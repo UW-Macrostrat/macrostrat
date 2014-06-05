@@ -1,0 +1,24 @@
+{
+  "name": "macrostrat-api",
+  "version": "0.0.1",
+  "description": "Data feeders for macrostrat",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "macrostrat",
+    "macrostratigraphy"
+  ],
+  "author": "John J Czaplewski",
+  "license": "CC0",
+  "dependencies": {
+    "async": "0.9.x",
+    "consolidate": "0.10.x",
+    "dbgeo": "0.0.x",
+    "express": "3.8.x",
+    "mustache": "0.8.x",
+    "mysql": "2.3.x",
+    "winston": "~0.7.3"
+  }
+}
