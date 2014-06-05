@@ -56,16 +56,20 @@ winston.add(winston.transports.File, { filename: "logs/larkin.log" });
         "data": data
       }
     });
-  }
+  };
 
-  api.error = function(res, next, message, options) {
-    res.json({
+  api.error = function(res, next, message, options, code) {
+    res.json((code) ? code : 200, {
       "error": {
         "message": message,
         "options": options
       }
     });
   };
+
+  api.log = function(type, message) {
+    winston.log(type, message);
+  }
 
   module.exports = api;
 

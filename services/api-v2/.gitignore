@@ -6,14 +6,11 @@ lib-cov
 *.pid
 *.gz
 
-pids
-logs
-results
-
 npm-debug.log
 node_modules
 
 routes/credentials.js
+logs/larkin.log
 
 .DS_Store
 .AppleDouble
