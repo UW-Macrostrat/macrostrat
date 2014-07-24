@@ -126,7 +126,7 @@ api.route("/fossils")
           if (error) {
             larkin.error(res, next, error);
           } else {
-            larkin.sendData(result, res, next);
+            larkin.sendData(result, res, null, next);
           }
         }
       });
@@ -181,7 +181,7 @@ api.route("/strats")
             larkin.error(res, next, error);
           } else {
             output.properties = data;
-            larkin.sendData(output, res, next);
+            larkin.sendData(output, res, null, next);
           }
         } 
       });

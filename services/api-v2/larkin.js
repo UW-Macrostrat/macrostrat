@@ -40,16 +40,9 @@ winston.add(winston.transports.File, { filename: "logs/larkin.log" });
   };
 
   larkin.sendData = function(data, res, format, next) {
-    if (format==="csv") {
-      var header = [];
-      async.each(Object.keys(data[0]), function(key, callback) {
-        header.push(key);
-        callback();
-      }, function(error) {
-        res.csv(data, header)
-      });
-      
-    }else {
+    if (format === "csv") {
+      res.csv(data, true)
+    } else {
       res.json({
         "success": {
         "results": data.length,
