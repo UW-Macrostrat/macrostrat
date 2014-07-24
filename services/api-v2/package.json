@@ -17,6 +17,8 @@
     "consolidate": "0.10.x",
     "dbgeo": "0.0.x",
     "express": "4.x.x",
+    "express-csv": "^0.6.0",
+    "json2csv": "^2.2.1",
     "mustache": "0.8.x",
     "mysql": "2.3.x",
     "winston": "~0.7.3"

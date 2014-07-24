@@ -1,6 +1,8 @@
 var mysql = require("mysql"),
+    async = require("async"),
     winston = require("winston"),
-    credentials = require("./routes/credentials");
+    credentials = require("./routes/credentials"),
+    csv = require('express-csv');
 
 winston.add(winston.transports.File, { filename: "logs/larkin.log" });
 
@@ -19,7 +21,7 @@ winston.add(winston.transports.File, { filename: "logs/larkin.log" });
     }.bind(this));
   };
 
-  larkin.query = function(sql, params, callback, send, res, next) {
+  larkin.query = function(sql, params, callback, send, res, format, next) {
     this.connection.getConnection(function(err, connection) {
       connection.query(sql, params, function(error, result) {
         connection.release();
@@ -27,7 +29,7 @@ winston.add(winston.transports.File, { filename: "logs/larkin.log" });
           this.error(res, next, "Error retrieving from MySQL.", error);
         } else {
           if (send) {
-            this.sendData(result, res, next);
+            this.sendData(result, res, format, next);
           } else {
             callback(result);
           }
@@ -36,14 +38,25 @@ winston.add(winston.transports.File, { filename: "logs/larkin.log" });
     }.bind(this));
   };
 
-  larkin.sendData = function(data, res, next) {
-    res.json({
-      "success": {
+  larkin.sendData = function(data, res, format, next) {
+    if (format==="csv") {
+      var header = [];
+      async.each(Object.keys(data[0]), function(key, callback) {
+        header.push(key);
+        callback();
+      }, function(error) {
+        res.csv(data, header)
+      });
+      
+    }else {
+      res.json({
+        "success": {
         "results": data.length,
         "data": data
-      }
-    });
-  };
+        }
+      });
+    }
+   };
 
   larkin.error = function(res, next, message, options, code) {
     //this.log("error", message);

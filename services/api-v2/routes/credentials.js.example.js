@@ -1,6 +1,5 @@
 exports.credentials = {
   host     : 'localhost',
-  user     : 'user',
-  password : 'password',
+  user     : 'webform',
   database : 'playground'
 }
