@@ -1,5 +1,8 @@
 exports.credentials = {
   host     : 'localhost',
-  user     : 'webform',
-  database : 'playground'
+  user     : 'user',
+  password : 'password',
+  database : 'playground',
+  socketPath: '/tmp/mysql.sock'
+//  socketPath: '/var/tmp/mariadb.sock'
 }

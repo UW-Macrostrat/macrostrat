@@ -4,6 +4,7 @@ var mysql = require("mysql"),
     credentials = require("./routes/credentials"),
     csv = require('express-csv');
 
+
 winston.add(winston.transports.File, { filename: "logs/larkin.log" });
 
 (function() {
@@ -58,8 +59,9 @@ winston.add(winston.transports.File, { filename: "logs/larkin.log" });
     }
    };
 
+
   larkin.error = function(res, next, message, options, code) {
-    //this.log("error", message);
+    this.log("error", message);
     res.json((code) ? code : 200, {
       "error": {
         "message": message,

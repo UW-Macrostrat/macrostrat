@@ -15,7 +15,6 @@ api.use(function(req, res, next) {
   next();
 });
 
-
 /*    /api    */
 api.route("/")
   .get(function(req, res, next) {
@@ -72,7 +71,7 @@ api.route("/columns")
         var column = [results.query1];
         column[0].units = results.query2;
 
-        larkin.sendData(column, res, next);
+        larkin.sendData(column, res, "csv", next);
       });
 
     } else {

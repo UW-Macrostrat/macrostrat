@@ -14,7 +14,6 @@
   "license": "CC0",
   "dependencies": {
     "async": "0.9.x",
-    "consolidate": "0.10.x",
     "dbgeo": "0.0.x",
     "express": "4.x.x",
     "express-csv": "^0.6.0",
