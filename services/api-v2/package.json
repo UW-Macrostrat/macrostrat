@@ -16,7 +16,7 @@
     "async": "0.9.x",
     "dbgeo": "0.0.x",
     "express": "4.x.x",
-    "express-csv": "^0.6.0",
+    "express-csv": "git://github.com/jczaplew/express-csv.git",
     "json2csv": "^2.2.1",
     "mustache": "0.8.x",
     "mysql": "2.3.x",

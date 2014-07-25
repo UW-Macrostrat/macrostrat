@@ -11,9 +11,9 @@ winston.add(winston.transports.File, { filename: "logs/larkin.log" });
   var larkin = {};
 
   larkin.connectMySQL = function() {
-    this.connection = mysql.createPool(credentials.credentials);
+    this.connection = mysql.createConnection(credentials.credentials);
 
-    this.connection.getConnection(function(error, connection) {
+    this.connection.connect(function(error) {
       if (error) {
         this.log("error", error);
       } else {
@@ -23,19 +23,16 @@ winston.add(winston.transports.File, { filename: "logs/larkin.log" });
   };
 
   larkin.query = function(sql, params, callback, send, res, format, next) {
-    this.connection.getConnection(function(err, connection) {
-      connection.query(sql, params, function(error, result) {
-        connection.release();
-        if (error) {
-          this.error(res, next, "Error retrieving from MySQL.", error);
+    this.connection.query(sql, params, function(error, result) {
+      if (error) {
+        this.error(res, next, "Error retrieving from MySQL.", error);
+      } else {
+        if (send) {
+          this.sendData(result, res, format, next);
         } else {
-          if (send) {
-            this.sendData(result, res, format, next);
-          } else {
-            callback(result);
-          }
+          callback(result);
         }
-      }.bind(this));
+      }
     }.bind(this));
   };
 

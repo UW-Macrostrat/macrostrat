@@ -15,6 +15,13 @@ api.use(function(req, res, next) {
   next();
 });
 
+api.acceptedFormats = {
+  "json": true,
+  "geojson": true,
+  "topojson": true,
+  "csv": true
+};
+
 /*    /api    */
 api.route("/")
   .get(function(req, res, next) {
@@ -70,8 +77,8 @@ api.route("/columns")
       function(err, results) {
         var column = [results.query1];
         column[0].units = results.query2;
-
-        larkin.sendData(column, res, "csv", next);
+        var format = "json";
+        larkin.sendData(column, res, format, next);
       });
 
     } else {
@@ -119,7 +126,7 @@ api.route("/fossils")
 
       dbgeo.parse({
         "data": results,
-        "outputFormat": (req.query.format) ? req.query.format : "geojson",
+        "outputFormat": (api.acceptedFormats[req.query.format]) ? req.query.format : "geojson",
         "geometryColumn": "geometry",
         "geometryType": "wkt",
         "callback": function(error, result) {
@@ -175,7 +182,7 @@ api.route("/strats")
         "data": result,
         "geometryColumn": "wkt",
         "geometryType": "wkt",
-        "outputFormat": (req.query.format) ? req.query.format : "geojson",
+        "outputFormat": (api.acceptedFormats[req.query.format]) ? req.query.format : "geojson",
         "callback": function(error, output) {
           if (error) {
             larkin.error(res, next, error);
@@ -200,10 +207,12 @@ api.route("/stats")
           GROUP BY project_id \
           ORDER BY field(project, 'North America','Caribbean','New Zealand','Deep Sea') ";
 
-    larkin.query(sql, [], null, true, res, next);
+    var format = (api.acceptedFormats[req.query.format]) ? req.query.format : "json";
+
+    larkin.query(sql, [], null, true, res, format, next);
   });
 
-/*    /api/strat_name    */
+/*    /api/strat_names    */
 api.route("/strat_names")
   .get(function(req, res, next) {
     var filterString = "",
@@ -243,25 +252,17 @@ api.route("/strat_names")
          GROUP BY sn.id \
          ORDER BY sn.strat_name";
 
-    larkin.query(sql, params, null, true, res, next);
+    var format = (api.acceptedFormats[req.query.format]) ? req.query.format : "json";
+
+    larkin.query(sql, params, null, true, res, format, next);
   });
 
 
-/*     /api/stats     */
+/*     /api/section_stats     */
 api.route("/section_stats")
   .get(function(req, res, next) {
-    var sql = "\
-      SELECT project_id,units_sections.col_id, units_sections.section_id, sum(max_thick) max_thick, sum(min_thick) min_thick, min(l.age_top) t_age, max(f.age_bottom) b_age \
-      FROM units \
-      JOIN units_sections ON units.id=unit_id \
-      JOIN cols ON units_sections.col_id=cols.id \
-      JOIN projects on project_id=projects.id \
-      JOIN intervals f ON f.id=FO \
-      JOIN intervals l on l.id=LO \
-      WHERE status_code='active' and units.id IN (SELECT distinct unit_id from unit_liths,liths where lith_id=liths.id and lith_class='sedimentary') and max_thick>0 and f.age_bottom<=541 GROUP BY units_sections.section_id";
-
-    if (req.query.age_model==="continuous"){
-    var sql = "\
+    if (req.query.age_model === "continuous") {
+      var sql = "\
       SELECT project_id, units_sections.col_id col_id, units_sections.section_id section_id, sum(max_thick) max_thick, sum(min_thick) min_thick, min(t1_age) t_age, max(t1_age) b_age \
       FROM units \
       JOIN units_sections ON units.id=unit_id \
@@ -269,12 +270,22 @@ api.route("/section_stats")
       JOIN projects on project_id=projects.id \
       JOIN unit_boundaries ON units_sections.unit_id=unit_boundaries.unit_id \
       WHERE status_code='active' and units.id IN (SELECT distinct unit_id from unit_liths,liths where lith_id=liths.id and lith_class='sedimentary') and max_thick>0 and t1_age<=541 GROUP BY units_sections.section_id";
+    } else {
+      var sql = "\
+        SELECT project_id,units_sections.col_id, units_sections.section_id, sum(max_thick) max_thick, sum(min_thick) min_thick, min(l.age_top) t_age, max(f.age_bottom) b_age \
+        FROM units \
+        JOIN units_sections ON units.id=unit_id \
+        JOIN cols ON units_sections.col_id=cols.id \
+        JOIN projects on project_id=projects.id \
+        JOIN intervals f ON f.id=FO \
+        JOIN intervals l on l.id=LO \
+        WHERE status_code='active' and units.id IN (SELECT distinct unit_id from unit_liths,liths where lith_id=liths.id and lith_class='sedimentary') and max_thick>0 and f.age_bottom<=541 GROUP BY units_sections.section_id";
     }
 
-    larkin.query(sql, [], null, true, res, req.query.format, next);
+    var format = (api.acceptedFormats[req.query.format]) ? req.query.format : "json";
+
+    larkin.query(sql, [], null, true, res, format, next);
   });
-
-
 
 
 /* Handle errors and unknown pages */
