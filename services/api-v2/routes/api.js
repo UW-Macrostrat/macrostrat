@@ -263,7 +263,7 @@ api.route("/section_stats")
   .get(function(req, res, next) {
     if (req.query.age_model === "continuous") {
       var sql = "\
-      SELECT project_id, units_sections.col_id col_id, units_sections.section_id section_id, sum(max_thick) max_thick, sum(min_thick) min_thick, min(t1_age) t_age, max(t1_age) b_age \
+      SELECT project, units_sections.col_id col_id, units_sections.section_id section_id, count(distinct units.id) units, sum(max_thick) max_thick, sum(min_thick) min_thick, min(t1_age) t_age, max(t1_age) b_age \
       FROM units \
       JOIN units_sections ON units.id=unit_id \
       JOIN cols ON units_sections.col_id=cols.id \
@@ -272,7 +272,7 @@ api.route("/section_stats")
       WHERE status_code='active' and units.id IN (SELECT distinct unit_id from unit_liths,liths where lith_id=liths.id and lith_class='sedimentary') and max_thick>0 and t1_age<=541 GROUP BY units_sections.section_id";
     } else {
       var sql = "\
-        SELECT project_id,units_sections.col_id, units_sections.section_id, sum(max_thick) max_thick, sum(min_thick) min_thick, min(l.age_top) t_age, max(f.age_bottom) b_age \
+        SELECT project,units_sections.col_id, units_sections.section_id, count(distinct units.id) units, sum(max_thick) max_thick, sum(min_thick) min_thick, min(l.age_top) t_age, max(f.age_bottom) b_age \
         FROM units \
         JOIN units_sections ON units.id=unit_id \
         JOIN cols ON units_sections.col_id=cols.id \
