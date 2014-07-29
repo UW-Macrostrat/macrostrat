@@ -287,6 +287,42 @@ api.route("/section_stats")
     larkin.query(sql, [], null, true, res, format, next);
   });
 
+/*    /api/paleogeography */
+api.route("/paleogeography")
+  .get(function(req, res, next) {
+    async.waterfall([
+      function(callback) {
+        if (req.query.year) {
+          callback(null, req.query.year);
+        } else if (req.query.interval) {
+          larkin.query("SELECT (age_bottom + age_top)/2 AS mid FROM intervals WHERE interval_name = ?", [req.query.interval], function(result) {
+            if (result.length === 1) {
+              callback(null, parseInt(result[0].mid));
+            } else {
+              larkin.error(res, next, "interval not found");
+            }
+          });
+        }
+      },
+      function(year, callback) {
+        larkin.queryPg("SELECT plateid, ST_AsGeoJSON(geom) AS geometry FROM merge.reconstructed_" + year + "_merged", [], function(result) {
+          callback(null, result.rows);
+        });
+      }
+    ], function(error, data) {
+
+      dbgeo.parse({
+        "data": data,
+        "outputFormat": (req.query.format && req.query.format === "geojson" || req.query.format === "topojson") ? req.query.format : "geojson",
+        "callback": function(error, result) {
+          if (error) {
+            larkin.error(res, next, error);
+          }
+          larkin.sendData(result, res, null, next);
+        }
+      });
+    });
+  });
 
 /* Handle errors and unknown pages */
 api.route("*")

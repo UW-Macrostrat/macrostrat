@@ -1,4 +1,5 @@
 var mysql = require("mysql"),
+    pg = require("pg"),
     async = require("async"),
     winston = require("winston"),
     credentials = require("./routes/credentials"),
@@ -11,7 +12,7 @@ winston.add(winston.transports.File, { filename: "logs/larkin.log" });
   var larkin = {};
 
   larkin.connectMySQL = function() {
-    this.connection = mysql.createConnection(credentials.credentials);
+    this.connection = mysql.createConnection(credentials.mysql);
 
     this.connection.connect(function(error) {
       if (error) {
@@ -21,6 +22,27 @@ winston.add(winston.transports.File, { filename: "logs/larkin.log" });
       }
     }.bind(this));
   };
+
+  larkin.queryPg = function(sql, params, callback, send, res, format, next) {
+    pg.connect("postgres://" + credentials.pg.user + "@" + credentials.pg.host + "/" + credentials.pg.database, function(err, client, done) {
+      if (err) {
+        this.log("error", error);
+      }
+      client.query(sql, params, function(err, result) {
+        done();
+
+        if (err) {
+          this.log("error", err);
+        }
+
+        if (send) {
+          this.sendData(result, res, format, next);
+        } else {
+          callback(result);
+        }
+      }.bind(this));
+    }.bind(this));
+  }
 
   larkin.query = function(sql, params, callback, send, res, format, next) {
     this.connection.query(sql, params, function(error, result) {
