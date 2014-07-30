@@ -40,25 +40,36 @@ api.route("/")
 /*    /api/columns?id=17    */
 api.route("/columns")
   .get(function(req, res, next) {
-    if (req.query.id) {
-      async.series({
-        query1: function(callback) {
-          larkin.query("SELECT id, col_name FROM cols WHERE id = ?", [req.query.id], function(result) {
+    if (isFinite(req.query.id) || isFinite(req.query.lat) && isFinite(req.query.lng)) {
+      async.waterfall([
+        function(callback) {
+            if (req.query.lat){
+              // Find nearest column
+              larkin.query("SELECT col_id from col_areas JOIN cols on col_id=cols.id WHERE ST_CONTAINS(col_areas.col_area,ST_GEOMFROMTEXT('POINT(? ?)')) and status_code='active'", [parseFloat(req.query.lng), parseFloat(req.query.lat)], function(result) {
+                callback(null, result[0].col_id);
+              });
+            } else { 
+              callback(null, req.query.id);
+            }
+
+        },
+        
+        function(column_id, callback) {
+          larkin.query("SELECT id, col_name FROM cols WHERE id = ?", column_id, function(result) {
             if (result.length === 0) {
               larkin.error(res, next, "No results found.");
             } else {
-              callback(null, result[0]);
+              callback(null, column_id, result[0]);
             }
             
           });
         },
-        query2: function(callback) {
-          larkin.query("SELECT units.id AS unit_id, units_sections.section_id, strat_name, max_thick,\
-            min_thick, f.id AS F_id, f.interval_name AS F_int, f.age_bottom AS F_agebot, f.age_top AS F_agetop,\
-            FO_h,l.id AS L_id, l.interval_name AS L_int, l.age_bottom AS L_agebot, l.age_top AS L_agetop, LO_h, \
-            position_bottom, u1.unit_id AS t_uid1,u1.unit_id_2 AS t_uid2,u1.t1 AS t_int_id,u1.t1_prop AS t_prop,\
-            u1.t1_age AS t_age, u2.unit_id_2 AS b_uid2, u2.unit_id AS b_uid1, u2.t1 AS b_int_id, u2.t1_prop AS\
-            b_prop, u2.t1_age AS b_age, color, GROUP_CONCAT(lith,' (',comp_prop,')' SEPARATOR '-') AS liths\
+
+        function(column_id, column_info, callback) {
+          var shortSQL = "units.id AS unit_id,strat_name,GROUP_CONCAT(lith,'-',comp_prop,'' SEPARATOR ',') AS liths ",
+              longSQL = "units.id AS unit_id, units_sections.section_id, strat_name, max_thick, min_thick, f.id AS F_id, f.interval_name AS F_int, f.age_bottom AS F_agebot, f.age_top AS F_agetop, FO_h,l.id AS L_id, l.interval_name AS L_int, l.age_bottom AS L_agebot, l.age_top AS L_agetop, LO_h, position_bottom, u1.unit_id AS t_uid1,u1.unit_id_2 AS t_uid2,u1.t1 AS t_int_id,u1.t1_prop AS t_prop, u1.t1_age AS t_age, u2.unit_id_2 AS b_uid2, u2.unit_id AS b_uid1, u2.t1 AS b_int_id, u2.t1_prop AS b_prop, u2.t1_age AS b_age, color, GROUP_CONCAT(lith,'-',comp_prop,'' SEPARATOR ',') AS liths ";
+
+          larkin.query("SELECT " + ((req.query.response === "short") ? shortSQL : longSQL) + " \
             FROM units\
             JOIN units_sections ON unit_id = units.id\
             JOIN unit_liths ON unit_liths.unit_id = units.id \
@@ -68,21 +79,21 @@ api.route("/columns")
             LEFT JOIN unit_boundaries u1 ON u1.unit_id = units.id \
             LEFT JOIN unit_boundaries u2 ON u2.unit_id_2 = units.id \
             WHERE units_sections.col_id = ? \
-            GROUP BY units.id ORDER BY b_age ASC", [req.query.id], function(result) {
-              callback(null, result);
+            GROUP BY units.id ORDER BY u2.t1_age ASC", [column_id], function(result) {
+              callback(null, column_info, result);
             });
         }
-      },
+      ],
       // after the two queries are executed, send the result
-      function(err, results) {
-        var column = [results.query1];
-        column[0].units = results.query2;
+      function(err, column_info, result) {
+        var column = [column_info];
+        column[0].units = result;
         var format = "json";
         larkin.sendData(column, res, format, next);
       });
 
     } else {
-      larkin.error(res, next, "Please provide a parameter id. Example: /api/columns?id=17");
+      larkin.error(res, next, "Please provide a parameter id corresponding to column id (api/columns?id=17) or a latitude and longitude (api/columns?lat=50&lng=-80");
     }
   });
 
@@ -286,6 +297,10 @@ api.route("/section_stats")
 
     larkin.query(sql, [], null, true, res, format, next);
   });
+
+
+
+
 
 /*    /api/paleogeography */
 api.route("/paleogeography")
