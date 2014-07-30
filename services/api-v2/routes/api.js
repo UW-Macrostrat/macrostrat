@@ -235,7 +235,13 @@ api.route("/stats")
 /*     /api/lith_definitions     */
 api.route("/lith_definitions")
   .get(function(req, res, next) {
-    var sql = "SELECT id,lith,lith_type,lith_class,lith_color from liths";
+    var sql="SELECT id,lith,lith_type,lith_class,lith_color from liths";
+
+    if (req.query.lith_class) {
+      sql += " WHERE lith_class='"+ req.query.lith_class +"'";
+    } else if (req.query.lith_type){
+      sql += " WHERE lith_type='"+ req.query.lith_type +"'";
+    } 
     var format = (api.acceptedFormats[req.query.format]) ? req.query.format : "json";
 
     larkin.query(sql, [], null, true, res, format, next);
