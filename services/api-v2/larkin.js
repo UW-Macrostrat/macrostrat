@@ -21,6 +21,11 @@ winston.add(winston.transports.File, { filename: "logs/larkin.log" });
         this.log("info", "Connected to MySQL");
       }
     }.bind(this));
+
+    this.connection.on("error", function(err) {
+      this.log("error", err);
+      this.connectMySQL();
+    }.bind(this));
   };
 
   larkin.queryPg = function(sql, params, callback, send, res, format, next) {
