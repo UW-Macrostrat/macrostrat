@@ -43,15 +43,20 @@ api.route("/columns")
     if (isFinite(req.query.id) || isFinite(req.query.lat) && isFinite(req.query.lng)) {
       async.waterfall([
         function(callback) {
-            if (req.query.lat){
-              // Find nearest column
-              larkin.query("SELECT col_id from col_areas JOIN cols on col_id=cols.id WHERE ST_CONTAINS(col_areas.col_area,ST_GEOMFROMTEXT('POINT(? ?)')) and status_code='active'", [parseFloat(req.query.lng), parseFloat(req.query.lat)], function(result) {
+          if (req.query.lat){
+            // Find nearest column
+            larkin.query("SELECT col_id from col_areas JOIN cols on col_id=cols.id WHERE ST_CONTAINS(col_areas.col_area,ST_GEOMFROMTEXT('POINT(? ?)')) and status_code='active'", [parseFloat(req.query.lng), parseFloat(req.query.lat)], function(result) {
+              if (result.length < 1) {
+                callback("No columns found");
+              } else if (result.length > 1) { 
+                callback("More than 1 column found");
+              } else {
                 callback(null, result[0].col_id);
-              });
-            } else { 
-              callback(null, req.query.id);
-            }
-
+              }
+            });
+          } else { 
+            callback(null, req.query.id);
+          }
         },
         
         function(column_id, callback) {
@@ -86,10 +91,14 @@ api.route("/columns")
       ],
       // after the two queries are executed, send the result
       function(err, column_info, result) {
-        var column = [column_info];
-        column[0].units = result;
-        var format = "json";
-        larkin.sendData(column, res, format, next);
+        if (err) {
+          larkin.error(res, next, err);
+        } else {
+          var column = [column_info];
+          column[0].units = result;
+          var format = "json";
+          larkin.sendData(column, res, format, next);
+        }
       });
 
     } else {
