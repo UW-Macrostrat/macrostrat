@@ -223,6 +223,33 @@ api.route("/stats")
     larkin.query(sql, [], null, true, res, format, next);
   });
 
+/*     /api/lith_definitions     */
+api.route("/lith_definitions")
+  .get(function(req, res, next) {
+    var sql = "SELECT id,lith,lith_type,lith_class,lith_color from liths";
+    var format = (api.acceptedFormats[req.query.format]) ? req.query.format : "json";
+
+    larkin.query(sql, [], null, true, res, format, next);
+  });
+
+/*     /api/lith_definitions     */
+api.route("/lithatt_definitions")
+  .get(function(req, res, next) {
+    var sql = "SELECT id,lith_att,att_type from lith_atts";
+    var format = (api.acceptedFormats[req.query.format]) ? req.query.format : "json";
+
+    larkin.query(sql, [], null, true, res, format, next);
+  });
+
+/*     /api/lith_definitions     */
+api.route("/environ_definitions")
+  .get(function(req, res, next) {
+    var sql = "SELECT id,environ,environ_type,environ_class from environs";
+    var format = (api.acceptedFormats[req.query.format]) ? req.query.format : "json";
+
+    larkin.query(sql, [], null, true, res, format, next);
+  });
+
 /*    /api/strat_names    */
 api.route("/strat_names")
   .get(function(req, res, next) {
