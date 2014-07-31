@@ -87,16 +87,18 @@ api.route("/columns")
         },
 
         function(column_id, column_info, callback) {
-          var shortSQL = "units.id AS unit_id,strat_name,GROUP_CONCAT(lith,'-',comp_prop,'' SEPARATOR ',') AS liths ",
-              longSQL = "units.id AS unit_id, units_sections.section_id, strat_name, max_thick, min_thick, f.id AS F_id, f.interval_name AS F_int, f.age_bottom AS F_agebot, f.age_top AS F_agetop, FO_h,l.id AS L_id, l.interval_name AS L_int, l.age_bottom AS L_agebot, l.age_top AS L_agetop, LO_h, position_bottom, u1.unit_id AS t_uid1,u1.unit_id_2 AS t_uid2,u1.t1 AS t_int_id,u1.t1_prop AS t_prop, u1.t1_age AS t_age, u2.unit_id_2 AS b_uid2, u2.unit_id AS b_uid1, u2.t1 AS b_int_id, u2.t1_prop AS b_prop, u2.t1_age AS b_age, color, GROUP_CONCAT(lith,'-',comp_prop,'' SEPARATOR ',') AS liths ";
+          var shortSQL = "units.id AS unit_id,mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, GROUP_CONCAT(lith,'-',comp_prop,'' SEPARATOR ',') AS liths ",
+              longSQL = "units.id AS unit_id, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, units.strat_name, units_sections.section_id, max_thick, min_thick, f.id AS F_id, f.interval_name AS F_int, f.age_bottom AS F_agebot, f.age_top AS F_agetop, FO_h,l.id AS L_id, l.interval_name AS L_int, l.age_bottom AS L_agebot, l.age_top AS L_agetop, LO_h, position_bottom, u1.unit_id AS t_uid1,u1.unit_id_2 AS t_uid2,u1.t1 AS t_int_id,u1.t1_prop AS t_prop, u1.t1_age AS t_age, u2.unit_id_2 AS b_uid2, u2.unit_id AS b_uid1, u2.t1 AS b_int_id, u2.t1_prop AS b_prop, u2.t1_age AS b_age, color, GROUP_CONCAT(lith,'-',comp_prop,'' SEPARATOR ',') AS liths ";
 
           larkin.query("SELECT " + ((req.query.response === "short") ? shortSQL : longSQL) + " \
             FROM units\
-            JOIN units_sections ON unit_id = units.id\
+            JOIN units_sections ON units_sections.unit_id = units.id\
             JOIN unit_liths ON unit_liths.unit_id = units.id \
             JOIN liths ON lith_id = liths.id \
             JOIN intervals f ON f.id = FO \
             JOIN intervals l ON l.id = LO \
+            LEFT JOIN unit_strat_names ON unit_strat_names.unit_id=units.id \
+            LEFT JOIN strat_name_lookup ON strat_name_lookup.strat_name_id=unit_strat_names.strat_name_id \
             LEFT JOIN unit_boundaries u1 ON u1.unit_id = units.id \
             LEFT JOIN unit_boundaries u2 ON u2.unit_id_2 = units.id \
             WHERE units_sections.col_id = ? \
