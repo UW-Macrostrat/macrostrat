@@ -25,13 +25,22 @@ api.acceptedFormats = {
 /*    /api    */
 api.route("/")
   .get(function(req, res, next) {
+    var routes = [];
+    api.stack.map(function(d) { 
+      if (d.route && d.route.path != "*" && d.route.path !== null && d.route.path.length) {
+        routes.push(d.route.path);
+      } 
+    });
     res.json({
       "success": {
         "about": "This is the root of the Macrostrat API",
-        "routes": api.stack.map(function(d) { 
-          if (d.route && d.route.path != "*" && d.route.path !== null) {
+        "routes": api.stack.filter(function(d) { 
+          if (d.route && d.route.path != "*" && d.route.path !== null && d.route.path.length) {
             return d.route.path;
           } 
+        })
+        .map(function(d) {
+          return d.route.path;
         })
       }
     });
@@ -45,13 +54,17 @@ api.route("/columns")
         function(callback) {
           if (req.query.lat){
             // Find nearest column
-            larkin.query("SELECT col_id from col_areas JOIN cols on col_id=cols.id WHERE ST_CONTAINS(col_areas.col_area,ST_GEOMFROMTEXT('POINT(? ?)')) and status_code='active'", [parseFloat(req.query.lng), parseFloat(req.query.lat)], function(result) {
-              if (result.length < 1) {
-                callback("No columns found");
-              } else if (result.length > 1) { 
-                callback("More than 1 column found");
+            larkin.query("SELECT col_id from col_areas JOIN cols on col_id=cols.id WHERE ST_CONTAINS(col_areas.col_area,ST_GEOMFROMTEXT('POINT(? ?)')) and status_code='active'", [parseFloat(req.query.lng), parseFloat(req.query.lat)], function(error, result) {
+              if (error) {
+                callback(error);
               } else {
-                callback(null, result[0].col_id);
+                if (result.length < 1) {
+                  callback("No columns found");
+                } else if (result.length > 1) { 
+                  callback("More than 1 column found");
+                } else {
+                  callback(null, result[0].col_id);
+                }
               }
             });
           } else { 
@@ -60,13 +73,16 @@ api.route("/columns")
         },
         
         function(column_id, callback) {
-          larkin.query("SELECT id, col_name FROM cols WHERE id = ?", column_id, function(result) {
-            if (result.length === 0) {
-              larkin.error(res, next, "No results found.");
+          larkin.query("SELECT id, col_name FROM cols WHERE id = ?", [column_id], function(error, result) {
+            if (error) {
+              callback(error);
             } else {
-              callback(null, column_id, result[0]);
+              if (result.length === 0) {
+                larkin.error(res, next, "No results found.");
+              } else {
+                callback(null, column_id, result[0]);
+              }
             }
-            
           });
         },
 
@@ -84,8 +100,12 @@ api.route("/columns")
             LEFT JOIN unit_boundaries u1 ON u1.unit_id = units.id \
             LEFT JOIN unit_boundaries u2 ON u2.unit_id_2 = units.id \
             WHERE units_sections.col_id = ? \
-            GROUP BY units.id ORDER BY u2.t1_age ASC", [column_id], function(result) {
-              callback(null, column_info, result);
+            GROUP BY units.id ORDER BY u2.t1_age ASC", [column_id], function(error, result) {
+              if (error) {
+                callback(error);
+              } else {
+                callback(null, column_info, result);
+              }
             });
         }
       ],
@@ -112,12 +132,16 @@ api.route("/fossils")
     async.waterfall([
       function(callback) {
         if (req.query.interval_name) {
-          larkin.query("SELECT age_bottom,age_top,interval_name from intervals where interval_name = ? limit 1", [req.query.interval_name], function(result) {
-            if (result.length === 0) {
-              larkin.error(res, next, "No results found");
+          larkin.query("SELECT age_bottom,age_top,interval_name from intervals where interval_name = ? limit 1", [req.query.interval_name], function(error, result) {
+            if (error) {
+              callback(error);
             } else {
-              callback(null, {"interval_name": result[0].interval_name, "age_bottom": result[0].age_bottom, "age_top": result[0].age_top});
-            }  
+              if (result.length === 0) {
+                larkin.error(res, next, "No results found");
+              } else {
+                callback(null, {"interval_name": result[0].interval_name, "age_bottom": result[0].age_bottom, "age_top": result[0].age_top});
+              }  
+            }
           });
         } else if (req.query.age) {
           callback(null, {"interval_name": "Unknown", "age_bottom": req.query.age, "age_top": req.query.age});
@@ -138,26 +162,32 @@ api.route("/fossils")
           JOIN intervals l ON l.id = LO \
           JOIN pbdb.occurrences ON pbdb_matches.collection_no = pbdb.occurrences.collection_no \
           WHERE f.age_bottom > ? AND l.age_top < ? AND \
-          status_code = 'active' AND project_id IN (1,7) GROUP BY collection_no", [data.age_top, data.age_bottom], function(result) {
-          callback(null, data, result);
+          status_code = 'active' AND project_id IN (1,7) GROUP BY collection_no", [data.age_top, data.age_bottom], function(error, result) {
+            if (error) {
+              callback(error);
+            } else {
+              callback(null, data, result);
+            }
         });
       }
     ], function(error, data, results) {
-
-      dbgeo.parse({
-        "data": results,
-        "outputFormat": (api.acceptedFormats[req.query.format]) ? req.query.format : "geojson",
-        "geometryColumn": "geometry",
-        "geometryType": "wkt",
-        "callback": function(error, result) {
-          if (error) {
-            larkin.error(res, next, error);
-          } else {
-            larkin.sendData(result, res, null, next);
+      if (error) {
+        larkin.error(res, next, error);
+      } else {
+        dbgeo.parse({
+          "data": results,
+          "outputFormat": (api.acceptedFormats[req.query.format]) ? req.query.format : "geojson",
+          "geometryColumn": "geometry",
+          "geometryType": "wkt",
+          "callback": function(error, result) {
+            if (error) {
+              larkin.error(res, next, error);
+            } else {
+              larkin.sendData(result, res, null, next);
+            }
           }
-        }
-      });
-
+        });
+      }
     });
   });
 
@@ -167,11 +197,15 @@ api.route("/strats")
     async.waterfall([
       function(callback) {
         if (req.query.interval_name) {
-          larkin.query("SELECT age_bottom,age_top,interval_name from intervals where interval_name = ? LIMIT 1", [req.query.interval_name], function(result) {
-            if (result.length === 0) {
-              larkin.error(res, next, "No results found");
+          larkin.query("SELECT age_bottom,age_top,interval_name from intervals where interval_name = ? LIMIT 1", [req.query.interval_name], function(error, result) {
+            if (error) {
+              callback(error);
             } else {
-              callback(null, {"interval_name": result[0].interval_name, "age_bottom": result[0].age_bottom, "age_top": result[0].age_top});
+              if (result.length === 0) {
+                larkin.error(res, next, "No results found");
+              } else {
+                callback(null, {"interval_name": result[0].interval_name, "age_bottom": result[0].age_bottom, "age_top": result[0].age_top});
+              }
             }
           });
         } else if (req.query.age) {
@@ -192,26 +226,33 @@ api.route("/strats")
           JOIN intervals f ON f.id = FO \
           JOIN intervals l ON l.id = LO \
           WHERE f.age_bottom > ? AND l.age_top < ? \
-          AND status_code = 'active' AND project_id IN (1,7) GROUP BY col_areas.col_id", [data.age_top, data.age_bottom], function(result) {
-            callback(null, data, result);
+          AND status_code = 'active' AND project_id IN (1,7) GROUP BY col_areas.col_id", [data.age_top, data.age_bottom], function(error, result) {
+            if (error) {
+              callback(error);
+            } else {
+              callback(null, data, result);
+            }
           });
       }
     ], function(error, data, result) {
-
-      dbgeo.parse({
-        "data": result,
-        "geometryColumn": "wkt",
-        "geometryType": "wkt",
-        "outputFormat": (api.acceptedFormats[req.query.format]) ? req.query.format : "geojson",
-        "callback": function(error, output) {
-          if (error) {
-            larkin.error(res, next, error);
-          } else {
-            output.properties = data;
-            larkin.sendData(output, res, null, next);
-          }
-        } 
-      });
+      if (error) {
+        larkin.error(res, next, error);
+      } else {
+        dbgeo.parse({
+          "data": result,
+          "geometryColumn": "wkt",
+          "geometryType": "wkt",
+          "outputFormat": (api.acceptedFormats[req.query.format]) ? req.query.format : "geojson",
+          "callback": function(error, output) {
+            if (error) {
+              larkin.error(res, next, error);
+            } else {
+              output.properties = data;
+              larkin.sendData(output, res, null, next);
+            }
+          } 
+        });
+      }
     });
   });
 
@@ -235,7 +276,7 @@ api.route("/stats")
 /*     /api/lith_definitions     */
 api.route("/lith_definitions")
   .get(function(req, res, next) {
-    var sql="SELECT id,lith,lith_type,lith_class,lith_color from liths";
+    var sql = "SELECT id,lith,lith_type,lith_class,lith_color from liths";
 
     if (req.query.lith_class) {
       sql += " WHERE lith_class='"+ req.query.lith_class +"'";
@@ -341,10 +382,7 @@ api.route("/section_stats")
   });
 
 
-
-
-
-/*    /api/paleogeography */
+/*    /api/paleogeography?year=550   /api/paleogeography?interval=Permian */
 api.route("/paleogeography")
   .get(function(req, res, next) {
     if (!req.query.year && !req.query.interval) {
@@ -355,11 +393,15 @@ api.route("/paleogeography")
           if (req.query.year) {
             callback(null, req.query.year);
           } else if (req.query.interval) {
-            larkin.query("SELECT (age_bottom + age_top)/2 AS mid FROM intervals WHERE interval_name = ?", [req.query.interval], function(result) {
-              if (result.length === 1) {
-                callback(null, parseInt(result[0].mid));
+            larkin.query("SELECT (age_bottom + age_top)/2 AS mid FROM intervals WHERE interval_name = ?", [req.query.interval], function(error, result) {
+              if (error) {
+                callback(error);
               } else {
-                larkin.error(res, next, "interval not found");
+                if (result.length === 1) {
+                  callback(null, parseInt(result[0].mid));
+                } else {
+                  larkin.error(res, next, "interval not found");
+                }
               }
             });
           }
@@ -370,20 +412,22 @@ api.route("/paleogeography")
           });
         }
       ], function(error, data) {
-
-        dbgeo.parse({
-          "data": data,
-          "outputFormat": (req.query.format && req.query.format === "geojson" || req.query.format === "topojson") ? req.query.format : "geojson",
-          "callback": function(error, result) {
-            if (error) {
-              larkin.error(res, next, error);
+        if (error) {
+          larkin.error(res, next, error);
+        } else {
+          dbgeo.parse({
+            "data": data,
+            "outputFormat": (req.query.format && req.query.format === "geojson" || req.query.format === "topojson") ? req.query.format : "geojson",
+            "callback": function(error, result) {
+              if (error) {
+                larkin.error(res, next, error);
+              }
+              larkin.sendData(result, res, null, next);
             }
-            larkin.sendData(result, res, null, next);
-          }
-        });
+          });
+        }
       });
     }
-  
   });
 
 /* Handle errors and unknown pages */
@@ -403,6 +447,6 @@ api.use(function(err, req, res, next) {
     larkin.error(res, next, "500: Internal Server Error", null, 500);
   }
 });
-
+console.log(JSON.stringify(api.stack));
 // Export the module
 module.exports = api;

@@ -18,6 +18,7 @@
     "express": "4.x.x",
     "express-csv": "git://github.com/jczaplew/express-csv.git",
     "json2csv": "^2.2.1",
+    "mariasql": "^0.1.21",
     "mustache": "0.8.x",
     "mysql": "2.3.x",
     "pg": "^3.4.0",
