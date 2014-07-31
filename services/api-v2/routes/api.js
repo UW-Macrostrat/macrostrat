@@ -309,14 +309,16 @@ api.route("/environ_definitions")
 /*     /api/interval_definitions     */
 api.route("/interval_definitions")
   .get(function(req, res, next) {
-    var sql = "SELECT intervals.id, interval_name, age_top late_age, age_bottom early_age from intervals";
+    var sql = "SELECT intervals.id, interval_name, age_top late_age, age_bottom early_age FROM intervals",
+        params = [];
     if (req.query.timescale){
-      sql += " JOIN timescales_intervals ON interval_id=intervals.id JOIN timescales ON timescale_id=timescales.id WHERE timescale='"+ req.query.timescale +"'";
+      sql += " JOIN timescales_intervals ON interval_id=intervals.id JOIN timescales ON timescale_id=timescales.id WHERE timescale = ?";
+      params.push(req.query.timescale);
     }
     sql += " ORDER BY late_age ASC";
     var format = (api.acceptedFormats[req.query.format]) ? req.query.format : "json";
 
-    larkin.query(sql, [], null, true, res, format, next);
+    larkin.query(sql, params, null, true, res, format, next);
   });
 
 /*    /api/strat_names    */
@@ -460,6 +462,6 @@ api.use(function(err, req, res, next) {
     larkin.error(res, next, "500: Internal Server Error", null, 500);
   }
 });
-console.log(JSON.stringify(api.stack));
+
 // Export the module
 module.exports = api;

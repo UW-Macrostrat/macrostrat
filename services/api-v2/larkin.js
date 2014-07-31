@@ -61,14 +61,18 @@ winston.add(winston.transports.File, { filename: "logs/larkin.log" });
           this.log("error", err);
         }.bind(this))
         .on("end", function(info) {
-          callback(null, result.results);
-        });
-      })
+          if (send) {
+            this.sendData(result.results, res, format, next);
+          } else {
+            callback(null, result.results);
+          }
+        }.bind(this));
+      }.bind(this))
       .on("end", function() {
-
+        // don't have to do anything
       });
   };
-  
+
 
   larkin.sendData = function(data, res, format, next) {
     if (format === "csv") {
