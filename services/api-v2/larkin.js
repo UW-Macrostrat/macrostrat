@@ -25,7 +25,7 @@ winston.add(winston.transports.File, { filename: "logs/larkin.log" });
     }.bind(this))
     .on('close', function(error) {
       this.log("error", error);
-    });
+    }.bind(this));
   };
 
   larkin.queryPg = function(sql, params, callback, send, res, format, next) {
