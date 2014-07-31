@@ -306,6 +306,19 @@ api.route("/environ_definitions")
     larkin.query(sql, [], null, true, res, format, next);
   });
 
+/*     /api/interval_definitions     */
+api.route("/interval_definitions")
+  .get(function(req, res, next) {
+    var sql = "SELECT intervals.id, interval_name, age_top late_age, age_bottom early_age from intervals";
+    if (req.query.timescale){
+      sql += " JOIN timescales_intervals ON interval_id=intervals.id JOIN timescales ON timescale_id=timescales.id WHERE timescale='"+ req.query.timescale +"'";
+    }
+    sql += " ORDER BY late_age ASC";
+    var format = (api.acceptedFormats[req.query.format]) ? req.query.format : "json";
+
+    larkin.query(sql, [], null, true, res, format, next);
+  });
+
 /*    /api/strat_names    */
 api.route("/strat_names")
   .get(function(req, res, next) {
