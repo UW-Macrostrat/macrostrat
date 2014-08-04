@@ -27,8 +27,8 @@ var mysql = require("mysql"),
     }.bind(this));
   };
 
-  larkin.queryPg = function(sql, params, callback, send, res, format, next) {
-    pg.connect("postgres://" + credentials.pg.user + "@" + credentials.pg.host + "/" + credentials.pg.database, function(err, client, done) {
+  larkin.queryPg = function(db, sql, params, callback, send, res, format, next) {
+    pg.connect("postgres://" + credentials.pg.user + "@" + credentials.pg.host + "/" + db, function(err, client, done) {
       if (err) {
         this.log("error", error);
       }

@@ -424,7 +424,7 @@ api.route("/paleogeography")
           }
         },
         function(year, callback) {
-          larkin.queryPg("SELECT plateid, ST_AsGeoJSON(geom) AS geometry FROM merge.reconstructed_" + year + "_merged", [], function(result) {
+          larkin.queryPg("alice", "SELECT plateid, ST_AsGeoJSON(geom) AS geometry FROM merge.reconstructed_" + year + "_merged", [], function(result) {
             callback(null, result.rows);
           });
         }
@@ -446,6 +446,41 @@ api.route("/paleogeography")
       });
     }
   });
+
+api.route("/editing")
+  .get(function(req, res, next) {
+    if (req.query.id) {
+      // return just that polygons and the ones that touch it
+      larkin.queryPg("macrostrat_editing", "SELECT col_id, ST_AsGeoJSON(geom) AS geometry FROM (SELECT col_id, geom FROM col_areas) q WHERE ST_Touches((SELECT geom FROM col_areas WHERE col_id = $1), geom) OR col_id = $1", [req.query.id], function(result) {
+        dbgeo.parse({
+          "data":result.rows,
+          "outputFormat": "topojson",
+          "callback": function(error, result) {
+            if (error) {
+              larkin.error(res, next, error);
+            } else {
+              larkin.sendData(result, res, null, next);
+            }
+          }
+        });
+      });
+    } else {
+      // return all polygons
+      larkin.queryPg("macrostrat_editing", "SELECT col_id, ST_AsGeoJSON(geom) as geometry FROM col_areas", [], function(result) {
+        dbgeo.parse({
+          "data":result.rows,
+          "outputFormat": "topojson",
+          "callback": function(error, result) {
+            if (error) {
+              larkin.error(res, next, error);
+            } else {
+              larkin.sendData(result, res, null, next);
+            }
+          }
+        });
+      });
+    }
+  })
 
 /* Handle errors and unknown pages */
 api.route("*")
