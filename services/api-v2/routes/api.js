@@ -405,7 +405,7 @@ api.route("/paleogeography")
     if (!req.query.year && !req.query.interval) {
       larkin.error(res, next, "Please specify a year between 0 and 550 MA or a named interval");
     } else {
-          async.waterfall([
+      async.waterfall([
         function(callback) {
           if (req.query.year) {
             callback(null, req.query.year);
@@ -451,10 +451,11 @@ api.route("/editing")
   .get(function(req, res, next) {
     if (req.query.id) {
       // return just that polygons and the ones that touch it
-      larkin.queryPg("macrostrat_editing", "SELECT col_id, ST_AsGeoJSON(geom) AS geometry FROM (SELECT col_id, geom FROM col_areas) q WHERE ST_Touches((SELECT geom FROM col_areas WHERE col_id = $1), geom) OR col_id = $1", [req.query.id], function(result) {
+    //  larkin.queryPg("macrostrat_editing", "SELECT col_id, ST_AsGeoJSON(geom) AS geometry FROM (SELECT col_id, geom FROM col_areas) q WHERE ST_Touches((SELECT geom FROM col_areas WHERE col_id = $1), geom) OR col_id = $1", [req.query.id], function(result) {
+      larkin.queryPg("macrostrat_editing", "SELECT b.col_id, ST_AsGeoJSON(b.geom) AS geometry FROM col_areas AS a JOIN col_areas AS b ON ST_Intersects(st_snaptogrid(a.geom,0.001), st_snaptogrid(b.geom,0.001)) WHERE a.col_id = $1 OR b.col_id = $1 GROUP BY b.col_id, b.geom ORDER BY b.col_id ASC;", [req.query.id], function(result) {
         dbgeo.parse({
           "data":result.rows,
-          "outputFormat": "topojson",
+          "outputFormat": "geojson",
           "callback": function(error, result) {
             if (error) {
               larkin.error(res, next, error);
@@ -469,7 +470,7 @@ api.route("/editing")
       larkin.queryPg("macrostrat_editing", "SELECT col_id, ST_AsGeoJSON(geom) as geometry FROM col_areas", [], function(result) {
         dbgeo.parse({
           "data":result.rows,
-          "outputFormat": "topojson",
+          "outputFormat": "geojson",
           "callback": function(error, result) {
             if (error) {
               larkin.error(res, next, error);
@@ -480,7 +481,39 @@ api.route("/editing")
         });
       });
     }
-  })
+  });
+
+api.route("/editing/update")
+  .post(function(req, res, next) {
+    if (req.body.layer) {
+      req.body.layer = JSON.parse(req.body.layer);
+      async.each(req.body.layer.features, function(feature, callback) {
+        larkin.queryPg("macrostrat_editing", "SELECT ST_isValid(st_geomfromgeojson( '" + JSON.stringify(feature.geometry) + "')) AS isvalid", [], function(result) {
+          if (result.rows[0].isvalid) {
+            callback();
+          } else {
+            callback("invalid");
+          }
+        });
+        
+      }, function(error) {
+        if (error) {
+          larkin.error(res, next, error);
+        } else {
+          async.each(req.body.layer.features, function(feature, callback) {
+            larkin.queryPg("macrostrat_editing", "UPDATE col_areas SET geom = st_geomfromgeojson('" + JSON.stringify(feature.geometry) + "') WHERE col_id = $1", [feature.properties.col_id], function(result) {
+              callback();
+            });
+          }, function(error) {
+            larkin.sendData([{"update": "success"}], res, null, next);
+          });
+        }
+      });
+
+    } else {
+      larkin.error(res, next, "A layer is required");
+    }
+  });
 
 /* Handle errors and unknown pages */
 api.route("*")
