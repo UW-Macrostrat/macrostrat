@@ -8,13 +8,16 @@
     "url": "https://github.com/UW-Macrostrat/macrostrat-api.git"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js"
   },
   "keywords": [
     "macrostrat",
     "macrostratigraphy"
   ],
-  "author": "John J Czaplewski",
+  "contributors": [
+    {"name": "John J Czaplewski"},
+    {"name": "Shanan Peters"}
+  ],
   "license": "CC0",
   "dependencies": {
     "async": "0.9.x",
