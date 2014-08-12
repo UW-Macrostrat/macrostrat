@@ -3,6 +3,7 @@ var express = require("express"),
     credentials = require("./credentials"),
     winston = require("winston"),
     async = require("async"),
+    wellknown = require("wellknown"),
     larkin = require("../larkin"),
     dbgeo = require("dbgeo");
 
@@ -488,7 +489,8 @@ api.route("/editing/update")
     if (req.body.layer) {
       req.body.layer = JSON.parse(req.body.layer);
       async.each(req.body.layer.features, function(feature, callback) {
-        larkin.queryPg("macrostrat_editing", "SELECT ST_isValid(st_geomfromgeojson( '" + JSON.stringify(feature.geometry) + "')) AS isvalid", [], function(result) {
+      //  larkin.queryPg("macrostrat_editing", "SELECT ST_isValid(st_geomfromgeojson( '" + JSON.stringify(feature.geometry) + "')) AS isvalid", [], function(result) {
+        larkin.queryPg("macrostrat_editing", "SELECT ST_isValid(ST_GeomFromText( '" + wellknown.stringify(feature.geometry) + "')) AS isvalid", [], function(result) {
           if (result.rows[0].isvalid) {
             callback();
           } else {
@@ -501,7 +503,8 @@ api.route("/editing/update")
           larkin.error(res, next, error);
         } else {
           async.each(req.body.layer.features, function(feature, callback) {
-            larkin.queryPg("macrostrat_editing", "UPDATE col_areas SET geom = st_geomfromgeojson('" + JSON.stringify(feature.geometry) + "') WHERE col_id = $1", [feature.properties.col_id], function(result) {
+            //larkin.queryPg("macrostrat_editing", "UPDATE col_areas SET geom = st_geomfromgeojson('" + JSON.stringify(feature.geometry) + "') WHERE col_id = $1", [feature.properties.col_id], function(result) {
+            larkin.queryPg("macrostrat_editing", "UPDATE col_areas SET geom = ST_GeomFromText('" + wellknown.stringify(feature.geometry) + "') WHERE col_id = $1", [feature.properties.col_id], function(result) {
               callback();
             });
           }, function(error) {

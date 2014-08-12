@@ -3,6 +3,10 @@
   "version": "0.0.2",
   "description": "Data feeders for macrostrat",
   "main": "server.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/UW-Macrostrat/macrostrat-api.git"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -14,14 +18,13 @@
   "license": "CC0",
   "dependencies": {
     "async": "0.9.x",
+    "body-parser": "^1.6.3",
     "dbgeo": "0.0.x",
     "express": "4.x.x",
     "express-csv": "git://github.com/jczaplew/express-csv.git",
-    "json2csv": "^2.2.1",
-    "mariasql": "^0.1.21",
-    "mustache": "0.8.x",
     "mysql": "2.3.x",
     "pg": "^3.4.0",
+    "wellknown": "^0.2.0",
     "winston": "~0.7.3"
   }
 }
