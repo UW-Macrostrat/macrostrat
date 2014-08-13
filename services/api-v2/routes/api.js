@@ -308,6 +308,14 @@ api.route("/environ_definitions")
     var sql = "SELECT id,environ,environ_type,environ_class from environs";
     var format = (api.acceptedFormats[req.query.format]) ? req.query.format : "json";
 
+    if (req.query.environ_class) {
+      sql += " WHERE environ_class='"+ req.query.environ_class +"'";
+    } else if (req.query.environ_type){
+      sql += " WHERE environ_type='"+ req.query.environ_type +"'";
+    }  else if (req.query.environ){
+      sql += " WHERE environ='"+ req.query.environ +"'";
+    }
+
     larkin.query(sql, [], null, true, res, format, next);
   });
 
