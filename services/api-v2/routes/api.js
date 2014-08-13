@@ -285,7 +285,9 @@ api.route("/lith_definitions")
       sql += " WHERE lith_class='"+ req.query.lith_class +"'";
     } else if (req.query.lith_type){
       sql += " WHERE lith_type='"+ req.query.lith_type +"'";
-    } 
+    }  else if (req.query.lith){
+      sql += " WHERE lith='"+ req.query.lith +"'";
+    }
     var format = (api.acceptedFormats[req.query.format]) ? req.query.format : "json";
 
     larkin.query(sql, [], null, true, res, format, next);
