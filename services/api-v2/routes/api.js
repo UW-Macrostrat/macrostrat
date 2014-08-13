@@ -299,6 +299,12 @@ api.route("/lithatt_definitions")
     var sql = "SELECT id,lith_att,att_type from lith_atts";
     var format = (api.acceptedFormats[req.query.format]) ? req.query.format : "json";
 
+    if (req.query.att_type) {
+      sql += " WHERE att_type='"+ req.query.att_type +"'";
+    } else if (req.query.lith_att){
+      sql += " WHERE lith_att='"+ req.query.lith_att +"'";
+    }
+
     larkin.query(sql, [], null, true, res, format, next);
   });
 
