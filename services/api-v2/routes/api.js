@@ -347,38 +347,26 @@ api.route("/strat_names")
         params = [];
 
     if (req.query.id) {
-      filterString += "AND sn.id = ?";
+      filterString += "strat_name_id = ?";
       params.push(req.query.id);
     } 
-    if (req.query.name) {
-      filterString += "AND sn.strat_name LIKE ? ";
-      params.push(req.query.name + "%");
+    else if (req.query.name) {
+      if (req.query.rank && req.query.rank.length <= 3 && req.query.rank.length >= 2 && /^[a-zA-Z]+$/.test(req.query.rank)){
+        filterString += req.query.rank+"_name LIKE ?";
+        params.push(req.query.name + "%");
+      } else {
+          filterString += "strat_name LIKE ?";
+           params.push(req.query.name + "%");}
     } 
-    if (req.query.parent_name) {
-      filterString += "AND sn2.strat_name LIKE ? ";
-      params.push(req.query.parent_name + "%");
-    }
-    if (req.query.rank) {
-      filterString += "AND sn.rank = ? ";
+    else if (req.query.rank) {
+      filterString += "rank = ?";
       params.push(req.query.rank);
     }
-    if (req.query.parent_rank) {
-      filterString += "AND sn2.rank = ? ";
-      params.push(req.query.parent_rank);
-    }
 
-    var sql = "\
-      SELECT sn.id as id, sn.strat_name, sn.rank, st.this_name AS parent_id, sn2.strat_name AS parent_name, sn2.rank AS parent_rank \
-          FROM unit_strat_names usn \
-            JOIN strat_names AS sn ON usn.strat_name_id = sn.id \
-            JOIN units AS u ON u.id = sn.id \
-            LEFT JOIN strat_tree AS st ON st.that_name = sn.id \
-            LEFT JOIN strat_names AS sn2 ON st.this_name = sn2.id \
-            JOIN cols AS c ON u.col_id = c.id \
-            LEFT JOIN strat_tree AS st2 ON st2.this_name = sn.id \
-                WHERE project_id = 1 AND status_code LIKE 'active' " + filterString + " \
-         GROUP BY sn.id \
-         ORDER BY sn.strat_name";
+    if (filterString.length > 1) filterString = " WHERE "+filterString;
+        
+
+    var sql = "SELECT strat_name name, rank, strat_name_id id, bed_name bed,bed_id,mbr_name mbr,mbr_id,fm_name fm,fm_id,gp_name gp,gp_id,sgp_name sgp,sgp_id FROM strat_name_lookup" + filterString;
 
     var format = (api.acceptedFormats[req.query.format]) ? req.query.format : "json";
 
