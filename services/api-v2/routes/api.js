@@ -366,7 +366,7 @@ api.route("/strat_names")
     if (filterString.length > 1) filterString = " WHERE "+filterString;
         
 
-    var sql = "SELECT strat_name name, rank, strat_name_id id, bed_name bed,bed_id,mbr_name mbr,mbr_id,fm_name fm,fm_id,gp_name gp,gp_id,sgp_name sgp,sgp_id FROM strat_name_lookup" + filterString;
+    var sql = "SELECT strat_name name, rank, strat_name_id id, bed_name bed,bed_id,mbr_name mbr,mbr_id,fm_name fm,fm_id,gp_name gp,gp_id,sgp_name sgp,sgp_id FROM strat_names_lookup" + filterString;
 
     var format = (api.acceptedFormats[req.query.format]) ? req.query.format : "json";
 
