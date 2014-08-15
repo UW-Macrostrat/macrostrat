@@ -26,12 +26,6 @@ api.acceptedFormats = {
 /*    /api    */
 api.route("/")
   .get(function(req, res, next) {
-    var routes = [];
-    api.stack.map(function(d) {
-      if (d.route && d.route.path != "*" && d.route.path !== null && d.route.path.length) {
-        routes.push(d.route.path);
-      }
-    });
     res.json({
       "success": {
         "about": "This is the root of the Macrostrat API",
@@ -39,9 +33,6 @@ api.route("/")
           if (d.route && d.route.path != "*" && d.route.path !== null && d.route.path.length) {
             return d.route.path;
           }
-        })
-        .map(function(d) {
-          return d.route.path;
         })
       }
     });
