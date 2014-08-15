@@ -86,22 +86,19 @@ api.route("/columns")
         },
 
         function(column_id, column_info, callback) {
-          var shortSQL = "units.id AS unit_id,mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, GROUP_CONCAT(lith,'-',comp_prop,'' SEPARATOR ',') AS liths ",
-              longSQL = "units.id AS unit_id, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, units.strat_name, units_sections.section_id, max_thick, min_thick, f.id AS F_id, f.interval_name AS F_int, f.age_bottom AS F_agebot, f.age_top AS F_agetop, FO_h,l.id AS L_id, l.interval_name AS L_int, l.age_bottom AS L_agebot, l.age_top AS L_agetop, LO_h, position_bottom, u1.unit_id AS t_uid1,u1.unit_id_2 AS t_uid2,u1.t1 AS t_int_id,u1.t1_prop AS t_prop, u1.t1_age AS t_age, u2.unit_id_2 AS b_uid2, u2.unit_id AS b_uid1, u2.t1 AS b_int_id, u2.t1_prop AS b_prop, u2.t1_age AS b_age, color, GROUP_CONCAT(lith,'-',comp_prop,'' SEPARATOR ',') AS liths ";
+          var shortSQL = "units.id AS id,units.strat_name, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick,min_thick, color, lith_short liths, count(distinct collection_no) pbdb";
+              longSQL = "units.id AS id,units_sections.section_id, units.strat_name, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick,min_thick, color, lith_short liths, GROUP_CONCAT(collection_no SEPARATOR ' | ') pbdb, FO_interval, FO_h, FO_age, b_age, LO_interval, LO_h, LO_age, t_age, position_bottom ";
 
           larkin.query("SELECT " + ((req.query.response === "short") ? shortSQL : longSQL) + " \
-            FROM units\
-            JOIN units_sections ON units_sections.unit_id = units.id\
-            JOIN unit_liths ON unit_liths.unit_id = units.id \
-            JOIN liths ON lith_id = liths.id \
-            JOIN intervals f ON f.id = FO \
-            JOIN intervals l ON l.id = LO \
+            FROM UNITS \
+            JOIN units_sections ON units_sections.unit_id = units.id \
+            JOIN lookup_unit_liths ON lookup_unit_liths.unit_id=units.id \
+            JOIN lookup_unit_intervals ON units.id=lookup_unit_intervals.unit_id \
             LEFT JOIN unit_strat_names ON unit_strat_names.unit_id=units.id \
-            LEFT JOIN strat_names_lookup ON strat_names_lookup.strat_name_id=unit_strat_names.strat_name_id \
-            LEFT JOIN unit_boundaries u1 ON u1.unit_id = units.id \
-            LEFT JOIN unit_boundaries u2 ON u2.unit_id_2 = units.id \
+            LEFT JOIN lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id \
+            LEFT JOIN pbdb_matches ON pbdb_matches.unit_id=units.id \
             WHERE units_sections.col_id = ? \
-            GROUP BY units.id ORDER BY u2.t1_age ASC", [column_id], function(error, result) {
+            GROUP BY units.id ORDER BY t_age ASC", [column_id], function(error, result) {
               if (error) {
                 callback(error);
               } else {
@@ -394,7 +391,7 @@ api.route("/strat_names")
       filterString = " WHERE "+filterString;
     }
 
-    var sql = "SELECT strat_name name, rank, strat_name_id id, bed_name bed,bed_id,mbr_name mbr,mbr_id,fm_name fm,fm_id,gp_name gp,gp_id,sgp_name sgp,sgp_id FROM strat_names_lookup" + filterString;
+    var sql = "SELECT strat_name name, rank, strat_name_id id, bed_name bed,bed_id,mbr_name mbr,mbr_id,fm_name fm,fm_id,gp_name gp,gp_id,sgp_name sgp,sgp_id FROM lookup_strat_names" + filterString;
 
     var format = (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json";
 
