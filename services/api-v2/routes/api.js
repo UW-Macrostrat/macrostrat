@@ -115,7 +115,8 @@ api.route("/columns")
       // after the two queries are executed, send the result
       function(err, column_info, result) {
         if (err) {
-          larkin.error(res, next, err);
+          larkin.log("error", error);
+          larkin.error(res, next);
         } else {
           var column = [column_info];
           column[0].units = result;
@@ -125,7 +126,15 @@ api.route("/columns")
       });
 
     } else {
-      larkin.error(res, next, "Please provide a parameter id corresponding to column id (api/columns?id=17) or a latitude and longitude (api/columns?lat=50&lng=-80");
+      larkin.error(res, next, "Please provide a column id or a latitude and longitude.", {
+        "parameters": {
+          "id": "Get a column by id",
+          "lat": "A valid latitude",
+          "lng": "A valid longitude",
+          "response": "Can be 'short' or 'long'"
+        },
+        "examples": ["api/columns?id=17", "api/columns?lat=50&lng=-80"]
+      });
     }
   });
 
@@ -151,7 +160,17 @@ api.route("/fossils")
         } else if (req.query.age_top && req.query.age_bottom) {
           callback(null, {"interval_name": "Unknown", "age_bottom": req.query.age_bottom, "age_top": req.query.age_top});
         } else {
-          larkin.error(res, next, "Please provide an interval_name, age, or age_top & age_bottom. Examples: /api/fossils?interval_name=Permian  /api/fossils?age=271 <br> /api/fossils?age_top=200&age_bottom=250");
+          larkin.error(res, next, "Please provide an interval_name, age, or age_top & age_bottom.", {
+            "parameters": {
+              "interval_name": "The name of a time interval",
+              "age": "A valid age",
+              "age_top": "A valid age - must be used with age_bottom and be less than age_bottom",
+              "age_bottom": "A valid age - must be used with age_top and be greater than age_top",
+              "format": "Desired output format"
+            },
+            "output_formats": ["geojson", "topojson"],
+            "examples": ["/api/fossils?interval_name=Permian",  "/api/fossils?age=271", "/api/fossils?age_top=200&age_bottom=250"]
+          });
         }
       },
       function(data, callback) {
@@ -175,7 +194,7 @@ api.route("/fossils")
       }
     ], function(error, data, results) {
       if (error) {
-        larkin.error(res, next, error);
+        larkin.error(res, next);
       } else {
         dbgeo.parse({
           "data": results,
@@ -184,7 +203,8 @@ api.route("/fossils")
           "geometryType": "wkt",
           "callback": function(error, result) {
             if (error) {
-              larkin.error(res, next, error);
+              larkin.log("error", error);
+              larkin.error(res, next);
             } else {
               larkin.sendData(result, res, null, next);
             }
@@ -216,7 +236,17 @@ api.route("/strats")
         } else if (req.query.age_top && req.query.age_bottom) {
           callback(null, {"interval_name": "Unknown", "age_bottom": req.query.age_bottom, "age_top": req.query.age_top});
         } else {
-          larkin.error(res, next, "You must specify an age argument to get a result. This can be of form: ?interval_name=string or ?age=234 or ?age_bottom=234&age_top=230 NB: this version does NOT use continuous time age model for units. Therefore an age may return units that are not of that exact age but in a bin spanning that age. Output is geoJSON.  Unit lithologies for time interval in each column are given.  The order of lith,lith_type,p is the same in each group and corresponds to the unique lithologies in that column for the requested age on a per-unit basis (i.e., thickness is ignored).")
+          larkin.error(res, next, "You must specify an age argument to get a result. NB: this version does NOT use continuous time age model for units. Therefore an age may return units that are not of that exact age but in a bin spanning that age. Unit lithologies for time interval in each column are given.  The order of lith,lith_type,p is the same in each group and corresponds to the unique lithologies in that column for the requested age on a per-unit basis (i.e., thickness is ignored).", {
+            "parameters": {
+              "interval_name": "The name of a time interval",
+              "age": "A valid age",
+              "age_top": "A valid age - must be used with age_bottom and be less than age_bottom",
+              "age_bottom": "A valid age - must be used with age_top and be greater than age_top",
+              "format": "Desired output format"
+            },
+            "output_formats": ["geojson", "topojson"],
+            "examples": ["/api/strats?interval_name=Permian",  "/api/strats?age=271", "/api/strats?age_top=200&age_bottom=250"]
+          });
         }
       },
       function(data, callback) {
@@ -349,22 +379,21 @@ api.route("/strat_names")
     if (req.query.id) {
       filterString += "strat_name_id = ?";
       params.push(req.query.id);
-    }
-    else if (req.query.name) {
+    } else if (req.query.name) {
       if (req.query.rank && req.query.rank.length <= 3 && req.query.rank.length >= 2 && /^[a-zA-Z]+$/.test(req.query.rank)){
         filterString += req.query.rank+"_name LIKE ?";
         params.push(req.query.name + "%");
       } else {
-          filterString += "strat_name LIKE ?";
-           params.push(req.query.name + "%");}
-    }
-    else if (req.query.rank) {
+        filterString += "strat_name LIKE ?";
+        params.push(req.query.name + "%");}
+    } else if (req.query.rank) {
       filterString += "rank = ?";
       params.push(req.query.rank);
     }
 
-    if (filterString.length > 1) filterString = " WHERE "+filterString;
-
+    if (filterString.length > 1) {
+      filterString = " WHERE "+filterString;
+    }
 
     var sql = "SELECT strat_name name, rank, strat_name_id id, bed_name bed,bed_id,mbr_name mbr,mbr_id,fm_name fm,fm_id,gp_name gp,gp_id,sgp_name sgp,sgp_id FROM strat_names_lookup" + filterString;
 
@@ -408,7 +437,15 @@ api.route("/section_stats")
 api.route("/paleogeography")
   .get(function(req, res, next) {
     if (!req.query.year && !req.query.interval) {
-      larkin.error(res, next, "Please specify a year between 0 and 550 MA or a named interval");
+      larkin.error(res, next, "Please specify a year or an interval", {
+        "parameters": {
+          "year": "Can be between 0 and 550",
+          "interval": "A named time interval",
+          "format": "Desired output format"
+        },
+        "output_formats": ["geojson", "topojson"],
+        "examples": ["/api/paleogeography?interval=Permian",  "/api/paleogeography?year=271"]
+      });
     } else {
       async.waterfall([
         function(callback) {

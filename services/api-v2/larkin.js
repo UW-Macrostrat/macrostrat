@@ -82,13 +82,15 @@ var mysql = require("mysql"),
 
 
   larkin.error = function(res, next, message, options, code) {
-    this.log("error", message);
-    res.json((code) ? code : 200, {
-      "error": {
-        "message": message,
-        "options": options
-      }
-    });
+    var responseMessage = (message) ? message : "Something went wrong. Please contact Shanan Peters.";
+    res
+      .status((code) ? code : 200)
+      .json({
+        "error": {
+          "message": responseMessage,
+          "options": options
+        }
+      });
   };
 
   larkin.log = function(type, message) {
