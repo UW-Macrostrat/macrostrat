@@ -27,18 +27,18 @@ api.acceptedFormats = {
 api.route("/")
   .get(function(req, res, next) {
     var routes = [];
-    api.stack.map(function(d) { 
+    api.stack.map(function(d) {
       if (d.route && d.route.path != "*" && d.route.path !== null && d.route.path.length) {
         routes.push(d.route.path);
-      } 
+      }
     });
     res.json({
       "success": {
         "about": "This is the root of the Macrostrat API",
-        "routes": api.stack.filter(function(d) { 
+        "routes": api.stack.filter(function(d) {
           if (d.route && d.route.path != "*" && d.route.path !== null && d.route.path.length) {
             return d.route.path;
-          } 
+          }
         })
         .map(function(d) {
           return d.route.path;
@@ -61,18 +61,18 @@ api.route("/columns")
               } else {
                 if (result.length < 1) {
                   callback("No columns found");
-                } else if (result.length > 1) { 
+                } else if (result.length > 1) {
                   callback("More than 1 column found");
                 } else {
                   callback(null, result[0].col_id);
                 }
               }
             });
-          } else { 
+          } else {
             callback(null, req.query.id);
           }
         },
-        
+
         function(column_id, callback) {
           larkin.query("SELECT id, col_name FROM cols WHERE id = ?", [column_id], function(error, result) {
             if (error) {
@@ -99,7 +99,7 @@ api.route("/columns")
             JOIN intervals f ON f.id = FO \
             JOIN intervals l ON l.id = LO \
             LEFT JOIN unit_strat_names ON unit_strat_names.unit_id=units.id \
-            LEFT JOIN strat_name_lookup ON strat_name_lookup.strat_name_id=unit_strat_names.strat_name_id \
+            LEFT JOIN strat_names_lookup ON strat_names_lookup.strat_name_id=unit_strat_names.strat_name_id \
             LEFT JOIN unit_boundaries u1 ON u1.unit_id = units.id \
             LEFT JOIN unit_boundaries u2 ON u2.unit_id_2 = units.id \
             WHERE units_sections.col_id = ? \
@@ -143,7 +143,7 @@ api.route("/fossils")
                 larkin.error(res, next, "No results found");
               } else {
                 callback(null, {"interval_name": result[0].interval_name, "age_bottom": result[0].age_bottom, "age_top": result[0].age_top});
-              }  
+              }
             }
           });
         } else if (req.query.age) {
@@ -253,7 +253,7 @@ api.route("/strats")
               output.properties = data;
               larkin.sendData(output, res, null, next);
             }
-          } 
+          }
         });
       }
     });
@@ -320,7 +320,7 @@ api.route("/environ_definitions")
     } else if (req.query.environ){
       sql += " WHERE environ='"+ req.query.environ +"'";
     }
-    
+
     var format = (api.acceptedFormats[req.query.format]) ? req.query.format : "json";
     larkin.query(sql, [], null, true, res, format, next);
   });
@@ -349,7 +349,7 @@ api.route("/strat_names")
     if (req.query.id) {
       filterString += "strat_name_id = ?";
       params.push(req.query.id);
-    } 
+    }
     else if (req.query.name) {
       if (req.query.rank && req.query.rank.length <= 3 && req.query.rank.length >= 2 && /^[a-zA-Z]+$/.test(req.query.rank)){
         filterString += req.query.rank+"_name LIKE ?";
@@ -357,14 +357,14 @@ api.route("/strat_names")
       } else {
           filterString += "strat_name LIKE ?";
            params.push(req.query.name + "%");}
-    } 
+    }
     else if (req.query.rank) {
       filterString += "rank = ?";
       params.push(req.query.rank);
     }
 
     if (filterString.length > 1) filterString = " WHERE "+filterString;
-        
+
 
     var sql = "SELECT strat_name name, rank, strat_name_id id, bed_name bed,bed_id,mbr_name mbr,mbr_id,fm_name fm,fm_id,gp_name gp,gp_id,sgp_name sgp,sgp_id FROM strat_names_lookup" + filterString;
 
@@ -501,7 +501,7 @@ api.route("/editing/update")
             callback("invalid");
           }
         });
-        
+
       }, function(error) {
         if (error) {
           larkin.error(res, next, error);
