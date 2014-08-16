@@ -212,7 +212,7 @@ api.route("/fossils")
 
 /*    /api/strats?interval_name=Permian || /api/strats?age=250 || /api/strats?age_top=100&age_bottom=200    */
 /* NB: this route needs updated to be like /readonly/getmap/geojson_macro5.php */
-api.route("/strats")
+api.route("/columns")
   .get(function(req, res, next) {
     async.waterfall([
       function(callback) {
@@ -225,9 +225,10 @@ api.route("/strats")
                 larkin.error(res, next, "No results found");
               } else {
                 callback(null, {"interval_name": result[0].interval_name, "age_bottom": result[0].age_bottom, "age_top": result[0].age_top});
+                }
               }
             }
-          });
+          );
         } else if (req.query.age) {
           callback(null, {"interval_name": "Unknown", "age_bottom": req.query.age, "age_top": req.query.age});
         } else if (req.query.age_top && req.query.age_bottom) {
@@ -242,27 +243,39 @@ api.route("/strats")
               "format": "Desired output format"
             },
             "output_formats": ["geojson", "topojson"],
-            "examples": ["/api/strats?interval_name=Permian",  "/api/strats?age=271", "/api/strats?age_top=200&age_bottom=250"]
-          });
-        }
+            "examples": ["/api/columns?interval_name=Permian",  "/api/columns?age=271", "/api/columns?age_top=200&age_bottom=250"]
+            }
+          );
+          }
       },
       function(data, callback) {
-        larkin.query("SELECT col_areas.col_id, cols.col_area AS area, AsWKT(col_areas.col_area) AS wkt, \
-          GROUP_CONCAT(units.id SEPARATOR '|') AS units \
+        var lith = '%';
+            lith_field = 'lith';
+        if (req.query.lith){
+          lith = req.query.lith;
+        } else if (req.query.lith_class){
+          lith = req.query.lith_class;
+          lith_field = 'lith_class';
+        } else if (req.query.lith_type){
+          lith = req.query.lith_type;
+          lith_field = 'lith_type';
+        }
+        larkin.query("SELECT AsWKT(col_areas.col_area) AS wkt, col_areas.col_id, cols.col_area AS area, count(units.id) units, GROUP_CONCAT(units.id SEPARATOR '|') AS unit_id, sum(max_thick) max_thick, sum(min_thick) min_thick, sum(LT.cpm) lith_max_thick, sum(LT.cpl) lith_min_thick\
           FROM col_areas \
           JOIN cols ON cols.id = col_areas.col_id \
           JOIN units_sections ON units_sections.col_id = cols.id \
           JOIN units ON unit_id = units.id \
           JOIN intervals f ON f.id = FO \
           JOIN intervals l ON l.id = LO \
+          JOIN (SELECT unit_id, round(sum(comp_prop*max_thick), 1) cpm, round(sum(comp_prop*min_thick), 1) cpl FROM unit_liths JOIN liths on lith_id=liths.id JOIN units on unit_id=units.id WHERE "+ lith_field +" like ? GROUP BY unit_id) LT ON LT.unit_id=units.id \
           WHERE f.age_bottom > ? AND l.age_top < ? AND status_code = 'active' \
-          GROUP BY col_areas.col_id", [data.age_top, data.age_bottom], function(error, result) {
+          GROUP BY col_areas.col_id", [lith, data.age_top, data.age_bottom], function(error, result) {
             if (error) {
               callback(error);
             } else {
               callback(null, data, result);
             }
-          });
+        });
       }
     ], function(error, data, result) {
       if (error) {
@@ -307,49 +320,59 @@ api.route("/stats")
 api.route("/lith_definitions")
   .get(function(req, res, next) {
     var sql = "SELECT id,lith,lith_type,lith_class,lith_color from liths";
-
+        lith = "";
     if (req.query.lith_class) {
-      sql += " WHERE lith_class='"+ req.query.lith_class +"'";
+      sql += " WHERE lith_class = ?";  
+      lith = req.query.lith_class;
     } else if (req.query.lith_type){
-      sql += " WHERE lith_type='"+ req.query.lith_type +"'";
+      sql += " WHERE lith_type = ?"; 
+      lith = req.query.lith_type;
     }  else if (req.query.lith){
-      sql += " WHERE lith='"+ req.query.lith +"'";
+      sql += " WHERE lith = ? "; 
+      lith = req.query.lith;
     }
 
     var format = (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json";
-    larkin.query(sql, [], null, true, res, format, next);
+    larkin.query(sql, [lith], null, true, res, format, next);
   });
 
 /*     /api/lith_definitions     */
 api.route("/lithatt_definitions")
   .get(function(req, res, next) {
     var sql = "SELECT id,lith_att,att_type from lith_atts";
-    var format = (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json";
+        lithatt = "";
 
     if (req.query.att_type) {
-      sql += " WHERE att_type='"+ req.query.att_type +"'";
+      sql += " WHERE att_type = ?"; 
+      lithatt=req.query.att_type;
     } else if (req.query.lith_att){
-      sql += " WHERE lith_att='"+ req.query.lith_att +"'";
+      sql += " WHERE lith_att = ?"; 
+      lithatt=req.query.lith_att;
     }
 
-    larkin.query(sql, [], null, true, res, format, next);
+    var format = (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json";
+    larkin.query(sql, [lithatt], null, true, res, format, next);
   });
 
 /*     /api/lith_definitions     */
 api.route("/environ_definitions")
   .get(function(req, res, next) {
     var sql = "SELECT id,environ,environ_type,environ_class from environs";
+        environ = "";
 
     if (req.query.environ_class) {
-      sql += " WHERE environ_class='"+ req.query.environ_class +"'";
+      sql += " WHERE environ_class= ?";
+      environ=req.query.environ_class;
     } else if (req.query.environ_type){
-      sql += " WHERE environ_type='"+ req.query.environ_type +"'";
+      sql += " WHERE environ_type = ?";
+      environ = req.query.environ_type;
     } else if (req.query.environ){
-      sql += " WHERE environ='"+ req.query.environ +"'";
+      sql += " WHERE environ = ?";
+      environ = req.query.environ;
     }
 
     var format = (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json";
-    larkin.query(sql, [], null, true, res, format, next);
+    larkin.query(sql, [environ], null, true, res, format, next);
   });
 
 /*     /api/interval_definitions     */
