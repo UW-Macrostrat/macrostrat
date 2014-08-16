@@ -45,8 +45,8 @@ api.route("/")
     });
   });
 
-/*    /api/columns?id=17    */
-api.route("/columns")
+/*    /api/column?id=17    */
+api.route("/column")
   .get(function(req, res, next) {
     if (isFinite(req.query.id) || isFinite(req.query.lat) && isFinite(req.query.lng)) {
       async.waterfall([
@@ -86,10 +86,10 @@ api.route("/columns")
         },
 
         function(column_id, column_info, callback) {
-          var shortSQL = "units.id AS id,units.strat_name, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick,min_thick, color, lith_short liths, count(distinct collection_no) pbdb";
-              longSQL = "units.id AS id,units_sections.section_id, units.strat_name, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick,min_thick, color, lith_short liths, GROUP_CONCAT(collection_no SEPARATOR ' | ') pbdb, FO_interval, FO_h, FO_age, b_age, LO_interval, LO_h, LO_age, t_age, position_bottom ";
+          var shortSQL = "units.id AS id,units.strat_name, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick,min_thick, color, lith_type liths, count(distinct collection_no) pbdb";
+              longSQL = "units.id AS id,units_sections.section_id, units.strat_name, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick,min_thick, color, lith_short liths, GROUP_CONCAT(collection_no SEPARATOR '|') pbdb, FO_interval, FO_h, FO_age, b_age, LO_interval, LO_h, LO_age, t_age, position_bottom ";
 
-          larkin.query("SELECT " + ((req.query.response === "short") ? shortSQL : longSQL) + " \
+          larkin.query("SELECT " + ((req.query.response === "long") ? longSQL : shortSQL) + " \
             FROM UNITS \
             JOIN units_sections ON units_sections.unit_id = units.id \
             JOIN lookup_unit_liths ON lookup_unit_liths.unit_id=units.id \
@@ -170,7 +170,7 @@ api.route("/fossils")
         }
       },
       function(data, callback) {
-        larkin.query("SELECT COUNT(pbdb.occurrences.occurrence_no) AS occ, pbdb_matches.collection_no,\
+        larkin.query("SELECT pbdb_matches.collection_no, n_occs AS occ, \
           pbdb_matches.unit_id, AsWKT(pbdb_matches.coordinate) AS geometry \
           FROM pbdb_matches \
           JOIN units ON pbdb_matches.unit_id = units.id \
@@ -178,9 +178,9 @@ api.route("/fossils")
           JOIN cols ON cols.id = units_sections.col_id \
           JOIN intervals f ON f.id = FO \
           JOIN intervals l ON l.id = LO \
-          JOIN pbdb.occurrences ON pbdb_matches.collection_no = pbdb.occurrences.collection_no \
+          JOIN pbdb.coll_matrix ON pbdb_matches.collection_no = pbdb.coll_matrix.collection_no \
           WHERE f.age_bottom > ? AND l.age_top < ? AND \
-          status_code = 'active' AND project_id IN (1,7) GROUP BY collection_no", [data.age_top, data.age_bottom], function(error, result) {
+          status_code = 'active'", [data.age_top, data.age_bottom], function(error, result) {
             if (error) {
               callback(error);
             } else {
@@ -211,6 +211,7 @@ api.route("/fossils")
   });
 
 /*    /api/strats?interval_name=Permian || /api/strats?age=250 || /api/strats?age_top=100&age_bottom=200    */
+/* NB: this route needs updated to be like /readonly/getmap/geojson_macro5.php */
 api.route("/strats")
   .get(function(req, res, next) {
     async.waterfall([
@@ -232,7 +233,7 @@ api.route("/strats")
         } else if (req.query.age_top && req.query.age_bottom) {
           callback(null, {"interval_name": "Unknown", "age_bottom": req.query.age_bottom, "age_top": req.query.age_top});
         } else {
-          larkin.error(res, next, "You must specify an age argument to get a result. NB: this version does NOT use continuous time age model for units. Therefore an age may return units that are not of that exact age but in a bin spanning that age. Unit lithologies for time interval in each column are given.  The order of lith,lith_type,p is the same in each group and corresponds to the unique lithologies in that column for the requested age on a per-unit basis (i.e., thickness is ignored).", {
+          larkin.error(res, next, "You must specify an age argument to get a result. NB: this version does NOT use continuous time age model for units. Therefore an age may return units that are not of that exact age but in a bin spanning that age.", {
             "parameters": {
               "interval_name": "The name of a time interval",
               "age": "A valid age",
@@ -247,15 +248,15 @@ api.route("/strats")
       },
       function(data, callback) {
         larkin.query("SELECT col_areas.col_id, cols.col_area AS area, AsWKT(col_areas.col_area) AS wkt, \
-          GROUP_CONCAT(units.id SEPARATOR ',') AS units \
+          GROUP_CONCAT(units.id SEPARATOR '|') AS units \
           FROM col_areas \
           JOIN cols ON cols.id = col_areas.col_id \
           JOIN units_sections ON units_sections.col_id = cols.id \
           JOIN units ON unit_id = units.id \
           JOIN intervals f ON f.id = FO \
           JOIN intervals l ON l.id = LO \
-          WHERE f.age_bottom > ? AND l.age_top < ? \
-          AND status_code = 'active' AND project_id IN (1,7) GROUP BY col_areas.col_id", [data.age_top, data.age_bottom], function(error, result) {
+          WHERE f.age_bottom > ? AND l.age_top < ? AND status_code = 'active' \
+          GROUP BY col_areas.col_id", [data.age_top, data.age_bottom], function(error, result) {
             if (error) {
               callback(error);
             } else {
@@ -290,9 +291,9 @@ api.route("/stats")
   .get(function(req, res, next) {
     var sql = "\
       SELECT project, COUNT(distinct section_id) AS packages, COUNT(distinct units.id) AS units, COUNT(distinct collection_no) AS pbdb_collections FROM units \
-          INNER JOIN cols ON cols.id = col_id \
-          INNER JOIN projects ON projects.id = project_id \
-          LEFT OUTER JOIN pbdb_matches ON unit_id = units.id \
+          JOIN cols ON cols.id = col_id \
+          JOIN projects ON projects.id = project_id \
+          LEFT JOIN pbdb_matches ON unit_id = units.id \
             WHERE project IN ('North America','New Zealand','Caribbean','Deep Sea') and status_code='active' \
           GROUP BY project_id \
           ORDER BY field(project, 'North America','Caribbean','New Zealand','Deep Sea') ";
