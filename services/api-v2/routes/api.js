@@ -333,6 +333,9 @@ api.route("/lith_definitions")
     }  else if (req.query.lith){
       sql += " WHERE lith = ? "; 
       lith = req.query.lith;
+    }  else if (req.query.id){
+      sql += " WHERE id = ? "; 
+      lith = req.query.id;
     }
 
     var format = (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json";
@@ -351,6 +354,9 @@ api.route("/lithatt_definitions")
     } else if (req.query.lith_att){
       sql += " WHERE lith_att = ?"; 
       lithatt = req.query.lith_att;
+    } else if (req.query.id){
+      sql += " WHERE id = ?"; 
+      lithatt = req.query.id;
     }
 
     var format = (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json";
@@ -372,6 +378,9 @@ api.route("/environ_definitions")
     } else if (req.query.environ){
       sql += " WHERE environ = ?";
       environ = req.query.environ;
+    } else if (req.query.id){
+      sql += " WHERE id = ?";
+      environ = req.query.id;
     }
 
     var format = (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json";
@@ -386,6 +395,8 @@ api.route("/interval_definitions")
     if (req.query.timescale){
       sql += " JOIN timescales_intervals ON interval_id=intervals.id JOIN timescales ON timescale_id=timescales.id WHERE timescale = ?";
       params.push(req.query.timescale);
+    } else if (req.query.id && isFinite(req.query.id)){
+      sql += " WHERE id ="+req.query.id;
     }
     sql += " ORDER BY late_age ASC";
     var format = (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json";
