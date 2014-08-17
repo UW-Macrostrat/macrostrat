@@ -233,7 +233,24 @@ api.route("/unit")
     var sql = "";
     if (req.query.pbdb && isFinite(req.query.id)) {
       sql = "SELECT pbdb.collections.collection_name, pbdb_matches.collection_no FROM pbdb_matches JOIN pbdb.collections USING (collection_no) where unit_id = " + req.query.id + " and pbdb.collections.release_date<=now()"; 
-    } 
+    } else if (isFinite(req.query.id)) {
+        var shortSQL = "units.id AS id,units.strat_name, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick, min_thick, color, lith_type, count(distinct collection_no) pbdb";
+            
+            longSQL = "units.id AS id,units_sections.section_id, units.strat_name, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick,min_thick, color, lith_class, lith_type, lith_short lith, environ_class, environ_type, environ, GROUP_CONCAT(collection_no SEPARATOR '|') pbdb, FO_interval, FO_h, FO_age, b_age, LO_interval, LO_h, LO_age, t_age, position_bottom, notes";
+              
+        sql = "SELECT " + ((req.query.response === "long") ? longSQL : shortSQL) + " FROM units \
+              JOIN units_sections ON units_sections.unit_id = units.id \
+              JOIN lookup_unit_liths ON lookup_unit_liths.unit_id=units.id \
+              JOIN lookup_unit_intervals ON units.id=lookup_unit_intervals.unit_id \
+              LEFT JOIN unit_strat_names ON unit_strat_names.unit_id=units.id \
+              LEFT JOIN lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id \
+              " + ((req.query.response === "long") ? "LEFT JOIN unit_notes ON unit_notes.unit_id=units.id" : "") + " \
+              LEFT JOIN pbdb_matches ON pbdb_matches.unit_id=units.id \
+              WHERE units.id = " + req.query.id;
+    } else { 
+      sql = "SELECT id from units where id=1";
+      // larkin.error(res, next, "A unit id argument is required.");
+    }
 
     var format = (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json";
     larkin.query(sql, [], null, true, res, format, next);
