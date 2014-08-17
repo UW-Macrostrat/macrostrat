@@ -86,19 +86,22 @@ api.route("/column")
         },
 
         function(column_id, column_info, callback) {
-          var shortSQL = "units.id AS id,units.strat_name, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick,min_thick, color, lith_type liths, count(distinct collection_no) pbdb";
-              longSQL = "units.id AS id,units_sections.section_id, units.strat_name, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick,min_thick, color, lith_short liths, GROUP_CONCAT(collection_no SEPARATOR '|') pbdb, FO_interval, FO_h, FO_age, b_age, LO_interval, LO_h, LO_age, t_age, position_bottom ";
+          var shortSQL = "units.id AS id,units.strat_name, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick,min_thick, color, lith_class, count(distinct collection_no) pbdb";
+              
+              longSQL = "units.id AS id,units_sections.section_id, units.strat_name, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick,min_thick, color, lith_class, lith_type, lith_short lith, environ_class, environ_type, environ, GROUP_CONCAT(collection_no SEPARATOR '|') pbdb, FO_interval, FO_h, FO_age, b_age, LO_interval, LO_h, LO_age, t_age, position_bottom, notes ";
+              
+              sql = "SELECT " + ((req.query.response === "long") ? longSQL : shortSQL) + " FROM UNITS \
+              JOIN units_sections ON units_sections.unit_id = units.id \
+              JOIN lookup_unit_liths ON lookup_unit_liths.unit_id=units.id \
+              JOIN lookup_unit_intervals ON units.id=lookup_unit_intervals.unit_id \
+              LEFT JOIN unit_strat_names ON unit_strat_names.unit_id=units.id \
+              LEFT JOIN lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id \
+              " + ((req.query.response === "long") ? "LEFT JOIN unit_notes ON unit_notes.unit_id=units.id" : "") + " \
+              LEFT JOIN pbdb_matches ON pbdb_matches.unit_id=units.id \
+              WHERE units_sections.col_id = ? \
+              GROUP BY units.id ORDER BY t_age ASC";
 
-          larkin.query("SELECT " + ((req.query.response === "long") ? longSQL : shortSQL) + " \
-            FROM UNITS \
-            JOIN units_sections ON units_sections.unit_id = units.id \
-            JOIN lookup_unit_liths ON lookup_unit_liths.unit_id=units.id \
-            JOIN lookup_unit_intervals ON units.id=lookup_unit_intervals.unit_id \
-            LEFT JOIN unit_strat_names ON unit_strat_names.unit_id=units.id \
-            LEFT JOIN lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id \
-            LEFT JOIN pbdb_matches ON pbdb_matches.unit_id=units.id \
-            WHERE units_sections.col_id = ? \
-            GROUP BY units.id ORDER BY t_age ASC", [column_id], function(error, result) {
+          larkin.query(sql, [column_id], function(error, result) {
               if (error) {
                 callback(error);
               } else {
@@ -134,81 +137,6 @@ api.route("/column")
     }
   });
 
-/*    /api/fossils?interval_name=Permian || /api/fossils?age=250 || /api/fossils?age_top=100&age_bottom=200    */
-api.route("/fossils")
-  .get(function(req, res, next) {
-    async.waterfall([
-      function(callback) {
-        if (req.query.interval_name) {
-          larkin.query("SELECT age_bottom,age_top,interval_name from intervals where interval_name = ? limit 1", [req.query.interval_name], function(error, result) {
-            if (error) {
-              callback(error);
-            } else {
-              if (result.length === 0) {
-                larkin.error(res, next, "No results found");
-              } else {
-                callback(null, {"interval_name": result[0].interval_name, "age_bottom": result[0].age_bottom, "age_top": result[0].age_top});
-              }
-            }
-          });
-        } else if (req.query.age) {
-          callback(null, {"interval_name": "Unknown", "age_bottom": req.query.age, "age_top": req.query.age});
-        } else if (req.query.age_top && req.query.age_bottom) {
-          callback(null, {"interval_name": "Unknown", "age_bottom": req.query.age_bottom, "age_top": req.query.age_top});
-        } else {
-          larkin.error(res, next, "Please provide an interval_name, age, or age_top & age_bottom.", {
-            "parameters": {
-              "interval_name": "The name of a time interval",
-              "age": "A valid age",
-              "age_top": "A valid age - must be used with age_bottom and be less than age_bottom",
-              "age_bottom": "A valid age - must be used with age_top and be greater than age_top",
-              "format": "Desired output format"
-            },
-            "output_formats": ["geojson", "topojson"],
-            "examples": ["/api/fossils?interval_name=Permian",  "/api/fossils?age=271", "/api/fossils?age_top=200&age_bottom=250"]
-          });
-        }
-      },
-      function(data, callback) {
-        larkin.query("SELECT pbdb_matches.collection_no, n_occs AS occ, \
-          pbdb_matches.unit_id, AsWKT(pbdb_matches.coordinate) AS geometry \
-          FROM pbdb_matches \
-          JOIN units ON pbdb_matches.unit_id = units.id \
-          JOIN units_sections ON units_sections.unit_id = units.id \
-          JOIN cols ON cols.id = units_sections.col_id \
-          JOIN intervals f ON f.id = FO \
-          JOIN intervals l ON l.id = LO \
-          JOIN pbdb.coll_matrix ON pbdb_matches.collection_no = pbdb.coll_matrix.collection_no \
-          WHERE f.age_bottom > ? AND l.age_top < ? AND \
-          status_code = 'active'", [data.age_top, data.age_bottom], function(error, result) {
-            if (error) {
-              callback(error);
-            } else {
-              callback(null, data, result);
-            }
-        });
-      }
-    ], function(error, data, results) {
-      if (error) {
-        larkin.error(res, next);
-      } else {
-        dbgeo.parse({
-          "data": results,
-          "outputFormat": (api.acceptedFormats.geo[req.query.format]) ? req.query.format : "geojson",
-          "geometryColumn": "geometry",
-          "geometryType": "wkt",
-          "callback": function(error, result) {
-            if (error) {
-              larkin.log("error", error);
-              larkin.error(res, next);
-            } else {
-              larkin.sendData(result, res, null, next);
-            }
-          }
-        });
-      }
-    });
-  });
 
 /*    /api/strats?interval_name=Permian || /api/strats?age=250 || /api/strats?age_top=100&age_bottom=200    */
 api.route("/columns")
@@ -291,6 +219,82 @@ api.route("/columns")
             } else {
               output.properties = data;
               larkin.sendData(output, res, null, next);
+            }
+          }
+        });
+      }
+    });
+  });
+
+/*    /api/fossils?interval_name=Permian || /api/fossils?age=250 || /api/fossils?age_top=100&age_bottom=200    */
+api.route("/fossils")
+  .get(function(req, res, next) {
+    async.waterfall([
+      function(callback) {
+        if (req.query.interval_name) {
+          larkin.query("SELECT age_bottom,age_top,interval_name from intervals where interval_name = ? limit 1", [req.query.interval_name], function(error, result) {
+            if (error) {
+              callback(error);
+            } else {
+              if (result.length === 0) {
+                larkin.error(res, next, "No results found");
+              } else {
+                callback(null, {"interval_name": result[0].interval_name, "age_bottom": result[0].age_bottom, "age_top": result[0].age_top});
+              }
+            }
+          });
+        } else if (req.query.age) {
+          callback(null, {"interval_name": "Unknown", "age_bottom": req.query.age, "age_top": req.query.age});
+        } else if (req.query.age_top && req.query.age_bottom) {
+          callback(null, {"interval_name": "Unknown", "age_bottom": req.query.age_bottom, "age_top": req.query.age_top});
+        } else {
+          larkin.error(res, next, "Please provide an interval_name, age, or age_top & age_bottom.", {
+            "parameters": {
+              "interval_name": "The name of a time interval",
+              "age": "A valid age",
+              "age_top": "A valid age - must be used with age_bottom and be less than age_bottom",
+              "age_bottom": "A valid age - must be used with age_top and be greater than age_top",
+              "format": "Desired output format"
+            },
+            "output_formats": ["geojson", "topojson"],
+            "examples": ["/api/fossils?interval_name=Permian",  "/api/fossils?age=271", "/api/fossils?age_top=200&age_bottom=250"]
+          });
+        }
+      },
+      function(data, callback) {
+        larkin.query("SELECT pbdb_matches.collection_no, n_occs AS occ, \
+          pbdb_matches.unit_id, AsWKT(pbdb_matches.coordinate) AS geometry \
+          FROM pbdb_matches \
+          JOIN units ON pbdb_matches.unit_id = units.id \
+          JOIN units_sections ON units_sections.unit_id = units.id \
+          JOIN cols ON cols.id = units_sections.col_id \
+          JOIN intervals f ON f.id = FO \
+          JOIN intervals l ON l.id = LO \
+          JOIN pbdb.coll_matrix ON pbdb_matches.collection_no = pbdb.coll_matrix.collection_no \
+          WHERE f.age_bottom > ? AND l.age_top < ? AND \
+          status_code = 'active'", [data.age_top, data.age_bottom], function(error, result) {
+            if (error) {
+              callback(error);
+            } else {
+              callback(null, data, result);
+            }
+        });
+      }
+    ], function(error, data, results) {
+      if (error) {
+        larkin.error(res, next);
+      } else {
+        dbgeo.parse({
+          "data": results,
+          "outputFormat": (api.acceptedFormats.geo[req.query.format]) ? req.query.format : "geojson",
+          "geometryColumn": "geometry",
+          "geometryType": "wkt",
+          "callback": function(error, result) {
+            if (error) {
+              larkin.log("error", error);
+              larkin.error(res, next);
+            } else {
+              larkin.sendData(result, res, null, next);
             }
           }
         });
