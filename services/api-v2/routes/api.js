@@ -231,8 +231,10 @@ api.route("/columns")
 api.route("/unit")
   .get(function(req, res, next) {
     var sql = "";
+        format = (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json";
     if (req.query.pbdb && isFinite(req.query.id)) {
-      sql = "SELECT pbdb.collections.collection_name, pbdb_matches.collection_no FROM pbdb_matches JOIN pbdb.collections USING (collection_no) where unit_id = " + req.query.id + " and pbdb.collections.release_date<=now()"; 
+      sql = "SELECT pbdb.collections.collection_name, pbdb_matches.collection_no FROM pbdb_matches JOIN pbdb.collections USING (collection_no) where unit_id = " + req.query.id + " and pbdb.collections.release_date<=now()";
+      larkin.query(sql, [], null, true, res, format, next);
     } else if (isFinite(req.query.id)) {
         var shortSQL = "units.id AS id,units.strat_name, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick, min_thick, color, lith_type, count(distinct collection_no) pbdb";
             
@@ -247,13 +249,10 @@ api.route("/unit")
               " + ((req.query.response === "long") ? "LEFT JOIN unit_notes ON unit_notes.unit_id=units.id" : "") + " \
               LEFT JOIN pbdb_matches ON pbdb_matches.unit_id=units.id \
               WHERE units.id = " + req.query.id;
+        larkin.query(sql, [], null, true, res, format, next);
     } else { 
-      sql = "SELECT id from units where id=1";
-      // larkin.error(res, next, "A unit id argument is required.");
+        larkin.error(res, next, "parameter id (unit_id) required.");
     }
-
-    var format = (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json";
-    larkin.query(sql, [], null, true, res, format, next);
   });
 
 
