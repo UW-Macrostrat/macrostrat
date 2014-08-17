@@ -86,11 +86,11 @@ api.route("/column")
         },
 
         function(column_id, column_info, callback) {
-          var shortSQL = "units.id AS id,units.strat_name, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick,min_thick, color, lith_class, count(distinct collection_no) pbdb";
+          var shortSQL = "units.id AS id,units.strat_name, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick, min_thick, color, lith_type, count(distinct collection_no) pbdb";
               
-              longSQL = "units.id AS id,units_sections.section_id, units.strat_name, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick,min_thick, color, lith_class, lith_type, lith_short lith, environ_class, environ_type, environ, GROUP_CONCAT(collection_no SEPARATOR '|') pbdb, FO_interval, FO_h, FO_age, b_age, LO_interval, LO_h, LO_age, t_age, position_bottom, notes ";
+              longSQL = "units.id AS id,units_sections.section_id, units.strat_name, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick,min_thick, color, lith_class, lith_type, lith_short lith, environ_class, environ_type, environ, GROUP_CONCAT(collection_no SEPARATOR '|') pbdb, FO_interval, FO_h, FO_age, b_age, LO_interval, LO_h, LO_age, t_age, position_bottom, notes";
               
-              sql = "SELECT " + ((req.query.response === "long") ? longSQL : shortSQL) + " FROM UNITS \
+              sql = "SELECT " + ((req.query.response === "long") ? longSQL : shortSQL) + " FROM units \
               JOIN units_sections ON units_sections.unit_id = units.id \
               JOIN lookup_unit_liths ON lookup_unit_liths.unit_id=units.id \
               JOIN lookup_unit_intervals ON units.id=lookup_unit_intervals.unit_id \
