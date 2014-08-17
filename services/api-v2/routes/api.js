@@ -226,6 +226,21 @@ api.route("/columns")
     });
   });
 
+
+/*     /api/lith_definitions     */
+api.route("/unit")
+  .get(function(req, res, next) {
+    var sql = "";
+    if (req.query.pbdb && isFinite(req.query.id)) {
+      sql = "SELECT pbdb.collections.collection_name, pbdb_matches.collection_no FROM pbdb_matches JOIN pbdb.collections USING (collection_no) where unit_id = " + req.query.id + " and pbdb.collections.release_date<=now()"; 
+    } 
+
+    var format = (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json";
+    larkin.query(sql, [], null, true, res, format, next);
+  });
+
+
+
 /*    /api/fossils?interval_name=Permian || /api/fossils?age=250 || /api/fossils?age_top=100&age_bottom=200    */
 api.route("/fossils")
   .get(function(req, res, next) {
