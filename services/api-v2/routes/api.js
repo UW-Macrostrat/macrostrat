@@ -746,7 +746,7 @@ api.route("/geologic_units")
       larkin.error(res, next, req.route.meta.description, req.route.meta.options);
     } else {
       var geo = (req.query.geo && req.query.geo === "true") ? true : false,
-          types = (req.query.types) ? req.query.type.split(",") : ["gmna", "gmus", "macrostrat"];
+          types = (req.query.type) ? req.query.type.split(",") : ["gmna", "gmus", "macrostrat"];
       async.parallel({
         gmna: function(callback) {
           if (types.indexOf("gmna") > -1) {
