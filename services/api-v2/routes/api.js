@@ -104,12 +104,12 @@ api.route("/column")
               GROUP BY units.id ORDER BY t_age ASC";
 
           var query = larkin.query(sql, [column_id], function(error, result) {
-              if (error) {
-                callback(error);
-              } else {
-                callback(null, column_info, result);
-              }
-            });
+            if (error) {
+              callback(error);
+            } else {
+              callback(null, column_info, result);
+            }
+          });
         }
       ],
       // after the two queries are executed, send the result
@@ -684,15 +684,7 @@ api.route("/section_stats")
 api.route("/paleogeography")
   .get(function(req, res, next) {
     if (!req.query.age && !req.query.interval_name) {
-      larkin.error(res, next, "Please specify an or time interval", {
-        "parameters": {
-          "age": "Can be between 0 and 550",
-          "interval_name": "A named time interval",
-          "format": "Desired output format"
-        },
-        "output_formats": ["geojson", "topojson"],
-        "examples": ["/api/paleogeography?interval_name=Permian",  "/api/paleogeography?age=271"]
-      });
+      larkin.error(res, next, req.route.meta.description, req.route.meta.options);
     } else {
       async.waterfall([
         function(callback) {
@@ -713,7 +705,7 @@ api.route("/paleogeography")
           }
         },
         function(year, callback) {
-          larkin.queryPg("alice", "SELECT plateid, ST_AsGeoJSON(geom) AS geometry FROM merge.reconstructed_" + year + "_merged", [], function(result) {
+          larkin.queryPg("alice", "SELECT plateid, ST_AsGeoJSON(geom) AS geometry FROM merge.reconstructed_" + year + "_merged", [], function(error, result) {
             callback(null, result.rows);
           });
         }
@@ -734,14 +726,102 @@ api.route("/paleogeography")
         }
       });
     }
-  });
+  })
+  .meta = {
+    "description": "Returns paleogeography geometry", 
+    "options": {
+      "parameters": {
+        "age": "Can be between 0 and 550",
+        "interval_name": "A named time interval",
+        "format": "Desired output format"
+      },
+      "output_formats": ["geojson", "topojson"],
+      "examples": ["/api/paleogeography?interval_name=Permian",  "/api/paleogeography?age=271"]
+    }
+  };
+
+api.route("/geologic_units")
+  .get(function(req, res, next) {
+    if (Object.keys(req.query).length < 1) {
+      larkin.error(res, next, req.route.meta.description, req.route.meta.options);
+    } else {
+      var geo = (req.query.geo && req.query.geo === "true") ? true : false,
+          types = req.query.type.split(",");
+      async.parallel({
+        gmna: function(callback) {
+          if (types.indexOf("gmna") > -1) {
+            larkin.queryPg("earthbase", "SELECT gid, state, a.rocktype1, a.rocktype2, b.rocktype3, unit_name, b.unit_age, unitdesc, strat_unit, unit_com" + ((geo) ? ", ST_AsGeoJSON(a.the_geom) AS geometry" : "") + " FROM gmus.geologic_units a JOIN gmus.units b ON a.unit_link = b.unit_link WHERE ST_Contains(ST_SetSRID(the_geom, 4326), ST_SetSRID(ST_GeomFromText($1),4326))", ["POINT(" + req.query.lng + " " + req.query.lat + ")"], function(error, result) {
+              if (error) {
+                callback(error);
+              } else {
+                if (geo) {
+                  result.rows[0].geometry = JSON.parse(result.rows[0].geometry);
+                }
+                callback(null, result.rows[0]);
+              }
+            });
+          } else {
+            callback(null);
+          }
+            
+        },
+
+        gmus: function(callback) {
+          if (types.indexOf("gmus") > -1) {
+            larkin.queryPg("earthbase", "SELECT objectid, unit_abbre, rocktype, lithology, min_age, max_age, min_max_re, unit_uncer, age_uncert" + ((geo) ? ", ST_AsGeoJSON(the_geom) AS geometry" : "") + " FROM gmna.geologic_units WHERE ST_Contains(ST_SetSRID(the_geom, 4326), ST_SetSRID(ST_GeomFromText($1),4326))", ["POINT(" + req.query.lng + " " + req.query.lat + ")"], function(error, result) {
+              if (error) {
+                callback(error);
+              } else {
+                if (geo) {
+                  result.rows[0].geometry = JSON.parse(result.rows[0].geometry);
+                }
+                callback(null, result.rows[0]);
+              }
+            });
+          } else {
+            callback(null);
+          }
+        },
+
+        macrostrat: function(callback) {
+          if (types.indexOf("macrostrat") > -1) {
+            // query macrostrat
+            callback(null);
+          } else {
+            callback(null);
+          }
+        }
+      }, function(error, results) {
+        if (error) {
+          larkin.error(res, next, req.route.meta.description, req.route.meta.options);
+        } else {
+          larkin.sendData(results, res, "json", next);
+        }
+      });
+    }
+  })
+  .meta = {
+    "description": "What's at a point", 
+    "options": {
+      "parameters": {
+        "lat": "A valid latitude",
+        "longitude": "A valid longitude",
+        "type": "Return only from given sources - can be 'gmna', 'gmus', 'macrostrat', or any combination thereof",
+        "response": "can be 'short' or 'long'",
+        "geo": "Whether geometry of features should also be returned",
+        "format": "Desired output format"
+      },
+      "output_formats": ["json"],
+      "examples": ["/api/geologic_units?lat=43&lng=-89.3", "/api/geologic_units?lat=43&lng=-89&geo=true", "/api/geologic_units?lat=43&lng=-89&type=gmus"]
+    }
+  };
 
 api.route("/editing")
   .get(function(req, res, next) {
     if (req.query.id) {
       // return just that polygons and the ones that touch it
     //  larkin.queryPg("macrostrat_editing", "SELECT col_id, ST_AsGeoJSON(geom) AS geometry FROM (SELECT col_id, geom FROM col_areas) q WHERE ST_Touches((SELECT geom FROM col_areas WHERE col_id = $1), geom) OR col_id = $1", [req.query.id], function(result) {
-      larkin.queryPg("macrostrat_editing", "SELECT b.col_id, ST_AsGeoJSON(b.geom) AS geometry FROM col_areas AS a JOIN col_areas AS b ON ST_Intersects(st_snaptogrid(a.geom,0.001), st_snaptogrid(b.geom,0.001)) WHERE a.col_id = $1 OR b.col_id = $1 GROUP BY b.col_id, b.geom ORDER BY b.col_id ASC;", [req.query.id], function(result) {
+      larkin.queryPg("macrostrat_editing", "SELECT b.col_id, ST_AsGeoJSON(b.geom) AS geometry FROM col_areas AS a JOIN col_areas AS b ON ST_Intersects(st_snaptogrid(a.geom,0.001), st_snaptogrid(b.geom,0.001)) WHERE a.col_id = $1 OR b.col_id = $1 GROUP BY b.col_id, b.geom ORDER BY b.col_id ASC;", [req.query.id], function(error, result) {
         dbgeo.parse({
           "data":result.rows,
           "outputFormat": "geojson",
@@ -756,7 +836,7 @@ api.route("/editing")
       });
     } else {
       // return all polygons
-      larkin.queryPg("macrostrat_editing", "SELECT col_id, ST_AsGeoJSON(geom) as geometry FROM col_areas", [], function(result) {
+      larkin.queryPg("macrostrat_editing", "SELECT col_id, ST_AsGeoJSON(geom) as geometry FROM col_areas", [], function(error, result) {
         dbgeo.parse({
           "data":result.rows,
           "outputFormat": "geojson",
@@ -778,7 +858,7 @@ api.route("/editing/update")
       req.body.layer = JSON.parse(req.body.layer);
       async.each(req.body.layer.features, function(feature, callback) {
       //  larkin.queryPg("macrostrat_editing", "SELECT ST_isValid(st_geomfromgeojson( '" + JSON.stringify(feature.geometry) + "')) AS isvalid", [], function(result) {
-        larkin.queryPg("macrostrat_editing", "SELECT ST_isValid(ST_GeomFromText( '" + wellknown.stringify(feature.geometry) + "')) AS isvalid", [], function(result) {
+        larkin.queryPg("macrostrat_editing", "SELECT ST_isValid(ST_GeomFromText( '" + wellknown.stringify(feature.geometry) + "')) AS isvalid", [], function(error, result) {
           if (result.rows[0].isvalid) {
             callback();
           } else {
@@ -792,7 +872,7 @@ api.route("/editing/update")
         } else {
           async.each(req.body.layer.features, function(feature, callback) {
             //larkin.queryPg("macrostrat_editing", "UPDATE col_areas SET geom = st_geomfromgeojson('" + JSON.stringify(feature.geometry) + "') WHERE col_id = $1", [feature.properties.col_id], function(result) {
-            larkin.queryPg("macrostrat_editing", "UPDATE col_areas SET geom = ST_GeomFromText('" + wellknown.stringify(feature.geometry) + "') WHERE col_id = $1", [feature.properties.col_id], function(result) {
+            larkin.queryPg("macrostrat_editing", "UPDATE col_areas SET geom = ST_GeomFromText('" + wellknown.stringify(feature.geometry) + "') WHERE col_id = $1", [feature.properties.col_id], function(error, result) {
               callback();
             });
           }, function(error) {

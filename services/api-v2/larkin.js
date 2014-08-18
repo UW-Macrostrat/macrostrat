@@ -31,20 +31,23 @@ var mysql = require("mysql"),
     pg.connect("postgres://" + credentials.pg.user + "@" + credentials.pg.host + "/" + db, function(err, client, done) {
       if (err) {
         this.log("error", "error connecting - " + error);
+        callback(error);
+      } else {
+        client.query(sql, params, function(err, result) {
+          done();
+          if (err) {
+            this.log("error", err);
+            callback(err);
+          } else {
+            if (send) {
+              this.sendData(result, res, format, next);
+            } else {
+              callback(null, result);
+            }
+          }
+
+        }.bind(this));
       }
-      client.query(sql, params, function(err, result) {
-        done();
-
-        if (err) {
-          this.log("error", err);
-        }
-
-        if (send) {
-          this.sendData(result, res, format, next);
-        } else {
-          callback(result);
-        }
-      }.bind(this));
     }.bind(this));
   }
 
