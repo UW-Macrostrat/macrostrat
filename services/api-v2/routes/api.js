@@ -746,7 +746,8 @@ api.route("/geologic_units")
       larkin.error(res, next, req.route.meta.description, req.route.meta.options);
     } else {
       var geo = (req.query.geo && req.query.geo === "true") ? true : false,
-          types = (req.query.type) ? req.query.type.split(",") : ["gmna", "gmus", "macrostrat"];
+          types = (req.query.type) ? req.query.type.split(",") : ["gmna", "gmus", "column"];
+
       async.parallel({
         gmna: function(callback) {
           if (types.indexOf("gmna") > -1) {
@@ -762,8 +763,7 @@ api.route("/geologic_units")
             });
           } else {
             callback(null);
-          }
-            
+          } 
         },
 
         gmus: function(callback) {
@@ -783,10 +783,75 @@ api.route("/geologic_units")
           }
         },
 
-        macrostrat: function(callback) {
-          if (types.indexOf("macrostrat") > -1) {
-            // query macrostrat
-            callback(null);
+        column: function(callback) {
+          if (types.indexOf("column") > -1) {
+            async.waterfall([
+              function(callbackB) {
+                // Find nearest column
+                larkin.query("SELECT col_id from col_areas JOIN cols on col_id=cols.id WHERE ST_CONTAINS(col_areas.col_area,ST_GEOMFROMTEXT('POINT(? ?)')) and status_code='active'", [parseFloat(req.query.lng), parseFloat(req.query.lat)], function(error, result) {
+                  if (error) {
+                    callback(error);
+                  } else {
+                    if (result.length < 1) {
+                      callbackB("No columns found");
+                    } else if (result.length > 1) {
+                      callbackB("More than 1 column found");
+                    } else {
+                      callbackB(null, result[0].col_id);
+                    }
+                  }
+                });
+              },
+
+              function(column_id, callbackB) {
+                larkin.query("SELECT id, col_name FROM cols WHERE id = ?", [column_id], function(error, result) {
+                  if (error) {
+                    callbackB(error);
+                  } else {
+                    if (result.length === 0) {
+                      callback(null);
+                    } else {
+                      callbackB(null, column_id, result[0]);
+                    }
+                  }
+                });
+              },
+
+              function(column_id, column_info, callbackB) {
+                var shortSQL = "units.id AS id,units.strat_name, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick, min_thick, color, lith_type, count(distinct collection_no) pbdb";
+                    
+                var longSQL = "units.id AS id,units_sections.section_id, units.strat_name, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick,min_thick, color, lith_class, lith_type, lith_short lith, environ_class, environ_type, environ, GROUP_CONCAT(collection_no SEPARATOR '|') pbdb, FO_interval, FO_h, FO_age, b_age, LO_interval, LO_h, LO_age, t_age, position_bottom, notes";
+                    
+                var sql = "SELECT " + ((req.query.response === "long") ? longSQL : shortSQL) + " FROM units \
+                    JOIN units_sections ON units_sections.unit_id = units.id \
+                    JOIN lookup_unit_liths ON lookup_unit_liths.unit_id=units.id \
+                    JOIN lookup_unit_intervals ON units.id=lookup_unit_intervals.unit_id \
+                    LEFT JOIN unit_strat_names ON unit_strat_names.unit_id=units.id \
+                    LEFT JOIN lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id \
+                    " + ((req.query.response === "long") ? "LEFT JOIN unit_notes ON unit_notes.unit_id=units.id" : "") + " \
+                    LEFT JOIN pbdb_matches ON pbdb_matches.unit_id=units.id \
+                    WHERE units_sections.col_id = ? \
+                    GROUP BY units.id ORDER BY t_age ASC";
+
+                var query = larkin.query(sql, [column_id], function(error, result) {
+                  if (error) {
+                    callbackB(error);
+                  } else {
+                    callbackB(null, column_info, result);
+                  }
+                });
+              }
+            ],
+            // after the two queries are executed, send the result
+            function(err, column_info, result) {
+              if (err) {
+                callback(err);
+              } else {
+                var column = [column_info];
+                column[0].units = result;
+                callback(null, column[0]);
+              }
+            });
           } else {
             callback(null);
           }
@@ -806,7 +871,7 @@ api.route("/geologic_units")
       "parameters": {
         "lat": "A valid latitude",
         "longitude": "A valid longitude",
-        "type": "Return only from given sources - can be 'gmna', 'gmus', 'macrostrat', or any combination thereof",
+        "type": "Return only from given sources - can be 'gmna', 'gmus', 'column', or any combination thereof",
         "response": "can be 'short' or 'long'",
         "geo": "Whether geometry of features should also be returned",
         "format": "Desired output format"
