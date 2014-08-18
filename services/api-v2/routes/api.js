@@ -35,8 +35,11 @@ api.route("/")
       if (d.route && d.route.path !== "*" && d.route.path !== null && d.route.path.length) {
         routes.push(d.route.path);
       }
+      if (d.route) {
+        console.log(d.route);
+      }
     });
-    //console.log(api.stack);
+    console.log(api.stack);
     res.json({
       "success": {
         "about": "This is the root of the Macrostrat API",
@@ -293,6 +296,77 @@ api.route("/unit")
   });
 
 
+api.route("/units")
+  .get(function(req, res, next) {
+    async.waterfall([
+      function(callback) {
+        if (req.query.interval_name) {
+          larkin.query("SELECT age_bottom,age_top,interval_name from intervals where interval_name = ? LIMIT 1", [req.query.interval_name], function(error, result) {
+            if (error) {
+              callback(error);
+            } else {
+              if (result.length === 0) {
+                larkin.error(res, next, "No results found");
+              } else {
+                callback(null, {"interval_name": result[0].interval_name, "age_bottom": result[0].age_bottom, "age_top": result[0].age_top});
+                }
+              }
+            }
+          );
+        } else if (req.query.age) {
+          callback(null, {"interval_name": "Unknown", "age_bottom": req.query.age, "age_top": req.query.age});
+        } else if (req.query.age_top && req.query.age_bottom) {
+          callback(null, {"interval_name": "Unknown", "age_bottom": req.query.age_bottom, "age_top": req.query.age_top});
+        } else {
+          larkin.error(res, next, "Error here");
+        }
+      },
+      function(data, callback) {
+        var lith = '%',
+            lith_field = 'lith';
+        if (req.query.lith){
+          lith = req.query.lith;
+        } else if (req.query.lith_class){
+          lith = req.query.lith_class;
+          lith_field = 'lith_class';
+        } else if (req.query.lith_type){
+          lith = req.query.lith_type;
+          lith_field = 'lith_type';
+        }
+
+        var shortSQL = "units.id AS id,units_sections.section_id as section_id, units_sections.col_id as col_id, col_area, units.strat_name, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick, min_thick, color, lith_type, count(distinct collection_no) pbdb";
+              
+        var longSQL = "units.id AS id,units_sections.section_id as section_id, units_sections.col_id as col_id, col_area, units.strat_name, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick,min_thick, color, lith_class, lith_type, lith_short lith, environ_class, environ_type, environ, GROUP_CONCAT(collection_no SEPARATOR '|') pbdb, FO_interval, FO_h, FO_age, b_age, LO_interval, LO_h, LO_age, t_age, position_bottom, notes"; 
+
+        var sql = "SELECT " + ((req.query.response === "long") ? longSQL : shortSQL) + " FROM units \
+              JOIN units_sections ON units_sections.unit_id=units.id \
+              JOIN cols ON units_sections.col_id=cols.id \
+              JOIN lookup_unit_liths ON lookup_unit_liths.unit_id=units.id \
+              JOIN lookup_unit_intervals ON units.id=lookup_unit_intervals.unit_id \
+              LEFT JOIN unit_strat_names ON unit_strat_names.unit_id=units.id \
+              LEFT JOIN lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id \
+              " + ((req.query.response === "long") ? "LEFT JOIN unit_notes ON unit_notes.unit_id=units.id" : "") + " \
+              LEFT JOIN pbdb_matches ON pbdb_matches.unit_id=units.id \
+              WHERE status_code='active' AND FO_age > ? AND LO_age < ? and units.id IN (SELECT unit_liths.unit_id from unit_liths JOIN liths on lith_id=liths.id WHERE lith like " + lith_field + ") GROUP BY units.id";
+
+        larkin.query(sql, [data.age_top, data.age_bottom], function(error, result) {
+            if (error) {
+              callback("error here -", error);
+            } else {
+              callback(null, data, result);
+            }
+        });
+      }
+    ], function(error, data, result) {
+      if (error) {
+        larkin.error(res, next, error);
+      } else {
+        larkin.sendData(result, res, "json", next);
+      }
+    });
+  });
+
+
 /*    /api/fossils?interval_name=Permian || /api/fossils?age=250 || /api/fossils?age_top=100&age_bottom=200    */
 api.route("/fossils")
   .get(function(req, res, next) {
@@ -372,6 +446,7 @@ api.route("/fossils")
 /*     /api/stats     */
 api.route("/stats")
   .get(function(req, res, next) {
+    console.log(req.route.meta);
     var sql = "\
       SELECT project, COUNT(distinct section_id) AS packages, COUNT(distinct units.id) AS units, COUNT(distinct collection_no) AS pbdb_collections FROM units \
           JOIN cols ON cols.id = col_id \
@@ -384,7 +459,10 @@ api.route("/stats")
     var format = (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json";
 
     larkin.query(sql, [], null, true, res, format, next);
-  });
+  })
+  .meta = "something";
+
+
 
 /*     /api/lith_definitions     */
 api.route("/lith_definitions")
