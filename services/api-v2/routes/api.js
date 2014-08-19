@@ -748,13 +748,13 @@ api.route("/paleogeography")
 api.route("/geologic_units")
   .get(function(req, res, next) {
     if (Object.keys(req.query).length < 1) {
-      larkin.error(res, next, req.route.meta.description, req.route.meta.options);
+      larkin.info(req, res, next);
     } else {
       var geo = (req.query.geo && req.query.geo === "true") ? true : false,
           types = (req.query.type) ? req.query.type.split(",") : ["gmna", "gmus", "column"];
 
       async.parallel({
-        gmna: function(callback) {
+        gmus: function(callback) {
           if (types.indexOf("gmna") > -1) {
             larkin.queryPg("earthbase", "SELECT gid, state, a.rocktype1, a.rocktype2, b.rocktype3, unit_name, b.unit_age, unitdesc, strat_unit, unit_com" + ((geo) ? ", ST_AsGeoJSON(a.the_geom) AS geometry" : "") + " FROM gmus.geologic_units a JOIN gmus.units b ON a.unit_link = b.unit_link WHERE ST_Contains(the_geom, ST_GeomFromText($1, 4326))", ["POINT(" + req.query.lng + " " + req.query.lat + ")"], function(error, result) {
               if (error) {
@@ -771,7 +771,7 @@ api.route("/geologic_units")
           } 
         },
 
-        gmus: function(callback) {
+        gmna: function(callback) {
           if (types.indexOf("gmus") > -1) {
             larkin.queryPg("earthbase", "SELECT objectid, unit_abbre, rocktype, lithology, min_age, max_age, min_max_re, unit_uncer, age_uncert" + ((geo) ? ", ST_AsGeoJSON(the_geom) AS geometry" : "") + " FROM gmna.geologic_units WHERE ST_Contains(the_geom, ST_GeomFromText($1, 4326))", ["POINT(" + req.query.lng + " " + req.query.lat + ")"], function(error, result) {
               if (error) {
@@ -793,7 +793,7 @@ api.route("/geologic_units")
             async.waterfall([
               function(callbackB) {
                 // Find nearest column
-                larkin.query("SELECT col_id from col_areas JOIN cols on col_id=cols.id WHERE ST_CONTAINS(col_areas.col_area,ST_GEOMFROMTEXT('POINT(? ?)')) and status_code='active'", [parseFloat(req.query.lng), parseFloat(req.query.lat)], function(error, result) {
+                larkin.query("SELECT col_id " + ((geo) ? ", AsWKT(col_areas.col_area) AS wkt" : "") + " FROM col_areas JOIN cols on col_id=cols.id WHERE ST_CONTAINS(col_areas.col_area,ST_GEOMFROMTEXT('POINT(? ?)')) and status_code='active'", [parseFloat(req.query.lng), parseFloat(req.query.lat)], function(error, result) {
                   if (error) {
                     callback(error);
                   } else {
@@ -802,27 +802,27 @@ api.route("/geologic_units")
                     } else if (result.length > 1) {
                       callbackB("More than 1 column found");
                     } else {
-                      callbackB(null, result[0].col_id);
+                      callbackB(null, result[0]);
                     }
                   }
                 });
               },
 
-              function(column_id, callbackB) {
-                larkin.query("SELECT id, col_name FROM cols WHERE id = ?", [column_id], function(error, result) {
+              function(column, callbackB) {
+                larkin.query("SELECT id, col_name FROM cols WHERE id = ?", [column.col_id], function(error, result) {
                   if (error) {
                     callbackB(error);
                   } else {
                     if (result.length === 0) {
                       callback(null);
                     } else {
-                      callbackB(null, column_id, result[0]);
+                      callbackB(null, column, result[0]);
                     }
                   }
                 });
               },
 
-              function(column_id, column_info, callbackB) {
+              function(column, column_info, callbackB) {
                 var shortSQL = "units.id AS id,units.strat_name, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick, min_thick, color, lith_type, count(distinct collection_no) pbdb";
                     
                 var longSQL = "units.id AS id,units_sections.section_id, units.strat_name, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick,min_thick, color, lith_class, lith_type, lith_short lith, environ_class, environ_type, environ, count(distinct collection_no) pbdb, FO_interval, FO_h, FO_age, b_age, LO_interval, LO_h, LO_age, t_age, position_bottom, notes";
@@ -838,23 +838,26 @@ api.route("/geologic_units")
                     WHERE units_sections.col_id = ? \
                     GROUP BY units.id ORDER BY t_age ASC";
 
-                var query = larkin.query(sql, [column_id], function(error, result) {
+                var query = larkin.query(sql, [column.col_id], function(error, result) {
                   if (error) {
                     callbackB(error);
                   } else {
-                    callbackB(null, column_info, result);
+                    callbackB(null, column, column_info, result);
                   }
                 });
               }
             ],
             // after the two queries are executed, send the result
-            function(err, column_info, result) {
+            function(err, column, column_info, result) {
               if (err) {
                 callback(err);
               } else {
-                var column = [column_info];
-                column[0].units = result;
-                callback(null, column[0]);
+                var col = [column_info];
+                if (geo) {
+                  col[0].geometry = wellknown(column.wkt);
+                }
+                col[0].units = result;
+                callback(null, col[0]);
               }
             });
           } else {
@@ -863,7 +866,7 @@ api.route("/geologic_units")
         }
       }, function(error, results) {
         if (error) {
-          larkin.error(res, next, req.route.meta.description, req.route.meta.options);
+          larkin.error(res, next, "Something went wrong", req.route.meta);
         } else {
           larkin.sendData(results, res, "json", next);
         }
@@ -884,6 +887,48 @@ api.route("/geologic_units")
       "output_formats": ["json"],
       "examples": ["/api/geologic_units?lat=43&lng=-89.3", "/api/geologic_units?lat=43&lng=-89&geo=true", "/api/geologic_units?lat=43&lng=-89&type=gmus"]
     }
+  };
+
+api.route("/geologic_units/map")
+  .get(function(req, res, next) {
+    if (Object.keys(req.query).length < 1) {
+      return larkin.info(req, res, next);
+    }
+    if (req.query.type === "gmus") {
+      larkin.queryPg("earthbase", "SELECT a.gid, a.unit_age, a.rocktype1, a.rocktype2, b.cmin_age, ST_AsGeoJSON(a.the_geom) AS geometry from gmus.geologic_units a JOIN gmus.age b ON a.unit_link = b.unit_link WHERE b.cmin_age = $1", [req.query.interval_name], function(error, result) {
+        dbgeo.parse({
+          "data": result.rows,
+          "outputFormat": (api.acceptedFormats.geo[req.query.format]) ? req.query.format : "geojson",
+          "callback": function(error, result) {
+            if (error) {
+              larkin.error(res, next, error);
+            } else {
+              larkin.sendData(result, res, null, next);
+            }
+          }
+        });
+      });
+    } else if (req.query.type === "gmna") {
+      larkin.queryPg("earthbase", "SELECT a.gid, a.rocktype, ST_AsGeoJSON(the_geom) AS geometry, b.interval_name from gmna.geologic_units a JOIN gmna.intervals_old b ON a.eb_interval_id = b.interval_id where b.interval_name = $1", [req.query.interval_name], function(error, result) {
+        dbgeo.parse({
+          "data": result.rows,
+          "outputFormat": (api.acceptedFormats.geo[req.query.format]) ? req.query.format : "geojson",
+          "callback": function(error, result) {
+            if (error) {
+              larkin.error(res, next, error);
+            } else {
+              larkin.sendData(result, res, null, next);
+            }
+          }
+        });
+      });
+    } else {
+      larkin.error(res, next, "Invalid parameters", req.route.meta);
+    }
+      
+  })
+  .meta = {
+    "description": "Fetch polygons for mapping"
   };
 
 api.route("/editing")
