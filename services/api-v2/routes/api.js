@@ -53,6 +53,7 @@ api.route("/column")
     if (Object.keys(req.query).length < 1) {
       return larkin.info(req, res, next);
     }
+    
     if (isFinite(req.query.id) || isFinite(req.query.lat) && isFinite(req.query.lng)) {
       async.waterfall([
         function(callback) {
@@ -118,7 +119,6 @@ api.route("/column")
       // after the two queries are executed, send the result
       function(err, column_info, result) {
         if (err) {
-          larkin.log("error", err);
           larkin.error(res, next, "An error was incurred", req.route.meta);
         } else {
           var column = [column_info];
@@ -252,6 +252,9 @@ api.route("/columns")
 /*     /api/unit    */
 api.route("/unit")
   .get(function(req, res, next) {
+    if (Object.keys(req.query).length < 1) {
+      return larkin.info(req, res, next);
+    }
     // Use some control flow, as we might need two separate queries for the result
     async.waterfall([
       function(callback) {
@@ -294,7 +297,7 @@ api.route("/unit")
       }
     ], function(error, collections, unit) {
       if (error) {
-        larkin.error(res, next, req.route.meta.message, req.route.meta.options);
+        larkin.error(res, next, "Something went wrong", req.route.meta);
       } else {
         // If the user asked for pbdb collections, add them as an attribute of the unit
         if (collections) {
@@ -324,6 +327,9 @@ api.route("/unit")
 
 api.route("/units")
   .get(function(req, res, next) {
+    if (Object.keys(req.query).length < 1) {
+      return larkin.info(req, res, next);
+    }
     async.waterfall([
       function(callback) {
         if (req.query.interval_name) {
@@ -385,7 +391,7 @@ api.route("/units")
       }
     ], function(error, data, result) {
       if (error) {
-        larkin.error(res, next, req.route.meta.message, req.route.meta.options);
+        larkin.error(res, next, "Something went wrong", req.route.meta);
       } else {
         larkin.sendData(result, res, "json", next);
       }
@@ -414,6 +420,9 @@ api.route("/units")
 /*    /api/fossils?interval_name=Permian || /api/fossils?age=250 || /api/fossils?age_top=100&age_bottom=200    */
 api.route("/fossils")
   .get(function(req, res, next) {
+    if (Object.keys(req.query).length < 1) {
+      return larkin.info(req, res, next);
+    }
     async.waterfall([
       function(callback) {
         if (req.query.interval_name) {
@@ -433,7 +442,7 @@ api.route("/fossils")
         } else if (req.query.age_top && req.query.age_bottom) {
           callback(null, {"interval_name": "Unknown", "age_bottom": req.query.age_bottom, "age_top": req.query.age_top});
         } else {
-          larkin.error(res, next, req.route.meta.message, req.route.meta.options);
+          larkin.error(res, next, "Invalid parameters", req.route.meta);
         }
       },
       function(data, callback) {
@@ -457,7 +466,7 @@ api.route("/fossils")
       }
     ], function(error, data, results) {
       if (error) {
-        larkin.error(res, next);
+        larkin.error(res, next, "Something went wrong", req.route.meta);
       } else {
         dbgeo.parse({
           "data": results,
@@ -466,8 +475,7 @@ api.route("/fossils")
           "geometryType": "wkt",
           "callback": function(error, result) {
             if (error) {
-              larkin.log("error", error);
-              larkin.error(res, next, req.route.meta.message, req.route.meta.options);
+              larkin.error(res, next, "Something went wrong", req.route.meta);
             } else {
               larkin.sendData(result, res, null, next);
             }
@@ -498,6 +506,10 @@ api.route("/fossils")
 /*     /api/stats     */
 api.route("/stats")
   .get(function(req, res, next) {
+    if (Object.keys(req.query).length < 1) {
+      return larkin.info(req, res, next);
+    }
+
     var sql = "\
       SELECT project, COUNT(distinct section_id) AS packages, COUNT(distinct units.id) AS units, COUNT(distinct collection_no) AS pbdb_collections FROM units \
           JOIN cols ON cols.id = col_id \
@@ -519,27 +531,31 @@ api.route("/stats")
 api.route("/lith_definitions")
   .get(function(req, res, next) {
     if (Object.keys(req.query).length < 1) {
-      larkin.error(res, next, req.route.meta.message, req.route.meta.options);
-    } else {
-      var sql = "SELECT id,lith,lith_type,lith_class,lith_color from liths";
-          lith = "";
-      if (req.query.lith_class) {
-        sql += " WHERE lith_class = ?";  
-        lith = req.query.lith_class;
-      } else if (req.query.lith_type){
-        sql += " WHERE lith_type = ?"; 
-        lith = req.query.lith_type;
-      }  else if (req.query.lith){
-        sql += " WHERE lith = ? "; 
-        lith = req.query.lith;
-      }  else if (req.query.id){
-        sql += " WHERE id = ? "; 
-        lith = req.query.id;
-      }
-
-      var format = (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json";
-      larkin.query(sql, [lith], null, true, res, format, next);
+      return larkin.info(req, res, next);
     }
+
+    var sql = "SELECT id,lith,lith_type,lith_class,lith_color from liths";
+        lith = "";
+
+    if (req.query.all) {
+      // do nothing
+    } else if (req.query.lith_class) {
+      sql += " WHERE lith_class = ?";  
+      lith = req.query.lith_class;
+    } else if (req.query.lith_type){
+      sql += " WHERE lith_type = ?"; 
+      lith = req.query.lith_type;
+    }  else if (req.query.lith){
+      sql += " WHERE lith = ? "; 
+      lith = req.query.lith;
+    }  else if (req.query.id){
+      sql += " WHERE id = ? "; 
+      lith = req.query.id;
+    }
+
+    var format = (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json";
+    larkin.query(sql, [lith], null, true, res, format, next);
+    
   })
   .meta = {
     "description": "Returns all lith definitions",
@@ -563,10 +579,15 @@ api.route("/lith_definitions")
 /*     /api/lith_definitions     */
 api.route("/lithatt_definitions")
   .get(function(req, res, next) {
+    if (Object.keys(req.query).length < 1) {
+      return larkin.info(req, res, next);
+    }
     var sql = "SELECT id,lith_att,att_type from lith_atts";
         lithatt = "";
 
-    if (req.query.att_type) {
+    if (req.query.all) {
+      // do nothing
+    } else if (req.query.att_type) {
       sql += " WHERE att_type = ?"; 
       lithatt = req.query.att_type;
     } else if (req.query.lith_att){
@@ -579,15 +600,30 @@ api.route("/lithatt_definitions")
 
     var format = (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json";
     larkin.query(sql, [lithatt], null, true, res, format, next);
-  });
+  })
+  .meta = {
+    "description": "Returns lithatt definitions",
+    "parameters": {
+        "att_type": "lithatt type",
+        "lith_att": "lith_att",
+        "id": "a lith att id",
+        "all": "return all lith_att definitions"
+      },
+      "output_formats": "json",
+      "examples": ["/lithatt_definitions?all"]
+  };
 
 /*     /api/lith_definitions     */
 api.route("/environ_definitions")
   .get(function(req, res, next) {
+    if (Object.keys(req.query).length < 1) {
+      return larkin.info(req, res, next);
+    }
     var sql = "SELECT id,environ,environ_type,environ_class from environs";
         environ = "";
-
-    if (req.query.environ_class) {
+    if (req.query.all) {
+      // do nothing
+    } else if (req.query.environ_class) {
       sql += " WHERE environ_class= ?";
       environ=req.query.environ_class;
     } else if (req.query.environ_type){
@@ -603,14 +639,33 @@ api.route("/environ_definitions")
 
     var format = (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json";
     larkin.query(sql, [environ], null, true, res, format, next);
-  });
+  })
+  .meta = {
+    "description": "Returns environment definitions",
+    "parameters": {
+        "environ_class": "environment class",
+        "environ_type": "environment type",
+        "environ": "environment",
+        "id": "an environment id",
+        "all": "return all interval definitions"
+      },
+      "output_formats": "json",
+      "examples": ["/environ_definitions?all"]
+  };
 
 /*     /api/interval_definitions     */
 api.route("/interval_definitions")
   .get(function(req, res, next) {
+    if (Object.keys(req.query).length < 1) {
+      return larkin.info(req, res, next);
+    }
+
     var sql = "SELECT intervals.id, interval_name, age_top late_age, age_bottom early_age FROM intervals",
         params = [];
-    if (req.query.timescale){
+
+    if (req.query.all) {
+      // do nothing
+    } else if (req.query.timescale){
       sql += " JOIN timescales_intervals ON interval_id=intervals.id JOIN timescales ON timescale_id=timescales.id WHERE timescale = ?";
       params.push(req.query.timescale);
     } else if (req.query.id && isFinite(req.query.id)){
@@ -620,15 +675,32 @@ api.route("/interval_definitions")
     var format = (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json";
 
     larkin.query(sql, params, null, true, res, format, next);
-  });
+  })
+  .meta = {
+    "description": "Returns interval definitions",
+    "parameters": {
+        "timescale": "timescale to use",
+        "id": "an interval id",
+        "all": "return all interval definitions"
+      },
+      "output_formats": "json",
+      "examples": ["/interval_definitions?all"]
+  };
+
 
 /*    /api/strat_names    */
 api.route("/strat_names")
   .get(function(req, res, next) {
+    if (Object.keys(req.query).length < 1) {
+      return larkin.info(req, res, next);
+    }
+
     var filterString = "",
         params = [];
 
-    if (req.query.id) {
+    if (req.query.all) {
+      // do nothing
+    } else if (req.query.id) {
       filterString += "strat_name_id = ?";
       params.push(req.query.id);
     } else if (req.query.name) {
@@ -652,12 +724,26 @@ api.route("/strat_names")
     var format = (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json";
 
     larkin.query(sql, params, null, true, res, format, next);
-  });
+  })
+  .meta = {
+    "description": "Returns strat names",
+    "parameters": {
+        "id": "strat id",
+        "name": "strat name",
+        "rank": "strat rank",
+        "all": "return all strat names"
+      },
+      "output_formats": "json",
+      "examples": ["/strat_names?all"]
+  };
 
 
 /*     /api/section_stats     */
 api.route("/section_stats")
   .get(function(req, res, next) {
+    if (Object.keys(req.query).length < 1) {
+      return larkin.info(req, res, next);
+    }
     if (req.query.age_model === "continuous") {
       var sql = "\
       SELECT project, units_sections.col_id col_id, units_sections.section_id section_id, count(distinct units.id) units, sum(max_thick) max_thick, sum(min_thick) min_thick, min(t1_age) t_age, max(t1_age) b_age \
@@ -667,7 +753,7 @@ api.route("/section_stats")
       JOIN projects on project_id=projects.id \
       JOIN unit_boundaries ON units_sections.unit_id=unit_boundaries.unit_id \
       WHERE status_code='active' and units.id IN (SELECT distinct unit_id from unit_liths,liths where lith_id=liths.id and lith_class='sedimentary') and max_thick>0 and t1_age<=541 GROUP BY units_sections.section_id";
-    } else {
+    } else if (req.query.all) {
       var sql = "\
         SELECT project,units_sections.col_id, units_sections.section_id, count(distinct units.id) units, sum(max_thick) max_thick, sum(min_thick) min_thick, min(l.age_top) t_age, max(f.age_bottom) b_age \
         FROM units \
@@ -677,19 +763,30 @@ api.route("/section_stats")
         JOIN intervals f ON f.id=FO \
         JOIN intervals l on l.id=LO \
         WHERE status_code='active' and units.id IN (SELECT distinct unit_id from unit_liths,liths where lith_id=liths.id and lith_class='sedimentary') and max_thick>0 and f.age_bottom<=541 GROUP BY units_sections.section_id";
+    } else {
+      return larkin.error(res, next, "Invalid parameters", req.route.meta);
     }
 
     var format = (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json";
 
     larkin.query(sql, [], null, true, res, format, next);
-  });
+  })
+  .meta = {
+    "description": "Returns section stats",
+    "parameters": {
+        "age_model": "continuous",
+        "all": "return all section stats"
+      },
+      "output_formats": "json",
+      "examples": ["/section_stats?all", "/section_stats?age_model=continuous"]
+  };
 
 
 /*    /api/paleogeography?year=550   /api/paleogeography?interval=Permian */
 api.route("/paleogeography")
   .get(function(req, res, next) {
     if (!req.query.age && !req.query.interval_name) {
-      larkin.error(res, next, req.route.meta.description, req.route.meta.options);
+      larkin.info(req, res, next);
     } else {
       async.waterfall([
         function(callback) {
@@ -716,16 +813,17 @@ api.route("/paleogeography")
         }
       ], function(error, data) {
         if (error) {
-          larkin.error(res, next, error);
+          larkin.error(res, next, "Something went wrong", req.route.meta);
         } else {
           dbgeo.parse({
             "data": data,
             "outputFormat": (api.acceptedFormats.geo[req.query.format]) ? req.query.format : "geojson",
             "callback": function(error, result) {
               if (error) {
-                larkin.error(res, next, error);
+                larkin.error(res, next, "Something went wrong", req.route.meta);
+              } else {
+                larkin.sendData(result, res, null, next);
               }
-              larkin.sendData(result, res, null, next);
             }
           });
         }
