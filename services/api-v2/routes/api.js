@@ -751,7 +751,7 @@ api.route("/geologic_units")
       async.parallel({
         gmna: function(callback) {
           if (types.indexOf("gmna") > -1) {
-            larkin.queryPg("earthbase", "SELECT gid, state, a.rocktype1, a.rocktype2, b.rocktype3, unit_name, b.unit_age, unitdesc, strat_unit, unit_com" + ((geo) ? ", ST_AsGeoJSON(a.the_geom) AS geometry" : "") + " FROM gmus.geologic_units a JOIN gmus.units b ON a.unit_link = b.unit_link WHERE ST_Contains(ST_SetSRID(the_geom, 4326), ST_SetSRID(ST_GeomFromText($1),4326))", ["POINT(" + req.query.lng + " " + req.query.lat + ")"], function(error, result) {
+            larkin.queryPg("earthbase", "SELECT gid, state, a.rocktype1, a.rocktype2, b.rocktype3, unit_name, b.unit_age, unitdesc, strat_unit, unit_com" + ((geo) ? ", ST_AsGeoJSON(a.the_geom) AS geometry" : "") + " FROM gmus.geologic_units a JOIN gmus.units b ON a.unit_link = b.unit_link WHERE ST_Contains(the_geom, ST_GeomFromText($1, 4326))", ["POINT(" + req.query.lng + " " + req.query.lat + ")"], function(error, result) {
               if (error) {
                 callback(error);
               } else {
@@ -768,7 +768,7 @@ api.route("/geologic_units")
 
         gmus: function(callback) {
           if (types.indexOf("gmus") > -1) {
-            larkin.queryPg("earthbase", "SELECT objectid, unit_abbre, rocktype, lithology, min_age, max_age, min_max_re, unit_uncer, age_uncert" + ((geo) ? ", ST_AsGeoJSON(the_geom) AS geometry" : "") + " FROM gmna.geologic_units WHERE ST_Contains(ST_SetSRID(the_geom, 4326), ST_SetSRID(ST_GeomFromText($1),4326))", ["POINT(" + req.query.lng + " " + req.query.lat + ")"], function(error, result) {
+            larkin.queryPg("earthbase", "SELECT objectid, unit_abbre, rocktype, lithology, min_age, max_age, min_max_re, unit_uncer, age_uncert" + ((geo) ? ", ST_AsGeoJSON(the_geom) AS geometry" : "") + " FROM gmna.geologic_units WHERE ST_Contains(the_geom, ST_GeomFromText($1, 4326))", ["POINT(" + req.query.lng + " " + req.query.lat + ")"], function(error, result) {
               if (error) {
                 callback(error);
               } else {
