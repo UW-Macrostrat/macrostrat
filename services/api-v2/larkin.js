@@ -84,6 +84,13 @@ var mysql = require("mysql"),
    };
 
 
+  larkin.info = function(req, res, next) {
+    res.json({
+      "success": req.route.meta
+    });
+  };
+
+
   larkin.error = function(res, next, message, options, code) {
     var responseMessage = (message) ? message : "Something went wrong. Please contact Shanan Peters.";
     res
@@ -91,7 +98,7 @@ var mysql = require("mysql"),
       .json({
         "error": {
           "message": responseMessage,
-          "options": options
+          "about": options
         }
       });
   };

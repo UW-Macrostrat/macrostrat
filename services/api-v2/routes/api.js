@@ -5,8 +5,8 @@ var express = require("express"),
     async = require("async"),
     wellknown = require("wellknown"),
     larkin = require("../larkin"),
-    dbgeo = require("dbgeo");
-
+    dbgeo = require("dbgeo"),
+    defs = require("./defs");
 
 var api = express.Router();
 
@@ -50,6 +50,9 @@ api.route("/")
 /*    /api/column?id=17    */
 api.route("/column")
   .get(function(req, res, next) {
+    if (Object.keys(req.query).length < 1) {
+      return larkin.info(req, res, next);
+    }
     if (isFinite(req.query.id) || isFinite(req.query.lat) && isFinite(req.query.lng)) {
       async.waterfall([
         function(callback) {
@@ -116,7 +119,7 @@ api.route("/column")
       function(err, column_info, result) {
         if (err) {
           larkin.log("error", err);
-          larkin.error(res, next);
+          larkin.error(res, next, "An error was incurred", req.route.meta);
         } else {
           var column = [column_info];
           column[0].units = result;
@@ -126,7 +129,7 @@ api.route("/column")
       });
 
     } else {
-      larkin.error(res, next, req.route.meta.message, req.route.meta.options);
+      larkin.error(res, next, "An invalid parameter value was given", req.route.meta);
     }
   })
   .meta = {
@@ -148,9 +151,12 @@ api.route("/column")
   };
 
 
-/*    /api/strats?interval_name=Permian || /api/strats?age=250 || /api/strats?age_top=100&age_bottom=200    */
+/*    /api/columns?interval_name=Permian || /api/columns?age=250 || /api/columns?age_top=100&age_bottom=200    */
 api.route("/columns")
   .get(function(req, res, next) {
+    if (Object.keys(req.query).length < 1) {
+      return larkin.info(req, res, next);
+    }
     async.waterfall([
       function(callback) {
         if (req.query.interval_name) {
@@ -159,7 +165,7 @@ api.route("/columns")
               callback(error);
             } else {
               if (result.length === 0) {
-                larkin.error(res, next, "No results found");
+                callback("No results found");
               } else {
                 callback(null, {"interval_name": result[0].interval_name, "age_bottom": result[0].age_bottom, "age_top": result[0].age_top});
                 }
@@ -171,7 +177,7 @@ api.route("/columns")
         } else if (req.query.age_top && req.query.age_bottom) {
           callback(null, {"interval_name": "Unknown", "age_bottom": req.query.age_bottom, "age_top": req.query.age_top});
         } else {
-          larkin.error(res, next, req.route.meta.message, req.route.meta.options);
+          larkin.error(res, next, "An invalid parameter was given", req.route.meta);
         }
       },
       function(data, callback) {
@@ -205,7 +211,7 @@ api.route("/columns")
       }
     ], function(error, data, result) {
       if (error) {
-        larkin.error(res, next, error);
+        larkin.error(res, next, "An error was incurred", req.route.meta);
       } else {
         dbgeo.parse({
           "data": result,
@@ -214,7 +220,7 @@ api.route("/columns")
           "outputFormat": (api.acceptedFormats.geo[req.query.format]) ? req.query.format : "geojson",
           "callback": function(error, output) {
             if (error) {
-              larkin.error(res, next, error);
+              larkin.error(res, next, "An error was incurred during con", req.route.meta);
             } else {
               output.properties = data;
               larkin.sendData(output, res, null, next);
@@ -301,7 +307,6 @@ api.route("/unit")
   })
   .meta = {
     "description": "Gets all data for a given unit",
-    "message": "Please provide a unit id",
     "options": {
       "parameters": {
         "id": "Unit id",
