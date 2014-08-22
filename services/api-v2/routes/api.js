@@ -753,7 +753,7 @@ api.route("/section_stats")
       JOIN projects on project_id=projects.id \
       JOIN unit_boundaries ON units_sections.unit_id=unit_boundaries.unit_id \
       WHERE status_code='active' and units.id IN (SELECT distinct unit_id from unit_liths,liths where lith_id=liths.id and lith_class='sedimentary') and max_thick>0 and t1_age<=541 GROUP BY units_sections.section_id";
-    } else if (req.query.all) {
+    } else if ("all" in req.query) {
       var sql = "\
         SELECT project,units_sections.col_id, units_sections.section_id, count(distinct units.id) units, sum(max_thick) max_thick, sum(min_thick) min_thick, min(l.age_top) t_age, max(f.age_bottom) b_age \
         FROM units \

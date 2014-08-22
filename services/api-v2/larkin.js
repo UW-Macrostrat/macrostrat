@@ -5,8 +5,6 @@ var mysql = require("mysql"),
     credentials = require("./routes/credentials"),
     csv = require('express-csv');
 
-//winston.add(winston.transports.File, { filename: "logs/larkin.log" });
-
 (function() {
   var larkin = {};
 

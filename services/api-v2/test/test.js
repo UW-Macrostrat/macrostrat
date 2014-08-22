@@ -290,7 +290,7 @@ async.series({
   },
 
   paleogeography: function(callback) {
-    var tests = ["/paleogeography"];
+    var tests = ["/paleogeography", "/paleogeography?interval_name=Permian", "/paleogeography?age=500", "/paleogeography?interval_name=Early Jurassic&output=topojson"];
 
     async.each(tests, function(test, callbackB) {
       getJSON(host + "/api" + test, function(error, result) {
