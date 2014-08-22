@@ -11,7 +11,13 @@ var mysql = require("mysql"),
   larkin.connectMySQL = function() {
     // Non-blocking FTW
     this.pool = mysql.createPool(credentials.mysql);
+
+    this.pool.on("connection", function(connection) {
+      // We could in theory take note of each query for analytics here...
+      // Or set a session, etc...
+    });
   };
+
 
   larkin.queryPg = function(db, sql, params, callback, send, res, format, next) {
     pg.connect("postgres://" + credentials.pg.user + "@" + credentials.pg.host + "/" + db, function(err, client, done) {
@@ -35,7 +41,8 @@ var mysql = require("mysql"),
         }.bind(this));
       }
     }.bind(this));
-  }
+  };
+
 
   larkin.query = function(sql, params, callback, send, res, format, next) {
     this.pool.getConnection(function(err, connection) {
@@ -95,7 +102,7 @@ var mysql = require("mysql"),
 
   larkin.log = function(type, message) {
     winston.log(type, message);
-  }
+  };
 
   module.exports = larkin;
 
