@@ -25,7 +25,7 @@ function getJSON(url, callback) {
   });
 };
 
-async.series({
+async.parallel({
   root: function(callback) {
     getJSON(host + "/api", function(error, result) {
       if (error) {

@@ -9,20 +9,8 @@ var mysql = require("mysql"),
   var larkin = {};
 
   larkin.connectMySQL = function() {
-    this.connection = mysql.createConnection(credentials.mysql);
-
-    this.connection.connect(function(error) {
-      if (error) {
-        this.log("error", error);
-      } else {
-        this.log("info", "Connected to MySQL");
-      }
-    }.bind(this));
-
-    this.connection.on("error", function(err) {
-      this.log("error", err);
-      this.connectMySQL();
-    }.bind(this));
+    // Non-blocking FTW
+    this.pool = mysql.createPool(credentials.mysql);
   };
 
   larkin.queryPg = function(db, sql, params, callback, send, res, format, next) {
@@ -50,20 +38,24 @@ var mysql = require("mysql"),
   }
 
   larkin.query = function(sql, params, callback, send, res, format, next) {
-    this.connection.query(sql, params, function(error, result) {
-      if (error) {
-        if (callback) {
-          callback(error);
+    this.pool.getConnection(function(err, connection) {
+      connection.query(sql, params, function(error, result) {
+        // Remove the connection
+        connection.destroy();
+        if (error) {
+          if (callback) {
+            callback(error);
+          } else {
+            this.error(res, next, "Error retrieving from MySQL.", error);
+          }
         } else {
-          this.error(res, next, "Error retrieving from MySQL.", error);
+          if (send) {
+            this.sendData(result, res, format, next);
+          } else {
+            callback(null, result);
+          }
         }
-      } else {
-        if (send) {
-          this.sendData(result, res, format, next);
-        } else {
-          callback(null, result);
-        }
-      }
+      }.bind(this));
     }.bind(this));
   };
 
