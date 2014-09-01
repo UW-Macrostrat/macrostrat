@@ -70,6 +70,202 @@
 
   };
 
+  defs["/columns"] = {
+    "description": "Gets all attributes of a given column",
+    "options": {
+      "parameters": {
+
+      },
+      "output_formats": "json",
+      "examples": [],
+      "fields": {
+
+      }
+    }
+  };
+
+  defs["unit"] = {
+    "description": "Gets all attributes of a given column",
+    "options": {
+      "parameters": {
+
+      },
+      "output_formats": "json",
+      "examples": [],
+      "fields": {
+
+      }
+    }
+  };
+
+  defs["units"] = {
+    "description": "Gets all attributes of a given column",
+    "options": {
+      "parameters": {
+
+      },
+      "output_formats": "json",
+      "examples": [],
+      "fields": {
+
+      }
+    }
+  };
+
+  defs["fossils"] = {
+    "description": "Gets all attributes of a given column",
+    "options": {
+      "parameters": {
+
+      },
+      "output_formats": "json",
+      "examples": [],
+      "fields": {
+
+      }
+    }
+  };
+
+  defs["stats"] = {
+    "description": "Gets all attributes of a given column",
+    "options": {
+      "parameters": {
+
+      },
+      "output_formats": "json",
+      "examples": [],
+      "fields": {
+
+      }
+    }
+  };
+
+  def["lith_definitions"] = {
+    "description": "Gets all attributes of a given column",
+    "options": {
+      "parameters": {
+
+      },
+      "output_formats": "json",
+      "examples": [],
+      "fields": {
+
+      }
+    }
+  };
+
+  def["lithatt_definitions"] = {
+    "description": "Gets all attributes of a given column",
+    "options": {
+      "parameters": {
+
+      },
+      "output_formats": "json",
+      "examples": [],
+      "fields": {
+
+      }
+    }
+  };
+
+  def["environ_definitions"] = {
+    "description": "Gets all attributes of a given column",
+    "options": {
+      "parameters": {
+
+      },
+      "output_formats": "json",
+      "examples": [],
+      "fields": {
+
+      }
+    }
+  };
+
+  def["interval_definitions"] = {
+    "description": "Gets all attributes of a given column",
+    "options": {
+      "parameters": {
+
+      },
+      "output_formats": "json",
+      "examples": [],
+      "fields": {
+
+      }
+    }
+  };
+
+  def["strat_names"] = {
+    "description": "Gets all attributes of a given column",
+    "options": {
+      "parameters": {
+
+      },
+      "output_formats": "json",
+      "examples": [],
+      "fields": {
+
+      }
+    }
+  };
+
+  def["section_stats"] = {
+    "description": "Gets all attributes of a given column",
+    "options": {
+      "parameters": {
+
+      },
+      "output_formats": "json",
+      "examples": [],
+      "fields": {
+
+      }
+    }
+  };
+
+  def["paleogeography"] = {
+    "description": "Gets all attributes of a given column",
+    "options": {
+      "parameters": {
+
+      },
+      "output_formats": "json",
+      "examples": [],
+      "fields": {
+
+      }
+    }
+  };
+
+  def["geologic_units"] = {
+    "description": "Gets all attributes of a given column",
+    "options": {
+      "parameters": {
+
+      },
+      "output_formats": "json",
+      "examples": [],
+      "fields": {
+
+      }
+    }
+  };
+
+  def["geologic_units/map"] = {
+    "description": "Gets all attributes of a given column",
+    "options": {
+      "parameters": {
+
+      },
+      "output_formats": "json",
+      "examples": [],
+      "fields": {
+
+      }
+    }
+  };
+
   // This is the primary dictionary for all field definitions
   defs.define = {
     "id": "integer, unique identifier",
