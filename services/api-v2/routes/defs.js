@@ -61,8 +61,6 @@
       },
       "examples": ["?interval_name=Permian", "?age=271", "?age_top=200&age_bottom=250"],
       "fields": {
-        "geometry",
-        "col_id",
 
 
       }
@@ -127,7 +125,7 @@
     }
   };
 
-  def["lith_definitions"] = {
+  defs["lith_definitions"] = {
     "description": "Gets all attributes of a given column",
     "options": {
       "parameters": {
@@ -141,7 +139,7 @@
     }
   };
 
-  def["lithatt_definitions"] = {
+  defs["lithatt_definitions"] = {
     "description": "Gets all attributes of a given column",
     "options": {
       "parameters": {
@@ -155,7 +153,7 @@
     }
   };
 
-  def["environ_definitions"] = {
+  defs["environ_definitions"] = {
     "description": "Gets all attributes of a given column",
     "options": {
       "parameters": {
@@ -169,7 +167,7 @@
     }
   };
 
-  def["interval_definitions"] = {
+  defs["interval_definitions"] = {
     "description": "Gets all attributes of a given column",
     "options": {
       "parameters": {
@@ -183,7 +181,7 @@
     }
   };
 
-  def["strat_names"] = {
+  defs["strat_names"] = {
     "description": "Gets all attributes of a given column",
     "options": {
       "parameters": {
@@ -197,7 +195,7 @@
     }
   };
 
-  def["section_stats"] = {
+  defs["section_stats"] = {
     "description": "Gets all attributes of a given column",
     "options": {
       "parameters": {
@@ -211,7 +209,7 @@
     }
   };
 
-  def["paleogeography"] = {
+  defs["paleogeography"] = {
     "description": "Gets all attributes of a given column",
     "options": {
       "parameters": {
@@ -225,7 +223,7 @@
     }
   };
 
-  def["geologic_units"] = {
+  defs["geologic_units"] = {
     "description": "Gets all attributes of a given column",
     "options": {
       "parameters": {
@@ -239,7 +237,7 @@
     }
   };
 
-  def["geologic_units/map"] = {
+  defs["geologic_units/map"] = {
     "description": "Gets all attributes of a given column",
     "options": {
       "parameters": {
