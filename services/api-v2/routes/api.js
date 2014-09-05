@@ -511,11 +511,11 @@ api.route("/stats")
     }
 
     var sql = "\
-      SELECT project, COUNT(distinct section_id) AS packages, COUNT(distinct units.id) AS units, COUNT(distinct collection_no) AS pbdb_collections FROM units \
+      SELECT project, COUNT(distinct units_sections.section_id) AS packages, COUNT(distinct unit_id) AS units, COUNT(distinct collection_no) AS pbdb_collections FROM units_sections \
           JOIN cols ON cols.id = col_id \
           JOIN projects ON projects.id = project_id \
-          LEFT JOIN pbdb_matches ON unit_id = units.id \
-            WHERE project IN ('North America','New Zealand','Caribbean','Deep Sea') and status_code='active' \
+          LEFT JOIN pbdb_matches USING (unit_id) \
+          WHERE project IN ('North America','New Zealand','Caribbean','Deep Sea') and status_code='active' \
           GROUP BY project_id \
           ORDER BY field(project, 'North America','Caribbean','New Zealand','Deep Sea') ";
 

@@ -48,6 +48,7 @@
       }
     }
   };
+  
   defs["/columns"] = {
     "description": "Get all colums containing one or more units matching specfied search criteria",
     "options": {
@@ -68,20 +69,6 @@
     }
 
 
-  };
-
-  defs["/columns"] = {
-    "description": "Gets all attributes of a given column",
-    "options": {
-      "parameters": {
-
-      },
-      "output_formats": "json",
-      "examples": [],
-      "fields": {
-
-      }
-    }
   };
 
   defs["unit"] = {
