@@ -25,6 +25,13 @@ function getJSON(url, callback) {
   });
 };
 
+/*
+1. go to /api
+2. get all routes
+3. hit each route, grabbing the first example
+4. hit the example route, getting all fields
+
+*/
 async.parallel({
   root: function(callback) {
     getJSON(host + "/api", function(error, result) {

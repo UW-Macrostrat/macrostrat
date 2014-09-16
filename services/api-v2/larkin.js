@@ -73,7 +73,6 @@ var mysql = require("mysql"),
     } else {
       res.json({
         "success": {
-        "results": data.length,
         "data": data
         }
       });

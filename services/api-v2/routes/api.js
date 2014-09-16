@@ -842,7 +842,10 @@ api.route("/paleogeography")
       "examples": ["/api/paleogeography?interval_name=Permian",  "/api/paleogeography?age=271"]
     }
   };
-
+/*
+  TODO:
+    I think instead of geo=true, we should use format=geojson or format=topojson
+*/
 api.route("/geologic_units")
   .get(function(req, res, next) {
     if (Object.keys(req.query).length < 1) {
