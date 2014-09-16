@@ -78,7 +78,7 @@
     }
   };
 
-  defs["unit"] = {
+  defs["/unit"] = {
     "description": "Gets all data for a given unit",
     "options": {
       "parameters": {
@@ -125,7 +125,7 @@
     }
   };
 
-  defs["units"] = {
+  defs["/units"] = {
     "description": "Return all units given an age or time range",
     "options": {
       "parameters": {
@@ -177,7 +177,7 @@
     }
   };
 
-  defs["fossils"] = {
+  defs["/fossils"] = {
     "description": "Returns all fossils given an interval name or age range",
     "options": {
       "parameters": {
@@ -201,7 +201,7 @@
     }
   };
 
-  defs["stats"] = {
+  defs["/stats"] = {
     "description": "Returns statistics about the macrostrat database",
     "options": {
       "parameters": {
@@ -219,7 +219,7 @@
     }
   };
 
-  defs["lith_definitions"] = {
+  defs["/lith_definitions"] = {
     "description": "Returns all lith definitions",
     "options": {
       "parameters": {
@@ -244,7 +244,7 @@
     }
   };
 
-  defs["lithatt_definitions"] = {
+  defs["/lithatt_definitions"] = {
     "description": "Returns lithatt definition",
     "options": {
       "parameters": {
@@ -267,7 +267,7 @@
     }
   };
 
-  defs["environ_definitions"] = {
+  defs["/environ_definitions"] = {
     "description": "Returns environment definitions",
     "options": {
       "parameters": {
@@ -292,7 +292,7 @@
     }
   };
 
-  defs["interval_definitions"] = {
+  defs["/interval_definitions"] = {
     "description": "Returns interval definitions",
     "options": {
       "parameters": {
@@ -316,7 +316,7 @@
     }
   };
 
-  defs["strat_names"] = {
+  defs["/strat_names"] = {
     "description": "Returns strat names",
     "options": {
       "parameters": {
@@ -351,7 +351,7 @@
     }
   };
 
-  defs["section_stats"] = {
+  defs["/section_stats"] = {
     "description": "Return section stats",
     "options": {
       "parameters": {
@@ -377,7 +377,7 @@
     }
   };
 
-  defs["paleogeography"] = {
+  defs["/paleogeography"] = {
     "description": "Returns paleogeography geometry",
     "options": {
       "parameters": {
@@ -396,7 +396,7 @@
     }
   };
 
-  defs["geologic_units"] = {
+  defs["/geologic_units"] = {
     "description": "What's at a point",
     "options": {
       "parameters": {
@@ -432,7 +432,7 @@
     }
   };
 
-  defs["geologic_units/map"] = {
+  defs["/geologic_units/map"] = {
     "description": "Fetch polygons for mapping",
     "options": {
       "parameters": {
@@ -496,21 +496,34 @@
     "area": "area in square kilometers"
   };
 
-  // Given a route and field type(optional), will return all field definitions
-  defs.defineRoute = function(route, type) {
+  // Will return all field definitions
+  defs.defineFields = function(route, callback) {
     var routeDefs = {}
-    async.each(this[route].options.fields, function(field, callback) {
-      if (routeDefs.hasOwnProperty(field)) {
+    async.each(defs[route].options.fields, function(field, callback) {
+      if (defs.define.hasOwnProperty(field)) {
         routeDefs[field] = defs.define[field];
       } else {
         routeDefs[field] = ""
       }
       callback()
     }, function(error) {
-      return routeDefs;
+      callback(routeDefs);
     });
-    return routeDefs;
+    callback(routeDefs);
   };
+
+  defs.defineRoute = function(route, callback) {
+    this.defineFields(route, function(fields) {
+      var options = this[route].options;
+      delete options.fields;
+      options.fields = fields;
+      var routeDefinition = {
+        "description": this[route].description,
+        "options": this[route].options
+      };
+      callback(routeDefinition);
+    }.bind(this)); 
+  }
 
   module.exports = defs;
 }());

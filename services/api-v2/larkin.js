@@ -3,7 +3,8 @@ var mysql = require("mysql"),
     async = require("async"),
     winston = require("winston"),
     credentials = require("./routes/credentials"),
-    csv = require('express-csv');
+    csv = require("express-csv"),
+    defs = require("./routes/defs");
 
 (function() {
   var larkin = {};
@@ -81,22 +82,26 @@ var mysql = require("mysql"),
 
 
   larkin.info = function(req, res, next) {
-    res.json({
-      "success": req.route.meta
+    defs.defineRoute(req.route.path, function(definition) {
+      res.json({
+        "success": definition
+      });
     });
   };
 
 
-  larkin.error = function(res, next, message, options, code) {
+  larkin.error = function(req, res, next, message, code) {
     var responseMessage = (message) ? message : "Something went wrong. Please contact Shanan Peters.";
-    res
-      .status((code) ? code : 200)
-      .json({
-        "error": {
-          "message": responseMessage,
-          "about": options
-        }
-      });
+    defs.defineRoute(req.route.path, function(definition) {
+      res
+        .status((code) ? code : 200)
+        .json({
+          "error": {
+            "message": responseMessage,
+            "about": definition
+          }
+        });
+    });
   };
 
   larkin.log = function(type, message) {
