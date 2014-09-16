@@ -496,34 +496,5 @@
     "area": "area in square kilometers"
   };
 
-  // Will return all field definitions
-  defs.defineFields = function(route, callback) {
-    var routeDefs = {}
-    async.each(defs[route].options.fields, function(field, callback) {
-      if (defs.define.hasOwnProperty(field)) {
-        routeDefs[field] = defs.define[field];
-      } else {
-        routeDefs[field] = ""
-      }
-      callback()
-    }, function(error) {
-      callback(routeDefs);
-    });
-    callback(routeDefs);
-  };
-
-  defs.defineRoute = function(route, callback) {
-    this.defineFields(route, function(fields) {
-      var options = this[route].options;
-      delete options.fields;
-      options.fields = fields;
-      var routeDefinition = {
-        "description": this[route].description,
-        "options": this[route].options
-      };
-      callback(routeDefinition);
-    }.bind(this)); 
-  }
-
   module.exports = defs;
 }());
