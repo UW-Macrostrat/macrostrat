@@ -32,7 +32,7 @@ function getJSON(url, callback) {
 4. hit the example route, getting all fields
 
 */
-async.parallel({
+async.series({
   root: function(callback) {
     getJSON(host + "/api", function(error, result) {
       if (error) {
