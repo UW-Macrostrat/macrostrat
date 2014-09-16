@@ -34,6 +34,7 @@ api.route("/")
     api.stack.filter(function(d) {
       if (d.route && d.route.path !== "*" && d.route.path !== null && d.route.path.length) {
         routes[d.route.path] = (d.route.meta && d.route.meta.description) ? d.route.meta.description : "";
+        routes[d.route.path] = (defs[d.route.path] && defs[d.route.path].description) ? defs[d.route.path].description : "";
       }
     });
     res.json({
@@ -42,10 +43,7 @@ api.route("/")
         "routes": routes
       }
     });
-  })
-  .meta = {
-    "description": "The root of the Macrostrat API"
-  };
+  });
 
 /*    /api/column?id=17    */
 api.route("/column")
@@ -83,7 +81,7 @@ api.route("/column")
               callback(error);
             } else {
               if (result.length === 0) {
-                larkin.error(res, next, "No results found.");
+                larkin.error(req, res, next, "No results found.");
               } else {
                 callback(null, column_id, result[0]);
               }
@@ -119,7 +117,7 @@ api.route("/column")
       // after the two queries are executed, send the result
       function(err, column_info, result) {
         if (err) {
-          larkin.error(res, next, "An error was incurred", req.route.meta);
+          larkin.error(req, res, next, "An error was incurred");
         } else {
           var column = [column_info];
           column[0].units = result;
@@ -129,26 +127,9 @@ api.route("/column")
       });
 
     } else {
-      larkin.error(res, next, "An invalid parameter value was given", req.route.meta);
+      larkin.error(req, res, next, "An invalid parameter value was given");
     }
-  })
-  .meta = {
-    "description": "Gets all attributes of a given column",
-    "message": "Please provide a column id or a latitude and longitude.",
-    "options": {
-      "parameters": {
-        "id": "Get a column by id",
-        "lat": "A valid latitude",
-        "lng": "A valid longitude",
-        "response": "Can be 'short' or 'long'"
-      },
-      "output_formats": "json",
-      "examples": ["api/columns?id=17", "api/columns?lat=50&lng=-80"],
-      "fields": {
-        "field": "description"
-      }
-    }
-  };
+  });
 
 
 /*    /api/columns?interval_name=Permian || /api/columns?age=250 || /api/columns?age_top=100&age_bottom=200    */
@@ -177,7 +158,7 @@ api.route("/columns")
         } else if (req.query.age_top && req.query.age_bottom) {
           callback(null, {"interval_name": "Unknown", "age_bottom": req.query.age_bottom, "age_top": req.query.age_top});
         } else {
-          larkin.error(res, next, "An invalid parameter was given", req.route.meta);
+          larkin.error(req, res, next, "An invalid parameter was given");
         }
       },
       function(data, callback) {
@@ -211,7 +192,7 @@ api.route("/columns")
       }
     ], function(error, data, result) {
       if (error) {
-        larkin.error(res, next, "An error was incurred", req.route.meta);
+        larkin.error(req, res, next, "An error was incurred");
       } else {
         dbgeo.parse({
           "data": result,
@@ -220,7 +201,7 @@ api.route("/columns")
           "outputFormat": (api.acceptedFormats.geo[req.query.format]) ? req.query.format : "geojson",
           "callback": function(error, output) {
             if (error) {
-              larkin.error(res, next, "An error was incurred during con", req.route.meta);
+              larkin.error(req, res, next, "An error was incurred during con");
             } else {
               output.properties = data;
               larkin.sendData(output, res, null, next);
@@ -229,25 +210,7 @@ api.route("/columns")
         });
       }
     });
-  })
-  .meta = {
-    "description": "Gets all columns given a time interval or range",
-    "message": "You must specify an age argument to get a result. NB: this version does NOT use continuous time age model for units. Therefore an age may return units that are not of that exact age but in a bin spanning that age.",
-    "options": {
-      "parameters": {
-        "interval_name": "The name of a time interval",
-        "age": "A valid age",
-        "age_top": "A valid age - must be used with age_bottom and be less than age_bottom",
-        "age_bottom": "A valid age - must be used with age_top and be greater than age_top",
-        "format": "Desired output format"
-      },
-      "output_formats": ["geojson", "topojson"],
-      "examples": ["/api/columns?interval_name=Permian",  "/api/columns?age=271", "/api/columns?age_top=200&age_bottom=250"],
-      "fields": {
-        "field": "description"
-      }
-    }
-  };
+  });
 
 /*     /api/unit    */
 api.route("/unit")
@@ -297,7 +260,7 @@ api.route("/unit")
       }
     ], function(error, collections, unit) {
       if (error) {
-        larkin.error(res, next, "Something went wrong", req.route.meta);
+        larkin.error(req, res, next, "Something went wrong");
       } else {
         // If the user asked for pbdb collections, add them as an attribute of the unit
         if (collections) {
@@ -307,22 +270,7 @@ api.route("/unit")
         larkin.sendData(unit, res, (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json", next);
       }
     });
-  })
-  .meta = {
-    "description": "Gets all data for a given unit",
-    "options": {
-      "parameters": {
-        "id": "Unit id",
-        "pbdb": "Boolean",
-        "response": "Can be 'short' or 'long'"
-      },
-      "output_formats": "json",
-      "examples": ["api/unit?id=527", "api/unit?id=527&pbdb=true"],
-      "fields": {
-        "field": "description"
-      }
-    }
-  };
+  });
 
 
 api.route("/units")
@@ -338,7 +286,7 @@ api.route("/units")
               callback(error);
             } else {
               if (result.length === 0) {
-                larkin.error(res, next, "No results found");
+                larkin.error(req, res, next, "No results found");
               } else {
                 callback(null, {"interval_name": result[0].interval_name, "age_bottom": result[0].age_bottom, "age_top": result[0].age_top});
                 }
@@ -391,30 +339,12 @@ api.route("/units")
       }
     ], function(error, data, result) {
       if (error) {
-        larkin.error(res, next, "Something went wrong", req.route.meta);
+        larkin.error(req, res, next, "Something went wrong");
       } else {
         larkin.sendData(result, res, "json", next);
       }
     });
-  })
-  .meta = {
-    "description": "Return all units given an age or time range",
-    "message": "Please provide a parameter",
-    "options": {
-      "parameters": {
-        "interval_name": "The name of a time interval",
-        "age": "A valid age",
-        "age_top": "A valid age - must be used with age_bottom and be less than age_bottom",
-        "age_bottom": "A valid age - must be used with age_top and be greater than age_top",
-        "format": "Desired output format"
-      },
-      "output_formats": "json",
-      "examples": [],
-      "fields": {
-        "field": "description"
-      }
-    }
-  };
+  });
 
 
 /*    /api/fossils?interval_name=Permian || /api/fossils?age=250 || /api/fossils?age_top=100&age_bottom=200    */
@@ -431,7 +361,7 @@ api.route("/fossils")
               callback(error);
             } else {
               if (result.length === 0) {
-                larkin.error(res, next, "No results found");
+                larkin.error(req, res, next, "No results found");
               } else {
                 callback(null, {"interval_name": result[0].interval_name, "age_bottom": result[0].age_bottom, "age_top": result[0].age_top});
               }
@@ -442,7 +372,7 @@ api.route("/fossils")
         } else if (req.query.age_top && req.query.age_bottom) {
           callback(null, {"interval_name": "Unknown", "age_bottom": req.query.age_bottom, "age_top": req.query.age_top});
         } else {
-          larkin.error(res, next, "Invalid parameters", req.route.meta);
+          larkin.error(req, res, next, "Invalid parameters");
         }
       },
       function(data, callback) {
@@ -466,7 +396,7 @@ api.route("/fossils")
       }
     ], function(error, data, results) {
       if (error) {
-        larkin.error(res, next, "Something went wrong", req.route.meta);
+        larkin.error(req, res, next, "Something went wrong");
       } else {
         dbgeo.parse({
           "data": results,
@@ -475,7 +405,7 @@ api.route("/fossils")
           "geometryType": "wkt",
           "callback": function(error, result) {
             if (error) {
-              larkin.error(res, next, "Something went wrong", req.route.meta);
+              larkin.error(req, res, next, "Something went wrong");
             } else {
               larkin.sendData(result, res, null, next);
             }
@@ -483,25 +413,7 @@ api.route("/fossils")
         });
       }
     });
-  })
-  .meta = {
-    "description": "Returns all fossils given an interval name or age range",
-    "message": "Please provide an interval_name, age, or age_top & age_bottom.",
-    "options": {
-      "parameters": {
-        "interval_name": "The name of a time interval",
-        "age": "A valid age",
-        "age_top": "A valid age - must be used with age_bottom and be less than age_bottom",
-        "age_bottom": "A valid age - must be used with age_top and be greater than age_top",
-        "format": "Desired output format"
-      },
-      "output_formats": ["geojson", "topojson"],
-      "examples": ["/api/fossils?interval_name=Permian",  "/api/fossils?age=271", "/api/fossils?age_top=200&age_bottom=250"],
-      "fields": {
-        "field": "description"
-      }
-    }
-  };
+  });
 
 /*     /api/stats     */
 api.route("/stats")
@@ -522,10 +434,7 @@ api.route("/stats")
     var format = (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json";
 
     larkin.query(sql, [], null, true, res, format, next);
-  })
-  .meta = {
-    "description": "Returns statistics about the macrostrat database"
-  };
+  });
 
 /*     /api/lith_definitions     */
 api.route("/lith_definitions")
@@ -556,24 +465,7 @@ api.route("/lith_definitions")
     var format = (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json";
     larkin.query(sql, [lith], null, true, res, format, next);
     
-  })
-  .meta = {
-    "description": "Returns all lith definitions",
-    "message": "Please provide lith_class, lith_type, lith, or id",
-    "options": {
-      "parameters": {
-        "id": "Lith id",
-        "lith_class": "lith class",
-        "lith_type": "lith_type",
-        "all": "return all lith definitions"
-      },
-      "output_formats": "json",
-      "examples": [],
-      "fields": {
-        "field": "description"
-      }
-    }
-  };
+  });
 
 
 /*     /api/lith_definitions     */
@@ -600,18 +492,7 @@ api.route("/lithatt_definitions")
 
     var format = (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json";
     larkin.query(sql, [lithatt], null, true, res, format, next);
-  })
-  .meta = {
-    "description": "Returns lithatt definitions",
-    "parameters": {
-        "att_type": "lithatt type",
-        "lith_att": "lith_att",
-        "id": "a lith att id",
-        "all": "return all lith_att definitions"
-      },
-      "output_formats": "json",
-      "examples": ["/lithatt_definitions?all"]
-  };
+  });
 
 /*     /api/lith_definitions     */
 api.route("/environ_definitions")
@@ -639,19 +520,7 @@ api.route("/environ_definitions")
 
     var format = (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json";
     larkin.query(sql, [environ], null, true, res, format, next);
-  })
-  .meta = {
-    "description": "Returns environment definitions",
-    "parameters": {
-        "environ_class": "environment class",
-        "environ_type": "environment type",
-        "environ": "environment",
-        "id": "an environment id",
-        "all": "return all interval definitions"
-      },
-      "output_formats": "json",
-      "examples": ["/environ_definitions?all"]
-  };
+  });
 
 /*     /api/interval_definitions     */
 api.route("/interval_definitions")
@@ -675,17 +544,7 @@ api.route("/interval_definitions")
     var format = (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json";
 
     larkin.query(sql, params, null, true, res, format, next);
-  })
-  .meta = {
-    "description": "Returns interval definitions",
-    "parameters": {
-        "timescale": "timescale to use",
-        "id": "an interval id",
-        "all": "return all interval definitions"
-      },
-      "output_formats": "json",
-      "examples": ["/interval_definitions?all"]
-  };
+  });
 
 
 /*    /api/strat_names    */
@@ -724,19 +583,7 @@ api.route("/strat_names")
     var format = (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json";
 
     larkin.query(sql, params, null, true, res, format, next);
-  })
-  .meta = {
-    "description": "Returns strat names",
-    "parameters": {
-        "id": "strat id",
-        "name": "strat name",
-        "rank": "strat rank",
-        "all": "return all strat names"
-      },
-      "output_formats": "json",
-      "examples": ["/strat_names?all"]
-  };
-
+  });
 
 /*     /api/section_stats     */
 api.route("/section_stats")
@@ -764,22 +611,13 @@ api.route("/section_stats")
         JOIN intervals l on l.id=LO \
         WHERE status_code='active' and units.id IN (SELECT distinct unit_id from unit_liths,liths where lith_id=liths.id and lith_class='sedimentary') and max_thick>0 and f.age_bottom<=541 GROUP BY units_sections.section_id";
     } else {
-      return larkin.error(res, next, "Invalid parameters", req.route.meta);
+      return larkin.error(req, res, next, "Invalid parameters");
     }
 
     var format = (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json";
 
     larkin.query(sql, [], null, true, res, format, next);
-  })
-  .meta = {
-    "description": "Returns section stats",
-    "parameters": {
-        "age_model": "continuous",
-        "all": "return all section stats"
-      },
-      "output_formats": "json",
-      "examples": ["/section_stats?all", "/section_stats?age_model=continuous"]
-  };
+  });
 
 
 /*    /api/paleogeography?year=550   /api/paleogeography?interval=Permian */
@@ -800,7 +638,7 @@ api.route("/paleogeography")
                 if (result.length === 1) {
                   callback(null, parseInt(result[0].mid));
                 } else {
-                  larkin.error(res, next, "interval not found");
+                  larkin.error(req, res, next, "interval not found");
                 }
               }
             });
@@ -813,14 +651,14 @@ api.route("/paleogeography")
         }
       ], function(error, data) {
         if (error) {
-          larkin.error(res, next, "Something went wrong", req.route.meta);
+          larkin.error(req, res, next, "Something went wrong");
         } else {
           dbgeo.parse({
             "data": data,
             "outputFormat": (api.acceptedFormats.geo[req.query.format]) ? req.query.format : "geojson",
             "callback": function(error, result) {
               if (error) {
-                larkin.error(res, next, "Something went wrong", req.route.meta);
+                larkin.error(req, res, next, "Something went wrong");
               } else {
                 larkin.sendData(result, res, null, next);
               }
@@ -829,20 +667,11 @@ api.route("/paleogeography")
         }
       });
     }
-  })
-  .meta = {
-    "description": "Returns paleogeography geometry", 
-    "options": {
-      "parameters": {
-        "age": "Can be between 0 and 550",
-        "interval_name": "A named time interval",
-        "format": "Desired output format"
-      },
-      "output_formats": ["geojson", "topojson"],
-      "examples": ["/api/paleogeography?interval_name=Permian",  "/api/paleogeography?age=271"]
-    }
-  };
-
+  });
+/*
+  TODO:
+    I think instead of geo=true, we should use format=geojson or format=topojson
+*/
 api.route("/geologic_units")
   .get(function(req, res, next) {
     if (Object.keys(req.query).length < 1) {
@@ -964,28 +793,13 @@ api.route("/geologic_units")
         }
       }, function(error, results) {
         if (error) {
-          larkin.error(res, next, "Something went wrong", req.route.meta);
+          larkin.error(req, res, next, "Something went wrong");
         } else {
           larkin.sendData(results, res, "json", next);
         }
       });
     }
-  })
-  .meta = {
-    "description": "What's at a point", 
-    "options": {
-      "parameters": {
-        "lat": "A valid latitude",
-        "longitude": "A valid longitude",
-        "type": "Return only from given sources - can be 'gmna', 'gmus', 'column', or any combination thereof",
-        "response": "can be 'short' or 'long'",
-        "geo": "Whether geometry of features should also be returned",
-        "format": "Desired output format"
-      },
-      "output_formats": ["json"],
-      "examples": ["/api/geologic_units?lat=43&lng=-89.3", "/api/geologic_units?lat=43&lng=-89&geo=true", "/api/geologic_units?lat=43&lng=-89&type=gmus"]
-    }
-  };
+  });
 
 api.route("/geologic_units/map")
   .get(function(req, res, next) {
@@ -999,7 +813,7 @@ api.route("/geologic_units/map")
           "outputFormat": (api.acceptedFormats.geo[req.query.format]) ? req.query.format : "geojson",
           "callback": function(error, result) {
             if (error) {
-              larkin.error(res, next, error);
+              larkin.error(req, res, next, error);
             } else {
               larkin.sendData(result, res, null, next);
             }
@@ -1013,7 +827,7 @@ api.route("/geologic_units/map")
           "outputFormat": (api.acceptedFormats.geo[req.query.format]) ? req.query.format : "geojson",
           "callback": function(error, result) {
             if (error) {
-              larkin.error(res, next, error);
+              larkin.error(req, res, next, error);
             } else {
               larkin.sendData(result, res, null, next);
             }
@@ -1021,13 +835,10 @@ api.route("/geologic_units/map")
         });
       });
     } else {
-      larkin.error(res, next, "Invalid parameters", req.route.meta);
+      larkin.error(req, res, next, "Invalid parameters");
     }
       
-  })
-  .meta = {
-    "description": "Fetch polygons for mapping"
-  };
+  });
 
 api.route("/editing")
   .get(function(req, res, next) {
@@ -1040,7 +851,7 @@ api.route("/editing")
           "outputFormat": "geojson",
           "callback": function(error, result) {
             if (error) {
-              larkin.error(res, next, error);
+              larkin.error(req, res, next, error);
             } else {
               larkin.sendData(result, res, null, next);
             }
@@ -1055,7 +866,7 @@ api.route("/editing")
           "outputFormat": "geojson",
           "callback": function(error, result) {
             if (error) {
-              larkin.error(res, next, error);
+              larkin.error(req, res, next, error);
             } else {
               larkin.sendData(result, res, null, next);
             }
@@ -1081,7 +892,7 @@ api.route("/editing/update")
 
       }, function(error) {
         if (error) {
-          larkin.error(res, next, error);
+          larkin.error(req, res, next, error);
         } else {
           async.each(req.body.layer.features, function(feature, callback) {
             //larkin.queryPg("macrostrat_editing", "UPDATE col_areas SET geom = st_geomfromgeojson('" + JSON.stringify(feature.geometry) + "') WHERE col_id = $1", [feature.properties.col_id], function(result) {
@@ -1095,7 +906,7 @@ api.route("/editing/update")
       });
 
     } else {
-      larkin.error(res, next, "A layer is required");
+      larkin.error(req, res, next, "A layer is required");
     }
   });
 
@@ -1111,9 +922,9 @@ api.use(function(err, req, res, next) {
   if(err.status !== 404) {
     return next();
   } else if (err.status === 404) {
-    larkin.error(res, next, "404: Page not found", null, 404);
+    larkin.error(req, res, next, "404: Page not found", 404);
   } else {
-    larkin.error(res, next, "500: Internal Server Error", null, 500);
+    larkin.error(req, res, next, "500: Internal Server Error", 500);
   }
 });
 

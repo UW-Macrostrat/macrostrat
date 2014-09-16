@@ -3,7 +3,8 @@ var mysql = require("mysql"),
     async = require("async"),
     winston = require("winston"),
     credentials = require("./routes/credentials"),
-    csv = require('express-csv');
+    csv = require("express-csv"),
+    defs = require("./routes/defs");
 
 (function() {
   var larkin = {};
@@ -73,7 +74,6 @@ var mysql = require("mysql"),
     } else {
       res.json({
         "success": {
-        "results": data.length,
         "data": data
         }
       });
@@ -82,27 +82,61 @@ var mysql = require("mysql"),
 
 
   larkin.info = function(req, res, next) {
-    res.json({
-      "success": req.route.meta
+    this.defineRoute(req.route.path, function(definition) {
+      res.json({
+        "success": definition
+      });
     });
   };
 
 
-  larkin.error = function(res, next, message, options, code) {
+  larkin.error = function(req, res, next, message, code) {
     var responseMessage = (message) ? message : "Something went wrong. Please contact Shanan Peters.";
-    res
-      .status((code) ? code : 200)
-      .json({
-        "error": {
-          "message": responseMessage,
-          "about": options
-        }
-      });
+    this.defineRoute(req.route.path, function(definition) {
+      res
+        .status((code) ? code : 200)
+        .json({
+          "error": {
+            "message": responseMessage,
+            "about": definition
+          }
+        });
+    });
   };
 
   larkin.log = function(type, message) {
     winston.log(type, message);
   };
+
+  // Will return all field definitions
+  larkin.defineFields = function(route, callback) {
+    var routeDefs = {}
+    async.each(defs[route].options.fields, function(field, callback) {
+      if (defs.define.hasOwnProperty(field)) {
+        routeDefs[field] = defs.define[field];
+      } else {
+        routeDefs[field] = ""
+      }
+      callback()
+    }, function(error) {
+      callback(routeDefs);
+    });
+    callback(routeDefs);
+  };
+
+  // Get the metadata for a given route
+  larkin.defineRoute = function(route, callback) {
+    this.defineFields(route, function(fields) {
+      var options = defs[route].options;
+      delete options.fields;
+      options.fields = fields;
+      var routeDefinition = {
+        "description": defs[route].description,
+        "options": defs[route].options
+      };
+      callback(routeDefinition);
+    }); 
+  }
 
   module.exports = larkin;
 
