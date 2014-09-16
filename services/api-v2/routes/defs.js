@@ -14,38 +14,37 @@
         "geom": "boolean, whether associated geometry is returned",
         "response": "Can be 'short' or 'long'"
       },
-      "output_formats": "json",
-      "examples": ["?id=17", "?lat=50&lng=-80"],
-      "fields": {
-        "short": [
-          "id",
-          "strat_name",
-          "Mbr",
-          "Fm",
-          "Gp",
-          "SGp",
-          "era",
-          "period",
-          "max_thick",
-          "min_thick",
-          "color",
-          "lith_type",
-          "pbdb",
-          "geom"
-        ],
-        "long": [
-          "FO_interval",
-          "FO_h",
-          "FO_age",
-          "b_age",
-          "LO_interval",
-          "LO_h",
-          "LO_age",
-          "t_age",
-          "position_bottom",
-          "notes",
-        ]
-      }
+      "output_formats": ["json"],
+      "examples": [
+        "/api/columns?id=17",
+        "/api/columns?lat=50&lng=-80"
+      ],
+      "fields":[ 
+        "id",
+        "strat_name",
+        "Mbr",
+        "Fm",
+        "Gp",
+        "SGp",
+        "era",
+        "period",
+        "max_thick",
+        "min_thick",
+        "color",
+        "lith_type",
+        "pbdb",
+        "geom",
+        "FO_interval",
+        "FO_h",
+        "FO_age",
+        "b_age",
+        "LO_interval",
+        "LO_h",
+        "LO_age",
+        "t_age",
+        "position_bottom",
+        "notes"
+      ]
     }
   };
   
@@ -59,195 +58,400 @@
         "age_bottom": "number, oldest limit of search, in Myr before present -  must be used with age_top",
         "format": "string, Desired output format"
       },
-      "examples": ["?interval_name=Permian", "?age=271", "?age_top=200&age_bottom=250"],
-      "fields": {
-
-
-      }
-    }
-
-
-  };
-
-  defs["unit"] = {
-    "description": "Gets all attributes of a given column",
-    "options": {
-      "parameters": {
-
-      },
-      "output_formats": "json",
-      "examples": [],
-      "fields": {
-
-      }
+      "output_formats": ["geojson", "topojson"],
+      "examples": [
+        "/api/columns?interval_name=Permian",
+        "/api/columns?age=271",
+        "/api/columns?age_top=200&age_bottom=250"
+      ],
+      "fields": [
+        "col_id",
+        "area",
+        "units",
+        "unit_id",
+        "max_thick",
+        "min_thick",
+        "lith_max_thick",
+        "lith_min_thick",
+        "lith_types"
+      ]
     }
   };
 
-  defs["units"] = {
-    "description": "Gets all attributes of a given column",
+  defs["/unit"] = {
+    "description": "Gets all data for a given unit",
     "options": {
       "parameters": {
-
+        "id": "Unit id",
+        "pbdb": "Boolean",
+        "response": "Can be 'short' or 'long'"
       },
-      "output_formats": "json",
-      "examples": [],
-      "fields": {
-
-      }
+      "output_formats": ["json"],
+      "examples": [
+        "api/unit?id=527",
+        "api/unit?id=527&pbdb=true"
+      ],
+      "fields": [
+        "id",
+        "section_id",
+        "strat_name",
+        "Mbr",
+        "Fm",
+        "Gp",
+        "SGp",
+        "era",
+        "period",
+        "max_thick",
+        "min_thick",
+        "color",
+        "lith_class",
+        "lith_type",
+        "lith",
+        "environ_class",
+        "environ_type",
+        "environ",
+        "pbdb",
+        "FO_interval",
+        "FO_h",
+        "FO_age",
+        "b_age",
+        "LO_interval",
+        "LO_h",
+        "LO_age",
+        "t_age",
+        "position_bottom",
+        "notes"
+      ]
     }
   };
 
-  defs["fossils"] = {
-    "description": "Gets all attributes of a given column",
+  defs["/units"] = {
+    "description": "Return all units given an age or time range",
     "options": {
       "parameters": {
-
+        "interval_name": "The name of a time interval",
+        "age": "A valid age",
+        "age_top": "A valid age - must be used with age_bottom and be less than age_bottom",
+        "age_bottom": "A valid age - must be used with age_top and be greater than age_top",
+        "format": "Desired output format"
       },
-      "output_formats": "json",
-      "examples": [],
-      "fields": {
-
-      }
+      "output_formats": ["json"],
+      "examples": [
+        "api/units?interval_name=Permian",
+        "api/units?age=271",
+        "api/units?interval_name=Permian&response=long"
+      ],
+      "fields": [
+        "id",
+        "section_id",
+        "col_id",
+        "col_area",
+        "strat_name",
+        "Mbr",
+        "Fm",
+        "Gp",
+        "SGp",
+        "era",
+        "period",
+        "max_thick",
+        "min_thick",
+        "color",
+        "lith_class",
+        "lith_type",
+        "lith",
+        "environ_class",
+        "environ_type",
+        "environ",
+        "pbdb",
+        "FO_interval",
+        "FO_h",
+        "FO_age",
+        "b_age",
+        "LO_interval",
+        "LO_h",
+        "LO_age",
+        "t_age",
+        "position_bottom",
+        "notes"
+      ]
     }
   };
 
-  defs["stats"] = {
-    "description": "Gets all attributes of a given column",
+  defs["/fossils"] = {
+    "description": "Returns all fossils given an interval name or age range",
     "options": {
       "parameters": {
-
+        "interval_name": "The name of a time interval",
+        "age": "A valid age",
+        "age_top": "A valid age - must be used with age_bottom and be less than age_bottom",
+        "age_bottom": "A valid age - must be used with age_top and be greater than age_top",
+        "format": "Desired output format"
       },
-      "output_formats": "json",
-      "examples": [],
-      "fields": {
-
-      }
+      "output_formats": ["geojson", "topojson"],
+      "examples": [
+        "/api/fossils?interval_name=Permian",
+        "/api/fossils?age=271",
+        "/api/fossils?age_top=200&age_bottom=250"
+      ],
+      "fields": [
+        "collection_no",
+        "occ",
+        "unit_id"
+      ]
     }
   };
 
-  defs["lith_definitions"] = {
-    "description": "Gets all attributes of a given column",
+  defs["/stats"] = {
+    "description": "Returns statistics about the macrostrat database",
     "options": {
       "parameters": {
-
+        "all": "Show all results",
+        "format": "Desired output format"
       },
-      "output_formats": "json",
-      "examples": [],
-      "fields": {
-
-      }
+      "output_formats": ["json", "csv"],
+      "examples": ["api/stats?all"],
+      "fields": [
+        "project",
+        "packages",
+        "units",
+        "pbdb_collections"
+      ]
     }
   };
 
-  defs["lithatt_definitions"] = {
-    "description": "Gets all attributes of a given column",
+  defs["/lith_definitions"] = {
+    "description": "Returns all lith definitions",
     "options": {
       "parameters": {
-
+        "id": "Lith id",
+        "lith_class": "lith class",
+        "lith_type": "lith_type",
+        "all": "return all lith definitions"
       },
-      "output_formats": "json",
-      "examples": [],
-      "fields": {
-
-      }
+      "output_formats": ["json", "csv"],
+      "examples": [
+        "api/lith_definitions?id=3",
+        "api/lith_definitions?all",
+        "api/lith_definitions?lith_class=sedimentary"
+      ],
+      "fields": [
+        "id",
+        "lith",
+        "lith_type",
+        "lith_class",
+        "lith_color"
+      ]
     }
   };
 
-  defs["environ_definitions"] = {
-    "description": "Gets all attributes of a given column",
+  defs["/lithatt_definitions"] = {
+    "description": "Returns lithatt definition",
     "options": {
       "parameters": {
-
+        "att_type": "lithatt type",
+        "lith_att": "lith_att",
+        "id": "a lith att id",
+        "all": "return all lith_att definitions",
+        "format": "Desired output format"
       },
-      "output_formats": "json",
-      "examples": [],
-      "fields": {
-
-      }
+      "output_formats": ["json", "csv"],
+      "examples": [
+        "api/lithatt_definitions?all",
+        "api/lithatt_definitions?lith_type=bedform"
+      ],
+      "fields": [
+        "id",
+        "lith_att",
+        "att_type"
+      ]
     }
   };
 
-  defs["interval_definitions"] = {
-    "description": "Gets all attributes of a given column",
+  defs["/environ_definitions"] = {
+    "description": "Returns environment definitions",
     "options": {
       "parameters": {
-
+        "environ_class": "environment class",
+        "environ_type": "environment type",
+        "environ": "environment",
+        "id": "an environment id",
+        "all": "return all interval definitions",
+        "format": "Desired output format"
       },
-      "output_formats": "json",
-      "examples": [],
-      "fields": {
-
-      }
+      "output_formats": ["json", "csv"],
+      "examples": [
+        "api/environ_definitions?all",
+        "api/environ_definitions?environ=sand%20shoal"
+      ],
+      "fields": [
+        "id",
+        "environ",
+        "environ_type",
+        "environ_class"
+      ]
     }
   };
 
-  defs["strat_names"] = {
-    "description": "Gets all attributes of a given column",
+  defs["/interval_definitions"] = {
+    "description": "Returns interval definitions",
     "options": {
       "parameters": {
-
+        "timescale": "timescale to use",
+        "id": "an interval id",
+        "all": "return all interval definitions",
+        "format": "Desired output format"
       },
-      "output_formats": "json",
-      "examples": [],
-      "fields": {
-
-      }
+      "output_formats": ["json", "csv"],
+      "examples": [
+        "api/interval_definitions?all",
+        "api/interval_definitions?id=366",
+        "api/interval_definitions?timescale=new%20zealand%20ages"
+      ],
+      "fields": [
+        "id",
+        "interval_name",
+        "late_age",
+        "early_age"
+      ]
     }
   };
 
-  defs["section_stats"] = {
-    "description": "Gets all attributes of a given column",
+  defs["/strat_names"] = {
+    "description": "Returns strat names",
     "options": {
       "parameters": {
-
+        "id": "strat id",
+        "name": "strat name",
+        "rank": "strat rank",
+        "all": "return all strat names",
+        "format": "Desired output format"
       },
-      "output_formats": "json",
-      "examples": [],
-      "fields": {
-
-      }
+      "output_formats": ["json", "csv"],
+      "examples": [
+        "api/strat_names?all",
+        "api/strat_names?rank=Fm"
+      ],
+      "fields": [
+        "name",
+        "rank",
+        "id",
+        "bed",
+        "bed_id",
+        "mbr",
+        "mbr_id",
+        "fm",
+        "fm_id",
+        "gp",
+        "gp_id",
+        "sgp",
+        "sgp_id",
+        "early_age",
+        "late_age"
+      ]
     }
   };
 
-  defs["paleogeography"] = {
-    "description": "Gets all attributes of a given column",
+  defs["/section_stats"] = {
+    "description": "Return section stats",
     "options": {
       "parameters": {
-
+        "age_model": "continuous",
+        "all": "return all section stats",
+        "format": "Desired output format"
       },
-      "output_formats": "json",
-      "examples": [],
-      "fields": {
-
-      }
+      "output_formats": ["json", "csv"],
+      "examples": [
+        "api/section_stats?all",
+        "api/section_stats?age_model=continuous"
+      ],
+      "fields": [
+        "project",
+        "col_id",
+        "section_id",
+        "units",
+        "max_thick",
+        "min_thick",
+        "t_age",
+        "b_age"
+      ]
     }
   };
 
-  defs["geologic_units"] = {
-    "description": "Gets all attributes of a given column",
+  defs["/paleogeography"] = {
+    "description": "Returns paleogeography geometry",
     "options": {
       "parameters": {
-
+        "age": "Can be between 0 and 550",
+        "interval_name": "A named time interval",
+        "format": "Desired output format"
       },
-      "output_formats": "json",
-      "examples": [],
-      "fields": {
-
-      }
+      "output_formats": ["geojson", "topojson"],
+      "examples": [
+        "api/paleogeography?interval_name=Permian",
+        "api/paleogeography?age=271&format=topojson"
+      ],
+      "fields": [
+        "plateid"
+      ]
     }
   };
 
-  defs["geologic_units/map"] = {
-    "description": "Gets all attributes of a given column",
+  defs["/geologic_units"] = {
+    "description": "What's at a point",
     "options": {
       "parameters": {
-
+        "lat": "A valid latitude",
+        "longitude": "A valid longitude",
+        "type": "Return only from given sources - can be 'gmna', 'gmus', 'column', or any combination thereof",
+        "response": "can be 'short' or 'long'",
+        "geo": "Whether geometry of features should also be returned",
+        "format": "Desired output format"
       },
-      "output_formats": "json",
-      "examples": [],
-      "fields": {
+      "output_formats": ["json"],
+      "examples": [
+        "/api/geologic_units?lat=43&lng=-89.3",
+        "/api/geologic_units?lat=43&lng=-89&geo=true",
+        "/api/geologic_units?lat=43&lng=-89&type=gmus"
+      ],
+      "fields": [
+        "id",
+        "col_name",
+        "strat_name",
+        "Mbr",
+        "Fm",
+        "Gp",
+        "SGp",
+        "era",
+        "period",
+        "max_thick",
+        "min_thick",
+        "color",
+        "lith_type",
+        "pbdb"
+      ]
+    }
+  };
 
-      }
+  defs["/geologic_units/map"] = {
+    "description": "Fetch polygons for mapping",
+    "options": {
+      "parameters": {
+        "type": "type of geometry to use - can be 'gmus' (Geologic Map United States) or 'gmna' (Geologic Map North America)",
+        "interval_name": "name of time interval to use",
+        "format": "Desired output format"
+      },
+      "output_formats": ["geojson", "topojson"],
+      "examples": [
+        "api/geologic_units/map?type=gmus&interval_name=Permian",
+        "api/geologic_units/map?type=gmna&interval_name=Jurassic&format=topojson"
+      ],
+      "fields": [
+        "gid",
+        "unit_age",
+        "rocktype1",
+        "rocktype2",
+        "cmin_age"
+      ]
     }
   };
 
@@ -290,18 +494,6 @@
     "project": "text, name of project",
     "geom": "geometry",
     "area": "area in square kilometers"
-  };
-
-  // Given a route and field type(optional), will return all field definitions
-  defs.defineRoute = function(route, type) {
-    var routeDefs = {}
-    async.each(this[route].options.fields[ (type) ? type : "short" ], function(field, callback) {
-      routeDefs[field] = defs.define[field];
-      callback()
-    }, function(error) {
-      return routeDefs;
-    });
-    return routeDefs;
   };
 
   module.exports = defs;
