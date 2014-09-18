@@ -55,7 +55,7 @@ api.route("/column")
     if (isFinite(req.query.id) || isFinite(req.query.lat) && isFinite(req.query.lng)) {
       async.waterfall([
         function(callback) {
-          if (req.query.lat){
+          if (req.query.lat) {
             // Find nearest column
             larkin.query("SELECT col_id from col_areas JOIN cols on col_id=cols.id WHERE ST_CONTAINS(col_areas.col_area,ST_GEOMFROMTEXT('POINT(? ?)')) and status_code='active'", [parseFloat(req.query.lng), parseFloat(req.query.lat)], function(error, result) {
               if (error) {
@@ -76,7 +76,12 @@ api.route("/column")
         },
 
         function(column_id, callback) {
-          larkin.query("SELECT id, col_name FROM cols WHERE id = ?", [column_id], function(error, result) {
+          if (req.query.geom === "true") {
+            var sql = "SELECT c.id, col_name, asText(ca.col_area) AS geom FROM cols c JOIN col_areas ca ON c.id = ca.col_id WHERE c.id = ?"
+          } else {
+            var sql = "SELECT id, col_name FROM cols WHERE id = ?";
+          }
+          larkin.query(sql, [column_id], function(error, result) {
             if (error) {
               callback(error);
             } else {
@@ -122,6 +127,9 @@ api.route("/column")
           var column = [column_info];
           column[0].units = result;
           var format = "json";
+          if (req.query.geom === "true") {
+            column_info.geom = wellknown(column_info.geom);
+          }
           larkin.sendData(column, res, format, next);
         }
       });
