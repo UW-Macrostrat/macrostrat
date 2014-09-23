@@ -33,8 +33,9 @@ api.route("/")
     var routes = {};
     api.stack.filter(function(d) {
       if (d.route && d.route.path !== "*" && d.route.path !== null && d.route.path.length) {
-        routes[d.route.path] = (d.route.meta && d.route.meta.description) ? d.route.meta.description : "";
-        routes[d.route.path] = (defs[d.route.path] && defs[d.route.path].description) ? defs[d.route.path].description : "";
+        if (defs[d.route.path] && defs[d.route.path].visible) { 
+          routes[d.route.path] = (defs[d.route.path] && defs[d.route.path].description) ? defs[d.route.path].description : "";
+        }
       }
     });
     res.json({

@@ -6,6 +6,7 @@
   // Instead of adding metadata to each route in api.js, we are going to do it here
   defs["/column"] = {
     "description": "Get all units of a given column, optionally with geometry",
+    "visible": true,
     "options": {
       "parameters": {
         "id": "integer, get a column by unique identifier",
@@ -50,6 +51,7 @@
   
   defs["/columns"] = {
     "description": "Get all colums containing one or more units matching specfied search criteria",
+    "visible": true,
     "options": {
       "parameters": {
         "interval_name": "text, name of search time interval",
@@ -80,6 +82,7 @@
 
   defs["/unit"] = {
     "description": "Gets all data for a given unit",
+    "visible": true,
     "options": {
       "parameters": {
         "id": "Unit id",
@@ -127,6 +130,7 @@
 
   defs["/units"] = {
     "description": "Return all units given an age or time range",
+    "visible": true,
     "options": {
       "parameters": {
         "interval_name": "The name of a time interval",
@@ -179,6 +183,7 @@
 
   defs["/fossils"] = {
     "description": "Returns all fossils given an interval name or age range",
+    "visible": true,
     "options": {
       "parameters": {
         "interval_name": "The name of a time interval",
@@ -203,6 +208,7 @@
 
   defs["/stats"] = {
     "description": "Returns statistics about the macrostrat database",
+    "visible": true,
     "options": {
       "parameters": {
         "all": "Show all results",
@@ -221,6 +227,7 @@
 
   defs["/lith_definitions"] = {
     "description": "Returns all lith definitions",
+    "visible": true,
     "options": {
       "parameters": {
         "id": "Lith id",
@@ -246,6 +253,7 @@
 
   defs["/lithatt_definitions"] = {
     "description": "Returns lithatt definition",
+    "visible": true,
     "options": {
       "parameters": {
         "att_type": "lithatt type",
@@ -269,6 +277,7 @@
 
   defs["/environ_definitions"] = {
     "description": "Returns environment definitions",
+    "visible": true,
     "options": {
       "parameters": {
         "environ_class": "environment class",
@@ -294,6 +303,7 @@
 
   defs["/interval_definitions"] = {
     "description": "Returns interval definitions",
+    "visible": true,
     "options": {
       "parameters": {
         "timescale": "timescale to use",
@@ -318,6 +328,7 @@
 
   defs["/strat_names"] = {
     "description": "Returns strat names",
+    "visible": true,
     "options": {
       "parameters": {
         "id": "strat id",
@@ -353,6 +364,7 @@
 
   defs["/section_stats"] = {
     "description": "Return section stats",
+    "visible": true,
     "options": {
       "parameters": {
         "age_model": "continuous",
@@ -379,6 +391,7 @@
 
   defs["/paleogeography"] = {
     "description": "Returns paleogeography geometry",
+    "visible": true,
     "options": {
       "parameters": {
         "age": "Can be between 0 and 550",
@@ -398,6 +411,7 @@
 
   defs["/geologic_units"] = {
     "description": "What's at a point",
+    "visible": true,
     "options": {
       "parameters": {
         "lat": "A valid latitude",
@@ -434,6 +448,7 @@
 
   defs["/geologic_units/map"] = {
     "description": "Fetch polygons for mapping",
+    "visible": true,
     "options": {
       "parameters": {
         "type": "type of geometry to use - can be 'gmus' (Geologic Map United States) or 'gmna' (Geologic Map North America)",
@@ -453,6 +468,14 @@
         "cmin_age"
       ]
     }
+  };
+
+  defs["/editing"] = {
+    "visible": false
+  };
+
+  defs["/editing/update"] = {
+    "visible": false
   };
 
   // This is the primary dictionary for all field definitions
