@@ -129,6 +129,7 @@ var mysql = require("mysql"),
     this.defineFields(route, function(fields) {
       var options = defs[route].options;
       delete options.fields;
+      delete options.visible;
       options.fields = fields;
       var routeDefinition = {
         "description": defs[route].description,
