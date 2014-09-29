@@ -1052,7 +1052,7 @@ api.route("/mobile/point_details")
 api.route("/mobile/fossil_collections")
   .get(function(req, res, next) {
     if (req.query.unit_id) {
-      larkin.query("SELECT DISTINCT collection_no AS cltn_no FROM pbdb_matches WHERE unit_id = ?", [req.query.unit_id], function(error, result) {
+      larkin.query("SELECT DISTINCT collection_no AS cltn_no FROM pbdb_matches WHERE unit_id = ? AND occs > 0", [req.query.unit_id], function(error, result) {
         if (error) {
           larkin.error(req, res, next, error);
         } else {
