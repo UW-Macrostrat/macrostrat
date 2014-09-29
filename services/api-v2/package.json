@@ -35,5 +35,10 @@
     "pg": "^3.4.0",
     "wellknown": "^0.2.0",
     "winston": "~0.7.3"
+  },
+  "devDependencies": {
+    "mocha": "*",
+    "should": "^4.0.4",
+    "supertest": "^0.14.0"
   }
 }

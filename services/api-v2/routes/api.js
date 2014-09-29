@@ -40,7 +40,7 @@ api.route("/")
     });
     res.json({
       "success": {
-        "about": "This is the root of the Macrostrat API",
+        "description": "This is the root of the Macrostrat API",
         "routes": routes
       }
     });
@@ -895,7 +895,7 @@ api.route("/mobile/point")
       });
         
     } else {
-      larkin.error(req, res, next, "Please provide a valid latitude and longitude");
+      larkin.info(req, res, next);
     }
       
   });
@@ -1043,7 +1043,7 @@ api.route("/mobile/point_details")
         }
       });
     } else {
-      larkin.error(req, res, next, "Please use either a latitude and a longitude, or a column id and a unit id");
+      larkin.info(req, res, next);
     }
   });
 
@@ -1061,7 +1061,7 @@ api.route("/mobile/fossil_collections")
         }
       });
     } else {
-      larkin.error(req, res, next, "Please enter a valid Macrostrat unit ID");
+      larkin.info(req, res, next);
     }
   });
 
