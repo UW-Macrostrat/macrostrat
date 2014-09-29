@@ -493,6 +493,30 @@
     }
   };
 
+  defs["/mobile/point_details"] = {
+    "description": "Get GMUS unit description and Macrostrat units for a given location",
+    "visible": true,
+    "options": {
+      "parameters": {
+        "lat": "A valid latitude",
+        "lng": "A valid longitude",
+        "col_id": "A valid column ID",
+        "unit_id": "A valid GMUS unit ID"
+      },
+      "output_formats": ["json"],
+      "examples": [
+        "api/mobile/point?lat=43&lng=-89",
+        "api/mobile/point?lat=43&lng=-89&geo_format=wkt"
+      ],
+      "fields": [
+        "gid",
+        "unit_name",
+        "col_id",
+        "col_poly"
+      ]
+    }
+  };
+
   defs["/editing"] = {
     "visible": false
   };
