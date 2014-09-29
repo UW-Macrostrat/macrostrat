@@ -1,6 +1,6 @@
 {
   "name": "macrostrat-api",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Data feeders for macrostrat",
   "main": "server.js",
   "repository": {
@@ -9,7 +9,7 @@
   },
   "scripts": {
     "start": "node server.js",
-    "test": "node test/test.js"
+    "test": "mocha"
   },
   "keywords": [
     "macrostrat",
@@ -37,7 +37,7 @@
     "winston": "~0.7.3"
   },
   "devDependencies": {
-    "mocha": "*",
+    "mocha": "^1.21.4",
     "should": "^4.0.4",
     "supertest": "^0.14.0"
   }

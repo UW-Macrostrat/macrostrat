@@ -137,7 +137,7 @@
         "age": "A valid age",
         "age_top": "A valid age - must be used with age_bottom and be less than age_bottom",
         "age_bottom": "A valid age - must be used with age_top and be greater than age_top",
-        "format": "Desired output format"
+        "response": "Can be 'short' or 'long' - default is 'short'"
       },
       "output_formats": ["json"],
       "examples": [
