@@ -1047,6 +1047,24 @@ api.route("/mobile/point_details")
     }
   });
 
+api.route("/mobile/fossil_collections")
+  .get(function(req, res, next) {
+    if (req.query.unit_id) {
+      larkin.query("SELECT DISTINCT collection_no AS cltn_no FROM pbdb_matches WHERE unit_id = ?", [req.query.unit_id], function(error, result) {
+        if (error) {
+          larkin.error(req, res, next, error);
+        } else {
+          var data = {
+            "pbdb_collections": result.map(function(n) { return n.cltn_no; })
+          };
+          larkin.sendData(data, res, "json", next);
+        }
+      });
+    } else {
+      larkin.error(req, res, next, "Please enter a valid Macrostrat unit ID");
+    }
+  });
+
 api.route("/editing/map")
   .get(function(req, res, next) {
     if (req.query.id) {
