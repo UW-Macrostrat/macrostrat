@@ -470,6 +470,29 @@
     }
   };
 
+  defs["/mobile/point"] = {
+    "description": "Get GMUS unit and Macrostrat polygon for a given point",
+    "visible": true,
+    "options": {
+      "parameters": {
+        "lat": "A valid latitude",
+        "lng": "A valid longitude",
+        "geo_format": "Output geometry format - can be 'wkt' or 'geojson'; Defaults to 'geojson'"
+      },
+      "output_formats": ["json"],
+      "examples": [
+        "api/mobile/point?lat=43&lng=-89",
+        "api/mobile/point?lat=43&lng=-89&geo_format=wkt"
+      ],
+      "fields": [
+        "gid",
+        "unit_name",
+        "col_id",
+        "col_poly"
+      ]
+    }
+  };
+
   defs["/editing"] = {
     "visible": false
   };
