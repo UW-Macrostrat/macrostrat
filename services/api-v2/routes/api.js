@@ -951,7 +951,7 @@ api.route("/mobile/point_details")
 
             function(column, column_info, callbackB) {
                   
-              var sql = "SELECT units.id AS id, units.strat_name, period, max_thick, min_thick, color, count(distinct collection_no) pbdb FROM units \
+              var sql = "SELECT units.id AS id, units.strat_name, period, max_thick, min_thick, color, count(distinct collection_no) pbdb, lith_short AS lith FROM units \
                   JOIN units_sections ON units_sections.unit_id = units.id \
                   JOIN lookup_unit_liths ON lookup_unit_liths.unit_id=units.id \
                   JOIN lookup_unit_intervals ON units.id=lookup_unit_intervals.unit_id \
@@ -1017,7 +1017,7 @@ api.route("/mobile/point_details")
             },
 
             function(column_info, callbackB) {
-              larkin.query("SELECT units.id AS id, units.strat_name, period, max_thick, min_thick, color, count(distinct collection_no) AS pbdb FROM units JOIN units_sections ON units_sections.unit_id = units.id JOIN lookup_unit_intervals ON units.id=lookup_unit_intervals.unit_id LEFT JOIN pbdb_matches ON pbdb_matches.unit_id = units.id WHERE units_sections.col_id = ? GROUP BY units.id ORDER BY t_age ASC", [req.query.col_id], function(error, result) {
+              larkin.query("SELECT units.id AS id, units.strat_name, period, max_thick, min_thick, color, count(distinct collection_no) AS pbdb, lith_short AS lith FROM units JOIN units_sections ON units_sections.unit_id = units.id JOIN lookup_unit_liths ON lookup_unit_liths.unit_id=units.id JOIN lookup_unit_intervals ON units.id=lookup_unit_intervals.unit_id LEFT JOIN pbdb_matches ON pbdb_matches.unit_id = units.id WHERE units_sections.col_id = ? GROUP BY units.id ORDER BY t_age ASC", [req.query.col_id], function(error, result) {
                 if (error) {
                   callbackB(error);
                 } else {
