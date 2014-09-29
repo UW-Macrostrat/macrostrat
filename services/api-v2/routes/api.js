@@ -849,11 +849,61 @@ api.route("/geologic_units/map")
       
   });
 
-api.route("/editing")
+api.route("/mobile/point")
+  .get(function(req, res, next) {
+    if (req.query.lat && req.query.lng) {
+      async.parallel([
+        // Query GMUS for unit name
+        function(callback) {
+          larkin.queryPg("earthbase", "SELECT gid AS unit_id, unit_name FROM gmus.geologic_units a JOIN gmus.units b ON a.unit_link = b.unit_link WHERE ST_Contains(the_geom, ST_GeomFromText($1, 4326))", ["POINT(" + req.query.lng + " " + req.query.lat + ")"], function(error, result) {
+            if (error) {
+              callback(error);
+            } else {
+              callback(null, result.rows[0]);
+            }
+          });
+        },
+
+        // Query Macrostrat for polygon
+        function(callback) {
+          larkin.query("SELECT col_id, AsWKT(col_areas.col_area) AS col_poly FROM col_areas JOIN cols on col_id = cols.id WHERE ST_CONTAINS(col_areas.col_area, ST_GEOMFROMTEXT('POINT(? ?)')) and status_code='active'", [parseFloat(req.query.lng), parseFloat(req.query.lat)], function(error, result) {
+              if (error) {
+                callback(error);
+              } else {
+                if (result.length < 1) {
+                  callback("No columns found");
+                } else if (result.length > 1) {
+                  callback("More than 1 column found");
+                } else {
+                  callback(null, result[0]);
+                }
+              }
+            });
+        }
+      ], function(error, results) {
+        if (error) {
+          larkin.error(req, res, next, error);
+        } else {
+          var result = {
+            "unit_id": results[0].unit_id,
+            "unit_name": results[0].unit_name,
+            "col_id": results[1].col_id,
+            "col_poly": (req.query.geo_format === "wkt") ? results[1].col_poly : wellknown(results[1].col_poly, 6)
+          };
+          larkin.sendData(result, res, null, next);
+        }
+      });
+        
+    } else {
+      larkin.error(req, res, next, "Please provide a valid latitude and longitude");
+    }
+      
+  });
+
+api.route("/editing/map")
   .get(function(req, res, next) {
     if (req.query.id) {
       // return just that polygons and the ones that touch it
-    //  larkin.queryPg("macrostrat_editing", "SELECT col_id, ST_AsGeoJSON(geom) AS geometry FROM (SELECT col_id, geom FROM col_areas) q WHERE ST_Touches((SELECT geom FROM col_areas WHERE col_id = $1), geom) OR col_id = $1", [req.query.id], function(result) {
       larkin.queryPg("macrostrat_editing", "SELECT b.col_id, ST_AsGeoJSON(b.geom) AS geometry FROM col_areas AS a JOIN col_areas AS b ON ST_Intersects(st_snaptogrid(a.geom,0.001), st_snaptogrid(b.geom,0.001)) WHERE a.col_id = $1 OR b.col_id = $1 GROUP BY b.col_id, b.geom ORDER BY b.col_id ASC;", [req.query.id], function(error, result) {
         dbgeo.parse({
           "data":result.rows,
@@ -885,12 +935,11 @@ api.route("/editing")
     }
   });
 
-api.route("/editing/update")
+api.route("/editing/map/update")
   .post(function(req, res, next) {
     if (req.body.layer) {
       req.body.layer = JSON.parse(req.body.layer);
       async.each(req.body.layer.features, function(feature, callback) {
-      //  larkin.queryPg("macrostrat_editing", "SELECT ST_isValid(st_geomfromgeojson( '" + JSON.stringify(feature.geometry) + "')) AS isvalid", [], function(result) {
         larkin.queryPg("macrostrat_editing", "SELECT ST_isValid(ST_GeomFromText( '" + wellknown.stringify(feature.geometry) + "')) AS isvalid", [], function(error, result) {
           if (result.rows[0].isvalid) {
             callback();
@@ -904,7 +953,6 @@ api.route("/editing/update")
           larkin.error(req, res, next, error);
         } else {
           async.each(req.body.layer.features, function(feature, callback) {
-            //larkin.queryPg("macrostrat_editing", "UPDATE col_areas SET geom = st_geomfromgeojson('" + JSON.stringify(feature.geometry) + "') WHERE col_id = $1", [feature.properties.col_id], function(result) {
             larkin.queryPg("macrostrat_editing", "UPDATE col_areas SET geom = ST_GeomFromText('" + wellknown.stringify(feature.geometry) + "') WHERE col_id = $1", [feature.properties.col_id], function(error, result) {
               callback();
             });
@@ -917,6 +965,16 @@ api.route("/editing/update")
     } else {
       larkin.error(req, res, next, "A layer is required");
     }
+  });
+
+api.route("/editing/units")
+  .get(function(req, res, next) {
+
+  });
+
+api.route("/editing/units/update")
+  .post(function(req, res, next) {
+
   });
 
 /* Handle errors and unknown pages */

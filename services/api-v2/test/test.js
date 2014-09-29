@@ -30,7 +30,6 @@ function getJSON(url, callback) {
 2. get all routes
 3. hit each route, grabbing the first example
 4. hit the example route, getting all fields
-
 */
 async.series({
   root: function(callback) {
