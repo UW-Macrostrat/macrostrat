@@ -118,23 +118,23 @@ var mysql = require("mysql"),
         routeDefs[field] = ""
       }
       callback()
-    }, function(error) {
+    }, function(error, result) {
       callback(routeDefs);
     });
-    callback(routeDefs);
   };
 
   // Get the metadata for a given route
   larkin.defineRoute = function(route, callback) {
     this.defineFields(route, function(fields) {
-      var options = defs[route].options;
-      delete options.fields;
-      delete options.visible;
-      options.fields = fields;
       var routeDefinition = {
         "description": defs[route].description,
-        "options": defs[route].options
+        "options": {
+          "parameters": defs[route].options.parameters,
+          "output_formats": defs[route].options.output_formats,
+          "examples": defs[route].options.examples
+        }
       };
+      routeDefinition.options.fields = fields;
       callback(routeDefinition);
     }); 
   }
