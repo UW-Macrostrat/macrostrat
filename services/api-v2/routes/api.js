@@ -888,7 +888,7 @@ api.route("/mobile/point")
             "unit_id": results[0].unit_id,
             "unit_name": results[0].unit_name,
             "col_id": results[1].col_id,
-            "col_poly": (req.query.geo_format === "wkt") ? results[1].col_poly : wellknown(results[1].col_poly, 6)
+            "col_poly": (req.query.geo_format === "wkt") ? wellknown.stringify(wellknown(results[1].col_poly), 6) : wellknown(results[1].col_poly, 6)
           };
           larkin.sendData(result, res, null, next);
         }
@@ -898,6 +898,153 @@ api.route("/mobile/point")
       larkin.error(req, res, next, "Please provide a valid latitude and longitude");
     }
       
+  });
+
+api.route("/mobile/point_details")
+  .get(function(req, res, next) {
+    if (req.query.lat && req.query.lng) {
+      async.parallel({
+        gmus: function(callback) {
+          larkin.queryPg("earthbase", "SELECT gid, a.rocktype1, a.rocktype2, b.rocktype3, unit_name, b.unit_age, unitdesc FROM gmus.geologic_units a JOIN gmus.units b ON a.unit_link = b.unit_link WHERE ST_Contains(the_geom, ST_GeomFromText($1, 4326))", ["POINT(" + req.query.lng + " " + req.query.lat + ")"], function(error, result) {
+            if (error) {
+              callback(error);
+            } else {
+              callback(null, result.rows[0]);
+            }
+          });
+        },
+
+        column: function(callback) {
+          async.waterfall([
+            function(callbackB) {
+              // Find nearest column
+              larkin.query("SELECT col_id FROM col_areas JOIN cols on col_id=cols.id WHERE ST_CONTAINS(col_areas.col_area,ST_GEOMFROMTEXT('POINT(? ?)')) and status_code='active'", [parseFloat(req.query.lng), parseFloat(req.query.lat)], function(error, result) {
+                if (error) {
+                  callback(error);
+                } else {
+                  if (result.length < 1) {
+                    callbackB("No columns found");
+                  } else if (result.length > 1) {
+                    callbackB("More than 1 column found");
+                  } else {
+                    callbackB(null, result[0]);
+                  }
+                }
+              });
+            },
+
+            function(column, callbackB) {
+              larkin.query("SELECT id, col_name FROM cols WHERE id = ?", [column.col_id], function(error, result) {
+                if (error) {
+                  callbackB(error);
+                } else {
+                  if (result.length === 0) {
+                    callback(null);
+                  } else {
+                    callbackB(null, column, result[0]);
+                  }
+                }
+              });
+            },
+
+            function(column, column_info, callbackB) {
+                  
+              var sql = "SELECT units.id AS id, units.strat_name, period, max_thick, min_thick, color, count(distinct collection_no) pbdb FROM units \
+                  JOIN units_sections ON units_sections.unit_id = units.id \
+                  JOIN lookup_unit_liths ON lookup_unit_liths.unit_id=units.id \
+                  JOIN lookup_unit_intervals ON units.id=lookup_unit_intervals.unit_id \
+                  LEFT JOIN unit_strat_names ON unit_strat_names.unit_id=units.id \
+                  LEFT JOIN lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id \
+                  LEFT JOIN pbdb_matches ON pbdb_matches.unit_id=units.id \
+                  WHERE units_sections.col_id = ? \
+                  GROUP BY units.id ORDER BY t_age ASC";
+
+              larkin.query(sql, [column.col_id], function(error, result) {
+                if (error) {
+                  callbackB(error);
+                } else {
+                  callbackB(null, column, column_info, result);
+                }
+              });
+            }
+          ],
+          // after the two queries are executed, send the result
+          function(err, column, column_info, result) {
+            if (err) {
+              callback(err);
+            } else {
+              var col = [column_info];
+              col[0].units = result;
+              callback(null, col[0]);
+            }
+          });
+        }
+      }, function(error, results) {
+        if (error) {
+          larkin.error(req, res, next, "Something went wrong");
+        } else {
+          larkin.sendData(results, res, "json", next);
+        }
+      });
+    } else if (req.query.col_id && req.query.unit_id) {
+      async.parallel({
+        gmus: function(callback) {
+          larkin.queryPg("earthbase", "SELECT gid, a.rocktype1, a.rocktype2, b.rocktype3, unit_name, b.unit_age, unitdesc FROM gmus.geologic_units a JOIN gmus.units b ON a.unit_link = b.unit_link WHERE gid = $1", [req.query.unit_id], function(error, result) {
+            if (error) {
+              callback(error);
+            } else {
+              callback(null, result.rows[0]);
+            }
+          });
+        },
+
+        column: function(callback) {
+          async.waterfall([
+            function(callbackB) {
+              larkin.query("SELECT id, col_name FROM cols WHERE id = ?", [req.query.col_id], function(error, result) {
+                if (error) {
+                  callbackB(error);
+                } else {
+                  if (result.length === 0) {
+                    callback(null);
+                  } else {
+                    callbackB(null, result[0]);
+                  }
+                }
+              });
+            },
+
+            function(column_info, callbackB) {
+              larkin.query("SELECT units.id AS id, units.strat_name, period, max_thick, min_thick, color, count(distinct collection_no) AS pbdb FROM units JOIN units_sections ON units_sections.unit_id = units.id JOIN lookup_unit_intervals ON units.id=lookup_unit_intervals.unit_id LEFT JOIN pbdb_matches ON pbdb_matches.unit_id = units.id WHERE units_sections.col_id = ? GROUP BY units.id ORDER BY t_age ASC", [req.query.col_id], function(error, result) {
+                if (error) {
+                  callbackB(error);
+                } else {
+                  callbackB(null, column_info, result);
+                }
+              });
+            }
+          ],
+          // after the two queries are executed, send the result
+          function(err, column_info, result) {
+            if (err) {
+              callback(err);
+            } else {
+              var col = [column_info];
+              col[0].units = result;
+              callback(null, col[0]);
+            }
+          });
+        }
+      }, function(error, results) {
+        if (error) {
+          larkin.error(req, res, next, "Something went wrong");
+        } else {
+          larkin.sendData(results, res, "json", next);
+        }
+      });
+    } else {
+      larkin.error(req, res, next, "Please use either a latitude and a longitude, or a column id and a unit id");
+    }
   });
 
 api.route("/editing/map")
