@@ -517,6 +517,23 @@
     }
   };
 
+  defs["/mobile/fossil_collections"] = {
+    "description": "Get Paleobiology Database fossil collection numbers for a given Macrostrat unit",
+    "visible": true,
+    "options": {
+      "parameters": {
+        "unit_id": "Macrostrat unit ID"
+      },
+      "output_formats": ["json"],
+      "examples": [
+        "/mobile/fossil_collections?unit_id=6132"
+      ],
+      "fields": [
+        "pbdb_collections"
+      ]
+    }
+  };
+
   defs["/editing"] = {
     "visible": false
   };
