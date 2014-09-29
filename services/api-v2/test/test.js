@@ -1,326 +1,317 @@
-var http = require("http"),
-    async = require("async"),
-    clc = require('cli-color');
+var assert = require("assert"),
+    should = require("should"),
+    request = require("supertest"),
+    async = require("async");
 
-var host = "http://localhost:5000",
-    warn = clc.red.bold;
+var host = "http://localhost:5000";
 
-function getJSON(url, callback) {
-  http.get(url, function(res) {
-    var body = "";
 
-    res.on("data", function(chunk) {
-        body += chunk;
+function aSuccessfulRequest(res) {
+  if (res.statusCode !== 200) {
+    throw new Error("Bad status code");
+  }
+  if (res.headers["access-control-allow-origin"] !== "*") {
+    throw new Error("Wrong access-control-allow-origin headers");
+  }
+  if (!res.body.success) {
+    throw new Error("Request was unsuccessful");
+  }
+}
+
+function metadata(res) {
+  // Make sure all the key metadata sections exist
+  if (!res.body.success.description) {
+    throw new Error("Route description missing");
+  }
+  if (!res.body.success.options) {
+    throw new Error("Route options missing");
+  }
+  if (!res.body.success.options.parameters) {
+    throw new Error("Route parameters missing");
+  }
+  if (!res.body.success.options.output_formats) {
+    throw new Error("Route output formats missing");
+  }
+  if (!res.body.success.options.examples) {
+    throw new Error("Route examples missing");
+  }
+  if (!res.body.success.options.fields) {
+    throw new Error("Route fields missing");
+  }
+
+  // Make sure the metadata sections are formatted properly
+  if (!(res.body.success.options.parameters instanceof Object)) {
+    throw new Error("Something wrong with parameters object");
+  }
+  if (!(res.body.success.options.output_formats instanceof Array)) {
+    throw new Error("Something wrong with output formats array");
+  }
+  if (!(res.body.success.options.examples instanceof Array)) {
+    throw new Error("Something wrong with examples array");
+  }
+  if (!(res.body.success.options.fields instanceof Object)) {
+    throw new Error("Something wrong with fields object");
+  }
+
+  // Make sure metadata sections are populated
+  if (Object.keys(res.body.success.options.parameters).length < 1) {
+    throw new Error("Route is missing parameters");
+  }
+  if (res.body.success.options.output_formats.length < 1) {
+    throw new Error("Route is missing output formats");
+  }
+  if (res.body.success.options.examples.length < 1) {
+    throw new Error("Route is missing examples");
+  }
+  if (Object.keys(res.body.success.options.fields).length < 1) {
+    throw new Error("Route is missing field definitions");
+  }
+}
+
+describe('Routes', function() {
+  describe('root', function() {
+    it('should return a list of all visible routes', function(done) {
+      request(host)
+        .get("/api")
+        .expect(aSuccessfulRequest)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
     });
-
-    res.on("end", function() {
-      if (JSON.parse(body).success && res.statusCode === 200) {
-        callback(null, "passed");
-      } else {
-        callback(JSON.parse(body), null);
-      }
-    });
-  }).on("error", function(error) {
-    callback(error, null);
   });
-};
 
-/*
-1. go to /api
-2. get all routes
-3. hit each route, grabbing the first example
-4. hit the example route, getting all fields
-*/
-async.series({
-  root: function(callback) {
-    getJSON(host + "/api", function(error, result) {
-      if (error) {
-        callback({"path": "root", "error": error});
-      } else {
-        console.log("/api : " + clc.green("passed"));
-        callback(null, result);
-      }
+  describe("column", function() {
+    it('should return metadata', function(done) {
+      request(host)
+        .get("/api/column")
+        .expect(aSuccessfulRequest)
+        .expect(metadata)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
     });
-  },
+  });
 
-  column: function(callback) {
-    var tests = ["/column", "/column?id=17", "/column?lat=50&lng=-80", "/column?id=49&response=short"];
-
-    async.each(tests, function(test, callbackB) {
-      getJSON(host + "/api" + test, function(error, result) {
-        if (error) {
-          callbackB({"path": "column", "error": error});
-        } else {
-          callbackB();
-        }
-      });
-    }, function(error) {
-      if (error) {
-        callback(error);
-      } else {
-        console.log("/api/column : " + clc.green("passed"));
-        callback(null, "passed");
-      }
+  describe("columns", function() {
+    it('should return metadata', function(done) {
+      request(host)
+        .get("/api/columns")
+        .expect(aSuccessfulRequest)
+        .expect(metadata)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
     });
-  },
+  });
 
-  columns: function(callback) {
-    var tests = ["/columns", "/columns?interval_name=Permian", "/columns?age=271", "/columns?age_top=200&age_bottom=250", "/columns?age_top=200&age_bottom=250&format=topojson"];
-
-    async.each(tests, function(test, callbackB) {
-      getJSON(host + "/api" + test, function(error, result) {
-        if (error) {
-          callbackB({"path": "columns", "error": error});
-        } else {
-          callbackB();
-        }
-      });
-    }, function(error) {
-      if (error) {
-        callback(error);
-      } else {
-        console.log("/api/columns : " + clc.green("passed"));
-        callback(null, "passed");
-      }
+  describe("unit", function() {
+    it('should return metadata', function(done) {
+      request(host)
+        .get("/api/unit")
+        .expect(aSuccessfulRequest)
+        .expect(metadata)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
     });
-  },
+  });
 
-  unit: function(callback) {
-    var tests = ["/unit", "/unit?id=527", "/unit?id=527&pbdb=true", "/unit?id=527&pbdb=true&response=long"];
-
-    async.each(tests, function(test, callbackB) {
-      getJSON(host + "/api" + test, function(error, result) {
-        if (error) {
-          callbackB({"path": "unit", "error": error});
-        } else {
-          callbackB();
-        }
-      });
-    }, function(error) {
-      if (error) {
-        callback(error);
-      } else {
-        console.log("/api/unit : " + clc.green("passed"));
-        callback(null, "passed");
-      }
+  describe("units", function() {
+    it('should return metadata', function(done) {
+      request(host)
+        .get("/api/units")
+        .expect(aSuccessfulRequest)
+        .expect(metadata)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
     });
-  },
+  });
 
-  units: function(callback) {
-    var tests = ["/units", "/units?interval_name=Permian", "/units?age=271", "/units?age_top=200&age_bottom=250"];
-
-    async.each(tests, function(test, callbackB) {
-      getJSON(host + "/api" + test, function(error, result) {
-        if (error) {
-          callbackB({"path": "units", "error": error});
-        } else {
-          callbackB();
-        }
-      });
-    }, function(error) {
-      if (error) {
-        callback(error);
-      } else {
-        console.log("/api/units : " + clc.green("passed"));
-        callback(null, "passed");
-      }
+  describe("fossils", function() {
+    it('should return metadata', function(done) {
+      request(host)
+        .get("/api/fossils")
+        .expect(aSuccessfulRequest)
+        .expect(metadata)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
     });
-  },
+  });
 
-  fossils: function(callback) {
-    var tests = ["/fossils", "/fossils?interval_name=Permian", "/fossils?age=271", "/fossils?age_top=200&age_bottom=250", "/fossils?age_top=200&age_bottom=250&output=topojson"];
-
-    async.each(tests, function(test, callbackB) {
-      getJSON(host + "/api" + test, function(error, result) {
-        if (error) {
-          callbackB({"path": "fossils", "error": error});
-        } else {
-          callbackB();
-        }
-      });
-    }, function(error) {
-      if (error) {
-        callback(error);
-      } else {
-        console.log("/api/fossils : " + clc.green("passed"));
-        callback(null, "passed");
-      }
+  describe("stats", function() {
+    it('should return metadata', function(done) {
+      request(host)
+        .get("/api/stats")
+        .expect(aSuccessfulRequest)
+        .expect(metadata)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
     });
-  },
+  });
 
-  stats: function(callback) {
-    var tests = ["/stats", "/stats?all"];
-
-    async.each(tests, function(test, callbackB) {
-      getJSON(host + "/api" + test, function(error, result) {
-        if (error) {
-          callbackB({"path": "stats", "error": error});
-        } else {
-          callbackB();
-        }
-      });
-    }, function(error) {
-      if (error) {
-        callback(error);
-      } else {
-        console.log("/api/stats : " + clc.green("passed"));
-        callback(null, "passed");
-      }
+  describe("lith_definitions", function() {
+    it('should return metadata', function(done) {
+      request(host)
+        .get("/api/lith_definitions")
+        .expect(aSuccessfulRequest)
+        .expect(metadata)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
     });
-  },
+  });
 
-  lith_definitions: function(callback) {
-    var tests = ["/lith_definitions", "/lith_definitions?all"];
-
-    async.each(tests, function(test, callbackB) {
-      getJSON(host + "/api" + test, function(error, result) {
-        if (error) {
-          callbackB({"path": "lith_definitions", "error": error});
-        } else {
-          callbackB();
-        }
-      });
-    }, function(error) {
-      if (error) {
-        callback(error);
-      } else {
-        console.log("/api/lith_definitions : " + clc.green("passed"));
-        callback(null, "passed");
-      }
+  describe("lithatt_definitions", function() {
+    it('should return metadata', function(done) {
+      request(host)
+        .get("/api/lithatt_definitions")
+        .expect(aSuccessfulRequest)
+        .expect(metadata)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
     });
-  },
+  });
 
-  lithatt_definitions: function(callback) {
-    var tests = ["/lithatt_definitions", "/lithatt_definitions?all"];
-
-    async.each(tests, function(test, callbackB) {
-      getJSON(host + "/api" + test, function(error, result) {
-        if (error) {
-          callbackB({"path": "lithatt_definitions", "error": error});
-        } else {
-          callbackB();
-        }
-      });
-    }, function(error) {
-      if (error) {
-        callback(error);
-      } else {
-        console.log("/api/lithatt_definitions : " + clc.green("passed"));
-        callback(null, "passed");
-      }
+  describe("environ_definitions", function() {
+    it('should return metadata', function(done) {
+      request(host)
+        .get("/api/environ_definitions")
+        .expect(aSuccessfulRequest)
+        .expect(metadata)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
     });
-  },
+  });
 
-  environ_definitions: function(callback) {
-    var tests = ["/environ_definitions", "/environ_definitions?all"];
-
-    async.each(tests, function(test, callbackB) {
-      getJSON(host + "/api" + test, function(error, result) {
-        if (error) {
-          callbackB({"path": "environ_definitions", "error": error});
-        } else {
-          callbackB();
-        }
-      });
-    }, function(error) {
-      if (error) {
-        callback(error);
-      } else {
-        console.log("/api/environ_definitions : " + clc.green("passed"));
-        callback(null, "passed");
-      }
+  describe("interval_definitions", function() {
+    it('should return metadata', function(done) {
+      request(host)
+        .get("/api/interval_definitions")
+        .expect(aSuccessfulRequest)
+        .expect(metadata)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
     });
-  },
+  });
 
-  interval_definitions: function(callback) {
-    var tests = ["/interval_definitions", "/interval_definitions?all"];
-
-    async.each(tests, function(test, callbackB) {
-      getJSON(host + "/api" + test, function(error, result) {
-        if (error) {
-          callbackB({"path": "interval_definitions", "error": error});
-        } else {
-          callbackB();
-        }
-      });
-    }, function(error) {
-      if (error) {
-        callback(error);
-      } else {
-        console.log("/api/interval_definitions : " + clc.green("passed"));
-        callback(null, "passed");
-      }
+  describe("strat_names", function() {
+    it('should return metadata', function(done) {
+      request(host)
+        .get("/api/strat_names")
+        .expect(aSuccessfulRequest)
+        .expect(metadata)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
     });
-  },
+  });
 
-  strat_names: function(callback) {
-    var tests = ["/strat_names", "/strat_names?all"];
-
-    async.each(tests, function(test, callbackB) {
-      getJSON(host + "/api" + test, function(error, result) {
-        if (error) {
-          callbackB({"path": "strat_names", "error": error});
-        } else {
-          callbackB();
-        }
-      });
-    }, function(error) {
-      if (error) {
-        callback(error);
-      } else {
-        console.log("/api/strat_names : " + clc.green("passed"));
-        callback(null, "passed");
-      }
+  describe("section_stats", function() {
+    it('should return metadata', function(done) {
+      request(host)
+        .get("/api/section_stats")
+        .expect(aSuccessfulRequest)
+        .expect(metadata)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
     });
-  },
+  });
 
-  section_stats: function(callback) {
-    var tests = ["/section_stats", "/section_stats?all", "/section_stats?age_model=continuous"];
-
-    async.each(tests, function(test, callbackB) {
-      getJSON(host + "/api" + test, function(error, result) {
-        if (error) {
-          callbackB({"path": "section_stats", "error": error});
-        } else {
-          callbackB();
-        }
-      });
-    }, function(error) {
-      if (error) {
-        callback(error);
-      } else {
-        console.log("/api/section_stats : " + clc.green("passed"));
-        callback(null, "passed");
-      }
+  describe("paleogeography", function() {
+    it('should return metadata', function(done) {
+      request(host)
+        .get("/api/paleogeography")
+        .expect(aSuccessfulRequest)
+        .expect(metadata)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
     });
-  },
+  });
 
-  paleogeography: function(callback) {
-    var tests = ["/paleogeography", "/paleogeography?interval_name=Permian", "/paleogeography?age=500", "/paleogeography?interval_name=Early Jurassic&output=topojson"];
-
-    async.each(tests, function(test, callbackB) {
-      getJSON(host + "/api" + test, function(error, result) {
-        if (error) {
-          callbackB({"path": "paleogeography", "error": error});
-        } else {
-          callbackB();
-        }
-      });
-    }, function(error) {
-      if (error) {
-        callback(error);
-      } else {
-        console.log("/api/paleogeography : " + clc.green("passed"));
-        callback(null, "passed");
-      }
+  describe("geologic_units", function() {
+    it('should return metadata', function(done) {
+      request(host)
+        .get("/api/geologic_units")
+        .expect(aSuccessfulRequest)
+        .expect(metadata)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
     });
-  }
+  });
 
-}, function(error, results) {
-  if (error) {
-    console.log(warn("Error on " + error.path), JSON.stringify(error));
-    process.exit();
-  } else {
-    process.exit();
-  }
+  describe("geologic_units/map", function() {
+    it('should return metadata', function(done) {
+      request(host)
+        .get("/api/geologic_units/map")
+        .expect(aSuccessfulRequest)
+        .expect(metadata)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+  });
+
+  describe("mobile/point", function() {
+    it('should return metadata', function(done) {
+      request(host)
+        .get("/api/mobile/point")
+        .expect(aSuccessfulRequest)
+        .expect(metadata)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+  });
+
+  describe("mobile/point_details", function() {
+    it('should return metadata', function(done) {
+      request(host)
+        .get("/api/mobile/point_details")
+        .expect(aSuccessfulRequest)
+        .expect(metadata)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+  });
+
+  describe("mobile/fossil_collections", function() {
+    it('should return metadata', function(done) {
+      request(host)
+        .get("/api/mobile/fossil_collections")
+        .expect(aSuccessfulRequest)
+        .expect(metadata)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+  });
 });
