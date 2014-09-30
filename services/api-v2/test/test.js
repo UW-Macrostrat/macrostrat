@@ -96,6 +96,7 @@ function atLeastOneResult(res) {
 }
 
 describe('Routes', function() {
+/* Root route */
   describe('root', function() {
     it('should return a list of all visible routes', function(done) {
       request(host)
@@ -109,6 +110,7 @@ describe('Routes', function() {
     });
   });
 
+/* column */
   describe("column", function() {
     it('should return metadata', function(done) {
       request(host)
@@ -167,6 +169,7 @@ describe('Routes', function() {
     });
   });
 
+/* columns */
   describe("columns", function() {
     it('should return metadata', function(done) {
       request(host)
@@ -225,6 +228,7 @@ describe('Routes', function() {
     });
   });
 
+/* unit */
   describe("unit", function() {
     it('should return metadata', function(done) {
       request(host)
@@ -282,6 +286,7 @@ describe('Routes', function() {
     })
   });
 
+/* units */
   describe("units", function() {
     this.timeout(20000);
 
@@ -347,6 +352,7 @@ describe('Routes', function() {
     });
   });
 
+/* fossils */
   describe("fossils", function() {
     it('should return metadata', function(done) {
       request(host)
@@ -405,6 +411,7 @@ describe('Routes', function() {
     });
   });
 
+/* stats */
   describe("stats", function() {
     it('should return metadata', function(done) {
       request(host)
@@ -442,6 +449,7 @@ describe('Routes', function() {
     })
   });
 
+/* lith_definitions */
   describe("lith_definitions", function() {
     it('should return metadata', function(done) {
       request(host)
@@ -511,6 +519,7 @@ describe('Routes', function() {
     });
   });
 
+/* lithatt_definitions */
   describe("lithatt_definitions", function() {
     it('should return metadata', function(done) {
       request(host)
@@ -585,6 +594,7 @@ describe('Routes', function() {
     });
   });
 
+/* environ_definitions */
   describe("environ_definitions", function() {
     it('should return metadata', function(done) {
       request(host)
@@ -671,6 +681,7 @@ describe('Routes', function() {
     });
   });
 
+/* interval_definitions */
   describe("interval_definitions", function() {
     it('should return metadata', function(done) {
       request(host)
@@ -733,6 +744,7 @@ describe('Routes', function() {
     });
   });
 
+/* strat_names */
   describe("strat_names", function() {
     it('should return metadata', function(done) {
       request(host)
@@ -807,6 +819,7 @@ describe('Routes', function() {
     });
   });
 
+/* section_stats */
   describe("section_stats", function() {
     it('should return metadata', function(done) {
       request(host)
@@ -857,6 +870,7 @@ describe('Routes', function() {
     });
   });
 
+/* paleogeography */
   describe("paleogeography", function() {
     it('should return metadata', function(done) {
       request(host)
@@ -904,6 +918,7 @@ describe('Routes', function() {
     });
   });
 
+/* geologic_units */
   describe("geologic_units", function() {
     it('should return metadata', function(done) {
       request(host)
@@ -982,6 +997,7 @@ describe('Routes', function() {
     });
   });
 
+/* geologic_units/map */
   describe("geologic_units/map", function() {
     it('should return metadata', function(done) {
       request(host)
@@ -1029,6 +1045,7 @@ describe('Routes', function() {
     });
   });
 
+/* mobile/point */
   describe("mobile/point", function() {
     it('should return metadata', function(done) {
       request(host)
@@ -1047,6 +1064,7 @@ describe('Routes', function() {
         .get("/api/mobile/point?lat=43&lng=-89")
         .expect(aSuccessfulRequest)
         .expect(json)
+        .expect(atLeastOneResult)
         .end(function(error, res) {
           if (error) return done(error);
           done();
@@ -1058,8 +1076,9 @@ describe('Routes', function() {
         .get("/api/mobile/point?lat=43&lng=-89&geo_format=wkt")
         .expect(aSuccessfulRequest)
         .expect(json)
+        .expect(atLeastOneResult)
         .expect(function(res) {
-          if (res.body.success.data.col_poly.substr(0, 7) !== "POLYGON") {
+          if (res.body.success.data[0].col_poly.substr(0, 7) !== "POLYGON") {
             throw new Error("WKT not returned when requested");
           }
         })
@@ -1070,6 +1089,7 @@ describe('Routes', function() {
     });
   });
 
+/* mobile/point_details */
   describe("mobile/point_details", function() {
     it('should return metadata', function(done) {
       request(host)
@@ -1088,8 +1108,9 @@ describe('Routes', function() {
         .get("/api/mobile/point_details?lat=43&lng=-89")
         .expect(aSuccessfulRequest)
         .expect(json)
+        .expect(atLeastOneResult)
         .expect(function(res) {
-          if (!res.body.success.data.column || !res.body.success.data.gmus) {
+          if (!res.body.success.data[0].column || !res.body.success.data[0].gmus) {
             throw new Error("Response missing a data type");
           }
         })
@@ -1104,8 +1125,9 @@ describe('Routes', function() {
         .get("/api/mobile/point_details?col_id=187&unit_id=184506")
         .expect(aSuccessfulRequest)
         .expect(json)
+        .expect(atLeastOneResult)
         .expect(function(res) {
-          if (!res.body.success.data.column || !res.body.success.data.gmus) {
+          if (!res.body.success.data[0].column || !res.body.success.data[0].gmus) {
             throw new Error("Response missing a data type");
           }
         })
@@ -1116,6 +1138,7 @@ describe('Routes', function() {
     });
   });
 
+/* fossil_collections */
   describe("mobile/fossil_collections", function() {
     it('should return metadata', function(done) {
       request(host)
@@ -1134,8 +1157,9 @@ describe('Routes', function() {
         .get("/api/mobile/fossil_collections?unit_id=6132")
         .expect(aSuccessfulRequest)
         .expect(json)
+        .expect(atLeastOneResult)
         .expect(function(res) {
-          if (!res.body.success.data.pbdb_collections || res.body.success.data.pbdb_collections.length < 2) {
+          if (!res.body.success.data[0].pbdb_collections || res.body.success.data[0].pbdb_collections.length < 2) {
             throw new Error("PBDB collections not returned");
           }
         })

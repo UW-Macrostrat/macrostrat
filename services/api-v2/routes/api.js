@@ -693,7 +693,7 @@ api.route("/geologic_units")
 
       async.parallel({
         gmus: function(callback) {
-          if (types.indexOf("gmna") > -1) {
+          if (types.indexOf("gmus") > -1) {
             larkin.queryPg("earthbase", "SELECT gid, state, a.rocktype1, a.rocktype2, b.rocktype3, unit_name, b.unit_age, unitdesc, strat_unit, unit_com" + ((geo) ? ", ST_AsGeoJSON(a.the_geom) AS geometry" : "") + " FROM gmus.geologic_units a JOIN gmus.units b ON a.unit_link = b.unit_link WHERE ST_Contains(the_geom, ST_GeomFromText($1, 4326))", ["POINT(" + req.query.lng + " " + req.query.lat + ")"], function(error, result) {
               if (error) {
                 callback(error);
@@ -710,7 +710,7 @@ api.route("/geologic_units")
         },
 
         gmna: function(callback) {
-          if (types.indexOf("gmus") > -1) {
+          if (types.indexOf("gmna") > -1) {
             larkin.queryPg("earthbase", "SELECT objectid, unit_abbre, rocktype, lithology, min_age, max_age, min_max_re, unit_uncer, age_uncert" + ((geo) ? ", ST_AsGeoJSON(the_geom) AS geometry" : "") + " FROM gmna.geologic_units WHERE ST_Contains(the_geom, ST_GeomFromText($1, 4326))", ["POINT(" + req.query.lng + " " + req.query.lat + ")"], function(error, result) {
               if (error) {
                 callback(error);
@@ -890,9 +890,9 @@ api.route("/mobile/point")
             "unit_id": results[0].unit_id,
             "unit_name": results[0].unit_name,
             "col_id": results[1].col_id,
-            "col_poly": (req.query.geo_format === "wkt") ? wellknown.stringify(wellknown(results[1].col_poly), 6) : wellknown(results[1].col_poly, 6)
+            "col_poly": (req.query.geo_format === "wkt") ? wellknown.stringify(wellknown(results[1].col_poly), 3) : wellknown(results[1].col_poly, 3)
           };
-          larkin.sendData(result, res, null, next);
+          larkin.sendData([result], res, null, next);
         }
       });
         
@@ -985,7 +985,7 @@ api.route("/mobile/point_details")
         if (error) {
           larkin.error(req, res, next, "Something went wrong");
         } else {
-          larkin.sendData(results, res, "json", next);
+          larkin.sendData([results], res, "json", next);
         }
       });
     } else if (req.query.col_id && req.query.unit_id) {
@@ -1041,7 +1041,7 @@ api.route("/mobile/point_details")
         if (error) {
           larkin.error(req, res, next, "Something went wrong");
         } else {
-          larkin.sendData(results, res, "json", next);
+          larkin.sendData([results], res, "json", next);
         }
       });
     } else {
@@ -1056,10 +1056,9 @@ api.route("/mobile/fossil_collections")
         if (error) {
           larkin.error(req, res, next, error);
         } else {
-          var data = {
+          larkin.sendData([{
             "pbdb_collections": result.map(function(n) { return n.cltn_no; })
-          };
-          larkin.sendData(data, res, "json", next);
+          }], res, "json", next);
         }
       });
     } else {
