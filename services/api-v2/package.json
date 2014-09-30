@@ -34,7 +34,7 @@
     "mysql": "2.3.x",
     "pg": "^3.4.0",
     "wellknown": "^0.2.0",
-    "winston": "~0.7.3"
+    "winston": "git://github.com/jczaplew/wellknown.git"
   },
   "devDependencies": {
     "mocha": "^1.21.4",
