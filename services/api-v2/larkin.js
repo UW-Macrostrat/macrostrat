@@ -92,16 +92,27 @@ var mysql = require("mysql"),
 
   larkin.error = function(req, res, next, message, code) {
     var responseMessage = (message) ? message : "Something went wrong. Please contact Shanan Peters.";
-    this.defineRoute(req.route.path, function(definition) {
+    if (code && code === 500 || code === 404) {
       res
         .status((code) ? code : 200)
         .json({
           "error": {
-            "message": responseMessage,
-            "about": definition
+            "message": responseMessage
           }
         });
-    });
+    } else {
+      this.defineRoute(req.route.path, function(definition) {
+        res
+          .status((code) ? code : 200)
+          .json({
+            "error": {
+              "message": responseMessage,
+              "about": definition
+            }
+          });
+      });
+    }
+        
   };
 
   larkin.log = function(type, message) {
