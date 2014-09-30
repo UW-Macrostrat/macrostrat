@@ -78,21 +78,21 @@ function topoJSON(res) {
 }
 
 function json(res) {
-  if (!res.body.success) {
-    throw new Error("Request was not successful, but should have been");
+  if (!res.body.success && !res.body.error) {
+    throw new Error("Request did not return valid JSON");
   }
 }
 
 function csv(res) {
-  if (res.statusCode !== 200) {
-    throw new Error("Bad status code");
-  }
-  if (res.headers["access-control-allow-origin"] !== "*") {
-    throw new Error("Wrong access-control-allow-origin headers");
-  }
   if (res.body.length < 10) {
     throw new Error("No CSV output recieved");
   }
+}
+
+function atLeastOneResult(res) {
+  if (res.body.success.data.length < 1) {
+    throw new Error("Should have returned at least one result");
+  } 
 }
 
 describe('Routes', function() {
@@ -434,6 +434,7 @@ describe('Routes', function() {
         .get("/api/stats?all&format=csv")
         .expect(aSuccessfulRequest)
         .expect(csv)
+        .expect("Content-Type", "text/csv; charset=utf-8")
         .end(function(error, res) {
           if (error) return done(error);
           done();
@@ -499,9 +500,10 @@ describe('Routes', function() {
 
     it("should output CSV", function(done) {
       request(host)
-        .get("/api/lith_definitions?id=3")
+        .get("/api/lith_definitions?id=3&format=csv")
         .expect(aSuccessfulRequest)
         .expect(csv)
+        .expect("Content-Type", "text/csv; charset=utf-8")
         .end(function(error, res) {
           if (error) return done(error);
           done();
@@ -521,6 +523,66 @@ describe('Routes', function() {
           done();
         });
     });
+
+    it("should accept an att_type", function(done) {
+      request(host)
+        .get("/api/lithatt_definitions?att_type=bedform")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should accept a lith_att", function(done) {
+      request(host)
+        .get("/api/lithatt_definitions?lith_att=mounds")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should accept a lith att id", function(done) {
+      request(host)
+        .get("/api/lithatt_definitions?id=1")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should return all records", function(done) {
+      request(host)
+        .get("/api/lithatt_definitions?all")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should output CSV", function(done) {
+      request(host)
+        .get("/api/lithatt_definitions?lith_att=mounds&format=csv")
+        .expect(aSuccessfulRequest)
+        .expect(csv)
+        .expect("Content-Type", "text/csv; charset=utf-8")
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
   });
 
   describe("environ_definitions", function() {
@@ -530,6 +592,78 @@ describe('Routes', function() {
         .expect(aSuccessfulRequest)
         .expect(json)
         .expect(metadata)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should accept an environment class", function(done) {
+      request(host)
+        .get("/api/environ_definitions?environ_class=non-marine")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should accept an environment type", function(done) {
+      request(host)
+        .get("/api/environ_definitions?environ_type=carbonate")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should accept an environment", function(done) {
+      request(host)
+        .get("/api/environ_definitions?environ=open%20shallow%20subtidal")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should accept an environment id", function(done) {
+      request(host)
+        .get("/api/environ_definitions?id=1")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should return all environment definitions", function(done) {
+      request(host)
+        .get("/api/environ_definitions?all")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should return CSV", function(done) {
+      request(host)
+        .get("/api/environ_definitions?all&format=csv")
+        .expect(aSuccessfulRequest)
+        .expect(csv)
+        .expect("Content-Type", "text/csv; charset=utf-8")
         .end(function(error, res) {
           if (error) return done(error);
           done();
@@ -549,6 +683,54 @@ describe('Routes', function() {
           done();
         });
     });
+
+    it("should accept a timescale parameter", function(done) {
+      request(host)
+        .get("/api/interval_definitions?timescale=new%20zealand%20ages")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should accept an interval id", function(done) {
+      request(host)
+        .get("/api/interval_definitions?id=366")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should return all definitions", function(done) {
+      request(host)
+        .get("/api/interval_definitions?all")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should return CSV", function(done) {
+      request(host)
+        .get("/api/interval_definitions?timescale=new%20zealand%20ages&format=csv")
+        .expect(aSuccessfulRequest)
+        .expect(csv)
+        .expect("Content-Type", "text/csv; charset=utf-8")
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
   });
 
   describe("strat_names", function() {
@@ -558,6 +740,66 @@ describe('Routes', function() {
         .expect(aSuccessfulRequest)
         .expect(json)
         .expect(metadata)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should accept a strat id", function(done) {
+      request(host)
+        .get("/api/strat_names?id=1")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should accept a strat name", function(done) {
+      request(host)
+        .get("/api/strat_names?name=Abercrombie")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should accept a strat rank", function(done) {
+      request(host)
+        .get("/api/strat_names?rank=Gp")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should return all strat names", function(done) {
+      request(host)
+        .get("/api/strat_names?all")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should output CSV", function(done) {
+      request(host)
+        .get("/api/strat_names?name=Abercrombie&format=csv")
+        .expect(aSuccessfulRequest)
+        .expect(csv)
+        .expect("Content-Type", "text/csv; charset=utf-8")
         .end(function(error, res) {
           if (error) return done(error);
           done();
@@ -577,6 +819,42 @@ describe('Routes', function() {
           done();
         });
     });
+
+    it("should accept an age model", function(done) {
+      request(host)
+        .get("/api/section_stats?age_model=continuous")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should return al; section stats", function(done) {
+      request(host)
+        .get("/api/section_stats?all")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should output CSV", function(done) {
+      request(host)
+        .get("/api/section_stats?age_model=continuous&format=csv")
+        .expect(aSuccessfulRequest)
+        .expect(csv)
+        .expect("Content-Type", "text/csv; charset=utf-8")
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
   });
 
   describe("paleogeography", function() {
@@ -586,6 +864,39 @@ describe('Routes', function() {
         .expect(aSuccessfulRequest)
         .expect(json)
         .expect(metadata)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should accept an age parameter", function(done) {
+      request(host)
+        .get("/api/paleogeography?age=271")
+        .expect(aSuccessfulRequest)
+        .expect(geoJSON)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should accept an interval name", function(done) {
+      request(host)
+        .get("/api/paleogeography?interval_name=Permian")
+        .expect(aSuccessfulRequest)
+        .expect(geoJSON)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should return topojson", function(done) {
+      request(host)
+        .get("/api/paleogeography?interval_name=Permian&format=topojson")
+        .expect(aSuccessfulRequest)
+        .expect(topoJSON)
         .end(function(error, res) {
           if (error) return done(error);
           done();
@@ -605,6 +916,70 @@ describe('Routes', function() {
           done();
         });
     });
+
+    it("should accept a latitude and longitude", function(done) {
+      request(host)
+        .get("/api/geologic_units?lat=43&lng=-89.3")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(function(res) {
+          if (!res.body.success.data.column || !res.body.success.data.gmna || !res.body.success.data.gmus) {
+            throw new Error("Output is missing a type");
+          }
+        })
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should return from only the selected sources", function(done) {
+      request(host)
+        .get("/api/geologic_units?lat=43&lng=-89.3&type=gmus")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(function(res) {
+          if (!res.body.success.data.gmus || res.body.success.data.column || res.body.success.gmna) {
+            throw new Error("Output is wrong");
+          }
+        })
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should return verbose output when asked", function(done) {
+      request(host)
+        .get("/api/geologic_units?lat=43&lng=-89.3&response=long")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(function(res) {
+          if (!res.body.success.data.column.units[0].LO_interval) {
+            throw new Error("Extra data missing when requested");
+          }
+        })
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should return geometry when asked", function(done) {
+      request(host)
+        .get("/api/geologic_units?lat=43&lng=-89.3&geo=true")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(function(res) {
+          if (!res.body.success.data.column.geometry) {
+            throw new Error("Geometry missing when requested");
+          }
+        })
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
   });
 
   describe("geologic_units/map", function() {
@@ -614,6 +989,39 @@ describe('Routes', function() {
         .expect(aSuccessfulRequest)
         .expect(json)
         .expect(metadata)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should throw an error if a required parameter is ommitted", function(done) {
+      request(host)
+        .get("/api/geologic_units/map?interval_name=Permian")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should accept a type and interval name", function(done) {
+      request(host)
+        .get("/api/geologic_units/map?interval_name=Permian&type=gmna")
+        .expect(aSuccessfulRequest)
+        .expect(geoJSON)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should output Topojson", function(done) {
+      request(host)
+        .get("/api/geologic_units/map?interval_name=Permian&type=gmna&format=topojson")
+        .expect(aSuccessfulRequest)
+        .expect(topoJSON)
         .end(function(error, res) {
           if (error) return done(error);
           done();
@@ -633,6 +1041,33 @@ describe('Routes', function() {
           done();
         });
     });
+
+    it("should accept a latitude and longitude", function(done) {
+      request(host)
+        .get("/api/mobile/point?lat=43&lng=-89")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should accept a geo_format parameter and respect it", function(done) {
+      request(host)
+        .get("/api/mobile/point?lat=43&lng=-89&geo_format=wkt")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(function(res) {
+          if (res.body.success.data.col_poly.substr(0, 7) !== "POLYGON") {
+            throw new Error("WKT not returned when requested");
+          }
+        })
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
   });
 
   describe("mobile/point_details", function() {
@@ -642,6 +1077,38 @@ describe('Routes', function() {
         .expect(aSuccessfulRequest)
         .expect(json)
         .expect(metadata)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should accept a lat and lng", function(done) {
+      request(host)
+        .get("/api/mobile/point_details?lat=43&lng=-89")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(function(res) {
+          if (!res.body.success.data.column || !res.body.success.data.gmus) {
+            throw new Error("Response missing a data type");
+          }
+        })
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should accept a col_id and unit_id", function(done) {
+      request(host)
+        .get("/api/mobile/point_details?col_id=187&unit_id=184506")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(function(res) {
+          if (!res.body.success.data.column || !res.body.success.data.gmus) {
+            throw new Error("Response missing a data type");
+          }
+        })
         .end(function(error, res) {
           if (error) return done(error);
           done();
@@ -661,5 +1128,21 @@ describe('Routes', function() {
           done();
         });
     });
+
+    it("should accept a unit_id", function(done) {
+      request(host)
+        .get("/api/mobile/fossil_collections?unit_id=6132")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(function(res) {
+          if (!res.body.success.data.pbdb_collections || res.body.success.data.pbdb_collections.length < 2) {
+            throw new Error("PBDB collections not returned");
+          }
+        })
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    })
   });
 });

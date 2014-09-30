@@ -284,7 +284,7 @@
         "environ_type": "environment type",
         "environ": "environment",
         "id": "an environment id",
-        "all": "return all interval definitions",
+        "all": "return all environment definitions",
         "format": "Desired output format"
       },
       "output_formats": ["json", "csv"],
