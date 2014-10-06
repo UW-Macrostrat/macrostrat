@@ -187,7 +187,8 @@ describe('Routes', function() {
       request(host)
         .get("/api/columns?interval_name=Permian")
         .expect(aSuccessfulRequest)
-        .expect(geoJSON)
+        .expect(json)
+        .expect(atLeastOneResult)
         .end(function(error, res) {
           if (error) return done(error);
           done();
@@ -198,7 +199,8 @@ describe('Routes', function() {
       request(host)
         .get("/api/columns?age=271")
         .expect(aSuccessfulRequest)
-        .expect(geoJSON)
+        .expect(json)
+        .expect(atLeastOneResult)
         .end(function(error, res) {
           if (error) return done(error);
           done();
@@ -209,6 +211,29 @@ describe('Routes', function() {
       request(host)
         .get("/api/columns?age_top=200&age_bottom=250")
         .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should return topojson", function(done) {
+      request(host)
+        .get("/api/columns?age=2&format=topojson")
+        .expect(aSuccessfulRequest)
+        .expect(topoJSON)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should return topojson", function(done) {
+      request(host)
+        .get("/api/columns?age=2&format=geojson")
+        .expect(aSuccessfulRequest)
         .expect(geoJSON)
         .end(function(error, res) {
           if (error) return done(error);
@@ -216,11 +241,11 @@ describe('Routes', function() {
         });
     });
 
-    it("should return geojson and topojson", function(done) {
+    it("should return csv", function(done) {
       request(host)
-        .get("/api/columns?age=2&format=topojson")
+        .get("/api/columns?age=2&format=csv")
         .expect(aSuccessfulRequest)
-        .expect(topoJSON)
+        .expect(csv)
         .end(function(error, res) {
           if (error) return done(error);
           done();

@@ -58,9 +58,10 @@
         "age": "number, search age in Myr before present",
         "age_top": "number, youngest limit of search, in Myr before present - must be used with age_bottom",
         "age_bottom": "number, oldest limit of search, in Myr before present -  must be used with age_top",
+        "all": "Show all results",
         "format": "string, Desired output format"
       },
-      "output_formats": ["geojson", "topojson"],
+      "output_formats": ["json", "csv", "geojson", "topojson"],
       "examples": [
         "/api/columns?interval_name=Permian",
         "/api/columns?age=271",

@@ -166,6 +166,8 @@ api.route("/columns")
           callback(null, {"interval_name": "Unknown", "age_bottom": req.query.age, "age_top": req.query.age});
         } else if (req.query.age_top && req.query.age_bottom) {
           callback(null, {"interval_name": "Unknown", "age_bottom": req.query.age_bottom, "age_top": req.query.age_top});
+        } else if (req.query.hasOwnProperty("all")) {
+          callback(null, {"interval_name": "Unknown", "age_bottom": 9999, "age_top": 0});
         } else {
           larkin.error(req, res, next, "An invalid parameter was given");
         }
@@ -182,7 +184,7 @@ api.route("/columns")
           lith = req.query.lith_type;
           lith_field = 'lith_type';
         }
-        larkin.query("SELECT AsWKT(col_areas.col_area) AS wkt, col_areas.col_id, round(cols.col_area, 1) AS area, count(units.id) units, GROUP_CONCAT(units.id SEPARATOR '|') AS unit_id, sum(max_thick) max_thick, sum(min_thick) min_thick, sum(LT.cpm) lith_max_thick, sum(LT.cpl) lith_min_thick,  LT2.lts lith_types \
+        larkin.query("SELECT " + ((req.query.format && req.query.format === "geojson" || req.query.format === "topojson") ? "AsWKT(col_areas.col_area) AS wkt," : "") + " col_areas.col_id, round(cols.col_area, 1) AS area, count(units.id) units, GROUP_CONCAT(units.id SEPARATOR '|') AS unit_id, sum(max_thick) max_thick, sum(min_thick) min_thick, sum(LT.cpm) lith_max_thick, sum(LT.cpl) lith_min_thick,  LT2.lts lith_types \
           FROM col_areas \
           JOIN cols ON cols.id = col_areas.col_id \
           JOIN units_sections ON units_sections.col_id = cols.id \
@@ -203,20 +205,24 @@ api.route("/columns")
       if (error) {
         larkin.error(req, res, next, "An error was incurred");
       } else {
-        dbgeo.parse({
-          "data": result,
-          "geometryColumn": "wkt",
-          "geometryType": "wkt",
-          "outputFormat": (api.acceptedFormats.geo[req.query.format]) ? req.query.format : "geojson",
-          "callback": function(error, output) {
-            if (error) {
-              larkin.error(req, res, next, "An error was incurred during con");
-            } else {
-              output.properties = data;
-              larkin.sendData(output, res, null, next);
+        if (req.query.format && req.query.format === "geojson" || req.query.format === "topojson") {
+          dbgeo.parse({
+            "data": result,
+            "geometryColumn": "wkt",
+            "geometryType": "wkt",
+            "outputFormat": (api.acceptedFormats.geo[req.query.format]) ? req.query.format : "geojson",
+            "callback": function(error, output) {
+              if (error) {
+                larkin.error(req, res, next, "An error was incurred during conversion");
+              } else {
+                output.properties = data;
+                larkin.sendData(output, res, null, next);
+              }
             }
-          }
-        });
+          });
+        } else {
+          larkin.sendData(result, res, (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json", next);
+        }  
       }
     });
   });
@@ -439,8 +445,7 @@ api.route("/stats")
           JOIN projects ON projects.id = project_id \
           LEFT JOIN pbdb_matches USING (unit_id) \
           WHERE project IN ('North America','New Zealand','Caribbean','Deep Sea') and status_code='active' \
-          GROUP BY project_id \
-          ORDER BY field(project, 'North America','Caribbean','New Zealand','Deep Sea') ";
+          GROUP BY project_id";
 
     var format = (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json";
 
