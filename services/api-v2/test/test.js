@@ -363,7 +363,6 @@ describe('Routes', function() {
 
 /* units */
   describe("units", function() {
-    this.timeout(20000);
 
     it('should return metadata', function(done) {
       request(host)
@@ -382,6 +381,7 @@ describe('Routes', function() {
         .get("/api/units?interval_name=Permian")
         .expect(aSuccessfulRequest)
         .expect(json)
+        .expect(atLeastOneResult)
         .end(function(error, res) {
           if (error) return done(error);
           done();
@@ -393,6 +393,7 @@ describe('Routes', function() {
         .get("/api/units?age=400")
         .expect(aSuccessfulRequest)
         .expect(json)
+        .expect(atLeastOneResult)
         .end(function(error, res) {
           if (error) return done(error);
           done();
@@ -404,6 +405,19 @@ describe('Routes', function() {
         .get("/api/units?age_top=200&age_bottom=250")
         .expect(aSuccessfulRequest)
         .expect(json)
+        .expect(atLeastOneResult)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should accept a section_id", function(done) {
+      request(host)
+        .get("/api/units?section_id=107")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
         .end(function(error, res) {
           if (error) return done(error);
           done();
@@ -420,6 +434,17 @@ describe('Routes', function() {
             throw new Error("Extra data missing when requested");
           }
         })
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should output CSV", function(done) {
+      request(host)
+        .get("/api/units?section_id=107&format=csv")
+        .expect(aSuccessfulRequest)
+        .expect(csv)
         .end(function(error, res) {
           if (error) return done(error);
           done();
