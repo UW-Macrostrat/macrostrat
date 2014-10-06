@@ -235,7 +235,7 @@ api.route("/sections")
     }
     var where = "",
         params = [];
-        
+
     if (req.query.hasOwnProperty("all")) {
       // do nothing
     } else if (req.query.col_id) {
@@ -349,6 +349,8 @@ api.route("/units")
           callback(null, {"interval_name": "Unknown", "age_bottom": req.query.age, "age_top": req.query.age});
         } else if (req.query.age_top && req.query.age_bottom) {
           callback(null, {"interval_name": "Unknown", "age_bottom": req.query.age_bottom, "age_top": req.query.age_top});
+        } else if (req.query.section_id) { 
+          callback(null, {"interval_name": "Unknown", "age_bottom": 99999, "age_top": 0});
         } else {
           callback("error");
         }
@@ -366,7 +368,20 @@ api.route("/units")
           lith_field = 'lith_type';
         }
 
-        var shortSQL = "units.id AS id,units_sections.section_id as section_id, units_sections.col_id as col_id, col_area, units.strat_name, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick, min_thick, color, lith_type, count(distinct collection_no) pbdb";
+        var where = "",
+            params = [data.age_top, data.age_bottom];
+
+        if (req.query.section_id) {
+          where += " AND units.section_id = ?";
+          params.push(req.query.section_id);
+        }
+
+        if (req.query.col_id) {
+          where += " AND units.col_id = ?";
+          params.push(req.query.col_id);
+        }
+
+        var shortSQL = "units.id AS id,units_sections.section_id as section_id, units_sections.col_id as col_id, col_area, units.strat_name, units.position_bottom, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick, min_thick, color, lith_type, count(distinct collection_no) pbdb";
               
         var longSQL = "units.id AS id,units_sections.section_id as section_id, units_sections.col_id as col_id, col_area, units.strat_name, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick,min_thick, color, lith_class, lith_type, lith_short lith, environ_class, environ_type, environ, count(distinct collection_no) pbdb, FO_interval, FO_h, FO_age, b_age, LO_interval, LO_h, LO_age, t_age, position_bottom, notes"; 
 
@@ -379,9 +394,9 @@ api.route("/units")
               LEFT JOIN lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id \
               " + ((req.query.response === "long") ? "LEFT JOIN unit_notes ON unit_notes.unit_id=units.id" : "") + " \
               LEFT JOIN pbdb_matches ON pbdb_matches.unit_id=units.id \
-              WHERE status_code='active' AND FO_age > ? AND LO_age < ? and units.id IN (SELECT unit_liths.unit_id from unit_liths JOIN liths on lith_id=liths.id WHERE lith like " + lith_field + ") GROUP BY units.id";
+              WHERE status_code='active' AND FO_age > ? AND LO_age < ? AND units.id IN (SELECT unit_liths.unit_id from unit_liths JOIN liths on lith_id=liths.id WHERE lith like " + lith_field + ")" + where + " GROUP BY units.id ORDER BY units.position_bottom ASC";
 
-        larkin.query(sql, [data.age_top, data.age_bottom], function(error, result) {
+        larkin.query(sql, params, function(error, result) {
             if (error) {
               callback(error);
             } else {
@@ -393,7 +408,7 @@ api.route("/units")
       if (error) {
         larkin.error(req, res, next, "Something went wrong");
       } else {
-        larkin.sendData(result, res, "json", next);
+        larkin.sendData(result, res, (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json", next);
       }
     });
   });
@@ -1158,7 +1173,7 @@ api.route("/editing/map/update")
 
       }, function(error) {
         if (error) {
-          larkin.error(req, res, next, error);
+          larkin.sendData([{"update": "failed"}], res, null, next);
         } else {
           async.each(req.body.layer.features, function(feature, callback) {
             larkin.queryPg("macrostrat_editing", "UPDATE col_areas SET geom = ST_GeomFromText('" + wellknown.stringify(feature.geometry) + "') WHERE col_id = $1", [feature.properties.col_id], function(error, result) {

@@ -163,13 +163,16 @@
         "age": "A valid age",
         "age_top": "A valid age - must be used with age_bottom and be less than age_bottom",
         "age_bottom": "A valid age - must be used with age_top and be greater than age_top",
+        "section_id": "Integer, a valid section id",
+        "col_id": "Integer, a valid column id",
         "response": "Can be 'short' or 'long' - default is 'short'"
       },
-      "output_formats": ["json"],
+      "output_formats": ["json", "csv"],
       "examples": [
         "api/units?interval_name=Permian",
         "api/units?age=271",
-        "api/units?interval_name=Permian&response=long"
+        "api/units?interval_name=Permian&response=long",
+        "api/units?section_id=107&col_id=22&format=csv"
       ],
       "fields": [
         "id",
