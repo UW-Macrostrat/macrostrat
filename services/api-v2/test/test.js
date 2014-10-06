@@ -253,6 +253,56 @@ describe('Routes', function() {
     });
   });
 
+/* sections */
+  describe("sections", function() {
+    it("should return metadata", function(done) {
+      request(host)
+        .get("/api/sections")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(metadata)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should return all sections", function(done) {
+      request(host)
+        .get("/api/sections?all")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should accept a column id", function(done) {
+      request(host)
+        .get("/api/sections?col_id=49")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should return csv", function(done) {
+      request(host)
+        .get("/api/sections?col_id=17&format=csv")
+        .expect(aSuccessfulRequest)
+        .expect(csv)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+  });
+
 /* unit */
   describe("unit", function() {
     it('should return metadata', function(done) {

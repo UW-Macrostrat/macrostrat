@@ -81,6 +81,31 @@
     }
   };
 
+  defs["/sections"] = {
+    "description": "Get all sections for a given column",
+    "visible": true,
+    "options": {
+      "parameters": {
+        "col_id": "integer, column ID",
+        "all": "Return all sections",
+        "format": "string, Desired output format"
+      },
+      "output_formats": ["json", "csv"],
+      "examples": [
+        "/api/sections?all",
+        "/api/sections?col_id=49"
+      ],
+      "fields": [
+        "id",
+        "col_id",
+        "bottom",
+        "top",
+        "units",
+        "fossils"
+      ]
+    }
+  };
+
   defs["/unit"] = {
     "description": "Gets all data for a given unit",
     "visible": true,
