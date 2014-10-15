@@ -396,7 +396,6 @@
     "visible": true,
     "options": {
       "parameters": {
-        "age_model": "continuous",
         "all": "return all section stats",
         "format": "Desired output format"
       },
