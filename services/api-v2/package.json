@@ -33,8 +33,8 @@
     "express-csv": "git://github.com/jczaplew/express-csv.git",
     "mysql": "2.3.x",
     "pg": "^3.4.0",
-    "wellknown": "^0.2.0",
-    "winston": "git://github.com/jczaplew/wellknown.git"
+    "wellknown": "git://github.com/jczaplew/wellknown.git",
+    "winston": "^0.8.1"
   },
   "devDependencies": {
     "mocha": "^1.21.4",
