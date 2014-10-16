@@ -383,7 +383,7 @@ api.route("/units")
 
         var shortSQL = "units.id AS id,units_sections.section_id as section_id, units_sections.col_id as col_id, col_area, units.strat_name, units.position_bottom, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick, min_thick, color, lith_type, count(distinct collection_no) pbdb";
               
-        var longSQL = "units.id AS id,units_sections.section_id as section_id, units_sections.col_id as col_id, col_area, units.strat_name, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick,min_thick, color, lith_class, lith_type, lith_short lith, environ_class, environ_type, environ, count(distinct collection_no) pbdb, FO_interval, FO_h, FO_age, b_age, LO_interval, LO_h, LO_age, t_age, position_bottom, notes"; 
+        var longSQL = "units.id AS id,units_sections.section_id as section_id, project_id, units_sections.col_id as col_id, col_area, units.strat_name, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick,min_thick, color, lith_class, lith_type, lith_short lith, environ_class, environ_type, environ, count(distinct collection_no) pbdb, FO_interval, FO_h, FO_age, b_age, LO_interval, LO_h, LO_age, t_age, position_bottom, notes"; 
 
         var sql = "SELECT " + ((req.query.response === "long") ? longSQL : shortSQL) + " FROM units \
               JOIN units_sections ON units_sections.unit_id=units.id \
@@ -659,25 +659,17 @@ api.route("/section_stats")
     if (Object.keys(req.query).length < 1) {
       return larkin.info(req, res, next);
     }
-    if (req.query.age_model === "continuous") {
+    if ("all" in req.query) {
       var sql = "\
-      SELECT project, units_sections.col_id col_id, units_sections.section_id section_id, count(distinct units.id) units, sum(max_thick) max_thick, sum(min_thick) min_thick, min(t1_age) t_age, max(t1_age) b_age \
+      SELECT project, units_sections.col_id col_id, units_sections.section_id section_id, count(distinct units.id) units, sum(max_thick) max_thick, sum(min_thick) min_thick, max(FO_age) FO_age, min(LO_age) LO_age, max(ub2.t1_age) b_age, min(ub1.t1_age) t_age \
       FROM units \
       JOIN units_sections ON units.id=unit_id \
       JOIN cols ON units_sections.col_id=cols.id \
       JOIN projects on project_id=projects.id \
-      JOIN unit_boundaries ON units_sections.unit_id=unit_boundaries.unit_id \
-      WHERE status_code='active' and units.id IN (SELECT distinct unit_id from unit_liths,liths where lith_id=liths.id and lith_class='sedimentary') and max_thick>0 and t1_age<=541 GROUP BY units_sections.section_id";
-    } else if ("all" in req.query) {
-      var sql = "\
-        SELECT project,units_sections.col_id, units_sections.section_id, count(distinct units.id) units, sum(max_thick) max_thick, sum(min_thick) min_thick, min(l.age_top) t_age, max(f.age_bottom) b_age \
-        FROM units \
-        JOIN units_sections ON units.id=unit_id \
-        JOIN cols ON units_sections.col_id=cols.id \
-        JOIN projects on project_id=projects.id \
-        JOIN intervals f ON f.id=FO \
-        JOIN intervals l on l.id=LO \
-        WHERE status_code='active' and units.id IN (SELECT distinct unit_id from unit_liths,liths where lith_id=liths.id and lith_class='sedimentary') and max_thick>0 and f.age_bottom<=541 GROUP BY units_sections.section_id";
+      JOIN lookup_unit_intervals ON units_sections.unit_id=lookup_unit_intervals.unit_id \
+      JOIN unit_boundaries ub1 ON units_sections.unit_id=ub1.unit_id \
+      JOIN unit_boundaries ub2 ON units_sections.unit_id=ub2.unit_id_2 \
+      WHERE status_code='active' and units.id IN (SELECT distinct unit_id from unit_liths,liths where lith_id=liths.id and lith_class='sedimentary') and FO_age<=541 GROUP BY units_sections.section_id;";
     } else {
       return larkin.error(req, res, next, "Invalid parameters");
     }
