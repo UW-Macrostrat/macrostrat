@@ -4,6 +4,7 @@ var express = require("express"),
     winston = require("winston"),
     async = require("async"),
     wellknown = require("wellknown"),
+    gp = require("geojson-precision"),
     larkin = require("../larkin"),
     dbgeo = require("dbgeo"),
     defs = require("./defs");
@@ -939,7 +940,7 @@ api.route("/mobile/point")
             "unit_id": results[0].unit_id,
             "unit_name": results[0].unit_name,
             "col_id": results[1].col_id,
-            "col_poly": (req.query.geo_format === "wkt") ? wellknown.stringify(wellknown(results[1].col_poly), 3) : wellknown(results[1].col_poly, 3)
+            "col_poly": (req.query.geo_format === "wkt") ? wellknown.stringify(gp(wellknown(results[1].col_poly), 3)) : gp(wellknown(results[1].col_poly), 3)
           };
           larkin.sendData([result], res, null, next);
         }
