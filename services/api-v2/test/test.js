@@ -933,7 +933,7 @@ describe('Routes', function() {
         });
     });
 
-    it("should accept an age model", function(done) {
+    /*it("should accept an age model", function(done) {
       request(host)
         .get("/api/section_stats?age_model=continuous")
         .expect(aSuccessfulRequest)
@@ -943,9 +943,9 @@ describe('Routes', function() {
           if (error) return done(error);
           done();
         });
-    });
+    });*/
 
-    it("should return al; section stats", function(done) {
+    it("should return all section stats", function(done) {
       request(host)
         .get("/api/section_stats?all")
         .expect(aSuccessfulRequest)
@@ -959,7 +959,7 @@ describe('Routes', function() {
 
     it("should output CSV", function(done) {
       request(host)
-        .get("/api/section_stats?age_model=continuous&format=csv")
+        .get("/api/section_stats?all&format=csv")
         .expect(aSuccessfulRequest)
         .expect(csv)
         .expect("Content-Type", "text/csv; charset=utf-8")
@@ -1097,6 +1097,32 @@ describe('Routes', function() {
     });
   });
 
+/* geologic_units/intersection */
+  describe("geologic_units/intersection", function() {
+    it("should return metadata", function(done) {
+      request(host)
+        .get("/api/geologic_units/intersection")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(metadata)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should accept a WKT LineString", function(done) {
+      request(host)
+        .get("/api/geologic_units/intersection?LINESTRING(-91.8896484375 43.26120612479979,-83.1005859375 43.068887774169625)")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+  });
 /* geologic_units/map */
   describe("geologic_units/map", function() {
     it('should return metadata', function(done) {

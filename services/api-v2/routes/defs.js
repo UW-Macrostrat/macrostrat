@@ -402,7 +402,7 @@
       "output_formats": ["json", "csv"],
       "examples": [
         "api/section_stats?all",
-        "api/section_stats?age_model=continuous"
+        "api/section_stats?all&format=csv"
       ],
       "fields": [
         "project",
@@ -470,6 +470,39 @@
         "color",
         "lith_type",
         "pbdb"
+      ]
+    }
+  };
+
+  defs["/geologic_units/intersection"] = {
+    "description": "What's under a line",
+    "visible": true,
+    "options": {
+      "parameters": {
+        "line": "A valid linestring in WKT format",
+        "type": "Return only from given sources - can be 'gmna' or 'gmus'"
+      },
+      "output_formats": ["json"],
+      "examples": [
+        "/api/geologic_units/intersection?LINESTRING(-91.8896484375 43.26120612479979,-83.1005859375 43.068887774169625)",
+        "/api/geologic_units/intersection?LINESTRING(-91.8896484375 43.26120612479979,-83.1005859375 43.068887774169625)&type=gmus"
+      ],
+      "fields": [
+        "id",
+        "unit_abbre",
+        "rocktype",
+        "lithology",
+        "min_age",
+        "max_age",
+        "state", 
+        "rocktype1", 
+        "rocktype2",
+        "rocktype3", 
+        "unit_name", 
+        "unit_age", 
+        "unitdesc", 
+        "strat_unit", 
+        "unit_com"
       ]
     }
   };

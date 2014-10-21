@@ -862,6 +862,70 @@ api.route("/geologic_units")
     }
   });
 
+api.route("/geologic_units/intersection")
+  .get(function(req, res, next) {
+    if (Object.keys(req.query).length < 1 || !req.query.line) {
+      larkin.info(req, res, next);
+    } else {
+      var types = (req.query.type) ? req.query.type.split(",") : ["gmna", "gmus"];
+      async.parallel({
+        gmna: function(callback) {
+          if (types.indexOf("gmna") > -1) {
+            larkin.queryPg("earthbase", "SELECT objectid AS id, unit_abbre, rocktype, lithology, min_age, max_age, ST_AsGeoJSON(ST_Intersection(geom_valid, ST_SetSRID($1::geometry, 4326))) AS geometry FROM gmna.geologic_units WHERE ST_Intersects(geom_valid, ST_SetSRID('LINESTRING(-91.8896484375 43.26120612479979, -83.1005859375 43.068887774169625)'::geometry, 4326)) is true", [req.query.line], function(error, result) {
+                if (error) {
+                  callback(error);
+                } else {
+                  dbgeo.parse({
+                    "data": result.rows,
+                    "outputFormat": "geojson",
+                    "callback": function(error, result) {
+                      if (error) {
+                        callback(error);
+                      } else {
+                        callback(null, gp(result, 4));
+                      }
+                    }
+                  });
+                }
+            });
+          } else {
+            callback(null);
+          }
+        },
+
+        gmus: function(callback) {
+          if (types.indexOf("gmus") > -1) {
+            larkin.queryPg("earthbase", "SELECT gid AS id, state, a.rocktype1, a.rocktype2, b.rocktype3, unit_name, b.unit_age, unitdesc, strat_unit, unit_com, ST_AsGeoJSON(ST_Intersection(the_geom, ST_SetSRID($1::geometry, 4326))) AS geometry FROM gmus.geologic_units a JOIN gmus.units b ON a.unit_link = b.unit_link WHERE ST_Intersects(the_geom, ST_SetSRID('LINESTRING(-91.8896484375 43.26120612479979, -83.1005859375 43.068887774169625)'::geometry, 4326)) is true;", [req.query.line], function(error, result) {
+                if (error) {
+                  callback(error);
+                } else {
+                  dbgeo.parse({
+                    "data": result.rows,
+                    "outputFormat": "geojson",
+                    "callback": function(error, result) {
+                      if (error) {
+                        callback(error);
+                      } else {
+                        callback(null, gp(result, 4));
+                      }
+                    }
+                  });
+                }
+            });
+          } else {
+            callback(null);
+          }
+        }
+      }, function(error, results) {
+        if (error) {
+          larkin.error(req, res, next, "Something went wrong");
+        } else {
+          larkin.sendData(results, res, "json", next);
+        }
+      });
+    }
+  })
+
 api.route("/geologic_units/map")
   .get(function(req, res, next) {
     if (Object.keys(req.query).length < 1) {
