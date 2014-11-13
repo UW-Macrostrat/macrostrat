@@ -954,12 +954,19 @@ api.route("/geologic_units/map")
       larkin.queryPg("earthbase", "SELECT a.gid, a.unit_age, a.rocktype1, a.rocktype2, b.cmin_age, ST_AsGeoJSON(a.the_geom) AS geometry from gmus.geologic_units a JOIN gmus.age b ON a.unit_link = b.unit_link WHERE b.cmin_age = $1", [req.query.interval_name], function(error, result) {
         dbgeo.parse({
           "data": result.rows,
-          "outputFormat": (api.acceptedFormats.geo[req.query.format]) ? req.query.format : "geojson",
+          "outputFormat": larkin.getOutputFormat(req.query.format),
           "callback": function(error, result) {
             if (error) {
               larkin.error(req, res, next, error);
             } else {
-              larkin.sendData(result, res, null, next);
+              if (req.query.format === "geojson" || larkin.getOutputFormat(req.query.format) === "geojson" || req.query.format === "geojson_bare") {
+                result = gp(result, 6);
+              }
+              if (req.query.format === "geojson_bare" || req.query.format === "topojson_bare") {
+                larkin.sendBare(result, res, next);
+              } else {
+                larkin.sendData(result, res, null, next);
+              }
             }
           }
         });
@@ -968,12 +975,19 @@ api.route("/geologic_units/map")
       larkin.queryPg("earthbase", "SELECT a.gid, a.rocktype, ST_AsGeoJSON(the_geom) AS geometry, b.interval_name from gmna.geologic_units a JOIN gmna.intervals_old b ON a.eb_interval_id = b.interval_id where b.interval_name = $1", [req.query.interval_name], function(error, result) {
         dbgeo.parse({
           "data": result.rows,
-          "outputFormat": (api.acceptedFormats.geo[req.query.format]) ? req.query.format : "geojson",
+          "outputFormat": larkin.getOutputFormat(req.query.format),
           "callback": function(error, result) {
             if (error) {
               larkin.error(req, res, next, error);
             } else {
-              larkin.sendData(result, res, null, next);
+              if (req.query.format === "geojson" || larkin.getOutputFormat(req.query.format) === "geojson" || req.query.format === "geojson_bare") {
+                result = gp(result, 6);
+              }
+              if (req.query.format === "geojson_bare" || req.query.format === "topojson_bare") {
+                larkin.sendBare(result, res, next);
+              } else {
+                larkin.sendData(result, res, null, next);
+              }
             }
           }
         });
