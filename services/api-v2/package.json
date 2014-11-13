@@ -31,7 +31,7 @@
     "dbgeo": "0.0.x",
     "express": "4.x.x",
     "express-csv": "git://github.com/jczaplew/express-csv.git",
-    "geojson-precision": "^0.2.1",
+    "geojson-precision": "^0.2.3",
     "mysql": "2.3.x",
     "pg": "^3.4.0",
     "wellknown": "^0.3.0",

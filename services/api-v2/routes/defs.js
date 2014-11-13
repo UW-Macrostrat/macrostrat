@@ -555,19 +555,20 @@
   };
 
   defs["/mobile/point_details"] = {
-    "description": "Get GMUS unit description and Macrostrat units for a given location",
+    "description": "Get GMUS unit description and Macrostrat units for a given location. A valid latitude and longitude or column ID and GMUS unit ID are required.",
     "visible": true,
     "options": {
       "parameters": {
         "lat": "A valid latitude",
         "lng": "A valid longitude",
         "col_id": "A valid column ID",
-        "unit_id": "A valid GMUS unit ID"
+        "unit_id": "A valid GMUS unit ID",
+        "geo_format": "Output geometry format - can be 'wkt' or 'geojson'; Defaults to 'geojson'"
       },
       "output_formats": ["json"],
       "examples": [
-        "api/mobile/point?lat=43&lng=-89",
-        "api/mobile/point?lat=43&lng=-89&geo_format=wkt"
+        "api/mobile/point_details?lat=43&lng=-89",
+        "api/mobile/point_details?col_id=187&unit_id=184506&geo_format=wkt"
       ],
       "fields": [
         "gid",
@@ -595,11 +596,19 @@
     }
   };
 
-  defs["/editing"] = {
+  defs["/editing/map"] = {
     "visible": false
   };
 
-  defs["/editing/update"] = {
+  defs["/editing/map/update"] = {
+    "visible": false
+  };
+
+  defs["/editing/units"] = {
+    "visible": false
+  };
+
+  defs["/editing/units/update"] = {
     "visible": false
   };
 
