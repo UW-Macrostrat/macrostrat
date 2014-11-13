@@ -81,6 +81,11 @@ var mysql = require("mysql"),
    };
 
 
+   larkin.sendBare = function(data, res, next) {
+    res.json(data);
+   };
+
+
   larkin.info = function(req, res, next) {
     this.defineRoute(req.route.path, function(definition) {
       res.json({
@@ -148,7 +153,19 @@ var mysql = require("mysql"),
       routeDefinition.options.fields = fields;
       callback(routeDefinition);
     }); 
-  }
+  };
+
+
+  larkin.getOutputFormat = function(requestedFormat) {
+    switch (requestedFormat) {
+      case "geojson_bare":
+        return "geojson";
+      case "topojson_bare":
+        return "topojson";
+      default:
+        return (requestedFormat === "geojson" || requestedFormat === "topojson") ? requestedFormat : "geojson";
+    }
+  };
 
   module.exports = larkin;
 

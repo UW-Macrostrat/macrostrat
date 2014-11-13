@@ -186,7 +186,7 @@ api.route("/columns")
           lith = req.query.lith_type;
           lith_field = 'lith_type';
         }
-        larkin.query("SELECT " + ((req.query.format && req.query.format === "geojson" || req.query.format === "topojson") ? "AsWKT(col_areas.col_area) AS wkt," : "") + " col_areas.col_id, round(cols.col_area, 1) AS area, count(units.id) units, GROUP_CONCAT(units.id SEPARATOR '|') AS unit_id, sum(max_thick) max_thick, sum(min_thick) min_thick, sum(LT.cpm) lith_max_thick, sum(LT.cpl) lith_min_thick,  LT2.lts lith_types \
+        larkin.query("SELECT " + ((req.query.format && req.query.format === "geojson" || req.query.format === "geojson_bare" || req.query.format === "topojson") ? "AsWKT(col_areas.col_area) AS wkt," : "") + " col_areas.col_id, round(cols.col_area, 1) AS area, count(units.id) units, GROUP_CONCAT(units.id SEPARATOR '|') AS unit_id, sum(max_thick) max_thick, sum(min_thick) min_thick, sum(LT.cpm) lith_max_thick, sum(LT.cpl) lith_min_thick,  LT2.lts lith_types \
           FROM col_areas \
           JOIN cols ON cols.id = col_areas.col_id \
           JOIN units_sections ON units_sections.col_id = cols.id \
@@ -207,18 +207,25 @@ api.route("/columns")
       if (error) {
         larkin.error(req, res, next, "An error was incurred");
       } else {
-        if (req.query.format && req.query.format === "geojson" || req.query.format === "topojson") {
+        if (req.query.format && req.query.format === "geojson" || req.query.format === "geojson_bare" || req.query.format === "topojson") {
           dbgeo.parse({
             "data": result,
             "geometryColumn": "wkt",
             "geometryType": "wkt",
-            "outputFormat": (api.acceptedFormats.geo[req.query.format]) ? req.query.format : "geojson",
+            "outputFormat": larkin.getOutputFormat(req.query.format),
             "callback": function(error, output) {
               if (error) {
                 larkin.error(req, res, next, "An error was incurred during conversion");
               } else {
                 output.properties = data;
-                larkin.sendData(output, res, null, next);
+                if (req.query.format === "geojson" || req.query.format === "geojson_bare") {
+                  output = gp(output, 4);
+                }
+                if (req.query.format === "geojson_bare" || req.query.format === "topojson_bare") {
+                  larkin.sendBare(output, res, next);
+                } else {
+                  larkin.sendData(output, res, null, next);
+                }
               }
             }
           });
@@ -469,14 +476,18 @@ api.route("/fossils")
         } else {
           dbgeo.parse({
             "data": results,
-            "outputFormat": (api.acceptedFormats.geo[req.query.format]) ? req.query.format : "geojson",
+            "outputFormat": larkin.getOutputFormat(req.query.format),
             "geometryColumn": "geometry",
             "geometryType": "wkt",
             "callback": function(error, result) {
               if (error) {
                 larkin.error(req, res, next, "Something went wrong");
               } else {
-                larkin.sendData(result, res, null, next);
+                if (req.query.format === "geojson_bare" || req.query.format === "topojson_bare") {
+                  larkin.sendBare(result, res, next);
+                } else {
+                  larkin.sendData(result, res, null, next);
+                }
               }
             }
           });
@@ -707,7 +718,7 @@ api.route("/paleogeography")
           }
         },
         function(year, callback) {
-          larkin.queryPg("alice", "SELECT plateid, ST_AsGeoJSON(geom) AS geometry FROM merge.reconstructed_" + year + "_merged", [], function(error, result) {
+          larkin.queryPg("alice", "SELECT plateid::integer, ST_AsGeoJSON(geom) AS geometry FROM merge.reconstructed_" + year + "_merged", [], function(error, result) {
             callback(null, result.rows);
           });
         }
@@ -717,12 +728,16 @@ api.route("/paleogeography")
         } else {
           dbgeo.parse({
             "data": data,
-            "outputFormat": (api.acceptedFormats.geo[req.query.format]) ? req.query.format : "geojson",
+            "outputFormat": larkin.getOutputFormat(req.query.format),
             "callback": function(error, result) {
               if (error) {
                 larkin.error(req, res, next, "Something went wrong");
               } else {
-                larkin.sendData(result, res, null, next);
+                if (req.query.format && req.query.format === "geojson_bare" || req.query.format === "topojson_bare") {
+                  larkin.sendBare(result, res, next);
+                } else {
+                  larkin.sendData(result, res, null, next);
+                }
               }
             }
           });

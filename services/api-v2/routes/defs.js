@@ -61,7 +61,7 @@
         "all": "Show all results",
         "format": "string, Desired output format"
       },
-      "output_formats": ["json", "csv", "geojson", "topojson"],
+      "output_formats": ["json", "csv", "geojson", "geojson_bare", "topojson", "topojson_bare"],
       "examples": [
         "/api/columns?interval_name=Permian",
         "/api/columns?age=271",
@@ -221,7 +221,7 @@
         "age_bottom": "A valid age - must be used with age_top and be greater than age_top",
         "format": "Desired output format"
       },
-      "output_formats": ["geojson", "topojson"],
+      "output_formats": ["geojson", "geojson_bare", "topojson", "topojson_bare"],
       "examples": [
         "/api/fossils?interval_name=Permian",
         "/api/fossils?age=271",
@@ -426,7 +426,7 @@
         "interval_name": "A named time interval",
         "format": "Desired output format"
       },
-      "output_formats": ["geojson", "topojson"],
+      "output_formats": ["geojson", "geojson_bare", "topojson", "topojson_bare"],
       "examples": [
         "api/paleogeography?interval_name=Permian",
         "api/paleogeography?age=271&format=topojson"
@@ -650,7 +650,8 @@
     "notes": "text, notes releavnt to containing element",
     "project": "text, name of project",
     "geom": "geometry",
-    "area": "area in square kilometers"
+    "area": "area in square kilometers",
+    "plateid": "integer, unique GPlates ID"
   };
 
   module.exports = defs;
