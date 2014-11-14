@@ -1001,10 +1001,19 @@ api.route("/geologic_units/map")
 api.route("/mobile/point")
   .get(function(req, res, next) {
     if (req.query.lat && req.query.lng) {
-      async.parallel([
-        // Query GMUS for unit name
-        function(callback) {
-          larkin.queryPg("earthbase", "SELECT gid AS unit_id, unit_name FROM gmus.geologic_units a JOIN gmus.units b ON a.unit_link = b.unit_link WHERE ST_Contains(the_geom, ST_GeomFromText($1, 4326))", ["POINT(" + req.query.lng + " " + req.query.lat + ")"], function(error, result) {
+      async.parallel({
+        gmus: function(callback) {
+          larkin.queryPg("earthbase", "SELECT gid, state, a.rocktype1, a.rocktype2, b.rocktype3, unit_name, b.unit_age, unitdesc, strat_unit, unit_com FROM gmus.geologic_units a JOIN gmus.units b ON a.unit_link = b.unit_link WHERE ST_Contains(the_geom, ST_GeomFromText($1, 4326))", ["POINT(" + req.query.lng + " " + req.query.lat + ")"], function(error, result) {
+            if (error) {
+              callback(error);
+            } else {
+              callback(null, result.rows[0]);
+            }
+          });
+        },
+
+        gmna: function(callback) {
+          larkin.queryPg("earthbase", "SELECT objectid AS id, unit_abbre, rocktype, lithology, interval_name, map_unit_n FROM gmna.gmna_for_maps WHERE ST_Contains(the_geom, ST_GeomFromText($1, 4326))", ["POINT(" + req.query.lng + " " + req.query.lat + ")"], function(error, result) {
             if (error) {
               callback(error);
             } else {
@@ -1014,32 +1023,30 @@ api.route("/mobile/point")
         },
 
         // Query Macrostrat for polygon
-        function(callback) {
-          larkin.query("SELECT col_id, AsWKT(col_areas.col_area) AS col_poly FROM col_areas JOIN cols on col_id = cols.id WHERE ST_CONTAINS(col_areas.col_area, ST_GEOMFROMTEXT('POINT(? ?)')) and status_code='active'", [parseFloat(req.query.lng), parseFloat(req.query.lat)], function(error, result) {
+        column: function(callback) {
+          larkin.query("SELECT col_id FROM col_areas JOIN cols on col_id = cols.id WHERE ST_CONTAINS(col_areas.col_area, ST_GEOMFROMTEXT('POINT(? ?)')) and status_code='active'", [parseFloat(req.query.lng), parseFloat(req.query.lat)], function(error, result) {
               if (error) {
                 callback(error);
               } else {
-                if (result.length < 1) {
-                  callback("No columns found");
-                } else if (result.length > 1) {
-                  callback("More than 1 column found");
-                } else {
-                  callback(null, result[0]);
-                }
+                callback(null, result[0]);
               }
             });
         }
-      ], function(error, results) {
+      }, function(error, result) {
         if (error) {
           larkin.error(req, res, next, error);
         } else {
-          var result = {
-            "unit_id": results[0].unit_id,
-            "unit_name": results[0].unit_name,
-            "col_id": results[1].col_id,
-            "col_poly": (req.query.geo_format === "wkt") ? wellknown.stringify(gp(wellknown(results[1].col_poly), 3)) : gp(wellknown(results[1].col_poly), 3)
+          var response = {
+            "uid": (result.gmus && result.gmus.gid) ? result.gmus.gid : (result.gmna && result.gmna.id) ? result.gmna.id : "",
+            "rocktype": (result.gmus && result.gmus.rocktype1) ? [result.gmus.rocktype1, result.gmus.rocktype2, result.gmus.rocktype3].filter(function(d) { if (d) return d }) : (result.gmna && (result.gmna.rocktype || result.gmna.lithology)) ? [result.gmna.rocktype, result.gmna.lithology].filter(function(d) { if (d) return d }) : [],
+            "age": (result.gmus && result.gmus.unit_age) ? result.gmus.unit_age : (result.gmna && result.gmna.interval_name) ? result.gmna.interval_name : "",
+            "name": (result.gmus && result.gmus.unit_name) ? result.gmus.unit_name : (result.gmna && result.gmna.rocktype) ? result.gmna.rocktype + ((result.gmna.lithology) ? ", " + result.gmna.lithology : "") : "",
+            "desc": (result.gmus && result.gmus.unitdesc) ? result.gmus.unitdesc : "",
+            "comm": (result.gmus && result.gmus.unit_com) ? result.gmus.unit_com : (result.gmna && result.gmna.map_unit_n) ? result.gmna.map_unit_n : "",
+            "strat_unit": (result.gmus && result.gmus.strat_unit) ? result.gmus.strat_unit : "",
+            "col_id": (result.column && result.column.col_id) ? result.column.col_id : ""
           };
-          larkin.sendData([result], res, null, next);
+          larkin.sendData(response, res, null, next);
         }
       });
         
