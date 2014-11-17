@@ -1233,7 +1233,7 @@ api.route("/mobile/fossil_collections")
         if (error) {
           larkin.error(req, res, next, error);
         } else {
-          larkin.sendData([result], res, "json", next);
+          larkin.sendData(result, res, "json", next);
         }
       });
     } else {
