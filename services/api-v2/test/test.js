@@ -1197,22 +1197,6 @@ describe('Routes', function() {
         });
     });
 
-    it("should accept a geo_format parameter and respect it", function(done) {
-      request(host)
-        .get("/api/mobile/point?lat=43&lng=-89&geo_format=wkt")
-        .expect(aSuccessfulRequest)
-        .expect(json)
-        .expect(atLeastOneResult)
-        .expect(function(res) {
-          if (res.body.success.data[0].col_poly.substr(0, 7) !== "POLYGON") {
-            throw new Error("WKT not returned when requested");
-          }
-        })
-        .end(function(error, res) {
-          if (error) return done(error);
-          done();
-        });
-    });
   });
 
 /* mobile/point_details */

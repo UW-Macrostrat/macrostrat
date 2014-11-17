@@ -7,7 +7,9 @@ var express = require("express"),
     gp = require("geojson-precision"),
     larkin = require("../larkin"),
     dbgeo = require("dbgeo"),
-    defs = require("./defs");
+    defs = require("./defs"),
+    nearest = require("turf-nearest"),
+    point = require("turf-point");
 
 var api = express.Router();
 
@@ -1078,8 +1080,31 @@ api.route("/mobile/point_details")
                 if (error) {
                   callback(error);
                 } else {
+                  /* If a column isn't immediately found, buffer the point by a degree, get all polygons that 
+                     intersect that buffer, and then find the closest one */
                   if (result.length < 1) {
-                    callbackB([]);
+                    larkin.query("SELECT col_id AS id, col_name, AsWKT(col_areas.col_area) AS col_poly FROM col_areas JOIN cols on col_id=cols.id WHERE ST_Intersects(col_areas.col_area, ST_Buffer(ST_GEOMFROMTEXT('POINT(? ?)'), 1)) and status_code='active'", [parseFloat(req.query.lng), parseFloat(req.query.lat)], function(error, result) {
+                      // If no columns are found within 1 degree, return an empty result
+                      if (result.length < 1) {
+                        callbackB([]);
+                      } else {
+                        dbgeo.parse({
+                          "data": result,
+                          "geometryColumn": "col_poly",
+                          "geometryType": "wkt",
+                          "callback": function(error, geojson) {
+                            if (error) {
+                              callback(error);
+                            } else {
+                              var closest = nearest(point(parseFloat(req.query.lng), parseFloat(req.query.lat), {"name": "inputPoint"}), geojson);
+                              callbackB(null, {"id": closest.properties.id, "col_name": closest.properties.col_name, "col_poly": wellknown.stringify(closest.geometry)});
+                            }
+                          }
+                        });
+                      }
+                      
+                    });
+                    
                   } else {
                     callbackB(null, result[0]);
                   }
