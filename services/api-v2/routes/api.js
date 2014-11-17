@@ -1079,9 +1079,7 @@ api.route("/mobile/point_details")
                   callback(error);
                 } else {
                   if (result.length < 1) {
-                    callbackB("No columns found");
-                  } else if (result.length > 1) {
-                    callbackB("More than 1 column found");
+                    callbackB([]);
                   } else {
                     callbackB(null, result[0]);
                   }
@@ -1113,7 +1111,11 @@ api.route("/mobile/point_details")
           // after the two queries are executed, send the result
           function(err, column, units) {
             if (err) {
-              callback(err);
+              if (err.length === 0) {
+                callback(null, [])
+              } else {
+                callback(err);
+              }
             } else {
               var col = [{
                 "id": column.id,
@@ -1127,6 +1129,7 @@ api.route("/mobile/point_details")
         }
       }, function(error, results) {
         if (error) {
+          console.log(error);
           larkin.error(req, res, next, "Something went wrong");
         } else {
           larkin.sendData([results], res, "json", next);
