@@ -1089,7 +1089,8 @@ api.route("/mobile/point_details")
 
             function(column, callbackB) {
                   
-              var sql = "SELECT units.id AS id, units.strat_name, period, max_thick, min_thick, color, count(distinct collection_no) pbdb, lith_short AS lith FROM units \
+              var sql = "SELECT units.id AS id, units.strat_name, period, max_thick, min_thick, colors.unit_class, count(distinct collection_no) pbdb, lith_short AS lith FROM units \
+                  JOIN colors ON colors.color = units.color \
                   JOIN units_sections ON units_sections.unit_id = units.id \
                   JOIN lookup_unit_liths ON lookup_unit_liths.unit_id=units.id \
                   JOIN lookup_unit_intervals ON units.id=lookup_unit_intervals.unit_id \
