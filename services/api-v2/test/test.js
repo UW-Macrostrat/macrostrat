@@ -1269,7 +1269,7 @@ describe('Routes', function() {
         .expect(json)
         .expect(atLeastOneResult)
         .expect(function(res) {
-          if (!res.body.success.data[0].pbdb_collections || res.body.success.data[0].pbdb_collections.length < 2) {
+          if (res.body.success.data.length < 2) {
             throw new Error("PBDB collections not returned");
           }
         })
