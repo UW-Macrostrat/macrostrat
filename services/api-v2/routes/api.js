@@ -1229,13 +1229,11 @@ api.route("/mobile/point_details")
 api.route("/mobile/fossil_collections")
   .get(function(req, res, next) {
     if (req.query.unit_id) {
-      larkin.query("SELECT DISTINCT collection_no AS cltn_no FROM pbdb_matches WHERE unit_id = ? AND occs > 0", [req.query.unit_id], function(error, result) {
+      larkin.query("SELECT DISTINCT collection_no AS id, collection_name AS name FROM pbdb_matches WHERE unit_id = ? AND occs > 0", [req.query.unit_id], function(error, result) {
         if (error) {
           larkin.error(req, res, next, error);
         } else {
-          larkin.sendData([{
-            "pbdb_collections": result.map(function(n) { return n.cltn_no; })
-          }], res, "json", next);
+          larkin.sendData([result], res, "json", next);
         }
       });
     } else {
