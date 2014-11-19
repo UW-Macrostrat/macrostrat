@@ -1030,7 +1030,31 @@ api.route("/mobile/point")
               if (error) {
                 callback(error);
               } else {
-                callback(null, result[0]);
+                if (result.length === 1) {
+                  callback(null, result[0]);
+                } else {
+                  larkin.query("SELECT col_id AS id, AsWKT(col_areas.col_area) AS col_poly FROM col_areas JOIN cols on col_id=cols.id WHERE ST_Intersects(col_areas.col_area, ST_Buffer(ST_GEOMFROMTEXT('POINT(? ?)'), 1)) and status_code='active'", [parseFloat(req.query.lng), parseFloat(req.query.lat)], function(error, result) {
+                    // If no columns are found within 1 degree, return an empty result
+                    if (result.length < 1) {
+                      callback(null, {});
+                    } else {
+                      dbgeo.parse({
+                        "data": result,
+                        "geometryColumn": "col_poly",
+                        "geometryType": "wkt",
+                        "callback": function(error, geojson) {
+                          if (error) {
+                            callback(error);
+                          } else {
+                            var nearest = nearestFeature(point(parseFloat(req.query.lng), parseFloat(req.query.lat)), geojson);
+
+                            callback(null, { "col_id": nearest.properties.id });
+                          }
+                        }
+                      });
+                    }
+                  });
+                }
               }
             });
         }
@@ -1105,7 +1129,6 @@ api.route("/mobile/point_details")
                           }
                         });
                       }
-                      
                     });
                     
                   } else {
