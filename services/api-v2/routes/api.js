@@ -8,7 +8,7 @@ var express = require("express"),
     larkin = require("../larkin"),
     dbgeo = require("dbgeo"),
     defs = require("./defs"),
-    nearest = require("turf-nearest"),
+    nearestFeature = require("nearest-feature"),
     point = require("turf-point");
 
 var api = express.Router();
@@ -1096,8 +1096,11 @@ api.route("/mobile/point_details")
                             if (error) {
                               callback(error);
                             } else {
-                              var closest = nearest(point(parseFloat(req.query.lng), parseFloat(req.query.lat), {"name": "inputPoint"}), geojson);
-                              callbackB(null, {"id": closest.properties.id, "col_name": closest.properties.col_name, "col_poly": wellknown.stringify(closest.geometry)});
+                              var nearest = nearestFeature(point(parseFloat(req.query.lng), parseFloat(req.query.lat)), geojson);
+
+                              callbackB(null, {"id": nearest.properties.id,
+                               "col_name": nearest.properties.col_name,
+                               "col_poly": wellknown.stringify(nearest.geometry)});
                             }
                           }
                         });
@@ -1106,6 +1109,7 @@ api.route("/mobile/point_details")
                     });
                     
                   } else {
+
                     callbackB(null, result[0]);
                   }
                 }
