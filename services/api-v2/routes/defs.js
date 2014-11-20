@@ -10,7 +10,7 @@
     "options": {
       "parameters": {
         "id": "integer, get a column by unique identifier",
-        "lat": "nuumber, decimal degree latitude, WGS84",
+        "lat": "number, decimal degree latitude, WGS84",
         "lng": "number, decimal degree longitude, WGS84",
         "geom": "boolean, whether associated geometry is returned",
         "response": "Can be 'short' or 'long'"
@@ -58,6 +58,9 @@
         "age": "number, search age in Myr before present",
         "age_top": "number, youngest limit of search, in Myr before present - must be used with age_bottom",
         "age_bottom": "number, oldest limit of search, in Myr before present -  must be used with age_top",
+        "lith": "string, return only columns with units containing specified lithology, lith defined in /lith_definitions",
+        "lith_class": "string, return only columsn with units containing specified lithology, lith_class defined in /lith_definitions",
+        "lith_type": "string, return only columsn with units containing specified lithology, lith_type defined in /lith_definitions",
         "all": "Show all results",
         "format": "string, Desired output format"
       },
@@ -68,15 +71,15 @@
         "/api/columns?age_top=200&age_bottom=250"
       ],
       "fields": [
-        "col_id",
-        "area",
-        "units",
-        "unit_id",
-        "max_thick",
-        "min_thick",
-        "lith_max_thick",
-        "lith_min_thick",
-        "lith_types"
+        "col_id": "unique identifier for column",
+        "area": "area of column in square kilometers",
+        "units": "number of units in column",
+        "unit_id": "unique identifier of units in column",
+        "max_thick": "sum of maximum unit thickness (m) in column",
+        "min_thick": "sum of minimum unit thickness (m) in column",
+        "lith_max_thick": "sum of maximum unit thickness (m) in column for specified lithology",
+        "lith_min_thick": "sum of minimum unit thickness (m) in column for specified lithology",
+        "lith_types": "summary of lithology types present in column"
       ]
     }
   };
