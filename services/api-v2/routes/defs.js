@@ -484,8 +484,8 @@
       },
       "output_formats": ["json"],
       "examples": [
-        "/api/geologic_units/intersection?LINESTRING(-91.8896484375 43.26120612479979,-83.1005859375 43.068887774169625)",
-        "/api/geologic_units/intersection?LINESTRING(-91.8896484375 43.26120612479979,-83.1005859375 43.068887774169625)&type=gmus"
+        "/api/geologic_units/intersection?line=LINESTRING(-91.8896484375 43.26120612479979,-83.1005859375 43.068887774169625)",
+        "/api/geologic_units/intersection?line=LINESTRING(-91.8896484375 43.26120612479979,-83.1005859375 43.068887774169625)&type=gmus"
       ],
       "fields": [
         "id",

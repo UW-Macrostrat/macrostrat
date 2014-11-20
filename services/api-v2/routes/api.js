@@ -938,10 +938,7 @@ api.route("/geologic_units/intersection")
         if (error) {
           larkin.error(req, res, next, "Something went wrong");
         } else {
-          dbgeo.merge([{"gmna": results.gmna}, {"gmus":results.gmus}], function(result) {
-            res.json(result);
-          });
-          //larkin.sendData(results.gmna, res, "json", next);
+          larkin.sendData(results, res, "json", next);
         }
       });
     }
@@ -1380,6 +1377,7 @@ api.route("/editing/units/update")
       }
     }
   });
+
 
 /* Handle errors and unknown pages */
 api.route("*")
