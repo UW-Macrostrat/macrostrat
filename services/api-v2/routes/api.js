@@ -1378,6 +1378,27 @@ api.route("/editing/units/update")
     }
   });
 
+api.route("/postgres2mysql")
+  .get(function(req, res, next) {
+    larkin.queryPg("earthbase", "SELECT id, ST_AsText(ST_Force2D(the_geom_voronoi)) AS geom FROM macrostrat.cols WHERE the_geom_voronoi is not null", [], function(error, result) {
+      var sql = "";
+      async.each(result.rows, function(column, callback) {
+        sql += "UPDATE col_areas SET col_area = GeomFromText('" + column.geom + "') WHERE col_id = " + column.id + "; "
+        callback(null);
+      }, function(error) {
+        larkin.query(sql, function(error, result) {
+          if (error) {
+            res.json({"Error": error, "sql": sql})
+          } else {
+            res.json("Done");
+          }
+        });
+      });
+    });
+   // larkin.query("SELECT col_id, AsText(col_area) AS geom FROM col_areas", function(error, result) {
+   //   res.json(result);
+   // });
+  });
 
 /* Handle errors and unknown pages */
 api.route("*")
