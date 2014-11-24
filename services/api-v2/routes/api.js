@@ -188,7 +188,7 @@ api.route("/columns")
           lith = req.query.lith_type;
           lith_field = 'lith_type';
         }
-        larkin.query("SELECT " + ((req.query.format && req.query.format === "geojson" || req.query.format === "geojson_bare" || req.query.format === "topojson") ? "AsWKT(col_areas.col_area) AS wkt," : "") + " col_areas.col_id, round(cols.col_area, 1) AS area, count(units.id) units, GROUP_CONCAT(units.id SEPARATOR '|') AS unit_id, sum(max_thick) max_thick, sum(min_thick) min_thick, sum(LT.cpm) lith_max_thick, sum(LT.cpl) lith_min_thick,  LT2.lts lith_types \
+        larkin.query("SELECT " + ((req.query.format && req.query.format === "geojson" || req.query.format === "geojson_bare" || req.query.format === "topojson") ? "AsWKT(col_areas.col_area) AS wkt," : "") + " col_areas.col_id, round(cols.col_area, 1) AS area, GROUP_CONCAT(units.id SEPARATOR '|') AS units, sum(max_thick) max_thick, sum(min_thick) min_thick, sum(LT.cpm) lith_max_thick, sum(LT.cpl) lith_min_thick,  LT2.lts lith_types \
           FROM col_areas \
           JOIN cols ON cols.id = col_areas.col_id \
           JOIN units_sections ON units_sections.col_id = cols.id \
@@ -201,6 +201,13 @@ api.route("/columns")
             if (error) {
               callback(error);
             } else {
+              result.forEach(function(d) {
+                d.units = d.units.split("|");
+                d.units = d.units.map(function(j) {
+                  return parseInt(j);
+                });
+                d.lith_types = d.lith_types.split("|");
+              });
               callback(null, data, result);
             }
         });
@@ -1129,7 +1136,6 @@ api.route("/mobile/point_details")
                     });
                     
                   } else {
-
                     callbackB(null, result[0]);
                   }
                 }
@@ -1162,7 +1168,7 @@ api.route("/mobile/point_details")
           function(err, column, units) {
             if (err) {
               if (err.length === 0) {
-                callback(null, [])
+                callback(null, {})
               } else {
                 callback(err);
               }
