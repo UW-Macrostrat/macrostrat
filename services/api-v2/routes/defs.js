@@ -71,15 +71,15 @@
         "/api/columns?age_top=200&age_bottom=250"
       ],
       "fields": [
-        "col_id": "unique identifier for column",
-        "area": "area of column in square kilometers",
-        "units": "number of units in column",
-        "unit_id": "unique identifier of units in column",
-        "max_thick": "sum of maximum unit thickness (m) in column",
-        "min_thick": "sum of minimum unit thickness (m) in column",
-        "lith_max_thick": "sum of maximum unit thickness (m) in column for specified lithology",
-        "lith_min_thick": "sum of minimum unit thickness (m) in column for specified lithology",
-        "lith_types": "summary of lithology types present in column"
+        "col_id",
+        "area",
+        "units",
+        "unit_id",
+        "max_thick",
+        "min_thick",
+        "lith_max_thick",
+        "lith_min_thick",
+        "lith_type"
       ]
     }
   };
@@ -645,6 +645,8 @@
     "lith": "text, specific lithology",
     "lith_type": "text, general lithology type",
     "lith_class": "text, general lithology class",
+    "lith_max_thick": "number, thickness of specified lithology, based on proportion of unit(s)",
+    "lith_min_thick": "number, thickness of specified lithology, based on proportion of unit(s)",
     "environ": "text, specific environment",
     "environ_type": "general environment type",
     "environ_class": "text, general lithology class",
