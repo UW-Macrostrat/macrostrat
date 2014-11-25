@@ -197,8 +197,8 @@ api.route("/columns")
           JOIN units_sections ON units_sections.col_id = cols.id \
           JOIN units ON unit_id = units.id \
           JOIN lookup_unit_intervals ON lookup_unit_intervals.unit_id = units_sections.unit_id \
-          JOIN (SELECT unit_id, round(sum(comp_prop*max_thick), 1) cpm, round(sum(comp_prop*min_thick), 1) cpl FROM unit_liths JOIN liths on lith_id=liths.id JOIN units on unit_id=units.id WHERE ? like ? GROUP BY unit_id) LT ON LT.unit_id=units.id \
-          JOIN (SELECT col_id, GROUP_CONCAT(distinct lith_type SEPARATOR '|') lts from liths JOIN unit_liths on lith_id=liths.id JOIN units_sections ON unit_liths.unit_id=units_sections.unit_id JOIN lookup_unit_intervals ON lookup_unit_intervals.unit_id=units_sections.unit_id WHERE ? like ? AND FO_age > ? AND LO_age < ? GROUP BY col_id) LT2 on LT2.col_id=col_areas.col_id \
+          JOIN (SELECT unit_id, round(sum(comp_prop*max_thick), 1) cpm, round(sum(comp_prop*min_thick), 1) cpl FROM unit_liths JOIN liths on lith_id=liths.id JOIN units on unit_id=units.id WHERE ?? like ? GROUP BY unit_id) LT ON LT.unit_id=units.id \
+          JOIN (SELECT col_id, GROUP_CONCAT(distinct lith_type SEPARATOR '|') lts from liths JOIN unit_liths on lith_id=liths.id JOIN units_sections ON unit_liths.unit_id=units_sections.unit_id JOIN lookup_unit_intervals ON lookup_unit_intervals.unit_id=units_sections.unit_id WHERE ?? like ? AND FO_age > ? AND LO_age < ? GROUP BY col_id) LT2 on LT2.col_id=col_areas.col_id \
           WHERE FO_age > ? AND LO_age < ? AND status_code = 'active' \
           GROUP BY col_areas.col_id", [lith_field, lith, lith_field, lith, data.age_top, data.age_bottom, data.age_top, data.age_bottom], function(error, result) {
             if (error) {
