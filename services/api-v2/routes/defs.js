@@ -10,7 +10,7 @@
     "options": {
       "parameters": {
         "id": "integer, get a column by unique identifier",
-        "lat": "nuumber, decimal degree latitude, WGS84",
+        "lat": "number, decimal degree latitude, WGS84",
         "lng": "number, decimal degree longitude, WGS84",
         "geom": "boolean, whether associated geometry is returned",
         "response": "Can be 'short' or 'long'"
@@ -58,6 +58,9 @@
         "age": "number, search age in Myr before present",
         "age_top": "number, youngest limit of search, in Myr before present - must be used with age_bottom",
         "age_bottom": "number, oldest limit of search, in Myr before present -  must be used with age_top",
+        "lith": "string, return only columns with units containing specified lithology, lith defined in /lith_definitions",
+        "lith_class": "string, return only columsn with units containing specified lithology, lith_class defined in /lith_definitions",
+        "lith_type": "string, return only columsn with units containing specified lithology, lith_type defined in /lith_definitions",
         "all": "Show all results",
         "format": "string, Desired output format"
       },
@@ -76,7 +79,7 @@
         "min_thick",
         "lith_max_thick",
         "lith_min_thick",
-        "lith_types"
+        "lith_type"
       ]
     }
   };
@@ -642,6 +645,8 @@
     "lith": "text, specific lithology",
     "lith_type": "text, general lithology type",
     "lith_class": "text, general lithology class",
+    "lith_max_thick": "number, thickness of specified lithology, based on proportion of unit(s)",
+    "lith_min_thick": "number, thickness of specified lithology, based on proportion of unit(s)",
     "environ": "text, specific environment",
     "environ_type": "general environment type",
     "environ_class": "text, general lithology class",
