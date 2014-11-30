@@ -263,7 +263,7 @@ api.route("/sections")
       where = "WHERE s.col_id = ?"
       params.push(req.query.col_id);
     } else {
-      larkin.error(req, res, next, "An invalid parameter was passed");
+      return larkin.error(req, res, next, "An invalid parameter was passed");
     }
     larkin.query("SELECT s.id, s.col_id, ints.interval_name AS bottom, ints2.interval_name AS top, count(u.id) AS units, COALESCE(r.fossils,0) AS fossils \
      FROM sections s \
