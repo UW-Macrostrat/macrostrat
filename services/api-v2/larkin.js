@@ -13,6 +13,13 @@ var mysql = require("mysql"),
     // Non-blocking FTW
     this.pool = mysql.createPool(credentials.mysql);
 
+    // Verify a connection has been made
+    this.pool.getConnection(function(error, connection) {
+      if (error) {
+        throw new Error("Unable to connect to MySQL. Please check your credentials");
+      };
+    });
+
     this.pool.on("connection", function(connection) {
       // We could in theory take note of each query for analytics here...
       // Or set a session, etc...
@@ -81,7 +88,7 @@ var mysql = require("mysql"),
    };
 
 
-   larkin.sendBare = function(data, res, next) {
+  larkin.sendBare = function(data, res, next) {
     res.json(data);
    };
 

@@ -1,5 +1,5 @@
-var express = require('express'),
-    routes = require('./routes/api'),
+var express = require("express"),
+    routes = require("./routes/api"),
     app = express(),
     larkin = require("./larkin"),
     bodyParser = require("body-parser");
@@ -14,13 +14,13 @@ app.use(bodyParser.urlencoded({ extended: false }))
 app.use(bodyParser.json())
 
 // parse application/vnd.api+json as json
-app.use(bodyParser.json({ type: 'application/vnd.api+json' }))
+app.use(bodyParser.json({ type: "application/vnd.api+json" }))
 
 // Load and prefix all routes with /api
-app.use('/api', routes);
+app.use("/api", routes);
 
 if (process.env.NODE_ENV !== "production") {
-  app.set('json spaces', 2);
+  app.set("json spaces", 2);
 }
 
 var port = 5000;
