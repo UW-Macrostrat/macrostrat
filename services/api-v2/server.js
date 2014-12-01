@@ -1,11 +1,7 @@
 var express = require("express"),
-    v1 = require("./v1/index"),
-    larkinV1 = require("./v1/larkin"),
     bodyParser = require("body-parser"),
+    v1 = require("./v1"),
     app = express();
-
-// Connect to the database
-larkinV1.connectMySQL();
 
 // parse application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({ extended: false }))
@@ -28,5 +24,5 @@ if (process.env.NODE_ENV !== "production") {
 
 var port = 5000;
 app.listen(port, function() {
-  larkinV1.log("info", "Listening on port " + port);
+  console.log("Listening on port " + port);
 });
