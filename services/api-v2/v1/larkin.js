@@ -1,10 +1,10 @@
 var mysql = require("mysql"),
     pg = require("pg"),
     async = require("async"),
-    winston = require("winston"),
-    credentials = require("./routes/credentials"),
+    credentials = require("./credentials"),
     csv = require("express-csv"),
-    defs = require("./routes/defs");
+    api = require("./api"),
+    defs = require("./defs");
 
 (function() {
   var larkin = {};
@@ -31,7 +31,7 @@ var mysql = require("mysql"),
     pg.connect("postgres://" + credentials.pg.user + "@" + credentials.pg.host + "/" + db, function(err, client, done) {
       if (err) {
         this.log("error", "error connecting - " + err);
-        callback(error);
+        callback(err);
       } else {
         client.query(sql, params, function(err, result) {
           done();
@@ -81,7 +81,8 @@ var mysql = require("mysql"),
     } else {
       res.json({
         "success": {
-        "data": data
+          "v": api.version,
+          "data": data
         }
       });
     }
@@ -118,6 +119,7 @@ var mysql = require("mysql"),
           .status((code) ? code : 200)
           .json({
             "error": {
+              "v": api.version,
               "message": responseMessage,
               "about": definition
             }
@@ -128,7 +130,7 @@ var mysql = require("mysql"),
   };
 
   larkin.log = function(type, message) {
-    winston.log(type, message);
+    console.log(type, message);
   };
 
   // Will return all field definitions
@@ -150,6 +152,7 @@ var mysql = require("mysql"),
   larkin.defineRoute = function(route, callback) {
     this.defineFields(route, function(fields) {
       var routeDefinition = {
+        "v": api.version,
         "description": defs[route].description,
         "options": {
           "parameters": defs[route].options.parameters,

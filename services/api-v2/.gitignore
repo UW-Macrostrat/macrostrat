@@ -9,8 +9,7 @@ lib-cov
 npm-debug.log
 node_modules
 
-routes/credentials.js
-logs/larkin.log
+v1/credentials.js
 
 .DS_Store
 .AppleDouble
