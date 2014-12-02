@@ -19,6 +19,9 @@ api.route("/sections")
 api.route("/unit")
   .get(require("./unit"));
 
+api.route("/unit_contacts")
+  .get(require("./unit_contacts"));
+
 api.route("/units")
   .get(require("./units"));
 

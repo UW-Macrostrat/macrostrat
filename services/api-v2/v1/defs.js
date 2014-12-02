@@ -213,6 +213,29 @@
     }
   };
 
+  defs["/unit_contacts"] = {
+    "description": "Returns unit contact relationship descriptions",
+    "visible": true,
+    "options": {
+      "parameters": {
+        "all": "return all contacts",
+        "section_id": "number, return contacts only for specified section_id"
+      },
+      "output_formats": ["json","csv"],
+      "examples": [
+        "/api/unit_contacts?all",
+        "api/unit_contacts?section_id=22"
+      ],
+      "fields": [
+        "unit_id",
+        "contact",
+        "with_unit"
+      ]
+    }
+
+
+  }
+
   defs["/fossils"] = {
     "description": "Returns all fossils given an interval name or age range",
     "visible": true,
@@ -675,7 +698,9 @@
     "project": "text, name of project",
     "geom": "geometry",
     "area": "area in square kilometers",
-    "plateid": "integer, unique GPlates ID"
+    "plateid": "integer, unique GPlates ID",
+    "with_unit": "unit in contact with unit_id",
+    "contact": "relative position of units, read for unit_id,  'contact' = with_unit"
   };
 
   module.exports = defs;
