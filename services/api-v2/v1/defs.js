@@ -511,34 +511,28 @@
   };
 
   defs["/geologic_units/intersection"] = {
-    "description": "What's under a line",
+    "description": "Geologic units under a linestring",
     "visible": true,
     "options": {
       "parameters": {
-        "line": "A valid linestring in WKT format",
-        "type": "Return only from given sources - can be 'gmna' or 'gmus'"
+        "line": "(Required) A valid linestring in WKT format",
+        "type": "(Required) Return only from given sources - can be 'gmna' or 'gmus'",
+        "buffer": "(Optional) Buffer the linestring by a given number of kilometers (default is 35)"
       },
-      "output_formats": ["json"],
+      "output_formats": ["json", "geojson", "topojson", "geojson_bare", "topojson_bare"],
       "examples": [
-        "/api/geologic_units/intersection?line=LINESTRING(-91.8896484375 43.26120612479979,-83.1005859375 43.068887774169625)",
-        "/api/geologic_units/intersection?line=LINESTRING(-91.8896484375 43.26120612479979,-83.1005859375 43.068887774169625)&type=gmus"
+        "/api/geologic_units/intersection?line=LINESTRING(-92 43,-83 43)&format=geojson_bare",
+        "/api/geologic_units/intersection?line=LINESTRING(-92 43,-83 43)&type=gmus",
+        "/api/geologic_units/intersection?line=LINESTRING(-92 43,-83 43)&type=gmna&format=geojson_bare&buffer=50"
       ],
       "fields": [
         "id",
         "unit_abbre",
         "rocktype",
-        "lithology",
+        "lith",
         "min_age",
         "max_age",
-        "state", 
-        "rocktype1", 
-        "rocktype2",
-        "rocktype3", 
-        "unit_name", 
-        "unit_age", 
-        "unitdesc", 
-        "strat_unit", 
-        "unit_com"
+        "color"
       ]
     }
   };
@@ -672,7 +666,7 @@
     "period": "string, containing international chronostratigraphic period",
     "max_thick": "number, maximum thickness in meters",
     "min_thick": "number, minimum thickess in meters (NB some zero values may not have meaning)",
-    "color": "text, recommended coloring for units baesd on dominant lithology",
+    "color": "text, recommended coloring for units based on dominant lithology",
     "FO_interval": "text, chronostratigraphic interval containing initiation/earliest(oldest) age",
     "FO_h": "integer, incates position within interval of initiation, 0=at base of interval",
     "FO_age": "number, age of FO_interval base in Myr before present",
@@ -700,7 +694,11 @@
     "area": "area in square kilometers",
     "plateid": "integer, unique GPlates ID",
     "with_unit": "unit in contact with unit_id",
-    "contact": "relative position of units, read for unit_id,  'contact' = with_unit"
+    "contact": "relative position of units, read for unit_id,  'contact' = with_unit",
+    "unit_abbre": "text, unit abbreviation",
+    "rocktype": "text, unit rock type",
+    "min_age": "text, the minimum age of the unit, using the International time scale",
+    "max_age": "text, the maximum age of the unit, using the International time scale"
   };
 
   module.exports = defs;
