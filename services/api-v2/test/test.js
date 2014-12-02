@@ -546,14 +546,32 @@ describe('Routes', function() {
           if (error) return done(error);
           done();
         });
-    })
+    });
   });
 
-/* lith_definitions */
-  describe("lith_definitions", function() {
+  describe("defs", function() {
+    it("should return available routes", function(done) {
+      request(host)
+        .get("/api/defs")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(function(res) {
+          if (res.body.success.routes.length < 5) {
+            throw new Error("Wrong number of definition routes")
+          }
+        })
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+  });
+
+/* defs/lithologies */
+  describe("defs/lithologies", function() {
     it('should return metadata', function(done) {
       request(host)
-        .get("/api/lith_definitions")
+        .get("/api/defs/lithologies")
         .expect(aSuccessfulRequest)
         .expect(json)
         .expect(metadata)
@@ -565,7 +583,7 @@ describe('Routes', function() {
 
     it("should accept a lith id", function(done) {
       request(host)
-        .get("/api/lith_definitions?id=3")
+        .get("/api/defs/lithologies?id=3")
         .expect(aSuccessfulRequest)
         .expect(json)
         .expect(function(res) {
@@ -581,7 +599,7 @@ describe('Routes', function() {
 
     it("should accept a lith class", function(done) {
       request(host)
-        .get("/api/lith_definitions?lith_class=sedimentary")
+        .get("/api/defs/lithologies?lith_class=sedimentary")
         .expect(aSuccessfulRequest)
         .expect(json)
         .end(function(error, res) {
@@ -592,7 +610,7 @@ describe('Routes', function() {
 
     it("should show all lith definitions when asked", function(done) {
       request(host)
-        .get("/api/lith_definitions?all")
+        .get("/api/defs/lithologies?all")
         .expect(aSuccessfulRequest)
         .expect(json)
         .expect(function(res) {
@@ -608,7 +626,7 @@ describe('Routes', function() {
 
     it("should output CSV", function(done) {
       request(host)
-        .get("/api/lith_definitions?id=3&format=csv")
+        .get("/api/defs/lithologies?id=3&format=csv")
         .expect(aSuccessfulRequest)
         .expect(csv)
         .expect("Content-Type", "text/csv; charset=utf-8")
@@ -619,11 +637,11 @@ describe('Routes', function() {
     });
   });
 
-/* lithatt_definitions */
-  describe("lithatt_definitions", function() {
+/* defs/lithology_attributes */
+  describe("defs/lithology_attributes", function() {
     it('should return metadata', function(done) {
       request(host)
-        .get("/api/lithatt_definitions")
+        .get("/api/defs/lithology_attributes")
         .expect(aSuccessfulRequest)
         .expect(json)
         .expect(metadata)
@@ -635,7 +653,7 @@ describe('Routes', function() {
 
     it("should accept an att_type", function(done) {
       request(host)
-        .get("/api/lithatt_definitions?att_type=bedform")
+        .get("/api/defs/lithology_attributes?att_type=bedform")
         .expect(aSuccessfulRequest)
         .expect(json)
         .expect(atLeastOneResult)
@@ -647,7 +665,7 @@ describe('Routes', function() {
 
     it("should accept a lith_att", function(done) {
       request(host)
-        .get("/api/lithatt_definitions?lith_att=mounds")
+        .get("/api/defs/lithology_attributes?lith_att=mounds")
         .expect(aSuccessfulRequest)
         .expect(json)
         .expect(atLeastOneResult)
@@ -659,7 +677,7 @@ describe('Routes', function() {
 
     it("should accept a lith att id", function(done) {
       request(host)
-        .get("/api/lithatt_definitions?id=1")
+        .get("/api/defs/lithology_attributes?id=1")
         .expect(aSuccessfulRequest)
         .expect(json)
         .expect(atLeastOneResult)
@@ -671,7 +689,7 @@ describe('Routes', function() {
 
     it("should return all records", function(done) {
       request(host)
-        .get("/api/lithatt_definitions?all")
+        .get("/api/defs/lithology_attributes?all")
         .expect(aSuccessfulRequest)
         .expect(json)
         .expect(atLeastOneResult)
@@ -683,7 +701,7 @@ describe('Routes', function() {
 
     it("should output CSV", function(done) {
       request(host)
-        .get("/api/lithatt_definitions?lith_att=mounds&format=csv")
+        .get("/api/defs/lithology_attributes?lith_att=mounds&format=csv")
         .expect(aSuccessfulRequest)
         .expect(csv)
         .expect("Content-Type", "text/csv; charset=utf-8")
@@ -694,11 +712,11 @@ describe('Routes', function() {
     });
   });
 
-/* environ_definitions */
-  describe("environ_definitions", function() {
+/* defs/environments */
+  describe("defs/environments", function() {
     it('should return metadata', function(done) {
       request(host)
-        .get("/api/environ_definitions")
+        .get("/api/defs/environments")
         .expect(aSuccessfulRequest)
         .expect(json)
         .expect(metadata)
@@ -710,7 +728,7 @@ describe('Routes', function() {
 
     it("should accept an environment class", function(done) {
       request(host)
-        .get("/api/environ_definitions?environ_class=non-marine")
+        .get("/api/defs/environments?environ_class=non-marine")
         .expect(aSuccessfulRequest)
         .expect(json)
         .expect(atLeastOneResult)
@@ -722,7 +740,7 @@ describe('Routes', function() {
 
     it("should accept an environment type", function(done) {
       request(host)
-        .get("/api/environ_definitions?environ_type=carbonate")
+        .get("/api/defs/environments?environ_type=carbonate")
         .expect(aSuccessfulRequest)
         .expect(json)
         .expect(atLeastOneResult)
@@ -734,7 +752,7 @@ describe('Routes', function() {
 
     it("should accept an environment", function(done) {
       request(host)
-        .get("/api/environ_definitions?environ=open%20shallow%20subtidal")
+        .get("/api/defs/environments?environ=open%20shallow%20subtidal")
         .expect(aSuccessfulRequest)
         .expect(json)
         .expect(atLeastOneResult)
@@ -746,7 +764,7 @@ describe('Routes', function() {
 
     it("should accept an environment id", function(done) {
       request(host)
-        .get("/api/environ_definitions?id=1")
+        .get("/api/defs/environments?id=1")
         .expect(aSuccessfulRequest)
         .expect(json)
         .expect(atLeastOneResult)
@@ -758,7 +776,7 @@ describe('Routes', function() {
 
     it("should return all environment definitions", function(done) {
       request(host)
-        .get("/api/environ_definitions?all")
+        .get("/api/defs/environments?all")
         .expect(aSuccessfulRequest)
         .expect(json)
         .expect(atLeastOneResult)
@@ -770,7 +788,7 @@ describe('Routes', function() {
 
     it("should return CSV", function(done) {
       request(host)
-        .get("/api/environ_definitions?all&format=csv")
+        .get("/api/defs/environments?all&format=csv")
         .expect(aSuccessfulRequest)
         .expect(csv)
         .expect("Content-Type", "text/csv; charset=utf-8")
@@ -781,11 +799,11 @@ describe('Routes', function() {
     });
   });
 
-/* interval_definitions */
-  describe("interval_definitions", function() {
+/* defs/intervals */
+  describe("defs/intervals", function() {
     it('should return metadata', function(done) {
       request(host)
-        .get("/api/interval_definitions")
+        .get("/api/defs/intervals")
         .expect(aSuccessfulRequest)
         .expect(json)
         .expect(metadata)
@@ -797,7 +815,7 @@ describe('Routes', function() {
 
     it("should accept a timescale parameter", function(done) {
       request(host)
-        .get("/api/interval_definitions?timescale=new%20zealand%20ages")
+        .get("/api/defs/intervals?timescale=new%20zealand%20ages")
         .expect(aSuccessfulRequest)
         .expect(json)
         .expect(atLeastOneResult)
@@ -809,7 +827,7 @@ describe('Routes', function() {
 
     it("should accept an interval id", function(done) {
       request(host)
-        .get("/api/interval_definitions?id=366")
+        .get("/api/defs/intervals?id=366")
         .expect(aSuccessfulRequest)
         .expect(json)
         .expect(atLeastOneResult)
@@ -821,7 +839,7 @@ describe('Routes', function() {
 
     it("should return all definitions", function(done) {
       request(host)
-        .get("/api/interval_definitions?all")
+        .get("/api/defs/intervals?all")
         .expect(aSuccessfulRequest)
         .expect(json)
         .expect(atLeastOneResult)
@@ -833,7 +851,7 @@ describe('Routes', function() {
 
     it("should return CSV", function(done) {
       request(host)
-        .get("/api/interval_definitions?timescale=new%20zealand%20ages&format=csv")
+        .get("/api/defs/intervals?timescale=new%20zealand%20ages&format=csv")
         .expect(aSuccessfulRequest)
         .expect(csv)
         .expect("Content-Type", "text/csv; charset=utf-8")
@@ -844,11 +862,11 @@ describe('Routes', function() {
     });
   });
 
-/* strat_names */
-  describe("strat_names", function() {
+/* defs/strat_names */
+  describe("defs/strat_names", function() {
     it('should return metadata', function(done) {
       request(host)
-        .get("/api/strat_names")
+        .get("/api/defs/strat_names")
         .expect(aSuccessfulRequest)
         .expect(json)
         .expect(metadata)
@@ -860,7 +878,7 @@ describe('Routes', function() {
 
     it("should accept a strat id", function(done) {
       request(host)
-        .get("/api/strat_names?id=1")
+        .get("/api/defs/strat_names?id=1")
         .expect(aSuccessfulRequest)
         .expect(json)
         .expect(atLeastOneResult)
@@ -872,7 +890,7 @@ describe('Routes', function() {
 
     it("should accept a strat name", function(done) {
       request(host)
-        .get("/api/strat_names?name=Abercrombie")
+        .get("/api/defs/strat_names?name=Abercrombie")
         .expect(aSuccessfulRequest)
         .expect(json)
         .expect(atLeastOneResult)
@@ -884,7 +902,7 @@ describe('Routes', function() {
 
     it("should accept a strat rank", function(done) {
       request(host)
-        .get("/api/strat_names?rank=Gp")
+        .get("/api/defs/strat_names?rank=Gp")
         .expect(aSuccessfulRequest)
         .expect(json)
         .expect(atLeastOneResult)
@@ -896,7 +914,7 @@ describe('Routes', function() {
 
     it("should return all strat names", function(done) {
       request(host)
-        .get("/api/strat_names?all")
+        .get("/api/defs/strat_names?all")
         .expect(aSuccessfulRequest)
         .expect(json)
         .expect(atLeastOneResult)
@@ -908,7 +926,7 @@ describe('Routes', function() {
 
     it("should output CSV", function(done) {
       request(host)
-        .get("/api/strat_names?name=Abercrombie&format=csv")
+        .get("/api/defs/strat_names?name=Abercrombie&format=csv")
         .expect(aSuccessfulRequest)
         .expect(csv)
         .expect("Content-Type", "text/csv; charset=utf-8")
@@ -1264,7 +1282,7 @@ describe('Routes', function() {
 
     it("should accept a unit_id", function(done) {
       request(host)
-        .get("/api/mobile/fossil_collections?unit_id=6132")
+        .get("/api/mobile/fossil_collections?unit_id=154")
         .expect(aSuccessfulRequest)
         .expect(json)
         .expect(atLeastOneResult)

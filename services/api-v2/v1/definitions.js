@@ -8,11 +8,11 @@ module.exports = function(req, res, next) {
       available[key] = defs[key].description
     }
   }
-
+  
   res.json({
     "success": {
       "v": api.version,
-      "description": defs["/definitions"].description,
+      "description": defs["/defs"].description,
       "routes": available
     }
   });
