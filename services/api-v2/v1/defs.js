@@ -257,12 +257,12 @@
     }
   };
 
-  defs["/definitions"] = {
+  defs["/defs"] = {
     "description": "Definitions of various parameters",
     "visible": true
   };
 
-  defs["/definitions/lithologies"] = {
+  defs["/defs/lithologies"] = {
     "description": "Returns all lithology definitions",
     "parent": "definitions",
     "visible": true,
@@ -289,7 +289,7 @@
     }
   };
 
-  defs["/definitions/lithology_attributes"] = {
+  defs["/defs/lithology_attributes"] = {
     "description": "Returns lithology attribute definitions",
     "parent": "definitions",
     "visible": true,
@@ -314,7 +314,7 @@
     }
   };
 
-  defs["/definitions/environments"] = {
+  defs["/defs/environments"] = {
     "description": "Returns environment definitions",
     "parent": "definitions",
     "visible": true,
@@ -341,7 +341,7 @@
     }
   };
 
-  defs["/definitions/intervals"] = {
+  defs["/defs/intervals"] = {
     "description": "Returns interval definitions",
     "parent": "definitions",
     "visible": true,
@@ -367,7 +367,7 @@
     }
   };
 
-  defs["/definitions/strat_names"] = {
+  defs["/defs/strat_names"] = {
     "description": "Returns strat names",
     "parent": "definitions",
     "visible": true,
