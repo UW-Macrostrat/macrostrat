@@ -28,20 +28,23 @@ api.route("/fossils")
 api.route("/stats")
   .get(require("./stats"));
 
-api.route("/lith_definitions")
-  .get(require("./lith_definitions"));
+api.route("/definitions")
+  .get(require("./definitions"));
 
-api.route("/lithatt_definitions")
-  .get(require("./lithatt_definitions"));
+api.route("/definitions/lithologies")
+  .get(require("./definitions_lithologies"));
 
-api.route("/environ_definitions")
-  .get(require("./environ_definitions"));
+api.route("/definitions/lithology_attributes")
+  .get(require("./definitions_lithology_attributes"));
 
-api.route("/interval_definitions")
-  .get(require("./interval_definitions"));
+api.route("/definitions/environments")
+  .get(require("./definitions_environments"));
 
-api.route("/strat_names")
-  .get(require("./strat_names"));
+api.route("/definitions/intervals")
+  .get(require("./definitions_intervals"));
+
+api.route("/definitions/strat_names")
+  .get(require("./definitions_strat_names"));
 
 api.route("/section_stats")
   .get(require("./section_stats"));
