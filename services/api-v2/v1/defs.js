@@ -544,8 +544,15 @@
     }
   };
 
+  defs["/mobile"] = {
+    "description": "Simplified data delivery, ideal for mobile applications",
+    "visible": true
+  };
+
+
   defs["/mobile/point"] = {
     "description": "Get GMUS unit and Macrostrat polygon for a given point",
+    "parent": "mobile",
     "visible": true,
     "options": {
       "parameters": {
@@ -569,6 +576,7 @@
 
   defs["/mobile/point_details"] = {
     "description": "Get GMUS unit description and Macrostrat units for a given location. A valid latitude and longitude or column ID and GMUS unit ID are required.",
+    "parent": "mobile",
     "visible": true,
     "options": {
       "parameters": {
@@ -594,6 +602,7 @@
 
   defs["/mobile/fossil_collections"] = {
     "description": "Get Paleobiology Database fossil collection numbers for a given Macrostrat unit",
+    "parent": "mobile",
     "visible": true,
     "options": {
       "parameters": {
