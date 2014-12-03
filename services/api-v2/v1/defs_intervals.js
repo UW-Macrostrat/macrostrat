@@ -6,16 +6,22 @@ module.exports = function(req, res, next) {
     return larkin.info(req, res, next);
   }
 
-  var sql = "SELECT intervals.id, interval_name, age_top late_age, age_bottom early_age FROM intervals",
+  var sql = "SELECT intervals.id, interval_name AS name, age_top AS late_age, age_bottom AS early_age, interval_type AS type FROM intervals",
       params = [];
 
   if (req.query.all) {
     // do nothing
-  } else if (req.query.timescale){
-    sql += " JOIN timescales_intervals ON interval_id=intervals.id JOIN timescales ON timescale_id=timescales.id WHERE timescale = ?";
-    params.push(req.query.timescale);
-  } else if (req.query.id && isFinite(req.query.id)){
-    sql += " WHERE id ="+req.query.id;
+  } else {
+    if (req.query.timescale) {
+      sql += " JOIN timescales_intervals ON interval_id=intervals.id JOIN timescales ON timescale_id=timescales.id WHERE timescale = ?";
+      params.push(req.query.timescale);
+    } else if (req.query.id && isFinite(req.query.id)) {
+      sql += " WHERE id = ?";
+      params.push(req.query.id);
+    } else if (req.query.late_age && req.query.early_age) {
+      sql += " WHERE age_top <= ? AND age_bottom >= ? OR age_top >= ? AND age_bottom <= ?";
+      params.push(req.query.late_age, req.query.early_age, req.query.late_age, req.query.early_age);
+    }
   }
   
   sql += " ORDER BY late_age ASC";
