@@ -298,9 +298,9 @@
       },
       "output_formats": ["json", "csv"],
       "examples": [
-        "api/lith_definitions?id=3",
-        "api/lith_definitions?all",
-        "api/lith_definitions?lith_class=sedimentary"
+        "api/defs/lithologies?id=3",
+        "api/defs/lithologies?all",
+        "api/defs/lithologies?lith_class=sedimentary"
       ],
       "fields": [
         "id",
@@ -326,8 +326,8 @@
       },
       "output_formats": ["json", "csv"],
       "examples": [
-        "api/lithatt_definitions?all",
-        "api/lithatt_definitions?lith_type=bedform"
+        "api/defs/lithology_attributes?all",
+        "api/defs/lithology_attributes?lith_type=bedform"
       ],
       "fields": [
         "id",
@@ -352,8 +352,8 @@
       },
       "output_formats": ["json", "csv"],
       "examples": [
-        "api/environ_definitions?all",
-        "api/environ_definitions?environ=sand%20shoal"
+        "api/defs/environments?all",
+        "api/defs/environments?environ=sand%20shoal"
       ],
       "fields": [
         "id",
@@ -373,19 +373,23 @@
         "timescale": "timescale to use",
         "id": "an interval id",
         "all": "return all interval definitions",
+        "late_age": "a late age",
+        "early_age": "an early age",
         "format": "Desired output format"
       },
       "output_formats": ["json", "csv"],
       "examples": [
-        "api/interval_definitions?all",
-        "api/interval_definitions?id=366",
-        "api/interval_definitions?timescale=new%20zealand%20ages"
+        "api/defs/intervals?all",
+        "api/defs/intervals?id=366",
+        "api/defs/intervals?timescale=new%20zealand%20ages",
+        "api/defs/intervals?late_age=0&early_age=130"
       ],
       "fields": [
         "id",
-        "interval_name",
+        "name",
         "late_age",
-        "early_age"
+        "early_age",
+        "type"
       ]
     }
   };
@@ -404,8 +408,8 @@
       },
       "output_formats": ["json", "csv"],
       "examples": [
-        "api/strat_names?all",
-        "api/strat_names?rank=Fm"
+        "api/defs/strat_names?all",
+        "api/defs/strat_names?rank=Fm"
       ],
       "fields": [
         "name",
