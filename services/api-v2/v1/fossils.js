@@ -39,7 +39,7 @@ module.exports = function(req, res, next) {
           JOIN intervals f ON f.id = FO \
           JOIN intervals l ON l.id = LO \
           JOIN pbdb.coll_matrix ON pbdb_matches.collection_no = pbdb.coll_matrix.collection_no \
-          WHERE f.age_bottom > ? AND l.age_top < ? AND \
+          WHERE f.age_bottom > ? AND l.age_top < ? AND pbdb_matches.release_date<NOW() \
           status_code = 'active'", [data.age_top, data.age_bottom], function(error, result) {
             if (error) {
               callback(error);
