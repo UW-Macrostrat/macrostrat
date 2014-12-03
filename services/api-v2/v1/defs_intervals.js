@@ -6,7 +6,7 @@ module.exports = function(req, res, next) {
     return larkin.info(req, res, next);
   }
 
-  var sql = "SELECT intervals.id, interval_name AS name, age_top AS late_age, age_bottom AS early_age, interval_type AS type FROM intervals",
+  var sql = "SELECT intervals.id, interval_name AS name, age_top AS late_age, age_bottom AS early_age, interval_type AS type, interval_color AS color FROM intervals",
       params = [];
 
   if (req.query.all) {
