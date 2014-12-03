@@ -9,18 +9,34 @@ module.exports = function(req, res, next) {
   var sql = "SELECT intervals.id, interval_name AS name, age_top AS late_age, age_bottom AS early_age, interval_type AS type, interval_color AS color FROM intervals",
       params = [];
 
+  var where = 0;
   if (req.query.all) {
     // do nothing
   } else {
     if (req.query.timescale) {
       sql += " JOIN timescales_intervals ON interval_id=intervals.id JOIN timescales ON timescale_id=timescales.id WHERE timescale = ?";
       params.push(req.query.timescale);
-    } else if (req.query.id && isFinite(req.query.id)) {
-      sql += " WHERE id = ?";
-      params.push(req.query.id);
-    } else if (req.query.late_age && req.query.early_age) {
-      sql += " WHERE age_top <= ? AND age_bottom >= ? OR age_top >= ? AND age_bottom <= ?";
-      params.push(req.query.late_age, req.query.early_age, req.query.late_age, req.query.early_age);
+      where ++;
+    } 
+    if (req.query.id && isFinite(req.query.id)) {
+      if (where < 1) {
+        sql += " WHERE id = ?";
+        params.push(req.query.id);
+      } else {
+        sql += " AND id = ?";
+        params.push(req.query.id);
+      }
+      where++;
+    } 
+    if (req.query.late_age && req.query.early_age) {
+      if (where < 1) {
+        sql += " WHERE age_top <= ? AND age_bottom >= ? OR age_top >= ? AND age_bottom <= ?";
+        params.push(req.query.late_age, req.query.early_age, req.query.late_age, req.query.early_age);
+      } else {
+        sql += " AND ((age_top <= ? AND age_bottom >= ?) OR (age_top >= ? AND age_bottom <= ?))";
+        params.push(req.query.late_age, req.query.early_age, req.query.late_age, req.query.early_age);
+      }
+        
     }
   }
   
