@@ -72,7 +72,7 @@ module.exports = function(req, res, next) {
                 LEFT JOIN unit_strat_names ON unit_strat_names.unit_id=units.id \
                 LEFT JOIN lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id \
                 LEFT JOIN pbdb_matches ON pbdb_matches.unit_id=units.id \
-                WHERE units_sections.col_id = ? and pbdb_matches.release_date<NOW() \
+                WHERE units_sections.col_id = ? \
                 GROUP BY units.id ORDER BY t_age ASC";
 
             larkin.query(sql, [column.id], function(error, result) {
