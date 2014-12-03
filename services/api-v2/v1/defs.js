@@ -459,7 +459,7 @@
   };
 
   defs["/paleogeography"] = {
-    "description": "Returns paleogeography geometry from http://www.gplates.org, courtesy of Mark Turner and Mike Gurnis. Note that for complete and recent reconstructions, original GPlates data services should be used.",
+    "description": "Returns paleogeography geometry from http://www.gplates.org, courtesy of Mark Turner and Mike Gurnis. Note that for complete and recent reconstructions, original GPlates data services should be used - http://gplates.gps.caltech.edu:8080.",
     "visible": true,
     "options": {
       "parameters": {
