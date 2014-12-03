@@ -389,7 +389,8 @@
         "name",
         "late_age",
         "early_age",
-        "type"
+        "type",
+        "color"
       ]
     }
   };
