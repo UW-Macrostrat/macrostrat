@@ -36,7 +36,14 @@ module.exports = function(req, res, next) {
         sql += " AND ((age_top <= ? AND age_bottom >= ?) OR (age_top >= ? AND age_bottom <= ?))";
         params.push(req.query.late_age, req.query.early_age, req.query.late_age, req.query.early_age);
       }
-        
+    } else if (req.query.age) {
+      if (where < 1) {
+        sql += " WHERE age_top <= ? AND age_bottom >= ?";
+        params.push(req.query.age, req.query.age);
+      } else {
+        sql += " AND age_top <= ? AND age_bottom >= ?";
+        params.push(req.query.age, req.query.age);
+      }
     }
   }
   
