@@ -71,7 +71,7 @@ module.exports = function(req, res, next) {
                 JOIN lookup_unit_intervals ON units.id=lookup_unit_intervals.unit_id \
                 LEFT JOIN unit_strat_names ON unit_strat_names.unit_id=units.id \
                 LEFT JOIN lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id \
-                LEFT JOIN pbdb_matches ON pbdb_matches.unit_id=units.id \
+                LEFT JOIN pbdb_matches ON pbdb_matches.unit_id=units.id and pbdb_matches.release_date < now() \
                 WHERE units_sections.col_id = ? \
                 GROUP BY units.id ORDER BY t_age ASC";
 
@@ -140,7 +140,7 @@ module.exports = function(req, res, next) {
           },
 
           function(column, callbackB) {
-            larkin.query("SELECT units.id AS id, units.strat_name, period, max_thick, min_thick, color, count(distinct collection_no) AS pbdb, lith_short AS lith FROM units JOIN units_sections ON units_sections.unit_id = units.id JOIN lookup_unit_liths ON lookup_unit_liths.unit_id=units.id JOIN lookup_unit_intervals ON units.id=lookup_unit_intervals.unit_id LEFT JOIN pbdb_matches ON pbdb_matches.unit_id = units.id WHERE units_sections.col_id = ? GROUP BY units.id ORDER BY t_age ASC", [req.query.col_id], function(error, result) {
+            larkin.query("SELECT units.id AS id, units.strat_name, period, max_thick, min_thick, color, count(distinct collection_no) AS pbdb, lith_short AS lith FROM units JOIN units_sections ON units_sections.unit_id = units.id JOIN lookup_unit_liths ON lookup_unit_liths.unit_id=units.id JOIN lookup_unit_intervals ON units.id=lookup_unit_intervals.unit_id LEFT JOIN pbdb_matches ON pbdb_matches.unit_id = units.id AND pbdb_matches.release_date < now() WHERE units_sections.col_id = ? GROUP BY units.id ORDER BY t_age ASC", [req.query.col_id], function(error, result) {
               if (error) {
                 callbackB(error);
               } else {
