@@ -434,6 +434,47 @@
     }
   };
 
+  defs["/defs/timescales"] = {
+    "description": "Returns available timescales",
+    "parent": "definitions",
+    "visible": true,
+    "options": {
+      "parameters": {
+        "all": "return all available timescales",
+        "format": "Desired output format"
+      },
+      "output_formats": ["json", "csv"],
+      "examples": [
+        "api/defs/timescales?all"
+      ],
+      "fields": [
+        "id",
+        "timescale"
+      ]
+    }
+  };
+
+  defs["/defs/projects"] = {
+    "description": "Returns available Macrostrat projects",
+    "parent": "definitions",
+    "visible": true,
+    "options": {
+      "parameters": {
+        "all": "return all available projects",
+        "format": "Desired output format"
+      },
+      "output_formats": ["json", "csv"],
+      "examples": [
+        "api/defs/timescales?all"
+      ],
+      "fields": [
+        "id",
+        "project",
+        "timescale_id"
+      ]
+    }
+  };
+
   defs["/section_stats"] = {
     "description": "Return section stats",
     "visible": true,
@@ -705,7 +746,10 @@
     "unit_abbre": "text, unit abbreviation",
     "rocktype": "text, unit rock type",
     "min_age": "text, the minimum age of the unit, using the International time scale",
-    "max_age": "text, the maximum age of the unit, using the International time scale"
+    "max_age": "text, the maximum age of the unit, using the International time scale",
+    "timescale": "text, name of timescale",
+    "project": "text, name of project",
+    "timescale_id": "integer, unique identifier for timescale used in project"
   };
 
   module.exports = defs;
