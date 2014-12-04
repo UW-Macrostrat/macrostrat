@@ -375,6 +375,7 @@
         "all": "return all interval definitions",
         "late_age": "a late age",
         "early_age": "an early age",
+        "age": "integer, an age - will find all intervals that overlap with this age",
         "format": "Desired output format"
       },
       "output_formats": ["json", "csv"],
@@ -382,7 +383,8 @@
         "api/defs/intervals?all",
         "api/defs/intervals?id=366",
         "api/defs/intervals?timescale=new%20zealand%20ages",
-        "api/defs/intervals?late_age=0&early_age=130"
+        "api/defs/intervals?late_age=0&early_age=130",
+        "api/defs/interals?timescale=international&age=100"
       ],
       "fields": [
         "id",

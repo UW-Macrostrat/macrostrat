@@ -860,6 +860,31 @@ describe('Routes', function() {
           done();
         });
     });
+
+    it("should accept an early and late age", function(done) {
+      request(host)
+        .get("/api/defs/intervals?late_age=0&early_age=130")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should accept an age", function(done) {
+      request(host)
+        .get("/api/defs/intervals?age=200")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
   });
 
 /* defs/strat_names */
