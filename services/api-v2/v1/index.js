@@ -46,8 +46,14 @@ api.route("/defs/environments")
 api.route("/defs/intervals")
   .get(require("./defs_intervals"));
 
+api.route("/defs/projects")
+  .get(require("./defs_projects"));
+
 api.route("/defs/strat_names")
   .get(require("./defs_strat_names"));
+
+api.route("/defs/timescales")
+  .get(require("./defs_timescales"));
 
 api.route("/section_stats")
   .get(require("./section_stats"));
