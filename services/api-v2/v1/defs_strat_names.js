@@ -12,15 +12,22 @@ module.exports = function(req, res, next) {
   if (req.query.all) {
     // do nothing
   } else if (req.query.id) {
-    filterString += "strat_name_id = ?";
-    params.push(req.query.id);
+    filterString += "bed_id = ? or mbr_id = ? or fm_id = ? or gp_id = ? or sgp_id = ?";
+    params.push(req.query.id,req.query.id,req.query.id,req.query.id,req.query.id);
+  } else if (req.query.name_like) {
+    if (req.query.rank && req.query.rank.length <= 3 && req.query.rank.length >= 2 && /^[a-zA-Z]+$/.test(req.query.rank)){
+      filterString += req.query.rank+"_name LIKE ?";
+      params.push(req.query.name_like + "%");
+    } else {
+      filterString += "strat_name LIKE ?";
+      params.push(req.query.name_like + "%");}
   } else if (req.query.name) {
     if (req.query.rank && req.query.rank.length <= 3 && req.query.rank.length >= 2 && /^[a-zA-Z]+$/.test(req.query.rank)){
       filterString += req.query.rank+"_name LIKE ?";
-      params.push(req.query.name + "%");
+      params.push(req.query.name);
     } else {
       filterString += "strat_name LIKE ?";
-      params.push(req.query.name + "%");}
+      params.push(req.query.name);}
   } else if (req.query.rank) {
     filterString += "rank = ?";
     params.push(req.query.rank);
