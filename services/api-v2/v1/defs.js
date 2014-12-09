@@ -403,10 +403,11 @@
     "visible": true,
     "options": {
       "parameters": {
-        "id": "strat id",
-        "name": "strat name",
-        "rank": "strat rank",
-        "all": "return all strat names",
+        "id": "unique id",
+        "name": "lithostratigraphic name, exact match",
+        "name_like": "lithostratigraphic name, with open-ended string matching",
+        "rank": "lithostratigraphic rank",
+        "all": "return all lithostratigraphic names",
         "format": "Desired output format"
       },
       "output_formats": ["json", "csv"],
