@@ -528,7 +528,7 @@
     "options": {
       "parameters": {
         "lat": "A valid latitude",
-        "longitude": "A valid longitude",
+        "lng": "A valid longitude",
         "type": "Return only from given sources - can be 'gmna', 'gmus', 'column', or any combination thereof",
         "response": "can be 'short' or 'long'",
         "geo": "Whether geometry of features should also be returned",
