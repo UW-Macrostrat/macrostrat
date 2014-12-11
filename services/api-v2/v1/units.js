@@ -59,19 +59,21 @@ module.exports = function(req, res, next) {
 
       var shortSQL = "units.id AS id,units_sections.section_id as section_id, units_sections.col_id as col_id, col_area, units.strat_name, units.position_bottom, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick, min_thick, color, lith_type, count(distinct collection_no) pbdb";
             
-      var longSQL = "units.id AS id,units_sections.section_id as section_id, project_id, units_sections.col_id as col_id, col_area, units.strat_name, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick,min_thick, color, lith_class, lith_type, lith_long lith, environ_class, environ_type, environ, count(distinct collection_no) pbdb, FO_interval, FO_h, FO_age, b_age, LO_interval, LO_h, LO_age, t_age, position_bottom, notes"; 
+      var longSQL = "units.id AS id,units_sections.section_id as section_id, project_id, units_sections.col_id as col_id, col_area, units.strat_name, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick,min_thick, color, lith_class, lith_type, lith_long lith, environ_class, environ_type, environ, count(distinct collection_no) pbdb, FO_interval, FO_h, FO_age, max(ubb.t1_age) AS b_age, LO_interval, LO_h, LO_age, min(ubt.t1_age) AS t_age, position_bottom, notes"; 
 
       var sql = "SELECT " + ((req.query.response === "long") ? longSQL : shortSQL) + " FROM units \
             JOIN units_sections ON units_sections.unit_id=units.id \
             JOIN cols ON units_sections.col_id=cols.id \
             JOIN lookup_unit_liths ON lookup_unit_liths.unit_id=units.id \
             JOIN lookup_unit_intervals ON units.id=lookup_unit_intervals.unit_id \
+            LEFT JOIN unit_boundaries ubb ON ubb.unit_id_2=units.id \
+            LEFT JOIN unit_boundaries ubt ON ubt.unit_id=units.id \
             LEFT JOIN unit_strat_names ON unit_strat_names.unit_id=units.id \
             LEFT JOIN lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id \
             " + ((req.query.response === "long") ? "LEFT JOIN unit_notes ON unit_notes.unit_id=units.id" : "") + " \
             LEFT JOIN pbdb_matches ON pbdb_matches.unit_id=units.id \
             WHERE status_code='active' AND FO_age > ? AND LO_age < ? AND units.id IN (SELECT unit_liths.unit_id from unit_liths JOIN liths on lith_id=liths.id WHERE lith like " + lith_field + ")" + where + " GROUP BY units.id ORDER BY units.position_bottom ASC";
-
+     
       larkin.query(sql, params, function(error, result) {
           if (error) {
             callback(error);
