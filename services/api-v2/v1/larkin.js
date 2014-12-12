@@ -88,9 +88,17 @@ var mysql = require("mysql"),
     }
    };
 
+   // Remove all whitespace from response
+  larkin.sendCompact = function(data, res) {
+    res
+      .set("Content-type", "application/json; charset=utf-8")
+      .send(JSON.stringify({"success": {"v": api.version,"data": data}}, null, 0));
+  }
 
   larkin.sendBare = function(data, res, next) {
-    res.json(data);
+    res
+      .set("Content-type", "application/json; charset=utf-8")
+      .send(JSON.stringify(data, null, 0));
    };
 
 

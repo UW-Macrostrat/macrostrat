@@ -523,7 +523,7 @@
   };
 
   defs["/geologic_units"] = {
-    "description": "What's at a point",
+    "description": "GMUS data via http://mrdata.usgs.gov/geology/state/, GMNA via http://ngmdb.usgs.gov/gmna/",
     "visible": true,
     "options": {
       "parameters": {
@@ -560,7 +560,7 @@
   };
 
   defs["/geologic_units/intersection"] = {
-    "description": "Geologic units under a linestring",
+    "description": "Geologic units under a linestring. GMUS data via http://mrdata.usgs.gov/geology/state/, GMNA via http://ngmdb.usgs.gov/gmna/",
     "visible": true,
     "options": {
       "parameters": {

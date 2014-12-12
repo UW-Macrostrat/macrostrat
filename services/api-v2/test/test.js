@@ -1153,46 +1153,46 @@ describe('Routes', function() {
 
     it("should accept a latitude and longitude", function(done) {
       request(host)
-        .get("/api/geologic_units?lat=43&lng=-89.3")
+        .get("/api/geologic_units?lat=43&lng=-89.3&type=gmna")
         .expect(aSuccessfulRequest)
         .expect(json)
-        .expect(function(res) {
-          if (!res.body.success.data.column || !res.body.success.data.gmna || !res.body.success.data.gmus) {
-            throw new Error("Output is missing a type");
-          }
-        })
+        .expect(atLeastOneResult)
         .end(function(error, res) {
           if (error) return done(error);
           done();
         });
     });
 
-    it("should return from only the selected sources", function(done) {
+    it("should accept a time interval name on GMUS", function(done) {
       request(host)
-        .get("/api/geologic_units?lat=43&lng=-89.3&type=gmus")
+        .get("/api/geologic_units?interval_name=Permian&type=gmus")
         .expect(aSuccessfulRequest)
         .expect(json)
-        .expect(function(res) {
-          if (!res.body.success.data.gmus || res.body.success.data.column || res.body.success.gmna) {
-            throw new Error("Output is wrong");
-          }
-        })
+        .expect(atLeastOneResult)
         .end(function(error, res) {
           if (error) return done(error);
           done();
         });
     });
 
-    it("should return verbose output when asked", function(done) {
+    it("should accept a time interval name on GMNA", function(done) {
       request(host)
-        .get("/api/geologic_units?lat=43&lng=-89.3&response=long")
+        .get("/api/geologic_units?interval_name=Permian&type=gmna")
         .expect(aSuccessfulRequest)
         .expect(json)
-        .expect(function(res) {
-          if (!res.body.success.data.column.units[0].LO_interval) {
-            throw new Error("Extra data missing when requested");
-          }
-        })
+        .expect(atLeastOneResult)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should accept a unit name on GMUS", function(done) {
+      request(host)
+        .get("/api/geologic_units?unit_name=Mancos%20Shale&type=gmus")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
         .end(function(error, res) {
           if (error) return done(error);
           done();
@@ -1201,14 +1201,10 @@ describe('Routes', function() {
 
     it("should return geometry when asked", function(done) {
       request(host)
-        .get("/api/geologic_units?lat=43&lng=-89.3&geo=true")
+        .get("/api/geologic_units?lat=43&lng=-89.3&type=gmna&format=geojson")
         .expect(aSuccessfulRequest)
         .expect(json)
-        .expect(function(res) {
-          if (!res.body.success.data.column.geometry) {
-            throw new Error("Geometry missing when requested");
-          }
-        })
+        .expect(atLeastOneResult)
         .end(function(error, res) {
           if (error) return done(error);
           done();
