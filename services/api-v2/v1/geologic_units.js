@@ -56,6 +56,10 @@ module.exports = function(req, res, next) {
         where += " c.cmin_age = " + placeholder;
         params.push(req.query.interval_name);
       }
+
+      if (where === "" || params.length === 0) {
+        return larkin.error(req, res, next, "Invalid params");
+      }
       larkin.queryPg("earthbase", "SELECT a.unit_link, a.rocktype1, a.rocktype2, b.rocktype3, unit_name, b.unit_age, strat_unit" + ((geo) ? ", ST_AsGeoJSON(a.the_geom) AS geometry" : "") + " FROM gmus.geologic_units a JOIN gmus.units b ON a.unit_link = b.unit_link JOIN gmus.age c ON a.unit_link = c.unit_link" + where, params, function(error, result) {
         if (error) {
           callback(error);
