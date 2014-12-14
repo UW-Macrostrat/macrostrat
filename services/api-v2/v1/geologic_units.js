@@ -46,7 +46,7 @@ module.exports = function(req, res, next) {
         params.push("%" + req.query.unit_name + "%");
       }
 
-    /*  if (req.query.interval_name) {
+      if (req.query.interval_name) {
         if (where.length < 1) {
           where += " WHERE "
         } else {
@@ -55,12 +55,12 @@ module.exports = function(req, res, next) {
         var placeholder = "$" + (params.length + 1);
         where += " c.cmin_age = " + placeholder;
         params.push(req.query.interval_name);
-      }*/
+      }
 
       if (where === "" || params.length === 0) {
         return larkin.error(req, res, next, "Invalid params");
       }
-      larkin.queryPg("earthbase", "SELECT unit_link, u_rocktype1 AS rt1, u_rocktype2 AS rt2, u_rocktype3 AS rt3, unit_name, unit_age, interval_color, lithology_color" + ((geo) ? ", ST_AsGeoJSON(the_geom) AS geometry" : "") + " FROM gmus.geologic_units_with_intervals" + where, params, function(error, result) {
+      larkin.queryPg("earthbase", "SELECT a.unit_link, u_rocktype1 AS rt1, u_rocktype2 AS rt2, u_rocktype3 AS rt3, unit_name, unit_age, interval_color, c.cmin_age AS min_age, c.cmax_age AS max_age, lith1, lith2, lith3, lith4, lith5" + ((geo) ? ", ST_AsGeoJSON(the_geom) AS geometry" : "") + " FROM gmus.geologic_units_with_intervals a JOIN gmus.lith b ON a.unit_link = b.unit_link JOIN gmus.age c ON a.unit_link = c.unit_link" + where, params, function(error, result) {
         if (error) {
           callback(error);
         } else {
