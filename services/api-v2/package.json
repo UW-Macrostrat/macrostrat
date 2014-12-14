@@ -1,7 +1,7 @@
 {
   "name": "macrostrat-api",
   "version": "0.1.0",
-  "description": "Data feeders for macrostrat",
+  "description": "The API for SCIENCE",
   "main": "server.js",
   "repository": {
     "type": "git",
