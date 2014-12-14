@@ -13,7 +13,7 @@ npm start
 ````
 You will need to update rename ````vx/credentials.example.js```` to ````vx/credentials.js```` and input your credentials. The API runs on port ````5000```` by default. 
 
-### Tests
+### Test
 ````
 npm test
 ````
@@ -21,7 +21,7 @@ npm test
 ### Organization
 Each version of the API functions as a self-contained module, and therefore has its own ````package.json```` and dependencies. 
 
-### Contributors
+### Authors
 [John J Czaplewski](https://github.com/jczaplew) and [Shanan E Peters](http://strata.geoglogy.wisc.edu)
 
 ### License
