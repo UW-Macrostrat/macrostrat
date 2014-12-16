@@ -32,7 +32,7 @@ module.exports = function(req, res, next) {
               if (api.acceptedFormats.bare[req.query.format]) {
                 larkin.sendBare(result, res, next);
               } else {
-                larkin.sendData(result, res, null, next);
+                larkin.sendCompact(result, res, null, next);
               }
             }
           }
@@ -51,12 +51,11 @@ module.exports = function(req, res, next) {
             if (error) {
               larkin.error(req, res, next, "Something went wrong");
             } else {
-              larkin.sendData(gp(result, 4), res, "json", next);
+              larkin.sendCompact(gp(result, 4), res, "json", next);
             }
           }
         });
       }
     });
-  }
-  
+  } 
 }
