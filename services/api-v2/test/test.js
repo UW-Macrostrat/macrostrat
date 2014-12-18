@@ -1166,6 +1166,7 @@ describe('Routes', function() {
     it("should accept a time interval name on GMUS", function(done) {
       request(host)
         .get("/api/geologic_units?interval_name=Permian&type=gmus")
+        .timeout(10000)
         .expect(aSuccessfulRequest)
         .expect(json)
         .expect(atLeastOneResult)
