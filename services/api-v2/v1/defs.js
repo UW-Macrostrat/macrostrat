@@ -191,7 +191,7 @@
         "period",
         "max_thick",
         "min_thick",
-        "color",
+        "u_color",
         "lith_class",
         "lith_type",
         "lith",
@@ -208,7 +208,9 @@
         "LO_age",
         "t_age",
         "position_bottom",
-        "notes"
+        "notes",
+        "color",
+        "text_color"
       ]
     }
   };
@@ -716,6 +718,8 @@
     "max_thick": "number, maximum thickness in meters",
     "min_thick": "number, minimum thickess in meters (NB some zero values may not have meaning)",
     "color": "text, recommended coloring for units based on dominant lithology",
+    "u_color": "text, original color for unit",
+    "text_color": "text, recommended coloring for text based on color",
     "FO_interval": "text, chronostratigraphic interval containing initiation/earliest(oldest) age",
     "FO_h": "integer, incates position within interval of initiation, 0=at base of interval",
     "FO_age": "number, age of FO_interval base in Myr before present",
