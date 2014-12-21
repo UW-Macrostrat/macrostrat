@@ -3,6 +3,7 @@ var api = require("./api"),
     larkin = require("./larkin");
 
 module.exports = function(req, res, next) {
+  // If no parameters, send the route definition
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
@@ -17,15 +18,14 @@ module.exports = function(req, res, next) {
               larkin.error(req, res, next, "No results found");
             } else {
               callback(null, {"interval_name": result[0].interval_name, "age_bottom": result[0].age_bottom, "age_top": result[0].age_top});
-              }
             }
           }
-        );
+        });
       } else if (req.query.age) {
         callback(null, {"interval_name": "none", "age_bottom": req.query.age, "age_top": req.query.age});
       } else if (req.query.age_top && req.query.age_bottom) {
         callback(null, {"interval_name": "none", "age_bottom": req.query.age_bottom, "age_top": req.query.age_top});
-      } else if (req.query.id || req.query.section_id || req.query.col_id) { 
+      } else if (req.query.id || req.query.section_id || req.query.col_id || req.query.lith || req.query.lith_class || req.query.lith_type) { 
         callback(null, {"interval_name": "none", "age_bottom": 99999, "age_top": 0});
       } else {
         callback("error");
@@ -33,18 +33,25 @@ module.exports = function(req, res, next) {
     },
   
     function(data, callback) {
-      if (req.query.lith){
-       callback(null, {"lith": req.query.lith, "lith_field": "lith"});
-      } else if (req.query.lith_class){
-       callback(null, {"lith": req.query.lith_class, "lith_field": "lith_class"});
-      } else if (req.query.lith_type){
-       callback(null, {"lith": req.query.lith_type, "lith_field": "lith_type"});
-      } else{
-        callback(null, {"lith": "%", "lith_field": "lith"});
+      var lith = "", 
+          lith_field = "";
+
+      if (req.query.lith) {
+        lith = req.query.lith;
+        lith_field = "lith";
+      } else if (req.query.lith_class) {
+        lith = req.query.lith_class;
+        lith_field = "lith_class";
+      } else if (req.query.lith_type) {
+        lith = req.query.lith_type;
+        lith_field = "lith_type";
+      } else {
+        lith = "%";
+        lith_field = "lith"
       }
 
       var where = "",
-          params = [data.age_top, data.age_bottom, data.lith_field, data.lith];
+          params = [data.age_top, data.age_bottom, lith_field, lith];
 
       if (req.query.id) {
         where += " AND units_sections.unit_id = ?";
@@ -76,7 +83,7 @@ module.exports = function(req, res, next) {
             LEFT JOIN lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id \
             " + ((req.query.response === "long") ? "LEFT JOIN unit_notes ON unit_notes.unit_id=units.id JOIN colors ON units.color = colors.color" : "") + " \
             LEFT JOIN pbdb_matches ON pbdb_matches.unit_id=units.id \
-            WHERE status_code='active' AND FO_age > ? AND LO_age < ? AND units.id IN (SELECT unit_liths.unit_id from unit_liths JOIN liths on lith_id=liths.id WHERE ? like '?')" + where + " GROUP BY units.id ORDER BY units.position_bottom ASC";
+            WHERE status_code='active' AND FO_age > ? AND LO_age < ? AND units.id IN (SELECT unit_liths.unit_id from unit_liths JOIN liths on lith_id=liths.id WHERE ?? LIKE ?)" + where + " GROUP BY units.id ORDER BY units.position_bottom ASC";
      
       larkin.query(sql, params, function(error, result) {
           if (error) {
@@ -88,6 +95,7 @@ module.exports = function(req, res, next) {
     }
   ], function(error, data, result) {
     if (error) {
+      console.log(error);
       larkin.error(req, res, next, "Something went wrong");
     } else {
       larkin.sendData(result, res, (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json", next);
