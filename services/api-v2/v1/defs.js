@@ -5,7 +5,7 @@
 
   // Instead of adding metadata to each route in api.js, we are going to do it here
   defs["/column"] = {
-    "description": "Get all units of a given column, optionally with geometry",
+    "description": "Get all units of a given column",
     "visible": true,
     "options": {
       "parameters": {
@@ -110,7 +110,7 @@
   };
 
   defs["/unit"] = {
-    "description": "Gets all data for a given unit",
+    "description": "this route is redundant with /units with parameter id specified",
     "visible": true,
     "options": {
       "parameters": {
@@ -158,16 +158,20 @@
   };
 
   defs["/units"] = {
-    "description": "Return all units given an age or time range",
+    "description": "all Macrostrat units matching search criteria",
     "visible": true,
     "options": {
       "parameters": {
-        "interval_name": "The name of a time interval",
-        "age": "A valid age",
-        "age_top": "A valid age - must be used with age_bottom and be less than age_bottom",
-        "age_bottom": "A valid age - must be used with age_top and be greater than age_top",
-        "section_id": "Integer, a valid section id",
-        "col_id": "Integer, a valid column id",
+        "id": "integer, a valid unit id",
+        "section_id": "integer, a valid section id",
+        "col_id": "integer, a valid column id",
+        "interval_name": "chronostratigraphic time interval name",
+        "age": "numerical age in millions of years before present",
+        "age_top": "numerical age (Ma) - must be used with age_bottom and be less than age_bottom",
+        "age_bottom": "numerical age (Ma) - must be used with age_top and be greater than age_top",
+        "lith": "specific lithology (e.g., shale, sandstone)",
+        "lith_type": "groups of lithologies (e.g., carbonate, siliciclastic)",
+        "lith_class": "general lithologies (sedimentary, igneous, metamorphic)",
         "response": "Can be 'short' or 'long' - default is 'short'"
       },
       "output_formats": ["json", "csv"],
@@ -216,7 +220,7 @@
   };
 
   defs["/unit_contacts"] = {
-    "description": "Returns unit contact relationship descriptions",
+    "description": "unit contact relationships",
     "visible": true,
     "options": {
       "parameters": {
@@ -239,7 +243,7 @@
   }
 
   defs["/fossils"] = {
-    "description": "Returns all fossils given an interval name or age range",
+    "description": "Paleobiology Database (http://paleobiodb.org) collections matched to Macrostrat units",
     "visible": true,
     "options": {
       "parameters": {
@@ -264,7 +268,7 @@
   };
 
   defs["/stats"] = {
-    "description": "Returns statistics about the macrostrat database",
+    "description": "statistics about the Macrostrat database",
     "visible": true,
     "options": {
       "parameters": {
@@ -283,7 +287,7 @@
   };
 
   defs["/defs"] = {
-    "description": "Definitions of various parameters",
+    "description": "Routes giving access to standard fields and dictionaries used in Macrostrat",
     "visible": true
   };
 
@@ -367,7 +371,7 @@
   };
 
   defs["/defs/intervals"] = {
-    "description": "Returns interval definitions",
+    "description": "Returns all time interval definitions",
     "parent": "definitions",
     "visible": true,
     "options": {
@@ -438,7 +442,7 @@
   };
 
   defs["/defs/timescales"] = {
-    "description": "Returns available timescales",
+    "description": "Returns timescales used by Macrostrat",
     "parent": "definitions",
     "visible": true,
     "options": {
@@ -479,7 +483,7 @@
   };
 
   defs["/section_stats"] = {
-    "description": "Return section stats",
+    "description": "Return section stats for Macrostrat",
     "visible": true,
     "options": {
       "parameters": {
@@ -505,7 +509,7 @@
   };
 
   defs["/paleogeography"] = {
-    "description": "Returns paleogeography geometry from http://www.gplates.org, courtesy of Mark Turner and Mike Gurnis. Note that for complete and recent reconstructions, original GPlates data services should be used - http://gplates.gps.caltech.edu:8080.",
+    "description": "Returns paleogeography geometry from http://www.gplates.org, courtesy of Mark Turner and Mike Gurnis. Note that for complete and recent reconstructions, original GPlates data services should be used - http://gplates.gps.caltech.edu:8080. If you use this service and provide attribution, you should cite GPlates via this service.",
     "visible": true,
     "options": {
       "parameters": {
@@ -525,7 +529,7 @@
   };
 
   defs["/geologic_units"] = {
-    "description": "GMUS data via http://mrdata.usgs.gov/geology/state/, GMNA via http://ngmdb.usgs.gov/gmna/",
+    "description": "Geologic map units. State-level (gmus) data adapated from http://mrdata.usgs.gov/geology/state/, Continental-scale North American data (gmna) adapted from the 2005 Geologic Map of North America (http://ngmdb.usgs.gov/gmna/)",
     "visible": true,
     "options": {
       "parameters": {
@@ -562,7 +566,7 @@
   };
 
   defs["/geologic_units/intersection"] = {
-    "description": "Geologic units under a linestring. GMUS data via http://mrdata.usgs.gov/geology/state/, GMNA via http://ngmdb.usgs.gov/gmna/",
+    "description": "Geologic units under a linestring. State-level geologic map (gmus) data adapted from http://mrdata.usgs.gov/geology/state/, continent-scale (gmna) data adapted from http://ngmdb.usgs.gov/gmna/",
     "visible": true,
     "options": {
       "parameters": {
@@ -619,7 +623,7 @@
 
 
   defs["/mobile/point"] = {
-    "description": "Get GMUS unit and Macrostrat polygon for a given point",
+    "description": "Get state-level map (gmus) unit and Macrostrat polygon for a given point",
     "parent": "mobile",
     "visible": true,
     "options": {
@@ -643,7 +647,7 @@
   };
 
   defs["/mobile/point_details"] = {
-    "description": "Get GMUS unit description and Macrostrat units for a given location. A valid latitude and longitude or column ID and GMUS unit ID are required.",
+    "description": "Get state-level geologic map (gmus) unit description and Macrostrat units for a given location. A valid latitude and longitude or column ID and GMUS unit ID are required.",
     "parent": "mobile",
     "visible": true,
     "options": {
@@ -669,7 +673,7 @@
   };
 
   defs["/mobile/fossil_collections"] = {
-    "description": "Get Paleobiology Database fossil collection numbers for a given Macrostrat unit",
+    "description": "Get Paleobiology Database (http://paleobiodb.org) fossil collection numbers matched to a given Macrostrat unit",
     "parent": "mobile",
     "visible": true,
     "options": {
@@ -716,7 +720,7 @@
     "era": "string, containing international chronostratigraphic period",
     "period": "string, containing international chronostratigraphic period",
     "max_thick": "number, maximum thickness in meters",
-    "min_thick": "number, minimum thickess in meters (NB some zero values may not have meaning)",
+    "min_thick": "number, minimum thickess in meters (NB some zero values may be equivalent to NULL, not zero)",
     "color": "text, recommended coloring for units based on dominant lithology",
     "u_color": "text, original color for unit",
     "text_color": "text, recommended coloring for text based on color",
