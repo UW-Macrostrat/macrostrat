@@ -109,54 +109,6 @@
     }
   };
 
-  defs["/unit"] = {
-    "description": "this route is redundant with /units with parameter id specified",
-    "visible": true,
-    "options": {
-      "parameters": {
-        "id": "Unit id",
-        "pbdb": "Boolean",
-        "response": "Can be 'short' or 'long'"
-      },
-      "output_formats": ["json"],
-      "examples": [
-        "api/unit?id=527",
-        "api/unit?id=527&pbdb=true"
-      ],
-      "fields": [
-        "id",
-        "section_id",
-        "strat_name",
-        "Mbr",
-        "Fm",
-        "Gp",
-        "SGp",
-        "era",
-        "period",
-        "max_thick",
-        "min_thick",
-        "color",
-        "lith_class",
-        "lith_type",
-        "lith",
-        "environ_class",
-        "environ_type",
-        "environ",
-        "pbdb",
-        "FO_interval",
-        "FO_h",
-        "FO_age",
-        "b_age",
-        "LO_interval",
-        "LO_h",
-        "LO_age",
-        "t_age",
-        "position_bottom",
-        "notes"
-      ]
-    }
-  };
-
   defs["/units"] = {
     "description": "all Macrostrat units matching search criteria",
     "visible": true,

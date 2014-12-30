@@ -303,64 +303,6 @@ describe('Routes', function() {
     });
   });
 
-/* unit */
-  describe("unit", function() {
-    it('should return metadata', function(done) {
-      request(host)
-        .get("/api/unit")
-        .expect(aSuccessfulRequest)
-        .expect(json)
-        .expect(metadata)
-        .end(function(error, res) {
-          if (error) return done(error);
-          done();
-        });
-    });
-
-    it("should accept a unit id", function(done) {
-      request(host)
-        .get("/api/unit?id=527")
-        .expect(aSuccessfulRequest)
-        .expect(json)
-        .end(function(error, res) {
-          if (error) return done(error);
-          done();
-        });
-    });
-
-    it("should accept a parameter 'pbdb'", function(done) {
-      request(host)
-        .get("/api/unit?id=527&pbdb=true")
-        .expect(aSuccessfulRequest)
-        .expect(json)
-        .expect(function(res) {
-          if (!res.body.success.data[0].pbdb_collections) {
-            throw new Error("PBDB collections missing when requested");
-          }
-        })
-        .end(function(error, res) {
-          if (error) return done(error);
-          done();
-        });
-    });
-
-    it("should accept a response parameter", function(done) {
-      request(host)
-        .get("/api/unit?id=527&response=long")
-        .expect(aSuccessfulRequest)
-        .expect(json)
-        .expect(function(res) {
-          if (!res.body.success.data[0].LO_interval) {
-            throw new Error("Extra data missing when requested");
-          }
-        })
-        .end(function(error, res) {
-          if (error) return done(error);
-          done();
-        });
-    })
-  });
-
 /* units */
   describe("units", function() {
 

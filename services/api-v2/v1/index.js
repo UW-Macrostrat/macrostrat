@@ -16,9 +16,6 @@ api.route("/columns")
 api.route("/sections")
   .get(require("./sections"));
 
-api.route("/unit")
-  .get(require("./unit"));
-
 api.route("/unit_contacts")
   .get(require("./unit_contacts"));
 
