@@ -44,7 +44,7 @@ module.exports = function(req, res, next) {
               if (req.query.format && api.acceptedFormats.bare[req.query.format]) {
                 larkin.sendBare(result, res, next);
               } else {
-                larkin.sendData(result, res, null, next);
+                larkin.sendCompact(result, res, null, next);
               }
             }
           }
