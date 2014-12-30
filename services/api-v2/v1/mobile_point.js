@@ -76,7 +76,7 @@ module.exports = function(req, res, next) {
           "strat_unit": (result.gmus && result.gmus.strat_unit) ? result.gmus.strat_unit : "",
           "col_id": (result.column && result.column.col_id) ? result.column.col_id : ""
         };
-        larkin.sendData(response, res, null, next);
+        larkin.sendCompact(response, res, null, next);
       }
     });
       

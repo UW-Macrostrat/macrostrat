@@ -7,7 +7,7 @@ module.exports = function(req, res, next) {
       if (error) {
         larkin.error(req, res, next, error);
       } else {
-        larkin.sendData(result, res, "json", next);
+        larkin.sendCompact(result, res, "json", next);
       }
     });
   } else {
