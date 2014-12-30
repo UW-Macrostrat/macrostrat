@@ -11,7 +11,11 @@ cd macrostrat-api
 npm install
 npm start
 ````
-You will need to update rename ````vx/credentials.example.js```` to ````vx/credentials.js```` and input your credentials. The API runs on port ````5000```` by default. 
+You will need to update rename ````vx/credentials.example.js```` to ````vx/credentials.js```` and input your credentials. The API runs on port ````5000```` by default. If installing in a directory with higher permissions, you will need to do this as well:
+````
+cd vx
+npm install
+````
 
 ### Test
 ````
