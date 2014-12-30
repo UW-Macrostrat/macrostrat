@@ -440,6 +440,57 @@ describe('Routes', function() {
         });
     });
 
+    it("should accept a lith parameter", function(done) {
+      request(host)
+        .get("/api/units?lith=sandstone")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .expect(function(res) {
+          if (res.body.success.data.length < 800) {
+            throw new Error("Not enough results returned when using lith on units");
+          }
+        })
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should accept a lith_type parameter", function(done) {
+      request(host)
+        .get("/api/units?lith_type=carbonate")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .expect(function(res) {
+          if (res.body.success.data.length < 11000) {
+            throw new Error("Not enough results returned when using lith_type on units");
+          }
+        })
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should accept a lith_class parameter", function(done) {
+      request(host)
+        .get("/api/units?lith_class=metamorphic")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .expect(function(res) {
+          if (res.body.success.data.length < 1800) {
+            throw new Error("Not enough results returned when using lith_class on units");
+          }
+        })
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
     it("should output CSV", function(done) {
       request(host)
         .get("/api/units?section_id=107&format=csv")
