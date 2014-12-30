@@ -108,7 +108,7 @@ module.exports = function(req, res, next) {
         console.log(error);
         larkin.error(req, res, next, "Something went wrong");
       } else {
-        larkin.sendData([results], res, "json", next);
+        larkin.sendCompact([results], res, "json", next);
       }
     });
   } else if (req.query.col_id && req.query.unit_id) {
@@ -168,7 +168,7 @@ module.exports = function(req, res, next) {
       if (error) {
         larkin.error(req, res, next, "Something went wrong");
       } else {
-        larkin.sendData([results], res, "json", next);
+        larkin.sendCompact([results], res, "json", next);
       }
     });
   } else {
