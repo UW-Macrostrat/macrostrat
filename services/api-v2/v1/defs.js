@@ -101,8 +101,10 @@
       "fields": [
         "id",
         "col_id",
-        "bottom",
         "top",
+        "top_age",
+        "bottom",
+        "bottom_age",
         "units",
         "fossils"
       ]
@@ -710,7 +712,11 @@
     "max_age": "text, the maximum age of the unit, using the International time scale",
     "timescale": "text, name of timescale",
     "project": "text, name of project",
-    "timescale_id": "integer, unique identifier for timescale used in project"
+    "timescale_id": "integer, unique identifier for timescale used in project",
+    "top": "text, named time interval that contains the top of the section",
+    "top_age": "number, minimum age of the section in millions of years",
+    "bottom": "text, named time interval that contains the bottom of the section",
+    "bottom_age": "number, maximum age of the section in millions of years"
   };
 
   module.exports = defs;
