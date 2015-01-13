@@ -17,8 +17,8 @@
       },
       "output_formats": ["json"],
       "examples": [
-        "/api/columns?id=17",
-        "/api/columns?lat=50&lng=-80"
+        "/api/column?id=17",
+        "/api/column?lat=50&lng=-80"
       ],
       "fields":[ 
         "id",
