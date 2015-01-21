@@ -58,9 +58,11 @@
         "age": "number, search age in Myr before present",
         "age_top": "number, youngest limit of search, in Myr before present - must be used with age_bottom",
         "age_bottom": "number, oldest limit of search, in Myr before present -  must be used with age_top",
-        "lith": "string, return only columns with units containing specified lithology, lith defined in /lith_definitions",
-        "lith_class": "string, return only columsn with units containing specified lithology, lith_class defined in /lith_definitions",
-        "lith_type": "string, return only columsn with units containing specified lithology, lith_type defined in /lith_definitions",
+        "lith": "string, return only columns with units containing specified lithology, lith defined in /defs/lithologies",
+        "lith_class": "string, return only columns with units containing specified lithology, lith_class defined in /defs/lithologies",
+        "lith_type": "string, return only columns with units containing specified lithology, lith_type defined in /defs/lithologies",
+        "strat_name": "string, return only columns that contain a given unit name",
+        "strat_id": "number, one or more comma-separated strat_ids, as definied in /defs/strat_names",
         "all": "Show all results",
         "format": "string, Desired output format"
       },
@@ -68,7 +70,8 @@
       "examples": [
         "/api/columns?interval_name=Permian",
         "/api/columns?age=271",
-        "/api/columns?age_top=200&age_bottom=250"
+        "/api/columns?age_top=200&age_bottom=250",
+        "/api/columns?strat_name=mancos&format=geojson_bare"
       ],
       "fields": [
         "col_id",

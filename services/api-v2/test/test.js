@@ -219,22 +219,36 @@ describe('Routes', function() {
         });
     });
 
-    it("should return topojson", function(done) {
+    it("should accept a strat_name parameter", function(done) {
       request(host)
-        .get("/api/columns?age=2&format=topojson")
+        .get("/api/columns?strat_name=mancos")
         .expect(aSuccessfulRequest)
-        .expect(topoJSON)
+        .expect(json)
+        .expect(atLeastOneResult)
         .end(function(error, res) {
           if (error) return done(error);
           done();
         });
     });
 
+    it("should accept a strat_id parameter", function(done) {
+      request(host)
+        .get("/api/columns?strat_id=1205")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+
     it("should return topojson", function(done) {
       request(host)
-        .get("/api/columns?age=2&format=geojson")
+        .get("/api/columns?age=2&format=topojson")
         .expect(aSuccessfulRequest)
-        .expect(geoJSON)
+        .expect(topoJSON)
         .end(function(error, res) {
           if (error) return done(error);
           done();
