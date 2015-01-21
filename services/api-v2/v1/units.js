@@ -86,8 +86,8 @@ module.exports = function(req, res, next) {
       }
 
       if (req.query.strat_name || req.query.strat_id) {
-        where += " AND lookup_strat_names.strat_name_id IN (?) OR lookup_strat_names.bed_id IN (?) OR lookup_strat_names.mbr_id IN (?) OR lookup_strat_names.fm_id IN (?)";
-        params.push(data.strat_ids, data.strat_ids, data.strat_ids, data.strat_ids);
+        where += " AND lookup_strat_names.bed_id IN (?) OR lookup_strat_names.mbr_id IN (?) OR lookup_strat_names.fm_id IN (?) OR lookup_strat_names.gp_id IN (?) OR lookup_strat_names.sgp_id IN (?) ";
+        params.push(data.strat_ids, data.strat_ids, data.strat_ids, data.strat_ids, data.strat_ids);
       }
 
       var shortSQL = "units.id AS id,units_sections.section_id as section_id, units_sections.col_id as col_id, col_area, units.strat_name, units.position_bottom, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick, min_thick, color AS u_color, lith_type, count(distinct collection_no) pbdb";

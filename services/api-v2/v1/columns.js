@@ -73,8 +73,8 @@ module.exports = function(req, res, next) {
           params = [lith_field, lith, lith_field, lith, data.age_top, data.age_bottom, data.age_top, data.age_bottom];
 
       if (req.query.strat_name || req.query.strat_id) {
-        where += " AND lookup_strat_names.strat_name_id IN (?) OR lookup_strat_names.bed_id IN (?) OR lookup_strat_names.mbr_id IN (?) OR lookup_strat_names.fm_id IN (?)";
-        params.push(data.strat_ids, data.strat_ids, data.strat_ids, data.strat_ids);
+        where += " AND lookup_strat_names.bed_id IN (?) OR lookup_strat_names.mbr_id IN (?) OR lookup_strat_names.fm_id IN (?) OR lookup_strat_names.gp_id IN (?) OR lookup_strat_names.sgp_id IN (?) ";
+        params.push(data.strat_ids, data.strat_ids, data.strat_ids, data.strat_ids, data.strat_ids);
 
         stratJoin += "LEFT JOIN unit_strat_names ON unit_strat_names.unit_id=units.id LEFT JOIN lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id ";
       }
