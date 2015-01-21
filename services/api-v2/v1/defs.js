@@ -126,6 +126,8 @@
         "lith": "specific lithology (e.g., shale, sandstone)",
         "lith_type": "groups of lithologies (e.g., carbonate, siliciclastic)",
         "lith_class": "general lithologies (sedimentary, igneous, metamorphic)",
+        "strat_name": "a fuzzy stratigraphic name to match units to",
+        "strat_id": "a single or comma-separated list of stratigraphic ids (can be retrieved from /defs/strat_names",
         "response": "Can be 'short' or 'long' - default is 'short'"
       },
       "output_formats": ["json", "csv"],
@@ -133,6 +135,8 @@
         "api/units?interval_name=Permian",
         "api/units?age=271",
         "api/units?interval_name=Permian&response=long",
+        "api/units?strat_id=1205,4260",
+        "api/units?strat_name=mancos",
         "api/units?section_id=107&col_id=22&format=csv"
       ],
       "fields": [

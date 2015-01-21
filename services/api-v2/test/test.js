@@ -433,6 +433,40 @@ describe('Routes', function() {
         });
     });
 
+    it("should accept a strat_name parameter", function(done) {
+      request(host)
+        .get("/api/units?strat_name=mancos")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .expect(function(res) {
+          if (res.body.success.data.length !== 22) {
+            throw new Error("Wrong number of units returned when using strat_name on units");
+          }
+        })
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should accept a strat_id parameter", function(done) {
+      request(host)
+        .get("/api/units?strat_id=1205,4260")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .expect(function(res) {
+          if (res.body.success.data.length !== 31) {
+            throw new Error("Wrong number of units returned when using strat_id on units");
+          }
+        })
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
     it("should output CSV", function(done) {
       request(host)
         .get("/api/units?section_id=107&format=csv")
