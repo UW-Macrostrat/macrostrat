@@ -68,7 +68,12 @@ module.exports = function(req, res, next) {
       }
 
       var where = "",
-          params = [data.age_top, data.age_bottom, lith_field, lith];
+          params = [lith_field, lith];
+
+      if (data.age_bottom !== 99999) {
+        where += " AND FO_age > ? AND LO_age < ?";
+        params.push(data.age_top, data.age_bottom);
+      }
 
       if (req.query.id) {
         where += " AND units_sections.unit_id = ?";
@@ -105,22 +110,32 @@ module.exports = function(req, res, next) {
             LEFT JOIN lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id \
             " + ((req.query.response === "long") ? "LEFT JOIN unit_notes ON unit_notes.unit_id=units.id JOIN colors ON units.color = colors.color" : "") + " \
             LEFT JOIN pbdb_matches ON pbdb_matches.unit_id=units.id \
-            WHERE status_code='active' AND FO_age > ? AND LO_age < ? AND units.id IN (SELECT unit_liths.unit_id from unit_liths JOIN liths on lith_id=liths.id WHERE ?? LIKE ?)" + where + " GROUP BY units.id ORDER BY t_age ASC";
-      
+            WHERE status_code='active' AND units.id IN (SELECT unit_liths.unit_id from unit_liths JOIN liths on lith_id=liths.id WHERE ?? LIKE ?)" + where + " GROUP BY units.id ORDER BY t_age ASC";
+ 
       larkin.query(sql, params, function(error, result) {
           if (error) {
             callback(error);
           } else {
             if (req.query.response === "long") {
               result.forEach(function(d) {
-                d.units_above = d.units_above.split("|");
-                d.units_above = d.units_above.map(function(j) {
-                  return parseInt(j);
-                });
-                d.units_below = d.units_below.split("|");
-                d.units_below = d.units_below.map(function(j) {
-                  return parseInt(j);
-                });
+                if (d.units_above) {
+                  d.units_above = d.units_above.split("|");
+                  d.units_above = d.units_above.map(function(j) {
+                    return parseInt(j);
+                  });
+                } else {
+                  d.units_above = [];
+                }
+                
+                if (d.units_below) {
+                  d.units_below = d.units_below.split("|");
+                  d.units_below = d.units_below.map(function(j) {
+                    return parseInt(j);
+                  });
+                } else {
+                  d.units_below = [];
+                }
+                  
               });
             }
             callback(null, data, result);
