@@ -161,10 +161,9 @@ module.exports = function(req, res, next) {
     }
   ], function(error, data, result) {
     if (error) {
-      console.log(error);
       larkin.error(req, res, next, "Something went wrong");
     } else {
-      larkin.sendData(result, res, (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json", next);
+      larkin.sendCompact(result, res, (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json", next);
     }
   });
 }

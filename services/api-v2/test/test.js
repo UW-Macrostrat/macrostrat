@@ -282,6 +282,8 @@ describe('Routes', function() {
     });
 
     it("should return all sections", function(done) {
+      this.timeout(6000);
+      
       request(host)
         .get("/api/sections?all")
         .expect(aSuccessfulRequest)
@@ -483,6 +485,8 @@ describe('Routes', function() {
     });
 
     it("should accept a environ_class parameter", function(done) {
+      this.timeout(5000);
+
       request(host)
         .get("/api/units?environ_class=marine")
         .expect(aSuccessfulRequest)
@@ -1259,7 +1263,6 @@ describe('Routes', function() {
     it("should accept a time interval name on GMUS", function(done) {
       request(host)
         .get("/api/geologic_units?interval_name=Permian&type=gmus")
-        .timeout(10000)
         .expect(aSuccessfulRequest)
         .expect(json)
         .expect(atLeastOneResult)
