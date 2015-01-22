@@ -129,6 +129,9 @@
         "lith": "specific lithology (e.g., shale, sandstone)",
         "lith_type": "groups of lithologies (e.g., carbonate, siliciclastic)",
         "lith_class": "general lithologies (sedimentary, igneous, metamorphic)",
+        "environ": "specific environment",
+        "environ_type": "groups of environments",
+        "environ_class": "general environments",
         "strat_name": "a fuzzy stratigraphic name to match units to",
         "strat_id": "a single or comma-separated list of stratigraphic ids (can be retrieved from /defs/strat_names",
         "response": "Can be 'short' or 'long' - default is 'short'"

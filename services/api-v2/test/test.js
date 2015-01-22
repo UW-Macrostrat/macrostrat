@@ -447,6 +447,58 @@ describe('Routes', function() {
         });
     });
 
+
+    it("should accept a environ parameter", function(done) {
+      request(host)
+        .get("/api/units?environ=marine indet.")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .expect(function(res) {
+          if (res.body.success.data.length < 100) {
+            throw new Error("Not enough results returned when using environ on units");
+          }
+        })
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should accept a environ_type parameter", function(done) {
+      request(host)
+        .get("/api/units?environ_type=carbonate")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .expect(function(res) {
+          if (res.body.success.data.length < 100) {
+            throw new Error("Not enough results returned when using environ_type on units");
+          }
+        })
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should accept a environ_class parameter", function(done) {
+      request(host)
+        .get("/api/units?environ_class=marine")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .expect(function(res) {
+          if (res.body.success.data.length < 1000) {
+            throw new Error("Not enough results returned when using environ_class on units");
+          }
+        })
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
     it("should accept a strat_name parameter", function(done) {
       request(host)
         .get("/api/units?strat_name=mancos")

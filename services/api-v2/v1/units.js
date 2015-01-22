@@ -42,7 +42,7 @@ module.exports = function(req, res, next) {
         callback(null, {"interval_name": "none", "age_bottom": req.query.age, "age_top": req.query.age});
       } else if (req.query.age_top && req.query.age_bottom) {
         callback(null, {"interval_name": "none", "age_bottom": req.query.age_bottom, "age_top": req.query.age_top});
-      } else if (req.query.id || req.query.section_id || req.query.col_id || req.query.lith || req.query.lith_class || req.query.lith_type) { 
+      } else if (req.query.id || req.query.section_id || req.query.col_id || req.query.lith || req.query.lith_class || req.query.lith_type || req.query.environ || req.query.environ_class || req.query.environ_type) { 
         callback(null, {"interval_name": "none", "age_bottom": 99999, "age_top": 0});
       } else {
         callback("error");
@@ -95,6 +95,23 @@ module.exports = function(req, res, next) {
         params.push(data.strat_ids, data.strat_ids, data.strat_ids, data.strat_ids, data.strat_ids);
       }
 
+      var environ = "", 
+          environ_field = "";
+      if (req.query.environ) {
+        environ = "%"+req.query.environ+"%";
+        environ_field = "environ";
+      } else if (req.query.environ_class) {
+        environ = "%"+req.query.environ_class+"%";
+        environ_field = "environ_class";
+      } else if (req.query.environ_type) {
+        environ = "%"+req.query.environ_type+"%";
+        environ_field = "environ_type";
+      }
+      if (environ !== ""){
+        where += " AND units.id IN (SELECT unit_id FROM lookup_unit_liths WHERE ?? LIKE ?)";
+        params.push(environ_field, environ);
+      } 
+
       var shortSQL = "units.id AS id,units_sections.section_id as section_id, units_sections.col_id as col_id, col_area, units.strat_name, units.position_bottom, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick, min_thick, color AS u_color, lith_type, count(distinct collection_no) pbdb";
             
       var longSQL = "units.id AS id, units_sections.section_id as section_id, project_id, units_sections.col_id as col_id, col_area, units.strat_name, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick,min_thick, lith_class, lith_type, lith_long lith, environ_class, environ_type, environ, count(distinct collection_no) pbdb, FO_interval, FO_h, FO_age, LO_interval, LO_h, LO_age, position_bottom, notes, units.color AS u_color, colors.unit_hex AS color, colors.text_hex AS text_color, min(ubt.t1_age) AS t_age, GROUP_CONCAT(distinct ubt.unit_id_2 SEPARATOR '|') AS units_above, max(ubb.t1_age) AS b_age, GROUP_CONCAT(distinct ubb.unit_id SEPARATOR '|') AS units_below "; 
@@ -111,7 +128,7 @@ module.exports = function(req, res, next) {
             " + ((req.query.response === "long") ? "LEFT JOIN unit_notes ON unit_notes.unit_id=units.id JOIN colors ON units.color = colors.color" : "") + " \
             LEFT JOIN pbdb_matches ON pbdb_matches.unit_id=units.id \
             WHERE status_code='active' AND units.id IN (SELECT unit_liths.unit_id from unit_liths JOIN liths on lith_id=liths.id WHERE ?? LIKE ?)" + where + " GROUP BY units.id ORDER BY t_age ASC";
- 
+      
       larkin.query(sql, params, function(error, result) {
           if (error) {
             callback(error);
