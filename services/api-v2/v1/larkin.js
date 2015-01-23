@@ -89,10 +89,14 @@ var mysql = require("mysql"),
    };
 
    // Remove all whitespace from response
-  larkin.sendCompact = function(data, res) {
-    res
-      .set("Content-type", "application/json; charset=utf-8")
-      .send(JSON.stringify({"success": {"v": api.version,"data": data}}, null, 0));
+  larkin.sendCompact = function(data, res, format) {
+    if (format === "csv") {
+      res.csv(data, true);
+    } else {
+      res
+        .set("Content-type", "application/json; charset=utf-8")
+        .send(JSON.stringify({"success": {"v": api.version,"data": data}}, null, 0));
+    }
   }
 
   larkin.sendBare = function(data, res, next) {
