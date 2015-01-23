@@ -148,6 +148,7 @@
       "fields": [
         "id",
         "section_id",
+        "project_id",
         "col_id",
         "col_area",
         "strat_name",
