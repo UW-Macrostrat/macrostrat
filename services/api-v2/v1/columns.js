@@ -96,11 +96,8 @@ module.exports = function(req, res, next) {
             callback(error);
           } else {
             result.forEach(function(d) {
-              d.units = d.units.split("|");
-              d.units = d.units.map(function(j) {
-                return parseInt(j);
-              });
-              d.lith_types = d.lith_types.split("|");
+              d.units = larkin.jsonifyPipes(d.units, "integers");
+              d.lith_types = larkin.jsonifyPipes(d.lith_types, "strings");
             });
             callback(null, data, result);
           }

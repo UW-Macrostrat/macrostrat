@@ -283,7 +283,7 @@ describe('Routes', function() {
 
     it("should return all sections", function(done) {
       this.timeout(6000);
-      
+
       request(host)
         .get("/api/sections?all")
         .expect(aSuccessfulRequest)
@@ -1249,6 +1249,8 @@ describe('Routes', function() {
     });
 
     it("should accept a latitude and longitude", function(done) {
+      this.timeout(3000);
+      
       request(host)
         .get("/api/geologic_units?lat=43&lng=-89.3&type=gmna")
         .expect(aSuccessfulRequest)

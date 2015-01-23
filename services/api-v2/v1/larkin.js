@@ -97,7 +97,8 @@ var mysql = require("mysql"),
         .set("Content-type", "application/json; charset=utf-8")
         .send(JSON.stringify({"success": {"v": api.version,"data": data}}, null, 0));
     }
-  }
+  };
+  
 
   larkin.sendBare = function(data, res, next) {
     res
@@ -188,6 +189,27 @@ var mysql = require("mysql"),
         return (requestedFormat === "geojson" || requestedFormat === "topojson") ? requestedFormat : "geojson";
     }
   };
+
+
+  larkin.jsonifyPipes = function(data, type) {
+    if (data) {
+      data = data.split("|");
+      if (type === "integers") {
+        data = data.map(function(d) {
+          return parseInt(d);
+        });
+      } else if (type === "floats") {
+        data = data.map(function(d) {
+          return parseFloat(d);
+        });
+      }
+
+      return data;
+
+    } else {
+      return [];
+    }
+  }
 
   module.exports = larkin;
 

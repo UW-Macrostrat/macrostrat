@@ -135,24 +135,8 @@ module.exports = function(req, res, next) {
           } else {
             if (req.query.response === "long") {
               result.forEach(function(d) {
-                if (d.units_above) {
-                  d.units_above = d.units_above.split("|");
-                  d.units_above = d.units_above.map(function(j) {
-                    return parseInt(j);
-                  });
-                } else {
-                  d.units_above = [];
-                }
-                
-                if (d.units_below) {
-                  d.units_below = d.units_below.split("|");
-                  d.units_below = d.units_below.map(function(j) {
-                    return parseInt(j);
-                  });
-                } else {
-                  d.units_below = [];
-                }
-                  
+                d.units_above = larkin.jsonifyPipes(d.units_above, "integers");
+                d.units_below = larkin.jsonifyPipes(d.units_below, "integers");
               });
             }
             callback(null, data, result);
