@@ -133,7 +133,8 @@ module.exports = function(req, res, next) {
           if (error) {
             callback(error);
           } else {
-            if (req.query.response === "long") {
+
+            if (req.query.response === "long" && req.query.format !== "csv") {
               result.forEach(function(d) {
                 d.units_above = larkin.jsonifyPipes(d.units_above, "integers");
                 d.units_below = larkin.jsonifyPipes(d.units_below, "integers");
