@@ -111,7 +111,7 @@ module.exports = function(req, res, next) {
         params.push(req.query.interval_name);
       }
 
-      larkin.queryPg("earthbase", "SELECT unit_abbre, rocktype, lithology, min_age, max_age, b.interval_name" + ((geo) ? ", ST_AsGeoJSON(the_geom) AS geometry" : "") + " FROM gmna.geologic_units a JOIN gmna.intervals_old b ON a.eb_interval_id = b.interval_id" + where, params, function(error, result) {
+      larkin.queryPg("earthbase", "SELECT unit_abbre, rocktype, lithology, min_age, max_age, b.interval_name" + ((geo) ? ", ST_AsGeoJSON(the_geom) AS geometry" : "") + " FROM gmna.geologic_units a LEFT JOIN gmna.intervals_old b ON a.eb_interval_id = b.interval_id" + where, params, function(error, result) {
         if (error) {
           callback(error);
         } else {
