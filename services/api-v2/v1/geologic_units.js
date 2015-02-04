@@ -60,10 +60,13 @@ module.exports = function(req, res, next) {
       if (where === "" || params.length === 0) {
         return larkin.error(req, res, next, "Invalid params");
       }
-      larkin.queryPg("earthbase", "SELECT a.unit_link, u_rocktype1 AS rt1, u_rocktype2 AS rt2, u_rocktype3 AS rt3, unit_name, unit_age, interval_color, c.cmin_age AS min_age, c.cmax_age AS max_age, lith1, lith2, lith3, lith4, lith5, unitdesc, a.gid" + ((geo) ? ", ST_AsGeoJSON(the_geom) AS geometry" : "") + " FROM gmus.geologic_units_with_intervals a LEFT JOIN gmus.lith b ON a.unit_link = b.unit_link LEFT JOIN gmus.age c ON a.unit_link = c.unit_link" + where, params, function(error, result) {
+      larkin.queryPg("earthbase", "SELECT a.unit_link, u_rocktype1 AS rt1, u_rocktype2 AS rt2, u_rocktype3 AS rt3, unit_name, unit_age, interval_color, c.cmin_age AS min_age, c.cmax_age AS max_age, lith1, lith2, lith3, lith4, lith5, unitdesc, unit_com, a.gid, string_agg(gm.unit_id::text, '|') AS macro_units" + ((geo) ? ", ST_AsGeoJSON(the_geom) AS geometry" : "") + " FROM gmus.geologic_units_with_intervals a LEFT JOIN gmus.lith b ON a.unit_link = b.unit_link LEFT JOIN gmus.age c ON a.unit_link = c.unit_link LEFT JOIN gmus.geounits_macrounits gm ON a.gid = gm.geologic_unit_gid" + where + " GROUP BY gm.geologic_unit_gid, a.unit_link, u_rocktype1, u_rocktype2, u_rocktype3, unit_name, unit_age, interval_color, c.cmin_age, c.cmax_age, lith1, lith2, lith3, lith4, lith5, unitdesc, unit_com, a.gid", params, function(error, result) {
         if (error) {
           callback(error);
         } else {
+          result.rows.forEach(function(d) {
+            d.macro_units = larkin.jsonifyPipes(d.macro_units, "integers");
+          });
           if (geo) {
             dbgeo.parse({
               "data": result.rows,
