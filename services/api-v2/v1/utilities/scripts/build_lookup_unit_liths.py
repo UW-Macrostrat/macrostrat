@@ -2,10 +2,11 @@ import MySQLdb
 import MySQLdb.cursors
 import urllib2
 import sys
+from credentials import *
 
 # Connect to Macrostrat
 try:
-  connection = MySQLdb.connect(host="", user="", passwd="", db="", unix_socket="/var/tmp/mariadb.sock", cursorclass=MySQLdb.cursors.DictCursor)
+  connection = MySQLdb.connect(host=mysql_host, user=mysql_user, passwd=mysql_passwd, db=mysql_db, unix_socket=mysql_unix_socket, cursorclass=MySQLdb.cursors.DictCursor)
 except:
   print "Could not connect to database: ", sys.exc_info()[1]
   sys.exit()

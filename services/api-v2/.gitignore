@@ -5,6 +5,7 @@ lib-cov
 *.out
 *.pid
 *.gz
+*.pyc
 
 npm-debug.log
 node_modules
@@ -12,6 +13,7 @@ v1/node_modules/*
 v1/npm-debug.log
 
 v1/credentials.js
+v1/utilities/scripts/credentials.py
 
 .DS_Store
 .AppleDouble

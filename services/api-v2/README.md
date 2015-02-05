@@ -22,6 +22,14 @@ npm install
 npm test
 ````
 
+### Building tables
+First, make sure you have updated ````v1/utilities/scripts/credentials.py.example```` with your credentials, and then rename the file to ````credentials.py````. Then run:
+
+````
+cd v1/utilities
+./rebuild.sh
+````
+
 ### Organization
 Each version of the API functions as a self-contained module, and therefore has its own ````package.json```` and dependencies. 
 
