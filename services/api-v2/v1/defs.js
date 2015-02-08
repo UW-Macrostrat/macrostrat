@@ -360,6 +360,7 @@
       "fields": [
         "id",
         "name",
+        "abbrev",
         "late_age",
         "early_age",
         "type",
@@ -677,7 +678,9 @@
     "unit_id": "integer, unique identifier for unit",
     "section_id": "integer, unique identifier for section (package)",
     "col_id": "integer, unique identifier for column",
+    "project_id": "unique identifier for project, corresponds to general geographic region",
     "strat_name": "text, informal unit name",
+    "name": "interval name",
     "Mbr": "text, lithostratigraphic member",
     "Fm": "text, lithostratigraphic formation",
     "Gp": "text, lithostratigraphic group",
@@ -727,7 +730,8 @@
     "top": "text, named time interval that contains the top of the section",
     "top_age": "number, minimum age of the section in millions of years",
     "bottom": "text, named time interval that contains the bottom of the section",
-    "bottom_age": "number, maximum age of the section in millions of years"
+    "bottom_age": "number, maximum age of the section in millions of years",
+    "abbrev": "standard abbreviation for interval name"
   };
 
   module.exports = defs;
