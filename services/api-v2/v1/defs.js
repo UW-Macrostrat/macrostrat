@@ -402,7 +402,8 @@
         "sgp",
         "sgp_id",
         "early_age",
-        "late_age"
+        "late_age",
+        "gsc_lexicon"
       ]
     }
   };
@@ -731,7 +732,8 @@
     "top_age": "number, minimum age of the section in millions of years",
     "bottom": "text, named time interval that contains the bottom of the section",
     "bottom_age": "number, maximum age of the section in millions of years",
-    "abbrev": "standard abbreviation for interval name"
+    "abbrev": "standard abbreviation for interval name",
+    "gsc_lexicon": "Canada Geological Survey Lexicon web id; data for some names can be accessed via link: http://weblex.nrcan.gc.ca/html/000000/GSCC00053000747.html"
   };
 
   module.exports = defs;
