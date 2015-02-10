@@ -72,6 +72,9 @@ for x in xrange(0,numrows):
 	if row2 is not None and row2['f'] is not None and row2['l'] is not None:
 		cursor.execute("UPDATE lookup_strat_names SET early_age = %f, late_age = %f WHERE strat_name_id=%d" % (row2['f'], row2['l'], row[x]['id']))
 
+# populate canada_lexicon webkey from canada_lexicon
+cursor.execute("UPDATE lookup_strat_names,canada_lexicon SET lookup_strat_names.gsc_lexicon = canada_lexicon.web_id WHERE lookup_strat_names.strat_name_id=canada_lexicon.strat_name_id")
+
 ## validate results
 cursor.execute("SELECT count(*) N, (SELECT count(*) from lookup_strat_names) nn from strat_names")
 row = cursor.fetchone()

@@ -37,7 +37,7 @@ module.exports = function(req, res, next) {
     filterString = " WHERE "+filterString;
   }
 
-  var sql = "SELECT strat_name name, rank, strat_name_id id, bed_name bed,bed_id,mbr_name mbr,mbr_id,fm_name fm,fm_id,gp_name gp,gp_id,sgp_name sgp,sgp_id,early_age,late_age FROM lookup_strat_names" + filterString;
+  var sql = "SELECT strat_name name, rank, strat_name_id id, bed_name bed,bed_id,mbr_name mbr,mbr_id,fm_name fm,fm_id,gp_name gp,gp_id,sgp_name sgp,sgp_id,early_age,late_age,gsc_lexicon FROM lookup_strat_names" + filterString;
 
   var format = (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json";
 
