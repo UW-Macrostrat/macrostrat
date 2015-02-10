@@ -531,19 +531,21 @@
   };
 
   defs["/geologic_units/intersection"] = {
-    "description": "Geologic units under a linestring. State-level geologic map (gmus) data adapted from http://mrdata.usgs.gov/geology/state/, continent-scale (gmna) data adapted from http://ngmdb.usgs.gov/gmna/",
+    "description": "Geologic units under a WKT shape. State-level geologic map (gmus) data adapted from http://mrdata.usgs.gov/geology/state/, continent-scale (gmna) data adapted from http://ngmdb.usgs.gov/gmna/",
     "visible": true,
     "options": {
       "parameters": {
-        "line": "(Required) A valid linestring in WKT format",
+        "shape": "(Required) A valid WKT shape",
+        "line": "(Deprecated) alias for shape",
         "type": "(Required) Return only from given sources - can be 'gmna' or 'gmus'",
         "buffer": "(Optional) Buffer the linestring by a given number of kilometers (default is 35)"
       },
       "output_formats": ["json", "geojson", "topojson", "geojson_bare", "topojson_bare"],
       "examples": [
-        "/api/geologic_units/intersection?line=LINESTRING(-92 43,-83 43)&format=geojson_bare",
+        "/api/geologic_units/intersection?line=LINESTRING(-92 43,-83 43)&format=geojson_bare&type=gmus",
         "/api/geologic_units/intersection?line=LINESTRING(-92 43,-83 43)&type=gmus",
-        "/api/geologic_units/intersection?line=LINESTRING(-92 43,-83 43)&type=gmna&format=geojson_bare&buffer=50"
+        "/api/geologic_units/intersection?line=LINESTRING(-92 43,-83 43)&type=gmna&format=geojson_bare&buffer=50",
+        "/api/geologic_units/intersection?shape=POLYGON((-89.7 42.9,-89.7 43.2,-88.9 43.2,-88.9 42.9,-89.7 42.9))&type=gmus&buffer=0&format=geojson_bare"
       ],
       "fields": [
         "id",

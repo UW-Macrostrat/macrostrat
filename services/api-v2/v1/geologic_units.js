@@ -33,8 +33,20 @@ module.exports = function(req, res, next) {
         }
         var placeholder = "$" + (params.length + 1);
         where += "(a.rocktype1 ILIKE " + placeholder + " OR a.rocktype2 ILIKE " + placeholder + " OR b.rocktype3 ILIKE " + placeholder + ")";
-        params.push("%" + req.query.rocktype + "%");
+        params.push("%" + req.query.rocktype3ype + "%");
       }*/
+
+      if (req.query.gid && req.query.gid != "undefined") {
+        if (where.length < 1) {
+          where += " WHERE "
+        } else {
+          where += " AND "
+        }
+        var placeholder = "$" + (params.length + 1);
+        where += " gid = " + placeholder;
+        params.push(req.query.gid);
+      }
+
       if (req.query.unit_name) {
         if (where.length < 1) {
           where += " WHERE "
