@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS `unit_boundaries` (
   KEY `section_id` (`section_id`)
 ) ENGINE=MyISAM AUTO_INCREMENT=46330 DEFAULT CHARSET=latin1;
 
-LOAD DATA INFILE '/Users/john/code/macrostrat/api/v1/utilities/scripts/UB_full_V4V3.csv' 
+LOAD DATA INFILE '/Users/john/code/macrostrat/api/v1/utilities/scripts/UB_full_V5V3_sectionbump.csv' 
 INTO TABLE unit_boundaries 
 FIELDS TERMINATED BY ',' 
 ENCLOSED BY '"'
