@@ -76,18 +76,57 @@ module.exports = function(req, res, next) {
       }
 
       if (req.query.id) {
-        where += " AND units_sections.unit_id = ?";
-        params.push(req.query.id);
+        if (req.query.id.indexOf(",") > -1) {
+          var ids = req.query.id.split(","),
+              placeholders = [];
+      
+          for (var i = 0; i < ids.length; i++) {
+            placeholders.push("?");
+            params.push(ids[i]);
+          }
+
+          where += " AND units_sections.unit_id IN (" + placeholders.join(",") + ")";
+
+        } else {
+          where += " AND units_sections.unit_id = ?";
+          params.push(req.query.id);
+        }
       }
 
       if (req.query.section_id) {
-        where += " AND units_sections.section_id = ?";
-        params.push(req.query.section_id);
+        if (req.query.section_id.indexOf(",") > -1) {
+          var sections = req.query.section_id.split(","),
+              placeholders = [];
+
+          for (var i = 0; i < sections.length; i++) {
+            placeholders.push("?");
+            params.push(sections[i]);
+          }
+
+          where += " AND units_sections.section_id IN (" + placeholders.join(",") + ")";
+
+        } else {
+          where += " AND units_sections.section_id = ?";
+          params.push(req.query.section_id);
+        }
       }
 
       if (req.query.col_id) {
-        where += " AND units_sections.col_id = ?";
-        params.push(req.query.col_id);
+        if (req.query.col_id.indexOf(",") > -1) {
+          var cols = req.query.col_id.split(","),
+              placeholders = [];
+
+          for (var i = 0; i < cols.length; i++) {
+            placeholders.push("?");
+            params.push(cols[i]);
+          }
+
+          where += " AND units_sections.col_id IN (" + placeholders.join(",") + ")";
+          
+        } else {
+          where += " AND units_sections.col_id = ?";
+          params.push(req.query.col_id);
+        }
       }
 
       if (req.query.strat_name || req.query.strat_id) {
