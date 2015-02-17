@@ -17,7 +17,20 @@ cursor = connection.cursor()
 ###############################################################################################
 ## build lookup_unit_intervals
 ###############################################################################################
-# truncate the table
+# recompute and populate comp_prop
+
+cursor.execute("SELECT  a.unit_id, adom sub_lith,bdom dom_lith FROM (SELECT unit_id,count(id) adom, dom from unit_liths WHERE dom='sub' group by unit_id) a JOIN (SELECT unit_id,count(id) bdom, dom from unit_liths WHERE dom='dom' group by unit_id) b on b.unit_id=a.unit_id")
+numrows = cursor.rowcount
+row = cursor.fetchall()
+
+for x in xrange(0,numrows):
+	n=row[x]['sub_lith']+(row[x]['dom_lith']*5)
+	dom_p=5/n
+	sub_p=1/n
+	cursor.execute("UPDATE unit_liths set comp_prop=%f WHERE unit_id=%d and dom='dom'" % (dom_p,row[x]['unit_id']))
+	cursor.execute("UPDATE unit_liths set comp_prop=%f WHERE unit_id=%d and dom='sub'" % (sub_p,row[x]['unit_id']))
+
+# truncate the lookup table
 cursor.execute("TRUNCATE TABLE lookup_unit_liths")
 
 # initial query for simple lith summary
