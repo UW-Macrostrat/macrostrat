@@ -1,6 +1,6 @@
 import MySQLdb
 import MySQLdb.cursors
-import urllib2
+from warnings import filterwarnings
 import sys
 from credentials import *
 
@@ -14,9 +14,9 @@ except:
 # Cursor for MySQL
 cursor = connection.cursor()
 
-###############################################################################################
-## build lookup_strat_names
-###############################################################################################
+# Ignore warnings
+filterwarnings('ignore', category = MySQLdb.Warning)
+
 # truncate the table
 cursor.execute("TRUNCATE TABLE lookup_strat_names")
 
@@ -26,7 +26,7 @@ numrows = cursor.rowcount
 row = cursor.fetchall()
 
 # initialize arrays
-row2={}
+row2 = {}
 
 #handle each unit
 for x in xrange(0,numrows):
@@ -34,14 +34,14 @@ for x in xrange(0,numrows):
 	nid = row[x]['rank'] + "_id"
 	n = row[x]['rank'] + "_name"
 	
-	cursor.execute("INSERT INTO lookup_strat_names (strat_name_id,strat_name,rank, "+ nid +", "+ n +") VALUES (%s, %s, %s, %s, %s)", (row[x]['id'], row[x]['strat_name'], row[x]['rank'], row[x]['id'], row[x]['strat_name']))
+	cursor.execute("INSERT INTO lookup_strat_names (strat_name_id,strat_name,rank, " + nid +", " + n +") VALUES (%s, %s, %s, %s, %s)", (row[x]['id'], row[x]['strat_name'], row[x]['rank'], row[x]['id'], row[x]['strat_name']))
 
 	parent = 1
 	old_one = row[x]['id']
 
 	while (parent > 0):
 		cursor.execute("SELECT this_name,strat_name,strat_names.id id, rank FROM strat_tree JOIN strat_names ON this_name=strat_names.id WHERE that_name = %d and rel='parent'" % (old_one))
-		row2=cursor.fetchone()
+		row2 = cursor.fetchone()
 		
 		if row2 is None:
 			old_one = 0
@@ -51,7 +51,7 @@ for x in xrange(0,numrows):
 			n = row2['rank'] + "_name"
 
 		if old_one > 0 and parent <= 1 :
-			cursor.execute("UPDATE lookup_strat_names SET "+ nid +" = %s, "+ n +" = %s WHERE strat_name_id = %s" , (row2['id'], row2['strat_name'], row[x]['id']))
+			cursor.execute("UPDATE lookup_strat_names SET " + nid + " = %s, "+ n +" = %s WHERE strat_name_id = %s" , (row2['id'], row2['strat_name'], row[x]['id']))
 		else :
 			parent = 0
 		if parent > 1:
@@ -62,7 +62,7 @@ cursor.execute("SELECT * FROM strat_names")
 numrows = cursor.rowcount
 row = cursor.fetchall()
 
-row2={}
+row2 = {}
 
 for x in xrange(0,numrows):
 	nid = row[x]['rank'] + "_id"

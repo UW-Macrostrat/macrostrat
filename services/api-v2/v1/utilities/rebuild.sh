@@ -1,7 +1,6 @@
 #! /bin/bash
-source scripts/credentials.py
 
-mysql -u $mysql_user -p$mysql_passwd $mysql_db < scripts/redo_unit_boundaries.sql
+python scripts/import.py
 echo "Done reloading boundaries into database"
 
 python scripts/build_lookup_unit_intervals.py

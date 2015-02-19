@@ -1,6 +1,6 @@
 import MySQLdb
 import MySQLdb.cursors
-import urllib2
+from warnings import filterwarnings
 import sys
 from credentials import *
 
@@ -14,9 +14,9 @@ except:
 # Cursor for MySQL
 cursor = connection.cursor()
 
-###############################################################################################
-## build lookup_unit_intervals
-###############################################################################################
+# Ignore warnings
+filterwarnings('ignore', category = MySQLdb.Warning)
+
 # recompute and populate comp_prop
 
 cursor.execute("SELECT  a.unit_id, adom sub_lith,bdom dom_lith FROM (SELECT unit_id,count(id) adom, dom from unit_liths WHERE dom='sub' group by unit_id) a JOIN (SELECT unit_id,count(id) bdom, dom from unit_liths WHERE dom='dom' group by unit_id) b on b.unit_id=a.unit_id")

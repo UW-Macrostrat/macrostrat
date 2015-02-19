@@ -1,6 +1,6 @@
 import MySQLdb
 import MySQLdb.cursors
-import urllib2
+from warnings import filterwarnings
 import sys
 from credentials import *
 
@@ -14,10 +14,10 @@ except:
 # Cursor for MySQL
 cursor = connection.cursor()
 
-###############################################################################################
-## update pbdb_matches with latest pbdb data
-###############################################################################################
+# Ignore warnings
+filterwarnings('ignore', category = MySQLdb.Warning)
 
+## update pbdb_matches with latest pbdb data
 cursor.execute("update pbdb_matches, pbdb.collections set pbdb_matches.collection_name=pbdb.collections.collection_name where pbdb_matches.collection_no=pbdb.collections.collection_no")
 cursor.execute("update pbdb_matches,pbdb.coll_matrix set occs=n_occs where pbdb_matches.collection_no=coll_matrix.collection_no")
 cursor.execute("update pbdb_matches,pbdb.collections set pbdb_matches.release_date=collections.release_date where pbdb_matches.collection_no=collections.collection_no")
