@@ -7,6 +7,8 @@ module.exports = function(req, res, next) {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
+  // First determine age range component of query, if any. 
+  // NB: ORDER MATTERS here. Do NOT add else if statements before req.query.interval_name, req.query.age or req.query.age_top else statements or  those age parameters will be ommitted 
   async.waterfall([
     function(callback) {
       if (req.query.interval_name) {
@@ -21,6 +23,10 @@ module.exports = function(req, res, next) {
             }
           }
         });
+      } else if (req.query.age) {
+        callback(null, {"interval_name": "none", "age_bottom": req.query.age, "age_top": req.query.age});
+      } else if (req.query.age_top && req.query.age_bottom) {
+        callback(null, {"interval_name": "none", "age_bottom": req.query.age_bottom, "age_top": req.query.age_top});
       } else if (req.query.strat_name) {
         larkin.query("SELECT strat_name_id FROM lookup_strat_names WHERE strat_name LIKE ? ", ["%" + req.query.strat_name + "%"], function(error, result) {
           if (error) {
@@ -38,10 +44,6 @@ module.exports = function(req, res, next) {
       } else if (req.query.strat_id) {
         var ids = req.query.strat_id.split(",").map(function(d) { return parseInt(d) });
         callback(null, {"interval_name": "none", "age_bottom": 99999, "age_top": 0, "strat_ids": ids });
-      } else if (req.query.age) {
-        callback(null, {"interval_name": "none", "age_bottom": req.query.age, "age_top": req.query.age});
-      } else if (req.query.age_top && req.query.age_bottom) {
-        callback(null, {"interval_name": "none", "age_bottom": req.query.age_bottom, "age_top": req.query.age_top});
       } else if (req.query.id || req.query.section_id || req.query.col_id || req.query.lith || req.query.lith_class || req.query.lith_type || req.query.environ || req.query.environ_class || req.query.environ_type) { 
         callback(null, {"interval_name": "none", "age_bottom": 99999, "age_top": 0});
       } else {

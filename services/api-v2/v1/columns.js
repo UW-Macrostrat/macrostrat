@@ -8,6 +8,9 @@ module.exports = function(req, res, next) {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
+
+  // First determine age range component of query, if any. 
+  // NB: ORDER MATTERS here. Do NOT add else if statements before req.query.interval_name, req.query.age or req.query.age_top else statements or  those age parameters will be ommitted 
   async.waterfall([
     function(callback) {
       if (req.query.interval_name) {
@@ -23,6 +26,10 @@ module.exports = function(req, res, next) {
             }
           }
         );
+      } else if (req.query.age) {
+        callback(null, {"interval_name": "Unknown", "age_bottom": req.query.age, "age_top": req.query.age});
+      } else if (req.query.age_top && req.query.age_bottom) {
+        callback(null, {"interval_name": "Unknown", "age_bottom": req.query.age_bottom, "age_top": req.query.age_top});
       } else if (req.query.strat_name) {
         larkin.query("SELECT strat_name_id FROM lookup_strat_names WHERE strat_name LIKE ? ", ["%" + req.query.strat_name + "%"], function(error, result) {
           if (error) {
@@ -36,20 +43,14 @@ module.exports = function(req, res, next) {
             }
           }
         });
-
       } else if (req.query.strat_id) {
         var ids = req.query.strat_id.split(",").map(function(d) { return parseInt(d) });
         callback(null, {"interval_name": "none", "age_bottom": 99999, "age_top": 0, "strat_ids": ids });
-      } else if (req.query.age) {
-        callback(null, {"interval_name": "Unknown", "age_bottom": req.query.age, "age_top": req.query.age});
-      } else if (req.query.age_top && req.query.age_bottom) {
-        callback(null, {"interval_name": "Unknown", "age_bottom": req.query.age_bottom, "age_top": req.query.age_top});
       } else if (req.query.hasOwnProperty("all")) {
         callback(null, {"interval_name": "Unknown", "age_bottom": 9999, "age_top": 0});
       } else if (req.query.lith_type || req.query.lith_class || req.query.lith){
         callback(null, {"interval_name": "Unknown", "age_bottom": 9999, "age_top": 0});
-      }
-        else {
+      } else {
         larkin.error(req, res, next, "An invalid parameter was given");
       }
     },
@@ -69,8 +70,15 @@ module.exports = function(req, res, next) {
 
       var geo = (req.query.format && api.acceptedFormats.geo[req.query.format]) ? "AsWKT(col_areas.col_area) AS wkt," : "",
           stratJoin = "",
+          first_where = "",
           where = "",
-          params = [lith_field, lith, lith_field, lith, data.age_top, data.age_bottom, data.age_top, data.age_bottom];
+          params = [lith_field, lith, lith_field, lith];
+
+      if (data.age_bottom !== 99999) {
+        first_where += " AND FO_age > ? AND LO_age < ?";
+        where += " AND FO_age > ? AND LO_age < ?";
+        params.push(data.age_top, data.age_bottom, data.age_top, data.age_bottom);
+      }
 
       if (req.query.strat_name || req.query.strat_id) {
         where += " AND lookup_strat_names.bed_id IN (?) OR lookup_strat_names.mbr_id IN (?) OR lookup_strat_names.fm_id IN (?) OR lookup_strat_names.gp_id IN (?) OR lookup_strat_names.sgp_id IN (?) ";
@@ -88,8 +96,8 @@ module.exports = function(req, res, next) {
         JOIN lookup_unit_intervals ON lookup_unit_intervals.unit_id = units_sections.unit_id \
         JOIN (SELECT unit_id, round(sum(comp_prop*max_thick), 1) cpm, round(sum(comp_prop*min_thick), 1) cpl FROM unit_liths JOIN liths on lith_id=liths.id JOIN units on unit_id=units.id WHERE ?? like ? GROUP BY unit_id) LT ON LT.unit_id=units.id \
         " + stratJoin + " \
-        JOIN (SELECT col_id, GROUP_CONCAT(distinct lith_type SEPARATOR '|') lts from liths JOIN unit_liths on lith_id=liths.id JOIN units_sections ON unit_liths.unit_id=units_sections.unit_id JOIN lookup_unit_intervals ON lookup_unit_intervals.unit_id=units_sections.unit_id WHERE ?? like ? AND FO_age > ? AND LO_age < ? GROUP BY col_id) LT2 on LT2.col_id=col_areas.col_id \
-        WHERE FO_age > ? AND LO_age < ? AND status_code = 'active' \
+        JOIN (SELECT col_id, GROUP_CONCAT(distinct lith_type SEPARATOR '|') lts from liths JOIN unit_liths on lith_id=liths.id JOIN units_sections ON unit_liths.unit_id=units_sections.unit_id JOIN lookup_unit_intervals ON lookup_unit_intervals.unit_id=units_sections.unit_id WHERE ?? like ? " + first_where + " GROUP BY col_id) LT2 on LT2.col_id=col_areas.col_id \
+        WHERE status_code = 'active' \
         " + where + " \
         GROUP BY col_areas.col_id", params, function(error, result) {
           if (error) {
