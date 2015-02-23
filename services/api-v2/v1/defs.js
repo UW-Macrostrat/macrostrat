@@ -64,14 +64,18 @@
         "strat_name": "string, return only columns that contain a given unit name",
         "strat_id": "number, one or more comma-separated strat_ids, as definied in /defs/strat_names",
         "all": "Show all results",
-        "format": "string, Desired output format"
+        "lat": "number, decimal degree latitude, WGS84",
+        "lng": "number, decimal degree longitude, WGS84",
+        "nearest": "integer, number of nearest columns to return, only used if valid lat & lng specified",
+        "format": "string, desired output format"
       },
       "output_formats": ["json", "csv", "geojson", "geojson_bare", "topojson", "topojson_bare"],
       "examples": [
         "/api/columns?interval_name=Permian",
         "/api/columns?age=271",
         "/api/columns?age_top=200&age_bottom=250",
-        "/api/columns?strat_name=mancos&format=geojson_bare"
+        "/api/columns?strat_name=mancos&format=geojson_bare",
+        "/api/columns?lat=43&lng=-89&nearest=3"
       ],
       "fields": [
         "col_id",
@@ -82,8 +86,7 @@
         "min_thick",
         "lith_max_thick",
         "lith_min_thick",
-        "lith_type"
-      ]
+        "lith_type"      ]
     }
   };
 
@@ -232,6 +235,28 @@
       ]
     }
   };
+
+  defs["/pbdb_report"] = {
+    "description": "Get distinct strat_names that have or have not been matched to one or more Paleobiology Database (http://paleobiodb.org) collections",
+    "visible": true,
+    "options": {
+      "parameters": {
+        "matched": "show only matched Macrostrat units, default is to show unmatched strat_names",
+        "project_id": "integer, limit results to project",
+        "format": "Desired output format"
+      },
+      "output_formats": ["json", "csv"],
+      "examples": [
+        "/api/pbdb_report?project_id=1&matched"
+      ],
+      "fields": [
+        "collections",
+        "strat_name",
+        "strat_name_id"
+      ]
+    }
+  };
+
 
   defs["/stats"] = {
     "description": "statistics about the Macrostrat database",

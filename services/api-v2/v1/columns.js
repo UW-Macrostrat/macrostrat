@@ -50,6 +50,8 @@ module.exports = function(req, res, next) {
         callback(null, {"interval_name": "Unknown", "age_bottom": 9999, "age_top": 0});
       } else if (req.query.lith_type || req.query.lith_class || req.query.lith){
         callback(null, {"interval_name": "Unknown", "age_bottom": 9999, "age_top": 0});
+      } else if (req.query.lat && req.query.lng){
+        callback(null, {"interval_name": "Unknown", "age_bottom": 9999, "age_top": 0});
       } else {
         larkin.error(req, res, next, "An invalid parameter was given");
       }
@@ -72,6 +74,7 @@ module.exports = function(req, res, next) {
           stratJoin = "",
           first_where = "",
           where = "",
+          orderby = "",
           params = [lith_field, lith, lith_field, lith];
 
       if (data.age_bottom !== 99999) {
@@ -87,6 +90,14 @@ module.exports = function(req, res, next) {
         stratJoin += "LEFT JOIN unit_strat_names ON unit_strat_names.unit_id=units.id LEFT JOIN lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id ";
       }
 
+      if (isFinite(req.query.lat) && isFinite(req.query.lng)) { 
+        orderby += " ORDER BY ST_DISTANCE(ST_GEOMFROMTEXT('POINT(? ?)'),coordinate) ASC";
+        params.push(parseFloat(req.query.lng), parseFloat(req.query.lat));
+        if (isFinite(req.query.nearest)) {
+          orderby += " LIMIT ?";
+          params.push(parseInt(req.query.nearest));
+        } else orderby += " LIMIT 1";
+      }
 
       larkin.query("SELECT " + geo + " col_areas.col_id, round(cols.col_area, 1) AS area, GROUP_CONCAT(units.id SEPARATOR '|') AS units, sum(max_thick) max_thick, sum(min_thick) min_thick, sum(LT.cpm) lith_max_thick, sum(LT.cpl) lith_min_thick,  LT2.lts lith_types \
         FROM col_areas \
@@ -99,7 +110,7 @@ module.exports = function(req, res, next) {
         JOIN (SELECT col_id, GROUP_CONCAT(distinct lith_type SEPARATOR '|') lts from liths JOIN unit_liths on lith_id=liths.id JOIN units_sections ON unit_liths.unit_id=units_sections.unit_id JOIN lookup_unit_intervals ON lookup_unit_intervals.unit_id=units_sections.unit_id WHERE ?? like ? " + first_where + " GROUP BY col_id) LT2 on LT2.col_id=col_areas.col_id \
         WHERE status_code = 'active' \
         " + where + " \
-        GROUP BY col_areas.col_id", params, function(error, result) {
+        GROUP BY col_areas.col_id " + orderby + "", params, function(error, result) {
           if (error) {
             callback(error);
           } else {
