@@ -48,10 +48,28 @@ module.exports = function(req, res, next) {
         callback(null, {"interval_name": "none", "age_bottom": 99999, "age_top": 0, "strat_ids": ids });
       } else if (req.query.hasOwnProperty("all")) {
         callback(null, {"interval_name": "Unknown", "age_bottom": 9999, "age_top": 0});
-      } else if (req.query.lith_type || req.query.lith_class || req.query.lith){
+      } else if (req.query.lith_type || req.query.lith_class || req.query.lith) {
         callback(null, {"interval_name": "Unknown", "age_bottom": 9999, "age_top": 0});
-      } else if (req.query.lat && req.query.lng){
-        callback(null, {"interval_name": "Unknown", "age_bottom": 9999, "age_top": 0});
+      } else if (req.query.col_id) {
+        callback(null, {"interval_name": "Unknown", "age_bottom": 9999, "age_top": 0, "col_ids": req.query.col_id.split(",")});
+      } else if (isFinite(req.query.lat) && isFinite(req.query.lng)) {
+        if (req.query.adjacents === "true") {
+          larkin.queryPg("geomacro", "with containing_geom AS (SELECT poly_geom FROM macrostrat.cols WHERE ST_Contains(st_setsrid(poly_geom,4326), st_setsrid(ST_GeomFromText($1), 4326))) select id from macrostrat.cols where ST_Intersects((SELECT * FROM containing_geom), poly_geom)", ["POINT(" + req.query.lng + " " + req.query.lat + ")"], function(error, response) {
+            if (error) {
+              callback(error);
+            } else {
+              callback(null, {"interval_name": "Unknown", "age_bottom": 9999, "age_top": 0, "col_ids": response.rows.map(function(d) { return d.id })});
+            }
+          });
+        } else {
+          larkin.queryPg("geomacro", "select id from macrostrat.cols where ST_Contains(st_setsrid(poly_geom, 4326), st_setsrid(ST_GeomFromText($1), 4326))", ["POINT(" + req.query.lng + " " + req.query.lat + ")"], function(error, response) {
+            if (error) {
+              callback(error);
+            } else {
+              callback(null, {"interval_name": "Unknown", "age_bottom": 9999, "age_top": 0, "col_ids": response.rows.map(function(d) { return d.id })});
+            }
+          });
+        }
       } else {
         larkin.error(req, res, next, "An invalid parameter was given");
       }
@@ -90,14 +108,12 @@ module.exports = function(req, res, next) {
         stratJoin += "LEFT JOIN unit_strat_names ON unit_strat_names.unit_id=units.id LEFT JOIN lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id ";
       }
 
-      if (isFinite(req.query.lat) && isFinite(req.query.lng)) { 
-        orderby += " ORDER BY ST_DISTANCE(ST_GEOMFROMTEXT('POINT(? ?)'),coordinate) ASC";
-        params.push(parseFloat(req.query.lng), parseFloat(req.query.lat));
-        if (isFinite(req.query.nearest)) {
-          orderby += " LIMIT ?";
-          params.push(parseInt(req.query.nearest));
-        } else orderby += " LIMIT 1";
+
+      if (data.col_ids) { 
+        where += " AND col_areas.col_id IN (?)";
+        params.push(data.col_ids);
       }
+
 
       larkin.query("SELECT " + geo + " col_areas.col_id, round(cols.col_area, 1) AS area, GROUP_CONCAT(units.id SEPARATOR '|') AS units, sum(max_thick) max_thick, sum(min_thick) min_thick, sum(LT.cpm) lith_max_thick, sum(LT.cpl) lith_min_thick,  LT2.lts lith_types \
         FROM col_areas \
@@ -124,6 +140,7 @@ module.exports = function(req, res, next) {
     }
   ], function(error, data, result) {
     if (error) {
+      console.log(error);
       larkin.error(req, res, next, "An error was incurred");
     } else {
       if (req.query.format && api.acceptedFormats.geo[req.query.format]) {

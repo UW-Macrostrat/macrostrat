@@ -66,7 +66,7 @@
         "all": "Show all results",
         "lat": "number, decimal degree latitude, WGS84",
         "lng": "number, decimal degree longitude, WGS84",
-        "nearest": "integer, number of nearest columns to return, only used if valid lat & lng specified",
+        "adjacents": "boolean, if lat/lng is specified, optionally return all columns that touch the polygon containing the supplied lat/lng",
         "format": "string, desired output format"
       },
       "output_formats": ["json", "csv", "geojson", "geojson_bare", "topojson", "topojson_bare"],
@@ -75,7 +75,7 @@
         "/api/columns?age=271",
         "/api/columns?age_top=200&age_bottom=250",
         "/api/columns?strat_name=mancos&format=geojson_bare",
-        "/api/columns?lat=43&lng=-89&nearest=3"
+        "/api/columns?lat=43&lng=-89&adjacents=true"
       ],
       "fields": [
         "col_id",
