@@ -48,8 +48,22 @@ module.exports = function(req, res, next) {
         callback(null, {"interval_name": "none", "age_bottom": 99999, "age_top": 0, "strat_ids": ids });
       } else if (req.query.hasOwnProperty("all")) {
         callback(null, {"interval_name": "Unknown", "age_bottom": 9999, "age_top": 0});
-      } else if (req.query.lith_type || req.query.lith_class || req.query.lith){
+      } else if (req.query.lith_type || req.query.lith_class || req.query.lith) {
         callback(null, {"interval_name": "Unknown", "age_bottom": 9999, "age_top": 0});
+      } else if (req.query.col_id) {
+        callback(null, {"interval_name": "Unknown", "age_bottom": 9999, "age_top": 0, "col_ids": req.query.col_id.split(",")});
+      } else if (isFinite(req.query.lat) && isFinite(req.query.lng)) {
+
+        var sql = (req.query.adjacents === "true") ? "WITH containing_geom AS (SELECT poly_geom FROM macrostrat.cols WHERE ST_Contains(poly_geom, st_setsrid(ST_GeomFromText($1), 4326))) select id from macrostrat.cols where ST_Intersects((SELECT * FROM containing_geom), poly_geom)" : "SELECT id FROM macrostrat.cols WHERE ST_Contains(poly_geom, st_setsrid(ST_GeomFromText($1), 4326))";
+        
+        larkin.queryPg("geomacro", sql, ["POINT(" + req.query.lng + " " + req.query.lat + ")"], function(error, response) {
+          if (error) {
+            callback(error);
+          } else {
+            callback(null, {"interval_name": "Unknown", "age_bottom": 9999, "age_top": 0, "col_ids": response.rows.map(function(d) { return d.id })});
+          }
+        });
+
       } else {
         larkin.error(req, res, next, "An invalid parameter was given");
       }
@@ -72,6 +86,7 @@ module.exports = function(req, res, next) {
           stratJoin = "",
           first_where = "",
           where = "",
+          orderby = "",
           params = [lith_field, lith, lith_field, lith];
 
       if (data.age_bottom !== 99999) {
@@ -88,6 +103,12 @@ module.exports = function(req, res, next) {
       }
 
 
+      if (data.col_ids) { 
+        where += " AND col_areas.col_id IN (?)";
+        params.push(data.col_ids);
+      }
+
+
       larkin.query("SELECT " + geo + " col_areas.col_id, round(cols.col_area, 1) AS area, GROUP_CONCAT(units.id SEPARATOR '|') AS units, sum(max_thick) max_thick, sum(min_thick) min_thick, sum(LT.cpm) lith_max_thick, sum(LT.cpl) lith_min_thick,  LT2.lts lith_types \
         FROM col_areas \
         JOIN cols ON cols.id = col_areas.col_id \
@@ -99,7 +120,7 @@ module.exports = function(req, res, next) {
         JOIN (SELECT col_id, GROUP_CONCAT(distinct lith_type SEPARATOR '|') lts from liths JOIN unit_liths on lith_id=liths.id JOIN units_sections ON unit_liths.unit_id=units_sections.unit_id JOIN lookup_unit_intervals ON lookup_unit_intervals.unit_id=units_sections.unit_id WHERE ?? like ? " + first_where + " GROUP BY col_id) LT2 on LT2.col_id=col_areas.col_id \
         WHERE status_code = 'active' \
         " + where + " \
-        GROUP BY col_areas.col_id", params, function(error, result) {
+        GROUP BY col_areas.col_id " + orderby + "", params, function(error, result) {
           if (error) {
             callback(error);
           } else {
@@ -113,6 +134,7 @@ module.exports = function(req, res, next) {
     }
   ], function(error, data, result) {
     if (error) {
+      console.log(error);
       larkin.error(req, res, next, "An error was incurred");
     } else {
       if (req.query.format && api.acceptedFormats.geo[req.query.format]) {

@@ -265,6 +265,41 @@ describe('Routes', function() {
           done();
         });
     });
+
+    it("should accept a latitude and longitude", function(done) {
+      request(host)
+        .get("/api/columns?lat=43.3&lng=-89.3")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .expect(function(res) {
+          if (res.body.success.data[0].col_id != 187) {
+            throw new Error("Columns returning the wrong column for the lat/lng");
+          }
+        })
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should accept a lat/lng and return all adjacent columns", function(done) {
+      request(host)
+        .get("/api/columns?lat=43.3&lng=-89.3&adjacents=true")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .expect(function(res) {
+          if (res.body.success.data.length != 6) {
+            throw new Error("Wrong number of adjacent columns being returned");
+          }
+        })
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
   });
 
 /* sections */
@@ -1263,6 +1298,8 @@ describe('Routes', function() {
     });
 
     it("should accept a time interval name on GMUS", function(done) {
+      this.timeout(4000);
+
       request(host)
         .get("/api/geologic_units?interval_name=Permian&type=gmus")
         .expect(aSuccessfulRequest)
@@ -1287,6 +1324,8 @@ describe('Routes', function() {
     });
 
     it("should accept a unit name on GMUS", function(done) {
+      this.timeout(4000);
+
       request(host)
         .get("/api/geologic_units?unit_name=Mancos%20Shale&type=gmus")
         .expect(aSuccessfulRequest)
