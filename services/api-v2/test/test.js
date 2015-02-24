@@ -582,6 +582,26 @@ describe('Routes', function() {
           done();
         });
     });
+
+    it("should order the output given the input", function(done) {
+      request(host)
+        .get("/api/units?id=138,139,137")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .expect(function(res) {
+          if (res.body.success.data.length != 3) {
+            throw new Error("Wrong number of units being returned");
+          }
+          if (res.body.success.data[0].id != 138 || res.body.success.data[2].id != 137) {
+            throw new Error("Wrong order of units returned");
+          }
+        })
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    })
   });
 
 /* fossils */

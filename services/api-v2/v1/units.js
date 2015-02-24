@@ -70,6 +70,7 @@ module.exports = function(req, res, next) {
       }
 
       var where = "",
+          orderby = [],
           params = [lith_field, lith];
 
       if (data.age_bottom !== 99999) {
@@ -81,13 +82,18 @@ module.exports = function(req, res, next) {
         if (req.query.id.indexOf(",") > -1) {
           var ids = req.query.id.split(","),
               placeholders = [];
-      
+          
+          ids = ids.map(function(d) {
+            return parseInt(d);
+          });
+
           for (var i = 0; i < ids.length; i++) {
             placeholders.push("?");
             params.push(ids[i]);
           }
 
           where += " AND units_sections.unit_id IN (" + placeholders.join(",") + ")";
+          orderby.push("FIELD(units.id, " + ids.join(",") + ")");
 
         } else {
           where += " AND units_sections.unit_id = ?";
@@ -106,7 +112,7 @@ module.exports = function(req, res, next) {
           }
 
           where += " AND units_sections.section_id IN (" + placeholders.join(",") + ")";
-
+          orderby.push("FIELD(units_sections.section_id, " + sections.join(",") + ")");
         } else {
           where += " AND units_sections.section_id = ?";
           params.push(req.query.section_id);
@@ -124,7 +130,7 @@ module.exports = function(req, res, next) {
           }
 
           where += " AND units_sections.col_id IN (" + placeholders.join(",") + ")";
-          
+          orderby.push("FIELD(units_sections.col_id, " + cols.join(",") + ")");
         } else {
           where += " AND units_sections.col_id = ?";
           params.push(req.query.col_id);
@@ -169,10 +175,11 @@ module.exports = function(req, res, next) {
             " + ((req.query.response === "long") ? "LEFT JOIN unit_notes ON unit_notes.unit_id=units.id JOIN colors ON units.color = colors.color" : "") + " \
             LEFT JOIN pbdb_matches ON pbdb_matches.unit_id=units.id \
             " + ((environ !== "") ? "LEFT JOIN unit_environs ON units.id=unit_environs.unit_id LEFT JOIN environs ON unit_environs.environ_id=environs.id" : "") + " \
-            WHERE status_code='active' AND units.id IN (SELECT unit_liths.unit_id from unit_liths JOIN liths on lith_id=liths.id WHERE ?? LIKE ?)" + where + " GROUP BY units.id ORDER BY t_age ASC";
+            WHERE status_code='active' AND units.id IN (SELECT unit_liths.unit_id from unit_liths JOIN liths on lith_id=liths.id WHERE ?? LIKE ?)" + where + " GROUP BY units.id ORDER BY " + ((orderby.length > 0) ? (orderby.join(", ") + ", t_age ASC") : "t_age ASC");
      
       larkin.query(sql, params, function(error, result) {
           if (error) {
+            console.log(error);
             callback(error);
           } else {
 
