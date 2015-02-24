@@ -53,23 +53,17 @@ module.exports = function(req, res, next) {
       } else if (req.query.col_id) {
         callback(null, {"interval_name": "Unknown", "age_bottom": 9999, "age_top": 0, "col_ids": req.query.col_id.split(",")});
       } else if (isFinite(req.query.lat) && isFinite(req.query.lng)) {
-        if (req.query.adjacents === "true") {
-          larkin.queryPg("geomacro", "with containing_geom AS (SELECT poly_geom FROM macrostrat.cols WHERE ST_Contains(st_setsrid(poly_geom,4326), st_setsrid(ST_GeomFromText($1), 4326))) select id from macrostrat.cols where ST_Intersects((SELECT * FROM containing_geom), poly_geom)", ["POINT(" + req.query.lng + " " + req.query.lat + ")"], function(error, response) {
-            if (error) {
-              callback(error);
-            } else {
-              callback(null, {"interval_name": "Unknown", "age_bottom": 9999, "age_top": 0, "col_ids": response.rows.map(function(d) { return d.id })});
-            }
-          });
-        } else {
-          larkin.queryPg("geomacro", "select id from macrostrat.cols where ST_Contains(st_setsrid(poly_geom, 4326), st_setsrid(ST_GeomFromText($1), 4326))", ["POINT(" + req.query.lng + " " + req.query.lat + ")"], function(error, response) {
-            if (error) {
-              callback(error);
-            } else {
-              callback(null, {"interval_name": "Unknown", "age_bottom": 9999, "age_top": 0, "col_ids": response.rows.map(function(d) { return d.id })});
-            }
-          });
-        }
+
+        var sql = (req.query.adjacents === "true") ? "WITH containing_geom AS (SELECT poly_geom FROM macrostrat.cols WHERE ST_Contains(poly_geom, st_setsrid(ST_GeomFromText($1), 4326))) select id from macrostrat.cols where ST_Intersects((SELECT * FROM containing_geom), poly_geom)" : "SELECT id FROM macrostrat.cols WHERE ST_Contains(poly_geom, st_setsrid(ST_GeomFromText($1), 4326))";
+        
+        larkin.queryPg("geomacro", sql, ["POINT(" + req.query.lng + " " + req.query.lat + ")"], function(error, response) {
+          if (error) {
+            callback(error);
+          } else {
+            callback(null, {"interval_name": "Unknown", "age_bottom": 9999, "age_top": 0, "col_ids": response.rows.map(function(d) { return d.id })});
+          }
+        });
+
       } else {
         larkin.error(req, res, next, "An invalid parameter was given");
       }
