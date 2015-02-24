@@ -63,6 +63,7 @@
         "lith_type": "string, return only columns with units containing specified lithology, lith_type defined in /defs/lithologies",
         "strat_name": "string, return only columns that contain a given unit name",
         "strat_id": "number, one or more comma-separated strat_ids, as definied in /defs/strat_names",
+        "col_id": "number, one or more comma-separated column IDs",
         "all": "Show all results",
         "lat": "number, decimal degree latitude, WGS84",
         "lng": "number, decimal degree longitude, WGS84",
