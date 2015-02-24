@@ -34,13 +34,13 @@ for x in xrange(0,numrows):
 	nid = row[x]['rank'] + "_id"
 	n = row[x]['rank'] + "_name"
 	
-	cursor.execute("INSERT INTO lookup_strat_names (strat_name_id,strat_name,rank, " + nid +", " + n +") VALUES (%s, %s, %s, %s, %s)", (row[x]['id'], row[x]['strat_name'], row[x]['rank'], row[x]['id'], row[x]['strat_name']))
+	cursor.execute("INSERT INTO lookup_strat_names (strat_name_id,strat_name,rank, " + nid + ", " + n +") VALUES (%s, %s, %s, %s, %s)", (row[x]['id'], row[x]['strat_name'], row[x]['rank'], row[x]['id'], row[x]['strat_name']))
 
 	parent = 1
 	old_one = row[x]['id']
 
 	while (parent > 0):
-		cursor.execute("SELECT this_name,strat_name,strat_names.id id, rank FROM strat_tree JOIN strat_names ON this_name=strat_names.id WHERE that_name = %d and rel='parent'" % (old_one))
+		cursor.execute("SELECT this_name,strat_name,strat_names.id id, rank FROM strat_tree JOIN strat_names ON this_name = strat_names.id WHERE that_name = %d and rel='parent'" % (old_one))
 		row2 = cursor.fetchone()
 		
 		if row2 is None:
