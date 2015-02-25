@@ -601,7 +601,7 @@ describe('Routes', function() {
           if (error) return done(error);
           done();
         });
-    })
+    });
   });
 
 /* fossils */
@@ -1318,10 +1318,10 @@ describe('Routes', function() {
     });
 
     it("should accept a time interval name on GMUS", function(done) {
-      this.timeout(4000);
+      this.timeout(5000);
 
       request(host)
-        .get("/api/geologic_units?interval_name=Permian&type=gmus")
+        .get("/api/geologic_units?interval_name=Pliocene&type=gmus")
         .expect(aSuccessfulRequest)
         .expect(json)
         .expect(atLeastOneResult)
