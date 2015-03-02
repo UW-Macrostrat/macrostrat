@@ -51,7 +51,18 @@ module.exports = function(req, res, next) {
       } else if (req.query.lith_type || req.query.lith_class || req.query.lith) {
         callback(null, {"interval_name": "Unknown", "age_bottom": 9999, "age_top": 0});
       } else if (req.query.col_id) {
-        callback(null, {"interval_name": "Unknown", "age_bottom": 9999, "age_top": 0, "col_ids": req.query.col_id.split(",")});
+        if (req.query.adjacents === "true") {
+          larkin.queryPg("geomacro", "WITH containing_geom AS (SELECT poly_geom FROM macrostrat.cols WHERE id = $1) select id from macrostrat.cols where ST_Intersects((SELECT * FROM containing_geom), poly_geom)", [req.query.col_id], function(error, response) {
+            if (error) {
+              callback(error);
+            } else {
+              callback(null, {"interval_name": "Unknown", "age_bottom": 9999, "age_top": 0, "col_ids": response.rows.map(function(d) { return d.id })});
+            }
+          })
+        } else {
+          callback(null, {"interval_name": "Unknown", "age_bottom": 9999, "age_top": 0, "col_ids": req.query.col_id.split(",")});
+        }
+        
       } else if (isFinite(req.query.lat) && isFinite(req.query.lng)) {
 
         var sql = (req.query.adjacents === "true") ? "WITH containing_geom AS (SELECT poly_geom FROM macrostrat.cols WHERE ST_Contains(poly_geom, st_setsrid(ST_GeomFromText($1), 4326))) select id from macrostrat.cols where ST_Intersects((SELECT * FROM containing_geom), poly_geom)" : "SELECT id FROM macrostrat.cols WHERE ST_Contains(poly_geom, st_setsrid(ST_GeomFromText($1), 4326))";
