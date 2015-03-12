@@ -82,7 +82,8 @@ def rotate_coordinates(geojson, age) :
     output_data = response.read()
     #print output_data
     update_mysql(json.loads(output_data))
-  except :
+  except urllib2.HTTPError, e:
+    print data
     print "----------- Error for age ", age , " -----------" 
 
 
@@ -122,7 +123,20 @@ def get_boundaries(age) :
 
 # Find all distinct t1_age in unit_boundaries
 my_cur.execute("""
-  SELECT DISTINCT t1_age, count(*) FROM unit_boundaries WHERE t1_age <= 540 AND t1_age > 0 GROUP BY t1_age
+  SELECT DISTINCT t1_age, count(*) 
+  FROM unit_boundaries ub
+  LEFT JOIN units_sections us1 ON ub.unit_id = us1.unit_id
+  LEFT JOIN units_sections us2 ON ub.unit_id_2 = us2.unit_id
+  LEFT JOIN cols c1 ON us1.col_id = c1.id
+  LEFT JOIN cols c2 ON us2.col_id = c2.id
+  WHERE 
+    t1_age <= 540 AND 
+    t1_age > 0 AND 
+    (c1.project_id != 4 OR c2.project_id != 4) AND
+    ub.unit_id != 0 AND
+    ub.unit_id_2 != 0
+  GROUP BY t1_age
+  ORDER BY t1_age ASC
 """)
 age_result = my_cur.fetchall()
 
@@ -143,6 +157,8 @@ for idx, age in enumerate(ages) :
 
   else :
     geojson = build_geojson(boundaries)
+    if len(geojson["features"]) < 1 :
+      print boundaries
     rotate_coordinates(geojson, age)
 
   print "Done with ", idx, " of ", len(ages)
