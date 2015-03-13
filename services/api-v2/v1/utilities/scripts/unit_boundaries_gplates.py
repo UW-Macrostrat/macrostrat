@@ -107,7 +107,7 @@ def get_boundaries(age) :
     LEFT JOIN cols c1 ON us1.col_id = c1.id
     LEFT JOIN cols c2 ON us2.col_id = c2.id
     WHERE 
-      t1_age <= 540 AND 
+      t1_age <= 550 AND 
       t1_age > 0 AND 
       t1_age = %s AND 
       (c1.project_id != 4 OR c2.project_id != 4) AND
@@ -130,7 +130,7 @@ my_cur.execute("""
   LEFT JOIN cols c1 ON us1.col_id = c1.id
   LEFT JOIN cols c2 ON us2.col_id = c2.id
   WHERE 
-    t1_age <= 540 AND 
+    t1_age <= 550 AND 
     t1_age > 0 AND 
     (c1.project_id != 4 OR c2.project_id != 4) AND
     ub.unit_id != 0 AND
