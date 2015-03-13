@@ -476,6 +476,32 @@
     }
   };
 
+  defs["/defs/measurements"] = {
+    "description": "Returns all measurements definitions",
+    "parent": "definitions",
+    "visible": true,
+    "options": {
+      "parameters": {
+        "id": "measurement id",
+        "measurement_class": "measurement_class",
+        "measurement_type": "measurement_type",
+        "all": "return all measurement definitions"
+      },
+      "output_formats": ["json", "csv"],
+      "examples": [
+        "api/defs/measurements?id=3",
+        "api/defs/measurements?all",
+        "api/defs/measurements?measurement_class=geochemical"
+      ],
+      "fields": [
+        "id",
+        "measurement",
+        "measurement_type",
+        "measurement_class"
+      ]
+    }
+  };
+
   defs["/section_stats"] = {
     "description": "Return section stats for Macrostrat",
     "visible": true,
@@ -737,6 +763,9 @@
     "lith": "text, specific lithology",
     "lith_type": "text, general lithology type",
     "lith_class": "text, general lithology class",
+    "measurement": "text, specific measurement",
+    "measurement_type": "text, general measurement type",
+    "measurement_class": "text, general measurement class",
     "lith_max_thick": "number, thickness of specified lithology, based on proportion of unit(s)",
     "lith_min_thick": "number, thickness of specified lithology, based on proportion of unit(s)",
     "environ": "text, specific environment",

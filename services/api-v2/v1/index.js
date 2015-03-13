@@ -55,6 +55,9 @@ api.route("/defs/strat_names")
 api.route("/defs/timescales")
   .get(require("./defs_timescales"));
 
+api.route("/defs/measurements")
+  .get(require("./defs_measurements"));
+
 api.route("/section_stats")
   .get(require("./section_stats"));
 
