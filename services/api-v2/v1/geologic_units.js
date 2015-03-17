@@ -44,7 +44,7 @@ module.exports = function(req, res, next) {
         return larkin.error(req, res, next, "Invalid params");
       }
 
-      larkin.queryPg("geomacro", "SELECT DISTINCT ON (gid) gid, macro_color AS interval_color, lith1, lith2, lith3, lith4, lith5, gm.best_units AS macro_units, i1.interval_name AS min_age, i2.interval_name as max_age, u_rocktype1 AS rt1, u_rocktype2 AS rt2, u_rocktype3 AS rt3, lu.interval_name AS unit_age, unit_com, lu.unit_link, unit_name, unitdesc, strat_unit" + ((geo) ? ", ST_AsGeoJSON(geom) AS geometry" : "") + " FROM gmus.lookup_units lu JOIN gmus.ages a ON lu.unit_link = a.unit_link JOIN macrostrat.intervals i1 ON a.macro_min_interval_id = i1.id JOIN macrostrat.intervals i2 ON a.macro_max_interval_id = i2.id LEFT JOIN gmus.liths l ON lu.unit_link = l.unit_link LEFT JOIN gmus.best_geounits_macrounits gm ON lu.gid = gm.geologic_unit_gid WHERE " + where.join(", "), params, function(error, result) {
+      larkin.queryPg("geomacro", "SELECT DISTINCT ON (gid) gid, macro_color AS interval_color, lith1, lith2, lith3, lith4, lith5, gm.best_units AS macro_units, lu.min_interval_name AS min_age, lu.age_top, lu.max_interval_name as max_age, lu.age_bottom, u_rocktype1 AS rt1, u_rocktype2 AS rt2, u_rocktype3 AS rt3, lu.containing_interval_name AS unit_age,  unit_com, lu.unit_link, unit_name, unitdesc, strat_unit" + ((geo) ? ", ST_AsGeoJSON(geom) AS geometry" : "") + " FROM gmus.lookup_units lu JOIN gmus.ages a ON lu.unit_link = a.unit_link LEFT JOIN gmus.liths l ON lu.unit_link = l.unit_link LEFT JOIN gmus.best_geounits_macrounits gm ON lu.gid = gm.geologic_unit_gid WHERE " + where.join(", "), params, function(error, result) {
         if (error) {
           larkin.error(req, res, next, error);
         } else {
@@ -88,7 +88,7 @@ module.exports = function(req, res, next) {
         params.push(req.query.interval_name, req.query.interval_name);
       }
 
-      larkin.queryPg("geomacro", "SELECT unit_abbre, rocktype, lithology, min_interval AS min_age, max_interval AS max_age, containing_interval AS interval_name" + ((geo) ? ", ST_AsGeoJSON(geom) AS geometry" : "") + " FROM gmna.lookup_units WHERE " + where.join(", "), params, function(error, result) {
+      larkin.queryPg("geomacro", "SELECT unit_abbre, rocktype, lithology, min_interval AS min_age, min_age AS age_top, max_interval AS max_age, max_age AS age_bottom, containing_interval AS interval_name" + ((geo) ? ", ST_AsGeoJSON(geom) AS geometry" : "") + " FROM gmna.lookup_units WHERE " + where.join(", "), params, function(error, result) {
         if (error) {
           callback(error);
         } else {
