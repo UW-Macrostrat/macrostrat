@@ -24,11 +24,11 @@ numrows = cursor.rowcount
 row = cursor.fetchall()
 
 for x in xrange(0,numrows):
-	n=row[x]['sub_lith']+(row[x]['dom_lith']*5)
+	n = float(row[x]['sub_lith']+(row[x]['dom_lith']*5))
 	dom_p=5/n
 	sub_p=1/n
-	cursor.execute("UPDATE unit_liths set comp_prop=%f WHERE unit_id=%d and dom='dom'" % (dom_p,row[x]['unit_id']))
-	cursor.execute("UPDATE unit_liths set comp_prop=%f WHERE unit_id=%d and dom='sub'" % (sub_p,row[x]['unit_id']))
+	cursor.execute("UPDATE unit_liths set comp_prop=%s WHERE unit_id=%s and dom='dom'", [dom_p,row[x]['unit_id']])
+	cursor.execute("UPDATE unit_liths set comp_prop=%s WHERE unit_id=%s and dom='sub'", [sub_p,row[x]['unit_id']])
 
 # truncate the lookup table
 cursor.execute("TRUNCATE TABLE lookup_unit_liths")
