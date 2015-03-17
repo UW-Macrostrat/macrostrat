@@ -16,7 +16,7 @@ cursor = connection.cursor()
 
 filterwarnings('ignore', category = MySQLdb.Warning)
 
-csv = os.getcwd() + '/scripts/UB_full_V5V3_sectionbump.csv'
+csv = os.getcwd() + '/scripts/UB_full_V6V3_sectionbump.csv'
 
 cursor.execute(""" 
 DROP TABLE IF EXISTS unit_boundaries_backup_recent;
