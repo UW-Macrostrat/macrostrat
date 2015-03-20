@@ -244,6 +244,7 @@
       "parameters": {
         "matched": "show only matched Macrostrat units, default is to show unmatched strat_names",
         "project_id": "integer, limit results to project",
+        "showpairs": "show all PBDB and Macrostrat key pairs",
         "format": "Desired output format"
       },
       "output_formats": ["json", "csv"],
