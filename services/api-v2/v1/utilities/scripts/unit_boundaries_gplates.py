@@ -110,9 +110,7 @@ def get_boundaries(age) :
       t1_age <= 550 AND 
       t1_age > 0 AND 
       t1_age = %s AND 
-      (c1.project_id != 4 OR c2.project_id != 4) AND
-      ub.unit_id != 0 AND
-      ub.unit_id_2 != 0
+      (c1.project_id != 4 OR c2.project_id != 4)
     ORDER BY ub.id ASC
   """, (age,))
 
@@ -132,9 +130,7 @@ my_cur.execute("""
   WHERE 
     t1_age <= 550 AND 
     t1_age > 0 AND 
-    (c1.project_id != 4 OR c2.project_id != 4) AND
-    ub.unit_id != 0 AND
-    ub.unit_id_2 != 0
+    (c1.project_id != 4 OR c2.project_id != 4)
   GROUP BY t1_age
   ORDER BY t1_age ASC
 """)
