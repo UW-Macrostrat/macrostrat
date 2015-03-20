@@ -555,32 +555,42 @@
       "parameters": {
         "lat": "A valid latitude",
         "lng": "A valid longitude",
-        "type": "Return only from given sources - can be 'gmna', 'gmus', 'column', or any combination thereof",
-        "response": "can be 'short' or 'long'",
-        "geo": "Whether geometry of features should also be returned",
+        "type": "(Required) Return only from given sources - can be 'gmna', 'gmus', or both",
+        "unit_name": "string, a stratigraphic name to search for (GMUS only)",
+        "unit_link": "string, a GMUS unit_link. If format=json, will return one record with unique attributes, if a geographic output format is request it will return all polygons with the given unit_link (GMUS only)",
+        "gid": "integer, a polygon GID to search for",
         "format": "Desired output format"
       },
-      "output_formats": ["json"],
+      "output_formats": ["json", "geojson", "geojson_bare", "topojson", "topojson_bare"],
       "examples": [
-        "/api/geologic_units?lat=43&lng=-89.3",
-        "/api/geologic_units?lat=43&lng=-89&geo=true",
-        "/api/geologic_units?lat=43&lng=-89&type=gmus"
+        "/api/geologic_units?lat=43&lng=-89.3&type=gmus",
+        "/api/geologic_units?lat=43&lng=-89&format=geojson_bare",
+        "/api/geologic_units?lat=43&lng=-89&type=gmna"
       ],
       "fields": [
-        "id",
-        "col_name",
-        "strat_name",
-        "Mbr",
-        "Fm",
-        "Gp",
-        "SGp",
-        "era",
-        "period",
-        "max_thick",
-        "min_thick",
-        "color",
-        "lith_type",
-        "pbdb"
+        "gid",
+        "interval_color",
+        "lith1",
+        "lith2",
+        "lith3",
+        "lith4",
+        "lith5",
+        "macro_units",
+        "min_age",
+        "max_age",
+        "rt1",
+        "rt2",
+        "rt3",
+        "unit_age",
+        "unit_com",
+        "unit_link",
+        "unit_name",
+        "unitdesc",
+        "strat_unit",
+        "unit_abrre",
+        "rocktype",
+        "lithology",
+        "interval_name"
       ]
     }
   };
