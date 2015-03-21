@@ -25,7 +25,7 @@ module.exports = function(req, res, next) {
  
   } else if (req.query.showorphans){
 
-    sql += "SELECT taxon_no,taxon_name,taxon_rank,type_specimen,authorities.reference_no,reversed_name authorizer,child.child_no,parent.parent_no,parent_spell.parent_spelling_no, child_spell.child_spelling_no FROM pbdb.authorities JOIN pbdb.person on authorizer_no=person_no LEFT JOIN pbdb.opinions child on taxon_no=child.child_no LEFT JOIN pbdb.opinions parent on taxon_no=parent.parent_no LEFT JOIN pbdb.opinions child_spell on taxon_no=child_spell.child_spelling_no LEFT JOIN pbdb.opinions parent_spell on taxon_no=parent_spell.parent_spelling_no WHERE child.child_no IS NULL and parent.parent_no IS NULL and parent_spell.parent_spelling_no IS NULL and child_spell.child_spelling_no IS NULL;";
+    sql += "SELECT taxon_no,orig_no,taxon_name,taxon_rank,type_specimen,type_taxon_no,authorities.reference_no,reversed_name authorizer,child.child_no,parent.parent_no,parent_spell.parent_spelling_no, child_spell.child_spelling_no FROM pbdb.authorities JOIN pbdb.person on authorizer_no=person_no LEFT JOIN pbdb.opinions child on taxon_no=child.child_no LEFT JOIN pbdb.opinions parent on taxon_no=parent.parent_no LEFT JOIN pbdb.opinions child_spell on taxon_no=child_spell.child_spelling_no LEFT JOIN pbdb.opinions parent_spell on taxon_no=parent_spell.parent_spelling_no WHERE child.child_no IS NULL and parent.parent_no IS NULL and parent_spell.parent_spelling_no IS NULL and child_spell.child_spelling_no IS NULL";
 
   } else {
     
