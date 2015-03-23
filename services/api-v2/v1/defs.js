@@ -5,7 +5,7 @@
 
   // Instead of adding metadata to each route in api.js, we are going to do it here
   defs["/column"] = {
-    "description": "Get all units of a given column",
+    "description": "*** Deprecated. Will not exist in v2. Please use /column or /units instead.*** Get all units of a given column",
     "visible": true,
     "options": {
       "parameters": {
@@ -67,7 +67,7 @@
         "all": "Show all results",
         "lat": "number, decimal degree latitude, WGS84",
         "lng": "number, decimal degree longitude, WGS84",
-        "adjacents": "boolean, if lat/lng is specified, optionally return all columns that touch the polygon containing the supplied lat/lng",
+        "adjacents": "boolean, if lat/lng or col_id is specified, optionally return all columns that touch the polygon containing the supplied lat/lng",
         "format": "string, desired output format"
       },
       "output_formats": ["json", "csv", "geojson", "geojson_bare", "topojson", "topojson_bare"],
@@ -80,6 +80,7 @@
       ],
       "fields": [
         "col_id",
+        "col_group",
         "area",
         "units",
         "unit_id",
@@ -742,6 +743,7 @@
   // This is the primary dictionary for all field definitions
   defs.define = {
     "id": "integer, unique identifier",
+    "col_group": "text, the group the column belongs to",
     "unit_id": "integer, unique identifier for unit",
     "section_id": "integer, unique identifier for section (package)",
     "col_id": "integer, unique identifier for column",
