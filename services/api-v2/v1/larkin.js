@@ -33,7 +33,7 @@ var mysql = require("mysql"),
         this.log("error", "error connecting - " + err);
         callback(err);
       } else {
-        client.query(sql, params, function(err, result) {
+        var query = client.query(sql, params, function(err, result) {
           done();
           if (err) {
             this.log("error", err);
@@ -47,6 +47,7 @@ var mysql = require("mysql"),
           }
 
         }.bind(this));
+        console.log(query);
       }
     }.bind(this));
   };

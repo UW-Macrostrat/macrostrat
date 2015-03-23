@@ -741,6 +741,52 @@
     "visible": false
   };
 
+  defs["/admin/new_key"] = {
+    "visible": false,
+    "description": "Get a new API key",
+    "parent": "admin",
+    "options": {
+      "parameters": {
+        "email": "required",
+        "first_name": "required",
+        "last_name": "required",
+        "permissions": "required",
+        "key": "required"
+      },
+      "output_formats": ["json"],
+      "examples": [
+        "/admin/new_key"
+      ],
+      "fields": [
+        "new_key"
+      ]
+    }
+  };
+
+  defs["/admin/new_key"] = {
+    "visible": false,
+    "description": "Get info about an existing API key",
+    "parent": "admin",
+    "options": {
+      "parameters": {
+        "key": "required"
+      },
+      "output_formats": ["json"],
+      "examples": [
+        "/admin/new_key"
+      ],
+      "fields": [
+        "id",
+        "first_name",
+        "last_name",
+        "key",
+        "email",
+        "permissions",
+        "admin"
+      ]
+    }
+  };
+
   // This is the primary dictionary for all field definitions
   defs.define = {
     "id": "integer, unique identifier",
