@@ -47,7 +47,7 @@ var mysql = require("mysql"),
           }
 
         }.bind(this));
-        console.log(query);
+       // console.log(query);
       }
     }.bind(this));
   };
