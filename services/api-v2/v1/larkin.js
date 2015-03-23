@@ -4,7 +4,8 @@ var mysql = require("mysql"),
     credentials = require("./credentials"),
     csv = require("express-csv"),
     api = require("./api"),
-    defs = require("./defs");
+    defs = require("./defs"),
+    validator = require("validator");
 
 (function() {
   var larkin = {};
@@ -210,6 +211,24 @@ var mysql = require("mysql"),
     } else {
       return [];
     }
+  }
+
+
+  larkin.verifyKey = function(key, callback) {
+    if (!validator.isUUID(key)) {
+      callback("Invalid key", null);
+    } else {
+      this.queryPg("geomacro", "SELECT key, admin FROM apikeys WHERE key = $1", [key], function(error, data) {
+        if (error) {
+          callback("Internal issue", null);
+        } else if (data.rows && data.rows.length === 1) {
+          callback(null, {"valid": true, "info": data.rows[0]});
+        } else {
+          callback(null, {"valid": false});
+        }
+      });
+    }
+      
   }
 
   module.exports = larkin;
