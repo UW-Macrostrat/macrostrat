@@ -93,7 +93,7 @@ def update_mysql(geojson) :
   for feature in geojson["features"] :
     my_cur.execute("""
       UPDATE unit_boundaries SET paleo_lat = %s, paleo_lng = %s WHERE id = %s
-    """, (feature["geometry"]["coordinates"][0], feature["geometry"]["coordinates"][1], int(feature["properties"]["NAME"])))
+    """, (feature["geometry"]["coordinates"][1], feature["geometry"]["coordinates"][0], int(feature["properties"]["NAME"])))
 
 
 
