@@ -88,7 +88,16 @@
         "min_thick",
         "lith_max_thick",
         "lith_min_thick",
-        "lith_type"      ]
+        "lith_type",
+        "col_name",
+        "col_group",
+        "col_group_id",
+        "b_age",
+        "t_age",
+        "sections",
+        "pbdb_collections",
+        "pbdb_occs"
+      ]
     }
   };
 
@@ -794,6 +803,11 @@
     "unit_id": "integer, unique identifier for unit",
     "section_id": "integer, unique identifier for section (package)",
     "col_id": "integer, unique identifier for column",
+    "col_name": "text, name of column",
+    "col_group_id": "integer, ID of column group",
+    "sections": "int[], sections that belong to the column",
+    "pbdb_collections": "integer, count of PBDB collections in units in column",
+    "pbdb_occs": "integer, count of PBDB occurrences in units in column",
     "project_id": "unique identifier for project, corresponds to general geographic region",
     "strat_name": "text, informal unit name",
     "strat_name_id": "integer, unique identifier for known stratigraphic name (see /defs/strat_names)",
