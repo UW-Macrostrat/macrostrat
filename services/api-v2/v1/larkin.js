@@ -4,7 +4,8 @@ var mysql = require("mysql"),
     credentials = require("./credentials"),
     csv = require("express-csv"),
     api = require("./api"),
-    defs = require("./defs");
+    defs = require("./defs"),
+    validator = require("validator");
 
 (function() {
   var larkin = {};
@@ -33,7 +34,7 @@ var mysql = require("mysql"),
         this.log("error", "error connecting - " + err);
         callback(err);
       } else {
-        client.query(sql, params, function(err, result) {
+        var query = client.query(sql, params, function(err, result) {
           done();
           if (err) {
             this.log("error", err);
@@ -47,6 +48,7 @@ var mysql = require("mysql"),
           }
 
         }.bind(this));
+       // console.log(query);
       }
     }.bind(this));
   };
@@ -209,6 +211,24 @@ var mysql = require("mysql"),
     } else {
       return [];
     }
+  }
+
+
+  larkin.verifyKey = function(key, callback) {
+    if (!validator.isUUID(key)) {
+      callback("Invalid key", null);
+    } else {
+      this.queryPg("geomacro", "SELECT key, admin FROM apikeys WHERE key = $1", [key], function(error, data) {
+        if (error) {
+          callback("Internal issue", null);
+        } else if (data.rows && data.rows.length === 1) {
+          callback(null, {"valid": true, "info": data.rows[0]});
+        } else {
+          callback(null, {"valid": false});
+        }
+      });
+    }
+      
   }
 
   module.exports = larkin;

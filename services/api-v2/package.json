@@ -32,7 +32,9 @@
   "devDependencies": {
     "async": "0.9.x",
     "mocha": "^1.21.4",
+    "node-uuid": "^1.4.3",
     "should": "^4.0.4",
-    "supertest": "^0.14.0"
+    "supertest": "^0.14.0",
+    "validator": "^3.34.0"
   }
 }

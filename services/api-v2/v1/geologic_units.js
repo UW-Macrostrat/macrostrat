@@ -40,6 +40,11 @@ module.exports = function(req, res, next) {
         params.push(req.query.interval_name, req.query.interval_name);
       }
 
+      if (req.query.unit_link) {
+        where.push(" lu.unit_link = $" + (where.length + 1));
+        params.push(req.query.unit_link);
+      }
+
       if (where.length === 0) {
         return larkin.error(req, res, next, "Invalid params");
       }
@@ -77,6 +82,11 @@ module.exports = function(req, res, next) {
     } else if (req.query.type === "gmna") {
       var where = [],
           params = [];
+
+      if (req.query.gid && req.query.gid != "undefined") {
+        where.push(" gid = " + (where.length + 1));
+        params.push(req.query.gid);
+      }
 
       if (req.query.lat && req.query.lng) {
         where.push(" ST_Contains(geom, ST_GeomFromText($" + (where.length + 1)+ ", 4326))");

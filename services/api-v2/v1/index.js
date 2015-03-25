@@ -97,6 +97,12 @@ api.route("/editing/section")
 api.route("/editing/units/update")
   .put(require("./editing_units_update"));
 
+api.route("/admin/new_key")
+  .get(require("./admin_new_key"));
+
+api.route("/admin/check_key")
+  .get(require("./admin_check_key"));
+
 api.route("*")
   .get(require("./catchall"));
 

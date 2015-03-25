@@ -119,12 +119,16 @@ module.exports = function(req, res, next) {
         params.push(data.col_ids);
       }
 
+      var additionalFields = (req.query.response === "long") ? "col_name, col_group, col_groups.id AS col_group_id, max(lookup_unit_intervals.b_age) AS b_age, min(lookup_unit_intervals.t_age) AS t_age, GROUP_CONCAT(DISTINCT units_sections.section_id SEPARATOR '|') AS sections, count(distinct pbdb_matches.id) AS pbdb_collections, sum(pbdb_matches.occs) AS pbdb_occs, " : "";
 
-      larkin.query("SELECT " + geo + " col_areas.col_id, round(cols.col_area, 1) AS area, GROUP_CONCAT(units.id SEPARATOR '|') AS units, sum(max_thick) max_thick, sum(min_thick) min_thick, sum(LT.cpm) lith_max_thick, sum(LT.cpl) lith_min_thick,  LT2.lts lith_types \
+      var additionalJoins = (req.query.response === "long") ? "JOIN col_groups ON col_groups.id = cols.col_group_id LEFT OUTER JOIN pbdb_matches ON pbdb_matches.unit_id = units.id" : ""
+
+      larkin.query("SELECT " + geo + " col_areas.col_id, " + additionalFields + "round(cols.col_area, 1) AS area, GROUP_CONCAT(units.id SEPARATOR '|') AS units, sum(max_thick) max_thick, sum(min_thick) min_thick, sum(LT.cpm) lith_max_thick, sum(LT.cpl) lith_min_thick,  LT2.lts lith_types \
         FROM col_areas \
         JOIN cols ON cols.id = col_areas.col_id \
         JOIN units_sections ON units_sections.col_id = cols.id \
         JOIN units ON unit_id = units.id \
+        " + additionalJoins + " \
         JOIN lookup_unit_intervals ON lookup_unit_intervals.unit_id = units_sections.unit_id \
         JOIN (SELECT unit_id, round(sum(comp_prop*max_thick), 1) cpm, round(sum(comp_prop*min_thick), 1) cpl FROM unit_liths JOIN liths on lith_id=liths.id JOIN units on unit_id=units.id WHERE ?? like ? GROUP BY unit_id) LT ON LT.unit_id=units.id \
         " + stratJoin + " \
@@ -136,6 +140,9 @@ module.exports = function(req, res, next) {
             callback(error);
           } else {
             result.forEach(function(d) {
+              if (d.sections) {
+                d.sections = larkin.jsonifyPipes(d.sections, "integers");
+              }
               d.units = larkin.jsonifyPipes(d.units, "integers");
               d.lith_types = larkin.jsonifyPipes(d.lith_types, "strings");
             });
