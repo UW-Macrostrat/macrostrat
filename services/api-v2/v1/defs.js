@@ -68,6 +68,7 @@
         "lat": "number, decimal degree latitude, WGS84",
         "lng": "number, decimal degree longitude, WGS84",
         "adjacents": "boolean, if lat/lng or col_id is specified, optionally return all columns that touch the polygon containing the supplied lat/lng",
+        "response": "Can be 'short' or 'long' - default is 'short'",
         "format": "string, desired output format"
       },
       "output_formats": ["json", "csv", "geojson", "geojson_bare", "topojson", "topojson_bare"],
