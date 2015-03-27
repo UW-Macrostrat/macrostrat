@@ -66,7 +66,7 @@ row2 = {}
 
 for x in xrange(0,numrows):
 	nid = row[x]['rank'] + "_id"
-	cursor.execute("SELECT max(FO_age) f, min(LO_age) l FROM lookup_unit_intervals WHERE unit_id in (SELECT unit_id from unit_strat_names JOIN lookup_strat_names USING (strat_name_id) WHERE %s = %d)" % (nid, row[x]['id']))
+	cursor.execute("SELECT max(b_age) f, min(t_age) l FROM lookup_unit_intervals WHERE unit_id in (SELECT unit_id from unit_strat_names JOIN lookup_strat_names USING (strat_name_id) WHERE %s = %d)" % (nid, row[x]['id']))
 	row2 = cursor.fetchone()
 
 	if row2 is not None and row2['f'] is not None and row2['l'] is not None:
