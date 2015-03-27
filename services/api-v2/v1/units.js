@@ -163,13 +163,14 @@ module.exports = function(req, res, next) {
             
       var longSQL = "units.id AS id, units_sections.section_id as section_id, project_id, units_sections.col_id as col_id, col_area, units.strat_name, unit_strat_names.strat_name_id, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick,min_thick, lith_class, lith_type, lith_long lith, lookup_unit_liths.environ_class, lookup_unit_liths.environ_type, lookup_unit_liths.environ, count(distinct collection_no) pbdb, FO_interval, FO_h, FO_age, LO_interval, LO_h, LO_age, position_bottom, notes, units.color AS u_color, colors.unit_hex AS color, colors.text_hex AS text_color, min(ubt.t1_age) AS t_age, GROUP_CONCAT(distinct ubt.unit_id_2 SEPARATOR '|') AS units_above, max(ubb.t1_age) AS b_age, GROUP_CONCAT(distinct ubb.unit_id SEPARATOR '|') AS units_below "; 
 
+      var unitBoundariesJoin = (req.query.debug === "true") ? "LEFT JOIN unit_boundaries_scratch ubb ON ubb.unit_id_2=units.id LEFT JOIN unit_boundaries_scratch ubt ON ubt.unit_id=units.id" : "LEFT JOIN unit_boundaries ubb ON ubb.unit_id_2=units.id LEFT JOIN unit_boundaries ubt ON ubt.unit_id=units.id";
+
       var sql = "SELECT " + ((req.query.response === "long") ? longSQL : shortSQL) + " FROM units \
             JOIN units_sections ON units_sections.unit_id=units.id \
             JOIN cols ON units_sections.col_id=cols.id \
             JOIN lookup_unit_liths ON lookup_unit_liths.unit_id=units.id \
             JOIN lookup_unit_intervals ON units.id=lookup_unit_intervals.unit_id \
-            LEFT JOIN unit_boundaries ubb ON ubb.unit_id_2=units.id \
-            LEFT JOIN unit_boundaries ubt ON ubt.unit_id=units.id \
+            " + unitBoundariesJoin + " \
             LEFT JOIN unit_strat_names ON unit_strat_names.unit_id=units.id \
             LEFT JOIN lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id \
             " + ((req.query.response === "long") ? "LEFT JOIN unit_notes ON unit_notes.unit_id=units.id JOIN colors ON units.color = colors.color" : "") + " \
