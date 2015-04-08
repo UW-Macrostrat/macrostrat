@@ -48,7 +48,7 @@ module.exports = function(req, res, next) {
         callback(null, {"interval_name": "none", "age_bottom": 99999, "age_top": 0, "strat_ids": ids });
       } else if (req.query.hasOwnProperty("all")) {
         callback(null, {"interval_name": "Unknown", "age_bottom": 9999, "age_top": 0});
-      } else if (req.query.lith_type || req.query.lith_class || req.query.lith || req.query.col_group_id || req.query.group || req.query.unit_id) {
+      } else if (req.query.lith_type || req.query.lith_class || req.query.lith || req.query.col_group_id || req.query.col_group || req.query.unit_id) {
         callback(null, {"interval_name": "Unknown", "age_bottom": 9999, "age_top": 0});
       } else if (req.query.col_id) {
         if (req.query.adjacents === "true") {
@@ -118,9 +118,9 @@ module.exports = function(req, res, next) {
         params.push(req.query.col_group_id);
       }
 
-      if (req.query.group) {
+      if (req.query.col_group) {
         where += " AND col_groups.col_group = ?";
-        params.push(req.query.group);
+        params.push(req.query.col_group);
       }
 
       if (req.query.unit_id) {
