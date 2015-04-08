@@ -48,7 +48,7 @@ module.exports = function(req, res, next) {
         callback(null, {"interval_name": "none", "age_bottom": 99999, "age_top": 0, "strat_ids": ids });
       } else if (req.query.hasOwnProperty("all")) {
         callback(null, {"interval_name": "Unknown", "age_bottom": 9999, "age_top": 0});
-      } else if (req.query.lith_type || req.query.lith_class || req.query.lith) {
+      } else if (req.query.lith_type || req.query.lith_class || req.query.lith || req.query.col_group_id || req.query.group || req.query.unit_id) {
         callback(null, {"interval_name": "Unknown", "age_bottom": 9999, "age_top": 0});
       } else if (req.query.col_id) {
         if (req.query.adjacents === "true") {
@@ -113,21 +113,52 @@ module.exports = function(req, res, next) {
         stratJoin += "LEFT JOIN unit_strat_names ON unit_strat_names.unit_id=units.id LEFT JOIN lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id ";
       }
 
+      if (req.query.col_group_id) {
+        where += " AND col_groups.id = ?";
+        params.push(req.query.col_group_id);
+      }
 
-      if (data.col_ids) { 
+      if (req.query.group) {
+        where += " AND col_groups.col_group = ?";
+        params.push(req.query.group);
+      }
+
+      if (req.query.unit_id) {
+        if (req.query.unit_id.indexOf(",") > -1) {
+          var ids = req.query.unit_id.split(","),
+              placeholders = [];
+          
+          ids = ids.map(function(d) {
+            return parseInt(d);
+          });
+
+          for (var i = 0; i < ids.length; i++) {
+            placeholders.push("?");
+            params.push(ids[i]);
+          }
+
+          where += " AND units.id IN (" + placeholders.join(",") + ")";
+        } else {
+          where += " AND units.id = ?";
+          params.push(req.query.unit_id);
+        }
+      }
+
+      if (data.col_ids) {
         where += " AND col_areas.col_id IN (?)";
         params.push(data.col_ids);
       }
 
       var additionalFields = (req.query.response === "long") ? "col_name, col_group, col_groups.id AS col_group_id, max(lookup_unit_intervals.b_age) AS b_age, min(lookup_unit_intervals.t_age) AS t_age, GROUP_CONCAT(DISTINCT units_sections.section_id SEPARATOR '|') AS sections, count(distinct pbdb_matches.id) AS pbdb_collections, sum(pbdb_matches.occs) AS pbdb_occs, " : "";
 
-      var additionalJoins = (req.query.response === "long") ? "JOIN col_groups ON col_groups.id = cols.col_group_id LEFT OUTER JOIN pbdb_matches ON pbdb_matches.unit_id = units.id" : ""
+      var additionalJoins = (req.query.response === "long") ? " LEFT OUTER JOIN pbdb_matches ON pbdb_matches.unit_id = units.id" : ""
 
       larkin.query("SELECT " + geo + " col_areas.col_id, " + additionalFields + "round(cols.col_area, 1) AS area, GROUP_CONCAT(units.id SEPARATOR '|') AS units, sum(max_thick) max_thick, sum(min_thick) min_thick, sum(LT.cpm) lith_max_thick, sum(LT.cpl) lith_min_thick,  LT2.lts lith_types \
         FROM col_areas \
         JOIN cols ON cols.id = col_areas.col_id \
         JOIN units_sections ON units_sections.col_id = cols.id \
         JOIN units ON unit_id = units.id \
+        JOIN col_groups ON col_groups.id = cols.col_group_id \
         " + additionalJoins + " \
         JOIN lookup_unit_intervals ON lookup_unit_intervals.unit_id = units_sections.unit_id \
         JOIN (SELECT unit_id, round(sum(comp_prop*max_thick), 1) cpm, round(sum(comp_prop*min_thick), 1) cpl FROM unit_liths JOIN liths on lith_id=liths.id JOIN units on unit_id=units.id WHERE ?? like ? GROUP BY unit_id) LT ON LT.unit_id=units.id \
