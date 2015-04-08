@@ -515,6 +515,25 @@
     }
   };
 
+  defs["/defs/groups"] = {
+    "description": "Returns all column groups",
+    "parent": "definitions",
+    "visible": true,
+    "options": {
+      "parameters": {
+        "all": "return all column groups"
+      },
+      "output_formats": ["json", "csv"],
+      "examples": [
+        "api/defs/groups?all",
+      ],
+      "fields": [
+        "col_group_id",
+        "col_group"
+      ]
+    }
+  };
+
   defs["/section_stats"] = {
     "description": "Return section stats for Macrostrat",
     "visible": true,
@@ -867,7 +886,9 @@
     "bottom": "text, named time interval that contains the bottom of the section",
     "bottom_age": "number, maximum age of the section in millions of years",
     "abbrev": "standard abbreviation for interval name",
-    "gsc_lexicon": "Canada Geological Survey Lexicon web id; data for some names can be accessed via link: http://weblex.nrcan.gc.ca/html/000000/GSCC00053000747.html"
+    "gsc_lexicon": "Canada Geological Survey Lexicon web id; data for some names can be accessed via link: http://weblex.nrcan.gc.ca/html/000000/GSCC00053000747.html",
+    "col_group_id": "integer, unique identifier for column group",
+    "col_group": "text, name of column group"
   };
 
   module.exports = defs;

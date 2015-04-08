@@ -58,6 +58,9 @@ api.route("/defs/timescales")
 api.route("/defs/measurements")
   .get(require("./defs_measurements"));
 
+api.route("/defs/groups")
+  .get(require("./defs_groups"));
+
 api.route("/section_stats")
   .get(require("./section_stats"));
 

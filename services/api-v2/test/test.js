@@ -1115,6 +1115,46 @@ describe('Routes', function() {
     });
   });
 
+  
+  describe("defs/groups", function() {
+    it('should return metadata', function(done) {
+      request(host)
+        .get("/api/defs/groups")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(metadata)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should return all column groups", function(done) {
+      request(host)
+        .get("/api/defs/groups?all")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should output CSV", function(done) {
+      request(host)
+        .get("/api/defs/groups?all&format=csv")
+        .expect(aSuccessfulRequest)
+        .expect(csv)
+        .expect("Content-Type", "text/csv; charset=utf-8")
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+  });
+
+
 /* defs/strat_names */
   describe("defs/strat_names", function() {
     it('should return metadata', function(done) {
