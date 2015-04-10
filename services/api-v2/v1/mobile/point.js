@@ -1,15 +1,13 @@
 var api = require("../api"),
     async = require("async"),
     dbgeo = require("dbgeo"),
-    nearestFeature = require("nearest-feature"),
-    point = require("turf-point"),
     larkin = require("../larkin");
 
 module.exports = function(req, res, next) {
   if (req.query.lat && req.query.lng) {
     async.parallel({
       gmus: function(callback) {
-        larkin.queryPg("earthbase", "SELECT gid, state, a.rocktype1, a.rocktype2, b.rocktype3, unit_name, b.unit_age, unitdesc, strat_unit, unit_com FROM gmus.geologic_units a JOIN gmus.units b ON a.unit_link = b.unit_link WHERE ST_Contains(the_geom, ST_GeomFromText($1, 4326))", ["POINT(" + req.query.lng + " " + req.query.lat + ")"], function(error, result) {
+        larkin.queryPg("geomacro", "SELECT gid, state, rocktype1, rocktype2, u_rocktype3 AS rocktype3, unit_name, unit_age, unitdesc, strat_unit, unit_com FROM gmus.lookup_units WHERE ST_Contains(geom, ST_GeomFromText($1, 4326))", ["POINT(" + req.query.lng + " " + req.query.lat + ")"], function(error, result) {
           if (error) {
             callback(error);
           } else {
@@ -19,7 +17,7 @@ module.exports = function(req, res, next) {
       },
 
       gmna: function(callback) {
-        larkin.queryPg("earthbase", "SELECT objectid AS id, unit_abbre, rocktype, lithology, interval_name, map_unit_n FROM gmna.gmna_for_maps WHERE ST_Contains(the_geom, ST_GeomFromText($1, 4326))", ["POINT(" + req.query.lng + " " + req.query.lat + ")"], function(error, result) {
+        larkin.queryPg("geomacro", "SELECT gid AS id, unit_abbre, rocktype, lithology, containing_interval AS interval_name, map_unit_n FROM gmna.lookup_units WHERE ST_Contains(geom, ST_GeomFromText($1, 4326))", ["POINT(" + req.query.lng + " " + req.query.lat + ")"], function(error, result) {
           if (error) {
             callback(error);
           } else {
@@ -30,32 +28,23 @@ module.exports = function(req, res, next) {
 
       // Query Macrostrat for polygon
       column: function(callback) {
-        larkin.query("SELECT col_id FROM col_areas JOIN cols on col_id = cols.id WHERE ST_CONTAINS(col_areas.col_area, ST_GEOMFROMTEXT('POINT(? ?)')) and status_code='active'", [parseFloat(req.query.lng), parseFloat(req.query.lat)], function(error, result) {
+        larkin.queryPg("geomacro", "SELECT id AS col_id FROM macrostrat.cols WHERE ST_Contains(poly_geom, ST_GeomFromText($1, 4326)) and status_code='active'", ["POINT(" + req.query.lng + " " + req.query.lat + ")"], function(error, result) {
             if (error) {
               callback(error);
             } else {
-              if (result.length === 1) {
-                callback(null, result[0]);
+              if (result.rows.length === 1) {
+                callback(null, result.rows[0]);
               } else {
-                larkin.query("SELECT col_id AS id, AsWKT(col_areas.col_area) AS col_poly FROM col_areas JOIN cols on col_id=cols.id WHERE ST_Intersects(col_areas.col_area, ST_Buffer(ST_GEOMFROMTEXT('POINT(? ?)'), 1)) and status_code='active'", [parseFloat(req.query.lng), parseFloat(req.query.lat)], function(error, result) {
+                larkin.queryPg("geomacro", "SELECT id AS col_id FROM macrostrat.cols WHERE ST_Intersects(poly_geom, ST_Buffer(ST_GeomFromText($1, 4326), 1)) and status_code='active' ORDER BY ST_Distance(ST_GeomFromText($1, 4326), poly_geom) LIMIT 1", ["POINT(" + req.query.lng + " " + req.query.lat + ")"], function(error, result) {
+                  if (error) {
+                    callback(error);
+
                   // If no columns are found within 1 degree, return an empty result
-                  if (result.length < 1) {
+                  } else if (result.rows.length < 1) {
                     callback(null, {});
                   } else {
-                    dbgeo.parse({
-                      "data": result,
-                      "geometryColumn": "col_poly",
-                      "geometryType": "wkt",
-                      "callback": function(error, geojson) {
-                        if (error) {
-                          callback(error);
-                        } else {
-                          var nearest = nearestFeature(point(parseFloat(req.query.lng), parseFloat(req.query.lat)), geojson);
-
-                          callback(null, { "col_id": nearest.properties.id });
-                        }
-                      }
-                    });
+                  // Otherwise return the closest one
+                    callback(null, { "col_id": result.rows[0].col_id });
                   }
                 });
               }
