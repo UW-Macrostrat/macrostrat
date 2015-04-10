@@ -195,7 +195,13 @@
         "position_bottom",
         "notes",
         "color",
-        "text_color"
+        "text_color",
+        "clat",
+        "clng",
+        "t_plat",
+        "t_plng",
+        "b_plat",
+        "b_plng"
       ]
     }
   };
@@ -855,7 +861,13 @@
     "abbrev": "standard abbreviation for interval name",
     "gsc_lexicon": "Canada Geological Survey Lexicon web id; data for some names can be accessed via link: http://weblex.nrcan.gc.ca/html/000000/GSCC00053000747.html",
     "col_group_id": "integer, unique identifier for column group",
-    "col_group": "text, name of column group"
+    "col_group": "text, name of column group",
+    "clat": "number, present day latitude of of the centroid of the column to which the unit belongs",
+    "clng": "number, present day longitude of of the centroid of the column to which the unit belongs",
+    "t_plat": "number, same as clat, but rotated to the t_age. Top age paleo latitude.",
+    "t_plng": "number, same as clng, but rotated to the t_age. Top age paleo longitude.",
+    "b_plat": "number, same as clat, but rotated to the b_age. Bottom age paleo latitude.",
+    "b_plng": "number, same as clng, but rotated to the b_age. Bottom age paleo latitude."
   };
 
   module.exports = defs;
