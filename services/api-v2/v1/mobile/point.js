@@ -6,7 +6,7 @@ module.exports = function(req, res, next) {
   if (req.query.lat && req.query.lng) {
     async.parallel({
       gmus: function(callback) {
-        larkin.queryPg("geomacro", "SELECT gid, state, rocktype1, rocktype2, u_rocktype3 AS rocktype3, unit_name, unit_age, unitdesc, strat_unit, unit_com FROM gmus.lookup_units WHERE ST_Contains(geom, ST_GeomFromText($1, 4326))", ["POINT(" + req.query.lng + " " + req.query.lat + ")"], function(error, result) {
+        larkin.queryPg("geomacro", "SELECT gid, state, (CASE WHEN (rocktype1 IS NULL) THEN '' ELSE rocktype1 END) AS rocktype1, (CASE WHEN (rocktype2 IS NULL) THEN '' ELSE rocktype2 END) AS rocktype2, (CASE WHEN (u_rocktype3 IS NULL) THEN '' ELSE u_rocktype3 END) AS rocktype3, unit_name, unit_age, unitdesc, strat_unit, unit_com FROM gmus.lookup_units WHERE ST_Contains(geom, ST_GeomFromText($1, 4326))", ["POINT(" + req.query.lng + " " + req.query.lat + ")"], function(error, result) {
           if (error) {
             callback(error);
           } else {
