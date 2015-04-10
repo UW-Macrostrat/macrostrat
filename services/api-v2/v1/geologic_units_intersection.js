@@ -16,7 +16,7 @@ module.exports = function(req, res, next) {
       shape = (req.query.line) ? req.query.line : req.query.shape;
 
   if (type === "gmna") {
-    larkin.queryPg("earthbase", "WITH linestring AS (SELECT ST_Buffer(ST_SnapToGrid($1::geometry, 0.1)::geography, $2) AS buffer) SELECT objectid AS id, unit_abbre, rocktype, lithology AS lith, min_age, max_age, interval_color AS color, ST_AsGeoJSON(ST_Intersection(the_geom, buffer)) AS geometry FROM gmna.gmna_for_maps, linestring WHERE ST_Intersects(the_geom, buffer) is true", [shape, buffer], function(error, result) {
+    larkin.queryPg("geomacro", "WITH linestring AS (SELECT ST_Buffer(ST_SnapToGrid($1::geometry, 0.1)::geography, $2) AS buffer) SELECT gid AS id, unit_abbre, rocktype, lithology AS lith, min_age, max_age, interval_color AS color, ST_AsGeoJSON(ST_Intersection(geom, buffer)) AS geometry FROM gmna.lookup_units, linestring WHERE ST_Intersects(geom, buffer) is true", [shape, buffer], function(error, result) {
       if (error) {
         larkin.error(req, res, next, "Something went wrong");
       } else {
@@ -41,14 +41,14 @@ module.exports = function(req, res, next) {
       }
     });
   } else {
-    larkin.queryPg("earthbase", "SELECT ST_Area(ST_Buffer($1::geography, $2))/100000000 AS area", [shape, buffer], function(err, data) {
+    larkin.queryPg("geomacro", "SELECT ST_Area(ST_Buffer($1::geography, $2))/100000000 AS area", [shape, buffer], function(err, data) {
       if (err) {
         return larkin.error(req, res, next, "Invalid geometry supplied");
       }
       if (data.rows[0].area > 1000) {
         return larkin.error(req, res, next, "Area too large. Please select a smaller area.");
       } else {
-        larkin.queryPg("earthbase", "WITH linestring AS (SELECT ST_Buffer(ST_SnapToGrid($1::geometry, 0.1)::geography, $2) AS buffer), states as (SELECT postal FROM us_states WHERE ST_Intersects(geom::geography, (SELECT buffer FROM linestring))), subset as (SELECT * FROM gmus.geologic_units_with_intervals WHERE upper(state) in (SELECT postal FROM states)) SELECT gid AS id, state, rocktype1, rocktype2, u_rocktype3 AS rocktype3, unit_name, unit_age, unitdesc, strat_unit, unit_com, interval_color AS color, ST_AsGeoJSON(ST_Intersection(the_geom, buffer)) AS geometry FROM subset, linestring WHERE ST_Intersects(the_geom::geography, buffer) is true", [shape, buffer], function(error, result) {
+        larkin.queryPg("geomacro", "WITH linestring AS (SELECT ST_Buffer(ST_SnapToGrid($1::geometry, 0.1)::geography, $2) AS buffer), states as (SELECT postal FROM us_states WHERE ST_Intersects(geom::geography, (SELECT buffer FROM linestring))), subset as (SELECT * FROM gmus.lookup_units WHERE upper(state) in (SELECT postal FROM states)) SELECT gid AS id, state, rocktype1, rocktype2, u_rocktype3 AS rocktype3, unit_name, unit_age, unitdesc, strat_unit, unit_com, interval_color AS color, ST_AsGeoJSON(ST_Intersection(geom, buffer)) AS geometry FROM subset, linestring WHERE ST_Intersects(geom::geography, buffer) is true", [shape, buffer], function(error, result) {
           if (error) {
             larkin.error(req, res, next, "Something went wrong");
           } else {
