@@ -95,7 +95,7 @@ function atLeastOneResult(res) {
   } 
 }
 
-describe('Routes', function() {
+describe('Version 1', function() {
 /* Root route */
   describe('root', function() {
     it('should return a list of all visible routes', function(done) {
