@@ -1,4 +1,4 @@
-var larkin = require("./larkin");
+var larkin = require("../larkin");
 
 module.exports = function(req, res, next) {
   if (!req.query.section_id) {

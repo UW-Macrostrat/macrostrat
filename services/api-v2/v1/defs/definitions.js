@@ -1,10 +1,10 @@
-var api = require("./api"),
-    defs = require("./defs");
+var api = require("../api"),
+    defs = require("../defs");
 
 module.exports = function(req, res, next) {
   var available = {}
   for (var key in defs) {
-    if (defs[key].parent && defs[key].parent === "mobile") {
+    if (defs[key].parent && defs[key].parent === "definitions") {
       available[key] = defs[key].description
     }
   }
@@ -12,7 +12,7 @@ module.exports = function(req, res, next) {
   res.json({
     "success": {
       "v": api.version,
-      "description": defs["/mobile"].description,
+      "description": defs["/defs"].description,
       "routes": available
     }
   });

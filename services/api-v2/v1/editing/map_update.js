@@ -1,7 +1,7 @@
-var api = require("./api"),
+var api = require("../api"),
     async = require("async"),
     wellknown = require("wellknown"),
-    larkin = require("./larkin");
+    larkin = require("../larkin");
 
 module.exports = function(req, res, next) {
   if (req.body.layer) {

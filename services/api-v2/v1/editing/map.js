@@ -1,6 +1,6 @@
-var api = require("./api"),
+var api = require("../api"),
     dbgeo = require("dbgeo"),
-    larkin = require("./larkin");
+    larkin = require("../larkin");
 
 module.exports = function(req, res, next) {
   if (req.query.id) {

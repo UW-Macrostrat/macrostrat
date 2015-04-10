@@ -32,34 +32,34 @@ api.route("/stats")
   .get(require("./stats"));
 
 api.route("/defs")
-  .get(require("./definitions"));
+  .get(require("./defs/definitions"));
 
 api.route("/defs/lithologies")
-  .get(require("./defs_lithologies"));
+  .get(require("./defs/lithologies"));
 
 api.route("/defs/lithology_attributes")
-  .get(require("./defs_lithology_attributes"));
+  .get(require("./defs/lithology_attributes"));
 
 api.route("/defs/environments")
-  .get(require("./defs_environments"));
+  .get(require("./defs/environments"));
 
 api.route("/defs/intervals")
-  .get(require("./defs_intervals"));
+  .get(require("./defs/intervals"));
 
 api.route("/defs/projects")
-  .get(require("./defs_projects"));
+  .get(require("./defs/projects"));
 
 api.route("/defs/strat_names")
-  .get(require("./defs_strat_names"));
+  .get(require("./defs/strat_names"));
 
 api.route("/defs/timescales")
-  .get(require("./defs_timescales"));
+  .get(require("./defs/timescales"));
 
 api.route("/defs/measurements")
-  .get(require("./defs_measurements"));
+  .get(require("./defs/measurements"));
 
 api.route("/defs/groups")
-  .get(require("./defs_groups"));
+  .get(require("./defs/groups"));
 
 api.route("/section_stats")
   .get(require("./section_stats"));
@@ -77,28 +77,31 @@ api.route("/geologic_units/map")
   .get(require("./geologic_units_map"));
 
 api.route("/mobile")
-  .get(require("./mobile"));
+  .get(require("./mobile/mobile"));
   
 api.route("/mobile/point")
-  .get(require("./mobile_point"));
+  .get(require("./mobile/point"));
 
 api.route("/mobile/point_details")
-  .get(require("./mobile_point_details"));
+  .get(require("./mobile/point_details"));
 
 api.route("/mobile/fossil_collections")
-  .get(require("./mobile_fossil_collections"));
+  .get(require("./mobile/fossil_collections"));
+
+api.route("/editing")
+  .get(require("./editing/editing"));
 
 api.route("/editing/map")
-  .get(require("./editing_map"));
+  .get(require("./editing/map"));
 
 api.route("/editing/map/update")
-  .post(require("./editing_map_update"));
+  .post(require("./editing/map_update"));
 
 api.route("/editing/section")
-  .get(require("./editing_section"));
+  .get(require("./editing/section"));
 
 api.route("/editing/units/update")
-  .put(require("./editing_units_update"));
+  .put(require("./editing/units_update"));
 
 api.route("*")
   .get(require("./catchall"));

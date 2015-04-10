@@ -1,5 +1,5 @@
-var api = require("./api"),
-    larkin = require("./larkin");
+var api = require("../api"),
+    larkin = require("../larkin");
 
 module.exports = function(req, res, next) {
   if (req.query.unit_id) {

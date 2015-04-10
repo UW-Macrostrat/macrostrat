@@ -754,22 +754,34 @@
     }
   };
 
+  defs["/editing"] = {
+    "description": "Routes for updating Macrostrat data",
+    "visible": false
+  };
+
   defs["/editing/map"] = {
+    "description": "WILL BE DEPRECATED. Fetch polygons for mapping",
+    "parent": "editing",
     "visible": false
   };
 
   defs["/editing/map/update"] = {
+    "description": "Update column polygon geometry",
+    "parent": "editing",
     "visible": false
   };
 
-  defs["/editing/units"] = {
+  defs["/editing/section"] = {
+    "description": "Update sections",
+    "parent": "editing",
     "visible": false
   };
 
   defs["/editing/units/update"] = {
+    "description": "Update units",
+    "parent": "editing",
     "visible": false
   };
-
 
   // This is the primary dictionary for all field definitions
   defs.define = {

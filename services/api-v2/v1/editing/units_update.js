@@ -1,5 +1,5 @@
 var async = require("async"),
-    larkin = require("./larkin");
+    larkin = require("../larkin");
 
 module.exports = function(req, res, next) {
   if (req.body.passcode && req.body.passcode === "phylum" && req.body.units) {

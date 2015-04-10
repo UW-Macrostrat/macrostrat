@@ -1,9 +1,9 @@
-var api = require("./api"),
+var api = require("../api"),
     async = require("async"),
     dbgeo = require("dbgeo"),
     nearestFeature = require("nearest-feature"),
     point = require("turf-point"),
-    larkin = require("./larkin");
+    larkin = require("../larkin");
 
 module.exports = function(req, res, next) {
   if (req.query.lat && req.query.lng) {
