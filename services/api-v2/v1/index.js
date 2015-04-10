@@ -40,6 +40,9 @@ api.route("/defs/lithologies")
 api.route("/defs/lithology_attributes")
   .get(require("./defs/lithology_attributes"));
 
+api.route("/defs/econs")
+  .get(require("./defs/econs"));
+  
 api.route("/defs/environments")
   .get(require("./defs/environments"));
 

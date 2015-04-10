@@ -354,6 +354,34 @@
     }
   };
 
+  defs["/defs/econs"] = {
+    "description": "Returns econ definitions",
+    "parent": "definitions",
+    "visible": true,
+    "options": {
+      "parameters": {
+        "econ_id": "econ identifier",
+        "econ": "name of an econ",
+        "econ_type": "econ type",
+        "econ_class": "an econ class",
+        "all": "return all environment definitions",
+        "format": "Desired output format"
+      },
+      "output_formats": ["json", "csv"],
+      "examples": [
+        "api/defs/econs?all",
+        "api/defs/econs?econ_type=hydrocarbon"
+      ],
+      "fields": [
+        "econ_id",
+        "econ",
+        "econ_type",
+        "econ_class"
+      ]
+    }
+  };
+
+
   defs["/defs/environments"] = {
     "description": "Returns environment definitions",
     "parent": "definitions",
@@ -867,7 +895,11 @@
     "t_plat": "number, same as clat, but rotated to the t_age. Top age paleo latitude.",
     "t_plng": "number, same as clng, but rotated to the t_age. Top age paleo longitude.",
     "b_plat": "number, same as clat, but rotated to the b_age. Bottom age paleo latitude.",
-    "b_plng": "number, same as clng, but rotated to the b_age. Bottom age paleo latitude."
+    "b_plng": "number, same as clng, but rotated to the b_age. Bottom age paleo latitude.",
+    "econ_id": "integer, unique econ identifier",
+    "econ": "text, name of econ",
+    "econ_type": "string, type of econ",
+    "econ_class": "text, class of econ"
   };
 
   module.exports = defs;

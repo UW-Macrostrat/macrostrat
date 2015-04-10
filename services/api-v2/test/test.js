@@ -864,6 +864,100 @@ describe('Routes', function() {
     });
   });
 
+
+/* defs/econs */
+  describe("defs/econs", function() {
+    it('should return metadata', function(done) {
+      request(host)
+        .get("/api/defs/econs")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(metadata)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should accept an econ_class", function(done) {
+      request(host)
+        .get("/api/defs/econs?econ_class=energy")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should accept an econ_type", function(done) {
+      request(host)
+        .get("/api/defs/econs?econ_type=hydrocarbon")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should accept an econ", function(done) {
+      request(host)
+        .get("/api/defs/econs?environ=oil%20shale")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should accept an econ_id", function(done) {
+      request(host)
+        .get("/api/defs/econs?id=1")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should return all econ definitions", function(done) {
+      request(host)
+        .get("/api/defs/econs?all")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .expect(function(res) {
+          if (res.body.success.data.length < 15) {
+            throw new Error("Not enough results returned on defs/econs");
+          }
+        })
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should return CSV", function(done) {
+      request(host)
+        .get("/api/defs/econs?all&format=csv")
+        .expect(aSuccessfulRequest)
+        .expect(csv)
+        .expect("Content-Type", "text/csv; charset=utf-8")
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+  });
+
+
 /* defs/environments */
   describe("defs/environments", function() {
     it('should return metadata', function(done) {
