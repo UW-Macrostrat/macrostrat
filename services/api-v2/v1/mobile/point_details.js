@@ -2,16 +2,13 @@ var api = require("../api"),
     async = require("async"),
     wellknown = require("wellknown"),
     gp = require("geojson-precision"),
-    dbgeo = require("dbgeo"),
-    nearestFeature = require("nearest-feature"),
-    point = require("turf-point"),
     larkin = require("../larkin");
 
 module.exports = function(req, res, next) {
   if (req.query.lat && req.query.lng) {
     async.parallel({
       gmus: function(callback) {
-        larkin.queryPg("earthbase", "SELECT gid, a.rocktype1, a.rocktype2, b.rocktype3, unit_name, b.unit_age, unitdesc FROM gmus.geologic_units a JOIN gmus.units b ON a.unit_link = b.unit_link WHERE ST_Contains(the_geom, ST_GeomFromText($1, 4326))", ["POINT(" + req.query.lng + " " + req.query.lat + ")"], function(error, result) {
+        larkin.queryPg("geomacro", "SELECT gid, (CASE WHEN (rocktype1 IS NULL) THEN '' ELSE rocktype1 END) AS rocktype1, (CASE WHEN (rocktype2 IS NULL) THEN '' ELSE rocktype2 END) AS rocktype2, (CASE WHEN (u_rocktype3 IS NULL) THEN '' ELSE u_rocktype3 END) AS rocktype3, unit_name, unit_age, unitdesc FROM gmus.lookup_units WHERE ST_Contains(geom, ST_GeomFromText($1, 4326))", ["POINT(" + req.query.lng + " " + req.query.lat + ")"], function(error, result) {
           if (error) {
             callback(error);
           } else {
@@ -24,39 +21,28 @@ module.exports = function(req, res, next) {
         async.waterfall([
           function(callbackB) {
             // Find nearest column
-            larkin.query("SELECT col_id AS id, col_name, AsWKT(col_areas.col_area) AS col_poly FROM col_areas JOIN cols on col_id=cols.id WHERE ST_CONTAINS(col_areas.col_area,ST_GEOMFROMTEXT('POINT(? ?)')) and status_code='active'", [parseFloat(req.query.lng), parseFloat(req.query.lat)], function(error, result) {
+            larkin.queryPg("geomacro", "SELECT id AS col_id, col_name, ST_AsGeoJSON(poly_geom) AS col_poly FROM macrostrat.cols WHERE ST_Contains(poly_geom, ST_GeomFromText($1, 4326)) and status_code='active'", ["POINT(" + req.query.lng + " " + req.query.lat + ")"], function(error, result) {
               if (error) {
                 callback(error);
               } else {
                 /* If a column isn't immediately found, buffer the point by a degree, get all polygons that 
                    intersect that buffer, and then find the closest one */
-                if (result.length < 1) {
-                  larkin.query("SELECT col_id AS id, col_name, AsWKT(col_areas.col_area) AS col_poly FROM col_areas JOIN cols on col_id=cols.id WHERE ST_Intersects(col_areas.col_area, ST_Buffer(ST_GEOMFROMTEXT('POINT(? ?)'), 1)) and status_code='active'", [parseFloat(req.query.lng), parseFloat(req.query.lat)], function(error, result) {
+                if (result.rows.length < 1) {
+                  larkin.queryPg("geomacro", "SELECT id AS col_id, col_name, ST_AsGeoJSON(poly_geom) AS col_poly FROM macrostrat.cols WHERE ST_Intersects(poly_geom, ST_Buffer(ST_GeomFromText($1, 4326), 1)) and status_code='active' ORDER BY ST_Distance(ST_GeomFromText($1, 4326), poly_geom) LIMIT 1", ["POINT(" + req.query.lng + " " + req.query.lat + ")"], function(error, result) {
+                    if (error) {
+                      callback(error);
+
                     // If no columns are found within 1 degree, return an empty result
-                    if (result.length < 1) {
+                    } else if (result.rows.length < 1) {
                       callbackB([]);
                     } else {
-                      dbgeo.parse({
-                        "data": result,
-                        "geometryColumn": "col_poly",
-                        "geometryType": "wkt",
-                        "callback": function(error, geojson) {
-                          if (error) {
-                            callback(error);
-                          } else {
-                            var nearest = nearestFeature(point(parseFloat(req.query.lng), parseFloat(req.query.lat)), geojson);
-
-                            callbackB(null, {"id": nearest.properties.id,
-                             "col_name": nearest.properties.col_name,
-                             "col_poly": wellknown.stringify(nearest.geometry)});
-                          }
-                        }
-                      });
+                    // Otherwise return the closest one
+                      callbackB(null, result.rows[0]);
                     }
                   });
                   
                 } else {
-                  callbackB(null, result[0]);
+                  callbackB(null, result.rows[0]);
                 }
               }
             });
@@ -75,7 +61,7 @@ module.exports = function(req, res, next) {
                 WHERE units_sections.col_id = ? \
                 GROUP BY units.id ORDER BY t_age ASC";
 
-            larkin.query(sql, [column.id], function(error, result) {
+            larkin.query(sql, [column.col_id], function(error, result) {
               if (error) {
                 callbackB(error);
               } else {
@@ -94,9 +80,9 @@ module.exports = function(req, res, next) {
             }
           } else {
             var col = [{
-              "id": column.id,
+              "id": column.col_id,
               "col_name": column.col_name,
-              "col_poly": (req.query.geo_format === "wkt") ? wellknown.stringify(gp(wellknown(column.col_poly), 3)) : gp(wellknown(column.col_poly), 3),
+              "col_poly": (req.query.geo_format === "wkt") ? wellknown.stringify(gp(JSON.parse(column.col_poly), 3)) : gp(JSON.parse(column.col_poly), 3),
               "units": units
             }];
             callback(null, col[0]);
@@ -114,7 +100,7 @@ module.exports = function(req, res, next) {
   } else if (req.query.col_id && req.query.unit_id) {
     async.parallel({
       gmus: function(callback) {
-        larkin.queryPg("earthbase", "SELECT gid, a.rocktype1, a.rocktype2, b.rocktype3, unit_name, b.unit_age, unitdesc FROM gmus.geologic_units a JOIN gmus.units b ON a.unit_link = b.unit_link WHERE gid = $1", [req.query.unit_id], function(error, result) {
+        larkin.queryPg("geomacro", "SELECT gid, (CASE WHEN (rocktype1 IS NULL) THEN '' ELSE rocktype1 END) AS rocktype1, (CASE WHEN (rocktype2 IS NULL) THEN '' ELSE rocktype2 END) AS rocktype2, (CASE WHEN (u_rocktype3 IS NULL) THEN '' ELSE u_rocktype3 END) AS rocktype3, unit_name, unit_age, unitdesc FROM gmus.lookup_units WHERE gid = $1", [req.query.unit_id], function(error, result) {
           if (error) {
             callback(error);
           } else {
@@ -126,14 +112,14 @@ module.exports = function(req, res, next) {
       column: function(callback) {
         async.waterfall([
           function(callbackB) {
-            larkin.query("SELECT col_id AS id, col_name, AsWKT(col_areas.col_area) AS col_poly FROM col_areas JOIN cols on col_id=cols.id WHERE cols.id = ?", [req.query.col_id], function(error, result) {
+            larkin.queryPg("geomacro", "SELECT id AS col_id, col_name, ST_AsGeoJSON(poly_geom) AS col_poly FROM macrostrat.cols WHERE id = $1", [req.query.col_id], function(error, result) {
               if (error) {
                 callbackB(error);
               } else {
-                if (result.length === 0) {
+                if (result.rows.length === 0) {
                   callback(null);
                 } else {
-                  callbackB(null, result[0]);
+                  callbackB(null, result.rows[0]);
                 }
               }
             });
@@ -155,9 +141,9 @@ module.exports = function(req, res, next) {
             callback(err);
           } else {
             var col = [{
-              "id": column.id,
+              "id": column.col_id,
               "col_name": column.col_name,
-              "col_poly": (req.query.geo_format === "wkt") ? wellknown.stringify(gp(wellknown(column.col_poly), 3)) : gp(wellknown(column.col_poly), 3),
+              "col_poly": (req.query.geo_format === "wkt") ? wellknown.stringify(gp(JSON.parse(column.col_poly), 3)) : gp(JSON.parse(column.col_poly), 3),
               "units": units
             }];
             callback(null, col[0]);
@@ -166,6 +152,7 @@ module.exports = function(req, res, next) {
       }
     }, function(error, results) {
       if (error) {
+        console.log(error);
         larkin.error(req, res, next, "Something went wrong");
       } else {
         larkin.sendCompact([results], res, "json", next);
