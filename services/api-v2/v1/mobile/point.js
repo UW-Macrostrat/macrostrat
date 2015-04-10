@@ -1,6 +1,5 @@
 var api = require("../api"),
     async = require("async"),
-    dbgeo = require("dbgeo"),
     larkin = require("../larkin");
 
 module.exports = function(req, res, next) {
