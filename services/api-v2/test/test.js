@@ -572,6 +572,50 @@ describe('Version 1', function() {
         });
     });
 
+    it("should output GeoJSON", function(done) {
+      request(host)
+        .get("/api/units?strat_id=1205&format=geojson")
+        .expect(aSuccessfulRequest)
+        .expect(geoJSON)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should output TopoJSON", function(done) {
+      request(host)
+        .get("/api/units?strat_id=1205&format=topojson")
+        .expect(aSuccessfulRequest)
+        .expect(topoJSON)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should accept a geom_age parameter", function(done) {
+      request(host)
+        .get("/api/units?strat_id=1205&format=geojson&geom_age=top")
+        .expect(aSuccessfulRequest)
+        .expect(geoJSON)
+        .expect(function(res) {
+          var coordLat = res.body.success.data.features[0].geometry.coordinates[1],
+              coordLng = res.body.success.data.features[0].geometry.coordinates[0],
+              topLat = res.body.success.data.features[0].properties.t_plat,
+              topLng  = res.body.success.data.features[0].properties.t_plng;
+
+          if (coordLat != topLat || coordLng != topLng) {
+            throw new Error("Incorrect coordinates used when specifying a geom_age on /units");
+          }
+
+        })
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
     it("should output CSV", function(done) {
       request(host)
         .get("/api/units?section_id=107&format=csv")

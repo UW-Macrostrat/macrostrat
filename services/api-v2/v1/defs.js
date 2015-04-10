@@ -149,16 +149,19 @@
         "environ_class": "general environments",
         "strat_name": "a fuzzy stratigraphic name to match units to",
         "strat_id": "a single or comma-separated list of stratigraphic ids (can be retrieved from /defs/strat_names",
-        "response": "Can be 'short' or 'long' - default is 'short'"
+        "response": "Can be 'short' or 'long' - default is 'short'",
+        "format": "string, desired output format",
+        "geom_age": "If requesting a geographic format, specifies which age to use for the primary coordinates. Accepted parameters are 'modern' (clat, clng), 'top' (t_plat, t_plng) and 'bottom' (b_plat, b_plng). Default is 'modern'"
       },
-      "output_formats": ["json", "csv"],
+      "output_formats": ["json", "csv", "geojson", "topojson", "geojson_bare", "topojson_bare"],
       "examples": [
         "api/units?interval_name=Permian",
         "api/units?age=271",
         "api/units?interval_name=Permian&response=long",
         "api/units?strat_id=1205,4260",
         "api/units?strat_name=mancos",
-        "api/units?section_id=107&col_id=22&format=csv"
+        "api/units?section_id=107&col_id=22&format=csv",
+        "api/units?strat_id=1205&format=geojson_bare&geom_age=bottom"
       ],
       "fields": [
         "id",

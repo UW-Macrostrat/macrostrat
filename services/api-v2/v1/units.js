@@ -1,5 +1,7 @@
 var api = require("./api"),
     async = require("async"),
+    dbgeo = require("dbgeo"),
+    gp = require("geojson-precision"),
     larkin = require("./larkin");
 
 module.exports = function(req, res, next) {
@@ -161,11 +163,13 @@ module.exports = function(req, res, next) {
 
       var shortSQL = "units.id AS id,units_sections.section_id as section_id, units_sections.col_id as col_id, col_area, units.strat_name, units.position_bottom, unit_strat_names.strat_name_id, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick, min_thick, color AS u_color, lith_type, count(distinct collection_no) pbdb";
             
-      var longSQL = "units.id AS id, units_sections.section_id as section_id, project_id, units_sections.col_id as col_id, col_area, units.strat_name, unit_strat_names.strat_name_id, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick,min_thick, lith_class, lith_type, lith_long lith, lookup_unit_liths.environ_class, lookup_unit_liths.environ_type, lookup_unit_liths.environ, count(distinct collection_no) pbdb, FO_interval, FO_h, FO_age, LO_interval, LO_h, LO_age, position_bottom, notes, units.color AS u_color, colors.unit_hex AS color, colors.text_hex AS text_color, min(ubt.t1_age) AS t_age, GROUP_CONCAT(distinct ubt.unit_id_2 SEPARATOR '|') AS units_above, max(ubb.t1_age) AS b_age, GROUP_CONCAT(distinct ubb.unit_id SEPARATOR '|') AS units_below, cols.lat AS clat, cols.lng AS clng, ubt.paleo_lat AS t_plat, ubt.paleo_lng AS t_plng, ubb.paleo_lat AS b_plat, ubb.paleo_lng AS b_plng "; 
+      var longSQL = "units.id AS id, units_sections.section_id as section_id, project_id, units_sections.col_id as col_id, col_area, units.strat_name, unit_strat_names.strat_name_id, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick,min_thick, lith_class, lith_type, lith_long lith, lookup_unit_liths.environ_class, lookup_unit_liths.environ_type, lookup_unit_liths.environ, count(distinct collection_no) pbdb, FO_interval, FO_h, FO_age, LO_interval, LO_h, LO_age, position_bottom, notes, units.color AS u_color, colors.unit_hex AS color, colors.text_hex AS text_color, min(ubt.t1_age) AS t_age, GROUP_CONCAT(distinct ubt.unit_id_2 SEPARATOR '|') AS units_above, max(ubb.t1_age) AS b_age, GROUP_CONCAT(distinct ubb.unit_id SEPARATOR '|') AS units_below"; 
 
       var unitBoundariesJoin = (req.query.debug === "true") ? "LEFT JOIN unit_boundaries_scratch ubb ON ubb.unit_id_2=units.id LEFT JOIN unit_boundaries_scratch ubt ON ubt.unit_id=units.id" : "LEFT JOIN unit_boundaries ubb ON ubb.unit_id_2=units.id LEFT JOIN unit_boundaries ubt ON ubt.unit_id=units.id";
 
-      var sql = "SELECT " + ((req.query.response === "long") ? longSQL : shortSQL) + " FROM units \
+      var geometry = ((req.query.format && api.acceptedFormats.geo[req.query.format]) || req.query.response === "long") ? ", cols.lat AS clat, cols.lng AS clng, ubt.paleo_lat AS t_plat, ubt.paleo_lng AS t_plng, ubb.paleo_lat AS b_plat, ubb.paleo_lng AS b_plng " : "";
+
+      var sql = "SELECT " + ((req.query.response === "long") ? longSQL : shortSQL) + geometry + " FROM units \
             JOIN units_sections ON units_sections.unit_id=units.id \
             JOIN cols ON units_sections.col_id=cols.id \
             JOIN lookup_unit_liths ON lookup_unit_liths.unit_id=units.id \
@@ -183,14 +187,35 @@ module.exports = function(req, res, next) {
             console.log(error);
             callback(error);
           } else {
-
             if (req.query.response === "long" && req.query.format !== "csv") {
               result.forEach(function(d) {
                 d.units_above = larkin.jsonifyPipes(d.units_above, "integers");
                 d.units_below = larkin.jsonifyPipes(d.units_below, "integers");
               });
             }
-            callback(null, data, result);
+
+            if (req.query.format && api.acceptedFormats.geo[req.query.format]) {
+              var geomAge = (req.query.geom_age && req.query.geom_age === "top") ? ["t_plat", "t_plng"] : (req.query.geom_age === "bottom") ? ["b_plat", "b_plng"] : ["clat", "clng"];
+
+              dbgeo.parse({
+                "data": result,
+                "geometryType": "ll",
+                "geometryColumn": geomAge,
+                "outputFormat": larkin.getOutputFormat(req.query.format),
+                "callback": function(error, output) {
+                  if (error) {
+                    larkin.error(req, res, next, "An error was incurred during conversion");
+                  } else {
+                    if (larkin.getOutputFormat(req.query.format) === "geojson") {
+                      output = gp(output, 4);
+                    }
+                    callback(null, data, output);
+                  }
+                }
+              });
+            } else {
+              callback(null, data, result);
+            }
           }
       });
     }
@@ -198,7 +223,11 @@ module.exports = function(req, res, next) {
     if (error) {
       larkin.error(req, res, next, "Something went wrong");
     } else {
-      larkin.sendCompact(result, res, (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json", next);
+      if (api.acceptedFormats.bare[req.query.format]) {
+        larkin.sendBare(result, res, next);
+      } else {
+        larkin.sendCompact(result, res, (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json", next);
+      }
     }
   });
 }
