@@ -34,20 +34,29 @@ api.route("/stats")
 api.route("/defs")
   .get(require("./defs/definitions"));
 
+api.route("/defs/columns")
+  .get(require("./defs/columns"));
+
+api.route("/defs/econs")
+  .get(require("./defs/econs"));
+
+api.route("/defs/environments")
+  .get(require("./defs/environments"));
+
+api.route("/defs/groups")
+  .get(require("./defs/groups"));
+
+api.route("/defs/intervals")
+  .get(require("./defs/intervals"));
+
 api.route("/defs/lithologies")
   .get(require("./defs/lithologies"));
 
 api.route("/defs/lithology_attributes")
   .get(require("./defs/lithology_attributes"));
 
-api.route("/defs/econs")
-  .get(require("./defs/econs"));
-  
-api.route("/defs/environments")
-  .get(require("./defs/environments"));
-
-api.route("/defs/intervals")
-  .get(require("./defs/intervals"));
+api.route("/defs/measurements")
+  .get(require("./defs/measurements"));
 
 api.route("/defs/projects")
   .get(require("./defs/projects"));
@@ -57,12 +66,6 @@ api.route("/defs/strat_names")
 
 api.route("/defs/timescales")
   .get(require("./defs/timescales"));
-
-api.route("/defs/measurements")
-  .get(require("./defs/measurements"));
-
-api.route("/defs/groups")
-  .get(require("./defs/groups"));
 
 api.route("/section_stats")
   .get(require("./section_stats"));

@@ -864,6 +864,73 @@ describe('Version 1', function() {
     });
   });
 
+/* defs/columns */
+  describe("defs/columns", function() {
+    it('should return metadata', function(done) {
+      request(host)
+        .get("/api/defs/columns")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(metadata)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should accept a col_group_id", function(done) {
+      request(host)
+        .get("/api/defs/columns?col_group_id=17")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should accept a col_id", function(done) {
+      request(host)
+        .get("/api/defs/columns?col_id=17")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should accept a col_name", function(done) {
+      request(host)
+        .get("/api/defs/columns?col_name=Eastern%20Kentucky")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+
+    it("should return all columns", function(done) {
+      request(host)
+        .get("/api/defs/columns?id=1")
+        .expect(aSuccessfulRequest)
+        .expect(json)
+        .expect(atLeastOneResult)
+        .expect(function(res) {
+          if (res.body.success.data.length < 1500) {
+            throw new Error("Not enough results returned on defs/columns");
+          }
+        })
+        .end(function(error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+  });
 
 /* defs/econs */
   describe("defs/econs", function() {

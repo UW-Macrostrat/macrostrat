@@ -354,6 +354,32 @@
     }
   };
 
+  defs["/defs/columns"] = {
+    "description": "Returns column definitions",
+    "parent": "definitions",
+    "visible": true,
+    "options": {
+      "parameters": {
+        "col_id": "Unique column identifier",
+        "col_group_id": "Unique column group identifier",
+        "col_name": "Column name",
+        "all": "Return all column definitions",
+        "format": "Desired output format"
+      },
+      "output_formats": ["json", "csv"],
+      "examples": [
+        "api/defs/columns?all",
+        "api/defs/columns?col_group_id=17",
+        "api/defs/columns?col_name=Eastern%20Kentucky"
+      ],
+      "fields": [
+        "col_id",
+        "col_group_id",
+        "col_name"
+      ]
+    }
+  };
+
   defs["/defs/econs"] = {
     "description": "Returns econ definitions",
     "parent": "definitions",
@@ -691,15 +717,15 @@
   };
 
   defs["/geologic_units/map"] = {
-    "description": "Fetch polygons for mapping",
+    "description": "*** Deprecated. Will not exist in v2. Please use /column or /geologic_units instead.*** Fetch polygons for mapping based on a time interval",
     "visible": true,
     "options": {
       "parameters": {
-        "type": "type of geometry to use - can be 'gmus' (Geologic Map United States) or 'gmna' (Geologic Map North America)",
-        "interval_name": "name of time interval to use",
+        "type": "(Required) type of geometry to use - can be 'gmus' (Geologic Map United States) or 'gmna' (Geologic Map North America)",
+        "interval_name": "(Required) - name of time interval to use",
         "format": "Desired output format"
       },
-      "output_formats": ["geojson", "topojson"],
+      "output_formats": ["geojson", "topojson", "geojson_bare", "topojson_bare"],
       "examples": [
         "api/geologic_units/map?type=gmus&interval_name=Permian",
         "api/geologic_units/map?type=gmna&interval_name=Jurassic&format=topojson"
