@@ -18,11 +18,18 @@ module.exports = function(req, res, next) {
 
     if (req.query.type === "gmus") {
       var where = [],
-          params = [];
+          params = [],
+          orderBy = "";
 
       if (req.query.lat && req.query.lng) {
-        where.push(" ST_Contains(geom, ST_GeomFromText($" + (where.length + 1) + ", 4326))");
-        params.push("POINT(" + req.query.lng + " " + req.query.lat + ")");
+        if (req.query.adjacents === "true") {
+          where.push("ST_Intersects(geom, ST_Buffer(ST_GeomFromText($" + (where.length) + 1 + ", 4326), 0.5))")
+          params.push("POINT(" + req.query.lng + " " + req.query.lat + ")");
+          orderBy += "ORDER BY ST_Distance(geom, ST_Buffer(ST_GeomFromText($" + where.length + ", 4326), 0.5))";
+        } else {
+          where.push(" ST_Contains(geom, ST_GeomFromText($" + (where.length + 1) + ", 4326))");
+          params.push("POINT(" + req.query.lng + " " + req.query.lat + ")");
+        }
       }
 
       if (req.query.gid && req.query.gid != "undefined") {
