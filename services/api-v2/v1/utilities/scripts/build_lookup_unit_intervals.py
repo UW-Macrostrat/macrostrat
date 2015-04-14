@@ -17,8 +17,8 @@ cursor = connection.cursor()
 # Ignore warnings
 filterwarnings('ignore', category = MySQLdb.Warning)
 
-# truncate the table
-cursor.execute("TRUNCATE TABLE lookup_unit_intervals")
+# Copy structure into new table
+cursor.execute("CREATE TABLE lookup_unit_intervals_new LIKE lookup_unit_intervals")
 
 # initial query
 cursor.execute("SELECT units.id, FO, LO, f.age_bottom, f.interval_name fname, f.age_top FATOP, l.age_top, l.interval_name lname, min(u1.t1_age) AS t_age, max(u2.t1_age) AS b_age from units JOIN intervals f on FO = f.id JOIN intervals l ON LO = l.id LEFT JOIN unit_boundaries u1 ON u1.unit_id = units.id LEFT JOIN unit_boundaries u2 ON u2.unit_id_2 = units.id group by units.id")
@@ -166,7 +166,7 @@ for x in xrange(0,numrows):
 		r6['id'] = row6['id']
 
 	cursor.execute("""
-    INSERT INTO lookup_unit_intervals (unit_id, FO_age, b_age, FO_interval, LO_age, t_age, LO_interval, epoch, epoch_id, period, period_id, age,age_id, era, era_id, eon, eon_id, FO_period, LO_period) 
+    INSERT INTO lookup_unit_intervals_new (unit_id, FO_age, b_age, FO_interval, LO_age, t_age, LO_interval, epoch, epoch_id, period, period_id, age,age_id, era, era_id, eon, eon_id, FO_period, LO_period) 
     VALUES (%(rx_id)s, %(rx_age_bottom)s, %(rx_b_age)s, %(rx_fname)s, %(rx_age_top)s, %(rx_t_age)s, %(rx_lname)s, %(r2_interval_name)s, %(r2_id)s, %(r3_interval_name)s, %(r3_id)s, %(r4_interval_name)s, %(r4_id)s, %(r6_interval_name)s, %(r6_id)s, %(r5_interval_name)s, %(r5_id)s, %(rFO)s, %(rLO)s )""", {
 
         "rx_id": row[x]["id"],
@@ -197,17 +197,21 @@ for x in xrange(0,numrows):
   })
 
 #modifiy results for long-ranging units
-cursor.execute("UPDATE lookup_unit_intervals set period = concat_WS('-',FO_period,LO_period) where period = '' and FO_period not like ''")
-cursor.execute("UPDATE lookup_unit_intervals set period = eon where period = '' and eon = 'Archean'")
-cursor.execute("UPDATE lookup_unit_intervals set period = concat_WS('-', FO_interval, LO_period) where FO_interval = 'Archean'")
-cursor.execute("UPDATE lookup_unit_intervals set period = 'Precambrian' where period = '' and t_age >= 541")
+cursor.execute("UPDATE lookup_unit_intervals_new set period = concat_WS('-',FO_period,LO_period) where period = '' and FO_period not like ''")
+cursor.execute("UPDATE lookup_unit_intervals_new set period = eon where period = '' and eon = 'Archean'")
+cursor.execute("UPDATE lookup_unit_intervals_new set period = concat_WS('-', FO_interval, LO_period) where FO_interval = 'Archean'")
+cursor.execute("UPDATE lookup_unit_intervals_new set period = 'Precambrian' where period = '' and t_age >= 541")
 
 
 ## validate results
-cursor.execute("SELECT count(*) N, (SELECT count(*) from lookup_unit_intervals) nn from units")
+cursor.execute("SELECT count(*) N, (SELECT count(*) from lookup_unit_intervals_new) nn from units")
 row = cursor.fetchone()
 if row['N'] != row['nn'] :
-	print "ERROR: inconsistent unit count in lookup_unit_intervals table"
+	print "ERROR: inconsistent unit count in lookup_unit_intervals_new table"
+
+# Out with the old, in with the new
+cursor.execute("DROP TABLE lookup_unit_intervals")
+cursor.execute("RENAME TABLE lookup_unit_intervals_new TO lookup_unit_intervals")
 
 print "Done with lookup_unit_intervals"
 

@@ -17,8 +17,8 @@ cursor = connection.cursor()
 # Ignore warnings
 filterwarnings('ignore', category = MySQLdb.Warning)
 
-# truncate the table
-cursor.execute("TRUNCATE TABLE lookup_strat_names")
+# Copy structure to new table
+cursor.execute("CREATE TABLE lookup_strat_names_new LIKE lookup_strat_names")
 
 # initial query
 cursor.execute("SELECT * FROM strat_names")
@@ -34,7 +34,7 @@ for x in xrange(0,numrows):
 	nid = row[x]['rank'] + "_id"
 	n = row[x]['rank'] + "_name"
 	
-	cursor.execute("INSERT INTO lookup_strat_names (strat_name_id,strat_name,rank, " + nid + ", " + n +") VALUES (%s, %s, %s, %s, %s)", (row[x]['id'], row[x]['strat_name'], row[x]['rank'], row[x]['id'], row[x]['strat_name']))
+	cursor.execute("INSERT INTO lookup_strat_names_new (strat_name_id,strat_name,rank, " + nid + ", " + n +") VALUES (%s, %s, %s, %s, %s)", (row[x]['id'], row[x]['strat_name'], row[x]['rank'], row[x]['id'], row[x]['strat_name']))
 
 	parent = 1
 	old_one = row[x]['id']
@@ -51,7 +51,7 @@ for x in xrange(0,numrows):
 			n = row2['rank'] + "_name"
 
 		if old_one > 0 and parent <= 1 :
-			cursor.execute("UPDATE lookup_strat_names SET " + nid + " = %s, "+ n +" = %s WHERE strat_name_id = %s" , (row2['id'], row2['strat_name'], row[x]['id']))
+			cursor.execute("UPDATE lookup_strat_names_new SET " + nid + " = %s, "+ n +" = %s WHERE strat_name_id = %s" , (row2['id'], row2['strat_name'], row[x]['id']))
 		else :
 			parent = 0
 		if parent > 1:
@@ -66,20 +66,24 @@ row2 = {}
 
 for x in xrange(0,numrows):
 	nid = row[x]['rank'] + "_id"
-	cursor.execute("SELECT max(b_age) f, min(t_age) l FROM lookup_unit_intervals WHERE unit_id in (SELECT unit_id from unit_strat_names JOIN lookup_strat_names USING (strat_name_id) WHERE %s = %d)" % (nid, row[x]['id']))
+	cursor.execute("SELECT max(b_age) f, min(t_age) l FROM lookup_unit_intervals WHERE unit_id in (SELECT unit_id from unit_strat_names JOIN lookup_strat_names_new USING (strat_name_id) WHERE %s = %d)" % (nid, row[x]['id']))
 	row2 = cursor.fetchone()
 
 	if row2 is not None and row2['f'] is not None and row2['l'] is not None:
-		cursor.execute("UPDATE lookup_strat_names SET early_age = %f, late_age = %f WHERE strat_name_id=%d" % (row2['f'], row2['l'], row[x]['id']))
+		cursor.execute("UPDATE lookup_strat_names_new SET early_age = %f, late_age = %f WHERE strat_name_id=%d" % (row2['f'], row2['l'], row[x]['id']))
 
 # populate canada_lexicon webkey from canada_lexicon
-cursor.execute("UPDATE lookup_strat_names,canada_lexicon SET lookup_strat_names.gsc_lexicon = canada_lexicon.web_id WHERE lookup_strat_names.strat_name_id=canada_lexicon.strat_name_id")
+cursor.execute("UPDATE lookup_strat_names_new,canada_lexicon SET lookup_strat_names_new.gsc_lexicon = canada_lexicon.web_id WHERE lookup_strat_names_new.strat_name_id=canada_lexicon.strat_name_id")
 
 ## validate results
-cursor.execute("SELECT count(*) N, (SELECT count(*) from lookup_strat_names) nn from strat_names")
+cursor.execute("SELECT count(*) N, (SELECT count(*) from lookup_strat_names_new) nn from strat_names")
 row = cursor.fetchone()
 if row['N'] != row['nn'] :
 	print "ERROR: inconsistent strat_name count in lookup table"
+
+# Out with the old, in with the new
+cursor.execute("DROP TABLE lookup_strat_names")
+cursor.execute("RENAME TABLE lookup_strat_names_new TO lookup_strat_names")
 
 print "Done with lookup_strat_names table"
 
