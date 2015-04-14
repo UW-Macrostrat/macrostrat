@@ -266,6 +266,7 @@
         "project_id": "integer, limit results to project",
         "showpairs": "show all PBDB and Macrostrat key pairs",
         "showorphans": "show all PBDB authorities with no opinion data of any kind",
+        "showtime": "show all PBDB time interval definitions",
         "format": "Desired output format"
       },
       "output_formats": ["json", "csv"],
