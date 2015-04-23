@@ -24,7 +24,8 @@ numrows = cursor.rowcount
 row = cursor.fetchall()
 
 for x in xrange(0,numrows):
-	n = float(row[x]['sub_lith']+(row[x]['dom_lith']*5))
+	n1 = float(row[x]['sub_lith']) if row[x]['sub_lith'] is not None else 0
+	n = float(n1 + (row[x]['dom_lith']*5))
 	dom_p=5/n
 	sub_p=1/n
 	cursor.execute("UPDATE unit_liths set comp_prop=%s WHERE unit_id=%s and dom='dom'", [dom_p,row[x]['unit_id']])
