@@ -13,8 +13,9 @@
         "lat": "number, decimal degree latitude, WGS84",
         "lng": "number, decimal degree longitude, WGS84",
         "geom": "boolean, whether associated geometry is returned",
-        "response": "Can be 'short' or 'long'"
+        "response": "Any available response_type. Default is short."
       },
+      "response_types": ["short", "long"],
       "output_formats": ["json"],
       "examples": [
         "/api/column?id=17",
@@ -68,9 +69,11 @@
         "lat": "number, decimal degree latitude, WGS84",
         "lng": "number, decimal degree longitude, WGS84",
         "adjacents": "boolean, if lat/lng or col_id is specified, optionally return all columns that touch the polygon containing the supplied lat/lng",
-        "response": "Can be 'short' or 'long' - default is 'short'",
+        "project_id": "number, Macrostrat project ID",
+        "response": "Any available response_type. Default is short.",
         "format": "string, desired output format"
       },
+      "response_types": ["short", "long"],
       "output_formats": ["json", "csv", "geojson", "geojson_bare", "topojson", "topojson_bare"],
       "examples": [
         "/api/columns?interval_name=Permian",
@@ -149,10 +152,12 @@
         "environ_class": "general environments",
         "strat_name": "a fuzzy stratigraphic name to match units to",
         "strat_id": "a single or comma-separated list of stratigraphic ids (can be retrieved from /defs/strat_names",
-        "response": "Can be 'short' or 'long' - default is 'short'",
+        "project_id": "a Macrostrat project ID",
+        "response": "Any available response_type. Default is short.",
         "format": "string, desired output format",
         "geom_age": "If requesting a geographic format, specifies which age to use for the primary coordinates. Accepted parameters are 'modern' (clat, clng), 'top' (t_plat, t_plng) and 'bottom' (b_plat, b_plng). Default is 'modern'"
       },
+      "response_types": ["short", "long"],
       "output_formats": ["json", "csv", "geojson", "topojson", "geojson_bare", "topojson_bare"],
       "examples": [
         "api/units?interval_name=Permian",

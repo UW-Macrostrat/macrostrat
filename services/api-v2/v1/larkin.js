@@ -181,6 +181,9 @@ var mysql = require("mysql"),
           "examples": defs[route].options.examples
         }
       };
+      if (defs[route].options.response_types) {
+        routeDefinition.options.response_types = defs[route].options.response_types;
+      }
       routeDefinition.options.fields = fields;
       callback(routeDefinition);
     }); 

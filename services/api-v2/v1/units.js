@@ -144,6 +144,11 @@ module.exports = function(req, res, next) {
         params.push(data.strat_ids, data.strat_ids, data.strat_ids, data.strat_ids, data.strat_ids);
       }
 
+      if (req.query.project_id) {
+        where += " AND cols.project_id = ?";
+        params.push(req.query.project_id);
+      }
+
       var environ = "", 
           environ_field = "";
       if (req.query.environ) {

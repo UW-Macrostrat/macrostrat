@@ -149,6 +149,11 @@ module.exports = function(req, res, next) {
         params.push(data.col_ids);
       }
 
+      if (req.query.project_id) {
+        where += " AND cols.project_id = ?";
+        params.push(req.query.project_id);
+      }
+
       var additionalFields = (req.query.response === "long") ? "col_name, col_group, col_groups.id AS col_group_id, max(lookup_unit_intervals.b_age) AS b_age, min(lookup_unit_intervals.t_age) AS t_age, GROUP_CONCAT(DISTINCT units_sections.section_id SEPARATOR '|') AS sections, count(distinct pbdb_matches.id) AS pbdb_collections, sum(pbdb_matches.occs) AS pbdb_occs, " : "";
 
       var additionalJoins = (req.query.response === "long") ? " LEFT OUTER JOIN pbdb_matches ON pbdb_matches.unit_id = units.id" : ""
