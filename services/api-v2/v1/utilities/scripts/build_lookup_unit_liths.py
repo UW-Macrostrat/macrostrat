@@ -19,7 +19,7 @@ filterwarnings('ignore', category = MySQLdb.Warning)
 
 # recompute and populate comp_prop
 
-cursor.execute("SELECT  a.unit_id, adom sub_lith,bdom dom_lith FROM (SELECT unit_id,count(id) adom, dom from unit_liths WHERE dom='sub' group by unit_id) a JOIN (SELECT unit_id,count(id) bdom, dom from unit_liths WHERE dom='dom' group by unit_id) b on b.unit_id=a.unit_id")
+cursor.execute("SELECT  a.unit_id, adom dom_lith,bdom sub_lith FROM (SELECT unit_id,count(id) adom, dom from unit_liths WHERE dom='dom' group by unit_id) a LEFT JOIN (SELECT unit_id,count(id) bdom, dom from unit_liths WHERE dom='sub' group by unit_id) b on b.unit_id=a.unit_id")
 numrows = cursor.rowcount
 row = cursor.fetchall()
 
