@@ -25,7 +25,7 @@ module.exports = function(req, res, next) {
         if (req.query.adjacents === "true") {
           where.push("ST_Intersects(geom, ST_Buffer(ST_GeomFromText($" + (where.length) + 1 + ", 4326), 0.5))")
           params.push("POINT(" + req.query.lng + " " + req.query.lat + ")");
-          orderBy += "ORDER BY ST_Distance(geom, ST_Buffer(ST_GeomFromText($" + where.length + ", 4326), 0.5))";
+          orderBy += " )a ORDER BY ST_Distance(geom, ST_GeomFromText($" + where.length + ", 4326))";
         } else {
           where.push(" ST_Contains(geom, ST_GeomFromText($" + (where.length + 1) + ", 4326))");
           params.push("POINT(" + req.query.lng + " " + req.query.lat + ")");
@@ -56,7 +56,7 @@ module.exports = function(req, res, next) {
         return larkin.error(req, res, next, "Invalid params");
       }
 
-      larkin.queryPg("geomacro", "SELECT DISTINCT ON (gid) gid, macro_color AS interval_color, lith1, lith2, lith3, lith4, lith5, gm.best_units AS macro_units, lu.min_interval_name AS min_age, lu.age_top, lu.max_interval_name as max_age, lu.age_bottom, u_rocktype1 AS rt1, u_rocktype2 AS rt2, u_rocktype3 AS rt3, lu.containing_interval_name AS unit_age,  unit_com, lu.unit_link, unit_name, unitdesc, strat_unit" + ((geo) ? ", ST_AsGeoJSON(geom) AS geometry" : "") + " FROM gmus.lookup_units lu JOIN gmus.ages a ON lu.unit_link = a.unit_link LEFT JOIN gmus.liths l ON lu.unit_link = l.unit_link LEFT JOIN gmus.best_geounits_macrounits gm ON lu.gid = gm.geologic_unit_gid WHERE " + where.join(", "), params, function(error, result) {
+      larkin.queryPg("geomacro", ((orderBy.length > 0) ? "SELECT gid, interval_color, lith1, lith2, lith3, lith4, lith5, macro_units, min_age, age_top, max_age, age_bottom, rt1, rt2, rt3, unit_age, unit_com, unit_link, unit_name, unitdesc, strat_unit" + ((geo) ? ", geometry" : "") + " FROM (" : "" ) + "SELECT DISTINCT ON (gid) gid, macro_color AS interval_color, lith1, lith2, lith3, lith4, lith5, gm.best_units AS macro_units, lu.min_interval_name AS min_age, lu.age_top, lu.max_interval_name as max_age, lu.age_bottom, u_rocktype1 AS rt1, u_rocktype2 AS rt2, u_rocktype3 AS rt3, lu.containing_interval_name AS unit_age,  unit_com, lu.unit_link, unit_name, unitdesc, strat_unit, geom" + ((geo) ? ", ST_AsGeoJSON(geom) AS geometry" : "") + " FROM gmus.lookup_units lu JOIN gmus.ages a ON lu.unit_link = a.unit_link LEFT JOIN gmus.liths l ON lu.unit_link = l.unit_link LEFT JOIN gmus.best_geounits_macrounits gm ON lu.gid = gm.geologic_unit_gid WHERE " + where.join(", ") + orderBy, params, function(error, result) {
         if (error) {
           larkin.error(req, res, next, error);
         } else {
