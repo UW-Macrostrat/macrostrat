@@ -144,9 +144,9 @@ module.exports = function(req, res, next) {
         }
       }
 
-      if (data.col_ids) {
+      if (data.col_id) {
         where += " AND col_areas.col_id IN (?)";
-        params.push(data.col_ids);
+        params.push(data.col_id);
       }
 
       if (req.query.project_id) {
