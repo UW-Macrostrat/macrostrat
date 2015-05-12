@@ -63,11 +63,11 @@ module.exports = function(req, res, next) {
         where += " AND units.id IN (SELECT unit_liths.unit_id from unit_liths JOIN liths on lith_id=liths.id WHERE ?? LIKE ?) ";
 
         if (req.query.lith) {
-          params.push(req.query.lith, "lith");
+          params.push("lith", req.query.lith);
         } else if (req.query.lith_class) {
-          params.push(req.query.lith_class, "lith_class");
+          params.push("lith_class", req.query.lith_class);
         } else if (req.query.lith_type) {
-          params.push(req.query.lith_type, "lith_type");
+          params.push("lith_type", req.query.lith_type);
         } 
       }
 

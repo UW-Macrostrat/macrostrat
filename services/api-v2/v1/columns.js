@@ -107,7 +107,6 @@ module.exports = function(req, res, next) {
       }
 
       if (req.query.strat_name || req.query.strat_id) {
-        console.log("HERE!")
         where += " AND (lookup_strat_names.bed_id IN (?) OR lookup_strat_names.mbr_id IN (?) OR lookup_strat_names.fm_id IN (?) OR lookup_strat_names.gp_id IN (?) OR lookup_strat_names.sgp_id IN (?) )";
         params.push(data.strat_ids, data.strat_ids, data.strat_ids, data.strat_ids, data.strat_ids);
 
