@@ -56,7 +56,7 @@ var mysql = require("mysql"),
 
   larkin.query = function(sql, params, callback, send, res, format, next) {
     this.pool.getConnection(function(err, connection) {
-      connection.query(sql, params, function(error, result) {
+      var query = connection.query(sql, params, function(error, result) {
         // Remove the connection
         connection.destroy();
         if (error) {
@@ -73,6 +73,7 @@ var mysql = require("mysql"),
           }
         }
       }.bind(this));
+      //console.log(query.sql)
     }.bind(this));
   };
 

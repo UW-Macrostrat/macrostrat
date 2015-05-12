@@ -54,26 +54,22 @@ module.exports = function(req, res, next) {
     },
   
     function(data, callback) {
-      var lith = "", 
-          lith_field = "";
-
-      if (req.query.lith) {
-        lith = req.query.lith;
-        lith_field = "lith";
-      } else if (req.query.lith_class) {
-        lith = req.query.lith_class;
-        lith_field = "lith_class";
-      } else if (req.query.lith_type) {
-        lith = req.query.lith_type;
-        lith_field = "lith_type";
-      } else {
-        lith = "%";
-        lith_field = "lith"
-      }
 
       var where = "",
           orderby = [],
-          params = [lith_field, lith];
+          params = [];
+
+      if (req.query.lith || req.query.lith_class || req.query.lith_type) {
+        where += " AND units.id IN (SELECT unit_liths.unit_id from unit_liths JOIN liths on lith_id=liths.id WHERE ?? LIKE ?) ";
+
+        if (req.query.lith) {
+          params.push(req.query.lith, "lith");
+        } else if (req.query.lith_class) {
+          params.push(req.query.lith_class, "lith_class");
+        } else if (req.query.lith_type) {
+          params.push(req.query.lith_type, "lith_type");
+        } 
+      }
 
       if (data.age_bottom !== 99999) {
         where += " AND FO_age > ? AND LO_age < ?";
@@ -140,7 +136,7 @@ module.exports = function(req, res, next) {
       }
 
       if (req.query.strat_name || req.query.strat_id) {
-        where += " AND lookup_strat_names.bed_id IN (?) OR lookup_strat_names.mbr_id IN (?) OR lookup_strat_names.fm_id IN (?) OR lookup_strat_names.gp_id IN (?) OR lookup_strat_names.sgp_id IN (?) ";
+        where += " AND (lookup_strat_names.bed_id IN (?) OR lookup_strat_names.mbr_id IN (?) OR lookup_strat_names.fm_id IN (?) OR lookup_strat_names.gp_id IN (?) OR lookup_strat_names.sgp_id IN (?)) ";
         params.push(data.strat_ids, data.strat_ids, data.strat_ids, data.strat_ids, data.strat_ids);
       }
 
@@ -185,7 +181,7 @@ module.exports = function(req, res, next) {
             " + ((req.query.response === "long") ? "LEFT JOIN unit_notes ON unit_notes.unit_id=units.id JOIN colors ON units.color = colors.color" : "") + " \
             LEFT JOIN pbdb_matches ON pbdb_matches.unit_id=units.id \
             " + ((environ !== "") ? "LEFT JOIN unit_environs ON units.id=unit_environs.unit_id LEFT JOIN environs ON unit_environs.environ_id=environs.id" : "") + " \
-            WHERE status_code='active' AND units.id IN (SELECT unit_liths.unit_id from unit_liths JOIN liths on lith_id=liths.id WHERE ?? LIKE ?)" + where + " GROUP BY units.id ORDER BY " + ((orderby.length > 0) ? (orderby.join(", ") + ", t_age ASC") : "t_age ASC");
+            WHERE status_code='active' " + where + " GROUP BY units.id ORDER BY " + ((orderby.length > 0) ? (orderby.join(", ") + ", t_age ASC") : "t_age ASC");
      
       larkin.query(sql, params, function(error, result) {
           if (error) {
