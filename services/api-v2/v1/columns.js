@@ -158,7 +158,7 @@ module.exports = function(req, res, next) {
 
       var additionalJoins = (req.query.response === "long") ? " LEFT OUTER JOIN pbdb_matches ON pbdb_matches.unit_id = units.id" : ""
 
-      larkin.query("SELECT " + geo + " col_areas.col_id, " + additionalFields + "round(cols.col_area, 1) AS area, GROUP_CONCAT(units.id SEPARATOR '|') AS units, sum(max_thick) max_thick, sum(min_thick) min_thick, sum(LT.cpm) lith_max_thick, sum(LT.cpl) lith_min_thick,  LT2.lts lith_types \
+      larkin.query("SELECT " + geo + " col_areas.col_id, " + additionalFields + "round(cols.col_area, 1) AS area, GROUP_CONCAT(DISTINCT units.id SEPARATOR '|') AS units, sum(max_thick) max_thick, sum(min_thick) min_thick, sum(LT.cpm) lith_max_thick, sum(LT.cpl) lith_min_thick,  LT2.lts lith_types \
         FROM col_areas \
         JOIN cols ON cols.id = col_areas.col_id \
         JOIN units_sections ON units_sections.col_id = cols.id \
