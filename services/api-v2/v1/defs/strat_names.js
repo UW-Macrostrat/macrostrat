@@ -12,8 +12,22 @@ module.exports = function(req, res, next) {
   if (req.query.all) {
     // do nothing
   } else if (req.query.id) {
-    filterString += "bed_id = ? or mbr_id = ? or fm_id = ? or gp_id = ? or sgp_id = ?";
-    params.push(req.query.id,req.query.id,req.query.id,req.query.id,req.query.id);
+    if (req.query.id.indexOf(",") > -1) {
+      var parsed = larkin.parseMultipleIds(req.query.id);
+
+      filterString += " bed_id IN (" + parsed.placeholders.join(",") + ") or mbr_id IN (" + parsed.placeholders.join(",") + ") or fm_id IN (" + parsed.placeholders.join(",") + ") or gp_id IN (" + parsed.placeholders.join(",") + ") or sgp_id IN (" + parsed.placeholders.join(",") + ")";
+      
+      for (var i = 0; i < 5; i++) {
+        parsed.ids.forEach(function(d) {
+          params.push(d);
+        });
+      }
+
+    } else {
+      filterString += " bed_id = ? or mbr_id = ? or fm_id = ? or gp_id = ? or sgp_id = ?";
+      params.push(req.query.id,req.query.id,req.query.id,req.query.id,req.query.id);
+    }
+
   } else if (req.query.name_like) {
     if (req.query.rank && req.query.rank.length <= 3 && req.query.rank.length >= 2 && /^[a-zA-Z]+$/.test(req.query.rank)){
       filterString += req.query.rank+"_name LIKE ?";

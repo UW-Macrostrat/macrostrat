@@ -27,6 +27,23 @@ module.exports = function() {
       });
   });
 
+  it("should accept multiple strat ids", function(done) {
+    request(settings.host)
+      .get("/api/v1/defs/strat_names?id=2188,7145")
+      .expect(validators.aSuccessfulRequest)
+      .expect(validators.json)
+      .expect(validators.atLeastOneResult)
+      .expect(function(res) {
+        if (res.body.success.data.length != 2 ) {
+          throw new Error("defs/strat_names does not return two results as expected");
+        }
+      })
+      .end(function(error, res) {
+        if (error) return done(error);
+        done();
+      });
+  });
+
   it("should accept a strat name", function(done) {
     request(settings.host)
       .get("/api/v1/defs/strat_names?name=Abercrombie")
