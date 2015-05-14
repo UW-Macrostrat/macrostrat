@@ -684,6 +684,7 @@
         "lith4",
         "lith5",
         "macro_units",
+        "strat_names",
         "min_age",
         "max_age",
         "rt1",

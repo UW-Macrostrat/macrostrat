@@ -221,7 +221,7 @@ var mysql = require("mysql"),
     } else {
       return [];
     }
-  }
+  };
 
 
   larkin.verifyKey = function(key, callback) {
@@ -238,8 +238,7 @@ var mysql = require("mysql"),
         }
       });
     }
-      
-  }
+  };
 
 
   larkin.parseMultipleIds = function(requested_ids) {
@@ -258,7 +257,7 @@ var mysql = require("mysql"),
       ids: ids,
       placeholders: placeholders
     }
-  }
+  };
 
 
   module.exports = larkin;
