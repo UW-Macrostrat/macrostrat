@@ -250,13 +250,16 @@
         "age": "A valid age",
         "age_top": "A valid age - must be used with age_bottom and be less than age_bottom",
         "age_bottom": "A valid age - must be used with age_top and be greater than age_top",
+        "unit_id": "One or more comma-separated valid unit IDs",
+        "col_id": "One or more comma-separated valid column IDs",
         "format": "Desired output format"
       },
       "output_formats": ["geojson", "geojson_bare", "topojson", "topojson_bare"],
       "examples": [
         "/api/fossils?interval_name=Permian",
         "/api/fossils?age=271",
-        "/api/fossils?age_top=200&age_bottom=250"
+        "/api/fossils?age_top=200&age_bottom=250",
+        "/api/fossils?col_id=446"
       ],
       "fields": [
         "collection_no",

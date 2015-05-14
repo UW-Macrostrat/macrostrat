@@ -48,6 +48,29 @@ module.exports = function() {
       });
   });
 
+  it("should accept a col_id", function(done) {
+    request(settings.host)
+      .get("/api/v1/fossils?col_id=446")
+      .expect(validators.aSuccessfulRequest)
+      .expect(validators.geoJSON)
+      .end(function(error, res) {
+        if (error) return done(error);
+        done();
+      });
+  });
+
+  it("should accept one or more unit_ids", function(done) {
+    request(settings.host)
+      .get("/api/v1/fossils?unit_id=14777,14949,15018,15211,15210&format=json")
+      .expect(validators.aSuccessfulRequest)
+      .expect(validators.json)
+      .expect(validators.atLeastOneResult)
+      .end(function(error, res) {
+        if (error) return done(error);
+        done();
+      });
+  });
+
   it("should output Topojson", function(done) {
     request(settings.host)
       .get("/api/v1/fossils?interval_name=Permian&format=topojson")
