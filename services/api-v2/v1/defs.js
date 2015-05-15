@@ -457,12 +457,14 @@
     "visible": true,
     "options": {
       "parameters": {
-        "timescale": "timescale to use",
         "id": "an interval id",
         "all": "return all interval definitions",
         "late_age": "a late age",
         "early_age": "an early age",
+        "rule": "if 'loose' provided along with an early_age and late_age, changes the querying of intervals",
         "age": "integer, an age - will find all intervals that overlap with this age",
+        "timescale": "string, a valid timescale name as defined in /api/defs/timescales",
+        "timescale_id": "integer, a valid timescale_id as defined in /api/defs/timescales",
         "format": "Desired output format"
       },
       "output_formats": ["json", "csv"],
@@ -471,7 +473,7 @@
         "api/defs/intervals?id=366",
         "api/defs/intervals?timescale=new%20zealand%20ages",
         "api/defs/intervals?late_age=0&early_age=130",
-        "api/defs/interals?timescale=international&age=100"
+        "api/defs/intervals?timescale_id=1&age=100"
       ],
       "fields": [
         "id",
@@ -480,7 +482,8 @@
         "late_age",
         "early_age",
         "type",
-        "color"
+        "color",
+        "timescale_id"
       ]
     }
   };
