@@ -75,7 +75,7 @@ var mysql = require("mysql"),
           }
         }
       }.bind(this));
-      //console.log(query.sql)
+      //=console.log(query.sql)
     }.bind(this));
   };
 
@@ -244,21 +244,9 @@ var mysql = require("mysql"),
 
 
   larkin.parseMultipleIds = function(requested_ids) {
-    var ids = requested_ids.split(","),
-              placeholders = [];
-          
-    ids = ids.map(function(d) {
+    return requested_ids.split(",").map(function(d) {
       return parseInt(d);
     });
-
-    for (var i = 0; i < ids.length; i++) {
-      placeholders.push("?");
-    }
-
-    return {
-      ids: ids,
-      placeholders: placeholders
-    }
   };
 
 

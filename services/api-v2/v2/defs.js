@@ -450,8 +450,8 @@
     "options": {
       "parameters": {
         "id": "unique id",
-        "name": "lithostratigraphic name, exact match",
-        "name_like": "lithostratigraphic name, with open-ended string matching",
+        "strat_name": "lithostratigraphic name, exact match",
+        "strat_name_like": "lithostratigraphic name, with open-ended string matching",
         "rank": "lithostratigraphic rank",
         "all": "return all lithostratigraphic names",
         "format": "Desired output format"

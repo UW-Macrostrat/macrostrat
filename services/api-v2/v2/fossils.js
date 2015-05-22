@@ -44,11 +44,11 @@ module.exports = function(req, res, next) {
 
         if (req.query.unit_id) {
           where = " AND pbdb_matches.unit_id IN (:unit_id)"
-          params = {unit_id: larkin.parseMultipleIds(req.query.unit_id)["ids"]}
+          params = {unit_id: larkin.parseMultipleIds(req.query.unit_id)}
 
         } else if (req.query.col_id) {
           where = " AND units.col_id IN (:col_id)";
-          params = {col_id: larkin.parseMultipleIds(req.query.col_id)["ids"]}
+          params = {col_id: larkin.parseMultipleIds(req.query.col_id)}
         }
 
         larkin.query("SELECT pbdb_matches.collection_no, n_occs AS occ, \

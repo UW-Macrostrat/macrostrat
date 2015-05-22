@@ -17,7 +17,7 @@ module.exports = function() {
 
   it("should accept a strat id", function(done) {
     request(settings.host)
-      .get("/api/v2/defs/strat_names?id=1")
+      .get("/api/v2/defs/strat_names?strat_name_id=1")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -29,7 +29,7 @@ module.exports = function() {
 
   it("should accept multiple strat ids", function(done) {
     request(settings.host)
-      .get("/api/v2/defs/strat_names?id=2188,7145")
+      .get("/api/v2/defs/strat_names?strat_name_id=2188,7145")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -46,7 +46,7 @@ module.exports = function() {
 
   it("should accept a strat name", function(done) {
     request(settings.host)
-      .get("/api/v2/defs/strat_names?name=Abercrombie")
+      .get("/api/v2/defs/strat_names?strat_name=Abercrombie")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -82,7 +82,7 @@ module.exports = function() {
 
   it("should output CSV", function(done) {
     request(settings.host)
-      .get("/api/v2/defs/strat_names?name=Abercrombie&format=csv")
+      .get("/api/v2/defs/strat_names?strat_name=Abercrombie&format=csv")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.csv)
       .expect("Content-Type", "text/csv; charset=utf-8")

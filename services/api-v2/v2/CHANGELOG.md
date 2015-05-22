@@ -1,17 +1,35 @@
 # Macrostrat API v2 Changelog
 
+
+
 ## /column
 *Removed*  - use ````/columns```` and ````/units```` instead.
+
+
 
 ## /fossils
 + Default output is now JSON instead of GeoJSON
 + Added CSV output
 
+
+## /defs/strat_names
++ parameter ````id```` is now ````strat_name_id````
++ parameter ````name```` is now ````strat_name````
++ parameter ````name_like```` is now ````strat_name_like````
++ parameter ````early_age```` is now ````b_age````
++ parameter ````late_age```` is now ````t_age````
++ The ````rank```` parameter can be used with ````strat_name````, ````strat_name_like````, ````strat_name_id````, and ````all````
+
+
 ## /geologic_units/map
 *Removed* - use ````/geologic_units/gmus```` and ````/geologic_units/gmna```` instead.
 
+
+
 ## /geologic_units
 *Removed* - use ````/geologic_units/gmus```` and ````/geologic_units/gmna```` instead.
+
+
 
 ## /geologic_units/gmna (formerly /geologic_units?type=gmna)
 + Added CSV output
@@ -41,3 +59,4 @@ The following output fields have been added:
 | max_age | b_interval |
 | age_bottom (string) | b_age (float) |
 | unit_age |  containing_interval
+
