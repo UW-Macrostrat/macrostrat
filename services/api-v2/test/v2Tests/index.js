@@ -1,7 +1,6 @@
 module.exports = function() {
   
   describe("root", require("./root"));
-  describe("column", require("./column"));
   describe("columns", require("./columns"));
   describe("sections", require("./sections"));
   describe("units", require("./units"));

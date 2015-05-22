@@ -4,51 +4,6 @@
   var defs = {};
 
   // Instead of adding metadata to each route in api.js, we are going to do it here
-  defs["/column"] = {
-    "description": "*** Deprecated. Will not exist in v2. Please use /column or /units instead.*** Get all units of a given column",
-    "visible": true,
-    "options": {
-      "parameters": {
-        "id": "integer, get a column by unique identifier",
-        "lat": "number, decimal degree latitude, WGS84",
-        "lng": "number, decimal degree longitude, WGS84",
-        "geom": "boolean, whether associated geometry is returned",
-        "response": "Any available response_type. Default is short."
-      },
-      "response_types": ["short", "long"],
-      "output_formats": ["json"],
-      "examples": [
-        "/api/column?id=17",
-        "/api/column?lat=50&lng=-80"
-      ],
-      "fields":[ 
-        "id",
-        "strat_name",
-        "Mbr",
-        "Fm",
-        "Gp",
-        "SGp",
-        "era",
-        "period",
-        "max_thick",
-        "min_thick",
-        "color",
-        "lith_type",
-        "pbdb",
-        "geom",
-        "FO_interval",
-        "FO_h",
-        "FO_age",
-        "b_age",
-        "LO_interval",
-        "LO_h",
-        "LO_age",
-        "t_age",
-        "position_bottom",
-        "notes"
-      ]
-    }
-  };
   
   defs["/columns"] = {
     "description": "Get all colums containing one or more units matching specfied search criteria",

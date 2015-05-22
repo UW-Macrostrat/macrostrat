@@ -7,9 +7,6 @@ larkin.connectMySQL();
 api.route("/")
   .get(require("./root"));
 
-api.route("/column")
-  .get(require("./column"));
-
 api.route("/columns")
   .get(require("./columns"));
 
