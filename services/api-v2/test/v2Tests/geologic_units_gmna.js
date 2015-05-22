@@ -5,7 +5,7 @@ module.exports = function() {
 
   it("should return metadata", function(done) {
     request(settings.host)
-      .get("/api/v2/geologic_units")
+      .get("/api/v2/geologic_units/gmna")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.metadata)
@@ -19,7 +19,7 @@ module.exports = function() {
     this.timeout(3000);
     
     request(settings.host)
-      .get("/api/v2/geologic_units?lat=43&lng=-89.3&type=gmna")
+      .get("/api/v2/geologic_units/gmna?lat=43&lng=-89.3")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -29,11 +29,9 @@ module.exports = function() {
       });
   });
 
-  it("should accept a time interval name on GMUS", function(done) {
-    this.timeout(5000);
-
+  it("should accept a GID ", function(done) {
     request(settings.host)
-      .get("/api/v2/geologic_units?interval_name=Pliocene&type=gmus")
+      .get("/api/v2/geologic_units/gmna?gid=1234")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -43,9 +41,9 @@ module.exports = function() {
       });
   });
 
-  it("should accept a time interval name on GMNA", function(done) {
+  it("should accept a time interval_name", function(done) {
     request(settings.host)
-      .get("/api/v2/geologic_units?interval_name=Permian&type=gmna")
+      .get("/api/v2/geologic_units/gmna?interval_name=Permian")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -55,23 +53,10 @@ module.exports = function() {
       });
   });
 
-  it("should accept a unit name on GMUS", function(done) {
-    this.timeout(4000);
-
-    request(settings.host)
-      .get("/api/v2/geologic_units?unit_name=Mancos%20Shale&type=gmus")
-      .expect(validators.aSuccessfulRequest)
-      .expect(validators.json)
-      .expect(validators.atLeastOneResult)
-      .end(function(error, res) {
-        if (error) return done(error);
-        done();
-      });
-  });
 
   it("should return geometry when asked", function(done) {
     request(settings.host)
-      .get("/api/v2/geologic_units?lat=43&lng=-89.3&type=gmna&format=geojson")
+      .get("/api/v2/geologic_units/gmna?lat=43&lng=-89.3&format=geojson")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)

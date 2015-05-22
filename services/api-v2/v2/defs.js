@@ -614,54 +614,81 @@
     }
   };
 
-  defs["/geologic_units"] = {
-    "description": "Geologic map units. State-level (gmus) data adapated from http://mrdata.usgs.gov/geology/state/, Continental-scale North American data (gmna) adapted from the 2005 Geologic Map of North America (http://ngmdb.usgs.gov/gmna/)",
+
+  defs["/geologic_units/gmna"] = {
+    "description": "Geologic map units. Continental-scale North American map data (gmna) adapted from the 2005 Geologic Map of North America (http://ngmdb.usgs.gov/gmna/)",
     "visible": true,
     "options": {
       "parameters": {
         "lat": "A valid latitude",
         "lng": "A valid longitude",
-        "type": "(Required) Return only from given sources - can be 'gmna', 'gmus', or both",
-        "unit_name": "string, a stratigraphic name to search for (GMUS only)",
-        "unit_link": "string, a GMUS unit_link. If format=json, will return one record with unique attributes, if a geographic output format is request it will return all polygons with the given unit_link (GMUS only)",
         "gid": "integer, a polygon GID to search for",
         "interval_name": "string, a valid interval name as defined in /defs/intervals",
         "format": "Desired output format"
       },
-      "output_formats": ["json", "geojson", "geojson_bare", "topojson", "topojson_bare"],
+      "output_formats": ["json", "csv", "geojson", "geojson_bare", "topojson", "topojson_bare"],
       "examples": [
-        "/api/geologic_units?lat=43&lng=-89.3&type=gmus",
-        "/api/geologic_units?lat=43&lng=-89&format=geojson_bare",
-        "/api/geologic_units?lat=43&lng=-89&type=gmna"
+        "/api/geologic_units/gmna?lat=43&lng=-89.3",
+        "/api/geologic_units/gmna?lat=43&lng=-89&format=geojson_bare",
+        "/api/geologic_units/gmna?interval_name=Permian"
       ],
       "fields": [
         "gid",
-        "interval_color",
-        "lith1",
-        "lith2",
-        "lith3",
-        "lith4",
-        "lith5",
-        "macro_units",
-        "strat_names",
-        "min_age",
-        "max_age",
-        "rt1",
-        "rt2",
-        "rt3",
-        "unit_age",
-        "unit_com",
-        "unit_link",
-        "unit_name",
-        "unitdesc",
-        "strat_unit",
         "unit_abrre",
         "rocktype",
         "lithology",
-        "interval_name"
+        "t_interval",
+        "t_age",
+        "b_interval",
+        "b_age",
+        "containing_interval",
+        "lith_type",
+        "lith_class"
       ]
     }
   };
+
+
+  defs["/geologic_units/gmus"] = {
+    "description": "Geologic map units. State-level (gmus) data adapated from http://mrdata.usgs.gov/geology/state/.",
+    "visible": true,
+    "options": {
+      "parameters": {
+        "lat": "A valid latitude",
+        "lng": "A valid longitude",
+        "gid": "integer, a polygon GID to search for",
+        "unit_name": "string, name of a stratigraphic unit from /defs/strat_names",
+        "unit_link": "string, GMUS unit_link",
+        "interval_name": "string, a valid interval name as defined in /defs/intervals",
+        "format": "Desired output format"
+      },
+      "output_formats": ["json", "csv", "geojson", "geojson_bare", "topojson", "topojson_bare"],
+      "examples": [
+        "/api/geologic_units/gmus?lat=43&lng=-89.3",
+        "/api/geologic_units/gmus?lat=43&lng=-89&format=geojson_bare",
+        "/api/geologic_units/gmus?interval_name=Permian"
+      ],
+      "fields": [
+        "gid",
+        "unit_link",
+        "interval_color",
+        "lithology",
+        "rocktype",
+        "macro_units",
+        "strat_names",
+        "t_interval",
+        "t_age",
+        "b_interval",
+        "b_age",
+        "containing_interval",
+        "unit_com",
+        "unitdesc",
+        "strat_unit"
+      ]
+    }
+  };
+
+
 
   defs["/geologic_units/intersection"] = {
     "description": "Geologic units under a WKT shape. State-level geologic map (gmus) data adapted from http://mrdata.usgs.gov/geology/state/, continent-scale (gmna) data adapted from http://ngmdb.usgs.gov/gmna/",
@@ -692,29 +719,6 @@
     }
   };
 
-  defs["/geologic_units/map"] = {
-    "description": "*** Deprecated. Will not exist in v2. Please use /column or /geologic_units instead.*** Fetch polygons for mapping based on a time interval",
-    "visible": true,
-    "options": {
-      "parameters": {
-        "type": "(Required) type of geometry to use - can be 'gmus' (Geologic Map United States) or 'gmna' (Geologic Map North America)",
-        "interval_name": "(Required) - name of time interval to use",
-        "format": "Desired output format"
-      },
-      "output_formats": ["geojson", "topojson", "geojson_bare", "topojson_bare"],
-      "examples": [
-        "api/geologic_units/map?type=gmus&interval_name=Permian",
-        "api/geologic_units/map?type=gmna&interval_name=Jurassic&format=topojson"
-      ],
-      "fields": [
-        "gid",
-        "unit_age",
-        "rocktype1",
-        "rocktype2",
-        "cmin_age"
-      ]
-    }
-  };
 
   defs["/mobile"] = {
     "description": "Simplified data delivery, ideal for mobile applications",

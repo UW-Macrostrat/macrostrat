@@ -70,8 +70,11 @@ api.route("/section_stats")
 api.route("/paleogeography")
   .get(require("./paleogeography"));
 
-api.route("/geologic_units")
-  .get(require("./geologic_units"));
+api.route("/geologic_units/gmna")
+  .get(require("./geologic_units_gmna"));
+
+api.route("/geologic_units/gmus")
+  .get(require("./geologic_units_gmus"));
 
 api.route("/geologic_units/intersection")
   .get(require("./geologic_units_intersection"));

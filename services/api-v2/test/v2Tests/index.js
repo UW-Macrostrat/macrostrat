@@ -21,7 +21,8 @@ module.exports = function() {
   describe("defs/strat_names", require("./defs_strat_names"));
 
   describe("paleogeography", require("./paleogeography"));
-  describe("geologic_units", require("./geologic_units"));
+  describe("geologic_units/gmna", require("./geologic_units_gmna"));
+  describe("geologic_units/gmus", require("./geologic_units_gmus"));
   describe("geologic_units/intersection", require("./geologic_units_intersection"));
 
   describe("mobile/point", require("./mobile_point"));
