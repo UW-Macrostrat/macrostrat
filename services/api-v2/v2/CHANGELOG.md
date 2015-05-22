@@ -3,6 +3,9 @@
 ## /column
 *Removed*  - use ````/columns```` and ````/units```` instead.
 
+## /fossils
++ Default output is now JSON instead of GeoJSON
++ Added CSV output
 
 ## /geologic_units/map
 *Removed* - use ````/geologic_units/gmus```` and ````/geologic_units/gmna```` instead.
@@ -11,7 +14,7 @@
 *Removed* - use ````/geologic_units/gmus```` and ````/geologic_units/gmna```` instead.
 
 ## /geologic_units/gmna (formerly /geologic_units?type=gmna)
-+ Now outputs CSV
++ Added CSV output
 + Output parameter names and data types have changed:
 | old  | new  |
 |---|---|
@@ -27,7 +30,7 @@ The following output fields have been added:
 
 
 ## /geologic_units/gmus (formerly /geologic_units?type=gmus)
-+ Now outputs CSV
++ Added CSV output
 + Output parameter names and data types have changed:
 | old  | new  |
 |---|---|

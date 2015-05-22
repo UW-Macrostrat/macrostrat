@@ -1,6 +1,7 @@
 var mysql = require("mysql"),
     pg = require("pg"),
     async = require("async"),
+    toUnnamed = require('named-placeholders')(),
     credentials = require("./credentials"),
     csv = require("express-csv"),
     api = require("./api"),
@@ -19,11 +20,6 @@ var mysql = require("mysql"),
       if (error) {
         throw new Error("Unable to connect to MySQL. Please check your credentials");
       };
-    });
-
-    this.pool.on("connection", function(connection) {
-      // We could in theory take note of each query for analytics here...
-      // Or set a session, etc...
     });
   };
 
@@ -55,6 +51,12 @@ var mysql = require("mysql"),
 
 
   larkin.query = function(sql, params, callback, send, res, format, next) {
+    if (sql.indexOf(':') > -1) {
+      var newQuery = toUnnamed(sql, params);
+      sql = newQuery[0];
+      params = newQuery[1];
+    }
+
     this.pool.getConnection(function(err, connection) {
       var query = connection.query(sql, params, function(error, result) {
         // Remove the connection

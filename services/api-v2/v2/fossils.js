@@ -7,6 +7,8 @@ module.exports = function(req, res, next) {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   } else {
+    var geo = (req.query.format && api.acceptedFormats.geo[req.query.format]) ? true : false;
+
     async.waterfall([
       function(callback) {
         if (req.query.interval_name) {
@@ -41,52 +43,16 @@ module.exports = function(req, res, next) {
         } 
 
         if (req.query.unit_id) {
-          if (req.query.unit_id.indexOf(",") > -1) {
-            var ids = req.query.unit_id.split(","),
-                placeholders = [];
-            
-            ids = ids.map(function(d) {
-              return parseInt(d);
-            });
-
-            for (var i = 0; i < ids.length; i++) {
-              placeholders.push("?");
-              params.push(ids[i]);
-            }
-
-            where = " AND pbdb_matches.unit_id IN (" + placeholders.join(",") + ")";
-
-          } else {
-            where = " AND pbdb_matches.unit_id = ?";
-            params.push(req.query.unit_id);
-          }
+          where = " AND pbdb_matches.unit_id IN (:unit_id)"
+          params = {unit_id: larkin.parseMultipleIds(req.query.unit_id)["ids"]}
 
         } else if (req.query.col_id) {
-          if (req.query.col_id.indexOf(",") > -1) {
-            var ids = req.query.col_id.split(","),
-                placeholders = [];
-            
-            ids = ids.map(function(d) {
-              return parseInt(d);
-            });
-
-            for (var i = 0; i < ids.length; i++) {
-              placeholders.push("?");
-              params.push(ids[i]);
-            }
-
-            where = " AND units.col_id IN (" + placeholders.join(",") + ")";
-
-          } else {
-            where = " AND units.col_id = ?";
-            params.push(req.query.col_id);
-          }
+          where = " AND units.col_id IN (:col_id)";
+          params = {col_id: larkin.parseMultipleIds(req.query.col_id)["ids"]}
         }
 
-        // TODO: v2 clean up 89!!!
-
         larkin.query("SELECT pbdb_matches.collection_no, n_occs AS occ, \
-          pbdb_matches.unit_id " + ((!req.query.format || req.query.format != "json") ? ", AsWKT(pbdb_matches.coordinate) AS geometry" : "") + " \
+          pbdb_matches.unit_id " + ((geo) ? ", AsWKT(pbdb_matches.coordinate) AS geometry" : "") + " \
           FROM pbdb_matches \
           JOIN units ON pbdb_matches.unit_id = units.id \
           JOIN units_sections ON units_sections.unit_id = units.id \
@@ -107,11 +73,7 @@ module.exports = function(req, res, next) {
       if (error) {
         larkin.error(req, res, next, "Something went wrong");
       } else {
-
-    // TODO: v2 clean this up (too much self loathing...)
-        if (req.query.format && req.query.format === "json") {
-          larkin.sendData(results, res, null, next);
-        } else {
+        if (geo) {
           dbgeo.parse({
             "data": results,
             "outputFormat": larkin.getOutputFormat(req.query.format),
@@ -129,6 +91,8 @@ module.exports = function(req, res, next) {
               }
             }
           });
+        } else {
+          larkin.sendCompact(results, res, (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json");
         }
       }
     });
