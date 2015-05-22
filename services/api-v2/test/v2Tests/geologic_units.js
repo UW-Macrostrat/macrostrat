@@ -5,7 +5,7 @@ module.exports = function() {
 
   it("should return metadata", function(done) {
     request(settings.host)
-      .get("/api/v1/geologic_units")
+      .get("/api/v2/geologic_units")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.metadata)
@@ -19,7 +19,7 @@ module.exports = function() {
     this.timeout(3000);
     
     request(settings.host)
-      .get("/api/v1/geologic_units?lat=43&lng=-89.3&type=gmna")
+      .get("/api/v2/geologic_units?lat=43&lng=-89.3&type=gmna")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -33,7 +33,7 @@ module.exports = function() {
     this.timeout(5000);
 
     request(settings.host)
-      .get("/api/v1/geologic_units?interval_name=Pliocene&type=gmus")
+      .get("/api/v2/geologic_units?interval_name=Pliocene&type=gmus")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -45,7 +45,7 @@ module.exports = function() {
 
   it("should accept a time interval name on GMNA", function(done) {
     request(settings.host)
-      .get("/api/v1/geologic_units?interval_name=Permian&type=gmna")
+      .get("/api/v2/geologic_units?interval_name=Permian&type=gmna")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -59,7 +59,7 @@ module.exports = function() {
     this.timeout(4000);
 
     request(settings.host)
-      .get("/api/v1/geologic_units?unit_name=Mancos%20Shale&type=gmus")
+      .get("/api/v2/geologic_units?unit_name=Mancos%20Shale&type=gmus")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -71,7 +71,7 @@ module.exports = function() {
 
   it("should return geometry when asked", function(done) {
     request(settings.host)
-      .get("/api/v1/geologic_units?lat=43&lng=-89.3&type=gmna&format=geojson")
+      .get("/api/v2/geologic_units?lat=43&lng=-89.3&type=gmna&format=geojson")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)

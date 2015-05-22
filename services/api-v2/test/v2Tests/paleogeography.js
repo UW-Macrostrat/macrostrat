@@ -5,7 +5,7 @@ module.exports = function() {
 
   it('should return metadata', function(done) {
     request(settings.host)
-      .get("/api/v1/paleogeography")
+      .get("/api/v2/paleogeography")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.metadata)
@@ -17,7 +17,7 @@ module.exports = function() {
 
   it("should accept an age parameter", function(done) {
     request(settings.host)
-      .get("/api/v1/paleogeography?age=271")
+      .get("/api/v2/paleogeography?age=271")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.geoJSON)
       .end(function(error, res) {
@@ -28,7 +28,7 @@ module.exports = function() {
 
   it("should accept an interval name", function(done) {
     request(settings.host)
-      .get("/api/v1/paleogeography?interval_name=Permian")
+      .get("/api/v2/paleogeography?interval_name=Permian")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.geoJSON)
       .end(function(error, res) {
@@ -39,7 +39,7 @@ module.exports = function() {
 
   it("should return topojson", function(done) {
     request(settings.host)
-      .get("/api/v1/paleogeography?interval_name=Permian&format=topojson")
+      .get("/api/v2/paleogeography?interval_name=Permian&format=topojson")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.topoJSON)
       .end(function(error, res) {

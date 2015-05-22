@@ -5,7 +5,7 @@ module.exports = function() {
 
   it('should return metadata', function(done) {
     request(settings.host)
-      .get("/api/v1/stats")
+      .get("/api/v2/stats")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.metadata)
       .expect(validators.json)
@@ -17,7 +17,7 @@ module.exports = function() {
 
   it("should show ALL THE STATS", function(done) {
     request(settings.host)
-      .get("/api/v1/stats?all")
+      .get("/api/v2/stats?all")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .end(function(error, res) {
@@ -28,7 +28,7 @@ module.exports = function() {
 
   it("should output the stats in CSV", function(done) {
     request(settings.host)
-      .get("/api/v1/stats?all&format=csv")
+      .get("/api/v2/stats?all&format=csv")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.csv)
       .expect("Content-Type", "text/csv; charset=utf-8")

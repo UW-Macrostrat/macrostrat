@@ -5,7 +5,7 @@ module.exports = function() {
 
   it('should return a list of all visible routes', function(done) {
     request(settings.host)
-      .get("/api/v1")
+      .get("/api/v2")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .end(function(error, res) {

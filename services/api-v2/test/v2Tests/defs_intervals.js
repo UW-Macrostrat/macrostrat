@@ -5,7 +5,7 @@ module.exports = function() {
 
   it('should return metadata', function(done) {
     request(settings.host)
-      .get("/api/v1/defs/intervals")
+      .get("/api/v2/defs/intervals")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.metadata)
@@ -17,7 +17,7 @@ module.exports = function() {
 
   it("should accept a timescale parameter", function(done) {
     request(settings.host)
-      .get("/api/v1/defs/intervals?timescale=new%20zealand%20ages")
+      .get("/api/v2/defs/intervals?timescale=new%20zealand%20ages")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -29,7 +29,7 @@ module.exports = function() {
 
   it("should accept an interval id", function(done) {
     request(settings.host)
-      .get("/api/v1/defs/intervals?id=366")
+      .get("/api/v2/defs/intervals?id=366")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -41,7 +41,7 @@ module.exports = function() {
 
   it("should return all definitions", function(done) {
     request(settings.host)
-      .get("/api/v1/defs/intervals?all")
+      .get("/api/v2/defs/intervals?all")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -53,7 +53,7 @@ module.exports = function() {
 
   it("should return CSV", function(done) {
     request(settings.host)
-      .get("/api/v1/defs/intervals?timescale=new%20zealand%20ages&format=csv")
+      .get("/api/v2/defs/intervals?timescale=new%20zealand%20ages&format=csv")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.csv)
       .expect("Content-Type", "text/csv; charset=utf-8")
@@ -65,7 +65,7 @@ module.exports = function() {
 
   it("should accept an early and late age", function(done) {
     request(settings.host)
-      .get("/api/v1/defs/intervals?late_age=0&early_age=130")
+      .get("/api/v2/defs/intervals?late_age=0&early_age=130")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -77,7 +77,7 @@ module.exports = function() {
 
   it("should accept an age", function(done) {
     request(settings.host)
-      .get("/api/v1/defs/intervals?age=200")
+      .get("/api/v2/defs/intervals?age=200")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)

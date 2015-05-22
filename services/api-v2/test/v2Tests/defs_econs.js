@@ -5,7 +5,7 @@ module.exports = function() {
 
   it('should return metadata', function(done) {
     request(settings.host)
-      .get("/api/v1/defs/econs")
+      .get("/api/v2/defs/econs")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.metadata)
@@ -17,7 +17,7 @@ module.exports = function() {
 
   it("should accept an econ_class", function(done) {
     request(settings.host)
-      .get("/api/v1/defs/econs?econ_class=energy")
+      .get("/api/v2/defs/econs?econ_class=energy")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -29,7 +29,7 @@ module.exports = function() {
 
   it("should accept an econ_type", function(done) {
     request(settings.host)
-      .get("/api/v1/defs/econs?econ_type=hydrocarbon")
+      .get("/api/v2/defs/econs?econ_type=hydrocarbon")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -41,7 +41,7 @@ module.exports = function() {
 
   it("should accept an econ", function(done) {
     request(settings.host)
-      .get("/api/v1/defs/econs?environ=oil%20shale")
+      .get("/api/v2/defs/econs?environ=oil%20shale")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -53,7 +53,7 @@ module.exports = function() {
 
   it("should accept an econ_id", function(done) {
     request(settings.host)
-      .get("/api/v1/defs/econs?id=1")
+      .get("/api/v2/defs/econs?id=1")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -65,7 +65,7 @@ module.exports = function() {
 
   it("should return all econ definitions", function(done) {
     request(settings.host)
-      .get("/api/v1/defs/econs?all")
+      .get("/api/v2/defs/econs?all")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -82,7 +82,7 @@ module.exports = function() {
 
   it("should return CSV", function(done) {
     request(settings.host)
-      .get("/api/v1/defs/econs?all&format=csv")
+      .get("/api/v2/defs/econs?all&format=csv")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.csv)
       .expect("Content-Type", "text/csv; charset=utf-8")

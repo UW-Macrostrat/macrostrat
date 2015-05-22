@@ -5,7 +5,7 @@ module.exports = function() {
 
   it('should return metadata', function(done) {
     request(settings.host)
-      .get("/api/v1/defs/columns")
+      .get("/api/v2/defs/columns")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.metadata)
@@ -17,7 +17,7 @@ module.exports = function() {
 
   it("should accept a col_group_id", function(done) {
     request(settings.host)
-      .get("/api/v1/defs/columns?col_group_id=17")
+      .get("/api/v2/defs/columns?col_group_id=17")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -29,7 +29,7 @@ module.exports = function() {
 
   it("should accept a col_id", function(done) {
     request(settings.host)
-      .get("/api/v1/defs/columns?col_id=17")
+      .get("/api/v2/defs/columns?col_id=17")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -41,7 +41,7 @@ module.exports = function() {
 
   it("should accept a col_name", function(done) {
     request(settings.host)
-      .get("/api/v1/defs/columns?col_name=Eastern%20Kentucky")
+      .get("/api/v2/defs/columns?col_name=Eastern%20Kentucky")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -53,7 +53,7 @@ module.exports = function() {
 
   it("should return all columns", function(done) {
     request(settings.host)
-      .get("/api/v1/defs/columns?id=1")
+      .get("/api/v2/defs/columns?id=1")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)

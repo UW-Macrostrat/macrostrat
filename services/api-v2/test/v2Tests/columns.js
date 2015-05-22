@@ -5,7 +5,7 @@ module.exports = function() {
 
   it('should return metadata', function(done) {
     request(settings.host)
-      .get("/api/v1/columns")
+      .get("/api/v2/columns")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.metadata)
@@ -17,7 +17,7 @@ module.exports = function() {
 
   it("should accept an interval name", function(done) {
     request(settings.host)
-      .get("/api/v1/columns?interval_name=Permian")
+      .get("/api/v2/columns?interval_name=Permian")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -29,7 +29,7 @@ module.exports = function() {
 
   it("should accept an age", function(done) {
     request(settings.host)
-      .get("/api/v1/columns?age=271")
+      .get("/api/v2/columns?age=271")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -41,7 +41,7 @@ module.exports = function() {
 
   it("should accept an age_top and age_bottom", function(done) {
     request(settings.host)
-      .get("/api/v1/columns?age_top=200&age_bottom=250")
+      .get("/api/v2/columns?age_top=200&age_bottom=250")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -53,7 +53,7 @@ module.exports = function() {
 
   it("should accept a strat_name parameter", function(done) {
     request(settings.host)
-      .get("/api/v1/columns?strat_name=mancos")
+      .get("/api/v2/columns?strat_name=mancos")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -65,7 +65,7 @@ module.exports = function() {
 
   it("should accept a strat_id parameter", function(done) {
     request(settings.host)
-      .get("/api/v1/columns?strat_id=1205")
+      .get("/api/v2/columns?strat_id=1205")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -78,7 +78,7 @@ module.exports = function() {
 
   it("should return topojson", function(done) {
     request(settings.host)
-      .get("/api/v1/columns?age=2&format=topojson")
+      .get("/api/v2/columns?age=2&format=topojson")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.topoJSON)
       .end(function(error, res) {
@@ -89,7 +89,7 @@ module.exports = function() {
 
   it("should return csv", function(done) {
     request(settings.host)
-      .get("/api/v1/columns?age=2&format=csv")
+      .get("/api/v2/columns?age=2&format=csv")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.csv)
       .end(function(error, res) {
@@ -100,7 +100,7 @@ module.exports = function() {
 
   it("should accept a latitude and longitude", function(done) {
     request(settings.host)
-      .get("/api/v1/columns?lat=43.3&lng=-89.3")
+      .get("/api/v2/columns?lat=43.3&lng=-89.3")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -117,7 +117,7 @@ module.exports = function() {
 
   it("should accept a project_id", function(done) {
     request(settings.host)
-      .get("/api/v1/columns?project_id=4")
+      .get("/api/v2/columns?project_id=4")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -129,7 +129,7 @@ module.exports = function() {
 
   it("should accept a lat/lng and return all adjacent columns", function(done) {
     request(settings.host)
-      .get("/api/v1/columns?lat=43.3&lng=-89.3&adjacents=true")
+      .get("/api/v2/columns?lat=43.3&lng=-89.3&adjacents=true")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)

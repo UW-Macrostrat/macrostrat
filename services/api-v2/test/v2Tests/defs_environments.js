@@ -5,7 +5,7 @@ module.exports = function() {
   
   it('should return metadata', function(done) {
     request(settings.host)
-      .get("/api/v1/defs/environments")
+      .get("/api/v2/defs/environments")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.metadata)
@@ -17,7 +17,7 @@ module.exports = function() {
 
   it("should accept an environment class", function(done) {
     request(settings.host)
-      .get("/api/v1/defs/environments?environ_class=non-marine")
+      .get("/api/v2/defs/environments?environ_class=non-marine")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -29,7 +29,7 @@ module.exports = function() {
 
   it("should accept an environment type", function(done) {
     request(settings.host)
-      .get("/api/v1/defs/environments?environ_type=carbonate")
+      .get("/api/v2/defs/environments?environ_type=carbonate")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -41,7 +41,7 @@ module.exports = function() {
 
   it("should accept an environment", function(done) {
     request(settings.host)
-      .get("/api/v1/defs/environments?environ=open%20shallow%20subtidal")
+      .get("/api/v2/defs/environments?environ=open%20shallow%20subtidal")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -53,7 +53,7 @@ module.exports = function() {
 
   it("should accept an environment id", function(done) {
     request(settings.host)
-      .get("/api/v1/defs/environments?id=1")
+      .get("/api/v2/defs/environments?id=1")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -65,7 +65,7 @@ module.exports = function() {
 
   it("should return all environment definitions", function(done) {
     request(settings.host)
-      .get("/api/v1/defs/environments?all")
+      .get("/api/v2/defs/environments?all")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -77,7 +77,7 @@ module.exports = function() {
 
   it("should return CSV", function(done) {
     request(settings.host)
-      .get("/api/v1/defs/environments?all&format=csv")
+      .get("/api/v2/defs/environments?all&format=csv")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.csv)
       .expect("Content-Type", "text/csv; charset=utf-8")

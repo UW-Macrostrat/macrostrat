@@ -5,7 +5,7 @@ module.exports = function() {
 
   it("should return point data for Detroit", function(done) {
     request(settings.host)
-      .get("/api/v1/mobile/point?lat=42.331427&lng=-83.045754")
+      .get("/api/v2/mobile/point?lat=42.331427&lng=-83.045754")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(function(res) {
@@ -36,7 +36,7 @@ module.exports = function() {
 
   it("should return point details for Detroit", function(done) {
     request(settings.host)
-      .get("/api/v1/mobile/point_details?lat=42.331427&lng=-83.045754")
+      .get("/api/v2/mobile/point_details?lat=42.331427&lng=-83.045754")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -56,7 +56,7 @@ module.exports = function() {
 
   it("should return point data for Toronto", function(done) {
     request(settings.host)
-      .get("/api/v1/mobile/point?lat=43.651893&lng=-79.381713")
+      .get("/api/v2/mobile/point?lat=43.651893&lng=-79.381713")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(function(res) {
@@ -87,7 +87,7 @@ module.exports = function() {
 
   it("should return point details for Toronto", function(done) {
     request(settings.host)
-      .get("/api/v1/mobile/point_details?lat=43.651893&lng=-79.381713")
+      .get("/api/v2/mobile/point_details?lat=43.651893&lng=-79.381713")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -107,7 +107,7 @@ module.exports = function() {
 
   it("should return point data for Buenos Aires", function(done) {
     request(settings.host)
-      .get("/api/v1/mobile/point?lat=-34.565383&lng=-58.452759")
+      .get("/api/v2/mobile/point?lat=-34.565383&lng=-58.452759")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(function(res) {
@@ -138,7 +138,7 @@ module.exports = function() {
 
   it("should return point details for Buenos Aires", function(done) {
     request(settings.host)
-      .get("/api/v1/mobile/point_details?lat=-34.565383&lng=-58.452759")
+      .get("/api/v2/mobile/point_details?lat=-34.565383&lng=-58.452759")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)

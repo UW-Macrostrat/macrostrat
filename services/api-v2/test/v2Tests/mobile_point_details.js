@@ -5,7 +5,7 @@ module.exports = function() {
 
   it("should return metadata", function(done) {
     request(settings.host)
-      .get("/api/v1/mobile/point_details")
+      .get("/api/v2/mobile/point_details")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.metadata)
@@ -17,7 +17,7 @@ module.exports = function() {
 
   it("should accept a lat and lng", function(done) {
     request(settings.host)
-      .get("/api/v1/mobile/point_details?lat=43&lng=-89")
+      .get("/api/v2/mobile/point_details?lat=43&lng=-89")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -34,7 +34,7 @@ module.exports = function() {
 
   it("should accept a col_id and unit_id", function(done) {
     request(settings.host)
-      .get("/api/v1/mobile/point_details?col_id=187&unit_id=184506")
+      .get("/api/v2/mobile/point_details?col_id=187&unit_id=184506")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)

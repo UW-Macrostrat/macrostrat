@@ -5,7 +5,7 @@ module.exports = function() {
 
   it("should return metadata", function(done) {
     request(settings.host)
-      .get("/api/v1/mobile/fossil_collections")
+      .get("/api/v2/mobile/fossil_collections")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.metadata)
@@ -17,7 +17,7 @@ module.exports = function() {
 
   it("should accept a unit_id", function(done) {
     request(settings.host)
-      .get("/api/v1/mobile/fossil_collections?unit_id=154")
+      .get("/api/v2/mobile/fossil_collections?unit_id=154")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)

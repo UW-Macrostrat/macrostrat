@@ -5,7 +5,7 @@ module.exports = function() {
 
   it("should return metadata", function(done) {
     request(settings.host)
-      .get("/api/v1/sections")
+      .get("/api/v2/sections")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.metadata)
@@ -19,7 +19,7 @@ module.exports = function() {
     this.timeout(6000);
 
     request(settings.host)
-      .get("/api/v1/sections?all")
+      .get("/api/v2/sections?all")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -31,7 +31,7 @@ module.exports = function() {
 
   it("should accept a column id", function(done) {
     request(settings.host)
-      .get("/api/v1/sections?col_id=49")
+      .get("/api/v2/sections?col_id=49")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -43,7 +43,7 @@ module.exports = function() {
 
   it("should return csv", function(done) {
     request(settings.host)
-      .get("/api/v1/sections?col_id=17&format=csv")
+      .get("/api/v2/sections?col_id=17&format=csv")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.csv)
       .end(function(error, res) {

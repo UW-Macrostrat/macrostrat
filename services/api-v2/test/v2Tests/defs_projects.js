@@ -5,7 +5,7 @@ module.exports = function() {
 
   it('should return metadata', function(done) {
     request(settings.host)
-      .get("/api/v1/defs/projects")
+      .get("/api/v2/defs/projects")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.metadata)
@@ -17,7 +17,7 @@ module.exports = function() {
 
   it("should return all projects", function(done) {
     request(settings.host)
-      .get("/api/v1/defs/projects?all")
+      .get("/api/v2/defs/projects?all")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -29,7 +29,7 @@ module.exports = function() {
 
   it("should output CSV", function(done) {
     request(settings.host)
-      .get("/api/v1/defs/projects?all&format=csv")
+      .get("/api/v2/defs/projects?all&format=csv")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.csv)
       .expect("Content-Type", "text/csv; charset=utf-8")

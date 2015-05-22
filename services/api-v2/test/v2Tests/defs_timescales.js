@@ -5,7 +5,7 @@ module.exports = function() {
   
   it('should return metadata', function(done) {
     request(settings.host)
-      .get("/api/v1/defs/timescales")
+      .get("/api/v2/defs/timescales")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.metadata)
@@ -17,7 +17,7 @@ module.exports = function() {
 
   it("should return all timescales", function(done) {
     request(settings.host)
-      .get("/api/v1/defs/timescales?all")
+      .get("/api/v2/defs/timescales?all")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -29,7 +29,7 @@ module.exports = function() {
 
   it("should output CSV", function(done) {
     request(settings.host)
-      .get("/api/v1/defs/timescales?all&format=csv")
+      .get("/api/v2/defs/timescales?all&format=csv")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.csv)
       .expect("Content-Type", "text/csv; charset=utf-8")

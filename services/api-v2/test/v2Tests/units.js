@@ -5,7 +5,7 @@ module.exports = function() {
 
   it('should return metadata', function(done) {
     request(settings.host)
-      .get("/api/v1/units")
+      .get("/api/v2/units")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.metadata)
@@ -17,7 +17,7 @@ module.exports = function() {
 
   it("should accept an interval_name", function(done) {
     request(settings.host)
-      .get("/api/v1/units?interval_name=Permian")
+      .get("/api/v2/units?interval_name=Permian")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -29,7 +29,7 @@ module.exports = function() {
 
   it("should accept an age", function(done) {
     request(settings.host)
-      .get("/api/v1/units?age=400")
+      .get("/api/v2/units?age=400")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -41,7 +41,7 @@ module.exports = function() {
 
   it("should accept an age_top and age_bottom", function(done) {
     request(settings.host)
-      .get("/api/v1/units?age_top=200&age_bottom=250")
+      .get("/api/v2/units?age_top=200&age_bottom=250")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -53,7 +53,7 @@ module.exports = function() {
 
   it("should accept a section_id", function(done) {
     request(settings.host)
-      .get("/api/v1/units?section_id=107")
+      .get("/api/v2/units?section_id=107")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -65,7 +65,7 @@ module.exports = function() {
 
   it("should accept a response parameter", function(done) {
     request(settings.host)
-      .get("/api/v1/units?age_top=200&age_bottom=250&response=long")
+      .get("/api/v2/units?age_top=200&age_bottom=250&response=long")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(function(res) {
@@ -81,7 +81,7 @@ module.exports = function() {
 
   it("should accept a lith parameter", function(done) {
     request(settings.host)
-      .get("/api/v1/units?lith=sandstone")
+      .get("/api/v2/units?lith=sandstone")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -98,7 +98,7 @@ module.exports = function() {
 
   it("should accept a lith_type parameter", function(done) {
     request(settings.host)
-      .get("/api/v1/units?lith_type=carbonate")
+      .get("/api/v2/units?lith_type=carbonate")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -115,7 +115,7 @@ module.exports = function() {
 
   it("should accept a lith_class parameter", function(done) {
     request(settings.host)
-      .get("/api/v1/units?lith_class=metamorphic")
+      .get("/api/v2/units?lith_class=metamorphic")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -133,7 +133,7 @@ module.exports = function() {
 
   it("should accept a environ parameter", function(done) {
     request(settings.host)
-      .get("/api/v1/units?environ=marine indet.")
+      .get("/api/v2/units?environ=marine indet.")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -150,7 +150,7 @@ module.exports = function() {
 
   it("should accept a environ_type parameter", function(done) {
     request(settings.host)
-      .get("/api/v1/units?environ_type=carbonate")
+      .get("/api/v2/units?environ_type=carbonate")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -169,7 +169,7 @@ module.exports = function() {
     this.timeout(5000);
 
     request(settings.host)
-      .get("/api/v1/units?environ_class=marine")
+      .get("/api/v2/units?environ_class=marine")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -187,7 +187,7 @@ module.exports = function() {
 
   it("should accept a project_id", function(done) {
     request(settings.host)
-      .get("/api/v1/units?project_id=4")
+      .get("/api/v2/units?project_id=4")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -205,7 +205,7 @@ module.exports = function() {
 
   it("should accept a strat_name parameter", function(done) {
     request(settings.host)
-      .get("/api/v1/units?strat_name=mancos")
+      .get("/api/v2/units?strat_name=mancos")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -222,7 +222,7 @@ module.exports = function() {
 
   it("should accept a strat_id parameter", function(done) {
     request(settings.host)
-      .get("/api/v1/units?strat_id=1205,4260")
+      .get("/api/v2/units?strat_id=1205,4260")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -239,7 +239,7 @@ module.exports = function() {
 
   it("should output GeoJSON", function(done) {
     request(settings.host)
-      .get("/api/v1/units?strat_id=1205&format=geojson")
+      .get("/api/v2/units?strat_id=1205&format=geojson")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.geoJSON)
       .end(function(error, res) {
@@ -250,7 +250,7 @@ module.exports = function() {
 
   it("should output TopoJSON", function(done) {
     request(settings.host)
-      .get("/api/v1/units?strat_id=1205&format=topojson")
+      .get("/api/v2/units?strat_id=1205&format=topojson")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.topoJSON)
       .end(function(error, res) {
@@ -261,7 +261,7 @@ module.exports = function() {
 
   it("should accept a geom_age parameter", function(done) {
     request(settings.host)
-      .get("/api/v1/units?strat_id=1205&format=geojson&geom_age=top")
+      .get("/api/v2/units?strat_id=1205&format=geojson&geom_age=top")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.geoJSON)
       .expect(function(res) {
@@ -283,7 +283,7 @@ module.exports = function() {
 
   it("should output CSV", function(done) {
     request(settings.host)
-      .get("/api/v1/units?section_id=107&format=csv")
+      .get("/api/v2/units?section_id=107&format=csv")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.csv)
       .end(function(error, res) {
@@ -294,7 +294,7 @@ module.exports = function() {
 
   it("should order the output given the input", function(done) {
     request(settings.host)
-      .get("/api/v1/units?id=138,139,137")
+      .get("/api/v2/units?id=138,139,137")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)

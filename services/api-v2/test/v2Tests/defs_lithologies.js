@@ -5,7 +5,7 @@ module.exports = function() {
 
   it('should return metadata', function(done) {
     request(settings.host)
-      .get("/api/v1/defs/lithologies")
+      .get("/api/v2/defs/lithologies")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.metadata)
@@ -17,7 +17,7 @@ module.exports = function() {
 
   it("should accept a lith id", function(done) {
     request(settings.host)
-      .get("/api/v1/defs/lithologies?id=3")
+      .get("/api/v2/defs/lithologies?id=3")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(function(res) {
@@ -33,7 +33,7 @@ module.exports = function() {
 
   it("should accept a lith class", function(done) {
     request(settings.host)
-      .get("/api/v1/defs/lithologies?lith_class=sedimentary")
+      .get("/api/v2/defs/lithologies?lith_class=sedimentary")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .end(function(error, res) {
@@ -44,7 +44,7 @@ module.exports = function() {
 
   it("should show all lith definitions when asked", function(done) {
     request(settings.host)
-      .get("/api/v1/defs/lithologies?all")
+      .get("/api/v2/defs/lithologies?all")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(function(res) {
@@ -60,7 +60,7 @@ module.exports = function() {
 
   it("should output CSV", function(done) {
     request(settings.host)
-      .get("/api/v1/defs/lithologies?id=3&format=csv")
+      .get("/api/v2/defs/lithologies?id=3&format=csv")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.csv)
       .expect("Content-Type", "text/csv; charset=utf-8")
