@@ -625,6 +625,7 @@
         "unit_name": "string, a stratigraphic name to search for (GMUS only)",
         "unit_link": "string, a GMUS unit_link. If format=json, will return one record with unique attributes, if a geographic output format is request it will return all polygons with the given unit_link (GMUS only)",
         "gid": "integer, a polygon GID to search for",
+        "interval_name": "string, a valid interval name as defined in /defs/intervals",
         "format": "Desired output format"
       },
       "output_formats": ["json", "geojson", "geojson_bare", "topojson", "topojson_bare"],

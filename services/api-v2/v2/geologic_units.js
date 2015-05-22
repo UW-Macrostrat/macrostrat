@@ -43,7 +43,7 @@ module.exports = function(req, res, next) {
       }
 
       if (req.query.interval_name) {
-        where.push("macro_b_age <= (SELECT age_bottom FROM macrostrat.intervals WHERE interval_name = $" + (where.length + 1) + ") AND macro_t_age <= (SELECT age_top FROM macrostrat.intervals WHERE interval_name = $" + (where.length + 2) + ")");
+        where.push("macro_b_age <= (SELECT age_bottom FROM macrostrat.intervals WHERE interval_name = $" + (where.length + 1) + ") AND macro_t_age >= (SELECT age_top FROM macrostrat.intervals WHERE interval_name = $" + (where.length + 2) + ")");
         params.push(req.query.interval_name, req.query.interval_name);
       }
 
@@ -101,7 +101,7 @@ module.exports = function(req, res, next) {
       }
 
       if (req.query.interval_name) {
-        where.push(" min_interval ILIKE $" + (where.length + 1) + " OR max_interval ILIKE $" + (where.length + 2));
+        where.push(" max_age <= (SELECT age_bottom FROM macrostrat.intervals WHERE interval_name = $" + (where.length + 1) + ") AND min_age >= (SELECT age_top FROM macrostrat.intervals WHERE interval_name = $" + (where.length + 2) + ")");
         params.push(req.query.interval_name, req.query.interval_name);
       }
 

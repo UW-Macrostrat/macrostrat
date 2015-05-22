@@ -23,7 +23,6 @@ module.exports = function() {
   describe("paleogeography", require("./paleogeography"));
   describe("geologic_units", require("./geologic_units"));
   describe("geologic_units/intersection", require("./geologic_units_intersection"));
-  describe("geologic_units/map", require("./geologic_units_map"));
 
   describe("mobile/point", require("./mobile_point"));
   describe("mobile/point_details", require("./mobile_point_details"));
