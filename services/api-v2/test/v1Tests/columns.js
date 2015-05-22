@@ -115,6 +115,18 @@ module.exports = function() {
       });
   });
 
+  it("should accept a project_id", function(done) {
+    request(settings.host)
+      .get("/api/v1/columns?project_id=4")
+      .expect(validators.aSuccessfulRequest)
+      .expect(validators.json)
+      .expect(validators.atLeastOneResult)
+      .end(function(error, res) {
+        if (error) return done(error);
+        done();
+      });
+  });
+
   it("should accept a lat/lng and return all adjacent columns", function(done) {
     request(settings.host)
       .get("/api/v1/columns?lat=43.3&lng=-89.3&adjacents=true")

@@ -46,7 +46,7 @@ module.exports = function(req, res, next) {
       } else if (req.query.strat_id) {
         var ids = req.query.strat_id.split(",").map(function(d) { return parseInt(d) });
         callback(null, {"interval_name": "none", "age_bottom": 99999, "age_top": 0, "strat_ids": ids });
-      } else if (req.query.hasOwnProperty("all")) {
+      } else if (req.query.hasOwnProperty("all") || req.query.project_id) {
         callback(null, {"interval_name": "Unknown", "age_bottom": 9999, "age_top": 0});
       } else if (req.query.lith_type || req.query.lith_class || req.query.lith || req.query.col_group_id || req.query.col_group || req.query.unit_id) {
         callback(null, {"interval_name": "Unknown", "age_bottom": 9999, "age_top": 0});

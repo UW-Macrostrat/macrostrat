@@ -184,6 +184,25 @@ module.exports = function() {
       });
   });
 
+
+  it("should accept a project_id", function(done) {
+    request(settings.host)
+      .get("/api/v1/units?project_id=4")
+      .expect(validators.aSuccessfulRequest)
+      .expect(validators.json)
+      .expect(validators.atLeastOneResult)
+      .expect(function(res) {
+        if (res.body.success.data.length < 130) {
+          throw new Error("Not enough results returned when using project_id on units");
+        }
+      })
+      .end(function(error, res) {
+        if (error) return done(error);
+        done();
+      });
+  });
+
+
   it("should accept a strat_name parameter", function(done) {
     request(settings.host)
       .get("/api/v1/units?strat_name=mancos")

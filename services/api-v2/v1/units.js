@@ -46,7 +46,7 @@ module.exports = function(req, res, next) {
       } else if (req.query.strat_id) {
         var ids = req.query.strat_id.split(",").map(function(d) { return parseInt(d) });
         callback(null, {"interval_name": "none", "age_bottom": 99999, "age_top": 0, "strat_ids": ids });
-      } else if (req.query.id || req.query.section_id || req.query.col_id || req.query.lith || req.query.lith_class || req.query.lith_type || req.query.environ || req.query.environ_class || req.query.environ_type) { 
+      } else if (req.query.id || req.query.section_id || req.query.col_id || req.query.lith || req.query.lith_class || req.query.lith_type || req.query.environ || req.query.environ_class || req.query.environ_type || req.query.project_id) { 
         callback(null, {"interval_name": "none", "age_bottom": 99999, "age_top": 0});
       } else {
         callback("error");
