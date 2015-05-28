@@ -39,12 +39,28 @@ module.exports = function() {
       });
   });
 
-  it("should accept a lith att id", function(done) {
+  it("should accept a lith_att_id", function(done) {
     request(settings.host)
-      .get("/api/v2/defs/lithology_attributes?id=1")
+      .get("/api/v2/defs/lithology_attributes?lith_att_id=1")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
+      .end(function(error, res) {
+        if (error) return done(error);
+        done();
+      });
+  });
+
+  it("should accept multiple lith_att_ids", function(done) {
+    request(settings.host)
+      .get("/api/v2/defs/lithology_attributes?lith_att_id=3,4,5")
+      .expect(validators.aSuccessfulRequest)
+      .expect(validators.json)
+      .expect(function(res) {
+        if (res.body.success.data.length !== 3) {
+          throw new Error("Should have returned 3 lithology attribute definitions but returned more or less");
+        } 
+      })
       .end(function(error, res) {
         if (error) return done(error);
         done();

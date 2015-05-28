@@ -12,6 +12,16 @@
 + Added CSV output
 
 
+## /defs/lithologies
++ input and output parameter ````id```` is now ````lith_id````
++ Multiple input ````lith_id```` now accepted
+
+
+## /defs/lithology_attributes
++ input and output parameter ````id```` is now ````lith_att_id````
++ Multiple input ````lith_att_id```` now accepted
+
+
 ## /defs/strat_names
 + parameter ````id```` is now ````strat_name_id````
 + parameter ````name```` is now ````strat_name````
@@ -34,6 +44,7 @@
 ## /geologic_units/gmna (formerly /geologic_units?type=gmna)
 + Added CSV output
 + Output parameter names and data types have changed:
+
 | old  | new  |
 |---|---|
 | min_age  | t_interval  |
@@ -41,6 +52,7 @@
 |  max_age | b_interval  |
 | age_bottom (string) | b_age (float) |
 | interval_name | containing_interval |
+
 
 The following output fields have been added:
 ````lith_type````, ````lith_class````, and ````gid````
@@ -50,6 +62,7 @@ The following output fields have been added:
 ## /geologic_units/gmus (formerly /geologic_units?type=gmus)
 + Added CSV output
 + Output parameter names and data types have changed:
+
 | old  | new  |
 |---|---|
 | lith1, lith2, lith3, lith4, lith5 (strings) | lithology (array)  |
