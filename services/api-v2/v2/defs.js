@@ -286,9 +286,9 @@
       },
       "output_formats": ["json", "csv"],
       "examples": [
-        "api/defs/lithologies?lith_id=3",
-        "api/defs/lithologies?all",
-        "api/defs/lithologies?lith_class=sedimentary"
+        "api/v2/defs/lithologies?lith_id=3",
+        "api/v2/defs/lithologies?all",
+        "api/v2/defs/lithologies?lith_class=sedimentary"
       ],
       "fields": [
         "lith_id",
@@ -306,16 +306,17 @@
     "visible": true,
     "options": {
       "parameters": {
-        "att_type": "lithatt type",
-        "lith_att": "lith_att",
-        "id": "a lith att id",
-        "all": "return all lith_att definitions",
+        "lith_att_id": "integer, one or more lithology attribute ids"
+        "att_type": "string, lithology attribute type",
+        "lith_att": "string, lithology attribute",
+        "all": "return all lithology attribute definitions",
         "format": "Desired output format"
       },
       "output_formats": ["json", "csv"],
       "examples": [
-        "api/defs/lithology_attributes?all",
-        "api/defs/lithology_attributes?lith_type=bedform"
+        "api/v2/defs/lithology_attributes?all",
+        "api/v2/defs/lithology_attributes?lith_type=bedform",
+        "api/v2/defs/lithology_attributes?lith_att_id=3,4,5"
       ],
       "fields": [
         "id",
@@ -339,9 +340,9 @@
       },
       "output_formats": ["json", "csv"],
       "examples": [
-        "api/defs/columns?all",
-        "api/defs/columns?col_group_id=17",
-        "api/defs/columns?col_name=Eastern%20Kentucky"
+        "api/v2/defs/columns?all",
+        "api/v2/defs/columns?col_group_id=17",
+        "api/v2/defs/columns?col_name=Eastern%20Kentucky"
       ],
       "fields": [
         "col_id",
@@ -366,8 +367,8 @@
       },
       "output_formats": ["json", "csv"],
       "examples": [
-        "api/defs/econs?all",
-        "api/defs/econs?econ_type=hydrocarbon"
+        "api/v2/defs/econs?all",
+        "api/v2/defs/econs?econ_type=hydrocarbon"
       ],
       "fields": [
         "econ_id",
@@ -394,8 +395,8 @@
       },
       "output_formats": ["json", "csv"],
       "examples": [
-        "api/defs/environments?all",
-        "api/defs/environments?environ=sand%20shoal"
+        "api/v2/defs/environments?all",
+        "api/v2/defs/environments?environ=sand%20shoal"
       ],
       "fields": [
         "id",
@@ -418,17 +419,17 @@
         "early_age": "an early age",
         "rule": "if 'loose' provided along with an early_age and late_age, changes the querying of intervals",
         "age": "integer, an age - will find all intervals that overlap with this age",
-        "timescale": "string, a valid timescale name as defined in /api/defs/timescales",
-        "timescale_id": "integer, a valid timescale_id as defined in /api/defs/timescales",
+        "timescale": "string, a valid timescale name as defined in /api/v2/defs/timescales",
+        "timescale_id": "integer, a valid timescale_id as defined in /api/v2/defs/timescales",
         "format": "Desired output format"
       },
       "output_formats": ["json", "csv"],
       "examples": [
-        "api/defs/intervals?all",
-        "api/defs/intervals?id=366",
-        "api/defs/intervals?timescale=new%20zealand%20ages",
-        "api/defs/intervals?late_age=0&early_age=130",
-        "api/defs/intervals?timescale_id=1&age=100"
+        "api/v2/defs/intervals?all",
+        "api/v2/defs/intervals?id=366",
+        "api/v2/defs/intervals?timescale=new%20zealand%20ages",
+        "api/v2/defs/intervals?late_age=0&early_age=130",
+        "api/v2/defs/intervals?timescale_id=1&age=100"
       ],
       "fields": [
         "id",
@@ -458,8 +459,8 @@
       },
       "output_formats": ["json", "csv"],
       "examples": [
-        "api/defs/strat_names?all",
-        "api/defs/strat_names?rank=Fm"
+        "api/v2/defs/strat_names?all",
+        "api/v2/defs/strat_names?rank=Fm"
       ],
       "fields": [
         "name",
@@ -493,7 +494,7 @@
       },
       "output_formats": ["json", "csv"],
       "examples": [
-        "api/defs/timescales?all"
+        "api/v2/defs/timescales?all"
       ],
       "fields": [
         "id",
@@ -513,7 +514,7 @@
       },
       "output_formats": ["json", "csv"],
       "examples": [
-        "api/defs/timescales?all"
+        "api/v2/defs/timescales?all"
       ],
       "fields": [
         "id",
@@ -536,9 +537,9 @@
       },
       "output_formats": ["json", "csv"],
       "examples": [
-        "api/defs/measurements?id=3",
-        "api/defs/measurements?all",
-        "api/defs/measurements?measurement_class=geochemical"
+        "api/v2/defs/measurements?id=3",
+        "api/v2/defs/measurements?all",
+        "api/v2/defs/measurements?measurement_class=geochemical"
       ],
       "fields": [
         "id",
@@ -559,7 +560,7 @@
       },
       "output_formats": ["json", "csv"],
       "examples": [
-        "api/defs/groups?all",
+        "api/v2/defs/groups?all",
       ],
       "fields": [
         "col_group_id",
