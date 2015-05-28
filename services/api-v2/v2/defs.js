@@ -306,7 +306,7 @@
     "visible": true,
     "options": {
       "parameters": {
-        "lith_att_id": "integer, one or more lithology attribute ids"
+        "lith_att_id": "integer, one or more lithology attribute ids",
         "att_type": "string, lithology attribute type",
         "lith_att": "string, lithology attribute",
         "all": "return all lithology attribute definitions",
@@ -332,9 +332,9 @@
     "visible": true,
     "options": {
       "parameters": {
-        "col_id": "Unique column identifier",
-        "col_group_id": "Unique column group identifier",
-        "col_name": "Column name",
+        "col_id": "integer, one or more column ids",
+        "col_group_id": "integer, one ore more column group ids",
+        "col_name": "string, column name",
         "all": "Return all column definitions",
         "format": "Desired output format"
       },

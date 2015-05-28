@@ -22,6 +22,10 @@
 + Multiple input ````lith_att_id```` now accepted
 
 
+## /defs/columns
++ input parameters ````col_id```` and ````col_group_id```` now accept multiple ids
+
+
 ## /defs/strat_names
 + parameter ````id```` is now ````strat_name_id````
 + parameter ````name```` is now ````strat_name````
