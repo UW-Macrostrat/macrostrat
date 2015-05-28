@@ -279,19 +279,19 @@
     "visible": true,
     "options": {
       "parameters": {
-        "id": "Lith id",
-        "lith_class": "lith class",
-        "lith_type": "lith_type",
-        "all": "return all lith definitions"
+        "lith_id": "integer, one or more lithology ids",
+        "lith_class": "string, lithology class",
+        "lith_type": "string, lithology type",
+        "all": "return all lithology definitions"
       },
       "output_formats": ["json", "csv"],
       "examples": [
-        "api/defs/lithologies?id=3",
+        "api/defs/lithologies?lith_id=3",
         "api/defs/lithologies?all",
         "api/defs/lithologies?lith_class=sedimentary"
       ],
       "fields": [
-        "id",
+        "lith_id",
         "lith",
         "lith_type",
         "lith_class",

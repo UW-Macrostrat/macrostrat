@@ -6,26 +6,24 @@ module.exports = function(req, res, next) {
     return larkin.info(req, res, next);
   }
 
-  var sql = "SELECT id,lith,lith_type,lith_class,lith_color from liths",
-      lith = "";
+  var sql = "SELECT id AS lith_id, lith, lith_type, lith_class, lith_color FROM liths",
+      params = {};
 
-  if (req.query.all) {
-    // do nothing
-  } else if (req.query.lith_class) {
-    sql += " WHERE lith_class = ?";  
-    lith = req.query.lith_class;
+  if (req.query.lith_class) {
+    sql += " WHERE lith_class = :lith_class"; 
+    params["lith_class"] = req.query.lith_class; 
   } else if (req.query.lith_type){
-    sql += " WHERE lith_type = ?"; 
-    lith = req.query.lith_type;
+    sql += " WHERE lith_type = :lith_type"; 
+    params["lith_type"] = req.query.lith_type;
   }  else if (req.query.lith){
-    sql += " WHERE lith = ? "; 
-    lith = req.query.lith;
-  }  else if (req.query.id){
-    sql += " WHERE id = ? "; 
-    lith = req.query.id;
+    sql += " WHERE lith = :lith ";
+    params["lith"] = req.query.lith; 
+  }  else if (req.query.lith_id){
+    sql += " WHERE id IN (:lith_id)";
+    params["lith_id"] = larkin.parseMultipleIds(req.query.lith_id); 
   }
 
-  var format = (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json";
-  larkin.query(sql, [lith], null, true, res, format, next);
+
+  larkin.query(sql, params, null, true, res, ((api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json"), next);
   
 }

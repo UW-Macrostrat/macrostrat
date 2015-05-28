@@ -15,14 +15,30 @@ module.exports = function() {
       });
   });
 
-  it("should accept a lith id", function(done) {
+  it("should accept a lith_id", function(done) {
     request(settings.host)
-      .get("/api/v2/defs/lithologies?id=3")
+      .get("/api/v2/defs/lithologies?lith_id=3")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(function(res) {
         if (res.body.success.data.length !== 1) {
           throw new Error("Should have returned 1 lith definition but returned more or less");
+        } 
+      })
+      .end(function(error, res) {
+        if (error) return done(error);
+        done();
+      });
+  });
+
+  it("should accept multiple lith_ids", function(done) {
+    request(settings.host)
+      .get("/api/v2/defs/lithologies?lith_id=3,4,5")
+      .expect(validators.aSuccessfulRequest)
+      .expect(validators.json)
+      .expect(function(res) {
+        if (res.body.success.data.length !== 3) {
+          throw new Error("Should have returned 3 lith definitions but returned more or less");
         } 
       })
       .end(function(error, res) {
@@ -60,7 +76,7 @@ module.exports = function() {
 
   it("should output CSV", function(done) {
     request(settings.host)
-      .get("/api/v2/defs/lithologies?id=3&format=csv")
+      .get("/api/v2/defs/lithologies?lith_id=3&format=csv")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.csv)
       .expect("Content-Type", "text/csv; charset=utf-8")
