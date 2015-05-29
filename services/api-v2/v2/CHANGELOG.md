@@ -38,6 +38,19 @@
 | col_name, col_group, col_group_id, b_age, t_age, sections, pbdb_collections, pbdb_occs |  max_thick, min_thick, b_age, t_age, pbdb_collections, environ_class, environ_type,  environ, lith, lith_class, lith_type |
 
 
+## /sections
++ Input and output parameters have changed:
+
+|    old     |    new     |
+|------------|------------|
+|   id       | section_id    |
+|  top  | t_interval |
+|  top_age   | t_age |
+| bottom     | b_interval  |
+|  bottom_age| b_age      |
+| fossils    | pbdb_collections |
+
+
 
 ## /fossils
 + Default output is now JSON instead of GeoJSON

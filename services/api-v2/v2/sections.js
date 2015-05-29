@@ -6,17 +6,19 @@ module.exports = function(req, res, next) {
     return larkin.info(req, res, next);
   }
   var where = "",
-      params = [];
+      params = {};
 
   if (req.query.hasOwnProperty("all")) {
     // do nothing
   } else if (req.query.col_id) {
-    where = "WHERE s.col_id = ?"
-    params.push(req.query.col_id);
+    where = "WHERE s.col_id IN (:col_id)";
+    params["col_id"] = larkin.parseMultipleIds(req.query.col_id);
+
   } else {
     return larkin.error(req, res, next, "An invalid parameter was passed");
   }
-  larkin.query("SELECT s.id, s.col_id, ints2.interval_name AS top, min(t1_age) AS top_age, ints.interval_name AS bottom, max(t1_age) AS bottom_age, count(u.id) AS units, COALESCE(r.fossils,0) AS fossils \
+
+  larkin.query("SELECT s.id AS section_id, s.col_id, ints2.interval_name AS t_interval, min(t1_age) AS t_age, ints.interval_name AS b_interval, max(t1_age) AS b_age, count(u.id) AS units, COALESCE(r.fossils,0) AS pbdb_collections \
    FROM sections s \
     JOIN intervals ints on FO = ints.id \
     JOIN intervals ints2 on LO = ints2.id \

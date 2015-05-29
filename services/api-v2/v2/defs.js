@@ -65,7 +65,7 @@
     "visible": true,
     "options": {
       "parameters": {
-        "col_id": "integer, column ID",
+        "col_id": "integer, one or more comma-separated column IDs",
         "all": "Return all sections",
         "format": "string, Desired output format"
       },
