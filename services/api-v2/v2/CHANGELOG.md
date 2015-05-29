@@ -121,6 +121,10 @@
 + Output paramter ````id```` is now ````project_id````
 
 
+## /defs/timescales
++ Output paramter ````id```` is now ````timescale_id````
+
+
 ## /geologic_units/map
 *Removed* - use ````/geologic_units/gmus```` and ````/geologic_units/gmna```` instead.
 

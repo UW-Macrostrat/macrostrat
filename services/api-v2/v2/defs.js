@@ -500,8 +500,9 @@
         "api/v2/defs/timescales?all"
       ],
       "fields": [
-        "id",
-        "timescale"
+        "timescale_id",
+        "timescale",
+        "ref_id"
       ]
     }
   };
