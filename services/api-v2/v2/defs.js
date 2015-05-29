@@ -533,19 +533,19 @@
     "visible": true,
     "options": {
       "parameters": {
-        "id": "measurement id",
-        "measurement_class": "measurement_class",
-        "measurement_type": "measurement_type",
+        "measure_id": "integer, one or more comma-separted measurement IDs",
+        "measurement_class": "string, measurement_class",
+        "measurement_type": "string, measurement_type",
         "all": "return all measurement definitions"
       },
       "output_formats": ["json", "csv"],
       "examples": [
-        "api/v2/defs/measurements?id=3",
+        "api/v2/defs/measurements?measure_id=3,4",
         "api/v2/defs/measurements?all",
         "api/v2/defs/measurements?measurement_class=geochemical"
       ],
       "fields": [
-        "id",
+        "measure_id",
         "measurement",
         "measurement_type",
         "measurement_class"

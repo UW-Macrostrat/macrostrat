@@ -113,6 +113,10 @@
 + The ````rank```` parameter can be used with ````strat_name````, ````strat_name_like````, ````strat_name_id````, and ````all````
 
 
+## /defs/measurements
++ input and output parameter ````id```` is now ````measure_id````
+
+
 ## /geologic_units/map
 *Removed* - use ````/geologic_units/gmus```` and ````/geologic_units/gmna```` instead.
 
