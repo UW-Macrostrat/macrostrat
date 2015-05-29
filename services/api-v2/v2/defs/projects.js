@@ -7,5 +7,5 @@ module.exports = function(req, res, next) {
   }
   
   var format = (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json";
-  larkin.query("SELECT * FROM projects", [], null, true, res, format, next);
+  larkin.query("SELECT id AS project_id, project, timescale_id FROM projects", [], null, true, res, format, next);
 }

@@ -1,7 +1,10 @@
 {
-  "name": "macrostrat-api-v1",
-  "version": "0.1.0",
-  "description": "v1",
+  "name": "macrostrat-api-v2",
+  "version": "1.0.0",
+  "description": "v2",
+  "scripts": {
+    "test": "mocha"
+  },
   "dependencies": {
     "async": "0.9.x",
     "dbgeo": "0.0.x",

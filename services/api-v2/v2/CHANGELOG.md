@@ -117,6 +117,10 @@
 + input and output parameter ````id```` is now ````measure_id````
 
 
+## /defs/projects
++ Output paramter ````id```` is now ````project_id````
+
+
 ## /geologic_units/map
 *Removed* - use ````/geologic_units/gmus```` and ````/geologic_units/gmna```` instead.
 

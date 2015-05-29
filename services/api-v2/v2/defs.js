@@ -520,7 +520,7 @@
         "api/v2/defs/timescales?all"
       ],
       "fields": [
-        "id",
+        "project_id",
         "project",
         "timescale_id"
       ]
