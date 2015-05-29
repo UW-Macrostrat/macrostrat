@@ -53,7 +53,7 @@ module.exports = function() {
 
   it("should accept an environment id", function(done) {
     request(settings.host)
-      .get("/api/v2/defs/environments?id=1")
+      .get("/api/v2/defs/environments?environ_id=1")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)

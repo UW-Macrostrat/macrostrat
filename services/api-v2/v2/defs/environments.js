@@ -6,7 +6,7 @@ module.exports = function(req, res, next) {
     return larkin.info(req, res, next);
   }
   
-  var sql = "SELECT id,environ,environ_type,environ_class from environs",
+  var sql = "SELECT id AS environ_id, environ, environ_type, environ_class FROM environs",
       environ = "";
 
   if (req.query.all) {

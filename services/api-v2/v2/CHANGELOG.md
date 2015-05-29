@@ -88,6 +88,10 @@
 + input parameters ````col_id```` and ````col_group_id```` now accept multiple ids
 
 
+## /defs/environ
++   input and output parameter ````id```` is now ````environ_id````
+
+
 ## /defs/strat_names
 + parameter ````id```` is now ````strat_name_id````
 + parameter ````name```` is now ````strat_name````
