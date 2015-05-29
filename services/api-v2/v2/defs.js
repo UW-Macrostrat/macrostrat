@@ -176,29 +176,6 @@
     }
   };
 
-  defs["/unit_contacts"] = {
-    "description": "unit contact relationships",
-    "visible": true,
-    "options": {
-      "parameters": {
-        "all": "return all contacts",
-        "section_id": "number, return contacts only for specified section_id"
-      },
-      "output_formats": ["json","csv"],
-      "examples": [
-        "/api/unit_contacts?all",
-        "api/unit_contacts?section_id=22"
-      ],
-      "fields": [
-        "unit_id",
-        "contact",
-        "with_unit"
-      ]
-    }
-
-
-  }
-
   defs["/fossils"] = {
     "description": "Paleobiology Database (http://paleobiodb.org) collections matched to Macrostrat units",
     "visible": true,

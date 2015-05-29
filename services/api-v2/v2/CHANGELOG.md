@@ -88,6 +88,11 @@
 
 
 
+## /unit_contacts
+*Removed*  - use ````/units```` instead.
+
+
+
 ## /defs/lithologies
 + input and output parameter ````id```` is now ````lith_id````
 + Multiple input ````lith_id```` now accepted

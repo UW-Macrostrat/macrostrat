@@ -13,9 +13,6 @@ api.route("/columns")
 api.route("/sections")
   .get(require("./sections"));
 
-api.route("/unit_contacts")
-  .get(require("./unit_contacts"));
-
 api.route("/units")
   .get(function(req, res, next) {
     require("./units")(req, res, next);
