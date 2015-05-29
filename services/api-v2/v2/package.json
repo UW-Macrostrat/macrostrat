@@ -12,6 +12,7 @@
     "nearest-feature": "git://github.com/jczaplew/nearest-feature.git",
     "pg": "^3.4.0",
     "turf-point": "^0.1.6",
+    "underscore": "^1.8.3",
     "wellknown": "^0.3.0"
   }
 }

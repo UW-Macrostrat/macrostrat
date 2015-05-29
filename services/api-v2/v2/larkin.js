@@ -1,7 +1,6 @@
 var mysql = require("mysql"),
     pg = require("pg"),
     async = require("async"),
-    toUnnamed = require('named-placeholders')(),
     credentials = require("./credentials"),
     csv = require("express-csv"),
     api = require("./api"),
@@ -49,10 +48,24 @@ var mysql = require("mysql"),
     }.bind(this));
   };
 
+  larkin.toUnnamed = function(sql, params) {
+    var placeholders = sql.match(/(?:\?)|(?::(\d+|(?::?[a-zA-Z][a-zA-Z0-9_]*)))/g),
+        newParams = [];
+
+    for (var i = 0; i < placeholders.length; i++) {
+      var flag = (placeholders[i].substr(0, 2) === "::") ? "::" : ":",
+          sub = (flag === "::") ? "??" : "?";
+
+      sql = sql.replace(placeholders[i], sub);
+      newParams.push(params[placeholders[i].replace(flag, "")]);
+    }
+
+    return [sql, newParams];
+  };
 
   larkin.query = function(sql, params, callback, send, res, format, next) {
     if (sql.indexOf(':') > -1) {
-      var newQuery = toUnnamed(sql, params);
+      var newQuery = larkin.toUnnamed(sql, params);
       sql = newQuery[0];
       params = newQuery[1];
     }
@@ -75,7 +88,7 @@ var mysql = require("mysql"),
           }
         }
       }.bind(this));
-      //=console.log(query.sql)
+     // console.log(query.sql)
     }.bind(this));
   };
 

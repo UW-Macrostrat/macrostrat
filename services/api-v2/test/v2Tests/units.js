@@ -69,7 +69,7 @@ module.exports = function() {
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(function(res) {
-        if (!res.body.success.data[0].LO_interval) {
+        if (!res.body.success.data[0].b_int_name) {
           throw new Error("Extra data missing when requested");
         }
       })
@@ -220,9 +220,9 @@ module.exports = function() {
       });
   });
 
-  it("should accept a strat_id parameter", function(done) {
+  it("should accept a strat_name_id parameter", function(done) {
     request(settings.host)
-      .get("/api/v2/units?strat_id=1205,4260")
+      .get("/api/v2/units?strat_name_id=1205,4260")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -239,7 +239,7 @@ module.exports = function() {
 
   it("should output GeoJSON", function(done) {
     request(settings.host)
-      .get("/api/v2/units?strat_id=1205&format=geojson")
+      .get("/api/v2/units?strat_name_id=1205&format=geojson")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.geoJSON)
       .end(function(error, res) {
@@ -250,7 +250,7 @@ module.exports = function() {
 
   it("should output TopoJSON", function(done) {
     request(settings.host)
-      .get("/api/v2/units?strat_id=1205&format=topojson")
+      .get("/api/v2/units?strat_name_id=1205&format=topojson")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.topoJSON)
       .end(function(error, res) {
@@ -261,7 +261,7 @@ module.exports = function() {
 
   it("should accept a geom_age parameter", function(done) {
     request(settings.host)
-      .get("/api/v2/units?strat_id=1205&format=geojson&geom_age=top")
+      .get("/api/v2/units?strat_name_id=1205&format=geojson&geom_age=top")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.geoJSON)
       .expect(function(res) {
@@ -294,7 +294,7 @@ module.exports = function() {
 
   it("should order the output given the input", function(done) {
     request(settings.host)
-      .get("/api/v2/units?id=138,139,137")
+      .get("/api/v2/units?unit_id=138,139,137")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -302,7 +302,7 @@ module.exports = function() {
         if (res.body.success.data.length != 3) {
           throw new Error("Wrong number of units being returned");
         }
-        if (res.body.success.data[0].id != 138 || res.body.success.data[2].id != 137) {
+        if (res.body.success.data[0].unit_id != 138 || res.body.success.data[2].unit_id != 137) {
           throw new Error("Wrong order of units returned");
         }
       })

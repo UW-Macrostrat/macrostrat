@@ -3,14 +3,15 @@
 
   var defs = {};
 
-  // Instead of adding metadata to each route in api.js, we are going to do it here
-  
   defs["/columns"] = {
     "description": "Get all colums containing one or more units matching specfied search criteria",
     "visible": true,
     "options": {
       "parameters": {
-        "interval_name": "text, name of search time interval",
+        "col_id": "integer, one or more comma-separated column IDs",
+        "unit_id": "integer, one or more comma-separated unit IDs",
+        "section_id": "integer, one or more comma-separated section IDs",
+        "interval_name": "string, name of a valid time interval from /defs/intervals",
         "age": "number, search age in Myr before present",
         "age_top": "number, youngest limit of search, in Myr before present - must be used with age_bottom",
         "age_bottom": "number, oldest limit of search, in Myr before present -  must be used with age_top",
@@ -18,13 +19,12 @@
         "lith_class": "string, return only columns with units containing specified lithology, lith_class defined in /defs/lithologies",
         "lith_type": "string, return only columns with units containing specified lithology, lith_type defined in /defs/lithologies",
         "strat_name": "string, return only columns that contain a given unit name",
-        "strat_id": "number, one or more comma-separated strat_ids, as definied in /defs/strat_names",
-        "col_id": "number, one or more comma-separated column IDs",
-        "all": "Show all results",
+        "strat_name_id": "number, one or more comma-separated strat_ids, as defined in /defs/strat_names",
+        "all": "Show all columns",
         "lat": "number, decimal degree latitude, WGS84",
         "lng": "number, decimal degree longitude, WGS84",
         "adjacents": "boolean, if lat/lng or col_id is specified, optionally return all columns that touch the polygon containing the supplied lat/lng",
-        "project_id": "number, Macrostrat project ID",
+        "project_id": "integer, one or more comma-separated project IDs as defined in /defs/projects",
         "response": "Any available response_type. Default is short.",
         "format": "string, desired output format"
       },
@@ -92,7 +92,7 @@
     "visible": true,
     "options": {
       "parameters": {
-        "id": "integer, a valid unit id",
+        "unit_id": "integer, a valid unit id",
         "section_id": "integer, a valid section id",
         "col_id": "integer, a valid column id",
         "interval_name": "chronostratigraphic time interval name",
@@ -106,7 +106,10 @@
         "environ_type": "groups of environments",
         "environ_class": "general environments",
         "strat_name": "a fuzzy stratigraphic name to match units to",
-        "strat_id": "a single or comma-separated list of stratigraphic ids (can be retrieved from /defs/strat_names",
+        "strat_name_id": "a single or comma-separated list of stratigraphic ids (can be retrieved from /defs/strat_names",
+        "lat": "number, decimal degree latitude, WGS84",
+        "lng": "number, decimal degree longitude, WGS84",
+        "adjacents": "boolean, if lat/lng or col_id is specified, optionally return all units in columns that touch the polygon containing the supplied lat/lng",
         "project_id": "a Macrostrat project ID",
         "response": "Any available response_type. Default is short.",
         "format": "string, desired output format",

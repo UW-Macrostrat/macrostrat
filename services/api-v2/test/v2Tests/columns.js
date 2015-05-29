@@ -63,9 +63,9 @@ module.exports = function() {
       });
   });
 
-  it("should accept a strat_id parameter", function(done) {
+  it("should accept a strat_name_id parameter", function(done) {
     request(settings.host)
-      .get("/api/v2/columns?strat_id=1205")
+      .get("/api/v2/columns?strat_name_id=1205")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
