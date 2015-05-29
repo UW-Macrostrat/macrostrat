@@ -88,8 +88,19 @@
 + input parameters ````col_id```` and ````col_group_id```` now accept multiple ids
 
 
-## /defs/environ
+## /defs/environments
 +   input and output parameter ````id```` is now ````environ_id````
+
+
+## /defs/intervals
++ Changes to input and output parameters:
+
+|   old    |   new   |
+|----------|---------|
+|  id      | int_id  |
+| late_age | t_age   |
+| early_age| b_age   |
+
 
 
 ## /defs/strat_names

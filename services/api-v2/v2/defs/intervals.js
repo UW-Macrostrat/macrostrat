@@ -6,66 +6,47 @@ module.exports = function(req, res, next) {
     return larkin.info(req, res, next);
   }
 
-  var sql = "SELECT intervals.id, interval_name AS name, interval_abbrev abbrev, age_top AS late_age, age_bottom AS early_age, interval_type AS type, interval_color AS color, GROUP_CONCAT(DISTINCT timescales.id SEPARATOR '|') AS timescale_id FROM intervals JOIN timescales_intervals ON interval_id=intervals.id JOIN timescales ON timescale_id=timescales.id ",
-      params = [];
+  var sql = "SELECT intervals.id AS int_id, interval_name AS name, interval_abbrev abbrev, age_top AS t_age, age_bottom AS b_age, interval_type AS type, interval_color AS color, GROUP_CONCAT(DISTINCT timescales.id SEPARATOR '|') AS timescale_id FROM intervals JOIN timescales_intervals ON interval_id=intervals.id JOIN timescales ON timescale_id=timescales.id ";
+  
+  var params = {},
+      where = [];
 
-  var where = 0;
+  if (req.query.timescale) {
+    where.push(" timescale = :timescale");
+    params["timescale"] = req.query.timescale;
 
-  if (req.query.all) {
-    // do nothing
-  } else {
-    if (req.query.timescale) {
-      sql += " WHERE timescale = ?";
-      params.push(req.query.timescale);
-      where ++;
-    } else if (req.query.timescale_id) {
-      sql += " WHERE timescales.id = ?";
-      params.push(req.query.timescale_id);
-      where ++;
+  } else if (req.query.timescale_id) {
+    where.push("timescales.id IN (:timescale_id)");
+    params["timescale_id"] = larkin.parseMultipleIds(req.query.timescale_id);
+  }
+
+  if (req.query.int_id && isFinite(req.query.int_id)) {
+    where.push("intervals.id IN (:int_id)");
+    params["int_id"] = larkin.parseMultipleIds(req.query.int_id);
+  } 
+
+  if (req.query.b_age && req.query.t_age) {
+    if (req.query.rule === "loose") {
+      where.push("intervals.age_bottom >= :b_age AND intervals.age_top <= t_age");
+      params["b_age"] = req.query.b_age;
+      params["t_age"] = req.query.t_age;
+
+    } else {
+      where.push("((intervals.age_top <= :t_age AND intervals.age_bottom >= :b_age) OR (intervals.age_top >= :t_age AND intervals.age_bottom <= :b_age))");
+      params["b_age"] = req.query.b_age;
+      params["t_age"] = req.query.t_age;
     }
-
-    if (req.query.id && isFinite(req.query.id)) {
-      if (where < 1) {
-        sql += " WHERE intervals.id = ?";
-        params.push(req.query.id);
-      } else {
-        sql += " AND intervals.id = ?";
-        params.push(req.query.id);
-      }
-      where++;
-    } 
-
-    if (req.query.late_age && req.query.early_age) {
-      if (req.query.rule === "loose") {
-        if (where < 1) {
-          sql += " WHERE intervals.age_bottom >= ? AND intervals.age_top <= ?";
-          params.push(req.query.late_age, req.query.early_age);
-        } else {
-          sql += " AND (intervals.age_bottom >= ? AND intervals.age_top <= ?)";
-          params.push(req.query.late_age, req.query.early_age);
-        }
-      } else {
-        if (where < 1) {
-          sql += " WHERE intervals.age_top <= ? AND intervals.age_bottom >= ? OR intervals.age_top >= ? AND intervals.age_bottom <= ?";
-          params.push(req.query.late_age, req.query.early_age, req.query.late_age, req.query.early_age);
-        } else {
-          sql += " AND ((intervals.age_top <= ? AND intervals.age_bottom >= ?) OR (intervals.age_top >= ? AND intervals.age_bottom <= ?))";
-          params.push(req.query.late_age, req.query.early_age, req.query.late_age, req.query.early_age);
-        }
-      }
-        
-    } else if (req.query.age) {
-      if (where < 1) {
-        sql += " WHERE intervals.age_top <= ? AND intervals.age_bottom >= ?";
-        params.push(req.query.age, req.query.age);
-      } else {
-        sql += " AND intervals.age_top <= ? AND intervals.age_bottom >= ?";
-        params.push(req.query.age, req.query.age);
-      }
-    }
+      
+  } else if (req.query.age) {
+    where.push("intervals.age_top <= :age AND intervals.age_bottom >= :age");
+    params["age"] = req.query.age;
   }
   
-  sql += " GROUP BY intervals.id ORDER BY late_age ASC";
+  if (where.length > 0) {
+    sql += ("WHERE " + where.join(" AND "));
+  }
+
+  sql += " GROUP BY intervals.id ORDER BY t_age ASC";
 
 
   larkin.query(sql, params, function(error, result) {
