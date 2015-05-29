@@ -66,6 +66,7 @@
 
 
 + Changes to the format of output fields:
+
 |    old     |    new     |
 |------------|------------|
 |  lith (string)  | lith (array of objects) |

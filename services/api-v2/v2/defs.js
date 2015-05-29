@@ -416,10 +416,10 @@
     "visible": true,
     "options": {
       "parameters": {
-        "id": "an interval id",
+        "int_id": "integer, one or more comma-separated interval IDs",
         "all": "return all interval definitions",
-        "late_age": "a late age",
-        "early_age": "an early age",
+        "t_age": "integer, a late age",
+        "b_age": "integer, an early age",
         "rule": "if 'loose' provided along with an early_age and late_age, changes the querying of intervals",
         "age": "integer, an age - will find all intervals that overlap with this age",
         "timescale": "string, a valid timescale name as defined in /api/v2/defs/timescales",
