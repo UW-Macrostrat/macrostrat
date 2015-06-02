@@ -637,10 +637,12 @@
     "visible": true,
     "options": {
       "parameters": {
-        "lat": "A valid latitude",
-        "lng": "A valid longitude",
         "gid": "integer, a polygon GID to search for",
-        "unit_name": "string, name of a stratigraphic unit from /defs/strat_names",
+        "lat": "A valid latitude in decimal degrees",
+        "lng": "A valid longitude in decimal degrees",
+        "strat_name_id": "integer, one or more valid strat_name_ids from /defs/strat_names",
+        "unit_id": "integer, one or more valid unit_ids from /units",
+        "search": "string, a term to search for in GMUS metadata",
         "unit_link": "string, GMUS unit_link",
         "interval_name": "string, a valid interval name as defined in /defs/intervals",
         "format": "Desired output format"

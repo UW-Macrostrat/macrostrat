@@ -43,11 +43,11 @@ module.exports = function() {
       });
   });
 
-  it("should accept a unit_name", function(done) {
+  it("should accept a search", function(done) {
     this.timeout(4000);
 
     request(settings.host)
-      .get("/api/v2/geologic_units/gmus?unit_name=Mancos%20Shale")
+      .get("/api/v2/geologic_units/gmus?search=Mancos%20Shale")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
@@ -58,8 +58,6 @@ module.exports = function() {
   });
 
   it("should accept a unit_link", function(done) {
-    this.timeout(4000);
-
     request(settings.host)
       .get("/api/v2/geologic_units/gmus?unit_link=WIOp;0")
       .expect(validators.aSuccessfulRequest)
@@ -83,6 +81,31 @@ module.exports = function() {
       });
   });
 
+
+  it("should accept a unit_id", function(done) {
+    request(settings.host)
+      .get("/api/v2/geologic_units/gmus?unit_id=2470,38484")
+      .expect(validators.aSuccessfulRequest)
+      .expect(validators.json)
+      .expect(validators.atLeastOneResult)
+      .end(function(error, res) {
+        if (error) return done(error);
+        done();
+      });
+  });
+
+
+  it("should accept a strat_name_id", function(done) {
+    request(settings.host)
+      .get("/api/v2/geologic_units/gmus?strat_name_id=1205")
+      .expect(validators.aSuccessfulRequest)
+      .expect(validators.json)
+      .expect(validators.atLeastOneResult)
+      .end(function(error, res) {
+        if (error) return done(error);
+        done();
+      });
+  }); 
 
   it("should return geometry when asked", function(done) {
     request(settings.host)

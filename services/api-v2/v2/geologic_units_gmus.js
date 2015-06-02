@@ -31,9 +31,23 @@ module.exports = function(req, res, next) {
       params.push(req.query.gid);
     }
 
-    if (req.query.unit_name) {
+    if (req.query.strat_name_id) {
+      var strat_name_ids = larkin.parseMultipleIds(req.query.strat_name_id);
+
+      where.push("gm.best_names && $" + (where.length + 1) + "::int[]");
+      params.push(strat_name_ids);
+    }
+
+    if (req.query.unit_id) {
+      var unit_ids = larkin.parseMultipleIds(req.query.unit_id);
+
+      where.push("gm.best_units && $" + (where.length + 1) + "::int[]");
+      params.push(unit_ids);
+    }
+
+    if (req.query.search) {
       where.push("text_search @@ plainto_tsquery('macro', $" + (where.length + 1) + ")")
-      params.push(req.query.unit_name);
+      params.push(req.query.search);
     }
 
     if (req.query.interval_name) {
