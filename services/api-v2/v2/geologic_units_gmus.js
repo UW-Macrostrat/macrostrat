@@ -92,13 +92,13 @@ module.exports = function(req, res, next) {
     }
 
     // Some things if querying by lat/lng
-    var sql = (orderBy.length > 0) ? ("SELECT gid, unit_link, lithology, rocktype, macro_units, t_interval, t_age, b_interval, b_age, containing_interval, interval_color, unit_com, unit_name, unitdesc, strat_unit" + ((geo) ? ", geometry" : "") + " FROM (") : "";
+    var sql = (orderBy.length > 0) ? ("SELECT gid, area, unit_link, lithology, rocktype, macro_units, t_interval, t_age, b_interval, b_age, containing_interval, interval_color, unit_com, unit_name, unitdesc, strat_unit" + ((geo) ? ", geometry" : "") + " FROM (") : "";
 
     if (req.query.shape) {
       sql += "WITH linestring AS (SELECT ST_Buffer(ST_SnapToGrid($" + (params.length - 1) + "::geometry, 0.1)::geography, $" + (params.length) + ") AS buffer), states AS (SELECT postal FROM us_states WHERE ST_Intersects(geom::geography, (SELECT buffer FROM linestring))), subset AS (SELECT * FROM gmus.lookup_units WHERE upper(state) in (SELECT postal FROM states))"
     }
 
-    sql += "SELECT DISTINCT ON (gid) gid, lu.unit_link, macro_color AS interval_color, (SELECT array_agg(liths) FROM unnest(array[lith1, lith2, lith3, lith4, lith5]) liths WHERE liths IS NOT null) AS lithology, (SELECT array_agg(DISTINCT rocktypes) FROM unnest(array[rocktype1, rocktype2, u_rocktype1, u_rocktype2, u_rocktype3]) rocktypes WHERE rocktypes IS NOT null) AS rocktype, COALESCE(gm.best_units, '{}') AS macro_units, COALESCE(gm.best_names, '{}') AS strat_names, lu.min_interval_name AS t_interval, lu.age_top::float AS t_age, lu.max_interval_name as b_interval, lu.age_bottom::float AS b_age, lu.containing_interval_name AS containing_interval, unit_com, unit_name, unitdesc, COALESCE(strat_unit, '') AS strat_unit, macro_color AS color" + ((orderBy.length > 0) ? ", geom" : "") + geomQuery + " FROM " + from + " WHERE " + where.join(", ") + orderBy;
+    sql += "SELECT DISTINCT ON (gid) gid, lu.area_km2::int AS area, lu.unit_link, macro_color AS interval_color, (SELECT array_agg(liths) FROM unnest(array[lith1, lith2, lith3, lith4, lith5]) liths WHERE liths IS NOT null) AS lithology, (SELECT array_agg(DISTINCT rocktypes) FROM unnest(array[rocktype1, rocktype2, u_rocktype1, u_rocktype2, u_rocktype3]) rocktypes WHERE rocktypes IS NOT null) AS rocktype, COALESCE(gm.best_units, '{}') AS macro_units, COALESCE(gm.best_names, '{}') AS strat_names, lu.min_interval_name AS t_interval, lu.age_top::float AS t_age, lu.max_interval_name as b_interval, lu.age_bottom::float AS b_age, lu.containing_interval_name AS containing_interval, unit_com, unit_name, unitdesc, COALESCE(strat_unit, '') AS strat_unit, macro_color AS color" + ((orderBy.length > 0) ? ", geom" : "") + geomQuery + " FROM " + from + " WHERE " + where.join(", ") + orderBy;
 
     larkin.queryPg("geomacro", sql, params, function(error, result) {
       if (error) {
