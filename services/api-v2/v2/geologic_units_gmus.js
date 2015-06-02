@@ -124,8 +124,7 @@ module.exports = function(req, res, next) {
             }
           });
         } else {
-          larkin.sendData(result.rows, res, (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json", next);
-          //larkin.sendCompact(result.rows, res, null, next);
+          larkin.sendCompact(result.rows, res, (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json", next);
         }
       }
     });
