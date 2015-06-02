@@ -75,9 +75,6 @@ api.route("/geologic_units/gmna")
 api.route("/geologic_units/gmus")
   .get(require("./geologic_units_gmus"));
 
-api.route("/geologic_units/intersection")
-  .get(require("./geologic_units_intersection"));
-
 api.route("/mobile")
   .get(require("./mobile/mobile"));
   

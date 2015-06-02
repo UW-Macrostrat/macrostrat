@@ -2,6 +2,8 @@ var api = require("./api"),
     async = require("async"),
     wellknown = require("wellknown"),
     gp = require("geojson-precision"),
+    buffer = require("turf-buffer"),
+    area = require("turf-area"),
     dbgeo = require("dbgeo"),
     larkin = require("./larkin");
 
@@ -13,6 +15,8 @@ module.exports = function(req, res, next) {
 
     var where = [],
         params = [],
+        from = "gmus.lookup_units lu JOIN gmus.ages a ON lu.unit_link = a.unit_link LEFT JOIN gmus.liths l ON lu.unit_link = l.unit_link LEFT JOIN gmus.best_geounits_macrounits gm ON lu.gid = gm.geologic_unit_gid",
+        geomQuery = ((geo) ? ", ST_AsGeoJSON(geom) AS geometry" : ""),
         orderBy = "";
 
     if (req.query.lat && req.query.lng) {
@@ -60,14 +64,41 @@ module.exports = function(req, res, next) {
       params.push(req.query.unit_link);
     }
 
+    if (req.query.shape) {
+
+      var bufferSize = (req.query.buffer && !isNaN(parseInt(req.query.buffer))) ? parseInt(req.query.buffer)*1000 : 1;
+
+      // Convert shape + buffer to geojson
+      var geojson = wellknown(decodeURI(req.query.shape)),
+          bufferedGeojson = buffer(geojson, bufferSize, "kilometers"),
+          totalArea = area(bufferedGeojson)*0.000001;
+
+      
+      // Test area
+      if (totalArea > 1000000000) {
+        console.log(totalArea)
+        return larkin.error(req, res, next, "Area too large. Please select a smaller area.");
+      }
+
+      from = "subset lu JOIN gmus.ages a ON lu.unit_link = a.unit_link LEFT JOIN gmus.liths l ON lu.unit_link = l.unit_link LEFT JOIN gmus.best_geounits_macrounits gm ON lu.gid = gm.geologic_unit_gid, linestring";
+      where.push("ST_Intersects(geom::geography, buffer) is true");
+      geomQuery = (geo) ? ", ST_AsGeoJSON(ST_Intersection(geom, buffer)) AS geometry" : ""
+      params.push(req.query.shape, bufferSize);
+
+    }
+
     if (where.length < 1) {
       return larkin.error(req, res, next, "Invalid params");
     }
 
     // Some things if querying by lat/lng
-    var sql = (orderBy.length > 0) ? ("SELECT gid, unit_link, lithology, rocktype, macro_units, min_age, t_interval, t_age, b_interval, b_age, containing_interval, interval_color, unit_com, unit_name, unitdesc, strat_unit" + ((geo) ? ", geometry" : "") + " FROM (") : "";
+    var sql = (orderBy.length > 0) ? ("SELECT gid, unit_link, lithology, rocktype, macro_units, t_interval, t_age, b_interval, b_age, containing_interval, interval_color, unit_com, unit_name, unitdesc, strat_unit" + ((geo) ? ", geometry" : "") + " FROM (") : "";
 
-    sql += "SELECT DISTINCT ON (gid) gid, lu.unit_link, macro_color AS interval_color, (SELECT array_agg(liths) FROM unnest(array[lith1, lith2, lith3, lith4, lith5]) liths WHERE liths IS NOT null) AS lithology, (SELECT array_agg(DISTINCT rocktypes) FROM unnest(array[rocktype1, rocktype2, u_rocktype1, u_rocktype2, u_rocktype3]) rocktypes WHERE rocktypes IS NOT null) AS rocktype, COALESCE(gm.best_units, '{}') AS macro_units, COALESCE(gm.best_names, '{}') AS strat_names, lu.min_interval_name AS t_interval, lu.age_top::float AS t_age, lu.max_interval_name as b_interval, lu.age_bottom::float AS b_age, lu.containing_interval_name AS containing_interval, unit_com, unit_name, unitdesc, COALESCE(strat_unit, '') AS strat_unit" + ((orderBy.length > 0) ? ", geom" : "") + ((geo) ? ", ST_AsGeoJSON(geom) AS geometry" : "") + " FROM gmus.lookup_units lu JOIN gmus.ages a ON lu.unit_link = a.unit_link LEFT JOIN gmus.liths l ON lu.unit_link = l.unit_link LEFT JOIN gmus.best_geounits_macrounits gm ON lu.gid = gm.geologic_unit_gid WHERE " + where.join(", ") + orderBy;
+    if (req.query.shape) {
+      sql += "WITH linestring AS (SELECT ST_Buffer(ST_SnapToGrid($" + (params.length - 1) + "::geometry, 0.1)::geography, $" + (params.length) + ") AS buffer), states AS (SELECT postal FROM us_states WHERE ST_Intersects(geom::geography, (SELECT buffer FROM linestring))), subset AS (SELECT * FROM gmus.lookup_units WHERE upper(state) in (SELECT postal FROM states))"
+    }
+
+    sql += "SELECT DISTINCT ON (gid) gid, lu.unit_link, macro_color AS interval_color, (SELECT array_agg(liths) FROM unnest(array[lith1, lith2, lith3, lith4, lith5]) liths WHERE liths IS NOT null) AS lithology, (SELECT array_agg(DISTINCT rocktypes) FROM unnest(array[rocktype1, rocktype2, u_rocktype1, u_rocktype2, u_rocktype3]) rocktypes WHERE rocktypes IS NOT null) AS rocktype, COALESCE(gm.best_units, '{}') AS macro_units, COALESCE(gm.best_names, '{}') AS strat_names, lu.min_interval_name AS t_interval, lu.age_top::float AS t_age, lu.max_interval_name as b_interval, lu.age_bottom::float AS b_age, lu.containing_interval_name AS containing_interval, unit_com, unit_name, unitdesc, COALESCE(strat_unit, '') AS strat_unit, macro_color AS color" + ((orderBy.length > 0) ? ", geom" : "") + geomQuery + " FROM " + from + " WHERE " + where.join(", ") + orderBy;
 
     larkin.queryPg("geomacro", sql, params, function(error, result) {
       if (error) {

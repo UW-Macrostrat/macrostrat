@@ -147,6 +147,9 @@
 *Removed* - use ````/geologic_units/gmus```` and ````/geologic_units/gmna```` instead.
 
 
+## /geologic_units/intersection
+*Removed* - use ````/geologic_units/gmus```` and ````/geologic_units/gmna```` instead.
+
 
 ## /geologic_units
 *Removed* - use ````/geologic_units/gmus```` and ````/geologic_units/gmna```` instead.
@@ -155,6 +158,7 @@
 
 ## /geologic_units/gmna (formerly /geologic_units?type=gmna)
 + Added CSV output
++ Added input variable ````shape````, which accepts a valid WKT polygon. If used, a ````buffer```` in km2 can also be specified.
 + Output parameter names and data types have changed:
 
 | old  | new  |
@@ -164,6 +168,7 @@
 |  max_age | b_interval  |
 | age_bottom (string) | b_age (float) |
 | interval_name | containing_interval |
+| *N/A*    | color |
 
 
 The following output fields have been added:
@@ -173,6 +178,7 @@ The following output fields have been added:
 
 ## /geologic_units/gmus (formerly /geologic_units?type=gmus)
 + Added CSV output
++ Added input variable ````shape````, which accepts a valid WKT polygon. If used, a ````buffer```` in km2 can also be specified.
 + Input value ````unit_name```` is now ````search````
 + Added input variable ````strat_name_id````, which allows direct querying of Macrostrat stratigraphic names that have been matched to GMUS. Example ````/api/v2/geologic_units/gmus?strat_name_id=1,2,3````
 + Added input variable ````unit_id````, which allows direct querying of GMUS units matched to Macrostrat units.
@@ -186,5 +192,6 @@ The following output fields have been added:
 | age_top (string) | t_age (float) |
 | max_age | b_interval |
 | age_bottom (string) | b_age (float) |
-| unit_age |  containing_interval
+| unit_age |  containing_interval |
+| *N/A*    | color |
 

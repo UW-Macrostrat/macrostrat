@@ -601,19 +601,23 @@
   defs["/geologic_units/gmna"] = {
     "description": "Geologic map units. Continental-scale North American map data (gmna) adapted from the 2005 Geologic Map of North America (http://ngmdb.usgs.gov/gmna/)",
     "visible": true,
+    "parent": "geologic_units",
     "options": {
       "parameters": {
         "lat": "A valid latitude",
         "lng": "A valid longitude",
         "gid": "integer, a polygon GID to search for",
         "interval_name": "string, a valid interval name as defined in /defs/intervals",
+        "shape": "string, a valid WKT shape",
+        "buffer": "integer, buffers a provided shape by x kilometers",
         "format": "Desired output format"
       },
       "output_formats": ["json", "csv", "geojson", "geojson_bare", "topojson", "topojson_bare"],
       "examples": [
-        "/api/geologic_units/gmna?lat=43&lng=-89.3",
-        "/api/geologic_units/gmna?lat=43&lng=-89&format=geojson_bare",
-        "/api/geologic_units/gmna?interval_name=Permian"
+        "/api/v2/geologic_units/gmna?lat=43&lng=-89.3",
+        "/api/v2/geologic_units/gmna?lat=43&lng=-89&format=geojson_bare",
+        "/api/v2/geologic_units/gmna?interval_name=Permian",
+        "/api/v2/geologic_units/gmna?shape=LINESTRING(-88 43,-90 43)&buffer=20"
       ],
       "fields": [
         "gid",
@@ -635,6 +639,7 @@
   defs["/geologic_units/gmus"] = {
     "description": "Geologic map units. State-level (gmus) data adapated from http://mrdata.usgs.gov/geology/state/.",
     "visible": true,
+    "parent": "geologic_units",
     "options": {
       "parameters": {
         "gid": "integer, a polygon GID to search for",
@@ -643,15 +648,18 @@
         "strat_name_id": "integer, one or more valid strat_name_ids from /defs/strat_names",
         "unit_id": "integer, one or more valid unit_ids from /units",
         "search": "string, a term to search for in GMUS metadata",
+        "shape": "string, a valid WKT shape",
+        "buffer": "integer, buffers a provided shape by x kilometers",
         "unit_link": "string, GMUS unit_link",
         "interval_name": "string, a valid interval name as defined in /defs/intervals",
         "format": "Desired output format"
       },
       "output_formats": ["json", "csv", "geojson", "geojson_bare", "topojson", "topojson_bare"],
       "examples": [
-        "/api/geologic_units/gmus?lat=43&lng=-89.3",
-        "/api/geologic_units/gmus?lat=43&lng=-89&format=geojson_bare",
-        "/api/geologic_units/gmus?interval_name=Permian"
+        "/api/v2/geologic_units/gmus?lat=43&lng=-89.3",
+        "/api/v2/geologic_units/gmus?lat=43&lng=-89&format=geojson_bare",
+        "/api/v2/geologic_units/gmus?interval_name=Permian",
+        "/api/v2/geologic_units/gmus?shape=LINESTRING(-88 43,-90 43)&buffer=20"
       ],
       "fields": [
         "gid",
@@ -674,35 +682,6 @@
   };
 
 
-
-  defs["/geologic_units/intersection"] = {
-    "description": "Geologic units under a WKT shape. State-level geologic map (gmus) data adapted from http://mrdata.usgs.gov/geology/state/, continent-scale (gmna) data adapted from http://ngmdb.usgs.gov/gmna/",
-    "visible": true,
-    "options": {
-      "parameters": {
-        "shape": "(Required) A valid WKT shape",
-        "line": "(Deprecated) alias for shape",
-        "type": "(Required) Return only from given sources - can be 'gmna' or 'gmus'",
-        "buffer": "(Optional) Buffer the linestring by a given number of kilometers (default is 35)"
-      },
-      "output_formats": ["json", "geojson", "topojson", "geojson_bare", "topojson_bare"],
-      "examples": [
-        "/api/geologic_units/intersection?line=LINESTRING(-92 43,-83 43)&format=geojson_bare&type=gmus",
-        "/api/geologic_units/intersection?line=LINESTRING(-92 43,-83 43)&type=gmus",
-        "/api/geologic_units/intersection?line=LINESTRING(-92 43,-83 43)&type=gmna&format=geojson_bare&buffer=50",
-        "/api/geologic_units/intersection?shape=POLYGON((-89.7 42.9,-89.7 43.2,-88.9 43.2,-88.9 42.9,-89.7 42.9))&type=gmus&buffer=0&format=geojson_bare"
-      ],
-      "fields": [
-        "id",
-        "unit_abbre",
-        "rocktype",
-        "lith",
-        "min_age",
-        "max_age",
-        "color"
-      ]
-    }
-  };
 
 
   defs["/mobile"] = {

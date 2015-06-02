@@ -12,7 +12,9 @@ module.exports = function(req, res, next) {
     var geo = (req.query.format && api.acceptedFormats.geo[req.query.format]) ? true : false;
 
     var where = [],
-        params = [];
+        params = [],
+        geomField = ((geo) ? ", ST_AsGeoJSON(geom) AS geometry" : "");
+        from = "";
 
     if (req.query.gid && req.query.gid != "undefined") {
       where.push(" gid = $" + (where.length + 1));
@@ -29,7 +31,17 @@ module.exports = function(req, res, next) {
       params.push(req.query.interval_name, req.query.interval_name);
     }
 
-    larkin.queryPg("geomacro", "SELECT gid, unit_abbre, COALESCE(rocktype, '') AS rocktype, COALESCE(lithology, '') AS lithology, lith_type, lith_class, min_interval AS t_interval, min_age::float AS t_age, max_interval AS b_interval, max_age::float AS b_age, containing_interval" + ((geo) ? ", ST_AsGeoJSON(geom) AS geometry" : "") + " FROM gmna.lookup_units WHERE " + where.join(", "), params, function(error, result) {
+    if (req.query.shape) {
+      var buffer = (req.query.buffer && !isNaN(parseInt(req.query.buffer))) ? parseInt(req.query.buffer)*1000 : 1;
+
+      from += ", (SELECT ST_Buffer(ST_SnapToGrid($" + (where.length + 1) + "::geometry, 0.1)::geography, $" + (where.length + 2) + ") AS buffer) shape";
+      where.push("ST_Intersects(geom, buffer) is true");
+      params.push(req.query.shape, buffer);
+
+      geomField = ((geo) ? ", ST_AsGeoJSON(ST_Intersection(geom, buffer)) AS geometry" : "");
+    }
+
+    larkin.queryPg("geomacro", "SELECT gid, unit_abbre, COALESCE(rocktype, '') AS rocktype, COALESCE(lithology, '') AS lithology, lith_type, lith_class, min_interval AS t_interval, min_age::float AS t_age, max_interval AS b_interval, max_age::float AS b_age, containing_interval, interval_color AS color" + geomField + " FROM gmna.lookup_units" + from + " WHERE " + where.join(", "), params, function(error, result) {
       if (error) {
         larkin.error(req, res, next, error);
       } else {
@@ -53,7 +65,7 @@ module.exports = function(req, res, next) {
             }
           });
         } else {
-          larkin.sendData(result.rows, res, (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json", next);
+          larkin.sendCompact(result.rows, res, (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json", next);
         }
       }
     });

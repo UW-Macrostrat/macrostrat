@@ -118,4 +118,16 @@ module.exports = function() {
         done();
       });
   });
+
+  it("should accept a shape", function(done) {
+    request(settings.host)
+      .get("/api/v2/geologic_units/gmus?shape=LINESTRING(-88%2043,%20-90%2043)")
+      .expect(validators.aSuccessfulRequest)
+      .expect(validators.json)
+      .expect(validators.atLeastOneResult)
+      .end(function(error, res) {
+        if (error) return done(error);
+        done();
+      });
+  });
 }
