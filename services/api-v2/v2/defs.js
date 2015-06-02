@@ -316,6 +316,7 @@
         "col_id": "integer, one or more column ids",
         "col_group_id": "integer, one ore more column group ids",
         "col_name": "string, column name",
+        "status": "string, status of column, values 'active','in process','obsolete'",
         "all": "Return all column definitions",
         "format": "Desired output format"
       },
@@ -328,7 +329,9 @@
       "fields": [
         "col_id",
         "col_group_id",
-        "col_name"
+        "col_name",
+        "status",
+        "ref_id"
       ]
     }
   };
@@ -547,6 +550,30 @@
       "fields": [
         "col_group_id",
         "col_group"
+      ]
+    }
+  };
+
+  defs["/defs/refs"] = {
+    "description": "Returns references",
+    "parent": "definitions",
+    "visible": true,
+    "options": {
+      "parameters": {
+        "ref_id": "integer, one or more comma-separted reference ids",
+        "all": "return all references",
+      },
+      "output_formats": ["json", "csv"],
+      "examples": [
+        "api/v2/defs/groups?all",
+      ],
+      "fields": [
+        "ref_id",
+        "pub_year",
+        "author",
+        "ref",
+        "doi",
+        "url"
       ]
     }
   };
@@ -866,6 +893,7 @@
     "units": "integer, number of units",
     "notes": "text, notes releavnt to containing element",
     "project": "text, name of project",
+    "status": "text, indicates current status of column, values are 'active', 'in process', 'obsolete'",
     "geom": "geometry",
     "area": "area in square kilometers",
     "plateid": "integer, unique GPlates ID",
@@ -893,9 +921,10 @@
     "b_plat": "number, same as clat, but rotated to the b_age. Bottom age paleo latitude.",
     "b_plng": "number, same as clng, but rotated to the b_age. Bottom age paleo latitude.",
     "econ_id": "integer, unique econ identifier",
-    "econ": "text, name of econ",
-    "econ_type": "string, type of econ",
-    "econ_class": "text, class of econ"
+    "econ": "text, name of econonomic use",
+    "econ_type": "string, type of econonomic use",
+    "econ_class": "text, class of econonomic use",
+    "ref_id": "integer, unique reference identifer"
   };
 
   module.exports = defs;
