@@ -6,28 +6,46 @@ module.exports = function(req, res, next) {
     return larkin.info(req, res, next);
   }
   
-  var sql = "SELECT cols.id AS col_id, col_group_id, col_name, GROUP_CONCAT(DISTINCT ref_id SEPARATOR '|'), status_code status FROM cols LEFT JOIN col_refs ON col_id=cols.id GROUP BY cols.id",
+  var sql = "SELECT cols.id AS col_id, col_group_id, col_name, GROUP_CONCAT(DISTINCT ref_id SEPARATOR '|') AS ref_id, status_code status FROM cols LEFT JOIN col_refs ON col_id=cols.id ",
+      where = [],
       params = {};
 
   if ("all" in req.query) {
     // do nothing
   } else if (req.query.col_id) {
-    sql += " WHERE id IN (:col_id)";
+    where.push("cols.id in (:col_id)");
     params["col_id"] = larkin.parseMultipleIds(req.query.col_id);
 
   } else if (req.query.col_group_id) {
-    sql += " WHERE col_group_id IN (:col_group_id)";
+    where.push("cols.col_group_id IN (:col_group_id)");
     params["col_group_id"] = larkin.parseMultipleIds(req.query.col_group_id);
 
   } else if (req.query.col_name) {
-    sql += " WHERE col_name = :col_name";
+    where.push("cols.col_name = :col_name");
     params["col_name"] = req.query.col_name;
 
-  } else if (req.query.status) {
-    sql += " WHERE status_code = :status";
-    params["status"] = req.query.status;
+  } 
 
+  if (req.query.status) {
+    where.push("status_code = :status");
+    params["status"] = req.query.status;
   }
 
-  larkin.query(sql, params, null, true, res, ((api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json"), next);
+  if (where.length > 0) {
+    sql += " WHERE " + where.join(" AND ");
+  }
+
+  sql += " GROUP BY cols.id";
+
+  larkin.query(sql, params, function(error, result) {
+    if (error) {
+      return larkin.error(req, res, next, error);
+    }
+
+    result.forEach(function(d) {
+      d.ref_id = larkin.jsonifyPipes(d.ref_id, "integers");
+    });
+
+    larkin.sendData(result, res, ((api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json"), next);
+  });
 }

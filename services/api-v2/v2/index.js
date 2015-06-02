@@ -63,6 +63,9 @@ api.route("/defs/strat_names")
 api.route("/defs/timescales")
   .get(require("./defs/timescales"));
 
+api.route("/defs/refs")
+  .get(require("./defs/refs"));
+
 api.route("/section_stats")
   .get(require("./section_stats"));
 

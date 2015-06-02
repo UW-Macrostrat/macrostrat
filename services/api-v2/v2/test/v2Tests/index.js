@@ -20,6 +20,7 @@ module.exports = function() {
   describe("defs/projects", require("./defs_projects"));
   describe("defs/groups", require("./defs_groups"));
   describe("defs/strat_names", require("./defs_strat_names"));
+  describe("defs/refs", require("./defs_refs"));
 
   describe("paleogeography", require("./paleogeography"));
   describe("geologic_units/gmna", require("./geologic_units_gmna"));
