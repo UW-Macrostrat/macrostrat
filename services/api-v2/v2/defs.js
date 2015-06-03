@@ -241,7 +241,10 @@
       "output_formats": ["json", "csv"],
       "examples": ["api/stats?all"],
       "fields": [
+        "project_id",
         "project",
+        "status",
+        "columns",
         "packages",
         "units",
         "pbdb_collections"
@@ -821,6 +824,7 @@
     "col_group_id": "integer, unique identifier for column group",
     "col_id": "integer, unique identifier for column",
     "col_name": "text, name of column",
+    "columns": "integer, number of columns",
     "unit_id": "integer, unique identifier for unit",
     "section_id": "integer, unique identifier for section (package)",
     "sections": "int[], section_ids that belong to group",
