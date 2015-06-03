@@ -35,6 +35,7 @@ module.exports = function(req, res, next) {
       },
       function(data, callback) {
         var where,
+            limit = ("sample" in req.query) ? " LIMIT 5" : "",
             params = [];
 
         if (data.age_bottom) {
@@ -61,7 +62,7 @@ module.exports = function(req, res, next) {
           JOIN intervals l ON l.id = LO \
           JOIN pbdb.coll_matrix ON pbdb_matches.collection_no = pbdb.coll_matrix.collection_no \
           WHERE pbdb_matches.release_date < now() AND \
-          status_code = 'active'" + where, params, function(error, result) {
+          status_code = 'active'" + where + limit, params, function(error, result) {
             if (error) {
               callback(error);
             } else {

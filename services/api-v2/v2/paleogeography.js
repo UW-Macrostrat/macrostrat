@@ -4,7 +4,7 @@ var api = require("./api"),
     larkin = require("./larkin");
 
 module.exports = function(req, res, next) {
-  if (!req.query.age && !req.query.interval_name) {
+  if (!req.query.age && !req.query.interval_name && !("sample" in req.query)) {
     larkin.info(req, res, next);
   } else {
     async.waterfall([
@@ -23,16 +23,21 @@ module.exports = function(req, res, next) {
               }
             }
           });
+        } else if ("sample" in req.query) {
+          callback(null, 0);
+        } else {
+          callback("error");
         }
       },
       function(year, callback) {
-        larkin.queryPg("alice", "SELECT plateid::integer, ST_AsGeoJSON(geom) AS geometry FROM merge.reconstructed_" + year + "_merged", [], function(error, result) {
+        var limit = ("sample" in req.query) ? " LIMIT 5" : "";
+        larkin.queryPg("alice", "SELECT plateid::integer, ST_AsGeoJSON(geom) AS geometry FROM merge.reconstructed_" + year + "_merged" + limit, [], function(error, result) {
           callback(null, result.rows);
         });
       }
     ], function(error, data) {
       if (error) {
-        larkin.error(req, res, next, "Something went wrong");
+        larkin.error(req, res, next, "Invalid query");
       } else {
         dbgeo.parse({
           "data": data,

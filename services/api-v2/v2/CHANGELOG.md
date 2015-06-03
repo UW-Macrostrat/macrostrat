@@ -143,6 +143,10 @@
 + Output paramter ````id```` is now ````timescale_id````
 
 
+## /defs/refs
++ Route added for fetching reference definitions.
+
+
 ## /geologic_units/map
 *Removed* - use ````/geologic_units/gmus```` and ````/geologic_units/gmna```` instead.
 

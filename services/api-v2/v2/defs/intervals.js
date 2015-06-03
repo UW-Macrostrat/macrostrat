@@ -48,6 +48,10 @@ module.exports = function(req, res, next) {
 
   sql += " GROUP BY intervals.id ORDER BY t_age ASC";
 
+  if ("sample" in req.query) {
+    sql += " LIMIT 5";
+  }
+
 
   larkin.query(sql, params, function(error, result) {
     if (error) {

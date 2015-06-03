@@ -102,7 +102,7 @@ module.exports = function(req, res, next, cb) {
         var ids = larkin.parseMultipleIds(req.query.strat_name_id);
         callback(null, {"interval_name": "none", "age_bottom": 99999, "age_top": 0, "strat_ids": ids });
 
-      } else if (req.query.unit_id || req.query.section_id || req.query.col_id || req.query.lith || req.query.lith_class || req.query.lith_type || req.query.environ || req.query.environ_class || req.query.environ_type || req.query.project_id) { 
+      } else if (req.query.unit_id || req.query.section_id || req.query.col_id || req.query.lith || req.query.lith_class || req.query.lith_type || req.query.environ || req.query.environ_class || req.query.environ_type || req.query.project_id || "sample" in req.query) { 
         callback(null, {"interval_name": "none", "age_bottom": 99999, "age_top": 0});
 
       } else {
@@ -113,6 +113,7 @@ module.exports = function(req, res, next, cb) {
     function(data, callback) {
 
       var where = "",
+          limit = ("sample" in req.query) ? " LIMIT 5" : "",
           orderby = [],
           params = {};
 
@@ -204,7 +205,7 @@ module.exports = function(req, res, next, cb) {
             " + ((req.query.response === "long" || cb) ? "LEFT JOIN unit_notes ON unit_notes.unit_id=units.id JOIN colors ON units.color = colors.color" : "") + " \
             LEFT JOIN pbdb_matches ON pbdb_matches.unit_id=units.id \
             " + (("environ" in params) ? "LEFT JOIN unit_environs ON units.id=unit_environs.unit_id LEFT JOIN environs ON unit_environs.environ_id=environs.id" : "") + " \
-            WHERE status_code='active' " + where + " GROUP BY units.id ORDER BY " + ((orderby.length > 0) ? (orderby.join(", ") + ", t_age ASC") : "t_age ASC");
+            WHERE status_code='active' " + where + " GROUP BY units.id ORDER BY " + ((orderby.length > 0) ? (orderby.join(", ") + ", t_age ASC") : "t_age ASC") + limit;
      
       larkin.query(sql, params, function(error, result) {
           if (error) {

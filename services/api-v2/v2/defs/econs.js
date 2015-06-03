@@ -28,6 +28,10 @@ module.exports = function(req, res, next) {
     params.push(req.query.econ_class);
   }
 
+  if ("sample" in req.query) {
+    sql += " LIMIT 5";
+  }
+
   var format = (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json";
   larkin.query(sql, params, null, true, res, format, next);
 }

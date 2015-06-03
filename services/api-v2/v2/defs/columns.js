@@ -37,6 +37,10 @@ module.exports = function(req, res, next) {
 
   sql += " GROUP BY cols.id";
 
+  if ("sample" in req.query) {
+    sql += " LIMIT 5";
+  }
+
   larkin.query(sql, params, function(error, result) {
     if (error) {
       return larkin.error(req, res, next, error);

@@ -33,5 +33,9 @@ module.exports = function(req, res, next) {
     sql += " WHERE " + where.join(" AND ")
   }
 
+  if ("sample" in req.query) {
+    sql += " LIMIT 5";
+  }
+  
   larkin.query(sql, params, null, true, res, (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json", next);
 }

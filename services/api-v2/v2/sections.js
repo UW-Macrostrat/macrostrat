@@ -6,6 +6,7 @@ module.exports = function(req, res, next) {
     return larkin.info(req, res, next);
   }
   var where = "",
+      limit = ("sample" in req.query) ? " LIMIT 5" : "",
       params = {};
 
   if (req.query.hasOwnProperty("all")) {
@@ -30,7 +31,7 @@ module.exports = function(req, res, next) {
     ) r ON r.section_id = s.id \
     JOIN unit_boundaries ub ON s.id = ub.section_id \
    " + where +    
-  " GROUP BY s.id", params, function(error, result) {
+  " GROUP BY s.id" + limit, params, function(error, result) {
     if (error) {
       larkin.error(req, res, next, "An SQL error occurred");
     } else {

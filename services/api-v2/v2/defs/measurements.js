@@ -27,6 +27,10 @@ module.exports = function(req, res, next) {
     params["meas"] = larkin.parseMultipleIds(req.query.measure_id);
   }
 
+  if ("sample" in req.query) {
+    sql += " LIMIT 5";
+  }
+  
   var format = (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json";
   larkin.query(sql, params, null, true, res, format, next);
   
