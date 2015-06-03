@@ -7,7 +7,7 @@ module.exports = function(req, res, next) {
   }
 
   var sql = "\
-    SELECT project_id, project, status_code status, COUNT(distinct units_sections.col_id) AS colums, COUNT(distinct units_sections.section_id) AS packages, COUNT(distinct unit_id) AS units, COUNT(distinct collection_no) AS pbdb_collections FROM units_sections \
+    SELECT project_id, project, status_code status, COUNT(distinct units_sections.col_id) AS columns, COUNT(distinct units_sections.section_id) AS packages, COUNT(distinct unit_id) AS units, COUNT(distinct collection_no) AS pbdb_collections FROM units_sections \
         JOIN cols ON cols.id = col_id \
         JOIN projects ON projects.id = project_id \
         LEFT JOIN pbdb_matches USING (unit_id) \
