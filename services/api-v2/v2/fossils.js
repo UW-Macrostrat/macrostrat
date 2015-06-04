@@ -52,7 +52,7 @@ module.exports = function(req, res, next) {
           params = {col_id: larkin.parseMultipleIds(req.query.col_id)}
         }
 
-        larkin.query("SELECT pbdb_matches.collection_no, n_occs AS occ, \
+        larkin.query("SELECT pbdb_matches.collection_no AS cltn_id, collection_name AS cltn_name, n_occs AS pbdb_occs, \
           pbdb_matches.unit_id " + ((geo) ? ", AsWKT(pbdb_matches.coordinate) AS geometry" : "") + " \
           FROM pbdb_matches \
           JOIN units ON pbdb_matches.unit_id = units.id \
