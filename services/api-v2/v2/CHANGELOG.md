@@ -102,6 +102,9 @@
 *Removed*  - use ````/units```` instead.
 
 
+## /pbdb_report
+*Removed*
+
 
 ## /defs/lithologies
 + input and output parameter ````id```` is now ````lith_id````
