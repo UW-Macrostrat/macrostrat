@@ -27,9 +27,6 @@ api.route("/units")
 api.route("/fossils")
   .get(require("./fossils"));
 
-api.route("/pbdb_report")
-  .get(require("./pbdb_report"));
-
 api.route("/stats")
   .get(require("./stats"));
 

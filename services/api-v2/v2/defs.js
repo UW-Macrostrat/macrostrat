@@ -225,32 +225,6 @@
       ]
     }
   },
-  "/pbdb_report": {
-    "description": "Get distinct strat_names that have or have not been matched to one or more Paleobiology Database (http://paleobiodb.org) collections",
-    "visible": true,
-    "options": {
-      "parameters": {
-        "matched": "show only matched Macrostrat units, default is to show unmatched strat_names",
-        "project_id": "integer, limit results to project",
-        "showpairs": "show all PBDB and Macrostrat key pairs",
-        "showorphans": "show all PBDB authorities with no opinion data of any kind",
-        "showtime": "show all PBDB time interval definitions",
-        "format": "Desired output format"
-      },
-      "output_formats": [
-        "json",
-        "csv"
-      ],
-      "examples": [
-        "/api/pbdb_report?project_id=1&matched"
-      ],
-      "fields": [
-        "collections",
-        "strat_name",
-        "strat_name_id"
-      ]
-    }
-  },
   "/stats": {
     "description": "statistics about the Macrostrat database",
     "visible": true,
