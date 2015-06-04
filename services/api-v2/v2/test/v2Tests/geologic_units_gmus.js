@@ -41,6 +41,23 @@ module.exports = function() {
       });
   });
 
+  it("should accept adjacents with a latitude and longitude", function(done) {
+    request(settings.host)
+      .get("/api/v2/geologic_units/gmus?lat=43.40205&lng=-89.82112&adjacents=true")
+      .expect(validators.aSuccessfulRequest)
+      .expect(validators.json)
+      .expect(validators.atLeastOneResult)
+      .expect(function(res) {
+        if (res.body.success.data.length !== 3) {
+          throw new Error("Wrong number of units returned with lat/lng and adjacents")
+        }
+      })
+      .end(function(error, res) {
+        if (error) return done(error);
+        done();
+      });
+  });
+
   it("should accept a time interval_name", function(done) {
     this.timeout(5000);
 
@@ -87,6 +104,23 @@ module.exports = function() {
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
+      .end(function(error, res) {
+        if (error) return done(error);
+        done();
+      });
+  });
+
+  it("should accept adjacents with a GID", function(done) {
+    request(settings.host)
+      .get("/api/v2/geologic_units/gmus?gid=184448&adjacents=true")
+      .expect(validators.aSuccessfulRequest)
+      .expect(validators.json)
+      .expect(validators.atLeastOneResult)
+      .expect(function(res) {
+        if (res.body.success.data.length !== 3) {
+          throw new Error("Wrong number of units returned with gid and adjacents")
+        }
+      })
       .end(function(error, res) {
         if (error) return done(error);
         done();

@@ -22,7 +22,7 @@ module.exports = function(req, res, next) {
 
     if (req.query.lat && req.query.lng) {
       if (req.query.adjacents === "true") {
-        where.push("ST_Intersects(geom, ST_Buffer(ST_GeomFromText($" + (where.length) + 1 + ", 4326), 0.5))")
+        where.push("gid = ANY (SELECT unnest(array_append(touches, (SELECT gid FROM gmus.lookup_units WHERE ST_Contains(geom, ST_GeomFromText($" + (where.length) + 1 + ", 4326))))) FROM gmus.adjacents WHERE geologic_unit_gid = (SELECT gid FROM gmus.lookup_units WHERE ST_Contains(geom, ST_GeomFromText($" + (where.length) + 1 + ", 4326))))");
         params.push("POINT(" + req.query.lng + " " + req.query.lat + ")");
         orderBy += " )a ORDER BY ST_Distance(geom, ST_GeomFromText($" + where.length + ", 4326))";
       } else {
@@ -32,8 +32,13 @@ module.exports = function(req, res, next) {
     }
 
     if (req.query.gid && req.query.gid != "undefined") {
-      where.push("gid = $" + (where.length + 1));
-      params.push(req.query.gid);
+      if (req.query.adjacents === "true") {
+        where.push("gid = $" + (where.length + 1) + " OR gid = ANY (SELECT unnest(touches) from gmus.adjacents where geologic_unit_gid = $" + (where.length + 1) + ")");
+        params.push(req.query.gid);
+      } else {
+        where.push("gid = $" + (where.length + 1));
+        params.push(req.query.gid);
+      }
     }
 
     if (req.query.strat_name_id) {
@@ -77,7 +82,6 @@ module.exports = function(req, res, next) {
       
       // Test area
       if (totalArea > 1000000000) {
-        console.log(totalArea)
         return larkin.error(req, res, next, "Area too large. Please select a smaller area.");
       }
 
