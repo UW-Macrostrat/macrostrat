@@ -4,6 +4,11 @@
 Each route has it's own file. ````api.js```` creates the Express.js router, and the logic of each route is mapped to its URL in ````index.js````, which allows you to ````require()```` each version of the API.
 
 
+## Common tasks
+Test - ````npm test````
+Build output fields and check for missing definitions - ````npm run-script build````
+
+
 ## larkin.js
 Larkin is a collection of reusable conviniences and utilities used in every route.
 

@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "v2",
   "scripts": {
-    "test": "mocha"
+    "test": "mocha",
+    "build": "node utilities/getOutputFields.js"
   },
   "dependencies": {
     "async": "0.9.x",
