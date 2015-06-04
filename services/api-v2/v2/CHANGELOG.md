@@ -196,6 +196,8 @@ The following output fields have been added:
 + Input value ````unit_name```` is now ````search````
 + Added input variable ````strat_name_id````, which allows direct querying of Macrostrat stratigraphic names that have been matched to GMUS. Example ````/api/v2/geologic_units/gmus?strat_name_id=1,2,3````
 + Added input variable ````unit_id````, which allows direct querying of GMUS units matched to Macrostrat units.
++ Adding ````adjacents=true```` now allowed when specifying a gid
++ Improved the handling of ````adjacents=true```` when specifying a latitude and longitude
 + Output parameter names and data types have changed:
 
 | old  | new  |
