@@ -38,33 +38,33 @@
         "topojson_bare"
       ],
       "examples": [
-        "/api/v2/columns?interval_name=Permian",
-        "/api/v2/columns?age=271",
-        "/api/v2/columns?age_top=200&age_bottom=250",
-        "/api/v2/columns?strat_name=mancos&format=geojson_bare",
-        "/api/v2/columns?lat=43&lng=-89&adjacents=true"
+        "/api/columns?interval_name=Permian",
+        "/api/columns?age=271",
+        "/api/columns?age_top=200&age_bottom=250",
+        "/api/columns?strat_name=mancos&format=geojson_bare",
+        "/api/columns?lat=43&lng=-89&adjacents=true"
+      ],
+      "fields": [
+        "col_id",
+        "col_name",
+        "col_group",
+        "col_group_id",
+        "group_col_id",
+        "col_area",
+        "project_id",
+        "max_thick",
+        "min_thick",
+        "b_age",
+        "t_age",
+        "pbdb_collections",
+        "environ_class",
+        "environ_type",
+        "environ",
+        "lith",
+        "lith_type",
+        "lith_class"
       ]
-    },
-    "fields": [
-      "col_id",
-      "col_name",
-      "col_group",
-      "col_group_id",
-      "group_col_id",
-      "col_area",
-      "project_id",
-      "max_thick",
-      "min_thick",
-      "b_age",
-      "t_age",
-      "pbdb_collections",
-      "environ_class",
-      "environ_type",
-      "environ",
-      "lith",
-      "lith_type",
-      "lith_class"
-    ]
+    }
   },
   "/sections": {
     "description": "Get all sections for a given column",
@@ -80,20 +80,20 @@
         "csv"
       ],
       "examples": [
-        "/api/v2/sections?all",
-        "/api/v2/sections?col_id=49"
+        "/api/sections?all",
+        "/api/sections?col_id=49"
+      ],
+      "fields": [
+        "section_id",
+        "col_id",
+        "t_interval",
+        "t_age",
+        "b_interval",
+        "b_age",
+        "units",
+        "pbdb_collections"
       ]
-    },
-    "fields": [
-      "section_id",
-      "col_id",
-      "t_interval",
-      "t_age",
-      "b_interval",
-      "b_age",
-      "units",
-      "pbdb_collections"
-    ]
+    }
   },
   "/units": {
     "description": "all Macrostrat units matching search criteria",
@@ -136,61 +136,61 @@
         "topojson_bare"
       ],
       "examples": [
-        "/api/v2/units?interval_name=Permian",
-        "/api/v2/units?age=271",
-        "/api/v2/units?interval_name=Permian&response=long",
-        "/api/v2/units?strat_id=1205,4260",
-        "/api/v2/units?strat_name=mancos",
-        "/api/v2/units?section_id=107&col_id=22&format=csv",
-        "/api/v2/units?strat_id=1205&format=geojson_bare&geom_age=bottom"
+        "api/units?interval_name=Permian",
+        "api/units?age=271",
+        "api/units?interval_name=Permian&response=long",
+        "api/units?strat_id=1205,4260",
+        "api/units?strat_name=mancos",
+        "api/units?section_id=107&col_id=22&format=csv",
+        "api/units?strat_id=1205&format=geojson_bare&geom_age=bottom"
+      ],
+      "fields": [
+        "unit_id",
+        "section_id",
+        "project_id",
+        "col_id",
+        "col_area",
+        "strat_name",
+        "strat_name_id",
+        "Mbr",
+        "Fm",
+        "Gp",
+        "SGp",
+        "era",
+        "period",
+        "max_thick",
+        "min_thick",
+        "lith_class",
+        "lith_type",
+        "lith",
+        "environ_class",
+        "environ_type",
+        "environ",
+        "outcrop",
+        "pbdb_collections",
+        "notes",
+        "color",
+        "text_color",
+        "t_int_id",
+        "t_int_name",
+        "t_int_age",
+        "t_age",
+        "t_prop",
+        "units_above",
+        "b_int_id",
+        "b_int_name",
+        "b_int_age",
+        "b_age",
+        "b_prop",
+        "units_below",
+        "clat",
+        "clng",
+        "t_plat",
+        "t_plng",
+        "b_plat",
+        "b_plng"
       ]
-    },
-    "fields": [
-      "unit_id",
-      "section_id",
-      "project_id",
-      "col_id",
-      "col_area",
-      "strat_name",
-      "strat_name_id",
-      "Mbr",
-      "Fm",
-      "Gp",
-      "SGp",
-      "era",
-      "period",
-      "max_thick",
-      "min_thick",
-      "lith_class",
-      "lith_type",
-      "lith",
-      "environ_class",
-      "environ_type",
-      "environ",
-      "outcrop",
-      "pbdb_collections",
-      "notes",
-      "color",
-      "text_color",
-      "t_int_id",
-      "t_int_name",
-      "t_int_age",
-      "t_age",
-      "t_prop",
-      "units_above",
-      "b_int_id",
-      "b_int_name",
-      "b_int_age",
-      "b_age",
-      "b_prop",
-      "units_below",
-      "clat",
-      "clng",
-      "t_plat",
-      "t_plng",
-      "b_plat",
-      "b_plng"
-    ]
+    }
   },
   "/fossils": {
     "description": "Paleobiology Database (http://paleobiodb.org) collections matched to Macrostrat units",
@@ -212,17 +212,18 @@
         "topojson_bare"
       ],
       "examples": [
-        "/api/v2/fossils?interval_name=Permian",
-        "/api/v2/fossils?age=271",
-        "/api/v2/fossils?age_top=200&age_bottom=250",
-        "/api/v2/fossils?col_id=446"
+        "/api/fossils?interval_name=Permian",
+        "/api/fossils?age=271",
+        "/api/fossils?age_top=200&age_bottom=250",
+        "/api/fossils?col_id=446"
+      ],
+      "fields": [
+        "cltn_id",
+        "cltn_name",
+        "pbdb_occs",
+        "unit_id"
       ]
-    },
-    "fields": [
-      "collection_no",
-      "occ",
-      "unit_id"
-    ]
+    }
   },
   "/pbdb_report": {
     "description": "Get distinct strat_names that have or have not been matched to one or more Paleobiology Database (http://paleobiodb.org) collections",
@@ -241,14 +242,14 @@
         "csv"
       ],
       "examples": [
-        "/api/v2/pbdb_report?project_id=1&matched"
+        "/api/pbdb_report?project_id=1&matched"
+      ],
+      "fields": [
+        "collections",
+        "strat_name",
+        "strat_name_id"
       ]
-    },
-    "fields": [
-      "collections",
-      "strat_name",
-      "strat_name_id"
-    ]
+    }
   },
   "/stats": {
     "description": "statistics about the Macrostrat database",
@@ -263,18 +264,18 @@
         "csv"
       ],
       "examples": [
-        "/api/v2/stats?all"
+        "api/stats?all"
+      ],
+      "fields": [
+        "project_id",
+        "project",
+        "status",
+        "columns",
+        "packages",
+        "units",
+        "pbdb_collections"
       ]
-    },
-    "fields": [
-      "project_id",
-      "project",
-      "status",
-      "columns",
-      "packages",
-      "units",
-      "pbdb_collections"
-    ]
+    }
   },
   "/defs": {
     "description": "Routes giving access to standard fields and dictionaries used in Macrostrat",
@@ -296,18 +297,18 @@
         "csv"
       ],
       "examples": [
-        "/api/v2/v2/defs/lithologies?lith_id=3",
-        "/api/v2/v2/defs/lithologies?all",
-        "/api/v2/v2/defs/lithologies?lith_class=sedimentary"
+        "api/v2/defs/lithologies?lith_id=3",
+        "api/v2/defs/lithologies?all",
+        "api/v2/defs/lithologies?lith_class=sedimentary"
+      ],
+      "fields": [
+        "lith_id",
+        "lith",
+        "lith_type",
+        "lith_class",
+        "lith_color"
       ]
-    },
-    "fields": [
-      "lith_id",
-      "lith",
-      "lith_type",
-      "lith_class",
-      "lith_color"
-    ]
+    }
   },
   "/defs/lithology_attributes": {
     "description": "Returns lithology attribute definitions",
@@ -326,16 +327,16 @@
         "csv"
       ],
       "examples": [
-        "/api/v2/v2/defs/lithology_attributes?all",
-        "/api/v2/v2/defs/lithology_attributes?lith_type=bedform",
-        "/api/v2/v2/defs/lithology_attributes?lith_att_id=3,4,5"
+        "api/v2/defs/lithology_attributes?all",
+        "api/v2/defs/lithology_attributes?lith_type=bedform",
+        "api/v2/defs/lithology_attributes?lith_att_id=3,4,5"
+      ],
+      "fields": [
+        "lith_att_id",
+        "lith_att",
+        "att_type"
       ]
-    },
-    "fields": [
-      "lith_att_id",
-      "lith_att",
-      "att_type"
-    ]
+    }
   },
   "/defs/columns": {
     "description": "Returns column definitions",
@@ -355,18 +356,18 @@
         "csv"
       ],
       "examples": [
-        "/api/v2/v2/defs/columns?all",
-        "/api/v2/v2/defs/columns?col_group_id=17",
-        "/api/v2/v2/defs/columns?col_name=Eastern%20Kentucky"
+        "api/v2/defs/columns?all",
+        "api/v2/defs/columns?col_group_id=17",
+        "api/v2/defs/columns?col_name=Eastern%20Kentucky"
+      ],
+      "fields": [
+        "col_id",
+        "col_group_id",
+        "col_name",
+        "ref_id",
+        "status"
       ]
-    },
-    "fields": [
-      "col_id",
-      "col_group_id",
-      "col_name",
-      "ref_id",
-      "status"
-    ]
+    }
   },
   "/defs/econs": {
     "description": "Returns econ definitions",
@@ -386,16 +387,16 @@
         "csv"
       ],
       "examples": [
-        "/api/v2/v2/defs/econs?all",
-        "/api/v2/v2/defs/econs?econ_type=hydrocarbon"
+        "api/v2/defs/econs?all",
+        "api/v2/defs/econs?econ_type=hydrocarbon"
+      ],
+      "fields": [
+        "econ_id",
+        "econ",
+        "econ_type",
+        "econ_class"
       ]
-    },
-    "fields": [
-      "econ_id",
-      "econ",
-      "econ_type",
-      "econ_class"
-    ]
+    }
   },
   "/defs/environments": {
     "description": "Returns environment definitions",
@@ -415,16 +416,16 @@
         "csv"
       ],
       "examples": [
-        "/api/v2/v2/defs/environments?all",
-        "/api/v2/v2/defs/environments?environ=sand%20shoal"
+        "api/v2/defs/environments?all",
+        "api/v2/defs/environments?environ=sand%20shoal"
+      ],
+      "fields": [
+        "environ_id",
+        "environ",
+        "environ_type",
+        "environ_class"
       ]
-    },
-    "fields": [
-      "environ_id",
-      "environ",
-      "environ_type",
-      "environ_class"
-    ]
+    }
   },
   "/defs/intervals": {
     "description": "Returns all time interval definitions",
@@ -438,8 +439,8 @@
         "b_age": "integer, an early age",
         "rule": "if 'loose' provided along with an early_age and late_age, changes the querying of intervals",
         "age": "integer, an age - will find all intervals that overlap with this age",
-        "timescale": "string, a valid timescale name as defined in /api/v2/v2/defs/timescales",
-        "timescale_id": "integer, a valid timescale_id as defined in /api/v2/v2/defs/timescales",
+        "timescale": "string, a valid timescale name as defined in /api/v2/defs/timescales",
+        "timescale_id": "integer, a valid timescale_id as defined in /api/v2/defs/timescales",
         "format": "Desired output format"
       },
       "output_formats": [
@@ -447,23 +448,23 @@
         "csv"
       ],
       "examples": [
-        "/api/v2/v2/defs/intervals?all",
-        "/api/v2/v2/defs/intervals?id=366",
-        "/api/v2/v2/defs/intervals?timescale=new%20zealand%20ages",
-        "/api/v2/v2/defs/intervals?late_age=0&early_age=130",
-        "/api/v2/v2/defs/intervals?timescale_id=1&age=100"
+        "api/v2/defs/intervals?all",
+        "api/v2/defs/intervals?id=366",
+        "api/v2/defs/intervals?timescale=new%20zealand%20ages",
+        "api/v2/defs/intervals?late_age=0&early_age=130",
+        "api/v2/defs/intervals?timescale_id=1&age=100"
+      ],
+      "fields": [
+        "int_id",
+        "name",
+        "abbrev",
+        "t_age",
+        "b_age",
+        "type",
+        "color",
+        "timescale_id"
       ]
-    },
-    "fields": [
-      "int_id",
-      "name",
-      "abbrev",
-      "t_age",
-      "b_age",
-      "type",
-      "color",
-      "timescale_id"
-    ]
+    }
   },
   "/defs/strat_names": {
     "description": "Returns strat names",
@@ -483,28 +484,28 @@
         "csv"
       ],
       "examples": [
-        "/api/v2/v2/defs/strat_names?all",
-        "/api/v2/v2/defs/strat_names?rank=Fm"
+        "api/v2/defs/strat_names?all",
+        "api/v2/defs/strat_names?rank=Fm"
+      ],
+      "fields": [
+        "strat_name",
+        "rank",
+        "strat_name_id",
+        "bed",
+        "bed_id",
+        "mbr",
+        "mbr_id",
+        "fm",
+        "fm_id",
+        "gp",
+        "gp_id",
+        "sgp",
+        "sgp_id",
+        "b_age",
+        "t_age",
+        "gsc_lexicon"
       ]
-    },
-    "fields": [
-      "strat_name",
-      "rank",
-      "strat_name_id",
-      "bed",
-      "bed_id",
-      "mbr",
-      "mbr_id",
-      "fm",
-      "fm_id",
-      "gp",
-      "gp_id",
-      "sgp",
-      "sgp_id",
-      "b_age",
-      "t_age",
-      "gsc_lexicon"
-    ]
+    }
   },
   "/defs/timescales": {
     "description": "Returns timescales used by Macrostrat",
@@ -520,14 +521,14 @@
         "csv"
       ],
       "examples": [
-        "/api/v2/v2/defs/timescales?all"
+        "api/v2/defs/timescales?all"
+      ],
+      "fields": [
+        "timescale_id",
+        "timescale",
+        "ref_id"
       ]
-    },
-    "fields": [
-      "timescale_id",
-      "timescale",
-      "ref_id"
-    ]
+    }
   },
   "/defs/projects": {
     "description": "Returns available Macrostrat projects",
@@ -543,14 +544,14 @@
         "csv"
       ],
       "examples": [
-        "/api/v2/v2/defs/timescales?all"
+        "api/v2/defs/timescales?all"
+      ],
+      "fields": [
+        "project_id",
+        "project",
+        "timescale_id"
       ]
-    },
-    "fields": [
-      "project_id",
-      "project",
-      "timescale_id"
-    ]
+    }
   },
   "/defs/measurements": {
     "description": "Returns all measurements definitions",
@@ -568,17 +569,17 @@
         "csv"
       ],
       "examples": [
-        "/api/v2/v2/defs/measurements?measure_id=3,4",
-        "/api/v2/v2/defs/measurements?all",
-        "/api/v2/v2/defs/measurements?measurement_class=geochemical"
+        "api/v2/defs/measurements?measure_id=3,4",
+        "api/v2/defs/measurements?all",
+        "api/v2/defs/measurements?measurement_class=geochemical"
+      ],
+      "fields": [
+        "measure_id",
+        "measurement_class",
+        "measurement_type",
+        "measurement"
       ]
-    },
-    "fields": [
-      "measure_id",
-      "measurement_class",
-      "measurement_type",
-      "measurement"
-    ]
+    }
   },
   "/defs/groups": {
     "description": "Returns all column groups",
@@ -593,13 +594,13 @@
         "csv"
       ],
       "examples": [
-        "/api/v2/v2/defs/groups?all"
+        "api/v2/defs/groups?all"
+      ],
+      "fields": [
+        "col_group_id",
+        "col_group"
       ]
-    },
-    "fields": [
-      "col_group_id",
-      "col_group"
-    ]
+    }
   },
   "/defs/refs": {
     "description": "Returns references",
@@ -615,17 +616,17 @@
         "csv"
       ],
       "examples": [
-        "/api/v2/v2/defs/groups?all"
+        "api/v2/defs/groups?all"
+      ],
+      "fields": [
+        "ref_id",
+        "pub_year",
+        "author",
+        "ref",
+        "doi",
+        "url"
       ]
-    },
-    "fields": [
-      "ref_id",
-      "pub_year",
-      "author",
-      "ref",
-      "doi",
-      "url"
-    ]
+    }
   },
   "/section_stats": {
     "description": "Return section stats for Macrostrat",
@@ -640,22 +641,22 @@
         "csv"
       ],
       "examples": [
-        "/api/v2/section_stats?all",
-        "/api/v2/section_stats?all&format=csv"
+        "api/section_stats?all",
+        "api/section_stats?all&format=csv"
+      ],
+      "fields": [
+        "project",
+        "col_id",
+        "section_id",
+        "units",
+        "max_thick",
+        "min_thick",
+        "FO_age",
+        "LO_age",
+        "b_age",
+        "t_age"
       ]
-    },
-    "fields": [
-      "project",
-      "col_id",
-      "section_id",
-      "units",
-      "max_thick",
-      "min_thick",
-      "FO_age",
-      "LO_age",
-      "b_age",
-      "t_age"
-    ]
+    }
   },
   "/paleogeography": {
     "description": "Returns paleogeography geometry from http://www.gplates.org, courtesy of Mark Turner and Mike Gurnis. Note that for complete and recent reconstructions, original GPlates data services should be used - http://gplates.gps.caltech.edu:8080. If you use this service and provide attribution, you should cite GPlates via this service.",
@@ -673,13 +674,13 @@
         "topojson_bare"
       ],
       "examples": [
-        "/api/v2/paleogeography?interval_name=Permian",
-        "/api/v2/paleogeography?age=271&format=topojson"
+        "api/paleogeography?interval_name=Permian",
+        "api/paleogeography?age=271&format=topojson"
+      ],
+      "fields": [
+        "plateid"
       ]
-    },
-    "fields": [
-      "plateid"
-    ]
+    }
   },
   "/geologic_units/gmna": {
     "description": "Geologic map units. Continental-scale North American map data (gmna) adapted from the 2005 Geologic Map of North America (http://ngmdb.usgs.gov/gmna/)",
@@ -704,26 +705,26 @@
         "topojson_bare"
       ],
       "examples": [
-        "/api/v2/v2/geologic_units/gmna?lat=43&lng=-89.3",
-        "/api/v2/v2/geologic_units/gmna?lat=43&lng=-89&format=geojson_bare",
-        "/api/v2/v2/geologic_units/gmna?interval_name=Permian",
-        "/api/v2/v2/geologic_units/gmna?shape=LINESTRING(-88 43,-90 43)&buffer=20"
+        "/api/v2/geologic_units/gmna?lat=43&lng=-89.3",
+        "/api/v2/geologic_units/gmna?lat=43&lng=-89&format=geojson_bare",
+        "/api/v2/geologic_units/gmna?interval_name=Permian",
+        "/api/v2/geologic_units/gmna?shape=LINESTRING(-88 43,-90 43)&buffer=20"
+      ],
+      "fields": [
+        "gid",
+        "unit_abbre",
+        "rocktype",
+        "lithology",
+        "lith_type",
+        "lith_class",
+        "t_interval",
+        "t_age",
+        "b_interval",
+        "b_age",
+        "containing_interval",
+        "color"
       ]
-    },
-    "fields": [
-      "gid",
-      "unit_abbre",
-      "rocktype",
-      "lithology",
-      "lith_type",
-      "lith_class",
-      "t_interval",
-      "t_age",
-      "b_interval",
-      "b_age",
-      "containing_interval",
-      "color"
-    ]
+    }
   },
   "/geologic_units/gmus": {
     "description": "Geologic map units. State-level (gmus) data adapated from http://mrdata.usgs.gov/geology/state/.",
@@ -752,32 +753,32 @@
         "topojson_bare"
       ],
       "examples": [
-        "/api/v2/v2/geologic_units/gmus?lat=43&lng=-89.3",
-        "/api/v2/v2/geologic_units/gmus?lat=43&lng=-89&format=geojson_bare",
-        "/api/v2/v2/geologic_units/gmus?interval_name=Permian",
-        "/api/v2/v2/geologic_units/gmus?shape=LINESTRING(-88 43,-90 43)&buffer=20"
+        "/api/v2/geologic_units/gmus?lat=43&lng=-89.3",
+        "/api/v2/geologic_units/gmus?lat=43&lng=-89&format=geojson_bare",
+        "/api/v2/geologic_units/gmus?interval_name=Permian",
+        "/api/v2/geologic_units/gmus?shape=LINESTRING(-88 43,-90 43)&buffer=20"
+      ],
+      "fields": [
+        "gid",
+        "area",
+        "unit_link",
+        "interval_color",
+        "lithology",
+        "rocktype",
+        "macro_units",
+        "strat_names",
+        "t_interval",
+        "t_age",
+        "b_interval",
+        "b_age",
+        "containing_interval",
+        "unit_com",
+        "unit_name",
+        "unitdesc",
+        "strat_unit",
+        "color"
       ]
-    },
-    "fields": [
-      "gid",
-      "area",
-      "unit_link",
-      "interval_color",
-      "lithology",
-      "rocktype",
-      "macro_units",
-      "strat_names",
-      "t_interval",
-      "t_age",
-      "b_interval",
-      "b_age",
-      "containing_interval",
-      "unit_com",
-      "unit_name",
-      "unitdesc",
-      "strat_unit",
-      "color"
-    ]
+    }
   },
   "/mobile": {
     "description": "Simplified data delivery, ideal for mobile applications",
@@ -797,8 +798,14 @@
         "json"
       ],
       "examples": [
-        "/api/v2/mobile/point?lat=43&lng=-89",
-        "/api/v2/mobile/point?lat=43&lng=-89&geo_format=wkt"
+        "api/mobile/point?lat=43&lng=-89",
+        "api/mobile/point?lat=43&lng=-89&geo_format=wkt"
+      ],
+      "fields": [
+        "gid",
+        "unit_name",
+        "col_id",
+        "col_poly"
       ]
     }
   },
@@ -818,8 +825,14 @@
         "json"
       ],
       "examples": [
-        "/api/v2/mobile/point_details?lat=43&lng=-89",
-        "/api/v2/mobile/point_details?col_id=187&unit_id=184506&geo_format=wkt"
+        "api/mobile/point_details?lat=43&lng=-89",
+        "api/mobile/point_details?col_id=187&unit_id=184506&geo_format=wkt"
+      ],
+      "fields": [
+        "gid",
+        "unit_name",
+        "col_id",
+        "col_poly"
       ]
     }
   },
@@ -836,6 +849,9 @@
       ],
       "examples": [
         "/mobile/fossil_collections?unit_id=6132"
+      ],
+      "fields": [
+        "pbdb_collections"
       ]
     }
   },

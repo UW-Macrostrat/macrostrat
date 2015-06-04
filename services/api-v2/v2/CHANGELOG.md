@@ -1,7 +1,7 @@
 # Macrostrat API v2 Changelog
 
 ## tl;dr
-+ Added ````?sample```` to every route (except ````/mobile````) which returns 5 records.
++ Added ````?sample```` to every route (except ````/mobile````), which returns 5 records.
 
 
 ## /column
@@ -57,6 +57,14 @@
 ## /fossils
 + Default output is now JSON instead of GeoJSON
 + Added CSV output
++ Changes to output field names:
+
+|    old     |    new     |
+|------------|------------|
+|   collection_no       | cltn_id    |
+|  occ       | pbdb_occs  |
+| *N/A*      | cltn_name  |
+
 
 
 ## /units

@@ -39,13 +39,13 @@ function getSample(routePath, callback) {
         var data = JSON.parse(body);
 
         if (data.success.data && data.success.data.features) {
-          defs[routePath].fields = Object.keys(data.success.data.features[0].properties);
+          defs[routePath].options.fields = Object.keys(data.success.data.features[0].properties);
         } else if (data.success.data) {
-          defs[routePath].fields = Object.keys(data.success.data[0]);
+          defs[routePath].options.fields = Object.keys(data.success.data[0]);
         }
 
-        if (defs[routePath].fields) {
-          defs[routePath].fields.forEach(function(d) {
+        if (defs[routePath].options && defs[routePath].options.fields) {
+          defs[routePath].options.fields.forEach(function(d) {
             if (!(d in defs.define)) {
               console.log(d, " missing from dictionary (" + routePath + ")");
             }
