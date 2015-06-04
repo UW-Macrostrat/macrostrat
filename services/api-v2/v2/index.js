@@ -1,11 +1,17 @@
 var api = require("./api"),
     larkin = require("./larkin");
 
+
 // Establish a connection to the database
 larkin.connectMySQL();
 
 api.route("/")
   .get(require("./root"));
+
+api.route("/changes")
+  .get(function(req, res, next) {
+    res.sendFile("/Users/john/code/macrostrat/api/v2/changes.html");
+  });
 
 api.route("/columns")
   .get(require("./columns"));

@@ -4,7 +4,7 @@
   "description": "v2",
   "scripts": {
     "test": "mocha",
-    "build": "node utilities/getOutputFields.js"
+    "build": "node utilities/getOutputFields.js && grip CHANGELOG.md --export changes.html"
   },
   "dependencies": {
     "async": "0.9.x",
@@ -12,7 +12,6 @@
     "express-csv": "git://github.com/jczaplew/express-csv.git",
     "geojson-precision": "^0.2.3",
     "mysql": "2.3.x",
-    "named-placeholders": "^0.1.3",
     "nearest-feature": "git://github.com/jczaplew/nearest-feature.git",
     "pg": "^3.4.0",
     "turf-area": "^1.1.1",

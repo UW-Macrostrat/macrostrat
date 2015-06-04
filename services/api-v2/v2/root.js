@@ -14,6 +14,7 @@ module.exports = function(req, res, next) {
     "success": {
       "v": api.version,
       "description": "This is the root of the Macrostrat API",
+      "changelog": "/changes",
       "routes": routes
     }
   });
