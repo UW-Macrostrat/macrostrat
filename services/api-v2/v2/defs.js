@@ -851,7 +851,8 @@
         "/mobile/fossil_collections?unit_id=6132"
       ],
       "fields": [
-        "pbdb_collections"
+        "cltn_id",
+        "cltn_name"
       ]
     }
   },
