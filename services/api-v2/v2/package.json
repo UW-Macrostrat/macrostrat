@@ -4,7 +4,8 @@
   "description": "v2",
   "scripts": {
     "test": "mocha",
-    "build": "node utilities/getOutputFields.js && grip CHANGELOG.md --export changes.html"
+    "build-defs": "node utilities/getOutputFields.js",
+    "build-changes": "grip CHANGELOG.md --export changes.html"
   },
   "dependencies": {
     "async": "0.9.x",

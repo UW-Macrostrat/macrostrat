@@ -6,7 +6,9 @@ Each route has it's own file. ````api.js```` creates the Express.js router, and 
 
 ## Common tasks
 Test - ````npm test````
-Build output fields and check for missing definitions - ````npm run-script build````
+Build output fields and check for missing definitions - ````npm run-script build-defs````
+Build ````changes.html````, the rendered version of ````CHANGELOG.md```` - ````npm run-script build-changes````
+
 
 
 ## larkin.js

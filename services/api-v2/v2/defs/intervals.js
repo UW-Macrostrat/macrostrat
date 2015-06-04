@@ -6,7 +6,7 @@ module.exports = function(req, res, next) {
     return larkin.info(req, res, next);
   }
 
-  var sql = "SELECT intervals.id AS int_id, interval_name AS name, interval_abbrev abbrev, age_top AS t_age, age_bottom AS b_age, interval_type AS type, interval_color AS color, GROUP_CONCAT(DISTINCT timescales.id SEPARATOR '|') AS timescale_id FROM intervals LEFT JOIN timescales_intervals ON interval_id=intervals.id LEFT JOIN timescales ON timescale_id=timescales.id ";
+  var sql = "SELECT intervals.id AS int_id, interval_name AS name, interval_abbrev abbrev, age_top AS t_age, age_bottom AS b_age, interval_type AS int_type, interval_color AS color, GROUP_CONCAT(DISTINCT timescales.id SEPARATOR '|') AS timescale_id FROM intervals LEFT JOIN timescales_intervals ON interval_id=intervals.id LEFT JOIN timescales ON timescale_id=timescales.id ";
   
   var params = {},
       where = [];

@@ -129,6 +129,7 @@
 |  id      | int_id  |
 | late_age | t_age   |
 | early_age| b_age   |
+| type     | int_type  |
 
 
 
