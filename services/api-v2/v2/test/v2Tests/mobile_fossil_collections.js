@@ -25,10 +25,10 @@ module.exports = function() {
         if (res.body.success.data.length < 2) {
           throw new Error("PBDB collections not returned");
         }
-        if (res.body.success.data[0].id !== 111035) {
+        if (res.body.success.data[0].cltn_id !== 111035) {
           throw new Error("Wrong collections returned on moble/fossil_collections")
         }
-        if (res.body.success.data[1].name !== "Lookout Mountain") {
+        if (res.body.success.data[1].cltn_name !== "Lookout Mountain") {
           throw new Error("Wrong collections returned on moble/fossil_collections")
         }
       })
