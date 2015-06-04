@@ -4,11 +4,12 @@ var api = require("../api"),
     gp = require("geojson-precision"),
     larkin = require("../larkin");
 
+
 module.exports = function(req, res, next) {
   if (req.query.lat && req.query.lng) {
     async.parallel({
       gmus: function(callback) {
-        larkin.queryPg("geomacro", "SELECT gid, (CASE WHEN (rocktype1 IS NULL) THEN '' ELSE rocktype1 END) AS rocktype1, (CASE WHEN (rocktype2 IS NULL) THEN '' ELSE rocktype2 END) AS rocktype2, (CASE WHEN (u_rocktype3 IS NULL) THEN '' ELSE u_rocktype3 END) AS rocktype3, unit_name, unit_age, unitdesc FROM gmus.lookup_units WHERE ST_Contains(geom, ST_GeomFromText($1, 4326))", ["POINT(" + req.query.lng + " " + req.query.lat + ")"], function(error, result) {
+        larkin.queryPg("geomacro", "SELECT gid, (SELECT array_agg(DISTINCT rocktypes) FROM unnest(array[rocktype1, rocktype2, u_rocktype1, u_rocktype2, u_rocktype3]) rocktypes WHERE rocktypes IS NOT null) AS rocktype, unit_name, unit_age, unitdesc FROM gmus.lookup_units WHERE ST_Contains(geom, ST_GeomFromText($1, 4326))", ["POINT(" + req.query.lng + " " + req.query.lat + ")"], function(error, result) {
           if (error) {
             callback(error);
           } else {
@@ -50,7 +51,7 @@ module.exports = function(req, res, next) {
 
           function(column, callbackB) {
                 
-            var sql = "SELECT units.id AS id, units.strat_name, period, max_thick, min_thick, colors.unit_class, count(distinct collection_no) pbdb, lith_short AS lith FROM units \
+            var sql = "SELECT units.id AS unit_id, units.strat_name, period, max_thick, min_thick, colors.unit_class, count(distinct collection_no) pbdb_cltns, lith_short AS lith FROM units \
                 JOIN colors ON colors.color = units.color \
                 JOIN units_sections ON units_sections.unit_id = units.id \
                 JOIN lookup_unit_liths ON lookup_unit_liths.unit_id=units.id \
@@ -65,6 +66,10 @@ module.exports = function(req, res, next) {
               if (error) {
                 callbackB(error);
               } else {
+                result.forEach(function(d) {
+                  d.lith = larkin.fixLiths(d.lith);
+                });
+
                 callbackB(null, column, result);
               }
             });
@@ -80,7 +85,7 @@ module.exports = function(req, res, next) {
             }
           } else {
             var col = [{
-              "id": column.col_id,
+              "col_id": column.col_id,
               "col_name": column.col_name,
               "col_poly": (req.query.geo_format === "wkt") ? wellknown.stringify(gp(JSON.parse(column.col_poly), 3)) : gp(JSON.parse(column.col_poly), 3),
               "units": units
@@ -100,7 +105,7 @@ module.exports = function(req, res, next) {
   } else if (req.query.col_id && req.query.unit_id) {
     async.parallel({
       gmus: function(callback) {
-        larkin.queryPg("geomacro", "SELECT gid, (CASE WHEN (rocktype1 IS NULL) THEN '' ELSE rocktype1 END) AS rocktype1, (CASE WHEN (rocktype2 IS NULL) THEN '' ELSE rocktype2 END) AS rocktype2, (CASE WHEN (u_rocktype3 IS NULL) THEN '' ELSE u_rocktype3 END) AS rocktype3, unit_name, unit_age, unitdesc FROM gmus.lookup_units WHERE gid = $1", [req.query.unit_id], function(error, result) {
+        larkin.queryPg("geomacro", "SELECT gid, (SELECT array_agg(DISTINCT rocktypes) FROM unnest(array[rocktype1, rocktype2, u_rocktype1, u_rocktype2, u_rocktype3]) rocktypes WHERE rocktypes IS NOT null) AS rocktype, unit_name, unit_age, unitdesc FROM gmus.lookup_units WHERE gid = $1", [req.query.unit_id], function(error, result) {
           if (error) {
             callback(error);
           } else {
@@ -126,10 +131,14 @@ module.exports = function(req, res, next) {
           },
 
           function(column, callbackB) {
-            larkin.query("SELECT units.id AS id, units.strat_name, period, max_thick, min_thick, color, count(distinct collection_no) AS pbdb, lith_short AS lith FROM units JOIN units_sections ON units_sections.unit_id = units.id JOIN lookup_unit_liths ON lookup_unit_liths.unit_id=units.id JOIN lookup_unit_intervals ON units.id=lookup_unit_intervals.unit_id LEFT JOIN pbdb_matches ON pbdb_matches.unit_id = units.id AND pbdb_matches.release_date < now() WHERE units_sections.col_id = ? GROUP BY units.id ORDER BY t_age ASC", [req.query.col_id], function(error, result) {
+            larkin.query("SELECT units.id AS unit_id, units.strat_name, period, max_thick, min_thick, color, count(distinct collection_no) AS pbdb_cltns, lith_short AS lith FROM units JOIN units_sections ON units_sections.unit_id = units.id JOIN lookup_unit_liths ON lookup_unit_liths.unit_id=units.id JOIN lookup_unit_intervals ON units.id=lookup_unit_intervals.unit_id LEFT JOIN pbdb_matches ON pbdb_matches.unit_id = units.id AND pbdb_matches.release_date < now() WHERE units_sections.col_id = ? GROUP BY units.id ORDER BY t_age ASC", [req.query.col_id], function(error, result) {
               if (error) {
                 callbackB(error);
               } else {
+                result.forEach(function(d) {
+                  d.lith = larkin.fixLiths(d.lith);
+                });
+
                 callbackB(null, column, result);
               }
             });
@@ -141,7 +150,7 @@ module.exports = function(req, res, next) {
             callback(err);
           } else {
             var col = [{
-              "id": column.col_id,
+              "col_id": column.col_id,
               "col_name": column.col_name,
               "col_poly": (req.query.geo_format === "wkt") ? wellknown.stringify(gp(JSON.parse(column.col_poly), 3)) : gp(JSON.parse(column.col_poly), 3),
               "units": units

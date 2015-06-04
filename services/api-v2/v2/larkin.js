@@ -263,6 +263,27 @@ var mysql = require("mysql"),
   };
 
 
+  larkin.findNumberInString = function(obj){
+    var matches = obj.replace(/,/g, '').match(/(\+|-)?((\d+(\.\d+)?)|(\.\d+))/);
+    return matches && matches[0] || null;
+  };
+
+  larkin.fixLiths = function(obj) {
+    return obj.split("|").map(function(d) {
+      var prop = parseFloat(this.findNumberInString(d)),
+          type = d.replace(prop, "").replace(/\.\d+/, '').trim();
+
+      return {"type": type, "prop": prop}
+    }.bind(this));
+  };
+
+  larkin.pipifyLiths = function(data) {
+    var piped = data.map(function(d) {
+      return d.type + " - " + d.prop;
+    }).join("|");
+    return piped;
+  };
+
   module.exports = larkin;
 
 }());

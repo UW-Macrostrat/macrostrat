@@ -4,26 +4,7 @@ var api = require("./api"),
     gp = require("geojson-precision"),
     larkin = require("./larkin");
 
-function findNumberInString(obj){
-  var matches = obj.replace(/,/g, '').match(/(\+|-)?((\d+(\.\d+)?)|(\.\d+))/);
-  return matches && matches[0] || null;
-}
 
-function fixLiths(obj) {
-  return obj.split("|").map(function(d) {
-    var prop = parseFloat(findNumberInString(d)),
-        type = d.replace(prop, "").replace(/\.\d+/, '').trim();
-
-    return {"type": type, "prop": prop}
-  });
-}
-
-function pipifyLiths(data) {
-  var piped = data.map(function(d) {
-    return d.type + " - " + d.prop;
-  }).join("|");
-  return piped;
-}
 
 module.exports = function(req, res, next, cb) {
   // If no parameters, send the route definition
@@ -221,13 +202,13 @@ module.exports = function(req, res, next, cb) {
               result.forEach(function(d) {
                 d.units_above = larkin.jsonifyPipes(d.units_above, "integers");
                 d.units_below = larkin.jsonifyPipes(d.units_below, "integers");
-                d.lith_class = fixLiths(d.lith_class);
-                d.lith_type = fixLiths(d.lith_type);
-                d.lith = fixLiths(d.lith);
+                d.lith_class = larkin.fixLiths(d.lith_class);
+                d.lith_type = larkin.fixLiths(d.lith_type);
+                d.lith = larkin.fixLiths(d.lith);
               });
             } else {
               result.forEach(function(d) {
-                d.lith_type = fixLiths(d.lith_type);
+                d.lith_type = larkin.fixLiths(d.lith_type);
               });
             }
 
@@ -235,9 +216,9 @@ module.exports = function(req, res, next, cb) {
               result.forEach(function(d) {
                 d.units_above = d.units_above.join(",");
                 d.units_below = d.units_below.join(",");
-                d.lith_class = pipifyLiths(d.lith_class);
-                d.lith_type = pipifyLiths(d.lith_type);
-                d.lith = pipifyLiths(d.lith);
+                d.lith_class = larkin.pipifyLiths(d.lith_class);
+                d.lith_type = larkin.pipifyLiths(d.lith_type);
+                d.lith = larkin.pipifyLiths(d.lith);
               });
             }
 

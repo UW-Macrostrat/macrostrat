@@ -211,3 +211,15 @@ The following output fields have been added:
 | unit_age |  containing_interval |
 | *N/A*    | color |
 
+
+## /mobile/fossils
++ Changed output ````id```` to ````cltn_id````
++ Changed output ````name```` to ````cltn_name````
+
+
+## /mobile/point_details
++ Under ````gmus````, ````rocktype1````, ````rocktype2````, and ````rocktype3```` have been collapsed into ````rocktype````, which is an array
++ Under ````column````, ````id```` has been renamed ````col_id````
++ Under ````units````, ````id```` has been renamed ````unit_id````, and ````pbdb```` has been renamed ````pbdb_cltns````, and ````lith```` is now an array of objects, with each object having a ````type```` and ````prop````, or proportion. 
+
+
