@@ -15,6 +15,18 @@ module.exports = function() {
       });
   });
 
+  it("should return a sample", function(done) {
+    request(settings.host)
+      .get("/api/v2/defs/intervals?sample")
+      .expect(validators.aSuccessfulRequest)
+      .expect(validators.json)
+      .expect(validators.aSample)
+      .end(function(error, res) {
+        if (error) return done(error);
+        done();
+      });
+  });
+
   it("should accept a timescale parameter", function(done) {
     request(settings.host)
       .get("/api/v2/defs/intervals?timescale=new%20zealand%20ages")

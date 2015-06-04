@@ -27,14 +27,14 @@ module.exports = function(req, res, next) {
           callback(null, {"interval_name": "Unknown", "age_bottom": req.query.age, "age_top": req.query.age});
         } else if (req.query.age_top && req.query.age_bottom) {
           callback(null, {"interval_name": "Unknown", "age_bottom": req.query.age_bottom, "age_top": req.query.age_top});
-        } else if (req.query.unit_id || req.query.col_id) {
+        } else if (req.query.unit_id || req.query.col_id || "sample" in req.query) {
           callback(null, {"interval_name": "Unknown", "age_bottom": null, "age_top": null});
         } else {
           larkin.error(req, res, next, "Invalid parameters");
         }
       },
       function(data, callback) {
-        var where,
+        var where = "",
             limit = ("sample" in req.query) ? " LIMIT 5" : "",
             params = [];
 
@@ -72,6 +72,7 @@ module.exports = function(req, res, next) {
       }
     ], function(error, data, results) {
       if (error) {
+        console.log(error);
         larkin.error(req, res, next, "Something went wrong");
       } else {
         if (geo) {

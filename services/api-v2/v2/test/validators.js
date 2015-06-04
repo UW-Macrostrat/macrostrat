@@ -2,6 +2,7 @@ module.exports = {
 
   aSuccessfulRequest: function(res) {
     if (res.statusCode !== 200) {
+      console.log(res.statusCode)
       throw new Error("Bad status code");
     }
     if (res.headers["access-control-allow-origin"] !== "*") {
@@ -56,6 +57,19 @@ module.exports = {
     }
     if (Object.keys(res.body.success.options.fields).length < 1) {
       throw new Error("Route is missing field definitions");
+    }
+  },
+
+  aSample: function(res) {
+    // Make sure 5 records were returned
+    if (res.body.success.data.type) {
+      if (res.body.success.data.features.length !== 5) {
+        throw new Error("Sample returned wrong number of records");
+      }
+    } else {
+      if (res.body.success.data.length !== 5) {
+        throw new Error("Sample returned wrong number of records");
+      }
     }
   },
 

@@ -15,6 +15,18 @@ module.exports = function() {
       });
   });
 
+  it("should return a sample", function(done) {
+    request(settings.host)
+      .get("/api/v2/defs/lithologies?sample")
+      .expect(validators.aSuccessfulRequest)
+      .expect(validators.json)
+      .expect(validators.aSample)
+      .end(function(error, res) {
+        if (error) return done(error);
+        done();
+      });
+  });
+
   it("should accept a lith_id", function(done) {
     request(settings.host)
       .get("/api/v2/defs/lithologies?lith_id=3")

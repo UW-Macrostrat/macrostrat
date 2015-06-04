@@ -15,6 +15,18 @@ module.exports = function() {
       });
   });
 
+  it("should return a sample", function(done) {
+    request(settings.host)
+      .get("/api/v2/sections?sample")
+      .expect(validators.aSuccessfulRequest)
+      .expect(validators.json)
+      .expect(validators.aSample)
+      .end(function(error, res) {
+        if (error) return done(error);
+        done();
+      });
+  });
+
   it("should return all sections", function(done) {
     this.timeout(6000);
 

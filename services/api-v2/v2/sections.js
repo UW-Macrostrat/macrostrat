@@ -9,7 +9,7 @@ module.exports = function(req, res, next) {
       limit = ("sample" in req.query) ? " LIMIT 5" : "",
       params = {};
 
-  if (req.query.hasOwnProperty("all")) {
+  if (req.query.hasOwnProperty("all") || "sample" in req.query) {
     // do nothing
   } else if (req.query.col_id) {
     where = "WHERE s.col_id IN (:col_id)";

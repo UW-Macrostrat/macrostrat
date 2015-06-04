@@ -1,5 +1,7 @@
 # Macrostrat API v2 Changelog
 
+## tl;dr
++ Added ````?sample```` to every route (except ````/mobile````) which returns 5 records.
 
 
 ## /column

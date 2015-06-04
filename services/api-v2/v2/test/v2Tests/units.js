@@ -15,6 +15,18 @@ module.exports = function() {
       });
   });
 
+  it("should return a sample", function(done) {
+    request(settings.host)
+      .get("/api/v2/units?sample")
+      .expect(validators.aSuccessfulRequest)
+      .expect(validators.json)
+      .expect(validators.aSample)
+      .end(function(error, res) {
+        if (error) return done(error);
+        done();
+      });
+  });
+
   it("should accept an interval_name", function(done) {
     request(settings.host)
       .get("/api/v2/units?interval_name=Permian")

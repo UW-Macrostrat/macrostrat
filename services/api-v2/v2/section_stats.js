@@ -6,8 +6,9 @@ module.exports = function(req, res, next) {
     return larkin.info(req, res, next);
   }
 
-  if ("all" in req.query) {
-    var limit = ("limit" in req.query) ? " LIMIT 5" : ""
+  if ("all" in req.query || "sample" in req.query) {
+    var limit = ("sample" in req.query) ? " LIMIT 5" : "";
+
     var sql = "\
     SELECT project, units_sections.col_id col_id, units_sections.section_id section_id, count(distinct units.id) units, sum(max_thick) max_thick, sum(min_thick) min_thick, max(FO_age) FO_age, min(LO_age) LO_age, max(ub2.t1_age) b_age, min(ub1.t1_age) t_age \
     FROM units \

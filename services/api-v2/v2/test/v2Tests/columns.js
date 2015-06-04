@@ -3,12 +3,25 @@ module.exports = function() {
       validators = require("../validators"),
       settings = require("../settings");
 
-  it('should return metadata', function(done) {
+  it("should return metadata", function(done) {
     request(settings.host)
       .get("/api/v2/columns")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.metadata)
+      .end(function(error, res) {
+        if (error) return done(error);
+        done();
+      });
+  });
+
+
+  it("should return a sample", function(done) {
+    request(settings.host)
+      .get("/api/v2/columns?sample")
+      .expect(validators.aSuccessfulRequest)
+      .expect(validators.json)
+      .expect(validators.aSample)
       .end(function(error, res) {
         if (error) return done(error);
         done();

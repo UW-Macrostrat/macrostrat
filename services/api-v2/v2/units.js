@@ -113,7 +113,7 @@ module.exports = function(req, res, next, cb) {
     function(data, callback) {
 
       var where = "",
-          limit = ("sample" in req.query) ? " LIMIT 5" : "",
+          limit = ("sample" in req.query) ? ((cb) ? " LIMIT 15 " : " LIMIT 5") : "",
           orderby = [],
           params = {};
 
@@ -185,6 +185,11 @@ module.exports = function(req, res, next, cb) {
       if ("environ" in params) {
         where += " AND ::environ_field LIKE :environ";
       } 
+
+      if ("sample" in req.query) {
+        // Speeds things up...
+        where += " AND units_sections.col_id IN (92, 488, 463, 289, 430, 481, 261, 534, 369, 798, 771, 1675) "
+      }
 
       var shortSQL = "units.id AS unit_id,units_sections.section_id as section_id, units_sections.col_id as col_id, col_area, units.strat_name, unit_strat_names.strat_name_id, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick, min_thick, lith_type, outcrop, count(distinct collection_no) pbdb_collections";
             
