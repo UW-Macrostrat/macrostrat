@@ -65,7 +65,7 @@ row = cursor.fetchall()
 row2 = {}
 
 ## validate results
-cursor.execute("SELECT count(*) N, (SELECT count(*) from lookup_usgs_strat_names_new) nn from usgs_strat_names")
+cursor.execute("SELECT count(*) N, (SELECT count(*) from lookup_usgs_strat_names_new) nn from usgs_strat_names where rank!=''")
 row = cursor.fetchone()
 if row['N'] != row['nn'] :
 	print "ERROR: inconsistent strat_name count in lookup table"
