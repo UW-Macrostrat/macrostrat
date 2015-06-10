@@ -7,25 +7,25 @@ module.exports = function(req, res, next) {
   }
   
   var sql = "SELECT id AS econ_id, econ, econ_type, econ_class FROM econs",
-      params = [];
+      params = {};
 
   if ("all" in req.query) {
     // do nothing
   } else if (req.query.econ_id) {
-    sql += " WHERE id = ?";
-    params.push(req.query.econ_id);
+    sql += " WHERE id IN (:econ_ids)";
+    params["econ_ids"] = larkin.parseMultipleIds(req.query.econ_id);
 
   } else if (req.query.econ){
-    sql += " WHERE econ = ?";
-    params.push(req.query.econ);
+    sql += " WHERE econ = :econ";
+    params["econ"] = req.query.econ;
 
   } else if (req.query.econ_type){
-    sql += " WHERE econ_type = ?";
-    params.push(req.query.econ_type);
+    sql += " WHERE econ_type = :econ_type";
+    params["econ_type"] = req.query.econ_type;
 
   } else if (req.query.econ_class){
-    sql += " WHERE econ_class = ?";
-    params.push(req.query.econ_class);
+    sql += " WHERE econ_class = :econ_class";
+    params["econ_class"] = req.query.econ_class;
   }
 
   if ("sample" in req.query) {
