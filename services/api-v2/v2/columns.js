@@ -7,21 +7,42 @@ var api = require("./api"),
 
 function summarizeLith(data, type, total_units) {
   var lithGroups = _.groupBy(_.flatten(data.map(function(d) { return d[type] })), function(d) {return d.type});
-  var liths = []
+  var liths = [];
 
   Object.keys(lithGroups).forEach(function(d) {
-    var props = lithGroups[d].map(function(d) { return d.prop })
-    var sum = parseFloat((_.reduce(props, function(a, b) { return a + b }, 0)/total_units).toFixed(4))
+    var props = lithGroups[d].map(function(d) { return d.prop });
+    var sum = parseFloat((_.reduce(props, function(a, b) { return a + b }, 0)/total_units).toFixed(4));
     liths.push({"type": d, "prop": sum});
   });
 
   return liths;
 }
 
-function pipifyLiths(data) {
-  return data.map(function(d) {
-    return d.type + " - " + d.prop;
-  }).join("|");
+function summarizeAttribute(data, type) {
+  var cats = _.countBy(_.flatten(data.map(function(d) { return d[type] }))),
+      total_cats = _.values(cats).reduce(function(a, b) { return a + b }, 0),
+      parsedCats = [];
+
+  Object.keys(cats).forEach(function(d) {
+    parsedCats.push({"type": d, "prop": parseFloat((cats[d]/total_cats).toFixed(4))})
+  });
+
+  return parsedCats;
+}
+
+
+function formatEnvirons(data, type) {
+  return _.uniq(
+          _.flatten(
+            data
+              .filter(function(d) { if (d[type].length > 0) return d; })
+              .map(function(d) { return d[type] })
+          )
+        ).filter(function(d) {
+          if (d.length > 1) {
+            return d;
+          }
+        });
 }
 
 
@@ -41,28 +62,33 @@ module.exports = function(req, res, next) {
 
         var new_cols = {}
         Object.keys(cols).forEach(function(col_id) {
-          
           new_cols[col_id] = {
             "max_thick": _.max(cols[col_id], function(d) { return d.max_thick; }).max_thick,
             "min_thick": _.min(cols[col_id], function(d) { return d.min_thick; }).min_thick,
             "b_age": _.max(cols[col_id], function(d) { return d.b_age; }).b_age,
             "t_age": _.min(cols[col_id], function(d) { return d.t_age; }).t_age,
             "pbdb_collections": _.reduce(cols[col_id].map(function(d) { return d.pbdb_collections }), function(a, b) { return a + b}, 0),
-            "environ_class": _.uniq(_.flatten(cols[col_id].filter(function(d) { if (d.environ_class.length > 0) return d; }).map(function(d) { return d.environ_class }))),
-            "environ_type": _.uniq(_.flatten(cols[col_id].filter(function(d) { if (d.environ_type.length > 0) return d; }).map(function(d) { return d.environ_type }))),
-            "environ": _.uniq(_.flatten(cols[col_id].filter(function(d) { if (d.environ.length > 0) return d; }).map(function(d) { return d.environ }))),
-            "lith": summarizeLith(cols[col_id], "lith", result.length),
-            "lith_type": summarizeLith(cols[col_id], "lith_type", result.length),
-            "lith_class": summarizeLith(cols[col_id], "lith_class", result.length)
+            
+            "environ_class": summarizeAttribute(cols[col_id], "environ_class"),
+            "environ_type": summarizeAttribute(cols[col_id], "environ_type"),
+            "environ": summarizeAttribute(cols[col_id], "environ"),
+
+            "econ_class": summarizeAttribute(cols[col_id], "econ_class"),
+            "econ_type": summarizeAttribute(cols[col_id], "econ_type"),
+            "econ": summarizeAttribute(cols[col_id], "econ"),
+
+            "lith": summarizeLith(cols[col_id], "lith", cols[col_id].length),
+            "lith_type": summarizeLith(cols[col_id], "lith_type", cols[col_id].length),
+            "lith_class": summarizeLith(cols[col_id], "lith_class", cols[col_id].length)
           }
         });
+
         callback(null, new_cols);
       });
     },
 
     // Using the unique column IDs returned from units, query columns
     function(new_cols, callback) {
-
       var geo = (req.query.format && api.acceptedFormats.geo[req.query.format]) ? ", AsWKT(col_areas.col_area) AS wkt" : "",
           params = {"col_ids": Object.keys(new_cols)},
           limit = ("sample" in req.query) ? " LIMIT 5" : "",
@@ -99,9 +125,9 @@ module.exports = function(req, res, next) {
           d.environ = d.environ.join("|");
           d.environ_type = d.environ_type.join("|");
           d.environ_class = d.environ_class.join("|");
-          d.lith = pipifyLiths(d.lith);
-          d.lith_type = pipifyLiths(d.lith_type);
-          d.lith_class = pipifyLiths(d.lith_class);
+          d.lith = larkin.pipifyLiths(d.lith);
+          d.lith_type = larkin.pipifyLiths(d.lith_type);
+          d.lith_class = larkin.pipifyLiths(d.lith_class);
         } 
       }  
     });

@@ -110,12 +110,12 @@ module.exports = function() {
 
   it("should accept a lith_type parameter", function(done) {
     request(settings.host)
-      .get("/api/v2/units?lith_type=carbonate")
+      .get("/api/v2/units?lith_type=organic")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
       .expect(function(res) {
-        if (res.body.success.data.length < 11000) {
+        if (res.body.success.data.length < 600) {
           throw new Error("Not enough results returned when using lith_type on units");
         }
       })
@@ -298,6 +298,84 @@ module.exports = function() {
       .get("/api/v2/units?section_id=107&format=csv")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.csv)
+      .end(function(error, res) {
+        if (error) return done(error);
+        done();
+      });
+  });
+
+
+  it("should accept an econ_id filter", function(done) {
+    request(settings.host)
+      .get("/api/v2/units?econ_id=4,5&response=long")
+      .expect(validators.aSuccessfulRequest)
+      .expect(validators.json)
+      .expect(validators.atLeastOneResult)
+      .expect(function(res) {
+        res.body.success.data.forEach(function(d) {
+          if (d.econ.indexOf("gas reservoir") < 0 && d.econ.indexOf("oil reservoir") < 0) {
+            console.log(d);
+            throw new Error("Wrong econs returned when filtering by econ_id");
+          }
+        })
+      })
+      .end(function(error, res) {
+        if (error) return done(error);
+        done();
+      });
+  });
+
+  it("should accept an econ filter", function(done) {
+    request(settings.host)
+      .get("/api/v2/units?econ=uranium%20ore&response=long")
+      .expect(validators.aSuccessfulRequest)
+      .expect(validators.json)
+      .expect(validators.atLeastOneResult)
+      .expect(function(res) {
+        res.body.success.data.forEach(function(d) {
+          if (d.econ.indexOf("uranium ore") < 0) {
+            throw new Error("Wrong econs returned when filtering by econ");
+          }
+        })
+      })
+      .end(function(error, res) {
+        if (error) return done(error);
+        done();
+      });
+  });
+
+  it("should accept an econ_type filter", function(done) {
+    request(settings.host)
+      .get("/api/v2/units?econ_type=nuclear&response=long")
+      .expect(validators.aSuccessfulRequest)
+      .expect(validators.json)
+      .expect(validators.atLeastOneResult)
+      .expect(function(res) {
+        res.body.success.data.forEach(function(d) {
+          if (d.econ_type.indexOf("nuclear") < 0) {
+            throw new Error("Wrong econs returned when filtering by econ_type");
+          }
+        })
+      })
+      .end(function(error, res) {
+        if (error) return done(error);
+        done();
+      });
+  });
+
+  it("should accept an econ_class filter", function(done) {
+    request(settings.host)
+      .get("/api/v2/units?econ_class=energy&response=long")
+      .expect(validators.aSuccessfulRequest)
+      .expect(validators.json)
+      .expect(validators.atLeastOneResult)
+      .expect(function(res) {
+        res.body.success.data.forEach(function(d) {
+          if (d.econ_class.indexOf("energy") < 0) {
+            throw new Error("Wrong econs returned when filtering by econ_class");
+          }
+        })
+      })
       .end(function(error, res) {
         if (error) return done(error);
         done();

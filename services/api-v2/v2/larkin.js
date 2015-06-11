@@ -222,16 +222,18 @@ var mysql = require("mysql"),
     if (data) {
       data = data.split("|");
       if (type === "integers") {
-        data = data.map(function(d) {
+        return data.map(function(d) {
           return parseInt(d);
         });
       } else if (type === "floats") {
-        data = data.map(function(d) {
+        return data.map(function(d) {
           return parseFloat(d);
         });
+      } else if (type === "strings") {
+        return data
+      } else {
+        return data;
       }
-
-      return data;
 
     } else {
       return [];
@@ -271,17 +273,17 @@ var mysql = require("mysql"),
   larkin.fixLiths = function(obj) {
     return obj.split("|").map(function(d) {
       var prop = parseFloat(this.findNumberInString(d)),
-          type = d.replace(prop, "").replace(/\.\d+/, '').trim();
+          type = d.replace(prop, "").replace(/\.\d+/, "").replace("0", "").replace("00", "").trim();
 
       return {"type": type, "prop": prop}
+      
     }.bind(this));
   };
 
   larkin.pipifyLiths = function(data) {
-    var piped = data.map(function(d) {
+    return data.map(function(d) {
       return d.type + " - " + d.prop;
     }).join("|");
-    return piped;
   };
 
   module.exports = larkin;
