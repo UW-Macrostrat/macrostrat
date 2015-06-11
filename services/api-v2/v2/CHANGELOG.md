@@ -2,6 +2,11 @@
 
 ## tl;dr
 + Added ````?sample```` to every route (except ````/mobile````), which returns 5 records.
++ The input and output parameter ````id```` no longer exists. All identifiers are now descriptive, for example ````unit_id````, ````col_id````, and ````econ_id````.
++ Numerous routes have been removed (````column````, ````unit_contacts````, ````pbdb_report````, ````geologic_units/map````, ````geologic_units/intersection```` and ````geologic_units````)
++ Every route outputs JSON by default
++ ````columns```` and ````sections```` are summaries of the data returned by ````units````
+
 
 
 ## /column
@@ -86,6 +91,10 @@
 |  FO_interval     | b_int_name |
 |  LO_age          | t_int_age |
 |  FO_age          | b_int_age |
+|  *N/A*     | econ_id    |
+|  *N/A*     | econ       |
+|  *N/A*     | econ_type  |
+|  *N/A*     | econ_class    |
 
 
 + Changes to the format of output fields:

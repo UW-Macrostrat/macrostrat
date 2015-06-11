@@ -51,6 +51,12 @@
 
 <ul>
 <li>Added <code>?sample</code> to every route (except <code>/mobile</code>), which returns 5 records.</li>
+<li>The input and output parameter <code>id</code> no longer exists. All identifiers are now descriptive, for example <code>unit_id</code>, <code>col_id</code>, and <code>econ_id</code>.</li>
+<li>Numerous routes have been removed (<code>column</code>, <code>unit_contacts</code>, <code>pbdb_report</code>, <code>geologic_units/map</code>, <code>geologic_units/intersection</code> and <code>geologic_units</code>)</li>
+<li>Every route outputs JSON by default</li>
+<li>
+<code>columns</code> and <code>sections</code> are summaries of the data returned by <code>units</code>
+</li>
 </ul>
 
 <h2>
@@ -321,6 +327,22 @@
 <tr>
 <td>FO_age</td>
 <td>b_int_age</td>
+</tr>
+<tr>
+<td><em>N/A</em></td>
+<td>econ_id</td>
+</tr>
+<tr>
+<td><em>N/A</em></td>
+<td>econ</td>
+</tr>
+<tr>
+<td><em>N/A</em></td>
+<td>econ_type</td>
+</tr>
+<tr>
+<td><em>N/A</em></td>
+<td>econ_class</td>
 </tr>
 </tbody>
 </table>
