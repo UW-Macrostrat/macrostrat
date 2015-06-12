@@ -285,10 +285,14 @@ module.exports = function(req, res, next, cb) {
   ], function(error, data, result) {
     if (error) {
       console.log(error);
-      return larkin.error(req, res, next, "Something went wrong");
+      if (cb) {
+        cb(error)
+      } else {
+        return larkin.error(req, res, next, "Something went wrong");
+      }
     } else {
       if (cb) {
-        cb(result);
+        cb(null, result);
       } else if (api.acceptedFormats.bare[req.query.format]) {
         return larkin.sendBare(result, res, next);
       } else {

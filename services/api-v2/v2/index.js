@@ -61,7 +61,9 @@ api.route("/defs/projects")
   .get(require("./defs/projects"));
 
 api.route("/defs/strat_names")
-  .get(require("./defs/strat_names"));
+  .get(function(req, res, next) {
+    require("./defs/strat_names")(req, res, next);
+  });
 
 api.route("/defs/timescales")
   .get(require("./defs/timescales"));
