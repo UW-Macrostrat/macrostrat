@@ -456,6 +456,7 @@
         "strat_name": "lithostratigraphic name, exact match",
         "strat_name_like": "lithostratigraphic name, with open-ended string matching",
         "rank": "lithostratigraphic rank",
+        "rule": "Can be 'all' or 'down'. Down will return any children of the requested stratigraphic name, and all will return the entire stratigraphic name hierarchy that the request name belongs to",
         "all": "return all lithostratigraphic names",
         "format": "Desired output format"
       },

@@ -152,6 +152,8 @@
 + parameter ````early_age```` is now ````b_age````
 + parameter ````late_age```` is now ````t_age````
 + The ````rank```` parameter can be used with ````strat_name````, ````strat_name_like````, ````strat_name_id````, and ````all````
++ By default, requesting a ````strat_name```` or ````strat_name_id```` will only return the matching name. Previously this would also return all associated children
++ A parameter ````rule```` was added. To return a strat name and all associated children, use ````rule=down````, and to return the entire hierarchy of a given strat name use ````rule=all````.
 
 
 ## /defs/measurements
