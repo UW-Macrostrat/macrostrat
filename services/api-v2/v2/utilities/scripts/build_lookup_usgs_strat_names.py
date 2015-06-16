@@ -34,7 +34,7 @@ for x in xrange(0,numrows):
 	nid = row[x]['rank'] + "_id"
 	n = row[x]['rank'] + "_name"
 	
-	cursor.execute("INSERT INTO lookup_usgs_strat_names_new (strat_name_id,strat_name,rank, " + nid + ", " + n +") VALUES (%s, %s, %s, %s, %s)", (row[x]['id'], row[x]['strat_name'], row[x]['rank'], row[x]['id'], row[x]['strat_name']))
+	cursor.execute("INSERT INTO lookup_usgs_strat_names_new (gsc_lexicon,usgs_strat_name_id,strat_name,rank, " + nid + ", " + n +") VALUES (%s, %s, %s, %s, %s, %s)", (row[x]['usgs_id'], row[x]['id'], row[x]['strat_name'], row[x]['rank'], row[x]['id'], row[x]['strat_name']))
 
 	parent = 1
 	old_one = row[x]['id']
@@ -51,7 +51,7 @@ for x in xrange(0,numrows):
 			n = row2['rank'] + "_name"
 
 		if old_one > 0 and parent <= 1 and nid != "_id":
-			cursor.execute("UPDATE lookup_usgs_strat_names_new SET " + nid + " = %s, "+ n +" = %s WHERE strat_name_id = %s" , (row2['id'], row2['strat_name'], row[x]['id']))
+			cursor.execute("UPDATE lookup_usgs_strat_names_new SET " + nid + " = %s, "+ n +" = %s WHERE usgs_strat_name_id = %s" , (row2['id'], row2['strat_name'], row[x]['id']))
 		else :
 			parent = 0
 		if parent > 1:
