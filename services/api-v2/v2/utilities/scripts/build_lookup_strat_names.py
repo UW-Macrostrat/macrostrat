@@ -15,139 +15,120 @@ except:
 cursor = connection.cursor()
 
 # Ignore warnings
-filterwarnings('ignore', category = MySQLdb.Warning)
+filterwarnings("ignore", category = MySQLdb.Warning)
 
 
-# For use later - get the top of a strat_name hierarchy
-def getTopOfTree(name) :
-  if name["sgp_id"] > 0 :
-    return name["sgp_id"]
-  elif name["gp_id"] > 0 :
-    return name["gp_id"]
-  elif name["fm_id"] > 0 :
-    return name["fm_id"]
-  elif name["mbr_id"] > 0 :
-    return name["mbr_id"]
-  elif name["bed_id"] > 0 :
-    return name["bed_id"]
-  else : 
-  	return 0
-
-# Get immediate parent
-def getParent(name) :
-	new_name = name.copy()
-	new_name.pop(new_name['rank'].lower() + "_id", None)
-
-	if "bed_id" in new_name and new_name["bed_id"] > 0:
-		return new_name["bed_id"]
-	elif "mbr_id" in new_name and new_name["mbr_id"] > 0:
-		return new_name["mbr_id"]
-	elif "fm_id" in new_name and new_name["fm_id"] > 0:
-		return new_name["fm_id"]
-	elif "gp_id" in new_name and new_name["gp_id"] > 0:
-		return new_name["gp_id"]
-	elif "sgp_id" in new_name and new_name["sgp_id"] > 0:
-		return new_name["sgp_id"]
-	else:
-		return new_name["strat_name_id"]
-
-
-
-# Create a new table
-cursor.execute(""" 
-	DROP TABLE IF EXISTS lookup_strat_names_new;
-
-	CREATE TABLE lookup_strat_names_new (
-		strat_name_id mediumint(8),
-		strat_name varchar(100),
-		rank enum('', 'SGp', 'Gp', 'Fm', 'Mbr', 'Bed'),
-		rank_name varchar(20),
-		bed_id mediumint(8),
-		bed_name varchar(100),
-		mbr_id mediumint(8),
-		mbr_name varchar(100),
-		fm_id mediumint(8),
-		fm_name varchar(100),
-		gp_id mediumint(8),
-		gp_name varchar(100),
-		sgp_id mediumint(8),
-		sgp_name varchar(100),
-		early_age decimal(8,4),
-		late_age decimal(8,4),
-		gsc_lexicon varchar(15),
-		parent mediumint(8),
-		tree mediumint(8)
-	);
-""")
+# Copy structure to new table
+cursor.execute("TRUNCATE lookup_strat_names_new")
 cursor.close()
 cursor = connection.cursor()
 
+
 # Get all the strat names
-cursor.execute("SELECT * FROM strat_names;")
+cursor.execute("SELECT * FROM strat_names order by strat_name asc;")
 strat_names = cursor.fetchall()
 
-# Handle each name
+
+# Build hierarchy for each name
 for name in strat_names:
-	nid = name['rank'] + "_id"
-	n = name['rank'] + "_name"
-	
-	cursor.execute("INSERT INTO lookup_strat_names_new (strat_name_id, strat_name, rank, " + nid + ", " + n +") VALUES (%s, %s, %s, %s, %s)", (name['id'], name['strat_name'], name['rank'], name['id'], name['strat_name']))
+	rank_id = name["rank"] + "_id"
+	rank_name = name["rank"] + "_name"
 
-	parent = 1
-	old_one = name['id']
+	cursor.execute("""
+		INSERT INTO lookup_strat_names_new (strat_name_id, strat_name, rank, """ + rank_id + """, """ + rank_name + """) 
+		VALUES (%s, %s, %s, %s, %s)
+	""", [name['id'], name['strat_name'], name['rank'], name['id'], name['strat_name']])
+	connection.commit()
 
-	while (parent > 0):
+	has_parent = True
+	name_id = name['id']
+
+	while has_parent:
 		# Get the parent of this unit
-		cursor.execute("SELECT this_name, strat_name, strat_names.id id, rank FROM strat_tree JOIN strat_names ON this_name = strat_names.id WHERE that_name = %s and rel = 'parent'", [old_one])
-		row2 = cursor.fetchone()
+		cursor.execute("""
+			SELECT this_name, strat_name, strat_names.id id, rank 
+			FROM strat_tree 
+			JOIN strat_names ON this_name = strat_names.id 
+			WHERE that_name = %s and rel = 'parent'
+		""", [name_id])
+		parent = cursor.fetchone()
 		
-		if row2 is None:
-			old_one = 0
+		if parent is None:
+			name_id = 0
 		else:
-			old_one = row2['id']
-			nid = row2['rank'] + "_id"
-			n = row2['rank'] + "_name"
+			name_id = parent['id']
+			parent_rank_id = parent['rank'] + "_id"
+			parent_rank_name = parent['rank'] + "_name"
 
-		if old_one > 0 and parent <= 1 :
-			cursor.execute("UPDATE lookup_strat_names_new SET " + nid + " = %s, "+ n +" = %s WHERE strat_name_id = %s" , [row2['id'], row2['strat_name'], name['id']])
+		if name_id > 0:
+			cursor.execute("""
+				UPDATE lookup_strat_names_new 
+				SET """ + parent_rank_id + """ = %s, """ + parent_rank_name + """ = %s 
+				WHERE strat_name_id = %s
+			""" , [parent['id'], parent['strat_name'], name['id']])
+			connection.commit()
 		else :
-			parent = 0
-		if parent > 1:
-			print "inconsistency in unit " + old_one
+			has_parent = False
 
-# build age ranges for strat_names, uses lookup table populated above for hierarchy; ages are for parent and all children unit ranges
-for name in strat_names:
-	nid = name['rank'] + "_id"
-	cursor.execute("SELECT max(b_age) f, min(t_age) l FROM lookup_unit_intervals WHERE unit_id in (SELECT unit_id from unit_strat_names JOIN lookup_strat_names_new USING (strat_name_id) WHERE %s = %s)", [nid, name['id']])
-	row2 = cursor.fetchone()
 
-	if row2 is not None and row2['f'] is not None and row2['l'] is not None:
-		cursor.execute("UPDATE lookup_strat_names_new SET early_age = %s, late_age = %s WHERE strat_name_id = %s", [row2["f"], row2["l"], row2["id"]])
+# Populate `early_age` and `late_age`
+cursor.execute(""" 
+	UPDATE lookup_strat_names_new lsn
+	LEFT JOIN (
+	  SELECT strat_name_id, max(b_age) AS early_age, min(t_age) AS late_age
+	  FROM lookup_strat_names_new
+	  LEFT JOIN unit_strat_names USING (strat_name_id)
+	  LEFT JOIN lookup_unit_intervals USING (unit_id) 
+	  GROUP BY strat_name_id
+	) AS sub USING (strat_name_id)
+	SET lsn.early_age = sub.early_age, lsn.late_age = sub.late_age
+""")
+connection.commit()
 
-# populate canada_lexicon webkey from canada_lexicon
+
+# Populate canada_lexicon webkey from canada_lexicon
 cursor.execute("UPDATE lookup_strat_names_new, canada_lexicon SET lookup_strat_names_new.gsc_lexicon = canada_lexicon.web_id WHERE lookup_strat_names_new.strat_name_id=canada_lexicon.strat_name_id")
+connection.commit()
 
-## validate results
+
+# Validate results
 cursor.execute("SELECT count(*) N, (SELECT count(*) from lookup_strat_names_new) nn from strat_names")
 row = cursor.fetchone()
 if row['N'] != row['nn'] :
 	print "ERROR: inconsistent strat_name count in lookup table"
 
-cursor.execute("SELECT * FROM lookup_strat_names_new")
-strat_names = cursor.fetchall()
 
-for name in strat_names:
-	parent = getParent(name)
-	top = getTopOfTree(name)
-	cursor.execute(""" 
-		UPDATE lookup_strat_names_new SET parent = %s, tree = %s WHERE strat_name_id = %s
-	""", [parent, top, name["strat_name_id"]])
-	connection.commit()
+# Populate the fields `parent` and `tree`
+cursor.execute(""" 
+	UPDATE lookup_strat_names_new
+	SET parent = CASE
+	  WHEN bed_id IS NOT NULL AND strat_name_id != bed_id THEN bed_id
+	  WHEN mbr_id IS NOT NULL AND strat_name_id != mbr_id THEN mbr_id
+	  WHEN fm_id IS NOT NULL AND strat_name_id != fm_id THEN fm_id
+	  WHEN gp_id IS NOT NULL AND strat_name_id != gp_id THEN gp_id
+	  WHEN sgp_id IS NOT NULL AND strat_name_id != sgp_id THEN sgp_id
+	  ELSE strat_name_id
+	END,
+	  tree = CASE
+	  WHEN sgp_id IS NOT NULL THEN sgp_id
+	  WHEN gp_id IS NOT NULL THEN gp_id
+	  WHEN fm_id IS NOT NULL THEN fm_id
+	  WHEN mbr_id IS NOT NULL THEN mbr_id
+	  WHEN bed_id IS NOT NULL THEN bed_id
+	  ELSE tree = 0
+	END
+""")
+connection.commit()
 
 
 # Out with the old, in with the new
-cursor.execute("DROP TABLE lookup_strat_names")
-cursor.execute("RENAME TABLE lookup_strat_names_new TO lookup_strat_names")
+cursor.execute("TRUNCATE lookup_strat_names")
+cursor.execute("INSERT INTO lookup_strat_names SELECT * FROM lookup_strat_names_new")
 cursor.close()
+
+
 print "Done with lookup_strat_names table"
+
+
+
 
