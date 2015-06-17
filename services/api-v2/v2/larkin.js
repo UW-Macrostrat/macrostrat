@@ -64,6 +64,7 @@ var mysql = require("mysql"),
   };
 
   larkin.query = function(sql, params, callback, send, res, format, next) {
+    // See if the query is using :named_parameters or positional ?
     if (sql.indexOf(':') > -1) {
       var newQuery = larkin.toUnnamed(sql, params);
       sql = newQuery[0];
@@ -274,6 +275,10 @@ var mysql = require("mysql"),
     return obj.split("|").map(function(d) {
       var prop = parseFloat(this.findNumberInString(d)),
           type = d.replace(prop, "").replace(/\.\d+/, "").replace("0", "").replace("00", "").trim();
+
+      // WTF? No idea why this is necessary...
+      type = type.replace("0", "");
+      type = type.trim()
 
       return {"type": type, "prop": prop}
       

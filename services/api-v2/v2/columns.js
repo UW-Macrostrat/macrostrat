@@ -55,7 +55,11 @@ module.exports = function(req, res, next) {
     // First pass the request to the /units route and get the long response
     function(callback) {
 
-      require("./units")(req, null, null, function(result) {
+      require("./units")(req, null, null, function(error, result) {
+        if (error) {
+          callback(error);
+        }
+
         var cols = _.groupBy(result, function(d) {
           return d.col_id;
         });
@@ -79,7 +83,10 @@ module.exports = function(req, res, next) {
 
             "lith": summarizeLith(cols[col_id], "lith", cols[col_id].length),
             "lith_type": summarizeLith(cols[col_id], "lith_type", cols[col_id].length),
-            "lith_class": summarizeLith(cols[col_id], "lith_class", cols[col_id].length)
+            "lith_class": summarizeLith(cols[col_id], "lith_class", cols[col_id].length),
+
+            "t_units": cols[col_id].length,
+            "t_sections": _.uniq(cols[col_id].map(function(d) { return d.section_id })).length
           }
         });
 

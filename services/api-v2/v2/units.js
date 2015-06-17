@@ -65,6 +65,12 @@ module.exports = function(req, res, next, cb) {
         });
 
 
+      } else if (req.query.col_group_id) {
+        larkin.query("SELECT id FROM cols WHERE col_group_id IN (:col_group_ids)", {"col_group_ids": larkin.parseMultipleIds(req.query.col_group_id)}, function(error, data) {
+          console.log(data.map(function(d) { return d.id }));
+          callback(null, {"interval_name": "none", "age_bottom": 99999, "age_top": 0, "col_ids": data.map(function(d) { return d.id })});
+        });
+
       } else if (req.query.strat_name) {
         larkin.query("SELECT strat_name_id FROM lookup_strat_names WHERE strat_name LIKE ? ", ["%" + req.query.strat_name + "%"], function(error, result) {
           if (error) {
@@ -141,6 +147,7 @@ module.exports = function(req, res, next, cb) {
       } 
 
       if (data.strat_ids) {
+        console.log(data.strat_ids);
         where += " AND (lookup_strat_names.bed_id IN (:strat_ids) OR lookup_strat_names.mbr_id IN (:strat_ids) OR lookup_strat_names.fm_id IN (:strat_ids) OR lookup_strat_names.gp_id IN (:strat_ids) OR lookup_strat_names.sgp_id IN (:strat_ids)) ";
         params["strat_ids"] = data.strat_ids;
       }
@@ -214,7 +221,7 @@ module.exports = function(req, res, next, cb) {
             LEFT JOIN pbdb_matches ON pbdb_matches.unit_id=units.id \
             " + (("environ" in params) ? "LEFT JOIN unit_environs ON units.id=unit_environs.unit_id LEFT JOIN environs ON unit_environs.environ_id=environs.id" : "") + " \
             WHERE status_code='active' " + where + " GROUP BY units.id ORDER BY " + ((orderby.length > 0) ? (orderby.join(", ") + ", t_age ASC") : "t_age ASC") + limit;
-     
+
       larkin.query(sql, params, function(error, result) {
           if (error) {
             console.log(error);
