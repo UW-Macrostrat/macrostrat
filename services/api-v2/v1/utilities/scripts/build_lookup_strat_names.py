@@ -102,19 +102,19 @@ if row['N'] != row['nn'] :
 cursor.execute(""" 
 	UPDATE lookup_strat_names_new
 	SET parent = CASE
-	  WHEN bed_id IS NOT NULL AND strat_name_id != bed_id THEN bed_id
-	  WHEN mbr_id IS NOT NULL AND strat_name_id != mbr_id THEN mbr_id
-	  WHEN fm_id IS NOT NULL AND strat_name_id != fm_id THEN fm_id
-	  WHEN gp_id IS NOT NULL AND strat_name_id != gp_id THEN gp_id
-	  WHEN sgp_id IS NOT NULL AND strat_name_id != sgp_id THEN sgp_id
+	  WHEN bed_id > 0 AND strat_name_id != bed_id THEN bed_id
+	  WHEN mbr_id > 0 AND strat_name_id != mbr_id THEN mbr_id
+	  WHEN fm_id > 0 AND strat_name_id != fm_id THEN fm_id
+	  WHEN gp_id > 0 AND strat_name_id != gp_id THEN gp_id
+	  WHEN sgp_id > 0 AND strat_name_id != sgp_id THEN sgp_id
 	  ELSE strat_name_id
 	END,
 	  tree = CASE
-	  WHEN sgp_id IS NOT NULL THEN sgp_id
-	  WHEN gp_id IS NOT NULL THEN gp_id
-	  WHEN fm_id IS NOT NULL THEN fm_id
-	  WHEN mbr_id IS NOT NULL THEN mbr_id
-	  WHEN bed_id IS NOT NULL THEN bed_id
+	  WHEN sgp_id > 0 THEN sgp_id
+	  WHEN gp_id > 0 THEN gp_id
+	  WHEN fm_id > 0 THEN fm_id
+	  WHEN mbr_id > 0 THEN mbr_id
+	  WHEN bed_id > 0 THEN bed_id
 	  ELSE tree = 0
 	END
 """)
