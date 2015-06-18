@@ -6,6 +6,7 @@
 + Numerous routes have been removed (````column````, ````unit_contacts````, ````pbdb_report````, ````geologic_units/map````, ````geologic_units/intersection```` and ````geologic_units````)
 + Every route outputs JSON by default
 + ````columns```` and ````sections```` are summaries of the data returned by ````units````
++ ````lith````, ````environ```` and ````econ```` have been refactored to return valid JSON instead of pipe-delimited strings
 
 
 
@@ -16,6 +17,7 @@
 ## /columns
 + This route has been reworked so that it is almost identical to units, but groups by and summarizes columns
 + Format of lithology fields in CSV output has changed. Instead of "name proportion|name proportion" it is now "name - proportion|name - proportion"
++ Added ability to query to ````environ_id````, ````econ_id````, ````econ````, ````econ_type````, and ````econ_class````
 + Changes to output fields
 
 |        old       | old example  |      new      |     new example     |
@@ -28,11 +30,10 @@
 | sections         | [2,3,4]      | *Removed*     |  *Removed*          |
 | area             | 43242.2      | col_area      |    43242.2          |
 | *N/A*            | *N/A*        | group_col_id  |    2.1              |
-| *N/A*            | *N/A*        | environ_class | ["marine"]          |
-| *N/A*            | *N/A*        | environ_type  | ["glacial", "fluvial"] |
-| *N/A*            | *N/A*        | environ       | ["loess", "glacial indet."]|
-| *N/A*            | *N/A*        | lith_class    | [{"type": "sedimentary", "prop": 0.5}, {"type": "metamorphic", "prop": 0.5}] |
-| *N/A*            | *N/A*        | lith          | [{"type": "organic", "prop": 0.75}, {"type": "siliciclastic", "prop": 0.25}] |
+| *N/A*            | *N/A*        | environ       | [{class: "marine", type: "siliciclastic", name: "submarine fan", environ_id: 37}] |
+| lith             | "shale 0.1250| siltstone 0.1250|"  | lith  | [{atts: [ ], name: "sandstone", prop: 0.1667, lith_id: 10, type: "siliciclastic", class: "sedimentary" }] |
+| *N/A*            | *N/A*        | econ       | [{type: "hydrocarbon", name: "oil reservoir", econ_id: 4, class: "energy"}]|
+
 
 
 + Default short and long response fields changed:
@@ -42,7 +43,7 @@
 
 | old long (in addition to short) |  new long (in addition to short)  |
 |---------------------------------|-----------------------------------|
-| col_name, col_group, col_group_id, b_age, t_age, sections, pbdb_collections, pbdb_occs |  max_thick, min_thick, b_age, t_age, pbdb_collections, environ_class, environ_type,  environ, lith, lith_class, lith_type |
+| col_name, col_group, col_group_id, b_age, t_age, sections, pbdb_collections, pbdb_occs |  max_thick, min_thick, b_age, t_age, pbdb_collections, lith, environ, econ |
 
 
 ## /sections
@@ -74,6 +75,8 @@
 
 ## /units
 + Format of lithology fields in CSV output has changed. Instead of "name proportion|name proportion" it is now "name - proportion|name - proportion"
++ Empty output fields now return empty strings or arrays instead of NULLs
++ Added ability to query to ````environ_id````, ````econ_id````, ````econ````, ````econ_type````, and ````econ_class````
 + Changes to input parameter names output fields:
 
 |    old     |    new     |
@@ -91,19 +94,16 @@
 |  FO_interval     | b_int_name |
 |  LO_age          | t_int_age |
 |  FO_age          | b_int_age |
-|  *N/A*     | econ_id    |
-|  *N/A*     | econ       |
-|  *N/A*     | econ_type  |
-|  *N/A*     | econ_class    |
+|  *N/A*     | econ[]    |
+
 
 
 + Changes to the format of output fields:
 
 |    old     |    new     |
 |------------|------------|
-|  lith (string)  | lith (array of objects) |
-|  lith_class (string)  | lith_class (array of objects) |
-|  lith_type (string)  | lith_type (array of objects) |
+|  lith (string), lith_class (string), lith_type (string)  | lith (array of objects) |
+|  environ (string), environ_class (string), environ_type (string)  | environ (array of objects) |
 
 
 

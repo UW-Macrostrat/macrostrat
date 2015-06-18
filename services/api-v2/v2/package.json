@@ -12,6 +12,7 @@
     "dbgeo": "0.0.x",
     "express-csv": "git://github.com/jczaplew/express-csv.git",
     "geojson-precision": "^0.2.3",
+    "multiline": "^1.0.2",
     "mysql": "2.3.x",
     "nearest-feature": "git://github.com/jczaplew/nearest-feature.git",
     "pg": "^3.4.0",

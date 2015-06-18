@@ -1,5 +1,6 @@
 var api = require("./api"),
     async = require("async"),
+    multiline = require("multiline"),
     dbgeo = require("dbgeo"),
     gp = require("geojson-precision"),
     larkin = require("./larkin");
@@ -157,51 +158,103 @@ module.exports = function(req, res, next, cb) {
         params["project_id"] = larkin.parseMultipleIds(req.query.project_id);
       }
 
-      if (req.query.environ) {
-        params["environ"] = req.query.environ;
-        params["environ_field"] = "environs.environ";
- 
-      } else if (req.query.environ_class) {
-        params["environ"] = req.query.environ_class;
-        params["environ_field"] = "environs.environ_class";
+      if (req.query.environ_id || req.query.environ || req.query.environ_class || req.query.environ_type) {
+        where += " AND units.id IN (SELECT unit_environs.unit_id FROM unit_environs JOIN environs on environ_id=environs.id WHERE ::environ_field";
 
-      } else if (req.query.environ_type) {
-        params["environ"] = req.query.environ_type;
-        params["environ_field"] = "environs.environ_type";
+        if (req.query.environ_id) {
+          where += " IN (:environ))";
+          params["environ"] = larkin.parseMultipleIds(req.query.environ_id);
+          params["environ_field"] = "environs.id";
+        }
+        if (req.query.environ) {
+          where += " LIKE :environ)";
+          params["environ"] = req.query.environ;
+          params["environ_field"] = "environs.environ";
+   
+        } else if (req.query.environ_class) {
+          where += " LIKE :environ)";
+          params["environ"] = req.query.environ_class;
+          params["environ_field"] = "environs.environ_class";
 
-      }
-      if ("environ" in params) {
-        where += " AND ::environ_field LIKE :environ";
-      } 
-
-      if (req.query.econ_id) {
-        where += " AND e.id IN (:econ_ids)"
-        params["econ_ids"] = larkin.parseMultipleIds(req.query.econ_id);
-      }
-
-      if (req.query.econ) {
-        where += " AND e.econ = :econ"
-        params["econ"] = req.query.econ;
+        } else if (req.query.environ_type) {
+          where += " LIKE :environ)";
+          params["environ"] = req.query.environ_type;
+          params["environ_field"] = "environs.environ_type";
+        }
       }
 
-      if (req.query.econ_type) {
-        where += " AND e.econ_type = :econ_type";
-        params["econ_type"] = req.query.econ_type;
-      }
 
-      if (req.query.econ_class) {
-        where += " AND e.econ_class = :econ_class";
-        params["econ_class"] = req.query.econ_class;
-      }
+      if (req.query.econ_id || req.query.econ || req.query.econ_type || req.query.econ_class) {
+        where += " AND units.id IN (SELECT unit_econs.unit_id FROM unit_econs JOIN econs on econ_id=econs.id WHERE ::econ_field";
+
+        if (req.query.econ_id) {
+          where += " IN (:econ))";
+          params["econ"] = larkin.parseMultipleIds(req.query.econ_id);
+          params["econ_field"] = "econs.id";
+        } else if (req.query.econ) {
+          where += " LIKE :econ)";
+          params["econ"] = req.query.econ;
+          params["econ_field"] = "econs.econ";
+        }
+        if (req.query.econ_type) {
+          where += " LIKE :econ)";
+          params["econ"] = req.query.econ_type;
+          params["econ_field"] = "econs.econ_type";
+        }
+        if (req.query.econ_class) {
+          where += " LIKE :econ)";
+          params["econ"] = req.query.econ_class;
+          params["econ_field"] = "econs.econ_class";
+        }
+      }  
+
 
       if ("sample" in req.query) {
         // Speeds things up...
         where += " AND units_sections.col_id IN (92, 488, 463, 289, 430, 481, 261, 534, 369, 798, 771, 1675) "
       }
 
-      var shortSQL = "units.id AS unit_id,units_sections.section_id as section_id, units_sections.col_id as col_id, col_area, units.strat_name, unit_strat_names.strat_name_id, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick, min_thick, lith_type, outcrop, count(distinct collection_no) pbdb_collections";
+      var shortSQL = multiline(function() {/*
+        units.id AS unit_id,
+        units_sections.section_id as section_id, 
+        units_sections.col_id as col_id, 
+        col_area,
+        units.strat_name, 
+        unit_strat_names.strat_name_id, 
+        IFNULL(mbr_name, '') AS Mbr, 
+        IFNULL(fm_name, '') AS Fm, 
+        IFNULL(gp_name, '') AS Gp, 
+        IFNULL(sgp_name, '') AS SGp, 
+        era, 
+        period, 
+        max_thick, 
+        min_thick, 
+        outcrop, 
+        count(distinct collection_no) pbdb_collections
+      */});
             
-      var longSQL = "units.id AS unit_id, units_sections.section_id as section_id, project_id, units_sections.col_id as col_id, col_area, units.strat_name, unit_strat_names.strat_name_id, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick,min_thick, lith_class, lith_type, lith_long lith, lookup_unit_liths.environ_class, lookup_unit_liths.environ_type, lookup_unit_liths.environ, outcrop, GROUP_CONCAT(DISTINCT e.econ SEPARATOR '|') econ, GROUP_CONCAT(DISTINCT e.econ_type SEPARATOR '|') econ_type, GROUP_CONCAT(DISTINCT e.econ_class SEPARATOR '|') econ_class, count(distinct collection_no) pbdb_collections, notes, colors.unit_hex AS color, colors.text_hex AS text_color, ubt.t1 as t_int_id, LO_interval AS t_int_name, LO_age AS t_int_age, min(ubt.t1_age) AS t_age, ubt.t1_prop as t_prop, GROUP_CONCAT(distinct ubt.unit_id_2 SEPARATOR '|') AS units_above, ubb.t1 AS b_int_id, FO_interval AS b_int_name, FO_age AS b_int_age, max(ubb.t1_age) AS b_age, ubb.t1_prop as b_prop, GROUP_CONCAT(distinct ubb.unit_id SEPARATOR '|') AS units_below "; 
+      var longSQL = shortSQL + multiline(function() {/*
+        ,
+        project_id, 
+        lookup_unit_attrs_api.lith,
+        lookup_unit_attrs_api.environ,
+        lookup_unit_attrs_api.econ,
+        notes, 
+        colors.unit_hex AS color, 
+        colors.text_hex AS text_color, 
+        ubt.t1 as t_int_id, 
+        LO_interval AS t_int_name, 
+        LO_age AS t_int_age, 
+        min(ubt.t1_age) AS t_age, 
+        ubt.t1_prop as t_prop, 
+        GROUP_CONCAT(distinct ubt.unit_id_2 SEPARATOR '|') AS units_above, 
+        ubb.t1 AS b_int_id, 
+        FO_interval AS b_int_name, 
+        FO_age AS b_int_age, 
+        max(ubb.t1_age) AS b_age, 
+        ubb.t1_prop as b_prop, 
+        GROUP_CONCAT(distinct ubb.unit_id SEPARATOR '|') AS units_below 
+      */}); 
 
       var unitBoundariesJoin = (req.query.debug === "true") ? "LEFT JOIN unit_boundaries_scratch ubb ON ubb.unit_id_2=units.id LEFT JOIN unit_boundaries_scratch ubt ON ubt.unit_id=units.id" : "LEFT JOIN unit_boundaries ubb ON ubb.unit_id_2=units.id LEFT JOIN unit_boundaries ubt ON ubt.unit_id=units.id";
 
@@ -210,16 +263,13 @@ module.exports = function(req, res, next, cb) {
       var sql = "SELECT " + ((req.query.response === "long" || cb) ? longSQL : shortSQL) + geometry + " FROM units \
             JOIN units_sections ON units_sections.unit_id=units.id \
             JOIN cols ON units_sections.col_id=cols.id \
-            JOIN lookup_unit_liths ON lookup_unit_liths.unit_id=units.id \
+            JOIN lookup_unit_attrs_api ON lookup_unit_attrs_api.unit_id = units.id \
             JOIN lookup_unit_intervals ON units.id=lookup_unit_intervals.unit_id \
             " + unitBoundariesJoin + " \
             LEFT JOIN unit_strat_names ON unit_strat_names.unit_id=units.id \
             LEFT JOIN lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id \
-            LEFT JOIN unit_econs ue ON units.id = ue.unit_id \
-            LEFT JOIN econs e ON ue.econ_id = e.id \
             " + ((req.query.response === "long" || cb) ? "LEFT JOIN unit_notes ON unit_notes.unit_id=units.id JOIN colors ON units.color = colors.color" : "") + " \
             LEFT JOIN pbdb_matches ON pbdb_matches.unit_id=units.id \
-            " + (("environ" in params) ? "LEFT JOIN unit_environs ON units.id=unit_environs.unit_id LEFT JOIN environs ON unit_environs.environ_id=environs.id" : "") + " \
             WHERE status_code='active' " + where + " GROUP BY units.id ORDER BY " + ((orderby.length > 0) ? (orderby.join(", ") + ", t_age ASC") : "t_age ASC") + limit;
 
       larkin.query(sql, params, function(error, result) {
@@ -229,24 +279,13 @@ module.exports = function(req, res, next, cb) {
           } else {
             if (req.query.response === "long") {
               for (var i = 0; i < result.length; i++) {
+                // These come back as JSON strings, so we need to make them real JSON
+                result[i].lith = JSON.parse(result[i].lith);
+                result[i].environ = JSON.parse(result[i].environ);
+                result[i].econ = JSON.parse(result[i].econ);
+
                 result[i].units_above = larkin.jsonifyPipes(result[i].units_above, "integers");
                 result[i].units_below = larkin.jsonifyPipes(result[i].units_below, "integers");
-
-                result[i].environ = larkin.jsonifyPipes(result[i].environ, "strings");
-                result[i].environ_type = larkin.jsonifyPipes(result[i].environ_type, "strings");
-                result[i].environ_class = larkin.jsonifyPipes(result[i].environ_class, "strings");
-
-                result[i].econ = larkin.jsonifyPipes(result[i].econ, "strings");
-                result[i].econ_type = larkin.jsonifyPipes(result[i].econ_type, "strings");
-                result[i].econ_class = larkin.jsonifyPipes(result[i].econ_class, "strings");
-
-                result[i].lith_class = larkin.fixLiths(result[i].lith_class);
-                result[i].lith_type = larkin.fixLiths(result[i].lith_type);
-                result[i].lith = larkin.fixLiths(result[i].lith);
-              }
-            } else {
-              for (var i = 0; i < result.length; i++) {
-                result[i].lith_type = larkin.fixLiths(result[i].lith_type);
               }
             }
 
@@ -254,13 +293,11 @@ module.exports = function(req, res, next, cb) {
               for (var i = 0; i < result.length; i++) {
                 result[i].units_above = result[i].units_above.join(",");
                 result[i].units_below = result[i].units_below.join(",");
-                result[i].econ = result[i].econ.join("|");
-                result[i].lith_class = larkin.pipifyLiths(result[i].lith_class);
-                result[i].lith_type = larkin.pipifyLiths(result[i].lith_type);
-                result[i].lith = larkin.pipifyLiths(result[i].lith);
-                result[i].environ = result[i].environ.join("|");
-                result[i].environ_type = result[i].environ_type.join("|");
-                result[i].environ_class = result[i].environ_class.join("|");
+
+                result[i].lith = larkin.pipifyAttrs(result[i].lith);
+                result[i].environ = larkin.pipifyAttrs(result[i].environ);
+                result[i].econ = larkin.pipifyAttrs(result[i].econ);
+
               }
             }
 

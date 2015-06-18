@@ -89,7 +89,7 @@ var mysql = require("mysql"),
           }
         }
       }.bind(this));
-     // console.log(query.sql)
+      //console.log(query.sql)
     }.bind(this));
   };
 
@@ -290,6 +290,14 @@ var mysql = require("mysql"),
       return d.type + " - " + d.prop;
     }).join("|");
   };
+
+  larkin.pipifyAttrs = function(data) {
+    return data.map(function(attr) {
+      return ((attr.attrs) ? attr.attrs.join(" ") : "") +
+              attr.name + " " + attr.type + " " + attr.class + " " +
+             ((attr.prop) ? " - " + attr.prop : "");
+    }).join("|");
+  }
 
   module.exports = larkin;
 

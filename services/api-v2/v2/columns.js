@@ -5,44 +5,49 @@ var api = require("./api"),
     _ = require("underscore"),
     larkin = require("./larkin");
 
-function summarizeLith(data, type, total_units) {
-  var lithGroups = _.groupBy(_.flatten(data.map(function(d) { return d[type] })), function(d) {return d.type});
-  var liths = [];
-
-  Object.keys(lithGroups).forEach(function(d) {
-    var props = lithGroups[d].map(function(d) { return d.prop });
-    var sum = parseFloat((_.reduce(props, function(a, b) { return a + b }, 0)/total_units).toFixed(4));
-    liths.push({"type": d, "prop": sum});
-  });
-
-  return liths;
-}
 
 function summarizeAttribute(data, type) {
-  var cats = _.countBy(_.flatten(data.map(function(d) { return d[type] }))),
-      total_cats = _.values(cats).reduce(function(a, b) { return a + b }, 0),
+  var mommaCat = _.flatten(
+    data.map(function(d) { 
+      return d[type] 
+    })).filter(function(d) { 
+      if (d) { return d }
+    });
+
+  if (mommaCat.length < 1) {
+    return []
+  }
+
+  var cats = _.groupBy(mommaCat, function(d) { return d[type + "_id"] }),
+      total_cats = Object.keys(cats).map(function(cat) { return cats[cat].length }).reduce(function(a, b) { return a + b }, 0),
       parsedCats = [];
 
   Object.keys(cats).forEach(function(d) {
-    parsedCats.push({"type": d, "prop": parseFloat((cats[d]/total_cats).toFixed(4))})
+    if (type === "lith") {
+      var prop = parseFloat((
+        cats[d].map(function(j) { 
+          return j.prop 
+        }).reduce(function(a, b) { 
+          return a + b 
+        }, 0)/data.length
+      ).toFixed(4));
+
+    } else {
+      var prop = parseFloat((cats[d].length/total_cats).toFixed(4));
+    }
+
+    var kitten = {
+      "name": cats[d][0].name,
+      "type": cats[d][0].type,
+      "class": cats[d][0].class,
+      "prop": prop
+    }
+    kitten[type + "_id"] = parseInt(d);
+    parsedCats.push(kitten);
+
   });
 
   return parsedCats;
-}
-
-
-function formatEnvirons(data, type) {
-  return _.uniq(
-          _.flatten(
-            data
-              .filter(function(d) { if (d[type].length > 0) return d; })
-              .map(function(d) { return d[type] })
-          )
-        ).filter(function(d) {
-          if (d.length > 1) {
-            return d;
-          }
-        });
 }
 
 
@@ -73,17 +78,9 @@ module.exports = function(req, res, next) {
             "t_age": _.min(cols[col_id], function(d) { return d.t_age; }).t_age,
             "pbdb_collections": _.reduce(cols[col_id].map(function(d) { return d.pbdb_collections }), function(a, b) { return a + b}, 0),
             
-            "environ_class": summarizeAttribute(cols[col_id], "environ_class"),
-            "environ_type": summarizeAttribute(cols[col_id], "environ_type"),
+            "lith": summarizeAttribute(cols[col_id], "lith"),
             "environ": summarizeAttribute(cols[col_id], "environ"),
-
-            "econ_class": summarizeAttribute(cols[col_id], "econ_class"),
-            "econ_type": summarizeAttribute(cols[col_id], "econ_type"),
             "econ": summarizeAttribute(cols[col_id], "econ"),
-
-            "lith": summarizeLith(cols[col_id], "lith", cols[col_id].length),
-            "lith_type": summarizeLith(cols[col_id], "lith_type", cols[col_id].length),
-            "lith_class": summarizeLith(cols[col_id], "lith_class", cols[col_id].length),
 
             "t_units": cols[col_id].length,
             "t_sections": _.uniq(cols[col_id].map(function(d) { return d.section_id })).length
@@ -129,12 +126,9 @@ module.exports = function(req, res, next) {
         d = _.extend(d, unit_data[d.col_id]);
 
         if (req.query.format === "csv") {
-          d.environ = d.environ.join("|");
-          d.environ_type = d.environ_type.join("|");
-          d.environ_class = d.environ_class.join("|");
-          d.lith = larkin.pipifyLiths(d.lith);
-          d.lith_type = larkin.pipifyLiths(d.lith_type);
-          d.lith_class = larkin.pipifyLiths(d.lith_class);
+          d.lith = larkin.pipifyAttrs(d.lith);
+          d.environ = larkin.pipifyAttrs(d.environ);
+          d.econ = larkin.pipifyAttrs(d.econ);
         } 
       }  
     });

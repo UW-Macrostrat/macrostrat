@@ -113,6 +113,7 @@
         "lith": "specific lithology (e.g., shale, sandstone)",
         "lith_type": "groups of lithologies (e.g., carbonate, siliciclastic)",
         "lith_class": "general lithologies (sedimentary, igneous, metamorphic)",
+        "environ_id": "specific environment ID from /defs/environments",
         "environ": "specific environment",
         "environ_type": "groups of environments",
         "environ_class": "general environments",

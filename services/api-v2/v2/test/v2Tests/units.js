@@ -307,17 +307,22 @@ module.exports = function() {
 
   it("should accept an econ_id filter", function(done) {
     request(settings.host)
-      .get("/api/v2/units?econ_id=4,5&response=long")
+      .get("/api/v2/units?econ_id=4&response=long")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
       .expect(function(res) {
         res.body.success.data.forEach(function(d) {
-          if (d.econ.indexOf("gas reservoir") < 0 && d.econ.indexOf("oil reservoir") < 0) {
-            console.log(d);
+          var found = false;
+          d.econ.forEach(function(j) {
+            if (j.name === "oil reservoir") {
+              found = true
+            }
+          });
+          if (!found) {
             throw new Error("Wrong econs returned when filtering by econ_id");
           }
-        })
+        });
       })
       .end(function(error, res) {
         if (error) return done(error);
@@ -333,10 +338,16 @@ module.exports = function() {
       .expect(validators.atLeastOneResult)
       .expect(function(res) {
         res.body.success.data.forEach(function(d) {
-          if (d.econ.indexOf("uranium ore") < 0) {
+          var found = false;
+          d.econ.forEach(function(j) {
+            if (j.name === "uranium ore") {
+              found = true;
+            }
+          });
+          if (!found) {
             throw new Error("Wrong econs returned when filtering by econ");
           }
-        })
+        });
       })
       .end(function(error, res) {
         if (error) return done(error);
@@ -352,10 +363,16 @@ module.exports = function() {
       .expect(validators.atLeastOneResult)
       .expect(function(res) {
         res.body.success.data.forEach(function(d) {
-          if (d.econ_type.indexOf("nuclear") < 0) {
+          var found = false;
+          d.econ.forEach(function(j) {
+            if (j.type === "nuclear") {
+              found = true;
+            }
+          });
+          if (!found) {
             throw new Error("Wrong econs returned when filtering by econ_type");
           }
-        })
+        });
       })
       .end(function(error, res) {
         if (error) return done(error);
@@ -371,10 +388,16 @@ module.exports = function() {
       .expect(validators.atLeastOneResult)
       .expect(function(res) {
         res.body.success.data.forEach(function(d) {
-          if (d.econ_class.indexOf("energy") < 0) {
+          var found = false;
+          d.econ.forEach(function(j) {
+            if (j.class === "energy") {
+              found = true;
+            }
+          });
+          if (!found) {
             throw new Error("Wrong econs returned when filtering by econ_class");
           }
-        })
+        });
       })
       .end(function(error, res) {
         if (error) return done(error);

@@ -28,18 +28,19 @@ def check_for_decimals(obj):
 
 # Do this if running for the first time!
 '''
-CREATE TABLE lookup_unit_liths_api (
+CREATE TABLE lookup_unit_attrs_api (
   unit_id mediumint(8),
-  lithology blob,
-  environment blob
+  lith blob,
+  environ blob,
+  econ blob
 ) ENGINE=MyISam ;
-CREATE INDEX unit_id_idx ON lookup_unit_liths_api (unit_id);
+CREATE INDEX unit_id_idx ON lookup_unit_attrs_api (unit_id);
 
-CREATE TABLE lookup_unit_liths_api_new LIKE lookup_unit_liths_api;
+CREATE TABLE lookup_unit_attrs_api_new LIKE lookup_unit_attrs_api;
 '''
 
 # Create room for the new data
-cursor.execute("TRUNCATE TABLE lookup_unit_liths_api_new")
+cursor.execute("TRUNCATE TABLE lookup_unit_attrs_api_new")
 
 ### First handle lithologies ###
 cursor.execute(""" 
@@ -73,7 +74,7 @@ for unit in units:
 # Update the lookup table with the jsonified structure
 for unit in grouped_units:
   cursor.execute(""" 
-    INSERT INTO lookup_unit_liths_api_new (unit_id, lithology) VALUES (%s, %s)
+    INSERT INTO lookup_unit_attrs_api_new (unit_id, lith) VALUES (%s, %s)
   """, [unit, json.dumps(grouped_units[unit], default=check_for_decimals)])
 
 
@@ -98,11 +99,39 @@ for unit in units:
 
 for unit in grouped_units:
   cursor.execute(""" 
-    UPDATE lookup_unit_liths_api_new SET environment = %s WHERE unit_id = %s
+    UPDATE lookup_unit_attrs_api_new SET environ = %s WHERE unit_id = %s
   """, [json.dumps(grouped_units[unit]), unit])
 
 
-cursor.execute("TRUNCATE TABLE lookup_unit_liths_api")
-cursor.execute("INSERT INTO lookup_unit_liths_api SELECT * FROM lookup_unit_liths_api_new")
+### Next handle econs ### 
+cursor.execute(""" 
+  SELECT unit_id, econ_id, econ, econ_type, econ_class 
+  FROM unit_econs 
+  LEFT JOIN econs ON econ_id = econs.id 
+  ORDER BY unit_id ASC
+""")
 
-print "Done building lookup_unit_liths_api!"
+units = cursor.fetchall()
+
+grouped_units = defaultdict(list)
+for unit in units:
+  grouped_units[unit["unit_id"]].append({
+    "econ_id": unit["econ_id"],
+    "name": unit["econ"],
+    "type": unit["econ_type"],
+    "class": unit["econ_class"]
+  })
+
+for unit in grouped_units:
+  cursor.execute(""" 
+    UPDATE lookup_unit_attrs_api_new SET econ = %s WHERE unit_id = %s
+  """, [json.dumps(grouped_units[unit]), unit])
+
+cursor.execute(""" 
+  UPDATE lookup_unit_attrs_api_new SET econ = '[]' WHERE econ IS NULL
+""")
+
+cursor.execute("TRUNCATE TABLE lookup_unit_attrs_api")
+cursor.execute("INSERT INTO lookup_unit_attrs_api SELECT * FROM lookup_unit_attrs_api_new")
+
+print "Done building lookup_unit_attrs_api!"
