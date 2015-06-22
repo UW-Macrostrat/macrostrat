@@ -68,7 +68,6 @@ module.exports = function(req, res, next, cb) {
 
       } else if (req.query.col_group_id) {
         larkin.query("SELECT id FROM cols WHERE col_group_id IN (:col_group_ids)", {"col_group_ids": larkin.parseMultipleIds(req.query.col_group_id)}, function(error, data) {
-          console.log(data.map(function(d) { return d.id }));
           callback(null, {"interval_name": "none", "age_bottom": 99999, "age_top": 0, "col_ids": data.map(function(d) { return d.id })});
         });
 

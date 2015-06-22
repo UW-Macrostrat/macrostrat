@@ -11,7 +11,7 @@
     "async": "^1.2.x",
     "dbgeo": "0.0.x",
     "express-csv": "git://github.com/jczaplew/express-csv.git",
-    "geojson-precision": "^0.3.0",
+    "geojson-precision": "^0.4.0",
     "multiline": "^1.0.2",
     "mysql": "2.7.x",
     "pg": "^4.4.0",

@@ -48,7 +48,7 @@ module.exports = function(req, res, next) {
 
     // Using the unique column IDs returned from units, query columns
     function(new_cols, callback) {
-      var geo = (req.query.format && api.acceptedFormats.geo[req.query.format]) ? ", AsWKT(col_areas.col_area) AS wkt" : "",
+      var geo = (req.query.format && api.acceptedFormats.geo[req.query.format]) ? ", IFNULL(AsWKT(col_areas.col_area), '') AS wkt" : "",
           params = {"col_ids": Object.keys(new_cols)},
           limit = ("sample" in req.query) ? " LIMIT 5" : "",
           orderby = "";
@@ -62,7 +62,7 @@ module.exports = function(req, res, next) {
         params["col_id"] = req.query.col_id;
       }
 
-      larkin.query("SELECT col_areas.col_id, col_name, col_group, col_groups.id AS col_group_id, col AS group_col_id, round(cols.col_area, 1) AS col_area, project_id" +  geo + " FROM cols LEFT JOIN col_areas on col_areas.col_id = cols.id LEFT JOIN col_groups ON col_groups.id = cols.col_group_id WHERE status_code = 'active' AND cols.id IN (:col_ids) GROUP BY col_areas.col_id " + orderby + limit, params, function(error, result) {
+      larkin.query("SELECT cols.id, col_name, col_group, col_groups.id AS col_group_id, col AS group_col_id, round(cols.col_area, 1) AS col_area, project_id" +  geo + " FROM cols LEFT JOIN col_areas on col_areas.col_id = cols.id LEFT JOIN col_groups ON col_groups.id = cols.col_group_id WHERE status_code = 'active' AND cols.id IN (:col_ids) GROUP BY col_areas.col_id " + orderby + limit, params, function(error, result) {
         if (error) {
           callback(error);
         } else {
@@ -74,6 +74,7 @@ module.exports = function(req, res, next) {
   // Once units and columns have been queried, wrap things up and send it
   ], function(error, unit_data, column_data) {
     if (error) {
+      console.log(error);
       return larkin.error(req, res, next, error);
     }
     column_data.forEach(function(d) {
