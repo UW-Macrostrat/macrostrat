@@ -129,6 +129,7 @@
 
 
 ## /defs/intervals
++ Can now specify a ````name```` query parameter
 + Changes to input and output parameters:
 
 |   old    |   new   |

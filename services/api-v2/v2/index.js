@@ -10,7 +10,7 @@ api.route("/")
 
 api.route("/changes")
   .get(function(req, res, next) {
-    res.sendFile("/Users/john/code/macrostrat/api/v2/changes.html");
+    res.sendFile(__dirname + "/changes.html");
   });
 
 api.route("/columns")
