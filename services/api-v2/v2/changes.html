@@ -52,11 +52,13 @@
 <ul>
 <li>Added <code>?sample</code> to every route (except <code>/mobile</code>), which returns 5 records.</li>
 <li>The input and output parameter <code>id</code> no longer exists. All identifiers are now descriptive, for example <code>unit_id</code>, <code>col_id</code>, and <code>econ_id</code>.</li>
-<li>Numerous routes have been removed (<code>column</code>, <code>unit_contacts</code>, <code>pbdb_report</code>, <code>geologic_units/map</code>, <code>geologic_units/intersection</code> and <code>geologic_units</code>)</li>
+<li>Numerous routes have been removed (<code>column</code>, <code>unit_contacts</code>, <code>pbdb_report</code>, <code>section_stats</code>, <code>geologic_units/map</code>, <code>geologic_units/intersection</code> and <code>geologic_units</code>)</li>
 <li>Every route outputs JSON by default</li>
 <li>
 <code>columns</code> and <code>sections</code> are summaries of the data returned by <code>units</code>
 </li>
+<li>
+<code>lith</code>, <code>environ</code> and <code>econ</code> have been refactored to return valid JSON instead of pipe-delimited strings</li>
 </ul>
 
 <h2>
@@ -70,6 +72,8 @@
 <ul>
 <li>This route has been reworked so that it is almost identical to units, but groups by and summarizes columns</li>
 <li>Format of lithology fields in CSV output has changed. Instead of "name proportion|name proportion" it is now "name - proportion|name - proportion"</li>
+<li>Added ability to query to <code>environ_id</code>, <code>econ_id</code>, <code>econ</code>, <code>econ_type</code>, and <code>econ_class</code>
+</li>
 <li>Changes to output fields</li>
 </ul>
 
@@ -134,32 +138,20 @@
 <tr>
 <td><em>N/A</em></td>
 <td><em>N/A</em></td>
-<td>environ_class</td>
-<td>["marine"]</td>
-</tr>
-<tr>
-<td><em>N/A</em></td>
-<td><em>N/A</em></td>
-<td>environ_type</td>
-<td>["glacial", "fluvial"]</td>
-</tr>
-<tr>
-<td><em>N/A</em></td>
-<td><em>N/A</em></td>
 <td>environ</td>
-<td>["loess", "glacial indet."]</td>
+<td>[{class: "marine", type: "siliciclastic", name: "submarine fan", environ_id: 37}]</td>
 </tr>
 <tr>
-<td><em>N/A</em></td>
-<td><em>N/A</em></td>
-<td>lith_class</td>
-<td>[{"type": "sedimentary", "prop": 0.5}, {"type": "metamorphic", "prop": 0.5}]</td>
-</tr>
-<tr>
-<td><em>N/A</em></td>
-<td><em>N/A</em></td>
 <td>lith</td>
-<td>[{"type": "organic", "prop": 0.75}, {"type": "siliciclastic", "prop": 0.25}]</td>
+<td>"shale 0.1250</td>
+<td>siltstone 0.1250</td>
+<td>"</td>
+</tr>
+<tr>
+<td><em>N/A</em></td>
+<td><em>N/A</em></td>
+<td>econ</td>
+<td>[{type: "hydrocarbon", name: "oil reservoir", econ_id: 4, class: "energy"}]</td>
 </tr>
 </tbody>
 </table>
@@ -181,7 +173,7 @@
 <tbody>
 <tr>
 <td>col_name, col_group, col_group_id, b_age, t_age, sections, pbdb_collections, pbdb_occs</td>
-<td>max_thick, min_thick, b_age, t_age, pbdb_collections, environ_class, environ_type,  environ, lith, lith_class, lith_type</td>
+<td>max_thick, min_thick, b_age, t_age, pbdb_collections, lith, environ, econ</td>
 </tr>
 </tbody>
 </table>
@@ -190,43 +182,14 @@
 <a id="user-content-sections" class="anchor" href="#sections" aria-hidden="true"><span class="octicon octicon-link"></span></a>/sections</h2>
 
 <ul>
-<li>Input and output parameters have changed:</li>
+<li>Input and output parameters have changed to be identical to those of <code>units</code>. See changes made to that route for more details.</li>
+<li>Major conceptual change - now dynamically computes packages based on query (thus multiple objects may share a <code>section_id</code>), where a package is a temporally gap bound section of units. </li>
 </ul>
 
-<table>
-<thead>
-<tr>
-<th>old</th>
-<th>new</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>id</td>
-<td>section_id</td>
-</tr>
-<tr>
-<td>top</td>
-<td>t_interval</td>
-</tr>
-<tr>
-<td>top_age</td>
-<td>t_age</td>
-</tr>
-<tr>
-<td>bottom</td>
-<td>b_interval</td>
-</tr>
-<tr>
-<td>bottom_age</td>
-<td>b_age</td>
-</tr>
-<tr>
-<td>fossils</td>
-<td>pbdb_collections</td>
-</tr>
-</tbody>
-</table>
+<h2>
+<a id="user-content-section_stats" class="anchor" href="#section_stats" aria-hidden="true"><span class="octicon octicon-link"></span></a>/section_stats</h2>
+
+<p><em>Removed</em>  - use <code>/sections</code> instead.</p>
 
 <h2>
 <a id="user-content-fossils" class="anchor" href="#fossils" aria-hidden="true"><span class="octicon octicon-link"></span></a>/fossils</h2>
@@ -265,6 +228,9 @@
 
 <ul>
 <li>Format of lithology fields in CSV output has changed. Instead of "name proportion|name proportion" it is now "name - proportion|name - proportion"</li>
+<li>Empty output fields now return empty strings or arrays instead of NULLs</li>
+<li>Added ability to query to <code>environ_id</code>, <code>econ_id</code>, <code>econ</code>, <code>econ_type</code>, and <code>econ_class</code>
+</li>
 <li>Changes to input parameter names output fields:</li>
 </ul>
 
@@ -330,19 +296,7 @@
 </tr>
 <tr>
 <td><em>N/A</em></td>
-<td>econ_id</td>
-</tr>
-<tr>
-<td><em>N/A</em></td>
-<td>econ</td>
-</tr>
-<tr>
-<td><em>N/A</em></td>
-<td>econ_type</td>
-</tr>
-<tr>
-<td><em>N/A</em></td>
-<td>econ_class</td>
+<td>econ[]</td>
 </tr>
 </tbody>
 </table>
@@ -360,16 +314,12 @@
 </thead>
 <tbody>
 <tr>
-<td>lith (string)</td>
+<td>lith (string), lith_class (string), lith_type (string)</td>
 <td>lith (array of objects)</td>
 </tr>
 <tr>
-<td>lith_class (string)</td>
-<td>lith_class (array of objects)</td>
-</tr>
-<tr>
-<td>lith_type (string)</td>
-<td>lith_type (array of objects)</td>
+<td>environ (string), environ_class (string), environ_type (string)</td>
+<td>environ (array of objects)</td>
 </tr>
 </tbody>
 </table>
@@ -467,6 +417,8 @@
 </li>
 <li>The <code>rank</code> parameter can be used with <code>strat_name</code>, <code>strat_name_like</code>, <code>strat_name_id</code>, and <code>all</code>
 </li>
+<li>By default, requesting a <code>strat_name</code> or <code>strat_name_id</code> will only return the matching name. Previously this would also return all associated children</li>
+<li>A parameter <code>rule</code> was added. To return a strat name and all associated children, use <code>rule=down</code>, and to return the entire hierarchy of a given strat name use <code>rule=all</code>.</li>
 </ul>
 
 <h2>

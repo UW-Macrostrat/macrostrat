@@ -57,15 +57,11 @@
         "b_age",
         "t_age",
         "pbdb_collections",
-        "environ_class",
-        "environ_type",
-        "environ",
-        "econ_class",
-        "econ_type",
-        "econ",
         "lith",
-        "lith_type",
-        "lith_class"
+        "environ",
+        "econ",
+        "t_units",
+        "t_sections"
       ]
     }
   },
@@ -82,19 +78,26 @@
         "json",
         "csv"
       ],
+      "response_types": [
+        "short",
+        "long"
+      ],
       "examples": [
         "/api/sections?all",
         "/api/sections?col_id=49"
       ],
       "fields": [
-        "section_id",
         "col_id",
-        "t_interval",
+        "section_id",
+        "project_id",
+        "max_thick",
+        "min_thick",
         "t_age",
-        "b_interval",
         "b_age",
-        "units",
-        "pbdb_collections"
+        "pbdb_collections",
+        "lith",
+        "environ",
+        "econ"
       ]
     }
   },
@@ -151,8 +154,8 @@
       "fields": [
         "unit_id",
         "section_id",
-        "project_id",
         "col_id",
+        "project_id",
         "col_area",
         "strat_name",
         "strat_name_id",
@@ -164,17 +167,11 @@
         "period",
         "max_thick",
         "min_thick",
-        "lith_class",
-        "lith_type",
-        "lith",
-        "environ_class",
-        "environ_type",
-        "environ",
         "outcrop",
-        "econ",
-        "econ_type",
-        "econ_class",
         "pbdb_collections",
+        "lith",
+        "environ",
+        "econ",
         "notes",
         "color",
         "text_color",
@@ -996,7 +993,9 @@
     "col_poly": "object, the GeoJSON representation of the column",
     "int_id": "integer, the unique interval ID",
     "int_type": "text, the temporal rank of the interval",
-    "packages": "integer, total packages"
+    "packages": "integer, total packages",
+    "t_sections": "integer, total sections",
+    "t_units": "integer, total units"
   }
 }; 
   module.exports = defs; 
