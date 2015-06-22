@@ -6,7 +6,6 @@ module.exports = function() {
   describe("units", require("./units"));
   describe("fossils", require("./fossils"));
   describe("stats", require("./stats"));
-  describe("section_stats", require("./section_stats"));
 
   describe("defs", require("./defs"));
   describe("defs/lithologies", require("./defs_lithologies"));

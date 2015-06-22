@@ -71,9 +71,6 @@ api.route("/defs/timescales")
 api.route("/defs/refs")
   .get(require("./defs/refs"));
 
-api.route("/section_stats")
-  .get(require("./section_stats"));
-
 api.route("/paleogeography")
   .get(require("./paleogeography"));
 

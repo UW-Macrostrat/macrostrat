@@ -3,7 +3,7 @@
 ## tl;dr
 + Added ````?sample```` to every route (except ````/mobile````), which returns 5 records.
 + The input and output parameter ````id```` no longer exists. All identifiers are now descriptive, for example ````unit_id````, ````col_id````, and ````econ_id````.
-+ Numerous routes have been removed (````column````, ````unit_contacts````, ````pbdb_report````, ````geologic_units/map````, ````geologic_units/intersection```` and ````geologic_units````)
++ Numerous routes have been removed (````column````, ````unit_contacts````, ````pbdb_report````, ````section_stats````, ````geologic_units/map````, ````geologic_units/intersection```` and ````geologic_units````)
 + Every route outputs JSON by default
 + ````columns```` and ````sections```` are summaries of the data returned by ````units````
 + ````lith````, ````environ```` and ````econ```` have been refactored to return valid JSON instead of pipe-delimited strings
@@ -50,6 +50,9 @@
 + Input and output parameters have changed to be identical to those of ````units````. See changes made to that route for more details.
 + Major conceptual change - now dynamically computes packages based on query (thus multiple objects may share a ````section_id````), where a package is a temporally gap bound section of units. 
 
+
+## /section_stats
+*Removed*  - use ````/sections```` instead.
 
 
 ## /fossils
