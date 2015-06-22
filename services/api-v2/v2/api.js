@@ -26,7 +26,7 @@ api.acceptedFormats = {
   }
 };
 
-api.version = 1;
+api.version = 2;
 
 // Export the module
 module.exports = api;
