@@ -62,7 +62,7 @@ module.exports = function(req, res, next) {
         params["col_id"] = req.query.col_id;
       }
 
-      larkin.query("SELECT col_areas.col_id, col_name, col_group, col_groups.id AS col_group_id, col AS group_col_id, round(cols.col_area, 1) AS col_area, project_id" +  geo + " FROM col_areas JOIN cols ON cols.id = col_areas.col_id JOIN col_groups ON col_groups.id = cols.col_group_id WHERE status_code = 'active' AND cols.id IN (:col_ids) GROUP BY col_areas.col_id " + orderby + limit, params, function(error, result) {
+      larkin.query("SELECT col_areas.col_id, col_name, col_group, col_groups.id AS col_group_id, col AS group_col_id, round(cols.col_area, 1) AS col_area, project_id" +  geo + " FROM cols LEFT JOIN col_areas on col_areas.col_id = cols.id LEFT JOIN col_groups ON col_groups.id = cols.col_group_id WHERE status_code = 'active' AND cols.id IN (:col_ids) GROUP BY col_areas.col_id " + orderby + limit, params, function(error, result) {
         if (error) {
           callback(error);
         } else {

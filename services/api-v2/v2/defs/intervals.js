@@ -20,6 +20,11 @@ module.exports = function(req, res, next) {
     params["timescale_id"] = larkin.parseMultipleIds(req.query.timescale_id);
   }
 
+  if (req.query.name) {
+    where.push("intervals.interval_name LIKE :interval_name");
+    params["interval_name"] = req.query.name;
+  }
+
   if (req.query.int_id && isFinite(req.query.int_id)) {
     where.push("intervals.id IN (:int_id)");
     params["int_id"] = larkin.parseMultipleIds(req.query.int_id);
