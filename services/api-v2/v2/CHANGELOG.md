@@ -47,16 +47,8 @@
 
 
 ## /sections
-+ Input and output parameters have changed:
-
-|    old     |    new     |
-|------------|------------|
-|   id       | section_id    |
-|  top  | t_interval |
-|  top_age   | t_age |
-| bottom     | b_interval  |
-|  bottom_age| b_age      |
-| fossils    | pbdb_collections |
++ Input and output parameters have changed to be identical to those of ````units````. See changes made to that route for more details.
++ Major conceptual change - now dynamically computes packages based on query (thus multiple objects may share a ````section_id````), where a package is a temporally gap bound section of units. 
 
 
 

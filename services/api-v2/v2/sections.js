@@ -1,41 +1,121 @@
 var api = require("./api"),
+    async = require("async"),
+    _ = require("underscore"),
     larkin = require("./larkin");
+
+function newSection(data) {
+  return {
+    "t_age": data.t_age,
+    "b_age": data.b_age,
+    "units": [data]
+  }
+}
 
 module.exports = function(req, res, next) {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
-  var where = "",
-      limit = ("sample" in req.query) ? " LIMIT 5" : "",
-      params = {};
 
-  if (req.query.hasOwnProperty("all") || "sample" in req.query) {
-    // do nothing
-  } else if (req.query.col_id) {
-    where = "WHERE s.col_id IN (:col_id)";
-    params["col_id"] = larkin.parseMultipleIds(req.query.col_id);
+  async.waterfall([
+    // First pass the request to units and get the units back
+    function(callback) {
+      require("./units")(req, null, null, function(error, result) {
+        if (error) {
+          return callback(error);
+        }
 
-  } else {
-    return larkin.error(req, res, next, "An invalid parameter was passed");
-  }
+        callback(null, result);
+      });
+    },
 
-  larkin.query("SELECT s.id AS section_id, s.col_id, ints2.interval_name AS t_interval, min(t1_age) AS t_age, ints.interval_name AS b_interval, max(t1_age) AS b_age, count(u.id) AS units, COALESCE(r.fossils,0) AS pbdb_collections \
-   FROM sections s \
-    JOIN intervals ints on FO = ints.id \
-    JOIN intervals ints2 on LO = ints2.id \
-    JOIN units u ON u.section_id = s.id \
-    LEFT JOIN ( \
-        SELECT u.section_id, count(pbdb.id) as fossils FROM units u \
-        JOIN pbdb_matches pbdb on pbdb.unit_id = u.id \
-        GROUP BY u.section_id \
-    ) r ON r.section_id = s.id \
-    JOIN unit_boundaries ub ON s.id = ub.section_id \
-   " + where +    
-  " GROUP BY s.id" + limit, params, function(error, result) {
-    if (error) {
-      larkin.error(req, res, next, "An SQL error occurred");
-    } else {
-      larkin.sendData(result, res, (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json", next);
+    // The sauce. Process the units into sections, grouped by column
+    function(units, callback) {
+
+      // First group by column
+      var columns = _.groupBy(units, function(d) { return d.col_id });
+
+      // Reorganize a bit
+      Object.keys(columns).forEach(function(d) {
+        columns[d] = {
+          sections: (function() {
+            // This holds the resultant packages
+            var sections = [];
+
+            // Our first section is the first unit, as they are sorted by ascending t_age
+            var currentSection = newSection(columns[d][0]);
+
+            for (var i = 1; i < columns[d].length; i++) {
+              if (columns[d][i].t_age >= currentSection.t_age && columns[d][i].t_age <= currentSection.b_age) {
+                // Bump the b_age down if needed
+                if (columns[d][i].b_age > currentSection.b_age) {
+                  currentSection.b_age = columns[d][i].b_age;
+                }
+                currentSection.units.push(columns[d][i]);
+
+              } else {
+                sections.push(currentSection);
+                currentSection = newSection(columns[d][i]);
+              }
+            }
+            // Add the last current section
+            sections.push(currentSection);
+      
+            return sections;
+          })()
+        }
+      });
+
+      callback(null, columns);
+    },
+
+    // Summarize each section and flatten into sections
+    function(columns, callback) {
+      var sections = [];
+
+      Object.keys(columns).forEach(function(col_id) {
+        for (var i = 0; i < columns[col_id].sections.length; i++) {
+          // Summarize the section and push it to our result queue
+          var section = {
+            "col_id": parseInt(col_id),
+            "section_id": columns[col_id].sections[i].units[0].section_id,
+            "project_id": columns[col_id].sections[i].units[0].project_id,
+
+            "max_thick": _.max(columns[col_id].sections[i].units, function(d) { return d.max_thick; }).max_thick,
+            "min_thick": _.min(columns[col_id].sections[i].units, function(d) { return d.min_thick; }).min_thick,
+
+            "t_age": _.min(columns[col_id].sections[i].units, function(d) { return d.t_age; }).t_age,
+            "b_age": _.max(columns[col_id].sections[i].units, function(d) { return d.b_age; }).b_age,
+            
+            "pbdb_collections": columns[col_id].sections[i].units.map(function(d) { return d.pbdb_collections }).reduce(function(a, b) { return a + b; }, 0)
+          }
+
+          if (req.query.response === "long") {
+            section["lith"] = larkin.summarizeAttribute(columns[col_id].sections[i].units, "lith");
+            section["environ"] = larkin.summarizeAttribute(columns[col_id].sections[i].units, "environ");
+            section["econ"] = larkin.summarizeAttribute(columns[col_id].sections[i].units, "econ");
+          }
+
+          sections.push(section);
+        }
+      });
+      
+      callback(null, sections);
     }
+
+  ], function(error, sections) {
+    if (error) {
+      return larkin.error(req, res, next, error);
+    }
+
+    if (req.query.response === "long" && req.query.format === "csv") {
+      for (var i = 0; i < sections.length; i++) {
+        sections[i].lith = larkin.pipifyAttrs(sections[i].lith);
+        sections[i].environ = larkin.pipifyAttrs(sections[i].environ);
+        sections[i].econ = larkin.pipifyAttrs(sections[i].econ);
+      }
+    }
+
+    larkin.sendData(sections, res, (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json", next);
   });
+
 }
