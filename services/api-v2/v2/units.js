@@ -218,6 +218,7 @@ module.exports = function(req, res, next, cb) {
         units.id AS unit_id,
         units_sections.section_id as section_id, 
         units_sections.col_id as col_id, 
+        cols.project_id,
         col_area,
         units.strat_name, 
         unit_strat_names.strat_name_id, 
@@ -277,7 +278,7 @@ module.exports = function(req, res, next, cb) {
             console.log(error);
             callback(error);
           } else {
-            if (req.query.response === "long") {
+            if (req.query.response === "long" || cb) {
               for (var i = 0; i < result.length; i++) {
                 // These come back as JSON strings, so we need to make them real JSON
                 result[i].lith = JSON.parse(result[i].lith);
