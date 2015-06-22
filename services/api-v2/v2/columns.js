@@ -6,51 +6,6 @@ var api = require("./api"),
     larkin = require("./larkin");
 
 
-function summarizeAttribute(data, type) {
-  var mommaCat = _.flatten(
-    data.map(function(d) { 
-      return d[type] 
-    })).filter(function(d) { 
-      if (d) { return d }
-    });
-
-  if (mommaCat.length < 1) {
-    return []
-  }
-
-  var cats = _.groupBy(mommaCat, function(d) { return d[type + "_id"] }),
-      total_cats = Object.keys(cats).map(function(cat) { return cats[cat].length }).reduce(function(a, b) { return a + b }, 0),
-      parsedCats = [];
-
-  Object.keys(cats).forEach(function(d) {
-    if (type === "lith") {
-      var prop = parseFloat((
-        cats[d].map(function(j) { 
-          return j.prop 
-        }).reduce(function(a, b) { 
-          return a + b 
-        }, 0)/data.length
-      ).toFixed(4));
-
-    } else {
-      var prop = parseFloat((cats[d].length/total_cats).toFixed(4));
-    }
-
-    var kitten = {
-      "name": cats[d][0].name,
-      "type": cats[d][0].type,
-      "class": cats[d][0].class,
-      "prop": prop
-    }
-    kitten[type + "_id"] = parseInt(d);
-    parsedCats.push(kitten);
-
-  });
-
-  return parsedCats;
-}
-
-
 module.exports = function(req, res, next) {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
@@ -78,9 +33,9 @@ module.exports = function(req, res, next) {
             "t_age": _.min(cols[col_id], function(d) { return d.t_age; }).t_age,
             "pbdb_collections": _.reduce(cols[col_id].map(function(d) { return d.pbdb_collections }), function(a, b) { return a + b}, 0),
             
-            "lith": summarizeAttribute(cols[col_id], "lith"),
-            "environ": summarizeAttribute(cols[col_id], "environ"),
-            "econ": summarizeAttribute(cols[col_id], "econ"),
+            "lith": larkin.summarizeAttribute(cols[col_id], "lith"),
+            "environ": larkin.summarizeAttribute(cols[col_id], "environ"),
+            "econ": larkin.summarizeAttribute(cols[col_id], "econ"),
 
             "t_units": cols[col_id].length,
             "t_sections": _.uniq(cols[col_id].map(function(d) { return d.section_id })).length

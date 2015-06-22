@@ -1,6 +1,7 @@
 var mysql = require("mysql"),
     pg = require("pg"),
     async = require("async"),
+    _ = require("underscore"),
     credentials = require("./credentials"),
     csv = require("express-csv"),
     api = require("./api"),
@@ -297,7 +298,52 @@ var mysql = require("mysql"),
               attr.name + " " + attr.type + " " + attr.class + " " +
              ((attr.prop) ? " - " + attr.prop : "");
     }).join("|");
+  };
+
+  larkin.summarizeAttribute = function(data, type) {
+    var mommaCat = _.flatten(
+      data.map(function(d) { 
+        return d[type];
+      })).filter(function(d) { 
+        if (d) { return d }
+      });
+
+    if (mommaCat.length < 1) {
+      return [];
+    }
+
+    var cats = _.groupBy(mommaCat, function(d) { return d[type + "_id"] }),
+        total_cats = Object.keys(cats).map(function(cat) { return cats[cat].length }).reduce(function(a, b) { return a + b }, 0),
+        parsedCats = [];
+
+    Object.keys(cats).forEach(function(d) {
+      if (type === "lith") {
+        var prop = parseFloat((
+          cats[d].map(function(j) { 
+            return j.prop 
+          }).reduce(function(a, b) { 
+            return a + b 
+          }, 0)/data.length
+        ).toFixed(4));
+
+      } else {
+        var prop = parseFloat((cats[d].length/total_cats).toFixed(4));
+      }
+
+      var kitten = {
+        "name": cats[d][0].name,
+        "type": cats[d][0].type,
+        "class": cats[d][0].class,
+        "prop": prop
+      }
+      kitten[type + "_id"] = parseInt(d);
+      parsedCats.push(kitten);
+
+    });
+
+    return parsedCats;
   }
+
 
   module.exports = larkin;
 
