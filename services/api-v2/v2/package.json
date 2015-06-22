@@ -8,14 +8,13 @@
     "build-changes": "grip CHANGELOG.md --export changes.html"
   },
   "dependencies": {
-    "async": "0.9.x",
+    "async": "^1.2.x",
     "dbgeo": "0.0.x",
     "express-csv": "git://github.com/jczaplew/express-csv.git",
-    "geojson-precision": "^0.2.3",
+    "geojson-precision": "^0.3.0",
     "multiline": "^1.0.2",
-    "mysql": "2.3.x",
-    "nearest-feature": "git://github.com/jczaplew/nearest-feature.git",
-    "pg": "^3.4.0",
+    "mysql": "2.7.x",
+    "pg": "^4.4.0",
     "turf-area": "^1.1.1",
     "turf-buffer": "^1.0.4",
     "turf-point": "^0.1.6",
