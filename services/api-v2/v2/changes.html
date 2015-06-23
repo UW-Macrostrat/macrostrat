@@ -228,10 +228,10 @@
 
 <ul>
 <li>Format of lithology fields in CSV output has changed. Instead of "name proportion|name proportion" it is now "name - proportion|name - proportion"</li>
-<li>Empty output fields now return empty strings or arrays instead of NULLs</li>
+<li>Empty output fields now return empty strings or arrays instead of NULLs, except strat_name_id</li>
 <li>Added ability to query to <code>environ_id</code>, <code>econ_id</code>, <code>econ</code>, <code>econ_type</code>, and <code>econ_class</code>
 </li>
-<li>Changes to input parameter names output fields:</li>
+<li>Changes to input parameter names and output fields:</li>
 </ul>
 
 <table>
@@ -297,6 +297,10 @@
 <tr>
 <td><em>N/A</em></td>
 <td>econ[]</td>
+</tr>
+<tr>
+<td>strat_name</td>
+<td>unit_name</td>
 </tr>
 </tbody>
 </table>

@@ -147,7 +147,6 @@ module.exports = function(req, res, next, cb) {
       } 
 
       if (data.strat_ids) {
-        console.log(data.strat_ids);
         where += " AND (lookup_strat_names.bed_id IN (:strat_ids) OR lookup_strat_names.mbr_id IN (:strat_ids) OR lookup_strat_names.fm_id IN (:strat_ids) OR lookup_strat_names.gp_id IN (:strat_ids) OR lookup_strat_names.sgp_id IN (:strat_ids)) ";
         params["strat_ids"] = data.strat_ids;
       }
@@ -219,7 +218,7 @@ module.exports = function(req, res, next, cb) {
         units_sections.col_id as col_id, 
         cols.project_id,
         col_area,
-        units.strat_name, 
+        units.strat_name AS unit_name, 
         unit_strat_names.strat_name_id, 
         IFNULL(mbr_name, '') AS Mbr, 
         IFNULL(fm_name, '') AS Fm, 
@@ -239,7 +238,7 @@ module.exports = function(req, res, next, cb) {
         lookup_unit_attrs_api.lith,
         lookup_unit_attrs_api.environ,
         lookup_unit_attrs_api.econ,
-        notes, 
+        IFNULL(notes, '') AS notes, 
         colors.unit_hex AS color, 
         colors.text_hex AS text_color, 
         ubt.t1 as t_int_id, 
@@ -280,9 +279,9 @@ module.exports = function(req, res, next, cb) {
             if (req.query.response === "long" || cb) {
               for (var i = 0; i < result.length; i++) {
                 // These come back as JSON strings, so we need to make them real JSON
-                result[i].lith = JSON.parse(result[i].lith);
-                result[i].environ = JSON.parse(result[i].environ);
-                result[i].econ = JSON.parse(result[i].econ);
+                result[i].lith = JSON.parse(result[i].lith) || [];
+                result[i].environ = JSON.parse(result[i].environ) || [];
+                result[i].econ = JSON.parse(result[i].econ) || [];
 
                 result[i].units_above = larkin.jsonifyPipes(result[i].units_above, "integers");
                 result[i].units_below = larkin.jsonifyPipes(result[i].units_below, "integers");
