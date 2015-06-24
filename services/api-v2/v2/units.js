@@ -89,7 +89,7 @@ module.exports = function(req, res, next, cb) {
         var ids = larkin.parseMultipleIds(req.query.strat_name_id);
         callback(null, {"interval_name": "none", "age_bottom": 99999, "age_top": 0, "strat_ids": ids });
 
-      } else if (req.query.unit_id || req.query.section_id || req.query.col_id || req.query.lith || req.query.lith_class || req.query.lith_type || req.query.environ || req.query.environ_class || req.query.environ_type || req.query.project_id || "sample" in req.query|| "all" in req.query || req.query.econ_id || req.query.econ || req.query.econ_type || req.query.econ_class) { 
+      } else if (req.query.unit_id || req.query.section_id || req.query.col_id || req.query.lith || req.query.lith_id || req.query.lith_class || req.query.lith_type || req.query.environ || req.query.environ_class || req.query.environ_type || req.query.project_id || "sample" in req.query|| "all" in req.query || req.query.econ_id || req.query.econ || req.query.econ_type || req.query.econ_class) { 
         callback(null, {"interval_name": "none", "age_bottom": 99999, "age_top": 0});
 
       } else {
@@ -104,21 +104,29 @@ module.exports = function(req, res, next, cb) {
           orderby = [],
           params = {};
 
-      if (req.query.lith || req.query.lith_class || req.query.lith_type) {
-        where += " AND units.id IN (SELECT unit_liths.unit_id from unit_liths JOIN liths on lith_id=liths.id WHERE ::lith_field LIKE :lith) ";
+      if (req.query.lith || req.query.lith_class || req.query.lith_type || req.query.lith_id) {
+        where += " AND units.id IN (SELECT unit_liths.unit_id from unit_liths JOIN liths on lith_id=liths.id WHERE ::lith_field ";
 
         if (req.query.lith) {
+          where += "LIKE :lith) ";
           params["lith_field"] = "lith";
           params["lith"] = req.query.lith;
 
         } else if (req.query.lith_class) {
+          where += "LIKE :lith) ";
           params["lith_field"] = "lith_class";
           params["lith"] = req.query.lith_class;
 
         } else if (req.query.lith_type) {
+          where += "LIKE :lith) ";
           params["lith_field"] = "lith_type";
           params["lith"] = req.query.lith_type;
-        } 
+        } else if (req.query.lith_id) {
+          where += "IN (:lith)) ";
+          params["lith_field"] = "liths.id"
+          params["lith"] = larkin.parseMultipleIds(req.query.lith_id);
+
+        }
       }
 
       if (data.age_bottom !== 99999) {
