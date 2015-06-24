@@ -71,7 +71,7 @@
 ## /units
 + Format of lithology fields in CSV output has changed. Instead of "name proportion|name proportion" it is now "name - proportion|name - proportion"
 + Empty output fields now return empty strings or arrays instead of NULLs, except strat_name_id
-+ Added ability to query to ````environ_id````, ````econ_id````, ````econ````, ````econ_type````, and ````econ_class````
++ Added ability to query to ````lith_id````, ````environ_id````, ````econ_id````, ````econ````, ````econ_type````, ````econ_class````, and ````cltn_id```` (PBDB collection number)
 + Changes to input parameter names and output fields:
 
 |    old     |    new     |
@@ -91,6 +91,9 @@
 |  FO_age          | b_int_age |
 |  *N/A*     | econ[]    |
 | strat_name      |  unit_name |
+| *N/A*      | econ |
+| *N/A*      | measure |
+
 
 
 

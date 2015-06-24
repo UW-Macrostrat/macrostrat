@@ -1,34 +1,30 @@
 (function() { 
   var defs = {
   "/columns": {
-    "description": "Get all colums containing one or more units matching specfied search criteria",
+    "description": "Summarize units by stratigraphic columns",
     "visible": true,
     "options": {
       "parameters": {
         "unit_id": "integer, a valid unit id",
         "section_id": "integer, a valid section id",
         "col_id": "integer, a valid column id",
-        
         "interval_name": "string, chronostratigraphic time interval name",
         "age": "numerical age in millions of years before present",
         "age_top": "numerical age (Ma) - must be used with age_bottom and be less than age_bottom",
         "age_bottom": "numerical age (Ma) - must be used with age_top and be greater than age_top",
-
         "lith_id": "integer, ID of a lithology from /defs/lithologies",
         "lith": "string, specific lithology name (e.g., shale, sandstone)",
         "lith_type": "string, groups of lithologies (e.g., carbonate, siliciclastic)",
         "lith_class": "string, general lithologies (sedimentary, igneous, metamorphic)",
-
         "environ_id": "integer, specific environment ID from /defs/environments",
         "environ": "string, specific environment",
         "environ_type": "string, groups of environments",
         "environ_class": "string, general environments",
-
         "econ_id": "integer, ID of an economic attribute from /defs/econs",
         "econ": "string, name of an economic attribute",
         "econ_type": "string, name of an economic attribute type",
         "econ_class": "string, name of an economic attribute class",
-
+        "cltn_id": "integer, one or more Paleobiology Database collection IDs",
         "strat_name": "a fuzzy stratigraphic name to match units to",
         "strat_name_id": "integer, a single or comma-separated list of stratigraphic IDs from /defs/strat_names",
         "lat": "number, decimal degree latitude, WGS84",
@@ -79,34 +75,30 @@
     }
   },
   "/sections": {
-    "description": "Get all sections for a given column",
+    "description": "Summarize units by gap-bound packages",
     "visible": true,
     "options": {
       "parameters": {
         "unit_id": "integer, a valid unit id",
         "section_id": "integer, a valid section id",
         "col_id": "integer, a valid column id",
-        
         "interval_name": "string, chronostratigraphic time interval name",
         "age": "numerical age in millions of years before present",
         "age_top": "numerical age (Ma) - must be used with age_bottom and be less than age_bottom",
         "age_bottom": "numerical age (Ma) - must be used with age_top and be greater than age_top",
-
         "lith_id": "integer, ID of a lithology from /defs/lithologies",
         "lith": "string, specific lithology name (e.g., shale, sandstone)",
         "lith_type": "string, groups of lithologies (e.g., carbonate, siliciclastic)",
         "lith_class": "string, general lithologies (sedimentary, igneous, metamorphic)",
-
         "environ_id": "integer, specific environment ID from /defs/environments",
         "environ": "string, specific environment",
         "environ_type": "string, groups of environments",
         "environ_class": "string, general environments",
-
         "econ_id": "integer, ID of an economic attribute from /defs/econs",
         "econ": "string, name of an economic attribute",
         "econ_type": "string, name of an economic attribute type",
         "econ_class": "string, name of an economic attribute class",
-
+        "cltn_id": "integer, one or more Paleobiology Database collection IDs",
         "strat_name": "a fuzzy stratigraphic name to match units to",
         "strat_name_id": "integer, a single or comma-separated list of stratigraphic IDs from /defs/strat_names",
         "lat": "number, decimal degree latitude, WGS84",
@@ -151,27 +143,23 @@
         "unit_id": "integer, a valid unit id",
         "section_id": "integer, a valid section id",
         "col_id": "integer, a valid column id",
-        
         "interval_name": "string, chronostratigraphic time interval name",
         "age": "numerical age in millions of years before present",
         "age_top": "numerical age (Ma) - must be used with age_bottom and be less than age_bottom",
         "age_bottom": "numerical age (Ma) - must be used with age_top and be greater than age_top",
-
         "lith_id": "integer, ID of a lithology from /defs/lithologies",
         "lith": "string, specific lithology name (e.g., shale, sandstone)",
         "lith_type": "string, groups of lithologies (e.g., carbonate, siliciclastic)",
         "lith_class": "string, general lithologies (sedimentary, igneous, metamorphic)",
-
         "environ_id": "integer, specific environment ID from /defs/environments",
         "environ": "string, specific environment",
         "environ_type": "string, groups of environments",
         "environ_class": "string, general environments",
-
         "econ_id": "integer, ID of an economic attribute from /defs/econs",
         "econ": "string, name of an economic attribute",
         "econ_type": "string, name of an economic attribute type",
         "econ_class": "string, name of an economic attribute class",
-
+        "cltn_id": "integer, one or more Paleobiology Database collection IDs",
         "strat_name": "a fuzzy stratigraphic name to match units to",
         "strat_name_id": "integer, a single or comma-separated list of stratigraphic IDs from /defs/strat_names",
         "lat": "number, decimal degree latitude, WGS84",
@@ -209,7 +197,7 @@
         "col_id",
         "project_id",
         "col_area",
-        "strat_name",
+        "unit_name",
         "strat_name_id",
         "Mbr",
         "Fm",
@@ -224,6 +212,7 @@
         "lith",
         "environ",
         "econ",
+        "measure",
         "notes",
         "color",
         "text_color",
@@ -745,7 +734,7 @@
         "gid",
         "unit_abbre",
         "rocktype",
-        "lithology",
+        "lith",
         "lith_type",
         "lith_class",
         "t_interval",
@@ -1047,7 +1036,8 @@
     "int_type": "text, the temporal rank of the interval",
     "packages": "integer, total packages",
     "t_sections": "integer, total sections",
-    "t_units": "integer, total units"
+    "t_units": "integer, total units",
+    "measure": "array, summary of types of measurements available"
   }
 }; 
   module.exports = defs; 

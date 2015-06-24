@@ -405,6 +405,23 @@ module.exports = function() {
       });
   });
 
+  it("should accept a PBDB collection filter", function(done) {
+    request(settings.host)
+      .get("/api/v2/units?cltn_id=185,191")
+      .expect(validators.aSuccessfulRequest)
+      .expect(validators.json)
+      .expect(validators.atLeastOneResult)
+      .expect(function(res) {
+        if (res.body.success.data.length !== 2) {
+          throw new Error("Wrong number of units returned with PBDB collection filter")
+        }
+      })
+      .end(function(error, res) {
+        if (error) return done(error);
+        done();
+      });
+  });
+
   it("should order the output given the input", function(done) {
     request(settings.host)
       .get("/api/v2/units?unit_id=138,139,137")

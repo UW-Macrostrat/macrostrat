@@ -229,8 +229,7 @@
 <ul>
 <li>Format of lithology fields in CSV output has changed. Instead of "name proportion|name proportion" it is now "name - proportion|name - proportion"</li>
 <li>Empty output fields now return empty strings or arrays instead of NULLs, except strat_name_id</li>
-<li>Added ability to query to <code>environ_id</code>, <code>econ_id</code>, <code>econ</code>, <code>econ_type</code>, and <code>econ_class</code>
-</li>
+<li>Added ability to query to <code>lith_id</code>, <code>environ_id</code>, <code>econ_id</code>, <code>econ</code>, <code>econ_type</code>, <code>econ_class</code>, and <code>cltn_id</code> (PBDB collection number)</li>
 <li>Changes to input parameter names and output fields:</li>
 </ul>
 
@@ -301,6 +300,14 @@
 <tr>
 <td>strat_name</td>
 <td>unit_name</td>
+</tr>
+<tr>
+<td><em>N/A</em></td>
+<td>econ</td>
+</tr>
+<tr>
+<td><em>N/A</em></td>
+<td>measure</td>
 </tr>
 </tbody>
 </table>
@@ -512,6 +519,22 @@
 <tr>
 <td><em>N/A</em></td>
 <td>color</td>
+</tr>
+<tr>
+<td>lithology</td>
+<td>lith</td>
+</tr>
+<tr>
+<td><em>N/A</em></td>
+<td>lith_type</td>
+</tr>
+<tr>
+<td><em>N/A</em></td>
+<td>lith_class</td>
+</tr>
+<tr>
+<td><em>N/A</em></td>
+<td>gid</td>
 </tr>
 </tbody>
 </table>

@@ -28,11 +28,15 @@ def check_for_decimals(obj):
 
 # Do this if running for the first time!
 '''
+DROP TABLE IF EXISTS lookup_unit_attrs_api;
+DROP TABLE IF EXISTS lookup_unit_attrs_api_new;
+
 CREATE TABLE lookup_unit_attrs_api (
   unit_id mediumint(8),
   lith blob,
   environ blob,
-  econ blob
+  econ blob,
+  measure blob
 ) ENGINE=MyISam ;
 CREATE INDEX unit_id_idx ON lookup_unit_attrs_api (unit_id);
 
@@ -131,6 +135,39 @@ cursor.execute("""
   UPDATE lookup_unit_attrs_api_new SET econ = '[]' WHERE econ IS NULL
 """)
 
+
+
+### Next handle measurements ###
+cursor.execute(""" 
+  SELECT DISTINCT
+  measurement_class,
+  measurement_type,
+  unit_id
+  FROM measurements JOIN measures ON measures.measurement_id = measurements.id 
+  JOIN measuremeta ON measures.measuremeta_id = measuremeta.id 
+  JOIN unit_measures ON measuremeta.id = unit_measures.measuremeta_id
+""")
+
+measurements = cursor.fetchall()
+
+grouped_measurements = defaultdict(list)
+for measurement in measurements:
+  grouped_measurements[measurement["unit_id"]].append({
+    "measure_class": measurement["measurement_class"],
+    "measure_type": measurement["measurement_type"]
+  })
+
+for measurement in grouped_measurements:
+  cursor.execute(""" 
+    UPDATE lookup_unit_attrs_api_new SET measure = %s WHERE unit_id = %s
+  """, [json.dumps(grouped_measurements[measurement]), measurement])
+
+cursor.execute(""" 
+  UPDATE lookup_unit_attrs_api_new SET measure = '[]' WHERE measure IS NULL
+""")
+
+
+### FINISH HIM ###
 cursor.execute("TRUNCATE TABLE lookup_unit_attrs_api")
 cursor.execute("INSERT INTO lookup_unit_attrs_api SELECT * FROM lookup_unit_attrs_api_new")
 

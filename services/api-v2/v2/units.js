@@ -89,7 +89,7 @@ module.exports = function(req, res, next, cb) {
         var ids = larkin.parseMultipleIds(req.query.strat_name_id);
         callback(null, {"interval_name": "none", "age_bottom": 99999, "age_top": 0, "strat_ids": ids });
 
-      } else if (req.query.unit_id || req.query.section_id || req.query.col_id || req.query.lith || req.query.lith_id || req.query.lith_class || req.query.lith_type || req.query.environ || req.query.environ_class || req.query.environ_type || req.query.project_id || "sample" in req.query|| "all" in req.query || req.query.econ_id || req.query.econ || req.query.econ_type || req.query.econ_class) { 
+      } else if (req.query.unit_id || req.query.section_id || req.query.col_id || req.query.lith || req.query.lith_id || req.query.lith_class || req.query.lith_type || req.query.environ || req.query.environ_class || req.query.environ_type || req.query.project_id || "sample" in req.query|| "all" in req.query || req.query.econ_id || req.query.econ || req.query.econ_type || req.query.econ_class || req.query.cltn_id) { 
         callback(null, {"interval_name": "none", "age_bottom": 99999, "age_top": 0});
 
       } else {
@@ -212,7 +212,13 @@ module.exports = function(req, res, next, cb) {
           params["econ"] = req.query.econ_class;
           params["econ_field"] = "econs.econ_class";
         }
-      }  
+      }
+
+
+      if (req.query.cltn_id) {
+        where += " AND pbdb_matches.collection_no IN (:cltn_ids)"
+        params["cltn_ids"] = larkin.parseMultipleIds(req.query.cltn_id);
+      }
 
 
       if ("sample" in req.query) {
@@ -246,6 +252,7 @@ module.exports = function(req, res, next, cb) {
         lookup_unit_attrs_api.lith,
         lookup_unit_attrs_api.environ,
         lookup_unit_attrs_api.econ,
+        lookup_unit_attrs_api.measure,
         IFNULL(notes, '') AS notes, 
         colors.unit_hex AS color, 
         colors.text_hex AS text_color, 
@@ -290,6 +297,7 @@ module.exports = function(req, res, next, cb) {
                 result[i].lith = JSON.parse(result[i].lith) || [];
                 result[i].environ = JSON.parse(result[i].environ) || [];
                 result[i].econ = JSON.parse(result[i].econ) || [];
+                result[i].measure = JSON.parse(result[i].measure) || [];
 
                 result[i].units_above = larkin.jsonifyPipes(result[i].units_above, "integers");
                 result[i].units_below = larkin.jsonifyPipes(result[i].units_below, "integers");
