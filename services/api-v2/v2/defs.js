@@ -168,7 +168,8 @@
         "project_id": "a Macrostrat project ID",
         "response": "Any available response_type. Default is short.",
         "format": "string, desired output format",
-        "geom_age": "If requesting a geographic format, specifies which age to use for the primary coordinates. Accepted parameters are 'modern' (clat, clng), 'top' (t_plat, t_plng) and 'bottom' (b_plat, b_plng). Default is 'modern'"
+        "geom_age": "If requesting a geographic format, specifies which age to use for the primary coordinates. Accepted parameters are 'modern' (clat, clng), 'top' (t_plat, t_plng) and 'bottom' (b_plat, b_plng). Default is 'modern'",
+        "summarize_measures": "If present, returns summary statistics about the measurements associated with each unit"
       },
       "response_types": [
         "short",

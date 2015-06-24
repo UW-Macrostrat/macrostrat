@@ -226,6 +226,8 @@ module.exports = function(req, res, next, cb) {
         where += " AND units_sections.col_id IN (92, 488, 463, 289, 430, 481, 261, 534, 369, 798, 771, 1675) "
       }
 
+      params["measure_field"] = ("summarize_measures" in req.query) ? "lookup_unit_attrs_api.measure_long" : "lookup_unit_attrs_api.measure_short";
+
       var shortSQL = multiline(function() {/*
         units.id AS unit_id,
         units_sections.section_id as section_id, 
@@ -252,7 +254,7 @@ module.exports = function(req, res, next, cb) {
         lookup_unit_attrs_api.lith,
         lookup_unit_attrs_api.environ,
         lookup_unit_attrs_api.econ,
-        lookup_unit_attrs_api.measure,
+        ::measure_field AS measure,
         IFNULL(notes, '') AS notes, 
         colors.unit_hex AS color, 
         colors.text_hex AS text_color, 

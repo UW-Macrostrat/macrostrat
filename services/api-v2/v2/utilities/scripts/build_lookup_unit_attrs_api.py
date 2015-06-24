@@ -36,7 +36,8 @@ CREATE TABLE lookup_unit_attrs_api (
   lith blob,
   environ blob,
   econ blob,
-  measure blob
+  measure_short blob,
+  measure_long blob
 ) ENGINE=MyISam ;
 CREATE INDEX unit_id_idx ON lookup_unit_attrs_api (unit_id);
 
@@ -104,7 +105,7 @@ for unit in units:
 for unit in grouped_units:
   cursor.execute(""" 
     UPDATE lookup_unit_attrs_api_new SET environ = %s WHERE unit_id = %s
-  """, [json.dumps(grouped_units[unit]), unit])
+  """, [json.dumps(grouped_units[unit], default=check_for_decimals), unit])
 
 
 ### Next handle econs ### 
@@ -129,7 +130,7 @@ for unit in units:
 for unit in grouped_units:
   cursor.execute(""" 
     UPDATE lookup_unit_attrs_api_new SET econ = %s WHERE unit_id = %s
-  """, [json.dumps(grouped_units[unit]), unit])
+  """, [json.dumps(grouped_units[unit], default=check_for_decimals), unit])
 
 cursor.execute(""" 
   UPDATE lookup_unit_attrs_api_new SET econ = '[]' WHERE econ IS NULL
@@ -137,7 +138,7 @@ cursor.execute("""
 
 
 
-### Next handle measurements ###
+### Next handle measurements short ###
 cursor.execute(""" 
   SELECT DISTINCT
   measurement_class,
@@ -159,11 +160,52 @@ for measurement in measurements:
 
 for measurement in grouped_measurements:
   cursor.execute(""" 
-    UPDATE lookup_unit_attrs_api_new SET measure = %s WHERE unit_id = %s
-  """, [json.dumps(grouped_measurements[measurement]), measurement])
+    UPDATE lookup_unit_attrs_api_new SET measure_short = %s WHERE unit_id = %s
+  """, [json.dumps(grouped_measurements[measurement], default=check_for_decimals), measurement])
 
 cursor.execute(""" 
-  UPDATE lookup_unit_attrs_api_new SET measure = '[]' WHERE measure IS NULL
+  UPDATE lookup_unit_attrs_api_new SET measure_short = '[]' WHERE measure_short IS NULL
+""")
+
+
+
+### Next handle measurements_long ####
+cursor.execute(""" 
+  SELECT measurements.id AS measure_id,
+  measurement_class AS measure_class,
+  measurement_type AS measure_type,
+  measurement AS measure, 
+  round(avg(measure_value),5) AS mean,
+  round(stddev(measure_value),5) AS stddev,
+  count(unit_measures.id) AS n, 
+  units,
+  unit_id
+  FROM measures JOIN measurements ON measures.measurement_id = measurements.id 
+  JOIN measuremeta ON measures.measuremeta_id = measuremeta.id 
+  JOIN unit_measures ON measuremeta.id = unit_measures.measuremeta_id
+  GROUP BY unit_id,measurements.id
+""")
+
+measurements = cursor.fetchall()
+
+grouped_measurements = defaultdict(list)
+for measurement in measurements:
+  grouped_measurements[measurement["unit_id"]].append({
+      "measure_id": measurement["measure_id"],
+      "measure": measurement["measure"],
+      "mean": measurement["mean"],
+      "stddev": measurement["stddev"],
+      "n": measurement["n"],
+      "unit": measurement["units"]
+    })
+
+for measurement in grouped_measurements:
+  cursor.execute(""" 
+    UPDATE lookup_unit_attrs_api_new SET measure_long = %s WHERE unit_id = %s
+  """, [json.dumps(grouped_measurements[measurement], default=check_for_decimals), measurement])
+
+cursor.execute(""" 
+  UPDATE lookup_unit_attrs_api_new SET measure_long = '[]' WHERE measure_long IS NULL
 """)
 
 
