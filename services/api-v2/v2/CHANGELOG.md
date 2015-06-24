@@ -195,6 +195,11 @@
 | age_bottom (string) | b_age (float) |
 | interval_name | containing_interval |
 | *N/A*    | color |
+| lithology | lith |
+| *N/A* | lith_type |
+| *N/A*  | lith_class |
+| *N/A*  | gid   |
+
 
 
 The following output fields have been added:

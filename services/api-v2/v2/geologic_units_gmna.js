@@ -50,7 +50,7 @@ module.exports = function(req, res, next) {
       where = " WHERE " + where.join(", ");
     }
 
-    larkin.queryPg("geomacro", "SELECT gid, unit_abbre, COALESCE(rocktype, '') AS rocktype, COALESCE(lithology, '') AS lithology, lith_type, lith_class, min_interval AS t_interval, min_age::float AS t_age, max_interval AS b_interval, max_age::float AS b_age, containing_interval, interval_color AS color" + geomField + " FROM gmna.lookup_units" + from + where + limit, params, function(error, result) {
+    larkin.queryPg("geomacro", "SELECT gid, unit_abbre, COALESCE(rocktype, '') AS rocktype, COALESCE(lithology, '') AS lith, lith_type, lith_class, min_interval AS t_interval, min_age::float AS t_age, max_interval AS b_interval, max_age::float AS b_age, containing_interval, interval_color AS color" + geomField + " FROM gmna.lookup_units" + from + where + limit, params, function(error, result) {
       if (error) {
         larkin.error(req, res, next, error);
       } else {
