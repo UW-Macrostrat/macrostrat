@@ -16,6 +16,7 @@ CREATE SEQUENCE map_ids INCREMENT 1 START 1;
 CREATE TABLE maps.small (
   map_id integer DEFAULT nextval('map_ids') PRIMARY KEY,
   name character varying(255),
+  age character varying(255),
   descrip text,
   comments text,
   t_interval integer,
@@ -25,6 +26,7 @@ CREATE TABLE maps.small (
 CREATE TABLE maps.medium (
   mmap_id integer DEFAULT nextval('map_ids') PRIMARY KEY,
   name character varying(255),
+  age character varying(255),
   descrip text,
   comments text,
   t_interval integer,
@@ -34,6 +36,7 @@ CREATE TABLE maps.medium (
 CREATE TABLE maps.large (
   map_id integer DEFAULT nextval('map_ids') PRIMARY KEY,
   name character varying(255),
+  age character varying(255),
   descrip text,
   comments text,
   t_interval integer,
