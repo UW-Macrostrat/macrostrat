@@ -20,17 +20,19 @@ CREATE TABLE maps.small (
   descrip text,
   comments text,
   t_interval integer,
-  b_interval integer
+  b_interval integer,
+  geom geometry
 );
 
 CREATE TABLE maps.medium (
-  mmap_id integer DEFAULT nextval('map_ids') PRIMARY KEY,
+  map_id integer DEFAULT nextval('map_ids') PRIMARY KEY,
   name character varying(255),
   age character varying(255),
   descrip text,
   comments text,
   t_interval integer,
-  b_interval integer
+  b_interval integer,
+  geom geometry
 );
 
 CREATE TABLE maps.large (
@@ -40,7 +42,8 @@ CREATE TABLE maps.large (
   descrip text,
   comments text,
   t_interval integer,
-  b_interval integer
+  b_interval integer,
+  geom geometry
 );
 
 CREATE TABLE maps.source_links (
@@ -69,3 +72,38 @@ CREATE TABLE maps.map_units (
   map_id integer NOT NULL,
   unit_id integer NOT NULL
 );
+
+
+SELECT UpdateGeometrySRID('maps', 'small', 'geom', 4326);
+SELECT UpdateGeometrySRID('maps', 'medium', 'geom', 4326);
+SELECT UpdateGeometrySRID('maps', 'large', 'geom', 4326);
+
+CREATE INDEX ON maps.small (map_id);
+CREATE INDEX ON maps.small (t_interval);
+CREATE INDEX ON maps.small (b_interval);
+CREATE INDEX ON maps.small USING Gist (geom);
+
+CREATE INDEX ON maps.medium (map_id);
+CREATE INDEX ON maps.medium (t_interval);
+CREATE INDEX ON maps.medium (b_interval);
+CREATE INDEX ON maps.medium USING Gist (geom);
+
+CREATE INDEX ON maps.large (map_id);
+CREATE INDEX ON maps.large (t_interval);
+CREATE INDEX ON maps.large (b_interval);
+CREATE INDEX ON maps.large USING Gist (geom);
+
+CREATE INDEX ON maps.source_links (map_id);
+CREATE INDEX ON maps.source_links (orig_id);
+CREATE INDEX ON maps.source_links (source_id);
+
+CREATE INDEX ON maps.sources (source_id);
+
+CREATE INDEX ON maps.map_liths (map_id);
+CREATE INDEX ON maps.map_liths (lith_id);
+
+CREATE INDEX ON maps.map_strat_names (map_id);
+CREATE INDEX ON maps.map_strat_names (strat_name_id);
+
+CREATE INDEX ON maps.map_units (map_id);
+CREATE INDEX ON maps.map_units (unit_id);
