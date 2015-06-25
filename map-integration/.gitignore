@@ -1,0 +1,6 @@
+.DS_Store
+.AppleDouble
+.LSOverride
+
+setup/credentials.py
+*.pyc
