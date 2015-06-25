@@ -288,15 +288,16 @@ var mysql = require("mysql"),
 
   larkin.pipifyLiths = function(data) {
     return data.map(function(d) {
-      return d.type + " - " + d.prop;
+      return d.type + " ~ " + d.prop;
     }).join("|");
   };
 
+  // Handle lith_atts
   larkin.pipifyAttrs = function(data) {
     return data.map(function(attr) {
-      return ((attr.attrs) ? attr.attrs.join(" ") : "") +
+      return ((attr.atts) ? attr.atts.join(" ") : "") +
               attr.name + " " + attr.type + " " + attr.class + " " +
-             ((attr.prop) ? " - " + attr.prop : "");
+             ((attr.prop) ? " ~ " + attr.prop : "");
     }).join("|");
   };
 
