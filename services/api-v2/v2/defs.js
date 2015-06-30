@@ -252,6 +252,8 @@
         "format": "Desired output format"
       },
       "output_formats": [
+        "json",
+        "csv",
         "geojson",
         "geojson_bare",
         "topojson",
