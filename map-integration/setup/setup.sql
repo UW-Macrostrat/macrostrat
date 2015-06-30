@@ -15,6 +15,7 @@ CREATE SEQUENCE map_ids INCREMENT 1 START 1;
 
 CREATE TABLE maps.small (
   map_id integer DEFAULT nextval('map_ids') PRIMARY KEY,
+  orig_id integer
   name character varying(255),
   age character varying(255),
   lithology text,
@@ -27,6 +28,7 @@ CREATE TABLE maps.small (
 
 CREATE TABLE maps.medium (
   map_id integer DEFAULT nextval('map_ids') PRIMARY KEY,
+  orig_id integer,
   name character varying(255),
   age character varying(255),
   lithology text,
@@ -39,6 +41,7 @@ CREATE TABLE maps.medium (
 
 CREATE TABLE maps.large (
   map_id integer DEFAULT nextval('map_ids') PRIMARY KEY,
+  orig_id integer
   name character varying(255),
   age character varying(255),
   lithology text,
@@ -82,16 +85,19 @@ SELECT UpdateGeometrySRID('maps', 'medium', 'geom', 4326);
 SELECT UpdateGeometrySRID('maps', 'large', 'geom', 4326);
 
 CREATE INDEX ON maps.small (map_id);
+CREATE INDEX ON maps.small (orig_id);
 CREATE INDEX ON maps.small (t_interval);
 CREATE INDEX ON maps.small (b_interval);
 CREATE INDEX ON maps.small USING Gist (geom);
 
 CREATE INDEX ON maps.medium (map_id);
+CREATE INDEX ON maps.medium (orig_id);
 CREATE INDEX ON maps.medium (t_interval);
 CREATE INDEX ON maps.medium (b_interval);
 CREATE INDEX ON maps.medium USING Gist (geom);
 
 CREATE INDEX ON maps.large (map_id);
+CREATE INDEX ON maps.large (orig_id);
 CREATE INDEX ON maps.large (t_interval);
 CREATE INDEX ON maps.large (b_interval);
 CREATE INDEX ON maps.large USING Gist (geom);
