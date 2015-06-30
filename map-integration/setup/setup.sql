@@ -15,7 +15,8 @@ CREATE SEQUENCE map_ids INCREMENT 1 START 1;
 
 CREATE TABLE maps.small (
   map_id integer DEFAULT nextval('map_ids') PRIMARY KEY,
-  orig_id integer
+  orig_id integer,
+  source_id integer,
   name character varying(255),
   age character varying(255),
   lith text,
@@ -29,6 +30,7 @@ CREATE TABLE maps.small (
 CREATE TABLE maps.medium (
   map_id integer DEFAULT nextval('map_ids') PRIMARY KEY,
   orig_id integer,
+  source_id integer,
   name character varying(255),
   age character varying(255),
   lith text,
@@ -41,7 +43,8 @@ CREATE TABLE maps.medium (
 
 CREATE TABLE maps.large (
   map_id integer DEFAULT nextval('map_ids') PRIMARY KEY,
-  orig_id integer
+  orig_id integer,
+  source_id integer,
   name character varying(255),
   age character varying(255),
   lith text,
@@ -50,12 +53,6 @@ CREATE TABLE maps.large (
   t_interval integer,
   b_interval integer,
   geom geometry
-);
-
-CREATE TABLE maps.source_links (
-  map_id integer,
-  orig_id integer,
-  source_id integer
 );
 
 CREATE TABLE maps.sources (
