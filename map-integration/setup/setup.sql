@@ -18,7 +18,7 @@ CREATE TABLE maps.small (
   orig_id integer
   name character varying(255),
   age character varying(255),
-  lithology text,
+  lith text,
   descrip text,
   comments text,
   t_interval integer,
@@ -31,7 +31,7 @@ CREATE TABLE maps.medium (
   orig_id integer,
   name character varying(255),
   age character varying(255),
-  lithology text,
+  lith text,
   descrip text,
   comments text,
   t_interval integer,
@@ -44,7 +44,7 @@ CREATE TABLE maps.large (
   orig_id integer
   name character varying(255),
   age character varying(255),
-  lithology text,
+  lith text,
   descrip text,
   comments text,
   t_interval integer,
