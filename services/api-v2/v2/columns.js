@@ -32,7 +32,7 @@ module.exports = function(req, res, next) {
             "b_age": _.max(cols[col_id], function(d) { return d.b_age; }).b_age,
             "t_age": _.min(cols[col_id], function(d) { return d.t_age; }).t_age,
             "pbdb_collections": _.reduce(cols[col_id].map(function(d) { return d.pbdb_collections }), function(a, b) { return a + b}, 0),
-            
+
             "lith": larkin.summarizeAttribute(cols[col_id], "lith"),
             "environ": larkin.summarizeAttribute(cols[col_id], "environ"),
             "econ": larkin.summarizeAttribute(cols[col_id], "econ"),
@@ -85,8 +85,8 @@ module.exports = function(req, res, next) {
           d.lith = larkin.pipifyAttrs(d.lith);
           d.environ = larkin.pipifyAttrs(d.environ);
           d.econ = larkin.pipifyAttrs(d.econ);
-        } 
-      }  
+        }
+      }
     });
 
     if (req.query.format && api.acceptedFormats.geo[req.query.format]) {
@@ -94,8 +94,8 @@ module.exports = function(req, res, next) {
         "data": column_data,
         "geometryColumn": "wkt",
         "geometryType": "wkt",
-        "outputFormat": larkin.getOutputFormat(req.query.format),
-        "callback": function(error, output) {
+        "outputFormat": larkin.getOutputFormat(req.query.format)
+      }, function(error, output) {
           if (error) {
             larkin.error(req, res, next, "An error was incurred during conversion");
           } else {
@@ -109,7 +109,7 @@ module.exports = function(req, res, next) {
             }
           }
         }
-      });
+      );
     } else {
       larkin.sendData(column_data, res, (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json", next);
     }

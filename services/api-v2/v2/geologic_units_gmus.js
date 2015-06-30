@@ -48,7 +48,7 @@ module.exports = function(req, res, next) {
 
         callback(null);
       },
-      
+
       function(callback) {
         // Need to go down the hierarchy!
         if (req.query.strat_name_id) {
@@ -63,10 +63,8 @@ module.exports = function(req, res, next) {
         } else {
           callback(null);
         }
-
-        
       },
-      
+
       function(callback) {
         if (req.query.unit_id) {
           var unit_ids = larkin.parseMultipleIds(req.query.unit_id);
@@ -77,7 +75,7 @@ module.exports = function(req, res, next) {
 
         callback(null);
       },
-      
+
       function(callback) {
         if (req.query.search) {
           where.push("text_search @@ plainto_tsquery('macro', $" + (where.length + 1) + ")")
@@ -86,7 +84,7 @@ module.exports = function(req, res, next) {
 
         callback(null);
       },
-      
+
       function(callback) {
         if (req.query.interval_name) {
           where.push("macro_b_age <= (SELECT age_bottom FROM macrostrat.intervals WHERE interval_name = $" + (where.length + 1) + ") AND macro_t_age >= (SELECT age_top FROM macrostrat.intervals WHERE interval_name = $" + (where.length + 2) + ")");
@@ -95,7 +93,7 @@ module.exports = function(req, res, next) {
 
         callback(null);
       },
-      
+
       function(callback) {
         if (req.query.unit_link) {
           where.push(" lu.unit_link = $" + (where.length + 1));
@@ -115,7 +113,7 @@ module.exports = function(req, res, next) {
               bufferedGeojson = buffer(geojson, bufferSize, "kilometers"),
               totalArea = area(bufferedGeojson)*0.000001;
 
-          
+
           // Test area
           if (totalArea > 1000000000) {
             return larkin.error(req, res, next, "Area too large. Please select a smaller area.");
@@ -130,7 +128,7 @@ module.exports = function(req, res, next) {
         callback(null);
 
       }
-      
+
     ], function() {
       if (where.length < 1 && !("sample" in req.query)) {
         return larkin.error(req, res, next, "Invalid params");
@@ -156,8 +154,8 @@ module.exports = function(req, res, next) {
           if (geo) {
             dbgeo.parse({
               "data": result.rows,
-              "outputFormat": larkin.getOutputFormat(req.query.format),
-              "callback": function(error, result) {
+              "outputFormat": larkin.getOutputFormat(req.query.format)
+            }, function(error, result) {
                 if (error) {
                   larkin.error(req, res, next, error);
                 } else {
@@ -171,7 +169,7 @@ module.exports = function(req, res, next) {
                   }
                 }
               }
-            });
+            );
           } else {
             larkin.sendCompact(result.rows, res, (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json", next);
           }

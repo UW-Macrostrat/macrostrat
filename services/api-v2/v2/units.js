@@ -13,8 +13,8 @@ module.exports = function(req, res, next, cb) {
     return larkin.info(req, res, next);
   }
 
-  // First determine age range component of query, if any. 
-  // NB: ORDER MATTERS here. Do NOT add else if statements before req.query.interval_name, req.query.age or req.query.age_top else statements or  those age parameters will be ommitted 
+  // First determine age range component of query, if any.
+  // NB: ORDER MATTERS here. Do NOT add else if statements before req.query.interval_name, req.query.age or req.query.age_top else statements or  those age parameters will be ommitted
   async.waterfall([
     function(callback) {
       if (req.query.interval_name) {
@@ -38,7 +38,7 @@ module.exports = function(req, res, next, cb) {
 
       } else if (req.query.lat && req.query.lng) {
         var sql = (req.query.adjacents === "true") ? "WITH containing_geom AS (SELECT poly_geom FROM macrostrat.cols WHERE ST_Contains(poly_geom, ST_GeomFromText($1, 4326))) SELECT id FROM macrostrat.cols WHERE ST_Intersects((SELECT * FROM containing_geom), poly_geom) ORDER BY ST_Distance(ST_Centroid(poly_geom), ST_GeomFromText($1, 4326))" : "SELECT id FROM macrostrat.cols WHERE ST_Contains(poly_geom, st_setsrid(ST_GeomFromText($1), 4326)) ORDER BY ST_Distance(ST_Centroid(poly_geom), ST_GeomFromText($1, 4326))";
-        
+
         larkin.queryPg("geomacro", sql, ["POINT(" + req.query.lng + " " + req.query.lat + ")"], function(error, response) {
           if (error) {
             callback(error);
@@ -52,11 +52,11 @@ module.exports = function(req, res, next, cb) {
             placeholders = col_ids.map(function(d, i) { return "$" + (i + 1)});
 
         var sql = "WITH containing_geom AS (SELECT poly_geom FROM macrostrat.cols WHERE id IN (" + placeholders.join(",") + ")) SELECT id FROM macrostrat.cols WHERE ST_Intersects((SELECT * FROM containing_geom), poly_geom)";
-  
+
         if (col_ids.length === 1) {
           sql += " ORDER BY ST_Distance(ST_Centroid(poly_geom), (SELECT * FROM containing_geom))"
         }
-        
+
         larkin.queryPg("geomacro", sql, col_ids, function(error, response) {
           if (error) {
             callback(error);
@@ -89,14 +89,14 @@ module.exports = function(req, res, next, cb) {
         var ids = larkin.parseMultipleIds(req.query.strat_name_id);
         callback(null, {"interval_name": "none", "age_bottom": 99999, "age_top": 0, "strat_ids": ids });
 
-      } else if (req.query.unit_id || req.query.section_id || req.query.col_id || req.query.lith || req.query.lith_id || req.query.lith_class || req.query.lith_type || req.query.environ || req.query.environ_class || req.query.environ_type || req.query.project_id || "sample" in req.query|| "all" in req.query || req.query.econ_id || req.query.econ || req.query.econ_type || req.query.econ_class || req.query.cltn_id) { 
+      } else if (req.query.unit_id || req.query.section_id || req.query.col_id || req.query.lith || req.query.lith_id || req.query.lith_class || req.query.lith_type || req.query.environ || req.query.environ_class || req.query.environ_type || req.query.project_id || "sample" in req.query|| "all" in req.query || req.query.econ_id || req.query.econ || req.query.econ_type || req.query.econ_class || req.query.cltn_id) {
         callback(null, {"interval_name": "none", "age_bottom": 99999, "age_top": 0});
 
       } else {
         callback("Invalid parameters passed");
       }
     },
-  
+
     function(data, callback) {
 
       var where = "",
@@ -152,7 +152,7 @@ module.exports = function(req, res, next, cb) {
       } else if (req.query.col_id) {
         where += " AND units_sections.col_id IN (:col_ids)";
         params["col_ids"] = larkin.parseMultipleIds(req.query.col_id);
-      } 
+      }
 
       if (data.strat_ids) {
         where += " AND (lookup_strat_names.bed_id IN (:strat_ids) OR lookup_strat_names.mbr_id IN (:strat_ids) OR lookup_strat_names.fm_id IN (:strat_ids) OR lookup_strat_names.gp_id IN (:strat_ids) OR lookup_strat_names.sgp_id IN (:strat_ids)) ";
@@ -176,7 +176,7 @@ module.exports = function(req, res, next, cb) {
           where += " LIKE :environ)";
           params["environ"] = req.query.environ;
           params["environ_field"] = "environs.environ";
-   
+
         } else if (req.query.environ_class) {
           where += " LIKE :environ)";
           params["environ"] = req.query.environ_class;
@@ -230,45 +230,45 @@ module.exports = function(req, res, next, cb) {
 
       var shortSQL = multiline(function() {/*
         units.id AS unit_id,
-        units_sections.section_id as section_id, 
-        units_sections.col_id as col_id, 
+        units_sections.section_id as section_id,
+        units_sections.col_id as col_id,
         cols.project_id,
         col_area,
-        units.strat_name AS unit_name, 
-        unit_strat_names.strat_name_id, 
-        IFNULL(mbr_name, '') AS Mbr, 
-        IFNULL(fm_name, '') AS Fm, 
-        IFNULL(gp_name, '') AS Gp, 
-        IFNULL(sgp_name, '') AS SGp, 
-        min(ubt.t1_age) AS t_age, 
-        max(ubb.t1_age) AS b_age, 
-        max_thick, 
-        min_thick, 
-        outcrop, 
+        units.strat_name AS unit_name,
+        unit_strat_names.strat_name_id,
+        IFNULL(mbr_name, '') AS Mbr,
+        IFNULL(fm_name, '') AS Fm,
+        IFNULL(gp_name, '') AS Gp,
+        IFNULL(sgp_name, '') AS SGp,
+        min(ubt.t1_age) AS t_age,
+        max(ubb.t1_age) AS b_age,
+        max_thick,
+        min_thick,
+        outcrop,
         count(distinct collection_no) pbdb_collections
       */});
-            
+
       var longSQL = shortSQL + multiline(function() {/*
         ,
-        project_id, 
+        project_id,
         lookup_unit_attrs_api.lith,
         lookup_unit_attrs_api.environ,
         lookup_unit_attrs_api.econ,
         ::measure_field AS measure,
-        IFNULL(notes, '') AS notes, 
-        colors.unit_hex AS color, 
-        colors.text_hex AS text_color, 
-        ubt.t1 as t_int_id, 
-        LO_interval AS t_int_name, 
-        LO_age AS t_int_age, 
-        ubt.t1_prop as t_prop, 
-        GROUP_CONCAT(distinct ubt.unit_id_2 SEPARATOR '|') AS units_above, 
-        ubb.t1 AS b_int_id, 
-        FO_interval AS b_int_name, 
-        FO_age AS b_int_age, 
-        ubb.t1_prop as b_prop, 
-        GROUP_CONCAT(distinct ubb.unit_id SEPARATOR '|') AS units_below 
-      */}); 
+        IFNULL(notes, '') AS notes,
+        colors.unit_hex AS color,
+        colors.text_hex AS text_color,
+        ubt.t1 as t_int_id,
+        LO_interval AS t_int_name,
+        LO_age AS t_int_age,
+        ubt.t1_prop as t_prop,
+        GROUP_CONCAT(distinct ubt.unit_id_2 SEPARATOR '|') AS units_above,
+        ubb.t1 AS b_int_id,
+        FO_interval AS b_int_name,
+        FO_age AS b_int_age,
+        ubb.t1_prop as b_prop,
+        GROUP_CONCAT(distinct ubb.unit_id SEPARATOR '|') AS units_below
+      */});
 
       var unitBoundariesJoin = (req.query.debug === "true") ? "LEFT JOIN unit_boundaries_scratch ubb ON ubb.unit_id_2=units.id LEFT JOIN unit_boundaries_scratch ubt ON ubt.unit_id=units.id" : "LEFT JOIN unit_boundaries ubb ON ubb.unit_id_2=units.id LEFT JOIN unit_boundaries ubt ON ubt.unit_id=units.id";
 
@@ -323,8 +323,8 @@ module.exports = function(req, res, next, cb) {
                 "data": result,
                 "geometryType": "ll",
                 "geometryColumn": geomAge,
-                "outputFormat": larkin.getOutputFormat(req.query.format),
-                "callback": function(error, output) {
+                "outputFormat": larkin.getOutputFormat(req.query.format)
+              }, function(error, output) {
                   if (error) {
                     return larkin.error(req, res, next, "An error was incurred during conversion");
                   } else {
@@ -334,7 +334,7 @@ module.exports = function(req, res, next, cb) {
                     callback(null, data, output);
                   }
                 }
-              });
+              );
             } else {
               callback(null, data, result);
             }

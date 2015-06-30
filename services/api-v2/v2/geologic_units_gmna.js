@@ -57,8 +57,8 @@ module.exports = function(req, res, next) {
         if (geo) {
           dbgeo.parse({
             "data": result.rows,
-            "outputFormat": larkin.getOutputFormat(req.query.format),
-            "callback": function(error, result) {
+            "outputFormat": larkin.getOutputFormat(req.query.format)
+          }, function(error, result) {
               if (error) {
                 larkin.error(req, res, next, error);
               } else {
@@ -72,7 +72,7 @@ module.exports = function(req, res, next) {
                 }
               }
             }
-          });
+          );
         } else {
           larkin.sendCompact(result.rows, res, (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json", next);
         }

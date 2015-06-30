@@ -41,7 +41,7 @@ module.exports = function(req, res, next) {
         if (data.age_bottom) {
           where = " AND f.age_bottom > ? AND l.age_top < ?";
           params.push(data.age_top, data.age_bottom);
-        } 
+        }
 
         if (req.query.unit_id) {
           where = " AND pbdb_matches.unit_id IN (:unit_id)"
@@ -80,8 +80,8 @@ module.exports = function(req, res, next) {
             "data": results,
             "outputFormat": larkin.getOutputFormat(req.query.format),
             "geometryColumn": "geometry",
-            "geometryType": "wkt",
-            "callback": function(error, result) {
+            "geometryType": "wkt"
+          }, function(error, result) {
               if (error) {
                 larkin.error(req, res, next, "Something went wrong");
               } else {
@@ -92,7 +92,7 @@ module.exports = function(req, res, next) {
                 }
               }
             }
-          });
+          );
         } else {
           larkin.sendCompact(results, res, (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json");
         }
