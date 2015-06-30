@@ -83,25 +83,24 @@ SELECT UpdateGeometrySRID('maps', 'large', 'geom', 4326);
 
 CREATE INDEX ON maps.small (map_id);
 CREATE INDEX ON maps.small (orig_id);
+CREATE INDEX ON maps.small (source_id);
 CREATE INDEX ON maps.small (t_interval);
 CREATE INDEX ON maps.small (b_interval);
 CREATE INDEX ON maps.small USING Gist (geom);
 
 CREATE INDEX ON maps.medium (map_id);
 CREATE INDEX ON maps.medium (orig_id);
+CREATE INDEX ON maps.small (source_id);
 CREATE INDEX ON maps.medium (t_interval);
 CREATE INDEX ON maps.medium (b_interval);
 CREATE INDEX ON maps.medium USING Gist (geom);
 
 CREATE INDEX ON maps.large (map_id);
 CREATE INDEX ON maps.large (orig_id);
+CREATE INDEX ON maps.small (source_id);
 CREATE INDEX ON maps.large (t_interval);
 CREATE INDEX ON maps.large (b_interval);
 CREATE INDEX ON maps.large USING Gist (geom);
-
-CREATE INDEX ON maps.source_links (map_id);
-CREATE INDEX ON maps.source_links (orig_id);
-CREATE INDEX ON maps.source_links (source_id);
 
 CREATE INDEX ON maps.sources (source_id);
 
