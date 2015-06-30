@@ -124,7 +124,7 @@ var mysql = require("mysql"),
         .send(JSON.stringify({"success": {"v": api.version,"data": data}}, null, 0));
     }
   };
-  
+
 
   larkin.sendBare = function(data, res, next) {
     res
@@ -165,7 +165,7 @@ var mysql = require("mysql"),
           });
       });
     }
-        
+
   };
 
   larkin.log = function(type, message) {
@@ -204,7 +204,7 @@ var mysql = require("mysql"),
       }
       routeDefinition.options.fields = fields;
       callback(routeDefinition);
-    }); 
+    });
   };
 
 
@@ -282,7 +282,7 @@ var mysql = require("mysql"),
       type = type.trim()
 
       return {"type": type, "prop": prop}
-      
+
     }.bind(this));
   };
 
@@ -295,7 +295,7 @@ var mysql = require("mysql"),
   // Handle lith_atts
   larkin.pipifyAttrs = function(data) {
     return data.map(function(attr) {
-      return ((attr.atts) ? attr.atts.join(" ") : "") +
+      return ((attr.atts) ? (attr.atts.join(" ") + " ") : "") +
               attr.name + " " + attr.type + " " + attr.class + " " +
              ((attr.prop) ? " ~ " + attr.prop : "");
     }).join("|");
@@ -303,9 +303,9 @@ var mysql = require("mysql"),
 
   larkin.summarizeAttribute = function(data, type) {
     var mommaCat = _.flatten(
-      data.map(function(d) { 
+      data.map(function(d) {
         return d[type];
-      })).filter(function(d) { 
+      })).filter(function(d) {
         if (d) { return d }
       });
 
@@ -320,10 +320,10 @@ var mysql = require("mysql"),
     Object.keys(cats).forEach(function(d) {
       if (type === "lith") {
         var prop = parseFloat((
-          cats[d].map(function(j) { 
-            return j.prop 
-          }).reduce(function(a, b) { 
-            return a + b 
+          cats[d].map(function(j) {
+            return j.prop
+          }).reduce(function(a, b) {
+            return a + b
           }, 0)/data.length
         ).toFixed(4));
 
