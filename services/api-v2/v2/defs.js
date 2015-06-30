@@ -494,7 +494,7 @@
     "visible": true,
     "options": {
       "parameters": {
-        "id": "unique id",
+        "strat_name_id": "unique id",
         "strat_name": "lithostratigraphic name, exact match",
         "strat_name_like": "lithostratigraphic name, with open-ended string matching",
         "rank": "lithostratigraphic rank",
