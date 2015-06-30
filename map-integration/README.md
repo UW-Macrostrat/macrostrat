@@ -4,7 +4,7 @@ Multiscale geologic map integration
 ## Setup
 + Edit ````setup/credentials.example.py```` with your credentials and rename to ````credentials.py````
 + Run ````cd setup && ./setup.sh````
-
++ Permissions for MariaDB to write files to repo directory must be in place
 
 ## import
 To import a new dataset, you can use ````./import```` which reprojects a dataset to EPSG 4326 and imports it into PostGIS.
