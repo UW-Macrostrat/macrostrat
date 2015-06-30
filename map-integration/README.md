@@ -25,7 +25,7 @@ _Import a single shapefile:_
 ./import france ~/Downloads/france/france.shp
 ````
 
- _Import a dataset spread out over two shapefiles with ````LATIN1```` encoding (note the use of ````false```` on the first command and ````true```` on the second!):_
+ _Import a dataset with same data structure spread out over two shapefiles with ````LATIN1```` encoding (note the use of ````false```` on the first command and ````true```` on the second!):_
 ````
 ./import ontario ~/Downloads/ontario/Canada.shp false LATIN1
 ./import ontario ~/Downloads/ontario/Greenland.shp true LATIN1
