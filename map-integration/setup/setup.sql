@@ -67,74 +67,29 @@ CREATE TABLE maps.sources (
 CREATE TABLE maps.map_liths (
   map_id integer NOT NULL,
   lith_id integer NOT NULL,
-  basis_id integer NOT NULL
+  basis_col character varying(50)
 );
 
 CREATE TABLE maps.map_strat_names (
   map_id integer NOT NULL,
   strat_name_id integer NOT NULL,
-  basis_id integer NOT NULL
+  basis_col character varying(50)
 );
 
 CREATE TABLE maps.map_units (
   map_id integer NOT NULL,
   unit_id integer NOT NULL,
-  basis_id integer NOT NULL
+  basis_col character varying(50)
 );
-
-CREATE TABLE maps.bases (
-  basis_id serial PRIMARY KEY NOT NULL,
-  name character varying(200)
-);
-
-INSERT INTO maps.bases (basis_id, name) VALUES
-(0, 'manual-matches'),
-
-(1, 'mbr_name-strat_name'),
-(2, 'fm_name-strat_name'),
-(3, 'gp_name-strat_name'),
-(4, 'sgp_name-strat_name'),
-
-(5, 'mbr_name-name'),
-(6, 'fm_name-name'),
-(7, 'gp_name-name'),
-(8, 'sgp_name-name'),
-
-(9, 'mbr_name-descrip'),
-(10, 'fm_name-descrip'),
-(11, 'gp_name-descrip'),
-(12, 'sgp_name-descrip'),
-
-(13, 'mbr_name-comments'),
-(14, 'fm_name-comments'),
-(15, 'gp_name-comments'),
-(16, 'sgp_name-comments'),
-
-(17, 'ns-mbr_name-strat_name'),
-(18, 'ns-fm_name-strat_name'),
-(19, 'ns-gp_name-strat_name'),
-(20, 'ns-sgp_name-strat_name'),
-
-(21, 'ns-mbr_name-name'),
-(22, 'ns-fm_name-name'),
-(23, 'ns-gp_name-name'),
-(24, 'ns-sgp_name-name'),
-
-(25, 'ns-mbr_name-descrip'),
-(26, 'ns-fm_name-descrip'),
-(27, 'ns-gp_name-descip'),
-(28, 'ns-sgp_name-descrip'),
-
-(29, 'ns-mbr_name-comments'),
-(30, 'ns-fm_name-comments'),
-(31, 'ns-gp_name-comments'),
-(32, 'ns-sgp_name-comments'),
-(88, 'misses');
 
 
 SELECT UpdateGeometrySRID('maps', 'small', 'geom', 4326);
 SELECT UpdateGeometrySRID('maps', 'medium', 'geom', 4326);
 SELECT UpdateGeometrySRID('maps', 'large', 'geom', 4326);
+
+ALTER TABLE maps.small ADD CONSTRAINT enforce_valid_geom_small CHECK (st_isvalid(geom));
+ALTER TABLE maps.medium ADD CONSTRAINT enforce_valid_geom_medium CHECK (st_isvalid(geom));
+ALTER TABLE maps.large ADD CONSTRAINT enforce_valid_geom_large CHECK (st_isvalid(geom));
 
 CREATE INDEX ON maps.small (map_id);
 CREATE INDEX ON maps.small (orig_id);
