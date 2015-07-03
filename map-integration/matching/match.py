@@ -67,7 +67,6 @@ WITH rocks AS (SELECT map_id, strat_name, name, descrip, comments, intervals_top
           JOIN macrostrat.intervals intervals_top on t_interval = intervals_top.id
           JOIN macrostrat.intervals intervals_bottom on b_interval = intervals_bottom.id
           WHERE source_id = %(source_id)s
-          LIMIT 500
  ),
  macro AS (SELECT us.unit_id AS unit_id, lsn.strat_name_id, lsn.strat_name, c.poly_geom, lui.lo_age as age_top, lui.fo_age as age_bottom
           FROM macrostrat.units_sections us
