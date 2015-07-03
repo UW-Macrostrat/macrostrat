@@ -57,7 +57,6 @@ CREATE TABLE maps.large (
   name character varying(255),
   strat_name character varying(255),
   age character varying(255),
-  age_nlp json,
   lith text,
   lith_nlp json,
   descrip text,
