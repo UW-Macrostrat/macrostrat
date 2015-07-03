@@ -15,8 +15,7 @@ It requires two parameters, a dataset name and a path to a shapefile, and accept
 + ````dataset_name```` - Name of the dataset. The data will be inserted into a table with this name in the schema ````sources````
 + ````shapefile_path```` - The path to the shapefile you would like to insert
 + ````append (optional)```` - Boolean ````true```` or ````false````, default is ````false````. If ````true````, will append the data to an existing table specified with ````dataset_name````.
-+ ````encoding (optional)```` - Default is ````UTF-8````. Often times shapefiles will have ````LATIN1```` encoding, and will throw an encoding error if ````UTF-8```` is used. If that happens, explicitly use the requested encoding.   
-
++ ````encoding (optional)```` - Default is ````UTF-8````. Often times shapefiles will have ````LATIN1```` encoding, and will throw an encoding error if ````UTF-8```` is used. If that happens, explicitly use the requested encoding.
 
 ##### Examples:
 
@@ -29,4 +28,20 @@ _Import a single shapefile:_
 ````
 ./import ontario ~/Downloads/ontario/Canada.shp false LATIN1
 ./import ontario ~/Downloads/ontario/Greenland.shp true LATIN1
+````
+
+
+
+## match.py
+Once a dataset is imported using the process above, you can run this script to make matches to Macrostrat units and strat names.
+
+##### Parameters:
++ ````--source_id```` (or ````-s````) - the ID of the dataset you would like to create matches to. Must be in ````maps.sources````.
++ ````--table```` (or ````-t````) - the map table that contains the target source that will be used for creating matches. Must be either ````small````, ````medium````, or ````large````.
+
+##### Examples:
+_Create new matches for source 1_
+
+````
+python match.py --source_id 1 --table medium
 ````
