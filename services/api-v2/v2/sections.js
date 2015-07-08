@@ -77,7 +77,7 @@ module.exports = function(req, res, next) {
           // Summarize the section and push it to our result queue
           var section = {
             "col_id": parseInt(col_id),
-            "col_area": parseFloat(col_area),
+            "col_area": parseFloat(columns[col_id].sections[i].units[0].col_area),
             "section_id": columns[col_id].sections[i].units[0].section_id,
             "project_id": columns[col_id].sections[i].units[0].project_id,
 
