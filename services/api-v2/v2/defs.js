@@ -310,6 +310,7 @@
     "options": {
       "parameters": {
         "lith_id": "integer, one or more lithology ids",
+        "lith": "string, lithology",
         "lith_class": "string, lithology class",
         "lith_type": "string, lithology type",
         "all": "return all lithology definitions"
