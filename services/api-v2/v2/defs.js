@@ -7,8 +7,7 @@
       "parameters": {
         "unit_id": "integer, a valid unit id",
         "section_id": "integer, a valid section id",
-        "col_id": "integer, a valid column id",
-        "interval_name": "string, chronostratigraphic time interval name",
+        "col_id": "integer, a valid column istigraphic time interval name",
         "age": "numerical age in millions of years before present",
         "age_top": "numerical age (Ma) - must be used with age_bottom and be less than age_bottom",
         "age_bottom": "numerical age (Ma) - must be used with age_top and be greater than age_top",
@@ -122,6 +121,7 @@
       ],
       "fields": [
         "col_id",
+        "col_area",
         "section_id",
         "project_id",
         "max_thick",
