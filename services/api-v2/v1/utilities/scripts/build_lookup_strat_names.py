@@ -25,7 +25,7 @@ cursor = connection.cursor()
 
 
 # Get all the strat names
-cursor.execute("SELECT * FROM strat_names order by strat_name asc;")
+cursor.execute("SELECT * FROM strat_names where rank!='' order by strat_name asc;")
 strat_names = cursor.fetchall()
 
 
@@ -49,7 +49,7 @@ for name in strat_names:
 			SELECT this_name, strat_name, strat_names.id id, rank 
 			FROM strat_tree 
 			JOIN strat_names ON this_name = strat_names.id 
-			WHERE that_name = %s and rel = 'parent'
+			WHERE that_name = %s and rel = 'parent' and rank!=''
 		""", [name_id])
 		parent = cursor.fetchone()
 		
@@ -92,7 +92,7 @@ connection.commit()
 
 
 # Validate results
-cursor.execute("SELECT count(*) N, (SELECT count(*) from lookup_strat_names_new) nn from strat_names")
+cursor.execute("SELECT count(*) N, (SELECT count(*) from lookup_strat_names_new) nn from strat_names WHERE rank!=''")
 row = cursor.fetchone()
 if row['N'] != row['nn'] :
 	print "ERROR: inconsistent strat_name count in lookup table"
