@@ -21,7 +21,7 @@ filterwarnings('ignore', category = MySQLdb.Warning)
 cursor.execute("CREATE TABLE lookup_usgs_strat_names_new LIKE lookup_usgs_strat_names")
 
 # initial query
-cursor.execute("SELECT * FROM usgs_strat_names where rank not like ''")
+cursor.execute("SELECT * FROM usgs_strat_names where rank not like '' and dont_use=0")
 numrows = cursor.rowcount
 row = cursor.fetchall()
 

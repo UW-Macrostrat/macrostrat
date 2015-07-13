@@ -35,9 +35,9 @@ for name in strat_names:
 	rank_name = name["rank"] + "_name"
 
 	cursor.execute("""
-		INSERT INTO lookup_strat_names_new (strat_name_id, strat_name, rank, """ + rank_id + """, """ + rank_name + """) 
-		VALUES (%s, %s, %s, %s, %s)
-	""", [name['id'], name['strat_name'], name['rank'], name['id'], name['strat_name']])
+		INSERT INTO lookup_strat_names_new (concept_id, strat_name_id, strat_name, rank, """ + rank_id + """, """ + rank_name + """) 
+		VALUES (%s, %s, %s, %s, %s, %s)
+	""", [name['concept_id'], name['id'], name['strat_name'], name['rank'], name['id'], name['strat_name']])
 	connection.commit()
 
 	has_parent = True
