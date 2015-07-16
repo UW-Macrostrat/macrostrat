@@ -6,3 +6,8 @@ setup/credentials.py
 *.pyc
 
 unprojected.*
+*.log
+tiles/node_modules
+
+tiles/:memory
+
