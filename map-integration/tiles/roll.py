@@ -5,6 +5,23 @@ import json
 import sys, os
 import sqlite3
 import shutil
+import argparse
+
+parser = argparse.ArgumentParser(
+  description="Match rocks to Macrostrat units",
+  epilog="Example usage: python roll.py --table medium")
+
+parser.add_argument("-t", "--table", dest="table",
+  default="small", type=str, required=True,
+  help="The scale table to use. Can be 'small', 'medium', or 'large'.")
+
+arguments = parser.parse_args()
+
+# Validate params!
+if arguments.table not in ["small", "medium", "large"]:
+    print "Invalid table argument"
+    sys.exit(1)
+
 
 def new_mbtiles(filename):
     temp_conn = sqlite3.connect(table + ".mbtiles")
@@ -37,7 +54,14 @@ except:
 
 cur = conn.cursor()
 
-table = "medium_map"
+table = arguments.table + "_map"
+
+max_zoom = {
+  "small": "8",
+  "medium": "12",
+  "large": "12"
+}
+
 sqlite3_connection = sqlite3.connect(":memory")
 sqlite3_cursor = sqlite3_connection.cursor()
 sqlite3_cursor.execute("PRAGMA cache_size = 40000")
@@ -85,7 +109,8 @@ for group in groups :
     with open(file_name, "wb") as output:
         json.dump(source_project, output, indent=2)
 
-    call(["node", "node_modules/kosmtik/index.js", "export", file_name, "--format", "mbtiles", "--output", ("tmp/" + name + ".mbtiles"), "--minZoom", "1", "--maxZoom", "12"])
+    call(["node", "node_modules/kosmtik/index.js", "export", file_name, "--format", "mbtiles", "--output", ("tmp/" + name + ".mbtiles"), "--minZoom", "1", "--maxZoom", max_zoom[arguments.table]])
+    print "Done creating MBTiles for ", str(group), " of ", str(len(groups))
     #call(["mb-util", ("tmp/" + name + "_tiles"), ("tmp/" + name + ".mbtiles")])
     sqlite3_cursor.execute("ATTACH DATABASE ? AS " + name, ("tmp/" + name + ".mbtiles", ))
     sqlite3_cursor.execute("REPLACE INTO combined.tiles SELECT * FROM " + name + ".tiles")

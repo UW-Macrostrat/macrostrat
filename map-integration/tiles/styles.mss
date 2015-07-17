@@ -1,4 +1,3 @@
-
 Map {
   background-color: transparent;
 }
@@ -7,13 +6,25 @@ Map {
   polygon-opacity:1;
   polygon-fill: #000;
   line-color: #aaa;
-}
-.burwell[zoom<=9] {
   line-width: 0.0;
 }
-.burwell[zoom>9] {
-  line-width: 0.2;
+#small_map[zoom>5] {
+  polygon-opacity: 0;
+  line-opacity: 0;
 }
+#medium_map[zoom<=5]{
+  polygon-opacity: 0;
+  line-opacity: 0;
+}
+#medium_map[zoom>=11] {
+  polygon-opacity: 0;
+  line-opacity: 0;
+}
+#large_map[zoom<=10] {
+  polygon-opacity: 0;
+  line-opacity: 0;
+}
+
 .burwell[color="null"] {
    polygon-fill: #777777;
 }
