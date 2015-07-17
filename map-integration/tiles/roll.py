@@ -2,9 +2,9 @@ import psycopg2
 from psycopg2.extensions import AsIs
 from subprocess import call
 import json
-#from collections import OrderedDict
 import sys, os
 import sqlite3
+import shutil
 
 def new_mbtiles(filename):
     temp_conn = sqlite3.connect(table + ".mbtiles")
@@ -20,7 +20,6 @@ def new_mbtiles(filename):
             tile_data blob
         );
     """)
-    update combined.tiles set tile_data = (select gmus.tiles.tile_data from gmus.tiles where length(combined.tiles.tile_data) < length(gmus.tiles.tile_data) AND combined.tiles.zoom_level = gmus.tiles.zoom_level AND combined.tiles.tile_column = gmus.tiles.tile_column AND combined.tiles.tile_row = gmus.tiles.tile_row)
 
     temp_cursor.execute("CREATE TABLE metadata (name text, value text)")
     temp_cursor.execute("CREATE UNIQUE INDEX name on metadata (name)")
@@ -86,9 +85,12 @@ for group in groups :
     with open(file_name, "wb") as output:
         json.dump(source_project, output, indent=2)
 
-    call(["node", "node_modules/kosmtik/index.js", "export", file_name, "--format", "tiles", "--output", ("tmp/" + name + "_tiles"), "--minZoom", "1", "--maxZoom", "4"])
-    call(["mb-util", ("tmp/" + name + "_tiles"), ("tmp/" + name + ".mbtiles")])
+    call(["node", "node_modules/kosmtik/index.js", "export", file_name, "--format", "mbtiles", "--output", ("tmp/" + name + ".mbtiles"), "--minZoom", "1", "--maxZoom", "12"])
+    #call(["mb-util", ("tmp/" + name + "_tiles"), ("tmp/" + name + ".mbtiles")])
     sqlite3_cursor.execute("ATTACH DATABASE ? AS " + name, ("tmp/" + name + ".mbtiles", ))
     sqlite3_cursor.execute("REPLACE INTO combined.tiles SELECT * FROM " + name + ".tiles")
 
 sqlite3_connection.commit()
+sqlite3_connection.close()
+
+shutil.rmtree('tmp/')

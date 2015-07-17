@@ -1,3 +1,18 @@
+drop materialized view if exists medium_map;
+drop materialized view if exists large_map;
+drop materialized view if exists small_map;
+
+DROP AGGREGATE IF EXISTS array_agg_mult;
+CREATE AGGREGATE array_agg_mult (anyarray)  (
+    SFUNC     = array_cat
+   ,STYPE     = anyarray
+   ,INITCOND  = '{}'
+);
+
+----------------------------------------------------
+---------------------- medium ----------------------
+----------------------------------------------------
+
 CREATE MATERIALIZED VIEW medium_map AS
 WITH start AS (
 	SELECT source_id, st_extent(geom)::geometry extent
@@ -58,13 +73,9 @@ JOIN parsed ON parsed.source_id = medium.source_id;
 
 
 
-
-
-
-
-
-
-
+----------------------------------------------------
+---------------------- small -----------------------
+----------------------------------------------------
 
 
 CREATE MATERIALIZED VIEW small_map AS
@@ -120,19 +131,21 @@ parsed AS (
 
 SELECT
   map_id,
-  medium.source_id,
+  small.source_id,
   geom,
   (select interval_color from macrostrat.intervals where age_top <= ti.age_top AND age_bottom >= tb.age_bottom order by age_bottom - age_top limit 1) color,
   group_id
-FROM maps.medium
+FROM maps.small
 JOIN macrostrat.intervals ti ON ti.id = t_interval
 JOIN macrostrat.intervals tb ON tb.id = b_interval
-JOIN parsed ON parsed.source_id = medium.source_id;
+JOIN parsed ON parsed.source_id = small.source_id;
 
 
 
 
-
+----------------------------------------------------
+---------------------- large -----------------------
+----------------------------------------------------
 
 CREATE MATERIALIZED VIEW large_map AS
 WITH start AS (
@@ -187,14 +200,14 @@ parsed AS (
 
 SELECT
   map_id,
-  medium.source_id,
+  large.source_id,
   geom,
   (select interval_color from macrostrat.intervals where age_top <= ti.age_top AND age_bottom >= tb.age_bottom order by age_bottom - age_top limit 1) color,
   group_id
-FROM maps.medium
+FROM maps.large
 JOIN macrostrat.intervals ti ON ti.id = t_interval
 JOIN macrostrat.intervals tb ON tb.id = b_interval
-JOIN parsed ON parsed.source_id = medium.source_id;
+JOIN parsed ON parsed.source_id = large.source_id;
 
 
 
