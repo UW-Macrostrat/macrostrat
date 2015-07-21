@@ -14,6 +14,15 @@ except:
 
 cur = conn.cursor()
 
+print "--- Refreshing views ---"
+print "---      small       ---"
+#cur.execute("REFRESH MATERIALIZED VIEW small_map")
+print "---      medium      ---"
+#cur.execute("REFRESH MATERIALIZED VIEW medium_map")
+print "---      large       ---"
+#cur.execute("REFRESH MATERIALIZED VIEW large_map")
+#conn.commit()
+
 print "--- Building styles.mss ---"
 # First, rebuild the file `styles.mss` in the event any colors were changed
 cur.execute("""
@@ -31,11 +40,11 @@ carto_css = """
   line-color: #aaa;
   line-width: 0.0;
 }
-#small_map[zoom>6] {
+#small_map[zoom>5] {
   polygon-opacity: 0;
   line-opacity: 0;
 }
-#medium_map[zoom<=6]{
+#medium_map[zoom<=5]{
   polygon-opacity: 0;
   line-opacity: 0;
 }
