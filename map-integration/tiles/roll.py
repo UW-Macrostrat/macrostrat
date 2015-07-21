@@ -3,47 +3,7 @@ from psycopg2.extensions import AsIs
 from subprocess import call
 import json
 import sys, os
-import sqlite3
-import shutil
-import argparse
-
-parser = argparse.ArgumentParser(
-  description="Match rocks to Macrostrat units",
-  epilog="Example usage: python roll.py --table medium")
-
-parser.add_argument("-t", "--table", dest="table",
-  default="small", type=str, required=True,
-  help="The scale table to use. Can be 'small', 'medium', or 'large'.")
-
-arguments = parser.parse_args()
-
-# Validate params!
-if arguments.table not in ["small", "medium", "large"]:
-    print "Invalid table argument"
-    sys.exit(1)
-
-
-def new_mbtiles(filename):
-    temp_conn = sqlite3.connect(table + ".mbtiles")
-    temp_cursor = temp_conn.cursor()
-    temp_cursor.execute("PRAGMA cache_size = 40000")
-    temp_cursor.execute("PRAGMA temp_store = memory")
-
-    temp_cursor.execute("""
-        CREATE TABLE tiles (
-            zoom_level integer,
-            tile_column integer,
-            tile_row integer,
-            tile_data blob
-        );
-    """)
-
-    temp_cursor.execute("CREATE TABLE metadata (name text, value text)")
-    temp_cursor.execute("CREATE UNIQUE INDEX name on metadata (name)")
-    temp_cursor.execute("CREATE UNIQUE INDEX tile_index on tiles (zoom_level, tile_column, tile_row)")
-    temp_conn.commit()
-    temp_conn.close()
-
+import copy
 
 # Connect to the database
 try:
@@ -54,68 +14,122 @@ except:
 
 cur = conn.cursor()
 
-table = arguments.table + "_map"
+print "--- Building styles.mss ---"
+# First, rebuild the file `styles.mss` in the event any colors were changed
+cur.execute("""
+    SELECT DISTINCT interval_color AS color
+    FROM macrostrat.intervals
+    WHERE interval_color IS NOT NULL
+        AND interval_color != ''
+""")
+colors = cur.fetchall()
 
-max_zoom = {
-  "small": "8",
-  "medium": "12",
-  "large": "12"
+carto_css = """
+.burwell {
+  polygon-opacity:1;
+  polygon-fill: #000;
+  line-color: #aaa;
+  line-width: 0.0;
+}
+#small_map[zoom>6] {
+  polygon-opacity: 0;
+  line-opacity: 0;
+}
+#medium_map[zoom<=6]{
+  polygon-opacity: 0;
+  line-opacity: 0;
+}
+#medium_map[zoom>=11] {
+  polygon-opacity: 0;
+  line-opacity: 0;
+}
+#large_map[zoom<=10] {
+  polygon-opacity: 0;
+  line-opacity: 0;
 }
 
-sqlite3_connection = sqlite3.connect(":memory")
-sqlite3_cursor = sqlite3_connection.cursor()
-sqlite3_cursor.execute("PRAGMA cache_size = 40000")
-sqlite3_cursor.execute("PRAGMA page_size = 80000")
-#sqlite3_cursor.execute("PRAGMA synchronous = OFF")
-sqlite3_cursor.execute("PRAGMA temp_store = memory")
-sqlite3_cursor.execute("PRAGMA journal_mode = DELETE")
-sqlite3_cursor.execute("PRAGMA locking_mode = EXCLUSIVE")
-sqlite3_connection.commit()
-new_mbtiles(table)
+.burwell[color="null"] {
+   polygon-fill: #777777;
+}
+.burwell[color=null] {
+   polygon-fill: #777777;
+}
+.burwell[color=""] {
+   polygon-fill: #777777;
+}
 
-# Get ready
+"""
 
-with open("template.mml") as input:
-    template = json.load(input)
+# Build the stylesheet
+for color in colors :
+  carto_css += '.burwell[color="' + color[0] + '"] {\n   polygon-fill: ' + color[0] + ';\n}\n'
 
-if not os.path.exists('tmp'):
-    os.makedirs('tmp')
+# Write it out
+with open("styles.mss", "w") as output:
+    output.write(carto_css)
 
-cur.execute("SELECT DISTINCT group_id FROM %(table)s", {"table": AsIs(table)})
-groups = [group[0] for group in cur.fetchall()]
+print "--- Building burwell_configured.mml ---"
 
-sqlite3_cursor.execute("attach database ? AS combined", (table + ".mbtiles", ))
-sqlite3_connection.commit()
+# This is the template for each layer
+layer_template = {
+    "geometry": "polygon",
+    "extent": [],
+    "Datasource": {
+        "type": "postgis",
+        "table": "",
+        "key_field": "map_id",
+        "geometry_field": "geom",
+        "extent_cache": "auto",
+        "extent": "",
+        "host": "localhost",
+        "port": "5432",
+        "user": "john",
+        "dbname": "burwell"
+    },
+    "id": "",
+    "class": "burwell",
+    "srs-name": "WGS84",
+    "srs": "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs",
+    "advanced": {},
+    "name": ""
+}
 
-for group in groups :
-    cur.execute("SELECT ST_Extent(geom), ST_AsText(ST_Centroid(ST_Extent(geom))) FROM %(table)s WHERE group_id = %(group_id)s", {"table": AsIs(table), "group_id": group})
+# Open the project template that will hold each layer
+with open("burwell.mml") as input:
+    burwell = json.load(input)
+
+# For each scale...
+for scale in ["small", "medium", "large"]:
+    name = scale + "_map"
+
+    # ...find the extent and the centroid
+    cur.execute("SELECT ST_Extent(geom), ST_AsText(ST_Centroid(ST_Extent(geom))) FROM %(table)s", {"table": AsIs(name)})
     attrs = cur.fetchone()
-    source_project = template.copy()
 
+    # ...create a new layer template
+    layer = copy.deepcopy(layer_template)
+
+    # ...clean up the extent and centroid from the above query
     extent = attrs[0].replace(" ", ",").replace("BOX(", "").replace(")", "")
     center = attrs[1].replace("POINT(", "").replace(")", "")
-    name = table + str(group)
 
-    source_project["bounds"] = [float(coord) for coord in extent.split(",")]
-    source_project["center"] = [float(coord) for coord in center.split(" ")].append(3)
-    source_project["Layer"][0]["extent"] = [float(coord) for coord in extent.split(",")]
-    source_project["Layer"][0]["Datasource"]["extent"] = extent
-    source_project["Layer"][0]["Datasource"]["table"] = "(SELECT * FROM %s WHERE group_id = %s) subset" % (table, group, )
-    source_project["Layer"][0]["id"] = name
-    source_project["Layer"][0]["name"] = name
-    source_project["name"] = name
+    # ...fill in the template
+    layer["bounds"] = [float(coord) for coord in extent.split(",")]
+    layer["center"] = [float(coord) for coord in center.split(" ")].append(3)
+    layer["extent"] = [float(coord) for coord in extent.split(",")]
+    layer["Datasource"]["extent"] = extent
+    layer["Datasource"]["table"] = "(SELECT * FROM %s ) subset" % (name,)
+    layer["id"] = name
+    layer["name"] = name
 
-    file_name = "tmp/" + name + ".mml"
-    with open(file_name, "wb") as output:
-        json.dump(source_project, output, indent=2)
+    # ...and append the layer to the project
+    burwell["Layer"].append(layer)
 
-    call(["node", "node_modules/kosmtik/index.js", "export", file_name, "--format", "mbtiles", "--output", ("tmp/" + name + ".mbtiles"), "--minZoom", "1", "--maxZoom", max_zoom[arguments.table]])
-    print "Done creating MBTiles for ", str(group), " of ", str(len(groups))
-    #call(["mb-util", ("tmp/" + name + "_tiles"), ("tmp/" + name + ".mbtiles")])
-    sqlite3_cursor.execute("ATTACH DATABASE ? AS " + name, ("tmp/" + name + ".mbtiles", ))
-    sqlite3_cursor.execute("REPLACE INTO combined.tiles SELECT * FROM " + name + ".tiles")
+# Dump the resultant configuration file to a new project file
+with open("burwell_configured.mml", "wb") as output:
+    json.dump(burwell, output, indent=2)
 
-sqlite3_connection.commit()
-sqlite3_connection.close()
+print "--- Building burwell_configured.xml ---"
 
-shutil.rmtree('tmp/')
+# Use kosmtik top conver the project file to a Mapnik XML file that can be read by TileStache
+call(["node", "node_modules/kosmtik/index.js", "export", "burwell_configured.mml", "--format", "xml", "--output", "burwell_configured.xml", "--minZoom", "1", "--max_zoom", "12"])

@@ -211,12 +211,14 @@ JOIN parsed ON parsed.source_id = large.source_id;
 
 
 
-
+CREATE INDEX medium_map_map_idx ON medium_map (map_id);
 CREATE INDEX medium_map_source_idx ON medium_map (source_id);
 CREATE INDEX medium_map_geom_idx ON medium_map USING GIST (geom);
 
+CREATE INDEX small_map_map_idx ON small_map (map_id);
 CREATE INDEX small_map_source_idx ON small_map (source_id);
 CREATE INDEX small_map_geom_idx ON small_map USING GIST (geom);
 
+CREATE INDEX large_map_map_idx ON large_map (map_id);
 CREATE INDEX large_map_source_idx ON large_map (source_id);
 CREATE INDEX large_map_geom_idx ON large_map USING GIST (geom);

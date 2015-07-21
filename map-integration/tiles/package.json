@@ -2,13 +2,13 @@
   "name": "tiles",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "roll_new.py",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "John J Czaplewski <jczaplew@gmail.com>",
   "license": "CC0",
-  "engine": "node 0.10.36",
+  "engine": "node 0.12.x",
   "dependencies": {
     "kosmtik": "0.0.11",
     "kosmtik-mbtiles-export": "0.0.3",
