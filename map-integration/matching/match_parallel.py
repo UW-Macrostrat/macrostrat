@@ -17,23 +17,16 @@ if __name__ == '__main__':
 
   parser = argparse.ArgumentParser(
     description="Match rocks to Macrostrat units",
-    epilog="Example usage: python match.py --source_id 2 --table medium")
+    epilog="Example usage: python match.py --source_id 2")
 
   parser.add_argument("-s", "--source_id", dest="source_id",
     default="0", type=str, required=True,
     help="The ID of the desired source to match")
 
-  parser.add_argument("-t", "--table", dest="table",
-    default="small", type=str, required=True,
-    help="The scale table to use. Can be 'small', 'medium', or 'large'.")
-
   arguments = parser.parse_args()
 
   # Validate params!
-  if arguments.table not in ["small", "medium", "large"]:
-      print "Invalid table argument"
-      sys.exit(1)
-
+  # Valid source_id
   cursor.execute("SELECT source_id FROM maps.sources")
   sources = cursor.fetchall()
   source_ids = [source[0] for source in sources]
@@ -41,19 +34,34 @@ if __name__ == '__main__':
       print "Invalid source_id argument. Source ID ", arguments.source_id, " was not found in maps.sources"
       sys.exit(1)
 
+  # Find scale table
+  scale = ""
+  for scale_table in ["small", "medium", "large"]:
+      cursor.execute("SELECT * FROM maps.%(table)s WHERE source_id = %(source_id)s LIMIT 1", {
+        "table": AsIs(scale_table),
+        "source_id": arguments.source_id
+      })
+      if cursor.fetchone() is not None:
+        scale = scale_table
+        break
+
+  if len(scale) < 1:
+      print "Provided source_id not found in maps.small, maps.medium, or maps.large. Please insert it and try again."
+      sys.exit(1)
+
 
   # Clean up
   cursor.execute("""
       DELETE FROM maps.map_units WHERE map_id IN (SELECT map_id FROM maps.%(table)s WHERE source_id = %(source_id)s)
   """, {
-      "table": AsIs(arguments.table),
+      "table": AsIs(scale),
       "source_id": AsIs(arguments.source_id)
   })
 
   cursor.execute("""
       DELETE FROM maps.map_strat_names WHERE map_id IN (SELECT map_id FROM maps.%(table)s WHERE source_id = %(source_id)s)
   """, {
-      "table": AsIs(arguments.table),
+      "table": AsIs(scale),
       "source_id": AsIs(arguments.source_id)
   })
   connection.commit()
@@ -76,10 +84,10 @@ if __name__ == '__main__':
     each.start()
 
   # Define our tasks
-  tasks.put(Task(arguments.table, arguments.source_id, "strat_name" ))
-  tasks.put(Task(arguments.table, arguments.source_id, "name" ))
-  tasks.put(Task(arguments.table, arguments.source_id, "descrip" ))
-  tasks.put(Task(arguments.table, arguments.source_id, "comments" ))
+  tasks.put(Task(scale, arguments.source_id, "strat_name" ))
+  tasks.put(Task(scale, arguments.source_id, "name" ))
+  tasks.put(Task(scale, arguments.source_id, "descrip" ))
+  tasks.put(Task(scale, arguments.source_id, "comments" ))
 
 
   for i in range(num_processors):

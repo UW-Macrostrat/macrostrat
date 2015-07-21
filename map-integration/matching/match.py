@@ -83,6 +83,7 @@ WHERE macro.strat_name != '' AND ST_Intersects(rocks.geom, macro.poly_geom) AND 
     rocks.name ~* concat('\y', macro.strat_name, '\y') OR
     rocks.descrip ~* concat('\y', macro.strat_name, '\y') OR
     rocks.comments ~* concat('\y', macro.strat_name, '\y')
+
 ) AND (((macro.age_top) <= (rocks.age_bottom + rocks.age_buffer))
 AND ((rocks.age_top - rocks.age_buffer) <= (macro.age_bottom)))
 """, {
