@@ -19,8 +19,40 @@ WITH first as (
 SELECT
   st.map_id,
   st.source_id,
-  array_agg(distinct unit_id) AS unit_ids,
-  array_agg(distinct strat_name_id) AS strat_name_ids,
+  array(
+  	select distinct unit_id
+  	FROM maps.map_units m
+  	WHERE st.map_id = m.map_id
+  	AND basis_col =
+  	  CASE
+  	    WHEN 'strat_name' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
+  	      'strat_name'
+  	    WHEN 'name' in (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
+  	      'name'
+  	    WHEN 'descrip' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
+  	      'descrip'
+  	    ELSE
+  	     'comments'
+  	   END
+  ) AS unit_ids,
+
+  array(
+  	SELECT DISTINCT strat_name_id
+  	FROM maps.map_strat_names m
+  	WHERE st.map_id = m.map_id
+  	AND basis_col =
+  	  CASE
+  	    WHEN 'strat_name' IN (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
+  	      'strat_name'
+  	    WHEN 'name' in (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
+  	      'name'
+  	    WHEN 'descrip' IN (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
+  	      'descrip'
+  	    ELSE
+  	     'comments'
+  	   END
+  ) AS strat_name_ids,
+
   t_interval,
   b_interval,
   geom
@@ -110,13 +142,44 @@ SELECT map_id,
 
 
 CREATE MATERIALIZED VIEW small_map AS
-
 WITH first as (
 SELECT
   st.map_id,
   st.source_id,
-  array_agg(distinct unit_id) AS unit_ids,
-  array_agg(distinct strat_name_id) AS strat_name_ids,
+  array(
+  	select distinct unit_id
+  	FROM maps.map_units m
+  	WHERE st.map_id = m.map_id
+  	AND basis_col =
+  	  CASE
+  	    WHEN 'strat_name' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
+  	      'strat_name'
+  	    WHEN 'name' in (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
+  	      'name'
+  	    WHEN 'descrip' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
+  	      'descrip'
+  	    ELSE
+  	     'comments'
+  	   END
+  ) AS unit_ids,
+
+  array(
+  	SELECT DISTINCT strat_name_id
+  	FROM maps.map_strat_names m
+  	WHERE st.map_id = m.map_id
+  	AND basis_col =
+  	  CASE
+  	    WHEN 'strat_name' IN (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
+  	      'strat_name'
+  	    WHEN 'name' in (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
+  	      'name'
+  	    WHEN 'descrip' IN (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
+  	      'descrip'
+  	    ELSE
+  	     'comments'
+  	   END
+  ) AS strat_name_ids,
+
   t_interval,
   b_interval,
   geom
@@ -199,7 +262,6 @@ SELECT map_id,
   FROM third;
 
 
-
 ----------------------------------------------------
 ---------------------- large -----------------------
 ----------------------------------------------------
@@ -210,8 +272,40 @@ WITH first as (
 SELECT
   st.map_id,
   st.source_id,
-  array_agg(distinct unit_id) AS unit_ids,
-  array_agg(distinct strat_name_id) AS strat_name_ids,
+  array(
+  	select distinct unit_id
+  	FROM maps.map_units m
+  	WHERE st.map_id = m.map_id
+  	AND basis_col =
+  	  CASE
+  	    WHEN 'strat_name' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
+  	      'strat_name'
+  	    WHEN 'name' in (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
+  	      'name'
+  	    WHEN 'descrip' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
+  	      'descrip'
+  	    ELSE
+  	     'comments'
+  	   END
+  ) AS unit_ids,
+
+  array(
+  	SELECT DISTINCT strat_name_id
+  	FROM maps.map_strat_names m
+  	WHERE st.map_id = m.map_id
+  	AND basis_col =
+  	  CASE
+  	    WHEN 'strat_name' IN (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
+  	      'strat_name'
+  	    WHEN 'name' in (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
+  	      'name'
+  	    WHEN 'descrip' IN (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
+  	      'descrip'
+  	    ELSE
+  	     'comments'
+  	   END
+  ) AS strat_name_ids,
+
   t_interval,
   b_interval,
   geom
@@ -292,7 +386,6 @@ SELECT map_id,
   ) AS color,
   geom
   FROM third;
-
 
 
 CREATE INDEX medium_map_map_idx ON medium_map (map_id);
