@@ -105,7 +105,6 @@ FROM maps.medium st
 LEFT JOIN maps.map_units mu ON mu.map_id = st.map_id
 LEFT JOIN maps.map_strat_names msn ON msn.map_id = st.map_id
 GROUP BY st.map_id
-LIMIT 500
 ),
 second AS (SELECT
   map_id,
@@ -281,7 +280,6 @@ FROM maps.small st
 LEFT JOIN maps.map_units mu ON mu.map_id = st.map_id
 LEFT JOIN maps.map_strat_names msn ON msn.map_id = st.map_id
 GROUP BY st.map_id
-LIMIT 500
 ),
 second AS (SELECT
   map_id,
@@ -454,7 +452,6 @@ FROM maps.large st
 LEFT JOIN maps.map_units mu ON mu.map_id = st.map_id
 LEFT JOIN maps.map_strat_names msn ON msn.map_id = st.map_id
 GROUP BY st.map_id
-LIMIT 500
 ),
 second AS (SELECT
   map_id,
