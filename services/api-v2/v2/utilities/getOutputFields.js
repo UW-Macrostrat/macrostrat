@@ -40,6 +40,15 @@ function getSample(routePath, callback) {
 
         if (data.success.data && data.success.data.features) {
           defs[routePath].options.fields = Object.keys(data.success.data.features[0].properties);
+        } else if (data.success.data && typeof(data.success.data) === "object" && Array.isArray(data.success.data) === false) {
+          defs[routePath].options.fields = Object.keys(data.success.data);
+          Object.keys(data.success.data).forEach(function(d) {
+            Object.keys(data.success.data[d][0]).forEach(function(j) {
+              if (defs[routePath].options.fields.indexOf(j) < 0) {
+                defs[routePath].options.fields.push(j);
+              }
+            });
+          });
         } else if (data.success.data) {
           defs[routePath].options.fields = Object.keys(data.success.data[0]);
         }

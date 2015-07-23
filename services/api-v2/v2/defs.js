@@ -205,8 +205,8 @@
         "Fm",
         "Gp",
         "SGp",
-        "era",
-        "period",
+        "t_age",
+        "b_age",
         "max_thick",
         "min_thick",
         "outcrop",
@@ -221,13 +221,11 @@
         "t_int_id",
         "t_int_name",
         "t_int_age",
-        "t_age",
         "t_prop",
         "units_above",
         "b_int_id",
         "b_int_name",
         "b_int_age",
-        "b_age",
         "b_prop",
         "units_below",
         "clat",
@@ -303,6 +301,34 @@
   "/defs": {
     "description": "Routes giving access to standard fields and dictionaries used in Macrostrat",
     "visible": true
+  },
+  "/defs/autocomplete": {
+    "description": "Quickly retrieve all definitions matching a query. Limited to 100 results.",
+    "parent": "definitions",
+    "visible": true,
+    "options": {
+      "parameters": {
+        "query": "The search term",
+        "include": "Definitions to include",
+        "exclude": "Definitions to exclude"
+      },
+      "output_formats": [
+        "json"
+      ],
+      "examples": [
+        "api/v2/defs/autocomplete?query=Mancos",
+        "api/v2/defs/autocomplete?query=Waldron&exclude=lithologies,lithology_attributes"
+      ],
+      "fields": [
+        "intervals",
+        "strat_names",
+        "columns",
+        "lithology_attributes",
+        "lithologies",
+        "id",
+        "name"
+      ]
+    }
   },
   "/defs/lithologies": {
     "description": "Returns all lithology definitions",
@@ -802,6 +828,45 @@
         "unit_name",
         "unitdesc",
         "strat_unit",
+        "color"
+      ]
+    }
+  },
+  "/geologic_units/burwell": {
+    "description": "Geologic map units from various data sources",
+    "visible": true,
+    "parent": "geologic_units",
+    "options": {
+      "parameters": {
+        "scale": "*Required: map scale to query. Can be 'small', 'medium', or 'large'",
+        "map_id": "integer, one or more polygon map_ids to search for",
+        "lat": "A valid latitude in decimal degrees",
+        "lng": "A valid longitude in decimal degrees",
+        "strat_name_id": "integer, one or more valid strat_name_ids from /defs/strat_names",
+        "unit_id": "integer, one or more valid unit_ids from /units",
+        "format": "Desired output format"
+      },
+      "output_formats": [
+        "json",
+        "csv"
+      ],
+      "examples": [
+        "/api/v2/geologic_units/burwell?lat=43&lng=-89.3"
+      ],
+      "fields": [
+        "map_id",
+        "source_id",
+        "name",
+        "strat_name",
+        "lith",
+        "descrip",
+        "comments",
+        "macro_units",
+        "strat_names",
+        "t_int_id",
+        "t_int_age",
+        "b_int_id",
+        "b_int_age",
         "color"
       ]
     }

@@ -33,6 +33,9 @@ api.route("/stats")
 api.route("/defs")
   .get(require("./defs/definitions"));
 
+api.route("/defs/autocomplete")
+  .get(require("./defs/autocomplete"));
+
 api.route("/defs/columns")
   .get(require("./defs/columns"));
 
@@ -79,6 +82,9 @@ api.route("/geologic_units/gmna")
 
 api.route("/geologic_units/gmus")
   .get(require("./geologic_units_gmus"));
+
+api.route("/geologic_units/burwell")
+  .get(require("./geologic_units_burwell"));
 
 api.route("/mobile")
   .get(require("./mobile/mobile"));

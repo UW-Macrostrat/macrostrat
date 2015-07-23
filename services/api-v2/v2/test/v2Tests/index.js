@@ -24,6 +24,7 @@ module.exports = function() {
   describe("paleogeography", require("./paleogeography"));
   describe("geologic_units/gmna", require("./geologic_units_gmna"));
   describe("geologic_units/gmus", require("./geologic_units_gmus"));
+  describe("geologic_units/burwell", require("./geologic_units_burwell"));
 
   describe("mobile/point", require("./mobile_point"));
   describe("mobile/point_details", require("./mobile_point_details"));
