@@ -16,10 +16,6 @@ parser.add_argument("--scale", dest="scale",
   type=str, required=False,
   help="The scale to regenerate. Can be 'small', 'medium', or 'large'.")
 
-parser.add_argument("--group_id", dest="group_id",
-  type=int, required=False,
-  help="A valid group ID to regenerate. Must be accompanied by a scale.")
-
 parser.add_argument("--all", dest="all",
   required=False, action="store_true",
   help="Regenerate all tiles")
