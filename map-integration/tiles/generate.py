@@ -145,9 +145,9 @@ elif arguments.scale:
     # For each group...
     for group in groups:
         # Clear cache
-        clear_cache(group["extent"])
+        clear_cache(group["extent"], arguments.scale)
         # Reseed cache
-        seed_cache(group["extent"])
+        seed_cache(group["extent"], arguments.scale)
 
 
 else:
