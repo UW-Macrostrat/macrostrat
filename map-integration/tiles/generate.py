@@ -27,7 +27,7 @@ def return_help():
     parser.print_help()
     sys.exit(0)
 
-if not arguments.all and not arguments.source_id and not arguments.group_id and not arguments.scale:
+if not arguments.all and not arguments.source_id and not arguments.scale:
     return_help()
 
 # Connect to the database
