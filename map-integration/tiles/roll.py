@@ -4,6 +4,17 @@ from subprocess import call
 import json
 import sys, os
 import copy
+import argparse
+
+parser = argparse.ArgumentParser(
+  description="Set up styles and data to create tiles",
+  epilog="Example usage: python roll.py --refresh medium")
+
+parser.add_argument("--refresh", dest="refresh",
+  type=str, required=False,
+  help="The scale to refresh. If new sources were added, make sure to refresh. Can be 'small', 'medium', 'large', or 'all'. Default will not refresh materialized views.")
+
+arguments = parser.parse_args()
 
 # Connect to the database
 try:
@@ -14,14 +25,28 @@ except:
 
 cur = conn.cursor()
 
-print "--- Refreshing views ---"
-print "---      small       ---"
-#cur.execute("REFRESH MATERIALIZED VIEW small_map")
-print "---      medium      ---"
-#cur.execute("REFRESH MATERIALIZED VIEW medium_map")
-print "---      large       ---"
-#cur.execute("REFRESH MATERIALIZED VIEW large_map")
-#conn.commit()
+if arguments.refresh:
+    print "--- Refreshing views ---"
+    if arguments.refresh == "all":
+        print "---      small       ---"
+        cur.execute("REFRESH MATERIALIZED VIEW small_map")
+        print "---      medium      ---"
+        cur.execute("REFRESH MATERIALIZED VIEW medium_map")
+        print "---      large       ---"
+        cur.execute("REFRESH MATERIALIZED VIEW large_map")
+        conn.commit()
+    elif arguments.refresh == "small":
+        print "---      small       ---"
+        cur.execute("REFRESH MATERIALIZED VIEW small_map")
+        conn.commit()
+    elif arguments.refresh == "medium":
+        print "---      medium       ---"
+        cur.execute("REFRESH MATERIALIZED VIEW medium_map")
+        conn.commit()
+    elif arguments.refresh == "large":
+        print "---      large       ---"
+        cur.execute("REFRESH MATERIALIZED VIEW large_map")
+        conn.commit()
 
 print "--- Building styles.mss ---"
 # First, rebuild the file `styles.mss` in the event any colors were changed
@@ -140,5 +165,7 @@ with open("burwell_configured.mml", "wb") as output:
 
 print "--- Building burwell_configured.xml ---"
 
-# Use kosmtik top conver the project file to a Mapnik XML file that can be read by TileStache
+# Use kosmtik top convert the project file to a Mapnik XML file that can be read by TileStache
 call(["node", "node_modules/kosmtik/index.js", "export", "burwell_configured.mml", "--format", "xml", "--output", "burwell_configured.xml", "--minZoom", "1", "--max_zoom", "12"])
+
+call(["cp", "burwell_configured.xml", "TileStache/burwell_configured.xml"])

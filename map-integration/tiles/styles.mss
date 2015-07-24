@@ -5,11 +5,11 @@
   line-color: #aaa;
   line-width: 0.0;
 }
-#small_map[zoom>6] {
+#small_map[zoom>5] {
   polygon-opacity: 0;
   line-opacity: 0;
 }
-#medium_map[zoom<=6]{
+#medium_map[zoom<=5]{
   polygon-opacity: 0;
   line-opacity: 0;
 }
