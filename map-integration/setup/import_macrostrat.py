@@ -474,8 +474,8 @@ CREATE TABLE macrostrat_new.lookup_unit_liths (
   unit_id integer,
   lith_class character varying(100),
   lith_type character varying(100),
-  lith_short character varying(255),
-  lith_long character varying(255),
+  lith_short text,
+  lith_long text,
   environ_class character varying(100),
   environ_type character varying(100),
   environ character varying(255)
@@ -487,17 +487,17 @@ CREATE INDEX ON macrostrat_new.lookup_unit_liths (unit_id);
 
 
 
-CREATE TABLE macrostrat.timescales (
+CREATE TABLE macrostrat_new.timescales (
   id integer,
   timescale character varying(100),
   ref_id integer
 );
 
-COPY macrostrat.timescales FROM %(timescales_path)s NULL '\N' DELIMITER ',' CSV;
+COPY macrostrat_new.timescales FROM %(timescales_path)s NULL '\N' DELIMITER ',' CSV;
 
-CREATE INDEX ON macrostrat.timescales (id);
-CREATE INDEX ON macrostrat.timescales(timescale);
-CREATE INDEX ON macrostrat.timescales (ref_id);
+CREATE INDEX ON macrostrat_new.timescales (id);
+CREATE INDEX ON macrostrat_new.timescales(timescale);
+CREATE INDEX ON macrostrat_new.timescales (ref_id);
 
 """, params)
 pg_conn.commit()
@@ -519,6 +519,7 @@ pg_cur.execute("VACUUM ANALYZE macrostrat_new.cols;")
 pg_cur.execute("VACUUM ANALYZE macrostrat_new.col_areas;")
 pg_cur.execute("VACUUM ANALYZE macrostrat_new.liths;")
 pg_cur.execute("VACUUM ANALYZE macrostrat_new.lith_atts;")
+pg_cur.execute("VACUUM ANALYZE macrostrat_new.timescales;")
 pg_cur.execute("""
   DROP SCHEMA IF EXISTS macrostrat cascade;
   ALTER SCHEMA macrostrat_new RENAME TO macrostrat;
