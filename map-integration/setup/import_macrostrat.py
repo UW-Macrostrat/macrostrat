@@ -40,7 +40,8 @@ params = {
   "lith_atts_path": directory + "/lith_atts.csv",
   "timescales_intervals_path": directory + "/timescales_intervals.csv",
   "unit_liths_path": directory + "/unit_liths.csv",
-  "lookup_unit_liths_path": directory + "/lookup_unit_liths.csv"
+  "lookup_unit_liths_path": directory + "/lookup_unit_liths.csv",
+  "timescales_path": directory + "/timescales.csv"
 }
 
 
@@ -49,84 +50,84 @@ params = {
 print "(1 of 3)   Dumping from MySQL"
 my_cur.execute("""
 
-  SELECT id, unit_id, strat_name_id 
+  SELECT id, unit_id, strat_name_id
   FROM unit_strat_names
   INTO OUTFILE %(unit_strat_names_path)s
   FIELDS TERMINATED BY ','
   ENCLOSED BY '"'
   LINES TERMINATED BY '\n';
 
-  SELECT id, strat_name, rank, ref_id 
+  SELECT id, strat_name, rank, ref_id
   FROM strat_names
   INTO OUTFILE %(strat_names_path)s
   FIELDS TERMINATED BY ','
   ENCLOSED BY '"'
   LINES TERMINATED BY '\n';
 
-  SELECT id, unit_id, section_id, col_id 
+  SELECT id, unit_id, section_id, col_id
   FROM units_sections
   INTO OUTFILE %(units_sections_path)s
   FIELDS TERMINATED BY ','
   ENCLOSED BY '"'
   LINES TERMINATED BY '\n';
 
-  SELECT id, age_bottom, age_top, interval_name, interval_abbrev, interval_type, interval_color 
+  SELECT id, age_bottom, age_top, interval_name, interval_abbrev, interval_type, interval_color
   FROM intervals
   INTO OUTFILE %(intervals_path)s
   FIELDS TERMINATED BY ','
   ENCLOSED BY '"'
   LINES TERMINATED BY '\n';
 
-  SELECT unit_id, fo_age, b_age, fo_interval, fo_period, lo_age, t_age, lo_interval, lo_period, age, age_id, epoch, epoch_id, period, period_id, era, era_id, eon, eon_id 
+  SELECT unit_id, fo_age, b_age, fo_interval, fo_period, lo_age, t_age, lo_interval, lo_period, age, age_id, epoch, epoch_id, period, period_id, era, era_id, eon, eon_id
   FROM lookup_unit_intervals
   INTO OUTFILE %(lookup_unit_intervals_path)s
   FIELDS TERMINATED BY ','
   ENCLOSED BY '"'
   LINES TERMINATED BY '\n';
 
-  SELECT id, strat_name, color, outcrop, FO, FO_h, LO, LO_h, position_bottom, position_top, max_thick, min_thick, section_id, col_id 
+  SELECT id, strat_name, color, outcrop, FO, FO_h, LO, LO_h, position_bottom, position_top, max_thick, min_thick, section_id, col_id
   FROM units
   INTO OUTFILE %(units_path)s
   FIELDS TERMINATED BY ','
   ENCLOSED BY '"'
   LINES TERMINATED BY '\n';
 
-  SELECT strat_name_id, strat_name, rank, rank_name, bed_id, bed_name, mbr_id, mbr_name, fm_id, fm_name, gp_id, gp_name, sgp_id, sgp_name, early_age, late_age, gsc_lexicon 
+  SELECT strat_name_id, strat_name, rank, rank_name, bed_id, bed_name, mbr_id, mbr_name, fm_id, fm_name, gp_id, gp_name, sgp_id, sgp_name, early_age, late_age, gsc_lexicon
   FROM lookup_strat_names
   INTO OUTFILE %(lookup_strat_names_path)s
   FIELDS TERMINATED BY ','
   ENCLOSED BY '"'
   LINES TERMINATED BY '\n';
 
-  SELECT id, col_group_id, project_id, status_code, col_position, col, col_name, lat, lng, col_area, null AS coordinate, ST_AsText(coordinate) AS wkt, created 
+  SELECT id, col_group_id, project_id, status_code, col_position, col, col_name, lat, lng, col_area, null AS coordinate, ST_AsText(coordinate) AS wkt, created
   FROM cols
   INTO OUTFILE %(cols_path)s
   FIELDS TERMINATED BY ','
   ENCLOSED BY '"'
   LINES TERMINATED BY '\n';
 
-  SELECT id, col_id, null as col_area, ST_AsText(col_area) AS wkt 
+  SELECT id, col_id, null as col_area, ST_AsText(col_area) AS wkt
   FROM col_areas
   INTO OUTFILE %(col_areas_path)s
   FIELDS TERMINATED BY ','
   ENCLOSED BY '"'
   LINES TERMINATED BY '\n';
 
-  SELECT id, lith, lith_type, lith_class, lith_fill, comp_coef, initial_porosity, bulk_density, lith_color 
+  SELECT id, lith, lith_type, lith_class, lith_fill, comp_coef, initial_porosity, bulk_density, lith_color
   FROM liths
   INTO OUTFILE %(liths_path)s
   FIELDS TERMINATED BY ','
   ENCLOSED BY '"'
   LINES TERMINATED BY '\n';
 
-  SELECT id, lith_att, att_type, lith_att_fill 
+  SELECT id, lith_att, att_type, lith_att_fill
   FROM lith_atts
   INTO OUTFILE %(lith_atts_path)s
   FIELDS TERMINATED BY ','
   ENCLOSED BY '"'
   LINES TERMINATED BY '\n';
 
-  SELECT timescale_id, interval_id 
+  SELECT timescale_id, interval_id
   FROM timescales_intervals
   INTO OUTFILE %(timescales_intervals_path)s
   FIELDS TERMINATED BY ','
@@ -147,6 +148,12 @@ my_cur.execute("""
   ENCLOSED BY '"'
   LINES TERMINATED BY '\n';
 
+  SELECT id, timescale, ref_id
+  FROM timescales
+  INTO OUTFILE %(timescales_path)s
+  FIELDS TERMINATED BY ','
+  ENCLOSED BY '"'
+  LINES TERMINATED BY '\n';
 
 """, params)
 
@@ -160,7 +167,7 @@ subprocess.call("chmod 777 *.csv", shell=True)
 
 
 print "(2 of 3)   Importing into Postgres"
-pg_cur.execute(""" 
+pg_cur.execute("""
 DROP SCHEMA IF EXISTS macrostrat_new cascade;
 CREATE SCHEMA macrostrat_new;
 
@@ -260,8 +267,8 @@ COPY macrostrat_new.lookup_unit_intervals FROM %(lookup_unit_intervals_path)s NU
 ALTER TABLE macrostrat_new.lookup_unit_intervals ADD COLUMN best_interval_id integer;
 
 WITH bests AS (
-  select unit_id, 
-    CASE 
+  select unit_id,
+    CASE
       WHEN age_id > 0 THEN
         age_id
       WHEN epoch_id > 0 THEN
@@ -452,7 +459,7 @@ CREATE TABLE macrostrat_new.unit_liths (
   mod_prop numeric,
   toc numeric,
   ref_id integer
-); 
+);
 
 COPY macrostrat_new.unit_liths FROM %(unit_liths_path)s NULL '\N' DELIMITER '\t' CSV;
 
@@ -477,6 +484,21 @@ CREATE TABLE macrostrat_new.lookup_unit_liths (
 COPY macrostrat_new.lookup_unit_liths FROM %(lookup_unit_liths_path)s NULL '\N' DELIMITER ',' CSV;
 
 CREATE INDEX ON macrostrat_new.lookup_unit_liths (unit_id);
+
+
+
+CREATE TABLE macrostrat.timescales (
+  id integer,
+  timescale character varying(100),
+  ref_id integer
+);
+
+COPY macrostrat.timescales FROM %(timescales_path)s NULL '\N' DELIMITER ',' CSV;
+
+CREATE INDEX ON macrostrat.timescales (id);
+CREATE INDEX ON macrostrat.timescales(timescale);
+CREATE INDEX ON macrostrat.timescales (ref_id);
+
 """, params)
 pg_conn.commit()
 
@@ -509,4 +531,3 @@ subprocess.call("rm *.csv", shell=True)
 
 
 print "Done!"
-
