@@ -25,11 +25,11 @@ module.exports = function(req, res, next) {
         if (req.query.lat && req.query.lng) {
           if (req.query.adjacents === "true") {
             where.push("gid = ANY (SELECT unnest(array_append(touches, (SELECT gid FROM gmus.lookup_units WHERE ST_Contains(geom, ST_GeomFromText($" + (where.length) + 1 + ", 4326))))) FROM gmus.adjacents WHERE geologic_unit_gid = (SELECT gid FROM gmus.lookup_units WHERE ST_Contains(geom, ST_GeomFromText($" + (where.length) + 1 + ", 4326))))");
-            params.push("POINT(" + req.query.lng + " " + req.query.lat + ")");
+            params.push("POINT(" + larkin.normalizeLng(req.query.lng) + " " + req.query.lat + ")");
             orderBy += " )a ORDER BY ST_Distance(geom, ST_GeomFromText($" + where.length + ", 4326))";
           } else {
             where.push(" ST_Contains(geom, ST_GeomFromText($" + (where.length + 1) + ", 4326))");
-            params.push("POINT(" + req.query.lng + " " + req.query.lat + ")");
+            params.push("POINT(" + larkin.normalizeLng(req.query.lng) + " " + req.query.lat + ")");
           }
         }
         callback(null);

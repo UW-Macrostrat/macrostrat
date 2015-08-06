@@ -343,6 +343,11 @@ var mysql = require("mysql"),
     });
 
     return parsedCats;
+  };
+
+  larkin.normalizeLng = function(lng) {
+    // via https://github.com/Leaflet/Leaflet/blob/32c9156cb1d1c9bd53130639ec4d8575fbeef5a6/src/core/Util.js#L87
+    return ((lng - 180) % 360 + 360) % 360 - 180;
   }
 
 

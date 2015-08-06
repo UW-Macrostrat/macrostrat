@@ -39,7 +39,7 @@ module.exports = function(req, res, next, cb) {
       } else if (req.query.lat && req.query.lng) {
         var sql = (req.query.adjacents === "true") ? "WITH containing_geom AS (SELECT poly_geom FROM macrostrat.cols WHERE ST_Contains(poly_geom, ST_GeomFromText($1, 4326))) SELECT id FROM macrostrat.cols WHERE ST_Intersects((SELECT * FROM containing_geom), poly_geom) ORDER BY ST_Distance(ST_Centroid(poly_geom), ST_GeomFromText($1, 4326))" : "SELECT id FROM macrostrat.cols WHERE ST_Contains(poly_geom, st_setsrid(ST_GeomFromText($1), 4326)) ORDER BY ST_Distance(ST_Centroid(poly_geom), ST_GeomFromText($1, 4326))";
 
-        larkin.queryPg("geomacro", sql, ["POINT(" + req.query.lng + " " + req.query.lat + ")"], function(error, response) {
+        larkin.queryPg("geomacro", sql, ["POINT(" + larkin.normalizeLng(req.query.lng) + " " + req.query.lat + ")"], function(error, response) {
           if (error) {
             callback(error);
           } else {

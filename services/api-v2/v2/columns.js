@@ -55,7 +55,7 @@ module.exports = function(req, res, next) {
 
       if (req.query.lat && req.query.lng && req.query.adjacents) {
         orderby = "ORDER BY ST_Distance(col_areas.col_area, GeomFromText(:point))";
-        params["point"] = "POINT(" + req.query.lng + " " + req.query.lat + ")";
+        params["point"] = "POINT(" + larkin.normalizeLng(req.query.lng) + " " + req.query.lat + ")";
 
       } else if (req.query.col_id && req.query.adjacents) {
         orderby = "ORDER BY ST_Distance(ST_Centroid(col_areas.col_area), (SELECT ST_Centroid(col_area) FROM col_areas WHERE col_id = :col_id))";

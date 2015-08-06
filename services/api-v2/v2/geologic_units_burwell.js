@@ -25,6 +25,7 @@ module.exports = function(req, res, next) {
       // Lat/lng
       function(callback) {
         if (req.query.lat && req.query.lng) {
+          req.query.lng = larkin.normalizeLng(req.query.lng);
           where.push("ST_Contains(m.geom, ST_GeomFromText($" + (where.length + 1) + ", 4326))");
           params.push("POINT(" + req.query.lng + " " + req.query.lat + ")");
         }
