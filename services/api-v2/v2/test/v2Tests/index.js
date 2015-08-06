@@ -1,5 +1,5 @@
 module.exports = function() {
-  
+
   describe("root", require("./root"));
   describe("columns", require("./columns"));
   describe("sections", require("./sections"));
@@ -20,6 +20,7 @@ module.exports = function() {
   describe("defs/groups", require("./defs_groups"));
   describe("defs/strat_names", require("./defs_strat_names"));
   describe("defs/refs", require("./defs_refs"));
+  describe("defs/sources", require("./defs_sources"));
 
   describe("paleogeography", require("./paleogeography"));
   describe("geologic_units/gmna", require("./geologic_units_gmna"));

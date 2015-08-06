@@ -63,6 +63,9 @@ api.route("/defs/measurements")
 api.route("/defs/projects")
   .get(require("./defs/projects"));
 
+api.route("/defs/sources")
+  .get(require("./defs/sources"));
+
 api.route("/defs/strat_names")
   .get(function(req, res, next) {
     require("./defs/strat_names")(req, res, next);
@@ -88,7 +91,7 @@ api.route("/geologic_units/burwell")
 
 api.route("/mobile")
   .get(require("./mobile/mobile"));
-  
+
 api.route("/mobile/point")
   .get(require("./mobile/point"));
 

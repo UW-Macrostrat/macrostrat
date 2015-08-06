@@ -21,7 +21,7 @@ module.exports = function(req, res, next) {
       limit = ""
     }
     async.parallel([
-      
+
       // Lat/lng
       function(callback) {
         if (req.query.lat && req.query.lng) {
@@ -56,7 +56,7 @@ module.exports = function(req, res, next) {
         } else {
           callback(null);
         }
-        
+
       },
 
       // unit_id
@@ -83,20 +83,23 @@ module.exports = function(req, res, next) {
       }
 
       var sql = multiline(function() {/*
-        SELECT 
-          m.map_id, 
-          m.source_id, 
-          COALESCE(m.name, '') AS name, 
-          COALESCE(m.strat_name, '') AS strat_name, 
-          COALESCE(m.lith, '') AS lith, 
-          COALESCE(m.descrip, '') AS descrip, 
-          COALESCE(m.comments, '') AS comments, 
-          mm.unit_ids AS macro_units, 
+        SELECT
+          m.map_id,
+          m.source_id,
+          COALESCE(m.name, '') AS name,
+          COALESCE(m.strat_name, '') AS strat_name,
+          COALESCE(m.lith, '') AS lith,
+          COALESCE(m.descrip, '') AS descrip,
+          COALESCE(m.comments, '') AS comments,
+          mm.unit_ids AS macro_units,
           mm.strat_name_ids AS strat_names,
-          m.t_interval AS t_int_id, 
-          ti.age_top::float AS t_int_age, 
-          m.b_interval AS b_int_id, 
-          tb.age_bottom::float AS b_int_age, mm.color
+          m.t_interval AS t_int_id,
+          ti.age_top::float AS t_int_age,
+          ti.interval_name AS t_int_name,
+          m.b_interval AS b_int_id,
+          tb.age_bottom::float AS b_int_age,
+          tb.interval_name AS b_int_name,
+          mm.color
       */});
 
       sql += " FROM maps." + req.query.scale + " m \

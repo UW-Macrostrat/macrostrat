@@ -1,4 +1,4 @@
-(function() { 
+(function() {
   var defs = {
   "/columns": {
     "description": "Summarize units by stratigraphic columns",
@@ -514,6 +514,37 @@
         "int_type",
         "color",
         "timescale_id"
+      ]
+    }
+  },
+  "/defs/sources": {
+    "description": "Returns sources associated with geologic units",
+    "parent": "definitions",
+    "visible": true,
+    "options": {
+      "parameters": {
+        "source_id": "integer, one or more comma-separated source IDs",
+        "all": "return all interval definitions",
+        "format": "Desired output format"
+      },
+      "output_formats": [
+        "json",
+        "csv"
+      ],
+      "examples": [
+        "api/v2/defs/sources?all",
+        "api/v2/defs/intervals?source_id=1,2,3",
+      ],
+      "fields": [
+        "source_id",
+        "name",
+        "url",
+        "ref_title",
+        "authors",
+        "ref_year",
+        "ref_source",
+        "isbn_doi",
+        "scale"
       ]
     }
   },
@@ -1110,6 +1141,6 @@
     "t_units": "integer, total units",
     "measure": "array, summary of types of measurements available"
   }
-}; 
-  module.exports = defs; 
+};
+  module.exports = defs;
 }());

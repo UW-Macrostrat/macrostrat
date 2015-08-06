@@ -234,12 +234,12 @@ module.exports = function() {
 
   it("should accept a strat_name_id parameter", function(done) {
     request(settings.host)
-      .get("/api/v2/units?strat_name_id=1205,4260")
+      .get("/api/v2/units?strat_name_id=1205")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
       .expect(function(res) {
-        if (res.body.success.data.length !== 31) {
+        if (res.body.success.data.length !== 2) {
           throw new Error("Wrong number of units returned when using strat_id on units");
         }
       })

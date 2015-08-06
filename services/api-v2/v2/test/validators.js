@@ -100,6 +100,6 @@ module.exports = {
   atLeastOneResult: function(res) {
     if (res.body.success.data.length < 1) {
       throw new Error("Should have returned at least one result");
-    } 
+    }
   }
 }
