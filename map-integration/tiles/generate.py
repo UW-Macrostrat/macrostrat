@@ -79,7 +79,7 @@ def setup():
       polygon-opacity: 0;
       line-opacity: 0;
     }
-    #large_map[zoom<=10] {
+    #large_map[zoom<=9] {
       polygon-opacity: 0;
       line-opacity: 0;
     }
