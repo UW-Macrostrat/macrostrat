@@ -57,22 +57,18 @@ npm install
 git clone https://github.com/TileStache/TileStache.git
 cp tilestache.cfg TileStache/tilestache.cfg
 psql -U john burwell < setup_new.sql
-python roll.py
 ````
 
 This will install [kosmtik](https://github.com/kosmtik/kosmtik) and [TileStache](https://github.com/TileStache/TileStache), which are used to create a Mapnik XML file and create tiles, respectively.
 It will then build the materialized views ````small_map````, ````medium_map````, and ````large_map````, which are used
 for styling and grouping. Finally, it will create a CartoCSS style sheet, the Mapnik XML file, and move it into place.
 
-#### roll.py
-This script first optionally refreshed the materialized views with any new source data (see ````--help```` for more info),
-creates some CartoCSS based on the contents of the table ````macrostrat.intervals````, constructs a Tilemill project file (````burwell_configured.mml````) which contains style and layer information, and then uses kosmtik to convert that file
-to a Mapnik XML file that can be used by TileStache.
+#### refresh.py
+This script is for refreshing the materialized views with any new source data (see ````--help```` for more info). Example: ````python refresh.py large````
 
 #### generate.py
 This abstraction of TileStache's ````tilestache-clean.py```` and ````tilestache-seed.py```` assists in the creation of tiles.
-It allows you to clean and seed a cache by ````source_id````, scale, or all. Use this if you want to generate tiles for a
-new source, or want to regenerate for any reason, such as an update to Macrostrat matches.
+It allows you to clean and seed a cache by ````source_id````, scale, or all. Use this if you want to generate tiles for a new source, or want to regenerate for any reason, such as an update to Macrostrat matches. It also creates CartoCSS based on the contents of the table ````macrostrat.intervals````, constructs a Tilemill project file (````burwell_configured.mml````) which contains style and layer information, and then uses kosmtik to convert that file to a Mapnik XML file that can be used by TileStache.
 
 
 #### setup_new.sql

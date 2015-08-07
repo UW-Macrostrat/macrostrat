@@ -1,38 +1,38 @@
 
-.burwell {
-  polygon-opacity:1;
-  polygon-fill: #000;
-  line-color: #aaa;
-  line-width: 0.0;
-}
-#small_map[zoom>5] {
-  polygon-opacity: 0;
-  line-opacity: 0;
-}
-#medium_map[zoom<=5]{
-  polygon-opacity: 0;
-  line-opacity: 0;
-}
-#medium_map[zoom>=11] {
-  polygon-opacity: 0;
-  line-opacity: 0;
-}
-#large_map[zoom<=10] {
-  polygon-opacity: 0;
-  line-opacity: 0;
-}
+    .burwell {
+      polygon-opacity:1;
+      polygon-fill: #000;
+      line-color: #aaa;
+      line-width: 0.0;
+    }
+    #small_map[zoom>5] {
+      polygon-opacity: 0;
+      line-opacity: 0;
+    }
+    #medium_map[zoom<=5]{
+      polygon-opacity: 0;
+      line-opacity: 0;
+    }
+    #medium_map[zoom>=10] {
+      polygon-opacity: 0;
+      line-opacity: 0;
+    }
+    #large_map[zoom<=10] {
+      polygon-opacity: 0;
+      line-opacity: 0;
+    }
 
-.burwell[color="null"] {
-   polygon-fill: #777777;
-}
-.burwell[color=null] {
-   polygon-fill: #777777;
-}
-.burwell[color=""] {
-   polygon-fill: #777777;
-}
+    .burwell[color="null"] {
+       polygon-fill: #777777;
+    }
+    .burwell[color=null] {
+       polygon-fill: #777777;
+    }
+    .burwell[color=""] {
+       polygon-fill: #777777;
+    }
 
-.burwell[color="#B8DEC2"] {
+    .burwell[color="#B8DEC2"] {
    polygon-fill: #B8DEC2;
 }
 .burwell[color="#7FC64E"] {
