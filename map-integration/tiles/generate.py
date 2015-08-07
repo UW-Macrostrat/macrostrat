@@ -5,6 +5,7 @@ import argparse
 import copy
 import json
 from subprocess import call
+import subprocess
 
 parser = argparse.ArgumentParser(
   description="(re)roll tiles for burwell",
@@ -232,15 +233,19 @@ def find_groups(scale, source_id=None):
 
 # Wrapper for tilestache-clean.py
 def clear_cache(bbox, scale):
-    cmd = ["python", "TileStache/scripts/tilestache-clean.py", "-b", bbox[0], bbox[1], bbox[2], bbox[3], "-c", "tilestache.cfg", "-l", "burwell"]
+    print "--- Cleaning cache ---"
+    cmd = ["python", "TileStache/scripts/tilestache-clean.py", "-q", "-b", bbox[0], bbox[1], bbox[2], bbox[3], "-c", "tilestache.cfg", "-l", "burwell"]
     cmd.extend(scale_map[scale])
     call(cmd)
 
 # Wrapper for tilestache-seed.py
 def seed_cache(bbox, scale):
-    cmd = ["python", "TileStache/scripts/tilestache-seed.py", "-b", bbox[0], bbox[1], bbox[2], bbox[3], "-c", "tilestache.cfg", "-l", "burwell"]
-    cmd.extend(scale_map[scale])
-    call(cmd)
+    print "--- Seeding cache ---"
+    cmd = "python TileStache/scripts/tilestache-list.py -b " + " ".join(bbox) + " " + " ".join(scale_map[scale]) + "| split -l 20 - tmp/list- && ls -1 tmp/list-* | xargs -n1 -P4 TileStache/scripts/tilestache-seed.py -q -c TileStache/tilestache.cfg -l burwell --tile-list"
+
+    #print cmd
+
+    call(cmd, shell=True)
 
 
 # First update the cartocss and project file
