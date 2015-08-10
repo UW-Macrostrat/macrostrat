@@ -198,7 +198,6 @@ SELECT map_id,
  JOIN parsed ON parsed.source_id = third.source_id;
 
 CREATE INDEX ON lookup_%(scale)s_new (map_id);
-CREATE INDEX ON lookup_%(scale)s_new (source_id);
 CREATE INDEX ON lookup_%(scale)s_new (group_id);
 
 DROP TABLE IF EXISTS lookup_%(scale)s;
