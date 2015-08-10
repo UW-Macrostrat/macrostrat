@@ -121,8 +121,7 @@ SELECT
   ) AS strat_name_ids,
 
   t_interval,
-  b_interval,
-  geom
+  b_interval
 FROM maps.%(scale)s st
 LEFT JOIN maps.map_units mu ON mu.map_id = st.map_id
 LEFT JOIN maps.map_strat_names msn ON msn.map_id = st.map_id
@@ -137,8 +136,7 @@ second AS (SELECT
   t_interval,
   b_interval,
   (SELECT min(t_age) AS t_age FROM macrostrat.lookup_unit_intervals WHERE unit_id = ANY(unit_ids)) t_age,
-  (SELECT max(b_age) AS b_age FROM macrostrat.lookup_unit_intervals WHERE unit_id = ANY(unit_ids)) b_age,
-  geom
+  (SELECT max(b_age) AS b_age FROM macrostrat.lookup_unit_intervals WHERE unit_id = ANY(unit_ids)) b_age
   FROM first
 ),
 -- Determine the best_age_top and best_age_bottom
@@ -169,9 +167,7 @@ SELECT map_id,
       tb.age_bottom
      ELSE
        b_age
-  END best_age_bottom,
-
-  geom
+  END best_age_bottom
 
  FROM second
  JOIN macrostrat.intervals ti ON ti.id = t_interval
@@ -179,7 +175,6 @@ SELECT map_id,
 )
 -- Assign a color for making tiles
 SELECT map_id,
- third.source_id,
  group_id,
  unit_ids,
  strat_name_ids,
@@ -198,15 +193,13 @@ SELECT map_id,
   WHERE age_top <= best_age_top AND age_bottom >= best_age_bottom
   ORDER BY age_bottom - age_top
   LIMIT 1
- ) AS color,
- geom
+ ) AS color
  FROM third
  JOIN parsed ON parsed.source_id = third.source_id;
 
 CREATE INDEX ON lookup_%(scale)s_new (map_id);
 CREATE INDEX ON lookup_%(scale)s_new (source_id);
 CREATE INDEX ON lookup_%(scale)s_new (group_id);
-CREATE INDEX ON lookup_%(scale)s_new USING GIST (geom);
 
 DROP TABLE IF EXISTS lookup_%(scale)s;
 ALTER TABLE lookup_%(scale)s_new RENAME TO lookup_%(scale)s;
