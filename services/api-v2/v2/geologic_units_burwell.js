@@ -106,7 +106,7 @@ module.exports = function(req, res, next) {
       sql += " FROM maps." + req.query.scale + " m \
               LEFT JOIN macrostrat.intervals ti ON m.t_interval = ti.id \
               LEFT JOIN macrostrat.intervals tb ON m.b_interval = tb.id \
-              LEFT JOIN " + req.query.scale + "_map mm ON mm.map_id = m.map_id"
+              LEFT JOIN lookup_" + req.query.scale + " mm ON mm.map_id = m.map_id"
           + where + limit;
 
 
