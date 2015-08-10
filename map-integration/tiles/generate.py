@@ -68,19 +68,19 @@ def setup():
       line-color: #aaa;
       line-width: 0.0;
     }
-    #small_map[zoom>5] {
+    #lookup_small[zoom>5] {
       polygon-opacity: 0;
       line-opacity: 0;
     }
-    #medium_map[zoom<=5]{
+    #lookup_medium[zoom<=5]{
       polygon-opacity: 0;
       line-opacity: 0;
     }
-    #medium_map[zoom>=10] {
+    #lookup_medium[zoom>=10] {
       polygon-opacity: 0;
       line-opacity: 0;
     }
-    #large_map[zoom<=9] {
+    #lookup_large[zoom<=9] {
       polygon-opacity: 0;
       line-opacity: 0;
     }
@@ -154,7 +154,7 @@ def setup():
 
     # For each scale...
     for scale in ["small", "medium", "large"]:
-        name = scale + "_map"
+        name = "lookup_" + scale
 
         # ...find the extent and the centroid
         cur.execute("SELECT ST_Extent(geom), ST_AsText(ST_Centroid(ST_Extent(geom))) FROM %(table)s", {"table": AsIs(name)})
@@ -201,14 +201,14 @@ def find_groups(scale, source_id=None):
 
     # If a source_id is supplied, find the group_id that it belongs to
     if source_id:
-        pre = "WITH the_group AS (SELECT DISTINCT group_id FROM %(scale)s_map WHERE source_id = %(source_id)s LIMIT 1)"
+        pre = "WITH the_group AS (SELECT DISTINCT group_id FROM lookup_%(scale)s WHERE source_id = %(source_id)s LIMIT 1)"
         where = " WHERE group_id IN (SELECT * FROM the_group)"
         params["source_id"] = source_id
 
     # Get the extent of the target group(s)
     cur.execute(pre + """
         SELECT group_id, ST_Extent(geom) AS extent
-        FROM %(scale)s_map
+        FROM lookup_%(scale)s
         """ + where + """
         GROUP BY group_id
     """, params)
