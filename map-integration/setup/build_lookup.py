@@ -220,7 +220,7 @@ def refresh_lookup(scale):
     conn.set_isolation_level(0)
     cur.execute("VACUUM ANALYZE lookup_%(scale)s;", {"scale": AsIs(scale)})
     conn.commit()
-    stop_time = time.time() - start_time
+    stop_time = int(time.time() - start_time)
     print "Execution time - ", (stop_time / 60), " minutes and ", (stop_time % 60), " seconds"
 
 
