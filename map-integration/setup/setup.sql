@@ -144,19 +144,6 @@ CREATE TABLE lines.large (
   geom geometry
 );
 
-CREATE TABLE lines.sources (
-  source_id serial,
-  name varchar(255),
-  primary_table varchar(50),
-  url varchar(255),
-  ref_title text,
-  authors varchar(255),
-  ref_year smallint,
-  ref_source varchar(255),
-  isbn_doi varchar(100),
-  scale varchar(20)
-);
-
 SELECT UpdateGeometrySRID('maps', 'small', 'geom', 4326);
 SELECT UpdateGeometrySRID('maps', 'medium', 'geom', 4326);
 SELECT UpdateGeometrySRID('maps', 'large', 'geom', 4326);
@@ -219,5 +206,3 @@ CREATE INDEX ON lines.large (line_id);
 CREATE INDEX ON lines.large (orig_id);
 CREATE INDEX ON lines.large (source_id);
 CREATE INDEX ON lines.large USING Gist (geom);
-
-CREATE INDEX ON lines.sources (source_id);
