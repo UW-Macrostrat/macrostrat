@@ -10,6 +10,14 @@ CREATE SCHEMA maps;
 CREATE SCHEMA sources;
 CREATE SCHEMA macrostrat;
 
+/* Used for creating lookup_tables */
+DROP AGGREGATE IF EXISTS array_agg_mult (anyarray);
+CREATE AGGREGATE array_agg_mult (anyarray)  (
+    SFUNC     = array_cat
+   ,STYPE     = anyarray
+   ,INITCOND  = '{}'
+);
+
 /* Use this so that map_id is unique across all three tables */
 CREATE SEQUENCE map_ids INCREMENT 1 START 1;
 
