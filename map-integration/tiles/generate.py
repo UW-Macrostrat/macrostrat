@@ -157,7 +157,7 @@ def setup():
         name = "lookup_" + scale
 
         # ...find the extent and the centroid
-        cur.execute("SELECT ST_Extent(geom), ST_AsText(ST_Centroid(ST_Extent(geom))) FROM %(table)s", {"table": AsIs(name)})
+        cur.execute("SELECT ST_Extent(geom), ST_AsText(ST_Centroid(ST_Extent(geom))) FROM %(table)s x JOIN maps.%(scale)s s ON s.map_id = x.map_id", {"table": AsIs(name), "scale": AsIs(scale)})
         attrs = cur.fetchone()
 
         # ...create a new layer template
@@ -172,7 +172,7 @@ def setup():
         layer["center"] = [float(coord) for coord in center.split(" ")].append(3)
         layer["extent"] = [float(coord) for coord in extent.split(",")]
         layer["Datasource"]["extent"] = extent
-        layer["Datasource"]["table"] = "(SELECT * FROM %s ) subset" % (name,)
+        layer["Datasource"]["table"] = "(SELECT * FROM %s x JOIN maps.%s s ON s.map_id = x.map_id) subset" % (name, scale)
         layer["id"] = name
         layer["name"] = name
 
@@ -208,7 +208,8 @@ def find_groups(scale, source_id=None):
     # Get the extent of the target group(s)
     cur.execute(pre + """
         SELECT group_id, ST_Extent(geom) AS extent
-        FROM lookup_%(scale)s
+        FROM lookup_%(scale)s x
+        JOIN maps.%(scale)s s ON s.map_id = x.map_id
         """ + where + """
         GROUP BY group_id
     """, params)
