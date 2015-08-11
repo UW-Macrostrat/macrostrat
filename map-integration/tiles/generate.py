@@ -46,7 +46,7 @@ cur = conn.cursor()
 # Which zoom levels correspond to which map scales
 scale_map = {
   "small": ["1", "2", "3", "4"],
-  "medium": ["5", "6", "7", "8", "9"],
+  "medium": ["3", "4", "5", "6", "7", "8", "9"],
   "large": ["10", "11", "12"]
 }
 
