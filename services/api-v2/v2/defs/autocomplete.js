@@ -12,7 +12,9 @@ CREATE TABLE autocomplete AS
     union
     select id, project as name, 'projects' as type from projects
     union
-    select id, strat_name as name, 'strat_names' as type from strat_names
+    select concept_id AS id, name, 'strat_name_concepts' AS type FROM strat_names_meta
+    union
+    (select id, CONCAT(strat_name, ' ', rank) AS name, 'strat_name_orphans' as type from strat_names WHERE concept_id = 0)
     union
     select id, col_name as name, 'columns' as type from cols
     union
@@ -38,7 +40,7 @@ module.exports = function(req, res, next) {
     return larkin.info(req, res, next);
   }
 
-  var categories = ["columns", "econs", "environments", "groups", "intervals", "lithologies", "lithology_attributes", "projects", "strat_names"];
+  var categories = ["columns", "econs", "environments", "groups", "intervals", "lithologies", "lithology_attributes", "projects", "strat_name_concepts", "strat_name_orphans"];
 
 
   var types = [];
@@ -82,7 +84,7 @@ module.exports = function(req, res, next) {
 
         larkin.sendCompact(parsed, res, "json");
       }
-        
+
     });
   } else {
     return larkin.info(req, res, next);

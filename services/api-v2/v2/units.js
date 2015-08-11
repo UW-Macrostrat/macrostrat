@@ -85,6 +85,19 @@ module.exports = function(req, res, next, cb) {
           }
         });
 
+      } else if (req.query.strat_name_concept_id) {
+        larkin.query("SELECT id FROM strat_names WHERE concept_id IN (:strat_name_concept_ids) ", {"strat_name_concept_ids": larkin.parseMultipleIds(req.query.strat_name_concept_id)}, function(error, result) {
+          if (error) {
+            callback(error);
+          } else {
+            if (result.length === 0) {
+              return larkin.error(req, res, next, "No results found");
+            } else {
+              var ids = result.map(function(d) { return d.id });
+              callback(null, {"interval_name": "none", "age_bottom": 99999, "age_top": 0, "strat_ids": ids });
+            }
+          }
+        });
       } else if (req.query.strat_name_id) {
         var ids = larkin.parseMultipleIds(req.query.strat_name_id);
         callback(null, {"interval_name": "none", "age_bottom": 99999, "age_top": 0, "strat_ids": ids });
