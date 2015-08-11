@@ -201,7 +201,7 @@ def find_groups(scale, source_id=None):
 
     # If a source_id is supplied, find the group_id that it belongs to
     if source_id:
-        pre = "WITH the_group AS (SELECT DISTINCT group_id FROM lookup_%(scale)s WHERE source_id = %(source_id)s LIMIT 1)"
+        pre = "WITH the_group AS (SELECT DISTINCT group_id FROM lookup_%(scale)s x JOIN maps.%(scale)s s ON s.map_id = x.map_id WHERE source_id = %(source_id)s LIMIT 1)"
         where = " WHERE group_id IN (SELECT * FROM the_group)"
         params["source_id"] = source_id
 
