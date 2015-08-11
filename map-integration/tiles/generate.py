@@ -172,7 +172,7 @@ def setup():
         layer["center"] = [float(coord) for coord in center.split(" ")].append(3)
         layer["extent"] = [float(coord) for coord in extent.split(",")]
         layer["Datasource"]["extent"] = extent
-        layer["Datasource"]["table"] = "(SELECT * FROM %s x JOIN maps.%s s ON s.map_id = x.map_id) subset" % (name, scale)
+        layer["Datasource"]["table"] = "(SELECT x.map_id, c.groupd_id, x.color FROM %s x JOIN maps.%s s ON s.map_id = x.map_id) subset" % (name, scale)
         layer["id"] = name
         layer["name"] = name
 
