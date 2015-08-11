@@ -72,7 +72,7 @@ def setup():
       polygon-opacity: 0;
       line-opacity: 0;
     }
-    #lookup_medium[zoom<=5]{
+    #lookup_medium[zoom<=2]{
       polygon-opacity: 0;
       line-opacity: 0;
     }
