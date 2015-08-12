@@ -239,7 +239,7 @@ module.exports = function() {
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
       .expect(function(res) {
-        if (res.body.success.data.length !== 2) {
+        if (res.body.success.data.length < 10) {
           throw new Error("Wrong number of units returned when using strat_id on units");
         }
       })

@@ -70,7 +70,7 @@ module.exports = function() {
 
   it("should accept a strat_name_id", function(done) {
     request(settings.host)
-      .get("/api/v2/geologic_units/burwell?strat_name_id=12004&scale=medium")
+      .get("/api/v2/geologic_units/burwell?strat_name_id=1205&scale=medium")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
