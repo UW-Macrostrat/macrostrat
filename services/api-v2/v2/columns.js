@@ -19,7 +19,7 @@ module.exports = function(req, res, next) {
         if (error) {
           callback(error);
         }
-        if (!result.length) {
+        if (!result || !result.length) {
           return callback(null, null);
         }
         var cols = _.groupBy(result, function(d) {

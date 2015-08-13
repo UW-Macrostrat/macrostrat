@@ -161,6 +161,9 @@ module.exports = function(req, res, next, cb) {
 
       if ("col_ids" in data) {
         where += " AND units_sections.col_id IN (:col_ids)";
+        if (!(data.col_ids.length)) {
+          data.col_ids = [''];
+        }
         params["col_ids"] = data.col_ids;
       } else if (req.query.col_id) {
         where += " AND units_sections.col_id IN (:col_ids)";
