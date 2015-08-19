@@ -145,7 +145,7 @@ module.exports = function() {
 
   it("should accept a environ parameter", function(done) {
     request(settings.host)
-      .get("/api/v2/units?environ=marine indet.")
+      .get("/api/v2/units?environ=reef")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)

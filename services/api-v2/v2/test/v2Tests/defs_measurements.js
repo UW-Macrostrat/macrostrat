@@ -36,7 +36,7 @@ module.exports = function() {
       .expect(function(res) {
         if (res.body.success.data.length !== 2) {
           throw new Error("Should have returned 2 measurements but did not");
-        } 
+        }
       })
       .end(function(error, res) {
         if (error) return done(error);
@@ -52,7 +52,7 @@ module.exports = function() {
       .expect(validators.atLeastOneResult)
       .expect(function(res) {
         res.body.success.data.forEach(function(d) {
-          if (d.measurement_class != "geochemical") {
+          if (d.class != "geochemical") {
             throw new Error("Wrong measurement class returned");
           }
         })
@@ -71,7 +71,7 @@ module.exports = function() {
       .expect(validators.atLeastOneResult)
       .expect(function(res) {
         res.body.success.data.forEach(function(d) {
-          if (d.measurement_type != "geochronological") {
+          if (d.type != "geochronological") {
             throw new Error("Wrong measurement type returned");
           }
         })
