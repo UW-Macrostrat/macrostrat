@@ -231,9 +231,9 @@ The following output fields have been added:
 |---|---|
 | lith1, lith2, lith3, lith4, lith5 (strings) | lithology (array)  |
 |  rt1, rt2, rt2 (strings) | rocktype (array) |
-|  min_age | t_interval  |
+|  min_age | t_int_id  |
 | age_top (string) | t_age (float) |
-| max_age | b_interval |
+| max_age | b_int_id |
 | age_bottom (string) | b_age (float) |
 | unit_age |  containing_interval |
 | *N/A*    | color |
