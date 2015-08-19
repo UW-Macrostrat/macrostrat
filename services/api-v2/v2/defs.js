@@ -903,7 +903,11 @@
       },
       "output_formats": [
         "json",
-        "csv"
+        "csv",
+        "geojson",
+        "geojson_bare",
+        "topojson",
+        "topojson_bare"
       ],
       "examples": [
         "/api/v2/geologic_units/burwell?lat=43&lng=-89.3"

@@ -95,10 +95,9 @@ module.exports = function() {
 
   it("should return geometry when asked", function(done) {
     request(settings.host)
-      .get("/api/v2/geologic_units/gmna?lat=43&lng=-89.3&format=geojson")
+      .get("/api/v2/geologic_units/burwell?lat=43&lng=-89.3&format=geojson&scale=medium")
       .expect(validators.aSuccessfulRequest)
-      .expect(validators.json)
-      .expect(validators.atLeastOneResult)
+      .expect(validators.geoJSON)
       .end(function(error, res) {
         if (error) return done(error);
         done();
