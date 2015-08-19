@@ -70,7 +70,7 @@ module.exports = function(req, res, next) {
           if (d.timescales) {
             d.timescales = d.timescales.split("|").map(function(j) {
               return {
-                "timescale_id": j.split("--")[1],
+                "timescale_id": parseInt(j.split("--")[1]),
                 "name": j.split("--")[0]
               }
             });
