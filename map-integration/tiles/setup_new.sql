@@ -134,6 +134,7 @@ SELECT map_id,
   source_id,
   unit_ids,
   strat_name_ids,
+  lith_ids,
 
   ti.interval_name AS t_interval_name,
   ti.age_top,
