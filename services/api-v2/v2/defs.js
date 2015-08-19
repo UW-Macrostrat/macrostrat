@@ -62,7 +62,8 @@
         "col_area",
         "project_id",
         "max_thick",
-        "min_thick",
+        "max_min_thick",
+        "min_min_thick",
         "b_age",
         "t_age",
         "pbdb_collections",
@@ -321,7 +322,8 @@
       ],
       "fields": [
         "intervals",
-        "strat_names",
+        "strat_name_concepts",
+        "strat_name_orphans",
         "columns",
         "lithology_attributes",
         "lithologies",
@@ -353,10 +355,10 @@
       ],
       "fields": [
         "lith_id",
-        "lith",
-        "lith_type",
-        "lith_class",
-        "lith_color"
+        "name",
+        "type",
+        "class",
+        "color"
       ]
     }
   },
@@ -383,8 +385,8 @@
       ],
       "fields": [
         "lith_att_id",
-        "lith_att",
-        "att_type"
+        "name",
+        "type"
       ]
     }
   },
@@ -442,9 +444,10 @@
       ],
       "fields": [
         "econ_id",
-        "econ",
-        "econ_type",
-        "econ_class"
+        "name",
+        "type",
+        "class",
+        "color"
       ]
     }
   },
@@ -471,9 +474,10 @@
       ],
       "fields": [
         "environ_id",
-        "environ",
-        "environ_type",
-        "environ_class"
+        "name",
+        "type",
+        "class",
+        "color"
       ]
     }
   },
@@ -513,7 +517,7 @@
         "b_age",
         "int_type",
         "color",
-        "timescale_id"
+        "timescales"
       ]
     }
   },
@@ -533,7 +537,7 @@
       ],
       "examples": [
         "api/v2/defs/sources?all",
-        "api/v2/defs/intervals?source_id=1,2,3",
+        "api/v2/defs/intervals?source_id=1,2,3"
       ],
       "fields": [
         "source_id",
@@ -682,9 +686,9 @@
       ],
       "fields": [
         "measure_id",
-        "measurement_class",
-        "measurement_type",
-        "measurement"
+        "name",
+        "type",
+        "class"
       ]
     }
   },
@@ -785,7 +789,7 @@
         "api/paleogeography?age=271&format=topojson"
       ],
       "fields": [
-        "plateid"
+        "plate_id"
       ]
     }
   },
@@ -924,8 +928,10 @@
         "strat_names",
         "t_int_id",
         "t_int_age",
+        "t_int_name",
         "b_int_id",
         "b_int_age",
+        "b_int_name",
         "color"
       ]
     }
@@ -1167,7 +1173,9 @@
     "packages": "integer, total packages",
     "t_sections": "integer, total sections",
     "t_units": "integer, total units",
-    "measure": "array, summary of types of measurements available"
+    "measure": "array, summary of types of measurements available",
+    "max_min_thick": "integer, the maximum possible minimum thickness in meters",
+    "min_min_thick": "integer, the minimum possible minimum thickness in meters"
   }
 };
   module.exports = defs;

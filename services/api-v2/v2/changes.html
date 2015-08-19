@@ -352,6 +352,8 @@
 <li>input and output parameter <code>id</code> is now <code>lith_id</code>
 </li>
 <li>Multiple input <code>lith_id</code> now accepted</li>
+<li>Removed <code>lith</code> prefix from all fields except <code>lith_id</code>
+</li>
 </ul>
 
 <h2>
@@ -361,6 +363,8 @@
 <li>input and output parameter <code>id</code> is now <code>lith_att_id</code>
 </li>
 <li>Multiple input <code>lith_att_id</code> now accepted</li>
+<li>+ Removed <code>lith_att</code> prefix from all fields except <code>lith_att_id</code>
+</li>
 </ul>
 
 <h2>
@@ -376,6 +380,15 @@
 <ul>
 <li>  input and output parameter <code>id</code> is now <code>environ_id</code>
 </li>
+<li>  + Removed <code>environ</code> prefix from all fields except <code>environ_id</code>
+</li>
+</ul>
+
+<h2>
+<a id="user-content-defsecons" class="anchor" href="#defsecons" aria-hidden="true"><span class="octicon octicon-link"></span></a>/defs/econs</h2>
+
+<ul>
+<li>New route for finding economic definitions</li>
 </ul>
 
 <h2>
@@ -410,8 +423,16 @@
 <td>type</td>
 <td>int_type</td>
 </tr>
+<tr>
+<td>timescale_id</td>
+<td>timescales</td>
+</tr>
 </tbody>
 </table>
+
+<ul>
+<li>Instead of <code>timescale_id</code> returning an array of <code>timescale_id</code>s, <code>timescales</code> returns an array of objects, where each object has a <code>timescale_id</code> and <code>name</code>.</li>
+</ul>
 
 <h2>
 <a id="user-content-defsstrat_names" class="anchor" href="#defsstrat_names" aria-hidden="true"><span class="octicon octicon-link"></span></a>/defs/strat_names</h2>
@@ -438,6 +459,8 @@
 
 <ul>
 <li>input and output parameter <code>id</code> is now <code>measure_id</code>
+</li>
+<li>Removed <code>measurement</code> prefix from all fields except <code>measure_id</code>
 </li>
 </ul>
 
@@ -600,6 +623,21 @@
 </tr>
 </tbody>
 </table>
+
+<h2>
+<a id="user-content-geologic_unitsburwell" class="anchor" href="#geologic_unitsburwell" aria-hidden="true"><span class="octicon octicon-link"></span></a>/geologic_units/burwell</h2>
+
+<ul>
+<li>New route for returning homogenized map data. Includes the data contained in <code>/geologic_units/gmna</code> and <code>/geologic_units/gmus</code>, along with many additional sources.</li>
+</ul>
+
+<h2>
+<a id="user-content-paleogeography" class="anchor" href="#paleogeography" aria-hidden="true"><span class="octicon octicon-link"></span></a>/paleogeography</h2>
+
+<ul>
+<li>Renamed <code>plateid</code> to <code>plate_id</code>
+</li>
+</ul>
 
 <h2>
 <a id="user-content-mobilefossils" class="anchor" href="#mobilefossils" aria-hidden="true"><span class="octicon octicon-link"></span></a>/mobile/fossils</h2>

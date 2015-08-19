@@ -29,8 +29,18 @@ module.exports = function(req, res, next) {
         var new_cols = {}
         Object.keys(cols).forEach(function(col_id) {
           new_cols[col_id] = {
-            "max_thick": _.max(cols[col_id], function(d) { return d.max_thick; }).max_thick,
-            "min_thick": _.min(cols[col_id], function(d) { return d.min_thick; }).min_thick,
+            "max_thick": _.reduce(cols[col_id].map(function(d) { return d.max_thick}) , function(a, b) { return a + b}, 0),
+            "max_min_thick": _.reduce(cols[col_id].map(function(d) {
+              if (d.min_thick === 0) {
+                return d.max_thick;
+              } else {
+                return d.min_thick
+              }
+            }) , function(a, b) { return a + b}, 0),
+            "min_min_thick": _.reduce(cols[col_id].map(function(d) { return d.min_thick}) , function(a, b) { return a + b}, 0),
+
+          //  "max_thick": _.max(cols[col_id], function(d) { return d.max_thick; }).max_thick,
+          //  "min_thick": _.min(cols[col_id], function(d) { return d.min_thick; }).min_thick,
             "b_age": _.max(cols[col_id], function(d) { return d.b_age; }).b_age,
             "t_age": _.min(cols[col_id], function(d) { return d.t_age; }).t_age,
             "pbdb_collections": _.reduce(cols[col_id].map(function(d) { return d.pbdb_collections }), function(a, b) { return a + b}, 0),

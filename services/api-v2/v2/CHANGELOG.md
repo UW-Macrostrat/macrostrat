@@ -238,6 +238,9 @@ The following output fields have been added:
 | unit_age |  containing_interval |
 | *N/A*    | color |
 
+## /geologic_units/burwell
++ New route for returning homogenized map data. Includes the data contained in ````/geologic_units/gmna```` and ````/geologic_units/gmus````, along with many additional sources.
+
 
 ## /paleogeography
 + Renamed ````plateid```` to ````plate_id````
