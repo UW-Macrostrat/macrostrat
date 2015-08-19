@@ -1,4 +1,4 @@
-(function() {
+(function() { 
   var defs = {
   "/columns": {
     "description": "Summarize units by stratigraphic columns",
@@ -594,6 +594,34 @@
       ]
     }
   },
+  "/defs/strat_name_concepts": {
+    "description": "Returns strat name concepts",
+    "parent": "definitions",
+    "visible": true,
+    "options": {
+      "parameters": {
+        "concept_id": "unique id",
+        "all": "return all lithostratigraphic names",
+        "format": "Desired output format"
+      },
+      "output_formats": [
+        "json",
+        "csv"
+      ],
+      "examples": [
+        "api/v2/defs/strat_name_concepts?all"
+      ],
+      "fields": [
+        "concept_id",
+        "name",
+        "geologic_age",
+        "int_id",
+        "usage_notes",
+        "other",
+        "province"
+      ]
+    }
+  },
   "/defs/timescales": {
     "description": "Returns timescales used by Macrostrat",
     "parent": "definitions",
@@ -878,9 +906,9 @@
         "rocktype",
         "macro_units",
         "strat_names",
-        "t_interval",
+        "t_int_id",
         "t_age",
-        "b_interval",
+        "b_int_id",
         "b_age",
         "containing_interval",
         "unit_com",
@@ -1177,6 +1205,6 @@
     "max_min_thick": "integer, the maximum possible minimum thickness in meters",
     "min_min_thick": "integer, the minimum possible minimum thickness in meters"
   }
-};
-  module.exports = defs;
+}; 
+  module.exports = defs; 
 }());

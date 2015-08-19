@@ -10,7 +10,7 @@ api.route("/")
 
 api.route("/meta")
   .get(require("./meta"));
-  
+
 api.route("/changes")
   .get(function(req, res, next) {
     res.sendFile(__dirname + "/changes.html");
@@ -77,6 +77,9 @@ api.route("/defs/strat_names")
     require("./defs/strat_names")(req, res, next);
   });
 
+api.route("/defs/strat_name_concepts")
+  .get(require("./defs/strat_name_concepts"));
+  
 api.route("/defs/timescales")
   .get(require("./defs/timescales"));
 
