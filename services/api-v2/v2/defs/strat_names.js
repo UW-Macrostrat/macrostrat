@@ -9,7 +9,7 @@ module.exports = function(req, res, next, cb) {
   var where = [],
       params = {};
 
-  
+
 
   if (req.query.rule) {
     if (req.query.rule === "down") {
@@ -21,7 +21,7 @@ module.exports = function(req, res, next, cb) {
         where.push("parent IN (:strat_name_id) OR strat_name_id IN (:strat_name_id)");
         params["strat_name_id"] = larkin.parseMultipleIds(req.query.strat_name_id);
       }
-      
+
     } else if (req.query.rule === "all") {
       if (req.query.strat_name) {
         where.push("tree = (SELECT tree FROM lookup_strat_names WHERE strat_name = :strat_name)");
@@ -44,7 +44,10 @@ module.exports = function(req, res, next, cb) {
     } else if (req.query.strat_name) {
       where.push("lower(strat_name) LIKE lower(:strat_name)");
       params["strat_name"] = req.query.strat_name;
-    } 
+    } else if (req.query.strat_name_concept_id) {
+      where.push("concept_id IN (:strat_name_concept_id)")
+      params["strat_name_concept_id"] = larkin.parseMultipleIds(req.query.strat_name_concept_id);
+    }
 
     if (req.query.rank) {
       where.push("rank = :rank");
@@ -62,7 +65,7 @@ module.exports = function(req, res, next, cb) {
   if ("sample" in req.query) {
     sql += " LIMIT 5";
   }
-  
+
   larkin.query(sql, params, function(error, response) {
     if (error) {
       console.log(error);
@@ -71,7 +74,7 @@ module.exports = function(req, res, next, cb) {
       } else {
         larkin.error(req, res, next, "Something went wrong");
       }
-      
+
     } else {
       if (cb) {
         cb(null, response);
@@ -81,4 +84,3 @@ module.exports = function(req, res, next, cb) {
     }
   });
 }
-

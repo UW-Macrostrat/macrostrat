@@ -5,8 +5,8 @@ module.exports = function(req, res, next) {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
-  
-  var sql = "SELECT id AS econ_id, econ, econ_type, econ_class FROM econs",
+
+  var sql = "SELECT id AS econ_id, econ AS name, econ_type AS type, econ_class AS class, econ_color AS color FROM econs",
       params = {};
 
   if ("all" in req.query) {

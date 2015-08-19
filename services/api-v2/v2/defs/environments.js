@@ -5,8 +5,8 @@ module.exports = function(req, res, next) {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
-  
-  var sql = "SELECT id AS environ_id, environ, environ_type, environ_class FROM environs",
+
+  var sql = "SELECT id AS environ_id, environ AS name, environ_type AS type, environ_class AS class, environ_color AS color FROM environs",
       environ = "";
 
   if (req.query.all) {
@@ -28,7 +28,7 @@ module.exports = function(req, res, next) {
   if ("sample" in req.query) {
     sql += " LIMIT 5";
   }
-  
+
   var format = (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json";
   larkin.query(sql, [environ], null, true, res, format, next);
 }

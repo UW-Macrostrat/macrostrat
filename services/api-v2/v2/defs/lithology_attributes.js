@@ -5,7 +5,7 @@ module.exports = function(req, res, next) {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
-  var sql = "SELECT id AS lith_att_id, lith_att, att_type FROM lith_atts",
+  var sql = "SELECT id AS lith_att_id, lith_att AS name, att_type AS type FROM lith_atts",
       params = {};
 
   if (req.query.att_type) {
@@ -15,13 +15,13 @@ module.exports = function(req, res, next) {
     sql += " WHERE lith_att = :lith_att";
     params["lith_att"] = req.query.lith_att;
   } else if (req.query.lith_att_id) {
-    sql += " WHERE id IN (:lith_att_id)"; 
+    sql += " WHERE id IN (:lith_att_id)";
     params["lith_att_id"] = larkin.parseMultipleIds(req.query.lith_att_id);
   }
 
   if ("sample" in req.query) {
     sql += " LIMIT 5";
   }
-  
+
   larkin.query(sql, params, null, true, res, ((api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json"), next);
 }
