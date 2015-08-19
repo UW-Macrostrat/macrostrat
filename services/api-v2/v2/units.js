@@ -121,19 +121,20 @@ module.exports = function(req, res, next, cb) {
         where += " AND units.id IN (SELECT unit_liths.unit_id from unit_liths JOIN liths on lith_id=liths.id WHERE ::lith_field ";
 
         if (req.query.lith) {
-          where += "LIKE :lith) ";
+          where += "IN (:lith)) ";
           params["lith_field"] = "lith";
-          params["lith"] = req.query.lith;
+          params["lith"] = larkin.parseMultipleStrings(req.query.lith);
 
         } else if (req.query.lith_class) {
-          where += "LIKE :lith) ";
+          where += "IN (:lith)) ";
           params["lith_field"] = "lith_class";
-          params["lith"] = req.query.lith_class;
+          params["lith"] = larkin.parseMultipleStrings(req.query.lith_class);
 
         } else if (req.query.lith_type) {
-          where += "LIKE :lith) ";
+          where += "IN (:lith)) ";
           params["lith_field"] = "lith_type";
-          params["lith"] = req.query.lith_type;
+          params["lith"] = larkin.parseMultipleStrings(req.query.lith_type);
+
         } else if (req.query.lith_id) {
           where += "IN (:lith)) ";
           params["lith_field"] = "liths.id"
@@ -189,18 +190,18 @@ module.exports = function(req, res, next, cb) {
           params["environ_field"] = "environs.id";
         }
         if (req.query.environ) {
-          where += " LIKE :environ)";
-          params["environ"] = req.query.environ;
+          where += " IN (:environ))";
+          params["environ"] = larkin.parseMultipleStrings(req.query.environ);
           params["environ_field"] = "environs.environ";
 
         } else if (req.query.environ_class) {
-          where += " LIKE :environ)";
-          params["environ"] = req.query.environ_class;
+          where += " IN (:environ))";
+          params["environ"] = larkin.parseMultipleStrings(req.query.environ_class);
           params["environ_field"] = "environs.environ_class";
 
         } else if (req.query.environ_type) {
-          where += " LIKE :environ)";
-          params["environ"] = req.query.environ_type;
+          where += " IN (:environ))";
+          params["environ"] = larkin.parseMultipleStrings(req.query.environ_type);
           params["environ_field"] = "environs.environ_type";
         }
       }
@@ -214,18 +215,18 @@ module.exports = function(req, res, next, cb) {
           params["econ"] = larkin.parseMultipleIds(req.query.econ_id);
           params["econ_field"] = "econs.id";
         } else if (req.query.econ) {
-          where += " LIKE :econ)";
-          params["econ"] = req.query.econ;
+          where += " IN (:econ))";
+          params["econ"] = larkin.parseMultipleStrings(req.query.econ);
           params["econ_field"] = "econs.econ";
         }
         if (req.query.econ_type) {
-          where += " LIKE :econ)";
-          params["econ"] = req.query.econ_type;
+          where += " IN (:econ))";
+          params["econ"] = larkin.parseMultipleStrings(req.query.econ_type);
           params["econ_field"] = "econs.econ_type";
         }
         if (req.query.econ_class) {
-          where += " LIKE :econ)";
-          params["econ"] = req.query.econ_class;
+          where += " IN (:econ))";
+          params["econ"] = larkin.parseMultipleStrings(req.query.econ_class);
           params["econ_field"] = "econs.econ_class";
         }
       }

@@ -266,6 +266,12 @@ var mysql = require("mysql"),
     });
   };
 
+  larkin.parseMultipleStrings = function(text) {
+    return text.split(",").map(function(d) {
+      return d;
+    });
+  };
+
 
   larkin.findNumberInString = function(obj){
     var matches = obj.replace(/,/g, '').match(/(\+|-)?((\d+(\.\d+)?)|(\.\d+))/);
