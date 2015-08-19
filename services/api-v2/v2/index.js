@@ -8,6 +8,9 @@ larkin.connectMySQL();
 api.route("/")
   .get(require("./root"));
 
+api.route("/meta")
+  .get(require("./meta"));
+  
 api.route("/changes")
   .get(function(req, res, next) {
     res.sendFile(__dirname + "/changes.html");
