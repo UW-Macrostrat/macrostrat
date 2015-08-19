@@ -104,12 +104,14 @@ SELECT
        END
   ) AS strat_name_ids,
 
+  array_agg(map_liths.lith_id) AS lith_ids,
   t_interval,
   b_interval,
   geom
 FROM maps.medium st
 LEFT JOIN maps.map_units mu ON mu.map_id = st.map_id
 LEFT JOIN maps.map_strat_names msn ON msn.map_id = st.map_id
+LEFT JOIN maps.map_liths ON map_liths.map_id = st.map_id
 GROUP BY st.map_id
 ),
 -- Get the min t_age and max b_age
@@ -118,6 +120,7 @@ second AS (SELECT
   source_id,
   unit_ids,
   strat_name_ids,
+  lith_ids,
   t_interval,
   b_interval,
   (SELECT min(t_age) AS t_age FROM macrostrat.lookup_unit_intervals WHERE unit_id = ANY(unit_ids)) t_age,
@@ -167,6 +170,7 @@ SELECT map_id,
  group_id,
  unit_ids,
  strat_name_ids,
+ lith_ids,
 
  t_interval_name,
  b_interval_name,
@@ -286,12 +290,14 @@ SELECT
        END
   ) AS strat_name_ids,
 
+  array_agg(map_liths.lith_id) AS lith_ids,
   t_interval,
   b_interval,
   geom
 FROM maps.small st
 LEFT JOIN maps.map_units mu ON mu.map_id = st.map_id
 LEFT JOIN maps.map_strat_names msn ON msn.map_id = st.map_id
+LEFT JOIN maps.map_liths ON map_liths.map_id = st.map_id
 GROUP BY st.map_id
 ),
 -- Get the min t_age and max b_age
@@ -300,6 +306,7 @@ second AS (SELECT
   source_id,
   unit_ids,
   strat_name_ids,
+  lith_ids,
   t_interval,
   b_interval,
   (SELECT min(t_age) AS t_age FROM macrostrat.lookup_unit_intervals WHERE unit_id = ANY(unit_ids)) t_age,
@@ -313,6 +320,7 @@ SELECT map_id,
   source_id,
   unit_ids,
   strat_name_ids,
+  lith_ids,
 
   ti.interval_name AS t_interval_name,
   ti.age_top,
@@ -349,6 +357,7 @@ SELECT map_id,
  group_id,
  unit_ids,
  strat_name_ids,
+ lith_ids,
 
  t_interval_name,
  b_interval_name,
@@ -465,12 +474,14 @@ SELECT
        END
   ) AS strat_name_ids,
 
+  array_agg(map_liths.lith_id) AS lith_ids,
   t_interval,
   b_interval,
   geom
 FROM maps.large st
 LEFT JOIN maps.map_units mu ON mu.map_id = st.map_id
 LEFT JOIN maps.map_strat_names msn ON msn.map_id = st.map_id
+LEFT JOIN maps.map_liths ON map_liths.map_id = st.map_id
 GROUP BY st.map_id
 ),
 -- Get the min t_age and max b_age
@@ -479,6 +490,7 @@ second AS (SELECT
   source_id,
   unit_ids,
   strat_name_ids,
+  lith_ids,
   t_interval,
   b_interval,
   (SELECT min(t_age) AS t_age FROM macrostrat.lookup_unit_intervals WHERE unit_id = ANY(unit_ids)) t_age,
@@ -492,6 +504,7 @@ SELECT map_id,
   source_id,
   unit_ids,
   strat_name_ids,
+  lith_ids,
 
   ti.interval_name AS t_interval_name,
   ti.age_top,
@@ -528,6 +541,7 @@ SELECT map_id,
  group_id,
  unit_ids,
  strat_name_ids,
+ lith_ids,
 
  t_interval_name,
  b_interval_name,
