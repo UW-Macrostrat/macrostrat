@@ -636,6 +636,30 @@
       ]
     }
   },
+  "/defs/plates": {
+    "description": "Returns definitions of plates from /paleogeography",
+    "parent": "definitions",
+    "visible": true,
+    "options": {
+      "parameters": {
+        "all": "return all available projects",
+        "plate_id": "One or more plate_ids to query",
+        "format": "Desired output format"
+      },
+      "output_formats": [
+        "json",
+        "csv"
+      ],
+      "examples": [
+        "api/v2/defs/plates?all",
+        "api/v2/defs/plates?plate_id=129,402"
+      ],
+      "fields": [
+        "plate_id",
+        "name"
+      ]
+    }
+  },
   "/defs/measurements": {
     "description": "Returns all measurements definitions",
     "parent": "definitions",

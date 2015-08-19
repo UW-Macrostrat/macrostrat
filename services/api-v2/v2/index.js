@@ -60,6 +60,9 @@ api.route("/defs/lithology_attributes")
 api.route("/defs/measurements")
   .get(require("./defs/measurements"));
 
+api.route("/defs/plates")
+  .get(require("./defs/plates"));
+
 api.route("/defs/projects")
   .get(require("./defs/projects"));
 
