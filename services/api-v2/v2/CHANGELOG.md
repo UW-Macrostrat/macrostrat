@@ -117,11 +117,13 @@
 ## /defs/lithologies
 + input and output parameter ````id```` is now ````lith_id````
 + Multiple input ````lith_id```` now accepted
++ Removed ````lith```` prefix from all fields except ````lith_id````
 
 
 ## /defs/lithology_attributes
 + input and output parameter ````id```` is now ````lith_att_id````
 + Multiple input ````lith_att_id```` now accepted
++ + Removed ````lith_att```` prefix from all fields except ````lith_att_id````
 
 
 ## /defs/columns
@@ -130,6 +132,10 @@
 
 ## /defs/environments
 +   input and output parameter ````id```` is now ````environ_id````
++   + Removed ````environ```` prefix from all fields except ````environ_id````
+
+## /defs/econs
++ New route for finding economic definitions
 
 
 ## /defs/intervals

@@ -6,7 +6,7 @@ module.exports = function(req, res, next) {
     return larkin.info(req, res, next);
   }
 
-  var sql = "SELECT id AS measure_id, measurement_class, measurement_type, measurement FROM measurements",
+  var sql = "SELECT id AS measure_id, measurement AS name, measurement_type AS type, measurement_class AS class FROM measurements",
       params = {};
 
   if (req.query.all) {
@@ -15,7 +15,7 @@ module.exports = function(req, res, next) {
     sql += " WHERE measurement_class = :meas";
     params["meas"] = req.query.measurement_class;
   } else if (req.query.measurement_type){
-    sql += " WHERE measurement_type = :meas"; 
+    sql += " WHERE measurement_type = :meas";
     params["meas"] = req.query.measurement_type;
 
   }  else if (req.query.measurement){
@@ -23,15 +23,15 @@ module.exports = function(req, res, next) {
     params["meas"] = req.query.measurement;
 
   }  else if (req.query.measure_id){
-    sql += " WHERE id IN (:meas) "; 
+    sql += " WHERE id IN (:meas) ";
     params["meas"] = larkin.parseMultipleIds(req.query.measure_id);
   }
 
   if ("sample" in req.query) {
     sql += " LIMIT 5";
   }
-  
+
   var format = (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json";
   larkin.query(sql, params, null, true, res, format, next);
-  
+
 }
