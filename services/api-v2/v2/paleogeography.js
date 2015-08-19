@@ -31,7 +31,7 @@ module.exports = function(req, res, next) {
       },
       function(year, callback) {
         var limit = ("sample" in req.query) ? " LIMIT 5" : "";
-        larkin.queryPg("alice", "SELECT plateid::integer, ST_AsGeoJSON(geom) AS geometry FROM merge.reconstructed_" + year + "_merged" + limit, [], function(error, result) {
+        larkin.queryPg("alice", "SELECT plateid::integer AS plate_id, ST_AsGeoJSON(geom) AS geometry FROM merge.reconstructed_" + year + "_merged" + limit, [], function(error, result) {
           callback(null, result.rows);
         });
       }

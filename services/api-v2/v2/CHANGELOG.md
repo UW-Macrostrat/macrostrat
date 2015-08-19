@@ -164,7 +164,7 @@
 
 ## /defs/measurements
 + input and output parameter ````id```` is now ````measure_id````
-
++ Removed ````measurement```` prefix from all fields except ````measure_id````
 
 ## /defs/projects
 + Output paramter ````id```` is now ````project_id````
@@ -237,6 +237,9 @@ The following output fields have been added:
 | unit_age |  containing_interval |
 | *N/A*    | color |
 
+
+## /paleogeography
++ Renamed ````plateid```` to ````plate_id````
 
 ## /mobile/fossils
 + Changed output ````id```` to ````cltn_id````
