@@ -6,8 +6,8 @@ module.exports = function(req, res, next) {
     return larkin.info(req, res, next);
   }
 
-  var sql = "SELECT intervals.id AS int_id, interval_name AS name, interval_abbrev abbrev, age_top AS t_age, age_bottom AS b_age, interval_type AS int_type, interval_color AS color, GROUP_CONCAT(DISTINCT timescales.id SEPARATOR '|') AS timescale_id FROM intervals LEFT JOIN timescales_intervals ON interval_id=intervals.id LEFT JOIN timescales ON timescale_id=timescales.id ";
-  
+  var sql = "SELECT intervals.id AS int_id, interval_name AS name, interval_abbrev abbrev, age_top AS t_age, age_bottom AS b_age, interval_type AS int_type, interval_color AS color, GROUP_CONCAT(CONCAT(timescales.timescale, '--', timescales.id) SEPARATOR '|') AS timescales FROM intervals LEFT JOIN timescales_intervals ON interval_id=intervals.id LEFT JOIN timescales ON timescale_id=timescales.id ";
+
   var params = {},
       where = [];
 
@@ -28,7 +28,7 @@ module.exports = function(req, res, next) {
   if (req.query.int_id && isFinite(req.query.int_id)) {
     where.push("intervals.id IN (:int_id)");
     params["int_id"] = larkin.parseMultipleIds(req.query.int_id);
-  } 
+  }
 
   if (req.query.b_age && req.query.t_age) {
     if (req.query.rule === "loose") {
@@ -41,12 +41,12 @@ module.exports = function(req, res, next) {
       params["b_age"] = req.query.b_age;
       params["t_age"] = req.query.t_age;
     }
-      
+
   } else if (req.query.age) {
     where.push("intervals.age_top <= :age AND intervals.age_bottom >= :age");
     params["age"] = req.query.age;
   }
-  
+
   if (where.length > 0) {
     sql += ("WHERE " + where.join(" AND "));
   }
@@ -63,9 +63,21 @@ module.exports = function(req, res, next) {
       console.log(error);
       return larkin.error(req, res, next, "Something went wrong");
     } else {
+
       if (req.query.format !== "csv") {
         result.forEach(function(d) {
-          d.timescale_id = larkin.jsonifyPipes(d.timescale_id, "integers");
+        //  d.timescale_id = larkin.jsonifyPipes(d.timescale_id, "integers");
+          if (d.timescales) {
+            d.timescales = d.timescales.split("|").map(function(j) {
+              return {
+                "timescale_id": j.split("--")[1],
+                "name": j.split("--")[0]
+              }
+            });
+          } else {
+            d.timescales = [];
+          }
+
         });
       }
 

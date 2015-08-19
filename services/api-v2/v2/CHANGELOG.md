@@ -148,7 +148,8 @@
 | late_age | t_age   |
 | early_age| b_age   |
 | type     | int_type  |
-
+| timescale_id | timescales|
++ Instead of ````timescale_id```` returning an array of ````timescale_id````s, ````timescales```` returns an array of objects, where each object has a ````timescale_id```` and ````name````.
 
 
 ## /defs/strat_names
