@@ -326,7 +326,6 @@ SELECT map_id,
 )
 -- Assign a color for making tiles
 SELECT map_id,
- third.source_id,
  group_id,
  unit_ids,
  strat_name_ids,
@@ -492,7 +491,6 @@ SELECT map_id,
 )
 -- Assign a color for making tiles
 SELECT map_id,
- third.source_id,
  group_id,
  unit_ids,
  strat_name_ids,
@@ -515,14 +513,11 @@ SELECT map_id,
 CREATE INDEX lookup_medium_map_idx ON lookup_medium (map_id);
 CREATE INDEX lookup_medium_source_idx ON lookup_medium (source_id);
 CREATE INDEX lookup_medium_group_idx ON lookup_medium (group_id);
-CREATE INDEX lookup_medium_geom_idx ON lookup_medium USING GIST (geom);
 
 CREATE INDEX lookup_small_map_idx ON lookup_small (map_id);
 CREATE INDEX lookup_small_source_idx ON lookup_small (source_id);
 CREATE INDEX lookup_small_group_idx ON lookup_small (group_id);
-CREATE INDEX lookup_small_geom_idx ON lookup_small USING GIST (geom);
 
 CREATE INDEX lookup_large_map_idx ON lookup_large (map_id);
 CREATE INDEX lookup_large_source_idx ON lookup_large (source_id);
 CREATE INDEX lookup_large_group_idx ON lookup_large (group_id);
-CREATE INDEX lookup_large_geom_idx ON lookup_large USING GIST (geom);
