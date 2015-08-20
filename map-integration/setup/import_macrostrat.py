@@ -137,7 +137,7 @@ my_cur.execute("""
   SELECT id, lith_id, unit_id, prop, dom, comp_prop, mod_prop, toc, ref_id
   FROM unit_liths
   INTO OUTFILE %(unit_liths_path)s
-  FIELDS TERMINATED BY '\t'
+  FIELDS TERMINATED BY ','
   ENCLOSED BY '"'
   LINES TERMINATED BY '\n';
 
@@ -461,7 +461,7 @@ CREATE TABLE macrostrat_new.unit_liths (
   ref_id integer
 );
 
-COPY macrostrat_new.unit_liths FROM %(unit_liths_path)s NULL '\N' DELIMITER '\t' CSV;
+COPY macrostrat_new.unit_liths FROM %(unit_liths_path)s NULL '\N' DELIMITER ',' CSV;
 
 CREATE INDEX ON macrostrat_new.unit_liths (id);
 CREATE INDEX ON macrostrat_new.unit_liths (unit_id);

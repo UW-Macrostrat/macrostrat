@@ -38,8 +38,8 @@ CREATE TABLE maps.small (
   descrip_nlp json,
   comments text,
   comments_nlp json,
-  t_interval integer,
-  b_interval integer,
+  t_interval integer NOT NULL,
+  b_interval integer NOT NULL,
   geom geometry
 );
 
@@ -57,8 +57,8 @@ CREATE TABLE maps.medium (
   descrip_nlp json,
   comments text,
   comments_nlp json,
-  t_interval integer,
-  b_interval integer,
+  t_interval integer NOT NULL,
+  b_interval integer NOT NULL,
   geom geometry
 );
 
@@ -75,8 +75,8 @@ CREATE TABLE maps.large (
   descrip_nlp json,
   comments text,
   comments_nlp json,
-  t_interval integer,
-  b_interval integer,
+  t_interval integer NOT NULL,
+  b_interval integer NOT NULL,
   geom geometry
 );
 
