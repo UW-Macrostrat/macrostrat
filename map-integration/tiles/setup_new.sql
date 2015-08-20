@@ -162,9 +162,6 @@ SELECT map_id,
  strat_name_ids,
  lith_ids,
 
- age_top AS t_age,
- age_bottom AS b_age,
-
  best_age_top,
  best_age_bottom,
 
@@ -335,9 +332,6 @@ SELECT map_id,
  strat_name_ids,
  lith_ids,
 
- age_top AS t_age,
- age_bottom AS b_age,
-
  best_age_top,
  best_age_bottom,
 
@@ -503,9 +497,6 @@ SELECT map_id,
  unit_ids,
  strat_name_ids,
  lith_ids,
-
- age_top AS t_age,
- age_bottom AS b_age,
 
  best_age_top,
  best_age_bottom,
