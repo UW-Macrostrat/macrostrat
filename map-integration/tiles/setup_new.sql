@@ -106,8 +106,7 @@ SELECT
 
   array_agg(map_liths.lith_id) AS lith_ids,
   t_interval,
-  b_interval,
-  geom
+  b_interval
 FROM maps.medium st
 LEFT JOIN maps.map_units mu ON mu.map_id = st.map_id
 LEFT JOIN maps.map_strat_names msn ON msn.map_id = st.map_id
@@ -124,8 +123,7 @@ second AS (SELECT
   t_interval,
   b_interval,
   (SELECT min(t_age) AS t_age FROM macrostrat.lookup_unit_intervals WHERE unit_id = ANY(unit_ids)) t_age,
-  (SELECT max(b_age) AS b_age FROM macrostrat.lookup_unit_intervals WHERE unit_id = ANY(unit_ids)) b_age,
-  geom
+  (SELECT max(b_age) AS b_age FROM macrostrat.lookup_unit_intervals WHERE unit_id = ANY(unit_ids)) b_age
   FROM first
 ),
 -- Determine the best_age_top and best_age_bottom
@@ -135,12 +133,6 @@ SELECT map_id,
   unit_ids,
   strat_name_ids,
   lith_ids,
-
-  ti.interval_name AS t_interval_name,
-  ti.age_top,
-
-  tb.interval_name AS b_interval_name,
-  tb.age_bottom,
 
   t_age,
   b_age,
@@ -157,9 +149,7 @@ SELECT map_id,
       tb.age_bottom
      ELSE
        b_age
-  END best_age_bottom,
-
-  geom
+  END best_age_bottom
 
  FROM second
  JOIN macrostrat.intervals ti ON ti.id = t_interval
@@ -167,14 +157,10 @@ SELECT map_id,
 )
 -- Assign a color for making tiles
 SELECT map_id,
- third.source_id,
  group_id,
  unit_ids,
  strat_name_ids,
  lith_ids,
-
- t_interval_name,
- b_interval_name,
 
  age_top AS t_age,
  age_bottom AS b_age,
@@ -187,8 +173,7 @@ SELECT map_id,
   WHERE age_top <= best_age_top AND age_bottom >= best_age_bottom
   ORDER BY age_bottom - age_top
   LIMIT 1
- ) AS color,
- geom
+ ) AS color
  FROM third
  JOIN parsed ON parsed.source_id = third.source_id;
 
@@ -293,8 +278,7 @@ SELECT
 
   array_agg(map_liths.lith_id) AS lith_ids,
   t_interval,
-  b_interval,
-  geom
+  b_interval
 FROM maps.small st
 LEFT JOIN maps.map_units mu ON mu.map_id = st.map_id
 LEFT JOIN maps.map_strat_names msn ON msn.map_id = st.map_id
@@ -311,8 +295,7 @@ second AS (SELECT
   t_interval,
   b_interval,
   (SELECT min(t_age) AS t_age FROM macrostrat.lookup_unit_intervals WHERE unit_id = ANY(unit_ids)) t_age,
-  (SELECT max(b_age) AS b_age FROM macrostrat.lookup_unit_intervals WHERE unit_id = ANY(unit_ids)) b_age,
-  geom
+  (SELECT max(b_age) AS b_age FROM macrostrat.lookup_unit_intervals WHERE unit_id = ANY(unit_ids)) b_age
   FROM first
 ),
 -- Determine the best_age_top and best_age_bottom
@@ -322,12 +305,6 @@ SELECT map_id,
   unit_ids,
   strat_name_ids,
   lith_ids,
-
-  ti.interval_name AS t_interval_name,
-  ti.age_top,
-
-  tb.interval_name AS b_interval_name,
-  tb.age_bottom,
 
   t_age,
   b_age,
@@ -344,9 +321,7 @@ SELECT map_id,
       tb.age_bottom
      ELSE
        b_age
-  END best_age_bottom,
-
-  geom
+  END best_age_bottom
 
  FROM second
  JOIN macrostrat.intervals ti ON ti.id = t_interval
@@ -360,9 +335,6 @@ SELECT map_id,
  strat_name_ids,
  lith_ids,
 
- t_interval_name,
- b_interval_name,
-
  age_top AS t_age,
  age_bottom AS b_age,
 
@@ -374,8 +346,7 @@ SELECT map_id,
   WHERE age_top <= best_age_top AND age_bottom >= best_age_bottom
   ORDER BY age_bottom - age_top
   LIMIT 1
- ) AS color,
- geom
+ ) AS color
  FROM third
  JOIN parsed ON parsed.source_id = third.source_id;
 
@@ -477,8 +448,7 @@ SELECT
 
   array_agg(map_liths.lith_id) AS lith_ids,
   t_interval,
-  b_interval,
-  geom
+  b_interval
 FROM maps.large st
 LEFT JOIN maps.map_units mu ON mu.map_id = st.map_id
 LEFT JOIN maps.map_strat_names msn ON msn.map_id = st.map_id
@@ -495,8 +465,7 @@ second AS (SELECT
   t_interval,
   b_interval,
   (SELECT min(t_age) AS t_age FROM macrostrat.lookup_unit_intervals WHERE unit_id = ANY(unit_ids)) t_age,
-  (SELECT max(b_age) AS b_age FROM macrostrat.lookup_unit_intervals WHERE unit_id = ANY(unit_ids)) b_age,
-  geom
+  (SELECT max(b_age) AS b_age FROM macrostrat.lookup_unit_intervals WHERE unit_id = ANY(unit_ids)) b_age
   FROM first
 ),
 -- Determine the best_age_top and best_age_bottom
@@ -506,12 +475,6 @@ SELECT map_id,
   unit_ids,
   strat_name_ids,
   lith_ids,
-
-  ti.interval_name AS t_interval_name,
-  ti.age_top,
-
-  tb.interval_name AS b_interval_name,
-  tb.age_bottom,
 
   t_age,
   b_age,
@@ -528,10 +491,7 @@ SELECT map_id,
       tb.age_bottom
      ELSE
        b_age
-  END best_age_bottom,
-
-  geom
-
+  END best_age_bottom
  FROM second
  JOIN macrostrat.intervals ti ON ti.id = t_interval
  JOIN macrostrat.intervals tb ON tb.id = b_interval
@@ -544,9 +504,6 @@ SELECT map_id,
  strat_name_ids,
  lith_ids,
 
- t_interval_name,
- b_interval_name,
-
  age_top AS t_age,
  age_bottom AS b_age,
 
@@ -558,8 +515,7 @@ SELECT map_id,
   WHERE age_top <= best_age_top AND age_bottom >= best_age_bottom
   ORDER BY age_bottom - age_top
   LIMIT 1
- ) AS color,
- geom
+ ) AS color
  FROM third
  JOIN parsed ON parsed.source_id = third.source_id;
 

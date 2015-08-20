@@ -157,7 +157,7 @@ def setup():
         name = "lookup_" + scale
 
         # ...find the extent and the centroid
-        cur.execute("SELECT ST_Extent(geom), ST_AsText(ST_Centroid(ST_Extent(geom))) FROM %(table)s x JOIN maps.%(scale)s s ON s.map_id = x.map_id", {"table": AsIs(name), "scale": AsIs(scale)})
+        cur.execute("SELECT ST_Extent(s.geom), ST_AsText(ST_Centroid(ST_Extent(geom))) FROM %(table)s x JOIN maps.%(scale)s s ON s.map_id = x.map_id", {"table": AsIs(name), "scale": AsIs(scale)})
         attrs = cur.fetchone()
 
         # ...create a new layer template
