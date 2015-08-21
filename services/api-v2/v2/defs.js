@@ -1,4 +1,4 @@
-(function() { 
+(function() {
   var defs = {
   "/columns": {
     "description": "Summarize units by stratigraphic columns",
@@ -964,6 +964,27 @@
       ]
     }
   },
+  "/elevation": {
+    "description": "Returns elevation in meters at a given coordinate from ETOPO1",
+    "visible": true,
+    "options": {
+      "parameters": {
+        "lat": "A valid latitude",
+        "lng": "A valid longitude",
+        "format": "Desired output format"
+      },
+      "output_formats": [
+        "json",
+        "csv"
+      ],
+      "examples": [
+        "api/elevation?lat=43&lng=-89"
+      ],
+      "fields": [
+        "elevation"
+      ]
+    }
+  },
   "/mobile": {
     "description": "Simplified data delivery, ideal for mobile applications",
     "visible": true
@@ -1205,6 +1226,6 @@
     "max_min_thick": "integer, the maximum possible minimum thickness in meters",
     "min_min_thick": "integer, the minimum possible minimum thickness in meters"
   }
-}; 
-  module.exports = defs; 
+};
+  module.exports = defs;
 }());

@@ -79,7 +79,7 @@ api.route("/defs/strat_names")
 
 api.route("/defs/strat_name_concepts")
   .get(require("./defs/strat_name_concepts"));
-  
+
 api.route("/defs/timescales")
   .get(require("./defs/timescales"));
 
@@ -97,6 +97,9 @@ api.route("/geologic_units/gmus")
 
 api.route("/geologic_units/burwell")
   .get(require("./geologic_units_burwell"));
+
+api.route("/elevation")
+  .get(require("./elevation"));
 
 api.route("/mobile")
   .get(require("./mobile/mobile"));
