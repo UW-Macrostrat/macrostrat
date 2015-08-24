@@ -30,6 +30,19 @@ module.exports = function(req, res, next, cb) {
           }
         });
 
+      } else if (req.query.int_id) {
+        larkin.query("SELECT age_bottom,age_top,interval_name from intervals where id = ? LIMIT 1", [req.query.int_id], function(error, result) {
+          if (error) {
+            callback(error);
+          } else {
+            if (result.length === 0) {
+              return larkin.error(req, res, next, "No results found");
+            } else {
+              callback(null, {"interval_name": result[0].interval_name, "age_bottom": result[0].age_bottom, "age_top": result[0].age_top});
+            }
+          }
+        });
+
       } else if (req.query.age) {
         callback(null, {"interval_name": "none", "age_bottom": req.query.age, "age_top": req.query.age});
 
