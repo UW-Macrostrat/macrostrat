@@ -22,6 +22,8 @@ module.exports = function(req, res, next) {
     } else {
       limit = ""
     }
+
+    // Process the parameters
     async.parallel([
 
       // Lat/lng
@@ -72,11 +74,24 @@ module.exports = function(req, res, next) {
         }
 
         callback(null);
+      },
+
+      // lith_id
+      function(callback) {
+        if (req.query.lith_id) {
+          var lith_ids = larkin.parseMultipleIds(req.query.lith_id);
+
+          where.push("mm.lith_ids && $" + (where.length + 1) + "::int[]");
+          params.push(lith_ids);
+        }
+
+        callback(null);
       }
 
     ], function() {
+      // If no valid parameters passed, return an Error
       if (where.length < 1 && !("sample" in req.query)) {
-        return larkin.error(req, res, next, "Invalid params");
+        return larkin.error(req, res, next, "No valid parameters passed");
       }
 
       if (where.length > 0) {
@@ -96,6 +111,7 @@ module.exports = function(req, res, next) {
           COALESCE(m.comments, '') AS comments,
           mm.unit_ids AS macro_units,
           mm.strat_name_ids AS strat_names,
+          mm.lith_ids AS liths,
           m.t_interval AS t_int_id,
           ti.age_top::float AS t_int_age,
           ti.interval_name AS t_int_name,
@@ -104,6 +120,10 @@ module.exports = function(req, res, next) {
           tb.interval_name AS b_int_name,
           mm.color
       */});
+
+      if (req.query.map) {
+        sql = "SELECT mm.color"
+      }
 
       if (req.query.format && api.acceptedFormats.geo[req.query.format]) {
         sql += ", ST_AsGeoJSON(m.geom) AS geometry"
