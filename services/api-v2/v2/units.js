@@ -33,10 +33,12 @@ module.exports = function(req, res, next, cb) {
       } else if (req.query.int_id) {
         larkin.query("SELECT age_bottom,age_top,interval_name from intervals where id = ? LIMIT 1", [req.query.int_id], function(error, result) {
           if (error) {
+
             callback(error);
           } else {
+
             if (result.length === 0) {
-              return larkin.error(req, res, next, "No results found");
+              callback(null, {"interval_name": "none", "age_bottom": 0, "age_top": 9999999});
             } else {
               callback(null, {"interval_name": result[0].interval_name, "age_bottom": result[0].age_bottom, "age_top": result[0].age_top});
             }
@@ -104,7 +106,8 @@ module.exports = function(req, res, next, cb) {
             callback(error);
           } else {
             if (result.length === 0) {
-              return larkin.error(req, res, next, "No results found");
+              callback(null, {"interval_name": "none", "age_bottom": 99999, "age_top": 0, "strat_ids": [null] });
+              //return larkin.error(req, res, next, "No results found");
             } else {
               var ids = result.map(function(d) { return d.id });
               callback(null, {"interval_name": "none", "age_bottom": 99999, "age_top": 0, "strat_ids": ids });
@@ -115,7 +118,7 @@ module.exports = function(req, res, next, cb) {
         var ids = larkin.parseMultipleIds(req.query.strat_name_id);
         callback(null, {"interval_name": "none", "age_bottom": 99999, "age_top": 0, "strat_ids": ids });
 
-      } else if (req.query.unit_id || req.query.section_id || req.query.col_id || req.query.lith || req.query.lith_id || req.query.lith_class || req.query.lith_type || req.query.environ || req.query.environ_class || req.query.environ_type || req.query.project_id || "sample" in req.query|| "all" in req.query || req.query.econ_id || req.query.econ || req.query.econ_type || req.query.econ_class || req.query.cltn_id) {
+      } else if (req.query.unit_id || req.query.section_id || req.query.col_id || req.query.lith || req.query.lith_id || req.query.lith_class || req.query.lith_type || req.query.environ || req.query.environ_id || req.query.environ_class || req.query.environ_type || req.query.project_id || "sample" in req.query|| "all" in req.query || req.query.econ_id || req.query.econ || req.query.econ_type || req.query.econ_class || req.query.cltn_id) {
         callback(null, {"interval_name": "none", "age_bottom": 99999, "age_top": 0});
 
       } else {
@@ -124,7 +127,6 @@ module.exports = function(req, res, next, cb) {
     },
 
     function(data, callback) {
-
       var where = "",
           limit = ("sample" in req.query) ? ((cb) ? " LIMIT 15 " : " LIMIT 5") : "",
           orderby = [],
