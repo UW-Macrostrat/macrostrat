@@ -20,9 +20,9 @@ module.exports = function(req, res, next) {
   } else if (req.query.environ){
     sql += " WHERE environ = ?";
     environ = req.query.environ;
-  } else if (req.query.id){
+  } else if (req.query.environ_id){
     sql += " WHERE id = ?";
-    environ = req.query.id;
+    environ = req.query.environ_id;
   }
 
   if ("sample" in req.query) {
