@@ -1,5 +1,6 @@
 var api = require("../api"),
-    larkin = require("../larkin");
+    larkin = require("../larkin"),
+    multiline = require("multiline");
 
 module.exports = function(req, res, next, cb) {
   if (Object.keys(req.query).length < 1) {
@@ -8,8 +9,6 @@ module.exports = function(req, res, next, cb) {
 
   var where = [],
       params = {};
-
-
 
   if (req.query.rule) {
     if (req.query.rule === "down") {
@@ -56,7 +55,27 @@ module.exports = function(req, res, next, cb) {
 
   }
 
-  var sql = "SELECT strat_name, rank, strat_name_id, bed_name bed,bed_id, mbr_name mbr, mbr_id, fm_name fm, fm_id, gp_name gp, gp_id, sgp_name sgp, sgp_id, early_age AS b_age, late_age AS t_age, gsc_lexicon, (SELECT COUNT(*) FROM unit_strat_names WHERE strat_name_id IN (SELECT DISTINCT strat_name_id FROM lookup_strat_names WHERE parent IN (l.strat_name_id)) OR strat_name_id IN (l.strat_name_id)) AS t_units FROM lookup_strat_names l";
+  var sql = multiline(function() {/*
+    SELECT
+      strat_name,
+      rank,
+      strat_name_id,
+      COALESCE(bed_name, '') AS bed,
+      bed_id,
+      COALESCE(mbr_name, '') AS mbr,
+      mbr_id,
+      COALESCE(fm_name, '') AS fm,
+      fm_id,
+      COALESCE(gp_name, '') AS gp,
+      gp_id,
+      COALESCE(sgp_name, '') AS sgp,
+      sgp_id,
+      early_age AS b_age,
+      late_age AS t_age,
+      COALESCE(gsc_lexicon, '') AS gsc_lexicon,
+      t_units
+    FROM lookup_strat_names_new l
+  */});
 
   if (where.length > 0) {
     sql += " WHERE " + where.join(" AND ")
