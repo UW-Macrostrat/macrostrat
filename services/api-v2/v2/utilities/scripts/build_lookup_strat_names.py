@@ -75,25 +75,31 @@ for idx, name in enumerate(strat_names):
 
     # Count number of units with this strat_name_id going down the hierarchy
     lookup_rank_children = {
-        "sgp": ["sgp", "gp", "fm", "mbr", "bed"],
-        "gp": ["gp", "fm", "mbr", "bed"],
-        "fm": ["fm", "mbr", "bed"],
-        "mbr": ["mbr", "bed"],
-        "bed": ["bed"]
+        "sgp": ["SGp", "Gp", "Fm", "Mbr", "Bed"],
+        "gp": ["Gp", "Fm", "Mbr", "Bed"],
+        "fm": ["Fm", "Mbr", "Bed"],
+        "mbr": ["Mbr", "Bed"],
+        "bed": ["Bed"]
     }
-    # Find all that_name in strat_tree where this_name = name['id'] AND rel = 'parent'
-    # For each in that result, do the same thing
-    # Repeat for given depth
-    # If bed, directly query unit_strat_names
+
     # SELECT COUNT(*) FROM unit_strat_names WHERE strat_name_id IN (SELECT strat_name_id from lookup_strat_names where fm_id = 1205 AND rank IN ('mbr', 'bed', 'fm'))
-    sql = "UPDATE lookup_strat_names_new SET t_units = (SELECT COUNT(*) FROM unit_strat_names WHERE strat_name_id IN (SELECT strat_name_id FROM lookup_strat_names WHERE %s_id = %s AND rank IN" % (name['rank'].lower(), name['id'],)
+    sql = """
+      UPDATE lookup_strat_names_new SET t_units = (
+        SELECT COUNT(*) 
+        FROM unit_strat_names 
+        WHERE strat_name_id IN (
+          SELECT strat_name_id 
+          FROM lookup_strat_names 
+          WHERE %s_id = %s AND rank IN """ % (name['rank'].lower(), name['id'])
+
+    
     placeholders = ["%s"] * len(lookup_rank_children[name["rank"].lower()])
-    sql +=  "(%s)))" % ','.join(placeholders)
-
-
-    cursor.execute(sql, lookup_rank_children[name["rank"].lower()])
+    sql +=  " (" + ','.join(placeholders) + "))) WHERE strat_name_id = %s"
+    params = [x for x in lookup_rank_children[name["rank"].lower()]]
+    params.append(name["id"])
+    cursor.execute(sql, params)
     connection.commit()
-#    print idx, " of ", len(strat_names)
+    print idx, " of ", len(strat_names)
 
 # Populate `early_age` and `late_age`
 cursor.execute("""

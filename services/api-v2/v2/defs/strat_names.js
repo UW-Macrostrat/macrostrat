@@ -74,8 +74,10 @@ module.exports = function(req, res, next, cb) {
       late_age AS t_age,
       COALESCE(gsc_lexicon, '') AS gsc_lexicon,
       t_units
-    FROM lookup_strat_names_new l
+    FROM lookup_strat_names l
   */});
+
+
 
   if (where.length > 0) {
     sql += " WHERE " + where.join(" AND ")
@@ -84,7 +86,7 @@ module.exports = function(req, res, next, cb) {
   if ("sample" in req.query) {
     sql += " LIMIT 5";
   }
-
+  console.log(sql)
   larkin.query(sql, params, function(error, response) {
     if (error) {
       console.log(error);
