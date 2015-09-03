@@ -32,7 +32,7 @@ strat_names = cursor.fetchall()
 
 
 # Build hierarchy for each name
-for name in strat_names:
+for idx, name in enumerate(strat_names):
   rank_id = name["rank"] + "_id"
   rank_name = name["rank"] + "_name"
 
@@ -81,16 +81,19 @@ for name in strat_names:
         "mbr": ["mbr", "bed"],
         "bed": ["bed"]
     }
+    # Find all that_name in strat_tree where this_name = name['id'] AND rel = 'parent'
+    # For each in that result, do the same thing
+    # Repeat for given depth
+    # If bed, directly query unit_strat_names
+    # SELECT COUNT(*) FROM unit_strat_names WHERE strat_name_id IN (SELECT strat_name_id from lookup_strat_names where fm_id = 1205 AND rank IN ('mbr', 'bed', 'fm'))
+    sql = "UPDATE lookup_strat_names_new SET t_units = (SELECT COUNT(*) FROM unit_strat_names WHERE strat_name_id IN (SELECT strat_name_id FROM lookup_strat_names WHERE %s_id = %s AND rank IN" % (name['rank'].lower(), name['id'],)
+    placeholders = ["%s"] * len(lookup_rank_children[name["rank"].lower()])
+    sql +=  "(%s)))" % ','.join(placeholders)
 
-    sql = "UPDATE lookup_strat_names_new SET t_units = (SELECT COUNT(*) FROM unit_strat_names WHERE strat_name_id IN ("
-    sub_sql = []
-    for rank in lookup_rank_children[name["rank"].lower()]:
-        sub_sql.append("SELECT DISTINCT %s_id FROM lookup_strat_names WHERE %s_id = %s AND %s_id > 0" % (rank, name["rank"].lower(), name["id"], rank))
-    sql += " UNION ".join(sub_sql)
-    sql += ")) WHERE strat_name_id = %s"
 
-    cursor.execute(sql, [name["id"]])
+    cursor.execute(sql, lookup_rank_children[name["rank"].lower()])
     connection.commit()
+#    print idx, " of ", len(strat_names)
 
 # Populate `early_age` and `late_age`
 cursor.execute("""
