@@ -43,6 +43,9 @@ module.exports = function(req, res, next) {
           //  "min_thick": _.min(cols[col_id], function(d) { return d.min_thick; }).min_thick,
             "b_age": _.max(cols[col_id], function(d) { return d.b_age; }).b_age,
             "t_age": _.min(cols[col_id], function(d) { return d.t_age; }).t_age,
+            "b_int_name": _.max(cols[col_id], function(d) { return d.b_age; }).b_int_name,
+            "t_int_name": _.min(cols[col_id], function(d) { return d.t_age; }).t_int_name,
+
             "pbdb_collections": _.reduce(cols[col_id].map(function(d) { return d.pbdb_collections }), function(a, b) { return a + b}, 0),
 
             "lith": larkin.summarizeAttribute(cols[col_id], "lith"),

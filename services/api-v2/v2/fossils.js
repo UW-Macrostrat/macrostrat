@@ -27,7 +27,7 @@ module.exports = function(req, res, next) {
           callback(null, {"interval_name": "Unknown", "age_bottom": req.query.age, "age_top": req.query.age});
         } else if (req.query.age_top && req.query.age_bottom) {
           callback(null, {"interval_name": "Unknown", "age_bottom": req.query.age_bottom, "age_top": req.query.age_top});
-        } else if (req.query.unit_id || req.query.col_id || "sample" in req.query) {
+        } else if (req.query.unit_id || req.query.col_id || req.query.col_group_id || req.query.strat_name_id || "sample" in req.query) {
           callback(null, {"interval_name": "Unknown", "age_bottom": null, "age_top": null});
         } else {
           larkin.error(req, res, next, "Invalid parameters");
@@ -36,20 +36,31 @@ module.exports = function(req, res, next) {
       function(data, callback) {
         var where = "",
             limit = ("sample" in req.query) ? " LIMIT 5" : "",
-            params = [];
+            params = {};
 
         if (data.age_bottom) {
-          where = " AND f.age_bottom > ? AND l.age_top < ?";
-          params.push(data.age_top, data.age_bottom);
+          where += " AND f.age_bottom > :age_top AND l.age_top < :age_bottom";
+          params["age_top"] = data.age_top;
+          params["age_bottom"] = data.age_bottom;
         }
 
         if (req.query.unit_id) {
-          where = " AND pbdb_matches.unit_id IN (:unit_id)"
-          params = {unit_id: larkin.parseMultipleIds(req.query.unit_id)}
+          where += " AND pbdb_matches.unit_id IN (:unit_id)";
+          params["unit_id"] = larkin.parseMultipleIds(req.query.unit_id);
 
         } else if (req.query.col_id) {
-          where = " AND units.col_id IN (:col_id)";
-          params = {col_id: larkin.parseMultipleIds(req.query.col_id)}
+          where += " AND units.col_id IN (:col_id)";
+          params["col_id"] = larkin.parseMultipleIds(req.query.col_id);
+        }
+
+        if (req.query.strat_name_id) {
+          where += " AND strat_name_id IN (:strat_name_ids)";
+          params["strat_name_ids"] = larkin.parseMultipleIds(req.query.strat_name_id);
+        }
+
+        if (req.query.col_group_id) {
+          where += " AND col_group_id IN (:col_group_ids)";
+          params["col_group_ids"] = larkin.parseMultipleIds(req.query.col_group_id);
         }
 
         larkin.query("SELECT pbdb_matches.collection_no AS cltn_id, collection_name AS cltn_name, n_occs AS pbdb_occs, \
@@ -61,6 +72,7 @@ module.exports = function(req, res, next) {
           JOIN intervals f ON f.id = FO \
           JOIN intervals l ON l.id = LO \
           JOIN pbdb.coll_matrix ON pbdb_matches.collection_no = pbdb.coll_matrix.collection_no \
+          LEFT JOIN unit_strat_names ON unit_strat_names.unit_id = units.id \
           WHERE pbdb_matches.release_date < now() AND \
           status_code = 'active'" + where + limit, params, function(error, result) {
             if (error) {

@@ -12,22 +12,115 @@ CREATE TABLE autocomplete AS
     union
     select id, project as name, 'projects' as type from projects
     union
-    select concept_id AS id, name, 'strat_name_concepts' AS type FROM strat_names_meta
+    SELECT DISTINCT strat_names_meta.concept_id AS id, name, 'strat_name_concepts' AS type
+    FROM strat_names_meta
+    JOIN strat_names ON strat_names_meta.concept_id = strat_names.concept_id
     union
     (select id, CONCAT(strat_name, ' ', rank) AS name, 'strat_name_orphans' as type from strat_names WHERE concept_id = 0)
     union
     select id, col_name as name, 'columns' as type from cols
     union
-    select id, col_group as name, 'groups' as type from col_groups
+    select id, col_group_long as name, 'groups' as type from col_groups
     union
     select id, lith as name, 'lithologies' as type from liths
     union
     select id, interval_name as name, 'intervals' as type from intervals
   ) i;
 
+  UPDATE autocomplete AS a
+    INNER JOIN (
+      SELECT concept_id, CONCAT(name, COALESCE(CONCAT(' (', interval_name, ')'), '')) AS name
+      FROM strat_names_meta
+      LEFT JOIN intervals ON intervals.id = strat_names_meta.interval_id
+    ) sub ON a.id = sub.concept_id
+  SET a.name = sub.name
+  WHERE a.id IN (
+    SELECT id FROM (
+      SELECT id
+      FROM autocomplete
+      WHERE name IN (
+        SELECT name
+        FROM (
+          SELECT name, type, count(*)
+          FROM autocomplete
+          WHERE type = 'strat_name_concepts'
+          GROUP BY name, type
+          HAVING count(*) > 1
+          ORDER BY count(*) desc
+        ) a
+      )
+    ) b
+  ) AND type = 'strat_name_concepts';
+
+
+  UPDATE autocomplete AS a
+    INNER JOIN (
+      SELECT concept_id,
+        CASE
+          WHEN CHAR_LENGTH(province) < 1 THEN name
+          ELSE CONCAT(name, ' (', province, ')')
+        END AS name
+      FROM strat_names_meta
+    ) sub ON a.id = sub.concept_id
+  SET a.name = sub.name
+  WHERE a.id IN (
+    SELECT id FROM (
+      SELECT id
+      FROM autocomplete
+      WHERE name IN (
+        SELECT name
+        FROM (
+          SELECT name, type, count(*)
+          FROM autocomplete
+          WHERE type = 'strat_name_concepts'
+          GROUP BY name, type
+          HAVING count(*) > 1
+          ORDER BY count(*) desc
+        ) a
+      )
+    ) b
+  ) AND type = 'strat_name_concepts';
+
+  UPDATE autocomplete AS a
+    INNER JOIN (
+      SELECT DISTINCT strat_names.id, CONCAT(strat_name, ' (', FO_period, ')') AS name
+      FROM strat_names
+      JOIN unit_strat_names ON strat_names.id = unit_strat_names.strat_name_id
+      JOIN lookup_unit_intervals ON lookup_unit_intervals.unit_id = unit_strat_names.unit_id
+    ) sub ON a.id = sub.id
+  SET a.name = sub.name
+  WHERE a.id IN (
+    SELECT id FROM (
+      SELECT id
+      FROM autocomplete
+      WHERE name IN (
+        SELECT name
+        FROM (
+          SELECT name, type, count(*)
+          FROM autocomplete
+          WHERE type = 'strat_name_orphans'
+          GROUP BY name, type
+          HAVING count(*) > 1
+          ORDER BY count(*) desc
+        ) a
+      )
+    ) b
+  ) AND type = 'strat_name_orphans';
+
+
 ALTER TABLE autocomplete ADD INDEX auto_id (id);
 ALTER TABLE autocomplete ADD INDEX auto_name (name);
 ALTER TABLE autocomplete ADD INDEX auto_type (type);
+
+select name, type, count(*) from autocomplete where type = 'strat_name_concepts' group by name, type having count(*) > 1 order by count(*) desc;
+
+select name, type, count(*) from autocomplete group by name, type having count(*) > 1 order by count(*) desc;
+
+SELECT concept_id, CONCAT(name, COALESCE(CONCAT(' (', interval_name, ')'), ''))
+FROM strat_names_meta
+LEFT JOIN intervals ON intervals.id = strat_names_meta.interval_id;
+
+
 
 
 */

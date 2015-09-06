@@ -60,6 +60,7 @@ module.exports = function(req, res, next, cb) {
       strat_name,
       rank,
       strat_name_id,
+      concept_id,
       COALESCE(bed_name, '') AS bed,
       bed_id,
       COALESCE(mbr_name, '') AS mbr,
@@ -86,7 +87,7 @@ module.exports = function(req, res, next, cb) {
   if ("sample" in req.query) {
     sql += " LIMIT 5";
   }
-  console.log(sql)
+
   larkin.query(sql, params, function(error, response) {
     if (error) {
       console.log(error);
