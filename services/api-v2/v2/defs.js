@@ -252,6 +252,8 @@
         "age_bottom": "A valid age - must be used with age_top and be greater than age_top",
         "unit_id": "One or more comma-separated valid unit IDs",
         "col_id": "One or more comma-separated valid column IDs",
+        "strat_name_id": "One or more comma-separted valid strat_name_ids from /defs/strat_names",
+        "concept_id": "One or more stratigraphic name concepts from /defs/strat_name_concepts",
         "format": "Desired output format"
       },
       "output_formats": [

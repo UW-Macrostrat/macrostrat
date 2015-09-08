@@ -27,7 +27,7 @@ module.exports = function(req, res, next) {
           callback(null, {"interval_name": "Unknown", "age_bottom": req.query.age, "age_top": req.query.age});
         } else if (req.query.age_top && req.query.age_bottom) {
           callback(null, {"interval_name": "Unknown", "age_bottom": req.query.age_bottom, "age_top": req.query.age_top});
-        } else if (req.query.unit_id || req.query.col_id || req.query.col_group_id || req.query.strat_name_id || "sample" in req.query) {
+        } else if (req.query.unit_id || req.query.col_id || req.query.col_group_id || req.query.strat_name_id || req.query.concept_id || "sample" in req.query) {
           callback(null, {"interval_name": "Unknown", "age_bottom": null, "age_top": null});
         } else {
           larkin.error(req, res, next, "Invalid parameters");
@@ -56,6 +56,11 @@ module.exports = function(req, res, next) {
         if (req.query.strat_name_id) {
           where += " AND strat_name_id IN (:strat_name_ids)";
           params["strat_name_ids"] = larkin.parseMultipleIds(req.query.strat_name_id);
+        }
+
+        if (req.query.concept_id) {
+          where += " AND strat_name_id IN (SELECT strat_name_id FROM lookup_strat_names WHERE concept_id IN (:concept_id))";
+          params["concept_id"] = larkin.parseMultipleIds(req.query.concept_id);
         }
 
         if (req.query.col_group_id) {
