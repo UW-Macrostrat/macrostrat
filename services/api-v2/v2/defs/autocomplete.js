@@ -6,7 +6,15 @@ CREATE TABLE autocomplete AS
   SELECT * FROM (
     select id, econ as name, 'econs' as type from econs
     union
+    select 0 AS id, econ_type AS name, 'econ_types' AS type FROM econs GROUP BY econ_type
+    union
+    SELECT 0 AS id, econ_class AS name, 'econ_classes' AS type FROM econs GROUP BY econ_class
+    union
     select id, environ as name, 'environments' as type from environs
+    union
+    select 0 AS id, environ_type AS name, 'environment_types' AS type FROM environs GROUP BY environ_type
+    union
+    select 0 AS id, environ_class AS name, 'environment_classes' AS type FROM environs GROUP BY environ_class
     union
     select id, concat(lith_att, ' (', att_type, ')') as name, 'lithology_attributes' as type from lith_atts
     union
@@ -22,7 +30,17 @@ CREATE TABLE autocomplete AS
     union
     select id, col_group_long as name, 'groups' as type from col_groups
     union
-    select id, lith as name, 'lithologies' as type from liths
+    SELECT id, lith AS name, 'lithologies' AS type
+    FROM liths
+    WHERE lith != lith_type AND lith != lith_class
+    union
+    SELECT 0 AS id, lith AS name, 'lithology_types' AS type
+    FROM liths
+    WHERE lith = lith_type
+    union
+    SELECT 0 AS id, lith AS name, 'lithology_classes' AS type
+    FROM liths
+    WHERE lith = lith_class
     union
     select id, interval_name as name, 'intervals' as type from intervals
   ) i;
@@ -133,7 +151,7 @@ module.exports = function(req, res, next) {
     return larkin.info(req, res, next);
   }
 
-  var categories = ["columns", "econs", "environments", "groups", "intervals", "lithologies", "lithology_attributes", "projects", "strat_name_concepts", "strat_name_orphans"];
+  var categories = ["columns", "econs", "econ_types", "econ_classes", "environments", "environment_types", "environmnet_classes", "groups", "intervals", "lithologies", "lithology_types", "lithology_classes", "lithology_attributes", "projects", "strat_name_concepts", "strat_name_orphans"];
 
 
   var types = [];
