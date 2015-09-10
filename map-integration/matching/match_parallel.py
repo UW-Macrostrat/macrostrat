@@ -5,6 +5,7 @@ import psycopg2
 from psycopg2.extensions import AsIs
 import sys
 import os
+import datetime
 
 sys.path = [os.path.join(os.path.dirname(__file__), os.pardir)] + sys.path
 import credentials
@@ -49,6 +50,8 @@ if __name__ == '__main__':
       print "Provided source_id not found in maps.small, maps.medium, or maps.large. Please insert it and try again."
       sys.exit(1)
 
+
+  print 'Starting at ', str(datetime.datetime.now())
 
   # Clean up
   cursor.execute("""
