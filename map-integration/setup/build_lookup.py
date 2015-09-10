@@ -26,7 +26,6 @@ cur = conn.cursor()
 valid_scales = ["small", "medium", "large"]
 
 query = """
-DROP TABLE IF EXISTS lookup_%(scale)s;
 
 CREATE TABLE lookup_%(scale)s_new AS
 -- Produce a list of sources and their extents
