@@ -102,11 +102,12 @@ var mysql = require("mysql"),
       if (data.length > 5) {
         res
           .set("Content-type", "application/json; charset=utf-8")
-          .send(JSON.stringify({"success": {"v": api.version,"data": data}}, null, 0));
+          .send(JSON.stringify({"success": {"v": api.version,"license": api.license,"data": data}}, null, 0));
         } else {
           res.json({
             "success": {
               "v": api.version,
+              "license": api.license,
               "data": data
             }
           });
@@ -121,7 +122,7 @@ var mysql = require("mysql"),
     } else {
       res
         .set("Content-type", "application/json; charset=utf-8")
-        .send(JSON.stringify({"success": {"v": api.version,"data": data}}, null, 0));
+        .send(JSON.stringify({"success": {"v": api.version,"license": api.license,"data": data}}, null, 0));
     }
   };
 
@@ -159,6 +160,7 @@ var mysql = require("mysql"),
           .json({
             "error": {
               "v": api.version,
+              "license": api.license,
               "message": responseMessage,
               "about": definition
             }
@@ -192,6 +194,7 @@ var mysql = require("mysql"),
     this.defineFields(route, function(fields) {
       var routeDefinition = {
         "v": api.version,
+        "license": api.license,
         "description": defs[route].description,
         "options": {
           "parameters": defs[route].options.parameters,

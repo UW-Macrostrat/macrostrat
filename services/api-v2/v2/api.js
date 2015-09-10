@@ -27,6 +27,7 @@ api.acceptedFormats = {
 };
 
 api.version = 2;
+api.license = "CC-BY 4.0";
 
 // Export the module
 module.exports = api;
