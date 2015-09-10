@@ -6,12 +6,18 @@ module.exports = function(req, res, next) {
     return larkin.info(req, res, next);
   }
 
-  var sql = "SELECT id AS col_group_id, col_group, col_group_long AS col_group_name FROM col_groups";
+  var sql = "SELECT id AS col_group_id, col_group, col_group_long AS col_group_name FROM col_groups",
+      params = {};
+
+  if (req.query.col_group_id) {
+    sql += " WHERE id IN (:col_group_ids)";
+    params["col_group_ids"] = larkin.parseMultipleIds(req.query.col_group_id);
+  }
 
   if ("sample" in req.query) {
     sql += " LIMIT 5";
   }
 
   var format = (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json";
-  larkin.query(sql, [], null, true, res, format, next);
+  larkin.query(sql, params, null, true, res, format, next);
 }
