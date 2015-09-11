@@ -30,7 +30,7 @@ def find_sources(scale):
     return cur.fetch_all()
 
 def find_scale(source_id):
-    cur.execute("SELECT scale from maps.sources WHERE source_id = %(source_id)s")
+    cur.execute("SELECT scale from maps.sources WHERE source_id = %(source_id)s", {"source_id": source_id})
     result = cur.fetchone()
     return result[0]
 
