@@ -5,11 +5,50 @@ var api = require("./api"),
     gp = require("geojson-precision"),
     larkin = require("./larkin");
 
+function buildSQL(req, scale, where, limit) {
+  var sql = multiline(function() {/*
+    (SELECT
+      m.map_id,
+      m.source_id,
+      COALESCE(m.name, '') AS name,
+      COALESCE(m.strat_name, '') AS strat_name,
+      COALESCE(m.lith, '') AS lith,
+      COALESCE(m.descrip, '') AS descrip,
+      COALESCE(m.comments, '') AS comments,
+      COALESCE(mm.unit_ids, '{}') AS macro_units,
+      COALESCE(mm.strat_name_ids, '{}') AS strat_names,
+      COALESCE(mm.lith_ids, '{}') AS liths,
+      m.t_interval AS t_int_id,
+      ti.age_top::float AS t_int_age,
+      ti.interval_name AS t_int_name,
+      m.b_interval AS b_int_id,
+      tb.age_bottom::float AS b_int_age,
+      tb.interval_name AS b_int_name,
+      mm.color
+  */});
+
+  //sql += "'" + scale + "' AS scale";
+
+  if (req.query.map) {
+    sql = "(SELECT mm.color"
+  }
+
+  if (req.query.format && api.acceptedFormats.geo[req.query.format]) {
+    sql += ", ST_AsGeoJSON(m.geom) AS geometry"
+  }
+
+  sql += " FROM maps." + scale + " m \
+          LEFT JOIN macrostrat.intervals ti ON m.t_interval = ti.id \
+          LEFT JOIN macrostrat.intervals tb ON m.b_interval = tb.id \
+          LEFT JOIN lookup_" + scale + " mm ON mm.map_id = m.map_id"
+      + where + limit + ")";
+
+  return sql;
+}
+
 module.exports = function(req, res, next) {
   if (Object.keys(req.query).length < 1) {
     larkin.info(req, res, next);
-  } else if ((!("scale" in req.query) || ["small", "medium", "large"].indexOf(req.query.scale) < 0) && !("sample" in req.query)) {
-    larkin.error(req, res, next, "A valid scale parameter is required (small, medium, or large)");
   } else {
 
     var where = [],
@@ -100,43 +139,29 @@ module.exports = function(req, res, next) {
         where = "";
       }
 
-      var sql = multiline(function() {/*
-        SELECT
-          m.map_id,
-          m.source_id,
-          COALESCE(m.name, '') AS name,
-          COALESCE(m.strat_name, '') AS strat_name,
-          COALESCE(m.lith, '') AS lith,
-          COALESCE(m.descrip, '') AS descrip,
-          COALESCE(m.comments, '') AS comments,
-          COALESCE(mm.unit_ids, '{}') AS macro_units,
-          COALESCE(mm.strat_name_ids, '{}') AS strat_names,
-          COALESCE(mm.lith_ids, '{}') AS liths,
-          m.t_interval AS t_int_id,
-          ti.age_top::float AS t_int_age,
-          ti.interval_name AS t_int_name,
-          m.b_interval AS b_int_id,
-          tb.age_bottom::float AS b_int_age,
-          tb.interval_name AS b_int_name,
-          mm.color
-      */});
+      if (req.query.scale) {
+        var requestedScales = larkin.parseMultipleStrings(req.query.scale);
+            scales = requestedScales.filter(function(d) {
+              if (["small", "medium", "large"].indexOf(d) > -1) {
+                return d;
+              }
+            });
 
-      if (req.query.map) {
-        sql = "SELECT mm.color"
+        if (scales.length < 1) {
+          return larkin.error(req, res, next, "Invalid scale parameter passed.");
+        }
+      } else {
+        scales = ["small", "medium", "large"];
       }
 
-      if (req.query.format && api.acceptedFormats.geo[req.query.format]) {
-        sql += ", ST_AsGeoJSON(m.geom) AS geometry"
-      }
 
-      sql += " FROM maps." + req.query.scale + " m \
-              LEFT JOIN macrostrat.intervals ti ON m.t_interval = ti.id \
-              LEFT JOIN macrostrat.intervals tb ON m.b_interval = tb.id \
-              LEFT JOIN lookup_" + req.query.scale + " mm ON mm.map_id = m.map_id"
-          + where + limit;
+      var scaleSQL = scales.map(function(d) {
+        return buildSQL(req, d, where, limit);
+      }).join(" UNION ");
 
+      var toRun = "SELECT * FROM ( " + scaleSQL + ") doit";
 
-      larkin.queryPg("burwell", sql, params, function(error, result) {
+      larkin.queryPg("burwell", toRun, params, function(error, result) {
         if (error) {
           larkin.error(req, res, next, error);
         } else {

@@ -15,7 +15,7 @@ module.exports = function(req, res, next) {
       "v": api.version,
       "description": "This is the root of the Macrostrat API",
       "changelog": "/changes",
-      "licence": "/meta",
+      "license": api.license + ". More info at /meta",
       "routes": routes
     }
   });
