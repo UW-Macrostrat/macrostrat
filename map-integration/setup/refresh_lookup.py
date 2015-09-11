@@ -207,7 +207,7 @@ def refresh(scale, source_id):
           LIMIT 1
          ) AS color
          FROM third
-         JOIN scale_group_%(scale)s sg ON sg.source_id = third.source_id
+         JOIN scale_groups_%(scale)s sg ON sg.source_id = third.source_id
     )
     """, {"scale": AsIs(scale), "source_id": source_id})
     conn.commit()
