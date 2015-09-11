@@ -27,7 +27,7 @@ valid_scales = ["small", "medium", "large"]
 
 def find_sources(scale):
     cur.execute("SELECT source_id FROM maps.sources WHERE scale = %(scale)s", {"scale": scale})
-    return cur.fetch_all()
+    return cur.fetchall()
 
 def find_scale(source_id):
     cur.execute("SELECT scale from maps.sources WHERE source_id = %(source_id)s", {"source_id": source_id})
