@@ -32,7 +32,7 @@ def find_sources(scale):
 def find_scale(source_id):
     cur.execute("SELECT scale from maps.sources WHERE source_id = %(source_id)s", {"source_id": source_id})
     result = cur.fetchone()
-    return result[0]
+    return result
 
 def refresh(scale, source_id):
     # Refresh groups
@@ -219,7 +219,7 @@ if len(arguments.refresh) == 1:
             for source in source_ids:
                 refresh(scale, source)
     else :
-        scale = find_scale(arguments.refresh[0])[0]
+        scale = find_scale(arguments.refresh[0])
         if scale is not None:
             refresh(scale, arguments.refresh[0])
         else :
