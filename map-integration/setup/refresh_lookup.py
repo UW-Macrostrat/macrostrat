@@ -96,7 +96,7 @@ def refresh(scale, source_id):
     DELETE FROM lookup_%(scale)s
     USING maps.%(scale)s ss
     WHERE ss.source_id = %(source_id)s
-    """, {"scale": AsIs(scale)})
+    """, {"scale": AsIs(scale), "source_id": source_id})
 
     # Insert source into lookup_scale
     cur.execute("""
