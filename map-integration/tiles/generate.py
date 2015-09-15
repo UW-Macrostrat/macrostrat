@@ -76,11 +76,11 @@ def setup():
       polygon-opacity: 0;
       line-opacity: 0;
     }
-    #lookup_medium[zoom>=10] {
+    #lookup_medium[zoom>10] {
       polygon-opacity: 0;
       line-opacity: 0;
     }
-    #lookup_large[zoom<=9] {
+    #lookup_large[zoom<11] {
       polygon-opacity: 0;
       line-opacity: 0;
     }
