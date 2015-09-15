@@ -126,6 +126,8 @@ class Task(object):
 
     pyConn.commit()
 
+    print "First step ", self.field
+
     # Do the same thing again, but relax the spatial constraint only for those with no matches
     pyCursor.execute("""
     WITH rocks AS (SELECT map_id, strat_name, name, descrip, comments, intervals_top.age_top, intervals_bottom.age_bottom, 25 as age_buffer, geom
@@ -133,7 +135,7 @@ class Task(object):
               JOIN macrostrat.intervals intervals_top on t_interval = intervals_top.id
               JOIN macrostrat.intervals intervals_bottom on b_interval = intervals_bottom.id
               WHERE source_id = %(source_id)s
-              AND map_id NOT IN (
+              AND (map_id NOT IN (
                 SELECT a.map_id
                 FROM maps.map_units a
                 LEFT JOIN maps.%(table)s b
@@ -145,7 +147,7 @@ class Task(object):
                 LEFT JOIN maps.%(table)s b
                 ON a.map_id = b.map_id
                 WHERE b.source_id = %(source_id)s
-              )
+              ))
      ),
      macro AS (
         WITH first AS (
