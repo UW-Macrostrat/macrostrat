@@ -142,7 +142,7 @@ module.exports = function(req, res, next) {
       if (req.query.scale) {
         var requestedScales = larkin.parseMultipleStrings(req.query.scale);
             scales = requestedScales.filter(function(d) {
-              if (["small", "medium", "large"].indexOf(d) > -1) {
+              if (["tiny", "small", "medium", "large"].indexOf(d) > -1) {
                 return d;
               }
             });
@@ -151,7 +151,7 @@ module.exports = function(req, res, next) {
           return larkin.error(req, res, next, "Invalid scale parameter passed.");
         }
       } else {
-        scales = ["small", "medium", "large"];
+        scales = ["tiny", "small", "medium", "large"];
       }
 
 
