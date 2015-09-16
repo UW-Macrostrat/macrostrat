@@ -37,7 +37,7 @@ if __name__ == '__main__':
 
   # Find scale table
   scale = ""
-  for scale_table in ["small", "medium", "large"]:
+  for scale_table in ["tiny", "small", "medium", "large"]:
       cursor.execute("SELECT * FROM maps.%(table)s WHERE source_id = %(source_id)s LIMIT 1", {
         "table": AsIs(scale_table),
         "source_id": arguments.source_id
