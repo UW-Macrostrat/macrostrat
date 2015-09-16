@@ -10,7 +10,7 @@ parser = argparse.ArgumentParser(
 
 parser.add_argument(dest="refresh",
   type=str, nargs=1,
-  help="The scale to refresh. If new sources were added or matches were made, make sure to refresh. Can be 'small', 'medium', 'large', or 'all'. Default will not refresh anything.")
+  help="The scale to refresh. If new sources were added or matches were made, make sure to refresh. Can be 'tiny', 'small', 'medium', 'large', or 'all'. Default will not refresh anything.")
 
 arguments = parser.parse_args()
 
@@ -23,7 +23,7 @@ except:
 
 cur = conn.cursor()
 
-valid_scales = ["small", "medium", "large"]
+valid_scales = ["small", "medium", "large", "tiny"]
 
 query = """
 
