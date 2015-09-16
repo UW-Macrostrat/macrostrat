@@ -17,7 +17,7 @@ parser.add_argument("--source_id", dest="source_id",
 
 parser.add_argument("--scale", dest="scale",
   type=str, required=False,
-  help="The scale to regenerate. Can be 'small', 'medium', or 'large'.")
+  help="The scale to regenerate. Can be 'tiny', 'small', 'medium', or 'large'.")
 
 parser.add_argument("--all", dest="all",
   required=False, action="store_true",
@@ -45,7 +45,8 @@ cur = conn.cursor()
 
 # Which zoom levels correspond to which map scales
 scale_map = {
-  "small": ["1", "2", "3", "4", "5"],
+  "tiny": ["0", "1", "2", "3"],
+  "small": ["4", "5"],
   "medium": ["6", "7", "8", "9", "10"],
   "large": ["11", "12"]
 }
@@ -67,6 +68,14 @@ def setup():
       polygon-fill: #000;
       line-color: #aaa;
       line-width: 0.0;
+    }
+    #lookup_tiny[zoom>3] {
+      polygon-opacity: 0;
+      line-opacity: 0;
+    }
+    #lookup_small[zoom<4] {
+      polygon-opacity: 0;
+      line-opacity: 0;
     }
     #lookup_small[zoom>5] {
       polygon-opacity: 0;
@@ -153,7 +162,7 @@ def setup():
 
 
     # For each scale...
-    for scale in ["small", "medium", "large"]:
+    for scale in ["tiny", "small", "medium", "large"]:
         name = "lookup_" + scale
 
         # ...find the extent and the centroid
@@ -257,7 +266,7 @@ if arguments.all:
     print "Do everything"
 
     # For each scale...
-    for scale in ["small", "medium", "large"]:
+    for scale in ["tiny", "small", "medium", "large"]:
         # Get a list of groups and their bboxes
         groups = find_groups(scale)
         # For each group...
