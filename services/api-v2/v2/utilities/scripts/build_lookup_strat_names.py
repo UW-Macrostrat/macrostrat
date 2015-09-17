@@ -99,7 +99,7 @@ for idx, name in enumerate(strat_names):
     params.append(name["id"])
     cursor.execute(sql, params)
     connection.commit()
-    print idx, " of ", len(strat_names)
+#    print idx, " of ", len(strat_names)
 
 # Populate `early_age` and `late_age`
 cursor.execute("""

@@ -161,6 +161,7 @@ module.exports = function(req, res, next) {
 
       var toRun = "SELECT * FROM ( " + scaleSQL + ") doit";
 
+      console.log(toRun)
       larkin.queryPg("burwell", toRun, params, function(error, result) {
         if (error) {
           larkin.error(req, res, next, error);

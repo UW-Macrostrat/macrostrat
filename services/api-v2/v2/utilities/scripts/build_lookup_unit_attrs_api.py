@@ -48,9 +48,9 @@ CREATE TABLE lookup_unit_attrs_api_new LIKE lookup_unit_attrs_api;
 cursor.execute("TRUNCATE TABLE lookup_unit_attrs_api_new")
 
 ### First handle lithologies ###
-cursor.execute(""" 
+cursor.execute("""
   SELECT unit_id, lith_id, lith, lith_type, lith_class, comp_prop, GROUP_CONCAT(lith_atts.lith_att SEPARATOR '|') AS lith_atts
-  FROM unit_liths 
+  FROM unit_liths
   LEFT JOIN liths ON lith_id = liths.id
   LEFT JOIN unit_liths_atts ON unit_liths.id = unit_liths_atts.unit_lith_id
   LEFT JOIN lith_atts ON unit_liths_atts.lith_att_id = lith_atts.id
@@ -78,15 +78,15 @@ for unit in units:
 
 # Update the lookup table with the jsonified structure
 for unit in grouped_units:
-  cursor.execute(""" 
+  cursor.execute("""
     INSERT INTO lookup_unit_attrs_api_new (unit_id, lith) VALUES (%s, %s)
   """, [unit, json.dumps(grouped_units[unit], default=check_for_decimals)])
 
 
 ### Next handle environments ###
-cursor.execute(""" 
+cursor.execute("""
   SELECT unit_id, environ_id, environ, environ_type, environ_class
-  FROM unit_environs 
+  FROM unit_environs
   LEFT JOIN environs ON environ_id = environs.id
   ORDER BY unit_id ASC
 """)
@@ -103,16 +103,16 @@ for unit in units:
   })
 
 for unit in grouped_units:
-  cursor.execute(""" 
+  cursor.execute("""
     UPDATE lookup_unit_attrs_api_new SET environ = %s WHERE unit_id = %s
   """, [json.dumps(grouped_units[unit], default=check_for_decimals), unit])
 
 
-### Next handle econs ### 
-cursor.execute(""" 
-  SELECT unit_id, econ_id, econ, econ_type, econ_class 
-  FROM unit_econs 
-  LEFT JOIN econs ON econ_id = econs.id 
+### Next handle econs ###
+cursor.execute("""
+  SELECT unit_id, econ_id, econ, econ_type, econ_class
+  FROM unit_econs
+  LEFT JOIN econs ON econ_id = econs.id
   ORDER BY unit_id ASC
 """)
 
@@ -128,24 +128,24 @@ for unit in units:
   })
 
 for unit in grouped_units:
-  cursor.execute(""" 
+  cursor.execute("""
     UPDATE lookup_unit_attrs_api_new SET econ = %s WHERE unit_id = %s
   """, [json.dumps(grouped_units[unit], default=check_for_decimals), unit])
 
-cursor.execute(""" 
+cursor.execute("""
   UPDATE lookup_unit_attrs_api_new SET econ = '[]' WHERE econ IS NULL
 """)
 
 
 
 ### Next handle measurements short ###
-cursor.execute(""" 
+cursor.execute("""
   SELECT DISTINCT
   measurement_class,
   measurement_type,
   unit_id
-  FROM measurements JOIN measures ON measures.measurement_id = measurements.id 
-  JOIN measuremeta ON measures.measuremeta_id = measuremeta.id 
+  FROM measurements JOIN measures ON measures.measurement_id = measurements.id
+  JOIN measuremeta ON measures.measuremeta_id = measuremeta.id
   JOIN unit_measures ON measuremeta.id = unit_measures.measuremeta_id
 """)
 
@@ -159,29 +159,29 @@ for measurement in measurements:
   })
 
 for measurement in grouped_measurements:
-  cursor.execute(""" 
+  cursor.execute("""
     UPDATE lookup_unit_attrs_api_new SET measure_short = %s WHERE unit_id = %s
   """, [json.dumps(grouped_measurements[measurement], default=check_for_decimals), measurement])
 
-cursor.execute(""" 
+cursor.execute("""
   UPDATE lookup_unit_attrs_api_new SET measure_short = '[]' WHERE measure_short IS NULL
 """)
 
 
 
 ### Next handle measurements_long ####
-cursor.execute(""" 
+cursor.execute("""
   SELECT measurements.id AS measure_id,
   measurement_class AS measure_class,
   measurement_type AS measure_type,
-  measurement AS measure, 
+  measurement AS measure,
   round(avg(measure_value),5) AS mean,
   round(stddev(measure_value),5) AS stddev,
-  count(unit_measures.id) AS n, 
+  count(unit_measures.id) AS n,
   units,
   unit_id
-  FROM measures JOIN measurements ON measures.measurement_id = measurements.id 
-  JOIN measuremeta ON measures.measuremeta_id = measuremeta.id 
+  FROM measures JOIN measurements ON measures.measurement_id = measurements.id
+  JOIN measuremeta ON measures.measuremeta_id = measuremeta.id
   JOIN unit_measures ON measuremeta.id = unit_measures.measuremeta_id
   GROUP BY unit_id,measurements.id
 """)
@@ -200,11 +200,11 @@ for measurement in measurements:
     })
 
 for measurement in grouped_measurements:
-  cursor.execute(""" 
+  cursor.execute("""
     UPDATE lookup_unit_attrs_api_new SET measure_long = %s WHERE unit_id = %s
   """, [json.dumps(grouped_measurements[measurement], default=check_for_decimals), measurement])
 
-cursor.execute(""" 
+cursor.execute("""
   UPDATE lookup_unit_attrs_api_new SET measure_long = '[]' WHERE measure_long IS NULL
 """)
 
@@ -213,4 +213,4 @@ cursor.execute("""
 cursor.execute("TRUNCATE TABLE lookup_unit_attrs_api")
 cursor.execute("INSERT INTO lookup_unit_attrs_api SELECT * FROM lookup_unit_attrs_api_new")
 
-print "Done building lookup_unit_attrs_api!"
+print "Done building lookup_unit_attrs_api"
