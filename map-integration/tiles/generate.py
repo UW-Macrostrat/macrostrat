@@ -45,10 +45,10 @@ cur = conn.cursor()
 
 # Which zoom levels correspond to which map scales
 scale_map = {
-  "tiny": ["0", "1", "2", "3"],
-  "small": ["4", "5"],
-  "medium": ["6", "7", "8", "9", "10"],
-  "large": ["11", "12"]
+  "tiny": ["0", "1", "2", "3", "4"],
+  "small": ["5", "6"],
+  "medium": ["7", "8", "9", "10", "11"],
+  "large": ["12", "13"]
 }
 
 def setup():
@@ -69,27 +69,27 @@ def setup():
       line-color: #aaa;
       line-width: 0.0;
     }
-    #lookup_tiny[zoom>3] {
+    #lookup_tiny[zoom>4] {
       polygon-opacity: 0;
       line-opacity: 0;
     }
-    #lookup_small[zoom<4] {
+    #lookup_small[zoom<5] {
       polygon-opacity: 0;
       line-opacity: 0;
     }
-    #lookup_small[zoom>5] {
+    #lookup_small[zoom>6] {
       polygon-opacity: 0;
       line-opacity: 0;
     }
-    #lookup_medium[zoom<=5]{
+    #lookup_medium[zoom<=6]{
       polygon-opacity: 0;
       line-opacity: 0;
     }
-    #lookup_medium[zoom>10] {
+    #lookup_medium[zoom>11] {
       polygon-opacity: 0;
       line-opacity: 0;
     }
-    #lookup_large[zoom<11] {
+    #lookup_large[zoom<12] {
       polygon-opacity: 0;
       line-opacity: 0;
     }
@@ -147,7 +147,7 @@ def setup():
       "format": "png8",
       "interactivity": False,
       "minzoom": 0,
-      "maxzoom": 12,
+      "maxzoom": 13,
       "srs": "+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0.0 +k=1.0 +units=m +nadgrids=@null +wktext +no_defs +over",
       "Stylesheet": [
         "styles.mss"
@@ -195,7 +195,7 @@ def setup():
     print "--- Building burwell_configured.xml with kosmtik---"
 
     # Use kosmtik top convert the project file to a Mapnik XML file that can be read by TileStache
-    call(["node", "node_modules/kosmtik/index.js", "export", "burwell_configured.mml", "--format", "xml", "--output", "burwell_configured.xml", "--minZoom", "1", "--max_zoom", "12"])
+    call(["node", "node_modules/kosmtik/index.js", "export", "burwell_configured.mml", "--format", "xml", "--output", "burwell_configured.xml", "--minZoom", "1", "--max_zoom", "13"])
 
     call(["cp", "burwell_configured.xml", "TileStache/burwell_configured.xml"])
 
