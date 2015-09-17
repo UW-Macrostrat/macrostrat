@@ -21,7 +21,15 @@ filterwarnings('ignore', category = MySQLdb.Warning)
 cursor.execute("CREATE TABLE lookup_unit_intervals_new LIKE lookup_unit_intervals")
 
 # initial query
-cursor.execute("SELECT units.id, FO, LO, f.age_bottom, f.interval_name fname, f.age_top FATOP, l.age_top, l.interval_name lname, min(u1.t1_age) AS t_age, max(u2.t1_age) AS b_age from units JOIN intervals f on FO = f.id JOIN intervals l ON LO = l.id LEFT JOIN unit_boundaries u1 ON u1.unit_id = units.id LEFT JOIN unit_boundaries u2 ON u2.unit_id_2 = units.id group by units.id")
+cursor.execute("""
+    SELECT units.id, FO, LO, f.age_bottom, f.interval_name fname, f.age_top FATOP, l.age_top, l.interval_name lname, min(u1.t1_age) AS t_age, max(u2.t1_age) AS b_age
+    FROM units
+    JOIN intervals f on FO = f.id
+    JOIN intervals l ON LO = l.id
+    LEFT JOIN unit_boundaries u1 ON u1.unit_id = units.id
+    LEFT JOIN unit_boundaries u2 ON u2.unit_id_2 = units.id
+    GROUP BY units.id
+""")
 numrows = cursor.rowcount
 row = cursor.fetchall()
 
@@ -43,13 +51,13 @@ for x in xrange(0,numrows):
 	}
 
 	cursor.execute("""
-		SELECT interval_name,intervals.id from intervals 
-		JOIN timescales_intervals ON intervals.id = interval_id 
-		JOIN timescales on timescale_id = timescales.id 
-		WHERE timescale = 'international epochs' 
-			AND %(age_bottom)s > age_top 
-			AND %(age_bottom)s <= age_bottom 
-			AND %(age_top)s < age_bottom 
+		SELECT interval_name,intervals.id from intervals
+		JOIN timescales_intervals ON intervals.id = interval_id
+		JOIN timescales on timescale_id = timescales.id
+		WHERE timescale = 'international epochs'
+			AND %(age_bottom)s > age_top
+			AND %(age_bottom)s <= age_bottom
+			AND %(age_top)s < age_bottom
 			AND %(age_top)s >= age_top
 	""", params)
 	row2 = cursor.fetchone()
@@ -60,15 +68,15 @@ for x in xrange(0,numrows):
 	else:
 		r2['interval_name'] = row2['interval_name']
 		r2['id'] = row2['id']
-	
+
 	cursor.execute("""
-		SELECT interval_name, intervals.id from intervals 
-		JOIN timescales_intervals ON intervals.id = interval_id 
-		JOIN timescales on timescale_id = timescales.id 
-		WHERE timescale='international periods' 
-			AND %(age_bottom)s > age_top 
-			AND %(age_bottom)s <= age_bottom 
-			AND %(age_top)s < age_bottom 
+		SELECT interval_name, intervals.id from intervals
+		JOIN timescales_intervals ON intervals.id = interval_id
+		JOIN timescales on timescale_id = timescales.id
+		WHERE timescale='international periods'
+			AND %(age_bottom)s > age_top
+			AND %(age_bottom)s <= age_bottom
+			AND %(age_top)s < age_bottom
 			AND %(age_top)s >= age_top
 	""", params)
 	row3 = cursor.fetchone()
@@ -81,11 +89,11 @@ for x in xrange(0,numrows):
 		r3['id'] = row3['id']
 
 	cursor.execute("""
-		SELECT interval_name FROM intervals 
-		JOIN timescales_intervals ON intervals.id = interval_id 
-		JOIN timescales on timescale_id = timescales.id 
-		WHERE timescale = 'international periods' 
-			AND age_bottom >= %(age_bottom)s 
+		SELECT interval_name FROM intervals
+		JOIN timescales_intervals ON intervals.id = interval_id
+		JOIN timescales on timescale_id = timescales.id
+		WHERE timescale = 'international periods'
+			AND age_bottom >= %(age_bottom)s
 			AND age_top < %(age_bottom)s
 	""", params)
 	row_period_FO = cursor.fetchone()
@@ -97,12 +105,12 @@ for x in xrange(0,numrows):
 		rFO['interval_name'] = row_period_FO['interval_name']
 
 	cursor.execute("""
-		SELECT interval_name FROM intervals 
-		JOIN timescales_intervals ON intervals.id = interval_id 
-		JOIN timescales on timescale_id = timescales.id 
-		WHERE timescale = 'international periods' 
-			AND age_bottom > %(age_top)s 
-			AND age_top <= %(age_top)s 
+		SELECT interval_name FROM intervals
+		JOIN timescales_intervals ON intervals.id = interval_id
+		JOIN timescales on timescale_id = timescales.id
+		WHERE timescale = 'international periods'
+			AND age_bottom > %(age_top)s
+			AND age_top <= %(age_top)s
 	""", params)
 	row_period_LO = cursor.fetchone()
 
@@ -113,13 +121,13 @@ for x in xrange(0,numrows):
 		rLO['interval_name'] = row_period_LO['interval_name']
 
 	cursor.execute("""
-		SELECT interval_name, intervals.id from intervals 
-		JOIN timescales_intervals ON intervals.id = interval_id 
-		JOIN timescales on timescale_id = timescales.id 
-		WHERE timescale = 'international ages' 
-			AND %(age_bottom)s > age_top 
-			AND %(age_bottom)s <= age_bottom 
-			AND %(age_top)s < age_bottom 
+		SELECT interval_name, intervals.id from intervals
+		JOIN timescales_intervals ON intervals.id = interval_id
+		JOIN timescales on timescale_id = timescales.id
+		WHERE timescale = 'international ages'
+			AND %(age_bottom)s > age_top
+			AND %(age_bottom)s <= age_bottom
+			AND %(age_top)s < age_bottom
 			AND %(age_top)s >= age_top
 	""", params)
 	row4 = cursor.fetchone()
@@ -132,11 +140,11 @@ for x in xrange(0,numrows):
 		r4['id'] = row4['id']
 
 	cursor.execute("""
-		SELECT interval_name,intervals.id from intervals 
-		WHERE interval_type = 'eon' 
-			AND %(age_bottom)s > age_top 
-			AND %(age_bottom)s <= age_bottom 
-			AND %(age_top)s < age_bottom 
+		SELECT interval_name,intervals.id from intervals
+		WHERE interval_type = 'eon'
+			AND %(age_bottom)s > age_top
+			AND %(age_bottom)s <= age_bottom
+			AND %(age_top)s < age_bottom
 			AND %(age_top)s >= age_top
 	""", params)
 	row5 = cursor.fetchone()
@@ -149,11 +157,11 @@ for x in xrange(0,numrows):
 		r5['id'] = row5['id']
 
 	cursor.execute("""
-		SELECT interval_name, intervals.id from intervals 
-		WHERE interval_type = 'era' 
-			AND %(age_bottom)s > age_top 
-			AND %(age_bottom)s <= age_bottom 
-			AND %(age_top)s < age_bottom 
+		SELECT interval_name, intervals.id from intervals
+		WHERE interval_type = 'era'
+			AND %(age_bottom)s > age_top
+			AND %(age_bottom)s <= age_bottom
+			AND %(age_top)s < age_bottom
 			AND %(age_top)s >= age_top
 	""", params)
 	row6 = cursor.fetchone()
@@ -166,7 +174,7 @@ for x in xrange(0,numrows):
 		r6['id'] = row6['id']
 
 	cursor.execute("""
-    INSERT INTO lookup_unit_intervals_new (unit_id, FO_age, b_age, FO_interval, LO_age, t_age, LO_interval, epoch, epoch_id, period, period_id, age,age_id, era, era_id, eon, eon_id, FO_period, LO_period) 
+    INSERT INTO lookup_unit_intervals_new (unit_id, FO_age, b_age, FO_interval, LO_age, t_age, LO_interval, epoch, epoch_id, period, period_id, age,age_id, era, era_id, eon, eon_id, FO_period, LO_period)
     VALUES (%(rx_id)s, %(rx_age_bottom)s, %(rx_b_age)s, %(rx_fname)s, %(rx_age_top)s, %(rx_t_age)s, %(rx_lname)s, %(r2_interval_name)s, %(r2_id)s, %(r3_interval_name)s, %(r3_id)s, %(r4_interval_name)s, %(r4_id)s, %(r6_interval_name)s, %(r6_id)s, %(r5_interval_name)s, %(r5_id)s, %(rFO)s, %(rLO)s )""", {
 
         "rx_id": row[x]["id"],
@@ -214,4 +222,3 @@ cursor.execute("DROP TABLE lookup_unit_intervals")
 cursor.execute("RENAME TABLE lookup_unit_intervals_new TO lookup_unit_intervals")
 
 print "Done with lookup_unit_intervals"
-

@@ -45,7 +45,12 @@ CREATE TABLE lookup_unit_attrs_api_new LIKE lookup_unit_attrs_api;
 '''
 
 # Create room for the new data
-cursor.execute("TRUNCATE TABLE lookup_unit_attrs_api_new")
+cursor.execute("""
+    DROP TABLE IF EXISTS lookup_unit_attrs_api_new;
+    CREATE TABLE lookup_unit_attrs_api_new LIKE lookup_unit_attrs_api;
+""")
+cursor.close()
+cursor = connection.cursor()
 
 ### First handle lithologies ###
 cursor.execute("""
@@ -212,5 +217,12 @@ cursor.execute("""
 ### FINISH HIM ###
 cursor.execute("TRUNCATE TABLE lookup_unit_attrs_api")
 cursor.execute("INSERT INTO lookup_unit_attrs_api SELECT * FROM lookup_unit_attrs_api_new")
+cursor.close()
+
+cursor = connection.cursor()
+cursor.execute("""
+    DROP TABLE IF EXISTS lookup_unit_attrs_api_new
+""")
+cursor.close()
 
 print "Done building lookup_unit_attrs_api"

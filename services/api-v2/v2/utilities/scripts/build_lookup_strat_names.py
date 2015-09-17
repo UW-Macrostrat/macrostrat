@@ -156,5 +156,8 @@ cursor.execute("TRUNCATE lookup_strat_names")
 cursor.execute("INSERT INTO lookup_strat_names SELECT * FROM lookup_strat_names_new")
 cursor.close()
 
+cursor = connection.cursor()
+cursor.execute("DROP TABLE lookup_strat_names_new")
+cursor.close()
 
 print "Done with lookup_strat_names table"
