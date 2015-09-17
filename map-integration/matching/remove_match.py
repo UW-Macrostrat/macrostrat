@@ -262,7 +262,7 @@ def remove_unit() :
         WHERE map_id = %(map_id)s
         AND unit_id = %(unit_id)s;
 
-        INSERT INTO maps.manual_matches (map_id, unit_id, addition) VALUES (%(map_id)s, %(unit_id)s, TRUE);
+        INSERT INTO maps.manual_matches (map_id, unit_id, removal) VALUES (%(map_id)s, %(unit_id)s, TRUE);
     """, {
         "unit_id": arguments.unit_id,
         "map_id": arguments.map_id
@@ -323,7 +323,7 @@ def remove_strat_name() :
             JOIN macrostrat.lookup_strat_names lsn ON usn.strat_name_id = lsn.strat_name_id
             WHERE (lsn.bed_id IN (%(strat_name_id)s) OR lsn.mbr_id IN (%(strat_name_id)s) OR lsn.fm_id IN (%(strat_name_id)s) OR lsn.gp_id IN (%(strat_name_id)s) OR lsn.sgp_id IN (%(strat_name_id)s))
         )
-        AND (basis_col = 'manual' OR basis_col = 'manual_replace') 
+        AND (basis_col = 'manual' OR basis_col = 'manual_replace')
     """, {
         "scale": AsIs(scale),
         "strat_name_id": arguments.strat_name_id,
@@ -337,6 +337,8 @@ def remove_strat_name() :
         DELETE FROM maps.manual_matches
         WHERE map_id = %(map_id)s
         AND strat_name_id = %(strat_name_id)s;
+
+        INSERT INTO maps.manual_matches (map_id, strat_name_id, removal) VALUES (%(map_id)s, %(strat_name_id)s, TRUE);
     """, {
         "strat_name_id": arguments.strat_name_id,
         "map_id": arguments.map_id
