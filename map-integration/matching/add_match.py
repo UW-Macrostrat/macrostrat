@@ -318,7 +318,7 @@ def strat_name_match() :
           WHERE distance.distance = min_dist.distance
         )
     """, {
-        "scale": AsIs("medium"),
+        "scale": AsIs(scale),
         "strat_name_id": arguments.strat_name_id,
         "map_id": arguments.map_id
     })
