@@ -6,6 +6,9 @@ To run all scripts except `unit_boundaries_gplates` and `build_lookup_usgs_strat
 ./rebuild
 ````
 
+#### getOutputFields
+Documentation validation script. Determines which fields are missing from the documentation on specific routes.
+
 #### unit_boundaries_gplates
 Populates the fields `paleo_lat` and `paleo_lng` in the table `unit_boundaries` by hitting the GPlates API. These coordinates are used for reporting the paleocoordinates of units (`t/b_plat/lng`).
 
