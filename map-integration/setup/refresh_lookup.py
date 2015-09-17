@@ -114,26 +114,28 @@ def refresh(scale, source_id):
             FROM maps.map_units m
             WHERE st.map_id = m.map_id
             AND basis_col =
-              CASE
+              ANY(CASE
+                WHEN 'manual_replace' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
+                  array['manual_replace']
                 WHEN 'strat_name' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
-                  'strat_name'
+                  array['strat_name', 'manual']
                 WHEN 'name' in (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
-                  'name'
+                  array['name', 'manual']
                 WHEN 'descrip' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
-                  'descrip'
+                  array['descrip', 'manual']
                 WHEN 'comments' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
-                  'comments'
+                  array['comments', 'manual']
                 WHEN 'strat_name_buffer' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
-                  'strat_name_buffer'
+                  array['strat_name_buffer', 'manual']
                 WHEN 'name_buffer' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
-                  'name_buffer'
+                  array['name_buffer', 'manual']
                 WHEN 'descrip' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
-                  'descrip'
+                  array['descrip', 'manual']
                 WHEN 'comments_buffer' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
-                  'comments_buffer'
+                  array['comments_buffer', 'manual']
                 ELSE
-                 'unknown'
-               END
+                 array['unknown', 'manual']
+               END)
           ) AS unit_ids,
 
           array(
@@ -141,26 +143,28 @@ def refresh(scale, source_id):
             FROM maps.map_strat_names m
             WHERE st.map_id = m.map_id
             AND basis_col =
-              CASE
-                WHEN 'strat_name' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
-                  'strat_name'
-                WHEN 'name' in (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
-                  'name'
-                WHEN 'descrip' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
-                  'descrip'
-                WHEN 'comments' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
-                  'comments'
-                WHEN 'strat_name_buffer' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
-                  'strat_name_buffer'
-                WHEN 'name_buffer' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
-                  'name_buffer'
-                WHEN 'descrip' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
-                  'descrip'
-                WHEN 'comments_buffer' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
-                  'comments_buffer'
+              ANY(CASE
+                WHEN 'manual_replace' IN (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
+                  array['manual_replace']
+                WHEN 'strat_name' IN (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
+                  array['strat_name', 'manual']
+                WHEN 'name' in (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
+                  array['name', 'manual']
+                WHEN 'descrip' IN (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
+                  array['descrip', 'manual']
+                WHEN 'comments' IN (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
+                  array['comments', 'manual']
+                WHEN 'strat_name_buffer' IN (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
+                  array['strat_name_buffer', 'manual']
+                WHEN 'name_buffer' IN (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
+                  array['name_buffer', 'manual']
+                WHEN 'descrip' IN (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
+                  array['descrip', 'manual']
+                WHEN 'comments_buffer' IN (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
+                  array['comments_buffer', 'manual']
                 ELSE
-                 'unknown'
-               END
+                 array['unknown', 'manual']
+               END)
           ) AS strat_name_ids,
 
           t_interval,

@@ -4,16 +4,12 @@ import psycopg2
 from psycopg2.extensions import AsIs
 
 parser = argparse.ArgumentParser(
-  description="Manually match a Burwell map_id with a Macrostrat strat_name_id or unit_id",
-  epilog="python add_match.py --map_id 12345 --strat_name_id 9876 --type add")
+  description="Manually remove strat_name_id or unit_id matches with Burwell map_ids",
+  epilog="python remove_match.py --map_id 12345 --strat_name_id 9876")
 
 parser.add_argument("-m", "--map_id", dest="map_id",
   default="na", type=str, required=True,
   help="Burwell map_id")
-
-parser.add_argument("-t", "--type", dest="type",
-  default="na", type=str, required=True,
-  help="Additional type. Can be 'replace' to replace all best matches with a manual match, or 'add' to add the manual match to the existing best matches.")
 
 parser.add_argument("-sn", "--strat_name_id", dest="strat_name_id",
   default="na", type=str, required=False,
@@ -28,10 +24,6 @@ arguments = parser.parse_args()
 if (arguments.unit_id == "na" and arguments.strat_name_id == "na") or (arguments.unit_id != "na" and arguments.strat_name_id != "na") :
   print "Unit or strat_name_id parameter required, but not both"
   sys.exit()
-
-if (arguments.type != "replace" and arguments.type != "add") :
-    print "Type must be 'replace' or 'add'"
-    sys.exit()
 
 # Connect to the database
 try:
@@ -61,61 +53,6 @@ def get_scale(map_id) :
 
 
 def update_lookup(scale, map_id) :
-    if arguments.type == 'replace' :
-        unit_basis = "'manual_replace'"
-        strat_name_basis = "'manual_replace'"
-
-    else :
-        unit_basis = """
-            ANY(CASE
-              WHEN 'manual_replace' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
-                array['manual_replace']
-              WHEN 'strat_name' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
-                array['strat_name', 'manual']
-              WHEN 'name' in (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
-                array['name', 'manual']
-              WHEN 'descrip' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
-                array['descrip', 'manual']
-              WHEN 'comments' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
-                array['comments', 'manual']
-              WHEN 'strat_name_buffer' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
-                array['strat_name_buffer', 'manual']
-              WHEN 'name_buffer' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
-                array['name_buffer', 'manual']
-              WHEN 'descrip' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
-                array['descrip', 'manual']
-              WHEN 'comments_buffer' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
-                array['comments_buffer', 'manual']
-              ELSE
-               array['unknown', 'manual']
-             END)
-        """
-
-        strat_name_basis = """
-            ANY(CASE
-              WHEN 'manual_replace' IN (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
-                array['manual_replace']
-              WHEN 'strat_name' IN (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
-                array['strat_name', 'manual']
-              WHEN 'name' in (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
-                array['name', 'manual']
-              WHEN 'descrip' IN (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
-                array['descrip', 'manual']
-              WHEN 'comments' IN (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
-                array['comments', 'manual']
-              WHEN 'strat_name_buffer' IN (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
-                array['strat_name_buffer', 'manual']
-              WHEN 'name_buffer' IN (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
-                array['name_buffer', 'manual']
-              WHEN 'descrip' IN (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
-                array['descrip', 'manual']
-              WHEN 'comments_buffer' IN (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
-                array['comments_buffer', 'manual']
-              ELSE
-               array['unknown', 'manual']
-             END)
-        """
-
     # Update lookup table
     cur.execute("""
         UPDATE lookup_%(scale)s a
@@ -133,14 +70,56 @@ def update_lookup(scale, map_id) :
                     select distinct unit_id
                     FROM maps.map_units m
                     WHERE st.map_id = m.map_id
-                    AND basis_col = """ + unit_basis + """
+                    AND basis_col = ANY(CASE
+                      WHEN 'manual_replace' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
+                        array['manual_replace']
+                      WHEN 'strat_name' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
+                        array['strat_name', 'manual']
+                      WHEN 'name' in (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
+                        array['name', 'manual']
+                      WHEN 'descrip' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
+                        array['descrip', 'manual']
+                      WHEN 'comments' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
+                        array['comments', 'manual']
+                      WHEN 'strat_name_buffer' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
+                        array['strat_name_buffer', 'manual']
+                      WHEN 'name_buffer' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
+                        array['name_buffer', 'manual']
+                      WHEN 'descrip' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
+                        array['descrip', 'manual']
+                      WHEN 'comments_buffer' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
+                        array['comments_buffer', 'manual']
+                      ELSE
+                       array['unknown', 'manual']
+                     END)
                   ) AS unit_ids,
 
                   array(
                     SELECT DISTINCT strat_name_id
                     FROM maps.map_strat_names m
                     WHERE st.map_id = m.map_id
-                    AND basis_col = """ + strat_name_basis + """
+                    AND basis_col = ANY(CASE
+                      WHEN 'manual_replace' IN (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
+                        array['manual_replace']
+                      WHEN 'strat_name' IN (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
+                        array['strat_name', 'manual']
+                      WHEN 'name' in (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
+                        array['name', 'manual']
+                      WHEN 'descrip' IN (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
+                        array['descrip', 'manual']
+                      WHEN 'comments' IN (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
+                        array['comments', 'manual']
+                      WHEN 'strat_name_buffer' IN (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
+                        array['strat_name_buffer', 'manual']
+                      WHEN 'name_buffer' IN (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
+                        array['name_buffer', 'manual']
+                      WHEN 'descrip' IN (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
+                        array['descrip', 'manual']
+                      WHEN 'comments_buffer' IN (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
+                        array['comments_buffer', 'manual']
+                      ELSE
+                       array['unknown', 'manual']
+                     END)
                   ) AS strat_name_ids,
 
                   t_interval,
@@ -217,33 +196,15 @@ def update_lookup(scale, map_id) :
     conn.commit()
 
 
-def unit_match() :
+def remove_unit() :
     # Get scale of this map_id
     scale = get_scale(arguments.map_id)
 
-    # Verify that this unit_id has only one strat_name_id attached to it
+    # Delete from maps.map_units
     cur.execute("""
-        WITH sub AS (SELECT unit_id, count(*) a FROM macrostrat.unit_strat_names
-          WHERE unit_id = %(unit_id)s
-          GROUP BY unit_id)
-        select * from sub where a > 1 order by a desc LIMIT 1
-    """, {"unit_id": arguments.unit_id})
-    unit_names = cur.fetchall()
-
-    # If it has more than one strat_name_id, exit
-    if len(unit_names) > 0:
-        print "Sorry, this unit_id has more than one strat name assigned to it"
-        sys.exit()
-
-    if arguments.type == "replace":
-        basis = "'manual_replace'"
-    else :
-        basis = "'manual'"
-
-    # Insert into maps.map_units
-    cur.execute("""
-        INSERT INTO maps.map_units (map_id, unit_id, basis_col) (
-            SELECT map_id, %(unit_id)s AS unit_id, """ + basis + """
+        DELETE FROM maps.map_units
+        WHERE map_id IN (
+            SELECT map_id
             FROM maps.%(scale)s
             WHERE source_id = (SELECT source_id FROM maps.%(scale)s WHERE map_id = %(map_id)s)
             AND name IS NOT DISTINCT FROM (SELECT name FROM maps.%(scale)s WHERE map_id = %(map_id)s)
@@ -255,6 +216,8 @@ def unit_match() :
             AND t_interval IS NOT DISTINCT FROM (SELECT t_interval FROM maps.%(scale)s WHERE map_id = %(map_id)s)
             AND b_interval IS NOT DISTINCT FROM (SELECT b_interval FROM maps.%(scale)s WHERE map_id = %(map_id)s)
         )
+        AND unit_id = %(unit_id)s
+        AND (basis_col = 'manual' OR basis_col = 'manual_replace')
     """, {
         "scale": AsIs(scale),
         "map_id": arguments.map_id,
@@ -263,12 +226,9 @@ def unit_match() :
 
     # Insert into maps.map_strat_names
     cur.execute("""
-        INSERT INTO maps.map_strat_names (map_id, strat_name_id, basis_col) (
-            SELECT map_id, (
-                SELECT strat_name_id
-                FROM macrostrat.unit_strat_names
-                WHERE unit_id = %(unit_id)s
-            ) AS strat_name_id, """ + basis + """ AS basis_col
+        DELETE FROM maps.map_strat_names
+        WHERE map_id IN (
+            SELECT map_id
             FROM maps.%(scale)s
             WHERE source_id = (SELECT source_id FROM maps.%(scale)s WHERE map_id = %(map_id)s)
             AND name IS NOT DISTINCT FROM (SELECT name FROM maps.%(scale)s WHERE map_id = %(map_id)s)
@@ -280,6 +240,12 @@ def unit_match() :
             AND t_interval IS NOT DISTINCT FROM (SELECT t_interval FROM maps.%(scale)s WHERE map_id = %(map_id)s)
             AND b_interval IS NOT DISTINCT FROM (SELECT b_interval FROM maps.%(scale)s WHERE map_id = %(map_id)s)
         )
+        AND strat_name_id IN (
+            SELECT strat_name_id
+            FROM macrostrat.unit_strat_names
+            WHERE unit_id = %(unit_id)s
+        )
+        AND (basis_col = 'manual' OR basis_col = 'manual_replace')
     """, {
         "scale": AsIs(scale),
         "map_id": arguments.map_id,
@@ -296,38 +262,24 @@ def unit_match() :
         WHERE map_id = %(map_id)s
         AND unit_id = %(unit_id)s;
 
-        INSERT INTO maps.manual_matches (map_id, unit_id, addition, type) VALUES (%(map_id)s, %(unit_id)s, TRUE, %(type)s);
+        INSERT INTO maps.manual_matches (map_id, unit_id, addition) VALUES (%(map_id)s, %(unit_id)s, TRUE);
     """, {
         "unit_id": arguments.unit_id,
-        "map_id": arguments.map_id,
-        "type": arguments.type
+        "map_id": arguments.map_id
     })
     conn.commit()
 
 
 
 
-def strat_name_match() :
+def remove_strat_name() :
     # First get scale of this map_id
     scale = get_scale(arguments.map_id)
 
-    if arguments.type == "replace":
-        basis = "'manual_replace'"
-    else :
-        basis = "'manual'"
-
-    # Insert new matches in maps.map_strat_names
+    # Delete matches from maps.map_strat_names
     cur.execute("""
-        INSERT INTO maps.map_strat_names (map_id, strat_name_id, basis_col) (
-          WITH units AS (
-            SELECT us.unit_id AS unit_id, lsn.strat_name_id, lsn.fm_name AS strat_name, c.poly_geom
-            FROM macrostrat.units_sections us
-            JOIN macrostrat.unit_strat_names usn ON us.unit_id = usn.unit_id
-            JOIN macrostrat.lookup_strat_names lsn ON usn.strat_name_id = lsn.strat_name_id
-            JOIN macrostrat.cols c ON us.col_id = c.id
-            WHERE c.status_code = 'active' AND (lsn.bed_id IN (%(strat_name_id)s) OR lsn.mbr_id IN (%(strat_name_id)s) OR lsn.fm_id IN (%(strat_name_id)s) OR lsn.gp_id IN (%(strat_name_id)s) OR lsn.sgp_id IN (%(strat_name_id)s))
-          ),
-          concepts AS (
+        DELETE FROM maps.map_strat_names
+        WHERE map_id IN (
             SELECT map_id
             FROM maps.%(scale)s
             WHERE source_id = (SELECT source_id FROM maps.%(scale)s WHERE map_id = %(map_id)s)
@@ -339,23 +291,9 @@ def strat_name_match() :
             AND comments IS NOT DISTINCT FROM (SELECT comments FROM maps.%(scale)s WHERE map_id = %(map_id)s)
             AND t_interval IS NOT DISTINCT FROM (SELECT t_interval FROM maps.%(scale)s WHERE map_id = %(map_id)s)
             AND b_interval IS NOT DISTINCT FROM (SELECT b_interval FROM maps.%(scale)s WHERE map_id = %(map_id)s)
-          ),
-          distance AS (
-            SELECT a.map_id, ST_Distance(a.geom::geography, u.poly_geom::geography)/1000 AS distance, u.unit_id, u.strat_name_id
-            FROM maps.%(scale)s a, units u
-            WHERE map_id IN (
-                SELECT * FROM concepts
-            )
-            ORDER BY map_id, distance
-          ),
-          min_dist AS (
-            SELECT map_id, min(distance) AS distance from distance GROUP BY map_id ORDER BY map_id
-          )
-          SELECT distance.map_id, strat_name_id, """ + basis + """ AS type
-          FROM distance
-          JOIN min_dist ON distance.map_id = min_dist.map_id
-          WHERE distance.distance = min_dist.distance
         )
+        AND strat_name_id = %(strat_name_id)s
+        AND (basis_col = 'manual' OR basis_col = 'manual_replace')
     """, {
         "scale": AsIs(scale),
         "strat_name_id": arguments.strat_name_id,
@@ -364,16 +302,8 @@ def strat_name_match() :
 
     # Insert new matches into maps.map_units
     cur.execute("""
-        INSERT INTO maps.map_units (map_id, unit_id, basis_col) (
-          WITH units AS (
-            SELECT us.unit_id AS unit_id, lsn.strat_name_id, lsn.fm_name AS strat_name, c.poly_geom
-            FROM macrostrat.units_sections us
-            JOIN macrostrat.unit_strat_names usn ON us.unit_id = usn.unit_id
-            JOIN macrostrat.lookup_strat_names lsn ON usn.strat_name_id = lsn.strat_name_id
-            JOIN macrostrat.cols c ON us.col_id = c.id
-            WHERE c.status_code = 'active' AND (lsn.bed_id IN (%(strat_name_id)s) OR lsn.mbr_id IN (%(strat_name_id)s) OR lsn.fm_id IN (%(strat_name_id)s) OR lsn.gp_id IN (%(strat_name_id)s) OR lsn.sgp_id IN (%(strat_name_id)s))
-          ),
-          concepts AS (
+        DELETE FROM maps.map_units
+        WHERE map_id IN (
             SELECT map_id
             FROM maps.%(scale)s
             WHERE source_id = (SELECT source_id FROM maps.%(scale)s WHERE map_id = %(map_id)s)
@@ -385,23 +315,15 @@ def strat_name_match() :
             AND comments IS NOT DISTINCT FROM (SELECT comments FROM maps.%(scale)s WHERE map_id = %(map_id)s)
             AND t_interval IS NOT DISTINCT FROM (SELECT t_interval FROM maps.%(scale)s WHERE map_id = %(map_id)s)
             AND b_interval IS NOT DISTINCT FROM (SELECT b_interval FROM maps.%(scale)s WHERE map_id = %(map_id)s)
-          ),
-          distance AS (
-            SELECT a.map_id, ST_Distance(a.geom::geography, u.poly_geom::geography)/1000 AS distance, u.unit_id, u.strat_name_id
-            FROM maps.%(scale)s a, units u
-            WHERE map_id IN (
-                SELECT * FROM concepts
-            )
-            ORDER BY map_id, distance
-          ),
-          min_dist AS (
-            SELECT map_id, min(distance) AS distance from distance GROUP BY map_id ORDER BY map_id
-          )
-          SELECT distance.map_id, distance.unit_id, """ + basis + """ AS type
-          FROM distance
-          JOIN min_dist ON distance.map_id = min_dist.map_id
-          WHERE distance.distance = min_dist.distance
         )
+        AND unit_id IN (
+            SELECT us.unit_id
+            FROM macrostrat.units_sections us
+            JOIN macrostrat.unit_strat_names usn ON us.unit_id = usn.unit_id
+            JOIN macrostrat.lookup_strat_names lsn ON usn.strat_name_id = lsn.strat_name_id
+            WHERE (lsn.bed_id IN (%(strat_name_id)s) OR lsn.mbr_id IN (%(strat_name_id)s) OR lsn.fm_id IN (%(strat_name_id)s) OR lsn.gp_id IN (%(strat_name_id)s) OR lsn.sgp_id IN (%(strat_name_id)s))
+        )
+        AND (basis_col = 'manual' OR basis_col = 'manual_replace') 
     """, {
         "scale": AsIs(scale),
         "strat_name_id": arguments.strat_name_id,
@@ -415,12 +337,9 @@ def strat_name_match() :
         DELETE FROM maps.manual_matches
         WHERE map_id = %(map_id)s
         AND strat_name_id = %(strat_name_id)s;
-
-        INSERT INTO maps.manual_matches (map_id, strat_name_id, addition, type) VALUES (%(map_id)s, %(strat_name_id)s, TRUE, %(type)s);
     """, {
         "strat_name_id": arguments.strat_name_id,
-        "map_id": arguments.map_id,
-        "type": arguments.type
+        "map_id": arguments.map_id
     })
     conn.commit()
 
@@ -430,10 +349,10 @@ def strat_name_match() :
 
 # Do a strat_name_id match
 if arguments.strat_name_id != "na":
-    strat_name_match()
+    remove_strat_name()
 
 elif arguments.unit_id != "na":
-    unit_match()
+    remove_unit()
 
 else:
     print "You should never see this message"
