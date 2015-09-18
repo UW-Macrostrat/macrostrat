@@ -4,7 +4,7 @@ from psycopg2.extensions import AsIs
 import argparse
 import copy
 import json
-from subprocess import call
+from subprocess import call, check_call, CalledProcessError
 import subprocess
 
 parser = argparse.ArgumentParser(
@@ -244,18 +244,21 @@ def find_groups(scale, source_id=None):
 # Wrapper for tilestache-clean.py
 def clear_cache(bbox, scale):
     print "--- Cleaning cache ---"
-    cmd = ["python", "TileStache/scripts/tilestache-clean.py", "-q", "-b", bbox[0], bbox[1], bbox[2], bbox[3], "-c", "tilestache.cfg", "-l", "burwell"]
+    cmd = ["python", "TileStache/scripts/tilestache-clean.py", "-q", "-b", bbox[0], bbox[1], bbox[2], bbox[3], "-c", "tilestache.cfg", "-l", ("lookup_" + scale)]
     cmd.extend(scale_map[scale])
     call(cmd)
 
 # Wrapper for tilestache-seed.py
 def seed_cache(bbox, scale):
     print "--- Seeding cache ---"
-    cmd = "python TileStache/scripts/tilestache-list.py -b " + " ".join(bbox) + " " + " ".join(scale_map[scale]) + "| split -l 500 - tmp/list- && ls -1 tmp/list-* | xargs -n1 -P4 TileStache/scripts/tilestache-seed.py -c TileStache/tilestache.cfg -l burwell --tile-list"
+    cmd = "python TileStache/scripts/tilestache-list.py -b " + " ".join(bbox) + " " + " ".join(scale_map[scale]) + "| split -l 5    00 - tmp/list- && ls -1 tmp/list-* | xargs -n1 -P4 TileStache/scripts/tilestache-seed.py -c TileStache/tilestache.cfg -l burwell --tile-list"
 
     #print cmd
-
-    call(cmd, shell=True)
+    try:
+        check_call(cmd, shell=True)
+    except CalledProcessError:
+        print "Error seeding cache at scale", scale
+        sys.exit()
 
 
 # First update the cartocss and project file
