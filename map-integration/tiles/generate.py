@@ -137,7 +137,9 @@ def setup():
         "srs-name": "WGS84",
         "srs": "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs",
         "advanced": {},
-        "name": ""
+        "name": "",
+        "minZoom": "",
+        "maxZoom": ""
     }
 
     # Instantiate the project template that will hold each layer
@@ -184,6 +186,8 @@ def setup():
         layer["Datasource"]["table"] = "(SELECT x.map_id, x.group_id, x.color, geom FROM %s x JOIN maps.%s s ON s.map_id = x.map_id) subset" % (name, scale)
         layer["id"] = name
         layer["name"] = name
+        layer["minZoom"] = min(scale_map[scale])
+        layer["maxZoom"] = max(scale_map[scale])
 
         # ...and append the layer to the project
         burwell["Layer"].append(layer)
