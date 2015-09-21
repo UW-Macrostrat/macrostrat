@@ -6,7 +6,7 @@ module.exports = function(req, res, next) {
     return larkin.info(req, res, next);
   }
 
-  var sql = "SELECT id AS col_group_id, col_group, col_group_long AS col_group_name FROM col_groups",
+  var sql = "SELECT id AS col_group_id, col_group, col_group_long AS name FROM col_groups",
       params = {};
 
   if (req.query.col_group_id) {
