@@ -212,7 +212,7 @@ for idx, unit in enumerate(units):
             era = %(era)s,
             era_id = %(era_id)s,
             eon = %(eon)s,
-            eon = %(eon_id)s
+            eon_id = %(eon_id)s
         WHERE unit_id = %(unit_id)s
     """, {
         "age": age["name"],
