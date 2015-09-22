@@ -9,8 +9,8 @@ module.exports = function(req, res, next) {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
-  // First determine age range component of query, if any. 
-  // NB: ORDER MATTERS here. Do NOT add else if statements before req.query.interval_name, req.query.age or req.query.age_top else statements or  those age parameters will be ommitted 
+  // First determine age range component of query, if any.
+  // NB: ORDER MATTERS here. Do NOT add else if statements before req.query.interval_name, req.query.age or req.query.age_top else statements or  those age parameters will be ommitted
   async.waterfall([
     function(callback) {
       if (req.query.interval_name) {
@@ -46,13 +46,13 @@ module.exports = function(req, res, next) {
       } else if (req.query.strat_id) {
         var ids = req.query.strat_id.split(",").map(function(d) { return parseInt(d) });
         callback(null, {"interval_name": "none", "age_bottom": 99999, "age_top": 0, "strat_ids": ids });
-      } else if (req.query.id || req.query.section_id || req.query.col_id || req.query.lith || req.query.lith_class || req.query.lith_type || req.query.environ || req.query.environ_class || req.query.environ_type || req.query.project_id) { 
+      } else if (req.query.id || req.query.section_id || req.query.col_id || req.query.lith || req.query.lith_class || req.query.lith_type || req.query.environ || req.query.environ_class || req.query.environ_type || req.query.project_id) {
         callback(null, {"interval_name": "none", "age_bottom": 99999, "age_top": 0});
       } else {
         callback("error");
       }
     },
-  
+
     function(data, callback) {
 
       var where = "",
@@ -68,7 +68,7 @@ module.exports = function(req, res, next) {
           params.push("lith_class", req.query.lith_class);
         } else if (req.query.lith_type) {
           params.push("lith_type", req.query.lith_type);
-        } 
+        }
       }
 
       if (data.age_bottom !== 99999) {
@@ -80,7 +80,7 @@ module.exports = function(req, res, next) {
         if (req.query.id.indexOf(",") > -1) {
           var ids = req.query.id.split(","),
               placeholders = [];
-          
+
           ids = ids.map(function(d) {
             return parseInt(d);
           });
@@ -145,7 +145,7 @@ module.exports = function(req, res, next) {
         params.push(req.query.project_id);
       }
 
-      var environ = "", 
+      var environ = "",
           environ_field = "";
       if (req.query.environ) {
         environ = req.query.environ;
@@ -160,17 +160,18 @@ module.exports = function(req, res, next) {
       if (environ !== ""){
         where += " AND ?? LIKE ?";
         params.push(environ_field, environ);
-      } 
+      }
 
       var shortSQL = "units.id AS id,units_sections.section_id as section_id, units_sections.col_id as col_id, col_area, units.strat_name, units.position_bottom, unit_strat_names.strat_name_id, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick, min_thick, color AS u_color, lith_type, count(distinct collection_no) pbdb";
-            
-      var longSQL = "units.id AS id, units_sections.section_id as section_id, project_id, units_sections.col_id as col_id, col_area, units.strat_name, unit_strat_names.strat_name_id, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick,min_thick, lith_class, lith_type, lith_long lith, lookup_unit_liths.environ_class, lookup_unit_liths.environ_type, lookup_unit_liths.environ, count(distinct collection_no) pbdb, FO_interval, FO_h, FO_age, LO_interval, LO_h, LO_age, position_bottom, notes, units.color AS u_color, colors.unit_hex AS color, colors.text_hex AS text_color, min(ubt.t1_age) AS t_age, ubt.t1 as t_interval, ubt.t1_prop as t_prop, GROUP_CONCAT(distinct ubt.unit_id_2 SEPARATOR '|') AS units_above, max(ubb.t1_age) AS b_age, ubb.t1 as b_interval, ubb.t1_prop as b_prop, GROUP_CONCAT(distinct ubb.unit_id SEPARATOR '|') AS units_below"; 
+      // Update t_age, t_interval, t_prop, b_age, b_interval, b_prop
+      var longSQL = "units.id AS id, units_sections.section_id as section_id, lookup_units.project_id, units_sections.col_id as col_id, lookup_units.col_area, units.strat_name, unit_strat_names.strat_name_id, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, lookup_units.era, lookup_units.period, max_thick,min_thick, lith_class, lith_type, lith_long lith, lookup_unit_liths.environ_class, lookup_unit_liths.environ_type, lookup_unit_liths.environ, count(distinct collection_no) pbdb, FO_interval, FO_h, FO_age, LO_interval, LO_h, LO_age, position_bottom, notes, units.color AS u_color, colors.unit_hex AS color, colors.text_hex AS text_color, lookup_units.t_age, lookup_units.t_int AS t_interval, lookup_units.t_prop, lookup_units.units_above, lookup_units.b_age, lookup_units.b_int AS b_interval, lookup_units.b_prop, lookup_units.units_below "; 
 
       var unitBoundariesJoin = (req.query.debug === "true") ? "LEFT JOIN unit_boundaries_scratch ubb ON ubb.unit_id_2=units.id LEFT JOIN unit_boundaries_scratch ubt ON ubt.unit_id=units.id" : "LEFT JOIN unit_boundaries ubb ON ubb.unit_id_2=units.id LEFT JOIN unit_boundaries ubt ON ubt.unit_id=units.id";
 
       var geometry = ((req.query.format && api.acceptedFormats.geo[req.query.format]) || req.query.response === "long") ? ", cols.lat AS clat, cols.lng AS clng, ubt.paleo_lat AS t_plat, ubt.paleo_lng AS t_plng, ubb.paleo_lat AS b_plat, ubb.paleo_lng AS b_plng " : "";
 
       var sql = "SELECT " + ((req.query.response === "long") ? longSQL : shortSQL) + geometry + " FROM units \
+            JOIN lookup_units ON lookup_units.unit_id = units.id \
             JOIN units_sections ON units_sections.unit_id=units.id \
             JOIN cols ON units_sections.col_id=cols.id \
             JOIN lookup_unit_liths ON lookup_unit_liths.unit_id=units.id \
@@ -182,7 +183,7 @@ module.exports = function(req, res, next) {
             LEFT JOIN pbdb_matches ON pbdb_matches.unit_id=units.id \
             " + ((environ !== "") ? "LEFT JOIN unit_environs ON units.id=unit_environs.unit_id LEFT JOIN environs ON unit_environs.environ_id=environs.id" : "") + " \
             WHERE status_code='active' " + where + " GROUP BY units.id ORDER BY " + ((orderby.length > 0) ? (orderby.join(", ") + ", t_age ASC") : "t_age ASC");
-     
+
       larkin.query(sql, params, function(error, result) {
           if (error) {
             console.log(error);
