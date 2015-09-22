@@ -284,7 +284,7 @@ for idx, unit in enumerate(units):
                 UPDATE lookup_units_new SET
                     b_int = %(b_int)s,
                     b_int_name = %(b_int_name)s,
-                    b_int_age = %(b_int_age)s
+                    b_int_age = %(b_int_age)s,
                     b_prop = 0
                 WHERE unit_id = %(unit_id)s
             """, {
