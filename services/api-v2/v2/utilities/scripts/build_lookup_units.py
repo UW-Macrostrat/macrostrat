@@ -45,10 +45,15 @@ def get_time(qtype, params) :
 # Copy structure into new table
 cursor.execute("""
     DROP TABLE IF EXISTS lookup_units_new;
+""")
+cursor.close()
+cursor = connection.cursor()
+cursor.execute("""
     CREATE TABLE lookup_units_new LIKE lookup_units;
 """)
 cursor.close()
 cursor = connection.cursor()
+
 
 # Initial query to populate the lookup table
 cursor.execute("""

@@ -18,7 +18,7 @@ module.exports = function(req, res, next, cb) {
   async.waterfall([
     function(callback) {
       if (req.query.interval_name) {
-        larkin.query("SELECT age_bottom,age_top,interval_name from intervals where interval_name = ? LIMIT 1", [req.query.interval_name], function(error, result) {
+        larkin.query("SELECT age_bottom, age_top, interval_name FROM intervals WHERE interval_name = ? LIMIT 1", [req.query.interval_name], function(error, result) {
           if (error) {
             callback(error);
           } else {
@@ -31,7 +31,7 @@ module.exports = function(req, res, next, cb) {
         });
 
       } else if (req.query.int_id) {
-        larkin.query("SELECT age_bottom,age_top,interval_name from intervals where id = ? LIMIT 1", [req.query.int_id], function(error, result) {
+        larkin.query("SELECT age_bottom, age_top, interval_name FROM intervals WHERE id = ? LIMIT 1", [req.query.int_id], function(error, result) {
           if (error) {
 
             callback(error);
@@ -54,7 +54,7 @@ module.exports = function(req, res, next, cb) {
       } else if (req.query.lat && req.query.lng) {
         var sql = (req.query.adjacents === "true") ? "WITH containing_geom AS (SELECT poly_geom FROM macrostrat.cols WHERE ST_Contains(poly_geom, ST_GeomFromText($1, 4326))) SELECT id FROM macrostrat.cols WHERE ST_Intersects((SELECT * FROM containing_geom), poly_geom) ORDER BY ST_Distance(ST_Centroid(poly_geom), ST_GeomFromText($1, 4326))" : "SELECT id FROM macrostrat.cols WHERE ST_Contains(poly_geom, st_setsrid(ST_GeomFromText($1), 4326)) ORDER BY ST_Distance(ST_Centroid(poly_geom), ST_GeomFromText($1, 4326))";
 
-        larkin.queryPg("geomacro", sql, ["POINT(" + larkin.normalizeLng(req.query.lng) + " " + req.query.lat + ")"], function(error, response) {
+        larkin.queryPg("burwell", sql, ["POINT(" + larkin.normalizeLng(req.query.lng) + " " + req.query.lat + ")"], function(error, response) {
           if (error) {
             callback(error);
           } else {
@@ -72,7 +72,7 @@ module.exports = function(req, res, next, cb) {
           sql += " ORDER BY ST_Distance(ST_Centroid(poly_geom), (SELECT * FROM containing_geom))"
         }
 
-        larkin.queryPg("geomacro", sql, col_ids, function(error, response) {
+        larkin.queryPg("burwell", sql, col_ids, function(error, response) {
           if (error) {
             callback(error);
           } else {
@@ -159,30 +159,30 @@ module.exports = function(req, res, next, cb) {
       }
 
       if (data.age_bottom !== 99999) {
-        where += " AND FO_age > :age_top AND LO_age < :age_bottom";
+        where += " AND b_int_age > :age_top AND t_int_age < :age_bottom";
         params["age_top"] = data.age_top;
         params["age_bottom"] = data.age_bottom;
       }
 
       if (req.query.unit_id) {
-        where += " AND units_sections.unit_id IN (:unit_ids)"
+        where += " AND units.id IN (:unit_ids)"
         params["unit_ids"] = larkin.parseMultipleIds(req.query.unit_id);
         orderby.push("FIELD(units.id, " + larkin.parseMultipleIds(req.query.unit_id).join(",") + ")");
       }
 
       if (req.query.section_id) {
-        where += " AND units_sections.section_id IN (:section_ids)";
+        where += " AND units.section_id IN (:section_ids)";
         params["section_ids"] = larkin.parseMultipleIds(req.query.section_id);
       }
 
       if ("col_ids" in data) {
-        where += " AND units_sections.col_id IN (:col_ids)";
+        where += " AND units.col_id IN (:col_ids)";
         if (!(data.col_ids.length)) {
           data.col_ids = [''];
         }
         params["col_ids"] = data.col_ids;
       } else if (req.query.col_id) {
-        where += " AND units_sections.col_id IN (:col_ids)";
+        where += " AND units.col_id IN (:col_ids)";
         params["col_ids"] = larkin.parseMultipleIds(req.query.col_id);
       }
 
@@ -192,7 +192,7 @@ module.exports = function(req, res, next, cb) {
       }
 
       if (req.query.project_id) {
-        where += " AND cols.project_id IN (:project_id)";
+        where += " AND lookup_units.project_id IN (:project_id)";
         params["project_id"] = larkin.parseMultipleIds(req.query.project_id);
       }
 
@@ -248,74 +248,68 @@ module.exports = function(req, res, next, cb) {
 
 
       if (req.query.cltn_id) {
-        where += " AND pbdb_matches.collection_no IN (:cltn_ids)"
+        where += " AND units.id IN (SELECT unit_id FROM pbdb_matches WHERE collection_no IN (:cltn_ids))"
         params["cltn_ids"] = larkin.parseMultipleIds(req.query.cltn_id);
       }
 
 
       if ("sample" in req.query) {
         // Speeds things up...
-        where += " AND units_sections.col_id IN (92, 488, 463, 289, 430, 481, 261, 534, 369, 798, 771, 1675) "
+        where += " AND units.col_id IN (92, 488, 463, 289, 430, 481, 261, 534, 369, 798, 771, 1675) "
       }
 
       params["measure_field"] = ("summarize_measures" in req.query) ? "lookup_unit_attrs_api.measure_long" : "lookup_unit_attrs_api.measure_short";
 
       var shortSQL = multiline(function() {/*
         units.id AS unit_id,
-        units_sections.section_id as section_id,
-        units_sections.col_id as col_id,
-        cols.project_id,
-        col_area,
+        units.section_id AS section_id,
+        units.col_id AS col_id,
+        lookup_units.project_id,
+        lookup_units.col_area,
         units.strat_name AS unit_name,
         unit_strat_names.strat_name_id,
         IFNULL(mbr_name, '') AS Mbr,
         IFNULL(fm_name, '') AS Fm,
         IFNULL(gp_name, '') AS Gp,
         IFNULL(sgp_name, '') AS SGp,
-        min(ubt.t1_age) AS t_age,
-        max(ubb.t1_age) AS b_age,
-        max_thick,
-        min_thick,
-        outcrop,
-        count(distinct collection_no) pbdb_collections
+        lookup_units.t_age,
+        lookup_units.b_age,
+        units.max_thick,
+        units.min_thick,
+        units.outcrop,
+        lookup_units.pbdb_collections
       */});
 
       var longSQL = shortSQL + multiline(function() {/*
         ,
-        project_id,
         lookup_unit_attrs_api.lith,
         lookup_unit_attrs_api.environ,
         lookup_unit_attrs_api.econ,
         ::measure_field AS measure,
         IFNULL(notes, '') AS notes,
-        colors.unit_hex AS color,
-        colors.text_hex AS text_color,
-        ubt.t1 as t_int_id,
-        LO_interval AS t_int_name,
-        LO_age AS t_int_age,
-        ubt.t1_prop as t_prop,
-        GROUP_CONCAT(distinct ubt.unit_id_2 SEPARATOR '|') AS units_above,
-        ubb.t1 AS b_int_id,
-        FO_interval AS b_int_name,
-        FO_age AS b_int_age,
-        ubb.t1_prop as b_prop,
-        GROUP_CONCAT(distinct ubb.unit_id SEPARATOR '|') AS units_below
+        lookup_units.color,
+        lookup_units.text_color,
+        lookup_units.t_int AS t_int_id,
+        lookup_units.t_int_name,
+        lookup_units.t_int_age,
+        lookup_units.t_prop,
+        lookup_units.units_above,
+        lookup_units.b_int AS b_int_id,
+        lookup_units.b_int_name,
+        lookup_units.b_int_age,
+        lookup_units.b_prop,
+        lookup_units.units_below
       */});
 
-      var unitBoundariesJoin = (req.query.debug === "true") ? "LEFT JOIN unit_boundaries_scratch ubb ON ubb.unit_id_2=units.id LEFT JOIN unit_boundaries_scratch ubt ON ubt.unit_id=units.id" : "LEFT JOIN unit_boundaries ubb ON ubb.unit_id_2=units.id LEFT JOIN unit_boundaries ubt ON ubt.unit_id=units.id";
-
-      var geometry = ((req.query.format && api.acceptedFormats.geo[req.query.format]) || req.query.response === "long") ? ", cols.lat AS clat, cols.lng AS clng, ubt.paleo_lat AS t_plat, ubt.paleo_lng AS t_plng, ubb.paleo_lat AS b_plat, ubb.paleo_lng AS b_plng " : "";
+      var geometry = ((req.query.format && api.acceptedFormats.geo[req.query.format]) || req.query.response === "long") ? ", lookup_units.clat, lookup_units.clng, lookup_units.t_plat, lookup_units.t_plng, lookup_units.b_plat, lookup_units.b_plng " : "";
 
       var sql = "SELECT " + ((req.query.response === "long" || cb) ? longSQL : shortSQL) + geometry + " FROM units \
-            JOIN units_sections ON units_sections.unit_id=units.id \
-            JOIN cols ON units_sections.col_id=cols.id \
             JOIN lookup_unit_attrs_api ON lookup_unit_attrs_api.unit_id = units.id \
-            JOIN lookup_unit_intervals ON units.id=lookup_unit_intervals.unit_id \
-            " + unitBoundariesJoin + " \
+            JOIN lookup_units ON units.id = lookup_units.unit_id \
             LEFT JOIN unit_strat_names ON unit_strat_names.unit_id=units.id \
+            LEFT JOIN cols ON units.col_id = cols.id \
             LEFT JOIN lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id \
-            " + ((req.query.response === "long" || cb) ? "LEFT JOIN unit_notes ON unit_notes.unit_id=units.id JOIN colors ON units.color = colors.color" : "") + " \
-            LEFT JOIN pbdb_matches ON pbdb_matches.unit_id=units.id \
+            " + ((req.query.response === "long" || cb) ? "LEFT JOIN unit_notes ON unit_notes.unit_id=units.id" : "") + " \
             WHERE status_code='active' " + where + " GROUP BY units.id ORDER BY " + ((orderby.length > 0) ? (orderby.join(", ") + ", t_age ASC") : "t_age ASC") + limit;
 
       larkin.query(sql, params, function(error, result) {
