@@ -231,7 +231,7 @@ for idx, unit in enumerate(units):
     # Check if t_prop == 1, and if so get the next oldest interval of the same scale
     if unit["t_prop"] == 1 :
         cursor.execute("""
-            SELECT intervals.interval_name, intervals.id, intervals.age_top
+            SELECT intervals.interval_name, intervals.id, intervals.bottom_top
             FROM intervals
             JOIN timescales_intervals ON intervals.id = timescales_intervals.interval_id
             WHERE timescales_intervals.timescale_id IN (
@@ -246,14 +246,14 @@ for idx, unit in enumerate(units):
             print "Should update top interval ", unit["unit_id"]
             cursor.execute("""
                 UPDATE lookup_units_new SET
-                    t_int = %(t_int)s,
-                    t_int_name = %(t_int_name)s,
-                    t_int_age = %(t_int_age)s
+                    b_int = %(b_int)s,
+                    b_int_name = %(b_int_name)s,
+                    b_int_age = %(b_int_age)s
                 WHERE unit_id = %(unit_id)s
             """, {
-                "t_int": data["id"],
-                "t_int_name": data["interval_name"],
-                "t_int_age": data["age_top"],
+                "b_int": data["id"],
+                "b_int_name": data["interval_name"],
+                "b_int_age": data["age_bottom"],
                 "unit_id": unit["unit_id"]
             })
 
@@ -261,7 +261,7 @@ for idx, unit in enumerate(units):
     # Check if b_prop == 1, if so get the next youngest time interval
     if unit["b_prop"] == 1 :
         cursor.execute("""
-            SELECT intervals.interval_name, intervals.id, intervals.age_bottom
+            SELECT intervals.interval_name, intervals.id, intervals.age_top
             FROM intervals
             JOIN timescales_intervals ON intervals.id = timescales_intervals.interval_id
             WHERE timescales_intervals.timescale_id IN (
@@ -276,14 +276,14 @@ for idx, unit in enumerate(units):
             print "Should update bottom interval ", unit["unit_id"]
             cursor.execute("""
                 UPDATE lookup_units_new SET
-                    b_int = %(b_int)s,
-                    b_int_name = %(b_int_name)s,
-                    b_int_age = %(b_int_age)s
+                    t_int = %(t_int)s,
+                    t_int_name = %(t_int_name)s,
+                    t_int_age = %(t_int_age)s
                 WHERE unit_id = %(unit_id)s
             """, {
-                "b_int": data["id"],
-                "b_int_name": data["interval_name"],
-                "b_int_age": data["age_bottom"],
+                "t_int": data["id"],
+                "t_int_name": data["interval_name"],
+                "t_int_age": data["age_top"],
                 "unit_id": unit["unit_id"]
             })
 
@@ -316,7 +316,7 @@ cursor.execute("""
     SELECT COUNT(*) N, (SELECT COUNT(*) FROM lookup_units) nn FROM units
 """)
 data = cursor.fetchone()
-
+cursor.close()
 if data['N'] != data['nn'] :
     print "ERROR: inconsistent unit count in lookup_unit_intervals_new table. ", data['nn'], " datas in `lookup_units` and ", data['N'], " datas in `units`."
     sys.exit()
