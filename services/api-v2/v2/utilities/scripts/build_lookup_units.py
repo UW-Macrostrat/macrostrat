@@ -233,16 +233,16 @@ for idx, unit in enumerate(units):
         "unit_id": unit["unit_id"]
     })
 
-    # Check if t_prop == 1, and if so get the next oldest interval of the same scale
-    if unit["t_prop"] == 1 :
+    # Check if t_prop == 0, and if so get the next oldest interval of the same scale
+    if unit["t_prop"] == 0 :
         cursor.execute("""
             SELECT intervals.interval_name, intervals.id, intervals.age_top
             FROM intervals
             JOIN timescales_intervals ON intervals.id = timescales_intervals.interval_id
             WHERE timescales_intervals.timescale_id IN (
                 SELECT timescale_id FROM timescales_intervals WHERE interval_id = %(int_id)s
-            ) AND age_bottom = (
-                SELECT age_top FROM intervals WHERE id = %(int_id)s
+            ) AND age_top = (
+                SELECT age_bottom FROM intervals WHERE id = %(int_id)s
             )
         """, {"int_id": unit["t_int"]})
         data = cursor.fetchone()
@@ -254,7 +254,7 @@ for idx, unit in enumerate(units):
                     t_int = %(t_int)s,
                     t_int_name = %(t_int_name)s,
                     t_int_age = %(t_int_age)s,
-                    t_prop = 0
+                    t_prop = 1
                 WHERE unit_id = %(unit_id)s
             """, {
                 "t_int": data["id"],
@@ -264,7 +264,7 @@ for idx, unit in enumerate(units):
             })
 
 
-    # Check if b_prop == 1, if so get the next youngest time interval
+    # Check if b_prop == 1, if so get the next oldest time interval
     if unit["b_prop"] == 1 :
         cursor.execute("""
             SELECT intervals.interval_name, intervals.id, intervals.age_bottom
@@ -272,10 +272,10 @@ for idx, unit in enumerate(units):
             JOIN timescales_intervals ON intervals.id = timescales_intervals.interval_id
             WHERE timescales_intervals.timescale_id IN (
                 SELECT timescale_id FROM timescales_intervals WHERE interval_id = %(int_id)s
-            ) AND age_top = (
-                SELECT age_bottom FROM intervals WHERE id = %(int_id)s
+            ) AND age_bottom = (
+                SELECT age_top FROM intervals WHERE id = %(int_id)s
             )
-        """, {"int_id": unit["t_int"]})
+        """, {"int_id": unit["b_int"]})
         data = cursor.fetchone()
 
         if data is not None:
