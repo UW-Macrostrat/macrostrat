@@ -231,7 +231,7 @@ for idx, unit in enumerate(units):
     # Check if t_prop == 1, and if so get the next oldest interval of the same scale
     if unit["t_prop"] == 1 :
         cursor.execute("""
-            SELECT intervals.interval_name, intervals.id, intervals.bottom_top
+            SELECT intervals.interval_name, intervals.id, intervals.age_bottom
             FROM intervals
             JOIN timescales_intervals ON intervals.id = timescales_intervals.interval_id
             WHERE timescales_intervals.timescale_id IN (
