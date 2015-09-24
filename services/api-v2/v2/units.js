@@ -307,7 +307,8 @@ module.exports = function(req, res, next, cb) {
             JOIN lookup_unit_attrs_api ON lookup_unit_attrs_api.unit_id = units.id \
             JOIN lookup_units ON units.id = lookup_units.unit_id \
             LEFT JOIN unit_strat_names ON unit_strat_names.unit_id=units.id \
-            LEFT JOIN cols ON units.col_id = cols.id \
+            LEFT JOIN units_sections ON units.id = units_sections.unit_id \
+            LEFT JOIN cols ON units_sections.col_id = cols.id \
             LEFT JOIN lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id \
             " + ((req.query.response === "long" || cb) ? "LEFT JOIN unit_notes ON unit_notes.unit_id=units.id" : "") + " \
             WHERE status_code='active' " + where + " GROUP BY units.id ORDER BY " + ((orderby.length > 0) ? (orderby.join(", ") + ", t_age ASC") : "t_age ASC") + limit;

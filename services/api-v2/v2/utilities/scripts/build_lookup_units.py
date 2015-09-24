@@ -165,7 +165,8 @@ cursor.execute("""
     LEFT JOIN intervals bint ON bint.id = units.b_int
     LEFT JOIN colors ON units.color = colors.color
     LEFT JOIN pbdb_matches ON pbdb_matches.unit_id = units.id
-    LEFT JOIN cols ON cols.id = units.col_id
+    LEFT JOIN units_sections ON units.id = units_sections.unit_id
+    LEFT JOIN cols ON cols.id = units_sections.col_id
     LEFT JOIN unit_boundaries ubb ON ubb.unit_id_2 = units.id
     LEFT JOIN unit_boundaries ubt ON ubt.unit_id = units.id
     GROUP BY units.id
