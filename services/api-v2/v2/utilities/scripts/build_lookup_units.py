@@ -249,7 +249,7 @@ for idx, unit in enumerate(units):
         data = cursor.fetchone()
 
         if data is not None:
-            print "Should update top interval ", unit["unit_id"]
+            #print "Should update top interval ", unit["unit_id"]
             cursor.execute("""
                 UPDATE lookup_units_new SET
                     t_int = %(t_int)s,
@@ -280,7 +280,7 @@ for idx, unit in enumerate(units):
         data = cursor.fetchone()
 
         if data is not None:
-            print "Should update bottom interval ", unit["unit_id"]
+            #print "Should update bottom interval ", unit["unit_id"]
             cursor.execute("""
                 UPDATE lookup_units_new SET
                     b_int = %(b_int)s,
