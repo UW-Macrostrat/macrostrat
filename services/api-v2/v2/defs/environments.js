@@ -6,7 +6,7 @@ module.exports = function(req, res, next) {
     return larkin.info(req, res, next);
   }
 
-  var sql = "SELECT id AS environ_id, environ AS name, environ_type AS type, environ_class AS class, environ_color AS color FROM environs",
+  var sql = "SELECT environs.id AS environ_id, environ AS name, environ_type AS type, environ_class AS class, environ_color AS color, COUNT(distinct units_sections.unit_id) AS t_units FROM environs LEFT JOIN unit_environs ON unit_environs.environ_id = environs.id LEFT JOIN units_sections ON units_sections.unit_id = unit_environs.unit_id ",
       environ = "";
 
   if (req.query.all) {
@@ -21,9 +21,11 @@ module.exports = function(req, res, next) {
     sql += " WHERE environ = ?";
     environ = req.query.environ;
   } else if (req.query.environ_id){
-    sql += " WHERE id = ?";
+    sql += " WHERE environs.id = ?";
     environ = req.query.environ_id;
   }
+
+  sql += " GROUP BY environs.id ";
 
   if ("sample" in req.query) {
     sql += " LIMIT 5";

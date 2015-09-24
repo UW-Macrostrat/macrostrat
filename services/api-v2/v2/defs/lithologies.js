@@ -6,7 +6,7 @@ module.exports = function(req, res, next) {
     return larkin.info(req, res, next);
   }
 
-  var sql = "SELECT id AS lith_id, lith AS name, lith_type AS type, lith_class AS class, lith_color AS color FROM liths",
+  var sql = "SELECT liths.id AS lith_id, lith AS name, lith_type AS type, lith_class AS class, lith_color AS color, COUNT(distinct units_sections.unit_id) AS t_units FROM liths LEFT JOIN unit_liths ON unit_liths.lith_id = liths.id LEFT JOIN units_sections ON units_sections.unit_id = unit_liths.unit_id ",
       params = {};
 
   if (req.query.lith_class) {
@@ -19,9 +19,11 @@ module.exports = function(req, res, next) {
     sql += " WHERE lith = :lith ";
     params["lith"] = req.query.lith;
   }  else if (req.query.lith_id){
-    sql += " WHERE id IN (:lith_id)";
+    sql += " WHERE liths.id IN (:lith_id)";
     params["lith_id"] = larkin.parseMultipleIds(req.query.lith_id);
   }
+
+  sql += " GROUP BY liths.id ";
 
   if ("sample" in req.query) {
     sql += " LIMIT 5";

@@ -6,7 +6,7 @@ module.exports = function(req, res, next) {
     return larkin.info(req, res, next);
   }
 
-  var sql = "SELECT id AS econ_id, econ AS name, econ_type AS type, econ_class AS class, econ_color AS color FROM econs",
+  var sql = "SELECT econs.id AS econ_id, econ AS name, econ_type AS type, econ_class AS class, econ_color AS color, COUNT(distinct units_sections.unit_id) AS t_units FROM econs LEFT JOIN unit_econs ON unit_econs.econ_id = econs.id LEFT JOIN units_sections ON units_sections.unit_id = unit_econs.unit_id ",
       params = {};
 
   if ("all" in req.query) {
@@ -27,6 +27,8 @@ module.exports = function(req, res, next) {
     sql += " WHERE econ_class = :econ_class";
     params["econ_class"] = req.query.econ_class;
   }
+
+  sql += " GROUP BY econs.id ";
 
   if ("sample" in req.query) {
     sql += " LIMIT 5";

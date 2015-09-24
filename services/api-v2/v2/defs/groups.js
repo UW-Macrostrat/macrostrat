@@ -6,13 +6,15 @@ module.exports = function(req, res, next) {
     return larkin.info(req, res, next);
   }
 
-  var sql = "SELECT id AS col_group_id, col_group, col_group_long AS name FROM col_groups",
+  var sql = "SELECT col_groups.id AS col_group_id, col_group, col_group_long AS name, COUNT(DISTINCT units_sections.unit_id) AS t_units FROM col_groups LEFT JOIN cols ON cols.col_group_id = col_groups.id LEFT JOIN units_sections ON units_sections.col_id = cols.id ",
       params = {};
 
   if (req.query.col_group_id) {
     sql += " WHERE id IN (:col_group_ids)";
     params["col_group_ids"] = larkin.parseMultipleIds(req.query.col_group_id);
   }
+
+  sql += " GROUP BY col_groups.id ";
 
   if ("sample" in req.query) {
     sql += " LIMIT 5";

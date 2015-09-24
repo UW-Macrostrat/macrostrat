@@ -58,6 +58,7 @@ module.exports = function(req, res, next, cb) {
   var sql = multiline(function() {/*
     SELECT
       strat_name,
+      rank_name AS strat_name_long,
       rank,
       strat_name_id,
       concept_id,

@@ -6,7 +6,7 @@ module.exports = function(req, res, next) {
     return larkin.info(req, res, next);
   }
 
-  var sql = "SELECT id AS measure_id, measurement AS name, measurement_type AS type, measurement_class AS class FROM measurements",
+  var sql = "SELECT measurements.id AS measure_id, measurement AS name, measurement_type AS type, measurement_class AS class, COUNT(DISTINCT unit_measures.unit_id) AS t_units FROM measurements LEFT JOIN measures ON measures.measurement_id = measurements.id LEFT JOIN unit_measures ON unit_measures.measuremeta_id = measures.measuremeta_id",
       params = {};
 
   if (req.query.all) {
@@ -23,9 +23,11 @@ module.exports = function(req, res, next) {
     params["meas"] = req.query.measurement;
 
   }  else if (req.query.measure_id){
-    sql += " WHERE id IN (:meas) ";
+    sql += " WHERE measurements.id IN (:meas) ";
     params["meas"] = larkin.parseMultipleIds(req.query.measure_id);
   }
+
+  sql += " GROUP BY measurements.id";
 
   if ("sample" in req.query) {
     sql += " LIMIT 5";
