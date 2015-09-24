@@ -162,9 +162,9 @@ module.exports = function(req, res, next) {
         params.push(environ_field, environ);
       }
 
-      var shortSQL = "units.id AS id,units_sections.section_id as section_id, units_sections.col_id as col_id, col_area, units.strat_name, units.position_bottom, unit_strat_names.strat_name_id, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, era, period, max_thick, min_thick, color AS u_color, lith_type, count(distinct collection_no) pbdb";
+      var shortSQL = "units.id AS id,units_sections.section_id as section_id, units_sections.col_id as col_id, lookup_units.col_area, units.strat_name, units.position_bottom, unit_strat_names.strat_name_id, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, lookup_units.era, lookup_units.period, max_thick, min_thick, lookup_units.color AS u_color, lith_type, count(distinct collection_no) pbdb";
       // Update t_age, t_interval, t_prop, b_age, b_interval, b_prop
-      var longSQL = "units.id AS id, units_sections.section_id as section_id, lookup_units.project_id, units_sections.col_id as col_id, lookup_units.col_area, units.strat_name, unit_strat_names.strat_name_id, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, lookup_units.era, lookup_units.period, max_thick,min_thick, lith_class, lith_type, lith_long lith, lookup_unit_liths.environ_class, lookup_unit_liths.environ_type, lookup_unit_liths.environ, count(distinct collection_no) pbdb, FO_interval, FO_h, FO_age, LO_interval, LO_h, LO_age, position_bottom, notes, units.color AS u_color, colors.unit_hex AS color, colors.text_hex AS text_color, lookup_units.t_age, lookup_units.t_int AS t_interval, lookup_units.t_prop, lookup_units.units_above, lookup_units.b_age, lookup_units.b_int AS b_interval, lookup_units.b_prop, lookup_units.units_below "; 
+      var longSQL = "units.id AS id, units_sections.section_id as section_id, lookup_units.project_id, units_sections.col_id as col_id, lookup_units.col_area, units.strat_name, unit_strat_names.strat_name_id, mbr_name Mbr, fm_name Fm, gp_name Gp, sgp_name SGp, lookup_units.era, lookup_units.period, max_thick,min_thick, lith_class, lith_type, lith_long lith, lookup_unit_liths.environ_class, lookup_unit_liths.environ_type, lookup_unit_liths.environ, count(distinct collection_no) pbdb, FO_interval, FO_h, FO_age, LO_interval, LO_h, LO_age, position_bottom, notes, units.color AS u_color, colors.unit_hex AS color, colors.text_hex AS text_color, lookup_units.t_age, lookup_units.t_int AS t_interval, lookup_units.t_prop, lookup_units.units_above, lookup_units.b_age, lookup_units.b_int AS b_interval, lookup_units.b_prop, lookup_units.units_below ";
 
       var unitBoundariesJoin = (req.query.debug === "true") ? "LEFT JOIN unit_boundaries_scratch ubb ON ubb.unit_id_2=units.id LEFT JOIN unit_boundaries_scratch ubt ON ubt.unit_id=units.id" : "LEFT JOIN unit_boundaries ubb ON ubb.unit_id_2=units.id LEFT JOIN unit_boundaries ubt ON ubt.unit_id=units.id";
 
@@ -182,7 +182,7 @@ module.exports = function(req, res, next) {
             " + ((req.query.response === "long") ? "LEFT JOIN unit_notes ON unit_notes.unit_id=units.id JOIN colors ON units.color = colors.color" : "") + " \
             LEFT JOIN pbdb_matches ON pbdb_matches.unit_id=units.id \
             " + ((environ !== "") ? "LEFT JOIN unit_environs ON units.id=unit_environs.unit_id LEFT JOIN environs ON unit_environs.environ_id=environs.id" : "") + " \
-            WHERE status_code='active' " + where + " GROUP BY units.id ORDER BY " + ((orderby.length > 0) ? (orderby.join(", ") + ", t_age ASC") : "t_age ASC");
+            WHERE status_code='active' " + where + " GROUP BY units.id ORDER BY " + ((orderby.length > 0) ? (orderby.join(", ") + ", lookup_units.t_age ASC") : "lookup_units.t_age ASC");
 
       larkin.query(sql, params, function(error, result) {
           if (error) {
