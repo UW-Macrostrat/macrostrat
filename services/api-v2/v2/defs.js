@@ -930,7 +930,7 @@
     "parent": "geologic_units",
     "options": {
       "parameters": {
-        "scale": "*Required: map scale to query. Can be 'small', 'medium', or 'large'",
+        "scale": "Can be 'small', 'medium', or 'large'",
         "map_id": "integer, one or more polygon map_ids to search for",
         "lat": "A valid latitude in decimal degrees",
         "lng": "A valid longitude in decimal degrees",
