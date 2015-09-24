@@ -47,6 +47,11 @@ CREATE TABLE lookup_unit_attrs_api_new LIKE lookup_unit_attrs_api;
 # Create room for the new data
 cursor.execute("""
     DROP TABLE IF EXISTS lookup_unit_attrs_api_new;
+""")
+cursor.close()
+cursor = connection.cursor()
+
+cursor.execute("""
     CREATE TABLE lookup_unit_attrs_api_new LIKE lookup_unit_attrs_api;
 """)
 cursor.close()

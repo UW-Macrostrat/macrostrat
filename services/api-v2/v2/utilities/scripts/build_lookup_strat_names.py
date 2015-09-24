@@ -20,6 +20,11 @@ filterwarnings("ignore", category = MySQLdb.Warning)
 # Copy structure to new table
 cursor.execute("""
     DROP TABLE IF EXISTS lookup_strat_names_new;
+""")
+cursor.close()
+cursor = connection.cursor()
+
+cursor.execute("""
     CREATE TABLE lookup_strat_names_new LIKE lookup_strat_names;
 """)
 cursor.close()
@@ -114,6 +119,27 @@ cursor.execute("""
   SET lsn.early_age = sub.early_age, lsn.late_age = sub.late_age
 """)
 connection.commit()
+
+# Populate rank_name
+cursor.execute("""
+    UPDATE lookup_strat_names_new SET rank_name =
+    CASE
+    	WHEN SUBSTRING_INDEX(strat_name, ' ', -1) IN ('Novaculite', 'Suite', 'Volcanics', 'Complex', 'Melange')
+        	THEN strat_name
+        WHEN LOWER(SUBSTRING_INDEX(strat_name, ' ', -1)) IN (SELECT lith FROM liths) AND rank = 'fm'
+        	THEN strat_name
+    	WHEN rank = 'SGp' THEN
+        	CONCAT(strat_name, ' Supergroup')
+    	WHEN rank = 'Gp' THEN
+        	CONCAT(strat_name, ' Group')
+        WHEN rank = 'Fm' THEN
+        	CONCAT(strat_name, ' Formation')
+        WHEN rank = 'Mbr' THEN
+        	CONCAT(strat_name, ' Member')
+        WHEN rank = 'Bed' THEN
+        	CONCAT(strat_name, ' Bed')
+    END
+""")
 
 
 # Populate canada_lexicon webkey from canada_lexicon

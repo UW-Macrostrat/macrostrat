@@ -219,6 +219,8 @@ if row['N'] != row['nn'] :
 
 # Out with the old, in with the new
 cursor.execute("DROP TABLE lookup_unit_intervals")
+cursor.close()
+cursor = connection.cursor()
 cursor.execute("RENAME TABLE lookup_unit_intervals_new TO lookup_unit_intervals")
-
+cursor.close()
 print "Done with lookup_unit_intervals"
