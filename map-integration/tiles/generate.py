@@ -131,13 +131,15 @@ def create_layer(scale) :
     return layer
 
 
-
-def setup():
+def clean_up_tmp():
     try:
         check_call("rm -rf tmp", shell=True)
     except CalledProcessError:
         print "Error deleting folder tmp"
         sys.exit()
+
+def setup():
+    clean_up_tmp()
 
     print "--- Building styles.mss ---"
     # First, rebuild the file `styles.mss` in the event any colors were changed
@@ -293,7 +295,7 @@ def clear_cache(bbox, scale):
 
 # Wrapper for tilestache-seed.py
 def seed_cache(bbox, scale):
-    print "Zooms - ", " ".join(scale_map[scale])
+    clean_up_tmp()
     cmd = "python TileStache/scripts/tilestache-list.py -b " + " ".join(bbox) + " " +  " ".join(scale_map[scale]) + " | split -l 2500 - tmp/list- && ls -1 tmp/list-* | xargs -n1 -P4 TileStache/scripts/tilestache-seed.py -q -c tilestache.cfg -l burwell_" + scale + " --tile-list"
 
     #print cmd
