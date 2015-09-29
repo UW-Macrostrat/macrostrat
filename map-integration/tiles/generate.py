@@ -133,6 +133,12 @@ def create_layer(scale) :
 
 
 def setup():
+    try:
+        check_call("rm -rf tmp", shell=True)
+    except CalledProcessError:
+        print "Error deleting folder tmp"
+        sys.exit()
+
     print "--- Building styles.mss ---"
     # First, rebuild the file `styles.mss` in the event any colors were changed
     cur.execute("""
@@ -170,7 +176,7 @@ def setup():
     with open("styles.mss", "w") as output:
         output.write(carto_css)
 
-    print "--- Building burwell_configured.mml ---"
+    print "--- Building project files ---"
 
 
     for scale in ["tiny", "small", "medium", "large"]:
@@ -229,7 +235,7 @@ def setup():
 
 def clean_up():
     try:
-        check_call("rm ./burwell_large.* && rm ./burwell_medium.* && ./rm burwell_small.* && rm ./burwell_tiny.* && rm -rf ./tmp")
+        check_call("rm burwell_large.* && rm burwell_medium.* && rm burwell_small.* && rm burwell_tiny.* && rm -rf tmp", shell=True)
     except CalledProcessError:
         print "Error cleaning up files"
         sys.exit()
@@ -287,7 +293,8 @@ def clear_cache(bbox, scale):
 
 # Wrapper for tilestache-seed.py
 def seed_cache(bbox, scale):
-    cmd = "python TileStache/scripts/tilestache-list.py -b " + " ".join(bbox) + " " +  " ".join(scale_map[scale]) + " | split -l 2500 - tmp/list- && ls -1 tmp/list-* | xargs -n1 -P4 TileStache/scripts/tilestache-seed.py -q -c tilestache.cfg -l burwell_" + scale + " --tile-list"
+    print "Zooms - ", " ".join(scale_map[scale])
+    cmd = "python TileStache/scripts/tilestache-list.py -b " + " ".join(bbox) + " " +  " ".join(scale_map[scale]) + " | split -l 2500 - tmp/list- && ls -1 tmp/list-* | xargs -n1 -P4 TileStache/scripts/tilestache-seed.py  -c tilestache.cfg -l burwell_" + scale + " --tile-list"
 
     #print cmd
     try:
