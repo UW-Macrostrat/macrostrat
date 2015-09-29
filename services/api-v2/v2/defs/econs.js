@@ -12,7 +12,7 @@ module.exports = function(req, res, next) {
   if ("all" in req.query) {
     // do nothing
   } else if (req.query.econ_id) {
-    sql += " WHERE id IN (:econ_ids)";
+    sql += " WHERE econs.id IN (:econ_ids)";
     params["econ_ids"] = larkin.parseMultipleIds(req.query.econ_id);
 
   } else if (req.query.econ){
