@@ -6,10 +6,18 @@ module.exports = function(req, res, next) {
     return larkin.info(req, res, next);
   }
 
-  var sql = "SELECT intervals.id AS int_id, interval_name AS name, interval_abbrev abbrev, age_top AS t_age, age_bottom AS b_age, interval_type AS int_type, interval_color AS color, GROUP_CONCAT(CONCAT(timescales.timescale, '--', timescales.id) SEPARATOR '|') AS timescales FROM intervals LEFT JOIN timescales_intervals ON interval_id=intervals.id LEFT JOIN timescales ON timescale_id=timescales.id ";
+  var sql = "SELECT intervals.id AS int_id, interval_name AS name, interval_abbrev abbrev, age_top AS t_age, age_bottom AS b_age, interval_type AS int_type, GROUP_CONCAT(CONCAT(timescales.timescale, '--', timescales.id) SEPARATOR '|') AS timescales,  ";
 
   var params = {},
       where = [];
+
+  if (req.query.true_colors) {
+    sql += "orig_color AS color ";
+  } else {
+    sql += "interval_color AS color ";
+  }
+
+  sql += "FROM intervals LEFT JOIN timescales_intervals ON interval_id=intervals.id LEFT JOIN timescales ON timescale_id=timescales.id ";
 
   if (req.query.timescale) {
     where.push(" timescale = :timescale");
