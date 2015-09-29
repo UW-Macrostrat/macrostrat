@@ -287,7 +287,7 @@ def clear_cache(bbox, scale):
 
 # Wrapper for tilestache-seed.py
 def seed_cache(bbox, scale):
-    cmd = "python TileStache/scripts/tilestache-list.py -b " + " ".join(bbox) + " " +  " ".join(scale_map[scale]) + " | split -l 500 - tmp/list- && ls -1 tmp/list-* | xargs -n1 -P4 TileStache/scripts/tilestache-seed.py -q -c tilestache.cfg -l burwell_" + scale + " --tile-list"
+    cmd = "python TileStache/scripts/tilestache-list.py -b " + " ".join(bbox) + " " +  " ".join(scale_map[scale]) + " | split -l 2500 - tmp/list- && ls -1 tmp/list-* | xargs -n1 -P4 TileStache/scripts/tilestache-seed.py -q -c tilestache.cfg -l burwell_" + scale + " --tile-list"
 
     #print cmd
     try:
