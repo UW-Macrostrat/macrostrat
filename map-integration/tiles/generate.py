@@ -229,7 +229,7 @@ def setup():
 
 def clean_up():
     try:
-        check_call("rm burwell_large.* && rm burwell_medium.* && rm burwell_small.* && rm burwell_tiny.* && rm -rf tmp")
+        check_call("rm ./burwell_large.* && rm ./burwell_medium.* && ./rm burwell_small.* && rm ./burwell_tiny.* && rm -rf ./tmp")
     except CalledProcessError:
         print "Error cleaning up files"
         sys.exit()
@@ -305,14 +305,14 @@ if arguments.all:
     print "Do everything"
 
     # For each scale...
-    for scale in ["tiny", "small"]:
+    for scale in ["tiny", "small", "medium", "large"]:
         # Get a list of groups and their bboxes
         groups = find_groups(scale)
         print "--- Seeding cache for " + scale + " ---"
 
         # For each group...
         for idx, group in enumerate(groups):
-            print "--- ", idx, " of ", len(groups), " ---"
+            print "--- ", (idx + 1), " of ", len(groups), " ---"
             # Clear cache
             #clear_cache(group["extent"], scale)
             # Reseed cache
