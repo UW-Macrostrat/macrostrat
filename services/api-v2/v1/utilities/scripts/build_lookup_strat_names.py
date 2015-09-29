@@ -25,7 +25,7 @@ cursor = connection.cursor()
 
 
 # Get all the strat names
-cursor.execute("SELECT * FROM strat_names order by strat_name asc;")
+cursor.execute("SELECT * FROM strat_names where rank!='' order by strat_name asc;")
 strat_names = cursor.fetchall()
 
 
@@ -35,7 +35,7 @@ for name in strat_names:
 	rank_name = name["rank"] + "_name"
 
 	cursor.execute("""
-		INSERT INTO lookup_strat_names_new (strat_name_id, strat_name, rank, """ + rank_id + """, """ + rank_name + """) 
+		INSERT INTO lookup_strat_names_new (strat_name_id, strat_name, rank, """ + rank_id + """, """ + rank_name + """)
 		VALUES (%s, %s, %s, %s, %s)
 	""", [name['id'], name['strat_name'], name['rank'], name['id'], name['strat_name']])
 	connection.commit()
@@ -46,13 +46,17 @@ for name in strat_names:
 	while has_parent:
 		# Get the parent of this unit
 		cursor.execute("""
-			SELECT this_name, strat_name, strat_names.id id, rank 
-			FROM strat_tree 
-			JOIN strat_names ON this_name = strat_names.id 
+			SELECT this_name, strat_name, strat_names.id id, rank
+			FROM strat_tree
+			JOIN strat_names ON this_name = strat_names.id
+<<<<<<< HEAD
+			WHERE that_name = %s and rel = 'parent' and rank!=''
+=======
 			WHERE that_name = %s and rel = 'parent'
+>>>>>>> master
 		""", [name_id])
 		parent = cursor.fetchone()
-		
+
 		if parent is None:
 			name_id = 0
 		else:
@@ -62,8 +66,8 @@ for name in strat_names:
 
 		if name_id > 0:
 			cursor.execute("""
-				UPDATE lookup_strat_names_new 
-				SET """ + parent_rank_id + """ = %s, """ + parent_rank_name + """ = %s 
+				UPDATE lookup_strat_names_new
+				SET """ + parent_rank_id + """ = %s, """ + parent_rank_name + """ = %s
 				WHERE strat_name_id = %s
 			""" , [parent['id'], parent['strat_name'], name['id']])
 			connection.commit()
@@ -72,13 +76,13 @@ for name in strat_names:
 
 
 # Populate `early_age` and `late_age`
-cursor.execute(""" 
+cursor.execute("""
 	UPDATE lookup_strat_names_new lsn
 	LEFT JOIN (
 	  SELECT strat_name_id, max(b_age) AS early_age, min(t_age) AS late_age
 	  FROM lookup_strat_names_new
 	  LEFT JOIN unit_strat_names USING (strat_name_id)
-	  LEFT JOIN lookup_unit_intervals USING (unit_id) 
+	  LEFT JOIN lookup_unit_intervals USING (unit_id)
 	  GROUP BY strat_name_id
 	) AS sub USING (strat_name_id)
 	SET lsn.early_age = sub.early_age, lsn.late_age = sub.late_age
@@ -92,14 +96,18 @@ connection.commit()
 
 
 # Validate results
+<<<<<<< HEAD
+cursor.execute("SELECT count(*) N, (SELECT count(*) from lookup_strat_names_new) nn from strat_names WHERE rank!=''")
+=======
 cursor.execute("SELECT count(*) N, (SELECT count(*) from lookup_strat_names_new) nn from strat_names")
+>>>>>>> master
 row = cursor.fetchone()
 if row['N'] != row['nn'] :
 	print "ERROR: inconsistent strat_name count in lookup table"
 
 
 # Populate the fields `parent` and `tree`
-cursor.execute(""" 
+cursor.execute("""
 	UPDATE lookup_strat_names_new
 	SET parent = CASE
 	  WHEN bed_id > 0 AND strat_name_id != bed_id THEN bed_id
@@ -128,7 +136,3 @@ cursor.close()
 
 
 print "Done with lookup_strat_names table"
-
-
-
-

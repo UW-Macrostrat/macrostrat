@@ -1,0 +1,24 @@
+{
+  "name": "macrostrat-api-v2",
+  "version": "1.0.0",
+  "description": "v2",
+  "scripts": {
+    "test": "mocha",
+    "build-defs": "node utilities/getOutputFields.js",
+    "build-changes": "grip CHANGELOG.md --export changes.html"
+  },
+  "dependencies": {
+    "async": "^1.2.x",
+    "csv-express": "^1.0.0",
+    "dbgeo": "^0.1.x",
+    "geojson-precision": "^0.4.0",
+    "multiline": "^1.0.2",
+    "mysql": "2.7.x",
+    "pg": "^4.4.0",
+    "turf-area": "^1.1.1",
+    "turf-buffer": "^1.0.4",
+    "turf-point": "^0.1.6",
+    "underscore": "^1.8.3",
+    "wellknown": "^0.3.0"
+  }
+}
