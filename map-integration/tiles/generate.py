@@ -324,13 +324,13 @@ if arguments.all:
         print "--- Seeding cache for " + scale + " ---"
         # Chop it up
         print "---- 1 ----"
-        seed_cache("-89 -189 0 0", scale)
+        seed_cache("-89 -179 0 0", scale)
         print "---- 2 ----"
-        seed_cache("0 -189 89 0", scale)
+        seed_cache("0 -179 89 0", scale)
         print "---- 3 ----"
-        seed_cache("-89 0 0 189", scale)
+        seed_cache("-89 0 0 179", scale)
         print "---- 4 ----"
-        seed_cache("0 0 89 189", scale)
+        seed_cache("0 0 89 179", scale)
 
         # For each group...
         #for idx, group in enumerate(groups):
