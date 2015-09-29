@@ -25,6 +25,12 @@ parser.add_argument("--all", dest="all",
 
 arguments = parser.parse_args()
 
+# Burwell_tiny = tiny [0, 1, 2, 3, 4]
+# Burwell_small = small, medium, large [5, 6]
+# Burwell_medium = medium, small, large [7, 8, 9, 10, 11]
+# Burwell_large = large, medium, small [12, 13]
+
+# For each, build a new project file, using the same stylesheet
 
 def return_help():
     parser.print_help()
@@ -51,6 +57,81 @@ scale_map = {
   "large": ["12", "13"]
 }
 
+# This is the template for each layer
+layer_template = {
+    "geometry": "polygon",
+    "extent": [],
+    "Datasource": {
+        "type": "postgis",
+        "table": "",
+        "key_field": "map_id",
+        "geometry_field": "geom",
+        "extent_cache": "auto",
+        "extent": "",
+        "host": "localhost",
+        "port": "5432",
+        "user": "john",
+        "dbname": "burwell"
+    },
+    "id": "",
+    "class": "burwell",
+    "srs-name": "WGS84",
+    "srs": "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs",
+    "advanced": {},
+    "name": "",
+    "minZoom": "",
+    "maxZoom": ""
+}
+
+# Instantiate the project template that will hold each layer
+burwell = {
+  "bounds": [-89,-179,89,179],
+  "center": [0, 0, 1],
+  "format": "png8",
+  "interactivity": False,
+  "minzoom": 0,
+  "maxzoom": 13,
+  "srs": "+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0.0 +k=1.0 +units=m +nadgrids=@null +wktext +no_defs +over",
+  "Stylesheet": [
+    "styles.mss"
+  ],
+  "Layer": [],
+  "scale": 1,
+  "metatile": 2,
+  "name": "burwell",
+  "description": "burwell",
+  "attribution": "Data providers, UW-Macrostrat, John J Czaplewski <jczaplew@gmail.com>"
+}
+
+def create_layer(scale) :
+    name = "lookup_" + scale
+
+    # ...find the extent and the centroid
+    cur.execute("SELECT ST_Extent(s.geom), ST_AsText(ST_Centroid(ST_Extent(geom))) FROM %(table)s x JOIN maps.%(scale)s s ON s.map_id = x.map_id", {"table": AsIs(name), "scale": AsIs(scale)})
+    attrs = cur.fetchone()
+
+    # ...create a new layer template
+    layer = copy.deepcopy(layer_template)
+
+    # ...clean up the extent and centroid from the above query
+    extent = attrs[0].replace(" ", ",").replace("BOX(", "").replace(")", "")
+    center = attrs[1].replace("POINT(", "").replace(")", "")
+
+    # ...fill in the template
+    layer["bounds"] = [float(coord) for coord in extent.split(",")]
+    layer["center"] = [float(coord) for coord in center.split(" ")].append(3)
+    layer["extent"] = [-179, -89, 179, 89]
+    layer["Datasource"]["extent"] = "-179,-89,179,89"
+    layer["Datasource"]["table"] = "(SELECT x.map_id, x.group_id, x.color, geom FROM %s x JOIN maps.%s s ON s.map_id = x.map_id) subset" % (name, scale)
+    layer["id"] = "burwell_" + scale
+    layer["name"] = "burwell_" + scale
+    layer["minZoom"] = min(scale_map[scale])
+    layer["maxZoom"] = max(scale_map[scale])
+
+    return layer
+
+
+
 def setup():
     print "--- Building styles.mss ---"
     # First, rebuild the file `styles.mss` in the event any colors were changed
@@ -69,31 +150,6 @@ def setup():
       line-color: #aaa;
       line-width: 0.0;
     }
-    #lookup_tiny[zoom>4] {
-      polygon-opacity: 0;
-      line-opacity: 0;
-    }
-    #lookup_small[zoom<5] {
-      polygon-opacity: 0;
-      line-opacity: 0;
-    }
-    #lookup_small[zoom>6] {
-      polygon-opacity: 0;
-      line-opacity: 0;
-    }
-    #lookup_medium[zoom<=6]{
-      polygon-opacity: 0;
-      line-opacity: 0;
-    }
-    #lookup_medium[zoom>11] {
-      polygon-opacity: 0;
-      line-opacity: 0;
-    }
-    #lookup_large[zoom<12] {
-      polygon-opacity: 0;
-      line-opacity: 0;
-    }
-
     .burwell[color="null"] {
        polygon-fill: #777777;
     }
@@ -116,92 +172,67 @@ def setup():
 
     print "--- Building burwell_configured.mml ---"
 
-    # This is the template for each layer
-    layer_template = {
-        "geometry": "polygon",
-        "extent": [],
-        "Datasource": {
-            "type": "postgis",
-            "table": "",
-            "key_field": "map_id",
-            "geometry_field": "geom",
-            "extent_cache": "auto",
-            "extent": "",
-            "host": "localhost",
-            "port": "5432",
-            "user": "john",
-            "dbname": "burwell"
-        },
-        "id": "",
-        "class": "burwell",
-        "srs-name": "WGS84",
-        "srs": "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs",
-        "advanced": {},
-        "name": "",
-        "minZoom": "",
-        "maxZoom": ""
-    }
 
-    # Instantiate the project template that will hold each layer
-    burwell = {
-      "bounds": [-180, -90, 180, 90],
-      "center": [0, 0, 1],
-      "format": "png8",
-      "interactivity": False,
-      "minzoom": 0,
-      "maxzoom": 13,
-      "srs": "+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0.0 +k=1.0 +units=m +nadgrids=@null +wktext +no_defs +over",
-      "Stylesheet": [
-        "styles.mss"
-      ],
-      "Layer": [],
-      "scale": 1,
-      "metatile": 2,
-      "name": "burwell",
-      "description": "burwell",
-      "attribution": "Data providers, UW-Macrostrat, John J Czaplewski <jczaplew@gmail.com>"
-    }
-
-
-    # For each scale...
     for scale in ["tiny", "small", "medium", "large"]:
-        name = "lookup_" + scale
+        if scale == "tiny":
+            project = copy.deepcopy(burwell)
+            project["minzoom"] = min(scale_map[scale])
+            project["maxzoom"] = max(scale_map[scale])
+            layer = create_layer("tiny")
+            project["Layer"].append(layer)
+            with open("burwell_tiny.mml", "wb") as output:
+                json.dump(project, output, indent=2)
 
-        # ...find the extent and the centroid
-        cur.execute("SELECT ST_Extent(s.geom), ST_AsText(ST_Centroid(ST_Extent(geom))) FROM %(table)s x JOIN maps.%(scale)s s ON s.map_id = x.map_id", {"table": AsIs(name), "scale": AsIs(scale)})
-        attrs = cur.fetchone()
+        elif scale == "small":
+            project = copy.deepcopy(burwell)
+            project["minzoom"] = min(scale_map[scale])
+            project["maxzoom"] = max(scale_map[scale])
+            for each in ["tiny", "large", "medium", "small"]:
+                layer = create_layer(each)
+                project["Layer"].append(layer)
+            with open("burwell_small.mml", "wb") as output:
+                json.dump(project, output, indent=2)
 
-        # ...create a new layer template
-        layer = copy.deepcopy(layer_template)
+        elif scale == "medium":
+            project = copy.deepcopy(burwell)
+            project["minzoom"] = min(scale_map[scale])
+            project["maxzoom"] = max(scale_map[scale])
+            for each in ["large", "small", "medium"]:
+                layer = create_layer(each)
+                project["Layer"].append(layer)
+            with open("burwell_medium.mml", "wb") as output:
+                json.dump(project, output, indent=2)
 
-        # ...clean up the extent and centroid from the above query
-        extent = attrs[0].replace(" ", ",").replace("BOX(", "").replace(")", "")
-        center = attrs[1].replace("POINT(", "").replace(")", "")
+        elif scale == "large":
+            project = copy.deepcopy(burwell)
+            project["minzoom"] = min(scale_map[scale])
+            project["maxzoom"] = max(scale_map[scale])
+            for each in ["medium", "large"]:
+                layer = create_layer(each)
+                project["Layer"].append(layer)
+            with open("burwell_large.mml", "wb") as output:
+                json.dump(project, output, indent=2)
 
-        # ...fill in the template
-        layer["bounds"] = [float(coord) for coord in extent.split(",")]
-        layer["center"] = [float(coord) for coord in center.split(" ")].append(3)
-        layer["extent"] = [float(coord) for coord in extent.split(",")]
-        layer["Datasource"]["extent"] = extent
-        layer["Datasource"]["table"] = "(SELECT x.map_id, x.group_id, x.color, geom FROM %s x JOIN maps.%s s ON s.map_id = x.map_id) subset" % (name, scale)
-        layer["id"] = name
-        layer["name"] = name
-        layer["minZoom"] = min(scale_map[scale])
-        layer["maxZoom"] = max(scale_map[scale])
+        else:
+            print "WTF?"
 
-        # ...and append the layer to the project
-        burwell["Layer"].append(layer)
 
-    # Dump the resultant configuration file to a new project file
-    with open("burwell_configured.mml", "wb") as output:
-        json.dump(burwell, output, indent=2)
+    # Build mapnik files
+    print "--- Building Mapnik config files with kosmtik ---"
 
-    print "--- Building burwell_configured.xml with kosmtik---"
+    for scale in ["tiny", "small", "medium", "large"]:
+        # Use kosmtik top convert the project file to a Mapnik XML file that can be read by TileStache
+        call(["node", "node_modules/kosmtik/index.js", "export", "burwell_" + scale + ".mml", "--format", "xml", "--output", "burwell_" + scale + ".xml", "--minZoom", min(scale_map[scale]), "--max_zoom", max(scale_map[scale])])
 
-    # Use kosmtik top convert the project file to a Mapnik XML file that can be read by TileStache
-    call(["node", "node_modules/kosmtik/index.js", "export", "burwell_configured.mml", "--format", "xml", "--output", "burwell_configured.xml", "--minZoom", "1", "--max_zoom", "13"])
+        #call(["cp", "burwell_" + scale + ".xml", "TileStache/burwell_" + scale + ".xml"])
 
-    call(["cp", "burwell_configured.xml", "TileStache/burwell_configured.xml"])
+
+def clean_up():
+    try:
+        check_call("rm ./burwell_large.* && rm ./burwell_medium.* && ./rm burwell_small.* && rm ./burwell_tiny.* && rm -rf ./tmp")
+    except CalledProcessError:
+        print "Error cleaning up files"
+        sys.exit()
 
 
 def find_groups(scale, source_id=None):
@@ -246,16 +277,17 @@ def find_groups(scale, source_id=None):
 
 
 # Wrapper for tilestache-clean.py
+'''
 def clear_cache(bbox, scale):
     print "--- Cleaning cache ---"
     cmd = ["python", "TileStache/scripts/tilestache-clean.py", "-q", "-b", bbox[0], bbox[1], bbox[2], bbox[3], "-c", "tilestache.cfg", "-l", ("lookup_" + scale)]
     cmd.extend(scale_map[scale])
     call(cmd)
+'''
 
 # Wrapper for tilestache-seed.py
 def seed_cache(bbox, scale):
-    print "--- Seeding cache ---"
-    cmd = "python TileStache/scripts/tilestache-list.py -b " + " ".join(bbox) + " " + " ".join(scale_map[scale]) + "| split -l 5    00 - tmp/list- && ls -1 tmp/list-* | xargs -n1 -P4 TileStache/scripts/tilestache-seed.py -c TileStache/tilestache.cfg -l burwell --tile-list"
+    cmd = "python TileStache/scripts/tilestache-list.py -b " + " ".join(bbox) + " " +  " ".join(scale_map[scale]) + " | split -l 500 - tmp/list- && ls -1 tmp/list-* | xargs -n1 -P4 TileStache/scripts/tilestache-seed.py -q -c tilestache.cfg -l burwell_" + scale + " --tile-list"
 
     #print cmd
     try:
@@ -276,12 +308,23 @@ if arguments.all:
     for scale in ["tiny", "small", "medium", "large"]:
         # Get a list of groups and their bboxes
         groups = find_groups(scale)
+        print "--- Seeding cache for " + scale + " ---"
+
         # For each group...
-        for group in groups:
+        for idx, group in enumerate(groups):
+            print "--- ", (idx + 1), " of ", len(groups), " ---"
             # Clear cache
-            clear_cache(group["extent"], scale)
+            #clear_cache(group["extent"], scale)
             # Reseed cache
             seed_cache(group["extent"], scale)
+
+        try:
+            check_call("cp -R TileStache/tiles/burwell_" + scale + "/* TileStache/tiles/burwell", shell=True)
+        except CalledProcessError:
+            print "Error moving tiles to burwell directory @ ", scale
+            sys.exit()
+
+    clean_up()
 
 
 

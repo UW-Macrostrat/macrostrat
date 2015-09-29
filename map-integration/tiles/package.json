@@ -10,7 +10,7 @@
   "license": "CC0",
   "engine": "node 0.12.x",
   "dependencies": {
-    "kosmtik": "0.0.11",
+    "kosmtik": "^0.0.11",
     "kosmtik-mbtiles-export": "0.0.3",
     "kosmtik-tiles-export": "0.0.4",
     "mbtile-server": "git+https://github.com/chelm/mbtiles-server.git"
