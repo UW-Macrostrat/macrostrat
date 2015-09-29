@@ -497,6 +497,7 @@
         "t_age": "integer, a late age in Ma",
         "b_age": "integer, an early age in Ma",
         "name": "string, interval name",
+        "true_colors": "boolean, returns original international time scale colors",
         "rule": "if 'loose' provided along with an early_age and late_age, changes the querying of intervals",
         "age": "integer, an age in Ma - will find all intervals that overlap with this age",
         "timescale": "string, a valid timescale name as defined in /api/v2/defs/timescales",

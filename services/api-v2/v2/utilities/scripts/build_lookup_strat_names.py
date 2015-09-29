@@ -128,6 +128,8 @@ cursor.execute("""
         	THEN strat_name
         WHEN LOWER(SUBSTRING_INDEX(strat_name, ' ', -1)) IN (SELECT lith FROM liths) AND rank = 'fm'
         	THEN strat_name
+         WHEN SUBSTRING_INDEX(strat_name, ' ', -1) = 'Beds' AND rank = 'Bed'
+            THEN strat_name
     	WHEN rank = 'SGp' THEN
         	CONCAT(strat_name, ' Supergroup')
     	WHEN rank = 'Gp' THEN
