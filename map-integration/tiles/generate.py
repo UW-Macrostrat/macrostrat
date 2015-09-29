@@ -300,7 +300,7 @@ def clear_cache(bbox, scale):
 def seed_cache(bbox, scale):
     check_call("rm -rf tmp/*", shell=True)
 
-    cmd = "python TileStache/scripts/tilestache-list.py -b -89 -189 89 189 " +  " ".join(scale_map[scale]) + " | split -l 2500 - tmp/list- && ls -1 tmp/list-* | xargs -n1 -P" + str(cpus) + " TileStache/scripts/tilestache-seed.py -q -c tilestache.cfg -l burwell_" + scale + " --tile-list"
+    cmd = "python TileStache/scripts/tilestache-list.py -b " + bbox + " "  +  " ".join(scale_map[scale]) + " | split -l 2500 - tmp/list- && ls -1 tmp/list-* | xargs -n1 -P" + str(cpus) + " TileStache/scripts/tilestache-seed.py -q -c tilestache.cfg -l burwell_" + scale + " --tile-list"
 
     #print cmd
     try:
@@ -322,8 +322,16 @@ if arguments.all:
         # Get a list of groups and their bboxes
         #groups = find_groups(scale)
         print "--- Seeding cache for " + scale + " ---"
+        # Chop it up
+        print "---- 1 ----"
+        seed_cache("-89 -189 0 0", scale)
+        print "---- 2 ----"
+        seed_cache("0 -189 89 0", scale)
+        print "---- 3 ----"
+        seed_cache("-89 0 0 189", scale)
+        print "---- 4 ----"
+        seed_cache("0 0 89 189", scale)
 
-        seed_cache([-89, -189, 89, 189],scale)
         # For each group...
         #for idx, group in enumerate(groups):
         #    print "--- ", (idx + 1), " of ", len(groups), " ---"
