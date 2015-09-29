@@ -320,16 +320,17 @@ if arguments.all:
     # For each scale...
     for scale in ["tiny", "small", "medium", "large"]:
         # Get a list of groups and their bboxes
-        groups = find_groups(scale)
+        #groups = find_groups(scale)
         print "--- Seeding cache for " + scale + " ---"
 
+        seed_cache([-89, -189, 89, 189],scale)
         # For each group...
-        for idx, group in enumerate(groups):
-            print "--- ", (idx + 1), " of ", len(groups), " ---"
+        #for idx, group in enumerate(groups):
+        #    print "--- ", (idx + 1), " of ", len(groups), " ---"
             # Clear cache
             #clear_cache(group["extent"], scale)
             # Reseed cache
-            seed_cache(group["extent"], scale)
+        #    seed_cache(group["extent"], scale)
 
         try:
             check_call("cp -R TileStache/tiles/burwell_" + scale + "/* TileStache/tiles/burwell", shell=True)
