@@ -242,8 +242,10 @@ def refresh(scale, source_id):
 if len(arguments.refresh) == 1:
     if arguments.refresh[0] == "all":
         for scale in valid_scales:
+            print "--- Working on ", scale, " ---"
             source_ids = find_sources(scale)
-            for source in source_ids:
+            for idx, source in enumerate(source_ids):
+                print "--- ", idx, " of ", len(source_ids), " ---"
                 refresh(scale, source)
     else :
         scale = find_scale(arguments.refresh[0])
