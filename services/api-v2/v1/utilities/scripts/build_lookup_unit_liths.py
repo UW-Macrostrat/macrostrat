@@ -37,8 +37,8 @@ cursor.execute("CREATE TABLE lookup_unit_liths_new LIKE lookup_unit_liths")
 # initial query for simple lith summary
 cursor.execute("INSERT INTO lookup_unit_liths_new (unit_id,lith_short) SELECT unit_id, GROUP_CONCAT(lith,' ',comp_prop SEPARATOR '|') FROM unit_liths JOIN liths on lith_id=liths.id GROUP BY unit_id")
 
-# build the long lithology summary 
-cursor.execute("TRUNCATE TABLE temp_liths")
+# build the long lithology summary
+cursor.execute("CREATE TABLE temp_liths (unit_id integer, lith_atts varchar(255), lith varchar(100), comp_prop decimal(5,4))")
 cursor.execute("INSERT INTO temp_liths SELECT unit_id, GROUP_CONCAT(lith_att SEPARATOR ' '), lith, comp_prop FROM unit_liths LEFT JOIN unit_liths_atts ON unit_lith_id=unit_liths.id LEFT JOIN lith_atts ON lith_att_id=lith_atts.id LEFT JOIN liths on lith_id=liths.id GROUP BY unit_liths.id")
 cursor.execute("UPDATE lookup_unit_liths_new JOIN (SELECT unit_id, GROUP_CONCAT(lith_atts,' ',lith,' ',comp_prop SEPARATOR '|') ee FROM temp_liths WHERE lith_atts IS NOT NULL GROUP BY unit_id) oo ON oo.unit_id=lookup_unit_liths_new.unit_id SET lith_long=oo.ee")
 cursor.execute("UPDATE lookup_unit_liths_new JOIN (SELECT unit_id, GROUP_CONCAT(lith,' ',comp_prop SEPARATOR '|') ee FROM temp_liths WHERE lith_atts IS NULL GROUP BY unit_id) oo ON oo.unit_id=lookup_unit_liths_new.unit_id SET lith_long=oo.ee")
@@ -58,14 +58,11 @@ if row['N'] != row['nn'] :
 
 # Out with the old, in with the new
 cursor.execute("DROP TABLE lookup_unit_liths")
+cursor.close()
+cursor = connection.cursor()
+cursor.execute("DROP TABLE temp_liths")
+cursor.close()
+cursor = connection.cursor()
 cursor.execute("RENAME TABLE lookup_unit_liths_new TO lookup_unit_liths")
 
 print "Done with lookup_unit_liths table"
-
-
-
-
-
-
-
-
