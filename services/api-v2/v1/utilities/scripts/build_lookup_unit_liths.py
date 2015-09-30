@@ -32,6 +32,10 @@ for x in xrange(0,numrows):
 	cursor.execute("UPDATE unit_liths set comp_prop=%s WHERE unit_id=%s and dom='sub'", [sub_p,row[x]['unit_id']])
 
 # Create new table
+cursor.execute("DROP TABLE IF EXISTS lookup_unit_liths_new")
+cursor.close()
+
+cursor = connection.cursor()
 cursor.execute("CREATE TABLE lookup_unit_liths_new LIKE lookup_unit_liths")
 
 # initial query for simple lith summary
