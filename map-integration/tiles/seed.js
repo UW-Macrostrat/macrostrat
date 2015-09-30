@@ -94,22 +94,6 @@ var scaleGroups = {
   "large": ["medium", "large"]
 }
 
-var coords = {
-  0: [],
-  1: [],
-  2: [],
-  3: [],
-  4: [],
-  5: [],
-  6: [],
-  7: [],
-  8: [],
-  9: [],
-  10: [],
-  11: [],
-  12: []
-}
-
 //var scales = ["tiny", "small", "medium", "large"];
 var scales = ["tiny"];
 
@@ -119,6 +103,8 @@ async.eachLimit(scales, 1, function(scale, scaleCallback) {
   // These are source-specific additions to land
   var extras;
 
+  var coords = {}
+
   async.series([
     function(callback) {
       queryPg("burwell", "SELECT ST_AsGeoJSON(geom, 4) AS geometry FROM public.land", [], function(error, data) {
@@ -127,6 +113,8 @@ async.eachLimit(scales, 1, function(scale, scaleCallback) {
         }
 
         async.each(scaleHash[scale], function(z, zcallback) {
+          coords[z] = [];
+
           async.each(data.rows, function(i, icallback) {
             var coverage = []
 
