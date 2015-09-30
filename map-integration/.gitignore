@@ -13,3 +13,4 @@ tiles/node_modules
 
 tiles/:memory
 
+tiles/credentials.js

@@ -10,9 +10,17 @@
   "license": "CC0",
   "engine": "node 0.12.x",
   "dependencies": {
+    "async": "^1.4.2",
     "kosmtik": "^0.0.11",
     "kosmtik-mbtiles-export": "0.0.3",
     "kosmtik-tiles-export": "0.0.4",
-    "mbtile-server": "git+https://github.com/chelm/mbtiles-server.git"
+    "mbtile-server": "git+https://github.com/chelm/mbtiles-server.git",
+    "pg": "^4.4.2",
+    "tile-cover": "^3.0.1",
+    "tilestrata": "^1.9.0",
+    "tilestrata-dependency": "^0.4.0",
+    "tilestrata-disk": "^0.4.1",
+    "tilestrata-mapnik": "^0.2.3",
+    "tilestrata-sharp": "^0.2.0"
   }
 }
