@@ -137,7 +137,7 @@ async.eachLimit(scales, 1, function(scale, scaleCallback) {
         SELECT ST_AsGeoJSON((ST_Dump(ST_MakeValid(geometry))).geom, 4) geometry FROM ( \
         SELECT ST_Simplify(((st_dump(geom)).geom), 1) AS geometry FROM \
         (SELECT \
-          ST_Intersection(ST_SetSRID(ST_GeomFromGeoJSON('{\"type\":\"Polygon\",\"coordinates\":[[[-179,-80],[-179,80],[179,80],[179,-80],[-179,-80]]] }'), 4326), \
+          ST_Intersection(ST_SetSRID(ST_GeomFromGeoJSON('{\"type\":\"Polygon\",\"coordinates\":[[[-179,-85],[-179,85],[179,85],[179,-85],[-179,-85]]] }'), 4326), \
           ST_Difference( \
             (SELECT ST_Buffer(ST_Collect(ref_geom),0) FROM maps.sources WHERE sources.source_id IN (SELECT source_id FROM maps.sources WHERE scale = ANY($1))), \
             (SELECT ST_Buffer(ST_Collect(geom),0) FROM public.land) \
