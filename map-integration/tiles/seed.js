@@ -135,7 +135,7 @@ async.eachLimit(scales, 1, function(scale, scaleCallback) {
     function(callback) {
       queryPg("burwell", "\
         SELECT geometry FROM ( \
-        SELECT ST_AsGeoJSON(ST_Simplify(((st_dump(geom)).geom), 1), 4) AS geometry FROM \
+        SELECT ST_AsGeoJSON(ST_MakeValid(ST_Simplify(((st_dump(geom)).geom), 1)), 4) AS geometry FROM \
         (SELECT \
           ST_Difference( \
             (SELECT ST_Buffer(ST_Collect(ref_geom),0) FROM maps.sources WHERE sources.source_id IN (SELECT source_id FROM maps.sources WHERE scale = ANY($1))), \
@@ -157,13 +157,13 @@ async.eachLimit(scales, 1, function(scale, scaleCallback) {
         var newCoords = [];
 
         for (var i = 0; i < extras.rows.length; i++) {
-          console.log(i, extras.rows[i].geometry.length);
+          console.log(i, extras.rows[i].geometry)
           var coverage = cover.tiles(JSON.parse(extras.rows[i].geometry), {min_zoom: z, max_zoom: z});
           console.log(i, extras.rows[i].geometry.length, coverage.length);
 
           if (coverage.length && coverage.length < 100000) {
             for (var q = 0; q < coverage.length; q++) {
-              console.log(q, coverage[q]);
+            //  console.log(q, coverage[q]);
               newCoords.push(coverage[q]);
             }
           }
