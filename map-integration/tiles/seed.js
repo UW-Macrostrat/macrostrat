@@ -116,9 +116,7 @@ async.eachLimit(scales, 1, function(scale, scaleCallback) {
           coords[z] = [];
 
           async.each(data.rows, function(i, icallback) {
-            var coverage = []
-
-            coverage = cover.tiles(JSON.parse(i.geometry), {min_zoom: z, max_zoom: z});
+            var coverage = cover.tiles(JSON.parse(i.geometry), {min_zoom: z, max_zoom: z});
             if (coverage.length && coverage.length < 100000) {
               coords[z].push.apply(coords[z], coverage)
               icallback(null);
@@ -159,7 +157,12 @@ async.eachLimit(scales, 1, function(scale, scaleCallback) {
         var newCoords = [];
 
         for (var i = 0; i < extras.rows.length; i++) {
-          newCoords.push.apply(newCoords, (cover.tiles(JSON.parse(extras.rows[i].geometry), {min_zoom: z, max_zoom: z})));
+          var coverage = cover.tiles(JSON.parse(extras.rows[i].geometry), {min_zoom: z, max_zoom: z});
+
+          if (coverage.length && coverage.length < 100000) {
+            newCoords.push.apply(newCoords, coverage)
+          }
+          //newCoords.push.apply(newCoords, (cover.tiles(JSON.parse(extras.rows[i].geometry), {min_zoom: z, max_zoom: z})));
         }
         //console.log(z, coords[z].length)
 
