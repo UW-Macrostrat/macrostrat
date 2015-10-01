@@ -134,8 +134,8 @@ async.eachLimit(scales, 1, function(scale, scaleCallback) {
 
     function(callback) {
       queryPg("burwell", "\
-        SELECT geometry FROM ( \
-        SELECT ST_AsGeoJSON(ST_MakeValid(ST_Simplify(((st_dump(geom)).geom), 1)), 4) AS geometry FROM \
+        SELECT ST_AsGeoJSON((ST_Dump(ST_MakeValid(geometry))).geom, 4) geometry FROM ( \
+        SELECT ST_Simplify(((st_dump(geom)).geom), 1) AS geometry FROM \
         (SELECT \
           ST_Difference( \
             (SELECT ST_Buffer(ST_Collect(ref_geom),0) FROM maps.sources WHERE sources.source_id IN (SELECT source_id FROM maps.sources WHERE scale = ANY($1))), \
