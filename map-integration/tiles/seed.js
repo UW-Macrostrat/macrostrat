@@ -80,10 +80,10 @@ function queryPg(db, sql, params, callback, send, res, format, next) {
 }
 
 var scaleHash = {
-  "tiny": [0, 1, 2, 3, 4],
-  "small": [5, 6],
-  "medium": [7, 8, 9, 10],
-  "large": [12, 13]
+  "tiny": [0, 1, 2, 3],
+  "small": [4, 5],
+  "medium": [6, 7, 8, 9, 10],
+  "large": [11, 12, 13]
 }
 
 
@@ -95,7 +95,7 @@ var scaleGroups = {
 }
 
 //var scales = ["tiny", "small", "medium", "large"];
-var scales = ["small"];
+var scales = ["tiny", "small"];
 
 async.eachLimit(scales, 1, function(scale, scaleCallback) {
   console.log("Working on ", scale);

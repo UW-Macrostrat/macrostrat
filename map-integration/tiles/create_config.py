@@ -7,14 +7,6 @@ from subprocess import call, check_call, CalledProcessError
 import subprocess
 
 
-# Burwell_tiny = tiny [0, 1, 2, 3, 4]
-# Burwell_small = small, medium, large [5, 6]
-# Burwell_medium = medium, small, large [7, 8, 9, 10, 11]
-# Burwell_large = large, medium, small [12, 13]
-
-# For each, build a new project file, using the same stylesheet
-
-
 # Connect to the database
 try:
   conn = psycopg2.connect(dbname="burwell", user="john", host="localhost", port="5432")
@@ -27,10 +19,10 @@ cur = conn.cursor()
 
 # Which zoom levels correspond to which map scales
 scale_map = {
-  "tiny": ["0", "1", "2", "3", "4"],
-  "small": ["5", "6"],
-  "medium": ["7", "8", "9", "10", "11"],
-  "large": ["12", "13"]
+  "tiny": ["0", "1", "2", "3"],
+  "small": ["4", "5"],
+  "medium": ["6", "7", "8", "9", "10"],
+  "large": ["11", "12", "13"]
 }
 
 # This is the template for each layer
