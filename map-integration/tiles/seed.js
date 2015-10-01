@@ -146,7 +146,7 @@ async.eachLimit(scales, 1, function(scale, scaleCallback) {
         if (error) {
           console.log(error);
         }
-        console.log(data);
+
         extras = data;
         callback(null)
       });
