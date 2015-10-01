@@ -163,7 +163,7 @@ async.eachLimit(scales, 1, function(scale, scaleCallback) {
 
           if (coverage.length && coverage.length < 100000) {
             for (var q = 0; q < coverage.length; q++) {
-              console.log(q);
+              console.log(q, coverage[q]);
               newCoords.push(coverage[q]);
             }
           }
