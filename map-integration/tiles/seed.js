@@ -157,9 +157,10 @@ async.eachLimit(scales, 1, function(scale, scaleCallback) {
         var newCoords = [];
 
         for (var i = 0; i < extras.rows.length; i++) {
-          console.log(i)
-          var coverage = cover.tiles(JSON.parse(extras.rows[i].geometry), {min_zoom: z, max_zoom: z});
 
+          var coverage = cover.tiles(JSON.parse(extras.rows[i].geometry), {min_zoom: z, max_zoom: z});
+          console.log(i, extras.rows[i].length, coverage.length);
+          
           if (coverage.length && coverage.length < 100000) {
             for (var q = 0; q < coverage.length; q++) {
               newCoords.push(coverage[q]);
