@@ -33,7 +33,7 @@ strata.layer("burwell")
 
 api.use(tilestrata.middleware({
   server: strata,
-  prefix: "/tiles"
+  prefix: "/maps"
 }))
 
 api.acceptedFormats = {
