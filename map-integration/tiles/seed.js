@@ -95,7 +95,7 @@ var scaleGroups = {
 }
 
 //var scales = ["tiny", "small", "medium", "large"];
-var scales = ["tiny"];
+var scales = ["small"];
 
 async.eachLimit(scales, 1, function(scale, scaleCallback) {
   console.log("Working on ", scale);
@@ -157,14 +157,17 @@ async.eachLimit(scales, 1, function(scale, scaleCallback) {
         var newCoords = [];
 
         for (var i = 0; i < extras.rows.length; i++) {
+          console.log(i)
           var coverage = cover.tiles(JSON.parse(extras.rows[i].geometry), {min_zoom: z, max_zoom: z});
 
           if (coverage.length && coverage.length < 100000) {
-            newCoords.push.apply(newCoords, coverage)
+            for (var q = 0; q < coverage.length; q++) {
+              newCoords.push(coverage[q]);
+            }
           }
           //newCoords.push.apply(newCoords, (cover.tiles(JSON.parse(extras.rows[i].geometry), {min_zoom: z, max_zoom: z})));
         }
-        //console.log(z, coords[z].length)
+        console.log(z, coords[z].length)
 
         var allTiles = coords[z].concat(newCoords);
         var foundTiles = {}
