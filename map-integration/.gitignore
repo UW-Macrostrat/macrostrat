@@ -10,7 +10,7 @@ unprojected.*
 
 node_modules
 tiles/node_modules
-
+tiles/tiles
 tiles/:memory
-
+tiles/*.xml
 tiles/credentials.js

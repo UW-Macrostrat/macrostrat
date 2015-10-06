@@ -159,19 +159,15 @@ async.eachLimit(scales, 1, function(scale, scaleCallback) {
         var newCoords = [];
 
         for (var i = 0; i < extras.rows.length; i++) {
-          //console.log(i, extras.rows[i].geometry)
-          var coverage = cover.tiles(JSON.parse(extras.rows[i].geometry), {min_zoom: z, max_zoom: z});
-        //  console.log(i, extras.rows[i].geometry.length, coverage.length);
 
-          if (coverage.length && coverage.length < 100000) {
+          var coverage = cover.tiles(JSON.parse(extras.rows[i].geometry), {min_zoom: z, max_zoom: z});
+
+          if (coverage.length && coverage.length < 200000) {
             for (var q = 0; q < coverage.length; q++) {
-            //  console.log(q, coverage[q]);
               newCoords.push(coverage[q]);
             }
           }
-          //newCoords.push.apply(newCoords, (cover.tiles(JSON.parse(extras.rows[i].geometry), {min_zoom: z, max_zoom: z})));
         }
-        //console.log(z, coords[z].length)
 
         var allTiles = coords[z].concat(newCoords);
         var foundTiles = {}
