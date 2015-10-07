@@ -5,6 +5,7 @@ var fs = require("fs");
 var path = require("path");
 var extend = require("util")._extend;
 var credentials = require("./credentials");
+var config = require("./config");
 
 // Factory for querying Postgres
 function queryPg(db, sql, params, callback) {
@@ -22,24 +23,6 @@ function queryPg(db, sql, params, callback) {
       });
     }
   });
-}
-
-// All of our burwell scales
-var scales = ["tiny", "small", "medium", "large"];
-
-// Which zoom levels correspond to which map scales
-var scaleMap = {
-  "tiny": ["0", "1", "2", "3"],
-  "small": ["4", "5"],
-  "medium": ["6", "7", "8", "9", "10"],
-  "large": ["11", "12", "13"]
-}
-
-var layerOrder = {
-  "tiny": ["tiny"],
-  "small": ["tiny", "large", "medium", "small"],
-  "medium": ["large", "small", "medium"],
-  "large": ["medium", "large"]
 }
 
 // This is the template for each layer
@@ -87,16 +70,19 @@ var burwell = {
   "attribution": "Data providers, UW-Macrostrat, John J Czaplewski <jczaplew@gmail.com>"
 }
 
+// Gets the extend and centroid of a given scale, and returns an mml layer configuration
 function createLayer(scale, callback) {
   // Find the extend and the centroid
   queryPg("burwell", "SELECT ST_Extent(s.geom) AS extent, ST_AsText(ST_Centroid(ST_Extent(geom))) AS centroid FROM lookup_" + scale + " x JOIN maps." + scale + " s ON s.map_id = x.map_id", [], function(error, data) {
     var attrs = data.rows[0];
 
+    // Copy the template
     var layer = extend({}, layerTemplate);
 
     var extent = attrs["extent"].replace(" ", ",").replace("BOX(", "").replace(")", "");
     var center = attrs["centroid"].replace("POINT(", "").replace(")", "");
 
+    // Fill in the attributes
     layer["bounds"] = extent.split(",").map(function(d) { return parseFloat(d) });
     layer["center"] = center.split(" ").map(function(d) { return parseFloat(d) }).push(3);
     layer["extent"] = [-179, -89, 179, 89];
@@ -104,17 +90,18 @@ function createLayer(scale, callback) {
     layer["Datasource"]["table"] = "(SELECT x.map_id, x.group_id, x.color, geom FROM lookup_" + scale + " x JOIN maps." + scale + " s ON s.map_id = x.map_id) subset";
     layer["id"] = "burwell_" + scale;
     layer["name"] = "burwell_" + scale;
-    layer["minZoom"] = Math.min.apply(Math, scaleMap[scale]);
-    layer["maxZoom"] = Math.max.apply(Math, scaleMap[scale]);
+    layer["minZoom"] = Math.min.apply(Math, config.scaleMap[scale]);
+    layer["maxZoom"] = Math.max.apply(Math, config.scaleMap[scale]);
 
     callback(layer);
   });
 }
 
+// Build our styles from the database
 function buildStyles(callback) {
   console.log("--- Building styles ---");
 
-  // First, rebuild the file `styles.mss` in the event any colors were changed
+  // First, rebuild the styles in the event any colors were changed
   queryPg("burwell", "SELECT DISTINCT interval_color AS color FROM macrostrat.intervals WHERE interval_color IS NOT NULL AND interval_color != ''", [], function(error, data) {
     var colors = data.rows;
 
@@ -145,6 +132,7 @@ function buildStyles(callback) {
       `;
     }
 
+    // Append the styles to the project template object
     burwell["Stylesheet"].push({
       id: 1,
       class: "burwell",
@@ -155,23 +143,30 @@ function buildStyles(callback) {
   });
 }
 
+// Create a new mmml project, convert it to Mapnik XML, and save it to the current directory
 function createProject(scale, callback) {
+  // Copy the project template
   var project = extend({}, burwell);
-  project["minzoom"] = Math.min.apply(Math, scaleMap[scale]);
-  project["maxzoom"] = Math.max.apply(Math, scaleMap[scale]);
 
-  async.map(layerOrder[scale], function(d, callback) {
+  project["minzoom"] = Math.min.apply(Math, config.scaleMap[scale]);
+  project["maxzoom"] = Math.max.apply(Math, config.scaleMap[scale]);
+
+  // Create a new layer for each scale that is a part of this scale's project as defined in layerOrder
+  async.map(config.layerOrder[scale], function(d, callback) {
     createLayer(d, function(layer) {
       callback(null, layer);
     });
   }, function(error, layers) {
+    // Record the layers
     project["Layer"] = layers;
 
+    // Convert the resultant mml file to Mapnik XML
     var mapnikXML = new carto.Renderer({
       paths: [ __dirname ],
       local_data_dir: __dirname
     }).render(project);
 
+    // Save it
     fs.writeFile(__dirname + "/burwell_" + scale + ".xml", mapnikXML, function(error) {
       if (error) {
         console.log("Error wrting mml file for ", scale);
@@ -183,15 +178,19 @@ function createProject(scale, callback) {
 
 }
 
+// Things start here
 async.waterfall([
+  // First build the styles
   buildStyles,
 
+  // For each scale, create and save and new project
   function(callback) {
-    async.each(scales, createProject, function(error) {
+    async.each(config.scales, createProject, function(error) {
       callback(null);
     });
   }
 
+  // Be done
 ], function(error, results) {
   if (error) {
     console.log(error);
