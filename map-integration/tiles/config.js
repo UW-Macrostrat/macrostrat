@@ -1,4 +1,13 @@
 module.exports = {
+  // Where to write the cache
+  cachePath: "./tiles/burwell",
+
+  // Where burwell_scale.xml live
+  configPath: "./",
+
+  // The port the tile cache server should run on
+  port: 7890,
+
   // All of our burwell scales
   scales: ["tiny", "small", "medium", "large"],
 

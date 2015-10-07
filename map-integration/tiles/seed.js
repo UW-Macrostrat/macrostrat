@@ -19,14 +19,14 @@ var strata = tilestrata.createServer();
 // define layers
 strata.layer("burwell_tiny")
     .route("tile@2x.png")
-        .use(disk.cache({dir: credentials.settings.cachePath}))
+        .use(disk.cache({dir: config.cachePath}))
         .use(mapnik({
-            xml: credentials.settings.configPath + "burwell_tiny.xml",
+            xml: config.configPath + "burwell_tiny.xml",
             tileSize: 512,
             scale: 2
         }))
     .route("tile.png")
-        .use(disk.cache({dir: credentials.settings.cachePath}))
+        .use(disk.cache({dir: config.cachePath}))
         .use(dependency("burwell_tiny", "tile@2x.png"))
         .use(sharp(function(image, sharp) {
             return image.resize(256);
@@ -34,33 +34,33 @@ strata.layer("burwell_tiny")
 
 strata.layer("burwell_small")
     .route("tile.png")
-        .use(disk.cache({dir: credentials.settings.cachePath}))
+        .use(disk.cache({dir: config.cachePath}))
         .use(mapnik({
-            xml: credentials.settings.configPath + "burwell_small.xml",
+            xml: config.configPath + "burwell_small.xml",
             tileSize: 512,
             scale: 2
         }));
 
 strata.layer("burwell_medium")
     .route("tile.png")
-        .use(disk.cache({dir: credentials.settings.cachePath}))
+        .use(disk.cache({dir: config.cachePath}))
         .use(mapnik({
-            xml: credentials.settings.configPath + "burwell_medium.xml",
+            xml: config.configPath + "burwell_medium.xml",
             tileSize: 512,
             scale: 2
         }));
 
 strata.layer("burwell_large")
     .route("tile.png")
-        .use(disk.cache({dir: credentials.settings.cachePath}))
+        .use(disk.cache({dir: config.cachePath}))
         .use(mapnik({
-            xml: credentials.settings.configPath + "burwell_large.xml",
+            xml: config.configPath + "burwell_large.xml",
             tileSize: 512,
             scale: 2
         }));
 
 // start accepting requests
-strata.listen(credentials.settings.port);
+strata.listen(config.port);
 
 
 // Factory for querying PostGIS
@@ -167,7 +167,7 @@ async.eachLimit(config.seedScales, 1, function(scale, scaleCallback) {
         });
 
         async.eachLimit(unique, 5, function(tile, tileCallback) {
-          http.get("http://localhost:" + credentials.settings.port + "/burwell_" + scale + "/" + tile[2] + "/" + tile[0] + "/" + tile[1] + "/tile.png", function(res) {
+          http.get("http://localhost:" + config.port + "/burwell_" + scale + "/" + tile[2] + "/" + tile[0] + "/" + tile[1] + "/tile.png", function(res) {
             tileCallback(null);
           });
         }, function(err) {
