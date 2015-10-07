@@ -5,6 +5,7 @@ var mapnik = require('tilestrata-mapnik');
 var dependency = require('tilestrata-dependency');
 var credentials = require("./credentials");
 var customCache = require('./customCache');
+var lru = require("tilestrata-lru");
 
 var api = express.Router();
 var strata = tilestrata.createServer();
@@ -19,6 +20,8 @@ api.use(function(req, res, next) {
 strata.layer("burwell")
     .route("tile@2x.png")
         .use(customCache({
+          size: '2GB',
+          ttl: 3000,
           dir: credentials.tiles.path,
           defaultTile: __dirname + '/default@2x.png'
         }))
@@ -29,6 +32,8 @@ strata.layer("burwell")
         }))
     .route("tile.png")
         .use(customCache({
+          size: '2GB',
+          ttl: 3000,
           dir: credentials.tiles.path,
           defaultTile: __dirname + '/default.png'
         }))
