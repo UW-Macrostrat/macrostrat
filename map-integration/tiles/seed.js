@@ -1,9 +1,9 @@
 // Depdendencies for tile server
-var tilestrata = require('tilestrata');
-var disk = require('tilestrata-disk');
-var sharp = require('tilestrata-sharp');
-var mapnik = require('tilestrata-mapnik');
-var dependency = require('tilestrata-dependency');
+var tilestrata = require("tilestrata");
+var disk = require("tilestrata-disk");
+var sharp = require("tilestrata-sharp");
+var mapnik = require("tilestrata-mapnik");
+var dependency = require("tilestrata-dependency");
 
 // Depdendencies for tile seeding
 var cover = require("tile-cover");
@@ -11,58 +11,60 @@ var async = require("async");
 var http = require("http");
 var pg = require("pg");
 var credentials = require("./credentials");
+var config = require("./config");
 
+// Define the tileserver that will be used for cache seedings
 var strata = tilestrata.createServer();
 
-
 // define layers
-strata.layer('burwell_tiny')
-    .route('tile@2x.png')
-        .use(disk.cache({dir: credentials.settings.cachePath}))
+strata.layer("burwell_tiny")
+    .route("tile@2x.png")
+        .use(disk.cache({dir: config.cachePath}))
         .use(mapnik({
-            xml: credentials.settings.configPath + 'burwell_tiny.xml',
+            xml: config.configPath + "burwell_tiny.xml",
             tileSize: 512,
             scale: 2
         }))
-    .route('tile.png')
-        .use(disk.cache({dir: credentials.settings.cachePath}))
-        .use(dependency('burwell_tiny', 'tile@2x.png'))
+    .route("tile.png")
+        .use(disk.cache({dir: config.cachePath}))
+        .use(dependency("burwell_tiny", "tile@2x.png"))
         .use(sharp(function(image, sharp) {
             return image.resize(256);
         }));
 
-strata.layer('burwell_small')
-    .route('tile.png')
-        .use(disk.cache({dir: credentials.settings.cachePath}))
+strata.layer("burwell_small")
+    .route("tile.png")
+        .use(disk.cache({dir: config.cachePath}))
         .use(mapnik({
-            xml: credentials.settings.configPath + 'burwell_small.xml',
+            xml: config.configPath + "burwell_small.xml",
             tileSize: 512,
             scale: 2
         }));
 
-strata.layer('burwell_medium')
-    .route('tile.png')
-        .use(disk.cache({dir: credentials.settings.cachePath}))
+strata.layer("burwell_medium")
+    .route("tile.png")
+        .use(disk.cache({dir: config.cachePath}))
         .use(mapnik({
-            xml: credentials.settings.configPath + 'burwell_medium.xml',
+            xml: config.configPath + "burwell_medium.xml",
             tileSize: 512,
             scale: 2
         }));
 
-strata.layer('burwell_large')
-    .route('tile.png')
-        .use(disk.cache({dir: credentials.settings.cachePath}))
+strata.layer("burwell_large")
+    .route("tile.png")
+        .use(disk.cache({dir: config.cachePath}))
         .use(mapnik({
-            xml: credentials.settings.configPath + 'burwell_large.xml',
+            xml: config.configPath + "burwell_large.xml",
             tileSize: 512,
             scale: 2
         }));
 
 // start accepting requests
-strata.listen(credentials.settings.port);
+strata.listen(config.port);
 
 
-function queryPg(db, sql, params, callback, send, res, format, next) {
+// Factory for querying PostGIS
+function queryPg(db, sql, params, callback) {
   pg.connect("postgres://" + credentials.pg.user + "@" + credentials.pg.host + "/" + db, function(err, client, done) {
     if (err) {
       callback(err);
@@ -79,25 +81,9 @@ function queryPg(db, sql, params, callback, send, res, format, next) {
   });
 }
 
-var scaleHash = {
-  "tiny": [0, 1, 2, 3],
-  "small": [4, 5],
-  "medium": [6, 7, 8, 9, 10],
-  "large": [11, 12, 13]
-}
-
-
-var scaleGroups = {
-  "tiny": ["tiny"],
-  "small": ["tiny", "large", "medium", "small"],
-  "medium": ["large", "small", "medium"],
-  "large": ["medium", "large"]
-}
-
-//var scales = ["tiny", "small", "medium", "large"];
-var scales = ["tiny", "small"];
-
-async.eachLimit(scales, 1, function(scale, scaleCallback) {
+// Seed each of our seedable scales
+async.eachLimit(config.seedScales, 1, function(scale, scaleCallback) {
+  console.time("scale");
   console.log("Working on ", scale);
 
   // These are source-specific additions to land
@@ -112,7 +98,7 @@ async.eachLimit(scales, 1, function(scale, scaleCallback) {
           console.log(error);
         }
 
-        async.each(scaleHash[scale], function(z, zcallback) {
+        async.each(config.scaleMap[scale], function(z, zcallback) {
           coords[z] = [];
 
           async.each(data.rows, function(i, icallback) {
@@ -142,7 +128,7 @@ async.eachLimit(scales, 1, function(scale, scaleCallback) {
             (SELECT ST_Buffer(ST_Collect(ref_geom),0) FROM maps.sources WHERE sources.source_id IN (SELECT source_id FROM maps.sources WHERE scale = ANY($1))), \
             (SELECT ST_Buffer(ST_Collect(geom),0) FROM public.land) \
           )) geom \
-        ) sub ) foo WHERE geometry is NOT NULL", [scaleGroups[scale]], function(error, data) {
+        ) sub ) foo WHERE geometry is NOT NULL", [config.layerOrder[scale]], function(error, data) {
         if (error) {
           console.log(error);
         }
@@ -153,45 +139,44 @@ async.eachLimit(scales, 1, function(scale, scaleCallback) {
     },
 
     function(callback) {
-      async.eachLimit(scaleHash[scale], 1, function(z, zoomCallback) {
+      async.eachLimit(config.scaleMap[scale], 1, function(z, zoomCallback) {
+        console.time("z");
         console.log("     z", z);
 
         var newCoords = [];
 
         for (var i = 0; i < extras.rows.length; i++) {
-          //console.log(i, extras.rows[i].geometry)
-          var coverage = cover.tiles(JSON.parse(extras.rows[i].geometry), {min_zoom: z, max_zoom: z});
-        //  console.log(i, extras.rows[i].geometry.length, coverage.length);
 
-          if (coverage.length && coverage.length < 100000) {
+          var coverage = cover.tiles(JSON.parse(extras.rows[i].geometry), {min_zoom: z, max_zoom: z});
+
+          if (coverage.length && coverage.length < 200000) {
             for (var q = 0; q < coverage.length; q++) {
-            //  console.log(q, coverage[q]);
               newCoords.push(coverage[q]);
             }
           }
-          //newCoords.push.apply(newCoords, (cover.tiles(JSON.parse(extras.rows[i].geometry), {min_zoom: z, max_zoom: z})));
         }
-        //console.log(z, coords[z].length)
 
         var allTiles = coords[z].concat(newCoords);
         var foundTiles = {}
 
         var unique = allTiles.filter(function(d) {
-          if (!foundTiles[d.join(',')]) {
-            foundTiles[d.join(',')] = true;
+          if (!foundTiles[d.join(",")]) {
+            foundTiles[d.join(",")] = true;
             return d;
           }
         });
 
-        async.eachLimit(unique, 10, function(tile, tileCallback) {
-          http.get('http://localhost:' + credentials.settings.port + '/burwell_' + scale + '/' + tile[2] + '/' + tile[0] + '/' + tile[1] + '/tile.png', function(res) {
+        async.eachLimit(unique, 5, function(tile, tileCallback) {
+          http.get("http://localhost:" + config.port + "/burwell_" + scale + "/" + tile[2] + "/" + tile[0] + "/" + tile[1] + "/tile.png", function(res) {
             tileCallback(null);
           });
         }, function(err) {
           if (err) {
             console.log(err);
           }
+          console.timeEnd("z");
           zoomCallback(null);
+
         });
       }, function(err) {
         if (err) {
@@ -202,6 +187,7 @@ async.eachLimit(scales, 1, function(scale, scaleCallback) {
     }
 
   ], function(error, result) {
+    console.timeEnd("scale")
     scaleCallback(null);
   });
 
