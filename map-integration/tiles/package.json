@@ -16,7 +16,6 @@
     "tile-cover": "^3.0.1",
     "tilestrata": "^1.9.0",
     "tilestrata-dependency": "^0.4.0",
-    "tilestrata-disk": "^0.4.1",
     "tilestrata-mapnik": "^0.2.3",
     "tilestrata-sharp": "^0.3.0"
   }

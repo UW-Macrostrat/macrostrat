@@ -1,9 +1,9 @@
 // Depdendencies for tile server
 var tilestrata = require("tilestrata");
-var disk = require("tilestrata-disk");
 var sharp = require("tilestrata-sharp");
 var mapnik = require("tilestrata-mapnik");
 var dependency = require("tilestrata-dependency");
+var cache = require("./cache");
 
 // Depdendencies for tile seeding
 var cover = require("tile-cover");
@@ -18,23 +18,17 @@ var strata = tilestrata.createServer();
 
 // define layers
 strata.layer("burwell_tiny")
-    .route("tile@2x.png")
-        .use(disk.cache({dir: config.cachePath}))
+    .route("tile.png")
+        .use(cache({dir: config.cachePath}))
         .use(mapnik({
             xml: config.configPath + "burwell_tiny.xml",
             tileSize: 512,
             scale: 2
-        }))
-    .route("tile.png")
-        .use(disk.cache({dir: config.cachePath}))
-        .use(dependency("burwell_tiny", "tile@2x.png"))
-        .use(sharp(function(image, sharp) {
-            return image.resize(256);
         }));
 
 strata.layer("burwell_small")
     .route("tile.png")
-        .use(disk.cache({dir: config.cachePath}))
+        .use(cache({dir: config.cachePath}))
         .use(mapnik({
             xml: config.configPath + "burwell_small.xml",
             tileSize: 512,
@@ -43,7 +37,7 @@ strata.layer("burwell_small")
 
 strata.layer("burwell_medium")
     .route("tile.png")
-        .use(disk.cache({dir: config.cachePath}))
+        .use(cache({dir: config.cachePath}))
         .use(mapnik({
             xml: config.configPath + "burwell_medium.xml",
             tileSize: 512,
@@ -52,7 +46,7 @@ strata.layer("burwell_medium")
 
 strata.layer("burwell_large")
     .route("tile.png")
-        .use(disk.cache({dir: config.cachePath}))
+        .use(cache({dir: config.cachePath}))
         .use(mapnik({
             xml: config.configPath + "burwell_large.xml",
             tileSize: 512,
@@ -167,7 +161,7 @@ async.eachLimit(config.seedScales, 1, function(scale, scaleCallback) {
           }
         });
 
-        async.eachLimit(unique, 3, function(tile, tileCallback) {
+        async.eachLimit(unique, 20, function(tile, tileCallback) {
           http.get("http://localhost:" + config.port + "/burwell_" + scale + "/" + tile[2] + "/" + tile[0] + "/" + tile[1] + "/tile.png", function(res) {
             tileCallback(null);
           });
@@ -193,7 +187,12 @@ async.eachLimit(config.seedScales, 1, function(scale, scaleCallback) {
   });
 
 }, function(error, results) {
-  console.log("Done seeding")
+  console.log("Done seeding, waiting for cache");
   console.timeEnd("Total");
-  process.exit();
+
+  // Wait a minute for the tile cache to catch up before we kill it
+  setTimeout(function() {
+    process.exit();
+  }, 60000)
+
 });

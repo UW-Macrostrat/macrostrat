@@ -2,8 +2,7 @@ var async = require("async");
 var pg = require("pg");
 var carto = require("carto");
 var fs = require("fs");
-var path = require("path");
-var extend = require("util")._extend;
+
 var credentials = require("./credentials");
 var config = require("./config");
 
