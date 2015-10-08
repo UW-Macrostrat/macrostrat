@@ -33,7 +33,7 @@ module.exports = function(req, res, next) {
     params["interval_name"] = req.query.name;
   }
 
-  if (req.query.int_id && isFinite(req.query.int_id)) {
+  if (req.query.int_id) {
     where.push("intervals.id IN (:int_id)");
     params["int_id"] = larkin.parseMultipleIds(req.query.int_id);
   }
