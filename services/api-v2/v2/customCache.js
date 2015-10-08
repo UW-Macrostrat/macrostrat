@@ -1,8 +1,15 @@
+/*
+  This is a hybrid memory/disk cache based on
+  tilestrata-lru - https://github.com/naturalatlas/tilestrata-lru
+  &
+  tilestrata-disk - https://github.com/naturalatlas/tilestrata-disk
+*/
 var fs = require('fs-extra');
-var SyncCache = require('active-cache/sync');
 var filesizeParser = require('filesize-parser');
+var LRU = require('lru-cache');
 
 module.exports = function(options) {
+  
     function tilePath(directory, z, x, y, filename) {
       return directory + '/' + z + '/' + x + '/' + y + '/' + filename;
     }
@@ -20,19 +27,17 @@ module.exports = function(options) {
       });
     }
 
-    var lruopts = {max: 6};
+    // Default to a max cache size of 1gb, and a max age of 6 hours
+    var lruOptions = {
+      max: (typeof(options.size) === 'string') ? filesizeParser(options.size) : 1000000000,
+      maxAge: options.maxAge || 21600000,
+      length: function(item) {
+        return item.buffer.length;
+      }
+    }
 
-  	if (typeof options.size === 'string') {
-  		lruopts.max = filesizeParser(options.size);
-  		lruopts.length = function(item){ return item.buffer.length; };
-  	} else if (typeof options.size === 'number') {
-  		lruopts.max = options.size;
-  	}
-
-  	lruopts.maxAge = (options.ttl || 15) * 1000;
-  	lruopts.interval = options.clearInterval || 5000;
-
-  	var cache = new SyncCache(lruopts);
+    // Define the cache
+  	var cache = LRU(lruOptions);
 
     return {
         init: function(server, callback) {
@@ -40,7 +45,6 @@ module.exports = function(options) {
         },
 
         get: function(server, tile, callback) {
-
           // Get the full tile path
           var file = tilePath(options.dir, tile.z, tile.x, tile.y, tile.filename);
 
@@ -88,7 +92,7 @@ module.exports = function(options) {
           var file = tilePath(options.dir, req.z, req.x, req.y, req.filename);
 
           // Write the tile to cache
-          cache.set(key(tile), {buffer: buffer, headers: headers});
+          cache.set(key(req), {buffer: buffer, headers: headers});
 
           // Write the tile to disk
         	fs.outputFile(file, buffer, callback);

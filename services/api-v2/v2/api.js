@@ -5,7 +5,6 @@ var mapnik = require('tilestrata-mapnik');
 var dependency = require('tilestrata-dependency');
 var credentials = require("./credentials");
 var customCache = require('./customCache');
-var lru = require("tilestrata-lru");
 
 var api = express.Router();
 var strata = tilestrata.createServer();
