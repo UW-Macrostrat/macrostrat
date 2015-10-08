@@ -81,9 +81,10 @@ function queryPg(db, sql, params, callback) {
   });
 }
 
+console.time("Total");
 // Seed each of our seedable scales
 async.eachLimit(config.seedScales, 1, function(scale, scaleCallback) {
-  console.time("scale");
+  console.time("Scale");
   console.log("Working on ", scale);
 
   // These are source-specific additions to land
@@ -166,7 +167,7 @@ async.eachLimit(config.seedScales, 1, function(scale, scaleCallback) {
           }
         });
 
-        async.eachLimit(unique, 5, function(tile, tileCallback) {
+        async.eachLimit(unique, 3, function(tile, tileCallback) {
           http.get("http://localhost:" + config.port + "/burwell_" + scale + "/" + tile[2] + "/" + tile[0] + "/" + tile[1] + "/tile.png", function(res) {
             tileCallback(null);
           });
@@ -187,11 +188,12 @@ async.eachLimit(config.seedScales, 1, function(scale, scaleCallback) {
     }
 
   ], function(error, result) {
-    console.timeEnd("scale")
+    console.timeEnd("Scale")
     scaleCallback(null);
   });
 
 }, function(error, results) {
   console.log("Done seeding")
+  console.timeEnd("Total");
   process.exit();
 });

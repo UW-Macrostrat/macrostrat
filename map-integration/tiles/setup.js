@@ -28,14 +28,13 @@ function queryPg(db, sql, params, callback) {
 // This is the template for each layer
 var layerTemplate = {
     "geometry": "polygon",
-    "extent": [],
     "Datasource": {
         "type": "postgis",
         "table": "",
         "key_field": "map_id",
         "geometry_field": "geom",
         "extent_cache": "auto",
-        "extent": "",
+        "extent": "-179,-89,179,89",
         "host": "localhost",
         "port": "5432",
         "user": "john",
@@ -72,29 +71,16 @@ var burwell = {
 
 // Gets the extend and centroid of a given scale, and returns an mml layer configuration
 function createLayer(scale, callback) {
-  // Find the extend and the centroid
-  queryPg("burwell", "SELECT ST_Extent(s.geom) AS extent, ST_AsText(ST_Centroid(ST_Extent(geom))) AS centroid FROM lookup_" + scale + " x JOIN maps." + scale + " s ON s.map_id = x.map_id", [], function(error, data) {
-    var attrs = data.rows[0];
+  // Copy the template
+  var layer = JSON.parse(JSON.stringify(layerTemplate));
 
-    // Copy the template
-    var layer = extend({}, layerTemplate);
-
-    var extent = attrs["extent"].replace(" ", ",").replace("BOX(", "").replace(")", "");
-    var center = attrs["centroid"].replace("POINT(", "").replace(")", "");
-
-    // Fill in the attributes
-    layer["bounds"] = extent.split(",").map(function(d) { return parseFloat(d) });
-    layer["center"] = center.split(" ").map(function(d) { return parseFloat(d) }).push(3);
-    layer["extent"] = [-179, -89, 179, 89];
-    layer["Datasource"]["extent"] = "-179,-89,179,89";
-    layer["Datasource"]["table"] = "(SELECT x.map_id, x.group_id, x.color, geom FROM lookup_" + scale + " x JOIN maps." + scale + " s ON s.map_id = x.map_id) subset";
-    layer["id"] = "burwell_" + scale;
-    layer["name"] = "burwell_" + scale;
-    layer["minZoom"] = Math.min.apply(Math, config.scaleMap[scale]);
-    layer["maxZoom"] = Math.max.apply(Math, config.scaleMap[scale]);
-
-    callback(layer);
-  });
+  // Fill in the attributes
+  layer["Datasource"]["table"] = "(SELECT x.map_id, x.group_id, x.color, geom FROM lookup_" + scale + " x JOIN maps." + scale + " s ON s.map_id = x.map_id) subset";
+  layer["id"] = "burwell_" + scale;
+  layer["name"] = "burwell_" + scale;
+  layer["minZoom"] = Math.min.apply(Math, config.scaleMap[scale]);
+  layer["maxZoom"] = Math.max.apply(Math, config.scaleMap[scale]);
+  callback(layer);
 }
 
 // Build our styles from the database
@@ -134,7 +120,6 @@ function buildStyles(callback) {
 
     // Append the styles to the project template object
     burwell["Stylesheet"].push({
-      id: 1,
       class: "burwell",
       data: cartoCSS
     });
@@ -146,7 +131,7 @@ function buildStyles(callback) {
 // Create a new mmml project, convert it to Mapnik XML, and save it to the current directory
 function createProject(scale, callback) {
   // Copy the project template
-  var project = extend({}, burwell);
+  var project = JSON.parse(JSON.stringify(burwell));
 
   project["minzoom"] = Math.min.apply(Math, config.scaleMap[scale]);
   project["maxzoom"] = Math.max.apply(Math, config.scaleMap[scale]);
