@@ -4,12 +4,13 @@
   &
   tilestrata-disk - https://github.com/naturalatlas/tilestrata-disk
 */
-var fs = require('fs-extra');
+var fs = require('fs');
+var mkdirp = require('mkdirp');
 var filesizeParser = require('filesize-parser');
 var LRU = require('lru-cache');
 
 module.exports = function(options) {
-  
+
     function tilePath(directory, z, x, y, filename) {
       return directory + '/' + z + '/' + x + '/' + y + '/' + filename;
     }
@@ -53,6 +54,7 @@ module.exports = function(options) {
 
           // if yes, return it
           if (item) {
+            item.headers['X-MemoryCache-Hit'] = true;
             return callback(null, item.buffer, item.headers);
           }
 
@@ -94,8 +96,17 @@ module.exports = function(options) {
           // Write the tile to cache
           cache.set(key(req), {buffer: buffer, headers: headers});
 
-          // Write the tile to disk
-        	fs.outputFile(file, buffer, callback);
+          // Make sure the correct directory exists
+          mkdirp(options.dir + '/' + req.z + '/' + req.x + '/' + req.y, function(error) {
+
+            // Write the tile to disk
+            fs.writeFile(file, buffer, function(err) {
+              if (err) {
+                console.log('Error writing tile - ', err);
+              }
+              callback();
+            });
+          });
         }
     }
 }

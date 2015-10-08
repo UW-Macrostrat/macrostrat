@@ -17,7 +17,7 @@ api.use(function(req, res, next) {
 });
 
 strata.layer("burwell")
-    .route("tile@2x.png")
+    .route("tile.png")
         .use(customCache({
           size: '2GB',
           ttl: 3000,
@@ -28,17 +28,6 @@ strata.layer("burwell")
             xml: credentials.tiles.config,
             tileSize: 512,
             scale: 2
-        }))
-    .route("tile.png")
-        .use(customCache({
-          size: '2GB',
-          ttl: 3000,
-          dir: credentials.tiles.path,
-          defaultTile: __dirname + '/default.png'
-        }))
-        .use(dependency("burwell", "tile@2x.png"))
-        .use(sharp(function(image, sharp) {
-            return image.resize(256);
         }));
 
 api.use(tilestrata.middleware({
