@@ -13,3 +13,7 @@ exports.pg = {
   password : '',
   database : 'alice'
 };
+exports.tiles = {
+  path: '/path/to/tiles/burwell',
+  config: '/path/to/burwell_large.xml'
+};

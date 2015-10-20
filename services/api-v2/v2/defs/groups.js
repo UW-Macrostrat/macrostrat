@@ -10,7 +10,7 @@ module.exports = function(req, res, next) {
       params = {};
 
   if (req.query.col_group_id) {
-    sql += " WHERE id IN (:col_group_ids)";
+    sql += " WHERE col_groups.id IN (:col_group_ids)";
     params["col_group_ids"] = larkin.parseMultipleIds(req.query.col_group_id);
   }
 
