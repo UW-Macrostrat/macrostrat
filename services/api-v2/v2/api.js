@@ -7,7 +7,7 @@ var credentials = require("./credentials");
 var customCache = require('./customCache');
 
 var api = express.Router();
-var strata = tilestrata.createServer();
+var strata = tilestrata();
 
 api.use(function(req, res, next) {
   res.header("Access-Control-Allow-Origin", "*");
