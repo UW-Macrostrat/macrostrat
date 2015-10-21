@@ -15,7 +15,8 @@ module.exports = function(req, res, next) {
       COALESCE(interval_id, '') int_id,
       COALESCE(usage_notes, '') usage_notes,
       COALESCE(other, '') other,
-      COALESCE(province, '') province
+      COALESCE(province, '') province,
+      GROUP_CONCAT(ref_id SEPARATOR '|') AS refs
      FROM strat_names_meta
   */}),
       params = {};
@@ -30,7 +31,7 @@ module.exports = function(req, res, next) {
     params["strat_name_ids"] = larkin.parseMultipleIds(req.query.strat_name_id);
   }
 
-  sql += " ORDER BY concept_id";
+  sql += " GROUP BY concept_id ORDER BY concept_id";
 
   if ("sample" in req.query) {
     sql += " LIMIT 5";
@@ -42,6 +43,7 @@ module.exports = function(req, res, next) {
     } else {
       result.forEach(function(d) {
         d.int_id = parseInt(d.int_id);
+        d.refs = larkin.jsonifyPipes(d.refs, "integers");
       });
       larkin.sendData(result, res, ((api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json"), next);
     }
