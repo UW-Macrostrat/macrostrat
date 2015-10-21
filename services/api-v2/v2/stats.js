@@ -19,7 +19,6 @@ module.exports = function(req, res, next) {
     FROM stats
   */});
 
-
   var format = (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json";
 
   larkin.query(sql, [], null, true, res, format, next);

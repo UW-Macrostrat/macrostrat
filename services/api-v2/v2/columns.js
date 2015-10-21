@@ -80,7 +80,7 @@ module.exports = function(req, res, next) {
         params["col_id"] = req.query.col_id;
       }
 
-      larkin.query("SELECT cols.id AS col_id, col_name, col_group, col_groups.id AS col_group_id, col AS group_col_id, round(cols.col_area, 1) AS col_area, project_id" +  geo + " FROM cols LEFT JOIN col_areas on col_areas.col_id = cols.id LEFT JOIN col_groups ON col_groups.id = cols.col_group_id WHERE status_code = 'active' AND col_areas.col_area IS NOT NULL AND cols.id IN (:col_ids) GROUP BY col_areas.col_id " + orderby + limit, params, function(error, result) {
+      larkin.query("SELECT cols.id AS col_id, col_name, col_group, col_groups.id AS col_group_id, col AS group_col_id, round(cols.col_area, 1) AS col_area, project_id, GROUP_CONCAT(col_refs.ref_id SEPARATOR '|') AS refs" +  geo + " FROM cols LEFT JOIN col_areas on col_areas.col_id = cols.id LEFT JOIN col_groups ON col_groups.id = cols.col_group_id LEFT JOIN col_refs ON cols.id = col_refs.id WHERE status_code = 'active' AND col_areas.col_area IS NOT NULL AND cols.id IN (:col_ids) GROUP BY col_areas.col_id " + orderby + limit, params, function(error, result) {
         if (error) {
           callback(error);
         } else {
@@ -97,6 +97,8 @@ module.exports = function(req, res, next) {
     }
     if (column_data) {
       column_data.forEach(function(d) {
+        d.refs = larkin.jsonifyPipes(d.refs, "integers");
+
         if (req.query.response === "long") {
           d = _.extend(d, unit_data[d.col_id]);
 

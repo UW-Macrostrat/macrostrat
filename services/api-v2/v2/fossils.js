@@ -69,7 +69,7 @@ module.exports = function(req, res, next) {
         }
 
         larkin.query("SELECT pbdb_matches.collection_no AS cltn_id, collection_name AS cltn_name, n_occs AS pbdb_occs, \
-          pbdb_matches.unit_id " + ((geo) ? ", AsWKT(pbdb_matches.coordinate) AS geometry" : "") + " \
+          pbdb_matches.unit_id, GROUP_CONCAT(pbdb_matches.ref_id SEPARATOR '|') AS refs " + ((geo) ? ", AsWKT(pbdb_matches.coordinate) AS geometry" : "") + " \
           FROM pbdb_matches \
           JOIN units ON pbdb_matches.unit_id = units.id \
           JOIN units_sections ON units_sections.unit_id = units.id \
@@ -79,10 +79,16 @@ module.exports = function(req, res, next) {
           JOIN pbdb.coll_matrix ON pbdb_matches.collection_no = pbdb.coll_matrix.collection_no \
           LEFT JOIN unit_strat_names ON unit_strat_names.unit_id = units.id \
           WHERE pbdb_matches.release_date < now() AND \
-          status_code = 'active'" + where + limit, params, function(error, result) {
+          status_code = 'active' GROUP BY pbdb_matches.collection_no" + where + limit, params, function(error, result) {
             if (error) {
               callback(error);
             } else {
+              result.forEach(function(d) {
+                d.refs = larkin.jsonifyPipes(d.refs, "integers");
+                if (req.query.format && req.query.format === "csv") {
+                    d.refs = d.refs.join("|")
+                }
+              });
               callback(null, data, result);
             }
         });

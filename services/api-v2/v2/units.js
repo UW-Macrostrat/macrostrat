@@ -298,7 +298,8 @@ module.exports = function(req, res, next, cb) {
         lookup_units.b_int_name,
         lookup_units.b_int_age,
         lookup_units.b_prop,
-        lookup_units.units_below
+        lookup_units.units_below,
+        GROUP_CONCAT(col_refs.ref_id SEPARATOR '|') AS refs
       */});
 
       var geometry = ((req.query.format && api.acceptedFormats.geo[req.query.format]) || req.query.response === "long") ? ", lookup_units.clat, lookup_units.clng, lookup_units.t_plat, lookup_units.t_plng, lookup_units.b_plat, lookup_units.b_plng " : "";
@@ -309,6 +310,7 @@ module.exports = function(req, res, next, cb) {
             LEFT JOIN unit_strat_names ON unit_strat_names.unit_id=units.id \
             LEFT JOIN units_sections ON units.id = units_sections.unit_id \
             LEFT JOIN cols ON units_sections.col_id = cols.id \
+            LEFT JOIN col_refs ON cols.id = col_refs.id \
             LEFT JOIN lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id \
             " + ((req.query.response === "long" || cb) ? "LEFT JOIN unit_notes ON unit_notes.unit_id=units.id" : "") + " \
             WHERE status_code='active' " + where + " GROUP BY units.id ORDER BY " + ((orderby.length > 0) ? (orderby.join(", ") + ", t_age ASC") : "t_age ASC") + limit;
@@ -328,6 +330,7 @@ module.exports = function(req, res, next, cb) {
 
                 result[i].units_above = larkin.jsonifyPipes(result[i].units_above, "integers");
                 result[i].units_below = larkin.jsonifyPipes(result[i].units_below, "integers");
+                result[i].refs = larkin.jsonifyPipes(result[i].refs, "integers");
               }
             }
 
@@ -339,6 +342,8 @@ module.exports = function(req, res, next, cb) {
                 result[i].lith = larkin.pipifyAttrs(result[i].lith);
                 result[i].environ = larkin.pipifyAttrs(result[i].environ);
                 result[i].econ = larkin.pipifyAttrs(result[i].econ);
+
+                result[i].refs = larkin.pipifyAttrs(result[i].refs);
 
               }
             }
