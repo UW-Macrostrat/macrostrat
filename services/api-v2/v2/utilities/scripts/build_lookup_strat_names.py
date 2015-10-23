@@ -101,7 +101,7 @@ for idx, name in enumerate(strat_names):
 
 
     placeholders = ["%s"] * len(lookup_rank_children[name["rank"].lower()])
-    sql +=  " (" + ','.join(placeholders) + "))) WHERE strat_name_id = %s"
+    sql +=  " (" + ','.join(placeholders) + ")) AND cols.status_code = 'active') WHERE strat_name_id = %s"
     params = [x for x in lookup_rank_children[name["rank"].lower()]]
     params.append(name["id"])
     cursor.execute(sql, params)
