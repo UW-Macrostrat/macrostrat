@@ -45,7 +45,12 @@ module.exports = function(req, res, next) {
         d.int_id = parseInt(d.int_id);
         d.refs = larkin.jsonifyPipes(d.refs, "integers");
       });
-      larkin.sendData(result, res, ((api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json"), next);
+      larkin.sendData(req, res, next, {
+        format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
+        bare: (api.acceptedFormats.bare[req.query.format]) ? true : false
+      }, {
+        data: result
+      });
     }
   });
 }

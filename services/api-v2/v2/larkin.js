@@ -87,43 +87,38 @@ var mysql = require("mysql"),
   };
 
 
-  larkin.sendData = function(data, res, format, next) {
-    if (format === "csv") {
-      res.csv(data, true)
-    } else {
-      if (data.length > 5) {
-        res
-          .set("Content-type", "application/json; charset=utf-8")
-          .send(JSON.stringify({"success": {"v": api.version,"license": api.license,"data": data}}, null, 0));
-        } else {
-          res.json({
-            "success": {
-              "v": api.version,
-              "license": api.license,
-              "data": data
-            }
-          });
-        }
+  larkin.sendData = function(req, res, next, options, outgoing) {
+    if (options && options.format === "csv") {
+      return res.csv(outgoing.data, true);
     }
-   };
 
-   // Remove all whitespace from response
-  larkin.sendCompact = function(data, res, format) {
-    if (format === "csv") {
-      res.csv(data, true);
-    } else {
-      res
+    if (options && options.bare) {
+      return res
         .set("Content-type", "application/json; charset=utf-8")
-        .send(JSON.stringify({"success": {"v": api.version,"license": api.license,"data": data}}, null, 0));
+        .send(JSON.stringify(outgoing.data, null, 0));
     }
+
+    var responseObject = {
+      "success": {
+        "v": api.version,
+        "license": api.license,
+        "data": outgoing.data
+      }
+    }
+
+    if (outgoing.refs) {
+      responseObject.success["refs"] = outgoing.refs;
+    }
+
+    if ((options && options.compact) || outgoing.data.length <= 5) {
+      return res
+        .set("Content-type", "application/json; charset=utf-8")
+        .send(JSON.stringify(responseObject, null, 0));
+    }
+
+    return res.json(responseObject);
+
   };
-
-
-  larkin.sendBare = function(data, res, next) {
-    res
-      .set("Content-type", "application/json; charset=utf-8")
-      .send(JSON.stringify(data, null, 0));
-   };
 
 
   larkin.info = function(req, res, next) {

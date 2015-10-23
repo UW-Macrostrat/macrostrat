@@ -64,11 +64,18 @@ module.exports = function(req, res, next) {
           "strat_unit": (result.gmus && result.gmus.strat_unit) ? result.gmus.strat_unit : "",
           "col_id": (result.column && result.column.col_id) ? result.column.col_id : ""
         };
-        larkin.sendCompact(response, res, null, next);
+
+        larkin.sendData(req, res, next, {
+          format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
+          bare: (api.acceptedFormats.bare[req.query.format]) ? true : false,
+          compact: true
+        }, {
+          data: response
+        });
       }
     });
-      
+
   } else {
     larkin.info(req, res, next);
-  } 
+  }
 }

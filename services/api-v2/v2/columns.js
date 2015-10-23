@@ -124,16 +124,23 @@ module.exports = function(req, res, next) {
             if (larkin.getOutputFormat(req.query.format) === "geojson") {
               output = gp(output, 4);
             }
-            if (api.acceptedFormats.bare[req.query.format]) {
-              larkin.sendBare(output, res, next);
-            } else {
-              larkin.sendCompact(output, res, null, next);
-            }
+
+            larkin.sendData(req, res, next, {
+              format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
+              bare: (api.acceptedFormats.bare[req.query.format]) ? true : false
+            }, {
+              data: output
+            });
+
           }
         }
       );
     } else {
-      larkin.sendData(column_data, res, (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json", next);
+      larkin.sendData(req, res, next, {
+        format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json"
+      }, {
+        data: column_data
+      });
     }
   });
 }

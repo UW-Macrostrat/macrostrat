@@ -69,7 +69,7 @@ module.exports = function(req, res, next) {
         }
 
         larkin.query("SELECT pbdb_matches.collection_no AS cltn_id, collection_name AS cltn_name, n_occs AS pbdb_occs, \
-          pbdb_matches.unit_id, GROUP_CONCAT(pbdb_matches.ref_id SEPARATOR '|') AS refs " + ((geo) ? ", AsWKT(pbdb_matches.coordinate) AS geometry" : "") + " \
+          pbdb_matches.unit_id, GROUP_CONCAT(DISTINCT pbdb_matches.ref_id SEPARATOR '|') AS refs " + ((geo) ? ", AsWKT(pbdb_matches.coordinate) AS geometry" : "") + " \
           FROM pbdb_matches \
           JOIN units ON pbdb_matches.unit_id = units.id \
           JOIN units_sections ON units_sections.unit_id = units.id \
@@ -108,16 +108,21 @@ module.exports = function(req, res, next) {
               if (error) {
                 larkin.error(req, res, next, "Something went wrong");
               } else {
-                if (api.acceptedFormats.bare[req.query.format]) {
-                  larkin.sendBare(result, res, next);
-                } else {
-                  larkin.sendData(result, res, null, next);
-                }
+                larkin.sendData(req, res, next, {
+                  format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
+                  bare: (api.acceptedFormats.bare[req.query.format]) ? true : false
+                }, {
+                  data: result
+                });
               }
             }
           );
         } else {
-          larkin.sendCompact(results, res, (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json");
+          larkin.sendData(req, res, next, {
+            format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json"
+          }, {
+            data: results
+          });
         }
       }
     });

@@ -10,7 +10,14 @@ module.exports = function(req, res, next) {
       if (error) {
         larkin.error(req, res, next, error);
       } else {
-        larkin.sendCompact(result, res, "json", next);
+
+        larkin.sendData(req, res, next, {
+          format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
+          bare: (api.acceptedFormats.bare[req.query.format]) ? true : false,
+          compact: true
+        }, {
+          data: result
+        });
       }
     });
   } else {
