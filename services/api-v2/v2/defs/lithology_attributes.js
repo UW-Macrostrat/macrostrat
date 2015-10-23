@@ -26,5 +26,11 @@ module.exports = function(req, res, next) {
     sql += " LIMIT 5";
   }
 
-  larkin.query(sql, params, null, true, res, ((api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json"), next);
+  larkin.query(sql, params, function(error, data) {
+    if (error) {
+      larkin.error(req, res, next, error);
+    } else {
+      larkin.sendData(data, res, ((api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json"), next);
+    }
+  });
 }

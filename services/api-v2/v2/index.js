@@ -84,7 +84,9 @@ api.route("/defs/timescales")
   .get(require("./defs/timescales"));
 
 api.route("/defs/refs")
-  .get(require("./defs/refs"));
+  .get(function(req, res, next) {
+    require("./defs/refs")(req, res, next);
+  });
 
 api.route("/paleogeography")
   .get(require("./paleogeography"));

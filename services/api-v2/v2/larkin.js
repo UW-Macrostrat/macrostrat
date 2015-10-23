@@ -24,7 +24,7 @@ var mysql = require("mysql"),
   };
 
 
-  larkin.queryPg = function(db, sql, params, callback, send, res, format, next) {
+  larkin.queryPg = function(db, sql, params, callback) {
     pg.connect("postgres://" + credentials.pg.user + "@" + credentials.pg.host + "/" + db, function(err, client, done) {
       if (err) {
         this.log("error", "error connecting - " + err);
@@ -36,11 +36,7 @@ var mysql = require("mysql"),
             this.log("error", err);
             callback(err);
           } else {
-            if (send) {
-              this.sendData(result, res, format, next);
-            } else {
-              callback(null, result);
-            }
+            callback(null, result);
           }
 
         }.bind(this));
@@ -64,7 +60,7 @@ var mysql = require("mysql"),
     return [sql, newParams];
   };
 
-  larkin.query = function(sql, params, callback, send, res, format, next) {
+  larkin.query = function(sql, params, callback) {
     // See if the query is using :named_parameters or positional ?
     if (sql.indexOf(':') > -1) {
       var newQuery = larkin.toUnnamed(sql, params);
@@ -83,11 +79,7 @@ var mysql = require("mysql"),
             this.error(res, next, "Error retrieving from MySQL.", error);
           }
         } else {
-          if (send) {
-            this.sendData(result, res, format, next);
-          } else {
-            callback(null, result);
-          }
+          callback(null, result);
         }
       }.bind(this));
       //console.log(query.sql)

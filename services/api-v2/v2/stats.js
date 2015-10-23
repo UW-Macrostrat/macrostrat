@@ -21,5 +21,11 @@ module.exports = function(req, res, next) {
 
   var format = (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json";
 
-  larkin.query(sql, [], null, true, res, format, next);
+  larkin.query(sql, [], function(error, data) {
+    if (error) {
+      larkin.error(req, res, next, error);
+    } else {
+      larkin.sendData(data, res, format, next);
+    }
+  });
 }
