@@ -92,7 +92,9 @@ for idx, name in enumerate(strat_names):
       UPDATE lookup_strat_names_new SET t_units = (
         SELECT COUNT(*)
         FROM unit_strat_names
-        WHERE strat_name_id IN (
+        LEFT JOIN units_sections ON unit_strat_names.unit_id = units_sections.unit_id
+        LEFT JOIN cols ON units_sections.col_id = cols.id
+        WHERE unit_strat_names.strat_name_id IN (
           SELECT strat_name_id
           FROM lookup_strat_names
           WHERE %s_id = %s AND rank IN """ % (name['rank'].lower(), name['id'])
