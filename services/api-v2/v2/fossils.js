@@ -110,7 +110,8 @@ module.exports = function(req, res, next) {
               } else {
                 larkin.sendData(req, res, next, {
                   format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
-                  bare: (api.acceptedFormats.bare[req.query.format]) ? true : false
+                  bare: (api.acceptedFormats.bare[req.query.format]) ? true : false,
+                  refs: "refs"
                 }, {
                   data: result
                 });
@@ -119,7 +120,8 @@ module.exports = function(req, res, next) {
           );
         } else {
           larkin.sendData(req, res, next, {
-            format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json"
+            format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
+            refs: "refs"
           }, {
             data: results
           });

@@ -388,7 +388,8 @@ module.exports = function(req, res, next, cb) {
       } else {
         return larkin.sendData(req, res, next, {
           format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
-          bare: (api.acceptedFormats.bare[req.query.format]) ? true : false
+          bare: (api.acceptedFormats.bare[req.query.format]) ? true : false,
+          refs: (req.query.response === "long") ? "refs": false
         }, {
           data: result
         });
