@@ -212,7 +212,11 @@ var mysql = require("mysql"),
 
   larkin.jsonifyPipes = function(data, type) {
     if (data) {
-      data = data.split("|");
+      data = data.split("|").filter(function(d) {
+        if (d) {
+          return d
+        }
+      });
       if (type === "integers") {
         return data.map(function(d) {
           return parseInt(d);
