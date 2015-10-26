@@ -991,6 +991,54 @@
       ]
     }
   },
+  "/grids": {
+    "description": "Returns grids with the specified parameters",
+    "visible": true
+  },
+  "/grids/latitude": {
+    "description": "Returns a grid given a longitude and latitude spacing",
+    "parent": "grids",
+    "visible": true,
+    "options": {
+      "parameters": {
+        "lngSpacing": "divide bands of latitude by x degrees of longitude",
+        "latSpacing": "the number of times a hemisphere should be cut",
+        "format": "Desired output format"
+      },
+      "output_formats": [
+        "geojson", "geojson_bare", "topojson", "topojson_bare"
+      ],
+      "examples": [
+        "api/v2/grids/latitude?lngSpacing=5&latSpacing=12&format=geojson_bare"
+      ],
+      "fields": [
+        "id",
+        "area"
+      ]
+    }
+  },
+  "/grids/longitude": {
+    "description": "Returns a grid given a latitude spacing and target cell size",
+    "parent": "grids",
+    "visible": true,
+    "options": {
+      "parameters": {
+        "latSpacing": "the number of degrees between bands of latitude",
+        "cellArea": "target cell area in km^2",
+        "format": "Desired output format"
+      },
+      "output_formats": [
+        "geojson", "geojson_bare", "topojson", "topojson_bare"
+      ],
+      "examples": [
+        "api/v2/grids/longitude?latSpacing=5&cellArea=500000&format=geojson_bare"
+      ],
+      "fields": [
+        "id",
+        "area"
+      ]
+    }
+  },
   "/mobile": {
     "description": "Simplified data delivery, ideal for mobile applications",
     "visible": true

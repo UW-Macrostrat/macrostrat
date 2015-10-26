@@ -115,6 +115,15 @@ api.route("/mobile/point_details")
 api.route("/mobile/fossil_collections")
   .get(require("./mobile/fossil_collections"));
 
+api.route("/grids")
+  .get(require("./grids/grids"));
+
+api.route("/grids/latitude")
+  .get(require("./grids/latitude"));
+
+api.route("/grids/longitude")
+  .get(require("./grids/longitude"));
+
 api.route("/editing")
   .get(require("./editing/editing"));
 
