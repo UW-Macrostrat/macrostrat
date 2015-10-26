@@ -26,7 +26,7 @@ module.exports = function(req, res, next) {
               if (error) {
                 callback(error);
               } else {
-                /* If a column isn't immediately found, buffer the point by a degree, get all polygons that 
+                /* If a column isn't immediately found, buffer the point by a degree, get all polygons that
                    intersect that buffer, and then find the closest one */
                 if (result.rows.length < 1) {
                   larkin.queryPg("geomacro", "SELECT id AS col_id, col_name, ST_AsGeoJSON(poly_geom) AS col_poly FROM macrostrat.cols WHERE ST_Intersects(poly_geom, ST_Buffer(ST_GeomFromText($1, 4326), 1)) and status_code='active' ORDER BY ST_Distance(ST_GeomFromText($1, 4326), poly_geom) LIMIT 1", ["POINT(" + req.query.lng + " " + req.query.lat + ")"], function(error, result) {
@@ -41,7 +41,7 @@ module.exports = function(req, res, next) {
                       callbackB(null, result.rows[0]);
                     }
                   });
-                  
+
                 } else {
                   callbackB(null, result.rows[0]);
                 }
@@ -50,7 +50,7 @@ module.exports = function(req, res, next) {
           },
 
           function(column, callbackB) {
-                
+
             var sql = "SELECT units.id AS unit_id, units.strat_name, period, max_thick, min_thick, colors.unit_class, count(distinct collection_no) pbdb_cltns, lith_short AS lith FROM units \
                 JOIN colors ON colors.color = units.color \
                 JOIN units_sections ON units_sections.unit_id = units.id \
@@ -99,7 +99,14 @@ module.exports = function(req, res, next) {
         console.log(error);
         larkin.error(req, res, next, "Something went wrong");
       } else {
-        larkin.sendCompact([results], res, "json", next);
+
+        larkin.sendData(req, res, next, {
+          format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
+          bare: (api.acceptedFormats.bare[req.query.format]) ? true : false,
+          compact: true
+        }, {
+          data: [results]
+        });
       }
     });
   } else if (req.query.col_id && req.query.unit_id) {
@@ -164,7 +171,13 @@ module.exports = function(req, res, next) {
         console.log(error);
         larkin.error(req, res, next, "Something went wrong");
       } else {
-        larkin.sendCompact([results], res, "json", next);
+        larkin.sendData(req, res, next, {
+          format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
+          bare: (api.acceptedFormats.bare[req.query.format]) ? true : false,
+          compact: true
+        }, {
+          data: [results]
+        });
       }
     });
   } else {

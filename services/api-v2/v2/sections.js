@@ -59,7 +59,7 @@ module.exports = function(req, res, next) {
             }
             // Add the last current section
             sections.push(currentSection);
-      
+
             return sections;
           })()
         }
@@ -86,7 +86,7 @@ module.exports = function(req, res, next) {
 
             "t_age": _.min(columns[col_id].sections[i].units, function(d) { return d.t_age; }).t_age,
             "b_age": _.max(columns[col_id].sections[i].units, function(d) { return d.b_age; }).b_age,
-            
+
             "pbdb_collections": columns[col_id].sections[i].units.map(function(d) { return d.pbdb_collections }).reduce(function(a, b) { return a + b; }, 0)
           }
 
@@ -99,7 +99,7 @@ module.exports = function(req, res, next) {
           sections.push(section);
         }
       });
-      
+
       callback(null, sections);
     }
 
@@ -116,7 +116,11 @@ module.exports = function(req, res, next) {
       }
     }
 
-    larkin.sendData(sections, res, (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json", next);
+    larkin.sendData(req, res, next, {
+      format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json"
+    }, {
+      data: sections
+    });
   });
 
 }

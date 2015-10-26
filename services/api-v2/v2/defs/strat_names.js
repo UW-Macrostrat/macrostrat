@@ -102,7 +102,12 @@ module.exports = function(req, res, next, cb) {
       if (cb) {
         cb(null, response);
       } else {
-        larkin.sendData(response, res, (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json", next);
+        larkin.sendData(req, res, next, {
+          format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
+          bare: (api.acceptedFormats.bare[req.query.format]) ? true : false
+        }, {
+          data: response
+        });
       }
     }
   });
