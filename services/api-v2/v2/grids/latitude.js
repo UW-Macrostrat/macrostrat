@@ -13,11 +13,12 @@ module.exports = function(req, res, next) {
       geojson = topojson.topology({grid: geojson});
     }
 
-    if (req.query.format === "topojson_bare" || req.query.format === "geojson_bare") {
-      return larkin.sendBare(geojson, res, next);
-    } else {
-      return larkin.sendCompact(geojson, res, next);
-    }
+    larkin.sendData(req, res, next, {
+      format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
+      bare: (api.acceptedFormats.bare[req.query.format]) ? true : false
+    }, {
+      data: geojson
+    });
   });
 
 }
