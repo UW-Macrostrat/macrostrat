@@ -57,19 +57,43 @@ cursor.execute("""
 cursor.close()
 cursor = connection.cursor()
 
-# First recompute and populate comp_prop 
-cursor.execute("SELECT  a.unit_id, adom dom_lith,bdom sub_lith FROM (SELECT unit_id,count(id) adom, dom from unit_liths WHERE dom='dom' group by unit_id) a LEFT JOIN (SELECT unit_id,count(id) bdom, dom from unit_liths WHERE dom='sub' group by unit_id) b on b.unit_id=a.unit_id")
-numrows = cursor.rowcount
-row = cursor.fetchall()
+# First recompute and populate comp_prop
+cursor.execute("""
+    SELECT
+        a.unit_id,
+        adom dom_lith,
+        bdom sub_lith
+    FROM (
+        SELECT
+            unit_id,
+            count(id) adom,
+            dom
+        FROM unit_liths
+        WHERE dom = 'dom'
+        GROUP BY unit_id
+    ) a
+    LEFT JOIN (
+        SELECT
+            unit_id,
+            count(id) bdom,
+            dom
+        FROM unit_liths
+        WHERE dom = 'sub'
+        GROUP BY unit_id
+    ) b ON b.unit_id = a.unit_id
+""")
 
-for x in xrange(0,numrows):
-  n1 = float(row[x]['sub_lith']) if row[x]['sub_lith'] is not None else 0
-  n = float(n1 + (row[x]['dom_lith']*5))
-  dom_p=5/n
-  sub_p=1/n
-  cursor.execute("UPDATE unit_liths set comp_prop=%s WHERE unit_id=%s and dom='dom'", [dom_p,row[x]['unit_id']])
-  cursor.execute("UPDATE unit_liths set comp_prop=%s WHERE unit_id=%s and dom='sub'", [sub_p,row[x]['unit_id']])
+units = cursor.fetchall()
 
+for unit in units:
+    n1 = float(unit['sub_lith']) if unit['sub_lith'] is not None else 0
+    n = float(n1 + (unit['dom_lith'] * 5))
+    dom_p = 5/n
+    sub_p = 1/n
+    cursor.execute("UPDATE unit_liths SET comp_prop = %s WHERE unit_id = %s AND dom = 'dom'", [dom_p, unit['unit_id']])
+    cursor.execute("UPDATE unit_liths SET comp_prop = %s WHERE unit_id = %s AND dom = 'sub'", [sub_p, unit['unit_id']])
+
+    
 ### Next handle lithologies ###
 cursor.execute("""
   SELECT unit_id, lith_id, lith, lith_type, lith_class, comp_prop, GROUP_CONCAT(lith_atts.lith_att SEPARATOR '|') AS lith_atts
