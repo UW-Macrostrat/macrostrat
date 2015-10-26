@@ -397,6 +397,9 @@ var mysql = require("mysql"),
     if (key === "refs" || key === "ref_id") {
       larkin.query("SELECT refs.id AS ref_id, pub_year, author, ref, doi, url, COUNT(DISTINCT units_sections.unit_id) AS t_units FROM refs LEFT JOIN col_refs ON col_refs.ref_id = refs.id LEFT JOIN units_sections ON units_sections.col_id = col_refs.col_id WHERE refs.id IN (:ref_id) GROUP BY refs.id", {"ref_id": ref_ids}, function(error, data) {
         var refs = {};
+        if (!data) {
+          return callback(null)
+        }
         for (var i = 0; i < data.length; i++) {
           refs[data[i]["ref_id"]] = larkin.normalizeRefField(data[i].author) + larkin.normalizeRefField(data[i].ref) + larkin.normalizeRefField(data[i].pub_year) + larkin.normalizeRefField(data[i].doi) + larkin.normalizeRefField(data[i].url);
         }
