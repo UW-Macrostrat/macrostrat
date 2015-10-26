@@ -60,7 +60,12 @@ module.exports = function(req, res, next) {
           }
         }
 
-        larkin.sendCompact(parsed, res, "json");
+        larkin.sendData(req, res, next, {
+          format: "json"
+        }, {
+          data: parsed
+        });
+
       }
 
     });
