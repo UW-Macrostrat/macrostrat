@@ -361,8 +361,27 @@ var mysql = require("mysql"),
     return ((lng - 180) % 360 + 360) % 360 - 180;
   }
 
+  larkin.normalizeRefField = function(content) {
+    if (content) {
+      content = content.toString();
+      return (content.substr(content.length - 1) === ".") ? content : content + ". ";
+    }
+
+    return '';
+
+  }
 
   larkin.getRefs = function(key, data, callback) {
+    // Remap if the data is topojson
+    if (data.type && data.type === "Topology") {
+      data = data.objects.output.geometries.map(function(d) {
+        return d.properties;
+      });
+
+    // Remap if the data is geojson
+    } else if (data.type && data.type === "FeatureCollection") {
+      data = data.features.map(function(d) { return d.properties });
+    }
 
     // Get unique ref_ids
     var ref_ids = _.uniq(
@@ -374,26 +393,28 @@ var mysql = require("mysql"),
       )
     );
 
+    // Macrostrat refs
     if (key === "refs" || key === "ref_id") {
       larkin.query("SELECT refs.id AS ref_id, pub_year, author, ref, doi, url, COUNT(DISTINCT units_sections.unit_id) AS t_units FROM refs LEFT JOIN col_refs ON col_refs.ref_id = refs.id LEFT JOIN units_sections ON units_sections.col_id = col_refs.col_id WHERE refs.id IN (:ref_id) GROUP BY refs.id", {"ref_id": ref_ids}, function(error, data) {
-        var refs = {}
-        data.forEach(function(d) {
-          refs[d[key]] = d.author + ". " + d.ref + ". " + d.pub_year + ". " + (d.doi + ". " || "") + (d.url  + "." || "");
-        });
-
+        var refs = {};
+        for (var i = 0; i < data.length; i++) {
+          refs[data[i]["ref_id"]] = larkin.normalizeRefField(data[i].author) + larkin.normalizeRefField(data[i].ref) + larkin.normalizeRefField(data[i].pub_year) + larkin.normalizeRefField(data[i].doi) + larkin.normalizeRefField(data[i].url);
+        }
         callback(refs);
       });
+
+    // Else burwell sources
     } else {
       larkin.queryPg("burwell", "SELECT source_id, name, COALESCE(url, '') url, COALESCE(ref_title, '') ref_title, COALESCE(authors, '') authors, COALESCE(ref_year, '') ref_year, COALESCE(ref_source, '') ref_source, COALESCE(isbn_doi, '') isbn_doi FROM maps.sources WHERE source_id = ANY($1)", [ref_ids], function(error, result) {
-        var refs = {}
-        result.rows.forEach(function(d) {
-          refs[d[key]] = d.authors + ". " + d.ref_title + ". " + d.ref_year + ". " + (d.isbn_doi + ". " || "") + (d.ref_source  + "." || "");
-        });
+        var refs = {};
+
+        for (var i = 0; i < result.rows.length; i++) {
+          refs[result.rows[i]["source_id"]] = larkin.normalizeRefField(result.rows[i].authors) + larkin.normalizeRefField(result.rows[i].ref_title) + larkin.normalizeRefField(result.rows[i].isbn_doi) + larkin.normalizeRefField(result.rows[i].ref_source);
+        }
 
         callback(refs);
       });
     }
-
 
   }
 
