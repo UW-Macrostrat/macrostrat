@@ -299,6 +299,7 @@ module.exports = function(req, res, next, cb) {
         lookup_units.b_int_age,
         lookup_units.b_prop,
         lookup_units.units_below,
+        lookup_strat_names.rank_name AS strat_name_long,
         GROUP_CONCAT(col_refs.ref_id SEPARATOR '|') AS refs
       */});
 
