@@ -30,7 +30,7 @@ function buildSQL(req, scale, where, limit) {
   //sql += "'" + scale + "' AS scale";
 
   if (req.query.map) {
-    sql = "(SELECT mm.color"
+    sql = "(SELECT mm.color, m.source_id"
   }
 
   if (req.query.format && api.acceptedFormats.geo[req.query.format]) {

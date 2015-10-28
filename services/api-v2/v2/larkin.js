@@ -364,7 +364,7 @@ var mysql = require("mysql"),
   larkin.normalizeRefField = function(content) {
     if (content) {
       content = content.toString();
-      return (content.substr(content.length - 1) === ".") ? content : content + ". ";
+      return (content.substr(content.length - 1) === ".") ? content + " " : content + ". ";
     }
 
     return '';

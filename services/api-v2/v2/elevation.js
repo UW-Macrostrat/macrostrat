@@ -13,7 +13,12 @@ module.exports = function(req, res, next) {
       if (error) {
         larkin.error(req, res, next, error);
       } else {
-        larkin.sendCompact(result.rows, res, (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json", next);
+        larkin.sendData(req, res, next, {
+          format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
+          compact: true
+        }, {
+          data: result.rows
+        });
       }
     });
 
