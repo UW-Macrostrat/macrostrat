@@ -54,7 +54,7 @@ module.exports = function(req, res, next) {
         }
 
         if (req.query.strat_name_id) {
-          where += " AND strat_name_id IN (:strat_name_ids)";
+          where += " AND (lookup_strat_names.bed_id IN (:strat_name_ids) OR lookup_strat_names.mbr_id IN (:strat_name_ids) OR lookup_strat_names.fm_id IN (:strat_name_ids) OR lookup_strat_names.gp_id IN (:strat_name_ids) OR lookup_strat_names.sgp_id IN (:strat_name_ids)) ";
           params["strat_name_ids"] = larkin.parseMultipleIds(req.query.strat_name_id);
         }
 
@@ -78,6 +78,7 @@ module.exports = function(req, res, next) {
           JOIN intervals l ON l.id = LO \
           JOIN pbdb.coll_matrix ON pbdb_matches.collection_no = pbdb.coll_matrix.collection_no \
           LEFT JOIN unit_strat_names ON unit_strat_names.unit_id = units.id \
+          LEFT JOIN lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id \
           WHERE pbdb_matches.release_date < now() AND \
           status_code = 'active' " + where + limit, params, function(error, result) {
             if (error) {
