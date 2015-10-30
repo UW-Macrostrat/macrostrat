@@ -6,7 +6,8 @@ var mysql = require("mysql"),
     csv = require("csv-express"),
     api = require("./api"),
     defs = require("./defs"),
-    validator = require("validator");
+    validator = require("validator"),
+    http = require("http");
 
 (function() {
   var larkin = {};
@@ -418,6 +419,88 @@ var mysql = require("mysql"),
         callback(refs);
       });
     }
+  }
+
+  larkin.cache = require("memory-cache");
+
+  larkin.setupCache = function() {
+
+    async.parallel({
+      unitSummary: function(callback) {
+        // get all units and summarize for columns
+        http.get("http://localhost:5000/api/v2/units?all&response=long", function(res) {
+          var body = "";
+
+          res.on("data", function(chunk) {
+            body += chunk;
+          });
+
+          res.on("end", function() {
+            var result = JSON.parse(body).success.data;
+
+            var cols = _.groupBy(result, function(d) {
+              return d.col_id;
+            });
+
+            var new_cols = {};
+
+            Object.keys(cols).forEach(function(col_id) {
+              new_cols[col_id] = {
+                "max_thick": _.reduce(cols[col_id].map(function(d) { return d.max_thick}) , function(a, b) { return a + b}, 0),
+                "max_min_thick": _.reduce(cols[col_id].map(function(d) {
+                  if (d.min_thick === 0) {
+                    return d.max_thick;
+                  } else {
+                    return d.min_thick
+                  }
+                }) , function(a, b) { return a + b}, 0),
+                "min_min_thick": _.reduce(cols[col_id].map(function(d) { return d.min_thick}) , function(a, b) { return a + b}, 0),
+
+                "b_age": _.max(cols[col_id], function(d) { return d.b_age; }).b_age,
+                "t_age": _.min(cols[col_id], function(d) { return d.t_age; }).t_age,
+                "b_int_name": _.max(cols[col_id], function(d) { return d.b_age; }).b_int_name,
+                "t_int_name": _.min(cols[col_id], function(d) { return d.t_age; }).t_int_name,
+
+                "pbdb_collections": _.reduce(cols[col_id].map(function(d) { return d.pbdb_collections }), function(a, b) { return a + b}, 0),
+
+                "lith": larkin.summarizeAttribute(cols[col_id], "lith"),
+                "environ": larkin.summarizeAttribute(cols[col_id], "environ"),
+                "econ": larkin.summarizeAttribute(cols[col_id], "econ"),
+
+                "t_units": cols[col_id].length,
+                "t_sections": _.uniq(cols[col_id].map(function(d) { return d.section_id })).length
+              }
+            });
+
+            callback(null, new_cols);
+          });
+        });
+      },
+
+      columnsGeom: function(callback) {
+        // get all columns, with geometry
+        larkin.query("SELECT cols.id AS col_id, col_name, col_group, col_groups.id AS col_group_id, col AS group_col_id, round(cols.col_area, 1) AS col_area, project_id, GROUP_CONCAT(col_refs.ref_id SEPARATOR '|') AS refs, IFNULL(AsWKT(col_areas.col_area), '') AS wkt FROM cols LEFT JOIN col_areas on col_areas.col_id = cols.id LEFT JOIN col_groups ON col_groups.id = cols.col_group_id LEFT JOIN col_refs ON cols.id = col_refs.id WHERE status_code = 'active' AND col_areas.col_area IS NOT NULL GROUP BY col_areas.col_id ", [], function(error, result) {
+          callback(null, result);
+        });
+      },
+
+      columnsNoGeom: function(callback) {
+        larkin.query("SELECT cols.id AS col_id, col_name, col_group, col_groups.id AS col_group_id, col AS group_col_id, round(cols.col_area, 1) AS col_area, project_id, GROUP_CONCAT(col_refs.ref_id SEPARATOR '|') AS refs FROM cols LEFT JOIN col_areas on col_areas.col_id = cols.id LEFT JOIN col_groups ON col_groups.id = cols.col_group_id LEFT JOIN col_refs ON cols.id = col_refs.id WHERE status_code = 'active' AND col_areas.col_area IS NOT NULL GROUP BY col_areas.col_id", [], function(error, result) {
+          callback(null, result);
+        });
+      }
+
+    }, function(error, results) {
+      larkin.cache.put("unitSummary", results.unitSummary);
+      larkin.cache.put("columnsGeom", results.columnsGeom);
+      larkin.cache.put("columnsNoGeom", results.columnsNoGeom);
+
+      console.log("done prepping cache");
+    });
+
+
+
+
 
   }
 

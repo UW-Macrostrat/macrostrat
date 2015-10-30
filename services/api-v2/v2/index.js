@@ -4,6 +4,7 @@ var api = require("./api"),
 
 // Establish a connection to the database
 larkin.connectMySQL();
+larkin.setupCache();
 
 api.route("/")
   .get(require("./root"));

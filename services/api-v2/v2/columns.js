@@ -14,6 +14,9 @@ module.exports = function(req, res, next) {
   async.waterfall([
     // First pass the request to the /units route and get the long response
     function(callback) {
+      if ("all" in req.query) {
+        return callback(null, larkin.cache.get("unitSummary"));
+      }
 
       require("./units")(req, null, null, function(error, result) {
         if (error) {
@@ -39,8 +42,6 @@ module.exports = function(req, res, next) {
             }) , function(a, b) { return a + b}, 0),
             "min_min_thick": _.reduce(cols[col_id].map(function(d) { return d.min_thick}) , function(a, b) { return a + b}, 0),
 
-          //  "max_thick": _.max(cols[col_id], function(d) { return d.max_thick; }).max_thick,
-          //  "min_thick": _.min(cols[col_id], function(d) { return d.min_thick; }).min_thick,
             "b_age": _.max(cols[col_id], function(d) { return d.b_age; }).b_age,
             "t_age": _.min(cols[col_id], function(d) { return d.t_age; }).t_age,
             "b_int_name": _.max(cols[col_id], function(d) { return d.b_age; }).b_int_name,
@@ -66,6 +67,15 @@ module.exports = function(req, res, next) {
       if (!(new_cols)) {
         return callback(null, null, []);
       }
+
+      if ("all" in req.query) {
+        if (req.query.format && api.acceptedFormats.geo[req.query.format]) {
+          return callback(null, new_cols, larkin.cache.get("columnsGeom"));
+        } else {
+          return callback(null, new_cols, larkin.cache.get("columnsNoGeom"));
+        }
+      }
+
       var geo = (req.query.format && api.acceptedFormats.geo[req.query.format]) ? ", IFNULL(AsWKT(col_areas.col_area), '') AS wkt" : "",
           params = {"col_ids": Object.keys(new_cols)},
           limit = ("sample" in req.query) ? " LIMIT 5" : "",
@@ -95,9 +105,12 @@ module.exports = function(req, res, next) {
       console.log(error);
       return larkin.error(req, res, next, error);
     }
+
     if (column_data) {
       column_data.forEach(function(d) {
-        d.refs = larkin.jsonifyPipes(d.refs, "integers");
+        if (typeof d.refs === "string" || d.refs instanceof String) {
+          d.refs = larkin.jsonifyPipes(d.refs, "integers");
+        }
 
         if (req.query.response === "long") {
           d = _.extend(d, unit_data[d.col_id]);
