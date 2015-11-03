@@ -69,8 +69,14 @@ module.exports = function(req, res, next) {
       function(callback) {
         if (req.query.lat && req.query.lng) {
           req.query.lng = larkin.normalizeLng(req.query.lng);
-          where.push("ST_Contains(m.geom, ST_GeomFromText($" + (where.length + 1) + ", 4326))");
-          params.push("POINT(" + req.query.lng + " " + req.query.lat + ")");
+          if (req.query.buffer && req.query.buffer <= 50) {
+            where.push("ST_Intersects(m.geom, ST_Buffer(ST_GeographyFromText($" + (where.length + 1) + "), $" + (where.length + 2) + ")::geometry)");
+            params.push("POINT(" + req.query.lng + " " + req.query.lat + ")", req.query.buffer * 1000);
+          } else {
+            where.push("ST_Intersects(m.geom, ST_GeomFromText($" + (where.length + 1) + ", 4326))");
+            params.push("POINT(" + req.query.lng + " " + req.query.lat + ")");
+          }
+
         }
         callback(null);
       },
