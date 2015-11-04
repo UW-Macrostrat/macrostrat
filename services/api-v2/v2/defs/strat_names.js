@@ -17,7 +17,7 @@ module.exports = function(req, res, next, cb) {
         params["strat_name"] = req.query.strat_name;
 
       } else if (req.query.strat_name_id) {
-        where.push("parent IN (:strat_name_id) OR strat_name_id IN (:strat_name_id)");
+        where.push("parent IN (:strat_name_id) OR l.strat_name_id IN (:strat_name_id)");
         params["strat_name_id"] = larkin.parseMultipleIds(req.query.strat_name_id);
       }
 
