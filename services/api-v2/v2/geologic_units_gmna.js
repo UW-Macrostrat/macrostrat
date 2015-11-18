@@ -39,7 +39,7 @@ module.exports = function(req, res, next) {
       where.push("ST_Intersects(geom, buffer) is true");
       params.push(req.query.shape, buffer);
 
-      geomField = ((geo) ? ", ST_AsGeoJSON(ST_Intersection(geom, buffer)) AS geometry" : "");
+      geomField = ((geo) ? ", ST_AsGeoJSON(ST_Intersection(ST_Buffer(geom, 0)::geography, buffer)) AS geometry" : "");
     }
 
     if (where.length < 1 && !("sample" in req.query)) {
