@@ -21,6 +21,9 @@ module.exports = function(req, res, next) {
   }  else if (req.query.lith_id){
     sql += " WHERE liths.id IN (:lith_id)";
     params["lith_id"] = larkin.parseMultipleIds(req.query.lith_id);
+  } else if (req.query.lith_like){
+    sql += " WHERE lith LIKE :lith";
+    params["lith"] = req.query.lith_like + '%';
   }
 
   sql += " GROUP BY liths.id ";
