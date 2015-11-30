@@ -325,7 +325,7 @@ CREATE TABLE macrostrat_new.lookup_strat_names (
   strat_name_id integer,
   strat_name character varying(100),
   rank character varying(20),
-  rank_name character varying(20),
+  rank_name character varying(200),
   bed_id integer,
   bed_name character varying(100),
   mbr_id integer,
