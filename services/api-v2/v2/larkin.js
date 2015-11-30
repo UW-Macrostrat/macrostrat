@@ -471,7 +471,6 @@ var mysql = require("mysql"),
                 "t_sections": _.uniq(cols[col_id].map(function(d) { return d.section_id })).length
               }
             });
-
             callback(null, new_cols);
           });
         });

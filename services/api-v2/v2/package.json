@@ -28,6 +28,7 @@
     "turf-area": "^1.1.1",
     "turf-buffer": "^1.0.4",
     "turf-point": "^0.1.6",
+    "turf-voronoi": "git+https://github.com/Turfjs/turf-voronoi.git",
     "underscore": "^1.8.3",
     "wellknown": "^0.3.0"
   }

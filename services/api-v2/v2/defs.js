@@ -970,6 +970,30 @@
       ]
     }
   },
+
+  "/geologic_units/burwell/nearby": {
+    "description": "Stratigraphic names, lithologies, and time intervals near a coordinate in Burwell",
+    "visible": false,
+    "parent": "geologic_units",
+    "options": {
+      "parameters": {
+        "lat": "A valid latitude in decimal degrees",
+        "lng": "A valid longitude in decimal degrees",
+        "format": "Desired output format"
+      },
+      "output_formats": [
+        "json",
+        "csv"
+      ],
+      "examples": [
+        "/api/v2/geologic_units/burwell?lat=43&lng=-89.3"
+      ],
+      "fields": [
+
+      ]
+    }
+  },
+
   "/elevation": {
     "description": "Returns elevation in meters at a given coordinate from ETOPO1",
     "visible": true,
@@ -982,6 +1006,25 @@
       "output_formats": [
         "json",
         "csv"
+      ],
+      "examples": [
+        "api/elevation?lat=43&lng=-89"
+      ],
+      "fields": [
+        "elevation"
+      ]
+    }
+  },
+  "/infer": {
+    "description": "",
+    "visible": false,
+    "options": {
+      "parameters": {
+        "lat": "A valid latitude",
+        "lng": "A valid longitude"
+      },
+      "output_formats": [
+        "json"
       ],
       "examples": [
         "api/elevation?lat=43&lng=-89"
@@ -1039,6 +1082,32 @@
       ]
     }
   },
+
+  "/grids/lithologies": {
+    "description": "Returns a grid given a latitude and longitude spacing with burwell lithology info",
+    "parent": "grids",
+    "visible": true,
+    "options": {
+      "parameters": {
+        "latSpacing": "the number of degrees between bands of latitude",
+        "lngSpacing": "the number of degrees between bands of longitude",
+        "originLat": "An optional origin latitude",
+        "originLng": "An option origin longitude",
+        "format": "Desired output format"
+      },
+      "output_formats": [
+        "geojson", "geojson_bare", "topojson", "topojson_bare"
+      ],
+      "examples": [
+        "api/v2/grids/longitude?latSpacing=5&cellArea=500000&format=geojson_bare"
+      ],
+      "fields": [
+        "id",
+        "area"
+      ]
+    }
+  },
+
   "/mobile": {
     "description": "Simplified data delivery, ideal for mobile applications",
     "visible": true

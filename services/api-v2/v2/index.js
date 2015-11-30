@@ -101,6 +101,9 @@ api.route("/geologic_units/gmus")
 api.route("/geologic_units/burwell")
   .get(require("./geologic_units_burwell"));
 
+  api.route("/geologic_units/burwell/nearby")
+    .get(require("./geologic_units_burwell_nearby"));
+
 api.route("/elevation")
   .get(require("./elevation"));
 
@@ -124,6 +127,9 @@ api.route("/grids/latitude")
 
 api.route("/grids/longitude")
   .get(require("./grids/longitude"));
+
+api.route("/grids/lithologies")
+  .get(require("./grids/lithologies"));
 
 api.route("/editing")
   .get(require("./editing/editing"));
