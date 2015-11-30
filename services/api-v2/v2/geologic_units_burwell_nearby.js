@@ -7,9 +7,9 @@ var api = require("./api"),
 var sql = {
   lithologies: `
   WITH nn AS (
-    SELECT lith_id, lith, lith_type, lith_class, distance
+    SELECT lith_id, lith, lith_type, lith_class, lith_color, distance
     FROM (
-      (SELECT lith_id, liths.lith, lith_type, lith_class, geom, ST_Distance(geom, st_setsrid(st_makepoint($1, $2),4326)) AS distance
+      (SELECT lith_id, liths.lith, lith_type, lith_class, lith_color, geom, ST_Distance(geom, st_setsrid(st_makepoint($1, $2),4326)) AS distance
        FROM maps.medium m
        LEFT JOIN maps.map_liths ON m.map_id = map_liths.map_id
        LEFT JOIN macrostrat.liths ON liths.id = map_liths.lith_id
@@ -17,7 +17,7 @@ var sql = {
        ORDER BY geom <#> st_setsrid(st_makepoint($1,$2),4326)
        LIMIT 1000)
       UNION ALL
-      (SELECT lith_id, liths.lith, lith_type, lith_class, geom, ST_Distance(geom, st_setsrid(st_makepoint($1, $2),4326)) AS distance
+      (SELECT lith_id, liths.lith, lith_type, lith_class, lith_color, geom, ST_Distance(geom, st_setsrid(st_makepoint($1, $2),4326)) AS distance
        FROM maps.small m
        LEFT JOIN maps.map_liths ON m.map_id = map_liths.map_id
        LEFT JOIN macrostrat.liths ON liths.id = map_liths.lith_id
@@ -25,7 +25,7 @@ var sql = {
        ORDER BY geom <#> st_setsrid(st_makepoint($1,$2),4326)
        LIMIT 1000)
       UNION ALL
-      (SELECT lith_id, liths.lith, lith_type, lith_class, geom, ST_Distance(geom, st_setsrid(st_makepoint($1, $2),4326)) AS distance
+      (SELECT lith_id, liths.lith, lith_type, lith_class, lith_color, geom, ST_Distance(geom, st_setsrid(st_makepoint($1, $2),4326)) AS distance
        FROM maps.large m
        LEFT JOIN maps.map_liths ON m.map_id = map_liths.map_id
        LEFT JOIN macrostrat.liths ON liths.id = map_liths.lith_id
@@ -38,12 +38,12 @@ var sql = {
   ),
 
   nnlimit AS (
-    SELECT DISTINCT ON (lith_id) lith_id, lith, lith_type, lith_class, distance
+    SELECT DISTINCT ON (lith_id) lith_id, lith, lith_type, lith_class, lith_color, distance
     FROM nn
     ORDER BY lith_id, distance
   )
 
-  SELECT lith_id, lith AS name, lith_type AS type, lith_class AS class
+  SELECT lith_id, lith AS name, lith_type AS type, lith_class AS class, lith_color AS color
   FROM nnlimit
   ORDER BY distance
   LIMIT 5;`,
