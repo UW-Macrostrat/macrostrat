@@ -49,7 +49,7 @@ module.exports = function(req, res, next) {
           params["unit_id"] = larkin.parseMultipleIds(req.query.unit_id);
 
         } else if (req.query.col_id) {
-          where += " AND units.col_id IN (:col_id)";
+          where += " AND units_sections.col_id IN (:col_id)";
           params["col_id"] = larkin.parseMultipleIds(req.query.col_id);
         }
 

@@ -171,18 +171,18 @@ module.exports = function(req, res, next, cb) {
       }
 
       if (req.query.section_id) {
-        where += " AND units.section_id IN (:section_ids)";
+        where += " AND units_sections.section_id IN (:section_ids)";
         params["section_ids"] = larkin.parseMultipleIds(req.query.section_id);
       }
 
       if ("col_ids" in data) {
-        where += " AND units.col_id IN (:col_ids)";
+        where += " AND units_sections.col_id IN (:col_ids)";
         if (!(data.col_ids.length)) {
           data.col_ids = [''];
         }
         params["col_ids"] = data.col_ids;
       } else if (req.query.col_id) {
-        where += " AND units.col_id IN (:col_ids)";
+        where += " AND units_sections.col_id IN (:col_ids)";
         params["col_ids"] = larkin.parseMultipleIds(req.query.col_id);
       }
 
@@ -255,15 +255,15 @@ module.exports = function(req, res, next, cb) {
 
       if ("sample" in req.query) {
         // Speeds things up...
-        where += " AND units.col_id IN (92, 488, 463, 289, 430, 481, 261, 534, 369, 798, 771, 1675) "
+        where += " AND units_sections.col_id IN (92, 488, 463, 289, 430, 481, 261, 534, 369, 798, 771, 1675) "
       }
 
       params["measure_field"] = ("summarize_measures" in req.query) ? "lookup_unit_attrs_api.measure_long" : "lookup_unit_attrs_api.measure_short";
 
       var shortSQL = multiline(function() {/*
         units.id AS unit_id,
-        units.section_id AS section_id,
-        units.col_id AS col_id,
+        units_sections.section_id AS section_id,
+        units_sections.col_id AS col_id,
         lookup_units.project_id,
         lookup_units.col_area,
         units.strat_name AS unit_name,
