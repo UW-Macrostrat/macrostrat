@@ -181,6 +181,37 @@ cursor.execute("""
 connection.commit()
 
 
+# Populate the fields `b_period` and `t_period`
+cursor.execute("""
+  UPDATE lookup_strat_names_new
+  SET b_period = (
+    SELECT interval_name
+    FROM macrostrat.intervals
+    JOIN timescales_intervals ON intervals.id = timescales_intervals.interval_id
+    JOIN timescales ON timescales.id = timescales_intervals.timescale_id
+    WHERE age_bottom >= early_age AND age_top <= early_age
+    AND timescales.id = 3
+    LIMIT 1
+  );
+""")
+connection.commit()
+
+
+cursor.execute("""
+  UPDATE lookup_strat_names_new
+  SET t_period = (
+    SELECT interval_name
+    FROM intervals
+    JOIN timescales_intervals ON intervals.id = timescales_intervals.interval_id
+    JOIN timescales ON timescales.id = timescales_intervals.timescale_id
+    WHERE age_bottom >= late_age AND age_top <= late_age
+    AND timescales.id = 3
+    LIMIT 1
+  );
+""")
+connection.commit()
+
+
 # Out with the old, in with the new
 cursor.execute("TRUNCATE lookup_strat_names")
 cursor.execute("INSERT INTO lookup_strat_names SELECT * FROM lookup_strat_names_new")
