@@ -28,7 +28,6 @@ module.exports = function(req, res, next) {
         var cols = _.groupBy(result, function(d) {
           return d.col_id;
         });
-
         var new_cols = {}
         Object.keys(cols).forEach(function(col_id) {
           new_cols[col_id] = {
@@ -89,7 +88,6 @@ module.exports = function(req, res, next) {
         orderby = "ORDER BY ST_Distance(ST_Centroid(col_areas.col_area), (SELECT ST_Centroid(col_area) FROM col_areas WHERE col_id = :col_id))";
         params["col_id"] = req.query.col_id;
       }
-
       larkin.query("SELECT cols.id AS col_id, col_name, col_group, col_groups.id AS col_group_id, col AS group_col_id, round(cols.col_area, 1) AS col_area, project_id, GROUP_CONCAT(col_refs.ref_id SEPARATOR '|') AS refs" +  geo + " FROM cols LEFT JOIN col_areas on col_areas.col_id = cols.id LEFT JOIN col_groups ON col_groups.id = cols.col_group_id LEFT JOIN col_refs ON cols.id = col_refs.col_id WHERE status_code = 'active' AND col_areas.col_area IS NOT NULL AND cols.id IN (:col_ids) GROUP BY col_areas.col_id " + orderby + limit, params, function(error, result) {
         if (error) {
           callback(error);

@@ -59,7 +59,7 @@ module.exports = function(req, res, next) {
         }
 
         if (req.query.strat_name_concept_id) {
-          where += " AND strat_name_id IN (SELECT strat_name_id FROM lookup_strat_names WHERE concept_id IN (:concept_id))";
+          where += " AND lookup_strat_names.strat_name_id IN (SELECT strat_name_id FROM lookup_strat_names WHERE concept_id IN (:concept_id))";
           params["concept_id"] = larkin.parseMultipleIds(req.query.strat_name_concept_id);
         }
 
