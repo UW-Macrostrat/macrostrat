@@ -24,7 +24,17 @@ if (process.env.NODE_ENV !== "production") {
   app.set("json spaces", 2);
 }
 
-var port = 5000;
-app.listen(port, function() {
-  console.log("Listening on port " + port);
-});
+app.port = process.argv[2] || 5000;
+
+app.start = function() {
+  app.listen(app.port, function() {
+    console.log("Listening on port " + app.port);
+  });
+}
+
+if (!module.parent) {
+  app.start();
+}
+
+
+module.exports = app;

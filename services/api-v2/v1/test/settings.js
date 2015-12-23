@@ -1,3 +1,6 @@
 module.exports = {
-  host: "http://localhost:5000"
+  port: 5555,
+  get host () {
+    return "http://localhost:" + this.port
+  }
 }
