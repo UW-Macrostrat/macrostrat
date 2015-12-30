@@ -9,15 +9,18 @@ module.exports = function(req, res, next) {
 
   var sql = multiline(function() {/*
     SELECT
-      concept_id,
-      name,
-      COALESCE(geologic_age, '') geologic_age,
-      COALESCE(interval_id, '') int_id,
-      COALESCE(usage_notes, '') usage_notes,
-      COALESCE(other, '') other,
-      COALESCE(province, '') province,
-      GROUP_CONCAT(ref_id SEPARATOR '|') AS refs
-     FROM strat_names_meta
+      snm.concept_id,
+      snm.name,
+      COALESCE(snm.geologic_age, '') geologic_age,
+      COALESCE(snm.interval_id, '') int_id,
+      COALESCE(snm.usage_notes, '') usage_notes,
+      COALESCE(snm.other, '') other,
+      COALESCE(snm.province, '') province,
+      GROUP_CONCAT(snm.ref_id SEPARATOR '|') AS refs,
+      COALESCE(snm.url, '') url,
+      refs.author
+     FROM strat_names_meta snm
+     JOIN refs ON snm.ref_id = refs.id
   */}),
       params = {};
 
