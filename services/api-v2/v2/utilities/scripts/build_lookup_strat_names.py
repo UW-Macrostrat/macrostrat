@@ -126,7 +126,7 @@ connection.commit()
 cursor.execute("""
     UPDATE lookup_strat_names_new SET rank_name =
     CASE
-    	WHEN SUBSTRING_INDEX(strat_name, ' ', -1) IN ('Novaculite', 'Suite', 'Volcanics', 'Complex', 'Melange', 'Series')
+    	WHEN SUBSTRING_INDEX(strat_name, ' ', -1) IN ('Suite', 'Volcanics', 'Complex', 'Melange', 'Series', 'Supersuite', 'Tongue', 'Lens', 'Lentil', 'Drift', 'Metamorphics', 'Sequence', 'Supersequence', 'Intrusives', 'Measures')
         	THEN strat_name
         WHEN LOWER(SUBSTRING_INDEX(strat_name, ' ', -1)) IN (SELECT lith FROM liths) AND rank = 'fm'
         	THEN strat_name
