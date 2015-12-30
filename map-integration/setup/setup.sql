@@ -90,7 +90,10 @@ CREATE TABLE maps.sources (
   ref_year smallint,
   ref_source varchar(255),
   isbn_doi varchar(100),
-  scale varchar(20)
+  scale varchar(20),
+  features integer,
+  area decimal,
+  bbox geometry
 );
 
 CREATE TABLE maps.map_liths (
