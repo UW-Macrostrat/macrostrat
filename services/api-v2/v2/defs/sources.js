@@ -39,6 +39,11 @@ module.exports = function(req, res, next) {
     params.push(larkin.parseMultipleIds(req.query.source_id));
   }
 
+  if (req.query.scale) {
+    where.push("sources.scale = ANY($" + (where.length + 1) + ")");
+    params.push(larkin.parseMultipleStrings(req.query.scale));
+  }
+  
   if (req.query.lat && req.query.lng) {
     where.push("ST_Intersects(sources.bbox, ST_GeomFromText($" + (where.length + 1) + ", 4326))");
     params.push("POINT(" + req.query.lng + " " + req.query.lat + ")");

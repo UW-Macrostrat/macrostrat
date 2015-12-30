@@ -528,22 +528,33 @@
     }
   },
   "/defs/sources": {
-    "description": "Returns sources associated with geologic units",
+    "description": "Returns sources associated with geologic units. If a geographic format is requested, the bounding box of the source is returned as the geometry.",
     "parent": "definitions",
     "visible": true,
     "options": {
       "parameters": {
         "source_id": "integer, one or more comma-separated source IDs",
-        "all": "return all interval definitions",
+        "scale": "string, one or more comma-separated Burwell scales (tiny, small, medium, large)",
+        "lat": "A valid latitude",
+        "lng": "A valid longitude",
+        "shape": "string, a WKT geometry that can be used to filter sources",
+        "buffer": "integer, buffer in meters that should be applied to a provided shape",
+        "all": "return all source definitions",
         "format": "Desired output format"
       },
       "output_formats": [
         "json",
-        "csv"
+        "csv",
+        "geojson",
+        "geojson_bare",
+        "topojson",
+        "topojson_bare"
       ],
       "examples": [
         "api/v2/defs/sources?all",
-        "api/v2/defs/intervals?source_id=1,2,3"
+        "api/v2/defs/sources?source_id=1,2,3",
+        "api/v2/defs/sources?shape=LINESTRING(-122.3438%2037,-89.3527%2043.0582)&buffer=100",
+        "api/v2/defs/sources?lat=43.03&lng=-89.4&scale=large"
       ],
       "fields": [
         "source_id",
@@ -1223,7 +1234,7 @@
     "project_id": "unique identifier for project, corresponds to general geographic region",
     "strat_name": "text, informal unit name",
     "strat_name_id": "integer, unique identifier for known stratigraphic name (see /defs/strat_names)",
-    "name": "interval name",
+    "name": "text, the name of the entity",
     "Mbr": "text, lithostratigraphic member",
     "Fm": "text, lithostratigraphic formation",
     "Gp": "text, lithostratigraphic group",
@@ -1347,7 +1358,14 @@
     "t_units": "integer, total units",
     "measure": "array, summary of types of measurements available",
     "max_min_thick": "integer, the maximum possible minimum thickness in meters",
-    "min_min_thick": "integer, the minimum possible minimum thickness in meters"
+    "min_min_thick": "integer, the minimum possible minimum thickness in meters",
+    "source_id": "integer, unique Burwell source",
+    "ref_title": "text, title of reference",
+    "authors": "text, authors of source",
+    "ref_year": "text, year of reference publication",
+    "ref_source": "text, source of reference",
+    "isbn_doi": "text, the reference ISBN or DOI",
+    "scale": "text, the Burwell scale the source belongs to"
   }
 };
   module.exports = defs;
