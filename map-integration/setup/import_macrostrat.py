@@ -92,7 +92,7 @@ my_cur.execute("""
   ENCLOSED BY '"'
   LINES TERMINATED BY '\n';
 
-  SELECT strat_name_id, strat_name, rank, rank_name, bed_id, bed_name, mbr_id, mbr_name, fm_id, fm_name, gp_id, gp_name, sgp_id, sgp_name, early_age, late_age, gsc_lexicon
+  SELECT strat_name_id, strat_name, rank, rank_name, bed_id, bed_name, mbr_id, mbr_name, fm_id, fm_name, gp_id, gp_name, sgp_id, sgp_name, early_age, late_age, gsc_lexicon, b_period, t_period
   FROM lookup_strat_names
   INTO OUTFILE %(lookup_strat_names_path)s
   FIELDS TERMINATED BY ','
@@ -338,7 +338,9 @@ CREATE TABLE macrostrat_new.lookup_strat_names (
   sgp_name character varying(100),
   early_age numeric,
   late_age numeric,
-  gsc_lexicon character varying(20)
+  gsc_lexicon character varying(20),
+  b_period character varying(100),
+  t_period character varying(100)
 );
 
 COPY macrostrat_new.lookup_strat_names FROM %(lookup_strat_names_path)s NULL '\N' DELIMITER ',' CSV;

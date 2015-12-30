@@ -11,7 +11,7 @@ module.exports = {
   // All of our burwell scales
   scales: ["tiny", "small", "medium", "large"],
 
-  seedScales: ["tiny", "small", "medium"],
+  seedScales: ["tiny", "small"],
 
   // Which zoom levels correspond to which map scales
   scaleMap: {
