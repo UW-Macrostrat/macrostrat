@@ -35,7 +35,7 @@ module.exports = function(req, res, next) {
   var where = [];
 
   if (req.query.source_id) {
-    where.push("source_id = ANY($1)");
+    where.push("source_id = ANY($" + (where.length + 1) + ")");
     params.push(larkin.parseMultipleIds(req.query.source_id));
   }
 
@@ -43,7 +43,7 @@ module.exports = function(req, res, next) {
     where.push("sources.scale = ANY($" + (where.length + 1) + ")");
     params.push(larkin.parseMultipleStrings(req.query.scale));
   }
-  
+
   if (req.query.lat && req.query.lng) {
     where.push("ST_Intersects(sources.bbox, ST_GeomFromText($" + (where.length + 1) + ", 4326))");
     params.push("POINT(" + req.query.lng + " " + req.query.lat + ")");
@@ -56,6 +56,9 @@ module.exports = function(req, res, next) {
 
     params.push("SRID=4326;" + decodeURI(req.query.shape), buffer);
   }
+
+  // Remove any empty sources and etopo1
+  where.push("sources.area IS NOT NULL");
 
   sql += (where.length) ? (" WHERE " + where.join(" AND ")) : "";
   sql += " ORDER BY source_id";

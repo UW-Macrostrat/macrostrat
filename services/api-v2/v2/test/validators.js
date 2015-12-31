@@ -74,9 +74,15 @@ module.exports = {
   },
 
   geoJSON: function(res) {
-    if(res.body.success.data.type !== "FeatureCollection") {
+    if (res.body.success.data.type !== "FeatureCollection") {
       throw new Error("GeoJSON was not returned");
     }
+
+    res.body.success.data.features.forEach(function(d) {
+      if (!d.geometry || !d.geometry.coordinates || !d.geometry.coordinates.length || !d.properties) {
+        throw new Error("GeoJSON was malformed", d);
+      }
+    });
   },
 
   topoJSON: function(res) {

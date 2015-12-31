@@ -67,4 +67,58 @@ module.exports = function() {
         done();
       });
   });
+
+  it("should return all sources as GeoJSON", function(done) {
+    request(settings.host)
+      .get("/api/v2/defs/sources?all&format=geojson")
+      .expect(validators.aSuccessfulRequest)
+      .expect(validators.geoJSON)
+      .end(function(error, res) {
+        if (error) return done(error);
+        done();
+      });
+  });
+
+  it("should accept a scale", function(done) {
+    request(settings.host)
+      .get("/api/v2/defs/sources?scale=medium")
+      .expect(validators.aSuccessfulRequest)
+      .expect(validators.json)
+      .expect(validators.atLeastOneResult)
+      .expect(function(res) {
+        res.body.success.data.forEach(function(d) {
+          if (d.scale != "medium") {
+            throw new Error("Wrong scale returned when filtering by scale");
+          }
+        });
+      })
+      .end(function(error, res) {
+        if (error) return done(error);
+        done();
+      });
+  });
+
+  it("should accept a latitude and longitude", function(done) {
+    request(settings.host)
+      .get("/api/v2/defs/sources?lat=43&lng=-89")
+      .expect(validators.aSuccessfulRequest)
+      .expect(validators.json)
+      .expect(validators.atLeastOneResult)
+      .end(function(error, res) {
+        if (error) return done(error);
+        done();
+      });
+  });
+
+  it("should accept a WKT shape", function(done) {
+    request(settings.host)
+      .get("/api/v2/defs/sources?shape=LINESTRING(-122.3438%2037,-89.3527%2043.0582)&buffer=100")
+      .expect(validators.aSuccessfulRequest)
+      .expect(validators.json)
+      .expect(validators.atLeastOneResult)
+      .end(function(error, res) {
+        if (error) return done(error);
+        done();
+      });
+  });
 }
