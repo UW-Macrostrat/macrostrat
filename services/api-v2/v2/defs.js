@@ -274,7 +274,9 @@
         "cltn_id",
         "cltn_name",
         "pbdb_occs",
-        "unit_id"
+        "unit_id",
+        "t_age",
+        "b_age"
       ]
     }
   },
