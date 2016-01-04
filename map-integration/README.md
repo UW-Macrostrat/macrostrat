@@ -1,10 +1,18 @@
 # burwell
 Multiscale geologic map integration
 
+## TL;DR
+1. `./import tataouine ~/Downloads/tataouine.shp`
+2. `python matching/match_parallel.py --source_id 1234`
+3. `python setup/build_lookup.py`
+4. `psql -U you burwell < setup/update_source_stats.sql`
+
+
 ## Setup
 + Edit ````setup/credentials.example.py```` with your credentials and rename to ````credentials.py````
 + Run ````cd setup && ./setup.sh````
 + Permissions for MariaDB to write files to repo directory must be in place
+
 
 ## import
 To import a new dataset, you can use ````./import```` which reprojects a dataset to EPSG 4326 and imports it into PostGIS.
@@ -30,6 +38,8 @@ _Import a single shapefile:_
 ./import ontario ~/Downloads/ontario/Greenland.shp true LATIN1
 ````
 
+
+
 ## Matching
 There are three matching operations available - make matches, manually add a match, and manually delete a match.
 
@@ -51,6 +61,7 @@ the automated search. To manually make a match, use `matching/add_match.py`.
 
 #### Manually deleting matches
 `matching/remove_match.py`
+
 
 
 ## Rebuilding lookup tables
