@@ -39,7 +39,7 @@ module.exports = function(req, res, next) {
             params = {};
 
         if (data.age_bottom) {
-          where += " AND f.age_bottom > :age_top AND l.age_top < :age_bottom";
+          where += " AND b_age > :age_top AND t_age < :age_bottom";
           params["age_top"] = data.age_top;
           params["age_bottom"] = data.age_bottom;
         }
@@ -68,14 +68,13 @@ module.exports = function(req, res, next) {
           params["col_group_ids"] = larkin.parseMultipleIds(req.query.col_group_id);
         }
 
-        larkin.query("SELECT pbdb_matches.collection_no AS cltn_id, collection_name AS cltn_name, n_occs AS pbdb_occs, \
+        larkin.query("SELECT pbdb_matches.collection_no AS cltn_id, collection_name AS cltn_name, t_age, b_age, n_occs AS pbdb_occs, \
           pbdb_matches.unit_id, CONCAT(pbdb_matches.ref_id, '|') AS refs " + ((geo) ? ", AsWKT(pbdb_matches.coordinate) AS geometry" : "") + " \
           FROM pbdb_matches \
           JOIN units ON pbdb_matches.unit_id = units.id \
           JOIN units_sections ON units_sections.unit_id = units.id \
           JOIN cols ON cols.id = units_sections.col_id \
-          JOIN intervals f ON f.id = FO \
-          JOIN intervals l ON l.id = LO \
+          JOIN lookup_unit_intervals ON units_sections.unit_id=lookup_unit_intervals.unit_id \
           JOIN pbdb.coll_matrix ON pbdb_matches.collection_no = pbdb.coll_matrix.collection_no \
           LEFT JOIN unit_strat_names ON unit_strat_names.unit_id = units.id \
           LEFT JOIN lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id \
