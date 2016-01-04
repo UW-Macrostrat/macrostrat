@@ -39,7 +39,7 @@ module.exports = function(req, res, next) {
             params = {};
 
         if (data.age_bottom) {
-          where += " AND b_age > :age_top AND t_age < :age_bottom";
+          where += " AND lookup_unit_intervals.b_age > :age_top AND lookup_unit_intervals.t_age < :age_bottom";
           params["age_top"] = data.age_top;
           params["age_bottom"] = data.age_bottom;
         }
@@ -68,7 +68,7 @@ module.exports = function(req, res, next) {
           params["col_group_ids"] = larkin.parseMultipleIds(req.query.col_group_id);
         }
 
-        larkin.query("SELECT pbdb_matches.collection_no AS cltn_id, collection_name AS cltn_name, t_age, b_age, n_occs AS pbdb_occs, \
+        larkin.query("SELECT pbdb_matches.collection_no AS cltn_id, collection_name AS cltn_name, lookup_unit_intervals.t_age, lookup_unit_intervals.b_age, n_occs AS pbdb_occs, \
           pbdb_matches.unit_id, CONCAT(pbdb_matches.ref_id, '|') AS refs " + ((geo) ? ", AsWKT(pbdb_matches.coordinate) AS geometry" : "") + " \
           FROM pbdb_matches \
           JOIN units ON pbdb_matches.unit_id = units.id \
