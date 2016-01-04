@@ -30,21 +30,36 @@ _Import a single shapefile:_
 ./import ontario ~/Downloads/ontario/Greenland.shp true LATIN1
 ````
 
+## Matching
+There are three matching operations available - make matches, manually add a match, and manually delete a match.
 
-
-## match.py
-Once a dataset is imported using the process above, you can run this script to make matches to Macrostrat units and strat names.
-
-##### Parameters:
-+ ````--source_id```` (or ````-s````) - the ID of the dataset you would like to create matches to. Must be in ````maps.sources````.
-+ ````--table```` (or ````-t````) - the map table that contains the target source that will be used for creating matches. Must be either ````small````, ````medium````, or ````large````.
-
-##### Examples:
-_Create new matches for source 1_
+#### Making matches
+After a new dataset has been imported a broad set of matches should be made. To do this, run
 
 ````
-python match.py --source_id 1 --table medium
+python matching/match_parallel.py --source_id **source id**
 ````
+
+The script `matching/match_parallel.py` takes one argument, a `source_id`, which is the new unique source ID of the dataset
+you would like to create matches for (`maps.sources.source_id`). This script could take a long time time run, but will
+populate `maps.map_units` and `maps.map_strat_names`.
+
+
+#### Manually adding matches
+Often times the automated matching script produces invalid results, or personal knowledge is better than what can be inferred from
+the automated search. To manually make a match, use `matching/add_match.py`.
+
+#### Manually deleting matches
+`matching/remove_match.py`
+
+
+## Rebuilding lookup tables
+After creating initial matches, the lookup table for the scale of the target source should be rebuilt.
+
+````
+python setup/build_lookup.py **scale**
+````
+
 
 
 
