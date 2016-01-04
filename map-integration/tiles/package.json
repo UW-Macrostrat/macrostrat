@@ -12,6 +12,7 @@
   "dependencies": {
     "async": "^1.4.2",
     "carto": "^0.15.2",
+    "mkdirp": "^0.5.1",
     "pg": "^4.4.2",
     "tile-cover": "^3.0.1",
     "tilestrata": "^1.9.0",

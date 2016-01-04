@@ -12,6 +12,7 @@ var http = require("http");
 var pg = require("pg");
 var credentials = require("./credentials");
 var config = require("./config");
+var fs = require("fs");
 
 // Define the tileserver that will be used for cache seedings
 var strata = tilestrata.createServer();
@@ -75,7 +76,48 @@ function queryPg(db, sql, params, callback) {
   });
 }
 
+function getBounds(source_id, callback) {
+  queryPg("burwell", "SELECT scale FROM maps.sources WHERE source_id = $1", [source_id], function(error, data) {
+    if (error || !data.rows || !data.rows.length) {
+      return callback(error);
+    }
+
+    queryPg("burwell", "SELECT ST_AsGeoJSON(ST_Envelope(ST_Collect(geom)), 4) AS geometry FROM maps." + data.rows[0].scale + " WHERE source_id = $1", [source_id], function(error, data) {
+      if (error || !data.rows || !data.rows.length) {
+        return callback(error);
+      }
+      callback(data.rows[0].geometry);
+    });
+  });
+}
+
+function clearCache(bbox) {
+  deleted = true;
+  var zooms = [11, 12, 13];
+  var tiles = [];
+  for (var i = 0; i < zooms.length; i++) {
+    var coverage = cover.tiles(JSON.parse(bbox), {min_zoom: zooms[i], max_zoom: zooms[i]});
+    if (coverage.length && coverage.length < 100000) {
+      tiles.push.apply(tiles, coverage);
+    }
+  }
+
+  for (var i = 0; i < tiles.length; i++) {
+    try {
+      fs.unlinkSync(__dirname + '/tiles/burwell/' + tiles[i][2] + '/' + tiles[i][0] + '/' + tiles[i][1] + '/tile.png');
+    } catch(e) {
+
+    }
+
+  }
+
+  console.log('Done deleting tiles')
+}
+
 console.time("Total");
+
+var deleted = false;
+
 // Seed each of our seedable scales
 async.eachLimit(config.seedScales, 1, function(scale, scaleCallback) {
   console.time("Scale");
@@ -86,8 +128,45 @@ async.eachLimit(config.seedScales, 1, function(scale, scaleCallback) {
 
   var coords = {}
 
-  async.series([
+  async.waterfall([
+    // Check if a source_id was passed
     function(callback) {
+      if (process.argv[2]) {
+
+        // If so, reseed the cache only for that area
+        getBounds(process.argv[2], function(bbox) {
+          if (!deleted) {
+            clearCache(bbox);
+          }
+
+          async.each(config.scaleMap[scale], function(z, zcallback) {
+            coords[z] = [];
+
+            var coverage = cover.tiles(JSON.parse(bbox), {min_zoom: z, max_zoom: z});
+            if (coverage.length && coverage.length < 100000) {
+              coords[z].push.apply(coords[z], coverage)
+              zcallback(null);
+            } else {
+              zcallback(null);
+            }
+
+          }, function(error) {
+            callback(null, true);
+          });
+        });
+
+      } else {
+        callback(null);
+      }
+    },
+
+
+    // Find all the tiles needed to cover land
+    function(isSource, callback) {
+      if (isSource) {
+        return callback(null, isSource);
+      }
+
       queryPg("burwell", "SELECT ST_AsGeoJSON(geom, 4) AS geometry FROM public.land", [], function(error, data) {
         if (error) {
           console.log(error);
@@ -113,7 +192,12 @@ async.eachLimit(config.seedScales, 1, function(scale, scaleCallback) {
       });
     },
 
-    function(callback) {
+    // Find the bits of sources that exist over water and add that geometry
+    function(isSource, callback) {
+      if (isSource) {
+        return callback(null);
+      }
+
       queryPg("burwell", "\
         SELECT ST_AsGeoJSON((ST_Dump(ST_MakeValid(geometry))).geom, 4) geometry FROM ( \
         SELECT ST_Simplify(((st_dump(geom)).geom), 1) AS geometry FROM \
@@ -133,6 +217,7 @@ async.eachLimit(config.seedScales, 1, function(scale, scaleCallback) {
       });
     },
 
+    // For each scale, find all tiles that need to be generated
     function(callback) {
       async.eachLimit(config.scaleMap[scale], 1, function(z, zoomCallback) {
         console.time("z");
@@ -140,16 +225,19 @@ async.eachLimit(config.seedScales, 1, function(scale, scaleCallback) {
 
         var newCoords = [];
 
-        for (var i = 0; i < extras.rows.length; i++) {
+        if (extras && extras.rows) {
+          for (var i = 0; i < extras.rows.length; i++) {
 
-          var coverage = cover.tiles(JSON.parse(extras.rows[i].geometry), {min_zoom: z, max_zoom: z});
+            var coverage = cover.tiles(JSON.parse(extras.rows[i].geometry), {min_zoom: z, max_zoom: z});
 
-          if (coverage.length && coverage.length < 200000) {
-            for (var q = 0; q < coverage.length; q++) {
-              newCoords.push(coverage[q]);
+            if (coverage.length && coverage.length < 200000) {
+              for (var q = 0; q < coverage.length; q++) {
+                newCoords.push(coverage[q]);
+              }
             }
           }
         }
+
 
         var allTiles = coords[z].concat(newCoords);
         var foundTiles = {}
@@ -161,6 +249,7 @@ async.eachLimit(config.seedScales, 1, function(scale, scaleCallback) {
           }
         });
 
+        // Once we have a list of tiles, request them (i.e. make GET request, and let tilesever cache save them)
         async.eachLimit(unique, 20, function(tile, tileCallback) {
           http.get("http://localhost:" + config.port + "/burwell_" + scale + "/" + tile[2] + "/" + tile[0] + "/" + tile[1] + "/tile.png", function(res) {
             tileCallback(null);
@@ -193,6 +282,6 @@ async.eachLimit(config.seedScales, 1, function(scale, scaleCallback) {
   // Wait a minute for the tile cache to catch up before we kill it
   setTimeout(function() {
     process.exit();
-  }, 60000)
+  }, 60000);
 
 });

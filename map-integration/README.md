@@ -6,6 +6,7 @@ Multiscale geologic map integration
 2. `python matching/match_parallel.py --source_id 1234`
 3. `python setup/build_lookup.py medium`
 4. `psql -U you burwell < setup/update_source_stats.sql`
+5. `node tiles/seed.js 1234`
 
 
 ## Setup
