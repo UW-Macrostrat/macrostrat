@@ -63,8 +63,8 @@ def refresh(scale, source_id):
             WHERE st.map_id = m.map_id
             AND basis_col =
               ANY(CASE
-                WHEN 'manual' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
-                  array['manual']
+                WHEN 'manual_replace' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
+                  array['manual_replace']
                 WHEN 'strat_name' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
                   array['strat_name', 'manual']
                 WHEN 'name' in (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
@@ -92,8 +92,8 @@ def refresh(scale, source_id):
             WHERE st.map_id = m.map_id
             AND basis_col =
               ANY(CASE
-                WHEN 'manual' IN (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
-                  array['manual']
+                WHEN 'manual_replace' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
+                  array['manual_replace']
                 WHEN 'strat_name' IN (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
                   array['strat_name', 'manual']
                 WHEN 'name' in (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
@@ -121,8 +121,8 @@ def refresh(scale, source_id):
             WHERE st.map_id = m.map_id
             AND basis_col =
               ANY(CASE
-                WHEN 'manual' IN (SELECT DISTINCT basis_col FROM maps.map_liths m WHERE st.map_id = m.map_id) THEN
-                  array['manual']
+                WHEN 'manual_replace' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
+                  array['manual_replace']
                 WHEN 'lith' IN (SELECT DISTINCT basis_col FROM maps.map_liths m WHERE st.map_id = m.map_id) THEN
                   array['lith', 'manual']
                 WHEN 'descrip' IN (SELECT DISTINCT basis_col FROM maps.map_liths m WHERE st.map_id = m.map_id) THEN
