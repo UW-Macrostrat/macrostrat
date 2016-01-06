@@ -74,7 +74,7 @@ function createLayer(scale, callback) {
   var layer = JSON.parse(JSON.stringify(layerTemplate));
 
   // Fill in the attributes
-  layer["Datasource"]["table"] = "(SELECT x.map_id, x.group_id, x.color, geom FROM lookup_" + scale + " x JOIN maps." + scale + " s ON s.map_id = x.map_id) subset";
+  layer["Datasource"]["table"] = "(SELECT x.map_id, x.color, geom FROM lookup_" + scale + " x JOIN maps." + scale + " s ON s.map_id = x.map_id) subset";
   layer["id"] = "burwell_" + scale;
   layer["name"] = "burwell_" + scale;
   layer["minZoom"] = Math.min.apply(Math, config.scaleMap[scale]);
