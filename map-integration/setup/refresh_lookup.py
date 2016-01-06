@@ -53,163 +53,202 @@ def refresh(scale, source_id):
     cur.execute("""
     INSERT INTO lookup_%(scale)s (map_id, unit_ids, strat_name_ids, lith_ids, best_age_top, best_age_bottom, color) (
       -- First create arrays of the best units and strat_names
-      WITH first as (
-        SELECT
-          st.map_id,
-          st.source_id,
-          array(
-            select distinct unit_id
-            FROM maps.map_units m
-            WHERE st.map_id = m.map_id
-            AND basis_col =
-              ANY(CASE
-                WHEN 'manual_replace' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
-                  array['manual_replace']
-                WHEN 'strat_name' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
-                  array['strat_name', 'manual']
-                WHEN 'name' in (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
-                  array['name', 'manual']
-                WHEN 'descrip' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
-                  array['descrip', 'manual']
-                WHEN 'comments' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
-                  array['comments', 'manual']
-                WHEN 'strat_name_buffer' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
-                  array['strat_name_buffer', 'manual']
-                WHEN 'name_buffer' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
-                  array['name_buffer', 'manual']
-                WHEN 'descrip_buffer' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
-                  array['descrip', 'manual']
-                WHEN 'comments_buffer' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
-                  array['comments_buffer', 'manual']
-                ELSE
-                 array['unknown', 'manual']
-               END)
-          ) AS unit_ids,
 
-          array(
-            SELECT DISTINCT strat_name_id
-            FROM maps.map_strat_names m
-            WHERE st.map_id = m.map_id
-            AND basis_col =
-              ANY(CASE
-                WHEN 'manual_replace' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
-                  array['manual_replace']
-                WHEN 'strat_name' IN (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
-                  array['strat_name', 'manual']
-                WHEN 'name' in (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
-                  array['name', 'manual']
-                WHEN 'descrip' IN (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
-                  array['descrip', 'manual']
-                WHEN 'comments' IN (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
-                  array['comments', 'manual']
-                WHEN 'strat_name_buffer' IN (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
-                  array['strat_name_buffer', 'manual']
-                WHEN 'name_buffer' IN (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
-                  array['name_buffer', 'manual']
-                WHEN 'descrip_buffer' IN (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
-                  array['descrip', 'manual']
-                WHEN 'comments_buffer' IN (SELECT DISTINCT basis_col FROM maps.map_strat_names m WHERE st.map_id = m.map_id) THEN
-                  array['comments_buffer', 'manual']
-                ELSE
-                 array['unknown', 'manual']
-               END)
-          ) AS strat_name_ids,
+     WITH unit_bases AS (
+       SELECT array_agg(distinct basis_col) bases, q.map_id
+       FROM maps.map_units
+       JOIN maps.%(scale)s q ON map_units.map_id = q.map_id
+       WHERE source_id = %(source_id)s
+       GROUP BY q.map_id
+       ORDER BY q.map_id
+     ),
+     unit_ids AS (
+       SELECT q.map_id, array_agg(DISTINCT unit_id) AS unit_ids
+       FROM maps.%(scale)s q
+       JOIN maps.map_units ON q.map_id = map_units.map_id
+       JOIN unit_bases ON unit_bases.map_id = q.map_id
 
-          array(
-            SELECT DISTINCT lith_id
-            FROM maps.map_liths m
-            WHERE st.map_id = m.map_id
-            AND basis_col =
-              ANY(CASE
-                WHEN 'manual_replace' IN (SELECT DISTINCT basis_col FROM maps.map_units m WHERE st.map_id = m.map_id) THEN
-                  array['manual_replace']
-                WHEN 'lith' IN (SELECT DISTINCT basis_col FROM maps.map_liths m WHERE st.map_id = m.map_id) THEN
-                  array['lith', 'manual']
-                WHEN 'descrip' IN (SELECT DISTINCT basis_col FROM maps.map_liths m WHERE st.map_id = m.map_id) THEN
-                  array['descrip', 'manual']
-                WHEN 'comments' IN (SELECT DISTINCT basis_col FROM maps.map_liths m WHERE st.map_id = m.map_id) THEN
-                  array['comments', 'manual']
-                WHEN 'name' IN (SELECT DISTINCT basis_col FROM maps.map_liths m WHERE st.map_id = m.map_id) THEN
-                  array['name', 'manual']
-                WHEN 'strat_name' IN (SELECT DISTINCT basis_col FROM maps.map_liths m WHERE st.map_id = m.map_id) THEN
-                  array['strat_name', 'manual']
-                ELSE
-                  array['unknown', 'manual']
-                END
-              )
-          ) AS lith_ids,
+       WHERE source_id = %(source_id)s AND map_units.basis_col = ANY(
+         CASE
+           WHEN 'manual_replace' = ANY(bases)
+             THEN array['manual_replace']
+         	WHEN 'strat_name' = ANY(bases)
+         	  THEN array['strat_name', 'manual']
+           WHEN 'name' = ANY(bases)
+             THEN array['name', 'manual']
+           WHEN 'descrip' = ANY(bases)
+             THEN array['descrip', 'manual']
+           WHEN 'comments' = ANY(bases)
+             THEN array['comments', 'manual']
+         	WHEN 'strat_name_buffer' = ANY(bases)
+         	  THEN array['strat_name_buffer', 'manual']
+           WHEN 'name_buffer' = ANY(bases)
+             THEN array['name_buffer', 'manual']
+           WHEN 'descrip_buffer' = ANY(bases)
+             THEN array['descrip_buffer', 'manual']
+           WHEN 'comments_buffer' = ANY(bases)
+             THEN array['comments_buffer', 'manual']
+         	ELSE
+         	  array['unknown', 'manual']
+         	END
+       )
+       GROUP BY q.map_id
+     ),
+     strat_name_bases AS (
+       SELECT array_agg(distinct basis_col) bases, q.map_id
+       FROM maps.map_strat_names
+       JOIN maps.%(scale)s q ON map_strat_names.map_id = q.map_id
+       WHERE source_id = %(source_id)s
+       GROUP BY q.map_id
+       ORDER BY q.map_id
+     ),
+     strat_name_ids AS (
+       SELECT q.map_id, array_agg(DISTINCT strat_name_id) AS strat_name_ids
+       FROM maps.%(scale)s q
+       JOIN maps.map_strat_names ON q.map_id = map_strat_names.map_id
+       JOIN strat_name_bases ON strat_name_bases.map_id = q.map_id
+       WHERE source_id = %(source_id)s AND map_strat_names.basis_col = ANY(
+         CASE
+           WHEN 'manual_replace' = ANY(bases)
+             THEN array['manual_replace']
+         	WHEN 'strat_name' = ANY(bases)
+         	  THEN array['strat_name', 'manual']
+           WHEN 'name' = ANY(bases)
+             THEN array['name', 'manual']
+           WHEN 'descrip' = ANY(bases)
+             THEN array['descrip', 'manual']
+           WHEN 'comments' = ANY(bases)
+             THEN array['comments', 'manual']
+         	WHEN 'strat_name_buffer' = ANY(bases)
+         	  THEN array['strat_name_buffer', 'manual']
+           WHEN 'name_buffer' = ANY(bases)
+             THEN array['name_buffer', 'manual']
+           WHEN 'descrip_buffer' = ANY(bases)
+             THEN array['descrip_buffer', 'manual']
+           WHEN 'comments_buffer' = ANY(bases)
+             THEN array['comments_buffer', 'manual']
+         	ELSE
+         	  array['unknown', 'manual']
+         	END
+       )
+       GROUP BY q.map_id
+     ),
+     lith_bases AS (
+       SELECT array_agg(distinct basis_col) bases, q.map_id
+       FROM maps.map_liths
+       JOIN maps.%(scale)s q ON map_liths.map_id = q.map_id
+       WHERE source_id = %(source_id)s
+       GROUP BY q.map_id
+       ORDER BY q.map_id
+     ),
+     lith_ids AS (
+       SELECT q.map_id, array_agg(DISTINCT lith_id) AS lith_ids
+       FROM maps.%(scale)s q
+       JOIN maps.map_liths ON q.map_id = map_liths.map_id
+       JOIN lith_bases ON lith_bases.map_id = q.map_id
+       WHERE source_id = %(source_id)s AND map_liths.basis_col = ANY(
+         CASE
+           WHEN 'manual_replace' = ANY(bases)
+             THEN array['manual_replace']
+         	WHEN 'strat_name' = ANY(bases)
+         	  THEN array['strat_name', 'manual']
+           WHEN 'name' = ANY(bases)
+             THEN array['name', 'manual']
+           WHEN 'descrip' = ANY(bases)
+             THEN array['descrip', 'manual']
+           WHEN 'comments' = ANY(bases)
+             THEN array['comments', 'manual']
+         	WHEN 'strat_name_buffer' = ANY(bases)
+         	  THEN array['strat_name_buffer', 'manual']
+           WHEN 'name_buffer' = ANY(bases)
+             THEN array['name_buffer', 'manual']
+           WHEN 'descrip_buffer' = ANY(bases)
+             THEN array['descrip_buffer', 'manual']
+           WHEN 'comments_buffer' = ANY(bases)
+             THEN array['comments_buffer', 'manual']
+         	ELSE
+         	  array['unknown', 'manual']
+         	END
+       )
+       GROUP BY q.map_id
+     ),
+     match_summary AS (
+       SELECT
+         q.map_id,
+         COALESCE(unit_ids.unit_ids, '{}') unit_ids,
+         COALESCE(strat_name_ids.strat_name_ids, '{}') strat_name_ids,
+         COALESCE(lith_ids.lith_ids, '{}') lith_ids,
+         t_interval,
+         b_interval
+       FROM maps.%(scale)s q
+       LEFT JOIN unit_ids ON q.map_id = unit_ids.map_id
+       LEFT JOIN strat_name_ids ON q.map_id = strat_name_ids.map_id
+       LEFT JOIN lith_ids ON q.map_id = lith_ids.map_id
+       WHERE source_id = %(source_id)s
+     ),
+     macro_ages AS (
+       SELECT
+         map_id,
+         unit_ids,
+         strat_name_ids,
+         lith_ids,
+         t_interval,
+         b_interval,
 
-          t_interval,
-          b_interval
-
-        FROM maps.%(scale)s st
-        LEFT JOIN maps.map_units mu ON mu.map_id = st.map_id
-        LEFT JOIN maps.map_strat_names msn ON msn.map_id = st.map_id
-        WHERE st.source_id = %(source_id)s
-        GROUP BY st.map_id
-        ),
-        -- Get the min t_age and max b_age
-        second AS (SELECT
-          map_id,
-          source_id,
-          unit_ids,
-          strat_name_ids,
-          lith_ids,
-          t_interval,
-          b_interval,
-
-          (SELECT min(t_age) AS t_age FROM macrostrat.lookup_unit_intervals WHERE unit_id = ANY(unit_ids)) t_age,
-          (SELECT max(b_age) AS b_age FROM macrostrat.lookup_unit_intervals WHERE unit_id = ANY(unit_ids)) b_age
-          FROM first
-        ),
-        -- Determine the best_age_top and best_age_bottom
-        third AS (
-        SELECT map_id,
-          source_id,
-          unit_ids,
-          strat_name_ids,
-          lith_ids,
-
-          ti.age_top,
-          tb.age_bottom,
-
-          t_age,
-          b_age,
-
-          CASE
-            WHEN t_age IS NULL THEN
-              ti.age_top
-             ELSE
-               t_age
-          END best_age_top,
-
-          CASE
-            WHEN b_age IS NULL THEN
-              tb.age_bottom
-             ELSE
-               b_age
-          END best_age_bottom
-
-         FROM second
-         JOIN macrostrat.intervals ti ON ti.id = t_interval
-         JOIN macrostrat.intervals tb ON tb.id = b_interval
-        )
-        -- Assign a color for making tiles
-        SELECT map_id,
+         (SELECT min(t_age) AS t_age FROM macrostrat.lookup_unit_intervals WHERE unit_id = ANY(unit_ids)) t_age,
+         (SELECT max(b_age) AS b_age FROM macrostrat.lookup_unit_intervals WHERE unit_id = ANY(unit_ids)) b_age
+       FROM match_summary
+     ),
+     -- Determine the best_age_top and best_age_bottom
+     best_times AS (
+       SELECT
+         map_id,
          unit_ids,
          strat_name_ids,
          lith_ids,
 
-         best_age_top,
-         best_age_bottom,
+         ti.age_top,
+         tb.age_bottom,
 
-         (SELECT interval_color
-          FROM macrostrat.intervals
-          WHERE age_top <= best_age_top AND age_bottom >= best_age_bottom
-          ORDER BY age_bottom - age_top
-          LIMIT 1
-         ) AS color
-         FROM third
+         t_age,
+         b_age,
+
+         CASE
+           WHEN t_age IS NULL THEN
+             ti.age_top
+            ELSE
+              t_age
+         END best_age_top,
+
+         CASE
+           WHEN b_age IS NULL THEN
+             tb.age_bottom
+            ELSE
+              b_age
+         END best_age_bottom
+
+      FROM macro_ages
+      JOIN macrostrat.intervals ti ON ti.id = t_interval
+      JOIN macrostrat.intervals tb ON tb.id = b_interval
+     )
+     -- Assign a color for making tiles
+     SELECT map_id,
+      unit_ids,
+      strat_name_ids,
+      lith_ids,
+
+      best_age_top,
+      best_age_bottom,
+
+      (SELECT interval_color
+       FROM macrostrat.intervals
+       WHERE age_top <= best_age_top AND age_bottom >= best_age_bottom
+       ORDER BY age_bottom - age_top
+       LIMIT 1
+      ) AS color
+      FROM best_times
+
+
     )
     """, {"scale": AsIs(scale), "source_id": source_id})
     conn.commit()
