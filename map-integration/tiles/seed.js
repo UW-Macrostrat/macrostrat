@@ -104,7 +104,7 @@ function clearCache(bbox) {
 
   for (var i = 0; i < tiles.length; i++) {
     try {
-      fs.unlinkSync(__dirname + '/' + config.cachePath + '/' + tiles[i][2] + '/' + tiles[i][0] + '/' + tiles[i][1] + '/tile.png');
+      fs.unlinkSync(config.cachePath + '/' + tiles[i][2] + '/' + tiles[i][0] + '/' + tiles[i][1] + '/tile.png');
     } catch(e) {
 
     }
