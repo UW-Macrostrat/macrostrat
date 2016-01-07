@@ -74,7 +74,8 @@ def refresh(scale, source_id):
          CASE
            WHEN 'manual_replace' = ANY(bases)
              THEN array['manual_replace']
-         	WHEN 'strat_name' = ANY(bases)
+
+           WHEN 'strat_name' = ANY(bases)
          	  THEN array['strat_name', 'manual']
            WHEN 'name' = ANY(bases)
              THEN array['name', 'manual']
@@ -82,7 +83,9 @@ def refresh(scale, source_id):
              THEN array['descrip', 'manual']
            WHEN 'comments' = ANY(bases)
              THEN array['comments', 'manual']
-         	WHEN 'strat_name_buffer' = ANY(bases)
+
+
+           WHEN 'strat_name_buffer' = ANY(bases)
          	  THEN array['strat_name_buffer', 'manual']
            WHEN 'name_buffer' = ANY(bases)
              THEN array['name_buffer', 'manual']
@@ -90,9 +93,28 @@ def refresh(scale, source_id):
              THEN array['descrip_buffer', 'manual']
            WHEN 'comments_buffer' = ANY(bases)
              THEN array['comments_buffer', 'manual']
-         	ELSE
+
+           WHEN 'strat_name_fname' = ANY(bases)
+         	  THEN array['strat_name_fname', 'manual']
+           WHEN 'name_fname' = ANY(bases)
+             THEN array['name_fname', 'manual']
+           WHEN 'descrip_fname' = ANY(bases)
+             THEN array['descrip_fname', 'manual']
+           WHEN 'comments_fname' = ANY(bases)
+             THEN array['comments_fname', 'manual']
+
+           WHEN 'strat_name_fname_buffer' = ANY(bases)
+         	  THEN array['strat_name_fname_buffer', 'manual']
+           WHEN 'name_fname_buffer' = ANY(bases)
+             THEN array['name_fname_buffer', 'manual']
+           WHEN 'descrip_fname_buffer' = ANY(bases)
+             THEN array['descrip_fname_buffer', 'manual']
+           WHEN 'comments_fname_buffer' = ANY(bases)
+             THEN array['comments_fname_buffer', 'manual']
+
+           ELSE
          	  array['unknown', 'manual']
-         	END
+           END
        )
        GROUP BY q.map_id
      ),
@@ -117,7 +139,8 @@ def refresh(scale, source_id):
          CASE
            WHEN 'manual_replace' = ANY(bases)
              THEN array['manual_replace']
-         	WHEN 'strat_name' = ANY(bases)
+
+           WHEN 'strat_name' = ANY(bases)
          	  THEN array['strat_name', 'manual']
            WHEN 'name' = ANY(bases)
              THEN array['name', 'manual']
@@ -125,7 +148,9 @@ def refresh(scale, source_id):
              THEN array['descrip', 'manual']
            WHEN 'comments' = ANY(bases)
              THEN array['comments', 'manual']
-         	WHEN 'strat_name_buffer' = ANY(bases)
+
+
+           WHEN 'strat_name_buffer' = ANY(bases)
          	  THEN array['strat_name_buffer', 'manual']
            WHEN 'name_buffer' = ANY(bases)
              THEN array['name_buffer', 'manual']
@@ -133,9 +158,28 @@ def refresh(scale, source_id):
              THEN array['descrip_buffer', 'manual']
            WHEN 'comments_buffer' = ANY(bases)
              THEN array['comments_buffer', 'manual']
-         	ELSE
+
+           WHEN 'strat_name_fname' = ANY(bases)
+         	  THEN array['strat_name_fname', 'manual']
+           WHEN 'name_fname' = ANY(bases)
+             THEN array['name_fname', 'manual']
+           WHEN 'descrip_fname' = ANY(bases)
+             THEN array['descrip_fname', 'manual']
+           WHEN 'comments_fname' = ANY(bases)
+             THEN array['comments_fname', 'manual']
+
+           WHEN 'strat_name_fname_buffer' = ANY(bases)
+         	  THEN array['strat_name_fname_buffer', 'manual']
+           WHEN 'name_fname_buffer' = ANY(bases)
+             THEN array['name_fname_buffer', 'manual']
+           WHEN 'descrip_fname_buffer' = ANY(bases)
+             THEN array['descrip_fname_buffer', 'manual']
+           WHEN 'comments_fname_buffer' = ANY(bases)
+             THEN array['comments_fname_buffer', 'manual']
+
+           ELSE
          	  array['unknown', 'manual']
-         	END
+           END
        )
        GROUP BY q.map_id
      ),
@@ -160,7 +204,8 @@ def refresh(scale, source_id):
          CASE
            WHEN 'manual_replace' = ANY(bases)
              THEN array['manual_replace']
-         	WHEN 'strat_name' = ANY(bases)
+
+           WHEN 'strat_name' = ANY(bases)
          	  THEN array['strat_name', 'manual']
            WHEN 'name' = ANY(bases)
              THEN array['name', 'manual']
@@ -168,7 +213,9 @@ def refresh(scale, source_id):
              THEN array['descrip', 'manual']
            WHEN 'comments' = ANY(bases)
              THEN array['comments', 'manual']
-         	WHEN 'strat_name_buffer' = ANY(bases)
+
+
+           WHEN 'strat_name_buffer' = ANY(bases)
          	  THEN array['strat_name_buffer', 'manual']
            WHEN 'name_buffer' = ANY(bases)
              THEN array['name_buffer', 'manual']
@@ -176,9 +223,28 @@ def refresh(scale, source_id):
              THEN array['descrip_buffer', 'manual']
            WHEN 'comments_buffer' = ANY(bases)
              THEN array['comments_buffer', 'manual']
-         	ELSE
+
+           WHEN 'strat_name_fname' = ANY(bases)
+         	  THEN array['strat_name_fname', 'manual']
+           WHEN 'name_fname' = ANY(bases)
+             THEN array['name_fname', 'manual']
+           WHEN 'descrip_fname' = ANY(bases)
+             THEN array['descrip_fname', 'manual']
+           WHEN 'comments_fname' = ANY(bases)
+             THEN array['comments_fname', 'manual']
+
+           WHEN 'strat_name_fname_buffer' = ANY(bases)
+         	  THEN array['strat_name_fname_buffer', 'manual']
+           WHEN 'name_fname_buffer' = ANY(bases)
+             THEN array['name_fname_buffer', 'manual']
+           WHEN 'descrip_fname_buffer' = ANY(bases)
+             THEN array['descrip_fname_buffer', 'manual']
+           WHEN 'comments_fname_buffer' = ANY(bases)
+             THEN array['comments_fname_buffer', 'manual']
+
+           ELSE
          	  array['unknown', 'manual']
-         	END
+           END
        )
        GROUP BY q.map_id
      ),
@@ -288,6 +354,8 @@ if len(arguments.refresh) == 1:
         scale = find_scale(arguments.refresh[0])
         if scale is not None:
             refresh(scale, arguments.refresh[0])
+            print "Refreshed lookup_" + scale + " for source_id ", arguments.refresh[0]
+
         else:
             print "This source_id was not found or is invalid"
 

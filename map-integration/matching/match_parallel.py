@@ -53,19 +53,20 @@ if __name__ == '__main__':
 
   print 'Starting at ', str(datetime.datetime.now())
 
+
   # Clean up
   cursor.execute("""
-      DELETE FROM maps.map_units WHERE map_id IN (SELECT map_id FROM maps.%(table)s WHERE source_id = %(source_id)s) AND basis_col NOT LIKE 'manual%'
+      DELETE FROM maps.map_units WHERE map_id IN (SELECT map_id FROM maps.%(table)s WHERE source_id = %(source_id)s) AND basis_col NOT LIKE 'manual%%'
   """, {
       "table": AsIs(scale),
-      "source_id": AsIs(arguments.source_id)
+      "source_id": arguments.source_id
   })
 
   cursor.execute("""
-      DELETE FROM maps.map_strat_names WHERE map_id IN (SELECT map_id FROM maps.%(table)s WHERE source_id = %(source_id)s) AND basis_col NOT LIKE 'manual%'
+      DELETE FROM maps.map_strat_names WHERE map_id IN (SELECT map_id FROM maps.%(table)s WHERE source_id = %(source_id)s) AND basis_col NOT LIKE 'manual%%'
   """, {
       "table": AsIs(scale),
-      "source_id": AsIs(arguments.source_id)
+      "source_id": arguments.source_id
   })
   connection.commit()
   print "------- Done cleaning up -------"
