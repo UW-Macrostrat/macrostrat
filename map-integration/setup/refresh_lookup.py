@@ -288,6 +288,8 @@ if len(arguments.refresh) == 1:
         scale = find_scale(arguments.refresh[0])
         if scale is not None:
             refresh(scale, arguments.refresh[0])
+        else:
+            print "This source_id was not found or is invalid"
 
     # If a scale was passed
     elif arguments.refresh[0] in valid_scales:

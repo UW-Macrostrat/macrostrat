@@ -116,6 +116,7 @@ function clearCache(bbox) {
 
 console.time("Total");
 
+// Janky
 var deleted = false;
 
 // Seed each of our seedable scales
@@ -126,7 +127,7 @@ async.eachLimit(config.seedScales, 1, function(scale, scaleCallback) {
   // These are source-specific additions to land
   var extras;
 
-  var coords = {}
+  var coords = {};
 
   async.waterfall([
     // Check if a source_id was passed
@@ -135,10 +136,12 @@ async.eachLimit(config.seedScales, 1, function(scale, scaleCallback) {
 
         // If so, reseed the cache only for that area
         getBounds(process.argv[2], function(bbox) {
+          // Janky in action
           if (!deleted) {
             clearCache(bbox);
           }
 
+          // For each zoom level at this scale record the tiles needed to cover the bbox
           async.each(config.scaleMap[scale], function(z, zcallback) {
             coords[z] = [];
 
@@ -194,6 +197,7 @@ async.eachLimit(config.seedScales, 1, function(scale, scaleCallback) {
 
     // Find the bits of sources that exist over water and add that geometry
     function(isSource, callback) {
+      // If a source_id was passed skip this step
       if (isSource) {
         return callback(null);
       }
@@ -225,6 +229,7 @@ async.eachLimit(config.seedScales, 1, function(scale, scaleCallback) {
 
         var newCoords = [];
 
+        // This will be skipped if a source_id is passed
         if (extras && extras.rows) {
           for (var i = 0; i < extras.rows.length; i++) {
 
@@ -240,8 +245,9 @@ async.eachLimit(config.seedScales, 1, function(scale, scaleCallback) {
 
 
         var allTiles = coords[z].concat(newCoords);
-        var foundTiles = {}
 
+        // Remove duplicates
+        var foundTiles = {}
         var unique = allTiles.filter(function(d) {
           if (!foundTiles[d.join(",")]) {
             foundTiles[d.join(",")] = true;
