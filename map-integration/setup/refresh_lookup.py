@@ -52,8 +52,8 @@ def refresh(scale, source_id):
     # Insert source into lookup_scale
     cur.execute("""
     INSERT INTO lookup_%(scale)s (map_id, unit_ids, strat_name_ids, lith_ids, best_age_top, best_age_bottom, color) (
-      -- First create arrays of the best units and strat_names
 
+      -- Find unique match types for units
      WITH unit_bases AS (
        SELECT array_agg(distinct basis_col) bases, q.map_id
        FROM maps.map_units
@@ -62,6 +62,8 @@ def refresh(scale, source_id):
        GROUP BY q.map_id
        ORDER BY q.map_id
      ),
+
+     -- Find and aggregate best unit_ids for each map_id
      unit_ids AS (
        SELECT q.map_id, array_agg(DISTINCT unit_id) AS unit_ids
        FROM maps.%(scale)s q
@@ -94,6 +96,8 @@ def refresh(scale, source_id):
        )
        GROUP BY q.map_id
      ),
+
+     -- Find unique match types of strat_names
      strat_name_bases AS (
        SELECT array_agg(distinct basis_col) bases, q.map_id
        FROM maps.map_strat_names
@@ -102,6 +106,8 @@ def refresh(scale, source_id):
        GROUP BY q.map_id
        ORDER BY q.map_id
      ),
+
+     -- Find and aggregate best strat_name_ids for each map_id
      strat_name_ids AS (
        SELECT q.map_id, array_agg(DISTINCT strat_name_id) AS strat_name_ids
        FROM maps.%(scale)s q
@@ -133,6 +139,8 @@ def refresh(scale, source_id):
        )
        GROUP BY q.map_id
      ),
+
+     -- Find unique match types of lithologies
      lith_bases AS (
        SELECT array_agg(distinct basis_col) bases, q.map_id
        FROM maps.map_liths
@@ -141,6 +149,8 @@ def refresh(scale, source_id):
        GROUP BY q.map_id
        ORDER BY q.map_id
      ),
+
+     -- Find and aggregate best lith_ids for each map_id
      lith_ids AS (
        SELECT q.map_id, array_agg(DISTINCT lith_id) AS lith_ids
        FROM maps.%(scale)s q
@@ -172,6 +182,8 @@ def refresh(scale, source_id):
        )
        GROUP BY q.map_id
      ),
+
+     -- Group all the previous matches, and select the top and bottom interval for each map_id
      match_summary AS (
        SELECT
          q.map_id,
@@ -186,6 +198,8 @@ def refresh(scale, source_id):
        LEFT JOIN lith_ids ON q.map_id = lith_ids.map_id
        WHERE source_id = %(source_id)s
      ),
+
+     -- Get the macrostrat ages for each map_id, if possible (i.e. if it has unit_id matches)
      macro_ages AS (
        SELECT
          map_id,
@@ -199,6 +213,7 @@ def refresh(scale, source_id):
          (SELECT max(b_age) AS b_age FROM macrostrat.lookup_unit_intervals WHERE unit_id = ANY(unit_ids)) b_age
        FROM match_summary
      ),
+
      -- Determine the best_age_top and best_age_bottom
      best_times AS (
        SELECT
@@ -248,10 +263,10 @@ def refresh(scale, source_id):
       ) AS color
       FROM best_times
 
-
     )
     """, {"scale": AsIs(scale), "source_id": source_id})
     conn.commit()
+
 
 def refresh_scale(scale):
     print "--- Working on ", scale, " ---"
@@ -260,16 +275,24 @@ def refresh_scale(scale):
         print "--- ", idx, " of ", len(source_ids), " ---"
         refresh(scale, source)
 
+
+
 if len(arguments.refresh) == 1:
     # Refresh all scales
     if arguments.refresh[0] == "all":
         for scale in valid_scales:
             refresh_scale(scale)
-    else :
+
+    # If a source_id was passed
+    elif arguments.refresh[0].isdigit() :
         scale = find_scale(arguments.refresh[0])
         if scale is not None:
             refresh(scale, arguments.refresh[0])
-        elif arguments.refresh[0] in valid_scales:
-            refresh_scale(arguments.refresh[0])
-        else:
-            print "Invalid source_id given"
+
+    # If a scale was passed
+    elif arguments.refresh[0] in valid_scales:
+        refresh_scale(arguments.refresh[0])
+
+    # ?
+    else:
+        print "Invalid source_id given"

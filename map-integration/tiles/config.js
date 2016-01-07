@@ -1,6 +1,6 @@
 module.exports = {
   // Where to write the cache
-  cachePath: "./tiles/burwell",
+  cachePath: __dirname + "/tiles/burwell",
 
   // Where burwell_scale.xml live
   configPath: "./",
