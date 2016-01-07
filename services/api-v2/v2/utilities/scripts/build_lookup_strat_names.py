@@ -211,6 +211,35 @@ cursor.execute("""
 """)
 connection.commit()
 
+# alter table lookup_strat_names add column name_no_lith varchar(100);
+### Remove lithological terms from strat names ###
+
+# Get a list of lithologies
+cursor.execute("""
+    SELECT lith FROM liths
+""")
+lith_results = cursor.fetchall()
+lithologies = [lith["lith"] for lith in lith_results]
+
+# Fetch all strat names
+cursor.execute("""
+    SELECT strat_name_id, strat_name FROM lookup_strat_names_new
+""")
+strat_name_results = cursor.fetchall()
+
+# Remove lithologies from name
+for strat_name in strat_name_results:
+    split_name = strat_name["strat_name"].split(" ")
+
+    good_name = " ".join([name for name in split_name if name.lower() not in lithologies])
+
+    cursor.execute("""
+      UPDATE lookup_strat_names_new SET name_no_lith = %(name)s WHERE strat_name_id = %(strat_name_id)s
+    """, {
+      "name": good_name,
+      "strat_name_id": strat_name["strat_name_id"]
+    })
+
 
 # Out with the old, in with the new
 cursor.execute("TRUNCATE lookup_strat_names")
