@@ -64,7 +64,7 @@ class Task(object):
         """
 
         pyCursor.execute("""
-            WITH rocks AS (SELECT map_id, strat_name, name, descrip, comments, intervals_top.age_top, intervals_bottom.age_bottom, 25 as age_buffer, geom
+            WITH rocks AS (SELECT map_id, replace(strat_name, '.', '') AS strat_name, replace(name, '.', '') AS name, descrip, comments, intervals_top.age_top, intervals_bottom.age_bottom, 25 as age_buffer, geom
                       FROM maps.%(table)s
                       JOIN macrostrat.intervals intervals_top on t_interval = intervals_top.id
                       JOIN macrostrat.intervals intervals_bottom on b_interval = intervals_bottom.id
@@ -94,7 +94,7 @@ class Task(object):
                     ORDER BY lsn.strat_name_id
                   )
 
-                  SELECT units.id AS unit_id, """ + ("lsn.rank_name" if strictNameMatch else "first.names") + """ AS strat_name, first.strat_name_ids AS strat_name_id, lui.lo_age AS age_top, lui.fo_age AS age_bottom, """ + ("st_buffer(st_envelope(poly_geom), 1.2) AS poly_geom " if bufferedGeometry else "poly_geom ") + """
+                  SELECT units.id AS unit_id, """ + ("replace(lsn.rank_name, '.', '')" if strictNameMatch else "replace(lsn.name_no_lith, '.', '')") + """ AS strat_name, first.strat_name_ids AS strat_name_id, lui.lo_age AS age_top, lui.fo_age AS age_bottom, """ + ("st_buffer(st_envelope(poly_geom), 1.2) AS poly_geom " if bufferedGeometry else "poly_geom ") + """
                   FROM macrostrat.units
                   JOIN macrostrat.unit_strat_names usn ON units.id = usn.unit_id
                   JOIN first ON first.strat_name_id = usn.strat_name_id

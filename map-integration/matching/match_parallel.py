@@ -10,6 +10,14 @@ import datetime
 sys.path = [os.path.join(os.path.dirname(__file__), os.pardir)] + sys.path
 import credentials
 
+cwd = os.path.dirname(os.path.realpath(__file__))
+
+split_path = cwd.split("/")
+split_path.pop()
+
+sys.path.insert(0, "/".join(split_path) + "/setup")
+
+import refresh
 
 if __name__ == '__main__':
 
@@ -96,3 +104,10 @@ if __name__ == '__main__':
 
   for i in range(num_processors):
     tasks.put(None)
+
+  tasks.join()
+
+  scale = refresh.find_scale(cursor, arguments.source_id)
+  if scale is not None:
+      refresh.refresh(cursor, connection, scale, arguments.source_id)
+      print "Refreshed lookup_" + scale + " for source_id ", arguments.source_id
