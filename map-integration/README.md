@@ -65,10 +65,10 @@ the automated search. To manually make a match, use `matching/add_match.py`.
 
 
 ## Rebuilding lookup tables
-After creating initial matches, the lookup table for the scale of the target source should be rebuilt.
+The lookup tables are automatically rebuilt after running `match_parallel.py`, but you can manually refresh them as well.
 
 ````
-python setup/build_lookup.py **scale**
+python setup/refresh_lookup.py **scale or source_id**
 ````
 
 
