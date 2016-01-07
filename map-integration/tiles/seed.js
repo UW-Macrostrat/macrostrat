@@ -159,7 +159,7 @@ async.eachLimit(config.seedScales, 1, function(scale, scaleCallback) {
         });
 
       } else {
-        callback(null);
+        callback(null, false);
       }
     },
 
@@ -190,7 +190,7 @@ async.eachLimit(config.seedScales, 1, function(scale, scaleCallback) {
             zcallback(null);
           })
         }, function(error) {
-          callback(null);
+          callback(null, false);
         });
       });
     },

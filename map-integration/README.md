@@ -52,7 +52,7 @@ python matching/match_parallel.py --source_id **source id**
 
 The script `matching/match_parallel.py` takes one argument, a `source_id`, which is the new unique source ID of the dataset
 you would like to create matches for (`maps.sources.source_id`). This script could take a long time time run, but will
-populate `maps.map_units` and `maps.map_strat_names`.
+populate `maps.map_units` and `maps.map_strat_names`, as well as update the proper lookup table.
 
 
 #### Manually adding matches
