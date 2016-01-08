@@ -94,21 +94,18 @@ function getBounds(source_id, callback) {
 function clearCache(bbox) {
   deleted = true;
   var zooms = [11, 12, 13];
-  var tiles = [];
+
   for (var i = 0; i < zooms.length; i++) {
     var coverage = cover.tiles(JSON.parse(bbox), {min_zoom: zooms[i], max_zoom: zooms[i]});
     if (coverage.length && coverage.length < 100000) {
-      tiles.push.apply(tiles, coverage);
+      for (var j = 0; j < coverage.length; j++) {
+        try {
+          fs.unlinkSync(config.cachePath + '/' + coverage[j][2] + '/' + coverage[j][0] + '/' + tiles[j][1] + '/tile.png');
+        } catch(e) {
+
+        }
+      }
     }
-  }
-
-  for (var i = 0; i < tiles.length; i++) {
-    try {
-      fs.unlinkSync(config.cachePath + '/' + tiles[i][2] + '/' + tiles[i][0] + '/' + tiles[i][1] + '/tile.png');
-    } catch(e) {
-
-    }
-
   }
 
   console.log('Done deleting tiles')
