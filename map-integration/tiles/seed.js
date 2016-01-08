@@ -115,9 +115,13 @@ console.time("Total");
 
 // Janky
 var deleted = false;
+var isLarge = false;
 
 // Seed each of our seedable scales
 async.eachLimit(config.seedScales, 1, function(scale, scaleCallback) {
+  if (isLarge) {
+    return scaleCallback(true);
+  }
   console.time("Scale");
   console.log("Working on ", scale);
 
@@ -131,29 +135,45 @@ async.eachLimit(config.seedScales, 1, function(scale, scaleCallback) {
     function(callback) {
       if (process.argv[2]) {
 
-        // If so, reseed the cache only for that area
-        getBounds(process.argv[2], function(bbox) {
-          // Janky in action
-          if (!deleted) {
-            clearCache(bbox);
-          }
+        queryPg("burwell", "SELECT scale FROM maps.sources where source_id = $1", [process.argv[2]], function(error, result) {
 
-          // For each zoom level at this scale record the tiles needed to cover the bbox
-          async.each(config.scaleMap[scale], function(z, zcallback) {
-            coords[z] = [];
 
-            var coverage = cover.tiles(JSON.parse(bbox), {min_zoom: z, max_zoom: z});
-            if (coverage.length && coverage.length < 100000) {
-              coords[z].push.apply(coords[z], coverage)
-              zcallback(null);
-            } else {
-              zcallback(null);
+          // If so, reseed the cache only for that area
+          getBounds(process.argv[2], function(bbox) {
+
+            if (result.rows && result.rows[0].scale === "large") {
+              isLarge = true;
+              clearCache(bbox);
+              callback(true);
+              return
             }
 
-          }, function(error) {
-            callback(null, true);
+            // Janky in action
+            if (!deleted) {
+              clearCache(bbox);
+            }
+
+
+            // For each zoom level at this scale record the tiles needed to cover the bbox
+            async.each(config.scaleMap[scale], function(z, zcallback) {
+              coords[z] = [];
+
+              var coverage = cover.tiles(JSON.parse(bbox), {min_zoom: z, max_zoom: z});
+              if (coverage.length && coverage.length < 100000) {
+                coords[z].push.apply(coords[z], coverage)
+                zcallback(null);
+              } else {
+                zcallback(null);
+              }
+
+            }, function(error) {
+              callback(null, true);
+            });
           });
+
         });
+
+
 
       } else {
         callback(null, false);
