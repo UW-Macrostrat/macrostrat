@@ -82,7 +82,7 @@ function getBounds(source_id, callback) {
       return callback(error);
     }
 
-    queryPg("burwell", "SELECT ST_AsGeoJSON(ST_Envelope(ST_Collect(geom)), 4) AS geometry FROM maps." + data.rows[0].scale + " WHERE source_id = $1", [source_id], function(error, data) {
+    queryPg("burwell", "SELECT ST_AsGeoJSON(ST_Extent(geom), 4) AS geometry FROM maps." + data.rows[0].scale + " WHERE source_id = $1", [source_id], function(error, data) {
       if (error || !data.rows || !data.rows.length) {
         return callback(error);
       }
@@ -115,13 +115,10 @@ console.time("Total");
 
 // Janky
 var deleted = false;
-var isLarge = false;
+
 
 // Seed each of our seedable scales
 async.eachLimit(config.seedScales, 1, function(scale, scaleCallback) {
-  if (isLarge) {
-    return scaleCallback(true);
-  }
   console.time("Scale");
   console.log("Working on ", scale);
 
@@ -134,47 +131,31 @@ async.eachLimit(config.seedScales, 1, function(scale, scaleCallback) {
     // Check if a source_id was passed
     function(callback) {
       if (process.argv[2]) {
+        // If so, reseed the cache only for that area
+        getBounds(process.argv[2], function(bbox) {
 
-        queryPg("burwell", "SELECT scale FROM maps.sources where source_id = $1", [process.argv[2]], function(error, result) {
+          // Janky in action
+          if (!deleted) {
+            clearCache(bbox);
+          }
 
 
-          // If so, reseed the cache only for that area
-          getBounds(process.argv[2], function(bbox) {
+          // For each zoom level at this scale record the tiles needed to cover the bbox
+          async.each(config.scaleMap[scale], function(z, zcallback) {
+            coords[z] = [];
 
-            if (result.rows && result.rows[0].scale === "large") {
-              isLarge = true;
-              clearCache(bbox);
-              callback(true);
-              return
+            var coverage = cover.tiles(JSON.parse(bbox), {min_zoom: z, max_zoom: z});
+            if (coverage.length && coverage.length < 100000) {
+              coords[z].push.apply(coords[z], coverage)
+              zcallback(null);
+            } else {
+              zcallback(null);
             }
 
-            // Janky in action
-            if (!deleted) {
-              clearCache(bbox);
-            }
-
-
-            // For each zoom level at this scale record the tiles needed to cover the bbox
-            async.each(config.scaleMap[scale], function(z, zcallback) {
-              coords[z] = [];
-
-              var coverage = cover.tiles(JSON.parse(bbox), {min_zoom: z, max_zoom: z});
-              if (coverage.length && coverage.length < 100000) {
-                coords[z].push.apply(coords[z], coverage)
-                zcallback(null);
-              } else {
-                zcallback(null);
-              }
-
-            }, function(error) {
-              callback(null, true);
-            });
+          }, function(error) {
+            callback(null, true);
           });
-
         });
-
-
-
       } else {
         callback(null, false);
       }

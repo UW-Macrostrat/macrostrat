@@ -8,7 +8,7 @@ WITH first AS (
   SELECT map_id, source_id, geom FROM maps.large
 ),
 second AS (
-  SELECT source_id, round(sum(ST_Area(geom::geography)*0.000001)) area, COUNT(*) features, ST_Envelope(ST_Collect(geom)) AS envelope
+  SELECT source_id, round(sum(ST_Area(geom::geography)*0.000001)) area, COUNT(*) features, ST_Extent(geom) AS envelope
   FROM first
   GROUP BY source_id
 )
