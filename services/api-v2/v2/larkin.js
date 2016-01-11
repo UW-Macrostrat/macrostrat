@@ -494,13 +494,8 @@ var mysql = require("mysql"),
       larkin.cache.put("columnsGeom", results.columnsGeom);
       larkin.cache.put("columnsNoGeom", results.columnsNoGeom);
 
-      console.log("done prepping cache");
+      console.log("Done prepping column cache");
     });
-
-
-
-
-
   }
 
   module.exports = larkin;

@@ -20,9 +20,7 @@ app.use("/api/v2", v2);
 // If no version specified, fall back to more current
 app.use("/api", v2);
 
-if (process.env.NODE_ENV !== "production") {
-  app.set("json spaces", 2);
-}
+app.set("json spaces", 2);
 
 app.port = process.argv[2] || 5000;
 
