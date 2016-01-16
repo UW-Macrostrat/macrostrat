@@ -35,7 +35,8 @@ module.exports = function(req, res, next) {
     if (req.query.shape) {
       var buffer = (req.query.buffer && !isNaN(parseInt(req.query.buffer))) ? parseInt(req.query.buffer)*1000 : 1;
 
-      from += ", (SELECT ST_Buffer(ST_SnapToGrid($" + (where.length + 1) + "::geometry, 0.1)::geography, $" + (where.length + 2) + ") AS buffer) shape";
+      from += ", (SELECT ST_Buffer((ST_Segmentize($" + (where.length + 1) + "::geography, 100000)::geometry)::geography, $" + (where.length + 2) + ")::geometry AS buffer) shape"
+
       where.push("ST_Intersects(geom, buffer) is true");
       params.push(req.query.shape, buffer);
 
