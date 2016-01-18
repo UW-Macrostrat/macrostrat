@@ -93,7 +93,7 @@ function getBounds(source_id, callback) {
 
 function clearCache(bbox) {
   deleted = true;
-  var zooms = [11, 12, 13];
+  var zooms = config.scaleMap['large'];
 
   for (var i = 0; i < zooms.length; i++) {
     var coverage = cover.tiles(JSON.parse(bbox), {min_zoom: zooms[i], max_zoom: zooms[i]});
@@ -117,6 +117,15 @@ console.time("Total");
 var deleted = false;
 
 
+try {
+  fs.statSync(config.cachePath + '/' + config.scaleMap['large'][0]);
+} catch(error) {
+  if (error) {
+    console.log('Cache path does not exist');
+    process.exit();
+  }
+}
+
 // Seed each of our seedable scales
 async.eachLimit(config.seedScales, 1, function(scale, scaleCallback) {
   console.time("Scale");
@@ -138,7 +147,6 @@ async.eachLimit(config.seedScales, 1, function(scale, scaleCallback) {
           if (!deleted) {
             clearCache(bbox);
           }
-
 
           // For each zoom level at this scale record the tiles needed to cover the bbox
           async.each(config.scaleMap[scale], function(z, zcallback) {
@@ -164,6 +172,7 @@ async.eachLimit(config.seedScales, 1, function(scale, scaleCallback) {
 
     // Find all the tiles needed to cover land
     function(isSource, callback) {
+      // Skip this if a source_id was passed
       if (isSource) {
         return callback(null, isSource);
       }
