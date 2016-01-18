@@ -99,7 +99,8 @@ function clearCache(bbox) {
 
   // Iterate on the zoom levels of the scale 'large'
   async.eachLimit(zooms, 1, function(zoom, callback) {
-
+    console.log('Deleting z', zoom);
+    
     // Find all the tiles that cover the bbox of the target source_id
     var coverage = cover.tiles(JSON.parse(bbox), {min_zoom: zoom, max_zoom: zoom});
 
@@ -156,9 +157,9 @@ function clearCache(bbox) {
       }
     }
     console.log('Done deleting z' + zooms[i]);
-  }*/
+  }
 
-  console.log('Done deleting tiles')
+  console.log('Done deleting tiles')*/
 }
 
 console.time("Total");
@@ -191,10 +192,10 @@ async.eachLimit(config.seedScales, 1, function(scale, scaleCallback) {
     function(callback) {
       if (process.argv[2]) {
         // If so, reseed the cache only for that area
-        getBounds(process.argv[2], function(bbox, scale) {
+        getBounds(process.argv[2], function(bbox, tScale) {
 
           // Janky in action
-          if (!deleted && scale === 'large') {
+          if (!deleted && tScale === 'large') {
             clearCache(bbox);
           }
 
