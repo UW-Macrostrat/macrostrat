@@ -16,3 +16,14 @@ UPDATE maps.sources AS a
 SET area = s.area, features = s.features, bbox = s.envelope
 FROM second AS s
 WHERE s.source_id = a.source_id;
+
+/*
+WITH a AS (
+select st_union(st_envelope(geom)) geometry from maps.small
+WHERE source_id = 11
+)
+update maps.sources
+set ref_geom = a.geometry
+from a
+where source_id = 11;
+*/
