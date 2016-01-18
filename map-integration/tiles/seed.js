@@ -82,11 +82,13 @@ function getBounds(source_id, callback) {
       return callback(error);
     }
 
-    queryPg("burwell", "SELECT ST_AsGeoJSON(ST_Extent(geom), 4) AS geometry FROM maps." + data.rows[0].scale + " WHERE source_id = $1", [source_id], function(error, data) {
+    var scale = data.rows[0].scale
+
+    queryPg("burwell", "SELECT ST_AsGeoJSON(ST_Extent(geom), 4) AS geometry FROM maps." + scale + " WHERE source_id = $1", [source_id], function(error, data) {
       if (error || !data.rows || !data.rows.length) {
         return callback(error);
       }
-      callback(data.rows[0].geometry);
+      callback(data.rows[0].geometry, scale);
     });
   });
 }
@@ -95,9 +97,56 @@ function clearCache(bbox) {
   deleted = true;
   var zooms = config.scaleMap['large'];
 
-  for (var i = 0; i < zooms.length; i++) {
+  // Iterate on the zoom levels of the scale 'large'
+  async.eachLimit(zooms, 1, function(zoom, callback) {
+
+    // Find all the tiles that cover the bbox of the target source_id
+    var coverage = cover.tiles(JSON.parse(bbox), {min_zoom: zoom, max_zoom: zoom});
+
+    // Make sure something legit was returned
+    if (coverage.length && coverage.length < 100000) {
+      // For each tile, check if it exists and if so delete it
+      async.each(coverage, function(tile, tCallback) {
+        // Check if it exists
+        fs.stat(config.cachePath + '/' + tile[2] + '/' + tile[0] + '/' + tile[1] + '/tile.png', function(error, file) {
+          // Doesn't exist
+          if (error) {
+            return tCallback(null);
+          }
+          // Exists, delete it
+          else {
+            fs.unlink(config.cachePath + '/' + tile[2] + '/' + tile[0] + '/' + tile[1] + '/tile.png', function(error) {
+              if (error) {
+                tCallback(error);
+              } else {
+                tCallback(null);
+              }
+            });
+          }
+        });
+
+      }, function(error) {
+        if (error) {
+          callback(error);
+        } else {
+          callback(null);
+        }
+      });
+    } else {
+      callback(null);
+    }
+  }, function(error) {
+    if (error) {
+      console.log(error);
+    }
+
+    console.log('Done deleting tiles');
+  });
+
+/*  for (var i = 0; i < zooms.length; i++) {
     var coverage = cover.tiles(JSON.parse(bbox), {min_zoom: zooms[i], max_zoom: zooms[i]});
     if (coverage.length && coverage.length < 100000) {
+      console.log('Deleting z' + zooms[i]);
       for (var j = 0; j < coverage.length; j++) {
         try {
           fs.unlinkSync(config.cachePath + '/' + coverage[j][2] + '/' + coverage[j][0] + '/' + tiles[j][1] + '/tile.png');
@@ -106,7 +155,8 @@ function clearCache(bbox) {
         }
       }
     }
-  }
+    console.log('Done deleting z' + zooms[i]);
+  }*/
 
   console.log('Done deleting tiles')
 }
@@ -141,10 +191,10 @@ async.eachLimit(config.seedScales, 1, function(scale, scaleCallback) {
     function(callback) {
       if (process.argv[2]) {
         // If so, reseed the cache only for that area
-        getBounds(process.argv[2], function(bbox) {
+        getBounds(process.argv[2], function(bbox, scale) {
 
           // Janky in action
-          if (!deleted) {
+          if (!deleted && scale === 'large') {
             clearCache(bbox);
           }
 
