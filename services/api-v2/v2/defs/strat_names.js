@@ -43,9 +43,9 @@ module.exports = function(req, res, next, cb) {
     } else if (req.query.strat_name) {
       where.push("lower(strat_name) LIKE lower(:strat_name)");
       params["strat_name"] = req.query.strat_name;
-    } else if (req.query.strat_name_concept_id) {
-      where.push("concept_id IN (:strat_name_concept_id)")
-      params["strat_name_concept_id"] = larkin.parseMultipleIds(req.query.strat_name_concept_id);
+    } else if (req.query.concept_id) {
+      where.push("concept_id IN (:concept_id)")
+      params["concept_id"] = larkin.parseMultipleIds(req.query.concept_id);
     }
 
     if (req.query.rank) {
@@ -61,7 +61,7 @@ module.exports = function(req, res, next, cb) {
       rank_name AS strat_name_long,
       rank,
       strat_name_id,
-      concept_id,
+      concept_id AS concept_id,
       COALESCE(bed_name, '') AS bed,
       bed_id,
       COALESCE(mbr_name, '') AS mbr,
@@ -75,7 +75,8 @@ module.exports = function(req, res, next, cb) {
       early_age AS b_age,
       late_age AS t_age,
       COALESCE(gsc_lexicon, '') AS gsc_lexicon,
-      t_units
+      t_units,
+      url
     FROM lookup_strat_names l
   */});
 

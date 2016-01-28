@@ -69,7 +69,7 @@ module.exports = function(req, res, next) {
         }
 
         larkin.query("SELECT pbdb_matches.collection_no AS cltn_id, collection_name AS cltn_name, lookup_unit_intervals.t_age, lookup_unit_intervals.b_age, n_occs AS pbdb_occs, \
-          pbdb_matches.unit_id, CONCAT(pbdb_matches.ref_id, '|') AS refs " + ((geo) ? ", AsWKT(pbdb_matches.coordinate) AS geometry" : "") + " \
+          pbdb_matches.unit_id, cols.id as col_id, CONCAT(pbdb_matches.ref_id, '|') AS refs " + ((geo) ? ", AsWKT(pbdb_matches.coordinate) AS geometry" : "") + " \
           FROM pbdb_matches \
           JOIN units ON pbdb_matches.unit_id = units.id \
           JOIN units_sections ON units_sections.unit_id = units.id \
@@ -79,7 +79,7 @@ module.exports = function(req, res, next) {
           LEFT JOIN unit_strat_names ON unit_strat_names.unit_id = units.id \
           LEFT JOIN lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id \
           WHERE pbdb_matches.release_date < now() AND \
-          status_code = 'active' " + where + limit, params, function(error, result) {
+          cols.status_code = 'active' " + where + limit, params, function(error, result) {
             if (error) {
               callback(error);
             } else {
