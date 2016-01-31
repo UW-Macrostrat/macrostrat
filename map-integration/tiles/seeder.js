@@ -117,7 +117,9 @@ function reseed(geometries, all) {
           .forEach(function(zoomDirectory) {
             fs.unlink(path.join(config.cachePath, zoomDirectory));
           });
+          callback(null);
       } else {
+        callback(null);
       /*  async.each(geometries, function(geom, geomCb) {
           // Iterate on the zoom levels of the scale 'large'
           async.eachLimit(config.scaleMap['large'], 1, function(zoom, zCb) {
