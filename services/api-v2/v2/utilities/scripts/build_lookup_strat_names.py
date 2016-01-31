@@ -42,9 +42,9 @@ for idx, name in enumerate(strat_names):
   rank_name = name["rank"] + "_name"
 
   cursor.execute("""
-    INSERT INTO lookup_strat_names_new (concept_id, strat_name_id, strat_name, rank, """ + rank_id + """, """ + rank_name + """)
-    VALUES (%s, %s, %s, %s, %s, %s)
-  """, [name['concept_id'], name['id'], name['strat_name'], name['rank'], name['id'], name['strat_name']])
+    INSERT INTO lookup_strat_names_new (ref_id, concept_id, strat_name_id, strat_name, rank, """ + rank_id + """, """ + rank_name + """)
+    VALUES (%s, %s, %s, %s, %s, %s, %s)
+  """, [name['ref_id'], name['concept_id'], name['id'], name['strat_name'], name['rank'], name['id'], name['strat_name']])
   connection.commit()
 
   has_parent = True
@@ -144,11 +144,6 @@ cursor.execute("""
         	CONCAT(strat_name, ' Bed')
     END
 """)
-
-
-# Populate canada_lexicon webkey from canada_lexicon
-cursor.execute("UPDATE lookup_strat_names_new, canada_lexicon SET lookup_strat_names_new.gsc_lexicon = canada_lexicon.web_id WHERE lookup_strat_names_new.strat_name_id=canada_lexicon.strat_name_id")
-connection.commit()
 
 
 # Validate results

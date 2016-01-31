@@ -9,7 +9,7 @@ module.exports = function(req, res, next) {
 
   var sql = multiline(function() {/*
     SELECT
-      snm.concept_id,
+      snm.concept_id as concept_id
       snm.name,
       COALESCE(snm.geologic_age, '') geologic_age,
       COALESCE(snm.interval_id, '') int_id,
@@ -26,9 +26,9 @@ module.exports = function(req, res, next) {
 
   if ("all" in req.query) {
     // do nothing
-  } else if (req.query.strat_name_concept_id) {
+  } else if (req.query.concept_id) {
     sql += " WHERE concept_id IN (:concept_id)";
-    params["concept_id"] = larkin.parseMultipleIds(req.query.strat_name_concept_id);
+    params["concept_id"] = larkin.parseMultipleIds(req.query.concept_id);
   } else if (req.query.strat_name_id) {
     sql += " WHERE concept_id IN (SELECT concept_id FROM lookup_strat_names WHERE strat_name_id IN (:strat_name_ids))";
     params["strat_name_ids"] = larkin.parseMultipleIds(req.query.strat_name_id);

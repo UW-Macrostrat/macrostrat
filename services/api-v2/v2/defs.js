@@ -275,6 +275,7 @@
         "cltn_name",
         "pbdb_occs",
         "unit_id",
+        "col_id",
         "t_age",
         "b_age"
       ]
@@ -580,6 +581,7 @@
         "strat_name_id": "unique id",
         "strat_name": "lithostratigraphic name, exact match",
         "strat_name_like": "lithostratigraphic name, with open-ended string matching",
+        "concept_id": "uniqe id for stratigraphic concepts",
         "rank": "lithostratigraphic rank",
         "rule": "Can be 'all' or 'down'. Down will return any children of the requested stratigraphic name, and all will return the entire stratigraphic name hierarchy that the request name belongs to",
         "all": "return all lithostratigraphic names",
@@ -597,6 +599,7 @@
         "strat_name",
         "rank",
         "strat_name_id",
+        "concept_id",
         "bed",
         "bed_id",
         "mbr",
@@ -609,7 +612,7 @@
         "sgp_id",
         "b_age",
         "t_age",
-        "gsc_lexicon"
+        "ref_id"
       ]
     }
   },
@@ -628,7 +631,7 @@
         "csv"
       ],
       "examples": [
-        "api/v2/defs/strat_name_concepts?all"
+        "api/v2/defs/concept_id?all"
       ],
       "fields": [
         "concept_id",
@@ -637,7 +640,10 @@
         "int_id",
         "usage_notes",
         "other",
-        "province"
+        "province",
+        "url",
+        "authors",
+        "ref_id"
       ]
     }
   },
@@ -1294,7 +1300,6 @@
     "bottom": "text, named time interval that contains the bottom of the section",
     "bottom_age": "number, maximum age of the section in millions of years",
     "abbrev": "standard abbreviation for interval name",
-    "gsc_lexicon": "Canada Geological Survey Lexicon web id; data for some names can be accessed via link: http://weblex.nrcan.gc.ca/html/000000/GSCC00053000747.html",
     "clat": "number, present day latitude of of the centroid of the column to which the unit belongs",
     "clng": "number, present day longitude of of the centroid of the column to which the unit belongs",
     "t_plat": "number, same as clat, but rotated to the t_age. Top age paleo latitude.",
@@ -1351,7 +1356,7 @@
     "pub_year": "integer, the year of publication",
     "author": "text, the author of the publication",
     "doi": "the digital object identifier of the publication",
-    "url": "text, URL where the publication can be found",
+    "url": "text, URL where the source or contributing publication can be found",
     "col_poly": "object, the GeoJSON representation of the column",
     "int_id": "integer, the unique interval ID",
     "int_type": "text, the temporal rank of the interval",
