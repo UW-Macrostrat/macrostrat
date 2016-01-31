@@ -10,7 +10,9 @@ var cover = require('tile-cover');
 var async = require('async');
 var http = require('http');
 var fs = require('fs');
+var path = require('path');
 var ProgressBar = require('progress');
+var rmrf = require('rimraf');
 var config = require('./config');
 var pg = require('pg');
 var credentials = require('./credentials');
@@ -110,14 +112,20 @@ function reseed(geometries, all) {
     function(callback) {
       // if reseeding all, simply delete all existing tiles
       if (all) {
-        fs.readdirSync(config.cachePath)
+        var zs = fs.readdirSync(config.cachePath)
           .filter(function(file) {
             return fs.statSync(path.join(config.cachePath, file)).isDirectory();
-          })
-          .forEach(function(zoomDirectory) {
-            fs.unlink(path.join(config.cachePath, zoomDirectory));
           });
+
+        async.each(zs, function(z, cb) {
+          console.log(z)
+          rmrf(path.join(config.cachePath, z), function(error) {
+            cb(null);
+          });
+        }, function(error) {
+          console.log('Done deleting tiles');
           callback(null);
+        });
       } else {
         callback(null);
       /*  async.each(geometries, function(geom, geomCb) {

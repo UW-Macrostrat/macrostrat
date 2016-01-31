@@ -15,6 +15,7 @@
     "mkdirp": "^0.5.1",
     "pg": "^4.4.2",
     "progress": "^1.1.8",
+    "rimraf": "^2.5.1",
     "tile-cover": "^3.0.1",
     "tilestrata": "^1.9.0",
     "tilestrata-dependency": "^0.4.0",
