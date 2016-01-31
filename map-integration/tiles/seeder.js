@@ -98,66 +98,78 @@ function getBounds(source_id, callback) {
       if (error || !data.rows || !data.rows.length) {
         return callback(error);
       }
-      callback(data.rows[0].geometry);
+      callback(data.rows[0].geometry, data.rows[0].scale);
     });
   });
 }
 
 
-function reseed(geometries) {
+function reseed(geometries, all) {
   async.waterfall([
     // delete the large scale cache
     function(callback) {
-      async.each(geometries, function(geom, geomCb) {
-        // Iterate on the zoom levels of the scale 'large'
-        async.eachLimit(config.scaleMap['large'], 1, function(zoom, zCb) {
+      // if reseeding all, simply delete all existing tiles
+      if (all) {
+        fs.readdirSync(config.cachePath)
+          .filter(function(file) {
+            return fs.statSync(path.join(config.cachePath, file)).isDirectory();
+          })
+          .forEach(function(zoomDirectory) {
+            fs.unlink(path.join(config.cachePath, zoomDirectory));
+          });
+      } else {
+      /*  async.each(geometries, function(geom, geomCb) {
+          // Iterate on the zoom levels of the scale 'large'
+          async.eachLimit(config.scaleMap['large'], 1, function(zoom, zCb) {
 
-          // Find all the tiles that cover the bbox of the target source_id
-          var coverage = cover.tiles(geom, {min_zoom: zoom, max_zoom: zoom});
+            // Find all the tiles that cover the bbox of the target source_id
+            var coverage = cover.tiles(geom, {min_zoom: zoom, max_zoom: zoom});
 
-          // Make sure something legit was returned
-          if (coverage.length && coverage.length < 100000) {
-            // For each tile, check if it exists and if so delete it
-            async.each(coverage, function(tile, tCb) {
-              // Check if it exists
-              fs.stat(config.cachePath + '/' + tile[2] + '/' + tile[0] + '/' + tile[1] + '/tile.png', function(error, file) {
-                // Doesn't exist
+            // Make sure something legit was returned
+            if (coverage.length && coverage.length < 100000) {
+              // For each tile, check if it exists and if so delete it
+              async.each(coverage, function(tile, tCb) {
+                // Check if it exists
+                fs.stat(config.cachePath + '/' + tile[2] + '/' + tile[0] + '/' + tile[1] + '/tile.png', function(error, file) {
+                  // Doesn't exist
+                  if (error) {
+                    return tCb(null);
+                  }
+                  // Exists, delete it
+                  else {
+                    fs.unlink(config.cachePath + '/' + tile[2] + '/' + tile[0] + '/' + tile[1] + '/tile.png', function(error) {
+                      if (error) {
+                        tCb(error);
+                      } else {
+                        tCb(null);
+                      }
+                    });
+                  }
+                });
+
+              }, function(error) {
                 if (error) {
-                  return tCb(null);
-                }
-                // Exists, delete it
-                else {
-                  fs.unlink(config.cachePath + '/' + tile[2] + '/' + tile[0] + '/' + tile[1] + '/tile.png', function(error) {
-                    if (error) {
-                      tCb(error);
-                    } else {
-                      tCb(null);
-                    }
-                  });
+                  zCb(error);
+                } else {
+                  zCb(null);
                 }
               });
+            } else {
+              zCb(null);
+            }
+          }, function(error) {
+            if (error) {
+              console.log(error);
+            }
 
-            }, function(error) {
-              if (error) {
-                zCb(error);
-              } else {
-                zCb(null);
-              }
-            });
-          } else {
-            zCb(null);
-          }
-        }, function(error) {
-          if (error) {
-            console.log(error);
-          }
+            geomCb();
+          });
+        }, function() {
+          console.log('Done deleting tiles')
+          callback(null);
+        });*/
+      }
 
-          geomCb();
-        });
-      }, function() {
-        console.log('Done deleting tiles')
-        callback(null);
-      });
     },
 
     // Get tile list
@@ -280,15 +292,15 @@ function reseedAll() {
     }
   ], function(error, lands, water) {
 
-    reseed([].concat(lands, water));
+    reseed([].concat(lands, water), true);
   });
 }
 
 
 
 function reseedSource() {
-  getBounds(process.argv[2], function(bbox) {
-    reseed([JSON.parse(bbox)]);
+  getBounds(process.argv[2], function(bbox, scale) {
+    reseed([JSON.parse(bbox)], false, scale);
   });
 }
 
@@ -305,4 +317,6 @@ try {
 
 if (process.argv[2]) {
   reseedSource(process.argv[2]);
+} else {
+  reseedAll();
 }
