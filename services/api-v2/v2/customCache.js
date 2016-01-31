@@ -61,7 +61,7 @@ module.exports = function(options) {
 
           // if no, check the disk cache
           fs.stat(file, function(error, stat) {
-            if (error || (z >= 11 && new Date() - stat.mtime.getTime() > diskMaxAge)) {
+            if (error || (tile.z >= 11 && new Date() - stat.mtime.getTime() > diskMaxAge)) {
               // If it doesn't exist or it is too old and z < 11, return a blank tile
               if (tile.z < 11) {
                 // Send blank tile
