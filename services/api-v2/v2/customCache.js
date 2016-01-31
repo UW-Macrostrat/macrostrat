@@ -31,14 +31,15 @@ module.exports = function(options) {
     // Default to a max cache size of 1gb, and a max age of 6 hours
     var lruOptions = {
       max: (typeof(options.size) === 'string') ? filesizeParser(options.size) : 1000000000,
-      maxAge: options.maxAge || 21600000,
+      maxAge: options.lruMaxAge || 21600000,
       length: function(item) {
         return item.buffer.length;
       }
     }
-
     // Define the cache
-  	var cache = LRU(lruOptions);
+    var cache = LRU(lruOptions);
+
+    var diskMaxAge = options.diskMaxAge || 86400000;
 
     return {
         init: function(server, callback) {
@@ -60,8 +61,8 @@ module.exports = function(options) {
 
           // if no, check the disk cache
           fs.stat(file, function(error, stat) {
-            if (error) {
-              // If it doesn't exist and z < 11, return a blank tile
+            if (error || new Date() - stat.mtime.getTime() > diskMaxAge) {
+              // If it doesn't exist or it is too old and z < 11, return a blank tile
               if (tile.z < 11) {
                 // Send blank tile
                 getTile(options.defaultTile, function(error, buffer, headers) {

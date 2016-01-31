@@ -21,6 +21,8 @@ strata.layer("burwell")
         .use(customCache({
           size: "2GB",
           ttl: 3000,
+          lruMaxAge: 21600000,  // 6hrs
+          diskMaxAge: 86400000, // 24hrs
           dir: credentials.tiles.path,
           defaultTile: __dirname + "/default@2x.png"
         }))
