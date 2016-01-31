@@ -118,7 +118,6 @@ function reseed(geometries, all) {
           });
 
         async.each(zs, function(z, cb) {
-          console.log(z)
           rmrf(path.join(config.cachePath, z), function(error) {
             cb(null);
           });
