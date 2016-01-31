@@ -23,13 +23,13 @@ It requires two parameters, a dataset name and a path to a shapefile, and accept
 + ````dataset_name```` - Name of the dataset. The data will be inserted into a table with this name in the schema ````sources````
 + ````shapefile_path```` - The path to the shapefile you would like to insert
 + ````append (optional)```` - Boolean ````true```` or ````false````, default is ````false````. If ````true````, will append the data to an existing table specified with ````dataset_name````.
-+ ````encoding (optional)```` - Default is ````UTF-8````. Often times shapefiles will have ````LATIN1```` encoding, and will throw an encoding error if ````UTF-8```` is used. If that happens, explicitly use the requested encoding.
++ ````encoding (optional)```` - REQUIRES ````true```` or ````false```` to be specified, otherwise ignored. Default is ````UTF-8````. Often times shapefiles will have ````LATIN1```` encoding, and will throw an encoding error if ````UTF-8```` is used. If that happens, explicitly use the requested encoding. Must also include "false", even if adding one file, otherwise the encoding will be ignored.
 
 ##### Examples:
 
 _Import a single shapefile:_
 ````
-./import france ~/Downloads/france/france.shp
+./import france ~/Downloads/france/france.shp false
 ````
 
  _Import a dataset with same data structure spread out over two shapefiles with ````LATIN1```` encoding (note the use of ````false```` on the first command and ````true```` on the second!):_
