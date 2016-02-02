@@ -160,9 +160,13 @@ function seed(tiles, callback) {
     try {
       var scale = zoomLookup[tile[2]];
 
-      request(`http://localhost:${config.port}/burwell_${scale}/${tile[2]}/${tile[0]}/${tile[1]}/tile.png`, function(error, response, body) {
+      request({
+        uri: `http://localhost:${config.port}/burwell_${scale}/${tile[2]}/${tile[0]}/${tile[1]}/tile.png`,
+        timeout: 300000
+      }, function(error, response, body) {
         if (error) {
-          console.log(error);
+        //  console.log('Error - ', response.headers, response.request.uri.path);
+          tryAgain.push(tile);
         }
         process.stdout.write('   ' + t + ' of ' + tiles.length + (t != tiles.length ? '\r' : '\n'));
         t++;
@@ -174,7 +178,11 @@ function seed(tiles, callback) {
     }
 
   }, function() {
-    console.log('Missing - ', tryAgain);
+    if (tryAgain.length) {
+      seed(tiles, callback)
+      console.log('Missing - ', tryAgain);
+    }
+
     callback(null);
   });
 }
