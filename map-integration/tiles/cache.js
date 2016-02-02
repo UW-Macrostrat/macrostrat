@@ -15,10 +15,11 @@ module.exports = function(options) {
 
     return {
         init: function(server, callback) {
-            callback();
+          callback();
         },
 
         get: function(server, tile, callback) {
+          // Force new tile creation
           callback('None');
         },
 

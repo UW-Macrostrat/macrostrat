@@ -1,9 +1,8 @@
 // Depdendencies for tile server
 var tilestrata = require('tilestrata');
-var sharp = require('tilestrata-sharp');
 var mapnik = require('tilestrata-mapnik');
-var dependency = require('tilestrata-dependency');
 var cache = require('./cache');
+var config = require('./config');
 
 // Depdendencies for tile seeding
 var cover = require('tile-cover');
@@ -12,7 +11,6 @@ var http = require('http');
 var fs = require('fs');
 var path = require('path');
 var st = require('geojson-bounds');
-var config = require('./config');
 var pg = require('pg');
 var credentials = require('./credentials');
 
@@ -202,20 +200,28 @@ function deleteTile(tile, callback) {
 function seed(tiles, callback) {
   var t = 1;
 
+  var tryAgain = [];
+
   async.eachLimit(tiles, 20, function(tile, tCb) {
+    try {
+      var scale = zoomLookup[tile[2]];
 
-    var scale = zoomLookup[tile[2]];
-
-    http.get({
-      host: `localhost`,
-      port: `${config.port}`,
-      path: `/burwell_${scale}/${tile[2]}/${tile[0]}/${tile[1]}/tile.png`
-    }, function(res) {
-      process.stdout.write('   ' + t + ' of ' + tiles.length + (t != tiles.length ? '\r' : '\n'));
-      t++;
+      http.get({
+        host: 'localhost',
+        port: config.port,
+        path: `/burwell_${scale}/${tile[2]}/${tile[0]}/${tile[1]}/tile.png`
+      }, function(res) {
+        process.stdout.write('   ' + t + ' of ' + tiles.length + (t != tiles.length ? '\r' : '\n'));
+        t++;
+        tCb(null);
+      });
+    } catch(e) {
+      tryAgain.push(tile);
       tCb(null);
-    });
+    }
+
   }, function() {
+    console.log('Missing - ', tryAgain);
     callback(null);
   });
 }
