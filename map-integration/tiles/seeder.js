@@ -11,8 +11,7 @@ var async = require('async');
 var http = require('http');
 var fs = require('fs');
 var path = require('path');
-var ProgressBar = require('progress');
-var rmrf = require('rimraf');
+var st = require('geojson-bounds');
 var config = require('./config');
 var pg = require('pg');
 var credentials = require('./credentials');
@@ -26,6 +25,12 @@ var seedableScales = {
   medium: config.scaleMap['medium']
 };
 
+var zoomLookup = {};
+Object.keys(config.scaleMap).forEach(function(scale) {
+  config.scaleMap[scale].forEach(function(z) {
+    zoomLookup[z] = scale;
+  });
+});
 
 // Define the tileserver that will be used for cache seedings
 var strata = tilestrata.createServer();
@@ -96,169 +101,239 @@ function getBounds(source_id, callback) {
       return callback(error);
     }
 
-    queryPg('burwell', 'SELECT ST_AsGeoJSON(ST_Extent(geom), 4) AS geometry FROM maps.' + data.rows[0].scale + ' WHERE source_id = $1', [source_id], function(error, data) {
+    var scale = data.rows[0].scale;
+
+    queryPg('burwell', 'SELECT ST_AsGeoJSON(ST_Extent(geom), 4) AS geometry FROM maps.' + scale + ' WHERE source_id = $1', [source_id], function(error, data) {
       if (error || !data.rows || !data.rows.length) {
         return callback(error);
       }
-      callback(data.rows[0].geometry, data.rows[0].scale);
+      callback(data.rows[0].geometry, scale);
     });
   });
 }
 
+function polygonFromMinMax(min, max) {
+  return {
+    "type": "Polygon",
+    "coordinates": [[
+      min,
+      [min[0], max[1]],
+      max,
+      [max[0], min[1]],
+      min
+    ]]
+  }
+}
 
-function reseed(geometries, all) {
-  async.waterfall([
-    // delete the large scale cache
-    function(callback) {
-      // if reseeding all, simply delete all existing tiles
-      if (all) {
-        var zs = fs.readdirSync(config.cachePath)
-          .filter(function(file) {
-            return fs.statSync(path.join(config.cachePath, file)).isDirectory();
-          });
+function splitExtent(envelope, callback) {
+  /*                                        [ext[2], ext[3]]
+        -------------------------------------------*
+        |          |         |           |         |
+  q2    |----------*---------|-----------*---------|  q3
+        |          |c2       |           |c3       |
+        |--------------------*---------------------|
+        |    b     |    c    | c0        |         |
+  q1    |----------*---------|-----------*---------|  q4
+        |    a     |c1  d    |           |c4       |
+        *------------------------------------------
+[ext[0], ext[1]]
+  */
 
-        async.each(zs, function(z, cb) {
-          rmrf(path.join(config.cachePath, z), function(error) {
-            cb(null);
-          });
-        }, function(error) {
-          console.log('Done deleting tiles');
+  // [w, s, e, n]
+  var ext = st.extent(envelope);
+
+  // Get center of extent
+  var c0 = st.centroid(envelope);
+
+  var q1 = polygonFromMinMax([ext[0], ext[1]], c0);
+  var q2 = polygonFromMinMax([ext[0], c0[1]], [c0[0], ext[3]]);
+  var q3 = polygonFromMinMax(c0, [ext[2], ext[3]]);
+  var q4 = polygonFromMinMax([c0[0], ext[1]], [ext[2], c0[1]]);
+
+  var extents = [];
+
+  async.each([q1, q2, q3, q4], function(q, cb) {
+    // Get center
+    var _c = st.centroid(q);
+
+    // Get extent
+    var extent = st.extent(q);
+
+    var a = polygonFromMinMax([extent[0], extent[1]], _c);
+    var b = polygonFromMinMax([extent[0], _c[1]], [_c[0], extent[3]]);
+    var c = polygonFromMinMax(_c, [extent[2], extent[3]]);
+    var d = polygonFromMinMax([_c[0], extent[1]], [extent[2], _c[1]]);
+
+    extents.push(a, b, c, d);
+
+    cb(null);
+  }, function() {
+    callback(extents);
+  });
+}
+
+
+function getTileList(geom, z) {
+  return cover.tiles(geom, {min_zoom: z, max_zoom: z});
+}
+
+
+function deleteTile(tile, callback) {
+  // Check if it exists
+  fs.stat(config.cachePath + '/' + tile[2] + '/' + tile[0] + '/' + tile[1] + '/tile.png', function(error, file) {
+    // Doesn't exist
+    if (error) {
+      return callback(null);
+    }
+    // Exists, delete it
+    else {
+      fs.unlink(config.cachePath + '/' + tile[2] + '/' + tile[0] + '/' + tile[1] + '/tile.png', function(error) {
+        if (error) {
+          callback(error);
+        } else {
           callback(null);
-        });
-      } else {
-        callback(null);
-      /*  async.each(geometries, function(geom, geomCb) {
-          // Iterate on the zoom levels of the scale 'large'
-          async.eachLimit(config.scaleMap['large'], 1, function(zoom, zCb) {
-
-            // Find all the tiles that cover the bbox of the target source_id
-            var coverage = cover.tiles(geom, {min_zoom: zoom, max_zoom: zoom});
-
-            // Make sure something legit was returned
-            if (coverage.length && coverage.length < 100000) {
-              // For each tile, check if it exists and if so delete it
-              async.each(coverage, function(tile, tCb) {
-                // Check if it exists
-                fs.stat(config.cachePath + '/' + tile[2] + '/' + tile[0] + '/' + tile[1] + '/tile.png', function(error, file) {
-                  // Doesn't exist
-                  if (error) {
-                    return tCb(null);
-                  }
-                  // Exists, delete it
-                  else {
-                    fs.unlink(config.cachePath + '/' + tile[2] + '/' + tile[0] + '/' + tile[1] + '/tile.png', function(error) {
-                      if (error) {
-                        tCb(error);
-                      } else {
-                        tCb(null);
-                      }
-                    });
-                  }
-                });
-
-              }, function(error) {
-                if (error) {
-                  zCb(error);
-                } else {
-                  zCb(null);
-                }
-              });
-            } else {
-              zCb(null);
-            }
-          }, function(error) {
-            if (error) {
-              console.log(error);
-            }
-
-            geomCb();
-          });
-        }, function() {
-          console.log('Done deleting tiles')
-          callback(null);
-        });*/
-      }
-
-    },
-
-    // Get tile list
-    function(callback) {
-      // Generate a list of tiles
-      var tilesToSeed = {};
-
-      // For each geometry, and each zoom level, get the needed tiles
-      async.each(geometries, function(geom, geomCb) {
-        async.each(Object.keys(seedableScales), function(scale, sCb) {
-          if (!tilesToSeed[scale]) {
-            tilesToSeed[scale] = [];
-          }
-          async.each(config.scaleMap[scale], function(z, zCb) {
-            var coverage = cover.tiles(geom, {min_zoom: z, max_zoom: z});
-            if (coverage.length && coverage.length < 100000) {
-              tilesToSeed[scale].push.apply(tilesToSeed[scale], coverage);
-              zCb(null);
-            } else {
-              zCb(null);
-            }
-          }, function() {
-            sCb(null);
-          });
-        }, function() {
-          geomCb(null);
-        });
-      }, function(err) {
-
-        // Remove duplicate tiles
-        var foundTiles = {};
-
-        Object.keys(tilesToSeed).forEach(function(scale) {
-          tilesToSeed[scale] = tilesToSeed[scale].filter(function(tile) {
-            if (!foundTiles[tile.join('|')]) {
-              foundTiles[tile.join('|')] = true;
-              return tile;
-            }
-          });
-        });
-
-        callback(null, tilesToSeed);
-
-      });
-    },
-
-    // Fetch the tiles
-    function(tiles, callback) {
-      async.eachLimit(Object.keys(tiles), 1, function(scale, sCb) {
-        // Make a progress bar
-        console.log('Caching ' + scale);
-        var bar = new ProgressBar(':bar :current of :total (:percent) Total: :elapsed(s)', { total: tiles[scale].length, width: 30 });
-
-        async.eachLimit(tiles[scale], 20, function(tile, tCb) {
-          http.get(`http://localhost:${config.port}/burwell_${scale}/${tile[2]}/${tile[0]}/${tile[1]}/tile.png`, function(res) {
-            bar.tick();
-            tCb();
-          })
-        }, function() {
-          sCb(null);
-        });
-      }, function() {
-        callback(null);
+        }
       });
     }
-
-  ], function() {
-    console.log('Done seeding, waiting for cache');
-
-    // Wait a minute for the tile cache to catch up before we kill it
-    setTimeout(function() {
-      process.exit();
-    }, 60000);
-
   });
+}
 
+
+function seed(tiles, callback) {
+  async.eachLimit(tiles, 20, function(tile, tCb) {
+    var scale = zoomLookup[tile[2]];
+    http.get(`http://localhost:${config.port}/burwell_${scale}/${tile[2]}/${tile[0]}/${tile[1]}/tile.png`, function(res) {
+      tCb();
+    })
+  }, function() {
+    callback(null);
+  });
+}
+
+
+function reseed(geometries, scale) {
+  async.waterfall([
+
+    // Get the envelope of the geometries
+    function(callback) {
+      // If reseeding all, just use the provided geometries
+      if (scale === '') {
+        callback(null, geometries, scale);
+      }
+      // Otherwise, split the envelope into sections
+      else {
+        console.log('Splitting extent')
+        splitExtent(geometries[0], function(sections) {
+          callback(null, sections, scale);
+        });
+      }
+    },
+
+    // If the scale is medium or large, clear the cache
+    function(shapes, scale, callback) {
+      if (scale && (scale === 'medium' || scale === 'large')) {
+        console.log('Clearing large cache');
+        async.each(config.scaleMap['large'], function(z, cba) {
+          async.each(shapes, function(shape, cbb) {
+            async.each(getTileList(shape, z), function(tile, cbc) {
+              deleteTile(tile, function() {
+                cbc();
+              });
+            }, function(error) {
+                cbb();
+            });
+          }, function(error) {
+              cba();
+          });
+        }, function(error) {
+          console.log('Done deleting large scale tiles');
+          callback(null, shapes);
+        });
+      } else {
+        callback(null, shapes);
+      }
+    },
+
+    // Seed the cache for z0-z6
+    function(shapes, callback) {
+      console.log('Seeding z0-6');
+      var tiles = [];
+
+      for (var i = 0; i < shapes.length; i++) {
+        for (var z = 0; z < 7; z++) {
+          tiles.push(getTileList(shapes[i], z)[0]);
+        }
+      }
+
+      var foundTiles = {};
+      tiles = tiles.filter(function(d) {
+        if (!foundTiles[d.join('|')]) {
+          foundTiles[d.join('|')] = true;
+          return d;
+        }
+      });
+
+      seed(tiles, function() {
+        callback(null, shapes);
+      });
+    },
+
+    // Seed the cache
+    function(shapes, callback) {
+      console.log('Seeding z7-10');
+      var zToSeed = seedableZooms.filter(function(d) {
+        if (d > 6) {
+          return d;
+        }
+      });
+
+      var seeded = 1;
+      // For each section/shape...
+      async.eachLimit(shapes, 3, function(shape, cb) {
+        // For each seedable zoom level...
+        async.each(zToSeed, function(z, cba) {
+
+          async.waterfall([
+            // Get a list of tiles
+            function(cbb) {
+              cbb(null, getTileList(shape, z));
+            },
+
+            // Seed that cache
+            function(tiles, cbb) {
+              seed(tiles, function() {
+                cbb(null);
+              });
+            }
+
+          ], function(error) {
+            cba();
+          });
+        }, function(error) {
+          process.stdout.write('Done seeding shape ' + seeded + ' of ' + shapes.length + '\r')
+          seeded += 1;
+          cb();
+        });
+      }, function(error) {
+
+        callback();
+      });
+
+    }], function() {
+      console.log('Done seeding, waiting for cache');
+
+      // Wait a minute for the tile cache to catch up before we kill it
+      setTimeout(function() {
+        process.exit();
+      }, 60000);
+
+    });
 }
 
 
 function reseedAll() {
+  // Skip the BS and just use ST_GeomFromText('POLYGON ((-179 -85, -179 85, 179 85, 179 -85, -179 -85))', 4326)
+  console.log('Getting geometry to seed');
   async.waterfall([
     // Get land
     function(callback) {
@@ -301,15 +376,16 @@ function reseedAll() {
     }
   ], function(error, lands, water) {
 
-    reseed([].concat(lands, water), true);
+    reseed([].concat(lands, water), '');
   });
 }
 
 
 
-function reseedSource() {
-  getBounds(process.argv[2], function(bbox, scale) {
-    reseed([JSON.parse(bbox)], false, scale);
+function reseedSource(source_id) {
+  console.log('Getting bounds for source_id ', source_id);
+  getBounds(source_id, function(bbox, scale) {
+    reseed([JSON.parse(bbox)], scale);
   });
 }
 
@@ -324,8 +400,10 @@ try {
   }
 }
 
-if (process.argv[2]) {
-  reseedSource(process.argv[2]);
-} else {
-  reseedAll();
-}
+setTimeout(function() {
+  if (process.argv[2]) {
+    reseedSource(process.argv[2]);
+  } else {
+    reseedAll();
+  }
+}, 3000);
