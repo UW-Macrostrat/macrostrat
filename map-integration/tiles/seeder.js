@@ -200,12 +200,24 @@ function deleteTile(tile, callback) {
 
 
 function seed(tiles, callback) {
+  var tryAgain = [];
+  var t = 1;
+
   async.eachLimit(tiles, 20, function(tile, tCb) {
+
     var scale = zoomLookup[tile[2]];
-    http.get(`http://localhost:${config.port}/burwell_${scale}/${tile[2]}/${tile[0]}/${tile[1]}/tile.png`, function(res) {
-      tCb();
-    })
+
+    http.get({
+      host: `localhost`,
+      port: `${config.port}`,
+      path: `/burwell_${scale}/${tile[2]}/${tile[0]}/${tile[1]}/tile.png`
+    }, function(res) {
+      process.stdout.write('   ' + t + ' of ' + tiles.length + (t != tile.length ? '\r' : ''));
+      t++;
+      tCb(null);
+    });
   }, function() {
+    console.log('here', tryAgain);
     callback(null);
   });
 }
