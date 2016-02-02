@@ -33,14 +33,14 @@ Object.keys(config.scaleMap).forEach(function(scale) {
 });
 
 // Define the tileserver that will be used for cache seedings
-var strata = tilestrata.createServer();
+var strata = tilestrata();
 
 // define layers
 strata.layer('burwell_tiny')
     .route('tile.png')
         .use(cache({dir: config.cachePath}))
         .use(mapnik({
-            xml: config.configPath + 'burwell_tiny.xml',
+            pathname: config.configPath + 'burwell_tiny.xml',
             tileSize: 512,
             scale: 2
         }));
@@ -49,7 +49,7 @@ strata.layer('burwell_small')
     .route('tile.png')
         .use(cache({dir: config.cachePath}))
         .use(mapnik({
-            xml: config.configPath + 'burwell_small.xml',
+            pathname: config.configPath + 'burwell_small.xml',
             tileSize: 512,
             scale: 2
         }));
@@ -58,7 +58,7 @@ strata.layer('burwell_medium')
     .route('tile.png')
         .use(cache({dir: config.cachePath}))
         .use(mapnik({
-            xml: config.configPath + 'burwell_medium.xml',
+            pathname: config.configPath + 'burwell_medium.xml',
             tileSize: 512,
             scale: 2
         }));
@@ -67,7 +67,7 @@ strata.layer('burwell_large')
     .route('tile.png')
         .use(cache({dir: config.cachePath}))
         .use(mapnik({
-            xml: config.configPath + 'burwell_large.xml',
+            pathname: config.configPath + 'burwell_large.xml',
             tileSize: 512,
             scale: 2
         }));
@@ -200,7 +200,6 @@ function deleteTile(tile, callback) {
 
 
 function seed(tiles, callback) {
-  var tryAgain = [];
   var t = 1;
 
   async.eachLimit(tiles, 20, function(tile, tCb) {
@@ -212,12 +211,11 @@ function seed(tiles, callback) {
       port: `${config.port}`,
       path: `/burwell_${scale}/${tile[2]}/${tile[0]}/${tile[1]}/tile.png`
     }, function(res) {
-      process.stdout.write('   ' + t + ' of ' + tiles.length + (t != tile.length ? '\r' : ''));
+      process.stdout.write('   ' + t + ' of ' + tiles.length + (t != tiles.length ? '\r' : '\n'));
       t++;
       tCb(null);
     });
   }, function() {
-    console.log('here', tryAgain);
     callback(null);
   });
 }
@@ -322,7 +320,7 @@ function reseed(geometries, scale) {
             cba();
           });
         }, function(error) {
-          process.stdout.write('Done seeding shape ' + seeded + ' of ' + shapes.length + '\r')
+          process.stdout.write('            Done seeding shape ' + seeded + ' of ' + shapes.length + '\r')
           seeded += 1;
           cb();
         });
