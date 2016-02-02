@@ -1,10 +1,10 @@
 // Depdendencies for tile server
-
 var config = require('./config');
 
 // Depdendencies for tile seeding
 var cover = require('tile-cover');
 var async = require('async');
+var request = require('request');
 var http = require('http');
 var fs = require('fs');
 var st = require('geojson-bounds');
@@ -160,11 +160,10 @@ function seed(tiles, callback) {
     try {
       var scale = zoomLookup[tile[2]];
 
-      http.get({
-        host: 'localhost',
-        port: config.port,
-        path: `/burwell_${scale}/${tile[2]}/${tile[0]}/${tile[1]}/tile.png`
-      }, function(res) {
+      request(`http://localhost:${config.port}/burwell_${scale}/${tile[2]}/${tile[0]}/${tile[1]}/tile.png`, function(error, response, body) {
+        if (error) {
+          console.log(error);
+        }
         process.stdout.write('   ' + t + ' of ' + tiles.length + (t != tiles.length ? '\r' : '\n'));
         t++;
         tCb(null);

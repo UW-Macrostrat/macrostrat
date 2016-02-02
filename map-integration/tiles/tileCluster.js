@@ -26,24 +26,8 @@ if (cluster.isMaster) {
   var cache = require('./cache');
 
   // Depdendencies for tile seeding
-
   var config = require('./config');
 
-  function resHook(options) {
-      return {
-          name: 'responseHook',
-          init: function(server, callback) {
-              callback();
-          },
-          reshook: function(server, tile, req, res, result, callback) {
-              console.log(req.url);
-              callback();
-          },
-          destroy: function(server, callback) {
-              callback();
-          }
-      }
-  };
 
   // Define the tileserver that will be used for cache seedings
   var strata = tilestrata();
@@ -51,7 +35,6 @@ if (cluster.isMaster) {
   // define layers
   strata.layer('burwell_tiny')
       .route('tile.png')
-          .use(resHook())
           .use(cache({dir: config.cachePath}))
           .use(mapnik({
               pathname: config.configPath + 'burwell_tiny.xml',
