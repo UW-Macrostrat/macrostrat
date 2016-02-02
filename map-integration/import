@@ -16,3 +16,24 @@ if [[ $4 != "" ]];
 fi
 
 ogr2ogr unprojected.shp -wrapdateline -t_srs "EPSG:4326" $2 && shp2pgsql -s 4326 $APPEND -W $ENCODING unprojected.shp sources.$1 | psql -h localhost -d burwell && rm unprojected.shp && rm unprojected.dbf && rm unprojected.prj && rm unprojected.shx
+
+tablename="$1"
+
+read -d '' sql << EOF
+  WITH first AS (
+    SELECT source_id FROM maps.sources WHERE primary_table = '${tablename}'
+  ),
+  second AS (
+    SELECT geom FROM sources.${tablename}
+  ),
+  third AS (
+    SELECT round(sum(ST_Area(geom::geography)*0.000001)) area, COUNT(*) features, ST_Extent(geom) AS envelope
+    FROM second
+  )
+  UPDATE maps.sources AS a
+  SET area = s.area, features = s.features, bbox = s.envelope
+  FROM third AS s
+  WHERE a.source_id = (SELECT source_id FROM first);
+EOF
+
+echo $sql | psql -U john burwell
