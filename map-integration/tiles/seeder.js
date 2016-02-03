@@ -291,7 +291,7 @@ function reseed(geometries, scale) {
             cba();
           });
         }, function(error) {
-          process.stdout.write('    Done seeding shape ' + seeded + ' of ' + shapes.length)
+          process.stdout.write('\n    Done seeding shape ' + seeded + ' of ' + shapes.length)
           seeded += 1;
           cb();
         });
