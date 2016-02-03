@@ -14,3 +14,6 @@ tiles/tiles
 tiles/:memory
 tiles/*.xml
 tiles/credentials.js
+
+elevation/srtm1/downloads/*
+
