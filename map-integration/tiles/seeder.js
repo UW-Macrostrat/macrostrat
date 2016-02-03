@@ -4,9 +4,10 @@ var config = require('./config');
 // Depdendencies for tile seeding
 var cover = require('tile-cover');
 var async = require('async');
-var request = require('request');
+var makeTile = require('./tileRoller');
+
 var ProgressBar = require('progress');
-var http = require('http');
+
 var fs = require('fs');
 var st = require('geojson-bounds');
 var pg = require('pg');
@@ -158,28 +159,17 @@ function seed(tiles, callback) {
   var tryAgain = [];
 
   async.eachLimit(tiles, 20, function(tile, tCb) {
-    try {
-      var hrstart = process.hrtime();
-      var scale = zoomLookup[tile[2]];
+    var scale = zoomLookup[tile[2]];
 
-      request({
-        uri: `http://localhost:${config.port}/burwell_${scale}/${tile[2]}/${tile[0]}/${tile[1]}/tile.png`,
-        timeout: 300000
-      }, function(error, response, body) {
-        var hrend = process.hrtime(hrstart);
-        if (error) {
-          console.log('Failed in %ds', hrend[0]);
-        //  console.log('Error - ', response.headers, response.request.uri.path);
-          tryAgain.push(tile);
-
-        }
-        bar.tick()
-        tCb(null);
-      });
-    } catch(e) {
-      tryAgain.push(tile);
+    makeTile(scale, {
+      x: tile[0],
+      y: tile[1],
+      z: tile[2]
+    }, function(error) {
+      bar.tick()
       tCb(null);
-    }
+    });
+
 
   }, function() {
     if (tryAgain.length) {
@@ -240,19 +230,32 @@ function reseed(geometries, scale) {
       console.log('Seeding z0-6');
       var tiles = [];
 
-      for (var i = 0; i < shapes.length; i++) {
-        for (var z = 0; z < 7; z++) {
-          tiles.push(getTileList(shapes[i], z)[0]);
-        }
-      }
+      // If seeding all, just generate all tiles
+      if (scale === '') {
+        var polygon = {"type":"Polygon","coordinates":[[[-179,-85],[-179,85],[179,85],[179,-85],[-179,-85]]]};
 
-      var foundTiles = {};
-      tiles = tiles.filter(function(d) {
-        if (!foundTiles[d.join('|')]) {
-          foundTiles[d.join('|')] = true;
-          return d;
+        var zooms = [0, 1, 2, 3, 4, 5, 6];
+
+
+        for (var i = 0; i < 7; i++ ) {
+          tiles = tiles.concat(getTileList(polygon, i));
         }
-      });
+
+      } else {
+        for (var i = 0; i < shapes.length; i++) {
+          for (var z = 0; z < 7; z++) {
+            tiles.push(getTileList(shapes[i], z)[0]);
+          }
+        }
+
+        var foundTiles = {};
+        tiles = tiles.filter(function(d) {
+          if (!foundTiles[d.join('|')]) {
+            foundTiles[d.join('|')] = true;
+            return d;
+          }
+        });
+      }
 
       seed(tiles, function() {
         callback(null, shapes);
@@ -313,12 +316,21 @@ function reseed(geometries, scale) {
 
 
 function reseedAll() {
-  // Skip the BS and just use ST_GeomFromText('POLYGON ((-179 -85, -179 85, 179 85, 179 -85, -179 -85))', 4326)
   console.log('Getting geometry to seed');
+
+  // Crop everything to (-179 -85), (179, 85)
   async.waterfall([
     // Get land
     function(callback) {
-      queryPg('burwell', 'SELECT ST_AsGeoJSON(geom, 4) AS geometry FROM public.land', [], function(error, data) {
+      queryPg('burwell', `
+        SELECT ST_AsGeoJSON(
+          ST_Intersection(
+              ST_GeomFromText('POLYGON ((-179 -85, -179 85, 179 85, 179 -85, -179 -85))', 4326),
+              ST_Union(geom)
+            )
+        , 4) AS geometry
+        FROM public.land
+      `, [], function(error, data) {
         if (error) {
           console.log(error);
         }
@@ -332,8 +344,8 @@ function reseedAll() {
     // Get water
     function(lands, callback) {
       queryPg('burwell', `
-        SELECT ST_AsGeoJSON((ST_Dump(ST_MakeValid(geometry))).geom, 4) geometry FROM (
-          SELECT ST_Simplify(((st_dump(geom)).geom), 1) AS geometry FROM (
+        SELECT ST_AsGeoJSON(ST_MakeValid(geometry), 4) geometry FROM (
+          SELECT ST_Simplify(geom, 1) AS geometry FROM (
           SELECT
             ST_Intersection(
               ST_GeomFromText('POLYGON ((-179 -85, -179 85, 179 85, 179 -85, -179 -85))', 4326),
@@ -343,7 +355,7 @@ function reseedAll() {
               )
             ) geom
           ) sub
-        ) foo
+          ) foo
         WHERE geometry is NOT NULL
       `, [], function(error, data) {
         if (error) {
@@ -380,6 +392,7 @@ try {
     process.exit();
   }
 }
+
 
 setTimeout(function() {
   if (process.argv[2]) {
