@@ -270,7 +270,7 @@ function reseed(geometries, scale) {
 
       var seeded = 1;
       // For each section/shape...
-      async.eachLimit(shapes, 3, function(shape, cb) {
+      async.eachLimit(shapes, 1, function(shape, cb) {
         // For each seedable zoom level...
         async.each(zToSeed, function(z, cba) {
 
