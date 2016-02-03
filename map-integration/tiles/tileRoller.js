@@ -4,31 +4,16 @@
   var mkdirp = require('mkdirp');
   var config = require('./config');
 
-  var providers = {
-    tiny: mapnik({
-        pathname: config.configPath + 'burwell_tiny.xml',
-        tileSize: 512,
-        scale: 2
-    }),
+  var providers = {};
 
-    small: mapnik({
-        pathname: config.configPath + 'burwell_small.xml',
-        tileSize: 512,
-        scale: 2
-    }),
-
-    medium: mapnik({
-        pathname: config.configPath + 'burwell_medium.xml',
-        tileSize: 512,
-        scale: 2
-    }),
-
-    large: mapnik({
-        pathname: config.configPath + 'burwell_large.xml',
+  // Create a tile provider for each scale that we precache
+  config.seedScales.forEach(function(scale) {
+    providers[scale] = mapnik({
+        pathname: config.configPath + 'burwell_' + scale + '.xml',
         tileSize: 512,
         scale: 2
     })
-  }
+  });
 
   function tilePath(directory, z, x, y, filename) {
     return directory + '/' + z + '/' + x + '/' + y + '/' + filename;

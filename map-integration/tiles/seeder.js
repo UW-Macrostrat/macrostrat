@@ -1,16 +1,12 @@
-// Depdendencies for tile server
-var config = require('./config');
-
-// Depdendencies for tile seeding
+var fs = require('fs');
 var cover = require('tile-cover');
 var async = require('async');
-var makeTile = require('./tileRoller');
-
-var ProgressBar = require('progress');
-
-var fs = require('fs');
-var st = require('geojson-bounds');
 var pg = require('pg');
+var ProgressBar = require('progress');
+var st = require('geojson-bounds');
+
+var config = require('./config');
+var makeTile = require('./tileRoller');
 var credentials = require('./credentials');
 
 // Array of zoom levels we are going to precache
@@ -48,7 +44,7 @@ function queryPg(db, sql, params, callback) {
   });
 }
 
-
+// Get the envelope for a given source
 function getBounds(source_id, callback) {
   queryPg('burwell', 'SELECT scale FROM maps.sources WHERE source_id = $1', [source_id], function(error, data) {
     if (error || !data.rows || !data.rows.length) {
@@ -73,6 +69,7 @@ function getBounds(source_id, callback) {
   });
 }
 
+// Given [minLng, minLat] and [maxLng, maxLat] generate a GeoJSON polygon
 function polygonFromMinMax(min, max) {
   return {
     "type": "Polygon",
@@ -86,6 +83,11 @@ function polygonFromMinMax(min, max) {
   }
 }
 
+/* Because some bounding boxes can be massive, we are always going to split them
+   into 16 different boxes, generate a list of tiles, and seed that list one at
+   a time. With large bboxes, there were issues generating a list of needed tiles
+   because the maximum array length was being reached
+*/
 function splitExtent(envelope, callback) {
   /*                                        [ext[2], ext[3]]
         -------------------------------------------*
@@ -133,7 +135,7 @@ function splitExtent(envelope, callback) {
   });
 }
 
-
+// Wrapper for tile-cover
 function getTileList(geom, z) {
   return cover.tiles(geom, {min_zoom: z, max_zoom: z});
 }
@@ -159,18 +161,17 @@ function deleteTile(tile, callback) {
   });
 }
 
-
+// Create the tiles
 function seed(tiles, showProgress, callback) {
   if (showProgress) {
     var bar = new ProgressBar(':bar :current of :total', { total: tiles.length, width: 50 });
   }
 
-
-  var tryAgain = [];
-
+  // Create 20 tiles at a time
   async.eachLimit(tiles, 20, function(tile, tCb) {
     var scale = zoomLookup[tile[2]];
 
+    // Code is in tileRoller.js - uses tilestrata-mapnik directly
     makeTile(scale, {
       x: tile[0],
       y: tile[1],
@@ -184,11 +185,6 @@ function seed(tiles, showProgress, callback) {
 
 
   }, function() {
-    if (tryAgain.length) {
-      seed(tiles, callback)
-      console.log('Missing - ', tryAgain);
-    }
-
     callback(null);
   });
 }
@@ -253,13 +249,18 @@ function reseed(geometries, scale) {
           tiles = tiles.concat(getTileList(polygon, i));
         }
 
-      } else {
+      }
+
+      // Otherwise if seeding a source...
+      else {
+        // Get a list of tiles for each shape at each zoom between 0 and 6
         for (var i = 0; i < shapes.length; i++) {
           for (var z = 0; z < 7; z++) {
             tiles.push(getTileList(shapes[i], z)[0]);
           }
         }
 
+        // There will be a ton of duplicates, so remove them
         var foundTiles = {};
         tiles = tiles.filter(function(d) {
           if (!foundTiles[d.join('|')]) {
@@ -269,12 +270,13 @@ function reseed(geometries, scale) {
         });
       }
 
+      // Actually seed those tiles, then move on
       seed(tiles, true, function() {
         callback(null, shapes);
       });
     },
 
-    // Seed the cache
+    // Seed the cache for z7-10
     function(shapes, callback) {
       console.log('Seeding z7-10');
 
@@ -284,6 +286,7 @@ function reseed(geometries, scale) {
         }
       });
 
+      // Add a progress bar
       var bar = new ProgressBar(':bar :percent', { total: (shapes.length * zToSeed.length), width: 50 });
 
       // For each section/shape...
@@ -309,10 +312,11 @@ function reseed(geometries, scale) {
             cba();
           });
         }, function(error) {
+          // Done with shape
           cb();
         });
       }, function(error) {
-        // Done with shape
+        // Done with all shapes
         callback();
       });
 
@@ -402,11 +406,11 @@ try {
   }
 }
 
-
+// Set a timeout to give the tile providers time to initialize
 setTimeout(function() {
   if (process.argv[2]) {
     reseedSource(process.argv[2]);
   } else {
     reseedAll();
   }
-}, 3000);
+}, 2000);

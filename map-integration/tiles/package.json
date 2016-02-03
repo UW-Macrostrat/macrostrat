@@ -8,7 +8,7 @@
   },
   "author": "John J Czaplewski <jczaplew@gmail.com>",
   "license": "CC0",
-  "engine": "node 4.1.x",
+  "engine": "node 4.2.x",
   "dependencies": {
     "async": "^1.4.2",
     "carto": "^0.15.2",
