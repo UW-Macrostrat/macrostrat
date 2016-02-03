@@ -57,7 +57,14 @@ function getBounds(source_id, callback) {
 
     var scale = data.rows[0].scale;
 
-    queryPg('burwell', 'SELECT ST_AsGeoJSON(ST_Extent(geom), 4) AS geometry FROM maps.' + scale + ' WHERE source_id = $1', [source_id], function(error, data) {
+    queryPg('burwell', `
+      SELECT ST_AsGeoJSON(
+        ST_Intersection(
+          ST_GeomFromText('POLYGON ((-179 -85, -179 85, 179 85, 179 -85, -179 -85))', 4326),
+          ST_SetSRID(ST_Extent(geom), 4326)
+        )
+      , 4) AS geometry FROM maps.${scale} WHERE source_id = $1
+    `, [source_id], function(error, data) {
       if (error || !data.rows || !data.rows.length) {
         return callback(error);
       }
@@ -153,8 +160,11 @@ function deleteTile(tile, callback) {
 }
 
 
-function seed(tiles, callback) {
-  var bar = new ProgressBar(':bar :current of :total', { total: tiles.length, width: 50 });
+function seed(tiles, showProgress, callback) {
+  if (showProgress) {
+    var bar = new ProgressBar(':bar :current of :total', { total: tiles.length, width: 50 });
+  }
+
 
   var tryAgain = [];
 
@@ -166,7 +176,9 @@ function seed(tiles, callback) {
       y: tile[1],
       z: tile[2]
     }, function(error) {
-      bar.tick()
+      if (showProgress) {
+        bar.tick();
+      }
       tCb(null);
     });
 
@@ -257,7 +269,7 @@ function reseed(geometries, scale) {
         });
       }
 
-      seed(tiles, function() {
+      seed(tiles, true, function() {
         callback(null, shapes);
       });
     },
@@ -265,18 +277,19 @@ function reseed(geometries, scale) {
     // Seed the cache
     function(shapes, callback) {
       console.log('Seeding z7-10');
+
       var zToSeed = seedableZooms.filter(function(d) {
         if (d > 6) {
           return d;
         }
       });
 
-      var seeded = 1;
+      var bar = new ProgressBar(':bar :percent', { total: (shapes.length * zToSeed.length), width: 50 });
+
       // For each section/shape...
       async.eachLimit(shapes, 1, function(shape, cb) {
         // For each seedable zoom level...
         async.each(zToSeed, function(z, cba) {
-
           async.waterfall([
             // Get a list of tiles
             function(cbb) {
@@ -285,32 +298,28 @@ function reseed(geometries, scale) {
 
             // Seed that cache
             function(tiles, cbb) {
-              seed(tiles, function() {
+              seed(tiles, false, function() {
                 cbb(null);
               });
             }
 
           ], function(error) {
+            // Done with z for shape
+            bar.tick();
             cba();
           });
         }, function(error) {
-          process.stdout.write('\n    Done seeding shape ' + seeded + ' of ' + shapes.length)
-          seeded += 1;
           cb();
         });
       }, function(error) {
-
+        // Done with shape
         callback();
       });
 
     }], function() {
-      console.log('Done seeding, waiting for cache');
-
-      // Wait a minute for the tile cache to catch up before we kill it
-      setTimeout(function() {
-        process.exit();
-      }, 60000);
-
+      // Done with all shapes
+      console.log('Done seeding');
+      process.exit();
     });
 }
 
