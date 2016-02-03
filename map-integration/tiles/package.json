@@ -15,6 +15,7 @@
     "geojson-bounds": "^1.0.0",
     "mkdirp": "^0.5.1",
     "pg": "^4.4.2",
+    "progress": "^1.1.8",
     "request": "^2.69.0",
     "tile-cover": "^3.0.1",
     "tilestrata": "^2.0.1",

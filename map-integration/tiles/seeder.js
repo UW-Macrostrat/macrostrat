@@ -5,6 +5,7 @@ var config = require('./config');
 var cover = require('tile-cover');
 var async = require('async');
 var request = require('request');
+var ProgressBar = require('progress');
 var http = require('http');
 var fs = require('fs');
 var st = require('geojson-bounds');
@@ -152,24 +153,27 @@ function deleteTile(tile, callback) {
 
 
 function seed(tiles, callback) {
-  var t = 1;
+  var bar = new ProgressBar(':bar :current of :total', { total: tiles.length, width: 50 });
 
   var tryAgain = [];
 
   async.eachLimit(tiles, 20, function(tile, tCb) {
     try {
+      var hrstart = process.hrtime();
       var scale = zoomLookup[tile[2]];
 
       request({
         uri: `http://localhost:${config.port}/burwell_${scale}/${tile[2]}/${tile[0]}/${tile[1]}/tile.png`,
         timeout: 300000
       }, function(error, response, body) {
+        var hrend = process.hrtime(hrstart);
         if (error) {
+          console.log('Failed in %ds', hrend[0]);
         //  console.log('Error - ', response.headers, response.request.uri.path);
           tryAgain.push(tile);
+
         }
-        process.stdout.write('   ' + t + ' of ' + tiles.length + (t != tiles.length ? '\r' : '\n'));
-        t++;
+        bar.tick()
         tCb(null);
       });
     } catch(e) {
