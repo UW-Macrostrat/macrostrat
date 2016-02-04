@@ -75,3 +75,11 @@ python setup/refresh_lookup.py **scale or source_id**
 
 ## tiles
 See `tiles/README.md`
+
+
+## Import raster
+
+````
+raster2pgsql -s 4326 -c -I -t 30x30 n42_w090_1arc_v2.tif public.srtm | psql -U john elevation
+
+````
