@@ -46,6 +46,9 @@ module.exports = function(req, res, next, cb) {
     } else if (req.query.concept_id) {
       where.push("concept_id IN (:concept_id)")
       params["concept_id"] = larkin.parseMultipleIds(req.query.concept_id);
+    } else if (req.query.strat_name_concept_id) {
+      where.push("concept_id IN (:concept_id)")
+      params["concept_id"] = larkin.parseMultipleIds(req.query.strat_name_concept_id);
     }
 
     if (req.query.rank) {
