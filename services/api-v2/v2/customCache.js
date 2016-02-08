@@ -83,6 +83,7 @@ module.exports = function(options) {
                 if (error) {
                   return callback(error)
                 }
+                headers['X-DiskCache-Hit'] = true;
                 cache.set(key(tile), {buffer: buffer, headers: headers});
                 return callback(null, buffer, headers);
               });

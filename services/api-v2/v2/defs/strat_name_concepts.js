@@ -9,7 +9,7 @@ module.exports = function(req, res, next) {
 
   var sql = multiline(function() {/*
     SELECT
-      snm.concept_id as concept_id
+      snm.concept_id as concept_id,
       snm.name,
       COALESCE(snm.geologic_age, '') geologic_age,
       COALESCE(snm.interval_id, '') int_id,

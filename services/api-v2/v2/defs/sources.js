@@ -45,14 +45,14 @@ module.exports = function(req, res, next) {
   }
 
   if (req.query.lat && req.query.lng) {
-    where.push("ST_Intersects(sources.bbox, ST_GeomFromText($" + (where.length + 1) + ", 4326))");
+    where.push("ST_Intersects(ST_SetSRID(sources.bbox, 4326), ST_GeomFromText($" + (where.length + 1) + ", 4326))");
     params.push("POINT(" + req.query.lng + " " + req.query.lat + ")");
   }
 
   if (req.query.shape) {
     var buffer = (req.query.buffer && !isNaN(parseInt(req.query.buffer))) ? parseInt(req.query.buffer)*1000 : 1;
 
-    where.push("ST_Intersects(sources.bbox, ST_Buffer($" + (where.length + 1) + "::geography , $" + (where.length + 2) + ")::geometry)");
+    where.push("ST_Intersects(ST_SetSRID(sources.bbox, 4326), ST_SetSRID(ST_Buffer($" + (where.length + 1) + "::geography , $" + (where.length + 2) + ")::geometry, 4326))");
 
     params.push("SRID=4326;" + decodeURI(req.query.shape), buffer);
   }

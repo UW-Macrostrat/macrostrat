@@ -74,9 +74,7 @@ module.exports = function(req, res, next, cb) {
       sgp_id,
       early_age AS b_age,
       late_age AS t_age,
-      COALESCE(gsc_lexicon, '') AS gsc_lexicon,
-      t_units,
-      url
+      t_units
     FROM lookup_strat_names l
   */});
 
