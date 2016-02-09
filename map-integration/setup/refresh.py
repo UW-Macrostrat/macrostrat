@@ -1,5 +1,32 @@
 from psycopg2.extensions import AsIs
 
+def source_stats(cursor, connection, source_id):
+    cursor.execute("""
+      SELECT primary_table FROM maps.sources WHERE source_id = %(source_id)s
+    """, {
+        "source_id": source_id
+    })
+    primary_table = cursor.fetchone()[0]
+
+    cursor.execute("""
+      WITH second AS (
+        SELECT geom FROM sources.%(primary_table)s
+      ),
+      third AS (
+        SELECT round(sum(ST_Area(geom::geography)*0.000001)) area, COUNT(*) features, ST_Extent(geom) AS envelope
+        FROM second
+      )
+      UPDATE maps.sources AS a
+      SET area = s.area, features = s.features, bbox = s.envelope
+      FROM third AS s
+      WHERE a.source_id = %(source_id)s
+    """, {
+        "primary_table": AsIs(primary_table),
+        "source_id": source_id
+    })
+    connection.commit()
+
+
 def find_sources(cursor, scale):
     cursor.execute("SELECT source_id FROM maps.sources WHERE scale = %(scale)s", {"scale": scale})
     return cursor.fetchall()
@@ -310,7 +337,9 @@ def refresh(cursor, connection, scale, source_id):
             SELECT map_id FROM maps.%(scale)s
             WHERE name ILIKE 'water'
         );
-    """)
+    """, {
+        "scale": AsIs(scale)
+    })
     connection.commit()
 
 def refresh_scale(cursor, connection, scale):
