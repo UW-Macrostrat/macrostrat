@@ -44,7 +44,7 @@ module.exports = function(req, res, next) {
   if ("sample" in req.query) {
     sql += " LIMIT 5";
   }
-  console.lo
+
   larkin.query(sql, params, function(error, result) {
     if (error) {
       larkin.error(req, res, next, error);

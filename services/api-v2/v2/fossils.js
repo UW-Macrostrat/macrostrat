@@ -11,24 +11,23 @@ module.exports = function(req, res, next) {
 
     async.waterfall([
       function(callback) {
-        if (req.query.interval_name) {
-          larkin.query("SELECT age_bottom,age_top,interval_name from intervals where interval_name = ? limit 1", [req.query.interval_name], function(error, result) {
-            if (error) {
-              callback(error);
-            } else {
-              if (result.length === 0) {
-                larkin.error(req, res, next, "No results found");
-              } else {
-                callback(null, {"interval_name": result[0].interval_name, "age_bottom": result[0].age_bottom, "age_top": result[0].age_top});
-              }
-            }
-          });
+        if (req.query.age_top && req.query.age_bottom) {
+          callback(null, {"interval_name": "Unknown", "age_bottom": req.query.age_bottom, "age_top": req.query.age_top});
         } else if (req.query.age) {
           callback(null, {"interval_name": "Unknown", "age_bottom": req.query.age, "age_top": req.query.age});
-        } else if (req.query.age_top && req.query.age_bottom) {
-          callback(null, {"interval_name": "Unknown", "age_bottom": req.query.age_bottom, "age_top": req.query.age_top});
         } else if (req.query.unit_id || req.query.col_id || req.query.col_group_id || req.query.strat_name_id || req.query.strat_name_concept_id || "sample" in req.query) {
           callback(null, {"interval_name": "Unknown", "age_bottom": null, "age_top": null});
+        } else if (req.query.interval_name || req.query.lith_id || req.query.lith || req.query.lith_type || req.query.lith_class || req.query.environ_id || req.query.environ || req.query.environ_type || req.query.environ_class || req.query.econ_id || req.query.econ || req.query.econ_type || req.query.econ_class) {
+          require("./units")(req, null, null, function(error, result) {
+            if (error) {
+              callback(error);
+            }
+            if (!result || !result.length) {
+              return callback(null, null);
+            }
+            req.query.unit_id = result.map(function(d) { return d.unit_id; }).join(",");
+            callback(null, {"interval_name": "Unknown", "age_bottom": null, "age_top": null});
+          });
         } else {
           larkin.error(req, res, next, "Invalid parameters");
         }
