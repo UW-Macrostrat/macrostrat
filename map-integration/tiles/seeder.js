@@ -256,7 +256,7 @@ function reseed(geometries, scale) {
         // Get a list of tiles for each shape at each zoom between 0 and 6
         for (var i = 0; i < shapes.length; i++) {
           for (var z = 0; z < 7; z++) {
-            tiles.push(getTileList(shapes[i], z)[0]);
+            tiles = tiles.concat(getTileList(shapes[i], z));
           }
         }
 
