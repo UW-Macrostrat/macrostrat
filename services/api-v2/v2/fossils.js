@@ -17,7 +17,7 @@ module.exports = function(req, res, next) {
           callback(null, {"interval_name": "Unknown", "age_bottom": req.query.age, "age_top": req.query.age});
         } else if (req.query.unit_id || req.query.col_id || req.query.col_group_id || req.query.strat_name_id || req.query.strat_name_concept_id || "sample" in req.query) {
           callback(null, {"interval_name": "Unknown", "age_bottom": null, "age_top": null});
-        } else if (req.query.interval_name || req.query.lith_id || req.query.lith || req.query.lith_type || req.query.lith_class || req.query.environ_id || req.query.environ || req.query.environ_type || req.query.environ_class || req.query.econ_id || req.query.econ || req.query.econ_type || req.query.econ_class) {
+        } else if (req.query.interval_name || req.query.int_id || req.query.lith_id || req.query.lith || req.query.lith_type || req.query.lith_class || req.query.environ_id || req.query.environ || req.query.environ_type || req.query.environ_class || req.query.econ_id || req.query.econ || req.query.econ_type || req.query.econ_class) {
           require("./units")(req, null, null, function(error, result) {
             if (error) {
               callback(error);
