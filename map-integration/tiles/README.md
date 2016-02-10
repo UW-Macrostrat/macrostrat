@@ -4,13 +4,12 @@
 You just imported a new source and want to create tiles:
 
 ````
-node setup.js
 node seeder.js **source_id**
 ````
 
 
 ## setup.js
-Run this first to generate the Mapnik XML files for each layer (`burwell_scale.xml`)
+Generates the Mapnik XML files for each layer (`burwell_scale.xml`)
 
 ## seeder.js
 Run this to seed the tile cache for zoom levels 1-10 (tiny - medium).

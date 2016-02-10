@@ -7,6 +7,7 @@ var st = require('geojson-bounds');
 
 var config = require('./config');
 var makeTile = require('./tileRoller');
+var setup = require('./setup');
 var credentials = require('./credentials');
 
 // Array of zoom levels we are going to precache
@@ -396,21 +397,38 @@ function reseedSource(source_id) {
 }
 
 
-// Make sure cachePath exists
-try {
-  fs.statSync(config.cachePath);
-} catch(error) {
-  if (error) {
-    console.log('Cache path does not exist', config.cachePath, error);
-    process.exit();
-  }
-}
+async.series([
+  function(callback) {
+    // Make sure cachePath exists
+    try {
+      fs.statSync(config.cachePath);
+    } catch(error) {
+      if (error) {
+        console.log('Cache path does not exist', config.cachePath, error);
+        return callback(error);
+      }
+    }
+    callback();
+  },
 
-// Set a timeout to give the tile providers time to initialize
-setTimeout(function() {
+  function(callback) {
+    setup(function(error) {
+      if (error) {
+        console.log('An error occurred while creating configuration files');
+        callback(error);
+      } else {
+        callback(null);
+      }
+    })
+  }
+], function(error) {
+  if (error) {
+    process.exit(1);
+  }
+
   if (process.argv[2]) {
     reseedSource(process.argv[2]);
   } else {
     reseedAll();
   }
-}, 2000);
+});

@@ -319,6 +319,7 @@ def strat_name_match() :
     # Insert new matches in maps.map_strat_names
     cur.execute("""
         INSERT INTO maps.map_strat_names (map_id, strat_name_id, basis_col) (
+        -- Get all units with the provided strat_name_id
           WITH units AS (
             SELECT us.unit_id AS unit_id, lsn.strat_name_id, lsn.fm_name AS strat_name, c.poly_geom
             FROM macrostrat.units_sections us

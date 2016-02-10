@@ -19,6 +19,10 @@ parser.add_argument("-u", "--unit_id", dest="unit_id",
   default="na", type=str, required=False,
   help="Macrostrat unit_id")
 
+parser.add_argument("-i", "--identical" dest="identical_field",
+  default="na", type=str, required=False,
+  help="Apply removal to all polygons with an identical given field. Example: -i strat_name.")
+
 arguments = parser.parse_args()
 
 if (arguments.unit_id == "na" and arguments.strat_name_id == "na") or (arguments.unit_id != "na" and arguments.strat_name_id != "na") :
