@@ -85,7 +85,7 @@
 
   // Build our styles from the database
   function buildStyles(callback) {
-    console.log("--- Building styles ---");
+    //console.log("--- Building styles ---");
 
     // First, rebuild the styles in the event any colors were changed
     queryPg("burwell", "SELECT DISTINCT interval_color AS color FROM macrostrat.intervals WHERE interval_color IS NOT NULL AND interval_color != ''", [], function(error, data) {
@@ -156,7 +156,7 @@
         if (error) {
           console.log("Error wrting mml file for ", scale);
         }
-        console.log("--- Created config for ", scale, " ---");
+        //console.log("--- Created config for ", scale, " ---");
         callback(null);
       });
     });

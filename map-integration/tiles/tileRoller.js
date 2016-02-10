@@ -38,12 +38,16 @@
     });
   }
 
-  Object.keys(providers).forEach(function(provider) {
-    providers[provider].init(null, function() {
-      //console.log('Initialized ', provider);
-    });
-  });
-
   module.exports = rollTile;
+
+  module.exports.init = function(callback) {
+    Object.keys(providers).forEach(function(provider) {
+      providers[provider].init(null, function() {
+        //console.log('Initialized ', provider);
+      });
+    });
+
+    callback();
+  }
 
 }());

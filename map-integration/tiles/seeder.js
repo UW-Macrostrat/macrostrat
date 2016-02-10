@@ -412,11 +412,19 @@ async.series([
   },
 
   function(callback) {
+    makeTile.init(function() {
+      console.log('Tile providers initialized');
+      callback();
+    });
+  },
+
+  function(callback) {
     setup(function(error) {
       if (error) {
         console.log('An error occurred while creating configuration files');
         callback(error);
       } else {
+        console.log('Configuration files generated');
         callback(null);
       }
     })
