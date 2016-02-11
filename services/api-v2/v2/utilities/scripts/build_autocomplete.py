@@ -50,6 +50,8 @@ cursor.execute("""
         union
         (select id, CONCAT(strat_name, ' ', rank) AS name, 'strat_name_orphans' as type from strat_names WHERE concept_id = 0)
         union
+        (select id, CONCAT(strat_name, ' ', rank) AS name, 'strat_names' as type from strat_names)
+        union
         select id, col_name as name, 'columns' as type from cols
         union
         select id, col_group_long as name, 'groups' as type from col_groups

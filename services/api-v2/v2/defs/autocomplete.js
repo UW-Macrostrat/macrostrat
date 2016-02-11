@@ -18,7 +18,7 @@ module.exports = function(req, res, next) {
     return larkin.info(req, res, next);
   }
 
-  var categories = ["columns", "econs", "econ_types", "econ_classes", "environments", "environment_types", "environmnet_classes", "groups", "intervals", "lithologies", "lithology_types", "lithology_classes", "lithology_attributes", "projects", "strat_name_concepts", "strat_name_orphans"];
+  var categories = ["columns", "econs", "econ_types", "econ_classes", "environments", "environment_types", "environment_classes", "groups", "intervals", "lithologies", "lithology_types", "lithology_classes", "lithology_attributes", "projects", "strat_name_concepts", "strat_name_orphans", "strat_names"];
 
 
   var types = [];
@@ -42,10 +42,9 @@ module.exports = function(req, res, next) {
     types = categories;
   }
 
-  if (req.query.query || "sample" in req.query) {
-    var limit = ("sample" in req.query) ? 100 : 100,
-        query = ("sample" in req.query) ? "ma%" : (req.query.query.toLowerCase() + "%");
-
+  if (req.query.query || "sample" in req.query || "all" in req.query) {
+    var limit = ("sample" in req.query) ? 100 : (("all" in req.query) ? 999999999 : 100),
+        query = ("sample" in req.query) ? "ma%" : (("all" in req.query )? "%" : req.query.query.toLowerCase() + "%");
 
     larkin.query("SELECT * FROM autocomplete WHERE name LIKE :query AND type IN (:types) LIMIT :limit", {"query": query, "types": types, "limit": limit}, function(error, result) {
       if (error) {
@@ -61,7 +60,8 @@ module.exports = function(req, res, next) {
         }
 
         larkin.sendData(req, res, next, {
-          format: "json"
+          format: "json",
+          compact: true
         }, {
           data: parsed
         });
