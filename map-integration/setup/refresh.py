@@ -10,7 +10,7 @@ def source_stats(cursor, connection, source_id):
 
     cursor.execute("""
       WITH second AS (
-        SELECT geom FROM sources.%(primary_table)s
+        SELECT ST_MakeValid(geom) geom FROM sources.%(primary_table)s
       ),
       third AS (
         SELECT round(sum(ST_Area(geom::geography)*0.000001)) area, COUNT(*) features, ST_Extent(geom) AS envelope
