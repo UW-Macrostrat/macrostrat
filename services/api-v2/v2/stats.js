@@ -15,7 +15,8 @@ module.exports = function(req, res, next) {
       packages,
       units,
       pbdb_collections,
-      measurements
+      measurements,
+      burwell_polygons AS t_polys
     FROM stats
   */});
 
