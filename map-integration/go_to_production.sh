@@ -13,8 +13,8 @@ psql -U john -h localhost -p 5440 burwell_new < etopo1.sql
 
 rm etopo1.sql
 
-psql -U john -h localhost -p burwell_new -c "VACUUM ANALYZE"
-psql -U john -h localhost -p burwell_new -c "REINDEX DATABASE burwell_new"
+psql -U john -h localhost -p 5440 burwell_new -c "VACUUM ANALYZE"
+psql -U john -h localhost -p 5440 burwell_new -c "REINDEX DATABASE burwell_new"
 
 ssh -S /tmp/tmp-sock -O exit jczaplewski@strata.geology.wisc.edu
 
