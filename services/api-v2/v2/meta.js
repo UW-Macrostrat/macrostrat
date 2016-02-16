@@ -21,8 +21,8 @@ module.exports = function(req, res, next) {
     }
     acknowledgements: {
       "data_entry": "University of Michigan Undergraduate Research Opportunity program, Noel Heim, Deb Rook, Neal Auchter, Annaka Clement, Clay Kelly.",
-      "contributors": "Jon Husson",
-      "data_providers": "The data synthesized in Macrostrat reflect the combined work of hundreds of field-based geoscientists. These contributors are too many to cite individually, but see /defs/refs?all for a list of primary sources supplying data and the references therein."
+      "contributors": ["Jon Husson"],
+      "data_providers": "The data synthesized in Macrostrat reflect the combined work of hundreds of field-based geoscientists. These contributors are too many to cite individually, but see /defs/refs?all and /defs/sources?all for a list of primary sources supplying data and the references therein."
     }
   });
 
