@@ -61,7 +61,12 @@ module.exports = function(req, res, next) {
   where.push("sources.area IS NOT NULL");
 
   sql += (where.length) ? (" WHERE " + where.join(" AND ")) : "";
-  sql += " ORDER BY source_id";
+
+  if (api.acceptedFormats.geo[req.query.format]) {
+    sql += " ORDER BY CASE scale when 'tiny' THEN 1 WHEN 'small' THEN 2 WHEN 'medium' THEN 3 WHEN 'large' THEN 4 ELSE 5 END";
+  } else {
+    sql += " ORDER BY source_id";
+  }
 
   if ("sample" in req.query) {
     sql += " LIMIT 5";

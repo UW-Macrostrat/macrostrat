@@ -1,5 +1,6 @@
 import MySQLdb
 import MySQLdb.cursors
+import psycopg2
 from warnings import filterwarnings
 import sys
 from credentials import *
@@ -16,6 +17,11 @@ cursor = connection.cursor()
 
 # Ignore warnings
 filterwarnings('ignore', category = MySQLdb.Warning)
+
+# Connect to Postgres
+pg_conn = psycopg2.connect(dbname=pg_db, user=pg_user, host=pg_host, port=pg_port)
+pg_cur = pg_conn.cursor()
+
 
 cursor.execute("""
     DROP TABLE IF EXISTS stats
@@ -70,6 +76,27 @@ cursor.execute("""
         WHERE project IN ('North America','New Zealand','Caribbean','Deep Sea')
     )
 """)
+
+cursor.execute("""
+    ALTER TABLE stats ADD COLUMN burwell_polygons integer default 0;
+""")
+
+cursor.close()
+cursor = connection.cursor()
+
+pg_cur.execute("""
+    select count(*)
+    FROM (SELECT map_id FROM maps.tiny
+    UNION SELECT map_id FROM maps.small
+    UNION SELECT map_id FROM maps.medium
+    UNION SELECT map_id FROM maps.large) foo
+""")
+count = pg_cur.fetchone()[0]
+
+print count
+cursor.execute("UPDATE stats SET burwell_polygons = %d" % count)
+connection.commit()
+
 cursor.close()
 
 print "Done updating stats"
