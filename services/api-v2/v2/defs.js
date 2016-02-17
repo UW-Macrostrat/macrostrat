@@ -635,6 +635,7 @@
     "options": {
       "parameters": {
         "concept_id": "unique id",
+        "concept_name": "string specifying concept name",
         "all": "return all lithostratigraphic names",
         "format": "Desired output format"
       },
