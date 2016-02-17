@@ -18,7 +18,7 @@ module.exports = function(req, res, next) {
     support: {
       "current_funding": "U.S. National Science Foundation Grant EAR-1150082 and ICER-1440312. Additional support from the University of Wisconsin-Madison Dept. of Geoscience.",
       "previous_funding": "Initial database development supported by the United States Geological Survey and the American Chemical Society."
-    }
+    },
     acknowledgements: {
       "data_entry": "University of Michigan Undergraduate Research Opportunity program, Noel Heim, Deb Rook, Neal Auchter, Annaka Clement, Clay Kelly.",
       "contributors": ["Jon Husson"],
