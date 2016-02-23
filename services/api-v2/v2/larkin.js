@@ -424,7 +424,7 @@ var mysql = require("mysql"),
 
   // Check if Redis is available
   portscanner.checkPortStatus(6379, "127.0.0.1", function(error, status) {
-    if (status === "a") {
+    if (status === "open") {
       console.log("Using Redis cache for columns");
       var redis = require("redis");
       larkin.cache = redis.createClient(6379, "127.0.0.1");
