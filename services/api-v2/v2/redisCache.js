@@ -43,7 +43,7 @@ module.exports = function(options) {
             if (data) {
               return callback(null, data, {
                 'Content-Type': 'image/png',
-                'X-TileStrata-CacheHit': '1',
+                'X-TileStrata-RedisHit': '1',
                 'X-Powered-By': 'TileStrata/2.0.1',
                 'Cache-Control': 'max-age=60'
               });
