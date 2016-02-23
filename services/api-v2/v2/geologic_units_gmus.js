@@ -120,8 +120,8 @@ module.exports = function(req, res, next) {
           }
 
           from = "subset lu JOIN gmus.ages a ON lu.unit_link = a.unit_link LEFT JOIN gmus.liths l ON lu.unit_link = l.unit_link LEFT JOIN gmus.best_geounits_macrounits gm ON lu.gid = gm.geologic_unit_gid, linestring";
-          where.push("ST_Intersects(geom::geography, buffer) is true");
-          geomQuery = (geo) ? ", ST_AsGeoJSON(ST_Intersection(geom, buffer)) AS geometry" : ""
+          where.push("ST_Intersects(geom, buffer) is true");
+          geomQuery = (geo) ? ", ST_AsGeoJSON(ST_Intersection(ST_Buffer(geom, 0)::geography, buffer)) AS geometry" : ""
           params.push(req.query.shape, bufferSize);
 
         }
@@ -142,7 +142,7 @@ module.exports = function(req, res, next) {
       var sql = (orderBy.length > 0) ? ("SELECT gid, area, unit_link, lithology, rocktype, macro_units, t_int_id, t_age, b_int_id, b_age, containing_interval, interval_color, unit_com, unit_name, unitdesc, strat_unit" + ((geo) ? ", geometry" : "") + " FROM (") : "";
 
       if (req.query.shape) {
-        sql += "WITH linestring AS (SELECT ST_Buffer(ST_SnapToGrid($" + (params.length - 1) + "::geometry, 0.1)::geography, $" + (params.length) + ") AS buffer), states AS (SELECT postal FROM us_states WHERE ST_Intersects(geom::geography, (SELECT buffer FROM linestring))), subset AS (SELECT * FROM gmus.lookup_units WHERE upper(state) in (SELECT postal FROM states))"
+        sql += "WITH linestring AS (SELECT ST_Buffer((ST_Segmentize($" + (params.length - 1) + "::geography, 100000)::geometry)::geography, $" + (params.length) + ")::geometry AS buffer), states AS (SELECT postal FROM us_states WHERE ST_Intersects(geom::geography, (SELECT buffer FROM linestring))), subset AS (SELECT * FROM gmus.lookup_units WHERE upper(state) in (SELECT postal FROM states))"
       }
 
       sql += "SELECT DISTINCT ON (gid) gid, lu.area_km2::int AS area, lu.unit_link, macro_color AS interval_color, (SELECT array_agg(liths) FROM unnest(array[lith1, lith2, lith3, lith4, lith5]) liths WHERE liths IS NOT null) AS lithology, (SELECT array_agg(DISTINCT rocktypes) FROM unnest(array[rocktype1, rocktype2, u_rocktype1, u_rocktype2, u_rocktype3]) rocktypes WHERE rocktypes IS NOT null) AS rocktype, COALESCE(gm.best_units, '{}') AS macro_units, COALESCE(gm.best_names, '{}') AS strat_names, lu.min_interval_name AS t_int_id, lu.age_top::float AS t_age, lu.max_interval_name as b_int_id, lu.age_bottom::float AS b_age, lu.containing_interval_name AS containing_interval, unit_com, unit_name, unitdesc, COALESCE(strat_unit, '') AS strat_unit, macro_color AS color" + ((orderBy.length > 0) ? ", geom" : "") + geomQuery + " FROM " + from + where + orderBy + limit;
