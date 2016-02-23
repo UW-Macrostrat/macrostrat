@@ -191,7 +191,6 @@ cursor.execute("""
 """)
 connection.commit()
 
-
 cursor.execute("""
   UPDATE lookup_strat_names_new
   SET t_period = (
@@ -205,6 +204,35 @@ cursor.execute("""
   );
 """)
 connection.commit()
+
+# Populate containing interval
+cursor.execute("""
+    UPDATE lookup_strat_names_new
+    SET c_interval = (
+        SELECT interval_name from intervals
+    	JOIN timescales_intervals ON intervals.id = interval_id
+    	JOIN timescales on timescale_id = timescales.id
+    	WHERE timescale = 'international'
+    		AND early_age > age_top
+    		AND early_age <= age_bottom
+    		AND late_age < age_bottom
+    		AND late_age >= age_top
+    		ORDER BY age_bottom - age_top
+            LIMIT 1
+    )
+""")
+connection.commit()
+
+# Update containing interval for names not explicitly matched to units but have a concept_id
+cursor.execute("""
+    UPDATE lookup_strat_names_new
+    JOIN strat_names_meta on lookup_strat_names_new.concept_id = strat_names_meta.concept_id
+    JOIN intervals ON strat_names_meta.interval_id = intervals.id
+    SET c_interval = intervals.interval_name
+    WHERE c_interval IS NULL
+""")
+connection.commit()
+
 
 # alter table lookup_strat_names add column name_no_lith varchar(100);
 ### Remove lithological terms from strat names ###

@@ -77,6 +77,9 @@ module.exports = function(req, res, next, cb) {
       sgp_id,
       early_age AS b_age,
       late_age AS t_age,
+      COALESCE(b_period, '') AS b_period,
+      COALESCE(t_period, '') AS t_period,
+      COALESCE(c_interval, '') AS c_interval,
       t_units
     FROM lookup_strat_names l
   */});
