@@ -30,10 +30,11 @@ module.exports = function(options) {
 
     return {
         init: function(server, callback) {
-            callback();
+          callback();
         },
 
         get: function(server, tile, callback) {
+
           // Get the full tile path
           var file = tilePath(options.dir, tile.z, tile.x, tile.y, tile.filename);
 
