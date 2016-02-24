@@ -28,26 +28,29 @@ api.use(tilestrata.middleware({
         }));
 
     // Check if Redis is running
-    portscanner.checkPortStatus(6379, "127.0.0.1", function(error, status) {
-      if (status === "open") {
-        var cache = require("./redisCache");
-        console.log("Using Redis cache for tiles")
-      } else {
-        var cache = require("./customCache");
-        console.log("Using application cache for tiles");
-      }
+    setTimeout(function() {
+      portscanner.checkPortStatus(6379, "127.0.0.1", function(error, status) {
+        if (status === "open") {
+          var cache = require("./redisCache");
+          console.log("Using Redis cache for tiles")
+        } else {
+          var cache = require("./customCache");
+          console.log("Using application cache for tiles");
+        }
 
-      strata.layer("burwell")
-          .route("tile.png")
-              .use(cache({
-                size: "2GB", // only for application cache
-                ttl: 3000,
-                lruMaxAge: 21600000,  // 6hrs
-                diskMaxAge: 86400000, // 24hrs
-                dir: credentials.tiles.path,
-                defaultTile: __dirname + "/default@2x.png"
-              }));
-    });
+        strata.layer("burwell")
+            .route("tile.png")
+                .use(cache({
+                  size: "2GB", // only for application cache
+                  ttl: 3000,
+                  lruMaxAge: 21600000,  // 6hrs
+                  diskMaxAge: 86400000, // 24hrs
+                  dir: credentials.tiles.path,
+                  defaultTile: __dirname + "/default@2x.png"
+                }));
+      });
+
+    }, 10)
 
     return strata;
 
