@@ -19,6 +19,14 @@ api.use(tilestrata.middleware({
   server: (function() {
     var strata = tilestrata();
 
+    strata.layer("burwell")
+        .route("tile.png")
+        .use(mapnik({
+            xml: credentials.tiles.config,
+            tileSize: 512,
+            scale: 2
+        }));
+
     // Check if Redis is running
     portscanner.checkPortStatus(6379, "127.0.0.1", function(error, status) {
       if (status === "open") {
@@ -38,11 +46,6 @@ api.use(tilestrata.middleware({
                 diskMaxAge: 86400000, // 24hrs
                 dir: credentials.tiles.path,
                 defaultTile: __dirname + "/default@2x.png"
-              }))
-              .use(mapnik({
-                  xml: credentials.tiles.config,
-                  tileSize: 512,
-                  scale: 2
               }));
     });
 
