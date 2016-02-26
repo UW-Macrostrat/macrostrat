@@ -268,9 +268,14 @@ var mysql = require("mysql"),
 
 
   larkin.parseMultipleIds = function(requested_ids) {
-    return requested_ids.split(",").map(function(d) {
-      return parseInt(d);
-    });
+    try {
+      return requested_ids.split(",").map(function(d) {
+        return parseInt(d);
+      });
+    } catch (e) {
+      return requested_ids;
+    }
+
   };
 
   larkin.parseMultipleStrings = function(text) {
