@@ -352,6 +352,49 @@
       ]
     }
   },
+  "/defs/define": {
+    "description": "Define multiple terms simultaneously",
+    "parent": "definitions",
+    "visible": true,
+    "options": {
+      "parameters": {
+        "col_id": "columns",
+        "econ_id": "econs",
+        "econ_type": "econs",
+        "econ_class": "econs",
+        "environ_id": "environments",
+        "environ_type": "environments",
+        "environ_class": "environments",
+        "col_group_id": "groups",
+        "int_id": "intervals",
+        "lith_id": "lithologies",
+        "lith_type": "lithologies",
+        "lith_class": "lithologies",
+        "lith_att_id": "lithology_attributes",
+        "strat_name_id": "strat_names",
+        "strat_name_concept_id": "strat_name_concepts",
+        "timescale_id": "timescales"
+      },
+      "output_formats": [
+        "json"
+      ],
+      "examples": [
+        "api/v2/defs/define?strat_name_concept_id=9165&lith_id=1&int_id=751,123"
+      ],
+      "fields": [
+        "columns",
+        "econs",
+        "environments",
+        "groups",
+        "intervals",
+        "lithologies",
+        "lithology_attributes",
+        "strat_names",
+        "strat_name_concepts",
+        "timescales"
+      ]
+    }
+  },
   "/defs/lithologies": {
     "description": "Returns all lithology definitions",
     "parent": "definitions",

@@ -40,6 +40,9 @@ api.route("/defs")
 api.route("/defs/autocomplete")
   .get(require("./defs/autocomplete"));
 
+api.route("/defs/define")
+  .get(require("./defs/define"));
+
 api.route("/defs/columns")
   .get(function(req, res, next) {
     require("./defs/columns")(req, res, next);
