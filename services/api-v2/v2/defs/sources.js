@@ -4,7 +4,7 @@ var api = require("../api"),
     dbgeo = require("dbgeo"),
     gp = require("geojson-precision");
 
-module.exports = function(req, res, next) {
+module.exports = function(req, res, next, cb) {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
@@ -74,7 +74,11 @@ module.exports = function(req, res, next) {
 
   larkin.queryPg("burwell", sql, params, function(error, result) {
     if (error) {
-      larkin.error(req, res, next, error);
+      if (cb) {
+        return cb(error);
+      } else {
+        return larkin.error(req, res, next, error);
+      }
     } else {
       if (req.query.format && api.acceptedFormats.geo[req.query.format]) {
         dbgeo.parse({
@@ -87,21 +91,32 @@ module.exports = function(req, res, next) {
             if (larkin.getOutputFormat(req.query.format) === "geojson") {
               result = gp(geojson, 5);
             }
-            larkin.sendData(req, res, next, {
-              format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
-              bare: (api.acceptedFormats.bare[req.query.format]) ? true : false
-            }, {
-              data: geojson
-            });
+
+            if (cb) {
+              cb(null, geojson);
+            } else {
+              larkin.sendData(req, res, next, {
+                format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
+                bare: (api.acceptedFormats.bare[req.query.format]) ? true : false
+              }, {
+                data: geojson
+              });
+            }
+
           }
         });
       } else {
-        larkin.sendData(req, res, next, {
-          format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
-          bare: (api.acceptedFormats.bare[req.query.format]) ? true : false
-        }, {
-          data: result.rows
-        });
+        if (cb) {
+          cb(null, result.rows);
+        } else {
+          larkin.sendData(req, res, next, {
+            format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
+            bare: (api.acceptedFormats.bare[req.query.format]) ? true : false
+          }, {
+            data: result.rows
+          });
+        }
+
       }
 
     }
