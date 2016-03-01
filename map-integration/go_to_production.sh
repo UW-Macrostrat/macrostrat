@@ -19,9 +19,16 @@ psql -U john -h localhost -p 5440 burwell_new -c "REINDEX DATABASE burwell_new"
 ssh -S /tmp/tmp-sock -O exit jczaplewski@strata.geology.wisc.edu
 
 : <<'END'
-psql -U john -c "ALTER DATABASE burwell RENAME TO burwell_old"
-psql -U john -c "ALTER DATABASE burwell_new RENAME TO burwell"
+EXISTING=`psql -U john -t -d burwell -c "SELECT source_id FROM maps.sources"`
+EXISTING=`echo $EXISTING | sed 's/ /,/g'`
+TOFIX=`psql -U john -t -d burwell_new -c "SELECT source_id from maps.sources where source_id NOT IN (${EXISTING})"`
+for i in $TOFIX; do
+  node tiles/seeder.js $i
+done
 
 SELECT pg_terminate_backend(pg_stat_activity.pid) FROM pg_stat_activity WHERE pg_stat_activity.datname = 'burwell' AND pid <> pg_backend_pid();
+
+psql -U john -c "ALTER DATABASE burwell RENAME TO burwell_old"
+psql -U john -c "ALTER DATABASE burwell_new RENAME TO burwell"
 
 END

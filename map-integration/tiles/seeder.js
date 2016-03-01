@@ -172,8 +172,9 @@ function seed(tiles, showProgress, callback) {
   async.eachLimit(tiles, 20, function(tile, tCb) {
     var scale = zoomLookup[tile[2]];
 
-    // Code is in tileRoller.js - uses tilestrata-mapnik directly
-    makeTile(scale, {
+
+    // Code is in tileRoller.js - uses tilestrata-mapnik/vtile  directly
+    createTile(scale, {
       x: tile[0],
       y: tile[1],
       z: tile[2]
@@ -399,12 +400,20 @@ function reseedSource(source_id) {
 
 async.series([
   function(callback) {
-    // Make sure cachePath exists
+    // Make sure cachePaths exists
     try {
       fs.statSync(config.cachePath);
     } catch(error) {
       if (error) {
         console.log('Cache path does not exist', config.cachePath, error);
+        return callback(error);
+      }
+    }
+    try {
+      fs.statSync(config.cachePathVector);
+    } catch(error) {
+      if (error) {
+        console.log('Cache path vector does not exist', config.cachePath, error);
         return callback(error);
       }
     }
@@ -434,7 +443,9 @@ async.series([
     process.exit(1);
   }
 
-  if (process.argv[2]) {
+  createTile = (process.argv[3] && process.argv[3] == 'vector') ? makeTile.roll.vector : makeTile.roll.raster;
+
+  if (process.argv[2] && process.argv[2] != 'all') {
     reseedSource(process.argv[2]);
   } else {
     reseedAll();

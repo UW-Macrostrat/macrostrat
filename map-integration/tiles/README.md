@@ -17,13 +17,13 @@ Run this to seed the tile cache for zoom levels 1-10 (tiny - medium).
 *****To seed everything:*****
 
 ````
-node seeder.js
+node seeder.js all raster
 ````
 
 *****To seed a specific source:*****
 
 ````
-node seeder.js 21
+node seeder.js 21 raster
 ````
 
 ## tileRoller.js

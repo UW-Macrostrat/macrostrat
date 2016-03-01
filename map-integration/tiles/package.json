@@ -1,6 +1,6 @@
 {
   "name": "tiles",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Tile generation for burwell",
   "main": "",
   "scripts": {
@@ -13,12 +13,14 @@
     "async": "^1.4.2",
     "carto": "^0.15.2",
     "geojson-bounds": "^1.0.0",
+    "mapnik": "^3.5.0",
     "mkdirp": "^0.5.1",
     "pg": "^4.4.2",
     "progress": "^1.1.8",
     "request": "^2.69.0",
     "tile-cover": "^3.0.1",
     "tilestrata": "^2.0.1",
-    "tilestrata-mapnik": "^0.4.1"
+    "tilestrata-mapnik": "^0.4.1",
+    "tilestrata-vtile": "^0.5.3"
   }
 }
