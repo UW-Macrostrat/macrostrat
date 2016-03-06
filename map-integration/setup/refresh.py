@@ -202,7 +202,8 @@ def refresh(cursor, connection, scale, source_id):
          CASE
            WHEN 'manual_replace' = ANY(bases)
              THEN array['manual_replace']
-
+           WHEN 'lith' = ANY(bases)
+             THEN array['lith', 'manual_replace']
            WHEN 'strat_name' = ANY(bases)
             THEN array['strat_name', 'manual']
            WHEN 'name' = ANY(bases)
