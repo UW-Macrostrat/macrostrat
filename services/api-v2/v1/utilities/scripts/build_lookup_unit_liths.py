@@ -42,10 +42,10 @@ cursor.execute("CREATE TABLE lookup_unit_liths_new LIKE lookup_unit_liths")
 cursor.execute("INSERT INTO lookup_unit_liths_new (unit_id,lith_short) SELECT unit_id, GROUP_CONCAT(lith,' ',comp_prop SEPARATOR '|') FROM unit_liths JOIN liths on lith_id=liths.id GROUP BY unit_id")
 
 # build the long lithology summary
-cursor.execute("CREATE TABLE temp_liths (unit_id integer, lith_atts varchar(255), lith varchar(100), comp_prop decimal(5,4))")
+cursor.execute("CREATE TABLE temp_liths (unit_id integer, lith_atts varchar(255) NOT NULL, lith varchar(100), comp_prop decimal(5,4))")
 cursor.execute("INSERT INTO temp_liths SELECT unit_id, GROUP_CONCAT(lith_att SEPARATOR ' ') lith_atts, lith, comp_prop FROM unit_liths LEFT JOIN unit_liths_atts ON unit_lith_id=unit_liths.id LEFT JOIN lith_atts ON lith_att_id=lith_atts.id LEFT JOIN liths on lith_id=liths.id GROUP BY unit_liths.id")
-cursor.execute("UPDATE lookup_unit_liths_new JOIN (SELECT unit_id, GROUP_CONCAT(lith_atts,' ',lith,' ',comp_prop SEPARATOR '|') ee FROM temp_liths WHERE lith_atts IS NOT NULL GROUP BY unit_id) oo ON oo.unit_id=lookup_unit_liths_new.unit_id SET lith_long=oo.ee")
-cursor.execute("UPDATE lookup_unit_liths_new JOIN (SELECT unit_id, GROUP_CONCAT(lith,' ',comp_prop SEPARATOR '|') ee FROM temp_liths WHERE lith_atts IS NULL GROUP BY unit_id) oo ON oo.unit_id=lookup_unit_liths_new.unit_id SET lith_long=oo.ee")
+cursor.execute("INSERT INTO lookup_unit_liths_new (unit_id) SELECT distinct unit_id from temp_liths")
+cursor.execute("UPDATE lookup_unit_liths_new JOIN (SELECT unit_id, GROUP_CONCAT(lith_atts,' ',lith,' ',comp_prop SEPARATOR '|') ee FROM temp_liths GROUP BY unit_id) oo ON oo.unit_id=lookup_unit_liths_new.unit_id SET lith_long=replace(oo.ee,'| ','|')")
 cursor.execute("UPDATE lookup_unit_liths_new JOIN (SELECT sp.unit_id, GROUP_CONCAT(sp.lith_class, ' ', sp.comp_prop  SEPARATOR '|') lith_class FROM (SELECT unit_id,lith_class, round(sum(comp_prop),3) comp_prop from unit_liths JOIN liths on lith_id=liths.id GROUP BY unit_id,lith_class) sp GROUP BY sp.unit_id) lithclass ON lithclass.unit_id=lookup_unit_liths_new.unit_id SET lookup_unit_liths_new.lith_class=lithclass.lith_class")
 cursor.execute("UPDATE lookup_unit_liths_new JOIN (SELECT sp.unit_id, GROUP_CONCAT(sp.lith_type, ' ', sp.comp_prop  SEPARATOR '|') lith_type FROM (SELECT unit_id,lith_type, round(sum(comp_prop),3) comp_prop from unit_liths JOIN liths on lith_id=liths.id GROUP BY unit_id,lith_type) sp GROUP BY sp.unit_id) lithclass ON lithclass.unit_id=lookup_unit_liths_new.unit_id SET lookup_unit_liths_new.lith_type=lithclass.lith_type")
 
