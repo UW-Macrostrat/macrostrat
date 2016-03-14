@@ -25,7 +25,6 @@ module.exports = function(req, res, next) {
 
     function(data, callback) {
       if (data) {
-        console.log('skip')
         return callback(null, data);
       }
 
@@ -167,6 +166,7 @@ module.exports = function(req, res, next) {
             larkin.sendData(req, res, next, {
               format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
               bare: (api.acceptedFormats.bare[req.query.format]) ? true : false,
+              compact: true,
               refs: "refs"
             }, {
               data: output
@@ -178,6 +178,7 @@ module.exports = function(req, res, next) {
     } else {
       larkin.sendData(req, res, next, {
         format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
+        compact: true,
         refs: "refs"
       }, {
         data: column_data

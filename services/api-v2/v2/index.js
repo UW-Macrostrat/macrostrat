@@ -9,6 +9,9 @@ larkin.setupCache();
 api.route("/")
   .get(require("./root"));
 
+api.route("/vtiles/burwell/:z/:x/:y")
+  .get(require("./vtiles"));
+
 api.route("/meta")
   .get(require("./meta"));
 
@@ -128,7 +131,9 @@ api.route("/geologic_units/gmus")
   .get(require("./geologic_units_gmus"));
 
 api.route("/geologic_units/burwell")
-  .get(require("./geologic_units_burwell"));
+  .get(function(req, res, next) {
+    require("./geologic_units_burwell")(req, res, next);
+  });
 
 api.route("/geologic_units/burwell/nearby")
   .get(require("./geologic_units_burwell_nearby"));
@@ -147,6 +152,9 @@ api.route("/mobile/point_details")
 
 api.route("/mobile/fossil_collections")
   .get(require("./mobile/fossil_collections"));
+
+api.route("/mobile/macro_summary")
+  .get(require("./mobile/macro_summary"));
 
 api.route("/grids")
   .get(require("./grids/grids"));

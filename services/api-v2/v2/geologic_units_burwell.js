@@ -46,11 +46,10 @@ function buildSQL(req, scale, where, limit) {
   return sql;
 }
 
-module.exports = function(req, res, next) {
+module.exports = function(req, res, next, cb) {
   if (Object.keys(req.query).length < 1) {
     larkin.info(req, res, next);
   } else {
-
     var where = [],
         params = [],
         limit;
@@ -136,6 +135,7 @@ module.exports = function(req, res, next) {
     ], function() {
       // If no valid parameters passed, return an Error
       if (where.length < 1 && !("sample" in req.query)) {
+        if (cb) return cb("No valid parameters passed");
         return larkin.error(req, res, next, "No valid parameters passed");
       }
 
@@ -169,6 +169,7 @@ module.exports = function(req, res, next) {
 
       larkin.queryPg("burwell", toRun, params, function(error, result) {
         if (error) {
+          if (cb) return cb(error);
           larkin.error(req, res, next, error);
         } else {
           if (req.query.format && api.acceptedFormats.geo[req.query.format]) {
@@ -177,11 +178,13 @@ module.exports = function(req, res, next) {
               "outputFormat": larkin.getOutputFormat(req.query.format)
             }, function(error, result) {
               if (error) {
+                if (cb) return cb(error);
                 larkin.error(req, res, next, error);
               } else {
                 if (larkin.getOutputFormat(req.query.format) === "geojson") {
                   result = gp(result, 5);
                 }
+                if (cb) return cb(null, result);
                 larkin.sendData(req, res, next, {
                   format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
                   bare: (api.acceptedFormats.bare[req.query.format]) ? true : false,
@@ -192,6 +195,7 @@ module.exports = function(req, res, next) {
               }
             });
           } else {
+            if (cb) return cb(null, result.rows);
             larkin.sendData(req, res, next, {
               format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
               bare: (api.acceptedFormats.bare[req.query.format]) ? true : false,
