@@ -1,6 +1,7 @@
 var express = require("express");
 var tilestrata = require("tilestrata");
 var mapnik = require("tilestrata-mapnik");
+//var vtile = require("tilestrata-vtile");
 var dependency = require("tilestrata-dependency");
 var credentials = require("./credentials");
 var portscanner = require("portscanner");
@@ -47,7 +48,14 @@ api.use(tilestrata.middleware({
                   diskMaxAge: 86400000, // 24hrs
                   dir: credentials.tiles.path,
                   defaultTile: __dirname + "/default@2x.png"
-                }));
+                }))
+          /*  .route("tile.pbf")
+              .use(vtile({
+                xml: __dirname + '/burwell_large.xml',
+                tileSize: 256,
+                metatile: 1,
+                bufferSize: 128
+              }))*/
       });
 
     }, 10)
