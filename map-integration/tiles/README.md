@@ -4,8 +4,10 @@
 You just imported a new source and want to create tiles:
 
 ````
-node seeder.js **source_id**
+./seed
 ````
+
+Follow the prompts
 
 
 ## setup.js
