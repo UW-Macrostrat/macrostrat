@@ -2,7 +2,7 @@
   var async = require("async");
   var pg = require("pg");
   var carto = require("carto");
-  var fs = require("fs");
+  var fs = require("fs-extra");
 
   var credentials = require("./credentials");
   var config = require("./config");
@@ -123,7 +123,7 @@
   }
 
   // Create a new mmml project, convert it to Mapnik XML, and save it to the current directory
-  function createProject(scale, callback) {
+  function createProject(scale, layer, callback) {
     // Copy the project template
     var project = JSON.parse(JSON.stringify(burwell));
 
@@ -146,11 +146,10 @@
       }).render(project);
 
       // Save it
-      fs.writeFile(__dirname + "/burwell_" + scale + ".xml", mapnikXML, function(error) {
+      fs.outputFile(__dirname + "/compiled_styles/burwell_" + scale + "_" + layer + ".xml", mapnikXML, function(error) {
         if (error) {
-          console.log("Error wrting mml file for ", scale);
+          console.log("Error wrting XML file for ", scale);
         }
-        //console.log("--- Created config for ", scale, " ---");
         callback(null);
       });
     });
@@ -163,10 +162,12 @@
       function(callback) {
         buildStyles(layer, callback);
       },
-      
+
       // For each scale, create and save and new project
       function(callback) {
-        async.each(config.scales, createProject, function(error) {
+        async.each(config.scales, function(scale, callback) {
+          createProject(scale, layer, callback);
+        }, function(error) {
           callback(null);
         });
       }

@@ -439,13 +439,6 @@ module.exports = function(params) {
     },
 
     function(callback) {
-      makeTile.init(function() {
-        console.log('Tile providers initialized');
-        callback();
-      });
-    },
-
-    function(callback) {
       setup(params.tileSet, function(error) {
         if (error) {
           console.log('An error occurred while creating configuration files');
@@ -455,6 +448,13 @@ module.exports = function(params) {
           callback(null);
         }
       })
+    },
+
+    function(callback) {
+      makeTile.init(params.tileSet, params.tileType, function() {
+        console.log('Tile providers initialized');
+        callback();
+      });
     }
   ], function(error) {
     if (error) {

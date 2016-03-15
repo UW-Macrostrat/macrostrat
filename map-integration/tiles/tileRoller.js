@@ -1,28 +1,12 @@
 (function() {
   var fs = require('fs');
+  var async = require('async');
   var mapnik = require('tilestrata-mapnik');
   var vtile = require('tilestrata-vtile');
   var mkdirp = require('mkdirp');
   var config = require('./config');
 
   var providers = {};
-  var vectorProviders = {};
-
-  // Create a tile provider for each scale that we precache
-  config.seedScales.forEach(function(scale) {
-    providers[scale] = mapnik({
-        pathname: config.configPath + 'burwell_' + scale + '.xml',
-        tileSize: 512,
-        scale: 2
-    });
-
-    vectorProviders[scale] = vtile({
-        xml: config.configPath + '/burwell_' + scale + '.xml',
-        tileSize: 256,
-        metatile: 1,
-        bufferSize: 128
-    });
-  });
 
   function tilePath(directory, z, x, y, filename) {
     return directory + '/' + z + '/' + x + '/' + y + '/' + filename;
@@ -48,7 +32,7 @@
   }
 
   function rollVectorTile(scale, tile, callback) {
-    vectorProviders[scale].serve(null, tile, function(error, buffer) {
+    providers[scale].serve(null, tile, function(error, buffer) {
       // Get the full tile path
       var file = tilePath(config.cachePathVector, tile.z, tile.x, tile.y, 'tile.mvt');
 
@@ -71,17 +55,49 @@
     raster: rollTile
   };
 
-  module.exports.init = function(callback) {
-    Object.keys(providers).forEach(function(provider) {
-      providers[provider].init(null, function() {
-        console.log('Initialized ', provider);
-      });
-      vectorProviders[provider].init(null, function() {
-        console.log('Initialized vector ', provider);
-      });
-    });
 
-    callback();
+  module.exports.init = function(layer, type, callback) {
+    async.series([
+      // Set up the tile providers depending on what type of tiles are being created
+      function(callback) {
+        async.each(config.seedScales, function(scale, cb) {
+          if (type === 'raster') {
+            providers[scale] = mapnik({
+                pathname: config.configPath + 'compiled_styles/burwell_' + scale + '_' + layer + '.xml',
+                tileSize: 512,
+                scale: 2
+            });
+          } else {
+            providers[scale] = vtile({
+                xml: config.configPath + 'compiled_styles/burwell_' + scale + '_' + layer + '.xml',
+                tileSize: 256,
+                metatile: 1,
+                bufferSize: 128
+            });
+          }
+
+          cb(null);
+
+        }, function() {
+          callback(null);
+        });
+      },
+
+      // Initialize the newly created providers
+      function(callback) {
+        async.each(Object.keys(providers), function(provider, cb) {
+          providers[provider].init(null, function() {
+            console.log('Initialized ', provider);
+            cb(null);
+          });
+        }, function() {
+          callback(null);
+        });
+      }
+    // Be done
+    ], function() {
+      callback();
+    });
   }
 
 }());
