@@ -75,15 +75,15 @@
     var layer = JSON.parse(JSON.stringify(layerTemplate));
 
     // Fill in the attributes
-    layer["Datasource"]["table"] = `(
+  /*  layer["Datasource"]["table"] = `(
       SELECT x.map_id, color, x.best_age_top t_age, x.best_age_bottom b_age, array_to_string(array_agg(DISTINCT lith_id), '|') liths, ST_SimplifyPreserveTopology(ST_SnapToGrid(geom, 0.08), 0.01) geom
       FROM lookup_` + scale + ` x
       JOIN maps.` + scale + ` s ON x.map_id = s.map_id
       LEFT JOIN maps.map_liths on x.map_id = map_liths.map_id
       GROUP BY x.map_id, x.color, x.best_age_top, x.best_age_bottom, geom
-    ) subset`
+    ) subset`*/
   //    layer["Datasource"]["table"] = "(select x.map_id, color, x.best_age_top t_age, x.best_age_bottom b_age, i_top.interval_name t_int, i_bottom.interval_name b_int, geom from lookup_" + scale + " x JOIN maps." + scale + " s ON x.map_id = s.map_id LEFT JOIN macrostrat.intervals i_top ON i_top.id = s.t_interval LEFT JOIN macrostrat.intervals i_bottom ON i_bottom.id = s.b_interval) subset"
-  //  layer["Datasource"]["table"] = "(SELECT x.map_id, x.color, geom FROM lookup_" + scale + " x JOIN maps." + scale + " s ON s.map_id = x.map_id JOIN maps.sources ON s.source_id = sources.source_id ORDER BY sources.priority ASC) subset";
+    layer["Datasource"]["table"] = "(SELECT x.map_id, x.color, geom FROM lookup_" + scale + " x JOIN maps." + scale + " s ON s.map_id = x.map_id JOIN maps.sources ON s.source_id = sources.source_id ORDER BY sources.priority ASC) subset";
     layer["id"] = "burwell_" + scale;
     layer["name"] = "burwell_" + scale;
     layer["minZoom"] = Math.min.apply(Math, config.scaleMap[scale]);
@@ -103,9 +103,33 @@
         .burwell {
           polygon-opacity:1;
           polygon-fill: #000;
-          line-color: #aaa;
-          line-width: 0.0;
         }
+        .burwell[zoom<4] {
+          line-width: 1;
+          line-color: #777;
+        }
+        .burwell[zoom>3][zoom<6] {
+          line-width: 0.4;
+          line-color: #777;
+        }
+        .burwell[zoom=5] {
+          line-width: 0.7;
+        }
+        .burwell[zoom>5][zoom<11] {
+          line-width: 0.2;
+          line-color: #777;
+        }
+        .burwell[zoom=6] {
+          line-width: 0.05;
+        }
+        .burwell[zoom=9] {
+          line-width: 1;
+        }
+        .burwell[zoom>10] {
+          line-width: 0.5;
+          line-color: #777;
+        }
+
         .burwell[color="null"] {
            polygon-fill: #777777;
         }

@@ -26,7 +26,6 @@ Object.keys(config.scaleMap).forEach(function(scale) {
   });
 });
 
-
 // Factory for querying PostGIS
 function queryPg(db, sql, params, callback) {
   pg.connect('postgres://' + credentials.pg.user + '@' + credentials.pg.host + '/' + db, function(err, client, done) {
@@ -397,57 +396,90 @@ function reseedSource(source_id) {
   });
 }
 
-
-async.series([
-  function(callback) {
-    // Make sure cachePaths exists
-    try {
-      fs.statSync(config.cachePath);
-    } catch(error) {
-      if (error) {
-        console.log('Cache path does not exist', config.cachePath, error);
-        return callback(error);
-      }
+function validateSource(source_id, callback) {
+  queryPg("burwell", "SELECT source_id FROM maps.sources WHERE source_id = $1", [source_id], function(error, result) {
+    if (error) return callback(error);
+    if (result.rows && result.rows.length === 1) {
+      callback(null, true);
+    } else {
+      callback(null, false);
     }
-    try {
-      fs.statSync(config.cachePathVector);
-    } catch(error) {
-      if (error) {
-        console.log('Cache path vector does not exist', config.cachePath, error);
-        return callback(error);
-      }
-    }
-    callback();
-  },
+  });
+}
 
-  function(callback) {
-    makeTile.init(function() {
-      console.log('Tile providers initialized');
+function getScaleSources(scale, callback) {
+  queryPg("burwell", "SELECT source_id FROM maps.sources WHERE scale = $1", [scale], function(error, result) {
+    if (error) return callback(error);
+    var sources = result.rows.map(function(d) { return d.source_id; });
+    callback(null, sources);
+  });
+}
+
+module.exports = function(params) {
+  async.series([
+    function(callback) {
+      // Make sure cachePaths exists
+      try {
+        fs.statSync(config.cachePath);
+      } catch(error) {
+        if (error) {
+          console.log('Cache path does not exist', config.cachePath, error);
+          return callback(error);
+        }
+      }
+      try {
+        fs.statSync(config.cachePathVector);
+      } catch(error) {
+        if (error) {
+          console.log('Cache path vector does not exist', config.cachePath, error);
+          return callback(error);
+        }
+      }
       callback();
-    });
-  },
+    },
 
-  function(callback) {
-    setup(function(error) {
-      if (error) {
-        console.log('An error occurred while creating configuration files');
-        callback(error);
-      } else {
-        console.log('Configuration files generated');
-        callback(null);
-      }
-    })
-  }
-], function(error) {
-  if (error) {
-    process.exit(1);
-  }
+    function(callback) {
+      makeTile.init(function() {
+        console.log('Tile providers initialized');
+        callback();
+      });
+    },
 
-  createTile = (process.argv[3] && process.argv[3] == 'vector') ? makeTile.roll.vector : makeTile.roll.raster;
+    function(callback) {
+      setup(function(error) {
+        if (error) {
+          console.log('An error occurred while creating configuration files');
+          callback(error);
+        } else {
+          console.log('Configuration files generated');
+          callback(null);
+        }
+      })
+    }
+  ], function(error) {
+    if (error) {
+      process.exit(1);
+    }
 
-  if (process.argv[2] && process.argv[2] != 'all') {
-    reseedSource(process.argv[2]);
-  } else {
-    reseedAll();
-  }
-});
+    createTile = (params.tileType === 'vector') ? makeTile.roll.vector : makeTile.roll.raster;
+
+    switch (params.target) {
+      case 'all':
+        reseedAll();
+        break;
+      case 'source':
+      case 'scale':
+        params.source_id.forEach(function(d) {
+          reseedSource(d);
+        });
+        break;
+      default:
+        console.log('QUITTING - no valid operation passed')
+    }
+
+  });
+
+}
+
+module.exports.validateSource = validateSource;
+module.exports.getScaleSources = getScaleSources;

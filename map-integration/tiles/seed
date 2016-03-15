@@ -1,0 +1,68 @@
+#! /usr/local/bin/node
+
+var inquirer = require('inquirer');
+var config = require('./config');
+var seeder = require('./seeder');
+
+inquirer.prompt([{
+  type: 'list',
+  name: 'target',
+  message: 'Would you like to seed a scale, a source, or all?',
+  choices: ['source', 'scale', 'all']
+}, {
+  type: 'list',
+  name: 'scale',
+  message: 'Which scale would you like to seed?',
+  choices: config.scales,
+  when: function(answers) {
+    return answers.target === 'scale';
+  }
+}, {
+  type: 'input',
+  name: 'source_id',
+  message: 'Which source_id would you like to seed?',
+  when: function(answers) {
+    return answers.target === 'source';
+  }
+}, {
+  type: 'list',
+  name: 'tileSet',
+  message: 'Which style would you like to seed?',
+  choices: ['vanilla', 'emphasized', 'lithologies', 'structures']
+},{
+  type: 'list',
+  name: 'tileType',
+  message: 'Which type of tiles would you like to create?',
+  choices: ['raster', 'vector']
+}], function(answers) {
+  if (answers.source_id) {
+    answers.source_id = answers.source_id.split(',');
+  }
+  // If source, validate that it exists
+  if (answers.target === 'scale') {
+    seeder.getScaleSources(answers.scale, function(error, sources) {
+      if (error) {
+        console.log('Could not get sources for given scale');
+        process.exit(1);
+      }
+      console.log('Sources to be seeded - ', sources);
+      answers.source_id = sources;
+
+      seeder(answers);
+    })
+
+  // If scale, get all source_ids
+  } else if (answers.target === 'source') {
+    seeder.validateSource(answers.source_id[0], function(error, found) {
+      if (error || !found) {
+        console.log('Target source could not be found');
+        process.exit(1);
+      }
+
+      seeder(answers);
+    })
+  } else {
+    seeder(answers);
+  }
+
+});
