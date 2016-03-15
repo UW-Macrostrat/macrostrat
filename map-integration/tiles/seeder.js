@@ -446,7 +446,7 @@ module.exports = function(params) {
     },
 
     function(callback) {
-      setup(function(error) {
+      setup(params.tileSet, function(error) {
         if (error) {
           console.log('An error occurred while creating configuration files');
           callback(error);

@@ -92,54 +92,16 @@
   }
 
   // Build our styles from the database
-  function buildStyles(callback) {
+  function buildStyles(layer, callback) {
     //console.log("--- Building styles ---");
 
     // First, rebuild the styles in the event any colors were changed
     queryPg("burwell", "SELECT DISTINCT interval_color AS color FROM macrostrat.intervals WHERE interval_color IS NOT NULL AND interval_color != ''", [], function(error, data) {
       var colors = data.rows;
 
-      var cartoCSS = `
-        .burwell {
-          polygon-opacity:1;
-          polygon-fill: #000;
-        }
-        .burwell[zoom<4] {
-          line-width: 1;
-          line-color: #777;
-        }
-        .burwell[zoom>3][zoom<6] {
-          line-width: 0.4;
-          line-color: #777;
-        }
-        .burwell[zoom=5] {
-          line-width: 0.7;
-        }
-        .burwell[zoom>5][zoom<11] {
-          line-width: 0.2;
-          line-color: #777;
-        }
-        .burwell[zoom=6] {
-          line-width: 0.05;
-        }
-        .burwell[zoom=9] {
-          line-width: 1;
-        }
-        .burwell[zoom>10] {
-          line-width: 0.5;
-          line-color: #777;
-        }
+      // Load the base styles
+      var cartoCSS = fs.readFileSync(__dirname + '/styles/' + layer + '.css', 'utf8');
 
-        .burwell[color="null"] {
-           polygon-fill: #777777;
-        }
-        .burwell[color=null] {
-           polygon-fill: #777777;
-        }
-        .burwell[color=""] {
-           polygon-fill: #777777;
-        }
-      `;
 
       // Compile the stylesheet
       for (var i = 0; i < colors.length; i++) {
@@ -195,11 +157,13 @@
 
   }
 
-  module.exports = function(callback) {
+  module.exports = function(layer, callback) {
     async.waterfall([
       // First build the styles
-      buildStyles,
-
+      function(callback) {
+        buildStyles(layer, callback);
+      },
+      
       // For each scale, create and save and new project
       function(callback) {
         async.each(config.scales, createProject, function(error) {

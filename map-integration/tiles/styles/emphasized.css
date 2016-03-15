@@ -1,0 +1,39 @@
+.burwell {
+  polygon-opacity:1;
+  polygon-fill: #000;
+}
+.burwell[zoom<4] {
+  line-width: 1;
+  line-color: #777;
+}
+.burwell[zoom>3][zoom<6] {
+  line-width: 0.4;
+  line-color: #777;
+}
+.burwell[zoom=5] {
+  line-width: 0.7;
+}
+.burwell[zoom>5][zoom<11] {
+  line-width: 0.2;
+  line-color: #777;
+}
+.burwell[zoom=6] {
+  line-width: 0.05;
+}
+.burwell[zoom=9] {
+  line-width: 1;
+}
+.burwell[zoom>10] {
+  line-width: 0.5;
+  line-color: #777;
+}
+
+.burwell[color="null"] {
+   polygon-fill: #777777;
+}
+.burwell[color=null] {
+   polygon-fill: #777777;
+}
+.burwell[color=""] {
+   polygon-fill: #777777;
+}

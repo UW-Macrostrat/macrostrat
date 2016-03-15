@@ -1,0 +1,13 @@
+.burwell {
+  polygon-opacity:1;
+  polygon-fill: #000;
+}
+.burwell[color="null"] {
+   polygon-fill: #777777;
+}
+.burwell[color=null] {
+   polygon-fill: #777777;
+}
+.burwell[color=""] {
+   polygon-fill: #777777;
+}
