@@ -30,10 +30,11 @@ module.exports = function(options) {
 
     return {
         init: function(server, callback) {
-            callback();
+          callback();
         },
 
         get: function(server, tile, callback) {
+
           // Get the full tile path
           var file = tilePath(options.dir, tile.z, tile.x, tile.y, tile.filename);
 
@@ -43,7 +44,7 @@ module.exports = function(options) {
             if (data) {
               return callback(null, data, {
                 'Content-Type': 'image/png',
-                'X-TileStrata-CacheHit': '1',
+                'X-TileStrata-RedisHit': '1',
                 'X-Powered-By': 'TileStrata/2.0.1',
                 'Cache-Control': 'max-age=60'
               });

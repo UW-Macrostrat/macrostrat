@@ -2,7 +2,7 @@ var api = require("../api"),
     larkin = require("../larkin"),
     multiline = require("multiline");
 
-module.exports = function(req, res, next) {
+module.exports = function(req, res, next, cb) {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
@@ -50,19 +50,30 @@ module.exports = function(req, res, next) {
 
   larkin.query(sql, params, function(error, result) {
     if (error) {
-      larkin.error(req, res, next, error);
+      if (cb) {
+        return cb(error);
+      } else {
+        return larkin.error(req, res, next, error);
+      }
+
     } else {
       result.forEach(function(d) {
         d.int_id = parseInt(d.int_id);
         d.refs = larkin.jsonifyPipes(d.refs, "integers");
       });
-      larkin.sendData(req, res, next, {
-        format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
-        bare: (api.acceptedFormats.bare[req.query.format]) ? true : false,
-        refs: "refs"
-      }, {
-        data: result
-      });
+
+      if (cb) {
+        cb(null, result);
+      } else {
+        larkin.sendData(req, res, next, {
+          format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
+          bare: (api.acceptedFormats.bare[req.query.format]) ? true : false,
+          refs: "refs"
+        }, {
+          data: result
+        });
+      }
+
     }
   });
 }

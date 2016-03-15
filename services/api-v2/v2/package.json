@@ -20,6 +20,8 @@
     "multiline": "^1.0.2",
     "mysql": "2.7.x",
     "pg": "^4.4.0",
+    "portscanner": "^1.0.0",
+    "redis": "^2.4.2",
     "tilestrata": "^2.0.1",
     "tilestrata-dependency": "^0.4.0",
     "tilestrata-mapnik": "^0.3.0",

@@ -55,7 +55,7 @@ module.exports = function(options) {
 
           // if yes, return it
           if (item) {
-            item.headers['X-MemoryCache-Hit'] = true;
+            item.headers['X-TileStrata-MemCacheHit'] = 1;
             return callback(null, item.buffer, item.headers);
           }
 

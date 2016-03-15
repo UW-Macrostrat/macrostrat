@@ -7,7 +7,8 @@ var mysql = require("mysql"),
     api = require("./api"),
     defs = require("./defs"),
     validator = require("validator"),
-    http = require("http");
+    http = require("http"),
+    portscanner = require("portscanner");
 
 (function() {
   var larkin = {};
@@ -267,9 +268,14 @@ var mysql = require("mysql"),
 
 
   larkin.parseMultipleIds = function(requested_ids) {
-    return requested_ids.split(",").map(function(d) {
-      return parseInt(d);
-    });
+    try {
+      return requested_ids.split(",").map(function(d) {
+        return parseInt(d);
+      });
+    } catch (e) {
+      return requested_ids;
+    }
+
   };
 
   larkin.parseMultipleStrings = function(text) {
@@ -421,7 +427,26 @@ var mysql = require("mysql"),
     }
   }
 
-  larkin.cache = require("memory-cache");
+  // Check if Redis is available
+  portscanner.checkPortStatus(6379, "127.0.0.1", function(error, status) {
+    if (status === "open") {
+      console.log("Using Redis cache for columns");
+      var redis = require("redis");
+      larkin.cache = redis.createClient(6379, "127.0.0.1");
+      larkin.cache.fetch = function(key, callback) {
+        larkin.cache.get(key, function(error, data) {
+          callback(JSON.parse(data));
+        });
+      }
+    } else {
+      console.log("Using application cache for columns")
+      larkin.cache = require("memory-cache");
+      larkin.cache.fetch = function(key, callback) {
+        callback(larkin.cache.get(key));
+      }
+    }
+  });
+
 
   larkin.setupCache = function() {
 
@@ -490,9 +515,16 @@ var mysql = require("mysql"),
       }
 
     }, function(error, results) {
-      larkin.cache.put("unitSummary", results.unitSummary);
-      larkin.cache.put("columnsGeom", results.columnsGeom);
-      larkin.cache.put("columnsNoGeom", results.columnsNoGeom);
+      // Check if using Redis or not
+      if (larkin.cache.address) {
+        larkin.cache.set("unitSummary", JSON.stringify(results.unitSummary));
+        larkin.cache.set("columnsGeom", JSON.stringify(results.columnsGeom));
+        larkin.cache.set("columnsNoGeom", JSON.stringify(results.columnsNoGeom));
+      } else {
+        larkin.cache.put("unitSummary", results.unitSummary);
+        larkin.cache.put("columnsGeom", results.columnsGeom);
+        larkin.cache.put("columnsNoGeom", results.columnsNoGeom);
+      }
 
       console.log("Done prepping column cache");
     });

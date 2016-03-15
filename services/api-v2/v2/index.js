@@ -40,38 +40,63 @@ api.route("/defs")
 api.route("/defs/autocomplete")
   .get(require("./defs/autocomplete"));
 
+api.route("/defs/define")
+  .get(require("./defs/define"));
+
 api.route("/defs/columns")
-  .get(require("./defs/columns"));
+  .get(function(req, res, next) {
+    require("./defs/columns")(req, res, next);
+  });
 
 api.route("/defs/econs")
-  .get(require("./defs/econs"));
+  .get(function(req, res, next) {
+    require("./defs/econs")(req, res, next);
+  });
 
 api.route("/defs/environments")
-  .get(require("./defs/environments"));
+  .get(function(req, res, next) {
+    require("./defs/environments")(req, res, next);
+  });
 
 api.route("/defs/groups")
-  .get(require("./defs/groups"));
+  .get(function(req, res, next) {
+    require("./defs/groups")(req, res, next);
+  });
 
 api.route("/defs/intervals")
-  .get(require("./defs/intervals"));
+  .get(function(req, res, next) {
+    require("./defs/intervals")(req, res, next);
+  });
 
 api.route("/defs/lithologies")
-  .get(require("./defs/lithologies"));
+  .get(function(req, res, next) {
+    require("./defs/lithologies")(req, res, next);
+  });
 
 api.route("/defs/lithology_attributes")
-  .get(require("./defs/lithology_attributes"));
+  .get(function(req, res, next) {
+    require("./defs/lithology_attributes")(req, res, next);
+  });
 
 api.route("/defs/measurements")
-  .get(require("./defs/measurements"));
+  .get(function(req, res, next) {
+    require("./defs/measurements")(req, res, next);
+  });
 
 api.route("/defs/plates")
-  .get(require("./defs/plates"));
+  .get(function(req, res, next) {
+    require("./defs/plates")(req, res, next);
+  });
 
 api.route("/defs/projects")
-  .get(require("./defs/projects"));
+  .get(function(req, res, next) {
+    require("./defs/projects")(req, res, next);
+  });
 
 api.route("/defs/sources")
-  .get(require("./defs/sources"));
+  .get(function(req, res, next) {
+    require("./defs/sources")(req, res, next);
+  });
 
 api.route("/defs/strat_names")
   .get(function(req, res, next) {
@@ -79,10 +104,14 @@ api.route("/defs/strat_names")
   });
 
 api.route("/defs/strat_name_concepts")
-  .get(require("./defs/strat_name_concepts"));
+  .get(function(req, res, next) {
+    require("./defs/strat_name_concepts")(req, res, next);
+  });
 
 api.route("/defs/timescales")
-  .get(require("./defs/timescales"));
+  .get(function(req, res, next) {
+    require("./defs/timescales")(req, res, next);
+  });
 
 api.route("/defs/refs")
   .get(function(req, res, next) {
