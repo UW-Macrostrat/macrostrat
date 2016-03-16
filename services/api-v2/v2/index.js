@@ -8,9 +8,6 @@ larkin.setupCache();
 api.route("/")
   .get(require("./root"));
 
-api.route("/vtiles/burwell/:z/:x/:y")
-  .get(require("./vtiles"));
-
 api.route("/meta")
   .get(require("./meta"));
 
