@@ -1,7 +1,7 @@
 var api = require("../api"),
     larkin = require("../larkin");
 
-module.exports = function(req, res, next) {
+module.exports = function(req, res, next, cb) {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
@@ -73,8 +73,11 @@ module.exports = function(req, res, next) {
 
   larkin.query(sql, params, function(error, result) {
     if (error) {
-      console.log(error);
-      return larkin.error(req, res, next, "Something went wrong");
+      if (cb) {
+        cb(error);
+      } else {
+        return larkin.error(req, res, next, "Something went wrong");
+      }
     } else {
 
       if (req.query.format !== "csv") {
@@ -94,12 +97,18 @@ module.exports = function(req, res, next) {
         });
       }
 
-      larkin.sendData(req, res, next, {
-        format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
-        bare: (api.acceptedFormats.bare[req.query.format]) ? true : false
-      }, {
-        data: result
-      });
+      if (cb) {
+        cb(null, result);
+      } else {
+        larkin.sendData(req, res, next, {
+          format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
+          bare: (api.acceptedFormats.bare[req.query.format]) ? true : false
+        }, {
+          data: result
+        });
+      }
+
+
     }
   });
 

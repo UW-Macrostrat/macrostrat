@@ -15,7 +15,17 @@ module.exports = function(req, res, next) {
     // First pass the request to the /units route and get the long response
     function(callback) {
       if ("all" in req.query) {
-        return callback(null, larkin.cache.get("unitSummary"));
+        larkin.cache.fetch("unitSummary", function(data) {
+          callback(null, data);
+        });
+      } else {
+        callback(null, null);
+      }
+    },
+
+    function(data, callback) {
+      if (data) {
+        return callback(null, data);
       }
 
       require("./units")(req, null, null, function(error, result) {
@@ -61,7 +71,6 @@ module.exports = function(req, res, next) {
       });
     },
 
-    // Using the unique column IDs returned from units, query columns
     function(new_cols, callback) {
       if (!(new_cols)) {
         return callback(null, null, []);
@@ -69,11 +78,29 @@ module.exports = function(req, res, next) {
 
       if ("all" in req.query) {
         if (req.query.format && api.acceptedFormats.geo[req.query.format]) {
-          return callback(null, new_cols, larkin.cache.get("columnsGeom"));
+          larkin.cache.fetch("columnsGeom", function(data) {
+            callback(null, new_cols, data);
+          });
         } else {
-          return callback(null, new_cols, larkin.cache.get("columnsNoGeom"));
+          larkin.cache.fetch("columnsNoGeom", function(data) {
+            callback(null, new_cols, data);
+          });
         }
+      } else {
+        callback(null, new_cols, null);
       }
+    },
+
+    // Using the unique column IDs returned from units, query columns
+    function(new_cols, data, callback) {
+      if (!(new_cols)) {
+        return callback(null, null, []);
+      }
+
+      if (data) {
+        return callback(null, new_cols, data);
+      }
+
 
       var geo = (req.query.format && api.acceptedFormats.geo[req.query.format]) ? ", IFNULL(AsWKT(col_areas.col_area), '') AS wkt" : "",
           params = {"col_ids": Object.keys(new_cols)},
@@ -139,6 +166,7 @@ module.exports = function(req, res, next) {
             larkin.sendData(req, res, next, {
               format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
               bare: (api.acceptedFormats.bare[req.query.format]) ? true : false,
+              compact: true,
               refs: "refs"
             }, {
               data: output
@@ -150,6 +178,7 @@ module.exports = function(req, res, next) {
     } else {
       larkin.sendData(req, res, next, {
         format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
+        compact: true,
         refs: "refs"
       }, {
         data: column_data
