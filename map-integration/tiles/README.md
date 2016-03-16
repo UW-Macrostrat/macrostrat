@@ -11,22 +11,8 @@ Follow the prompts
 
 
 ## setup.js
-Generates the Mapnik XML files for each layer (`burwell_scale.xml`)
+Converts the CartoCSS found in `/styles` to Mapnik XML files for each layer (`burwell_scale_style.xml`)
 
-## seeder.js
-Run this to seed the tile cache for zoom levels 1-10 (tiny - medium).
-
-*****To seed everything:*****
-
-````
-node seeder.js all raster
-````
-
-*****To seed a specific source:*****
-
-````
-node seeder.js 21 raster
-````
 
 ## tileRoller.js
 An abstraction of `tilestrata-mapnik` that allows us to use it directly to create tiles instead of
@@ -37,6 +23,11 @@ It initializes tile providers for each scale, and then exposes a single method t
 scale, a tile object (`{x: 0, y:0, z: 0}`), and a callback function.
 
 Used in `seeder.js`
+
+
+## seeder.js
+Methods for efficiently creating tiles. Primarily, it will break the target area into 16 areas in order to avoid
+memory limits. Also takes care of deleting old tiles and updating any old tiles that are in a running Redis cache.
 
 
 ## credentials.js
