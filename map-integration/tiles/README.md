@@ -7,7 +7,12 @@ You just imported a new source and want to create tiles:
 ./seed
 ````
 
-Follow the prompts
+Follow the prompts.
+
+## Structure
+When you call `seed`, you are walked through a series of prompts to determine the parameters to be passed to the seeding scripts.
+The parameters the user passes to `seed` are then passed to `seeder.js`, which uses those parameters to initialize the tile providers
+defined in `tileRoller.js`. Configuration files and output tile locations are declared in `config.js`.
 
 
 ## setup.js
