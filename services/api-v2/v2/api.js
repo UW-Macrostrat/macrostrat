@@ -6,6 +6,8 @@ var dependency = require("tilestrata-dependency");
 var credentials = require("./credentials");
 var portscanner = require("portscanner");
 
+var burwellTileServer = require("./burwellTileServer");
+
 var api = express.Router();
 
 api.use(function(req, res, next) {
@@ -15,8 +17,9 @@ api.use(function(req, res, next) {
   next();
 });
 
-// Set up the tileserver
+// Set up the tileserver (REMOVE THIS IN V3)
 api.use(tilestrata.middleware({
+  prefix: "/maps",
   server: (function() {
     var strata = tilestrata();
 
@@ -46,7 +49,7 @@ api.use(tilestrata.middleware({
                   ttl: 3000,
                   lruMaxAge: 21600000,  // 6hrs
                   diskMaxAge: 86400000, // 24hrs
-                  dir: credentials.tiles.path,
+                  dir: credentials.tiles.stashPath + '/vanilla',
                   defaultTile: __dirname + "/default@2x.png"
                 }))
           /*  .route("tile.pbf")
@@ -62,10 +65,11 @@ api.use(tilestrata.middleware({
 
     return strata;
 
-  }()),
-  prefix: "/maps"
+  }())
 }));
 
+// Load the new tile server that has multiple layers (USE ONLY THIS IN V3)
+api.use(burwellTileServer);
 
 api.acceptedFormats = {
   "standard": {

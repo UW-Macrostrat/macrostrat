@@ -4,6 +4,21 @@ var express = require("express"),
     v2 = require("./v2"),
     app = express();
 
+/*
+var keenio = require("express-keenio");
+
+keenio.configure({
+  client: {
+    projectId: "56e6fb7690e4bd5b3b1acba4",
+    writeKey: "ee3b2b574b8e54e9d92748cffad9c0354e973739fd928c3f5091039bae0f17ec7ba6d6b61c15754e8b5656837f65b3d0f9f36f45a7d8543df9210f1e60468ae3f07c70dc9ae81d691b3f04c09f319c2541518813ee33d50f8fa5d938b56c529f"
+  },
+  excludeRoutes: [
+    { method: 'GET', route: 'maps'}
+  ]
+});
+
+app.use(keenio.handleAll());
+*/
 // parse application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({ extended: false }))
 
