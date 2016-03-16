@@ -4,6 +4,7 @@ var async = require('async');
 var pg = require('pg');
 var ProgressBar = require('progress');
 var st = require('geojson-bounds');
+var mkdirp = require('mkdirp');
 
 var config = require('./config');
 var makeTile = require('./tileRoller');
@@ -419,25 +420,19 @@ module.exports = function(params) {
   async.series([
     function(callback) {
       // Make sure cachePaths exists
-      try {
-        fs.statSync(config.cachePath);
-      } catch(error) {
-        if (error) {
-          console.log('Cache path does not exist', config.cachePath, error);
-          return callback(error);
-        }
-      }
-      try {
-        fs.statSync(config.cachePathVector);
-      } catch(error) {
-        if (error) {
-          console.log('Cache path vector does not exist', config.cachePath, error);
-          return callback(error);
-        }
-      }
-      callback();
+      mkdirp(config.cachePath + '/' + params.tileSet, function(error) {
+        if (error) return callback(error);
+
+        mkdirp(config.cachePathVector + '/' + params.tileSet, function(error) {
+          if (error) return callback(error);
+
+          callback();
+        })
+      });
+
     },
 
+    // Set up the project files (Mapnik XML)
     function(callback) {
       setup(params.tileSet, function(error) {
         if (error) {
@@ -450,6 +445,7 @@ module.exports = function(params) {
       })
     },
 
+    // Initialize the tile providers
     function(callback) {
       makeTile.init(params.tileSet, params.tileType, function() {
         console.log('Tile providers initialized');

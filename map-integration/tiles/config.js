@@ -8,12 +8,15 @@ module.exports = {
 
   // The port the tile cache server should run on
   port: 7890,
+  redisPort: 6379,
 
   // All of our burwell scales
   scales: ["tiny", "small", "medium", "large"],
 
   // The scales that should be precached
   seedScales: ["tiny", "small", "medium"],
+
+  layers: ['vanilla', 'emphasized', 'lithologies', 'structures'],
 
   // Which zoom levels correspond to which map scales
   scaleMap: {

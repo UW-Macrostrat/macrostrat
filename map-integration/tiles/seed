@@ -28,7 +28,7 @@ inquirer.prompt([{
   type: 'list',
   name: 'tileSet',
   message: 'Which style would you like to seed?',
-  choices: ['all bedrock', 'vanilla', 'emphasized', 'lithologies', 'structures']
+  choices: config.layers.concat(['all bedrock'])
 },{
   type: 'list',
   name: 'tileType',
