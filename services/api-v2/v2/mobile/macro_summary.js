@@ -60,10 +60,6 @@ function groupStratNames(names, rank, callback) {
       callback(result);
     }
   });
-
-
-
-
 }
 
 function summarizeBurwell(lat, lng, callback) {
@@ -298,8 +294,27 @@ module.exports = function(req, res, next) {
           if (error) return callback(error);
 
           if (result.length) {
-            unit_summary['c_int_name'] = result[0].name
+            unit_summary['c_int_name'] = result[0].name;
+            unit_summary['int_color'] = result[0].color;
           }
+          callback(null, unit_summary);
+        });
+      },
+
+      function(unit_summary, callback) {
+        if (!unit_summary.lith || !unit_summary.lith.length) return callback(null, unit_summary);
+
+        require('../defs/lithologies')({
+          query: {
+            lith_id: _.max(unit_summary.lith, function(d) { return d.prop; }).lith_id
+          }
+        }, null, null, function(error, result) {
+          if (error) return callback(error);
+
+          if (result.length) {
+            unit_summary['lith_color'] = result[0].color;
+          }
+
           callback(null, unit_summary);
         });
       }

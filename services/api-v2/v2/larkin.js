@@ -355,6 +355,7 @@ var mysql = require("mysql"),
         "class": cats[d][0].class,
         "prop": prop
       }
+
       kitten[type + "_id"] = parseInt(d);
       parsedCats.push(kitten);
 
