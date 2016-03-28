@@ -27,6 +27,8 @@ interfere with the tile creation process.
 It initializes tile providers for each scale, and then exposes a single method that accepts a valid
 scale, a tile object (`{x: 0, y:0, z: 0}`), and a callback function.
 
+Also checks if `redis` is available, and will update the cache as needed while creating tiles.
+
 Used in `seeder.js`
 
 
