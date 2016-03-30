@@ -7,8 +7,12 @@ var express = require("express"),
 
 var ua = require('universal-analytics');
 
+ua('UA-75769740-1', null, {}, {
+  dh: 'https://macrostrat.org/api'
+}).debug();
+
 app.use(function(req, res, next) {
-  var visitor = ua('UA-59921731-1', {https: true});
+  var visitor = ua('UA-75769740-1', {https: true});
   visitor.pageview(req.originalUrl).send();
   next();
 });
