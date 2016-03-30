@@ -2,10 +2,19 @@ var express = require("express"),
     bodyParser = require("body-parser"),
     v1 = require("./v1"),
     v2 = require("./v2"),
+    defs = require("./v2/defs"),
     app = express();
 
-/*
-var keenio = require("express-keenio");
+var ua = require('universal-analytics');
+
+app.use(function(req, res, next) {
+  var visitor = ua('UA-59921731-1', {https: true});
+  visitor.pageview(req.originalUrl).send();
+  next();
+});
+
+
+/*var keenio = require("express-keenio");
 
 keenio.configure({
   client: {
@@ -14,11 +23,20 @@ keenio.configure({
   },
   excludeRoutes: [
     { method: 'GET', route: 'maps'}
+  ],
+  routes: Object.keys(defs).map(function(def) {
+    return {
+      method: 'GET',
+
+    }
+  })
+  routes: [
+    { method: 'GET', route: 'units', eventCollectionName: '', whitelistProperties: }
   ]
 });
 
-app.use(keenio.handleAll());
-*/
+app.use(keenio.handleAll());*/
+
 // parse application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({ extended: false }))
 

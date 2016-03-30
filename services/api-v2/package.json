@@ -27,7 +27,8 @@
   "license": "CC0",
   "dependencies": {
     "body-parser": "^1.6.3",
-    "express": "4.x.x"
+    "express": "4.x.x",
+    "universal-analytics": "^0.3.11"
   },
   "devDependencies": {
     "async": "0.9.x",
