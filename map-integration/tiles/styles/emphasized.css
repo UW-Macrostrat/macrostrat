@@ -10,12 +10,8 @@
 .burwell[zoom=5] {
   line-width: 0.8;
 }
-.burwell[zoom>5][zoom<11] {
-  line-width: 0.2;
-  line-color: #777;
-}
 .burwell[zoom=6] {
-  line-width: 0.05;
+  line-width: 1;
 }
 .burwell[zoom=7] {
   line-width: 2.5;
