@@ -257,6 +257,7 @@ module.exports = function(req, res, next) {
 
               if (result.length <= 3) {
                 unit_summary.strat_names = result.map(function(d) { return d.strat_name_long; });
+                unit_summary.strat_name_ids = result.map(function(d) { return d.strat_name_id; });
                 callback(null, unit_summary);
               } else {
                 groupStratNames(result, null, function(names) {
@@ -274,7 +275,7 @@ module.exports = function(req, res, next) {
 
       function(unit_summary, callback) {
         require('../elevation')(req, null, null, function(error, result) {
-          if (result.length) {
+          if (result && result.length) {
             unit_summary['elevation'] = result[0].elevation;
           }
           callback(null, unit_summary);
