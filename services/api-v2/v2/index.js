@@ -135,7 +135,9 @@ api.route("/geologic_units/burwell/nearby")
   .get(require("./geologic_units_burwell_nearby"));
 
 api.route("/elevation")
-  .get(require("./elevation"));
+  .get(function(req, res, next) {
+    require("./elevation")(req, res, next);
+  });
 
 api.route("/mobile")
   .get(require("./mobile/mobile"));
