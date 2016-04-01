@@ -442,7 +442,7 @@ module.exports = function(params) {
           console.log('Configuration files generated');
           callback(null);
         }
-      })
+      });
     },
 
     // Initialize the tile providers
