@@ -11,19 +11,19 @@
   line-width: 0.8;
 }
 .burwell[zoom=6] {
-  line-width: 0.6;
+  line-width: 0.1;
 }
 .burwell[zoom=7] {
-  line-width: 1.15;
+  line-width: 0.5;
 }
 .burwell[zoom=8] {
-  line-width: 1.8;
+  line-width: 1;
 }
 .burwell[zoom=9] {
-  line-width: 1.65;
+  line-width: 1.25;
 }
 .burwell[zoom=10] {
-  line-width: 3.75;
+  line-width: 2.5;
 }
 .burwell[zoom>10] {
   line-width: 3;
