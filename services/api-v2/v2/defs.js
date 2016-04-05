@@ -726,6 +726,34 @@
       ]
     }
   },
+  "/defs/minerals": {
+    "description": "Returns mineral names and formulas",
+    "parent": "definitions",
+    "visible": true,
+    "options": {
+      "parameters": {
+        "all": "return all available minerals",
+        "mineral": "string, name of mineral",
+        "mineral_type": "string, type of mineral (e.g., feldspar)",
+        "format": "Desired output format"
+      },
+      "output_formats": [
+        "json",
+        "csv"
+      ],
+      "examples": [
+        "api/v2/defs/timescales?all"
+      ],
+      "fields": [
+        "mineral_id",
+        "mineral",
+        "mineral_type",
+        "formula",
+        "formula_tags",
+        "url"
+      ]
+    }
+  },
   "/defs/projects": {
     "description": "Returns available Macrostrat projects",
     "parent": "definitions",
@@ -1412,7 +1440,7 @@
     "pub_year": "integer, the year of publication",
     "author": "text, the author of the publication",
     "doi": "the digital object identifier of the publication",
-    "url": "text, URL where the source or contributing publication can be found",
+    "url": "text, URL where additional information, the source or contributing publication can be found",
     "col_poly": "object, the GeoJSON representation of the column",
     "int_id": "integer, the unique interval ID",
     "int_type": "text, the temporal rank of the interval",
@@ -1428,7 +1456,12 @@
     "ref_year": "text, year of reference publication",
     "ref_source": "text, source of reference",
     "isbn_doi": "text, the reference ISBN or DOI",
-    "scale": "text, the Burwell scale the source belongs to"
+    "scale": "text, the Burwell scale the source belongs to",
+    "mineral_id", "integer, unqiue identifier for mineral",
+    "mineral", "string, name of mineral",
+    "mineral_type", "string, name of mineral group",
+    "formula", "chemical formula of mineral",
+    "formula_tags", "chemical formula of mineral with sub/superscript tags"
   }
 };
   module.exports = defs;
