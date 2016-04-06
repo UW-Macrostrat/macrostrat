@@ -6,16 +6,20 @@ module.exports = function(req, res, next, cb) {
     return larkin.info(req, res, next);
   }
 
-  var sql = "SELECT minerals.id AS mineral_id, mineral AS mineral, min_type as mineral_type, formula AS formula, formula_tags AS formula_tags, url AS url FROM minerals",
-      params = {};
+  var sql = "SELECT minerals.id AS mineral_id, mineral AS mineral, min_type as mineral_type, formula AS formula, formula_tags AS formula_tags, url AS url FROM minerals";
 
-  if (req.query.mineral) {
+  var params = {};
+
+  if (req.query.mineral_id) {
+    sql += " WHERE minerals.id = :mineral_id";
+    params["mineral_id"] = req.query.mineral_id;
+  } else if (req.query.mineral) {
     sql += " WHERE mineral = :mineral";
     params["mineral"] = req.query.mineral;
   } else if (req.query.mineral_type){
     sql += " WHERE mineral_type = :mineral_type";
     params["mineral_type"] = req.query.mineral_type;
-  } 
+  }
 
   if ("sample" in req.query) {
     sql += " LIMIT 5";
@@ -35,7 +39,8 @@ module.exports = function(req, res, next, cb) {
     } else {
       larkin.sendData(req, res, next, {
         format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
-        bare: (api.acceptedFormats.bare[req.query.format]) ? true : false
+        bare: (api.acceptedFormats.bare[req.query.format]) ? true : false,
+        compact: true
       }, {
         data: data
       });

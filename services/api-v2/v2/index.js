@@ -82,6 +82,11 @@ api.route("/defs/measurements")
     require("./defs/measurements")(req, res, next);
   });
 
+api.route("/defs/minerals")
+  .get(function(req, res, next) {
+    require("./defs/minerals")(req, res, next);
+  });
+
 api.route("/defs/plates")
   .get(function(req, res, next) {
     require("./defs/plates")(req, res, next);

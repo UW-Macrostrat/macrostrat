@@ -742,7 +742,9 @@
         "csv"
       ],
       "examples": [
-        "api/v2/defs/timescales?all"
+        "api/v2/defs/minerals?all",
+        "api/v2/defs/minerals?mineral_id=1",
+        "api/v2/defs/minerals?mineral_type=clinopyroxene"
       ],
       "fields": [
         "mineral_id",
@@ -1457,11 +1459,11 @@
     "ref_source": "text, source of reference",
     "isbn_doi": "text, the reference ISBN or DOI",
     "scale": "text, the Burwell scale the source belongs to",
-    "mineral_id", "integer, unqiue identifier for mineral",
-    "mineral", "string, name of mineral",
-    "mineral_type", "string, name of mineral group",
-    "formula", "chemical formula of mineral",
-    "formula_tags", "chemical formula of mineral with sub/superscript tags"
+    "mineral_id": "integer, unqiue identifier for mineral",
+    "mineral": "string, name of mineral",
+    "mineral_type": "string, name of mineral group",
+    "formula": "chemical formula of mineral",
+    "formula_tags": "chemical formula of mineral with sub/superscript tags"
   }
 };
   module.exports = defs;

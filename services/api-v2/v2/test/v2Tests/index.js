@@ -15,6 +15,7 @@ module.exports = function() {
   describe("defs/environments", require("./defs_environments"));
   describe("defs/intervals", require("./defs_intervals"));
   describe("defs/measurements", require("./defs_measurements"));
+  describe("defs/minerals", require("./defs_minerals"));
   describe("defs/timescales", require("./defs_timescales"));
   describe("defs/plates", require("./defs_plates"));
   describe("defs/projects", require("./defs_projects"));
