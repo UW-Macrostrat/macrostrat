@@ -17,7 +17,7 @@ module.exports = function(req, res, next, cb) {
     sql += " WHERE mineral = :mineral";
     params["mineral"] = req.query.mineral;
   } else if (req.query.mineral_type){
-    sql += " WHERE mineral_type = :mineral_type";
+    sql += " WHERE min_type = :mineral_type";
     params["mineral_type"] = req.query.mineral_type;
   }
 
