@@ -19,6 +19,9 @@ module.exports = function(req, res, next, cb) {
   } else if (req.query.mineral_type){
     sql += " WHERE min_type = :mineral_type";
     params["mineral_type"] = req.query.mineral_type;
+  } else if (req.query.element){
+    sql += " WHERE BINARY formula LIKE :element";
+    params["element"] = "%" + req.query.element + "%";
   }
 
   if ("sample" in req.query) {

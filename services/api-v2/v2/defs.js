@@ -735,6 +735,7 @@
         "all": "return all available minerals",
         "mineral": "string, name of mineral",
         "mineral_type": "string, type of mineral (e.g., feldspar)",
+        "element": "string, element abbreviation, case sensitive (e.g., Co)",
         "format": "Desired output format"
       },
       "output_formats": [
@@ -744,7 +745,8 @@
       "examples": [
         "api/v2/defs/minerals?all",
         "api/v2/defs/minerals?mineral_id=1",
-        "api/v2/defs/minerals?mineral_type=clinopyroxene"
+        "api/v2/defs/minerals?mineral_type=clinopyroxene",
+        "api/v2/defs/minerals?element=Co"
       ],
       "fields": [
         "mineral_id",
