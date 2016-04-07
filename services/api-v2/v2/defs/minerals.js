@@ -11,17 +11,19 @@ module.exports = function(req, res, next, cb) {
   var params = {};
 
   if (req.query.mineral_id) {
-    sql += " WHERE minerals.id = :mineral_id";
-    params["mineral_id"] = req.query.mineral_id;
+    sql += " WHERE minerals.id IN (:mineral_id)";
+    params["mineral_id"] = larkin.parseMultipleIds(req.query.mineral_id);
   } else if (req.query.mineral) {
-    sql += " WHERE mineral = :mineral";
-    params["mineral"] = req.query.mineral;
+    sql += " WHERE mineral IN  (:mineral)";
+    params["mineral"] = larkin.parseMultipleStrings(req.query.mineral);
   } else if (req.query.mineral_type){
-    sql += " WHERE min_type = :mineral_type";
-    params["mineral_type"] = req.query.mineral_type;
-  } else if (req.query.element){
-    sql += " WHERE BINARY formula LIKE :element";
-    params["element"] = "%" + req.query.element + "%";
+    sql += " WHERE min_type IN (:mineral_type)";
+    params["mineral_type"] = larkin.parseMultipleStrings(req.query.mineral_type);
+  } else if (req.query.element) {
+    req.query.element = larkin.pool.escapeId(larkin.parseMultipleStrings(req.query.element).join('|'));
+
+    sql += " WHERE REGEXP_INSTR(BINARY formula, '.?[" + req.query.element + "][[:upper:]]+') or REGEXP_INSTR(BINARY formula, '.?[" + req.query.element + "][[:digit:]]+') or REGEXP_INSTR(BINARY formula, '.?[" + req.query.element + "][\\(|\\),x,\\+,\\[,\\],-]') or REGEXP_INSTR(BINARY formula, '.?[" + req.query.element + "]$') ORDER BY mineral";
+
   }
 
   if ("sample" in req.query) {

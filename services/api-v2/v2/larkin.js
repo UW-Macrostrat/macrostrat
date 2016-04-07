@@ -64,7 +64,7 @@ var mysql = require("mysql"),
 
   larkin.query = function(sql, params, callback) {
     // See if the query is using :named_parameters or positional ?
-    if (sql.indexOf(':') > -1) {
+    if (sql.indexOf(':') > -1 && Object.keys(params).length > 0) {
       var newQuery = larkin.toUnnamed(sql, params);
       sql = newQuery[0];
       params = newQuery[1];
