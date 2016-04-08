@@ -22,7 +22,7 @@ module.exports = function(req, res, next, cb) {
   } else if (req.query.element) {
     req.query.element = larkin.pool.escapeId(larkin.parseMultipleStrings(req.query.element).join('|'));
 
-    sql += " WHERE REGEXP_INSTR(BINARY formula, '.?[" + req.query.element + "][[:upper:]]+') or REGEXP_INSTR(BINARY formula, '.?[" + req.query.element + "][[:digit:]]+') or REGEXP_INSTR(BINARY formula, '.?[" + req.query.element + "][\\(|\\),x,\\+,\\[,\\],-]') or REGEXP_INSTR(BINARY formula, '.?[" + req.query.element + "]$') ORDER BY mineral";
+    sql += " WHERE REGEXP_INSTR(BINARY formula, '.?" + req.query.element + "[[:upper:]]+') or REGEXP_INSTR(BINARY formula, '.?" + req.query.element + "[[:digit:]]+') or REGEXP_INSTR(BINARY formula, '.?[" + req.query.element + "][\\(|\\),x,\\+,\\[,\\],-]') or REGEXP_INSTR(BINARY formula, '.?" + req.query.element + "$') ORDER BY mineral";
 
   }
 
