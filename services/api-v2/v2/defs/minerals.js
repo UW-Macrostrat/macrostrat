@@ -25,7 +25,7 @@ module.exports = function(req, res, next, cb) {
     params = {
       elementA: ".*" + parsedElements + "[A-Z]+",
       elementB: ".*" + parsedElements + "[0-9]+",
-      elementC: ".*[" + parsedElements + "][\\(|\\),x,\\+,\\[,\\],-]",
+      elementC: ".*" + parsedElements + "[\\(|\\),x,\\+,\\[,\\],-]",
       elementD: ".*" + parsedElements + "$"
     }
 
