@@ -20,7 +20,7 @@
     "pg": "^4.4.2",
     "portscanner": "^1.0.0",
     "progress": "^1.1.8",
-    "redis": "^2.5.1",
+    "redis": "^2.5.3",
     "request": "^2.69.0",
     "tile-cover": "^3.0.1",
     "tilestrata": "^2.0.1",

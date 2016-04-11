@@ -20,15 +20,17 @@
       // Get the full tile path
       var file = tilePath(config.cachePath, tile.z, tile.x, tile.y, 'tile.png');
 
-
-      if (redis) {
+      try {
         var redisKey = `${tile.z},${tile.x},${tile.y},${mapType},tile.png`;
         client.get(redisKey, function(error, data) {
           if (data) {
             client.set(redisKey, buffer);
           }
         });
+      } catch(er) {
+
       }
+
 
       // Make sure the correct directory exists
       mkdirp(config.cachePath + '/' + mapType + '/' + tile.z + '/' + tile.x + '/' + tile.y, function(error) {
@@ -94,7 +96,8 @@
             providers[scale] = mapnik({
                 pathname: config.configPath + 'compiled_styles/burwell_' + scale + '_' + layer + '.xml',
                 tileSize: 512,
-                scale: 2
+                scale: 2,
+                metatile: 1
             });
           } else {
             providers[scale] = vtile({
