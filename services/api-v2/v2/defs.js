@@ -1101,6 +1101,45 @@
     }
   },
 
+  "/small": {
+    "description": "Returns Burwell polygons for mapping purposes",
+    "parent": "carto",
+    "visible": true,
+    "options": {
+      "parameters": {
+        "sample": "Get a sample response",
+        "lat": "A valid latitude in decimal degrees",
+        "lng": "A valid longitude in decimal degrees",
+        "shape": "A valid WKT geometry",
+        "format": "Desired output format"
+      },
+      "output_formats": [
+        "json",
+        "csv",
+        "geojson", "geojson_bare", "topojson", "topojson_bare"
+      ],
+      "examples": [
+        ""
+      ],
+      "fields": [
+        "map_id",
+        "scale",
+        "source_id",
+        "name",
+        "strat_name",
+        "age",
+        "lith",
+        "descrip",
+        "comments",
+        "best_age_top",
+        "best_age_bottom",
+        "t_int",
+        "b_int",
+        "color"
+      ]
+    }
+  },
+
   "/elevation": {
     "description": "Returns elevation in meters at a given coordinate from ETOPO1",
     "visible": true,

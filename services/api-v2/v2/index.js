@@ -5,6 +5,8 @@ var api = require("./api"),
 larkin.connectMySQL();
 larkin.setupCache();
 
+api.use("/carto", require("./carto"));
+
 api.route("/")
   .get(require("./root"));
 
