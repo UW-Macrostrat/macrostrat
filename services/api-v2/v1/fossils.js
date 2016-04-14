@@ -75,10 +75,10 @@ module.exports = function(req, res, next) {
               params.push(ids[i]);
             }
 
-            where = " AND units.col_id IN (" + placeholders.join(",") + ")";
+            where = " AND units_sections.col_id IN (" + placeholders.join(",") + ")";
 
           } else {
-            where = " AND units.col_id = ?";
+            where = " AND units_sections.col_id = ?";
             params.push(req.query.col_id);
           }
         }

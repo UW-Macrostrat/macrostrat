@@ -1,7 +1,7 @@
 (function() {
   var defs = {
   "/columns": {
-    "description": "Summarize units by stratigraphic columns",
+    "description": "Search and summarize columns based on unit properties or geographic location",
     "visible": true,
     "options": {
       "parameters": {
@@ -151,7 +151,7 @@
         "int_id": "integer, a chronostratigraphic time interval ID from /defs/intervals",
         "age": "numerical age in millions of years before present",
         "age_top": "numerical age (Ma) - must be used with age_bottom and be less than age_bottom",
-        "age_bottom": "numerical age (Ma) - must be used with age_top and be greater than age_top",
+        "age_bottom": "numerical age (Ma) - must be used with age_top and be greater than age_top; note that returned units may not be entirely contained by age_top and age_bottom, but they will intersect that age range in whole or in part",
         "lith_id": "integer, ID of a lithology from /defs/lithologies",
         "lith": "string, specific lithology name (e.g., shale, sandstone)",
         "lith_type": "string, groups of lithologies (e.g., carbonate, siliciclastic)",
