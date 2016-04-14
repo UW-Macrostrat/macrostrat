@@ -106,16 +106,41 @@ tiny_clipped AS (
   FROM tiny t
   JOIN small_ref sr
   ON ST_Intersects(t.geom, sr.geom)
+),
+result AS (
+  SELECT map_id, 'small' AS scale, geom
+  FROM small
+  UNION
+  SELECT map_id, 'tiny' AS scale, geom
+  FROM unique_tiny
+  UNION
+  SELECT map_id, 'tiny' AS scale, geom
+  FROM tiny_clipped
 )
 
-SELECT map_id, geom
-FROM small
-UNION
-SELECT map_id, geom
-FROM unique_tiny
-UNION
-SELECT map_id, geom
-FROM tiny_clipped;
+SELECT r.map_id, r.scale, m.source_id,
+COALESCE(m.name, '') AS name,
+COALESCE(m.strat_name, '') AS strat_name,
+COALESCE(m.age, '') AS age,
+COALESCE(m.lith, '') AS lith,
+COALESCE(m.descrip, '') AS descrip,
+COALESCE(m.comments, '') AS comments,
+cast(l.best_age_top as numeric) AS best_age_top,
+cast(l.best_age_bottom as numeric) AS best_age_bottom, it.interval_name t_int, ib.interval_name b_int, l.color, r.geom
+FROM result r
+LEFT JOIN (
+  SELECT map_id, source_id, name, strat_name, age, lith, descrip, comments, t_interval, b_interval FROM maps.tiny
+  UNION
+  SELECT map_id, source_id, name, strat_name, age, lith, descrip, comments, t_interval, b_interval FROM maps.small
+) m ON r.map_id = m.map_id
+LEFT JOIN (
+  SELECT map_id, best_age_top, best_age_bottom, color FROM public.lookup_tiny
+  UNION
+  SELECT map_id, best_age_top, best_age_bottom, color FROM public.lookup_small
+) l ON r.map_id = l.map_id
+JOIN macrostrat.intervals it ON m.t_interval = it.id
+JOIN macrostrat.intervals ib ON m.b_interval = ib.id
+WHERE ST_NumGeometries(r.geom) > 0;
 
 CREATE INDEX ON carto.small (map_id);
 CREATE INDEX ON carto.small USING GiST (geom);
