@@ -321,7 +321,8 @@
   },
   "/defs": {
     "description": "Routes giving access to standard fields and dictionaries used in Macrostrat",
-    "visible": true
+    "visible": true,
+    "isParent": true
   },
   "/defs/autocomplete": {
     "description": "Quickly retrieve all definitions matching a query. Limited to 100 results.",
@@ -1103,7 +1104,8 @@
 
   "/carto": {
     "description": "Routes for creating geologic maps",
-    "visible": true
+    "visible": true,
+    "isParent": true
   },
 
   "/carto/small": {
@@ -1187,7 +1189,8 @@
   },
   "/grids": {
     "description": "Returns grids with the specified parameters",
-    "visible": true
+    "visible": true,
+    "isParent": true
   },
   "/grids/latitude": {
     "description": "Returns a grid given a longitude and latitude spacing",
@@ -1261,7 +1264,8 @@
 
   "/mobile": {
     "description": "Simplified data delivery, ideal for mobile applications",
-    "visible": true
+    "visible": true,
+    "isParent": true
   },
   "/mobile/point": {
     "description": "Get state-level map (gmus) unit and Macrostrat polygon for a given point",

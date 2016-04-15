@@ -10,6 +10,13 @@ module.exports = function(req, res, next) {
       }
     }
   });
+
+  Object.keys(defs).filter(function(d) {
+    if (defs[d].isParent) {
+      routes[d] = defs[d].description;
+    }
+  });
+
   res.json({
     "success": {
       "v": api.version,
