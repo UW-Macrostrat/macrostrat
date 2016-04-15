@@ -135,12 +135,27 @@ var mysql = require("mysql"),
 
 
   larkin.info = function(req, res, next) {
-    this.defineRoute(req.route.path, function(definition) {
+    this.defineRoute(req.originalUrl.replace("/api/v" + api.version, ""), function(definition) {
       res.json({
         "success": definition
       });
     });
   };
+
+  larkin.defineCategory = function(category, callback) {
+    var available = {}
+    for (var key in defs) {
+      if (defs[key].parent && defs[key].parent === category) {
+        available[key] = defs[key].description
+      }
+    }
+
+    callback(null, {
+      "v": api.version,
+      "description": defs["/defs"].description,
+      "routes": available
+    });
+  }
 
 
   larkin.error = function(req, res, next, message, code) {

@@ -1101,7 +1101,12 @@
     }
   },
 
-  "/small": {
+  "/carto": {
+    "description": "Routes for creating geologic maps",
+    "visible": true
+  },
+
+  "/carto/small": {
     "description": "Returns Burwell polygons for mapping purposes",
     "parent": "carto",
     "visible": true,

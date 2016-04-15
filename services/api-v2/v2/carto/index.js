@@ -1,12 +1,16 @@
 var express = require("express");
 var carto = express.Router();
+var larkin = require("../larkin");
 
-carto.use(function(req, res, next) {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS");
-  next();
-});
+carto.route("/")
+  .get(function(req, res, next) {
+    larkin.defineCategory("carto", function(error, routes) {
+      res.json({
+        "success": routes
+      });
+    });
+  }
+);
 
 carto.route("/small")
   .get(function(req, res, next) {

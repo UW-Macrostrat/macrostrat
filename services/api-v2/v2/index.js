@@ -5,7 +5,11 @@ var api = require("./api"),
 larkin.connectMySQL();
 larkin.setupCache();
 
+// Load route categories
 api.use("/carto", require("./carto"));
+api.use("/defs", require("./definitions"))
+api.use("/grids", require("./grids"));
+api.use("/mobile", require("./mobile"));
 
 api.route("/")
   .get(require("./root"));
@@ -35,95 +39,6 @@ api.route("/fossils")
 api.route("/stats")
   .get(require("./stats"));
 
-api.route("/defs")
-  .get(require("./defs/definitions"));
-
-api.route("/defs/autocomplete")
-  .get(require("./defs/autocomplete"));
-
-api.route("/defs/define")
-  .get(require("./defs/define"));
-
-api.route("/defs/columns")
-  .get(function(req, res, next) {
-    require("./defs/columns")(req, res, next);
-  });
-
-api.route("/defs/econs")
-  .get(function(req, res, next) {
-    require("./defs/econs")(req, res, next);
-  });
-
-api.route("/defs/environments")
-  .get(function(req, res, next) {
-    require("./defs/environments")(req, res, next);
-  });
-
-api.route("/defs/groups")
-  .get(function(req, res, next) {
-    require("./defs/groups")(req, res, next);
-  });
-
-api.route("/defs/intervals")
-  .get(function(req, res, next) {
-    require("./defs/intervals")(req, res, next);
-  });
-
-api.route("/defs/lithologies")
-  .get(function(req, res, next) {
-    require("./defs/lithologies")(req, res, next);
-  });
-
-api.route("/defs/lithology_attributes")
-  .get(function(req, res, next) {
-    require("./defs/lithology_attributes")(req, res, next);
-  });
-
-api.route("/defs/measurements")
-  .get(function(req, res, next) {
-    require("./defs/measurements")(req, res, next);
-  });
-
-api.route("/defs/minerals")
-  .get(function(req, res, next) {
-    require("./defs/minerals")(req, res, next);
-  });
-
-api.route("/defs/plates")
-  .get(function(req, res, next) {
-    require("./defs/plates")(req, res, next);
-  });
-
-api.route("/defs/projects")
-  .get(function(req, res, next) {
-    require("./defs/projects")(req, res, next);
-  });
-
-api.route("/defs/sources")
-  .get(function(req, res, next) {
-    require("./defs/sources")(req, res, next);
-  });
-
-api.route("/defs/strat_names")
-  .get(function(req, res, next) {
-    require("./defs/strat_names")(req, res, next);
-  });
-
-api.route("/defs/strat_name_concepts")
-  .get(function(req, res, next) {
-    require("./defs/strat_name_concepts")(req, res, next);
-  });
-
-api.route("/defs/timescales")
-  .get(function(req, res, next) {
-    require("./defs/timescales")(req, res, next);
-  });
-
-api.route("/defs/refs")
-  .get(function(req, res, next) {
-    require("./defs/refs")(req, res, next);
-  });
-
 api.route("/paleogeography")
   .get(require("./paleogeography"));
 
@@ -145,48 +60,6 @@ api.route("/elevation")
   .get(function(req, res, next) {
     require("./elevation")(req, res, next);
   });
-
-api.route("/mobile")
-  .get(require("./mobile/mobile"));
-
-api.route("/mobile/point")
-  .get(require("./mobile/point"));
-
-api.route("/mobile/point_details")
-  .get(require("./mobile/point_details"));
-
-api.route("/mobile/fossil_collections")
-  .get(require("./mobile/fossil_collections"));
-
-api.route("/mobile/macro_summary")
-  .get(require("./mobile/macro_summary"));
-
-api.route("/grids")
-  .get(require("./grids/grids"));
-
-api.route("/grids/latitude")
-  .get(require("./grids/latitude"));
-
-api.route("/grids/longitude")
-  .get(require("./grids/longitude"));
-
-api.route("/grids/lithologies")
-  .get(require("./grids/lithologies"));
-
-api.route("/editing")
-  .get(require("./editing/editing"));
-
-api.route("/editing/map")
-  .get(require("./editing/map"));
-
-api.route("/editing/map/update")
-  .post(require("./editing/map_update"));
-
-api.route("/editing/section")
-  .get(require("./editing/section"));
-
-api.route("/editing/units/update")
-  .put(require("./editing/units_update"));
 
 api.route("*")
   .get(require("./catchall"));
