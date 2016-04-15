@@ -32,6 +32,8 @@ module.exports = function() {
 
   describe("carto/small", require("./carto_small"));
 
+  describe("tiles", require("./tiles"));
+
   describe("mobile/point", require("./mobile_point"));
   describe("mobile/point_details", require("./mobile_point_details"));
   describe("mobile/fossil_collections", require("./mobile_fossil_collections"));

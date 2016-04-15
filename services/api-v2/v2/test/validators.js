@@ -1,3 +1,5 @@
+var sizeOf = require("image-size");
+
 module.exports = {
 
   aSuccessfulRequest: function(res) {
@@ -9,6 +11,7 @@ module.exports = {
       throw new Error("Wrong access-control-allow-origin headers");
     }
   },
+
 
   metadata: function(res) {
     // Make sure all the key metadata sections exist
@@ -100,6 +103,19 @@ module.exports = {
   csv: function(res) {
     if (res.body.length < 10) {
       throw new Error("No CSV output recieved");
+    }
+  },
+
+  tile: function(res) {
+    if (res.headers["content-type"] != "image/png") {
+      throw new Error("Wrong content-type header on tile");
+    }
+    if (res.headers["content-length"] < 200) {
+      throw new Error("Empty tile returned");
+    }
+    var dims = sizeOf(res.body);
+    if (dims.width != 512 || dims.height != 512) {
+      throw new Error("Tile has the wrong dimensions");
     }
   },
 
