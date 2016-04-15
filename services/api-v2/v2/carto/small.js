@@ -1,15 +1,20 @@
-var api = require("../api"),
-    async = require("async"),
-    dbgeo = require("dbgeo"),
-    gp = require("geojson-precision"),
-    larkin = require("../larkin");
+var api = require("../api");
+var async = require("async");
+var dbgeo = require("dbgeo");
+var gp = require("geojson-precision");
+var mapshaper = require("mapshaper");
+var larkin = require("../larkin");
 
 module.exports = function(req, res, next, cb) {
   if (Object.keys(req.query).length < 1) {
     larkin.info(req, res, next);
   } else {
-    var where = [],
-        params = [];
+    if (req.query.lat && req.query.lng && req.query.shape) {
+      return larkin.error(req, res, next, "Invalid request");
+    }
+
+    var where = [];
+    var params = [];
     var pre = "";
 
     // Process the parameters
@@ -19,7 +24,7 @@ module.exports = function(req, res, next, cb) {
       function(callback) {
         if (req.query.lat && req.query.lng) {
           req.query.lng = larkin.normalizeLng(req.query.lng);
-          where.push("ST_Intersects(geom, ST_GeomFromText($" + (where.length + 1) + ", 4326))");
+          where.push("ST_Intersects(geom, ST_GeomFromText($1, 4326))");
           params.push("POINT(" + req.query.lng + " " + req.query.lat + ")");
         }
         callback(null);
@@ -28,9 +33,13 @@ module.exports = function(req, res, next, cb) {
       // shape
       function(callback) {
         if (req.query.shape) {
-          // Validate
-          larkin.queryPg("burwell", "SELECT $1::geometry", [req.query.shape], function(error, done) {
-            if (error) return callback(error);
+          // Validate geometry and geometry area
+          larkin.queryPg("burwell", "SELECT ST_Area($1::geography)/1000000 area", [req.query.shape], function(error, result) {
+            if (error) return callback("Invalid geometry passed");
+
+            if (result.rows[0].area > 100000000) {
+              return callback("Geometry too large");
+            }
 
             pre = `
               WITH shape AS (
@@ -49,7 +58,7 @@ module.exports = function(req, res, next, cb) {
 
     ], function(error) {
       if (error) {
-        return larkin.error(req, res, next, "Invalid geometry passed");
+        return larkin.error(req, res, next, error);
       }
       // If no valid parameters passed, return an Error
       if (where.length < 1 && !("sample" in req.query) && pre.length < 1) {
@@ -63,15 +72,12 @@ module.exports = function(req, res, next, cb) {
         where = "";
       }
 
-      if ("sample" in req.query) {
-        var limit = " LIMIT 5";
-      } else {
-        limit = ""
-      }
+      var limit = ("sample" in req.query) ? " LIMIT 5" : "";
 
       var sql = pre + " SELECT map_id, scale, source_id, name, strat_name, age, lith, descrip, comments, best_age_top, best_age_bottom, t_int, b_int, color";
       var join = "";
 
+      // Modify the query if geometry is being requested
       if (req.query.format && api.acceptedFormats.geo[req.query.format]) {
         if (req.query.shape) {
           sql += `,
@@ -96,40 +102,52 @@ module.exports = function(req, res, next, cb) {
       larkin.queryPg("burwell", sql, params, function(error, result) {
         if (error) {
           if (cb) return cb(error);
-          larkin.error(req, res, next, error);
-        } else {
-          if (req.query.format && api.acceptedFormats.geo[req.query.format]) {
-            dbgeo.parse({
-              "data": result.rows,
-              "outputFormat": larkin.getOutputFormat(req.query.format)
-            }, function(error, result) {
-              if (error) {
-                if (cb) return cb(error);
-                larkin.error(req, res, next, error);
-              } else {
-                if (larkin.getOutputFormat(req.query.format) === "geojson") {
-                  result = gp(result, 5);
-                }
+          return larkin.error(req, res, next, error);
+        }
+
+        // Requesting geographic data
+        if (req.query.format && api.acceptedFormats.geo[req.query.format]) {
+          // Convert the db response to a proper FeatureCollection
+          dbgeo.parse({
+            "data": result.rows,
+            "outputFormat": larkin.getOutputFormat(req.query.format)
+          }, function(error, result) {
+            if (error) {
+              if (cb) return cb(error);
+              larkin.error(req, res, next, error);
+            } else {
+              // Trim precision if GeoJSON
+              if (larkin.getOutputFormat(req.query.format) === "geojson") {
+                result = gp(result, 5);
+              }
+
+              // Simplify the output!
+              mapshaper.applyCommands("-simplify 14% visvalingam weighted", result, function(error, data) {
                 if (cb) return cb(null, result);
+
                 larkin.sendData(req, res, next, {
                   format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
                   bare: (api.acceptedFormats.bare[req.query.format]) ? true : false,
                   refs: 'source_id'
                 }, {
-                  data: result
+                  data: JSON.parse(data)
                 });
-              }
-            });
-          } else {
-            if (cb) return cb(null, result.rows);
-            larkin.sendData(req, res, next, {
-              format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
-              bare: (api.acceptedFormats.bare[req.query.format]) ? true : false,
-              refs: 'source_id'
-            }, {
-              data: result.rows
-            });
-          }
+              });
+
+            }
+          });
+        } else {
+        // Not requesting geographic data
+          if (cb) return cb(null, result.rows);
+
+          larkin.sendData(req, res, next, {
+            format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
+            bare: (api.acceptedFormats.bare[req.query.format]) ? true : false,
+            compact: true,
+            refs: 'source_id'
+          }, {
+            data: result.rows
+          });
         }
       });
     });

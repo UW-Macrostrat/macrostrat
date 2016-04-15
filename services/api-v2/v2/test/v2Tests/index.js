@@ -30,6 +30,8 @@ module.exports = function() {
   describe("geologic_units/gmus", require("./geologic_units_gmus"));
   describe("geologic_units/burwell", require("./geologic_units_burwell"));
 
+  describe("carto/small", require("./carto_small"));
+
   describe("mobile/point", require("./mobile_point"));
   describe("mobile/point_details", require("./mobile_point_details"));
   describe("mobile/fossil_collections", require("./mobile_fossil_collections"));
