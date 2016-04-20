@@ -126,7 +126,8 @@ COALESCE(m.lith, '') AS lith,
 COALESCE(m.descrip, '') AS descrip,
 COALESCE(m.comments, '') AS comments,
 cast(l.best_age_top as numeric) AS best_age_top,
-cast(l.best_age_bottom as numeric) AS best_age_bottom, it.interval_name t_int, ib.interval_name b_int, l.color, r.geom
+cast(l.best_age_bottom as numeric) AS best_age_bottom, it.interval_name t_int, ib.interval_name b_int, l.color,
+ST_SetSRID(r.geom, 4326) AS geom
 FROM result r
 LEFT JOIN (
   SELECT map_id, source_id, name, strat_name, age, lith, descrip, comments, t_interval, b_interval FROM maps.tiny
