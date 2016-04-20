@@ -59,7 +59,7 @@ Often times the automated matching script produces invalid results, or personal 
 the automated search. To manually make a match, use `matching/add_match.py`.
 
 #### Manually deleting matches
-`matching/remove_match.py`
+`matching/remove_match.py --help`
 
 
 
