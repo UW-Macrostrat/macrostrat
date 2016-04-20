@@ -162,11 +162,11 @@ class Task(object):
     # Strict space, strict strat name
     a = query(True, False, False)
 
-    # Buffered space, strict strat name
-    c = query(True, True, True)
-
     # Strict space, fuzzy strat name
     b = query(False, False, True)
+
+    # Buffered space, strict strat name
+    c = query(True, True, True)
 
     # Buffered space, fuzz strat name
     d = query(False, True, True)
