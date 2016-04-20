@@ -75,8 +75,14 @@ def refresh(cursor, connection, scale, source_id):
 
            WHEN 'strat_name' = ANY(bases)
             THEN array['strat_name', 'manual']
+           WHEN 'strat_name_fname' = ANY(bases)
+            THEN array['strat_name_fname', 'manual']
+
            WHEN 'name' = ANY(bases)
              THEN array['name', 'manual']
+           WHEN 'name_fname' = ANY(bases)
+             THEN array['name_fname', 'manual']
+
            WHEN 'descrip' = ANY(bases)
              THEN array['descrip', 'manual']
            WHEN 'comments' = ANY(bases)
@@ -92,10 +98,7 @@ def refresh(cursor, connection, scale, source_id):
            WHEN 'comments_buffer' = ANY(bases)
              THEN array['comments_buffer', 'manual']
 
-           WHEN 'strat_name_fname' = ANY(bases)
-            THEN array['strat_name_fname', 'manual']
-           WHEN 'name_fname' = ANY(bases)
-             THEN array['name_fname', 'manual']
+
            WHEN 'descrip_fname' = ANY(bases)
              THEN array['descrip_fname', 'manual']
            WHEN 'comments_fname' = ANY(bases)
