@@ -66,23 +66,13 @@
     "metatile": 2,
     "name": "burwell",
     "description": "burwell",
-    "attribution": "Data providers, UW-Macrostrat, John J Czaplewski <jczaplew@gmail.com>"
+    "attribution": "Data providers, UW-Macrostrat, John J Czaplewski <john@czaplewski.org>"
   }
 
   // Gets the extend and centroid of a given scale, and returns an mml layer configuration
   function createLayer(scale, callback) {
     // Copy the template
     var layer = JSON.parse(JSON.stringify(layerTemplate));
-
-    // Fill in the attributes
-  /*  layer["Datasource"]["table"] = `(
-      SELECT x.map_id, color, x.best_age_top t_age, x.best_age_bottom b_age, array_to_string(array_agg(DISTINCT lith_id), '|') liths, ST_SimplifyPreserveTopology(ST_SnapToGrid(geom, 0.08), 0.01) geom
-      FROM lookup_` + scale + ` x
-      JOIN maps.` + scale + ` s ON x.map_id = s.map_id
-      LEFT JOIN maps.map_liths on x.map_id = map_liths.map_id
-      GROUP BY x.map_id, x.color, x.best_age_top, x.best_age_bottom, geom
-    ) subset`*/
-  //    layer["Datasource"]["table"] = "(select x.map_id, color, x.best_age_top t_age, x.best_age_bottom b_age, i_top.interval_name t_int, i_bottom.interval_name b_int, geom from lookup_" + scale + " x JOIN maps." + scale + " s ON x.map_id = s.map_id LEFT JOIN macrostrat.intervals i_top ON i_top.id = s.t_interval LEFT JOIN macrostrat.intervals i_bottom ON i_bottom.id = s.b_interval) subset"
     layer["Datasource"]["table"] = "(SELECT x.map_id, x.color, geom FROM lookup_" + scale + " x JOIN maps." + scale + " s ON s.map_id = x.map_id JOIN maps.sources ON s.source_id = sources.source_id ORDER BY sources.priority ASC) subset";
     layer["id"] = "burwell_" + scale;
     layer["name"] = "burwell_" + scale;

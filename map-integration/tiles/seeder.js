@@ -11,8 +11,9 @@ var makeTile = require('./tileRoller');
 var setup = require('./setup');
 var credentials = require('./credentials');
 
+var tileSet = '';
 // Array of zoom levels we are going to precache
-var seedableZooms = [].concat(config.scaleMap['tiny'], config.scaleMap['small'], config.scaleMap['medium']);
+var seedableZooms = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 var seedableScales = {
   tiny: config.scaleMap['tiny'],
@@ -144,14 +145,14 @@ function getTileList(geom, z) {
 
 function deleteTile(tile, callback) {
   // Check if it exists
-  fs.stat(config.cachePath + '/' + tile[2] + '/' + tile[0] + '/' + tile[1] + '/tile.png', function(error, file) {
+  fs.stat(config.cachePath + '/' + tileSet + '/' + tile[2] + '/' + tile[0] + '/' + tile[1] + '/tile.png', function(error, file) {
     // Doesn't exist
     if (error) {
       return callback(null);
     }
     // Exists, delete it
     else {
-      fs.unlink(config.cachePath + '/' + tile[2] + '/' + tile[0] + '/' + tile[1] + '/tile.png', function(error) {
+      fs.unlink(config.cachePath + '/' + tileSet + '/' + tile[2] + '/' + tile[0] + '/' + tile[1] + '/tile.png', function(error) {
         if (error) {
           callback(error);
         } else {
@@ -341,10 +342,10 @@ function reseedAll() {
         SELECT ST_AsGeoJSON(
           ST_Intersection(
               ST_GeomFromText('POLYGON ((-179 -85, -179 85, 179 85, 179 -85, -179 -85))', 4326),
-              ST_Union(geom)
+              ST_Union(rgeom)
             )
         , 4) AS geometry
-        FROM public.land
+        FROM maps.sources
       `, [], function(error, data) {
         if (error) {
           console.log(error);
@@ -354,37 +355,9 @@ function reseedAll() {
 
         callback(null, lands);
       });
-    },
-
-    // Get water
-    function(lands, callback) {
-      queryPg('burwell', `
-        SELECT ST_AsGeoJSON(ST_MakeValid(geometry), 4) geometry FROM (
-          SELECT ST_Simplify(geom, 1) AS geometry FROM (
-          SELECT
-            ST_Intersection(
-              ST_GeomFromText('POLYGON ((-179 -85, -179 85, 179 85, 179 -85, -179 -85))', 4326),
-              ST_Difference(
-                (SELECT ST_Buffer(ST_Collect(ref_geom),0) FROM maps.sources),
-                (SELECT ST_Buffer(ST_Collect(geom),0) FROM public.land)
-              )
-            ) geom
-          ) sub
-          ) foo
-        WHERE geometry is NOT NULL
-      `, [], function(error, data) {
-        if (error) {
-          console.log(error);
-        }
-
-        var water = data.rows.map(function(d) { return JSON.parse(d.geometry); });
-
-        callback(null, lands, water);
-      });
     }
-  ], function(error, lands, water) {
-
-    reseed([].concat(lands, water), '');
+  ], function(error, lands) {
+    reseed(lands, '');
   });
 }
 
@@ -419,6 +392,7 @@ function getScaleSources(scale, callback) {
 module.exports = function(params) {
   async.series([
     function(callback) {
+      tileSet = params.tileSet;
       // Make sure cachePaths exists
       mkdirp(config.cachePath + '/' + params.tileSet, function(error) {
         if (error) return callback(error);
