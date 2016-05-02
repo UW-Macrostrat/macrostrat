@@ -194,7 +194,6 @@ var mysql = require("mysql"),
   // Will return all field definitions
   larkin.defineFields = function(route, callback) {
     var routeDefs = {}
-    console.log('ROUTE -- ', route)
     async.each(defs[route].options.fields, function(field, callback) {
       if (defs.define.hasOwnProperty(field)) {
         routeDefs[field] = defs.define[field];
