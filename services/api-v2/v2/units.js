@@ -51,6 +51,21 @@ module.exports = function(req, res, next, cb) {
       } else if (req.query.age_top && req.query.age_bottom) {
         callback(null, {"interval_name": "none", "age_bottom": req.query.age_bottom, "age_top": req.query.age_top});
 
+      } else if (req.query.shape) {
+
+        larkin.queryPg("burwell", `
+          WITH shape AS (
+            SELECT ST_Segmentize($1::geography, 100000)::geometry AS buffer
+          )
+          SELECT id
+          FROM macrostrat.cols
+          JOIN shape ON ST_Intersects(poly_geom, shape.buffer)
+        `, [req.query.shape], function(error, response) {
+          if (error) return callback(error);
+
+          callback(null, {"interval_name": "none", "age_bottom": 99999, "age_top": 0, "col_ids": response.rows.map(function(d) { return d.id })});
+        });
+        
       } else if (req.query.lat && req.query.lng) {
         var sql = (req.query.adjacents === "true") ? "WITH containing_geom AS (SELECT poly_geom FROM macrostrat.cols WHERE ST_Contains(poly_geom, ST_GeomFromText($1, 4326))) SELECT id FROM macrostrat.cols WHERE ST_Intersects((SELECT * FROM containing_geom), poly_geom) ORDER BY ST_Distance(ST_Centroid(poly_geom), ST_GeomFromText($1, 4326))" : "SELECT id FROM macrostrat.cols WHERE ST_Contains(poly_geom, st_setsrid(ST_GeomFromText($1), 4326)) ORDER BY ST_Distance(ST_Centroid(poly_geom), ST_GeomFromText($1, 4326))";
 
