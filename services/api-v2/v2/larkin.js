@@ -135,7 +135,8 @@ var mysql = require("mysql"),
 
 
   larkin.info = function(req, res, next) {
-    this.defineRoute(req.originalUrl.replace("/api/v" + api.version, "").replace("/api", "").replace(/\/$/, ""), function(definition) {
+    var formatted = (req.baseUrl + req.route.path).replace("/api/v" + api.version, "").replace("/api", "").replace(/\/$/, "");
+    this.defineRoute(formatted, function(definition) {
       res.json({
         "success": definition
       });
@@ -169,7 +170,8 @@ var mysql = require("mysql"),
           }
         });
     } else {
-      this.defineRoute(req.route.path, function(definition) {
+      var formatted = (req.baseUrl + req.route.path).replace("/api/v" + api.version, "").replace("/api", "").replace(/\/$/, "");
+      this.defineRoute(formatted, function(definition) {
         res
           .status((code) ? code : 200)
           .json({
@@ -192,6 +194,7 @@ var mysql = require("mysql"),
   // Will return all field definitions
   larkin.defineFields = function(route, callback) {
     var routeDefs = {}
+    console.log('ROUTE -- ', route)
     async.each(defs[route].options.fields, function(field, callback) {
       if (defs.define.hasOwnProperty(field)) {
         routeDefs[field] = defs.define[field];
