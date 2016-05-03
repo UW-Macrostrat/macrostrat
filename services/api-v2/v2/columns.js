@@ -108,7 +108,12 @@ module.exports = function(req, res, next) {
       var orderby = "";
 
       if (req.query.format && api.acceptedFormats.geo[req.query.format]) {
-        geo = ", ST_AsGeoJSON(col_areas.col_area) geojson";
+        if (req.query.shape) {
+          geo = ", ST_AsGeoJSON(ST_Intersection(col_areas.col_area, $2)) geojson";
+          params.push(req.query.shape);
+        } else {
+          geo = ", ST_AsGeoJSON(ST_Intersection(col_areas.col_area) geojson";
+        }
         groupBy = ", col_areas.col_area";
       }
 
@@ -147,28 +152,6 @@ module.exports = function(req, res, next) {
 
         callback(null, new_cols, result.rows);
       });
-
-/*
-      var geo = (req.query.format && api.acceptedFormats.geo[req.query.format]) ? ", IFNULL(AsWKT(col_areas.col_area), '') AS wkt" : "",
-          params = {"col_ids": Object.keys(new_cols)},
-          limit = ("sample" in req.query) ? " LIMIT 5" : "",
-          orderby = "";
-
-      if (req.query.lat && req.query.lng && req.query.adjacents) {
-        orderby = "ORDER BY ST_Distance(col_areas.col_area, GeomFromText(:point))";
-        params["point"] = "POINT(" + larkin.normalizeLng(req.query.lng) + " " + req.query.lat + ")";
-
-      } else if (req.query.col_id && req.query.adjacents) {
-        orderby = "ORDER BY ST_Distance(ST_Centroid(col_areas.col_area), (SELECT ST_Centroid(col_area) FROM col_areas WHERE col_id = :col_id))";
-        params["col_id"] = req.query.col_id;
-      }
-      larkin.query("SELECT cols.id AS col_id, col_name, col_group, col_groups.id AS col_group_id, col AS group_col_id, round(cols.col_area, 1) AS col_area, project_id, GROUP_CONCAT(col_refs.ref_id SEPARATOR '|') AS refs" +  geo + " FROM cols LEFT JOIN col_areas on col_areas.col_id = cols.id LEFT JOIN col_groups ON col_groups.id = cols.col_group_id LEFT JOIN col_refs ON cols.id = col_refs.col_id WHERE status_code = 'active' AND col_areas.col_area IS NOT NULL AND cols.id IN (:col_ids) GROUP BY col_areas.col_id " + orderby + limit, params, function(error, result) {
-        if (error) {
-          callback(error);
-        } else {
-          callback(null, new_cols, result);
-        }
-      });*/
     }
 
   // Once units and columns have been queried, wrap things up and send it
