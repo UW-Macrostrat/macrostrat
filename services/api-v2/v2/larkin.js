@@ -521,15 +521,50 @@ var mysql = require("mysql"),
 
       columnsGeom: function(callback) {
         // get all columns, with geometry
-        larkin.query("SELECT cols.id AS col_id, col_name, col_group, col_groups.id AS col_group_id, col AS group_col_id, round(cols.col_area, 1) AS col_area, project_id, GROUP_CONCAT(col_refs.ref_id SEPARATOR '|') AS refs, IFNULL(AsWKT(col_areas.col_area), '') AS wkt FROM cols LEFT JOIN col_areas on col_areas.col_id = cols.id LEFT JOIN col_groups ON col_groups.id = cols.col_group_id LEFT JOIN col_refs ON cols.id = col_refs.id WHERE status_code = 'active' AND col_areas.col_area IS NOT NULL GROUP BY col_areas.col_id ", [], function(error, result) {
-          callback(null, result);
-        });
+        larkin.queryPg('burwell', `
+         SELECT
+          cols.id AS col_id,
+          col_name,
+          col_group,
+          col_groups.id AS col_group_id,
+          col AS group_col_id,
+          round(cols.col_area, 1) AS col_area,
+          project_id,
+          string_agg(col_refs.ref_id::varchar, '|') AS refs,
+          ST_AsGeoJSON(col_areas.col_area) geojson
+        FROM macrostrat.cols
+        LEFT JOIN macrostrat.col_areas on col_areas.col_id = cols.id
+        LEFT JOIN macrostrat.col_groups ON col_groups.id = cols.col_group_id
+        LEFT JOIN macrostrat.col_refs ON cols.id = col_refs.col_id
+        WHERE status_code = 'active'
+          AND col_areas.col_area IS NOT NULL
+        GROUP BY col_areas.col_id, cols.id, col_groups.col_group, col_groups.id, col_areas.col_area
+        `, [], function(error, result) {
+          callback(null, result.rows)
+        })
       },
 
       columnsNoGeom: function(callback) {
-        larkin.query("SELECT cols.id AS col_id, col_name, col_group, col_groups.id AS col_group_id, col AS group_col_id, round(cols.col_area, 1) AS col_area, project_id, GROUP_CONCAT(col_refs.ref_id SEPARATOR '|') AS refs FROM cols LEFT JOIN col_areas on col_areas.col_id = cols.id LEFT JOIN col_groups ON col_groups.id = cols.col_group_id LEFT JOIN col_refs ON cols.id = col_refs.id WHERE status_code = 'active' AND col_areas.col_area IS NOT NULL GROUP BY col_areas.col_id", [], function(error, result) {
-          callback(null, result);
-        });
+        larkin.queryPg('burwell', `
+        SELECT
+          cols.id AS col_id,
+          col_name,
+          col_group,
+          col_groups.id AS col_group_id,
+          col AS group_col_id,
+          round(cols.col_area, 1) AS col_area,
+          project_id,
+          string_agg(col_refs.ref_id::varchar, '|') AS refs
+        FROM macrostrat.cols
+        LEFT JOIN macrostrat.col_areas on col_areas.col_id = cols.id
+        LEFT JOIN macrostrat.col_groups ON col_groups.id = cols.col_group_id
+        LEFT JOIN macrostrat.col_refs ON cols.id = col_refs.col_id
+        WHERE status_code = 'active'
+          AND col_areas.col_area IS NOT NULL
+        GROUP BY col_areas.col_id, cols.id, col_groups.col_group, col_groups.id
+        `, [], function(error, result) {
+          callback(null, result.rows);
+        })
       }
 
     }, function(error, results) {

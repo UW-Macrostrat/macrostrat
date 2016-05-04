@@ -112,7 +112,7 @@ module.exports = function(req, res, next) {
           geo = ", ST_AsGeoJSON(ST_Intersection(col_areas.col_area, $2)) geojson";
           params.push(req.query.shape);
         } else {
-          geo = ", ST_AsGeoJSON(ST_Intersection(col_areas.col_area) geojson";
+          geo = ", ST_AsGeoJSON(col_areas.col_area) geojson";
         }
         groupBy = ", col_areas.col_area";
       }
