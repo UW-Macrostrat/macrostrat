@@ -13,11 +13,11 @@ def source_stats(cursor, connection, source_id):
         SELECT ST_MakeValid(geom) geom FROM sources.%(primary_table)s
       ),
       third AS (
-        SELECT round(sum(ST_Area(geom::geography)*0.000001)) area, COUNT(*) features, ST_Extent(geom) AS envelope
+        SELECT round(sum(ST_Area(geom::geography)*0.000001)) area, COUNT(*) features
         FROM second
       )
       UPDATE maps.sources AS a
-      SET area = s.area, features = s.features, bbox = s.envelope
+      SET area = s.area, features = s.features
       FROM third AS s
       WHERE a.source_id = %(source_id)s
     """, {
