@@ -33,26 +33,26 @@ function prepScale(scale) {
     AND priority IS TRUE
   ),
   ${scale}_priorities AS (
-    SELECT s.map_id, s.geom
+    SELECT s.map_id, ST_SetSRID(s.geom, 4326)
     FROM maps.${scale} s
     JOIN maps.sources ON s.source_id = sources.source_id
     WHERE priority IS TRUE
   ),
   ${scale}_nonpriority_unique AS (
-    SELECT s.map_id, s.geom
+    SELECT s.map_id, ST_SetSRID(s.geom, 4326)
     FROM maps.${scale} s
     JOIN maps.sources ON s.source_id = sources.source_id
     LEFT JOIN ${scale}_priority_ref pr
-    ON ST_Intersects(s.geom, st_setsrid(pr.geom, 4326))
+    ON ST_Intersects(ST_SetSRID(s.geom, 4326), st_setsrid(pr.geom, 4326))
     WHERE pr.id IS NULL
     AND priority IS FALSE
     AND ST_Geometrytype(s.geom) != 'ST_LineString'
   ),
   ${scale}_nonpriority_clipped AS (
-    SELECT s.map_id, ST_Difference(s.geom, pr.geom) geom
+    SELECT s.map_id, ST_Difference(ST_SetSRID(s.geom, 4326), pr.geom) geom
     FROM maps.${scale} s
     JOIN ${scale}_priority_ref pr
-    ON ST_Intersects(s.geom, pr.geom)
+    ON ST_Intersects(ST_SetSRID(s.geom, 4326), pr.geom)
     JOIN maps.sources ON s.source_id = sources.source_id
     WHERE priority IS FALSE
   ),
