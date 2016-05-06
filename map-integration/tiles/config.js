@@ -14,7 +14,7 @@ module.exports = {
   scales: ["tiny", "small", "medium", "large"],
 
   // The scales that should be precached
-  seedScales: ["tiny", "small", "medium"],
+  seedScales: ["tiny", "small", "medium", "large"],
 
   layers: ["vanilla", "emphasized", "lithologies", "structures"],
 

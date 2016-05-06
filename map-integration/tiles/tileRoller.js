@@ -31,7 +31,6 @@
 
       }
 
-
       // Make sure the correct directory exists
       mkdirp(config.cachePath + '/' + mapType + '/' + tile.z + '/' + tile.x + '/' + tile.y, function(error) {
 

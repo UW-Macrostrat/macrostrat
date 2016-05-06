@@ -6,6 +6,8 @@ var ProgressBar = require('progress');
 var st = require('geojson-bounds');
 var mkdirp = require('mkdirp');
 
+var portscanner = require('portscanner');
+
 var config = require('./config');
 var makeTile = require('./tileRoller');
 var setup = require('./setup');
@@ -27,6 +29,16 @@ Object.keys(config.scaleMap).forEach(function(scale) {
     zoomLookup[z] = scale;
   });
 });
+
+setTimeout(function() {
+  portscanner.checkPortStatus(config.redisPort, '127.0.0.1', function(error, status) {
+      if (status === 'open') {
+        redis = require('redis');
+        client = redis.createClient(config.redisPort, '127.0.0.1', {'return_buffers': true});
+      }
+  });
+}, 10);
+
 
 // Factory for querying PostGIS
 function queryPg(db, sql, params, callback) {
@@ -153,11 +165,17 @@ function deleteTile(tile, callback) {
     // Exists, delete it
     else {
       fs.unlink(config.cachePath + '/' + tileSet + '/' + tile[2] + '/' + tile[0] + '/' + tile[1] + '/tile.png', function(error) {
-        if (error) {
-          callback(error);
-        } else {
-          callback(null);
+        if (error) return callback(error);
+
+        try {
+          var redisKey = `${tile[2]},${tile[0]},${tile[1]},${tileSet},tile.png`;
+          client.del(redisKey, function(error) {
+            return callback(null);
+          });
+        } catch(er) {
+          return callback(null);
         }
+
       });
     }
   });
