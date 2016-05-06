@@ -33,13 +33,13 @@ function prepScale(scale) {
     AND priority IS TRUE
   ),
   ${scale}_priorities AS (
-    SELECT s.map_id, ST_SetSRID(s.geom, 4326)
+    SELECT s.map_id, ST_SetSRID(s.geom, 4326) geom
     FROM maps.${scale} s
     JOIN maps.sources ON s.source_id = sources.source_id
     WHERE priority IS TRUE
   ),
   ${scale}_nonpriority_unique AS (
-    SELECT s.map_id, ST_SetSRID(s.geom, 4326)
+    SELECT s.map_id, ST_SetSRID(s.geom, 4326) geom
     FROM maps.${scale} s
     JOIN maps.sources ON s.source_id = sources.source_id
     LEFT JOIN ${scale}_priority_ref pr
