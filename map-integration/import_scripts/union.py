@@ -116,12 +116,12 @@ if __name__ == '__main__':
         jobs -= 1
 
     print 'Done unioning groups'
-    
+
     done = cascaded_union(all_results)
 
     cursor.execute("""
         UPDATE maps.sources
-        SET rgeom = %(geom)s::geometry
+        SET rgeom = ST_SetSRID(%(geom)s::geometry, 4326)
         WHERE source_id = %(source_id)s
     """, {
         "geom": done.wkt,
