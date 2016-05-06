@@ -65,7 +65,7 @@ module.exports = function(req, res, next, cb) {
 
           callback(null, {"interval_name": "none", "age_bottom": 99999, "age_top": 0, "col_ids": response.rows.map(function(d) { return d.id })});
         });
-        
+
       } else if (req.query.lat && req.query.lng) {
         var sql = (req.query.adjacents === "true") ? "WITH containing_geom AS (SELECT poly_geom FROM macrostrat.cols WHERE ST_Contains(poly_geom, ST_GeomFromText($1, 4326))) SELECT id FROM macrostrat.cols WHERE ST_Intersects((SELECT * FROM containing_geom), poly_geom) ORDER BY ST_Distance(ST_Centroid(poly_geom), ST_GeomFromText($1, 4326))" : "SELECT id FROM macrostrat.cols WHERE ST_Contains(poly_geom, st_setsrid(ST_GeomFromText($1), 4326)) ORDER BY ST_Distance(ST_Centroid(poly_geom), ST_GeomFromText($1, 4326))";
 
@@ -133,7 +133,7 @@ module.exports = function(req, res, next, cb) {
         var ids = larkin.parseMultipleIds(req.query.strat_name_id);
         callback(null, {"interval_name": "none", "age_bottom": 99999, "age_top": 0, "strat_ids": ids });
 
-      } else if (req.query.unit_id || req.query.section_id || req.query.col_id || req.query.lith || req.query.lith_id || req.query.lith_class || req.query.lith_type || req.query.environ || req.query.environ_id || req.query.environ_class || req.query.environ_type || req.query.project_id || "sample" in req.query|| "all" in req.query || req.query.econ_id || req.query.econ || req.query.econ_type || req.query.econ_class || req.query.cltn_id) {
+      } else if (req.query.unit_id || req.query.section_id || req.query.col_id || req.query.lith || req.query.lith_id || req.query.lith_class || req.query.lith_type || req.query.environ || req.query.environ_id || req.query.environ_class || req.query.environ_type || req.query.project_id || "sample" in req.query|| "all" in req.query || req.query.econ_id || req.query.econ || req.query.econ_type || req.query.econ_class || req.query.cltn_id || req.query.lith_att_id || req.query.lith_att || req.query.lith_att_type) {
         callback(null, {"interval_name": "none", "age_bottom": 99999, "age_top": 0});
 
       } else {
@@ -170,6 +170,33 @@ module.exports = function(req, res, next, cb) {
           params["lith_field"] = "liths.id"
           params["lith"] = larkin.parseMultipleIds(req.query.lith_id);
 
+        }
+      }
+
+      if (req.query.lith_att_id || req.query.lith_att || req.query.lith_att_type) {
+        where += `
+          AND units.id IN (
+            SELECT unit_liths.unit_id
+            FROM unit_liths
+            JOIN liths ON lith_id = liths.id
+            JOIN unit_liths_atts ON unit_liths_atts.unit_lith_id = unit_liths.id
+            JOIN lith_atts ON unit_liths_atts.lith_att_id = lith_atts.id
+            WHERE ::lith_att_field`;
+
+        if (req.query.lith_att_id) {
+          where += " IN (:lith_att)) ";
+          params["lith_att_field"] = "unit_liths_atts.lith_att_id";
+          params["lith_att"] = larkin.parseMultipleIds(req.query.lith_att_id);
+
+        } else if (req.query.lith_att) {
+          where += " IN (:lith_att)) ";
+          params["lith_att_field"] = "lith_atts.lith_att";
+          params["lith_att"] = larkin.parseMultipleStrings(req.query.lith_att);
+
+        } else if (req.query.lith_att_type) {
+          where += " IN (:lith_att)) ";
+          params["lith_att_field"] = "lith_atts.att_type";
+          params["lith_att"] = larkin.parseMultipleStrings(req.query.lith_att_type);
         }
       }
 
