@@ -53,7 +53,7 @@ module.exports = function(req, res, next) {
         // Need to go down the hierarchy!
         if (req.query.strat_name_id) {
           req.query.rule = "down";
-          require("./defs/strat_names")(req, null, null, function(error, result) {
+          require("./definitions/strat_names")(req, null, null, function(error, result) {
             var strat_name_ids = result.map(function(d) { return d.strat_name_id });
 
             where.push("gm.best_names && $" + (where.length + 1) + "::int[]");
