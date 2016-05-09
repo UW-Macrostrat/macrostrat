@@ -77,7 +77,7 @@ function summarizeBurwell(lat, lng, callback) {
       }
 
       if (Object.keys(parsed.lith).length) {
-        require('../defs/lithologies')({
+        require('../definitions/lithologies')({
           query: {
             lith_id: Object.keys(parsed.lith).join(',')
         }}, null, null, function(error, result) {
@@ -252,7 +252,7 @@ module.exports = function(req, res, next) {
               return d.strat_name_ids;
             })[0];
 
-            require('../defs/strat_names')({query: { strat_name_id: bestNames.join(',')}}, null, null, function(error, result) {
+            require('../definitions/strat_names')({query: { strat_name_id: bestNames.join(',')}}, null, null, function(error, result) {
               if (error) return callback(error);
 
               if (result.length <= 3) {
@@ -285,7 +285,7 @@ module.exports = function(req, res, next) {
       function(unit_summary, callback) {
         if (!unit_summary.b_age) return callback(null, unit_summary);
 
-        require('../defs/intervals')({
+        require('../definitions/intervals')({
           query: {
             t_age: unit_summary.t_age,
             b_age: unit_summary.b_age,
@@ -305,7 +305,7 @@ module.exports = function(req, res, next) {
       function(unit_summary, callback) {
         if (!unit_summary.lith || !unit_summary.lith.length) return callback(null, unit_summary);
 
-        require('../defs/lithologies')({
+        require('../definitions/lithologies')({
           query: {
             lith_id: _.max(unit_summary.lith, function(d) { return d.prop; }).lith_id
           }

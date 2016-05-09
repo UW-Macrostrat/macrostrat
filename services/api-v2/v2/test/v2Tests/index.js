@@ -37,6 +37,7 @@ module.exports = function() {
   describe("mobile/point", require("./mobile_point"));
   describe("mobile/point_details", require("./mobile_point_details"));
   describe("mobile/fossil_collections", require("./mobile_fossil_collections"));
+  describe("mobile/macro_summary", require("./mobile_macro_summary"));
   describe("Mancos test cases", require("./mancos_test_cases"));
 
 }
