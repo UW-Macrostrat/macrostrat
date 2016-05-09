@@ -67,7 +67,7 @@ module.exports = function() {
         done();
       });
   });
-
+/*
   it("should return all sources as GeoJSON", function(done) {
     request(settings.host)
       .get("/api/v2/defs/sources?all&format=geojson")
@@ -78,6 +78,7 @@ module.exports = function() {
         done();
       });
   });
+  */
 
   it("should accept a scale", function(done) {
     request(settings.host)
