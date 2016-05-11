@@ -3,7 +3,7 @@ var credentials = require('../tiles/credentials');
 var pg = require('pg');
 
 if (!process.argv[2] || config.scales.indexOf(process.argv[2]) < 0) {
-  console.log('Please provide a valid burwell scale');
+  console.log('Please provide a valid burwell scale. Example: `node build_carto.js small`');
   process.exit(1)
 }
 

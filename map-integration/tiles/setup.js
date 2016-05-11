@@ -9,7 +9,7 @@
 
   // Factory for querying Postgres
   function queryPg(db, sql, params, callback) {
-    pg.connect("postgres://" + credentials.pg.user + "@" + credentials.pg.host + "/" + db, function(err, client, done) {
+    pg.connect("postgres://" + credentials.pg.user +  (credentials.pg.password.length ? ':' + credentials.pg.password : '') + "@" + credentials.pg.host + "/" + db, function(err, client, done) {
       if (err) {
         callback(err);
       } else {
@@ -37,7 +37,8 @@
           "extent": "-179,-89,179,89",
           "host": "localhost",
           "port": "5432",
-          "user": "john",
+          "user": "readonly"
+          "password": "macrostrat",
           "dbname": "burwell",
           "srid": "4326"
       },
