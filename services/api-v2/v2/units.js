@@ -148,7 +148,7 @@ module.exports = function(req, res, next, cb) {
           params = {};
 
       if (req.query.lith || req.query.lith_class || req.query.lith_type || req.query.lith_id) {
-        where += " AND units.id IN (SELET unit_liths.unit_id FROM unit_liths JOIN liths ON lith_id = liths.id WHERE "
+        where += " AND units.id IN (SELECT unit_liths.unit_id FROM unit_liths JOIN liths ON lith_id = liths.id WHERE "
         var lithWhere = []
 
         if (req.query.lith) {
@@ -158,23 +158,23 @@ module.exports = function(req, res, next, cb) {
         }
 
         if (req.query.lith_class) {
-          lithWhere.push("lith_class IN (:lith_class)) ")
+          lithWhere.push("lith_class IN (:lith_class)")
           params["lith_class"] = larkin.parseMultipleStrings(req.query.lith_class);
 
         }
 
         if (req.query.lith_type) {
-          lithWhere.push("lith_type IN (:lith_type)) ")
+          lithWhere.push("lith_type IN (:lith_type)")
           params["lith_type"] = larkin.parseMultipleStrings(req.query.lith_type);
 
         }
 
         if (req.query.lith_id) {
-          lithWhere.push("liths.id IN (:lith_id)) ")
+          lithWhere.push("liths.id IN (:lith_id)")
           params["lith_id"] = larkin.parseMultipleIds(req.query.lith_id);
         }
 
-        where += lithWhere.join(" OR ") + ")"
+        where += (lithWhere.join(" OR ") + ")")
 
       }
 
