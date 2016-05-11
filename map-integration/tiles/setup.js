@@ -37,7 +37,7 @@
           "extent": "-179,-89,179,89",
           "host": "localhost",
           "port": "5432",
-          "user": "readonly"
+          "user": "readonly",
           "password": "macrostrat",
           "dbname": "burwell",
           "srid": "4326"
