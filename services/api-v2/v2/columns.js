@@ -123,7 +123,7 @@ module.exports = function(req, res, next) {
         groupBy = ", col_areas.col_area";
 
       } else if (req.query.col_id && req.query.adjacents) {
-        orderby = "ORDER BY ST_Distance(ST_Centroid(col_areas.col_area), (SELECT ST_Centroid(col_area) FROM col_areas WHERE col_id = $2))";
+        orderby = "ORDER BY ST_Distance(ST_Centroid(col_areas.col_area), (SELECT ST_Centroid(col_area) FROM macrostrat.col_areas WHERE col_id = $2))";
         params.push(req.query.col_id);
       }
 
