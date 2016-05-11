@@ -168,12 +168,13 @@ module.exports = function(req, res, next, cb) {
           params["lith_type"] = larkin.parseMultipleStrings(req.query.lith_type);
 
         }
-        
+
         if (req.query.lith_id) {
           lithWhere.push("units.id IN (SELECT unit_liths.unit_id from unit_liths JOIN liths on lith_id=liths.id WHERE liths.id IN (:lith_id)) ")
           params["lith_id"] = larkin.parseMultipleIds(req.query.lith_id);
-
         }
+
+        where += " AND (" + lithWhere.join(" OR ") + ") ";
       }
 
       if (req.query.lith_att_id || req.query.lith_att || req.query.lith_att_type) {
