@@ -453,7 +453,7 @@
       ],
       "examples": [
         "api/v2/defs/lithology_attributes?all",
-        "api/v2/defs/lithology_attributes?lith_type=bedform",
+        "api/v2/defs/lithology_attributes?lith_att=bedform",
         "api/v2/defs/lithology_attributes?lith_att_id=3,4,5"
       ],
       "fields": [
