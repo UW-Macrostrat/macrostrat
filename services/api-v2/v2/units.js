@@ -391,7 +391,7 @@ module.exports = function(req, res, next, cb) {
                 result[i].environ = larkin.pipifyAttrs(result[i].environ);
                 result[i].econ = larkin.pipifyAttrs(result[i].econ);
 
-                result[i].refs = larkin.pipifyAttrs(result[i].refs);
+                result[i].refs = result[i].refs.join('|');
 
               }
             }
