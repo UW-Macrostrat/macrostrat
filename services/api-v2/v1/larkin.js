@@ -29,7 +29,7 @@ var mysql = require("mysql"),
 
 
   larkin.queryPg = function(db, sql, params, callback, send, res, format, next) {
-    pg.connect("postgres://" + credentials.pg.user + "@" + credentials.pg.host + "/" + db, function(err, client, done) {
+    pg.connect("postgres://" + credentials.pg.user +  (credentials.pg.password.length ? ':' + credentials.pg.password : '') + "@" + credentials.pg.host + "/" + db, function(err, client, done) {
       if (err) {
         this.log("error", "error connecting - " + err);
         callback(err);
@@ -107,7 +107,7 @@ var mysql = require("mysql"),
         .send(JSON.stringify({"success": {"v": api.version,"data": data}}, null, 0));
     }
   };
-  
+
 
   larkin.sendBare = function(data, res, next) {
     res
@@ -148,7 +148,7 @@ var mysql = require("mysql"),
           });
       });
     }
-        
+
   };
 
   larkin.log = function(type, message) {
@@ -187,7 +187,7 @@ var mysql = require("mysql"),
       }
       routeDefinition.options.fields = fields;
       callback(routeDefinition);
-    }); 
+    });
   };
 
 
@@ -244,7 +244,7 @@ var mysql = require("mysql"),
   larkin.parseMultipleIds = function(requested_ids) {
     var ids = requested_ids.split(","),
               placeholders = [];
-          
+
     ids = ids.map(function(d) {
       return parseInt(d);
     });
