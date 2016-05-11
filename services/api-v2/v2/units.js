@@ -148,27 +148,30 @@ module.exports = function(req, res, next, cb) {
           params = {};
 
       if (req.query.lith || req.query.lith_class || req.query.lith_type || req.query.lith_id) {
-        where += " AND units.id IN (SELECT unit_liths.unit_id from unit_liths JOIN liths on lith_id=liths.id WHERE ::lith_field ";
+        where += " AND units.id IN (SELECT unit_liths.unit_id from unit_liths JOIN liths on lith_id=liths.id WHERE ::lith_field IN (:lith)) ";
+        var lithWhere = []
 
         if (req.query.lith) {
-          where += "IN (:lith)) ";
-          params["lith_field"] = "lith";
+          lithWhere.push("units.id IN (SELECT unit_liths.unit_id from unit_liths JOIN liths on lith_id=liths.id WHERE lith IN (:lith)) ")
           params["lith"] = larkin.parseMultipleStrings(req.query.lith);
 
-        } else if (req.query.lith_class) {
-          where += "IN (:lith)) ";
-          params["lith_field"] = "lith_class";
-          params["lith"] = larkin.parseMultipleStrings(req.query.lith_class);
+        }
 
-        } else if (req.query.lith_type) {
-          where += "IN (:lith)) ";
-          params["lith_field"] = "lith_type";
-          params["lith"] = larkin.parseMultipleStrings(req.query.lith_type);
+        if (req.query.lith_class) {
+          lithWhere.push("units.id IN (SELECT unit_liths.unit_id from unit_liths JOIN liths on lith_id=liths.id WHERE lith_class IN (:lith_class)) ")
+          params["lith_class"] = larkin.parseMultipleStrings(req.query.lith_class);
 
-        } else if (req.query.lith_id) {
-          where += "IN (:lith)) ";
-          params["lith_field"] = "liths.id"
-          params["lith"] = larkin.parseMultipleIds(req.query.lith_id);
+        }
+
+        if (req.query.lith_type) {
+          lithWhere.push("units.id IN (SELECT unit_liths.unit_id from unit_liths JOIN liths on lith_id=liths.id WHERE lith_type IN (:lith_type)) ")
+          params["lith_type"] = larkin.parseMultipleStrings(req.query.lith_type);
+
+        }
+        
+        if (req.query.lith_id) {
+          lithWhere.push("units.id IN (SELECT unit_liths.unit_id from unit_liths JOIN liths on lith_id=liths.id WHERE liths.id IN (:lith_id)) ")
+          params["lith_id"] = larkin.parseMultipleIds(req.query.lith_id);
 
         }
       }
