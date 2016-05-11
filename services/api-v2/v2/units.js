@@ -148,7 +148,6 @@ module.exports = function(req, res, next, cb) {
           params = {};
 
       if (req.query.lith || req.query.lith_class || req.query.lith_type || req.query.lith_id) {
-        where += " AND units.id IN (SELECT unit_liths.unit_id from unit_liths JOIN liths on lith_id=liths.id WHERE ::lith_field IN (:lith)) ";
         var lithWhere = []
 
         if (req.query.lith) {
