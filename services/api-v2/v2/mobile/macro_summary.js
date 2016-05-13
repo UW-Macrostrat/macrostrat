@@ -283,6 +283,15 @@ module.exports = function(req, res, next) {
       },
 
       function(unit_summary, callback) {
+        larkin.queryPg("rockd", "SELECT CONCAT(name, ', ', state) AS place FROM places ORDER BY geom <#> $1 LIMIT 1", ["SRID=4326;POINT(" + larkin.normalizeLng(req.query.lng) + " " + req.query.lat + ")"], function(error, data) {
+          if (data && data.rows && data.rows.length) {
+            unit_summary['near'] = data.rows[0].place;
+          }
+          callback(null, unit_summary);
+        });
+      },
+
+      function(unit_summary, callback) {
         if (!unit_summary.b_age) return callback(null, unit_summary);
 
         require('../definitions/intervals')({
