@@ -15,4 +15,4 @@ if [[ $4 != "" ]];
   then ENCODING=$4
 fi
 
-ogr2ogr unprojected.shp -wrapdateline -t_srs "EPSG:4326" $2 && shp2pgsql -s 4326 $APPEND -W $ENCODING unprojected.shp sources.$1 | psql -h localhost -d burwell && rm unprojected.shp && rm unprojected.dbf && rm unprojected.prj && rm unprojected.shx
+rm unprojected.* && ogr2ogr unprojected.shp -wrapdateline -t_srs "EPSG:4326" $2 && shp2pgsql -s 4326 $APPEND -W $ENCODING unprojected.shp sources.$1 | psql -h localhost -d burwell && rm unprojected.*
