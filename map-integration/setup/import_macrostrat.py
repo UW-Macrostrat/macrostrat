@@ -223,7 +223,7 @@ COPY macrostrat_new.intervals FROM %(intervals_path)s NULL '\N' DELIMITER ',' CS
 
 ALTER TABLE macrostrat_new.intervals ADD COLUMN rank integer DEFAULT NULL;
 
-INSERT INTO macrostrat_new.intervals (id, interval_name, interval_color) VALUES (0, 'Age Unknown', '#737373'), (0, 'Unknown', '#737373');
+INSERT INTO macrostrat_new.intervals (id, interval_name, interval_color) VALUES (0, 'Unknown', '#737373');
 
 UPDATE macrostrat_new.intervals SET rank = 6 WHERE interval_type = 'age';
 UPDATE macrostrat_new.intervals SET rank = 5 WHERE interval_type = 'epoch';
