@@ -32,6 +32,10 @@ if __name__ == '__main__':
     default="0", type=str, required=True,
     help="The ID of the desired source to match")
 
+  parser.add_argument("-e", "--exclude", dest="exclude",
+    default="", type=str, required=False,
+    help="Field(s) that should be ommitted from the matching process. Ex: --exclude descrip,comments")
+
   arguments = parser.parse_args()
 
   # Validate params!
@@ -95,12 +99,22 @@ if __name__ == '__main__':
   for each in processors:
     each.start()
 
-  # Define our tasks
-  tasks.put(Task(scale, arguments.source_id, "strat_name" ))
-  tasks.put(Task(scale, arguments.source_id, "name" ))
-  tasks.put(Task(scale, arguments.source_id, "descrip" ))
-  tasks.put(Task(scale, arguments.source_id, "comments" ))
+  ### Define our tasks ###
 
+  # Fields in burwell to match on
+  fields = ["strat_name", "name", "descrip", "comments"]
+
+  # Remove the fields explicitly excluded
+  exclude = arguments.exclude.split(",")
+  for field in exclude:
+    try :
+      fields.remove(field)
+    except:
+      print 'Not excluding invalid field selection ', field
+
+  # Insert a new task for each matching field into the queue
+  for field in fields:
+      tasks.put(Task(scale, arguments.source_id, field))
 
   for i in range(num_processors):
     tasks.put(None)
