@@ -1352,7 +1352,7 @@
   "/mobile/macro_summary": {
     "description": "Summarize Macrostrat for a given location",
     "parent": "mobile",
-    "visible": true,
+    "visible": false,
     "options": {
       "parameters": {
         "lat": "numeric, a valid latitude",
