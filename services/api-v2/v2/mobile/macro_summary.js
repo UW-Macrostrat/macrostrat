@@ -282,6 +282,32 @@ module.exports = function(req, res, next) {
         });
       },
 
+      // Produce a warning message if on public lands
+      function(unit_summary, callback) {
+        larkin.queryPg("rockd", `
+        SELECT CASE
+          WHEN type LIKE '%NPS%'
+            THEN CONCAT('You are in ', name, ' which is managed by the National Park Service. Removal of natural objects is strictly prohibited.')
+          WHEN type = 'state_park'
+            THEN CONCAT('You are in ', name, ' which is a locally managed protected area. Please check local laws before removing or collecting any natural objects.')
+          WHEN type NOT LIKE '%NPS%'
+            THEN CONCAT('You are in ', name, ' which is federal land. Removal of natural objects is regulated by state and federal laws and regulations.')
+          ELSE
+            ''
+          END AS message,
+          COALESCE(url, '') url
+        FROM places
+        WHERE ST_Intersects(geom, $1)
+        AND type != 'incorp'
+        LIMIT 1
+        `, ["SRID=4326;POINT(" + larkin.normalizeLng(req.query.lng) + " " + req.query.lat + ")"], function(error, data) {
+          if (data && data.rows && data.rows.length) {
+            unit_summary['warning'] = data.rows[0]
+          }
+          callback(null, unit_summary)
+        })
+      },
+
       function(unit_summary, callback) {
         larkin.queryPg("rockd", "SELECT CONCAT(name, ', ', state) AS place FROM places ORDER BY geom <#> $1 LIMIT 1", ["SRID=4326;POINT(" + larkin.normalizeLng(req.query.lng) + " " + req.query.lat + ")"], function(error, data) {
           if (data && data.rows && data.rows.length) {
