@@ -146,7 +146,7 @@ var mysql = require("mysql"),
   larkin.defineCategory = function(category, callback) {
     var available = {}
     for (var key in defs) {
-      if (defs[key].parent && defs[key].parent === category) {
+      if (defs[key].parent && defs[key].parent === category && defs[key].visible) {
         available[key] = defs[key].description
       }
     }
