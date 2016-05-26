@@ -13,6 +13,8 @@ module.exports = function(req, res, next, cb) {
       snm.name,
       COALESCE(snm.geologic_age, '') geologic_age,
       COALESCE(snm.interval_id, '') int_id,
+      COALESCE(snm.b_int, '') b_int_id,
+      COALESCE(snm.t_int, '') t_int_id,
       COALESCE(snm.usage_notes, '') usage_notes,
       COALESCE(snm.other, '') other,
       COALESCE(snm.province, '') province,
