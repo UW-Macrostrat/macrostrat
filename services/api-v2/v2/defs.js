@@ -704,6 +704,8 @@
         "name",
         "geologic_age",
         "int_id",
+        "b_int_id",
+        "t_int_id",
         "usage_notes",
         "other",
         "province",
