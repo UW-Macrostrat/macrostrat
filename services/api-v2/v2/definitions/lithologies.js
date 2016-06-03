@@ -6,7 +6,7 @@ module.exports = function(req, res, next, cb) {
     return larkin.info(req, res, next);
   }
 
-  var sql = "SELECT liths.id AS lith_id, lith AS name, lith_type AS type, lith_class AS class, lith_color AS color, COUNT(distinct units_sections.unit_id) AS t_units FROM liths LEFT JOIN unit_liths ON unit_liths.lith_id = liths.id LEFT JOIN units_sections ON units_sections.unit_id = unit_liths.unit_id ",
+  var sql = "SELECT liths.id AS lith_id, lith AS name, lith_type AS type, COALESCE(lith_group, '') AS `group`, lith_class AS `class`, lith_color AS color, lith_fill AS fill, COUNT(distinct units_sections.unit_id) AS t_units FROM liths LEFT JOIN unit_liths ON unit_liths.lith_id = liths.id LEFT JOIN units_sections ON units_sections.unit_id = unit_liths.unit_id ",
       params = {};
 
   if (req.query.lith_class) {
