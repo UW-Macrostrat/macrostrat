@@ -121,7 +121,59 @@ var sql = {
     FROM nnlimit
     JOIN macrostrat.intervals on nnlimit.interval_id = intervals.id
     ORDER BY row_number
-    LIMIT 5;`
+    LIMIT 5;`,
+
+  map_units: `
+    WITH subset AS (
+      SELECT map_id, name, 'tiny' AS scale, geom
+      FROM maps.tiny
+      WHERE ST_Intersects(geom, ST_Buffer($1::geography, 3200)::geometry)
+      UNION ALL
+      SELECT map_id, name, 'small' AS scale, geom
+      FROM maps.small
+      WHERE ST_Intersects(geom, ST_Buffer($1::geography, 3200)::geometry)
+      UNION ALL
+      SELECT map_id, name, 'medium' AS scale, geom
+      FROM maps.medium
+      WHERE ST_Intersects(geom, ST_Buffer($1::geography, 3200)::geometry)
+      UNION ALL
+      SELECT map_id, name, 'large' AS scale, geom
+      FROM maps.large
+      WHERE ST_Intersects(geom, ST_Buffer($1::geography, 3200)::geometry)
+    ),
+    best_scale AS (
+      SELECT
+        CASE WHEN 'large' IN (SELECT DISTINCT scale FROM subset)
+          THEN 'large'
+        WHEN 'medium' IN (SELECT DISTINCT scale FROM subset)
+          THEN 'medium'
+        WHEN 'small' IN (SELECT DISTINCT scale FROM subset)
+          THEN 'small'
+        WHEN 'tiny' IN (SELECT DISTINCT scale FROM subset)
+          THEN 'tiny'
+        ELSE null
+       END AS best
+    ),
+    units AS (
+      SELECT first_value(map_id) OVER (
+        PARTITION BY name
+        ORDER BY ST_Distance(geom, $1)
+      ) map_id, first_value(name) OVER (
+        PARTITION BY name
+        ORDER BY ST_Distance(geom, $1)
+      ) unit_name, ST_Distance(geom, $1) distance
+      FROM subset
+      WHERE ST_Intersects(geom, ST_Buffer($1::geography, 3200)::geometry)
+      AND name NOT ILIKE '%water%' AND scale = (SELECT best FROM best_scale)
+      GROUP BY map_id, name, geom
+      ORDER BY distance
+    )
+
+    SELECT map_id, unit_name
+    FROM units
+    GROUP BY map_id, unit_name
+    ORDER BY min(distance);
+  `
 }
 
 
@@ -165,6 +217,16 @@ module.exports = function(req, res, next) {
           callback(null, data.rows);
         }
       });
+    },
+
+    map_units: function(callback) {
+      larkin.queryPg("burwell", sql.map_units, ['SRID=4326;POINT(' + req.query.lng + ' ' + req.query.lat + ')'], function(error, data) {
+        if (error) {
+          callback(error);
+        } else {
+          callback(null, data.rows);
+        }
+      })
     }
   }, function(error, results) {
     if (error) {
@@ -172,7 +234,8 @@ module.exports = function(req, res, next) {
     } else {
       larkin.sendData(req, res, next, {
         format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
-        bare: (api.acceptedFormats.bare[req.query.format]) ? true : false
+        bare: (api.acceptedFormats.bare[req.query.format]) ? true : false,
+        compact: true
       }, {
         data: results
       });
