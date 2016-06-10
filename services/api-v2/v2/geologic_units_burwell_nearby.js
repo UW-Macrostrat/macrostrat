@@ -1,6 +1,5 @@
 var api = require("./api"),
     async = require("async"),
-    multiline = require("multiline"),
     larkin = require("./larkin");
 
 // To whom it may concern: sorry this is so hairy. Magic ain't cheap.
@@ -173,6 +172,18 @@ var sql = {
     FROM units
     GROUP BY map_id, unit_name
     ORDER BY min(distance);
+  `,
+
+  places: `
+    WITH first AS (
+      SELECT notes, ST_Distance(ST_SetSRID(geom, 4326)::geography, $1::geography)::int d
+      FROM checkins
+      ORDER BY ST_SetSRID(geom, 4326) <-> $1
+      LIMIT 15
+    )
+    SELECT notes AS place, d AS distance
+    FROM first
+    WHERE d < 80000;
   `
 }
 
@@ -221,6 +232,16 @@ module.exports = function(req, res, next) {
 
     map_units: function(callback) {
       larkin.queryPg("burwell", sql.map_units, ['SRID=4326;POINT(' + req.query.lng + ' ' + req.query.lat + ')'], function(error, data) {
+        if (error) {
+          callback(error);
+        } else {
+          callback(null, data.rows);
+        }
+      })
+    },
+
+    places: function(callback) {
+      larkin.queryPg("rockd", sql.places, ['SRID=4326;POINT(' + req.query.lng + ' ' + req.query.lat + ')'], function(error, data) {
         if (error) {
           callback(error);
         } else {
