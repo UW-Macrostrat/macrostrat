@@ -144,13 +144,13 @@ var sql = {
     best_scale AS (
       SELECT
         CASE WHEN 'large' IN (SELECT DISTINCT scale FROM subset)
-          THEN 'large'
+          THEN ARRAY['large', 'medium']
         WHEN 'medium' IN (SELECT DISTINCT scale FROM subset)
-          THEN 'medium'
+          THEN ARRAY['medium', 'small']
         WHEN 'small' IN (SELECT DISTINCT scale FROM subset)
-          THEN 'small'
+          THEN ARRAY['small', 'tiny']
         WHEN 'tiny' IN (SELECT DISTINCT scale FROM subset)
-          THEN 'tiny'
+          THEN ARRAY['tiny']
         ELSE null
        END AS best
     ),
@@ -161,15 +161,15 @@ var sql = {
       ) map_id, first_value(name) OVER (
         PARTITION BY name
         ORDER BY ST_Distance(geom, $1)
-      ) unit_name, ST_Distance(geom, $1) distance
+      ) unit_name, ST_Distance(geom::geography, $1::geography)::int distance
       FROM subset
       WHERE ST_Intersects(geom, ST_Buffer($1::geography, 3200)::geometry)
-      AND name NOT ILIKE '%water%' AND scale = (SELECT best FROM best_scale)
+      AND name NOT ILIKE '%water%' AND (SELECT scale = ANY(best) FROM best_scale)
       GROUP BY map_id, name, geom
       ORDER BY distance
     )
 
-    SELECT map_id, unit_name
+    SELECT map_id, unit_name, min(distance) AS distance
     FROM units
     GROUP BY map_id, unit_name
     ORDER BY min(distance);
