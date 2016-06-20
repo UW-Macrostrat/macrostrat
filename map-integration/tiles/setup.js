@@ -37,8 +37,8 @@
           "extent": "-179,-89,179,89",
           "host": "localhost",
           "port": "5432",
-          "user": "readonly",
-          "password": "macrostrat",
+          "user": credentials.pg.user,
+          "password": credentials.pg.password,
           "dbname": "burwell",
           "srid": "4326"
       },

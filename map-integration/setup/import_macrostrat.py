@@ -14,8 +14,9 @@ pg_conn = psycopg2.connect(dbname=credentials.pg_db, user=credentials.pg_user, h
 pg_cur = pg_conn.cursor()
 
 # Connect to MySQL
-my_conn = MySQLdb.connect(host=credentials.mysql_host, user=credentials.mysql_user, passwd=credentials.mysql_passwd, db=credentials.mysql_db, unix_socket=credentials.mysql_socket, cursorclass=MySQLdb.cursors.DictCursor)
+my_conn = MySQLdb.connect(host=credentials.mysql_host, user=credentials.mysql_user, passwd=credentials.mysql_passwd, db=credentials.mysql_db, unix_socket=credentials.mysql_unix_socket, cursorclass=MySQLdb.cursors.DictCursor)
 my_cur = my_conn.cursor()
+
 
 
 
@@ -41,7 +42,9 @@ params = {
   "timescales_intervals_path": directory + "/timescales_intervals.csv",
   "unit_liths_path": directory + "/unit_liths.csv",
   "lookup_unit_liths_path": directory + "/lookup_unit_liths.csv",
-  "timescales_path": directory + "/timescales.csv"
+  "timescales_path": directory + "/timescales.csv",
+  "col_groups_path": directory + "/col_groups.csv",
+  "col_refs_path": directory + "/col_refs.csv"
 }
 
 
@@ -92,7 +95,7 @@ my_cur.execute("""
   ENCLOSED BY '"'
   LINES TERMINATED BY '\n';
 
-  SELECT strat_name_id, strat_name, rank, rank_name, bed_id, bed_name, mbr_id, mbr_name, fm_id, fm_name, gp_id, gp_name, sgp_id, sgp_name, early_age, late_age, gsc_lexicon, b_period, t_period, name_no_lith
+  SELECT strat_name_id, strat_name, rank, rank_name, bed_id, bed_name, mbr_id, mbr_name, fm_id, fm_name, gp_id, gp_name, sgp_id, sgp_name, early_age, late_age, gsc_lexicon, b_period, t_period, c_interval, name_no_lith
   FROM lookup_strat_names
   INTO OUTFILE %(lookup_strat_names_path)s
   FIELDS TERMINATED BY ','
@@ -155,6 +158,20 @@ my_cur.execute("""
   ENCLOSED BY '"'
   LINES TERMINATED BY '\n';
 
+  SELECT id, col_group, col_group_long
+  FROM col_groups
+  INTO OUTFILE %(col_groups_path)s
+  FIELDS TERMINATED BY ','
+  ENCLOSED BY '"'
+  LINES TERMINATED BY '\n';
+
+  SELECT id, col_id, ref_id
+  FROM col_refs
+  INTO OUTFILE %(col_refs_path)s
+  FIELDS TERMINATED BY ','
+  ENCLOSED BY '"'
+  LINES TERMINATED BY '\n';
+
 """, params)
 
 
@@ -179,7 +196,6 @@ CREATE TABLE macrostrat_new.unit_strat_names (
 
 COPY macrostrat_new.unit_strat_names FROM %(unit_strat_names_path)s DELIMITER ',' CSV;
 
-CREATE INDEX ON macrostrat_new.unit_strat_names (id);
 CREATE INDEX ON macrostrat_new.unit_strat_names (unit_id);
 CREATE INDEX ON macrostrat_new.unit_strat_names (strat_name_id);
 
@@ -191,8 +207,12 @@ CREATE TABLE macrostrat_new.strat_names (
   ref_id  integer NOT NULL
 );
 
-
 COPY macrostrat_new.strat_names FROM %(strat_names_path)s DELIMITER ',' CSV;
+
+CREATE INDEX ON macrostrat_new.strat_names (strat_name);
+CREATE INDEX ON macrostrat_new.strat_names (rank);
+CREATE INDEX ON macrostrat_new.strat_names (ref_id);
+
 
 CREATE TABLE macrostrat_new.units_sections (
   id serial PRIMARY KEY NOT NULL,
@@ -203,8 +223,6 @@ CREATE TABLE macrostrat_new.units_sections (
 
 COPY macrostrat_new.units_sections FROM %(units_sections_path)s DELIMITER ',' CSV;
 
-
-CREATE INDEX ON macrostrat_new.units_sections (id);
 CREATE INDEX ON macrostrat_new.units_sections (unit_id);
 CREATE INDEX ON macrostrat_new.units_sections (section_id);
 CREATE INDEX ON macrostrat_new.units_sections (col_id);
@@ -314,7 +332,6 @@ CREATE TABLE macrostrat_new.units (
 COPY macrostrat_new.units FROM %(units_path)s DELIMITER ',' CSV;
 
 
-CREATE INDEX ON macrostrat_new.units (id);
 CREATE INDEX ON macrostrat_new.units (section_id);
 CREATE INDEX ON macrostrat_new.units (col_id);
 CREATE INDEX ON macrostrat_new.units (strat_name);
@@ -341,6 +358,7 @@ CREATE TABLE macrostrat_new.lookup_strat_names (
   gsc_lexicon character varying(20),
   b_period character varying(100),
   t_period character varying(100),
+  c_interval character varying(100),
   name_no_lith character varying(100)
 );
 
@@ -377,7 +395,7 @@ COPY macrostrat_new.cols FROM %(cols_path)s NULL '\N' DELIMITER ',' CSV;
 
 UPDATE macrostrat_new.cols SET coordinate = ST_GeomFromText(wkt);
 UPDATE macrostrat_new.cols SET coordinate = ST_GeomFromText(wkt);
-CREATE INDEX ON macrostrat_new.cols (id);
+
 CREATE INDEX ON macrostrat_new.cols (project_id);
 CREATE INDEX ON macrostrat_new.cols USING GIST (coordinate);
 CREATE INDEX ON macrostrat_new.cols (col_group_id);
@@ -423,7 +441,6 @@ CREATE TABLE macrostrat_new.liths (
 );
 COPY macrostrat_new.liths FROM %(liths_path)s NULL '\N' DELIMITER ',' CSV;
 
-CREATE INDEX ON macrostrat_new.liths (id);
 CREATE INDEX ON macrostrat_new.liths (lith);
 CREATE INDEX ON macrostrat_new.liths (lith_class);
 CREATE INDEX ON macrostrat_new.liths (lith_type);
@@ -437,7 +454,6 @@ CREATE TABLE macrostrat_new.lith_atts (
 );
 COPY macrostrat_new.lith_atts FROM %(lith_atts_path)s NULL '\N' DELIMITER ',' CSV;
 
-CREATE INDEX ON macrostrat_new.lith_atts (id);
 CREATE INDEX ON macrostrat_new.lith_atts (att_type);
 CREATE INDEX ON macrostrat_new.lith_atts (lith_att);
 
@@ -453,7 +469,7 @@ CREATE INDEX ON macrostrat_new.timescales_intervals (interval_id);
 
 
 CREATE TABLE macrostrat_new.unit_liths (
-  id integer,
+  id integer PRIMARY KEY,
   lith_id integer,
   unit_id integer,
   prop text,
@@ -466,7 +482,6 @@ CREATE TABLE macrostrat_new.unit_liths (
 
 COPY macrostrat_new.unit_liths FROM %(unit_liths_path)s NULL '\N' DELIMITER ',' CSV;
 
-CREATE INDEX ON macrostrat_new.unit_liths (id);
 CREATE INDEX ON macrostrat_new.unit_liths (unit_id);
 CREATE INDEX ON macrostrat_new.unit_liths (lith_id);
 CREATE INDEX ON macrostrat_new.unit_liths (ref_id);
@@ -491,17 +506,39 @@ CREATE INDEX ON macrostrat_new.lookup_unit_liths (unit_id);
 
 
 CREATE TABLE macrostrat_new.timescales (
-  id integer,
+  id integer PRIMARY KEY,
   timescale character varying(100),
   ref_id integer
 );
 
 COPY macrostrat_new.timescales FROM %(timescales_path)s NULL '\N' DELIMITER ',' CSV;
 
-CREATE INDEX ON macrostrat_new.timescales (id);
 CREATE INDEX ON macrostrat_new.timescales(timescale);
 CREATE INDEX ON macrostrat_new.timescales (ref_id);
 
+
+
+CREATE TABLE macrostrat_new.col_groups (
+    id integer PRIMARY KEY,
+    col_group character varying(100),
+    col_group_long character varying(100)
+);
+
+COPY macrostrat_new.col_groups FROM %(col_groups_path)s NULL '\N' DELIMITER ',' CSV;
+
+
+CREATE TABLE macrostrat_new.col_refs (
+    id integer PRIMARY KEY,
+    col_id integer,
+    ref_id integer
+);
+COPY macrostrat_new.col_refs FROM %(col_refs_path)s NULL '\N' DELIMITER ',' CSV;
+
+CREATE INDEX ON macrostrat_new.col_refs (col_id);
+CREATE INDEX ON macrostrat_new.col_refs (ref_id);
+
+GRANT usage ON SCHEMA macrostrat TO readonly;
+GRANT SELECT ON all tables IN SCHEMA macrostrat TO readonly;
 """, params)
 pg_conn.commit()
 
@@ -523,6 +560,8 @@ pg_cur.execute("VACUUM ANALYZE macrostrat_new.col_areas;")
 pg_cur.execute("VACUUM ANALYZE macrostrat_new.liths;")
 pg_cur.execute("VACUUM ANALYZE macrostrat_new.lith_atts;")
 pg_cur.execute("VACUUM ANALYZE macrostrat_new.timescales;")
+pg_cur.execute("VACUUM ANALYZE macrostrat_new.col_groups;")
+pg_cur.execute("VACUUM ANALYZE macrostrat_new.col_refs");
 pg_cur.execute("""
   DROP SCHEMA IF EXISTS macrostrat cascade;
   ALTER SCHEMA macrostrat_new RENAME TO macrostrat;
