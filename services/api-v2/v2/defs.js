@@ -94,7 +94,8 @@
         "age_bottom": "numerical age (Ma) - must be used with age_top and be greater than age_top",
         "lith_id": "integer, ID of a lithology from /defs/lithologies",
         "lith": "string, specific lithology name (e.g., shale, sandstone)",
-        "lith_type": "string, groups of lithologies (e.g., carbonate, siliciclastic)",
+        "lith_group": "string, group of lithologies (e.g., unconsolidated)",
+        "lith_type": "string, type of lithologies (e.g., carbonate, siliciclastic)",
         "lith_class": "string, general lithologies (sedimentary, igneous, metamorphic)",
         "lith_att_id": "integer, ID of a lithology attribute from /defs/lithology_attributes",
         "lith_att": "string, specific lithology attribute name (e.g. fine, olivine, poorly washed)",
@@ -838,26 +839,10 @@
         "api/v2/defs/measurements?measurement_class=geochemical"
       ],
       "fields": [
-        "measurement_id",
         "measure_id",
-        "measurement",
-        "measurement_class",
-        "measurement_type",
-        "method",
-        "measure_value",
-        "v_error",
-        "v_error_units",
-        "v_type",
-        "v_n",
-        "lat",
-        "lng",
-        "sample_geo_unit",
-        "sample_lith",
-        "lith_id",
-        "sample_descrip",
-        "ref_id",
-        "units"
-
+        "name",
+        "type",
+        "class"
       ]
     }
   },
@@ -943,7 +928,17 @@
     "visible": true,
     "options": {
       "parameters": {
-
+        "measurement",
+        "measurement_type",
+        "measurement_class",
+        "measurement_id",
+        "measure_id",
+        "measuremeta_id",
+        "lith_id",
+        "lith",
+        "lith_class",
+        "lith_type",
+        "lith_group",
       },
       "output_formats": [
         "json",
@@ -954,10 +949,29 @@
         "topojson_bare"
       ],
       "examples": [
-
+        "api/measurements?measurement_type=geochemical",
+        "api/measurements?lith_type=siliciclastic"
       ],
       "fields": [
-
+        "measurement_id",
+        "measure_id",
+        "measurement",
+        "measurement_class",
+        "measurement_type",
+        "method",
+        "measure_value",
+        "v_error",
+        "v_error_units",
+        "v_type",
+        "v_n",
+        "lat",
+        "lng",
+        "sample_geo_unit",
+        "sample_lith",
+        "lith_id",
+        "sample_descrip",
+        "ref_id",
+        "units"
       ]
     }
   },
@@ -1501,7 +1515,7 @@
     "v_type": "text, descriptor applying to nature of measure_value (e.g., point measurement, mean value for multiple point measurements)",
     "v_n": "integer, number of observations used to generate measure_value",
     "sample_lith": "text, lithological description of sampeld used to generate measure_value",
-    "sample_descrip": "text, verbal description of sample used to generate measure_value",
+    "sample_descrip": "text, verbal description of sample used to generate",
     "sampel_geo_unit": "text, geological unit yielding sample_measurement"
     "lith_max_thick": "number, thickness of specified lithology, based on proportion of unit(s)",
     "lith_min_thick": "number, thickness of specified lithology, based on proportion of unit(s)",
@@ -1570,19 +1584,19 @@
     "lith_id": "integer, unique ID of the lithology",
     "measure_id": "integer, unique ID of the measurement",
     "group_col_id": "float, the original column ID assigned to the column (used in the original source)",
-    "bed": "text, the strat_name of the bed",
+    "bed": "string, the strat_name of the bed",
     "bed_id": "integer, the strat_name_id of the bed",
-    "mbr": "text, the strat_name of the member",
+    "mbr": "string, the strat_name of the member",
     "mbr_id": "integer, the strat_name_id of the member",
-    "fm": "text, the strat_name of the formation",
+    "fm": "string, the strat_name of the formation",
     "fm_id": "integer, the strat_name_id of the formation",
-    "gp": "text, the strat_name of the group",
+    "gp": "string, the strat_name of the group",
     "gp_id": "integer, the strat_name_id of the group",
-    "sgp": "text, the strat_name of the supergroup",
+    "sgp": "string, the strat_name of the supergroup",
     "sgp_id": "integer, the strat_name_id of the supergroup",
     "lith_att_id": "integer, the unique ID of the lithology attribute",
-    "lith_att": "text, the name of the lithology attribute",
-    "att_type": "text, the lith_type of the lithology attribute",
+    "lith_att": "string, the name of the lithology attribute",
+    "att_type": "string, the lith_type of the lithology attribute",
     "pub_year": "integer, the year of publication",
     "author": "text, the author of the publication",
     "doi": "the digital object identifier of the publication",
@@ -1606,8 +1620,11 @@
     "mineral_id": "integer, unqiue identifier for mineral",
     "mineral": "string, name of mineral",
     "mineral_type": "string, name of mineral group",
-    "formula": "chemical formula of mineral",
-    "formula_tags": "chemical formula of mineral with sub/superscript tags"
+    "formula": "string, chemical formula of mineral",
+    "formula_tags": "chemical formula of mineral with sub/superscript tags",
+    "group": "string, defition group, less inclusive than type",
+    "type": "string, definition type, less inclusive than class",
+    "class": "string, definition class, more inclusive than type"
   }
 };
   module.exports = defs;
