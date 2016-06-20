@@ -40,7 +40,7 @@ module.exports = function(req, res, next) {
     where = ''
   }
 
-  if (req.query.sample) {
+  if (req.query.hasOwnProperty('sample')) {
     limit = 'LIMIT 10'
   }
 
@@ -72,7 +72,7 @@ module.exports = function(req, res, next) {
     LEFT JOIN unit_measures ON unit_measures.measuremeta_id = measuremeta.id
     ${where}
     GROUP BY measures.id
-    LIMIT 10
+    ${limit}
   `, params, function(error, response) {
     if (error) {
       larkin.error(req, res, next, error);
