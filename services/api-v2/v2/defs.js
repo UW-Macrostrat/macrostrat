@@ -931,14 +931,14 @@
         "measurement": "string, measurement definition name",
         "measurement_type": "string, measurement definition type",
         "measurement_class": "string, measurement definition class",
-        "measurement_id", "integer, measurement definition unique identifier",
-        "measure_id", "integer, specific measurement id",
-        "measuremeta_id", "integer, specific measuremet meatadata id",
-        "lith_id", "integer, lithology unique identifier",
+        "measurement_id": "integer, measurement definition unique identifier",
+        "measure_id": "integer, specific measurement id",
+        "measuremeta_id": "integer, specific measuremet meatadata id",
+        "lith_id": "integer, lithology unique identifier",
         "lith": "string, lithology",
         "lith_class": "string, lithology class",
-        "lith_type", "string, lithology type",
-        "lith_group", "string, lithology group"
+        "lith_type": "string, lithology type",
+        "lith_group": "string, lithology group"
       },
       "output_formats": [
         "json",
