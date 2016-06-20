@@ -28,12 +28,12 @@ module.exports = function(req, res, next) {
 
   Object.keys(req.query).forEach(function(param) {
     if (validParams.hasOwnProperty(param)) {
-      where.push(validParams[param] + ' IN ($' + (where.length + 1) + ')')
+      where.push(validParams[param] + ' IN (:' + param + ')')
 
       if (param.substr(param.length - 3, param.length) === '_id') {
-        params.push(larkin.parseMultipleIds(req.query[param]))
+        params[param] = larkin.parseMultipleIds(req.query[param])
       } else {
-        params.push(larkin.parseMultipleStrings(req.query[param]))
+        params[param] = larkin.parseMultipleStrings(req.query[param])
       }
     }
   })
