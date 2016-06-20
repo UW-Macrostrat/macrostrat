@@ -56,7 +56,7 @@ module.exports = function(req, res, next) {
       measurement_class,
       measurement_type,
       method,
-      units,
+      units measure_units,
       measure_value,
       v_error,
       COALESCE(v_error_units, '') v_error_units,

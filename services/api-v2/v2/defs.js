@@ -927,7 +927,7 @@
     "description": "measurements",
     "visible": true,
     "options": {
-      "parameters": [
+      "parameters": {
         "measurement": "string, measurement definition name",
         "measurement_type": "string, measurement definition type",
         "measurement_class": "string, measurement definition class",
@@ -939,7 +939,7 @@
         "lith_class": "string, lithology class",
         "lith_type", "string, lithology type",
         "lith_group", "string, lithology group"
-      ],
+      },
       "output_formats": [
         "json",
         "csv",
@@ -958,6 +958,7 @@
         "measurement",
         "measurement_class",
         "measurement_type",
+        "measure_units",
         "method",
         "measure_value",
         "v_error",
@@ -1510,6 +1511,7 @@
     "sample_geo_unit": "text, description of unit supplying measurement",
     "measurement_type": "text, general measurement type",
     "measurement_class": "text, general measurement class",
+    "measure_units": "text, units used in generating the measurement",
     "method": "text, method used to generate result",
     "measure_value": "number, reported value for measurement",
     "v_error": "number, reported error associated with measure_value",
