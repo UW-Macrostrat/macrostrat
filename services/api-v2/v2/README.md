@@ -9,6 +9,7 @@ Test - ````npm test````
 Build output fields and check for missing definitions - ````npm run-script build-defs````
 Build ````changes.html````, the rendered version of ````CHANGELOG.md```` - ````npm run-script build-changes````
 
+Validate definitions file - ````npm run-script defs````
 
 
 ## larkin.js
@@ -79,4 +80,3 @@ someStrings = larkin.jsonifyPipes(someStrings);
 
     --> someStrings now equals ["carbonate", "marine", "shallow subtidal"]
 ````
-

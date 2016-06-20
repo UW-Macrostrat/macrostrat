@@ -4,6 +4,7 @@
   "description": "v2",
   "scripts": {
     "test": "mocha",
+    "defs": "node utilities/validateDefs.js",
     "build-defs": "node utilities/getOutputFields.js",
     "build-changes": "grip CHANGELOG.md --export changes.html"
   },
@@ -15,6 +16,7 @@
     "filesize-parser": "^1.3.0",
     "geojson-precision": "^0.4.0",
     "image-size": "^0.5.0",
+    "jshint": "^2.9.2",
     "lru-cache": "^2.7.0",
     "mapshaper": "^0.3.20",
     "memory-cache": "^0.1.4",
