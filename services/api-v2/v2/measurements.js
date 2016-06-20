@@ -19,7 +19,11 @@ module.exports = function(req, res, next) {
     'measurement_id': 'measurements.id',
     'measure_id': 'measures.id',
     'measuremeta_id': 'measuremeta.id',
-    'lith_id': 'measuremeta.lith_id'
+    'lith_id': 'measuremeta.lith_id',
+    'lith': 'liths.lith',
+    'lith_class': 'liths.lith_class',
+    'lith_type': 'liths.lith_type',
+    'lith_group': 'liths.lith_group'
   }
 
   Object.keys(req.query).forEach(function(param) {
@@ -70,6 +74,7 @@ module.exports = function(req, res, next) {
     JOIN measurements ON measures.measurement_id = measurements.id
     JOIN measuremeta ON measures.measuremeta_id = measuremeta.id
     LEFT JOIN unit_measures ON unit_measures.measuremeta_id = measuremeta.id
+    LEFT JOIN liths ON liths.id = measuremeta.lith_id
     ${where}
     GROUP BY measures.id
     ${limit}
