@@ -1,6 +1,6 @@
-var api = require("./api")
-var dbgeo = require("dbgeo")
-var larkin = require("./larkin")
+var api = require('./api')
+var dbgeo = require('dbgeo')
+var larkin = require('./larkin')
 
 
 module.exports = function(req, res, next) {
@@ -90,15 +90,15 @@ module.exports = function(req, res, next) {
 
       if ((req.query.format && api.acceptedFormats.geo[req.query.format])) {
         dbgeo.parse({
-          "data": response,
-          "outputFormat": larkin.getOutputFormat(req.query.format),
-          "geometryType": "ll",
-          "geometryColumn": ["lat", "lng"]
+          'data': response,
+          'outputFormat': larkin.getOutputFormat(req.query.format),
+          'geometryType': 'll',
+          'geometryColumn': ['lat', 'lng']
         }, function(error, result) {
           if (error) return larkin.error(req, res, next, error)
 
           larkin.sendData(req, res, next, {
-            format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
+            format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : 'json',
             bare: (api.acceptedFormats.bare[req.query.format]) ? true : false,
             refs: 'ref_id'
           }, {
@@ -107,7 +107,7 @@ module.exports = function(req, res, next) {
         })
       } else {
         larkin.sendData(req, res, next, {
-          format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
+          format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : 'json',
           bare: (api.acceptedFormats.bare[req.query.format]) ? true : false,
           refs: 'ref_id'
         }, {
