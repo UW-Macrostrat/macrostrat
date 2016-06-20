@@ -537,6 +537,8 @@ COPY macrostrat_new.col_refs FROM %(col_refs_path)s NULL '\N' DELIMITER ',' CSV;
 CREATE INDEX ON macrostrat_new.col_refs (col_id);
 CREATE INDEX ON macrostrat_new.col_refs (ref_id);
 
+GRANT usage ON SCHEMA macrostrat TO readonly;
+GRANT SELECT ON all tables IN SCHEMA macrostrat TO readonly;
 """, params)
 pg_conn.commit()
 
