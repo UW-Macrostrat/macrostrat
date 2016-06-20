@@ -927,7 +927,7 @@
     "description": "measurements",
     "visible": true,
     "options": {
-      "parameters": {
+      "parameters": [
         "measurement",
         "measurement_type",
         "measurement_class",
@@ -939,7 +939,7 @@
         "lith_class",
         "lith_type",
         "lith_group",
-      },
+      ],
       "output_formats": [
         "json",
         "csv",
@@ -1516,7 +1516,7 @@
     "v_n": "integer, number of observations used to generate measure_value",
     "sample_lith": "text, lithological description of sampeld used to generate measure_value",
     "sample_descrip": "text, verbal description of sample used to generate",
-    "sampel_geo_unit": "text, geological unit yielding sample_measurement"
+    "sampel_geo_unit": "text, geological unit yielding sample_measurement",
     "lith_max_thick": "number, thickness of specified lithology, based on proportion of unit(s)",
     "lith_min_thick": "number, thickness of specified lithology, based on proportion of unit(s)",
     "environ": "text, specific environment, see /defs/environments",
