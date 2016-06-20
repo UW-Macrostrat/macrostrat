@@ -838,10 +838,26 @@
         "api/v2/defs/measurements?measurement_class=geochemical"
       ],
       "fields": [
+        "measurement_id",
         "measure_id",
-        "name",
-        "type",
-        "class"
+        "measurement",
+        "measurement_class",
+        "measurement_type",
+        "method",
+        "measure_value",
+        "v_error",
+        "v_error_units",
+        "v_type",
+        "v_n",
+        "lat",
+        "lng",
+        "sample_geo_unit",
+        "sample_lith",
+        "lith_id",
+        "sample_descrip",
+        "ref_id",
+        "units"
+
       ]
     }
   },
@@ -1478,6 +1494,15 @@
     "measurement": "text, specific measurement",
     "measurement_type": "text, general measurement type",
     "measurement_class": "text, general measurement class",
+    "method": "text, method used to generate result",
+    "measure_value": "number, reported value for measurement",
+    "v_error": "number, reported error associated with measure_value",
+    "v_error_units": "text, units used in reported v_error",
+    "v_type": "text, descriptor applying to nature of measure_value (e.g., point measurement, mean value for multiple point measurements)",
+    "v_n": "integer, number of observations used to generate measure_value",
+    "sample_lith": "text, lithological description of sampeld used to generate measure_value",
+    "sample_descrip": "text, verbal description of sample used to generate measure_value",
+    "sampel_geo_unit": "text, geological unit yielding sample_measurement"
     "lith_max_thick": "number, thickness of specified lithology, based on proportion of unit(s)",
     "lith_min_thick": "number, thickness of specified lithology, based on proportion of unit(s)",
     "environ": "text, specific environment, see /defs/environments",
@@ -1485,7 +1510,7 @@
     "environ_class": "text, general lithology class, /defs/environments",
     "outcrop": "text, describes where unit is exposed or not, values are  'outcrop', 'subsurface', or 'both'",
     "pbdb": "number of matching Paleobiology Database fossil collections",
-    "units": "integer, number of units",
+    "units": "integer, unit_id matched to object",
     "notes": "text, notes releavnt to containing element",
     "project": "text, name of project",
     "status": "text, indicates current status of column, values are 'active', 'in process', 'obsolete'",
