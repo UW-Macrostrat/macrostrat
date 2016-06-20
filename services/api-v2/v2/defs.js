@@ -1506,6 +1506,8 @@
     "lith_type": "text, general lithology type, see /defs/lithologies",
     "lith_class": "text, general lithology class, see /defs/lithologies",
     "measurement": "text, specific measurement",
+    "measurement_id": "integer, unique identifier for measurement",
+    "sample_geo_unit": "text, description of unit supplying measurement",
     "measurement_type": "text, general measurement type",
     "measurement_class": "text, general measurement class",
     "method": "text, method used to generate result",
@@ -1624,7 +1626,9 @@
     "formula_tags": "chemical formula of mineral with sub/superscript tags",
     "group": "string, defition group, less inclusive than type",
     "type": "string, definition type, less inclusive than class",
-    "class": "string, definition class, more inclusive than type"
+    "class": "string, definition class, more inclusive than type",
+    "lat": "decimal, latitude in WGS84",
+    "lng": "decimal, longigtude in WGS84"
   }
 };
   module.exports = defs;
