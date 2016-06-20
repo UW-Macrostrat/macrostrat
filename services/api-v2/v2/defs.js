@@ -922,6 +922,29 @@
       ]
     }
   },
+  "/measurements": {
+    "description": "measurements",
+    "visible": true,
+    "options": {
+      "parameters": {
+
+      },
+      "output_formats": [
+        "json",
+        "csv",
+        "geojson",
+        "geojson_bare",
+        "topojson",
+        "topojson_bare"
+      ],
+      "examples": [
+
+      ],
+      "fields": [
+
+      ]
+    }
+  },
   "/paleogeography": {
     "description": "Returns paleogeography geometry from http://www.gplates.org, courtesy of Mark Turner and Mike Gurnis. Note that for complete and recent reconstructions, original GPlates data services should be used - http://gplates.gps.caltech.edu:8080. If you use this service and provide attribution, you should cite GPlates via this service.",
     "visible": true,
