@@ -414,6 +414,7 @@
       "parameters": {
         "lith_id": "integer, one or more lithology ids",
         "lith": "string, lithology",
+        "lith_group": "string, lithology group",
         "lith_class": "string, lithology class",
         "lith_type": "string, lithology type",
         "all": "return all lithology definitions"
@@ -430,6 +431,7 @@
       "fields": [
         "lith_id",
         "name",
+        "group",
         "type",
         "class",
         "color"
@@ -461,6 +463,37 @@
         "lith_att_id",
         "name",
         "type"
+      ]
+    }
+  },
+  "/defs/structures": {
+    "description": "Returns all structure definitions",
+    "parent": "definitions",
+    "visible": true,
+    "options": {
+      "parameters": {
+        "structure_id": "integer, one or more structure ids",
+        "structure": "string, structure",
+        "structure_group": "string, structure group",
+        "structure_class": "string, structure class",
+        "structure_type": "string, structure type",
+        "all": "return all structure definitions"
+      },
+      "output_formats": [
+        "json",
+        "csv"
+      ],
+      "examples": [
+        "api/v2/defs/lithologies?lith_id=3",
+        "api/v2/defs/lithologies?all",
+        "api/v2/defs/lithologies?lith_class=sedimentary"
+      ],
+      "fields": [
+        "structure_id",
+        "name",
+        "group",
+        "type",
+        "class"
       ]
     }
   },
