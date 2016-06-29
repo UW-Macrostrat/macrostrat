@@ -22,6 +22,7 @@ module.exports = function() {
   describe("defs/groups", require("./defs_groups"));
   describe("defs/strat_names", require("./defs_strat_names"));
   describe("defs/strat_name_concepts", require("./defs_strat_name_concepts"));
+  describe("defs/structures", require("./defs_structures"));
   describe("defs/refs", require("./defs_refs"));
   describe("defs/sources", require("./defs_sources"));
 

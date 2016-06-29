@@ -88,6 +88,11 @@ definitions.route("/strat_name_concepts")
     require("./strat_name_concepts")(req, res, next);
   });
 
+definitions.route("/structures")
+  .get(function(req, res, next) {
+    require("./structures")(req, res, next);
+  });
+
 definitions.route("/timescales")
   .get(function(req, res, next) {
     require("./timescales")(req, res, next);

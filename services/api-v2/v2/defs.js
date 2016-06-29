@@ -474,6 +474,7 @@
       "parameters": {
         "structure_id": "integer, one or more structure ids",
         "structure": "string, structure",
+        "structure_like": "string, loose match to structure",
         "structure_group": "string, structure group",
         "structure_class": "string, structure class",
         "structure_type": "string, structure type",
@@ -484,9 +485,9 @@
         "csv"
       ],
       "examples": [
-        "api/v2/defs/lithologies?lith_id=3",
-        "api/v2/defs/lithologies?all",
-        "api/v2/defs/lithologies?lith_class=sedimentary"
+        "api/v2/defs/structures?structure_id=3",
+        "api/v2/defs/structures?all",
+        "api/v2/defs/structures?structure_class=fabric"
       ],
       "fields": [
         "structure_id",
@@ -1663,7 +1664,8 @@
     "type": "string, definition type, less inclusive than class",
     "class": "string, definition class, more inclusive than type",
     "lat": "decimal, latitude in WGS84",
-    "lng": "decimal, longigtude in WGS84"
+    "lng": "decimal, longigtude in WGS84",
+    "structure_id": "integer, unique structure ID"
   }
 };
   module.exports = defs;
