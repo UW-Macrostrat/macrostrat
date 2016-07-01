@@ -142,7 +142,10 @@
         "pbdb_collections",
         "lith",
         "environ",
-        "econ"
+        "econ",
+        "name",
+        "type",
+        "class"
       ]
     }
   },
@@ -1665,7 +1668,8 @@
     "class": "string, definition class, more inclusive than type",
     "lat": "decimal, latitude in WGS84",
     "lng": "decimal, longigtude in WGS84",
-    "structure_id": "integer, unique structure ID"
+    "structure_id": "integer, unique structure ID",
+    "prop": "decimal, proportion"
   }
 };
   module.exports = defs;
