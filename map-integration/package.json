@@ -1,0 +1,27 @@
+{
+  "name": "burwell",
+  "version": "1.0.0",
+  "description": "Processing scripts for burwell",
+  "main": "index.js",
+  "dependencies": {
+    "inquirer": "^1.1.2",
+    "mkdirp": "^0.5.1",
+    "pg": "^6.0.2",
+    "stanford-corenlp": "^0.3.2",
+    "yamljs": "^0.2.8"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/UW-Macrostrat/burwell.git"
+  },
+  "author": "John J Czaplewski <jczaplew@gmail.com>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/UW-Macrostrat/burwell/issues"
+  },
+  "homepage": "https://github.com/UW-Macrostrat/burwell"
+}
