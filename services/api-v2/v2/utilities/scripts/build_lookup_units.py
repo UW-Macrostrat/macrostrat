@@ -82,7 +82,8 @@ cursor.execute("""
       colors.text_hex AS text_color,
       GROUP_CONCAT(distinct ubt.unit_id_2 SEPARATOR '|') AS units_above,
       GROUP_CONCAT(distinct ubb.unit_id SEPARATOR '|') AS units_below,
-      COUNT(DISTINCT collection_no) AS pbdb_collections
+      COUNT(DISTINCT pbdb_matches.collection_no) AS pbdb_collections,
+      SUM(pbdb_matches.occs) AS pbdb_occurrences
     FROM (
       SELECT
           units.id,
@@ -156,8 +157,7 @@ cursor.execute("""
             ORDER BY t1_age desc
             LIMIT 1
           ) b_plng,
-          units.color,
-          units.col_id
+          units.color
       FROM units
       GROUP BY units.id
     ) units

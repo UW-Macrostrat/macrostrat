@@ -324,7 +324,8 @@ module.exports = function(req, res, next, cb) {
         units.max_thick,
         units.min_thick,
         units.outcrop,
-        lookup_units.pbdb_collections
+        lookup_units.pbdb_collections,
+        lookup_units.pbdb_occurrences
       */});
 
       var longSQL = shortSQL + multiline(function() {/*
