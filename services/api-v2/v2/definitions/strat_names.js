@@ -80,7 +80,8 @@ module.exports = function(req, res, next, cb) {
       COALESCE(b_period, '') AS b_period,
       COALESCE(t_period, '') AS t_period,
       COALESCE(c_interval, '') AS c_interval,
-      t_units
+      t_units,
+      ref_id
     FROM lookup_strat_names l
   */});
 
