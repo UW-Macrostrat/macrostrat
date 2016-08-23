@@ -44,9 +44,7 @@ module.exports = function(options) {
             if (data) {
               return callback(null, data, {
                 'Content-Type': 'image/png',
-                'X-TileStrata-RedisHit': '1',
-                'X-Powered-By': 'TileStrata',
-                'Cache-Control': 'max-age=60'
+                'X-TileStrata-RedisHit': '1'
               });
             }
 

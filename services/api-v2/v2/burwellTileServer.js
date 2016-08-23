@@ -1,5 +1,7 @@
 var tilestrata = require("tilestrata");
 var mapnik = require("tilestrata-mapnik");
+var headers = require("tilestrata-headers");
+var etag = require("tilestrata-etag");
 var portscanner = require("portscanner");
 var credentials = require("./credentials");
 
@@ -16,7 +18,12 @@ module.exports = tilestrata.middleware({
               xml: credentials.tiles.configPath + `/burwell_large_${layer}.xml`,
               tileSize: 512,
               scale: 2
-          }));
+          }))
+          .use(headers({
+            "Cache-Control": "max-age=604800",
+            "X-Powered-By": "TileStrata"
+          }))
+          .use(etag())
     });
 
     // Check if Redis is running
