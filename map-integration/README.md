@@ -37,6 +37,12 @@ _Import a single shapefile:_
 ./import ontario ~/Downloads/ontario/Greenland.shp true LATIN1
 ````
 
+Once a source has been imported, be sure to update the sources stats in `maps.sources`:
+
+````
+psql burwell < setup/update_source_stats.sql
+python import_scrips/union.py <source_id>
+````
 
 
 ## Matching

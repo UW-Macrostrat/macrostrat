@@ -24,20 +24,33 @@ function queryPg(sql, params, callback) {
   });
 }
 
+/*
+
+Each scale involved in the building of a `carto` table (see tiles/config.layerOrder) needs to be processed into a flat layer.
+You can think of it as getting all sources of a given scale, and then laying 'priority' sources on top to create a smooth,
+homogenous layer.
+
+*/
 function prepScale(scale) {
   return `
+  -- Get the reference geom of all sources flagged as the given scale and with high priority
   ${scale}_priority_ref AS (
     SELECT 1 AS id, ST_SetSRID(ST_Union(rgeom), 4326) geom
     FROM maps.sources
     WHERE scale = '${scale}'
     AND priority IS TRUE
   ),
+
+  -- Get the actual geometries that belong to the above scale and priority
   ${scale}_priorities AS (
     SELECT s.map_id, ST_SetSRID(s.geom, 4326) geom
     FROM maps.${scale} s
     JOIN maps.sources ON s.source_id = sources.source_id
     WHERE priority IS TRUE
   ),
+
+  -- Get all polygons of the target scale that DON'T intersect the reference geometry of high priority sources
+  -- These don't need to be cut!
   ${scale}_nonpriority_unique AS (
     SELECT s.map_id, ST_SetSRID(s.geom, 4326) geom
     FROM maps.${scale} s
@@ -48,6 +61,9 @@ function prepScale(scale) {
     AND priority IS FALSE
     AND ST_Geometrytype(s.geom) != 'ST_LineString'
   ),
+
+  -- Get all polygons of the target scale that intersect the reference geometry of the high priority sources
+  -- Cut them by the high priority sources
   ${scale}_nonpriority_clipped AS (
     SELECT s.map_id, ST_Difference(ST_SetSRID(s.geom, 4326), pr.geom) geom
     FROM maps.${scale} s
@@ -56,6 +72,11 @@ function prepScale(scale) {
     JOIN maps.sources ON s.source_id = sources.source_id
     WHERE priority IS FALSE
   ),
+
+  -- Join together:
+  --    + All geometries that are high priority (never cut)
+  --    + Low priority geometries that don't intersect the high priority ones
+  --    + Low priority geometries that DO intersect the high priority ones
   ${scale} AS (
     SELECT map_id, geom
     FROM ${scale}_priorities
@@ -77,8 +98,8 @@ CREATE TABLE carto.${process.argv[2]} AS WITH `;
 
 var scalePrepSQL = [];
 
-//var scales = ['tiny', 'small'];
- var scales = config.layerOrder[process.argv[2]];
+// These are the scales that go into the composite of the carto table for the target scale
+var scales = config.layerOrder[process.argv[2]];
 
 scales.forEach(function(scale) {
   scalePrepSQL.push(prepScale(scale));
@@ -96,6 +117,7 @@ scales.forEach(function(scale, idx) {
   }).join(',');
 
   scalePrepSQL.push(`
+  -- Get polygons from the scale that don't intersect the target scale at all
   unique_${scale} AS (
     SELECT t.map_id, t.geom
     FROM ${scale} t
@@ -108,6 +130,7 @@ scales.forEach(function(scale, idx) {
     WHERE sr.id IS NULL
     AND ST_Geometrytype(t.geom) != 'ST_LineString'
   ),
+  -- Clip the parts of the scale that intersect all scales 'above' in priority
   ${scale}_clipped AS (
     SELECT t.map_id, ST_Difference(t.geom, sr.geom) geom
     FROM ${scale} t
@@ -175,7 +198,6 @@ WHERE ST_NumGeometries(r.geom) > 0;
 
 CREATE INDEX ON carto.${process.argv[2]} (map_id);
 CREATE INDEX ON carto.${process.argv[2]} USING GiST (geom);
-
 `;
 
 console.time('query');
