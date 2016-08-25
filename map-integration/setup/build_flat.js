@@ -71,7 +71,7 @@ queryPg(`
     ON ST_Intersects(ST_SetSRID(s.geom, 4326), pr.geom)
     JOIN maps.sources ON s.source_id = sources.source_id
     WHERE priority IS FALSE
-  ),
+  )
 
   -- Join together:
   --    + All geometries that are high priority (never cut)
