@@ -60,6 +60,7 @@ if __name__ == '__main__':
         "source_id": arguments.source_id
     })
     connection.commit()
+    print 'Done inserting new geometry'
 
     # Drop the temporary table
     cursor.execute("""
@@ -68,6 +69,7 @@ if __name__ == '__main__':
         "primary_table": AsIs(primary_table + '_rgeom')
     })
     connection.commit()
+    print 'Done dropping temp table'
 
     # Clean up the working directory
     call(['rm %s*' % (primary_table, )], shell=True)

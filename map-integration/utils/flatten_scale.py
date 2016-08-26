@@ -60,7 +60,7 @@ if __name__ == '__main__':
 
         CREATE TABLE carto.flat_%(scale)s AS
             SELECT s.map_id, s.geom
-            FROM maps.small s
+            FROM maps.%(scale)s s
             JOIN maps.sources ON s.source_id = sources.source_id
             WHERE priority IS TRUE
             AND ST_NumGeometries(s.geom) > 0
@@ -68,7 +68,7 @@ if __name__ == '__main__':
             UNION
 
             SELECT s.map_id, s.geom
-            FROM maps.small s
+            FROM maps.%(scale)s s
             JOIN maps.sources ON s.source_id = sources.source_id
             LEFT JOIN (
               SELECT 1 AS id, ST_SetSRID(ST_Union(rgeom), 4326) geom
@@ -110,7 +110,7 @@ if __name__ == '__main__':
 
         CREATE TABLE carto.flat_%(scale)s AS
             SELECT s.map_id, s.geom
-            FROM maps.small s
+            FROM maps.%(scale)s s
             WHERE ST_NumGeometries(s.geom) > 0;
 
         CREATE INDEX ON carto.flat_%(scale)s (map_id);
