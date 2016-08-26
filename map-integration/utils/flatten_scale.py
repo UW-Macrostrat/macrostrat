@@ -86,6 +86,9 @@ if __name__ == '__main__':
 
             SELECT map_id, geom
             FROM public.low_priority_clipped;
+
+        CREATE INDEX ON carto.flat_%(scale)s (map_id);
+        CREATE INDEX ON carto.flat_%(scale)s USING GiST (geom);
         """, {
             "scale": AsIs(scale)
         })
@@ -108,7 +111,10 @@ if __name__ == '__main__':
         CREATE TABLE carto.flat_%(scale)s AS
             SELECT s.map_id, s.geom
             FROM maps.small s
-            WHERE ST_NumGeometries(s.geom) > 0
+            WHERE ST_NumGeometries(s.geom) > 0;
+
+        CREATE INDEX ON carto.flat_%(scale)s (map_id);
+        CREATE INDEX ON carto.flat_%(scale)s USING GiST (geom);
         """, {
             "scale": AsIs(scale)
         })
