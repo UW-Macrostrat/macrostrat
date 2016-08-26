@@ -51,7 +51,7 @@ if __name__ == '__main__':
     cursor.execute("""
         UPDATE maps.sources
         SET rgeom = (
-            SELECT geom
+            SELECT ST_MakeValid(geom)
             FROM public.%(primary_table)s
         )
         WHERE source_id = %(source_id)s
