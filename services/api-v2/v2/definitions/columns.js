@@ -26,7 +26,7 @@ module.exports = function(req, res, next, cb) {
 
   } else if (req.query.project_id) {
     where.push("cols.project_id = :project_id");
-    params["project_id"] = req.query.project_id;
+    params["project_id"] = larkin.parseMultipleIds(req.query.project_id);
 
   }
 
