@@ -509,8 +509,9 @@
     "options": {
       "parameters": {
         "col_id": "integer, one or more column ids",
-        "col_group_id": "integer, one ore more column group ids",
+        "col_group_id": "integer, one or more column group ids",
         "col_name": "string, column name",
+        "project_id": "integer, one or more project ids",
         "status": "string, status of column, values 'active','in process','obsolete'",
         "all": "Return all column definitions",
         "format": "Desired output format"
@@ -528,6 +529,7 @@
         "col_id",
         "col_group_id",
         "col_name",
+        "project_id",
         "ref_id",
         "status"
       ]

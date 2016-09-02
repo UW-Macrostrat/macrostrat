@@ -6,7 +6,7 @@ module.exports = function(req, res, next, cb) {
     return larkin.info(req, res, next);
   }
 
-  var sql = "SELECT cols.id AS col_id, col_group_id, col_name, GROUP_CONCAT(DISTINCT ref_id SEPARATOR '|') AS ref_id, status_code AS status, count(distinct units_sections.unit_id) AS t_units  FROM cols LEFT JOIN col_refs ON col_id=cols.id LEFT JOIN units_sections ON units_sections.col_id = cols.id ",
+  var sql = "SELECT cols.id AS col_id, col_group_id, col_name, GROUP_CONCAT(DISTINCT ref_id SEPARATOR '|') AS ref_id, status_code AS status, count(distinct units_sections.unit_id) AS t_units, project_id  FROM cols LEFT JOIN col_refs ON col_id=cols.id LEFT JOIN units_sections ON units_sections.col_id = cols.id ",
       where = [],
       params = {};
 
@@ -24,7 +24,12 @@ module.exports = function(req, res, next, cb) {
     where.push("cols.col_name = :col_name");
     params["col_name"] = req.query.col_name;
 
+  } else if (req.query.project_id) {
+    where.push("cols.project_id = :project_id");
+    params["project_id"] = req.query.project_id;
+
   }
+
 
   if (req.query.status) {
     where.push("status_code = :status");
