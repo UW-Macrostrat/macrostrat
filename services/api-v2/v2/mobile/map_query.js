@@ -41,7 +41,10 @@ var priorities = {
 function summarizeUnits(units, callback) {
   callback({
     ids: units.map(function(d) { return d.unit_id }),
-    strat_names: _.uniq(units.map(function(d) { return d.strat_name_long })).join(', '),
+    strat_names: _.uniq(units.map(function(d) { return {
+      name: d.strat_name_long,
+      id: d.strat_name_id
+    }})),
     rank_names: _.uniq(units.map(function(d) { return d.strat_name_long })).join(', '),
     max_thick: _.reduce(units.map(function(d) { return d.max_thick}), function(a, b) { return a + b}, 0),
     max_min_thick: _.reduce(units.map(function(d) {
@@ -146,7 +149,7 @@ module.exports = function(req, res, next) {
   async.parallel({
     elevation: function(cb) {
       require('../elevation')(req, null, null, function(error, data) {
-        if (data.length) {
+        if (data && data.length) {
           cb(null, data[0].elevation)
         } else {
           cb(null, null)
