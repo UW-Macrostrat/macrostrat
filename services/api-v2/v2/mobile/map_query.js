@@ -147,7 +147,7 @@ module.exports = function(req, res, next) {
     elevation: function(cb) {
       require('../elevation')(req, null, null, function(error, data) {
         if (data.length) {
-          cb.null, data[0].elevation)
+          cb(null, data[0].elevation)
         } else {
           cb(null, null)
         }
