@@ -25,4 +25,7 @@ mobile.route("/fossil_collections")
 mobile.route("/macro_summary")
   .get(require("./macro_summary"));
 
+mobile.route("/map_query")
+  .get(require("./map_query"));
+
 module.exports =  mobile;

@@ -1,7 +1,7 @@
 var express = require("express");
 var tilestrata = require("tilestrata");
 var mapnik = require("tilestrata-mapnik");
-//var vtile = require("tilestrata-vtile");
+var vtile = require("tilestrata-vtile");
 var dependency = require("tilestrata-dependency");
 var credentials = require("./credentials");
 var portscanner = require("portscanner");
@@ -16,6 +16,9 @@ api.use(function(req, res, next) {
   res.header("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS");
   next();
 });
+
+// Load the new tile server that has multiple layers (USE ONLY THIS IN V3)
+api.use(burwellTileServer);
 
 // Set up the tileserver (REMOVE THIS IN V3)
 api.use(tilestrata.middleware({
@@ -52,13 +55,6 @@ api.use(tilestrata.middleware({
                   dir: credentials.tiles.stashPath + '/vanilla',
                   defaultTile: __dirname + "/default@2x.png"
                 }))
-          /*  .route("tile.pbf")
-              .use(vtile({
-                xml: __dirname + '/burwell_large.xml',
-                tileSize: 256,
-                metatile: 1,
-                bufferSize: 128
-              }))*/
       });
 
     }, 10)
@@ -68,8 +64,6 @@ api.use(tilestrata.middleware({
   }())
 }));
 
-// Load the new tile server that has multiple layers (USE ONLY THIS IN V3)
-api.use(burwellTileServer);
 
 api.acceptedFormats = {
   "standard": {

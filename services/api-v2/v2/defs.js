@@ -1477,6 +1477,27 @@
     }
   },
 
+  "/mobile/map_query": {
+    "description": "Query burwell (and Macrostrat) for a given location",
+    "parent": "mobile",
+    "visible": false,
+    "options": {
+      "parameters": {
+        "lat": "numeric, a valid latitude",
+        "lng": "numeric, a valid longitude",
+        "z": "integer, a valid zoom level"
+      },
+      "output_formats": [
+        "json"
+      ],
+      "examples": [
+        "/mobile/map_query?lat=43.0706192&lng=-89.406167&z=10"
+      ],
+      "fields": [
+      ]
+    }
+  },
+
   "/editing": {
     "description": "Routes for updating Macrostrat data",
     "visible": false
