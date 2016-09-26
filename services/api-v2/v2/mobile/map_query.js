@@ -39,12 +39,21 @@ var priorities = {
 }
 
 function summarizeUnits(units, callback) {
+  var stratNames = units.map(function(d) { return {
+    name: d.strat_name_long,
+    id: d.strat_name_id
+  }})
+  var recorded = {}
+  var filteredStratNames.filter(function(d) {
+    if (!recorded[d.id]) {
+      recorded[d.id] = d
+      return d
+    }
+  })
+  
   callback({
     ids: units.map(function(d) { return d.unit_id }),
-    strat_names: _.uniq(units.map(function(d) { return {
-      name: d.strat_name_long,
-      id: d.strat_name_id
-    }})),
+    strat_names: filteredStratNames,
     rank_names: _.uniq(units.map(function(d) { return d.strat_name_long })).join(', '),
     max_thick: _.reduce(units.map(function(d) { return d.max_thick}), function(a, b) { return a + b}, 0),
     max_min_thick: _.reduce(units.map(function(d) {
