@@ -85,6 +85,10 @@ module.exports = function(options) {
         },
 
         set: function(server, req, buffer, headers, callback) {
+          // NEVER CACHE 13+! It's hard to get rid of them
+          if (req.z > 13) {
+            return callback(null)
+          }
           // Get the full tile path
           var file = tilePath(options.dir, req.z, req.x, req.y, req.filename);
 
