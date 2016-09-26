@@ -44,13 +44,13 @@ function summarizeUnits(units, callback) {
     id: d.strat_name_id
   }})
   var recorded = {}
-  var filteredStratNames.filter(function(d) {
+  var filteredStratNames = stratNames.filter(function(d) {
     if (!recorded[d.id]) {
       recorded[d.id] = d
       return d
     }
   })
-  
+
   callback({
     ids: units.map(function(d) { return d.unit_id }),
     strat_names: filteredStratNames,
