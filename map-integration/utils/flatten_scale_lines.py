@@ -9,7 +9,7 @@ import credentials
 
 parser = argparse.ArgumentParser(
     description="Creat a unioned reference geometry for a given scale",
-    epilog="Example usage: python flatten_scale.py small")
+    epilog="Example usage: python flatten_scale_lines.py small")
 
 parser.add_argument(nargs="?", dest="scale",
     default="0", type=str,
@@ -43,7 +43,7 @@ if __name__ == '__main__':
         call(['pgsql2shp -f high_priority_mask.shp -u %s -h %s -p %s burwell "SELECT 1 AS id, ST_SetSRID(ST_Union(rgeom), 4326) geom FROM maps.sources WHERE scale = \'%s\' AND priority IS TRUE"' % (credentials.pg_user, credentials.pg_host, credentials.pg_port, scale)], shell=True)
 
         # low priority intersections
-        call(['pgsql2shp -f low_priority_intersections.shp -u %s -h %s -p %s burwell "SELECT s.map_id, s.geom FROM maps.%s s JOIN maps.sources ON s.source_id = sources.source_id JOIN ( SELECT 1 AS id, ST_SetSRID(ST_Union(rgeom), 4326) geom FROM maps.sources WHERE scale = \'%s\' AND priority IS TRUE) pr ON ST_Intersects(s.geom, st_setsrid(pr.geom, 4326)) WHERE priority IS FALSE AND ST_NumGeometries(s.geom) > 0"' % (credentials.pg_user, credentials.pg_host, credentials.pg_port, scale, scale)], shell=True)
+        call(['pgsql2shp -f low_priority_intersections.shp -u %s -h %s -p %s burwell "SELECT s.line_id, s.geom FROM lines.%s s JOIN maps.sources ON s.source_id = sources.source_id JOIN ( SELECT 1 AS id, ST_SetSRID(ST_Union(rgeom), 4326) geom FROM maps.sources WHERE scale = \'%s\' AND priority IS TRUE) pr ON ST_Intersects(s.geom, st_setsrid(pr.geom, 4326)) WHERE priority IS FALSE AND ST_NumGeometries(s.geom) > 0"' % (credentials.pg_user, credentials.pg_host, credentials.pg_port, scale, scale)], shell=True)
 
         # Remove the parts of low priority intersects that overlap with the high priority areas
         call(['mapshaper low_priority_intersections.shp -erase high_priority_mask.shp -o low_priority_clipped.shp'], shell=True)
@@ -56,19 +56,19 @@ if __name__ == '__main__':
 
         # Recreate the flattened table
         cursor.execute("""
-        DROP TABLE IF EXISTS carto.flat_%(scale)s;
+        DROP TABLE IF EXISTS carto_lines.flat_%(scale)s;
 
-        CREATE TABLE carto.flat_%(scale)s AS
-            SELECT s.map_id, s.geom
-            FROM maps.%(scale)s s
+        CREATE TABLE carto_lines.flat_%(scale)s AS
+            SELECT s.line_id, s.geom
+            FROM lines.%(scale)s s
             JOIN maps.sources ON s.source_id = sources.source_id
             WHERE priority IS TRUE
             AND ST_NumGeometries(s.geom) > 0
 
             UNION
 
-            SELECT s.map_id, s.geom
-            FROM maps.%(scale)s s
+            SELECT s.line_id, s.geom
+            FROM lines.%(scale)s s
             JOIN maps.sources ON s.source_id = sources.source_id
             LEFT JOIN (
               SELECT 1 AS id, ST_SetSRID(ST_Union(rgeom), 4326) geom
@@ -106,15 +106,15 @@ if __name__ == '__main__':
 
     else:
         cursor.execute("""
-        DROP TABLE IF EXISTS carto.flat_%(scale)s;
+        DROP TABLE IF EXISTS carto_lines.flat_%(scale)s;
 
-        CREATE TABLE carto.flat_%(scale)s AS
-            SELECT s.map_id, s.geom
-            FROM maps.%(scale)s s
+        CREATE TABLE carto_lines.flat_%(scale)s AS
+            SELECT s.line_id, s.geom
+            FROM lines.%(scale)s s
             WHERE ST_NumGeometries(s.geom) > 0;
 
-        CREATE INDEX ON carto.flat_%(scale)s (map_id);
-        CREATE INDEX ON carto.flat_%(scale)s USING GiST (geom);
+        CREATE INDEX ON carto_lines.flat_%(scale)s (map_id);
+        CREATE INDEX ON carto_lines.flat_%(scale)s USING GiST (geom);
         """, {
             "scale": AsIs(scale)
         })
