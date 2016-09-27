@@ -3,6 +3,8 @@ var async = require('async')
 var larkin = require('../larkin')
 var _ = require('underscore')
 
+var LINE_TOLERANCE  = 20
+
 var scaleLookup = {
   0: 'tiny',
   1: 'tiny',
@@ -36,6 +38,41 @@ var priorities = {
   'small': ['small', 'medium', 'large', 'tiny'],
   'medium': ['medium', 'large', 'small', 'tiny'],
   'large': ['large', 'medium', 'small', 'tiny']
+}
+
+// https://msdn.microsoft.com/en-us/library/bb259689.aspx
+// Calcucate m/px given a latitude and a zoom level
+function tolerance(lat, z) {
+  return (Math.cos(lat * Math.PI/180) * 2 * Math.PI * 6378137) / (256 * Math.pow(2, z))
+}
+
+function getBestFit(z, data) {
+  var currentScale = scaleLookup[z]
+  var returnedScales = _.uniq(data.map(function(d) { return d.scale }))
+
+  var targetScales = []
+
+  // Iterate on possible scales given our z
+  for (var i = 0; i < priorities[currentScale].length; i++) {
+    // If that scale is present, record it
+     if (returnedScales.indexOf(priorities[currentScale][i]) > -1) {
+       targetScales.push(priorities[currentScale][i])
+       if (currentScale != 'tiny' && currentScale != 'small') {
+         break
+       } else if (targetScales.length > 1) {
+         break
+       }
+     }
+   }
+
+   var bestFit = data.filter(function(d) {
+     if (targetScales.indexOf(d.scale) > -1) {
+       delete d.scale
+       return d
+     }
+   })
+
+   return bestFit
 }
 
 function summarizeUnits(units, callback) {
@@ -137,6 +174,35 @@ function buildSQL(scale, where) {
   `
 }
 
+function buildLineSQL(scale) {
+  return `
+  (
+    SELECT
+      m.line_id,
+      COALESCE(m.name, '') AS name,
+      COALESCE(m.type, '') AS type,
+      COALESCE(m.direction, '') AS direction,
+      COALESCE(m.descrip, '') AS descrip,
+      '${scale}' AS scale,
+      (SELECT row_to_json(r) FROM (SELECT
+        source_id,
+        name,
+        COALESCE(url, '') url,
+        COALESCE(ref_title, '') ref_title,
+        COALESCE(authors, '') authors,
+        COALESCE(ref_year, '') ref_year,
+        COALESCE(ref_source, '') ref_source,
+        COALESCE(isbn_doi, '') isbn_doi
+        FROM maps.sources
+        WHERE source_id = m.source_id) r)::jsonb AS ref,
+      ST_Distance(m.geom, $1) AS distance
+    FROM lines.${scale} m
+    ORDER BY m.geom <-> $1
+    LIMIT 1
+  )
+  `
+}
+
 // Accepts a longitude, a latitude, and a zoom level
 // Returns the proper burwell data and macrostrat data
 module.exports = function(req, res, next) {
@@ -163,6 +229,29 @@ module.exports = function(req, res, next) {
         } else {
           cb(null, null)
         }
+      })
+    },
+    lines: function(cb) {
+      var sql = Object.keys(priorities).map(function(scale) {
+        return buildLineSQL(scale)
+      }).join(' UNION ')
+
+      larkin.queryPg('burwell', `SELECT * FROM ( ${sql} ) doit`, [`SRID=4326;POINT(${req.query.lng} ${req.query.lat})`], function(error, result) {
+        if (error) return cb(error);
+
+        var bestFit = getBestFit(req.query.z, result.rows)[0]
+
+        // Verify that the best fit is within a clickable tolerance
+        if (bestFit.distance >= (tolerance(req.query.lat, req.query.z) * 20 )) {
+          bestFit = {}
+        }
+
+        if (bestFit.hasOwnProperty('distance')) {
+          delete bestFit.distance
+        }
+
+        cb(null, bestFit)
+
       })
     },
     burwell: function(cb) {
@@ -254,7 +343,8 @@ module.exports = function(req, res, next) {
       data: {
         elevation: data.elevation,
         burwell: data.burwell.burwell,
-        macrostrat: data.burwell.macrostrat
+        macrostrat: data.burwell.macrostrat,
+        lines: data.lines
       }
     })
   })
