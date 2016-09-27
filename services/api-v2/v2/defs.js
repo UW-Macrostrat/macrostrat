@@ -300,6 +300,7 @@
         "cltn_id",
         "cltn_name",
         "pbdb_occs",
+        "genus_no",
         "unit_id",
         "col_id",
         "t_age",
@@ -1694,7 +1695,8 @@
     "lat": "decimal, latitude in WGS84",
     "lng": "decimal, longigtude in WGS84",
     "structure_id": "integer, unique structure ID",
-    "prop": "decimal, proportion"
+    "prop": "decimal, proportion",
+    "genus_no": "integer, corresponds to taxon_no in Paleobiology Database"
   }
 };
   module.exports = defs;
