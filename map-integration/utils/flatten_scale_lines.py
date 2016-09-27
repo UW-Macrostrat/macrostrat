@@ -84,11 +84,11 @@ if __name__ == '__main__':
 
             UNION
 
-            SELECT map_id, geom
+            SELECT line_id, geom
             FROM public.low_priority_clipped;
 
-        CREATE INDEX ON carto.flat_%(scale)s (map_id);
-        CREATE INDEX ON carto.flat_%(scale)s USING GiST (geom);
+        CREATE INDEX ON carto_lines.flat_%(scale)s (line_id);
+        CREATE INDEX ON carto_lines.flat_%(scale)s USING GiST (geom);
         """, {
             "scale": AsIs(scale)
         })
@@ -113,7 +113,7 @@ if __name__ == '__main__':
             FROM lines.%(scale)s s
             WHERE ST_NumGeometries(s.geom) > 0;
 
-        CREATE INDEX ON carto_lines.flat_%(scale)s (map_id);
+        CREATE INDEX ON carto_lines.flat_%(scale)s (line_id);
         CREATE INDEX ON carto_lines.flat_%(scale)s USING GiST (geom);
         """, {
             "scale": AsIs(scale)
