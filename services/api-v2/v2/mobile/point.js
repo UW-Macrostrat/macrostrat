@@ -17,6 +17,7 @@ function buildSQL(scale, where) {
       m.map_id,
       m.source_id,
       COALESCE(m.name, '') AS name,
+      COALESCE(m.age, '') AS age,
       COALESCE(m.strat_name, '') AS strat_name,
       COALESCE(m.lith, '') AS lith,
       COALESCE(m.descrip, '') AS descrip,
@@ -133,7 +134,7 @@ module.exports = function(req, res, next) {
         var response = {
           "uid": result.burwell.map_id || "",
           "rocktype": result.burwell.liths_full || [],
-          "age": (result.burwell.b_int_name && result.burwell.t_int_name && result.burwell.b_int_name === result.burwell.t_int_name) ? result.burwell.b_int_name : result.burwell.b_int_name + ' - ' + result.burwell.t_int_name,
+          "age": result.burwell.age || "",
           "name": result.burwell.name || "",
           "desc": result.burwell.descrip || "",
           "comm": result.burwell.comments || "",
