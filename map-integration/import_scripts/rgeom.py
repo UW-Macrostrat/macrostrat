@@ -38,6 +38,10 @@ if __name__ == '__main__':
 
     primary_table = result[0]
 
+    # Clean up
+    call(['rm %s.*' % (primary_table ,)], shell=True)
+    call(['rm %s_rgeom.*' % (primary_table, )], shell=True)
+
     # Write it to a shapefile
     call(['pgsql2shp -f %s.shp -u %s -h %s -p %s burwell sources.%s' % (primary_table, credentials.pg_user, credentials.pg_host, credentials.pg_port, primary_table)], shell=True)
 
@@ -47,12 +51,38 @@ if __name__ == '__main__':
     # Import the simplified geometry into PostGIS
     call(['shp2pgsql -s 4326 -I %s_rgeom.shp public.%s_rgeom | psql -h %s -p %s -U %s -d burwell' % (primary_table, primary_table, credentials.pg_host, credentials.pg_port, credentials.pg_user)], shell=True)
 
+    print 'Processing geometry...'
     # Update the sources table
     cursor.execute("""
         UPDATE maps.sources
         SET rgeom = (
-            SELECT ST_MakeValid(geom)
-            FROM public.%(primary_table)s
+            WITH dump AS (
+              SELECT (ST_Dump(geom)).geom
+              FROM public.%(primary_table)s
+            ),
+            types AS (
+              SELECT ST_GeometryType(geom), geom
+              FROM dump
+              WHERE ST_GeometryType(geom) = 'ST_Polygon'
+            ),
+            rings AS (
+              SELECT (ST_DumpRings(geom)).geom
+              FROM types
+            ),
+            rings_numbered AS (
+              SELECT a.geom, row_number() OVER () AS row_no
+              FROM rings a
+            ),
+            relationships AS (
+              SELECT geom, row_no,
+              (
+                SELECT ST_Contains(ST_Buffer(ST_Collect(b.geom),0), a.geom)
+                FROM rings_numbered b
+                WHERE b.row_no != a.row_no
+              ) isinside
+              FROM rings_numbered a
+            )
+            SELECT ST_Union(geom) geom FROM relationships WHERE NOT isinside
         )
         WHERE source_id = %(source_id)s
     """, {
