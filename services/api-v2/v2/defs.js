@@ -278,6 +278,7 @@
         "econ_class": "string, name of an economic attribute class",
         "unit_id": "One or more comma-separated valid unit IDs",
         "col_id": "One or more comma-separated valid column IDs",
+        "project_id": "One or more comma-separated valid project IDs",
         "strat_name_id": "One or more comma-separted valid strat_name_ids from /defs/strat_names",
         "concept_id": "One or more stratigraphic name concepts from /defs/strat_name_concepts",
         "format": "Desired output format"

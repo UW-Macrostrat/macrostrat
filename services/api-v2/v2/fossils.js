@@ -67,6 +67,11 @@ module.exports = function(req, res, next) {
           params["col_group_ids"] = larkin.parseMultipleIds(req.query.col_group_id);
         }
 
+        if (req.query.project_id) {
+          where += " AND cols.project_id IN (:project_ids)";
+          params["project_ids"] = larkin.parseMultipleIds(req.query.project_id);
+        }
+
         larkin.query("SELECT pbdb_matches.collection_no AS cltn_id, collection_name AS cltn_name, lookup_unit_intervals.t_age, lookup_unit_intervals.b_age, n_occs AS pbdb_occs, GROUP_CONCAT(distinct pbdb.taxon_lower.genus_no) AS genus_no, \
           pbdb_matches.unit_id, cols.id as col_id, CONCAT(pbdb_matches.ref_id, '|') AS refs " + ((geo) ? ", AsWKT(pbdb_matches.coordinate) AS geometry" : "") + " \
           FROM pbdb_matches \
