@@ -278,6 +278,7 @@
         "econ_class": "string, name of an economic attribute class",
         "unit_id": "One or more comma-separated valid unit IDs",
         "col_id": "One or more comma-separated valid column IDs",
+        "project_id": "One or more comma-separated valid project IDs",
         "strat_name_id": "One or more comma-separted valid strat_name_ids from /defs/strat_names",
         "concept_id": "One or more stratigraphic name concepts from /defs/strat_name_concepts",
         "format": "Desired output format"
@@ -300,6 +301,7 @@
         "cltn_id",
         "cltn_name",
         "pbdb_occs",
+        "genus_no",
         "unit_id",
         "col_id",
         "t_age",
@@ -1694,7 +1696,8 @@
     "lat": "decimal, latitude in WGS84",
     "lng": "decimal, longigtude in WGS84",
     "structure_id": "integer, unique structure ID",
-    "prop": "decimal, proportion"
+    "prop": "decimal, proportion",
+    "genus_no": "integer, corresponds to taxon_no in Paleobiology Database"
   }
 };
   module.exports = defs;

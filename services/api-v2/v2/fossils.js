@@ -67,7 +67,12 @@ module.exports = function(req, res, next) {
           params["col_group_ids"] = larkin.parseMultipleIds(req.query.col_group_id);
         }
 
-        larkin.query("SELECT pbdb_matches.collection_no AS cltn_id, collection_name AS cltn_name, lookup_unit_intervals.t_age, lookup_unit_intervals.b_age, n_occs AS pbdb_occs, \
+        if (req.query.project_id) {
+          where += " AND cols.project_id IN (:project_ids)";
+          params["project_ids"] = larkin.parseMultipleIds(req.query.project_id);
+        }
+
+        larkin.query("SELECT pbdb_matches.collection_no AS cltn_id, collection_name AS cltn_name, lookup_unit_intervals.t_age, lookup_unit_intervals.b_age, n_occs AS pbdb_occs, GROUP_CONCAT(distinct pbdb.taxon_lower.genus_no) AS genus_no, \
           pbdb_matches.unit_id, cols.id as col_id, CONCAT(pbdb_matches.ref_id, '|') AS refs " + ((geo) ? ", AsWKT(pbdb_matches.coordinate) AS geometry" : "") + " \
           FROM pbdb_matches \
           JOIN units ON pbdb_matches.unit_id = units.id \
@@ -75,17 +80,21 @@ module.exports = function(req, res, next) {
           JOIN cols ON cols.id = units_sections.col_id \
           JOIN lookup_unit_intervals ON units_sections.unit_id=lookup_unit_intervals.unit_id \
           JOIN pbdb.coll_matrix ON pbdb_matches.collection_no = pbdb.coll_matrix.collection_no \
+          LEFT JOIN pbdb.occ_matrix ON pbdb.coll_matrix.collection_no = pbdb.occ_matrix.collection_no \
+          LEFT JOIN pbdb.taxon_lower ON pbdb.occ_matrix.orig_no = pbdb.taxon_lower.orig_no \
           LEFT JOIN unit_strat_names ON unit_strat_names.unit_id = units.id \
           LEFT JOIN lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id \
           WHERE pbdb_matches.release_date < now() AND \
-          cols.status_code = 'active' " + where + limit, params, function(error, result) {
+          cols.status_code = 'active' " + where + " GROUP BY pbdb_matches.collection_no" + limit, params, function(error, result) {
             if (error) {
               callback(error);
             } else {
               result.forEach(function(d) {
+                d.genus_no = d.genus_no.split(",").map(function(d) {return parseInt(d)});
                 d.refs = larkin.jsonifyPipes(d.refs, "integers");
                 if (req.query.format && req.query.format === "csv") {
                     d.refs = d.refs.join("|")
+                    d.genus_no = d.genus_no.join("|")
                 }
               });
               callback(null, data, result);
