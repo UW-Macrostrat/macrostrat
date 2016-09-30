@@ -55,10 +55,8 @@ if __name__ == '__main__':
     cursor.execute("""
         UPDATE public.%(primary_table)s
         SET geom = ST_MakeValid(geom)
-        WHERE source_id = %(source_id)s
     """, {
-        "primary_table": AsIs(primary_table + '_rgeom'),
-        "source_id": arguments.source_id
+        "primary_table": AsIs(primary_table + '_rgeom')
     })
     connection.commit()
 
