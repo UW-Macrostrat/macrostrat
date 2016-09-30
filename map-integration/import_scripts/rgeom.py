@@ -53,8 +53,10 @@ if __name__ == '__main__':
 
     print 'Validating geometry...'
     cursor.execute("""
+        ALTER TABLE public.%(primary_table)s ALTER COLUMN geom SET DATA TYPE geometry;
+
         UPDATE public.%(primary_table)s
-        SET geom = ST_Buffer((ST_Dump(geom)).geom, 0)
+        SET geom = ST_Buffer(geom, 0);
     """, {
         "primary_table": AsIs(primary_table + '_rgeom')
     })
