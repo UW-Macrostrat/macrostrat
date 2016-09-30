@@ -89,7 +89,7 @@ if __name__ == '__main__':
               WHERE a.row_no != b.row_no
               GROUP BY b.row_no
             )
-            SELECT ST_Union(rings_numbered.geom) geom
+            SELECT ST_Buffer(ST_Union(rings_numbered.geom), 0.0000001) geom
             FROM rings_numbered JOIN containers
             ON containers.row_no = rings_numbered.row_no
             WHERE NOT ST_Covers(containers.geom, rings_numbered.geom)
