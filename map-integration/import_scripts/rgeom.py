@@ -97,7 +97,7 @@ if __name__ == '__main__':
               ON containers.row_no = rings_numbered.row_no
               WHERE NOT ST_Covers(containers.geom, rings_numbered.geom)
             )
-            SELECT * FROM (
+            SELECT geom FROM (
             SELECT 'best' as type, geom
             FROM best
             UNION
