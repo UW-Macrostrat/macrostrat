@@ -54,7 +54,7 @@ if __name__ == '__main__':
     print 'Validating geometry...'
     cursor.execute("""
         UPDATE public.%(primary_table)s
-        SET geom = ST_Buffer(geom, 0)
+        SET geom = ST_Buffer((ST_Dump(geom)).geom, 0)
     """, {
         "primary_table": AsIs(primary_table + '_rgeom')
     })
@@ -88,7 +88,7 @@ if __name__ == '__main__':
               ON ST_Intersects(a.geom, b.geom)
               WHERE a.row_no != b.row_no
               GROUP BY b.row_no
-            )
+            ),
             best AS (
               SELECT ST_Buffer(ST_Union(rings_numbered.geom), 0.0000001) geom
               FROM rings_numbered JOIN containers
