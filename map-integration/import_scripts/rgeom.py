@@ -51,9 +51,24 @@ if __name__ == '__main__':
     # Import the simplified geometry into PostGIS
     call(['shp2pgsql -s 4326 -I %s_rgeom.shp public.%s_rgeom | psql -h %s -p %s -U %s -d burwell' % (primary_table, primary_table, credentials.pg_host, credentials.pg_port, credentials.pg_user)], shell=True)
 
+    print 'Validating geometry...'
+    cursor.execute("""
+        UPDATE FROM public.%(primary_table)s
+        SET geom = ST_MakeValid(geom)
+        WHERE source_id = %(source_id)s
+    """, {
+        "primary_table": AsIs(primary_table + '_rgeom'),
+        "source_id": arguments.source_id
+    })
+    connection.commit()
+
     print 'Processing geometry...'
     # Update the sources table
     cursor.execute("""
+        UPDATE FROM public.%(primary_table)s
+        SET geom = ST_MakeValid(geom)
+        WHERE source_id = %(source_id)s
+
         UPDATE maps.sources
         SET rgeom = (
             WITH dump AS (
@@ -73,16 +88,17 @@ if __name__ == '__main__':
               SELECT a.geom, row_number() OVER () AS row_no
               FROM rings a
             ),
-            relationships AS (
-              SELECT geom, row_no,
-              (
-                SELECT ST_Contains(ST_Buffer(ST_Collect(b.geom),0), a.geom)
-                FROM rings_numbered b
-                WHERE b.row_no != a.row_no
-              ) isinside
-              FROM rings_numbered a
+            containers AS (
+              SELECT ST_Union(a.geom) AS GEOM, b.row_no
+              FROM rings_numbered a JOIN rings_numbered b
+              ON ST_Intersects(a.geom, b.geom)
+              WHERE a.row_no != b.row_no
+              GROUP BY b.row_no
             )
-            SELECT ST_Union(geom) geom FROM relationships WHERE NOT isinside
+            SELECT ST_Union(rings_numbered.geom) geom
+            FROM rings_numbered JOIN containers
+            ON containers.row_no = rings_numbered.row_no
+            WHERE NOT ST_Covers(containers.geom, rings_numbered.geom)
         )
         WHERE source_id = %(source_id)s
     """, {
