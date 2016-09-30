@@ -65,7 +65,7 @@ if __name__ == '__main__':
     print 'Processing geometry...'
     # Update the sources table
     cursor.execute("""
-        UPDATE FROM public.%(primary_table)s
+        UPDATE public.%(primary_table)s
         SET geom = ST_MakeValid(geom)
         WHERE source_id = %(source_id)s
 
