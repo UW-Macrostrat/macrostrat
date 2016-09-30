@@ -89,10 +89,26 @@ if __name__ == '__main__':
               WHERE a.row_no != b.row_no
               GROUP BY b.row_no
             )
-            SELECT ST_Buffer(ST_Union(rings_numbered.geom), 0.0000001) geom
-            FROM rings_numbered JOIN containers
-            ON containers.row_no = rings_numbered.row_no
-            WHERE NOT ST_Covers(containers.geom, rings_numbered.geom)
+            best AS (
+              SELECT ST_Buffer(ST_Union(rings_numbered.geom), 0.0000001) geom
+              FROM rings_numbered JOIN containers
+              ON containers.row_no = rings_numbered.row_no
+              WHERE NOT ST_Covers(containers.geom, rings_numbered.geom)
+            )
+            SELECT * FROM (
+            SELECT 'best' as type, geom
+            FROM best
+            UNION
+            SELECT 'next best' as type, geom
+            FROM rings_numbered
+            ) foo
+            WHERE type = (
+              CASE
+                WHEN (SELECT count(*) FROM best) != NULL
+                  THEN 'best'
+                ELSE 'next best'
+                END
+            )
         )
         WHERE source_id = %(source_id)s
     """, {
