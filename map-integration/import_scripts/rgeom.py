@@ -54,7 +54,7 @@ if __name__ == '__main__':
     print 'Validating geometry...'
     cursor.execute("""
         UPDATE public.%(primary_table)s
-        SET geom = ST_MakeValid(geom)
+        SET geom = ST_Buffer(geom, 0)
     """, {
         "primary_table": AsIs(primary_table + '_rgeom')
     })
