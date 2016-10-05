@@ -63,7 +63,7 @@ if __name__ == '__main__':
         call(['mapshaper -i rgeoms.shp -dissolve -o %s_rgeom.shp' % (scale, )], shell=True)
 
         # Import it
-        call(['shp2pgsql -s 4326 %s_rgeom.shp public.%s_rgeom | psql -h %s -p %s -U %s -d burwell' % (scale, scale, credentials.pg_host, credentials.pg_port, credentials.pg_user)], shell=True)
+        call(['shp2pgsql -I -s 4326 %s_rgeom.shp public.%s_rgeom | psql -h %s -p %s -U %s -d burwell' % (scale, scale, credentials.pg_host, credentials.pg_port, credentials.pg_user)], shell=True)
 
         # Export intersecting geom
         call(['pgsql2shp -f intersecting.shp -u %s -h %s -p %s burwell "SELECT t.map_id, t.geom FROM carto.flat_%s t JOIN public.%s_rgeom sr ON ST_Intersects(t.geom, sr.geom)"' % (credentials.pg_user, credentials.pg_host, credentials.pg_port, scale, scale)], shell=True )
@@ -72,7 +72,7 @@ if __name__ == '__main__':
         call(['mapshaper intersecting.shp -erase rgeom.shp -o clipped.shp'], shell=True)
 
         # Import the result to PostGIS
-        call(['shp2pgsql -s 4326 clipped.shp public.%s_clipped | psql -h %s -p %s -U %s -d burwell' % (scale, credentials.pg_host, credentials.pg_port, credentials.pg_user)], shell=True)
+        call(['shp2pgsql -I -s 4326 clipped.shp public.%s_clipped | psql -h %s -p %s -U %s -d burwell' % (scale, credentials.pg_host, credentials.pg_port, credentials.pg_user)], shell=True)
 
         # Clean up shapefiles
         call(['rm intersecting.* && rm rgeom.* && rm clipped.* && rm *_rgeom.* && rm *_rgeoms.*'], shell=True)
