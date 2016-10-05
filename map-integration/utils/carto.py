@@ -138,7 +138,7 @@ if __name__ == '__main__':
     drop = ''
 
     for scale in layerOrder[arguments.the_scale]:
-        drop += 'DROP TABLE IF EXISTS %s_clipped;' % scale
+        drop += 'DROP TABLE IF EXISTS %s_clipped; DROP TABLE IF EXISTS %s_rgeom;' % (scale, scale, )
 
     cursor.execute(drop)
     connection.commit()
