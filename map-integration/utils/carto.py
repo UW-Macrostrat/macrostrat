@@ -75,7 +75,7 @@ if __name__ == '__main__':
         call(['shp2pgsql -I -s 4326 clipped.shp public.%s_clipped | psql -h %s -p %s -U %s -d burwell' % (scale, credentials.pg_host, credentials.pg_port, credentials.pg_user)], shell=True)
 
         # Clean up shapefiles
-        call(['rm intersecting.* && rm rgeom.* && rm clipped.* && rm *_rgeom.* && rm *_rgeoms.*'], shell=True)
+        call(['rm intersecting.* && rm rgeom.* && rm clipped.* && rm *_rgeom.* && rm rgeoms.*' % (scale, )], shell=True)
 
         # Build the SQL query
         sql.append("""
@@ -83,7 +83,7 @@ if __name__ == '__main__':
         FROM carto.flat_%(scale)s t
         LEFT JOIN public.%(scale)s_rgeom sr
         ON ST_Intersects(t.geom, sr.geom)
-        WHERE sr.id IS NULL
+        WHERE sr.gid IS NULL
         AND ST_Geometrytype(t.geom) != 'ST_LineString'
 
         UNION
