@@ -60,10 +60,10 @@ if __name__ == '__main__':
         call(['pgsql2shp -f rgeoms.shp -u %s -h %s -p %s burwell "SELECT 1 AS id, rgeom AS geom FROM maps.sources WHERE scale IN (%s)"' % (credentials.pg_user, credentials.pg_host, credentials.pg_port, ','.join(scales_above))], shell=True)
 
         # Union it
-        call(['mapshaper -i rgeoms.shp --dissolve -o rgeom.shp'], shell=True)
+        call(['mapshaper -i rgeoms.shp -dissolve -o %s_rgeom.shp' & (scale, )], shell=True)
 
         # Import it
-        call(['shp2pgsql -s 4326 rgeom.shp public.%s_rgeom | psql -h %s -p %s -U %s -d burwell' % (scale, credentials.pg_host, credentials.pg_port, credentials.pg_user)])
+        call(['shp2pgsql -s 4326 %s_rgeom.shp public.%s_rgeom | psql -h %s -p %s -U %s -d burwell' % (scale, scale, credentials.pg_host, credentials.pg_port, credentials.pg_user)])
 
         # Export intersecting geom
         call(['pgsql2shp -f intersecting.shp -u %s, -h %s -p %s burwell "SELECT t.map_id, t.geom FROM carto.flat_%s t JOIN public.%s_rgeom sr ON ST_Intersects(t.geom, sr.geom)"' % (credentials.pg_user, credentials.pg_host, credentials.pg_port, scale, scale)], shell=True )
@@ -75,7 +75,7 @@ if __name__ == '__main__':
         call(['shp2pgsql -s 4326 clipped.shp public.%s_clipped | psql -h %s -p %s -U %s -d burwell' % (scale, credentials.pg_host, credentials.pg_port, credentials.pg_user)], shell=True)
 
         # Clean up shapefiles
-        call(['rm intersecting.* && rm rgeom.* && rm clipped.* && rm rgeom.* && rm rgeoms.*'], shell=True)
+        call(['rm intersecting.* && rm rgeom.* && rm clipped.* && rm *_rgeom.* && rm *_rgeoms.*'], shell=True)
 
         # Build the SQL query
         sql.append("""
@@ -138,7 +138,7 @@ if __name__ == '__main__':
     drop = ''
 
     for scale in layerOrder[arguments.the_scale]:
-        drop += 'DROP TABLE IF EXISTS %s_clipped; DROP TABLE IF EXISTS %s_rgeom;' % (scale, scale, )
+        drop += 'DROP TABLE IF EXISTS %s_clipped; DROP TABLE IF EXISTS %s_rgeom;' % (scale, scal
 
     cursor.execute(drop)
     connection.commit()
