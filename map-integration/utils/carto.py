@@ -60,7 +60,7 @@ if __name__ == '__main__':
         call(['pgsql2shp -f rgeoms.shp -u %s -h %s -p %s burwell "SELECT 1 AS id, rgeom AS geom FROM maps.sources WHERE scale IN (%s)"' % (credentials.pg_user, credentials.pg_host, credentials.pg_port, ','.join(scales_above))], shell=True)
 
         # Union it
-        call(['mapshaper -i rgeoms.shp -dissolve -o %s_rgeom.shp' & (scale, )], shell=True)
+        call(['mapshaper -i rgeoms.shp -dissolve -o %s_rgeom.shp' % (scale, )], shell=True)
 
         # Import it
         call(['shp2pgsql -s 4326 %s_rgeom.shp public.%s_rgeom | psql -h %s -p %s -U %s -d burwell' % (scale, scale, credentials.pg_host, credentials.pg_port, credentials.pg_user)])
