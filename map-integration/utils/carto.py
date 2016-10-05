@@ -75,7 +75,7 @@ if __name__ == '__main__':
         call(['shp2pgsql -I -s 4326 clipped.shp public.%s_clipped | psql -h %s -p %s -U %s -d burwell' % (scale, credentials.pg_host, credentials.pg_port, credentials.pg_user)], shell=True)
 
         # Clean up shapefiles
-        call(['rm intersecting.* && rm rgeom.* && rm clipped.* && rm *_rgeom.* && rm rgeoms.*' % (scale, )], shell=True)
+        call(['rm intersecting.* && rm rgeom.* && rm clipped.* && rm _rgeom.* && rm rgeoms.*'], shell=True)
 
         # Build the SQL query
         sql.append("""
