@@ -57,10 +57,16 @@ if __name__ == '__main__':
         scales_above = ["'" + s + "'" for idx, s in enumerate(layerOrder[arguments.the_scale]) if idx > scale_idx]
 
         # Export reference geom
-        call(['pgsql2shp -f rgeom.shp -u %s -h %s -p %s burwell "SELECT 1 AS id, ST_SetSRID(ST_Union(rgeom), 4326) geom FROM maps.sources WHERE scale IN (%s)"' % (credentials.pg_user, credentials.pg_host, credentials.pg_port, ','.join(scales_above))], shell=True)
+        call(['pgsql2shp -f rgeoms.shp -u %s -h %s -p %s burwell "SELECT 1 AS id, rgeom AS geom FROM maps.sources WHERE scale IN (%s)"' % (credentials.pg_user, credentials.pg_host, credentials.pg_port, ','.join(scales_above))], shell=True)
+
+        # Union it
+        call(['mapshaper -i rgeoms.shp --dissolve -o rgeom.shp'], shell=True)
+
+        # Import it
+        call(['shp2pgsql -s 4326 rgeom.shp public.%s_rgeom | psql -h %s -p %s -U %s -d burwell' % (scale, credentials.pg_host, credentials.pg_port, credentials.pg_user)])
 
         # Export intersecting geom
-        call(['pgsql2shp -f intersecting.shp -u %s -h %s -p %s burwell "SELECT t.map_id, t.geom FROM carto.flat_%s t JOIN ( SELECT 1 AS id, ST_SetSRID(ST_Union(rgeom), 4326) geom FROM maps.sources WHERE scale IN (%s) ) sr ON ST_Intersects(t.geom, sr.geom)"' % ( credentials.pg_user, credentials.pg_host, credentials.pg_port, scale, ','.join(scales_above))], shell=True)
+        call(['pgsql2shp -f intersecting.shp -u %s, -h %s -p %s burwell "SELECT t.map_id, t.geom FROM carto.flat_%s t JOIN public.%s_rgeom sr ON ST_Intersects(t.geom, sr.geom)"' % (credentials.pg_user, credentials.pg_host, credentials.pg_port, scale, scale)], shell=True )
 
         # Remove the parts of the intersecting geoms that intersect scales above
         call(['mapshaper intersecting.shp -erase rgeom.shp -o clipped.shp'], shell=True)
@@ -69,17 +75,13 @@ if __name__ == '__main__':
         call(['shp2pgsql -s 4326 clipped.shp public.%s_clipped | psql -h %s -p %s -U %s -d burwell' % (scale, credentials.pg_host, credentials.pg_port, credentials.pg_user)], shell=True)
 
         # Clean up shapefiles
-        call(['rm intersecting.* && rm rgeom.* && rm clipped.*'], shell=True)
+        call(['rm intersecting.* && rm rgeom.* && rm clipped.* && rm rgeom.* && rm rgeoms.*'], shell=True)
 
         # Build the SQL query
         sql.append("""
         SELECT t.map_id, '%(scale)s' AS scale, t.geom
         FROM carto.flat_%(scale)s t
-        LEFT JOIN (
-          SELECT 1 AS id, ST_SetSRID(ST_Union(rgeom), 4326) geom
-          FROM maps.sources
-          WHERE scale IN (%(scales_above)s)
-        ) sr
+        LEFT JOIN public.%(scale)s_rgeom sr
         ON ST_Intersects(t.geom, sr.geom)
         WHERE sr.id IS NULL
         AND ST_Geometrytype(t.geom) != 'ST_LineString'
@@ -143,45 +145,3 @@ if __name__ == '__main__':
 
     end = time.time()
     print 'Created carto.%s in ' % scale, int(end - start), 's'
-
-    # result = cursor.fetchone()
-    #
-    # primary_table = result[0]
-    #
-    # # Write it to a shapefile
-    # call(['pgsql2shp -f %s.shp -u %s -h %s -p %s burwell sources.%s' % (primary_table, credentials.pg_user, credentials.pg_host, credentials.pg_port, primary_table)], shell=True)
-    #
-    # # Simplify it with mapshaper
-    # call(['mapshaper -i %s.shp -dissolve -o %s_rgeom.shp' % (primary_table, primary_table)], shell=True)
-    #
-    # # Import the simplified geometry into PostGIS
-    # call(['shp2pgsql -s 4326 %s_rgeom.shp public.%s_rgeom | psql -h %s -p %s -U %s -d burwell' % (primary_table, primary_table, credentials.pg_host, credentials.pg_port, credentials.pg_user)], shell=True)
-    #
-    # # Update the sources table
-    # cursor.execute("""
-    #     UPDATE maps.sources
-    #     SET rgeom = (
-    #         SELECT ST_MakeValid(geom)
-    #         FROM public.%(primary_table)s
-    #     )
-    #     WHERE source_id = %(source_id)s
-    # """, {
-    #     "primary_table": AsIs(primary_table + '_rgeom'),
-    #     "source_id": arguments.source_id
-    # })
-    # connection.commit()
-    #
-    # # Drop the temporary table
-    # cursor.execute("""
-    #     DROP TABLE public.%(primary_table)s
-    # """, {
-    #     "primary_table": AsIs(primary_table + '_rgeom')
-    # })
-    # connection.commit()
-    #
-    # # Clean up the working directory
-    # call(['rm %s*' % (primary_table, )], shell=True)
-    #
-    # end = time.time()
-    #
-    # print 'Done in ', int(end - start), 's'
