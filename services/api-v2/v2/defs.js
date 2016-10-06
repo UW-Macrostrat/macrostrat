@@ -1375,7 +1375,7 @@
     "isParent": true
   },
   "/mobile/point": {
-    "description": "Get state-level map (gmus) unit and Macrostrat polygon for a given point",
+    "description": "Get the largest scale geological map data available in Macrostrat/burwell for coordinates and relevant Macrostrat col_id (if any)",
     "parent": "mobile",
     "visible": true,
     "options": {
