@@ -96,6 +96,9 @@ module.exports = function(req, res, next, cb) {
         if (req.query.strat_name_id) {
           req.query.rule = "down";
           require("./definitions/strat_names")(req, null, null, function(error, result) {
+            if (error || !result) {
+              return callback(null)
+            }
             var strat_name_ids = result.map(function(d) { return d.strat_name_id });
 
             where.push("mm.strat_name_ids && $" + (where.length + 1) + "::int[]");
