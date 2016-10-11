@@ -72,7 +72,7 @@ module.exports = function(req, res, next) {
           params["project_ids"] = larkin.parseMultipleIds(req.query.project_id);
         }
 
-        larkin.query("SELECT pbdb_matches.collection_no AS cltn_id, collection_name AS cltn_name, lookup_unit_intervals.t_age, lookup_unit_intervals.b_age, n_occs AS pbdb_occs, GROUP_CONCAT(distinct pbdb.taxon_lower.genus_no) AS genus_no, \
+        larkin.query("SELECT pbdb_matches.collection_no AS cltn_id, collection_name AS cltn_name, lookup_unit_intervals.t_age, lookup_unit_intervals.b_age, n_occs AS pbdb_occs, COALESCE(GROUP_CONCAT(distinct pbdb.taxon_lower.genus_no), '') AS genus_no, \
           pbdb_matches.unit_id, cols.id as col_id, CONCAT(pbdb_matches.ref_id, '|') AS refs " + ((geo) ? ", AsWKT(pbdb_matches.coordinate) AS geometry" : "") + " \
           FROM pbdb_matches \
           JOIN units ON pbdb_matches.unit_id = units.id \
@@ -90,7 +90,7 @@ module.exports = function(req, res, next) {
               callback(error);
             } else {
               result.forEach(function(d) {
-                d.genus_no = d.genus_no.split(",").map(function(d) {return parseInt(d)});
+                d.genus_no = (d.genus_no.length) ? d.genus_no.split(",").map(function(d) {return parseInt(d)}) : [ ];
                 d.refs = larkin.jsonifyPipes(d.refs, "integers");
                 if (req.query.format && req.query.format === "csv") {
                     d.refs = d.refs.join("|")

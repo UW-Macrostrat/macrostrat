@@ -28,6 +28,8 @@ module.exports = function() {
   });
 
   it("should accept a time_interval", function(done) {
+    this.timeout(4000);
+
     request(settings.host)
       .get("/api/v2/fossils?interval_name=Permian")
       .expect(validators.aSuccessfulRequest)
@@ -82,7 +84,7 @@ module.exports = function() {
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
       .expect(function(res) {
-        if (res.body.success.data.length < 30) {
+        if (res.body.success.data.length < 29) {
           throw new Error("Wrong number of fossil collections returned with multiple IDs supplied");
         }
       })
