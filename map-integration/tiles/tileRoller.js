@@ -12,7 +12,12 @@
 
 
   function tilePath(directory, z, x, y, filename) {
-    return directory + '/' + mapType + '/' + z + '/' + x + '/' + y + '/' + filename;
+    if (mapType) {
+      return directory + '/' + mapType + '/' + z + '/' + x + '/' + y + '/' + filename;
+    } else {
+      return directory + '/' + z + '/' + x + '/' + y + '/' + filename;
+    }
+
   }
 
   function rollTile(scale, tile, callback) {
@@ -48,7 +53,7 @@
   function rollVectorTile(scale, tile, callback) {
     providers[scale].serve(null, tile, function(error, buffer) {
       // Get the full tile path
-      var file = tilePath(config.cachePathVector, tile.z, tile.x, tile.y, 'tile.mvt');
+      var file = tilePath(config.cachePathVector, tile.z, tile.x, tile.y, 'tile.pbf');
 
       // Make sure the correct directory exists
       mkdirp(config.cachePathVector + '/' + tile.z + '/' + tile.x + '/' + tile.y, function(error) {
@@ -57,6 +62,7 @@
         fs.writeFile(file, buffer, function(err) {
           if (err) {
             console.log('Error writing tile - ', err);
+            throw new Error('Could not write to tilepath')
           }
           callback();
         });
@@ -100,7 +106,7 @@
             });
           } else {
             providers[scale] = vtile({
-                xml: config.configPath + 'compiled_styles/burwell_' + scale + '_' + layer + '.xml',
+                xml: config.configPath + 'compiled_styles/burwell_vtile_' + scale + '.xml',
                 tileSize: 256,
                 metatile: 1,
                 bufferSize: 128

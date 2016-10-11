@@ -412,29 +412,35 @@ module.exports = function(params) {
     function(callback) {
       tileSet = params.tileSet;
       // Make sure cachePaths exists
-      mkdirp(config.cachePath + '/' + params.tileSet, function(error) {
-        if (error) return callback(error);
-
-        mkdirp(config.cachePathVector + '/' + params.tileSet, function(error) {
+      if (params.tileType === 'raster') {
+        mkdirp(config.cachePath + '/' + params.tileSet, function(error) {
+          if (error) return callback(error);
+          callback();
+        })
+      } else {
+        mkdirp(config.cachePathVector + '/', function(error) {
           if (error) return callback(error);
 
           callback();
         })
-      });
-
+      }
     },
 
-    // Set up the project files (Mapnik XML)
+    // Set up the project files (Mapnik XML) (not necessary for vector tiles as they are unstyled)
     function(callback) {
-      setup(params.tileSet, function(error) {
-        if (error) {
-          console.log('An error occurred while creating configuration files');
-          callback(error);
-        } else {
-          console.log('Configuration files generated');
-          callback(null);
-        }
-      });
+      if (params.tileType === 'raster') {
+        setup(params.tileSet, function(error) {
+          if (error) {
+            console.log('An error occurred while creating configuration files');
+            callback(error);
+          } else {
+            console.log('Configuration files generated');
+            callback(null);
+          }
+        });
+      } else {
+        callback(null)
+      }
     },
 
     // Initialize the tile providers

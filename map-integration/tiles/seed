@@ -26,15 +26,18 @@ inquirer.prompt([{
   }
 }, {
   type: 'list',
-  name: 'tileSet',
-  message: 'Which style would you like to seed?',
-  choices: config.layers
-  //choices: config.layers.concat(['all bedrock'])
-},{
-  type: 'list',
   name: 'tileType',
   message: 'Which type of tiles would you like to create?',
   choices: ['raster', 'vector']
+}, {
+  type: 'list',
+  name: 'tileSet',
+  message: 'Which style would you like to seed?',
+  choices: config.layers,
+  when: function(answers) {
+    return answers.tileType === 'raster'
+  }
+  //choices: config.layers.concat(['all bedrock'])
 }], function(answers) {
   if (answers.source_id) {
     answers.source_id = answers.source_id.split(',');

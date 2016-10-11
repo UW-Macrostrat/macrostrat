@@ -52,6 +52,33 @@
       "maxZoom": ""
   }
 
+  // This is the template for each layer
+  var layerTemplateLines = {
+      "geometry": "linestring",
+      "Datasource": {
+          "type": "postgis",
+          "table": "",
+          "key_field": "line_id",
+          "geometry_field": "geom",
+          "extent_cache": "auto",
+          "extent": "-179,-89,179,89",
+          "host": "localhost",
+          "port": "5432",
+          "user": credentials.pg.user,
+          "password": credentials.pg.password,
+          "dbname": "burwell",
+          "srid": "4326"
+      },
+      "id": "",
+      "class": "lines",
+      "srs-name": "WGS84",
+      "srs": "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs",
+      "advanced": {},
+      "name": "",
+      "minZoom": "",
+      "maxZoom": ""
+  }
+
   // Instantiate the project template that will hold each layer
   var burwell = {
     "bounds": [-89,-179,89,179],
@@ -76,7 +103,21 @@
     var layer = JSON.parse(JSON.stringify(layerTemplate));
     layer["Datasource"]["table"] = "(SELECT x.map_id, x.color, geom FROM lookup_" + scale + " x JOIN maps." + scale + " s ON s.map_id = x.map_id JOIN maps.sources ON s.source_id = sources.source_id ORDER BY sources.priority ASC) subset";
     layer["id"] = "burwell_" + scale;
+    layer["class"] = "burwell";
     layer["name"] = "burwell_" + scale;
+    layer["minZoom"] = Math.min.apply(Math, config.scaleMap[scale]);
+    layer["maxZoom"] = Math.max.apply(Math, config.scaleMap[scale]);
+    callback(layer);
+  }
+
+  // Gets the extend and centroid of a given scale, and returns an mml layer configuration
+  function createLayerLines(scale, callback) {
+    // Copy the template
+    var layer = JSON.parse(JSON.stringify(layerTemplateLines));
+    layer["Datasource"]["table"] = "(SELECT x.line_id, geom FROM carto_lines." + scale + " x) subset";
+    layer["id"] = "burwell_lines_" + scale;
+    layer["class"] = "lines";
+    layer["name"] = "burwell_lines_" + scale;
     layer["minZoom"] = Math.min.apply(Math, config.scaleMap[scale]);
     layer["maxZoom"] = Math.max.apply(Math, config.scaleMap[scale]);
     callback(layer);
@@ -93,7 +134,6 @@
       // Load the base styles
       var cartoCSS = fs.readFileSync(__dirname + '/styles/' + layer + '.css', 'utf8');
 
-
       // Compile the stylesheet
       for (var i = 0; i < colors.length; i++) {
         cartoCSS += `
@@ -102,6 +142,8 @@
           }
         `;
       }
+
+      //fs.writeFileSync('./styles.mss', cartoCSS)
 
       // Append the styles to the project template object
       burwell["Stylesheet"].push({
@@ -122,11 +164,33 @@
     project["maxzoom"] = Math.max.apply(Math, config.scaleMap[scale]);
 
     // Create a new layer for each scale that is a part of this scale's project as defined in layerOrder
-    async.map(config.layerOrder[scale], function(d, callback) {
-      createLayer(d, function(layer) {
-        callback(null, layer);
-      });
-    }, function(error, layers) {
+    var layers = []
+    async.each(config.layerOrder[scale], function(d, callback) {
+      async.parallel([
+        function(c) {
+          if (config.mapLayers[layer].hasLines) {
+            createLayerLines(d, function(l) {
+              layers.push(l)
+              c(null)
+            })
+          } else {
+            c(null)
+          }
+        },
+        function(c) {
+          if (config.mapLayers[layer].hasUnits) {
+            createLayer(d, function(l) {
+              layers.push(l)
+              c(null)
+            })
+          } else {
+            c(null)
+          }
+        }
+      ], function(error) {
+        callback(null)
+      })
+    }, function(error) {
       // Record the layers
       project["Layer"] = layers;
 

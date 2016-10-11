@@ -16,14 +16,29 @@ module.exports = {
   // The scales that should be precached
   seedScales: ["tiny", "small", "medium", "large"],
 
-  layers: ["vanilla", "emphasized", "lithologies", "structures"],
+  layers: ["emphasized", "lines", "vanilla"],
+
+  mapLayers: {
+    emphasized: {
+      hasLines: true,
+      hasUnits: true
+    },
+    lines: {
+      hasLines: true,
+      hasUnits: false
+    },
+    vanilla: {
+      hasLines: true,
+      hasUnits: true
+    }
+  },
 
   // Which zoom levels correspond to which map scales
   scaleMap: {
     "tiny": [0, 1, 2, 3],
     "small": [4, 5],
     "medium": [6, 7, 8, 9],
-    "large": [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+    "large": [10, 11, 12]
   },
 
   // The order in which scales should be drawn for each layer
