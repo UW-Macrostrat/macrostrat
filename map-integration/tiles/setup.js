@@ -170,24 +170,25 @@
         function(c) {
           if (config.mapLayers[layer].hasLines) {
             createLayerLines(d, function(l) {
-              layers.push(l)
-              c(null)
+            //  layers.push(l)
+              c(null, l)
             })
           } else {
-            c(null)
+            c(null, null)
           }
         },
         function(c) {
           if (config.mapLayers[layer].hasUnits) {
             createLayer(d, function(l) {
-              layers.push(l)
-              c(null)
+              //layers.push(l)
+              c(null, l)
             })
           } else {
-            c(null)
+            c(null, null)
           }
         }
-      ], function(error) {
+      ], function(error, result) {
+        layers = result.filter(function(d) { if (d) return d })
         callback(null)
       })
     }, function(error) {
