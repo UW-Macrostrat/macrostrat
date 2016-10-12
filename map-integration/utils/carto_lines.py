@@ -153,7 +153,7 @@ if __name__ == '__main__':
         """
         cursor.execute(sql, {
             "target": AsIs(arguments.the_scale),
-            "below": AsIs(layerOrder[arguments.the_scale][1])
+            "below": AsIs(layerOrder[arguments.the_scale][0])
         })
         connection.commit()
     end = time.time()
