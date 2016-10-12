@@ -1,0 +1,51 @@
+.lines {
+  line-color:#000000;
+ }
+.lines [zoom = 0] {
+  line-width: 0.3;
+}
+.lines [zoom = 1] {
+  line-width: 0.3;
+}
+.lines [zoom = 2] {
+  line-width: 0.3;
+}
+.lines [zoom = 3] {
+  line-width: 0.5;
+}
+.lines [zoom = 4] {
+  line-width:0.35;
+}
+.lines [zoom = 5] {
+  line-width: 0.4;
+}
+.lines [zoom = 6] {
+  line-width: 0.3;
+}
+.lines [zoom = 7] {
+  line-width: 0.4;
+}
+.lines [zoom = 8] {
+  line-width: 0.6;
+}
+.lines [zoom = 8] {
+  line-width: 0.6;
+}
+.lines [zoom = 9] {
+  line-width: 0.6;
+}
+.lines [zoom = 9] {
+  line-width: 0.6;
+}
+.lines [zoom = 9] {
+  line-width: 0.5;
+}
+.lines [zoom = 10] {
+  line-width: 0.4;
+}
+.lines [zoom = 11] {
+  line-width: 0.5;
+}
+.lines [zoom = 12] {
+  line-width: 0.5;
+}
