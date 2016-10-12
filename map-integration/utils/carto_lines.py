@@ -81,7 +81,6 @@ if __name__ == '__main__':
     else:
         sql = """
             CREATE TABLE carto.lines_%(target)s_new AS
-            WITH l1 AS (
               SELECT line_id, geom,
                   '%(target)s'::text AS scale,
                   a.source_id,
@@ -92,8 +91,9 @@ if __name__ == '__main__':
               FROM lines.%(target)s a
               JOIN maps.sources b
               ON a.source_id = b.source_id
-              WHERE priority = True
-            ),l2 AS (
+              WHERE priority = True;
+
+            INSERT INTO carto.lines_%(target)s_new (line_id, geom, scale, source_id, name, type, direction, descrip)
               SELECT a.line_id, a.geom,
                   '%(target)s'::text AS scale,
                   a.source_id,
@@ -104,12 +104,11 @@ if __name__ == '__main__':
               FROM lines.%(target)s a
               JOIN maps.sources b
                 ON a.source_id = b.source_id
-              LEFT JOIN l1 ON ST_Intersects(a.geom, l1.geom)
+              LEFT JOIN carto.lines_%(target)s_new c ON ST_Intersects(a.geom, c.geom)
               WHERE priority = False
-              AND l1.line_id IS NULL
-              UNION
-              SELECT * FROM l1
-            ), l3 AS (
+              AND c.line_id IS NULL;
+
+            INSERT INTO carto.lines_%(target)s_new (line_id, geom, scale, source_id, name, type, direction, descrip)
               SELECT a.line_id, a.geom,
                   '%(below)s'::text AS scale,
                   a.source_id,
@@ -120,12 +119,11 @@ if __name__ == '__main__':
               FROM lines.%(below)s a
               JOIN maps.sources b
                 ON a.source_id = b.source_id
-              LEFT JOIN l2 ON ST_Intersects(a.geom, l2.geom)
+              LEFT JOIN carto.lines_%(target)s_new c ON ST_Intersects(a.geom, c.geom)
               WHERE priority = True
-              AND l2.line_id IS NULL
-              UNION
-              SELECT * FROM l2
-            ), l4 AS (
+              AND c.line_id IS NULL;
+
+            INSERT INTO carto.lines_%(target)s_new (line_id, geom, scale, source_id, name, type, direction, descrip)
               SELECT a.line_id, a.geom,
                   '%(below)s'::text AS scale,
                   a.source_id,
@@ -136,13 +134,9 @@ if __name__ == '__main__':
               FROM lines.%(below)s a
               JOIN maps.sources b
                 ON a.source_id = b.source_id
-              LEFT JOIN l3 ON ST_Intersects(a.geom, l3.geom)
+              LEFT JOIN carto.lines_%(target)s_new c ON ST_Intersects(a.geom, c.geom)
               WHERE priority = FALSE
-              AND l3.line_id IS NULL
-              UNION
-              SELECT * FROM l3
-            )
-            SELECT * FROM l4;
+              AND c.line_id IS NULL;
 
             CREATE INDEX ON carto.lines_%(target)s_new (line_id);
             CREATE INDEX ON carto.lines_%(target)s_new USING GiST (geom);
