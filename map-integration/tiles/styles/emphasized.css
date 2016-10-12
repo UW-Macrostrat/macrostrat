@@ -1,7 +1,6 @@
 .burwell {
    line-width: 0.3;
    line-color: #777;
-   polygon-opacity: 0.6;
 }
 
 .burwell[zoom>3][zoom<6] {
