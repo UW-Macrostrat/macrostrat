@@ -331,6 +331,8 @@ def refresh(cursor, connection, scale, source_id):
       (SELECT interval_color
        FROM macrostrat.intervals
        WHERE age_top <= best_age_top AND age_bottom >= best_age_bottom
+       -- Exclude New Zealand ages as possible matches
+       AND intervals.id NOT IN (SELECT interval_id FROM macrostrat.timescales_intervals WHERE timescale_id = 6)
        ORDER BY age_bottom - age_top
        LIMIT 1
       ) AS color
