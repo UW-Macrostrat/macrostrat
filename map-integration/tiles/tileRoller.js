@@ -12,6 +12,7 @@
 
 
   function tilePath(directory, z, x, y, filename) {
+    // No mapType means we are rolling vector tiles
     if (mapType) {
       return directory + '/' + mapType + '/' + z + '/' + x + '/' + y + '/' + filename;
     } else {

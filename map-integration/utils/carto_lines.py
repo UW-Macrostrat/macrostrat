@@ -20,8 +20,8 @@ arguments = parser.parse_args()
 # For a given scale, define which scales go into the carto table (ordered from 'bottom' to 'top' if you think of them as stacked)
 layerOrder = {
     "tiny": ["tiny"],
-    "small": ["tiny", "large", "medium", "small"],
-    "medium": ["large", "small", "medium"],
+    "small": ["tiny", "small"],
+    "medium": ["small", "medium"],
     "large": ["medium", "large"]
 }
 
