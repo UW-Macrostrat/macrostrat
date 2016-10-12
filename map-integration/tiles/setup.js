@@ -114,7 +114,7 @@
   function createLayerLines(scale, callback) {
     // Copy the template
     var layer = JSON.parse(JSON.stringify(layerTemplateLines));
-    layer["Datasource"]["table"] = "(SELECT x.line_id, geom FROM carto_lines." + scale + " x) subset";
+    layer["Datasource"]["table"] = "(SELECT x.line_id, geom FROM carto.lines_" + scale + " x) subset";
     layer["id"] = "burwell_lines_" + scale;
     layer["class"] = "lines";
     layer["name"] = "burwell_lines_" + scale;
