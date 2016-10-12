@@ -168,9 +168,9 @@
     async.each(config.layerOrder[scale], function(d, callback) {
       async.parallel([
         function(c) {
-          if (config.mapLayers[layer].hasLines) {
-            createLayerLines(d, function(l) {
-            //  layers.push(l)
+          if (config.mapLayers[layer].hasUnits) {
+            createLayer(d, function(l) {
+              //layers.push(l)
               c(null, l)
             })
           } else {
@@ -178,9 +178,9 @@
           }
         },
         function(c) {
-          if (config.mapLayers[layer].hasUnits) {
-            createLayer(d, function(l) {
-              //layers.push(l)
+          if (config.mapLayers[layer].hasLines) {
+            createLayerLines(d, function(l) {
+            //  layers.push(l)
               c(null, l)
             })
           } else {
