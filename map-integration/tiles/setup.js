@@ -188,7 +188,7 @@
           }
         }
       ], function(error, result) {
-        layers = result.filter(function(d) { if (d) return d })
+        layers = layers.concat(result.filter(function(d) { if (d) return d }))
         callback(null)
       })
     }, function(error) {
