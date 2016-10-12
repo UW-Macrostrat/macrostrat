@@ -3,9 +3,11 @@
    line-color: #777;
 }
 
-.burwell[zoom>3][zoom<6] {
+.burwell[zoom<=3] {
+  line-width: 0.3;
+}
+.burwell[z=4] {
   line-width: 0.4;
-  line-color: #777;
 }
 .burwell[zoom=5] {
   line-width: 0.8;
