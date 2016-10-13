@@ -3,7 +3,7 @@ Multiscale geologic map integration
 
 ## TL;DR
 1. `./import tataouine ~/Downloads/tataouine.shp`
-2. `python matching/match_parallel.py --source_id 1234`
+2. `python process_source.py --source_id 1234`
 3. `tiles/seed`
 
 
