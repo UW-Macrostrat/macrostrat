@@ -101,13 +101,13 @@ def refresh(scale, source_id):
           JOIN maps.sources b
             ON a.source_id = b.source_id
           LEFT JOIN (
-            SELECT rgeom
+            SELECT source_id, rgeom
             FROM maps.sources
             WHERE scales = '%(target)s'
           ) c ON ST_Intersects(a.geom, c.geom)
         --  LEFT JOIN carto.lines_%(target)s c ON ST_Intersects(a.geom, c.geom)
           WHERE priority = True
-          AND c.line_id IS NULL
+          AND c.source_id IS NULL
           AND ST_Intersects(
                 a.geom,
                 (SELECT ST_Envelope(rgeom)
@@ -127,13 +127,13 @@ def refresh(scale, source_id):
           JOIN maps.sources b
             ON a.source_id = b.source_id
           LEFT JOIN (
-            SELECT rgeom
+            SELECT source_id, rgeom
             FROM maps.sources
             WHERE scales = '%(target)s'
           ) c ON ST_Intersects(a.geom, c.geom)
          -- LEFT JOIN carto.lines_%(target)s c ON ST_Intersects(a.geom, c.geom)
           WHERE priority = FALSE
-          AND c.line_id IS NULL
+          AND c.source_id IS NULL
           AND ST_Intersects(
                 a.geom,
                 (SELECT ST_Envelope(rgeom)
