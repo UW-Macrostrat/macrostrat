@@ -147,7 +147,8 @@ if __name__ == '__main__':
         # Get scale of source_id
         cursor.execute("SELECT scale FROM maps.sources WHERE source_id = %(source_id)s", { "source_id": arguments.source_id })
         scale = cursor.fetchone()[0]
-        refresh(scale, arguments.source_id)
+        for each in scaleIsIn[scale]:
+            refresh(each, arguments.source_id)
 
 
     elif arguments.the_scale == 'tiny':
