@@ -9,7 +9,7 @@ import credentials
 
 parser = argparse.ArgumentParser(
     description="Creat a unioned reference geometry for a given source",
-    epilog="Example usage: python union.py 1")
+    epilog="Example usage: python rgeom.py 1")
 
 parser.add_argument(nargs="?", dest="source_id",
     default="0", type=int,
