@@ -33,7 +33,7 @@ def find_sources(cursor, scale):
 
 def find_scale(cursor, source_id):
     cursor.execute("SELECT scale from maps.sources WHERE source_id = %(source_id)s", {"source_id": source_id})
-    result = cursor.fetchone()[0]
+    result = cursor.fetchone()
     return result
 
 def refresh(cursor, connection, scale, source_id):
