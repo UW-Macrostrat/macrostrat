@@ -107,11 +107,12 @@ if __name__ == '__main__':
 
   # Remove the fields explicitly excluded
   exclude = arguments.exclude.split(",")
-  for field in exclude:
-    try :
-      fields.remove(field)
-    except:
-      print 'Not excluding invalid field selection ', field
+  if len(exclude) > 0:
+      for field in exclude:
+        try :
+          fields.remove(field)
+        except:
+          print 'Not excluding invalid field selection ', field
 
   # Filter null fields
   cursor.execute("""
@@ -126,6 +127,8 @@ if __name__ == '__main__':
     "source_id": arguments.source_id
   })
   result = cursor.fetchone()
+
+  print result
 
   for field in result:
       if result[field] != 0:
