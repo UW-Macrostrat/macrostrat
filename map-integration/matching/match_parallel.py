@@ -22,7 +22,7 @@ import refresh
 if __name__ == '__main__':
 
   connection = psycopg2.connect(dbname="burwell", user=credentials.pg_user, host=credentials.pg_host, port=credentials.pg_port)
-  cursor = connection.cursor()
+  cursor = connection.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
 
   parser = argparse.ArgumentParser(
     description="Match rocks to Macrostrat units",
@@ -42,7 +42,7 @@ if __name__ == '__main__':
   # Valid source_id
   cursor.execute("SELECT source_id FROM maps.sources")
   sources = cursor.fetchall()
-  source_ids = [source[0] for source in sources]
+  source_ids = [source['source_id'] for source in sources]
   if int(arguments.source_id) not in source_ids:
       print "Invalid source_id argument. Source ID ", arguments.source_id, " was not found in maps.sources"
       sys.exit(1)
@@ -111,6 +111,25 @@ if __name__ == '__main__':
       fields.remove(field)
     except:
       print 'Not excluding invalid field selection ', field
+
+  # Filter null fields
+  cursor.execute("""
+    SELECT
+        count(distinct strat_name) AS strat_names,
+        count(distinct name) AS names,
+        count(distinct descrip) AS descrips,
+        count(distinct comments) AS comments
+    FROM maps.%(scale)s where source_id = %(source_id)s;
+  """, {
+    "scale": AsIs(scale),
+    "source_id": arguments.source_id
+  })
+  result = cursor.fetchone()
+
+  for field in result:
+      if result[field] != 0:
+          fields.remove(field)
+          print 'Excluding ', field, 'because it is null'
 
   # Insert a new task for each matching field into the queue
   for field in fields:
