@@ -129,8 +129,7 @@ if __name__ == '__main__':
   result = cursor.fetchone()
 
   for field in result:
-      print field, result[field]
-      if result[field] != 0:
+      if result[field] == 0:
           fields.remove(field)
           print 'Excluding ', field, 'because it is null'
 
