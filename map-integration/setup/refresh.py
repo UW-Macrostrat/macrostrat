@@ -6,7 +6,7 @@ def source_stats(cursor, connection, source_id):
     """, {
         "source_id": source_id
     })
-    primary_table = cursor.fetchone()[0]
+    primary_table = cursor.fetchone()['primary_table']
 
     cursor.execute("""
       WITH second AS (
@@ -33,7 +33,7 @@ def find_sources(cursor, scale):
 
 def find_scale(cursor, source_id):
     cursor.execute("SELECT scale from maps.sources WHERE source_id = %(source_id)s", {"source_id": source_id})
-    result = cursor.fetchone()
+    result = cursor.fetchone()['scale']
     return result
 
 def refresh(cursor, connection, scale, source_id):
