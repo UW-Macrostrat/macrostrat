@@ -117,10 +117,10 @@ if __name__ == '__main__':
   # Filter null fields
   cursor.execute("""
     SELECT
-        count(distinct strat_name) AS strat_names,
-        count(distinct name) AS names,
-        count(distinct descrip) AS descrips,
-        count(distinct comments) AS comments
+        count(distinct strat_name)::int AS strat_names,
+        count(distinct name)::int AS names,
+        count(distinct descrip)::int AS descrips,
+        count(distinct comments)::int AS comments
     FROM maps.%(scale)s where source_id = %(source_id)s;
   """, {
     "scale": AsIs(scale),
