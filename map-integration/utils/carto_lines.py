@@ -101,9 +101,9 @@ def refresh(scale, source_id):
           JOIN maps.sources b
             ON a.source_id = b.source_id
           LEFT JOIN (
-            SELECT source_id, rgeom
+            SELECT source_id, rgeom AS geom
             FROM maps.sources
-            WHERE scales = '%(target)s'
+            WHERE scale = '%(target)s'
           ) c ON ST_Intersects(a.geom, c.geom)
         --  LEFT JOIN carto.lines_%(target)s c ON ST_Intersects(a.geom, c.geom)
           WHERE priority = True
@@ -127,9 +127,9 @@ def refresh(scale, source_id):
           JOIN maps.sources b
             ON a.source_id = b.source_id
           LEFT JOIN (
-            SELECT source_id, rgeom
+            SELECT source_id, rgeom AS geom
             FROM maps.sources
-            WHERE scales = '%(target)s'
+            WHERE scale = '%(target)s'
           ) c ON ST_Intersects(a.geom, c.geom)
          -- LEFT JOIN carto.lines_%(target)s c ON ST_Intersects(a.geom, c.geom)
           WHERE priority = FALSE
@@ -247,9 +247,9 @@ if __name__ == '__main__':
               JOIN maps.sources b
                 ON a.source_id = b.source_id
               LEFT JOIN (
-                SELECT source_id, rgeom
+                SELECT source_id, rgeom AS geom
                 FROM maps.sources
-                WHERE scales = '%(target)s'
+                WHERE scale = '%(target)s'
               ) c ON ST_Intersects(a.geom, c.geom)
              -- LEFT JOIN carto.lines_%(target)s c ON ST_Intersects(a.geom, c.geom)
               WHERE priority = FALSE
@@ -267,9 +267,9 @@ if __name__ == '__main__':
               JOIN maps.sources b
                 ON a.source_id = b.source_id
               LEFT JOIN (
-                SELECT source_id, rgeom
+                SELECT source_id, rgeom AS geom
                 FROM maps.sources
-                WHERE scales = '%(target)s'
+                WHERE scale = '%(target)s'
               ) c ON ST_Intersects(a.geom, c.geom)
              -- LEFT JOIN carto.lines_%(target)s c ON ST_Intersects(a.geom, c.geom)
               WHERE priority = FALSE
