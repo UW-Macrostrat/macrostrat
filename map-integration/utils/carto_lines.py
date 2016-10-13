@@ -246,9 +246,14 @@ if __name__ == '__main__':
               FROM lines.%(below)s a
               JOIN maps.sources b
                 ON a.source_id = b.source_id
-              LEFT JOIN carto.lines_%(target)s_new c ON ST_Intersects(a.geom, c.geom)
-              WHERE priority = True
-              AND c.line_id IS NULL;
+              LEFT JOIN (
+                SELECT source_id, rgeom
+                FROM maps.sources
+                WHERE scales = '%(target)s'
+              ) c ON ST_Intersects(a.geom, c.geom)
+             -- LEFT JOIN carto.lines_%(target)s c ON ST_Intersects(a.geom, c.geom)
+              WHERE priority = FALSE
+              AND c.source_id IS NULL;
 
             INSERT INTO carto.lines_%(target)s_new (line_id, geom, scale, source_id, name, type, direction, descrip)
               SELECT a.line_id, a.geom,
@@ -261,9 +266,14 @@ if __name__ == '__main__':
               FROM lines.%(below)s a
               JOIN maps.sources b
                 ON a.source_id = b.source_id
-              LEFT JOIN carto.lines_%(target)s_new c ON ST_Intersects(a.geom, c.geom)
+              LEFT JOIN (
+                SELECT source_id, rgeom
+                FROM maps.sources
+                WHERE scales = '%(target)s'
+              ) c ON ST_Intersects(a.geom, c.geom)
+             -- LEFT JOIN carto.lines_%(target)s c ON ST_Intersects(a.geom, c.geom)
               WHERE priority = FALSE
-              AND c.line_id IS NULL;
+              AND c.source_id IS NULL;
 
             CREATE INDEX ON carto.lines_%(target)s_new (line_id);
             CREATE INDEX ON carto.lines_%(target)s_new USING GiST (geom);
