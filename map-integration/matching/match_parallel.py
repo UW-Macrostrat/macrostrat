@@ -2,6 +2,7 @@ import multiprocessing
 from match_multiprocessor import *
 import argparse
 import psycopg2
+import psycopg2.extras
 from psycopg2.extensions import AsIs
 import sys
 import os
@@ -22,7 +23,7 @@ import refresh
 if __name__ == '__main__':
 
   connection = psycopg2.connect(dbname="burwell", user=credentials.pg_user, host=credentials.pg_host, port=credentials.pg_port)
-  cursor = connection.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
+  cursor = connection.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
   parser = argparse.ArgumentParser(
     description="Match rocks to Macrostrat units",
