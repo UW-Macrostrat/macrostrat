@@ -65,6 +65,9 @@ if __name__ == '__main__':
         # Import it
         call(['shp2pgsql -I -s 4326 %s_rgeom.shp public.%s_rgeom | psql -h %s -p %s -U %s -d burwell' % (scale, scale, credentials.pg_host, credentials.pg_port, credentials.pg_user)], shell=True)
 
+        cursor.execute('UPDATE public.%s_rgeom SET geom = ST_MakeValid(geom)' % (scale,))
+        connection.commit()
+
         # Export intersecting geom
         call(['pgsql2shp -f intersecting.shp -u %s -h %s -p %s burwell "SELECT t.map_id, t.geom FROM carto.flat_%s t JOIN public.%s_rgeom sr ON ST_Intersects(t.geom, sr.geom)"' % (credentials.pg_user, credentials.pg_host, credentials.pg_port, scale, scale)], shell=True )
 
