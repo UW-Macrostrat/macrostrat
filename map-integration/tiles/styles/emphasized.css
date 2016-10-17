@@ -25,10 +25,10 @@
   line-width: 1;
 }
 .burwell[zoom=10] {
-  line-width: 0.5;
+  line-width: 0.65;
 }
 .burwell[zoom=11] {
-  line-width: 1;
+  line-width: 0.85;
 }
 .burwell[zoom=12] {
   line-width: 2.75;
@@ -66,10 +66,10 @@
   	line-width: 0.5;
   }
   [zoom = 3] {
-    line-width: 0.5;
+    line-width: 0.4;
   }
   [zoom = 3][direction!=""] {
-  	line-width: 0.8;
+  	line-width: 0.6;
   }
   [zoom = 4] {
     line-width:0.35;
@@ -108,27 +108,27 @@
   	line-width: 0.8;
   }
   [zoom = 10] {
-    line-width: 0.4;
+    line-width: 0.6;
   }
   [zoom = 10][direction!=""] {
-  	line-width: 0.6;
+  	line-width: 0.8;
   }
   [zoom = 11] {
-    line-width: 0.5;
+    line-width: 0.6;
   }
   [zoom = 11][direction!=""] {
-  	line-width: 0.7;
+  	line-width: 0.8;
   }
   [zoom = 12] {
-    line-width: 0.5;
+    line-width: 1;
   }
   [zoom = 12][direction!=""] {
-  	line-width: 0.7;
+  	line-width: 1.2;
   }
   [zoom > 12] {
-    line-width: 0.5;
+    line-width: 2;
   }
   [zoom > 12][direction!=""] {
-  	line-width: 0.7;
+  	line-width: 2.5;
   }
 }
