@@ -204,6 +204,7 @@ module.exports = function(req, res, next) {
       })
     },
     lines: function(cb) {
+      var scale = scaleLookup[req.query.z]
       larkin.queryPg('burwell', `
         SELECT
           m.line_id,
@@ -230,10 +231,10 @@ module.exports = function(req, res, next) {
       `, [`SRID=4326;POINT(${req.query.lng} ${req.query.lat})`], function(error, result) {
         if (error) return cb(error);
 
-        var bestFit = (result.rows && result.rows.length) ? result.rows[0] : {distance: 9999999}
+        var bestFit = (result.rows && result.rows.length) ? result.rows[0] : {}
 
         // Verify that the best fit is within a clickable tolerance
-        if (bestFit.distance <= (tolerance(req.query.lat, req.query.z) * 20 )) {
+        if (bestFit.hasOwnProperty('distance') && bestFit.distance >= (tolerance(req.query.lat, req.query.z) * 20 )) {
           bestFit = {}
         }
 
