@@ -184,7 +184,7 @@ function deleteTile(tile, callback) {
 // Create the tiles
 function seed(tiles, showProgress, callback) {
   if (showProgress) {
-    var bar = new ProgressBar(':bar :current of :total', { total: tiles.length, width: 50 });
+    var bar = new ProgressBar('   :bar :current of :total', { total: tiles.length, width: 50 });
   }
 
   // Create 20 tiles at a time
@@ -246,7 +246,7 @@ function reseed(geometries, scale, done) {
               cba();
           });
         }, function(error) {
-          console.log('Done deleting large scale tiles');
+          console.log('   Done deleting large scale tiles');
           callback(null, shapes);
         });
       } else {
@@ -308,7 +308,7 @@ function reseed(geometries, scale, done) {
       });
 
       // Add a progress bar
-      var bar = new ProgressBar(':bar :percent', { total: (shapes.length * zToSeed.length), width: 50 });
+      var bar = new ProgressBar('   :bar :percent', { total: (shapes.length * zToSeed.length), width: 50 });
 
       // For each section/shape...
       async.eachLimit(shapes, 1, function(shape, cb) {
@@ -466,8 +466,8 @@ module.exports = function(params) {
         break;
       case 'source':
       case 'scale':
-        async.eachLimit(params.source_id, 1, function(d, cb) {
-          console.log('Working on ', d)
+        async.forEachOfLimit(params.source_id, 1, function(d, idx, cb) {
+          console.log(`Working on ${d} (${idx}/${params.source_id.length})`)
           reseedSource(d, function() {
             cb()
           })
