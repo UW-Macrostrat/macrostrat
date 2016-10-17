@@ -242,7 +242,7 @@ module.exports = function(req, res, next) {
         var bestFit = getBestFit(req.query.z, result.rows)[0]
 
         // Verify that the best fit is within a clickable tolerance
-        if (bestFit.distance >= (tolerance(req.query.lat, req.query.z) * 20 )) {
+        if (bestFit.distance <= (tolerance(req.query.lat, req.query.z) * 20 )) {
           bestFit = {}
         }
 
