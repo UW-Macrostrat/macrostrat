@@ -102,28 +102,28 @@
   	line-width: 0.6;
   }
   [zoom = 6] {
-    line-width: 0.35;
+    line-width: 0.25;
   }
   [zoom = 6][direction!=""] {
-  	line-width: 0.55;
+  	line-width: 0.45;
   }
   [zoom = 7] {
-    line-width: 0.4;
+    line-width: 0.3;
   }
   [zoom = 7][direction!=""] {
-  	line-width: 0.6;
+  	line-width: 0.4;
   }
   [zoom = 8] {
-    line-width: 0.6;
+    line-width: 0.5;
   }
   [zoom = 8][direction!=""] {
-  	line-width: 0.8;
+  	line-width: 0.7;
   }
   [zoom = 9] {
-    line-width: 0.8;
+    line-width: 0.7;
   }
   [zoom = 9][direction!=""] {
-  	line-width: 1;
+  	line-width: 0.8;
   }
   [zoom = 10] {
     line-width: 0.8;
