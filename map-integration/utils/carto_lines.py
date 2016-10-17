@@ -54,7 +54,7 @@ def refresh(scale, source_id):
               '%(target)s'::text AS scale,
               a.source_id,
               COALESCE(a.name, '') AS name,
-              COALESCE(a.type, '') AS type,
+              COALESCE(a.new_type, '') AS type,
               COALESCE(a.direction, '') AS direction,
               COALESCE(a.descrip, '') AS descrip
           FROM lines.%(target)s a
@@ -73,7 +73,7 @@ def refresh(scale, source_id):
               '%(target)s'::text AS scale,
               a.source_id,
               COALESCE(a.name, '') AS name,
-              COALESCE(a.type, '') AS type,
+              COALESCE(a.new_type, '') AS type,
               COALESCE(a.direction, '') AS direction,
               COALESCE(a.descrip, '') AS descrip
           FROM lines.%(target)s a
@@ -94,7 +94,7 @@ def refresh(scale, source_id):
               '%(below)s'::text AS scale,
               a.source_id,
               COALESCE(a.name, '') AS name,
-              COALESCE(a.type, '') AS type,
+              COALESCE(a.new_type, '') AS type,
               COALESCE(a.direction, '') AS direction,
               COALESCE(a.descrip, '') AS descrip
           FROM lines.%(below)s a
@@ -120,7 +120,7 @@ def refresh(scale, source_id):
               '%(below)s'::text AS scale,
               a.source_id,
               COALESCE(a.name, '') AS name,
-              COALESCE(a.type, '') AS type,
+              COALESCE(a.new_type, '') AS type,
               COALESCE(a.direction, '') AS direction,
               COALESCE(a.descrip, '') AS descrip
           FROM lines.%(below)s a
@@ -169,7 +169,7 @@ if __name__ == '__main__':
                   'tiny'::text AS scale,
                   a.source_id,
                   COALESCE(a.name, '') AS name,
-                  COALESCE(a.type, '') AS type,
+                  COALESCE(a.new_type, '') AS type,
                   COALESCE(a.direction, '') AS direction,
                   COALESCE(a.descrip, '') AS descrip
               FROM lines.tiny a
@@ -181,7 +181,7 @@ if __name__ == '__main__':
                   'tiny'::text AS scale,
                   a.source_id,
                   COALESCE(a.name, '') AS name,
-                  COALESCE(a.type, '') AS type,
+                  COALESCE(a.new_type, '') AS type,
                   COALESCE(a.direction, '') AS direction,
                   COALESCE(a.descrip, '') AS descrip
               FROM lines.tiny a
@@ -212,7 +212,7 @@ if __name__ == '__main__':
                   '%(target)s'::text AS scale,
                   a.source_id,
                   COALESCE(a.name, '') AS name,
-                  COALESCE(a.type, '') AS type,
+                  COALESCE(a.new_type, '') AS type,
                   COALESCE(a.direction, '') AS direction,
                   COALESCE(a.descrip, '') AS descrip
               FROM lines.%(target)s a
@@ -225,7 +225,7 @@ if __name__ == '__main__':
                   '%(target)s'::text AS scale,
                   a.source_id,
                   COALESCE(a.name, '') AS name,
-                  COALESCE(a.type, '') AS type,
+                  COALESCE(a.new_type, '') AS type,
                   COALESCE(a.direction, '') AS direction,
                   COALESCE(a.descrip, '') AS descrip
               FROM lines.%(target)s a
@@ -240,7 +240,7 @@ if __name__ == '__main__':
                   '%(below)s'::text AS scale,
                   a.source_id,
                   COALESCE(a.name, '') AS name,
-                  COALESCE(a.type, '') AS type,
+                  COALESCE(a.new_type, '') AS type,
                   COALESCE(a.direction, '') AS direction,
                   COALESCE(a.descrip, '') AS descrip
               FROM lines.%(below)s a
@@ -260,7 +260,7 @@ if __name__ == '__main__':
                   '%(below)s'::text AS scale,
                   a.source_id,
                   COALESCE(a.name, '') AS name,
-                  COALESCE(a.type, '') AS type,
+                  COALESCE(a.new_type, '') AS type,
                   COALESCE(a.direction, '') AS direction,
                   COALESCE(a.descrip, '') AS descrip
               FROM lines.%(below)s a
