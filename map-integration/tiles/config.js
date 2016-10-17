@@ -38,7 +38,7 @@ module.exports = {
     "tiny": [0, 1, 2, 3],
     "small": [4, 5],
     "medium": [6, 7, 8, 9],
-    "large": [10, 11, 12]
+    "large": [10, 11, 12, 13]
   },
 
   // The order in which scales should be drawn for each layer
