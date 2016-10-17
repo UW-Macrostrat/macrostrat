@@ -184,7 +184,7 @@ function deleteTile(tile, callback) {
 // Create the tiles
 function seed(tiles, showProgress, callback) {
   if (showProgress) {
-    var bar = new ProgressBar('   :bar :current of :total', { total: tiles.length, width: 50 });
+    var bar = new ProgressBar('     :bar :current of :total', { total: tiles.length, width: 50 });
   }
 
   // Create 20 tiles at a time
@@ -222,7 +222,7 @@ function reseed(geometries, scale, done) {
       }
       // Otherwise, split the envelope into sections
       else {
-        console.log('   Splitting extent')
+        console.log('   - Splitting extent')
         splitExtent(geometries[0], function(sections) {
           callback(null, sections, scale);
         });
@@ -232,7 +232,7 @@ function reseed(geometries, scale, done) {
     // If the scale is medium or large, clear the cache
     function(shapes, scale, callback) {
       if (scale && (scale === 'medium' || scale === 'large')) {
-        console.log('   Clearing large cache');
+        console.log('   - Clearing large cache');
         async.each(config.scaleMap['large'], function(z, cba) {
           async.each(shapes, function(shape, cbb) {
             async.each(getTileList(shape, z), function(tile, cbc) {
@@ -246,7 +246,6 @@ function reseed(geometries, scale, done) {
               cba();
           });
         }, function(error) {
-          console.log('   Done deleting large scale tiles');
           callback(null, shapes);
         });
       } else {
@@ -256,7 +255,7 @@ function reseed(geometries, scale, done) {
 
     // Seed the cache for z0-z6
     function(shapes, callback) {
-      console.log('   Seeding z0-6');
+      console.log('   - Seeding z0-6');
       var tiles = [];
 
       // If seeding all, just generate all tiles
@@ -299,7 +298,7 @@ function reseed(geometries, scale, done) {
 
     // Seed the cache for z7-10
     function(shapes, callback) {
-      console.log('   Seeding z7-10');
+      console.log('   - Seeding z7-10');
 
       var zToSeed = seedableZooms.filter(function(d) {
         if (d > 6) {
@@ -308,7 +307,7 @@ function reseed(geometries, scale, done) {
       });
 
       // Add a progress bar
-      var bar = new ProgressBar('   :bar :percent', { total: (shapes.length * zToSeed.length), width: 50 });
+      var bar = new ProgressBar('     :bar :percent', { total: (shapes.length * zToSeed.length), width: 50 });
 
       // For each section/shape...
       async.eachLimit(shapes, 1, function(shape, cb) {
@@ -467,7 +466,7 @@ module.exports = function(params) {
       case 'source':
       case 'scale':
         async.forEachOfLimit(params.source_id, 1, function(d, idx, cb) {
-          console.log(`Working on ${d} (${idx}/${params.source_id.length})`)
+          console.log(`Working on ${d} (${idx + 1}/${params.source_id.length})`)
           reseedSource(d, function() {
             cb()
           })
