@@ -211,7 +211,7 @@ function seed(tiles, showProgress, callback) {
 }
 
 
-function reseed(geometries, scale) {
+function reseed(geometries, scale, done) {
   async.waterfall([
 
     // Get the envelope of the geometries
@@ -222,7 +222,7 @@ function reseed(geometries, scale) {
       }
       // Otherwise, split the envelope into sections
       else {
-        console.log('Splitting extent')
+        console.log('   Splitting extent')
         splitExtent(geometries[0], function(sections) {
           callback(null, sections, scale);
         });
@@ -232,7 +232,7 @@ function reseed(geometries, scale) {
     // If the scale is medium or large, clear the cache
     function(shapes, scale, callback) {
       if (scale && (scale === 'medium' || scale === 'large')) {
-        console.log('Clearing large cache');
+        console.log('   Clearing large cache');
         async.each(config.scaleMap['large'], function(z, cba) {
           async.each(shapes, function(shape, cbb) {
             async.each(getTileList(shape, z), function(tile, cbc) {
@@ -256,7 +256,7 @@ function reseed(geometries, scale) {
 
     // Seed the cache for z0-z6
     function(shapes, callback) {
-      console.log('Seeding z0-6');
+      console.log('   Seeding z0-6');
       var tiles = [];
 
       // If seeding all, just generate all tiles
@@ -299,7 +299,7 @@ function reseed(geometries, scale) {
 
     // Seed the cache for z7-10
     function(shapes, callback) {
-      console.log('Seeding z7-10');
+      console.log('   Seeding z7-10');
 
       var zToSeed = seedableZooms.filter(function(d) {
         if (d > 6) {
@@ -343,6 +343,9 @@ function reseed(geometries, scale) {
 
     }], function() {
       // Done with all shapes
+      if (done) {
+        return done()
+      }
       console.log('Done seeding');
       process.exit();
     });
@@ -381,10 +384,10 @@ function reseedAll() {
 
 
 
-function reseedSource(source_id) {
-  console.log('Getting bounds for source_id ', source_id);
+function reseedSource(source_id, done) {
+//  console.log('Getting bounds for source_id ', source_id);
   getBounds(source_id, function(bbox, scale) {
-    reseed([JSON.parse(bbox)], scale);
+    reseed([JSON.parse(bbox)], scale, done);
   });
 }
 
@@ -463,9 +466,14 @@ module.exports = function(params) {
         break;
       case 'source':
       case 'scale':
-        params.source_id.forEach(function(d) {
-          reseedSource(d);
-        });
+        async.eachLimit(params.source_id, 1, function(d, cb) {
+          console.log('Working on ', d)
+          reseedSource(d, function() {
+            cb()
+          })
+        }, function(error) {
+          process.exit(0)
+        })
         break;
       default:
         console.log('QUITTING - no valid operation passed')
