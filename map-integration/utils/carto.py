@@ -65,11 +65,11 @@ if __name__ == '__main__':
         # Import it
         call(['shp2pgsql -I -s 4326 %s_rgeom.shp public.%s_rgeom | psql -h %s -p %s -U %s -d burwell' % (scale, scale, credentials.pg_host, credentials.pg_port, credentials.pg_user)], shell=True)
 
-        cursor.execute('UPDATE public.%s_rgeom SET geom = ST_MakeValid(geom)' % (scale,))
+        cursor.execute('UPDATE public.%s_rgeom SET geom = ST_SetSRID(ST_MakeValid(geom), 4326)' % (scale,))
         connection.commit()
 
         # Export intersecting geom
-        call(['pgsql2shp -f intersecting.shp -u %s -h %s -p %s burwell "SELECT t.map_id, t.geom FROM carto.flat_%s t JOIN public.%s_rgeom sr ON ST_Intersects(t.geom, sr.geom)"' % (credentials.pg_user, credentials.pg_host, credentials.pg_port, scale, scale)], shell=True )
+        call(['pgsql2shp -f intersecting.shp -u %s -h %s -p %s burwell "SELECT t.map_id, t.geom FROM carto.flat_%s t JOIN public.%s_rgeom sr ON ST_Intersects(ST_SetSRID(t.geom,4326) sr.geom)"' % (credentials.pg_user, credentials.pg_host, credentials.pg_port, scale, scale)], shell=True )
 
         # Remove the parts of the intersecting geoms that intersect scales above
         call(['mapshaper intersecting.shp -erase rgeom.shp -o clipped.shp'], shell=True)
