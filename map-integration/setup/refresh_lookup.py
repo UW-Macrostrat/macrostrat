@@ -1,5 +1,6 @@
 import psycopg2
 from psycopg2.extensions import AsIs
+import psycopg2.extras
 import sys, os
 import argparse
 import time
@@ -22,7 +23,7 @@ except:
   print "Could not connect to database: ", sys.exc_info()[1]
   sys.exit()
 
-cursor = connection.cursor()
+cursor = connection.cursor(ursor_factory=psycopg2.extras.RealDictCursor)
 
 valid_scales = ["tiny", "small", "medium", "large"]
 
