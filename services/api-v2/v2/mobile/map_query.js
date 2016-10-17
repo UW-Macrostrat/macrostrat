@@ -34,10 +34,10 @@ var scaleLookup = {
 }
 // Determine a priority order for each scale
 var priorities = {
-  'tiny': ['tiny', 'small', 'medium', 'large'],
-  'small': ['small', 'medium', 'large', 'tiny'],
-  'medium': ['medium', 'large', 'small', 'tiny'],
-  'large': ['large', 'medium', 'small', 'tiny']
+  'tiny': ['tiny'],
+  'small': ['small', 'tiny'],
+  'medium': ['medium', 'small'],
+  'large': ['large', 'medium']
 }
 
 // https://msdn.microsoft.com/en-us/library/bb259689.aspx
@@ -174,34 +174,6 @@ function buildSQL(scale, where) {
   `
 }
 
-function buildLineSQL(scale) {
-  return `
-  (
-    SELECT
-      m.line_id,
-      COALESCE(m.name, '') AS name,
-      COALESCE(m.type, '') AS type,
-      COALESCE(m.direction, '') AS direction,
-      COALESCE(m.descrip, '') AS descrip,
-      '${scale}' AS scale,
-      (SELECT row_to_json(r) FROM (SELECT
-        source_id,
-        name,
-        COALESCE(url, '') url,
-        COALESCE(ref_title, '') ref_title,
-        COALESCE(authors, '') authors,
-        COALESCE(ref_year, '') ref_year,
-        COALESCE(ref_source, '') ref_source,
-        COALESCE(isbn_doi, '') isbn_doi
-        FROM maps.sources
-        WHERE source_id = m.source_id) r)::jsonb AS ref,
-      ST_Distance_Spheroid(m.geom, $1, 'SPHEROID["WGS 84",6378137,298.257223563]') AS distance
-    FROM lines.${scale} m
-    ORDER BY m.geom <-> $1
-    LIMIT 1
-  )
-  `
-}
 
 // Accepts a longitude, a latitude, and a zoom level
 // Returns the proper burwell data and macrostrat data
@@ -232,14 +204,33 @@ module.exports = function(req, res, next) {
       })
     },
     lines: function(cb) {
-      var sql = Object.keys(priorities).map(function(scale) {
-        return buildLineSQL(scale)
-      }).join(' UNION ')
-
-      larkin.queryPg('burwell', `SELECT * FROM ( ${sql} ) doit`, [`SRID=4326;POINT(${req.query.lng} ${req.query.lat})`], function(error, result) {
+      larkin.queryPg('burwell', `
+        SELECT
+          m.line_id,
+          COALESCE(m.name, '') AS name,
+          COALESCE(m.type, '') AS type,
+          COALESCE(m.direction, '') AS direction,
+          COALESCE(m.descrip, '') AS descrip,
+          '${scale}' AS scale,
+          (SELECT row_to_json(r) FROM (SELECT
+            source_id,
+            name,
+            COALESCE(url, '') url,
+            COALESCE(ref_title, '') ref_title,
+            COALESCE(authors, '') authors,
+            COALESCE(ref_year, '') ref_year,
+            COALESCE(ref_source, '') ref_source,
+            COALESCE(isbn_doi, '') isbn_doi
+            FROM maps.sources
+            WHERE source_id = m.source_id) r)::jsonb AS ref,
+          ST_Distance_Spheroid(m.geom, $1, 'SPHEROID["WGS 84",6378137,298.257223563]') AS distance
+        FROM carto.lines_${scale} m
+        ORDER BY m.geom <-> $1
+        LIMIT 1
+      `, [`SRID=4326;POINT(${req.query.lng} ${req.query.lat})`], function(error, result) {
         if (error) return cb(error);
 
-        var bestFit = getBestFit(req.query.z, result.rows)[0]
+        var bestFit = (result.rows && result.rows.length) ? result.rows[0] : {distance: 9999999}
 
         // Verify that the best fit is within a clickable tolerance
         if (bestFit.distance <= (tolerance(req.query.lat, req.query.z) * 20 )) {
