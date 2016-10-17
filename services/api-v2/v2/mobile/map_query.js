@@ -195,7 +195,7 @@ function buildLineSQL(scale) {
         COALESCE(isbn_doi, '') isbn_doi
         FROM maps.sources
         WHERE source_id = m.source_id) r)::jsonb AS ref,
-      ST_Distance(m.geom, $1) AS distance
+      ST_Distance(m.geom::geography, $1::geography) AS distance
     FROM lines.${scale} m
     ORDER BY m.geom <-> $1
     LIMIT 1
