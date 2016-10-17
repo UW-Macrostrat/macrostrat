@@ -126,28 +126,28 @@
   	line-width: 1;
   }
   [zoom = 10] {
-    line-width: 1;
+    line-width: 0.8;
   }
   [zoom = 10][direction!=""] {
-  	line-width: 1.2;
+  	line-width: 1;
   }
   [zoom = 11] {
-    line-width: 1.2;
+    line-width: 1.1;
   }
   [zoom = 11][direction!=""] {
-  	line-width: 1.4;
+  	line-width: 1.3;
   }
   [zoom = 12] {
-    line-width: 1.6;
+    line-width: 1.5;
   }
   [zoom = 12][direction!=""] {
-  	line-width: 1.8;
+  	line-width: 1.7;
   }
   [zoom = 13] {
-    line-width: 2.1;
+    line-width: 2;
   }
   [zoom = 13][direction!=""] {
-    line-width: 2.35;
+    line-width: 2.25;
   }
   [zoom = 14] {
     line-width: 3;
