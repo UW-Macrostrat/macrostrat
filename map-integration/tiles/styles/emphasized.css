@@ -51,51 +51,84 @@
 .lines {
   line-color:#000000;
  }
-.lines [zoom = 0] {
-  line-width: 0.3;
-}
-.lines [zoom = 1] {
-  line-width: 0.3;
-}
-.lines [zoom = 2] {
-  line-width: 0.3;
-}
-.lines [zoom = 3] {
-  line-width: 0.5;
-}
-.lines [zoom = 4] {
-  line-width:0.35;
-}
-.lines [zoom = 5] {
-  line-width: 0.4;
-}
-.lines [zoom = 6] {
-  line-width: 0.3;
-}
-.lines [zoom = 7] {
-  line-width: 0.4;
-}
-.lines [zoom = 8] {
-  line-width: 0.6;
-}
-.lines [zoom = 8] {
-  line-width: 0.6;
-}
-.lines [zoom = 9] {
-  line-width: 0.6;
-}
-.lines [zoom = 9] {
-  line-width: 0.6;
-}
-.lines [zoom = 9] {
-  line-width: 0.5;
-}
-.lines [zoom = 10] {
-  line-width: 0.4;
-}
-.lines [zoom = 11] {
-  line-width: 0.5;
-}
-.lines [zoom = 12] {
-  line-width: 0.5;
+
+.lines {
+  [zoom = 0] {
+    line-width: 0.3;
+  }
+  [zoom = 1] {
+    line-width: 0.3;
+  }
+  [zoom = 2] {
+    line-width: 0.3;
+  }
+  [zoom = 2][direction!=""] {
+  	line-width: 0.5;
+  }
+  [zoom = 3] {
+    line-width: 0.5;
+  }
+  [zoom = 3][direction!=""] {
+  	line-width: 0.8;
+  }
+  [zoom = 4] {
+    line-width:0.35;
+  }
+  [zoom = 4][direction!=""] {
+  	line-width: 0.55;
+  }
+  [zoom = 5] {
+    line-width: 0.4;
+  }
+  [zoom = 5][direction!=""] {
+  	line-width: 0.6;
+  }
+  [zoom = 6] {
+    line-width: 0.3;
+  }
+  [zoom = 6][direction!=""] {
+  	line-width: 0.5;
+  }
+  [zoom = 7] {
+    line-width: 0.4;
+  }
+  [zoom = 7][direction!=""] {
+  	line-width: 0.6;
+  }
+  [zoom = 8] {
+    line-width: 0.6;
+  }
+  [zoom = 8][direction!=""] {
+  	line-width: 0.8;
+  }
+  [zoom = 9] {
+    line-width: 0.6;
+  }
+  [zoom = 9][direction!=""] {
+  	line-width: 0.8;
+  }
+  [zoom = 10] {
+    line-width: 0.4;
+  }
+  [zoom = 10][direction!=""] {
+  	line-width: 0.6;
+  }
+  [zoom = 11] {
+    line-width: 0.5;
+  }
+  [zoom = 11][direction!=""] {
+  	line-width: 0.7;
+  }
+  [zoom = 12] {
+    line-width: 0.5;
+  }
+  [zoom = 12][direction!=""] {
+  	line-width: 0.7;
+  }
+  [zoom > 12] {
+    line-width: 0.5;
+  }
+  [zoom > 12][direction!=""] {
+  	line-width: 0.7;
+  }
 }
