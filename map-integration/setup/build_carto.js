@@ -143,6 +143,7 @@ scales.forEach(function(scale, idx) {
   )`);
 });
 
+
 var resultQuery = 'result AS ( '
 
 // Union everything

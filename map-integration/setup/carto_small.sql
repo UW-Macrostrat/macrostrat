@@ -1,18 +1,22 @@
 DROP TABLE IF EXISTS carto.small;
 -- Format small
 create table carto.small as
+-- Get the reference geom of all sources flagged as 'small' and with high priority
 WITH priority_ref AS (
   SELECT 1 AS id, ST_SetSRID(ST_Union(rgeom), 4326) geom
   FROM maps.sources
   WHERE scale = 'small'
   AND priority IS TRUE
 ),
+-- Get the actual geometries that belong to the above scale and priority
 priorities AS (
   SELECT s.map_id, s.geom
   FROM maps.small s
   JOIN maps.sources ON s.source_id = sources.source_id
   WHERE priority IS TRUE
 ),
+-- Get all polygons of the target source that DON'T intersect the reference geometry of high priority sources
+-- These don't need to be cut!
 nonpriority_unique AS (
   SELECT s.map_id, s.geom
   FROM maps.small s
@@ -23,6 +27,8 @@ nonpriority_unique AS (
   AND priority IS FALSE
   AND ST_Geometrytype(s.geom) != 'ST_LineString'
 ),
+-- Get all polygons of the target scale that intersect the reference geometry of the high priority sources
+-- Cut them by the high priority sources
 nonpriority_clipped AS (
   SELECT s.map_id, ST_Difference(s.geom, pr.geom) geom
   FROM maps.small s
@@ -31,6 +37,10 @@ nonpriority_clipped AS (
   JOIN maps.sources ON s.source_id = sources.source_id
   WHERE priority IS FALSE
 ),
+-- Join together:
+--    + All geometries that are high priority (never cut)
+--    + Low priority geometries that don't intersect the high priority ones
+--    + Low priority geometries that DO intersect the high priority ones
 small AS (
   SELECT map_id, geom
   FROM priorities
@@ -44,7 +54,8 @@ small AS (
   FROM nonpriority_clipped
   WHERE ST_NumGeometries(geom) > 0
 ),
--- Format tiny
+
+-- Do the same as above, but for tiny
 tiny_priority_ref AS (
   SELECT 1 AS id, ST_SetSRID(ST_Union(rgeom), 4326) geom
   FROM maps.sources
@@ -88,11 +99,14 @@ tiny AS (
   FROM tiny_nonpriority_clipped
   WHERE ST_NumGeometries(geom) > 0
 ),
+
+-- Union the reference geometry of all small sources
 small_ref AS (
   SELECT 1 AS id, ST_SetSRID(ST_Union(rgeom), 4326) geom
   FROM maps.sources
   WHERE scale = 'small'
 ),
+-- Get polygons from tiny that don't intersect small at all
 unique_tiny AS (
   SELECT t.map_id, t.geom
   FROM tiny t
@@ -101,12 +115,17 @@ unique_tiny AS (
   WHERE sr.id IS NULL
   AND ST_Geometrytype(t.geom) != 'ST_LineString'
 ),
+-- Clip the parts of tiny the intersect small
 tiny_clipped AS (
   SELECT t.map_id, ST_Difference(t.geom, sr.geom) geom
   FROM tiny t
   JOIN small_ref sr
   ON ST_Intersects(t.geom, sr.geom)
 ),
+-- get the result:
+--    + All polygons from the 'small' queries
+--    + The polygons from tiny that don't touch small
+--    + The cut polygons from tiny that intersect tiny
 result AS (
   SELECT map_id, 'small' AS scale, geom
   FROM small
@@ -117,7 +136,7 @@ result AS (
   SELECT map_id, 'tiny' AS scale, geom
   FROM tiny_clipped
 )
-
+-- Synthesize everything into a nice table
 SELECT r.map_id, r.scale, m.source_id,
 COALESCE(m.name, '') AS name,
 COALESCE(m.strat_name, '') AS strat_name,

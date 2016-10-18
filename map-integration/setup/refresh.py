@@ -43,7 +43,7 @@ def refresh(cursor, connection, scale, source_id):
     WHERE map_id IN (
         SELECT map_id
         FROM maps.%(scale)s
-        WHERE source_id =  %(source_id)s
+        WHERE source_id = %(source_id)s
     )
     """, {"scale": AsIs(scale), "source_id": source_id})
 

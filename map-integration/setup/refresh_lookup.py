@@ -23,7 +23,7 @@ except:
   print "Could not connect to database: ", sys.exc_info()[1]
   sys.exit()
 
-cursor = connection.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+cursor = connection.cursor()
 
 valid_scales = ["tiny", "small", "medium", "large"]
 
