@@ -69,5 +69,8 @@ if __name__ == '__main__':
     print '| | | | | Adding to carto.lines...'
     call(['python utils/carto_lines.py --source_id %s' % (arguments.source_id, )], shell=True)
     print '| | | | | Done adding to carto.lines | | | | | '
-    
+
     # Make tiles
+    print '| | | | | Rolling tiles...'
+    call(['node tiles/simple_seed.js --source_id %s --layers emphasized' % (arguments.source_id, )], shell=True)
+    print '| | | | | Done rolling tiles | | | | | '
