@@ -409,7 +409,7 @@ function getScaleSources(scale, callback) {
   });
 }
 
-module.exports = function(params) {
+module.exports = function(params, done) {
   async.series([
     function(callback) {
       tileSet = params.tileSet;
@@ -471,6 +471,9 @@ module.exports = function(params) {
             cb()
           })
         }, function(error) {
+          if (done) {
+            return done()
+          }
           process.exit(0)
         })
         break;
