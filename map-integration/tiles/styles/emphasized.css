@@ -90,7 +90,7 @@
   	line-width: 0.5;
   }
   [zoom = 2][type="dike"] {
-    line-width: 0.1;
+    line-width: 0.25;
   }
 
   [zoom = 3] {
@@ -100,7 +100,7 @@
   	line-width: 0.6;
   }
   [zoom = 3][type="dike"] {
-    line-width: 2;
+    line-width: 0.35;
   }
 
   [zoom = 4] {
@@ -110,7 +110,7 @@
   	line-width: 0.55;
   }
   [zoom = 4][type="dike"] {
-    line-width: 0.15;
+    line-width: 0.3;
   }
 
   [zoom = 5] {
@@ -120,7 +120,7 @@
   	line-width: 0.6;
   }
   [zoom = 5][type="dike"] {
-    line-width: 0.2;
+    line-width: 0.35;
   }
 
   [zoom = 6] {
@@ -130,7 +130,7 @@
   	line-width: 0.45;
   }
   [zoom = 6][type="dike"] {
-    line-width: 0.05;
+    line-width: 0.2;
   }
 
   [zoom = 7] {
@@ -140,7 +140,7 @@
   	line-width: 0.4;
   }
   [zoom = 7][type="dike"] {
-    line-width: 0.1;
+    line-width: 0.25;
   }
 
   [zoom = 8] {
@@ -150,7 +150,7 @@
   	line-width: 0.7;
   }
   [zoom = 8][type="dike"] {
-    line-width: 0.3;
+    line-width: 0.45;
   }
 
   [zoom = 9] {
@@ -160,7 +160,7 @@
   	line-width: 0.8;
   }
   [zoom = 9][type="dike"] {
-    line-width: 0.5;
+    line-width: 0.65;
   }
 
   [zoom = 10] {
@@ -170,7 +170,7 @@
   	line-width: 1;
   }
   [zoom = 10][type="dike"] {
-    line-width: 0.6;
+    line-width: 0.75;
   }
 
   [zoom = 11] {
@@ -180,7 +180,7 @@
   	line-width: 1.3;
   }
   [zoom = 11][type="dike"] {
-    line-width: 0.9;
+    line-width: 1;
   }
 
   [zoom = 12] {
@@ -190,7 +190,7 @@
   	line-width: 1.7;
   }
   [zoom = 12][type="dike"] {
-    line-width: 1.3;
+    line-width: 1.4;
   }
 
   [zoom = 13] {
@@ -200,7 +200,7 @@
     line-width: 2.25;
   }
   [zoom = 13][type="dike"] {
-    line-width: 1.8;
+    line-width: 1.9;
   }
 
   [zoom = 14] {
@@ -210,7 +210,7 @@
     line-width: 3.25;
   }
   [zoom = 14][type="dike"] {
-    line-width: 2.5;
+    line-width: 2.8;
   }
 
   [zoom = 15] {
@@ -220,7 +220,7 @@
     line-width: 4;
   }
   [zoom = 15][type="dike"] {
-    line-width: 3;
+    line-width: 3.5;
   }
 
   [zoom = 16] {
@@ -230,7 +230,7 @@
     line-width: 5.5;
   }
   [zoom = 16][type="dike"] {
-    line-width: 4;
+    line-width: 4.5;
   }
 
   [zoom > 16] {
