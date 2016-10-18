@@ -19,7 +19,11 @@ def source_stats(cursor, connection, source_id):
       UPDATE maps.sources AS a
       SET area = s.area, features = s.features
       FROM third AS s
-      WHERE a.source_id = %(source_id)s
+      WHERE a.source_id = %(source_id)s;
+
+      UPDATE maps.sources
+      SET display_scales = ARRAY[scale]
+      WHERE source_id = %(source_id)s;
     """, {
         "primary_table": AsIs(primary_table),
         "source_id": source_id

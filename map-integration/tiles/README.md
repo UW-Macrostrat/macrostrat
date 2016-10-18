@@ -9,6 +9,9 @@ You just imported a new source and want to create tiles:
 
 Follow the prompts.
 
+Alternatively, you can call `node simple_seed.js --source_id 1234`
+
+
 ## Structure
 When you call `seed`, you are walked through a series of prompts to determine the parameters to be passed to the seeding scripts.
 The parameters the user passes to `seed` are then passed to `seeder.js`, which uses those parameters to initialize the tile providers
@@ -42,3 +45,21 @@ Your postgres credentials for accessing the database
 
 ## config.js
 Configuration options for rolling tiles
+
+
+## How it works
+`seed`
+  Params:
+    + target (a source, scale, or all)
+    + scale (an optional scale)
+    + source_id (an optional source_id)
+    + tileType (raster or vector)
+    + tileSet (which stylesheet to apply)
+
+  These params are passed to `seeder.js`
+    + Build Mapnik files
+      -> `./setup`
+        * `buildStyles` (gets unique colors to apply to polygons)
+        * `createProject` (done for each scale that is a part of the stack for the given scale)
+          = `createLayer`
+        * Outputs to `compiled_styles/burwell_<scale>_<style>.xml`

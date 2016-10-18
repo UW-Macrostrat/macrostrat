@@ -4,7 +4,6 @@ Multiscale geologic map integration
 ## TL;DR
 1. `./import tataouine ~/Downloads/tataouine.shp`
 2. `python process_source.py --source_id 1234`
-3. `tiles/seed`
 
 
 ## Setup
@@ -37,11 +36,20 @@ _Import a single shapefile:_
 ./import ontario ~/Downloads/ontario/Greenland.shp true LATIN1
 ````
 
-Once a source has been imported, be sure to update the sources stats in `maps.sources`:
 
+## processing
+Processing a source involves matching, refreshing lookup tables, building an `rgeom`, refreshing carto tables for lines, and rolling tiles. While these steps can be done individually, they should be done all at once by using `process_source.py`.
+
+**This should only be called after the units and lines for a given source have been imported into their respective homogenized tables!!!**
+
+##### Parameters:
++ ````source_id```` - A valid source_id to process
+
+##### Examples:
+
+_Process a source:_
 ````
-psql burwell < setup/update_source_stats.sql
-python import_scrips/union.py <source_id>
+python process_source.py --source_id 1234
 ````
 
 
@@ -75,7 +83,6 @@ The lookup tables are automatically rebuilt after running `match_parallel.py`, b
 ````
 python setup/refresh_lookup.py **scale or source_id**
 ````
-
 
 
 
