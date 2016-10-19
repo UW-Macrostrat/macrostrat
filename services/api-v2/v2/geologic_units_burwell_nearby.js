@@ -204,6 +204,9 @@ module.exports = function(req, res, next) {
     return;
   }
 
+  req.query.lng = parseFloat(req.query.lng).toFixed(4)
+  req.query.lat = parseFloat(req.query.lat).toFixed(4)
+
   async.parallel({
     strat_names: function(callback) {
       larkin.queryPg("burwell", sql.strat_names, [req.query.lng, req.query.lat], function(error, data) {
