@@ -49,45 +49,50 @@ var sql = {
 
   strat_names: `
   WITH nn AS (
-    SELECT strat_name_id, strat_name, strat_name_long, bed, mbr, fm, gp, sgp, b_age, t_age, distance, b_period, t_period
+    SELECT strat_name_id, strat_name, strat_name_long, bed, mbr, fm, gp, sgp, b_age, t_age, b_period, t_period, geom, row_number() OVER() as row_number
     FROM (
-      (SELECT msn.strat_name_id, lookup_strat_names.strat_name, lookup_strat_names.rank_name AS strat_name_long, bed_name AS bed, mbr_name AS mbr, fm_name AS fm, gp_name AS gp, sgp_name AS sgp, early_age AS b_age, late_age AS t_age, ST_Distance(geom, st_setsrid(st_makepoint($1, $2),4326)) AS distance, b_period, t_period
-       FROM maps.large m
-       LEFT JOIN maps.map_strat_names msn ON m.map_id = msn.map_id
-       LEFT JOIN macrostrat.lookup_strat_names ON lookup_strat_names.strat_name_id = msn.strat_name_id
-       WHERE msn.strat_name_id IS NOT NULL
-       ORDER BY geom <#> st_setsrid(st_makepoint($1, $2),4326)
-       LIMIT 100)
+      SELECT strat_name_id, strat_name, strat_name_long, bed, mbr, fm, gp, sgp, b_age, t_age, b_period, t_period, geom FROM (
+        SELECT msn.strat_name_id, lookup_strat_names.strat_name, lookup_strat_names.rank_name AS strat_name_long, bed_name AS bed, mbr_name AS mbr, fm_name AS fm, gp_name AS gp, sgp_name AS sgp, early_age AS b_age, late_age AS t_age, b_period, t_period, geom
+         FROM maps.large m
+         LEFT JOIN maps.map_strat_names msn ON m.map_id = msn.map_id
+         LEFT JOIN macrostrat.lookup_strat_names ON lookup_strat_names.strat_name_id = msn.strat_name_id
+         WHERE msn.strat_name_id IS NOT NULL
+         ORDER BY geom <#> st_setsrid(st_makepoint($1, $2),4326)
+         LIMIT 100
+      ) a
       UNION ALL
-      (SELECT msn.strat_name_id, lookup_strat_names.strat_name, lookup_strat_names.rank_name AS strat_name_long, bed_name AS bed, mbr_name AS mbr, fm_name AS fm, gp_name AS gp, sgp_name AS sgp, early_age AS b_age, late_age AS t_age, ST_Distance(geom, st_setsrid(st_makepoint($1, $2),4326)) AS distance, b_period, t_period
-       FROM maps.medium m
-       LEFT JOIN maps.map_strat_names msn ON m.map_id = msn.map_id
-       LEFT JOIN macrostrat.lookup_strat_names ON lookup_strat_names.strat_name_id = msn.strat_name_id
-       WHERE msn.strat_name_id IS NOT NULL
-       ORDER BY geom <#> st_setsrid(st_makepoint($1, $2),4326)
-       LIMIT 100)
+      SELECT strat_name_id, strat_name, strat_name_long, bed, mbr, fm, gp, sgp, b_age, t_age, b_period, t_period, geom FROM (
+        SELECT msn.strat_name_id, lookup_strat_names.strat_name, lookup_strat_names.rank_name AS strat_name_long, bed_name AS bed, mbr_name AS mbr, fm_name AS fm, gp_name AS gp, sgp_name AS sgp, early_age AS b_age, late_age AS t_age, b_period, t_period, geom
+         FROM maps.medium m
+         LEFT JOIN maps.map_strat_names msn ON m.map_id = msn.map_id
+         LEFT JOIN macrostrat.lookup_strat_names ON lookup_strat_names.strat_name_id = msn.strat_name_id
+         WHERE msn.strat_name_id IS NOT NULL
+         ORDER BY geom <#> st_setsrid(st_makepoint($1, $2),4326)
+         LIMIT 100
+      ) b
       UNION ALL
-      (SELECT msn.strat_name_id, lookup_strat_names.strat_name, lookup_strat_names.rank_name as strat_name_long, bed_name AS bed, mbr_name AS mbr, fm_name AS fm, gp_name AS gp, sgp_name AS sgp, early_age AS b_age, late_age AS t_age, ST_Distance(geom, st_setsrid(st_makepoint($1, $2),4326)) AS distance, b_period, t_period
-       FROM maps.small m
-       LEFT JOIN maps.map_strat_names msn ON m.map_id = msn.map_id
-       LEFT JOIN macrostrat.lookup_strat_names ON lookup_strat_names.strat_name_id = msn.strat_name_id
-       WHERE msn.strat_name_id IS NOT NULL
-       ORDER BY geom <#> st_setsrid(st_makepoint($1, $2),4326)
-       LIMIT 100)
+      SELECT strat_name_id, strat_name, strat_name_long, bed, mbr, fm, gp, sgp, b_age, t_age, b_period, t_period, geom FROM (
+        SELECT msn.strat_name_id, lookup_strat_names.strat_name, lookup_strat_names.rank_name as strat_name_long, bed_name AS bed, mbr_name AS mbr, fm_name AS fm, gp_name AS gp, sgp_name AS sgp, early_age AS b_age, late_age AS t_age, b_period, t_period, geom
+         FROM maps.small m
+         LEFT JOIN maps.map_strat_names msn ON m.map_id = msn.map_id
+         LEFT JOIN macrostrat.lookup_strat_names ON lookup_strat_names.strat_name_id = msn.strat_name_id
+         WHERE msn.strat_name_id IS NOT NULL
+         ORDER BY geom <#> st_setsrid(st_makepoint($1, $2),4326)
+         LIMIT 100
+      ) c
     )a
-    ORDER BY distance
+    ORDER BY geom <#> st_setsrid(st_makepoint($1, $2),4326)
     LIMIT 100
   ),
 
   nnlimit AS (
-    SELECT DISTINCT ON (strat_name_id) strat_name_id, strat_name, strat_name_long, bed, mbr, fm, gp, sgp, b_age, t_age, distance, b_period, t_period
+    SELECT DISTINCT ON (strat_name_id) strat_name_id, strat_name, strat_name_long, bed, mbr, fm, gp, sgp, b_age, t_age, b_period, t_period, row_number
     FROM nn
-    ORDER BY strat_name_id, distance
   )
 
   SELECT strat_name_id, strat_name, strat_name_long, bed, mbr, fm, gp, sgp, b_age, t_age, b_period, t_period
   FROM nnlimit
-  ORDER BY distance
+  ORDER BY row_number
   LIMIT 5;`,
 
   intervals: `
