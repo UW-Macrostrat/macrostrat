@@ -60,7 +60,7 @@ my_cur.execute("""
   ENCLOSED BY '"'
   LINES TERMINATED BY '\n';
 
-  SELECT id, strat_name, rank, ref_id
+  SELECT id, strat_name, rank, ref_id, concept_id
   FROM strat_names
   INTO OUTFILE %(strat_names_path)s
   FIELDS TERMINATED BY ','
@@ -204,7 +204,8 @@ CREATE TABLE macrostrat_new.strat_names (
   id serial PRIMARY KEY NOT NULL,
   strat_name character varying(100) NOT NULL,
   rank character varying(50),
-  ref_id  integer NOT NULL
+  ref_id  integer NOT NULL,
+  concept_id integer
 );
 
 COPY macrostrat_new.strat_names FROM %(strat_names_path)s DELIMITER ',' CSV;
@@ -212,6 +213,7 @@ COPY macrostrat_new.strat_names FROM %(strat_names_path)s DELIMITER ',' CSV;
 CREATE INDEX ON macrostrat_new.strat_names (strat_name);
 CREATE INDEX ON macrostrat_new.strat_names (rank);
 CREATE INDEX ON macrostrat_new.strat_names (ref_id);
+CREATE INDEX ON macrostrat_new.strat_names (concept_id);
 
 
 CREATE TABLE macrostrat_new.units_sections (
