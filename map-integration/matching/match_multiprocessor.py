@@ -88,25 +88,45 @@ class Task(object):
                             array[lsn.bed_id, lsn.mbr_id, lsn.fm_id, lsn.gp_id, lsn.sgp_id]
                           ) not_null_ids
                         ) sub WHERE not_null_ids != 0
-                      )) AS strat_name_ids
+                      )) AS strat_name_ids,
+                      concept_id
                     FROM macrostrat.lookup_strat_names lsn
                     JOIN macrostrat.unit_strat_names usn ON usn.strat_name_id = lsn.strat_name_id
                     ORDER BY lsn.strat_name_id
+                  ),
+                  second AS (
+                    SELECT *, (SELECT array_agg(DISTINCT unit_id)
+                    FROM macrostrat.lookup_strat_names lsn
+                    JOIN macrostrat.unit_strat_names usn ON lsn.strat_name_id = usn.strat_name_id
+                    WHERE lsn.concept_id = first.concept_id AND first.concept_id > 0) AS units
+                    FROM first
+                  ),
+                  third AS (
+                    SELECT units.id AS unit_id, """ + ("replace(lsn.rank_name, '.', '')" if strictNameMatch else "replace(lsn.name_no_lith, '.', '')") + """ AS strat_name, first.strat_name_ids AS strat_name_id, lui.lo_age AS age_top, lui.fo_age AS age_bottom, """ + ("st_buffer(st_envelope(poly_geom), 1.2) AS poly_geom " if bufferedGeometry else "poly_geom ") + """,
+                    cols.id AS col_id,  units, ( SELECT array_agg(cols.id) FROM macrostrat.cols JOIN macrostrat.units_sections ON cols.id = units_sections.col_id WHERE units_sections.unit_id = ANY(units) ) concept_columns
+                    FROM macrostrat.units
+                    JOIN macrostrat.unit_strat_names usn ON units.id = usn.unit_id
+                    JOIN second AS first ON first.strat_name_id = usn.strat_name_id
+                    JOIN macrostrat.units_sections us ON us.unit_id = units.id
+                    JOIN macrostrat.cols ON cols.id = us.col_id
+                    JOIN macrostrat.lookup_unit_intervals lui ON units.id = lui.unit_id
+                    JOIN macrostrat.lookup_strat_names lsn ON first.strat_name_ids = lsn.strat_name_id
+                    WHERE cols.status_code = 'active'
+                  ),
+
+                  name_columns AS (
+                    SELECT strat_name, array_agg(col_id) AS columns
+                    FROM third
+                    GROUP BY strat_name
                   )
 
-                  SELECT units.id AS unit_id, """ + ("replace(lsn.rank_name, '.', '')" if strictNameMatch else "replace(lsn.name_no_lith, '.', '')") + """ AS strat_name, first.strat_name_ids AS strat_name_id, lui.lo_age AS age_top, lui.fo_age AS age_bottom, """ + ("st_buffer(st_envelope(poly_geom), 1.2) AS poly_geom " if bufferedGeometry else "poly_geom ") + """
-                  FROM macrostrat.units
-                  JOIN macrostrat.unit_strat_names usn ON units.id = usn.unit_id
-                  JOIN first ON first.strat_name_id = usn.strat_name_id
-                  JOIN macrostrat.units_sections us ON us.unit_id = units.id
-                  JOIN macrostrat.cols ON cols.id = us.col_id
-                  JOIN macrostrat.lookup_unit_intervals lui ON units.id = lui.unit_id
-                  JOIN macrostrat.lookup_strat_names lsn ON first.strat_name_ids = lsn.strat_name_id
-                  WHERE cols.status_code = 'active'
+                  SELECT unit_id, third.strat_name, third.strat_name_id, third.age_top, third.age_bottom, (SELECT ST_Collect(poly_geom) FROM macrostrat.cols WHERE cols.id = ANY(array_cat(concept_columns, columns))) AS geom
+                  FROM third
+                  JOIN name_columns ON name_columns.strat_name = third.strat_name
              )
             SELECT DISTINCT rocks.map_id, macro.unit_id, macro.strat_name_id FROM rocks, macro
             WHERE macro.strat_name != ''
-                AND ST_Intersects(rocks.geom, macro.poly_geom)
+                AND ST_Intersects(rocks.geom, macro.geom)
                 AND rocks.%(field)s ~* concat('\y', macro.strat_name, '\y')
                 AND (((macro.age_top) <= (rocks.age_bottom + rocks.age_buffer))
                 AND ((rocks.age_top - rocks.age_buffer) <= (macro.age_bottom)))
