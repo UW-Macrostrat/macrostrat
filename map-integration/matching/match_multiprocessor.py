@@ -171,7 +171,7 @@ class Task(object):
     # Time the process
     start_time = time.time()
 
-    print "-------  Working on ", self.field, " -------"
+    print "      Working on ", self.field, " -------"
 
     field = self.field
     table = self.table
@@ -193,4 +193,4 @@ class Task(object):
 
 
     elapsed = int(time.time() - start_time)
-    print "Done with ", self.field, " - inserted ", (a + b + c + d), " records into maps.unit_strat_names and maps.units in ", elapsed / 60, " minutes and ", elapsed % 60, " seconds"
+    print "        Done with ", self.field, " - inserted ", (a + b + c + d), " records into maps.unit_strat_names and maps.units in ", elapsed / 60, " minutes and ", elapsed % 60, " seconds"

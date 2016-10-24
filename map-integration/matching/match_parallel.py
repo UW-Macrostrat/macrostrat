@@ -82,7 +82,7 @@ if __name__ == '__main__':
       "source_id": arguments.source_id
   })
   connection.commit()
-  print "------- Done cleaning up -------"
+  print "        Done cleaning up -------"
 
 
 
@@ -112,7 +112,7 @@ if __name__ == '__main__':
         try :
           fields.remove(field)
         except:
-          print 'Not excluding invalid field selection ', field
+          print '        Not excluding invalid field selection ', field
 
   # Filter null fields
   cursor.execute("""
@@ -131,7 +131,7 @@ if __name__ == '__main__':
   for field in result:
       if result[field] == 0:
           fields.remove(field)
-          print 'Excluding', field, 'because it is null'
+          print '        Excluding', field, 'because it is null'
 
   # Insert a new task for each matching field into the queue
   for field in fields:
@@ -146,4 +146,4 @@ if __name__ == '__main__':
   if scale is not None:
       refresh.refresh(cursor, connection, scale, arguments.source_id)
       refresh.source_stats(cursor, connection, arguments.source_id)
-      print "Refreshed lookup_" + scale + " for source_id ", arguments.source_id
+      print "        Refreshed lookup_" + scale + " for source_id ", arguments.source_id
