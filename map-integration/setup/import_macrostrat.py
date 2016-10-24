@@ -44,7 +44,8 @@ params = {
   "lookup_unit_liths_path": directory + "/lookup_unit_liths.csv",
   "timescales_path": directory + "/timescales.csv",
   "col_groups_path": directory + "/col_groups.csv",
-  "col_refs_path": directory + "/col_refs.csv"
+  "col_refs_path": directory + "/col_refs.csv",
+  "strat_names_meta_path": directory + "/strat_names_meta.csv"
 }
 
 
@@ -168,6 +169,13 @@ my_cur.execute("""
   SELECT id, col_id, ref_id
   FROM col_refs
   INTO OUTFILE %(col_refs_path)s
+  FIELDS TERMINATED BY ','
+  ENCLOSED BY '"'
+  LINES TERMINATED BY '\n';
+
+  SELECT concept_id, orig_id, name, geologic_age, interval_id, b_int, t_int, usage_notes, other, province, url, ref_id
+  FROM strat_names_meta
+  INTO OUTFILE %(strat_names_meta_path)s
   FIELDS TERMINATED BY ','
   ENCLOSED BY '"'
   LINES TERMINATED BY '\n';
@@ -539,6 +547,27 @@ COPY macrostrat_new.col_refs FROM %(col_refs_path)s NULL '\N' DELIMITER ',' CSV;
 CREATE INDEX ON macrostrat_new.col_refs (col_id);
 CREATE INDEX ON macrostrat_new.col_refs (ref_id);
 
+CREATE TABLE macrostrat_new.strat_names_meta (
+    concept_id integer PRIMARY KEY,
+    orig_id integer NOT NULL,
+    name character varying(40),
+    geologic_age text,
+    interval_id integer NOT NULL,
+    b_int integer NOT NULL,
+    t_int integer NOT NULL,
+    usage_notes text,
+    other text,
+    province text,
+    url character varying(150),
+    ref_id integer NOT NULL
+);
+
+CREATE INDEX ON macrostrat_new.strat_names_meta (interval_id);
+CREATE INDEX ON macrostrat_new.strat_names_meta (b_int);
+CREATE INDEX ON macrostrat_new.strat_names_meta (t_int);
+CREATE INDEX ON macrostrat_new.strat_names_meta (ref_id);
+
+
 GRANT usage ON SCHEMA macrostrat TO readonly;
 GRANT SELECT ON all tables IN SCHEMA macrostrat TO readonly;
 """, params)
@@ -564,6 +593,7 @@ pg_cur.execute("VACUUM ANALYZE macrostrat_new.lith_atts;")
 pg_cur.execute("VACUUM ANALYZE macrostrat_new.timescales;")
 pg_cur.execute("VACUUM ANALYZE macrostrat_new.col_groups;")
 pg_cur.execute("VACUUM ANALYZE macrostrat_new.col_refs");
+pg_cur.execute("VACUUM ANALYZE macrostrat_new.strat_names_meta");
 pg_cur.execute("""
   DROP SCHEMA IF EXISTS macrostrat cascade;
   ALTER SCHEMA macrostrat_new RENAME TO macrostrat;
