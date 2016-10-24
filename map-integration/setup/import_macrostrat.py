@@ -14,7 +14,7 @@ pg_conn = psycopg2.connect(dbname=credentials.pg_db, user=credentials.pg_user, h
 pg_cur = pg_conn.cursor()
 
 # Connect to MySQL
-my_conn = MySQLdb.connect(host=credentials.mysql_host, user=credentials.mysql_user, passwd=credentials.mysql_passwd, db=credentials.mysql_db, unix_socket=credentials.mysql_unix_socket, cursorclass=MySQLdb.cursors.DictCursor)
+my_conn = MySQLdb.connect(host=credentials.mysql_host, user=credentials.mysql_user, passwd=credentials.mysql_passwd, db=credentials.mysql_db, unix_socket=credentials.mysql_socket, cursorclass=MySQLdb.cursors.DictCursor)
 my_cur = my_conn.cursor()
 
 
