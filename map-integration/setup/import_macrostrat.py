@@ -177,7 +177,7 @@ my_cur.execute("""
   FROM strat_names_meta
   INTO OUTFILE %(strat_names_meta_path)s
   FIELDS TERMINATED BY ','
-  ENCLOSED BY '"'
+  ENCLOSED BY '$'
   LINES TERMINATED BY '\n';
 
 """, params)
@@ -561,7 +561,7 @@ CREATE TABLE macrostrat_new.strat_names_meta (
     url character varying(150),
     ref_id integer NOT NULL
 );
-COPY macrostrat_new.strat_names_meta FROM %(strat_names_meta_path)s NULL '\N' DELIMITER ',' CSV;
+COPY macrostrat_new.strat_names_meta FROM %(strat_names_meta_path)s NULL '\N' DELIMITER ',' QUOTE '$' CSV;
 
 CREATE INDEX ON macrostrat_new.strat_names_meta (interval_id);
 CREATE INDEX ON macrostrat_new.strat_names_meta (b_int);
