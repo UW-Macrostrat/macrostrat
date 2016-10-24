@@ -96,7 +96,7 @@ my_cur.execute("""
   ENCLOSED BY '"'
   LINES TERMINATED BY '\n';
 
-  SELECT strat_name_id, strat_name, rank, rank_name, bed_id, bed_name, mbr_id, mbr_name, fm_id, fm_name, gp_id, gp_name, sgp_id, sgp_name, early_age, late_age, gsc_lexicon, b_period, t_period, c_interval, name_no_lith
+  SELECT strat_name_id, strat_name, rank, concept_id, rank_name, bed_id, bed_name, mbr_id, mbr_name, fm_id, fm_name, gp_id, gp_name, sgp_id, sgp_name, early_age, late_age, gsc_lexicon, b_period, t_period, c_interval, name_no_lith
   FROM lookup_strat_names
   INTO OUTFILE %(lookup_strat_names_path)s
   FIELDS TERMINATED BY ','
@@ -352,6 +352,7 @@ CREATE TABLE macrostrat_new.lookup_strat_names (
   strat_name_id integer,
   strat_name character varying(100),
   rank character varying(20),
+  concept_id integer,
   rank_name character varying(200),
   bed_id integer,
   bed_name character varying(100),
@@ -376,6 +377,7 @@ COPY macrostrat_new.lookup_strat_names FROM %(lookup_strat_names_path)s NULL '\N
 
 
 CREATE INDEX ON macrostrat_new.lookup_strat_names (strat_name_id);
+CREATE INDEX ON macrostrat_new.lookup_strat_names (concept_id);
 CREATE INDEX ON macrostrat_new.lookup_strat_names (bed_id);
 CREATE INDEX ON macrostrat_new.lookup_strat_names (mbr_id);
 CREATE INDEX ON macrostrat_new.lookup_strat_names (fm_id);
