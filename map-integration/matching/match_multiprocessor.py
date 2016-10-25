@@ -137,7 +137,7 @@ class Task(object):
             WHERE macro.strat_name != ''
                 AND ST_Intersects(rocks.geom, macro.geom)
                 AND rocks.%(field)s ~* concat('\y', macro.strat_name, '\y')
-                AND (((macro.age_top) < (rocks.age_bottom + rocks.age_buffer))
+                AND ((macro.age_top) < (rocks.age_bottom + rocks.age_buffer))
                 AND ((macro.age_bottom) > (rocks.age_top - rocks.age_buffer))
         """, {
           "table": AsIs(table),
