@@ -141,9 +141,3 @@ if __name__ == '__main__':
     tasks.put(None)
 
   tasks.join()
-
-  scale = refresh.find_scale(cursor, arguments.source_id)
-  if scale is not None:
-      refresh.refresh(cursor, connection, scale, arguments.source_id)
-      refresh.source_stats(cursor, connection, arguments.source_id)
-      print "        Refreshed lookup_" + scale + " for source_id ", arguments.source_id
