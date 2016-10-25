@@ -138,7 +138,7 @@ class Task(object):
                 AND ST_Intersects(rocks.geom, macro.geom)
                 AND rocks.%(field)s ~* concat('\y', macro.strat_name, '\y')
                 AND (((macro.age_top) <= (rocks.age_bottom + rocks.age_buffer))
-                AND ((rocks.age_top - rocks.age_buffer) <= (macro.age_bottom)))
+                AND ((rocks.age_top - rocks.age_buffer) < (macro.age_bottom)))
         """, {
           "table": AsIs(table),
           "source_id": source_id,
