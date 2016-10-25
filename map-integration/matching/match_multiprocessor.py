@@ -170,7 +170,7 @@ class Task(object):
 
         pyConn.commit()
 
-        print "        Done with " + match_type
+        print "        - Done with " + match_type
         return len(results)
 
 
@@ -180,7 +180,7 @@ class Task(object):
     # Time the process
     start_time = time.time()
 
-    print "      Working on ", self.field, " -------"
+    print "      * Working on ", self.field, " *"
 
     field = self.field
     table = self.table
@@ -191,11 +191,11 @@ class Task(object):
     # Strict name, strict space, strict time
     a = query(True, True, True, False)
 
-    # Fuzzy name, strict space, strict time
-    b = query(False, True, True, True)
-
     # Strict name, fuzzy space, strict time
-    c = query(True, False, True, True)
+    b = query(True, False, True, True)
+
+    # Fuzzy name, strict space, strict time
+    c = query(False, True, True, True)
 
     # Strict name, strict space, fuzzy time
     d = query(True, True, False, True)
