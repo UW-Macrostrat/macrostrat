@@ -44,8 +44,17 @@ class Task(object):
   # Acts as the controller for a given year
   def __call__(self, connection=None):
 
-    def query(strictNameMatch, bufferedGeometry, useNullSet):
-        match_type = field + ("" if strictNameMatch else "_fname") + ("_buffer" if bufferedGeometry else "")
+    def query(strictNameMatch, strictSpace, strictTime, useNullSet):
+        match_type = field
+
+        if not strictNameMatch:
+            match_type += '_fname'
+
+        if not strictSpace:
+            match_type += '_fspace'
+
+        if not strictTime:
+            match_type += '_ftime'
 
         nullAddition = """
             AND (map_id NOT IN (
@@ -64,7 +73,7 @@ class Task(object):
         """
 
         pyCursor.execute("""
-            WITH rocks AS (SELECT map_id, replace(strat_name, '.', '') AS strat_name, replace(name, '.', '') AS name, descrip, comments, intervals_top.age_top, intervals_bottom.age_bottom, 25 as age_buffer, geom
+            WITH rocks AS (SELECT map_id, replace(strat_name, '.', '') AS strat_name, replace(name, '.', '') AS name, descrip, comments, intervals_top.age_top, intervals_bottom.age_bottom, """ + ("0" if strictTime else "25") + """ as age_buffer, geom
                       FROM maps.%(table)s
                       JOIN macrostrat.intervals intervals_top on t_interval = intervals_top.id
                       JOIN macrostrat.intervals intervals_bottom on b_interval = intervals_bottom.id
@@ -102,7 +111,7 @@ class Task(object):
                     FROM first
                   ),
                   third AS (
-                    SELECT units.id AS unit_id, """ + ("replace(lsn.rank_name, '.', '')" if strictNameMatch else "replace(lsn.name_no_lith, '.', '')") + """ AS strat_name, first.strat_name_ids AS strat_name_id, lui.lo_age AS age_top, lui.fo_age AS age_bottom, """ + ("st_buffer(st_envelope(poly_geom), 1.2) AS poly_geom " if bufferedGeometry else "poly_geom ") + """,
+                    SELECT units.id AS unit_id, """ + ("replace(lsn.rank_name, '.', '')" if strictNameMatch else "replace(lsn.name_no_lith, '.', '')") + """ AS strat_name, first.strat_name_ids AS strat_name_id, lui.lo_age AS age_top, lui.fo_age AS age_bottom, """ + ("poly_geom " if strictSpace else "st_buffer(st_envelope(poly_geom), 1.2) AS poly_geom ") + """,
                     cols.id AS col_id,  units, ( SELECT array_agg(cols.id) FROM macrostrat.cols JOIN macrostrat.units_sections ON cols.id = units_sections.col_id WHERE units_sections.unit_id = ANY(units) ) concept_columns
                     FROM macrostrat.units
                     JOIN macrostrat.unit_strat_names usn ON units.id = usn.unit_id
@@ -177,19 +186,31 @@ class Task(object):
     table = self.table
     source_id = self.source_id
 
-    # strictNameMatch, bufferedGeometry, useNullSet
+    # strictNameMatch, strictSpace, strictTime, useNullSet
 
-    # Strict space, strict strat name
-    a = query(True, False, False)
+    # Strict name, strict space, strict time
+    a = query(True, True, True, False)
 
-    # Strict space, fuzzy strat name
-    b = query(False, False, True)
+    # Fuzzy name, strict space, strict time
+    b = query(False, True, True, True)
 
-    # Buffered space, strict strat name
-    c = query(True, True, True)
+    # Strict name, fuzzy space, strict time
+    c = query(True, False, True, True)
 
-    # Buffered space, fuzz strat name
-    d = query(False, True, True)
+    # Strict name, strict space, fuzzy time
+    d = query(True, True, False, True)
+
+    # Fuzzy name, fuzzy space, strict time
+    e = query(False, False, True, True)
+
+    # Strict name, fuzzy space, fuzzy time
+    f = query(True, False, False, True)
+
+    # Fuzzy name, strict space, fuzzy time
+    g = query(False, True, False, True)
+
+    # Fuzzy name, fuzzy space, fuzzy time
+    h = query(False, False, False, True)
 
 
     elapsed = int(time.time() - start_time)

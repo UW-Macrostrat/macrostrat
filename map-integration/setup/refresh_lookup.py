@@ -37,9 +37,9 @@ if len(arguments.refresh) == 1:
     # If a source_id was passed
     elif arguments.refresh[0].isdigit() :
         scale = refresh.find_scale(cursor, arguments.refresh[0])
-        if scale is not None:
-            refresh.refresh(cursor, connection, scale, arguments.refresh[0])
-            print "Refreshed lookup_" + scale + " for source_id ", arguments.refresh[0]
+        if scale and scale[0] is not None:
+            refresh.refresh(cursor, connection, scale[0], arguments.refresh[0])
+            print "Refreshed lookup_" + scale[0] + " for source_id ", arguments.refresh[0]
 
         else:
             print "This source_id was not found or is invalid"

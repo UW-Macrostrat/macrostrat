@@ -37,19 +37,18 @@ def find_sources(cursor, scale):
 
 def find_scale(cursor, source_id):
     cursor.execute("SELECT scale from maps.sources WHERE source_id = %(source_id)s", {"source_id": source_id})
-    result = cursor.fetchone()[0]
-    return result
+    return cursor.fetchone()
 
 def refresh(cursor, connection, scale, source_id):
     # Delete source from lookup_scale
     cursor.execute("""
-    DELETE FROM lookup_%(scale)s
+    DELETE FROM lookup_%s
     WHERE map_id IN (
         SELECT map_id
-        FROM maps.%(scale)s
-        WHERE source_id = %(source_id)s
+        FROM maps.%s
+        WHERE source_id = %s
     )
-    """, {"scale": AsIs(scale), "source_id": source_id})
+    """, (AsIs(scale), AsIs(scale), source_id))
 
     # Insert source into lookup_scale
     cursor.execute("""
@@ -79,43 +78,77 @@ def refresh(cursor, connection, scale, source_id):
 
            WHEN 'strat_name' = ANY(bases)
             THEN array['strat_name', 'manual']
+
            WHEN 'strat_name_fname' = ANY(bases)
-            THEN array['strat_name_fname', 'manual']
+             THEN array['strat_name_fname', 'manual']
 
+           WHEN 'strat_name_fspace' = ANY(bases)
+             THEN array['strat_name_fspace', 'manual']
+
+           WHEN 'strat_name_ftime' = ANY(bases)
+             THEN array['strat_name_ftime', 'manual']
+
+           WHEN 'strat_name_fname_fspace' = ANY(bases)
+              THEN array['strat_name_fname_fspace', 'manual']
+
+           WHEN 'strat_name_fspace_ftime' = ANY(bases)
+              THEN array['strat_name_fspace_ftime', 'manual']
+
+           WHEN 'strat_name_fname_ftime' = ANY(bases)
+              THEN array['strat_name_fname_ftime', 'manual']
+
+           WHEN 'strat_name_fname_fspace_ftime' = ANY(bases)
+              THEN array['strat_name_fname_fspace_ftime', 'manual']
+
+--------------------------------------------------------------------------------------------
            WHEN 'name' = ANY(bases)
-             THEN array['name', 'manual']
+            THEN array['name', 'manual']
+
            WHEN 'name_fname' = ANY(bases)
-             THEN array['name_fname', 'manual']
+            THEN array['name_fname', 'manual']
 
-           WHEN 'descrip' = ANY(bases)
-             THEN array['descrip', 'manual']
-           WHEN 'comments' = ANY(bases)
-             THEN array['comments', 'manual']
+           WHEN 'name_fspace' = ANY(bases)
+            THEN array['name_fspace', 'manual']
 
+           WHEN 'name_ftime' = ANY(bases)
+            THEN array['name_ftime', 'manual']
 
-           WHEN 'strat_name_buffer' = ANY(bases)
-            THEN array['strat_name_buffer', 'manual']
-           WHEN 'name_buffer' = ANY(bases)
-             THEN array['name_buffer', 'manual']
-           WHEN 'descrip_buffer' = ANY(bases)
-             THEN array['descrip_buffer', 'manual']
-           WHEN 'comments_buffer' = ANY(bases)
-             THEN array['comments_buffer', 'manual']
+           WHEN 'name_fname_fspace' = ANY(bases)
+             THEN array['name_fname_fspace', 'manual']
 
+           WHEN 'name_fspace_ftime' = ANY(bases)
+             THEN array['name_fspace_ftime', 'manual']
 
-           WHEN 'descrip_fname' = ANY(bases)
-             THEN array['descrip_fname', 'manual']
-           WHEN 'comments_fname' = ANY(bases)
-             THEN array['comments_fname', 'manual']
+           WHEN 'name_fname_ftime' = ANY(bases)
+             THEN array['name_fname_ftime', 'manual']
 
-           WHEN 'strat_name_fname_buffer' = ANY(bases)
-            THEN array['strat_name_fname_buffer', 'manual']
-           WHEN 'name_fname_buffer' = ANY(bases)
-             THEN array['name_fname_buffer', 'manual']
-           WHEN 'descrip_fname_buffer' = ANY(bases)
-             THEN array['descrip_fname_buffer', 'manual']
-           WHEN 'comments_fname_buffer' = ANY(bases)
-             THEN array['comments_fname_buffer', 'manual']
+           WHEN 'name_fname_fspace_ftime' = ANY(bases)
+             THEN array['name_fname_fspace_ftime', 'manual']
+
+--------------------------------------------------------------------------------------------
+           WHEN ('descrip' = ANY(bases) OR 'comments' = ANY(bases))
+            THEN array['descrip', 'comments', 'manual']
+
+           WHEN ('descrip_fname' = ANY(bases) OR 'comments_fname' = ANY(bases))
+            THEN array['descrip_fname', 'comments_fname', 'manual']
+
+           WHEN ('descrip_fspace' = ANY(bases) OR 'comments_fspace' = ANY(bases))
+            THEN array['descrip_fspace', 'comments_fspace', 'manual']
+
+           WHEN ('descrip_ftime' = ANY(bases) OR 'comments_ftime' = ANY(bases))
+            THEN array['descrip_ftime', 'comments_ftime', 'manual']
+
+           WHEN ('descrip_fname_fspace' = ANY(bases) OR 'comments_fname_fspace' = ANY(bases))
+             THEN array['descrip_fname_fspace', 'comments_fname_fspace', 'manual']
+
+           WHEN ('descrip_fspace_ftime' = ANY(bases) OR 'comments_fspace_ftime' = ANY(bases))
+             THEN array['descrip_fspace_ftime', 'comments_fspace_ftime', 'manual']
+
+           WHEN ('descrip_fname_ftime' = ANY(bases) OR 'comments_fname_ftime' = ANY(bases))
+             THEN array['descrip_fname_ftime', 'comments_fname_ftime', 'manual']
+
+           WHEN ('descrip_fname_fspace_ftime' = ANY(bases) OR 'comments_fname_fspace_ftime' = ANY(bases))
+             THEN array['descrip_fname_fspace_ftime', 'comments_fname_fspace_ftime', 'manual']
 
            ELSE
             array['unknown', 'manual']
