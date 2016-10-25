@@ -1019,7 +1019,7 @@
     }
   },
   "/paleogeography": {
-    "description": "Returns paleogeography geometry from http://www.gplates.org, courtesy of Mark Turner and Mike Gurnis. Note that for complete and recent reconstructions, original GPlates data services should be used - http://gplates.gps.caltech.edu:8080. If you use this service and provide attribution, you should cite GPlates via this service.",
+    "description": "Returns paleogeography geometry from \"Wright et al. (2013) Towards community-driven paleogeographic reconstructions: integrating open-access paleogeographic and paleobiology data with plate tectonics. Biogeosciences 10:1529-1541\"  If you use this service and provide attribution, you should cite the associated paper via this service.",
     "visible": true,
     "options": {
       "parameters": {
