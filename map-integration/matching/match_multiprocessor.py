@@ -100,27 +100,34 @@ class Task(object):
                       )) AS strat_name_ids,
                       concept_id
                     FROM macrostrat.lookup_strat_names lsn
-                    JOIN macrostrat.unit_strat_names usn ON usn.strat_name_id = lsn.strat_name_id
+                    LEFT JOIN macrostrat.unit_strat_names usn ON usn.strat_name_id = lsn.strat_name_id
                     ORDER BY lsn.strat_name_id
                   ),
                   second AS (
-                    SELECT *, (SELECT array_agg(DISTINCT unit_id)
-                    FROM macrostrat.lookup_strat_names lsn
-                    JOIN macrostrat.unit_strat_names usn ON lsn.strat_name_id = usn.strat_name_id
-                    WHERE lsn.concept_id = first.concept_id AND first.concept_id > 0) AS units
+                    SELECT *, (
+                        SELECT array_agg(DISTINCT unit_id)
+                        FROM macrostrat.lookup_strat_names lsn
+                        LEFT JOIN macrostrat.unit_strat_names usn ON lsn.strat_name_id = usn.strat_name_id
+                        WHERE lsn.concept_id = first.concept_id AND first.concept_id > 0
+                    ) AS units
                     FROM first
                   ),
                   third AS (
-                    SELECT units.id AS unit_id, """ + ("replace(lsn.rank_name, '.', '')" if strictNameMatch else "replace(lsn.name_no_lith, '.', '')") + """ AS strat_name, first.strat_name_ids AS strat_name_id, lui.lo_age AS age_top, lui.fo_age AS age_bottom, """ + ("poly_geom " if strictSpace else "st_buffer(st_envelope(poly_geom), 1.2) AS poly_geom ") + """,
-                    cols.id AS col_id,  units, ( SELECT array_agg(cols.id) FROM macrostrat.cols JOIN macrostrat.units_sections ON cols.id = units_sections.col_id WHERE units_sections.unit_id = ANY(units) ) concept_columns
-                    FROM macrostrat.units
-                    JOIN macrostrat.unit_strat_names usn ON units.id = usn.unit_id
-                    JOIN second AS first ON first.strat_name_id = usn.strat_name_id
-                    JOIN macrostrat.units_sections us ON us.unit_id = units.id
-                    JOIN macrostrat.cols ON cols.id = us.col_id
-                    JOIN macrostrat.lookup_unit_intervals lui ON units.id = lui.unit_id
-                    JOIN macrostrat.lookup_strat_names lsn ON first.strat_name_ids = lsn.strat_name_id
-                    WHERE cols.status_code = 'active'
+                    SELECT """ + ("replace(lsn.rank_name, '.', '')" if strictNameMatch else "replace(lsn.name_no_lith, '.', '')") + """ AS strat_name,
+                      second.strat_name_ids AS strat_name_id, """ + ("poly_geom " if strictSpace else "st_buffer(st_envelope(poly_geom), 1.2) AS poly_geom ") + """,
+                      cols.id AS col_id,
+                      unnest(units) AS unit_id, (
+                          SELECT array_agg(cols.id)
+                          FROM macrostrat.cols
+                          LEFT JOIN macrostrat.units_sections ON cols.id = units_sections.col_id
+                          WHERE units_sections.unit_id = ANY(units)
+                    ) concept_columns
+                    FROM second
+                    LEFT JOIN macrostrat.unit_strat_names usn ON second.strat_name_ids = usn.strat_name_id
+                    LEFT JOIN macrostrat.units ON usn.unit_id = units.id
+                    LEFT JOIN macrostrat.units_sections us ON us.unit_id = units.id
+                    LEFT JOIN macrostrat.cols ON cols.id = us.col_id
+                    LEFT JOIN macrostrat.lookup_strat_names lsn ON second.strat_name_ids = lsn.strat_name_id
                   ),
 
                   name_columns AS (
@@ -129,9 +136,20 @@ class Task(object):
                     GROUP BY strat_name
                   )
 
-                  SELECT unit_id, third.strat_name, third.strat_name_id, third.age_top, third.age_bottom, (SELECT ST_Collect(poly_geom) FROM macrostrat.cols WHERE cols.id = ANY(array_cat(concept_columns, columns))) AS geom
+                  SELECT
+                    third.unit_id,
+                    third.strat_name,
+                    third.strat_name_id, (
+                        SELECT ST_Union(""" + ("poly_geom " if strictSpace else "st_buffer(st_envelope(poly_geom), 1.2) AS poly_geom ") + """)
+                        FROM macrostrat.cols
+                        WHERE cols.id = ANY(array_cat(concept_columns, columns))
+                    ) AS geom,
+                    lui.lo_age AS age_top,
+                    lui.fo_age AS age_bottom
                   FROM third
-                  JOIN name_columns ON name_columns.strat_name = third.strat_name
+                  LEFT JOIN name_columns ON name_columns.strat_name = third.strat_name
+                  LEFT JOIN macrostrat.lookup_unit_intervals lui ON third.unit_id = lui.unit_id
+                  WHERE third.unit_id IS NOT NULL
              )
             SELECT DISTINCT rocks.map_id, macro.unit_id, macro.strat_name_id FROM rocks, macro
             WHERE macro.strat_name != ''
