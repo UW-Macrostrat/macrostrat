@@ -140,7 +140,7 @@ class Task(object):
                     third.unit_id,
                     third.strat_name,
                     third.strat_name_id, (
-                        SELECT ST_Union(""" + ("poly_geom " if strictSpace else "st_buffer(st_envelope(poly_geom), 1.2) AS poly_geom ") + """)
+                        SELECT ST_Union(""" + ("poly_geom " if strictSpace else "st_buffer(st_envelope(poly_geom), 1.2)") + """) AS poly_geom)
                         FROM macrostrat.cols
                         WHERE cols.id = ANY(array_cat(concept_columns, columns))
                     ) AS geom,
