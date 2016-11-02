@@ -28,7 +28,7 @@
   "dependencies": {
     "body-parser": "^1.6.3",
     "express": "4.x.x",
-    "universal-analytics": "^0.3.11"
+    "universal-analytics": "^0.4.6"
   },
   "devDependencies": {
     "async": "0.9.x",
