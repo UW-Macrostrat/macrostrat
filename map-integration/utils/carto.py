@@ -72,13 +72,13 @@ if __name__ == '__main__':
         call(['pgsql2shp -f intersecting.shp -u %s -h %s -p %s burwell "SELECT t.map_id, t.geom FROM carto.flat_%s t JOIN public.%s_rgeom sr ON ST_Intersects(ST_SetSRID(t.geom,4326), sr.geom)"' % (credentials.pg_user, credentials.pg_host, credentials.pg_port, scale, scale)], shell=True )
 
         # Remove the parts of the intersecting geoms that intersect scales above
-        call(['mapshaper intersecting.shp -erase rgeom.shp -o clipped.shp'], shell=True)
+        call(['mapshaper intersecting.shp -erase rgeoms.shp -o clipped.shp'], shell=True)
 
         # Import the result to PostGIS
         call(['shp2pgsql -I -s 4326 clipped.shp public.%s_clipped | psql -h %s -p %s -U %s -d burwell' % (scale, credentials.pg_host, credentials.pg_port, credentials.pg_user)], shell=True)
 
         # Clean up shapefiles
-        call(['rm intersecting.* && rm rgeom.* && rm clipped.* && rm _rgeom.* && rm rgeoms.*'], shell=True)
+        call(['rm intersecting.* && rm clipped.* && rm _rgeom.* && rm rgeoms.*'], shell=True)
 
         # Build the SQL query
         sql.append("""
