@@ -21,10 +21,10 @@ app.use(function(req, res, next) {
   var visitor = ua('UA-75785431-1', { https: true });
 
   visitor.pageview({
-    documentPath: req.originalUrl,
-    ipOverride: ip || '0.0.0.0',
-    applicationName: (req.query && req.query.referrer) ? req.query.referrer : '',
-    applicationVersion: (req.query && req.query.version)  ? req.query.version : ''
+    dp: req.originalUrl,
+    uip: ip || '0.0.0.0',
+    an: (req.query && req.query.referrer) ? req.query.referrer : '',
+    av: (req.query && req.query.version)  ? req.query.version : ''
   }).send();
   next();
 });
