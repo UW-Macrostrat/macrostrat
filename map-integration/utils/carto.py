@@ -69,7 +69,7 @@ if __name__ == '__main__':
         connection.commit()
 
         # Export intersecting geom
-        call(['pgsql2shp -f intersecting.shp -u %s -h %s -p %s burwell "WITH first AS (SELECT t.map_id, (ST_Dump(t.geom)).geom FROM carto.flat_%s t JOIN public.%s_rgeom sr ON ST_Intersects(ST_SetSRID(t.geom,4326), sr.geom)) SELECT map_id, geom FROM first WHERE ST_Geometrytype(geom) = \'ST_Polygon\'"' % (credentials.pg_user, credentials.pg_host, credentials.pg_port, scale, scale)], shell=True )
+        call(["pgsql2shp -f intersecting.shp -u %s -h %s -p %s burwell 'WITH first AS (SELECT t.map_id, (ST_Dump(t.geom)).geom FROM carto.flat_%s t JOIN public.%s_rgeom sr ON ST_Intersects(ST_SetSRID(t.geom,4326), sr.geom)) SELECT map_id, geom FROM first WHERE ST_GeometryType(geom) = \"ST_Polygon\"'" % (credentials.pg_user, credentials.pg_host, credentials.pg_port, scale, scale)], shell=True )
 
         # Remove the parts of the intersecting geoms that intersect scales above
         call(['mapshaper intersecting.shp -erase rgeoms.shp -o clipped.shp'], shell=True)
