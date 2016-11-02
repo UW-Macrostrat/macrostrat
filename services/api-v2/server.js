@@ -12,8 +12,20 @@ ua('UA-75785431-1', null, {}, {
 }).debug();
 
 app.use(function(req, res, next) {
-  var visitor = ua('UA-75785431-1', {https: true});
-  visitor.pageview(req.originalUrl).send();
+  // Ignore requests from the status server
+  if (req.query && req.query.skip) {
+    return next()
+  }
+
+  var ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+  var visitor = ua('UA-75785431-1', { https: true });
+
+  visitor.pageview({
+    documentPath: req.originalUrl,
+    ipOverride: ip || '0.0.0.0',
+    applicationName: (req.query && req.query.referrer) ? req.query.referrer : '',
+    applicationVersion: (req.query && req.query.version)  ? req.query.version : ''
+  }).send();
   next();
 });
 
