@@ -65,7 +65,7 @@ if __name__ == '__main__':
         # Import it
         call(['shp2pgsql -I -s 4326 %s_rgeom.shp public.%s_rgeom | psql -h %s -p %s -U %s -d burwell' % (scale, scale, credentials.pg_host, credentials.pg_port, credentials.pg_user)], shell=True)
 
-        cursor.execute('UPDATE public.%s_rgeom SET geom = ST_SetSRID(ST_MakeValid(geom), 4326)' % (scale,))
+        cursor.execute('UPDATE public.%s_rgeom SET geom = ST_CollectionExtract(ST_SetSRID(ST_MakeValid(geom), 4326), 3)' % (scale,))
         connection.commit()
 
         # Export intersecting geom
