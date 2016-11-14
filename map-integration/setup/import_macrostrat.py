@@ -11,6 +11,7 @@ import credentials
 
 # Connect to Postgres
 pg_conn = psycopg2.connect(dbname=credentials.pg_db, user=credentials.pg_user, host=credentials.pg_host, port=credentials.pg_port)
+pg_conn.set_client_encoding('Latin1')
 pg_cur = pg_conn.cursor()
 
 # Connect to MySQL
@@ -45,7 +46,10 @@ params = {
   "timescales_path": directory + "/timescales.csv",
   "col_groups_path": directory + "/col_groups.csv",
   "col_refs_path": directory + "/col_refs.csv",
-  "strat_names_meta_path": directory + "/strat_names_meta.csv"
+  "strat_names_meta_path": directory + "/strat_names_meta.csv",
+  "refs_path": directory + "/refs.csv",
+  "places_path": directory + "/places.csv",
+  "strat_names_places_path": directory + "/strat_names_places_path.csv"
 }
 
 
@@ -180,9 +184,28 @@ my_cur.execute("""
   ENCLOSED BY '$'
   LINES TERMINATED BY '\n';
 
+  SELECT id, pub_year, author, ref, doi, compilation_code, url, ST_AsText(rgeom) rgeom
+  FROM refs
+  INTO OUTFILE %(refs_path)s
+  FIELDS TERMINATED BY ','
+  ENCLOSED BY '$'
+  LINES TERMINATED BY '\n';
+
+  SELECT place_id, name, abbrev, postal, country, country_abbrev, ST_AsText(geom) geom
+  FROM places
+  INTO OUTFILE %(places_path)s
+  FIELDS TERMINATED BY ','
+  ENCLOSED BY '$'
+  LINES TERMINATED BY '\n';
+
+  SELECT concept_id, place_id
+  FROM strat_names_places
+  INTO OUTFILE %(strat_names_places_path)s
+  FIELDS TERMINATED BY ','
+  ENCLOSED BY '$'
+  LINES TERMINATED BY '\n';
+
 """, params)
-
-
 
 
 
@@ -436,7 +459,6 @@ FROM macrostrat_new.col_areas a
 WHERE c.id = a.col_id;
 
 UPDATE macrostrat_new.cols SET poly_geom = ST_SetSRID(poly_geom, 4326);
-
 CREATE INDEX ON macrostrat_new.cols USING GIST (poly_geom);
 
 
@@ -571,6 +593,52 @@ CREATE INDEX ON macrostrat_new.strat_names_meta (t_int);
 CREATE INDEX ON macrostrat_new.strat_names_meta (ref_id);
 
 
+CREATE TABLE macrostrat_new.refs (
+    id integer PRIMARY key,
+    pub_year integer,
+    author character varying(255),
+    ref text,
+    doi character varying(40),
+    compilation_code character varying(100),
+    url text,
+    wkt text
+);
+COPY macrostrat_new.refs FROM %(refs_path)s NULL '\N' DELIMITER ',' QUOTE '$' CSV;
+
+ALTER TABLE macrostrat_new.refs ADD COLUMN rgeom geometry;
+UPDATE macrostrat_new.refs SET rgeom = ST_GeomFromText(wkt);
+UPDATE macrostrat_new.refs SET rgeom = ST_SetSRID(rgeom, 4326);
+ALTER TABLE macrostrat_new.refs DROP COLUMN wkt;
+CREATE INDEX ON macrostrat_new.refs USING GiST (rgeom);
+
+
+
+CREATE TABLE macrostrat_new.places (
+    place_id integer PRIMARY KEY,
+    name text,
+    abbrev text,
+    postal text,
+    country text,
+    country_abbrev text,
+    wkt text
+);
+COPY macrostrat_new.places FROM %(places_path)s NULL '\N' DELIMITER ',' QUOTE '$' CSV;
+ALTER TABLE macrostrat_new.places ADD COLUMN geom geometry;
+UPDATE macrostrat_new.places SET geom = ST_GeomFromText(wkt);
+UPDATE macrostrat_new.places SET geom = ST_SetSRID(geom, 4326);
+ALTER TABLE macrostrat_new.places DROP COLUMN wkt;
+CREATE INDEX ON macrostrat_new.places USING GiST (geom);
+
+
+CREATE TABLE macrostrat_new.strat_names_places (
+    concept_id integer NOT NULL,
+    place_id integer NOT NULL
+);
+COPY macrostrat_new.strat_names_places FROM %(strat_names_places_path)s NULL '\N' DELIMITER ',' QUOTE '$' CSV;
+CREATE INDEX ON macrostrat_new.strat_names_places (concept_id);
+CREATE INDEX ON macrostrat_new.strat_names_places (place_id);
+
+
 GRANT usage ON SCHEMA macrostrat TO readonly;
 GRANT SELECT ON all tables IN SCHEMA macrostrat TO readonly;
 """, params)
@@ -597,6 +665,9 @@ pg_cur.execute("VACUUM ANALYZE macrostrat_new.timescales;")
 pg_cur.execute("VACUUM ANALYZE macrostrat_new.col_groups;")
 pg_cur.execute("VACUUM ANALYZE macrostrat_new.col_refs");
 pg_cur.execute("VACUUM ANALYZE macrostrat_new.strat_names_meta");
+pg_cur.execute("VACUUM ANALYZE macrostrat_new.refs");
+pg_cur.execute("VACUUM ANALYZE macrostrat_new.places");
+pg_cur.execute("VACUUM ANALYZE macrostrat_new.strat_names_places");
 pg_cur.execute("""
   DROP SCHEMA IF EXISTS macrostrat cascade;
   ALTER SCHEMA macrostrat_new RENAME TO macrostrat;
