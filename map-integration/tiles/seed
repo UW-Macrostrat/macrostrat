@@ -1,4 +1,4 @@
-#! /usr/local/bin/node
+#! /usr/local/bin/node --max_old_space_size=8000
 
 var inquirer = require('inquirer');
 var config = require('./config');
