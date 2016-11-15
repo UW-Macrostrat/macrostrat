@@ -225,14 +225,17 @@ connection.commit()
 
 # Update containing interval for names not explicitly matched to units but have a concept_id
 cursor.execute("""
-    UPDATE lookup_strat_names_new
-    JOIN strat_names_meta on lookup_strat_names_new.concept_id = strat_names_meta.concept_id
-    JOIN intervals ON strat_names_meta.interval_id = intervals.id
-    SET c_interval = intervals.interval_name
-    WHERE c_interval IS NULL
+      SELECT strat_name_id,t.age_top,b.age_bottom 
+      FROM lookup_strat_names_new 
+      JOIN strat_names_meta USING (concept_id) 
+      JOIN intervals t on t.id=t_int 
+      JOIN intervals b on b.id=b_int 
+      WHERE c_interval IS NULL and t_int>0 and b_int>0;
 """)
-connection.commit()
+names = cursor.fetchall()
 
+for name in names:
+    cursor.execute("UPDATE lookup_strat_names_new SET c_interval= (SELECT interval_name from intervals JOIN timescales_intervals ON intervals.id = interval_id JOIN timescales on timescale_id = timescales.id WHERE timescale = 'international' AND %s > age_top AND %s <= age_bottom AND %s < age_bottom AND %s >= age_top ORDER BY age_bottom - age_top LIMIT 1) WHERE strat_name_id=%s", [name['b_age'], name['b_age'],name['t_age'],name['t_age'],name['strat_name_id']])
 
 # alter table lookup_strat_names add column name_no_lith varchar(100);
 ### Remove lithological terms from strat names ###
