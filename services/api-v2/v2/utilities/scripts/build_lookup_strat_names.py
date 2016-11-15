@@ -225,7 +225,7 @@ connection.commit()
 
 # Update containing interval for names not explicitly matched to units but have a concept_id
 cursor.execute("""
-      SELECT strat_name_id,t.age_top,b.age_bottom
+      SELECT strat_name_id, t.age_top AS t_age_top, t.age_bottom AS t_age_bottom, b.age_top AS b_age_top, b.age_bottom AS b_age_bottom
       FROM lookup_strat_names_new
       JOIN strat_names_meta USING (concept_id)
       JOIN intervals t on t.id = t_int
@@ -243,14 +243,47 @@ for name in names:
             JOIN timescales_intervals ON intervals.id = interval_id
             JOIN timescales ON timescale_id = timescales.id
             WHERE timescale = 'international'
-                AND %s > age_top
-                AND %s <= age_bottom
-                AND %s < age_bottom
-                AND %s >= age_top
+                AND %(b_age_bottom)s > age_top
+                AND %(b_age_bottom)s <= age_bottom
+                AND %(t_age_top)s < age_bottom
+                AND %(t_age_top)s >= age_top
             ORDER BY age_bottom - age_top
             LIMIT 1
-        ) WHERE strat_name_id=%s
-    """, [name['age_bottom'], name['age_bottom'], name['age_top'], name['age_top'], name['strat_name_id']])
+        ),
+        b_period = (
+            SELECT interval_name
+            FROM intervals
+            JOIN timescales_intervals ON intervals.id = interval_id
+            JOIN timescales ON timescale_id = timescales.id
+            WHERE timescale = 'international periods'
+                AND %(b_age_bottom)s > age_top
+                AND %(b_age_bottom)s <= age_bottom
+                AND %(b_age_top)s < age_bottom
+                AND %(b_age_top)s >= age_top
+            ORDER BY age_bottom - age_top
+            LIMIT 1
+        ),
+        t_period = (
+            SELECT interval_name
+            FROM intervals
+            JOIN timescales_intervals ON intervals.id = interval_id
+            JOIN timescales ON timescale_id = timescales.id
+            WHERE timescale = 'international periods'
+                AND %(t_age_bottom)s > age_top
+                AND %(t_age_bottom)s <= age_bottom
+                AND %(t_age_top)s < age_bottom
+                AND %(t_age_top)s >= age_top
+            ORDER BY age_bottom - age_top
+            LIMIT 1
+        ) WHERE strat_name_id = %(strat_name_id)s
+    """, {
+        "b_age_bottom": name["b_age_bottom"],
+        "b_age_top": name["b_age_top"],
+        "t_age_bottom": name["t_age_bottom"],
+        "t_age_top": name["t_age_top"],
+        "strat_name_id": name["strat_name_id"]
+    })
+
 
 # alter table lookup_strat_names add column name_no_lith varchar(100);
 ### Remove lithological terms from strat names ###
