@@ -49,7 +49,8 @@ params = {
   "strat_names_meta_path": directory + "/strat_names_meta.csv",
   "refs_path": directory + "/refs.csv",
   "places_path": directory + "/places.csv",
-  "strat_names_places_path": directory + "/strat_names_places_path.csv"
+  "strat_names_places_path": directory + "/strat_names_places_path.csv",
+  "concepts_places_path": directory + "/concepts_places_path.csv"
 }
 
 
@@ -198,9 +199,16 @@ my_cur.execute("""
   ENCLOSED BY '$'
   LINES TERMINATED BY '\n';
 
-  SELECT concept_id, place_id
+  SELECT strat_name_id, place_id
   FROM strat_names_places
   INTO OUTFILE %(strat_names_places_path)s
+  FIELDS TERMINATED BY ','
+  ENCLOSED BY '$'
+  LINES TERMINATED BY '\n';
+
+  SELECT concept_id, place_id
+  FROM concepts_places
+  INTO OUTFILE %(concepts_places_path)s
   FIELDS TERMINATED BY ','
   ENCLOSED BY '$'
   LINES TERMINATED BY '\n';
@@ -631,12 +639,22 @@ CREATE INDEX ON macrostrat_new.places USING GiST (geom);
 
 
 CREATE TABLE macrostrat_new.strat_names_places (
-    concept_id integer NOT NULL,
+    strat_name_id integer NOT NULL,
     place_id integer NOT NULL
 );
 COPY macrostrat_new.strat_names_places FROM %(strat_names_places_path)s NULL '\N' DELIMITER ',' QUOTE '$' CSV;
-CREATE INDEX ON macrostrat_new.strat_names_places (concept_id);
+CREATE INDEX ON macrostrat_new.strat_names_places (strat_name_id);
 CREATE INDEX ON macrostrat_new.strat_names_places (place_id);
+
+
+
+CREATE TABLE macrostrat_new.concepts_places (
+    concept_id integer NOT NULL,
+    place_id integer NOT NULL
+);
+COPY macrostrat_new.concepts_places FROM %(concepts_places_path)s NULL '\N' DELIMITER ',' QUOTE '$' CSV;
+CREATE INDEX ON macrostrat_new.concepts_places (concept_id);
+CREATE INDEX ON macrostrat_new.concepts_places (place_id);
 
 
 GRANT usage ON SCHEMA macrostrat TO readonly;
