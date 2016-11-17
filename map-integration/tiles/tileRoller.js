@@ -124,7 +124,11 @@
       // Initialize the newly created providers
       function(callback) {
         async.each(Object.keys(providers), function(provider, cb) {
-          providers[provider].init(null, function() {
+          providers[provider].init(null, function(error) {
+            if (error) {
+              console.log(error)
+              process.exit(1)
+            }
             console.log('Initialized ', provider);
             cb(null);
           });
