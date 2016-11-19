@@ -324,14 +324,28 @@ module.exports = function(req, res, next) {
           query: {
             t_age: unit_summary.t_age,
             b_age: unit_summary.b_age,
-            timescale_id: 3
+            timescale_id: '3,11'
           }
         }, null, null, function(error, result) {
           if (error) return callback(error);
 
           if (result.length) {
-            unit_summary['c_int_name'] = result[0].name;
-            unit_summary['int_color'] = result[0].color;
+            var best = result.filter(function(d) {
+              var timescales = d.timescales.map(function(j) { return j.timescale_id })
+              if (timescales.indexOf(3) > -1) {
+                return d
+              }
+            })
+            var nextBest = result.filter(function(d) {
+              var timescales = d.timescales.map(function(j) { return j.timescale_id })
+              if (timescales.indexOf(11) > -1 && d.int_type === 'era') {
+                return d
+              }
+            })
+            unit_summary['c_int_name'] = (best.length) ? best[0].name : ((nextBest.length) ? nextBest[0].name : '')
+            unit_summary['int_color'] = (best.length) ? best[0].color : ((nextBest.length) ? nextBest[0].color : '')
+            // unit_summary['c_int_name'] = result[0].name;
+            // unit_summary['int_color'] = result[0].color;
           }
           callback(null, unit_summary);
         });
