@@ -220,7 +220,7 @@
     line-width: 1.3;
   }
   [zoom = 13][type="moraine"] {
-    line-width: 2;
+    line-width: 1.5;
     line-dasharray: 1,5;
   }
 
@@ -234,7 +234,7 @@
     line-width: 2.3;
   }
   [zoom = 14][type="moraine"] {
-    line-width: 3;
+    line-width: 2.5;
     line-dasharray: 1,5;
   }
 
