@@ -263,7 +263,7 @@
   }
   [zoom = 16][type="moraine"] {
     line-width: 4.5;
-    line-dasharray: 1,12;
+    line-dasharray: 1,5;
   }
 
   [zoom > 16] {
