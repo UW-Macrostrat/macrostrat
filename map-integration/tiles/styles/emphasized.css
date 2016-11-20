@@ -75,6 +75,8 @@
  }
  .lines[type="moraine"] {
    line-color: #3498DB;
+   line-join: round;
+   line-cap: round;
  }
 
 .lines {
