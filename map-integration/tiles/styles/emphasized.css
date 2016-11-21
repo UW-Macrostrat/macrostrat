@@ -185,6 +185,12 @@
   [zoom = 7][type="lineament"] {
     line-dasharray: 2, 1, 7, 1;
   }
+  [zoom = 7][type="fold"],
+  [zoom = 7][type="anticline"],
+  [zoom = 7][type="syncline"],
+  [zoom = 7][type="monocline"] {
+    line-width: 0.5;
+  }
 
   [zoom = 8] {
     line-width: 0.5;
@@ -199,6 +205,12 @@
   [zoom = 8][type="lineament"] {
     line-dasharray: 2, 1, 7, 1;
   }
+  [zoom = 8][type="fold"],
+  [zoom = 8][type="anticline"],
+  [zoom = 8][type="syncline"],
+  [zoom = 8][type="monocline"] {
+    line-width: 0.8;
+  }
 
   [zoom = 9] {
     line-width: 0.7;
@@ -212,6 +224,12 @@
   }
   [zoom = 9][type="lineament"] {
     line-dasharray: 3, 2, 11, 2;
+  }
+  [zoom = 9][type="fold"],
+  [zoom = 9][type="anticline"],
+  [zoom = 9][type="syncline"],
+  [zoom = 9][type="monocline"] {
+    line-width: 0.9;
   }
 
   [zoom = 10] {
@@ -241,6 +259,12 @@
   [zoom = 10][type="lineament"] {
     line-dasharray: 3, 3, 8, 3;
   }
+  [zoom = 10][type="fold"],
+  [zoom = 10][type="anticline"],
+  [zoom = 10][type="syncline"],
+  [zoom = 10][type="monocline"] {
+    line-width: 0.9;
+  }
 
   [zoom = 11] {
     line-width: 0.9;
@@ -268,6 +292,12 @@
   }
   [zoom = 11][type="lineament"] {
     line-dasharray: 4, 2, 14, 2;
+  }
+  [zoom = 11][type="fold"],
+  [zoom = 11][type="anticline"],
+  [zoom = 11][type="syncline"],
+  [zoom = 11][type="monocline"] {
+    line-width: 1.2;
   }
 
 
@@ -302,7 +332,12 @@
   [zoom = 12][type="lineament"] {
     line-dasharray: 5, 3, 18, 3;
   }
-
+  [zoom = 12][type="fold"],
+  [zoom = 12][type="anticline"],
+  [zoom = 12][type="syncline"],
+  [zoom = 12][type="monocline"] {
+    line-width: 1.4;
+  }
 
 
 
@@ -341,6 +376,12 @@
   [zoom = 13][type="lineament"] {
     line-dasharray: 6, 4, 22, 4;
   }
+  [zoom = 13][type="fold"],
+  [zoom = 13][type="anticline"],
+  [zoom = 13][type="syncline"],
+  [zoom = 13][type="monocline"] {
+    line-width: 1.8;
+  }
 
 
   [zoom = 14] {
@@ -377,6 +418,12 @@
   }
   [zoom = 14][type="lineament"] {
     line-dasharray: 8, 5, 29, 5;
+  }
+  [zoom = 14][type="fold"],
+  [zoom = 14][type="anticline"],
+  [zoom = 14][type="syncline"],
+  [zoom = 14][type="monocline"] {
+    line-width: 2.8;
   }
 
 
@@ -415,6 +462,12 @@
   [zoom = 15][type="lineament"] {
     line-dasharray: 8, 5, 29, 5;
   }
+  [zoom = 15][type="fold"],
+  [zoom = 15][type="anticline"],
+  [zoom = 15][type="syncline"],
+  [zoom = 15][type="monocline"] {
+    line-width: 3.5;
+  }
 
 
   [zoom = 16] {
@@ -451,6 +504,12 @@
   }
   [zoom = 16][type="lineament"] {
     line-dasharray: 10, 6, 36, 6;
+  }
+  [zoom = 16][type="fold"],
+  [zoom = 16][type="anticline"],
+  [zoom = 16][type="syncline"],
+  [zoom = 16][type="monocline"] {
+    line-width: 4.4;
   }
 
 
