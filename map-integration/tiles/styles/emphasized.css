@@ -277,6 +277,10 @@
       line-cap: round;
     }
   }
+  [zoom = 12][type="flow"] {
+    line-width: 1.3;
+    line-dasharray: 3,3;
+  }
 
 
   [zoom = 13] {
@@ -302,6 +306,10 @@
       line-join: round;
       line-cap: round;
     }
+  }
+  [zoom = 13][type="flow"] {
+    line-width: 1.5;
+    line-dasharray: 3,3;
   }
 
 
@@ -329,6 +337,10 @@
       line-cap: round;
     }
   }
+  [zoom = 14][type="flow"] {
+    line-width: 2;
+    line-dasharray: 3,3;
+  }
 
 
   [zoom = 15] {
@@ -355,6 +367,10 @@
       line-cap: round;
     }
   }
+  [zoom = 15][type="flow"] {
+    line-width: 2.5;
+    line-dasharray: 5,5;
+  }
 
 
   [zoom = 16] {
@@ -380,6 +396,10 @@
       line-join: round;
       line-cap: round;
     }
+  }
+  [zoom = 16][type="flow"] {
+    line-width: 3;
+    line-dasharray: 7,7;
   }
 
 
