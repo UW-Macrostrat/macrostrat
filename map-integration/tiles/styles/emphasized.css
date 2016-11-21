@@ -103,6 +103,9 @@
   [type="vein"] {
    line-color: #FF4136;
   }
+  [type="marker bed"] {
+    line-color: #333333;
+  }
  }
 
 .lines {
@@ -283,6 +286,8 @@
   }
 
 
+
+
   [zoom = 13] {
     line-width: 1.5;
   }
@@ -310,6 +315,10 @@
   [zoom = 13][type="flow"] {
     line-width: 1.5;
     line-dasharray: 3,3;
+  }
+  [zoom = 13][type="marker bed"] {
+    line-width: 2;
+    line-dasharray: 5,5;
   }
 
 
@@ -341,6 +350,10 @@
     line-width: 2;
     line-dasharray: 3,3;
   }
+  [zoom = 14][type="marker bed"] {
+    line-width: 3;
+    line-dasharray: 5,5;
+  }
 
 
   [zoom = 15] {
@@ -369,6 +382,10 @@
   }
   [zoom = 15][type="flow"] {
     line-width: 2.5;
+    line-dasharray: 5,5;
+  }
+  [zoom = 15][type="marker bed"] {
+    line-width: 3.5;
     line-dasharray: 5,5;
   }
 
@@ -400,6 +417,10 @@
   [zoom = 16][type="flow"] {
     line-width: 3;
     line-dasharray: 7,7;
+  }
+  [zoom = 16][type="marker bed"] {
+    line-width: 4;
+    line-dasharray: 5,5;
   }
 
 
