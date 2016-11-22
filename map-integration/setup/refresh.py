@@ -241,55 +241,7 @@ def refresh(cursor, connection, scale, source_id):
        FROM maps.%(scale)s q
        JOIN maps.map_liths ON q.map_id = map_liths.map_id
        JOIN lith_bases ON lith_bases.map_id = q.map_id
-       WHERE source_id = %(source_id)s AND map_liths.basis_col = ANY(
-         CASE
-           WHEN 'manual_replace' = ANY(bases)
-             THEN array['manual_replace']
-
-           WHEN 'strat_name' = ANY(bases)
-            THEN array['strat_name', 'manual']
-           WHEN 'strat_name_fname' = ANY(bases)
-            THEN array['strat_name_fname', 'manual']
-
-           WHEN 'name' = ANY(bases)
-             THEN array['name', 'manual']
-           WHEN 'name_fname' = ANY(bases)
-             THEN array['name_fname', 'manual']
-
-           WHEN 'descrip' = ANY(bases)
-             THEN array['descrip', 'manual']
-           WHEN 'comments' = ANY(bases)
-             THEN array['comments', 'manual']
-
-
-           WHEN 'strat_name_buffer' = ANY(bases)
-            THEN array['strat_name_buffer', 'manual']
-           WHEN 'name_buffer' = ANY(bases)
-             THEN array['name_buffer', 'manual']
-           WHEN 'descrip_buffer' = ANY(bases)
-             THEN array['descrip_buffer', 'manual']
-           WHEN 'comments_buffer' = ANY(bases)
-             THEN array['comments_buffer', 'manual']
-
-
-           WHEN 'descrip_fname' = ANY(bases)
-             THEN array['descrip_fname', 'manual']
-           WHEN 'comments_fname' = ANY(bases)
-             THEN array['comments_fname', 'manual']
-
-           WHEN 'strat_name_fname_buffer' = ANY(bases)
-            THEN array['strat_name_fname_buffer', 'manual']
-           WHEN 'name_fname_buffer' = ANY(bases)
-             THEN array['name_fname_buffer', 'manual']
-           WHEN 'descrip_fname_buffer' = ANY(bases)
-             THEN array['descrip_fname_buffer', 'manual']
-           WHEN 'comments_fname_buffer' = ANY(bases)
-             THEN array['comments_fname_buffer', 'manual']
-
-           ELSE
-            array['unknown', 'manual']
-           END
-       )
+       WHERE source_id = %(source_id)s
        GROUP BY q.map_id
      ),
 
@@ -383,7 +335,7 @@ def refresh(cursor, connection, scale, source_id):
         DELETE FROM lookup_%(scale)s
         WHERE map_id IN (
             SELECT map_id FROM maps.%(scale)s
-            WHERE name ILIKE 'water'
+            --WHERE name ILIKE 'water'
         );
     """, {
         "scale": AsIs(scale)
