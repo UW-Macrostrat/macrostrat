@@ -240,7 +240,6 @@ def refresh(cursor, connection, scale, source_id):
        SELECT q.map_id, array_agg(DISTINCT lith_id) AS lith_ids
        FROM maps.%(scale)s q
        JOIN maps.map_liths ON q.map_id = map_liths.map_id
-       JOIN lith_bases ON lith_bases.map_id = q.map_id
        WHERE source_id = %(source_id)s
        GROUP BY q.map_id
      ),
