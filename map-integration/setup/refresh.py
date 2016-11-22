@@ -320,16 +320,6 @@ def refresh(cursor, connection, scale, source_id):
     """, {"scale": AsIs(scale), "source_id": source_id})
     connection.commit()
 
-    cursor.execute("""
-        DELETE FROM lookup_%(scale)s
-        WHERE map_id IN (
-            SELECT map_id FROM maps.%(scale)s
-            --WHERE name ILIKE 'water'
-        );
-    """, {
-        "scale": AsIs(scale)
-    })
-    connection.commit()
 
 def refresh_scale(cursor, connection, scale):
     print "--- Working on ", scale, " ---"
