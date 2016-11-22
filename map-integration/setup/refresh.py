@@ -225,16 +225,6 @@ def refresh(cursor, connection, scale, source_id):
        GROUP BY q.map_id
      ),
 
-     -- Find unique match types of lithologies
-     lith_bases AS (
-       SELECT array_agg(distinct basis_col) bases, q.map_id
-       FROM maps.map_liths
-       JOIN maps.%(scale)s q ON map_liths.map_id = q.map_id
-       WHERE source_id = %(source_id)s
-       GROUP BY q.map_id
-       ORDER BY q.map_id
-     ),
-
      -- Find and aggregate best lith_ids for each map_id
      lith_ids AS (
        SELECT q.map_id, array_agg(DISTINCT lith_id) AS lith_ids
