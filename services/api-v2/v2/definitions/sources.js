@@ -24,9 +24,9 @@ module.exports = function(req, res, next, cb) {
       area
   */});
 
-/*  if (api.acceptedFormats.geo[req.query.format]) {
+  if (api.acceptedFormats.geo[req.query.format]) {
     sql += ", ST_AsGeoJSON(rgeom) AS geometry";
-  } */
+  }
 
   sql += " FROM maps.sources ";
 
