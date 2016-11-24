@@ -58,7 +58,7 @@ module.exports = function(req, res, next, cb) {
   }
 
   // Remove any empty sources and etopo1
-  where.push("sources.area IS NOT NULL");
+  where.push("sources.rgeom IS NOT NULL");
 
   sql += (where.length) ? (" WHERE " + where.join(" AND ")) : "";
 
