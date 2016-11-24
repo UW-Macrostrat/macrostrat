@@ -6,7 +6,7 @@ def source_stats(cursor, connection, source_id):
     """, {
         "source_id": source_id
     })
-    primary_table = cursor.fetchone()['primary_table']
+    primary_table = cursor.fetchone()[0]
 
     cursor.execute("""
       WITH second AS (
@@ -319,6 +319,8 @@ def refresh(cursor, connection, scale, source_id):
     )
     """, {"scale": AsIs(scale), "source_id": source_id})
     connection.commit()
+
+    source_stats(cursor, connection, source_id)
 
 
 def refresh_scale(cursor, connection, scale):
