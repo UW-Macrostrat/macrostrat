@@ -51,9 +51,13 @@ if __name__ == '__main__':
     print 'Starting at ', str(datetime.datetime.now())
 
     # Match
-    print '| | | | | Matching...'
-    call(['python matching/match_parallel.py --source_id %s' % (arguments.source_id, )], shell=True)
-    print '| | | | | Done matching | | | | |'
+    print '| | | | | Matching stratigraphic names...'
+    call(['python matching/match_names.py --source_id %s' % (arguments.source_id, )], shell=True)
+    print '| | | | | Done matching stratigraphic names| | | | |'
+
+    print '| | | | | Matching macrostrat units...'
+    call(['python matching/match_units.py --source_id %s' % (arguments.source_id, )], shell=True)
+    print '| | | | | Done matching macrostrat units| | | | |'
 
     # Refresh lookup tables
     print '| | | | | Refreshing lookup tables...'
