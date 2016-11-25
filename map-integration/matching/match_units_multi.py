@@ -104,7 +104,7 @@ class Task(object):
               unit_strat_names.unit_id,
               lookup_unit_intervals.t_age,
               lookup_unit_intervals.b_age,
-              cols.poly_geom AS geom
+              """ + ("cols.poly_geom " if strictSpace else "st_buffer(st_envelope(cols.poly_geom), 1.2)") + """ AS geom
             FROM macrostrat.unit_strat_names
             JOIN macrostrat.units_sections ON unit_strat_names.unit_id = units_sections.unit_id
             JOIN macrostrat.cols ON units_sections.col_id = cols.id
@@ -195,7 +195,7 @@ class Task(object):
               unit_strat_names.unit_id,
               lookup_unit_intervals.t_age,
               lookup_unit_intervals.b_age,
-              cols.poly_geom AS geom
+              """ + ("cols.poly_geom " if strictSpace else "st_buffer(st_envelope(cols.poly_geom), 1.2)") + """ AS geom
             FROM macrostrat.unit_strat_names
             JOIN macrostrat.units_sections ON unit_strat_names.unit_id = units_sections.unit_id
             JOIN macrostrat.cols ON units_sections.col_id = cols.id
@@ -253,7 +253,7 @@ class Task(object):
               )
             ),
             b AS (
-              SELECT unit_strat_names.strat_name_id, unit_strat_names.unit_id, lookup_unit_intervals.t_age, lookup_unit_intervals.b_age, cols.poly_geom AS geom
+              SELECT unit_strat_names.strat_name_id, unit_strat_names.unit_id, lookup_unit_intervals.t_age, lookup_unit_intervals.b_age, """ + ("cols.poly_geom " if strictSpace else "st_buffer(st_envelope(cols.poly_geom), 1.2)") + """ AS geom
               FROM macrostrat.unit_strat_names
               JOIN macrostrat.units_sections ON unit_strat_names.unit_id = units_sections.unit_id
               JOIN macrostrat.cols ON units_sections.col_id = cols.id
