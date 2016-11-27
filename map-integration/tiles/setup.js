@@ -36,7 +36,7 @@
           "extent_cache": "auto",
           "extent": "-179,-89,179,89",
           "host": "localhost",
-          "port": "5432",
+          "port": "5439",
           "user": credentials.pg.user,
           "password": credentials.pg.password,
           "dbname": "burwell",
@@ -63,7 +63,7 @@
           "extent_cache": "auto",
           "extent": "-179,-89,179,89",
           "host": "localhost",
-          "port": "5432",
+          "port": "5439",
           "user": credentials.pg.user,
           "password": credentials.pg.password,
           "dbname": "burwell",
@@ -178,7 +178,8 @@
           }
         },
         function(c) {
-          if (config.mapLayers[layer].hasLines) {
+          // Only add lines if A) this layer needs lines and B) we are iterating on the current scale
+          if (config.mapLayers[layer].hasLines && d === scale) {
             createLayerLines(d, function(l) {
             //  layers.push(l)
               c(null, l)
