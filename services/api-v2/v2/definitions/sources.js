@@ -24,9 +24,9 @@ module.exports = function(req, res, next, cb) {
       area
   */});
 
-/*  if (api.acceptedFormats.geo[req.query.format]) {
+  if (api.acceptedFormats.geo[req.query.format]) {
     sql += ", ST_AsGeoJSON(rgeom) AS geometry";
-  } */
+  }
 
   sql += " FROM maps.sources ";
 
@@ -58,7 +58,7 @@ module.exports = function(req, res, next, cb) {
   }
 
   // Remove any empty sources and etopo1
-  where.push("sources.area IS NOT NULL");
+  where.push("sources.rgeom IS NOT NULL");
 
   sql += (where.length) ? (" WHERE " + where.join(" AND ")) : "";
 
