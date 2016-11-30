@@ -187,6 +187,14 @@ cursor.execute("""
     WHERE age_bottom >= early_age AND age_top <= early_age
     AND timescales.id = 3
     LIMIT 1
+  ), early_age = (
+    SELECT age_bottom
+    FROM macrostrat.intervals
+    JOIN timescales_intervals ON intervals.id = timescales_intervals.interval_id
+    JOIN timescales ON timescales.id = timescales_intervals.timescale_id
+    WHERE age_bottom >= early_age AND age_top <= early_age
+    AND timescales.id = 3
+    LIMIT 1
   );
 """)
 connection.commit()
@@ -202,6 +210,29 @@ cursor.execute("""
     AND timescales.id = 3
     LIMIT 1
   );
+""")
+connection.commit()
+
+# Make sure all names have an early and late_age
+cursor.execute("""
+  UPDATE lookup_strat_names_new
+  SET early_age = (
+    SELECT age_bottom
+    FROM macrostrat.intervals
+    JOIN timescales_intervals ON intervals.id = timescales_intervals.interval_id
+    JOIN timescales ON timescales.id = timescales_intervals.timescale_id
+    WHERE age_bottom >= early_age AND age_top <= early_age
+    AND timescales.id = 3
+    LIMIT 1
+  ), late_age = (
+    SELECT age_top
+    FROM macrostrat.intervals
+    JOIN timescales_intervals ON intervals.id = timescales_intervals.interval_id
+    JOIN timescales ON timescales.id = timescales_intervals.timescale_id
+    WHERE age_bottom >= early_age AND age_top <= early_age
+    AND timescales.id = 3
+    LIMIT 1
+  ) WHERE early_age IS NULL AND late_age IS NULL;
 """)
 connection.commit()
 
