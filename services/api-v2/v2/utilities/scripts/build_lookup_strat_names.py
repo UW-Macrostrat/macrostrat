@@ -187,14 +187,6 @@ cursor.execute("""
     WHERE age_bottom >= early_age AND age_top <= early_age
     AND timescales.id = 3
     LIMIT 1
-  ), early_age = (
-    SELECT age_bottom
-    FROM macrostrat.intervals
-    JOIN timescales_intervals ON intervals.id = timescales_intervals.interval_id
-    JOIN timescales ON timescales.id = timescales_intervals.timescale_id
-    WHERE age_bottom >= early_age AND age_top <= early_age
-    AND timescales.id = 3
-    LIMIT 1
   );
 """)
 connection.commit()
