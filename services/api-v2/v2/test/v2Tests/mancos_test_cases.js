@@ -9,7 +9,7 @@ module.exports = function() {
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(function(res) {
-        if (res.body.success.data.uid !== 60404) {
+        if (res.body.success.data.uid !== 1114738) {
           throw new Error("Wrong unit returned for Detroit")
         }
         if (res.body.success.data.rocktype.length < 2) {
@@ -60,7 +60,7 @@ module.exports = function() {
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(function(res) {
-        if (res.body.success.data.uid !== 33901) {
+        if (res.body.success.data.uid !== 619176) {
           throw new Error("Wrong unit returned for Toronto")
         }
         if (res.body.success.data.rocktype.length < 1) {

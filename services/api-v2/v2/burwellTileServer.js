@@ -2,6 +2,7 @@ var tilestrata = require("tilestrata");
 var mapnik = require("tilestrata-mapnik");
 var headers = require("tilestrata-headers");
 var etag = require("tilestrata-etag");
+var vtile = require("tilestrata-vtile");
 var portscanner = require("portscanner");
 var credentials = require("./credentials");
 
@@ -9,6 +10,7 @@ module.exports = tilestrata.middleware({
   prefix: "/maps/burwell",
   server: (function() {
     var strata = tilestrata();
+
 
     // Create a provider for all active tile layers
     credentials.tiles.activeLayers.forEach(function(layer) {
@@ -25,6 +27,16 @@ module.exports = tilestrata.middleware({
           }))
           .use(etag())
     });
+
+    strata.layer('vector')
+        .route('tile.pbf')
+            .use(vtile({
+                xml: __dirname + '/burwell_vtile_tiny.xml',
+                tileSize: 256,
+                metatile: 1,
+                bufferSize: 128
+            }))
+            .use(etag())
 
     // Check if Redis is running
     setTimeout(function() {
