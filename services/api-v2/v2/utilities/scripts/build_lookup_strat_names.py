@@ -185,7 +185,7 @@ cursor.execute("""
     JOIN timescales_intervals ON intervals.id = timescales_intervals.interval_id
     JOIN timescales ON timescales.id = timescales_intervals.timescale_id
     WHERE age_bottom >= early_age AND age_top <= early_age
-    AND timescales.id = 3
+    AND timescales.id = 20
     LIMIT 1
   );
 """)
@@ -199,27 +199,9 @@ cursor.execute("""
     JOIN timescales_intervals ON intervals.id = timescales_intervals.interval_id
     JOIN timescales ON timescales.id = timescales_intervals.timescale_id
     WHERE age_bottom >= late_age AND age_top <= late_age
-    AND timescales.id = 3
+    AND timescales.id = 20
     LIMIT 1
   );
-""")
-connection.commit()
-
-# Populate containing interval
-cursor.execute("""
-    UPDATE lookup_strat_names_new
-    SET c_interval = (
-        SELECT interval_name from intervals
-    	JOIN timescales_intervals ON intervals.id = interval_id
-    	JOIN timescales on timescale_id = timescales.id
-    	WHERE timescale = 'international'
-    		AND early_age > age_top
-    		AND early_age <= age_bottom
-    		AND late_age < age_bottom
-    		AND late_age >= age_top
-    		ORDER BY age_bottom - age_top
-            LIMIT 1
-    )
 """)
 connection.commit()
 
@@ -329,6 +311,24 @@ cursor.execute("""
     WHERE interval_name = t_period
     LIMIT 1
   ) WHERE early_age IS NULL AND late_age IS NULL;
+""")
+connection.commit()
+
+# Populate containing interval
+cursor.execute("""
+    UPDATE lookup_strat_names_new
+    SET c_interval = (
+        SELECT interval_name from intervals
+    	JOIN timescales_intervals ON intervals.id = interval_id
+    	JOIN timescales on timescale_id = timescales.id
+    	WHERE timescale = 'international'
+    		AND early_age > age_top
+    		AND early_age <= age_bottom
+    		AND late_age < age_bottom
+    		AND late_age >= age_top
+    		ORDER BY age_bottom - age_top
+            LIMIT 1
+    )
 """)
 connection.commit()
 
