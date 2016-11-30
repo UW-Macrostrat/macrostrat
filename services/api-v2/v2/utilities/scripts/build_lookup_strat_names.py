@@ -205,23 +205,6 @@ cursor.execute("""
 """)
 connection.commit()
 
-# Make sure all names have an early and late_age
-cursor.execute("""
-  UPDATE lookup_strat_names_new
-  SET early_age = (
-    SELECT age_bottom
-    FROM macrostrat.intervals, macrostrat.lookup_strat_names_new
-    WHERE interval_name = b_period
-    LIMIT 1
-  ), late_age = (
-    SELECT age_top
-    FROM macrostrat.intervals, macrostrat.lookup_strat_names_new
-    WHERE interval_name = t_period
-    LIMIT 1
-  ) WHERE early_age IS NULL AND late_age IS NULL;
-""")
-connection.commit()
-
 # Populate containing interval
 cursor.execute("""
     UPDATE lookup_strat_names_new
@@ -331,6 +314,23 @@ for strat_name in strat_name_results:
       "strat_name_id": strat_name["strat_name_id"]
     })
 
+
+# Make sure all names have an early and late_age
+cursor.execute("""
+  UPDATE lookup_strat_names_new
+  SET early_age = (
+    SELECT age_bottom
+    FROM macrostrat.intervals
+    WHERE interval_name = b_period
+    LIMIT 1
+  ), late_age = (
+    SELECT age_top
+    FROM macrostrat.intervals
+    WHERE interval_name = t_period
+    LIMIT 1
+  ) WHERE early_age IS NULL AND late_age IS NULL;
+""")
+connection.commit()
 
 # Out with the old, in with the new
 cursor.execute("TRUNCATE lookup_strat_names")
