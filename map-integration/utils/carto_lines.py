@@ -50,7 +50,12 @@ def refresh(scale, source_id):
         );
 
         INSERT INTO carto.lines_%(target)s (line_id, geom, scale, source_id, name, type, direction, descrip)
-          SELECT line_id, geom,
+          SELECT line_id,
+              ST_Intersection(a.geom, (
+                SELECT ST_Envelope(rgeom)
+                FROM maps.sources
+                WHERE source_id = %(source_id)s
+              )) as geom,
               '%(target)s'::text AS scale,
               a.source_id,
               COALESCE(a.name, '') AS name,
@@ -60,16 +65,28 @@ def refresh(scale, source_id):
           FROM lines.%(target)s a
           JOIN maps.sources b
           ON a.source_id = b.source_id
-          WHERE priority = True
-            AND ST_Intersects(
-                    geom,
-                    (SELECT ST_Envelope(rgeom)
-                     FROM maps.sources
-                     WHERE source_id = %(source_id)s )
-            );
+          JOIN (
+             SELECT ST_Envelope(rgeom) as geom
+             FROM maps.sources
+             WHERE source_id = %(source_id)s
+          ) c ON ST_Intersects(a.geom, c.geom)
+          WHERE priority IS True;
+
 
         INSERT INTO carto.lines_%(target)s (line_id, geom, scale, source_id, name, type, direction, descrip)
-          SELECT a.line_id, a.geom,
+          SELECT a.line_id,
+              ST_Difference(a.geom, (
+
+                SELECT ST_Union(rgeom)
+                FROM maps.sources x
+                JOIN (
+                 SELECT ST_Envelope(rgeom) as geom
+                 FROM maps.sources
+                 WHERE source_id = %(source_id)s
+                ) w ON ST_Intersects(x.rgeom, w.geom)
+                WHERE priority IS True
+
+              )) as geom,
               '%(target)s'::text AS scale,
               a.source_id,
               COALESCE(a.name, '') AS name,
@@ -77,20 +94,26 @@ def refresh(scale, source_id):
               COALESCE(a.direction, '') AS direction,
               COALESCE(a.descrip, '') AS descrip
           FROM lines.%(target)s a
-          JOIN maps.sources b
-            ON a.source_id = b.source_id
-          LEFT JOIN carto.lines_%(target)s c ON ST_Intersects(a.geom, c.geom)
-          WHERE priority = False
-          AND c.line_id IS NULL
-          AND ST_Intersects(
-                a.geom,
-                (SELECT ST_Envelope(rgeom)
-                FROM maps.sources
-                WHERE source_id = %(source_id)s )
-          );
+          JOIN maps.sources b ON a.source_id = b.source_id
+          JOIN (
+            SELECT ST_Envelope(rgeom) as geom
+             FROM maps.sources
+             WHERE source_id = %(source_id)s
+          ) c ON ST_Intersects(a.geom, c.geom)
+          WHERE priority IS False;
 
         INSERT INTO carto.lines_%(target)s (line_id, geom, scale, source_id, name, type, direction, descrip)
-          SELECT a.line_id, a.geom,
+          SELECT a.line_id,
+              ST_Difference(a.geom, (
+                SELECT ST_Union(rgeom)
+                FROM maps.sources x
+                JOIN (
+                 SELECT ST_Envelope(rgeom) as geom
+                 FROM maps.sources
+                 WHERE source_id = %(source_id)s
+                ) w ON ST_Intersects(x.rgeom, w.geom)
+                WHERE scale = '%(below)s'::text
+              )) as geom,
               '%(below)s'::text AS scale,
               a.source_id,
               COALESCE(a.name, '') AS name,
@@ -98,25 +121,26 @@ def refresh(scale, source_id):
               COALESCE(a.direction, '') AS direction,
               COALESCE(a.descrip, '') AS descrip
           FROM lines.%(below)s a
-          JOIN maps.sources b
-            ON a.source_id = b.source_id
-          LEFT JOIN (
-            SELECT source_id, rgeom AS geom
+          JOIN maps.sources b ON a.source_id = b.source_id
+          JOIN (
+            SELECT ST_Envelope(rgeom) as geom
             FROM maps.sources
-            WHERE scale = '%(target)s'
+            WHERE source_id = %(source_id)s
           ) c ON ST_Intersects(a.geom, c.geom)
-        --  LEFT JOIN carto.lines_%(target)s c ON ST_Intersects(a.geom, c.geom)
-          WHERE priority = True
-          AND c.source_id IS NULL
-          AND ST_Intersects(
-                a.geom,
-                (SELECT ST_Envelope(rgeom)
-                FROM maps.sources
-                WHERE source_id = %(source_id)s )
-          );
+          WHERE priority IS True;
 
         INSERT INTO carto.lines_%(target)s (line_id, geom, scale, source_id, name, type, direction, descrip)
-          SELECT a.line_id, a.geom,
+          SELECT a.line_id,
+              ST_Difference(a.geom, (
+                SELECT ST_Union(rgeom)
+                FROM maps.sources x
+                JOIN (
+                 SELECT ST_Envelope(rgeom) as geom
+                 FROM maps.sources
+                 WHERE source_id = %(source_id)s
+                ) w ON ST_Intersects(x.rgeom, w.geom)
+                WHERE scale = '%(below)s'::text
+              )) as geom,
               '%(below)s'::text AS scale,
               a.source_id,
               COALESCE(a.name, '') AS name,
@@ -124,22 +148,13 @@ def refresh(scale, source_id):
               COALESCE(a.direction, '') AS direction,
               COALESCE(a.descrip, '') AS descrip
           FROM lines.%(below)s a
-          JOIN maps.sources b
-            ON a.source_id = b.source_id
-          LEFT JOIN (
-            SELECT source_id, rgeom AS geom
+          JOIN maps.sources b ON a.source_id = b.source_id
+          JOIN (
+            SELECT ST_Envelope(rgeom) as geom
             FROM maps.sources
-            WHERE scale = '%(target)s'
+            WHERE source_id = %(source_id)s
           ) c ON ST_Intersects(a.geom, c.geom)
-         -- LEFT JOIN carto.lines_%(target)s c ON ST_Intersects(a.geom, c.geom)
-          WHERE priority = FALSE
-          AND c.source_id IS NULL
-          AND ST_Intersects(
-                a.geom,
-                (SELECT ST_Envelope(rgeom)
-                FROM maps.sources
-                WHERE source_id = %(source_id)s )
-          );
+          WHERE priority IS False; 
     """
     cursor.execute(sql, {
         "target": AsIs(scale),
