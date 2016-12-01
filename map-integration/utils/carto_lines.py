@@ -76,16 +76,14 @@ def refresh(scale, source_id):
         INSERT INTO carto.lines_%(target)s (line_id, geom, scale, source_id, name, type, direction, descrip)
           SELECT a.line_id,
               ST_Difference(a.geom, (
-
                 SELECT ST_Union(rgeom)
                 FROM maps.sources x
                 JOIN (
-                 SELECT ST_Envelope(rgeom) as geom
-                 FROM maps.sources
-                 WHERE source_id = %(source_id)s
+                   SELECT ST_Envelope(rgeom) as geom
+                   FROM maps.sources
+                   WHERE source_id = %(source_id)s
                 ) w ON ST_Intersects(x.rgeom, w.geom)
-                WHERE priority IS True
-
+                WHERE priority IS True and scale = '%(target)s'::text
               )) as geom,
               '%(target)s'::text AS scale,
               a.source_id,
@@ -112,7 +110,7 @@ def refresh(scale, source_id):
                  FROM maps.sources
                  WHERE source_id = %(source_id)s
                 ) w ON ST_Intersects(x.rgeom, w.geom)
-                WHERE scale = '%(below)s'::text
+                WHERE scale = '%(target)s'
               )) as geom,
               '%(below)s'::text AS scale,
               a.source_id,
@@ -139,7 +137,7 @@ def refresh(scale, source_id):
                  FROM maps.sources
                  WHERE source_id = %(source_id)s
                 ) w ON ST_Intersects(x.rgeom, w.geom)
-                WHERE scale = '%(below)s'::text
+                WHERE scale = '%(target)s' OR (scale = '%(below)s'::text AND priority is True)
               )) as geom,
               '%(below)s'::text AS scale,
               a.source_id,
@@ -154,7 +152,7 @@ def refresh(scale, source_id):
             FROM maps.sources
             WHERE source_id = %(source_id)s
           ) c ON ST_Intersects(a.geom, c.geom)
-          WHERE priority IS False; 
+          WHERE priority IS False;
     """
     cursor.execute(sql, {
         "target": AsIs(scale),
@@ -236,7 +234,12 @@ if __name__ == '__main__':
               WHERE priority = True;
 
             INSERT INTO carto.lines_%(target)s_new (line_id, geom, scale, source_id, name, type, direction, descrip)
-              SELECT a.line_id, a.geom,
+              SELECT a.line_id,
+                  ST_Difference(a.geom, (
+                    SELECT ST_Union(rgeom)
+                    FROM maps.sources x
+                    WHERE priority IS True and scale = '%(target)s'::text
+                  )) as geom,
                   '%(target)s'::text AS scale,
                   a.source_id,
                   COALESCE(a.name, '') AS name,
@@ -244,14 +247,17 @@ if __name__ == '__main__':
                   COALESCE(a.direction, '') AS direction,
                   COALESCE(a.descrip, '') AS descrip
               FROM lines.%(target)s a
-              JOIN maps.sources b
-                ON a.source_id = b.source_id
-              LEFT JOIN carto.lines_%(target)s_new c ON ST_Intersects(a.geom, c.geom)
-              WHERE priority = False
-              AND c.line_id IS NULL;
+              JOIN maps.sources b ON a.source_id = b.source_id
+              WHERE priority IS False;
+
 
             INSERT INTO carto.lines_%(target)s_new (line_id, geom, scale, source_id, name, type, direction, descrip)
-              SELECT a.line_id, a.geom,
+              SELECT a.line_id,
+                  ST_Difference(a.geom, (
+                    SELECT ST_Union(rgeom)
+                    FROM maps.sources x
+                    WHERE scale = '%(target)s'::text
+                  )) as geom,
                   '%(below)s'::text AS scale,
                   a.source_id,
                   COALESCE(a.name, '') AS name,
@@ -259,19 +265,16 @@ if __name__ == '__main__':
                   COALESCE(a.direction, '') AS direction,
                   COALESCE(a.descrip, '') AS descrip
               FROM lines.%(below)s a
-              JOIN maps.sources b
-                ON a.source_id = b.source_id
-              LEFT JOIN (
-                SELECT source_id, rgeom AS geom
-                FROM maps.sources
-                WHERE scale = '%(target)s'
-              ) c ON ST_Intersects(a.geom, c.geom)
-             -- LEFT JOIN carto.lines_%(target)s c ON ST_Intersects(a.geom, c.geom)
-              WHERE priority = FALSE
-              AND c.source_id IS NULL;
+              JOIN maps.sources b ON a.source_id = b.source_id
+              WHERE priority IS True;
 
-            INSERT INTO carto.lines_%(target)s_new (line_id, geom, scale, source_id, name, type, direction, descrip)
-              SELECT a.line_id, a.geom,
+            INSERT INTO carto.lines_%(target)s (line_id, geom, scale, source_id, name, type, direction, descrip)
+              SELECT a.line_id,
+                  ST_Difference(a.geom, (
+                    SELECT ST_Union(rgeom)
+                    FROM maps.sources x
+                    WHERE scale = '%(target)s' OR (scale = '%(below)s'::text AND priority is True)
+                  )) as geom,
                   '%(below)s'::text AS scale,
                   a.source_id,
                   COALESCE(a.name, '') AS name,
@@ -279,16 +282,8 @@ if __name__ == '__main__':
                   COALESCE(a.direction, '') AS direction,
                   COALESCE(a.descrip, '') AS descrip
               FROM lines.%(below)s a
-              JOIN maps.sources b
-                ON a.source_id = b.source_id
-              LEFT JOIN (
-                SELECT source_id, rgeom AS geom
-                FROM maps.sources
-                WHERE scale = '%(target)s'
-              ) c ON ST_Intersects(a.geom, c.geom)
-             -- LEFT JOIN carto.lines_%(target)s c ON ST_Intersects(a.geom, c.geom)
-              WHERE priority = FALSE
-              AND c.source_id IS NULL;
+              JOIN maps.sources b ON a.source_id = b.source_id
+              WHERE priority IS False;
 
             CREATE INDEX ON carto.lines_%(target)s_new (line_id);
             CREATE INDEX ON carto.lines_%(target)s_new USING GiST (geom);
@@ -303,4 +298,4 @@ if __name__ == '__main__':
         })
         connection.commit()
     end = time.time()
-    print 'Created carto.%s in ' % arguments.the_scale, int(end - start), 's'
+    print 'Created carto.%s in %s s' % (arguments.the_scale, int(end - start))
