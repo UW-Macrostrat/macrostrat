@@ -76,7 +76,7 @@ def refresh(scale, source_id):
         INSERT INTO carto.lines_%(target)s (line_id, geom, scale, source_id, name, type, direction, descrip)
           SELECT a.line_id,
               ST_Difference(a.geom, (
-                SELECT ST_Union(rgeom)
+                SELECT COALESCE(ST_Union(rgeom), 'POLYGON EMPTY')
                 FROM maps.sources x
                 JOIN (
                    SELECT ST_Envelope(rgeom) as geom
@@ -103,7 +103,7 @@ def refresh(scale, source_id):
         INSERT INTO carto.lines_%(target)s (line_id, geom, scale, source_id, name, type, direction, descrip)
           SELECT a.line_id,
               ST_Difference(a.geom, (
-                SELECT ST_Union(rgeom)
+                SELECT COALESCE(ST_Union(rgeom), 'POLYGON EMPTY')
                 FROM maps.sources x
                 JOIN (
                  SELECT ST_Envelope(rgeom) as geom
@@ -130,7 +130,7 @@ def refresh(scale, source_id):
         INSERT INTO carto.lines_%(target)s (line_id, geom, scale, source_id, name, type, direction, descrip)
           SELECT a.line_id,
               ST_Difference(a.geom, (
-                SELECT ST_Union(rgeom)
+                SELECT COALESCE(ST_Union(rgeom), 'POLYGON EMPTY')
                 FROM maps.sources x
                 JOIN (
                  SELECT ST_Envelope(rgeom) as geom
@@ -236,7 +236,7 @@ if __name__ == '__main__':
             INSERT INTO carto.lines_%(target)s_new (line_id, geom, scale, source_id, name, type, direction, descrip)
               SELECT a.line_id,
                   ST_Difference(a.geom, (
-                    SELECT ST_Union(rgeom)
+                    SELECT COALESCE(ST_Union(rgeom), 'POLYGON EMPTY')
                     FROM maps.sources x
                     WHERE priority IS True and scale = '%(target)s'::text
                   )) as geom,
@@ -254,7 +254,7 @@ if __name__ == '__main__':
             INSERT INTO carto.lines_%(target)s_new (line_id, geom, scale, source_id, name, type, direction, descrip)
               SELECT a.line_id,
                   ST_Difference(a.geom, (
-                    SELECT ST_Union(rgeom)
+                    SELECT COALESCE(ST_Union(rgeom), 'POLYGON EMPTY')
                     FROM maps.sources x
                     WHERE scale = '%(target)s'::text
                   )) as geom,
@@ -271,7 +271,7 @@ if __name__ == '__main__':
             INSERT INTO carto.lines_%(target)s (line_id, geom, scale, source_id, name, type, direction, descrip)
               SELECT a.line_id,
                   ST_Difference(a.geom, (
-                    SELECT ST_Union(rgeom)
+                    SELECT COALESCE(ST_Union(rgeom), 'POLYGON EMPTY')
                     FROM maps.sources x
                     WHERE scale = '%(target)s' OR (scale = '%(below)s'::text AND priority is True)
                   )) as geom,
