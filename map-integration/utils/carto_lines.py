@@ -338,7 +338,7 @@ if __name__ == '__main__':
                       ( scale = '%(target)s'::text AND priority = False )
                       OR
                       ( '%(target)s'::text = ANY(display_scales) AND scale != '%(target)s'::text )
-                )) as geom,
+                )) as geom
                 FROM lines.large
                 JOIN maps.sources ON large.source_id = sources.source_id
                 WHERE scale = '%(below)s'::text AND priority = True;
@@ -394,7 +394,7 @@ if __name__ == '__main__':
                       ( '%(target)s'::text = ANY(display_scales))
                       OR
                       ( scale = '%(below)s'::text AND priority = True )
-                )) as geom,
+                )) as geom
                 FROM lines.large
                 JOIN maps.sources ON large.source_id = sources.source_id
                 WHERE ( scale = '%(below)s'::text AND priority = False )
