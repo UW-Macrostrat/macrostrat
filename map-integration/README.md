@@ -126,6 +126,23 @@ Coming soon. Necessary for vector tiles
 See `tiles/README.md`
 
 
+## tile-tester
+This is a small application to make the modification of styles to the burwell tiles easier. It is identical to the tile server in the Macrostrat API except it doesn't use any caching.
+
+#### Setup
+````
+cd tile-tester
+npm install
+````
+
+#### Usage
+````
+node server.js
+````
+
+You will then be able to see a live view of the tiles at `http://localhost:5555` in your web browser. If you edit any of the styles in `./tiles/styles` and then run `node tiles/compile_styles.js` and restart the `tile-tester` server you will see the changes.
+
+
 ## Import raster
 
 ````
