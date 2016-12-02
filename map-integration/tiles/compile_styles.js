@@ -11,5 +11,6 @@ async.eachLimit(config.layers, 1, function(layer, callback) {
 }, function(error) {
   if (error) console.log(error);
 
+  process.exit(0)
   console.log('Configuration files generated');
 });

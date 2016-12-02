@@ -73,90 +73,114 @@ class Task(object):
         """
 
         pyCursor.execute("""
-            WITH rocks AS (SELECT map_id, replace(strat_name, '.', '') AS strat_name, replace(name, '.', '') AS name, descrip, comments, intervals_top.age_top, intervals_bottom.age_bottom, """ + ("0" if strictTime else "25") + """ as age_buffer, geom
+            WITH first AS (
+                SELECT
+                  """ + ("lsn.rank_name" if strictNameMatch else "lsn.name_no_lith") + """ AS strat_name,
+                  unnest(array(
+                    SELECT not_null_names FROM (
+                      SELECT unnest(
+                        array[lsn.bed_name, lsn.mbr_name, lsn.fm_name, lsn.gp_name, lsn.sgp_name]
+                      ) not_null_names
+                    ) sub WHERE not_null_names IS NOT NULL
+                  )) AS names,
+
+                  unnest(array(
+                    SELECT not_null_ids FROM (
+                      SELECT unnest(
+                        array[lsn.bed_id, lsn.mbr_id, lsn.fm_id, lsn.gp_id, lsn.sgp_id]
+                      ) not_null_ids
+                    ) sub WHERE not_null_ids != 0
+                  )) AS strat_name_id,
+
+                  concept_id,
+
+                  (SELECT array_agg(DISTINCT unit_id)
+                    FROM macrostrat.lookup_strat_names lsn2
+                    LEFT JOIN macrostrat.unit_strat_names usn ON lsn2.strat_name_id = usn.strat_name_id
+                    WHERE lsn2.concept_id = lsn.concept_id AND lsn.concept_id > 0
+                  ) AS units
+
+                FROM macrostrat.lookup_strat_names lsn
+                LEFT JOIN macrostrat.unit_strat_names usn ON usn.strat_name_id = lsn.strat_name_id
+                -- Limit strat name ids only to those that are found in the field we are matching on
+                WHERE lsn.strat_name_id IN (
+                    WITH macro_flat AS (
+                      SELECT strat_name_id, unnest(string_to_array(""" + ("replace(lsn3.rank_name, '.', '')" if strictNameMatch else "replace(lsn3.name_no_lith, '.', '')") + """, ' ')) as token
+                      FROM macrostrat.lookup_strat_names lsn3
+                    ),
+                    names AS (
+                        SELECT DISTINCT strat_name_id
+                        FROM macro_flat
+                        WHERE token IN (
+                          SELECT DISTINCT unnest(string_to_array(name, ' '))
+                          FROM maps.%(table)s
+                          WHERE source_id = %(source_id)s
+                        )
+                    )
+                    SELECT DISTINCT lsn4.strat_name_id
+                    FROM macrostrat.lookup_strat_names AS lsn4
+                    CROSS JOIN (
+                      SELECT DISTINCT replace(%(field)s, '.', '') AS rock_match_field
                       FROM maps.%(table)s
-                      JOIN macrostrat.intervals intervals_top on t_interval = intervals_top.id
-                      JOIN macrostrat.intervals intervals_bottom on b_interval = intervals_bottom.id
                       WHERE source_id = %(source_id)s
-                      """ + (nullAddition if useNullSet else "") + """
-             ),
-             macro AS (
-                WITH first AS (
-                    SELECT DISTINCT lsn.strat_name_id,
-                      unnest(array(
-                        SELECT not_null_names FROM (
-                          SELECT unnest(
-                            array[lsn.bed_name, lsn.mbr_name, lsn.fm_name, lsn.gp_name, lsn.sgp_name]
-                          ) not_null_names
-                        ) sub WHERE not_null_names IS NOT NULL
-                      )) AS names,
+                    ) AS distinct_rocks
+                    JOIN names ON lsn4.strat_name_id = names.strat_name_id
+                    WHERE distinct_rocks.rock_match_field ~* concat('\y', """ + ("replace(lsn4.rank_name, '.', '')" if strictNameMatch else "replace(lsn4.name_no_lith, '.', '')") + """, '\y')
+                )
+            ),
+            third AS (
+                SELECT DISTINCT ON (strat_name_id, col_id, unit_id)
+                  first.strat_name,
+                  first.strat_name_id,
+                  cols.id AS col_id,
+                  unnest(units) AS unit_id, (
+                      SELECT array_agg(cols.id)
+                      FROM macrostrat.cols
+                      LEFT JOIN macrostrat.units_sections ON cols.id = units_sections.col_id
+                      WHERE units_sections.unit_id = ANY(units)
+                ) concept_columns
+                FROM first
+                LEFT JOIN macrostrat.unit_strat_names usn ON first.strat_name_id = usn.strat_name_id
+                LEFT JOIN macrostrat.units ON usn.unit_id = units.id
+                LEFT JOIN macrostrat.units_sections us ON us.unit_id = units.id
+                LEFT JOIN macrostrat.cols ON cols.id = us.col_id
+            ),
 
-                      unnest(array(
-                        SELECT not_null_ids FROM (
-                          SELECT unnest(
-                            array[lsn.bed_id, lsn.mbr_id, lsn.fm_id, lsn.gp_id, lsn.sgp_id]
-                          ) not_null_ids
-                        ) sub WHERE not_null_ids != 0
-                      )) AS strat_name_ids,
-                      concept_id
-                    FROM macrostrat.lookup_strat_names lsn
-                    LEFT JOIN macrostrat.unit_strat_names usn ON usn.strat_name_id = lsn.strat_name_id
-                    ORDER BY lsn.strat_name_id
-                  ),
-                  second AS (
-                    SELECT *, (
-                        SELECT array_agg(DISTINCT unit_id)
-                        FROM macrostrat.lookup_strat_names lsn
-                        LEFT JOIN macrostrat.unit_strat_names usn ON lsn.strat_name_id = usn.strat_name_id
-                        WHERE lsn.concept_id = first.concept_id AND first.concept_id > 0
-                    ) AS units
-                    FROM first
-                  ),
-                  third AS (
-                    SELECT """ + ("replace(lsn.rank_name, '.', '')" if strictNameMatch else "replace(lsn.name_no_lith, '.', '')") + """ AS strat_name,
-                      second.strat_name_ids AS strat_name_id, """ + ("poly_geom " if strictSpace else "st_buffer(st_envelope(poly_geom), 1.2) AS poly_geom ") + """,
-                      cols.id AS col_id,
-                      unnest(units) AS unit_id, (
-                          SELECT array_agg(cols.id)
-                          FROM macrostrat.cols
-                          LEFT JOIN macrostrat.units_sections ON cols.id = units_sections.col_id
-                          WHERE units_sections.unit_id = ANY(units)
-                    ) concept_columns
-                    FROM second
-                    LEFT JOIN macrostrat.unit_strat_names usn ON second.strat_name_ids = usn.strat_name_id
-                    LEFT JOIN macrostrat.units ON usn.unit_id = units.id
-                    LEFT JOIN macrostrat.units_sections us ON us.unit_id = units.id
-                    LEFT JOIN macrostrat.cols ON cols.id = us.col_id
-                    LEFT JOIN macrostrat.lookup_strat_names lsn ON second.strat_name_ids = lsn.strat_name_id
-                  ),
+            name_columns AS (
+                SELECT strat_name, array_agg(DISTINCT col_id) AS columns
+                FROM third
+                GROUP BY strat_name
+            ),
 
-                  name_columns AS (
-                    SELECT strat_name, array_agg(col_id) AS columns
-                    FROM third
-                    GROUP BY strat_name
-                  )
+            macro AS (
+                 SELECT
+                   third.unit_id,
+                   third.strat_name,
+                   third.strat_name_id, (
+                       SELECT ST_Union(""" + ("poly_geom " if strictSpace else "st_buffer(st_envelope(poly_geom), 1.2)") + """) AS poly_geom
+                       FROM macrostrat.cols
+                       WHERE cols.id = ANY(array_cat(concept_columns, columns))
+                   ) AS geom,
+                   lui.lo_age AS age_top,
+                   lui.fo_age AS age_bottom
+                 FROM third
+                 LEFT JOIN name_columns ON name_columns.strat_name = third.strat_name
+                 LEFT JOIN macrostrat.lookup_unit_intervals lui ON third.unit_id = lui.unit_id
+                 WHERE third.unit_id IS NOT NULL
+            )
 
-                  SELECT
-                    third.unit_id,
-                    third.strat_name,
-                    third.strat_name_id, (
-                        SELECT ST_Union(""" + ("poly_geom " if strictSpace else "st_buffer(st_envelope(poly_geom), 1.2)") + """) AS poly_geom
-                        FROM macrostrat.cols
-                        WHERE cols.id = ANY(array_cat(concept_columns, columns))
-                    ) AS geom,
-                    lui.lo_age AS age_top,
-                    lui.fo_age AS age_bottom
-                  FROM third
-                  LEFT JOIN name_columns ON name_columns.strat_name = third.strat_name
-                  LEFT JOIN macrostrat.lookup_unit_intervals lui ON third.unit_id = lui.unit_id
-                  WHERE third.unit_id IS NOT NULL
-             )
-            SELECT DISTINCT rocks.map_id, macro.unit_id, macro.strat_name_id FROM rocks, macro
-            WHERE macro.strat_name != ''
-                AND ST_Intersects(rocks.geom, macro.geom)
-                AND rocks.%(field)s ~* concat('\y', macro.strat_name, '\y')
-                AND ((macro.age_top) < (rocks.age_bottom + rocks.age_buffer))
-                AND ((macro.age_bottom) > (rocks.age_top - rocks.age_buffer))
+            SELECT DISTINCT ON (m.map_id, macro.unit_id, macro.strat_name_id)
+                m.map_id,
+                macro.unit_id,
+                macro.strat_name_id
+            FROM maps.%(table)s m
+            JOIN macrostrat.intervals intervals_top on m.t_interval = intervals_top.id
+            JOIN macrostrat.intervals intervals_bottom on m.b_interval = intervals_bottom.id
+            JOIN macro ON ST_Intersects(m.geom, macro.geom)
+            WHERE m.source_id = %(source_id)s
+                 """ + (nullAddition if useNullSet else "") + """
+                 AND((macro.age_top) < (intervals_bottom.age_bottom + """ + ("0" if strictTime else "25") + """))
+                 AND ((macro.age_bottom) > (intervals_top.age_top - """ + ("0" if strictTime else "25") + """))
         """, {
           "table": AsIs(table),
           "source_id": source_id,

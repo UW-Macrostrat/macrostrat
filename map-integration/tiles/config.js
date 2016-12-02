@@ -16,8 +16,8 @@ module.exports = {
   // The scales that should be precached
   seedScales: ["tiny", "small", "medium", "large"],
 
-  layers: ["emphasized", "lines", "vanilla"],
-
+  //layers: ["emphasized", "vanilla"],
+  layers: ["emphasized"],
   mapLayers: {
     emphasized: {
       hasLines: true,

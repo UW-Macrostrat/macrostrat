@@ -79,35 +79,35 @@ if __name__ == '__main__':
     else:
 
         # Export reference geom
-        call(['pgsql2shp -f rgeoms.shp -u %s -h %s -p %s burwell "SELECT 1 AS id, rgeom AS geom FROM maps.sources WHERE \'%s\' = ANY(display_scales)"' % (credentials.pg_user, credentials.pg_host, credentials.pg_port, layerOrder[arguments.the_scale][1])], shell=True)
+        call(['pgsql2shp -f rgeoms.shp -u %s -h %s -p %s burwell "SELECT 1 AS id, rgeom AS geom FROM maps.sources WHERE \'%s\' = ANY(display_scales)"' % (credentials.pg_user, credentials.pg_host, credentials.pg_port, arguments.the_scale)], shell=True)
 
         # Union it
-        call(['mapshaper -i rgeoms.shp -dissolve -o %s_rgeom.shp' % (layerOrder[arguments.the_scale][1], )], shell=True)
+        call(['mapshaper -i rgeoms.shp -dissolve -o %s_rgeom.shp' % (arguments.the_scale, )], shell=True)
 
         # Import it
-        call(['shp2pgsql -I -s 4326 %s_rgeom.shp public.%s_rgeom | psql -h %s -p %s -U %s -d burwell' % (layerOrder[arguments.the_scale][1], layerOrder[arguments.the_scale][1], credentials.pg_host, credentials.pg_port, credentials.pg_user)], shell=True)
+        call(['shp2pgsql -I -s 4326 %s_rgeom.shp public.%s_rgeom | psql -h %s -p %s -U %s -d burwell' % (arguments.the_scale, arguments.the_scale, credentials.pg_host, credentials.pg_port, credentials.pg_user)], shell=True)
 
         # Make sure it's valid
-        cursor.execute('UPDATE public.%s_rgeom SET geom = ST_CollectionExtract(ST_SetSRID(ST_MakeValid(geom), 4326), 3)' % (layerOrder[arguments.the_scale][1],))
+        cursor.execute('UPDATE public.%s_rgeom SET geom = ST_CollectionExtract(ST_SetSRID(ST_MakeValid(geom), 4326), 3)' % (arguments.the_scale,))
         connection.commit()
 
         # Export intersecting geom
-        call(['pgsql2shp -f intersecting.shp -u %s -h %s -p %s burwell "SELECT map_id, geom FROM (SELECT t.map_id, (ST_Dump(t.geom)).geom FROM carto.flat_%s t JOIN public.%s_rgeom sr ON ST_Intersects(ST_SetSRID(t.geom,4326), sr.geom)) foo WHERE ST_GeometryType(geom) = \'%s\'"'% (credentials.pg_user, credentials.pg_host, credentials.pg_port, layerOrder[arguments.the_scale][1], layerOrder[arguments.the_scale][1], 'ST_Polygon')], shell=True )
+        call(['pgsql2shp -f intersecting.shp -u %s -h %s -p %s burwell "SELECT map_id, geom FROM (SELECT t.map_id, (ST_Dump(t.geom)).geom FROM carto.flat_%s t JOIN public.%s_rgeom sr ON ST_Intersects(ST_SetSRID(t.geom,4326), sr.geom)) foo WHERE ST_GeometryType(geom) = \'%s\'"'% (credentials.pg_user, credentials.pg_host, credentials.pg_port, layerOrder[arguments.the_scale][0], arguments.the_scale, 'ST_Polygon')], shell=True )
 
         # Remove the parts of the intersecting geoms that intersect scales above
         call(['mapshaper intersecting.shp -erase rgeoms.shp -o clipped.shp'], shell=True)
 
         # Import the result to PostGIS
-        call(['shp2pgsql -I -s 4326 clipped.shp public.%s_clipped | psql -h %s -p %s -U %s -d burwell' % (layerOrder[arguments.the_scale][1], credentials.pg_host, credentials.pg_port, credentials.pg_user)], shell=True)
+        call(['shp2pgsql -I -s 4326 clipped.shp public.%s_clipped | psql -h %s -p %s -U %s -d burwell' % (layerOrder[arguments.the_scale][0], credentials.pg_host, credentials.pg_port, credentials.pg_user)], shell=True)
 
         # Clean up shapefiles
-        call(['rm rgeoms.* && rm %s_rgeom.* && rm intersecting.* && rm clipped.*' % (layerOrder[arguments.the_scale][1], )], shell=True)
+        call(['rm rgeoms.* && rm %s_rgeom.* && rm intersecting.* && rm clipped.*' % (layerOrder[arguments.the_scale][0], )], shell=True)
 
         # Build the SQL query
         sql.append("""
         SELECT t.map_id, '%(scale)s' AS scale, t.geom
         FROM carto.flat_%(scale)s t
-        LEFT JOIN public.%(scale)s_rgeom sr
+        LEFT JOIN public.%(scale_bottom)s_rgeom sr
         ON ST_Intersects(t.geom, sr.geom)
         WHERE sr.gid IS NULL
         AND ST_Geometrytype(t.geom) != 'ST_LineString'
@@ -116,7 +116,7 @@ if __name__ == '__main__':
 
         SELECT map_id, '%(scale)s' AS scale, geom
         FROM %(scale)s_clipped
-        """ % {'scale': layerOrder[arguments.the_scale][1]})
+        """ % {'scale': layerOrder[arguments.the_scale][0], 'scale_bottom': arguments.the_scale})
 
 
         sql.append("""

@@ -1,5 +1,5 @@
 # burwell
-Multiscale geologic map integration
+Multiscale geologic map integration. Contains scripts for importing maps, matching to macrostrat, creation of build tables, and tiles.
 
 ## TL;DR
 1. `./import tataouine ~/Downloads/tataouine.shp`
@@ -10,6 +10,7 @@ Multiscale geologic map integration
 + Edit ````setup/credentials.example.py```` with your credentials and rename to ````credentials.py````
 + Run ````cd setup && ./setup.sh````
 + Permissions for MariaDB to write files to repo directory must be in place
++ (Optional) Edit `tiles/config.js` with the proper paths to tiles
 
 
 ## import
@@ -54,18 +55,28 @@ python process_source.py --source_id 1234
 
 
 ## Matching
-There are three matching operations available - make matches, manually add a match, and manually delete a match.
+Matching involves creating relationships between geologic map units and Macrostrat units and/or stratigraphic names.
 
-#### Making matches
-After a new dataset has been imported a broad set of matches should be made. To do this, run
+Fundamental to this process is the table `macrostrat.strat_name_footprints` (built during the import of Macrostrat into burwell or by running the script `setup/create_strat_names_footprints.sql`). This table represents a greedy footprint for each stratigraphic name which consists of the union of units tagged to *any* name in the given name's hierarchy, the units tagged to *any* name part of the same concept, and the footprint identified by the lexicon the name belongs to.
+
+#### Matching to stratigraphic names
 
 ````
-python matching/match_parallel.py --source_id **source id**
+python matching/match_names.py --source_id <source-id>
 ````
 
-The script `matching/match_parallel.py` takes one argument, a `source_id`, which is the new unique source ID of the dataset
-you would like to create matches for (`maps.sources.source_id`). This script could take a long time time run, but will
-populate `maps.map_units` and `maps.map_strat_names`, as well as update the proper lookup table.
+Geologic map units are matched to stratigraphic names on the basis of these footprints, a string match, and an overlap in time. This matching process is repeated by relaxing each of these constraints in all possible combinations and recorded in the column `basis_col` in the table `maps.map_strat_names`. The relaxation of each constraint appends `_f<name of constraint>` to the column being matched.
+
+For example, if a geologic map source has data in the fields `name` and `descrip`, `match_names.py` will first try to match stratigraphic names using a strict time, space, and string match on each field. It will then begin to relax these constraints. A strict name match uses the field `rank_name`, and a relaxed match uses `name_no_lith`. A strict time match checks for an overlap in the range of the unit and name's ages, and a relaxed match adds 25Ma to the top age of the stratigraphic name, and subtracts 25Ma from the bottom age. A strict space match uses the footprint of the name from `strat_name_footprints`, and a relaxed match buffers the footprint of the name by 1.2 degrees.
+
+
+#### Matching to Macrostrat units
+
+````
+python matching/match_units.py --source_id <source-id>
+````
+
+After geologic map units are matched to stratigraphic names, they are then matched to Macrostrat units with the script `match_units.py` and the companion script `match_units_multi.py`. While this script relaxes constraints in an identical way to `match_names.py`, it also takes into account name hierarchy. First, it uses the names matched to a given geologic map unit to find macrostrat units that are assigned to that stratigraphic name. It then goes through the constraint relaxing process. Next, it repeats the same process, but instead looks for Macrostrat units that are assigned to children of the target stratigraphic name. So, if a geologic map unit is matched to a formation, it will look for matches to Macrostrat units that are assigned to members of that formation. The same relaxation of constraints is repeated. Finally, the process is repeated but instead the script looks for Macrostrat units that are assigned to names that the target stratigraphic name *belongs to*. Again, if our target name is a formation, it will look for any Macrostrat units that assigned to the group or supergroup that this formation might belong to.
 
 
 #### Manually adding matches
@@ -76,14 +87,39 @@ the automated search. To manually make a match, use `matching/add_match.py`.
 `matching/remove_match.py --help`
 
 
-
-## Rebuilding lookup tables
-The lookup tables are automatically rebuilt after running `match_parallel.py`, but you can manually refresh them as well.
+## Lookup Tables
 
 ````
-python setup/refresh_lookup.py **scale or source_id**
+python setup/refresh_lookup <source_id or scale>
 ````
 
+After the matching process, the lookup tables for each scale are built. These tables (`public.lookup_<scale>`) contain a synthesis of the best data available for a given geologic map unit. The `strat_name_ids` amd `unit_ids` are determined based on the highest quality of match available for a polygon. To see the order in which this is determined, please see `setup/refresh.py`. This is also where a color is assigned to each polygon for tile creation.
+
+
+## rgeom
+
+````
+python import_scripts/rgeom.py <source_id>
+````
+
+The `rgeom` for each source is the convex hull for all the geometries the given source and can be found in `maps.sources`. It is used primarily in the creation of `carto` tables and tiles, and is necessary for many operations. In order to speed up the creation of this geometry, all geometries of the target source are exported to a shapefile and dissolved by Mapshaper. The result is then imported into PostGIS and processed to remove small interior rings. **Some rgeoms in burwell have been manually edited to get the desired level of simplicity**.
+
+
+## carto
+
+The schema `carto` contains geometries that are suitable for mapping purposes. In order to reconcile overlapping geometries from multiple scales, sources, and priorities, the `carto` scripts "flatten" these data into a single layer for each source with non-overlapping polygons and lines.
+
+#### lines
+
+````
+python utils/carto_lines.py --source_id <source_id>
+````
+
+This script adds the lines from a single source to the proper `carto.lines_<scale>`. The lines of the source must be in one of the tables in the schema `lines`. It takes into the various `display_scales` and priorities of all sources.
+
+
+#### units
+Coming soon. Necessary for vector tiles
 
 
 ## tiles
