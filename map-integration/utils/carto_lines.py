@@ -220,53 +220,188 @@ if __name__ == '__main__':
 
     else:
         sql = """
+            -- All priorities of the target scale
             CREATE TABLE carto.lines_%(target)s_new AS
-              SELECT line_id, geom,
-                  '%(target)s'::text AS scale,
-                  a.source_id,
-                  COALESCE(a.name, '') AS name,
-                  COALESCE(a.new_type, '') AS type,
-                  COALESCE(a.direction, '') AS direction,
-                  COALESCE(a.descrip, '') AS descrip
-              FROM lines.%(target)s a
-              JOIN maps.sources b
-              ON a.source_id = b.source_id
-              WHERE priority = True;
+                SELECT line_id, 'tiny' AS scale, tiny.source_id, COALESCE(tiny.name, '') AS name, COALESCE(tiny.new_type, '') AS type, COALESCE(direction, '') AS direction, COALESCE(descrip, '') AS descrip, geom
+                FROM lines.tiny
+                JOIN maps.sources ON tiny.source_id = sources.source_id
+                WHERE scale = '%(target)s'::text AND priority = True
+                UNION
+                SELECT line_id, 'small' AS scale, small.source_id, COALESCE(small.name, '') AS name, COALESCE(small.new_type, '') AS type, COALESCE(direction, '') AS direction, COALESCE(descrip, '') AS descrip, geom
+                FROM lines.small
+                JOIN maps.sources ON small.source_id = sources.source_id
+                WHERE scale = '%(target)s'::text AND priority = True
+                UNION
+                SELECT line_id, 'medium' AS scale, medium.source_id, COALESCE(medium.name, '') AS name, COALESCE(medium.new_type, '') AS type, COALESCE(direction, '') AS direction, COALESCE(descrip, '') AS descrip, geom
+                FROM lines.medium
+                JOIN maps.sources ON medium.source_id = sources.source_id
+                WHERE scale = '%(target)s'::text AND priority = True
+                UNION
+                SELECT line_id, 'large' AS scale, large.source_id, COALESCE(large.name, '') AS name, COALESCE(large.new_type, '') AS type, COALESCE(direction, '') AS direction, COALESCE(descrip, '') AS descrip, geom
+                FROM lines.large
+                JOIN maps.sources ON large.source_id = sources.source_id
+                WHERE scale = '%(target)s'::text AND priority = True;
 
+            -- All low priorities of the target scale and all priorities of display_scale = target scale
             INSERT INTO carto.lines_%(target)s_new (line_id, geom, scale, source_id, name, type, direction, descrip)
-              SELECT a.line_id,
-                  ST_Difference(a.geom, (
-                    SELECT COALESCE(ST_Union(rgeom), 'POLYGON EMPTY')
-                    FROM maps.sources x
-                    WHERE priority IS True and scale = '%(target)s'::text
-                  )) as geom,
-                  '%(target)s'::text AS scale,
-                  a.source_id,
-                  COALESCE(a.name, '') AS name,
-                  COALESCE(a.new_type, '') AS type,
-                  COALESCE(a.direction, '') AS direction,
-                  COALESCE(a.descrip, '') AS descrip
-              FROM lines.%(target)s a
-              JOIN maps.sources b ON a.source_id = b.source_id
-              WHERE priority IS False;
 
+                    SELECT line_id, 'tiny' AS scale, tiny.source_id, COALESCE(tiny.name, '') AS name, COALESCE(tiny.new_type, '') AS type, COALESCE(direction, '') AS direction, COALESCE(descrip, '') AS descrip, ST_Difference(geom, (
+                      SELECT COALESCE(ST_Union(rgeom), 'POLYGON EMPTY')
+                      FROM maps.sources x
+                      WHERE scale = '%(target)s'::text AND priority = True
+                    )) as geom
+                    FROM lines.tiny
+                    JOIN maps.sources ON tiny.source_id = sources.source_id
+                    WHERE
+                        ( scale = '%(target)s'::text AND priority = False )
+                        OR
+                        ( '%(target)s'::text = ANY(display_scales) AND scale != '%(target)s'::text )
+                    UNION
+                    SELECT line_id, 'small' AS scale, small.source_id, COALESCE(small.name, '') AS name, COALESCE(small.new_type, '') AS type, COALESCE(direction, '') AS direction, COALESCE(descrip, '') AS descrip, ST_Difference(geom, (
+                      SELECT COALESCE(ST_Union(rgeom), 'POLYGON EMPTY')
+                      FROM maps.sources x
+                      WHERE scale = '%(target)s'::text AND priority = True
+                    )) as geom
+                    FROM lines.small
+                    JOIN maps.sources ON small.source_id = sources.source_id
+                    WHERE
+                        ( scale = '%(target)s'::text AND priority = False )
+                        OR
+                        ( '%(target)s'::text = ANY(display_scales) AND scale != '%(target)s'::text )
+                    UNION
+                    SELECT line_id, 'medium' AS scale, medium.source_id, COALESCE(medium.name, '') AS name, COALESCE(medium.new_type, '') AS type, COALESCE(direction, '') AS direction, COALESCE(descrip, '') AS descrip, ST_Difference(geom, (
+                      SELECT COALESCE(ST_Union(rgeom), 'POLYGON EMPTY')
+                      FROM maps.sources x
+                      WHERE scale = '%(target)s'::text AND priority = True
+                    )) as geom
+                    FROM lines.medium
+                    JOIN maps.sources ON medium.source_id = sources.source_id
+                    WHERE
+                        ( scale = '%(target)s'::text AND priority = False )
+                        OR
+                        ( '%(target)s'::text = ANY(display_scales) AND scale != '%(target)s'::text )
+                    UNION
+                    SELECT line_id, 'large' AS scale, large.source_id, COALESCE(large.name, '') AS name, COALESCE(large.new_type, '') AS type, COALESCE(direction, '') AS direction, COALESCE(descrip, '') AS descrip, ST_Difference(geom, (
+                      SELECT COALESCE(ST_Union(rgeom), 'POLYGON EMPTY')
+                      FROM maps.sources x
+                      WHERE scale = '%(target)s'::text AND priority = True
+                    )) as geom
+                    FROM lines.large
+                    JOIN maps.sources ON large.source_id = sources.source_id
+                    WHERE
+                        ( scale = '%(target)s'::text AND priority = False )
+                        OR
+                        ( '%(target)s'::text = ANY(display_scales) AND scale != '%(target)s'::text );
 
+            -- All high priorities of the scale below
             INSERT INTO carto.lines_%(target)s_new (line_id, geom, scale, source_id, name, type, direction, descrip)
-              SELECT a.line_id,
-                  ST_Difference(a.geom, (
-                    SELECT COALESCE(ST_Union(rgeom), 'POLYGON EMPTY')
-                    FROM maps.sources x
-                    WHERE scale = '%(target)s'::text
-                  )) as geom,
-                  '%(below)s'::text AS scale,
-                  a.source_id,
-                  COALESCE(a.name, '') AS name,
-                  COALESCE(a.new_type, '') AS type,
-                  COALESCE(a.direction, '') AS direction,
-                  COALESCE(a.descrip, '') AS descrip
-              FROM lines.%(below)s a
-              JOIN maps.sources b ON a.source_id = b.source_id
-              WHERE priority IS True;
+                SELECT line_id, 'tiny' AS scale, tiny.source_id, COALESCE(tiny.name, '') AS name, COALESCE(tiny.new_type, '') AS type, COALESCE(direction, '') AS direction, COALESCE(descrip, '') AS descrip, ST_Difference(geom, (
+                  SELECT COALESCE(ST_Union(rgeom), 'POLYGON EMPTY')
+                  FROM maps.sources x
+                  WHERE
+                      ( scale = '%(target)s'::text AND priority = False )
+                      OR
+                      ( '%(target)s'::text = ANY(display_scales) AND scale != '%(target)s'::text )
+                )) as geom,
+                FROM lines.tiny
+                JOIN maps.sources ON tiny.source_id = sources.source_id
+                WHERE scale = '%(below)s'::text AND priority = True
+                UNION
+                SELECT line_id, 'small' AS scale, small.source_id, COALESCE(small.name, '') AS name, COALESCE(small.new_type, '') AS type, COALESCE(direction, '') AS direction, COALESCE(descrip, '') AS descrip, ST_Difference(geom, (
+                  SELECT COALESCE(ST_Union(rgeom), 'POLYGON EMPTY')
+                  FROM maps.sources x
+                  WHERE
+                      ( scale = '%(target)s'::text AND priority = False )
+                      OR
+                      ( '%(target)s'::text = ANY(display_scales) AND scale != '%(target)s'::text )
+                )) as geom,
+                FROM lines.small
+                JOIN maps.sources ON small.source_id = sources.source_id
+                WHERE scale = '%(below)s'::text AND priority = True
+                UNION
+                SELECT line_id, 'medium' AS scale, medium.source_id, COALESCE(medium.name, '') AS name, COALESCE(medium.new_type, '') AS type, COALESCE(direction, '') AS direction, COALESCE(descrip, '') AS descrip, ST_Difference(geom, (
+                  SELECT COALESCE(ST_Union(rgeom), 'POLYGON EMPTY')
+                  FROM maps.sources x
+                  WHERE
+                      ( scale = '%(target)s'::text AND priority = False )
+                      OR
+                      ( '%(target)s'::text = ANY(display_scales) AND scale != '%(target)s'::text )
+                )) as geom,
+                FROM lines.medium
+                JOIN maps.sources ON medium.source_id = sources.source_id
+                WHERE scale = '%(below)s'::text AND priority = True
+                UNION
+                SELECT line_id, 'large' AS scale, large.source_id, COALESCE(large.name, '') AS name, COALESCE(large.new_type, '') AS type, COALESCE(direction, '') AS direction, COALESCE(descrip, '') AS descrip, ST_Difference(geom, (
+                  SELECT COALESCE(ST_Union(rgeom), 'POLYGON EMPTY')
+                  FROM maps.sources x
+                  WHERE
+                      ( scale = '%(target)s'::text AND priority = False )
+                      OR
+                      ( '%(target)s'::text = ANY(display_scales) AND scale != '%(target)s'::text )
+                )) as geom,
+                FROM lines.large
+                JOIN maps.sources ON large.source_id = sources.source_id
+                WHERE scale = '%(below)s'::text AND priority = True;
+
+            -- All low priorities of the scale below
+            INSERT INTO carto.lines_%(target)s_new (line_id, geom, scale, source_id, name, type, direction, descrip)
+                SELECT line_id, 'tiny' AS scale, tiny.source_id, COALESCE(tiny.name, '') AS name, COALESCE(tiny.new_type, '') AS type, COALESCE(direction, '') AS direction, COALESCE(descrip, '') AS descrip, ST_Difference(geom, (
+                  SELECT COALESCE(ST_Union(rgeom), 'POLYGON EMPTY')
+                  FROM maps.sources x
+                  WHERE
+                      ( '%(target)s'::text = ANY(display_scales))
+                      OR
+                      ( scale = '%(below)s'::text AND priority = True )
+                )) as geom,
+                FROM lines.tiny
+                JOIN maps.sources ON tiny.source_id = sources.source_id
+                WHERE ( scale = '%(below)s'::text AND priority = False )
+                    OR
+                    ( '%(below)s'::text = ANY(display_scales) AND scale != '%(below)s'::text )
+                UNION
+                SELECT line_id, 'small' AS scale, small.source_id, COALESCE(small.name, '') AS name, COALESCE(small.new_type, '') AS type, COALESCE(direction, '') AS direction, COALESCE(descrip, '') AS descrip, ST_Difference(geom, (
+                  SELECT COALESCE(ST_Union(rgeom), 'POLYGON EMPTY')
+                  FROM maps.sources x
+                  WHERE
+                      ( '%(target)s'::text = ANY(display_scales))
+                      OR
+                      ( scale = '%(below)s'::text AND priority = True )
+                )) as geom,
+                FROM lines.small
+                JOIN maps.sources ON small.source_id = sources.source_id
+                WHERE ( scale = '%(below)s'::text AND priority = False )
+                    OR
+                    ( '%(below)s'::text = ANY(display_scales) AND scale != '%(below)s'::text )
+                UNION
+                SELECT line_id, 'medium' AS scale, medium.source_id, COALESCE(medium.name, '') AS name, COALESCE(medium.new_type, '') AS type, COALESCE(direction, '') AS direction, COALESCE(descrip, '') AS descrip, ST_Difference(geom, (
+                  SELECT COALESCE(ST_Union(rgeom), 'POLYGON EMPTY')
+                  FROM maps.sources x
+                  WHERE
+                      ( '%(target)s'::text = ANY(display_scales))
+                      OR
+                      ( scale = '%(below)s'::text AND priority = True )
+                )) as geom,
+                FROM lines.medium
+                JOIN maps.sources ON medium.source_id = sources.source_id
+                WHERE ( scale = '%(below)s'::text AND priority = False )
+                    OR
+                    ( '%(below)s'::text = ANY(display_scales) AND scale != '%(below)s'::text )
+                UNION
+                SELECT line_id, 'large' AS scale, large.source_id, COALESCE(large.name, '') AS name, COALESCE(large.new_type, '') AS type, COALESCE(direction, '') AS direction, COALESCE(descrip, '') AS descrip, ST_Difference(geom, (
+                  SELECT COALESCE(ST_Union(rgeom), 'POLYGON EMPTY')
+                  FROM maps.sources x
+                  WHERE
+                      ( '%(target)s'::text = ANY(display_scales))
+                      OR
+                      ( scale = '%(below)s'::text AND priority = True )
+                )) as geom,
+                FROM lines.large
+                JOIN maps.sources ON large.source_id = sources.source_id
+                WHERE ( scale = '%(below)s'::text AND priority = False )
+                    OR
+                    ( '%(below)s'::text = ANY(display_scales) AND scale != '%(below)s'::text );
+
+
 
             INSERT INTO carto.lines_%(target)s (line_id, geom, scale, source_id, name, type, direction, descrip)
               SELECT a.line_id,
@@ -284,6 +419,36 @@ if __name__ == '__main__':
               FROM lines.%(below)s a
               JOIN maps.sources b ON a.source_id = b.source_id
               WHERE priority IS False;
+
+              SELECT line_id,
+                  geom,
+                  scale,
+                  source_id,
+                  name,
+                  type,
+                  direction,
+                  descrip
+              FROM (
+                SELECT line_id, 'tiny' AS scale, tiny.source_id, COALESCE(tiny.name, '') AS name, COALESCE(tiny.new_type, '') AS type, COALESCE(direction, '') AS direction, COALESCE(descrip, '') AS descrip, geom
+                FROM lines.tiny
+                JOIN maps.sources ON tiny.source_id = sources.source_id
+                WHERE '%(target)s'::text = ANY(display_scales) AND priority = False
+                UNION
+                SELECT line_id, 'small' AS scale, small.source_id, COALESCE(small.name, '') AS name, COALESCE(small.new_type, '') AS type, COALESCE(direction, '') AS direction, COALESCE(descrip, '') AS descrip, geom
+                FROM lines.small
+                JOIN maps.sources ON small.source_id = sources.source_id
+                WHERE '%(target)s'::text = ANY(display_scales) AND priority = False
+                UNION
+                SELECT line_id, 'medium' AS scale, medium.source_id, COALESCE(medium.name, '') AS name, COALESCE(medium.new_type, '') AS type, COALESCE(direction, '') AS direction, COALESCE(descrip, '') AS descrip, geom
+                FROM lines.medium
+                JOIN maps.sources ON medium.source_id = sources.source_id
+                WHERE '%(target)s'::text = ANY(display_scales) AND priority = False
+                UNION
+                SELECT line_id, 'large' AS scale, large.source_id, COALESCE(large.name, '') AS name, COALESCE(large.new_type, '') AS type, COALESCE(direction, '') AS direction, COALESCE(descrip, '') AS descrip, geom
+                FROM lines.large
+                JOIN maps.sources ON large.source_id = sources.source_id
+                WHERE '%(target)s'::text = ANY(display_scales) AND priority = False
+              ) a;
 
             CREATE INDEX ON carto.lines_%(target)s_new (line_id);
             CREATE INDEX ON carto.lines_%(target)s_new USING GiST (geom);
