@@ -66,7 +66,7 @@ if __name__ == '__main__':
 
     # Build rgeom
     print '| | | | | Building rgeom...'
-    call(['python import_scripts/rgeom.py %s' % (arguments.source_id, ) ], shell=True)
+    call(['python utils/rgeom.py %s' % (arguments.source_id, ) ], shell=True)
     print '| | | | | Done building rgeom | | | | |'
 
     # Refresh carto lines

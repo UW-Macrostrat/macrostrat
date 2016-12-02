@@ -99,7 +99,7 @@ After the matching process, the lookup tables for each scale are built. These ta
 ## rgeom
 
 ````
-python import_scripts/rgeom.py <source_id>
+python utils/rgeom.py <source_id>
 ````
 
 The `rgeom` for each source is the convex hull for all the geometries the given source and can be found in `maps.sources`. It is used primarily in the creation of `carto` tables and tiles, and is necessary for many operations. In order to speed up the creation of this geometry, all geometries of the target source are exported to a shapefile and dissolved by Mapshaper. The result is then imported into PostGIS and processed to remove small interior rings. **Some rgeoms in burwell have been manually edited to get the desired level of simplicity**.
