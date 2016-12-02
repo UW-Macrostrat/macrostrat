@@ -243,7 +243,7 @@ if __name__ == '__main__':
                 WHERE scale = '%(target)s'::text AND priority = True;
 
             -- All low priorities of the target scale and all priorities of display_scale = target scale
-            INSERT INTO carto.lines_%(target)s_new (line_id, geom, scale, source_id, name, type, direction, descrip)
+            INSERT INTO carto.lines_%(target)s_new (line_id, scale, source_id, name, type, direction, descrip, geom)
 
                     SELECT line_id, 'tiny' AS scale, tiny.source_id, COALESCE(tiny.name, '') AS name, COALESCE(tiny.new_type, '') AS type, COALESCE(direction, '') AS direction, COALESCE(descrip, '') AS descrip, ST_Difference(geom, (
                       SELECT COALESCE(ST_Union(rgeom), 'POLYGON EMPTY')
@@ -294,7 +294,7 @@ if __name__ == '__main__':
                         ( '%(target)s'::text = ANY(display_scales) AND scale != '%(target)s'::text );
 
             -- All high priorities of the scale below
-            INSERT INTO carto.lines_%(target)s_new (line_id, geom, scale, source_id, name, type, direction, descrip)
+            INSERT INTO carto.lines_%(target)s_new (line_id, scale, source_id, name, type, direction, descrip, geom)
                 SELECT line_id, 'tiny' AS scale, tiny.source_id, COALESCE(tiny.name, '') AS name, COALESCE(tiny.new_type, '') AS type, COALESCE(direction, '') AS direction, COALESCE(descrip, '') AS descrip, ST_Difference(geom, (
                   SELECT COALESCE(ST_Union(rgeom), 'POLYGON EMPTY')
                   FROM maps.sources x
@@ -344,7 +344,7 @@ if __name__ == '__main__':
                 WHERE scale = '%(below)s'::text AND priority = True;
 
             -- All low priorities of the scale below
-            INSERT INTO carto.lines_%(target)s_new (line_id, geom, scale, source_id, name, type, direction, descrip)
+            INSERT INTO carto.lines_%(target)s_new (line_id, scale, source_id, name, type, direction, descrip, geom)
                 SELECT line_id, 'tiny' AS scale, tiny.source_id, COALESCE(tiny.name, '') AS name, COALESCE(tiny.new_type, '') AS type, COALESCE(direction, '') AS direction, COALESCE(descrip, '') AS descrip, ST_Difference(geom, (
                   SELECT COALESCE(ST_Union(rgeom), 'POLYGON EMPTY')
                   FROM maps.sources x
@@ -403,7 +403,7 @@ if __name__ == '__main__':
 
 
 
-            INSERT INTO carto.lines_%(target)s (line_id, geom, scale, source_id, name, type, direction, descrip)
+            INSERT INTO carto.lines_%(target)s (line_id, scale, source_id, name, type, direction, descrip, geom)
               SELECT a.line_id,
                   ST_Difference(a.geom, (
                     SELECT COALESCE(ST_Union(rgeom), 'POLYGON EMPTY')
