@@ -238,6 +238,7 @@ def refresh(cursor, connection, scale, source_id):
      match_summary AS (
        SELECT
          q.map_id,
+         q.name,
          COALESCE(unit_ids.unit_ids, '{}') unit_ids,
          COALESCE(strat_name_ids.strat_name_ids, '{}') strat_name_ids,
          COALESCE(lith_ids.lith_ids, '{}') lith_ids,
@@ -254,6 +255,7 @@ def refresh(cursor, connection, scale, source_id):
      macro_ages AS (
        SELECT
          map_id,
+         name,
          unit_ids,
          strat_name_ids,
          lith_ids,
@@ -269,6 +271,7 @@ def refresh(cursor, connection, scale, source_id):
      best_times AS (
        SELECT
          map_id,
+         name,
          unit_ids,
          strat_name_ids,
          lith_ids,
@@ -306,15 +309,21 @@ def refresh(cursor, connection, scale, source_id):
       best_age_top,
       best_age_bottom,
 
-      (SELECT interval_color
-       FROM macrostrat.intervals
-       WHERE age_top <= best_age_top AND age_bottom >= best_age_bottom
-       -- Exclude New Zealand ages as possible matches
-       AND intervals.id NOT IN (SELECT interval_id FROM macrostrat.timescales_intervals WHERE timescale_id = 6)
-       ORDER BY age_bottom - age_top
-       LIMIT 1
-      ) AS color
+      CASE
+        WHEN name ilike 'water'
+            THEN ''
+        ELSE
+          (SELECT interval_color
+           FROM macrostrat.intervals
+           WHERE age_top <= best_age_top AND age_bottom >= best_age_bottom
+           -- Exclude New Zealand ages as possible matches
+           AND intervals.id NOT IN (SELECT interval_id FROM macrostrat.timescales_intervals WHERE timescale_id = 6)
+           ORDER BY age_bottom - age_top
+           LIMIT 1
+          )
+        END AS color
       FROM best_times
+
 
     )
     """, {"scale": AsIs(scale), "source_id": source_id})
