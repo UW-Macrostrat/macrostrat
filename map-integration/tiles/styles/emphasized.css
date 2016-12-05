@@ -61,8 +61,9 @@
 .burwell[color=null] {
    polygon-fill: #777777;
 }
+/* Water polygons are invisible */
 .burwell[color=""] {
-   polygon-fill: #777777;
+   polygon-opacity: 0;
 }
 
 
