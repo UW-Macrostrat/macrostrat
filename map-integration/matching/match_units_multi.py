@@ -58,21 +58,25 @@ class Task(object):
         pyCursor.execute("""
           INSERT INTO maps.map_units (map_id, unit_id, basis_col)
             WITH a AS (
-              SELECT m.map_id, map_strat_names.strat_name_id, intervals_top.age_top, intervals_bottom.age_bottom, geom
-              FROM maps.%(table)s m
-              JOIN macrostrat.intervals intervals_top on m.t_interval = intervals_top.id
-              JOIN macrostrat.intervals intervals_bottom on m.b_interval = intervals_bottom.id
-              JOIN maps.map_strat_names ON m.map_id = map_strat_names.map_id
-              JOIN macrostrat.lookup_strat_names on map_strat_names.strat_name_id = lookup_strat_names.strat_name_id
-              WHERE m.source_id = %(source_id)s
-              AND basis_col = %(match_type)s
-              AND m.map_id NOT IN (
-                SELECT x.map_id
-                FROM maps.map_units x
-                JOIN maps.%(table)s z
-                ON x.map_id = z.map_id
-                WHERE z.source_id = %(source_id)s
-              )
+              SELECT map_id, strat_name_id, age_top, age_bottom, geom
+              FROM macrostrat.lookup_strat_names
+              JOIN (
+                SELECT DISTINCT ON (m.map_id, concept_id) m.map_id, concept_id, map_strat_names.strat_name_id, intervals_top.age_top, intervals_bottom.age_bottom, geom
+                FROM maps.%(table)s m
+                JOIN macrostrat.intervals intervals_top on m.t_interval = intervals_top.id
+                JOIN macrostrat.intervals intervals_bottom on m.b_interval = intervals_bottom.id
+                JOIN maps.map_strat_names ON m.map_id = map_strat_names.map_id
+                JOIN macrostrat.lookup_strat_names on map_strat_names.strat_name_id = lookup_strat_names.strat_name_id
+                WHERE m.source_id = %(source_id)s
+                AND basis_col = %(match_type)s
+                AND m.map_id NOT IN (
+                  SELECT x.map_id
+                  FROM maps.map_units x
+                  JOIN maps.%(table)s z
+                  ON x.map_id = z.map_id
+                  WHERE z.source_id = %(source_id)s
+                )
+              ) q ON q.concept_id = lookup_strat_names.concept_id
             ),
             shaped AS (
               SELECT strat_name_id, strat_name, rank,
@@ -145,21 +149,25 @@ class Task(object):
         pyCursor.execute("""
           INSERT INTO maps.map_units (map_id, unit_id, basis_col)
             WITH a AS (
-              SELECT m.map_id, map_strat_names.strat_name_id, intervals_top.age_top, intervals_bottom.age_bottom, geom
-              FROM maps.%(table)s m
-              JOIN macrostrat.intervals intervals_top on m.t_interval = intervals_top.id
-              JOIN macrostrat.intervals intervals_bottom on m.b_interval = intervals_bottom.id
-              JOIN maps.map_strat_names ON m.map_id = map_strat_names.map_id
-              JOIN macrostrat.lookup_strat_names on map_strat_names.strat_name_id = lookup_strat_names.strat_name_id
-              WHERE m.source_id = %(source_id)s
-              AND basis_col = %(match_type)s
-              AND m.map_id NOT IN (
-                SELECT x.map_id
-                FROM maps.map_units x
-                JOIN maps.%(table)s z
-                ON x.map_id = z.map_id
-                WHERE z.source_id = %(source_id)s
-              )
+              SELECT map_id, strat_name_id, age_top, age_bottom, geom
+              FROM macrostrat.lookup_strat_names
+              JOIN (
+                SELECT DISTINCT ON (m.map_id, concept_id) m.map_id, concept_id, map_strat_names.strat_name_id, intervals_top.age_top, intervals_bottom.age_bottom, geom
+                FROM maps.%(table)s m
+                JOIN macrostrat.intervals intervals_top on m.t_interval = intervals_top.id
+                JOIN macrostrat.intervals intervals_bottom on m.b_interval = intervals_bottom.id
+                JOIN maps.map_strat_names ON m.map_id = map_strat_names.map_id
+                JOIN macrostrat.lookup_strat_names on map_strat_names.strat_name_id = lookup_strat_names.strat_name_id
+                WHERE m.source_id = %(source_id)s
+                AND basis_col = %(match_type)s
+                AND m.map_id NOT IN (
+                  SELECT x.map_id
+                  FROM maps.map_units x
+                  JOIN maps.%(table)s z
+                  ON x.map_id = z.map_id
+                  WHERE z.source_id = %(source_id)s
+                )
+              ) q ON q.concept_id = lookup_strat_names.concept_id
             ),
             shaped AS (
               SELECT strat_name_id, strat_name, rank,
@@ -236,21 +244,25 @@ class Task(object):
         pyCursor.execute("""
             INSERT INTO maps.map_units (map_id, unit_id, basis_col)
             WITH a AS (
-              SELECT m.map_id, map_strat_names.strat_name_id, intervals_top.age_top, intervals_bottom.age_bottom, geom
-              FROM maps.%(table)s m
-              JOIN macrostrat.intervals intervals_top on m.t_interval = intervals_top.id
-              JOIN macrostrat.intervals intervals_bottom on m.b_interval = intervals_bottom.id
-              JOIN maps.map_strat_names ON m.map_id = map_strat_names.map_id
-              JOIN macrostrat.lookup_strat_names on map_strat_names.strat_name_id = lookup_strat_names.strat_name_id
-              WHERE m.source_id = %(source_id)s
-              AND basis_col = %(match_type)s
-              AND m.map_id NOT IN (
-                SELECT x.map_id
-                FROM maps.map_units x
-                JOIN maps.%(table)s z
-                ON x.map_id = z.map_id
-                WHERE z.source_id = %(source_id)s
-              )
+              SELECT map_id, strat_name_id, age_top, age_bottom, geom
+              FROM macrostrat.lookup_strat_names
+              JOIN (
+                SELECT DISTINCT ON (m.map_id, concept_id) m.map_id, concept_id, map_strat_names.strat_name_id, intervals_top.age_top, intervals_bottom.age_bottom, geom
+                FROM maps.%(table)s m
+                JOIN macrostrat.intervals intervals_top on m.t_interval = intervals_top.id
+                JOIN macrostrat.intervals intervals_bottom on m.b_interval = intervals_bottom.id
+                JOIN maps.map_strat_names ON m.map_id = map_strat_names.map_id
+                JOIN macrostrat.lookup_strat_names on map_strat_names.strat_name_id = lookup_strat_names.strat_name_id
+                WHERE m.source_id = %(source_id)s
+                AND basis_col = %(match_type)s
+                AND m.map_id NOT IN (
+                  SELECT x.map_id
+                  FROM maps.map_units x
+                  JOIN maps.%(table)s z
+                  ON x.map_id = z.map_id
+                  WHERE z.source_id = %(source_id)s
+                )
+              ) q ON q.concept_id = lookup_strat_names.concept_id
             ),
             b AS (
               SELECT unit_strat_names.strat_name_id, unit_strat_names.unit_id, lookup_unit_intervals.t_age, lookup_unit_intervals.b_age, """ + ("cols.poly_geom " if strictSpace else "st_buffer(st_envelope(cols.poly_geom), 1.2)") + """ AS geom
