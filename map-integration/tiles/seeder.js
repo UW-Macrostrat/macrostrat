@@ -12,7 +12,7 @@ var config = require('./config');
 var makeTile = require('./tileRoller');
 var setup = require('./setup');
 var yaml = require('yamljs')
-var credentials = yaml.load('../credentials.yml')
+var credentials = yaml.load(path.join(__dirname, '..', 'credentials.yml'))
 
 var tileSet = '';
 // Array of zoom levels we are going to precache

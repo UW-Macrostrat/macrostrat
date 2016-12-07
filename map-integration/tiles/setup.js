@@ -5,7 +5,7 @@
   var fs = require("fs-extra");
 
   var yaml = require('yamljs')
-  var credentials = yaml.load('../credentials.yml')
+  var credentials = yaml.load(path.join(__dirname, '..', 'credentials.yml'))
 
   var config = require("./config");
 
@@ -103,26 +103,26 @@
   function createLayer(scale, callback) {
     // Copy the template
     var layer = JSON.parse(JSON.stringify(layerTemplate));
-    layer["Datasource"]["table"] = "(SELECT x.map_id, x.color, geom FROM lookup_" + scale + " x JOIN maps." + scale + " s ON s.map_id = x.map_id JOIN maps.sources ON s.source_id = sources.source_id ORDER BY sources.priority ASC) subset";
-    layer["id"] = "burwell_" + scale;
-    layer["class"] = "burwell";
-    layer["name"] = "burwell_" + scale;
-    layer["minZoom"] = Math.min.apply(Math, config.scaleMap[scale]);
-    layer["maxZoom"] = Math.max.apply(Math, config.scaleMap[scale]);
-    callback(layer);
+    layer["Datasource"]["table"] = `(SELECT x.map_id, x.color, geom FROM lookup_${scale} x JOIN maps.${scale} s ON s.map_id = x.map_id JOIN maps.sources ON s.source_id = sources.source_id ORDER BY sources.priority ASC) subset`
+    layer["id"] = `burwell_${scale}`
+    layer["class"] = "burwell"
+    layer["name"] = `burwell_${scale}`
+    layer["minZoom"] = Math.min.apply(Math, config.scaleMap[scale])
+    layer["maxZoom"] = Math.max.apply(Math, config.scaleMap[scale])
+    callback(layer)
   }
 
   // Gets the extend and centroid of a given scale, and returns an mml layer configuration
   function createLayerLines(scale, callback) {
     // Copy the template
     var layer = JSON.parse(JSON.stringify(layerTemplateLines));
-    layer["Datasource"]["table"] = "(SELECT x.line_id, x.geom, x.direction, x.type FROM carto.lines_" + scale + " x) subset";
-    layer["id"] = "burwell_lines_" + scale;
-    layer["class"] = "lines";
-    layer["name"] = "burwell_lines_" + scale;
-    layer["minZoom"] = Math.min.apply(Math, config.scaleMap[scale]);
-    layer["maxZoom"] = Math.max.apply(Math, config.scaleMap[scale]);
-    callback(layer);
+    layer["Datasource"]["table"] = `(SELECT x.line_id, x.geom, x.direction, x.type FROM carto.lines_${scale} x) subset`
+    layer["id"] = `burwell_lines_${scale}`
+    layer["class"] = "lines"
+    layer["name"] = `burwell_lines_${scale}`
+    layer["minZoom"] = Math.min.apply(Math, config.scaleMap[scale])
+    layer["maxZoom"] = Math.max.apply(Math, config.scaleMap[scale])
+    callback(layer)
   }
 
   // Build our styles from the database
@@ -183,7 +183,6 @@
           // Only add lines if A) this layer needs lines and B) we are iterating on the current scale
           if (config.mapLayers[layer].hasLines && d === scale) {
             createLayerLines(d, function(l) {
-            //  layers.push(l)
               c(null, l)
             })
           } else {
@@ -205,14 +204,13 @@
       }).render(project);
 
       // Save it
-      fs.outputFile(__dirname + "/compiled_styles/burwell_" + scale + "_" + layer + ".xml", mapnikXML, function(error) {
+      fs.outputFile(`${__dirname}/compiled_styles/burwell_${scale}_${layer}.xml`, mapnikXML, function(error) {
         if (error) {
           console.log("Error wrting XML file for ", scale);
         }
         callback(null);
       });
     });
-
   }
 
   module.exports = function(layer, callback) {
