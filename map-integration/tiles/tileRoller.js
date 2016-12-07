@@ -7,7 +7,7 @@
   var mkdirp = require('mkdirp');
   var config = require('./config');
   var yaml = require('yamljs')
-  var credentials = yaml.load('../credentials.yml')
+  var credentials = yaml.load(__dirname + '../credentials.yml')
 
   var providers = {};
   var mapType = '';
