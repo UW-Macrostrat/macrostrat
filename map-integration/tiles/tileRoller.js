@@ -103,7 +103,7 @@
         async.each(config.seedScales, function(scale, cb) {
           if (type === 'raster') {
             providers[scale] = mapnik({
-                pathname: config.configPath + 'compiled_styles/burwell_' + scale + '_' + layer + '.xml',
+                pathname: path.join(__dirname, 'compiled_styles', `burwell_${scale}_${layer}.xml`),
                 tileSize: 512,
                 scale: 2,
                 metatile: 1
