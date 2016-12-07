@@ -9,7 +9,7 @@ import os
 import datetime
 import yaml
 
-with open('../credentials.yml', 'r') as f:
+with open(os.path.join(os.path.dirname(__file__), '../credentials.yml'), 'r') as f:
     credentials = yaml.load(f)
 
 cwd = os.path.dirname(os.path.realpath(__file__))

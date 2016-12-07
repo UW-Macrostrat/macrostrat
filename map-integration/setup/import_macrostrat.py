@@ -7,7 +7,7 @@ import sys
 import subprocess
 import yaml
 
-with open('../credentials.yml', 'r') as f:
+with open(os.path.join(os.path.dirname(__file__), '../credentials.yml'), 'r') as f:
     credentials = yaml.load(f)
 
 # Connect to Postgres
