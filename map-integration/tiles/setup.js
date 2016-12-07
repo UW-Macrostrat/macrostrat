@@ -3,6 +3,7 @@
   var pg = require("pg");
   var carto = require("carto");
   var fs = require("fs-extra");
+  var path = require('path')
 
   var yaml = require('yamljs')
   var credentials = yaml.load(path.join(__dirname, '..', 'credentials.yml'))
