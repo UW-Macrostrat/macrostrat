@@ -1,4 +1,5 @@
 (function() {
+  var path = require('path')
   var fs = require('fs');
   var async = require('async');
   var mapnik = require('tilestrata-mapnik');
@@ -7,7 +8,7 @@
   var mkdirp = require('mkdirp');
   var config = require('./config');
   var yaml = require('yamljs')
-  var credentials = yaml.load(__dirname + '/../credentials.yml')
+  var credentials = yaml.load(path.join(__dirname, '../', 'credentials.yml'))
 
   var providers = {};
   var mapType = '';
