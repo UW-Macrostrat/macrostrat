@@ -4,12 +4,14 @@
   var carto = require("carto");
   var fs = require("fs-extra");
 
-  var credentials = require("./credentials");
+  var yaml = require('yamljs')
+  var credentials = yaml.load('../credentials.yml')
+
   var config = require("./config");
 
   // Factory for querying Postgres
   function queryPg(db, sql, params, callback) {
-    pg.connect("postgres://" + credentials.pg.user +  (credentials.pg.password.length ? ':' + credentials.pg.password : '') + "@" + credentials.pg.host + ":" + credentials.pg.port + "/" + db, function(err, client, done) {
+    pg.connect("postgres://" + credentials.pg_user +  (credentials.pg_password.length ? ':' + credentials.pg_password : '') + "@" + credentials.pg_host + ":" + credentials.pg_port + "/" + db, function(err, client, done) {
       if (err) {
         callback(err);
       } else {
@@ -36,9 +38,9 @@
           "extent_cache": "auto",
           "extent": "-179,-89,179,89",
           "host": "localhost",
-          "port": credentials.pg.port,
-          "user": credentials.pg.user,
-          "password": credentials.pg.password,
+          "port": credentials.pg_port,
+          "user": credentials.pg_user,
+          "password": credentials.pg_password,
           "dbname": "burwell",
           "srid": "4326"
       },
@@ -63,9 +65,9 @@
           "extent_cache": "auto",
           "extent": "-179,-89,179,89",
           "host": "localhost",
-          "port": credentials.pg.port,
-          "user": credentials.pg.user,
-          "password": credentials.pg.password,
+          "port": credentials.pg_port,
+          "user": credentials.pg_user,
+          "password": credentials.pg_password,
           "dbname": "burwell",
           "srid": "4326"
       },

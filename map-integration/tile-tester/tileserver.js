@@ -2,7 +2,8 @@ var tilestrata = require("tilestrata")
 var mapnik = require("tilestrata-mapnik")
 var etag = require("tilestrata-etag")
 //var vtile = require("tilestrata-vtile")
-var credentials = require("./credentials")
+var yaml = require('yamljs')
+var credentials = yaml.load('../credentials.yml')
 
 module.exports = tilestrata.middleware({
   prefix: '/tiles',
@@ -10,12 +11,12 @@ module.exports = tilestrata.middleware({
     var strata = tilestrata()
 
     // Create a provider for all active tile layers
-    credentials.tiles.activeLayers.forEach(function(layer) {
+    ['emphasized'].forEach(function(layer) {
       ['tiny', 'small', 'medium', 'large'].forEach(function(scale) {
         strata.layer(`${layer}_${scale}`)
             .route('tile.png')
             .use(mapnik({
-                pathname: `${credentials.tiles.configPath}/burwell_${scale}_${layer}.xml`,
+                pathname: `../tiles/compiled_styles/burwell_${scale}_${layer}.xml`,
                 tileSize: 512,
                 scale: 2
             }))
@@ -37,4 +38,4 @@ module.exports = tilestrata.middleware({
     return strata;
 
   }())
-});
+})

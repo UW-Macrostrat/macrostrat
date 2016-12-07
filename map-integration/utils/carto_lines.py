@@ -3,13 +3,14 @@ from subprocess import call
 import argparse
 import psycopg2
 from psycopg2.extensions import AsIs
+import yaml
 
-sys.path = [os.path.join(os.path.dirname(__file__), os.pardir)] + sys.path
-import credentials
+with open('../credentials.yml', 'r') as f:
+    credentials = yaml.load(f)
 
 parser = argparse.ArgumentParser(
-    description="Create a carto table for a given scale",
-    epilog="Example usage: python carto.py small")
+    description="Create a carto table for a given source or scale",
+    epilog="Example usage: python carto_lines.py -s 123 --or-- python carto_lines.py small")
 
 parser.add_argument(nargs="?", dest="the_scale",
     default="0", type=str,
@@ -155,7 +156,7 @@ def refresh(scale, source_id):
 
 if __name__ == '__main__':
     start = time.time()
-    connection = psycopg2.connect(dbname="burwell", user=credentials.pg_user, host=credentials.pg_host, port=credentials.pg_port)
+    connection = psycopg2.connect(dbname="burwell", user=credentials['pg_user'], host=credentials['pg_host'], port=credentials['pg_port'])
     cursor = connection.cursor()
 
     if len(arguments.source_id):

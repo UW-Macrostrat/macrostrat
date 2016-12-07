@@ -2,6 +2,10 @@ import argparse
 import sys, os
 import psycopg2
 from psycopg2.extensions import AsIs
+import yaml
+
+with open('../credentials.yml', 'r') as f:
+    credentials = yaml.load(f)
 
 parser = argparse.ArgumentParser(
     description="Move a source from one scale to another",
@@ -23,7 +27,7 @@ arguments = parser.parse_args()
 
 # Connect to the database
 try:
-  conn = psycopg2.connect(dbname="burwell", user="john", host="localhost", port="5432")
+  conn = psycopg2.connect(dbname=credentials["pg_db"], user=credentials["pg_user"], host=credentials["pg_host"], port=credentials["pg_port"])
 except:
   print "Could not connect to database: ", sys.exc_info()[1]
   sys.exit()

@@ -4,8 +4,13 @@ import psycopg2.extras
 import sys, os
 import argparse
 import time
-import credentials as creds
+import yaml
+
+with open('../credentials.yml', 'r') as f:
+    credentials = yaml.load(f)
+
 import refresh
+
 parser = argparse.ArgumentParser(
   description="Refresh lookup tables",
   epilog="Example usage: python refresh_lookup.py medium")
@@ -18,7 +23,7 @@ arguments = parser.parse_args()
 
 # Connect to the database
 try:
-  connection = psycopg2.connect(dbname=creds.pg_db, user=creds.pg_user, host=creds.pg_host, port=creds.pg_port)
+  connection = psycopg2.connect(dbname=credentials['pg_db'], user=credentials['pg_user'], host=credentials['pg_host'], port=credentials['pg_port'])
 except:
   print "Could not connect to database: ", sys.exc_info()[1]
   sys.exit()

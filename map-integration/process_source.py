@@ -6,9 +6,10 @@ from subprocess import call
 import sys
 import os
 import datetime
+import yaml
 
-sys.path = [os.path.join(os.path.dirname(__file__), os.pardir)] + sys.path
-import credentials
+with open('./credentials.yml', 'r') as f:
+    credentials = yaml.load(f)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -21,7 +22,7 @@ if __name__ == '__main__':
 
     arguments = parser.parse_args()
 
-    connection = psycopg2.connect(dbname="burwell", user=credentials.pg_user, host=credentials.pg_host, port=credentials.pg_port)
+    connection = psycopg2.connect(dbname="burwell", user=credentials["pg_user"], host=credentials["pg_host"], port=credentials["pg_port"])
     cursor = connection.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     # Validate params!

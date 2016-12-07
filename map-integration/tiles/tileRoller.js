@@ -6,6 +6,8 @@
   var portscanner = require('portscanner');
   var mkdirp = require('mkdirp');
   var config = require('./config');
+  var yaml = require('yamljs')
+  var credentials = yaml.load('../credentials.yml')
 
   var providers = {};
   var mapType = '';
@@ -24,7 +26,7 @@
   function rollTile(scale, tile, callback) {
     providers[scale].serve(null, tile, function(error, buffer) {
       // Get the full tile path
-      var file = tilePath(config.cachePath, tile.z, tile.x, tile.y, 'tile.png');
+      var file = tilePath(credentials.cache_path, tile.z, tile.x, tile.y, 'tile.png');
 
       try {
         var redisKey = `${tile.z},${tile.x},${tile.y},${mapType},tile.png`;
@@ -38,7 +40,7 @@
       }
 
       // Make sure the correct directory exists
-      mkdirp(config.cachePath + '/' + mapType + '/' + tile.z + '/' + tile.x + '/' + tile.y, function(error) {
+      mkdirp(credentials.cache_path + '/' + mapType + '/' + tile.z + '/' + tile.x + '/' + tile.y, function(error) {
 
         // Write the tile to disk
         fs.writeFile(file, buffer, function(err) {
@@ -54,10 +56,10 @@
   function rollVectorTile(scale, tile, callback) {
     providers[scale].serve(null, tile, function(error, buffer) {
       // Get the full tile path
-      var file = tilePath(config.cachePathVector, tile.z, tile.x, tile.y, 'tile.pbf');
+      var file = tilePath(credentials.cache_pathVector, tile.z, tile.x, tile.y, 'tile.pbf');
 
       // Make sure the correct directory exists
-      mkdirp(config.cachePathVector + '/' + tile.z + '/' + tile.x + '/' + tile.y, function(error) {
+      mkdirp(credentials.cache_pathVector + '/' + tile.z + '/' + tile.x + '/' + tile.y, function(error) {
 
         // Write the tile to disk
         fs.writeFile(file, buffer, function(err) {
@@ -83,11 +85,11 @@
     async.series([
       function(callback) {
         setTimeout(function() {
-          portscanner.checkPortStatus(config.redisPort, '127.0.0.1', function(error, status) {
+          portscanner.checkPortStatus(credentials.redis_port, '127.0.0.1', function(error, status) {
               if (status === 'open') {
                 console.log('Redis available - cache will be updated')
                 redis = require('redis');
-                client = redis.createClient(config.redisPort, '127.0.0.1', {'return_buffers': true});
+                client = redis.createClient(credentials.redis_port, '127.0.0.1', {'return_buffers': true});
               }
 
               callback(null);

@@ -7,9 +7,10 @@ from psycopg2.extensions import AsIs
 import sys
 import os
 import datetime
+import yaml
 
-sys.path = [os.path.join(os.path.dirname(__file__), os.pardir)] + sys.path
-import credentials
+with open('../credentials.yml', 'r') as f:
+    credentials = yaml.load(f)
 
 cwd = os.path.dirname(os.path.realpath(__file__))
 
@@ -22,7 +23,7 @@ import refresh
 
 if __name__ == '__main__':
 
-  connection = psycopg2.connect(dbname="burwell", user=credentials.pg_user, host=credentials.pg_host, port=credentials.pg_port)
+  connection = psycopg2.connect(dbname="burwell", user=credentials["pg_user"], host=credentials["pg_host"], port=credentials["pg_port"])
   cursor = connection.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
   parser = argparse.ArgumentParser(

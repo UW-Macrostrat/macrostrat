@@ -2,6 +2,10 @@ import argparse
 import sys, os
 import psycopg2
 from psycopg2.extensions import AsIs
+import yaml
+
+with open('../credentials.yml', 'r') as f:
+    credentials = yaml.load(f)
 
 parser = argparse.ArgumentParser(
   description="Manually remove strat_name_id or unit_id matches with Burwell map_ids",
@@ -31,7 +35,7 @@ if (arguments.unit_id == "na" and arguments.strat_name_id == "na") or (arguments
 
 # Connect to the database
 try:
-  conn = psycopg2.connect(dbname="burwell", user="john", host="localhost", port="5432")
+  conn = psycopg2.connect(dbname=credentials["pg_db"], user=credentials["pg_user"], host=credentials["pg_host"], port=credentials["pg_port"])
 except:
   print "Could not connect to database: ", sys.exc_info()[1]
   sys.exit()
@@ -44,9 +48,9 @@ def get_scale(map_id) :
         SELECT scale
         FROM (SELECT map_id, source_id FROM (
         	SELECT map_id, source_id FROM maps.large
-        	UNION
+        	UNION ALL
         	SELECT map_id, source_id FROM maps.medium
-        	UNION
+        	UNION ALL
         	SELECT map_id, source_id FROM maps.small
         ) a) sub
         JOIN maps.sources s ON sub.source_id = s.source_id

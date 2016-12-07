@@ -11,7 +11,8 @@ var portscanner = require('portscanner');
 var config = require('./config');
 var makeTile = require('./tileRoller');
 var setup = require('./setup');
-var credentials = require('./credentials');
+var yaml = require('yamljs')
+var credentials = yaml.load('../credentials.yml')
 
 var tileSet = '';
 // Array of zoom levels we are going to precache
@@ -31,10 +32,10 @@ Object.keys(config.scaleMap).forEach(function(scale) {
 });
 
 setTimeout(function() {
-  portscanner.checkPortStatus(config.redisPort, '127.0.0.1', function(error, status) {
+  portscanner.checkPortStatus(credentials.redis_port, '127.0.0.1', function(error, status) {
       if (status === 'open') {
         redis = require('redis');
-        client = redis.createClient(config.redisPort, '127.0.0.1', {'return_buffers': true});
+        client = redis.createClient(credentials.redis_port, '127.0.0.1', {'return_buffers': true});
       }
   });
 }, 10);
@@ -42,7 +43,7 @@ setTimeout(function() {
 
 // Factory for querying PostGIS
 function queryPg(db, sql, params, callback) {
-  pg.connect('postgres://' + credentials.pg.user + '@' + credentials.pg.host + '/' + db, function(err, client, done) {
+  pg.connect('postgres://' + credentials.pg_user + '@' + credentials.pg_host + '/' + db, function(err, client, done) {
     if (err) {
       callback(err);
     } else {
@@ -157,14 +158,14 @@ function getTileList(geom, z) {
 
 function deleteTile(tile, callback) {
   // Check if it exists
-  fs.stat(config.cachePath + '/' + tileSet + '/' + tile[2] + '/' + tile[0] + '/' + tile[1] + '/tile.png', function(error, file) {
+  fs.stat(credentials.cache_path + '/' + tileSet + '/' + tile[2] + '/' + tile[0] + '/' + tile[1] + '/tile.png', function(error, file) {
     // Doesn't exist
     if (error) {
       return callback(null);
     }
     // Exists, delete it
     else {
-      fs.unlink(config.cachePath + '/' + tileSet + '/' + tile[2] + '/' + tile[0] + '/' + tile[1] + '/tile.png', function(error) {
+      fs.unlink(credentials.cache_path + '/' + tileSet + '/' + tile[2] + '/' + tile[0] + '/' + tile[1] + '/tile.png', function(error) {
         if (error) return callback(error);
 
         try {
@@ -415,12 +416,12 @@ module.exports = function(params, done) {
       tileSet = params.tileSet;
       // Make sure cachePaths exists
       if (params.tileType === 'raster') {
-        mkdirp(config.cachePath + '/' + params.tileSet, function(error) {
+        mkdirp(credentials.cache_path + '/' + params.tileSet, function(error) {
           if (error) return callback(error);
           callback();
         })
       } else {
-        mkdirp(config.cachePathVector + '/', function(error) {
+        mkdirp(credentials.cache_pathVector + '/', function(error) {
           if (error) return callback(error);
 
           callback();

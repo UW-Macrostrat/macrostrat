@@ -3,9 +3,10 @@ from subprocess import call
 import argparse
 import psycopg2
 from psycopg2.extensions import AsIs
+import yaml
 
-sys.path = [os.path.join(os.path.dirname(__file__), os.pardir)] + sys.path
-import credentials
+with open('../credentials.yml', 'r') as f:
+    credentials = yaml.load(f)
 
 parser = argparse.ArgumentParser(
     description="Creat a unioned reference geometry for a given source",
@@ -22,7 +23,7 @@ if arguments.source_id == 0:
 
 if __name__ == '__main__':
     start = time.time()
-    connection = psycopg2.connect(dbname="burwell", user=credentials.pg_user, host=credentials.pg_host, port=credentials.pg_port)
+    connection = psycopg2.connect(dbname="burwell", user=credentials['pg_user'], host=credentials['pg_host'], port=credentials['pg_port'])
     cursor = connection.cursor()
 
     # Get the primary table of the target source
@@ -43,13 +44,13 @@ if __name__ == '__main__':
     call(['rm %s_rgeom.*' % (primary_table, )], shell=True)
 
     # Write it to a shapefile
-    call(['pgsql2shp -f %s.shp -u %s -h %s -p %s burwell sources.%s' % (primary_table, credentials.pg_user, credentials.pg_host, credentials.pg_port, primary_table)], shell=True)
+    call(['pgsql2shp -f %s.shp -u %s -h %s -p %s burwell sources.%s' % (primary_table, credentials['pg_user'], credentials['pg_host'], credentials['pg_port'], primary_table)], shell=True)
 
     # Simplify it with mapshaper
     call(['mapshaper -i %s.shp -dissolve -o %s_rgeom.shp' % (primary_table, primary_table)], shell=True)
 
     # Import the simplified geometry into PostGIS
-    call(['shp2pgsql -s 4326 -I %s_rgeom.shp public.%s_rgeom | psql -h %s -p %s -U %s -d burwell' % (primary_table, primary_table, credentials.pg_host, credentials.pg_port, credentials.pg_user)], shell=True)
+    call(['shp2pgsql -s 4326 -I %s_rgeom.shp public.%s_rgeom | psql -h %s -p %s -U %s -d burwell' % (primary_table, primary_table, credentials['pg_host'], credentials['pg_port'], credentials['pg_user'])], shell=True)
 
     print 'Validating geometry...'
     cursor.execute("""

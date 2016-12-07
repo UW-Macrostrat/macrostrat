@@ -5,20 +5,19 @@ import psycopg2
 from psycopg2.extensions import AsIs
 import sys
 import subprocess
+import yaml
 
-sys.path = [os.path.join(os.path.dirname(__file__), os.pardir)] + sys.path
-import credentials
+with open('../credentials.yml', 'r') as f:
+    credentials = yaml.load(f)
 
 # Connect to Postgres
-pg_conn = psycopg2.connect(dbname=credentials.pg_db, user=credentials.pg_user, host=credentials.pg_host, port=credentials.pg_port)
+pg_conn = psycopg2.connect(dbname=credentials['pg_db'], user=credentials['pg_user'], host=credentials['pg_host'], port=credentials['pg_port'])
 pg_conn.set_client_encoding('Latin1')
 pg_cur = pg_conn.cursor()
 
 # Connect to MySQL
-my_conn = MySQLdb.connect(host=credentials.mysql_host, user=credentials.mysql_user, passwd=credentials.mysql_passwd, db=credentials.mysql_db, unix_socket=credentials.mysql_socket, cursorclass=MySQLdb.cursors.DictCursor)
+my_conn = MySQLdb.connect(host=credentials['mysql_host'], user=credentials['mysql_user'], passwd=credentials['mysql_passwd'], db=credentials['mysql_db'], unix_socket=credentials['mysql_socket'], cursorclass=MySQLdb.cursors.DictCursor)
 my_cur = my_conn.cursor()
-
-
 
 
 # Start the process
