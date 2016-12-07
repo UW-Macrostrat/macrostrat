@@ -1,4 +1,5 @@
 var fs = require('fs');
+var path = require('path')
 var cover = require('tile-cover');
 var async = require('async');
 var pg = require('pg');
