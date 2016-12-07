@@ -128,12 +128,14 @@ def refresh(scale, source_id):
 
     # Chop out a footprint = the target source's rgeom
     sql = ["""
-    UPDATE carto.lines_%(target)s
-    SET geom = ST_Difference(geom, (
+    UPDATE carto.lines_%(target)s a
+    SET geom = ST_Difference(a.geom, b.geom)
+    FROM (
         SELECT rgeom
         FROM maps.sources
         WHERE source_id = %(source_id)s
-    ));
+    ) b
+    WHERE ST_Intersects(a.geom, b.geom);
     DELETE FROM carto.lines_%(target)s WHERE geometrytype(geom) NOT IN ('LINESTRING', 'MULTILINESTRING');
     """ % { "target": target, "source_id": source_id }]
 
