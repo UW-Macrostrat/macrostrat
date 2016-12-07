@@ -11,7 +11,7 @@
 
   // Factory for querying Postgres
   function queryPg(db, sql, params, callback) {
-    pg.connect("postgres://" + credentials.pg_user +  (credentials.pg_password.length ? ':' + credentials.pg_password : '') + "@" + credentials.pg_host + ":" + credentials.pg_port + "/" + db, function(err, client, done) {
+    pg.connect("postgres://" + credentials.pg_user + "@" + credentials.pg_host + ":" + credentials.pg_port + "/" + db, function(err, client, done) {
       if (err) {
         callback(err);
       } else {
