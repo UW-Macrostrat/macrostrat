@@ -2,6 +2,7 @@
 .AppleDouble
 .LSOverride
 
+credentials.yml
 setup/credentials.py
 *.pyc
 
