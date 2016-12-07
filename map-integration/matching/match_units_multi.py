@@ -58,7 +58,7 @@ class Task(object):
         pyCursor.execute("""
           INSERT INTO maps.map_units (map_id, unit_id, basis_col)
             WITH a AS (
-              SELECT map_id, strat_name_id, age_top, age_bottom, geom
+              SELECT map_id, lookup_strat_names.strat_name_id, lookup_strat_names.age_top, lookup_strat_names.age_bottom, geom
               FROM macrostrat.lookup_strat_names
               JOIN (
                 SELECT DISTINCT ON (m.map_id, concept_id) m.map_id, concept_id, map_strat_names.strat_name_id, intervals_top.age_top, intervals_bottom.age_bottom, geom
@@ -149,7 +149,7 @@ class Task(object):
         pyCursor.execute("""
           INSERT INTO maps.map_units (map_id, unit_id, basis_col)
             WITH a AS (
-              SELECT map_id, strat_name_id, age_top, age_bottom, geom
+              SELECT map_id, lookup_strat_names.strat_name_id, lookup_strat_names.age_top, lookup_strat_names.age_bottom, geom
               FROM macrostrat.lookup_strat_names
               JOIN (
                 SELECT DISTINCT ON (m.map_id, concept_id) m.map_id, concept_id, map_strat_names.strat_name_id, intervals_top.age_top, intervals_bottom.age_bottom, geom
@@ -244,7 +244,7 @@ class Task(object):
         pyCursor.execute("""
             INSERT INTO maps.map_units (map_id, unit_id, basis_col)
             WITH a AS (
-              SELECT map_id, strat_name_id, age_top, age_bottom, geom
+               SELECT map_id, lookup_strat_names.strat_name_id, lookup_strat_names.age_top, lookup_strat_names.age_bottom, geom
               FROM macrostrat.lookup_strat_names
               JOIN (
                 SELECT DISTINCT ON (m.map_id, concept_id) m.map_id, concept_id, map_strat_names.strat_name_id, intervals_top.age_top, intervals_bottom.age_bottom, geom
