@@ -129,7 +129,7 @@ def refresh(scale, source_id):
     # Chop out a footprint = the target source's rgeom
     sql = ["""
     UPDATE carto.lines_%(target)s a
-    SET geom = ST_Difference(a.geom, b.geom)
+    SET geom = ST_Difference(a.geom, b.rgeom)
     FROM (
         SELECT rgeom
         FROM maps.sources
