@@ -135,7 +135,7 @@ def refresh(scale, source_id):
         FROM maps.sources
         WHERE source_id = %(source_id)s
     ) b
-    WHERE ST_Intersects(a.geom, b.geom);
+    WHERE ST_Intersects(a.geom, b.rgeom);
     DELETE FROM carto.lines_%(target)s WHERE geometrytype(geom) NOT IN ('LINESTRING', 'MULTILINESTRING');
     """ % { "target": target, "source_id": source_id }]
 
