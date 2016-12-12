@@ -26,17 +26,16 @@ module.exports = tilestrata.middleware({
             "X-Powered-By": "TileStrata"
           }))
           .use(etag())
-    });
 
-    strata.layer('vector')
-        .route('tile.pbf')
-            .use(vtile({
-                xml: credentials.tiles.configPath + `/burwell_vector_large_${layer}.xml`,
-                tileSize: 256,
-                metatile: 1,
-                bufferSize: 128
-            }))
-            .use(etag())
+          .route('tile.pbf')
+              .use(vtile({
+                  xml: credentials.tiles.configPath + `/burwell_vector_large_${layer}.xml`,
+                  tileSize: 256,
+                  metatile: 1,
+                  bufferSize: 128
+              }))
+              .use(etag())
+    });
 
     // Check if Redis is running
     setTimeout(function() {
