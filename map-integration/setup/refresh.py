@@ -331,8 +331,8 @@ def refresh(cursor, connection, scale, source_id):
          END best_age_bottom
 
       FROM macro_ages
-      JOIN macrostrat.intervals ti ON ti.id = t_interval
-      JOIN macrostrat.intervals tb ON tb.id = b_interval
+      LEFT JOIN macrostrat.intervals ti ON ti.id = t_interval
+      LEFT JOIN macrostrat.intervals tb ON tb.id = b_interval
      )
      -- Assign a color for making tiles
      SELECT map_id,
