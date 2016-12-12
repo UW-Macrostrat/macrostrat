@@ -63,7 +63,8 @@
 }
 /* Water polygons are invisible */
 .burwell[color=""] {
-   polygon-opacity: 0;
+   polygon-fill: #000000;
+   line-width: 0;
 }
 
 
