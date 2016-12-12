@@ -31,7 +31,7 @@ module.exports = tilestrata.middleware({
     strata.layer('vector')
         .route('tile.pbf')
             .use(vtile({
-                xml: __dirname + '/burwell_vtile_tiny.xml',
+                xml: credentials.tiles.configPath + `/burwell_vector_large_${layer}.xml`,
                 tileSize: 256,
                 metatile: 1,
                 bufferSize: 128
