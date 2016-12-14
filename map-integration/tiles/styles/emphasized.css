@@ -65,6 +65,7 @@
 .burwell[color=""] {
   polygon-comp-op: src-out;
   polygon-opacity: 0;
+  line-width: 0;
 }
 
 
