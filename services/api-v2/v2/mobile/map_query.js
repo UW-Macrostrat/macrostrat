@@ -192,7 +192,7 @@ module.exports = function(req, res, next) {
   }
 
   req.query.lng = larkin.normalizeLng(req.query.lng)
-  req.query.z = parseInt(z)
+  req.query.z = parseInt(req.query.z || 0)
 
   async.parallel({
     elevation: function(cb) {
