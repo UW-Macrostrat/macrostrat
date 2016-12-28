@@ -1,7 +1,7 @@
 var express = require("express");
 var tilestrata = require("tilestrata");
 var mapnik = require("tilestrata-mapnik");
-var vtile = require("tilestrata-vtile");
+//var vtile = require("tilestrata-vtile");
 var dependency = require("tilestrata-dependency");
 var credentials = require("./credentials");
 var portscanner = require("portscanner");
@@ -29,14 +29,14 @@ api.use(tilestrata.middleware({
     strata.layer("burwell")
         .route("tile.png")
         .use(mapnik({
-            xml: credentials.tiles.config,
+            pathname: __dirname + '/' + credentials.tiles.config,
             tileSize: 512,
             scale: 2
         }));
 
     // Check if Redis is running
     setTimeout(function() {
-      portscanner.checkPortStatus(6379, "127.0.0.1", function(error, status) {
+      portscanner.checkPortStatus(credentials.redis.port, "127.0.0.1", function(error, status) {
         if (status === "open") {
           var cache = require("./redisCache");
           console.log("Using Redis cache for tiles")
@@ -56,7 +56,6 @@ api.use(tilestrata.middleware({
                   defaultTile: __dirname + "/default@2x.png"
                 }))
       });
-
     }, 10)
 
     return strata;

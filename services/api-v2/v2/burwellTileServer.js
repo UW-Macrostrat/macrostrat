@@ -2,7 +2,7 @@ var tilestrata = require("tilestrata");
 var mapnik = require("tilestrata-mapnik");
 var headers = require("tilestrata-headers");
 var etag = require("tilestrata-etag");
-var vtile = require("tilestrata-vtile");
+//var vtile = require("tilestrata-vtile");
 var portscanner = require("portscanner");
 var credentials = require("./credentials");
 
@@ -17,7 +17,7 @@ module.exports = tilestrata.middleware({
       strata.layer(layer)
           .route("tile.png")
           .use(mapnik({
-              xml: credentials.tiles.configPath + `/burwell_large_${layer}.xml`,
+              pathname: credentials.tiles.configPath + `/burwell_large_${layer}.xml`,
               tileSize: 512,
               scale: 2
           }))
@@ -26,10 +26,10 @@ module.exports = tilestrata.middleware({
             "X-Powered-By": "TileStrata"
           }))
           .use(etag())
-          // 
+          //
           // .route('tile.pbf')
           //     .use(vtile({
-          //         xml: credentials.tiles.configPath + `/burwell_vector_large_${layer}.xml`,
+          //         pathname: credentials.tiles.configPath + `/burwell_vector_large_${layer}.xml`,
           //         tileSize: 256,
           //         metatile: 1,
           //         bufferSize: 128
