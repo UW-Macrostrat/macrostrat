@@ -39,6 +39,7 @@ module.exports = function() {
   describe("mobile/point_details", require("./mobile_point_details"));
   describe("mobile/fossil_collections", require("./mobile_fossil_collections"));
   describe("mobile/macro_summary", require("./mobile_macro_summary"));
+  describe("mobile/map_query", require("./mobile_map_query"));
   describe("Mancos test cases", require("./mancos_test_cases"));
 
 }
