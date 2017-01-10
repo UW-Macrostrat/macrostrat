@@ -19,6 +19,9 @@ module.exports = function(req, res, next, cb) {
       } else if (req.query.strat_name_id) {
         where.push("parent IN (:strat_name_id) OR l.strat_name_id IN (:strat_name_id)");
         params["strat_name_id"] = larkin.parseMultipleIds(req.query.strat_name_id);
+      } else if (req.query.concept_id) {
+        where.push("parent IN (( SELECT DISTINCT strat_name_id FROM lookup_strat_names WHERE concept_id IN (:concept_id) )) OR l.strat_name_id IN (( SELECT DISTINCT strat_name_id FROM lookup_strat_names WHERE concept_id IN (:concept_id) ))")
+        params["concept_id"] = larkin.parseMultipleIds(req.query.concept_id);
       }
 
     } else if (req.query.rule === "all") {
