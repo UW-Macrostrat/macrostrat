@@ -67,6 +67,10 @@ cursor.execute("""
         WHERE lith = lith_class
         union
         select id, interval_name as name, 'intervals' as type from intervals
+        union
+        SELECT id, mineral AS name, 'minerals' AS type from minerals
+        union
+        SELECT id, structure as name, 'structures' as type from structures
       ) i;
 
       UPDATE autocomplete_new AS a
