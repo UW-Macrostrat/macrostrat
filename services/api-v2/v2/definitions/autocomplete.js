@@ -18,7 +18,7 @@ module.exports = function(req, res, next) {
     return larkin.info(req, res, next);
   }
 
-  var categories = ["columns", "econs", "econ_types", "econ_classes", "environments", "environment_types", "environment_classes", "groups", "intervals", "lithologies", "lithology_types", "lithology_classes", "lithology_attributes", "projects", "strat_name_concepts", "strat_name_orphans"];
+  var categories = ["columns", "econs", "econ_types", "econ_classes", "environments", "environment_types", "environment_classes", "groups", "intervals", "lithologies", "lithology_types", "lithology_classes", "lithology_attributes", "projects", "strat_name_concepts", "strat_name_orphans", "structures", "minerals"];
 
 
   var types = [];
