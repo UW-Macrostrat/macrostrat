@@ -1,34 +1,41 @@
 var api = require("./api"),
     async = require("async"),
-    multiline = require("multiline"),
     dbgeo = require("dbgeo"),
     gp = require("geojson-precision"),
     larkin = require("./larkin");
 
 function buildSQL(req, scale, where, limit) {
-  var sql = multiline(function() {/*
-    (SELECT
-      m.map_id,
-      m.source_id,
-      COALESCE(m.name, '') AS name,
-      COALESCE(m.strat_name, '') AS strat_name,
-      COALESCE(m.lith, '') AS lith,
-      COALESCE(m.descrip, '') AS descrip,
-      COALESCE(m.comments, '') AS comments,
-      COALESCE(mm.unit_ids, '{}') AS macro_units,
-      COALESCE(mm.strat_name_ids, '{}') AS strat_names,
-      COALESCE(mm.lith_ids, '{}') AS liths,
-      m.t_interval AS t_int_id,
-      ti.age_top::float AS t_int_age,
-      ti.interval_name AS t_int_name,
-      m.b_interval AS b_int_id,
-      tb.age_bottom::float AS b_int_age,
-      tb.interval_name AS b_int_name,
-      mm.color
-  */});
-
-  //sql += "'" + scale + "' AS scale";
-
+  var sql = `
+  (SELECT
+    m.map_id,
+    m.source_id,
+    COALESCE(m.name, '') AS name,
+    COALESCE(m.strat_name, '') AS strat_name,
+    COALESCE(m.lith, '') AS lith,
+    COALESCE(m.descrip, '') AS descrip,
+    COALESCE(m.comments, '') AS comments,
+    COALESCE(mm.unit_ids, '{}') AS macro_units,
+    COALESCE(mm.strat_name_ids, '{}') AS strat_names,
+    COALESCE(mm.lith_ids, '{}') AS liths,
+    m.t_interval AS t_int_id,
+    ti.age_top::float AS t_int_age,
+    ti.interval_name AS t_int_name,
+    m.b_interval AS b_int_id,
+    tb.age_bottom::float AS b_int_age,
+    tb.interval_name AS b_int_name,
+    mm.color,
+    mm.best_age_top::float AS t_age,
+    mm.best_age_bottom::float AS b_age,
+    (SELECT COALESCE(interval_name, '')
+     FROM macrostrat.intervals
+     JOIN macrostrat.timescales_intervals ON intervals.id = timescales_intervals.interval_id
+     JOIN macrostrat.timescales ON timescales_intervals.timescale_id = timescales.id
+     WHERE age_top <= mm.best_age_top::float AND age_bottom >= mm.best_age_bottom::float
+     AND timescales.id IN (11,14)
+     ORDER BY age_bottom - age_top
+     LIMIT 1
+    ) AS best_int_name
+  `
   if (req.query.map) {
     sql = "(SELECT mm.color, m.source_id"
   }
