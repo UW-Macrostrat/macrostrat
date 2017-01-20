@@ -101,15 +101,9 @@ var sql = {
       FROM (
         SELECT map_id, t_interval as interval_id, geom from maps.large
         UNION ALL
-        SELECT map_id, b_interval AS interval_id, geom from maps.large
-        UNION ALL
         SELECT map_id, t_interval as interval_id, geom from maps.medium
         UNION ALL
-        SELECT map_id, b_interval AS interval_id, geom from maps.medium
-        UNION ALL
         SELECT map_id, t_interval as interval_id, geom from maps.small
-        UNION ALL
-        SELECT map_id, b_interval AS interval_id, geom from maps.small
       ) a
       ORDER BY geom <-> st_setsrid(st_makepoint($1,$2),4326)
       LIMIT 1000
@@ -129,20 +123,60 @@ var sql = {
 
   map_units: `
     WITH subset AS (
-      SELECT map_id, name, 'tiny' AS scale, geom
+      SELECT mm.map_id, name, 'tiny' AS scale, geom,
+      (SELECT COALESCE(interval_name, '')
+         FROM macrostrat.intervals
+         JOIN macrostrat.timescales_intervals ON intervals.id = timescales_intervals.interval_id
+         JOIN macrostrat.timescales ON timescales_intervals.timescale_id = timescales.id
+         WHERE age_top <= mm.best_age_top::float AND age_bottom >= mm.best_age_bottom::float
+         AND timescales.id IN (11,14)
+         ORDER BY age_bottom - age_top
+         LIMIT 1
+      ) AS int_name
       FROM maps.tiny
+      JOIN lookup_tiny mm on tiny.map_id = mm.map_id
       WHERE ST_Intersects(geom, ST_Buffer($1::geography, 3200)::geometry)
       UNION ALL
-      SELECT map_id, name, 'small' AS scale, geom
+      SELECT mm.map_id, name, 'small' AS scale, geom,
+      (SELECT COALESCE(interval_name, '')
+         FROM macrostrat.intervals
+         JOIN macrostrat.timescales_intervals ON intervals.id = timescales_intervals.interval_id
+         JOIN macrostrat.timescales ON timescales_intervals.timescale_id = timescales.id
+         WHERE age_top <= mm.best_age_top::float AND age_bottom >= mm.best_age_bottom::float
+         AND timescales.id IN (11,14)
+         ORDER BY age_bottom - age_top
+         LIMIT 1
+      ) AS int_name
       FROM maps.small
+      JOIN lookup_small mm on small.map_id = mm.map_id
       WHERE ST_Intersects(geom, ST_Buffer($1::geography, 3200)::geometry)
       UNION ALL
-      SELECT map_id, name, 'medium' AS scale, geom
+      SELECT mm.map_id, name, 'medium' AS scale, geom,
+      (SELECT COALESCE(interval_name, '')
+         FROM macrostrat.intervals
+         JOIN macrostrat.timescales_intervals ON intervals.id = timescales_intervals.interval_id
+         JOIN macrostrat.timescales ON timescales_intervals.timescale_id = timescales.id
+         WHERE age_top <= mm.best_age_top::float AND age_bottom >= mm.best_age_bottom::float
+         AND timescales.id IN (11,14)
+         ORDER BY age_bottom - age_top
+         LIMIT 1
+      ) AS int_name
       FROM maps.medium
+      JOIN lookup_medium mm on medium.map_id = mm.map_id
       WHERE ST_Intersects(geom, ST_Buffer($1::geography, 3200)::geometry)
       UNION ALL
-      SELECT map_id, name, 'large' AS scale, geom
+      SELECT mm.map_id, name, 'large' AS scale, geom,
+      (SELECT COALESCE(interval_name, '')
+         FROM macrostrat.intervals
+         JOIN macrostrat.timescales_intervals ON intervals.id = timescales_intervals.interval_id
+         JOIN macrostrat.timescales ON timescales_intervals.timescale_id = timescales.id
+         WHERE age_top <= mm.best_age_top::float AND age_bottom >= mm.best_age_bottom::float
+         AND timescales.id IN (11,14)
+         ORDER BY age_bottom - age_top
+         LIMIT 1
+      ) AS int_name
       FROM maps.large
+      JOIN lookup_large mm on large.map_id = mm.map_id
       WHERE ST_Intersects(geom, ST_Buffer($1::geography, 3200)::geometry)
     ),
     best_scale AS (
@@ -165,31 +199,33 @@ var sql = {
       ) map_id, first_value(name) OVER (
         PARTITION BY name
         ORDER BY ST_Distance(geom, $1)
-      ) unit_name, ST_Distance(geom::geography, $1::geography)::int distance
+      ) unit_name, ST_Distance(geom::geography, $1::geography)::int distance, int_name
       FROM subset
       WHERE ST_Intersects(geom, ST_Buffer($1::geography, 3200)::geometry)
       AND name NOT ILIKE '%water%' AND (SELECT scale = ANY(best) FROM best_scale)
-      GROUP BY map_id, name, geom
+      GROUP BY map_id, name, geom, int_name
       ORDER BY distance
     )
 
-    SELECT map_id, unit_name, min(distance) AS distance
+    SELECT map_id, unit_name, min(distance) AS distance, int_name
     FROM units
-    GROUP BY map_id, unit_name
-    ORDER BY min(distance);
+    GROUP BY map_id, unit_name, int_name
+    ORDER BY min(distance)
+
+
   `,
 
-  places: `
-    WITH first AS (
-      SELECT notes, ST_Distance(ST_SetSRID(geom, 4326)::geography, $1::geography)::int d
-      FROM checkins
-      ORDER BY ST_SetSRID(geom, 4326) <-> $1
-      LIMIT 15
-    )
-    SELECT notes AS place, d AS distance
-    FROM first
-    WHERE d < 80000;
-  `
+  // places: `
+  //   WITH first AS (
+  //     SELECT notes, ST_Distance(ST_SetSRID(geom, 4326)::geography, $1::geography)::int d
+  //     FROM checkins
+  //     ORDER BY ST_SetSRID(geom, 4326) <-> $1
+  //     LIMIT 15
+  //   )
+  //   SELECT notes AS place, d AS distance
+  //   FROM first
+  //   WHERE d < 80000;
+  // `
 }
 
 
@@ -247,16 +283,16 @@ module.exports = function(req, res, next) {
         }
       })
     },
-
-    places: function(callback) {
-      larkin.queryPg("rockd", sql.places, ['SRID=4326;POINT(' + req.query.lng + ' ' + req.query.lat + ')'], function(error, data) {
-        if (error) {
-          callback(error);
-        } else {
-          callback(null, data.rows);
-        }
-      })
-    }
+    //
+    // places: function(callback) {
+    //   larkin.queryPg("rockd", sql.places, ['SRID=4326;POINT(' + req.query.lng + ' ' + req.query.lat + ')'], function(error, data) {
+    //     if (error) {
+    //       callback(error);
+    //     } else {
+    //       callback(null, data.rows);
+    //     }
+    //   })
+    // }
   }, function(error, results) {
     if (error) {
       larkin.error(req, res, next, error);
