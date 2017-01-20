@@ -90,7 +90,7 @@ var sql = {
     FROM nn
   )
 
-  SELECT strat_name_id, strat_name, strat_name_long, bed, mbr, fm, gp, sgp, b_age, t_age, b_period, t_period
+  SELECT strat_name_id, strat_name, strat_name_long, bed, mbr, fm, gp, sgp, b_age::float, t_age::float, b_period, t_period
   FROM nnlimit
   ORDER BY row_number
   LIMIT 5;`,
@@ -211,8 +211,6 @@ var sql = {
     FROM units
     GROUP BY map_id, unit_name, int_name
     ORDER BY min(distance)
-
-
   `,
 
   // places: `
