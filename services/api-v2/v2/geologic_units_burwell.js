@@ -23,7 +23,18 @@ function buildSQL(req, scale, where, limit) {
     m.b_interval AS b_int_id,
     tb.age_bottom::float AS b_int_age,
     tb.interval_name AS b_int_name,
-    mm.color
+    mm.color,
+    mm.best_age_top::float AS t_age,
+    mm.best_age_bottom::float AS b_age,
+    (SELECT COALESCE(interval_name, '')
+     FROM macrostrat.intervals
+     JOIN macrostrat.timescales_intervals ON intervals.id = timescales_intervals.interval_id
+     JOIN macrostrat.timescales ON timescales_intervals.timescale_id = timescales.id
+     WHERE age_top <= mm.best_age_top::float AND age_bottom >= mm.best_age_bottom::float
+     AND timescales.id IN (11,14)
+     ORDER BY age_bottom - age_top
+     LIMIT 1
+    ) AS best_int_name
   `
   if (req.query.map) {
     sql = "(SELECT mm.color, m.source_id"
