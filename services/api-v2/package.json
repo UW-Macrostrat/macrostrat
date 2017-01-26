@@ -27,6 +27,7 @@
   "license": "CC0",
   "dependencies": {
     "body-parser": "^1.6.3",
+    "csv-express": "^1.1.0",
     "express": "4.x.x",
     "universal-analytics": "^0.4.6"
   },
