@@ -7,7 +7,6 @@
     "inquirer": "^1.1.2",
     "mkdirp": "^0.5.1",
     "pg": "^6.0.2",
-    "stanford-corenlp": "^0.3.2",
     "yamljs": "^0.2.8"
   },
   "devDependencies": {},
