@@ -1186,6 +1186,49 @@
     }
   },
 
+  "/geologic_units/burwell/points": {
+    "description": "Query point features from geologic maps",
+    "visible": true,
+    "parent": "geologic_units",
+    "options": {
+      "parameters": {
+        "point_id": "One or more comma-separated valid point_ids",
+        "point_type": "One or more comma-separated point_types",
+        "certainty": "A string to search the certainty field for (fuzzy)",
+        "comments": "A string to search the comments field for (fuzzy)",
+        "source_id": "One or more comma-separated source_ids",
+        "minlat": "A minimum latitude that represents the southwest corner of a bounding box (requires minlng, maxlat, and maxlng)",
+        "minlng": "A minimum longitude that represents the southwest corner of a bounding box (requires minlat, maxlat, and maxlng)",
+        "maxlat": "A maximum latitude that represents the northeast corner of a bounding box (requires minlat, minlng, and maxlng)",
+        "maxlng": "A maximum longitude that represents the northeast corner of a bounding box (requires minlat, minlng, and maxlat)",
+        "format": "Desired output format. Default is GeoJSON",
+        "sample": "Return a sample of data"
+      },
+      "output_formats": [
+        "geojson",
+        "geojson_bare",
+        "topojson",
+        "topojson_bare",
+        "csv"
+      ],
+      "examples": [
+        "/api/v2/geologic_units/burwell/points?point_id=1,2,3",
+        "/api/v2/geologic_units/burwell/points?point_type=joint",
+        "/api/v2/geologic_units/burwell/points?minlng=-112.7672&minlat=36.0627&maxlng=-112.5390&maxlat=36.1872"
+      ],
+      "fields": [
+        "point_id",
+        "strike",
+        "dip",
+        "dip_dir",
+        "point_type",
+        "certainty",
+        "comments",
+        "source_id"
+      ]
+    }
+  },
+
   "/geologic_units/burwell/nearby": {
     "description": "Stratigraphic names, lithologies, and time intervals near a coordinate in Burwell",
     "visible": false,
@@ -1699,7 +1742,13 @@
     "lng": "decimal, longigtude in WGS84",
     "structure_id": "integer, unique structure ID",
     "prop": "decimal, proportion",
-    "genus_no": "integer, corresponds to taxon_no in Paleobiology Database"
+    "genus_no": "integer, corresponds to taxon_no in Paleobiology Database",
+    "point_id": "integer, unique ID of the point",
+    "strike": "integer, point strike",
+    "dip": "integer, point dip",
+    "dip_dir": "integer, point dip direction",
+    "point_type": "text, type of point",
+    "certainty": "text, point location certainty"
   }
 };
   module.exports = defs;

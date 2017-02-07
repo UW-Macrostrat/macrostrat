@@ -27,7 +27,7 @@ var mysql = require("mysql"),
 
 
   larkin.queryPg = function(db, sql, params, callback) {
-    pg.connect("postgres://" + credentials.pg.user +  (credentials.pg.password.length ? ':' + credentials.pg.password : '') + "@" + credentials.pg.host + "/" + db, function(err, client, done) {
+    pg.connect("postgres://" + credentials.pg.user +  (credentials.pg.password.length ? ':' + credentials.pg.password : '') + "@" + credentials.pg.host + ":" + credentials.pg.port + "/" + db, function(err, client, done) {
       if (err) {
         this.log("error", "error connecting - " + err);
         callback(err);
