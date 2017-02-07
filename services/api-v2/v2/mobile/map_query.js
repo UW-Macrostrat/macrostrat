@@ -36,8 +36,8 @@ var scaleLookup = {
 var priorities = {
   'tiny': ['tiny'],
   'small': ['small', 'tiny'],
-  'medium': ['medium', 'small'],
-  'large': ['large', 'medium']
+  'medium': ['medium', 'small', 'tiny'],
+  'large': ['large', 'medium', 'small', 'tiny']
 }
 
 // https://msdn.microsoft.com/en-us/library/bb259689.aspx
