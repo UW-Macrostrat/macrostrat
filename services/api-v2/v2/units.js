@@ -398,10 +398,9 @@ module.exports = function(req, res, next, cb) {
             }
 
             if (req.query.format && api.acceptedFormats.geo[req.query.format] && !cb) {
-              var geomAge = (req.query.geom_age && req.query.geom_age === "top") ? ["t_plat", "t_plng"] : (req.query.geom_age === "bottom") ? ["b_plat", "b_plng"] : ["clat", "clng"];
+              var geomAge = (req.query.geom_age && req.query.geom_age === "top") ? ["t_plng", "t_plat"] : (req.query.geom_age === "bottom") ? ["b_plng", "b_plat"] : ["clng", "clat"];
 
-              dbgeo.parse({
-                "data": result,
+              dbgeo.parse(result, {
                 "geometryType": "ll",
                 "geometryColumn": geomAge,
                 "outputFormat": larkin.getOutputFormat(req.query.format)

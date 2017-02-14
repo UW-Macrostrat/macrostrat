@@ -107,8 +107,7 @@ module.exports = function(req, res, next) {
         larkin.error(req, res, next, "Something went wrong");
       } else {
         if (geo) {
-          dbgeo.parse({
-            "data": results,
+          dbgeo.parse(results, {
             "outputFormat": larkin.getOutputFormat(req.query.format),
             "geometryColumn": "geometry",
             "geometryType": "wkt"

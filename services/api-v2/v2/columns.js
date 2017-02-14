@@ -180,8 +180,7 @@ module.exports = function(req, res, next) {
     }
 
     if (req.query.format && api.acceptedFormats.geo[req.query.format]) {
-      dbgeo.parse({
-        "data": column_data || [],
+      dbgeo.parse(column_data || [], {
         "geometryColumn": "geojson",
         "geometryType": "geojson",
         "outputFormat": larkin.getOutputFormat(req.query.format)

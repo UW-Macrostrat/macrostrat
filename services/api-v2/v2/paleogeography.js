@@ -39,8 +39,9 @@ module.exports = function(req, res, next) {
       if (error) {
         larkin.error(req, res, next, "Invalid query");
       } else {
-        dbgeo.parse({
-          "data": data,
+        dbgeo.parse(data, {
+          "geometryType": "geojson",
+          "geometryColumn": "geometry",
           "outputFormat": larkin.getOutputFormat(req.query.format)
         }, function(error, result) {
             if (error) {
