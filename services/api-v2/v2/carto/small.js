@@ -108,8 +108,7 @@ module.exports = function(req, res, next, cb) {
         // Requesting geographic data
         if (req.query.format && api.acceptedFormats.geo[req.query.format]) {
           // Convert the db response to a proper FeatureCollection
-          dbgeo.parse({
-            "data": result.rows,
+          dbgeo.parse(result.rows, {
             "outputFormat": larkin.getOutputFormat(req.query.format)
           }, function(error, result) {
             if (error) {
