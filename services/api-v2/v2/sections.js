@@ -81,8 +81,8 @@ module.exports = function(req, res, next) {
             "section_id": columns[col_id].sections[i].units[0].section_id,
             "project_id": columns[col_id].sections[i].units[0].project_id,
 
-            "max_thick": columns[col_id].sections[i].units.map(function(d) { return d.max_thick }).reduce(function(a, b) { return a + b }, 0),
-            "min_thick": columns[col_id].sections[i].units.map(function(d) { return d.min_thick }).reduce(function(a, b) { return a + b }, 0),
+            "max_thick": columns[col_id].sections[i].units.map(function(d) { return d.max_thick }).reduce(function(a, b) { return a + b }, 0).toFixed(2),
+            "min_thick": columns[col_id].sections[i].units.map(function(d) { return d.min_thick }).reduce(function(a, b) { return a + b }, 0).toFixed(2),
 
             "t_age": _.min(columns[col_id].sections[i].units, function(d) { return d.t_age; }).t_age,
             "b_age": _.max(columns[col_id].sections[i].units, function(d) { return d.b_age; }).b_age,
