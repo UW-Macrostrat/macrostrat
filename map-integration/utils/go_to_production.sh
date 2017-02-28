@@ -1,4 +1,4 @@
-ssh -p 2200 -f -N -M -S /tmp/tmp-sock -L 5440:127.0.0.1:5432 jczaplewski@strata.geology.wisc.edu
+ssh -p 22 -f -N -M -S /tmp/tmp-sock -L 5440:127.0.0.1:5432 jczaplewski@128.104.50.24
 
 dropdb -U john -h localhost -p 5440 burwell_new
 createdb -U john -h localhost -p 5440 burwell_new
@@ -16,7 +16,7 @@ rm etopo1.sql
 psql -U john -h localhost -p 5440 burwell_new -c "VACUUM ANALYZE"
 psql -U john -h localhost -p 5440 burwell_new -c "REINDEX DATABASE burwell_new"
 
-ssh -S /tmp/tmp-sock -O exit jczaplewski@strata.geology.wisc.edu
+ssh -S /tmp/tmp-sock -O exit jczaplewski@128.104.50.24
 
 : <<'END'
 
