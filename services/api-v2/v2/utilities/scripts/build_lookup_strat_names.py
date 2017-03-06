@@ -122,6 +122,7 @@ cursor.execute("""
 """)
 connection.commit()
 
+
 # Populate rank_name
 cursor.execute("""
     UPDATE lookup_strat_names_new SET rank_name =
@@ -172,6 +173,53 @@ cursor.execute("""
     WHEN bed_id > 0 THEN bed_id
     ELSE tree = 0
   END
+""")
+connection.commit()
+
+
+# Group by concept_id and fill in NULL ages
+cursor.execute("""
+    UPDATE lookup_strat_names_new lsn
+     LEFT JOIN (
+       SELECT concept_id, max(b_age) AS early_age, min(t_age) AS late_age
+       FROM lookup_strat_names_new
+       LEFT JOIN unit_strat_names USING (strat_name_id)
+       LEFT JOIN lookup_unit_intervals USING (unit_id)
+       WHERE concept_id != 0
+       GROUP BY strat_name_id
+     ) AS sub USING (concept_id)
+     SET lsn.early_age = sub.early_age, lsn.late_age = sub.late_age
+    WHERE lsn.early_age IS NULL AND lsn.late_age IS NULL
+""")
+connection.commit()
+
+# Group by parent and fill in NULL ages
+cursor.execute("""
+    UPDATE lookup_strat_names_new lsn
+     LEFT JOIN (
+       SELECT parent, max(b_age) AS early_age, min(t_age) AS late_age
+       FROM lookup_strat_names_new
+       LEFT JOIN unit_strat_names USING (strat_name_id)
+       LEFT JOIN lookup_unit_intervals USING (unit_id)
+       GROUP BY parent
+     ) AS sub USING (parent)
+     SET lsn.early_age = sub.early_age, lsn.late_age = sub.late_age
+    WHERE lsn.early_age IS NULL AND lsn.late_age IS NULL
+""")
+connection.commit()
+
+# Group by tree and fill in NULL ages
+cursor.execute("""
+    UPDATE lookup_strat_names_new lsn
+     LEFT JOIN (
+       SELECT tree, max(b_age) AS early_age, min(t_age) AS late_age
+       FROM lookup_strat_names
+       LEFT JOIN unit_strat_names USING (strat_name_id)
+       LEFT JOIN lookup_unit_intervals USING (unit_id)
+       GROUP BY tree
+     ) AS sub USING (tree)
+     SET lsn.early_age = sub.early_age, lsn.late_age = sub.late_age
+    WHERE lsn.early_age IS NULL AND lsn.late_age IS NULL
 """)
 connection.commit()
 
