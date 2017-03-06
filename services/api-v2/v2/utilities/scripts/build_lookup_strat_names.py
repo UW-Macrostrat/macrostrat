@@ -189,9 +189,22 @@ cursor.execute("""
        GROUP BY strat_name_id
      ) AS sub USING (concept_id)
      SET lsn.early_age = sub.early_age, lsn.late_age = sub.late_age
-    WHERE lsn.early_age IS NULL AND lsn.late_age IS NULL
+     WHERE lsn.early_age IS NULL AND lsn.late_age IS NULL
 """)
 connection.commit()
+
+# Group by concept_id, but using strat names meta
+cursor.execute("""
+    UPDATE lookup_strat_names_new lsn
+    LEFT JOIN (
+        SELECT concept_id, b.age_bottom, t.age_top
+        FROM strat_names_meta
+        JOIN intervals b on b.id = b_int
+        JOIN intervals t ON t.id = t_int
+    ) AS sub USING (concept_id)
+    SET lsn.early_age = sub.age_bottom, lsn.late_age = sub.age_top
+    WHERE lsn.early_age IS NULL AND lsn.late_age IS NULL
+""")
 
 # Group by parent and fill in NULL ages
 cursor.execute("""
@@ -204,7 +217,7 @@ cursor.execute("""
        GROUP BY parent
      ) AS sub USING (parent)
      SET lsn.early_age = sub.early_age, lsn.late_age = sub.late_age
-    WHERE lsn.early_age IS NULL AND lsn.late_age IS NULL
+     WHERE lsn.early_age IS NULL AND lsn.late_age IS NULL
 """)
 connection.commit()
 
@@ -219,7 +232,7 @@ cursor.execute("""
        GROUP BY tree
      ) AS sub USING (tree)
      SET lsn.early_age = sub.early_age, lsn.late_age = sub.late_age
-    WHERE lsn.early_age IS NULL AND lsn.late_age IS NULL
+     WHERE lsn.early_age IS NULL AND lsn.late_age IS NULL
 """)
 connection.commit()
 
