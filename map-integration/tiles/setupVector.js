@@ -29,7 +29,7 @@
       "srs-name": "WGS84",
       "srs": "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs",
       "advanced": {},
-      "name": "",
+      "name": "units",
       "minZoom": "",
       "maxZoom": ""
   }
@@ -56,7 +56,7 @@
       "srs-name": "WGS84",
       "srs": "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs",
       "advanced": {},
-      "name": "",
+      "name": "lines",
       "minZoom": "",
       "maxZoom": ""
   }
@@ -82,10 +82,10 @@
   function createLayer(scale, callback) {
     // Copy the template
     var layer = JSON.parse(JSON.stringify(layerTemplate));
-    layer["Datasource"]["table"] = `(SELECT x.map_id, x.color, geom FROM carto.${scale}) subset`
+    layer["Datasource"]["table"] = `(SELECT x.map_id, q.color, geom FROM carto.${scale} x JOIN lookup_${scale} q ON q.map_id = x.map_id ) subset`
     layer["id"] = `burwell_${scale}`
     layer["class"] = "burwell"
-    layer["name"] = `burwell_${scale}`
+//    layer["name"] = `burwell_${scale}`
     layer["minZoom"] = Math.min.apply(Math, config.scaleMap[scale])
     layer["maxZoom"] = Math.max.apply(Math, config.scaleMap[scale])
     callback(layer)
@@ -98,7 +98,7 @@
     layer["Datasource"]["table"] = `(SELECT x.line_id, x.geom, x.direction, x.type FROM carto.lines_${scale} x) subset`
     layer["id"] = `burwell_lines_${scale}`
     layer["class"] = "lines"
-    layer["name"] = `burwell_lines_${scale}`
+//    layer["name"] = `burwell_lines_${scale}`
     layer["minZoom"] = Math.min.apply(Math, config.scaleMap[scale])
     layer["maxZoom"] = Math.max.apply(Math, config.scaleMap[scale])
     callback(layer)
@@ -117,25 +117,16 @@
 
     async.parallel([
       function(c) {
-        if (config.mapLayers[layer].hasUnits) {
-          createLayer(scale, function(l) {
-            //layers.push(l)
-            c(null, l)
-          })
-        } else {
-          c(null, null)
-        }
+        createLayer(scale, function(l) {
+          //layers.push(l)
+          c(null, l)
+        })
       },
       function(c) {
-        // Only add lines if A) this layer needs lines and B) we are iterating on the current scale
-        if (config.mapLayers[layer].hasLines) {
-          createLayerLines(scale, function(l) {
-          //  layers.push(l)
-            c(null, l)
-          })
-        } else {
-          c(null, null)
-        }
+        createLayerLines(scale, function(l) {
+        //  layers.push(l)
+          c(null, l)
+        })
       }
     ], function(error, result) {
       // Record the layers
@@ -148,7 +139,7 @@
       }).render(project)
 
       // Save it
-      fs.outputFile(`${__dirname}/compiled_styles/burwell_vector_${scale}_${layer}.xml`, mapnikXML, function(error) {
+      fs.outputFile(`${__dirname}/compiled_styles/burwell_vector_${scale}.xml`, mapnikXML, function(error) {
         if (error) {
           console.log("Error wrting XML file for ", scale)
         }
@@ -162,7 +153,7 @@
       // For each scale, create and save and new project
       function(callback) {
         async.each(config.scales, function(scale, callback) {
-          createProject(scale, layer, callback);
+          createProject(scale, null, callback);
         }, function(error) {
           callback(null);
         });

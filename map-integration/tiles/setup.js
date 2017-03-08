@@ -104,7 +104,7 @@
   function createLayer(scale, callback) {
     // Copy the template
     var layer = JSON.parse(JSON.stringify(layerTemplate));
-    layer["Datasource"]["table"] = `(SELECT x.map_id, x.color, geom FROM lookup_${scale} x JOIN maps.${scale} s ON s.map_id = x.map_id JOIN maps.sources ON s.source_id = sources.source_id ORDER BY sources.priority ASC) subset`
+    layer["Datasource"]["table"] = `(SELECT x.map_id, x.color, sources.scale, geom FROM lookup_${scale} x JOIN maps.${scale} s ON s.map_id = x.map_id JOIN maps.sources ON s.source_id = sources.source_id ORDER BY sources.priority ASC) subset`
     layer["id"] = `burwell_${scale}`
     layer["class"] = "burwell"
     layer["name"] = `burwell_${scale}`
@@ -197,11 +197,12 @@
     }, function(error) {
       // Record the layers
       project["Layer"] = layers;
-
+      fs.writeFileSync(`${__dirname}/test.mml`, JSON.stringify(project), 'utf8')
       // Convert the resultant mml file to Mapnik XML
       var mapnikXML = new carto.Renderer({
-        paths: [ __dirname ],
-        local_data_dir: __dirname
+        //paths: [ __dirname ],
+        filename: 'test.mml',
+        local_data_dir: path.dirname('test.mml')
       }).render(project);
 
       // Save it

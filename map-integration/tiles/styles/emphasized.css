@@ -8,6 +8,9 @@
 .burwell[zoom=4] {
   line-width: 0.4;
 }
+.burwell[zoom=4][scale="medium"] {
+  line-width: 0.05;
+}
 .burwell[zoom=5] {
   line-width: 0.8;
 }

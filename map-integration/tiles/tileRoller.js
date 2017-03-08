@@ -57,10 +57,10 @@
   function rollVectorTile(scale, tile, callback) {
     providers[scale].serve(null, tile, function(error, buffer) {
       // Get the full tile path
-      var file = tilePath(credentials.cache_pathVector, tile.z, tile.x, tile.y, 'tile.pbf');
+      var file = tilePath(credentials.cache_path, tile.z, tile.x, tile.y, 'tile.pbf');
 
       // Make sure the correct directory exists
-      mkdirp(credentials.cache_pathVector + '/' + tile.z + '/' + tile.x + '/' + tile.y, function(error) {
+      mkdirp(credentials.cache_path + '/' + tile.z + '/' + tile.x + '/' + tile.y, function(error) {
 
         // Write the tile to disk
         fs.writeFile(file, buffer, function(err) {
@@ -110,7 +110,7 @@
             });
           } else {
             providers[scale] = vtile({
-                xml: config.configPath + 'compiled_styles/burwell_vtile_' + scale + '.xml',
+                xml: path.join(__dirname, 'compiled_styles', `burwell_vector_${scale}.xml`),
                 tileSize: 256,
                 metatile: 1,
                 bufferSize: 128

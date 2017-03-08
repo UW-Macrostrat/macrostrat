@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <title>tile-tester</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+  <link href='https://api.mapbox.com/mapbox-gl-js/v0.32.1/mapbox-gl.css' rel='stylesheet' />
+  <style>
+    body {
+      padding:0;
+      margin:0;
+    }
+    #map {
+      position:absolute;
+      width:100%;
+      height:100%;
+  }
+  </style>
+
+</head>
+<body>
+  <div id="map"></div>
+  <script src='https://api.mapbox.com/mapbox-gl-js/v0.32.1/mapbox-gl.js'></script>
+
+  <script>
+  mapboxgl.accessToken = 'pk.eyJ1IjoiamN6YXBsZXdza2kiLCJhIjoiWnQxSC01USJ9.oleZzfREJUKAK1TMeCD0bg'
+  var map = new mapboxgl.Map({
+    container: 'map',
+    style: {
+      version: 8,
+      sources: {
+        satellite: {
+          type: 'raster',
+          tiles: ['https://api.mapbox.com/styles/v1/jczaplewski/cigmamq4n000xaaknfpuj1zdk/tiles/256/{z}/{x}/{y}?access_token=pk.eyJ1IjoiamN6YXBsZXdza2kiLCJhIjoiWnQxSC01USJ9.oleZzfREJUKAK1TMeCD0bg'],
+          tileSize: 256
+        },
+        burwell_tiny: {
+          type: 'vector',
+          tiles: ['http://144.92.207.7:5555/tiles/tiny/{z}/{x}/{y}/tile.pbf']
+        },
+        burwell_small: {
+          type: 'vector',
+          tiles: ['http://144.92.207.7:5555/tiles/small/{z}/{x}/{y}/tile.pbf']
+        },
+        burwell_medium: {
+          type: 'vector',
+          tiles: ['http://144.92.207.7:5555/tiles/medium/{z}/{x}/{y}/tile.pbf']
+        }
+      },
+      layers: [
+        {
+          id: 'satellite',
+          type: 'raster',
+          source: 'satellite',
+          minzoom: 1,
+          maxzoom: 17
+        },
+        {
+          id: 'tiny',
+          type: 'fill',
+          source: 'burwell_tiny',
+          'source-layer': 'units',
+          minzoom: 0,
+          maxzoom: 4,
+          paint: {
+            'fill-color': {
+              'property': 'color',
+              'type': 'identity'
+            },
+            'fill-opacity': 0.5,
+            'fill-outline-color': '#777777'
+          }
+        },
+        {
+          id: 'lines',
+          type: 'line',
+          source: 'burwell_tiny',
+          'source-layer': 'lines',
+          minzoom: 0,
+          maxzoom: 4,
+          paint: {
+            'line-color': '#000000',
+            'line-width': {
+              'stops': [
+                [0, 0.3],
+                [1, 0.3],
+                [2, 0.3],
+                [3, 0.4],
+                [4, 0.35],
+                [5, 0.4],
+                [6, 0.25],
+                [7, 0.3],
+                [8, 0.5],
+                [9, 0.7],
+                [10, 0.6],
+                [11, 0.9],
+                [12, 1.1],
+                [13, 1.5],
+                [14, 2.5],
+                [15, 3],
+                [16, 4]
+              ]
+            }
+          }
+        },
+        {
+          id: 'small',
+          type: 'fill',
+          source: 'burwell_small',
+          'source-layer': 'units',
+          minzoom: 4,
+          maxzoom: 6,
+          paint: {
+            'fill-color': {
+              'property': 'color',
+              'type': 'identity'
+            },
+            'fill-opacity': 0.5,
+            'fill-outline-color': '#777777'
+          }
+        },
+        {
+          id: 'small_lines',
+          type: 'line',
+          source: 'burwell_small',
+          'source-layer': 'lines',
+          minzoom: 4,
+          maxzoom: 6,
+          paint: {
+            'line-color': '#000000',
+            'line-width': {
+              'stops': [
+                [0, 0.3],
+                [1, 0.3],
+                [2, 0.3],
+                [3, 0.4],
+                [4, 0.35],
+                [5, 0.4],
+                [6, 0.25],
+                [7, 0.3],
+                [8, 0.5],
+                [9, 0.7],
+                [10, 0.6],
+                [11, 0.9],
+                [12, 1.1],
+                [13, 1.5],
+                [14, 2.5],
+                [15, 3],
+                [16, 4]
+              ]
+            }
+          }
+        },
+        {
+          id: 'medium',
+          type: 'fill',
+          source: 'burwell_medium',
+          'source-layer': 'units',
+          minzoom: 6,
+          maxzoom: 9,
+          paint: {
+            'fill-color': {
+              'property': 'color',
+              'type': 'identity'
+            },
+            'fill-opacity': 0.5,
+            'fill-outline-color': '#777777'
+          }
+        },
+        {
+          id: 'medium_lines',
+          type: 'line',
+          source: 'burwell_medium',
+          'source-layer': 'lines',
+          minzoom: 6,
+          maxzoom: 9,
+          paint: {
+            'line-color': '#000000',
+            'line-width': {
+              'stops': [
+                [0, 0.3],
+                [1, 0.3],
+                [2, 0.3],
+                [3, 0.4],
+                [4, 0.35],
+                [5, 0.4],
+                [6, 0.25],
+                [7, 0.3],
+                [8, 0.5],
+                [9, 0.7],
+                [10, 0.6],
+                [11, 0.9],
+                [12, 1.1],
+                [13, 1.5],
+                [14, 2.5],
+                [15, 3],
+                [16, 4]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    attributionControl: false,
+    hash: true,
+    dragRotate: false,
+  //  touchZoomRotate: false,
+    center: [-40, 20],
+    minZoom: 1,
+    maxZoom: 17,
+    zoom: 3
+  })
+  </script>
+
+</body>
+</html>

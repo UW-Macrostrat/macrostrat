@@ -13,6 +13,10 @@ app.use(tileServer)
 .route("/")
   .get(function(req, res, next) {
     res.sendFile(__dirname + "/leaflet-starter/index.html");
+  })
+app.route("/vector")
+  .get(function(req, res, next) {
+    res.sendFile(__dirname + "/leaflet-starter/vector.html");
   });
 
 
