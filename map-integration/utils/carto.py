@@ -3,17 +3,21 @@ from subprocess import call
 import argparse
 import psycopg2
 from psycopg2.extensions import AsIs
-
-sys.path = [os.path.join(os.path.dirname(__file__), os.pardir)] + sys.path
-import credentials
+import yaml
+with open('../credentials.yml', 'r') as f:
+    credentials = yaml.load(f)
 
 parser = argparse.ArgumentParser(
-    description="Create a carto table for a given scale",
-    epilog="Example usage: python union.py 1")
+    description="Create a carto table for a given source or scale",
+    epilog="Example usage: python carto.py -s 123 --or-- python carto.py small")
 
 parser.add_argument(nargs="?", dest="the_scale",
     default="0", type=str,
     help="The scale to generate a carto table for")
+
+parser.add_argument("-s", "--source_id", dest="source_id",
+  default="", type=str, required=False,
+  help="The source_id that should be added to the carto tables")
 
 arguments = parser.parse_args()
 
@@ -25,209 +29,226 @@ layerOrder = {
     "large": ["medium", "large"]
 }
 
-if arguments.the_scale not in layerOrder:
+scaleIsIn = {
+    "tiny": ["tiny"],
+    "small": ["small", "medium"],
+    "medium": ["medium", "large"],
+    "large": ["large"]
+}
+
+scales = ["tiny", "small", "medium", "large"]
+
+if arguments.the_scale not in layerOrder and len(arguments.source_id) == 0:
     print 'Please enter a valid scale', [scale for scale in layerOrder]
     sys.exit(1)
 
-if __name__ == '__main__':
-    start = time.time()
-    connection = psycopg2.connect(dbname="burwell", user=credentials.pg_user, host=credentials.pg_host, port=credentials.pg_port)
-    cursor = connection.cursor()
-
-    # Clean up
-    cursor.execute("""
-        DROP TABLE IF EXISTS carto.%(scale)s
+def piece(scale, geom_query, where):
+    return """
+    SELECT
+        map_id,
+        '%(scale)s' AS scale,
+        x.source_id,
+        %(geom_query)s
+    FROM maps.%(scale)s x
+    JOIN maps.sources ON x.source_id = sources.source_id
+    WHERE %(where)s
     """ % {
-        "scale": arguments.the_scale
-    })
-    connection.commit()
-
-    sql = []
-
-    if arguments.the_scale == 'tiny':
-        cursor.execute("""
-            CREATE TABLE carto.tiny AS
-            SELECT r.map_id, r.scale, m.source_id,
-            COALESCE(m.name, '') AS name,
-            COALESCE(m.strat_name, '') AS strat_name,
-            COALESCE(m.age, '') AS age,
-            COALESCE(m.lith, '') AS lith,
-            COALESCE(m.descrip, '') AS descrip,
-            COALESCE(m.comments, '') AS comments,
-            cast(l.best_age_top as numeric) AS best_age_top,
-            cast(l.best_age_bottom as numeric) AS best_age_bottom, it.interval_name t_int, ib.interval_name b_int, l.color,
-            ST_SetSRID(r.geom, 4326) AS geom
-            FROM (
-                SELECT t.map_id, 'tiny' AS scale, t.geom
-                FROM carto.flat_tiny t
-                WHERE ST_Geometrytype(t.geom) != 'ST_LineString'
-            ) r
-            LEFT JOIN (
-                SELECT map_id, source_id, name, strat_name, age, lith, descrip, comments, t_interval, b_interval FROM maps.tiny
-            ) m ON r.map_id = m.map_id
-            LEFT JOIN (
-                SELECT map_id, best_age_top, best_age_bottom, color FROM public.lookup_tiny
-            ) l ON r.map_id = l.map_id
-            JOIN macrostrat.intervals it ON m.t_interval = it.id
-            JOIN macrostrat.intervals ib ON m.b_interval = ib.id
-            WHERE ST_NumGeometries(r.geom) > 0;
-
-            CREATE INDEX ON carto.tiny (map_id);
-            CREATE INDEX ON carto.tiny USING GiST (geom);
-        """)
-        connection.commit()
-    else:
-
-        # Export reference geom
-        call(['pgsql2shp -f rgeoms.shp -u %s -h %s -p %s burwell "SELECT 1 AS id, rgeom AS geom FROM maps.sources WHERE \'%s\' = ANY(display_scales)"' % (credentials.pg_user, credentials.pg_host, credentials.pg_port, arguments.the_scale)], shell=True)
-
-        # Union it
-        call(['mapshaper -i rgeoms.shp -dissolve -o %s_rgeom.shp' % (arguments.the_scale, )], shell=True)
-
-        # Import it
-        call(['shp2pgsql -I -s 4326 %s_rgeom.shp public.%s_rgeom | psql -h %s -p %s -U %s -d burwell' % (arguments.the_scale, arguments.the_scale, credentials.pg_host, credentials.pg_port, credentials.pg_user)], shell=True)
-
-        # Make sure it's valid
-        cursor.execute('UPDATE public.%s_rgeom SET geom = ST_CollectionExtract(ST_SetSRID(ST_MakeValid(geom), 4326), 3)' % (arguments.the_scale,))
-        connection.commit()
-
-        # Export intersecting geom
-        call(['pgsql2shp -f intersecting.shp -u %s -h %s -p %s burwell "SELECT map_id, geom FROM (SELECT t.map_id, (ST_Dump(t.geom)).geom FROM carto.flat_%s t JOIN public.%s_rgeom sr ON ST_Intersects(ST_SetSRID(t.geom,4326), sr.geom)) foo WHERE ST_GeometryType(geom) = \'%s\'"'% (credentials.pg_user, credentials.pg_host, credentials.pg_port, layerOrder[arguments.the_scale][0], arguments.the_scale, 'ST_Polygon')], shell=True )
-
-        # Remove the parts of the intersecting geoms that intersect scales above
-        call(['mapshaper intersecting.shp -erase rgeoms.shp -o clipped.shp'], shell=True)
-
-        # Import the result to PostGIS
-        call(['shp2pgsql -I -s 4326 clipped.shp public.%s_clipped | psql -h %s -p %s -U %s -d burwell' % (layerOrder[arguments.the_scale][0], credentials.pg_host, credentials.pg_port, credentials.pg_user)], shell=True)
-
-        # Clean up shapefiles
-        call(['rm rgeoms.* && rm %s_rgeom.* && rm intersecting.* && rm clipped.*' % (layerOrder[arguments.the_scale][0], )], shell=True)
-
-        # Build the SQL query
-        sql.append("""
-        SELECT t.map_id, '%(scale)s' AS scale, t.geom
-        FROM carto.flat_%(scale)s t
-        LEFT JOIN public.%(scale_bottom)s_rgeom sr
-        ON ST_Intersects(t.geom, sr.geom)
-        WHERE sr.gid IS NULL
-        AND ST_Geometrytype(t.geom) != 'ST_LineString'
-
-        UNION
-
-        SELECT map_id, '%(scale)s' AS scale, geom
-        FROM %(scale)s_clipped
-        """ % {'scale': layerOrder[arguments.the_scale][0], 'scale_bottom': arguments.the_scale})
-
-
-        sql.append("""
-            SELECT map_id, '%(scale)s' AS scale, geom
-            FROM carto.flat_%(scale)s
-        """ % {"scale": arguments.the_scale})
-
-
-
-    # for scale_idx, scale in enumerate(layerOrder[arguments.the_scale]):
-    #     # Skip if it is the target scale
-    #     if scale == arguments.the_scale:
-    #         sql.append("""
-    #             SELECT map_id, '%(scale)s' AS scale, geom
-    #             FROM carto.flat_%(scale)s
-    #         """ % {"scale": scale})
-    #         continue
-    #
-    #     # Get the scales that are 'above' in the layer stacking order
-    #     scales_above = ["'" + s + "'" for idx, s in enumerate(layerOrder[arguments.the_scale]) if idx > scale_idx]
-    #
-    #     # Export reference geom
-    #     call(['pgsql2shp -f rgeoms.shp -u %s -h %s -p %s burwell "SELECT 1 AS id, rgeom AS geom FROM maps.sources WHERE scale = \'%s\'"' % (credentials.pg_user, credentials.pg_host, credentials.pg_port, scale)], shell=True)
-    #
-    #     # Union it
-    #     call(['mapshaper -i rgeoms.shp -dissolve -o %s_rgeom.shp' % (scale, )], shell=True)
-    #
-    #     # Import it
-    #     call(['shp2pgsql -I -s 4326 %s_rgeom.shp public.%s_rgeom | psql -h %s -p %s -U %s -d burwell' % (scale, scale, credentials.pg_host, credentials.pg_port, credentials.pg_user)], shell=True)
-    #
-    #     # Make sure it's valid
-    #     cursor.execute('UPDATE public.%s_rgeom SET geom = ST_CollectionExtract(ST_SetSRID(ST_MakeValid(geom), 4326), 3)' % (scale,))
-    #     connection.commit()
-    #
-    #     # Export intersecting geom
-    #     call(['pgsql2shp -f intersecting.shp -u %s -h %s -p %s burwell "SELECT map_id, geom FROM (SELECT t.map_id, (ST_Dump(t.geom)).geom FROM carto.flat_%s t JOIN public.%s_rgeom sr ON ST_Intersects(ST_SetSRID(t.geom,4326), sr.geom)) foo WHERE ST_GeometryType(geom) = \'%s\'"'% (credentials.pg_user, credentials.pg_host, credentials.pg_port, scale, scale, 'ST_Polygon')], shell=True )
-    #
-    #     # Remove the parts of the intersecting geoms that intersect scales above
-    #     call(['mapshaper intersecting.shp -erase rgeoms.shp -o clipped.shp'], shell=True)
-    #
-    #     # Import the result to PostGIS
-    #     call(['shp2pgsql -I -s 4326 clipped.shp public.%s_clipped | psql -h %s -p %s -U %s -d burwell' % (scale, credentials.pg_host, credentials.pg_port, credentials.pg_user)], shell=True)
-    #
-    #     # Clean up shapefiles
-    #     #call(['rm intersecting.* && rm clipped.* && rm rgeoms.*'], shell=True)
-    #
-    #     # Build the SQL query
-    #     sql.append("""
-    #     SELECT t.map_id, '%(scale)s' AS scale, t.geom
-    #     FROM carto.flat_%(scale)s t
-    #     LEFT JOIN public.%(scale)s_rgeom sr
-    #     ON ST_Intersects(t.geom, sr.geom)
-    #     WHERE sr.gid IS NULL
-    #     AND ST_Geometrytype(t.geom) != 'ST_LineString'
-    #
-    #     UNION
-    #
-    #     SELECT map_id, '%(scale)s' AS scale, geom
-    #     FROM %(scale)s_clipped
-    #     """ % {'scale': scale, 'scales_above': ','.join(scales_above)})
-    #
-    #
-    m_join = ' UNION '.join(['SELECT map_id, source_id, name, strat_name, age, lith, descrip, comments, t_interval, b_interval FROM maps.%s' % scale for scale in layerOrder[arguments.the_scale]])
-
-    l_join = ' UNION '.join(['SELECT map_id, best_age_top, best_age_bottom, color FROM public.lookup_%s' % scale for scale in layerOrder[arguments.the_scale]])
-
-
-    to_run = """
-        CREATE TABLE carto.%(scale)s AS
-        SELECT r.map_id, r.scale, m.source_id,
-        COALESCE(m.name, '') AS name,
-        COALESCE(m.strat_name, '') AS strat_name,
-        COALESCE(m.age, '') AS age,
-        COALESCE(m.lith, '') AS lith,
-        COALESCE(m.descrip, '') AS descrip,
-        COALESCE(m.comments, '') AS comments,
-        cast(l.best_age_top as numeric) AS best_age_top,
-        cast(l.best_age_bottom as numeric) AS best_age_bottom, it.interval_name t_int, ib.interval_name b_int, l.color,
-        ST_SetSRID(r.geom, 4326) AS geom
-        FROM (
-            %(sql)s
-        ) r
-        LEFT JOIN (
-            %(m_join)s
-        ) m ON r.map_id = m.map_id
-        LEFT JOIN (
-            %(l_join)s
-        ) l ON r.map_id = l.map_id
-        JOIN macrostrat.intervals it ON m.t_interval = it.id
-        JOIN macrostrat.intervals ib ON m.b_interval = ib.id
-        WHERE ST_NumGeometries(r.geom) > 0;
-
-        CREATE INDEX ON carto.%(scale)s (map_id);
-        CREATE INDEX ON carto.%(scale)s USING GiST (geom);
-    """ % {
-        'scale': arguments.the_scale,
-        'sql': ' UNION '.join(sql),
-        'm_join': m_join,
-        'l_join': l_join
+     "scale": scale,
+     "geom_query": geom_query,
+     "where": where
     }
 
-    cursor.execute(to_run)
-    connection.commit()
+def geom_chop(where):
+     return """ ST_Difference(geom, (
+      SELECT COALESCE(ST_Union(rgeom), 'POLYGON EMPTY')
+          FROM maps.sources x
+          WHERE %(where)s
+      )) as geom""" % { "where": where }
 
-    drop = ''
 
-    for scale in layerOrder[arguments.the_scale]:
-        drop += 'DROP TABLE IF EXISTS %s_clipped; DROP TABLE IF EXISTS %s_rgeom;' % (scale, scale,)
+def piece_refresh(scale, geom_query, where, source_id):
+    return """
+    SELECT
+        map_id,
+        '%(scale)s' AS scale,
+        a.source_id,
+        %(geom_query)s
+    FROM maps.%(scale)s a
+    JOIN maps.sources ON a.source_id = sources.source_id
+    JOIN maps.sources c ON ST_Intersects(a.geom, c.rgeom)
+    WHERE (c.source_id = %(source_id)s) AND %(where)s
+    """ % {
+     "scale": scale,
+     "geom_query": geom_query,
+     "where": where,
+     "source_id": source_id
+    }
 
-    cursor.execute(drop)
-    connection.commit()
+def geom_chop_refresh(where, source_id):
+     return """ ST_Difference(a.geom, (
+          SELECT COALESCE(ST_Union(x.rgeom), 'POLYGON EMPTY')
+          FROM maps.sources x
+          JOIN maps.source w ON ST_Intersects(x.rgeom, w.rgeom)
+          WHERE (w.source_id = %(source_id)s) AND %(where)s
+      )) as geom""" % { "where": where, "source_id": source_id }
+
+
+def refresh(scale, source_id):
+    target = AsIs(scale)
+    below = AsIs(layerOrder[scale][0])
+
+    insert = "INSERT INTO carto.%(target)s (map_id, scale, source_id, geom) " % {"target": target}
+
+    # from top to bottom:
+    filter_types = ["scale = '%(target)s'::text AND priority = True"  % {"target": target},
+     "scale = '%(target)s'::text AND priority = False"  % {"target": target},
+     "'%(target)s'::text = ANY(display_scales) AND priority = True AND scale != '%(target)s'::text"  % {"target": target},
+     "'%(target)s'::text = ANY(display_scales) AND priority = False AND scale != '%(target)s'::text" % {"target": target},
+     "scale = '%(below)s'::text AND priority = True" % {"below": below},
+     "scale = '%(below)s'::text AND priority = False" % {"below": below},
+     "'%(below)s'::text = ANY(display_scales) AND priority = True AND scale != '%(below)s'::text" % {"below": below},
+     "'%(below)s'::text = ANY(display_scales) AND priority = False AND scale != '%(below)s'::text" % {"below": below}]
+
+    # Chop out a footprint = the target source's rgeom
+    sql = ["""
+    DELETE FROM carto.%(target)s
+    USING maps.sources
+    WHERE ST_Contains(rgeom, geom) AND sources.source_id = %(source_id)s;
+
+    UPDATE carto.%(target)s
+    SET geom = ST_Difference(geom, rgeom)
+    FROM maps.sources
+    WHERE ST_Intersects(geom, rgeom) AND sources.source_id = %(source_id)s;
+
+    DELETE FROM carto.%(target)s WHERE geometrytype(geom) NOT IN ('POLYGON', 'MULTIPOLYGON');
+    """ % { "target": target, "source_id": source_id }]
+
+    for idx, each in enumerate(filter_types):
+        for scale in scales:
+            if idx == 0:
+                sql.append(insert + piece_refresh(scale, "a.geom", filter_types[idx], source_id) + ";")
+            else:
+
+                sql.append(insert + piece_refresh(scale, geom_chop_refresh(" OR ".join([ "(" + d + ")" for i, d in enumerate(filter_types) if i < idx ]), source_id), filter_types[idx], source_id) + ";")
+
+    # Clean up bad or empty geometries
+    sql.append("DELETE FROM carto.%(target)s WHERE geometrytype(geom) NOT IN ('POLYGON', 'MULTIPOLYGON');" % { "target": target })
+
+    for idx, statement in enumerate(sql):
+        print idx + 1, ' of ', len(sql)
+        cursor.execute(statement)
+        connection.commit()
+
+    sys.exit()
+
+
+if __name__ == '__main__':
+    start = time.time()
+    connection = psycopg2.connect(dbname=credentials["pg_db"], user=credentials["pg_user"], host=credentials["pg_host"], port=credentials["pg_port"])
+    cursor = connection.cursor()
+
+    # If a source_id is passed, refresh only that area
+    if len(arguments.source_id):
+        # Get scale of source_id
+        cursor.execute("SELECT scale FROM maps.sources WHERE source_id = %(source_id)s", { "source_id": arguments.source_id })
+        scale = cursor.fetchone()[0]
+        for each in scaleIsIn[scale]:
+            refresh(each, arguments.source_id)
+
+
+
+    elif arguments.the_scale == 'tiny':
+        sql = """
+            CREATE TABLE carto.tiny_new AS
+            WITH l1 AS (
+              SELECT a.map_id, a.geom,
+                  'tiny'::text AS scale,
+                  a.source_id
+              FROM maps.tiny a
+              JOIN maps.sources b ON a.source_id = b.source_id
+              WHERE priority = True
+            ),l2 AS (
+              SELECT a.map_id, a.geom,
+                  'tiny'::text AS scale,
+                  a.source_id
+              FROM maps.tiny a
+              JOIN maps.sources b ON a.source_id = b.source_id
+              LEFT JOIN l1 ON ST_Intersects(a.geom, l1.geom)
+              WHERE priority = False
+              AND l1.map_id IS NULL
+              UNION
+              SELECT * FROM l1
+            )
+            SELECT * FROM l2;
+
+            CREATE INDEX ON carto.tiny_new (map_id);
+            CREATE INDEX ON carto.tiny_new USING GiST (geom);
+
+            ALTER TABLE carto.tiny RENAME TO tiny_old;
+            ALTER TABLE carto.tiny_new RENAME TO tiny;
+            DROP TABLE carto.tiny_old;
+        """
+        cursor.execute(sql)
+        connection.commit()
+
+    else:
+        # 1. scale = target and priority = true
+        # 2. scale = target and priority = false
+        # 3. target in display_scale and priority = true and scale != target
+        # 4. target in display_scale and priority = false and scale != target
+        # 5. scale = below and priority = true
+        # 6. scale = below and priority = false
+        # 7. below in display_scale and priority = true and scale != below
+        # 8. below in display_scale and priority = false and scale != below
+
+        target = AsIs(arguments.the_scale)
+        below = AsIs(layerOrder[arguments.the_scale][0])
+
+        insert = "INSERT INTO carto.%(target)s_new (map_id, scale, source_id, geom) " % {"target": target}
+
+        sql = ["""DROP TABLE IF EXISTS carto.%(target)s_new; CREATE TABLE carto.%(target)s_new (
+            map_id integer,
+            scale text,
+            source_id integer,
+            geom geometry
+        );""" % {"target": target}]
+
+        # from top to bottom:
+        filter_types = ["scale = '%(target)s'::text AND priority = True"  % {"target": target},
+         "scale = '%(target)s'::text AND priority = False"  % {"target": target},
+         "'%(target)s'::text = ANY(display_scales) AND priority = True AND scale != '%(target)s'::text"  % {"target": target},
+         "'%(target)s'::text = ANY(display_scales) AND priority = False AND scale != '%(target)s'::text" % {"target": target},
+         "scale = '%(below)s'::text AND priority = True" % {"below": below},
+         "scale = '%(below)s'::text AND priority = False" % {"below": below},
+         "'%(below)s'::text = ANY(display_scales) AND priority = True AND scale != '%(below)s'::text" % {"below": below},
+         "'%(below)s'::text = ANY(display_scales) AND priority = False AND scale != '%(below)s'::text" % {"below": below}]
+
+
+        for idx, each in enumerate(filter_types):
+            for scale in scales:
+                if idx == 0:
+                    sql.append(insert + piece(scale, "geom", filter_types[idx]) + ";")
+                else:
+                    sql.append(insert + piece(scale, geom_chop(" OR ".join([ "(" + d + ")" for i, d in enumerate(filter_types) if i < idx ])), filter_types[idx]) + ";")
+
+        for idx, statement in enumerate(sql):
+            print idx + 1, ' of ', len(sql)
+            cursor.execute(statement)
+            connection.commit()
+
+        cursor.execute("""
+            DELETE FROM carto.%(target)s_new WHERE geometrytype(geom) NOT IN ('POLYGON', 'MULTIPOLYGON');
+            CREATE INDEX ON carto.%(target)s_new (map_id);
+            CREATE INDEX ON carto.%(target)s_new USING GiST (geom);
+            ALTER TABLE carto.%(target)s RENAME TO %(target)s_old;
+            ALTER TABLE carto.%(target)s_new RENAME TO %(target)s;
+            DROP TABLE carto.%(target)s_old;
+        """, {
+            "target": target
+        })
+        connection.commit()
+        sys.exit()
+
 
     end = time.time()
-    print 'Created carto.%s in ' % scale, int(end - start), 's'
+    print 'Created carto.%s in %s s' % (arguments.the_scale, int(end - start))
