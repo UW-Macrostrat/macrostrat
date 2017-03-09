@@ -43,6 +43,11 @@ definitions.route("/intervals")
     require("./intervals")(req, res, next);
   });
 
+definitions.route("/languages")
+  .get(function(req, res, next) {
+    require("./languages")(req, res, next);
+  });
+
 definitions.route("/lithologies")
   .get(function(req, res, next) {
     require("./lithologies")(req, res, next);

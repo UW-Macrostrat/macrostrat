@@ -412,6 +412,32 @@
       ]
     }
   },
+  "/defs/languages": {
+    "description": "Returns ISO 639-3 and ISO 639-1 codes for all languages",
+    "parent": "definitions",
+    "visible": true,
+    "options": {
+      "parameters": {
+        "name": "string, the name of a language",
+        "code": "string, an ISO 639-3 or ISO 639-1 language code",
+        "all": "return all language definitions"
+      },
+      "output_formats": [
+        "json",
+        "csv"
+      ],
+      "examples": [
+        "api/v2/defs/languages?name=hawaiian",
+        "api/v2/defs/languages?code=hmn,jpn,ita",
+        "api/v2/defs/languages?all"
+      ],
+      "fields": [
+        "name",
+        "iso639_3",
+        "iso639_1"
+      ]
+    }
+  },
   "/defs/lithologies": {
     "description": "Returns all lithology definitions",
     "parent": "definitions",
