@@ -45,17 +45,40 @@ if arguments.the_scale not in layerOrder and len(arguments.source_id) == 0:
 def piece(scale, geom_query, where):
     return """
     SELECT
-        map_id,
+        a.map_id,
+        a.orig_id,
+        a.source_id,
         '%(scale)s' AS scale,
-        x.source_id,
+        COALESCE(a.name, '') AS name,
+        COALESCE(a.strat_name, '') AS strat_name,
+        COALESCE(a.age, '') AS age,
+        COALESCE(a.lith, '') AS lith,
+        COALESCE(a.descrip, '') AS descrip,
+        COALESCE(a.comments, '') AS comments,
+        a.t_interval AS t_int_id,
+        ta.interval_name AS t_int,
+        l.best_age_top::numeric AS best_age_top,
+        a.b_interval AS b_int_id,
+        tb.interval_name AS b_int,
+        l.best_age_bottom::numeric AS best_age_bottom,
+        l.color,
+        l.unit_ids,
+        l.strat_name_ids,
+        l.lith_ids,
         %(geom_query)s
-    FROM maps.%(scale)s x
-    JOIN maps.sources ON x.source_id = sources.source_id
+
+    FROM maps.%(scale)s a
+    LEFT JOIN macrostrat.intervals ta ON ta.id = a.t_interval
+    LEFT JOIN macrostrat.intervals tb ON tb.id = a.b_interval
+    LEFT JOIN %(lookup)s l ON a.map_id = l.map_id
+
+    JOIN maps.sources ON a.source_id = sources.source_id
     WHERE %(where)s
     """ % {
      "scale": scale,
      "geom_query": geom_query,
-     "where": where
+     "where": where,
+     "lookup": AsIs("lookup_" + scale)
     }
 
 def geom_chop(where):
@@ -69,11 +92,33 @@ def geom_chop(where):
 def piece_refresh(scale, geom_query, where, source_id):
     return """
     SELECT
-        map_id,
-        '%(scale)s' AS scale,
+        a.map_id,
+        a.orig_id,
         a.source_id,
+        '%(scale)s' AS scale,
+        COALESCE(a.name, '') AS name,
+        COALESCE(a.strat_name, '') AS strat_name,
+        COALESCE(a.age, '') AS age,
+        COALESCE(a.lith, '') AS lith,
+        COALESCE(a.descrip, '') AS descrip,
+        COALESCE(a.comments, '') AS comments,
+        a.t_interval AS t_int_id,
+        ta.interval_name AS t_int,
+        l.best_age_top::numeric AS best_age_top,
+        a.b_interval AS b_int_id,
+        tb.interval_name AS b_int,
+        l.best_age_bottom::numeric AS best_age_bottom,
+        l.color,
+        l.unit_ids,
+        l.strat_name_ids,
+        l.lith_ids,
         %(geom_query)s
+
     FROM maps.%(scale)s a
+    LEFT JOIN macrostrat.intervals ta ON ta.id = a.t_interval
+    LEFT JOIN macrostrat.intervals tb ON tb.id = a.b_interval
+    LEFT JOIN %(lookup)s l ON a.map_id = l.map_id
+
     JOIN maps.sources ON a.source_id = sources.source_id
     JOIN maps.sources c ON ST_Intersects(a.geom, c.rgeom)
     WHERE (c.source_id = %(source_id)s) AND %(where)s
@@ -81,7 +126,8 @@ def piece_refresh(scale, geom_query, where, source_id):
      "scale": scale,
      "geom_query": geom_query,
      "where": where,
-     "source_id": source_id
+     "source_id": source_id,
+     "lookup": AsIs("lookup_" + scale)
     }
 
 def geom_chop_refresh(where, source_id):
@@ -160,26 +206,33 @@ if __name__ == '__main__':
     elif arguments.the_scale == 'tiny':
         sql = """
             CREATE TABLE carto.tiny_new AS
-            WITH l1 AS (
-              SELECT a.map_id, a.geom,
-                  'tiny'::text AS scale,
-                  a.source_id
-              FROM maps.tiny a
-              JOIN maps.sources b ON a.source_id = b.source_id
-              WHERE priority = True
-            ),l2 AS (
-              SELECT a.map_id, a.geom,
-                  'tiny'::text AS scale,
-                  a.source_id
-              FROM maps.tiny a
-              JOIN maps.sources b ON a.source_id = b.source_id
-              LEFT JOIN l1 ON ST_Intersects(a.geom, l1.geom)
-              WHERE priority = False
-              AND l1.map_id IS NULL
-              UNION
-              SELECT * FROM l1
-            )
-            SELECT * FROM l2;
+            SELECT
+              a.map_id,
+              a.orig_id,
+              a.source_id,
+              'tiny'::text AS scale,
+              COALESCE(a.name, '') AS name,
+              COALESCE(a.strat_name, '') AS strat_name,
+              COALESCE(a.age, '') AS age,
+              COALESCE(a.lith, '') AS lith,
+              COALESCE(a.descrip, '') AS descrip,
+              COALESCE(a.comments, '') AS comments,
+              a.t_interval AS t_int_id,
+              ta.interval_name AS t_int,
+              l.best_age_top::numeric AS best_age_top,
+              a.b_interval AS b_int_id,
+              tb.interval_name AS b_int,
+              l.best_age_bottom::numeric AS best_age_bottom,
+              l.color,
+              l.unit_ids,
+              l.strat_name_ids,
+              l.lith_ids,
+              ST_SetSRID(a.geom, 4326) AS geom
+            FROM maps.tiny a
+            LEFT JOIN macrostrat.intervals ta ON ta.id = a.t_interval
+            LEFT JOIN macrostrat.intervals tb ON tb.id = a.b_interval
+            LEFT JOIN lookup_tiny l ON a.map_id = l.map_id
+            JOIN maps.sources b ON a.source_id = b.source_id;
 
             CREATE INDEX ON carto.tiny_new (map_id);
             CREATE INDEX ON carto.tiny_new USING GiST (geom);
@@ -204,14 +257,32 @@ if __name__ == '__main__':
         target = AsIs(arguments.the_scale)
         below = AsIs(layerOrder[arguments.the_scale][0])
 
-        insert = "INSERT INTO carto.%(target)s_new (map_id, scale, source_id, geom) " % {"target": target}
+        insert = "INSERT INTO carto.%(target)s_new (map_id, orig_id, source_id, scale, name, strat_name, age, lith, descrip, comments, t_int_id, t_int, best_age_top, b_int_id, b_int, best_age_bottom, color, unit_ids, strat_name_ids, lith_ids, geom) " % {"target": target}
 
         sql = ["""DROP TABLE IF EXISTS carto.%(target)s_new; CREATE TABLE carto.%(target)s_new (
             map_id integer,
-            scale text,
+            orig_id integer,
             source_id integer,
+            scale text,
+            name text,
+            strat_name text,
+            age text,
+            lith text,
+            descrip text,
+            comments text,
+            t_int_id integer,
+            t_int text,
+            best_age_top numeric,
+            b_int_id integer,
+            b_int text,
+            best_age_bottom numeric,
+            color text,
+            unit_ids integer[],
+            strat_name_ids integer[],
+            lith_ids integer[],
             geom geometry
         );""" % {"target": target}]
+
 
         # from top to bottom:
         filter_types = ["scale = '%(target)s'::text AND priority = True"  % {"target": target},
