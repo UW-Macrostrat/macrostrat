@@ -114,7 +114,8 @@ module.exports = function(req, res, next, cb) {
         larkin.sendData(req, res, next, {
           format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
           bare: (api.acceptedFormats.bare[req.query.format]) ? true : false,
-          compact: true
+          compact: true,
+          refs: "ref_id"
         }, {
           data: response
         });
