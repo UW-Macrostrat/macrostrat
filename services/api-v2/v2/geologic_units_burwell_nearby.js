@@ -52,7 +52,8 @@ var sql = {
       FROM macrostrat.strat_name_footprints
       WHERE ST_Intersects(geom, st_setsrid(st_makepoint($1, $2),4326))
     )
-    ORDER BY distance;
+    ORDER BY distance
+    LIMIT 10;
   `,
 
   intervals: `
