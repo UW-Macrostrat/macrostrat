@@ -23,36 +23,38 @@ var sql = {
     LIMIT 10`,
 
   strat_names: `
-    SELECT strat_name_id, strat_name, strat_name_long, bed, mbr, fm, gp, sgp, b_age, t_age, b_period, t_period FROM (
-      SELECT DISTINCT ON (strat_name_id) strat_name_id, strat_name, strat_name_long, bed, mbr, fm, gp, sgp, b_age, t_age, b_period, t_period, geom, distance FROM (
-        SELECT
-          msn.strat_name_id,
-          lookup_strat_names.strat_name,
-          lookup_strat_names.rank_name AS strat_name_long,
-          bed_name AS bed,
-          mbr_name AS mbr,
-          fm_name AS fm,
-          gp_name AS gp,
-          sgp_name AS sgp,
-          early_age AS b_age,
-          late_age AS t_age,
-          b_period, t_period,
-          geom,
-          ST_Distance(geom, st_setsrid(st_makepoint($1, $2),4326)) AS distance
-         FROM maps.:scale m
-         JOIN maps.map_strat_names msn ON m.map_id = msn.map_id
-         JOIN macrostrat.lookup_strat_names ON lookup_strat_names.strat_name_id = msn.strat_name_id
-         ORDER BY geom <-> st_setsrid(st_makepoint($1, $2),4326)
-         LIMIT 100
-      ) a
-      ORDER BY strat_name_id, distance
-    ) b
-    WHERE strat_name_id IN (
-      SELECT strat_name_id
-      FROM macrostrat.strat_name_footprints
-      WHERE ST_Intersects(geom, st_setsrid(st_makepoint($1, $2),4326))
-    )
-    ORDER BY distance
+    SELECT DISTINCT ON (strat_name_long) strat_name_id, strat_name, strat_name_long, bed, mbr, fm, gp, sgp, b_age, t_age, b_period, t_period FROM (
+      SELECT strat_name_id, strat_name, strat_name_long, bed, mbr, fm, gp, sgp, b_age, t_age, b_period, t_period FROM (
+        SELECT DISTINCT ON (strat_name_id) strat_name_id, strat_name, strat_name_long, bed, mbr, fm, gp, sgp, b_age, t_age, b_period, t_period, geom, distance FROM (
+          SELECT
+            msn.strat_name_id,
+            lookup_strat_names.strat_name,
+            lookup_strat_names.rank_name AS strat_name_long,
+            bed_name AS bed,
+            mbr_name AS mbr,
+            fm_name AS fm,
+            gp_name AS gp,
+            sgp_name AS sgp,
+            early_age AS b_age,
+            late_age AS t_age,
+            b_period, t_period,
+            geom,
+            ST_Distance(geom, st_setsrid(st_makepoint($1, $2),4326)) AS distance
+           FROM maps.:scale m
+           JOIN maps.map_strat_names msn ON m.map_id = msn.map_id
+           JOIN macrostrat.lookup_strat_names ON lookup_strat_names.strat_name_id = msn.strat_name_id
+           ORDER BY geom <-> st_setsrid(st_makepoint($1, $2),4326)
+           LIMIT 100
+        ) a
+        ORDER BY strat_name_id, distance
+      ) b
+      WHERE strat_name_id IN (
+        SELECT strat_name_id
+        FROM macrostrat.strat_name_footprints
+        WHERE ST_Intersects(geom, st_setsrid(st_makepoint($1, $2),4326))
+      )
+      ORDER BY distance
+    ) c
     LIMIT 10;
   `,
 
