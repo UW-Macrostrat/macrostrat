@@ -77,7 +77,7 @@ var sql = {
   LIMIT 5;`,
 
   map_units: `
-  SELECT map_id, name AS unit_id, distance, int_name
+  SELECT map_id, name AS unit_name, distance, int_name
   FROM (
   SELECT DISTINCT ON (name) map_id, name, int_name, distance
   FROM (
