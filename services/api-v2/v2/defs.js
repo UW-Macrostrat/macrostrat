@@ -1454,7 +1454,8 @@
         "json","geojson", "geojson_bare", "topojson", "topojson_bare"
       ],
       "examples": [
-
+        "/api/v2/places?wof_id=101732721",
+        "api/v2/places?lng=-89.3843&lat=43.0748&placetype=region"
       ],
       "fields": [
         "wof_id",

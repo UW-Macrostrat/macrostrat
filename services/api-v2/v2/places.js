@@ -25,7 +25,10 @@ module.exports = function(req, res, next, callback) {
     where.push(`a.name = \$${where.length + 1}`)
     params.push(`%${req.query.placetype}%`)
   }
-
+  if (req.query.lng && req.query.lat) {
+    where.push(`ST_Intersects(a.geom, ST_SetSRID(ST_MakePoint(\$${where.length + 1}, \$${where.length + 2}), 4326))`)
+    params.push(larkin.normalizeLng(req.query.lng), req.query.lat)
+  }
   if (!where.length && !('sample' in req.query)) {
     return larkin.error(req, res, next, 'Please provide at least one valid parameter', 400)
   }
