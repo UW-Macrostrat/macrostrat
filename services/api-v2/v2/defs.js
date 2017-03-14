@@ -1438,6 +1438,39 @@
     }
   },
 
+
+  "/places": {
+    "description": "Returns places",
+    "visible": false,
+    "options": {
+      "parameters": {
+        "wof_id": "integer, the Who's on First ID",
+        "name": "text, the place name",
+        "name_like": "text, the place name (fuzzy match)",
+        "placetype": "text, the type of the place (continent, country, region, county, or locality)",
+        "format": "Desired output format"
+      },
+      "output_formats": [
+        "json","geojson", "geojson_bare", "topojson", "topojson_bare"
+      ],
+      "examples": [
+
+      ],
+      "fields": [
+        "wof_id",
+        "name",
+        "name_format",
+        "placetype",
+        "continent",
+        "country",
+        "region",
+        "county",
+        "other_names"
+      ]
+    }
+  },
+
+
   "/mobile": {
     "description": "Simplified data delivery, ideal for mobile applications",
     "visible": true,

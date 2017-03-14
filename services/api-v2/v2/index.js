@@ -64,6 +64,11 @@ api.route("/elevation")
     require("./elevation")(req, res, next);
   });
 
+api.route("/places")
+  .get(function(req, res, next) {
+    require("./places")(req, res, next);
+  });
+
 api.route("/measurements")
   .get(require("./measurements"));
 
