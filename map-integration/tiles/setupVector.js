@@ -82,11 +82,11 @@
   function createLayer(scale, callback) {
     // Copy the template
     var layer = JSON.parse(JSON.stringify(layerTemplate));
-    layer["Datasource"]["table"] = `(SELECT x.map_id, q.color, geom FROM carto.${scale} x JOIN lookup_${scale} q ON q.map_id = x.map_id ) subset`
-    layer["id"] = 'burwell_units'
-    layer["class"] = "burwell"
-    layer["minZoom"] = Math.min.apply(Math, config.scaleMap[scale])
-    layer["maxZoom"] = Math.max.apply(Math, config.scaleMap[scale])
+    layer["Datasource"]["table"] = `(SELECT map_id, name, age, lith, descrip, comments, t_int, b_int, color, geom FROM carto.${scale} ) subset`
+    layer["id"] = "burwell_units"
+    layer["class"] = "burwell_units"
+    layer["minZoom"] = 0
+    layer["maxZoom"] = 16
     callback(layer)
   }
 
@@ -96,9 +96,9 @@
     var layer = JSON.parse(JSON.stringify(layerTemplateLines));
     layer["Datasource"]["table"] = `(SELECT x.line_id, x.geom, x.direction, x.type FROM carto.lines_${scale} x) subset`
     layer["id"] = 'burwell_lines'
-    layer["class"] = "lines"
-    layer["minZoom"] = Math.min.apply(Math, config.scaleMap[scale])
-    layer["maxZoom"] = Math.max.apply(Math, config.scaleMap[scale])
+    layer["class"] = "burwell_lines"
+    layer["minZoom"] = 0
+    layer["maxZoom"] = 16
     callback(layer)
   }
 
