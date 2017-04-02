@@ -80,8 +80,9 @@ for idx, name in enumerate(strat_names):
 
     # Count number of units with this strat_name_id going down the hierarchy
     lookup_rank_children = {
-        "sgp": ["SGp", "Gp", "Fm", "Mbr", "Bed"],
-        "gp": ["Gp", "Fm", "Mbr", "Bed"],
+        "sgp": ["SGp", "Gp", "SubGp", "Fm", "Mbr", "Bed"],
+        "gp": ["Gp", "SubGp", "Fm", "Mbr", "Bed"],
+        "subgp": ["SubGp", "Fm", "Mbr", "Bed"],
         "fm": ["Fm", "Mbr", "Bed"],
         "mbr": ["Mbr", "Bed"],
         "bed": ["Bed"]
@@ -127,7 +128,7 @@ connection.commit()
 cursor.execute("""
     UPDATE lookup_strat_names_new SET rank_name =
     CASE
-    	WHEN SUBSTRING_INDEX(strat_name, ' ', -1) IN ('Suite', 'Volcanics', 'Complex', 'Melange', 'Series', 'Supersuite', 'Tongue', 'Lens', 'Lentil', 'Drift', 'Metamorphics', 'Sequence', 'Supersequence', 'Intrusives', 'Measures')
+    	WHEN SUBSTRING_INDEX(strat_name, ' ', -1) IN ('Suite', 'Volcanics', 'Complex', 'Melange', 'Series', 'Supersuite', 'Tongue', 'Lens', 'Lentil', 'Drift', 'Metamorphics', 'Sequence', 'Supersequence', 'Intrusives', 'Measures', 'Division', 'Subsuite')
         	THEN strat_name
         WHEN LOWER(SUBSTRING_INDEX(strat_name, ' ', -1)) IN (SELECT lith FROM liths) AND rank = 'fm'
         	THEN strat_name
@@ -137,6 +138,8 @@ cursor.execute("""
         	CONCAT(strat_name, ' Supergroup')
     	WHEN rank = 'Gp' THEN
         	CONCAT(strat_name, ' Group')
+      WHEN rank = 'SubGp' THEN
+          CONCAT(strat_name, ' Subgroup')
         WHEN rank = 'Fm' THEN
         	CONCAT(strat_name, ' Formation')
         WHEN rank = 'Mbr' THEN
@@ -161,6 +164,7 @@ cursor.execute("""
     WHEN bed_id > 0 AND strat_name_id != bed_id THEN bed_id
     WHEN mbr_id > 0 AND strat_name_id != mbr_id THEN mbr_id
     WHEN fm_id > 0 AND strat_name_id != fm_id THEN fm_id
+    WHEN subgp_id > 0 AND strat_name_id != subgp_id THEN subgp_id
     WHEN gp_id > 0 AND strat_name_id != gp_id THEN gp_id
     WHEN sgp_id > 0 AND strat_name_id != sgp_id THEN sgp_id
     ELSE strat_name_id
@@ -168,6 +172,7 @@ cursor.execute("""
     tree = CASE
     WHEN sgp_id > 0 THEN sgp_id
     WHEN gp_id > 0 THEN gp_id
+    WHEN subgp_id > 0 THEN subgp_id
     WHEN fm_id > 0 THEN fm_id
     WHEN mbr_id > 0 THEN mbr_id
     WHEN bed_id > 0 THEN bed_id
