@@ -74,6 +74,8 @@ module.exports = function(req, res, next, cb) {
       mbr_id,
       COALESCE(fm_name, '') AS fm,
       fm_id,
+      COALESCE(subgp_name, '') AS subgp,
+      subgp_id,
       COALESCE(gp_name, '') AS gp,
       gp_id,
       COALESCE(sgp_name, '') AS sgp,
