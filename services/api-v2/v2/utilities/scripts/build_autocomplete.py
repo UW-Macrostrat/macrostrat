@@ -72,37 +72,6 @@ cursor.execute("""
         union
         SELECT id, structure as name, 'structures' as type from structures
       ) i;
-
-
-
-
-      UPDATE autocomplete_new AS a
-        INNER JOIN (
-          SELECT concept_id,
-            CASE
-              WHEN CHAR_LENGTH(province) < 1 THEN name
-              ELSE CONCAT(name, ' (', province, ')')
-            END AS name
-          FROM strat_names_meta
-        ) sub ON a.id = sub.concept_id
-      SET a.name = sub.name
-      WHERE a.id IN (
-        SELECT id FROM (
-          SELECT id
-          FROM autocomplete_new
-          WHERE name IN (
-            SELECT name
-            FROM (
-              SELECT name, type, count(*)
-              FROM autocomplete_new
-              WHERE type = 'strat_name_concepts'
-              GROUP BY name, type
-              HAVING count(*) > 1
-              ORDER BY count(*) desc
-            ) a
-          )
-        ) b
-      ) AND type = 'strat_name_concepts';
 """)
 cursor.close()
 cursor = connection.cursor()
@@ -165,11 +134,10 @@ cursor.execute("""
 """)
 cursor.close()
 cursor = connection.cursor()
+
 # Replace the old data with the new stuff
 cursor.execute("""
     TRUNCATE TABLE autocomplete;
-
-    DROP TABLE autocomplete_new;
 """)
 cursor.close()
 cursor = connection.cursor()
