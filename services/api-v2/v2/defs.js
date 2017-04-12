@@ -280,7 +280,7 @@
         "col_id": "One or more comma-separated valid column IDs",
         "project_id": "One or more comma-separated valid project IDs",
         "strat_name_id": "One or more comma-separted valid strat_name_ids from /defs/strat_names",
-        "concept_id": "One or more stratigraphic name concepts from /defs/strat_name_concepts",
+        "strat_name_concept_id": "One or more stratigraphic name concepts from /defs/strat_name_concepts",
         "format": "Desired output format"
       },
       "output_formats": [
@@ -1647,9 +1647,11 @@
     "strat_name_long": "text, the full formal name for a given strat_name",
     "strat_name_id": "integer, unique identifier for known stratigraphic name (see /defs/strat_names)",
     "concept_id": "intger, unique identifier for the stratigraphic name concept, which groups variant strat_names for same entity",
+   "strat_name_concept_id": "intger, unique identifier for the stratigraphic name concept, which groups variant strat_names for same entity",
     "name": "text, the name of the entity",
     "Mbr": "text, lithostratigraphic member",
     "Fm": "text, lithostratigraphic formation",
+    "SubGp": "text, lithostratigraphic subgroup",
     "Gp": "text, lithostratigraphic group",
     "SGp": "text, lithostratigraphic supergroup",
     "era": "string, containing international chronostratigraphic period",
