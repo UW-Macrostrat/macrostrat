@@ -73,7 +73,7 @@ module.exports = function(req, res, next) {
         }
 
         larkin.query("SELECT pbdb_matches.collection_no AS cltn_id, collection_name AS cltn_name, lookup_unit_intervals.t_age, lookup_unit_intervals.b_age, n_occs AS pbdb_occs, COALESCE(GROUP_CONCAT(distinct pbdb.taxon_lower.genus_no), '') AS genus_no, \
-          pbdb_matches.unit_id, cols.id as col_id, CONCAT(pbdb_matches.ref_id, '|') AS refs " + ((geo) ? ", AsWKT(pbdb_matches.coordinate) AS geometry" : "") + " \
+          pbdb_matches.unit_id, cols.id as col_id, CONCAT(pbdb_matches.ref_id, '|') AS refs " + ((geo) ? ", AsWKT(pbdb_matches.coordinate) AS geometry" : "") + ", lookup_strat_names.concept_id AS strat_name_concept_id \
           FROM pbdb_matches \
           JOIN units ON pbdb_matches.unit_id = units.id \
           JOIN units_sections ON units_sections.unit_id = units.id \
