@@ -59,6 +59,11 @@ module.exports = function(req, res, next, cb) {
       params["rank"] = req.query.rank;
     }
 
+    if (req.query.ref_id) {
+      where.push("ref_id IN (:ref_ids)")
+      params["ref_id"] = larkin.parseMultipleIds(req.query.ref_id)
+    }
+
   }
 
   var sql = multiline(function() {/*
