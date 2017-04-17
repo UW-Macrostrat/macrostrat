@@ -61,12 +61,12 @@ module.exports = function(req, res, next, cb) {
 
     if (req.query.ref_id) {
       where.push("ref_id IN (:ref_ids)")
-      params["ref_id"] = larkin.parseMultipleIds(req.query.ref_id)
+      params["ref_ids"] = larkin.parseMultipleIds(req.query.ref_id)
     }
 
   }
 
-  var sql = multiline(function() {/*
+  var sql = `
     SELECT
       strat_name,
       rank_name AS strat_name_long,
@@ -93,7 +93,7 @@ module.exports = function(req, res, next, cb) {
       t_units,
       ref_id
     FROM lookup_strat_names l
-  */});
+  `
 
 
 
