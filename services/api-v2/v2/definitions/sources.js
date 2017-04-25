@@ -9,30 +9,25 @@ module.exports = function(req, res, next, cb) {
     return larkin.info(req, res, next);
   }
 
-  var sql = multiline(function() {/*
-    SELECT
-      source_id,
-      name,
-      COALESCE(url, '') url,
-      COALESCE(ref_title, '') ref_title,
-      COALESCE(authors, '') authors,
-      COALESCE(ref_year, '') ref_year,
-      COALESCE(ref_source, '') ref_source,
-      COALESCE(isbn_doi, '') isbn_doi,
-      COALESCE(scale, '') scale,
-      features,
-      area
-  */});
+  var sql = `
+  SELECT
+    source_id,
+    name,
+    COALESCE(url, '') url,
+    COALESCE(ref_title, '') ref_title,
+    COALESCE(authors, '') authors,
+    COALESCE(ref_year, '') ref_year,
+    COALESCE(ref_source, '') ref_source,
+    COALESCE(isbn_doi, '') isbn_doi,
+    COALESCE(scale, '') scale,
+    features,
+    area
+    ${api.acceptedFormats.geo[req.query.format] ? ', ST_AsGeoJSON(ST_Envelope(rgeom)) AS geom' : ''}
+  FROM maps.sources
+  `
 
-  if (api.acceptedFormats.geo[req.query.format]) {
-    sql += ", ST_AsGeoJSON(rgeom) AS geometry";
-  }
-
-  sql += " FROM maps.sources ";
-
-
-  var params = [];
-  var where = [];
+  var params = []
+  var where = []
 
   if (req.query.source_id) {
     where.push("source_id = ANY($" + (where.length + 1) + ")");
@@ -81,17 +76,14 @@ module.exports = function(req, res, next, cb) {
       }
     } else {
       if (req.query.format && api.acceptedFormats.geo[req.query.format]) {
-        dbgeo.parse({
-          "data": result.rows,
-          "outputFormat": larkin.getOutputFormat(req.query.format)
+        dbgeo.parse(result.rows, {
+          "geometryType": "geojson",
+          "outputFormat": larkin.getOutputFormat(req.query.format),
+          "precision": 5
         }, function(error, geojson) {
           if (error) {
             larkin.error(req, res, next, error);
           } else {
-            if (larkin.getOutputFormat(req.query.format) === "geojson") {
-              result = gp(geojson, 5);
-            }
-
             if (cb) {
               cb(null, geojson);
             } else {
