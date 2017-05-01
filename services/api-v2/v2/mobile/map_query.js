@@ -298,6 +298,7 @@ module.exports = function(req, res, next) {
            // Add reference here! (or maybe in buildSQL...)
 
            var macroUnits = [].concat.apply([], bestFit.map(function(unit) { return unit.macro_units }))
+           var macroNames = [].concat.apply([], bestFit.map(function(unit) { return unit.strat_names }))
 
            if (macroUnits.length) {
              require('../units')({query: { unit_id: macroUnits.join(',') } }, null, null, function(error, result) {
@@ -316,6 +317,30 @@ module.exports = function(req, res, next) {
                    macrostrat: {}
                  })
                }
+             })
+           } else if (macroNames.length) {
+             require('../definitions/strat_names')({
+               query: {
+                 strat_name_id: macroNames.join(',')
+               }
+             }, null, null, function(error, result) {
+               if (error || !result || !result.length) {
+                 console.log('Error fetching strat names ', error)
+                 return cb(null, {
+                   burwell: bestFit,
+                   macrostrat: {}
+                 })
+               }
+               cb(null, {
+                 burwell: bestFit,
+                 macrostrat: {
+                   rank_names: _.uniq(result.map(function(d) { return d.strat_name_long })).join(', '),
+                   strat_names: result.map(function(d) { return {
+                     name: d.strat_name_long,
+                     id: d.strat_name_id
+                   }})
+                 }
+               })
              })
            } else {
              cb(null, {
