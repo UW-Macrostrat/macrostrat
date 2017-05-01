@@ -90,6 +90,13 @@ var mysql = require("mysql"),
 
 
   larkin.sendData = function(req, res, next, options, outgoing) {
+    if (!options.format) {
+      options.format = (api.acceptedFormats.standard[req.query.format]) ? req.query.format : 'json'
+    }
+    if (!options.bare) {
+      options.bare = (api.acceptedFormats.bare[req.query.format]) ? true : false
+    }
+    
     if (options && options.format === "csv") {
       return res.csv(outgoing.data, true);
     }
@@ -108,7 +115,6 @@ var mysql = require("mysql"),
     } else {
       larkin.finishSend(req, res, next, options, outgoing);
     }
-
   };
 
   larkin.finishSend = function(req, res, next, options, outgoing) {
