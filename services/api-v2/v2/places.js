@@ -1,25 +1,76 @@
-var larkin = require('./larkin')
-var api = require('./api')
-var dbgeo = require('dbgeo')
+'use strict'
+const larkin = require('./larkin')
+const api = require('./api')
+const dbgeo = require('dbgeo')
 
-
-module.exports = function(req, res, next, callback) {
-  var where = []
-  var params = []
-  var limit = ('sample' in req.query) ? 'LIMIT 5' : ''
-
+module.exports = (req, res, next, callback) => {
+  let where = []
+  let params = []
+  let limit = ('sample' in req.query) ? 'LIMIT 5' : ''
 
   if (req.query.wof_id) {
-    where.push(`a.wof_id = ANY(\$${where.length + 1})`)
-    params.push(larkin.parseMultipleIds(req.query.wof_id))
+    if (req.query.childtype) {
+      where.push(`a.wof_id IN (
+        SELECT wof_id
+        FROM places
+        WHERE
+          CASE
+            WHEN (SELECT placetype FROM places WHERE wof_id = $1) = 'continent'
+              THEN ( continent = $1 )
+            WHEN (SELECT placetype FROM places WHERE wof_id = $1) = 'country'
+              THEN ( country = $1 )
+            WHEN (SELECT placetype FROM places WHERE wof_id = $1) = 'region'
+              THEN ( region = $1 )
+            WHEN (SELECT placetype FROM places WHERE wof_id = $1) = 'county'
+              THEN ( county = $1 )
+            WHEN (SELECT placetype FROM places WHERE wof_id = $1) = 'locality'
+              THEN ( locality = $1 )
+            ELSE ( wof_id = -9999 )
+          END
+
+          AND placetype = $2
+      )`)
+      params.push(req.query.wof_id, req.query.childtype)
+    } else {
+      where.push(`a.wof_id = ANY(\$${where.length + 1})`)
+      params.push(larkin.parseMultipleIds(req.query.wof_id))
+    }
   }
-  if (req.query.placetype) {
+  if (req.query.placetype && !req.query.childtype) {
     where.push(`a.placetype = ANY(\$${where.length + 1})`)
     params.push(larkin.parseMultipleStrings(req.query.placetype))
   }
   if (req.query.name) {
-    where.push(`a.name = ANY(\$${where.length + 1})`)
-    params.push(larkin.parseMultipleStrings(req.query.name))
+    if (req.query.childtype) {
+      if (!req.query.placetype) {
+        return larkin.error(req, res, next, 'You must provide a "placetype" when querying for children with a "name"', 401)
+      }
+
+      where.push(`a.wof_id IN (
+        SELECT wof_id
+        FROM places
+        WHERE
+          CASE
+            WHEN (SELECT placetype FROM places WHERE name = $1 AND placetype = $2) = 'continent'
+              THEN ( continent = ( SELECT wof_id FROM places WHERE name = $1 AND placetype = $2 ) )
+            WHEN (SELECT placetype FROM places WHERE name = $1 AND placetype = $2) = 'country'
+              THEN ( country = ( SELECT wof_id FROM places WHERE name = $1 AND placetype = $2 ) )
+            WHEN (SELECT placetype FROM places WHERE name = $1 AND placetype = $2) = 'region'
+              THEN ( region = ( SELECT wof_id FROM places WHERE name = $1 AND placetype = $2 ) )
+            WHEN (SELECT placetype FROM places WHERE name = $1 AND placetype = $2) = 'county'
+              THEN ( county = ( SELECT wof_id FROM places WHERE name = $1 AND placetype = $2 ) )
+            WHEN (SELECT placetype FROM places WHERE name = $1 AND placetype = $2) = 'locality'
+              THEN ( locality = ( SELECT wof_id FROM places WHERE name = $1 AND placetype = $2 ) )
+            ELSE ( wof_id = -9999 )
+          END
+
+          AND placetype = $3
+      )`)
+      params.push(req.query.name, req.query.placetype, req.query.childtype)
+    } else {
+      where.push(`a.name = ANY(\$${where.length + 1})`)
+      params.push(larkin.parseMultipleStrings(req.query.name))
+    }
   }
   if (req.query.name_like) {
     where.push(`a.name = \$${where.length + 1}`)
@@ -29,10 +80,10 @@ module.exports = function(req, res, next, callback) {
     where.push(`ST_Intersects(a.geom, ST_SetSRID(ST_MakePoint(\$${where.length + 1}, \$${where.length + 2}), 4326))`)
     params.push(larkin.normalizeLng(req.query.lng), req.query.lat)
   }
+
   if (!where.length && !('sample' in req.query)) {
     return larkin.error(req, res, next, 'Please provide at least one valid parameter', 400)
   }
-
 
   larkin.queryPg('wof', `
     SELECT
@@ -55,7 +106,7 @@ module.exports = function(req, res, next, callback) {
     LEFT JOIN places cnt ON cnt.wof_id = a.continent
     WHERE ${where.join(' AND ')}
     ${limit}
-  `, params, function(error, result) {
+  `, params, (error, result) => {
     if (error) {
       return larkin.error(req, res, next, 'Internal error', 500)
     }
@@ -64,22 +115,16 @@ module.exports = function(req, res, next, callback) {
       dbgeo.parse(result.rows, {
         'outputFormat': larkin.getOutputFormat(req.query.format),
         'precision': 6
-      }, function(error, result) {
+      }, (error, result) => {
         if (error) {
           return larkin.error(req, res, next, 'Internal error', 500)
         }
-        larkin.sendData(req, res, next, {
-          format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : 'json',
-          bare: (api.acceptedFormats.bare[req.query.format]) ? true : false
-        }, {
+        larkin.sendData(req, res, next, {}, {
           data: result
         })
       })
     } else {
-      larkin.sendData(req, res, next, {
-        format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : 'json',
-        bare: (api.acceptedFormats.bare[req.query.format]) ? true : false
-      }, {
+      larkin.sendData(req, res, next, {}, {
         data: result.rows
       })
     }
