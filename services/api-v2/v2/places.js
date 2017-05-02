@@ -3,6 +3,8 @@ const larkin = require('./larkin')
 const api = require('./api')
 const dbgeo = require('dbgeo')
 
+const MAXRESULTS = 5000
+
 module.exports = (req, res, next, callback) => {
   let where = []
   let params = []
@@ -87,17 +89,7 @@ module.exports = (req, res, next, callback) => {
 
   larkin.queryPg('wof', `
     SELECT
-      a.wof_id,
-      a.placetype,
-      a.name,
-      COALESCE(a.name_formal, '') AS name_formal,
-      (SELECT row_to_json(_) FROM (SELECT cnt.wof_id, cnt.name) _) AS continent,
-      (SELECT row_to_json(_) FROM (SELECT cntry.wof_id, cntry.name, cntry.iso2, cntry.iso3) _) AS country,
-      (SELECT row_to_json(_) FROM (SELECT r.wof_id, r.name) _) AS region,
-      (SELECT row_to_json(_) FROM (SELECT c.wof_id, c.name) _) AS county,
-      (SELECT row_to_json(_) FROM (SELECT l.wof_id, l.name) _) AS locality,
-      hstore_to_json(a.other_names) AS other_names
-      ${req.query.format && api.acceptedFormats.geo[req.query.format] ? ', a.geom' : ''}
+      COUNT(*) AS n_rows
     FROM places a
     LEFT JOIN places l ON l.wof_id = a.locality
     LEFT JOIN places c ON c.wof_id = a.county
@@ -107,26 +99,57 @@ module.exports = (req, res, next, callback) => {
     WHERE ${where.join(' AND ')}
     ${limit}
   `, params, (error, result) => {
-    if (error) {
+    if (error || !result || !result.rows) {
       return larkin.error(req, res, next, 'Internal error', 500)
     }
-    // if a geographic format is requested
-    if (req.query.format && api.acceptedFormats.geo[req.query.format]) {
-      dbgeo.parse(result.rows, {
-        'outputFormat': larkin.getOutputFormat(req.query.format),
-        'precision': 6
-      }, (error, result) => {
-        if (error) {
-          return larkin.error(req, res, next, 'Internal error', 500)
-        }
-        larkin.sendData(req, res, next, {}, {
-          data: result
-        })
-      })
-    } else {
-      larkin.sendData(req, res, next, {}, {
-        data: result.rows
-      })
+    console.log(result.rows.n_rows)
+    if (result.rows[0].n_rows > MAXRESULTS) {
+      return larkin.error(req, res, next, 'Too many results returned by this query. Please refine your search and try again', 401)
     }
+
+    larkin.queryPg('wof', `
+      SELECT
+        a.wof_id,
+        a.placetype,
+        a.name,
+        COALESCE(a.name_formal, '') AS name_formal,
+        (SELECT row_to_json(_) FROM (SELECT cnt.wof_id, cnt.name) _) AS continent,
+        (SELECT row_to_json(_) FROM (SELECT cntry.wof_id, cntry.name, cntry.iso2, cntry.iso3) _) AS country,
+        (SELECT row_to_json(_) FROM (SELECT r.wof_id, r.name) _) AS region,
+        (SELECT row_to_json(_) FROM (SELECT c.wof_id, c.name) _) AS county,
+        (SELECT row_to_json(_) FROM (SELECT l.wof_id, l.name) _) AS locality,
+        hstore_to_json(a.other_names) AS other_names
+        ${req.query.format && api.acceptedFormats.geo[req.query.format] ? ', a.geom' : ''}
+      FROM places a
+      LEFT JOIN places l ON l.wof_id = a.locality
+      LEFT JOIN places c ON c.wof_id = a.county
+      LEFT JOIN places r ON r.wof_id = a.region
+      LEFT JOIN places cntry ON cntry.wof_id = a.country
+      LEFT JOIN places cnt ON cnt.wof_id = a.continent
+      WHERE ${where.join(' AND ')}
+      ${limit}
+    `, params, (error, result) => {
+      if (error) {
+        return larkin.error(req, res, next, 'Internal error', 500)
+      }
+      // if a geographic format is requested
+      if (req.query.format && api.acceptedFormats.geo[req.query.format]) {
+        dbgeo.parse(result.rows, {
+          'outputFormat': larkin.getOutputFormat(req.query.format),
+          'precision': 6
+        }, (error, result) => {
+          if (error) {
+            return larkin.error(req, res, next, 'Internal error', 500)
+          }
+          larkin.sendData(req, res, next, {}, {
+            data: result
+          })
+        })
+      } else {
+        larkin.sendData(req, res, next, {}, {
+          data: result.rows
+        })
+      }
+    })
   })
 }
