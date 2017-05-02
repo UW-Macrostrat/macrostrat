@@ -77,5 +77,5 @@ if __name__ == '__main__':
 
     # Make tiles
     print '| | | | | Rolling tiles...'
-    call(['node tiles/simple_seed.js --source_id %s --layers emphasized' % (arguments.source_id, )], shell=True)
+    call(['node tiles/simple_seed.js --source_id %s' % (arguments.source_id, )], shell=True)
     print '| | | | | Done rolling tiles | | | | | '

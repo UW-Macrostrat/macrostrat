@@ -82,7 +82,7 @@
   function createLayer(scale, callback) {
     // Copy the template
     var layer = JSON.parse(JSON.stringify(layerTemplate));
-    layer["Datasource"]["table"] = `(SELECT map_id, name, age, lith, descrip, comments, t_int, b_int, color, geom FROM carto.${scale} ) subset`
+    layer["Datasource"]["table"] = `(SELECT map_id, COALESCE(name, '') AS name, COALESCE(age, '') AS age, COALESCE(lith, '') AS lith, COALESCE(descrip, '') AS descrip, COALESCE(comments, '') AS comments, COALESCE(t_int, '') AS t_int, COALESCE(b_int, '') AS b_int, COALESCE(color, '') AS color, geom FROM carto.${scale} ) subset`
     layer["id"] = "burwell_units"
     layer["class"] = "burwell_units"
     layer["minZoom"] = 0
@@ -94,7 +94,7 @@
   function createLayerLines(scale, callback) {
     // Copy the template
     var layer = JSON.parse(JSON.stringify(layerTemplateLines));
-    layer["Datasource"]["table"] = `(SELECT x.line_id, x.geom, x.direction, x.type FROM carto.lines_${scale} x) subset`
+    layer["Datasource"]["table"] = `(SELECT line_id, COALESCE(descrip, '') AS descrip, COALESCE(name, '') AS name, COALESCE(direction, '') AS direction, COALESCE(type, '') AS type, source_id, geom FROM carto.lines_${scale}) subset2`
     layer["id"] = 'burwell_lines'
     layer["class"] = "burwell_lines"
     layer["minZoom"] = 0
