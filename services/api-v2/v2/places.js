@@ -102,7 +102,6 @@ module.exports = (req, res, next, callback) => {
     if (error || !result || !result.rows) {
       return larkin.error(req, res, next, 'Internal error', 500)
     }
-    console.log(result.rows.n_rows)
     if (result.rows[0].n_rows > MAXRESULTS) {
       return larkin.error(req, res, next, 'Too many results returned by this query. Please refine your search and try again', 401)
     }
