@@ -82,7 +82,7 @@
   function createLayer(scale, callback) {
     // Copy the template
     var layer = JSON.parse(JSON.stringify(layerTemplate));
-    layer["Datasource"]["table"] = `(SELECT map_id, COALESCE(name, '') AS name, COALESCE(age, '') AS age, COALESCE(lith, '') AS lith, COALESCE(descrip, '') AS descrip, COALESCE(comments, '') AS comments, COALESCE(t_int, '') AS t_int, COALESCE(b_int, '') AS b_int, COALESCE(color, '') AS color, geom FROM carto.${scale} ) subset`
+    layer["Datasource"]["table"] = `(SELECT map_id, COALESCE(name, '') AS name, COALESCE(age, '') AS age, COALESCE(lith, '') AS lith, COALESCE(descrip, '') AS descrip, COALESCE(comments, '') AS comments, COALESCE(t_int, '') AS t_int, COALESCE(b_int, '') AS b_int, CASE WHEN color IS NULL THEN 'rgba(0,0,0,0)' ELSE 'rgba('|| ('x'||substr(color,2,2))::bit(8)::int||','|| ('x'||substr(color,4,2))::bit(8)::int||','|| ('x'||substr(color,6,2))::bit(8)::int|| ',0.6)' END AS color, geom FROM carto.${scale} ) subset`
     layer["id"] = "burwell_units"
     layer["class"] = "burwell_units"
     layer["minZoom"] = 0
