@@ -16,8 +16,6 @@ var yaml = require('yamljs')
 var credentials = yaml.load(path.join(__dirname, '..', 'credentials.yml'))
 
 var tileSet = '';
-// Array of zoom levels we are going to precache
-var seedableZooms = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 var seedableScales = {
   tiny: config.scaleMap['tiny'],
@@ -193,7 +191,6 @@ function seed(tiles, showProgress, callback) {
   async.eachLimit(tiles, 20, function(tile, tCb) {
     var scale = zoomLookup[tile[2]];
 
-
     // Code is in tileRoller.js - uses tilestrata-mapnik/vtile  directly
     createTile(scale, {
       x: tile[0],
@@ -264,9 +261,6 @@ function reseed(geometries, scale, done) {
       if (scale === '') {
         var polygon = {"type":"Polygon","coordinates":[[[-179,-85],[-179,85],[179,85],[179,-85],[-179,-85]]]};
 
-        var zooms = [0, 1, 2, 3, 4, 5, 6];
-
-
         for (var i = 0; i < 7; i++ ) {
           tiles = tiles.concat(getTileList(polygon, i));
         }
@@ -302,11 +296,7 @@ function reseed(geometries, scale, done) {
     function(shapes, callback) {
       console.log('   - Seeding z7-10');
 
-      var zToSeed = seedableZooms.filter(function(d) {
-        if (d > 6) {
-          return d;
-        }
-      });
+      var zToSeed = [7, 8, 9, 10]
 
       // Add a progress bar
       var bar = new ProgressBar('     :bar :percent', { total: (shapes.length * zToSeed.length), width: 50 });
@@ -364,10 +354,10 @@ function reseedAll() {
         SELECT ST_AsGeoJSON(
           ST_Intersection(
               ST_GeomFromText('POLYGON ((-179 -85, -179 85, 179 85, 179 -85, -179 -85))', 4326),
-              ST_Union(rgeom)
+              geom
             )
-        , 4) AS geometry
-        FROM maps.sources
+        , 6) AS geometry
+        FROM public.land
       `, [], function(error, data) {
         if (error) {
           console.log(error);
