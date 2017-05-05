@@ -59,6 +59,17 @@
       // Get the full tile path
       var file = tilePath(credentials.cache_path, tile.z, tile.x, tile.y, 'tile.pbf');
 
+      try {
+        var redisKey = `${tile.z},${tile.x},${tile.y},${mapType},tile.pbf`;
+        client.get(redisKey, function(error, data) {
+          if (data) {
+            client.set(redisKey, buffer);
+          }
+        });
+      } catch(er) {
+
+      }
+
       // Make sure the correct directory exists
       mkdirp(credentials.cache_path + '/' + tile.z + '/' + tile.x + '/' + tile.y, function(error) {
 
