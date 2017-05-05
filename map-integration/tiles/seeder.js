@@ -353,11 +353,10 @@ function reseedAll() {
       queryPg('burwell', `
         SELECT ST_AsGeoJSON(
           (ST_Dump(
-            ST_Intersection(
-              ST_GeomFromText('POLYGON ((-179 -85, -179 85, 179 85, 179 -85, -179 -85))', 4326),
-              geom
-            )
-          )).geom
+          ST_Intersection(
+	          ST_GeomFromText('POLYGON ((-179 -85, -179 85, 179 85, 179 -85, -179 -85))', 4326),
+	          geom
+	        ))).geom
         , 6) AS geometry
         FROM public.land
       `, [], function(error, data) {
