@@ -58,43 +58,43 @@ class Task(object):
 
         pyCursor.execute("""
         INSERT INTO maps.map_strat_names
-            WITH cull AS (
-                SELECT *
-                FROM macrostrat.strat_name_footprints snft
-                WHERE snft.strat_name_id IN (
-                    WITH macro_flat AS (
-                      SELECT strat_name_id, unnest(string_to_array(""" + ("replace(lsn3.rank_name, '.', '')" if strictNameMatch else "replace(lsn3.name_no_lith, '.', '')") + """, ' ')) as token
-                      FROM macrostrat.lookup_strat_names lsn3
-                    ),
-                    names AS (
-                        SELECT DISTINCT strat_name_id
-                        FROM macro_flat
-                        WHERE token IN (
-                          SELECT DISTINCT unnest(string_to_array(name, ' '))
-                          FROM maps.%(table)s
-                          WHERE source_id = %(source_id)s
-                        )
-                    )
-                    SELECT DISTINCT lsn4.strat_name_id
-                    FROM macrostrat.lookup_strat_names AS lsn4
-                    CROSS JOIN (
-                      SELECT DISTINCT replace(%(field)s, '.', '') AS rock_match_field
-                      FROM maps.%(table)s
-                      WHERE source_id = %(source_id)s
-                    ) AS distinct_rocks
-                    JOIN names ON lsn4.strat_name_id = names.strat_name_id
-                    WHERE distinct_rocks.rock_match_field ~* concat('\y', """ + ("replace(lsn4.rank_name, '.', '')" if strictNameMatch else "replace(lsn4.name_no_lith, '.', '')") + """, '\y')
-                )
-            )
             SELECT rocks.map_id, strat_name_id, %(match_type)s
-            FROM cull snft
-            JOIN maps.%(table)s rocks ON ST_Intersects(""" + ("snft.geom" if strictSpace else "ST_Buffer(snft.geom, 1.2)") + """, rocks.geom)
+            FROM macrostrat.strat_name_footprints snft
+            CROSS JOIN maps.%(table)s rocks
             JOIN macrostrat.intervals intervals_top on rocks.t_interval = intervals_top.id
             JOIN macrostrat.intervals intervals_bottom on rocks.b_interval = intervals_bottom.id
             WHERE rocks.source_id = %(source_id)s
-            AND ((snft.best_t_age) < (intervals_bottom.age_bottom + """ + ("0" if strictTime else "25") + """))
-            AND ((snft.best_b_age) > (intervals_top.age_top - """ + ("0" if strictTime else "25") + """))
-            AND rocks.%(field)s ~* concat('\y', """ + ("replace(snft.rank_name, '.', '')" if strictNameMatch else "replace(snft.name_no_lith, '.', '')") + """, '\y')
+              AND ((snft.best_t_age) < (intervals_bottom.age_bottom + """ + ("0" if strictTime else "25") + """))
+              AND ((snft.best_b_age) > (intervals_top.age_top - """ + ("0" if strictTime else "25") + """))
+              AND rocks.%(field)s ~* concat('\y', """ + ("replace(snft.rank_name, '.', '')" if strictNameMatch else "replace(snft.name_no_lith, '.', '')") + """, '\y')
+            AND snft.strat_name_id IN (
+              SELECT DISTINCT lsn4.strat_name_id
+              FROM macrostrat.lookup_strat_names AS lsn4
+              JOIN macrostrat.strat_name_footprints ON strat_name_footprints.strat_name_id = lsn4.strat_name_id
+              JOIN (
+                SELECT strat_name_id, token
+                FROM (
+                  SELECT strat_name_id, unnest(string_to_array(replace(lsn3.strat_name, '.', ''), ' ')) as token
+                  FROM macrostrat.lookup_strat_names lsn3
+                ) x
+                JOIN (
+                  SELECT DISTINCT unnest(string_to_array(%(field)s, ' ')) AS unnested_name
+                  FROM maps.%(table)s
+                  WHERE source_id = %(source_id)s
+                ) q ON q.unnested_name = x.token
+              ) names ON lsn4.strat_name_id = names.strat_name_id
+              CROSS JOIN (
+                SELECT DISTINCT replace(%(field)s, '.', '') AS rock_match_field
+                FROM maps.%(table)s
+                WHERE source_id = %(source_id)s
+              ) AS distinct_rocks
+              WHERE distinct_rocks.rock_match_field ~* concat('\y', """ + ("replace(lsn4.rank_name, '.', '')" if strictNameMatch else "replace(lsn4.name_no_lith, '.', '')") + """, '\y')
+              AND ST_Intersects(strat_name_footprints.geom, (
+                SELECT rgeom
+                FROM maps.sources
+                WHERE source_id = %(source_id)s
+              ))
+            )
         """, {
           "table": AsIs(table),
           "source_id": source_id,
