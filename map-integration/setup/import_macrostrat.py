@@ -721,6 +721,7 @@ LEFT JOIN macrostrat_new.intervals tb ON strat_names_meta.b_int = tb.id
 ;
 
 UPDATE macrostrat_new.strat_name_footprints SET geom = 'POLYGON EMPTY' WHERE ST_GeometryType(geom) = 'ST_Point';
+UPDATE macrostrat_new.strat_name_footprints SET geom = ST_SetSRID(geom, 4326);
 
 CREATE INDEX ON macrostrat_new.strat_name_footprints (strat_name_id);
 CREATE INDEX ON macrostrat_new.strat_name_footprints USING GiST (geom);
