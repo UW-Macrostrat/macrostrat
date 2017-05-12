@@ -110,6 +110,7 @@ if __name__ == '__main__':
       """, {
         "match_type": match_type
       })
+      connection.commit()
       print "        - Done with " + match_type
 
   # Time the process
