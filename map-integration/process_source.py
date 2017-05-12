@@ -51,6 +51,11 @@ if __name__ == '__main__':
 
     print 'Starting at ', str(datetime.datetime.now())
 
+    # Build rgeom
+    print '| | | | | Building rgeom...'
+    call(['python utils/rgeom.py %s' % (arguments.source_id, ) ], shell=True)
+    print '| | | | | Done building rgeom | | | | |'
+
     # Match
     print '| | | | | Matching stratigraphic names...'
     call(['python matching/strat_name_match.py --source_id %s' % (arguments.source_id, )], shell=True)
@@ -64,11 +69,6 @@ if __name__ == '__main__':
     print '| | | | | Refreshing lookup tables...'
     call(['python setup/refresh_lookup.py %s' % (arguments.source_id, ) ], shell=True)
     print '| | | | | Done refreshing lookup tables | | | | |'
-
-    # Build rgeom
-    print '| | | | | Building rgeom...'
-    call(['python utils/rgeom.py %s' % (arguments.source_id, ) ], shell=True)
-    print '| | | | | Done building rgeom | | | | |'
 
     # Refresh carto lines
     print '| | | | | Adding to carto.lines...'
