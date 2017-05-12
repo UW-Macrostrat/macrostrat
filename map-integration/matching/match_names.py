@@ -132,6 +132,115 @@ if __name__ == '__main__':
           fields.remove(field)
           print '        + Excluding', field, 'because it is null'
 
+  cursor.execute("""
+    DROP TABLE IF EXISTS temp_rocks;
+
+    CREATE TABLE temp_rocks AS
+    WITH first AS (
+    	SELECT
+    		array_agg(map_id) AS map_ids,
+    		name,
+    		CASE
+    			WHEN
+    				array_length(string_to_array(COALESCE(strat_name, ''), ';'), 1) IS NULL
+    				THEN NULL
+    			ELSE
+    				unnest(string_to_array(COALESCE(strat_name, ''), ';'))
+    			END AS strat_name,
+    		age,
+    		lith,
+    		descrip,
+    		comments,
+    		t_interval,
+    		b_interval,
+    		ST_Envelope(ST_Collect(geom)) AS envelope
+    	FROM maps.%(scale)s
+    	WHERE source_id = %(source_id)s
+    	GROUP BY name, strat_name, age, lith, descrip, comments, t_interval, b_interval
+    ),
+    name_parts AS (
+    	SELECT array_to_string(map_ids, '|') AS id, a.name_part, a.nr
+    	FROM first
+    	LEFT JOIN LATERAL unnest(string_to_array(first.strat_name, ' '))
+    	WITH ORDINALITY AS a(name_part, nr) ON TRUE
+    ),
+    no_liths AS (
+        SELECT id, name_part
+        FROM name_parts
+        WHERE lower(name_part) NOT IN (select lower(lith) from macrostrat.liths) AND lower(name_part) NOT IN ('bed', 'member', 'formation', 'group', 'supergroup')
+        order by nr
+    ),
+    clean AS (
+    	SELECT id, array_to_string(array_agg(name_part), ' ') AS name
+    	from no_liths
+    	GROUP BY id
+    )
+
+    SELECT
+    	map_ids,
+    	first.name,
+    	strat_name,
+    	clean.name AS strat_name_clean,
+    	age,
+    	lith,
+    	descrip,
+    	comments,
+    	t_interval,
+    	b_interval,
+    	envelope
+    FROM first
+    JOIN clean ON array_to_string(map_ids, '|') = id
+  """, {
+    "scale": AsIs(scale),
+    "source_id": arguments.source_id
+  })
+  connection.commit()
+
+  cursor.execute("""
+    CREATE INDEX ON temp_rocks (strat_name);
+    CREATE INDEX ON temp_rocks (strat_name_clean);
+    CREATE INDEX ON temp_rocks (t_interval);
+    CREATE INDEX ON temp_rocks (b_interval);
+    CREATE INDEX ON temp_rocks USING GiST (envelope);
+  """)
+  connection.commit()
+
+  cursor.execute("""
+    DROP TABLE IF EXISTS temp_names;
+    CREATE TABLE temp_names AS
+    SELECT DISTINCT ON (sub.strat_name_id) lookup_strat_names.*
+    FROM (
+    	SELECT DISTINCT lsn4.strat_name_id, lsn4.strat_name, unnest(string_to_array(lsn4.rank_name, ' ')) AS words
+    	FROM macrostrat.lookup_strat_names AS lsn4
+    	JOIN macrostrat.strat_name_footprints ON strat_name_footprints.strat_name_id = lsn4.strat_name_id
+    	JOIN maps.sources ON ST_Intersects(strat_name_footprints.geom, rgeom)
+    	WHERE sources.source_id = %(source_id)s
+    ) sub
+    JOIN macrostrat.lookup_strat_names ON sub.strat_name_id = lookup_strat_names.strat_name_id
+    WHERE words IN (
+    	SELECT DISTINCT words
+    	FROM (
+    		SELECT DISTINCT unnest(string_to_array(strat_name, ' ')) AS words
+    		FROM maps.%(scale)s
+    		where source_id = %(source_id)s
+    	) sub
+    	WHERE lower(words) NOT IN (select lower(lith) from macrostrat.liths)
+    	  AND lower(words) NOT IN ('bed', 'member', 'formation', 'group', 'supergroup')
+    );
+  """, {
+    "scale": AsIs(scale),
+    "source_id": arguments.source_id
+  })
+  connection.commit()
+
+  cursor.execute("""
+    CREATE INDEX ON temp_names (strat_name_id);
+    CREATE INDEX ON temp_names (rank_name);
+    CREATE INDEX ON temp_names (name_no_lith);
+    CREATE INDEX ON temp_names (strat_name);
+  """)
+  connection.commit()
+
   # Insert a new task for each matching field into the queue
   for field in fields:
       tasks.put(Task(scale, arguments.source_id, field))
