@@ -53,7 +53,7 @@ if __name__ == '__main__':
 
     # Match
     print '| | | | | Matching stratigraphic names...'
-    call(['python matching/match_names.py --source_id %s' % (arguments.source_id, )], shell=True)
+    call(['python matching/strat_name_match.py --source_id %s' % (arguments.source_id, )], shell=True)
     print '| | | | | Done matching stratigraphic names| | | | |'
 
     print '| | | | | Matching macrostrat units...'
