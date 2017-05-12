@@ -181,26 +181,38 @@ def refresh(cursor, connection, scale, source_id):
            WHEN 'strat_name' = ANY(bases)
             THEN array['strat_name', 'manual']
 
-           WHEN 'strat_name_fname' = ANY(bases)
-             THEN array['strat_name_fname', 'manual']
-
            WHEN 'strat_name_fspace' = ANY(bases)
              THEN array['strat_name_fspace', 'manual']
 
            WHEN 'strat_name_ftime' = ANY(bases)
              THEN array['strat_name_ftime', 'manual']
 
+           WHEN 'strat_name_fspace_ftime' = ANY(bases)
+             THEN array['strat_name_fspace_ftime', 'manual']
+
+           WHEN 'strat_name_ntime' = ANY(bases)
+             THEN array['strat_name_ntime', 'manual']
+
+           WHEN 'strat_name_fspace_ntime' = ANY(bases)
+             THEN array['strat_name_fspace_ntime', 'manual']
+
+           WHEN 'strat_name_fname' = ANY(bases)
+             THEN array['strat_name_fname', 'manual']
+
            WHEN 'strat_name_fname_fspace' = ANY(bases)
               THEN array['strat_name_fname_fspace', 'manual']
-
-           WHEN 'strat_name_fspace_ftime' = ANY(bases)
-              THEN array['strat_name_fspace_ftime', 'manual']
 
            WHEN 'strat_name_fname_ftime' = ANY(bases)
               THEN array['strat_name_fname_ftime', 'manual']
 
            WHEN 'strat_name_fname_fspace_ftime' = ANY(bases)
               THEN array['strat_name_fname_fspace_ftime', 'manual']
+
+           WHEN 'strat_name_fname_ftime' = ANY(bases)
+              THEN array['strat_name_fname_ftime', 'manual']
+
+           WHEN 'strat_name_fname_fspace_ntime' = ANY(bases)
+              THEN array['strat_name_fname_fspace_ntime', 'manual']
 
 --------------------------------------------------------------------------------------------
            WHEN 'name' = ANY(bases)
