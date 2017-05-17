@@ -9,6 +9,7 @@
     "build-changes": "grip CHANGELOG.md --export changes.html"
   },
   "dependencies": {
+    "@mapbox/polyline": "^0.2.0",
     "async": "^1.2.x",
     "brute-force-equal-area": "git+https://github.com/UW-Macrostrat/brute-force-equal-area.git",
     "csv-express": "^1.0.0",

@@ -1,6 +1,8 @@
 'use strict'
 const api = require('./api')
 const larkin = require('./larkin')
+const https = require('https')
+const polyline = require('@mapbox/polyline')
 
 module.exports = (req, res, next, cb) => {
   if (Object.keys(req.query).length < 1) {
@@ -9,29 +11,24 @@ module.exports = (req, res, next, cb) => {
   if ((req.query.lat && req.query.lng) || 'sample' in req.query) {
     let lat = req.query.lat || 43.07
     let lng = larkin.normalizeLng(req.query.lng) || -89.4
-    let point = `POINT(${lng} ${lat})`
 
-    larkin.queryPg('elevation', `
-      WITH first AS (
-        SELECT ST_Value(rast, 1, ST_GeomFromText($1, 4326)) AS elevation
-        FROM sources.srtm1
-        WHERE ST_Intersects(ST_GeomFromText($2, 4326), rast)
-      )
-      SELECT elevation
-      FROM first
-      WHERE elevation IS NOT NULL
-      LIMIT 1
-    `, [point, point], (error, result) => {
-      if (error) {
-        if (cb) return cb(error)
-        return larkin.error(req, res, next, error)
-      }
-      if (cb) return cb(null, result.rows)
-      larkin.sendData(req, res, next, {
-        format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : 'json',
-        compact: true
-      }, {
-        data: result.rows
+    https.get(`https://elevation.mapzen.com/height?json={"range":false,"shape":[{"lat":${lat},"lon":${lng}}]}&api_key=mapzen-kcRxhTk`, (response) => {
+      let body = ''
+
+      response.on('data', (chunk) => {
+        body += chunk
+      })
+      response.on('end', () => {
+        let mapzenResponse = JSON.parse(body)
+        let toSend = [{ elevation: mapzenResponse.height[0] || null }]
+
+        if (cb) return cb(null, result.rows)
+        larkin.sendData(req, res, next, {
+          format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : 'json',
+          compact: true
+        }, {
+          data: toSend
+        })
       })
     })
 
@@ -43,8 +40,9 @@ module.exports = (req, res, next, cb) => {
     let leftLat = (req.query.start_lng < req.query.end_lng) ? req.query.start_lat : req.query.end_lat
     let rightLng = (req.query.start_lng < req.query.end_lng) ? req.query.end_lng : req.query.start_lng
     let rightLat = (req.query.start_lng < req.query.end_lng) ? req.query.end_lat : req.query.start_lat
+    let linestring = `SRID=4326;LINESTRING(${leftLng} ${leftLat}, ${rightLng} ${rightLat})`
+    let westPoint = `SRID=4326;POINT(${leftLng} ${leftLat})`
 
-    let linestring = `LINESTRING(${leftLng} ${leftLat}, ${rightLng} ${rightLat})`
     larkin.queryPg('elevation', `
       WITH first AS (
         SELECT ST_SetSRID((ST_Dump(
@@ -59,25 +57,40 @@ module.exports = (req, res, next, cb) => {
       SELECT
         ST_X(geom) AS lng,
         ST_Y(geom) AS lat,
-        (
-      	 SELECT ST_Value(rast, 1, geom)
-      	 FROM sources.srtm1
-      	 WHERE ST_Intersects(geom, rast)
-      	 LIMIT 1
-      	) AS elevation
+        round((ST_Distance_Sphere(geom, $2) * 0.001)::numeric, 2)::float AS d
       FROM first
-    `, [linestring], (error, result) => {
+    `, [linestring, westPoint], (error, result) => {
       if (error) {
         if (cb) return cb(error)
         return larkin.error(req, res, next, 'Internal error', 500)
       }
-      if (cb) return cb(null, result.rows)
-      larkin.sendData(req, res, next, {
-        format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : 'json',
-        compact: true
-      }, {
-        data: result.rows
+      let pts = result.rows
+
+      let encodedPolyline = polyline.encode(pts.map(pt => { return [pt.lat, pt.lng] }), 6)
+
+      https.get(`https://elevation.mapzen.com/height?json={"range":true,"encoded_polyline":"${encodedPolyline}"}&api_key=mapzen-kcRxhTk`, (response) => {
+        let body = ''
+
+        response.on('data', (chunk) => {
+          body += chunk
+        })
+
+        response.on('end', () => {
+          let elevationResult = JSON.parse(body)
+
+          if (cb) return cb(null, result.rows)
+          larkin.sendData(req, res, next, {
+            format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : 'json',
+            compact: true
+          }, {
+            data: pts.map((pt, i) => {
+              pt.elevation = elevationResult.range_height[i][1]
+              return pt
+            })
+          })
+        })
       })
+
     })
   } else {
     return larkin.error(req, res, next, 'Invalid Parameters', 401)
