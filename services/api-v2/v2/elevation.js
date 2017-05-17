@@ -22,7 +22,7 @@ module.exports = (req, res, next, cb) => {
         let mapzenResponse = JSON.parse(body)
         let toSend = [{ elevation: mapzenResponse.height[0] || null }]
 
-        if (cb) return cb(null, result.rows)
+        if (cb) return cb(null, toSend)
         larkin.sendData(req, res, next, {
           format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : 'json',
           compact: true
