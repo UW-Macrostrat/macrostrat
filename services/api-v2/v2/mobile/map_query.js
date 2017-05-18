@@ -306,10 +306,34 @@ module.exports = function(req, res, next) {
                if (result && result.length) {
                  // summarizeUnits
                  summarizeUnits(result, function(summary) {
-                   cb(null, {
-                     burwell: bestFit,
-                     macrostrat: summary
-                   })
+                   if (macroNames.length) {
+                     require('../definitions/strat_names')({
+                       query: {
+                         strat_name_id: macroNames.join(',')
+                       }
+                     }, null, null, function(error, result) {
+                       if (error || !result || !result.length) {
+                         return cb(null, {
+                           burwell: bestFit,
+                           macrostrat: summary
+                         })
+                       }
+                       summary.rank_names = _.uniq(result.map(function(d) { return d.strat_name_long })).join(', ')
+                       summary.strat_names = result.map(function(d) { return {
+                         name: d.strat_name_long,
+                         id: d.strat_name_id
+                       }})
+                       cb(null, {
+                         burwell: bestFit,
+                         macrostrat: summary
+                       })
+                     })
+                   } else {
+                     cb(null, {
+                       burwell: bestFit,
+                       macrostrat: summary
+                     })
+                   }
                  })
                } else {
                  cb(null, {
