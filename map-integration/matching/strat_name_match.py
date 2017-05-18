@@ -156,29 +156,34 @@ if __name__ == '__main__':
     	WHERE source_id = %(source_id)s
     	GROUP BY name, strat_name, age, lith, descrip, comments, t_interval, b_interval
     ),
-    name_parts AS (
-    	SELECT array_to_string(map_ids, '|') AS id, a.name_part, a.nr
+    with_nos AS (
+    	SELECT 
+    		row_number() OVER() as row_no,
+    		*
     	FROM first
-    	LEFT JOIN LATERAL unnest(string_to_array(first.strat_name, ' '))
+    ),
+    name_parts AS (
+    	SELECT row_no, array_to_string(map_ids, '|') AS id, a.name_part, a.nr
+    	FROM with_nos
+    	LEFT JOIN LATERAL unnest(string_to_array(with_nos.strat_name, ' '))
     	WITH ORDINALITY AS a(name_part, nr) ON TRUE
     ),
     no_liths AS (
-        SELECT id, name_part
+        SELECT id, row_no, name_part
         FROM name_parts
         WHERE lower(name_part) NOT IN (select lower(lith) from macrostrat.liths) AND lower(name_part) NOT IN ('bed', 'member', 'formation', 'group', 'supergroup')
         order by nr
     ),
     clean AS (
-    	SELECT id, array_to_string(array_agg(name_part), ' ') AS name
+    	SELECT id, row_no, array_to_string(array_agg(name_part), ' ') AS name
     	from no_liths
-    	GROUP BY id
+    	GROUP BY row_no, id
     )
-
     SELECT
     	map_ids,
-    	first.name,
-    	strat_name,
-    	clean.name AS strat_name_clean,
+    	with_nos.name,
+    	trim(both ' ' FROM replace(strat_name, '.', '')) AS strat_name,
+    	trim(both ' ' FROM clean.name) AS strat_name_clean,
     	age,
     	lith,
     	descrip,
@@ -186,8 +191,8 @@ if __name__ == '__main__':
     	t_interval,
     	b_interval,
     	envelope
-    FROM first
-    JOIN clean ON array_to_string(map_ids, '|') = id
+    FROM with_nos
+    JOIN clean ON with_nos.row_no = clean.row_no
   """, {
     "scale": AsIs(scale),
     "source_id": arguments.source_id
