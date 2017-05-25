@@ -292,8 +292,7 @@ if __name__ == '__main__':
          "sources.scale = '%(below)s'::text AND priority = True" % {"below": below},
          "sources.scale = '%(below)s'::text AND priority = False" % {"below": below},
          "'%(below)s'::text = ANY(display_scales) AND priority = True AND sources.scale != '%(below)s'::text" % {"below": below},
-         "'%(below)s'::text = ANY(display_scales) AND priority = False AND sources.
-         scale != '%(below)s'::text" % {"below": below}]
+         "'%(below)s'::text = ANY(display_scales) AND priority = False AND sources.scale != '%(below)s'::text" % {"below": below}]
 
 
         for idx, each in enumerate(filter_types):
