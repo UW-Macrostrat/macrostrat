@@ -146,14 +146,14 @@ def refresh(scale, source_id):
     insert = "INSERT INTO carto.%(target)s (map_id, scale, source_id, geom) " % {"target": target}
 
     # from top to bottom:
-    filter_types = ["sources.scale = '%(target)s'::text AND priority = True"  % {"target": target},
-     "sources.scale = '%(target)s'::text AND priority = False"  % {"target": target},
-     "'%(target)s'::text = ANY(display_scales) AND priority = True AND sources.scale != '%(target)s'::text"  % {"target": target},
-     "'%(target)s'::text = ANY(display_scales) AND priority = False AND sources.scale != '%(target)s'::text" % {"target": target},
-     "sources.scale = '%(below)s'::text AND priority = True" % {"below": below},
-     "sources.scale = '%(below)s'::text AND priority = False" % {"below": below},
-     "'%(below)s'::text = ANY(display_scales) AND priority = True AND sources.scale != '%(below)s'::text" % {"below": below},
-     "'%(below)s'::text = ANY(display_scales) AND priority = False AND sources.scale != '%(below)s'::text" % {"below": below}]
+    filter_types = ["sources.scale = '%(target)s'::text AND sources.priority = True"  % {"target": target},
+     "sources.scale = '%(target)s'::text AND sources.priority = False"  % {"target": target},
+     "'%(target)s'::text = ANY(display_scales) AND sources.priority = True AND sources.scale != '%(target)s'::text"  % {"target": target},
+     "'%(target)s'::text = ANY(display_scales) AND sources.priority = False AND sources.scale != '%(target)s'::text" % {"target": target},
+     "sources.scale = '%(below)s'::text AND sources.priority = True" % {"below": below},
+     "sources.scale = '%(below)s'::text AND sources.priority = False" % {"below": below},
+     "'%(below)s'::text = ANY(display_scales) AND sources.priority = True AND sources.scale != '%(below)s'::text" % {"below": below},
+     "'%(below)s'::text = ANY(display_scales) AND sources.priority = False AND sources.scale != '%(below)s'::text" % {"below": below}]
 
     # Chop out a footprint = the target source's rgeom
     sql = ["""
@@ -285,14 +285,14 @@ if __name__ == '__main__':
 
 
         # from top to bottom:
-        filter_types = ["sources.scale = '%(target)s'::text AND priority = True"  % {"target": target},
-         "sources.scale = '%(target)s'::text AND priority = False"  % {"target": target},
-         "'%(target)s'::text = ANY(display_scales) AND priority = True AND sources.scale != '%(target)s'::text"  % {"target": target},
-         "'%(target)s'::text = ANY(display_scales) AND priority = False AND sources.scale != '%(target)s'::text" % {"target": target},
-         "sources.scale = '%(below)s'::text AND priority = True" % {"below": below},
-         "sources.scale = '%(below)s'::text AND priority = False" % {"below": below},
-         "'%(below)s'::text = ANY(display_scales) AND priority = True AND sources.scale != '%(below)s'::text" % {"below": below},
-         "'%(below)s'::text = ANY(display_scales) AND priority = False AND sources.scale != '%(below)s'::text" % {"below": below}]
+        filter_types = ["sources.scale = '%(target)s'::text AND sources.priority = True"  % {"target": target},
+         "sources.scale = '%(target)s'::text AND sources.priority = False"  % {"target": target},
+         "'%(target)s'::text = ANY(display_scales) AND sources.priority = True AND sources.scale != '%(target)s'::text"  % {"target": target},
+         "'%(target)s'::text = ANY(display_scales) AND sources.priority = False AND sources.scale != '%(target)s'::text" % {"target": target},
+         "sources.scale = '%(below)s'::text AND sources.priority = True" % {"below": below},
+         "sources.scale = '%(below)s'::text AND sources.priority = False" % {"below": below},
+         "'%(below)s'::text = ANY(display_scales) AND sources.priority = True AND sources.scale != '%(below)s'::text" % {"below": below},
+         "'%(below)s'::text = ANY(display_scales) AND sources.priority = False AND sources.scale != '%(below)s'::text" % {"below": below}]
 
 
         for idx, each in enumerate(filter_types):
