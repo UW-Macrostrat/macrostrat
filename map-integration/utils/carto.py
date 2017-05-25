@@ -287,12 +287,12 @@ if __name__ == '__main__':
         # from top to bottom:
         filter_types = ["scale = '%(target)s'::text AND priority = True"  % {"target": target},
          "scale = '%(target)s'::text AND priority = False"  % {"target": target},
-         "'%(target)s'::text = ANY(display_scales) AND priority = True AND scale != '%(target)s'::text"  % {"target": target},
-         "'%(target)s'::text = ANY(display_scales) AND priority = False AND scale != '%(target)s'::text" % {"target": target},
+         "'%(target)s'::text = ANY(display_scales) AND priority = True AND sources.scale != '%(target)s'::text"  % {"target": target},
+         "'%(target)s'::text = ANY(display_scales) AND priority = False AND sources.scale != '%(target)s'::text" % {"target": target},
          "scale = '%(below)s'::text AND priority = True" % {"below": below},
          "scale = '%(below)s'::text AND priority = False" % {"below": below},
-         "'%(below)s'::text = ANY(display_scales) AND priority = True AND scale != '%(below)s'::text" % {"below": below},
-         "'%(below)s'::text = ANY(display_scales) AND priority = False AND scale != '%(below)s'::text" % {"below": below}]
+         "'%(below)s'::text = ANY(display_scales) AND priority = True AND sources.scale != '%(below)s'::text" % {"below": below},
+         "'%(below)s'::text = ANY(display_scales) AND priority = False AND sources.scale != '%(below)s'::text" % {"below": below}]
 
 
         for idx, each in enumerate(filter_types):
