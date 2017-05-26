@@ -2,6 +2,19 @@ var api = require("./api"),
     async = require("async"),
     larkin = require("./larkin");
 
+var parentOrder = {
+  "bed": ["mbr", "fm", "gp", "sgp"],
+  "mbr": ["fm", "gp", "sgp"],
+  "fm": ["gp", "sgp"],
+  "gp": ["sgp"],
+  "sgp": []
+}
+var abbrevs = {
+  "mbr": "Member",
+  "fm": "Formation",
+  "gp": "Group",
+  "sgp": "Supergroup"
+}
 // To whom it may concern: sorry this is so hairy. Magic ain't cheap.
 var sql = {
   lithologies: `
@@ -23,13 +36,14 @@ var sql = {
     LIMIT 10`,
 
   strat_names: `
-    SELECT DISTINCT ON (strat_name_long) strat_name_id, strat_name, strat_name_long, bed, mbr, fm, gp, sgp, b_age, t_age, b_period, t_period FROM (
-      SELECT strat_name_id, strat_name, strat_name_long, bed, mbr, fm, gp, sgp, b_age, t_age, b_period, t_period FROM (
-        SELECT DISTINCT ON (strat_name_id) strat_name_id, strat_name, strat_name_long, bed, mbr, fm, gp, sgp, b_age, t_age, b_period, t_period, geom, distance FROM (
+    SELECT DISTINCT ON (strat_name_long) strat_name_id, strat_name, strat_name_long, rank, bed, mbr, fm, gp, sgp, b_age, t_age, b_period, t_period FROM (
+      SELECT strat_name_id, strat_name, strat_name_long, rank, bed, mbr, fm, gp, sgp, b_age, t_age, b_period, t_period FROM (
+        SELECT DISTINCT ON (strat_name_id) strat_name_id, strat_name, strat_name_long, rank, bed, mbr, fm, gp, sgp, b_age, t_age, b_period, t_period, geom, distance FROM (
           SELECT
             msn.strat_name_id,
             lookup_strat_names.strat_name,
             lookup_strat_names.rank_name AS strat_name_long,
+            lookup_strat_names.rank,
             bed_name AS bed,
             mbr_name AS mbr,
             fm_name AS fm,
@@ -180,7 +194,33 @@ module.exports = function(req, res, next) {
             if (error) {
               callback(error);
             } else {
-              callback(null, data.rows);
+              var names = data.rows.map( d => {
+                var rank = d.rank.toLowerCase()
+                if (rank === 'subgp') {
+                  return null
+                }
+                var parent = ''
+                for (var i = 0; i < parentOrder[rank].length; i++) {
+                  if (d[parentOrder[rank][i]]) {
+                    parent = d[parentOrder[rank][i]] + " " + abbrevs[parentOrder[rank][i]]
+                    continue
+                  }
+                }
+
+                return {
+                  strat_name_long: d.strat_name_long,
+                  strat_name_id: d.strat_name_id,
+                  strat_name: d.strat_name,
+                  b_age: d.b_age,
+                  b_period: d.b_period,
+                  t_age: d.t_age,
+                  t_period: d.t_period,
+                  parent: parent
+                }
+              })
+
+
+              callback(null, names)
             }
           });
         },
