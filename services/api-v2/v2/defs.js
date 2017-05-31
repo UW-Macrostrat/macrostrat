@@ -60,6 +60,8 @@
       "fields": [
         "col_id",
         "col_name",
+        "lat",
+        "lng",
         "col_group",
         "col_group_id",
         "group_col_id",
@@ -557,6 +559,9 @@
         "col_id",
         "col_group_id",
         "col_name",
+        "lat",
+        "lng",
+        "col_area",
         "project_id",
         "ref_id",
         "status"
