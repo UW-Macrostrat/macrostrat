@@ -1,5 +1,6 @@
 var api = require("../api")
 var larkin = require("../larkin")
+var dbgeo = require('dbgeo')
 
 module.exports = function(req, res, next, cb) {
   if (Object.keys(req.query).length < 1) {
@@ -11,9 +12,7 @@ module.exports = function(req, res, next, cb) {
       cols.id AS col_id,
       col_group_id,
       col_name,
-      lat,
-      lng,
-      col_area,
+      ${req.query.format && api.acceptedFormats.geo[req.query.format] ? 'lng, lat,' : ''}
       GROUP_CONCAT(DISTINCT ref_id SEPARATOR '|') AS ref_id,
       status_code AS status,
       count(distinct units_sections.unit_id) AS t_units,
@@ -69,8 +68,29 @@ module.exports = function(req, res, next, cb) {
       d.ref_id = larkin.jsonifyPipes(d.ref_id, "integers");
     })
 
-    if (cb) {
-      cb(null, result)
+    // if a geographic format is requested
+    if (req.query.format && api.acceptedFormats.geo[req.query.format]) {
+      dbgeo.parse(result, {
+        'geometryType': 'll',
+        'geometryColumn': ['lng', 'lat'],
+        'outputFormat': larkin.getOutputFormat(req.query.format),
+        'precision': 6
+      }, (error, geoResult) => {
+        if (error) {
+          if (cb) {
+            return cb(error)
+          }
+          return larkin.error(req, res, next, 'Internal error', 500)
+        }
+
+        larkin.sendData(req, res, next, {
+          format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
+          bare: (api.acceptedFormats.bare[req.query.format]) ? true : false,
+          refs: 'ref_id'
+        }, {
+          data: geoResult
+        })
+      })
     } else {
       larkin.sendData(req, res, next, {
         format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
@@ -80,5 +100,6 @@ module.exports = function(req, res, next, cb) {
         data: result
       })
     }
+
   })
 }
