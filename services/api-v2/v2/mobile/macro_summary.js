@@ -346,6 +346,17 @@ module.exports = function(req, res, next) {
             unit_summary['int_color'] = (best.length) ? best[0].color : ((nextBest.length) ? nextBest[0].color : '')
             // unit_summary['c_int_name'] = result[0].name;
             // unit_summary['int_color'] = result[0].color;
+          } else {
+            require('../definitions/intervals')({
+              query: {
+                name: unit_summary.b_int_name
+              }
+            }, null, null, function(error, result) {
+              if (error) return callback(error);
+              if (!result || !result.length) return callback(null, unit_summary)
+
+              unit_summary['int_color'] = result[0].color
+            })
           }
           callback(null, unit_summary);
         });
