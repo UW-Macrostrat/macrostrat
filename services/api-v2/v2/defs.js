@@ -1453,6 +1453,7 @@
         "name": "text, the place name",
         "name_like": "text, the place name (fuzzy match)",
         "placetype": "text, the type of the place (continent, country, region, county, or locality)",
+        "childtype": "text, if provided, returns the specified childtype of the provided wof_id or name",
         "format": "Desired output format"
       },
       "output_formats": [

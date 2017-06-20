@@ -53,22 +53,22 @@ module.exports = (req, res, next, callback) => {
         FROM places
         WHERE
           CASE
-            WHEN (SELECT placetype FROM places WHERE name = $1 AND placetype = $2) = 'continent'
-              THEN ( continent = ( SELECT wof_id FROM places WHERE name = $1 AND placetype = $2 ) )
-            WHEN (SELECT placetype FROM places WHERE name = $1 AND placetype = $2) = 'country'
-              THEN ( country = ( SELECT wof_id FROM places WHERE name = $1 AND placetype = $2 ) )
-            WHEN (SELECT placetype FROM places WHERE name = $1 AND placetype = $2) = 'region'
-              THEN ( region = ( SELECT wof_id FROM places WHERE name = $1 AND placetype = $2 ) )
-            WHEN (SELECT placetype FROM places WHERE name = $1 AND placetype = $2) = 'county'
-              THEN ( county = ( SELECT wof_id FROM places WHERE name = $1 AND placetype = $2 ) )
-            WHEN (SELECT placetype FROM places WHERE name = $1 AND placetype = $2) = 'locality'
-              THEN ( locality = ( SELECT wof_id FROM places WHERE name = $1 AND placetype = $2 ) )
-            ELSE ( wof_id = -9999 )
+            WHEN $2 = 'continent' AND $3 = 'country'
+              THEN ( continent = ANY( SELECT wof_id  FROM places WHERE name = ANY($1) AND placetype = $2) )
+            WHEN $2 = 'country' AND $3 = 'region'
+              THEN ( country = ANY( SELECT wof_id  FROM places WHERE name = ANY($1) AND placetype = $2) )
+            WHEN $2 = 'region' AND $3 = 'county'
+              THEN ( region = ANY( SELECT wof_id  FROM places WHERE name = ANY($1) AND placetype = $2) )
+            WHEN $2 = 'county' AND $3 = 'locality'
+              THEN ( county = ANY( SELECT wof_id  FROM places WHERE name = ANY($1) AND placetype = $2) )
+            WHEN $2 = 'locality' AND $3 = 'locality'
+              THEN ( locality = ANY( SELECT wof_id  FROM places WHERE name = ANY($1) AND placetype = $2) )
+            ELSE ( wof_id = -9999)
           END
-
+          
           AND placetype = $3
       )`)
-      params.push(req.query.name, req.query.placetype, req.query.childtype)
+      params.push(larkin.parseMultipleStrings(req.query.name), req.query.placetype, req.query.childtype)
     } else {
       where.push(`a.name = ANY(\$${where.length + 1})`)
       params.push(larkin.parseMultipleStrings(req.query.name))
