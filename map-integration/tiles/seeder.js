@@ -160,7 +160,14 @@ function deleteTile(tile, callback) {
   fs.stat(credentials.cache_path + '/' + tileSet + '/' + tile[2] + '/' + tile[0] + '/' + tile[1] + '/tile.png', function(error, file) {
     // Doesn't exist
     if (error) {
-      return callback(null);
+      try {
+        var redisKey = `${tile[2]},${tile[0]},${tile[1]},${tileSet},tile.png`;
+        client.del(redisKey, function(error) {
+          return callback(null);
+        });
+      } catch(er) {
+        return callback(null);
+      }
     }
     // Exists, delete it
     else {
