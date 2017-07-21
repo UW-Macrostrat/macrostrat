@@ -77,7 +77,6 @@ module.exports = function(req, res, next, cb) {
     } else {
       if (req.query.format && api.acceptedFormats.geo[req.query.format]) {
         dbgeo.parse(result.rows, {
-          "geometryType": "geojson",
           "outputFormat": larkin.getOutputFormat(req.query.format),
           "precision": 5
         }, function(error, geojson) {
