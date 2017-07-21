@@ -22,7 +22,7 @@ module.exports = function(req, res, next, cb) {
     COALESCE(scale, '') scale,
     features,
     area
-    ${api.acceptedFormats.geo[req.query.format] ? ', ST_AsGeoJSON(ST_Envelope(rgeom)) AS geom' : ''}
+    ${api.acceptedFormats.geo[req.query.format] ? ', web_geom AS geom' : ''}
   FROM maps.sources
   `
 
