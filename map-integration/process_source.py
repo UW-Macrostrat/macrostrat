@@ -56,6 +56,11 @@ if __name__ == '__main__':
     call(['python utils/rgeom.py %s' % (arguments.source_id, ) ], shell=True)
     print '| | | | | Done building rgeom | | | | |'
 
+    # Build web_geom
+    print '| | | | | Building web_geom...'
+    call(['python utils/web_geom.py %s' % (arguments.source_id, ) ], shell=True)
+    print '| | | | | Done building web_geom | | | | |'
+
     # Match
     print '| | | | | Matching stratigraphic names...'
     call(['python matching/strat_name_match.py --source_id %s' % (arguments.source_id, )], shell=True)
