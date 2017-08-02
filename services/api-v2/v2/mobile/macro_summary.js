@@ -65,7 +65,7 @@ function groupStratNames(names, rank, callback) {
 function summarizeBurwell(lat, lng, callback) {
   require('../geologic_units_burwell')({query: {lat: lat, lng: lng}}, null, null, function(error, result) {
     if (error) return callback(error);
-
+    console.log(result)
     if (result.length) {
       var bestAge = _.min(result, function(d) { return d.b_int_age - d.t_int_age; });
       var parsed = {
@@ -372,12 +372,36 @@ module.exports = function(req, res, next) {
         }, null, null, function(error, result) {
           if (error) return callback(error);
 
-          if (result.length) {
+          if (result) {
             unit_summary['lith_color'] = result[0].color;
           }
 
           callback(null, unit_summary);
         });
+      },
+
+      function(unit_summary, callback) {
+        larkin.queryPg('burwell', `
+          SELECT
+              boundary_id,
+              COALESCE(name, '') AS name,
+              COALESCE(boundary_group, '') AS boundary_group,
+              COALESCE(boundary_type, '') AS boundary_type,
+              COALESCE(descrip, '') AS descrip,
+              COALESCE(wiki_link, '') AS wiki_link
+          FROM geologic_boundaries.boundaries
+          WHERE ST_Intersects(geom, $1 )
+              AND boundary_class = 'physiographic'
+          ORDER BY ST_Area(geom) ASC
+          LIMIT 1
+        `, [`SRID=4326;POINT(${req.query.lng} ${req.query.lat})`], function(error, result) {
+          if (result && result.rows && result.rows.length) {
+            unit_summary['province'] = result.rows[0]
+          } else {
+            unit_summary['province'] = {}
+          }
+          callback(null, unit_summary)
+        })
       }
 
     ], function(error, result) {
