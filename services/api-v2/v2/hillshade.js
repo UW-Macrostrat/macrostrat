@@ -94,7 +94,24 @@ module.exports = (req, res, next) => {
         return larkin.error(req, res, next, 'Internal error', 500)
       }
       hillshadeCache.set([lng, lat], aspect, Math.random().toString(36).substring(15), jpeg)
+
       larkin.sendImage(req, res, next, jpeg)
+
+      // Go ahead and cache the big version
+      if (aspect === 'small') {
+        extent = big([lng, lat])
+        hillshade(extent, {
+          zoom: 10,
+          format: 'jpeg'
+        }, (error, jpeg) => {
+          if (error) {
+            console.log(error)
+            return
+          }
+          hillshadeCache.set([lng, lat], 'big', Math.random().toString(36).substring(15), jpeg)
+        })
+      }
+
     })
   })
 }
