@@ -4,6 +4,7 @@ const larkin = require('./larkin')
 const buffer = require('@turf/buffer')
 const envelope = require('@turf/envelope')
 const hillshade = require('hillshadejs')
+const hillshadeCache = require('./hillshadeCache')
 
 function big(coord) {
   let point = {
@@ -60,6 +61,7 @@ function small(coord) {
 const VALID_ASPECTS = ['small', 'big']
 
 module.exports = (req, res, next) => {
+
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
@@ -75,16 +77,24 @@ module.exports = (req, res, next) => {
   if (VALID_ASPECTS.indexOf(aspect) === -1) {
     aspect = 'small'
   }
-
-  let extent = (aspect === 'small') ? small([lng, lat]) : big([lng, lat])
-
-  hillshade(extent, {
-    zoom: (aspect === 'small') ? 12 : 10,
-    format: 'jpeg'
-  }, (error, jpeg) => {
-    if (error) {
-      return larkin.error(req, res, next, 'Internal error', 500)
+  // Check the cache
+  hillshadeCache.get([lng, lat], aspect, (error, buffer) => {
+    if (error) { console.log(error)}
+    if (buffer) {
+      return larkin.sendImage(req, res, next, buffer)
     }
-    larkin.sendImage(req, res, next, jpeg)
+
+    let extent = (aspect === 'small') ? small([lng, lat]) : big([lng, lat])
+
+    hillshade(extent, {
+      zoom: (aspect === 'small') ? 12 : 10,
+      format: 'jpeg'
+    }, (error, jpeg) => {
+      if (error) {
+        return larkin.error(req, res, next, 'Internal error', 500)
+      }
+      hillshadeCache.set([lng, lat], aspect, Math.random().toString(36).substring(15), jpeg)
+      larkin.sendImage(req, res, next, jpeg)
+    })
   })
 }
