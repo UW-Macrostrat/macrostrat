@@ -390,7 +390,7 @@ module.exports = function(req, res, next) {
                   COALESCE(name, '') AS name,
                   COALESCE(boundary_group, '') AS boundary_group,
                   COALESCE(boundary_type, '') AS boundary_type,
-                  COALESCE(boundary_class, '') AS boundary_class,
+                  COALESCE(initcap(boundary_class), '') AS boundary_class,
                   COALESCE(descrip, '') AS descrip,
                   COALESCE(wiki_link, '') AS wiki_link,
                   row_number() OVER(PARTITION BY boundary_class ORDER BY ST_Area(geom) ASC) as rn
