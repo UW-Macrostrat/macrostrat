@@ -382,23 +382,27 @@ module.exports = function(req, res, next) {
 
       function(unit_summary, callback) {
         larkin.queryPg('burwell', `
-          SELECT
-              boundary_id,
-              COALESCE(name, '') AS name,
-              COALESCE(boundary_group, '') AS boundary_group,
-              COALESCE(boundary_type, '') AS boundary_type,
-              COALESCE(descrip, '') AS descrip,
-              COALESCE(wiki_link, '') AS wiki_link
-          FROM geologic_boundaries.boundaries
-          WHERE ST_Intersects(geom, $1 )
-              AND boundary_class = 'physiographic'
-          ORDER BY ST_Area(geom) ASC
-          LIMIT 1
+          SELECT boundary_id, name, boundary_group, boundary_type, boundary_class, descrip, wiki_link
+          FROM
+              (
+              SELECT
+                  boundary_id,
+                  COALESCE(name, '') AS name,
+                  COALESCE(boundary_group, '') AS boundary_group,
+                  COALESCE(boundary_type, '') AS boundary_type,
+                  COALESCE(boundary_class, '') AS boundary_class,
+                  COALESCE(descrip, '') AS descrip,
+                  COALESCE(wiki_link, '') AS wiki_link,
+                  row_number() OVER(PARTITION BY boundary_class ORDER BY ST_Area(geom) ASC) as rn
+              FROM geologic_boundaries.boundaries
+              WHERE ST_Intersects(geom, $1)
+              ) sub
+          WHERE rn = 1
         `, [`SRID=4326;POINT(${req.query.lng} ${req.query.lat})`], function(error, result) {
           if (result && result.rows && result.rows.length) {
-            unit_summary['province'] = result.rows[0]
+            unit_summary['regions'] = result.rows
           } else {
-            unit_summary['province'] = {}
+            unit_summary['regions'] = []
           }
           callback(null, unit_summary)
         })
