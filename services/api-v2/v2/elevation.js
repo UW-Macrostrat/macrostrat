@@ -3,6 +3,7 @@ const api = require('./api')
 const larkin = require('./larkin')
 const https = require('https')
 const polyline = require('@mapbox/polyline')
+const credentials = require('./credentials')
 
 module.exports = (req, res, next, cb) => {
   if (Object.keys(req.query).length < 1) {
@@ -12,7 +13,7 @@ module.exports = (req, res, next, cb) => {
     let lat = req.query.lat || 43.07
     let lng = larkin.normalizeLng(req.query.lng) || -89.4
 
-    https.get(`https://elevation.mapzen.com/height?json={"range":false,"shape":[{"lat":${lat},"lon":${lng}}]}&api_key=mapzen-kcRxhTk`, (response) => {
+    https.get(`https://elevation.mapzen.com/height?json={"range":false,"shape":[{"lat":${lat},"lon":${lng}}]}&api_key=${credentials.mapzen_key}`, (response) => {
       let body = ''
 
       response.on('data', (chunk) => {
@@ -68,7 +69,7 @@ module.exports = (req, res, next, cb) => {
 
       let encodedPolyline = polyline.encode(pts.map(pt => { return [pt.lat, pt.lng] }), 6)
 
-      https.get(`https://elevation.mapzen.com/height?json={"range":true,"encoded_polyline":"${encodedPolyline}"}&api_key=mapzen-kcRxhTk`, (response) => {
+      https.get(`https://elevation.mapzen.com/height?json={"range":true,"encoded_polyline":"${encodedPolyline}"}&api_key=${credentials.mapzen_key}`, (response) => {
         let body = ''
 
         response.on('data', (chunk) => {
