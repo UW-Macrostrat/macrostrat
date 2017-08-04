@@ -88,10 +88,11 @@ var mysql = require("mysql"),
     }.bind(this));
   };
 
-  larkin.sendImage = function(req, res, next, data) {
+  larkin.sendImage = function(req, res, next, data, isCached) {
   //  console.log(data)
     res.set('Content-Type', 'image/jpeg')
     res.set('Content-Length', Buffer.byteLength(data, 'utf8'))
+    res.set('Redis-cache-hit', isCached)
     res.set('Accept-Ranges', 'bytes')
     res.end(data)
   }

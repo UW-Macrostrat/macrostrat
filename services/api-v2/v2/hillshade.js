@@ -81,7 +81,7 @@ module.exports = (req, res, next) => {
   hillshadeCache.get([lng, lat], aspect, (error, buffer) => {
     if (error) { console.log(error)}
     if (buffer) {
-      return larkin.sendImage(req, res, next, buffer)
+      return larkin.sendImage(req, res, next, buffer, true)
     }
 
     let extent = (aspect === 'small') ? small([lng, lat]) : big([lng, lat])
@@ -95,7 +95,7 @@ module.exports = (req, res, next) => {
       }
       hillshadeCache.set([lng, lat], aspect, Math.random().toString(36).substring(15), jpeg)
 
-      larkin.sendImage(req, res, next, jpeg)
+      larkin.sendImage(req, res, next, jpeg, false)
 
       // Go ahead and cache the big version
       if (aspect === 'small') {
