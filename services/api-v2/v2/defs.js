@@ -1477,6 +1477,25 @@
     }
   },
 
+    "/hillshade": {
+      "description": "Get a hillshade for a point at z12",
+      "visible": false,
+      "options": {
+        "parameters": {
+          "lat": "a valid latitude",
+          "lng": "a valid longitude"
+        },
+        "output_formats": [
+          "jpeg"
+        ],
+        "examples": [
+        ],
+        "fields": [
+
+        ]
+      }
+    },
+
 
   "/mobile": {
     "description": "Simplified data delivery, ideal for mobile applications",

@@ -88,6 +88,14 @@ var mysql = require("mysql"),
     }.bind(this));
   };
 
+  larkin.sendImage = function(req, res, next, data) {
+  //  console.log(data)
+    res.set('Content-Type', 'image/jpeg')
+    res.set('Content-Length', Buffer.byteLength(data, 'utf8'))
+    res.set('Accept-Ranges', 'bytes')
+    res.end(data)
+  }
+
 
   larkin.sendData = function(req, res, next, options, outgoing) {
     if (!options.format) {
@@ -96,7 +104,7 @@ var mysql = require("mysql"),
     if (!options.bare) {
       options.bare = (api.acceptedFormats.bare[req.query.format]) ? true : false
     }
-    
+
     if (options && options.format === "csv") {
       return res.csv(outgoing.data, true);
     }

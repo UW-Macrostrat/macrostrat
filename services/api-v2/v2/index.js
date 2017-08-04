@@ -72,6 +72,9 @@ api.route("/places")
 api.route("/measurements")
   .get(require("./measurements"));
 
+api.route("/hillshade")
+  .get(require("./hillshade"));
+
 api.route("*")
   .get(require("./catchall"));
 
