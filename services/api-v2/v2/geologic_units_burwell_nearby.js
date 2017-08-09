@@ -22,7 +22,7 @@ var sql = {
       SELECT DISTINCT ON (lith_id) lith_id, distance
       FROM (
         SELECT lith_id, ST_Distance(geom, st_setsrid(st_makepoint($1, $2),4326)) AS distance
-        FROM maps.medium m
+        FROM maps.:scale m
         JOIN maps.map_liths ON m.map_id = map_liths.map_id
         ORDER BY geom <-> st_setsrid(st_makepoint($1, $2),4326)
         LIMIT 100
@@ -94,28 +94,35 @@ var sql = {
   LIMIT 5;`,
 
   map_units: `
-  SELECT map_id, name AS unit_name, distance, int_name
+  SELECT map_id, name AS unit_name, distance, int_name, lith, descrip, comments
   FROM (
-  SELECT DISTINCT ON (name) map_id, name, int_name, distance
-  FROM (
-    SELECT mm.map_id, name, ST_Distance(geom::geography, st_setsrid(st_makepoint($1, $2), 4326)::geography)::int AS distance,
-    (SELECT COALESCE(interval_name, '')
-       FROM macrostrat.intervals
-       JOIN macrostrat.timescales_intervals ON intervals.id = timescales_intervals.interval_id
-       JOIN macrostrat.timescales ON timescales_intervals.timescale_id = timescales.id
-       WHERE age_top <= mm.best_age_top::float AND age_bottom >= mm.best_age_bottom::float
-       AND timescales.id IN (11,14) AND name NOT ILIKE '%water%'
-       ORDER BY age_bottom - age_top
-       LIMIT 1
-    ) AS int_name
-    FROM maps.:scale m
-    JOIN lookup_:scale mm on m.map_id = mm.map_id
-    ORDER BY geom <-> st_setsrid(st_makepoint($1, $2),4326)
-    LIMIT 200
-  ) a
-  ORDER BY name, distance
-  ) b ORDER BY distance
-  LIMIT 10
+      SELECT DISTINCT ON (name) map_id, name, int_name, distance, lith, descrip, comments
+      FROM (
+          SELECT
+            mm.map_id,
+            COALESCE(name, CONCAT('Undifferentiated ', age)) AS name,
+            ST_Distance(geom::geography, st_setsrid(st_makepoint($1, $2), 4326)::geography)::int AS distance,
+            COALESCE(lith, '') AS lith,
+            COALESCE(descrip, '') AS descrip,
+            COALESCE(comments, '') AS comments,
+              (SELECT COALESCE(interval_name, '')
+              FROM macrostrat.intervals
+              JOIN macrostrat.timescales_intervals ON intervals.id = timescales_intervals.interval_id
+              JOIN macrostrat.timescales ON timescales_intervals.timescale_id = timescales.id
+              WHERE age_top <= mm.best_age_top AND age_bottom >= mm.best_age_bottom
+              AND timescales.id IN (11,14)
+              ORDER BY age_bottom - age_top
+              LIMIT 1
+          ) AS int_name
+          FROM maps.:scale m
+          JOIN lookup_:scale mm on m.map_id = mm.map_id
+          ORDER BY geom <-> st_setsrid(st_makepoint($1, $2),4326)
+          LIMIT 200
+      ) a
+      ORDER BY name, distance
+  ) b
+  ORDER BY distance
+  LIMIT 10;
   `,
 
   // places: `
@@ -146,6 +153,11 @@ module.exports = function(req, res, next) {
   req.query.lng = larkin.normalizeLng(parseFloat(req.query.lng).toFixed(4))
   req.query.lat = parseFloat(req.query.lat).toFixed(4)
 
+  let scaleMap = {
+    'large': ['large'],
+    'medium': ['large', 'medium'],
+    'small': ['large', 'medium', 'small']
+  }
   async.waterfall([
     function(cb) {
       larkin.queryPg("burwell", `
