@@ -94,17 +94,14 @@ var sql = {
   LIMIT 5;`,
 
   map_units: `
-  SELECT map_id, name AS unit_name, distance, int_name, lith, descrip, comments
+  SELECT map_id, name AS unit_name, distance, int_name
   FROM (
-      SELECT DISTINCT ON (name) map_id, name, int_name, distance, lith, descrip, comments
+      SELECT DISTINCT ON (name) map_id, name, int_name, distance
       FROM (
           SELECT
             mm.map_id,
             COALESCE(name, CONCAT('Undifferentiated ', age)) AS name,
             ST_Distance(geom::geography, st_setsrid(st_makepoint($1, $2), 4326)::geography)::int AS distance,
-            COALESCE(lith, '') AS lith,
-            COALESCE(descrip, '') AS descrip,
-            COALESCE(comments, '') AS comments,
               (SELECT COALESCE(interval_name, '')
               FROM macrostrat.intervals
               JOIN macrostrat.timescales_intervals ON intervals.id = timescales_intervals.interval_id
