@@ -150,11 +150,6 @@ module.exports = function(req, res, next) {
   req.query.lng = larkin.normalizeLng(parseFloat(req.query.lng).toFixed(4))
   req.query.lat = parseFloat(req.query.lat).toFixed(4)
 
-  let scaleMap = {
-    'large': ['large'],
-    'medium': ['large', 'medium'],
-    'small': ['large', 'medium', 'small']
-  }
   async.waterfall([
     function(cb) {
       larkin.queryPg("burwell", `
