@@ -382,11 +382,15 @@ module.exports = function(req, res, next) {
 
       function(unit_summary, callback) {
         larkin.queryPg('burwell', `
-          SELECT boundary_id, name, boundary_group, boundary_type, boundary_class, descrip, wiki_link
+          SELECT sub.boundary_id, sub.name, sub.boundary_group, sub.boundary_type, sub.boundary_class, sub.descrip, sub.wiki_link,
+          row_to_json(
+            (SELECT x FROM (SELECT sources.source_id, sources.name, sources.url, sources.ref_title, sources.authors, sources.ref_year, sources.ref_source, COALESCE(sources.isbn_doi, '') AS isbn_doi) x)
+         ) AS ref
           FROM
               (
               SELECT
                   boundary_id,
+                  source_id,
                   COALESCE(name, '') AS name,
                   COALESCE(boundary_group, '') AS boundary_group,
                   COALESCE(boundary_type, '') AS boundary_type,
@@ -397,6 +401,7 @@ module.exports = function(req, res, next) {
               FROM geologic_boundaries.boundaries
               WHERE ST_Intersects(geom, $1)
               ) sub
+          JOIN geologic_boundaries.sources ON sub.source_id = sources.source_id
           WHERE rn = 1
         `, [`SRID=4326;POINT(${req.query.lng} ${req.query.lat})`], function(error, result) {
           if (result && result.rows && result.rows.length) {
