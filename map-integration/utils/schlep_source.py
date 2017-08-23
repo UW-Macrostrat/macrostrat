@@ -41,7 +41,7 @@ if __name__ == '__main__':
     connection = psycopg2.connect(dbname=credentials["pg_db"], user=credentials["pg_user"], host=credentials["pg_host"], port=credentials["pg_port"])
     cursor = connection.cursor()
 
-    cursor.execute("SELECT scale, primary_table, primary_lines_table FROM maps.sources WHERE source_id = %(source_id)s", { "source_id": arguments.source_id })
+    cursor.execute("SELECT scale, primary_table, primary_line_table FROM maps.sources WHERE source_id = %(source_id)s", { "source_id": arguments.source_id })
     scale, primary_table, primary_lines_table = cursor.fetchone()
 
     if not scale:
