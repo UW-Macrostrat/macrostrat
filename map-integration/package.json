@@ -4,6 +4,8 @@
   "description": "Processing scripts for burwell",
   "main": "index.js",
   "dependencies": {
+    "async": "^2.5.0",
+    "google-translate-api": "^2.3.0",
     "inquirer": "^1.1.2",
     "mkdirp": "^0.5.1",
     "pg": "^6.0.2",
