@@ -26,8 +26,6 @@ arguments = parser.parse_args()
     b. maps.map_units
     c. maps.map_liths
     d. maps.map_strat_names
-    e. carto.<scale>
-    f. carto.lines_<scale>
     g. lookup_<scale>
     h. maps.<scale>
 '''
@@ -60,14 +58,8 @@ if __name__ == '__main__':
     # maps.map_strat_names
     call(['psql -U %s -p %s -h %s burwell -c "COPY (SELECT * FROM maps.map_strat_names WHERE map_id IN (SELECT map_id FROM maps.%s WHERE source_id = %s)) TO stdout" | psql -U %s -p %s -h %s burwell -c "COPY maps.map_strat_names FROM stdin"' % (credentials['pg_user'], credentials['pg_port'], credentials['pg_host'], scale, arguments.source_id, credentials['pg_user_remote'], credentials['pg_port_remote'], credentials['pg_host_remote'])], shell=True)
 
-    # carto.<scale>
-    call(['psql -U %s -p %s -h %s burwell -c "COPY (SELECT * FROM carto.%s WHERE source_id = %s) TO stdout" | psql -U %s -p %s -h %s burwell -c "COPY carto.%s FROM stdin"' % (credentials['pg_user'], credentials['pg_port'], credentials['pg_host'], scale, arguments.source_id, credentials['pg_user_remote'], credentials['pg_port_remote'], credentials['pg_host_remote'], scale)], shell=True)
-
-    # carto.lines_<scale>
-    call(['psql -U %s -p %s -h %s burwell -c "COPY (SELECT * FROM carto.lines_%s WHERE source_id = %s) TO stdout" | psql -U %s -p %s -h %s burwell -c "COPY carto.lines_%s FROM stdin"' % (credentials['pg_user'], credentials['pg_port'], credentials['pg_host'], scale, arguments.source_id, credentials['pg_user_remote'], credentials['pg_port_remote'], credentials['pg_host_remote'], scale)], shell=True)
-
     # lookup_<scale>
-    call(['psql -U %s -p %s -h %s burwell -c "COPY (SELECT * FROM public.lookup_%s WHERE source_id = %s) TO stdout" | psql -U %s -p %s -h %s burwell -c "COPY public.lookup_%s FROM stdin"' % (credentials['pg_user'], credentials['pg_port'], credentials['pg_host'], scale, arguments.source_id, credentials['pg_user_remote'], credentials['pg_port_remote'], credentials['pg_host_remote'], scale)], shell=True)
+    call(['psql -U %s -p %s -h %s burwell -c "COPY (SELECT l.* FROM public.lookup_%s l JOIN maps.%s m ON m.map_id = l.map_id  WHERE source_id = %s) TO stdout" | psql -U %s -p %s -h %s burwell -c "COPY public.lookup_%s FROM stdin"' % (credentials['pg_user'], credentials['pg_port'], credentials['pg_host'], scale, scale, arguments.source_id, credentials['pg_user_remote'], credentials['pg_port_remote'], credentials['pg_host_remote'], scale)], shell=True)
 
     # maps.<scale>
     call(['psql -U %s -p %s -h %s burwell -c "COPY (SELECT * FROM maps.%s WHERE source_id = %s) TO stdout" | psql -U %s -p %s -h %s burwell -c "COPY maps.%s FROM stdin"' % (credentials['pg_user'], credentials['pg_port'], credentials['pg_host'], scale, arguments.source_id, credentials['pg_user_remote'], credentials['pg_port_remote'], credentials['pg_host_remote'], scale)], shell=True)
