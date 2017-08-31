@@ -1,6 +1,5 @@
 const vtile = require('tilestrata-vtile')
-
-const config = require('../tiles/config')
+const config = require('./config')
 
 module.exports = (options) => {
   // Create a hash for looking up the proper scale for each zoom level
@@ -21,7 +20,7 @@ module.exports = (options) => {
       config.scales.forEach(scale => {
         // Create the provider
         providers[scale] = new vtile({
-          xml: `../tiles/compiled_styles/burwell_vector_${scale}.xml`,
+          xml: `./mapnik/burwell_vector_${scale}.xml`,
         })
         // Initialize it
         providers[scale].init(server, (error) => {

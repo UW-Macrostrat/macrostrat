@@ -1,5 +1,3 @@
-'use strict'
-
 const tilestrata = require('tilestrata')
 const mapnik = require('tilestrata-mapnik')
 const vtile = require('tilestrata-vtile')
@@ -19,12 +17,12 @@ module.exports = tilestrata.middleware({
         .use(cartoProvider())
         .use(redisCache({
             dir: `${__dirname}/tilecache/carto/vector`,
-            defaultTile: __dirname + "/default@2x.png"
+            defaultTile: `${__dirname}/resources/tile.mvt`
           }))
         .use(etag())
       .route('tile.png')
         .use(vtileraster({
-          xml: `../tiles/compiled_styles/burwell_vector_to_raster.xml`,
+          xml: `./mapnik/burwell_vector_to_raster.xml`,
           tileSize: 512,
           scale: 1
         }, {
@@ -32,7 +30,7 @@ module.exports = tilestrata.middleware({
         }))
         .use(redisCache({
           dir: `${__dirname}/tilecache/carto/raster`,
-          defaultTile: __dirname + "/default@2x.png"
+          defaultTile: `${__dirname}/resources/tile.png`
         }))
         .use(etag())
 
@@ -46,12 +44,12 @@ module.exports = tilestrata.middleware({
         }))
         .use(redisCache({
           dir: `${__dirname}/tilecache/tiny/vector`,
-          defaultTile: __dirname + "/default@2x.png"
+          defaultTile: `${__dirname}/resources/tile.mvt`
         }))
         .use(etag())
       .route('tile.png')
         .use(vtileraster({
-          xml: `../tiles/compiled_styles/burwell_vector_to_raster.xml`,
+          xml: `./mapnik/burwell_vector_to_raster.xml`,
           tileSize: 512,
           scale: 2
         }, {
@@ -59,7 +57,7 @@ module.exports = tilestrata.middleware({
         }))
         .use(redisCache({
           dir: `${__dirname}/tilecache/tiny/raster`,
-          defaultTile: __dirname + "/default@2x.png"
+          defaultTile: `${__dirname}/resources/tile.png`
         }))
         .use(etag())
 
@@ -73,16 +71,20 @@ module.exports = tilestrata.middleware({
         }))
         .use(redisCache({
           dir: `${__dirname}/tilecache/small/vector`,
-          defaultTile: __dirname + "/default@2x.png"
+          defaultTile: `${__dirname}/resources/tile.mvt`
         }))
         .use(etag())
       .route('tile.png')
         .use(vtileraster({
-          xml: `../tiles/compiled_styles/burwell_vector_to_raster.xml`,
+          xml: `./mapnik/burwell_vector_to_raster.xml`,
           tileSize: 512,
           scale: 2
         }, {
           tilesource: ['small', 'tile.mvt']
+        }))
+        .use(redisCache({
+          dir: `${__dirname}/tilecache/small/raster`,
+          defaultTile: `${__dirname}/resources/tile.png`
         }))
         .use(etag())
 
@@ -96,16 +98,20 @@ module.exports = tilestrata.middleware({
         }))
         .use(redisCache({
           dir: `${__dirname}/tilecache/medium/vector`,
-          defaultTile: __dirname + "/default@2x.png"
+          defaultTile: `${__dirname}/resources/tile.mvt`
         }))
         .use(etag())
       .route('tile.png')
         .use(vtileraster({
-          xml: `../tiles/compiled_styles/burwell_vector_to_raster.xml`,
+          xml: `./mapnik/burwell_vector_to_raster.xml`,
           tileSize: 512,
           scale: 2
         }, {
           tilesource: ['medium', 'tile.mvt']
+        }))
+        .use(redisCache({
+          dir: `${__dirname}/tilecache/medium/raster`,
+          defaultTile: `${__dirname}/resources/tile.png`
         }))
         .use(etag())
 
@@ -119,16 +125,20 @@ module.exports = tilestrata.middleware({
         }))
         .use(redisCache({
           dir: `${__dirname}/tilecache/large/vector`,
-          defaultTile: __dirname + "/default@2x.png"
+          defaultTile: `${__dirname}/resources/tile.mvt`
         }))
         .use(etag())
       .route('tile.png')
         .use(vtileraster({
-          xml: `../tiles/compiled_styles/burwell_vector_to_raster.xml`,
+          xml: `./mapnik/burwell_vector_to_raster.xml`,
           tileSize: 512,
           scale: 2
         }, {
           tilesource: ['large', 'tile.mvt']
+        }))
+        .use(redisCache({
+          dir: `${__dirname}/tilecache/large/raster`,
+          defaultTile: `${__dirname}/resources/tile.png`
         }))
         .use(etag())
 
