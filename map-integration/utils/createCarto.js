@@ -33,7 +33,7 @@ const UNDER = {
 const scaleIsIn = {
     tiny: ['tiny'],
     small: ['small', 'medium'],
-    medium: ['medium', 'large'],
+    medium: ['small', 'medium', 'large'],
     large: ['large']
 }
 
@@ -159,11 +159,11 @@ function processScale(the_scale, bedone) {
 function insertScale(scale, callback) {
   // Find the unique priorities of a given scale
   queryPg(`
-    SELECT DISTINCT sa.new_priority
-    FROM maps.${scale} x
-    JOIN maps.sources sa ON x.source_id = sa.source_id
+    SELECT DISTINCT new_priority
+    FROM maps.sources
+    WHERE $1::text = ANY(display_scales)
     ORDER BY new_priority ASC
-  `, [ ], (error, result) => {
+  `, [ scale ], (error, result) => {
     if (error) return callback(error)
 
     async.eachLimit(result.rows, 1, (row, done) => {

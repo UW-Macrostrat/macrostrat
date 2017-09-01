@@ -200,9 +200,8 @@ function insertScale(scale, callback) {
   // Find the unique priorities of a given scale
   queryPg(`
     SELECT DISTINCT sa.new_priority
-    FROM maps.${scale} x
-    JOIN maps.sources sa ON x.source_id = sa.source_id
-    JOIN maps.sources sb ON ST_Intersects(geom, sb.rgeom)
+    FROM maps.sources sa
+    JOIN maps.sources sb ON ST_Intersects(sa.rgeom, sb.rgeom)
     WHERE sb.source_id = $1
     ORDER BY new_priority ASC
   `, [ SOURCE ], (error, result) => {
