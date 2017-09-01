@@ -1,3 +1,4 @@
+'use strict'
 /*
 @input
   - source_id
@@ -30,9 +31,9 @@ const UNDER = {
   'large': 'medium'
 }
 const scaleIsIn = {
-    tiny: ['tiny'],
+    tiny: ['tiny', 'small'],
     small: ['small', 'medium'],
-    medium: ['medium', 'large'],
+    medium: ['small', 'medium', 'large'],
     large: ['large']
 }
 
@@ -53,7 +54,7 @@ function queryPg(sql, params, callback) {
 const SOURCE = parseInt(process.argv[2])
 console.time('carto')
 queryPg(`
-  SELECT scale
+  SELECT display_scales
   FROM maps.sources
   WHERE source_id = $1
 `, [ SOURCE ], (error, result) => {
@@ -65,8 +66,18 @@ queryPg(`
     console.log('Source not found')
     process.exit(1)
   }
-
-  async.eachLimit(scaleIsIn[result.rows[0].scale], 1, (scale, done) => {
+  let foundScales = {}
+  let allScales = result.rows[0].display_scales.map(d => {
+    return scaleIsIn[d]
+  })
+  let scales = [].concat.apply([], allScales).filter(scale => {
+    if (!foundScales[scale]) {
+      foundScales[scale] = true
+      return scale
+    }
+  })
+  console.log('Scales to refresh', scales)
+  async.eachLimit(scales, 1, (scale, done) => {
     processScale(scale, (error) => {
       if (error) return done(error)
       done()
