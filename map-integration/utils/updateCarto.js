@@ -244,51 +244,76 @@ function insertScale(scale, callback) {
         },
 
         (cb) => {
-          queryPg(`
-            INSERT INTO carto_temp
-            SELECT
-              m.map_id,
-              m.source_id,
-              'tiny'::text AS scale,
-              (ST_Dump(ST_SetSRID(COALESCE(ST_Intersection(m.geom, sb.rgeom), 'POLYGON EMPTY'), 4326))).geom AS geom
-            FROM maps.tiny m
-            JOIN maps.sources sa ON m.source_id = sa.source_id
-            JOIN maps.sources sb ON ST_Intersects(m.geom, sb.rgeom)
-            WHERE sb.source_id = $1 AND sa.new_priority = $2 AND $3::text = ANY(sa.display_scales);
-
-            INSERT INTO carto_temp
-            SELECT
-              m.map_id,
-              m.source_id,
-              'small'::text AS scale,
-              (ST_Dump(ST_SetSRID(COALESCE(ST_Intersection(m.geom, sb.rgeom), 'POLYGON EMPTY'), 4326))).geom AS geom
-            FROM maps.small m
-            JOIN maps.sources sa ON m.source_id = sa.source_id
-            JOIN maps.sources sb ON ST_Intersects(m.geom, sb.rgeom)
-            WHERE sb.source_id = $1 AND sa.new_priority = $2 AND $3::text = ANY(sa.display_scales);
-
-            INSERT INTO carto_temp
-            SELECT
-              m.map_id,
-              m.source_id,
-              'medium'::text AS scale,
-              (ST_Dump(ST_SetSRID(COALESCE(ST_Intersection(m.geom, sb.rgeom), 'POLYGON EMPTY'), 4326))).geom AS geom
-            FROM maps.medium m
-            JOIN maps.sources sa ON m.source_id = sa.source_id
-            JOIN maps.sources sb ON ST_Intersects(m.geom, sb.rgeom)
-            WHERE sb.source_id = $1 AND sa.new_priority = $2 AND $3::text = ANY(sa.display_scales);
-
-            INSERT INTO carto_temp
-            SELECT
-              m.map_id,
-              m.source_id,
-              'large'::text AS scale,
-              (ST_Dump(ST_SetSRID(COALESCE(ST_Intersection(m.geom, sb.rgeom), 'POLYGON EMPTY'), 4326))).geom AS geom
-            FROM maps.large m
-            JOIN maps.sources sa ON m.source_id = sa.source_id
-            JOIN maps.sources sb ON ST_Intersects(m.geom, sb.rgeom)
-            WHERE sb.source_id = $1 AND sa.new_priority = $2 AND $3::text = ANY(sa.display_scales);
-          `, [ SOURCE, row.new_priority, scale ], (error) => {
+          async.parallel([
+            (d) => {
+              queryPg(`
+                INSERT INTO carto_temp
+                SELECT
+                  m.map_id,
+                  m.source_id,
+                  'tiny'::text AS scale,
+                  (ST_Dump(ST_SetSRID(COALESCE(ST_Intersection(m.geom, sb.rgeom), 'POLYGON EMPTY'), 4326))).geom AS geom
+                FROM maps.tiny m
+                JOIN maps.sources sa ON m.source_id = sa.source_id
+                JOIN maps.sources sb ON ST_Intersects(m.geom, sb.rgeom)
+                WHERE sb.source_id = $1 AND sa.new_priority = $2 AND $3::text = ANY(sa.display_scales);
+              `, [ SOURCE, row.new_priority, scale ], (error) => {
+                if (error) return d(error)
+                d()
+              })
+            },
+            (d) => {
+              queryPg(`
+                INSERT INTO carto_temp
+                SELECT
+                  m.map_id,
+                  m.source_id,
+                  'small'::text AS scale,
+                  (ST_Dump(ST_SetSRID(COALESCE(ST_Intersection(m.geom, sb.rgeom), 'POLYGON EMPTY'), 4326))).geom AS geom
+                FROM maps.small m
+                JOIN maps.sources sa ON m.source_id = sa.source_id
+                JOIN maps.sources sb ON ST_Intersects(m.geom, sb.rgeom)
+                WHERE sb.source_id = $1 AND sa.new_priority = $2 AND $3::text = ANY(sa.display_scales);
+              `, [ SOURCE, row.new_priority, scale ], (error) => {
+                if (error) return d(error)
+                d()
+              })
+            },
+            (d) => {
+              queryPg(`
+                INSERT INTO carto_temp
+                SELECT
+                  m.map_id,
+                  m.source_id,
+                  'medium'::text AS scale,
+                  (ST_Dump(ST_SetSRID(COALESCE(ST_Intersection(m.geom, sb.rgeom), 'POLYGON EMPTY'), 4326))).geom AS geom
+                FROM maps.medium m
+                JOIN maps.sources sa ON m.source_id = sa.source_id
+                JOIN maps.sources sb ON ST_Intersects(m.geom, sb.rgeom)
+                WHERE sb.source_id = $1 AND sa.new_priority = $2 AND $3::text = ANY(sa.display_scales);
+              `, [ SOURCE, row.new_priority, scale ], (error) => {
+                if (error) return d(error)
+                d()
+              })
+            },
+            (d) => {
+              queryPg(`
+                INSERT INTO carto_temp
+                SELECT
+                  m.map_id,
+                  m.source_id,
+                  'large'::text AS scale,
+                  (ST_Dump(ST_SetSRID(COALESCE(ST_Intersection(m.geom, sb.rgeom), 'POLYGON EMPTY'), 4326))).geom AS geom
+                FROM maps.large m
+                JOIN maps.sources sa ON m.source_id = sa.source_id
+                JOIN maps.sources sb ON ST_Intersects(m.geom, sb.rgeom)
+                WHERE sb.source_id = $1 AND sa.new_priority = $2 AND $3::text = ANY(sa.display_scales);
+              `, [ SOURCE, row.new_priority, scale ], (error) => {
+                if (error) return d(error)
+                d()
+              })
+            }
+          ], (error) => {
             if (error) return cb(error)
             cb()
           })
