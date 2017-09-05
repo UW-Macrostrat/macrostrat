@@ -12,9 +12,9 @@ app.use((req, res, next) => {
 })
 
 app.use(tileServer)
-.route("/")
-  .get(function(req, res, next) {
-    res.sendFile(__dirname + "/leaflet-starter/index.html");
+.route('/')
+  .get((req, res, next) => {
+    res.sendFile(`${__dirname}/pages/main/index.html`)
   })
 app.route("/vector")
   .get(function(req, res, next) {
