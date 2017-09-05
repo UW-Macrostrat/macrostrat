@@ -7,8 +7,8 @@ const client = redis.createClient(6379, '127.0.0.1', {'return_buffers': true})
 
 module.exports = (options) => {
 
-    function tilePath(directory, z, x, y, filename) {
-      return `${directory}/${z}/${x}/${y}/${filename}`
+    function tilePath(directory, z, x, y, format) {
+      return `${directory}/${z}/${x}/${y}${format}`
     }
 
     function key(req) {
@@ -56,7 +56,8 @@ module.exports = (options) => {
             }
 
             // Get the full tile path
-            var file = tilePath(options.dir, tile.z, tile.x, tile.y, tile.filename)
+            var file = tilePath(options.dir, tile.z, tile.x, tile.y, tile.filename.replace('*', ''))
+
             // if no, check the disk cache
             fs.stat(file, (error, stat) => {
               if (error) {
@@ -103,10 +104,10 @@ module.exports = (options) => {
           client.set(key(req), buffer)
 
           // Make sure the correct directory exists
-          mkdirp(`${options.dir}/${req.z}/${req.x}/${req.y}`, (error) => {
+          mkdirp(`${options.dir}/${req.z}/${req.x}`, (error) => {
 
             // Get the full tile path
-            var file = tilePath(options.dir, req.z, req.x, req.y, req.filename)
+            var file = tilePath(options.dir, req.z, req.x, req.y, req.filename.replace('*', ''))
 
             // Write the tile to disk
             fs.writeFile(file, buffer, (err) => {

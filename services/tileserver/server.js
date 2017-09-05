@@ -12,21 +12,22 @@ app.use((req, res, next) => {
 })
 
 app.use(tileServer)
-.route('/')
+
+app.route('/')
   .get((req, res, next) => {
     res.sendFile(`${__dirname}/pages/main/index.html`)
   })
-app.route("/vector")
-  .get(function(req, res, next) {
-    res.sendFile(__dirname + "/leaflet-starter/vector_simple.html");
-  });
 
+app.route('/preview/:layer')
+  .get((req, res, next) => {
+    res.sendFile(`${__dirname}/pages/preview/index.html`)
+  })
 
 app.port = process.argv[2] || 5555
 
-app.start = function() {
-  app.listen(app.port, function() {
-    console.log(`Listening on port ${app.port}`)
+app.start = () => {
+  app.listen(app.port, () => {
+    console.log(`Tile server listening on port ${app.port}`)
   })
 }
 
