@@ -8,7 +8,7 @@ const pg = require('pg')
 const ProgressBar = require('progress')
 const st = require('geojson-bounds')
 const request = require('request')
-const credentials = require('credentials')
+const credentials = require('./credentials')
 
 const tileserver = require('./server')
 

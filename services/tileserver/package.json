@@ -16,6 +16,7 @@
     "geojson-bounds": "^1.0.1",
     "mapnik": "^3.5.14",
     "mkdirp": "^0.5.1",
+    "pg": "^7.3.0",
     "progress": "^2.0.0",
     "redis": "^2.8.0",
     "request": "^2.81.0",

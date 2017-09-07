@@ -5,6 +5,7 @@ const vtileraster = require('tilestrata-vtile-raster')
 const etag = require('tilestrata-etag')
 const cartoProvider = require('./cartoProvider')
 const redisCache = require('./redisCache')
+const logger = require('./logger')
 
 const MAX_ZOOM = 16
 module.exports = tilestrata.middleware({
@@ -26,6 +27,7 @@ module.exports = tilestrata.middleware({
       .route('*.png', {
         maxZoom: MAX_ZOOM
       })
+    //
         .use(vtileraster({
           xml: `./mapnik/burwell_vector_to_raster.xml`,
           tileSize: 512,
@@ -38,6 +40,7 @@ module.exports = tilestrata.middleware({
           defaultTile: `${__dirname}/resources/tile.png`
         }))
         .use(etag())
+        .use(logger())
 
     // Tiny
     strata.layer('tiny', {
