@@ -5,7 +5,6 @@ const vtileraster = require('tilestrata-vtile-raster')
 const etag = require('tilestrata-etag')
 const cartoProvider = require('./cartoProvider')
 const redisCache = require('./redisCache')
-const removeFilename = require('./removeFilename')
 
 const MAX_ZOOM = 16
 module.exports = tilestrata.middleware({

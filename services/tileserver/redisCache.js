@@ -4,6 +4,7 @@ const fs = require('fs')
 const mkdirp = require('mkdirp')
 const redis = require('redis')
 const client = redis.createClient(6379, '127.0.0.1', {'return_buffers': true})
+const secret = require('./credentials').secret
 
 module.exports = (options) => {
 
@@ -14,6 +15,16 @@ module.exports = (options) => {
     function key(req) {
       return `${req.z},${req.x},${req.y},${req.layer},${req.filename}`
     }
+
+    let blankVectorTile = ''
+    let blankRasterTile = ''
+
+    fs.readFile(`${__dirname}/resources/tile.png`, (error, buffer) => {
+      blankRasterTile = buffer
+    })
+    fs.readFile(`${__dirname}/resources/tile.mvt`, (error, buffer) => {
+      blankVectorTile = buffer
+    })
 
     function getHeaders(type) {
       if (type === 'raster') {
@@ -26,6 +37,17 @@ module.exports = (options) => {
           'Content-Encoding': 'gzip'
         }
       }
+    }
+
+    function deleteTile(tile, callback) {
+      let file = tilePath(options.dir, tile.z, tile.x, tile.y, tile.filename.replace('*', ''))
+
+      // Errors will be thrown if we try to delete a tile that doesn't exist, but 🤷‍♂️
+      fs.unlink(file, (error) => {
+        client.del(key(tile), (error) => {
+          callback(null)
+        })
+      })
     }
 
     function getTile(tilePath, cb) {
@@ -46,6 +68,11 @@ module.exports = (options) => {
         },
 
         get: (server, tile, callback) => {
+          // I know it is jank to delete something with a GET request, but it is also expedient and easy
+          if (tile.headers['x-tilestrata-deletetile'] && tile.headers['x-tilestrata-deletetile'] === secret) {
+            return callback(null, (tile.filename.indexOf('.png') > -1 ? blankRasterTile : blankVectorTile))
+          }
+
           // Check if tile exists in memory
           client.get(key(tile), (error, data) => {
             // if yes, return it
