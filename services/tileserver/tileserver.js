@@ -1,4 +1,4 @@
-const tilestrata = require('../../tilestrata')
+const tilestrata = require('tilestrata')
 const mapnik = require('tilestrata-mapnik')
 const vtile = require('tilestrata-vtile')
 const vtileraster = require('tilestrata-vtile-raster')
