@@ -23,7 +23,9 @@ api.route("/changes")
   });
 
 api.route("/columns")
-  .get(require("./columns"));
+  .get(function(req, res, next) {
+    require("./columns")(req, res, next);
+  });
 
 api.route("/sections")
   .get(require("./sections"));
