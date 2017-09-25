@@ -65,7 +65,7 @@ var sql = {
       WHERE strat_name_id IN (
         SELECT strat_name_id
         FROM macrostrat.strat_name_footprints
-        WHERE ST_Intersects(geom, st_setsrid(st_makepoint($1, $2),4326))
+        WHERE ST_Intersects(geom, ST_Buffer(st_setsrid(st_makepoint($1, $2),4326), 0.1))
       )
       ORDER BY distance
     ) c
