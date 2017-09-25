@@ -6,7 +6,7 @@ var api = require("./api"),
     larkin = require("./larkin");
 
 
-module.exports = function(req, res, next) {
+module.exports = function(req, res, next, callback) {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
@@ -158,6 +158,9 @@ module.exports = function(req, res, next) {
   ], function(error, unit_data, column_data) {
     if (error) {
       console.log(error);
+      if (callback) {
+        return callback(error)
+      }
       return larkin.error(req, res, next, error);
     }
 
@@ -186,11 +189,14 @@ module.exports = function(req, res, next) {
         "outputFormat": larkin.getOutputFormat(req.query.format)
       }, function(error, output) {
           if (error) {
+            if (callback) return callback("An error was incurred during conversion")
             larkin.error(req, res, next, "An error was incurred during conversion");
           } else {
             if (larkin.getOutputFormat(req.query.format) === "geojson") {
               output = gp(output, 4);
             }
+
+            if (callback) return callback(null, output)
 
             larkin.sendData(req, res, next, {
               format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
@@ -205,6 +211,7 @@ module.exports = function(req, res, next) {
         }
       );
     } else {
+      if (callback) return callback(null, column_data)
       larkin.sendData(req, res, next, {
         format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
         compact: true,
