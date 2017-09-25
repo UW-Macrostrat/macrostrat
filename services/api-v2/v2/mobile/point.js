@@ -1,3 +1,5 @@
+'use strict'
+
 var api = require("../api"),
     async = require("async"),
     larkin = require("../larkin");
