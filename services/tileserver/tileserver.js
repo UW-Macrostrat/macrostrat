@@ -29,7 +29,7 @@ module.exports = tilestrata.middleware({
       })
     //
         .use(vtileraster({
-          xml: `./mapnik/burwell_vector_to_raster.xml`,
+          xml: `${__dirname}/mapnik/burwell_vector_to_raster.xml`,
           tileSize: 512,
           scale: 1
         }, {
@@ -48,7 +48,7 @@ module.exports = tilestrata.middleware({
     })
       .route('*.mvt')
         .use(vtile({
-          xml: './mapnik/tiny.xml',
+          xml: `${__dirname}/mapnik/tiny.xml`,
           tileSize: 512,
           scale: 1
         }))
@@ -61,7 +61,7 @@ module.exports = tilestrata.middleware({
         maxZoom: MAX_ZOOM
       })
         .use(vtileraster({
-          xml: `./mapnik/burwell_vector_to_raster.xml`,
+          xml: `${__dirname}/mapnik/burwell_vector_to_raster.xml`,
           tileSize: 512,
           scale: 2
         }, {
@@ -80,7 +80,7 @@ module.exports = tilestrata.middleware({
     })
       .route('*.mvt')
         .use(vtile({
-          xml: './mapnik/small.xml',
+          xml: `${__dirname}/mapnik/small.xml`,
           tileSize: 512,
           scale: 1
         }))
@@ -93,7 +93,7 @@ module.exports = tilestrata.middleware({
         maxZoom: MAX_ZOOM
       })
         .use(vtileraster({
-          xml: `./mapnik/burwell_vector_to_raster.xml`,
+          xml: `${__dirname}/mapnik/burwell_vector_to_raster.xml`,
           tileSize: 512,
           scale: 2
         }, {
@@ -112,7 +112,7 @@ module.exports = tilestrata.middleware({
     })
       .route('*.mvt')
         .use(vtile({
-          xml: './mapnik/medium.xml',
+          xml: `${__dirname}/mapnik/medium.xml`,
           tileSize: 512,
           scale: 1
         }))
@@ -125,7 +125,7 @@ module.exports = tilestrata.middleware({
         maxZoom: MAX_ZOOM
       })
         .use(vtileraster({
-          xml: `./mapnik/burwell_vector_to_raster.xml`,
+          xml: `${__dirname}/mapnik/burwell_vector_to_raster.xml`,
           tileSize: 512,
           scale: 2
         }, {
@@ -144,7 +144,7 @@ module.exports = tilestrata.middleware({
     })
       .route('*.mvt')
         .use(vtile({
-          xml: './mapnik/large.xml',
+          xml: `${__dirname}/mapnik/large.xml`,
           tileSize: 512,
           scale: 1
         }))
@@ -157,7 +157,7 @@ module.exports = tilestrata.middleware({
         maxZoom: MAX_ZOOM
       })
         .use(vtileraster({
-          xml: `./mapnik/burwell_vector_to_raster.xml`,
+          xml: `${__dirname}/mapnik/burwell_vector_to_raster.xml`,
           tileSize: 512,
           scale: 2
         }, {

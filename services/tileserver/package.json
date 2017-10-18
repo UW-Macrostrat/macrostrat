@@ -25,5 +25,10 @@
     "tilestrata-mapnik": "^0.4.1",
     "tilestrata-vtile": "^0.5.3",
     "tilestrata-vtile-raster": "^0.5.0"
+  },
+  "devDependencies": {
+    "image-size": "^0.6.1",
+    "should": "^13.0.1",
+    "supertest": "^3.0.0"
   }
 }

@@ -1,3 +1,5 @@
+'use strict'
+
 const pg = require('pg')
 const credentials = require('./credentials')
 
@@ -22,7 +24,7 @@ function queryPg(sql, params, callback) {
 
 module.exports = () => {
   return {
-    name: 'profile',
+    name: 'logger',
     init: (server, callback) => {
       callback()
     },

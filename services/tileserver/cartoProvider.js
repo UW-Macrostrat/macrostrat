@@ -1,3 +1,5 @@
+'use strict'
+
 const vtile = require('tilestrata-vtile')
 const config = require('./config')
 
