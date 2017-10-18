@@ -77,8 +77,13 @@ if __name__ == '__main__':
 
     # Refresh carto lines
     print '| | | | | Adding to carto.lines...'
-    call(['python utils/carto_lines.py --source_id %s' % (arguments.source_id, )], shell=True)
+    call(['node utils/updateCartoLines.js %s' % (arguments.source_id, )], shell=True)
     print '| | | | | Done adding to carto.lines | | | | | '
+
+    # Refresh carto
+    print '| | | | | Adding to carto...'
+    call(['node utils/updateCarto.js %s' % (arguments.source_id, )], shell=True)
+    print '| | | | | Done adding to carto | | | | | '
 
     # Make tiles
     print '| | | | | Rolling tiles...'
