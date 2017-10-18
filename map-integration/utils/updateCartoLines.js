@@ -161,7 +161,7 @@ function processScale(the_scale, bedone) {
     (callback) => {
       console.log('   5. Insert')
       queryPg(`
-        INSERT INTO carto_new.lines_${the_scale} (map_id, source_id, scale, geom)
+        INSERT INTO carto_new.lines_${the_scale} (line_id, source_id, scale, geom)
         SELECT * FROM carto_temp;
       `, [], (error) => {
         if (error) return callback(error)
