@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE Map[]>
+<Map srs="+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0.0 +k=1.0 +units=m +nadgrids=@null +wktext +no_defs +over">
+
+<Parameters>
+  <Parameter name="bounds">-89,-179,89,179</Parameter>
+  <Parameter name="center">0,0,1</Parameter>
+  <Parameter name="minzoom">0</Parameter>
+  <Parameter name="maxzoom">16</Parameter>
+  <Parameter name="scale">1</Parameter>
+  <Parameter name="metatile">1</Parameter>
+  <Parameter name="name"><![CDATA[burwell]]></Parameter>
+  <Parameter name="description"><![CDATA[burwell]]></Parameter>
+  <Parameter name="attribution"><![CDATA[Data providers, UW-Macrostrat, John J Czaplewski <john@czaplewski.org>]]></Parameter>
+</Parameters>
+
+
+<Layer name="units"
+  srs="+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs">
+    
+    <Datasource>
+       <Parameter name="type"><![CDATA[postgis]]></Parameter>
+       <Parameter name="table"><![CDATA[(SELECT z.map_id, z.source_id, COALESCE(m.name, '') AS name, COALESCE(m.age, '') AS age, COALESCE(m.lith, '') AS lith, COALESCE(m.descrip, '') AS descrip, COALESCE(m.comments, '') AS comments, m.t_interval AS t_int_id, ta.interval_name AS t_int, l.best_age_top::numeric AS best_age_top, m.b_interval AS b_int_id, tb.interval_name AS b_int, l.best_age_bottom::numeric AS best_age_bottom, COALESCE(l.color, '#777777') AS color, z.geom 
+        FROM carto_new.medium z
+        LEFT JOIN (
+          SELECT * FROM maps.medium
+          UNION ALL
+          SELECT * FROM maps.small
+        ) m ON z.map_id = m.map_id
+        LEFT JOIN (
+          SELECT * FROM lookup_medium
+          UNION ALL
+          SELECT * FROM lookup_small
+        ) l ON z.map_id = l.map_id
+       LEFT JOIN macrostrat.intervals ta ON ta.id = m.t_interval LEFT JOIN macrostrat.intervals tb ON tb.id = m.b_interval ) subset]]></Parameter>
+       <Parameter name="key_field"><![CDATA[map_id]]></Parameter>
+       <Parameter name="geometry_field"><![CDATA[geom]]></Parameter>
+       <Parameter name="extent_cache"><![CDATA[auto]]></Parameter>
+       <Parameter name="extent"><![CDATA[-179,-89,179,89]]></Parameter>
+       <Parameter name="host"><![CDATA[localhost]]></Parameter>
+       <Parameter name="port"><![CDATA[5439]]></Parameter>
+       <Parameter name="user"><![CDATA[john]]></Parameter>
+       <Parameter name="dbname"><![CDATA[burwell]]></Parameter>
+       <Parameter name="srid"><![CDATA[4326]]></Parameter>
+    </Datasource>
+  </Layer>
+
+<Layer name="lines"
+  srs="+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs">
+    
+    <Datasource>
+       <Parameter name="type"><![CDATA[postgis]]></Parameter>
+       <Parameter name="table"><![CDATA[(SELECT line_id, COALESCE(descrip, '') AS descrip, COALESCE(name, '') AS name, COALESCE(direction, '') AS direction, COALESCE(type, '') AS type, source_id, geom FROM carto.lines_medium) subset2]]></Parameter>
+       <Parameter name="key_field"><![CDATA[line_id]]></Parameter>
+       <Parameter name="geometry_field"><![CDATA[geom]]></Parameter>
+       <Parameter name="extent_cache"><![CDATA[auto]]></Parameter>
+       <Parameter name="extent"><![CDATA[-179,-89,179,89]]></Parameter>
+       <Parameter name="host"><![CDATA[localhost]]></Parameter>
+       <Parameter name="port"><![CDATA[5439]]></Parameter>
+       <Parameter name="user"><![CDATA[john]]></Parameter>
+       <Parameter name="dbname"><![CDATA[burwell]]></Parameter>
+       <Parameter name="srid"><![CDATA[4326]]></Parameter>
+    </Datasource>
+  </Layer>
+
+</Map>
