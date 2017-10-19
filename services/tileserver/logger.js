@@ -66,7 +66,9 @@ module.exports = () => {
         (res._headers['x-tilestrata-cachehit'] || false),
         (res._headers['x-tilestrata-redishit'] || false)
       ], (error) => {
-
+        if (error) {
+          console.log(error)
+        }
       })
     }
   }

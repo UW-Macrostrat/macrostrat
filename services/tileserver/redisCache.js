@@ -1,5 +1,6 @@
 'use strict'
 
+const async = require('async')
 const fs = require('fs')
 const mkdirp = require('mkdirp')
 const redis = require('redis')
@@ -39,14 +40,33 @@ module.exports = (options) => {
       }
     }
 
-    function deleteTile(tile, callback) {
+    function deleteTile(tile) {
       let file = tilePath(options.dir, tile.z, tile.x, tile.y, tile.filename.replace('*', ''))
 
       // Errors will be thrown if we try to delete a tile that doesn't exist, but 🤷‍♂️
-      fs.unlink(file, (error) => {
-        client.del(key(tile), (error) => {
-          callback(null)
-        })
+      async.parallel([
+        (done) => {
+          fs.unlink(file, (error) => {
+            done()
+          })
+        },
+        (done) => {
+          client.del(key(tile), (error) => {
+            done(null)
+          })
+        },
+        (done) => {
+          fs.unlink(file, (error) => {
+            done()
+          })
+        },
+        (done) => {
+          client.del(key(tile), (error) => {
+            callback(null)
+          })
+        }
+      ], (error) => {
+        // Doneski. Don't care if it failed or not
       })
     }
 
@@ -70,6 +90,7 @@ module.exports = (options) => {
         get: (server, tile, callback) => {
           // I know it is jank to delete something with a GET request, but it is also expedient and easy
           if (tile.headers['x-tilestrata-deletetile'] && tile.headers['x-tilestrata-deletetile'] === secret) {
+            deleteTile(tile)
             return callback(null, (tile.filename.indexOf('.png') > -1 ? blankRasterTile : blankVectorTile))
           }
 

@@ -119,7 +119,7 @@ function getTileList(geom, z) {
 function seed(layer, tiles, callback) {
   let bar = new ProgressBar('     :bar :current of :total', { total: tiles.length, width: 50 })
 
-  // Create 20 tiles at a time
+  // Create 5 tiles at a time
   async.eachLimit(tiles, 5, (tile, cb) => {
     getTile({
       z: tile[2],
@@ -170,19 +170,23 @@ function reseed(source_id) {
             ST_GeomFromText('POLYGON ((-179 -85, -179 85, 179 85, 179 -85, -179 -85))', 4326),
             ST_SetSRID(rgeom, 4326)
           )
-        ) AS geometry
+        ) AS geometry,
+         display_scales
         FROM maps.sources
         WHERE source_id = $1
       `, [ source_id ], (error, result) => {
         if (error) return callback(error)
         if (!result || !result.rows || !result.rows.length) return callback('No geometry found')
 
-        callback(null, JSON.parse(result.rows[0].geometry))
+        callback(null, JSON.parse(result.rows[0].geometry), result.rows[0].display_scales)
       })
     },
 
     // If the scale is medium or large, clear the cache
-    (shapes, callback) => {
+    (shapes, scales, callback) => {
+      if (scales.indexOf('large') === -1 && scales.indexOf('medium') === -1) {
+        return callback(null, shapes)
+      }
       console.log('   ** Clearing large cache **')
       async.eachSeries(cachedZooms, (z, cba) => {
         console.log(`     z${z}`)
@@ -200,7 +204,7 @@ function reseed(source_id) {
       let tiles = {}
       let tileIdx = {}
 
-      async.eachLimit(zooms, 1, (z, zcallback) => {
+      async.eachLimit(zooms, 5, (z, zcallback) => {
         tiles[z] = []
 
         let shapeTiles = getTileList(shapes, z)
