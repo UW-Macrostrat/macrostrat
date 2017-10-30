@@ -20,8 +20,9 @@ module.exports = (req, res, next, cb) => {
         body += chunk
       })
       response.on('end', () => {
+        let mapzenResponse = body
         try {
-          let mapzenResponse = JSON.parse(body)
+          mapzenResponse = JSON.parse(mapzenResponse)
         } catch(e) {
           if (cb) return cb(e)
           return larkin.error(req, res, next, 'Error retrieving data from Mapzen', 500)
