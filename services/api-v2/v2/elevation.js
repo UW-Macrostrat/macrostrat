@@ -20,7 +20,12 @@ module.exports = (req, res, next, cb) => {
         body += chunk
       })
       response.on('end', () => {
-        let mapzenResponse = JSON.parse(body)
+        try {
+          let mapzenResponse = JSON.parse(body)
+        } catch(e) {
+          if (cb) return cb(e)
+          return larkin.error(req, res, next, 'Error retrieving data from Mapzen', 500)
+        }
         let toSend = [{ elevation: mapzenResponse.height[0] || null }]
 
         if (cb) return cb(null, toSend)
