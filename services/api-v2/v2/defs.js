@@ -1330,7 +1330,7 @@
 
   "/elevation": {
     "description": "Returns elevation in meters at a given coordinate from ETOPO1",
-    "visible": true,
+    "visible": false,
     "options": {
       "parameters": {
         "lat": "A valid latitude",
