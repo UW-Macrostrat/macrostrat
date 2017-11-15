@@ -104,7 +104,7 @@
   function createLayer(scale, callback) {
     // Copy the template
     var layer = JSON.parse(JSON.stringify(layerTemplate));
-    layer["Datasource"]["table"] = `(SELECT x.map_id, x.color, sources.scale, geom FROM lookup_${scale} x JOIN maps.${scale} s ON s.map_id = x.map_id JOIN maps.sources ON s.source_id = sources.source_id ORDER BY sources.priority ASC) subset`
+    layer["Datasource"]["table"] = `(SELECT x.map_id, x.scale, s.color, x.geom FROM carto_new.${scale} x JOIN lookup_${scale} s ON s.map_id = x.map_id JOIN maps.sources ON x.source_id = sources.source_id ORDER BY sources.priority ASC) subset`
     layer["id"] = `burwell_${scale}`
     layer["class"] = "burwell"
     layer["name"] = `burwell_${scale}`
@@ -117,7 +117,7 @@
   function createLayerLines(scale, callback) {
     // Copy the template
     var layer = JSON.parse(JSON.stringify(layerTemplateLines));
-    layer["Datasource"]["table"] = `(SELECT x.line_id, x.geom, x.direction, x.type FROM carto.lines_${scale} x) subset`
+    layer["Datasource"]["table"] = `(SELECT x.line_id, x.geom, x.direction, x.type FROM carto_new.lines_${scale} x) subset`
     layer["id"] = `burwell_lines_${scale}`
     layer["class"] = "lines"
     layer["name"] = `burwell_lines_${scale}`
