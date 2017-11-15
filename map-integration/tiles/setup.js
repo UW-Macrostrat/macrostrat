@@ -117,7 +117,16 @@
   function createLayerLines(scale, callback) {
     // Copy the template
     var layer = JSON.parse(JSON.stringify(layerTemplateLines));
-    layer["Datasource"]["table"] = `(SELECT x.line_id, x.geom, x.direction, x.type FROM carto_new.lines_${scale} x) subset`
+    let sql = `
+      SELECT x.line_id, x.geom, q.direction, q.type
+      FROM carto_new.lines_${scale} x
+      LEFT JOIN (
+          ${config.layerOrder.map(s => {
+            return 'SELECT * FROM lines.${s}'
+          }).join(' UNION ALL ')}
+      ) q on q.line_id = x.line_id
+    `
+    layer["Datasource"]["table"] = `(${sql}) subset`
     layer["id"] = `burwell_lines_${scale}`
     layer["class"] = "lines"
     layer["name"] = `burwell_lines_${scale}`
