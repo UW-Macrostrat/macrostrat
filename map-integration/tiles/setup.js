@@ -122,7 +122,7 @@
       FROM carto_new.lines_${scale} x
       LEFT JOIN (
           ${config.layerOrder[scale].map(s => {
-            return 'SELECT * FROM lines.${s}'
+            return `SELECT * FROM lines.${s}`
           }).join(' UNION ALL ')}
       ) q on q.line_id = x.line_id
     `
