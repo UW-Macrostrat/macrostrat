@@ -150,7 +150,7 @@ function processScale(the_scale, bedone) {
 
     (callback) => {
       queryPg(`
-        DELETE FROM carto_new.lines_${the_scale} WHERE geometrytype(geom) NOT IN ('POLYGON', 'MULTIPOLYGON');
+        DELETE FROM carto_new.lines_${the_scale} WHERE geometrytype(geom) NOT IN ('LINESTRING', 'MULTILINESTRING');
       `, [], (error) => {
         if (error) return callback(error)
         callback()
