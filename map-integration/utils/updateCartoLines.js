@@ -119,6 +119,7 @@ function processScale(the_scale, bedone) {
     */
     (callback) => {
       console.log('   2. Scale under')
+      if (!SCALE_UNDER) return callback()
       insertScale(SCALE_UNDER, (error) => {
         if (error) return callback(error)
         callback()
