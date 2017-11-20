@@ -3,7 +3,11 @@ class LookupUnitIntervals:
         'mariadb': True,
         'pg': False
     }
-    def build(my_cur, my_conn):
+    @staticmethod
+    def build(connection):
+        my_conn = connection()
+        my_cur = my_conn.cursor()
+
         # Copy structure into new table
         my_cur.execute("CREATE TABLE lookup_unit_intervals_new LIKE lookup_unit_intervals")
 
@@ -211,3 +215,4 @@ class LookupUnitIntervals:
             DROP TABLE lookup_unit_intervals_old;
         """)
         my_cur.close()
+        my_conn.close()

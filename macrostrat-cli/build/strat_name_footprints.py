@@ -3,7 +3,10 @@ class StratNameFootprints:
         'mariadb': False,
         'pg': True
     }
-    def build(pg_cur, pg_conn):
+    def build(connection):
+        pg_conn = connection()
+        pg_cur = pg_conn.cursor()
+
         pg_cur.execute("""
             CREATE TABLE macrostrat.strat_name_footprints_new AS
             WITH first as (

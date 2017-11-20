@@ -3,7 +3,10 @@ class Autocomplete:
         'mariadb': True,
         'pg': False
     }
-    def build(my_cur, my_conn):
+    @staticmethod
+    def build(connection):
+        my_conn = connection()
+        my_cur = my_conn.cursor()
         my_cur.execute("""
             DROP TABLE IF EXISTS autocomplete_new;
         """)
@@ -126,3 +129,4 @@ class Autocomplete:
             DROP TABLE autocomplete_old;
         """)
         my_cur.close()
+        my_conn.close()

@@ -3,7 +3,14 @@ class Stats:
         'mariadb': True,
         'pg': True
     }
-    def stats(my_cur, my_conn, pg_cur, pg_conn):
+    @staticmethod
+    def build(mariaConnection, pgConnection):
+        my_conn = mariaConnection()
+        my_cur = my_conn.cursor()
+
+        pg_conn = pgConnection()
+        pg_cur = pg_conn.cursor()
+
         my_cur.execute("""
             DROP TABLE IF EXISTS stats_new
         """)
@@ -84,3 +91,6 @@ class Stats:
         """)
 
         my_cur.close()
+        my_conn.close()
+
+        pg_conn.close()
