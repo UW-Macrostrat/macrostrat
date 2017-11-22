@@ -27,6 +27,24 @@ def pgConnection():
 # Ignore warnings from MariaDB
 filterwarnings('ignore', category = pymysql.Warning)
 
+def do_build(table):
+    # Get the class associated with the provided table name
+    script = getattr(build, table)
+
+    print '    Building %s' % (table, )
+
+    if script.meta['mariadb'] and script.meta['pg']:
+        script.build(mariaConnection, pgConnection)
+    elif script.meta['mariadb']:
+        script.build(mariaConnection)
+    elif script.meta['pg']:
+        script.build(pgConnection)
+    else:
+        print 'Build script does not specify connector type'
+        sys.exit()
+
+    print '       Done'
+
 # Check if a table was provided
 if len(sys.argv) == 1:
     print 'Please specify a table'
@@ -37,23 +55,13 @@ if len(sys.argv) == 1:
 
 # Validate the passed table
 table = sys.argv[1]
-if table not in dir(build):
+if table not in dir(build) and table != 'all':
     print 'Invalid table'
     sys.exit()
 
-# Get the class associated with the provided table name
-script = getattr(build, table)
-
-print '    Building %s' % (table, )
-
-if script.meta['mariadb'] and script.meta['pg']:
-    script.build(mariaConnection, pgConnection)
-elif script.meta['mariadb']:
-    script.build(mariaConnection)
-elif script.meta['pg']:
-    script.build(pgConnection)
+if table == 'all':
+    tables = [ t for t in dir(build) if t[:2] != '__']
+    for t in tables:
+        do_build(t)
 else:
-    print 'Build script does not specify connector type'
-    sys.exit()
-
-print '    Done building %s' % (table, )
+    do_build(table)
