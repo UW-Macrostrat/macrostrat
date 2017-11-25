@@ -218,7 +218,7 @@ function insertScale(scale, callback) {
         (cb) => {
           queryPg(`
             WITH first AS (
-                SELECT ST_Intersection(sb.rgeom, COALESCE(ST_Union(x.rgeom), 'POLYGON EMPTY')) AS geom
+                SELECT (ST_Dump(ST_Intersection(sb.rgeom, COALESCE(ST_Union(x.rgeom), 'POLYGON EMPTY')))).geom AS geom
                 FROM maps.sources x
                 JOIN maps.sources sb ON ST_Intersects(x.rgeom, sb.rgeom)
                 WHERE sb.source_id = $1 AND
