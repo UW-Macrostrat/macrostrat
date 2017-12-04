@@ -1,5 +1,5 @@
 from autocomplete import Autocomplete as autocomplete
-from lookup_strat_names import LookupStratNames as look_strat_names
+from lookup_strat_names import LookupStratNames as lookup_strat_names
 from lookup_unit_attrs_api import LookupUnitsAttrsAPI as lookup_unit_attrs_api
 from lookup_unit_intervals import LookupUnitIntervals as lookup_unit_intervals
 from lookup_units import LookupUnits as lookup_units

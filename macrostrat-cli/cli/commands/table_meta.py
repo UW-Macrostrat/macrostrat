@@ -31,7 +31,7 @@ tables = OrderedDict({
             );
         """,
         "insert": """
-            INSERT INTO macrostrat.unit_strat_names_new (id, unit_id, strat_name_id) VALUES (%s, %s, %s);
+            INSERT INTO macrostrat.unit_strat_names_new (id, unit_id, strat_name_id) VALUES (%(id)s, %(unit_id)s, %(strat_name_id)s);
         """,
         "index": """
             CREATE INDEX ON macrostrat.unit_strat_names_new (unit_id);
@@ -61,7 +61,7 @@ tables = OrderedDict({
             )
         """,
         "insert": """
-            INSERT INTO macrostrat.strat_names_new (id, strat_name, rank, ref_id, concept_id) VALUES (%s, %s, %s, %s, %s);
+            INSERT INTO macrostrat.strat_names_new (id, strat_name, rank, ref_id, concept_id) VALUES (%(id)s, %(strat_name)s, %(rank)s, %(ref_id)s, %(concept_id)s);
         """,
         "index": """
             CREATE INDEX ON macrostrat.strat_names_new (strat_name);
@@ -88,7 +88,7 @@ tables = OrderedDict({
             );
         """,
         "insert": """
-            INSERT INTO macrostrat.units_sections_new (id, unit_id, section_id, col_id) VALUES (%s, %s, %s, %s)
+            INSERT INTO macrostrat.units_sections_new (id, unit_id, section_id, col_id) VALUES (%(id)s, %(unit_id)s, %(section_id)s, %(col_id)s)
         """,
         "index": """
             CREATE INDEX ON macrostrat.units_sections_new (unit_id);
@@ -118,7 +118,7 @@ tables = OrderedDict({
             );
         """,
         "insert": """
-            INSERT INTO macrostrat.intervals_new (id, age_bottom, age_top, interval_name, interval_abbrev, interval_type, interval_color) VALUES (%s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO macrostrat.intervals_new (id, age_bottom, age_top, interval_name, interval_abbrev, interval_type, interval_color) VALUES (%(id)s, %(age_bottom)s, %(age_top)s, %(interval_name)s, %(interval_abbrev)s, %(interval_type)s, %(interval_color)s)
         """,
         "index": """
             CREATE INDEX ON macrostrat.intervals_new (id);
@@ -170,7 +170,7 @@ tables = OrderedDict({
             );
         """,
         "insert": """
-            INSERT INTO macrostrat.lookup_unit_intervals_new (unit_id, FO_age, b_age, FO_interval, FO_period, LO_age, t_age, LO_interval, LO_period, age, age_id, epoch, epoch_id, period, period_id, era, era_id, eon, eon_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO macrostrat.lookup_unit_intervals_new (unit_id, FO_age, b_age, FO_interval, FO_period, LO_age, t_age, LO_interval, LO_period, age, age_id, epoch, epoch_id, period, period_id, era, era_id, eon, eon_id) VALUES (%(unit_id)s, %(fo_age)s, %(b_age)s, %(fo_interval)s, %(fo_period)s, %(lo_age)s, %(t_age)s, %(lo_interval)s, %(lo_period)s, %(age)s, %(age_id)s, %(epoch)s, %(epoch_id)s, %(period)s, %(period_id)s, %(era)s, %(era_id)s, %(eon)s, %(eon_id)s)
         """,
         "index": """
             CREATE INDEX ON macrostrat.lookup_unit_intervals_new (unit_id);
@@ -226,7 +226,7 @@ tables = OrderedDict({
             );
         """,
         "insert": """
-            INSERT INTO macrostrat.units_new (id, strat_name, color, outcrop, FO, FO_h, LO, LO_h, position_bottom, position_top, max_thick, min_thick, section_id, col_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO macrostrat.units_new (id, strat_name, color, outcrop, FO, FO_h, LO, LO_h, position_bottom, position_top, max_thick, min_thick, section_id, col_id) VALUES (%(id)s, %(strat_name)s, %(color)s, %(outcrop)s, %(FO)s, %(FO_h)s, %(LO)s, %(LO_h)s, %(position_bottom)s, %(position_top)s, %(max_thick)s, %(min_thick)s, %(section_id)s, %(col_id)s)
         """,
         "index": """
             CREATE INDEX ON macrostrat.units_new (section_id);
@@ -271,7 +271,7 @@ tables = OrderedDict({
             );
         """,
         "insert": """
-            INSERT INTO macrostrat.lookup_strat_names_new (strat_name_id, strat_name, rank, concept_id, rank_name, bed_id, bed_name, mbr_id, mbr_name, fm_id, fm_name, gp_id, gp_name, sgp_id, sgp_name, early_age, late_age, gsc_lexicon, b_period, t_period, c_interval, name_no_lith) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO macrostrat.lookup_strat_names_new (strat_name_id, strat_name, rank, concept_id, rank_name, bed_id, bed_name, mbr_id, mbr_name, fm_id, fm_name, gp_id, gp_name, sgp_id, sgp_name, early_age, late_age, gsc_lexicon, b_period, t_period, c_interval, name_no_lith) VALUES (%(strat_name_id)s, %(strat_name)s, %(rank)s, %(concept_id)s, %(rank_name)s, %(bed_id)s, %(bed_name)s, %(mbr_id)s, %(mbr_name)s, %(fm_id)s, %(fm_name)s, %(gp_id)s, %(gp_name)s, %(sgp_id)s, %(sgp_name)s, %(early_age)s, %(late_age)s, %(gsc_lexicon)s, %(b_period)s, %(t_period)s, %(c_interval)s, %(name_no_lith)s)
         """,
         "index": """
             CREATE INDEX ON macrostrat.lookup_strat_names_new (strat_name_id);
@@ -302,7 +302,7 @@ tables = OrderedDict({
             );
         """,
         "insert": """
-            INSERT INTO macrostrat.col_areas_new (id, col_id, col_area, wkt) VALUES (%s, %s, %s, %s)
+            INSERT INTO macrostrat.col_areas_new (id, col_id, col_area, wkt) VALUES (%(id)s, %(col_id)s, %(col_area)s, %(wkt)s)
         """,
         "index": """
             CREATE INDEX ON macrostrat.col_areas_new (col_id);
@@ -337,7 +337,7 @@ tables = OrderedDict({
             );
         """,
         "insert": """
-            INSERT INTO macrostrat.cols_new (id, col_group_id, project_id, status_code, col_position, col, col_name, lat, lng, col_area, wkt, created) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO macrostrat.cols_new (id, col_group_id, project_id, status_code, col_position, col, col_name, lat, lng, col_area, wkt, created) VALUES (%(id)s, %(col_group_id)s, %(project_id)s, %(status_code)s, %(col_position)s, %(col)s, %(col_name)s, %(lat)s, %(lng)s, %(col_area)s, %(wkt)s, %(created)s)
         """,
         "index": """
             CREATE INDEX ON macrostrat.cols_new (project_id);
@@ -376,7 +376,7 @@ tables = OrderedDict({
             );
         """,
         "insert": """
-            INSERT INTO macrostrat.liths_new ( id, lith, lith_type, lith_class, lith_fill, comp_coef, initial_porosity, bulk_density, lith_color) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO macrostrat.liths_new ( id, lith, lith_type, lith_class, lith_fill, comp_coef, initial_porosity, bulk_density, lith_color) VALUES (%(id)s, %(lith)s, %(lith_type)s, %(lith_class)s, %(lith_fill)s, %(comp_coef)s, %(initial_porosity)s, %(bulk_density)s, %(lith_color)s)
         """,
         "index": """
             CREATE INDEX ON macrostrat.liths_new (lith);
@@ -402,7 +402,7 @@ tables = OrderedDict({
             );
         """,
         "insert": """
-            INSERT INTO macrostrat.lith_atts_new (id, lith_att, att_type, lith_att_fill) VALUES (%s, %s, %s, %s)
+            INSERT INTO macrostrat.lith_atts_new (id, lith_att, att_type, lith_att_fill) VALUES (%(id)s, %(lith_att)s, %(att_type)s, %(lith_att_fill)s)
         """,
         "index": """
             CREATE INDEX ON macrostrat.lith_atts_new (att_type);
@@ -425,7 +425,7 @@ tables = OrderedDict({
             );
         """,
         "insert": """
-            INSERT INTO macrostrat.timescales_intervals_new (timescale_id, interval_id) VALUES (%s, %s)
+            INSERT INTO macrostrat.timescales_intervals_new (timescale_id, interval_id) VALUES (%(timescale_id)s, %(interval_id)s)
         """,
         "index": """
             CREATE INDEX ON macrostrat.timescales_intervals_new (timescale_id);
@@ -455,7 +455,7 @@ tables = OrderedDict({
             );
         """,
         "insert": """
-            INSERT INTO macrostrat.unit_liths_new (id, lith_id, unit_id, prop, dom, comp_prop, mod_prop, toc, ref_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO macrostrat.unit_liths_new (id, lith_id, unit_id, prop, dom, comp_prop, mod_prop, toc, ref_id) VALUES (%(id)s, %(lith_id)s, %(unit_id)s, %(prop)s, %(dom)s, %(comp_prop)s, %(mod_prop)s, %(toc)s, %(ref_id)s)
         """,
         "index": """
             CREATE INDEX ON macrostrat.unit_liths_new (unit_id);
@@ -485,7 +485,7 @@ tables = OrderedDict({
             );
         """,
         "insert": """
-            INSERT INTO macrostrat.lookup_unit_liths_new (unit_id, lith_class, lith_type, lith_short, lith_long, environ_class, environ_type, environ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO macrostrat.lookup_unit_liths_new (unit_id, lith_class, lith_type, lith_short, lith_long, environ_class, environ_type, environ) VALUES (%(unit_id)s, %(lith_class)s, %(lith_type)s, %(lith_short)s, %(lith_long)s, %(environ_class)s, %(environ_type)s, %(environ)s)
         """,
         "index": """
             CREATE INDEX ON macrostrat.lookup_unit_liths_new (unit_id);
@@ -508,7 +508,7 @@ tables = OrderedDict({
             );
         """,
         "insert": """
-            INSERT INTO macrostrat.timescales_new (id, timescale, ref_id) VALUES (%s, %s, %s)
+            INSERT INTO macrostrat.timescales_new (id, timescale, ref_id) VALUES (%(id)s, %(timescale)s, %(ref_id)s)
         """,
         "index": """
             CREATE INDEX ON macrostrat.timescales_new (timescale);
@@ -532,7 +532,7 @@ tables = OrderedDict({
             );
         """,
         "insert": """
-            INSERT INTO macrostrat.col_groups_new (id, col_group, col_group_long ) VALUES (%s, %s, %s)
+            INSERT INTO macrostrat.col_groups_new (id, col_group, col_group_long ) VALUES (%(id)s, %(col_group)s, %(col_group_long)s)
         """,
         "index": """
             CREATE INDEX ON macrostrat.col_groups_new (id);
@@ -555,7 +555,7 @@ tables = OrderedDict({
             );
         """,
         "insert": """
-            INSERT INTO macrostrat.col_refs_new (id, col_id, ref_id) VALUES (%s, %s, %s)
+            INSERT INTO macrostrat.col_refs_new (id, col_id, ref_id) VALUES (%(id)s, %(col_id)s, %(ref_id)s)
         """,
         "index": """
             CREATE INDEX ON macrostrat.col_refs_new (col_id);
@@ -588,7 +588,7 @@ tables = OrderedDict({
             );
         """,
         "insert": """
-            INSERT INTO macrostrat.strat_names_meta_new (concept_id, orig_id, name, geologic_age, interval_id, b_int, t_int, usage_notes, other, province, url, ref_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO macrostrat.strat_names_meta_new (concept_id, orig_id, name, geologic_age, interval_id, b_int, t_int, usage_notes, other, province, url, ref_id) VALUES (%(concept_id)s, %(orig_id)s, %(name)s, %(geologic_age)s, %(interval_id)s, %(b_int)s, %(t_int)s, %(usage_notes)s, %(other)s, %(province)s, %(url)s, %(ref_id)s)
         """,
         "index": """
             CREATE INDEX ON macrostrat.strat_names_meta_new (interval_id);
@@ -619,7 +619,7 @@ tables = OrderedDict({
             );
         """,
         "insert": """
-            INSERT INTO macrostrat.refs_new (id, pub_year, author, ref, doi, compilation_code, url, rgeom) VALUES (%s, %s, %s, %s, %s, %s, %s, ST_SetSRID(ST_GeomFromText(%s), 4326))
+            INSERT INTO macrostrat.refs_new (id, pub_year, author, ref, doi, compilation_code, url, rgeom) VALUES (%(id)s, %(pub_year)s, %(author)s, %(ref)s, %(doi)s, %(compilation_code)s, %(url)s, ST_SetSRID(ST_GeomFromText(%(rgeom)s), 4326))
         """,
         "index": """
             CREATE INDEX ON macrostrat.refs_new USING GiST (rgeom);
@@ -646,7 +646,7 @@ tables = OrderedDict({
             );
         """,
         "insert": """
-            INSERT INTO macrostrat.places_new (place_id, name, abbrev, postal, country, country_abbrev, geom) VALUES (%s, %s, %s, %s, %s, %s, ST_SetSRID(ST_GeomFromText(%s), 4326))
+            INSERT INTO macrostrat.places_new (place_id, name, abbrev, postal, country, country_abbrev, geom) VALUES (%(place_id)s, %(name)s, %(abbrev)s, %(postal)s, %(country)s, %(country_abbrev)s, ST_SetSRID(ST_GeomFromText(%(geom)s), 4326))
         """,
         "index": """
             CREATE INDEX ON macrostrat.places_new USING GiST (geom);
@@ -668,7 +668,7 @@ tables = OrderedDict({
             );
         """,
         "insert": """
-            INSERT INTO macrostrat.strat_names_places (strat_name_id, place_id) VALUES (%s, %s)
+            INSERT INTO macrostrat.strat_names_places (strat_name_id, place_id) VALUES (%(strat_name_id)s, %(place_id)s)
         """,
         "index": """
             CREATE INDEX ON macrostrat.strat_names_places_new (strat_name_id);
@@ -691,7 +691,7 @@ tables = OrderedDict({
             );
         """,
         "insert": """
-            INSERT INTO macrostrat.concepts_places_new (concept_id, place_id) VALUES (%s, %s)
+            INSERT INTO macrostrat.concepts_places_new (concept_id, place_id) VALUES (%(concept_id)s, %(place_id)s)
         """,
         "index": """
             CREATE INDEX ON macrostrat.concepts_places_new (concept_id);

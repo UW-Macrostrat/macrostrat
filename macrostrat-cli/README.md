@@ -1,4 +1,8 @@
-# Utils
+# Macrostrat CLI
+
+````
+pip install -e .[test]
+````
 
 ### build.py
 
