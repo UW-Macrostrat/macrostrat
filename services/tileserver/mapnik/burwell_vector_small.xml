@@ -38,7 +38,7 @@
        <Parameter name="extent_cache"><![CDATA[auto]]></Parameter>
        <Parameter name="extent"><![CDATA[-179,-89,179,89]]></Parameter>
        <Parameter name="host"><![CDATA[localhost]]></Parameter>
-       <Parameter name="port"><![CDATA[5439]]></Parameter>
+       <Parameter name="port"><![CDATA[5432]]></Parameter>
        <Parameter name="user"><![CDATA[john]]></Parameter>
        <Parameter name="dbname"><![CDATA[burwell]]></Parameter>
        <Parameter name="srid"><![CDATA[4326]]></Parameter>
@@ -61,7 +61,7 @@
        <Parameter name="extent_cache"><![CDATA[auto]]></Parameter>
        <Parameter name="extent"><![CDATA[-179,-89,179,89]]></Parameter>
        <Parameter name="host"><![CDATA[localhost]]></Parameter>
-       <Parameter name="port"><![CDATA[5439]]></Parameter>
+       <Parameter name="port"><![CDATA[5432]]></Parameter>
        <Parameter name="user"><![CDATA[john]]></Parameter>
        <Parameter name="dbname"><![CDATA[burwell]]></Parameter>
        <Parameter name="srid"><![CDATA[4326]]></Parameter>
