@@ -16,7 +16,7 @@ class Stats:
         """)
         my_cur.close()
 
-        my_cur = my_conn.my_cur()
+        my_cur = my_conn.cursor()
         my_cur.execute("""
             CREATE TABLE stats_new AS (
                 SELECT
@@ -70,7 +70,7 @@ class Stats:
         """)
 
         my_cur.close()
-        my_cur = my_conn.my_cur()
+        my_cur = my_conn.cursor()
 
         pg_cur.execute("""
             select count(*)

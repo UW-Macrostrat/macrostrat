@@ -38,6 +38,8 @@ with open(os.path.join(os.path.dirname(__file__), '../credentials.yml'), 'r') as
 
 # Connect to MySQL
 def mariaConnection():
+    # Ignore warnings from MariaDB
+    filterwarnings('ignore', category = pymysql.Warning)
     return pymysql.connect(host=credentials['mysql_host'], user=credentials['mysql_user'], passwd=credentials['mysql_passwd'], db=credentials['mysql_db'], unix_socket=credentials['mysql_socket'], cursorclass=pymysql.cursors.SSDictCursor, read_timeout=180)
 
 # Connect to Postgres
