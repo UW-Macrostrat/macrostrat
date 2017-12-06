@@ -1,20 +1,3 @@
-"""
-macrostrat process:
-
-Usage:
-  macrostrat process <script> <source_id>
-  macrostrat process -h | --help
-Options:
-  -h --help                         Show this screen.
-  --version                         Show version.
-Examples:
-  macrostrat process web_geom 21
-Help:
-  For help using this tool, please open an issue on the Github repository:
-  https://github.com/UW-Macrostrat/macrostrat-cli
-"""
-
-
 from .base import Base
 import sys
 import datetime
@@ -22,6 +5,28 @@ from psycopg2.extensions import AsIs
 import process_scripts
 
 class Process(Base):
+    """
+    macrostrat process <command> <source_id>:
+        Scripts for processing geologic map data
+
+    Available commands:
+        burwell_lookup <source_id> - Refresh the appropriate lookup tables for a given map source
+        carto_lines <source_id> - Refresh the table carto.lines_<scale> for a given map source
+        carto <source_id> - Refresh the table carto.<scale> for a given map source
+        rgeom <source_id> - Update the field `rgeom` in maps.sources for a given map source
+        web_geom <source_id> - Update the field `web_geom` in maps.sources for a given map source
+    Usage:
+      macrostrat process <script> <source_id>
+      macrostrat process -h | --help
+    Options:
+      -h --help                         Show this screen.
+      --version                         Show version.
+    Examples:
+      macrostrat process web_geom 21
+    Help:
+      For help using this tool, please open an issue on the Github repository:
+      https://github.com/UW-Macrostrat/macrostrat-cli
+    """
 
     def run(self):
         # Check if a table was provided

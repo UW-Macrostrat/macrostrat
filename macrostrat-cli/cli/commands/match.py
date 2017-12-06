@@ -1,25 +1,28 @@
-"""
-macrostrat match:
-
-Usage:
-  macrostrat match <script> <source_id>
-  macrostrat match -h | --help
-Options:
-  -h --help                         Show this screen.
-  --version                         Show version.
-Examples:
-  macrostrat match strat_names 123
-Help:
-  For help using this tool, please open an issue on the Github repository:
-  https://github.com/UW-Macrostrat/macrostrat-cli
-"""
-
-
 from .base import Base
 import match_scripts
 import sys
 
 class Match(Base):
+    '''
+    macrostrat match <script> <source_id>:
+        Scripts for matching geologic maps to columns
+
+    Available scripts:
+        strat_names
+        units
+    Usage:
+      macrostrat match <script> <source_id>
+      macrostrat match -h | --help
+    Options:
+      -h --help                         Show this screen.
+      --version                         Show version.
+    Examples:
+      macrostrat match strat_names 123
+    Help:
+      For help using this tool, please open an issue on the Github repository:
+      https://github.com/UW-Macrostrat/macrostrat-cli
+    '''
+
     def do_build(self, table):
         # Get the class associated with the provided table name
         script = getattr(match_scripts, table)

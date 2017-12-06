@@ -14,7 +14,6 @@ class RGeom:
         'pg': True,
         'usage': """
             Populates the field `rgeom` for a given geologic map source.
-            The rgeom is a convex hull of all polyons in the source.
         """,
         'required_args': {
             'source_id': 'A valid source_id'

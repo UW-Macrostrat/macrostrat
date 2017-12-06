@@ -73,8 +73,15 @@ def main():
 
     # Get the class associated with the provided table name
     script = getattr(commands, cmd)
+
     script = script({
         'pg': pgConnection,
         'mariadb': mariaConnection
     }, *sys.argv[1:])
+
+
+    if len(sys.argv) == 2 or sys.argv[2] == '--help' or sys.argv[2] == '-h':
+        print script.__doc__
+        sys.exit()
+
     script.run()

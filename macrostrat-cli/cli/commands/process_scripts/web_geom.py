@@ -5,7 +5,6 @@ class WebGeom:
         'pg': True,
         'usage': """
             Populates the field `web_geom` for a given geologic map source.
-            The web_geom is simply a bbox cropped for optimal web display
         """,
         'required_args': {
             'source_id': 'A valid source_id'

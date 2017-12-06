@@ -25,7 +25,6 @@ class CartoLines:
         'pg': True,
         'usage': """
             Adds a given source to the proper carto line tables.
-            Carto tables are used for visualization and querying purposes.
         """,
         'required_args': {
             'source_id': 'A valid source_id'

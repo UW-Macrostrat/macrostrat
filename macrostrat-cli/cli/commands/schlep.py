@@ -1,20 +1,3 @@
-"""
-macrostrat schlep:
-
-Usage:
-  macrostrat schlep <table>
-  macrostrat schlep -h | --help
-Options:
-  -h --help                         Show this screen.
-  --version                         Show version.
-Examples:
-  macrostrat schlep strat_names
-Help:
-  For help using this tool, please open an issue on the Github repository:
-  https://github.com/UW-Macrostrat/macrostrat-cli
-"""
-
-
 from .base import Base
 import sys
 import datetime
@@ -22,7 +5,46 @@ from psycopg2.extensions import AsIs
 from table_meta import *
 
 class Schlep(Base):
-    """ Move data around """
+    '''
+    macrostrat schlep <table>:
+        Move a table from MariaDB to Postgres
+
+    Available tables:
+        col_areas
+        refs
+        cols
+        intervals
+        timescales
+        liths
+        strat_names_meta
+        col_refs
+        concepts_places
+        units
+        lookup_strat_names
+        unit_strat_names
+        units_sections
+        strat_names
+        unit_liths
+        strat_names_places
+        col_groups
+        places
+        lookup_unit_intervals
+        lith_atts
+        lookup_unit_liths
+        timescales_intervals
+
+    Usage:
+      macrostrat schlep <table>
+      macrostrat schlep -h | --help
+    Options:
+      -h --help                         Show this screen.
+      --version                         Show version.
+    Examples:
+      macrostrat schlep strat_names
+    Help:
+      For help using this tool, please open an issue on the Github repository:
+      https://github.com/UW-Macrostrat/macrostrat-cli
+    '''
 
     def move_table(self, table):
         print '     %s' % (table, )
