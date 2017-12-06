@@ -1,9 +1,10 @@
 from psycopg2.extensions import AsIs
 from psycopg2.extras import NamedTupleCursor
 import time
+import datetime
 import sys
 
-class MatchStratNames:
+class StratNames:
     meta = {
         'mariadb': False,
         'pg': True,
@@ -20,12 +21,12 @@ class MatchStratNames:
     cursor = None
 
     def __init__(self, pgConnection):
-        MatchStratNames.connection = pgConnection()
-        MatchStratNames.cursor = MatchStratNames.connection.cursor(cursor_factory = NamedTupleCursor)
+        StratNames.connection = pgConnection()
+        StratNames.cursor = StratNames.connection.cursor(cursor_factory = NamedTupleCursor)
 
 
     @classmethod
-    def query(strictTime, strictSpace, strictName):
+    def query(self, strictTime, strictSpace, strictName):
         match_type = 'strat_name'
 
         if not strictName:
@@ -54,7 +55,7 @@ class MatchStratNames:
                 AND ((lsn.early_age) > (intervals_top.age_top - """ + (timeFuzz) + """))
                 and lsn.strat_name_id = snft.strat_name_id"""
         # Handle no time in the query!!!
-        MatchStratNames.cursor.execute("""
+        StratNames.cursor.execute("""
             INSERT INTO maps.map_strat_names
             SELECT unnest(map_ids), strat_name_id, %(match_type)s
             FROM (
@@ -70,7 +71,7 @@ class MatchStratNames:
             'match_type': match_type,
             'where': AsIs(where)
         })
-        MatchStratNames.connection.commit()
+        StratNames.connection.commit()
 
         print '        - Done with %s' % (match_type, )
 
@@ -82,12 +83,12 @@ class MatchStratNames:
 
         # Validate params!
         # Valid source_id
-        MatchStratNames.cursor.execute("""
+        StratNames.cursor.execute("""
             SELECT source_id
             FROM maps.sources
             WHERE source_id = %(source_id)s
         """, { 'source_id': int(source_id) })
-        sources = MatchStratNames.cursor.fetchall()
+        sources = StratNames.cursor.fetchall()
 
         if len(sources) != 1:
             print 'Invalid source_id argument. Source ID %s was not found in maps.sources' % (source_id, s)
@@ -96,16 +97,16 @@ class MatchStratNames:
         # Find scale table
         scale = ""
         for scale_table in ["tiny", "small", "medium", "large"]:
-          cursor.execute("SELECT * FROM maps.%(table)s WHERE source_id = %(source_id)s LIMIT 1", {
-            "table": AsIs(scale_table),
-            "source_id": arguments.source_id
+          StratNames.cursor.execute("SELECT * FROM maps.%(table)s WHERE source_id = %(source_id)s LIMIT 1", {
+            'table': AsIs(scale_table),
+            'source_id': source_id
           })
-          if cursor.fetchone() is not None:
+          if StratNames.cursor.fetchone() is not None:
             scale = scale_table
             break
 
         if len(scale) < 1:
-          print "Provided source_id not found in maps.small, maps.medium, or maps.large. Please insert it and try again."
+          print 'Provided source_id not found in maps.small, maps.medium, or maps.large. Please insert it and try again.'
           sys.exit(1)
 
 
@@ -113,7 +114,7 @@ class MatchStratNames:
 
 
         # Clean up
-        MatchStratNames.cursor.execute("""
+        StratNames.cursor.execute("""
           DELETE FROM maps.map_strat_names
           WHERE map_id IN (
             SELECT map_id
@@ -122,12 +123,12 @@ class MatchStratNames:
           ) AND basis_col NOT LIKE 'manual%%'
         """, {
           'table': AsIs(scale),
-          'source_id': arguments.source_id
+          'source_id': source_id
         })
-        MatchStratNames.connection.commit()
+        StratNames.connection.commit()
         print '        + Done cleaning up'
 
-        MatchStratNames.cursor.execute("""
+        StratNames.cursor.execute("""
             DROP TABLE IF EXISTS temp_rocks;
 
             CREATE TABLE temp_rocks AS
@@ -192,20 +193,20 @@ class MatchStratNames:
             JOIN clean ON with_nos.row_no = clean.row_no
         """, {
             'scale': AsIs(scale),
-            'source_id': arguments.source_id
+            'source_id': source_id
         })
-        MatchStratNames.connection.commit()
+        StratNames.connection.commit()
 
-        MatchStratNames.cursor.execute("""
+        StratNames.cursor.execute("""
             CREATE INDEX ON temp_rocks (strat_name);
             CREATE INDEX ON temp_rocks (strat_name_clean);
             CREATE INDEX ON temp_rocks (t_interval);
             CREATE INDEX ON temp_rocks (b_interval);
             CREATE INDEX ON temp_rocks USING GiST (envelope);
         """)
-        MatchStratNames.connection.commit()
+        StratNames.connection.commit()
 
-        MatchStratNames.cursor.execute("""
+        StratNames.cursor.execute("""
             DROP TABLE IF EXISTS temp_names;
             CREATE TABLE temp_names AS
             SELECT DISTINCT ON (sub.strat_name_id) lookup_strat_names.*
@@ -229,59 +230,59 @@ class MatchStratNames:
             );
         """, {
             'scale': AsIs(scale),
-            'source_id': arguments.source_id
+            'source_id': source_id
         })
-        MatchStratNames.connection.commit()
+        StratNames.connection.commit()
 
-        MatchStratNames.cursor.execute("""
+        StratNames.cursor.execute("""
             CREATE INDEX ON temp_names (strat_name_id);
             CREATE INDEX ON temp_names (rank_name);
             CREATE INDEX ON temp_names (name_no_lith);
             CREATE INDEX ON temp_names (strat_name);
         """)
-        MatchStratNames.connection.commit()
+        StratNames.connection.commit()
 
         elapsed = int(time.time() - start_time)
-        print "        Done with prepping temp tables in ", elapsed / 60, " minutes and ", elapsed % 60, " seconds"
+        print '        Done with prepping temp tables in ', elapsed / 60, ' minutes and ', elapsed % 60, ' seconds'
 
         # Time the process
         start_time = time.time()
 
         # strict time - strict space - strict name
-        a = MatchStratNames.query(True, True, True)
+        a = StratNames.query(True, True, True)
 
         # strict time - fuzzy space - strict name
-        b = MatchStratNames.query(True, False, True)
+        b = StratNames.query(True, False, True)
 
         # fuzzy time - strict space - strict name
-        c = MatchStratNames.query(False, True, True)
+        c = StratNames.query(False, True, True)
 
         # fuzzy time - fuzzy space - strict name
-        d = MatchStratNames.query(False, False, True)
+        d = StratNames.query(False, False, True)
 
         # no time - strict space - strict name
-        e = MatchStratNames.query(None, True, True)
+        e = StratNames.query(None, True, True)
 
         # no time - fuzzy space - strict name
-        f = MatchStratNames.query(None, False, True)
+        f = StratNames.query(None, False, True)
 
         # strict time - strict space - fuzzy name
-        g = MatchStratNames.query(True, True, False)
+        g = StratNames.query(True, True, False)
 
         # strict time - fuzzy space - fuzzy name
-        h = MatchStratNames.query(True, False, False)
+        h = StratNames.query(True, False, False)
 
         # fuzzy time - strict space - fuzzy name
-        i = MatchStratNames.query(False, True, False)
+        i = StratNames.query(False, True, False)
 
         # fuzzy time - fuzzy space - fuzzy name
-        j = MatchStratNames.query(False, False, False)
+        j = StratNames.query(False, False, False)
 
         # no time - strict space - fuzzy name
-        k = MatchStratNames.query(None, True, False)
+        k = StratNames.query(None, True, False)
 
         # no time - fuzzy space - fuzzy name
-        l = MatchStratNames.query(None, False, False)
+        l = StratNames.query(None, False, False)
 
         elapsed = int(time.time() - start_time)
-        print "        Done with in ", elapsed / 60, " minutes and ", elapsed % 60, " seconds"
+        print '        Done with in ', elapsed / 60, ' minutes and ', elapsed % 60, ' seconds'

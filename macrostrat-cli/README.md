@@ -4,20 +4,20 @@
 pip install -e .[test]
 ````
 
-### build.py
+### rebuild
 
 Builds one of Macrostrat's lookup or build tables.
 
 ````
-  python build.py <name of table or all>
+  macrostrat rebuild <table | all>
 ````
 
-### move.py
+### schlep
 
 Moves a table from MariaDB to Postgres
 
 ````
-  python move.py <name of table or all>
+  macrostrat schlep <table | all>
 ````
 
 
