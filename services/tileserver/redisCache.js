@@ -54,19 +54,10 @@ module.exports = (options) => {
           client.del(key(tile), (error) => {
             done(null)
           })
-        },
-        (done) => {
-          fs.unlink(file, (error) => {
-            done()
-          })
-        },
-        (done) => {
-          client.del(key(tile), (error) => {
-            callback(null)
-          })
         }
       ], (error) => {
         // Doneski. Don't care if it failed or not
+        callback(null)
       })
     }
 
