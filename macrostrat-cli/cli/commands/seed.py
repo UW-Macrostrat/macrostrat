@@ -182,6 +182,21 @@ class Seed(Base):
         #             ParallelRequests([ 'http://localhost:5555/%s/%s/%s/%s.png' % (layer, tile.z, tile.x, tile.y) for tile in tiles ], { 'X-Tilestrata-SkipCache': '*'})
         #
 
+        print '     Seeding...'
+        for z in self.zooms:
+            print '         ', z
+            tiles = [ t for t in tilecover.cover_geometry(tiler, seed_area, z) ]
+            headers = { 'X-Tilestrata-SkipCache': '*'}
+            # Request that a tile be created
+            for layer in self.layers:
+                for tile in tqdm(tiles):
+                    url = 'http://localhost:5555/%s/%s/%s/%s.png' % (layer, tile.z, tile.x, tile.y)
+                    try:
+                        r = requests.get(url, headers=headers)
+                        if r.status_code != 200 and r.status_code != 204:
+                            print r.status_code
+                    except:
+                        pass
 
         print '     Deleting...'
         for z in self.cached_zooms:
@@ -192,24 +207,15 @@ class Seed(Base):
             for layer in self.layers:
                 for tile in tqdm(tiles):
                     url = 'http://localhost:5555/%s/%s/%s/%s.png' % (layer, tile.z, tile.x, tile.y)
-                    r = requests.get(url, headers=headers)
-                    if r.status_code != 200 and r.status_code != 204:
-                        print r.status_code
+                    try:
+                        r = requests.get(url, headers=headers)
+                        if r.status_code != 200 and r.status_code != 204:
+                            print r.status_code
+                    except:
+                        pass
                         # fails.append(url)
 
                 # ParallelRequests([ 'http://localhost:5555/%s/%s/%s/%s.png' % (layer, tile.z, tile.x, tile.y) for tile in tiles ], { 'X-Tilestrata-DeleteTile': self.credentials['tileserver_secret'] })
 
-        print '     Seeding...'
-        for z in self.zooms:
-            print '         ', z
-            tiles = [ t for t in tilecover.cover_geometry(tiler, seed_area, z) ]
-            headers = { 'X-Tilestrata-SkipCache': '*'}
-            # Request that a tile be created
-            for layer in self.layers:
-                for tile in tqdm(tiles):
-                    url = 'http://localhost:5555/%s/%s/%s/%s.png' % (layer, tile.z, tile.x, tile.y)
-                    r = requests.get(url, headers=headers)
-                    if r.status_code != 200 and r.status_code != 204:
-                        print r.status_code
-                        # fails.append(url)
+
                 # ParallelRequests([ 'http://localhost:5555/%s/%s/%s/%s.png' % (layer, tile.z, tile.x, tile.y) for tile in tiles ], { 'X-Tilestrata-SkipCache': '*'})
