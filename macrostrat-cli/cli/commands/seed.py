@@ -8,7 +8,7 @@ from shapely.wkt import loads
 from tiletanic import tileschemes
 from urlparse import urlparse
 from threading import Thread
-import httplib, sys
+import requests
 from Queue import Queue
 
 class ParallelRequests():
@@ -37,21 +37,13 @@ class ParallelRequests():
     def make_request(self):
         while True:
             url = self.q.get()
-            status, url = self.getStatus(url)
+            r = requests.get(url, headers=self.headers)
+            if r.status_code != 200:
+                print r.status_code
+                self.fails.append(url)
             self.q.task_done()
 
 
-    def getStatus(self, ourl):
-        try:
-            url = urlparse(ourl)
-            conn = httplib.HTTPConnection(url.netloc)
-            conn.request('GET', url.path, '', self.headers)
-            res = conn.getresponse()
-            if res.status != 200:
-                self.fails.append(ourl)
-            return res.status, ourl
-        except:
-            return 'error', ourl
 
 class Seed(Base):
     '''
@@ -174,7 +166,7 @@ class Seed(Base):
 
                 # Call delete tile
                 for layer in self.layers:
-                    ParallelRequests([ 'http://localhost:5555/%s/%s/%s/%s.png' % (layer, tile.z, tile.x, tile.y) for tile in tiles ], { 'X-Tilestrata-DeleteTile': self.credentials['tileserver_secret'] })
+                    ParallelRequests([ 'https://devtiles.macrostrat.org/%s/%s/%s/%s.png' % (layer, tile.z, tile.x, tile.y) for tile in tiles ], { 'X-Tilestrata-DeleteTile': self.credentials['tileserver_secret'] })
             for z in self.zooms:
                 tiles = [ t for t in tilecover.cover_geometry(tiler, part, z) ]
                 for tile in tiles:
@@ -183,6 +175,6 @@ class Seed(Base):
                     else:
                         tiles.remove(tile)
 
-                # Call delete tile
+                # Request that a tile be created
                 for layer in self.layers:
                     ParallelRequests([ 'http://localhost:5555/%s/%s/%s/%s.png' % (layer, tile.z, tile.x, tile.y) for tile in tiles ], { 'X-Tilestrata-SkipCache': '*'})
