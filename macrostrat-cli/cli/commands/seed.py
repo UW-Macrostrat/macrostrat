@@ -42,15 +42,16 @@ class ParallelRequests():
 
 
     def getStatus(self, ourl):
-        url = urlparse(ourl)
-        conn = httplib.HTTPConnection(url.netloc)
-        conn.request('GET', url.path, '', self.headers)
-        res = conn.getresponse()
-        if res.status != 200:
-            self.fails.append(ourl)
-        return res.status, ourl
-
-
+        try:
+            url = urlparse(ourl)
+            conn = httplib.HTTPConnection(url.netloc)
+            conn.request('GET', url.path, '', self.headers)
+            res = conn.getresponse()
+            if res.status != 200:
+                self.fails.append(ourl)
+            return res.status, ourl
+        except:
+            return 'error', ourl
 
 class Seed(Base):
     '''
