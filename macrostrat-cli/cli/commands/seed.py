@@ -72,8 +72,6 @@ class Seed(Base):
 
     zooms = [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]
     cached_zooms = [ 11, 12, 13 ]
-    # zooms = [ 0, 1, 2 ]
-    # cached_zooms = [ 0 ]
     #layers = [ 'carto', 'tiny', 'small', 'medium', 'large']
     layers = [ 'carto' ]
     min_zooms = {
@@ -175,7 +173,7 @@ class Seed(Base):
 
                 # Call delete tile
                 for layer in self.layers:
-                    ParallelRequests([ 'http://localhost:5555/%s/%s/%s/%s.png' % (layer, tile.z, tile.x, tile.y) for tile in tiles ], { 'X-Tilestrata-DeleteTile': '71d36721-73ed-4e8e-b019-d4b3db0abfe0'})
+                    ParallelRequests([ 'http://localhost:5555/%s/%s/%s/%s.png' % (layer, tile.z, tile.x, tile.y) for tile in tiles ], { 'X-Tilestrata-DeleteTile': self.credentials['tileserver_secret'] })
             for z in self.zooms:
                 tiles = [ t for t in tilecover.cover_geometry(tiler, part, z) ]
                 for tile in tiles:

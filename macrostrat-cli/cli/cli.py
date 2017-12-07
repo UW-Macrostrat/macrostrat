@@ -76,7 +76,8 @@ def main():
 
     script = script({
         'pg': pgConnection,
-        'mariadb': mariaConnection
+        'mariadb': mariaConnection,
+        'credentials': credentials
     }, *sys.argv[1:])
 
 

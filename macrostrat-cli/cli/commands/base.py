@@ -16,6 +16,7 @@ class Base(object):
             self.mariadb['cursor'] = self.mariadb['connection'].cursor()
 
         self.args = args
+        self.credentials = connections['credentials']
 
     def run(self):
         raise NotImplementedError('You must implement the run() method yourself!')
