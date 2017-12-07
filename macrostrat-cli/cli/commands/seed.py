@@ -166,7 +166,7 @@ class Seed(Base):
 
                 # Call delete tile
                 for layer in self.layers:
-                    ParallelRequests([ 'https://devtiles.macrostrat.org/%s/%s/%s/%s.png' % (layer, tile.z, tile.x, tile.y) for tile in tiles ], { 'X-Tilestrata-DeleteTile': self.credentials['tileserver_secret'] })
+                    ParallelRequests([ 'http://localhost:5555/%s/%s/%s/%s.png' % (layer, tile.z, tile.x, tile.y) for tile in tiles ], { 'X-Tilestrata-DeleteTile': self.credentials['tileserver_secret'] })
             for z in self.zooms:
                 tiles = [ t for t in tilecover.cover_geometry(tiler, part, z) ]
                 for tile in tiles:
