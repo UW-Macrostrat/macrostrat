@@ -57,7 +57,7 @@ module.exports = (options) => {
         }
       ], (error) => {
         // Doneski. Don't care if it failed or not
-        callback(null)
+        //callback(null)
       })
     }
 
