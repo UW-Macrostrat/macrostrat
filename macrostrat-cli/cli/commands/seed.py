@@ -10,7 +10,7 @@ from urlparse import urlparse
 from threading import Thread
 import requests
 from Queue import Queue
-
+from tqdm import *
 class ParallelRequests():
     concurrency = 5
     fails = []
@@ -20,6 +20,7 @@ class ParallelRequests():
         self.headers = headers
         self.q = Queue(self.concurrency * 2)
         self.fails = []
+        self.done = 0
 
         for i in range(self.concurrency):
             t = Thread(target=self.make_request)
@@ -38,9 +39,10 @@ class ParallelRequests():
         while True:
             url = self.q.get()
             r = requests.get(url, headers=self.headers)
-            if r.status_code != 200:
+            if r.status_code != 200 and r.status_code != 204:
                 print r.status_code
                 self.fails.append(url)
+
             self.q.task_done()
 
 
@@ -150,31 +152,64 @@ class Seed(Base):
         tiler = tileschemes.WebMercator()
         #tiles = [ t for t in tilecover.cover_geometry(tiler, seed_area, 11) ]
         #print tiles
-        parts = self.chunk_area(seed_area)
+        # parts = self.chunk_area(seed_area)
+        #
+        # deleted_tiles = []
+        # seeded_tiles = []
+        # for idx, part in enumerate(parts):
+        #     print idx
+        #     for z in self.cached_zooms:
+        #         tiles = [ t for t in tilecover.cover_geometry(tiler, part, z) ]
+        #         for tile in tiles:
+        #             if '%s|%s|%s' % (tile.z, tile.x, tile.y) not in deleted_tiles:
+        #                 deleted_tiles.append('%s|%s|%s' % (tile.z, tile.x, tile.y))
+        #             else:
+        #                 tiles.remove(tile)
+        #
+        #         # Call delete tile
+        #         for layer in self.layers:
+        #             ParallelRequests([ 'http://localhost:5555/%s/%s/%s/%s.png' % (layer, tile.z, tile.x, tile.y) for tile in tiles ], { 'X-Tilestrata-DeleteTile': self.credentials['tileserver_secret'] })
+        #     for z in self.zooms:
+        #         tiles = [ t for t in tilecover.cover_geometry(tiler, part, z) ]
+        #         for tile in tiles:
+        #             if '%s|%s|%s' % (tile.z, tile.x, tile.y) not in seeded_tiles:
+        #                 seeded_tiles.append('%s|%s|%s' % (tile.z, tile.x, tile.y))
+        #             else:
+        #                 tiles.remove(tile)
+        #
+        #         # Request that a tile be created
+        #         for layer in self.layers:
+        #             ParallelRequests([ 'http://localhost:5555/%s/%s/%s/%s.png' % (layer, tile.z, tile.x, tile.y) for tile in tiles ], { 'X-Tilestrata-SkipCache': '*'})
+        #
 
-        deleted_tiles = []
-        seeded_tiles = []
-        for idx, part in enumerate(parts):
-            print idx
-            for z in self.cached_zooms:
-                tiles = [ t for t in tilecover.cover_geometry(tiler, part, z) ]
-                for tile in tiles:
-                    if '%s|%s|%s' % (tile.z, tile.x, tile.y) not in deleted_tiles:
-                        deleted_tiles.append('%s|%s|%s' % (tile.z, tile.x, tile.y))
-                    else:
-                        tiles.remove(tile)
 
-                # Call delete tile
-                for layer in self.layers:
-                    ParallelRequests([ 'http://localhost:5555/%s/%s/%s/%s.png' % (layer, tile.z, tile.x, tile.y) for tile in tiles ], { 'X-Tilestrata-DeleteTile': self.credentials['tileserver_secret'] })
-            for z in self.zooms:
-                tiles = [ t for t in tilecover.cover_geometry(tiler, part, z) ]
-                for tile in tiles:
-                    if '%s|%s|%s' % (tile.z, tile.x, tile.y) not in seeded_tiles:
-                        seeded_tiles.append('%s|%s|%s' % (tile.z, tile.x, tile.y))
-                    else:
-                        tiles.remove(tile)
+        print '     Deleting...'
+        for z in self.cached_zooms:
+            print '         ', z
+            tiles = [ t for t in tilecover.cover_geometry(tiler, seed_area, z) ]
+            headers = { 'X-Tilestrata-DeleteTile': self.credentials['tileserver_secret'] }
+            # Call delete tile
+            for layer in self.layers:
+                for tile in tqdm(tiles):
+                    url = 'http://localhost:5555/%s/%s/%s/%s.png' % (layer, tile.z, tile.x, tile.y)
+                    r = requests.get(url, headers=headers)
+                    if r.status_code != 200 and r.status_code != 204:
+                        print r.status_code
+                        # fails.append(url)
 
-                # Request that a tile be created
-                for layer in self.layers:
-                    ParallelRequests([ 'http://localhost:5555/%s/%s/%s/%s.png' % (layer, tile.z, tile.x, tile.y) for tile in tiles ], { 'X-Tilestrata-SkipCache': '*'})
+                # ParallelRequests([ 'http://localhost:5555/%s/%s/%s/%s.png' % (layer, tile.z, tile.x, tile.y) for tile in tiles ], { 'X-Tilestrata-DeleteTile': self.credentials['tileserver_secret'] })
+
+        print '     Seeding...'
+        for z in self.zooms:
+            print '         ', z
+            tiles = [ t for t in tilecover.cover_geometry(tiler, seed_area, z) ]
+            headers = { 'X-Tilestrata-SkipCache': '*'}
+            # Request that a tile be created
+            for layer in self.layers:
+                for tile in tqdm(tiles):
+                    url = 'http://localhost:5555/%s/%s/%s/%s.png' % (layer, tile.z, tile.x, tile.y)
+                    r = requests.get(url, headers=headers)
+                    if r.status_code != 200 and r.status_code != 204:
+                        print r.status_code
+                        # fails.append(url)
+                # ParallelRequests([ 'http://localhost:5555/%s/%s/%s/%s.png' % (layer, tile.z, tile.x, tile.y) for tile in tiles ], { 'X-Tilestrata-SkipCache': '*'})
