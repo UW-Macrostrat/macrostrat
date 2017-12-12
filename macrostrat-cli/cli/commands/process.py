@@ -15,6 +15,7 @@ class Process(Base):
         carto <source_id> - Refresh the table carto.<scale> for a given map source
         rgeom <source_id> - Update the field `rgeom` in maps.sources for a given map source
         web_geom <source_id> - Update the field `web_geom` in maps.sources for a given map source
+        tesselate <options> - Create new voronoi polygons for columns
     Usage:
       macrostrat process <script> <source_id>
       macrostrat process -h | --help
@@ -45,11 +46,21 @@ class Process(Base):
 
         script = getattr(process_scripts, cmd)
 
-        if (len(self.args) - 2) != len(script.meta['required_args']) or len(self.args) == 2:
+        #if (len(self.args) - 2) != len(script.meta['required_args']) or len(self.args) == 2:
+        if (len(self.args) - 2) != len(script.meta['required_args']) and cmd != 'tesselate':
             print 'You are missing a required argument for this command. The following arguments are required:'
             for arg in script.meta['required_args']:
                 print '     + %s - %s' % (arg, script.meta['required_args'][arg])
             sys.exit()
 
-        script(self.pg['raw_connection'])
-        script.build(self.args[2])
+
+        if script.meta['mariadb'] and script.meta['pg']:
+            script(self.mariadb['raw_connection'], self.pg['raw_connection'])
+        elif script.meta['mariadb'] and not script.meta['pg']:
+            script(self.mariadb['raw_connection'])
+        elif script.meta['pg'] and not script.meta['mariadb']:
+            script(self.pg['raw_connection'])
+        else:
+            print 'wtf'
+
+        script.build(self.args[2:])
