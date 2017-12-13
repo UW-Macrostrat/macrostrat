@@ -49,7 +49,7 @@
   srs="+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs">
     <Datasource>
        <Parameter name="type"><![CDATA[postgis]]></Parameter>
-       <Parameter name="table"><![CDATA[(SELECT x.line_id, x.source_id, COALESCE(q.descrip, '') AS descrip, COALESCE(q.name, '') AS name, COALESCE(q.direction, '') AS direction, COALESCE(q.type, '') AS type, x.geom
+       <Parameter name="table"><![CDATA[(SELECT x.line_id, x.source_id, COALESCE(q.descrip, '') AS descrip, COALESCE(q.name, '') AS name, COALESCE(q.new_direction, '') AS direction, COALESCE(q.new_type, '') AS type, x.geom
        FROM carto_new.lines_large x
        LEFT JOIN (
            SELECT * FROM lines.medium
