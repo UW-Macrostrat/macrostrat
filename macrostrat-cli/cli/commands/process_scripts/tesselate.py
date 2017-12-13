@@ -119,30 +119,38 @@ class Tesselate:
 
             parameters[re.sub(r'-', '', parts[0])] = parts[1].split(',')
 
+        if len(parameters) < 1:
+            print 'Please provide params'
+            sys.exit(1)
+
         # Validate the parameters passed to the script
         column_params = [ 'col_id', 'col_group_id', 'project_id' ]
-        clip_params = [ 'boundary_id', 'boundary_polygon', 'snap-to-nearest', 'buffer' ]
+        clip_params = [ 'boundary_id', 'boundary_polygon', 'snap_to_nearest', 'buffer' ]
         optional_params = [ 'allow-overlap' ]
 
         if len(set(parameters.keys()).intersection(column_params)) == 0:
             print ' Please provide one of the following parameters to select columns:'
             for p in column_params:
                 print '     -> %s' % (p, )
+            sys.exit(1)
 
         if len(set(parameters.keys()).intersection(column_params)) > 1:
             print ' Only one column selection parameter can be provided. Please provide one of the following parameters to select columns:'
             for p in column_params:
                 print '     -> %s' % (p, )
+            sys.exit(1)
 
-        if len(set(parameters.keys()).intersection(clip_params)) == 0:
-            print ' Please provide one of the following parameters to clip columns:'
-            for p in clip_params:
-                print '     -> %s' % (p, )
+        # if len(set(parameters.keys()).intersection(clip_params)) == 0:
+        #     print ' Please provide one of the following parameters to clip columns:'
+        #     for p in clip_params:
+        #         print '     -> %s' % (p, )
+        #     sys.exit(1)
 
         if len(set(parameters.keys()).intersection(clip_params)) > 1:
             print ' Only one clip parameter can be provided. Please provide one of the following parameters to clip polygons:'
             for p in clip_params:
                 print '     -> %s' % (p, )
+            sys.exit(1)
 
         # Validate column_params
         column_param_key = list(set(parameters.keys()).intersection(column_params))[0]
@@ -150,23 +158,23 @@ class Tesselate:
             if not val.isdigit():
                 print ' Value %s provided to parameter %s is invalid. It must be an integer' % (val, column_param_key, )
 
-        # Validate snap-to-nearest
-        if 'snap-to-nearest' in parameters:
-            val = parameters['snap-to-nearest'].title()
+        # Validate snap_to_nearest
+        if 'snap_to_nearest' in parameters:
+            val = parameters['snap_to_nearest'][0].title()
             if val == 'True':
                 val = True
-            elif val == 'False'
+            elif val == 'False':
                 val = False
             else:
-                print ' Invalid value for parameter `snap-to-nearest`. Must be either `True` or `False`'
+                print ' Invalid value for parameter `snap_to_nearest`. Must be either `True` or `False`'
                 sys.exit(1)
-            parameters['snap-to-nearest'] = val
+            parameters['snap_to_nearest'] = val
 
             if 'boundary_id' in parameters:
-                print ' You cannot pass %s or any other clip parameters when using `snap-to-nearest`' % ('boundary_id', )
+                print ' You cannot pass %s or any other clip parameters when using `snap_to_nearest`' % ('boundary_id', )
                 sys.exit(1)
             if 'boundary_polygon' in parameters:
-                print ' You cannot pass %s or any other clip parameters when using `snap-to-nearest`' % ('boundary_polygon', )
+                print ' You cannot pass %s or any other clip parameters when using `snap_to_nearest`' % ('boundary_polygon', )
                 sys.exit(1)
 
         # Validate the buffer parameter
@@ -177,8 +185,8 @@ class Tesselate:
             if 'boundary_polygon' in parameters:
                 print ' You cannot pass %s or any other clip parameters when using `buffer`' % ('boundary_polygon', )
                 sys.exit(1)
-            if 'snap-to-nearest' in parameters:
-                print ' You cannot pass %s or any other clip parameters when using `buffer`' % ('snap-to-nearest', )
+            if 'snap_to_nearest' in parameters:
+                print ' You cannot pass %s or any other clip parameters when using `buffer`' % ('snap_to_nearest', )
                 sys.exit(1)
 
             try:
@@ -235,8 +243,8 @@ class Tesselate:
             Tesselate.pg['cursor'].execute("""
                 SELECT ST_AsGeoJSON((ST_dump(ST_Union(geom))).geom) AS geom
                 FROM geologic_boundaries.boundaries
-                WHERE boundary_id = %(boundary_id)s
-            """, { 'boundary_id': 469 })
+                WHERE boundary_id = ANY(%(boundary_id)s)
+            """, { 'boundary_id': [ int(p) for p in parameters['boundary_id'] ] })
             clip_polygon = Tesselate.pg['cursor'].fetchone()
 
             # Verify that something was fetched
@@ -253,14 +261,15 @@ class Tesselate:
             # TODO: comment this A LOT
             distances = []
             for p1 in columns:
-                p1 = Point([float(p1['lng'], float(p1['lat']))])
+                p1 = Point([float(p1['lng']), float(p1['lat'])])
                 for p2 in columns:
-                    p2 = Point([float(p2['lng'], float(p2['lat']))])
+                    p2 = Point([float(p2['lng']), float(p2['lat'])])
                     distances.append(p1.distance(p2))
             max_distance = max(distances)
-            all_points = MultiPoint([ (float(p['lng'], float(p['lat']))) for p in columns ])
+            all_points = MultiPoint([ (float(p['lng']), float(p['lat'])) for p in columns ])
             all_points_center = all_points.centroid
-            clip_polygon = all_points_center.buffer(max_distance)
+            clip_polygon = all_points_center.buffer(max_distance).envelope
+            print clip_polygon
 
         # Validate that all columns are inside the clip polygon, if applicable
         if 'boundary_id' in parameters or 'boundary_polygon' in parameters:
@@ -277,11 +286,6 @@ class Tesselate:
 
 
 
-        # Tesselate.pg['cursor'].execute("""
-        #     SELECT ST_AsGeoJSON(ST_Union(poly_geom)) AS geom
-        #     FROM macrostrat.cols
-        # """, { 'boundary_id': 469 })
-        # all_columns = shape(json.loads(Tesselate.pg['cursor'].fetchone()[0]))
         #
         # # Validate that all columns do not overlap with existing column geometries
         # inside_columns = []
@@ -295,10 +299,11 @@ class Tesselate:
         #         print '     -> %s' % (point['id'])
         #     sys.exit(1)
 
+        # Tesselation time
         if len(columns) == 1:
             if 'buffer' in parameters:
                 unclipped_polygons = [ column.buffer(parameters['buffer']) for column in columns ]
-            elif 'snap-to-nearest' in parameters:
+            elif 'snap_to_nearest' in parameters:
                 # Need to get buffer distance
                 Tesselate.pg['cursor'].execute("""
                     SELECT ST_Distance(coordinate, %(point)s) AS distance
@@ -311,9 +316,10 @@ class Tesselate:
                     'col_id': columns[0]['id']
                 })
                 result = Tesselate.pg['cursor'].fetchone()
-                unclipped_polygons = [ column.buffer(result['distance']) for column in columns ]
+                unclipped_polygons = [ Point([float(p['lng']), float(p['lat'])]).buffer(result[0]).envelope for p in columns ]
+                print unclipped_polygons[0].wkt
             else:
-                print 'When only one column is provided, a valid `buffer` or `snap-to-nearest` must also be provided'
+                print 'When only one column is provided, a valid `buffer` or `snap_to_nearest` must also be provided'
                 sys.exit(1)
         else:
             # Create the tesselation; initially open-ended and not clipped to the clipping polygon
@@ -322,15 +328,22 @@ class Tesselate:
             regions, new_points =  Tesselate.voronoi_finite_polygons_2d(tesselation)
             unclipped_polygons = [ Polygon(new_points[r]) for r in regions ]
 
-        clipping_polygons = [ ]
+
+        if clip_polygon is not None:
+            clipped_polygons = [ poly.intersection(clip_polygon) for poly in unclipped_polygons ]
+        else:
+            clipped_polygons = unclipped_polygons
+
         if 'allow-overlap' in parameters and parameters['allow-overlap'] is True:
             pass
         else:
-            clipping_polgons.append(all_columns)
-
-        # Clip the resultant tesselation by our clipping polygon
-        all_clip = cascaded_union([all_columns, clip_polygon])
-        clipped_polygons = [ poly.intersection(all_clip) for poly in unclipped_polygons ]
+            # Fetch all column polygons
+            Tesselate.pg['cursor'].execute("""
+                SELECT ST_AsGeoJSON(ST_Union(poly_geom)) AS geom
+                FROM macrostrat.cols
+            """, { })
+            all_columns = shape(json.loads(Tesselate.pg['cursor'].fetchone()[0]))
+            clipped_polygons = [ poly.difference(all_columns) for poly in clipped_polygons ]
 
         # Assign a tesselated polygon to each column
         assigned_polygons = []
@@ -340,7 +353,30 @@ class Tesselate:
                     assigned_polygons.append({ 'col_id': column['id'], 'polygon': polygon })
                     continue
 
-
+        # Update the database
+        for column in assigned_polygons:
+            # First check if it already exists in `col_areas`
+            Tesselate.mariadb['cursor'].execute("""
+                SELECT col_id
+                FROM col_areas
+                WHERE col_id = %s
+            """, column['col_id'])
+            col_id = Tesselate.mariadb['cursor'].fetchone()
+            # If it doesn't exist, insert
+            if col_id is None or len(col_id) == 0:
+                Tesselate.mariadb['cursor'].execute("""
+                    INSERT INTO col_areas (col_id, col_area)
+                    VALUES (%s, ST_GeomFromText(%s))
+                """, [ column['col_id'], column['polygon'].wkt ])
+                Tesselate.mariadb['connection'].commit()
+            # Otherwise update
+            else:
+                Tesselate.mariadb['cursor'].execute("""
+                    UPDATE col_areas
+                    SET col_area =  ST_GeomFromText(%s)
+                    WHERE col_id = %s
+                """, [ column['polygon'].wkt, column['col_id'] ])
+                Tesselate.mariadb['connection'].commit()
 
         geojson = {
             "type": "FeatureCollection",
@@ -362,12 +398,13 @@ class Tesselate:
             json.dump(point_geojson, out)
 
 
-        clip_geojson = {
-            "type": "FeatureCollection",
-            "features": [
-                {"type": "Feature", "properties": {}, "geometry": json.loads(json.dumps(mapping(clip_polygon)))}
-            ]
-        }
+        if clip_polygon is not None:
+            clip_geojson = {
+                "type": "FeatureCollection",
+                "features": [
+                    {"type": "Feature", "properties": {}, "geometry": json.loads(json.dumps(mapping(clip_polygon)))}
+                ]
+            }
 
-        with open('clip.json', 'w') as out:
-            json.dump(clip_geojson, out)
+            with open('clip.json', 'w') as out:
+                json.dump(clip_geojson, out)
