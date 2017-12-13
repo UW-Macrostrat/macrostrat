@@ -11,6 +11,7 @@ from shapely.geometry import Polygon, Point, MultiPoint, mapping, shape
 from shapely.wkt import loads
 import json
 import re
+from .. import schlep
 
 class Tesselate:
     meta = {
@@ -211,6 +212,7 @@ class Tesselate:
             for val in parameters['boundary_id']:
                 if not val.isdigit():
                     print ' Value %s provided to parameter boundary_id is invalid. It must be an integer' % (val, )
+            parameters['boundary_id'] = [ int(val) for val in parameters['boundary_id' ]]
 
 
         # Get the column coordinates
@@ -341,7 +343,8 @@ class Tesselate:
             Tesselate.pg['cursor'].execute("""
                 SELECT ST_AsGeoJSON(ST_Union(poly_geom)) AS geom
                 FROM macrostrat.cols
-            """, { })
+                WHERE """ + sql_key + """ != ANY(%(ids)s)
+            """, { 'ids': parameters[column_param_key]})
             all_columns = shape(json.loads(Tesselate.pg['cursor'].fetchone()[0]))
             clipped_polygons = [ poly.difference(all_columns) for poly in clipped_polygons ]
 
@@ -377,6 +380,11 @@ class Tesselate:
                     WHERE col_id = %s
                 """, [ column['polygon'].wkt, column['col_id'] ])
                 Tesselate.mariadb['connection'].commit()
+
+        schlep({
+            'pg': Tesselate.pg['raw_connection'],
+            'mariadb': Tesselate.mariadb['raw_connection']
+        }, [ None, ''])
 
         geojson = {
             "type": "FeatureCollection",
