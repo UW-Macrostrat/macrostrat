@@ -344,7 +344,7 @@ class Tesselate:
                 SELECT ST_AsGeoJSON(ST_Union(poly_geom)) AS geom
                 FROM macrostrat.cols
                 WHERE NOT (""" + sql_key + """ = ANY(%(ids)s))
-            """, { 'ids': parameters[column_param_key]})
+            """, { 'ids': [ int(p) for p in parameters[column_param_key] ]})
             all_columns = shape(json.loads(Tesselate.pg['cursor'].fetchone()[0]))
             clipped_polygons = [ poly.difference(all_columns) for poly in clipped_polygons ]
 
