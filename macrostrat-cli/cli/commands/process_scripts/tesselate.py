@@ -1,6 +1,3 @@
-'''
-
-'''
 import sys
 from psycopg2.extensions import AsIs
 from psycopg2.extras import NamedTupleCursor
@@ -14,6 +11,37 @@ import re
 from .. import schlep
 
 class Tesselate:
+    '''
+    macrostrat process tesselate
+        Given some Macrostrat column centroids, create polygon geometries
+
+    Parameters
+        One of the following is required:
+            --col_id - (int/int[]) one or many comma-delimited column ids
+            --col_group_id - (int/int[]) one or many comma-delimited col_group_ids
+            --project_id - (int/int[]) one or many comma-delimited project_ids
+
+        Options:
+            --boundary_id - (int) a boundary_id from geologic_boundaries.boundaries to use to cut the tesselated polygons
+            --boundary_polygon - (text) a valid WKT polygon to use to cut the tesselated polygons
+            --snap_to_nearest - (boolean) if only a single col_id is passed, create a polygon whose radius is equal to the distance to the nearest existing column centroid
+            --buffer - (float) if only a single col_id is passed, create a polygon with the given radius. Good for things like Deep Sea columns
+            --allow_overlap - (boolean) do not cut the resultant polygons by all other existing column polygons. Will result in overlapping geometries.
+
+        *NB*: If multiple columns are passed and no options are provided, the tesselated polygons will be clipped by a polygon whose centroid is the center of all columns being operated on and whose radius is equivalent to the maximum distance between two columns being operated on.
+
+    Examples:
+      macrostrat process tesselate --col_id=1,2,3 --boundary_id=987
+      macrostrat process tesselate --col_group_id=76 --boundary_id=345
+      macrostrat process tesselate --col_id=54 --snap_to_nearest=True
+    Options:
+      -h --help                         Show this screen.
+      --version                         Show version.
+    Help:
+      For help using this tool, please open an issue on the Github repository:
+      https://github.com/UW-Macrostrat/macrostrat-cli
+    '''
+
     meta = {
         'mariadb': True,
         'pg': True,
@@ -21,7 +49,7 @@ class Tesselate:
             Adds a given source to the proper carto line tables.
         """,
         'required_args': {
-            'source_id': 'A valid source_id'
+
         }
     }
 
@@ -38,8 +66,10 @@ class Tesselate:
     def __init__(self, mariaConnection, pgConnection):
         Tesselate.mariadb['connection'] = mariaConnection()
         Tesselate.mariadb['cursor'] = Tesselate.mariadb['connection'].cursor()
+        Tesselate.mariadb['raw_connection'] = mariaConnection
         Tesselate.pg['connection'] = pgConnection()
         Tesselate.pg['cursor'] = Tesselate.pg['connection'].cursor(cursor_factory = NamedTupleCursor)
+        Tesselate.pg['raw_connection'] = pgConnection
 
     @classmethod
     def voronoi_finite_polygons_2d(self, vor, radius=None):
@@ -110,6 +140,10 @@ class Tesselate:
 
     @staticmethod
     def build(args):
+        if '--help' in args or '-h' in args:
+            print Tesselate.__doc__
+            sys.exit()
+            
         clip_polygon = None
         column_buffer = None
         parameters = {}
@@ -121,13 +155,13 @@ class Tesselate:
             parameters[re.sub(r'-', '', parts[0])] = parts[1].split(',')
 
         if len(parameters) < 1:
-            print 'Please provide params'
+            print Tesselate.__doc__
             sys.exit(1)
 
         # Validate the parameters passed to the script
         column_params = [ 'col_id', 'col_group_id', 'project_id' ]
         clip_params = [ 'boundary_id', 'boundary_polygon', 'snap_to_nearest', 'buffer' ]
-        optional_params = [ 'allow-overlap' ]
+        optional_params = [ 'allow_overlap' ]
 
         if len(set(parameters.keys()).intersection(column_params)) == 0:
             print ' Please provide one of the following parameters to select columns:'
@@ -177,6 +211,18 @@ class Tesselate:
             if 'boundary_polygon' in parameters:
                 print ' You cannot pass %s or any other clip parameters when using `snap_to_nearest`' % ('boundary_polygon', )
                 sys.exit(1)
+
+        # Validate allow_overlap
+        if 'allow_overlap' in parameters:
+            val = parameters['allow_overlap'][0].title()
+            if val == 'True':
+                val = True
+            elif val == 'False':
+                val = False
+            else:
+                print ' Invalid value for parameter `allow_overlap`. Must be either `True` or `False`'
+                sys.exit(1)
+            parameters['allow_overlap'] = val
 
         # Validate the buffer parameter
         if 'buffer' in parameters:
@@ -319,7 +365,6 @@ class Tesselate:
                 })
                 result = Tesselate.pg['cursor'].fetchone()
                 unclipped_polygons = [ Point([float(p['lng']), float(p['lat'])]).buffer(result[0]).envelope for p in columns ]
-                print unclipped_polygons[0].wkt
             else:
                 print 'When only one column is provided, a valid `buffer` or `snap_to_nearest` must also be provided'
                 sys.exit(1)
@@ -336,7 +381,7 @@ class Tesselate:
         else:
             clipped_polygons = unclipped_polygons
 
-        if 'allow-overlap' in parameters and parameters['allow-overlap'] is True:
+        if 'allow_overlap' in parameters and parameters['allow_overlap'] is True:
             pass
         else:
             # Fetch all column polygons
@@ -381,38 +426,47 @@ class Tesselate:
                 """, [ column['polygon'].wkt, column['col_id'] ])
                 Tesselate.mariadb['connection'].commit()
 
-        schlep({
+
+        # Close connections, otherwise you'll have a bad time https://dba.stackexchange.com/a/133047/38677
+        Tesselate.pg['connection'].close()
+        Tesselate.mariadb['connection'].close()
+
+        # Update postgres
+        schlep_instance = schlep({
             'pg': Tesselate.pg['raw_connection'],
             'mariadb': Tesselate.mariadb['raw_connection']
         }, [ None, ''])
 
-        geojson = {
-            "type": "FeatureCollection",
-            "features": [
-                {"type": "Feature", "properties": {'col_id': f['col_id']}, "geometry": json.loads(json.dumps(mapping(f['polygon'])))} for f in assigned_polygons
-            ]
-        }
-        with open('tesselation.json', 'w') as out:
-            json.dump(geojson, out)
+        schlep_instance.move_table('col_areas')
+        schlep_instance.move_table('cols')
 
-
-        point_geojson = {
-            "type": "FeatureCollection",
-            "features": [
-                {"type": "Feature", "properties": {}, "geometry": { "type": "Point", "coordinates": [float(p['lng']), float(p['lat'])] }} for p in columns
-            ]
-        }
-        with open('points.json', 'w') as out:
-            json.dump(point_geojson, out)
-
-
-        if clip_polygon is not None:
-            clip_geojson = {
-                "type": "FeatureCollection",
-                "features": [
-                    {"type": "Feature", "properties": {}, "geometry": json.loads(json.dumps(mapping(clip_polygon)))}
-                ]
-            }
-
-            with open('clip.json', 'w') as out:
-                json.dump(clip_geojson, out)
+        # geojson = {
+        #     "type": "FeatureCollection",
+        #     "features": [
+        #         {"type": "Feature", "properties": {'col_id': f['col_id']}, "geometry": json.loads(json.dumps(mapping(f['polygon'])))} for f in assigned_polygons
+        #     ]
+        # }
+        # with open('tesselation.json', 'w') as out:
+        #     json.dump(geojson, out)
+        #
+        #
+        # point_geojson = {
+        #     "type": "FeatureCollection",
+        #     "features": [
+        #         {"type": "Feature", "properties": {}, "geometry": { "type": "Point", "coordinates": [float(p['lng']), float(p['lat'])] }} for p in columns
+        #     ]
+        # }
+        # with open('points.json', 'w') as out:
+        #     json.dump(point_geojson, out)
+        #
+        #
+        # if clip_polygon is not None:
+        #     clip_geojson = {
+        #         "type": "FeatureCollection",
+        #         "features": [
+        #             {"type": "Feature", "properties": {}, "geometry": json.loads(json.dumps(mapping(clip_polygon)))}
+        #         ]
+        #     }
+        #
+        #     with open('clip.json', 'w') as out:
+        #         json.dump(clip_geojson, out)

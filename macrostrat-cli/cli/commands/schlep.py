@@ -47,6 +47,9 @@ class Schlep(Base):
     '''
 
     def move_table(self, table):
+        if table not in tables:
+            print 'Table not found'
+            
         print '     %s' % (table, )
         # Clean up
         self.pg['cursor'].execute('DROP TABLE IF EXISTS macrostrat.%(table)s_new', { 'table': AsIs(table) })
