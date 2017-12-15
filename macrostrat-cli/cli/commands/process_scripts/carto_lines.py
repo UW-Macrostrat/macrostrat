@@ -52,9 +52,13 @@ class CartoLines:
     @classmethod
     def insert_scale(cls, scale):
         CartoLines.cursor.execute("""
+            WITH dumped AS (
+                SELECT source_id, new_priority, (ST_Dump(rgeom)).geom
+                FROM maps.sources
+            )
             SELECT DISTINCT sa.new_priority
-            FROM maps.sources sa
-            JOIN maps.sources sb ON ST_Intersects(sa.rgeom, sb.rgeom)
+            FROM dumped sa
+            JOIN dumped sb ON ST_Intersects(sa.geom, sb.geom)
             WHERE sb.source_id = %(source_id)s
             ORDER BY new_priority ASC
         """, { 'source_id': CartoLines.source_id })
@@ -98,7 +102,12 @@ class CartoLines:
                   m.line_id,
                   m.source_id,
                   'tiny'::text AS scale,
-                  (ST_Dump(ST_SetSRID(COALESCE(ST_Intersection(m.geom, sb.rgeom), 'POLYGON EMPTY'), 4326))).geom AS geom
+                  (ST_Dump(ST_SetSRID(COALESCE(CASE
+                    WHEN ST_Contains(sb.rgeom, m.geom)
+                        THEN m.geom
+                    ELSE
+                        ST_Intersection(m.geom, sb.rgeom)
+                    END, 'POLYGON EMPTY'), 4326))).geom AS geom
                 FROM lines.tiny m
                 JOIN maps.sources sa ON m.source_id = sa.source_id
                 JOIN maps.sources sb ON ST_Intersects(m.geom, sb.rgeom)
@@ -115,7 +124,12 @@ class CartoLines:
                   m.line_id,
                   m.source_id,
                   'small'::text AS scale,
-                  (ST_Dump(ST_SetSRID(COALESCE(ST_Intersection(m.geom, sb.rgeom), 'POLYGON EMPTY'), 4326))).geom AS geom
+                  (ST_Dump(ST_SetSRID(COALESCE(CASE
+                    WHEN ST_Contains(sb.rgeom, m.geom)
+                        THEN m.geom
+                    ELSE
+                        ST_Intersection(m.geom, sb.rgeom)
+                    END, 'POLYGON EMPTY'), 4326))).geom AS geom
                 FROM lines.small m
                 JOIN maps.sources sa ON m.source_id = sa.source_id
                 JOIN maps.sources sb ON ST_Intersects(m.geom, sb.rgeom)
@@ -132,7 +146,12 @@ class CartoLines:
                   m.line_id,
                   m.source_id,
                   'medium'::text AS scale,
-                  (ST_Dump(ST_SetSRID(COALESCE(ST_Intersection(m.geom, sb.rgeom), 'POLYGON EMPTY'), 4326))).geom AS geom
+                  (ST_Dump(ST_SetSRID(COALESCE(CASE
+                    WHEN ST_Contains(sb.rgeom, m.geom)
+                        THEN m.geom
+                    ELSE
+                        ST_Intersection(m.geom, sb.rgeom)
+                    END, 'POLYGON EMPTY'), 4326))).geom AS geom
                 FROM lines.medium m
                 JOIN maps.sources sa ON m.source_id = sa.source_id
                 JOIN maps.sources sb ON ST_Intersects(m.geom, sb.rgeom)
@@ -149,7 +168,12 @@ class CartoLines:
                   m.line_id,
                   m.source_id,
                   'large'::text AS scale,
-                  (ST_Dump(ST_SetSRID(COALESCE(ST_Intersection(m.geom, sb.rgeom), 'POLYGON EMPTY'), 4326))).geom AS geom
+                  (ST_Dump(ST_SetSRID(COALESCE(CASE
+                    WHEN ST_Contains(sb.rgeom, m.geom)
+                        THEN m.geom
+                    ELSE
+                        ST_Intersection(m.geom, sb.rgeom)
+                    END, 'POLYGON EMPTY'), 4326))).geom AS geom
                 FROM lines.large m
                 JOIN maps.sources sa ON m.source_id = sa.source_id
                 JOIN maps.sources sb ON ST_Intersects(m.geom, sb.rgeom)

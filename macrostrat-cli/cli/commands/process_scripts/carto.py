@@ -18,6 +18,7 @@
 '''
 from psycopg2.extensions import AsIs
 from psycopg2.extras import NamedTupleCursor
+import time
 
 class Carto:
     meta = {
@@ -51,10 +52,15 @@ class Carto:
 
     @classmethod
     def insert_scale(cls, scale):
+        # Get a list of unique priorities that overlap with this source
         Carto.cursor.execute("""
+            WITH dumped AS (
+                SELECT source_id, new_priority, (ST_Dump(rgeom)).geom
+                FROM maps.sources
+            )
             SELECT DISTINCT sa.new_priority
-            FROM maps.sources sa
-            JOIN maps.sources sb ON ST_Intersects(sa.rgeom, sb.rgeom)
+            FROM dumped sa
+            JOIN dumped sb ON ST_Intersects(sa.geom, sb.geom)
             WHERE sb.source_id = %(source_id)s
             ORDER BY new_priority ASC
         """, { 'source_id': Carto.source_id })
@@ -77,7 +83,12 @@ class Carto:
                     GROUP BY sb.rgeom
                 )
                 UPDATE carto_temp
-                SET geom = ST_Difference(carto_temp.geom, q.geom)
+                SET geom =
+                    CASE
+                        WHEN ST_Contains(q.geom, carto_temp.geom)
+                            THEN 'POLYGON EMPTY'
+                        ELSE ST_Difference(carto_temp.geom, q.geom)
+                    END
                 FROM first q
                     WHERE ST_Intersects(carto_temp.geom, q.geom);
             """, {
@@ -88,7 +99,7 @@ class Carto:
             Carto.connection.commit()
 
             Carto.cursor.execute("""
-                DELETE FROM carto_temp WHERE geometrytype(geom) NOT IN ('POLYGON', 'MULTIPOLYGON');
+                DELETE FROM carto_temp WHERE geometrytype(geom) NOT IN ('POLYGON', 'MULTIPOLYGON') OR ST_IsEmpty(geom);;
             """)
             Carto.connection.commit()
 
@@ -98,7 +109,12 @@ class Carto:
                   m.map_id,
                   m.source_id,
                   'tiny'::text AS scale,
-                  (ST_Dump(ST_SetSRID(COALESCE(ST_Intersection(m.geom, sb.rgeom), 'POLYGON EMPTY'), 4326))).geom AS geom
+                  (ST_Dump(ST_SetSRID(COALESCE(CASE
+                    WHEN ST_Contains(sb.rgeom, m.geom)
+                        THEN m.geom
+                    ELSE
+                        ST_Intersection(m.geom, sb.rgeom)
+                    END, 'POLYGON EMPTY'), 4326))).geom AS geom
                 FROM maps.tiny m
                 JOIN maps.sources sa ON m.source_id = sa.source_id
                 JOIN maps.sources sb ON ST_Intersects(m.geom, sb.rgeom)
@@ -115,7 +131,12 @@ class Carto:
                   m.map_id,
                   m.source_id,
                   'small'::text AS scale,
-                  (ST_Dump(ST_SetSRID(COALESCE(ST_Intersection(m.geom, sb.rgeom), 'POLYGON EMPTY'), 4326))).geom AS geom
+                  (ST_Dump(ST_SetSRID(COALESCE(CASE
+                    WHEN ST_Contains(sb.rgeom, m.geom)
+                        THEN m.geom
+                    ELSE
+                        ST_Intersection(m.geom, sb.rgeom)
+                    END, 'POLYGON EMPTY'), 4326))).geom AS geom
                 FROM maps.small m
                 JOIN maps.sources sa ON m.source_id = sa.source_id
                 JOIN maps.sources sb ON ST_Intersects(m.geom, sb.rgeom)
@@ -132,7 +153,12 @@ class Carto:
                   m.map_id,
                   m.source_id,
                   'medium'::text AS scale,
-                  (ST_Dump(ST_SetSRID(COALESCE(ST_Intersection(m.geom, sb.rgeom), 'POLYGON EMPTY'), 4326))).geom AS geom
+                  (ST_Dump(ST_SetSRID(COALESCE(CASE
+                    WHEN ST_Contains(sb.rgeom, m.geom)
+                        THEN m.geom
+                    ELSE
+                        ST_Intersection(m.geom, sb.rgeom)
+                    END, 'POLYGON EMPTY'), 4326))).geom AS geom
                 FROM maps.medium m
                 JOIN maps.sources sa ON m.source_id = sa.source_id
                 JOIN maps.sources sb ON ST_Intersects(m.geom, sb.rgeom)
@@ -149,7 +175,12 @@ class Carto:
                   m.map_id,
                   m.source_id,
                   'large'::text AS scale,
-                  (ST_Dump(ST_SetSRID(COALESCE(ST_Intersection(m.geom, sb.rgeom), 'POLYGON EMPTY'), 4326))).geom AS geom
+                  (ST_Dump(ST_SetSRID(COALESCE(CASE
+                    WHEN ST_Contains(sb.rgeom, m.geom)
+                        THEN m.geom
+                    ELSE
+                        ST_Intersection(m.geom, sb.rgeom)
+                    END, 'POLYGON EMPTY'), 4326))).geom AS geom
                 FROM maps.large m
                 JOIN maps.sources sa ON m.source_id = sa.source_id
                 JOIN maps.sources sb ON ST_Intersects(m.geom, sb.rgeom)
@@ -161,7 +192,7 @@ class Carto:
             })
 
             Carto.cursor.execute("""
-                DELETE FROM carto_temp WHERE geometrytype(geom) NOT IN ('POLYGON', 'MULTIPOLYGON');
+                DELETE FROM carto_temp WHERE geometrytype(geom) NOT IN ('POLYGON', 'MULTIPOLYGON') OR ST_IsEmpty(geom);;
             """)
             Carto.connection.commit()
 
@@ -199,7 +230,11 @@ class Carto:
         print '   4. Cut'
         Carto.cursor.execute("""
             UPDATE carto_new.%(scale)s
-            SET geom = ST_Difference(geom, rgeom)
+            SET geom = CASE
+                WHEN ST_Contains(rgeom, geom)
+                    THEN 'POLYGON EMPTY'
+                ELSE ST_Difference(geom, rgeom)
+            END
             FROM maps.sources
             WHERE ST_Intersects(geom, rgeom) AND sources.source_id = %(source)s;
         """, {
@@ -209,7 +244,7 @@ class Carto:
 
         Carto.cursor.execute("""
             DELETE FROM carto_new.%(scale)s
-            WHERE geometrytype(geom) NOT IN ('POLYGON', 'MULTIPOLYGON');
+            WHERE geometrytype(geom) NOT IN ('POLYGON', 'MULTIPOLYGON') OR ST_IsEmpty(geom);
         """, {
             'scale': AsIs(the_scale)
         })
@@ -231,7 +266,7 @@ class Carto:
         print '   7. Clean up bad geometries'
         Carto.cursor.execute("""
             DELETE FROM carto_new.%(scale)s
-            WHERE geometrytype(geom) NOT IN ('POLYGON', 'MULTIPOLYGON');
+            WHERE geometrytype(geom) NOT IN ('POLYGON', 'MULTIPOLYGON') OR ST_IsEmpty(geom);
         """, {
             'scale': AsIs(the_scale)
         })
@@ -240,6 +275,7 @@ class Carto:
 
     @staticmethod
     def build(source_id):
+        start = time.time()
         Carto.source_id = source_id
 
         Carto.cursor.execute("""
@@ -262,3 +298,6 @@ class Carto:
 
         for scale in scales:
             Carto.processScale(scale)
+
+        end = time.time()
+        print 'Took %s' % ((end - start), )
