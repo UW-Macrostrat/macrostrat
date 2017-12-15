@@ -445,7 +445,7 @@ class Tesselate:
             Tesselate.mariadb['cursor'].execute("""
                 UPDATE cols
                 SET col_area = %s
-                WHERE col_id = %s
+                WHERE id = %s
             """, [area, column['col_id']])
             Tesselate.mariadb['connection'].commit()
 
