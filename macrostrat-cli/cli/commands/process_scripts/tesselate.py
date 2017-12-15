@@ -5,7 +5,10 @@ import numpy as np
 from scipy.spatial import Voronoi
 from shapely.ops import cascaded_union
 from shapely.geometry import Polygon, Point, MultiPoint, mapping, shape
+import shapely.ops as ops
 from shapely.wkt import loads
+import pyproj
+from functools import partial
 import json
 import re
 from .. import schlep
@@ -143,7 +146,7 @@ class Tesselate:
         if '--help' in args or '-h' in args:
             print Tesselate.__doc__
             sys.exit()
-            
+
         clip_polygon = None
         column_buffer = None
         parameters = {}
@@ -426,6 +429,25 @@ class Tesselate:
                 """, [ column['polygon'].wkt, column['col_id'] ])
                 Tesselate.mariadb['connection'].commit()
 
+            column_aea = ops.transform(
+                partial(
+                    pyproj.transform,
+                    pyproj.Proj(init='EPSG:4326'),
+                    pyproj.Proj(
+                        proj='aea',
+                        lat1=column['polygon'].bounds[1],
+                        lat2=column['polygon'].bounds[3])),
+                column['polygon'])
+
+            # Print the area in m^2
+            area = column_aea.area / 1000000
+
+            Tesselate.mariadb['cursor'].execute("""
+                UPDATE cols
+                SET col_area = %s
+                WHERE col_id = %s
+            """, [area, column['col_id']])
+            Tesselate.mariadb['connection'].commit()
 
         # Close connections, otherwise you'll have a bad time https://dba.stackexchange.com/a/133047/38677
         Tesselate.pg['connection'].close()
