@@ -12,7 +12,7 @@ from functools import partial
 import json
 import re
 from .. import schlep
-from ... import Base
+from ..base import Base
 
 class Tesselate(Base):
     '''

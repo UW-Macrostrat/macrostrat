@@ -17,7 +17,7 @@
 + Insert all from the temp table into the carto table
 '''
 import time
-from ... import Base
+from ..base import Base
 from psycopg2.extensions import AsIs
 
 class Carto(Base):

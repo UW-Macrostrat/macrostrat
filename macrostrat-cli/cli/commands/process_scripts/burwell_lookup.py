@@ -7,7 +7,7 @@
 Usage:
     macrostrat process burwell_lookup 123
 '''
-from ... import Base
+from ..base import Base
 from psycopg2.extensions import AsIs
 import sys
 

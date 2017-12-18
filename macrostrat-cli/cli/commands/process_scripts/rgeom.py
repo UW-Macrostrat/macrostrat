@@ -1,6 +1,6 @@
 from subprocess import call
 import os
-from ... import Base
+from ..base import Base
 from psycopg2.extensions import AsIs
 
 class RGeom(Base):
@@ -15,7 +15,7 @@ class RGeom(Base):
         }
     }
     def __init__(self, connections, *args):
-        setattr(self, 'credentials', connections['credentials'])
+        #setattr(self, 'credentials', connections['credentials'])
         Base.__init__(self, connections, *args)
 
     def build(self, source_id):

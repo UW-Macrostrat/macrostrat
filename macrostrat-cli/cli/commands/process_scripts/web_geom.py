@@ -1,4 +1,4 @@
-from ... import Base
+from ..base import Base
 
 class WebGeom(Base):
     meta = {
