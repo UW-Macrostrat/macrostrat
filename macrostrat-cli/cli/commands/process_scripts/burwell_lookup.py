@@ -415,11 +415,6 @@ class BurwellLookup(Base):
         #source_stats(cursor, connection, source_id)
 
     def build(self, source_id):
-        source_id = source_id[0]
-        if not source_id.isdigit():
-            print 'Invalid source_id'
-            sys.exit(1)
-
         self.pg['cursor'].execute('''
             SELECT scale
             FROM maps.sources

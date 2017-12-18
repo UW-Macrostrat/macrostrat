@@ -74,7 +74,7 @@ class StratNames(Base):
 
 
     def build(self, source_id):
-        source_id = source_id[0]
+        
         # Time the process
         start_time = time.time()
 

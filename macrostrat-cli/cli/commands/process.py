@@ -66,4 +66,4 @@ class Process(Base):
         # else:
         #     print 'wtf'
 
-        script.build(self.args[2:])
+        script.build(self.args[2])

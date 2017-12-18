@@ -22,29 +22,29 @@ class MapSource(Base):
         Base.__init__(self, connections, *args)
 
     def build(self, source_id):
-
+        
         config = {
             'pg': self.pg['raw_connection'],
             'mariadb': self.mariadb['raw_connection'],
             'credentials': self.credentials
         }
         # rgeom = RGeom(config)
-        # rgeom.build(source_id[0])
+        # rgeom.build(source_id)
         #
         # web_geom = WebGeom(config)
-        # web_geom.build(source_id[0])
+        # web_geom.build(source_id)
 
         sn = strat_names(config)
-        sn.build(source_id[0])
+        sn.build(source_id)
 
         u = units(config)
-        u.build(source_id[0])
+        u.build(source_id)
 
         burwell_lookup = BurwellLookup(config)
-        burwell_lookup.build(source_id[0])
+        burwell_lookup.build(source_id)
 
         carto = Carto(config)
-        carto.build(source_id[0])
+        carto.build(source_id)
 
         carto_lines = CartoLines(config)
-        carto_lines.build(source_id[0])
+        carto_lines.build(source_id)
