@@ -3,8 +3,9 @@ from psycopg2.extras import NamedTupleCursor
 import time
 import datetime
 import sys
+from ..base import Base
 
-class StratNames:
+class StratNames(Base):
     meta = {
         'mariadb': False,
         'pg': True,
@@ -17,15 +18,11 @@ class StratNames:
     }
 
     source_id = None
-    connection = None
-    cursor = None
 
-    def __init__(self, pgConnection):
-        StratNames.connection = pgConnection()
-        StratNames.cursor = StratNames.connection.cursor(cursor_factory = NamedTupleCursor)
+    def __init__(self, connections, *args):
+        Base.__init__(self, connections, *args)
 
 
-    @classmethod
     def query(self, strictTime, strictSpace, strictName):
         match_type = 'strat_name'
 
@@ -55,7 +52,7 @@ class StratNames:
                 AND ((lsn.early_age) > (intervals_top.age_top - """ + (timeFuzz) + """))
                 and lsn.strat_name_id = snft.strat_name_id"""
         # Handle no time in the query!!!
-        StratNames.cursor.execute("""
+        self.pg['cursor'].execute("""
             INSERT INTO maps.map_strat_names
             SELECT unnest(map_ids), strat_name_id, %(match_type)s
             FROM (
@@ -71,37 +68,37 @@ class StratNames:
             'match_type': match_type,
             'where': AsIs(where)
         })
-        StratNames.connection.commit()
+        self.pg['connection'].commit()
 
         print '        - Done with %s' % (match_type, )
 
 
-    @staticmethod
-    def build(source_id):
+    def build(self, source_id):
+        source_id = source_id[0]
         # Time the process
         start_time = time.time()
 
         # Validate params!
         # Valid source_id
-        StratNames.cursor.execute("""
+        self.pg['cursor'].execute("""
             SELECT source_id
             FROM maps.sources
             WHERE source_id = %(source_id)s
         """, { 'source_id': int(source_id) })
-        sources = StratNames.cursor.fetchall()
+        sources = self.pg['cursor'].fetchall()
 
         if len(sources) != 1:
-            print 'Invalid source_id argument. Source ID %s was not found in maps.sources' % (source_id, s)
+            print 'Invalid source_id argument. Source ID %s was not found in maps.sources' % (source_id, )
             sys.exit(1)
 
         # Find scale table
         scale = ""
         for scale_table in ["tiny", "small", "medium", "large"]:
-          StratNames.cursor.execute("SELECT * FROM maps.%(table)s WHERE source_id = %(source_id)s LIMIT 1", {
+          self.pg['cursor'].execute("SELECT * FROM maps.%(table)s WHERE source_id = %(source_id)s LIMIT 1", {
             'table': AsIs(scale_table),
             'source_id': source_id
           })
-          if StratNames.cursor.fetchone() is not None:
+          if self.pg['cursor'].fetchone() is not None:
             scale = scale_table
             break
 
@@ -114,7 +111,7 @@ class StratNames:
 
 
         # Clean up
-        StratNames.cursor.execute("""
+        self.pg['cursor'].execute("""
           DELETE FROM maps.map_strat_names
           WHERE map_id IN (
             SELECT map_id
@@ -125,10 +122,10 @@ class StratNames:
           'table': AsIs(scale),
           'source_id': source_id
         })
-        StratNames.connection.commit()
+        self.pg['connection'].commit()
         print '        + Done cleaning up'
 
-        StratNames.cursor.execute("""
+        self.pg['cursor'].execute("""
             DROP TABLE IF EXISTS temp_rocks;
 
             CREATE TABLE temp_rocks AS
@@ -195,18 +192,18 @@ class StratNames:
             'scale': AsIs(scale),
             'source_id': source_id
         })
-        StratNames.connection.commit()
+        self.pg['connection'].commit()
 
-        StratNames.cursor.execute("""
+        self.pg['cursor'].execute("""
             CREATE INDEX ON temp_rocks (strat_name);
             CREATE INDEX ON temp_rocks (strat_name_clean);
             CREATE INDEX ON temp_rocks (t_interval);
             CREATE INDEX ON temp_rocks (b_interval);
             CREATE INDEX ON temp_rocks USING GiST (envelope);
         """)
-        StratNames.connection.commit()
+        self.pg['connection'].commit()
 
-        StratNames.cursor.execute("""
+        self.pg['cursor'].execute("""
             DROP TABLE IF EXISTS temp_names;
             CREATE TABLE temp_names AS
             SELECT DISTINCT ON (sub.strat_name_id) lookup_strat_names.*
@@ -232,15 +229,15 @@ class StratNames:
             'scale': AsIs(scale),
             'source_id': source_id
         })
-        StratNames.connection.commit()
+        self.pg['connection'].commit()
 
-        StratNames.cursor.execute("""
+        self.pg['cursor'].execute("""
             CREATE INDEX ON temp_names (strat_name_id);
             CREATE INDEX ON temp_names (rank_name);
             CREATE INDEX ON temp_names (name_no_lith);
             CREATE INDEX ON temp_names (strat_name);
         """)
-        StratNames.connection.commit()
+        self.pg['connection'].commit()
 
         elapsed = int(time.time() - start_time)
         print '        Done with prepping temp tables in ', elapsed / 60, ' minutes and ', elapsed % 60, ' seconds'
@@ -249,40 +246,40 @@ class StratNames:
         start_time = time.time()
 
         # strict time - strict space - strict name
-        a = StratNames.query(True, True, True)
+        a = StratNames.query(self, True, True, True)
 
         # strict time - fuzzy space - strict name
-        b = StratNames.query(True, False, True)
+        b = StratNames.query(self, True, False, True)
 
         # fuzzy time - strict space - strict name
-        c = StratNames.query(False, True, True)
+        c = StratNames.query(self, False, True, True)
 
         # fuzzy time - fuzzy space - strict name
-        d = StratNames.query(False, False, True)
+        d = StratNames.query(self, False, False, True)
 
         # no time - strict space - strict name
-        e = StratNames.query(None, True, True)
+        e = StratNames.query(self, None, True, True)
 
         # no time - fuzzy space - strict name
-        f = StratNames.query(None, False, True)
+        f = StratNames.query(self, None, False, True)
 
         # strict time - strict space - fuzzy name
-        g = StratNames.query(True, True, False)
+        g = StratNames.query(self, True, True, False)
 
         # strict time - fuzzy space - fuzzy name
-        h = StratNames.query(True, False, False)
+        h = StratNames.query(self, True, False, False)
 
         # fuzzy time - strict space - fuzzy name
-        i = StratNames.query(False, True, False)
+        i = StratNames.query(self, False, True, False)
 
         # fuzzy time - fuzzy space - fuzzy name
-        j = StratNames.query(False, False, False)
+        j = StratNames.query(self, False, False, False)
 
         # no time - strict space - fuzzy name
-        k = StratNames.query(None, True, False)
+        k = StratNames.query(self, None, True, False)
 
         # no time - fuzzy space - fuzzy name
-        l = StratNames.query(None, False, False)
+        l = StratNames.query(self, None, False, False)
 
         elapsed = int(time.time() - start_time)
         print '        Done with in ', elapsed / 60, ' minutes and ', elapsed % 60, ' seconds'

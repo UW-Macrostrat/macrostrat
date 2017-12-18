@@ -275,7 +275,7 @@ class CartoLines(Base):
             print 'Source not found'
             sys.exit()
 
-        allScales = [ CartoLines.scaleIsIn[scale] for scale in scales[0] ]
+        allScales = [ CartoLines.scaleIsIn[scale] for scale in scales.display_scales ]
         scales = set([ scale for scales in allScales for scale in scales ])
 
         print 'Scales to refresh: '

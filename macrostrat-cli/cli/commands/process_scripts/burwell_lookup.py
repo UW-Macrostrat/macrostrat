@@ -46,7 +46,7 @@ class BurwellLookup(Base):
         """, {
             'source_id': self.source_id
         })
-        primary_table = self.pg['cursor'].fetchone()[0]
+        primary_table = self.pg['cursor'].fetchone().primary_table
 
         self.pg['cursor'].execute("""
           WITH second AS (
@@ -431,11 +431,11 @@ class BurwellLookup(Base):
             print 'Source ID %s was not found in maps.sources' % (source_id, )
             sys.exit(1)
 
-        if scale[0] is None:
+        if scale.scale is None:
             print 'Source ID %s is missing a scale' % (source_id, )
             sys.exit(1)
 
         BurwellLookup.source_id = source_id
-        BurwellLookup.scale = scale[0]
+        BurwellLookup.scale = scale.scale
 
         BurwellLookup.refresh(self)

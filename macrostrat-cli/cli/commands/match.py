@@ -23,24 +23,6 @@ class Match(Base):
       https://github.com/UW-Macrostrat/macrostrat-cli
     '''
 
-    def do_build(self, table):
-        # Get the class associated with the provided table name
-        script = getattr(match_scripts, table)
-
-        print '    Building %s' % (table, )
-
-        if script.meta['mariadb'] and script.meta['pg']:
-            script.build(self.mariadb['raw_connection'], self.pg['raw_connection'])
-        elif script.meta['mariadb']:
-            script.build(self.mariadb['raw_connection'])
-        elif script.meta['pg']:
-            script.build(self.pg['raw_connection'])
-        else:
-            print 'Build script does not specify connector type'
-            sys.exit()
-
-        print '       Done'
-
     def run(self):
         # Check if a table was provided
         if len(self.args) != 3:
@@ -61,5 +43,7 @@ class Match(Base):
                 print '     + %s - %s' % (arg, script.meta['required_args'][arg])
             sys.exit()
 
-        script(self.pg['raw_connection'])
-        script.build(*self.args[2:])
+
+        script = script({'pg': self.pg['raw_connection'], 'mariadb': self.mariadb['raw_connection'], 'credentials': self.credentials }, self.args[2:])
+        
+        script.build(self.args[2:])

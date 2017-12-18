@@ -3,8 +3,9 @@ from psycopg2.extras import RealDictCursor
 import time
 import datetime
 import sys
+from ..base import Base
 
-class Units:
+class Units(Base):
     meta = {
         'mariadb': False,
         'pg': True,
@@ -19,15 +20,11 @@ class Units:
     source_id = None
     table = None
     field = None
-    connection = None
-    cursor = None
-
-    def __init__(self, pgConnection):
-        Units.connection = pgConnection()
-        Units.cursor = Units.connection.cursor(cursor_factory = RealDictCursor)
 
 
-    @classmethod
+    def __init__(self, connections, *args):
+        Base.__init__(self, connections, *args)
+
     def query_down(self, strictNameMatch, strictSpace, strictTime):
         match_type = self.field
 
@@ -40,7 +37,7 @@ class Units:
         if not strictTime:
             match_type += '_ftime'
 
-        Units.cursor.execute("""
+        self.pg['cursor'].execute("""
           INSERT INTO maps.map_units (map_id, unit_id, basis_col)
             WITH a AS (
               SELECT map_id, lookup_strat_names.strat_name_id, q.age_top, q.age_bottom, geom
@@ -114,11 +111,10 @@ class Units:
           'match_type': match_type
         })
 
-        Units.connection.commit()
+        self.pg['connection'].commit()
 
         print '        - Done with %s (up)' % (match_type, )
 
-    @classmethod
     def query_up(self, strictNameMatch, strictSpace, strictTime):
         match_type = self.field
 
@@ -131,7 +127,7 @@ class Units:
         if not strictTime:
             match_type += '_ftime'
 
-        Units.cursor.execute("""
+        self.pg['cursor'].execute("""
           INSERT INTO maps.map_units (map_id, unit_id, basis_col)
             WITH a AS (
               SELECT map_id, lookup_strat_names.strat_name_id, q.age_top, q.age_bottom, geom
@@ -209,12 +205,11 @@ class Units:
           'match_type': match_type
         })
 
-        Units.connection.commit()
+        self.pg['connection'].commit()
 
         print '        - Done with %s (down)' % (match_type, )
 
 
-    @classmethod
     def query(self, strictNameMatch, strictSpace, strictTime):
         match_type = self.field
 
@@ -227,7 +222,7 @@ class Units:
         if not strictTime:
             match_type += '_ftime'
 
-        Units.cursor.execute("""
+        self.pg['cursor'].execute("""
             INSERT INTO maps.map_units (map_id, unit_id, basis_col)
             WITH a AS (
                SELECT map_id, lookup_strat_names.strat_name_id, q.age_top, q.age_bottom, geom
@@ -271,98 +266,93 @@ class Units:
           'match_type': match_type
         })
 
-        Units.connection.commit()
+        self.pg['connection'].commit()
 
         print '        - Done with %s' % (match_type, )
 
-
-    @classmethod
     def match(self) :
         # strictName, strictSpace, strictTime, useNullSet
 
         # Strict name, strict space, strict time
-        a = Units.query(True, True, True)
+        a = Units.query(self, True, True, True)
 
         # Strict name, fuzzy space, strict time
-        b = Units.query(True, False, True)
+        b = Units.query(self, True, False, True)
 
         # Fuzzy name, strict space, strict time
-        c = Units.query(False, True, True)
+        c = Units.query(self, False, True, True)
 
         # Strict name, strict space, fuzzy time
-        d = Units.query(True, True, False)
+        d = Units.query(self, True, True, False)
 
         # Fuzzy name, fuzzy space, strict time
-        e = Units.query(False, False, True)
+        e = Units.query(self, False, False, True)
 
         # Strict name, fuzzy space, fuzzy time
-        f = Units.query(True, False, False)
+        f = Units.query(self, True, False, False)
 
         # Fuzzy name, strict space, fuzzy time
-        g = Units.query(False, True, False)
+        g = Units.query(self, False, True, False)
 
         # Fuzzy name, fuzzy space, fuzzy time
-        h = Units.query(False, False, False)
+        h = Units.query(self, False, False, False)
 
-    @classmethod
     def match_down(self):
         # strictName, strictSpace, strictTime, useNullSet
 
         # Strict name, strict space, strict time
-        a = Units.query_down(True, True, True)
+        a = Units.query_down(self, True, True, True)
 
         # Strict name, fuzzy space, strict time
-        b = Units.query_down(True, False, True)
+        b = Units.query_down(self, True, False, True)
 
         # Fuzzy name, strict space, strict time
-        c = Units.query_down(False, True, True)
+        c = Units.query_down(self, False, True, True)
 
         # Strict name, strict space, fuzzy time
-        d = Units.query_down(True, True, False)
+        d = Units.query_down(self, True, True, False)
 
         # Fuzzy name, fuzzy space, strict time
-        e = Units.query_down(False, False, True)
+        e = Units.query_down(self, False, False, True)
 
         # Strict name, fuzzy space, fuzzy time
-        f = Units.query_down(True, False, False)
+        f = Units.query_down(self, True, False, False)
 
         # Fuzzy name, strict space, fuzzy time
-        g = Units.query_down(False, True, False)
+        g = Units.query_down(self, False, True, False)
 
         # Fuzzy name, fuzzy space, fuzzy time
-        h = Units.query_down(False, False, False)
+        h = Units.query_down(self, False, False, False)
 
 
-    @classmethod
     def match_up(self):
         # strictName, strictSpace, strictTime
 
         # Strict name, strict space, strict time
-        a = Units.query_up(True, True, True)
+        a = Units.query_up(self, True, True, True)
 
         # Strict name, fuzzy space, strict time
-        b = Units.query_up(True, False, True)
+        b = Units.query_up(self, True, False, True)
 
         # Fuzzy name, strict space, strict time
-        c = Units.query_up(False, True, True)
+        c = Units.query_up(self, False, True, True)
 
         # Strict name, strict space, fuzzy time
-        d = Units.query_up(True, True, False)
+        d = Units.query_up(self, True, True, False)
 
         # Fuzzy name, fuzzy space, strict time
-        e = Units.query_up(False, False, True)
+        e = Units.query_up(self, False, False, True)
 
         # Strict name, fuzzy space, fuzzy time
-        f = Units.query_up(True, False, False)
+        f = Units.query_up(self, True, False, False)
 
         # Fuzzy name, strict space, fuzzy time
-        g = Units.query_up(False, True, False)
+        g = Units.query_up(self, False, True, False)
 
         # Fuzzy name, fuzzy space, fuzzy time
-        h = Units.query_up(False, False, False)
+        h = Units.query_up(self, False, False, False)
 
 
-    @classmethod
     def do_work(self, field):
         # Time the process
         start_time = time.time()
@@ -371,28 +361,27 @@ class Units:
 
         self.field = field
 
-        Units.match()
-        Units.match_down()
-        Units.match_up()
+        Units.match(self)
+        Units.match_down(self)
+        Units.match_up(self)
 
 
         elapsed = int(time.time() - start_time)
         print '        Done with ', self.field, ' in ', elapsed / 60, ' minutes and ', elapsed % 60, ' seconds'
 
 
-    @staticmethod
-    def build(source_id):
+    def build(self, source_id):
         Units.source_id = source_id
         # Validate params!
         # Valid source_id
-        Units.cursor.execute('''
+        self.pg['cursor'].execute('''
             SELECT source_id
             FROM maps.sources
             WHERE source_id = %(source_id)s
         ''', {
             'source_id': source_id
         })
-        result = Units.cursor.fetchone()
+        result = self.pg['cursor'].fetchone()
         if result is None:
             print 'Invalid source_id. %s was not found in maps.sources' % (source_id, )
             sys.exit(1)
@@ -400,7 +389,7 @@ class Units:
         # Find scale table
         scale = ''
         for scale_table in ['tiny', 'small', 'medium', 'large']:
-          Units.cursor.execute('''
+          self.pg['cursor'].execute('''
             SELECT *
             FROM maps.%(table)s
             WHERE source_id = %(source_id)s
@@ -409,7 +398,7 @@ class Units:
             'table': AsIs(scale_table),
             'source_id': source_id
           })
-          if Units.cursor.fetchone() is not None:
+          if self.pg['cursor'].fetchone() is not None:
             scale = scale_table
             break
 
@@ -424,7 +413,7 @@ class Units:
 
 
         # Clean up
-        Units.cursor.execute("""
+        self.pg['cursor'].execute("""
           DELETE FROM maps.map_units
           WHERE map_id IN (
             SELECT map_id
@@ -437,7 +426,7 @@ class Units:
           'source_id': source_id
         })
 
-        Units.connection.commit()
+        self.pg['connection'].commit()
         print '        + Done cleaning up'
 
 
@@ -445,7 +434,7 @@ class Units:
         fields = ['strat_name', 'name', 'descrip', 'comments']
 
         # Filter null fields
-        Units.cursor.execute("""
+        self.pg['cursor'].execute("""
         SELECT
             count(distinct strat_name)::int AS strat_name,
             count(distinct name)::int AS name,
@@ -456,15 +445,15 @@ class Units:
             'scale': AsIs(scale),
             'source_id': source_id
         })
-        result = Units.cursor.fetchone()
-
-        for field in fields:
-
-            if result[field] == 0:
-                fields.remove(field)
-                print '        + Excluding %s because it is null' % (field, )
+        result = self.pg['cursor'].fetchone()
+        for field in result:
+            if field == 0:
+                field_name = fields[field]
+                del fields[field]
+                #fields.remove(field)
+                print '        + Excluding %s because it is null' % (field_name, )
 
 
         # Insert a new task for each matching field into the queue
         for field in fields:
-            Units.do_work(field)
+            Units.do_work(self, field)
