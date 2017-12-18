@@ -16,11 +16,11 @@
 
 + Insert all from the temp table into the carto table
 '''
-from psycopg2.extensions import AsIs
-from psycopg2.extras import NamedTupleCursor
 import time
+from ... import Base
+from psycopg2.extensions import AsIs
 
-class Carto:
+class Carto(Base):
     meta = {
         'mariadb': False,
         'pg': True,
@@ -43,17 +43,14 @@ class Carto:
         'large': ['large']
     }
     source_id = None
-    connection = None
-    cursor = None
 
-    def __init__(self, pgConnection):
-        Carto.connection = pgConnection()
-        Carto.cursor = Carto.connection.cursor(cursor_factory = NamedTupleCursor)
+    def __init__(self, connections, *args):
+        Base.__init__(self, connections, *args)
 
-    @classmethod
-    def insert_scale(cls, scale):
+
+    def insert_scale(self, scale):
         # Get a list of unique priorities that overlap with this source
-        Carto.cursor.execute("""
+        self.pg['cursor'].execute("""
             WITH dumped AS (
                 SELECT source_id, new_priority, (ST_Dump(rgeom)).geom
                 FROM maps.sources
@@ -65,7 +62,7 @@ class Carto:
             ORDER BY new_priority ASC
         """, { 'source_id': Carto.source_id })
 
-        sources = Carto.cursor.fetchall()
+        sources = self.pg['cursor'].fetchall()
 
         for row in sources:
             '''
@@ -73,7 +70,7 @@ class Carto:
                 2. Remove empty geometries
                 3. Insert new geometries
             '''
-            Carto.cursor.execute("""
+            self.pg['cursor'].execute("""
                 WITH first AS (
                     SELECT (ST_Dump(ST_Intersection(sb.rgeom, COALESCE(ST_Union(x.rgeom), 'POLYGON EMPTY')))).geom AS geom
                     FROM maps.sources x
@@ -96,14 +93,14 @@ class Carto:
                 'priority': row.new_priority,
                 'scale': scale
             })
-            Carto.connection.commit()
+            self.pg['connection'].commit()
 
-            Carto.cursor.execute("""
+            self.pg['cursor'].execute("""
                 DELETE FROM carto_temp WHERE geometrytype(geom) NOT IN ('POLYGON', 'MULTIPOLYGON') OR ST_IsEmpty(geom);;
             """)
-            Carto.connection.commit()
+            self.pg['connection'].commit()
 
-            Carto.cursor.execute("""
+            self.pg['cursor'].execute("""
                 INSERT INTO carto_temp
                 SELECT
                   m.map_id,
@@ -125,7 +122,7 @@ class Carto:
                 'scale': scale
             })
 
-            Carto.cursor.execute("""
+            self.pg['cursor'].execute("""
                 INSERT INTO carto_temp
                 SELECT
                   m.map_id,
@@ -147,7 +144,7 @@ class Carto:
                 'scale': scale
             })
 
-            Carto.cursor.execute("""
+            self.pg['cursor'].execute("""
                 INSERT INTO carto_temp
                 SELECT
                   m.map_id,
@@ -169,7 +166,7 @@ class Carto:
                 'scale': scale
             })
 
-            Carto.cursor.execute("""
+            self.pg['cursor'].execute("""
                 INSERT INTO carto_temp
                 SELECT
                   m.map_id,
@@ -191,24 +188,23 @@ class Carto:
                 'scale': scale
             })
 
-            Carto.cursor.execute("""
+            self.pg['cursor'].execute("""
                 DELETE FROM carto_temp WHERE geometrytype(geom) NOT IN ('POLYGON', 'MULTIPOLYGON') OR ST_IsEmpty(geom);;
             """)
-            Carto.connection.commit()
+            self.pg['connection'].commit()
 
 
-    @classmethod
-    def processScale(cls, the_scale):
+    def processScale(self, the_scale):
         SCALE_UNDER = Carto.UNDER[the_scale]
         print the_scale
 
         print '   1. Clean and create'
-        Carto.cursor.execute("""
+        self.pg['cursor'].execute("""
             DROP TABLE IF EXISTS carto_temp;
             CREATE TABLE carto_temp AS SELECT * FROM carto_new.%(scale)s LIMIT 0;
             CREATE INDEX ON carto_temp USING GiST (geom);
         """, { 'scale': AsIs(the_scale) })
-        Carto.connection.commit()
+        self.pg['connection'].commit()
 
         '''
         + Get all polygons from the underlying scale that intersect the target source's footprint
@@ -219,16 +215,16 @@ class Carto:
         '''
         print '   2. Scale under'
         if SCALE_UNDER is not None:
-            Carto.insert_scale(SCALE_UNDER)
+            Carto.insert_scale(self, SCALE_UNDER)
 
         print '   3. Scale'
-        Carto.insert_scale(the_scale)
+        Carto.insert_scale(self, the_scale)
 
         '''
             Cut target source's footprint out of carto table
         '''
         print '   4. Cut'
-        Carto.cursor.execute("""
+        self.pg['cursor'].execute("""
             UPDATE carto_new.%(scale)s
             SET geom = CASE
                 WHEN ST_Contains(rgeom, geom)
@@ -242,7 +238,7 @@ class Carto:
             'scale': AsIs(the_scale)
         })
 
-        Carto.cursor.execute("""
+        self.pg['cursor'].execute("""
             DELETE FROM carto_new.%(scale)s
             WHERE geometrytype(geom) NOT IN ('POLYGON', 'MULTIPOLYGON') OR ST_IsEmpty(geom);
         """, {
@@ -250,7 +246,7 @@ class Carto:
         })
 
         print '   5. Insert'
-        Carto.cursor.execute("""
+        self.pg['cursor'].execute("""
             INSERT INTO carto_new.%(scale)s (map_id, source_id, scale, geom)
             SELECT * FROM carto_temp;
         """, {
@@ -258,32 +254,31 @@ class Carto:
         })
 
         print '   6. Clean up'
-        Carto.cursor.execute("""
+        self.pg['cursor'].execute("""
             DROP TABLE carto_temp;
         """)
-        Carto.connection.commit()
+        self.pg['connection'].commit()
 
         print '   7. Clean up bad geometries'
-        Carto.cursor.execute("""
+        self.pg['cursor'].execute("""
             DELETE FROM carto_new.%(scale)s
             WHERE geometrytype(geom) NOT IN ('POLYGON', 'MULTIPOLYGON') OR ST_IsEmpty(geom);
         """, {
             'scale': AsIs(the_scale)
         })
-        Carto.connection.commit()
+        self.pg['connection'].commit()
 
 
-    @staticmethod
-    def build(source_id):
+    def build(self, source_id):
         start = time.time()
         Carto.source_id = source_id
 
-        Carto.cursor.execute("""
+        self.pg['cursor'].execute("""
             SELECT display_scales
             FROM maps.sources
             WHERE source_id = %(source_id)s
         """, { 'source_id': source_id })
-        scales = Carto.cursor.fetchone()
+        scales = self.pg['cursor'].fetchone()
 
         if len(scales) == 0 or scales is None:
             print 'Source not found'
@@ -297,7 +292,7 @@ class Carto:
             print scale
 
         for scale in scales:
-            Carto.processScale(scale)
+            Carto.processScale(self, scale)
 
         end = time.time()
         print 'Took %s' % ((end - start), )

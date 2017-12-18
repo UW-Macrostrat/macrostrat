@@ -16,10 +16,11 @@
 
 + Insert all from the temp table into the carto table
 '''
-from psycopg2.extensions import AsIs
-from psycopg2.extras import NamedTupleCursor
 
-class CartoLines:
+from ... import Base
+from psycopg2.extensions import AsIs
+
+class CartoLines(Base):
     meta = {
         'mariadb': False,
         'pg': True,
@@ -45,13 +46,11 @@ class CartoLines:
     connection = None
     cursor = None
 
-    def __init__(self, pgConnection):
-        CartoLines.connection = pgConnection()
-        CartoLines.cursor = CartoLines.connection.cursor(cursor_factory = NamedTupleCursor)
+    def __init__(self, connections, *args):
+        Base.__init__(self, connections, *args)
 
-    @classmethod
-    def insert_scale(cls, scale):
-        CartoLines.cursor.execute("""
+    def insert_scale(self, scale):
+        self.pg['cursor'].execute("""
             WITH dumped AS (
                 SELECT source_id, new_priority, (ST_Dump(rgeom)).geom
                 FROM maps.sources
@@ -63,7 +62,7 @@ class CartoLines:
             ORDER BY new_priority ASC
         """, { 'source_id': CartoLines.source_id })
 
-        sources = CartoLines.cursor.fetchall()
+        sources = self.pg['cursor'].fetchall()
 
         for row in sources:
             '''
@@ -71,7 +70,7 @@ class CartoLines:
                 2. Remove empty geometries
                 3. Insert new geometries
             '''
-            CartoLines.cursor.execute("""
+            self.pg['cursor'].execute("""
                 WITH first AS (
                     SELECT (ST_Dump(ST_Intersection(sb.rgeom, COALESCE(ST_Union(x.rgeom), 'POLYGON EMPTY')))).geom AS geom
                     FROM maps.sources x
@@ -89,14 +88,14 @@ class CartoLines:
                 'priority': row.new_priority,
                 'scale': scale
             })
-            CartoLines.connection.commit()
+            self.pg['connection'].commit()
 
-            CartoLines.cursor.execute("""
+            self.pg['cursor'].execute("""
                 DELETE FROM carto_temp WHERE geometrytype(geom) NOT IN ('LINESTRING', 'MULTILINESTRING');
             """)
-            CartoLines.connection.commit()
+            self.pg['connection'].commit()
 
-            CartoLines.cursor.execute("""
+            self.pg['cursor'].execute("""
                 INSERT INTO carto_temp
                 SELECT
                   m.line_id,
@@ -118,7 +117,7 @@ class CartoLines:
                 'scale': scale
             })
 
-            CartoLines.cursor.execute("""
+            self.pg['cursor'].execute("""
                 INSERT INTO carto_temp
                 SELECT
                   m.line_id,
@@ -140,7 +139,7 @@ class CartoLines:
                 'scale': scale
             })
 
-            CartoLines.cursor.execute("""
+            self.pg['cursor'].execute("""
                 INSERT INTO carto_temp
                 SELECT
                   m.line_id,
@@ -162,7 +161,7 @@ class CartoLines:
                 'scale': scale
             })
 
-            CartoLines.cursor.execute("""
+            self.pg['cursor'].execute("""
                 INSERT INTO carto_temp
                 SELECT
                   m.line_id,
@@ -184,24 +183,23 @@ class CartoLines:
                 'scale': scale
             })
 
-            CartoLines.cursor.execute("""
+            self.pg['cursor'].execute("""
                 DELETE FROM carto_temp WHERE geometrytype(geom) NOT IN ('LINESTRING', 'MULTILINESTRING');
             """)
-            CartoLines.connection.commit()
+            self.pg['connection'].commit()
 
 
-    @classmethod
-    def processScale(cls, the_scale):
+    def processScale(self, the_scale):
         SCALE_UNDER = CartoLines.UNDER[the_scale]
         print the_scale
 
         print '   1. Clean and create'
-        CartoLines.cursor.execute("""
+        self.pg['cursor'].execute("""
             DROP TABLE IF EXISTS carto_temp;
             CREATE TABLE carto_temp AS SELECT * FROM carto_new.lines_%(scale)s LIMIT 0;
             CREATE INDEX ON carto_temp USING GiST (geom);
         """, { 'scale': AsIs(the_scale) })
-        CartoLines.connection.commit()
+        self.pg['connection'].commit()
 
         '''
         + Get all polygons from the underlying scale that intersect the target source's footprint
@@ -212,16 +210,16 @@ class CartoLines:
         '''
         print '   2. Scale under'
         if SCALE_UNDER is not None:
-            CartoLines.insert_scale(SCALE_UNDER)
+            CartoLines.insert_scale(self, SCALE_UNDER)
 
         print '   3. Scale'
-        CartoLines.insert_scale(the_scale)
+        CartoLines.insert_scale(self, the_scale)
 
         '''
             Cut target source's footprint out of carto table
         '''
         print '   4. Cut'
-        CartoLines.cursor.execute("""
+        self.pg['cursor'].execute("""
             UPDATE carto_new.lines_%(scale)s
             SET geom = ST_Difference(geom, rgeom)
             FROM maps.sources
@@ -231,7 +229,7 @@ class CartoLines:
             'scale': AsIs(the_scale)
         })
 
-        CartoLines.cursor.execute("""
+        self.pg['cursor'].execute("""
             DELETE FROM carto_new.lines_%(scale)s
             WHERE geometrytype(geom) NOT IN ('LINESTRING', 'MULTILINESTRING');
         """, {
@@ -239,39 +237,39 @@ class CartoLines:
         })
 
         print '   5. Insert'
-        CartoLines.cursor.execute("""
+        self.pg['cursor'].execute("""
             INSERT INTO carto_new.lines_%(scale)s (line_id, source_id, scale, geom)
             SELECT * FROM carto_temp;
         """, {
             'scale': AsIs(the_scale)
         })
+        self.pg['connection'].commit()
 
         print '   6. Clean up'
-        CartoLines.cursor.execute("""
+        self.pg['cursor'].execute("""
             DROP TABLE carto_temp;
         """)
-        CartoLines.connection.commit()
+        self.pg['connection'].commit()
 
         print '   7. Clean up bad geometries'
-        CartoLines.cursor.execute("""
+        self.pg['cursor'].execute("""
             DELETE FROM carto_new.lines_%(scale)s
             WHERE geometrytype(geom) NOT IN ('LINESTRING', 'MULTILINESTRING');
         """, {
             'scale': AsIs(the_scale)
         })
-        CartoLines.connection.commit()
+        self.pg['connection'].commit()
 
 
-    @staticmethod
-    def build(source_id):
+    def build(self, source_id):
         CartoLines.source_id = source_id
 
-        CartoLines.cursor.execute("""
+        self.pg['cursor'].execute("""
             SELECT display_scales
             FROM maps.sources
             WHERE source_id = %(source_id)s
         """, { 'source_id': source_id })
-        scales = CartoLines.cursor.fetchone()
+        scales = self.pg['cursor'].fetchone()
 
         if len(scales) == 0 or scales is None:
             print 'Source not found'
@@ -285,4 +283,4 @@ class CartoLines:
             print scale
 
         for scale in scales:
-            CartoLines.processScale(scale)
+            CartoLines.processScale(self, scale)

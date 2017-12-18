@@ -12,8 +12,9 @@ from functools import partial
 import json
 import re
 from .. import schlep
+from ... import Base
 
-class Tesselate:
+class Tesselate(Base):
     '''
     macrostrat process tesselate
         Given some Macrostrat column centroids, create polygon geometries
@@ -66,15 +67,9 @@ class Tesselate:
         'cursor': None
     }
 
-    def __init__(self, mariaConnection, pgConnection):
-        Tesselate.mariadb['connection'] = mariaConnection()
-        Tesselate.mariadb['cursor'] = Tesselate.mariadb['connection'].cursor()
-        Tesselate.mariadb['raw_connection'] = mariaConnection
-        Tesselate.pg['connection'] = pgConnection()
-        Tesselate.pg['cursor'] = Tesselate.pg['connection'].cursor(cursor_factory = NamedTupleCursor)
-        Tesselate.pg['raw_connection'] = pgConnection
+    def __init__(self, connections, *args):
+        Base.__init__(self, connections, *args)
 
-    @classmethod
     def voronoi_finite_polygons_2d(self, vor, radius=None):
         # via https://gist.github.com/pv/8036995 with minor mods
 
@@ -140,9 +135,7 @@ class Tesselate:
 
         return new_regions, np.asarray(new_vertices)
 
-
-    @staticmethod
-    def build(args):
+    def build(self, args):
         if '--help' in args or '-h' in args:
             print Tesselate.__doc__
             sys.exit()
@@ -375,7 +368,7 @@ class Tesselate:
             # Create the tesselation; initially open-ended and not clipped to the clipping polygon
             tesselation = Voronoi(np.array( [ [float(p['lng']), float(p['lat'])] for p in columns ] ))
             # We have to do this BS because scipy voronoi doesn't create edges for vertices outside of convex hull of all the points
-            regions, new_points =  Tesselate.voronoi_finite_polygons_2d(tesselation)
+            regions, new_points =  Tesselate.voronoi_finite_polygons_2d(self, tesselation)
             unclipped_polygons = [ Polygon(new_points[r]) for r in regions ]
 
 

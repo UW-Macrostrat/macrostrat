@@ -4,3 +4,4 @@ from carto import Carto as carto
 from carto_lines import CartoLines as carto_lines
 from burwell_lookup import BurwellLookup as burwell_lookup
 from tesselate import Tesselate as tesselate
+from map_source import MapSource as map_source

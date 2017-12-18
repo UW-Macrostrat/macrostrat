@@ -1,5 +1,6 @@
-from psycopg2.extras import NamedTupleCursor
-class WebGeom:
+from ... import Base
+
+class WebGeom(Base):
     meta = {
         'mariadb': False,
         'pg': True,
@@ -10,14 +11,14 @@ class WebGeom:
             'source_id': 'A valid source_id'
         }
     }
-    def __init__(self, pgConnection):
-        WebGeom.connection = pgConnection()
-        WebGeom.cursor = WebGeom.connection.cursor(cursor_factory = NamedTupleCursor)
 
-    @staticmethod
-    def build(source_id):
+    def __init__(self, connections, *args):
+        Base.__init__(self, connections, *args)
+
+
+    def build(self, source_id):
         # Get the primary table of the target source
-        WebGeom.cursor.execute("""
+        self.pg['cursor'].execute("""
             WITH first as (
                 SELECT source_id, (ST_Dump(ST_Split(ST_SetSRID(rgeom, 4326), ST_SetSRID(ST_MakeLine(ST_MakePoint(-180, 90), ST_MakePoint(-180, -90)), 4326)))).geom
                 FROM maps.sources
@@ -75,4 +76,4 @@ class WebGeom:
         """, {
             "source_id": source_id
         })
-        WebGeom.connection.commit()
+        self.pg['connection'].commit()

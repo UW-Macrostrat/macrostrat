@@ -7,11 +7,11 @@
 Usage:
     macrostrat process burwell_lookup 123
 '''
-
+from ... import Base
 from psycopg2.extensions import AsIs
 import sys
 
-class BurwellLookup():
+class BurwellLookup(Base):
     meta = {
         'mariadb': False,
         'pg': True,
@@ -35,23 +35,20 @@ class BurwellLookup():
     }
 
     source_id = None
-    connection = None
-    cursor = None
 
-    def __init__(self, pgConnection):
-        BurwellLookup.connection = pgConnection()
-        BurwellLookup.cursor = BurwellLookup.connection.cursor()
+    def __init__(self, connections, *args):
+        Base.__init__(self, connections, *args)
 
-    @classmethod
+
     def source_stats(self):
-        BurwellLookup.cursor.execute("""
+        self.pg['cursor'].execute("""
           SELECT primary_table FROM maps.sources WHERE source_id = %(source_id)s
         """, {
             'source_id': self.source_id
         })
-        primary_table = BurwellLookup.cursor.fetchone()[0]
+        primary_table = self.pg['cursor'].fetchone()[0]
 
-        BurwellLookup.cursor.execute("""
+        self.pg['cursor'].execute("""
           WITH second AS (
             SELECT ST_MakeValid(geom) geom FROM sources.%(primary_table)s
           ),
@@ -71,13 +68,12 @@ class BurwellLookup():
             'primary_table': AsIs(primary_table),
             'source_id': self.source_id
         })
-        BurwellLookup.connection.commit()
+        self.pg['connection'].commit()
 
 
-    @classmethod
     def refresh(self):
         # Delete source from lookup_scale
-        BurwellLookup.cursor.execute('''
+        self.pg['cursor'].execute('''
             DELETE FROM lookup_%s
             WHERE map_id IN (
                 SELECT map_id
@@ -87,7 +83,7 @@ class BurwellLookup():
         ''', (AsIs(self.scale), AsIs(self.scale), self.source_id))
 
         # Insert source into lookup_scale
-        BurwellLookup.cursor.execute("""
+        self.pg['cursor'].execute("""
         INSERT INTO lookup_%(scale)s (map_id, unit_ids, strat_name_ids, lith_ids, best_age_top, best_age_bottom, color) (
 
           -- Find unique match types for units
@@ -412,24 +408,24 @@ class BurwellLookup():
             'scale': AsIs(self.scale),
             'source_id': self.source_id
         })
-        BurwellLookup.connection.commit()
+        self.pg['connection'].commit()
 
-        BurwellLookup.source_stats()
+        BurwellLookup.source_stats(self)
 
-        source_stats(cursor, connection, source_id)
+        #source_stats(cursor, connection, source_id)
 
-    @staticmethod
-    def build(source_id):
+    def build(self, source_id):
+        source_id = source_id[0]
         if not source_id.isdigit():
             print 'Invalid source_id'
             sys.exit(1)
 
-        BurwellLookup.cursor.execute('''
+        self.pg['cursor'].execute('''
             SELECT scale
             FROM maps.sources
             WHERE source_id = %(source_id)s
         ''', { 'source_id': source_id })
-        scale = BurwellLookup.cursor.fetchone()
+        scale = self.pg['cursor'].fetchone()
 
         if scale is None:
             print 'Source ID %s was not found in maps.sources' % (source_id, )
@@ -442,4 +438,4 @@ class BurwellLookup():
         BurwellLookup.source_id = source_id
         BurwellLookup.scale = scale[0]
 
-        BurwellLookup.refresh()
+        BurwellLookup.refresh(self)

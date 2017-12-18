@@ -17,7 +17,7 @@ class Base(object):
 
         self.args = args
         if 'credentials' in connections:
-            self.credentials = connections['credentials']
+            setattr(self, 'credentials', connections['credentials'])
 
     def run(self):
         raise NotImplementedError('You must implement the run() method yourself!')

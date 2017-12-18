@@ -1,14 +1,9 @@
 from subprocess import call
 import os
+from ... import Base
 from psycopg2.extensions import AsIs
-from psycopg2.extras import NamedTupleCursor
-import yaml
-# Load the credentials file
-with open(os.path.join(os.path.dirname(__file__), '../../../credentials.yml'), 'r') as f:
-    credentials = yaml.load(f)
 
-
-class RGeom:
+class RGeom(Base):
     meta = {
         'mariadb': False,
         'pg': True,
@@ -19,14 +14,13 @@ class RGeom:
             'source_id': 'A valid source_id'
         }
     }
-    def __init__(self, pgConnection):
-        RGeom.connection = pgConnection()
-        RGeom.cursor = RGeom.connection.cursor(cursor_factory = NamedTupleCursor)
+    def __init__(self, connections, *args):
+        setattr(self, 'credentials', connections['credentials'])
+        Base.__init__(self, connections, *args)
 
-    @staticmethod
-    def build(source_id):
+    def build(self, source_id):
         # Get the name of the primary table
-        RGeom.cursor.execute("""
+        self.pg['cursor'].execute("""
             SELECT primary_table
             FROM maps.sources
             WHERE source_id = %(source_id)s
@@ -34,7 +28,7 @@ class RGeom:
             'source_id': source_id
         })
 
-        result = RGeom.cursor.fetchone()
+        result = self.pg['cursor'].fetchone()
 
         primary_table = result[0]
 
@@ -45,24 +39,24 @@ class RGeom:
         call(['rm %s_rgeom.*' % (primary_table, )], shell=True, stdout=FNULL)
 
         # Drop the temporary table
-        RGeom.cursor.execute("""
+        self.pg['cursor'].execute("""
             DROP TABLE IF EXISTS public.%(primary_table)s
         """, {
             'primary_table': AsIs(primary_table + '_rgeom')
         })
-        RGeom.connection.commit()
+        self.pg['connection'].commit()
 
         # Write it to a shapefile
-        call(['pgsql2shp -f %s.shp -u %s -h %s -p %s burwell sources.%s' % (primary_table, credentials['pg_user'], credentials['pg_host'], credentials['pg_port'], primary_table)], shell=True, stdout=FNULL)
+        call(['pgsql2shp -f %s.shp -u %s -h %s -p %s burwell sources.%s' % (primary_table, self.credentials['pg_user'], self.credentials['pg_host'], self.credentials['pg_port'], primary_table)], shell=True, stdout=FNULL)
 
         # Simplify it with mapshaper
         call(['mapshaper -i %s.shp -dissolve -o %s_rgeom.shp' % (primary_table, primary_table)], shell=True, stdout=FNULL)
 
         # Import the simplified geometry into PostGIS
-        call(['shp2pgsql -s 4326 -I %s_rgeom.shp public.%s_rgeom | psql -h %s -p %s -U %s -d burwell' % (primary_table, primary_table, credentials['pg_host'], credentials['pg_port'], credentials['pg_user'])], shell=True, stdout=FNULL)
+        call(['shp2pgsql -s 4326 -I %s_rgeom.shp public.%s_rgeom | psql -h %s -p %s -U %s -d burwell' % (primary_table, primary_table, self.credentials['pg_host'], self.credentials['pg_port'], self.credentials['pg_user'])], shell=True, stdout=FNULL)
 
         print '     Validating geometry...'
-        RGeom.cursor.execute("""
+        self.pg['cursor'].execute("""
             ALTER TABLE public.%(primary_table)s ALTER COLUMN geom SET DATA TYPE geometry;
 
             UPDATE public.%(primary_table)s
@@ -70,11 +64,11 @@ class RGeom:
         """, {
             "primary_table": AsIs(primary_table + '_rgeom')
         })
-        RGeom.connection.commit()
+        self.pg['connection'].commit()
 
         print '     Processing geometry...'
         # Update the sources table
-        RGeom.cursor.execute("""
+        self.pg['cursor'].execute("""
             UPDATE maps.sources
             SET rgeom = (
                 WITH dump AS (
@@ -127,15 +121,15 @@ class RGeom:
             'primary_table': AsIs(primary_table + '_rgeom'),
             'source_id': source_id
         })
-        RGeom.connection.commit()
+        self.pg['connection'].commit()
 
         # Drop the temporary table
-        RGeom.cursor.execute("""
+        self.pg['cursor'].execute("""
             DROP TABLE public.%(primary_table)s
         """, {
             'primary_table': AsIs(primary_table + '_rgeom')
         })
-        RGeom.connection.commit()
+        self.pg['connection'].commit()
 
         # Clean up the working directory
         call(['rm %s*' % (primary_table, )], shell=True)
