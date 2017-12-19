@@ -3,6 +3,7 @@ import sys
 from subprocess import call
 import datetime
 import os
+from psycopg2.extensions import AsIs
 
 class Backup(Base):
     '''
@@ -36,24 +37,104 @@ class Backup(Base):
 
         # Check if a database name or source_id was passed
         if self.args[1].isdigit():
+            # Get info
+            self.pg['cursor'].execute("""
+                SELECT name, primary_table, primary_line_table, scale
+                FROM maps.sources WHERE source_id = %(source_id)s
+            """, {'source_id': self.args[1]})
+            source_info = self.pg['cursor'].fetchone()
+
+            if source_info is None:
+                print 'Invalid source id. Source ID %s not found' % (self.args[1], )
+                sys.exit(1)
+
             # maps.sources
+            self.pg['cursor'].execute("""
+                CREATE TABLE temp_sources AS
+                SELECT * FROM maps.sources WHERE source_id = %(source_id)s
+            """, {'source_id': self.args[1]})
 
             # maps.scale
+            self.pg['cursor'].execute("""
+                CREATE TABLE temp_scale AS
+                SELECT * FROM maps.%(scale)s WHERE source_id = %(source_id)s
+            """, { 'scale': AsIs(source_info.scale), 'source_id': self.args[1]})
 
             # lines.scale
+            self.pg['cursor'].execute("""
+                CREATE TABLE temp_lines AS
+                SELECT * FROM lines.%(scale)s WHERE source_id = %(source_id)s
+            """, { 'scale': AsIs(source_info.scale), 'source_id': self.args[1]})
 
             # maps.map_liths
+            self.pg['cursor'].execute("""
+                CREATE TABLE temp_liths AS
+                SELECT * FROM maps.map_liths
+                WHERE map_id IN (
+                    SELECT map_id
+                    FROM maps.%(scale)s
+                    WHERE source_id = %(source_id)s
+                )
+            """, { 'scale': AsIs(source_info.scale), 'source_id': self.args[1] })
 
             # maps.map_strat_names
+            self.pg['cursor'].execute("""
+                CREATE TABLE temp_strat_names AS
+                SELECT * FROM maps.map_strat_names
+                WHERE map_id IN (
+                    SELECT map_id
+                    FROM maps.%(scale)s
+                    WHERE source_id = %(source_id)s
+                )
+            """, { 'scale': AsIs(source_info.scale), 'source_id': self.args[1] })
 
             # maps.map_units
+            self.pg['cursor'].execute("""
+                CREATE TABLE temp_units AS
+                SELECT * FROM maps.map_units
+                WHERE map_id IN (
+                    SELECT map_id
+                    FROM maps.%(scale)s
+                    WHERE source_id = %(source_id)s
+                )
+            """, { 'scale': AsIs(source_info.scale), 'source_id': self.args[1] })
 
-            # sources.<primary_table>
-
-            # sources.primary_table_lines
 
             # points.points
-            print 'Backup source'
+            self.pg['cursor'].execute("""
+                CREATE TABLE temp_points AS
+                SELECT * FROM points.points
+                WHERE source_id = %(source_id)s
+            """, { 'source_id': self.args[1] })
+
+            # public.lookup_scale
+            self.pg['cursor'].execute("""
+                CREATE TABLE temp_lookup AS
+                SELECT * FROM public.lookup_%(scale)s
+                WHERE map_id IN (
+                    SELECT map_id
+                    FROM maps.%(scale)s
+                    WHERE source_id = %(source_id)s
+                )
+            """, { 'scale': AsIs(source_info.scale), 'source_id': self.args[1] })
+            self.pg['connection'].commit()
+
+            call(['pg_dump -O -x --data-only --column-inserts -t temp_sources -t temp_scale -t temp_lines -t temp_liths -t temp_strat_names -t temp_units -t temp_points -t temp_lookup -U %s -h %s -p %s burwell > temp.sql && pg_dump -O -x -c -t sources.%s -t sources.%s -U %s -h %s -p %s burwell > primary.sql && cat temp.sql primary.sql | gzip > %s.%s.sql.gz && rm temp.sql && rm primary.sql'
+            % ( self.credentials['pg_user'], self.credentials['pg_host'], self.credentials['pg_port'], source_info.primary_table, source_info.primary_line_table, self.credentials['pg_user'], self.credentials['pg_host'], self.credentials['pg_port'], today, source_info.name.replace(' ', '_'))], shell=True)
+
+            self.pg['cursor'].execute("""
+                DROP TABLE temp_sources;
+                DROP TABLE temp_scale;
+                DROP TABLE temp_lines;
+                DROP TABLE temp_liths;
+                DROP TABLE temp_strat_names;
+                DROP TABLE temp_units;
+                DROP TABLE temp_points;
+                DROP TABLE temp_lookup;
+            """)
+            self.pg['connection'].commit()
+
+            print '     Dumped %s to %s.%s.sql.gz' % (source_info.name, today, source_info.name.replace(' ', '_'))
         else:
             db = self.args[1]
             if db in pg_dbs:
