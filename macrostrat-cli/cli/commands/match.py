@@ -45,5 +45,5 @@ class Match(Base):
 
 
         script = script({'pg': self.pg['raw_connection'], 'mariadb': self.mariadb['raw_connection'], 'credentials': self.credentials }, self.args[2:])
-        
-        script.build(self.args[2:])
+
+        script.build(self.args[2])
