@@ -74,7 +74,7 @@ class StratNames(Base):
 
 
     def build(self, source_id):
-        
+
         # Time the process
         start_time = time.time()
 
@@ -133,13 +133,7 @@ class StratNames(Base):
             	SELECT
             		array_agg(map_id) AS map_ids,
             		name,
-            		CASE
-            			WHEN
-            				array_length(string_to_array(COALESCE(strat_name, ''), ';'), 1) IS NULL
-            				THEN NULL
-            			ELSE
-            				unnest(string_to_array(COALESCE(strat_name, ''), ';'))
-            			END AS strat_name,
+            		trim(unnest(string_to_array(strat_name, ';'))) AS strat_name,
             		age,
             		lith,
             		descrip,
