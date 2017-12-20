@@ -1,9 +1,31 @@
 from subprocess import call
 import os
+import sys
 from ..base import Base
 from psycopg2.extensions import AsIs
 
 class RGeom(Base):
+    """
+    macrostrat process rgeom <source_id>:
+        Populate the field `rgeom` (i.e. "reference geometry") in the table maps.sources
+        The rgeom is a convex hull of the given source. However, in order to speed things
+        up, the command line tool mapshaper is used to create the initial geometry before
+        being processed in PostGIS to remove slivers and small interior rings. The rgeom
+        is used for many things, including cutting geometries when creating the carto
+        tables.
+
+    Usage:
+      macrostrat process rgeom <source_id>
+      macrostrat process rgeom -h | --help
+    Options:
+      -h --help                         Show this screen.
+      --version                         Show version.
+    Examples:
+      macrostrat process rgeom 123
+    Help:
+      For help using this tool, please open an issue on the Github repository:
+      https://github.com/UW-Macrostrat/macrostrat-cli
+    """
     meta = {
         'mariadb': False,
         'pg': True,
@@ -15,10 +37,13 @@ class RGeom(Base):
         }
     }
     def __init__(self, connections, *args):
-        #setattr(self, 'credentials', connections['credentials'])
         Base.__init__(self, connections, *args)
 
     def build(self, source_id):
+        if source_id == '--help' or source_id == '-h':
+            print RGeom.__doc__
+            sys.exit()
+
         # Get the name of the primary table
         self.pg['cursor'].execute("""
             SELECT primary_table

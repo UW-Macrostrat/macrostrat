@@ -26,13 +26,22 @@ class Tesselate(Base):
             --project_id - (int/int[]) one or many comma-delimited project_ids
 
         Options:
-            --boundary_id - (int) a boundary_id from geologic_boundaries.boundaries to use to cut the tesselated polygons
-            --boundary_polygon - (text) a valid WKT polygon to use to cut the tesselated polygons
-            --snap_to_nearest - (boolean) if only a single col_id is passed, create a polygon whose radius is equal to the distance to the nearest existing column centroid
-            --buffer - (float) if only a single col_id is passed, create a polygon with the given radius. Good for things like Deep Sea columns
-            --allow_overlap - (boolean) do not cut the resultant polygons by all other existing column polygons. Will result in overlapping geometries.
+            --boundary_id - (int) a boundary_id from geologic_boundaries.boundaries
+                to use to cut the tesselated polygons
+            --boundary_polygon - (text) a valid WKT polygon to use to cut the
+                tesselated polygons
+            --snap_to_nearest - (boolean) if only a single col_id is passed,
+                create a polygon whose radius is equal to the distance to the
+                nearest existing column centroid
+            --buffer - (float) if only a single col_id is passed, create a polygon
+                with the given radius. Good for things like Deep Sea columns
+            --allow_overlap - (boolean) do not cut the resultant polygons by all
+                other existing column polygons. Will result in overlapping geometries.
 
-        *NB*: If multiple columns are passed and no options are provided, the tesselated polygons will be clipped by a polygon whose centroid is the center of all columns being operated on and whose radius is equivalent to the maximum distance between two columns being operated on.
+        *NB*: If multiple columns are passed and no options are provided, the
+              tesselated polygons will be clipped by a polygon whose centroid is
+              the center of all columns being operated on and whose radius is
+              equivalent to the maximum distance between two columns being operated on.
 
     Examples:
       macrostrat process tesselate --col_id=1,2,3 --boundary_id=987

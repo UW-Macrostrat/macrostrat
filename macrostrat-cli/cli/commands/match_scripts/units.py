@@ -6,6 +6,24 @@ import sys
 from ..base import Base
 
 class Units(Base):
+    """
+    macrostrat match units <source_id>:
+        Match a given map source to Macrostrat units.
+        Populates the table maps.map_units.
+        Uses all available fields of matching, including name, strat_name, descrip, and comments.
+
+    Usage:
+      macrostrat match units <source_id>
+      macrostrat match units -h | --help
+    Options:
+      -h --help                         Show this screen.
+      --version                         Show version.
+    Examples:
+      macrostrat match units 123
+    Help:
+      For help using this tool, please open an issue on the Github repository:
+      https://github.com/UW-Macrostrat/macrostrat-cli
+    """
     meta = {
         'mariadb': False,
         'pg': True,
@@ -371,6 +389,10 @@ class Units(Base):
 
 
     def build(self, source_id):
+        if source_id == '--help' or source_id == '-h':
+            print Units.__doc__
+            sys.exit()
+
         Units.source_id = source_id
         # Validate params!
         # Valid source_id

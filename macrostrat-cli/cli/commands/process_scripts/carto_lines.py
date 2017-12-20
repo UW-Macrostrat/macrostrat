@@ -1,26 +1,36 @@
-'''
-@input
-  - source_id
-
-+ Cut target source's footprint out of carto table
-
-+ Create a new temp table to hold the intermediate product to speed up inserts
-
-+ Get all polygons from the underlying scale that intersect the target source's footprint
-  - Group by priority
-    - Order by priority ASC
-    - Cut a hole in the built up polygons equal to the group
-    - Insert each group
-
-+ Do the same for the target scale
-
-+ Insert all from the temp table into the carto table
-'''
-
 from ..base import Base
 from psycopg2.extensions import AsIs
+import sys
 
 class CartoLines(Base):
+    """
+    macrostrat process carto_lines <source_id>:
+        Inserts/updates a given map source's lines into the appropriate carto tables
+        NB: Updates the tables in the schema `carto_new`
+        Processes as follows:
+            + Cut target source's footprint out of the appropriate carto line table
+            + Create a new temp table to hold the intermediate product to speed up inserts
+            + Get all lines from the underlying scale that intersect the target source's footprint
+              - Group by priority
+                - Order by priority ASC
+                - Cut a hole in the built up polygons equal to the group
+                - Insert each group
+            + Do the same for the target scale
+            + Insert all from the temp table into the carto table
+
+    Usage:
+      macrostrat process carto_lines <source_id>
+      macrostrat process carto_lines -h | --help
+    Options:
+      -h --help                         Show this screen.
+      --version                         Show version.
+    Examples:
+      macrostrat process carto_lines 123
+    Help:
+      For help using this tool, please open an issue on the Github repository:
+      https://github.com/UW-Macrostrat/macrostrat-cli
+    """
+
     meta = {
         'mariadb': False,
         'pg': True,
@@ -262,6 +272,10 @@ class CartoLines(Base):
 
 
     def build(self, source_id):
+        if source_id == '--help' or source_id == '-h':
+            print CartoLines.__doc__
+            sys.exit()
+
         CartoLines.source_id = source_id
 
         self.pg['cursor'].execute("""

@@ -6,6 +6,23 @@ import sys
 from ..base import Base
 
 class StratNames(Base):
+    """
+    macrostrat match strat_names <source_id>:
+        Match a given map source's `strat_name` field to Macrostrat strat_name_ids.
+        Populates the table maps.map_strat_names
+
+    Usage:
+      macrostrat match strat_names <source_id>
+      macrostrat match strat_names -h | --help
+    Options:
+      -h --help                         Show this screen.
+      --version                         Show version.
+    Examples:
+      macrostrat match strat_names 123
+    Help:
+      For help using this tool, please open an issue on the Github repository:
+      https://github.com/UW-Macrostrat/macrostrat-cli
+    """
     meta = {
         'mariadb': False,
         'pg': True,
@@ -74,6 +91,9 @@ class StratNames(Base):
 
 
     def build(self, source_id):
+        if source_id == '--help' or source_id == '-h':
+            print StratNames.__doc__
+            sys.exit()
 
         # Time the process
         start_time = time.time()

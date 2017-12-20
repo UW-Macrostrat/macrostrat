@@ -9,7 +9,22 @@ cwd = os.getcwd()
 class Backup(Base):
     '''
     macrostrat backup <database or source_id>:
-        Create a backup/dump of a given database or map source
+        Create a backup/dump of a given database or map source.
+        In the case of a source, a pg_dump that first removes all instances of
+        the source from the database. DELETES DATA from:
+            - public.lookup_<scale>
+            - maps.map_liths
+            - maps.map_strat_names
+            - maps.map_units
+            - sources.<primary_table>
+            - sources.<primary_line_table>
+            - maps.sources
+            - lines.<scale>
+            - points.points
+            - carto_new.<scale>
+            - carto_new.lines_<scale>
+        The source dump is intended to be used to move sources between databases
+        on different machines (dev to production, laptop to dev).
 
     Usage:
       macrostrat backup <database or source_id>
@@ -18,7 +33,8 @@ class Backup(Base):
       -h --help                         Show this screen.
       --version                         Show version.
     Examples:
-      macrostrat match strat_names 123
+      macrostrat backup 123
+      macrostrat backup burwell
     Help:
       For help using this tool, please open an issue on the Github repository:
       https://github.com/UW-Macrostrat/macrostrat-cli

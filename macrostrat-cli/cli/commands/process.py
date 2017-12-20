@@ -49,7 +49,6 @@ class Process(Base):
 
         script = getattr(process_scripts, cmd)
 
-        #if (len(self.args) - 2) != len(script.meta['required_args']) or len(self.args) == 2:
         if (len(self.args) - 2) != len(script.meta['required_args']) and cmd != 'tesselate':
             print 'You are missing a required argument for this command. The following arguments are required:'
             for arg in script.meta['required_args']:
@@ -57,13 +56,5 @@ class Process(Base):
             sys.exit()
 
         script = script({'pg': self.pg['raw_connection'], 'mariadb': self.mariadb['raw_connection'], 'credentials': self.credentials }, self.args[2:])
-        # if script.meta['mariadb'] and script.meta['pg']:
-        #     script(self.mariadb['raw_connection'], self.pg['raw_connection'])
-        # elif script.meta['mariadb'] and not script.meta['pg']:
-        #     script(self.mariadb['raw_connection'])
-        # elif script.meta['pg'] and not script.meta['mariadb']:
-        #     script(self.pg['raw_connection'])
-        # else:
-        #     print 'wtf'
 
         script.build(self.args[2])

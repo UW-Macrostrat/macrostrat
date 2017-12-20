@@ -1,6 +1,26 @@
 from ..base import Base
+import sys
 
 class WebGeom(Base):
+    """
+    macrostrat process web_geom <source_id>:
+        Populate the field `web_geom` in the table maps.sources. The web_geom is
+        simply the envelope of the given source, but processed so that it renders
+        properly on an interactive map (sensibly crosses the dateline). It is
+        primarily used for displaying the index map of sources at /map/sources
+
+    Usage:
+      macrostrat process web_geom <source_id>
+      macrostrat process web_geom -h | --help
+    Options:
+      -h --help                         Show this screen.
+      --version                         Show version.
+    Examples:
+      macrostrat process web_geom 123
+    Help:
+      For help using this tool, please open an issue on the Github repository:
+      https://github.com/UW-Macrostrat/macrostrat-cli
+    """
     meta = {
         'mariadb': False,
         'pg': True,
@@ -17,6 +37,10 @@ class WebGeom(Base):
 
 
     def build(self, source_id):
+        if source_id == '--help' or source_id == '-h':
+            print WebGeom.__doc__
+            sys.exit()
+
         # Get the primary table of the target source
         self.pg['cursor'].execute("""
             WITH first as (

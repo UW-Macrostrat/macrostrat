@@ -1,17 +1,26 @@
-'''
-@input
-  - source_id
-
-+ Refresh the appropriate lookup tables for a given map source
-
-Usage:
-    macrostrat process burwell_lookup 123
-'''
 from ..base import Base
 from psycopg2.extensions import AsIs
 import sys
 
 class BurwellLookup(Base):
+    """
+    macrostrat process burwell_lookup <source_id>:
+        Inserts/updates a given map source's records in public.lookup_<scale>
+        Computes things like best_age_top/bottom and the appropriate color for each polygon
+
+    Usage:
+      macrostrat process burwell_lookup <source_id>
+      macrostrat process burwell_lookup -h | --help
+    Options:
+      -h --help                         Show this screen.
+      --version                         Show version.
+    Examples:
+      macrostrat process burwell_lookup 123
+    Help:
+      For help using this tool, please open an issue on the Github repository:
+      https://github.com/UW-Macrostrat/macrostrat-cli
+    """
+
     meta = {
         'mariadb': False,
         'pg': True,
@@ -415,6 +424,10 @@ class BurwellLookup(Base):
         #source_stats(cursor, connection, source_id)
 
     def build(self, source_id):
+        if source_id == '--help' or source_id == '-h':
+            print BurwellLookup.__doc__
+            sys.exit()
+
         self.pg['cursor'].execute('''
             SELECT scale
             FROM maps.sources
