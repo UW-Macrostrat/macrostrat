@@ -3,10 +3,11 @@ macrostrat-cli: a command-line interface for working with Macrostrat data[bases]
 
 Usage:
   macrostrat rebuild <table>
-  macrostrat match <type> <source_id>
-  macrostrat backup <type>
+  macrostrat match <cmd> <source_id>
+  macrostrat backup <db>
   macrostrat process <cmd> <source_id>
-  macrostrat schlep <type> <source_id>
+  macrostrat schlep <table>
+  macrostrat export [coming soon]
   macrostrat -h | --help
   macrostrat --version
 Options:
