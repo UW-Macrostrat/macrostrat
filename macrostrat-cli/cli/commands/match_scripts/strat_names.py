@@ -57,7 +57,9 @@ class StratNames(Base):
         macroNameMatch = 'rank_name' if strictName else 'name_no_lith'
         mapNameMatch = 'strat_name' if strictName else 'strat_name_clean'
 
+        # Relax the matching constraints
         spaceQuery = 'ST_Intersects(snft.geom, tr.envelope)' if strictSpace else 'ST_Intersects(ST_Buffer(snft.geom, 1.2), ST_Buffer(tr.envelope, 1.2))'
+        # Time buffer
         timeFuzz = '0' if strictTime else '25'
 
         where = ''
@@ -71,16 +73,13 @@ class StratNames(Base):
         # Handle no time in the query!!!
         self.pg['cursor'].execute("""
             INSERT INTO maps.map_strat_names
-            SELECT unnest(map_ids), strat_name_id, %(match_type)s
-            FROM (
-                SELECT map_ids, lsn.strat_name_id
-                FROM temp_rocks tr
-                JOIN temp_names lsn on lsn.""" + (macroNameMatch) + """ = tr.""" + (mapNameMatch) + """
-                JOIN macrostrat.strat_name_footprints snft ON """ + (spaceQuery) + """
-                JOIN macrostrat.intervals intervals_top on tr.t_interval = intervals_top.id
-                JOIN macrostrat.intervals intervals_bottom on tr.b_interval = intervals_bottom.id
-                WHERE %(where)s
-            ) sub
+            SELECT unnest(map_ids), lsn.strat_name_id, %(match_type)s
+            FROM temp_rocks tr
+            JOIN temp_names lsn on lsn.""" + (macroNameMatch) + """ = tr.""" + (mapNameMatch) + """
+            JOIN macrostrat.strat_name_footprints snft ON """ + (spaceQuery) + """
+            JOIN macrostrat.intervals intervals_top on tr.t_interval = intervals_top.id
+            JOIN macrostrat.intervals intervals_bottom on tr.b_interval = intervals_bottom.id
+            WHERE %(where)s
         """, {
             'match_type': match_type,
             'where': AsIs(where)

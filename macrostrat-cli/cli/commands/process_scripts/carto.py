@@ -49,7 +49,7 @@ class Carto(Base):
     scaleIsIn = {
         'tiny': ['tiny'],
         'small': ['small', 'medium'],
-        'medium': ['small', 'medium', 'large'],
+        'medium': ['medium', 'large'],
         'large': ['large']
     }
     source_id = None
@@ -235,18 +235,35 @@ class Carto(Base):
         '''
         print '   4. Cut'
         self.pg['cursor'].execute("""
-            UPDATE carto_new.%(scale)s
-            SET geom = CASE
-                WHEN ST_Contains(rgeom, geom)
-                    THEN 'POLYGON EMPTY'
-                ELSE ST_Difference(geom, rgeom)
-            END
-            FROM maps.sources
-            WHERE ST_Intersects(geom, rgeom) AND sources.source_id = %(source)s;
-        """, {
-            'source': Carto.source_id,
-            'scale': AsIs(the_scale)
-        })
+            DROP TABLE IF EXISTS temp_subdivide;
+            CREATE TABLE temp_subdivide
+            AS SELECT row_number() OVER() as row_id, rgeom
+            FROM (
+                SELECT ST_Subdivide(rgeom) as rgeom
+                FROM maps.sources
+                WHERE source_id = %(source_id)s
+            ) foo
+        """, { 'source_id': Carto.source_id })
+        self.pg['connection'].commit()
+        self.pg['cursor'].execute("CREATE INDEX ON temp_subdivide USING GiST (rgeom)")
+        self.pg['connection'].commit()
+
+        self.pg['cursor'].execute("SELECT row_id FROM temp_subdivide ORDER BY row_id ASC")
+        rows = self.pg['cursor'].fetchall()
+        for row in rows:
+            self.pg['cursor'].execute("""
+                UPDATE carto_new.%(scale)s
+                SET geom = ST_Difference(geom, rgeom)
+                FROM temp_subdivide
+                WHERE ST_Intersects(geom, rgeom)
+                    AND row_id = %(row_id)s
+            """, {
+                'row_id': row.row_id,
+                'scale': AsIs(the_scale)
+            })
+        self.pg['connection'].commit()
+        self.pg['cursor'].execute("DROP TABLE temp_subdivide")
+        self.pg['connection'].commit()
 
         self.pg['cursor'].execute("""
             DELETE FROM carto_new.%(scale)s
