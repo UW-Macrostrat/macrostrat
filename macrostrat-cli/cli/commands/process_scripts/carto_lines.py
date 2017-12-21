@@ -313,9 +313,7 @@ class CartoLines(Base):
         allScales = [ CartoLines.scaleIsIn[scale] for scale in scales.display_scales ]
         scales = set([ scale for scales in allScales for scale in scales ])
 
-        print 'Scales to refresh: '
-        for scale in scales:
-            print scale
+        print 'Scales to refresh: %s' % (', '.join(scales), )
 
         for scale in scales:
             CartoLines.processScale(self, scale)
