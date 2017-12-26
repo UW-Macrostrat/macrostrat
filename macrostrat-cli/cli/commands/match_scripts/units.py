@@ -388,7 +388,7 @@ class Units(Base):
         print '        Done with ', self.field, ' in ', elapsed / 60, ' minutes and ', elapsed % 60, ' seconds'
 
 
-    def build(self, source_id):
+    def run(self, source_id):
         if source_id == '--help' or source_id == '-h':
             print Units.__doc__
             sys.exit()

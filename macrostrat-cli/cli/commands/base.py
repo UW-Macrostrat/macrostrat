@@ -1,24 +1,61 @@
+from abc import abstractmethod
+import pymysql
+import pymysql.cursors
+from warnings import filterwarnings
+import psycopg2
 from psycopg2.extras import NamedTupleCursor
+import yaml
+import os
 
 class Base(object):
 
     def __init__(self, connections, *args):
-        if 'pg' in connections:
-            setattr(self, 'pg', {'connection': None, 'raw_connection': None, 'cursor': None})
-            self.pg['raw_connection'] = connections['pg']
-            self.pg['connection'] = connections['pg']()
-            self.pg['cursor'] = self.pg['connection'].cursor(cursor_factory = NamedTupleCursor)
+        # Load the credentials file
+        with open(os.path.join(os.path.dirname(__file__), '../../credentials.yml'), 'r') as f:
+            self.credentials = yaml.load(f)
 
-        if 'mariadb' in connections:
-            setattr(self, 'mariadb', {'connection': None, 'raw_connection': None, 'cursor': None})
-            self.mariadb['raw_connection'] = connections['mariadb']
-            self.mariadb['connection'] = connections['mariadb']()
-            self.mariadb['cursor'] = self.mariadb['connection'].cursor()
+        # Connect to MySQL
+        def mariaConnection():
+            # Ignore warnings from MariaDB
+            filterwarnings('ignore', category = pymysql.Warning)
+            return pymysql.connect(host=self.credentials['mysql_host'], user=self.credentials['mysql_user'], passwd=self.credentials['mysql_passwd'], db=self.credentials['mysql_db'], unix_socket=self.credentials['mysql_socket'], cursorclass=pymysql.cursors.SSDictCursor, read_timeout=180)
+
+        # Connect to Postgres
+        def pgConnection():
+            pg_conn = psycopg2.connect(dbname=self.credentials['pg_db'], user=self.credentials['pg_user'], host=self.credentials['pg_host'], port=self.credentials['pg_port'])
+            pg_conn.set_client_encoding('Latin1')
+            return pg_conn
+
+        self.mariadb = {
+            'connection': mariaConnection(),
+            'cursor': None,
+            'raw_connection': mariaConnection
+        }
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
+
+        self.pg = {
+            'connection': pgConnection(),
+            'cursor': None,
+            'raw_connection': pgConnection
+        }
+        self.pg['cursor'] = self.pg['connection'].cursor(cursor_factory = NamedTupleCursor)
+
+        # if 'pg' in connections:
+        #     setattr(self, 'pg', {'connection': None, 'raw_connection': None, 'cursor': None})
+        #     self.pg['raw_connection'] = connections['pg']
+        #     self.pg['connection'] = connections['pg']()
+        #     self.pg['cursor'] = self.pg['connection'].cursor(cursor_factory = NamedTupleCursor)
+        #
+        # if 'mariadb' in connections:
+        #     setattr(self, 'mariadb', {'connection': None, 'raw_connection': None, 'cursor': None})
+        #     self.mariadb['raw_connection'] = connections['mariadb']
+        #     self.mariadb['connection'] = connections['mariadb']()
+        #     self.mariadb['cursor'] = self.mariadb['connection'].cursor()
 
         self.args = args
-        if 'credentials' in connections:
-            setattr(self, 'credentials', connections['credentials'])
+        # if 'credentials' in connections:
+        #     setattr(self, 'credentials', connections['credentials'])
 
-
+    @abstractmethod
     def run(self):
-        raise NotImplementedError('You must implement the run() method yourself!')
+        return None

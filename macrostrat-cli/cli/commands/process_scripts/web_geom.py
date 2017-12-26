@@ -36,7 +36,7 @@ class WebGeom(Base):
         Base.__init__(self, connections, *args)
 
 
-    def build(self, source_id):
+    def run(self, source_id):
         if source_id == '--help' or source_id == '-h':
             print WebGeom.__doc__
             sys.exit()

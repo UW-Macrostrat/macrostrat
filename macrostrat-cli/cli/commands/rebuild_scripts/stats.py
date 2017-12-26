@@ -1,23 +1,17 @@
-class Stats:
-    meta = {
-        'mariadb': True,
-        'pg': True
-    }
-    @staticmethod
-    def build(mariaConnection, pgConnection):
-        my_conn = mariaConnection()
-        my_cur = my_conn.cursor()
+from ..base import Base
 
-        pg_conn = pgConnection()
-        pg_cur = pg_conn.cursor()
+class Stats(Base):
+    def __init__(self, *args):
+        Base.__init__(self, {}, *args)
 
-        my_cur.execute("""
+    def run(self):
+        self.mariadb['cursor'].execute("""
             DROP TABLE IF EXISTS stats_new
         """)
-        my_cur.close()
+        self.mariadb['cursor'].close()
 
-        my_cur = my_conn.cursor()
-        my_cur.execute("""
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
+        self.mariadb['cursor'].execute("""
             CREATE TABLE stats_new AS (
                 SELECT
                   projects.id AS project_id,
@@ -65,32 +59,32 @@ class Stats:
             )
         """)
 
-        my_cur.execute("""
+        self.mariadb['cursor'].execute("""
             ALTER TABLE stats_new ADD COLUMN burwell_polygons integer default 0;
         """)
 
-        my_cur.close()
-        my_cur = my_conn.cursor()
+        self.mariadb['cursor'].close()
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
 
-        pg_cur.execute("""
+        self.pg['cursor'].execute("""
             select count(*)
             FROM (SELECT map_id FROM maps.tiny
             UNION SELECT map_id FROM maps.small
             UNION SELECT map_id FROM maps.medium
             UNION SELECT map_id FROM maps.large) foo
         """)
-        count = pg_cur.fetchone()[0]
+        count = self.pg['cursor'].fetchone()[0]
 
-        my_cur.execute("UPDATE stats_new SET burwell_polygons = %d" % count)
-        my_conn.commit()
+        self.mariadb['cursor'].execute("UPDATE stats_new SET burwell_polygons = %d" % count)
+        self.mariadb['connection'].commit()
 
-        my_cur.execute("""
+        self.mariadb['cursor'].execute("""
             ALTER TABLE stats rename to stats_old;
             ALTER TABLE stats_new rename to stats;
             DROP TABLE stats;
         """)
 
-        my_cur.close()
-        my_conn.close()
+        self.mariadb['cursor'].close()
+        self.mariadb['connection'].close()
 
-        pg_conn.close()
+        self.pg['connection'].close()

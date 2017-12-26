@@ -32,6 +32,8 @@ from psycopg2.extensions import AsIs
 import subprocess
 import yaml
 import datetime
+# import all available commands
+import commands
 
 # Load the credentials file
 with open(os.path.join(os.path.dirname(__file__), '../credentials.yml'), 'r') as f:
@@ -52,8 +54,6 @@ def pgConnection():
 
 def main():
     """Main CLI entrypoint."""
-    import commands
-
     # No parameters
     if len(sys.argv) == 1:
         print __doc__

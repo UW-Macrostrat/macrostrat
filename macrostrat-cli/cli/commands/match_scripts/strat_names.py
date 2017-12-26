@@ -89,7 +89,7 @@ class StratNames(Base):
         print '        - Done with %s' % (match_type, )
 
 
-    def build(self, source_id):
+    def run(self, source_id):
         if source_id == '--help' or source_id == '-h':
             print StratNames.__doc__
             sys.exit()

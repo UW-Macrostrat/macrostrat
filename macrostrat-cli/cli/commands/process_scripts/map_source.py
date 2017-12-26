@@ -46,33 +46,28 @@ class MapSource(Base):
     def __init__(self, connections, *args):
         Base.__init__(self, connections, *args)
 
-    def build(self, source_id):
+    def run(self, source_id):
         if source_id == '--help' or source_id == '-h':
             print MapSource.__doc__
             sys.exit()
 
-        config = {
-            'pg': self.pg['raw_connection'],
-            'mariadb': self.mariadb['raw_connection'],
-            'credentials': self.credentials
-        }
-        # rgeom = RGeom(config)
-        # rgeom.build(source_id)
+        # rgeom = RGeom({})
+        # rgeom.run(source_id)
         #
-        # web_geom = WebGeom(config)
-        # web_geom.build(source_id)
+        # web_geom = WebGeom({})
+        # web_geom.run(source_id)
 
-        sn = strat_names(config)
-        sn.build(source_id)
+        sn = strat_names({})
+        sn.run(source_id)
 
-        u = units(config)
-        u.build(source_id)
+        u = units({})
+        u.run(source_id)
 
-        burwell_lookup = BurwellLookup(config)
-        burwell_lookup.build(source_id)
+        burwell_lookup = BurwellLookup({})
+        burwell_lookup.run(source_id)
 
-        carto = Carto(config)
-        carto.build(source_id)
+        carto = Carto({})
+        carto.run(source_id)
 
-        carto_lines = CartoLines(config)
-        carto_lines.build(source_id)
+        carto_lines = CartoLines({})
+        carto_lines.run(source_id)

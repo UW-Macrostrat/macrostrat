@@ -1,18 +1,14 @@
 import sys
+from ..base import Base
 
-class LookupUnits:
-    meta = {
-        'mariadb': True,
-        'pg': False
-    }
-    @staticmethod
-    def build(mariaConnection):
-        connection = mariaConnection()
-        cursor = connection.cursor()
+class LookupUnits(Base):
+    def __init__(self, *args):
+        Base.__init__(self, {}, *args)
 
+    def run(self):
         def get_time(qtype, params):
             params['type'] = qtype
-            cursor.execute("""
+            self.mariadb['cursor'].execute("""
                 SELECT interval_name, intervals.id from intervals
                 JOIN timescales_intervals ON intervals.id = interval_id
                 JOIN timescales on timescale_id = timescales.id
@@ -22,7 +18,7 @@ class LookupUnits:
                     AND %(t_age)s < age_bottom
                     AND %(t_age)s >= age_top
             """, params)
-            data = cursor.fetchone()
+            data = self.mariadb['cursor'].fetchone()
 
             if data is not None:
                 return {
@@ -36,20 +32,20 @@ class LookupUnits:
                 }
 
         # Copy structure into new table
-        cursor.execute("""
+        self.mariadb['cursor'].execute("""
             DROP TABLE IF EXISTS lookup_units_new;
         """)
-        cursor.close()
-        cursor = connection.cursor()
-        cursor.execute("""
+        self.mariadb['cursor'].close()
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
+        self.mariadb['cursor'].execute("""
             CREATE TABLE lookup_units_new LIKE lookup_units;
         """)
-        cursor.close()
-        cursor = connection.cursor()
+        self.mariadb['cursor'].close()
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
 
 
         # Initial query to populate the lookup table
-        cursor.execute("""
+        self.mariadb['cursor'].execute("""
             INSERT INTO lookup_units_new (unit_id, col_area, project_id, t_int, t_int_name, t_int_age, t_age, t_prop, t_plat, t_plng, b_int, b_int_name, b_int_age, b_age, b_prop, b_plat, b_plng, clat,  clng, color, text_color, units_above, units_below, pbdb_collections, pbdb_occurrences)
             SELECT
               units.id AS unit_id,
@@ -164,14 +160,14 @@ class LookupUnits:
             LEFT JOIN unit_boundaries ubt ON ubt.unit_id = units.id
             GROUP BY units.id
         """)
-        cursor.close()
-        cursor = connection.cursor()
+        self.mariadb['cursor'].close()
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
 
         # Gather basic info about all units just inserted so that we can loop through them
-        cursor.execute("""
+        self.mariadb['cursor'].execute("""
             SELECT unit_id, t_age, t_int, t_prop, b_age, b_int, b_prop FROM lookup_units_new
         """)
-        units = cursor.fetchall()
+        units = self.mariadb['cursor'].fetchall()
 
         for idx, unit in enumerate(units):
             # Give some feedback
@@ -200,7 +196,7 @@ class LookupUnits:
             eon = get_time('international eons', params)
 
             # Update the lookup table with detailed time info
-            cursor.execute("""
+            self.mariadb['cursor'].execute("""
                 UPDATE lookup_units_new SET
                     age = %(age)s,
                     age_id = %(age_id)s,
@@ -229,7 +225,7 @@ class LookupUnits:
 
             # Check if t_prop == 0, and if so get the next oldest interval of the same scale
             if unit['t_prop'] == 0 :
-                cursor.execute("""
+                self.mariadb['cursor'].execute("""
                     SELECT intervals.interval_name, intervals.id, intervals.age_top
                     FROM intervals
                     JOIN timescales_intervals ON intervals.id = timescales_intervals.interval_id
@@ -239,11 +235,11 @@ class LookupUnits:
                         SELECT age_bottom FROM intervals WHERE id = %(int_id)s
                     )
                 """, { 'int_id': unit['t_int'] })
-                data = cursor.fetchone()
+                data = self.mariadb['cursor'].fetchone()
 
                 if data is not None:
                     #print "Should update top interval ", unit["unit_id"]
-                    cursor.execute("""
+                    self.mariadb['cursor'].execute("""
                         UPDATE lookup_units_new SET
                             t_int = %(t_int)s,
                             t_int_name = %(t_int_name)s,
@@ -260,7 +256,7 @@ class LookupUnits:
 
             # Check if b_prop == 1, if so get the next oldest time interval
             if unit['b_prop'] == 1 :
-                cursor.execute("""
+                self.mariadb['cursor'].execute("""
                     SELECT intervals.interval_name, intervals.id, intervals.age_bottom
                     FROM intervals
                     JOIN timescales_intervals ON intervals.id = timescales_intervals.interval_id
@@ -270,11 +266,11 @@ class LookupUnits:
                         SELECT age_top FROM intervals WHERE id = %(int_id)s
                     )
                 """, { 'int_id': unit['b_int'] })
-                data = cursor.fetchone()
+                data = self.mariadb['cursor'].fetchone()
 
                 if data is not None:
                     #print "Should update bottom interval ", unit["unit_id"]
-                    cursor.execute("""
+                    self.mariadb['cursor'].execute("""
                         UPDATE lookup_units_new SET
                             b_int = %(b_int)s,
                             b_int_name = %(b_int_name)s,
@@ -290,7 +286,7 @@ class LookupUnits:
 
 
         # Modify results for long-ranging units
-        cursor.execute("""
+        self.mariadb['cursor'].execute("""
             UPDATE lookup_units_new
             SET period = eon
             WHERE period = '' AND eon = 'Archean';
@@ -319,24 +315,24 @@ class LookupUnits:
                 ))
             WHERE period = '';
         """)
-        cursor.close()
-        cursor = connection.cursor()
+        self.mariadb['cursor'].close()
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
 
         # Clean up
-        cursor.execute("""
+        self.mariadb['cursor'].execute("""
             TRUNCATE TABLE lookup_units;
             INSERT INTO lookup_units SELECT * FROM lookup_units_new;
             DROP TABLE lookup_units_new;
         """)
-        cursor.close()
-        cursor = connection.cursor()
+        self.mariadb['cursor'].close()
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
 
 
         # Validate results
-        cursor.execute("""
+        self.mariadb['cursor'].execute("""
             SELECT COUNT(*) N, (SELECT COUNT(*) FROM lookup_units) nn FROM units
         """)
-        data = cursor.fetchone()
-        cursor.close()
+        data = self.mariadb['cursor'].fetchone()
+        self.mariadb['cursor'].close()
         if data['N'] != data['nn'] :
             print "ERROR: inconsistent unit count in lookup_unit_intervals_new table. ", data['nn'], " datas in `lookup_units` and ", data['N'], " datas in `units`."

@@ -423,7 +423,7 @@ class BurwellLookup(Base):
 
         #source_stats(cursor, connection, source_id)
 
-    def build(self, source_id):
+    def run(self, source_id):
         if source_id == '--help' or source_id == '-h':
             print BurwellLookup.__doc__
             sys.exit()

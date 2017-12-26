@@ -1,13 +1,11 @@
-class StratNameFootprints:
-    meta = {
-        'mariadb': False,
-        'pg': True
-    }
-    def build(connection):
-        pg_conn = connection()
-        pg_cur = pg_conn.cursor()
+from ..base import Base
 
-        pg_cur.execute("""
+class StratNameFootprints(Base):
+    def __init__(self, *args):
+        Base.__init__(self, {}, *args)
+
+    def run(self):
+        self.pg['cursor'].execute("""
             CREATE TABLE macrostrat.strat_name_footprints_new AS
             WITH first as (
               SELECT
@@ -148,11 +146,11 @@ class StratNameFootprints:
             CREATE INDEX ON macrostrat.strat_name_footprints_new (strat_name_id);
             CREATE INDEX ON macrostrat.strat_name_footprints_new USING GiST (geom);
         """)
-        pg_conn.commit()
+        self.pg['connection'].commit()
 
-        pg_cur.execute("""
+        self.pg['cursor'].execute("""
             ALTER TABLE macrostrat.strat_name_footprints RENAME TO strat_name_footprints_old;
             ALTER TABLE macrostrat.strat_name_footprints_new RENAME to strat_name_footprints;
             DROP TABLE macrostrat.strat_name_footprints_old;
         """)
-        pg_conn.commit()
+        self.pg['connection'].commit()

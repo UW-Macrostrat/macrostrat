@@ -1,15 +1,10 @@
-class LookupStratNames():
-    meta = {
-        'mariadb': True,
-        'pg': False
-    }
-    @staticmethod
-    def build(mariaConnection):
-        connection = mariaConnection()
-        cursor = connection.cursor()
-        update_connection = mariaConnection()
-        update_cursor = update_connection.cursor()
+from ..base import Base
 
+class LookupStratNames(Base):
+    def __init__(self, *args):
+        Base.__init__(self, {}, *args)
+
+    def run(self):
         lookup_rank_children = {
             'sgp': ['SGp', 'Gp', 'SubGp', 'Fm', 'Mbr', 'Bed'],
             'gp': ['Gp', 'SubGp', 'Fm', 'Mbr', 'Bed'],
@@ -20,27 +15,30 @@ class LookupStratNames():
         }
 
         # Copy structure to new table
-        cursor.execute("""
+        self.mariadb['cursor'].execute("""
             DROP TABLE IF EXISTS lookup_strat_names_new;
         """)
-        cursor.close()
-        cursor = connection.cursor()
+        self.mariadb['cursor'].close()
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
 
-        cursor.execute("""
+        self.mariadb['cursor'].execute("""
             CREATE TABLE lookup_strat_names_new LIKE lookup_strat_names;
         """)
-        cursor.close()
-        cursor = connection.cursor()
+        self.mariadb['cursor'].close()
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
 
         # Get all the strat names
-        cursor.execute("""
+        self.mariadb['cursor'].execute("""
             SELECT *
             FROM strat_names
             WHERE rank != ''
             ORDER BY strat_name ASC
         """)
 
-        for strat_name in cursor:
+        update_connection = self.mariadb['raw_connection']()
+        update_cursor = update_connection.cursor()
+
+        for strat_name in self.mariadb['cursor']:
             rank_id = strat_name['rank'] + '_id'
             rank_name = strat_name['rank'] + '_name'
 
@@ -103,10 +101,10 @@ class LookupStratNames():
                 update_connection.commit()
 
         update_cursor.close()
-
+        update_connection.close()
 
         # Populate `early_age` and `late_age`
-        cursor.execute("""
+        self.mariadb['cursor'].execute("""
           UPDATE lookup_strat_names_new lsn
           LEFT JOIN (
             SELECT strat_name_id, max(b_age) AS early_age, min(t_age) AS late_age
@@ -117,11 +115,10 @@ class LookupStratNames():
           ) AS sub USING (strat_name_id)
           SET lsn.early_age = sub.early_age, lsn.late_age = sub.late_age
         """)
-        connection.commit()
-
+        self.mariadb['connection'].commit()
 
         # Populate rank_name
-        cursor.execute("""
+        self.mariadb['cursor'].execute("""
             UPDATE lookup_strat_names_new SET rank_name =
             CASE
             	WHEN SUBSTRING_INDEX(strat_name, ' ', -1) IN ('Suite', 'Volcanics', 'Complex', 'Melange', 'Series', 'Supersuite', 'Tongue', 'Lens', 'Lentil', 'Drift', 'Metamorphics', 'Sequence', 'Supersequence', 'Intrusives', 'Measures', 'Division', 'Subsuite')
@@ -144,19 +141,24 @@ class LookupStratNames():
                 	CONCAT(strat_name, ' Bed')
             END
         """)
-
+        self.mariadb['connection'].commit()
 
         # Validate results
-        cursor.execute("SELECT count(*) N, (SELECT count(*) from lookup_strat_names_new) nn from strat_names WHERE rank!=''")
-        row = cursor.fetchone()
-        if row['N'] != row['nn'] :
-          print "ERROR: inconsistent strat_name count in lookup table"
+        self.mariadb['cursor'].execute("""
+            SELECT count(*) sn, (SELECT count(*) from lookup_strat_names_new) lsn
+            FROM strat_names
+            WHERE rank != ''
+        """)
+        row = self.mariadb['cursor'].fetchone()
+        if row['sn'] != row['lsn'] :
+          print '   ERROR: inconsistent strat_name count in lookup table. Found %s rows in lookup_strat_names_new' % (row['lsn'], )
+          sys.exit(1)
 
-        cursor.close()
-        cursor = connection.cursor()
+        self.mariadb['cursor'].close()
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
 
         # Populate the fields `parent` and `tree`
-        cursor.execute("""
+        self.mariadb['cursor'].execute("""
           UPDATE lookup_strat_names_new
           SET parent = CASE
             WHEN bed_id > 0 AND strat_name_id != bed_id THEN bed_id
@@ -177,11 +179,10 @@ class LookupStratNames():
             ELSE tree = 0
           END
         """)
-        connection.commit()
-
+        self.mariadb['connection'].commit()
 
         # Group by concept_id and fill in NULL ages
-        cursor.execute("""
+        self.mariadb['cursor'].execute("""
             UPDATE lookup_strat_names_new lsn
              LEFT JOIN (
                SELECT concept_id, max(b_age) AS early_age, min(t_age) AS late_age
@@ -194,10 +195,10 @@ class LookupStratNames():
              SET lsn.early_age = sub.early_age, lsn.late_age = sub.late_age
              WHERE lsn.early_age IS NULL AND lsn.late_age IS NULL
         """)
-        connection.commit()
+        self.mariadb['connection'].commit()
 
         # Group by concept_id, but using strat names meta
-        cursor.execute("""
+        self.mariadb['cursor'].execute("""
             UPDATE lookup_strat_names_new lsn
             LEFT JOIN (
                 SELECT concept_id, b.age_bottom, t.age_top
@@ -208,9 +209,10 @@ class LookupStratNames():
             SET lsn.early_age = sub.age_bottom, lsn.late_age = sub.age_top
             WHERE lsn.early_age IS NULL AND lsn.late_age IS NULL
         """)
+        self.mariadb['connection'].commit()
 
         # Group by parent and fill in NULL ages
-        cursor.execute("""
+        self.mariadb['cursor'].execute("""
             UPDATE lookup_strat_names_new lsn
              LEFT JOIN (
                SELECT parent, max(b_age) AS early_age, min(t_age) AS late_age
@@ -222,10 +224,10 @@ class LookupStratNames():
              SET lsn.early_age = sub.early_age, lsn.late_age = sub.late_age
              WHERE lsn.early_age IS NULL AND lsn.late_age IS NULL
         """)
-        connection.commit()
+        self.mariadb['connection'].commit()
 
         # Group by tree and fill in NULL ages
-        cursor.execute("""
+        self.mariadb['cursor'].execute("""
             UPDATE lookup_strat_names_new lsn
              LEFT JOIN (
                SELECT tree, max(b_age) AS early_age, min(t_age) AS late_age
@@ -237,11 +239,11 @@ class LookupStratNames():
              SET lsn.early_age = sub.early_age, lsn.late_age = sub.late_age
              WHERE lsn.early_age IS NULL AND lsn.late_age IS NULL
         """)
-        connection.commit()
+        self.mariadb['connection'].commit()
 
 
         # Populate the fields `b_period` and `t_period`
-        cursor.execute("""
+        self.mariadb['cursor'].execute("""
           UPDATE lookup_strat_names_new
           SET b_period = (
             SELECT interval_name
@@ -253,9 +255,9 @@ class LookupStratNames():
             LIMIT 1
           );
         """)
-        connection.commit()
+        self.mariadb['connection'].commit()
 
-        cursor.execute("""
+        self.mariadb['cursor'].execute("""
           UPDATE lookup_strat_names_new
           SET t_period = (
             SELECT interval_name
@@ -267,10 +269,10 @@ class LookupStratNames():
             LIMIT 1
           );
         """)
-        connection.commit()
+        self.mariadb['connection'].commit()
 
         # Update containing interval for names not explicitly matched to units but have a concept_id
-        cursor.execute("""
+        self.mariadb['cursor'].execute("""
             UPDATE lookup_strat_names_new
             JOIN strat_names_meta USING (concept_id)
             JOIN intervals t on t.id = t_int
@@ -316,41 +318,41 @@ class LookupStratNames():
             )
             WHERE c_interval IS NULL and t_int > 0 and b_int > 0;
         """)
-        connection.commit()
+        self.mariadb['connection'].commit()
 
         # alter table lookup_strat_names add column name_no_lith varchar(100);
         ### Remove lithological terms from strat names ###
 
         # Get a list of lithologies
-        cursor.execute("""
+        self.mariadb['cursor'].execute("""
             SELECT lith FROM liths
         """)
-        lith_results = cursor.fetchall()
+        lith_results = self.mariadb['cursor'].fetchall()
         lithologies = [ lith['lith'] for lith in lith_results ]
 
         # Fetch all strat names
-        cursor.execute("""
+        self.mariadb['cursor'].execute("""
             SELECT strat_name_id, strat_name FROM lookup_strat_names_new
         """)
         names_no_lith = []
-        for strat_name in cursor:
+        for strat_name in self.mariadb['cursor']:
             split_name = strat_name['strat_name'].split(' ')
 
             name_no_lith = ' '.join([ name for name in split_name if name.lower() not in lithologies ])
             names_no_lith.append([ strat_name['strat_name_id'], name_no_lith ])
 
         for name in names_no_lith:
-            cursor.execute("""
+            self.mariadb['cursor'].execute("""
               UPDATE lookup_strat_names_new SET name_no_lith = %(name_no_lith)s WHERE strat_name_id = %(strat_name_id)s
             """, {
               'name_no_lith': name[1],
               'strat_name_id': name[0]
             })
 
-        connection.commit()
+        self.mariadb['connection'].commit()
 
         # Make sure all names have an early and late_age
-        cursor.execute("""
+        self.mariadb['cursor'].execute("""
           UPDATE lookup_strat_names_new
           SET early_age = (
             SELECT age_bottom
@@ -364,10 +366,10 @@ class LookupStratNames():
             LIMIT 1
           ) WHERE early_age IS NULL AND late_age IS NULL;
         """)
-        connection.commit()
+        self.mariadb['connection'].commit()
 
         # Populate containing interval
-        cursor.execute("""
+        self.mariadb['cursor'].execute("""
             UPDATE lookup_strat_names_new
             SET c_interval = (
                 SELECT interval_name from intervals
@@ -382,13 +384,13 @@ class LookupStratNames():
                     LIMIT 1
             )
         """)
-        connection.commit()
+        self.mariadb['connection'].commit()
 
         # Out with the old, in with the new
-        cursor.execute('TRUNCATE lookup_strat_names')
-        cursor.execute('INSERT INTO lookup_strat_names SELECT * FROM lookup_strat_names_new')
-        cursor.close()
+        self.mariadb['cursor'].execute('TRUNCATE lookup_strat_names')
+        self.mariadb['cursor'].execute('INSERT INTO lookup_strat_names SELECT * FROM lookup_strat_names_new')
+        self.mariadb['cursor'].close()
 
-        cursor = connection.cursor()
-        cursor.execute('DROP TABLE lookup_strat_names_new')
-        cursor.close()
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
+        self.mariadb['cursor'].execute('DROP TABLE lookup_strat_names_new')
+        self.mariadb['cursor'].close()

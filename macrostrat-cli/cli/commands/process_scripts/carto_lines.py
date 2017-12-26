@@ -292,7 +292,7 @@ class CartoLines(Base):
         self.pg['connection'].commit()
 
 
-    def build(self, source_id):
+    def run(self, source_id):
         if source_id == '--help' or source_id == '-h':
             print CartoLines.__doc__
             sys.exit()

@@ -31,24 +31,6 @@ class Rebuild(Base):
       https://github.com/UW-Macrostrat/macrostrat-cli
     '''
 
-    def do_build(self, table):
-        # Get the class associated with the provided table name
-        script = getattr(rebuild_scripts, table)
-
-        print '    Building %s' % (table, )
-
-        if script.meta['mariadb'] and script.meta['pg']:
-            script.build(self.mariadb['raw_connection'], self.pg['raw_connection'])
-        elif script.meta['mariadb']:
-            script.build(self.mariadb['raw_connection'])
-        elif script.meta['pg']:
-            script.build(self.pg['raw_connection'])
-        else:
-            print 'Build script does not specify connector type'
-            sys.exit()
-
-        print '       Done'
-
     def run(self):
         # Check if a table was provided
         if len(self.args) != 2:
@@ -67,6 +49,11 @@ class Rebuild(Base):
         if table == 'all':
             tables = [ t for t in dir(rebuild_scripts) if t[:2] != '__']
             for t in tables:
-                Rebuild.do_build(self, t)
+                script = getattr(rebuild_scripts, t)
+                script = script()
+                script.run()
+
         else:
-            Rebuild.do_build(self, table)
+            script = getattr(rebuild_scripts, table)
+            script = script()
+            script.run()

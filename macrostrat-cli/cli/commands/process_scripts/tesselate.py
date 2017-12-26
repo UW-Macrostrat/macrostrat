@@ -144,7 +144,7 @@ class Tesselate(Base):
 
         return new_regions, np.asarray(new_vertices)
 
-    def build(self, args):
+    def run(self, args):
         if '--help' in args or '-h' in args:
             print Tesselate.__doc__
             sys.exit()

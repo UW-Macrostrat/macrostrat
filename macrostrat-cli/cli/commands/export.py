@@ -23,8 +23,8 @@ class Export(Base):
             + The homogenized line data
             + The record from maps.sources
         If a bounding box is provided, the following data will be dumped:
-            + All carto polygon tables
-            + All carto line tables
+            + carto polygon table for appropriate scale
+            + carto line table for appropriate scale
             + The necessary records from maps.sources
             + All homogenized polygon scales
             + All homogenized line scales
@@ -35,6 +35,7 @@ class Export(Base):
     Options:
       -h --help                         Show this screen.
       --version                         Show version.
+      --force_scale                     Export the given scale with a bbox
     Examples:
       macrostrat export 123
       macrostrat export -90 43 -90 45
@@ -77,19 +78,6 @@ class Export(Base):
         'new_direction': 'str'
     }
 
-    sources_schema = {
-        'source_id': 'int',
-        'name': 'str',
-        'url': 'str',
-        'ref_title': 'str',
-        'authors': 'str',
-        'ref_year': 'str',
-        'ref_source': 'str',
-        'isbn_doi': 'str',
-        'scale': 'str',
-        'license': 'str'
-    }
-
     maps_select = """
         SELECT
             m.map_id,
@@ -114,6 +102,30 @@ class Export(Base):
         WHERE m.source_id = %s
     """
 
+    maps_select_intersect = """
+        SELECT
+            m.map_id,
+            m.orig_id,
+            m.source_id,
+            m.name,
+            m.strat_name,
+            m.age,
+            m.lith,
+            m.descrip,
+            m.comments,
+            ti.interval_name AS macro_t_int,
+            tb.interval_name AS macro_b_int,
+            l.best_age_top AS best_t_age,
+            l.best_age_bottom AS best_b_age,
+            l.color,
+            ST_Intersection(m.geom, %s) AS geom
+        FROM maps.%s m
+        LEFT JOIN macrostrat.intervals ti ON m.t_interval = ti.id
+        LEFT JOIN macrostrat.intervals tb ON m.b_interval = tb.id
+        JOIN lookup_%s l ON m.map_id = l.map_id
+        WHERE ST_Intersects(geom, %s)
+    """
+
     lines_select = """
         SELECT
             line_id,
@@ -128,22 +140,6 @@ class Export(Base):
             geom
         FROM lines.%s
         WHERE source_id = %s
-    """
-
-    sources_select = """
-        SELECT
-            source_id,
-            name,
-            url,
-            ref_title,
-            authors,
-            ref_year,
-            ref_source,
-            isbn_doi,
-            scale,
-            licence AS license
-        FROM maps.sources
-        WHERE source_id = ANY(%(source_ids)s)
     """
 
     def __init__(self, connections, *args):
@@ -171,7 +167,21 @@ class Export(Base):
             )
         """)
 
-        self.pg['cursor'].execute(Export.sources_select, { 'source_ids': sources })
+        self.pg['cursor'].execute("""
+            SELECT
+                source_id,
+                name,
+                url,
+                ref_title,
+                authors,
+                ref_year,
+                ref_source,
+                isbn_doi,
+                scale,
+                licence AS license
+            FROM maps.sources
+            WHERE source_id = ANY(%(source_ids)s)
+        """, { 'source_ids': sources })
         for row in self.pg['cursor']:
             cursor.execute("""
                 INSERT INTO sources
@@ -236,15 +246,7 @@ class Export(Base):
             }
         ) as output:
             self.pg['cursor'].execute(select, select_params)
-            # self.pg['cursor'].execute("""
-            #     SELECT %(column_names)s FROM %(pg_schema)s.%(primary_table)s
-            #     %(where)s
-            # """, {
-            #     'pg_schema': AsIs(pg_schema),
-            #     'column_names': AsIs(','.join(column_names)),
-            #     'primary_table': AsIs(table),
-            #     'where': AsIs(where)
-            # })
+
             for row in self.pg['cursor']:
                 # Create a shapely geometry from the wkb and dump it into a dict
                 geometry =  mapping(loads(row['geom'], hex=True))
@@ -302,6 +304,7 @@ class Export(Base):
             # Write the metadata
             Export.write_sources(self, filename, [ int(source_id) ])
 
+            print '     Wrote source_id %s to %s.gpkg' % (source_id, filename, )
 
         # bbox mode
         elif len(self.args) == 5:
@@ -316,7 +319,33 @@ class Export(Base):
                 print 'Invalid bounding box. Please make sure it is in the format xmin ymin xmax ymax'
                 sys.exit(1)
 
+            # Get appropriate scale for carto purposes
+            self.pg['cursor'].execute("""
+                SELECT ST_Area(ST_MakeEnvelope(%(xmin)s, %(ymin)s, %(xmax)s, %(ymax)s)::geography)/1000000 as area
+            """, { 'xmin': xmin, 'ymin': ymin, 'xmax': xmax, 'ymax': ymax })
+            area = int(self.pg['cursor'].fetchone()['area'])
+            scale = None
+            if area < 1000000:
+                scale = 'large'
+            elif area < 15000000:
+                scale = 'medium'
+            elif area < 80000000:
+                scale = 'small'
+            else:
+                scale = 'tiny'
 
+            # Write carto units
+
+            # Write carto lines
+
+            # Write each scale
+            for scale in ['tiny', 'small', 'medium', 'large']:
+                # Units
+                envelope = 'ST_MakeEnvelope(%s, %s, %s, %s)' % (xmin, ymin, xmax, ymax)
+                select = Export.maps_select_intersect % (envelope, scale, envelope, )
+                Export.write_layer(self, filename, 'units', 'MultiPolygon', select, {}, Export.maps_schema)
+
+            # Write the metadata
 
         else:
             print 'Invalid args. Please run macrostrat export --help to see available options'

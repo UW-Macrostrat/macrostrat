@@ -1,40 +1,36 @@
 from collections import defaultdict
 import json
 import decimal
+from ..base import Base
 
-class LookupUnitsAttrsAPI():
-    meta = {
-        'mariadb': True,
-        'pg': False
-    }
-    @staticmethod
-    def build(connection):
+class LookupUnitsAttrsAPI(Base):
+    def __init__(self, *args):
+        Base.__init__(self, {}, *args)
+
+    def run(self):
         def check_for_decimals(obj):
           if isinstance(obj, decimal.Decimal):
             return float(obj)
           raise TypeError
 
-        my_conn = connection()
-        my_cur = my_conn.cursor()
-
-        update_conn = connection()
+        update_conn = self.mariadb['raw_connection']()
         update_cur = update_conn.cursor()
 
         # Create room for the new data
-        my_cur.execute("""
+        self.mariadb['cursor'].execute("""
             DROP TABLE IF EXISTS lookup_unit_attrs_api_new;
         """)
-        my_cur.close()
-        my_cur = my_conn.cursor()
+        self.mariadb['cursor'].close()
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
 
-        my_cur.execute("""
+        self.mariadb['cursor'].execute("""
             CREATE TABLE lookup_unit_attrs_api_new LIKE lookup_unit_attrs_api;
         """)
-        my_cur.close()
-        my_cur = my_conn.cursor()
+        self.mariadb['cursor'].close()
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
 
         # First recompute and populate comp_prop
-        my_cur.execute("""
+        self.mariadb['cursor'].execute("""
             UPDATE unit_liths
             JOIN (
                 SELECT
@@ -61,10 +57,10 @@ class LookupUnitsAttrsAPI():
             ) d ON d.unit_id = unit_liths.unit_id AND 'dom' = unit_liths.dom
             SET unit_liths.comp_prop = d.dom_p;
         """)
-        my_cur.close()
-        my_cur = my_conn.cursor()
+        self.mariadb['cursor'].close()
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
 
-        my_cur.execute("""
+        self.mariadb['cursor'].execute("""
             UPDATE unit_liths
             JOIN (
                 SELECT
@@ -91,11 +87,11 @@ class LookupUnitsAttrsAPI():
             ) s ON s.unit_id = unit_liths.unit_id AND 'sub' = unit_liths.dom
             SET unit_liths.comp_prop = s.sub_p;
         """)
-        my_cur.close()
-        my_cur = my_conn.cursor()
+        self.mariadb['cursor'].close()
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
 
         ### Next handle lithologies ###
-        my_cur.execute("""
+        self.mariadb['cursor'].execute("""
           SELECT unit_id, lith_id, lith, lith_type, lith_class, comp_prop, GROUP_CONCAT(lith_atts.lith_att SEPARATOR '|') AS lith_atts
           FROM unit_liths
           LEFT JOIN liths ON lith_id = liths.id
@@ -106,7 +102,7 @@ class LookupUnitsAttrsAPI():
         """)
 
         # Iterate on each row and insert
-        unit = my_cur.fetchone()
+        unit = self.mariadb['cursor'].fetchone()
         while unit is not None:
             atts = []
             if unit["lith_atts"] is not None:
@@ -122,22 +118,22 @@ class LookupUnitsAttrsAPI():
             update_cur.execute("""
               INSERT INTO lookup_unit_attrs_api_new (unit_id, lith) VALUES (%s, %s)
             """, [unit["unit_id"], json.dumps(entry, default=check_for_decimals)])
-            unit = my_cur.fetchone()
+            unit = self.mariadb['cursor'].fetchone()
 
         update_cur.close()
         update_cur = update_conn.cursor()
-        my_cur.close()
-        my_cur = my_conn.cursor()
+        self.mariadb['cursor'].close()
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
 
         ### Next handle environments ###
-        my_cur.execute("""
+        self.mariadb['cursor'].execute("""
           SELECT unit_id, environ_id, environ, environ_type, environ_class
           FROM unit_environs
           LEFT JOIN environs ON environ_id = environs.id
           ORDER BY unit_id ASC
         """)
 
-        unit_a = my_cur.fetchone()
+        unit_a = self.mariadb['cursor'].fetchone()
         while unit_a is not None:
             entry = {
               "environ_id": unit_a["environ_id"],
@@ -148,22 +144,22 @@ class LookupUnitsAttrsAPI():
             update_cur.execute("""
               UPDATE lookup_unit_attrs_api_new SET environ = %s WHERE unit_id = %s
             """, [json.dumps(entry, default=check_for_decimals), unit_a["unit_id"]])
-            unit_a = my_cur.fetchone()
+            unit_a = self.mariadb['cursor'].fetchone()
 
         update_cur.close()
         update_cur = update_conn.cursor()
-        my_cur.close()
-        my_cur = my_conn.cursor()
+        self.mariadb['cursor'].close()
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
 
         ### Next handle econs ###
-        my_cur.execute("""
+        self.mariadb['cursor'].execute("""
           SELECT unit_id, econ_id, econ, econ_type, econ_class
           FROM unit_econs
           LEFT JOIN econs ON econ_id = econs.id
           ORDER BY unit_id ASC
         """)
 
-        unit_b = my_cur.fetchone()
+        unit_b = self.mariadb['cursor'].fetchone()
         while unit_b is not None:
             entry = {
               "econ_id": unit_b["econ_id"],
@@ -174,18 +170,18 @@ class LookupUnitsAttrsAPI():
             update_cur.execute("""
               UPDATE lookup_unit_attrs_api_new SET econ = %s WHERE unit_id = %s
             """, [json.dumps(entry, default=check_for_decimals), unit_b["unit_id"]])
-            unit_b = my_cur.fetchone()
+            unit_b = self.mariadb['cursor'].fetchone()
 
-        my_cur.execute("""
+        self.mariadb['cursor'].execute("""
           UPDATE lookup_unit_attrs_api_new SET econ = '[]' WHERE econ IS NULL
         """)
         update_cur.close()
         update_cur = update_conn.cursor()
-        my_cur.close()
-        my_cur = my_conn.cursor()
+        self.mariadb['cursor'].close()
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
 
         ### Next handle measurements short ###
-        my_cur.execute("""
+        self.mariadb['cursor'].execute("""
           SELECT DISTINCT
           measurement_class,
           measurement_type,
@@ -195,7 +191,7 @@ class LookupUnitsAttrsAPI():
           JOIN unit_measures ON measuremeta.id = unit_measures.measuremeta_id
         """)
 
-        measurement = my_cur.fetchone()
+        measurement = self.mariadb['cursor'].fetchone()
         while measurement is not None:
             entry = {
               "measure_class": measurement["measurement_class"],
@@ -204,19 +200,19 @@ class LookupUnitsAttrsAPI():
             update_cur.execute("""
               UPDATE lookup_unit_attrs_api_new SET measure_short = %s WHERE unit_id = %s
             """, [json.dumps(entry, default=check_for_decimals), measurement["unit_id"]])
-            measurement = my_cur.fetchone()
+            measurement = self.mariadb['cursor'].fetchone()
 
-        my_cur.execute("""
+        self.mariadb['cursor'].execute("""
           UPDATE lookup_unit_attrs_api_new SET measure_short = '[]' WHERE measure_short IS NULL
         """)
 
         update_cur.close()
         update_cur = update_conn.cursor()
-        my_cur.close()
-        my_cur = my_conn.cursor()
+        self.mariadb['cursor'].close()
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
 
         ### Next handle measurements_long ####
-        my_cur.execute("""
+        self.mariadb['cursor'].execute("""
           SELECT measurements.id AS measure_id,
           measurement_class AS measure_class,
           measurement_type AS measure_type,
@@ -232,7 +228,7 @@ class LookupUnitsAttrsAPI():
           GROUP BY unit_id, measurements.id
         """)
 
-        measurement_b = my_cur.fetchone()
+        measurement_b = self.mariadb['cursor'].fetchone()
         while measurement_b is not None:
             entry = {
                 "measure_id": measurement_b["measure_id"],
@@ -245,26 +241,26 @@ class LookupUnitsAttrsAPI():
             update_cur.execute("""
               UPDATE lookup_unit_attrs_api_new SET measure_long = %s WHERE unit_id = %s
             """, [json.dumps(entry, default=check_for_decimals), measurement_b["unit_id"]])
-            measurement_b = my_cur.fetchone()
+            measurement_b = self.mariadb['cursor'].fetchone()
 
         update_cur.close()
         update_conn.close()
 
-        my_cur.execute("""
+        self.mariadb['cursor'].execute("""
           UPDATE lookup_unit_attrs_api_new SET measure_long = '[]' WHERE measure_long IS NULL
         """)
-        my_conn.commit()
+        self.mariadb['connection'].commit()
 
-        my_cur.execute("""
+        self.mariadb['cursor'].execute("""
             TRUNCATE TABLE lookup_unit_attrs_api;
             INSERT INTO lookup_unit_attrs_api SELECT * FROM lookup_unit_attrs_api_new;
         """)
-        my_cur.close()
+        self.mariadb['cursor'].close()
 
-        my_cur = my_conn.cursor()
-        my_cur.execute("""
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
+        self.mariadb['cursor'].execute("""
             DROP TABLE IF EXISTS lookup_unit_attrs_api_new;
         """)
 
-        my_cur.close()
-        my_conn.close()
+        self.mariadb['cursor'].close()
+        self.mariadb['connection'].close()

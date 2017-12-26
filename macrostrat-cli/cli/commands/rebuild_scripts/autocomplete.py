@@ -1,19 +1,17 @@
-class Autocomplete:
-    meta = {
-        'mariadb': True,
-        'pg': False
-    }
-    @staticmethod
-    def build(connection):
-        my_conn = connection()
-        my_cur = my_conn.cursor()
-        my_cur.execute("""
+from ..base import Base
+
+class Autocomplete(Base):
+    def __init__(self, *args):
+        Base.__init__(self, {}, *args)
+
+    def run(self):
+        self.mariadb['cursor'].execute("""
             DROP TABLE IF EXISTS autocomplete_new;
         """)
-        my_conn.commit()
+        self.mariadb['connection'].commit()
 
         # Build the new table
-        my_cur.execute("""
+        self.mariadb['cursor'].execute("""
             CREATE TABLE autocomplete_new AS
               SELECT * FROM (
                 select id, econ as name, 'econs' as type from econs
@@ -61,10 +59,10 @@ class Autocomplete:
                 SELECT id, structure as name, 'structures' as type from structures
               ) i;
         """)
-        my_cur.close()
-        my_cur = my_conn.cursor()
+        self.mariadb['cursor'].close()
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
 
-        my_cur.execute("""
+        self.mariadb['cursor'].execute("""
           UPDATE autocomplete_new AS a
             INNER JOIN (
               SELECT concept_id, CONCAT(name, COALESCE(CONCAT(' (', interval_name, ')'), '')) AS name
@@ -90,10 +88,10 @@ class Autocomplete:
             ) b
           ) AND type = 'strat_name_concepts';
         """)
-        my_cur.close()
-        my_cur = my_conn.cursor()
+        self.mariadb['cursor'].close()
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
 
-        my_cur.execute("""
+        self.mariadb['cursor'].execute("""
           UPDATE autocomplete_new AS a
             INNER JOIN (
               SELECT DISTINCT strat_names.id, CONCAT(strat_name, ' (', FO_period, ')') AS name
@@ -120,13 +118,13 @@ class Autocomplete:
             ) b
           ) AND type = 'strat_name_orphans';
         """)
-        my_cur.close()
-        my_cur = my_conn.cursor()
+        self.mariadb['cursor'].close()
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
 
-        my_cur.execute("""
+        self.mariadb['cursor'].execute("""
             ALTER TABLE autocomplete rename to autocomplete_old;
             ALTER TABLE autocomplete_new rename to autocomplete;
             DROP TABLE autocomplete_old;
         """)
-        my_cur.close()
-        my_conn.close()
+        self.mariadb['cursor'].close()
+        self.mariadb['connection'].close()
