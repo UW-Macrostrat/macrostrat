@@ -261,6 +261,13 @@ class Carto(Base):
                 'row_id': row.row_id,
                 'scale': AsIs(the_scale)
             })
+            # Make sure no empty geoms were created during the slice
+            self.pg['cursor'].execute("""
+                DELETE FROM carto_new.%(scale)s
+                WHERE geometrytype(geom) NOT IN ('POLYGON', 'MULTIPOLYGON') OR ST_IsEmpty(geom);
+            """, {
+                'scale': AsIs(the_scale)
+            })
         self.pg['connection'].commit()
         self.pg['cursor'].execute("DROP TABLE temp_subdivide")
         self.pg['connection'].commit()
