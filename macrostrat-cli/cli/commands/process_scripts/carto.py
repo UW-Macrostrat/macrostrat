@@ -258,8 +258,8 @@ class Carto(Base):
                 WHERE ST_Intersects(geom, rgeom)
                     AND row_id = %(row_id)s
             """, {
-                'row_id': row.row_id,
-                'scale': AsIs(the_scale)
+                'scale': AsIs(the_scale),
+                'row_id': row.row_id
             })
             # Make sure no empty geoms were created during the slice
             self.pg['cursor'].execute("""
@@ -268,7 +268,7 @@ class Carto(Base):
             """, {
                 'scale': AsIs(the_scale)
             })
-            self.pg['connection'].commit()
+
 
         self.pg['connection'].commit()
         self.pg['cursor'].execute("DROP TABLE temp_subdivide")
