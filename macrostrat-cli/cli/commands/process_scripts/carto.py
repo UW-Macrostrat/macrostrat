@@ -268,6 +268,7 @@ class Carto(Base):
             """, {
                 'scale': AsIs(the_scale)
             })
+            self.pg['connection'].commit()
 
         self.pg['connection'].commit()
         self.pg['cursor'].execute("DROP TABLE temp_subdivide")
