@@ -238,7 +238,7 @@ class CartoLines(Base):
                 FROM maps.sources
                 WHERE source_id = %(source_id)s
             ) foo
-        """, { 'source_id': Carto.source_id })
+        """, { 'source_id': CartoLines.source_id })
         self.pg['connection'].commit()
         self.pg['cursor'].execute("CREATE INDEX ON temp_subdivide USING GiST (rgeom)")
         self.pg['connection'].commit()
