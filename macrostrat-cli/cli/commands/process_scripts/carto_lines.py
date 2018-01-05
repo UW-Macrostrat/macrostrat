@@ -236,7 +236,7 @@ class CartoLines(Base):
             'scale': AsIs(the_scale)
         })
         self.pg['connection'].commit()
-        
+
         self.pg['cursor'].execute("""
             DROP TABLE IF EXISTS temp_subdivide;
             CREATE TABLE temp_subdivide
@@ -271,6 +271,7 @@ class CartoLines(Base):
             """, {
                 'scale': AsIs(the_scale)
             })
+            self.pg['connection'].commit()
 
         self.pg['connection'].commit()
         self.pg['cursor'].execute("DROP TABLE temp_subdivide")
