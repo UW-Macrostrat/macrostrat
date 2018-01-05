@@ -230,6 +230,14 @@ class CartoLines(Base):
         '''
         print '   4. Cut'
         self.pg['cursor'].execute("""
+            DELETE FROM carto_new.%(scale)s
+            WHERE (geometrytype(geom) NOT IN ('LINESTRING', 'MULTILINESTRING')) OR ST_IsEmpty(geom);
+        """, {
+            'scale': AsIs(the_scale)
+        })
+        self.pg['connection'].commit()
+        
+        self.pg['cursor'].execute("""
             DROP TABLE IF EXISTS temp_subdivide;
             CREATE TABLE temp_subdivide
             AS SELECT row_number() OVER() as row_id, rgeom
