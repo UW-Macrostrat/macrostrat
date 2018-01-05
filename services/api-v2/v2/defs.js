@@ -1329,7 +1329,7 @@
   },
 
   "/elevation": {
-    "description": "Returns elevation in meters at a given coordinate from ETOPO1",
+    "description": "Returns elevation in meters at a given coordinate from ETOPO1 and SRTM1",
     "visible": false,
     "options": {
       "parameters": {
