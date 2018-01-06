@@ -115,7 +115,7 @@ class StratNames(Base):
         for scale_table in ["tiny", "small", "medium", "large"]:
           self.pg['cursor'].execute("SELECT * FROM maps.%(table)s WHERE source_id = %(source_id)s LIMIT 1", {
             'table': AsIs(scale_table),
-            'source_id': source_id
+            'source_id': int(source_id)
           })
           if self.pg['cursor'].fetchone() is not None:
             scale = scale_table
