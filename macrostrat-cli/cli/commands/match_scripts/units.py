@@ -408,11 +408,13 @@ class Units(Base):
             print 'Invalid source_id. %s was not found in maps.sources' % (source_id, )
             sys.exit(1)
 
+        # Validate that this source intersects *any* Macrostrat units in space or time
+
         # Find scale table
         scale = ''
         for scale_table in ['tiny', 'small', 'medium', 'large']:
           self.pg['cursor'].execute('''
-            SELECT *
+            SELECT map_id
             FROM maps.%(table)s
             WHERE source_id = %(source_id)s
             LIMIT 1
@@ -472,7 +474,6 @@ class Units(Base):
             if field == 0:
                 field_name = fields[field]
                 del fields[field]
-                #fields.remove(field)
                 print '        + Excluding %s because it is null' % (field_name, )
 
 
