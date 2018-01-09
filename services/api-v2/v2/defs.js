@@ -1870,7 +1870,15 @@
     "dip": "integer, point dip",
     "dip_dir": "integer, point dip direction",
     "point_type": "text, type of point",
-    "certainty": "text, point location certainty"
+    "certainty": "text, point location certainty",
+    "grain_id": "Unique grain ID",
+    "grain_symbol": "The grain symbol for display purposes",
+    "grain_name": "The name of the grain",
+    "grain_group": "The family of grains the grain belongs to",
+    "soil_group": "The family of soils the grain belongs to",
+    "classification": "The classification scheme the given grain belongs to",
+    "min_size": "The minimum grainsize in millimeters",
+    "max_size": "The maximum grainsize in millimeters"
   }
 };
   module.exports = defs;
