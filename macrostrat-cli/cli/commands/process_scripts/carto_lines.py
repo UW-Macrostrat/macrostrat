@@ -201,9 +201,9 @@ class CartoLines(Base):
 
     def processScale(self, the_scale):
         SCALE_UNDER = CartoLines.UNDER[the_scale]
-        print the_scale
+        print '      %s' % (the_scale, )
 
-        print '   1. Clean and create'
+        print '         1. Clean and create'
         self.pg['cursor'].execute("""
             DROP TABLE IF EXISTS carto_temp;
             CREATE TABLE carto_temp AS SELECT * FROM carto_new.lines_%(scale)s LIMIT 0;
@@ -218,17 +218,17 @@ class CartoLines(Base):
           - Cut a hole in the built up polygons equal to the group
           - Insert each group
         '''
-        print '   2. Scale under'
+        print '         2. Scale under'
         if SCALE_UNDER is not None:
             CartoLines.insert_scale(self, SCALE_UNDER)
 
-        print '   3. Scale'
+        print '         3. Scale'
         CartoLines.insert_scale(self, the_scale)
 
         '''
             Cut target source's footprint out of carto table
         '''
-        print '   4. Cut'
+        print '         4. Cut'
         self.pg['cursor'].execute("""
             DROP TABLE IF EXISTS temp_subdivide;
             CREATE TABLE temp_subdivide
@@ -277,7 +277,7 @@ class CartoLines(Base):
             'scale': AsIs(the_scale)
         })
 
-        print '   5. Insert'
+        print '         5. Insert'
         self.pg['cursor'].execute("""
             INSERT INTO carto_new.lines_%(scale)s (line_id, source_id, scale, geom)
             SELECT * FROM carto_temp;
@@ -286,13 +286,13 @@ class CartoLines(Base):
         })
         self.pg['connection'].commit()
 
-        print '   6. Clean up'
+        print '         6. Clean up'
         self.pg['cursor'].execute("""
             DROP TABLE carto_temp;
         """)
         self.pg['connection'].commit()
 
-        print '   7. Clean up bad geometries'
+        print '         7. Clean up bad geometries'
         self.pg['cursor'].execute("""
             DELETE FROM carto_new.lines_%(scale)s
             WHERE geometrytype(geom) NOT IN ('LINESTRING', 'MULTILINESTRING');
@@ -327,3 +327,6 @@ class CartoLines(Base):
 
         for scale in scales:
             CartoLines.processScale(self, scale)
+
+        end = time.time()
+        print 'Took %s seconds' % (int(end - start), )

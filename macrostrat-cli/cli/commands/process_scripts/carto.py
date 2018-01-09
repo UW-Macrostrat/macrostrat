@@ -207,9 +207,9 @@ class Carto(Base):
 
     def processScale(self, the_scale):
         SCALE_UNDER = Carto.UNDER[the_scale]
-        print the_scale
+        print '      %s' % (the_scale, )
 
-        print '   1. Clean and create'
+        print '         1. Clean and create'
         self.pg['cursor'].execute("""
             DROP TABLE IF EXISTS carto_temp;
             CREATE TABLE carto_temp AS SELECT * FROM carto_new.%(scale)s LIMIT 0;
@@ -224,17 +224,17 @@ class Carto(Base):
           - Cut a hole in the built up polygons equal to the group
           - Insert each group
         '''
-        print '   2. Scale under'
+        print '         2. Scale under'
         if SCALE_UNDER is not None:
             Carto.insert_scale(self, SCALE_UNDER)
 
-        print '   3. Scale'
+        print '         3. Scale'
         Carto.insert_scale(self, the_scale)
 
         '''
             Cut target source's footprint out of carto table
         '''
-        print '   4. Cut'
+        print '         4. Cut'
         self.pg['cursor'].execute("""
             DROP TABLE IF EXISTS temp_subdivide;
             CREATE TABLE temp_subdivide
@@ -282,7 +282,7 @@ class Carto(Base):
             'scale': AsIs(the_scale)
         })
 
-        print '   5. Insert'
+        print '         5. Insert'
         self.pg['cursor'].execute("""
             INSERT INTO carto_new.%(scale)s (map_id, source_id, scale, geom)
             SELECT * FROM carto_temp;
@@ -290,13 +290,13 @@ class Carto(Base):
             'scale': AsIs(the_scale)
         })
 
-        print '   6. Clean up'
+        print '         6. Clean up'
         self.pg['cursor'].execute("""
             DROP TABLE carto_temp;
         """)
         self.pg['connection'].commit()
 
-        print '   7. Clean up bad geometries'
+        print '         7. Clean up bad geometries'
         self.pg['cursor'].execute("""
             DELETE FROM carto_new.%(scale)s
             WHERE geometrytype(geom) NOT IN ('POLYGON', 'MULTIPOLYGON') OR ST_IsEmpty(geom);
@@ -334,4 +334,4 @@ class Carto(Base):
             Carto.processScale(self, scale)
 
         end = time.time()
-        print 'Took %s' % ((end - start), )
+        print 'Took %s seconds' % (int(end - start), )
