@@ -940,6 +940,41 @@
       ]
     }
   },
+  "/defs/grainsizes": {
+    "description": "Returns grain size definitions",
+    "parent": "definitions",
+    "visible": true,
+    "options": {
+      "parameters": {
+        "grain_id": "Unique grain ID",
+        "grain_symbol": "The grain symbol for display purposes",
+        "grain_name": "The name of the grain",
+        "grain_group": "The family of grains the grain belongs to",
+        "soil_group": "The family of soils the grain belongs to",
+        "classification": "The classification scheme the given grain belongs to",
+        "all": "Return all grain sizes",
+        "format": "Desired output format"
+      },
+      "output_formats": [
+        "json",
+        "csv"
+      ],
+      "examples": [
+        "api/v2/defs/grainsizes?all",
+        "api/v2/defs/grainsizes?grain_name=clay",
+        "api/v2/defs/grainsizes?classification=iso"
+      ],
+      "fields": [
+        "grain_id",
+        "grain_symbol",
+        "grain_group",
+        "soil_group",
+        "min_size",
+        "max_size",
+        "classification"
+      ]
+    }
+  },
   "/defs/refs": {
     "description": "Returns references",
     "parent": "definitions",

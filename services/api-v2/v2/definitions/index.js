@@ -33,6 +33,11 @@ definitions.route("/environments")
     require("./environments")(req, res, next);
   });
 
+definitions.route("/grainsizes")
+  .get(function(req, res, next) {
+    require("./grainsizes")(req, res, next);
+  });
+
 definitions.route("/groups")
   .get(function(req, res, next) {
     require("./groups")(req, res, next);
