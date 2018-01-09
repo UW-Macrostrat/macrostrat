@@ -131,7 +131,7 @@ class Units(Base):
 
         self.pg['connection'].commit()
 
-        print '        - Done with %s (up)' % (match_type, )
+        #print '        - Done with %s (up)' % (match_type, )
 
     def query_up(self, strictNameMatch, strictSpace, strictTime):
         match_type = self.field
@@ -225,7 +225,7 @@ class Units(Base):
 
         self.pg['connection'].commit()
 
-        print '        - Done with %s (down)' % (match_type, )
+        #print '        - Done with %s (down)' % (match_type, )
 
 
     def query(self, strictNameMatch, strictSpace, strictTime):
@@ -286,7 +286,7 @@ class Units(Base):
 
         self.pg['connection'].commit()
 
-        print '        - Done with %s' % (match_type, )
+        #print '        - Done with %s' % (match_type, )
 
     def match(self) :
         # strictName, strictSpace, strictTime, useNullSet
@@ -393,6 +393,7 @@ class Units(Base):
             print Units.__doc__
             sys.exit()
 
+        start = time.time()
         Units.source_id = source_id
         # Validate params!
         # Valid source_id
@@ -407,8 +408,6 @@ class Units(Base):
         if result is None:
             print 'Invalid source_id. %s was not found in maps.sources' % (source_id, )
             sys.exit(1)
-
-        # Validate that this source intersects *any* Macrostrat units in space or time
 
         # Find scale table
         scale = ''
@@ -430,53 +429,70 @@ class Units(Base):
           print 'Provided source_id not found in maps.small, maps.medium, or maps.large. Please insert it and try again.'
           sys.exit(1)
 
-        # TODO cleanup this jank assignment
-        Units.table = scale
+        # Validate that this source intersects *any* Macrostrat units in space or time
+        self.pg['cursor'].execute('''
+            SELECT count(units.id)
+            FROM maps.sources
+            JOIN (
+                SELECT units.id, b_age, t_age, ST_Buffer(ST_Envelope(poly_geom), 1.2) as poly_geom
+                FROM macrostrat.units
+                JOIN macrostrat.lookup_unit_intervals ON lookup_unit_intervals.unit_id = units.id
+                JOIN macrostrat.units_sections ON units.id = units_sections.unit_id
+                JOIN macrostrat.cols ON cols.id = units_sections.col_id
+            ) units ON ST_Intersects(poly_geom, rgeom)
+            WHERE source_id = %(source_id)s;
+        ''', { 'source_id': source_id })
 
-        print 'Starting at ', str(datetime.datetime.now())
+        if self.pg['cursor'].fetchone()[0] > 0:
+            # skip this
+            # TODO cleanup this jank assignment
+            Units.table = scale
 
+            print '      Starting unit match at ', str(datetime.datetime.now())
 
-        # Clean up
-        self.pg['cursor'].execute("""
-          DELETE FROM maps.map_units
-          WHERE map_id IN (
-            SELECT map_id
-            FROM maps.%(table)s
-            WHERE source_id = %(source_id)s
-          )
-          AND basis_col NOT LIKE 'manual%%'
-        """, {
-          'table': AsIs(scale),
-          'source_id': source_id
-        })
+            # Clean up
+            self.pg['cursor'].execute("""
+              DELETE FROM maps.map_units
+              WHERE map_id IN (
+                SELECT map_id
+                FROM maps.%(table)s
+                WHERE source_id = %(source_id)s
+              )
+              AND basis_col NOT LIKE 'manual%%'
+            """, {
+              'table': AsIs(scale),
+              'source_id': source_id
+            })
 
-        self.pg['connection'].commit()
-        print '        + Done cleaning up'
-
-
-        # Fields in burwell to match on
-        fields = ['strat_name', 'name', 'descrip', 'comments']
-
-        # Filter null fields
-        self.pg['cursor'].execute("""
-        SELECT
-            count(distinct strat_name)::int AS strat_name,
-            count(distinct name)::int AS name,
-            count(distinct descrip)::int AS descrip,
-            count(distinct comments)::int AS comments
-        FROM maps.%(scale)s where source_id = %(source_id)s;
-        """, {
-            'scale': AsIs(scale),
-            'source_id': source_id
-        })
-        result = self.pg['cursor'].fetchone()
-        for field in result:
-            if field == 0:
-                field_name = fields[field]
-                del fields[field]
-                print '        + Excluding %s because it is null' % (field_name, )
+            self.pg['connection'].commit()
+            print '        + Done cleaning up'
 
 
-        # Insert a new task for each matching field into the queue
-        for field in fields:
-            Units.do_work(self, field)
+            # Fields in burwell to match on
+            fields = ['strat_name', 'name', 'descrip', 'comments']
+
+            # Filter null fields
+            self.pg['cursor'].execute("""
+            SELECT
+                count(distinct strat_name)::int AS strat_name,
+                count(distinct name)::int AS name,
+                count(distinct descrip)::int AS descrip,
+                count(distinct comments)::int AS comments
+            FROM maps.%(scale)s where source_id = %(source_id)s;
+            """, {
+                'scale': AsIs(scale),
+                'source_id': source_id
+            })
+            result = self.pg['cursor'].fetchone()
+            for field in result:
+                if field == 0:
+                    field_name = fields[field]
+                    del fields[field]
+                    print '        + Excluding %s because it is null' % (field_name, )
+
+
+            # Insert a new task for each matching field into the queue
+            for field in fields:
+                Units.do_work(self, field)
+        else:
+            print 'Skipping unit matching - source does not intersect any columns'
