@@ -70,6 +70,7 @@ class StratNames(Base):
             where = """((lsn.late_age) < (intervals_bottom.age_bottom + """ + (timeFuzz) + """))
                 AND ((lsn.early_age) > (intervals_top.age_top - """ + (timeFuzz) + """))
                 and lsn.strat_name_id = snft.strat_name_id"""
+
         # Handle no time in the query!!!
         self.pg['cursor'].execute("""
             INSERT INTO maps.map_strat_names
@@ -86,7 +87,7 @@ class StratNames(Base):
         })
         self.pg['connection'].commit()
 
-        print '        - Done with %s' % (match_type, )
+        #print '        - Done with %s' % (match_type, )
 
 
     def run(self, source_id):
@@ -126,7 +127,7 @@ class StratNames(Base):
           sys.exit(1)
 
 
-        print 'Starting at ', str(datetime.datetime.now())
+        print '      Starting strat name match at ', str(datetime.datetime.now())
 
 
         # Clean up
@@ -253,7 +254,7 @@ class StratNames(Base):
         self.pg['connection'].commit()
 
         elapsed = int(time.time() - start_time)
-        print '        Done with prepping temp tables in ', elapsed / 60, ' minutes and ', elapsed % 60, ' seconds'
+        #print '        Done with prepping temp tables in ', elapsed / 60, ' minutes and ', elapsed % 60, ' seconds'
 
         # Time the process
         start_time = time.time()
