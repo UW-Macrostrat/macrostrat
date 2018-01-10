@@ -48,7 +48,7 @@ class Carto(Base):
         'large': 'medium'
     }
     scaleIsIn = {
-        'tiny': ['tiny'],
+        'tiny': ['tiny', 'small'],
         'small': ['small', 'medium'],
         'medium': ['medium', 'large'],
         'large': ['large']
