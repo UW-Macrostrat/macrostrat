@@ -1,6 +1,7 @@
 from ..base import Base
 from psycopg2.extensions import AsIs
 import sys
+import time
 
 class CartoLines(Base):
     """
