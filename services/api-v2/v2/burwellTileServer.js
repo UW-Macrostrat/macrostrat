@@ -11,7 +11,7 @@ const tilePassThrough = {
 
 module.exports = tilestrata.middleware({
   prefix: '/maps/burwell',
-  server: (() => {
+  server: (function() {
     var strata = tilestrata();
 
     strata.layer('emphasized')
