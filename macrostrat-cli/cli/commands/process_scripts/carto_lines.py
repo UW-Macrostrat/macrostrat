@@ -308,6 +308,7 @@ class CartoLines(Base):
             print CartoLines.__doc__
             sys.exit()
 
+        start = time.time()
         CartoLines.source_id = source_id
 
         self.pg['cursor'].execute("""
