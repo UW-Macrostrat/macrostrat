@@ -84,9 +84,9 @@ class Schlep(Base):
         # Rename the table, drop the old one, add updated comment
         self.pg['cursor'].execute("""
             COMMENT ON TABLE macrostrat.%(table)s_new IS %(time)s;
-            ALTER TABLE macrostrat.%(table)s RENAME TO %(table)s_old;
+            ALTER TABLE IF EXISTS macrostrat.%(table)s RENAME TO %(table)s_old;
             ALTER TABLE macrostrat.%(table)s_new RENAME TO %(table)s;
-            DROP TABLE macrostrat.%(table)s_old;
+            DROP TABLE IF EXISTS macrostrat.%(table)s_old;
         """, { 'table': AsIs(table), 'time': 'Last updated from MariaDB - ' + datetime.datetime.now().strftime('%Y-%m-%d %H:%M') })
         self.pg['connection'].commit()
 

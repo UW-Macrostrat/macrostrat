@@ -701,4 +701,61 @@ tables = OrderedDict({
 
         """
     },
+
+    "lookup_units": {
+        "dump": """
+            SELECT unit_id, col_area, project_id, t_int, t_int_name, t_int_age, t_age, t_prop, t_plat, t_plng, b_int, b_int_name, b_int_age, b_age, b_prop, b_plat, b_plng, clat, clng, color, text_color, units_above, units_below, pbdb_collections, pbdb_occurrences, age, age_id, epoch, epoch_id, period, period_id, era, era_id, eon, eon_id
+            FROM lookup_units
+        """,
+        "create": """
+            CREATE TABLE macrostrat.lookup_units_new (
+              unit_id integer PRIMARY KEY NOT NULL,
+              col_area numeric NOT NULL,
+              project_id integer NOT NULL,
+              t_int integer,
+              t_int_name text,
+              t_int_age numeric,
+              t_age numeric,
+              t_prop numeric,
+              t_plat numeric,
+              t_plng numeric,
+              b_int integer,
+              b_int_name text,
+              b_int_age numeric,
+              b_age numeric,
+              b_prop numeric,
+              b_plat numeric,
+              b_plng numeric,
+              clat numeric,
+              clng numeric,
+              color text,
+              text_color text,
+              units_above text,
+              units_below text,
+              pbdb_collections integer,
+              pbdb_occurrences integer,
+              age text,
+              age_id integer,
+              epoch text,
+              epoch_id integer,
+              period text,
+              period_id integer,
+              era text,
+              era_id integer,
+              eon text,
+              eon_id integer
+            );
+        """,
+        "insert": """
+            INSERT INTO macrostrat.lookup_units_new (unit_id, col_area, project_id, t_int, t_int_name, t_int_age, t_age, t_prop, t_plat, t_plng, b_int, b_int_name, b_int_age, b_age, b_prop, b_plat, b_plng, clat, clng, color, text_color, units_above, units_below, pbdb_collections, pbdb_occurrences, age, age_id, epoch, epoch_id, period, period_id, era, era_id, eon, eon_id) VALUES (%(unit_id)s, %(col_area)s, %(project_id)s, %(t_int)s, %(t_int_name)s, %(t_int_age)s, %(t_age)s, %(t_prop)s, %(t_plat)s, %(t_plng)s, %(b_int)s, %(b_int_name)s, %(b_int_age)s, %(b_age)s, %(b_prop)s, %(b_plat)s, %(b_plng)s, %(clat)s, %(clng)s, %(color)s, %(text_color)s, %(units_above)s, %(units_below)s, %(pbdb_collections)s, %(pbdb_occurrences)s, %(age)s, %(age_id)s, %(epoch)s, %(epoch_id)s, %(period)s, %(period_id)s, %(era)s, %(era_id)s, %(eon)s, %(eon_id)s)
+        """,
+        "index": """
+            CREATE INDEX ON macrostrat.lookup_units_new (project_id);
+            CREATE INDEX ON macrostrat.lookup_units_new (t_int);
+            CREATE INDEX ON macrostrat.lookup_units_new (b_int);
+        """,
+        "process": """
+
+        """
+    },
 })
