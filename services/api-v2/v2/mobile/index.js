@@ -28,4 +28,7 @@ mobile.route("/macro_summary")
 mobile.route("/map_query")
   .get(require("./map_query"));
 
+mobile.route("/map_query_v2")
+  .get(require("./map_query_v2"));
+
 module.exports =  mobile;
