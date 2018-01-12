@@ -758,4 +758,30 @@ tables = OrderedDict({
 
         """
     },
+
+    "lookup_unit_attrs_api": {
+        "dump": """
+            SELECT unit_id, lith, environ, econ, measure_short, measure_long
+            FROM lookup_unit_attrs_api
+        """,
+        "create": """
+            CREATE TABLE macrostrat.lookup_unit_attrs_api_new (
+              unit_id integer NOT NULL,
+              lith json,
+              environ json,
+              econ json,
+              measure_short json,
+              measure_long json
+            );
+        """,
+        "insert": """
+            INSERT INTO macrostrat.lookup_unit_attrs_api_new (unit_id, lith, environ, econ, measure_short, measure_long) VALUES (%(unit_id)s, %(lith)s::json, %(environ)s::json, %(econ)s::json, %(measure_short)s::json, %(measure_long)s::json)
+        """,
+        "index": """
+            CREATE INDEX ON macrostrat.lookup_unit_attrs_api_new (unit_id);
+        """,
+        "process": """
+
+        """
+    },
 })
