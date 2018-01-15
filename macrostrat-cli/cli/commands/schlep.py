@@ -73,8 +73,9 @@ class Schlep(Base):
         self.pg['connection'].commit()
 
         # Add any indexes
-        self.pg['cursor'].execute(tables[table]['index'])
-        self.pg['connection'].commit()
+        if len(tables[table]['index'].strip()) > 0:
+            self.pg['cursor'].execute(tables[table]['index'])
+            self.pg['connection'].commit()
 
         # Run processing steps, if needed
         if len(tables[table]['process'].strip()) != 0:

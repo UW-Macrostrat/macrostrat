@@ -784,4 +784,50 @@ tables = OrderedDict({
 
         """
     },
+
+    "environs": {
+        "dump": """
+            SELECT id, environ, environ_type, environ_class, environ_color
+            FROM environs
+        """,
+        "create": """
+            CREATE TABLE macrostrat.environs_new (
+              id integer NOT NULL PRIMARY KEY,
+              environ text,
+              environ_type text,
+              environ_class text,
+              environ_color text
+            );
+        """,
+        "insert": """
+            INSERT INTO macrostrat.environs_new (id, environ, environ_type, environ_class, environ_color) VALUES (%(id)s, %(environ)s, %(environ_type)s, %(environ_class)s, %(environ_color)s)
+        """,
+        "index": "",
+        "process": """
+
+        """
+    },
+
+    "econs": {
+        "dump": """
+            SELECT id, econ, econ_type, econ_class, econ_color
+            FROM econs
+        """,
+        "create": """
+            CREATE TABLE macrostrat.econs_new (
+              id integer NOT NULL PRIMARY KEY,
+              econ text,
+              econ_type text,
+              econ_class text,
+              econ_color text
+            );
+        """,
+        "insert": """
+            INSERT INTO macrostrat.econs_new (id, econ, econ_type, econ_class, econ_color) VALUES (%(id)s, %(econ)s, %(econ_type)s, %(econ_class)s, %(econ_color)s)
+        """,
+        "index": "",
+        "process": """
+
+        """
+    },
 })
