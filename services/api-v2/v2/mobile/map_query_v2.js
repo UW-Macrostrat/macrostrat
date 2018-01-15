@@ -195,7 +195,8 @@ function buildSQL(scale, where) {
         SELECT row_to_json(r) FROM (
           SELECT
             m.b_interval AS int_id,
-            tb.age_bottom::float AS int_age,
+            tb.age_bottom::float AS b_age,
+            tb.age_top::float AS t_age,
             tb.interval_name AS int_name,
             tb.interval_color AS color
         ) r
@@ -204,7 +205,8 @@ function buildSQL(scale, where) {
         SELECT row_to_json(r) FROM (
           SELECT
             m.t_interval AS int_id,
-            ti.age_top::float AS int_age,
+            ti.age_bottom::float AS b_age,
+            ti.age_top::float AS t_age,
             ti.interval_name AS int_name,
             ti.interval_color AS color
         ) r
