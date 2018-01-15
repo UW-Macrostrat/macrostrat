@@ -215,6 +215,7 @@ function buildSQL(scale, where) {
       '${scale}' AS scale,
       (SELECT row_to_json(r) FROM (SELECT
         sources.name,
+        sources.source_id,
         COALESCE(sources.url, '') url,
         COALESCE(sources.ref_title, '') ref_title,
         COALESCE(sources.authors, '') authors,
