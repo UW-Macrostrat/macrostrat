@@ -191,12 +191,24 @@ function buildSQL(scale, where) {
           WHERE id = ANY(mm.lith_ids)
         ) t
       ), '[]') AS liths,
-      m.t_interval AS t_int_id,
-      ti.age_top::float AS t_int_age,
-      ti.interval_name AS t_int_name,
-      m.b_interval AS b_int_id,
-      tb.age_bottom::float AS b_int_age,
-      tb.interval_name AS b_int_name,
+      (
+        SELECT row_to_json(r) FROM (
+          SELECT
+            m.b_interval AS int_id,
+            tb.age_bottom::float AS int_age,
+            tb.interval_name AS int_name,
+            tb.interval_color AS color
+        ) r
+      ) AS b_int,
+      (
+        SELECT row_to_json(r) FROM (
+          SELECT
+            m.t_interval AS int_id,
+            ti.age_top::float AS int_age,
+            ti.interval_name AS int_name,
+            ti.interval_color AS color
+        ) r
+      ) AS t_int,
       mm.color,
       '${scale}' AS scale,
       (SELECT row_to_json(r) FROM (SELECT
