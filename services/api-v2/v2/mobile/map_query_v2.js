@@ -244,8 +244,8 @@ function buildLineSQL(scale) {
                 m.line_id,
                 m.source_id,
                 COALESCE(m.name, '') AS name,
-                COALESCE(m.type, '') AS type,
-                COALESCE(m.direction, '') AS direction,
+                COALESCE(m.new_type, '') AS type,
+                COALESCE(m.new_direction, '') AS direction,
                 COALESCE(m.descrip, '') AS descrip,
                 '${scale}' AS scale,
                 ST_Distance_Spheroid(m.geom, $1, 'SPHEROID["WGS 84",6378137,298.257223563]') AS distance
