@@ -50,31 +50,82 @@ function getUnits(params, callback) {
   let p = (params.unit_ids) ? params.unit_ids : params.strat_name_ids
   larkin.queryPg('burwell', `
     SELECT
-      units.id AS unit_id,
-      unit_strat_names.strat_name_id,
-      lookup_units.t_age::numeric,
-      lookup_units.b_age::numeric,
-      units.max_thick::numeric,
-      units.min_thick::numeric,
-      lookup_units.pbdb_collections,
-      lookup_units.pbdb_occurrences,
-      lookup_unit_attrs_api.lith,
-      lookup_unit_attrs_api.environ,
-      lookup_unit_attrs_api.econ,
-      lookup_units.t_int_name,
-      lookup_units.t_int_age,
-      lookup_units.b_int_name,
-      lookup_units.b_int_age,
-      lookup_strat_names.rank_name AS strat_name_long
+      (
+           SELECT json_agg(w) FROM (
+               SELECT split_part(q, '|', 1)::int AS strat_name_id, split_part(q, '|', 2) AS rank_name
+               FROM (
+                  SELECT unnest(array_agg(DISTINCT concat(unit_strat_names.strat_name_id, '|', lookup_strat_names.rank_name))) q
+               ) foo
+           ) w
+      ) as strat_names,
+      array_agg(DISTINCT units.id) AS unit_ids,
+      COALESCE(max(units.max_thick), 0)::int AS max_thick,
+      COALESCE(max(units.min_thick), 0)::int AS max_min_thick,
+      COALESCE(min(units.min_thick), 0)::int AS min_min_thick,
+      max(lookup_units.b_age::numeric)::float AS b_age,
+      min(lookup_units.t_age::numeric)::float AS t_age,
+      sum(lookup_units.pbdb_collections)::int AS pbdb_collections,
+      sum(lookup_units.pbdb_occurrences)::int AS pbdb_occs,
+      (
+        SELECT row_to_json(r) FROM (
+          SELECT
+            id AS int_id,
+            interval_name,
+            interval_color
+          FROM macrostrat.intervals
+          JOIN macrostrat.timescales_intervals ON timescales_intervals.interval_id = intervals.id
+          WHERE age_bottom >= max(lookup_units.b_age::numeric) AND age_top <= max(lookup_units.b_age::numeric)
+            AND timescale_id = 11
+          ORDER BY age_bottom - age_top
+          LIMIT 1
+        ) r
+      ) as b_int,
+      (
+        SELECT row_to_json(r) FROM (
+          SELECT
+            id AS int_id,
+            interval_name,
+            interval_color
+          FROM macrostrat.intervals
+          JOIN macrostrat.timescales_intervals ON timescales_intervals.interval_id = intervals.id
+          WHERE age_bottom >= min(lookup_units.t_age::numeric) AND age_top <= min(lookup_units.t_age::numeric)
+            AND timescale_id = 11
+          ORDER BY age_bottom - age_top
+          LIMIT 1
+        ) r
+      ) as t_int,
+      (
+        SELECT COALESCE(json_agg(t), '[]') FROM (
+          SELECT lith_id, lith, lith_type, lith_class, lith_color AS color, round(count(comp_prop)/sum(count(comp_prop)) over(), 3) AS prop
+          FROM macrostrat.unit_liths
+          JOIN macrostrat.liths ON liths.id = unit_liths.lith_id
+          WHERE unit_id = ANY(array_agg(units.id))
+          GROUP BY lith_id, lith, lith_type, lith_class, lith_color
+        ) t
+      ) AS liths,
+      (
+        SELECT COALESCE(json_agg(t), '[]') FROM (
+          SELECT DISTINCT econ_id, econ, econ_type, econ_class, econ_color AS color
+          FROM macrostrat.unit_econs
+          JOIN macrostrat.econs ON econs.id = unit_econs.econ_id
+          WHERE unit_id = ANY(array_agg(units.id))
+        ) t
+      ) AS econs,
+      (
+        SELECT COALESCE(json_agg(t), '[]') FROM (
+          SELECT DISTINCT environ_id, environ, environ_type, environ_class, environ_color AS color
+          FROM macrostrat.unit_environs
+          JOIN macrostrat.environs ON environs.id = unit_environs.environ_id
+          WHERE unit_id = ANY(array_agg(units.id))
+        ) t
+      ) AS environs
     FROM macrostrat.units
-    JOIN macrostrat.lookup_unit_attrs_api ON lookup_unit_attrs_api.unit_id = units.id
     JOIN macrostrat.lookup_units ON units.id = lookup_units.unit_id
     LEFT JOIN macrostrat.unit_strat_names ON unit_strat_names.unit_id = units.id
     LEFT JOIN macrostrat.units_sections ON units.id = units_sections.unit_id
     LEFT JOIN macrostrat.cols ON units_sections.col_id = cols.id
     LEFT JOIN macrostrat.lookup_strat_names ON lookup_strat_names.strat_name_id = unit_strat_names.strat_name_id
-    WHERE status_code = 'active'
-      AND ${params.unit_ids ? 'units.id' : 'unit_strat_names.strat_name_id'} = ANY($1)
+    WHERE status_code = 'active' AND ${params.unit_ids ? 'units.id' : 'unit_strat_names.strat_name_id'} = ANY($1)
   `, [p], (error, result) => {
     if (error) return callback(error)
     callback(null, result.rows)
@@ -109,75 +160,13 @@ function getBestFit(z, data) {
    return bestFit
 }
 
-function summarizeUnits(units, callback) {
-  var stratNames = units.map(function(d) { return {
-    name: d.strat_name_long,
-    id: d.strat_name_id
-  }})
-  var recorded = {}
-  var filteredStratNames = stratNames.filter(function(d) {
-    if (!recorded[d.id]) {
-      recorded[d.id] = d
-      return d
-    }
-  })
-
-  callback({
-    unit_ids: units.map(function(d) { return d.unit_id }),
-    strat_names: filteredStratNames,
-    rank_names: [...new Set(units.map(d => { return d.strat_name_long }))].join(', '),
-    max_thick: units.map(unit => { return unit.max_thick }).reduce((a, b) => { return parseFloat(a) + parseFloat(b) }, 0),
-    max_min_thick: units.map(unit => {
-      if (unit.min_thick === 0) {
-        return unit.max_thick
-      } else {
-        return unit.min_thick
-      }
-    }).reduce((a, b) => { return parseFloat(a) + parseFloat(b) }, 0),
-    min_min_thick: units.map(unit => { return unit.min_thick }).reduce((a, b) => { return parseFloat(a) + parseFloat(b) }, 0),
-
-    b_age: units.map(unit => { return unit.b_age }).reduce((a, b) => {
-      return Math.max(a, b)
-    }),
-    t_age: units.map(unit => { return unit.t_age }).reduce((a, b) => {
-      return Math.min(a, b)
-    }),
-
-    b_int_name: _.max(units, function(d) { return d.b_age }).b_int_name,
-    t_int_name: _.min(units, function(d) { return d.t_age }).t_int_name,
-
-    pbdb_collections: units.map(unit => { return unit.pbdb_collections }).reduce((a, b) => { return a + b }, 0),
-    lith: larkin.summarizeAttribute(units, 'lith'),
-    environ: larkin.summarizeAttribute(units, 'environ'),
-    econ: larkin.summarizeAttribute(units, 'econ'),
-    uniqueIntervals: (function() {
-      var min_age = 9999,
-          min_age_interval = '',
-          max_age = -1,
-          max_age_interval = ''
-
-      units.forEach(function(d, i) {
-        if (d.t_age < min_age) {
-          min_age = d.t_age
-          min_age_interval = d.t_int_name
-        }
-        if (d.b_age > max_age) {
-          max_age = d.b_age
-          max_age_interval = d.b_int_name
-        }
-      })
-      return (max_age_interval === min_age_interval) ? min_age_interval : max_age_interval + ' - ' + min_age_interval
-    })()
-  })
-}
-
-
 function buildSQL(scale, where) {
   return `
     (SELECT
       m.map_id,
       m.source_id,
       COALESCE(m.name, '') AS name,
+      COALESCE(m.age, '') AS age,
       COALESCE(m.strat_name, '') AS strat_name,
       COALESCE(m.lith, '') AS lith,
       COALESCE(m.descrip, '') AS descrip,
@@ -402,10 +391,8 @@ module.exports = function(req, res, next) {
              if (error) {
                return cb(error)
              }
-             summarizeUnits(units, (summary) => {
-               mapPolygon.macrostrat = summary
-               done(null, mapPolygon)
-             })
+             mapPolygon.macrostrat = units
+             done(null, mapPolygon)
            })
 
            // done(null, mapPolygon)
