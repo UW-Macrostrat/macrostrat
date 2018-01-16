@@ -830,4 +830,117 @@ tables = OrderedDict({
 
         """
     },
+
+    "unit_liths": {
+        "dump": """
+            SELECT id, lith_id, unit_id, prop, dom, comp_prop, mod_prop, toc, ref_id, date_mod
+            FROM unit_liths
+        """,
+        "create": """
+            CREATE TABLE macrostrat.unit_liths_new (
+              id integer NOT NULL PRIMARY KEY,
+              lith_id integer,
+              unit_id integer,
+              prop text,
+              dom text,
+              comp_prop numeric,
+              mod_prop numeric,
+              toc numeric,
+              ref_id integer,
+              date_mod text
+            );
+        """,
+        "insert": """
+            INSERT INTO macrostrat.unit_liths_new (id, lith_id, unit_id, prop, dom, comp_prop, mod_prop, toc, ref_id, date_mod) VALUES (%(id)s, %(lith_id)s, %(unit_id)s, %(prop)s, %(dom)s, %(comp_prop)s, %(mod_prop)s, %(toc)s, %(ref_id)s, %(date_mod)s)
+        """,
+        "index": """
+            CREATE INDEX ON macrostrat.unit_liths_new (lith_id);
+            CREATE INDEX ON macrostrat.unit_liths_new (unit_id);
+            CREATE INDEX ON macrostrat.unit_liths_new (ref_id);
+        """,
+        "process": """
+
+        """
+    },
+
+    "unit_lith_atts": {
+        "dump": """
+            SELECT id, unit_lith_id, lith_att_id, ref_id, date_mod
+            FROM unit_liths_atts
+        """,
+        "create": """
+            CREATE TABLE macrostrat.unit_lith_atts_new (
+              id integer NOT NULL PRIMARY KEY,
+              unit_lith_id integer,
+              lith_att_id integer,
+              ref_id integer,
+              date_mod text
+            );
+        """,
+        "insert": """
+            INSERT INTO macrostrat.unit_lith_atts_new (id, unit_lith_id, lith_att_id, ref_id, date_mod) VALUES (%(id)s, %(unit_lith_id)s, %(lith_att_id)s, %(ref_id)s, %(date_mod)s)
+        """,
+        "index": """
+            CREATE INDEX ON macrostrat.unit_lith_atts_new (unit_lith_id);
+            CREATE INDEX ON macrostrat.unit_lith_atts_new (lith_att_id);
+            CREATE INDEX ON macrostrat.unit_lith_atts_new (ref_id);
+        """,
+        "process": """
+
+        """
+    },
+
+    "unit_econs": {
+        "dump": """
+            SELECT id, unit_id, econ_id, ref_id, date_mod
+            FROM unit_econs
+        """,
+        "create": """
+            CREATE TABLE macrostrat.unit_econs_new (
+              id integer NOT NULL PRIMARY KEY,
+              unit_id integer,
+              econ_id integer,
+              ref_id integer,
+              date_mod text
+            );
+        """,
+        "insert": """
+            INSERT INTO macrostrat.unit_econs_new (id, unit_id, econ_id, ref_id, date_mod) VALUES (%(id)s, %(unit_id)s, %(econ_id)s, %(ref_id)s, %(date_mod)s)
+        """,
+        "index": """
+            CREATE INDEX ON macrostrat.unit_econs_new (econ_id);
+            CREATE INDEX ON macrostrat.unit_econs_new (unit_id);
+            CREATE INDEX ON macrostrat.unit_econs_new (ref_id);
+        """,
+        "process": """
+
+        """
+    },
+
+    "unit_environs": {
+        "dump": """
+            SELECT id, unit_id, environ_id, ref_id, date_mod
+            FROM unit_environs
+        """,
+        "create": """
+            CREATE TABLE macrostrat.unit_environs_new (
+              id integer NOT NULL PRIMARY KEY,
+              unit_id integer,
+              environ_id integer,
+              ref_id integer,
+              date_mod text
+            );
+        """,
+        "insert": """
+            INSERT INTO macrostrat.unit_environs_new (id, unit_id, environ_id, ref_id, date_mod) VALUES (%(id)s, %(unit_id)s, %(environ_id)s, %(ref_id)s, %(date_mod)s)
+        """,
+        "index": """
+            CREATE INDEX ON macrostrat.unit_environs_new (environ_id);
+            CREATE INDEX ON macrostrat.unit_environs_new (unit_id);
+            CREATE INDEX ON macrostrat.unit_environs_new (ref_id);
+        """,
+        "process": """
+
+        """
+    },
 })
