@@ -383,6 +383,7 @@ module.exports = function(req, res, next) {
            } else if (mapPolygon.strat_names.length) {
              params = { 'strat_name_ids': mapPolygon.strat_names }
            } else {
+             mapPolygon.macrostrat = {}
              return done(null, mapPolygon)
            }
            delete mapPolygon.strat_names
@@ -391,7 +392,12 @@ module.exports = function(req, res, next) {
              if (error) {
                return cb(error)
              }
-             mapPolygon.macrostrat = units
+             if (units.length) {
+               mapPolygon.macrostrat = units[0]
+             } else {
+               mapPolygon.macrostrat = {}
+             }
+
              done(null, mapPolygon)
            })
 
