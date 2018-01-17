@@ -85,7 +85,7 @@ class RGeom(Base):
             ALTER TABLE public.%(primary_table)s ALTER COLUMN geom SET DATA TYPE geometry;
 
             UPDATE public.%(primary_table)s
-            SET geom = ST_Buffer(geom, 0);
+            SET geom = ST_Buffer(ST_MakeValid(geom), 0);
         """, {
             "primary_table": AsIs(primary_table + '_rgeom')
         })
