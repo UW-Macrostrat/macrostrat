@@ -45,8 +45,6 @@ class Seed(Base):
     def run(self):
         scales = ['tiny', 'small', 'medium', 'large']
         # Check if a command was provided
-        print self.args
-        print len(self.args)
         if len(self.args) == 1:
             print 'Please specify a source_id or scale'
             sys.exit()
