@@ -208,10 +208,10 @@ module.exports = function(req, res, next) {
       larkin.queryPg('burwell', `
         SELECT
           m.line_id,
-          COALESCE(m.name, '') AS name,
-          COALESCE(m.type, '') AS type,
-          COALESCE(m.direction, '') AS direction,
-          COALESCE(m.descrip, '') AS descrip,
+          COALESCE(s.name, '') AS name,
+          COALESCE(s.type, '') AS type,
+          COALESCE(s.direction, '') AS direction,
+          COALESCE(s.descrip, '') AS descrip,
           '${scale}' AS scale,
           (SELECT row_to_json(r) FROM (SELECT
             source_id,
@@ -226,6 +226,15 @@ module.exports = function(req, res, next) {
             WHERE source_id = m.source_id) r)::jsonb AS ref,
           ST_Distance_Spheroid(m.geom, $1, 'SPHEROID["WGS 84",6378137,298.257223563]') AS distance
         FROM carto_new.lines_${scale} m
+        JOIN LATERAL (
+            SELECT * FROM lines.tiny
+            UNION ALL
+            SELECT * FROM lines.small
+            UNION ALL
+            SELECT * FROM lines.medium
+            UNION ALL
+            SELECT * FROM lines.large
+        ) s ON s.line_id = m.line_id
         ORDER BY m.geom <-> $1
         LIMIT 1
       `, [`SRID=4326;POINT(${req.query.lng} ${req.query.lat})`], function(error, result) {
