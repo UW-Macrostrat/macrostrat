@@ -40,21 +40,7 @@ class Base(object):
         }
         self.pg['cursor'] = self.pg['connection'].cursor(cursor_factory = NamedTupleCursor)
 
-        # if 'pg' in connections:
-        #     setattr(self, 'pg', {'connection': None, 'raw_connection': None, 'cursor': None})
-        #     self.pg['raw_connection'] = connections['pg']
-        #     self.pg['connection'] = connections['pg']()
-        #     self.pg['cursor'] = self.pg['connection'].cursor(cursor_factory = NamedTupleCursor)
-        #
-        # if 'mariadb' in connections:
-        #     setattr(self, 'mariadb', {'connection': None, 'raw_connection': None, 'cursor': None})
-        #     self.mariadb['raw_connection'] = connections['mariadb']
-        #     self.mariadb['connection'] = connections['mariadb']()
-        #     self.mariadb['cursor'] = self.mariadb['connection'].cursor()
-
         self.args = args
-        # if 'credentials' in connections:
-        #     setattr(self, 'credentials', connections['credentials'])
 
     @abstractmethod
     def run(self):

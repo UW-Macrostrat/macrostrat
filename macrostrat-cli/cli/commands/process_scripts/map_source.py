@@ -6,6 +6,7 @@ from ..match_scripts import strat_names
 from ..match_scripts import units
 from carto import Carto
 from carto_lines import CartoLines
+from ..seed import Seed
 import sys
 
 class MapSource(Base):
@@ -51,11 +52,11 @@ class MapSource(Base):
             print MapSource.__doc__
             sys.exit()
 
-        # rgeom = RGeom({})
-        # rgeom.run(source_id)
-        #
-        # web_geom = WebGeom({})
-        # web_geom.run(source_id)
+        rgeom = RGeom({})
+        rgeom.run(source_id)
+
+        web_geom = WebGeom({})
+        web_geom.run(source_id)
 
         sn = strat_names({})
         sn.run(source_id)
@@ -71,3 +72,6 @@ class MapSource(Base):
 
         carto_lines = CartoLines({})
         carto_lines.run(source_id)
+
+        seed = Seed({}, True, source_id )
+        seed.run()
