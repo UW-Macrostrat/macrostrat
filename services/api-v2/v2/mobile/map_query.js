@@ -209,8 +209,8 @@ module.exports = function(req, res, next) {
         SELECT
           m.line_id,
           COALESCE(s.name, '') AS name,
-          COALESCE(s.type, '') AS type,
-          COALESCE(s.direction, '') AS direction,
+          COALESCE(s.type, s.new_type, '') AS type,
+          COALESCE(s.direction, s.new_direction, '') AS direction,
           COALESCE(s.descrip, '') AS descrip,
           '${scale}' AS scale,
           (SELECT row_to_json(r) FROM (SELECT
