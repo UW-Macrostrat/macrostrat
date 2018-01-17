@@ -43,6 +43,7 @@ class CartoLines(Base):
         }
     }
     UNDER = {
+        'tiny': None,
         'small': 'tiny',
         'medium': 'small',
         'large': 'medium'
