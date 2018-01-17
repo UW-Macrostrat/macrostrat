@@ -484,10 +484,11 @@ class Units(Base):
                 'source_id': source_id
             })
             result = self.pg['cursor'].fetchone()
-            for field in result:
-                if field == 0:
-                    field_name = fields[field]
-                    del fields[field]
+
+            for key, val in result._asdict().iteritems():
+                if val == 0:
+                    field_name = key
+                    fields = [ d for d in fields if d != key]
                     print '        + Excluding %s because it is null' % (field_name, )
 
 
