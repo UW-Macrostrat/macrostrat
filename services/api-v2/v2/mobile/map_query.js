@@ -155,21 +155,20 @@ function buildSQL(scale, where) {
       mm.color,
       '${scale}' AS scale,
       (SELECT row_to_json(r) FROM (SELECT
-        source_id,
-        name,
-        COALESCE(url, '') url,
-        COALESCE(ref_title, '') ref_title,
-        COALESCE(authors, '') authors,
-        COALESCE(ref_year, '') ref_year,
-        COALESCE(ref_source, '') ref_source,
-        COALESCE(isbn_doi, '') isbn_doi
-        FROM maps.sources
-        WHERE source_id = m.source_id) r)::jsonb AS ref
+        sources.name,
+        COALESCE(sources.url, '') url,
+        COALESCE(sources.ref_title, '') ref_title,
+        COALESCE(sources.authors, '') authors,
+        COALESCE(sources.ref_year, '') ref_year,
+        COALESCE(sources.ref_source, '') ref_source,
+        COALESCE(sources.isbn_doi, '') isbn_doi) r)::jsonb AS ref
       FROM maps.${scale} m
+      JOIN maps.sources ON m.source_id = sources.source_id
       LEFT JOIN macrostrat.intervals ti ON m.t_interval = ti.id
       LEFT JOIN macrostrat.intervals tb ON m.b_interval = tb.id
       LEFT JOIN lookup_${scale} mm ON mm.map_id = m.map_id
       ${where}
+      ORDER BY sources.new_priority DESC
     )
   `
 }
@@ -226,7 +225,7 @@ module.exports = function(req, res, next) {
             FROM maps.sources
             WHERE source_id = m.source_id) r)::jsonb AS ref,
           ST_Distance_Spheroid(m.geom, $1, 'SPHEROID["WGS 84",6378137,298.257223563]') AS distance
-        FROM carto.lines_${scale} m
+        FROM carto_new.lines_${scale} m
         ORDER BY m.geom <-> $1
         LIMIT 1
       `, [`SRID=4326;POINT(${req.query.lng} ${req.query.lat})`], function(error, result) {
@@ -262,7 +261,7 @@ module.exports = function(req, res, next) {
 
       var scaleSQL = Object.keys(priorities).map(function(scale) {
         return buildSQL(scale, where);
-      }).join(' UNION ');
+      }).join(' UNION ALL ');
 
       var toRun = `SELECT * FROM ( ${scaleSQL} ) doit`;
       larkin.queryPg('burwell', toRun, params, function(error, result) {
@@ -288,6 +287,7 @@ module.exports = function(req, res, next) {
              }
            }
 
+           // All the map polygons of the best appropriate scale
            var bestFit = result.rows.filter(function(d) {
              if (targetScales.indexOf(d.scale) > -1) {
                delete d.scale
