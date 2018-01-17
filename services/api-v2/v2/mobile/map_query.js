@@ -302,12 +302,12 @@ module.exports = function(req, res, next) {
                delete d.scale
                return d
              }
-           })
+           })[0]
 
            // Add reference here! (or maybe in buildSQL...)
 
-           var macroUnits = [].concat.apply([], bestFit.map(function(unit) { return unit.macro_units }))
-           var macroNames = [].concat.apply([], bestFit.map(function(unit) { return unit.strat_names }))
+           var macroUnits = bestFit.macro_units
+           var macroNames = bestFit.strat_names
 
            if (macroUnits.length) {
              require('../units')({query: { unit_id: macroUnits.join(',') } }, null, null, function(error, result) {
@@ -393,7 +393,7 @@ module.exports = function(req, res, next) {
     }, {
       data: {
         elevation: data.elevation,
-        burwell: data.burwell.burwell,
+        burwell: [ data.burwell.burwell ],
         macrostrat: data.burwell.macrostrat,
         lines: data.lines
       }
