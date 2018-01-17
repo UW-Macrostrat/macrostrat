@@ -115,3 +115,11 @@ class Seed(Base):
                     except:
                         pass
                         # fails.append(url)
+                    url = 'http://localhost:5555/%s/%s/%s/%s.mvt' % (layer, tile.z, tile.x, tile.y)
+                    try:
+                        r = requests.get(url, headers=headers)
+                        if r.status_code != 200 and r.status_code != 204:
+                            print r.status_code
+                    except:
+                        pass
+                        # fails.append(url)
