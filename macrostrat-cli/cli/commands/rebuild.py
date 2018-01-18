@@ -47,8 +47,10 @@ class Rebuild(Base):
             sys.exit()
 
         if table == 'all':
-            tables = [ t for t in dir(rebuild_scripts) if t[:2] != '__']
+            # Rebuild in a specific order
+            tables = [ 'autocomplete', 'lookup_strat_names', 'lookup_unit_attrs_api', 'lookup_unit_intervals', 'pbdb_matches', 'unit_boundaries', 'lookup_units', 'stats']
             for t in tables:
+                print '     %s' % (t, )
                 script = getattr(rebuild_scripts, t)
                 script = script()
                 script.run()
