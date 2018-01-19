@@ -31,7 +31,7 @@ module.exports = tilestrata.middleware({
         .use(vtileraster({
           xml: `${__dirname}/mapnik/burwell_vector_to_raster.xml`,
           tileSize: 512,
-          scale: 1
+          scale: 2
         }, {
           tilesource: ['carto', '*.mvt']
         }))
