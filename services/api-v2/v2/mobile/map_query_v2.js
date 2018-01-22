@@ -70,8 +70,8 @@ function getUnits(params, callback) {
         SELECT row_to_json(r) FROM (
           SELECT
             id AS int_id,
-            interval_name,
-            interval_color
+            interval_name AS int_name,
+            interval_color AS color
           FROM macrostrat.intervals
           JOIN macrostrat.timescales_intervals ON timescales_intervals.interval_id = intervals.id
           WHERE age_bottom >= max(lookup_units.b_age::numeric) AND age_top <= max(lookup_units.b_age::numeric)
@@ -84,8 +84,8 @@ function getUnits(params, callback) {
         SELECT row_to_json(r) FROM (
           SELECT
             id AS int_id,
-            interval_name,
-            interval_color
+            interval_name AS int_name,
+            interval_color AS color
           FROM macrostrat.intervals
           JOIN macrostrat.timescales_intervals ON timescales_intervals.interval_id = intervals.id
           WHERE age_bottom >= min(lookup_units.t_age::numeric) AND age_top <= min(lookup_units.t_age::numeric)
