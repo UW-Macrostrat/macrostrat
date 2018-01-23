@@ -100,7 +100,7 @@ function getUnits(params, callback) {
           FROM macrostrat.unit_liths
           JOIN macrostrat.liths ON liths.id = unit_liths.lith_id
           WHERE unit_id = ANY(array_agg(units.id))
-          GROUP BY lith_id, lith, lith_type, lith_class, lith_color
+          GROUP BY lith_id, lith, lith_type, lith_class, lith_color, lith_fill
         ) t
       ) AS liths,
       (
