@@ -59,9 +59,9 @@ function getUnits(params, callback) {
            ) w
       ) as strat_names,
       array_agg(DISTINCT units.id) AS unit_ids,
-      COALESCE(max(units.max_thick), 0)::int AS max_thick,
-      COALESCE(max(units.min_thick), 0)::int AS max_min_thick,
-      COALESCE(min(units.min_thick), 0)::int AS min_min_thick,
+      COALESCE(sum(units.max_thick), 0)::int AS max_thick,
+      COALESCE(sum(units.min_thick), 0)::int AS max_min_thick,
+      COALESCE(sum(units.min_thick), 0)::int AS min_min_thick,
       max(lookup_units.b_age::numeric)::float AS b_age,
       min(lookup_units.t_age::numeric)::float AS t_age,
       sum(lookup_units.pbdb_collections)::int AS pbdb_collections,
@@ -96,7 +96,7 @@ function getUnits(params, callback) {
       ) as t_int,
       (
         SELECT COALESCE(json_agg(t), '[]') FROM (
-          SELECT lith_id, lith, lith_type, lith_class, lith_color AS color, round(count(comp_prop)/sum(count(comp_prop)) over(), 3) AS prop
+          SELECT lith_id, lith, lith_type, lith_class, lith_color AS color, lith_fill, round(count(comp_prop)/sum(count(comp_prop)) over(), 3) AS prop
           FROM macrostrat.unit_liths
           JOIN macrostrat.liths ON liths.id = unit_liths.lith_id
           WHERE unit_id = ANY(array_agg(units.id))
@@ -175,7 +175,7 @@ function buildSQL(scale, where) {
       COALESCE(mm.strat_name_ids, '{}') AS strat_names,
       COALESCE((
         SELECT json_agg(t) FROM (
-          SELECT id AS lith_id, lith, lith_type, lith_class, lith_color AS color
+          SELECT id AS lith_id, lith, lith_type, lith_class, lith_color AS color, lith_fill
           FROM macrostrat.liths
           WHERE id = ANY(mm.lith_ids)
         ) t
