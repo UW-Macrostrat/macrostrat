@@ -93,7 +93,7 @@ class BurwellLookup(Base):
 
         # Insert source into lookup_scale
         self.pg['cursor'].execute("""
-        INSERT INTO lookup_%(scale)s (map_id, unit_ids, strat_name_ids, lith_ids, best_age_top, best_age_bottom, color) (
+        INSERT INTO lookup_%(scale)s (map_id, unit_ids, strat_name_ids, concept_ids, strat_name_children, lith_ids, lith_types, lith_classes, best_age_top, best_age_bottom, color) (
 
           -- Find unique match types for units
          WITH unit_bases AS (
@@ -314,11 +314,49 @@ class BurwellLookup(Base):
 
          -- Find and aggregate best lith_ids for each map_id
          lith_ids AS (
-           SELECT q.map_id, array_agg(DISTINCT lith_id) AS lith_ids
-           FROM maps.%(scale)s q
-           JOIN maps.map_liths ON q.map_id = map_liths.map_id
-           WHERE source_id = %(source_id)s
-           GROUP BY q.map_id
+           SELECT map_id, array_agg(DISTINCT lith_id) AS lith_ids, array_agg(DISTINCT liths.lith_type) AS lith_types, array_agg(DISTINCT liths.lith_class) AS lith_classes
+           FROM (
+               SELECT q.map_id, liths.id AS lith_id
+               FROM maps.%(scale)s q
+               LEFT JOIN unit_ids ON q.map_id = unit_ids.map_id
+               JOIN macrostrat.unit_liths ON unit_liths.unit_id = ANY(unit_ids.unit_ids)
+               JOIN macrostrat.liths ON liths.id = unit_liths.lith_id
+               WHERE unit_liths.unit_id = ANY(unit_ids.unit_ids) AND q.source_id = %(source_id)s
+
+               UNION ALL
+               SELECT q.map_id, lith_id
+               FROM maps.%(scale)s q
+               JOIN maps.map_liths ON q.map_id = map_liths.map_id
+               WHERE source_id = %(source_id)s
+           ) sub
+           JOIN macrostrat.liths ON sub.lith_id = liths.id
+           GROUP BY map_id
+         ),
+
+         more_strat_names AS (
+            SELECT
+                sub.map_id,
+                concept_ids,
+                (
+                    SELECT array_agg(DISTINCT strat_name_id)
+                    FROM macrostrat.lookup_strat_names
+                    WHERE bed_id = ANY(strat_name_ids)
+                        OR mbr_id = ANY(strat_name_ids)
+                        OR fm_id = ANY(strat_name_ids)
+                        OR gp_id = ANY(strat_name_ids)
+                        OR sgp_id = ANY(strat_name_ids)
+                ) AS strat_name_children
+            FROM (
+                SELECT
+                 q.map_id,
+                 array_agg(DISTINCT lsn.concept_id) AS concept_ids
+                FROM maps.%(scale)s q
+                JOIN strat_name_ids sni ON sni.map_id = q.map_id
+                JOIN macrostrat.lookup_strat_names lsn ON lsn.strat_name_id = ANY(sni.strat_name_ids)
+                WHERE source_id = %(source_id)s
+                GROUP BY q.map_id
+            ) sub
+            JOIN strat_name_ids sni ON sni.map_id = sub.map_id
          ),
 
          -- Group all the previous matches, and select the top and bottom interval for each map_id
@@ -328,12 +366,17 @@ class BurwellLookup(Base):
              q.name,
              COALESCE(unit_ids.unit_ids, '{}') unit_ids,
              COALESCE(strat_name_ids.strat_name_ids, '{}') strat_name_ids,
+             COALESCE(more_strat_names.concept_ids, '{}') concept_ids,
+             COALESCE(more_strat_names.strat_name_children, '{}') strat_name_children,
              COALESCE(lith_ids.lith_ids, '{}') lith_ids,
+             COALESCE(lith_ids.lith_types, '{}') lith_types,
+             COALESCE(lith_ids.lith_classes, '{}') lith_classes,
              t_interval,
              b_interval
            FROM maps.%(scale)s q
            LEFT JOIN unit_ids ON q.map_id = unit_ids.map_id
            LEFT JOIN strat_name_ids ON q.map_id = strat_name_ids.map_id
+           LEFT JOIN more_strat_names ON more_strat_names.map_id = q.map_id
            LEFT JOIN lith_ids ON q.map_id = lith_ids.map_id
            WHERE source_id = %(source_id)s
          ),
@@ -345,7 +388,11 @@ class BurwellLookup(Base):
              name,
              unit_ids,
              strat_name_ids,
+             concept_ids,
+             strat_name_children,
              lith_ids,
+             lith_types,
+             lith_classes,
              t_interval,
              b_interval,
 
@@ -361,7 +408,11 @@ class BurwellLookup(Base):
              name,
              unit_ids,
              strat_name_ids,
+             concept_ids,
+             strat_name_children,
              lith_ids,
+             lith_types,
+             lith_classes,
 
              ti.age_top,
              tb.age_bottom,
@@ -391,7 +442,11 @@ class BurwellLookup(Base):
          SELECT map_id,
           unit_ids,
           strat_name_ids,
+          concept_ids,
+          strat_name_children,
           lith_ids,
+          lith_types,
+          lith_classes,
 
           best_age_top,
           best_age_bottom,
@@ -410,8 +465,6 @@ class BurwellLookup(Base):
               )
             END AS color
           FROM best_times
-
-
         )
         """, {
             'scale': AsIs(self.scale),
