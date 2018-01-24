@@ -125,7 +125,7 @@ function getUnits(params, callback) {
     LEFT JOIN macrostrat.lookup_units ON units.id = lookup_units.unit_id
     LEFT JOIN macrostrat.units_sections ON units.id = units_sections.unit_id
     LEFT JOIN macrostrat.cols ON units_sections.col_id = cols.id
-    WHERE status_code = 'active' AND ${params.unit_ids ? 'units.id' : 'lookup_strat_names.strat_name_id'} = ANY($1)
+    WHERE ${params.unit_ids ? 'units.id' : 'lookup_strat_names.strat_name_id'} = ANY($1)
   `, [p], (error, result) => {
     if (error) return callback(error)
     callback(null, result.rows)
