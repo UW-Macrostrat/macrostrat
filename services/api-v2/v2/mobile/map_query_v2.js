@@ -394,6 +394,8 @@ module.exports = function(req, res, next) {
              }
              if (units.length) {
                mapPolygon.macrostrat = units[0]
+             } else if (params.strat_name_ids) {
+               mapPolygon.macrostrat = params
              } else {
                mapPolygon.macrostrat = {}
              }
