@@ -14,49 +14,49 @@ class Autocomplete(Base):
         self.mariadb['cursor'].execute("""
             CREATE TABLE autocomplete_new AS
               SELECT * FROM (
-                select id, econ as name, 'econs' as type from econs
+                select id, econ as name, 'econs' as type, 'econ' as category from econs
                 union
-                select 0 AS id, econ_type AS name, 'econ_types' AS type FROM econs GROUP BY econ_type
+                select 0 AS id, econ_type AS name, 'econ_types' AS type, 'econ' as category FROM econs GROUP BY econ_type
                 union
-                SELECT 0 AS id, econ_class AS name, 'econ_classes' AS type FROM econs GROUP BY econ_class
+                SELECT 0 AS id, econ_class AS name, 'econ_classes' AS type, 'econ' as category FROM econs GROUP BY econ_class
                 union
-                select id, environ as name, 'environments' as type from environs
+                select id, environ as name, 'environments' as type, 'environ' as category from environs
                 union
-                select 0 AS id, environ_type AS name, 'environment_types' AS type FROM environs GROUP BY environ_type
+                select 0 AS id, environ_type AS name, 'environment_types' AS type, 'environ' as category FROM environs GROUP BY environ_type
                 union
-                select 0 AS id, environ_class AS name, 'environment_classes' AS type FROM environs GROUP BY environ_class
+                select 0 AS id, environ_class AS name, 'environment_classes' AS type, 'environ' as category FROM environs GROUP BY environ_class
                 union
-                select id, concat(lith_att, ' (', att_type, ')') as name, 'lithology_attributes' as type from lith_atts
+                select id, concat(lith_att, ' (', att_type, ')') as name, 'lithology_attributes' as type, 'lith_att' as category from lith_atts
                 union
-                select id, project as name, 'projects' as type from projects
+                select id, project as name, 'projects' as type, 'project' as category from projects
                 union
-                SELECT DISTINCT strat_names_meta.concept_id AS id, name, 'strat_name_concepts' AS type
+                SELECT DISTINCT strat_names_meta.concept_id AS id, name, 'strat_name_concepts' AS type, 'strat_name' as category
                 FROM strat_names_meta
                 JOIN strat_names ON strat_names_meta.concept_id = strat_names.concept_id
                 union
-                (select id, CONCAT(strat_name, ' ', rank) AS name, 'strat_name_orphans' as type from strat_names WHERE concept_id = 0)
+                (select id, CONCAT(strat_name, ' ', rank) AS name, 'strat_name_orphans' as type, 'strat_name' as category from strat_names WHERE concept_id = 0)
                 union
-                select id, col_name as name, 'columns' as type from cols
+                select id, col_name as name, 'columns' as type, 'column' as category from cols
                 union
-                select id, col_group_long as name, 'groups' as type from col_groups
+                select id, col_group_long as name, 'groups' as type, 'group' as category from col_groups
                 union
-                SELECT id, lith AS name, 'lithologies' AS type
+                SELECT id, lith AS name, 'lithologies' AS type, 'lithology' as category
                 FROM liths
                 WHERE lith != lith_type AND lith != lith_class
                 union
-                SELECT 0 AS id, lith AS name, 'lithology_types' AS type
+                SELECT 0 AS id, lith AS name, 'lithology_types' AS type, 'lithology' as category
                 FROM liths
                 WHERE lith = lith_type
                 union
-                SELECT 0 AS id, lith AS name, 'lithology_classes' AS type
+                SELECT 0 AS id, lith AS name, 'lithology_classes' AS type, 'lithology' as category
                 FROM liths
                 WHERE lith = lith_class
                 union
-                select id, interval_name as name, 'intervals' as type from intervals
+                select id, interval_name as name, 'intervals' as type, 'interval' as category from intervals
                 union
-                SELECT id, mineral AS name, 'minerals' AS type from minerals
+                SELECT id, mineral AS name, 'minerals' AS type, 'mineral' as category from minerals
                 union
-                SELECT id, structure as name, 'structures' as type from structures
+                SELECT id, structure as name, 'structures' as type, 'structure' as category from structures
               ) i;
         """)
         self.mariadb['cursor'].close()

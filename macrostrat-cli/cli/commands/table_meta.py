@@ -943,4 +943,31 @@ tables = OrderedDict({
 
         """
     },
+
+    "autocomplete": {
+        "dump": """
+            SELECT id, name, type, category
+            FROM autocomplete
+        """,
+        "create": """
+            CREATE TABLE macrostrat.autocomplete_new (
+              id integer NOT NULL,
+              name text,
+              type text,
+              category text
+            );
+        """,
+        "insert": """
+            INSERT INTO macrostrat.autocomplete_new (id, name, type, category) VALUES (%(id)s, %(name)s, %(type)s, %(category)s)
+        """,
+        "index": """
+            CREATE INDEX ON macrostrat.autocomplete_new (id);
+            CREATE INDEX ON macrostrat.autocomplete_new (name);
+            CREATE INDEX ON macrostrat.autocomplete_new (type);
+            CREATE INDEX ON macrostrat.autocomplete_new (category);
+        """,
+        "process": """
+
+        """
+    },
 })

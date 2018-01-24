@@ -10,6 +10,7 @@ class Schlep(Base):
         Move a table from MariaDB to Postgres
 
     Available tables:
+        autocomplete
         col_areas
         refs
         cols
