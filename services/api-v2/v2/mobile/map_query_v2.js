@@ -54,7 +54,7 @@ function getUnits(params, callback) {
            SELECT json_agg(w) FROM (
                SELECT split_part(q, '|', 1)::int AS strat_name_id, split_part(q, '|', 2) AS rank_name
                FROM (
-                  SELECT unnest(array_agg(DISTINCT concat(unit_strat_names.strat_name_id, '|', lookup_strat_names.rank_name))) q
+                  SELECT unnest(array_agg(DISTINCT concat(lookup_strat_names.strat_name_id, '|', lookup_strat_names.rank_name))) q
                ) foo
            ) w
       ) as strat_names,
@@ -119,13 +119,13 @@ function getUnits(params, callback) {
           WHERE unit_id = ANY(array_agg(units.id))
         ) t
       ) AS environs
-    FROM macrostrat.units
-    JOIN macrostrat.lookup_units ON units.id = lookup_units.unit_id
-    LEFT JOIN macrostrat.unit_strat_names ON unit_strat_names.unit_id = units.id
+    FROM macrostrat.lookup_strat_names
+    LEFT JOIN macrostrat.unit_strat_names ON unit_strat_names.strat_name_id = lookup_strat_names.strat_name_id
+    LEFT JOIN macrostrat.units ON units.id = unit_strat_names.unit_id
+    LEFT JOIN macrostrat.lookup_units ON units.id = lookup_units.unit_id
     LEFT JOIN macrostrat.units_sections ON units.id = units_sections.unit_id
     LEFT JOIN macrostrat.cols ON units_sections.col_id = cols.id
-    LEFT JOIN macrostrat.lookup_strat_names ON lookup_strat_names.strat_name_id = unit_strat_names.strat_name_id
-    WHERE status_code = 'active' AND ${params.unit_ids ? 'units.id' : 'unit_strat_names.strat_name_id'} = ANY($1)
+    WHERE status_code = 'active' AND ${params.unit_ids ? 'units.id' : 'lookup_strat_names.strat_name_id'} = ANY($1)
   `, [p], (error, result) => {
     if (error) return callback(error)
     callback(null, result.rows)
@@ -395,7 +395,9 @@ module.exports = function(req, res, next) {
              if (units.length) {
                mapPolygon.macrostrat = units[0]
              } else if (params.strat_name_ids) {
-               mapPolygon.macrostrat = params
+               mapPolygon.macrostrat = {
+                 strat_names: params.strat_name_ids
+               }
              } else {
                mapPolygon.macrostrat = {}
              }
