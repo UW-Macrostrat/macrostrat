@@ -20,7 +20,7 @@
 
     <Datasource>
        <Parameter name="type"><![CDATA[postgis]]></Parameter>
-       <Parameter name="table"><![CDATA[(SELECT z.map_id, z.source_id, COALESCE(m.name, '') AS name, COALESCE(m.age, '') AS age, COALESCE(m.lith, '') AS lith, COALESCE(m.descrip, '') AS descrip, COALESCE(m.comments, '') AS comments, m.t_interval AS t_int_id, ta.interval_name AS t_int, l.best_age_top::numeric AS best_age_top, m.b_interval AS b_int_id, tb.interval_name AS b_int, l.best_age_bottom::numeric AS best_age_bottom, COALESCE(l.color, '#777777') AS color, z.geom
+       <Parameter name="table"><![CDATA[(SELECT z.map_id, z.source_id, COALESCE(m.name, '') AS name, COALESCE(m.age, '') AS age, COALESCE(m.lith, '') AS lith, COALESCE(m.descrip, '') AS descrip, COALESCE(m.comments, '') AS comments, m.t_interval AS t_int_id, ta.interval_name AS t_int, l.best_age_top::numeric AS best_age_top, m.b_interval AS b_int_id, tb.interval_name AS b_int, l.best_age_bottom::numeric AS best_age_bottom, COALESCE(l.color, '#777777') AS color,  l.lith_ids, l.lith_types, l.lith_classes, l.strat_name_ids, l.concept_ids, l.strat_name_children, z.geom
         FROM carto_new.tiny z
         JOIN maps.tiny m ON z.map_id = m.map_id
         LEFT JOIN lookup_tiny l on z.map_id = l.map_id
