@@ -4,6 +4,7 @@ const vtile = require('tilestrata-vtile')
 const vtileraster = require('tilestrata-vtile-raster')
 const etag = require('tilestrata-etag')
 const cartoProvider = require('./cartoProvider')
+const cartoProviderSlim = require('./cartoProviderSlim')
 const redisCache = require('./redisCache')
 const logger = require('./logger')
 
@@ -11,6 +12,17 @@ const MAX_ZOOM = 16
 module.exports = tilestrata.middleware({
   server: (function() {
     var strata = tilestrata()
+
+    strata.layer('carto-slim')
+      .route('*.mvt', {
+        maxZoom: MAX_ZOOM
+      })
+        .use(cartoProviderSlim())
+        // .use(redisCache({
+        //     dir: `${__dirname}/tilecache/carto-slim/vector`,
+        //     defaultTile: `${__dirname}/resources/tile.mvt`
+        //   }))
+        .use(etag())
 
     // Carto
     strata.layer('carto')
