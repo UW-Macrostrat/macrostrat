@@ -31,4 +31,9 @@ mobile.route("/map_query")
 mobile.route("/map_query_v2")
   .get(require("./map_query_v2"));
 
+mobile.route("/map_filter")
+  .get(require("./map_filter"));
+
+mobile.route("/autocomplete")
+  .get(require("./autocomplete"));
 module.exports =  mobile;
