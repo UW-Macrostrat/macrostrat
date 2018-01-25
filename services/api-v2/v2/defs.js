@@ -1208,7 +1208,7 @@
   },
   "/geologic_units/burwell": {
     "description": "Geologic map units from various data sources",
-    "visible": true,
+    "visible": false,
     "parent": "geologic_units",
     "options": {
       "parameters": {
@@ -1251,10 +1251,54 @@
       ]
     }
   },
-
+    "/geologic_units/map": {
+      "description": "Geologic map units from various data sources",
+      "visible": true,
+      "parent": "geologic_units",
+      "options": {
+        "parameters": {
+          "scale": "Can be 'small', 'medium', or 'large'",
+          "map_id": "integer, one or more polygon map_ids to search for",
+          "lat": "A valid latitude in decimal degrees",
+          "lng": "A valid longitude in decimal degrees",
+          "strat_name_id": "integer, one or more valid strat_name_ids from /defs/strat_names",
+          "unit_id": "integer, one or more valid unit_ids from /units",
+          "format": "Desired output format"
+        },
+        "output_formats": [
+          "json",
+          "csv",
+          "geojson",
+          "geojson_bare",
+          "topojson",
+          "topojson_bare"
+        ],
+        "examples": [
+          "/api/v2/geologic_units/map?lat=43&lng=-89.3"
+        ],
+        "fields": [
+          "map_id",
+          "source_id",
+          "name",
+          "strat_name",
+          "lith",
+          "descrip",
+          "comments",
+          "macro_units",
+          "strat_names",
+          "t_int_id",
+          "t_int_age",
+          "t_int_name",
+          "b_int_id",
+          "b_int_age",
+          "b_int_name",
+          "color"
+        ]
+      }
+    },
   "/geologic_units/burwell/points": {
     "description": "Query point features from geologic maps",
-    "visible": true,
+    "visible": false,
     "parent": "geologic_units",
     "options": {
       "parameters": {
@@ -1295,6 +1339,49 @@
     }
   },
 
+  "/geologic_units/map/points": {
+    "description": "Query point features from geologic maps",
+    "visible": true,
+    "parent": "geologic_units",
+    "options": {
+      "parameters": {
+        "point_id": "One or more comma-separated valid point_ids",
+        "point_type": "One or more comma-separated point_types",
+        "certainty": "A string to search the certainty field for (fuzzy)",
+        "comments": "A string to search the comments field for (fuzzy)",
+        "source_id": "One or more comma-separated source_ids",
+        "minlat": "A minimum latitude that represents the southwest corner of a bounding box (requires minlng, maxlat, and maxlng)",
+        "minlng": "A minimum longitude that represents the southwest corner of a bounding box (requires minlat, maxlat, and maxlng)",
+        "maxlat": "A maximum latitude that represents the northeast corner of a bounding box (requires minlat, minlng, and maxlng)",
+        "maxlng": "A maximum longitude that represents the northeast corner of a bounding box (requires minlat, minlng, and maxlat)",
+        "format": "Desired output format. Default is GeoJSON",
+        "sample": "Return a sample of data"
+      },
+      "output_formats": [
+        "geojson",
+        "geojson_bare",
+        "topojson",
+        "topojson_bare",
+        "csv"
+      ],
+      "examples": [
+        "/api/v2/geologic_units/map/points?point_id=1,2,3",
+        "/api/v2/geologic_units/map/points?point_type=joint",
+        "/api/v2/geologic_units/map/points?minlng=-112.7672&minlat=36.0627&maxlng=-112.5390&maxlat=36.1872"
+      ],
+      "fields": [
+        "point_id",
+        "strike",
+        "dip",
+        "dip_dir",
+        "point_type",
+        "certainty",
+        "comments",
+        "source_id"
+      ]
+    }
+  },
+
   "/geologic_units/burwell/nearby": {
     "description": "Stratigraphic names, lithologies, and time intervals near a coordinate in Burwell",
     "visible": false,
@@ -1311,6 +1398,29 @@
       ],
       "examples": [
         "/api/v2/geologic_units/burwell?lat=43&lng=-89.3"
+      ],
+      "fields": [
+
+      ]
+    }
+  },
+
+  "/geologic_units/map/nearby": {
+    "description": "Stratigraphic names, lithologies, and time intervals near a coordinate in Macrostrat",
+    "visible": false,
+    "parent": "geologic_units",
+    "options": {
+      "parameters": {
+        "lat": "A valid latitude in decimal degrees",
+        "lng": "A valid longitude in decimal degrees",
+        "format": "Desired output format"
+      },
+      "output_formats": [
+        "json",
+        "csv"
+      ],
+      "examples": [
+        "/api/v2/geologic_units/map?lat=43&lng=-89.3"
       ],
       "fields": [
 

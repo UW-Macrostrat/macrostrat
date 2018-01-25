@@ -55,10 +55,21 @@ api.route("/geologic_units/burwell")
     require("./geologic_units_burwell")(req, res, next);
   });
 
+api.route("/geologic_units/map")
+  .get(function(req, res, next) {
+    require("./geologic_units_burwell")(req, res, next);
+  });
+
 api.route("/geologic_units/burwell/nearby")
   .get(require("./geologic_units_burwell_nearby"));
 
+api.route("/geologic_units/map/nearby")
+  .get(require("./geologic_units_burwell_nearby"));
+
 api.route("/geologic_units/burwell/points")
+  .get(require("./geologic_units_burwell_points"));
+
+api.route("/geologic_units/map/points")
   .get(require("./geologic_units_burwell_points"));
 
 api.route("/elevation")
