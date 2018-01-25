@@ -16,15 +16,24 @@ class Autocomplete(Base):
               SELECT * FROM (
                 select id, econ as name, 'econs' as type, 'econ' as category from econs
                 union
-                select 0 AS id, econ_type AS name, 'econ_types' AS type, 'econ' as category FROM econs GROUP BY econ_type
+                select 0 AS id, econ_type AS name, 'econ_types' AS type, 'econ' as category
+                FROM econs
+                WHERE econ != econ_type 
+                GROUP BY econ_type
                 union
                 SELECT 0 AS id, econ_class AS name, 'econ_classes' AS type, 'econ' as category FROM econs GROUP BY econ_class
                 union
-                select id, environ as name, 'environments' as type, 'environ' as category from environs
+                select id, environ as name, 'environments' as type, 'environ' as category
+                FROM environs
+                WHERE environ != environ_class
                 union
-                select 0 AS id, environ_type AS name, 'environment_types' AS type, 'environ' as category FROM environs GROUP BY environ_type
+                select 0 AS id, environ_type AS name, 'environment_types' AS type, 'environ' as category
+                FROM environs
+                GROUP BY environ_type
                 union
-                select 0 AS id, environ_class AS name, 'environment_classes' AS type, 'environ' as category FROM environs GROUP BY environ_class
+                select 0 AS id, environ_class AS name, 'environment_classes' AS type, 'environ' as category
+                FROM environs
+                GROUP BY environ_class
                 union
                 select id, concat(lith_att, ' (', att_type, ')') as name, 'lithology_attributes' as type, 'lith_att' as category from lith_atts
                 union
@@ -44,13 +53,14 @@ class Autocomplete(Base):
                 FROM liths
                 WHERE lith != lith_type AND lith != lith_class
                 union
-                SELECT 0 AS id, lith AS name, 'lithology_types' AS type, 'lithology' as category
+                SELECT 0 AS id, lith_type AS name,  'lithology_types' AS type, 'lithology' AS category
                 FROM liths
-                WHERE lith = lith_type
+                WHERE lith_type != lith_class
+                GROUP BY lith_type
                 union
-                SELECT 0 AS id, lith AS name, 'lithology_classes' AS type, 'lithology' as category
+                SELECT 0 AS id, lith_class AS name, 'lithology_classes' AS type, 'lithology' as category
                 FROM liths
-                WHERE lith = lith_class
+                GROUP BY lith_class
                 union
                 select id, interval_name as name, 'intervals' as type, 'interval' as category from intervals
                 union
