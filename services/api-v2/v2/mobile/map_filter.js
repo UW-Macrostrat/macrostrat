@@ -20,6 +20,10 @@ module.exports = (req, res, next) => {
     where.push(`lith_types && $${where.length + 1}`)
     params.push(req.query.lith_type.split(','))
   }
+  if (req.query.lith_id) {
+    where.push(`lith_ids && $${where.length + 1}`)
+    params.push(req.query.lith_id.split(','))
+  }
 
   let sql = `
     SELECT map_id

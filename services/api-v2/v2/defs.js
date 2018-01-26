@@ -1775,6 +1775,26 @@
     }
   },
 
+  "/mobile/map_filter": {
+    "description": "Filter burwell polygons",
+    "parent": "mobile",
+    "visible": false,
+    "options": {
+      "parameters": {
+        "lith_id": "integer, one or more comma-separated lithology ids",
+      },
+      "output_formats": [
+        "json"
+      ],
+      "examples": [
+
+      ],
+      "fields": [
+
+      ]
+    }
+  },
+
   "/editing": {
     "description": "Routes for updating Macrostrat data",
     "visible": false
