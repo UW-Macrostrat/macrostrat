@@ -54,6 +54,6 @@ module.exports = (req, res, next) => {
   `
   larkin.queryPg('burwell', sql, params, (error, result) => {
     if (error) return larkin.error(req, res, next)
-    res.json(result.rows.map(row => { return row.legend_id }))
+    res.json(result.rows.map(row => { return row.legend_id }).filter(d => { if (d) return d }))
   })
 }
