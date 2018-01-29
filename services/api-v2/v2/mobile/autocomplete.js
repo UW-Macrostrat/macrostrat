@@ -63,7 +63,7 @@ module.exports = (req, res, next) => {
             return {
               type: 'place',
               category: 'place',
-              place_type: (place.place_type && place.place_type.length) ? place.place_type[0] : ''
+              place_type: (place.place_type && place.place_type.length) ? place.place_type[0] : '',
               name: place.place_name,
               bbox: place.bbox || [],
               center: place.center || []
