@@ -1,5 +1,7 @@
 const api = require('../api')
 const larkin = require('../larkin')
+const https = require('https')
+const async = require('async')
 
 module.exports = (req, res, next) => {
   if (Object.keys(req.query).length < 1) {
@@ -42,18 +44,44 @@ module.exports = (req, res, next) => {
   } else {
     foundCategories = categories
   }
-
   // if ((Object.keys(req.query).indexOf('query') == -1) || (Object.keys(req.query).indexOf('sample') == -1)) {
   //   return larkin.info(req, res, next)
   // }
 
-  larkin.queryPg('burwell', `
-    SELECT id, name, type, category
-    FROM macrostrat.autocomplete
-    WHERE name ILIKE $1
-      AND category = ANY($2)
-    LIMIT 100
-  `, [`${req.query.query}%`, foundCategories], (error, result) => {
+  async.parallel({
+    places: (callback) => {
+      console.log(`https://api.mapbox.com/geocoding/v5/mapbox.places/${req.query.query}.json?access_token=pk.eyJ1IjoiamN6YXBsZXdza2kiLCJhIjoiY2pjMjBiYWRjMDh2ZzJ4cHIwMjdyeWpieCJ9.EO2U9fSUuSPFvJ8LBQ4QSg&types=country,region,locality,place,poi.landmark`)
+      https.get(`https://api.mapbox.com/geocoding/v5/mapbox.places/${req.query.query}.json?access_token=pk.eyJ1IjoiamN6YXBsZXdza2kiLCJhIjoiY2pjMjBiYWRjMDh2ZzJ4cHIwMjdyeWpieCJ9.EO2U9fSUuSPFvJ8LBQ4QSg&types=country,region,locality,place,poi.landmark`, res => {
+        res.setEncoding('utf8')
+        let body = ''
+        res.on('data', data => {
+          body += data
+        })
+        res.on('end', () => {
+          body = JSON.parse(body)
+          callback(null, body.features.map(place => {
+            place['type'] = 'place'
+            place['category'] = 'place'
+            return place
+          }))
+        })
+      })
+    },
+    macrostrat: (callback) => {
+      larkin.queryPg('burwell', `
+        SELECT id, name, type, category
+        FROM macrostrat.autocomplete
+        WHERE name ILIKE $1
+          AND category = ANY($2)
+        LIMIT 100
+      `, [`${req.query.query}%`, foundCategories], (error, result) => {
+        if (error) {
+          return callback(error)
+        }
+        callback(null, result.rows)
+      })
+    }
+  }, (error, results) => {
     if (error) {
       console.log(error)
       return larkin.error(req, res, next, error)
@@ -63,7 +91,7 @@ module.exports = (req, res, next) => {
       format: 'json',
       compact: true
     }, {
-      data: result.rows
+      data: results.macrostrat.concat(results.places)
     })
   })
 }
