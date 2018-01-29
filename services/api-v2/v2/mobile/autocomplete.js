@@ -60,9 +60,14 @@ module.exports = (req, res, next) => {
         res.on('end', () => {
           body = JSON.parse(body)
           callback(null, body.features.map(place => {
-            place['type'] = 'place'
-            place['category'] = 'place'
-            return place
+            return {
+              type: 'place',
+              category: 'place',
+              place_type: (place.place_type && place.place_type.length) ? place.place_type[0] : ''
+              name: place.place_name,
+              bbox: place.bbox || [],
+              center: place.center || []
+            }
           }))
         })
       })
