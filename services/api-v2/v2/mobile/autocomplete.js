@@ -50,7 +50,6 @@ module.exports = (req, res, next) => {
 
   async.parallel({
     places: (callback) => {
-      console.log(`https://api.mapbox.com/geocoding/v5/mapbox.places/${req.query.query}.json?access_token=pk.eyJ1IjoiamN6YXBsZXdza2kiLCJhIjoiY2pjMjBiYWRjMDh2ZzJ4cHIwMjdyeWpieCJ9.EO2U9fSUuSPFvJ8LBQ4QSg&types=country,region,locality,place,poi.landmark`)
       https.get(`https://api.mapbox.com/geocoding/v5/mapbox.places/${req.query.query}.json?access_token=pk.eyJ1IjoiamN6YXBsZXdza2kiLCJhIjoiY2pjMjBiYWRjMDh2ZzJ4cHIwMjdyeWpieCJ9.EO2U9fSUuSPFvJ8LBQ4QSg&types=country,region,locality,place,poi.landmark`, res => {
         res.setEncoding('utf8')
         let body = ''

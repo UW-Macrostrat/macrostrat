@@ -7,7 +7,9 @@ module.exports = (req, res, next) => {
     'lith_class',
     'lith_type',
     'lith',
-    'lith_id'
+    'lith_id',
+    'strat_name_id',
+    'concept_id'
   ]
 
   let where = []
@@ -24,21 +26,29 @@ module.exports = (req, res, next) => {
     where.push(`lith_ids && $${where.length + 1}`)
     params.push(req.query.lith_id.split(','))
   }
+  if (req.query.strat_name_id) {
+    where.push(`strat_name_children && $${where.length + 1}`)
+    params.push(req.query.strat_name_id.split(','))
+  }
+  if (req.query.concept_id) {
+    where.push(`concept_ids && $${where.length + 1}`)
+    params.push(req.query.concept_id.split(','))
+  }
 
   let sql = `
-    SELECT map_id
+    SELECT DISTINCT legend_id
     FROM lookup_large
     WHERE ${where.join(' AND ')}
     UNION ALL
-    SELECT map_id
+    SELECT DISTINCT legend_id
     FROM lookup_medium
     WHERE ${where.join(' AND ')}
     UNION ALL
-    SELECT map_id
+    SELECT DISTINCT legend_id
     FROM lookup_small
     WHERE ${where.join(' AND ')}
     UNION ALL
-    SELECT map_id
+    SELECT DISTINCT legend_id
     FROM lookup_tiny
     WHERE ${where.join(' AND ')}
   `
