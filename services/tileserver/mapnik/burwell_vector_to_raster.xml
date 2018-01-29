@@ -86442,6 +86442,130 @@
   <Rule>
     <MaxScaleDenominator>1500</MaxScaleDenominator>
     <MinScaleDenominator>750</MinScaleDenominator>
+    <Filter>([color] = '#94DB59')</Filter>
+    <LineSymbolizer stroke-width="5.5" stroke="#777777" />
+    <PolygonSymbolizer fill="#94DB59" />
+  </Rule>
+  <Rule>
+    <MaxScaleDenominator>2500</MaxScaleDenominator>
+    <MinScaleDenominator>1500</MinScaleDenominator>
+    <Filter>([color] = '#94DB59')</Filter>
+    <LineSymbolizer stroke-width="5" stroke="#777777" />
+    <PolygonSymbolizer fill="#94DB59" />
+  </Rule>
+  <Rule>
+    <MaxScaleDenominator>5000</MaxScaleDenominator>
+    <MinScaleDenominator>2500</MinScaleDenominator>
+    <Filter>([color] = '#94DB59')</Filter>
+    <LineSymbolizer stroke-width="4.5" stroke="#777777" />
+    <PolygonSymbolizer fill="#94DB59" />
+  </Rule>
+  <Rule>
+    <MaxScaleDenominator>12500</MaxScaleDenominator>
+    <MinScaleDenominator>5000</MinScaleDenominator>
+    <Filter>([color] = '#94DB59')</Filter>
+    <LineSymbolizer stroke-width="4" stroke="#777777" />
+    <PolygonSymbolizer fill="#94DB59" />
+  </Rule>
+  <Rule>
+    <MaxScaleDenominator>25000</MaxScaleDenominator>
+    <MinScaleDenominator>12500</MinScaleDenominator>
+    <Filter>([color] = '#94DB59')</Filter>
+    <LineSymbolizer stroke-width="3.5" stroke="#777777" />
+    <PolygonSymbolizer fill="#94DB59" />
+  </Rule>
+  <Rule>
+    <MaxScaleDenominator>50000</MaxScaleDenominator>
+    <MinScaleDenominator>25000</MinScaleDenominator>
+    <Filter>([color] = '#94DB59')</Filter>
+    <LineSymbolizer stroke-width="3" stroke="#777777" />
+    <PolygonSymbolizer fill="#94DB59" />
+  </Rule>
+  <Rule>
+    <MaxScaleDenominator>100000</MaxScaleDenominator>
+    <MinScaleDenominator>50000</MinScaleDenominator>
+    <Filter>([color] = '#94DB59')</Filter>
+    <LineSymbolizer stroke-width="2.5" stroke="#777777" />
+    <PolygonSymbolizer fill="#94DB59" />
+  </Rule>
+  <Rule>
+    <MaxScaleDenominator>200000</MaxScaleDenominator>
+    <MinScaleDenominator>100000</MinScaleDenominator>
+    <Filter>([color] = '#94DB59')</Filter>
+    <LineSymbolizer stroke-width="2" stroke="#777777" />
+    <PolygonSymbolizer fill="#94DB59" />
+  </Rule>
+  <Rule>
+    <MaxScaleDenominator>400000</MaxScaleDenominator>
+    <MinScaleDenominator>200000</MinScaleDenominator>
+    <Filter>([color] = '#94DB59')</Filter>
+    <LineSymbolizer stroke-width="0.85" stroke="#777777" />
+    <PolygonSymbolizer fill="#94DB59" />
+  </Rule>
+  <Rule>
+    <MaxScaleDenominator>750000</MaxScaleDenominator>
+    <MinScaleDenominator>400000</MinScaleDenominator>
+    <Filter>([color] = '#94DB59')</Filter>
+    <LineSymbolizer stroke-width="0.7" stroke="#777777" />
+    <PolygonSymbolizer fill="#94DB59" />
+  </Rule>
+  <Rule>
+    <MaxScaleDenominator>1500000</MaxScaleDenominator>
+    <MinScaleDenominator>750000</MinScaleDenominator>
+    <Filter>([color] = '#94DB59')</Filter>
+    <LineSymbolizer stroke-width="1" stroke="#777777" />
+    <PolygonSymbolizer fill="#94DB59" />
+  </Rule>
+  <Rule>
+    <MaxScaleDenominator>3000000</MaxScaleDenominator>
+    <MinScaleDenominator>1500000</MinScaleDenominator>
+    <Filter>([color] = '#94DB59')</Filter>
+    <LineSymbolizer stroke-width="0.8" stroke="#777777" />
+    <PolygonSymbolizer fill="#94DB59" />
+  </Rule>
+  <Rule>
+    <MaxScaleDenominator>6500000</MaxScaleDenominator>
+    <MinScaleDenominator>3000000</MinScaleDenominator>
+    <Filter>([color] = '#94DB59')</Filter>
+    <LineSymbolizer stroke-width="0.2" stroke="#777777" />
+    <PolygonSymbolizer fill="#94DB59" />
+  </Rule>
+  <Rule>
+    <MaxScaleDenominator>12500000</MaxScaleDenominator>
+    <MinScaleDenominator>6500000</MinScaleDenominator>
+    <Filter>([color] = '#94DB59')</Filter>
+    <LineSymbolizer stroke-width="0.1" stroke="#777777" />
+    <PolygonSymbolizer fill="#94DB59" />
+  </Rule>
+  <Rule>
+    <MaxScaleDenominator>25000000</MaxScaleDenominator>
+    <MinScaleDenominator>12500000</MinScaleDenominator>
+    <Filter>([color] = '#94DB59')</Filter>
+    <LineSymbolizer stroke-width="0.8" stroke="#777777" />
+    <PolygonSymbolizer fill="#94DB59" />
+  </Rule>
+  <Rule>
+    <MaxScaleDenominator>50000000</MaxScaleDenominator>
+    <MinScaleDenominator>25000000</MinScaleDenominator>
+    <Filter>([color] = '#94DB59')</Filter>
+    <LineSymbolizer stroke-width="0.4" stroke="#777777" />
+    <PolygonSymbolizer fill="#94DB59" />
+  </Rule>
+  <Rule>
+    <MinScaleDenominator>50000000</MinScaleDenominator>
+    <Filter>([color] = '#94DB59')</Filter>
+    <LineSymbolizer stroke-width="0.3" stroke="#777777" />
+    <PolygonSymbolizer fill="#94DB59" />
+  </Rule>
+  <Rule>
+    <MaxScaleDenominator>750</MaxScaleDenominator>
+    <Filter>([color] = '#94DB59')</Filter>
+    <LineSymbolizer stroke="#777777" />
+    <PolygonSymbolizer fill="#94DB59" />
+  </Rule>
+  <Rule>
+    <MaxScaleDenominator>1500</MaxScaleDenominator>
+    <MinScaleDenominator>750</MinScaleDenominator>
     <Filter>([color] = '#FD9A52')</Filter>
     <LineSymbolizer stroke-width="5.5" stroke="#777777" />
     <PolygonSymbolizer fill="#fd9a52" />
