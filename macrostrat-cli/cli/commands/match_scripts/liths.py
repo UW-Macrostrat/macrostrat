@@ -46,7 +46,11 @@ class Liths(Base):
             SELECT legend_id, liths.id, %(basis)s
             FROM maps.legend, macrostrat.liths
             WHERE source_id = %(source_id)s
-             AND legend.%(field)s ~* concat('\y', liths.lith, '\y')
+             AND (
+                legend.%(field)s ~* concat('\y', liths.lith, '\y')
+                OR
+                legend.%(field)s ~* concat('\y', liths.lith, 's', '\y')
+            )
         ''', {
             'source_id': self.source_id,
             'basis': field,
