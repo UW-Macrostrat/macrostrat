@@ -10,6 +10,7 @@ class Match(Base):
     Available scripts:
         strat_names
         units
+        liths
     Usage:
       macrostrat match <script> <source_id>
       macrostrat match -h | --help
