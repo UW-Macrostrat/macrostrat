@@ -4,6 +4,7 @@ from web_geom import WebGeom
 from burwell_lookup import BurwellLookup
 from ..match_scripts import strat_names
 from ..match_scripts import units
+from ..match_scripts import liths
 from carto import Carto
 from carto_lines import CartoLines
 from ..seed import Seed
@@ -63,6 +64,9 @@ class MapSource(Base):
 
         u = units({})
         u.run(source_id)
+
+        l = liths({})
+        l.run(source_id)
 
         burwell_lookup = BurwellLookup({})
         burwell_lookup.run(source_id)
