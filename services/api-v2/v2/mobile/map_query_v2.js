@@ -40,6 +40,12 @@ const priorities = {
   'large': ['large', 'medium', 'small', 'tiny']
 }
 
+const scaleIsIn = {
+  'tiny': ['tiny'],
+  'small': ['small', 'tiny'],
+  'medium': ['medium', 'small'],
+  'large': ['medium', 'large']
+}
 // https://msdn.microsoft.com/en-us/library/bb259689.aspx
 // Calcucate m/px given a latitude and a zoom level
 function tolerance(lat, z) {
@@ -161,8 +167,19 @@ function getBestFit(z, data) {
 }
 
 function buildSQL(scale, where) {
+  let scaleJoin = scaleIsIn[scale].map(s => {
+    return `
+    SELECT * FROM maps.${s}
+    `
+  }).join(' UNION ALL ')
+  let lookupJoin = scaleIsIn[scale].map(s => {
+    return `
+    SELECT * FROM lookup_${s}
+    `
+  }).join(' UNION ALL ')
+
   return `
-    (SELECT
+    SELECT
       m.map_id,
       m.source_id,
       COALESCE(m.name, '') AS name,
@@ -211,14 +228,19 @@ function buildSQL(scale, where) {
         COALESCE(sources.ref_year, '') ref_year,
         COALESCE(sources.ref_source, '') ref_source,
         COALESCE(sources.isbn_doi, '') isbn_doi) r)::jsonb AS ref
-      FROM maps.${scale} m
+      FROM carto_new.${scale} y
+      JOIN (
+        ${scaleJoin}
+      ) m ON y.map_id = m.map_id
       JOIN maps.sources ON m.source_id = sources.source_id
       LEFT JOIN macrostrat.intervals ti ON m.t_interval = ti.id
       LEFT JOIN macrostrat.intervals tb ON m.b_interval = tb.id
-      LEFT JOIN lookup_${scale} mm ON mm.map_id = m.map_id
+      LEFT JOIN (
+        ${lookupJoin}
+      ) mm ON mm.map_id = m.map_id
       ${where}
       ORDER BY sources.new_priority DESC
-    )
+
   `
 }
 
@@ -330,7 +352,7 @@ module.exports = function(req, res, next) {
     },
     burwell: function(cb) {
 
-      let where = [`ST_Intersects(m.geom, ST_GeomFromText($1, 4326))`]
+      let where = [`ST_Intersects(y.geom, ST_GeomFromText($1, 4326))`]
       let params = [`SRID=4326;POINT(${req.query.lng} ${req.query.lat})`]
 
       // If no valid parameters passed, return an Error
@@ -340,43 +362,12 @@ module.exports = function(req, res, next) {
 
       where = ` WHERE ${where.join(' AND ')}`
 
-      var scaleSQL = Object.keys(priorities).map(function(scale) {
-        return buildSQL(scale, where);
-      }).join(' UNION ALL ');
-
-      var toRun = `SELECT * FROM ( ${scaleSQL} ) doit`;
-      larkin.queryPg('burwell', toRun, params, (error, result) => {
+      larkin.queryPg('burwell',  buildSQL(scaleLookup[req.query.z], where), params, (error, result) => {
         if (error) {
           return cb(error)
         }
 
-        let currentScale = scaleLookup[req.query.z]
-        let returnedScales = [...new Set(result.rows.map(row => { return row.scale }))]
-
-        var targetScales = []
-
-        // Iterate on possible scales given our z
-        for (var i = 0; i < priorities[currentScale].length; i++) {
-          // If that scale is present, record it
-           if (returnedScales.indexOf(priorities[currentScale][i]) > -1) {
-             targetScales.push(priorities[currentScale][i])
-             if (currentScale != 'tiny' && currentScale != 'small') {
-               break
-             } else if (targetScales.length > 1) {
-               break
-             }
-           }
-         }
-
-         // All the map polygons of the best appropriate scale
-         var bestFit = result.rows.filter(d => {
-           if (targetScales.indexOf(d.scale) > -1) {
-             delete d.scale
-             return d
-           }
-         })
-
-         async.mapLimit(bestFit, 3, (mapPolygon, done) => {
+         async.mapLimit(result.rows, 3, (mapPolygon, done) => {
            let params = {}
            if (mapPolygon.macro_units.length) {
              params = { 'unit_ids': mapPolygon.macro_units  }
