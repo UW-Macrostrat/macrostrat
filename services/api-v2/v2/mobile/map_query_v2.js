@@ -228,52 +228,60 @@ function buildSQL(scale, where) {
         COALESCE(sources.ref_year, '') ref_year,
         COALESCE(sources.ref_source, '') ref_source,
         COALESCE(sources.isbn_doi, '') isbn_doi) r)::jsonb AS ref
-      FROM carto_new.${scale} y
-      JOIN (
-        ${scaleJoin}
-      ) m ON y.map_id = m.map_id
-      JOIN maps.sources ON m.source_id = sources.source_id
-      LEFT JOIN macrostrat.intervals ti ON m.t_interval = ti.id
-      LEFT JOIN macrostrat.intervals tb ON m.b_interval = tb.id
-      LEFT JOIN (
-        ${lookupJoin}
-      ) mm ON mm.map_id = m.map_id
-      ${where}
-      ORDER BY sources.new_priority DESC
-
+    FROM carto_new.${scale} y
+    JOIN (
+      ${scaleJoin}
+    ) m ON y.map_id = m.map_id
+    JOIN maps.sources ON m.source_id = sources.source_id
+    LEFT JOIN macrostrat.intervals ti ON m.t_interval = ti.id
+    LEFT JOIN macrostrat.intervals tb ON m.b_interval = tb.id
+    LEFT JOIN (
+      ${lookupJoin}
+    ) mm ON mm.map_id = m.map_id
+    ${where}
+    ORDER BY sources.new_priority DESC
   `
 }
 
 function buildLineSQL(scale) {
+  let scaleJoin = scaleIsIn[scale].map(s => {
+    return `
+    SELECT * FROM lines.${s}
+    `
+  }).join(' UNION ALL ')
+
   return `
-    (
-      SELECT line_id, source_id, name, type, direction, descrip, scale, distance
-      FROM (
-          SELECT *, row_number() OVER (PARTITION BY source_id ORDER BY distance)
-          FROM (
-              SELECT
-                m.line_id,
-                m.source_id,
-                COALESCE(m.name, '') AS name,
-                COALESCE(m.new_type, '') AS type,
-                COALESCE(m.new_direction, '') AS direction,
-                COALESCE(m.descrip, '') AS descrip,
-                '${scale}' AS scale,
-                ST_Distance_Spheroid(m.geom, $1, 'SPHEROID["WGS 84",6378137,298.257223563]') AS distance
-              FROM lines.${scale} m
-              ORDER BY geom <-> $1
-              LIMIT 10
-          ) foo
-          ORDER BY distance
-      ) bar WHERE row_number = 1
-    )
+    SELECT
+      y.line_id,
+      bar.source_id,
+      COALESCE(y.name, '') AS name,
+      COALESCE(y.new_type, '') AS type,
+      COALESCE(y.new_direction, '') AS direction,
+      COALESCE(y.descrip, '') AS descrip,
+      '${scale}' AS scale,
+      bar.distance
+    FROM (
+        SELECT *, row_number() OVER (PARTITION BY source_id ORDER BY distance)
+        FROM (
+            SELECT
+              m.line_id,
+              m.source_id,
+              ST_Distance_Spheroid(m.geom, $1, 'SPHEROID["WGS 84",6378137,298.257223563]') AS distance
+            FROM carto_new.lines_${scale} m
+            ORDER BY geom <-> $1
+            LIMIT 10
+        ) foo
+        ORDER BY distance
+    ) bar
+    JOIN ( ${scaleJoin} ) y ON y.line_id = bar.line_id
+    WHERE row_number = 1
   `
 }
 
 
 // Accepts a longitude, a latitude, and a zoom level
 // Returns the proper burwell data and macrostrat data
-module.exports = function(req, res, next) {
+module.exports = (req, res, next) => {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
@@ -303,41 +311,9 @@ module.exports = function(req, res, next) {
     },
 
     lines: (cb) => {
-
-      var scaleSQL = Object.keys(priorities).map(scale => {
-        return buildLineSQL(scale)
-      }).join(' UNION ALL ')
-
-
-      larkin.queryPg('burwell', `SELECT * FROM ( ${scaleSQL} ) doit`, [ `SRID=4326;POINT(${req.query.lng} ${req.query.lat})` ], (error, result) => {
+      larkin.queryPg('burwell', buildLineSQL(scaleLookup[req.query.z]), [ `SRID=4326;POINT(${req.query.lng} ${req.query.lat})` ], (error, result) => {
         if (error) return cb(error)
-
-        let currentScale = scaleLookup[req.query.z]
-        let returnedScales = [...new Set(result.rows.map(row => { return row.scale }))]
-        let targetScales = []
-
-        // Iterate on possible scales given our z
-        for (var i = 0; i < priorities[currentScale].length; i++) {
-          // If that scale is present, record it
-           if (returnedScales.indexOf(priorities[currentScale][i]) > -1) {
-             targetScales.push(priorities[currentScale][i])
-             if (currentScale != 'tiny' && currentScale != 'small') {
-               break
-             } else if (targetScales.length > 1) {
-               break
-             }
-           }
-         }
-
-         // All the map polygons of the best appropriate scale
-         let bestFits = result.rows.filter(d => {
-           if (targetScales.indexOf(d.scale) > -1) {
-             delete d.scale
-             return d
-           }
-         })
-
-         bestFits = bestFits.filter(line => {
+        result.rows = result.rows.filter(line => {
            // Verify that the best fit is within a clickable tolerance
            if (line.hasOwnProperty('distance') && line.distance <= (tolerance(req.query.lat, req.query.z) * 20 )) {
              return line
@@ -347,10 +323,10 @@ module.exports = function(req, res, next) {
            return line
          })
 
-         cb(null, bestFits)
+         cb(null, result.rows)
       })
     },
-    burwell: function(cb) {
+    burwell: (cb) => {
 
       let where = [`ST_Intersects(y.geom, ST_GeomFromText($1, 4326))`]
       let params = [`SRID=4326;POINT(${req.query.lng} ${req.query.lat})`]
@@ -405,7 +381,7 @@ module.exports = function(req, res, next) {
 
       })
     }
-  }, function(error, data) {
+  }, (error, data) => {
     if (error) return larkin.error(req, res, next, error || null)
 
     for (let i = 0; i < data.burwell.length; i++) {
