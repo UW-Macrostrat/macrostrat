@@ -390,7 +390,7 @@ class BurwellLookup(Base):
             -- if `strat_names` and NOT all are matched
                 -- Use `lith` matches
         ---------------
-        
+
         -- Find and aggregate best lith_ids for each map_id
         -- **NB:** Only uses lith matches from the map!
         --         All lithologies matches to matched units are ommitted
@@ -398,7 +398,7 @@ class BurwellLookup(Base):
          lith_ids AS (
             SELECT
                 q.map_id,
-                array_agg(DISTINCT lith_id) AS lith_ids,
+                array_agg(DISTINCT lith_equiv) AS lith_ids,
                 array_agg(DISTINCT liths.lith_type) AS lith_types,
                 array_agg(DISTINCT liths.lith_class) AS lith_classes
             FROM (
