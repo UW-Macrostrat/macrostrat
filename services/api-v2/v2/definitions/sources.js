@@ -9,30 +9,6 @@ module.exports = function(req, res, next, cb) {
     return larkin.info(req, res, next);
   }
 
-  var sql = `
-  SELECT
-    source_id,
-    name,
-    COALESCE(url, '') url,
-    COALESCE(ref_title, '') ref_title,
-    COALESCE(authors, '') authors,
-    COALESCE(ref_year, '') ref_year,
-    COALESCE(ref_source, '') ref_source,
-    COALESCE(isbn_doi, '') isbn_doi,
-    COALESCE(scale, '') scale,
-    features,
-    area
-    ${api.acceptedFormats.geo[req.query.format] ? ', web_geom AS geom' : ''}
-  FROM maps.sources
-  JOIN (values
-    ('tiny', 0),
-    ('small', 1),
-    ('medium', 2),
-    ('large', 3)
-   ) ord (s, ordering) ON sources.scale = ord.s
-   ORDER BY ordering, new_priority
-  `
-
   var params = []
   var where = []
 
@@ -62,17 +38,30 @@ module.exports = function(req, res, next, cb) {
   // Remove any empty sources and etopo1
   where.push("sources.rgeom IS NOT NULL");
 
-  sql += (where.length) ? (" WHERE " + where.join(" AND ")) : "";
-
-  if (api.acceptedFormats.geo[req.query.format]) {
-    sql += " ORDER BY CASE scale when 'tiny' THEN 1 WHEN 'small' THEN 2 WHEN 'medium' THEN 3 WHEN 'large' THEN 4 ELSE 5 END";
-  } else {
-    sql += " ORDER BY source_id";
-  }
-
-  if ("sample" in req.query) {
-    sql += " LIMIT 5";
-  }
+  var sql = `
+  SELECT
+    source_id,
+    name,
+    COALESCE(url, '') url,
+    COALESCE(ref_title, '') ref_title,
+    COALESCE(authors, '') authors,
+    COALESCE(ref_year, '') ref_year,
+    COALESCE(ref_source, '') ref_source,
+    COALESCE(isbn_doi, '') isbn_doi,
+    COALESCE(scale, '') scale,
+    features,
+    area
+    ${api.acceptedFormats.geo[req.query.format] ? ', web_geom AS geom' : ''}
+  FROM maps.sourcesJOIN (values
+    ('tiny', 0),
+    ('small', 1),
+    ('medium', 2),
+    ('large', 3)
+   ) ord (s, ordering) ON sources.scale = ord.s
+   ${(where.length) ? (" WHERE " + where.join(" AND ")) : ""}
+   ORDER BY ordering, new_priority
+   ${('sample' in req.query) ? 'LIMIT 5': ''}
+  `
 
   larkin.queryPg("burwell", sql, params, function(error, result) {
     if (error) {
