@@ -2,6 +2,7 @@ from ..base import Base
 from rgeom import RGeom
 from web_geom import WebGeom
 from burwell_lookup import BurwellLookup
+from legend import Legend
 from ..match_scripts import strat_names
 from ..match_scripts import units
 from ..match_scripts import liths
@@ -19,9 +20,11 @@ class MapSource(Base):
             + macrostrat process web_geom <source_id>
             + macrostrat match strat_names <source_id>
             + macrostrat match units <source_id>
+            + macrostrat process legend <source_id>
             + macrostrat process burwell_lookup <source_id>
             + macrostrat process carto <source_id>
             + macrostrat process carto_lines <source_id>
+            + macrostrat seed <source_id>
 
     Usage:
       macrostrat process map_source <source_id>
@@ -67,6 +70,9 @@ class MapSource(Base):
 
         l = liths({})
         l.run(source_id)
+
+        leg = Legend({})
+        leg.run(source_id)
 
         burwell_lookup = BurwellLookup({})
         burwell_lookup.run(source_id)

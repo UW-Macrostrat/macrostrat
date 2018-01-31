@@ -17,6 +17,7 @@ class Process(Base):
         web_geom <source_id> - Update the field `web_geom` in maps.sources for a given map source
         tesselate <options> - Create new voronoi polygons for columns
         map_source <source_id> - Run all the appropriate scripts for processing a new map source
+        legend <source_id> - Insert/update a source's records in maps.legend and maps.map_legend
     Usage:
       macrostrat process <script> <source_id>
       macrostrat process -h | --help

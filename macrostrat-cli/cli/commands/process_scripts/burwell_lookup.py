@@ -48,59 +48,6 @@ class BurwellLookup(Base):
     def __init__(self, connections, *args):
         Base.__init__(self, connections, *args)
 
-
-    def legend(self):
-        # Clean up
-        self.pg['cursor'].execute("""
-          DELETE FROM maps.legend WHERE source_id = %(source_id)s
-        """, {
-            'source_id': self.source_id
-        })
-        self.pg['cursor'].execute("""
-          DELETE FROM maps.map_legend WHERE map_id IN (
-            SELECT map_id
-            FROM maps.%(scale)s
-            WHERE source_id = %(source_id)s
-          )
-        """, {
-            'scale': AsIs(self.scale),
-            'source_id': self.source_id
-        })
-        self.pg['connection'].commit()
-
-        self.pg['cursor'].execute("""
-          INSERT INTO maps.legend (source_id, name, strat_name, age, lith, descrip, comments, b_interval, t_interval)
-          SELECT DISTINCT ON (name, strat_name, age, lith, descrip, comments, b_interval, t_interval) %(source_id)s, name, strat_name, age, lith, descrip, comments, b_interval, t_interval
-          FROM maps.%(scale)s
-          WHERE source_id = %(source_id)s;
-        """, {
-            'scale': AsIs(self.scale),
-            'source_id': self.source_id
-        })
-        self.pg['connection'].commit()
-
-        self.pg['cursor'].execute("""
-          INSERT INTO maps.map_legend (legend_id, map_id)
-          SELECT legend_id, map_id
-          FROM maps.%(scale)s m
-          JOIN maps.legend ON
-            legend.source_id = m.source_id AND
-            COALESCE(legend.name, '') = COALESCE(m.name, '') AND
-            COALESCE(legend.strat_name, '') = COALESCE(m.strat_name, '') AND
-            COALESCE(legend.age, '') = COALESCE(m.age, '') AND
-            COALESCE(legend.lith, '') = COALESCE(m.lith, '') AND
-            COALESCE(legend.descrip, '') = COALESCE(m.descrip, '') AND
-            COALESCE(legend.comments, '') = COALESCE(m.comments, '') AND
-            COALESCE(legend.b_interval, -999) = COALESCE(m.b_interval, -999) AND
-            COALESCE(legend.t_interval, -999) = COALESCE(m.t_interval, -999)
-          WHERE m.source_id = %(source_id)s;
-        """, {
-            'scale': AsIs(self.scale),
-            'source_id': self.source_id
-        })
-        self.pg['connection'].commit()
-
-
     def source_stats(self):
         self.pg['cursor'].execute("""
           SELECT primary_table FROM maps.sources WHERE source_id = %(source_id)s
@@ -133,8 +80,6 @@ class BurwellLookup(Base):
 
 
     def refresh(self):
-        BurwellLookup.legend(self)
-
         # Delete source from lookup_scale
         self.pg['cursor'].execute('''
             DELETE FROM lookup_%s
