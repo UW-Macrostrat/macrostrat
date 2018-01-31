@@ -36,7 +36,8 @@ module.exports = function(req, res, next, cb) {
   }
 
   // Remove any empty sources and etopo1
-  where.push("sources.rgeom IS NOT NULL");
+  where.push("sources.rgeom IS NOT NULL")
+  where.push("sources.status_code = 'active'")
 
   var sql = `
   SELECT
@@ -63,7 +64,6 @@ module.exports = function(req, res, next, cb) {
    ORDER BY ordering, new_priority
    ${('sample' in req.query) ? 'LIMIT 5': ''}
   `
-  c
   larkin.queryPg("burwell", sql, params, function(error, result) {
     if (error) {
       if (cb) {
