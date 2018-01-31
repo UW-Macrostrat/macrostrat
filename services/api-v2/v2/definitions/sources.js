@@ -24,6 +24,13 @@ module.exports = function(req, res, next, cb) {
     area
     ${api.acceptedFormats.geo[req.query.format] ? ', web_geom AS geom' : ''}
   FROM maps.sources
+  JOIN (values
+    ('tiny', 0),
+    ('small', 1),
+    ('medium', 2),
+    ('large', 3)
+   ) ord (s, ordering) ON sources.scale = ord.s
+   ORDER BY ordering, new_priority
   `
 
   var params = []
