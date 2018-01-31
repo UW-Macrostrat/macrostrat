@@ -52,7 +52,8 @@ module.exports = function(req, res, next, cb) {
     features,
     area
     ${api.acceptedFormats.geo[req.query.format] ? ', web_geom AS geom' : ''}
-  FROM maps.sourcesJOIN (values
+  FROM maps.sources
+  JOIN (values
     ('tiny', 0),
     ('small', 1),
     ('medium', 2),
@@ -62,7 +63,7 @@ module.exports = function(req, res, next, cb) {
    ORDER BY ordering, new_priority
    ${('sample' in req.query) ? 'LIMIT 5': ''}
   `
-
+  c
   larkin.queryPg("burwell", sql, params, function(error, result) {
     if (error) {
       if (cb) {
