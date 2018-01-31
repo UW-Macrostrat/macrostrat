@@ -366,25 +366,64 @@ class BurwellLookup(Base):
            GROUP BY q.map_id
          ),
 
-         -- Find and aggregate best lith_ids for each map_id
-         lith_ids AS (
-           SELECT map_id, array_agg(DISTINCT lith_id) AS lith_ids, array_agg(DISTINCT liths.lith_type) AS lith_types, array_agg(DISTINCT liths.lith_class) AS lith_classes
-           FROM (
-               SELECT q.map_id, liths.id AS lith_id
-               FROM maps.%(scale)s q
-               LEFT JOIN unit_ids ON q.map_id = unit_ids.map_id
-               JOIN macrostrat.unit_liths ON unit_liths.unit_id = ANY(unit_ids.unit_ids)
-               JOIN macrostrat.liths ON liths.id = unit_liths.lith_id
-               WHERE unit_liths.unit_id = ANY(unit_ids.unit_ids) AND q.source_id = %(source_id)s
-
-               UNION ALL
-               SELECT q.map_id, lith_id
-               FROM maps.%(scale)s q
-               JOIN maps.map_liths ON q.map_id = map_liths.map_id
+          lith_bases AS (
+               SELECT array_agg(distinct basis_col) bases, q.legend_id
+               FROM maps.legend_liths
+               JOIN maps.legend q ON legend_liths.legend_id = q.legend_id
                WHERE source_id = %(source_id)s
-           ) sub
-           JOIN macrostrat.liths ON sub.lith_id = liths.id
-           GROUP BY map_id
+               GROUP BY q.legend_id
+               ORDER BY q.legend_id
+         ),
+
+         -- The following was an idea that was not implemented, but might be in the future
+         ------------
+         -- If there are matches on the 'lith' field, don't include macrostrat match liths
+         -- if matched on `lith`
+            -- if `strat_names` and all are matched
+                -- Use `lith` matches AND macrostrat unit matches
+            -- if `strat_names` and NOT all are matched
+                -- Use `lith` matches
+         -- if NOT matched on `lith` (but matched on another field)
+            --
+            -- if `strat_names` and all are matched
+                -- Use `lith` matches AND macrostrat unit matches
+            -- if `strat_names` and NOT all are matched
+                -- Use `lith` matches
+        ---------------
+        
+        -- Find and aggregate best lith_ids for each map_id
+        -- **NB:** Only uses lith matches from the map!
+        --         All lithologies matches to matched units are ommitted
+        -- Priority: `lith`, `descrip`, `name`, `comments`
+         lith_ids AS (
+            SELECT
+                q.map_id,
+                array_agg(DISTINCT lith_id) AS lith_ids,
+                array_agg(DISTINCT liths.lith_type) AS lith_types,
+                array_agg(DISTINCT liths.lith_class) AS lith_classes
+            FROM (
+                SELECT legend_liths.legend_id, legend_liths.lith_id
+                FROM maps.legend_liths
+                JOIN maps.legend ON legend_liths.legend_id = legend.legend_id
+                JOIN lith_bases ON lith_bases.legend_id = legend.legend_id
+                WHERE source_id = %(source_id)s
+                 AND legend_liths.basis_col =
+                     CASE
+                         WHEN 'lith' = ANY(bases)
+                             THEN 'lith'
+                         WHEN 'descrip' = ANY(bases)
+                             THEN 'descrip'
+                         WHEN 'name' = ANY(bases)
+                             THEN 'name'
+                         WHEN 'comments' = ANY(bases)
+                             THEN 'comments'
+                         ELSE ''
+                     END
+            ) sub
+            JOIN maps.map_legend ON map_legend.legend_id = sub.legend_id
+            JOIN maps.%(scale)s q ON q.map_id = map_legend.map_id
+            JOIN macrostrat.liths ON sub.lith_id = liths.id
+            GROUP BY q.map_id
          ),
 
          more_strat_names AS (
