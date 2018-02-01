@@ -17,7 +17,7 @@ Examples:
   macrostrat rebuild lookup_strat_names
 Help:
   For help using this tool, please open an issue on the Github repository:
-  https://github.com/UW-Macrostrat/macrostrat-cli
+  https://github.com/UW-Macrostrat/utils
 """
 
 
