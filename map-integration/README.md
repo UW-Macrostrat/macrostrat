@@ -9,7 +9,7 @@ Multiscale geologic map integration. Contains scripts for importing maps, matchi
 ## Setup
 + Edit ````setup/credentials.example.py```` with your credentials and rename to ````credentials.py````
 + Run ````cd setup && ./setup.sh````
-+ Permissions for MariaDB to write files to repo directory must be in place
++ Permissions for Postgres to write files to repo directory must be in place
 + (Optional) Edit `tiles/config.js` with the proper paths to tiles
 
 
