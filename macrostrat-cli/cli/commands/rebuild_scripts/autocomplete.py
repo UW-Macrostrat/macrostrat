@@ -18,7 +18,7 @@ class Autocomplete(Base):
                 union
                 select 0 AS id, econ_type AS name, 'econ_types' AS type, 'econ' as category
                 FROM econs
-                WHERE econ != econ_type 
+                WHERE econ != econ_type
                 GROUP BY econ_type
                 union
                 SELECT 0 AS id, econ_class AS name, 'econ_classes' AS type, 'econ' as category FROM econs GROUP BY econ_class
@@ -134,7 +134,7 @@ class Autocomplete(Base):
         self.mariadb['cursor'].execute("""
             ALTER TABLE autocomplete rename to autocomplete_old;
             ALTER TABLE autocomplete_new rename to autocomplete;
-            DROP TABLE autocomplete_old;
+            DROP TABLE IF EXISTS autocomplete_old;
         """)
         self.mariadb['cursor'].close()
         self.mariadb['connection'].close()

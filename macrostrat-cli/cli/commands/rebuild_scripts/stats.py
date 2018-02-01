@@ -81,7 +81,7 @@ class Stats(Base):
         self.mariadb['cursor'].execute("""
             ALTER TABLE stats rename to stats_old;
             ALTER TABLE stats_new rename to stats;
-            DROP TABLE stats;
+            DROP TABLE IF EXISTS stats;
         """)
 
         self.mariadb['cursor'].close()
