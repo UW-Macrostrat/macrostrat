@@ -20,6 +20,7 @@ class Rebuild(Base):
 
     Usage:
       macrostrat rebuild <table>
+      macrostrat rebuild all
       macrostrat rebuild -h | --help
     Options:
       -h --help                         Show this screen.
