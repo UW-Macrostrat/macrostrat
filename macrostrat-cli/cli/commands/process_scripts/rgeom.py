@@ -46,7 +46,7 @@ class RGeom(Base):
 
         # Get the name of the primary table
         self.pg['cursor'].execute("""
-            SELECT primary_table
+            SELECT scale
             FROM maps.sources
             WHERE source_id = %(source_id)s
         """, {
@@ -55,7 +55,8 @@ class RGeom(Base):
 
         result = self.pg['cursor'].fetchone()
 
-        primary_table = result[0]
+        scale = result[0]
+        primary_table = result[0] + str(source_id)
 
         FNULL = open(os.devnull, 'w')
 
@@ -72,7 +73,7 @@ class RGeom(Base):
         self.pg['connection'].commit()
 
         # Write it to a shapefile
-        call(['pgsql2shp -f %s.shp -u %s -h %s -p %s burwell sources.%s' % (primary_table, self.credentials['pg_user'], self.credentials['pg_host'], self.credentials['pg_port'], primary_table)], shell=True, stdout=FNULL)
+        call(['pgsql2shp -f %s.shp -u %s -h %s -p %s burwell "SELECT geom FROM maps.%s WHERE source_id = %s" ' % (primary_table, self.credentials['pg_user'], self.credentials['pg_host'], self.credentials['pg_port'], scale, source_id)], shell=True, stdout=FNULL)
 
         # Simplify it with mapshaper
         call(['mapshaper -i %s.shp -dissolve -o %s_rgeom.shp' % (primary_table, primary_table)], shell=True, stdout=FNULL)
