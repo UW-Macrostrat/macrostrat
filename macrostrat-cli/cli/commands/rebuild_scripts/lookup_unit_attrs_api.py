@@ -108,6 +108,8 @@ class LookupUnitsAttrsAPI(Base):
             atts = []
             if unit["lith_atts"] is not None:
                 atts = unit["lith_atts"].split("|")
+            else:
+                atts = ''
             entry = {
               "lith_id": unit["lith_id"],
               "atts": atts,
