@@ -20,6 +20,7 @@ class Rebuild(Base):
 
     Usage:
       macrostrat rebuild <table>
+      macrostrat rebuild all
       macrostrat rebuild -h | --help
     Options:
       -h --help                         Show this screen.
@@ -28,7 +29,7 @@ class Rebuild(Base):
       macrostrat rebuild lookup_strat_names
     Help:
       For help using this tool, please open an issue on the Github repository:
-      https://github.com/UW-Macrostrat/macrostrat-cli
+      https://github.com/UW-Macrostrat/utils
     '''
 
     def run(self):
@@ -48,7 +49,7 @@ class Rebuild(Base):
 
         if table == 'all':
             # Rebuild in a specific order
-            tables = [ 'autocomplete', 'lookup_strat_names', 'lookup_unit_attrs_api', 'lookup_unit_intervals', 'pbdb_matches', 'unit_boundaries', 'lookup_units', 'stats']
+            tables = ['lookup_strat_names', 'lookup_unit_attrs_api', 'lookup_unit_intervals', 'pbdb_matches', 'unit_boundaries', 'lookup_units', 'stats', 'autocomplete']
             for t in tables:
                 print '     %s' % (t, )
                 script = getattr(rebuild_scripts, t)
