@@ -49,7 +49,7 @@ class Rebuild(Base):
 
         if table == 'all':
             # Rebuild in a specific order
-            tables = [ 'autocomplete', 'lookup_strat_names', 'lookup_unit_attrs_api', 'lookup_unit_intervals', 'pbdb_matches', 'unit_boundaries', 'lookup_units', 'stats']
+            tables = ['lookup_strat_names', 'lookup_unit_attrs_api', 'lookup_unit_intervals', 'pbdb_matches', 'unit_boundaries', 'lookup_units', 'stats', 'autocomplete']
             for t in tables:
                 print '     %s' % (t, )
                 script = getattr(rebuild_scripts, t)
