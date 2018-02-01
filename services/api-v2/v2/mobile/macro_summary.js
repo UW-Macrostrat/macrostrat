@@ -65,7 +65,6 @@ function groupStratNames(names, rank, callback) {
 function summarizeBurwell(lat, lng, callback) {
   require('../geologic_units_burwell')({query: {lat: lat, lng: lng}}, null, null, function(error, result) {
     if (error) return callback(error);
-    console.log(result)
     if (result.length) {
       var bestAge = _.min(result, function(d) { return d.b_int_age - d.t_int_age; });
       var parsed = {
