@@ -58,9 +58,6 @@ class Units(Base):
         self.pg['cursor'].execute("""
           INSERT INTO maps.map_units (map_id, unit_id, basis_col)
             WITH a AS (
-              SELECT map_id, lookup_strat_names.strat_name_id, q.age_top, q.age_bottom, geom
-              FROM macrostrat.lookup_strat_names
-              JOIN (
                 SELECT DISTINCT ON (m.map_id, concept_id) m.map_id, concept_id, map_strat_names.strat_name_id, intervals_top.age_top, intervals_bottom.age_bottom, geom
                 FROM maps.%(table)s m
                 JOIN macrostrat.intervals intervals_top on m.t_interval = intervals_top.id
@@ -76,7 +73,6 @@ class Units(Base):
                   ON x.map_id = z.map_id
                   WHERE z.source_id = %(source_id)s
                 )
-              ) q ON q.concept_id = lookup_strat_names.concept_id
             ),
             shaped AS (
               SELECT strat_name_id, strat_name, rank,
@@ -148,9 +144,6 @@ class Units(Base):
         self.pg['cursor'].execute("""
           INSERT INTO maps.map_units (map_id, unit_id, basis_col)
             WITH a AS (
-              SELECT map_id, lookup_strat_names.strat_name_id, q.age_top, q.age_bottom, geom
-              FROM macrostrat.lookup_strat_names
-              JOIN (
                 SELECT DISTINCT ON (m.map_id, concept_id) m.map_id, concept_id, map_strat_names.strat_name_id, intervals_top.age_top, intervals_bottom.age_bottom, geom
                 FROM maps.%(table)s m
                 JOIN macrostrat.intervals intervals_top on m.t_interval = intervals_top.id
@@ -166,7 +159,6 @@ class Units(Base):
                   ON x.map_id = z.map_id
                   WHERE z.source_id = %(source_id)s
                 )
-              ) q ON q.concept_id = lookup_strat_names.concept_id
             ),
             shaped AS (
               SELECT strat_name_id, strat_name, rank,
@@ -243,9 +235,6 @@ class Units(Base):
         self.pg['cursor'].execute("""
             INSERT INTO maps.map_units (map_id, unit_id, basis_col)
             WITH a AS (
-               SELECT map_id, lookup_strat_names.strat_name_id, q.age_top, q.age_bottom, geom
-              FROM macrostrat.lookup_strat_names
-              JOIN (
                 SELECT DISTINCT ON (m.map_id, concept_id) m.map_id, concept_id, map_strat_names.strat_name_id, intervals_top.age_top, intervals_bottom.age_bottom, geom
                 FROM maps.%(table)s m
                 JOIN macrostrat.intervals intervals_top on m.t_interval = intervals_top.id
@@ -261,16 +250,15 @@ class Units(Base):
                   ON x.map_id = z.map_id
                   WHERE z.source_id = %(source_id)s
                 )
-              ) q ON q.concept_id = lookup_strat_names.concept_id
             ),
-            b AS (
-              SELECT unit_strat_names.strat_name_id, unit_strat_names.unit_id, lookup_unit_intervals.t_age, lookup_unit_intervals.b_age, """ + ("cols.poly_geom " if strictSpace else "st_buffer(st_envelope(cols.poly_geom), 1.2)") + """ AS geom
-              FROM macrostrat.unit_strat_names
-              JOIN macrostrat.units_sections ON unit_strat_names.unit_id = units_sections.unit_id
-              JOIN macrostrat.cols ON units_sections.col_id = cols.id
-              JOIN macrostrat.lookup_unit_intervals ON unit_strat_names.unit_id = lookup_unit_intervals.unit_id
-              WHERE strat_name_id IN (SELECT DISTINCT strat_name_id FROM a)
-            )
+                b AS (
+                  SELECT unit_strat_names.strat_name_id, unit_strat_names.unit_id, lookup_unit_intervals.t_age, lookup_unit_intervals.b_age, """ + ("cols.poly_geom " if strictSpace else "st_buffer(st_envelope(cols.poly_geom), 1.2)") + """ AS geom
+                  FROM macrostrat.unit_strat_names
+                  JOIN macrostrat.units_sections ON unit_strat_names.unit_id = units_sections.unit_id
+                  JOIN macrostrat.cols ON units_sections.col_id = cols.id
+                  JOIN macrostrat.lookup_unit_intervals ON unit_strat_names.unit_id = lookup_unit_intervals.unit_id
+                  WHERE strat_name_id IN (SELECT DISTINCT strat_name_id FROM a)
+                )
             SELECT DISTINCT ON (map_id, b.unit_id) map_id, b.unit_id AS units, %(match_type)s
             FROM a
             JOIN b ON a.strat_name_id = b.strat_name_id
