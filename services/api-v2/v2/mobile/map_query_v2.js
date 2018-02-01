@@ -326,8 +326,37 @@ module.exports = (req, res, next) => {
          cb(null, result.rows)
       })
     },
-    burwell: (cb) => {
 
+    regions: (cb) => {
+      larkin.queryPg('burwell', `
+      SELECT sub.boundary_id, sub.name, sub.boundary_group, sub.boundary_type, sub.boundary_class, sub.descrip, sub.wiki_link,
+        row_to_json(
+          (SELECT x FROM (SELECT sources.source_id, sources.name, sources.url, sources.ref_title, sources.authors, sources.ref_year, sources.ref_source, COALESCE(sources.isbn_doi, '') AS isbn_doi) x)
+       ) AS ref
+        FROM
+            (
+            SELECT
+                boundary_id,
+                source_id,
+                COALESCE(name, '') AS name,
+                COALESCE(boundary_group, '') AS boundary_group,
+                COALESCE(boundary_type, '') AS boundary_type,
+                COALESCE(initcap(boundary_class), '') AS boundary_class,
+                COALESCE(descrip, '') AS descrip,
+                COALESCE(wiki_link, '') AS wiki_link,
+                row_number() OVER(PARTITION BY boundary_class ORDER BY ST_Area(geom) ASC) as rn
+            FROM geologic_boundaries.boundaries
+            WHERE ST_Intersects(geom, $1)
+            ) sub
+        JOIN geologic_boundaries.sources ON sub.source_id = sources.source_id
+        WHERE rn = 1
+      `, [ `SRID=4326;POINT(${req.query.lng} ${req.query.lat})` ], (error, result) => {
+        if (error || !result || !result.rows) return cb(null, [])
+        cb(null, result.rows)
+      })
+    },
+
+    burwell: (cb) => {
       let where = [`ST_Intersects(y.geom, ST_GeomFromText($1, 4326))`]
       let params = [`SRID=4326;POINT(${req.query.lng} ${req.query.lat})`]
 
@@ -399,6 +428,7 @@ module.exports = (req, res, next) => {
       data: {
         elevation: data.elevation,
         mapData: data.burwell,
+        regions: data.regions
       }
     })
   })
