@@ -17,6 +17,7 @@ class LookupStratNames(Base):
         # Copy structure to new table
         self.mariadb['cursor'].execute("""
             DROP TABLE IF EXISTS lookup_strat_names_new;
+            DROP TABLE IF EXISTS lookup_strat_names_old;
         """)
         self.mariadb['cursor'].close()
         self.mariadb['cursor'] = self.mariadb['connection'].cursor()

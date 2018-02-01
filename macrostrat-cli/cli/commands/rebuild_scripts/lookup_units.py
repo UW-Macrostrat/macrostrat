@@ -34,6 +34,7 @@ class LookupUnits(Base):
         # Copy structure into new table
         self.mariadb['cursor'].execute("""
             DROP TABLE IF EXISTS lookup_units_new;
+            DROP TABLE IF EXISTS lookup_units_old;
         """)
         self.mariadb['cursor'].close()
         self.mariadb['cursor'] = self.mariadb['connection'].cursor()

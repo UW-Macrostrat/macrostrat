@@ -7,6 +7,7 @@ class Autocomplete(Base):
     def run(self):
         self.mariadb['cursor'].execute("""
             DROP TABLE IF EXISTS autocomplete_new;
+            DROP TABLE IF EXISTS autocomplete_old;
         """)
         self.mariadb['connection'].commit()
 

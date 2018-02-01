@@ -6,7 +6,8 @@ class Stats(Base):
 
     def run(self):
         self.mariadb['cursor'].execute("""
-            DROP TABLE IF EXISTS stats_new
+            DROP TABLE IF EXISTS stats_new;
+            DROP TABLE IF EXISTS stats_old;
         """)
         self.mariadb['cursor'].close()
 

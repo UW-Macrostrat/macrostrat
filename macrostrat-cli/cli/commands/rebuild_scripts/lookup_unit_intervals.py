@@ -9,9 +9,12 @@ class LookupUnitIntervals(Base):
         second_cursor = second_connection.cursor()
 
         # Clean up
-        self.mariadb['cursor'].execute("DROP TABLE IF EXISTS lookup_unit_intervals_new")
+        self.mariadb['cursor'].execute("""
+            DROP TABLE IF EXISTS lookup_unit_intervals_new;
+            DROP TABLE IF EXISTS lookup_unit_intervals_old;
+        """)
         self.mariadb['connection'].commit()
-        
+
         # Copy structure into new table
         self.mariadb['cursor'].execute("CREATE TABLE lookup_unit_intervals_new LIKE lookup_unit_intervals")
 
