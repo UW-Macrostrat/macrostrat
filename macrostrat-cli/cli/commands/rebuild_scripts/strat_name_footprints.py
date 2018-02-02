@@ -149,8 +149,8 @@ class StratNameFootprints(Base):
         self.pg['connection'].commit()
 
         self.pg['cursor'].execute("""
-            ALTER TABLE macrostrat.strat_name_footprints RENAME TO strat_name_footprints_old;
+            ALTER TABLE IF EXISTS macrostrat.strat_name_footprints RENAME TO strat_name_footprints_old;
             ALTER TABLE macrostrat.strat_name_footprints_new RENAME to strat_name_footprints;
-            DROP TABLE macrostrat.strat_name_footprints_old;
+            DROP TABLE IF EXISTS macrostrat.strat_name_footprints_old;
         """)
         self.pg['connection'].commit()
