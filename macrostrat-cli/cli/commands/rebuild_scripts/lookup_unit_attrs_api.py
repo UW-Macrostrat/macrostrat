@@ -104,12 +104,19 @@ class LookupUnitsAttrsAPI(Base):
 
         # Iterate on each row and insert
         unit = self.mariadb['cursor'].fetchone()
+        unit_attrs = []
+        current_unit_id = None
         while unit is not None:
+            if unit["unit_id"] != current_unit_id:
+                update_cur.execute("""
+                  INSERT INTO lookup_unit_attrs_api_new (unit_id, lith) VALUES (%s, %s)
+                """, [current_unit_id, json.dumps(unit_attrs, default=check_for_decimals)])
+                unit_attrs = []
+                current_unit_id = unit["unit_id"]
+
             atts = []
             if unit["lith_atts"] is not None:
                 atts = unit["lith_atts"].split("|")
-            else:
-                atts = ''
             entry = {
               "lith_id": unit["lith_id"],
               "atts": atts,
@@ -118,9 +125,7 @@ class LookupUnitsAttrsAPI(Base):
               "class": unit["lith_class"],
               "prop": unit["comp_prop"]
             }
-            update_cur.execute("""
-              INSERT INTO lookup_unit_attrs_api_new (unit_id, lith) VALUES (%s, %s)
-            """, [unit["unit_id"], json.dumps(entry, default=check_for_decimals)])
+            unit_attrs.append(entry)
             unit = self.mariadb['cursor'].fetchone()
 
         update_cur.close()
@@ -137,16 +142,23 @@ class LookupUnitsAttrsAPI(Base):
         """)
 
         unit_a = self.mariadb['cursor'].fetchone()
+        unit_a_attrs = []
+        current_unit_a_id = None
         while unit_a is not None:
+            if unit_a["unit_id"] != current_unit_a_id:
+                update_cur.execute("""
+                  UPDATE lookup_unit_attrs_api_new SET environ = %s WHERE unit_id = %s
+                """, [json.dumps(unit_a_attrs, default=check_for_decimals), current_unit_a_id])
+                unit_a_attrs = []
+                current_unit_a_id = unit_a["unit_id"]
+
             entry = {
               "environ_id": unit_a["environ_id"],
               "name": unit_a["environ"],
               "type": unit_a["environ_type"],
               "class": unit_a["environ_class"],
             }
-            update_cur.execute("""
-              UPDATE lookup_unit_attrs_api_new SET environ = %s WHERE unit_id = %s
-            """, [json.dumps(entry, default=check_for_decimals), unit_a["unit_id"]])
+            unit_a_attrs.append(entry)
             unit_a = self.mariadb['cursor'].fetchone()
 
         update_cur.close()
@@ -163,16 +175,23 @@ class LookupUnitsAttrsAPI(Base):
         """)
 
         unit_b = self.mariadb['cursor'].fetchone()
+        unit_b_attrs = []
+        current_unit_b_id = None
         while unit_b is not None:
+            if unit_b["unit_id"] != current_unit_b_id:
+                update_cur.execute("""
+                  UPDATE lookup_unit_attrs_api_new SET econ = %s WHERE unit_id = %s
+                """, [json.dumps(unit_b_attrs, default=check_for_decimals), current_unit_b_id])
+                unit_b_attrs = []
+                current_unit_b_id = unit_b["unit_id"]
+
             entry = {
               "econ_id": unit_b["econ_id"],
               "name": unit_b["econ"],
               "type": unit_b["econ_type"],
               "class": unit_b["econ_class"]
             }
-            update_cur.execute("""
-              UPDATE lookup_unit_attrs_api_new SET econ = %s WHERE unit_id = %s
-            """, [json.dumps(entry, default=check_for_decimals), unit_b["unit_id"]])
+            unit_b_attrs.append(entry)
             unit_b = self.mariadb['cursor'].fetchone()
 
         self.mariadb['cursor'].execute("""
@@ -195,14 +214,21 @@ class LookupUnitsAttrsAPI(Base):
         """)
 
         measurement = self.mariadb['cursor'].fetchone()
+        measurement_attrs = []
+        current_measurement_id = None
         while measurement is not None:
+            if measurement["unit_id"] != current_measurement_id:
+                update_cur.execute("""
+                  UPDATE lookup_unit_attrs_api_new SET measure_short = %s WHERE unit_id = %s
+                """, [json.dumps(measurement_attrs, default=check_for_decimals), current_measurement_id])
+                measurement_attrs = []
+                current_measurement_id = measurement["unit_id"]
+
             entry = {
               "measure_class": measurement["measurement_class"],
               "measure_type": measurement["measurement_type"]
             }
-            update_cur.execute("""
-              UPDATE lookup_unit_attrs_api_new SET measure_short = %s WHERE unit_id = %s
-            """, [json.dumps(entry, default=check_for_decimals), measurement["unit_id"]])
+            measurement_attrs.append(entry)
             measurement = self.mariadb['cursor'].fetchone()
 
         self.mariadb['cursor'].execute("""
@@ -232,7 +258,16 @@ class LookupUnitsAttrsAPI(Base):
         """)
 
         measurement_b = self.mariadb['cursor'].fetchone()
+        measurement_b_attrs = []
+        current_measurement_b_id = None
         while measurement_b is not None:
+            if measurement_b["unit_id"] != current_measurement_b_id:
+                update_cur.execute("""
+                  UPDATE lookup_unit_attrs_api_new SET measure_long = %s WHERE unit_id = %s
+                """, [json.dumps(measurement_b_attrs, default=check_for_decimals), current_measurement_b_id])
+                measurement_b_attrs = []
+                current_measurement_b_id = measurement_b["unit_id"]
+
             entry = {
                 "measure_id": measurement_b["measure_id"],
                 "measure": measurement_b["measure"],
@@ -241,9 +276,7 @@ class LookupUnitsAttrsAPI(Base):
                 "n": measurement_b["n"],
                 "unit": measurement_b["units"]
             }
-            update_cur.execute("""
-              UPDATE lookup_unit_attrs_api_new SET measure_long = %s WHERE unit_id = %s
-            """, [json.dumps(entry, default=check_for_decimals), measurement_b["unit_id"]])
+            measurement_b_attrs.append(entry)
             measurement_b = self.mariadb['cursor'].fetchone()
 
         update_cur.close()
