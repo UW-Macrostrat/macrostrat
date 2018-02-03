@@ -330,27 +330,33 @@ class LookupStratNames(Base):
         """)
         lith_results = self.mariadb['cursor'].fetchall()
         lithologies = [ lith['lith'] for lith in lith_results ]
+        plural_lithologies = [ lith['lith'] + 's' for lith in lith_results ]
+        other_terms = [ 'beds', 'volcanics', 'and', 'complex', 'member', 'formation', 'lower', 'upper']
 
+        lithologies = lithologies + plural_lithologies + other_terms
+
+        update_connection = self.mariadb['raw_connection']()
+        update_cursor = update_connection.cursor()
         # Fetch all strat names
         self.mariadb['cursor'].execute("""
             SELECT strat_name_id, strat_name FROM lookup_strat_names_new
         """)
-        names_no_lith = []
-        for strat_name in self.mariadb['cursor']:
+        for strat_name in self.mariadb['cursor'].fetchall():
             split_name = strat_name['strat_name'].split(' ')
 
             name_no_lith = ' '.join([ name for name in split_name if name.lower() not in lithologies ])
-            names_no_lith.append([ strat_name['strat_name_id'], name_no_lith ])
-
-        for name in names_no_lith:
-            self.mariadb['cursor'].execute("""
+            print strat_name['strat_name_id'], name_no_lith
+            update_cursor.execute("""
               UPDATE lookup_strat_names_new SET name_no_lith = %(name_no_lith)s WHERE strat_name_id = %(strat_name_id)s
             """, {
-              'name_no_lith': name[1],
-              'strat_name_id': name[0]
+              'name_no_lith': name_no_lith,
+              'strat_name_id': strat_name['strat_name_id']
             })
+            update_connection.commit()
 
-        self.mariadb['connection'].commit()
+        update_connection.commit()
+        update_connection.close()
+        #self.mariadb['connection'].commit()
 
         # Make sure all names have an early and late_age
         self.mariadb['cursor'].execute("""
