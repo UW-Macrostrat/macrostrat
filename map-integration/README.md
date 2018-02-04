@@ -36,6 +36,7 @@ _Import a single shapefile:_
 ./import ontario ~/Downloads/ontario/Canada.shp false LATIN1
 ./import ontario ~/Downloads/ontario/Greenland.shp true LATIN1
 ````
+Note that if this script reports an error similar to ````Unable to open unprojected.shp or unprojected.SHP.````, try moving the directory containing the .shp file into a shorter path location. Long paths can cause failure.
 
 
 ## processing
