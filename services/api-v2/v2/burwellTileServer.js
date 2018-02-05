@@ -1,12 +1,27 @@
 const tilestrata = require('tilestrata')
+const http = require('http')
 
-const tilePassThrough = {
+const passThrough = {
   init: (server, callback) => {
     callback()
   },
   reqhook: (server, tile, req, res, callback) => {
-    return res.redirect(301, `https://devtiles.macrostrat.org/carto/${tile.z}/${tile.x}/${tile.y}.png`)
+    http.get(`http://localhost:5555/carto/${tile.z}/${tile.x}/${tile.y}.png`, (res) => {
+      let headers = response.headers
+      res.set({
+        'Content-Type': 'image/png',
+        'content-length': headers['content-length'],
+        'access-control-allow-origin': '*',
+        'Cache-Control': headers['cache-control'],
+        'etag': headers['etag'],
+        'expires': headers['expires'],
+        'strict-transport-security': headers['strict-transport-security'],
+        'X-Powered-By': 'Tilestrata'
+      })
+      response.pipe(res)
+    })
   }
+
 }
 
 module.exports = tilestrata.middleware({
@@ -16,9 +31,9 @@ module.exports = tilestrata.middleware({
 
     strata.layer('emphasized')
       .route('tile.png')
-      .use(tilePassThrough)
+      .use(passThrough)
 
-    return strata;
+    return strata
 
   }())
 })
