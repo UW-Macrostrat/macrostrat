@@ -18,10 +18,10 @@ module.exports = tilestrata.middleware({
         maxZoom: MAX_ZOOM
       })
         .use(cartoProviderSlim())
-        // .use(redisCache({
-        //     dir: `${__dirname}/tilecache/carto-slim/vector`,
-        //     defaultTile: `${__dirname}/resources/tile.mvt`
-        //   }))
+        .use(redisCache({
+            dir: `${__dirname}/tilecache/carto-slim/vector`,
+            defaultTile: `${__dirname}/resources/tile.mvt`
+          }))
         .use(etag())
 
     // Carto
