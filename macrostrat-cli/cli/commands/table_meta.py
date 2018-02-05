@@ -670,7 +670,7 @@ tables = OrderedDict({
             );
         """,
         "insert": """
-            INSERT INTO macrostrat.strat_names_places (strat_name_id, place_id) VALUES (%(strat_name_id)s, %(place_id)s)
+            INSERT INTO macrostrat.strat_names_places_new (strat_name_id, place_id) VALUES (%(strat_name_id)s, %(place_id)s)
         """,
         "index": """
             CREATE INDEX ON macrostrat.strat_names_places_new (strat_name_id);
@@ -971,5 +971,5 @@ tables = OrderedDict({
         "process": """
 
         """
-    },
+    }
 })
