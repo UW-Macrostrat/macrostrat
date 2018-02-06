@@ -1,12 +1,20 @@
 const tilestrata = require('tilestrata')
 const http = require('http')
+const fs = require('fs')
 
 const passThrough = {
   init: (server, callback) => {
     callback()
   },
   reqhook: (server, tile, req, res, callback) => {
-    http.get(`http://localhost:5555/carto/${tile.z}/${tile.x}/${tile.y}.png`, (response) => {
+    let tileReq = http.get(`http://localhost:5555/carto/${tile.z}/${tile.x}/${tile.y}.png`, (response) => {
+      if (!response) {
+        fs.readFile(__dirname + '/default@2x.png', (error, buffer) => {
+          res.set('Content-Type', 'image/png')
+          res.end(buffer)
+        })
+      }
+
       let headers = response.headers
       res.set({
         'Content-Type': 'image/png',
@@ -19,6 +27,13 @@ const passThrough = {
         'X-Powered-By': 'Tilestrata'
       })
       response.pipe(res)
+    })
+
+    tileReq.on('error', (error) => {
+      fs.readFile(__dirname + '/default@2x.png', (error, buffer) => {
+        res.set('Content-Type', 'image/png')
+        res.end(buffer)
+      })
     })
   }
 
