@@ -306,8 +306,8 @@ module.exports = function(req, res, next) {
 
            // Add reference here! (or maybe in buildSQL...)
 
-           var macroUnits = bestFit.macro_units
-           var macroNames = bestFit.strat_names
+           var macroUnits = bestFit.macro_units || []
+           var macroNames = bestFit.strat_names || []
 
            if (macroUnits.length) {
              require('../units')({query: { unit_id: macroUnits.join(',') } }, null, null, function(error, result) {
