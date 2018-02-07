@@ -73,19 +73,19 @@ class Backup(Base):
 
             # maps.sources
             self.pg['cursor'].execute("""
-                COPY (SELECT * FROM maps.sources WHERE source_id = %(source_id)s) TO '%(cwd)s/temp_sources.tsv'
+                COPY (SELECT * FROM maps.sources WHERE source_id = %(source_id)s) TO '%(cwd)s/temp_sources.tsv' WITH ENCODING 'UTF8'
             """, {'source_id': self.args[1], 'cwd': AsIs(cwd) })
             call(['echo "COPY maps.sources FROM stdin;" | cat - temp_sources.tsv > sources.tsv && echo "\.\n" >> sources.tsv && rm temp_sources.tsv'], shell=True)
 
             # maps.scale
             self.pg['cursor'].execute("""
-                COPY (SELECT * FROM maps.%(scale)s WHERE source_id = %(source_id)s) TO '%(cwd)s/temp_scale.tsv'
+                COPY (SELECT * FROM maps.%(scale)s WHERE source_id = %(source_id)s) TO '%(cwd)s/temp_scale.tsv' WITH ENCODING 'UTF8'
             """, { 'scale': AsIs(source_info.scale), 'source_id': self.args[1], 'cwd': AsIs(cwd) })
             call(['echo "COPY maps.%s FROM stdin;" | cat - temp_scale.tsv > scale.tsv && echo "\.\n" >> scale.tsv && rm temp_scale.tsv' % (source_info.scale, )], shell=True)
 
             # lines.scale
             self.pg['cursor'].execute("""
-                COPY (SELECT * FROM lines.%(scale)s WHERE source_id = %(source_id)s) TO '%(cwd)s/temp_lines.tsv'
+                COPY (SELECT * FROM lines.%(scale)s WHERE source_id = %(source_id)s) TO '%(cwd)s/temp_lines.tsv' WITH ENCODING 'UTF8'
             """, { 'scale': AsIs(source_info.scale), 'source_id': self.args[1], 'cwd': AsIs(cwd) })
             call(['echo "COPY lines.%s FROM stdin;" | cat - temp_lines.tsv > lines.tsv && echo "\.\n" >> lines.tsv && rm temp_lines.tsv' % (source_info.scale, )], shell=True)
 
@@ -96,7 +96,7 @@ class Backup(Base):
                     SELECT map_id
                     FROM maps.%(scale)s
                     WHERE source_id = %(source_id)s
-                )) TO '%(cwd)s/temp_map_liths.tsv'
+                )) TO '%(cwd)s/temp_map_liths.tsv' WITH ENCODING 'UTF8'
             """, { 'scale': AsIs(source_info.scale), 'source_id': self.args[1], 'cwd': AsIs(cwd)  })
             call(['echo "COPY maps.map_liths FROM stdin;" | cat - temp_map_liths.tsv > map_liths.tsv && echo "\.\n" >> map_liths.tsv && rm temp_map_liths.tsv'], shell=True)
 
@@ -107,7 +107,7 @@ class Backup(Base):
                     SELECT map_id
                     FROM maps.%(scale)s
                     WHERE source_id = %(source_id)s
-                )) TO '%(cwd)s/temp_strat_names.tsv'
+                )) TO '%(cwd)s/temp_strat_names.tsv' WITH ENCODING 'UTF8'
             """, { 'scale': AsIs(source_info.scale), 'source_id': self.args[1], 'cwd': AsIs(cwd)  })
             call(['echo "COPY maps.map_strat_names FROM stdin;" | cat - temp_strat_names.tsv > strat_names.tsv && echo "\.\n" >> strat_names.tsv && rm temp_strat_names.tsv'], shell=True)
 
@@ -118,14 +118,14 @@ class Backup(Base):
                     SELECT map_id
                     FROM maps.%(scale)s
                     WHERE source_id = %(source_id)s
-                )) TO '%(cwd)s/temp_map_units.tsv'
+                )) TO '%(cwd)s/temp_map_units.tsv' WITH ENCODING 'UTF8'
             """, { 'scale': AsIs(source_info.scale), 'source_id': self.args[1], 'cwd': AsIs(cwd)  })
             call(['echo "COPY maps.map_units FROM stdin;" | cat - temp_map_units.tsv > map_units.tsv && echo "\.\n" >> map_units.tsv && rm temp_map_units.tsv'], shell=True)
 
             # points.points
             self.pg['cursor'].execute("""
                 COPY (SELECT * FROM points.points
-                WHERE source_id = %(source_id)s) TO '%(cwd)s/temp_points.tsv'
+                WHERE source_id = %(source_id)s) TO '%(cwd)s/temp_points.tsv' WITH ENCODING 'UTF8'
             """, { 'source_id': self.args[1], 'cwd': AsIs(cwd)  })
             call(['echo "COPY points.points FROM stdin;" | cat - temp_points.tsv > points.tsv && echo "\.\n" >> points.tsv && rm temp_points.tsv'], shell=True)
 
@@ -136,7 +136,7 @@ class Backup(Base):
                     SELECT map_id
                     FROM maps.%(scale)s
                     WHERE source_id = %(source_id)s
-                )) TO '%(cwd)s/temp_lookup.tsv'
+                )) TO '%(cwd)s/temp_lookup.tsv' WITH ENCODING 'UTF8'
             """, { 'scale': AsIs(source_info.scale), 'source_id': self.args[1], 'cwd': AsIs(cwd)  })
             call(['echo "COPY public.lookup_%s FROM stdin;" | cat - temp_lookup.tsv > lookup.tsv && echo "\.\n" >> lookup.tsv && rm temp_lookup.tsv' % (source_info.scale, )], shell=True)
 
@@ -149,7 +149,7 @@ class Backup(Base):
                         SELECT web_geom
                         FROM maps.sources
                         WHERE source_id = %(source_id)s
-                    ))) TO '%(cwd)s/temp_carto_%(scale)s.tsv'
+                    ))) TO '%(cwd)s/temp_carto_%(scale)s.tsv' WITH ENCODING 'UTF8'
                 """, { 'scale': AsIs(scale), 'source_id': self.args[1], 'cwd': AsIs(cwd)  })
                 call(['echo "COPY carto_new.%s FROM stdin;" | cat - temp_carto_%s.tsv > carto_%s.tsv && echo "\.\n" >> carto_%s.tsv && rm temp_carto_%s.tsv' % (scale, scale, scale, scale, scale )], shell=True)
 
@@ -159,7 +159,7 @@ class Backup(Base):
                         SELECT web_geom
                         FROM maps.sources
                         WHERE source_id = %(source_id)s
-                    ))) TO '%(cwd)s/temp_carto_lines_%(scale)s.tsv'
+                    ))) TO '%(cwd)s/temp_carto_lines_%(scale)s.tsv' WITH ENCODING 'UTF8'
                 """, { 'scale': AsIs(scale), 'source_id': self.args[1], 'cwd': AsIs(cwd)  })
                 call(['echo "COPY carto_new.lines_%s FROM stdin;" | cat - temp_carto_lines_%s.tsv > carto_lines_%s.tsv && echo "\.\n" >> carto_lines_%s.tsv && rm temp_carto_lines_%s.tsv' % (scale, scale, scale, scale, scale )], shell=True)
 
