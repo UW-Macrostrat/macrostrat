@@ -7,7 +7,7 @@ const passThrough = {
     callback()
   },
   reqhook: (server, tile, req, res, callback) => {
-    let tileReq = http.get(`http://localhost:5555/carto/${tile.z}/${tile.x}/${tile.y}.png${req._parsedUrl.search}`, (response) => {
+    let tileReq = http.get(`http://localhost:5555/carto/${tile.z}/${tile.x}/${tile.y}.png${req._parsedUrl.search || ''}`, (response) => {
       if (!response) {
         fs.readFile(__dirname + '/default@2x.png', (error, buffer) => {
           res.set('Content-Type', 'image/png')
