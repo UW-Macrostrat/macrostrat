@@ -10,19 +10,6 @@ let pg = new pgHelper({
   database: 'tileserver'
 })
 
-
-// Factory for querying PostGIS
-function queryPg(sql, params, callback) {
-  pool.connect((err, client, done) => {
-    if (err) return callback(err)
-    client.query(sql, params, (err, result) => {
-      done()
-      if (err) return callback(err)
-      callback(null, result)
-    })
-  })
-}
-
 module.exports = () => {
   return {
     name: 'logger',
