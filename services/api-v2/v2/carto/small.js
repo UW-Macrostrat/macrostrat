@@ -43,11 +43,11 @@ module.exports = function(req, res, next, cb) {
 
             pre = `
               WITH shape AS (
-                SELECT ST_Segmentize($1::geography, 100000)::geometry AS buffer
+                SELECT ST_GeomFromText($1) AS buffer
               )
             `;
 
-            params.push(req.query.shape);
+            params.push(('SRID=4326;' + req.query.shape));
 
             callback(null);
           });
@@ -74,7 +74,7 @@ module.exports = function(req, res, next, cb) {
 
       var limit = ("sample" in req.query) ? " LIMIT 5" : "";
 
-      var sql = pre + " SELECT map_id, scale, source_id, name, strat_name, age, lith, descrip, comments, best_age_top, best_age_bottom, t_int, b_int, color";
+      var sql = pre + " SELECT s1.map_id, s1.scale, s1.source_id, name, strat_name, age, lith, descrip, comments, best_age_top, best_age_bottom, t_interval AS t_int, b_interval AS b_int, color";
       var join = "";
 
       // Modify the query if geometry is being requested
@@ -82,14 +82,13 @@ module.exports = function(req, res, next, cb) {
         if (req.query.shape) {
           sql += `,
             CASE
-              WHEN ST_Within(geom, shape.buffer)
-                THEN ST_AsGeoJSON(geom)
-              ELSE ST_AsGeoJSON(ST_Multi(ST_Intersection(geom, shape.buffer)))
+              WHEN ST_Within(s1.geom, shape.buffer)
+                THEN ST_AsGeoJSON(s1.geom)
+              ELSE ST_AsGeoJSON(ST_Multi(ST_Intersection(s1.geom, shape.buffer)))
             END AS geometry
           `;
           join = `
-            JOIN shape
-            ON ST_Intersects(geom, shape.buffer)
+            JOIN shape ON ST_Intersects(s1.geom, shape.buffer)
           `;
 
         } else {
@@ -97,8 +96,14 @@ module.exports = function(req, res, next, cb) {
         }
       }
 
-      sql += " FROM carto.small " + join + where + limit;
-
+      sql += `
+        FROM carto_new.small s1
+        LEFT JOIN maps.small s2 ON s1.map_id = s2.map_id
+        LEFT JOIN lookup_small ls ON ls.map_id = s2.map_id
+        ${join}
+        ${where}
+        ${limit}
+      `
       larkin.queryPg("burwell", sql, params, function(error, result) {
         if (error) {
           if (cb) return cb(error);
