@@ -135,6 +135,7 @@ module.exports = function(req, res, next, cb) {
                 result = gp(result, 5);
               }
 
+
               // Simplify the output!
               mapshaper.applyCommands("-simplify 14% visvalingam weighted", result, function(error, data) {
                 if (cb) return cb(null, result);
@@ -144,7 +145,7 @@ module.exports = function(req, res, next, cb) {
                   bare: (api.acceptedFormats.bare[req.query.format]) ? true : false,
                   refs: 'source_id'
                 }, {
-                  data: JSON.parse(data)
+                  data: (data) ? JSON.parse(data) : result
                 });
               });
 
