@@ -68,11 +68,7 @@ class Stats(Base):
         self.mariadb['cursor'] = self.mariadb['connection'].cursor()
 
         self.pg['cursor'].execute("""
-            select count(*)
-            FROM (SELECT map_id FROM maps.tiny
-            UNION SELECT map_id FROM maps.small
-            UNION SELECT map_id FROM maps.medium
-            UNION SELECT map_id FROM maps.large) foo
+            SELECT SUM(features) foo FROM maps.sources WHERE status_code='active'
         """)
         count = self.pg['cursor'].fetchone()[0]
 
