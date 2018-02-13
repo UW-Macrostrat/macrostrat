@@ -5,6 +5,7 @@ const vtileraster = require('tilestrata-vtile-raster')
 const etag = require('tilestrata-etag')
 const cartoProvider = require('./cartoProvider')
 const cartoProviderSlim = require('./cartoProviderSlim')
+const rasterProvider = require('./raster-provider')
 const redisCache = require('./redisCache')
 const logger = require('./logger')
 
@@ -39,20 +40,23 @@ module.exports = tilestrata.middleware({
       .route('*.png', {
         maxZoom: MAX_ZOOM
       })
-    //
-        .use(vtileraster({
-          xml: `${__dirname}/mapnik/burwell_vector_to_raster.xml`,
-          tileSize: 512,
-          scale: 2
-        }, {
-          tilesource: ['carto', '*.mvt']
-        }))
-        .use(redisCache({
-          dir: `${__dirname}/tilecache/carto/raster`,
-          defaultTile: `${__dirname}/resources/tile.png`
-        }))
+        .use(rasterProvider())
         .use(etag())
         .use(logger())
+    //
+        // .use(vtileraster({
+        //   xml: `${__dirname}/mapnik/burwell_vector_to_raster.xml`,
+        //   tileSize: 512,
+        //   scale: 2
+        // }, {
+        //   tilesource: ['carto', '*.mvt']
+        // }))
+        // .use(redisCache({
+        //   dir: `${__dirname}/tilecache/carto/raster`,
+        //   defaultTile: `${__dirname}/resources/tile.png`
+        // }))
+        // .use(etag())
+        // .use(logger())
 
     // Tiny
     strata.layer('tiny', {
