@@ -88,45 +88,62 @@ class Seed(Base):
             print '         ', z
             tiles = [ t for t in tilecover.cover_geometry(tiler, seed_area, z) ]
             headers = { 'X-Tilestrata-SkipCache': '*'}
-            # Request that a tile be created
             for tile in tqdm(tiles):
-                url = 'http://localhost:5555/carto/%s/%s/%s.png' % (tile.z, tile.x, tile.y)
+                url = 'http://localhost:8675/carto/%s/%s/%s.png?secret=%s' % (tile.z, tile.x, tile.y, self.credentials['tileserver_secret'])
                 try:
                     r = requests.get(url, headers=headers)
                     if r.status_code != 200 and r.status_code != 204:
                         print r.status_code
                 except:
                     pass
+                #
+                # url = 'http://localhost:8675/carto/%s/%s/%s.mvt?secret=71d36721-73ed-4e8e-b019-d4b3db0abfe0' % (tile.z, tile.x, tile.y)
+                # try:
+                #     r = requests.get(url, headers=headers)
+                #     if r.status_code != 200 and r.status_code != 204:
+                #         print r.status_code
+                # except:
+                #     pass
 
-                url = 'http://localhost:5555/carto-slim/%s/%s/%s.mvt' % (tile.z, tile.x, tile.y)
-                try:
-                    r = requests.get(url, headers=headers)
-                    if r.status_code != 200 and r.status_code != 204:
-                        print r.status_code
-                except:
-                    pass
+            # Request that a tile be created
+            # for tile in tqdm(tiles):
+            #     url = 'http://localhost:5555/carto/%s/%s/%s.png' % (tile.z, tile.x, tile.y)
+            #     try:
+            #         r = requests.get(url, headers=headers)
+            #         if r.status_code != 200 and r.status_code != 204:
+            #             print r.status_code
+            #     except:
+            #         pass
+            #
+            #     url = 'http://localhost:5555/carto-slim/%s/%s/%s.mvt' % (tile.z, tile.x, tile.y)
+            #     try:
+            #         r = requests.get(url, headers=headers)
+            #         if r.status_code != 200 and r.status_code != 204:
+            #             print r.status_code
+            #     except:
+            #         pass
 
-        print '     Deleting...'
-        for z in self.cached_zooms:
-            print '         ', z
-            tiles = [ t for t in tilecover.cover_geometry(tiler, seed_area, z) ]
-            headers = { 'X-Tilestrata-DeleteTile': self.credentials['tileserver_secret'] }
-            # Call delete tile
-            for layer in self.layers:
-                for tile in tqdm(tiles):
-                    url = 'http://localhost:5555/%s/%s/%s/%s.png' % (layer, tile.z, tile.x, tile.y)
-                    try:
-                        r = requests.get(url, headers=headers)
-                        if r.status_code != 200 and r.status_code != 204:
-                            print r.status_code
-                    except:
-                        pass
-                        # fails.append(url)
-                    url = 'http://localhost:5555/%s/%s/%s/%s.mvt' % (layer, tile.z, tile.x, tile.y)
-                    try:
-                        r = requests.get(url, headers=headers)
-                        if r.status_code != 200 and r.status_code != 204:
-                            print r.status_code
-                    except:
-                        pass
+        # print '     Deleting...'
+        # for z in self.cached_zooms:
+        #     print '         ', z
+        #     tiles = [ t for t in tilecover.cover_geometry(tiler, seed_area, z) ]
+        #     headers = { 'X-Tilestrata-DeleteTile': self.credentials['tileserver_secret'] }
+        #     # Call delete tile
+        #     for layer in self.layers:
+        #         for tile in tqdm(tiles):
+        #             url = 'http://localhost:5555/%s/%s/%s/%s.png' % (layer, tile.z, tile.x, tile.y)
+        #             try:
+        #                 r = requests.get(url, headers=headers)
+        #                 if r.status_code != 200 and r.status_code != 204:
+        #                     print r.status_code
+        #             except:
+        #                 pass
+        #                 # fails.append(url)
+        #             url = 'http://localhost:5555/%s/%s/%s/%s.mvt' % (layer, tile.z, tile.x, tile.y)
+        #             try:
+        #                 r = requests.get(url, headers=headers)
+        #                 if r.status_code != 200 and r.status_code != 204:
+        #                     print r.status_code
+        #             except:
+        #                 pass
                         # fails.append(url)
