@@ -7,6 +7,7 @@ const cartoProvider = require('./cartoProvider')
 const cartoProviderSlim = require('./cartoProviderSlim')
 const rasterProvider = require('./raster-provider')
 const redisCache = require('./redisCache')
+const pureRedisCache = require('./pureRedisCache')
 const logger = require('./logger')
 
 const MAX_ZOOM = 16
@@ -41,6 +42,7 @@ module.exports = tilestrata.middleware({
         maxZoom: MAX_ZOOM
       })
         .use(rasterProvider())
+        .use(pureRedisCache())
         .use(etag())
         .use(logger())
     //
