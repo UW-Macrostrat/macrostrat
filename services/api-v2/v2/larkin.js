@@ -344,6 +344,7 @@ var mysql = require("mysql"),
 
   // Handle lith_atts
   larkin.pipifyAttrs = function(data) {
+    if (!data || !data.length) return ''
     return data.map(function(attr) {
       return ((attr.atts) ? (attr.atts.join(" ") + " ") : "") +
               attr.name + " " + attr.type + " " + attr.class + " " +

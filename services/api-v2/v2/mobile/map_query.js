@@ -39,6 +39,12 @@ var priorities = {
   'medium': ['medium', 'small', 'tiny'],
   'large': ['large', 'medium', 'small', 'tiny']
 }
+const scaleIsIn = {
+  'tiny': ['tiny'],
+  'small': ['small', 'tiny'],
+  'medium': ['medium', 'small'],
+  'large': ['medium', 'large']
+}
 
 // https://msdn.microsoft.com/en-us/library/bb259689.aspx
 // Calcucate m/px given a latitude and a zoom level
@@ -134,8 +140,19 @@ function summarizeUnits(units, callback) {
 
 
 function buildSQL(scale, where) {
+  let scaleJoin = scaleIsIn[scale].map(s => {
+    return `
+    SELECT * FROM maps.${s}
+    `
+  }).join(' UNION ALL ')
+  let lookupJoin = scaleIsIn[scale].map(s => {
+    return `
+    SELECT * FROM lookup_${s}
+    `
+  }).join(' UNION ALL ')
+
   return `
-    (SELECT
+    SELECT
       m.map_id,
       m.source_id,
       COALESCE(m.name, '') AS name,
@@ -162,14 +179,19 @@ function buildSQL(scale, where) {
         COALESCE(sources.ref_year, '') ref_year,
         COALESCE(sources.ref_source, '') ref_source,
         COALESCE(sources.isbn_doi, '') isbn_doi) r)::jsonb AS ref
-      FROM maps.${scale} m
+      FROM carto_new.${scale} y
+      JOIN (
+        ${scaleJoin}
+      ) m ON y.map_id = m.map_id
+      LEFT JOIN (
+        ${lookupJoin}
+      ) mm ON mm.map_id = m.map_id
       JOIN maps.sources ON m.source_id = sources.source_id
       LEFT JOIN macrostrat.intervals ti ON m.t_interval = ti.id
       LEFT JOIN macrostrat.intervals tb ON m.b_interval = tb.id
-      LEFT JOIN lookup_${scale} mm ON mm.map_id = m.map_id
       ${where}
       ORDER BY sources.new_priority DESC
-    )
+
   `
 }
 
@@ -268,47 +290,19 @@ module.exports = function(req, res, next) {
 
       where = ' WHERE ' + where.join(' AND ')
 
-      var scaleSQL = Object.keys(priorities).map(function(scale) {
-        return buildSQL(scale, where);
-      }).join(' UNION ALL ');
 
-      var toRun = `SELECT * FROM ( ${scaleSQL} ) doit`;
-      larkin.queryPg('burwell', toRun, params, function(error, result) {
+      let z = req.query.z || 10
+      let sql = buildSQL(scaleLookup[z], where)
+
+      larkin.queryPg('burwell', sql, params, function(error, result) {
         if (error) {
           return cb(error)
         } else {
 
-          var currentScale = scaleLookup[req.query.z]
-          var returnedScales = _.uniq(result.rows.map(function(d) { return d.scale }))
-
-          var targetScales = []
-
-          // Iterate on possible scales given our z
-          for (var i = 0; i < priorities[currentScale].length; i++) {
-            // If that scale is present, record it
-             if (returnedScales.indexOf(priorities[currentScale][i]) > -1) {
-               targetScales.push(priorities[currentScale][i])
-               if (currentScale != 'tiny' && currentScale != 'small') {
-                 break
-               } else if (targetScales.length > 1) {
-                 break
-               }
-             }
-           }
-
-           // All the map polygons of the best appropriate scale
-           var bestFit = result.rows.filter(function(d) {
-             if (targetScales.indexOf(d.scale) > -1) {
-               delete d.scale
-               return d
-             }
-           })[0]
-
-           // Add reference here! (or maybe in buildSQL...)
-
-           var macroUnits = (bestFit && bestFit.macroUnits) ? bestFit.macro_units : []
+           var bestFit = result.rows[0] || {}
+           var macroUnits = (bestFit && bestFit.macro_units) ? bestFit.macro_units : []
            var macroNames = (bestFit && bestFit.strat_names) ? bestFit.strat_names : []
-
+    
            if (macroUnits.length) {
              require('../units')({query: { unit_id: macroUnits.join(',') } }, null, null, function(error, result) {
                if (error) console.log('Error fetching units', error);
