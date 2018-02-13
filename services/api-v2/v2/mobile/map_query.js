@@ -191,7 +191,6 @@ function buildSQL(scale, where) {
       LEFT JOIN macrostrat.intervals tb ON m.b_interval = tb.id
       ${where}
       ORDER BY sources.new_priority DESC
-
   `
 }
 
@@ -280,7 +279,7 @@ module.exports = function(req, res, next) {
     burwell: function(cb) {
       var where = []
       var params = []
-      where.push('ST_Intersects(m.geom, ST_GeomFromText($' + (where.length + 1) + ', 4326))');
+      where.push('ST_Intersects(y.geom, ST_GeomFromText($' + (where.length + 1) + ', 4326))');
       params.push(`SRID=4326;POINT(${req.query.lng} ${req.query.lat})`);
 
       // If no valid parameters passed, return an Error
@@ -302,7 +301,7 @@ module.exports = function(req, res, next) {
            var bestFit = result.rows[0] || {}
            var macroUnits = (bestFit && bestFit.macro_units) ? bestFit.macro_units : []
            var macroNames = (bestFit && bestFit.strat_names) ? bestFit.strat_names : []
-    
+
            if (macroUnits.length) {
              require('../units')({query: { unit_id: macroUnits.join(',') } }, null, null, function(error, result) {
                if (error) console.log('Error fetching units', error);
