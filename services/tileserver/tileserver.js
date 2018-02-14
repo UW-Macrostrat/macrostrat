@@ -1,14 +1,14 @@
 const tilestrata = require('tilestrata')
-const mapnik = require('tilestrata-mapnik')
 const vtile = require('tilestrata-vtile')
-const vtileraster = require('tilestrata-vtile-raster')
 const etag = require('tilestrata-etag')
-const cartoProvider = require('./cartoProvider')
-const cartoProviderSlim = require('./cartoProviderSlim')
+
 const rasterProvider = require('./raster-provider')
 const redisCache = require('./redisCache')
 const pureRedisCache = require('./pureRedisCache')
 const logger = require('./logger')
+
+const cartoVectorProvider = require('./cartoVectorProvider')
+const cartoSlimVectorProvider = require('./cartoSlimVectorProvider')
 
 const MAX_ZOOM = 16
 module.exports = tilestrata.middleware({
@@ -19,24 +19,20 @@ module.exports = tilestrata.middleware({
       .route('*.mvt', {
         maxZoom: MAX_ZOOM
       })
-        .use(cartoProviderSlim())
-        .use(redisCache({
-            dir: `${__dirname}/tilecache/carto-slim/vector`,
-            defaultTile: `${__dirname}/resources/tile.mvt`
-          }))
+        .use(cartoSlimVectorProvider())
+        .use(pureRedisCache())
         .use(etag())
+        .use(logger())
 
     // Carto
     strata.layer('carto')
       .route('*.mvt', {
         maxZoom: MAX_ZOOM
       })
-        .use(cartoProvider())
-        .use(redisCache({
-            dir: `${__dirname}/tilecache/carto/vector`,
-            defaultTile: `${__dirname}/resources/tile.mvt`
-          }))
+        .use(cartoVectorProvider())
+        .use(pureRedisCache())
         .use(etag())
+        .use(logger())
 
       .route('*.png', {
         maxZoom: MAX_ZOOM
@@ -45,20 +41,6 @@ module.exports = tilestrata.middleware({
         .use(pureRedisCache())
         .use(etag())
         .use(logger())
-    //
-        // .use(vtileraster({
-        //   xml: `${__dirname}/mapnik/burwell_vector_to_raster.xml`,
-        //   tileSize: 512,
-        //   scale: 2
-        // }, {
-        //   tilesource: ['carto', '*.mvt']
-        // }))
-        // .use(redisCache({
-        //   dir: `${__dirname}/tilecache/carto/raster`,
-        //   defaultTile: `${__dirname}/resources/tile.png`
-        // }))
-        // .use(etag())
-        // .use(logger())
 
     // Tiny
     strata.layer('tiny', {

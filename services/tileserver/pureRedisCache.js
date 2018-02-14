@@ -19,12 +19,24 @@ module.exports = (options) => {
       }
     }
 
+    function deleteTile(tile) {
+      client.del(key(tile), (error) => {
+        // Let it fail. What do I care.
+      })
+    }
+
     return {
         init: (server, callback) => {
           callback()
         },
 
         get: (server, tile, callback) => {
+          // Handle a cache-clear request
+          if (tile.headers['x-tilestrata-deletetile'] && tile.headers['x-tilestrata-deletetile'] === secret) {
+            deleteTile(tile)
+            return callback(null, (tile.filename.indexOf('.png') > -1 ? blankRasterTile : blankVectorTile))
+          }
+
           // Check if tile exists in memory
           client.get(key(tile), (error, data) => {
             // if yes, return it
