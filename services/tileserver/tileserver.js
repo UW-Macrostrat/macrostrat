@@ -1,7 +1,7 @@
 const tilestrata = require('tilestrata')
 const vtile = require('tilestrata-vtile')
 const etag = require('tilestrata-etag')
-
+const vtileraster = require('tilestrata-vtile-raster')
 const rasterProvider = require('./raster-provider')
 const redisCache = require('./redisCache')
 const pureRedisCache = require('./pureRedisCache')
