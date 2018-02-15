@@ -153,11 +153,12 @@ class Tesselate(Base):
         column_buffer = None
         parameters = {}
         for arg in args:
+            arg = arg.decode('utf8')
             parts = arg.split('=')
             if len(parts) != 2:
                 print 'Invalid argument - %s' % (arg, )
 
-            parameters[re.sub(r'-', '', parts[0])] = parts[1].split(',')
+            parameters[re.sub(u'\u2014', '', parts[0])] = parts[1].split(',')
 
         if len(parameters) < 1:
             print Tesselate.__doc__
