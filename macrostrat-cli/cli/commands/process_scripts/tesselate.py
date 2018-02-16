@@ -409,12 +409,16 @@ class Tesselate(Base):
                 print 'When only one column is provided, a valid `buffer` or `snap_to_nearest` must also be provided'
                 sys.exit(1)
         else:
+            bbox = Polygon([[-179, -85], [-179, 85], [179, 85], [179, -85]])
             # Create the tesselation; initially open-ended and not clipped to the clipping polygon
             tesselation = Voronoi(np.array( [ [float(p['lng']), float(p['lat'])] for p in columns ] ))
             # We have to do this BS because scipy voronoi doesn't create edges for vertices outside of convex hull of all the points
             regions, new_points =  Tesselate.voronoi_finite_polygons_2d(self, tesselation)
-            unclipped_polygons = [ Polygon(new_points[r]) for r in regions ]
+            unclipped_polygons = [ Polygon(new_points[region]).intersection(bbox) for region in regions ]
+            #unclipped_polygons = [ Polygon(new_points[r]) for r in regions ]
 
+        for polygon in unclipped_polygons:
+            print json.dumps(mapping(polygon['polygon']))
 
         if clip_polygon is not None:
             clipped_polygons = [ poly.intersection(clip_polygon) for poly in unclipped_polygons ]
