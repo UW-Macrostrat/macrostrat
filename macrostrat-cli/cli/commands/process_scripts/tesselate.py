@@ -409,6 +409,18 @@ class Tesselate(Base):
                 print 'When only one column is provided, a valid `buffer` or `snap_to_nearest` must also be provided'
                 sys.exit(1)
         else:
+            '''
+            OK. This is super weird. The scipy voronoi algorithm requires 4 points,
+            but will only throw an error if <= 2 points are provided. When 3 are input
+            and they are not nearly colinear it works as expected, but if they are almost
+            colinear bizarre bad things happen. The hypothesis is that there exists
+            some edge case in which the resultant vectors are parallel, which messes
+            things up. To get around that, we simply add a
+            point on Null Island to make sure we have 4 points and everything works.
+            While this point will have a varying degree of influence depending on the
+            distance of the input points from Null Island, it is usually very minor,
+            especially considering these polygons are fairly meaningless.
+            '''
             if len(columns) == 3:
                 columns.append({'lng': 0, 'lat': 0})
             # Create the tesselation; initially open-ended and not clipped to the clipping polygon
