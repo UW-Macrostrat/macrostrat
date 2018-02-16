@@ -270,12 +270,12 @@ class Tesselate(Base):
         # Get the column coordinates
         sql_key = 'id' if column_param_key == 'col_id' else column_param_key
         sql_params = ','.join([ '%s' for val in parameters[column_param_key] ])
-        Tesselate.mariadb['cursor'].execute("""
+        self.mariadb['cursor'].execute("""
             SELECT id, lat, lng
             FROM cols
             WHERE """ + sql_key + """ IN (""" + sql_params + """)
         """, parameters[column_param_key])
-        columns = Tesselate.mariadb['cursor'].fetchall()
+        columns = self.mariadb['cursor'].fetchall()
 
         # Validate
         if column_param_key == 'id' and len(columns) != len(parameters[column_param_key]):
@@ -294,12 +294,12 @@ class Tesselate(Base):
 
         # Get the clip polygon
         if 'boundary_id' in parameters:
-            Tesselate.pg['cursor'].execute("""
+            self.pg['cursor'].execute("""
                 SELECT ST_AsGeoJSON((ST_dump(ST_Union(geom))).geom) AS geom
                 FROM geologic_boundaries.boundaries
                 WHERE boundary_id = ANY(%(boundary_id)s)
             """, { 'boundary_id': [ int(p) for p in parameters['boundary_id'] ] })
-            clip_polygon = Tesselate.pg['cursor'].fetchone()
+            clip_polygon = self.pg['cursor'].fetchone()
 
             # Verify that something was fetched
             if len(clip_polygon) == 0:
@@ -359,7 +359,7 @@ class Tesselate(Base):
                 unclipped_polygons = [ column.buffer(parameters['buffer']) for column in columns ]
             elif 'snap_to_nearest' in parameters:
                 # Need to get buffer distance
-                Tesselate.pg['cursor'].execute("""
+                self.pg['cursor'].execute("""
                     SELECT ST_Distance(coordinate, %(point)s) AS distance
                     FROM macrostrat.cols
                     WHERE id != %(col_id)s
@@ -369,7 +369,7 @@ class Tesselate(Base):
                     'point': 'POINT(%s %s)' % (columns[0]['lng'], columns[0]['lat']),
                     'col_id': columns[0]['id']
                 })
-                result = Tesselate.pg['cursor'].fetchone()
+                result = self.pg['cursor'].fetchone()
                 unclipped_polygons = [ Point([float(p['lng']), float(p['lat'])]).buffer(result[0]).envelope for p in columns ]
             else:
                 print 'When only one column is provided, a valid `buffer` or `snap_to_nearest` must also be provided'
@@ -391,12 +391,12 @@ class Tesselate(Base):
             pass
         else:
             # Fetch all column polygons
-            Tesselate.pg['cursor'].execute("""
+            self.pg['cursor'].execute("""
                 SELECT ST_AsGeoJSON(ST_Union(poly_geom)) AS geom
                 FROM macrostrat.cols
                 WHERE NOT (""" + sql_key + """ = ANY(%(ids)s))
             """, { 'ids': [ int(p) for p in parameters[column_param_key] ]})
-            all_columns = shape(json.loads(Tesselate.pg['cursor'].fetchone()[0]))
+            all_columns = shape(json.loads(self.pg['cursor'].fetchone()[0]))
             clipped_polygons = [ poly.difference(all_columns) for poly in clipped_polygons ]
 
         # Assign a tesselated polygon to each column
@@ -410,27 +410,27 @@ class Tesselate(Base):
         # Update the database
         for column in assigned_polygons:
             # First check if it already exists in `col_areas`
-            Tesselate.mariadb['cursor'].execute("""
+            self.mariadb['cursor'].execute("""
                 SELECT col_id
                 FROM col_areas
                 WHERE col_id = %s
             """, column['col_id'])
-            col_id = Tesselate.mariadb['cursor'].fetchone()
+            col_id = self.mariadb['cursor'].fetchone()
             # If it doesn't exist, insert
             if col_id is None or len(col_id) == 0:
-                Tesselate.mariadb['cursor'].execute("""
+                self.mariadb['cursor'].execute("""
                     INSERT INTO col_areas (col_id, col_area)
                     VALUES (%s, ST_GeomFromText(%s))
                 """, [ column['col_id'], column['polygon'].wkt ])
-                Tesselate.mariadb['connection'].commit()
+                self.mariadb['connection'].commit()
             # Otherwise update
             else:
-                Tesselate.mariadb['cursor'].execute("""
+                self.mariadb['cursor'].execute("""
                     UPDATE col_areas
                     SET col_area =  ST_GeomFromText(%s)
                     WHERE col_id = %s
                 """, [ column['polygon'].wkt, column['col_id'] ])
-                Tesselate.mariadb['connection'].commit()
+                self.mariadb['connection'].commit()
 
             column_aea = ops.transform(
                 partial(
@@ -445,21 +445,21 @@ class Tesselate(Base):
             # Print the area in m^2
             area = column_aea.area / 1000000
 
-            Tesselate.mariadb['cursor'].execute("""
+            self.mariadb['cursor'].execute("""
                 UPDATE cols
                 SET col_area = %s
                 WHERE id = %s
             """, [area, column['col_id']])
-            Tesselate.mariadb['connection'].commit()
+            self.mariadb['connection'].commit()
 
         # Close connections, otherwise you'll have a bad time https://dba.stackexchange.com/a/133047/38677
-        Tesselate.pg['connection'].close()
-        Tesselate.mariadb['connection'].close()
+        self.pg['connection'].close()
+        self.mariadb['connection'].close()
 
         # Update postgres
         schlep_instance = schlep({
-            'pg': Tesselate.pg['raw_connection'],
-            'mariadb': Tesselate.mariadb['raw_connection']
+            'pg': self.pg['raw_connection'],
+            'mariadb': self.mariadb['raw_connection']
         }, [ None, ''])
 
         schlep_instance.move_table('col_areas')
