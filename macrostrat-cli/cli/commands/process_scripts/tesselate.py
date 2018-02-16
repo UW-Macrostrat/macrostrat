@@ -164,8 +164,6 @@ class Tesselate(Base):
             print Tesselate.__doc__
             sys.exit(1)
 
-        print parameters
-        sys.exit()
         # Validate the parameters passed to the script
         column_params = [ 'col_id', 'col_group_id', 'project_id' ]
         clip_params = [ 'boundary_id', 'boundary_polygon', 'snap_to_nearest', 'buffer' ]
