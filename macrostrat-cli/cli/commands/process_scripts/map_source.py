@@ -53,9 +53,11 @@ class MapSource(Base):
         Base.__init__(self, connections, *args)
 
     def run(self, source_id):
-        if source_id == '--help' or source_id == '-h':
+        if len(source_id) == 0 or source_id[0] == '--help' or source_id[0] == '-h':
             print MapSource.__doc__
             sys.exit()
+
+        source_id = source_id[0]
 
         rgeom = RGeom({})
         rgeom.run(source_id)
