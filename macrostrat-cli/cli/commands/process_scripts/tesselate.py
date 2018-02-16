@@ -157,13 +157,15 @@ class Tesselate(Base):
             parts = arg.split('=')
             if len(parts) != 2:
                 print 'Invalid argument - %s' % (arg, )
-
-            parameters[re.sub(u'\u2014', '', parts[0])] = parts[1].split(',')
+            clean_part = re.sub(r'-', '', re.sub(u'\u2014', '', parts[0]))
+            parameters[clean_part] = parts[1].split(',')
 
         if len(parameters) < 1:
             print Tesselate.__doc__
             sys.exit(1)
 
+        print parameters
+        sys.exit()
         # Validate the parameters passed to the script
         column_params = [ 'col_id', 'col_group_id', 'project_id' ]
         clip_params = [ 'boundary_id', 'boundary_polygon', 'snap_to_nearest', 'buffer' ]
