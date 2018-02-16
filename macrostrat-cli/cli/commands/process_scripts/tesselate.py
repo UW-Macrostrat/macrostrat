@@ -418,7 +418,7 @@ class Tesselate(Base):
             #unclipped_polygons = [ Polygon(new_points[r]) for r in regions ]
 
         for polygon in unclipped_polygons:
-            print json.dumps(mapping(polygon['polygon']))
+            print polygon
 
         if clip_polygon is not None:
             clipped_polygons = [ poly.intersection(clip_polygon) for poly in unclipped_polygons ]
@@ -459,6 +459,7 @@ class Tesselate(Base):
                 WHERE col_id = %s
             """, column['col_id'])
             col_id = self.mariadb['cursor'].fetchone()
+
             # If it doesn't exist, insert
             if col_id is None or len(col_id) == 0:
                 self.mariadb['cursor'].execute("""
@@ -508,4 +509,4 @@ class Tesselate(Base):
         schlep_instance.move_table('col_areas')
         schlep_instance.move_table('cols')
 
-        urllib2.urlopen('http://localhost:5000/api/v2/coluns/refresh-cache?cacheRefreshKey=%s' % (self.credentials['cacheRefreshKey'], )).read()
+        urllib2.urlopen('http://127.0.0.1:5000/api/v2/coluns/refresh-cache?cacheRefreshKey=%s' % (self.credentials['cacheRefreshKey'], )).read()
