@@ -84,7 +84,7 @@ class Tesselate(Base):
         geojson = {
             "type": "FeatureCollection",
             "features": [
-                {"type": "Feature", "properties": {'col_id': f['col_id']}, "geometry": json.loads(json.dumps(mapping(f['polygon'])))} for f in tesselation
+                {"type": "Feature", "properties": {}, "geometry": json.loads(json.dumps(mapping(f['polygon'])))} for f in tesselation
             ]
         }
         with open('tesselation.json', 'w') as out:
