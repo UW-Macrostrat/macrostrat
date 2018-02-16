@@ -409,7 +409,7 @@ class Tesselate(Base):
                 print 'When only one column is provided, a valid `buffer` or `snap_to_nearest` must also be provided'
                 sys.exit(1)
         else:
-            if len(columns) === 3:
+            if len(columns) == 3:
                 columns.append({'lng': 0, 'lat': 0})
             # Create the tesselation; initially open-ended and not clipped to the clipping polygon
             tesselation = Voronoi(np.array( [ [float(p['lng']), float(p['lat'])] for p in columns ] ))
