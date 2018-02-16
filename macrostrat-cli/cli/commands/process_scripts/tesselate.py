@@ -13,6 +13,7 @@ import json
 import re
 from .. import schlep
 from ..base import Base
+import urllib2
 
 class Tesselate(Base):
     '''
@@ -464,6 +465,8 @@ class Tesselate(Base):
 
         schlep_instance.move_table('col_areas')
         schlep_instance.move_table('cols')
+
+        urllib2.urlopen("http://localhost:5000/api/v2/coluns/refresh-cache?cacheRefreshKey=").read()
 
         # geojson = {
         #     "type": "FeatureCollection",
