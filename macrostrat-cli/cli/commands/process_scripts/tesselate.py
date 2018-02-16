@@ -80,7 +80,7 @@ class Tesselate(Base):
     def __init__(self, connections, *args):
         Base.__init__(self, connections, *args)
 
-    def debug(tesselation, columns, clip_polygon):
+    def debug(self, tesselation, columns, clip_polygon):
         geojson = {
             "type": "FeatureCollection",
             "features": [
