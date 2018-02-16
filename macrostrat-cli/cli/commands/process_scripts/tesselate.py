@@ -443,7 +443,7 @@ class Tesselate(Base):
 
         if len(assigned_polygons) != len(columns):
             print 'Not all column points were assigned a tesselated polygon. See debug geojson files for help.'
-            Tesselate.debug(clipped_polygons, columns, clip_polygon)
+            Tesselate.debug(self, clipped_polygons, columns, clip_polygon)
             sys.exit(1)
 
         # Update the database
