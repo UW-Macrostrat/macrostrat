@@ -466,7 +466,7 @@ class Tesselate(Base):
         schlep_instance.move_table('col_areas')
         schlep_instance.move_table('cols')
 
-        urllib2.urlopen("http://localhost:5000/api/v2/coluns/refresh-cache?cacheRefreshKey=").read()
+        urllib2.urlopen('http://localhost:5000/api/v2/coluns/refresh-cache?cacheRefreshKey=%s' % (self.credentials['cacheRefreshKey'], )).read()
 
         # geojson = {
         #     "type": "FeatureCollection",
