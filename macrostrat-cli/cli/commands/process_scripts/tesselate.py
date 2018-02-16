@@ -80,6 +80,39 @@ class Tesselate(Base):
     def __init__(self, connections, *args):
         Base.__init__(self, connections, *args)
 
+    def debug(tesselation, columns, clip_polygon):
+        geojson = {
+            "type": "FeatureCollection",
+            "features": [
+                {"type": "Feature", "properties": {'col_id': f['col_id']}, "geometry": json.loads(json.dumps(mapping(f['polygon'])))} for f in tesselation
+            ]
+        }
+        with open('tesselation.json', 'w') as out:
+            json.dump(geojson, out)
+
+
+        point_geojson = {
+            "type": "FeatureCollection",
+            "features": [
+                {"type": "Feature", "properties": {}, "geometry": { "type": "Point", "coordinates": [float(p['lng']), float(p['lat'])] }} for p in columns
+            ]
+        }
+        with open('points.json', 'w') as out:
+            json.dump(point_geojson, out)
+
+
+        if clip_polygon is not None:
+            clip_geojson = {
+                "type": "FeatureCollection",
+                "features": [
+                    {"type": "Feature", "properties": {}, "geometry": json.loads(json.dumps(mapping(clip_polygon)))}
+                ]
+            }
+
+            with open('clip.json', 'w') as out:
+                json.dump(clip_geojson, out)
+
+
     def voronoi_finite_polygons_2d(self, vor, radius=None):
         # via https://gist.github.com/pv/8036995 with minor mods
 
@@ -408,6 +441,11 @@ class Tesselate(Base):
                     assigned_polygons.append({ 'col_id': column['id'], 'polygon': polygon })
                     continue
 
+        if len(assigned_polygons) != len(columns):
+            print 'Not all column points were assigned a tesselated polygon. See debug geojson files for help.'
+            Tesselate.debug(clipped_polygons, columns, clip_polygon)
+            sys.exit(1)
+
         # Update the database
         for column in assigned_polygons:
             # First check if it already exists in `col_areas`
@@ -467,34 +505,3 @@ class Tesselate(Base):
         schlep_instance.move_table('cols')
 
         urllib2.urlopen('http://localhost:5000/api/v2/coluns/refresh-cache?cacheRefreshKey=%s' % (self.credentials['cacheRefreshKey'], )).read()
-
-        # geojson = {
-        #     "type": "FeatureCollection",
-        #     "features": [
-        #         {"type": "Feature", "properties": {'col_id': f['col_id']}, "geometry": json.loads(json.dumps(mapping(f['polygon'])))} for f in assigned_polygons
-        #     ]
-        # }
-        # with open('tesselation.json', 'w') as out:
-        #     json.dump(geojson, out)
-        #
-        #
-        # point_geojson = {
-        #     "type": "FeatureCollection",
-        #     "features": [
-        #         {"type": "Feature", "properties": {}, "geometry": { "type": "Point", "coordinates": [float(p['lng']), float(p['lat'])] }} for p in columns
-        #     ]
-        # }
-        # with open('points.json', 'w') as out:
-        #     json.dump(point_geojson, out)
-        #
-        #
-        # if clip_polygon is not None:
-        #     clip_geojson = {
-        #         "type": "FeatureCollection",
-        #         "features": [
-        #             {"type": "Feature", "properties": {}, "geometry": json.loads(json.dumps(mapping(clip_polygon)))}
-        #         ]
-        #     }
-        #
-        #     with open('clip.json', 'w') as out:
-        #         json.dump(clip_geojson, out)
