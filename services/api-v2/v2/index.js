@@ -22,6 +22,9 @@ api.route("/changes")
     res.sendFile(__dirname + "/changes.html");
   });
 
+api.route("/columns/refresh-cache")
+  .get(require("./column-cache-refresh"))
+  
 api.route("/columns")
   .get(function(req, res, next) {
     require("./columns")(req, res, next);
