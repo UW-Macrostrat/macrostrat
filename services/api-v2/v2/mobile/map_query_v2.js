@@ -327,6 +327,17 @@ module.exports = (req, res, next) => {
       })
     },
 
+    columns: (cb) => {
+      larkin.queryPg('burwell', `
+        SELECT count(*) AS total_columns
+        FROM macrostrat.cols
+        WHERE poly_geom IS NOT NULL AND status_code = 'active' AND ST_Intersects(poly_geom, $1)
+      `, [ `SRID=4326;POINT(${req.query.lng} ${req.query.lat})` ], (error, result) => {
+        if (error) return cb(error)
+        cb(null, ((result && result.rows.length && result.rows[0].total_columns && result.rows[0].total_columns != 0) ? true : false))
+      })
+    },
+
     regions: (cb) => {
       larkin.queryPg('burwell', `
       SELECT sub.boundary_id, sub.name, sub.boundary_group, sub.boundary_type, sub.boundary_class, sub.descrip, sub.wiki_link,
@@ -428,7 +439,8 @@ module.exports = (req, res, next) => {
       data: {
         elevation: data.elevation,
         mapData: data.burwell,
-        regions: data.regions
+        regions: data.regions,
+        hasColumns: data.columns
       }
     })
   })
