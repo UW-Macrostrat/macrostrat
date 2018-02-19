@@ -60,13 +60,13 @@ class MapSource(Base):
         source_id = source_id[0]
 
         rgeom = RGeom({})
-        rgeom.run(source_id)
+        rgeom.run((source_id, ))
 
         web_geom = WebGeom({})
-        web_geom.run(source_id)
+        web_geom.run((source_id, ))
 
         leg = Legend({})
-        leg.run(source_id)
+        leg.run((source_id, ))
 
         sn = strat_names({})
         sn.run(source_id)
@@ -78,13 +78,13 @@ class MapSource(Base):
         l.run(source_id)
 
         burwell_lookup = BurwellLookup({})
-        burwell_lookup.run(source_id)
+        burwell_lookup.run((source_id, ))
 
         carto = Carto({})
-        carto.run(source_id)
+        carto.run((source_id, ))
 
         carto_lines = CartoLines({})
-        carto_lines.run(source_id)
+        carto_lines.run((source_id, ))
 
         seed = Seed({}, True, source_id )
         seed.run()
