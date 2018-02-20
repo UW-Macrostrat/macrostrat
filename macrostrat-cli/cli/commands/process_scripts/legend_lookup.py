@@ -447,8 +447,11 @@ class LegendLookup(Base):
         for color in colors:
             if color.color is None:
                 continue
-
-            c = spectra.html(color.color)
+            try:
+                c = spectra.html(color.color)
+            except:
+                print color
+                continue
             variants = [
                 c.brighten(amount=3).hexcode,
                 c.brighten(amount=6).hexcode,
