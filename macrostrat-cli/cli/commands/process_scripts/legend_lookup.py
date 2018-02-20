@@ -445,6 +445,8 @@ class LegendLookup(Base):
         colors = self.pg['cursor'].fetchall()
 
         for color in colors:
+            if color.color is None:
+                continue
             c = spectra.html(color.color)
             variants = [
                 c.brighten(amount=3).hexcode,
