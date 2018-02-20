@@ -462,7 +462,10 @@ class LegendLookup(Base):
             ]
             used_variants = []
 
-            for legend_id in color.legend_ids:
+            for idx, legend_id in enumerate(color.legend_ids):
+                # allow one to maintain its original color
+                if idx == 0:
+                    continue
                 # If we have used all the colors start over
                 if len(used_variants) == len(variants):
                     used_variants = []
