@@ -447,6 +447,7 @@ class LegendLookup(Base):
         for color in colors:
             if color.color is None:
                 continue
+
             c = spectra.html(color.color)
             variants = [
                 c.brighten(amount=3).hexcode,
@@ -473,11 +474,16 @@ class LegendLookup(Base):
                     used_variants = []
 
                 valid_choice = False
+                loops = 0
                 while not valid_choice:
                     new_color = random.choice(variants)
+                    loops = loops + 1
                     if new_color not in used_variants:
                         valid_choice = True
                         used_variants.append(new_color)
+                    elif loops > 12:
+                        used_variants = []
+
 
                 self.pg['cursor'].execute("""
                     UPDATE maps.legend
