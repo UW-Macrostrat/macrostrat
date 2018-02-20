@@ -3,6 +3,7 @@ from rgeom import RGeom
 from web_geom import WebGeom
 from burwell_lookup import BurwellLookup
 from legend import Legend
+from legend_lookup import LegendLookup
 from ..match_scripts import strat_names
 from ..match_scripts import units
 from ..match_scripts import liths
@@ -43,7 +44,7 @@ class MapSource(Base):
         'mariadb': True,
         'pg': True,
         'usage': """
-            Adds a given source to the proper carto line tables.
+            Processes a map source using all appropriate scripts
         """,
         'required_args': {
             'source_id': 'A valid source_id'
@@ -79,6 +80,9 @@ class MapSource(Base):
 
         burwell_lookup = BurwellLookup({})
         burwell_lookup.run((source_id, ))
+
+        leg_lookup = LegendLookup({})
+        leg_lookup.run((source_id, ))
 
         carto = Carto({})
         carto.run((source_id, ))
