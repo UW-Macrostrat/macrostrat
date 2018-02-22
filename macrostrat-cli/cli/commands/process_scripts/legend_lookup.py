@@ -553,17 +553,12 @@ class LegendLookup(Base):
             # Just pick the first color
             color = unit.colors[0]
 
-            for idx, legend_id in enumerate(unit.legend_ids):
-                # allow one to maintain its original color
-                if idx == 0:
-                    continue
-
-                self.pg['cursor'].execute("""
-                    UPDATE maps.legend
-                    SET color = %(color)s
-                    WHERE legend_id = %(legend_id)s
-                """, {
-                    'color': color,
-                    'legend_id': legend_id
-                })
+            self.pg['cursor'].execute("""
+                UPDATE maps.legend
+                SET color = %(color)s
+                WHERE legend_id = ANY(%(legend_id)s)
+            """, {
+                'color': color,
+                'legend_id': unit.legend_ids
+            })
             self.pg['connection'].commit()
