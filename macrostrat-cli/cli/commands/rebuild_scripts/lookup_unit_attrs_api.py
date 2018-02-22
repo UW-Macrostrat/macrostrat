@@ -294,11 +294,17 @@ class LookupUnitsAttrsAPI(Base):
 
         self.mariadb['cursor'].execute("""
             TRUNCATE TABLE lookup_unit_attrs_api;
+        """)
+        self.mariadb['cursor'].close()
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
+
+        self.mariadb['cursor'].execute("""
             INSERT INTO lookup_unit_attrs_api SELECT * FROM lookup_unit_attrs_api_new;
         """)
         self.mariadb['cursor'].close()
 
         self.mariadb['cursor'] = self.mariadb['connection'].cursor()
+
         self.mariadb['cursor'].execute("""
             DROP TABLE IF EXISTS lookup_unit_attrs_api_new;
         """)
