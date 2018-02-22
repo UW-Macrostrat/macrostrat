@@ -368,8 +368,19 @@ module.exports = (req, res, next) => {
     },
 
     burwell: (cb) => {
-      let where = [`ST_Intersects(y.geom, ST_GeomFromText($1, 4326))`]
-      let params = [`SRID=4326;POINT(${req.query.lng} ${req.query.lat})`]
+      let where = []
+      let params = []
+
+      if (req.query.map_id) {
+        where = [ `y.map_id = $1` ]
+        params = [ req.query.map_id ]
+      } else if (req.query.legend_id) {
+        where = [ `mm.legend_id = $1` ]
+        params = [ re.query.legend_id ]
+      } else {
+        where = [`ST_Intersects(y.geom, ST_GeomFromText($1, 4326))`]
+        params = [`SRID=4326;POINT(${req.query.lng} ${req.query.lat})`]
+      }
 
       // If no valid parameters passed, return an Error
       if (where.length < 1 && !('sample' in req.query)) {
