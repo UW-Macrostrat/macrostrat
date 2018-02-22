@@ -327,7 +327,17 @@ class LookupUnits(Base):
         # Clean up
         self.mariadb['cursor'].execute("""
             TRUNCATE TABLE lookup_units;
+        """)
+        self.mariadb['cursor'].close()
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
+
+        self.mariadb['cursor'].execute("""
             INSERT INTO lookup_units SELECT * FROM lookup_units_new;
+        """)
+        self.mariadb['cursor'].close()
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
+
+        self.mariadb['cursor'].execute("""
             DROP TABLE lookup_units_new;
         """)
         self.mariadb['cursor'].close()
