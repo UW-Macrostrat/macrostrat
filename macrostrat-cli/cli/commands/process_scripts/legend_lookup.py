@@ -540,7 +540,6 @@ class LegendLookup(Base):
                         JOIN maps.sources on legend.source_id = legend.source_id
                         where scale = ANY(%(scales)s)
                     ) sub ON sub.name = l.name AND sub.b_interval = l.b_interval AND sub.t_interval = l.t_interval
-                    WHERE l.source_id = %(source_id)s
                     GROUP BY l.name, l.strat_name, l.age
                 )
                 SELECT legend_ids, colors
