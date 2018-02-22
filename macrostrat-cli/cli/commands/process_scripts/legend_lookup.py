@@ -32,6 +32,12 @@ class LegendLookup(Base):
             'source_id': 'A valid source_id'
         }
     }
+    scaleIsIn = {
+        'tiny': ['tiny', 'small'],
+        'small': ['small', 'medium'],
+        'medium': ['medium', 'large'],
+        'large': ['large']
+    }
 
     def __init__(self, connections, *args):
         Base.__init__(self, connections, *args)
@@ -456,7 +462,7 @@ class LegendLookup(Base):
 
         # Shift colors where needed
         self.pg['cursor'].execute("""
-            SELECT color, c, legend_ids
+            SELECT color, c, legend_ids, best_age_bottom, best_age_top
             FROM (
                 select color, count(*) c, array_agg(legend_id) AS legend_ids, best_age_bottom, best_age_top
                 FROM maps.legend
@@ -469,8 +475,6 @@ class LegendLookup(Base):
 
         for color in colors:
             if color.color is None:
-                continue
-            if scale == 'medium' and color.best_age_top > 541:
                 continue
             try:
                 c = spectra.html(color.color)
@@ -531,9 +535,10 @@ class LegendLookup(Base):
                     SELECT array_agg(legend_id) AS legend_ids, l.name, l.strat_name, l.age, array_agg(DISTINCT color) AS colors
                     FROM maps.legend l
                     JOIN (
-                        SELECT DISTINCT ON (name, b_interval, t_interval) name, b_interval, t_interval
+                        SELECT DISTINCT ON (legend.name, b_interval, t_interval) legend.name, b_interval, t_interval
                         FROM maps.legend
-                        where source_id = 133
+                        JOIN maps.sources on legend.source_id = legend.source_id
+                        where scale = ANY(%(scale)s)
                     ) sub ON sub.name = l.name AND sub.b_interval = l.b_interval AND sub.t_interval = l.t_interval
                     WHERE l.source_id = %(source_id)s
                     GROUP BY l.name, l.strat_name, l.age
@@ -541,7 +546,7 @@ class LegendLookup(Base):
                 SELECT legend_ids, colors
                 FROM first
                 WHERE array_length(legend_ids, 1) > 1;
-            """, { 'source_id': source_id })
+            """, { 'scales': LegendLookup.scaleIsIn[scale] })
             similar_units = self.pg['cursor'].fetchall()
 
             for unit in similar_units:
