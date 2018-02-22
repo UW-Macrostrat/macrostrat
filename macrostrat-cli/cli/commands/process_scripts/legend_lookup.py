@@ -548,8 +548,8 @@ class LegendLookup(Base):
             """, { 'scales': LegendLookup.scaleIsIn[scale] })
             similar_units = self.pg['cursor'].fetchall()
 
-            for unit in similar_units:
-                print unit
+            for idx, unit in enumerate(similar_units):
+                print '%s of %s' % (idx, len(similar_units), )
                 # Just pick the first color
                 color = unit.colors[0]
 
