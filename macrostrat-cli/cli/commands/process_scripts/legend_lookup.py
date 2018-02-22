@@ -549,6 +549,7 @@ class LegendLookup(Base):
             similar_units = self.pg['cursor'].fetchall()
 
             for unit in similar_units:
+                print unit
                 # Just pick the first color
                 color = unit.colors[0]
 
