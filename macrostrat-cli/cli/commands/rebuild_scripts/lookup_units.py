@@ -296,11 +296,19 @@ class LookupUnits(Base):
             UPDATE lookup_units_new
             SET period = eon
             WHERE period = '' AND eon = 'Archean';
+        """)
+        self.mariadb['cursor'].close()
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
 
+        self.mariadb['cursor'].execute("""
             UPDATE lookup_units_new
             SET period = 'Precambrian'
             WHERE period = '' AND t_age >= 541;
+        """)
+        self.mariadb['cursor'].close()
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
 
+        self.mariadb['cursor'].execute("""
             UPDATE lookup_units
             SET period = concat_WS('-', (
                     SELECT intervals.interval_name
