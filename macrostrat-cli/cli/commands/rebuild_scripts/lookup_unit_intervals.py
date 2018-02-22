@@ -225,8 +225,18 @@ class LookupUnitIntervals(Base):
         # Out with the old, in with the new
         self.mariadb['cursor'].execute("""
             ALTER TABLE lookup_unit_intervals RENAME TO lookup_unit_intervals_old;
+        """)
+        self.mariadb['connection'].commit()
+
+        self.mariadb['cursor'].execute("""
             ALTER TABLE lookup_unit_intervals_new RENAME TO lookup_unit_intervals;
+        """)
+        self.mariadb['connection'].commit()
+
+        self.mariadb['cursor'].execute("""
             DROP TABLE lookup_unit_intervals_old;
         """)
+        self.mariadb['connection'].commit()
+
         self.mariadb['cursor'].close()
         self.mariadb['connection'].close()
