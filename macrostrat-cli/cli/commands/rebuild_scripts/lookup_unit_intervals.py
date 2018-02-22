@@ -11,6 +11,10 @@ class LookupUnitIntervals(Base):
         # Clean up
         self.mariadb['cursor'].execute("""
             DROP TABLE IF EXISTS lookup_unit_intervals_new;
+        """)
+        self.mariadb['connection'].commit()
+
+        self.mariadb['cursor'].execute("""
             DROP TABLE IF EXISTS lookup_unit_intervals_old;
         """)
         self.mariadb['connection'].commit()

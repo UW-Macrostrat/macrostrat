@@ -34,10 +34,15 @@ class LookupUnits(Base):
         # Copy structure into new table
         self.mariadb['cursor'].execute("""
             DROP TABLE IF EXISTS lookup_units_new;
+        """)
+        self.mariadb['cursor'].close()
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
+        self.mariadb['cursor'].execute("""
             DROP TABLE IF EXISTS lookup_units_old;
         """)
         self.mariadb['cursor'].close()
         self.mariadb['cursor'] = self.mariadb['connection'].cursor()
+
         self.mariadb['cursor'].execute("""
             CREATE TABLE lookup_units_new LIKE lookup_units;
         """)

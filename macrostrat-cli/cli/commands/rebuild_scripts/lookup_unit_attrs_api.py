@@ -19,6 +19,11 @@ class LookupUnitsAttrsAPI(Base):
         # Create room for the new data
         self.mariadb['cursor'].execute("""
             DROP TABLE IF EXISTS lookup_unit_attrs_api_new;
+        """)
+        self.mariadb['cursor'].close()
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
+
+        self.mariadb['cursor'].execute("""
             DROP TABLE IF EXISTS lookup_unit_attrs_api_old;
         """)
         self.mariadb['cursor'].close()
