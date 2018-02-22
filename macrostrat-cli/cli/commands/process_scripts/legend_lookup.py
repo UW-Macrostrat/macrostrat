@@ -292,7 +292,18 @@ class LegendLookup(Base):
               GROUP BY map_legend.legend_id
             )
             UPDATE maps.legend
-            SET strat_name_ids = strat_names.strat_name_ids
+            SET strat_name_ids =
+            CASE
+                WHEN array_length(legend.unit_ids, 1) = 0
+                    THEN strat_names.strat_name_ids
+                ELSE
+                    (
+                        SELECT array_agg(DISTINCT lsn.strat_name_id)
+                        FROM macrostrat.unit_strat_names usn
+                        JOIN macrostrat.lookup_strat_names lsn ON lsn.strat_name_id = usn.strat_name_id
+                        WHERE usn.unit_id = ANY(legend.unit_ids)
+                    )
+                END
             FROM strat_names
             WHERE strat_names.legend_id = legend.legend_id;
         """, {
@@ -377,7 +388,19 @@ class LegendLookup(Base):
                 ) sub
              )
             UPDATE maps.legend
-            SET concept_ids = COALESCE(more_strat_names.concept_ids, '{}'), strat_name_children = COALESCE(more_strat_names.strat_name_children, '{}')
+            SET concept_ids =
+            CASE
+                WHEN array_length(legend.unit_ids, 1) = 0
+                    THEN COALESCE(more_strat_names.concept_ids, '{}')
+                ELSE
+                    (
+                        SELECT array_agg(DISTINCT lsn.concept_id)
+                        FROM macrostrat.unit_strat_names usn
+                        JOIN macrostrat.lookup_strat_names lsn ON lsn.strat_name_id = usn.strat_name_id
+                        WHERE usn.unit_id = ANY(legend.unit_ids)
+                    )
+                END,
+                strat_name_children = COALESCE(more_strat_names.strat_name_children, '{}')
             FROM more_strat_names
             WHERE more_strat_names.legend_id = legend.legend_id;
         """, {
@@ -435,10 +458,10 @@ class LegendLookup(Base):
         self.pg['cursor'].execute("""
             SELECT color, c, legend_ids
             FROM (
-                select color, count(*) c, array_agg(legend_id) AS legend_ids
+                select color, count(*) c, array_agg(legend_id) AS legend_ids, best_age_bottom, best_age_top
                 FROM maps.legend
                 WHERE source_id = %(source_id)s
-                GROUP BY color
+                GROUP BY color, best_age_bottom, best_age_top
             ) sub
             WHERE c > 1;
         """, { 'source_id': source_id })
@@ -447,11 +470,14 @@ class LegendLookup(Base):
         for color in colors:
             if color.color is None:
                 continue
+            if scale == 'medium' and color.best_age_top > 541:
+                continue
             try:
                 c = spectra.html(color.color)
             except:
                 print color
                 continue
+
             variants = [
                 c.brighten(amount=3).hexcode,
                 c.brighten(amount=6).hexcode,
@@ -498,3 +524,41 @@ class LegendLookup(Base):
                 })
 
             self.pg['connection'].commit()
+
+            # Now go back and homogenize similar units
+            self.pg['cursor'].execute("""
+                WITH first AS (
+                    SELECT array_agg(legend_id) AS legend_ids, l.name, l.strat_name, l.age, array_agg(DISTINCT color) AS colors
+                    FROM maps.legend l
+                    JOIN (
+                        SELECT DISTINCT ON (name, b_interval, t_interval) name, b_interval, t_interval
+                        FROM maps.legend
+                        where source_id = 133
+                    ) sub ON sub.name = l.name AND sub.b_interval = l.b_interval AND sub.t_interval = l.t_interval
+                    WHERE l.source_id = %(source_id)s
+                    GROUP BY l.name, l.strat_name, l.age
+                )
+                SELECT legend_ids, colors
+                FROM first
+                WHERE array_length(legend_ids, 1) > 1;
+            """, { 'source_id': source_id })
+            similar_units = self.pg['cursor'].fetchall()
+
+            for unit in similar_units:
+                # Just pick the first color
+                color = unit.colors[0]
+
+                for idx, legend_id in enumerate(unit.legend_ids):
+                    # allow one to maintain its original color
+                    if idx == 0:
+                        continue
+
+                    self.pg['cursor'].execute("""
+                        UPDATE maps.legend
+                        SET color = %(color)s
+                        WHERE legend_id = %(legend_id)s
+                    """, {
+                        'color': color,
+                        'legend_id': legend_id
+                    })
+                self.pg['connection'].commit()
