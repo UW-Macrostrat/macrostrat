@@ -447,7 +447,25 @@ class Tesselate(Base):
                 WHERE NOT (""" + sql_key + """ = ANY(%(ids)s))
             """, { 'ids': [ int(p) for p in parameters[column_param_key] ]})
             all_columns = shape(json.loads(self.pg['cursor'].fetchone()[0]))
-            clipped_polygons = [ poly.buffer(0).difference(all_columns) for poly in clipped_polygons ]
+
+            # Check all columns validity
+            if not all_columns.is_valid:
+                all_columns = all_columns.buffer(0)
+
+            if not all_columns.is_valid:
+                print 'The clipping geometry of all columns is invalid. Cannot complete'
+                sys.exit(1)
+
+            for idx, poly in enumerate(clipped_polygons):
+                if not poly.is_valid:
+                    clipped_polygons[idx] = poly.buffer(0)
+
+            for poly in clipped_polygons:
+                if not poly.is_valid:
+                    print 'Clipped polygon cannot be made valid. Exiting'
+                    sys.exit(1)
+
+            clipped_polygons = [ poly.difference(all_columns) for poly in clipped_polygons ]
 
 
         # Assign a tesselated polygon to each column
