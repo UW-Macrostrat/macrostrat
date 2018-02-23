@@ -109,8 +109,7 @@ class Seed(Base):
 
 
         # Merge the mbtiles files created by Tippecanoe
-        #for scale in ['large', 'medium', 'small', 'tiny']:
-        for scale in ['small', 'tiny']:
+        for scale in ['large', 'medium', 'small', 'tiny']:
             # Connect to the source
             source_connection = sqlite3.connect('%s/%s.mbtiles' % (mbtile_path, scale, ))
             source_cursor = source_connection.cursor()
