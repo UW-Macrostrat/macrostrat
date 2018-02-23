@@ -447,7 +447,7 @@ class Tesselate(Base):
                 WHERE NOT (""" + sql_key + """ = ANY(%(ids)s))
             """, { 'ids': [ int(p) for p in parameters[column_param_key] ]})
             all_columns = shape(json.loads(self.pg['cursor'].fetchone()[0]))
-            clipped_polygons = [ poly.difference(all_columns) for poly in clipped_polygons ]
+            clipped_polygons = [ poly.buffer(0).difference(all_columns) for poly in clipped_polygons ]
 
 
         # Assign a tesselated polygon to each column
