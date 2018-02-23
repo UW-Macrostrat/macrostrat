@@ -16,7 +16,7 @@
     "async": "^2.4.0",
     "express": "^4.14.0",
     "geojson-bounds": "^1.0.1",
-    "mapnik": "^3.5.14",
+    "mapnik": "~3.5.14",
     "mkdirp": "^0.5.1",
     "pg": "^7.3.0",
     "progress": "^2.0.0",
