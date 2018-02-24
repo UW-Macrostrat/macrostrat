@@ -41,22 +41,25 @@ class Liths(Base):
         Base.__init__(self, connections, *args)
 
     def do_work(self, field):
-        self.pg['cursor'].execute('''
-            INSERT INTO maps.legend_liths (legend_id, lith_id, basis_col)
-            SELECT legend_id, liths.id, %(basis)s
-            FROM maps.legend, macrostrat.liths
-            WHERE source_id = %(source_id)s
-             AND (
-                legend.%(field)s ~* concat('\y', liths.lith, '\y')
-                OR
-                legend.%(field)s ~* concat('\y', liths.lith, 's', '\y')
-            )
-        ''', {
-            'source_id': self.source_id,
-            'basis': field,
-            'field': AsIs(field)
-        })
-        self.pg['connection'].commit()
+        try:
+            self.pg['cursor'].execute('''
+                INSERT INTO maps.legend_liths (legend_id, lith_id, basis_col)
+                SELECT legend_id, liths.id, %(basis)s
+                FROM maps.legend, macrostrat.liths
+                WHERE source_id = %(source_id)s
+                 AND (
+                    legend.%(field)s ~* concat('\y', liths.lith, '\y')
+                    OR
+                    legend.%(field)s ~* concat('\y', liths.lith, 's', '\y')
+                )
+            ''', {
+                'source_id': self.source_id,
+                'basis': field,
+                'field': AsIs(field)
+            })
+            self.pg['connection'].commit()
+        except:
+            pass
 
     def run(self, source_id):
         if source_id == '--help' or source_id == '-h':

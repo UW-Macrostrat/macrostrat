@@ -532,15 +532,11 @@ class LegendLookup(Base):
         # Now go back and homogenize similar units
         self.pg['cursor'].execute("""
             WITH first AS (
-                SELECT array_agg(legend_id) AS legend_ids, l.name, l.strat_name, l.age, array_agg(DISTINCT color) AS colors
-                FROM maps.legend l
-                JOIN (
-                    SELECT DISTINCT ON (legend.name, b_interval, t_interval) legend.name, b_interval, t_interval
-                    FROM maps.legend
-                    JOIN maps.sources on legend.source_id = legend.source_id
-                    where scale = ANY(%(scales)s)
-                ) sub ON sub.name = l.name AND sub.b_interval = l.b_interval AND sub.t_interval = l.t_interval
-                GROUP BY l.name, l.strat_name, l.age
+                SELECT DISTINCT ON (legend.name, b_interval, t_interval) legend.name, b_interval, t_interval, count(distinct legend_id), array_agg(distinct legend_id) AS legend_ids, array_agg(distinct color) AS colors
+                FROM maps.legend
+                JOIN maps.sources on legend.source_id = legend.source_id
+                WHERE scale = ANY(%(scales)s)
+                GROUP BY legend.name, b_interval, t_interval
             )
             SELECT legend_ids, colors
             FROM first
