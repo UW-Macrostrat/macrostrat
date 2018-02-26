@@ -42,12 +42,12 @@ function makeLayer(scale, cartoCSS, callback) {
           "dbname": "burwell",
           "srid": "4326"
       },
-      "id": "units",
+      "id": `units_${scale}`,
       "class": "units",
       "srs-name": "WGS84",
       "srs": "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs",
       "advanced": {},
-      "name": "units",
+      "name": `units_${scale}`,
       "minZoom": "0",
       "maxZoom": "16"
   }, {
@@ -66,11 +66,11 @@ function makeLayer(scale, cartoCSS, callback) {
         "srid": "4326"
     },
     "id": "lines",
-    "class": "lines",
+    "class": `lines_${scale}`,
     "srs-name": "WGS84",
     "srs": "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs",
     "advanced": {},
-    "name": "lines",
+    "name": `lines_${scale}`,
     "minZoom": "0",
     "maxZoom": "16"
   }],

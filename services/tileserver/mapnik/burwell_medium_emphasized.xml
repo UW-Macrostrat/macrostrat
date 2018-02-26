@@ -16,28 +16,7 @@
 </Parameters>
 
 
-<Style name="units" filter-mode="first">
-  <Rule>
-    <MaxScaleDenominator>1500</MaxScaleDenominator>
-    <MinScaleDenominator>750</MinScaleDenominator>
-    <Filter>([color] = '#f0eaa5')</Filter>
-    <LineSymbolizer stroke-width="5.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#f0eaa5" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>2500</MaxScaleDenominator>
-    <MinScaleDenominator>1500</MinScaleDenominator>
-    <Filter>([color] = '#f0eaa5')</Filter>
-    <LineSymbolizer stroke-width="5" stroke="#777777" />
-    <PolygonSymbolizer fill="#f0eaa5" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <MinScaleDenominator>2500</MinScaleDenominator>
-    <Filter>([color] = '#f0eaa5')</Filter>
-    <LineSymbolizer stroke-width="4.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#f0eaa5" />
-  </Rule>
+<Style name="units_medium" filter-mode="first">
   <Rule>
     <MaxScaleDenominator>12500</MaxScaleDenominator>
     <MinScaleDenominator>5000</MinScaleDenominator>
@@ -136,31 +115,10 @@
     <PolygonSymbolizer fill="#f0eaa5" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>750</MaxScaleDenominator>
+    <MaxScaleDenominator>5000</MaxScaleDenominator>
     <Filter>([color] = '#f0eaa5')</Filter>
     <LineSymbolizer stroke="#777777" />
     <PolygonSymbolizer fill="#f0eaa5" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>1500</MaxScaleDenominator>
-    <MinScaleDenominator>750</MinScaleDenominator>
-    <Filter>([color] = '#dfd995')</Filter>
-    <LineSymbolizer stroke-width="5.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#dfd995" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>2500</MaxScaleDenominator>
-    <MinScaleDenominator>1500</MinScaleDenominator>
-    <Filter>([color] = '#dfd995')</Filter>
-    <LineSymbolizer stroke-width="5" stroke="#777777" />
-    <PolygonSymbolizer fill="#dfd995" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <MinScaleDenominator>2500</MinScaleDenominator>
-    <Filter>([color] = '#dfd995')</Filter>
-    <LineSymbolizer stroke-width="4.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#dfd995" />
   </Rule>
   <Rule>
     <MaxScaleDenominator>12500</MaxScaleDenominator>
@@ -260,33 +218,12 @@
     <PolygonSymbolizer fill="#dfd995" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>750</MaxScaleDenominator>
+    <MaxScaleDenominator>5000</MaxScaleDenominator>
     <Filter>([color] = '#dfd995')</Filter>
     <LineSymbolizer stroke="#777777" />
     <PolygonSymbolizer fill="#dfd995" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>1500</MaxScaleDenominator>
-    <MinScaleDenominator>750</MinScaleDenominator>
-    <Filter>([color] = '#d8fdbe')</Filter>
-    <LineSymbolizer stroke-width="5.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#d8fdbe" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>2500</MaxScaleDenominator>
-    <MinScaleDenominator>1500</MinScaleDenominator>
-    <Filter>([color] = '#d8fdbe')</Filter>
-    <LineSymbolizer stroke-width="5" stroke="#777777" />
-    <PolygonSymbolizer fill="#d8fdbe" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <MinScaleDenominator>2500</MinScaleDenominator>
-    <Filter>([color] = '#d8fdbe')</Filter>
-    <LineSymbolizer stroke-width="4.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#d8fdbe" />
-  </Rule>
-  <Rule>
     <MaxScaleDenominator>12500</MaxScaleDenominator>
     <MinScaleDenominator>5000</MinScaleDenominator>
     <Filter>([color] = '#d8fdbe')</Filter>
@@ -384,31 +321,10 @@
     <PolygonSymbolizer fill="#d8fdbe" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>750</MaxScaleDenominator>
+    <MaxScaleDenominator>5000</MaxScaleDenominator>
     <Filter>([color] = '#d8fdbe')</Filter>
     <LineSymbolizer stroke="#777777" />
     <PolygonSymbolizer fill="#d8fdbe" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>1500</MaxScaleDenominator>
-    <MinScaleDenominator>750</MinScaleDenominator>
-    <Filter>([color] = '#f5f2d4')</Filter>
-    <LineSymbolizer stroke-width="5.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#f5f2d4" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>2500</MaxScaleDenominator>
-    <MinScaleDenominator>1500</MinScaleDenominator>
-    <Filter>([color] = '#f5f2d4')</Filter>
-    <LineSymbolizer stroke-width="5" stroke="#777777" />
-    <PolygonSymbolizer fill="#f5f2d4" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <MinScaleDenominator>2500</MinScaleDenominator>
-    <Filter>([color] = '#f5f2d4')</Filter>
-    <LineSymbolizer stroke-width="4.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#f5f2d4" />
   </Rule>
   <Rule>
     <MaxScaleDenominator>12500</MaxScaleDenominator>
@@ -508,33 +424,12 @@
     <PolygonSymbolizer fill="#f5f2d4" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>750</MaxScaleDenominator>
+    <MaxScaleDenominator>5000</MaxScaleDenominator>
     <Filter>([color] = '#f5f2d4')</Filter>
     <LineSymbolizer stroke="#777777" />
     <PolygonSymbolizer fill="#f5f2d4" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>1500</MaxScaleDenominator>
-    <MinScaleDenominator>750</MinScaleDenominator>
-    <Filter>([color] = '#e12b62')</Filter>
-    <LineSymbolizer stroke-width="5.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#e12b62" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>2500</MaxScaleDenominator>
-    <MinScaleDenominator>1500</MinScaleDenominator>
-    <Filter>([color] = '#e12b62')</Filter>
-    <LineSymbolizer stroke-width="5" stroke="#777777" />
-    <PolygonSymbolizer fill="#e12b62" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <MinScaleDenominator>2500</MinScaleDenominator>
-    <Filter>([color] = '#e12b62')</Filter>
-    <LineSymbolizer stroke-width="4.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#e12b62" />
-  </Rule>
-  <Rule>
     <MaxScaleDenominator>12500</MaxScaleDenominator>
     <MinScaleDenominator>5000</MinScaleDenominator>
     <Filter>([color] = '#e12b62')</Filter>
@@ -632,31 +527,10 @@
     <PolygonSymbolizer fill="#e12b62" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>750</MaxScaleDenominator>
+    <MaxScaleDenominator>5000</MaxScaleDenominator>
     <Filter>([color] = '#e12b62')</Filter>
     <LineSymbolizer stroke="#777777" />
     <PolygonSymbolizer fill="#e12b62" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>1500</MaxScaleDenominator>
-    <MinScaleDenominator>750</MinScaleDenominator>
-    <Filter>([color] = '#8ED195')</Filter>
-    <LineSymbolizer stroke-width="5.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#8ed195" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>2500</MaxScaleDenominator>
-    <MinScaleDenominator>1500</MinScaleDenominator>
-    <Filter>([color] = '#8ED195')</Filter>
-    <LineSymbolizer stroke-width="5" stroke="#777777" />
-    <PolygonSymbolizer fill="#8ed195" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <MinScaleDenominator>2500</MinScaleDenominator>
-    <Filter>([color] = '#8ED195')</Filter>
-    <LineSymbolizer stroke-width="4.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#8ed195" />
   </Rule>
   <Rule>
     <MaxScaleDenominator>12500</MaxScaleDenominator>
@@ -756,33 +630,12 @@
     <PolygonSymbolizer fill="#8ed195" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>750</MaxScaleDenominator>
+    <MaxScaleDenominator>5000</MaxScaleDenominator>
     <Filter>([color] = '#8ED195')</Filter>
     <LineSymbolizer stroke="#777777" />
     <PolygonSymbolizer fill="#8ed195" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>1500</MaxScaleDenominator>
-    <MinScaleDenominator>750</MinScaleDenominator>
-    <Filter>([color] = '#faf655')</Filter>
-    <LineSymbolizer stroke-width="5.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#faf655" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>2500</MaxScaleDenominator>
-    <MinScaleDenominator>1500</MinScaleDenominator>
-    <Filter>([color] = '#faf655')</Filter>
-    <LineSymbolizer stroke-width="5" stroke="#777777" />
-    <PolygonSymbolizer fill="#faf655" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <MinScaleDenominator>2500</MinScaleDenominator>
-    <Filter>([color] = '#faf655')</Filter>
-    <LineSymbolizer stroke-width="4.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#faf655" />
-  </Rule>
-  <Rule>
     <MaxScaleDenominator>12500</MaxScaleDenominator>
     <MinScaleDenominator>5000</MinScaleDenominator>
     <Filter>([color] = '#faf655')</Filter>
@@ -880,31 +733,10 @@
     <PolygonSymbolizer fill="#faf655" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>750</MaxScaleDenominator>
+    <MaxScaleDenominator>5000</MaxScaleDenominator>
     <Filter>([color] = '#faf655')</Filter>
     <LineSymbolizer stroke="#777777" />
     <PolygonSymbolizer fill="#faf655" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>1500</MaxScaleDenominator>
-    <MinScaleDenominator>750</MinScaleDenominator>
-    <Filter>([color] = '#ff266e')</Filter>
-    <LineSymbolizer stroke-width="5.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#ff266e" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>2500</MaxScaleDenominator>
-    <MinScaleDenominator>1500</MinScaleDenominator>
-    <Filter>([color] = '#ff266e')</Filter>
-    <LineSymbolizer stroke-width="5" stroke="#777777" />
-    <PolygonSymbolizer fill="#ff266e" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <MinScaleDenominator>2500</MinScaleDenominator>
-    <Filter>([color] = '#ff266e')</Filter>
-    <LineSymbolizer stroke-width="4.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#ff266e" />
   </Rule>
   <Rule>
     <MaxScaleDenominator>12500</MaxScaleDenominator>
@@ -1004,33 +836,12 @@
     <PolygonSymbolizer fill="#ff266e" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>750</MaxScaleDenominator>
+    <MaxScaleDenominator>5000</MaxScaleDenominator>
     <Filter>([color] = '#ff266e')</Filter>
     <LineSymbolizer stroke="#777777" />
     <PolygonSymbolizer fill="#ff266e" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>1500</MaxScaleDenominator>
-    <MinScaleDenominator>750</MinScaleDenominator>
-    <Filter>([color] = '#e75274')</Filter>
-    <LineSymbolizer stroke-width="5.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#e75274" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>2500</MaxScaleDenominator>
-    <MinScaleDenominator>1500</MinScaleDenominator>
-    <Filter>([color] = '#e75274')</Filter>
-    <LineSymbolizer stroke-width="5" stroke="#777777" />
-    <PolygonSymbolizer fill="#e75274" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <MinScaleDenominator>2500</MinScaleDenominator>
-    <Filter>([color] = '#e75274')</Filter>
-    <LineSymbolizer stroke-width="4.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#e75274" />
-  </Rule>
-  <Rule>
     <MaxScaleDenominator>12500</MaxScaleDenominator>
     <MinScaleDenominator>5000</MinScaleDenominator>
     <Filter>([color] = '#e75274')</Filter>
@@ -1128,31 +939,10 @@
     <PolygonSymbolizer fill="#e75274" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>750</MaxScaleDenominator>
+    <MaxScaleDenominator>5000</MaxScaleDenominator>
     <Filter>([color] = '#e75274')</Filter>
     <LineSymbolizer stroke="#777777" />
     <PolygonSymbolizer fill="#e75274" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>1500</MaxScaleDenominator>
-    <MinScaleDenominator>750</MinScaleDenominator>
-    <Filter>([color] = '#e8e29d')</Filter>
-    <LineSymbolizer stroke-width="5.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#e8e29d" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>2500</MaxScaleDenominator>
-    <MinScaleDenominator>1500</MinScaleDenominator>
-    <Filter>([color] = '#e8e29d')</Filter>
-    <LineSymbolizer stroke-width="5" stroke="#777777" />
-    <PolygonSymbolizer fill="#e8e29d" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <MinScaleDenominator>2500</MinScaleDenominator>
-    <Filter>([color] = '#e8e29d')</Filter>
-    <LineSymbolizer stroke-width="4.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#e8e29d" />
   </Rule>
   <Rule>
     <MaxScaleDenominator>12500</MaxScaleDenominator>
@@ -1252,33 +1042,12 @@
     <PolygonSymbolizer fill="#e8e29d" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>750</MaxScaleDenominator>
+    <MaxScaleDenominator>5000</MaxScaleDenominator>
     <Filter>([color] = '#e8e29d')</Filter>
     <LineSymbolizer stroke="#777777" />
     <PolygonSymbolizer fill="#e8e29d" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>1500</MaxScaleDenominator>
-    <MinScaleDenominator>750</MinScaleDenominator>
-    <Filter>([color] = '#FEF2E0')</Filter>
-    <LineSymbolizer stroke-width="5.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#fef2e0" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>2500</MaxScaleDenominator>
-    <MinScaleDenominator>1500</MinScaleDenominator>
-    <Filter>([color] = '#FEF2E0')</Filter>
-    <LineSymbolizer stroke-width="5" stroke="#777777" />
-    <PolygonSymbolizer fill="#fef2e0" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <MinScaleDenominator>2500</MinScaleDenominator>
-    <Filter>([color] = '#FEF2E0')</Filter>
-    <LineSymbolizer stroke-width="4.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#fef2e0" />
-  </Rule>
-  <Rule>
     <MaxScaleDenominator>12500</MaxScaleDenominator>
     <MinScaleDenominator>5000</MinScaleDenominator>
     <Filter>([color] = '#FEF2E0')</Filter>
@@ -1376,31 +1145,10 @@
     <PolygonSymbolizer fill="#fef2e0" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>750</MaxScaleDenominator>
+    <MaxScaleDenominator>5000</MaxScaleDenominator>
     <Filter>([color] = '#FEF2E0')</Filter>
     <LineSymbolizer stroke="#777777" />
     <PolygonSymbolizer fill="#fef2e0" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>1500</MaxScaleDenominator>
-    <MinScaleDenominator>750</MinScaleDenominator>
-    <Filter>([color] = '#99D69F')</Filter>
-    <LineSymbolizer stroke-width="5.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#99d69f" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>2500</MaxScaleDenominator>
-    <MinScaleDenominator>1500</MinScaleDenominator>
-    <Filter>([color] = '#99D69F')</Filter>
-    <LineSymbolizer stroke-width="5" stroke="#777777" />
-    <PolygonSymbolizer fill="#99d69f" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <MinScaleDenominator>2500</MinScaleDenominator>
-    <Filter>([color] = '#99D69F')</Filter>
-    <LineSymbolizer stroke-width="4.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#99d69f" />
   </Rule>
   <Rule>
     <MaxScaleDenominator>12500</MaxScaleDenominator>
@@ -1500,33 +1248,12 @@
     <PolygonSymbolizer fill="#99d69f" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>750</MaxScaleDenominator>
+    <MaxScaleDenominator>5000</MaxScaleDenominator>
     <Filter>([color] = '#99D69F')</Filter>
     <LineSymbolizer stroke="#777777" />
     <PolygonSymbolizer fill="#99d69f" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>1500</MaxScaleDenominator>
-    <MinScaleDenominator>750</MinScaleDenominator>
-    <Filter>([color] = '#ffffc6')</Filter>
-    <LineSymbolizer stroke-width="5.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#ffffc6" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>2500</MaxScaleDenominator>
-    <MinScaleDenominator>1500</MinScaleDenominator>
-    <Filter>([color] = '#ffffc6')</Filter>
-    <LineSymbolizer stroke-width="5" stroke="#777777" />
-    <PolygonSymbolizer fill="#ffffc6" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <MinScaleDenominator>2500</MinScaleDenominator>
-    <Filter>([color] = '#ffffc6')</Filter>
-    <LineSymbolizer stroke-width="4.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#ffffc6" />
-  </Rule>
-  <Rule>
     <MaxScaleDenominator>12500</MaxScaleDenominator>
     <MinScaleDenominator>5000</MinScaleDenominator>
     <Filter>([color] = '#ffffc6')</Filter>
@@ -1624,31 +1351,10 @@
     <PolygonSymbolizer fill="#ffffc6" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>750</MaxScaleDenominator>
+    <MaxScaleDenominator>5000</MaxScaleDenominator>
     <Filter>([color] = '#ffffc6')</Filter>
     <LineSymbolizer stroke="#777777" />
     <PolygonSymbolizer fill="#ffffc6" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>1500</MaxScaleDenominator>
-    <MinScaleDenominator>750</MinScaleDenominator>
-    <Filter>([color] = '#ffffbe')</Filter>
-    <LineSymbolizer stroke-width="5.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#ffffbe" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>2500</MaxScaleDenominator>
-    <MinScaleDenominator>1500</MinScaleDenominator>
-    <Filter>([color] = '#ffffbe')</Filter>
-    <LineSymbolizer stroke-width="5" stroke="#777777" />
-    <PolygonSymbolizer fill="#ffffbe" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <MinScaleDenominator>2500</MinScaleDenominator>
-    <Filter>([color] = '#ffffbe')</Filter>
-    <LineSymbolizer stroke-width="4.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#ffffbe" />
   </Rule>
   <Rule>
     <MaxScaleDenominator>12500</MaxScaleDenominator>
@@ -1748,33 +1454,12 @@
     <PolygonSymbolizer fill="#ffffbe" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>750</MaxScaleDenominator>
+    <MaxScaleDenominator>5000</MaxScaleDenominator>
     <Filter>([color] = '#ffffbe')</Filter>
     <LineSymbolizer stroke="#777777" />
     <PolygonSymbolizer fill="#ffffbe" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>1500</MaxScaleDenominator>
-    <MinScaleDenominator>750</MinScaleDenominator>
-    <Filter>([color] = '#fffbe8')</Filter>
-    <LineSymbolizer stroke-width="5.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#fffbe8" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>2500</MaxScaleDenominator>
-    <MinScaleDenominator>1500</MinScaleDenominator>
-    <Filter>([color] = '#fffbe8')</Filter>
-    <LineSymbolizer stroke-width="5" stroke="#777777" />
-    <PolygonSymbolizer fill="#fffbe8" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <MinScaleDenominator>2500</MinScaleDenominator>
-    <Filter>([color] = '#fffbe8')</Filter>
-    <LineSymbolizer stroke-width="4.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#fffbe8" />
-  </Rule>
-  <Rule>
     <MaxScaleDenominator>12500</MaxScaleDenominator>
     <MinScaleDenominator>5000</MinScaleDenominator>
     <Filter>([color] = '#fffbe8')</Filter>
@@ -1872,31 +1557,10 @@
     <PolygonSymbolizer fill="#fffbe8" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>750</MaxScaleDenominator>
+    <MaxScaleDenominator>5000</MaxScaleDenominator>
     <Filter>([color] = '#fffbe8')</Filter>
     <LineSymbolizer stroke="#777777" />
     <PolygonSymbolizer fill="#fffbe8" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>1500</MaxScaleDenominator>
-    <MinScaleDenominator>750</MinScaleDenominator>
-    <Filter>([color] = '#CCDFAA')</Filter>
-    <LineSymbolizer stroke-width="5.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#ccdfaa" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>2500</MaxScaleDenominator>
-    <MinScaleDenominator>1500</MinScaleDenominator>
-    <Filter>([color] = '#CCDFAA')</Filter>
-    <LineSymbolizer stroke-width="5" stroke="#777777" />
-    <PolygonSymbolizer fill="#ccdfaa" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <MinScaleDenominator>2500</MinScaleDenominator>
-    <Filter>([color] = '#CCDFAA')</Filter>
-    <LineSymbolizer stroke-width="4.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#ccdfaa" />
   </Rule>
   <Rule>
     <MaxScaleDenominator>12500</MaxScaleDenominator>
@@ -1996,33 +1660,12 @@
     <PolygonSymbolizer fill="#ccdfaa" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>750</MaxScaleDenominator>
+    <MaxScaleDenominator>5000</MaxScaleDenominator>
     <Filter>([color] = '#CCDFAA')</Filter>
     <LineSymbolizer stroke="#777777" />
     <PolygonSymbolizer fill="#ccdfaa" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>1500</MaxScaleDenominator>
-    <MinScaleDenominator>750</MinScaleDenominator>
-    <Filter>([color] = '#faf499')</Filter>
-    <LineSymbolizer stroke-width="5.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#faf499" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>2500</MaxScaleDenominator>
-    <MinScaleDenominator>1500</MinScaleDenominator>
-    <Filter>([color] = '#faf499')</Filter>
-    <LineSymbolizer stroke-width="5" stroke="#777777" />
-    <PolygonSymbolizer fill="#faf499" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <MinScaleDenominator>2500</MinScaleDenominator>
-    <Filter>([color] = '#faf499')</Filter>
-    <LineSymbolizer stroke-width="4.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#faf499" />
-  </Rule>
-  <Rule>
     <MaxScaleDenominator>12500</MaxScaleDenominator>
     <MinScaleDenominator>5000</MinScaleDenominator>
     <Filter>([color] = '#faf499')</Filter>
@@ -2120,31 +1763,10 @@
     <PolygonSymbolizer fill="#faf499" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>750</MaxScaleDenominator>
+    <MaxScaleDenominator>5000</MaxScaleDenominator>
     <Filter>([color] = '#faf499')</Filter>
     <LineSymbolizer stroke="#777777" />
     <PolygonSymbolizer fill="#faf499" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>1500</MaxScaleDenominator>
-    <MinScaleDenominator>750</MinScaleDenominator>
-    <Filter>([color] = '#4eaa00')</Filter>
-    <LineSymbolizer stroke-width="5.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#4eaa00" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>2500</MaxScaleDenominator>
-    <MinScaleDenominator>1500</MinScaleDenominator>
-    <Filter>([color] = '#4eaa00')</Filter>
-    <LineSymbolizer stroke-width="5" stroke="#777777" />
-    <PolygonSymbolizer fill="#4eaa00" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <MinScaleDenominator>2500</MinScaleDenominator>
-    <Filter>([color] = '#4eaa00')</Filter>
-    <LineSymbolizer stroke-width="4.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#4eaa00" />
   </Rule>
   <Rule>
     <MaxScaleDenominator>12500</MaxScaleDenominator>
@@ -2244,33 +1866,12 @@
     <PolygonSymbolizer fill="#4eaa00" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>750</MaxScaleDenominator>
+    <MaxScaleDenominator>5000</MaxScaleDenominator>
     <Filter>([color] = '#4eaa00')</Filter>
     <LineSymbolizer stroke="#777777" />
     <PolygonSymbolizer fill="#4eaa00" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>1500</MaxScaleDenominator>
-    <MinScaleDenominator>750</MinScaleDenominator>
-    <Filter>([color] = '#da5f77')</Filter>
-    <LineSymbolizer stroke-width="5.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#da5f77" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>2500</MaxScaleDenominator>
-    <MinScaleDenominator>1500</MinScaleDenominator>
-    <Filter>([color] = '#da5f77')</Filter>
-    <LineSymbolizer stroke-width="5" stroke="#777777" />
-    <PolygonSymbolizer fill="#da5f77" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <MinScaleDenominator>2500</MinScaleDenominator>
-    <Filter>([color] = '#da5f77')</Filter>
-    <LineSymbolizer stroke-width="4.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#da5f77" />
-  </Rule>
-  <Rule>
     <MaxScaleDenominator>12500</MaxScaleDenominator>
     <MinScaleDenominator>5000</MinScaleDenominator>
     <Filter>([color] = '#da5f77')</Filter>
@@ -2368,31 +1969,10 @@
     <PolygonSymbolizer fill="#da5f77" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>750</MaxScaleDenominator>
+    <MaxScaleDenominator>5000</MaxScaleDenominator>
     <Filter>([color] = '#da5f77')</Filter>
     <LineSymbolizer stroke="#777777" />
     <PolygonSymbolizer fill="#da5f77" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>1500</MaxScaleDenominator>
-    <MinScaleDenominator>750</MinScaleDenominator>
-    <Filter>([color] = '#7FA056')</Filter>
-    <LineSymbolizer stroke-width="5.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#7fa056" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>2500</MaxScaleDenominator>
-    <MinScaleDenominator>1500</MinScaleDenominator>
-    <Filter>([color] = '#7FA056')</Filter>
-    <LineSymbolizer stroke-width="5" stroke="#777777" />
-    <PolygonSymbolizer fill="#7fa056" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <MinScaleDenominator>2500</MinScaleDenominator>
-    <Filter>([color] = '#7FA056')</Filter>
-    <LineSymbolizer stroke-width="4.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#7fa056" />
   </Rule>
   <Rule>
     <MaxScaleDenominator>12500</MaxScaleDenominator>
@@ -2492,33 +2072,12 @@
     <PolygonSymbolizer fill="#7fa056" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>750</MaxScaleDenominator>
+    <MaxScaleDenominator>5000</MaxScaleDenominator>
     <Filter>([color] = '#7FA056')</Filter>
     <LineSymbolizer stroke="#777777" />
     <PolygonSymbolizer fill="#7fa056" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>1500</MaxScaleDenominator>
-    <MinScaleDenominator>750</MinScaleDenominator>
-    <Filter>([color] = '#889c74')</Filter>
-    <LineSymbolizer stroke-width="5.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#889c74" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>2500</MaxScaleDenominator>
-    <MinScaleDenominator>1500</MinScaleDenominator>
-    <Filter>([color] = '#889c74')</Filter>
-    <LineSymbolizer stroke-width="5" stroke="#777777" />
-    <PolygonSymbolizer fill="#889c74" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <MinScaleDenominator>2500</MinScaleDenominator>
-    <Filter>([color] = '#889c74')</Filter>
-    <LineSymbolizer stroke-width="4.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#889c74" />
-  </Rule>
-  <Rule>
     <MaxScaleDenominator>12500</MaxScaleDenominator>
     <MinScaleDenominator>5000</MinScaleDenominator>
     <Filter>([color] = '#889c74')</Filter>
@@ -2616,31 +2175,10 @@
     <PolygonSymbolizer fill="#889c74" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>750</MaxScaleDenominator>
+    <MaxScaleDenominator>5000</MaxScaleDenominator>
     <Filter>([color] = '#889c74')</Filter>
     <LineSymbolizer stroke="#777777" />
     <PolygonSymbolizer fill="#889c74" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>1500</MaxScaleDenominator>
-    <MinScaleDenominator>750</MinScaleDenominator>
-    <Filter>([color] = '#fbf484')</Filter>
-    <LineSymbolizer stroke-width="5.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#fbf484" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>2500</MaxScaleDenominator>
-    <MinScaleDenominator>1500</MinScaleDenominator>
-    <Filter>([color] = '#fbf484')</Filter>
-    <LineSymbolizer stroke-width="5" stroke="#777777" />
-    <PolygonSymbolizer fill="#fbf484" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <MinScaleDenominator>2500</MinScaleDenominator>
-    <Filter>([color] = '#fbf484')</Filter>
-    <LineSymbolizer stroke-width="4.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#fbf484" />
   </Rule>
   <Rule>
     <MaxScaleDenominator>12500</MaxScaleDenominator>
@@ -2740,33 +2278,12 @@
     <PolygonSymbolizer fill="#fbf484" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>750</MaxScaleDenominator>
+    <MaxScaleDenominator>5000</MaxScaleDenominator>
     <Filter>([color] = '#fbf484')</Filter>
     <LineSymbolizer stroke="#777777" />
     <PolygonSymbolizer fill="#fbf484" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>1500</MaxScaleDenominator>
-    <MinScaleDenominator>750</MinScaleDenominator>
-    <Filter>([color] = '#CCEBAE')</Filter>
-    <LineSymbolizer stroke-width="5.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#ccebae" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>2500</MaxScaleDenominator>
-    <MinScaleDenominator>1500</MinScaleDenominator>
-    <Filter>([color] = '#CCEBAE')</Filter>
-    <LineSymbolizer stroke-width="5" stroke="#777777" />
-    <PolygonSymbolizer fill="#ccebae" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <MinScaleDenominator>2500</MinScaleDenominator>
-    <Filter>([color] = '#CCEBAE')</Filter>
-    <LineSymbolizer stroke-width="4.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#ccebae" />
-  </Rule>
-  <Rule>
     <MaxScaleDenominator>12500</MaxScaleDenominator>
     <MinScaleDenominator>5000</MinScaleDenominator>
     <Filter>([color] = '#CCEBAE')</Filter>
@@ -2864,31 +2381,10 @@
     <PolygonSymbolizer fill="#ccebae" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>750</MaxScaleDenominator>
+    <MaxScaleDenominator>5000</MaxScaleDenominator>
     <Filter>([color] = '#CCEBAE')</Filter>
     <LineSymbolizer stroke="#777777" />
     <PolygonSymbolizer fill="#ccebae" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>1500</MaxScaleDenominator>
-    <MinScaleDenominator>750</MinScaleDenominator>
-    <Filter>([color] = '#fbf56e')</Filter>
-    <LineSymbolizer stroke-width="5.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#fbf56e" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>2500</MaxScaleDenominator>
-    <MinScaleDenominator>1500</MinScaleDenominator>
-    <Filter>([color] = '#fbf56e')</Filter>
-    <LineSymbolizer stroke-width="5" stroke="#777777" />
-    <PolygonSymbolizer fill="#fbf56e" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <MinScaleDenominator>2500</MinScaleDenominator>
-    <Filter>([color] = '#fbf56e')</Filter>
-    <LineSymbolizer stroke-width="4.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#fbf56e" />
   </Rule>
   <Rule>
     <MaxScaleDenominator>12500</MaxScaleDenominator>
@@ -2988,33 +2484,12 @@
     <PolygonSymbolizer fill="#fbf56e" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>750</MaxScaleDenominator>
+    <MaxScaleDenominator>5000</MaxScaleDenominator>
     <Filter>([color] = '#fbf56e')</Filter>
     <LineSymbolizer stroke="#777777" />
     <PolygonSymbolizer fill="#fbf56e" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>1500</MaxScaleDenominator>
-    <MinScaleDenominator>750</MinScaleDenominator>
-    <Filter>([color] = '#E6F5C9')</Filter>
-    <LineSymbolizer stroke-width="5.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#e6f5c9" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>2500</MaxScaleDenominator>
-    <MinScaleDenominator>1500</MinScaleDenominator>
-    <Filter>([color] = '#E6F5C9')</Filter>
-    <LineSymbolizer stroke-width="5" stroke="#777777" />
-    <PolygonSymbolizer fill="#e6f5c9" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <MinScaleDenominator>2500</MinScaleDenominator>
-    <Filter>([color] = '#E6F5C9')</Filter>
-    <LineSymbolizer stroke-width="4.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#e6f5c9" />
-  </Rule>
-  <Rule>
     <MaxScaleDenominator>12500</MaxScaleDenominator>
     <MinScaleDenominator>5000</MinScaleDenominator>
     <Filter>([color] = '#E6F5C9')</Filter>
@@ -3112,31 +2587,10 @@
     <PolygonSymbolizer fill="#e6f5c9" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>750</MaxScaleDenominator>
+    <MaxScaleDenominator>5000</MaxScaleDenominator>
     <Filter>([color] = '#E6F5C9')</Filter>
     <LineSymbolizer stroke="#777777" />
     <PolygonSymbolizer fill="#e6f5c9" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>1500</MaxScaleDenominator>
-    <MinScaleDenominator>750</MinScaleDenominator>
-    <Filter>([color] = '#f7f2c1')</Filter>
-    <LineSymbolizer stroke-width="5.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#f7f2c1" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>2500</MaxScaleDenominator>
-    <MinScaleDenominator>1500</MinScaleDenominator>
-    <Filter>([color] = '#f7f2c1')</Filter>
-    <LineSymbolizer stroke-width="5" stroke="#777777" />
-    <PolygonSymbolizer fill="#f7f2c1" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <MinScaleDenominator>2500</MinScaleDenominator>
-    <Filter>([color] = '#f7f2c1')</Filter>
-    <LineSymbolizer stroke-width="4.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#f7f2c1" />
   </Rule>
   <Rule>
     <MaxScaleDenominator>12500</MaxScaleDenominator>
@@ -3236,33 +2690,12 @@
     <PolygonSymbolizer fill="#f7f2c1" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>750</MaxScaleDenominator>
+    <MaxScaleDenominator>5000</MaxScaleDenominator>
     <Filter>([color] = '#f7f2c1')</Filter>
     <LineSymbolizer stroke="#777777" />
     <PolygonSymbolizer fill="#f7f2c1" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>1500</MaxScaleDenominator>
-    <MinScaleDenominator>750</MinScaleDenominator>
-    <Filter>([color] = '#fffcb6')</Filter>
-    <LineSymbolizer stroke-width="5.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#fffcb6" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>2500</MaxScaleDenominator>
-    <MinScaleDenominator>1500</MinScaleDenominator>
-    <Filter>([color] = '#fffcb6')</Filter>
-    <LineSymbolizer stroke-width="5" stroke="#777777" />
-    <PolygonSymbolizer fill="#fffcb6" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <MinScaleDenominator>2500</MinScaleDenominator>
-    <Filter>([color] = '#fffcb6')</Filter>
-    <LineSymbolizer stroke-width="4.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#fffcb6" />
-  </Rule>
-  <Rule>
     <MaxScaleDenominator>12500</MaxScaleDenominator>
     <MinScaleDenominator>5000</MinScaleDenominator>
     <Filter>([color] = '#fffcb6')</Filter>
@@ -3360,31 +2793,10 @@
     <PolygonSymbolizer fill="#fffcb6" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>750</MaxScaleDenominator>
+    <MaxScaleDenominator>5000</MaxScaleDenominator>
     <Filter>([color] = '#fffcb6')</Filter>
     <LineSymbolizer stroke="#777777" />
     <PolygonSymbolizer fill="#fffcb6" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>1500</MaxScaleDenominator>
-    <MinScaleDenominator>750</MinScaleDenominator>
-    <Filter>([color] = '#A6DCB5')</Filter>
-    <LineSymbolizer stroke-width="5.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#a6dcb5" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>2500</MaxScaleDenominator>
-    <MinScaleDenominator>1500</MinScaleDenominator>
-    <Filter>([color] = '#A6DCB5')</Filter>
-    <LineSymbolizer stroke-width="5" stroke="#777777" />
-    <PolygonSymbolizer fill="#a6dcb5" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <MinScaleDenominator>2500</MinScaleDenominator>
-    <Filter>([color] = '#A6DCB5')</Filter>
-    <LineSymbolizer stroke-width="4.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#a6dcb5" />
   </Rule>
   <Rule>
     <MaxScaleDenominator>12500</MaxScaleDenominator>
@@ -3484,33 +2896,12 @@
     <PolygonSymbolizer fill="#a6dcb5" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>750</MaxScaleDenominator>
+    <MaxScaleDenominator>5000</MaxScaleDenominator>
     <Filter>([color] = '#A6DCB5')</Filter>
     <LineSymbolizer stroke="#777777" />
     <PolygonSymbolizer fill="#a6dcb5" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>1500</MaxScaleDenominator>
-    <MinScaleDenominator>750</MinScaleDenominator>
-    <Filter>([color] = '#F74370')</Filter>
-    <LineSymbolizer stroke-width="5.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#f74370" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>2500</MaxScaleDenominator>
-    <MinScaleDenominator>1500</MinScaleDenominator>
-    <Filter>([color] = '#F74370')</Filter>
-    <LineSymbolizer stroke-width="5" stroke="#777777" />
-    <PolygonSymbolizer fill="#f74370" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <MinScaleDenominator>2500</MinScaleDenominator>
-    <Filter>([color] = '#F74370')</Filter>
-    <LineSymbolizer stroke-width="4.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#f74370" />
-  </Rule>
-  <Rule>
     <MaxScaleDenominator>12500</MaxScaleDenominator>
     <MinScaleDenominator>5000</MinScaleDenominator>
     <Filter>([color] = '#F74370')</Filter>
@@ -3608,31 +2999,10 @@
     <PolygonSymbolizer fill="#f74370" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>750</MaxScaleDenominator>
+    <MaxScaleDenominator>5000</MaxScaleDenominator>
     <Filter>([color] = '#F74370')</Filter>
     <LineSymbolizer stroke="#777777" />
     <PolygonSymbolizer fill="#f74370" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>1500</MaxScaleDenominator>
-    <MinScaleDenominator>750</MinScaleDenominator>
-    <Filter>([color] = '#71994d')</Filter>
-    <LineSymbolizer stroke-width="5.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#71994d" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>2500</MaxScaleDenominator>
-    <MinScaleDenominator>1500</MinScaleDenominator>
-    <Filter>([color] = '#71994d')</Filter>
-    <LineSymbolizer stroke-width="5" stroke="#777777" />
-    <PolygonSymbolizer fill="#71994d" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <MinScaleDenominator>2500</MinScaleDenominator>
-    <Filter>([color] = '#71994d')</Filter>
-    <LineSymbolizer stroke-width="4.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#71994d" />
   </Rule>
   <Rule>
     <MaxScaleDenominator>12500</MaxScaleDenominator>
@@ -3732,33 +3102,12 @@
     <PolygonSymbolizer fill="#71994d" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>750</MaxScaleDenominator>
+    <MaxScaleDenominator>5000</MaxScaleDenominator>
     <Filter>([color] = '#71994d')</Filter>
     <LineSymbolizer stroke="#777777" />
     <PolygonSymbolizer fill="#71994d" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>1500</MaxScaleDenominator>
-    <MinScaleDenominator>750</MinScaleDenominator>
-    <Filter>([color] = '#FFF2AE')</Filter>
-    <LineSymbolizer stroke-width="5.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#fff2ae" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>2500</MaxScaleDenominator>
-    <MinScaleDenominator>1500</MinScaleDenominator>
-    <Filter>([color] = '#FFF2AE')</Filter>
-    <LineSymbolizer stroke-width="5" stroke="#777777" />
-    <PolygonSymbolizer fill="#fff2ae" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <MinScaleDenominator>2500</MinScaleDenominator>
-    <Filter>([color] = '#FFF2AE')</Filter>
-    <LineSymbolizer stroke-width="4.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#fff2ae" />
-  </Rule>
-  <Rule>
     <MaxScaleDenominator>12500</MaxScaleDenominator>
     <MinScaleDenominator>5000</MinScaleDenominator>
     <Filter>([color] = '#FFF2AE')</Filter>
@@ -3856,31 +3205,10 @@
     <PolygonSymbolizer fill="#fff2ae" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>750</MaxScaleDenominator>
+    <MaxScaleDenominator>5000</MaxScaleDenominator>
     <Filter>([color] = '#FFF2AE')</Filter>
     <LineSymbolizer stroke="#777777" />
     <PolygonSymbolizer fill="#fff2ae" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>1500</MaxScaleDenominator>
-    <MinScaleDenominator>750</MinScaleDenominator>
-    <Filter>([color] = '#89b164')</Filter>
-    <LineSymbolizer stroke-width="5.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#89b164" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>2500</MaxScaleDenominator>
-    <MinScaleDenominator>1500</MinScaleDenominator>
-    <Filter>([color] = '#89b164')</Filter>
-    <LineSymbolizer stroke-width="5" stroke="#777777" />
-    <PolygonSymbolizer fill="#89b164" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <MinScaleDenominator>2500</MinScaleDenominator>
-    <Filter>([color] = '#89b164')</Filter>
-    <LineSymbolizer stroke-width="4.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#89b164" />
   </Rule>
   <Rule>
     <MaxScaleDenominator>12500</MaxScaleDenominator>
@@ -3980,33 +3308,12 @@
     <PolygonSymbolizer fill="#89b164" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>750</MaxScaleDenominator>
+    <MaxScaleDenominator>5000</MaxScaleDenominator>
     <Filter>([color] = '#89b164')</Filter>
     <LineSymbolizer stroke="#777777" />
     <PolygonSymbolizer fill="#89b164" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>1500</MaxScaleDenominator>
-    <MinScaleDenominator>750</MinScaleDenominator>
-    <Filter>([color] = '#008b68')</Filter>
-    <LineSymbolizer stroke-width="5.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#008b68" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>2500</MaxScaleDenominator>
-    <MinScaleDenominator>1500</MinScaleDenominator>
-    <Filter>([color] = '#008b68')</Filter>
-    <LineSymbolizer stroke-width="5" stroke="#777777" />
-    <PolygonSymbolizer fill="#008b68" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <MinScaleDenominator>2500</MinScaleDenominator>
-    <Filter>([color] = '#008b68')</Filter>
-    <LineSymbolizer stroke-width="4.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#008b68" />
-  </Rule>
-  <Rule>
     <MaxScaleDenominator>12500</MaxScaleDenominator>
     <MinScaleDenominator>5000</MinScaleDenominator>
     <Filter>([color] = '#008b68')</Filter>
@@ -4104,31 +3411,10 @@
     <PolygonSymbolizer fill="#008b68" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>750</MaxScaleDenominator>
+    <MaxScaleDenominator>5000</MaxScaleDenominator>
     <Filter>([color] = '#008b68')</Filter>
     <LineSymbolizer stroke="#777777" />
     <PolygonSymbolizer fill="#008b68" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>1500</MaxScaleDenominator>
-    <MinScaleDenominator>750</MinScaleDenominator>
-    <Filter>([color] = '#699146')</Filter>
-    <LineSymbolizer stroke-width="5.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#699146" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>2500</MaxScaleDenominator>
-    <MinScaleDenominator>1500</MinScaleDenominator>
-    <Filter>([color] = '#699146')</Filter>
-    <LineSymbolizer stroke-width="5" stroke="#777777" />
-    <PolygonSymbolizer fill="#699146" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <MinScaleDenominator>2500</MinScaleDenominator>
-    <Filter>([color] = '#699146')</Filter>
-    <LineSymbolizer stroke-width="4.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#699146" />
   </Rule>
   <Rule>
     <MaxScaleDenominator>12500</MaxScaleDenominator>
@@ -4228,31 +3514,10 @@
     <PolygonSymbolizer fill="#699146" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>750</MaxScaleDenominator>
+    <MaxScaleDenominator>5000</MaxScaleDenominator>
     <Filter>([color] = '#699146')</Filter>
     <LineSymbolizer stroke="#777777" />
     <PolygonSymbolizer fill="#699146" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>1500</MaxScaleDenominator>
-    <MinScaleDenominator>750</MinScaleDenominator>
-    <Filter>([color] = '#009270')</Filter>
-    <LineSymbolizer stroke-width="5.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#009270" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>2500</MaxScaleDenominator>
-    <MinScaleDenominator>1500</MinScaleDenominator>
-    <Filter>([color] = '#009270')</Filter>
-    <LineSymbolizer stroke-width="5" stroke="#777777" />
-    <PolygonSymbolizer fill="#009270" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <MinScaleDenominator>2500</MinScaleDenominator>
-    <Filter>([color] = '#009270')</Filter>
-    <LineSymbolizer stroke-width="4.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#009270" />
   </Rule>
   <Rule>
     <MaxScaleDenominator>12500</MaxScaleDenominator>
@@ -4352,7 +3617,7 @@
     <PolygonSymbolizer fill="#009270" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>750</MaxScaleDenominator>
+    <MaxScaleDenominator>5000</MaxScaleDenominator>
     <Filter>([color] = '#009270')</Filter>
     <LineSymbolizer stroke="#777777" />
     <PolygonSymbolizer fill="#009270" />
@@ -4363,27 +3628,6 @@
     <PolygonSymbolizer comp-op="src-out" fill-opacity="0" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>1500</MaxScaleDenominator>
-    <MinScaleDenominator>750</MinScaleDenominator>
-    <Filter>([color] = null)</Filter>
-    <LineSymbolizer stroke-width="5.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#777777" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>2500</MaxScaleDenominator>
-    <MinScaleDenominator>1500</MinScaleDenominator>
-    <Filter>([color] = null)</Filter>
-    <LineSymbolizer stroke-width="5" stroke="#777777" />
-    <PolygonSymbolizer fill="#777777" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <MinScaleDenominator>2500</MinScaleDenominator>
-    <Filter>([color] = null)</Filter>
-    <LineSymbolizer stroke-width="4.5" stroke="#777777" />
-    <PolygonSymbolizer fill="#777777" />
-  </Rule>
-  <Rule>
     <MaxScaleDenominator>12500</MaxScaleDenominator>
     <MinScaleDenominator>5000</MinScaleDenominator>
     <Filter>([color] = null)</Filter>
@@ -4481,27 +3725,12 @@
     <PolygonSymbolizer fill="#777777" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>750</MaxScaleDenominator>
+    <MaxScaleDenominator>5000</MaxScaleDenominator>
     <Filter>([color] = null)</Filter>
     <LineSymbolizer stroke="#777777" />
     <PolygonSymbolizer fill="#777777" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>1500</MaxScaleDenominator>
-    <MinScaleDenominator>750</MinScaleDenominator>
-    <LineSymbolizer stroke-width="5.5" stroke="#777777" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>2500</MaxScaleDenominator>
-    <MinScaleDenominator>1500</MinScaleDenominator>
-    <LineSymbolizer stroke-width="5" stroke="#777777" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <MinScaleDenominator>2500</MinScaleDenominator>
-    <LineSymbolizer stroke-width="4.5" stroke="#777777" />
-  </Rule>
-  <Rule>
     <MaxScaleDenominator>12500</MaxScaleDenominator>
     <MinScaleDenominator>5000</MinScaleDenominator>
     <LineSymbolizer stroke-width="4" stroke="#777777" />
@@ -4571,13 +3800,13 @@
     <LineSymbolizer stroke-width="0.3" stroke="#777777" />
   </Rule>
   <Rule>
-    <MaxScaleDenominator>750</MaxScaleDenominator>
+    <MaxScaleDenominator>5000</MaxScaleDenominator>
     <LineSymbolizer stroke="#777777" />
   </Rule>
 </Style>
-<Layer name="units"
+<Layer name="units_medium"
   srs="+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs">
-    <StyleName>units</StyleName>
+    <StyleName>units_medium</StyleName>
     <Datasource>
        <Parameter name="type"><![CDATA[postgis]]></Parameter>
        <Parameter name="table"><![CDATA[(SELECT z.map_id, COALESCE(l.color, '#777777') AS color, z.geom FROM carto_new.medium z LEFT JOIN maps.map_legend ON z.map_id = map_legend.map_id LEFT JOIN maps.legend AS l ON l.legend_id = map_legend.legend_id) subset]]></Parameter>
@@ -4593,2415 +3822,9 @@
     </Datasource>
   </Layer>
 
-<Style name="lines-hatch" filter-mode="first">
-  <Rule>
-    <MaxScaleDenominator>12500</MaxScaleDenominator>
-    <MinScaleDenominator>5000</MinScaleDenominator>
-    <Filter>([type] = 'vein')</Filter>
-    <LineSymbolizer stroke-width="8" stroke-dasharray="1, 48" stroke-linejoin="round" stroke-linecap="round" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000</MaxScaleDenominator>
-    <MinScaleDenominator>12500</MinScaleDenominator>
-    <Filter>([type] = 'vein')</Filter>
-    <LineSymbolizer stroke-width="7" stroke-dasharray="1, 45" stroke-linejoin="round" stroke-linecap="round" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000</MaxScaleDenominator>
-    <MinScaleDenominator>25000</MinScaleDenominator>
-    <Filter>([type] = 'vein')</Filter>
-    <LineSymbolizer stroke-width="6" stroke-dasharray="1, 35" stroke-linejoin="round" stroke-linecap="round" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000</MaxScaleDenominator>
-    <MinScaleDenominator>50000</MinScaleDenominator>
-    <Filter>([type] = 'vein')</Filter>
-    <LineSymbolizer stroke-width="5" stroke-dasharray="1, 27" stroke-linejoin="round" stroke-linecap="round" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000</MaxScaleDenominator>
-    <MinScaleDenominator>100000</MinScaleDenominator>
-    <Filter>([type] = 'vein')</Filter>
-    <LineSymbolizer stroke-width="4" stroke-dasharray="1, 22" stroke-linejoin="round" stroke-linecap="round" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>400000</MaxScaleDenominator>
-    <MinScaleDenominator>200000</MinScaleDenominator>
-    <Filter>([type] = 'vein')</Filter>
-    <LineSymbolizer stroke-width="2.5" stroke-dasharray="1, 18" stroke-linejoin="round" stroke-linecap="round" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>750000</MaxScaleDenominator>
-    <MinScaleDenominator>400000</MinScaleDenominator>
-    <Filter>([type] = 'vein')</Filter>
-    <LineSymbolizer stroke-width="1.5" stroke-dasharray="1, 20" stroke-linejoin="round" stroke-linecap="round" stroke="#ff4136" />
-  </Rule>
-</Style>
-<Style name="lines-line" filter-mode="first">
-  <Rule>
-    <MaxScaleDenominator>12500</MaxScaleDenominator>
-    <MinScaleDenominator>5000</MinScaleDenominator>
-    <Filter>([type] = 'vein')</Filter>
-    <LineSymbolizer stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000</MaxScaleDenominator>
-    <MinScaleDenominator>12500</MinScaleDenominator>
-    <Filter>([type] = 'vein')</Filter>
-    <LineSymbolizer stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000</MaxScaleDenominator>
-    <MinScaleDenominator>25000</MinScaleDenominator>
-    <Filter>([type] = 'vein')</Filter>
-    <LineSymbolizer stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000</MaxScaleDenominator>
-    <MinScaleDenominator>50000</MinScaleDenominator>
-    <Filter>([type] = 'vein')</Filter>
-    <LineSymbolizer stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000</MaxScaleDenominator>
-    <MinScaleDenominator>100000</MinScaleDenominator>
-    <Filter>([type] = 'vein')</Filter>
-    <LineSymbolizer stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>400000</MaxScaleDenominator>
-    <MinScaleDenominator>200000</MinScaleDenominator>
-    <Filter>([type] = 'vein')</Filter>
-    <LineSymbolizer stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>750000</MaxScaleDenominator>
-    <MinScaleDenominator>400000</MinScaleDenominator>
-    <Filter>([type] = 'vein')</Filter>
-    <LineSymbolizer stroke="#ff4136" />
-  </Rule>
-</Style>
-<Style name="lines" filter-mode="first">
-  <Rule>
-    <MaxScaleDenominator>12500</MaxScaleDenominator>
-    <MinScaleDenominator>5000</MinScaleDenominator>
-    <Filter>([type] = 'syncline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="4.4" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000</MaxScaleDenominator>
-    <MinScaleDenominator>12500</MinScaleDenominator>
-    <Filter>([type] = 'syncline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="3.5" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000</MaxScaleDenominator>
-    <MinScaleDenominator>25000</MinScaleDenominator>
-    <Filter>([type] = 'syncline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="2.8" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000</MaxScaleDenominator>
-    <MinScaleDenominator>50000</MinScaleDenominator>
-    <Filter>([type] = 'syncline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="1.8" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000</MaxScaleDenominator>
-    <MinScaleDenominator>100000</MinScaleDenominator>
-    <Filter>([type] = 'syncline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="1.4" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>400000</MaxScaleDenominator>
-    <MinScaleDenominator>200000</MinScaleDenominator>
-    <Filter>([type] = 'syncline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="1.2" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>750000</MaxScaleDenominator>
-    <MinScaleDenominator>400000</MinScaleDenominator>
-    <Filter>([type] = 'syncline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.9" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>1500000</MaxScaleDenominator>
-    <MinScaleDenominator>750000</MinScaleDenominator>
-    <Filter>([type] = 'syncline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.9" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>3000000</MaxScaleDenominator>
-    <MinScaleDenominator>1500000</MinScaleDenominator>
-    <Filter>([type] = 'syncline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.8" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>6500000</MaxScaleDenominator>
-    <MinScaleDenominator>3000000</MinScaleDenominator>
-    <Filter>([type] = 'syncline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.5" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500000</MaxScaleDenominator>
-    <MinScaleDenominator>6500000</MinScaleDenominator>
-    <Filter>([type] = 'syncline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.45" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000000</MaxScaleDenominator>
-    <MinScaleDenominator>12500000</MinScaleDenominator>
-    <Filter>([type] = 'syncline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.6" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000000</MaxScaleDenominator>
-    <MinScaleDenominator>25000000</MinScaleDenominator>
-    <Filter>([type] = 'syncline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.55" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000000</MaxScaleDenominator>
-    <MinScaleDenominator>50000000</MinScaleDenominator>
-    <Filter>([type] = 'syncline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.6" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000000</MaxScaleDenominator>
-    <MinScaleDenominator>100000000</MinScaleDenominator>
-    <Filter>([type] = 'syncline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.5" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <Filter>([type] = 'syncline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>500000000</MaxScaleDenominator>
-    <MinScaleDenominator>200000000</MinScaleDenominator>
-    <Filter>([type] = 'syncline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MinScaleDenominator>500000000</MinScaleDenominator>
-    <Filter>([type] = 'syncline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500</MaxScaleDenominator>
-    <MinScaleDenominator>5000</MinScaleDenominator>
-    <Filter>([type] = 'syncline')</Filter>
-    <LineSymbolizer stroke-width="4.4" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000</MaxScaleDenominator>
-    <MinScaleDenominator>12500</MinScaleDenominator>
-    <Filter>([type] = 'syncline')</Filter>
-    <LineSymbolizer stroke-width="3.5" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000</MaxScaleDenominator>
-    <MinScaleDenominator>25000</MinScaleDenominator>
-    <Filter>([type] = 'syncline')</Filter>
-    <LineSymbolizer stroke-width="2.8" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000</MaxScaleDenominator>
-    <MinScaleDenominator>50000</MinScaleDenominator>
-    <Filter>([type] = 'syncline')</Filter>
-    <LineSymbolizer stroke-width="1.8" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000</MaxScaleDenominator>
-    <MinScaleDenominator>100000</MinScaleDenominator>
-    <Filter>([type] = 'syncline')</Filter>
-    <LineSymbolizer stroke-width="1.4" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>400000</MaxScaleDenominator>
-    <MinScaleDenominator>200000</MinScaleDenominator>
-    <Filter>([type] = 'syncline')</Filter>
-    <LineSymbolizer stroke-width="1.2" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>750000</MaxScaleDenominator>
-    <MinScaleDenominator>400000</MinScaleDenominator>
-    <Filter>([type] = 'syncline')</Filter>
-    <LineSymbolizer stroke-width="0.9" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>1500000</MaxScaleDenominator>
-    <MinScaleDenominator>750000</MinScaleDenominator>
-    <Filter>([type] = 'syncline')</Filter>
-    <LineSymbolizer stroke-width="0.9" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>3000000</MaxScaleDenominator>
-    <MinScaleDenominator>1500000</MinScaleDenominator>
-    <Filter>([type] = 'syncline')</Filter>
-    <LineSymbolizer stroke-width="0.8" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>6500000</MaxScaleDenominator>
-    <MinScaleDenominator>3000000</MinScaleDenominator>
-    <Filter>([type] = 'syncline')</Filter>
-    <LineSymbolizer stroke-width="0.5" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <Filter>([type] = 'syncline')</Filter>
-    <LineSymbolizer stroke-width="0" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500000</MaxScaleDenominator>
-    <MinScaleDenominator>6500000</MinScaleDenominator>
-    <Filter>([type] = 'syncline')</Filter>
-    <LineSymbolizer stroke-width="0.25" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000000</MaxScaleDenominator>
-    <MinScaleDenominator>12500000</MinScaleDenominator>
-    <Filter>([type] = 'syncline')</Filter>
-    <LineSymbolizer stroke-width="0.4" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000000</MaxScaleDenominator>
-    <MinScaleDenominator>25000000</MinScaleDenominator>
-    <Filter>([type] = 'syncline')</Filter>
-    <LineSymbolizer stroke-width="0.35" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000000</MaxScaleDenominator>
-    <MinScaleDenominator>50000000</MinScaleDenominator>
-    <Filter>([type] = 'syncline')</Filter>
-    <LineSymbolizer stroke-width="0.4" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000000</MaxScaleDenominator>
-    <MinScaleDenominator>100000000</MinScaleDenominator>
-    <Filter>([type] = 'syncline')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>500000000</MaxScaleDenominator>
-    <MinScaleDenominator>200000000</MinScaleDenominator>
-    <Filter>([type] = 'syncline')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MinScaleDenominator>500000000</MinScaleDenominator>
-    <Filter>([type] = 'syncline')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500</MaxScaleDenominator>
-    <MinScaleDenominator>5000</MinScaleDenominator>
-    <Filter>([type] = 'fold') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="4.4" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000</MaxScaleDenominator>
-    <MinScaleDenominator>12500</MinScaleDenominator>
-    <Filter>([type] = 'fold') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="3.5" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000</MaxScaleDenominator>
-    <MinScaleDenominator>25000</MinScaleDenominator>
-    <Filter>([type] = 'fold') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="2.8" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000</MaxScaleDenominator>
-    <MinScaleDenominator>50000</MinScaleDenominator>
-    <Filter>([type] = 'fold') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="1.8" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000</MaxScaleDenominator>
-    <MinScaleDenominator>100000</MinScaleDenominator>
-    <Filter>([type] = 'fold') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="1.4" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>400000</MaxScaleDenominator>
-    <MinScaleDenominator>200000</MinScaleDenominator>
-    <Filter>([type] = 'fold') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="1.2" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>750000</MaxScaleDenominator>
-    <MinScaleDenominator>400000</MinScaleDenominator>
-    <Filter>([type] = 'fold') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.9" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>1500000</MaxScaleDenominator>
-    <MinScaleDenominator>750000</MinScaleDenominator>
-    <Filter>([type] = 'fold') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.9" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>3000000</MaxScaleDenominator>
-    <MinScaleDenominator>1500000</MinScaleDenominator>
-    <Filter>([type] = 'fold') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.8" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>6500000</MaxScaleDenominator>
-    <MinScaleDenominator>3000000</MinScaleDenominator>
-    <Filter>([type] = 'fold') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.5" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500000</MaxScaleDenominator>
-    <MinScaleDenominator>6500000</MinScaleDenominator>
-    <Filter>([type] = 'fold') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.45" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000000</MaxScaleDenominator>
-    <MinScaleDenominator>12500000</MinScaleDenominator>
-    <Filter>([type] = 'fold') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.6" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000000</MaxScaleDenominator>
-    <MinScaleDenominator>25000000</MinScaleDenominator>
-    <Filter>([type] = 'fold') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.55" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000000</MaxScaleDenominator>
-    <MinScaleDenominator>50000000</MinScaleDenominator>
-    <Filter>([type] = 'fold') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.6" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000000</MaxScaleDenominator>
-    <MinScaleDenominator>100000000</MinScaleDenominator>
-    <Filter>([type] = 'fold') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.5" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <Filter>([type] = 'fold') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>500000000</MaxScaleDenominator>
-    <MinScaleDenominator>200000000</MinScaleDenominator>
-    <Filter>([type] = 'fold') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MinScaleDenominator>500000000</MinScaleDenominator>
-    <Filter>([type] = 'fold') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500</MaxScaleDenominator>
-    <MinScaleDenominator>5000</MinScaleDenominator>
-    <Filter>([type] = 'fold')</Filter>
-    <LineSymbolizer stroke-width="4.4" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000</MaxScaleDenominator>
-    <MinScaleDenominator>12500</MinScaleDenominator>
-    <Filter>([type] = 'fold')</Filter>
-    <LineSymbolizer stroke-width="3.5" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000</MaxScaleDenominator>
-    <MinScaleDenominator>25000</MinScaleDenominator>
-    <Filter>([type] = 'fold')</Filter>
-    <LineSymbolizer stroke-width="2.8" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000</MaxScaleDenominator>
-    <MinScaleDenominator>50000</MinScaleDenominator>
-    <Filter>([type] = 'fold')</Filter>
-    <LineSymbolizer stroke-width="1.8" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000</MaxScaleDenominator>
-    <MinScaleDenominator>100000</MinScaleDenominator>
-    <Filter>([type] = 'fold')</Filter>
-    <LineSymbolizer stroke-width="1.4" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>400000</MaxScaleDenominator>
-    <MinScaleDenominator>200000</MinScaleDenominator>
-    <Filter>([type] = 'fold')</Filter>
-    <LineSymbolizer stroke-width="1.2" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>750000</MaxScaleDenominator>
-    <MinScaleDenominator>400000</MinScaleDenominator>
-    <Filter>([type] = 'fold')</Filter>
-    <LineSymbolizer stroke-width="0.9" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>1500000</MaxScaleDenominator>
-    <MinScaleDenominator>750000</MinScaleDenominator>
-    <Filter>([type] = 'fold')</Filter>
-    <LineSymbolizer stroke-width="0.9" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>3000000</MaxScaleDenominator>
-    <MinScaleDenominator>1500000</MinScaleDenominator>
-    <Filter>([type] = 'fold')</Filter>
-    <LineSymbolizer stroke-width="0.8" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>6500000</MaxScaleDenominator>
-    <MinScaleDenominator>3000000</MinScaleDenominator>
-    <Filter>([type] = 'fold')</Filter>
-    <LineSymbolizer stroke-width="0.5" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <Filter>([type] = 'fold')</Filter>
-    <LineSymbolizer stroke-width="0" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500000</MaxScaleDenominator>
-    <MinScaleDenominator>6500000</MinScaleDenominator>
-    <Filter>([type] = 'fold')</Filter>
-    <LineSymbolizer stroke-width="0.25" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000000</MaxScaleDenominator>
-    <MinScaleDenominator>12500000</MinScaleDenominator>
-    <Filter>([type] = 'fold')</Filter>
-    <LineSymbolizer stroke-width="0.4" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000000</MaxScaleDenominator>
-    <MinScaleDenominator>25000000</MinScaleDenominator>
-    <Filter>([type] = 'fold')</Filter>
-    <LineSymbolizer stroke-width="0.35" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000000</MaxScaleDenominator>
-    <MinScaleDenominator>50000000</MinScaleDenominator>
-    <Filter>([type] = 'fold')</Filter>
-    <LineSymbolizer stroke-width="0.4" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000000</MaxScaleDenominator>
-    <MinScaleDenominator>100000000</MinScaleDenominator>
-    <Filter>([type] = 'fold')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>500000000</MaxScaleDenominator>
-    <MinScaleDenominator>200000000</MinScaleDenominator>
-    <Filter>([type] = 'fold')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MinScaleDenominator>500000000</MinScaleDenominator>
-    <Filter>([type] = 'fold')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500</MaxScaleDenominator>
-    <MinScaleDenominator>5000</MinScaleDenominator>
-    <Filter>([type] = 'monocline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="4.4" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000</MaxScaleDenominator>
-    <MinScaleDenominator>12500</MinScaleDenominator>
-    <Filter>([type] = 'monocline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="3.5" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000</MaxScaleDenominator>
-    <MinScaleDenominator>25000</MinScaleDenominator>
-    <Filter>([type] = 'monocline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="2.8" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000</MaxScaleDenominator>
-    <MinScaleDenominator>50000</MinScaleDenominator>
-    <Filter>([type] = 'monocline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="1.8" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000</MaxScaleDenominator>
-    <MinScaleDenominator>100000</MinScaleDenominator>
-    <Filter>([type] = 'monocline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="1.4" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>400000</MaxScaleDenominator>
-    <MinScaleDenominator>200000</MinScaleDenominator>
-    <Filter>([type] = 'monocline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="1.2" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>750000</MaxScaleDenominator>
-    <MinScaleDenominator>400000</MinScaleDenominator>
-    <Filter>([type] = 'monocline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.9" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>1500000</MaxScaleDenominator>
-    <MinScaleDenominator>750000</MinScaleDenominator>
-    <Filter>([type] = 'monocline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.9" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>3000000</MaxScaleDenominator>
-    <MinScaleDenominator>1500000</MinScaleDenominator>
-    <Filter>([type] = 'monocline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.8" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>6500000</MaxScaleDenominator>
-    <MinScaleDenominator>3000000</MinScaleDenominator>
-    <Filter>([type] = 'monocline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.5" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500000</MaxScaleDenominator>
-    <MinScaleDenominator>6500000</MinScaleDenominator>
-    <Filter>([type] = 'monocline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.45" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000000</MaxScaleDenominator>
-    <MinScaleDenominator>12500000</MinScaleDenominator>
-    <Filter>([type] = 'monocline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.6" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000000</MaxScaleDenominator>
-    <MinScaleDenominator>25000000</MinScaleDenominator>
-    <Filter>([type] = 'monocline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.55" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000000</MaxScaleDenominator>
-    <MinScaleDenominator>50000000</MinScaleDenominator>
-    <Filter>([type] = 'monocline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.6" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000000</MaxScaleDenominator>
-    <MinScaleDenominator>100000000</MinScaleDenominator>
-    <Filter>([type] = 'monocline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.5" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <Filter>([type] = 'monocline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>500000000</MaxScaleDenominator>
-    <MinScaleDenominator>200000000</MinScaleDenominator>
-    <Filter>([type] = 'monocline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MinScaleDenominator>500000000</MinScaleDenominator>
-    <Filter>([type] = 'monocline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500</MaxScaleDenominator>
-    <MinScaleDenominator>5000</MinScaleDenominator>
-    <Filter>([type] = 'monocline')</Filter>
-    <LineSymbolizer stroke-width="4.4" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000</MaxScaleDenominator>
-    <MinScaleDenominator>12500</MinScaleDenominator>
-    <Filter>([type] = 'monocline')</Filter>
-    <LineSymbolizer stroke-width="3.5" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000</MaxScaleDenominator>
-    <MinScaleDenominator>25000</MinScaleDenominator>
-    <Filter>([type] = 'monocline')</Filter>
-    <LineSymbolizer stroke-width="2.8" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000</MaxScaleDenominator>
-    <MinScaleDenominator>50000</MinScaleDenominator>
-    <Filter>([type] = 'monocline')</Filter>
-    <LineSymbolizer stroke-width="1.8" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000</MaxScaleDenominator>
-    <MinScaleDenominator>100000</MinScaleDenominator>
-    <Filter>([type] = 'monocline')</Filter>
-    <LineSymbolizer stroke-width="1.4" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>400000</MaxScaleDenominator>
-    <MinScaleDenominator>200000</MinScaleDenominator>
-    <Filter>([type] = 'monocline')</Filter>
-    <LineSymbolizer stroke-width="1.2" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>750000</MaxScaleDenominator>
-    <MinScaleDenominator>400000</MinScaleDenominator>
-    <Filter>([type] = 'monocline')</Filter>
-    <LineSymbolizer stroke-width="0.9" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>1500000</MaxScaleDenominator>
-    <MinScaleDenominator>750000</MinScaleDenominator>
-    <Filter>([type] = 'monocline')</Filter>
-    <LineSymbolizer stroke-width="0.9" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>3000000</MaxScaleDenominator>
-    <MinScaleDenominator>1500000</MinScaleDenominator>
-    <Filter>([type] = 'monocline')</Filter>
-    <LineSymbolizer stroke-width="0.8" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>6500000</MaxScaleDenominator>
-    <MinScaleDenominator>3000000</MinScaleDenominator>
-    <Filter>([type] = 'monocline')</Filter>
-    <LineSymbolizer stroke-width="0.5" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <Filter>([type] = 'monocline')</Filter>
-    <LineSymbolizer stroke-width="0" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500000</MaxScaleDenominator>
-    <MinScaleDenominator>6500000</MinScaleDenominator>
-    <Filter>([type] = 'monocline')</Filter>
-    <LineSymbolizer stroke-width="0.25" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000000</MaxScaleDenominator>
-    <MinScaleDenominator>12500000</MinScaleDenominator>
-    <Filter>([type] = 'monocline')</Filter>
-    <LineSymbolizer stroke-width="0.4" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000000</MaxScaleDenominator>
-    <MinScaleDenominator>25000000</MinScaleDenominator>
-    <Filter>([type] = 'monocline')</Filter>
-    <LineSymbolizer stroke-width="0.35" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000000</MaxScaleDenominator>
-    <MinScaleDenominator>50000000</MinScaleDenominator>
-    <Filter>([type] = 'monocline')</Filter>
-    <LineSymbolizer stroke-width="0.4" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000000</MaxScaleDenominator>
-    <MinScaleDenominator>100000000</MinScaleDenominator>
-    <Filter>([type] = 'monocline')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>500000000</MaxScaleDenominator>
-    <MinScaleDenominator>200000000</MinScaleDenominator>
-    <Filter>([type] = 'monocline')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MinScaleDenominator>500000000</MinScaleDenominator>
-    <Filter>([type] = 'monocline')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500</MaxScaleDenominator>
-    <MinScaleDenominator>5000</MinScaleDenominator>
-    <Filter>([type] = 'anticline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="4.4" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000</MaxScaleDenominator>
-    <MinScaleDenominator>12500</MinScaleDenominator>
-    <Filter>([type] = 'anticline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="3.5" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000</MaxScaleDenominator>
-    <MinScaleDenominator>25000</MinScaleDenominator>
-    <Filter>([type] = 'anticline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="2.8" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000</MaxScaleDenominator>
-    <MinScaleDenominator>50000</MinScaleDenominator>
-    <Filter>([type] = 'anticline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="1.8" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000</MaxScaleDenominator>
-    <MinScaleDenominator>100000</MinScaleDenominator>
-    <Filter>([type] = 'anticline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="1.4" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>400000</MaxScaleDenominator>
-    <MinScaleDenominator>200000</MinScaleDenominator>
-    <Filter>([type] = 'anticline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="1.2" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>750000</MaxScaleDenominator>
-    <MinScaleDenominator>400000</MinScaleDenominator>
-    <Filter>([type] = 'anticline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.9" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>1500000</MaxScaleDenominator>
-    <MinScaleDenominator>750000</MinScaleDenominator>
-    <Filter>([type] = 'anticline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.9" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>3000000</MaxScaleDenominator>
-    <MinScaleDenominator>1500000</MinScaleDenominator>
-    <Filter>([type] = 'anticline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.8" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>6500000</MaxScaleDenominator>
-    <MinScaleDenominator>3000000</MinScaleDenominator>
-    <Filter>([type] = 'anticline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.5" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500000</MaxScaleDenominator>
-    <MinScaleDenominator>6500000</MinScaleDenominator>
-    <Filter>([type] = 'anticline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.45" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000000</MaxScaleDenominator>
-    <MinScaleDenominator>12500000</MinScaleDenominator>
-    <Filter>([type] = 'anticline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.6" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000000</MaxScaleDenominator>
-    <MinScaleDenominator>25000000</MinScaleDenominator>
-    <Filter>([type] = 'anticline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.55" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000000</MaxScaleDenominator>
-    <MinScaleDenominator>50000000</MinScaleDenominator>
-    <Filter>([type] = 'anticline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.6" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000000</MaxScaleDenominator>
-    <MinScaleDenominator>100000000</MinScaleDenominator>
-    <Filter>([type] = 'anticline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.5" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <Filter>([type] = 'anticline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>500000000</MaxScaleDenominator>
-    <MinScaleDenominator>200000000</MinScaleDenominator>
-    <Filter>([type] = 'anticline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MinScaleDenominator>500000000</MinScaleDenominator>
-    <Filter>([type] = 'anticline') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500</MaxScaleDenominator>
-    <MinScaleDenominator>5000</MinScaleDenominator>
-    <Filter>([type] = 'anticline')</Filter>
-    <LineSymbolizer stroke-width="4.4" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000</MaxScaleDenominator>
-    <MinScaleDenominator>12500</MinScaleDenominator>
-    <Filter>([type] = 'anticline')</Filter>
-    <LineSymbolizer stroke-width="3.5" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000</MaxScaleDenominator>
-    <MinScaleDenominator>25000</MinScaleDenominator>
-    <Filter>([type] = 'anticline')</Filter>
-    <LineSymbolizer stroke-width="2.8" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000</MaxScaleDenominator>
-    <MinScaleDenominator>50000</MinScaleDenominator>
-    <Filter>([type] = 'anticline')</Filter>
-    <LineSymbolizer stroke-width="1.8" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000</MaxScaleDenominator>
-    <MinScaleDenominator>100000</MinScaleDenominator>
-    <Filter>([type] = 'anticline')</Filter>
-    <LineSymbolizer stroke-width="1.4" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>400000</MaxScaleDenominator>
-    <MinScaleDenominator>200000</MinScaleDenominator>
-    <Filter>([type] = 'anticline')</Filter>
-    <LineSymbolizer stroke-width="1.2" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>750000</MaxScaleDenominator>
-    <MinScaleDenominator>400000</MinScaleDenominator>
-    <Filter>([type] = 'anticline')</Filter>
-    <LineSymbolizer stroke-width="0.9" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>1500000</MaxScaleDenominator>
-    <MinScaleDenominator>750000</MinScaleDenominator>
-    <Filter>([type] = 'anticline')</Filter>
-    <LineSymbolizer stroke-width="0.9" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>3000000</MaxScaleDenominator>
-    <MinScaleDenominator>1500000</MinScaleDenominator>
-    <Filter>([type] = 'anticline')</Filter>
-    <LineSymbolizer stroke-width="0.8" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>6500000</MaxScaleDenominator>
-    <MinScaleDenominator>3000000</MinScaleDenominator>
-    <Filter>([type] = 'anticline')</Filter>
-    <LineSymbolizer stroke-width="0.5" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <Filter>([type] = 'anticline')</Filter>
-    <LineSymbolizer stroke-width="0" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500000</MaxScaleDenominator>
-    <MinScaleDenominator>6500000</MinScaleDenominator>
-    <Filter>([type] = 'anticline')</Filter>
-    <LineSymbolizer stroke-width="0.25" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000000</MaxScaleDenominator>
-    <MinScaleDenominator>12500000</MinScaleDenominator>
-    <Filter>([type] = 'anticline')</Filter>
-    <LineSymbolizer stroke-width="0.4" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000000</MaxScaleDenominator>
-    <MinScaleDenominator>25000000</MinScaleDenominator>
-    <Filter>([type] = 'anticline')</Filter>
-    <LineSymbolizer stroke-width="0.35" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000000</MaxScaleDenominator>
-    <MinScaleDenominator>50000000</MinScaleDenominator>
-    <Filter>([type] = 'anticline')</Filter>
-    <LineSymbolizer stroke-width="0.4" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000000</MaxScaleDenominator>
-    <MinScaleDenominator>100000000</MinScaleDenominator>
-    <Filter>([type] = 'anticline')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>500000000</MaxScaleDenominator>
-    <MinScaleDenominator>200000000</MinScaleDenominator>
-    <Filter>([type] = 'anticline')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MinScaleDenominator>500000000</MinScaleDenominator>
-    <Filter>([type] = 'anticline')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#f012be" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500</MaxScaleDenominator>
-    <MinScaleDenominator>5000</MinScaleDenominator>
-    <Filter>([type] = 'lineament') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-dasharray="10, 6, 36, 6" stroke-width="4.2" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000</MaxScaleDenominator>
-    <MinScaleDenominator>12500</MinScaleDenominator>
-    <Filter>([type] = 'lineament') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-dasharray="8, 5, 29, 5" stroke-width="3.2" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000</MaxScaleDenominator>
-    <MinScaleDenominator>25000</MinScaleDenominator>
-    <Filter>([type] = 'lineament') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-dasharray="8, 5, 29, 5" stroke-width="2.7" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000</MaxScaleDenominator>
-    <MinScaleDenominator>50000</MinScaleDenominator>
-    <Filter>([type] = 'lineament') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-dasharray="6, 4, 22, 4" stroke-width="1.7" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000</MaxScaleDenominator>
-    <MinScaleDenominator>100000</MinScaleDenominator>
-    <Filter>([type] = 'lineament') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-dasharray="5, 3, 18, 3" stroke-width="1.3" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>400000</MaxScaleDenominator>
-    <MinScaleDenominator>200000</MinScaleDenominator>
-    <Filter>([type] = 'lineament') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-dasharray="4, 2, 14, 2" stroke-width="1.1" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>750000</MaxScaleDenominator>
-    <MinScaleDenominator>400000</MinScaleDenominator>
-    <Filter>([type] = 'lineament') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-dasharray="3, 3, 8, 3" stroke-width="0.8" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>1500000</MaxScaleDenominator>
-    <MinScaleDenominator>750000</MinScaleDenominator>
-    <Filter>([type] = 'lineament') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-dasharray="3, 2, 11, 2" stroke-width="0.8" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>3000000</MaxScaleDenominator>
-    <MinScaleDenominator>1500000</MinScaleDenominator>
-    <Filter>([type] = 'lineament') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-dasharray="2, 1, 7, 1" stroke-width="0.7" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>6500000</MaxScaleDenominator>
-    <MinScaleDenominator>3000000</MinScaleDenominator>
-    <Filter>([type] = 'lineament') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-dasharray="2, 1, 7, 1" stroke-width="0.4" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500000</MaxScaleDenominator>
-    <MinScaleDenominator>6500000</MinScaleDenominator>
-    <Filter>([type] = 'lineament') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.45" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000000</MaxScaleDenominator>
-    <MinScaleDenominator>12500000</MinScaleDenominator>
-    <Filter>([type] = 'lineament') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.6" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000000</MaxScaleDenominator>
-    <MinScaleDenominator>25000000</MinScaleDenominator>
-    <Filter>([type] = 'lineament') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.55" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000000</MaxScaleDenominator>
-    <MinScaleDenominator>50000000</MinScaleDenominator>
-    <Filter>([type] = 'lineament') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.6" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000000</MaxScaleDenominator>
-    <MinScaleDenominator>100000000</MinScaleDenominator>
-    <Filter>([type] = 'lineament') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.5" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <Filter>([type] = 'lineament') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>500000000</MaxScaleDenominator>
-    <MinScaleDenominator>200000000</MinScaleDenominator>
-    <Filter>([type] = 'lineament') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MinScaleDenominator>500000000</MinScaleDenominator>
-    <Filter>([type] = 'lineament') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500</MaxScaleDenominator>
-    <MinScaleDenominator>5000</MinScaleDenominator>
-    <Filter>([type] = 'lineament')</Filter>
-    <LineSymbolizer stroke-dasharray="10, 6, 36, 6" stroke-width="4" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000</MaxScaleDenominator>
-    <MinScaleDenominator>12500</MinScaleDenominator>
-    <Filter>([type] = 'lineament')</Filter>
-    <LineSymbolizer stroke-dasharray="8, 5, 29, 5" stroke-width="3" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000</MaxScaleDenominator>
-    <MinScaleDenominator>25000</MinScaleDenominator>
-    <Filter>([type] = 'lineament')</Filter>
-    <LineSymbolizer stroke-dasharray="8, 5, 29, 5" stroke-width="2.5" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000</MaxScaleDenominator>
-    <MinScaleDenominator>50000</MinScaleDenominator>
-    <Filter>([type] = 'lineament')</Filter>
-    <LineSymbolizer stroke-dasharray="6, 4, 22, 4" stroke-width="1.5" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000</MaxScaleDenominator>
-    <MinScaleDenominator>100000</MinScaleDenominator>
-    <Filter>([type] = 'lineament')</Filter>
-    <LineSymbolizer stroke-dasharray="5, 3, 18, 3" stroke-width="1.1" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>400000</MaxScaleDenominator>
-    <MinScaleDenominator>200000</MinScaleDenominator>
-    <Filter>([type] = 'lineament')</Filter>
-    <LineSymbolizer stroke-dasharray="4, 2, 14, 2" stroke-width="0.9" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>750000</MaxScaleDenominator>
-    <MinScaleDenominator>400000</MinScaleDenominator>
-    <Filter>([type] = 'lineament')</Filter>
-    <LineSymbolizer stroke-dasharray="3, 3, 8, 3" stroke-width="0.6" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>1500000</MaxScaleDenominator>
-    <MinScaleDenominator>750000</MinScaleDenominator>
-    <Filter>([type] = 'lineament')</Filter>
-    <LineSymbolizer stroke-dasharray="3, 2, 11, 2" stroke-width="0.7" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>3000000</MaxScaleDenominator>
-    <MinScaleDenominator>1500000</MinScaleDenominator>
-    <Filter>([type] = 'lineament')</Filter>
-    <LineSymbolizer stroke-dasharray="2, 1, 7, 1" stroke-width="0.5" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>6500000</MaxScaleDenominator>
-    <MinScaleDenominator>3000000</MinScaleDenominator>
-    <Filter>([type] = 'lineament')</Filter>
-    <LineSymbolizer stroke-dasharray="2, 1, 7, 1" stroke-width="0.3" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <Filter>([type] = 'lineament')</Filter>
-    <LineSymbolizer stroke-width="0" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500000</MaxScaleDenominator>
-    <MinScaleDenominator>6500000</MinScaleDenominator>
-    <Filter>([type] = 'lineament')</Filter>
-    <LineSymbolizer stroke-width="0.25" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000000</MaxScaleDenominator>
-    <MinScaleDenominator>12500000</MinScaleDenominator>
-    <Filter>([type] = 'lineament')</Filter>
-    <LineSymbolizer stroke-width="0.4" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000000</MaxScaleDenominator>
-    <MinScaleDenominator>25000000</MinScaleDenominator>
-    <Filter>([type] = 'lineament')</Filter>
-    <LineSymbolizer stroke-width="0.35" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000000</MaxScaleDenominator>
-    <MinScaleDenominator>50000000</MinScaleDenominator>
-    <Filter>([type] = 'lineament')</Filter>
-    <LineSymbolizer stroke-width="0.4" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000000</MaxScaleDenominator>
-    <MinScaleDenominator>100000000</MinScaleDenominator>
-    <Filter>([type] = 'lineament')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>500000000</MaxScaleDenominator>
-    <MinScaleDenominator>200000000</MinScaleDenominator>
-    <Filter>([type] = 'lineament')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MinScaleDenominator>500000000</MinScaleDenominator>
-    <Filter>([type] = 'lineament')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500</MaxScaleDenominator>
-    <MinScaleDenominator>5000</MinScaleDenominator>
-    <Filter>([type] = 'marker bed') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="4" stroke-dasharray="5, 5" stroke="#333333" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000</MaxScaleDenominator>
-    <MinScaleDenominator>12500</MinScaleDenominator>
-    <Filter>([type] = 'marker bed') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="3.5" stroke-dasharray="5, 5" stroke="#333333" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000</MaxScaleDenominator>
-    <MinScaleDenominator>25000</MinScaleDenominator>
-    <Filter>([type] = 'marker bed') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="3" stroke-dasharray="5, 5" stroke="#333333" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000</MaxScaleDenominator>
-    <MinScaleDenominator>50000</MinScaleDenominator>
-    <Filter>([type] = 'marker bed') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="2" stroke-dasharray="5, 5" stroke="#333333" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000</MaxScaleDenominator>
-    <MinScaleDenominator>100000</MinScaleDenominator>
-    <Filter>([type] = 'marker bed') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="1.3" stroke="#333333" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>400000</MaxScaleDenominator>
-    <MinScaleDenominator>200000</MinScaleDenominator>
-    <Filter>([type] = 'marker bed') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="1.1" stroke="#333333" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>750000</MaxScaleDenominator>
-    <MinScaleDenominator>400000</MinScaleDenominator>
-    <Filter>([type] = 'marker bed') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.8" stroke="#333333" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>1500000</MaxScaleDenominator>
-    <MinScaleDenominator>750000</MinScaleDenominator>
-    <Filter>([type] = 'marker bed') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.8" stroke="#333333" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>3000000</MaxScaleDenominator>
-    <MinScaleDenominator>1500000</MinScaleDenominator>
-    <Filter>([type] = 'marker bed') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.7" stroke="#333333" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>6500000</MaxScaleDenominator>
-    <MinScaleDenominator>3000000</MinScaleDenominator>
-    <Filter>([type] = 'marker bed') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.4" stroke="#333333" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500000</MaxScaleDenominator>
-    <MinScaleDenominator>6500000</MinScaleDenominator>
-    <Filter>([type] = 'marker bed') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.45" stroke="#333333" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000000</MaxScaleDenominator>
-    <MinScaleDenominator>12500000</MinScaleDenominator>
-    <Filter>([type] = 'marker bed') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.6" stroke="#333333" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000000</MaxScaleDenominator>
-    <MinScaleDenominator>25000000</MinScaleDenominator>
-    <Filter>([type] = 'marker bed') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.55" stroke="#333333" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000000</MaxScaleDenominator>
-    <MinScaleDenominator>50000000</MinScaleDenominator>
-    <Filter>([type] = 'marker bed') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.6" stroke="#333333" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000000</MaxScaleDenominator>
-    <MinScaleDenominator>100000000</MinScaleDenominator>
-    <Filter>([type] = 'marker bed') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.5" stroke="#333333" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <Filter>([type] = 'marker bed') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0" stroke="#333333" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>500000000</MaxScaleDenominator>
-    <MinScaleDenominator>200000000</MinScaleDenominator>
-    <Filter>([type] = 'marker bed') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#333333" />
-  </Rule>
-  <Rule>
-    <MinScaleDenominator>500000000</MinScaleDenominator>
-    <Filter>([type] = 'marker bed') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#333333" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500</MaxScaleDenominator>
-    <MinScaleDenominator>5000</MinScaleDenominator>
-    <Filter>([type] = 'marker bed')</Filter>
-    <LineSymbolizer stroke-width="4" stroke-dasharray="5, 5" stroke="#333333" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000</MaxScaleDenominator>
-    <MinScaleDenominator>12500</MinScaleDenominator>
-    <Filter>([type] = 'marker bed')</Filter>
-    <LineSymbolizer stroke-width="3.5" stroke-dasharray="5, 5" stroke="#333333" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000</MaxScaleDenominator>
-    <MinScaleDenominator>25000</MinScaleDenominator>
-    <Filter>([type] = 'marker bed')</Filter>
-    <LineSymbolizer stroke-width="3" stroke-dasharray="5, 5" stroke="#333333" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000</MaxScaleDenominator>
-    <MinScaleDenominator>50000</MinScaleDenominator>
-    <Filter>([type] = 'marker bed')</Filter>
-    <LineSymbolizer stroke-width="2" stroke-dasharray="5, 5" stroke="#333333" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <Filter>([type] = 'marker bed')</Filter>
-    <LineSymbolizer stroke-width="0" stroke="#333333" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000</MaxScaleDenominator>
-    <MinScaleDenominator>100000</MinScaleDenominator>
-    <Filter>([type] = 'marker bed')</Filter>
-    <LineSymbolizer stroke-width="1.1" stroke="#333333" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>400000</MaxScaleDenominator>
-    <MinScaleDenominator>200000</MinScaleDenominator>
-    <Filter>([type] = 'marker bed')</Filter>
-    <LineSymbolizer stroke-width="0.9" stroke="#333333" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>750000</MaxScaleDenominator>
-    <MinScaleDenominator>400000</MinScaleDenominator>
-    <Filter>([type] = 'marker bed')</Filter>
-    <LineSymbolizer stroke-width="0.6" stroke="#333333" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>1500000</MaxScaleDenominator>
-    <MinScaleDenominator>750000</MinScaleDenominator>
-    <Filter>([type] = 'marker bed')</Filter>
-    <LineSymbolizer stroke-width="0.7" stroke="#333333" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>3000000</MaxScaleDenominator>
-    <MinScaleDenominator>1500000</MinScaleDenominator>
-    <Filter>([type] = 'marker bed')</Filter>
-    <LineSymbolizer stroke-width="0.5" stroke="#333333" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>6500000</MaxScaleDenominator>
-    <MinScaleDenominator>3000000</MinScaleDenominator>
-    <Filter>([type] = 'marker bed')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#333333" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500000</MaxScaleDenominator>
-    <MinScaleDenominator>6500000</MinScaleDenominator>
-    <Filter>([type] = 'marker bed')</Filter>
-    <LineSymbolizer stroke-width="0.25" stroke="#333333" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000000</MaxScaleDenominator>
-    <MinScaleDenominator>12500000</MinScaleDenominator>
-    <Filter>([type] = 'marker bed')</Filter>
-    <LineSymbolizer stroke-width="0.4" stroke="#333333" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000000</MaxScaleDenominator>
-    <MinScaleDenominator>25000000</MinScaleDenominator>
-    <Filter>([type] = 'marker bed')</Filter>
-    <LineSymbolizer stroke-width="0.35" stroke="#333333" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000000</MaxScaleDenominator>
-    <MinScaleDenominator>50000000</MinScaleDenominator>
-    <Filter>([type] = 'marker bed')</Filter>
-    <LineSymbolizer stroke-width="0.4" stroke="#333333" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000000</MaxScaleDenominator>
-    <MinScaleDenominator>100000000</MinScaleDenominator>
-    <Filter>([type] = 'marker bed')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#333333" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>500000000</MaxScaleDenominator>
-    <MinScaleDenominator>200000000</MinScaleDenominator>
-    <Filter>([type] = 'marker bed')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#333333" />
-  </Rule>
-  <Rule>
-    <MinScaleDenominator>500000000</MinScaleDenominator>
-    <Filter>([type] = 'marker bed')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#333333" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500</MaxScaleDenominator>
-    <MinScaleDenominator>5000</MinScaleDenominator>
-    <Filter>([type] = 'flow') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="3" stroke-dasharray="7, 7" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000</MaxScaleDenominator>
-    <MinScaleDenominator>12500</MinScaleDenominator>
-    <Filter>([type] = 'flow') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="2.5" stroke-dasharray="5, 5" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000</MaxScaleDenominator>
-    <MinScaleDenominator>25000</MinScaleDenominator>
-    <Filter>([type] = 'flow') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="2" stroke-dasharray="3, 3" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000</MaxScaleDenominator>
-    <MinScaleDenominator>50000</MinScaleDenominator>
-    <Filter>([type] = 'flow') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="1.5" stroke-dasharray="3, 3" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000</MaxScaleDenominator>
-    <MinScaleDenominator>100000</MinScaleDenominator>
-    <Filter>([type] = 'flow') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="1.3" stroke-dasharray="3, 3" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>400000</MaxScaleDenominator>
-    <MinScaleDenominator>200000</MinScaleDenominator>
-    <Filter>([type] = 'flow') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="1.1" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>750000</MaxScaleDenominator>
-    <MinScaleDenominator>400000</MinScaleDenominator>
-    <Filter>([type] = 'flow') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.8" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>1500000</MaxScaleDenominator>
-    <MinScaleDenominator>750000</MinScaleDenominator>
-    <Filter>([type] = 'flow') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.8" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>3000000</MaxScaleDenominator>
-    <MinScaleDenominator>1500000</MinScaleDenominator>
-    <Filter>([type] = 'flow') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.7" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>6500000</MaxScaleDenominator>
-    <MinScaleDenominator>3000000</MinScaleDenominator>
-    <Filter>([type] = 'flow') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.4" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500000</MaxScaleDenominator>
-    <MinScaleDenominator>6500000</MinScaleDenominator>
-    <Filter>([type] = 'flow') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.45" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000000</MaxScaleDenominator>
-    <MinScaleDenominator>12500000</MinScaleDenominator>
-    <Filter>([type] = 'flow') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.6" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000000</MaxScaleDenominator>
-    <MinScaleDenominator>25000000</MinScaleDenominator>
-    <Filter>([type] = 'flow') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.55" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000000</MaxScaleDenominator>
-    <MinScaleDenominator>50000000</MinScaleDenominator>
-    <Filter>([type] = 'flow') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.6" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000000</MaxScaleDenominator>
-    <MinScaleDenominator>100000000</MinScaleDenominator>
-    <Filter>([type] = 'flow') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.5" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <Filter>([type] = 'flow') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>500000000</MaxScaleDenominator>
-    <MinScaleDenominator>200000000</MinScaleDenominator>
-    <Filter>([type] = 'flow') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MinScaleDenominator>500000000</MinScaleDenominator>
-    <Filter>([type] = 'flow') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500</MaxScaleDenominator>
-    <MinScaleDenominator>5000</MinScaleDenominator>
-    <Filter>([type] = 'flow')</Filter>
-    <LineSymbolizer stroke-width="3" stroke-dasharray="7, 7" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000</MaxScaleDenominator>
-    <MinScaleDenominator>12500</MinScaleDenominator>
-    <Filter>([type] = 'flow')</Filter>
-    <LineSymbolizer stroke-width="2.5" stroke-dasharray="5, 5" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000</MaxScaleDenominator>
-    <MinScaleDenominator>25000</MinScaleDenominator>
-    <Filter>([type] = 'flow')</Filter>
-    <LineSymbolizer stroke-width="2" stroke-dasharray="3, 3" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000</MaxScaleDenominator>
-    <MinScaleDenominator>50000</MinScaleDenominator>
-    <Filter>([type] = 'flow')</Filter>
-    <LineSymbolizer stroke-width="1.5" stroke-dasharray="3, 3" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000</MaxScaleDenominator>
-    <MinScaleDenominator>100000</MinScaleDenominator>
-    <Filter>([type] = 'flow')</Filter>
-    <LineSymbolizer stroke-width="1.3" stroke-dasharray="3, 3" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <Filter>([type] = 'flow')</Filter>
-    <LineSymbolizer stroke-width="0" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>400000</MaxScaleDenominator>
-    <MinScaleDenominator>200000</MinScaleDenominator>
-    <Filter>([type] = 'flow')</Filter>
-    <LineSymbolizer stroke-width="0.9" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>750000</MaxScaleDenominator>
-    <MinScaleDenominator>400000</MinScaleDenominator>
-    <Filter>([type] = 'flow')</Filter>
-    <LineSymbolizer stroke-width="0.6" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>1500000</MaxScaleDenominator>
-    <MinScaleDenominator>750000</MinScaleDenominator>
-    <Filter>([type] = 'flow')</Filter>
-    <LineSymbolizer stroke-width="0.7" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>3000000</MaxScaleDenominator>
-    <MinScaleDenominator>1500000</MinScaleDenominator>
-    <Filter>([type] = 'flow')</Filter>
-    <LineSymbolizer stroke-width="0.5" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>6500000</MaxScaleDenominator>
-    <MinScaleDenominator>3000000</MinScaleDenominator>
-    <Filter>([type] = 'flow')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500000</MaxScaleDenominator>
-    <MinScaleDenominator>6500000</MinScaleDenominator>
-    <Filter>([type] = 'flow')</Filter>
-    <LineSymbolizer stroke-width="0.25" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000000</MaxScaleDenominator>
-    <MinScaleDenominator>12500000</MinScaleDenominator>
-    <Filter>([type] = 'flow')</Filter>
-    <LineSymbolizer stroke-width="0.4" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000000</MaxScaleDenominator>
-    <MinScaleDenominator>25000000</MinScaleDenominator>
-    <Filter>([type] = 'flow')</Filter>
-    <LineSymbolizer stroke-width="0.35" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000000</MaxScaleDenominator>
-    <MinScaleDenominator>50000000</MinScaleDenominator>
-    <Filter>([type] = 'flow')</Filter>
-    <LineSymbolizer stroke-width="0.4" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000000</MaxScaleDenominator>
-    <MinScaleDenominator>100000000</MinScaleDenominator>
-    <Filter>([type] = 'flow')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>500000000</MaxScaleDenominator>
-    <MinScaleDenominator>200000000</MinScaleDenominator>
-    <Filter>([type] = 'flow')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MinScaleDenominator>500000000</MinScaleDenominator>
-    <Filter>([type] = 'flow')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500</MaxScaleDenominator>
-    <MinScaleDenominator>5000</MinScaleDenominator>
-    <Filter>([type] = 'vein') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="2.5" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000</MaxScaleDenominator>
-    <MinScaleDenominator>12500</MinScaleDenominator>
-    <Filter>([type] = 'vein') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="2" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000</MaxScaleDenominator>
-    <MinScaleDenominator>25000</MinScaleDenominator>
-    <Filter>([type] = 'vein') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="1.5" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000</MaxScaleDenominator>
-    <MinScaleDenominator>50000</MinScaleDenominator>
-    <Filter>([type] = 'vein') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="1" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000</MaxScaleDenominator>
-    <MinScaleDenominator>100000</MinScaleDenominator>
-    <Filter>([type] = 'vein') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.8" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>400000</MaxScaleDenominator>
-    <MinScaleDenominator>200000</MinScaleDenominator>
-    <Filter>([type] = 'vein') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.8" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>750000</MaxScaleDenominator>
-    <MinScaleDenominator>400000</MinScaleDenominator>
-    <Filter>([type] = 'vein') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.5" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>1500000</MaxScaleDenominator>
-    <MinScaleDenominator>750000</MinScaleDenominator>
-    <Filter>([type] = 'vein') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.8" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>3000000</MaxScaleDenominator>
-    <MinScaleDenominator>1500000</MinScaleDenominator>
-    <Filter>([type] = 'vein') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.7" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>6500000</MaxScaleDenominator>
-    <MinScaleDenominator>3000000</MinScaleDenominator>
-    <Filter>([type] = 'vein') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.4" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500000</MaxScaleDenominator>
-    <MinScaleDenominator>6500000</MinScaleDenominator>
-    <Filter>([type] = 'vein') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.45" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000000</MaxScaleDenominator>
-    <MinScaleDenominator>12500000</MinScaleDenominator>
-    <Filter>([type] = 'vein') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.6" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000000</MaxScaleDenominator>
-    <MinScaleDenominator>25000000</MinScaleDenominator>
-    <Filter>([type] = 'vein') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.55" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000000</MaxScaleDenominator>
-    <MinScaleDenominator>50000000</MinScaleDenominator>
-    <Filter>([type] = 'vein') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.6" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000000</MaxScaleDenominator>
-    <MinScaleDenominator>100000000</MinScaleDenominator>
-    <Filter>([type] = 'vein') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.5" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <Filter>([type] = 'vein') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>500000000</MaxScaleDenominator>
-    <MinScaleDenominator>200000000</MinScaleDenominator>
-    <Filter>([type] = 'vein') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MinScaleDenominator>500000000</MinScaleDenominator>
-    <Filter>([type] = 'vein') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500</MaxScaleDenominator>
-    <MinScaleDenominator>5000</MinScaleDenominator>
-    <Filter>([type] = 'vein')</Filter>
-    <LineSymbolizer stroke-width="2.5" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000</MaxScaleDenominator>
-    <MinScaleDenominator>12500</MinScaleDenominator>
-    <Filter>([type] = 'vein')</Filter>
-    <LineSymbolizer stroke-width="2" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000</MaxScaleDenominator>
-    <MinScaleDenominator>25000</MinScaleDenominator>
-    <Filter>([type] = 'vein')</Filter>
-    <LineSymbolizer stroke-width="1.5" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000</MaxScaleDenominator>
-    <MinScaleDenominator>50000</MinScaleDenominator>
-    <Filter>([type] = 'vein')</Filter>
-    <LineSymbolizer stroke-width="1" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000</MaxScaleDenominator>
-    <MinScaleDenominator>100000</MinScaleDenominator>
-    <Filter>([type] = 'vein')</Filter>
-    <LineSymbolizer stroke-width="0.8" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>400000</MaxScaleDenominator>
-    <MinScaleDenominator>200000</MinScaleDenominator>
-    <Filter>([type] = 'vein')</Filter>
-    <LineSymbolizer stroke-width="0.8" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>750000</MaxScaleDenominator>
-    <MinScaleDenominator>400000</MinScaleDenominator>
-    <Filter>([type] = 'vein')</Filter>
-    <LineSymbolizer stroke-width="0.5" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <Filter>([type] = 'vein')</Filter>
-    <LineSymbolizer stroke-width="0" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>1500000</MaxScaleDenominator>
-    <MinScaleDenominator>750000</MinScaleDenominator>
-    <Filter>([type] = 'vein')</Filter>
-    <LineSymbolizer stroke-width="0.7" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>3000000</MaxScaleDenominator>
-    <MinScaleDenominator>1500000</MinScaleDenominator>
-    <Filter>([type] = 'vein')</Filter>
-    <LineSymbolizer stroke-width="0.5" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>6500000</MaxScaleDenominator>
-    <MinScaleDenominator>3000000</MinScaleDenominator>
-    <Filter>([type] = 'vein')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500000</MaxScaleDenominator>
-    <MinScaleDenominator>6500000</MinScaleDenominator>
-    <Filter>([type] = 'vein')</Filter>
-    <LineSymbolizer stroke-width="0.25" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000000</MaxScaleDenominator>
-    <MinScaleDenominator>12500000</MinScaleDenominator>
-    <Filter>([type] = 'vein')</Filter>
-    <LineSymbolizer stroke-width="0.4" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000000</MaxScaleDenominator>
-    <MinScaleDenominator>25000000</MinScaleDenominator>
-    <Filter>([type] = 'vein')</Filter>
-    <LineSymbolizer stroke-width="0.35" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000000</MaxScaleDenominator>
-    <MinScaleDenominator>50000000</MinScaleDenominator>
-    <Filter>([type] = 'vein')</Filter>
-    <LineSymbolizer stroke-width="0.4" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000000</MaxScaleDenominator>
-    <MinScaleDenominator>100000000</MinScaleDenominator>
-    <Filter>([type] = 'vein')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>500000000</MaxScaleDenominator>
-    <MinScaleDenominator>200000000</MinScaleDenominator>
-    <Filter>([type] = 'vein')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MinScaleDenominator>500000000</MinScaleDenominator>
-    <Filter>([type] = 'vein')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500</MaxScaleDenominator>
-    <MinScaleDenominator>5000</MinScaleDenominator>
-    <Filter>([type] = 'moraine') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="4.1" stroke-dasharray="1, 15" stroke="#3498db" stroke-linejoin="round" stroke-linecap="round" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000</MaxScaleDenominator>
-    <MinScaleDenominator>12500</MinScaleDenominator>
-    <Filter>([type] = 'moraine') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="3.5" stroke-dasharray="1, 10" stroke="#3498db" stroke-linejoin="round" stroke-linecap="round" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000</MaxScaleDenominator>
-    <MinScaleDenominator>25000</MinScaleDenominator>
-    <Filter>([type] = 'moraine') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="2.1" stroke-dasharray="1, 9" stroke="#3498db" stroke-linejoin="round" stroke-linecap="round" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000</MaxScaleDenominator>
-    <MinScaleDenominator>50000</MinScaleDenominator>
-    <Filter>([type] = 'moraine') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="1.1" stroke-dasharray="1, 5" stroke="#3498db" stroke-linejoin="round" stroke-linecap="round" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000</MaxScaleDenominator>
-    <MinScaleDenominator>100000</MinScaleDenominator>
-    <Filter>([type] = 'moraine') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.8" stroke-dasharray="1, 3" stroke="#3498db" stroke-linejoin="round" stroke-linecap="round" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>400000</MaxScaleDenominator>
-    <MinScaleDenominator>200000</MinScaleDenominator>
-    <Filter>([type] = 'moraine') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.8" stroke-dasharray="1, 2" stroke="#3498db" stroke-linejoin="round" stroke-linecap="round" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>750000</MaxScaleDenominator>
-    <MinScaleDenominator>400000</MinScaleDenominator>
-    <Filter>([type] = 'moraine') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.5" stroke-dasharray="1, 1" stroke="#3498db" stroke-linejoin="round" stroke-linecap="round" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>1500000</MaxScaleDenominator>
-    <MinScaleDenominator>750000</MinScaleDenominator>
-    <Filter>([type] = 'moraine') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.8" stroke="#3498db" stroke-linejoin="round" stroke-linecap="round" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>3000000</MaxScaleDenominator>
-    <MinScaleDenominator>1500000</MinScaleDenominator>
-    <Filter>([type] = 'moraine') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.7" stroke="#3498db" stroke-linejoin="round" stroke-linecap="round" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>6500000</MaxScaleDenominator>
-    <MinScaleDenominator>3000000</MinScaleDenominator>
-    <Filter>([type] = 'moraine') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.4" stroke="#3498db" stroke-linejoin="round" stroke-linecap="round" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500000</MaxScaleDenominator>
-    <MinScaleDenominator>6500000</MinScaleDenominator>
-    <Filter>([type] = 'moraine') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.45" stroke="#3498db" stroke-linejoin="round" stroke-linecap="round" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000000</MaxScaleDenominator>
-    <MinScaleDenominator>12500000</MinScaleDenominator>
-    <Filter>([type] = 'moraine') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.6" stroke="#3498db" stroke-linejoin="round" stroke-linecap="round" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000000</MaxScaleDenominator>
-    <MinScaleDenominator>25000000</MinScaleDenominator>
-    <Filter>([type] = 'moraine') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.55" stroke="#3498db" stroke-linejoin="round" stroke-linecap="round" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000000</MaxScaleDenominator>
-    <MinScaleDenominator>50000000</MinScaleDenominator>
-    <Filter>([type] = 'moraine') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.6" stroke="#3498db" stroke-linejoin="round" stroke-linecap="round" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000000</MaxScaleDenominator>
-    <MinScaleDenominator>100000000</MinScaleDenominator>
-    <Filter>([type] = 'moraine') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.5" stroke="#3498db" stroke-linejoin="round" stroke-linecap="round" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <Filter>([type] = 'moraine') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0" stroke="#3498db" stroke-linejoin="round" stroke-linecap="round" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>500000000</MaxScaleDenominator>
-    <MinScaleDenominator>200000000</MinScaleDenominator>
-    <Filter>([type] = 'moraine') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#3498db" stroke-linejoin="round" stroke-linecap="round" />
-  </Rule>
-  <Rule>
-    <MinScaleDenominator>500000000</MinScaleDenominator>
-    <Filter>([type] = 'moraine') and ([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#3498db" stroke-linejoin="round" stroke-linecap="round" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500</MaxScaleDenominator>
-    <MinScaleDenominator>5000</MinScaleDenominator>
-    <Filter>([type] = 'moraine')</Filter>
-    <LineSymbolizer stroke-width="4.1" stroke-dasharray="1, 15" stroke="#3498db" stroke-linejoin="round" stroke-linecap="round" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000</MaxScaleDenominator>
-    <MinScaleDenominator>12500</MinScaleDenominator>
-    <Filter>([type] = 'moraine')</Filter>
-    <LineSymbolizer stroke-width="3.5" stroke-dasharray="1, 10" stroke="#3498db" stroke-linejoin="round" stroke-linecap="round" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000</MaxScaleDenominator>
-    <MinScaleDenominator>25000</MinScaleDenominator>
-    <Filter>([type] = 'moraine')</Filter>
-    <LineSymbolizer stroke-width="2.1" stroke-dasharray="1, 9" stroke="#3498db" stroke-linejoin="round" stroke-linecap="round" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000</MaxScaleDenominator>
-    <MinScaleDenominator>50000</MinScaleDenominator>
-    <Filter>([type] = 'moraine')</Filter>
-    <LineSymbolizer stroke-width="1.1" stroke-dasharray="1, 5" stroke="#3498db" stroke-linejoin="round" stroke-linecap="round" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000</MaxScaleDenominator>
-    <MinScaleDenominator>100000</MinScaleDenominator>
-    <Filter>([type] = 'moraine')</Filter>
-    <LineSymbolizer stroke-width="0.8" stroke-dasharray="1, 3" stroke="#3498db" stroke-linejoin="round" stroke-linecap="round" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>400000</MaxScaleDenominator>
-    <MinScaleDenominator>200000</MinScaleDenominator>
-    <Filter>([type] = 'moraine')</Filter>
-    <LineSymbolizer stroke-width="0.8" stroke-dasharray="1, 2" stroke="#3498db" stroke-linejoin="round" stroke-linecap="round" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>750000</MaxScaleDenominator>
-    <MinScaleDenominator>400000</MinScaleDenominator>
-    <Filter>([type] = 'moraine')</Filter>
-    <LineSymbolizer stroke-width="0.5" stroke-dasharray="1, 1" stroke="#3498db" stroke-linejoin="round" stroke-linecap="round" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <Filter>([type] = 'moraine')</Filter>
-    <LineSymbolizer stroke-width="0" stroke="#3498db" stroke-linejoin="round" stroke-linecap="round" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>1500000</MaxScaleDenominator>
-    <MinScaleDenominator>750000</MinScaleDenominator>
-    <Filter>([type] = 'moraine')</Filter>
-    <LineSymbolizer stroke-width="0.7" stroke="#3498db" stroke-linejoin="round" stroke-linecap="round" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>3000000</MaxScaleDenominator>
-    <MinScaleDenominator>1500000</MinScaleDenominator>
-    <Filter>([type] = 'moraine')</Filter>
-    <LineSymbolizer stroke-width="0.5" stroke="#3498db" stroke-linejoin="round" stroke-linecap="round" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>6500000</MaxScaleDenominator>
-    <MinScaleDenominator>3000000</MinScaleDenominator>
-    <Filter>([type] = 'moraine')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#3498db" stroke-linejoin="round" stroke-linecap="round" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500000</MaxScaleDenominator>
-    <MinScaleDenominator>6500000</MinScaleDenominator>
-    <Filter>([type] = 'moraine')</Filter>
-    <LineSymbolizer stroke-width="0.25" stroke="#3498db" stroke-linejoin="round" stroke-linecap="round" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000000</MaxScaleDenominator>
-    <MinScaleDenominator>12500000</MinScaleDenominator>
-    <Filter>([type] = 'moraine')</Filter>
-    <LineSymbolizer stroke-width="0.4" stroke="#3498db" stroke-linejoin="round" stroke-linecap="round" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000000</MaxScaleDenominator>
-    <MinScaleDenominator>25000000</MinScaleDenominator>
-    <Filter>([type] = 'moraine')</Filter>
-    <LineSymbolizer stroke-width="0.35" stroke="#3498db" stroke-linejoin="round" stroke-linecap="round" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000000</MaxScaleDenominator>
-    <MinScaleDenominator>50000000</MinScaleDenominator>
-    <Filter>([type] = 'moraine')</Filter>
-    <LineSymbolizer stroke-width="0.4" stroke="#3498db" stroke-linejoin="round" stroke-linecap="round" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000000</MaxScaleDenominator>
-    <MinScaleDenominator>100000000</MinScaleDenominator>
-    <Filter>([type] = 'moraine')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#3498db" stroke-linejoin="round" stroke-linecap="round" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>500000000</MaxScaleDenominator>
-    <MinScaleDenominator>200000000</MinScaleDenominator>
-    <Filter>([type] = 'moraine')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#3498db" stroke-linejoin="round" stroke-linecap="round" />
-  </Rule>
-  <Rule>
-    <MinScaleDenominator>500000000</MinScaleDenominator>
-    <Filter>([type] = 'moraine')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#3498db" stroke-linejoin="round" stroke-linecap="round" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500</MaxScaleDenominator>
-    <MinScaleDenominator>5000</MinScaleDenominator>
-    <Filter>([type] = 'sill')</Filter>
-    <LineSymbolizer stroke-width="3.5" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000</MaxScaleDenominator>
-    <MinScaleDenominator>12500</MinScaleDenominator>
-    <Filter>([type] = 'sill')</Filter>
-    <LineSymbolizer stroke-width="2.5" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000</MaxScaleDenominator>
-    <MinScaleDenominator>25000</MinScaleDenominator>
-    <Filter>([type] = 'sill')</Filter>
-    <LineSymbolizer stroke-width="2.3" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000</MaxScaleDenominator>
-    <MinScaleDenominator>50000</MinScaleDenominator>
-    <Filter>([type] = 'sill')</Filter>
-    <LineSymbolizer stroke-width="1.3" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000</MaxScaleDenominator>
-    <MinScaleDenominator>100000</MinScaleDenominator>
-    <Filter>([type] = 'sill')</Filter>
-    <LineSymbolizer stroke-width="0.9" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>400000</MaxScaleDenominator>
-    <MinScaleDenominator>200000</MinScaleDenominator>
-    <Filter>([type] = 'sill')</Filter>
-    <LineSymbolizer stroke-width="0.85" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>750000</MaxScaleDenominator>
-    <MinScaleDenominator>400000</MinScaleDenominator>
-    <Filter>([type] = 'sill')</Filter>
-    <LineSymbolizer stroke-width="0.55" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>1500000</MaxScaleDenominator>
-    <MinScaleDenominator>750000</MinScaleDenominator>
-    <Filter>([type] = 'sill')</Filter>
-    <LineSymbolizer stroke-width="0.65" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>3000000</MaxScaleDenominator>
-    <MinScaleDenominator>1500000</MinScaleDenominator>
-    <Filter>([type] = 'sill')</Filter>
-    <LineSymbolizer stroke-width="0.45" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>6500000</MaxScaleDenominator>
-    <MinScaleDenominator>3000000</MinScaleDenominator>
-    <Filter>([type] = 'sill')</Filter>
-    <LineSymbolizer stroke-width="0.25" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500000</MaxScaleDenominator>
-    <MinScaleDenominator>6500000</MinScaleDenominator>
-    <Filter>([type] = 'sill')</Filter>
-    <LineSymbolizer stroke-width="0.2" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000000</MaxScaleDenominator>
-    <MinScaleDenominator>12500000</MinScaleDenominator>
-    <Filter>([type] = 'sill')</Filter>
-    <LineSymbolizer stroke-width="0.35" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000000</MaxScaleDenominator>
-    <MinScaleDenominator>25000000</MinScaleDenominator>
-    <Filter>([type] = 'sill')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000000</MaxScaleDenominator>
-    <MinScaleDenominator>50000000</MinScaleDenominator>
-    <Filter>([type] = 'sill')</Filter>
-    <LineSymbolizer stroke-width="0.35" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000000</MaxScaleDenominator>
-    <MinScaleDenominator>100000000</MinScaleDenominator>
-    <Filter>([type] = 'sill')</Filter>
-    <LineSymbolizer stroke-width="0.25" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <Filter>([type] = 'sill')</Filter>
-    <LineSymbolizer stroke-width="0" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>500000000</MaxScaleDenominator>
-    <MinScaleDenominator>200000000</MinScaleDenominator>
-    <Filter>([type] = 'sill')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MinScaleDenominator>500000000</MinScaleDenominator>
-    <Filter>([type] = 'sill')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500</MaxScaleDenominator>
-    <MinScaleDenominator>5000</MinScaleDenominator>
-    <Filter>([type] = 'dike')</Filter>
-    <LineSymbolizer stroke-width="3.5" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000</MaxScaleDenominator>
-    <MinScaleDenominator>12500</MinScaleDenominator>
-    <Filter>([type] = 'dike')</Filter>
-    <LineSymbolizer stroke-width="2.5" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000</MaxScaleDenominator>
-    <MinScaleDenominator>25000</MinScaleDenominator>
-    <Filter>([type] = 'dike')</Filter>
-    <LineSymbolizer stroke-width="2.3" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000</MaxScaleDenominator>
-    <MinScaleDenominator>50000</MinScaleDenominator>
-    <Filter>([type] = 'dike')</Filter>
-    <LineSymbolizer stroke-width="1.3" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000</MaxScaleDenominator>
-    <MinScaleDenominator>100000</MinScaleDenominator>
-    <Filter>([type] = 'dike')</Filter>
-    <LineSymbolizer stroke-width="0.9" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>400000</MaxScaleDenominator>
-    <MinScaleDenominator>200000</MinScaleDenominator>
-    <Filter>([type] = 'dike')</Filter>
-    <LineSymbolizer stroke-width="0.85" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>750000</MaxScaleDenominator>
-    <MinScaleDenominator>400000</MinScaleDenominator>
-    <Filter>([type] = 'dike')</Filter>
-    <LineSymbolizer stroke-width="0.55" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>1500000</MaxScaleDenominator>
-    <MinScaleDenominator>750000</MinScaleDenominator>
-    <Filter>([type] = 'dike')</Filter>
-    <LineSymbolizer stroke-width="0.65" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>3000000</MaxScaleDenominator>
-    <MinScaleDenominator>1500000</MinScaleDenominator>
-    <Filter>([type] = 'dike')</Filter>
-    <LineSymbolizer stroke-width="0.45" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>6500000</MaxScaleDenominator>
-    <MinScaleDenominator>3000000</MinScaleDenominator>
-    <Filter>([type] = 'dike')</Filter>
-    <LineSymbolizer stroke-width="0.25" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500000</MaxScaleDenominator>
-    <MinScaleDenominator>6500000</MinScaleDenominator>
-    <Filter>([type] = 'dike')</Filter>
-    <LineSymbolizer stroke-width="0.2" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000000</MaxScaleDenominator>
-    <MinScaleDenominator>12500000</MinScaleDenominator>
-    <Filter>([type] = 'dike')</Filter>
-    <LineSymbolizer stroke-width="0.35" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000000</MaxScaleDenominator>
-    <MinScaleDenominator>25000000</MinScaleDenominator>
-    <Filter>([type] = 'dike')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000000</MaxScaleDenominator>
-    <MinScaleDenominator>50000000</MinScaleDenominator>
-    <Filter>([type] = 'dike')</Filter>
-    <LineSymbolizer stroke-width="0.35" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000000</MaxScaleDenominator>
-    <MinScaleDenominator>100000000</MinScaleDenominator>
-    <Filter>([type] = 'dike')</Filter>
-    <LineSymbolizer stroke-width="0.25" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <Filter>([type] = 'dike')</Filter>
-    <LineSymbolizer stroke-width="0" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>500000000</MaxScaleDenominator>
-    <MinScaleDenominator>200000000</MinScaleDenominator>
-    <Filter>([type] = 'dike')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MinScaleDenominator>500000000</MinScaleDenominator>
-    <Filter>([type] = 'dike')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#ff4136" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500</MaxScaleDenominator>
-    <MinScaleDenominator>5000</MinScaleDenominator>
-    <Filter>([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="4.2" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000</MaxScaleDenominator>
-    <MinScaleDenominator>12500</MinScaleDenominator>
-    <Filter>([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="3.2" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000</MaxScaleDenominator>
-    <MinScaleDenominator>25000</MinScaleDenominator>
-    <Filter>([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="2.7" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000</MaxScaleDenominator>
-    <MinScaleDenominator>50000</MinScaleDenominator>
-    <Filter>([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="1.7" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000</MaxScaleDenominator>
-    <MinScaleDenominator>100000</MinScaleDenominator>
-    <Filter>([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="1.3" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>400000</MaxScaleDenominator>
-    <MinScaleDenominator>200000</MinScaleDenominator>
-    <Filter>([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="1.1" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>750000</MaxScaleDenominator>
-    <MinScaleDenominator>400000</MinScaleDenominator>
-    <Filter>([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.8" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>1500000</MaxScaleDenominator>
-    <MinScaleDenominator>750000</MinScaleDenominator>
-    <Filter>([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.8" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>3000000</MaxScaleDenominator>
-    <MinScaleDenominator>1500000</MinScaleDenominator>
-    <Filter>([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.7" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>6500000</MaxScaleDenominator>
-    <MinScaleDenominator>3000000</MinScaleDenominator>
-    <Filter>([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.4" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500000</MaxScaleDenominator>
-    <MinScaleDenominator>6500000</MinScaleDenominator>
-    <Filter>([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.45" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000000</MaxScaleDenominator>
-    <MinScaleDenominator>12500000</MinScaleDenominator>
-    <Filter>([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.6" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000000</MaxScaleDenominator>
-    <MinScaleDenominator>25000000</MinScaleDenominator>
-    <Filter>([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.55" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000000</MaxScaleDenominator>
-    <MinScaleDenominator>50000000</MinScaleDenominator>
-    <Filter>([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.6" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000000</MaxScaleDenominator>
-    <MinScaleDenominator>100000000</MinScaleDenominator>
-    <Filter>([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.5" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <Filter>([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>500000000</MaxScaleDenominator>
-    <MinScaleDenominator>200000000</MinScaleDenominator>
-    <Filter>([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MinScaleDenominator>500000000</MinScaleDenominator>
-    <Filter>([direction] != '')</Filter>
-    <LineSymbolizer stroke-width="0.3" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>5000</MaxScaleDenominator>
-    <LineSymbolizer stroke-width="0" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500</MaxScaleDenominator>
-    <MinScaleDenominator>5000</MinScaleDenominator>
-    <LineSymbolizer stroke-width="4" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000</MaxScaleDenominator>
-    <MinScaleDenominator>12500</MinScaleDenominator>
-    <LineSymbolizer stroke-width="3" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000</MaxScaleDenominator>
-    <MinScaleDenominator>25000</MinScaleDenominator>
-    <LineSymbolizer stroke-width="2.5" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000</MaxScaleDenominator>
-    <MinScaleDenominator>50000</MinScaleDenominator>
-    <LineSymbolizer stroke-width="1.5" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000</MaxScaleDenominator>
-    <MinScaleDenominator>100000</MinScaleDenominator>
-    <LineSymbolizer stroke-width="1.1" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>400000</MaxScaleDenominator>
-    <MinScaleDenominator>200000</MinScaleDenominator>
-    <LineSymbolizer stroke-width="0.9" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>750000</MaxScaleDenominator>
-    <MinScaleDenominator>400000</MinScaleDenominator>
-    <LineSymbolizer stroke-width="0.6" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>1500000</MaxScaleDenominator>
-    <MinScaleDenominator>750000</MinScaleDenominator>
-    <LineSymbolizer stroke-width="0.7" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>3000000</MaxScaleDenominator>
-    <MinScaleDenominator>1500000</MinScaleDenominator>
-    <LineSymbolizer stroke-width="0.5" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>6500000</MaxScaleDenominator>
-    <MinScaleDenominator>3000000</MinScaleDenominator>
-    <LineSymbolizer stroke-width="0.3" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>12500000</MaxScaleDenominator>
-    <MinScaleDenominator>6500000</MinScaleDenominator>
-    <LineSymbolizer stroke-width="0.25" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>25000000</MaxScaleDenominator>
-    <MinScaleDenominator>12500000</MinScaleDenominator>
-    <LineSymbolizer stroke-width="0.4" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>50000000</MaxScaleDenominator>
-    <MinScaleDenominator>25000000</MinScaleDenominator>
-    <LineSymbolizer stroke-width="0.35" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>100000000</MaxScaleDenominator>
-    <MinScaleDenominator>50000000</MinScaleDenominator>
-    <LineSymbolizer stroke-width="0.4" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>200000000</MaxScaleDenominator>
-    <MinScaleDenominator>100000000</MinScaleDenominator>
-    <LineSymbolizer stroke-width="0.3" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MaxScaleDenominator>500000000</MaxScaleDenominator>
-    <MinScaleDenominator>200000000</MinScaleDenominator>
-    <LineSymbolizer stroke-width="0.3" stroke="#000000" />
-  </Rule>
-  <Rule>
-    <MinScaleDenominator>500000000</MinScaleDenominator>
-    <LineSymbolizer stroke-width="0.3" stroke="#000000" />
-  </Rule>
-</Style>
-<Layer name="lines"
+<Layer name="lines_medium"
   srs="+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs">
-    <StyleName>lines</StyleName>
-    <StyleName>lines-line</StyleName>
-    <StyleName>lines-hatch</StyleName>
+    
     <Datasource>
        <Parameter name="type"><![CDATA[postgis]]></Parameter>
        <Parameter name="table"><![CDATA[(SELECT x.line_id, x.geom, q.direction, q.type FROM carto_new.lines_medium x LEFT JOIN ( SELECT * FROM lines.small UNION ALL SELECT * FROM lines.medium ) q on q.line_id = x.line_id ) subset]]></Parameter>
