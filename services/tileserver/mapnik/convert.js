@@ -37,6 +37,8 @@ function makeLayer(scale, cartoCSS, callback) {
           "extent_cache": "auto",
           "extent": "-179,-89,179,89",
           "host": credentials.pg_host,
+          "port": credentials.pg_port,
+          "user": credentials.pg_user,
           "dbname": "burwell",
           "srid": "4326"
       },
@@ -58,6 +60,8 @@ function makeLayer(scale, cartoCSS, callback) {
         "extent_cache": "auto",
         "extent": "-179,-89,179,89",
         "host": credentials.pg_host,
+        "port": credentials.pg_port,
+        "user": credentials.pg_user,
         "dbname": "burwell",
         "srid": "4326"
     },
