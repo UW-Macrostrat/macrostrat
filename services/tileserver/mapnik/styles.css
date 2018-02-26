@@ -8,9 +8,6 @@
 .units[zoom=4] {
   line-width: 0.4;
 }
-.units[zoom=4][scale="medium"] {
-  line-width: 0.05;
-}
 .units[zoom=5] {
   line-width: 0.8;
 }
