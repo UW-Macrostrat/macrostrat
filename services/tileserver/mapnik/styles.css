@@ -1,71 +1,71 @@
-.burwell {
+.units {
    line-color: #777;
 }
 
-.burwell[zoom<=3] {
+.units[zoom<=3] {
   line-width: 0.3;
 }
-.burwell[zoom=4] {
+.units[zoom=4] {
   line-width: 0.4;
 }
-.burwell[zoom=4][scale="medium"] {
+.units[zoom=4][scale="medium"] {
   line-width: 0.05;
 }
-.burwell[zoom=5] {
+.units[zoom=5] {
   line-width: 0.8;
 }
-.burwell[zoom=6] {
+.units[zoom=6] {
   line-width: 0.1;
 }
-.burwell[zoom=7] {
+.units[zoom=7] {
   line-width: 0.2;
 }
-.burwell[zoom=8] {
+.units[zoom=8] {
   line-width: 0.8;
 }
-.burwell[zoom=9] {
+.units[zoom=9] {
   line-width: 1;
 }
-.burwell[zoom=10] {
+.units[zoom=10] {
   line-width: 0.7;
 }
-.burwell[zoom=11] {
+.units[zoom=11] {
   line-width: 0.85;
 }
-.burwell[zoom=12] {
+.units[zoom=12] {
   line-width: 2;
 }
-.burwell[zoom=13] {
+.units[zoom=13] {
   line-width: 2.5;
 }
-.burwell[zoom=14] {
+.units[zoom=14] {
   line-width: 3.0;
 }
-.burwell[zoom=15] {
+.units[zoom=15] {
   line-width: 3.5;
 }
-.burwell[zoom=16] {
+.units[zoom=16] {
   line-width: 4.0;
 }
-.burwell[zoom=17] {
+.units[zoom=17] {
   line-width: 4.5;
 }
-.burwell[zoom=18] {
+.units[zoom=18] {
   line-width: 5.0;
 }
-.burwell[zoom=19] {
+.units[zoom=19] {
   line-width: 5.5;
 }
 
 
-.burwell[color="null"] {
+.units[color="null"] {
    polygon-fill: #777777;
 }
-.burwell[color=null] {
+.units[color=null] {
    polygon-fill: #777777;
 }
 /* Water polygons are invisible */
-.burwell[color=""] {
+.units[color=""] {
   polygon-comp-op: src-out;
   polygon-opacity: 0;
   line-width: 0;
