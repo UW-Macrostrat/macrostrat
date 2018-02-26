@@ -106,21 +106,19 @@ function buildStyles(callback) {
     FROM maps.legend
     WHERE color IS NOT NULL AND color != ''
   `, [], (error, data) => {
-    let colors = data
+    let colors = data.map(c => {
+      return `
+        .units[color="${c.color}"] {
+          polygon-fill: ${c.color};
+        }
+      `
+    }).join(`
+    `)
 
     // Load the base styles
     let cartoCSS = fs.readFileSync(`${__dirname}/styles.css`, 'utf8')
 
-    // Compile the stylesheet
-    for (let i = 0; i < colors.length; i++) {
-      cartoCSS += `
-        .units[color="${colors[i].color}"] {
-          polygon-fill: ${colors[i].color};
-        }
-      `
-    }
-
-    callback(null, cartoCSS)
+    callback(null, colors + cartoCSS)
   })
 }
 
