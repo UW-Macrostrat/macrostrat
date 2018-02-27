@@ -144,7 +144,7 @@ class FossilsStratNames(Base):
 
         # Clean up
         self.pg['cursor'].execute("""
-          DELETE FROM macrostrat.collections_strat_names
+          DELETE FROM macrostrat.pbdb_collections_strat_names
         """, {})
         self.pg['connection'].commit()
         print '        + Done cleaning up'
