@@ -43,7 +43,7 @@ split on
 
 class FossilsStratNames(Base):
     """
-    macrostrat match fossils <source_id>:
+    macrostrat match fossils:
         Match Paleobiology Database fossil collections to Macrostrat strat_name_ids.
         Populates the table macrostrat.pbdb_collection_strat_names
 
@@ -54,7 +54,7 @@ class FossilsStratNames(Base):
       -h --help                         Show this screen.
       --version                         Show version.
     Examples:
-      macrostrat match fossils 123
+      macrostrat match fossils
     Help:
       For help using this tool, please open an issue on the Github repository:
       https://github.com/UW-Macrostrat/macrostrat-cli
@@ -117,19 +117,9 @@ class FossilsStratNames(Base):
         where.append("""
             pbdb.collection_no NOT IN (
                 SELECT collection_no
-                FROM macrostrat.collections_strat_names
+                FROM macrostrat.pbdb_collections_strat_names
             )
         """)
-
-        print """
-            SELECT pbdb.collection_no, lsn.strat_name_id, %(match_type)s
-            FROM macrostrat.pbdb_collections pbdb, macrostrat.strat_name_footprints snf
-            JOIN macrostrat.lookup_strat_names lsn ON lsn.strat_name_id = snf.strat_name_id
-            WHERE %(where)s
-        """ %  {
-            'match_type': match_type,
-            'where': AsIs(' AND '.join(where))
-        }
 
         self.pg['cursor'].execute("""
             INSERT INTO macrostrat.pbdb_collections_strat_names (collection_no, strat_name_id, basis_col)
