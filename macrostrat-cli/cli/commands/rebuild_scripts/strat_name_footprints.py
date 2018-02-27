@@ -34,25 +34,31 @@ class StratNameFootprints(Base):
               WHERE concept_id != 0
               GROUP BY concept_id
             )
-            SELECT strat_name_id, name_no_lith, rank_name, second.concept_id, second.concept_names, ST_Union((
-              SELECT COALESCE(ST_Union(poly_geom), 'POLYGON EMPTY') AS geom
+            SELECT strat_name_id, name_no_lith, rank_name, second.concept_id, second.concept_names, ST_Union(ARRAY[(
+              SELECT COALESCE(ST_Union(poly_geom), 'SRID=4326;POLYGON EMPTY') AS geom
               FROM macrostrat.unit_strat_names
               JOIN macrostrat.units_sections ON unit_strat_names.unit_id = units_sections.unit_id
               JOIN macrostrat.cols ON units_sections.col_id = cols.id
               WHERE unit_strat_names.strat_name_id = ANY(second.concept_names)
             ), (
-              SELECT COALESCE(ST_Union(geom), 'POLYGON EMPTY') as geom
+              SELECT COALESCE(ST_Union(geom), 'SRID=4326;POLYGON EMPTY') as geom
               FROM macrostrat.strat_names_places
               JOIN macrostrat.places ON places.place_id = strat_names_places.place_id
               WHERE strat_names_places.strat_name_id = ANY(second.concept_names)
-            )) AS geom,
+            ),(
+                SELECT COALESCE(ST_Union(ST_SetSRID(poly_geom, 4326)), 'SRID=4326;POLYGON EMPTY') AS geom
+                FROM macrostrat.cols
+                JOIN macrostrat.units_sections us ON us.col_id = cols.id
+                JOIN macrostrat.unit_strat_names usn ON usn.unit_id = us.unit_id
+                WHERE usn.strat_name_id = ANY(names_in_hierarchy)
+            )]) AS geom,
             LEAST((
               SELECT min(t_age)
               FROM macrostrat.lookup_unit_intervals
               JOIN macrostrat.unit_strat_names ON unit_strat_names.unit_id = lookup_unit_intervals.unit_id
               JOIN macrostrat.units_sections ON unit_strat_names.unit_id = units_sections.unit_id
               JOIN macrostrat.cols ON units_sections.col_id = cols.id
-              WHERE unit_strat_names.strat_name_id = ANY(second.concept_names)
+              WHERE unit_strat_names.strat_name_id = ANY(second.concept_names) OR unit_strat_names.strat_name_id = ANY(first.names_in_hierarchy)
             ),ti.age_top) AS best_t_age,
             GREATEST((
               SELECT max(b_age)
@@ -60,7 +66,7 @@ class StratNameFootprints(Base):
               JOIN macrostrat.unit_strat_names ON unit_strat_names.unit_id = lookup_unit_intervals.unit_id
               JOIN macrostrat.units_sections ON unit_strat_names.unit_id = units_sections.unit_id
               JOIN macrostrat.cols ON units_sections.col_id = cols.id
-              WHERE unit_strat_names.strat_name_id = ANY(second.concept_names)
+              WHERE unit_strat_names.strat_name_id = ANY(second.concept_names) OR unit_strat_names.strat_name_id = ANY(first.names_in_hierarchy)
             ), tb.age_bottom) AS best_b_age
             FROM first
             LEFT JOIN second ON first.concept_id = second.concept_id
@@ -101,18 +107,24 @@ class StratNameFootprints(Base):
               FROM first
               WHERE concept_id = 0
             )
-            SELECT third.strat_name_id, name_no_lith, rank_name, third.concept_id, third.concept_names, ST_Union((
-              SELECT COALESCE(ST_Union(poly_geom), 'POLYGON EMPTY') AS geom
+            SELECT third.strat_name_id, name_no_lith, rank_name, third.concept_id, third.concept_names, ST_Union(ARRAY[(
+              SELECT COALESCE(ST_Union(poly_geom), 'SRID=4326;POLYGON EMPTY') AS geom
               FROM macrostrat.unit_strat_names
               JOIN macrostrat.units_sections ON unit_strat_names.unit_id = units_sections.unit_id
               JOIN macrostrat.cols ON units_sections.col_id = cols.id
-              WHERE unit_strat_names.strat_name_id = ANY(third.concept_names)
+              WHERE unit_strat_names.strat_name_id = ANY(second.concept_names)
             ), (
-              SELECT COALESCE(ST_Union(geom), 'POLYGON EMPTY') as geom
+              SELECT COALESCE(ST_Union(geom), 'SRID=4326;POLYGON EMPTY') as geom
               FROM macrostrat.strat_names_places
               JOIN macrostrat.places ON places.place_id = strat_names_places.place_id
-              WHERE strat_names_places.strat_name_id = ANY(third.concept_names)
-            )) AS geom,
+              WHERE strat_names_places.strat_name_id = ANY(second.concept_names)
+            ),(
+                SELECT COALESCE(ST_Union(ST_SetSRID(poly_geom, 4326)), 'SRID=4326;POLYGON EMPTY') AS geom
+                FROM macrostrat.cols
+                JOIN macrostrat.units_sections us ON us.col_id = cols.id
+                JOIN macrostrat.unit_strat_names usn ON usn.unit_id = us.unit_id
+                WHERE usn.strat_name_id = ANY(names_in_hierarchy)
+            )]) AS geom,
             LEAST((
               SELECT min(t_age)
               FROM macrostrat.lookup_unit_intervals
