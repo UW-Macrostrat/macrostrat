@@ -77,6 +77,7 @@ class FossilsStratNames(Base):
 
 
     def query(self, field, strictTime, strictSpace, strictName):
+        print '%s - StrictTime: %s | StrictSpace: %s | StrictName: %s' % (field, strictTime, strictSpace, strictName)
         match_type = field
         where = []
 
@@ -91,11 +92,12 @@ class FossilsStratNames(Base):
         spaceQuery = ''
         if strictSpace == False:
             match_type += '_fspace'
-            where.append('ST_Intersects(ST_Buffer(snf.geom, 1.2), ST_Buffer(pbdb.geom, 1.2))')
+            spaceQuery = 'ST_Intersects(ST_Buffer(snf.geom, 1.2), ST_Buffer(pbdb.geom, 1.2))'
         elif strictSpace == None:
             match_type += '_nspace'
+            spaceQuery = 'true'
         else:
-            where.append('ST_Intersects(snf.geom, pbdb.geom)')
+            spaceQuery = 'ST_Intersects(snf.geom, pbdb.geom)'
 
         # Time buffer
         timeFuzz = ''
@@ -124,11 +126,13 @@ class FossilsStratNames(Base):
         self.pg['cursor'].execute("""
             INSERT INTO macrostrat.pbdb_collections_strat_names (collection_no, strat_name_id, basis_col)
             SELECT pbdb.collection_no, lsn.strat_name_id, %(match_type)s
-            FROM macrostrat.pbdb_collections pbdb, macrostrat.strat_name_footprints snf
+            FROM macrostrat.pbdb_collections pbdb
+            JOIN macrostrat.strat_name_footprints snf ON %(spaceQuery)s
             JOIN macrostrat.lookup_strat_names lsn ON lsn.strat_name_id = snf.strat_name_id
             WHERE %(where)s
         """, {
             'match_type': match_type,
+            'spaceQuery': AsIs(spaceQuery),
             'where': AsIs(' AND '.join(where))
         })
         self.pg['connection'].commit()
