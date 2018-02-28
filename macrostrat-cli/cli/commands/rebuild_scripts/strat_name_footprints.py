@@ -50,7 +50,7 @@ class StratNameFootprints(Base):
                 FROM macrostrat.cols
                 JOIN macrostrat.units_sections us ON us.col_id = cols.id
                 JOIN macrostrat.unit_strat_names usn ON usn.unit_id = us.unit_id
-                WHERE usn.strat_name_id = ANY(names_in_hierarchy)
+                WHERE usn.strat_name_id = ANY(first.names_in_hierarchy)
             )]) AS geom,
             LEAST((
               SELECT min(t_age)
@@ -123,7 +123,7 @@ class StratNameFootprints(Base):
                 FROM macrostrat.cols
                 JOIN macrostrat.units_sections us ON us.col_id = cols.id
                 JOIN macrostrat.unit_strat_names usn ON usn.unit_id = us.unit_id
-                WHERE usn.strat_name_id = ANY(names_in_hierarchy)
+                WHERE usn.strat_name_id = ANY(third.concept_names)
             )]) AS geom,
             LEAST((
               SELECT min(t_age)
