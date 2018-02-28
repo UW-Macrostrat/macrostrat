@@ -46,6 +46,28 @@ class Seed(Base):
     def __init__(self, connections, *args):
         Base.__init__(self, connections, *args)
 
+    def seed_pbdb_collections(self):
+        tiler = tileschemes.WebMercator()
+        self.pg['cursor'].execute("""
+            SELECT ST_AsText(ST_Transform(
+                ST_GeomFromText('POLYGON ((-179 -85, -179 85, 179 85, 179 -85, -179 -85))', 4326)
+            , 3857)) as geom
+        """)
+        source = self.pg['cursor'].fetchone()
+        seed_area = loads(source[0])
+
+        for z in self.zooms:
+            tiles = [ t for t in tilecover.cover_geometry(tiler, seed_area, z) ]
+            headers = { 'X-Tilestrata-SkipCache': '*'}
+            for tile in tqdm(tiles):
+                url = 'http://localhost:8675/pbdb-collections/%s/%s/%s.mvt?secret=%s' % (tile.z, tile.x, tile.y, self.credentials['tileserver_secret'])
+                try:
+                    r = requests.get(url, headers=headers)
+                    if r.status_code != 200 and r.status_code != 204:
+                        print r.status_code
+                except:
+                    pass
+
     def seed_mbtiles(self, layer):
         mbtile_path = self.credentials['mbtiles_path']
         path = os.path.dirname(__file__)
@@ -133,6 +155,10 @@ class Seed(Base):
 
         if self.args[1] == 'carto' or self.args[1] == 'carto-slim':
             Seed.seed_mbtiles(self, self.args[1])
+            sys.exit()
+
+        if self.args[1] == 'pbdb-collections':
+            Seed.seed_pbdb_collections(self)
             sys.exit()
 
         seed_area = None
