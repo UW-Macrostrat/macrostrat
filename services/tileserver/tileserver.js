@@ -9,11 +9,18 @@ const logger = require('./logger')
 
 const cartoVectorProvider = require('./cartoVectorProvider')
 const cartoSlimVectorProvider = require('./cartoSlimVectorProvider')
+const pbdbCollectionProvider = require('./pbdb-collection-provider')
 
 const MAX_ZOOM = 16
 module.exports = tilestrata.middleware({
   server: (function() {
     var strata = tilestrata()
+    
+    strata.layer('pbdb-collections')
+      .route('*.mvt', {
+        maxZoom: MAX_ZOOM
+      })
+        .use(pbdbCollectionProvider())
 
     strata.layer('carto-slim')
       .route('*.mvt', {
