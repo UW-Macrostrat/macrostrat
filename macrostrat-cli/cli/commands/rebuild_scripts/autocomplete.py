@@ -137,8 +137,21 @@ class Autocomplete(Base):
 
         self.mariadb['cursor'].execute("""
             ALTER TABLE autocomplete rename to autocomplete_old;
+        """)
+        self.mariadb['cursor'].close()
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
+
+        self.mariadb['cursor'].execute("""
             ALTER TABLE autocomplete_new rename to autocomplete;
+        """)
+        self.mariadb['cursor'].close()
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
+
+        self.mariadb['cursor'].execute("""
             DROP TABLE IF EXISTS autocomplete_old;
         """)
+        self.mariadb['cursor'].close()
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
+
         self.mariadb['cursor'].close()
         self.mariadb['connection'].close()
