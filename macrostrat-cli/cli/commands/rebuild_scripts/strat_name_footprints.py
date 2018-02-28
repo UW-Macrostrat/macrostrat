@@ -112,12 +112,12 @@ class StratNameFootprints(Base):
               FROM macrostrat.unit_strat_names
               JOIN macrostrat.units_sections ON unit_strat_names.unit_id = units_sections.unit_id
               JOIN macrostrat.cols ON units_sections.col_id = cols.id
-              WHERE unit_strat_names.strat_name_id = ANY(second.concept_names)
+              WHERE unit_strat_names.strat_name_id = ANY(third.concept_names)
             ), (
               SELECT COALESCE(ST_MakeValid(ST_Union(ST_MakeValid(geom))), 'SRID=4326;POLYGON EMPTY') as geom
               FROM macrostrat.strat_names_places
               JOIN macrostrat.places ON places.place_id = strat_names_places.place_id
-              WHERE strat_names_places.strat_name_id = ANY(second.concept_names)
+              WHERE strat_names_places.strat_name_id = ANY(third.concept_names)
             ),(
                 SELECT COALESCE(ST_MakeValid(ST_Envelope(ST_Collect(ST_SetSRID(ST_MakeValid(poly_geom), 4326)))), 'SRID=4326;POLYGON EMPTY') AS geom
                 FROM macrostrat.cols
