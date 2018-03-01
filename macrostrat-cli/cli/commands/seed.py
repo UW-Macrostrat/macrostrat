@@ -56,7 +56,7 @@ class Seed(Base):
         source = self.pg['cursor'].fetchone()
         seed_area = loads(source[0])
 
-        for z in self.zooms:
+        for z in [1, 2, 3, 4, 5, 6, 7, 8, 9]:
             tiles = [ t for t in tilecover.cover_geometry(tiler, seed_area, z) ]
             headers = { 'X-Tilestrata-SkipCache': '*'}
             for tile in tqdm(tiles):
