@@ -69,7 +69,6 @@ module.exports = (options) => {
           FROM (
             SELECT
               collection_no,
-              name,
               ST_AsMVTGeom(
                 geom,
                 ST_SetSRID(ST_MakeBox2D(ST_MakePoint(${extent[0]}, ${extent[1]}), ST_MakePoint(${extent[2]}, ${extent[3]})), 4326),

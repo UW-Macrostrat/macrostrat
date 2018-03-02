@@ -15,12 +15,15 @@ const MAX_ZOOM = 16
 module.exports = tilestrata.middleware({
   server: (function() {
     var strata = tilestrata()
-    
+
     strata.layer('pbdb-collections')
       .route('*.mvt', {
         maxZoom: MAX_ZOOM
       })
         .use(pbdbCollectionProvider())
+        .use(pureRedisCache())
+        .use(etag())
+        .use(logger())
 
     strata.layer('carto-slim')
       .route('*.mvt', {
