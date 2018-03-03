@@ -84,9 +84,15 @@ class FossilsStratNames(Base):
         if not strictName:
             match_type += '_fname'
 
-        macroNameMatch = 'rank_name' if strictName else 'name_no_lith'
-        pbdbNameMatch = field if strictName else '%s_clean' % (field, )
-        where.append('pbdb.%s = lsn.%s' % (pbdbNameMatch, macroNameMatch, ))
+        macroNameMatch = ''
+        if strictName:
+            macroNameMatch = 'lsn.rank_name'
+            pbdbNameMatch = 'pbdb.%s' % (field, )
+        else:
+            macroNameMatch = 'lower(lsn.name_no_lith)'
+            pbdbNameMatch = 'pbdb.%s_clean' % (field, )
+
+        where.append('%s = %s' % (pbdbNameMatch, macroNameMatch, ))
 
         # Space constraint
         spaceQuery = ''
@@ -122,7 +128,18 @@ class FossilsStratNames(Base):
                 FROM macrostrat.pbdb_collections_strat_names
             )
         """)
-
+        # print self.pg['cursor'].mogrify("""
+        #     INSERT INTO macrostrat.pbdb_collections_strat_names (collection_no, strat_name_id, basis_col)
+        #     SELECT pbdb.collection_no, lsn.strat_name_id, %(match_type)s
+        #     FROM macrostrat.pbdb_collections pbdb
+        #     JOIN macrostrat.strat_name_footprints snf ON %(spaceQuery)s
+        #     JOIN macrostrat.lookup_strat_names lsn ON lsn.strat_name_id = snf.strat_name_id
+        #     WHERE %(where)s
+        # """, {
+        #     'match_type': match_type,
+        #     'spaceQuery': AsIs(spaceQuery),
+        #     'where': AsIs(' AND '.join(where))
+        # })
         self.pg['cursor'].execute("""
             INSERT INTO macrostrat.pbdb_collections_strat_names (collection_no, strat_name_id, basis_col)
             SELECT pbdb.collection_no, lsn.strat_name_id, %(match_type)s
