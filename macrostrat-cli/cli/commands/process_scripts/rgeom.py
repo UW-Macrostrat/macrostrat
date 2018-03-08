@@ -40,9 +40,12 @@ class RGeom(Base):
         Base.__init__(self, connections, *args)
 
     def run(self, source_id):
-        if source_id == '--help' or source_id == '-h':
+
+        if len(source_id) == 0 or source_id[0] == '--help' or source_id[0] == '-h':
             print RGeom.__doc__
             sys.exit()
+
+        source_id = source_id[0]
 
         # Get the name of the primary table
         self.pg['cursor'].execute("""

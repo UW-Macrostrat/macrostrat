@@ -13,6 +13,7 @@ import json
 import re
 from .. import schlep
 from ..base import Base
+import urllib2
 
 class Tesselate(Base):
     '''
@@ -78,6 +79,39 @@ class Tesselate(Base):
 
     def __init__(self, connections, *args):
         Base.__init__(self, connections, *args)
+
+    def debug(self, tesselation, columns, clip_polygon):
+        geojson = {
+            "type": "FeatureCollection",
+            "features": [
+                {"type": "Feature", "properties": {}, "geometry": json.loads(json.dumps(mapping(f['polygon'])))} for f in tesselation
+            ]
+        }
+        with open('tesselation.json', 'w') as out:
+            json.dump(geojson, out)
+
+
+        point_geojson = {
+            "type": "FeatureCollection",
+            "features": [
+                {"type": "Feature", "properties": {}, "geometry": { "type": "Point", "coordinates": [float(p['lng']), float(p['lat'])] }} for p in columns
+            ]
+        }
+        with open('points.json', 'w') as out:
+            json.dump(point_geojson, out)
+
+
+        if clip_polygon is not None:
+            clip_geojson = {
+                "type": "FeatureCollection",
+                "features": [
+                    {"type": "Feature", "properties": {}, "geometry": json.loads(json.dumps(mapping(clip_polygon)))}
+                ]
+            }
+
+            with open('clip.json', 'w') as out:
+                json.dump(clip_geojson, out)
+
 
     def voronoi_finite_polygons_2d(self, vor, radius=None):
         # via https://gist.github.com/pv/8036995 with minor mods
@@ -153,11 +187,12 @@ class Tesselate(Base):
         column_buffer = None
         parameters = {}
         for arg in args:
+            arg = arg.decode('utf8')
             parts = arg.split('=')
             if len(parts) != 2:
                 print 'Invalid argument - %s' % (arg, )
-
-            parameters[re.sub(r'-', '', parts[0])] = parts[1].split(',')
+            clean_part = re.sub(r'-', '', re.sub(u'\u2014', '', parts[0]))
+            parameters[clean_part] = parts[1].split(',')
 
         if len(parameters) < 1:
             print Tesselate.__doc__
@@ -269,12 +304,12 @@ class Tesselate(Base):
         # Get the column coordinates
         sql_key = 'id' if column_param_key == 'col_id' else column_param_key
         sql_params = ','.join([ '%s' for val in parameters[column_param_key] ])
-        Tesselate.mariadb['cursor'].execute("""
+        self.mariadb['cursor'].execute("""
             SELECT id, lat, lng
             FROM cols
             WHERE """ + sql_key + """ IN (""" + sql_params + """)
         """, parameters[column_param_key])
-        columns = Tesselate.mariadb['cursor'].fetchall()
+        columns = self.mariadb['cursor'].fetchall()
 
         # Validate
         if column_param_key == 'id' and len(columns) != len(parameters[column_param_key]):
@@ -293,12 +328,12 @@ class Tesselate(Base):
 
         # Get the clip polygon
         if 'boundary_id' in parameters:
-            Tesselate.pg['cursor'].execute("""
+            self.pg['cursor'].execute("""
                 SELECT ST_AsGeoJSON((ST_dump(ST_Union(geom))).geom) AS geom
                 FROM geologic_boundaries.boundaries
                 WHERE boundary_id = ANY(%(boundary_id)s)
             """, { 'boundary_id': [ int(p) for p in parameters['boundary_id'] ] })
-            clip_polygon = Tesselate.pg['cursor'].fetchone()
+            clip_polygon = self.pg['cursor'].fetchone()
 
             # Verify that something was fetched
             if len(clip_polygon) == 0:
@@ -358,7 +393,7 @@ class Tesselate(Base):
                 unclipped_polygons = [ column.buffer(parameters['buffer']) for column in columns ]
             elif 'snap_to_nearest' in parameters:
                 # Need to get buffer distance
-                Tesselate.pg['cursor'].execute("""
+                self.pg['cursor'].execute("""
                     SELECT ST_Distance(coordinate, %(point)s) AS distance
                     FROM macrostrat.cols
                     WHERE id != %(col_id)s
@@ -368,18 +403,37 @@ class Tesselate(Base):
                     'point': 'POINT(%s %s)' % (columns[0]['lng'], columns[0]['lat']),
                     'col_id': columns[0]['id']
                 })
-                result = Tesselate.pg['cursor'].fetchone()
+                result = self.pg['cursor'].fetchone()
                 unclipped_polygons = [ Point([float(p['lng']), float(p['lat'])]).buffer(result[0]).envelope for p in columns ]
             else:
                 print 'When only one column is provided, a valid `buffer` or `snap_to_nearest` must also be provided'
                 sys.exit(1)
         else:
+            '''
+            OK. This is super weird. The scipy voronoi algorithm requires 4 points,
+            but will only throw an error if <= 2 points are provided. When 3 are input
+            and they are not nearly colinear it works as expected, but if they are almost
+            colinear bizarre bad things happen. The hypothesis is that there exists
+            some edge case in which the resultant vectors are parallel, which messes
+            things up. To get around that, we simply add a
+            point on Null Island to make sure we have 4 points and everything works.
+            While this point will have a varying degree of influence depending on the
+            distance of the input points from Null Island, it is usually very minor,
+            especially considering these polygons are fairly meaningless.
+            '''
+            if len(columns) == 2:
+                columns.append({'lng': 0, 'lat': 0})
+                columns.append({'lng': 1, 'lat': 1})
+            elif len(columns) == 3:
+                columns.append({'lng': 0, 'lat': 0})
             # Create the tesselation; initially open-ended and not clipped to the clipping polygon
             tesselation = Voronoi(np.array( [ [float(p['lng']), float(p['lat'])] for p in columns ] ))
             # We have to do this BS because scipy voronoi doesn't create edges for vertices outside of convex hull of all the points
             regions, new_points =  Tesselate.voronoi_finite_polygons_2d(self, tesselation)
-            unclipped_polygons = [ Polygon(new_points[r]) for r in regions ]
+            unclipped_polygons = [ Polygon(new_points[region]) for region in regions ]
 
+
+        columns = [ column for column in columns if column['lng'] != 0 and column['lat'] != 0]
 
         if clip_polygon is not None:
             clipped_polygons = [ poly.intersection(clip_polygon) for poly in unclipped_polygons ]
@@ -390,13 +444,32 @@ class Tesselate(Base):
             pass
         else:
             # Fetch all column polygons
-            Tesselate.pg['cursor'].execute("""
+            self.pg['cursor'].execute("""
                 SELECT ST_AsGeoJSON(ST_Union(poly_geom)) AS geom
                 FROM macrostrat.cols
                 WHERE NOT (""" + sql_key + """ = ANY(%(ids)s))
             """, { 'ids': [ int(p) for p in parameters[column_param_key] ]})
-            all_columns = shape(json.loads(Tesselate.pg['cursor'].fetchone()[0]))
+            all_columns = shape(json.loads(self.pg['cursor'].fetchone()[0]))
+
+            # Check all columns validity
+            if not all_columns.is_valid:
+                all_columns = all_columns.buffer(0)
+
+            if not all_columns.is_valid:
+                print 'The clipping geometry of all columns is invalid. Cannot complete'
+                sys.exit(1)
+
+            for idx, poly in enumerate(clipped_polygons):
+                if not poly.is_valid:
+                    clipped_polygons[idx] = poly.buffer(0)
+
+            for poly in clipped_polygons:
+                if not poly.is_valid:
+                    print 'Clipped polygon cannot be made valid. Exiting'
+                    sys.exit(1)
+
             clipped_polygons = [ poly.difference(all_columns) for poly in clipped_polygons ]
+
 
         # Assign a tesselated polygon to each column
         assigned_polygons = []
@@ -406,30 +479,36 @@ class Tesselate(Base):
                     assigned_polygons.append({ 'col_id': column['id'], 'polygon': polygon })
                     continue
 
+        if len(assigned_polygons) != len(columns):
+            print 'Not all column points were assigned a tesselated polygon. See debug geojson files for help.'
+            #Tesselate.debug(self, clipped_polygons, columns, clip_polygon)
+            sys.exit(1)
+
         # Update the database
         for column in assigned_polygons:
             # First check if it already exists in `col_areas`
-            Tesselate.mariadb['cursor'].execute("""
+            self.mariadb['cursor'].execute("""
                 SELECT col_id
                 FROM col_areas
                 WHERE col_id = %s
             """, column['col_id'])
-            col_id = Tesselate.mariadb['cursor'].fetchone()
+            col_id = self.mariadb['cursor'].fetchone()
+
             # If it doesn't exist, insert
             if col_id is None or len(col_id) == 0:
-                Tesselate.mariadb['cursor'].execute("""
+                self.mariadb['cursor'].execute("""
                     INSERT INTO col_areas (col_id, col_area)
                     VALUES (%s, ST_GeomFromText(%s))
                 """, [ column['col_id'], column['polygon'].wkt ])
-                Tesselate.mariadb['connection'].commit()
+                self.mariadb['connection'].commit()
             # Otherwise update
             else:
-                Tesselate.mariadb['cursor'].execute("""
+                self.mariadb['cursor'].execute("""
                     UPDATE col_areas
                     SET col_area =  ST_GeomFromText(%s)
                     WHERE col_id = %s
                 """, [ column['polygon'].wkt, column['col_id'] ])
-                Tesselate.mariadb['connection'].commit()
+                self.mariadb['connection'].commit()
 
             column_aea = ops.transform(
                 partial(
@@ -444,53 +523,24 @@ class Tesselate(Base):
             # Print the area in m^2
             area = column_aea.area / 1000000
 
-            Tesselate.mariadb['cursor'].execute("""
+            self.mariadb['cursor'].execute("""
                 UPDATE cols
                 SET col_area = %s
                 WHERE id = %s
             """, [area, column['col_id']])
-            Tesselate.mariadb['connection'].commit()
+            self.mariadb['connection'].commit()
 
         # Close connections, otherwise you'll have a bad time https://dba.stackexchange.com/a/133047/38677
-        Tesselate.pg['connection'].close()
-        Tesselate.mariadb['connection'].close()
+        self.pg['connection'].close()
+        self.mariadb['connection'].close()
 
         # Update postgres
         schlep_instance = schlep({
-            'pg': Tesselate.pg['raw_connection'],
-            'mariadb': Tesselate.mariadb['raw_connection']
+            'pg': self.pg['raw_connection'],
+            'mariadb': self.mariadb['raw_connection']
         }, [ None, ''])
 
         schlep_instance.move_table('col_areas')
         schlep_instance.move_table('cols')
 
-        # geojson = {
-        #     "type": "FeatureCollection",
-        #     "features": [
-        #         {"type": "Feature", "properties": {'col_id': f['col_id']}, "geometry": json.loads(json.dumps(mapping(f['polygon'])))} for f in assigned_polygons
-        #     ]
-        # }
-        # with open('tesselation.json', 'w') as out:
-        #     json.dump(geojson, out)
-        #
-        #
-        # point_geojson = {
-        #     "type": "FeatureCollection",
-        #     "features": [
-        #         {"type": "Feature", "properties": {}, "geometry": { "type": "Point", "coordinates": [float(p['lng']), float(p['lat'])] }} for p in columns
-        #     ]
-        # }
-        # with open('points.json', 'w') as out:
-        #     json.dump(point_geojson, out)
-        #
-        #
-        # if clip_polygon is not None:
-        #     clip_geojson = {
-        #         "type": "FeatureCollection",
-        #         "features": [
-        #             {"type": "Feature", "properties": {}, "geometry": json.loads(json.dumps(mapping(clip_polygon)))}
-        #         ]
-        #     }
-        #
-        #     with open('clip.json', 'w') as out:
-        #         json.dump(clip_geojson, out)
+        urllib2.urlopen('http://127.0.0.1:5000/api/v2/columns/refresh-cache?cacheRefreshKey=%s' % (self.credentials['cacheRefreshKey'], )).read()

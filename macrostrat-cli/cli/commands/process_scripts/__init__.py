@@ -6,3 +6,4 @@ from burwell_lookup import BurwellLookup as burwell_lookup
 from tesselate import Tesselate as tesselate
 from map_source import MapSource as map_source
 from legend import Legend as legend
+from legend_lookup import LegendLookup as legend_lookup

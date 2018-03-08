@@ -151,9 +151,10 @@ class StratNames(Base):
             CREATE TABLE temp_rocks AS
             WITH first AS (
             	SELECT
+            	    row_number() OVER() as row_no,
             		array_agg(map_id) AS map_ids,
             		name,
-            		trim(unnest(string_to_array(strat_name, ';'))) AS strat_name,
+            		string_to_array(strat_name, ';') AS strat_name,
             		age,
             		lith,
             		descrip,
@@ -167,31 +168,37 @@ class StratNames(Base):
             ),
             with_nos AS (
             	SELECT
-            		row_number() OVER() as row_no,
-            		*
-            	FROM first
+            	    row_no,
+            		name,
+            		row_number() OVER() as name_no
+                FROM (
+                    SELECT row_no, unnest(strat_name) AS name
+                    FROM first
+                ) foo
             ),
             name_parts AS (
-            	SELECT row_no, array_to_string(map_ids, '|') AS id, a.name_part, a.nr
+            	SELECT row_no, name_no, a.name_part, a.nr
             	FROM with_nos
-            	LEFT JOIN LATERAL unnest(string_to_array(with_nos.strat_name, ' '))
+            	LEFT JOIN LATERAL unnest(string_to_array(with_nos.name, ' '))
             	WITH ORDINALITY AS a(name_part, nr) ON TRUE
             ),
             no_liths AS (
-                SELECT id, row_no, name_part
+                SELECT row_no, name_no, name_part
                 FROM name_parts
                 WHERE lower(name_part) NOT IN (select lower(lith) from macrostrat.liths) AND lower(name_part) NOT IN ('bed', 'member', 'formation', 'group', 'supergroup')
                 order by nr
             ),
             clean AS (
-            	SELECT id, row_no, array_to_string(array_agg(name_part), ' ') AS name
+            	SELECT row_no, name_no, trim(array_to_string(array_agg(name_part), ' ')) AS name
             	from no_liths
-            	GROUP BY row_no, id
+            	GROUP BY name_no, row_no
             )
+
             SELECT
             	map_ids,
-            	with_nos.name,
-            	trim(both ' ' FROM replace(strat_name, '.', '')) AS strat_name,
+            	first.name,
+            	first.strat_name as orig_strat_name,
+            	trim(both ' ' FROM replace(clean.name, '.', '')) AS strat_name,
             	trim(both ' ' FROM clean.name) AS strat_name_clean,
             	age,
             	lith,
@@ -200,8 +207,8 @@ class StratNames(Base):
             	t_interval,
             	b_interval,
             	envelope
-            FROM with_nos
-            JOIN clean ON with_nos.row_no = clean.row_no
+            FROM first
+            LEFT JOIN clean ON first.row_no = clean.row_no;
         """, {
             'scale': AsIs(scale),
             'source_id': source_id

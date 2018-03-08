@@ -37,9 +37,11 @@ class WebGeom(Base):
 
 
     def run(self, source_id):
-        if source_id == '--help' or source_id == '-h':
+        if len(source_id) == 0 or source_id[0] == '--help' or source_id[0] == '-h':
             print WebGeom.__doc__
             sys.exit()
+
+        source_id = source_id[0]
 
         # Get the primary table of the target source
         self.pg['cursor'].execute("""

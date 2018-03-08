@@ -34,10 +34,15 @@ class LookupUnits(Base):
         # Copy structure into new table
         self.mariadb['cursor'].execute("""
             DROP TABLE IF EXISTS lookup_units_new;
+        """)
+        self.mariadb['cursor'].close()
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
+        self.mariadb['cursor'].execute("""
             DROP TABLE IF EXISTS lookup_units_old;
         """)
         self.mariadb['cursor'].close()
         self.mariadb['cursor'] = self.mariadb['connection'].cursor()
+
         self.mariadb['cursor'].execute("""
             CREATE TABLE lookup_units_new LIKE lookup_units;
         """)
@@ -291,11 +296,19 @@ class LookupUnits(Base):
             UPDATE lookup_units_new
             SET period = eon
             WHERE period = '' AND eon = 'Archean';
+        """)
+        self.mariadb['cursor'].close()
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
 
+        self.mariadb['cursor'].execute("""
             UPDATE lookup_units_new
             SET period = 'Precambrian'
             WHERE period = '' AND t_age >= 541;
+        """)
+        self.mariadb['cursor'].close()
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
 
+        self.mariadb['cursor'].execute("""
             UPDATE lookup_units
             SET period = concat_WS('-', (
                     SELECT intervals.interval_name
@@ -322,7 +335,17 @@ class LookupUnits(Base):
         # Clean up
         self.mariadb['cursor'].execute("""
             TRUNCATE TABLE lookup_units;
+        """)
+        self.mariadb['cursor'].close()
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
+
+        self.mariadb['cursor'].execute("""
             INSERT INTO lookup_units SELECT * FROM lookup_units_new;
+        """)
+        self.mariadb['cursor'].close()
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
+
+        self.mariadb['cursor'].execute("""
             DROP TABLE lookup_units_new;
         """)
         self.mariadb['cursor'].close()

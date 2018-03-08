@@ -768,7 +768,7 @@ tables = OrderedDict({
         """,
         "create": """
             CREATE TABLE macrostrat.lookup_unit_attrs_api_new (
-              unit_id integer NOT NULL,
+              unit_id integer,
               lith json,
               environ json,
               econ json,
@@ -971,5 +971,145 @@ tables = OrderedDict({
         "process": """
 
         """
-    }
+    },
+
+    "pbdb_collections": {
+        "dump": """
+            SELECT
+              matrix.collection_no,
+              collections.collection_name,
+              matrix.early_age,
+              matrix.late_age,
+              strata.grp,
+              strata.formation,
+              strata.member,
+              strata.lithology,
+              matrix.environment,
+              matrix.reference_no,
+              matrix.n_occs,
+              matrix.lng,
+              matrix.lat
+            FROM pbdb.coll_matrix matrix
+            JOIN pbdb.coll_strata strata ON strata.collection_no = matrix.collection_no
+            JOIN pbdb.collections ON collections.collection_no = strata.collection_no
+            WHERE matrix.access_level = 0
+        """,
+        "create": """
+            CREATE TABLE macrostrat.pbdb_collections_new (
+              collection_no integer NOT NULL,
+              name text,
+              early_age numeric,
+              late_age numeric,
+              grp text,
+              grp_clean text,
+              formation text,
+              formation_clean text,
+              member text,
+              member_clean text,
+              lithologies text[],
+              environment text,
+              reference_no integer,
+              n_occs integer,
+              geom geometry
+            );
+        """,
+        "insert": """
+            INSERT INTO macrostrat.pbdb_collections_new (collection_no, name, early_age, late_age, grp, formation, member, lithologies, environment, reference_no, n_occs, geom) VALUES (%(collection_no)s, regexp_replace(regexp_replace(replace(%(collection_name)s, '"', ''), '\(\.*\)', ''), '\s+$', ''), %(early_age)s, %(late_age)s, regexp_replace(regexp_replace(replace(replace(%(grp)s, '.', ''), '"', ''), '\(\.*\)', ''), '\s+$', ''), regexp_replace(regexp_replace(replace(replace(%(formation)s, '.', ''), '"', ''), '\(\.*\)', ''), '\s+$', ''), regexp_replace(regexp_replace(replace(replace(%(member)s, '.', ''), '"', ''), '\(\.*\)', ''), '\s+$', ''), string_to_array(replace(%(lithology)s, '"', ''), '/'), %(environment)s, %(reference_no)s, %(n_occs)s, ST_SetSRID(ST_MakePoint(%(lng)s, %(lat)s), 4326))
+        """,
+        "index": """
+            CREATE INDEX ON macrostrat.pbdb_collections_new (collection_no);
+            CREATE INDEX ON macrostrat.pbdb_collections_new (early_age);
+            CREATE INDEX ON macrostrat.pbdb_collections_new (late_age);
+            CREATE INDEX ON macrostrat.pbdb_collections_new USING GiST (geom);
+        """,
+        "process": """
+            WITH clean AS (
+                SELECT collection_no, lower(regexp_replace(regexp_replace(replace(replace(grp, '.', ''), '"', ''), '\(\.*\)', ''), '\s+$', '')) AS name
+                FROM macrostrat.pbdb_collections_new
+            ),
+            unnested AS (
+                SELECT collection_no, a.name_part, a.nr
+                FROM clean
+                LEFT JOIN LATERAL unnest(string_to_array(name, ' '))
+                WITH ORDINALITY AS a(name_part, nr) ON TRUE
+            ),
+            cleaned AS (
+                SELECT collection_no, array_to_string(array_agg(name_part), ' ') AS cleaned_name
+                FROM unnested
+                WHERE lower(name_part) NOT IN ('supergroup', 'group', 'subgroup', 'formation', 'member', 'bed', 'beds', 'and', 'upper', 'middle', 'lower') AND
+                    lower(name_part) NOT IN (
+                        SELECT lower(lith)
+                        FROM macrostrat.liths
+                        UNION ALL
+                        SELECT lower(concat(lith, 's'))
+                        FROM macrostrat.liths
+                    )
+                GROUP BY collection_no
+            )
+            UPDATE macrostrat.pbdb_collections_new SET grp_clean = cleaned_name
+            FROM cleaned
+            WHERE cleaned.collection_no = pbdb_collections_new.collection_no;
+
+            WITH clean AS (
+                SELECT collection_no, lower(regexp_replace(regexp_replace(replace(replace(formation, '.', ''), '"', ''), '\(\.*\)', ''), '\s+$', '')) AS name
+                FROM macrostrat.pbdb_collections_new
+            ),
+            unnested AS (
+                SELECT collection_no, a.name_part, a.nr
+                FROM clean
+                LEFT JOIN LATERAL unnest(string_to_array(name, ' '))
+                WITH ORDINALITY AS a(name_part, nr) ON TRUE
+            ),
+            cleaned AS (
+                SELECT collection_no, array_to_string(array_agg(name_part), ' ') AS cleaned_name
+                FROM unnested
+                WHERE lower(name_part) NOT IN ('supergroup', 'group', 'subgroup', 'formation', 'member', 'bed', 'beds', 'and', 'upper', 'middle', 'lower') AND
+                    lower(name_part) NOT IN (
+                        SELECT lower(lith)
+                        FROM macrostrat.liths
+                        UNION ALL
+                        SELECT lower(concat(lith, 's'))
+                        FROM macrostrat.liths
+                    )
+                GROUP BY collection_no
+            )
+            UPDATE macrostrat.pbdb_collections_new SET formation_clean = cleaned_name
+            FROM cleaned
+            WHERE cleaned.collection_no = pbdb_collections_new.collection_no;
+
+            WITH clean AS (
+                SELECT collection_no, lower(regexp_replace(regexp_replace(replace(replace(member, '.', ''), '"', ''), '\(\.*\)', ''), '\s+$', '')) AS name
+                FROM macrostrat.pbdb_collections_new
+            ),
+            unnested AS (
+                SELECT collection_no, a.name_part, a.nr
+                FROM clean
+                LEFT JOIN LATERAL unnest(string_to_array(name, ' '))
+                WITH ORDINALITY AS a(name_part, nr) ON TRUE
+            ),
+            cleaned AS (
+                SELECT collection_no, array_to_string(array_agg(name_part), ' ') AS cleaned_name
+                FROM unnested
+                WHERE lower(name_part) NOT IN ('supergroup', 'group', 'subgroup', 'formation', 'member', 'bed', 'beds', 'and', 'upper', 'middle', 'lower') AND
+                    lower(name_part) NOT IN (
+                        SELECT lower(lith)
+                        FROM macrostrat.liths
+                        UNION ALL
+                        SELECT lower(concat(lith, 's'))
+                        FROM macrostrat.liths
+                    )
+                GROUP BY collection_no
+            )
+            UPDATE macrostrat.pbdb_collections_new SET member_clean = cleaned_name
+            FROM cleaned
+            WHERE cleaned.collection_no = pbdb_collections_new.collection_no;
+
+            UPDATE macrostrat.pbdb_collections_new SET grp = NULL WHERE grp = '';
+            UPDATE macrostrat.pbdb_collections_new SET grp_clean = NULL WHERE grp_clean = '';
+            UPDATE macrostrat.pbdb_collections_new SET formation = NULL WHERE formation = '';
+            UPDATE macrostrat.pbdb_collections_new SET formation_clean = NULL WHERE formation_clean = '';
+            UPDATE macrostrat.pbdb_collections_new SET member = NULL WHERE member = '';
+            UPDATE macrostrat.pbdb_collections_new SET member_clean = NULL WHERE member_clean = '';
+        """
+    },
 })

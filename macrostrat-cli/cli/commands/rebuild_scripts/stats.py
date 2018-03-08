@@ -7,11 +7,16 @@ class Stats(Base):
     def run(self):
         self.mariadb['cursor'].execute("""
             DROP TABLE IF EXISTS stats_new;
+        """)
+        self.mariadb['cursor'].close()
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
+
+        self.mariadb['cursor'].execute("""
             DROP TABLE IF EXISTS stats_old;
         """)
         self.mariadb['cursor'].close()
-
         self.mariadb['cursor'] = self.mariadb['connection'].cursor()
+
         self.mariadb['cursor'].execute("""
             CREATE TABLE stats_new AS (
                 SELECT
@@ -77,11 +82,22 @@ class Stats(Base):
 
         self.mariadb['cursor'].execute("""
             ALTER TABLE stats rename to stats_old;
+        """)
+        self.mariadb['cursor'].close()
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
+
+        self.mariadb['cursor'].execute("""
             ALTER TABLE stats_new rename to stats;
+        """)
+        self.mariadb['cursor'].close()
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
+
+        self.mariadb['cursor'].execute("""
             DROP TABLE IF EXISTS stats_old;
         """)
-
         self.mariadb['cursor'].close()
+        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
+
         self.mariadb['connection'].close()
 
         self.pg['connection'].close()

@@ -3,6 +3,7 @@ from rgeom import RGeom
 from web_geom import WebGeom
 from burwell_lookup import BurwellLookup
 from legend import Legend
+from legend_lookup import LegendLookup
 from ..match_scripts import strat_names
 from ..match_scripts import units
 from ..match_scripts import liths
@@ -43,7 +44,7 @@ class MapSource(Base):
         'mariadb': True,
         'pg': True,
         'usage': """
-            Adds a given source to the proper carto line tables.
+            Processes a map source using all appropriate scripts
         """,
         'required_args': {
             'source_id': 'A valid source_id'
@@ -53,18 +54,20 @@ class MapSource(Base):
         Base.__init__(self, connections, *args)
 
     def run(self, source_id):
-        if source_id == '--help' or source_id == '-h':
+        if len(source_id) == 0 or source_id[0] == '--help' or source_id[0] == '-h':
             print MapSource.__doc__
             sys.exit()
 
+        source_id = source_id[0]
+
         rgeom = RGeom({})
-        rgeom.run(source_id)
+        rgeom.run((source_id, ))
 
         web_geom = WebGeom({})
-        web_geom.run(source_id)
+        web_geom.run((source_id, ))
 
         leg = Legend({})
-        leg.run(source_id)
+        leg.run((source_id, ))
 
         sn = strat_names({})
         sn.run(source_id)
@@ -76,13 +79,16 @@ class MapSource(Base):
         l.run(source_id)
 
         burwell_lookup = BurwellLookup({})
-        burwell_lookup.run(source_id)
+        burwell_lookup.run((source_id, ))
+
+        leg_lookup = LegendLookup({})
+        leg_lookup.run((source_id, ))
 
         carto = Carto({})
-        carto.run(source_id)
+        carto.run((source_id, ))
 
         carto_lines = CartoLines({})
-        carto_lines.run(source_id)
+        carto_lines.run((source_id, ))
 
         seed = Seed({}, True, source_id )
         seed.run()
