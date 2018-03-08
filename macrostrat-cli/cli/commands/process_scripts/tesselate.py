@@ -433,7 +433,7 @@ class Tesselate(Base):
             unclipped_polygons = [ Polygon(new_points[region]) for region in regions ]
 
 
-        columns = [ column for column in columns if column['lng'] != 0 and column['lat'] != 0]
+        columns = [ column for column in columns if column['lng'] != 0 and column['lat'] != 0 and column['lng'] != 1 and column['lat'] != 1]
 
         if clip_polygon is not None:
             clipped_polygons = [ poly.intersection(clip_polygon) for poly in unclipped_polygons ]
