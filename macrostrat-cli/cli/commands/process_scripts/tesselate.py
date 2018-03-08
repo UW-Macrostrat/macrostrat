@@ -421,7 +421,10 @@ class Tesselate(Base):
             distance of the input points from Null Island, it is usually very minor,
             especially considering these polygons are fairly meaningless.
             '''
-            if len(columns) == 3:
+            if len(columns) == 2:
+                columns.append({'lng': 0, 'lat': 0})
+                columns.append({'lng': 1, 'lat': 1})
+            elif len(columns) == 3:
                 columns.append({'lng': 0, 'lat': 0})
             # Create the tesselation; initially open-ended and not clipped to the clipping polygon
             tesselation = Voronoi(np.array( [ [float(p['lng']), float(p['lat'])] for p in columns ] ))
