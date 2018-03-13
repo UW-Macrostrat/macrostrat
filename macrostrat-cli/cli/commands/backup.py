@@ -75,19 +75,19 @@ class Backup(Base):
             self.pg['cursor'].execute("""
                 COPY (SELECT * FROM maps.sources WHERE source_id = %(source_id)s) TO '%(cwd)s/temp_sources.tsv' WITH ENCODING 'UTF8'
             """, {'source_id': self.args[1], 'cwd': AsIs(cwd) })
-            call(['echo "COPY maps.sources FROM stdin;" | cat - temp_sources.tsv > sources.tsv && echo "\.\n" >> sources.tsv && rm temp_sources.tsv'], shell=True)
+            call(['echo "COPY maps.sources FROM stdin;" | cat - temp_sources.tsv > sources.tsv && echo "\.\n" >> sources.tsv && rm -f temp_sources.tsv'], shell=True)
 
             # maps.scale
             self.pg['cursor'].execute("""
                 COPY (SELECT * FROM maps.%(scale)s WHERE source_id = %(source_id)s) TO '%(cwd)s/temp_scale.tsv' WITH ENCODING 'UTF8'
             """, { 'scale': AsIs(source_info.scale), 'source_id': self.args[1], 'cwd': AsIs(cwd) })
-            call(['echo "COPY maps.%s FROM stdin;" | cat - temp_scale.tsv > scale.tsv && echo "\.\n" >> scale.tsv && rm temp_scale.tsv' % (source_info.scale, )], shell=True)
+            call(['echo "COPY maps.%s FROM stdin;" | cat - temp_scale.tsv > scale.tsv && echo "\.\n" >> scale.tsv && rm -f temp_scale.tsv' % (source_info.scale, )], shell=True)
 
             # lines.scale
             self.pg['cursor'].execute("""
                 COPY (SELECT * FROM lines.%(scale)s WHERE source_id = %(source_id)s) TO '%(cwd)s/temp_lines.tsv' WITH ENCODING 'UTF8'
             """, { 'scale': AsIs(source_info.scale), 'source_id': self.args[1], 'cwd': AsIs(cwd) })
-            call(['echo "COPY lines.%s FROM stdin;" | cat - temp_lines.tsv > lines.tsv && echo "\.\n" >> lines.tsv && rm temp_lines.tsv' % (source_info.scale, )], shell=True)
+            call(['echo "COPY lines.%s FROM stdin;" | cat - temp_lines.tsv > lines.tsv && echo "\.\n" >> lines.tsv && rm -f temp_lines.tsv' % (source_info.scale, )], shell=True)
 
             # maps.map_liths
             self.pg['cursor'].execute("""
@@ -98,7 +98,7 @@ class Backup(Base):
                     WHERE source_id = %(source_id)s
                 )) TO '%(cwd)s/temp_map_liths.tsv' WITH ENCODING 'UTF8'
             """, { 'scale': AsIs(source_info.scale), 'source_id': self.args[1], 'cwd': AsIs(cwd)  })
-            call(['echo "COPY maps.map_liths FROM stdin;" | cat - temp_map_liths.tsv > map_liths.tsv && echo "\.\n" >> map_liths.tsv && rm temp_map_liths.tsv'], shell=True)
+            call(['echo "COPY maps.map_liths FROM stdin;" | cat - temp_map_liths.tsv > map_liths.tsv && echo "\.\n" >> map_liths.tsv && rm -f temp_map_liths.tsv'], shell=True)
 
             # maps.map_strat_names
             self.pg['cursor'].execute("""
@@ -109,7 +109,7 @@ class Backup(Base):
                     WHERE source_id = %(source_id)s
                 )) TO '%(cwd)s/temp_strat_names.tsv' WITH ENCODING 'UTF8'
             """, { 'scale': AsIs(source_info.scale), 'source_id': self.args[1], 'cwd': AsIs(cwd)  })
-            call(['echo "COPY maps.map_strat_names FROM stdin;" | cat - temp_strat_names.tsv > strat_names.tsv && echo "\.\n" >> strat_names.tsv && rm temp_strat_names.tsv'], shell=True)
+            call(['echo "COPY maps.map_strat_names FROM stdin;" | cat - temp_strat_names.tsv > strat_names.tsv && echo "\.\n" >> strat_names.tsv && rm -f temp_strat_names.tsv'], shell=True)
 
             # maps.map_units
             self.pg['cursor'].execute("""
@@ -120,14 +120,14 @@ class Backup(Base):
                     WHERE source_id = %(source_id)s
                 )) TO '%(cwd)s/temp_map_units.tsv' WITH ENCODING 'UTF8'
             """, { 'scale': AsIs(source_info.scale), 'source_id': self.args[1], 'cwd': AsIs(cwd)  })
-            call(['echo "COPY maps.map_units FROM stdin;" | cat - temp_map_units.tsv > map_units.tsv && echo "\.\n" >> map_units.tsv && rm temp_map_units.tsv'], shell=True)
+            call(['echo "COPY maps.map_units FROM stdin;" | cat - temp_map_units.tsv > map_units.tsv && echo "\.\n" >> map_units.tsv && rm -f temp_map_units.tsv'], shell=True)
 
             # points.points
             self.pg['cursor'].execute("""
                 COPY (SELECT * FROM points.points
                 WHERE source_id = %(source_id)s) TO '%(cwd)s/temp_points.tsv' WITH ENCODING 'UTF8'
             """, { 'source_id': self.args[1], 'cwd': AsIs(cwd)  })
-            call(['echo "COPY points.points FROM stdin;" | cat - temp_points.tsv > points.tsv && echo "\.\n" >> points.tsv && rm temp_points.tsv'], shell=True)
+            call(['echo "COPY points.points FROM stdin;" | cat - temp_points.tsv > points.tsv && echo "\.\n" >> points.tsv && rm -f temp_points.tsv'], shell=True)
 
             # public.lookup_scale
             self.pg['cursor'].execute("""
@@ -138,7 +138,7 @@ class Backup(Base):
                     WHERE source_id = %(source_id)s
                 )) TO '%(cwd)s/temp_lookup.tsv' WITH ENCODING 'UTF8'
             """, { 'scale': AsIs(source_info.scale), 'source_id': self.args[1], 'cwd': AsIs(cwd)  })
-            call(['echo "COPY public.lookup_%s FROM stdin;" | cat - temp_lookup.tsv > lookup.tsv && echo "\.\n" >> lookup.tsv && rm temp_lookup.tsv' % (source_info.scale, )], shell=True)
+            call(['echo "COPY public.lookup_%s FROM stdin;" | cat - temp_lookup.tsv > lookup.tsv && echo "\.\n" >> lookup.tsv && rm -f temp_lookup.tsv' % (source_info.scale, )], shell=True)
 
             carto_tables = ''
             carto_cmd = 'cat '
@@ -151,7 +151,7 @@ class Backup(Base):
                         WHERE source_id = %(source_id)s
                     ))) TO '%(cwd)s/temp_carto_%(scale)s.tsv' WITH ENCODING 'UTF8'
                 """, { 'scale': AsIs(scale), 'source_id': self.args[1], 'cwd': AsIs(cwd)  })
-                call(['echo "COPY carto_new.%s FROM stdin;" | cat - temp_carto_%s.tsv > carto_%s.tsv && echo "\.\n" >> carto_%s.tsv && rm temp_carto_%s.tsv' % (scale, scale, scale, scale, scale )], shell=True)
+                call(['echo "COPY carto_new.%s FROM stdin;" | cat - temp_carto_%s.tsv > carto_%s.tsv && echo "\.\n" >> carto_%s.tsv && rm -f temp_carto_%s.tsv' % (scale, scale, scale, scale, scale )], shell=True)
 
                 self.pg['cursor'].execute("""
                     COPY (SELECT * FROM carto_new.lines_%(scale)s
@@ -161,14 +161,14 @@ class Backup(Base):
                         WHERE source_id = %(source_id)s
                     ))) TO '%(cwd)s/temp_carto_lines_%(scale)s.tsv' WITH ENCODING 'UTF8'
                 """, { 'scale': AsIs(scale), 'source_id': self.args[1], 'cwd': AsIs(cwd)  })
-                call(['echo "COPY carto_new.lines_%s FROM stdin;" | cat - temp_carto_lines_%s.tsv > carto_lines_%s.tsv && echo "\.\n" >> carto_lines_%s.tsv && rm temp_carto_lines_%s.tsv' % (scale, scale, scale, scale, scale )], shell=True)
+                call(['echo "COPY carto_new.lines_%s FROM stdin;" | cat - temp_carto_lines_%s.tsv > carto_lines_%s.tsv && echo "\.\n" >> carto_lines_%s.tsv && rm -f temp_carto_lines_%s.tsv' % (scale, scale, scale, scale, scale )], shell=True)
 
                 # bookkeeping for the giant command
                 carto_cmd += "<(cat %s/export_scripts/delete_carto.sql | sed 's/::source_id::/%s/g; s/::scale::/%s/g')" % ( os.path.dirname(__file__), self.args[1], scale, )
 
                 carto_tables += 'carto_%s.tsv carto_lines_%s.tsv' % (scale, scale, )
 
-            call("cat <(cat %s/export_scripts/delete.sql | sed 's/::source_id::/%s/g; s/::scale::/%s/g; s/::primary_table::/%s/g; s/::primary_line_table::/%s/g') <(pg_dump -O -x -c -t sources.%s -t sources.%s -U %s -h %s -p %s burwell | cat - sources.tsv scale.tsv lines.tsv map_liths.tsv strat_names.tsv map_units.tsv points.tsv lookup.tsv) <(%s) <(cat %s) | gzip > %s.%s.sql.gz && rm *.tsv" % ( os.path.dirname(__file__), self.args[1], source_info.scale, source_info.primary_table, source_info.primary_line_table, source_info.primary_table, source_info.primary_line_table, self.credentials['pg_user'], self.credentials['pg_host'], self.credentials['pg_port'], carto_cmd, carto_tables, today, source_info.name.replace(' ', '_')), shell=True, executable='/bin/bash')
+            call("cat <(cat %s/export_scripts/delete.sql | sed 's/::source_id::/%s/g; s/::scale::/%s/g; s/::primary_table::/%s/g; s/::primary_line_table::/%s/g') <(pg_dump -O -x -c -t sources.%s -t sources.%s -U %s -h %s -p %s burwell | cat - sources.tsv scale.tsv lines.tsv map_liths.tsv strat_names.tsv map_units.tsv points.tsv lookup.tsv) <(%s) <(cat %s) | gzip > %s.%s.sql.gz && rm -f *.tsv" % ( os.path.dirname(__file__), self.args[1], source_info.scale, source_info.primary_table, source_info.primary_line_table, source_info.primary_table, source_info.primary_line_table, self.credentials['pg_user'], self.credentials['pg_host'], self.credentials['pg_port'], carto_cmd, carto_tables, today, source_info.name.replace(' ', '_')), shell=True, executable='/bin/bash')
 
             print '     Dumped %s to %s.%s.sql.gz' % (source_info.name, today, source_info.name.replace(' ', '_'))
 
