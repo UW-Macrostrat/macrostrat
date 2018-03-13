@@ -106,6 +106,7 @@ function buildStyles(callback) {
     FROM maps.legend
     WHERE color IS NOT NULL AND color != ''
   `, [], (error, data) => {
+    console.log(data.length)
     let colors = data.map(c => {
       return `
         .units[color="${c.color}"] {
@@ -117,8 +118,7 @@ function buildStyles(callback) {
 
     // Load the base styles
     let cartoCSS = fs.readFileSync(`${__dirname}/styles.css`, 'utf8')
-
-    callback(null, colors + cartoCSS)
+    callback(null, cartoCSS + colors)
   })
 }
 
