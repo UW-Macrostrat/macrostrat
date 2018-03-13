@@ -23,7 +23,7 @@ module.exports = (options) => {
       mapnikProvider = new mapnik({
         pathname: `./mapnik/burwell_large_emphasized.xml`,
         tileSize: 512,
-        scale: 2,
+        scale: 1,
       })
       mapnikProvider.init(server, (error) => {
         if (error) {
