@@ -6,14 +6,10 @@ module.exports = (options) => {
   let mapnikProvider = null
   let mbtilesProvider = null
 
-  let blankVectorTile = ''
   let blankRasterTile = ''
 
   fs.readFile(`${__dirname}/resources/tile.png`, (error, buffer) => {
     blankRasterTile = buffer
-  })
-  fs.readFile(`${__dirname}/resources/tile.mvt`, (error, buffer) => {
-    blankVectorTile = buffer
   })
 
   return {

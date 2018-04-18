@@ -89,43 +89,6 @@ module.exports = (options) => {
           })
         })
       }
-      // if (z >= 10) {
-      //
-      // } else {
-      //   pg.query(`
-      //     SELECT ST_AsMVT(q, 'pbdb-collections', 4096, 'geom') AS vtile
-      //     FROM (
-      //       SELECT
-      //           cid,
-      //           array_length(array_agg(collection_no), 1) AS n_collections,
-      //           ST_AsMVTGeom(
-      //             ST_Centroid(ST_Collect(geom)),
-      //             ST_SetSRID(ST_MakeBox2D(ST_MakePoint(${extent[0]}, ${extent[1]}), ST_MakePoint(${extent[2]}, ${extent[3]})), 4326),
-      //             4096,
-      //             512
-      //           ) AS geom
-      //       FROM (
-      //         SELECT
-      //           collection_no,
-      //           name,
-      //           ST_ClusterDBScan(geom, eps := ${zoomSimplification[z]}, minpoints := 2) over () AS cid,
-      //           geom
-      //         FROM macrostrat.pbdb_collections
-      //         WHERE geom && ST_SetSRID(ST_MakeBox2D(ST_MakePoint($1, $2), ST_MakePoint($3, $4)), 4326)
-      //        ) sub
-      //       GROUP BY cid
-      //     ) q
-      //   `, extent, (error, result) => {
-      //     if (error || !result || !result.length || !result[0].vtile) {
-      //       return callback(error, blankVectorTile, {
-      //         'Content-Type': 'application/x-protobuf'
-      //       })
-      //     }
-      //     callback(error, result[0].vtile, {
-      //       'Content-Type': 'application/x-protobuf'
-      //     })
-      //   })
-      // }
     },
     destroy: (server, callback) => {
       callback()

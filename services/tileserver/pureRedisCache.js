@@ -1,5 +1,6 @@
 const redis = require('redis')
 const client = redis.createClient(6379, '127.0.0.1', {'return_buffers': true})
+const credentials = require('./credentials')
 
 module.exports = (options) => {
     function key(req) {
@@ -32,7 +33,7 @@ module.exports = (options) => {
 
         get: (server, tile, callback) => {
           // Handle a cache-clear request
-          if (tile.headers['x-tilestrata-deletetile'] && tile.headers['x-tilestrata-deletetile'] === secret) {
+          if (tile.headers['X-Tilestrata-DeleteTile'] && tile.headers['X-Tilestrata-DeleteTile'] === credentials.secret) {
             deleteTile(tile)
             return callback(null, (tile.filename.indexOf('.png') > -1 ? blankRasterTile : blankVectorTile))
           }

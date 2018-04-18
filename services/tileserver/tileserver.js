@@ -2,14 +2,16 @@ const tilestrata = require('tilestrata')
 const vtile = require('tilestrata-vtile')
 const etag = require('tilestrata-etag')
 const vtileraster = require('tilestrata-vtile-raster')
+
+// Load our providers
 const rasterProvider = require('./raster-provider')
 const redisCache = require('./redisCache')
-const pureRedisCache = require('./pureRedisCache')
-const logger = require('./logger')
-
 const cartoVectorProvider = require('./cartoVectorProvider')
 const cartoSlimVectorProvider = require('./cartoSlimVectorProvider')
 const pbdbCollectionProvider = require('./pbdb-collection-provider')
+
+const pureRedisCache = require('./pureRedisCache')
+const logger = require('./logger')
 
 const MAX_ZOOM = 16
 module.exports = tilestrata.middleware({

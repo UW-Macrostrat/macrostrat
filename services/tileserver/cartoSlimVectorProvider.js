@@ -12,9 +12,9 @@ module.exports = (options) => {
   })
 
   return {
-    name: 'carto-slim-provider',
+    name: 'carto-slim',
     init: (server, callback) => {
-      // Create the provider
+      // Create the a mapnik provider for dynamic tile creation
       mapnikProvider = new mapnik({
         xml: `./mapnik/burwell_vector_slim_large.xml`,
         tileSize: 512,
@@ -25,6 +25,7 @@ module.exports = (options) => {
           console.log('Error initializing mapnik provider', error)
         }
       })
+      // Create a mbtiles provider for pre-created tile fetching
       new mbtiles(`./seeder/carto-slim-vector.mbtiles`, (error, provider) => {
         if (error) {
           console.log('Could not find carto-slim-vector.mbtiles')
