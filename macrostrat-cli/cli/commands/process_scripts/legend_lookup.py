@@ -484,17 +484,17 @@ class LegendLookup(Base):
 
             variants = [
                 c.brighten(amount=3).hexcode,
-                c.brighten(amount=6).hexcode,
-                c.brighten(amount=9).hexcode,
                 c.darken(amount=3).hexcode,
+                c.brighten(amount=6).hexcode,
                 c.darken(amount=6).hexcode,
+                c.brighten(amount=9).hexcode,
                 c.darken(amount=9).hexcode,
                 c.saturate(amount=10).hexcode,
+                c.desaturate(amount=10).hexcode,
+                c.desaturate(amount=20).hexcode,
                 c.saturate(amount=20).hexcode,
                 c.saturate(amount=30).hexcode,
-                c.saturate(amount=40).hexcode,
-                c.desaturate(amount=10).hexcode,
-                c.desaturate(amount=20).hexcode
+                c.saturate(amount=40).hexcode
             ]
             used_variants = []
 

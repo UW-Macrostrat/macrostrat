@@ -324,28 +324,60 @@ class Export(Base):
                 SELECT ST_Area(ST_MakeEnvelope(%(xmin)s, %(ymin)s, %(xmax)s, %(ymax)s)::geography)/1000000 as area
             """, { 'xmin': xmin, 'ymin': ymin, 'xmax': xmax, 'ymax': ymax })
             area = int(self.pg['cursor'].fetchone()['area'])
-            scale = None
-            if area < 1000000:
-                scale = 'large'
-            elif area < 15000000:
-                scale = 'medium'
-            elif area < 80000000:
-                scale = 'small'
-            else:
-                scale = 'tiny'
+            scale = 'large'
+            # if area < 1000000:
+            #     scale = 'large'
+            # elif area < 15000000:
+            #     scale = 'medium'
+            # elif area < 80000000:
+            #     scale = 'small'
+            # else:
+            #     scale = 'tiny'
 
             filename = '%s-%s-%s-%s' % (xmin, ymin, xmax, ymax)
             # Write carto units
             select = '''
-                SELECT c.map_id, legend_id, ST_Multi(geom) AS geom
+                SELECT c.map_id, l.legend_id, l.source_id, name,
+                strat_name,
+                age,
+                lith,
+                descrip,
+                comments,
+                b_interval,
+                t_interval,
+                best_age_bottom,
+                best_age_top,
+                color,
+                COALESCE(array_to_string(unit_ids, '|'), '') AS unit_ids,
+                COALESCE(array_to_string(strat_name_ids, '|'), '') AS strat_name_ids,
+                COALESCE(array_to_string(concept_ids, '|'), '') AS concept_ids,
+                COALESCE(array_to_string(lith_ids, '|'), '') AS lith_ids,
+                ST_Multi(geom) AS geom
                 FROM carto_new.%s c
                 JOIN maps.map_legend ON map_legend.map_id = c.map_id
+                JOIN maps.legend l ON l.legend_id = map_legend.legend_id
                 WHERE ST_Intersects(c.geom, %s)
             ''' % (scale, 'ST_SetSRID(ST_MakeEnvelope(%s, %s, %s, %s), 4326)' % (xmin, ymin, xmax, ymax), )
 
             Export.write_layer(self, filename, 'units', 'MultiPolygon', select, {}, {
                 'map_id': 'int',
-                'legend_id': 'int'
+                'legend_id': 'int',
+                'source_id': 'int',
+                'name': 'str',
+                'strat_name': 'str',
+                'age': 'str',
+                'lith': 'str',
+                'descrip': 'str',
+                'comments': 'str',
+                'b_interval': 'int',
+                't_interval': 'int',
+                'best_age_bottom': 'str',
+                'best_age_top': 'str',
+                'color': 'str',
+                'unit_ids': 'str',
+                'strat_name_ids': 'str',
+                'concept_ids': 'str',
+                'lith_ids': 'str'
             })
 
             # Write carto lines
@@ -364,59 +396,21 @@ class Export(Base):
                 WHERE ST_Intersects(c.geom, %s)
             ''' % (scale, 'ST_SetSRID(ST_MakeEnvelope(%s, %s, %s, %s), 4326)' % (xmin, ymin, xmax, ymax), )
 
+            Export.write_layer(self, filename, 'lines', 'MultiLineString', select, {}, {
+                'line_id': 'int',
+                'source_id': 'int',
+                'name': 'str',
+                'type': 'str',
+                'direction': 'str',
+                'descrip': 'str',
+                'new_type': 'str',
+                'new_direction': 'str'
+            })
+
             # Write legend
             connection = sqlite3.connect('%s.gpkg' % filename)
+            connection.text_factory = str
             cursor = connection.cursor()
-
-            cursor.execute("""
-                CREATE TABLE legend (
-                    legend_id integer PRIMARY KEY AUTOINCREMENT,
-                    source_id integer,
-                    name text,
-                    strat_name text,
-                    age text,
-                    lith text,
-                    descrip text,
-                    comments text,
-                    b_interval integer,
-                    t_interval integer,
-                    best_age_bottom float,
-                    best_age_top float
-                )
-            """)
-
-            select = """
-                SELECT
-                    legend_id,
-                    source_id,
-                    name,
-                    strat_name,
-                    age,
-                    lith,
-                    descrip,
-                    comments,
-                    b_interval,
-                    t_interval,
-                    best_age_bottom,
-                    best_age_top
-                FROM maps.legend
-                WHERE legend_id IN (
-                    SELECT DISTINCT legend_id
-                    FROM carto_new.%s c
-                    JOIN maps.map_legend ON map_legend.map_id = c.map_id
-                    WHERE ST_Intersects(c.geom, %s)
-                )
-            """  % (scale, 'ST_SetSRID(ST_MakeEnvelope(%s, %s, %s, %s), 4326)' % (xmin, ymin, xmax, ymax), )
-
-            self.pg['cursor'].execute(select)
-            for row in self.pg['cursor']:
-                cursor.execute("""
-                    INSERT INTO legend
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, [ row['legend_id'], row['source_id'], row['name'], row['strat_name'], row['age'], row['lith'], row['descrip'], row['comments'], row['t_interval'], row['b_interval'], float(row['best_age_top']), float(row['best_age_bottom']) ])
-
-            connection.commit()
-
 
             # Write sources
             cursor.execute("""
@@ -470,33 +464,6 @@ class Export(Base):
 
             connection.commit()
             connection.close()
-
-
-
-
-            # select = '''
-            #     SELECT c.map_id, legend_id, ST_Multi(geom) AS geom
-            #     FROM carto_new.%s c
-            #     JOIN maps.map_legend ON map_legend.map_id = c.map_id
-            #     WHERE ST_Intersects(c.geom, %s)
-            # ''' % (scale, 'ST_SetSRID(ST_MakeEnvelope(%s, %s, %s, %s), 4326)' % (xmin, ymin, xmax, ymax), )
-            #
-            # Export.write_layer(self, filename, 'units', 'MultiPolygon', select, {}, {
-            #     'map_id': 'int',
-            #     'legend_id': 'int'
-            # })
-            #
-            # Export.write_layer(self, filename, 'units', 'MultiPolygon', select, {}, {
-            #     'map_id': 'int',
-            #     'legend_id': 'int'
-            # })
-
-            # Write each scale
-            # for scale in ['tiny', 'small', 'medium', 'large']:
-            #     # Units
-            #     envelope = 'ST_SetSRID(ST_MakeEnvelope(%s, %s, %s, %s), 4326)' % (xmin, ymin, xmax, ymax)
-            #     select = Export.maps_select_intersect % (envelope, scale, scale, envelope, )
-            #     Export.write_layer(self, 'temp', 'units', 'MultiPolygon', select, {}, Export.maps_schema)
 
             # Write the metadata
 
