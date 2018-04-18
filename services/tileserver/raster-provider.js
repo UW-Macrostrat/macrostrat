@@ -17,9 +17,9 @@ module.exports = (options) => {
     init: (server, callback) => {
       // Create the provider
       mapnikProvider = new mapnik({
-        pathname: `./mapnik/burwell_large_emphasized.xml`,
+        pathname: `./seeder/etc/burwell_large_emphasized.xml`,
         tileSize: 512,
-        scale: 1,
+        scale: 2,
       })
       mapnikProvider.init(server, (error) => {
         if (error) {
