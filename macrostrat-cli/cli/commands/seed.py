@@ -255,7 +255,7 @@ class Seed(Base):
             headers = { 'X-Tilestrata-DeleteTile': self.credentials['tileserver_secret'] }
             # Call delete tile
             for tile in tqdm(tiles):
-                url = 'http://localhost:5555/carto/%s/%s/%s.png' % (layer, tile.z, tile.x, tile.y)
+                url = 'http://localhost:5555/carto/%s/%s/%s.png' % (tile.z, tile.x, tile.y)
                 try:
                     r = requests.get(url, headers=headers)
                     if r.status_code != 200 and r.status_code != 204:
@@ -263,7 +263,7 @@ class Seed(Base):
                 except:
                     pass
 
-                url = 'http://localhost:5555/carto/%s/%s/%s.mvt' % (layer, tile.z, tile.x, tile.y)
+                url = 'http://localhost:5555/carto/%s/%s/%s.mvt' % (tile.z, tile.x, tile.y)
                 try:
                     r = requests.get(url, headers=headers)
                     if r.status_code != 200 and r.status_code != 204:
@@ -271,7 +271,7 @@ class Seed(Base):
                 except:
                     pass
 
-                url = 'http://localhost:5555/carto-slim/%s/%s/%s.mvt' % (layer, tile.z, tile.x, tile.y)
+                url = 'http://localhost:5555/carto-slim/%s/%s/%s.mvt' % (tile.z, tile.x, tile.y)
                 try:
                     r = requests.get(url, headers=headers)
                     if r.status_code != 200 and r.status_code != 204:
