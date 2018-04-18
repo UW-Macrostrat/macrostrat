@@ -100,12 +100,12 @@ class Legend(Base):
           FROM maps.%(scale)s m
           JOIN maps.legend ON
             legend.source_id = m.source_id AND
-            COALESCE(legend.name, '') = COALESCE(m.name, '') AND
-            COALESCE(legend.strat_name, '') = COALESCE(m.strat_name, '') AND
-            COALESCE(legend.age, '') = COALESCE(m.age, '') AND
-            COALESCE(legend.lith, '') = COALESCE(m.lith, '') AND
-            COALESCE(legend.descrip, '') = COALESCE(m.descrip, '') AND
-            COALESCE(legend.comments, '') = COALESCE(m.comments, '') AND
+            trim(COALESCE(legend.name, '')) = trim(COALESCE(m.name, '')) AND
+            trim(COALESCE(legend.strat_name, '')) = trim(COALESCE(m.strat_name, '')) AND
+            trim(COALESCE(legend.age, '')) = trim(COALESCE(m.age, '')) AND
+            trim(COALESCE(legend.lith, '')) = trim(COALESCE(m.lith, '')) AND
+            trim(COALESCE(legend.descrip, '')) = trim(COALESCE(m.descrip, '')) AND
+            trim(COALESCE(legend.comments, '')) = trim(COALESCE(m.comments, '')) AND
             COALESCE(legend.b_interval, -999) = COALESCE(m.b_interval, -999) AND
             COALESCE(legend.t_interval, -999) = COALESCE(m.t_interval, -999)
           WHERE m.source_id = %(source_id)s;
