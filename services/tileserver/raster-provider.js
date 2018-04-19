@@ -32,7 +32,7 @@ module.exports = (options) => {
         if (err) {
           console.log('Could not find carto-raster.mbtiles')
         }
-        mbtilesProvider = provider
+        mbtilesProvider = mbtileHandler
         callback()
       })
     },
