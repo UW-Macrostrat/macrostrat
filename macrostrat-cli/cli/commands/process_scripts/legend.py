@@ -75,19 +75,19 @@ class Legend(Base):
         self.pg['cursor'].execute("""
           INSERT INTO maps.legend (source_id, name, strat_name, age, lith, descrip, comments, b_interval, t_interval)
           SELECT DISTINCT ON (q.name, q.strat_name, q.age, q.lith, q.descrip, q.comments, q.b_interval, q.t_interval) %(source_id)s, q.name, q.strat_name, q.age, q.lith, q.descrip, q.comments, q.b_interval, q.t_interval
-          FROM maps.%(scale)s q
-          LEFT JOIN maps.legend ON
-            legend.source_id = %(source_id)s
-          WHERE q.source_id = %(source_id)s
-          AND
-            legend.name IS NULL AND
-            legend.strat_name IS NULL AND
-            legend.age IS NULL AND
-            legend.lith IS NULL AND
-            legend.descrip IS NULL AND
-            legend.comments IS NULL AND
-            legend.b_interval IS NULL AND
-            legend.t_interval IS NULL;
+            FROM maps.%(scale)s q
+            LEFT JOIN maps.legend ON
+                trim(COALESCE(legend.name, '')) = trim(COALESCE(q.name, '')) AND
+                trim(COALESCE(legend.strat_name, '')) = trim(COALESCE(q.strat_name, '')) AND
+                trim(COALESCE(legend.age, '')) = trim(COALESCE(q.age, '')) AND
+                trim(COALESCE(legend.lith, '')) = trim(COALESCE(q.lith, '')) AND
+                trim(COALESCE(legend.descrip, '')) = trim(COALESCE(q.descrip, '')) AND
+                trim(COALESCE(legend.comments, '')) = trim(COALESCE(q.comments, '')) AND
+                COALESCE(legend.b_interval, -999) = COALESCE(q.b_interval, -999) AND
+                COALESCE(legend.t_interval, -999) = COALESCE(q.t_interval, -999) AND
+                legend.source_id = %(source_id)s
+            WHERE q.source_id = %(source_id)s
+            AND legend_id IS NULL;
         """, {
             'scale': AsIs(scale),
             'source_id': source_id
