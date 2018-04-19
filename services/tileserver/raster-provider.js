@@ -29,7 +29,7 @@ module.exports = (options) => {
       let path = `${__dirname}/seeder/carto-raster.mbtiles`
       let sinkUri = `mbtiles:///${path}`
       new mbtiles(sinkUri, (err, mbtileHandler) => {
-        if (error) {
+        if (err) {
           console.log('Could not find carto-raster.mbtiles')
         }
         mbtilesProvider = provider
