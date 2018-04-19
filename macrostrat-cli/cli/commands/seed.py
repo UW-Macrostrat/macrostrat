@@ -218,7 +218,12 @@ class Seed(Base):
         tiler = tileschemes.WebMercator()
 
         print '     Seeding...'
+        fails = 0
         for z in self.zooms:
+            if fails > 20:
+                print 'There seems be an issue seeding tiles. Quitting....'
+                sys.exit()
+                
             print '         ', z
             tiles = [ t for t in tilecover.cover_geometry(tiler, seed_area, z) ]
             headers = { 'X-Tilestrata-SkipCache': '*'}
@@ -230,6 +235,7 @@ class Seed(Base):
                         print r.status_code
                 except:
                     pass
+                    fails = fails + 1
 
                 url = 'http://localhost:8675/carto/%s/%s/%s.mvt?secret=%s' % (tile.z, tile.x, tile.y, self.credentials['tileserver_secret'])
                 try:
@@ -238,6 +244,7 @@ class Seed(Base):
                         print r.status_code
                 except:
                     pass
+                    fails = fails + 1
 
                 url = 'http://localhost:8675/carto-slim/%s/%s/%s.mvt?secret=%s' % (tile.z, tile.x, tile.y, self.credentials['tileserver_secret'])
                 try:
@@ -246,35 +253,36 @@ class Seed(Base):
                         print r.status_code
                 except:
                     pass
+                    fails = fails + 1
 
 
-        print '     Deleting...'
-        for z in self.cached_zooms:
-            print '         ', z
-            tiles = [ t for t in tilecover.cover_geometry(tiler, seed_area, z) ]
-            headers = { 'X-Tilestrata-DeleteTile': self.credentials['tileserver_secret'] }
-            # Call delete tile
-            for tile in tqdm(tiles):
-                url = 'http://localhost:5555/carto/%s/%s/%s.png' % (tile.z, tile.x, tile.y)
-                try:
-                    r = requests.get(url, headers=headers)
-                    if r.status_code != 200 and r.status_code != 204:
-                        print r.status_code
-                except:
-                    pass
-
-                url = 'http://localhost:5555/carto/%s/%s/%s.mvt' % (tile.z, tile.x, tile.y)
-                try:
-                    r = requests.get(url, headers=headers)
-                    if r.status_code != 200 and r.status_code != 204:
-                        print r.status_code
-                except:
-                    pass
-
-                url = 'http://localhost:5555/carto-slim/%s/%s/%s.mvt' % (tile.z, tile.x, tile.y)
-                try:
-                    r = requests.get(url, headers=headers)
-                    if r.status_code != 200 and r.status_code != 204:
-                        print r.status_code
-                except:
-                    pass
+        # print '     Deleting...'
+        # for z in self.cached_zooms:
+        #     print '         ', z
+        #     tiles = [ t for t in tilecover.cover_geometry(tiler, seed_area, z) ]
+        #     headers = { 'X-Tilestrata-DeleteTile': self.credentials['tileserver_secret'] }
+        #     # Call delete tile
+        #     for tile in tqdm(tiles):
+        #         url = 'http://localhost:5555/carto/%s/%s/%s.png' % (tile.z, tile.x, tile.y)
+        #         try:
+        #             r = requests.get(url, headers=headers)
+        #             if r.status_code != 200 and r.status_code != 204:
+        #                 print r.status_code
+        #         except:
+        #             pass
+        #
+        #         url = 'http://localhost:5555/carto/%s/%s/%s.mvt' % (tile.z, tile.x, tile.y)
+        #         try:
+        #             r = requests.get(url, headers=headers)
+        #             if r.status_code != 200 and r.status_code != 204:
+        #                 print r.status_code
+        #         except:
+        #             pass
+        #
+        #         url = 'http://localhost:5555/carto-slim/%s/%s/%s.mvt' % (tile.z, tile.x, tile.y)
+        #         try:
+        #             r = requests.get(url, headers=headers)
+        #             if r.status_code != 200 and r.status_code != 204:
+        #                 print r.status_code
+        #         except:
+        #             pass
