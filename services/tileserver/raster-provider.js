@@ -26,7 +26,9 @@ module.exports = (options) => {
           console.log('Error initializing mapnik provider', error)
         }
       })
-      new mbtiles(`./seeder/carto-raster.mbtiles`, (error, provider) => {
+      let path = `${__dirname}/seeder/carto-raster.mbtiles`
+      let sinkUri = `mbtiles:///${path}`
+      new mbtiles(sinkUri, (err, mbtileHandler) => {
         if (error) {
           console.log('Could not find carto-raster.mbtiles')
         }
