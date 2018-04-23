@@ -429,7 +429,7 @@ class LegendLookup(Base):
                     WHEN
                         (SELECT max(b_age) AS b_age FROM macrostrat.lookup_unit_intervals WHERE unit_id = ANY(unit_ids)) IS NULL
                     THEN tb.age_bottom
-                    ELSE (SELECT min(t_age) AS t_age FROM macrostrat.lookup_unit_intervals WHERE unit_id = ANY(unit_ids))
+                    ELSE (SELECT max(b_age) AS t_age FROM macrostrat.lookup_unit_intervals WHERE unit_id = ANY(unit_ids))
                  END as best_age_bottom
                FROM maps.legend
                LEFT JOIN macrostrat.intervals ti ON ti.id = t_interval
@@ -493,8 +493,7 @@ class LegendLookup(Base):
                 c.desaturate(amount=10).hexcode,
                 c.desaturate(amount=20).hexcode,
                 c.saturate(amount=20).hexcode,
-                c.saturate(amount=30).hexcode,
-                c.saturate(amount=40).hexcode
+                c.saturate(amount=30).hexcode
             ]
             used_variants = []
 
@@ -514,7 +513,7 @@ class LegendLookup(Base):
                     if new_color not in used_variants:
                         valid_choice = True
                         used_variants.append(new_color)
-                    elif loops > 12:
+                    elif loops > len(variants):
                         used_variants = []
 
 

@@ -24,6 +24,7 @@ class MapSource(Base):
             + macrostrat match units <source_id>
             + macrostrat match liths <source_id>
             + macrostrat process burwell_lookup <source_id>
+            + macrostrat process legend_lookup <source_id>
             + macrostrat process carto <source_id>
             + macrostrat process carto_lines <source_id>
             + macrostrat seed <source_id>
