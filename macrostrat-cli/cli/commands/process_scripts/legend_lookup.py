@@ -298,18 +298,7 @@ class LegendLookup(Base):
               GROUP BY map_legend.legend_id
             )
             UPDATE maps.legend
-            SET strat_name_ids =
-            CASE
-                WHEN array_length(legend.unit_ids, 1) = 0
-                    THEN strat_names.strat_name_ids
-                ELSE
-                    (
-                        SELECT array_agg(DISTINCT lsn.strat_name_id)
-                        FROM macrostrat.unit_strat_names usn
-                        JOIN macrostrat.lookup_strat_names lsn ON lsn.strat_name_id = usn.strat_name_id
-                        WHERE usn.unit_id = ANY(legend.unit_ids)
-                    )
-                END
+            SET strat_name_ids = strat_names.strat_name_ids
             FROM strat_names
             WHERE strat_names.legend_id = legend.legend_id;
         """, {
