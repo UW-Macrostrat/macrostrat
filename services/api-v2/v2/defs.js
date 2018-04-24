@@ -1641,6 +1641,24 @@
       }
     },
 
+    "/boundaries": {
+      "description": "Get geologic boundaries",
+      "visible": false,
+      "options": {
+        "parameters": {
+          "boundary_id": "A valid boundary id"
+        },
+        "output_formats": [
+          "geojson"
+        ],
+        "examples": [
+        ],
+        "fields": [
+
+        ]
+      }
+    },
+
 
   "/mobile": {
     "description": "Simplified data delivery, ideal for mobile applications",
