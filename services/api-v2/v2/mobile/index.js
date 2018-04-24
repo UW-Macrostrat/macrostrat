@@ -36,4 +36,8 @@ mobile.route("/map_filter")
 
 mobile.route("/autocomplete")
   .get(require("./autocomplete"));
+
+mobile.route("/dashboard")
+  .get(require("./dashboard"));
+
 module.exports =  mobile;

@@ -556,7 +556,13 @@ var mysql = require("mysql"),
           AND col_areas.col_area IS NOT NULL
         GROUP BY col_areas.col_id, cols.id, col_groups.col_group, col_groups.id, col_areas.col_area
         `, [], function(error, result) {
-          callback(null, result.rows)
+          if (!error && result && result.rows) {
+            callback(null, result.rows)
+          } else {
+            console.log('Could not set up column cache. Check postgres connection')
+            callback(null)
+          }
+
         })
       },
 
@@ -579,7 +585,13 @@ var mysql = require("mysql"),
           AND col_areas.col_area IS NOT NULL
         GROUP BY col_areas.col_id, cols.id, col_groups.col_group, col_groups.id
         `, [], function(error, result) {
-          callback(null, result.rows);
+          if (!error && result && result.rows) {
+            callback(null, result.rows)
+          } else {
+            console.log('Could not set up column cache. Check postgres connection')
+            callback(null)
+          }
+          
         })
       }
 

@@ -24,7 +24,7 @@ api.route("/changes")
 
 api.route("/columns/refresh-cache")
   .get(require("./column-cache-refresh"))
-  
+
 api.route("/columns")
   .get(function(req, res, next) {
     require("./columns")(req, res, next);
@@ -90,6 +90,9 @@ api.route("/measurements")
 
 api.route("/hillshade")
   .get(require("./hillshade"));
+
+api.route('/boundaries')
+  .get(require('./boundaries'))
 
 api.route("*")
   .get(require("./catchall"));

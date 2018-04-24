@@ -1754,6 +1754,40 @@
     }
   },
 
+  "/mobile/dashboard": {
+    "description": "Summarize Macrostrat for a given location",
+    "parent": "mobile",
+    "visible": false,
+    "options": {
+      "parameters": {
+        "lat": "numeric, a valid latitude",
+        "lng": "numeric, a valid longitude"
+      },
+      "output_formats": [
+        "json"
+      ],
+      "examples": [
+        "/mobile/dashboard?lat=43.0706192&lng=-89.406167"
+      ],
+      "fields": [
+        "max_thick",
+        "min_min_thick",
+        "b_age",
+        "t_age",
+        "b_int_name",
+        "t_int_name",
+        "lith",
+        "environ",
+        "econs",
+        "strat_names",
+        "strat_name_ids",
+        "c_int_name",
+        "int_color",
+        "lith_color"
+      ]
+    }
+  },
+
   "/mobile/map_query": {
     "description": "Query burwell (and Macrostrat) for a given location",
     "parent": "mobile",
