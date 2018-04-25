@@ -12,7 +12,7 @@ module.exports = (req, res, next) => {
   req.query.boundary_id = req.query.boundary_id.split(',')
 
   larkin.queryPg('burwell', `
-    SELECT boundary_id, ST_Simplify(geom, 0.1) AS geom
+    SELECT boundary_id, geom
     FROM geologic_boundaries.boundaries
     WHERE boundary_id = ANY($1)
   `, [ req.query.boundary_id ], (error, result) => {
