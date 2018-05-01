@@ -61,7 +61,6 @@ class Stats(Base):
                   ) AS distinct_collections
                   GROUP BY distinct_collections.project_id
                 ) AS collection_counts ON collection_counts.project_id = projects.id
-                WHERE project IN ('North America','New Zealand','Caribbean','Deep Sea')
             )
         """)
 
@@ -80,11 +79,14 @@ class Stats(Base):
         self.mariadb['cursor'].execute("UPDATE stats_new SET burwell_polygons = %d" % count)
         self.mariadb['connection'].commit()
 
-        self.mariadb['cursor'].execute("""
-            ALTER TABLE stats rename to stats_old;
-        """)
-        self.mariadb['cursor'].close()
-        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
+        try:
+            self.mariadb['cursor'].execute("""
+                ALTER TABLE stats rename to stats_old;
+            """)
+            self.mariadb['cursor'].close()
+            self.mariadb['cursor'] = self.mariadb['connection'].cursor()
+        except:
+            pass
 
         self.mariadb['cursor'].execute("""
             ALTER TABLE stats_new rename to stats;
