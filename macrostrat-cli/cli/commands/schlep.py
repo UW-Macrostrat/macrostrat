@@ -3,6 +3,7 @@ import sys
 import datetime
 from psycopg2.extensions import AsIs
 from table_meta import *
+import urllib2
 
 class Schlep(Base):
     '''
@@ -111,3 +112,8 @@ class Schlep(Base):
                 Schlep.move_table(self, t)
         else:
             Schlep.move_table(self, table)
+
+        try:
+            urllib2.urlopen('http://127.0.0.1:5000/api/v2/columns/refresh-cache?cacheRefreshKey=%s' % (self.credentials['cacheRefreshKey'], )).read()
+        except:
+            print 'API cache was not updated'
