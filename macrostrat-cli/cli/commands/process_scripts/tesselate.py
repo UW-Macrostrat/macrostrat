@@ -192,7 +192,8 @@ class Tesselate(Base):
             if len(parts) != 2:
                 print 'Invalid argument - %s' % (arg, )
             clean_part = re.sub(r'-', '', re.sub(u'\u2014', '', parts[0]))
-            parameters[clean_part] = parts[1].split(',')
+
+            parameters[clean_part] = parts[1].split(',') if clean_part != 'boundary_polygon' else parts[1]
 
         if len(parameters) < 1:
             print Tesselate.__doc__
@@ -288,7 +289,12 @@ class Tesselate(Base):
 
         # Validate the polygon
         if 'boundary_polygon' in parameters:
-            boundary_polygon = loads(parameters['boundary_polygon'])
+            try:
+                boundary_polygon = loads(parameters['boundary_polygon'])
+            except:
+                print '  The boundary polygon you provided could not be parsed. Please try again'
+                sys.exit(1)
+
             if not boundary_polygon.is_valid:
                 print ' Invalid boundary polygon'
                 sys.exit(1)
