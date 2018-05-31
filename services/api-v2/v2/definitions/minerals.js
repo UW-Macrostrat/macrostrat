@@ -6,7 +6,7 @@ module.exports = function(req, res, next, cb) {
     return larkin.info(req, res, next);
   }
 
-  var sql = "SELECT minerals.id AS mineral_id, mineral AS mineral, min_type as mineral_type, formula AS formula, formula_tags AS formula_tags, url AS url, hardness_min AS hardness_min, hardness_max AS hardness_max, crystal_form AS crystal_form, color AS color, lustre AS lustre FROM minerals";
+  var sql = "SELECT minerals.id AS mineral_id, mineral AS mineral, min_type as mineral_type, formula AS formula, formula_tags AS formula_tags, url AS url, hardness_min AS hardness_min, hardness_max AS hardness_max, crystal_form AS crystal_form, color AS mineral_color, lustre AS lustre FROM minerals";
 
   var params = {};
 

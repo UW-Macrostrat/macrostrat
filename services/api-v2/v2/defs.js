@@ -840,7 +840,7 @@
         "mineral_type",
         "hardness_min",
         "hardness_max",
-        "color",
+        "mineral_color",
         "lustre",
         "crystal_form",
         "formula",
