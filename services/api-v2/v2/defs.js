@@ -821,7 +821,7 @@
         "all": "return all available minerals",
         "mineral": "string, name of mineral",
         "mineral_type": "string, type of mineral (e.g., feldspar)",
-        "element": "string, element abbreviation, case sensitive (e.g., Co)",
+        "element": "string, chemical element abbreviation, case sensitive (e.g., Co)",
         "format": "Desired output format"
       },
       "output_formats": [
@@ -838,6 +838,11 @@
         "mineral_id",
         "mineral",
         "mineral_type",
+        "hardness_min",
+        "hardness_max",
+        "mineral_color",
+        "lustre",
+        "crystal_form",
         "formula",
         "formula_tags",
         "url"
@@ -1902,6 +1907,11 @@
     "min_thick": "number, minimum unit thickess in meters (NB: some zero values may be equivalent in meaning to NULL)",
     "color": "text, recommended coloring for units based on dominant lithology",
     "u_color": "text, original color for unit",
+    "mineral_color": "text, color description of mineral",
+    "lustre": "text, description of mineral lustre",
+    "crystal_form": "text, crystal form of mineral",
+    "hardness_min": "decimal, minimum value for Moh's hardness scale",
+    "hardness_max": "decimal, maximum value for Moh's hardness scale",
     "text_color": "text, recommended coloring for text based on color",
     "FO_interval": "text, chronostratigraphic interval containing initiation/earliest(oldest) age",
     "FO_age": "number, age of FO_interval base in Myr before present",
