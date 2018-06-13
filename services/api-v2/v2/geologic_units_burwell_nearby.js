@@ -182,7 +182,7 @@ module.exports = function(req, res, next) {
             FROM maps.small
             WHERE ST_Intersects(geom, ST_SetSRID(ST_MakePoint($1, $2),4326))
           ) THEN 'small'
-          ELSE ''
+          ELSE 'large'
         END AS scale
       `, [ req.query.lng, req.query.lat ], function(error, result) {
         if (error || !result.rows) return cb(error)

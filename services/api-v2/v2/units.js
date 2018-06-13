@@ -54,12 +54,9 @@ module.exports = function(req, res, next, cb) {
       } else if (req.query.shape) {
 
         larkin.queryPg("burwell", `
-          WITH shape AS (
-            SELECT ST_Segmentize($1::geography, 100000)::geometry AS buffer
-          )
           SELECT id
           FROM macrostrat.cols
-          JOIN shape ON ST_Intersects(poly_geom, shape.buffer)
+          WHERE ST_Intersects(poly_geom, ST_GeomFromText($1, 4326))
         `, [req.query.shape], function(error, response) {
           if (error) return callback(error);
 

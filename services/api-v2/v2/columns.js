@@ -109,7 +109,7 @@ module.exports = function(req, res, next, callback) {
 
       if (req.query.format && api.acceptedFormats.geo[req.query.format]) {
         if (req.query.shape) {
-          geo = ", ST_AsGeoJSON(ST_Intersection(col_areas.col_area, $2)) geojson";
+          geo = ", ST_AsGeoJSON(ST_Intersection(col_areas.col_area, ST_MakeValid($2))) geojson";
           params.push(req.query.shape);
         } else {
           geo = ", ST_AsGeoJSON(col_areas.col_area) geojson";
@@ -127,7 +127,6 @@ module.exports = function(req, res, next, callback) {
         params.push(req.query.col_id);
         groupBy = ", col_areas.col_area";
       }
-
       larkin.queryPg("burwell", `
       SELECT
         cols.id AS col_id,
