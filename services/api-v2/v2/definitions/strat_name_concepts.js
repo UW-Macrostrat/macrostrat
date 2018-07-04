@@ -30,7 +30,7 @@ module.exports = function(req, res, next, cb) {
     // do nothing
   } else if ("concept_name" in req.query) {
     sql += " WHERE name IN (:concept_name)";
-    params["name"] = req.query.concept_name;
+    params["concept_name"] = req.query.concept_name;
   } else if (req.query.concept_id || req.query.strat_name_concept_id) {
     sql += " WHERE concept_id IN (:concept_id)";
     if (req.query.concept_id) {
