@@ -13,7 +13,7 @@ module.exports = function(req, res, next, cb) {
   if (req.query.rule) {
     if (req.query.rule === "down") {
       if (req.query.strat_name) {
-        where.push("parent = (SELECT strat_name_id FROM lookup_strat_names WHERE strat_name = :strat_name) OR strat_name_id = (SELECT strat_name_id FROM lookup_strat_names WHERE strat_name = :strat_name)");
+        where.push("parent IN (SELECT strat_name_id FROM lookup_strat_names WHERE strat_name = :strat_name) OR strat_name_id IN (SELECT strat_name_id FROM lookup_strat_names WHERE strat_name = :strat_name)");
         params["strat_name"] = req.query.strat_name;
 
       } else if (req.query.strat_name_id) {
