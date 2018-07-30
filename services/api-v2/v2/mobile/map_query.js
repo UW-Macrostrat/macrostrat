@@ -287,6 +287,8 @@ module.exports = function(req, res, next) {
         return cb('No valid parameters passed')
       }
 
+      where.push(`sources.status_code = 'active'`)
+
       where = ' WHERE ' + where.join(' AND ')
 
 
