@@ -7,6 +7,7 @@ Usage:
   macrostrat backup <db>
   macrostrat process <cmd> <source_id>
   macrostrat schlep <table>
+  macrostrat seed <source_id>
   macrostrat export [coming soon]
   macrostrat -h | --help
   macrostrat --version
