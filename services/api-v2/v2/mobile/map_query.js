@@ -256,6 +256,8 @@ module.exports = function(req, res, next) {
             UNION ALL
             SELECT * FROM lines.large
         ) s ON s.line_id = m.line_id
+        LEFT JOIN maps.sources ON m.source_id = sources.source_id
+        WHERE sources.status_code = 'active'
         ORDER BY m.geom <-> $1
         LIMIT 1
       `, [`SRID=4326;POINT(${req.query.lng} ${req.query.lat})`], function(error, result) {
