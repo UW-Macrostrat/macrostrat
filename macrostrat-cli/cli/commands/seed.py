@@ -72,22 +72,21 @@ class Seed(Base):
                     pass
 
     # Currently this doesn't operate on a source basis. It is all or nothing.
-    def seed_mbtiles(self, layer):
+    def seed_mbtiles(self, bbox, layer):
         mbtile_path = self.credentials['mbtiles_path']
         path = os.path.dirname(__file__)
         call(['rm %s/tiny.mbtiles && rm %s/small.mbtiles && rm %s/medium.mbtiles && rm %s/large.mbtiles' % (mbtile_path, mbtile_path, mbtile_path, mbtile_path)], shell=True, stdout=FNULL)
-
         # Create tiles for tiny
-        call(['tippecanoe -o %s/tiny.mbtiles --minimum-zoom=0 --maximum-zoom=2 --detect-shared-borders --simplification=3 -Lunits:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s`") -Llines:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s`")' % (mbtile_path, self.credentials['pg_host'], self.credentials['pg_port'], self.credentials['pg_db'], self.credentials['pg_user'], '%s/seed_scripts/sql/%s/tiny.sql' % (path, layer, ), self.credentials['pg_host'], self.credentials['pg_port'], self.credentials['pg_db'], self.credentials['pg_user'], '%s/seed_scripts/sql/%s/tiny_lines.sql' % (path, layer,), )], shell=True, stdout=FNULL, executable='/bin/bash')
+        call(['tippecanoe -o %s/tiny.mbtiles --minimum-zoom=0 --maximum-zoom=2 --detect-shared-borders --simplification=3 -Lunits:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s <(echo \"\'%s\',4326));\")`") -Llines:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s <(echo \"\'%s\',4326));\")`")' % (mbtile_path, self.credentials['pg_host'], self.credentials['pg_port'], self.credentials['pg_db'], self.credentials['pg_user'], '%s/seed_scripts/sql/%s/tiny.sql' % (path, layer, ), bbox, self.credentials['pg_host'], self.credentials['pg_port'], self.credentials['pg_db'], self.credentials['pg_user'], '%s/seed_scripts/sql/%s/tiny_lines.sql' % (path, layer,), bbox)], shell=True, stdout=FNULL, executable='/bin/bash')
 
         # Create tiles for small
-        call(['tippecanoe -o %s/small.mbtiles --minimum-zoom=3 --maximum-zoom=5 --detect-shared-borders --simplification=4 -Lunits:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s`") -Llines:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s`")' % (mbtile_path, self.credentials['pg_host'], self.credentials['pg_port'], self.credentials['pg_db'], self.credentials['pg_user'], '%s/seed_scripts/sql/%s/small.sql' % (path, layer, ), self.credentials['pg_host'], self.credentials['pg_port'], self.credentials['pg_db'], self.credentials['pg_user'], '%s/seed_scripts/sql/%s/small_lines.sql' % (path, layer, ), )], shell=True, stdout=FNULL, executable='/bin/bash')
+        call(['tippecanoe -o %s/small.mbtiles --minimum-zoom=3 --maximum-zoom=5 --detect-shared-borders --simplification=4 -Lunits:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s <(echo \"\'%s\',4326));\")`") -Llines:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s <(echo \"\'%s\',4326));\")`")' % (mbtile_path, self.credentials['pg_host'], self.credentials['pg_port'], self.credentials['pg_db'], self.credentials['pg_user'], '%s/seed_scripts/sql/%s/small.sql' % (path, layer, ), bbox, self.credentials['pg_host'], self.credentials['pg_port'], self.credentials['pg_db'], self.credentials['pg_user'], '%s/seed_scripts/sql/%s/small_lines.sql' % (path, layer, ), bbox)], shell=True, stdout=FNULL, executable='/bin/bash')
 
         # Create tiles for medium
-        call(['tippecanoe -o %s/medium.mbtiles --minimum-zoom=6 --maximum-zoom=8 --detect-shared-borders --simplification=5 -Lunits:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s`") -Llines:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s`")' % (mbtile_path, self.credentials['pg_host'], self.credentials['pg_port'], self.credentials['pg_db'], self.credentials['pg_user'], '%s/seed_scripts/sql/%s/medium.sql' % (path, layer, ), self.credentials['pg_host'], self.credentials['pg_port'], self.credentials['pg_db'], self.credentials['pg_user'], '%s/seed_scripts/sql/%s/medium_lines.sql' % (path, layer, ), )], shell=True, stdout=FNULL, executable='/bin/bash')
+        call(['tippecanoe -o %s/medium.mbtiles --minimum-zoom=6 --maximum-zoom=8 --detect-shared-borders --simplification=5 -Lunits:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s <(echo \"\'%s\',4326));\")`") -Llines:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s <(echo \"\'%s\',4326));\")`")' % (mbtile_path, self.credentials['pg_host'], self.credentials['pg_port'], self.credentials['pg_db'], self.credentials['pg_user'], '%s/seed_scripts/sql/%s/medium.sql' % (path, layer, ), bbox, self.credentials['pg_host'], self.credentials['pg_port'], self.credentials['pg_db'], self.credentials['pg_user'], '%s/seed_scripts/sql/%s/medium_lines.sql' % (path, layer, ), bbox)], shell=True, stdout=FNULL, executable='/bin/bash')
 
         # Create tiles for large
-        call(['tippecanoe -o %s/large.mbtiles --minimum-zoom=9 --maximum-zoom=12 --detect-shared-borders --simplification=3 -Lunits:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s`") -Llines:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s`")' % (mbtile_path, self.credentials['pg_host'], self.credentials['pg_port'], self.credentials['pg_db'], self.credentials['pg_user'], '%s/seed_scripts/sql/%s/large.sql' % (path, layer, ), self.credentials['pg_host'], self.credentials['pg_port'], self.credentials['pg_db'], self.credentials['pg_user'], '%s/seed_scripts/sql/%s/large_lines.sql' % (path, layer, ), )], shell=True, stdout=FNULL, executable='/bin/bash')
+        call(['tippecanoe -o %s/large.mbtiles --minimum-zoom=9 --maximum-zoom=12 --detect-shared-borders --simplification=3 -Lunits:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s <(echo \"\'%s\',4326));\")`") -Llines:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s <(echo \"\'%s\',4326));\")`")' % (mbtile_path, self.credentials['pg_host'], self.credentials['pg_port'], self.credentials['pg_db'], self.credentials['pg_user'], '%s/seed_scripts/sql/%s/large.sql' % (path, layer, ), bbox, self.credentials['pg_host'], self.credentials['pg_port'], self.credentials['pg_db'], self.credentials['pg_user'], '%s/seed_scripts/sql/%s/large_lines.sql' % (path, layer, ), bbox)], shell=True, stdout=FNULL, executable='/bin/bash')
 
 
         # Connect to the sink (i.e. sqlite/mbtiles database)
@@ -150,28 +149,6 @@ class Seed(Base):
 
         sink_connection.close()
 
-        # Update the raster version of the tiles
-        tiler = tileschemes.WebMercator()
-        self.pg['cursor'].execute("""
-            SELECT ST_AsText(ST_Transform(
-                ST_GeomFromText('POLYGON ((-179 -85, -179 85, 179 85, 179 -85, -179 -85))', 4326)
-            , 3857)) as geom
-        """)
-        source = self.pg['cursor'].fetchone()
-        seed_area = loads(source[0])
-
-        # Update the raster tiles
-        for z in self.zooms:
-            tiles = [ t for t in tilecover.cover_geometry(tiler, seed_area, z) ]
-            headers = { 'X-Tilestrata-SkipCache': '*'}
-            for tile in tqdm(tiles):
-                url = 'http://localhost:8675/carto/%s/%s/%s.png?secret=%s' % (tile.z, tile.x, tile.y, self.credentials['tileserver_secret'])
-                try:
-                    r = requests.get(url, headers=headers)
-                    if r.status_code != 200 and r.status_code != 204:
-                        print r.status_code
-                except:
-                    pass
 
     def run(self):
         scales = ['tiny', 'small', 'medium', 'large']
@@ -199,6 +176,7 @@ class Seed(Base):
                         ST_SetSRID(rgeom, 4326)
                     )
                 , 3857)) as geom,
+                ST_AsText(web_geom) AS web_geom,
                 display_scales
                 FROM maps.sources
                 WHERE source_id = %(source_id)s
@@ -222,17 +200,24 @@ class Seed(Base):
 
         tiler = tileschemes.WebMercator()
 
+
+        Seed.seed_mbtiles(self, source[1], 'carto')
+        Seed.seed_mbtiles(self, source[1], 'carto-slim')
+
         print '     Seeding...'
         fails = 0
-        for z in self.zooms:
-            if fails > 20:
-                print 'There seems be an issue seeding tiles. Quitting....'
-                sys.exit()
+        # Update the raster version of the tiles
+        tiler = tileschemes.WebMercator()
+        seed_area = loads(source[0])
 
-            print '         ', z
+        # Update the raster tiles
+        for z in self.zooms:
             tiles = [ t for t in tilecover.cover_geometry(tiler, seed_area, z) ]
             headers = { 'X-Tilestrata-SkipCache': '*'}
             for tile in tqdm(tiles):
+                if fails > 20:
+                    print 'There seems be an issue seeding tiles. Quitting....'
+                    sys.exit()
                 url = 'http://localhost:8675/carto/%s/%s/%s.png?secret=%s' % (tile.z, tile.x, tile.y, self.credentials['tileserver_secret'])
                 try:
                     r = requests.get(url, headers=headers)

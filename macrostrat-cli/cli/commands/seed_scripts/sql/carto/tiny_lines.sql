@@ -2,4 +2,5 @@ SELECT x.line_id, x.source_id, COALESCE(q.descrip, '') AS descrip, COALESCE(q.na
 FROM carto_new.lines_tiny x
 LEFT JOIN lines.tiny q on q.line_id = x.line_id
 LEFT JOIN maps.sources ON x.source_id = sources.source_id
-WHERE sources.status_code = 'active';
+WHERE sources.status_code = 'active'
+AND ST_Intersects(x.geom, ST_GeomFromText(

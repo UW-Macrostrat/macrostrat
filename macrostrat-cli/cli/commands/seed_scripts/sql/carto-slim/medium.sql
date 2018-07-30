@@ -3,4 +3,5 @@ FROM carto_new.medium z
 LEFT JOIN maps.map_legend ON z.map_id = map_legend.map_id
 LEFT JOIN maps.legend AS l ON l.legend_id = map_legend.legend_id
 LEFT JOIN maps.sources ON l.source_id = sources.source_id
-WHERE sources.status_code = 'active';
+WHERE sources.status_code = 'active'
+AND ST_Intersects(z.geom, ST_GeomFromText( 
