@@ -15,11 +15,13 @@ FNULL = open(os.devnull, 'w')
 
 class Seed(Base):
     '''
-    macrostrat seed <source_id or scale>:
+    macrostrat seed <source_id, scale, or layer>:
         Seed the tileserver
 
     Usage:
       macrostrat seed 123
+      macrostrat seed tiny
+      macrostrat seed carto-slim
       macrostrat seed -h | --help
     Options:
       -h --help                         Show this screen.
@@ -48,6 +50,7 @@ class Seed(Base):
 
     def seed_pbdb_collections(self):
         tiler = tileschemes.WebMercator()
+        # For now seed the whole world...
         self.pg['cursor'].execute("""
             SELECT ST_AsText(ST_Transform(
                 ST_GeomFromText('POLYGON ((-179 -85, -179 85, 179 85, 179 -85, -179 -85))', 4326)
@@ -68,6 +71,7 @@ class Seed(Base):
                 except:
                     pass
 
+    # Currently this doesn't operate on a source basis. It is all or nothing.
     def seed_mbtiles(self, layer):
         mbtile_path = self.credentials['mbtiles_path']
         path = os.path.dirname(__file__)
@@ -86,7 +90,7 @@ class Seed(Base):
         call(['tippecanoe -o %s/large.mbtiles --minimum-zoom=9 --maximum-zoom=12 --detect-shared-borders --simplification=3 -Lunits:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s`") -Llines:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s`")' % (mbtile_path, self.credentials['pg_host'], self.credentials['pg_port'], self.credentials['pg_db'], self.credentials['pg_user'], '%s/seed_scripts/sql/%s/large.sql' % (path, layer, ), self.credentials['pg_host'], self.credentials['pg_port'], self.credentials['pg_db'], self.credentials['pg_user'], '%s/seed_scripts/sql/%s/large_lines.sql' % (path, layer, ), )], shell=True, stdout=FNULL, executable='/bin/bash')
 
 
-        # Connect to the sink
+        # Connect to the sink (i.e. sqlite/mbtiles database)
         sink_connection = sqlite3.connect('%s/%s.mbtiles' % (mbtile_path, layer, ))
         sink_cursor = sink_connection.cursor()
 
@@ -156,6 +160,7 @@ class Seed(Base):
         source = self.pg['cursor'].fetchone()
         seed_area = loads(source[0])
 
+        # Update the raster tiles
         for z in self.zooms:
             tiles = [ t for t in tilecover.cover_geometry(tiler, seed_area, z) ]
             headers = { 'X-Tilestrata-SkipCache': '*'}
@@ -237,24 +242,6 @@ class Seed(Base):
                     pass
                     fails = fails + 1
 
-                url = 'http://localhost:8675/carto/%s/%s/%s.mvt?secret=%s' % (tile.z, tile.x, tile.y, self.credentials['tileserver_secret'])
-                try:
-                    r = requests.get(url, headers=headers)
-                    if r.status_code != 200 and r.status_code != 204:
-                        print r.status_code
-                except:
-                    pass
-                    fails = fails + 1
-
-                url = 'http://localhost:8675/carto-slim/%s/%s/%s.mvt?secret=%s' % (tile.z, tile.x, tile.y, self.credentials['tileserver_secret'])
-                try:
-                    r = requests.get(url, headers=headers)
-                    if r.status_code != 200 and r.status_code != 204:
-                        print r.status_code
-                except:
-                    pass
-                    fails = fails + 1
-
 
         print '     Deleting...'
         for z in self.cached_zooms:
@@ -264,22 +251,6 @@ class Seed(Base):
             # Call delete tile
             for tile in tqdm(tiles):
                 url = 'http://localhost:5555/carto/%s/%s/%s.png' % (tile.z, tile.x, tile.y)
-                try:
-                    r = requests.get(url, headers=headers)
-                    if r.status_code != 200 and r.status_code != 204:
-                        print r.status_code
-                except:
-                    pass
-
-                url = 'http://localhost:5555/carto/%s/%s/%s.mvt' % (tile.z, tile.x, tile.y)
-                try:
-                    r = requests.get(url, headers=headers)
-                    if r.status_code != 200 and r.status_code != 204:
-                        print r.status_code
-                except:
-                    pass
-
-                url = 'http://localhost:5555/carto-slim/%s/%s/%s.mvt' % (tile.z, tile.x, tile.y)
                 try:
                     r = requests.get(url, headers=headers)
                     if r.status_code != 200 and r.status_code != 204:

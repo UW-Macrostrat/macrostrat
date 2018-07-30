@@ -2,3 +2,5 @@ SELECT z.map_id, z.source_id, l.legend_id, l.best_age_top::numeric AS best_age_t
 FROM carto_new.tiny z
 LEFT JOIN maps.map_legend ON z.map_id = map_legend.map_id
 LEFT JOIN maps.legend AS l ON l.legend_id = map_legend.legend_id
+LEFT JOIN maps.sources ON l.source_id = sources.source_id
+WHERE sources.status_code = 'active';

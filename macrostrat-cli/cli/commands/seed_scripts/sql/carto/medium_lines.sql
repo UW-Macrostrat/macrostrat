@@ -5,3 +5,5 @@ LEFT JOIN (
    UNION ALL
    SELECT * FROM lines.small
 ) q on q.line_id = x.line_id;
+LEFT JOIN maps.sources ON x.source_id = sources.source_id
+WHERE sources.status_code = 'active';

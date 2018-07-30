@@ -4,4 +4,6 @@ LEFT JOIN (
    SELECT * FROM lines.medium
    UNION ALL
    SELECT * FROM lines.large
-) q on q.line_id = x.line_id;
+) q on q.line_id = x.line_id
+LEFT JOIN maps.sources ON x.source_id = sources.source_id
+WHERE sources.status_code = 'active';
