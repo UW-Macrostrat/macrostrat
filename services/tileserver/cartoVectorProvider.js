@@ -25,7 +25,7 @@ module.exports = (options) => {
           console.log('Error initializing mapnik provider', error)
         }
       })
-      new mbtiles(`./seeder/carto-vector.mbtiles`, (error, provider) => {
+      new mbtiles(`./seeder/carto.mbtiles`, (error, provider) => {
         if (error) {
           console.log('Could not find carto-vector.mbtiles')
         }

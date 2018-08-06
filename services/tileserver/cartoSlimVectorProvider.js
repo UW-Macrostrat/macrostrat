@@ -26,7 +26,7 @@ module.exports = (options) => {
         }
       })
       // Create a mbtiles provider for pre-created tile fetching
-      new mbtiles(`./seeder/carto-slim-vector.mbtiles`, (error, provider) => {
+      new mbtiles(`./seeder/carto-slim.mbtiles`, (error, provider) => {
         if (error) {
           console.log('Could not find carto-slim-vector.mbtiles')
         }

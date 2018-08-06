@@ -42,7 +42,7 @@ module.exports = (options) => {
         providers[scale].init(server, (error) => {})
 
         // Load the mbtile writer
-        let path = `${__dirname}/carto-vector.mbtiles`
+        let path = `${__dirname}/carto.mbtiles`
         let sinkUri = `mbtiles:///${path}`
         new mbtiles(sinkUri, (err, mbtileHandler) => {
           mbtileWriter = mbtileHandler
