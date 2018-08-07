@@ -7,4 +7,3 @@ LEFT JOIN (
 ) q on q.line_id = x.line_id
 LEFT JOIN maps.sources ON x.source_id = sources.source_id
 WHERE sources.status_code = 'active'
-AND ST_Intersects(x.geom, ST_GeomFromText(
