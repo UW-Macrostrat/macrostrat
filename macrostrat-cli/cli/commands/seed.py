@@ -10,8 +10,21 @@ from tqdm import *
 from subprocess import call
 import os
 import sqlite3
+from multiprocessing.pool import Pool
 
+THREADS = 4
 FNULL = open(os.devnull, 'w')
+
+# Used for making requests to the seed server
+def http_request(params):
+    url, headers = params
+    try:
+        r = requests.get(url, headers=headers)
+        if r.status_code != 200 and r.status_code != 204:
+            print r.status_code
+    except:
+        pass
+
 
 class Seed(Base):
     '''
@@ -49,6 +62,8 @@ class Seed(Base):
         Base.__init__(self, connections, *args)
 
     def seed_pbdb_collections(self):
+        p = Pool(THREADS)
+
         tiler = tileschemes.WebMercator()
         # For now seed the whole world...
         self.pg['cursor'].execute("""
@@ -59,35 +74,35 @@ class Seed(Base):
         source = self.pg['cursor'].fetchone()
         seed_area = loads(source[0])
 
+        headers = { 'X-Tilestrata-SkipCache': '*'}
+
         for z in [1, 2, 3, 4, 5, 6, 7, 8, 9]:
-            tiles = [ t for t in tilecover.cover_geometry(tiler, seed_area, z) ]
-            headers = { 'X-Tilestrata-SkipCache': '*'}
-            for tile in tqdm(tiles):
-                url = 'http://localhost:8675/pbdb-collections/%s/%s/%s.mvt?secret=%s' % (tile.z, tile.x, tile.y, self.credentials['tileserver_secret'])
-                try:
-                    r = requests.get(url, headers=headers)
-                    if r.status_code != 200 and r.status_code != 204:
-                        print r.status_code
-                except:
-                    pass
+            tiles = [ ('http://localhost:8675/pbdb-collections/%s/%s/%s.mvt?secret=%s' % (tile.z, tile.x, tile.y, self.credentials['tileserver_secret']), headers) for tile in tilecover.cover_geometry(tiler, seed_area, z) ]
+
+            # Throw the seed requests at the multiprocessing pool
+            r = list(tqdm(p.imap(http_request, tiles), total=len(tiles)))
+
+
 
     # Currently this doesn't operate on a source basis. It is all or nothing.
-    def seed_mbtiles(self, bbox, layer):
+    def seed_mbtiles(self, layer):
         mbtile_path = self.credentials['mbtiles_path']
         path = os.path.dirname(__file__)
+
+        # Delete existing scale mbtiles files
         call(['rm %s/tiny.mbtiles && rm %s/small.mbtiles && rm %s/medium.mbtiles && rm %s/large.mbtiles' % (mbtile_path, mbtile_path, mbtile_path, mbtile_path)], shell=True, stdout=FNULL)
+
         # Create tiles for tiny
-        call(['tippecanoe -o %s/tiny.mbtiles --minimum-zoom=0 --maximum-zoom=2 --detect-shared-borders --simplification=3 -Lunits:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s <(echo \"\'%s\',4326));\")`") -Llines:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s <(echo \"\'%s\',4326));\")`")' % (mbtile_path, self.credentials['pg_host'], self.credentials['pg_port'], self.credentials['pg_db'], self.credentials['pg_user'], '%s/seed_scripts/sql/%s/tiny.sql' % (path, layer, ), bbox, self.credentials['pg_host'], self.credentials['pg_port'], self.credentials['pg_db'], self.credentials['pg_user'], '%s/seed_scripts/sql/%s/tiny_lines.sql' % (path, layer,), bbox)], shell=True, stdout=FNULL, executable='/bin/bash')
+        call(['tippecanoe -o %s/tiny.mbtiles --minimum-zoom=0 --maximum-zoom=2 --detect-shared-borders --simplification=3 -Lunits:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s`") -Llines:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s`")' % (mbtile_path, self.credentials['pg_host'], self.credentials['pg_port'], self.credentials['pg_db'], self.credentials['pg_user'], '%s/seed_scripts/sql/%s/tiny.sql' % (path, layer, ), self.credentials['pg_host'], self.credentials['pg_port'], self.credentials['pg_db'], self.credentials['pg_user'], '%s/seed_scripts/sql/%s/tiny_lines.sql' % (path, layer,), )], shell=True, stdout=FNULL, executable='/bin/bash')
 
         # Create tiles for small
-        call(['tippecanoe -o %s/small.mbtiles --minimum-zoom=3 --maximum-zoom=5 --detect-shared-borders --simplification=4 -Lunits:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s <(echo \"\'%s\',4326));\")`") -Llines:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s <(echo \"\'%s\',4326));\")`")' % (mbtile_path, self.credentials['pg_host'], self.credentials['pg_port'], self.credentials['pg_db'], self.credentials['pg_user'], '%s/seed_scripts/sql/%s/small.sql' % (path, layer, ), bbox, self.credentials['pg_host'], self.credentials['pg_port'], self.credentials['pg_db'], self.credentials['pg_user'], '%s/seed_scripts/sql/%s/small_lines.sql' % (path, layer, ), bbox)], shell=True, stdout=FNULL, executable='/bin/bash')
+        call(['tippecanoe -o %s/small.mbtiles --minimum-zoom=3 --maximum-zoom=5 --detect-shared-borders --simplification=4 -Lunits:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s`") -Llines:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s`")' % (mbtile_path, self.credentials['pg_host'], self.credentials['pg_port'], self.credentials['pg_db'], self.credentials['pg_user'], '%s/seed_scripts/sql/%s/small.sql' % (path, layer, ), self.credentials['pg_host'], self.credentials['pg_port'], self.credentials['pg_db'], self.credentials['pg_user'], '%s/seed_scripts/sql/%s/small_lines.sql' % (path, layer, ), )], shell=True, stdout=FNULL, executable='/bin/bash')
 
         # Create tiles for medium
-        call(['tippecanoe -o %s/medium.mbtiles --minimum-zoom=6 --maximum-zoom=8 --detect-shared-borders --simplification=5 -Lunits:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s <(echo \"\'%s\',4326));\")`") -Llines:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s <(echo \"\'%s\',4326));\")`")' % (mbtile_path, self.credentials['pg_host'], self.credentials['pg_port'], self.credentials['pg_db'], self.credentials['pg_user'], '%s/seed_scripts/sql/%s/medium.sql' % (path, layer, ), bbox, self.credentials['pg_host'], self.credentials['pg_port'], self.credentials['pg_db'], self.credentials['pg_user'], '%s/seed_scripts/sql/%s/medium_lines.sql' % (path, layer, ), bbox)], shell=True, stdout=FNULL, executable='/bin/bash')
+        call(['tippecanoe -o %s/medium.mbtiles --minimum-zoom=6 --maximum-zoom=8 --detect-shared-borders --simplification=5 -Lunits:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s`") -Llines:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s`")' % (mbtile_path, self.credentials['pg_host'], self.credentials['pg_port'], self.credentials['pg_db'], self.credentials['pg_user'], '%s/seed_scripts/sql/%s/medium.sql' % (path, layer, ), self.credentials['pg_host'], self.credentials['pg_port'], self.credentials['pg_db'], self.credentials['pg_user'], '%s/seed_scripts/sql/%s/medium_lines.sql' % (path, layer, ), )], shell=True, stdout=FNULL, executable='/bin/bash')
 
         # Create tiles for large
-        call(['tippecanoe -o %s/large.mbtiles --minimum-zoom=9 --maximum-zoom=12 --detect-shared-borders --simplification=3 -Lunits:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s <(echo \"\'%s\',4326));\")`") -Llines:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s <(echo \"\'%s\',4326));\")`")' % (mbtile_path, self.credentials['pg_host'], self.credentials['pg_port'], self.credentials['pg_db'], self.credentials['pg_user'], '%s/seed_scripts/sql/%s/large.sql' % (path, layer, ), bbox, self.credentials['pg_host'], self.credentials['pg_port'], self.credentials['pg_db'], self.credentials['pg_user'], '%s/seed_scripts/sql/%s/large_lines.sql' % (path, layer, ), bbox)], shell=True, stdout=FNULL, executable='/bin/bash')
-
+        call(['tippecanoe -o %s/large.mbtiles --minimum-zoom=9 --maximum-zoom=12 --detect-shared-borders --simplification=3 -Lunits:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s`") -Llines:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s`")' % (mbtile_path, self.credentials['pg_host'], self.credentials['pg_port'], self.credentials['pg_db'], self.credentials['pg_user'], '%s/seed_scripts/sql/%s/large.sql' % (path, layer, ), self.credentials['pg_host'], self.credentials['pg_port'], self.credentials['pg_db'], self.credentials['pg_user'], '%s/seed_scripts/sql/%s/large_lines.sql' % (path, layer, ), )], shell=True, stdout=FNULL, executable='/bin/bash')
 
         # Connect to the sink (i.e. sqlite/mbtiles database)
         sink_connection = sqlite3.connect('%s/%s.mbtiles' % (mbtile_path, layer, ))
@@ -104,7 +119,7 @@ class Seed(Base):
                     CREATE TABLE metadata (name text, value text);
                 """)
                 metadata = [
-                     ('name', 'carto-slim'),
+                     ('name', layer),
                      ('format', 'pbf'),
                      ('bounds', '-180.0,-85,180,85'),
                      ('center', '0,0'),
@@ -134,6 +149,7 @@ class Seed(Base):
 
 
         # Merge the mbtiles files created by Tippecanoe
+        # Need to run in this order to get proper stacking!
         for scale in ['large', 'medium', 'small', 'tiny']:
             # Connect to the source
             source_connection = sqlite3.connect('%s/%s.mbtiles' % (mbtile_path, scale, ))
@@ -200,45 +216,33 @@ class Seed(Base):
 
         tiler = tileschemes.WebMercator()
 
+        # Update the vector tiles
+        # Seed.seed_mbtiles(self, 'carto')
+        # Seed.seed_mbtiles(self, 'carto-slim')
 
-        Seed.seed_mbtiles(self, source[1], 'carto')
-        Seed.seed_mbtiles(self, source[1], 'carto-slim')
-
-        print '     Seeding...'
+        print '     Seeding raster tiles...'
         fails = 0
         # Update the raster version of the tiles
         tiler = tileschemes.WebMercator()
         seed_area = loads(source[0])
 
+        # Create a multiprocessing pool for parallel http requests
+        p = Pool(THREADS)
+
         # Update the raster tiles
+        headers = { 'X-Tilestrata-SkipCache': '*'}
         for z in self.zooms:
-            tiles = [ t for t in tilecover.cover_geometry(tiler, seed_area, z) ]
-            headers = { 'X-Tilestrata-SkipCache': '*'}
-            for tile in tqdm(tiles):
-                if fails > 20:
-                    print 'There seems be an issue seeding tiles. Quitting....'
-                    sys.exit()
-                url = 'http://localhost:8675/carto/%s/%s/%s.png?secret=%s' % (tile.z, tile.x, tile.y, self.credentials['tileserver_secret'])
-                try:
-                    r = requests.get(url, headers=headers)
-                    if r.status_code != 200 and r.status_code != 204:
-                        print r.status_code
-                except:
-                    pass
-                    fails = fails + 1
+            tiles = [ ('http://localhost:8675/carto/%s/%s/%s.png?secret=%s' % (tile.z, tile.x, tile.y, self.credentials['tileserver_secret']), headers) for tile in tilecover.cover_geometry(tiler, seed_area, z) ]
+
+            # Throw the delete requests at the multiprocessing pool
+            r = list(tqdm(p.imap(http_request, tiles), total=len(tiles)))
 
 
         print '     Deleting...'
+        headers = { 'X-Tilestrata-DeleteTile': self.credentials['tileserver_secret'] }
         for z in self.cached_zooms:
             print '         ', z
-            tiles = [ t for t in tilecover.cover_geometry(tiler, seed_area, z) ]
-            headers = { 'X-Tilestrata-DeleteTile': self.credentials['tileserver_secret'] }
-            # Call delete tile
-            for tile in tqdm(tiles):
-                url = 'http://localhost:5555/carto/%s/%s/%s.png' % (tile.z, tile.x, tile.y)
-                try:
-                    r = requests.get(url, headers=headers)
-                    if r.status_code != 200 and r.status_code != 204:
-                        print r.status_code
-                except:
-                    pass
+            tiles = [ ('http://localhost:5555/carto/%s/%s/%s.png' % (tile.z, tile.x, tile.y), headers) for tile in tilecover.cover_geometry(tiler, seed_area, z) ]
+
+            # Throw the delete requests at the multiprocessing pool
+            r = list(tqdm(p.imap(http_request, tiles), total=len(tiles)))
