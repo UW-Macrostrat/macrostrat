@@ -13,7 +13,7 @@ let pg = new pgHelper({
 })
 
 let converter = new SphericalMercator({
-    size: 512
+  size: 512
 })
 
 const zoomSimplification = {

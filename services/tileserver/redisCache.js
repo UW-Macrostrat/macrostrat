@@ -101,20 +101,6 @@ module.exports = (options) => {
             fs.stat(file, (error, stat) => {
               if (error) {
                 return callback(null)
-                // If it doesn't exist at z < 11, return a blank tile
-                // if (tile.z < 11) {
-                //   // Send blank tile
-                //   getTile(options.defaultTile, (error, buffer, headers) => {
-                //     if (error) {
-                //       return callback(error)
-                //     }
-                //     return callback(null, buffer, headers)
-                //   })
-                //
-                // // If z >= 11 and no tile exists, create one (which will then write it to disk for next time)
-                // } else {
-                //   return callback(error)
-                // }
 
               // If it does exist in the disk cache, spit it back
               } else {
