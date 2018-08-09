@@ -55,10 +55,11 @@ module.exports = (options) => {
     },
     serve: (server, tile, callback) => {
       let z = parseInt(tile.z)
-      if (z < 10) {
+      let extent = converter.bbox(tile.x, tile.y, z, false, '900913')
 
-      }
-      let extent = converter.bbox(tile.x, tile.y, z, false, 'WGS84')
+      // Web mercator doesn't operate outside of -85 to 85, so verify we are getting good coords
+      // extent[0] = (extent[0] < -85) ? -85 : extent[0]
+      // extent[2] = (extent[2] > 85) ? 85 : extent[2]
 
       pg.query(`
         SELECT ST_AsMVT(q, 'pbdb-collections', 4096, 'geom') AS vtile
@@ -68,7 +69,7 @@ module.exports = (options) => {
               array_length(array_agg(collection_no), 1) AS n_collections,
               ST_AsMVTGeom(
                 ST_ClosestPoint(ST_Collect(geom), ST_Centroid(ST_Collect(geom))),
-                ST_SetSRID(ST_MakeBox2D(ST_MakePoint(${extent[0]}, ${extent[1]}), ST_MakePoint(${extent[2]}, ${extent[3]})), 4326),
+                ST_MakeEnvelope(${extent[0]}, ${extent[1]}, ${extent[2]}, ${extent[3]}, 3857),
                 4096,
                 512
               ) AS geom
@@ -77,13 +78,13 @@ module.exports = (options) => {
               collection_no,
               name,
               ST_ClusterDBScan(geom, eps := ${zoomSimplification[z]}, minpoints := 2) over () AS cid,
-              geom
+              ST_Transform(geom, 3857) AS geom
             FROM macrostrat.pbdb_collections
-            WHERE geom && ST_SetSRID(ST_MakeBox2D(ST_MakePoint($1, $2), ST_MakePoint($3, $4)), 4326)
+            WHERE ST_Transform(geom, 3857) && ST_MakeEnvelope(${extent[0]}, ${extent[1]}, ${extent[2]}, ${extent[3]}, 3857)
            ) sub
           GROUP BY cid
         ) q
-      `, extent, (error, result) => {
+      `, [], (error, result) => {
         if (error) {
           console.log(error)
         }

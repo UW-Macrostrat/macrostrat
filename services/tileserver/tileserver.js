@@ -8,7 +8,7 @@ const rasterProvider = require('./raster-provider')
 const redisCache = require('./redisCache')
 const cartoVectorProvider = require('./cartoVectorProvider')
 const cartoSlimVectorProvider = require('./cartoSlimVectorProvider')
-// const pbdbCollectionProvider = require('./pbdb-collection-provider')
+const pbdbCollectionProvider = require('./pbdb-collection-provider')
 // const rockdCheckinProvider = require('./rockdCheckinProvider')
 // const footprintProvider = require('./footprintProvider')
 const hexGridProvider = require('./hexGridProvider')
@@ -21,9 +21,9 @@ module.exports = tilestrata.middleware({
   server: (function() {
     var strata = tilestrata()
 
-    strata.layer('hex-grids')
+    strata.layer('pbdb-hex-grids')
       .route('*.mvt', {
-        maxZoom: 14
+        maxZoom: 12
       })
       .use(hexGridProvider())
       .use(emptyHook())
@@ -44,15 +44,16 @@ module.exports = tilestrata.middleware({
     //     .use(etag())
     //   //  .use(logger())
     //
-    // strata.layer('pbdb-collections')
-    //   .route('*.mvt', {
-    //     maxZoom: MAX_ZOOM
-    //   })
-    //     .use(pbdbCollectionProvider())
-    //     .use(pureRedisCache())
-    //     .use(etag())
-    //     .use(logger())
-    //
+    strata.layer('pbdb-collections')
+      .route('*.mvt', {
+        maxZoom: MAX_ZOOM
+      })
+        .use(pbdbCollectionProvider())
+        // .use(pureRedisCache())
+        .use(emptyHook())
+        .use(etag())
+        .use(logger())
+
     strata.layer('carto-slim')
       .route('*.mvt', {
         maxZoom: MAX_ZOOM

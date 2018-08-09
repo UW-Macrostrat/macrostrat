@@ -3,7 +3,6 @@ const mbtiles = require('@mapbox/mbtiles')
 const SphericalMercator = require('@mapbox/sphericalmercator')
 const pgHelper = require('@macrostrat/pg-helper')
 const credentials = require('./credentials')
-const zlib = require('zlib')
 
 let pg = new pgHelper({
   host: credentials.pg_host,
@@ -50,8 +49,33 @@ module.exports = (options) => {
       })
     },
     serve: (server, tile, callback) => {
+      let reqParams = {}
+      if (tile.qs) {
+        tile.qs
+          .split('&')
+          .map(d => { return d.split('=') })
+          .forEach(d => { reqParams[d[0]] = d[1] })
+      }
+
+      let where = []
+      let params = []
+
+      if (reqParams.b_age) {
+        where.push(`pb.early_age <= $${where.length + 1}`)
+        params.push(parseFloat(reqParams.b_age))
+      }
+      if (reqParams.t_age) {
+        where.push(`pb.late_age >= $${where.length + 1}`)
+        params.push(parseFloat(reqParams.t_age))
+      }
+
+      where = where.join(' AND ')
+
+      if (where.length) {
+        where = ' AND ' + where
+      }
+
       let z = parseInt(tile.z)
-      let extent = converter.bbox(tile.x, tile.y, z, false, 'WGS84')
 
       if (z < 10) {
         mbtilesProvider.getTile(tile.z, tile.x, tile.y, (error, buffer, headers) => {
@@ -59,26 +83,32 @@ module.exports = (options) => {
             buffer = blankVectorTile
           }
           callback(null, buffer, {
-            'Content-Type': 'application/x-protobuf',
-            'Content-Encoding': 'gzip'
+            'Content-Type': 'application/x-protobuf'
           })
         })
       } else {
+
+        let extent = converter.bbox(tile.x, tile.y, z, false, '900913')
+
+        // Web mercator doesn't operate outside of -85 to 85, so verify we are getting good coords
+        // extent[0] = (extent[0] < -85) ? -85 : extent[0]
+        // extent[2] = (extent[2] > 85) ? 85 : extent[2]
+
         pg.query(`
           SELECT ST_AsMVT(q, 'pbdb-collections', 4096, 'geom') AS vtile
           FROM (
             SELECT
               collection_no,
               ST_AsMVTGeom(
-                geom,
-                ST_SetSRID(ST_MakeBox2D(ST_MakePoint(${extent[0]}, ${extent[1]}), ST_MakePoint(${extent[2]}, ${extent[3]})), 4326),
+                ST_Transform(ST_SetSRID(geom, 4326), 3857),
+                ST_MakeEnvelope(${extent[0]}, ${extent[1]}, ${extent[2]}, ${extent[3]}, 3857),
                 4096,
                 512
               ) AS geom
             FROM macrostrat.pbdb_collections
-            WHERE geom && ST_SetSRID(ST_MakeBox2D(ST_MakePoint($1, $2), ST_MakePoint($3, $4)), 4326)
+            WHERE ST_Transform(geom, 3857) && ST_MakeEnvelope(${extent[0]}, ${extent[1]}, ${extent[2]}, ${extent[3]}, 3857)
           ) q
-        `, extent, (error, result) => {
+        `, [], (error, result) => {
           if (error || !result || !result.length || !result[0].vtile) {
             return callback(error, blankVectorTile, {
               'Content-Type': 'application/x-protobuf'
