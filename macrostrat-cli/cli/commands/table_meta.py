@@ -1128,8 +1128,10 @@ for (dirpath, dirnames, filenames) in walk(__table_meta__):
     table_name = dirnames[0]
     for fn in filenames:
         if table_name not in tables:
-            tables[table_name] = OrderedDict({})
-        (operation, ext) = path.splitext(fn)
+            tables[table_name] = OrderedDict({"process": ""})
+        (base, ext) = path.splitext(fn)
+        # ix is a prefix that shows ordering, 
+        (ix, operation) = base.split("-")
         # Only accept SQL files (this way we can keep notes, etc.)
         if ext != '.sql'
             continue
