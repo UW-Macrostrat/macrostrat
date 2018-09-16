@@ -1113,3 +1113,28 @@ tables = OrderedDict({
         """
     },
 })
+
+from os import path, walk
+
+__here__ = path.dirname(__file__)
+__table_meta__ = path.join(__here__,"table_meta")
+
+# Walk a directory tree and assemble a listing of SQL files
+# Note: this is inefficient and should eventually be replaced with
+# a function supporting the on-demand loading of SQL
+for (dirpath, dirnames, filenames) in walk(__table_meta__):
+    if not len(dirnames) == 1:
+        continue
+    table_name = dirnames[0]
+    for fn in filenames:
+        if table_name not in tables:
+            tables[table_name] = OrderedDict({})
+        (operation, ext) = path.splitext(fn)
+        # Only accept SQL files (this way we can keep notes, etc.)
+        if ext != '.sql'
+            continue
+        fp = path.join(__table_meta__,table,fn)
+        with open(fp,'r') as f:
+            sqltext = f.read()
+        tables[table_name][operation] = sqltext
+
