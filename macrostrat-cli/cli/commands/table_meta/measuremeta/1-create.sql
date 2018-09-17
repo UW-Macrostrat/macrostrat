@@ -1,5 +1,5 @@
 CREATE TABLE macrostrat.measuremeta_new (
-  id serial,
+  id serial PRIMARY KEY,
   sample_name text NOT NULL,
   lat decimal(8,5),
   lng decimal(8,5),
