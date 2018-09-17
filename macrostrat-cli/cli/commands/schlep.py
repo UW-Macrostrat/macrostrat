@@ -34,6 +34,9 @@ class Schlep(Base):
         lith_atts
         lookup_unit_liths
         timescales_intervals
+        measures
+        measuremeta
+        measurements
 
         all - will move all above tables
 
