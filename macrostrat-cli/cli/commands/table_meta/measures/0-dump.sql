@@ -3,7 +3,8 @@ SELECT
   id,
   measuremeta_id,
   measurement_id,
-  sample_no,
+  -- We had a problem with NUL characters in this column
+  replace(sample_no, CHAR(0x00 using utf8), "") sample_no,
   measure_phase,
   method,
   units,
