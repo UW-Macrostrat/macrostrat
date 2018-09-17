@@ -1,7 +1,7 @@
 CREATE TABLE macrostrat.measures_new (
   id serial,
-  measuremeta_id integer NOT NULL REFERENCES macrostrat.measuremeta(id),
-  measurement_id integer NOT NULL REFERENCES macrostrat.measurements(id),
+  measuremeta_id integer NOT NULL, -- REFERENCES macrostrat.measuremeta(id),
+  measurement_id integer NOT NULL, -- REFERENCES macrostrat.measurements(id),
   sample_no varchar(50),
   measure_phase varchar(100) NOT NULL,
   method varchar(100) NOT NULL,
