@@ -1,7 +1,6 @@
 const vtile = require('tilestrata-vtile')
 const fs = require('fs')
 const mbtiles = require('@mapbox/mbtiles')
-const zlib = require('zlib')
 const config = require('../config')
 const redis = require('redis')
 const client = redis.createClient(6379, '127.0.0.1', {'return_buffers': true})
@@ -9,7 +8,6 @@ const client = redis.createClient(6379, '127.0.0.1', {'return_buffers': true})
 function key(req) {
   return `${req.z},${req.x},${req.y},${req.layer},${req.filename}`
 }
-
 
 module.exports = (options) => {
   // Create a hash for looking up the proper scale for each zoom level
@@ -37,6 +35,8 @@ module.exports = (options) => {
         // Create the provider
         providers[scale] = new vtile({
           xml: `../mapnik/burwell_vector_${scale}.xml`,
+          tileSize: 512,
+          scale: 2,
         })
         // Initialize it
         providers[scale].init(server, (error) => {})

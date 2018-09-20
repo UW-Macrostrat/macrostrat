@@ -12,7 +12,7 @@ module.exports = (options) => {
   })
 
   return {
-    name: 'carto-provider',
+    name: 'carto',
     init: (server, callback) => {
       // Create the provider
       mapnikProvider = new mapnik({
