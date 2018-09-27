@@ -84,7 +84,6 @@ class Seed(Base):
             r = list(tqdm(p.imap(http_request, tiles), total=len(tiles)))
 
 
-
     # Currently this doesn't operate on a source basis. It is all or nothing.
     def seed_mbtiles(self, layer):
         mbtile_path = self.credentials['mbtiles_path']
@@ -167,6 +166,31 @@ class Seed(Base):
 
         sink_connection.close()
 
+    def seed_raster(self):
+        # For now seed the whole world...
+        self.pg['cursor'].execute("""
+            SELECT ST_AsText(ST_Transform(
+                ST_GeomFromText('POLYGON ((-179 -85, -179 85, 179 85, 179 -85, -179 -85))', 4326)
+            , 3857)) as geom
+        """)
+        source = self.pg['cursor'].fetchone()
+        seed_area = loads(source[0])
+
+        tiler = tileschemes.WebMercator()
+
+        print '     Seeding raster tiles...'
+        fails = 0
+
+        # Create a multiprocessing pool for parallel http requests
+        p = Pool(THREADS)
+
+        # Update the raster tiles
+        headers = { 'X-Tilestrata-SkipCache': '*'}
+        for z in self.zooms:
+            tiles = [ ('http://localhost:8675/carto/%s/%s/%s.png?secret=%s' % (tile.z, tile.x, tile.y, self.credentials['tileserver_secret']), headers) for tile in tilecover.cover_geometry(tiler, seed_area, z) ]
+            r = list(tqdm(p.imap(http_request, tiles), total=len(tiles)))
+
+
 
     def run(self):
         scales = ['tiny', 'small', 'medium', 'large']
@@ -177,6 +201,10 @@ class Seed(Base):
 
         if self.args[1] == 'carto' or self.args[1] == 'carto-slim':
             Seed.seed_mbtiles(self, self.args[1])
+            sys.exit()
+
+        if self.args[1] == 'carto-raster':
+            Seed.seed_raster(self)
             sys.exit()
 
         if self.args[1] == 'pbdb-collections':
@@ -217,10 +245,6 @@ class Seed(Base):
 
 
         tiler = tileschemes.WebMercator()
-
-        # Update the vector tiles
-        # Seed.seed_mbtiles(self, 'carto')
-        # Seed.seed_mbtiles(self, 'carto-slim')
 
         print '     Seeding raster tiles...'
         fails = 0
