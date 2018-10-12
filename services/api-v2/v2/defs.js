@@ -1664,6 +1664,28 @@
       }
     },
 
+    "/hex-summary": {
+      "description": "Get corresponding data for hex grids",
+      "visible": false,
+      "options": {
+        "parameters": {
+          "zoom": "zoom level",
+          "min_lng": "",
+          "min_lat": "",
+          "max_lng": "",
+          "max_lat": ""
+        },
+        "output_formats": [
+          "json"
+        ],
+        "examples": [
+        ],
+        "fields": [
+
+        ]
+      }
+    },
+
 
   "/mobile": {
     "description": "Simplified data delivery, ideal for mobile applications",
