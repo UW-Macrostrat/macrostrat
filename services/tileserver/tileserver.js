@@ -8,10 +8,12 @@ const rasterProvider = require('./raster-provider')
 const redisCache = require('./redisCache')
 const cartoVectorProvider = require('./cartoVectorProvider')
 const cartoSlimVectorProvider = require('./cartoSlimVectorProvider')
-const pbdbCollectionProvider = require('./pbdb-collection-provider')
+const hexProvider = require('./hexProvider')
+//const pbdbCollectionProvider = require('./pbdb-collection-provider')
 // const rockdCheckinProvider = require('./rockdCheckinProvider')
 // const footprintProvider = require('./footprintProvider')
-const hexGridProvider = require('./hexGridProvider')
+// const hexGridProvider = require('./hexGridProvider')
+// const geologicHexGridProvider = require('./geologicMapHexGridProvider')
 const pureRedisCache = require('./pureRedisCache')
 const logger = require('./logger')
 const emptyHook = require('./empty_hook')
@@ -21,13 +23,26 @@ module.exports = tilestrata.middleware({
   server: (function() {
     var strata = tilestrata()
 
-    strata.layer('pbdb-hex-grids')
-      .route('*.mvt', {
-        maxZoom: 12
-      })
-      .use(hexGridProvider())
-      .use(emptyHook())
-      .use(etag())
+    strata.layer('hexgrid')
+      .route('*.mvt')
+        .use(hexProvider())
+        .use(emptyHook())
+        
+    // strata.layer('pbdb-hex-grids')
+    //   .route('*.mvt', {
+    //     maxZoom: 12
+    //   })
+    //   .use(hexGridProvider())
+    //   .use(emptyHook())
+    //   .use(etag())
+    //
+    // strata.layer('geologic-hex-grids')
+    //   .route('*.mvt', {
+    //     maxZoom: 12
+    //   })
+    //   .use(geologicHexGridProvider())
+    //   .use(emptyHook())
+    //   .use(etag())
     //
     // strata.layer('footprints')
     //   .route('*.mvt', {
@@ -44,15 +59,15 @@ module.exports = tilestrata.middleware({
     //     .use(etag())
     //   //  .use(logger())
     //
-    strata.layer('pbdb-collections')
-      .route('*.mvt', {
-        maxZoom: MAX_ZOOM
-      })
-        .use(pbdbCollectionProvider())
-        // .use(pureRedisCache())
-        .use(emptyHook())
-        .use(etag())
-        .use(logger())
+    // strata.layer('pbdb-collections')
+    //   .route('*.mvt', {
+    //     maxZoom: MAX_ZOOM
+    //   })
+    //     .use(pbdbCollectionProvider())
+    //     // .use(pureRedisCache())
+    //     .use(emptyHook())
+    //     .use(etag())
+    //     .use(logger())
 
     strata.layer('carto-slim')
       .route('*.mvt', {
