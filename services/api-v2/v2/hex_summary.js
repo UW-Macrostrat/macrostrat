@@ -1,13 +1,3 @@
-const pgHelper = require('@macrostrat/pg-helper')
-const credentials = require('./credentials')
-
-let pg = new pgHelper({
-  host: credentials.pg_host,
-  user: credentials.pg_user,
-  port: credentials.pg_port,
-  database: 'burwell'
-})
-
 const larkin = require('./larkin')
 
 const scaleMap = {
@@ -17,9 +7,9 @@ const scaleMap = {
   3: 8,
   4: 9,
   5: 9,
-  6: 11,
-  7: 12,
-  8: 12,
+  6: 10,
+  7: 11,
+  8: 11,
   9: 12,
   10: 12
 }

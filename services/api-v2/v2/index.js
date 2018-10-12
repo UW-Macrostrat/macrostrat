@@ -98,6 +98,9 @@ api.route('/boundaries')
 api.route('/hex-summary')
   .get(require('./hex_summary'))
 
+api.route('/hex-summary/max/:zoom')
+  .get(require('./hex_summary_max'))
+
 api.route("*")
   .get(require("./catchall"));
 
