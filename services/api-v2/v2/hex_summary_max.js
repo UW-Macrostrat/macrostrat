@@ -20,7 +20,7 @@ module.exports = (req, res, next) => {
     return larkin.error(req, res, next, 'A zoom paramter is required', 400)
   }
   larkin.queryPg('burwell', `
-    SELECT max(count) AS max FROM (
+    SELECT (avg(count) + stddev_pop(count)) AS max FROM (
       SELECT hexgrids.hex_id, count(collection_no) AS count
       FROM hexgrids.hexgrids
       JOIN hexgrids.pbdb_index ON pbdb_index.hex_id = hexgrids.hex_id
