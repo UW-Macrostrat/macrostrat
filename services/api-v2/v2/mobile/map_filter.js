@@ -36,21 +36,9 @@ module.exports = (req, res, next) => {
   }
 
   let sql = `
-      SELECT DISTINCT legend_id
-      FROM lookup_large
-      WHERE ${where.join(' AND ')}
-    UNION ALL
-      SELECT DISTINCT legend_id
-      FROM lookup_medium
-      WHERE ${where.join(' AND ')}
-    UNION ALL
-      SELECT DISTINCT legend_id
-      FROM lookup_small
-      WHERE ${where.join(' AND ')}
-    UNION ALL
-      SELECT DISTINCT legend_id
-      FROM lookup_tiny
-      WHERE ${where.join(' AND ')}
+    SELECT legend_id
+    FROM maps.legend
+    WHERE ${where.join(' AND ')}
   `
   larkin.queryPg('burwell', sql, params, (error, result) => {
     if (error) return larkin.error(req, res, next)
