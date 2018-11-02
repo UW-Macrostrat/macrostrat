@@ -93,7 +93,6 @@ function queryCarto(scale, lng, lat, callback) {
     if (!result || !result.rows || !result.rows.length) {
       // try going a scale up
       if (above[scale]) {
-        console.log('try above', above[scale])
         queryCarto(above[scale], lng, lat, callback)
       } else {
         callback(null, null)
