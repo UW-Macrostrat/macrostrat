@@ -244,6 +244,7 @@ function buildSQL(scale, where) {
 }
 
 function buildLineSQL(scale) {
+  scale = scale || 'tiny'
   let scaleJoin = scaleIsIn[scale].map(s => {
     return `
     SELECT * FROM lines.${s}
