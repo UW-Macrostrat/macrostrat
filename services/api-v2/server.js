@@ -9,7 +9,7 @@ var ua = require('universal-analytics');
 
 ua('UA-75785431-1', null, {}, {
   dh: 'https://macrostrat.org/api'
-}).debug();
+});
 
 app.use(function(req, res, next) {
   // Ignore requests from the status server
