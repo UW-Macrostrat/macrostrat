@@ -58,16 +58,22 @@ module.exports = (req, res, next) => {
         })
         res.on('end', () => {
           body = JSON.parse(body)
-          callback(null, body.features.map(place => {
-            return {
-              type: 'place',
-              category: 'place',
-              place_type: (place.place_type && place.place_type.length) ? place.place_type[0] : '',
-              name: place.place_name,
-              bbox: place.bbox || [],
-              center: place.center || []
-            }
-          }))
+
+        // handle no features
+          if (!body || !body.features) {
+            callback(null, [])
+          } else {
+            callback(null, body.features.map(place => {
+              return {
+                type: 'place',
+                category: 'place',
+                place_type: (place.place_type && place.place_type.length) ? place.place_type[0] : '',
+                name: place.place_name,
+                bbox: place.bbox || [],
+                center: place.center || []
+              }
+            }))
+          }
         })
       })
     },
