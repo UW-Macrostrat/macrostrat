@@ -374,11 +374,10 @@ class LegendLookup(Base):
                      map_legend.legend_id,
                      legend.strat_name_ids,
                      array_agg(DISTINCT lsn.concept_id) AS concept_ids
-                    FROM maps.%(scale)s q
-                    JOIN maps.map_legend ON map_legend.map_id = q.map_id
-                    JOIN maps.legend ON legend.legend_id = map_legend.legend_id
+                    FROM maps.legend 
+                    JOIN maps.map_legend ON map_legend.legend_id = legend.legend_id
                     JOIN macrostrat.lookup_strat_names lsn ON lsn.strat_name_id = ANY(legend.strat_name_ids)
-                    WHERE q.source_id = %(source_id)s
+                    WHERE legend.source_id = %(source_id)s
                     GROUP BY map_legend.legend_id, legend.strat_name_ids
                 ) sub
              )
