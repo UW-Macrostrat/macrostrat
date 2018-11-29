@@ -385,7 +385,7 @@ class LegendLookup(Base):
             UPDATE maps.legend
             SET concept_ids =
             CASE
-                WHEN array_length(legend.unit_ids, 1) = 0
+                WHEN array_length(legend.unit_ids, 1) = 0 OR legend.unit_ids is null
                     THEN COALESCE(more_strat_names.concept_ids, '{}')
                 ELSE
                     (
