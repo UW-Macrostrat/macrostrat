@@ -359,7 +359,7 @@ class LegendLookup(Base):
             WITH more_strat_names AS (
                 SELECT
                     sub.legend_id,
-                    concept_ids,
+                    array((SELECT DISTINCT Unnest(array_cat(concept_ids, ac)))) as concept_ids,
                     (
                         SELECT array_agg(DISTINCT strat_name_id)
                         FROM macrostrat.lookup_strat_names
@@ -373,10 +373,56 @@ class LegendLookup(Base):
                     SELECT
                      map_legend.legend_id,
                      legend.strat_name_ids,
+                     array_agg(DISTINCT applicable_concepts.applicable_concepts) as ac,
                      array_agg(DISTINCT lsn.concept_id) AS concept_ids
                     FROM maps.legend 
                     JOIN maps.map_legend ON map_legend.legend_id = legend.legend_id
                     JOIN macrostrat.lookup_strat_names lsn ON lsn.strat_name_id = ANY(legend.strat_name_ids)
+                    JOIN (
+                        SELECT 
+                            ids.strat_name_id,
+                            unnest((
+                                SELECT COALESCE(array_agg(id), ARRAY[]::int[])
+                                FROM unnest(array_agg(ARRAY[lookup_bed.concept_id, lookup_mbr.concept_id, lookup_fm.concept_id, lookup_gp.concept_id, lookup_sgp.concept_id])) as id
+                                WHERE id is not null and id != 0
+                             )) as applicable_concepts
+                        FROM (
+                          SELECT 
+                            strat_name_id,
+                            CASE
+                                WHEN bed_id = 0
+                                    THEN NULL
+                                ELSE bed_id
+                            END as bed_id,
+                            CASE
+                                WHEN mbr_id = 0
+                                    THEN NULL
+                                ELSE mbr_id
+                            END as mbr_id,
+                            CASE
+                                WHEN fm_id = 0
+                                    THEN NULL
+                                ELSE fm_id
+                            END as fm_id,
+                            CASE
+                                WHEN gp_id = 0
+                                    THEN NULL
+                                ELSE gp_id
+                            END as gp_id,
+                            CASE
+                                WHEN sgp_id = 0
+                                    THEN NULL
+                                ELSE sgp_id
+                            END as sgp_id
+                        FROM macrostrat.lookup_strat_names
+                        ) ids
+                        LEFT JOIN macrostrat.lookup_strat_names lookup_bed ON lookup_bed.strat_name_id = ids.bed_id
+                        LEFT JOIN macrostrat.lookup_strat_names lookup_mbr ON lookup_mbr.strat_name_id = ids.mbr_id
+                        LEFT JOIN macrostrat.lookup_strat_names lookup_fm ON lookup_fm.strat_name_id = ids.fm_id
+                        LEFT JOIN macrostrat.lookup_strat_names lookup_gp ON lookup_gp.strat_name_id = ids.gp_id
+                        LEFT JOIN macrostrat.lookup_strat_names lookup_sgp ON lookup_sgp.strat_name_id = ids.sgp_id
+                        GROUP BY ids.strat_name_id
+                    ) applicable_concepts ON applicable_concepts.strat_name_id = lsn.strat_name_id
                     WHERE legend.source_id = %(source_id)s
                     GROUP BY map_legend.legend_id, legend.strat_name_ids
                 ) sub
@@ -388,7 +434,7 @@ class LegendLookup(Base):
                     THEN COALESCE(more_strat_names.concept_ids, '{}')
                 ELSE
                     (
-                        SELECT array_agg(DISTINCT lsn.concept_id)
+                        SELECT array((SELECT DISTINCT unnest(array_cat(COALESCE(more_strat_names.concept_ids, '{}'), array_agg(DISTINCT lsn.concept_id)))))
                         FROM macrostrat.unit_strat_names usn
                         JOIN macrostrat.lookup_strat_names lsn ON lsn.strat_name_id = usn.strat_name_id
                         WHERE usn.unit_id = ANY(legend.unit_ids)
