@@ -10,8 +10,8 @@ class Backup(Base):
     '''
     macrostrat backup <database or source_id>:
         Create a backup/dump of a given database or map source.
-        In the case of a source, a pg_dump that first removes all instances of
-        the source from the database. DELETES DATA from:
+        If a source is provided, the resulting pg_dump file will first remove
+        all instances of the source from the database. DELETES DATA from:
             - public.lookup_<scale>
             - maps.map_liths
             - maps.map_strat_names
@@ -121,6 +121,35 @@ class Backup(Base):
                 )) TO '%(cwd)s/temp_map_units.tsv' WITH ENCODING 'UTF8'
             """, { 'scale': AsIs(source_info.scale), 'source_id': self.args[1], 'cwd': AsIs(cwd)  })
             call(['echo "COPY maps.map_units FROM stdin;" | cat - temp_map_units.tsv > map_units.tsv && echo "\.\n" >> map_units.tsv && rm -f temp_map_units.tsv'], shell=True)
+
+            # maps.legend
+            self.pg['cursor'].execute("""
+                COPY (SELECT * FROM maps.legend
+                WHERE source_id = %(source_id)s) TO '%(cwd)s/temp_legend.tsv' WITH ENCODING 'UTF8'
+            """, { 'source_id': self.args[1], 'cwd': AsIs(cwd)  })
+            call(['echo "COPY maps.legend FROM stdin;" | cat - temp_legend.tsv > legend.tsv && echo "\.\n" >> legend.tsv && rm -f temp_legend.tsv'], shell=True)
+
+            # maps.map_legend
+            self.pg['cursor'].execute("""
+                COPY (SELECT * FROM maps.map_legend
+                WHERE map_id IN (
+                    SELECT map_id
+                    FROM maps.%(scale)s
+                    WHERE source_id = %(source_id)s
+                )) TO '%(cwd)s/temp_map_legend.tsv' WITH ENCODING 'UTF8'
+            """, { 'scale': AsIs(source_info.scale), 'source_id': self.args[1], 'cwd': AsIs(cwd)  })
+            call(['echo "COPY maps.map_legend FROM stdin;" | cat - temp_map_legend.tsv > map_legend.tsv && echo "\.\n" >> map_legend.tsv && rm -f temp_map_legend.tsv'], shell=True)
+
+            # maps.legend_liths
+            self.pg['cursor'].execute("""
+                COPY (SELECT * FROM maps.legend_liths
+                WHERE legend_id IN (
+                    SELECT legend_id
+                    FROM maps.legend
+                    WHERE source_id = %(source_id)s
+                )) TO '%(cwd)s/temp_legend_liths.tsv' WITH ENCODING 'UTF8'
+            """, { 'source_id': self.args[1], 'cwd': AsIs(cwd)  })
+            call(['echo "COPY maps.legend_liths FROM stdin;" | cat - temp_legend_liths.tsv > legend_liths.tsv && echo "\.\n" >> legend_liths.tsv && rm -f temp_legend_liths.tsv'], shell=True)
 
             # points.points
             self.pg['cursor'].execute("""
