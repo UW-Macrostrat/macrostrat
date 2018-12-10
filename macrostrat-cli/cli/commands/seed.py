@@ -30,7 +30,10 @@ def http_request(params):
 class Seed(Base):
     '''
     macrostrat seed <source_id, scale, or layer>:
-        Seed the tileserver
+        Seed vector and raster tiles. When providing a <source_id> only
+        raster tiles will be seeded. To seed vector tiles a <layer> must be
+        provided (carto or carto-slim). Vector tile seeding requires recreating
+        all tiles and takes a few hours, so using tmux or screen is advisable.
 
     Usage:
       macrostrat seed 123
