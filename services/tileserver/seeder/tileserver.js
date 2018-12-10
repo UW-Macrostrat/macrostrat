@@ -1,27 +1,19 @@
 const tilestrata = require('tilestrata')
 const cartoRaster = require('./cartoRaster')
-const cartoVector = require('./cartoVector')
-const cartoSlimVector = require('./cartoSlimVector')
-const pbdbCollections = require('./pbdb-collections')
+// const hexgrid = require('./hexgrid')
 
 module.exports = tilestrata.middleware({
   server: (function() {
     let strata = tilestrata()
 
-    strata.layer('pbdb-collections')
-      .route('*.mvt')
-        .use(pbdbCollections())
-
     // carto mvt and png
     strata.layer('carto')
       .route('*.png')
         .use(cartoRaster())
-      .route('*.mvt')
-        .use(cartoVector())
 
-    strata.layer('carto-slim')
-      .route('*.mvt')
-        .use(cartoSlimVector())
+    // strata.layer('hexgrid')
+    //   .route("*.mvt")
+    //     .use(hexgrid())
 
     return strata
 
