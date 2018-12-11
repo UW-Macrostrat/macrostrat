@@ -131,7 +131,7 @@ module.exports = function(req, res, next, callback) {
       SELECT
         cols.id AS col_id,
         col_name,
-        col_group,
+        col_group_long AS col_group,
         col_groups.id AS col_group_id,
         col AS group_col_id,
         round(cols.col_area, 1) AS col_area,
