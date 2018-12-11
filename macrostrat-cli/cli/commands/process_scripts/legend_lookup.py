@@ -307,6 +307,7 @@ class LegendLookup(Base):
         })
         self.pg['connection'].commit()
 
+        # Update specific liths
         self.pg['cursor'].execute("""
             WITH lith_bases AS (
               SELECT array_agg(distinct basis_col) bases, q.legend_id
@@ -355,6 +356,32 @@ class LegendLookup(Base):
         })
         self.pg['connection'].commit()
 
+        # Update all liths
+        self.pg['cursor'].execute("""
+            UPDATE maps.legend
+            SET
+                all_lith_ids = sub.lith_ids,
+                all_lith_types = sub.lith_types,
+                all_lith_classes = sub.lith_classes
+            FROM (
+                SELECT
+                    legend.legend_id,
+                    array_agg(DISTINCT liths.lith_equiv) AS lith_ids,
+                    array_agg(DISTINCT liths.lith_type) AS lith_types,
+                    array_agg(DISTINCT liths.lith_class) AS lith_classes
+                FROM maps.legend_liths
+                JOIN maps.legend ON legend_liths.legend_id = legend.legend_id
+                JOIN macrostrat.liths ON liths.id = legend_liths.lith_id
+                WHERE legend.source_id = %(source_id)s
+                GROUP BY legend.legend_id
+            ) sub
+            WHERE legend.legend_id = sub.legend_id;
+        """, {
+            'source_id': source_id
+        })
+        self.pg['connection'].commit()
+
+        # Update concept_ids and strat_name_children
         self.pg['cursor'].execute("""
             WITH more_strat_names AS (
                 SELECT
@@ -375,11 +402,11 @@ class LegendLookup(Base):
                      legend.strat_name_ids,
                      array_agg(DISTINCT applicable_concepts.applicable_concepts) as ac,
                      array_agg(DISTINCT lsn.concept_id) AS concept_ids
-                    FROM maps.legend 
+                    FROM maps.legend
                     JOIN maps.map_legend ON map_legend.legend_id = legend.legend_id
                     JOIN macrostrat.lookup_strat_names lsn ON lsn.strat_name_id = ANY(legend.strat_name_ids)
                     JOIN (
-                        SELECT 
+                        SELECT
                             ids.strat_name_id,
                             unnest((
                                 SELECT COALESCE(array_agg(id), ARRAY[]::int[])
@@ -387,7 +414,7 @@ class LegendLookup(Base):
                                 WHERE id is not null and id != 0
                              )) as applicable_concepts
                         FROM (
-                          SELECT 
+                          SELECT
                             strat_name_id,
                             CASE
                                 WHEN bed_id = 0
@@ -449,6 +476,7 @@ class LegendLookup(Base):
         })
         self.pg['connection'].commit()
 
+        # Update best_age_top and best_age_bottom and color
         self.pg['cursor'].execute("""
             WITH ages AS (
                 SELECT
