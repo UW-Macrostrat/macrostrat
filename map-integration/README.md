@@ -150,3 +150,11 @@ You will then be able to see a live view of the tiles at `http://localhost:5555`
 raster2pgsql -s 4326 -c -I -t 30x30 n42_w090_1arc_v2.tif sources.srtm | psql -U john elevation
 
 ````
+
+## Fix unstyled polygons
+When empty (unstyled) polygons appear do the following to fix (see https://github.com/UW-Macrostrat/burwell/issues/38)
+```
+sudo su jczaplewski
+pm2 restart seed-server
+macrostrat seed 207
+```
