@@ -8,7 +8,7 @@
     "url": "https://github.com/UW-Macrostrat/macrostrat-api.git"
   },
   "scripts": {
-    "postinstall": "npm install --prefix ./v1 ./v1 && npm install --prefix ./v2 ./v2",
+    "postinstall": "./postinstall.sh",
     "start": "node server.js",
     "test": "mocha ./v1/test && mocha ./v2/test"
   },
