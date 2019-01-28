@@ -94,7 +94,6 @@ api.route("/measurements")
 api.route('/boundaries')
   .get(require('./boundaries'))
 
-
 api.route('/hex-summary')
   .get(require('./hex_summary'))
 
