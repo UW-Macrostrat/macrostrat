@@ -2,6 +2,7 @@ const tilestrata = require('tilestrata')
 const http = require('http')
 const fs = require('fs')
 
+// Proxy all tile requests to the new tileserver
 const passThrough = {
   init: (server, callback) => {
     callback()
