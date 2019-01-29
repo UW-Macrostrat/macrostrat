@@ -136,6 +136,7 @@ module.exports = function(req, res, next, callback) {
         col AS group_col_id,
         round(cols.col_area, 1) AS col_area,
         project_id,
+        COALESCE(cols.col_type, '') AS col_type,
         string_agg(col_refs.ref_id::varchar, '|') AS refs
         ${geo}
       FROM macrostrat.cols
