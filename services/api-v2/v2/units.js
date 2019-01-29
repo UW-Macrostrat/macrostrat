@@ -144,8 +144,8 @@ module.exports = function(req, res, next, cb) {
           params = {};
 
       if (req.query.status_code) {
-        where += "cols.status_code = :status_code"
-        params["status_code"] = req.query.status_code
+          where += "cols.status_code IN (:status_code)"
+          params["status_code"] = larkin.parseMultipleStrings(req.query.status_code)
       } else {
         where += "cols.status_code = 'active'"
       }
