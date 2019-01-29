@@ -364,7 +364,7 @@ module.exports = function(req, res, next, cb) {
         LEFT JOIN lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id
         ${(req.query.response === 'long' || cb) ? 'LEFT JOIN unit_notes ON unit_notes.unit_id=units.id' : ''}
         WHERE
-          status_code = ${req.query.status_code ? req.query.status_code : 'active'}
+          cols.status_code = ${req.query.status_code ? req.query.status_code : "'active'"}
           ${where}
         GROUP BY units.id
       ORDER BY ${(orderby.length > 0) ? orderby.join(', ') + ',' : ''} t_age ASC
