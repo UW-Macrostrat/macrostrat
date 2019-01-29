@@ -107,9 +107,15 @@ module.exports = function(req, res, next, callback) {
       var groupBy = "";
       var orderby = "";
 
+      if (req.query.status_code) {
+        params.push(req.query.status_code)
+      } else {
+        params.push('active')
+      }
+
       if (req.query.format && api.acceptedFormats.geo[req.query.format]) {
         if (req.query.shape) {
-          geo = ", ST_AsGeoJSON(ST_Intersection(col_areas.col_area, ST_MakeValid($2))) geojson";
+          geo = ", ST_AsGeoJSON(ST_Intersection(col_areas.col_area, ST_MakeValid($3))) geojson";
           params.push(req.query.shape);
         } else {
           geo = ", ST_AsGeoJSON(col_areas.col_area) geojson";
@@ -118,12 +124,12 @@ module.exports = function(req, res, next, callback) {
       }
 
       if (req.query.lat && req.query.lng && req.query.adjacents) {
-        orderby = "ORDER BY ST_Distance(ST_SetSRID(col_areas.col_area, 4326), ST_GeometryFromText($2, 4326))";
+        orderby = "ORDER BY ST_Distance(ST_SetSRID(col_areas.col_area, 4326), ST_GeometryFromText($3, 4326))";
         params.push("POINT(" + larkin.normalizeLng(req.query.lng) + " " + req.query.lat + ")");
         groupBy = ", col_areas.col_area";
 
       } else if (req.query.col_id && req.query.adjacents) {
-        orderby = "ORDER BY ST_Distance(ST_Centroid(col_areas.col_area), (SELECT ST_Centroid(col_area) FROM macrostrat.col_areas WHERE col_id = $2))";
+        orderby = "ORDER BY ST_Distance(ST_Centroid(col_areas.col_area), (SELECT ST_Centroid(col_area) FROM macrostrat.col_areas WHERE col_id = $3))";
         params.push(req.query.col_id);
         groupBy = ", col_areas.col_area";
       }
@@ -143,7 +149,7 @@ module.exports = function(req, res, next, callback) {
       LEFT JOIN macrostrat.col_areas on col_areas.col_id = cols.id
       LEFT JOIN macrostrat.col_groups ON col_groups.id = cols.col_group_id
       LEFT JOIN macrostrat.col_refs ON cols.id = col_refs.col_id
-      WHERE cols.status_code = ${req.query.status_code ? req.query.status_code : "'active'"}
+      WHERE cols.status_code = $2
         AND col_areas.col_area IS NOT NULL AND cols.id = ANY($1)
       GROUP BY col_areas.col_id, cols.id, col_groups.col_group, col_groups.id ${groupBy}
       ${orderby}

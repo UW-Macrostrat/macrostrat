@@ -143,6 +143,13 @@ module.exports = function(req, res, next, cb) {
           orderby = [],
           params = {};
 
+      if (req.query.status_code) {
+        where += "cols.status_code = :status_code"
+        params["status_code"] = req.query.status_code
+      } else {
+        where += "cols.status_code = 'active'"
+      }
+
       if (req.query.lith || req.query.lith_class || req.query.lith_type || req.query.lith_id) {
         where += " AND units.id IN (SELECT unit_liths.unit_id FROM unit_liths JOIN liths ON lith_id = liths.id WHERE "
         var lithWhere = []
@@ -364,7 +371,6 @@ module.exports = function(req, res, next, cb) {
         LEFT JOIN lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id
         ${(req.query.response === 'long' || cb) ? 'LEFT JOIN unit_notes ON unit_notes.unit_id=units.id' : ''}
         WHERE
-          cols.status_code = ${req.query.status_code ? req.query.status_code : "'active'"}
           ${where}
         GROUP BY units.id
       ORDER BY ${(orderby.length > 0) ? orderby.join(', ') + ',' : ''} t_age ASC
