@@ -1,6 +1,5 @@
 var api = require("./api"),
     async = require("async"),
-    multiline = require("multiline"),
     dbgeo = require("dbgeo"),
     gp = require("geojson-precision"),
     larkin = require("./larkin");
@@ -296,6 +295,11 @@ module.exports = function(req, res, next, cb) {
         params["cltn_ids"] = larkin.parseMultipleIds(req.query.cltn_id);
       }
 
+      if (req.query.col_type) {
+        where += " AND cols.col_type IN (:col_type)"
+        params["col_type"] = larkin.parseMultipleStrings(req.query.col_type)
+      }
+
 
       if ("sample" in req.query) {
         // Speeds things up...
@@ -304,49 +308,47 @@ module.exports = function(req, res, next, cb) {
 
       params["measure_field"] = ("summarize_measures" in req.query) ? "lookup_unit_attrs_api.measure_long" : "lookup_unit_attrs_api.measure_short";
 
-      var shortSQL = multiline(function() {/*
-        units.id AS unit_id,
-        units_sections.section_id AS section_id,
-        units_sections.col_id AS col_id,
-        cols.project_id,
-        cols.col_area,
-        units.strat_name AS unit_name,
-        unit_strat_names.strat_name_id,
-        IFNULL(mbr_name, '') AS Mbr,
-        IFNULL(fm_name, '') AS Fm,
-        IFNULL(gp_name, '') AS Gp,
-        IFNULL(sgp_name, '') AS SGp,
-        lookup_units.t_age,
-        lookup_units.b_age,
-        units.max_thick,
-        units.min_thick,
-        units.outcrop,
-        lookup_units.pbdb_collections,
-        lookup_units.pbdb_occurrences
-      */});
+      var shortSQL = `
+      units.id AS unit_id,
+      units_sections.section_id AS section_id,
+      units_sections.col_id AS col_id,
+      cols.project_id,
+      cols.col_area,
+      units.strat_name AS unit_name,
+      unit_strat_names.strat_name_id,
+      IFNULL(mbr_name, '') AS Mbr,
+      IFNULL(fm_name, '') AS Fm,
+      IFNULL(gp_name, '') AS Gp,
+      IFNULL(sgp_name, '') AS SGp,
+      lookup_units.t_age,
+      lookup_units.b_age,
+      units.max_thick,
+      units.min_thick,
+      units.outcrop,
+      lookup_units.pbdb_collections,
+      lookup_units.pbdb_occurrences`
 
-      var longSQL = shortSQL + multiline(function() {/*
-        ,
-        lookup_unit_attrs_api.lith,
-        lookup_unit_attrs_api.environ,
-        lookup_unit_attrs_api.econ,
-        ::measure_field AS measure,
-        IFNULL(notes, '') AS notes,
-        lookup_units.color,
-        lookup_units.text_color,
-        lookup_units.t_int AS t_int_id,
-        lookup_units.t_int_name,
-        lookup_units.t_int_age,
-        lookup_units.t_prop,
-        lookup_units.units_above,
-        lookup_units.b_int AS b_int_id,
-        lookup_units.b_int_name,
-        lookup_units.b_int_age,
-        lookup_units.b_prop,
-        lookup_units.units_below,
-        lookup_strat_names.rank_name AS strat_name_long,
-        GROUP_CONCAT(col_refs.ref_id SEPARATOR '|') AS refs
-      */});
+      var longSQL = `${shortSQL},
+      lookup_unit_attrs_api.lith,
+      lookup_unit_attrs_api.environ,
+      lookup_unit_attrs_api.econ,
+      ::measure_field AS measure,
+      IFNULL(notes, '') AS notes,
+      lookup_units.color,
+      lookup_units.text_color,
+      lookup_units.t_int AS t_int_id,
+      lookup_units.t_int_name,
+      lookup_units.t_int_age,
+      lookup_units.t_prop,
+      lookup_units.units_above,
+      lookup_units.b_int AS b_int_id,
+      lookup_units.b_int_name,
+      lookup_units.b_int_age,
+      lookup_units.b_prop,
+      lookup_units.units_below,
+      lookup_strat_names.rank_name AS strat_name_long,
+      GROUP_CONCAT(col_refs.ref_id SEPARATOR '|') AS refs
+      `
 
       var geometry = ((req.query.format && api.acceptedFormats.geo[req.query.format]) || req.query.response === "long") ? ", lookup_units.clat, lookup_units.clng, lookup_units.t_plat, lookup_units.t_plng, lookup_units.b_plat, lookup_units.b_plng " : "";
 

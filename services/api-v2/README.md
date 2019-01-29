@@ -26,16 +26,7 @@ Next, install dependencies:
 npm install
 ````
 
-Depending on the permissions of the directory you might need to manually install dependencies for each version of the API as well:
-
-````
-cd v1 && npm install && cd .. && cd v2 && npm install && cd ..
-````
-
-Each of the two versions of the API has a credentials file that is not tracked by git. Start by copying the example files:
-````
-cp v1/credentials.example.js v1/credentials.js && cp v2/credentials.example.js v2/credentials.js
-````
+This will also run the script `postinstall.sh` which copies credentials files into place.
 
 For `v1/credentials.js` fill in your MariaDB and PostgreSQL user information. Do the same for `v2/credentials.js`, but also update the port for Redis if necessary, and follow the inline instructions for generating a cache refresh key. The cache refresh key is used as a secret parameter to programmatically refresh the column cache, such as in situations in which the underlying data has been changed (editing, adding, etc).
 
