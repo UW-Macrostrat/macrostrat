@@ -360,7 +360,7 @@ module.exports = function(req, res, next, cb) {
       var geometry = ((req.query.format && api.acceptedFormats.geo[req.query.format]) || req.query.response === "long") ? ", lookup_units.clat, lookup_units.clng, lookup_units.t_plat, lookup_units.t_plng, lookup_units.b_plat, lookup_units.b_plng " : "";
 
       var sql = `
-        SELECT ${(req.query.response === 'long' || cb) ? longSQL : shortSQL}
+          SELECT ${(req.query.response === 'long' || cb) ? longSQL : shortSQL} ${geometry}
         FROM units
         LEFT JOIN lookup_unit_attrs_api ON lookup_unit_attrs_api.unit_id = units.id
         LEFT JOIN lookup_units ON units.id = lookup_units.unit_id
