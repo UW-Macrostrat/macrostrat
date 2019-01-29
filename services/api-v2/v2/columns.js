@@ -108,7 +108,7 @@ module.exports = function(req, res, next, callback) {
       var orderby = "";
 
       if (req.query.status_code) {
-        params.push(req.query.status_code)
+        params.push(decodeURI(req.query.status_code))
       } else {
         params.push('active')
       }
