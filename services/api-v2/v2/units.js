@@ -369,7 +369,7 @@ module.exports = function(req, res, next, cb) {
         LEFT JOIN cols ON units_sections.col_id = cols.id
         LEFT JOIN col_refs ON cols.id = col_refs.col_id
         LEFT JOIN lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id
-        ${(req.query.response === 'long' || cb) ? 'LEFT JOIN unit_notes ON unit_notes.unit_id=units.id' : ''}
+        LEFT JOIN unit_notes ON unit_notes.unit_id=units.id
         WHERE
           ${where}
         GROUP BY units.id
