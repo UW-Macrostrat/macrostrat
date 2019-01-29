@@ -360,7 +360,7 @@ module.exports = function(req, res, next, cb) {
       var geometry = ((req.query.format && api.acceptedFormats.geo[req.query.format]) || req.query.response === "long") ? ", lookup_units.clat, lookup_units.clng, lookup_units.t_plat, lookup_units.t_plng, lookup_units.b_plat, lookup_units.b_plng " : "";
 
       var sql = `
-        SELECT ${(req.query.response === 'long' || callback) ? longSQL : shortSQL}
+        SELECT ${(req.query.response === 'long' || cb) ? longSQL : shortSQL}
         FROM units
         LEFT JOIN lookup_unit_attrs_api ON lookup_unit_attrs_api.unit_id = units.id
         LEFT JOIN lookup_units ON units.id = lookup_units.unit_id
@@ -376,16 +376,6 @@ module.exports = function(req, res, next, cb) {
       ORDER BY ${(orderby.length > 0) ? orderby.join(', ') + ',' : ''} t_age ASC
       ${limit}
       `
-      // var sql = "SELECT " + ((req.query.response === "long" || cb) ? longSQL : shortSQL) + geometry + " FROM units \
-      //       JOIN lookup_unit_attrs_api ON lookup_unit_attrs_api.unit_id = units.id \
-      //       JOIN lookup_units ON units.id = lookup_units.unit_id \
-      //       LEFT JOIN unit_strat_names ON unit_strat_names.unit_id=units.id \
-      //       LEFT JOIN units_sections ON units.id = units_sections.unit_id \
-      //       LEFT JOIN cols ON units_sections.col_id = cols.id \
-      //       LEFT JOIN col_refs ON cols.id = col_refs.col_id \
-      //       LEFT JOIN lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id \
-      //       " + ((req.query.response === "long" || cb) ? "LEFT JOIN unit_notes ON unit_notes.unit_id=units.id" : "") + " \
-      //       WHERE status_code='active' " + where + " GROUP BY units.id ORDER BY " + ((orderby.length > 0) ? (orderby.join(", ") + ", t_age ASC") : "t_age ASC") + limit;
 
       larkin.query(sql, params, function(error, result) {
           if (error) {
