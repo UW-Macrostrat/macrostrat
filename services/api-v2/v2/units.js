@@ -362,8 +362,8 @@ module.exports = function(req, res, next, cb) {
       var sql = `
         SELECT ${(req.query.response === 'long' || callback) ? longSQL : shortSQL}
         FROM units
-        JOIN lookup_unit_attrs_api ON lookup_unit_attrs_api.unit_id = units.id
-        JOIN lookup_units ON units.id = lookup_units.unit_id
+        LEFT JOIN lookup_unit_attrs_api ON lookup_unit_attrs_api.unit_id = units.id
+        LEFT JOIN lookup_units ON units.id = lookup_units.unit_id
         LEFT JOIN unit_strat_names ON unit_strat_names.unit_id=units.id
         LEFT JOIN units_sections ON units.id = units_sections.unit_id
         LEFT JOIN cols ON units_sections.col_id = cols.id
