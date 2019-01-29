@@ -150,7 +150,7 @@ module.exports = function(req, res, next, callback) {
       LEFT JOIN macrostrat.col_groups ON col_groups.id = cols.col_group_id
       LEFT JOIN macrostrat.col_refs ON cols.id = col_refs.col_id
       WHERE cols.status_code = $2
-        AND col_areas.col_area IS NOT NULL AND cols.id = ANY($1)
+        AND cols.id = ANY($1)
       GROUP BY col_areas.col_id, cols.id, col_groups.col_group, col_groups.id ${groupBy}
       ${orderby}
       ${limit}
