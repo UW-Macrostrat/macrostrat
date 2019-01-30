@@ -481,7 +481,16 @@ var mysql = require("mysql"),
     }
   });
 
+  /*
+    On API startup cache the following:
+      + All columns (with geometries)
+      + All columns (without geometries)
+      + A summary of all units
 
+    To refresh these caches without restarting the API an HTTP request can be
+    made to /columns/refresh-cache?cacheRefreshKey= with the value of
+    exports.cacheRefreshKey found in ./credentials.js
+  */
   larkin.setupCache = function() {
 
     async.parallel({
@@ -591,7 +600,7 @@ var mysql = require("mysql"),
             console.log('Could not set up column cache. Check postgres connection')
             callback(null)
           }
-          
+
         })
       }
 

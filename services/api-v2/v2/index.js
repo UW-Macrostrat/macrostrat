@@ -3,6 +3,8 @@ var api = require("./api"),
 
 // Establish a connection to the database
 larkin.connectMySQL();
+
+// Set up the column and unit cache
 larkin.setupCache();
 
 // Load route categories
