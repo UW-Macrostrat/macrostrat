@@ -42,11 +42,6 @@ class RGeom(Base):
         Base.__init__(self, connections, *args)
 
     def run(self, source_id):
-
-        print 'args'
-        print self.args
-        print '--simple' in self.args[0]
-        sys.exit()
         if len(source_id) == 0 or source_id[0] == '--help' or source_id[0] == '-h':
             print RGeom.__doc__
             sys.exit()
