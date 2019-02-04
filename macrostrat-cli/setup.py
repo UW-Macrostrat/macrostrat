@@ -49,7 +49,7 @@ setup(
     ],
     keywords = 'cli',
     packages = find_packages(exclude=['docs', 'tests*']),
-    install_requires = ['psycopg2', 'pymysql', 'pyyaml', 'tiletanic', 'shapely', 'fiona', 'pyproj', 'numpy', 'scipy', 'tqdm', 'spectra'],
+    install_requires = ['psycopg2', 'pymysql', 'pyyaml', 'tiletanic', 'shapely', 'fiona', 'pyproj', 'numpy', 'scipy', 'tqdm', 'spectra', 'requests'],
     # extras_require = {
     #     'test': ['coverage', 'pytest', 'pytest-cov'],
     # },

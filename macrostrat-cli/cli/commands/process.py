@@ -50,7 +50,7 @@ class Process(Base):
 
         script = getattr(process_scripts, cmd)
 
-        if (len(self.args) - 2) != len(script.meta['required_args']) and cmd != 'tesselate':
+        if (len(self.args) - 2) < len(script.meta['required_args']) and cmd != 'tesselate':
             print 'You are missing a required argument for this command. The following arguments are required:'
             for arg in script.meta['required_args']:
                 print '     + %s - %s' % (arg, script.meta['required_args'][arg])
