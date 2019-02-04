@@ -20,8 +20,10 @@ class RGeom(Base):
     Options:
       -h --help                         Show this screen.
       --version                         Show version.
+      --simple                          Skip geometry ring cleanup
     Examples:
       macrostrat process rgeom 123
+      macrostrat process rgeom 123 --simple
     Help:
       For help using this tool, please open an issue on the Github repository:
       https://github.com/UW-Macrostrat/macrostrat-cli
