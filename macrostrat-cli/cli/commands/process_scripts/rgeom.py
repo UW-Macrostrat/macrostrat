@@ -101,7 +101,7 @@ class RGeom(Base):
                 UPDATE maps.sources
                 SET rgeom = (
                     SELECT geom
-                    FROM public.%primary_table
+                    FROM public.%(primary_table)s
                 )
                 WHERE source_id = %(source_id)s
             """, {
@@ -109,6 +109,7 @@ class RGeom(Base):
                 'source_id': source_id
             })
             self.pg['connection'].commit()
+
         else:
             print '     Processing geometry...'
             # Update the sources table
