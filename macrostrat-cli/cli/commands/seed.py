@@ -29,11 +29,13 @@ def http_request(params):
 
 class Seed(Base):
     '''
-    macrostrat seed <source_id, scale, or layer>:
+    macrostrat seed <source_id, scale, layer, or all>:
         Seed vector and raster tiles. When providing a <source_id> only
         raster tiles will be seeded. To seed vector tiles a <layer> must be
         provided (carto or carto-slim). Vector tile seeding requires recreating
         all tiles and takes a few hours, so using tmux or screen is advisable.
+
+        To reseed all tiles you can run `macrostrat seed all`
 
     Usage:
       macrostrat seed 123
@@ -201,6 +203,37 @@ class Seed(Base):
         if len(self.args) == 1:
             print 'Please specify a source_id or scale'
             sys.exit()
+
+        if self.args[1] == 'all':
+            print '  Working on carto (vector)'
+            Seed.seed_mbtiles(self, 'carto')
+
+            print '  Working on carto-slim (vector)'
+            Seed.seed_mbtiles(self, 'carto-slim')
+
+            print '  Working on carto (raster)'
+            Seed.seed_raster(self)
+
+            print """
+                All tiles have been rerolled. If you are experiencing rendering
+                issues try the following:
+                  + Restart the tileserver (`pm2 restart tileserver`)
+                  + Clear the cache (`redis-cli flushdb`)
+
+                If you are experiencing issues related to the coloring of raster
+                tiles try restarting the seed server and rerolling:
+
+                  pm2 restart seed-server && macrostrat seed carto-raster
+
+                To move these tiles into production, run the following:
+
+                    scp /data/projects/tileserver/seeder/carto.mbtiles strata:/data/tmp
+                    scp /data/projects/tileserver/seeder/carto-slim.mbtiles strata:/data/tmp
+                    scp /data/projects/tileserver/seeder/carto-raster.mbtiles strata:/data/tmp
+
+            """
+            sys.exit()
+
 
         if self.args[1] == 'carto' or self.args[1] == 'carto-slim':
             Seed.seed_mbtiles(self, self.args[1])
