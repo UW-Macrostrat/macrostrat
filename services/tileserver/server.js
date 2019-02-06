@@ -4,6 +4,9 @@ const express = require('express')
 const app = express()
 const tileServer = require('./tileserver')
 
+// Script to generate Mapnik XML files for dynamic tile generation
+const compileStyles = require('./seeder/etc/convert')
+
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*')
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept')
@@ -26,8 +29,11 @@ app.route('/preview/:layer')
 app.port = process.argv[2] || 5555
 
 app.start = () => {
-  app.listen(app.port, () => {
-    console.log(`Tile server listening on port ${app.port}`)
+
+  compileStyles(() => {
+    app.listen(app.port, () => {
+      console.log(`Tile server listening on port ${app.port}`)
+    })
   })
 }
 
