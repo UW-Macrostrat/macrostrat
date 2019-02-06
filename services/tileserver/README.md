@@ -2,26 +2,55 @@
 
 For all your geologic map needs
 
-## Available formats
-All tiles are available as both Map(nik/box) Vector Tiles (`.mvt`) and PNG (`.png`)
+## Installation
+````
+npm install && cp credentials.example.js credentials.js
+````
+
+Enter your Postgres credentials in `credentials.js`
+
+## Starting
+
+For development:
+````
+npm start
+````
+
+For production:
+````
+pm2 start server.js -i 2 --name tileserver
+````
+
+## Troubleshooting
+Seeing blank tiles, empty polygons, or other oddities? Try the following:
+
+1. Clear your browser cache
+
+2. Clear the tile cache:
+````
+redis-cli flushdb
+````
+
+3. Restart the tileserver:
+````
+pm2 restart tileserver
+````
+
+4a. If the problem is with raster tiles....
+````
+macrostrat seed <source_id>
+````
+
+4b. If the problem is with vector tiles...
+````
+macrostrat seed carto && macrostrat seed carto-vector
+````
 
 ## Layers
 The following tilesets are available:
-
-### Carto
-The carto layer is for visualization purposes, and makes many assumptions about the relative priority of each map. The layers and scales are seamlessly blended so no scale-dependent decisions can or should be made
-
-### Tiny
-All maps from the scale `tiny`. You can find a list of available maps at https://macrostrat.org/api/v2/defs/sources?scale=tiny
-
-### Small
-All maps from the scale `small`. You can find a list of available maps at https://macrostrat.org/api/v2/defs/sources?scale=small
-
-### Tiny
-All maps from the scale `medium`. You can find a list of available maps at https://macrostrat.org/api/v2/defs/sources?scale=medium
-
-### Large
-All maps from the scale `tiny`. You can find a list of available maps at https://macrostrat.org/api/v2/defs/sources?scale=large
++ `/carto/<z>/<x>/<y>.mvt`
++ `/carto/<z>/<x>/<y>.png`
++ `/carto-slim/<z>/<x>/<y>.mvt`
 
 
 ## Schema
