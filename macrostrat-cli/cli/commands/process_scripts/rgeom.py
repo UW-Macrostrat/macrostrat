@@ -96,7 +96,7 @@ class RGeom(Base):
         })
         self.pg['connection'].commit()
 
-        if '--simple' in self.args[0]:
+        if self.args and '--simple' in self.args[0]:
             self.pg['cursor'].execute("""
                 UPDATE maps.sources
                 SET rgeom = (
