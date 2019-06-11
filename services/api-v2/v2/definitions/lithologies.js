@@ -45,7 +45,7 @@ module.exports = function(req, res, next, cb) {
   }
   if (req.query.lith_group) {
     where.push("lith_group IN (:lith_group)")
-    params["lith_group"] = larkin.parseMultipleIds(req.query.lith_group)
+    params["lith_group"] = larkin.parseMultipleStrings(req.query.lith_group)
   }
 
   if (where.length) {
