@@ -34,7 +34,6 @@ class Stats(Base):
                     SELECT DISTINCT project_id, units_sections.section_id, units_sections.col_id, units_sections.unit_id
                     FROM units_sections
                     JOIN cols ON cols.id = units_sections.col_id
-                    WHERE cols.status_code = 'active'
                   ) distinct_units
                   GROUP BY distinct_units.project_id
                 ) AS unit_counts ON unit_counts.project_id = projects.id
@@ -46,7 +45,6 @@ class Stats(Base):
                     JOIN units_sections ON cols.id = units_sections.col_id
                     LEFT JOIN unit_measures ON unit_measures.unit_id = units_sections.unit_id
                     LEFT JOIN measures ON unit_measures.measuremeta_id = measures.measuremeta_id
-                    WHERE cols.status_code = 'active'
                   ) AS distinct_measures
                   GROUP BY distinct_measures.project_id
                 ) AS measure_counts ON measure_counts.project_id = projects.id
@@ -57,7 +55,6 @@ class Stats(Base):
                     FROM cols
                     JOIN units_sections ON units_sections.col_id = cols.id
                     LEFT JOIN pbdb_matches ON pbdb_matches.unit_id = units_sections.unit_id
-                    WHERE cols.status_code = 'active'
                   ) AS distinct_collections
                   GROUP BY distinct_collections.project_id
                 ) AS collection_counts ON collection_counts.project_id = projects.id
