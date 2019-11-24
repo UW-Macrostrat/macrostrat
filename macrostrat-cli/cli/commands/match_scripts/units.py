@@ -111,6 +111,7 @@ class Units(Base):
             JOIN macrostrat.lookup_unit_intervals ON unit_strat_names.unit_id = lookup_unit_intervals.unit_id
             JOIN flattened ON flattened.down_names = unit_strat_names.strat_name_id
             JOIN macrostrat.lookup_strat_names ON flattened.down_names = lookup_strat_names.strat_name_id
+            WHERE cols.status_code='active'
             )
             SELECT DISTINCT ON (map_id, b.unit_id) map_id, b.unit_id AS units, %(match_type)s
             FROM a
@@ -201,6 +202,7 @@ class Units(Base):
             JOIN macrostrat.lookup_unit_intervals ON unit_strat_names.unit_id = lookup_unit_intervals.unit_id
             JOIN flattened ON flattened.up_names = unit_strat_names.strat_name_id
             JOIN macrostrat.lookup_strat_names ON flattened.up_names = lookup_strat_names.strat_name_id
+            WHERE cols.status_code='active'
             )
             SELECT DISTINCT ON (map_id, b.unit_id) map_id, b.unit_id AS units, %(match_type)s
             FROM a
@@ -257,7 +259,7 @@ class Units(Base):
                   JOIN macrostrat.units_sections ON unit_strat_names.unit_id = units_sections.unit_id
                   JOIN macrostrat.cols ON units_sections.col_id = cols.id
                   JOIN macrostrat.lookup_unit_intervals ON unit_strat_names.unit_id = lookup_unit_intervals.unit_id
-                  WHERE strat_name_id IN (SELECT DISTINCT strat_name_id FROM a)
+                  WHERE strat_name_id IN (SELECT DISTINCT strat_name_id FROM a) AND cols.status_code='active'
                 )
             SELECT DISTINCT ON (map_id, b.unit_id) map_id, b.unit_id AS units, %(match_type)s
             FROM a
@@ -428,7 +430,7 @@ class Units(Base):
                 JOIN macrostrat.units_sections ON units.id = units_sections.unit_id
                 JOIN macrostrat.cols ON cols.id = units_sections.col_id
             ) units ON ST_Intersects(poly_geom, rgeom)
-            WHERE source_id = %(source_id)s;
+            WHERE cols.status_code='active' and source_id = %(source_id)s;
         ''', { 'source_id': source_id })
 
         if self.pg['cursor'].fetchone()[0] > 0:
