@@ -356,6 +356,9 @@ module.exports = function(req, res, next, cb) {
       lookup_strat_names.rank_name AS strat_name_long,
       GROUP_CONCAT(col_refs.ref_id SEPARATOR '|') AS refs
       `
+      if ("show_position" in req.query){
+        longSQL += ", position_top AS t_pos, position_bottom AS b_pos"
+      }
 
       var geometry = ((req.query.format && api.acceptedFormats.geo[req.query.format]) || req.query.response === "long") ? ", lookup_units.clat, lookup_units.clng, lookup_units.t_plat, lookup_units.t_plng, lookup_units.b_plat, lookup_units.b_plng " : "";
 

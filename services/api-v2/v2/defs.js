@@ -191,7 +191,8 @@
         "response": "Any available response_type. Default is short.",
         "format": "string, desired output format",
         "geom_age": "If requesting a geographic format, specifies which age to use for the primary coordinates. Accepted parameters are 'modern' (clat, clng), 'top' (t_plat, t_plng) and 'bottom' (b_plat, b_plng). Default is 'modern'",
-        "summarize_measures": "If present, returns summary statistics about the measurements associated with each unit"
+        "summarize_measures": "If present, returns summary statistics about the measurements associated with each unit",
+        "show_position": "If present, return the unit top and bottom positions in section"
       },
       "response_types": [
         "short",
@@ -255,7 +256,9 @@
         "t_plat",
         "t_plng",
         "b_plat",
-        "b_plng"
+        "b_plng",
+        "t_pos",
+        "b_pos"
       ]
     }
   },
@@ -2095,7 +2098,9 @@
     "soil_group": "The family of soils the grain belongs to",
     "classification": "The classification scheme the given grain belongs to",
     "min_size": "The minimum grainsize in millimeters",
-    "max_size": "The maximum grainsize in millimeters"
+    "max_size": "The maximum grainsize in millimeters",
+    "t_pos": "The position of unit top in ordering of units in section, optionally in units of m for some columns",
+    "b_pos": "The position of unit bottom in ordering of units in section, optionally in units of m for some columns"
   }
 };
   module.exports = defs;
