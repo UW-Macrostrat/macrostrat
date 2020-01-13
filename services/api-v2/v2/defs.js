@@ -189,10 +189,10 @@
         "adjacents": "boolean, if lat/lng or col_id is specified, optionally return all units in columns that touch the polygon containing the supplied lat/lng",
         "project_id": "a Macrostrat project ID",
         "response": "Any available response_type. Default is short.",
-        "format": "string, desired output format",
         "geom_age": "If requesting a geographic format, specifies which age to use for the primary coordinates. Accepted parameters are 'modern' (clat, clng), 'top' (t_plat, t_plng) and 'bottom' (b_plat, b_plng). Default is 'modern'",
         "summarize_measures": "If present, returns summary statistics about the measurements associated with each unit",
-        "show_position": "If present, return the unit top and bottom positions in section"
+        "show_position": "If present, return the unit top and bottom position in section",
+        "format": "string, desired output format"
       },
       "response_types": [
         "short",
@@ -207,13 +207,13 @@
         "topojson_bare"
       ],
       "examples": [
+        "api/units?section_id=107&format=csv",
         "api/units?interval_name=Permian",
         "api/units?age=271",
         "api/units?interval_name=Permian&response=long",
         "api/units?strat_id=1205,4260",
         "api/units?strat_name=mancos",
-        "api/units?section_id=107&col_id=22&format=csv",
-        "api/units?strat_id=1205&format=geojson_bare&geom_age=bottom"
+        "api/units?strat_name_id=1205&format=geojson_bare&geom_age=bottom"
       ],
       "fields": [
         "unit_id",
@@ -873,7 +873,10 @@
       "fields": [
         "project_id",
         "project",
-        "timescale_id"
+        "decrip",
+        "timescale_id",
+        "t_cols",
+        "t_units"
       ]
     }
   },
@@ -1051,46 +1054,58 @@
         "measurement_class": "string, measurement definition class",
         "measurement_id": "integer, measurement definition unique identifier",
         "measure_id": "integer, specific measurement id",
-        "measuremeta_id": "integer, specific measuremet meatadata id",
-        "lith_id": "integer, lithology unique identifier",
-        "lith": "string, lithology",
-        "lith_class": "string, lithology class",
-        "lith_type": "string, lithology type",
-        "lith_group": "string, lithology group"
+        "measuremeta_id": "integer, specific id for measurment metadata (generally a sample)",
+        "unit_id": "integer, id for unit containing measurements",
+        "section_id": "integer, id for section containing measurements",
+        "col_id": "integer, id for column containing measurements",
+        "measure_phase": "string, phase from which measurement was taken (e.g., 'zircon')",
+        "response": "Any available response_type. Default is short. Use 'light' for effecient return of measurements with little metadata",
+        "format": "Desired output format",
+        "sample": "if present, show a subset of the data",
+        "show_values": "if present, show measurements as arrays, grouped by measuremeta_id and measurement_id"
       },
+      "response_types": [
+        "light",
+        "short",
+        "long"
+      ],
       "output_formats": [
         "json",
         "csv",
         "geojson",
-        "geojson_bare",
         "topojson",
+        "geojson_bare",
         "topojson_bare"
       ],
       "examples": [
-        "api/measurements?measurement_type=geochemical",
-        "api/measurements?lith_type=siliciclastic"
+        "api/measurements?col_id=11&show_values",
+        "api/measurements?measure_id=353&response=long"
       ],
       "fields": [
         "measurement_id",
-        "measure_id",
+        "measuremeta_id",
         "measurement",
-        "measurement_class",
-        "measurement_type",
         "measure_units",
+        "measure_phase",
         "method",
+        "n",
         "measure_value",
-        "v_error",
-        "v_error_units",
-        "v_type",
-        "v_n",
+        "measure_error",
+        "measure_position",
+        "measure_n",
+        "error_units",
         "lat",
         "lng",
-        "sample_geo_unit",
-        "sample_lith",
-        "lith_id",
-        "sample_descrip",
+        "samp_geo_unit",
+        "samp_lith",
+        "samp_desc",
+        "samp_age",
         "ref_id",
-        "units"
+        "unit_id",
+        "col_id",
+        "strat_name_id",
+        "match_basis",
+        "ref"
       ]
     }
   },
@@ -1921,7 +1936,7 @@
     "strat_name_long": "text, the full formal name for a given strat_name",
     "strat_name_id": "integer, unique identifier for known stratigraphic name (see /defs/strat_names)",
     "concept_id": "intger, unique identifier for the stratigraphic name concept, which groups variant strat_names for same entity",
-   "strat_name_concept_id": "intger, unique identifier for the stratigraphic name concept, which groups variant strat_names for same entity",
+    "strat_name_concept_id": "intger, unique identifier for the stratigraphic name concept, which groups variant strat_names for same entity",
     "name": "text, the name of the entity",
     "Mbr": "text, lithostratigraphic member",
     "Fm": "text, lithostratigraphic formation",
@@ -1964,13 +1979,21 @@
     "measure_units": "text, units used in generating the measurement",
     "method": "text, method used to generate result",
     "measure_value": "number, reported value for measurement",
-    "v_error": "number, reported error associated with measure_value",
-    "v_error_units": "text, units used in reported v_error",
-    "v_type": "text, descriptor applying to nature of measure_value (e.g., point measurement, mean value for multiple point measurements)",
-    "v_n": "integer, number of observations used to generate measure_value",
-    "sample_lith": "text, lithological description of sampeld used to generate measure_value",
-    "sample_descrip": "text, verbal description of sample used to generate",
-    "sampel_geo_unit": "text, geological unit yielding sample_measurement",
+    "measure_error": "number, reported error associated with measure_value",
+    "measure_n": "number, measurements used to compute measure_value, if greater than 1, typically also used in measure_error",
+    "measure_position": "number, position of measurement in column, optionally section or unit; requires context of latter",
+    "error_units": "text, units used in reported measure_error",
+    "measure_type": "text, descriptor applying to nature of measure_value (e.g., point measurement, mean value for multiple point measurements)",
+    "measure_phase": "text, material analyzed for measure_value (e.g., 'zircon' or 'whole rock')",
+    "n": "integer, number of observations/measurements",
+    "measuremeta_id": "integer, unique identifier for measuremeta (sample metadata)",
+    "samp_lith": "text, lithological description of sample that produced measure_value",
+    "samp_lith_id": "integer, unique identifier for lithology (see /defs/lithologies) in sample that produced measure_value",
+    "samp_desc": "text, verbal description of sample used to generate",
+    "samp_geo_unit": "text, geological unit yielding sample_measurement",
+    "match_basis": "text, terse descriptor of what served to match measuremeta record to given macrostrat unit, if any",
+    "samp_age": "text, geological time interval assigned to measurement",
+    "unit_rel_pos": "number, position of measurement within a unit, usually proportional where 1=top, 0=bottom",
     "lith_max_thick": "number, thickness of specified lithology, based on proportion of unit(s)",
     "lith_min_thick": "number, thickness of specified lithology, based on proportion of unit(s)",
     "environ": "text, specific environment, see /defs/environments",
@@ -2099,6 +2122,7 @@
     "classification": "The classification scheme the given grain belongs to",
     "min_size": "The minimum grainsize in millimeters",
     "max_size": "The maximum grainsize in millimeters",
+    "descrip": "text, description of entity in plain text",
     "t_pos": "The position of unit top in ordering of units in section, optionally in units of m for some columns",
     "b_pos": "The position of unit bottom in ordering of units in section, optionally in units of m for some columns"
   }
