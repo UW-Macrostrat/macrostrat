@@ -1020,10 +1020,11 @@
     "visible": true,
     "options": {
       "parameters": {
-        "exp": "integer, one or more comma-separted measurement IDs",
-        "site": "string, measurement_class",
-        "all": "return all sites",
-        "sample": "if present, get a selection of data"
+        "exp": "string, drilling expedition",
+        "site": "string, drilling site",
+        "all": "return all drilling expeditions and sites",
+        "sample": "if present, get a selection of data",
+        "format": "desired output format, options given below in output_formats"
       },
       "output_formats": [
         "json",
@@ -1034,6 +1035,7 @@
         "topojson_bare"
       ],
       "examples": [
+        "api/v2/defs/drilling_sites?format=geojson_bare",
         "api/v2/defs/drilling_sites?site=U1547",
         "api/v2/defs/drilling_sites?all",
         "api/v2/defs/drilling_sites?exp=385"
