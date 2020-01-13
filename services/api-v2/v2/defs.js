@@ -1014,6 +1014,49 @@
       ]
     }
   },
+  "/defs/drilling_sites": {
+    "description": "Returns metadata for offshore drilling sites from ODP, DSDP and IODP",
+    "parent": "definitions",
+    "visible": true,
+    "options": {
+      "parameters": {
+        "exp": "integer, one or more comma-separted measurement IDs",
+        "site": "string, measurement_class",
+        "all": "return all sites",
+        "sample": "if present, get a selection of data"
+      },
+      "output_formats": [
+        "json",
+        "csv",
+        "geojson",
+        "geojson_bare",
+        "topojson",
+        "topojson_bare"
+      ],
+      "examples": [
+        "api/v2/defs/drilling_sites?site=U1547",
+        "api/v2/defs/drilling_sites?all",
+        "api/v2/defs/drilling_sites?exp=385"
+      ],
+      "fields": [
+        "exp",
+        "site",
+        "hole",
+        "lat",
+        "lng",
+        "penetration",
+        "cored",
+        "recovered",
+        "recovery",
+        "drilled_interval",
+        "drilled_intervals",
+        "cores",
+        "date_started",
+        "comments",
+        "ref_id",
+      ]
+    }
+  },
   "/section_stats": {
     "description": "Return section stats for Macrostrat",
     "visible": true,

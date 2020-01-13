@@ -113,5 +113,9 @@ definitions.route("/refs")
     require("./refs")(req, res, next);
   });
 
+definitions.route("/drilling_sites")
+  .get(function(req, res, next) {
+    require("./drilling_sites.js")(req, res, next);
+  });
 
 module.exports =  definitions;
