@@ -9,15 +9,20 @@ module.exports = function(req, res, next, cb) {
 
   var sql = `
     SELECT
-      exp,site,hole,lat,lng,penetration,cored,recovered,recovery,drilled_interval,drilled_intervals,cores,date_started,date_finished,comments,ref_id
+      epoch,leg,site,hole,lat,lng,penetration,cored,recovered,recovery,drilled_interval,drilled_intervals,cores,date_started,date_finished,comments,ref_id
     FROM offshore_sites
   `
   var where = []
   var params = {}
 
-  if (req.query.exp) {
-    where.push("exp in (:exp)")
-    params["exp"] = larkin.parseMultipleStrings(req.query.exp)
+  if (req.query.epoch) {
+    where.push("epoch in (:epoch)")
+    params["epoch"] = larkin.parseMultipleStrings(req.query.epoch)
+  }
+
+  if (req.query.leg) {
+    where.push("exp in (:leg)")
+    params["leg"] = larkin.parseMultipleStrings(req.query.leg)
   }
   if (req.query.site) {
     where.push("site IN (:site)")
@@ -40,10 +45,6 @@ module.exports = function(req, res, next, cb) {
         return larkin.error(req, res, next, error)
       }
     }
-
-    result.forEach(function(d) {
-      d.ref_id = larkin.jsonifyPipes(d.ref_id, "integers");
-    })
 
     // if a geographic format is requested
     if (req.query.format && api.acceptedFormats.geo[req.query.format]) {

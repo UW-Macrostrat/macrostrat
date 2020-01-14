@@ -1020,7 +1020,8 @@
     "visible": true,
     "options": {
       "parameters": {
-        "exp": "string, drilling expedition",
+        "epoch": "string, drilling 'epoch'; only three valid values. DSDP, ODP and IODP",
+        "leg": "string, drilling leg (or expedition for IODP)",
         "site": "string, drilling site",
         "all": "return all drilling expeditions and sites",
         "sample": "if present, get a selection of data",
@@ -1041,7 +1042,8 @@
         "api/v2/defs/drilling_sites?exp=385"
       ],
       "fields": [
-        "exp",
+        "epoch",
+        "leg",
         "site",
         "hole",
         "lat",
