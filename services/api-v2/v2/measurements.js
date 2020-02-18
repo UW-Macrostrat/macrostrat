@@ -2,6 +2,8 @@ var api = require('./api')
 var dbgeo = require('dbgeo')
 var larkin = require('./larkin')
 
+// need to fix bug to allow both col_id and measurement type parameters at same time
+
 module.exports = function(req, res, next) {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
@@ -76,7 +78,7 @@ module.exports = function(req, res, next) {
 
   if (req.query.response === 'long'){
     select +=`,
-      sample_no,
+      sample_name,
       sample_geo_unit as geo_unit,
       sample_lith as samp_lith,
       measuremeta.lith_id as samp_lith_id,
@@ -123,7 +125,7 @@ module.exports = function(req, res, next) {
     LEFT JOIN measuremeta_cols ON measuremeta.id=measuremeta_cols.measuremeta_id
     LEFT JOIN units_sections USING (unit_id)
     ${where}
-    GROUP BY measurements.id,measuremeta.id
+    GROUP BY measuremeta.id,measurements.id
     ${limit}
   `
 
