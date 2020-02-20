@@ -10,7 +10,7 @@ module.exports = function(req, res, next) {
   } else if (req.query.measurement || req.query.measurement_id || req.query.measurement_type || req.query.measurement_class) {
       if (req.query.unit_id || req.query.section_id || req.query.col_id || req.query.measuremeta_id || req.query.measure_phase || "sample" in req.query || !("show_values" in req.query)) {
       } else { return larkin.error(req, res, next, "You must specify a unit_id,section_id,col_id, measuremeta_id, or measure_phase to retrieve these data or include the sample parameter to see example output"); }
-  } else if (req.query.unit_id || req.query.section_id || req.query.col_id || req.query.measuremeta_id || req.query.measure_phase || "sample" in req.query || req.query.measure_id){
+  } else if (req.query.unit_id || req.query.section_id || req.query.col_id || req.query.project_id || req.query.measuremeta_id || req.query.measure_phase || "sample" in req.query || req.query.measure_id){
     } else if (req.query.lith_id) {
       if (req.query.measurement || req.query.measurement_id || req.query.measurement_type || !("show_values" in req.query)) {
       } else { return larkin.error(req, res, next, "You must specify a measurement, measurement_id, or measurement_type to retrieve these data or include the sample parameter to see example output"); }
@@ -34,7 +34,8 @@ module.exports = function(req, res, next) {
     'lith_id': 'measuremeta.lith_id',
     'unit_id': 'unit_measures.unit_id',
     'section_id': 'units_sections.section_id',
-    'measure_phase': 'measures.measure_phase'
+    'measure_phase': 'measures.measure_phase',
+    'project_id': 'cols.project_id'
   }
 
   Object.keys(req.query).forEach(function(param) {
@@ -50,9 +51,15 @@ module.exports = function(req, res, next) {
   })
 
   if (req.query.col_id) {
-      where.push("measuremeta_cols.col_id IN (:col_id1) OR units_sections.col_id IN (:col_id2)")
+      where.push("(measuremeta_cols.col_id IN (:col_id1) OR units_sections.col_id IN (:col_id2))")
       params["col_id1"] = larkin.parseMultipleIds(req.query.col_id);
       params["col_id2"] = larkin.parseMultipleIds(req.query.col_id);
+  }
+
+  if (req.query.interval_name) {
+      where.push("b_age>(SELECT age_top from intervals where interval_name IN (:intname1) and t_age<(SELECT age_bottom from intervals where interval_name in (:intname2)))")
+      params["intname1"] = larkin.parseMultipleStrings(req.query.interval_name);
+      params["intname2"] = larkin.parseMultipleStrings(req.query.interval_name);
   }
 
   if (where.length) {
@@ -83,7 +90,7 @@ module.exports = function(req, res, next) {
       sample_lith as samp_lith,
       measuremeta.lith_id as samp_lith_id,
       sample_descrip as samp_desc,
-      age as samp_age,
+      measuremeta.age as samp_age,
       measuremeta.lat as lat,
       measuremeta.lng as lng,
       unit_measures.unit_id,
@@ -124,11 +131,13 @@ module.exports = function(req, res, next) {
 	  LEFT JOIN unit_measures ON unit_measures.measuremeta_id=measuremeta.id
     LEFT JOIN measuremeta_cols ON measuremeta.id=measuremeta_cols.measuremeta_id
     LEFT JOIN units_sections USING (unit_id)
+    LEFT JOIN cols ON units_sections.col_id=cols.id
+    LEFT JOIN lookup_unit_intervals USING (unit_id)
     ${where}
     GROUP BY measuremeta.id,measurements.id
     ${limit}
   `
-
+  
   larkin.query(sql, params, function(error, response) {
     if (error) {
       larkin.error(req, res, next, error);
