@@ -150,7 +150,7 @@ module.exports = function(req, res, next, cb) {
         where += "cols.status_code = 'active'"
       }
 
-      if (req.query.lith || req.query.lith_class || req.query.lith_type || req.query.lith_id) {
+      if (req.query.lith || req.query.lith_class || req.query.lith_type || req.query.lith_id || req.query.lith_group) {
         where += " AND units.id IN (SELECT unit_liths.unit_id FROM unit_liths JOIN liths ON lith_id = liths.id WHERE "
         var lithWhere = []
 
@@ -169,6 +169,12 @@ module.exports = function(req, res, next, cb) {
         if (req.query.lith_type) {
           lithWhere.push("lith_type IN (:lith_type)")
           params["lith_type"] = larkin.parseMultipleStrings(req.query.lith_type);
+
+        }
+
+        if (req.query.lith_group) {
+          lithWhere.push("lith_group IN (:lith_group)")
+          params["lith_group"] = larkin.parseMultipleStrings(req.query.lith_group);
 
         }
 
