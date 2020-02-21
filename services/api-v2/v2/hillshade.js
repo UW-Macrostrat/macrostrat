@@ -91,6 +91,7 @@ module.exports = (req, res, next) => {
       format: 'jpeg'
     }, (error, jpeg) => {
       if (error) {
+	console.log(error)
         return larkin.error(req, res, next, 'Internal error', 500)
       }
       hillshadeCache.set([lng, lat], aspect, Math.random().toString(36).substring(15), jpeg)
