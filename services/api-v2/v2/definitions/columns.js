@@ -16,9 +16,11 @@ module.exports = function(req, res, next, cb) {
       GROUP_CONCAT(DISTINCT ref_id SEPARATOR '|') AS ref_id,
       status_code AS status,
       count(distinct units_sections.unit_id) AS t_units,
-      project_id
+      project_id,
+      notes
     FROM cols
     LEFT JOIN col_refs ON col_id = cols.id
+    LEFT JOIN col_notes on cols.id=col_notes.col_id
     LEFT JOIN units_sections ON units_sections.col_id = cols.id
   `
   var where = []

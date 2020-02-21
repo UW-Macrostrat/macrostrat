@@ -247,28 +247,34 @@ module.exports = function(req, res, next, cb) {
       }
 
       if (req.query.environ_id || req.query.environ || req.query.environ_class || req.query.environ_type) {
-        where += " AND units.id IN (SELECT unit_environs.unit_id FROM unit_environs JOIN environs on environ_id=environs.id WHERE ::environ_field";
+        where += " AND units.id IN (SELECT unit_environs.unit_id FROM unit_environs JOIN environs on environ_id=environs.id WHERE "
+        var environWhere = []
+
+        if (req.query.environ) {
+          environWhere.push("environ IN (:environ)")
+          params["environ"] = larkin.parseMultipleStrings(req.query.environ);
+
+        }
+
+        if (req.query.environ_class) {
+          environWhere.push("environ_class IN (:environ_class)")
+          params["environ_class"] = larkin.parseMultipleStrings(req.query.environ_class);
+
+        }
+
+        if (req.query.environ_type) {
+          environWhere.push("environ_type IN (:environ_type)")
+          params["environ_type"] = larkin.parseMultipleStrings(req.query.environ_type);
+
+        }
 
         if (req.query.environ_id) {
-          where += " IN (:environ))";
-          params["environ"] = larkin.parseMultipleIds(req.query.environ_id);
-          params["environ_field"] = "environs.id";
+          environWhere.push("environs.id IN (:environ_id)")
+          params["environ_id"] = larkin.parseMultipleIds(req.query.environ_id);
         }
-        if (req.query.environ) {
-          where += " IN (:environ))";
-          params["environ"] = larkin.parseMultipleStrings(req.query.environ);
-          params["environ_field"] = "environs.environ";
 
-        } else if (req.query.environ_class) {
-          where += " IN (:environ))";
-          params["environ"] = larkin.parseMultipleStrings(req.query.environ_class);
-          params["environ_field"] = "environs.environ_class";
+        where += (environWhere.join(" OR ") + ")")
 
-        } else if (req.query.environ_type) {
-          where += " IN (:environ))";
-          params["environ"] = larkin.parseMultipleStrings(req.query.environ_type);
-          params["environ_field"] = "environs.environ_type";
-        }
       }
 
 
@@ -356,6 +362,9 @@ module.exports = function(req, res, next, cb) {
       lookup_strat_names.rank_name AS strat_name_long,
       GROUP_CONCAT(col_refs.ref_id SEPARATOR '|') AS refs
       `
+      if ("show_position" in req.query){
+        longSQL += ", position_top AS t_pos, position_bottom AS b_pos"
+      }
 
       var geometry = ((req.query.format && api.acceptedFormats.geo[req.query.format]) || req.query.response === "long") ? ", lookup_units.clat, lookup_units.clng, lookup_units.t_plat, lookup_units.t_plng, lookup_units.b_plat, lookup_units.b_plng " : "";
 
