@@ -215,7 +215,7 @@ module.exports = function(req, res, next, cb) {
       }
 
       if (data.age_bottom !== 99999) {
-        where += " AND b_int_age > :age_top AND t_int_age < :age_bottom";
+        where += " AND b_age > :age_top AND t_age < :age_bottom";
         params["age_top"] = data.age_top;
         params["age_bottom"] = data.age_bottom;
       }
@@ -391,7 +391,7 @@ module.exports = function(req, res, next, cb) {
       ORDER BY ${(orderby.length > 0) ? orderby.join(', ') + ',' : ''} t_age ASC
       ${limit}
       `
-
+      
       larkin.query(sql, params, function(error, result) {
           if (error) {
             console.log(error);
