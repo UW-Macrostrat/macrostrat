@@ -73,6 +73,14 @@ class Legend(Base):
         self.pg['connection'].commit()
 
         self.pg['cursor'].execute("""
+          DELETE FROM maps.legend WHERE source_id = %(source_id)s
+        """, {
+            'source_id': source_id
+        })
+        self.pg['connection'].commit()
+
+        # Create legend
+        self.pg['cursor'].execute("""
           INSERT INTO maps.legend (source_id, name, strat_name, age, lith, descrip, comments, b_interval, t_interval)
           SELECT DISTINCT ON (q.name, q.strat_name, q.age, q.lith, q.descrip, q.comments, q.b_interval, q.t_interval) %(source_id)s, q.name, q.strat_name, q.age, q.lith, q.descrip, q.comments, q.b_interval, q.t_interval
             FROM maps.%(scale)s q
