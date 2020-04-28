@@ -59,18 +59,19 @@ class Legend(Base):
 
         scale = scale[0]
 
-        # Clean up
-        self.pg['cursor'].execute("""
-          DELETE FROM maps.map_legend WHERE map_id IN (
-            SELECT map_id
-            FROM maps.%(scale)s
-            WHERE source_id = %(source_id)s
-          )
-        """, {
-            'scale': AsIs(scale),
-            'source_id': source_id
-        })
-        self.pg['connection'].commit()
+        # Clean up: NB: this needs to be run, but doing so here prevents other deletions from legend_liths from occuring
+        # neeed to add a delete statement end of building legend-building stps.
+       # self.pg['cursor'].execute("""
+        #  DELETE FROM maps.map_legend WHERE map_id IN (
+        #    SELECT map_id
+        #    FROM maps.%(scale)s
+        #    WHERE source_id = %(source_id)s
+        #  )
+        #""", {
+        #    'scale': AsIs(scale),
+        #    'source_id': source_id
+        #})
+        #self.pg['connection'].commit()
 
         self.pg['cursor'].execute("""
           DELETE FROM maps.legend WHERE source_id = %(source_id)s
