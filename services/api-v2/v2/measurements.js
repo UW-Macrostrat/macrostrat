@@ -11,8 +11,8 @@ module.exports = function(req, res, next) {
       if (req.query.unit_id || req.query.section_id || req.query.col_id || req.query.measuremeta_id || req.query.measure_phase || "sample" in req.query || !("show_values" in req.query)) {
       } else { return larkin.error(req, res, next, "You must specify a unit_id,section_id,col_id, measuremeta_id, or measure_phase to retrieve these data or include the sample parameter to see example output"); }
   } else if (req.query.unit_id || req.query.section_id || req.query.col_id || req.query.project_id || req.query.measuremeta_id || req.query.measure_phase || "sample" in req.query || req.query.measure_id){
-  } if (req.query.lith_id || req.query.lith_type || req.query.lith_class) {
-        if (req.query.measurement || req.query.measurement_id || req.query.measurement_type || !("show_values" in req.query)) {
+  } else if (req.query.lith_id || req.query.lith_type || req.query.lith_class) {
+        if (req.query.measurement || req.query.measurement_id || req.query.measurement_type || "sample" in req.query || !("show_values" in req.query)) {
       } else { return larkin.error(req, res, next, "You must specify a measurement, measurement_id, or measurement_type to retrieve these data or include the sample parameter to see example output"); }
     } else {
         return larkin.error(req, res, next, "Invalid Parameters");
