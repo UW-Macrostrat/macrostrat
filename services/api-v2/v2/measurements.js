@@ -11,8 +11,8 @@ module.exports = function(req, res, next) {
       if (req.query.unit_id || req.query.section_id || req.query.col_id || req.query.measuremeta_id || req.query.measure_phase || "sample" in req.query || !("show_values" in req.query)) {
       } else { return larkin.error(req, res, next, "You must specify a unit_id,section_id,col_id, measuremeta_id, or measure_phase to retrieve these data or include the sample parameter to see example output"); }
   } else if (req.query.unit_id || req.query.section_id || req.query.col_id || req.query.project_id || req.query.measuremeta_id || req.query.measure_phase || "sample" in req.query || req.query.measure_id){
-    } else if (req.query.lith_id) {
-      if (req.query.measurement || req.query.measurement_id || req.query.measurement_type || !("show_values" in req.query)) {
+  } if (req.query.lith_id || req.query.lith_type || req.query.lith_class) {
+        if (req.query.measurement || req.query.measurement_id || req.query.measurement_type || !("show_values" in req.query)) {
       } else { return larkin.error(req, res, next, "You must specify a measurement, measurement_id, or measurement_type to retrieve these data or include the sample parameter to see example output"); }
     } else {
         return larkin.error(req, res, next, "Invalid Parameters");
@@ -60,6 +60,16 @@ module.exports = function(req, res, next) {
       where.push("b_age>(SELECT age_top from intervals where interval_name IN (:intname1) and t_age<(SELECT age_bottom from intervals where interval_name in (:intname2)))")
       params["intname1"] = larkin.parseMultipleStrings(req.query.interval_name);
       params["intname2"] = larkin.parseMultipleStrings(req.query.interval_name);
+  }
+
+  if (req.query.lith_type) {
+      where.push("lith_type IN (:lith_type)")
+      params["lith_type"] = larkin.parseMultipleStrings(req.query.lith_type);
+  }
+
+  if (req.query.lith_class) {
+      where.push("lith_class IN (:lith_class)")
+      params["lith_class"] = larkin.parseMultipleStrings(req.query.lith_class);
   }
 
   if (where.length) {
@@ -119,7 +129,7 @@ module.exports = function(req, res, next) {
             GROUP_CONCAT(measure_value ORDER BY measures.id SEPARATOR '|') AS measure_value,
             GROUP_CONCAT(v_error ORDER BY measures.id SEPARATOR '|') AS measure_error `
     if (req.query.response !== 'light') select += ", GROUP_CONCAT(samp_pos order by measures.id SEPARATOR '|') AS measure_position"
-    if (req.query.response === 'long') select += ", GROUP_CONCAT(v_n ORDER BY measures.id SEPARATOR '|') AS measure_n"
+    if (req.query.response === 'long') select += ", GROUP_CONCAT(v_n ORDER BY measures.id SEPARATOR '|') AS measure_n, GROUP_CONCAT(sample_no ORDER BY measures.id SEPARATOR '|') AS sample_no"
     select += ", v_error_units as error_units"
   }
 
@@ -133,11 +143,13 @@ module.exports = function(req, res, next) {
     LEFT JOIN units_sections USING (unit_id)
     LEFT JOIN cols ON units_sections.col_id=cols.id
     LEFT JOIN lookup_unit_intervals USING (unit_id)
+    LEFT JOIN liths ON lith_id=liths.id
     ${where}
     GROUP BY measuremeta.id,measurements.id
     ${limit}
   `
-  
+//  console.log(sql)
+
   larkin.query(sql, params, function(error, response) {
     if (error) {
       larkin.error(req, res, next, error);
@@ -147,7 +159,10 @@ module.exports = function(req, res, next) {
           if (req.query.response !== "light") {response[i].measure_position = larkin.jsonifyPipes(response[i].measure_position, "floats");}
           response[i].measure_value = larkin.jsonifyPipes(response[i].measure_value, "floats");
           response[i].measure_error = larkin.jsonifyPipes(response[i].measure_error, "floats");
-          if (req.query.response === "long") {response[i].measure_n = larkin.jsonifyPipes(response[i].measure_n, "floats");}
+          if (req.query.response === "long") {
+            response[i].measure_n = larkin.jsonifyPipes(response[i].measure_n, "floats");
+            response[i].sample_no = larkin.jsonifyPipes(response[i].sample_no, "strings");
+          }
         }
       }
 
