@@ -168,7 +168,8 @@
         "age_bottom": "numerical age (Ma) - must be used with age_top and be greater than age_top; note that returned units may not be entirely contained by age_top and age_bottom, but they will intersect that age range in whole or in part",
         "lith_id": "integer, ID of a lithology from /defs/lithologies",
         "lith": "string, specific lithology name (e.g., shale, sandstone)",
-        "lith_type": "string, groups of lithologies (e.g., carbonate, siliciclastic)",
+        "lith_group": "string, groups of lithologies (e.g., sandstones, mudrocks, unconsolidated)",
+        "lith_type": "string, types of lithologies (e.g., carbonate, siliciclastic)",
         "lith_class": "string, general lithologies (sedimentary, igneous, metamorphic)",
         "lith_att_id": "integer, ID of a lithology attribute from /defs/lithology_attributes",
         "lith_att": "string, specific lithology attribute name (e.g. fine, olivine, poorly washed)",
@@ -813,6 +814,9 @@
       "fields": [
         "timescale_id",
         "timescale",
+        "max_age",
+        "min_age",
+        "n_intervals",
         "ref_id"
       ]
     }
@@ -928,7 +932,8 @@
         "measure_id",
         "name",
         "type",
-        "class"
+        "class",
+        "t_units"
       ]
     }
   },
@@ -1023,6 +1028,8 @@
         "epoch": "string, drilling 'epoch'; only three valid values. DSDP, ODP and IODP",
         "leg": "string, drilling leg (or expedition for IODP)",
         "site": "string, drilling site",
+        "col_id": "integer, one or more Macrostrat column ids",
+        "col_group_id": "integer, one or more Macrostrat column group ids; corresponds to legs/expeditions",
         "all": "return all drilling expeditions and sites",
         "sample": "if present, get a selection of data",
         "format": "desired output format, options given below in output_formats"
@@ -1048,6 +1055,8 @@
         "hole",
         "lat",
         "lng",
+        "col_id",
+        "col_group_id",
         "penetration",
         "cored",
         "recovered",
@@ -1108,6 +1117,7 @@
         "lith_class": "string, one or more lithology classes",
         "section_id": "integer, id for section containing measurements",
         "col_id": "integer, id for column containing measurements",
+        "project_id": "integer, id for project",
         "measure_phase": "string, phase from which measurement was taken (e.g., 'zircon')",
         "response": "Any available response_type. Default is short. Use 'light' for effecient return of measurements with little metadata",
         "format": "Desired output format",
@@ -2174,7 +2184,8 @@
     "max_size": "The maximum grainsize in millimeters",
     "descrip": "text, description of entity in plain text",
     "t_pos": "The position of unit top in ordering of units in section, optionally in units of m for some columns",
-    "b_pos": "The position of unit bottom in ordering of units in section, optionally in units of m for some columns"
+    "b_pos": "The position of unit bottom in ordering of units in section, optionally in units of m for some columns",
+    "n_intervals": "integer, number of intervals in timescale."
   }
 };
   module.exports = defs;

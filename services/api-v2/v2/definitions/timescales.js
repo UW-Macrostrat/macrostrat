@@ -5,7 +5,7 @@ module.exports = function(req, res, next, cb) {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
-  var sql = "SELECT id AS timescale_id, timescale, ref_id FROM timescales";
+  var sql = "SELECT timescales.id AS timescale_id, timescale, count(distinct intervals.id) AS n_intervals, MAX( age_bottom ) AS max_age, MIN( age_top ) AS min_age, ref_id FROM timescales JOIN timescales_intervals ti ON ti.timescale_id = timescales.id JOIN intervals ON interval_id = intervals.id GROUP BY timescales.id ORDER BY  timescales.id ASC ";
 
   if ("sample" in req.query) {
     sql += " LIMIT 5";

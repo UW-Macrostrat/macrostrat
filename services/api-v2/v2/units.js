@@ -129,7 +129,7 @@ module.exports = function(req, res, next, cb) {
         var ids = larkin.parseMultipleIds(req.query.strat_name_id);
         callback(null, {"interval_name": "none", "age_bottom": 99999, "age_top": 0, "strat_ids": ids });
 
-      } else if (req.query.unit_id || req.query.section_id || req.query.col_id || req.query.lith || req.query.lith_id || req.query.lith_class || req.query.lith_type || req.query.environ || req.query.environ_id || req.query.environ_class || req.query.environ_type || req.query.project_id || "sample" in req.query|| "all" in req.query || req.query.econ_id || req.query.econ || req.query.econ_type || req.query.econ_class || req.query.cltn_id || req.query.lith_att_id || req.query.lith_att || req.query.lith_att_type || req.query.col_type || req.query.status_code) {
+      } else if (req.query.unit_id || req.query.section_id || req.query.col_id || req.query.lith || req.query.lith_id || req.query.lith_class || req.query.lith_type || req.query.lith_group ||  req.query.environ || req.query.environ_id || req.query.environ_class || req.query.environ_type || req.query.project_id || "sample" in req.query|| "all" in req.query || req.query.econ_id || req.query.econ || req.query.econ_type || req.query.econ_class || req.query.cltn_id || req.query.lith_att_id || req.query.lith_att || req.query.lith_att_type || req.query.col_type || req.query.status_code) {
         callback(null, {"interval_name": "none", "age_bottom": 99999, "age_top": 0});
 
       } else {
@@ -391,7 +391,7 @@ module.exports = function(req, res, next, cb) {
       ORDER BY ${(orderby.length > 0) ? orderby.join(', ') + ',' : ''} t_age ASC
       ${limit}
       `
-      
+
       larkin.query(sql, params, function(error, result) {
           if (error) {
             console.log(error);

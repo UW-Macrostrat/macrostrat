@@ -9,7 +9,7 @@ module.exports = function(req, res, next, cb) {
 
   var sql = `
     SELECT
-      epoch,leg,site,hole,lat,lng,penetration,cored,recovered,recovery,drilled_interval,drilled_intervals,cores,date_started,date_finished,comments,ref_id
+      epoch,leg,site,hole,lat,lng,col_id,col_group_id,penetration,cored,recovered,recovery,drilled_interval,drilled_intervals,cores,date_started,date_finished,comments,ref_id
     FROM offshore_sites
   `
   var where = []
@@ -27,6 +27,16 @@ module.exports = function(req, res, next, cb) {
   if (req.query.site) {
     where.push("site IN (:site)")
     params["site"] = larkin.parseMultipleStrings(req.query.site)
+  }
+
+  if (req.query.col_id) {
+    where.push("col_id IN (:col_id)")
+    params["site"] = larkin.parseMultipleIds(req.query.col_id)
+  }
+
+  if (req.query.col_group_id) {
+    where.push("site IN (:col_group_id)")
+    params["site"] = larkin.parseMultipleIds(req.query.col_group_id)
   }
 
   if (where.length) {

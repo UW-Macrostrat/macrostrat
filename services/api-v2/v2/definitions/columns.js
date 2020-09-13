@@ -13,6 +13,8 @@ module.exports = function(req, res, next, cb) {
       col_group_id,
       col_name,
       ${req.query.format && api.acceptedFormats.geo[req.query.format] ? 'lng, lat,' : ''}
+      SUM(col_area) as col_area,
+      SUM(max_thick) as max_thick,
       GROUP_CONCAT(DISTINCT ref_id SEPARATOR '|') AS ref_id,
       status_code AS status,
       count(distinct units_sections.unit_id) AS t_units,
@@ -22,6 +24,7 @@ module.exports = function(req, res, next, cb) {
     LEFT JOIN col_refs ON col_id = cols.id
     LEFT JOIN col_notes on cols.id=col_notes.col_id
     LEFT JOIN units_sections ON units_sections.col_id = cols.id
+    LEFT JOIN units ON units_sections.unit_id=units.id
   `
   var where = []
   var params = {}
