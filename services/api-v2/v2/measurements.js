@@ -117,6 +117,7 @@ module.exports = function(req, res, next) {
       measuremeta.id as measuremeta_id,
       units as measure_units,
       count(measurements.id) as n,
+      unit_measures.unit_id,
       measuremeta.ref_id`
   }
 
