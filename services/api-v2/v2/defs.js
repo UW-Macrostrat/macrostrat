@@ -1195,7 +1195,7 @@
   },
   "/geologic_units/gmna": {
     "description": "Geologic map units. Continental-scale North American map data (gmna) adapted from the 2005 Geologic Map of North America (http://ngmdb.usgs.gov/gmna/)",
-    "visible": true,
+    "visible": false,
     "parent": "geologic_units",
     "options": {
       "parameters": {
@@ -1239,7 +1239,7 @@
   },
   "/geologic_units/gmus": {
     "description": "Geologic map units. State-level (gmus) data adapated from http://mrdata.usgs.gov/geology/state/.",
-    "visible": true,
+    "visible": false,
     "parent": "geologic_units",
     "options": {
       "parameters": {
