@@ -865,6 +865,7 @@
     "options": {
       "parameters": {
         "all": "return all available projects",
+        "project_id": "integer identifying project(s), separate multiple values with commas",
         "format": "Desired output format"
       },
       "output_formats": [
@@ -872,7 +873,7 @@
         "csv"
       ],
       "examples": [
-        "api/v2/defs/timescales?all"
+        "api/v2/defs/projects?all"
       ],
       "fields": [
         "project_id",
@@ -2183,8 +2184,8 @@
     "min_size": "The minimum grainsize in millimeters",
     "max_size": "The maximum grainsize in millimeters",
     "descrip": "text, description of entity in plain text",
-    "t_pos": "The position of unit top in ordering of units in section, optionally in units of m for some columns",
-    "b_pos": "The position of unit bottom in ordering of units in section, optionally in units of m for some columns",
+    "t_pos": "The position of unit top in ordering of units in section, optionally in units of m for some columns (e.g., eODP project)",
+    "b_pos": "The position of unit bottom in ordering of units in section, optionally in units of m for some columns (e.g., eODP project)",
     "n_intervals": "integer, number of intervals in timescale."
   }
 };
