@@ -173,9 +173,8 @@ module.exports = function(req, res, next, cb) {
 
       var params_combined = params.concat(params_lith);
 
-      var sql = `
-      SELECT legend_id, source_id, scale, m.name as map_unit_name, strat_name,age,lith,descrip,comments,best_age_top::float t_age,best_age_bottom::float b_age,b_interval,t_interval,strat_name_ids strat_name_id,lith_classes,lith_types,lith_ids lith_id ,color,m.area::float,tiny_area::float,small_area::float,medium_area::float,large_area::float
-      `
+      var sql = "SELECT legend_id, source_id, scale, m.name as map_unit_name, strat_name,age,lith,regexp_replace(descrip, E'[\\n\\r\\u2028]+', ' ', 'g' ) descrip,regexp_replace(comments, E'[\\n\\r\\u2028]+', ' ', 'g' ) AS comments,best_age_top::float t_age,best_age_bottom::float b_age,b_interval,t_interval,strat_name_ids strat_name_id,lith_classes,lith_types,lith_ids lith_id ,color,m.area::float,tiny_area::float,small_area::float,medium_area::float,large_area::float";
+
       sql += " FROM maps.legend m JOIN maps.sources USING (source_id)"
         + where_start + where + where_combined + where_lith + limit;
 
