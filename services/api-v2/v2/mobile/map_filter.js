@@ -1,3 +1,5 @@
+// note that this route will throw an error when displaying documentation page because trap for case of no parameters not in here
+
 'use strict'
 const larkin = require('../larkin')
 

@@ -25,6 +25,7 @@ Next, install dependencies:
 ````
 npm install
 ````
+NOTE: Postgres connections are completely broken in node v14 and v15 (as of 2021-03-16). Use node v12!
 
 This will also run the script `postinstall.sh` which copies credentials files into place.
 

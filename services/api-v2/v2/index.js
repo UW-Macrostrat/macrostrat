@@ -77,6 +77,11 @@ api.route("/geologic_units/burwell/points")
 api.route("/geologic_units/map/points")
   .get(require("./geologic_units_burwell_points"));
 
+api.route("/geologic_units/map/legend")
+  .get(function(req, res, next) {
+    require("./geologic_units_burwell_legend")(req, res, next);
+  });
+
 api.route("/elevation")
   .get(function(req, res, next) {
     require("./elevation")(req, res, next);
@@ -90,17 +95,20 @@ api.route("/places")
 api.route("/measurements")
   .get(require("./measurements"));
 
+api.route("/age_model")
+  .get(require("./age_model"));
+
 //api.route("/hillshade")
 //  .get(require("./hillshade"));
 
 api.route('/boundaries')
-  .get(require('./boundaries'))
+  .get(require('./boundaries'));
 
 api.route('/hex-summary')
-  .get(require('./hex_summary'))
+  .get(require('./hex_summary'));
 
 api.route('/hex-summary/max/:zoom')
-  .get(require('./hex_summary_max'))
+  .get(require('./hex_summary_max'));
 
 api.route("*")
   .get(require("./catchall"));

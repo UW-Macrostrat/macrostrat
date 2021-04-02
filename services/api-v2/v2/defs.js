@@ -1249,7 +1249,7 @@
         "lng": "A valid longitude in decimal degrees",
         "strat_name_id": "integer, one or more valid strat_name_ids from /defs/strat_names",
         "unit_id": "integer, one or more valid unit_ids from /units",
-        "search": "string, a term to search for in GMUS metadata",
+        "search": "string, a term to search for in map metadata",
         "shape": "string, a valid WKT shape",
         "buffer": "integer, buffers a provided shape by x kilometers",
         "unit_link": "string, GMUS unit_link",
@@ -1424,6 +1424,58 @@
       ]
     }
   },
+
+  "/geologic_units/map/legend": {
+    "description": "Retrieve legends for geologic map units",
+    "visible": true,
+    "parent": "geologic_units",
+    "options": {
+      "parameters": {
+        "scale": "Map scale in Macrostrat's topology, can be tiny, small, medium, or large",
+        "source_id": "Integer(s), one or more comma-separated integers identifying map sources",
+        "description": "A string to search for in the map unit description",
+        "comments": "A string to search for in the map unit comments",
+        "lith_type": "String, one or more comma-separated lithology types",
+        "lith_class": "String, one or more comma-separated lithology classes",
+        "lith_id": "Integer(s), one or more comma-separated integers identifying specific lithologies",
+        "format": "Desired output format. Default is JSON",
+        "sample": "Return a sample of data"
+      },
+      "output_formats": [
+        "json",
+        "csv"
+      ],
+      "examples": [
+        "/api/v2/geologic_units/map/legend?source_id=1",
+        "/api/v2/geologic_units/map/legend?description=banded%20iron",
+        "/api/v2/geologic_units/map/legend?lith_type=carbonate"
+      ],
+      "fields": [
+        "legend_id",
+        "source_id",
+        "scale",
+        "map_unit_name",
+        "strat_name",
+        "age",
+        "lith",
+        "descrip",
+        "comments",
+        "best_age_bottom",
+        "best_age_top",
+        "strat_name_ids",
+        "lith_types",
+        "lith_classes",
+        "lith_ids",
+        "color",
+        "area",
+        "tiny_area",
+        "small_area",
+        "medium_area",
+        "large_area"
+      ]
+    }
+  },
+
 
   "/geologic_units/map/points": {
     "description": "Query point features from geologic maps",
@@ -1745,6 +1797,38 @@
       }
     },
 
+    "/age_model": {
+      "description": "Get all components of column age models; mostly unit_boundaries but can include other constraints",
+      "visible": true,
+      "options": {
+        "parameters": {
+          "col_id": "A valid col_id",
+          "section_id": "A valid section_id"
+        },
+        "output_formats": [
+          "json","csv"
+        ],
+        "examples": [
+          "/age_models?section_id=1"
+        ],
+        "fields": [
+          "boundary_id",
+          "col_id",
+          "section_id",
+          "interval_id",
+          "interval_name",
+          "age_bottom",
+          "age_top",
+          "rel_position",
+          "model_age",
+          "boundary_status",
+          "boundary_type",
+          "unit_below",
+          "unit_above"
+        ]
+      }
+    },
+
     "/hex-summary": {
       "description": "Get corresponding data for hex grids",
       "visible": false,
@@ -1799,15 +1883,15 @@
     }
   },
   "/mobile/point_details": {
-    "description": "Get state-level geologic map (gmus) unit description and Macrostrat units for a given location. A valid latitude and longitude or column ID and GMUS unit ID are required.",
+    "description": "Get state-level geologic map unit description and Macrostrat units for a given location. A valid latitude and longitude or column ID and map unit ID are required.",
     "parent": "mobile",
-    "visible": true,
+    "visible": false,
     "options": {
       "parameters": {
         "lat": "A valid latitude",
         "lng": "A valid longitude",
         "col_id": "A valid column ID",
-        "unit_id": "A valid GMUS unit ID",
+        "unit_id": "A valid map unit ID",
         "geo_format": "Output geometry format - can be 'wkt' or 'geojson'; Defaults to 'geojson'"
       },
       "output_formats": [
@@ -1941,7 +2025,14 @@
     "visible": false,
     "options": {
       "parameters": {
-        "lith_id": "integer, one or more comma-separated lithology ids",
+        "lith_id": "integer, one or more comma-separated lithology ids: matches strictly to lith field in map data",
+        "lith_type": "string, one or more comma-separated lith_types: matches strictly to lith field in map data",
+        "lith_class": "string, one or more comma-separated lith_classes: matches strictly to lith field in map data",
+        "all_lith_id": "integer, one or more comma-separated lithology ids: matches any lith in any legend field",
+        "all_lith_type": "string, one or more comma-separated lith_types: matches any lith_type in any legend field",
+        "all_lith_class": "string, one or more comma-separated lith_classes: matches any lith_type in any legend field",
+        "strat_name_id": "integer, one or more comma-separated strat_name_ids",
+        "concept_id": "integer, one or more comma-separated strat_name concept_ids ids"
       },
       "output_formats": [
         "json"
@@ -2112,12 +2203,12 @@
     "unitdesc": "text, description of the unit",
     "unit_name": "text, the name of the unit",
     "lithology": "array of strings, lithologies associated with the unit",
-    "strat_names": "array of integer, strat_name_ids matched to the GMUS polygon or unit_link",
+    "strat_names": "array of integer, strat_name_ids matched to the polygon or unit_link",
     "strat_unit": "text, the stratigraphic unit of the polygon",
-    "gid": "integer, unique polygon ID of a GMUS unit",
+    "gid": "integer, unique polygon ID of a map unit",
     "containing_interval": "text, the interval that includes the top and bottom ages of a unit",
     "unit_link": "text, the ID assigned to a given group of polygons that share common attributes",
-    "macro_units": "array of integers, the unit_ids of Macrostrat units matched to the GMUS polygon or unit_link",
+    "macro_units": "array of integers, the unit_ids of Macrostrat units matched to the polygon or unit_link",
     "interval_color": "text, the hex color associated with the age of the unit",
     "lith_id": "integer, unique ID of the lithology",
     "measure_id": "integer, unique ID of the measurement",
@@ -2186,7 +2277,20 @@
     "descrip": "text, description of entity in plain text",
     "t_pos": "The position of unit top in ordering of units in section, optionally in units of m for some columns (e.g., eODP project)",
     "b_pos": "The position of unit bottom in ordering of units in section, optionally in units of m for some columns (e.g., eODP project)",
-    "n_intervals": "integer, number of intervals in timescale."
+    "n_intervals": "integer, number of intervals in timescale.",
+    "interval_name": "string, a valid interval name as defined in /defs/intervals",
+    "age_bottom": "decimal, age of bottom of entity (interval_name or unit) in Ma",
+    "age_top": "decimal, age of top of entity (interval_name or unit) in Ma",
+    "best_age_bottom": "decimal, age of bottom of entity (map unit) in Ma; estimate is 'best' because it incorporates multiple age model sources",
+    "best_age_top": "decimal, age of top of entity (map unit) in Ma; estimate is 'best' because it incorporates multiple age model sources",
+    "map_unit_name": "name of map unit in original source, or modified original source",
+    "legend_id": "integer, macrostrat internal identifier for map unit; one or more map_id values are assigned to a legend_id",
+    "tiny_area": "number, area in km^2 of map polygons in tiny-scale topology",
+    "small_area": "number, area in km^2 of map polygons in small-scale topology",
+    "medium_area": "number, area in km^2 of map polygons in medium-scale topology",
+    "large_area": "number, area in km^2 of map polygons in large-scale topology",
+    "age": "string, chronostratigraphic bin assigned to object",
+    "comments": "string, notes assigned to object"
   }
 };
   module.exports = defs;
