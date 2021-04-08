@@ -1431,7 +1431,8 @@
     "parent": "geologic_units",
     "options": {
       "parameters": {
-        "scale": "Map scale in Macrostrat's topology, can be tiny, small, medium, or large",
+        "scale": "Restrict results to maps of a specific scale(s) in Macrostrat's system, can be tiny, small, medium, or large",
+        "carto": "Restrict results to map components present in one of Macrostrat's map harmonized scales: tiny, small, medium, large",
         "source_id": "Integer(s), one or more comma-separated integers identifying map sources",
         "description": "A string to search for in the map unit description",
         "comments": "A string to search for in the map unit comments",
@@ -1456,6 +1457,7 @@
         "scale",
         "map_unit_name",
         "strat_name",
+        "unit_id",
         "age",
         "lith",
         "descrip",
