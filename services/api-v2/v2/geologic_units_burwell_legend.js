@@ -183,7 +183,7 @@ module.exports = function(req, res, next, cb) {
 
       var params_combined = params.concat(params_lith);
 
-      var sql = "SELECT legend_id, m.source_id, sources.scale, m.name as map_unit_name, strat_name,age,to_json(regexp_replace(lith, E'[\\n\\r\\f\\u000B\\u0085\\u2028\\u2029]+', ' ', 'g')) AS lith,to_json(regexp_replace(descrip, E'[\\n\\r\\f\\u000B\\u0085\\u2028\\u2029]+', ' ', 'g')) AS descrip, to_json(regexp_replace(comments, E'[\\n\\r\\f\\u000B\\u0085\\u2028\\u2029]+', ' ', 'g')) AS comments,best_age_top::float t_age,best_age_bottom::float b_age,b_interval,t_interval,strat_name_ids strat_name_id,unit_ids unit_id, lith_classes,lith_types,lith_ids lith_id ,color,m.area::float,tiny_area::float,small_area::float,medium_area::float,large_area::float";
+      var sql = "SELECT legend_id, m.source_id, sources.scale, to_json(regexp_replace(m.name, E'[\\n\\r\\f\\u000B\\u0085\\u2028\\u2029]+', ' ', 'g')) as map_unit_name, to_json(regexp_replace(strat_name, E'[\\n\\r\\f\\u000B\\u0085\\u2028\\u2029]+', ' ', 'g')) as strat_name,age,to_json(regexp_replace(lith, E'[\\n\\r\\f\\u000B\\u0085\\u2028\\u2029]+', ' ', 'g')) AS lith,to_json(regexp_replace(descrip, E'[\\n\\r\\f\\u000B\\u0085\\u2028\\u2029]+', ' ', 'g')) AS descrip, to_json(regexp_replace(comments, E'[\\n\\r\\f\\u000B\\u0085\\u2028\\u2029]+', ' ', 'g')) AS comments,best_age_top::float t_age,best_age_bottom::float b_age,b_interval,t_interval,strat_name_ids strat_name_id,unit_ids unit_id, lith_classes,lith_types,lith_ids lith_id ,color,m.area::float,tiny_area::float,small_area::float,medium_area::float,large_area::float";
 
       sql += " FROM maps.legend m JOIN maps.sources USING (source_id)"
         + where_start + carto_scale + where + where_combined + where_lith + limit;
