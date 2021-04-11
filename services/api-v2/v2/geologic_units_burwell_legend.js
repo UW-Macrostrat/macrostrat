@@ -176,7 +176,6 @@ module.exports = function(req, res, next, cb) {
 
        var where_combined = '';
        if (where_lith.length > 0 && where.length > 0) {
-         where = where + " AND "
          where_combined = where.concat(where_lith);
          where = "";
          where_lith = "";
