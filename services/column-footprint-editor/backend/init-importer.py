@@ -10,6 +10,9 @@ db = Database()
 here = Path(__file__).parent
 queries = here / "queries"
 
+data_dir = here / "data"
+json_f = data_dir / "project_10.json"
+
 insert_file = queries / "project_1_insert.sql"
 
 if __name__ == "__main__":
@@ -22,15 +25,16 @@ if __name__ == "__main__":
     sql = open(insert_file).read()
     print(sql)
 
-    json_text = Path("data/import.json").read_text()
+    json_text = open(json_f).read()
 
     ## I had to do this not to overload system
     ## should be a pooling configuration for the engine
-    json_data = json.loads(json_text)[70:100] 
+    json_data = json.loads(json_text) 
     for ele in json_data:
         loc = json.dumps(ele['location'])
         params = {"project_id": ele['project_id'],
          "col_name": ele["col_name"], "col_group": ele['col_group'],
+         "col_id": ele['col_id'],
          "location": loc}
         db.run_sql_file(insert_file, params)
 

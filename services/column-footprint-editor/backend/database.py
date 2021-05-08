@@ -1,4 +1,3 @@
-import sqlalchemy
 from sqlalchemy.ext.automap import automap_base
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -13,7 +12,7 @@ fixtures = here / "fixtures"
 
 class Database:
 
-    engine = create_engine("postgresql://postgres:password@0.0.0.0/topology", echo=True)
+    engine = create_engine("postgresql://postgres@localhost:54321/geologic_map", echo=True)
     Session = sessionmaker(bind=engine)
 
     @classmethod
