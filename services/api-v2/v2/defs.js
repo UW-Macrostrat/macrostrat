@@ -937,7 +937,38 @@
         "t_units"
       ]
     }
-  },
+  },  "/defs/measurement_sources": {
+      "description": "Returns references used in Macrostrat measurements",
+      "parent": "definitions",
+      "visible": true,
+      "options": {
+        "parameters": {
+          "doi": "string, a specific doi, note that it is best to use one DOI at a time in this query",
+          "measurement_class": "string, measurement_class",
+          "measurement_type": "string, measurement_type",
+          "measurement": "string, measurement",
+          "all": "return all measurement definitions"
+        },
+        "output_formats": [
+          "json",
+          "csv"
+        ],
+        "examples": [
+          "api/v2/defs/measurement_sources?doi=",
+          "api/v2/defs/measurements?all",
+          "api/v2/defs/measurements?measurement_class=geochemical"
+        ],
+        "fields": [
+          "ref_id",
+          "pub_year",
+          "author",
+          "ref",
+          "doi",
+          "url",
+          "measurements"
+        ]
+      }
+    },
   "/defs/groups": {
     "description": "Returns all column groups",
     "parent": "definitions",

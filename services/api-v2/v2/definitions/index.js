@@ -88,6 +88,11 @@ definitions.route("/sources")
     require("./sources")(req, res, next);
   });
 
+definitions.route("/measurement_sources")
+  .get(function(req, res, next) {
+    require("./measurement_sources")(req, res, next);
+  });
+
 definitions.route("/strat_names")
   .get(function(req, res, next) {
     require("./strat_names")(req, res, next);

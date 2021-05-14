@@ -31,12 +31,12 @@ module.exports = function(req, res, next, cb) {
 
   if (req.query.col_id) {
     where.push("col_id IN (:col_id)")
-    params["site"] = larkin.parseMultipleIds(req.query.col_id)
+    params["col_id"] = larkin.parseMultipleIds(req.query.col_id)
   }
 
   if (req.query.col_group_id) {
     where.push("site IN (:col_group_id)")
-    params["site"] = larkin.parseMultipleIds(req.query.col_group_id)
+    params["col_group_id"] = larkin.parseMultipleIds(req.query.col_group_id)
   }
 
   if (where.length) {
@@ -46,6 +46,8 @@ module.exports = function(req, res, next, cb) {
   if ("sample" in req.query) {
     sql += " LIMIT 5"
   }
+
+console.log(sql);
 
   larkin.query(sql, params, function(error, result) {
     if (error) {
