@@ -729,6 +729,8 @@
         "concept_id": "uniqe id for stratigraphic concepts",
         "rank": "lithostratigraphic rank",
         "rule": "Can be 'all' or 'down'. Down will return any children of the requested stratigraphic name, and all will return the entire stratigraphic name hierarchy that the request name belongs to",
+        "interval_name": "chronostratigrpahic interval name (see /defs/intervals); this will return only strat_names with a declared age in Macrostrat",
+        "ref_id": "retrieve only stratigraphic names linked the specified reference_id (see /defs/refs)",
         "all": "return all lithostratigraphic names",
         "format": "Desired output format"
       },
