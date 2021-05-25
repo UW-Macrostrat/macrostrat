@@ -26,12 +26,22 @@ Backend is bootstrapped to postgis-geologic-map and mapboard-server. Creates top
 
 Database persistence onClick of the `save` button.
 
+Fixed Bug of dragging two points in same feature and 1+ of another feature. My mistake was overcomplicating the logic.
+
 ### Bugs:
 
-Dragging points where 2 are in the same line, and 1+ are in others doesn't fully work. This is probably caused by "over-engineering" the click on vertex option.
-
 Deleting nodes where points are shared doesn't work. This may be trickier to solve.
+
+The custom modes for clicking, dragging and line creation are not isolated enough from the map itself. Some of the methods inside these modes set variables outside of the interal map state. Solution: move variables to internal state. 
+
+The `draw.udpate` logic should be moved to the custom line mode at the `onStop` or a similar event.
 
 ### Goals:
 
 Create a column version management system. Similar to git... Have a "compare" view to view two topology versions sideby side or on top. Metadata descriptions about project being edited.. Total area of polygons.
+
+Have a info panel at top: what project, total area of polygons.
+
+Have a "properties" view which shows the topology faces, and color coded based on if they have an identity or not. This view would also ideally support editing properties of the column geometries.
+
+Ability to switch between different projects and maybe even different drafts of projects.
