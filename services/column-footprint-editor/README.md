@@ -28,13 +28,15 @@ Database persistence onClick of the `save` button.
 
 Fixed Bug of dragging two points in same feature and 1+ of another feature. My mistake was overcomplicating the logic.
 
+I have successfully isolated the fronted custom drawing modes. Now state is handled the "right" way. The `draw.update` logic is performed in the `directselect.onstop` method.
+
+It looks like these coding clean-ups have also fixed the deleting points where shared bug that was occuring. But some odd behavior is causing me to leave it on bugs.
+
 ### Bugs:
 
-Deleting nodes where points are shared doesn't work. This may be trickier to solve.
+Deleting nodes where points are shared doesn't work. This may be trickier to solve. Sometimes it seems like the code is breaking here and other times not..
 
-The custom modes for clicking, dragging and line creation are not isolated enough from the map itself. Some of the methods inside these modes set variables outside of the interal map state. Solution: move variables to internal state. 
-
-The `draw.udpate` logic should be moved to the custom line mode at the `onStop` or a similar event.
+Forseable Bug-- when deciding how map-faces get col identity, it is possible that a user will cut an identity column, which would mean both columns, old and generated, would recieve the same identity. I think to solve this we could employ a frontend warning or something.
 
 ### Goals:
 

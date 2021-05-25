@@ -25,7 +25,20 @@ async def homepage(request):
     return PlainTextResponse("Home Page")
 
 async def geometries(request):
-    return JSONResponse({"Geoms": "Geometry Data"})
+    q = here / "queries" / "get-topology-columns.sql"
+    sql = open(q).read()
+
+    df = db.exec_query(sql)
+    df.fillna('')
+    polygons = []
+    for i in range(0, len(df['polygon'])):
+        obj = {}
+        obj['geometry'] = json.loads(df['polygon'][i])
+        obj['type'] = "Feature"
+        obj['properties'] = {"id": f"{df['id'][i]}","project_id": f"{df['project_id'][i]}", "col_id": f"{df['col_id'][i]}","col_name": df['col_name'][i],"col_group": df['col_group'][i],"col_color": df['col_color'][i]}
+        polygons.append(obj)
+
+    return JSONResponse({"type": "FeatureCollection", "features": polygons})
 
 async def updates(request):
     """
