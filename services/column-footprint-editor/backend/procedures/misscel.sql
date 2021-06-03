@@ -10,6 +10,6 @@ INSERT INTO map_digitizer.linework(geometry)
 	
 /* Putting polygons as buffered centroids into polgon tabel along with macrostrat columnid*/ 
 INSERT INTO map_digitizer.polygon(geometry, col_id)
-	select ST_Multi(ST_Buffer(ST_Centroid(location), .0001, 2)),
-	col_id
+	select ST_Multi(ST_Buffer(ST_PointOnSurface(ST_MakeValid(location)), .0001, 2)),
+	id
 from columns.columns;

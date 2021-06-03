@@ -4,6 +4,7 @@ from starlette.middleware import Middleware
 from starlette.responses import PlainTextResponse, JSONResponse
 from starlette.routing import Route
 from pathlib import Path
+import subprocess
 import json
 import uvicorn
 
@@ -20,6 +21,8 @@ middleware = [
     Middleware(CORSMiddleware, allow_origins=['*'], allow_methods=['*'], allow_headers=['*']),
 ]
 
+## Command to call topo update in docker
+docker_geologic_update = 'docker exec postgis-geologic-map_app_1 bin/geologic-map update'
 
 async def homepage(request):
     return PlainTextResponse("Home Page")
@@ -90,9 +93,12 @@ async def updates(request):
                 print("Add a line")
                 geometry_ = json.dumps(line['feature']['geometry'])
                 db.run_sql_file(create_line_file, {"geometry_":geometry_})
-        return JSONResponse({"Status": "Success", "change_set": json.dumps(data['change_set'])})
+
+        p = subprocess.Popen(docker_geologic_update)
+        p.wait()
+        return JSONResponse({"status": "success"})
     except:
-        return JSONResponse({"Status": "Error", "message": "different data structured expected"})
+        return JSONResponse({"status": "error", "message": "different data structured expected"})
 
 
 async def lines(request):
