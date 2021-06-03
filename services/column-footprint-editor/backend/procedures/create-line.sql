@@ -1,3 +1,4 @@
-INSERT INTO map_digitizer.linework(geometry) VALUES (
-    ST_Multi(ST_GeomFromGeoJSON(:geometry_))
+INSERT INTO map_digitizer.linework(geometry, type) VALUES (
+    ST_Multi(ST_GeomFromGeoJSON(:geometry_)),
+    'default'
 );
