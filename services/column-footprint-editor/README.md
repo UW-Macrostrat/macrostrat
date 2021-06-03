@@ -32,11 +32,17 @@ I have successfully isolated the fronted custom drawing modes. Now state is hand
 
 It looks like these coding clean-ups have also fixed the deleting points where shared bug that was occuring. But some odd behavior is causing me to leave it on bugs.
 
+Created a `GET` endpoint on top of a view table that joins `map_face` from `map_topology` schema onto the identity polygons and then the column properties table. Renders in the frontend as a geojson layer in mapbox, shade is determined by if the column has an identity.
+
+Clicking on shaded column brings a popup that has some basic info about the column.
+
 ### Bugs:
 
 Deleting nodes where points are shared doesn't work. This may be trickier to solve. Sometimes it seems like the code is breaking here and other times not..
 
 Forseable Bug-- when deciding how map-faces get col identity, it is possible that a user will cut an identity column, which would mean both columns, old and generated, would recieve the same identity. I think to solve this we could employ a frontend warning or something.
+
+Identity polygon, as centroids don't work! Centroids are not always inside of a polygon, especially irregularly shaped ones, which is basically all geology columns. Possible solution: Point of Unaccessability, not implemented in postgis but there is a JavaScript algorithm I think.
 
 ### Goals:
 
