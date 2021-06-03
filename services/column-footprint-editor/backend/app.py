@@ -1,3 +1,4 @@
+from os import error
 from starlette.applications import Starlette
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware import Middleware
@@ -42,6 +43,24 @@ async def geometries(request):
         polygons.append(obj)
 
     return JSONResponse({"type": "FeatureCollection", "features": polygons})
+
+async def property_updates(request):
+
+    sql_fn = procedures / "update-properties.sql"
+
+    res = await request.json()
+
+    data = res['updatedModel']
+    
+
+    params = dict(id = data['identity_id'], column_name = data['column_name'],group = data['group'])
+    try:
+        db.run_sql_file(sql_fn, params)
+    except error:
+        print(error)
+        return JSONResponse({"status": "error", "message": f'{error}'})
+    
+    return JSONResponse({"statue": f'success'})
 
 async def updates(request):
     """
@@ -140,7 +159,8 @@ routes = [
     Route("/", homepage, methods=['GET']),
     Route('/columns', geometries, methods=['GET']),
     Route('/lines', lines, methods=['GET']),
-    Route('/updates', updates, methods=['PUT'])
+    Route('/updates', updates, methods=['PUT']),
+    Route('/property_updates', property_updates, methods=['PUT'])
 ]
 
 app = Starlette(routes=routes,debug=True, middleware=middleware)
