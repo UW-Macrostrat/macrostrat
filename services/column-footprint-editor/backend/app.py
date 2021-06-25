@@ -1,4 +1,5 @@
 from os import error
+import requests
 from starlette.applications import Starlette
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware import Middleware
@@ -12,6 +13,7 @@ import uvicorn
 from utils import change_set_clean
 
 from database import Database
+from importer import ProjectImporter
 
 here = Path(__file__).parent
 procedures = here / "procedures"
@@ -24,6 +26,9 @@ middleware = [
 
 ## Command to call topo update in docker
 docker_geologic_update = 'docker exec postgis-geologic-map_app_1 bin/geologic-map update'
+docker_geologic_create_tables = 'docker exec postgis-geologic-map_app_1 bin/geologic-map create-tables --all'
+docker_geologic_reset_topo = 'docker exec postgis-geologic-map_app_1 bin/geologic-map reset'
+
 
 async def homepage(request):
     return PlainTextResponse("Home Page")
@@ -113,11 +118,38 @@ async def updates(request):
                 geometry_ = json.dumps(line['feature']['geometry'])
                 db.run_sql_file(create_line_file, {"geometry_":geometry_})
 
-        p = subprocess.Popen(docker_geologic_update)
+        p = subprocess.Popen(docker_geologic_update.split())
         p.wait()
         return JSONResponse({"status": "success"})
     except:
         return JSONResponse({"status": "error", "message": "different data structured expected"})
+
+async def import_topologies(request):
+    data = await request.json()
+
+    if 'url' not in data:
+        return JSONResponse({"error": "url not passed"})
+    if 'project_id' not in data:
+        return JSONResponse({"error": "project_id not passed"})
+
+    url = data['url']
+    project_id = data['project_id']
+
+    Importer = ProjectImporter(url, project_id)
+
+    # p = subprocess.Popen(docker_geologic_reset_topo.split())
+    # p.wait()
+
+    Importer.tear_down_project()
+
+    # p = subprocess.Popen(docker_geologic_create_tables.split())
+    # p.wait()
+
+    Importer.import_column_topolgy()
+
+    Importer.create_map_face_view()
+
+    return JSONResponse({"status": "success"})
 
 
 async def lines(request):
@@ -160,7 +192,8 @@ routes = [
     Route('/columns', geometries, methods=['GET']),
     Route('/lines', lines, methods=['GET']),
     Route('/updates', updates, methods=['PUT']),
-    Route('/property_updates', property_updates, methods=['PUT'])
+    Route('/property_updates', property_updates, methods=['PUT']),
+    Route('/import', import_topologies, methods=['POST'])
 ]
 
 app = Starlette(routes=routes,debug=True, middleware=middleware)

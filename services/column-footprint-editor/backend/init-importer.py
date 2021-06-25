@@ -1,40 +1,43 @@
-## importer script to import a json file into database
+## Test import script
+import subprocess
+from importer import ProjectImporter
 
-import json
-from pathlib import Path
-
-from database import Database
-from utils import pretty_print
-
-db = Database()
-here = Path(__file__).parent
-queries = here / "queries"
-
-data_dir = here / "data"
-json_f = data_dir / "project_10.json"
-
-insert_file = queries / "project_1_insert.sql"
 
 if __name__ == "__main__":
+    ## Command to call topo update in docker
+    docker_geologic_update = 'docker exec postgis-geologic-map_app_1 bin/geologic-map update'
+    docker_geologic_create_tables = 'docker exec postgis-geologic-map_app_1 bin/geologic-map create-tables --all'
+    docker_geologic_reset_topo = 'docker exec postgis-geologic-map_app_1 bin/geologic-map reset'
+
+    project_id = 10
+    url = "https://macrostrat.org/api/v2/columns?project_id=10&format=geojson_bare&status_code=in%20process"
+
+    Importer = ProjectImporter(url, project_id)
+
+    # remove topology and truncate columns, linework, polygon tables
+    Importer.tear_down_project()
+    p = subprocess.Popen(docker_geologic_reset_topo.split())
+    p.wait()
+
+
+    # # rebuild the map_topolgy schema
+    p = subprocess.Popen(docker_geologic_create_tables.split())
+    p.wait()
+
+    # fetches columns from macrostrat
+    # inserts in columns.columns
+    # runs import.sql
+    #   creates identity polygons using ST_PointOnSurface
+    #   adds topolgy column to columns.columns
+    #   adds location to topology
+    #   dumps edge_data to linework table
+    Importer.import_column_topolgy()
+
+    # Importer.create_map_face_view()
+
+    # # runs the geologic-map update command in docker
+    # p = subprocess.Popen(docker_geologic_update.split())
+    # p.wait()
     
-    db.print_hello()
-
-    print(__name__)
-    # works
-    
-    sql = open(insert_file).read()
-    print(sql)
-
-    json_text = open(json_f).read()
-
-    ## I had to do this not to overload system
-    ## should be a pooling configuration for the engine
-    json_data = json.loads(json_text) 
-    for ele in json_data:
-        loc = json.dumps(ele['location'])
-        params = {"project_id": ele['project_id'],
-         "col_name": ele["col_name"], "col_group": ele['col_group'],
-         "col_id": ele['col_id'],
-         "location": loc}
-        db.run_sql_file(insert_file, params)
+   
 
