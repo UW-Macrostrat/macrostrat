@@ -1,10 +1,6 @@
-/*
-SQL file to redump lines to the linkwork table from the topology.edge_data
-*/
+TRUNCATE ${data_schema}.linework CASCADE;
 
-TRUNCATE map_digitizer.linework CASCADE;
+ALTER SEQUENCE ${data_schema}.linework_id_seq RESTART WITH 1;
 
-ALTER SEQUENCE map_digitizer.linework_id_seq RESTART WITH 1;
-
-INSERT INTO map_digitizer.linework(type, geometry)
-SELECT 'default', ST_Multi(geom) from map_topology.edge_data;
+INSERT INTO ${data_schema}.linework(type, geometry)
+SELECT 'default', ST_Multi(geom) from ${topo_schema}.edge_data;

@@ -1,6 +1,6 @@
 /*
 Updates the existing line, just the geometry
 */
-UPDATE map_digitizer.linework
+UPDATE ${data_schema}.linework
 SET geometry = ST_Multi(ST_GeomFromGeoJSON(:geometry_))
 WHERE id = :id_;

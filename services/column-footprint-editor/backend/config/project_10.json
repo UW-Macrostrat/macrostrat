@@ -1,0 +1,11 @@
+{
+  "connection": {
+    "database": "geologic_map",
+    "port": 5432,
+    "host": "db",
+    "user": "postgres"
+  },
+  "project_schema": "columns",
+  "data_schema": "map_digitizer",
+  "topo_schema": "map_topology"
+}

@@ -1,16 +1,48 @@
-from subprocess import run as _run
 from click import secho
 from sqlparse import split, format
 from sqlalchemy.exc import ProgrammingError, IntegrityError
+from shlex import split as split_
+from subprocess import run
+from pathlib import Path
+import json
+import logging
 
+here = Path(__file__).parent
+config_dir = here / "config"
 
-def run(*args, **kwargs):
-    command = " ".join(args)
-    if kwargs.pop("echo", True):
-        secho(command, fg="cyan")
-    kwargs["shell"] = True
-    return _run(command, **kwargs)
+def get_logger(name=None, level=logging.DEBUG, handler=None):
+    log = logging.getLogger(name)
+    log.setLevel(level)
+    if handler:
+        log.addHandler(handler)
+    return log
 
+log = get_logger(__name__)
+
+def split_args(*args):
+    return split_(" ".join(args))
+
+def cmd(*v, **kwargs):
+    logger = kwargs.pop("logger", log)
+    val = " ".join(v)
+    logger.debug(val)
+    return run(split_(val), **kwargs)
+
+def run_docker_config(project_id, command):
+    exec_ = f"docker exec -it -e GEOLOGIC_MAP_CONFIG=/var/config/project_{project_id}.json postgis-geologic-map_app_1" 
+    base = exec_ + " bin/geologic-map"
+    update = base + " update"
+    reset = base + " reset"
+    create_tables = base + " create-tables --all"
+
+    if command == "update":
+        cmd_ = update
+    if command == "reset":
+        cmd_ = reset
+    if command == "create_tables":
+        cmd_ = create_tables
+
+    return cmd(cmd_)
 
 # The below functions are stolen from sparrow; we should place them in a utility module
 
@@ -44,9 +76,26 @@ def run_sql(sql, params=None, session=None):
                 err = "  " + err
             secho(err, fg="red", dim=dim)
 
+def sql_config_paramertize(project_id, sql):
+    """ function to parameterize sql schemas based on project config"""
+
+    config_fn = config_dir / f'project_{project_id}.json'
+    config_json = json.load(open(config_fn))
+
+    for k,v in config_json.items():
+        string = '${%s}' % k
+        if string in sql:
+            sql = sql.replace(string, v)
+
+    return sql
 
 def run_sql_file(sql_file, **kwargs):
     sql = open(sql_file).read()
+
+    if 'project_id' in kwargs:
+        project_id = kwargs.pop('project_id')
+        sql = sql_config_paramertize(project_id, sql)
+    
     return run_sql(sql, **kwargs)
 
 
@@ -62,9 +111,15 @@ def run_query(db, filename_or_query, **kwargs):
         # We are working with a query string instead of
         # an SQL file.
         sql = filename_or_query
+        if 'project_id' in kwargs:
+            project_id = kwargs.pop('project_id')
+            sql = sql_config_paramertize(project_id, sql)
     else:
         with open(filename_or_query) as f:
             sql = f.read()
+        if 'project_id' in kwargs:
+            project_id = kwargs.pop('project_id')
+            sql = sql_config_paramertize(project_id, sql)
 
     return read_sql(sql, db, **kwargs)
 
@@ -126,6 +181,31 @@ def change_set_clean(change_set):
                 del change_set[i] 
         
     return change_set
+
+def create_project_config(project_id):
+    config = {}
+    config['project_schema'] = f'project_{project_id}'
+    config['data_schema'] = f'project_{project_id}_data'
+    config['topo_schema'] = f'project_{project_id}_topology'
+    ## these are the 'defaults'
+    config['connection'] = {"database": "geologic_map", "port": 5432, "host": "db","user": "postgres"}
+
+    fn = config_dir / f'project_{project_id}.json'
+    with open(fn, 'w') as f:
+        json.dump(config, f)
+    print("Configuration file sucessfully created")
+
+def config_check(project_id):
+    config_fn = config_dir / f'project_{project_id}.json' 
+    
+
+    if config_fn.exists():
+        print("Configuration file exists")
+    else:
+        print("Config does not exist")
+        create_project_config(project_id)
+    
+
 
         
  

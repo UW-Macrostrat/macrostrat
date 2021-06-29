@@ -11,24 +11,19 @@ here = Path(__file__).parent
 fixtures = here / "fixtures"
 procedures = here / "procedures"
 
-update_topology_fn = procedures / "update-topology.sql"
-
 class Database:
 
     engine = create_engine("postgresql://postgres@localhost:54321/geologic_map", echo=True)
     Session = sessionmaker(bind=engine)
 
     @classmethod
-    def run_sql_file(cls, sql_file, params={}):
-        return run_sql_file(sql_file, params=params, session=cls.Session())
+    def run_sql_file(cls, sql_file, params={}, **kwargs):
+        return run_sql_file(sql_file, params=params, session=cls.Session(), **kwargs)
     
     def run_sql_string(self, sql_string):
         '''Dangerous method'''
         return self.Session().execute(sql_string)
     
-    def update_topology(self):
-        return self.run_sql_file(update_topology_fn)
-
     @classmethod
     def exec_query(cls, filename_or_query, **kwargs):
         """
