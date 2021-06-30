@@ -25,15 +25,15 @@ class Database:
     Database class with built in SQL Formatter
     """
 
-    def __init__(self, project_id):
+    def __init__(self, project_id = None):
         self.project_id = project_id
         self.engine = create_engine("postgresql://postgres@localhost:54321/geologic_map", echo=True)
         self.Session = sessionmaker(bind=self.engine)
         self.config = config_check(self.project_id)
-        self.SqlFormatter = SqlFormatter(self.project_id)
+        self.formatter = SqlFormatter(self.project_id)
     
     def run_sql(self, sql, params={}, **kwargs):
-        sql = self.SqlFormatter.sql_config_paramertize(sql, self.config)
+        sql = self.formatter.sql_config_format(sql, self.config)
         return run_sql(sql, params=params, session=self.Session(), **kwargs)
 
     def run_sql_file(self, sql_file, params={}, **kwargs):
@@ -52,13 +52,12 @@ class Database:
             # We are working with a query string instead of
             # an SQL file.
             sql = filename_or_query
-            sql = self.SqlFormatter.sql_config_paramertize(sql, self.config)
+            sql = self.formatter.sql_config_format(sql, self.config)
         else:
             with open(filename_or_query) as f:
                 sql = f.read()
-            sql = self.SqlFormatter.sql_config_paramertize(sql, self.config)
+            sql = self.formatter.sql_config_format(sql, self.config)
 
-        
         return read_sql(sql, self.engine, **kwargs)
               
     #################### db procedure methods ###############################

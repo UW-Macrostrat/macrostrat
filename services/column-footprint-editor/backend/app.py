@@ -1,5 +1,4 @@
 from os import error
-import requests
 from starlette.applications import Starlette
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware import Middleware
@@ -18,7 +17,6 @@ from importer import ProjectImporter
 here = Path(__file__).parent
 procedures = here / "procedures"
 
-db = Database()
 
 middleware = [
     Middleware(CORSMiddleware, allow_origins=['*'], allow_methods=['*'], allow_headers=['*']),
@@ -36,11 +34,13 @@ async def homepage(request):
 async def geometries(request):
 
     project_id = request.path_params['project_id']
+    db = Database(project_id)
+
 
     q = here / "queries" / "get-topology-columns.sql"
     sql = open(q).read()
 
-    df = db.exec_query(sql, project_id = project_id)
+    df = db.exec_query(sql)
     df.fillna('')
     polygons = []
     for i in range(0, len(df['polygon'])):
@@ -59,6 +59,7 @@ async def property_updates(request):
     res = await request.json()
 
     project_id = request.path_params['project_id']
+    db = Database(project_id)
 
 
     data = res['updatedModel']
@@ -66,7 +67,7 @@ async def property_updates(request):
 
     params = dict(id = data['identity_id'], column_name = data['column_name'],group = data['group'])
     try:
-        db.run_sql_file(sql_fn, params, project_id = project_id)
+        db.run_sql_file(sql_fn, params)
     except error:
         print(error)
         return JSONResponse({"status": "error", "message": f'{error}'})
@@ -99,6 +100,7 @@ async def updates(request):
     create_line_file = procedures / "create-line.sql"
 
     project_id = request.path_params['project_id']
+    db = Database(project_id)
 
 
     data = await request.json()
@@ -115,19 +117,19 @@ async def updates(request):
                 id_ = line['feature']['properties']['id']
                 params = {"geometry_": geometry_, "id_":id_}
 
-                db.run_sql_file(change_line_file, params, project_id = project_id)
+                db.run_sql_file(change_line_file, params)
 
             if line['action'] == "draw.delete":
                 print("Delete a Line")
                 id_ = line['feature']['properties']['id']
-                db.run_sql_file(delete_line_file, {"id_":id_}, project_id = project_id)
+                db.run_sql_file(delete_line_file, {"id_":id_})
 
             if line['action'] == "draw.create":
                 print("Add a line")
                 geometry_ = json.dumps(line['feature']['geometry'])
-                db.run_sql_file(create_line_file, {"geometry_":geometry_}, project_id = project_id)
-
-        p = subprocess.run(docker_geologic_update.split())
+                db.run_sql_file(create_line_file, {"geometry_":geometry_})
+                
+        db.update_topology()
         return JSONResponse({"status": "success"})
     except:
         return JSONResponse({"status": "error", "message": "different data structured expected"})
@@ -153,6 +155,8 @@ async def import_topologies(request):
 async def lines(request):
 
     project_id = request.path_params['project_id']
+    db = Database(project_id)
+
 
     if 'id' in request.query_params:
         id_ = request.query_params['id']
@@ -160,7 +164,7 @@ async def lines(request):
         q = here / "queries" / "select-line-by-id.sql"
         sql = open(q).read()
 
-        df = db.exec_query(sql, params={'id_': id_}, project_id = project_id)
+        df = db.exec_query(sql, params={'id_': id_})
         lines = []
         for i in range(0, len(df['lines'])):
             obj = {}
@@ -175,7 +179,7 @@ async def lines(request):
     q = here / "queries" / "get-linework.sql"
     sql = open(q).read()
 
-    df = db.exec_query(sql, project_id = project_id)
+    df = db.exec_query(sql)
 
     lines = []
     for i in range(0, len(df['lines'])):
@@ -189,11 +193,11 @@ async def lines(request):
 
 routes = [
     Route("/", homepage, methods=['GET']),
-    Route('/columns/{project_id}', geometries, methods=['GET']),
-    Route('/lines/{project_id}', lines, methods=['GET']),
-    Route('/updates/{project_id}', updates, methods=['PUT']),
-    Route('/property_updates/{project_id}', property_updates, methods=['PUT']),
-    Route('/import/{project_id}', import_topologies, methods=['POST'])
+    Route('/{project_id}/columns', geometries, methods=['GET']),
+    Route('/{project_id}/lines', lines, methods=['GET']),
+    Route('/{project_id}/updates', updates, methods=['PUT']),
+    Route('/{project_id}/property_updates', property_updates, methods=['PUT']),
+    Route('/{project_id}/import', import_topologies, methods=['POST'])
 ]
 
 app = Starlette(routes=routes,debug=True, middleware=middleware)

@@ -8,7 +8,7 @@ class SqlFormatter:
         self.project_id = project_id
       
 
-    def sql_config_paramertize(self, sql, config):
+    def sql_config_format(self, sql, config):
         """ function to parameterize sql schemas based on project config"""
 
         for k,v in config.items():
