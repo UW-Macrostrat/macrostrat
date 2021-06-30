@@ -1,3 +1,7 @@
+ALTER TABLE ${data_schema}.polygon
+	ADD COLUMN col_id integer,
+	ADD FOREIGN KEY (col_id) REFERENCES ${project_schema}.columns(id);
+
 CREATE OR REPLACE VIEW ${project_schema}.column_map_face AS
 WITH A as(
 SELECT c.id,c.project_id, c.col_id, c.col_name, c.col_group, mtm.geometry from ${topo_schema}.map_face mtm

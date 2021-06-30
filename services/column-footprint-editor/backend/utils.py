@@ -29,10 +29,18 @@ def cmd(*v, **kwargs):
     return run(split_(val), **kwargs)
 
 def run_docker_config(project_id, command):
+    """
+    Possible Commands:
+    update
+    reset
+    delete
+    create_tables 
+    """
     exec_ = f"docker exec -it -e GEOLOGIC_MAP_CONFIG=/var/config/project_{project_id}.json postgis-geologic-map_app_1" 
     base = exec_ + " bin/geologic-map"
     update = base + " update"
     reset = base + " reset"
+    delete = base + " delete"
     create_tables = base + " create-tables --all"
 
     if command == "update":
@@ -41,6 +49,8 @@ def run_docker_config(project_id, command):
         cmd_ = reset
     if command == "create_tables":
         cmd_ = create_tables
+    if command == "delete":
+        cmd_ = delete
 
     return cmd(cmd_)
 
@@ -76,52 +86,6 @@ def run_sql(sql, params=None, session=None):
                 err = "  " + err
             secho(err, fg="red", dim=dim)
 
-def sql_config_paramertize(project_id, sql):
-    """ function to parameterize sql schemas based on project config"""
-
-    config_fn = config_dir / f'project_{project_id}.json'
-    config_json = json.load(open(config_fn))
-
-    for k,v in config_json.items():
-        string = '${%s}' % k
-        if string in sql:
-            sql = sql.replace(string, v)
-
-    return sql
-
-def run_sql_file(sql_file, **kwargs):
-    sql = open(sql_file).read()
-
-    if 'project_id' in kwargs:
-        project_id = kwargs.pop('project_id')
-        sql = sql_config_paramertize(project_id, sql)
-    
-    return run_sql(sql, **kwargs)
-
-
-def run_query(db, filename_or_query, **kwargs):
-    """
-    Run a query on a SQL database (represented by
-    a SQLAlchemy database object) and turn it into a
-    `Pandas` dataframe.
-    """
-    from pandas import read_sql        
-    
-    if "SELECT" in str(filename_or_query):
-        # We are working with a query string instead of
-        # an SQL file.
-        sql = filename_or_query
-        if 'project_id' in kwargs:
-            project_id = kwargs.pop('project_id')
-            sql = sql_config_paramertize(project_id, sql)
-    else:
-        with open(filename_or_query) as f:
-            sql = f.read()
-        if 'project_id' in kwargs:
-            project_id = kwargs.pop('project_id')
-            sql = sql_config_paramertize(project_id, sql)
-
-    return read_sql(sql, db, **kwargs)
 
 def change_set_clean(change_set):
     '''
@@ -187,6 +151,7 @@ def create_project_config(project_id):
     config['project_schema'] = f'project_{project_id}'
     config['data_schema'] = f'project_{project_id}_data'
     config['topo_schema'] = f'project_{project_id}_topology'
+    config['tolerance'] = 0.0001
     ## these are the 'defaults'
     config['connection'] = {"database": "geologic_map", "port": 5432, "host": "db","user": "postgres"}
 
@@ -194,16 +159,30 @@ def create_project_config(project_id):
     with open(fn, 'w') as f:
         json.dump(config, f)
     print("Configuration file sucessfully created")
+    return config
 
 def config_check(project_id):
     config_fn = config_dir / f'project_{project_id}.json' 
     
-
     if config_fn.exists():
         print("Configuration file exists")
+        return get_config(project_id)
     else:
         print("Config does not exist")
-        create_project_config(project_id)
+        return create_project_config(project_id)
+
+def get_config(project_id):
+    config_fn = config_dir / f'project_{project_id}.json'
+    config_json = json.load(open(config_fn))
+    return config_json
+
+def delete_config(project_id):
+    config_fn = config_dir / f'project_{project_id}.json'
+    try:
+        config_fn.unlink()
+    except OSError as e:
+        print(f"Error:{ e.strerror}")
+
     
 
 

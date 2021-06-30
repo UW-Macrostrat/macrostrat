@@ -145,17 +145,7 @@ async def import_topologies(request):
 
     Importer = ProjectImporter(url, project_id)
 
-    # p = subprocess.Popen(docker_geologic_reset_topo.split())
-    # p.wait()
-
-    Importer.tear_down_project()
-
-    # p = subprocess.Popen(docker_geologic_create_tables.split())
-    # p.wait()
-
-    Importer.import_column_topolgy()
-
-    Importer.create_map_face_view()
+    Importer.import_column_topology()
 
     return JSONResponse({"status": "success","imported":True, "project_id": project_id, "url": url})
 
@@ -209,6 +199,5 @@ routes = [
 app = Starlette(routes=routes,debug=True, middleware=middleware)
 
 if __name__ == "__main__":
-    db.print_hello()
     uvicorn.run(app, host='0.0.0.0', port=8000)
 
