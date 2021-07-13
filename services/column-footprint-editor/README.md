@@ -47,6 +47,24 @@ Property editing works! Uses `ModelEditor` component from ui-components.
 
 Frontend component for if a polygon has two identities is around. Lists them as cards and you can choose which one.
 
+07/02/21:
+
+Multiple projects exist in the database as separate schemas and linked topologies using a config file for each project and a passing the project_id and config to a database class instance. The config is also passed to the docker container through a subprocess so the map topology can resolve the correct schema.
+
+Frontend WIP, click and add polygon. For now it just adds a box. Can become much more sophisticated to sense polygons around it and attach to their vertices if they're close by.
+
+07/13/21:
+
+Can swtich between projects through navbar and open import dialog. Import dialog has more info including all of the available projects in macrostrat.
+
+`change_set_clean` function for backend works much better now.
+
+Projects table in database holds project name and description.
+
+Slightly better U.I with more info in the import overlay
+
+Helper Project class created to make passing project attributes around easier
+
 ### Bugs:
 
 Deleting nodes where points are shared doesn't work. This may be trickier to solve. Sometimes it seems like the code is breaking here and other times not..
@@ -55,11 +73,15 @@ Forseable Bug-- when deciding how map-faces get col identity, it is possible tha
 
 When creating a self-closing line to form a polygon, sometimes on save the ends separate. This was generally fixed when I tried closing them again. But maybe theres an easier way.
 
+Creating a new feature adds WAY more things to the change_set than there actually is. Closely related is the backend `clean_changeset` function. It needs to work better.
+
 ### Goals:
 
 Create a column version management system. Similar to git... Have a "compare" view to view two topology versions sideby side or on top. Metadata descriptions about project being edited.. Total area of polygons.
 
 Have a info panel at top: what project, total area of polygons.
+
+Some component that shows the change_set with maybe the ability to undo them.
 
 Ability to switch between different projects and maybe even different drafts of projects.
 
@@ -67,19 +89,13 @@ Ability to switch between different projects and maybe even different drafts of 
 
 Backend workflow to remove an identity polygon when there are two for an geometry.
 
-Create a more structured database including a specific column attributes table for column ids and their attributes.
+- Rounding of points, to 4 spots
 
-Backend workflow for adding identity to a polygon without any. A newly created polygon. Once properties are made on the frontend, need a backend process that creates a new identity polygon with a foreign key that matches the correct properties, whether they are new or exisiting.
-
-Backend Workflow and frontend exposure of project import from macrostrat, what are the different properties that we care about?
-
-- Need to talk to Shanan about the properties
-- Need to adjust the database to handle multiple projects
-- Frontend needs a way to request a project from macrostrat
-  - have a list of projects currently in macrostrat?
-
-Backend workflow and frontend implementation of getting data out! Need a geojson spitter outer.
-
-- Forms geojson from whatever `column_map_face` view I have in the end.
 - Will include all geometries and identity polygons as point
   - for that `ST_Centroid` will work because the identity polygons are symmetrical.
+
+Workflow for starting a new project from scratch.
+
+Dockerization
+
+Import overlay should be closeable if state.project_id is not null

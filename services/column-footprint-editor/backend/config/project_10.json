@@ -1,11 +1,1 @@
-{
-  "connection": {
-    "database": "geologic_map",
-    "port": 5432,
-    "host": "db",
-    "user": "postgres"
-  },
-  "project_schema": "columns",
-  "data_schema": "map_digitizer",
-  "topo_schema": "map_topology"
-}
+{"project_schema": "project_10", "project_id": 10, "name": "North American Ediacaran", "description": null, "data_schema": "project_10_data", "topo_schema": "project_10_topology", "tolerance": 0.0001, "connection": {"database": "geologic_map", "port": 5432, "host": "db", "user": "postgres"}}

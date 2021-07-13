@@ -15,6 +15,14 @@ fixtures = here / 'fixtures'
 
 docker_geologic_update = 'docker exec postgis-geologic-map_app_1 bin/geologic-map update'
 
+class Project:
+    """ Helper class to pass around project attributes """
+
+    def __init__(self, id_, name= "", description = "") -> None:
+        self.id= id_
+        self.name = name
+        self.description = description
+
 class ProjectImporter:
     '''
     Importer class for importing new projects from macrostrat
@@ -31,13 +39,20 @@ class ProjectImporter:
 
     '''
     
-    def __init__(self, url, project_id):
-        self.url = url
-        self.project_id = project_id
-        self.db = Database(self.project_id)
+    def __init__(self, project_id: int, name: str, description: str):
+        self.project = Project(project_id, name, description)
+        self.db = Database(self.project)
 
     def get_project_json(self):
-        res = requests.get(self.url)
+        project_id = self.project.id
+        url = f'https://macrostrat.org/api/v2/columns?project_id={project_id}&format=geojson_bare'
+        res = requests.get(url)
+        data = res.json()
+        if len(data['features']) > 0:
+            return data
+        
+        url = f'https://macrostrat.org/api/v2/columns?project_id={project_id}&format=geojson_bare&status_code=in%20process'
+        res = requests.get(url)
         data = res.json()
 
         return data
@@ -54,6 +69,10 @@ class ProjectImporter:
             "col_id": properties['col_id'],
             "location": loc}
             params['columns'] = 'columns'
+
+            params['name'] = self.project.name
+            params['description'] = self.project.description
+
             self.db.insert_project_data(params)
 
     def import_column_topology(self):

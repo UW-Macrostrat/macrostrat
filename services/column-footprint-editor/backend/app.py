@@ -12,10 +12,11 @@ import uvicorn
 from utils import change_set_clean, cmd
 
 from database import Database
-from importer import ProjectImporter
+from importer import ProjectImporter, Project
 
 here = Path(__file__).parent
 procedures = here / "procedures"
+config = here / "config"
 
 
 middleware = [
@@ -34,7 +35,8 @@ async def homepage(request):
 async def geometries(request):
 
     project_id = request.path_params['project_id']
-    db = Database(project_id)
+    project = Project(project_id)
+    db = Database(project)
 
 
     q = here / "queries" / "get-topology-columns.sql"
@@ -59,7 +61,8 @@ async def property_updates(request):
     res = await request.json()
 
     project_id = request.path_params['project_id']
-    db = Database(project_id)
+    project = Project(project_id)
+    db = Database(project)
 
 
     data = res['updatedModel']
@@ -80,27 +83,19 @@ async def updates(request):
     It will directly update the map_digitizer.linework
     table. 
 
-    data = {change_set: [{objects}]}
-
     possible actions:
         "change_coordinates",
         "draw.delete",
         "draw.create",
 
-    row id = object['feature']['properties']['id']
-    geojson = object['feature']['geometry'] 
-
-    Might be good to perform a change_set cleaning to remove duplicates. 
-        Will be especially important when someone creates a new line (polygon) and then also moves 
-        it around triggering the change_coordinates events. I can use object['feature']['id'], it's the 
-        internal id, a very long string 
     """
     delete_line_file = procedures / "delete-line.sql"
     change_line_file = procedures / "change-line-coordinates.sql"
     create_line_file = procedures / "create-line.sql"
 
     project_id = request.path_params['project_id']
-    db = Database(project_id)
+    project = Project(project_id)
+    db = Database(project)
 
 
     data = await request.json()
@@ -137,25 +132,40 @@ async def updates(request):
 async def import_topologies(request):
     data = await request.json()
 
-    if 'url' not in data:
-        return JSONResponse({"error": "url not passed"})
     if 'project_id' not in data:
         return JSONResponse({"error": "project_id not passed"})
+    
+    name = None
+    description = None
+    if 'name' in data:
+        name = data['name']
+    if 'description' in data:
+        description = data['description']
 
-    url = data['url']
-    project_id = data['project_id']
+    project_id = int(data['project_id'])
 
-    Importer = ProjectImporter(url, project_id)
+    Importer = ProjectImporter(project_id, name, description)
 
     Importer.import_column_topology()
 
-    return JSONResponse({"status": "success","imported":True, "project_id": project_id, "url": url})
+    return JSONResponse({"status": "success","imported":True, "project_id": project_id})
+
+async def project(request):
+    """ endpoint to get availble projects """
+    config_fns = config.glob("*.json")
+    projects = []
+    for fn in config_fns:
+        config_json = json.load(open(fn))
+        projects.append(config_json)
+    
+    return JSONResponse({"data": projects})
 
 
 async def lines(request):
 
     project_id = request.path_params['project_id']
-    db = Database(project_id)
+    project = Project(project_id)
+    db = Database(project)
 
 
     if 'id' in request.query_params:
@@ -197,7 +207,8 @@ routes = [
     Route('/{project_id}/lines', lines, methods=['GET']),
     Route('/{project_id}/updates', updates, methods=['PUT']),
     Route('/{project_id}/property_updates', property_updates, methods=['PUT']),
-    Route('/{project_id}/import', import_topologies, methods=['POST'])
+    Route('/import', import_topologies, methods=['POST']),
+    Route('/projects', project, methods=['GET']),
 ]
 
 app = Starlette(routes=routes,debug=True, middleware=middleware)

@@ -25,11 +25,11 @@ class Database:
     Database class with built in SQL Formatter
     """
 
-    def __init__(self, project_id = None):
-        self.project_id = project_id
+    def __init__(self, project = None):
+        self.project_id = project.id
         self.engine = create_engine("postgresql://postgres@localhost:54321/geologic_map", echo=True)
         self.Session = sessionmaker(bind=self.engine)
-        self.config = config_check(self.project_id)
+        self.config = config_check(project)
         self.formatter = SqlFormatter(self.project_id)
     
     def run_sql(self, sql, params={}, **kwargs):
@@ -82,9 +82,9 @@ class Database:
     def redump_linework_from_edge(self):
         self.run_sql_file(redump_linework_sql)
 
-    def remove_project(self):
+    def remove_project(self, params={}):
         run_docker_config(self.project_id, "delete") # delete topology
-        self.run_sql_file(remove_project_schema) # remove other tables
+        self.run_sql_file(remove_project_schema, params) # remove other tables
         delete_config(self.project_id) # remove config file
 
     ################## db topology methods ##############################

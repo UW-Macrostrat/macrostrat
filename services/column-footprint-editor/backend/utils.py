@@ -90,31 +90,10 @@ def run_sql(sql, params=None, session=None):
 def change_set_clean(change_set):
     '''
     This function cleans the change_set passed from frontend
-
-    The goal is to condense changes to similar features. This is most important 
-    when creating a new feature and then continuing to edit it before saving because it doesn't 
-    have a postgres ID yet. But it does have an internal id from mapbox draw. 
-
-    draw_id = object['feature']['id']
-
-    params:
-        :change_set: array of objects that are changes
-    
-    returns:
-        :change_set: array of objects
-
-
-    Idea of how to do this:
-        look for "draw.create", get the internal id and then find other indices where they occur.
-
-        then get the coordinates from the last occurence and replace the original coordinates.
-
-        can remove those other indices then
-
+    Right now it only 
     '''
-    id_objects = [] # list of objects {id: "internal id", occurences: [indexes]}
-
     for line in change_set:
+        id_objects = [] # list of objects {id: "internal id", occurences: [indexes]}
         if line['action'] == "draw.create":
             obj = {"id": "", "occurences": []}
             draw_id = line['feature']['id']
@@ -123,32 +102,43 @@ def change_set_clean(change_set):
                 if 'id' in l['feature'] and draw_id == l['feature']['id']:
                     obj['occurences'].append(index) # add the indexes to occurneces
             id_objects.append(obj)
+        
+        for obj in id_objects:
+            if len(obj['occurences']) > 1:
+                first_index = obj['occurences'][0]
+                final_index = obj['occurences'][-1]
+                
+                first_line = change_set[first_index]
+                last_line = change_set[final_index]
 
-    for obj in id_objects:
-        if len(obj['occurences']) > 1:
-            first_index = obj['occurences'][0]
-            final_index = obj['occurences'][-1]
-            
-            first_line = change_set[first_index]
-            last_line = change_set[final_index]
-            
-            if line['action'] == "draw.delete":
-                # remove all the lines
-                for i in sorted(obj['occurences'], reverse=True):
-                    del change_set[i] ## remove all lines by indexes in occurences
-                    ## have to do it in reverse order to not throw off earlier indexes
-            geom = last_line['feature']['geometry']
-            first_line['feature']['geometry'] = geom
-            for i in sorted(obj['occurences'][1:], reverse=True):
-                # remove all occurences except for the first, which we changed to have 
-                ## the coordinates of the last one.
-                del change_set[i] 
+                print(first_line)
+                print(last_line)
+                
+                if last_line['action'] == "draw.delete":
+                    # remove all the lines
+                    print('delete')
+                    for i in sorted(obj['occurences'], reverse=True):
+                        del change_set[i] ## remove all lines by indexes in occurences
+                        ## have to do it in reverse order to not throw off earlier indexes
+                else:
+                    geom = last_line['feature']['geometry']
+                    first_line['feature']['geometry'] = geom
+                    for i in sorted(obj['occurences'][1:], reverse=True):
+                        # remove all occurences except for the first, which we changed to have 
+                        ## the coordinates of the last one.
+                        del change_set[i] 
         
     return change_set
 
-def create_project_config(project_id):
+def create_project_config(project):
+    project_id = project.id
+    name = project.name
+    description = project.description
     config = {}
     config['project_schema'] = f'project_{project_id}'
+    config['project_id'] = project_id
+    config['name'] = name
+    config['description'] = description
     config['data_schema'] = f'project_{project_id}_data'
     config['topo_schema'] = f'project_{project_id}_topology'
     config['tolerance'] = 0.0001
@@ -161,7 +151,8 @@ def create_project_config(project_id):
     print("Configuration file sucessfully created")
     return config
 
-def config_check(project_id):
+def config_check(project):
+    project_id = project.id
     config_fn = config_dir / f'project_{project_id}.json' 
     
     if config_fn.exists():
@@ -169,7 +160,7 @@ def config_check(project_id):
         return get_config(project_id)
     else:
         print("Config does not exist")
-        return create_project_config(project_id)
+        return create_project_config(project)
 
 def get_config(project_id):
     config_fn = config_dir / f'project_{project_id}.json'
