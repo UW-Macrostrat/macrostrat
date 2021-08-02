@@ -3,6 +3,7 @@ import json
 class SqlFormatter:
     '''SQL query formatter'''
     # TODO: distingush single and double quotes
+    # TODO: Basically make it like pg_me
 
     def __init__(self, project_id):
         self.project_id = project_id

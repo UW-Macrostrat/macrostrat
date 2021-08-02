@@ -65,6 +65,15 @@ Slightly better U.I with more info in the import overlay
 
 Helper Project class created to make passing project attributes around easier
 
+08/02/21:
+
+Frontend context has more robust architecture. A async runActions allows for side-effects like fetching data
+in an async method while also passing off the dispatch for the rest of the app reducer. Things are simplified and standardized through types as well.
+
+Backend Project and Database class have some new methods to make it easier for creating a new project.
+
+Can now successfully create blank new projects through the frontend.
+
 ### Bugs:
 
 Deleting nodes where points are shared doesn't work. This may be trickier to solve. Sometimes it seems like the code is breaking here and other times not..
@@ -74,6 +83,8 @@ Forseable Bug-- when deciding how map-faces get col identity, it is possible tha
 When creating a self-closing line to form a polygon, sometimes on save the ends separate. This was generally fixed when I tried closing them again. But maybe theres an easier way.
 
 Creating a new feature adds WAY more things to the change_set than there actually is. Closely related is the backend `clean_changeset` function. It needs to work better.
+
+Need to remove layers and topology on project deletion.. Might happen automatically through the post-gis call and I missed it through my messing around.
 
 ### Goals:
 
@@ -99,3 +110,5 @@ Workflow for starting a new project from scratch.
 Dockerization
 
 Import overlay should be closeable if state.project_id is not null
+
+Custom decorator for database methods needing a specific project class instance, raises an error

@@ -32,6 +32,22 @@ docker_geologic_reset_topo = 'docker exec postgis-geologic-map_app_1 bin/geologi
 async def homepage(request):
     return PlainTextResponse("Home Page")
 
+async def new_project(request):
+    res = await request.json()
+
+    db = Database()
+    next_id = db.get_next_project_id()
+
+    params = res['data']
+    params['id'] = next_id
+    project = Project(params['id'], params['name'], params['description'])
+
+    try:
+        project.create_new_project()
+        return JSONResponse({"status":"success", "project_id": params['id'], "name": params['name'], "description": params['description']})
+    except:
+        return JSONResponse({"status": "error"},status_code=404)
+
 async def geometries(request):
 
     project_id = request.path_params['project_id']
@@ -152,14 +168,11 @@ async def import_topologies(request):
 
 async def project(request):
     """ endpoint to get availble projects """
-    config_fns = config.glob("*.json")
-    projects = []
-    for fn in config_fns:
-        config_json = json.load(open(fn))
-        projects.append(config_json)
+    db = Database()
     
-    return JSONResponse({"data": projects})
-
+    project_data = db.get_project_info()
+    
+    return JSONResponse({"data": project_data})
 
 async def lines(request):
 
@@ -209,6 +222,7 @@ routes = [
     Route('/{project_id}/property_updates', property_updates, methods=['PUT']),
     Route('/import', import_topologies, methods=['POST']),
     Route('/projects', project, methods=['GET']),
+    Route('/new-project', new_project,methods=['POST'])
 ]
 
 app = Starlette(routes=routes,debug=True, middleware=middleware)

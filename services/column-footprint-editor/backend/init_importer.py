@@ -5,12 +5,12 @@ from database import Database
 
 if __name__ == "__main__":
     ## Command to call topo update in docker
-    project_id = 10
-    name = "North America"
-    description = "Composite column dataset for the USA and Canada."
+    name = "Test New project"
+    description = "Testing.... Testing.... "
+    db = Database()
+    project_id = db.get_next_project_id()
     project= Project(project_id, name, description)
-    db = Database(project)
-    db.remove_project({"project_id":project_id})
+    project.create_new_project()
 
     # url = "https://macrostrat.org/api/v2/columns?project_id=10&format=geojson_bare&status_code=in%20process";
 

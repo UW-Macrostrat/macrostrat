@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker
 from pathlib import Path
 
 #from settings import DATABASE
-from utils import run_sql, config_check, run_docker_config, delete_config
+from utils import run_sql, config_check, run_docker_config, delete_config, id_check
 from sql_formatter import SqlFormatter
 
 here = Path(__file__).parent
@@ -19,6 +19,7 @@ create_core_table = fixtures / "project_schema_tables.sql"
 on_project_insert_sql = procedures / "on_project_insert.sql"
 redump_linework_sql = procedures / "redump-linework-from-edge-data.sql"
 remove_project_schema = procedures / "remove_project_schema.sql"
+project_info_insert = procedures / "project-meta-insert.sql"
 
 class Database:
     """ 
@@ -26,7 +27,7 @@ class Database:
     """
 
     def __init__(self, project = None):
-        self.project_id = project.id
+        self.project_id = getattr(project, "id", None)
         self.engine = create_engine("postgresql://postgres@localhost:54321/geologic_map", echo=True)
         self.Session = sessionmaker(bind=self.engine)
         self.config = config_check(project)
@@ -66,12 +67,15 @@ class Database:
         run_docker_config(self.project_id, "create_tables")
         self.run_sql_file(create_core_table)
         self.create_map_face_view()
-
+    
     def clear_project_data(self):
         self.run_sql_file(clear_project_data_sql)
     
     def insert_project_data(self, params={}):
         self.run_sql_file(project_insert_sql, params=params)
+    
+    def insert_project_info(self, params={}):
+        self.run_sql_file(project_info_insert, params=params)
 
     def on_project_insert(self):
         self.run_sql_file(on_project_insert_sql)
@@ -91,3 +95,23 @@ class Database:
 
     def update_topology(self):
         run_docker_config(self.project_id, "update")
+
+    ###################### Project-Free methods ########################
+    
+    def get_project_info(self):
+        query = "SELECT * FROM projects;"
+        return self.exec_query(query).to_dict(orient="records")
+    
+    def get_next_project_id(self):
+        """ function to get the next project id that won't conflict with macrostrat. RN it's hardcoded BAD """
+        sql = '''SELECT max(project_id), 'imported' origin from projects WHERE project_id < 50
+                 UNION ALL
+                 SELECT max(project_id), 'all' origin from projects;'''
+
+        data = self.exec_query(sql).to_dict(orient='records')
+        imported_max_id = data[0]['max']
+        all_max_id = data[1]['max']
+        if imported_max_id == all_max_id:
+            return imported_max_id + 1000
+        else:
+            return all_max_id + 1

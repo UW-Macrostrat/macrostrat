@@ -1,0 +1,1 @@
+SELECT EXISTS (SELECT * FROM projects p WHERE p.project_id = %(project_id)s);

@@ -152,6 +152,8 @@ def create_project_config(project):
     return config
 
 def config_check(project):
+    if not hasattr(project, "id"):
+        return {}
     project_id = project.id
     config_fn = config_dir / f'project_{project_id}.json' 
     
@@ -173,6 +175,18 @@ def delete_config(project_id):
         config_fn.unlink()
     except OSError as e:
         print(f"Error:{ e.strerror}")
+
+def id_check(id_: int = None):
+    def project_exists(func):
+        '''custom decorator to check if project exists on db instance'''
+        def check(*args, **kwargs):
+            if id_ is not None:
+                func(*args, **kwargs)
+            else:
+                raise AttributeError("Database needs a project_id attribute for this method")
+        return check
+    return project_exists
+    
 
     
 
