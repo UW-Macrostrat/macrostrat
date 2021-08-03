@@ -47,7 +47,7 @@ module.exports = function(req, res, next, cb) {
     sql += " LIMIT 5"
   }
 
-console.log(sql);
+// console.log(sql);
 
   larkin.query(sql, params, function(error, result) {
     if (error) {

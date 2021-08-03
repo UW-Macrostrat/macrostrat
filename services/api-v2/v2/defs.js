@@ -1211,6 +1211,31 @@
       ]
     }
   },
+  "/eodp": {
+    "description": "eODP Macrostrat Baggage Stripper Import",
+    "visible": true,
+    "options": {
+      "parameters": {
+        "col_id": "integer, id for column containing measurements",
+        "format": "Desired output format"
+      },
+      "output_formats": [
+        "json",
+        "csv",
+        "geojson",
+        "topojson",
+        "geojson_bare",
+        "topojson_bare"
+      ],
+      "examples": [
+        "api/measurements?col_id=11&show_values",
+        "api/measurements?measure_id=353&response=long"
+      ],
+      "fields": [
+        "measurement_id"
+      ]
+    }
+  },
   "/paleogeography": {
     "description": "Returns paleogeography geometry from \"Wright et al. (2013) Towards community-driven paleogeographic reconstructions: integrating open-access paleogeographic and paleobiology data with plate tectonics. Biogeosciences 10:1529-1541\"  If you use this service and provide attribution, you should cite the associated paper via this service.",
     "visible": true,
