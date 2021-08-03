@@ -569,6 +569,7 @@
         "lng",
         "col_area",
         "project_id",
+        "t_units",
         "ref_id",
         "status"
       ]
@@ -942,10 +943,10 @@
   },  "/defs/measurement_sources": {
       "description": "Returns references used in Macrostrat measurements",
       "parent": "definitions",
-      "visible": true,
+      "visible": false,
       "options": {
         "parameters": {
-          "doi": "string, a specific doi, note that it is best to use one DOI at a time in this query",
+          "doi": "string, a specific doi, note that it is necessary to use one DOI at a time in this query",
           "measurement_class": "string, measurement_class",
           "measurement_type": "string, measurement_type",
           "measurement": "string, measurement",
@@ -956,7 +957,7 @@
           "csv"
         ],
         "examples": [
-          "api/v2/defs/measurement_sources?doi=",
+          "api/v2/defs/measurement_sources?doi=10.1016/j.epsl.2009.11.039",
           "api/v2/defs/measurements?all",
           "api/v2/defs/measurements?measurement_class=geochemical"
         ],
@@ -977,7 +978,10 @@
     "visible": true,
     "options": {
       "parameters": {
-        "all": "return all column groups"
+        "all": "return all column groups",
+        "project_id": "limit results to specific project",
+        "col_id": "get col_group data for specific column",
+        "col_group_id": "get col_group data for specific col_group_id"
       },
       "output_formats": [
         "json",
@@ -988,7 +992,11 @@
       ],
       "fields": [
         "col_group_id",
-        "col_group"
+        "col_group",
+        "t_units",
+        "t_cols",
+        "project_id",
+        "name"
       ]
     }
   },
@@ -2273,6 +2281,7 @@
     "packages": "integer, total packages",
     "t_sections": "integer, total sections",
     "t_units": "integer, total units",
+    "t_cols": "integer, total columns",
     "measure": "array, summary of types of measurements available",
     "max_min_thick": "integer, the maximum possible minimum thickness in meters",
     "min_min_thick": "integer, the minimum possible minimum thickness in meters",
