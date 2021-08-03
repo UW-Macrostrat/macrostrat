@@ -21,7 +21,7 @@ module.exports = function(req, res, next) {
   }
 
   if (req.query.leg) {
-    where.push("exp in (:leg)")
+    where.push("leg in (:leg)")
     params["leg"] = larkin.parseMultipleStrings(req.query.leg)
   }
   if (req.query.site) {

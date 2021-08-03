@@ -1216,8 +1216,14 @@
     "visible": true,
     "options": {
       "parameters": {
-        "col_id": "integer, id for column containing measurements",
-        "format": "Desired output format"
+        "epoch": "string, drilling 'epoch'; only three valid values (DSDP, ODP and IODP), but note that Baggage Stipper limited to IODP",
+        "leg": "string, drilling leg (or expedition for IODP, e.g., leg=317)",
+        "site": "string, drilling site (e.g., U1351)",
+        "col_id": "integer, one or more Macrostrat column ids",
+        "col_group_id": "integer, one or more Macrostrat column group ids; corresponds to legs/expeditions",
+        "all": "return all drilling expeditions and sites",
+        "sample": "if present, get a selection of data",
+        "format": "desired output format, options given below in output_formats"
       },
       "output_formats": [
         "json",
@@ -1228,11 +1234,22 @@
         "topojson_bare"
       ],
       "examples": [
-        "api/measurements?col_id=11&show_values",
-        "api/measurements?measure_id=353&response=long"
+        "api/measurements?leg=317",
+        "api/measurements?site=U1354",
+        "api/measurements?col_id=5092"
       ],
       "fields": [
-        "measurement_id"
+        "col_group",
+        "site_hole",
+        "date_started",
+        "ref_id",
+        "col_id",
+        "lat",
+        "lng",
+        "top_depth",
+        "bottom_depth",
+        "primary_lith",
+        "minor_lith"
       ]
     }
   },
