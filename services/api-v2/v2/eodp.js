@@ -10,7 +10,7 @@ module.exports = function(req, res, next) {
   var geo = (req.query.format && api.acceptedFormats.geo[req.query.format]) ? true : false;
 
   var sql = `
-    SELECT col_groups.col_group,ob.site_hole,date_started,ref_id,ob.col_id,lat,lng,GROUP_CONCAT(ob.top_depth ORDER BY top_depth SEPARATOR '|') top_depth,GROUP_CONCAT(ob.bottom_depth ORDER BY top_depth SEPARATOR '|') bottom_depth, GROUP_CONCAT(trim(concat_WS(' ',principal_lith_prefix_cleaned,cleaned_lith,principal_lith_suffix_cleaned)) ORDER BY top_depth SEPARATOR '|') as primary_lith,GROUP_CONCAT(trim(concat_WS(' ',minor_lith_prefix_cleaned,cleaned_minor,minor_lithology_suffix)) ORDER BY top_depth SEPARATOR '|') as minor_lith FROM offshore_baggage ob JOIN offshore_sites USING (col_id) JOIN col_groups on col_group_id=col_groups.id
+    SELECT col_groups.col_group,ob.site_hole,date_started,ref_id,ob.col_id,lat,lng,GROUP_CONCAT(ob.top_depth ORDER BY top_depth SEPARATOR '|') top_depth,GROUP_CONCAT(ob.bottom_depth ORDER BY top_depth SEPARATOR '|') bottom_depth, GROUP_CONCAT(trim(concat_WS(' ',principal_lith_prefix_cleaned,cleaned_lith,principal_lith_suffix_cleaned)) ORDER BY top_depth SEPARATOR '|') as primary_lith, GROUP_CONCAT(lith_id ORDER BY top_depth SEPARATOR '|') as lith_id, GROUP_CONCAT(standard_minor_lith ORDER BY top_depth SEPARATOR '|') as minor_lith FROM offshore_baggage ob JOIN offshore_sites USING (col_id) JOIN col_groups on col_group_id=col_groups.id
   `
   var where = []
   var params = {}
@@ -40,8 +40,8 @@ module.exports = function(req, res, next) {
   }
 
   if (where.length) {
-    sql += ` WHERE ${where.join(' AND ')}`
-  }
+    sql += ` WHERE ${where.join(' AND ')} AND lith_id>0 `
+  } else { sql += ` WHERE lith_id>0 ` }
 
   sql += " GROUP BY ob.col_id ORDER BY ob.col_id,ob.top_depth ASC "
 
@@ -60,6 +60,7 @@ module.exports = function(req, res, next) {
           response[i].top_depth = larkin.jsonifyPipes(response[i].top_depth, "floats");
           response[i].bottom_depth = larkin.jsonifyPipes(response[i].bottom_depth, "floats");
           response[i].primary_lith = larkin.jsonifyPipes(response[i].primary_lith, "strings");
+          response[i].lith_id = larkin.jsonifyPipes(response[i].lith_id, "integers");
           response[i].minor_lith = larkin.jsonifyPipes(response[i].minor_lith, "strings");
 
         }
