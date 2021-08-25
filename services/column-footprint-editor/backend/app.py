@@ -23,12 +23,6 @@ middleware = [
     Middleware(CORSMiddleware, allow_origins=['*'], allow_methods=['*'], allow_headers=['*']),
 ]
 
-## Command to call topo update in docker
-docker_geologic_update = 'docker exec postgis-geologic-map_app_1 bin/geologic-map update'
-docker_geologic_create_tables = 'docker exec postgis-geologic-map_app_1 bin/geologic-map create-tables --all'
-docker_geologic_reset_topo = 'docker exec postgis-geologic-map_app_1 bin/geologic-map reset'
-
-
 async def homepage(request):
     return PlainTextResponse("Home Page")
 

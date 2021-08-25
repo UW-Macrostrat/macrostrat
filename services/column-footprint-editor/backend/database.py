@@ -103,7 +103,8 @@ class Database:
         return self.exec_query(query).to_dict(orient="records")
     
     def get_next_project_id(self):
-        """ function to get the next project id that won't conflict with macrostrat. RN it's hardcoded BAD """
+        """ function to get the next project id that won't conflict with macrostrat """
+        # TODO: unhardcode the max int for project id
         sql = '''SELECT max(project_id), 'imported' origin from projects WHERE project_id < 50
                  UNION ALL
                  SELECT max(project_id), 'all' origin from projects;'''

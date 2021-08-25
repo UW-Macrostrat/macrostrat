@@ -78,11 +78,13 @@ Can now successfully create blank new projects through the frontend.
 
 Deleting nodes where points are shared doesn't work. This may be trickier to solve. Sometimes it seems like the code is breaking here and other times not..
 
+Strange console error, `Cannot read property 'getSelectedIds' of null`, on stopDragging event
+
 Forseable Bug-- when deciding how map-faces get col identity, it is possible that a user will cut an identity column, which would mean both columns, old and generated, would recieve the same identity. I think to solve this we could employ a frontend warning or something.
 
 When creating a self-closing line to form a polygon, sometimes on save the ends separate. This was generally fixed when I tried closing them again. But maybe theres an easier way.
 
-Creating a new feature adds WAY more things to the change_set than there actually is. Closely related is the backend `clean_changeset` function. It needs to work better.
+Creating a new feature adds WAY more things to the change_set than there actually is. Closely related is the backend `clean_changeset` function. It needs to work better. Something strange happens on deleting a feature that hasn't persisted yet, i.e delete a line before having saved it. All other changes afterwards are not recorded. BUT NOT ALL THE TIME?
 
 Need to remove layers and topology on project deletion.. Might happen automatically through the post-gis call and I missed it through my messing around.
 
@@ -96,7 +98,7 @@ Some component that shows the change_set with maybe the ability to undo them.
 
 Ability to switch between different projects and maybe even different drafts of projects.
 
-### Next Steps:
+### Next Steps/ Wanted Features:
 
 Backend workflow to remove an identity polygon when there are two for an geometry.
 
@@ -111,4 +113,4 @@ Dockerization
 
 Import overlay should be closeable if state.project_id is not null
 
-Custom decorator for database methods needing a specific project class instance, raises an error
+Add a known geometry-- like a basin geometry. Maybe have the ability to teselate it into n internal polygons.
