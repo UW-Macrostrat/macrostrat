@@ -116,3 +116,17 @@ class Database:
             return imported_max_id + 1000
         else:
             return all_max_id + 1
+    def get_next_col_group_id(self):
+        """ function to get the next project id that won't conflict with macrostrat """
+        # TODO: unhardcode the max int for project id
+        sql = '''SELECT max(col_group_id), 'imported' origin from column_groups WHERE col_group_id < 5000
+                 UNION ALL
+                 SELECT max(col_group_id), 'all' origin from column_groups;'''
+
+        data = self.exec_query(sql).to_dict(orient='records')
+        imported_max_id = data[0]['max']
+        all_max_id = data[1]['max']
+        if imported_max_id == all_max_id:
+            return imported_max_id + 5000
+        else:
+            return all_max_id + 1

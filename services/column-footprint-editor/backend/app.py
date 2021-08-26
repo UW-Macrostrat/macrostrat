@@ -67,21 +67,49 @@ async def geometries(request):
 
     return JSONResponse({"type": "FeatureCollection", "features": json_})
 
+async def new_col_group(request):
+    """ Endpoint for new Column Groups """
+
+    sql = """INSERT INTO column_groups(col_group_id, col_group, col_group_name)VALUES(
+        :col_group_id,:col_group,:col_group_name
+    )  """
+    db = Database() 
+
+    res = await request.json()
+
+    params = res['updatedModel']
+    params['col_group_id'] = db.get_next_col_group_id()
+
+    try:
+        db.run_sql(sql, params)
+    except error:
+        return JSONResponse({"error": str(error)})
+    
+    return JSONResponse({"status":"success", "col_group_id": params['col_group_id']})
+
 async def property_updates(request):
+    """ This will need a route for creating a new column group """
 
     sql_fn = procedures / "update-properties.sql"
-
+    
     res = await request.json()
 
     project_id = request.path_params['project_id']
     project = Project(project_id)
-    db = Database(project)
-
+    db = project.db
 
     data = res['updatedModel']
     
 
-    params = dict(id = data['identity_id'], column_name = data['column_name'],group = data['group'])
+    params = dict(id = data['identity_id'], col_name = data['col_name'])
+    params = {**params, **dict(col_group_id = data['col_group_id'])}
+    params['project_id'] = project_id
+    params['location'] = json.dumps(data['location'])
+
+    if params['id'] == 'null':
+        params['col_id'] = None
+        sql_fn = procedures / "new-column.sql"
+
     try:
         db.run_sql_file(sql_fn, params)
     except error:
@@ -275,7 +303,8 @@ routes = [
     Route('/import', import_topologies, methods=['POST']),
     Route('/projects', project, methods=['GET']),
     Route('/new-project', new_project,methods=['POST']),
-    Route('/col-groups', column_groups, methods=["GET"])
+    Route('/col-groups', column_groups, methods=["GET"]),
+    Route('/col-groups/post', new_col_group, methods=['POST'])
 ]
 
 app = Starlette(routes=routes,debug=True, middleware=middleware)

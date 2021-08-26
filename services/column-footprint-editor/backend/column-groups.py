@@ -1,6 +1,8 @@
 from database import Database
 from requests import get
 
+""" Script to Import All existing Col-groups to macrostrat """
+
 if __name__ == "__main__":
     db = Database()
 

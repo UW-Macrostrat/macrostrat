@@ -1,0 +1,1 @@
+{"project_schema": "project_null", "project_id": "null", "name": "", "description": "", "data_schema": "project_null_data", "topo_schema": "project_null_topology", "tolerance": 0.0001, "connection": {"database": "geologic_map", "port": 5432, "host": "db", "user": "postgres"}}
