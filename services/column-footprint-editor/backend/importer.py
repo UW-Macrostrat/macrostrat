@@ -45,6 +45,9 @@ class Project:
         params['description'] = self.description
 
         self.db.insert_project_info(params)
+    
+    def remove_project(self):
+        self.db.remove_project()
 
 class ProjectImporter:
     '''
@@ -88,7 +91,7 @@ class ProjectImporter:
             loc = json.dumps(feature['geometry'])
             properties = feature['properties']
             params = {"project_id": properties['project_id'],
-            "col_name": properties["col_name"], "col_group": properties['col_group'],
+            "col_name": properties["col_name"], "col_group_id": properties['col_group_id'],
             "col_id": properties['col_id'],
             "location": loc}
             params['columns'] = 'columns'

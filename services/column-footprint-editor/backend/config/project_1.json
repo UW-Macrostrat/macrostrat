@@ -1,15 +1,1 @@
-{
-  "project_schema": "project_1",
-  "project_id": 1,
-  "name": "North America",
-  "description": null,
-  "data_schema": "project_1_data",
-  "topo_schema": "project_1_topology",
-  "tolerance": 0.0001,
-  "connection": {
-    "database": "geologic_map",
-    "port": 5432,
-    "host": "db",
-    "user": "postgres"
-  }
-}
+{"project_schema": "project_1", "project_id": 1, "name": "North America", "description": "Composite column dataset for the USA and Canada.", "data_schema": "project_1_data", "topo_schema": "project_1_topology", "tolerance": 0.0001, "connection": {"database": "geologic_map", "port": 5432, "host": "db", "user": "postgres"}}

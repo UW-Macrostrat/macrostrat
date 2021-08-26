@@ -88,7 +88,7 @@ class Database:
 
     def remove_project(self, params={}):
         run_docker_config(self.project_id, "delete") # delete topology
-        self.run_sql_file(remove_project_schema, params) # remove other tables
+        self.run_sql_file(remove_project_schema, params={"project_id": self.project_id}) 
         delete_config(self.project_id) # remove config file
 
     ################## db topology methods ##############################

@@ -1,15 +1,16 @@
 from os import error
+from pandas.core.indexing import convert_from_missing_indexer_tuple
 from starlette.applications import Starlette
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware import Middleware
 from starlette.responses import PlainTextResponse, JSONResponse
 from starlette.routing import Route
 from pathlib import Path
-import subprocess
 import json
+import simplejson
 import uvicorn
 
-from utils import change_set_clean, cmd
+from utils import change_set_clean
 
 from database import Database
 from importer import ProjectImporter, Project
@@ -53,16 +54,18 @@ async def geometries(request):
     sql = open(q).read()
 
     df = db.exec_query(sql)
-    df.fillna('')
-    polygons = []
-    for i in range(0, len(df['polygon'])):
-        obj = {}
-        obj['geometry'] = json.loads(df['polygon'][i])
-        obj['type'] = "Feature"
-        obj['properties'] = {"id": f"{df['id'][i]}","project_id": f"{df['project_id'][i]}", "col_id": f"{df['col_id'][i]}","col_name": df['col_name'][i],"col_group": df['col_group'][i],"col_color": df['col_color'][i]}
-        polygons.append(obj)
+    cols = df.to_dict(orient="records")
+    cols = json.loads(simplejson.dumps(cols, ignore_nan=True))
 
-    return JSONResponse({"type": "FeatureCollection", "features": polygons})
+    json_ = []
+    for i in cols:
+        obj = {}
+        obj['geometry'] = json.loads(i['polygon'])
+        i.pop('polygon')
+        obj['properties'] = i
+        json_.append(obj)
+
+    return JSONResponse({"type": "FeatureCollection", "features": json_})
 
 async def property_updates(request):
 
@@ -168,6 +171,61 @@ async def project(request):
     
     return JSONResponse({"data": project_data})
 
+async def column_groups(request):
+    """ 
+     endpoint to get column group metadata 
+    
+    needs to get column groups based on:
+        col_group_id
+        project_id
+        all 
+    """
+    query_params = request.query_params
+    if 'project_id' in query_params:
+        id_ = query_params['project_id']
+        project = Project(id_)
+        sql = '''SELECT DISTINCT cg.* from ${project_schema}.columns c 
+                    LEFT JOIN column_groups cg
+	                ON cg.col_group_id = c.col_group
+                    WHERE cg.col_group_id IS NOT NULL;'''
+        try:
+            df = project.db.exec_query(sql)
+            col_groups = df.to_dict(orient='records')
+
+            return JSONResponse({"status":"success", "data": col_groups})
+        except error:
+            return JSONResponse({"error": f"project {id_} does not exist"}) 
+    
+    if 'col_group_id' in query_params:
+        id_ = query_params['col_group_id']
+        sql = f'''SELECT * FROM column_groups WHERE col_group_id = {id_};'''
+        
+        try:
+            df = Database().exec_query(sql)
+            col_groups = df.to_dict(orient='records')
+            
+            return JSONResponse({"status":"success", "data": col_groups})
+        except error:
+            return JSONResponse({"error": f"col_group {id_} does not exist"}) 
+
+    if 'all' in query_params:
+        sql = 'SELECT * FROM column_groups;'
+        df = Database().exec_query(sql)
+        col_groups = df.to_dict(orient='records')
+            
+        return JSONResponse({"status":"success", "data": col_groups})
+
+    base = {}
+    base['status'] = 'success'
+    base['params'] = [{'col_group_id': "A specific col_group_id", 
+                        'example': "?col_group_id=66"},
+                      {'project_id': "Get all col_groups associated with a project",
+                      'example': '?project_id=1'}]
+
+    return JSONResponse(base)
+
+
+
 async def lines(request):
 
     project_id = request.path_params['project_id']
@@ -216,7 +274,8 @@ routes = [
     Route('/{project_id}/property_updates', property_updates, methods=['PUT']),
     Route('/import', import_topologies, methods=['POST']),
     Route('/projects', project, methods=['GET']),
-    Route('/new-project', new_project,methods=['POST'])
+    Route('/new-project', new_project,methods=['POST']),
+    Route('/col-groups', column_groups, methods=["GET"])
 ]
 
 app = Starlette(routes=routes,debug=True, middleware=middleware)

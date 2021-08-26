@@ -5,6 +5,6 @@ CREATE TABLE IF NOT EXISTS ${project_schema}.columns(
     project_id integer,
     col_id integer,
     col_name text,
-    col_group text,
+    col_group integer REFERENCES column_groups(id),
     location geometry 
 );
