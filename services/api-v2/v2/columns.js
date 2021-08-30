@@ -27,7 +27,7 @@ module.exports = function(req, res, next, callback) {
       if (data) {
         return callback(null, data);
       }
-      
+
       require("./units")(req, null, null, function(error, result) {
         if (error) {
           callback(error);
@@ -140,6 +140,8 @@ module.exports = function(req, res, next, callback) {
         col_group_long AS col_group,
         col_groups.id AS col_group_id,
         col AS group_col_id,
+        cols.lat,
+        cols.lng,
         round(cols.col_area, 1) AS col_area,
         project_id,
         COALESCE(cols.col_type, '') AS col_type,
@@ -200,7 +202,7 @@ module.exports = function(req, res, next, callback) {
             larkin.error(req, res, next, "An error was incurred during conversion");
           } else {
             if (larkin.getOutputFormat(req.query.format) === "geojson") {
-              output = gp(output, 4);
+              output = gp(output, 5);
             }
 
             if (callback) return callback(null, output)
