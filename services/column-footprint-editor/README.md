@@ -74,19 +74,29 @@ Backend Project and Database class have some new methods to make it easier for c
 
 Can now successfully create blank new projects through the frontend.
 
-### Bugs:
+08/20/21:
 
-Deleting nodes where points are shared doesn't work. This may be trickier to solve. Sometimes it seems like the code is breaking here and other times not..
+Deleting shared nodes now works and doesn't break the frontend.
+
+Backend `clean_changeset` function works much better now after some additional fixes.
+
+MAJOR FEATURE ADDITION:
+
+- The ability to view, assign, and create `col_groups` and `col_group_names`.
+
+onClick highlight of column in property view.
+
+A color coded legned for column info.
+
+feedback on create new project and import
+
+### Bugs:
 
 Strange console error, `Cannot read property 'getSelectedIds' of null`, on stopDragging event
 
 Forseable Bug-- when deciding how map-faces get col identity, it is possible that a user will cut an identity column, which would mean both columns, old and generated, would recieve the same identity. I think to solve this we could employ a frontend warning or something.
 
-When creating a self-closing line to form a polygon, sometimes on save the ends separate. This was generally fixed when I tried closing them again. But maybe theres an easier way.
-
-Creating a new feature adds WAY more things to the change_set than there actually is. Closely related is the backend `clean_changeset` function. It needs to work better. Something strange happens on deleting a feature that hasn't persisted yet, i.e delete a line before having saved it. All other changes afterwards are not recorded. BUT NOT ALL THE TIME?
-
-Need to remove layers and topology on project deletion.. Might happen automatically through the post-gis call and I missed it through my messing around.
+`isEditing` state of prop overlay needs to be better handled onClose or onSave.
 
 ### Goals:
 
@@ -107,10 +117,26 @@ Backend workflow to remove an identity polygon when there are two for an geometr
 - Will include all geometries and identity polygons as point
   - for that `ST_Centroid` will work because the identity polygons are symmetrical.
 
-Workflow for starting a new project from scratch.
-
 Dockerization
 
-Import overlay should be closeable if state.project_id is not null
-
 Add a known geometry-- like a basin geometry. Maybe have the ability to teselate it into n internal polygons.
+
+Ability to copy the properties, i.e `column_name`, `col_group`, `col_group_name` from nearby columns.. Maybe a suggester based on columns nearby.
+
+Move viewport to "next column without an column property."
+
+Export CSV
+
+Column groups need to be unique to projects--have a project specific column-group table
+
+Burwell Layer
+
+Highlight lines on snap, on Join
+
+eODP -- drill hole points, polygons aren't showing up. Perhaps render the centroid as a point.
+
+Feedback on import and create new project should catch errors and display them
+
+Download individual columns, column-groups and selected columns (multiple)
+
+Notes field for column properties

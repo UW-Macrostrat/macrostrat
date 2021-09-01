@@ -294,6 +294,35 @@ async def lines(request):
 
     return JSONResponse({"type": "FeatureCollection", "features": lines})
 
+def is_json(myjson):
+  try:
+    json_object = json.loads(myjson)
+  except ValueError as e:
+    return False
+  return True
+
+async def get_line(request):   
+    """ a utility function to return a linestring or multilinestring
+        For adding an exsiting geometry on the frontend
+    """
+    res = await request.json()
+    data = res['location']
+
+    location_parser = "ST_GeomFromText(%(location)s)"
+    if is_json(data):
+        location_parser = "ST_GeomFromGeoJSON(%(location)s)"
+    
+    sql = f"SELECT ST_AsGeoJSON(((ST_Dump(ST_Boundary({location_parser}))).geom))"
+
+    db = Database()
+    df = db.exec_query(sql, params={'location':data}) 
+    location = json.loads(df.to_dict(orient="records")[0]['st_asgeojson'])   
+
+    return JSONResponse({"status":"success", "location":location})
+
+
+
+
 routes = [
     Route("/", homepage, methods=['GET']),
     Route('/{project_id}/columns', geometries, methods=['GET']),
@@ -304,7 +333,8 @@ routes = [
     Route('/projects', project, methods=['GET']),
     Route('/new-project', new_project,methods=['POST']),
     Route('/col-groups', column_groups, methods=["GET"]),
-    Route('/col-groups/post', new_col_group, methods=['POST'])
+    Route('/col-groups/post', new_col_group, methods=['POST']),
+    Route('/get-line', get_line, methods=['POST'])
 ]
 
 app = Starlette(routes=routes,debug=True, middleware=middleware)
