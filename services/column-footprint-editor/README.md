@@ -90,6 +90,10 @@ A color coded legned for column info.
 
 feedback on create new project and import
 
+09/01/21:
+
+Can add a known geometry by pasting either geojson or wkt into text box.
+
 ### Bugs:
 
 Strange console error, `Cannot read property 'getSelectedIds' of null`, on stopDragging event
