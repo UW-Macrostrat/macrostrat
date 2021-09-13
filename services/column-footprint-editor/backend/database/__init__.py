@@ -76,6 +76,11 @@ class Database:
     
     def insert_project_info(self, params={}):
         self.run_sql_file(project_info_insert, params=params)
+    
+    def insert_project_column_group(self, params={}):
+        sql = """INSERT INTO ${project_schema}.column_groups(col_group_id, col_group, col_group_name) VALUES(
+            :col_group_id, :col_group, :col_group_name);"""
+        self.run_sql(sql, params)
 
     def on_project_insert(self):
         self.run_sql_file(on_project_insert_sql)
@@ -119,13 +124,16 @@ class Database:
     def get_next_col_group_id(self):
         """ function to get the next project id that won't conflict with macrostrat """
         # TODO: unhardcode the max int for project id
-        sql = '''SELECT max(col_group_id), 'imported' origin from column_groups WHERE col_group_id < 5000
+        # WARNING: Now this isn't going to be conflict free. Because we split the tables up
+        sql = '''SELECT max(col_group_id), 'imported' origin from ${project_schema}.column_groups WHERE col_group_id < 5000
                  UNION ALL
-                 SELECT max(col_group_id), 'all' origin from column_groups;'''
+                 SELECT max(col_group_id), 'all' origin from ${project_schema}.column_groups;'''
 
         data = self.exec_query(sql).to_dict(orient='records')
         imported_max_id = data[0]['max']
         all_max_id = data[1]['max']
+        if imported_max_id is None or all_max_id is None:
+            return 5000
         if imported_max_id == all_max_id:
             return imported_max_id + 5000
         else:

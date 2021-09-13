@@ -94,6 +94,14 @@ feedback on create new project and import
 
 Can add a known geometry by pasting either geojson or wkt into text box.
 
+Map legend for column-groups
+
+09/13/21:
+
+Column-groups are now project specific.
+
+Frontend and Backend are Dockerized
+
 ### Bugs:
 
 Strange console error, `Cannot read property 'getSelectedIds' of null`, on stopDragging event
@@ -123,15 +131,13 @@ Backend workflow to remove an identity polygon when there are two for an geometr
 
 Dockerization
 
-Add a known geometry-- like a basin geometry. Maybe have the ability to teselate it into n internal polygons.
+Maybe have the ability to teselate polygons into n internal polygons.
 
 Ability to copy the properties, i.e `column_name`, `col_group`, `col_group_name` from nearby columns.. Maybe a suggester based on columns nearby.
 
 Move viewport to "next column without an column property."
 
 Export CSV
-
-Column groups need to be unique to projects--have a project specific column-group table
 
 Burwell Layer
 

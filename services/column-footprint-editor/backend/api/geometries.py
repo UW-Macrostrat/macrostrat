@@ -1,5 +1,6 @@
+import requests
 from starlette.endpoints import HTTPEndpoint
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, PlainTextResponse
 from project import Project
 from project.importer import ProjectImporter
 from database import Database
@@ -158,6 +159,28 @@ async def geometries(request):
         json_.append(obj)
 
     return JSONResponse({"type": "FeatureCollection", "features": json_})
+
+async def get_csv(request):
+    project_id = request.path_params['project_id']
+    project = Project(project_id)
+
+    sql = '''SELECT ST_AsGeoJSON(c.geometry) polygon, 
+             ST_AsGeoJSON(ST_Centroid(p.geometry)) point,
+             c.id, 
+             c.project_id, 
+             c.col_id, 
+             c.col_name, 
+             c.col_group_id, 
+             c.col_group, 
+             c.col_group_name 
+            from ${project_schema}.column_map_face c 
+            LEFT JOIN ${data_schema}.polygon p
+            ON p.col_id = c.id
+            ; '''
+    df = project.db.exec_query(sql)
+    csv = df.to_csv()
+
+    return PlainTextResponse(csv)
 
 async def import_topologies(request):
     data = await request.json()

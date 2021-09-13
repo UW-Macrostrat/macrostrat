@@ -1,5 +1,6 @@
 from pathlib import Path
 from database import Database
+import requests
 
 here = Path(__file__).parent / ".." / "database"
 queries = here / "queries"
@@ -36,6 +37,20 @@ class Project:
 
         self.db.insert_project_info(params)
     
+    def insert_project_column_groups(self):
+        route = f'https://macrostrat.org/api/defs/groups?project_id={self.id}'
+
+        res = requests.get(route)
+        json_ = res.json()
+        data = json_['success']['data']
+        for column in data:
+            params = {}
+            params['col_group_id'] = column['col_group_id']
+            params['col_group'] = column['col_group']
+            params['col_group_name'] = column['name'] 
+
+            self.db.insert_project_column_group(params)
+
     def remove_project(self):
         self.db.remove_project()
 

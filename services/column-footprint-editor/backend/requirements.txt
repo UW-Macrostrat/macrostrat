@@ -1,0 +1,58 @@
+##  libraries in my conda environement
+
+#appnope @ file:///opt/concourse/worker/volumes/live/6ca6f098-d773-4461-5c91-a24a17435bda/volume/appnope_1606859448531/work
+astroid==2.5.3
+##backcall @ file:///home/ktietz/src/ci/backcall_1611930011877/work
+certifi==2020.12.5
+chardet==4.0.0
+click==7.1.2
+cycler==0.10.0
+##decorator @ file:///tmp/build/80754af9/decorator_1621259047763/work
+GeoAlchemy2==0.8.4
+greenlet==1.0.0
+h11==0.12.0
+idna==2.10
+##ipykernel @ file:///opt/concourse/worker/volumes/live/b72ce213-516a-4998-6411-bacb2eb6d5d1/volume/ipykernel_1607452776186/work/dist/ipykernel-5.3.4-py3-none-any.whl
+##ipython @ file:///opt/concourse/worker/volumes/live/53a0fafb-1ff1-44d4-4ba9-874c42807e28/volume/ipython_1617120878135/work
+##ipython-genutils @ file:///tmp/build/80754af9/ipython_genutils_1606773439826/work
+isort==5.8.0
+##jedi @ file:///opt/concourse/worker/volumes/live/fb4a9bd9-ce20-4358-4d29-83b0746d57b6/volume/jedi_1606932574534/work
+#jupyter-client @ file:///tmp/build/80754af9/jupyter_client_1616770841739/work
+#jupyter-core @ file:///opt/concourse/worker/volumes/live/d225f67f-0726-47b9-4510-c6aff5625ca4/volume/jupyter_core_1612213300495/work
+kiwisolver==1.3.1
+lazy-object-proxy==1.6.0
+matplotlib==3.4.1
+mccabe==0.6.1
+#mkl-fft==1.3.0
+#mkl-random @ file:///opt/concourse/worker/volumes/live/ee9c6651-7474-4ea3-40dc-9000610cf5d2/volume/mkl_random_1618853976708/work
+#mkl-service==2.3.0
+#numpy @ file:///opt/concourse/worker/volumes/live/43c6229c-0418-40f9-7644-06e35c2c24e6/volume/numpy_and_numpy_base_1620831187393/work
+pandas==1.2.3
+parso==0.7.0
+#pexpect @ file:///tmp/build/80754af9/pexpect_1605563209008/work
+#pickleshare @ file:///tmp/build/80754af9/pickleshare_1606932040724/work
+Pillow==8.2.0
+#prompt-toolkit @ file:///tmp/build/80754af9/prompt-toolkit_1616415428029/work
+psycopg2==2.8.6
+#ptyprocess @ file:///tmp/build/80754af9/ptyprocess_1609355006118/work/dist/ptyprocess-0.7.0-py2.py3-none-any.whl
+#Pygments @ file:///tmp/build/80754af9/pygments_1621606182707/work
+pylint==2.7.4
+pyparsing==2.4.7
+pyshp==2.1.3
+#python-dateutil @ file:///home/ktietz/src/ci/python-dateutil_1611928101742/work
+pytz==2021.1
+pyzmq==20.0.0
+requests==2.25.1
+Shapely==1.7.1
+simplejson==3.17.5
+#six @ file:///opt/concourse/worker/volumes/live/34b5b2b5-c9cb-44fb-4b8e-8a9a881bfa35/volume/six_1605205329242/work
+SQLAlchemy==1.4.3
+sqlparse==0.4.1
+starlette==0.14.2
+toml==0.10.2
+#tornado @ file:///opt/concourse/worker/volumes/live/2c1a63a2-006b-48ee-56b9-0cfe8b4927f9/volume/tornado_1606942321278/work
+#traitlets @ file:///home/ktietz/src/ci/traitlets_1611929699868/work
+urllib3==1.26.4
+uvicorn==0.13.4
+#wcwidth @ file:///tmp/build/80754af9/wcwidth_1593447189090/work
+wrapt==1.12.1

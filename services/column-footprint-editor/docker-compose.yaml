@@ -1,0 +1,20 @@
+version: "3"
+services:
+  # db:
+  #   extends:
+  #     file: postgis-geologic-map/docker-compose.yaml
+  #     service: db
+  # app:
+  #   extends:
+  #     file: postgis-geologic-map/docker-compose.yaml
+  #     service: app
+  frontend:
+    build: ./frontend
+    ports:
+      - "1234:1234"
+  backend:
+    build: "./backend"
+    ports:
+      - "8000:8000"
+volumes:
+  db_cluster:

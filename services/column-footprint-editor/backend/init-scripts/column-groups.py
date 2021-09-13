@@ -16,7 +16,7 @@ if __name__ == "__main__":
         params['col_group'] = column['col_group']
         params['col_group_name'] = column['name'] 
 
-        sql = """INSERT INTO column_groups(col_group_id, col_group, col_group_name) VALUES(
+        sql = """INSERT INTO ${project_schema}.column_groups(col_group_id, col_group, col_group_name) VALUES(
             :col_group_id, :col_group, :col_group_name);"""
         db.run_sql(sql, params)
 

@@ -58,6 +58,7 @@ class ProjectImporter:
         """
         self.db.create_project_schema()
         self.project.insert_project_info()
+        self.project.insert_project_column_groups()
         self.columns_import()
         self.db.on_project_insert()
         self.db.update_topology()
