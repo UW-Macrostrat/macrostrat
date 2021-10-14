@@ -11,9 +11,4 @@ LEFT JOIN ${project_schema}.columns c
 ON mdp.col_id = c.id
 LEFT JOIN ${project_schema}.column_groups cg
 ON cg.id = c.col_group
-) SELECT A.*, '#F95E5E' col_color from A
-WHERE A.col_id IS NULL
-UNION 
-SELECT A.*,'#0BDCB9' col_color from A
-WHERE A.col_id IS NOT NULL
-;
+) SELECT A.* from A;

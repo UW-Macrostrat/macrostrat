@@ -20,6 +20,7 @@ on_project_insert_sql = procedures / "on_project_insert.sql"
 redump_linework_sql = procedures / "redump-linework-from-edge-data.sql"
 remove_project_schema = procedures / "remove_project_schema.sql"
 project_info_insert = procedures / "project-meta-insert.sql"
+project_table = fixtures / "projects_table.sql"
 
 class Database:
     """ 
@@ -28,7 +29,7 @@ class Database:
 
     def __init__(self, project = None):
         self.project_id = getattr(project, "id", None)
-        self.engine = create_engine("postgresql://postgres@localhost:54321/geologic_map", echo=True)
+        self.engine = create_engine("postgresql://postgres@db/geologic_map", echo=True)
         self.Session = sessionmaker(bind=self.engine)
         self.config = config_check(project)
         self.formatter = SqlFormatter(self.project_id)
@@ -60,6 +61,10 @@ class Database:
             sql = self.formatter.sql_config_format(sql, self.config)
 
         return read_sql(sql, self.engine, **kwargs)
+    
+    #################### db initialization methods ##########################
+    def create_project_table(self):
+        self.run_sql_file(project_table)
               
     #################### db procedure methods ###############################
     def create_project_schema(self):

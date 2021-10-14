@@ -1,3 +1,5 @@
+import os
+
 from click import secho
 from sqlparse import split, format
 from sqlalchemy.exc import ProgrammingError, IntegrityError
@@ -36,8 +38,10 @@ def run_docker_config(project_id, command):
     delete
     create_tables 
     """
-    exec_ = f"docker exec -it -e GEOLOGIC_MAP_CONFIG=/var/config/project_{project_id}.json postgis-geologic-map_app_1" 
-    base = exec_ + " bin/geologic-map"
+    
+    my_env = os.environ.copy()
+    my_env['GEOLOGIC_MAP_CONFIG'] = f"/python_app/config/project_{project_id}.json"
+    base = "/app/bin/geologic-map"
     update = base + " update"
     reset = base + " reset"
     delete = base + " delete"
@@ -52,10 +56,7 @@ def run_docker_config(project_id, command):
     if command == "delete":
         cmd_ = delete
 
-    return cmd(cmd_)
-
-# The below functions are stolen from sparrow; we should place them in a utility module
-
+    return cmd(cmd_, env=my_env)
 
 def pretty_print(sql, **kwargs):
     for line in sql.split("\n"):

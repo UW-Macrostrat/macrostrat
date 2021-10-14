@@ -1,1 +1,0 @@
-{"project_schema": "project_1001", "project_id": 1001, "name": "No-Col-Groups", "description": "Test project for new col-group configuration", "data_schema": "project_1001_data", "topo_schema": "project_1001_topology", "tolerance": 0.0001, "connection": {"database": "geologic_map", "port": 5432, "host": "db", "user": "postgres"}}

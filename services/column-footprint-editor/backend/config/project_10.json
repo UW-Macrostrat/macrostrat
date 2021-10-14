@@ -1,1 +1,15 @@
-{"project_schema": "project_10", "project_id": "10", "name": "", "description": "", "data_schema": "project_10_data", "topo_schema": "project_10_topology", "tolerance": 0.0001, "connection": {"database": "geologic_map", "port": 5432, "host": "db", "user": "postgres"}}
+{
+  "project_schema": "project_10",
+  "project_id": 10,
+  "name": "North American Ediacaran",
+  "description": "Composite columns of intermediate scale resolution that are comprehensive for the Ediacaran System of present-day North America and adjacent continental blocks formerly part of North America. Compiled by D. Segessenman as part of his Ph.D.",
+  "data_schema": "project_10_data",
+  "topo_schema": "project_10_topology",
+  "tolerance": 0.0001,
+  "connection": {
+    "database": "geologic_map",
+    "port": 5432,
+    "host": "db",
+    "user": "postgres"
+  }
+}
