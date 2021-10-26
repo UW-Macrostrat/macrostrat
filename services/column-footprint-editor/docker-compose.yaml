@@ -24,10 +24,8 @@ services:
     environment:
       - GEOLOGIC_MAP_CONFIG=/app/docker-assets/docker-map-config.json
     ports:
-      - "3006:3006"
-      - "8000:8000"
+      - "40053:8000"
     expose:
-      - "3006"
       - "8000"
 volumes:
   db_cluster:
