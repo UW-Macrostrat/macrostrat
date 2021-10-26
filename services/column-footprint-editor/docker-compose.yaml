@@ -18,8 +18,6 @@ services:
     build: ./frontend
     ports:
       - "1234:5000"
-    environment:
-      - ENV="production"
   backend:
     build: "./backend"
     entrypoint: "/python_app/docker-scripts/run"
