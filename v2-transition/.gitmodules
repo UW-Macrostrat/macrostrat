@@ -1,0 +1,3 @@
+[submodule "services/macrostrat-api"]
+	path = services/macrostrat-api
+	url = ./services/macrostrat-api
