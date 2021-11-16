@@ -1,3 +1,6 @@
 [submodule "services/macrostrat-api"]
 	path = services/macrostrat-api
 	url = ./services/macrostrat-api
+[submodule "tools/msutils"]
+	path = tools/macrostrat-utils
+	url = ./tools/msutils
