@@ -1,0 +1,1 @@
+pl: * ../lib/PBDBCmd/*.pm ../t/*.t

@@ -1,0 +1,23 @@
+#
+# Paleobiology Database service customizations
+# 
+# This file can be modified in order to customize the Paleobiology Database and/or Macrostrat
+# service definitions for this particular installation.
+# 
+# Any changes to service definitions should be made here, and NOT in docker-compose.yml.
+# 
+
+version: "3.5"
+
+# You can change the options on any of the service definitions by adding the appropriate keywords
+# under the service name below.  If you want to disable one or more of the services, add the
+# following under each service name to be disabled:
+#     entrypoint: ["echo", "Service <name> disabled"]
+
+services:
+  mariadb:
+  nginx:
+
+# You can add additional volumes to the service configuration by including them below.
+
+# volumes:

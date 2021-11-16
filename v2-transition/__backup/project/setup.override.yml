@@ -1,0 +1,39 @@
+#
+# Paleobiology Database file tree customizations
+# 
+# This file can be modified in order to customize the Paleobiology Database file tree definitions
+# for this particular installation.
+# 
+# Any changes to file tree setup actions should be made here, and NOT in setup.yml.
+# 
+
+# To override the action specified in setup.yml for any particular path, add an entry to the list
+# below specifying the same path. If you simply want to cancel the action for that path, set the
+# type to 'skip'. Otherwise, whatever type and other attributes you set will be used to generate
+# an action for that path, and the attributes specified in setup.yml will be completely ignored.
+# You can also add entries with paths that do not appear in setup.yml. These actions will be
+# carried out after the ones specified in setup.yml.
+
+# The following types are available:
+# 
+#    skip                  Do nothing to the specified path, and skip any action specified
+#                             for that path in setup.yml. The only required attribute is 'path'.
+#    
+#    repository         Clone a git repository from the URL specified by the 'source' option
+#                             to the specified path. The attribute 'source' is required. If the
+#                             source URL is not absolute, it will be appended to the remote URL
+#                             for the base repository minus the last component. If you want to
+#                             override this, you can provide a different base using the 'git_remote'
+#                             keyword at the top level of this file.
+#    
+#    dir                     Create a directory with the specified path.
+#    
+#    symlink             Create a symlink from the specified path to the specified target. The
+#                             attribute 'target' is required.
+
+# An example entry has been specified below, to help you format them properly.
+
+setup:
+   - type: skip
+     path: test
+     attribute: value

@@ -1,0 +1,15 @@
+Changes
+Makefile.PL
+MANIFEST
+README
+t/001-module.t
+t/002-script.t
+lib/PMCmd/Config.pm
+lib/PMCmd/Command.pm
+lib/PMCmd/System.pm
+lib/PMCmd/Build.pm
+lib/PMCmd/Install.pm
+lib/PMCmd/DBVersion.pm
+lib/PMCmd/PBTasks.pm
+script/pbdb
+script/macrostrat

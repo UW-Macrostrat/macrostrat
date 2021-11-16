@@ -1,0 +1,555 @@
+#!/usr/bin/env perl
+# -*- mode: CPerl; -*-
+# 
+# Paleobiology Database control and status command
+#
+# This command provides control functions and status reporting for the dockerized verision
+# of the Paleobiology Database.
+# 
+# Author: Michael McClennen
+# Created: 2019-10-24
+
+
+use 5.018001;
+use strict;
+
+use PMCmd::Path;
+use PMCmd::Config qw(SetConfig $MAIN_PATH $COMMAND $DEBUG $VERSION);
+
+use Getopt::Long;
+
+
+# Following are the subcommands that we can execute natively:
+
+my %COMMAND = ( status => 'PMCmd::Command::StatusCmd',
+		show => 'PMCmd::Install::ShowCmd',
+		up => 'PMCmd::Command::ControlCmd',
+		down => 'PMCmd::Command::ControlCmd',
+		start => 'PMCmd::Command::ControlCmd',
+		stop => 'PMCmd::Command::ControlCmd',
+		kill => 'PMCmd::Command::ControlCmd',
+		restart => 'PMCmd::Command::ControlCmd',
+		pause => 'PMCmd::Command::ControlCmd',
+		unpause => 'PMCmd::Command::ControlCmd',
+		top => 'PMCmd::Command::ControlCmd',
+		log => 'PMCmd::Command::LogCmd',
+		exec => 'PMCmd::Command::ExecCmd',
+		run => 'PMCmd::Command::ExecCmd',
+		do => 'PMCmd::Command::DoCmd',
+		sh => 'PMCmd::Command::ShellCmd',
+		mariadb => 'PMCmd::Command::MariadbCmd',
+		psql => 'PMCmd::Command::PostgresqlCmd',
+		build => 'PMCmd::Build::BuildCmd',
+		copyin => 'PMCmd::Build::CopyCmd',
+		push => 'PMCmd::Build::PushPullCmd',
+		pull => 'PMCmd::Build::PushPullCmd',
+		update => 'PMCmd::Install::UpdateCmd',
+		# check => 'PMCmd::Install::CheckCmd',
+		help => 'HelpCmd',
+		version => 'VersionCmd',
+	      );
+
+my %ALIAS = ( shell => 'sh', mysql => 'mariadb', logs => 'log' );
+
+my %CDOC = ( status => "Display the status of the various services that make up this installation",
+	     list => "List configuration files, settings, and other things about this installation",
+	     up => "Bring up the specified services, or all services",
+	     down => "Bring up the specified services, or all services",
+	     start => "Start one or more services",
+	     stop => "Stop one or more services",
+	     kill => "Force stop one or more services",
+	     restart => "Restart one or more services",
+	     pause => "Pause one or more services",
+	     unpause => "Unpause one or more services",
+	     top => "Display the running processes in one or more containers",
+	     log => "Display the most recent log file lines from the specified service",
+	     exec => "Execute a command in a service's running container",
+	     run => "Execute a command in a new container using the image from a service",
+	     sh => "Execute an interactive shell in a service's running container",
+	     do => "Execute one or more paleobiology database tasks",
+	     mariadb => "Execute an sql command or an interactive mariadb client in the mariadb container",
+	     psql => "Execute an sql command or an interactive psql client shell in the postgresql container",
+	     # backup => "Backup the database",
+	     # remote => "Copy database backups to remote sites",
+	     build => "Build or rebuild the image for a service",
+	     copyin => "Copy a file or files into one or more running containers",
+	     push => "Push a container image to a repository",
+	     pull => "Pull a container image from a repository",
+	     update => "Update the installation",
+	     # check => "Check various aspects of the installation",
+	     show => "Display information about various aspects of this installation",
+	     help => "Show documentation about this command or any subcommand",
+	     version => "Show version information",
+	   );
+
+my %NEEDS_CWD = ( copyin => 1 );
+
+# Start by checking for options.
+
+my ($opt_config, $opt_root, $opt_exec, $opt_quiet, $opt_force, $opt_help, $opt_version);
+
+Getopt::Long::Configure('require_order');
+
+GetOptions( "file|f=s" => \$opt_config,
+	    "root|R" => \$opt_root,
+	    "exec|E" => \$opt_exec,
+	    "force" => \$opt_force,
+	    "quiet|q" => \$opt_quiet,
+	    "help|h" => \$opt_help,
+	    "version|v" => \$opt_version,
+	    "debug|d" => \$DEBUG);
+
+# The first argument is the subcommand.
+
+my $cmd = $ARGV[0];
+
+# If an alternate root directory and/or configuration file is given, then use these.
+
+if ( $opt_config || $ENV{PBDB_CONFIG} || $ENV{PBDB_COMPOSE} )
+{
+    SetConfig($opt_config);
+}
+
+# Record which command is currently running, so that code in other modules knows whether it is
+# being run from 'pbdb' or 'macrostrat'. We use these hardcoded values regardless of the name of
+# the actual script that is currently executing.
+
+$COMMAND = 'pbdb';
+
+# If either --version or the subcommand 'version' was given, print a version string and exit.
+
+if ( $opt_version || $COMMAND{$cmd} eq 'VersionCmd' )
+{
+    &VersionCmd;
+    exit;
+}
+ 
+# If the subcommand is 'help' then remove it from the argument list and set the help option.
+
+elsif ( $COMMAND{$cmd} eq 'HelpCmd' )
+{
+    shift @ARGV;
+    $cmd = $ARGV[0];
+    $opt_help = 1;
+}
+
+# If the --help option was given at the end, remove it and also set the option.
+
+if ( $ARGV[-1] && $ARGV[-1] =~ /^--help$|^-h$/ )
+{
+    pop @ARGV;
+    $opt_help = 1;
+}
+
+# If no subcommand was given, display the top-level documentation.
+
+unless ( $cmd )
+{
+    &HelpNotFound;
+}
+
+# If the subcommand is a string that begins with either 'mysql' or 'mariadb', i.e. 'mysqladmin',
+# replace the subcommand with 'mariadb'. The subcommand that was actually requested will be the first
+# argument.
+
+if ( $cmd && $cmd =~ /^(?:mysql|mariadb)(\w*)/ )
+{
+    $cmd = 'mariadb';
+    
+    # If the user put the --root or --exec argument before the command instead of after it, put it
+    # where the command procedure expects it.
+    
+    if ( $opt_root )
+    {
+	splice(@ARGV, 1, 0, '--root');
+    }
+    
+    elsif ( $opt_exec )
+    {
+	splice(@ARGV, 1, 0, '--exec');
+    }
+}
+
+# If this subcommand is an alias, substitute the original subcommand.
+
+elsif ( $ALIAS{$cmd} )
+{
+    $cmd = $ALIAS{$cmd};
+}
+
+# If the --help option was given, display documentation about the subcommand.
+
+if ( $opt_help )
+{
+    &HelpSubcommand($cmd) || &ExecuteOther(undef, 'help') || &HelpNotFound;
+}
+
+# Otherwise, try to execute the specified subcommand. If it is one of the native subcommands,
+# execute directly and then exit. Otherwise, if there is a corresponding command in the directory
+# where this command is located, execute that. If none is found, then display a 'not found' message.
+
+else
+{
+    &ExecuteSubcommand($cmd) || &ExecuteOther || &HelpNotFound;
+}    
+
+# If the above string of calls falls through, exit.
+    
+exit;
+
+
+# ExecuteSubcommand ( name )
+# 
+# Execute the named subcommand, if it is defined natively. Otherwise, return false.
+
+sub ExecuteSubcommand {
+
+    my ($subcommand) = @_;
+    
+    # If we know about this command, then we can execute it.
+    
+    if ( $COMMAND{$subcommand} )
+    {
+	# All commands are executed with the main path as the current working directory, except
+	# for a few that need the current directory.
+
+	unless ( $NEEDS_CWD{$subcommand} )
+	{
+	    chdir $MAIN_PATH || die "ERROR: could not chdir to $MAIN_PATH: $!\n";
+	}
+	
+	# If this command is located in a module that we haven't loaded yet, load it now.
+	
+	if ( $COMMAND{$subcommand} =~ qr{ ^ ( PMCmd::\w+ ) }xs )
+	{
+	    my $module = $1;
+	    $module =~ s{::}{/}g;
+	    require "$module.pm";
+	}
+
+	# If any of the global options were specified, add them back in after the subcommand name.
+	
+	if ( $opt_force )
+	{
+	    splice(@ARGV, 1, 0, '--force');
+	}
+
+	if ( $opt_quiet )
+	{
+	    splice(@ARGV, 1, 0, '--quiet');
+	}
+	
+	# Execute the command, then exit.
+
+	no strict 'refs';
+	
+	$DB::single = 1;
+	
+	&{$COMMAND{$subcommand}}();
+	exit;
+    }
+    
+    # Otherwise, return false.
+    
+    return 0;
+}
+
+
+# ExecuteOther ( name )
+#
+# Look for a command with the specified name in the same directory as this script. If one is
+# found, execute it. Otherwise, return false.
+
+sub ExecuteOther {
+    
+    my ($subcommand, $help) = @_;
+
+    # If no subcommand is given, remove the first element of @ARGV and use that.
+    
+    unless ( $subcommand )
+    {
+	$subcommand = shift @ARGV;
+    }
+    
+    # If we can extract a directory path from $0, look there.
+    
+    if ( $0 =~ qr{ ^ ( / .* ) / \w+ $ }xs )
+    {
+	my $dirpath = $1;
+	my $checkpath = "$dirpath/pbdb-$subcommand";
+	
+	# If we find the corresponding subcommand, execute it if possible.
+	
+	if ( -e $checkpath )
+	{
+	    # If $help is true, then add --help to the beginning of the argument list.
+	    
+	    unshift @ARGV, '--help' if $help;
+	    
+	    # Make sure the subcommand we have found is executable.
+	    
+	    die "ERROR: $checkpath: $!\n" unless -x $checkpath;
+	    
+	    # Set some environment variables.
+	    
+	    $ENV{PBDB_ROOT} = $MAIN_PATH;
+	    $ENV{PBDB_CONFIG} = "$MAIN_PATH/$PMCmd::Config::LOCAL_CONFIG";
+	    $ENV{PBDB_COMPOSE} = "$MAIN_PATH/$PMCmd::Config::MASTER_COMPOSE";
+	    $ENV{PBDB_LOCAL_COMPOSE} = "$MAIN_PATH/$PMCmd::Config::LOCAL_COMPOSE";
+	    $ENV{PBDB_DEBUG} = 1 if $DEBUG;
+	    
+	    # Now exec that program with the possibly altered argument list.
+	    
+	    exec $checkpath, @ARGV;
+	}
+    }
+    
+    # Otherwise, return false.
+
+    return 0;
+}
+
+
+# VersionCmd ( )
+#
+# Print out the version string for this script.
+
+sub VersionCmd {
+    
+    print STDOUT "Paleobiology Database control and status command version $VERSION\n";
+}
+
+
+# HelpSubcommand ( cmd )
+#
+# If the indicated subcommand is native, print out its documentation string. Otherwise, return
+# false.
+
+sub HelpSubcommand {
+
+    my ($subcommand) = @_;
+    
+    # If we know about this command, then we can print out its documentation.
+    
+    if ( $COMMAND{$subcommand} )
+    {
+	# Figure out the bare name of this command, for use in documentation strings.
+	
+	my $NAME = $0;
+	
+	if ( $NAME =~ qr{ ( [^/]+ ) $ }xs )
+	{
+	    $NAME = $1;
+	}
+
+	# If this command is in one of the modules, load that module and call its HelpString
+	# subroutine.
+	
+	if ( $COMMAND{$subcommand} =~ qr{ ^ ( PMCmd::\w+ ) }xs )
+	{
+	    my $localhelp = "$1::HelpString";
+	    my $module = $1;
+	    $module =~ s{::}{/}g;
+	    require "$module.pm";
+	    
+	    $DB::single = 1;
+	    
+	    my ($docstring, $extra);
+	    
+	    eval {
+		no strict 'refs';
+		($docstring, $extra) = &{$localhelp}($subcommand, $ARGV[1]);
+	    };
+	    
+	    # If no documentation is found, print out that message.
+
+	    unless ( $docstring )
+	    {
+		print "\nNo documentation is available for '$subcommand'.\n\n";
+		exit;
+	    }
+		
+	    # Substitute in the name of this command, and print the documentation string.
+	    
+	    $docstring =~ s/{NAME}/$NAME/g;
+	    
+	    # If extra options are available, get those.
+
+	    if ( $extra )
+	    {
+		$docstring .= HelpExtra($extra);
+	    }
+	    
+	    print STDOUT $docstring;
+	}
+	
+	# If we are asked for help about one of the built-in commands, just print out a simple message.
+	
+	elsif ( $subcommand eq 'help' )
+	{
+	    print <<EndHelp;
+
+Usage:  $NAME help [SUBCOMMAND]
+
+Show documentation for the specified subcommand. If no subcommand is specified, display the
+documentation for this command.
+
+EndHelp
+	}
+	
+	elsif ( $subcommand eq 'version' )
+	{
+	    print <<EndVersion;
+
+Usage:  $NAME version
+
+Show the version number for this command.
+
+EndVersion
+	}
+
+	else
+	{
+	    print <<EndOther;
+
+No documentation is available for '$subcommand'.
+
+EndOther
+	}
+
+	exit;
+    }
+
+    # Otherwise, return false.
+
+    return 0;
+}
+
+
+sub HelpExtra {
+    
+    my ($extra) = @_;
+
+    my ($cmd, @args) = split /\s+/, $extra;
+
+    # If we are getting our extra args from docker-compose, do so now.
+    
+    if ( $cmd eq 'docker-compose' )
+    {
+	require PMCmd::System;
+	
+	my @lines = PMCmd::System::CaptureDockerCompose(@args);
+	
+	while ( @lines && $lines[0] !~ /^Options:/ )
+	{
+	    shift @lines;
+	}
+	
+	shift @lines if @lines;
+	
+	return join("\n", @lines, '', '');
+    }
+
+    # Otherwise, just return a blank line as a placeholder.
+    
+    else
+    {
+	return "\n";
+    }
+}
+
+
+# HelpNotFound ( subcommand )
+#
+# Display the top level help documentation. If a subcommand name is passed to this routine, then
+# it is an invalid one.
+
+sub HelpNotFound {
+    
+    shift @ARGV if $ARGV[0] eq 'help';
+    
+    my $cmd = $ARGV[0];
+    
+    if ( defined $cmd && $cmd ne '' && $cmd ne 'help' )
+    {
+	print STDOUT "Error: no such subcommand '$cmd'\n";
+	exit;
+    }
+    
+    my $CMDNAME = $0;
+    
+    if ( $CMDNAME =~ / ( [^\/]+ ) $/x )
+    {
+	$CMDNAME = $1;
+    }
+	
+    print STDOUT <<END1;
+
+Usage:  $CMDNAME [options] [command] [arguments...]
+
+A control script for the Paleobiology Database server in its dockerized version.
+
+Options:
+  -f, --file=PATH   Use an alternate configuration file. The path must be given relative to
+                      the main project directory.
+  -d, --debug       Produce additional output showing the underlying commands executed
+  -h, --help        Show documentation about this command or any subcommand
+  -v, --version     Show version information
+
+Commands:
+END1
+    
+    foreach my $c (sort keys %COMMAND)
+    {
+	print STDOUT sprintf("  %-17s \%s\n", $c, $CDOC{$c});
+    }
+    
+    print STDOUT <<END2;
+
+Run '$CMDNAME help [subcommand]' to get help on any of these subcommands.
+
+END2
+	
+    exit;
+}
+
+
+__END__
+
+=head1 NAME
+
+pbdb
+
+=head1 SYNOPSIS
+
+pbdb [options] [command] [arguments...]
+
+Options
+
+  -f, --file=PATH   Use an alternate configuration file. The path must be given relative to
+                      the main project directory.
+  -d, --debug       Causes extra output to be produced, showing the underlying commands being executed.
+  -h, --help        Show documentation about this command or any subcommand.
+  -v, --version     Show version information.
+
+=head1 DESCRIPTION
+
+This program is designed to act as the main control script for the Paleobiology Database server in
+its dockerized version. It enables individual services or the entire thing to be brought up and
+down, and also enables initial setup, backups, and more. A full list of available subcommands can
+be viewed by typing the following:
+
+    pbdb help
+
+A description of any given subcommand can be viewed by typing:
+
+    pbdb help [command]
+
+=HEAD1 COPYRIGHT
+
+Copyright (C) 2019-2020 by Michael McClennen
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself, either Perl version 5.26.1 or,
+at your option, any later version of Perl 5 you may have available.
+
