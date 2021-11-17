@@ -22,6 +22,8 @@ remove_project_schema = procedures / "remove_project_schema.sql"
 project_info_insert = procedures / "project-meta-insert.sql"
 project_table = fixtures / "projects_table.sql"
 
+
+prod_url = "postgresql://postgres@db/geologic_map"
 class Database:
     """ 
     Database class with built in SQL Formatter
@@ -29,7 +31,7 @@ class Database:
 
     def __init__(self, project = None):
         self.project_id = getattr(project, "id", None)
-        self.engine = create_engine("postgresql://postgres@db/geologic_map", echo=True)
+        self.engine = create_engine(prod_url, echo=True)
         self.Session = sessionmaker(bind=self.engine)
         self.config = config_check(project)
         self.formatter = SqlFormatter(self.project_id)

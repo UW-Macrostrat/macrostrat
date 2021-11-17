@@ -17,7 +17,7 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "1234:5000"
+      - "1234:3000"
   backend:
     build: "./backend"
     entrypoint: "/python_app/docker-scripts/run"
