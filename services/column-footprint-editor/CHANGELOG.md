@@ -84,9 +84,20 @@ Column-groups are now project specific.
 
 Frontend and Backend are Dockerized
 
+11/23/21:
+
+Frontend and sql queries adjusted to allow for `multilinestrings`. Dragging points
+together uses more internal Mapbox-gl-js-draw methods now, consequently dragging is
+more effecient and works better.
+
+The `SnapLineMode` creates valid multiline strings. Now when using the tool if you snap to a non-vertix point on an existing line, it creates a vertix on that line at that position. This makes creating columns easier and more effcient.
+
 ### Bugs:
 
 Strange console error, `Cannot read property 'getSelectedIds' of null`, on stopDragging event
+
+- This occurs during the onTouchEnd and onMouseUp in the custom direct_select
+- During the `this.fireUpdate()`
 
 Forseable Bug-- when deciding how map-faces get col identity, it is possible that a user will cut an identity column, which would mean both columns, old and generated, would recieve the same identity. I think to solve this we could employ a frontend warning or something.
 
