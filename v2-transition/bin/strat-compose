@@ -1,0 +1,3 @@
+#!/usr/bin/env zsh
+
+docker-compose --project-dir "$STRAT_BASE" $@

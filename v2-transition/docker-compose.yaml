@@ -1,0 +1,7 @@
+version: "3"
+services:
+  mariadb:
+    image: mariadb/server:10.4
+    ports:
+      - "3306:3306"
+  
