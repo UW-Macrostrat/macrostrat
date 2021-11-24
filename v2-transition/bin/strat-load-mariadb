@@ -1,3 +1,8 @@
-[ -z $1 ] && echo "No dump file specified" && exit 1
+#!/usr/bin/env zsh
 
-zcat $1 | strat run mariadb mysql -u 'root' -P $MARIADB_ROOT_PASSWORD -p macrostrat
+db=${1:A}
+
+[ -z "$db" ] && echo "No dump file specified" && exit 1
+
+strat mysql -e "CREATE DATABASE macrostrat"
+zcat "$db" | pv -cN zcat | strat mysql macrostrat

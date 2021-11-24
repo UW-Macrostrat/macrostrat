@@ -1,3 +1,4 @@
 #!/usr/bin/env zsh
 
-strat compose up $@
+strat compose up -d $@
+strat compose logs -f --tail=0
