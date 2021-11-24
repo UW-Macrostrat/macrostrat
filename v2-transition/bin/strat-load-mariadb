@@ -1,0 +1,3 @@
+[ -z $1 ] && echo "No dump file specified" && exit 1
+
+zcat $1 | strat run mariadb mysql -u 'root' -P $MARIADB_ROOT_PASSWORD -p macrostrat
