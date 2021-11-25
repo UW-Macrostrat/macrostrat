@@ -569,6 +569,7 @@
         "lng",
         "col_area",
         "project_id",
+        "t_units",
         "ref_id",
         "status"
       ]
@@ -729,6 +730,8 @@
         "concept_id": "uniqe id for stratigraphic concepts",
         "rank": "lithostratigraphic rank",
         "rule": "Can be 'all' or 'down'. Down will return any children of the requested stratigraphic name, and all will return the entire stratigraphic name hierarchy that the request name belongs to",
+        "interval_name": "chronostratigrpahic interval name (see /defs/intervals); this will return only strat_names with a declared age in Macrostrat",
+        "ref_id": "retrieve only stratigraphic names linked the specified reference_id (see /defs/refs)",
         "all": "return all lithostratigraphic names",
         "format": "Desired output format"
       },
@@ -865,6 +868,7 @@
     "options": {
       "parameters": {
         "all": "return all available projects",
+        "project_id": "integer identifying project(s), separate multiple values with commas",
         "format": "Desired output format"
       },
       "output_formats": [
@@ -872,7 +876,7 @@
         "csv"
       ],
       "examples": [
-        "api/v2/defs/timescales?all"
+        "api/v2/defs/projects?all"
       ],
       "fields": [
         "project_id",
@@ -936,14 +940,48 @@
         "t_units"
       ]
     }
-  },
+  },  "/defs/measurement_sources": {
+      "description": "Returns references used in Macrostrat measurements",
+      "parent": "definitions",
+      "visible": false,
+      "options": {
+        "parameters": {
+          "doi": "string, a specific doi, note that it is necessary to use one DOI at a time in this query",
+          "measurement_class": "string, measurement_class",
+          "measurement_type": "string, measurement_type",
+          "measurement": "string, measurement",
+          "all": "return all measurement definitions"
+        },
+        "output_formats": [
+          "json",
+          "csv"
+        ],
+        "examples": [
+          "api/v2/defs/measurement_sources?doi=10.1016/j.epsl.2009.11.039",
+          "api/v2/defs/measurements?all",
+          "api/v2/defs/measurements?measurement_class=geochemical"
+        ],
+        "fields": [
+          "ref_id",
+          "pub_year",
+          "author",
+          "ref",
+          "doi",
+          "url",
+          "measurements"
+        ]
+      }
+    },
   "/defs/groups": {
     "description": "Returns all column groups",
     "parent": "definitions",
     "visible": true,
     "options": {
       "parameters": {
-        "all": "return all column groups"
+        "all": "return all column groups",
+        "project_id": "limit results to specific project",
+        "col_id": "get col_group data for specific column",
+        "col_group_id": "get col_group data for specific col_group_id"
       },
       "output_formats": [
         "json",
@@ -954,7 +992,11 @@
       ],
       "fields": [
         "col_group_id",
-        "col_group"
+        "col_group",
+        "t_units",
+        "t_cols",
+        "project_id",
+        "name"
       ]
     }
   },
@@ -1169,6 +1211,48 @@
       ]
     }
   },
+  "/eodp": {
+    "description": "eODP Macrostrat Baggage Stripper Import",
+    "visible": true,
+    "options": {
+      "parameters": {
+        "epoch": "string, drilling 'epoch'; only three valid values (DSDP, ODP and IODP), but note that Baggage Stipper limited to IODP",
+        "leg": "string, drilling leg (or expedition for IODP, e.g., leg=317)",
+        "site": "string, drilling site (e.g., U1351)",
+        "col_id": "integer, one or more Macrostrat column ids",
+        "col_group_id": "integer, one or more Macrostrat column group ids; corresponds to legs/expeditions",
+        "all": "return all drilling expeditions and sites",
+        "sample": "if present, get a selection of data",
+        "format": "desired output format, options given below in output_formats"
+      },
+      "output_formats": [
+        "json",
+        "csv",
+        "geojson",
+        "topojson",
+        "geojson_bare",
+        "topojson_bare"
+      ],
+      "examples": [
+        "api/measurements?leg=317",
+        "api/measurements?site=U1354",
+        "api/measurements?col_id=5092"
+      ],
+      "fields": [
+        "col_group",
+        "site_hole",
+        "date_started",
+        "ref_id",
+        "col_id",
+        "lat",
+        "lng",
+        "top_depth",
+        "bottom_depth",
+        "primary_lith",
+        "minor_lith"
+      ]
+    }
+  },
   "/paleogeography": {
     "description": "Returns paleogeography geometry from \"Wright et al. (2013) Towards community-driven paleogeographic reconstructions: integrating open-access paleogeographic and paleobiology data with plate tectonics. Biogeosciences 10:1529-1541\"  If you use this service and provide attribution, you should cite the associated paper via this service.",
     "visible": true,
@@ -1195,7 +1279,7 @@
   },
   "/geologic_units/gmna": {
     "description": "Geologic map units. Continental-scale North American map data (gmna) adapted from the 2005 Geologic Map of North America (http://ngmdb.usgs.gov/gmna/)",
-    "visible": true,
+    "visible": false,
     "parent": "geologic_units",
     "options": {
       "parameters": {
@@ -1239,7 +1323,7 @@
   },
   "/geologic_units/gmus": {
     "description": "Geologic map units. State-level (gmus) data adapated from http://mrdata.usgs.gov/geology/state/.",
-    "visible": true,
+    "visible": false,
     "parent": "geologic_units",
     "options": {
       "parameters": {
@@ -1248,7 +1332,7 @@
         "lng": "A valid longitude in decimal degrees",
         "strat_name_id": "integer, one or more valid strat_name_ids from /defs/strat_names",
         "unit_id": "integer, one or more valid unit_ids from /units",
-        "search": "string, a term to search for in GMUS metadata",
+        "search": "string, a term to search for in map metadata",
         "shape": "string, a valid WKT shape",
         "buffer": "integer, buffers a provided shape by x kilometers",
         "unit_link": "string, GMUS unit_link",
@@ -1423,6 +1507,62 @@
       ]
     }
   },
+
+  "/geologic_units/map/legend": {
+    "description": "Retrieve legends for geologic map units",
+    "visible": true,
+    "parent": "geologic_units",
+    "options": {
+      "parameters": {
+        "scale": "Restrict results to maps of a specific scale(s) in Macrostrat's system, can be tiny, small, medium, or large",
+        "carto": "Restrict results to map components present in one of Macrostrat's map harmonized scales: tiny, small, medium, large",
+        "source_id": "Integer(s), one or more comma-separated integers identifying map sources",
+        "description": "A string to search for in the map unit description",
+        "comments": "A string to search for in the map unit comments",
+        "lith_type": "String, one or more comma-separated lithology types",
+        "lith_class": "String, one or more comma-separated lithology classes",
+        "lith_id": "Integer(s), one or more comma-separated integers identifying specific lithologies",
+        "format": "Desired output format. Default is JSON",
+        "sample": "Return a sample of data"
+      },
+      "output_formats": [
+        "json",
+        "csv"
+      ],
+      "examples": [
+        "/api/v2/geologic_units/map/legend?source_id=1",
+        "/api/v2/geologic_units/map/legend?description=banded%20iron",
+        "/api/v2/geologic_units/map/legend?lith_type=carbonate"
+      ],
+      "fields": [
+        "legend_id",
+        "source_id",
+        "scale",
+        "map_unit_name",
+        "strat_name",
+        "unit_id",
+        "age",
+        "lith",
+        "descrip",
+        "comments",
+        "b_age",
+        "t_age",
+        "b_interval",
+        "t_interval",
+        "strat_name_id",
+        "lith_types",
+        "lith_classes",
+        "lith_id",
+        "color",
+        "area",
+        "tiny_area",
+        "small_area",
+        "medium_area",
+        "large_area"
+      ]
+    }
+  },
+
 
   "/geologic_units/map/points": {
     "description": "Query point features from geologic maps",
@@ -1744,6 +1884,38 @@
       }
     },
 
+    "/age_model": {
+      "description": "Get all components of column age models; mostly unit_boundaries but can include other constraints",
+      "visible": true,
+      "options": {
+        "parameters": {
+          "col_id": "A valid col_id",
+          "section_id": "A valid section_id"
+        },
+        "output_formats": [
+          "json","csv"
+        ],
+        "examples": [
+          "/age_models?section_id=1"
+        ],
+        "fields": [
+          "boundary_id",
+          "col_id",
+          "section_id",
+          "interval_id",
+          "interval_name",
+          "age_bottom",
+          "age_top",
+          "rel_position",
+          "model_age",
+          "boundary_status",
+          "boundary_type",
+          "unit_below",
+          "unit_above"
+        ]
+      }
+    },
+
     "/hex-summary": {
       "description": "Get corresponding data for hex grids",
       "visible": false,
@@ -1798,15 +1970,15 @@
     }
   },
   "/mobile/point_details": {
-    "description": "Get state-level geologic map (gmus) unit description and Macrostrat units for a given location. A valid latitude and longitude or column ID and GMUS unit ID are required.",
+    "description": "Get state-level geologic map unit description and Macrostrat units for a given location. A valid latitude and longitude or column ID and map unit ID are required.",
     "parent": "mobile",
-    "visible": true,
+    "visible": false,
     "options": {
       "parameters": {
         "lat": "A valid latitude",
         "lng": "A valid longitude",
         "col_id": "A valid column ID",
-        "unit_id": "A valid GMUS unit ID",
+        "unit_id": "A valid map unit ID",
         "geo_format": "Output geometry format - can be 'wkt' or 'geojson'; Defaults to 'geojson'"
       },
       "output_formats": [
@@ -1940,7 +2112,14 @@
     "visible": false,
     "options": {
       "parameters": {
-        "lith_id": "integer, one or more comma-separated lithology ids",
+        "lith_id": "integer, one or more comma-separated lithology ids: matches strictly to lith field in map data",
+        "lith_type": "string, one or more comma-separated lith_types: matches strictly to lith field in map data",
+        "lith_class": "string, one or more comma-separated lith_classes: matches strictly to lith field in map data",
+        "all_lith_id": "integer, one or more comma-separated lithology ids: matches any lith in any legend field",
+        "all_lith_type": "string, one or more comma-separated lith_types: matches any lith_type in any legend field",
+        "all_lith_class": "string, one or more comma-separated lith_classes: matches any lith_type in any legend field",
+        "strat_name_id": "integer, one or more comma-separated strat_name_ids",
+        "concept_id": "integer, one or more comma-separated strat_name concept_ids ids"
       },
       "output_formats": [
         "json"
@@ -1994,7 +2173,7 @@
     "project_id": "unique identifier for project, corresponds to general geographic region",
     "strat_name": "text, informal unit name",
     "strat_name_long": "text, the full formal name for a given strat_name",
-    "strat_name_id": "integer, unique identifier for known stratigraphic name (see /defs/strat_names)",
+    "strat_name_id": "integer, unique identifier for known stratigraphic name(s) (see /defs/strat_names)",
     "concept_id": "intger, unique identifier for the stratigraphic name concept, which groups variant strat_names for same entity",
     "strat_name_concept_id": "intger, unique identifier for the stratigraphic name concept, which groups variant strat_names for same entity",
     "name": "text, the name of the entity",
@@ -2111,12 +2290,12 @@
     "unitdesc": "text, description of the unit",
     "unit_name": "text, the name of the unit",
     "lithology": "array of strings, lithologies associated with the unit",
-    "strat_names": "array of integer, strat_name_ids matched to the GMUS polygon or unit_link",
+    "strat_names": "array of integer, strat_name_ids matched to the polygon or unit_link",
     "strat_unit": "text, the stratigraphic unit of the polygon",
-    "gid": "integer, unique polygon ID of a GMUS unit",
+    "gid": "integer, unique polygon ID of a map unit",
     "containing_interval": "text, the interval that includes the top and bottom ages of a unit",
     "unit_link": "text, the ID assigned to a given group of polygons that share common attributes",
-    "macro_units": "array of integers, the unit_ids of Macrostrat units matched to the GMUS polygon or unit_link",
+    "macro_units": "array of integers, the unit_ids of Macrostrat units matched to the polygon or unit_link",
     "interval_color": "text, the hex color associated with the age of the unit",
     "lith_id": "integer, unique ID of the lithology",
     "measure_id": "integer, unique ID of the measurement",
@@ -2144,6 +2323,7 @@
     "packages": "integer, total packages",
     "t_sections": "integer, total sections",
     "t_units": "integer, total units",
+    "t_cols": "integer, total columns",
     "measure": "array, summary of types of measurements available",
     "max_min_thick": "integer, the maximum possible minimum thickness in meters",
     "min_min_thick": "integer, the minimum possible minimum thickness in meters",
@@ -2183,9 +2363,22 @@
     "min_size": "The minimum grainsize in millimeters",
     "max_size": "The maximum grainsize in millimeters",
     "descrip": "text, description of entity in plain text",
-    "t_pos": "The position of unit top in ordering of units in section, optionally in units of m for some columns",
-    "b_pos": "The position of unit bottom in ordering of units in section, optionally in units of m for some columns",
-    "n_intervals": "integer, number of intervals in timescale."
+    "t_pos": "The position of unit top in ordering of units in section, optionally in units of m for some columns (e.g., eODP project)",
+    "b_pos": "The position of unit bottom in ordering of units in section, optionally in units of m for some columns (e.g., eODP project)",
+    "n_intervals": "integer, number of intervals in timescale.",
+    "interval_name": "string, a valid interval name as defined in /defs/intervals",
+    "age_bottom": "decimal, age of bottom of entity (interval_name or unit) in Ma",
+    "age_top": "decimal, age of top of entity (interval_name or unit) in Ma",
+    "best_age_bottom": "decimal, age of bottom of entity (map unit) in Ma; estimate is 'best' because it incorporates multiple age model sources",
+    "best_age_top": "decimal, age of top of entity (map unit) in Ma; estimate is 'best' because it incorporates multiple age model sources",
+    "map_unit_name": "name of map unit in original source, or modified original source",
+    "legend_id": "integer, macrostrat internal identifier for map unit; one or more map_id values are assigned to a legend_id",
+    "tiny_area": "number, area in km^2 of map polygons in tiny-scale topology",
+    "small_area": "number, area in km^2 of map polygons in small-scale topology",
+    "medium_area": "number, area in km^2 of map polygons in medium-scale topology",
+    "large_area": "number, area in km^2 of map polygons in large-scale topology",
+    "age": "string, chronostratigraphic bin assigned to object",
+    "comments": "string, notes assigned to object"
   }
 };
   module.exports = defs;

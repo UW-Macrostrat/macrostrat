@@ -65,6 +65,10 @@ function queryCarto(scale, lng, lat, callback) {
           CASE
             WHEN l.b_interval IS NULL
           THEN ''
+          WHEN l.b_interval=l.t_interval
+          THEN (SELECT interval_name
+            FROM macrostrat.intervals ib
+            WHERE id = l.t_interval)
           ELSE
             (SELECT concat((SELECT interval_name
             FROM macrostrat.intervals ia

@@ -12,6 +12,8 @@ module.exports = function(req, res, next, cb) {
       cols.id AS col_id,
       col_group_id,
       col_name,
+      lat,
+      lng,
       ${req.query.format && api.acceptedFormats.geo[req.query.format] ? 'lng, lat,' : ''}
       SUM(col_area) as col_area,
       SUM(max_thick) as max_thick,
