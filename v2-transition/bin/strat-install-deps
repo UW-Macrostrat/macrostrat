@@ -1,0 +1,4 @@
+# Because the macrostrat command is designed to run on Ubuntu,
+# we feel comfortable asking for users to have
+# certain small utilities installed.
+sudo apt install zsh pv

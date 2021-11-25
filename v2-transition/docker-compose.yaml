@@ -1,6 +1,7 @@
 version: "3"
 services:
   mariadb:
+    # The MariaDB service is Macrostrat's current database service.
     image: mariadb:10.7
     ports:
       - "3306:3306"
@@ -9,5 +10,17 @@ services:
     volumes:
       - mariadb_data:/var/lib/mysql
     restart: unless-stopped
+  postgres:
+    # Macrostrat's newer database clusters are based around PostgreSQL.
+    # This should hopefully handle most of our databases going forward.
+    image: postgis/postgis:14-3.1
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_PASSWORD
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
 volumes:
   mariadb_data:
+  postgres_data:
