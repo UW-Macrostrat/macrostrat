@@ -1,4 +1,4 @@
 #!/usr/bin/env zsh
 
-strat compose up -d $@
-strat compose logs -f --tail=0
+strat compose up --remove-orphans --build -d $@
+strat compose logs -f --tail=100 $@

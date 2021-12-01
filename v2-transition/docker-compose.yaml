@@ -1,5 +1,6 @@
 version: "3"
 services:
+  # DATABASE SERVICES
   mariadb:
     # The MariaDB service is Macrostrat's current database service.
     image: mariadb:10.7
@@ -21,6 +22,12 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
+  api:
+    # Macrostrat API
+    build: services/macrostrat-api
+    expose: [5000]
+    ports:
+      - "80:5000"
 volumes:
   mariadb_data:
   postgres_data:
