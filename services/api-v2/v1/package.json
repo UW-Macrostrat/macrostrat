@@ -8,7 +8,8 @@
     "express-csv": "git://github.com/jczaplew/express-csv.git",
     "geojson-precision": "^0.2.3",
     "mysql": "2.3.x",
-    "pg": "^4.4.0",
+    "pg": "^8.7.1",
+    "pg-native": "^3.0.0",
     "nearest-feature": "git://github.com/jczaplew/nearest-feature.git",
     "turf-point": "^0.1.6",
     "wellknown": "^0.3.0"
