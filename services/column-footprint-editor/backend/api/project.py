@@ -35,12 +35,12 @@ class ProjectsAPI(HTTPEndpoint):
         data = res['updatedModel']
         
 
-        params = dict(id = data['identity_id'], col_name = data['col_name'])
+        params = dict(id = data.get('identity_id', None), col_name = data['col_name'])
         params = {**params, **dict(col_group_id = data['col_group_id'])}
         params['project_id'] = project_id
         params['location'] = json.dumps(data['location'])
 
-        if params['id'] == 'null':
+        if params['id'] == 'null' or params['id'] is None:
             params['col_id'] = None
             sql_fn = procedures / "new-column.sql"
 
