@@ -4,3 +4,6 @@
 [submodule "tools/msutils"]
 	path = tools/macrostrat-utils
 	url = ./tools/msutils
+[submodule "services/rockd-api"]
+	path = services/rockd-api
+	url = git@github.com:UW-Macrostrat/rockd.git
