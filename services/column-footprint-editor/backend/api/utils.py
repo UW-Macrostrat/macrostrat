@@ -1,42 +1,51 @@
-def change_set_clean(change_set):
-    '''
-    This function cleans the change_set passed from frontend
-    Right now it only 
-    '''
-    for line in change_set:
-        id_objects = [] # list of objects {id: "internal id", occurences: [indexes]}
-        if line['action'] == "draw.create":
-            obj = {"id": "", "occurences": []}
-            draw_id = line['feature']['id']
-            obj['id'] = draw_id
-            for index, l in enumerate(change_set):
-                if 'id' in l['feature'] and draw_id == l['feature']['id']:
-                    obj['occurences'].append(index) # add the indexes to occurneces
-            id_objects.append(obj)
-        
-        for obj in id_objects:
-            if len(obj['occurences']) > 1:
-                first_index = obj['occurences'][0]
-                final_index = obj['occurences'][-1]
-                
-                first_line = change_set[first_index]
-                last_line = change_set[final_index]
+def merge(left, right):
+    """ takes two arrays and merges by comparison """
 
-                print(first_line)
-                print(last_line)
-                
-                if last_line['action'] == "draw.delete":
-                    # remove all the lines
-                    print('delete')
-                    for i in sorted(obj['occurences'], reverse=True):
-                        del change_set[i] ## remove all lines by indexes in occurences
-                        ## have to do it in reverse order to not throw off earlier indexes
-                else:
-                    geom = last_line['feature']['geometry']
-                    first_line['feature']['geometry'] = geom
-                    for i in sorted(obj['occurences'][1:], reverse=True):
-                        # remove all occurences except for the first, which we changed to have 
-                        ## the coordinates of the last one.
-                        del change_set[i] 
-        
+    result = []
+    left_i = 0
+    right_i = 0
+    # go one at a time comparing
+    while left_i < len(left) and right_i < len(right):
+        if left[left_i] > right[right_i]:
+            # add right to result
+            result.append(right[right_i])
+            right_i += 1
+        else:
+            result.append(left[left_i])
+            left_i += 1
+    result = result + left[left_i:] + right[right_i:]
+    return result
+
+def merge_sort(array):
+    if len(array) == 1:
+        return array
+    
+    leng = len(array)
+    half_rough = leng // 2
+    left = array[:half_rough]
+    right = array[half_rough:]
+    
+    return merge(merge_sort(left), merge_sort(right))
+
+def clean_change_set(change_set):
+    """ use pointers """
+    for_deletion = []
+    for i in range(len(change_set)):
+        current_line = change_set[i]
+        if current_line['action'] == "draw.create":
+            for j in range(i, len(change_set)):
+                line = change_set[j]
+                if line['feature']['id'] == current_line['feature']['id']:
+                    if line['action'] == "change_coordinates":
+                        current_line['feature']["geometry"] = line['feature']['geometry']
+                        for_deletion.append(j)
+                    elif line['action'] == "draw.delete":
+                        for_deletion.append(i)
+                        for_deletion.append(j)
+                        break
+
+    sorted_deletions = merge_sort(for_deletion)
+    for index in sorted_deletions[::-1]:
+        del change_set[index]
+    
     return change_set

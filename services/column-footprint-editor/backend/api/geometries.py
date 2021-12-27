@@ -5,7 +5,7 @@ from project import Project
 from project.importer import ProjectImporter
 from database import Database
 from pathlib import Path
-from .utils import change_set_clean
+from .utils import clean_change_set
 
 import json
 import simplejson
@@ -80,13 +80,12 @@ class Lines(HTTPEndpoint):
         db = Database(project)
 
 
-        new_change_set = change_set_clean(data['change_set'])
+        new_change_set = clean_change_set(data['change_set'])
         data['change_set'] = new_change_set
 
         try:
             for line in data['change_set']:
                 if line['action'] == "change_coordinates":
-                    print("Changed Coordinates")
 
                     geometry_ = json.dumps(line['feature']['geometry'])
                     id_ = line['feature']['properties']['id']
@@ -95,12 +94,10 @@ class Lines(HTTPEndpoint):
                     db.run_sql_file(change_line_file, params)
 
                 if line['action'] == "draw.delete":
-                    print("Delete a Line")
                     id_ = line['feature']['properties']['id']
                     db.run_sql_file(delete_line_file, {"id_":id_})
 
                 if line['action'] == "draw.create":
-                    print("Add a line")
                     geometry_ = json.dumps(line['feature']['geometry'])
                     db.run_sql_file(create_line_file, {"geometry_":geometry_})
                     
