@@ -1,0 +1,21 @@
+#!/usr/bin/env zsh
+
+backup_server=teststrata
+backup_dir=/Volumes/database/backups/rockd
+
+# Find the newest backup on teststrata
+newest_backup=$(ssh $backup_server "ls -t $backup_dir/*.rockd.sql.gz | head -1")
+
+echo "Found rockd backup $newest_backup on $backup_server" 
+
+# Install the database locally
+
+dbname=rockd
+strat compose exec postgres psql -Upostgres -c "DROP DATABASE $dbname WITH (FORCE);"
+strat compose exec postgres createdb -Upostgres $dbname
+
+# NOTE: some rockd features appear to use foreign tables into the 'burwell' database.
+# So that will need to be loaded in order to have all features available.
+
+# Pipe directly from backup into database
+ssh $backup_server "gzcat $newest_backup" | pv -cN zcat | strat compose exec -T postgres psql -Upostgres $dbname
