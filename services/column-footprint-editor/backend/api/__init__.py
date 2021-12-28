@@ -18,7 +18,7 @@ routes = [
     Route('/{project_id}/lines', Lines, methods=['GET', 'PUT']),
     Route("/projects", ProjectsAPI, methods=["GET", "POST", "PUT"]),
     Route('/import', import_topologies, methods=['POST']),
-    Route('/{project_id}/col-groups', ColumnGroups, methods=["GET", "POST"]),
+    Route('/{project_id}/col-groups', ColumnGroups, methods=["GET", "POST", "PUT"]),
     Route('/get-line', get_line, methods=['POST']),
     Route('/{project_id}/csv', get_csv, methods=['GET'])
 ]

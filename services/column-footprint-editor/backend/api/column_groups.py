@@ -44,8 +44,8 @@ class ColumnGroups(HTTPEndpoint):
     async def post(self, request):
         """ Endpoint for new Column Groups """
 
-        sql = """INSERT INTO ${project_schema}.column_groups(col_group_id, col_group, col_group_name)VALUES(
-            :col_group_id,:col_group,:col_group_name
+        sql = """INSERT INTO ${project_schema}.column_groups(col_group_id, col_group, col_group_name, color)VALUES(
+            :col_group_id,:col_group,:col_group_name,:color
         )  """
 
         project = Project(request.path_params['project_id'])
@@ -53,6 +53,8 @@ class ColumnGroups(HTTPEndpoint):
         res = await request.json()
 
         params = res['updatedModel']
+        if res.get('color') is None:
+            params['color'] = None
         params['col_group_id'] = project.db.get_next_col_group_id()
 
         try:
@@ -61,3 +63,28 @@ class ColumnGroups(HTTPEndpoint):
             return JSONResponse({"error": str(error)})
         
         return JSONResponse({"status":"success", "col_group_id": params['col_group_id']})
+
+    async def put(self, request):
+        """ Endpoint for Editing Existing Column Groups """
+
+        sql = """ 
+            UPDATE ${project_schema}.column_groups cg
+                SET col_group = :col_group,
+                col_group_name = :col_group_name,
+                color = :color
+            WHERE cg.col_group_id = :col_group_id
+         """
+        project = Project(request.path_params['project_id'])
+
+        res = await request.json()
+
+        params = res['updatedModel']
+        if res['updatedModel'].get('color') is None:
+            params['color'] = None
+
+        try:
+            project.db.run_sql(sql, params)
+        except error:
+            return JSONResponse({"error": str(error)})
+        
+        return JSONResponse({"status":"success", **params})

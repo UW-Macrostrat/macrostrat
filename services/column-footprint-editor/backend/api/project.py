@@ -37,6 +37,7 @@ class ProjectsAPI(HTTPEndpoint):
 
         params = dict(id = data.get('identity_id', None), col_name = data['col_name'])
         params = {**params, **dict(col_group_id = data['col_group_id'])}
+        params['description'] = data['description']
         params['project_id'] = project_id
         params['location'] = json.dumps(data['location'])
 

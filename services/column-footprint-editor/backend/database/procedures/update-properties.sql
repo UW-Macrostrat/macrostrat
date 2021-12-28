@@ -6,6 +6,7 @@ WITH A AS(
 )
 UPDATE ${project_schema}.columns c
 SET col_name = A.col_name,
-    col_group = A.id
+    col_group = A.id,
+    description = :description
 FROM A
 WHERE c.id = :id;
