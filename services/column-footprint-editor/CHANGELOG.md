@@ -92,6 +92,21 @@ more effecient and works better.
 
 The `SnapLineMode` creates valid multiline strings. Now when using the tool if you snap to a non-vertix point on an existing line, it creates a vertix on that line at that position. This makes creating columns easier and more effcient.
 
+12/27/21:
+
+Backend:
+
+- `clean_change_set` function is more efficient.
+
+Frontend:
+
+- U.I enhancements: Remodeled navbar and main overlay. About tab has short 'how to' section. Property dialog is draggable.
+- Increased the click-buffer when determining which features' points should be dragged, increasing drag reliability. Also,
+  when holding down the `shift` key while clicking on a vertex will ignore any dragging, allowing for un-linking vertices.
+- Draw Polygon mode is much more enhanced. OnClick a n-sided polygon (hexagon by default) is created and mousemove will change
+  size of the polgyon. Pressing 'a' (add) and 's' (subtract) allow the user to add or subtract how many sides the n-sided polygon
+  has (minimum 3).
+
 ### Bugs:
 
 Strange console error, `Cannot read property 'getSelectedIds' of null`, on stopDragging event
