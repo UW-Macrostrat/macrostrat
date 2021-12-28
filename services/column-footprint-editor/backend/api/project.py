@@ -49,8 +49,9 @@ class ProjectsAPI(HTTPEndpoint):
         except error:
             print(error)
             return JSONResponse({"status": "error", "message": f'{error}'})
-        
-        return JSONResponse({"statue": f'success'})
+
+        params['location'] = data['location']
+        return JSONResponse({"statue": f'success', "project": params})
     
     async def post(self, request):
         res = await request.json()
