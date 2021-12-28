@@ -92,6 +92,14 @@ more effecient and works better.
 
 The `SnapLineMode` creates valid multiline strings. Now when using the tool if you snap to a non-vertix point on an existing line, it creates a vertix on that line at that position. This makes creating columns easier and more effcient.
 
+12/28/21:
+
+Minro database schema change to allow for a description field and color field in columns and column_groups
+respectively.
+
+Users can add a description to any column via the properties dialog as well as add a color to a column group.
+Column groups are now editable through the frontend.
+
 ### Bugs:
 
 Strange console error, `Cannot read property 'getSelectedIds' of null`, on stopDragging event
