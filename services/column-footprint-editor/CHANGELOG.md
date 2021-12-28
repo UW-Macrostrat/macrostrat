@@ -92,6 +92,21 @@ more effecient and works better.
 
 The `SnapLineMode` creates valid multiline strings. Now when using the tool if you snap to a non-vertix point on an existing line, it creates a vertix on that line at that position. This makes creating columns easier and more effcient.
 
+12/27/21:
+
+Backend:
+
+- `clean_change_set` function is more efficient.
+
+Frontend:
+
+- U.I enhancements: Remodeled navbar and main overlay. About tab has short 'how to' section. Property dialog is draggable.
+- Increased the click-buffer when determining which features' points should be dragged, increasing drag reliability. Also,
+  when holding down the `shift` key while clicking on a vertex will ignore any dragging, allowing for un-linking vertices.
+- Draw Polygon mode is much more enhanced. OnClick a n-sided polygon (hexagon by default) is created and mousemove will change
+  size of the polgyon. Pressing 'a' (add) and 's' (subtract) allow the user to add or subtract how many sides the n-sided polygon
+  has (minimum 3).
+
 12/28/21:
 
 Minro database schema change to allow for a description field and color field in columns and column_groups
@@ -99,7 +114,6 @@ respectively.
 
 Users can add a description to any column via the properties dialog as well as add a color to a column group.
 Column groups are now editable through the frontend.
-
 ### Bugs:
 
 Strange console error, `Cannot read property 'getSelectedIds' of null`, on stopDragging event
@@ -107,11 +121,9 @@ Strange console error, `Cannot read property 'getSelectedIds' of null`, on stopD
 - This occurs during the onTouchEnd and onMouseUp in the custom direct_select
 - During the `this.fireUpdate()`
 
-Forseable Bug-- when deciding how map-faces get col identity, it is possible that a user will cut an identity column, which would mean both columns, old and generated, would recieve the same identity. I think to solve this we could employ a frontend warning or something.
-
-`isEditing` state of prop overlay needs to be better handled onClose or onSave.
-
 ### Next Steps/ Wanted Features:
+
+__POINTS MODE__: I want the functionality to see and change the location of the idenitity points. Could be a toggle.
 
 Backend workflow to remove an identity polygon when there are two for an geometry.
 
@@ -120,15 +132,7 @@ Backend workflow to remove an identity polygon when there are two for an geometr
 - Will include all geometries and identity polygons as point
   - for that `ST_Centroid` will work because the identity polygons are symmetrical.
 
-Dockerization
-
 Maybe have the ability to teselate polygons into n internal polygons.
-
-Ability to copy the properties, i.e `column_name`, `col_group`, `col_group_name` from nearby columns.. Maybe a suggester based on columns nearby.
-
-Move viewport to "next column without an column property."
-
-Export CSV
 
 Burwell Layer
 
@@ -139,5 +143,3 @@ eODP -- drill hole points, polygons aren't showing up. Perhaps render the centro
 Feedback on import and create new project should catch errors and display them
 
 Download individual columns, column-groups and selected columns (multiple)
-
-Notes field for column properties
