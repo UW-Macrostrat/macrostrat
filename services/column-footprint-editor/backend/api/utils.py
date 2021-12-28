@@ -43,9 +43,9 @@ def clean_change_set(change_set):
                         for_deletion.append(i)
                         for_deletion.append(j)
                         break
-
-    sorted_deletions = merge_sort(for_deletion)
-    for index in sorted_deletions[::-1]:
-        del change_set[index]
+    if len(for_deletion):                
+        sorted_deletions = merge_sort(for_deletion)
+        for index in sorted_deletions[::-1]:
+            del change_set[index]
     
     return change_set
