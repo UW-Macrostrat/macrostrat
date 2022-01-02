@@ -7,3 +7,6 @@
 [submodule "services/rockd-api"]
 	path = services/rockd-api
 	url = git@github.com:UW-Macrostrat/rockd.git
+[submodule "services/tileserver"]
+	path = services/tileserver
+	url = https://github.com/UW-Macrostrat/tileserver.git
