@@ -9,4 +9,4 @@ RUN python setup.py egg_info && pip install -r *.egg-info/requires.txt
 
 COPY ./ /code/
 
-RUN pip install .
+RUN pip install -e .
