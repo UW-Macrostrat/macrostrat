@@ -4,7 +4,7 @@ from subprocess import call
 
 from setuptools import Command, find_packages, setup
 
-from cli import __version__
+from macrostrat_cli import __version__
 
 
 this_dir = abspath(dirname(__file__))
@@ -68,7 +68,7 @@ setup(
     # },
     entry_points={
         "console_scripts": [
-            "macrostrat=cli.cli:main",
+            "macrostrat=macrostrat_cli.cli:main",
         ],
     },
     # cmdclass = {'test': RunTests},
