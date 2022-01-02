@@ -1,23 +1,29 @@
 from ..base import Base
 
+
 class Stats(Base):
     def __init__(self, *args):
         Base.__init__(self, {}, *args)
 
     def run(self):
-        self.mariadb['cursor'].execute("""
+        self.mariadb["cursor"].execute(
+            """
             DROP TABLE IF EXISTS stats_new;
-        """)
-        self.mariadb['cursor'].close()
-        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
+        """
+        )
+        self.mariadb["cursor"].close()
+        self.mariadb["cursor"] = self.mariadb["connection"].cursor()
 
-        self.mariadb['cursor'].execute("""
+        self.mariadb["cursor"].execute(
+            """
             DROP TABLE IF EXISTS stats_old;
-        """)
-        self.mariadb['cursor'].close()
-        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
+        """
+        )
+        self.mariadb["cursor"].close()
+        self.mariadb["cursor"] = self.mariadb["connection"].cursor()
 
-        self.mariadb['cursor'].execute("""
+        self.mariadb["cursor"].execute(
+            """
             CREATE TABLE stats_new AS (
                 SELECT
                   projects.id AS project_id,
@@ -59,44 +65,57 @@ class Stats(Base):
                   GROUP BY distinct_collections.project_id
                 ) AS collection_counts ON collection_counts.project_id = projects.id
             )
-        """)
+        """
+        )
 
-        self.mariadb['cursor'].execute("""
+        self.mariadb["cursor"].execute(
+            """
             ALTER TABLE stats_new ADD COLUMN burwell_polygons integer default 0;
-        """)
+        """
+        )
 
-        self.mariadb['cursor'].close()
-        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
+        self.mariadb["cursor"].close()
+        self.mariadb["cursor"] = self.mariadb["connection"].cursor()
 
-        self.pg['cursor'].execute("""
+        self.pg["cursor"].execute(
+            """
             SELECT SUM(features) foo FROM maps.sources WHERE status_code='active'
-        """)
-        count = self.pg['cursor'].fetchone()[0]
+        """
+        )
+        count = self.pg["cursor"].fetchone()[0]
 
-        self.mariadb['cursor'].execute("UPDATE stats_new SET burwell_polygons = %d" % count)
-        self.mariadb['connection'].commit()
+        self.mariadb["cursor"].execute(
+            "UPDATE stats_new SET burwell_polygons = %d" % count
+        )
+        self.mariadb["connection"].commit()
 
         try:
-            self.mariadb['cursor'].execute("""
+            self.mariadb["cursor"].execute(
+                """
                 ALTER TABLE stats rename to stats_old;
-            """)
-            self.mariadb['cursor'].close()
-            self.mariadb['cursor'] = self.mariadb['connection'].cursor()
+            """
+            )
+            self.mariadb["cursor"].close()
+            self.mariadb["cursor"] = self.mariadb["connection"].cursor()
         except:
             pass
 
-        self.mariadb['cursor'].execute("""
+        self.mariadb["cursor"].execute(
+            """
             ALTER TABLE stats_new rename to stats;
-        """)
-        self.mariadb['cursor'].close()
-        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
+        """
+        )
+        self.mariadb["cursor"].close()
+        self.mariadb["cursor"] = self.mariadb["connection"].cursor()
 
-        self.mariadb['cursor'].execute("""
+        self.mariadb["cursor"].execute(
+            """
             DROP TABLE IF EXISTS stats_old;
-        """)
-        self.mariadb['cursor'].close()
-        self.mariadb['cursor'] = self.mariadb['connection'].cursor()
+        """
+        )
+        self.mariadb["cursor"].close()
+        self.mariadb["cursor"] = self.mariadb["connection"].cursor()
 
-        self.mariadb['connection'].close()
+        self.mariadb["connection"].close()
 
-        self.pg['connection'].close()
+        self.pg["connection"].close()

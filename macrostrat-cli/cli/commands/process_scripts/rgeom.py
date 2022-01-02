@@ -4,6 +4,7 @@ import sys
 from ..base import Base
 from psycopg2.extensions import AsIs
 
+
 class RGeom(Base):
     """
     macrostrat process rgeom <source_id>:
@@ -28,92 +29,133 @@ class RGeom(Base):
       For help using this tool, please open an issue on the Github repository:
       https://github.com/UW-Macrostrat/macrostrat-cli
     """
+
     meta = {
-        'mariadb': False,
-        'pg': True,
-        'usage': """
+        "mariadb": False,
+        "pg": True,
+        "usage": """
             Populates the field `rgeom` for a given geologic map source.
         """,
-        'required_args': {
-            'source_id': 'A valid source_id'
-        }
+        "required_args": {"source_id": "A valid source_id"},
     }
+
     def __init__(self, connections, *args):
         Base.__init__(self, connections, *args)
 
     def run(self, source_id):
-        if len(source_id) == 0 or source_id[0] == '--help' or source_id[0] == '-h':
-            print RGeom.__doc__
+        if len(source_id) == 0 or source_id[0] == "--help" or source_id[0] == "-h":
+            print(RGeom.__doc__)
             sys.exit()
 
         source_id = source_id[0]
 
         # Get the name of the primary table
-        self.pg['cursor'].execute("""
+        self.pg["cursor"].execute(
+            """
             SELECT scale
             FROM maps.sources
             WHERE source_id = %(source_id)s
-        """, {
-            'source_id': source_id
-        })
+        """,
+            {"source_id": source_id},
+        )
 
-        result = self.pg['cursor'].fetchone()
+        result = self.pg["cursor"].fetchone()
 
         scale = result[0]
         primary_table = result[0] + str(source_id)
 
-        FNULL = open(os.devnull, 'w')
+        FNULL = open(os.devnull, "w")
 
         # Clean up
-        call(['rm %s.*' % (primary_table ,)], shell=True, stdout=FNULL)
-        call(['rm %s_rgeom.*' % (primary_table, )], shell=True, stdout=FNULL)
+        call(["rm %s.*" % (primary_table,)], shell=True, stdout=FNULL)
+        call(["rm %s_rgeom.*" % (primary_table,)], shell=True, stdout=FNULL)
 
         # Drop the temporary table
-        self.pg['cursor'].execute("""
+        self.pg["cursor"].execute(
+            """
             DROP TABLE IF EXISTS public.%(primary_table)s
-        """, {
-            'primary_table': AsIs(primary_table + '_rgeom')
-        })
-        self.pg['connection'].commit()
+        """,
+            {"primary_table": AsIs(primary_table + "_rgeom")},
+        )
+        self.pg["connection"].commit()
 
         # Write it to a shapefile
-        call(['pgsql2shp -f %s.shp -u %s -h %s -p %s burwell "SELECT geom FROM maps.%s WHERE source_id = %s" ' % (primary_table, self.credentials['pg_user'], self.credentials['pg_host'], self.credentials['pg_port'], scale, source_id)], shell=True, stdout=FNULL)
+        call(
+            [
+                'pgsql2shp -f %s.shp -u %s -h %s -p %s burwell "SELECT geom FROM maps.%s WHERE source_id = %s" '
+                % (
+                    primary_table,
+                    self.credentials["pg_user"],
+                    self.credentials["pg_host"],
+                    self.credentials["pg_port"],
+                    scale,
+                    source_id,
+                )
+            ],
+            shell=True,
+            stdout=FNULL,
+        )
 
         # Simplify it with mapshaper
-        call(['mapshaper -i %s.shp -dissolve -o %s_rgeom.shp' % (primary_table, primary_table)], shell=True, stdout=FNULL)
+        call(
+            [
+                "mapshaper -i %s.shp -dissolve -o %s_rgeom.shp"
+                % (primary_table, primary_table)
+            ],
+            shell=True,
+            stdout=FNULL,
+        )
 
         # Import the simplified geometry into PostGIS
-        call(['shp2pgsql -s 4326 -I %s_rgeom.shp public.%s_rgeom | psql -h %s -p %s -U %s -d burwell' % (primary_table, primary_table, self.credentials['pg_host'], self.credentials['pg_port'], self.credentials['pg_user'])], shell=True, stdout=FNULL)
+        call(
+            [
+                "shp2pgsql -s 4326 -I %s_rgeom.shp public.%s_rgeom | psql -h %s -p %s -U %s -d burwell"
+                % (
+                    primary_table,
+                    primary_table,
+                    self.credentials["pg_host"],
+                    self.credentials["pg_port"],
+                    self.credentials["pg_user"],
+                )
+            ],
+            shell=True,
+            stdout=FNULL,
+        )
 
-        print '     Validating geometry...'
-        self.pg['cursor'].execute("""
+        print("     Validating geometry...")
+        self.pg["cursor"].execute(
+            """
             ALTER TABLE public.%(primary_table)s ALTER COLUMN geom SET DATA TYPE geometry;
 
             UPDATE public.%(primary_table)s
             SET geom = ST_SetSRID(ST_Buffer(ST_MakeValid(geom), 0), 4326);
-        """, {
-            "primary_table": AsIs(primary_table + '_rgeom')
-        })
-        self.pg['connection'].commit()
+        """,
+            {"primary_table": AsIs(primary_table + "_rgeom")},
+        )
+        self.pg["connection"].commit()
 
-        if self.args and '--simple' in self.args[0]:
-            self.pg['cursor'].execute("""
+        if self.args and "--simple" in self.args[0]:
+            self.pg["cursor"].execute(
+                """
                 UPDATE maps.sources
                 SET rgeom = (
                     SELECT geom
                     FROM public.%(primary_table)s
                 )
                 WHERE source_id = %(source_id)s
-            """, {
-                'primary_table': AsIs(primary_table + '_rgeom'),
-                'source_id': source_id
-            })
-            self.pg['connection'].commit()
+            """,
+                {
+                    "primary_table": AsIs(primary_table + "_rgeom"),
+                    "source_id": source_id,
+                },
+            )
+            self.pg["connection"].commit()
 
         else:
-            print '     Processing geometry...'
+            print("     Processing geometry...")
             # Update the sources table
-            self.pg['cursor'].execute("""
+            self.pg["cursor"].execute(
+                """
                 UPDATE maps.sources
                 SET rgeom = (
                     WITH dump AS (
@@ -162,19 +204,22 @@ class RGeom(Base):
                     )
                 )
                 WHERE source_id = %(source_id)s
-            """, {
-                'primary_table': AsIs(primary_table + '_rgeom'),
-                'source_id': source_id
-            })
-            self.pg['connection'].commit()
+            """,
+                {
+                    "primary_table": AsIs(primary_table + "_rgeom"),
+                    "source_id": source_id,
+                },
+            )
+            self.pg["connection"].commit()
 
         # Drop the temporary table
-        self.pg['cursor'].execute("""
+        self.pg["cursor"].execute(
+            """
             DROP TABLE public.%(primary_table)s
-        """, {
-            'primary_table': AsIs(primary_table + '_rgeom')
-        })
-        self.pg['connection'].commit()
+        """,
+            {"primary_table": AsIs(primary_table + "_rgeom")},
+        )
+        self.pg["connection"].commit()
 
         # Clean up the working directory
-        call(['rm %s*' % (primary_table, )], shell=True)
+        call(["rm %s*" % (primary_table,)], shell=True)

@@ -2,7 +2,8 @@ from .base import Base
 import sys
 import datetime
 from psycopg2.extensions import AsIs
-import process_scripts
+from . import process_scripts
+
 
 class Process(Base):
     """
@@ -30,32 +31,44 @@ class Process(Base):
       For help using this tool, please open an issue on the Github repository:
       https://github.com/UW-Macrostrat/macrostrat-cli
     """
+
     def __init__(self, connections, *args):
         Base.__init__(self, connections, *args)
 
     def run(self):
         # Check if a table was provided
         if len(self.args) == 1:
-            print 'Please specify a command'
+            print("Please specify a command")
             for cmd in dir(process_scripts):
-                if cmd[:2] != '__':
-                    print '   %s' % (cmd, )
+                if cmd[:2] != "__":
+                    print("   %s" % (cmd,))
             sys.exit()
 
         # Validate the passed table
         cmd = self.args[1]
         if cmd not in dir(process_scripts):
-            print 'Invalid command'
+            print("Invalid command")
             sys.exit()
 
         script = getattr(process_scripts, cmd)
 
-        if (len(self.args) - 2) < len(script.meta['required_args']) and cmd != 'tesselate':
-            print 'You are missing a required argument for this command. The following arguments are required:'
-            for arg in script.meta['required_args']:
-                print '     + %s - %s' % (arg, script.meta['required_args'][arg])
+        if (len(self.args) - 2) < len(
+            script.meta["required_args"]
+        ) and cmd != "tesselate":
+            print(
+                "You are missing a required argument for this command. The following arguments are required:"
+            )
+            for arg in script.meta["required_args"]:
+                print("     + %s - %s" % (arg, script.meta["required_args"][arg]))
             sys.exit()
 
-        script = script({'pg': self.pg['raw_connection'], 'mariadb': self.mariadb['raw_connection'], 'credentials': self.credentials }, self.args[2:])
+        script = script(
+            {
+                "pg": self.pg["raw_connection"],
+                "mariadb": self.mariadb["raw_connection"],
+                "credentials": self.credentials,
+            },
+            self.args[2:],
+        )
 
         script.run(self.args[2:])

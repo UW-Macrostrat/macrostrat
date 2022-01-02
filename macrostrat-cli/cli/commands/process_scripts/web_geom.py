@@ -1,6 +1,7 @@
 from ..base import Base
 import sys
 
+
 class WebGeom(Base):
     """
     macrostrat process web_geom <source_id>:
@@ -21,30 +22,29 @@ class WebGeom(Base):
       For help using this tool, please open an issue on the Github repository:
       https://github.com/UW-Macrostrat/macrostrat-cli
     """
+
     meta = {
-        'mariadb': False,
-        'pg': True,
-        'usage': """
+        "mariadb": False,
+        "pg": True,
+        "usage": """
             Populates the field `web_geom` for a given geologic map source.
         """,
-        'required_args': {
-            'source_id': 'A valid source_id'
-        }
+        "required_args": {"source_id": "A valid source_id"},
     }
 
     def __init__(self, connections, *args):
         Base.__init__(self, connections, *args)
 
-
     def run(self, source_id):
-        if len(source_id) == 0 or source_id[0] == '--help' or source_id[0] == '-h':
-            print WebGeom.__doc__
+        if len(source_id) == 0 or source_id[0] == "--help" or source_id[0] == "-h":
+            print(WebGeom.__doc__)
             sys.exit()
 
         source_id = source_id[0]
 
         # Get the primary table of the target source
-        self.pg['cursor'].execute("""
+        self.pg["cursor"].execute(
+            """
             WITH first as (
                 SELECT source_id, (ST_Dump(ST_Split(ST_SetSRID(rgeom, 4326), ST_SetSRID(ST_MakeLine(ST_MakePoint(-180, 90), ST_MakePoint(-180, -90)), 4326)))).geom
                 FROM maps.sources
@@ -99,7 +99,7 @@ class WebGeom(Base):
              GROUP BY source_id
             )
             WHERE source_id = %(source_id)s;
-        """, {
-            "source_id": source_id
-        })
-        self.pg['connection'].commit()
+        """,
+            {"source_id": source_id},
+        )
+        self.pg["connection"].commit()

@@ -4,6 +4,7 @@ import sys
 import spectra
 import random
 
+
 class LegendLookup(Base):
     """
     macrostrat process legend_lookup <source_id>:
@@ -23,51 +24,52 @@ class LegendLookup(Base):
     """
 
     meta = {
-        'mariadb': False,
-        'pg': True,
-        'usage': """
+        "mariadb": False,
+        "pg": True,
+        "usage": """
             Refresh the appropriate lookup tables for a given map source
         """,
-        'required_args': {
-            'source_id': 'A valid source_id'
-        }
+        "required_args": {"source_id": "A valid source_id"},
     }
     scaleIsIn = {
-        'tiny': ['tiny', 'small'],
-        'small': ['small', 'medium'],
-        'medium': ['medium', 'large'],
-        'large': ['large']
+        "tiny": ["tiny", "small"],
+        "small": ["small", "medium"],
+        "medium": ["medium", "large"],
+        "large": ["large"],
     }
 
     def __init__(self, connections, *args):
         Base.__init__(self, connections, *args)
 
-
     def run(self, source_id):
-        if len(source_id) == 0 or source_id[0] == '--help' or source_id[0] == '-h':
-            print LegendLookup.__doc__
+        if len(source_id) == 0 or source_id[0] == "--help" or source_id[0] == "-h":
+            print(LegendLookup.__doc__)
             sys.exit()
 
         source_id = source_id[0]
 
-        self.pg['cursor'].execute('''
+        self.pg["cursor"].execute(
+            """
             SELECT scale
             FROM maps.sources
             WHERE source_id = %(source_id)s
-        ''', { 'source_id': source_id })
-        scale = self.pg['cursor'].fetchone()
+        """,
+            {"source_id": source_id},
+        )
+        scale = self.pg["cursor"].fetchone()
 
         if scale is None:
-            print 'Source ID %s was not found in maps.sources' % (source_id, )
+            print("Source ID %s was not found in maps.sources" % (source_id,))
             sys.exit(1)
 
         if scale[0] is None:
-            print 'Source ID %s is missing a scale' % (source_id, )
+            print("Source ID %s is missing a scale" % (source_id,))
             sys.exit(1)
 
         scale = scale[0]
 
-        self.pg['cursor'].execute("""
+        self.pg["cursor"].execute(
+            """
             -- Find unique match types for units
            WITH unit_bases AS (
              SELECT legend_id, array_agg(distinct basis_col) bases
@@ -175,13 +177,13 @@ class LegendLookup(Base):
            SET unit_ids = units.unit_ids
            FROM units
            WHERE units.legend_id = legend.legend_id;
-        """, {
-           'scale': AsIs(scale),
-           'source_id': source_id
-        })
-        self.pg['connection'].commit()
+        """,
+            {"scale": AsIs(scale), "source_id": source_id},
+        )
+        self.pg["connection"].commit()
 
-        self.pg['cursor'].execute("""
+        self.pg["cursor"].execute(
+            """
             -- Find unique match types of strat_names
             WITH strat_name_bases AS (
               SELECT legend_id, array_agg(distinct basis_col) bases
@@ -301,14 +303,14 @@ class LegendLookup(Base):
             SET strat_name_ids = strat_names.strat_name_ids
             FROM strat_names
             WHERE strat_names.legend_id = legend.legend_id;
-        """, {
-            'scale': AsIs(scale),
-            'source_id': source_id
-        })
-        self.pg['connection'].commit()
+        """,
+            {"scale": AsIs(scale), "source_id": source_id},
+        )
+        self.pg["connection"].commit()
 
         # Update specific liths
-        self.pg['cursor'].execute("""
+        self.pg["cursor"].execute(
+            """
             WITH lith_bases AS (
               SELECT array_agg(distinct basis_col) bases, q.legend_id
               FROM maps.legend_liths
@@ -350,14 +352,14 @@ class LegendLookup(Base):
             SET lith_ids = liths.lith_ids, lith_types = liths.lith_types, lith_classes = liths.lith_classes
             FROM liths
             WHERE liths.legend_id = legend.legend_id;
-        """, {
-            'scale': AsIs(scale),
-            'source_id': source_id
-        })
-        self.pg['connection'].commit()
+        """,
+            {"scale": AsIs(scale), "source_id": source_id},
+        )
+        self.pg["connection"].commit()
 
         # Update all liths
-        self.pg['cursor'].execute("""
+        self.pg["cursor"].execute(
+            """
             UPDATE maps.legend
             SET
                 all_lith_ids = sub.lith_ids,
@@ -376,13 +378,14 @@ class LegendLookup(Base):
                 GROUP BY legend.legend_id
             ) sub
             WHERE legend.legend_id = sub.legend_id;
-        """, {
-            'source_id': source_id
-        })
-        self.pg['connection'].commit()
+        """,
+            {"source_id": source_id},
+        )
+        self.pg["connection"].commit()
 
         # Update concept_ids and strat_name_children
-        self.pg['cursor'].execute("""
+        self.pg["cursor"].execute(
+            """
             WITH more_strat_names AS (
                 SELECT
                     sub.legend_id,
@@ -470,14 +473,14 @@ class LegendLookup(Base):
                 strat_name_children = COALESCE(more_strat_names.strat_name_children, '{}')
             FROM more_strat_names
             WHERE more_strat_names.legend_id = legend.legend_id;
-        """, {
-            'scale': AsIs(scale),
-            'source_id': source_id
-        })
-        self.pg['connection'].commit()
+        """,
+            {"scale": AsIs(scale), "source_id": source_id},
+        )
+        self.pg["connection"].commit()
 
         # Update best_age_top and best_age_bottom and color
-        self.pg['cursor'].execute("""
+        self.pg["cursor"].execute(
+            """
             WITH ages AS (
                 SELECT
                  legend_id,
@@ -516,14 +519,14 @@ class LegendLookup(Base):
               END
             FROM ages
             WHERE ages.legend_id = legend.legend_id;
-        """, {
-            'scale': AsIs(scale),
-            'source_id': source_id
-        })
-        self.pg['connection'].commit()
+        """,
+            {"scale": AsIs(scale), "source_id": source_id},
+        )
+        self.pg["connection"].commit()
 
         # Shift colors where needed
-        self.pg['cursor'].execute("""
+        self.pg["cursor"].execute(
+            """
             SELECT color, c, legend_ids, best_age_bottom, best_age_top
             FROM (
                 select color, count(*) c, array_agg(legend_id) AS legend_ids, best_age_bottom, best_age_top
@@ -532,8 +535,10 @@ class LegendLookup(Base):
                 GROUP BY color, best_age_bottom, best_age_top
             ) sub
             WHERE c > 1;
-        """, { 'source_id': source_id })
-        colors = self.pg['cursor'].fetchall()
+        """,
+            {"source_id": source_id},
+        )
+        colors = self.pg["cursor"].fetchall()
 
         for color in colors:
             if color.color is None:
@@ -541,7 +546,7 @@ class LegendLookup(Base):
             try:
                 c = spectra.html(color.color)
             except:
-                print color
+                print(color)
                 continue
 
             variants = [
@@ -555,7 +560,7 @@ class LegendLookup(Base):
                 c.desaturate(amount=10).hexcode,
                 c.desaturate(amount=20).hexcode,
                 c.saturate(amount=20).hexcode,
-                c.saturate(amount=30).hexcode
+                c.saturate(amount=30).hexcode,
             ]
             used_variants = []
 
@@ -578,20 +583,20 @@ class LegendLookup(Base):
                     elif loops > len(variants):
                         used_variants = []
 
-
-                self.pg['cursor'].execute("""
+                self.pg["cursor"].execute(
+                    """
                     UPDATE maps.legend
                     SET color = %(color)s
                     WHERE legend_id = %(legend_id)s
-                """, {
-                    'color': new_color,
-                    'legend_id': legend_id
-                })
+                """,
+                    {"color": new_color, "legend_id": legend_id},
+                )
 
-            self.pg['connection'].commit()
+            self.pg["connection"].commit()
 
         # Now go back and homogenize similar units
-        self.pg['cursor'].execute("""
+        self.pg["cursor"].execute(
+            """
             WITH first AS (
                 SELECT DISTINCT ON (legend.name, b_interval, t_interval) legend.name, b_interval, t_interval, count(distinct legend_id), array_agg(distinct legend_id) AS legend_ids, array_agg(distinct color) AS colors
                 FROM maps.legend
@@ -602,20 +607,22 @@ class LegendLookup(Base):
             SELECT legend_ids, colors
             FROM first
             WHERE array_length(legend_ids, 1) > 1;
-        """, { 'scales': LegendLookup.scaleIsIn[scale] })
-        similar_units = self.pg['cursor'].fetchall()
+        """,
+            {"scales": LegendLookup.scaleIsIn[scale]},
+        )
+        similar_units = self.pg["cursor"].fetchall()
 
         for idx, unit in enumerate(similar_units):
             # print '%s of %s' % (idx, len(similar_units), )
             # Just pick the first color
             color = unit.colors[0]
 
-            self.pg['cursor'].execute("""
+            self.pg["cursor"].execute(
+                """
                 UPDATE maps.legend
                 SET color = %(color)s
                 WHERE legend_id = ANY(%(legend_id)s)
-            """, {
-                'color': color,
-                'legend_id': unit.legend_ids
-            })
-            self.pg['connection'].commit()
+            """,
+                {"color": color, "legend_id": unit.legend_ids},
+            )
+            self.pg["connection"].commit()

@@ -2,6 +2,7 @@ from ..base import Base
 from psycopg2.extensions import AsIs
 import sys
 
+
 class BurwellLookup(Base):
     """
     macrostrat process burwell_lookup <source_id>:
@@ -22,25 +23,19 @@ class BurwellLookup(Base):
     """
 
     meta = {
-        'mariadb': False,
-        'pg': True,
-        'usage': """
+        "mariadb": False,
+        "pg": True,
+        "usage": """
             Refresh the appropriate lookup tables for a given map source
         """,
-        'required_args': {
-            'source_id': 'A valid source_id'
-        }
+        "required_args": {"source_id": "A valid source_id"},
     }
-    UNDER = {
-        'small': 'tiny',
-        'medium': 'small',
-        'large': 'medium'
-    }
+    UNDER = {"small": "tiny", "medium": "small", "large": "medium"}
     scaleIsIn = {
-        'tiny': ['tiny'],
-        'small': ['small', 'medium'],
-        'medium': ['small', 'medium', 'large'],
-        'large': ['large']
+        "tiny": ["tiny"],
+        "small": ["small", "medium"],
+        "medium": ["small", "medium", "large"],
+        "large": ["large"],
     }
 
     source_id = None
@@ -49,14 +44,16 @@ class BurwellLookup(Base):
         Base.__init__(self, connections, *args)
 
     def source_stats(self):
-        self.pg['cursor'].execute("""
+        self.pg["cursor"].execute(
+            """
           SELECT primary_table FROM maps.sources WHERE source_id = %(source_id)s
-        """, {
-            'source_id': self.source_id
-        })
-        primary_table = self.pg['cursor'].fetchone().primary_table
+        """,
+            {"source_id": self.source_id},
+        )
+        primary_table = self.pg["cursor"].fetchone().primary_table
 
-        self.pg['cursor'].execute("""
+        self.pg["cursor"].execute(
+            """
           WITH second AS (
             SELECT ST_MakeValid(geom) geom FROM sources.%(primary_table)s
           ),
@@ -72,26 +69,28 @@ class BurwellLookup(Base):
           UPDATE maps.sources
           SET display_scales = ARRAY[scale]
           WHERE source_id = %(source_id)s;
-        """, {
-            'primary_table': AsIs(primary_table),
-            'source_id': self.source_id
-        })
-        self.pg['connection'].commit()
-
+        """,
+            {"primary_table": AsIs(primary_table), "source_id": self.source_id},
+        )
+        self.pg["connection"].commit()
 
     def refresh(self):
         # Delete source from lookup_scale
-        self.pg['cursor'].execute('''
+        self.pg["cursor"].execute(
+            """
             DELETE FROM lookup_%s
             WHERE map_id IN (
                 SELECT map_id
                 FROM maps.%s
                 WHERE source_id = %s
             )
-        ''', (AsIs(self.scale), AsIs(self.scale), self.source_id))
+        """,
+            (AsIs(self.scale), AsIs(self.scale), self.source_id),
+        )
 
         # Insert source into lookup_scale
-        self.pg['cursor'].execute("""
+        self.pg["cursor"].execute(
+            """
         INSERT INTO lookup_%(scale)s (map_id, legend_id, unit_ids, strat_name_ids, concept_ids, strat_name_children, lith_ids, lith_types, lith_classes, best_age_top, best_age_bottom, color) (
 
           -- Find unique match types for units
@@ -506,36 +505,38 @@ class BurwellLookup(Base):
           FROM best_times
           LEFT JOIN maps.map_legend ON map_legend.map_id = best_times.map_id
         )
-        """, {
-            'scale': AsIs(self.scale),
-            'source_id': self.source_id
-        })
-        self.pg['connection'].commit()
+        """,
+            {"scale": AsIs(self.scale), "source_id": self.source_id},
+        )
+        self.pg["connection"].commit()
 
         BurwellLookup.source_stats(self)
 
-        #source_stats(cursor, connection, source_id)
+        # source_stats(cursor, connection, source_id)
 
     def run(self, source_id):
-        if len(source_id) == 0 or source_id[0] == '--help' or source_id[0] == '-h':
-            print BurwellLookup.__doc__
+        if len(source_id) == 0 or source_id[0] == "--help" or source_id[0] == "-h":
+            print(BurwellLookup.__doc__)
             sys.exit()
 
         source_id = source_id[0]
 
-        self.pg['cursor'].execute('''
+        self.pg["cursor"].execute(
+            """
             SELECT scale
             FROM maps.sources
             WHERE source_id = %(source_id)s
-        ''', { 'source_id': source_id })
-        scale = self.pg['cursor'].fetchone()
+        """,
+            {"source_id": source_id},
+        )
+        scale = self.pg["cursor"].fetchone()
 
         if scale is None:
-            print 'Source ID %s was not found in maps.sources' % (source_id, )
+            print("Source ID %s was not found in maps.sources" % (source_id,))
             sys.exit(1)
 
         if scale.scale is None:
-            print 'Source ID %s is missing a scale' % (source_id, )
+            print("Source ID %s is missing a scale" % (source_id,))
             sys.exit(1)
 
         BurwellLookup.source_id = source_id

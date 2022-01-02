@@ -2,6 +2,7 @@ from ..base import Base
 from psycopg2.extensions import AsIs
 import sys
 
+
 class Legend(Base):
     """
     macrostrat process legend <source_id>:
@@ -21,67 +22,69 @@ class Legend(Base):
     """
 
     meta = {
-        'mariadb': False,
-        'pg': True,
-        'usage': """
+        "mariadb": False,
+        "pg": True,
+        "usage": """
             Refresh the appropriate lookup tables for a given map source
         """,
-        'required_args': {
-            'source_id': 'A valid source_id'
-        }
+        "required_args": {"source_id": "A valid source_id"},
     }
 
     def __init__(self, connections, *args):
         Base.__init__(self, connections, *args)
 
-
     def run(self, source_id):
-        if len(source_id) == 0 or source_id[0] == '--help' or source_id[0] == '-h':
-            print Legend.__doc__
+        if len(source_id) == 0 or source_id[0] == "--help" or source_id[0] == "-h":
+            print(Legend.__doc__)
             sys.exit()
 
         source_id = source_id[0]
 
-        self.pg['cursor'].execute('''
+        self.pg["cursor"].execute(
+            """
             SELECT scale
             FROM maps.sources
             WHERE source_id = %(source_id)s
-        ''', { 'source_id': source_id })
-        scale = self.pg['cursor'].fetchone()
+        """,
+            {"source_id": source_id},
+        )
+        scale = self.pg["cursor"].fetchone()
 
         if scale is None:
-            print 'Source ID %s was not found in maps.sources' % (source_id, )
+            print("Source ID %s was not found in maps.sources" % (source_id,))
             sys.exit(1)
 
         if scale[0] is None:
-            print 'Source ID %s is missing a scale' % (source_id, )
+            print("Source ID %s is missing a scale" % (source_id,))
             sys.exit(1)
 
         scale = scale[0]
 
         # Clean up: NB: this needs to be run, but doing so here prevents other deletions from legend_liths from occuring
         # neeed to add a delete statement end of building legend-building stps.
-       # self.pg['cursor'].execute("""
+        # self.pg['cursor'].execute("""
         #  DELETE FROM maps.map_legend WHERE map_id IN (
         #    SELECT map_id
         #    FROM maps.%(scale)s
         #    WHERE source_id = %(source_id)s
         #  )
-        #""", {
+        # """, {
         #    'scale': AsIs(scale),
         #    'source_id': source_id
-        #})
-        #self.pg['connection'].commit()
+        # })
+        # self.pg['connection'].commit()
 
-        self.pg['cursor'].execute("""
+        self.pg["cursor"].execute(
+            """
           DELETE FROM maps.legend WHERE source_id = %(source_id)s
-        """, {
-            'source_id': source_id
-        })
-        self.pg['connection'].commit()
+        """,
+            {"source_id": source_id},
+        )
+        self.pg["connection"].commit()
 
         # Create legend
-        self.pg['cursor'].execute("""
+        self.pg["cursor"].execute(
+            """
           INSERT INTO maps.legend (source_id, name, strat_name, age, lith, descrip, comments, b_interval, t_interval)
           SELECT DISTINCT ON (q.name, q.strat_name, q.age, q.lith, q.descrip, q.comments, q.b_interval, q.t_interval) %(source_id)s, q.name, q.strat_name, q.age, q.lith, q.descrip, q.comments, q.b_interval, q.t_interval
             FROM maps.%(scale)s q
@@ -97,13 +100,13 @@ class Legend(Base):
                 legend.source_id = %(source_id)s
             WHERE q.source_id = %(source_id)s
             AND legend_id IS NULL;
-        """, {
-            'scale': AsIs(scale),
-            'source_id': source_id
-        })
-        self.pg['connection'].commit()
+        """,
+            {"scale": AsIs(scale), "source_id": source_id},
+        )
+        self.pg["connection"].commit()
 
-        self.pg['cursor'].execute("""
+        self.pg["cursor"].execute(
+            """
           INSERT INTO maps.map_legend (legend_id, map_id)
           SELECT legend_id, map_id
           FROM maps.%(scale)s m
@@ -118,8 +121,7 @@ class Legend(Base):
             COALESCE(legend.b_interval, -999) = COALESCE(m.b_interval, -999) AND
             COALESCE(legend.t_interval, -999) = COALESCE(m.t_interval, -999)
           WHERE m.source_id = %(source_id)s;
-        """, {
-            'scale': AsIs(scale),
-            'source_id': source_id
-        })
-        self.pg['connection'].commit()
+        """,
+            {"scale": AsIs(scale), "source_id": source_id},
+        )
+        self.pg["connection"].commit()

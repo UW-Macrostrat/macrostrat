@@ -1,16 +1,17 @@
 from ..base import Base
-from rgeom import RGeom
-from web_geom import WebGeom
-from burwell_lookup import BurwellLookup
-from legend import Legend
-from legend_lookup import LegendLookup
+from .rgeom import RGeom
+from .web_geom import WebGeom
+from .burwell_lookup import BurwellLookup
+from .legend import Legend
+from .legend_lookup import LegendLookup
 from ..match_scripts import strat_names
 from ..match_scripts import units
 from ..match_scripts import liths
-from carto import Carto
-from carto_lines import CartoLines
+from .carto import Carto
+from .carto_lines import CartoLines
 from ..seed import Seed
 import sys
+
 
 class MapSource(Base):
     """
@@ -41,34 +42,34 @@ class MapSource(Base):
       For help using this tool, please open an issue on the Github repository:
       https://github.com/UW-Macrostrat/macrostrat-cli
     """
+
     meta = {
-        'mariadb': True,
-        'pg': True,
-        'usage': """
+        "mariadb": True,
+        "pg": True,
+        "usage": """
             Processes a map source using all appropriate scripts
         """,
-        'required_args': {
-            'source_id': 'A valid source_id'
-        }
+        "required_args": {"source_id": "A valid source_id"},
     }
+
     def __init__(self, connections, *args):
         Base.__init__(self, connections, *args)
 
     def run(self, source_id):
-        if len(source_id) == 0 or source_id[0] == '--help' or source_id[0] == '-h':
-            print MapSource.__doc__
+        if len(source_id) == 0 or source_id[0] == "--help" or source_id[0] == "-h":
+            print(MapSource.__doc__)
             sys.exit()
 
         source_id = source_id[0]
 
         rgeom = RGeom({})
-        rgeom.run((source_id, ))
+        rgeom.run((source_id,))
 
         web_geom = WebGeom({})
-        web_geom.run((source_id, ))
+        web_geom.run((source_id,))
 
         leg = Legend({})
-        leg.run((source_id, ))
+        leg.run((source_id,))
 
         sn = strat_names({})
         sn.run(source_id)
@@ -80,16 +81,16 @@ class MapSource(Base):
         l.run(source_id)
 
         burwell_lookup = BurwellLookup({})
-        burwell_lookup.run((source_id, ))
+        burwell_lookup.run((source_id,))
 
         leg_lookup = LegendLookup({})
-        leg_lookup.run((source_id, ))
+        leg_lookup.run((source_id,))
 
         carto = Carto({})
-        carto.run((source_id, ))
+        carto.run((source_id,))
 
         carto_lines = CartoLines({})
-        carto_lines.run((source_id, ))
+        carto_lines.run((source_id,))
 
-        seed = Seed({}, True, source_id )
+        seed = Seed({}, True, source_id)
         seed.run()

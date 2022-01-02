@@ -1,11 +1,13 @@
 from ..base import Base
 
+
 class StratNameFootprints(Base):
     def __init__(self, *args):
         Base.__init__(self, {}, *args)
 
     def run(self):
-        self.pg['cursor'].execute("""
+        self.pg["cursor"].execute(
+            """
             CREATE TABLE macrostrat.strat_name_footprints_new AS
             WITH first as (
               SELECT
@@ -157,12 +159,15 @@ class StratNameFootprints(Base):
 
             CREATE INDEX ON macrostrat.strat_name_footprints_new (strat_name_id);
             CREATE INDEX ON macrostrat.strat_name_footprints_new USING GiST (geom);
-        """)
-        self.pg['connection'].commit()
+        """
+        )
+        self.pg["connection"].commit()
 
-        self.pg['cursor'].execute("""
+        self.pg["cursor"].execute(
+            """
             ALTER TABLE IF EXISTS macrostrat.strat_name_footprints RENAME TO strat_name_footprints_old;
             ALTER TABLE macrostrat.strat_name_footprints_new RENAME to strat_name_footprints;
             DROP TABLE IF EXISTS macrostrat.strat_name_footprints_old;
-        """)
-        self.pg['connection'].commit()
+        """
+        )
+        self.pg["connection"].commit()

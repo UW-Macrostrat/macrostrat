@@ -5,6 +5,7 @@ import datetime
 import sys
 from ..base import Base
 
+
 class StratNames(Base):
     """
     macrostrat match strat_names <source_id>:
@@ -23,15 +24,14 @@ class StratNames(Base):
       For help using this tool, please open an issue on the Github repository:
       https://github.com/UW-Macrostrat/macrostrat-cli
     """
+
     meta = {
-        'mariadb': False,
-        'pg': True,
-        'usage': """
+        "mariadb": False,
+        "pg": True,
+        "usage": """
             Matches the stratigraphic name field of geologic maps to Macrostrat strat names
         """,
-        'required_args': {
-            'source_id': 'A valid source_id'
-        }
+        "required_args": {"source_id": "A valid source_id"},
     }
 
     source_id = None
@@ -39,60 +39,74 @@ class StratNames(Base):
     def __init__(self, connections, *args):
         Base.__init__(self, connections, *args)
 
-
     def query(self, strictTime, strictSpace, strictName):
-        match_type = 'strat_name'
+        match_type = "strat_name"
 
         if not strictName:
-            match_type += '_fname'
+            match_type += "_fname"
 
         if not strictSpace:
-            match_type += '_fspace'
+            match_type += "_fspace"
 
         if strictTime == False:
-            match_type += '_ftime'
+            match_type += "_ftime"
         elif strictTime == None:
-            match_type += '_ntime'
+            match_type += "_ntime"
 
-        macroNameMatch = 'rank_name' if strictName else 'name_no_lith'
-        mapNameMatch = 'strat_name' if strictName else 'strat_name_clean'
+        macroNameMatch = "rank_name" if strictName else "name_no_lith"
+        mapNameMatch = "strat_name" if strictName else "strat_name_clean"
 
         # Relax the matching constraints
-        spaceQuery = 'ST_Intersects(snft.geom, tr.envelope)' if strictSpace else 'ST_Intersects(ST_Buffer(snft.geom, 1.2), ST_Buffer(tr.envelope, 1.2))'
+        spaceQuery = (
+            "ST_Intersects(snft.geom, tr.envelope)"
+            if strictSpace
+            else "ST_Intersects(ST_Buffer(snft.geom, 1.2), ST_Buffer(tr.envelope, 1.2))"
+        )
         # Time buffer
-        timeFuzz = '0' if strictTime else '25'
+        timeFuzz = "0" if strictTime else "25"
 
-        where = ''
+        where = ""
 
         if strictTime == None:
-            where = 'lsn.strat_name_id = snft.strat_name_id'
+            where = "lsn.strat_name_id = snft.strat_name_id"
         else:
-            where = """((lsn.late_age) < (intervals_bottom.age_bottom + """ + (timeFuzz) + """))
-                AND ((lsn.early_age) > (intervals_top.age_top - """ + (timeFuzz) + """))
+            where = (
+                """((lsn.late_age) < (intervals_bottom.age_bottom + """
+                + (timeFuzz)
+                + """))
+                AND ((lsn.early_age) > (intervals_top.age_top - """
+                + (timeFuzz)
+                + """))
                 and lsn.strat_name_id = snft.strat_name_id"""
+            )
 
         # Handle no time in the query!!!
-        self.pg['cursor'].execute("""
+        self.pg["cursor"].execute(
+            """
             INSERT INTO maps.map_strat_names
             SELECT unnest(map_ids), lsn.strat_name_id, %(match_type)s
             FROM temp_rocks tr
-            JOIN temp_names lsn on lsn.""" + (macroNameMatch) + """ = tr.""" + (mapNameMatch) + """
-            JOIN macrostrat.strat_name_footprints snft ON """ + (spaceQuery) + """
+            JOIN temp_names lsn on lsn."""
+            + (macroNameMatch)
+            + """ = tr."""
+            + (mapNameMatch)
+            + """
+            JOIN macrostrat.strat_name_footprints snft ON """
+            + (spaceQuery)
+            + """
             JOIN macrostrat.intervals intervals_top on tr.t_interval = intervals_top.id
             JOIN macrostrat.intervals intervals_bottom on tr.b_interval = intervals_bottom.id
             WHERE %(where)s
-        """, {
-            'match_type': match_type,
-            'where': AsIs(where)
-        })
-        self.pg['connection'].commit()
+        """,
+            {"match_type": match_type, "where": AsIs(where)},
+        )
+        self.pg["connection"].commit()
 
-        #print '        - Done with %s' % (match_type, )
-
+        # print '        - Done with %s' % (match_type, )
 
     def run(self, source_id):
-        if source_id == '--help' or source_id == '-h':
-            print StratNames.__doc__
+        if source_id == "--help" or source_id == "-h":
+            print(StratNames.__doc__)
             sys.exit()
 
         # Time the process
@@ -100,52 +114,59 @@ class StratNames(Base):
 
         # Validate params!
         # Valid source_id
-        self.pg['cursor'].execute("""
+        self.pg["cursor"].execute(
+            """
             SELECT source_id
             FROM maps.sources
             WHERE source_id = %(source_id)s
-        """, { 'source_id': int(source_id) })
-        sources = self.pg['cursor'].fetchall()
+        """,
+            {"source_id": int(source_id)},
+        )
+        sources = self.pg["cursor"].fetchall()
 
         if len(sources) != 1:
-            print 'Invalid source_id argument. Source ID %s was not found in maps.sources' % (source_id, )
+            print(
+                "Invalid source_id argument. Source ID %s was not found in maps.sources"
+                % (source_id,)
+            )
             sys.exit(1)
 
         # Find scale table
         scale = ""
         for scale_table in ["tiny", "small", "medium", "large"]:
-          self.pg['cursor'].execute("SELECT map_id FROM maps.%(table)s WHERE source_id = %(source_id)s LIMIT 1", {
-            'table': AsIs(scale_table),
-            'source_id': int(source_id)
-          })
-          if self.pg['cursor'].fetchone() is not None:
-            scale = scale_table
-            break
+            self.pg["cursor"].execute(
+                "SELECT map_id FROM maps.%(table)s WHERE source_id = %(source_id)s LIMIT 1",
+                {"table": AsIs(scale_table), "source_id": int(source_id)},
+            )
+            if self.pg["cursor"].fetchone() is not None:
+                scale = scale_table
+                break
 
         if len(scale) < 1:
-          print 'Provided source_id not found in maps.small, maps.medium, or maps.large. Please insert it and try again.'
-          sys.exit(1)
+            print(
+                "Provided source_id not found in maps.small, maps.medium, or maps.large. Please insert it and try again."
+            )
+            sys.exit(1)
 
-
-        print '      Starting strat name match at ', str(datetime.datetime.now())
-
+        print("      Starting strat name match at ", str(datetime.datetime.now()))
 
         # Clean up
-        self.pg['cursor'].execute("""
+        self.pg["cursor"].execute(
+            """
           DELETE FROM maps.map_strat_names
           WHERE map_id IN (
             SELECT map_id
             FROM maps.%(table)s
             WHERE source_id = %(source_id)s
           ) AND basis_col NOT LIKE 'manual%%'
-        """, {
-          'table': AsIs(scale),
-          'source_id': source_id
-        })
-        self.pg['connection'].commit()
-        print '        + Done cleaning up'
+        """,
+            {"table": AsIs(scale), "source_id": source_id},
+        )
+        self.pg["connection"].commit()
+        print("        + Done cleaning up")
 
-        self.pg['cursor'].execute("""
+        self.pg["cursor"].execute(
+            """
             DROP TABLE IF EXISTS temp_rocks;
 
             CREATE TABLE temp_rocks AS
@@ -209,22 +230,24 @@ class StratNames(Base):
             	envelope
             FROM first
             LEFT JOIN clean ON first.row_no = clean.row_no;
-        """, {
-            'scale': AsIs(scale),
-            'source_id': source_id
-        })
-        self.pg['connection'].commit()
+        """,
+            {"scale": AsIs(scale), "source_id": source_id},
+        )
+        self.pg["connection"].commit()
 
-        self.pg['cursor'].execute("""
+        self.pg["cursor"].execute(
+            """
             CREATE INDEX ON temp_rocks (strat_name);
             CREATE INDEX ON temp_rocks (strat_name_clean);
             CREATE INDEX ON temp_rocks (t_interval);
             CREATE INDEX ON temp_rocks (b_interval);
             CREATE INDEX ON temp_rocks USING GiST (envelope);
-        """)
-        self.pg['connection'].commit()
+        """
+        )
+        self.pg["connection"].commit()
 
-        self.pg['cursor'].execute("""
+        self.pg["cursor"].execute(
+            """
             DROP TABLE IF EXISTS temp_names;
             CREATE TABLE temp_names AS
             SELECT DISTINCT ON (sub.strat_name_id) lookup_strat_names.*
@@ -246,22 +269,23 @@ class StratNames(Base):
             	WHERE lower(words) NOT IN (select lower(lith) from macrostrat.liths)
             	  AND lower(words) NOT IN ('bed', 'member', 'formation', 'group', 'supergroup')
             );
-        """, {
-            'scale': AsIs(scale),
-            'source_id': source_id
-        })
-        self.pg['connection'].commit()
+        """,
+            {"scale": AsIs(scale), "source_id": source_id},
+        )
+        self.pg["connection"].commit()
 
-        self.pg['cursor'].execute("""
+        self.pg["cursor"].execute(
+            """
             CREATE INDEX ON temp_names (strat_name_id);
             CREATE INDEX ON temp_names (rank_name);
             CREATE INDEX ON temp_names (name_no_lith);
             CREATE INDEX ON temp_names (strat_name);
-        """)
-        self.pg['connection'].commit()
+        """
+        )
+        self.pg["connection"].commit()
 
         elapsed = int(time.time() - start_time)
-        #print '        Done with prepping temp tables in ', elapsed / 60, ' minutes and ', elapsed % 60, ' seconds'
+        # print '        Done with prepping temp tables in ', elapsed / 60, ' minutes and ', elapsed % 60, ' seconds'
 
         # Time the process
         start_time = time.time()
@@ -303,4 +327,10 @@ class StratNames(Base):
         l = StratNames.query(self, None, False, False)
 
         elapsed = int(time.time() - start_time)
-        print '        Done with in ', elapsed / 60, ' minutes and ', elapsed % 60, ' seconds'
+        print(
+            "        Done with in ",
+            elapsed / 60,
+            " minutes and ",
+            elapsed % 60,
+            " seconds",
+        )

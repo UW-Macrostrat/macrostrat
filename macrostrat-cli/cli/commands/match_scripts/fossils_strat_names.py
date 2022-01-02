@@ -5,7 +5,7 @@ import datetime
 import sys
 from ..base import Base
 
-'''
+"""
  select
     coll_strata.lat,
     coll_strata.lng,
@@ -39,7 +39,8 @@ split on
     /
     or
     and
-'''
+"""
+
 
 class FossilsStratNames(Base):
     """
@@ -59,15 +60,14 @@ class FossilsStratNames(Base):
       For help using this tool, please open an issue on the Github repository:
       https://github.com/UW-Macrostrat/macrostrat-cli
     """
+
     meta = {
-        'mariadb': False,
-        'pg': True,
-        'usage': """
+        "mariadb": False,
+        "pg": True,
+        "usage": """
             Matches Paleobiology Database fossil collections to Macrostrat strat_name_ids
         """,
-        'required_args': {
-
-        }
+        "required_args": {},
     }
 
     source_id = None
@@ -75,59 +75,76 @@ class FossilsStratNames(Base):
     def __init__(self, connections, *args):
         Base.__init__(self, connections, *args)
 
-
     def query(self, field, strictTime, strictSpace, strictName):
-        print '%s - StrictTime: %s | StrictSpace: %s | StrictName: %s' % (field, strictTime, strictSpace, strictName)
+        print(
+            "%s - StrictTime: %s | StrictSpace: %s | StrictName: %s"
+            % (field, strictTime, strictSpace, strictName)
+        )
         match_type = field
         where = []
 
         if not strictName:
-            match_type += '_fname'
+            match_type += "_fname"
 
-        macroNameMatch = ''
+        macroNameMatch = ""
         if strictName:
-            macroNameMatch = 'lsn.rank_name'
-            pbdbNameMatch = 'pbdb.%s' % (field, )
+            macroNameMatch = "lsn.rank_name"
+            pbdbNameMatch = "pbdb.%s" % (field,)
         else:
-            macroNameMatch = 'lower(lsn.name_no_lith)'
-            pbdbNameMatch = 'pbdb.%s_clean' % (field, )
+            macroNameMatch = "lower(lsn.name_no_lith)"
+            pbdbNameMatch = "pbdb.%s_clean" % (field,)
 
-        where.append('%s = %s' % (pbdbNameMatch, macroNameMatch, ))
+        where.append(
+            "%s = %s"
+            % (
+                pbdbNameMatch,
+                macroNameMatch,
+            )
+        )
 
         # Space constraint
-        spaceQuery = ''
+        spaceQuery = ""
         if strictSpace == False:
-            match_type += '_fspace'
-            spaceQuery = 'ST_Intersects(ST_Buffer(snf.geom, 1.2), ST_Buffer(pbdb.geom, 1.2))'
+            match_type += "_fspace"
+            spaceQuery = (
+                "ST_Intersects(ST_Buffer(snf.geom, 1.2), ST_Buffer(pbdb.geom, 1.2))"
+            )
         elif strictSpace == None:
-            match_type += '_nspace'
-            spaceQuery = 'true'
+            match_type += "_nspace"
+            spaceQuery = "true"
         else:
-            spaceQuery = 'ST_Intersects(snf.geom, pbdb.geom)'
+            spaceQuery = "ST_Intersects(snf.geom, pbdb.geom)"
 
         # Time buffer
-        timeFuzz = ''
+        timeFuzz = ""
         if strictTime == False:
-            match_type += '_ftime'
-            timeFuzz = '25'
+            match_type += "_ftime"
+            timeFuzz = "25"
         elif strictTime == None:
-            match_type += '_ntime'
+            match_type += "_ntime"
         else:
-            timeFuzz = '0'
-
+            timeFuzz = "0"
 
         if strictTime != None:
-            where.append("""((lsn.late_age) < (pbdb.early_age + %s))
+            where.append(
+                """((lsn.late_age) < (pbdb.early_age + %s))
                 AND ((lsn.early_age) > (pbdb.late_age - %s))
-            """ % (timeFuzz, timeFuzz, ))
+            """
+                % (
+                    timeFuzz,
+                    timeFuzz,
+                )
+            )
 
         # Don't match already matched collections
-        where.append("""
+        where.append(
+            """
             pbdb.collection_no NOT IN (
                 SELECT collection_no
                 FROM macrostrat.pbdb_collections_strat_names
             )
-        """)
+        """
+        )
         # print self.pg['cursor'].mogrify("""
         #     INSERT INTO macrostrat.pbdb_collections_strat_names (collection_no, strat_name_id, basis_col)
         #     SELECT pbdb.collection_no, lsn.strat_name_id, %(match_type)s
@@ -140,37 +157,43 @@ class FossilsStratNames(Base):
         #     'spaceQuery': AsIs(spaceQuery),
         #     'where': AsIs(' AND '.join(where))
         # })
-        self.pg['cursor'].execute("""
+        self.pg["cursor"].execute(
+            """
             INSERT INTO macrostrat.pbdb_collections_strat_names (collection_no, strat_name_id, basis_col)
             SELECT pbdb.collection_no, lsn.strat_name_id, %(match_type)s
             FROM macrostrat.pbdb_collections pbdb
             JOIN macrostrat.strat_name_footprints snf ON %(spaceQuery)s
             JOIN macrostrat.lookup_strat_names lsn ON lsn.strat_name_id = snf.strat_name_id
             WHERE %(where)s
-        """, {
-            'match_type': match_type,
-            'spaceQuery': AsIs(spaceQuery),
-            'where': AsIs(' AND '.join(where))
-        })
-        self.pg['connection'].commit()
-
+        """,
+            {
+                "match_type": match_type,
+                "spaceQuery": AsIs(spaceQuery),
+                "where": AsIs(" AND ".join(where)),
+            },
+        )
+        self.pg["connection"].commit()
 
     def run(self, source_id):
-        if source_id == '--help' or source_id == '-h':
-            print FossilsStratNames.__doc__
+        if source_id == "--help" or source_id == "-h":
+            print(FossilsStratNames.__doc__)
             sys.exit()
 
-
-        print '      Starting fossil / strat name match at ', str(datetime.datetime.now())
+        print(
+            "      Starting fossil / strat name match at ", str(datetime.datetime.now())
+        )
 
         # Clean up
-        self.pg['cursor'].execute("""
+        self.pg["cursor"].execute(
+            """
           DELETE FROM macrostrat.pbdb_collections_strat_names
-        """, {})
-        self.pg['connection'].commit()
-        print '        + Done cleaning up'
+        """,
+            {},
+        )
+        self.pg["connection"].commit()
+        print("        + Done cleaning up")
 
-        fields = [ 'member', 'formation', 'grp' ]
+        fields = ["member", "formation", "grp"]
 
         # Time the process
         start_time = time.time()
@@ -228,4 +251,10 @@ class FossilsStratNames(Base):
             FossilsStratNames.query(self, field, True, None, True)
 
         elapsed = int(time.time() - start_time)
-        print '        Done with in ', elapsed / 60, ' minutes and ', elapsed % 60, ' seconds'
+        print(
+            "        Done with in ",
+            elapsed / 60,
+            " minutes and ",
+            elapsed % 60,
+            " seconds",
+        )

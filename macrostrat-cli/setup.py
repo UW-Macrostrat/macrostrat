@@ -8,7 +8,7 @@ from cli import __version__
 
 
 this_dir = abspath(dirname(__file__))
-with open(join(this_dir, 'README.md'), encoding='utf-8') as file:
+with open(join(this_dir, "README.md"), encoding="utf-8") as file:
     long_description = file.read()
 
 
@@ -30,32 +30,45 @@ with open(join(this_dir, 'README.md'), encoding='utf-8') as file:
 #
 
 setup(
-    name = 'macrostrat-cli',
-    version = __version__,
-    description = 'Utilities for manipulating Macrostrat',
-    long_description = long_description,
-    url = 'https://github.com/UW-Macrostrat/macrostrat-cli',
-    author = 'John J Czaplewski',
-    author_email = 'jczaplewski@wisc.edu',
-    license = 'CC0',
-    classifiers = [
-        'Intended Audience :: Developers',
-        'Topic :: Utilities',
-        'License :: Public Domain',
-        'Natural Language :: English',
-        'Operating System :: OS Independent',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.7'
+    name="macrostrat-cli",
+    version=__version__,
+    description="Utilities for manipulating Macrostrat",
+    long_description=long_description,
+    url="https://github.com/UW-Macrostrat/macrostrat-cli",
+    author="John J Czaplewski",
+    author_email="jczaplewski@wisc.edu",
+    license="CC0",
+    classifiers=[
+        "Intended Audience :: Developers",
+        "Topic :: Utilities",
+        "License :: Public Domain",
+        "Natural Language :: English",
+        "Operating System :: OS Independent",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.8",
     ],
-    keywords = 'cli',
-    packages = find_packages(exclude=['docs', 'tests*']),
-    install_requires = ['psycopg2', 'pymysql', 'pyyaml', 'tiletanic', 'shapely', 'fiona', 'pyproj', 'numpy', 'scipy', 'tqdm', 'spectra', 'requests'],
+    keywords="cli",
+    packages=find_packages(exclude=["docs", "tests*"]),
+    install_requires=[
+        "psycopg2",
+        "pymysql",
+        "pyyaml",
+        "tiletanic",
+        "shapely",
+        "fiona",
+        "pyproj",
+        "numpy",
+        "scipy",
+        "tqdm",
+        "spectra",
+        "requests",
+    ],
     # extras_require = {
     #     'test': ['coverage', 'pytest', 'pytest-cov'],
     # },
-    entry_points = {
-        'console_scripts': [
-            'macrostrat=cli.cli:main',
+    entry_points={
+        "console_scripts": [
+            "macrostrat=cli.cli:main",
         ],
     },
     # cmdclass = {'test': RunTests},
