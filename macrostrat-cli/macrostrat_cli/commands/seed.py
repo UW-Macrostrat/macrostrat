@@ -11,6 +11,8 @@ from subprocess import call
 import os
 import sqlite3
 from multiprocessing.pool import Pool
+from .. import config as cfg
+from ..database import get_pg_credentials
 
 THREADS = 4
 FNULL = open(os.devnull, "w")
@@ -78,11 +80,15 @@ class Seed(Base):
 
         headers = {"X-Tilestrata-SkipCache": "*"}
 
+        secret = cfg.TILESERVER_SECRET
+        if secret is None:
+            raise AttributeError("TILESERVER_SECRET must be defined")
+
         for z in [1, 2, 3, 4, 5, 6, 7, 8, 9]:
             tiles = [
                 (
                     "http://localhost:8675/pbdb-collections/%s/%s/%s.mvt?secret=%s"
-                    % (tile.z, tile.x, tile.y, self.credentials["tileserver_secret"]),
+                    % (tile.z, tile.x, tile.y, secret),
                     headers,
                 )
                 for tile in tilecover.cover_geometry(tiler, seed_area, z)
@@ -93,18 +99,19 @@ class Seed(Base):
 
     # Currently this doesn't operate on a source basis. It is all or nothing.
     def seed_mbtiles(self, layer):
-        mbtile_path = self.credentials["mbtiles_path"]
+        mbtile_path = cfg.MYSQL_DATABASE
         path = os.path.dirname(__file__)
 
         # Delete existing scale mbtiles files
-        call(
-            [
-                "rm %s/tiny.mbtiles && rm %s/small.mbtiles && rm %s/medium.mbtiles && rm %s/large.mbtiles"
-                % (mbtile_path, mbtile_path, mbtile_path, mbtile_path)
-            ],
-            shell=True,
-            stdout=FNULL,
-        )
+        for scale in ["tiny", "small", "medium", "large"]:
+            call(
+                [f"rm {mbtile_path}/tiny.mbtiles"],
+                shell=True,
+                stdout=FNULL,
+            )
+
+        url = get_pg_credentials()
+        pg_args = (url.host, url.port, url.database, url.username)
 
         # Create tiles for tiny
         call(
@@ -112,19 +119,13 @@ class Seed(Base):
                 'tippecanoe -o %s/tiny.mbtiles --minimum-zoom=0 --maximum-zoom=2 --generate-ids --detect-shared-borders --simplification=5 -Lunits:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s`") -Llines:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s`")'
                 % (
                     mbtile_path,
-                    self.credentials["pg_host"],
-                    self.credentials["pg_port"],
-                    self.credentials["pg_db"],
-                    self.credentials["pg_user"],
+                    *pg_args,
                     "%s/seed_scripts/sql/%s/tiny.sql"
                     % (
                         path,
                         layer,
                     ),
-                    self.credentials["pg_host"],
-                    self.credentials["pg_port"],
-                    self.credentials["pg_db"],
-                    self.credentials["pg_user"],
+                    *pg_args,
                     "%s/seed_scripts/sql/%s/tiny_lines.sql"
                     % (
                         path,
@@ -143,19 +144,13 @@ class Seed(Base):
                 'tippecanoe -o %s/small.mbtiles --minimum-zoom=3 --maximum-zoom=5 --generate-ids --detect-shared-borders --simplification=6 -Lunits:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s`") -Llines:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s`")'
                 % (
                     mbtile_path,
-                    self.credentials["pg_host"],
-                    self.credentials["pg_port"],
-                    self.credentials["pg_db"],
-                    self.credentials["pg_user"],
+                    *pg_args,
                     "%s/seed_scripts/sql/%s/small.sql"
                     % (
                         path,
                         layer,
                     ),
-                    self.credentials["pg_host"],
-                    self.credentials["pg_port"],
-                    self.credentials["pg_db"],
-                    self.credentials["pg_user"],
+                    *pg_args,
                     "%s/seed_scripts/sql/%s/small_lines.sql"
                     % (
                         path,
@@ -174,19 +169,13 @@ class Seed(Base):
                 'tippecanoe -o %s/medium.mbtiles --minimum-zoom=6 --maximum-zoom=8 --generate-ids --detect-shared-borders --simplification=7 -Lunits:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s`") -Llines:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s`")'
                 % (
                     mbtile_path,
-                    self.credentials["pg_host"],
-                    self.credentials["pg_port"],
-                    self.credentials["pg_db"],
-                    self.credentials["pg_user"],
+                    *pg_args,
                     "%s/seed_scripts/sql/%s/medium.sql"
                     % (
                         path,
                         layer,
                     ),
-                    self.credentials["pg_host"],
-                    self.credentials["pg_port"],
-                    self.credentials["pg_db"],
-                    self.credentials["pg_user"],
+                    *pg_args,
                     "%s/seed_scripts/sql/%s/medium_lines.sql"
                     % (
                         path,
@@ -205,19 +194,13 @@ class Seed(Base):
                 'tippecanoe -o %s/large.mbtiles --minimum-zoom=9 --maximum-zoom=12 --generate-ids --detect-shared-borders --simplification=4 -Lunits:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s`") -Llines:<(ogr2ogr -f "GeoJSON" /dev/stdout "PG:host=%s port=%s dbname=%s user=%s" -sql "`cat %s`")'
                 % (
                     mbtile_path,
-                    self.credentials["pg_host"],
-                    self.credentials["pg_port"],
-                    self.credentials["pg_db"],
-                    self.credentials["pg_user"],
+                    *pg_args,
                     "%s/seed_scripts/sql/%s/large.sql"
                     % (
                         path,
                         layer,
                     ),
-                    self.credentials["pg_host"],
-                    self.credentials["pg_port"],
-                    self.credentials["pg_db"],
-                    self.credentials["pg_user"],
+                    *pg_args,
                     "%s/seed_scripts/sql/%s/large_lines.sql"
                     % (
                         path,

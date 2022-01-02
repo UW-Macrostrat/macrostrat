@@ -62,6 +62,7 @@ setup(
         "tqdm",
         "spectra",
         "requests",
+        "sqlalchemy",
     ],
     # extras_require = {
     #     'test': ['coverage', 'pytest', 'pytest-cov'],
