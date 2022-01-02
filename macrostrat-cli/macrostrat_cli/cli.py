@@ -23,49 +23,11 @@ Help:
 
 
 from . import __version__ as VERSION
+from .database import pgConnection, mariaConnection
 import sys
-import pymysql
-import pymysql.cursors
-from warnings import filterwarnings
-import os
-import psycopg2
-from psycopg2.extensions import AsIs
-import subprocess
-import yaml
-import datetime
 
 # import all available commands
 from . import commands
-
-# Load the credentials file
-with open(os.path.join(os.path.dirname(__file__), "../credentials.yml"), "r") as f:
-    credentials = yaml.load(f)
-
-# Connect to MySQL
-def mariaConnection():
-    # Ignore warnings from MariaDB
-    filterwarnings("ignore", category=pymysql.Warning)
-    return pymysql.connect(
-        host=credentials["mysql_host"],
-        user=credentials["mysql_user"],
-        passwd=credentials["mysql_passwd"],
-        db=credentials["mysql_db"],
-        unix_socket=credentials["mysql_socket"],
-        cursorclass=pymysql.cursors.SSDictCursor,
-        read_timeout=180,
-    )
-
-
-# Connect to Postgres
-def pgConnection():
-    pg_conn = psycopg2.connect(
-        dbname=credentials["pg_db"],
-        user=credentials["pg_user"],
-        host=credentials["pg_host"],
-        port=credentials["pg_port"],
-    )
-    pg_conn.set_client_encoding("Latin1")
-    return pg_conn
 
 
 def main():
@@ -91,10 +53,7 @@ def main():
     # Get the class associated with the provided table name
     script = getattr(commands, cmd)
 
-    script = script(
-        {"pg": pgConnection, "mariadb": mariaConnection, "credentials": credentials},
-        *sys.argv[1:]
-    )
+    script = script({"pg": pgConnection, "mariadb": mariaConnection}, *sys.argv[1:])
 
     if len(sys.argv) == 2 or sys.argv[2] == "--help" or sys.argv[2] == "-h":
         print((script.__doc__))

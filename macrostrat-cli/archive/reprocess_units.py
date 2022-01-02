@@ -1,53 +1,12 @@
-import sys
-import pymysql
-import pymysql.cursors
-from warnings import filterwarnings
-import os
-import psycopg2
-from psycopg2.extensions import AsIs
-import yaml
-import datetime
+from ..macrostrat_cli.database import pgConnection, mariaConnection
 
-# Load the credentials file
-with open(os.path.join(os.path.dirname(__file__), "./credentials.yml"), "r") as f:
-    credentials = yaml.load(f)
+from macrostrat_cli.commands.match_scripts import units
+from macrostrat_cli.commands.process_scripts import burwell_lookup
 
-# Connect to MySQL
-def mariaConnection():
-    # Ignore warnings from MariaDB
-    filterwarnings("ignore", category=pymysql.Warning)
-    return pymysql.connect(
-        host=credentials["mysql_host"],
-        user=credentials["mysql_user"],
-        passwd=credentials["mysql_passwd"],
-        db=credentials["mysql_db"],
-        unix_socket=credentials["mysql_socket"],
-        cursorclass=pymysql.cursors.SSDictCursor,
-        read_timeout=180,
-    )
+opts = {"pg": pgConnection, "mariadb": mariaConnection}
 
-
-# Connect to Postgres
-def pgConnection():
-    pg_conn = psycopg2.connect(
-        dbname=credentials["pg_db"],
-        user=credentials["pg_user"],
-        host=credentials["pg_host"],
-        port=credentials["pg_port"],
-    )
-    pg_conn.set_client_encoding("Latin1")
-    return pg_conn
-
-
-from cli.commands.match_scripts import units
-from cli.commands.process_scripts import burwell_lookup
-
-unit_processing = units(
-    {"pg": pgConnection, "mariadb": mariaConnection, "credentials": credentials}
-)
-lookup_processing = burwell_lookup(
-    {"pg": pgConnection, "mariadb": mariaConnection, "credentials": credentials}
-)
+unit_processing = units(opts)
+lookup_processing = burwell_lookup(opts)
 
 
 pg_connection = pgConnection()
