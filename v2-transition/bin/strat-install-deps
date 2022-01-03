@@ -5,6 +5,7 @@
 sudo apt install zsh pv
 
 # Poetry is nice to have for the local versions of some commands
+sudo apt install python3-pip
 if ! command -v poetry &> /dev/null ; then
   echo "Installing poetry"
   curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python -

@@ -28,6 +28,16 @@ services:
     expose: [5000]
     ports:
       - "80:5000"
+  cli:
+    build: tools/macrostrat-utils
+    environment:
+      - MACROSTRAT_PG_DATABASE=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/burwell
+      - MACROSTRAT_MYSQL_DATABASE=mysql://root:${MARIADB_ROOT_PASSWORD}@mariadb:3306/macrostrat
+      - REDIS_PORT
+      - TILE_CACHE_PATH
+      - TILE_CACHE_PATH_VECTOR
+      - TILESERVER_SECRET
+      - MBTILES_PATH
 volumes:
   mariadb_data:
   postgres_data:
