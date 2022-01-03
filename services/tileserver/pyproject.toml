@@ -1,0 +1,18 @@
+[tool.poetry]
+authors = ["Daven Quinn <dev@davenquinn.com>"]
+description = "Macrostrat tile server"
+name = "macrostrat_tileserver"
+packages = [
+  {include = "macrostrat_tileserver"},
+]
+version = "2.0.0"
+
+[tool.poetry.dependencies]
+fastapi = "*"
+python = "^3.8"
+timvt = "*"
+uvicorn = "0.16.0"
+
+[build-system]
+build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core>=1.0.0"]
