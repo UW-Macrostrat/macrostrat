@@ -99,7 +99,7 @@ class Seed(Base):
 
     # Currently this doesn't operate on a source basis. It is all or nothing.
     def seed_mbtiles(self, layer):
-        mbtile_path = cfg.MYSQL_DATABASE
+        mbtile_path = cfg.MBTILES_PATH
         path = os.path.dirname(__file__)
 
         # Delete existing scale mbtiles files
