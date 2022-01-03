@@ -1,4 +1,5 @@
 #!/usr/bin/env zsh
 
 strat compose up --remove-orphans --build -d $@
+strat compose exec gateway nginx -s reload
 strat compose logs -f --tail=100 $@

@@ -49,7 +49,14 @@ services:
     build: services/tileserver
     environment:
       - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/burwell
+      - FORWARDED_ALLOW_IPS=*
     expose: [8000]
+    command: >
+      uvicorn
+        --host 0.0.0.0
+        --port 8000
+        --proxy-headers
+        macrostrat_tileserver.main:app
 volumes:
   mariadb_data:
   postgres_data:
