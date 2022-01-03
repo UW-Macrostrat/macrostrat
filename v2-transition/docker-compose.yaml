@@ -38,6 +38,12 @@ services:
       - TILE_CACHE_PATH_VECTOR
       - TILESERVER_SECRET
       - MBTILES_PATH
+  tileserver:
+    build: services/tileserver
+    environment:
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/burwell
+    ports:
+      - "8000:8000"
 volumes:
   mariadb_data:
   postgres_data:
