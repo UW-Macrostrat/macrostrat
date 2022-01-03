@@ -1,5 +1,14 @@
 version: "3"
 services:
+  gateway:
+    image: jonasal/nginx-certbot:latest
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - CERTBOT_EMAIL
+    volumes:
+      - ./system/nginx-config:/etc/nginx/user_conf.d:ro
   # DATABASE SERVICES
   mariadb:
     # The MariaDB service is Macrostrat's current database service.
@@ -26,8 +35,6 @@ services:
     # Macrostrat API
     build: services/macrostrat-api
     expose: [5000]
-    ports:
-      - "80:5000"
   cli:
     build: tools/macrostrat-utils
     environment:
@@ -42,8 +49,7 @@ services:
     build: services/tileserver
     environment:
       - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/burwell
-    ports:
-      - "8000:8000"
+    expose: [8000]
 volumes:
   mariadb_data:
   postgres_data:
