@@ -1,25 +1,30 @@
-## Shell script to dump macrostrat-lite from gunnison into db of my choice.
+#!/usr/bin/env zsh
 
-ssh -Cfo ExitOnForwardFailure=yes -N -L 5439:localhost:5432 steno
-PID=$(pgrep -f 'N -L 5439:')
-[ "$PID" ] || exit 1
+## Shell script to dump macrostrat-lite from gunnison into a docker db.
+### this is a trash and restart kind of thing. 
 
+#create some varibles 
 dbname=burwell
+localdb=column_data
 
-strat compose exec postgres psql -Upostgres -c "DROP DATABASE $dbname WITH (FORCE);"
-strat compose exec postgres createdb -Upostgres $dbname
+##drop and recreate the database
+docker-compose exec db psql -c "DROP DATABASE $localdb WITH (FORCE);"
+docker-compose exec db createdb -Upostgres $localdb
+docker-compose exec db psql -Upostgres $localdb -c "CREATE EXTENSION postgis;"
 
-echo "Dumping Macrostrat database from steno"
-strat compose exec postgres psql -Upostgres $dbname -c "CREATE EXTENSION postgis;"
-pg_dump -Fc -p 5439 -h localhost -U postgres \
+# I have a LocalFoward for the remote server that I set up in a ssh config
+
+echo "Dumping Macrostrat database from Gunnison localForward"
+pg_dump -Fc -p 54381 -h localhost -U postgres -W \ 
+  # only grab macrostrat schema
   --schema=macrostrat \
+  # for these tables, only dump their structure not the actual data 
   --exclude-table-data=macrostrat.strat_name_footprints \
   --exclude-table-data=macrostrat.measures \
   --exclude-table-data=macrostrat.measuremeta \
   --exclude-table-data=macrostrat.lookup_unit_attrs_api \
   --exclude-table-data=macrostrat.pbdb_collections \
   $dbname \
-| pv \
-| strat compose exec -T postgres pg_restore -v -Upostgres -d $dbname
-
-kill $PID
+  # restore the data right away to my dockerized postgres db. 
+  # No need for intermediate file
+| docker-compose exec -T db pg_restore -v -Upostgres -d $localdb
