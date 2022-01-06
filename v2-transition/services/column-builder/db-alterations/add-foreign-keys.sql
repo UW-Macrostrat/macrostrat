@@ -8,6 +8,9 @@
         Where is project meta data? I.E name of project... etc. Theres a project_id in cols that I'm guessing
         references some table, perhaps in the mariaDB instance 
 
+		It might be nice to add a status_code at the project level and not just column level. for navigating
+		the api.
+
         What is cols.col? It doesn't seem to be unqiue, even within project.
 
         'concepts' table is missing
