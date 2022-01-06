@@ -10,9 +10,8 @@ help()
    echo "Script to dump postgres instance of macrostrat schema from gunnison"
    echo "WARNING: this will first drop the database specified in -d"
    echo 
-   echo "Syntax: scriptTemplate [-f | -p | -c | -d | -U | -h, --help]"
+   echo "Syntax: scriptTemplate [ -p | -c | -d | -U | -h, --help]"
    echo "options:"
-   echo "-f            Path to sql-file. Default ../db-alterations/add-foreign-keys.sql"
    echo "-p            Port that gunnison is explosed to on your localhost, default 54381"
    echo "-c            Container name of db sql is being performed. Default db"
    echo "-d            Name of db in cluster. Default column_data"
@@ -24,9 +23,8 @@ help()
 check()
 {
     echo "Gathering arguments"
-    while getopts ":f:c:d:U:h" opt; do
+    while getopts ":c:d:U:h" opt; do
         case $opt in 
-            f) file_path=$OPTARG;;
             c) container_name=$OPTARG;;
             d) local_db=$OPTARG;;
             U) db_user=$OPTARG;;
@@ -42,7 +40,8 @@ local_db=column_data
 container_name=db
 db_user=postgres
 local_forward=54381
-file_path=../db-alterations/add-foreign-keys.sql
+fk_file_path=../db-alterations/add-foreign-keys.sql
+projects_file_path=../db-alterations/projects-table.sql
 
 ########################### main script ###############################
 check $@
@@ -69,7 +68,18 @@ echo -n "Do you wish to continue?(Y/n): "
 read FK
 if [[ "$FK" = "Y" || "$FK" = "y" ]]
   then 
-    ./add-foreign-keys -f $file_path -c $container_name -d $local_db -U $db_user
+    ./run-sql-file -f $fk_file_path -c $container_name -d $local_db -U $db_user
   else
     echo "Okay, your choice, no foreign keys."
+    exit 1
+fi
+
+echo "Do you wish to add the projects table?"
+echo -n "Do you wish to continue?(Y/n): "
+read FK
+if [[ "$FK" = "Y" || "$FK" = "y" ]]
+  then 
+    ./run-sql-file -f $projects_file_path -c $container_name -d $local_db -U $db_user
+  else
+    echo "Okay, your choice, no project table."
 fi

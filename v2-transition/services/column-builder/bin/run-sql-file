@@ -5,7 +5,7 @@ help()
 # display help
 {
    echo  
-   echo "Script to run add-foreign-keys.sql on a freshly imported gunnison postgres db"
+   echo "Script to run a specified sql file on a freshly imported gunnison postgres db"
    echo
    echo "Syntax: scriptTemplate [-f | -c | -d | -U | -h, --help]"
    echo "options:"
