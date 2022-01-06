@@ -10,6 +10,9 @@ I've done a quick first pass looking at the tables in postgres:gunnison/macrostr
 run delete where statements in areas with non-matching key issues. I also took notes about how many rows were
 removed from each. Most of the removed rows were in joining tables. All the sql used is in the `add-foreign-keys.sql` file.
 
+The `dump-burwell` script has the option to run `add-foreign-keys` as well. This is a good place to start, we
+can add on more scripts that alter the database into what we want and then add them to `dump-burwell`. Both scripts have flag options now as well with defaults.
+
 Troubles I had:
 
 - I didn't have `pv` installed so the scrip wasn't working at first.
