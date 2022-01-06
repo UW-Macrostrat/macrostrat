@@ -3,17 +3,57 @@
 ## Shell script to dump macrostrat-lite from gunnison into a docker db.
 ### this is a trash and restart kind of thing. 
 
-#create some varibles 
+########################## functions #################################
+help()
+{
+   echo  
+   echo "Script to dump postgres instance of macrostrat schema from gunnison"
+   echo "WARNING: this will first drop the database specified in -d"
+   echo 
+   echo "Syntax: scriptTemplate [-f | -p | -c | -d | -U | -h, --help]"
+   echo "options:"
+   echo "-f            Path to sql-file. Default ../db-alterations/add-foreign-keys.sql"
+   echo "-p            Port that gunnison is explosed to on your localhost, default 54381"
+   echo "-c            Container name of db sql is being performed. Default db"
+   echo "-d            Name of db in cluster. Default column_data"
+   echo "-U            Name of db user. Default postgres"
+   echo "-h, --help    Display help"
+   echo
+}
+
+check()
+{
+    echo "Gathering arguments"
+    while getopts ":f:c:d:U:h" opt; do
+        case $opt in 
+            f) file_path=$OPTARG;;
+            c) container_name=$OPTARG;;
+            d) local_db=$OPTARG;;
+            U) db_user=$OPTARG;;
+            h) help; exit 1 ;; 
+           \?) help; exit 1 ;; 
+        esac
+    done
+}
+############################ variables ################################
+
 dbname=burwell
-localdb=column_data
+local_db=column_data
+container_name=db
+db_user=postgres
+local_forward=54381
+file_path=../db-alterations/add-foreign-keys.sql
 
-docker-compose exec db psql -c "DROP DATABASE $localdb WITH (FORCE);"
-docker-compose exec db createdb -Upostgres $localdb
+########################### main script ###############################
+check $@
+
+docker-compose exec $container_name psql -c "DROP DATABASE $local_db WITH (FORCE);"
+docker-compose exec $container_name createdb -U$db_user $local_db
 
 
-echo "Dumping Macrostrat database from Gunnison localForward"
-docker-compose exec db psql -Upostgres $localdb -c "CREATE EXTENSION postgis;"
-pg_dump -Fc -p 54381 -h localhost -U postgres -W \
+echo "Dumping Macrostrat database from Gunnison local_forward"
+docker-compose exec $container_name psql -U$db_user $local_db -c "CREATE EXTENSION postgis;"
+pg_dump -Fc -p $local_forward -h localhost -U postgres -W \
   --schema=macrostrat \
   --exclude-table-data=macrostrat.strat_name_footprints \
   --exclude-table-data=macrostrat.measures \
@@ -21,5 +61,15 @@ pg_dump -Fc -p 54381 -h localhost -U postgres -W \
   --exclude-table-data=macrostrat.lookup_unit_attrs_api \
   --exclude-table-data=macrostrat.pbdb_collections \
   $dbname \
-| docker-compose exec -T db pg_restore -v -Upostgres -d $localdb
+| docker-compose exec -T $container_name pg_restore -v -U$db_user -d $local_db
 
+echo "Do you wish to add foreign keys?"
+echo "WARNING: This may drop rows with foreign key conflicts!"
+echo -n "Do you wish to continue?(Y/n): "
+read FK
+if [[ "$FK" = "Y" || "$FK" = "y" ]]
+  then 
+    ./add-foreign-keys -f $file_path -c $container_name -d $local_db -U $db_user
+  else
+    echo "Okay, your choice, no foreign keys."
+fi
