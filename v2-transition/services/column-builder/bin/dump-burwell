@@ -7,24 +7,19 @@
 dbname=burwell
 localdb=column_data
 
-##drop and recreate the database
 docker-compose exec db psql -c "DROP DATABASE $localdb WITH (FORCE);"
 docker-compose exec db createdb -Upostgres $localdb
-docker-compose exec db psql -Upostgres $localdb -c "CREATE EXTENSION postgis;"
 
-# I have a LocalFoward for the remote server that I set up in a ssh config
 
 echo "Dumping Macrostrat database from Gunnison localForward"
-pg_dump -Fc -p 54381 -h localhost -U postgres -W \ 
-  # only grab macrostrat schema
+docker-compose exec db psql -Upostgres $localdb -c "CREATE EXTENSION postgis;"
+pg_dump -Fc -p 54381 -h localhost -U postgres -W \
   --schema=macrostrat \
-  # for these tables, only dump their structure not the actual data 
   --exclude-table-data=macrostrat.strat_name_footprints \
   --exclude-table-data=macrostrat.measures \
   --exclude-table-data=macrostrat.measuremeta \
   --exclude-table-data=macrostrat.lookup_unit_attrs_api \
   --exclude-table-data=macrostrat.pbdb_collections \
   $dbname \
-  # restore the data right away to my dockerized postgres db. 
-  # No need for intermediate file
 | docker-compose exec -T db pg_restore -v -Upostgres -d $localdb
+

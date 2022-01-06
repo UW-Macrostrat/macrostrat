@@ -6,6 +6,10 @@ I've modified a script from gunnison, bin/dump-burwell, that dumps the macrostra
 from the postgres instance of burwell from gunnison through a local forward.
 This script begins by deleting and replacing my local database and then continues with the dump.
 
+I've done a quick first pass looking at the tables in postgres:gunnison/macrostrat and added foreign keys and
+run delete where statements in areas with non-matching key issues. I also took notes about how many rows were
+removed from each. Most of the removed rows were in joining tables. All the sql used is in the `add-foreign-keys.sql` file.
+
 Troubles I had:
 
 - I didn't have `pv` installed so the scrip wasn't working at first.
