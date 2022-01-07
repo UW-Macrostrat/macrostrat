@@ -1,0 +1,47 @@
+from backend.models import Project, Column, Unit
+
+sql = """ SELECT * FROM macrostrat.projects; """
+
+def test_project_model(db):
+    res  = db.execute(sql).fetchall()
+    new_projects = []
+    for project in res:
+        new_project = Project
+        for k,v in project.items():
+            setattr(new_project, k, v)
+        new_projects.append(new_project)
+    
+    assert len(res) == len(new_projects)
+
+def test_geom_values(db):
+    """ asserts the usage of pydantic models for geometry types! 
+        also assert the Columns pydantic model
+    """
+    sql = """ SELECT 
+                id, 
+                col_group_id, 
+                project_id, 
+                col_type, 
+                status_code, 
+                col_position, 
+                col, 
+                col_name, 
+                lat, 
+                lng, 
+                col_area, 
+                ST_AsGeoJSON(coordinate)::jsonb coordinate, 
+                wkt, 
+                created, 
+                ST_AsGeoJSON(poly_geom)::jsonb poly_geom  
+            FROM macrostrat.cols;
+         """
+    res = db.execute(sql).fetchall()
+    columns = []
+    for column in res:
+        columns.append(Column(**column))
+
+def test_units_mode(db):
+    """ assert the unit model works correctly """
+    sql = """ SELECT * FROM macrostrat.units; """
+    res = db.execute(sql).fetchall()
+    units = [Unit(**unit) for unit in res]

@@ -1,0 +1,47 @@
+#!/usr/bin/env zsh
+
+############################## functions ###############################
+help()
+# display help
+{
+   echo  
+   echo "Script to run a specified sql file on a freshly imported gunnison postgres db"
+   echo
+   echo "Syntax: scriptTemplate [-f | -c | -d | -U | -h, --help]"
+   echo "options:"
+   echo "-f            Path to sql-file. Default ../db-alterations/add-foreign-keys.sql"
+   echo "-c            Container name of db sql is being performed. Default db"
+   echo "-d            Name of db in cluster. Default column_data"
+   echo "-U            Name of db user. Default postgres"
+   echo "-h, --help    Display help"
+   echo
+}
+
+check()
+{
+    echo "Gathering arguments"
+    while getopts ":f:c:d:U:h" opt; do
+        case $opt in 
+            f) file_path=$OPTARG;;
+            c) container_name=$OPTARG;;
+            d) db_name=$OPTARG;;
+            U) db_user=$OPTARG;;
+            h) help; exit 1 ;; 
+           \?) help; exit 1 ;; 
+        esac
+    done
+}
+############################ variables ##################################
+
+file_path=../db-alterations/add-foreign-keys.sql
+container_name=db
+db_name=column_data
+db_user=postgres
+
+############################ MAIN SCRIPT ###############################
+check $@
+
+echo "Running $file_path on database"
+# this is an unfortunate hack around b/c you can't execute a sql file in docker-compose without
+# copying into the container first
+docker container exec -i $(docker-compose ps -q $container_name) psql $db_name < $file_path

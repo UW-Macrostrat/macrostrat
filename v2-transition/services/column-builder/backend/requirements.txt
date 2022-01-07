@@ -1,0 +1,7 @@
+
+python=3.10
+psycopg
+psycopg_binary
+pydantic
+fastapi
+geojson_pydantic

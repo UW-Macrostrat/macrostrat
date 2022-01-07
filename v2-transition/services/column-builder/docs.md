@@ -17,3 +17,5 @@ Troubles I had:
 
 - I didn't have `pv` installed so the scrip wasn't working at first.
 - The gunnison postgres/postgis debian image is 14.1 whereas my local postgres was at 13.5. I got an error about verision differences between pg_dump and pg_restore. I had to run some updates and change my path with the postgres app for mac.
+
+- There are 38,000 strat_names defined in units that are not in the strat_names table!!!
