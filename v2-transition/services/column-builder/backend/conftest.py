@@ -1,18 +1,15 @@
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import scoped_session, sessionmaker
+from psycopg import connect, rows
 
 testing_db = "postgresql://postgres@localhost:5434/col_test"
 
 @pytest.fixture(scope="session")
 def connection():
-    engine = create_engine(testing_db)
-    return engine.connect()
+    conn = connect(testing_db, row_factory=rows.dict_row)
+    return conn
 
 @pytest.fixture
 def db(connection):
-    transaction = connection.begin()
-    yield scoped_session(
-        sessionmaker(autocommit=False, autoflush=False, bind=connection)
-    )
-    transaction.rollback()
+    with connection.cursor() as cur:
+        yield cur
+    connection.rollback()    
