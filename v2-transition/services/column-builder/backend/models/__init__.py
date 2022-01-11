@@ -38,10 +38,10 @@ class Unit(BaseModel):
     strat_name: str
     color: str
     outcrop: str | None
-    fo: int
-    fo_h: int
-    lo: int
-    lo_h: int
+    fo: int # bottom time period "older bound" - fk for interval
+    fo_h: int = Field(default_factory=0)
+    lo: int # top time period "younger bound" - fk for interval
+    lo_h: int = Field(default_factory=0)
     position_bottom: int
     position_top: int
     max_thick: int 
@@ -57,5 +57,23 @@ class Environ(BaseModel):
     id: int | None
     environ: str
     environ_type: str | None
-    environ_class: EnvironClass.marine | EnvironClass.non_marine
+    environ_class: EnvironClass
     environ_color: str
+
+class LithClass(str, Enum):
+    sedimentary = "sedimentary"
+    igneous = "igneous"
+    metamorphic = "metamorphic"
+
+class Lith(BaseModel): 
+    id: int | None
+    lith: str
+    lith_group: str | None
+    lith_type: str 
+    lith_class: LithClass
+    lith_fill: int
+    comp_coef: float
+    initial_porosity: float
+    bulk_density: float
+    lith_color: str
+
