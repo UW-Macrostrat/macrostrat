@@ -1,0 +1,1 @@
+SELECT id, col_group_id, project_id, col_type, status_code, col_position, col, col_name, lat, lng, col_area, ST_AsGeoJSON(coordinate)::jsonb coordinate, wkt, created, ST_AsGeoJSON(poly_geom)::jsonb poly_geom  FROM macrostrat.cols;
