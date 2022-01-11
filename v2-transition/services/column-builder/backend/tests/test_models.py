@@ -1,4 +1,4 @@
-from backend.models import Project, Column, Unit
+from backend.models import Project, Column, Unit, Environ, Lith
 
 sql = """ SELECT * FROM macrostrat.projects; """
 
@@ -40,8 +40,18 @@ def test_geom_values(db):
     for column in res:
         columns.append(Column(**column))
 
-def test_units_mode(db):
+def test_units_model(db):
     """ assert the unit model works correctly """
     sql = """ SELECT * FROM macrostrat.units; """
     res = db.execute(sql).fetchall()
     units = [Unit(**unit) for unit in res]
+
+def test_environ_model(db):
+    sql = """ SELECT * FROM macrostrat.environs; """
+    res = db.execute(sql).fetchall()
+    envs = [Environ(**env) for env in res]
+
+def test_lith_model(db):
+    sql = """ SELECT * FROM macrostrat.liths; """
+    res = db.execute(sql).fetchall()
+    liths = [Lith(**lith) for lith in res]
