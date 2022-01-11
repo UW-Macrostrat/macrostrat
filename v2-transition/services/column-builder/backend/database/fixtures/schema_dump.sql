@@ -5,16 +5,16 @@
 -- Dumped from database version 14.1 (Debian 14.1-1.pgdg110+1)
 -- Dumped by pg_dump version 14.1
 
--- SET statement_timeout = 0;
--- SET lock_timeout = 0;
--- SET idle_in_transaction_session_timeout = 0;
--- SET client_encoding = 'UTF8';
--- SET standard_conforming_strings = on;
--- SELECT pg_catalog.set_config('search_path', '', false);
--- SET check_function_bodies = false;
--- SET xmloption = content;
--- SET client_min_messages = warning;
--- SET row_security = off;
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
 
 --
 -- Name: macrostrat; Type: SCHEMA; Schema: -; Owner: postgres
@@ -1098,9 +1098,7 @@ CREATE TABLE macrostrat.units (
     color character varying(20),
     outcrop character varying(20),
     fo integer,
-    fo_h integer,
     lo integer,
-    lo_h integer,
     position_bottom numeric,
     position_top numeric,
     max_thick numeric,
@@ -2252,6 +2250,22 @@ ALTER TABLE ONLY macrostrat.unit_strat_names
 
 ALTER TABLE ONLY macrostrat.units
     ADD CONSTRAINT units_col_id_fkey FOREIGN KEY (col_id) REFERENCES macrostrat.cols(id);
+
+
+--
+-- Name: units units_fo_fkey; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.units
+    ADD CONSTRAINT units_fo_fkey FOREIGN KEY (fo) REFERENCES macrostrat.intervals(id) ON DELETE CASCADE;
+
+
+--
+-- Name: units units_lo_fkey; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.units
+    ADD CONSTRAINT units_lo_fkey FOREIGN KEY (lo) REFERENCES macrostrat.intervals(id) ON DELETE CASCADE;
 
 
 --
