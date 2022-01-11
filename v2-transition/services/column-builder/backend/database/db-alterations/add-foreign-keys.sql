@@ -107,4 +107,6 @@ DELETE FROM macrostrat.units
 	WHERE col_id NOT IN (SELECT id FROM macrostrat.cols);
 
 ALTER TABLE macrostrat.units
-	ADD FOREIGN KEY (col_id) REFERENCES macrostrat.cols(id);
+	ADD FOREIGN KEY (col_id) REFERENCES macrostrat.cols(id) ON DELETE CASCADE,
+	ADD FOREIGN KEY (fo) REFERENCES macrostrat.intervals(id) ON DELETE CASCADE,
+	ADD FOREIGN KEY (lo) REFERENCES macrostrat.intervals(id) ON DELETE CASCADE;
