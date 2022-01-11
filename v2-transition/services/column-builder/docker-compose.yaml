@@ -3,14 +3,12 @@ services:
   db:
     image: postgis/postgis:14-3.1
     environment:
-      - PGUSER=postgres
-      - POSTGRES_DB=column_data
+      - PGUSER
+      - POSTGRES_DB
       # This allows connections without a password, which is expedient but insecure...
       - POSTGRES_HOST_AUTH_METHOD=trust
     ports:
-      - "5434:5432"
-    expose:
-      - 5434
+      - ${PG_PORT}:5432
     volumes:
       - db_cluster:/var/lib/postgresql/data
   db_backup:
