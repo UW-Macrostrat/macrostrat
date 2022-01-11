@@ -5,6 +5,8 @@ from geojson_pydantic import Point, Polygon, MultiPolygon
 ## geojson types for pydantic
 ## https://github.com/developmentseed/geojson-pydantic
 
+## these are more for typing the queries than the actual db tables
+
 class Project(BaseModel):
     id: int | None
     project: str
@@ -39,9 +41,9 @@ class Unit(BaseModel):
     color: str
     outcrop: str | None
     fo: int # bottom time period "older bound" - fk for interval
-    fo_h: int = Field(default_factory=0)
+    name_fo: str | None # older bound interval name
     lo: int # top time period "younger bound" - fk for interval
-    lo_h: int = Field(default_factory=0)
+    name_lo: str | None # younger bound interval name
     position_bottom: int
     position_top: int
     max_thick: int 
