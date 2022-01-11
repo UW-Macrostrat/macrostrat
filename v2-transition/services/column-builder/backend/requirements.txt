@@ -5,3 +5,4 @@ psycopg_binary
 pydantic
 fastapi
 geojson_pydantic
+requests
