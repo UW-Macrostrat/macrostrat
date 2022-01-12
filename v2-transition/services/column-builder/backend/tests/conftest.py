@@ -1,8 +1,8 @@
 import pytest
-from backend.app import app
-from backend.app.depends import get_db
-from backend.database import Database
-from backend.database.fixtures import get_sql
+from urvogel.app import app
+from urvogel.app.depends import get_db
+from urvogel.database import Database
+from urvogel.database.fixtures import get_sql
 from fastapi.testclient import TestClient
 
 # for testing the api

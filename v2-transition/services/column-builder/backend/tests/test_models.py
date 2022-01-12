@@ -1,6 +1,6 @@
 import pytest
-from backend.models import Project, Column, Unit, Environ, Lith
-from backend.database.queries import get_sql
+from urvogel.models import Project, Column, Unit, Environ, Lith
+from urvogel.database.queries import get_sql
 
 sql = """ SELECT * FROM macrostrat.projects; """
 

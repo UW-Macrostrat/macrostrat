@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from fastapi.params import Depends
-from backend.models import Lith
-from backend.database.queries import get_sql
+from urvogel.models import Lith
+from urvogel.database.queries import get_sql
 from ..depends import get_db
 from psycopg.sql import SQL, Identifier
 

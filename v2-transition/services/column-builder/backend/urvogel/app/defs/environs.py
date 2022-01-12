@@ -1,8 +1,8 @@
 from fastapi import APIRouter
 from fastapi.params import Depends
-from backend.models import Environ
+from urvogel.models import Environ
 from ..depends import get_db
-from backend.database.queries import get_sql
+from urvogel.database.queries import get_sql
 from psycopg.sql import SQL, Identifier
 
 env_router = APIRouter(prefix="/environs")

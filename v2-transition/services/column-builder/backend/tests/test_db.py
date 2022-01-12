@@ -1,4 +1,4 @@
-from backend.database.queries import get_sql, add_sql_clause, add_where_clause
+from urvogel.database.queries import get_sql, add_sql_clause, add_where_clause
 
 sql = """ SELECT * FROM macrostrat.projects; """
     
