@@ -19,25 +19,29 @@ def override_get_db():
 app.dependency_overrides[get_db] = override_get_db
 
 @pytest.fixture(scope="session")
-def connection():
+def db_():
     db = Database(testing_db)
-    return db.conn
+    return db
 
 @pytest.fixture(scope="session")
-def setup(connection):
+def setup(db_):
     schema = get_sql("schema_dump.sql")
     data_inserts = get_sql("test_inserts.sql")
-    with connection.cursor() as cur:
+    with db_.conn.cursor() as cur:
         cur.execute("DROP SCHEMA IF EXISTS macrostrat CASCADE;")
         cur.execute(schema)
         cur.execute(data_inserts)
- 
-@pytest.fixture
-def db(setup, connection):
-    with connection.cursor() as cur:
-        yield cur
-    connection.rollback()    
+
+# @pytest.fixture
+# def db(setup, connection):
+#     with connection.cursor() as cur:
+#         yield cur
+#     connection.rollback()    
+
+@pytest.fixture()
+def db(setup, db_):
+    return db_
 
 @pytest.fixture
-def client(connection):
+def client(db_):
     return TestClient(app)

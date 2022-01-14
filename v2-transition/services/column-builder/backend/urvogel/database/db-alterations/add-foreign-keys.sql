@@ -17,6 +17,8 @@
         'sections' table is missing - columns have been added to 'units'
         'col_notes' table is missing
         'col_equv'  table is missing
+
+	All primary key sequences need to be adjusted to allow for incrementing correct id values
 */
 
 /* deleted 68 rows where col_id didn't exist in cols

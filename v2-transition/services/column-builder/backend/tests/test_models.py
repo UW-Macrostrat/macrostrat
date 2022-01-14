@@ -5,7 +5,7 @@ from urvogel.database.queries import get_sql
 sql = """ SELECT * FROM macrostrat.projects; """
 
 def test_project_model(db):
-    res  = db.execute(sql).fetchall()
+    res  = db.query(sql).fetchall()
     new_projects = []
     for project in res:
         new_project = Project
@@ -21,7 +21,7 @@ def test_geom_values(db):
         also assert the Columns pydantic model
     """
     sql = get_sql("get-cols-by.sql")
-    res = db.execute(sql).fetchall()
+    res = db.query(sql).fetchall()
     columns = []
     for column in res:
         columns.append(Column(**column))
@@ -29,15 +29,15 @@ def test_geom_values(db):
 def test_units_model(db):
     """ assert the unit model works correctly """
     sql = """ SELECT * FROM macrostrat.units; """
-    res = db.execute(sql).fetchall()
+    res = db.query(sql).fetchall()
     units = [Unit(**unit) for unit in res]
 
 def test_environ_model(db):
     sql = """ SELECT * FROM macrostrat.environs; """
-    res = db.execute(sql).fetchall()
+    res = db.query(sql).fetchall()
     envs = [Environ(**env) for env in res]
 
 def test_lith_model(db):
     sql = """ SELECT * FROM macrostrat.liths; """
-    res = db.execute(sql).fetchall()
+    res = db.query(sql).fetchall()
     liths = [Lith(**lith) for lith in res]

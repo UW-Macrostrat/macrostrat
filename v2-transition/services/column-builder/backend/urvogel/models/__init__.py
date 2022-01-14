@@ -11,7 +11,7 @@ class Project(BaseModel):
     id: int | None
     project: str
     descrip: str | None
-    timescale_id: int
+    timescale_id: int | None
 
 class ColumnGroup(BaseModel):
     id: int | None

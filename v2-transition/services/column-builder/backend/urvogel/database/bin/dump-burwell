@@ -42,6 +42,7 @@ db_user=postgres
 local_forward=54381
 fk_file_path=../db-alterations/add-foreign-keys.sql
 projects_file_path=../db-alterations/projects-table.sql
+other_alterations=../db-alterations/remove-unused.sql
 
 ########################### main script ###############################
 check $@
@@ -74,12 +75,14 @@ if [[ "$FK" = "Y" || "$FK" = "y" ]]
     exit 1
 fi
 
-echo "Do you wish to add the projects table?"
+echo "Do you wish to make further alterations?"
 echo -n "Do you wish to continue?(Y/n): "
 read FK
 if [[ "$FK" = "Y" || "$FK" = "y" ]]
   then 
     ./run-sql-file -f $projects_file_path -c $container_name -d $local_db -U $db_user
+    ./run-sql-file -f $other_alterations -c $container_name -d $local_db -U $db_user
   else
-    echo "Okay, your choice, no project table."
+    echo "Okay, your choice..."
+    exit 1;
 fi
