@@ -1,4 +1,6 @@
 from fastapi import APIRouter, Depends
+
+from ..database import Database
 from .depends import get_db
 from ..database.queries import get_sql, add_sql_clause
 from ..models import Project
@@ -25,4 +27,12 @@ async def get_project_by_id(project_id: int = None, db = Depends(get_db)):
         project = Project(**res)
         return project
     
-    
+@project_router.post("/")
+async def post_project(project: Project, db: Database = Depends(get_db)):
+    id_ = db.insert(project, "project", "macrostrat")
+    return {"status":"success","id": id_}
+
+@project_router.put("/")
+async def put_project(project: Project, db: Database = Depends(get_db)):
+    id_ = db.update(project, "project", "macrostrat")
+    return {"status": "success","id": id_}
