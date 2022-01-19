@@ -1,3 +1,5 @@
+# 01.06.22: Initial Commits
+
 So far I've installed a postgis/postgres instance in a docker container for my column_data db.
 
 I've also installed the db_backup service from uw-macrostrat.
@@ -19,3 +21,15 @@ Troubles I had:
 - The gunnison postgres/postgis debian image is 14.1 whereas my local postgres was at 13.5. I got an error about verision differences between pg_dump and pg_restore. I had to run some updates and change my path with the postgres app for mac.
 
 - There are 38,000 strat_names defined in units that are not in the strat_names table!!!
+
+# 01.19.22: Pydantic, FastAPI, & Postgrest
+
+I have added more database alterations including a procedure to update or create primary key sequences on 
+every primary key in the `macrostrat` schema. 
+
+I have created some Pydantic models for some of the major database modesl (Project, Column, Unit, etc). I also began creating a FastAPI with psycopg3 db bindings, however it quickly became apparent that the direction I was headed was creating a ORM, which for the purposes of this app, seemed overkill. The API doesn't need to handle much logic besides inserting and retrieving from the database.
+
+To simplfy the application I have installed Postgrest to work as the API. I have created a few tests for Postgrest that include retrieving data (GET), creating new models (POST), and editing existing models (PATCH).
+As well as linking two models via a foreign key insert into a joining table. These tests express the main functionality the application is meant to encompass.
+
+The `dump-burwell` script has been updated to include the latest db-alterations. 
