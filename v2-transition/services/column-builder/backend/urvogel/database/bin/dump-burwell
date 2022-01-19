@@ -40,9 +40,10 @@ local_db=column_data
 container_name=db
 db_user=postgres
 local_forward=54381
-fk_file_path=../db-alterations/add-foreign-keys.sql
-projects_file_path=../db-alterations/projects-table.sql
-other_alterations=../db-alterations/remove-unused.sql
+fk_file_path=`dirname $0`/../db-alterations/add-foreign-keys.sql
+projects_file_path=`dirname $0`/../db-alterations/projects-table.sql
+remove_unused=`dirname $0`/../db-alterations/remove-unused.sql
+sequence_reset=`dirname $0`/../db-alterations/primary-key-seq.sql
 
 ########################### main script ###############################
 check $@
@@ -69,19 +70,25 @@ echo -n "Do you wish to continue?(Y/n): "
 read FK
 if [[ "$FK" = "Y" || "$FK" = "y" ]]
   then 
-    ./run-sql-file -f $fk_file_path -c $container_name -d $local_db -U $db_user
+    `dirname $0`/./run-sql-file -f $fk_file_path -c $container_name -d $local_db -U $db_user
   else
     echo "Okay, your choice, no foreign keys."
-    exit 1
+    exit 1;
 fi
 
+echo
 echo "Do you wish to make further alterations?"
+echo "Alterations to be made: "
+echo "  - Add the projects table (data copy and based from MariaDB)"
+echo "  - Remove unused columns (ex. lo_h, fo_h from cols)"
+echo "  - Reset Primary Key Sequences"
 echo -n "Do you wish to continue?(Y/n): "
 read FK
 if [[ "$FK" = "Y" || "$FK" = "y" ]]
   then 
-    ./run-sql-file -f $projects_file_path -c $container_name -d $local_db -U $db_user
-    ./run-sql-file -f $other_alterations -c $container_name -d $local_db -U $db_user
+    `dirname $0`/./run-sql-file -f $projects_file_path -c $container_name -d $local_db -U $db_user
+    `dirname $0`/./run-sql-file -f $remove_unused -c $container_name -d $local_db -U $db_user
+    `dirname $0`/./run-sql-file -f $sequence_reset -c $container_name -d $local_db -U $db_user
   else
     echo "Okay, your choice..."
     exit 1;
