@@ -1,0 +1,4 @@
+#!/usr/bin/env zsh
+
+
+docker-compose exec db pg_dump -s -U postgres -d column_data > `dirname $0`/../fixtures/schema_dump.sql
