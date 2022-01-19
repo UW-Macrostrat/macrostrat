@@ -3,7 +3,7 @@
 --
 
 -- Dumped from database version 14.1 (Debian 14.1-1.pgdg110+1)
--- Dumped by pg_dump version 14.1
+-- Dumped by pg_dump version 14.1 (Debian 14.1-1.pgdg110+1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -38,6 +38,72 @@ CREATE EXTENSION IF NOT EXISTS postgis WITH SCHEMA public;
 
 COMMENT ON EXTENSION postgis IS 'PostGIS geometry and geography spatial types and functions';
 
+
+--
+-- Name: make_into_serial(text, text); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION public.make_into_serial(table_name text, column_name text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    start_with INTEGER;
+    sequence_name TEXT;
+BEGIN
+    sequence_name := table_name || '_' || column_name || '_seq';
+    EXECUTE 'SELECT coalesce(max(' || column_name || '), 0) + 1 FROM ' || table_name
+            INTO start_with;
+    EXECUTE 'CREATE SEQUENCE IF NOT EXISTS ' || sequence_name ||
+            ' START WITH ' || start_with ||
+            ' OWNED BY ' || table_name || '.' || column_name;
+    EXECUTE 'ALTER TABLE ' || table_name || ' ALTER COLUMN ' || column_name ||
+            ' SET DEFAULT nextVal(''' || sequence_name || ''')';
+    RETURN start_with;
+END;
+$$;
+
+
+ALTER FUNCTION public.make_into_serial(table_name text, column_name text) OWNER TO postgres;
+
+--
+-- Name: pg_reset_pkey_seq(); Type: PROCEDURE; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE PROCEDURE public.pg_reset_pkey_seq()
+    LANGUAGE plpgsql
+    AS $_$
+DECLARE
+	sql_reset TEXT;
+	table_pkeys RECORD;
+	next_val INT;
+BEGIN
+
+sql_reset :=
+$sql$
+SELECT make_into_serial('%1$s.%2$s', '%3$s');
+$sql$;
+
+FOR table_pkeys IN
+	SELECT kcu.table_schema, kcu.table_name, kcu.column_name 
+	FROM information_schema.key_column_usage kcu
+	JOIN information_schema.table_constraints tc
+	ON tc.constraint_name = kcu.constraint_name
+	WHERE tc.constraint_type='PRIMARY KEY'
+	AND kcu.table_schema='macrostrat'
+LOOP
+	EXECUTE format(sql_reset, table_pkeys.table_schema,table_pkeys.table_name,table_pkeys.column_name) INTO next_val;
+	RAISE info 'Resetting Sequence for: %.% (%) to %'
+		, table_pkeys.table_schema
+		, table_pkeys.table_name
+		, table_pkeys.column_name
+		, next_val
+		;
+END LOOP;
+END
+$_$;
+
+
+ALTER PROCEDURE public.pg_reset_pkey_seq() OWNER TO postgres;
 
 SET default_tablespace = '';
 
@@ -86,6 +152,27 @@ COMMENT ON TABLE macrostrat.col_areas IS 'Last updated from MariaDB - 2021-08-30
 
 
 --
+-- Name: col_areas_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
+--
+
+CREATE SEQUENCE macrostrat.col_areas_id_seq
+    START WITH 5355
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE macrostrat.col_areas_id_seq OWNER TO postgres;
+
+--
+-- Name: col_areas_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
+--
+
+ALTER SEQUENCE macrostrat.col_areas_id_seq OWNED BY macrostrat.col_areas.id;
+
+
+--
 -- Name: col_groups; Type: TABLE; Schema: macrostrat; Owner: postgres
 --
 
@@ -106,6 +193,27 @@ COMMENT ON TABLE macrostrat.col_groups IS 'Last updated from MariaDB - 2021-08-3
 
 
 --
+-- Name: col_groups_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
+--
+
+CREATE SEQUENCE macrostrat.col_groups_id_seq
+    START WITH 354
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE macrostrat.col_groups_id_seq OWNER TO postgres;
+
+--
+-- Name: col_groups_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
+--
+
+ALTER SEQUENCE macrostrat.col_groups_id_seq OWNED BY macrostrat.col_groups.id;
+
+
+--
 -- Name: col_refs; Type: TABLE; Schema: macrostrat; Owner: postgres
 --
 
@@ -123,6 +231,27 @@ ALTER TABLE macrostrat.col_refs OWNER TO postgres;
 --
 
 COMMENT ON TABLE macrostrat.col_refs IS 'Last updated from MariaDB - 2021-08-30 11:25';
+
+
+--
+-- Name: col_refs_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
+--
+
+CREATE SEQUENCE macrostrat.col_refs_id_seq
+    START WITH 9721
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE macrostrat.col_refs_id_seq OWNER TO postgres;
+
+--
+-- Name: col_refs_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
+--
+
+ALTER SEQUENCE macrostrat.col_refs_id_seq OWNED BY macrostrat.col_refs.id;
 
 
 --
@@ -155,6 +284,27 @@ ALTER TABLE macrostrat.cols OWNER TO postgres;
 --
 
 COMMENT ON TABLE macrostrat.cols IS 'Last updated from MariaDB - 2021-08-30 12:02';
+
+
+--
+-- Name: cols_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
+--
+
+CREATE SEQUENCE macrostrat.cols_id_seq
+    START WITH 5728
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE macrostrat.cols_id_seq OWNER TO postgres;
+
+--
+-- Name: cols_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
+--
+
+ALTER SEQUENCE macrostrat.cols_id_seq OWNED BY macrostrat.cols.id;
 
 
 --
@@ -199,6 +349,27 @@ COMMENT ON TABLE macrostrat.econs IS 'Last updated from MariaDB - 2021-08-30 11:
 
 
 --
+-- Name: econs_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
+--
+
+CREATE SEQUENCE macrostrat.econs_id_seq
+    START WITH 24
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE macrostrat.econs_id_seq OWNER TO postgres;
+
+--
+-- Name: econs_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
+--
+
+ALTER SEQUENCE macrostrat.econs_id_seq OWNED BY macrostrat.econs.id;
+
+
+--
 -- Name: environs; Type: TABLE; Schema: macrostrat; Owner: postgres
 --
 
@@ -221,6 +392,27 @@ COMMENT ON TABLE macrostrat.environs IS 'Last updated from MariaDB - 2021-08-30 
 
 
 --
+-- Name: environs_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
+--
+
+CREATE SEQUENCE macrostrat.environs_id_seq
+    START WITH 94
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE macrostrat.environs_id_seq OWNER TO postgres;
+
+--
+-- Name: environs_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
+--
+
+ALTER SEQUENCE macrostrat.environs_id_seq OWNED BY macrostrat.environs.id;
+
+
+--
 -- Name: grainsize; Type: TABLE; Schema: macrostrat; Owner: postgres
 --
 
@@ -237,6 +429,27 @@ CREATE TABLE macrostrat.grainsize (
 
 
 ALTER TABLE macrostrat.grainsize OWNER TO postgres;
+
+--
+-- Name: grainsize_grain_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
+--
+
+CREATE SEQUENCE macrostrat.grainsize_grain_id_seq
+    START WITH 32
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE macrostrat.grainsize_grain_id_seq OWNER TO postgres;
+
+--
+-- Name: grainsize_grain_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
+--
+
+ALTER SEQUENCE macrostrat.grainsize_grain_id_seq OWNED BY macrostrat.grainsize.grain_id;
+
 
 --
 -- Name: intervals; Type: TABLE; Schema: macrostrat; Owner: postgres
@@ -261,6 +474,27 @@ ALTER TABLE macrostrat.intervals OWNER TO postgres;
 --
 
 COMMENT ON TABLE macrostrat.intervals IS 'Last updated from MariaDB - 2021-08-30 11:29';
+
+
+--
+-- Name: intervals_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
+--
+
+CREATE SEQUENCE macrostrat.intervals_id_seq
+    START WITH 1596
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE macrostrat.intervals_id_seq OWNER TO postgres;
+
+--
+-- Name: intervals_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
+--
+
+ALTER SEQUENCE macrostrat.intervals_id_seq OWNED BY macrostrat.intervals.id;
 
 
 --
@@ -307,6 +541,27 @@ COMMENT ON TABLE macrostrat.lith_atts IS 'Last updated from MariaDB - 2021-08-30
 
 
 --
+-- Name: lith_atts_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
+--
+
+CREATE SEQUENCE macrostrat.lith_atts_id_seq
+    START WITH 186
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE macrostrat.lith_atts_id_seq OWNER TO postgres;
+
+--
+-- Name: lith_atts_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
+--
+
+ALTER SEQUENCE macrostrat.lith_atts_id_seq OWNED BY macrostrat.lith_atts.id;
+
+
+--
 -- Name: liths; Type: TABLE; Schema: macrostrat; Owner: postgres
 --
 
@@ -332,6 +587,27 @@ ALTER TABLE macrostrat.liths OWNER TO postgres;
 --
 
 COMMENT ON TABLE macrostrat.liths IS 'Last updated from MariaDB - 2021-08-30 11:29';
+
+
+--
+-- Name: liths_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
+--
+
+CREATE SEQUENCE macrostrat.liths_id_seq
+    START WITH 207
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE macrostrat.liths_id_seq OWNER TO postgres;
+
+--
+-- Name: liths_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
+--
+
+ALTER SEQUENCE macrostrat.liths_id_seq OWNED BY macrostrat.liths.id;
 
 
 --
@@ -511,6 +787,27 @@ COMMENT ON TABLE macrostrat.lookup_units IS 'Last updated from MariaDB - 2021-08
 
 
 --
+-- Name: lookup_units_unit_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
+--
+
+CREATE SEQUENCE macrostrat.lookup_units_unit_id_seq
+    START WITH 52383
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE macrostrat.lookup_units_unit_id_seq OWNER TO postgres;
+
+--
+-- Name: lookup_units_unit_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
+--
+
+ALTER SEQUENCE macrostrat.lookup_units_unit_id_seq OWNED BY macrostrat.lookup_units.unit_id;
+
+
+--
 -- Name: measurements_new_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
 --
 
@@ -554,6 +851,27 @@ ALTER TABLE macrostrat.measuremeta OWNER TO postgres;
 --
 
 COMMENT ON TABLE macrostrat.measuremeta IS 'Last updated from MariaDB - 2021-08-30 11:27';
+
+
+--
+-- Name: measuremeta_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
+--
+
+CREATE SEQUENCE macrostrat.measuremeta_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE macrostrat.measuremeta_id_seq OWNER TO postgres;
+
+--
+-- Name: measuremeta_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
+--
+
+ALTER SEQUENCE macrostrat.measuremeta_id_seq OWNED BY macrostrat.measuremeta.id;
 
 
 --
@@ -699,6 +1017,27 @@ COMMENT ON TABLE macrostrat.places IS 'Last updated from MariaDB - 2021-08-30 11
 
 
 --
+-- Name: places_place_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
+--
+
+CREATE SEQUENCE macrostrat.places_place_id_seq
+    START WITH 88
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE macrostrat.places_place_id_seq OWNER TO postgres;
+
+--
+-- Name: places_place_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
+--
+
+ALTER SEQUENCE macrostrat.places_place_id_seq OWNED BY macrostrat.places.place_id;
+
+
+--
 -- Name: projects; Type: TABLE; Schema: macrostrat; Owner: postgres
 --
 
@@ -760,6 +1099,27 @@ COMMENT ON TABLE macrostrat.refs IS 'Last updated from MariaDB - 2021-08-30 11:2
 
 
 --
+-- Name: refs_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
+--
+
+CREATE SEQUENCE macrostrat.refs_id_seq
+    START WITH 218
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE macrostrat.refs_id_seq OWNER TO postgres;
+
+--
+-- Name: refs_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
+--
+
+ALTER SEQUENCE macrostrat.refs_id_seq OWNED BY macrostrat.refs.id;
+
+
+--
 -- Name: strat_name_footprints; Type: TABLE; Schema: macrostrat; Owner: postgres
 --
 
@@ -800,6 +1160,27 @@ COMMENT ON TABLE macrostrat.strat_names IS 'Last updated from MariaDB - 2021-08-
 
 
 --
+-- Name: strat_names_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
+--
+
+CREATE SEQUENCE macrostrat.strat_names_id_seq
+    START WITH 108117
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE macrostrat.strat_names_id_seq OWNER TO postgres;
+
+--
+-- Name: strat_names_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
+--
+
+ALTER SEQUENCE macrostrat.strat_names_id_seq OWNED BY macrostrat.strat_names.id;
+
+
+--
 -- Name: strat_names_meta; Type: TABLE; Schema: macrostrat; Owner: postgres
 --
 
@@ -826,6 +1207,27 @@ ALTER TABLE macrostrat.strat_names_meta OWNER TO postgres;
 --
 
 COMMENT ON TABLE macrostrat.strat_names_meta IS 'Last updated from MariaDB - 2021-08-30 11:28';
+
+
+--
+-- Name: strat_names_meta_concept_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
+--
+
+CREATE SEQUENCE macrostrat.strat_names_meta_concept_id_seq
+    START WITH 43927
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE macrostrat.strat_names_meta_concept_id_seq OWNER TO postgres;
+
+--
+-- Name: strat_names_meta_concept_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
+--
+
+ALTER SEQUENCE macrostrat.strat_names_meta_concept_id_seq OWNED BY macrostrat.strat_names_meta.concept_id;
 
 
 --
@@ -890,6 +1292,27 @@ COMMENT ON TABLE macrostrat.timescales IS 'Last updated from MariaDB - 2021-08-3
 
 
 --
+-- Name: timescales_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
+--
+
+CREATE SEQUENCE macrostrat.timescales_id_seq
+    START WITH 29
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE macrostrat.timescales_id_seq OWNER TO postgres;
+
+--
+-- Name: timescales_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
+--
+
+ALTER SEQUENCE macrostrat.timescales_id_seq OWNED BY macrostrat.timescales.id;
+
+
+--
 -- Name: timescales_intervals; Type: TABLE; Schema: macrostrat; Owner: postgres
 --
 
@@ -931,6 +1354,27 @@ COMMENT ON TABLE macrostrat.unit_econs IS 'Last updated from MariaDB - 2021-08-3
 
 
 --
+-- Name: unit_econs_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
+--
+
+CREATE SEQUENCE macrostrat.unit_econs_id_seq
+    START WITH 3158
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE macrostrat.unit_econs_id_seq OWNER TO postgres;
+
+--
+-- Name: unit_econs_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
+--
+
+ALTER SEQUENCE macrostrat.unit_econs_id_seq OWNED BY macrostrat.unit_econs.id;
+
+
+--
 -- Name: unit_environs; Type: TABLE; Schema: macrostrat; Owner: postgres
 --
 
@@ -953,6 +1397,27 @@ COMMENT ON TABLE macrostrat.unit_environs IS 'Last updated from MariaDB - 2021-0
 
 
 --
+-- Name: unit_environs_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
+--
+
+CREATE SEQUENCE macrostrat.unit_environs_id_seq
+    START WITH 85929
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE macrostrat.unit_environs_id_seq OWNER TO postgres;
+
+--
+-- Name: unit_environs_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
+--
+
+ALTER SEQUENCE macrostrat.unit_environs_id_seq OWNED BY macrostrat.unit_environs.id;
+
+
+--
 -- Name: unit_lith_atts; Type: TABLE; Schema: macrostrat; Owner: postgres
 --
 
@@ -972,6 +1437,27 @@ ALTER TABLE macrostrat.unit_lith_atts OWNER TO postgres;
 --
 
 COMMENT ON TABLE macrostrat.unit_lith_atts IS 'Last updated from MariaDB - 2021-08-30 11:25';
+
+
+--
+-- Name: unit_lith_atts_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
+--
+
+CREATE SEQUENCE macrostrat.unit_lith_atts_id_seq
+    START WITH 60953
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE macrostrat.unit_lith_atts_id_seq OWNER TO postgres;
+
+--
+-- Name: unit_lith_atts_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
+--
+
+ALTER SEQUENCE macrostrat.unit_lith_atts_id_seq OWNED BY macrostrat.unit_lith_atts.id;
 
 
 --
@@ -1002,6 +1488,27 @@ COMMENT ON TABLE macrostrat.unit_liths IS 'Last updated from MariaDB - 2021-08-3
 
 
 --
+-- Name: unit_liths_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
+--
+
+CREATE SEQUENCE macrostrat.unit_liths_id_seq
+    START WITH 130551
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE macrostrat.unit_liths_id_seq OWNER TO postgres;
+
+--
+-- Name: unit_liths_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
+--
+
+ALTER SEQUENCE macrostrat.unit_liths_id_seq OWNED BY macrostrat.unit_liths.id;
+
+
+--
 -- Name: unit_measures; Type: TABLE; Schema: macrostrat; Owner: postgres
 --
 
@@ -1022,6 +1529,27 @@ ALTER TABLE macrostrat.unit_measures OWNER TO postgres;
 --
 
 COMMENT ON TABLE macrostrat.unit_measures IS 'Last updated from MariaDB - 2018-09-25 10:40';
+
+
+--
+-- Name: unit_measures_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
+--
+
+CREATE SEQUENCE macrostrat.unit_measures_id_seq
+    START WITH 105049
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE macrostrat.unit_measures_id_seq OWNER TO postgres;
+
+--
+-- Name: unit_measures_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
+--
+
+ALTER SEQUENCE macrostrat.unit_measures_id_seq OWNED BY macrostrat.unit_measures.id;
 
 
 --
@@ -1064,6 +1592,27 @@ ALTER TABLE macrostrat.unit_strat_names OWNER TO postgres;
 --
 
 COMMENT ON TABLE macrostrat.unit_strat_names IS 'Last updated from MariaDB - 2021-08-30 11:25';
+
+
+--
+-- Name: unit_strat_names_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
+--
+
+CREATE SEQUENCE macrostrat.unit_strat_names_id_seq
+    START WITH 32147
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE macrostrat.unit_strat_names_id_seq OWNER TO postgres;
+
+--
+-- Name: unit_strat_names_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
+--
+
+ALTER SEQUENCE macrostrat.unit_strat_names_id_seq OWNED BY macrostrat.unit_strat_names.id;
 
 
 --
@@ -1118,6 +1667,27 @@ COMMENT ON TABLE macrostrat.units IS 'Last updated from MariaDB - 2021-08-30 11:
 
 
 --
+-- Name: units_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
+--
+
+CREATE SEQUENCE macrostrat.units_id_seq
+    START WITH 52384
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE macrostrat.units_id_seq OWNER TO postgres;
+
+--
+-- Name: units_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
+--
+
+ALTER SEQUENCE macrostrat.units_id_seq OWNED BY macrostrat.units.id;
+
+
+--
 -- Name: units_sections; Type: TABLE; Schema: macrostrat; Owner: postgres
 --
 
@@ -1136,6 +1706,27 @@ ALTER TABLE macrostrat.units_sections OWNER TO postgres;
 --
 
 COMMENT ON TABLE macrostrat.units_sections IS 'Last updated from MariaDB - 2021-08-30 11:59';
+
+
+--
+-- Name: units_sections_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
+--
+
+CREATE SEQUENCE macrostrat.units_sections_id_seq
+    START WITH 50897
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE macrostrat.units_sections_id_seq OWNER TO postgres;
+
+--
+-- Name: units_sections_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
+--
+
+ALTER SEQUENCE macrostrat.units_sections_id_seq OWNED BY macrostrat.units_sections.id;
 
 
 --
@@ -1161,17 +1752,87 @@ ALTER SEQUENCE macrostrat.units_sections_new_id_seq1 OWNED BY macrostrat.units_s
 
 
 --
+-- Name: col_areas id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.col_areas ALTER COLUMN id SET DEFAULT nextval('macrostrat.col_areas_id_seq'::regclass);
+
+
+--
+-- Name: col_groups id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.col_groups ALTER COLUMN id SET DEFAULT nextval('macrostrat.col_groups_id_seq'::regclass);
+
+
+--
+-- Name: col_refs id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.col_refs ALTER COLUMN id SET DEFAULT nextval('macrostrat.col_refs_id_seq'::regclass);
+
+
+--
+-- Name: cols id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.cols ALTER COLUMN id SET DEFAULT nextval('macrostrat.cols_id_seq'::regclass);
+
+
+--
+-- Name: econs id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.econs ALTER COLUMN id SET DEFAULT nextval('macrostrat.econs_id_seq'::regclass);
+
+
+--
+-- Name: environs id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.environs ALTER COLUMN id SET DEFAULT nextval('macrostrat.environs_id_seq'::regclass);
+
+
+--
+-- Name: grainsize grain_id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.grainsize ALTER COLUMN grain_id SET DEFAULT nextval('macrostrat.grainsize_grain_id_seq'::regclass);
+
+
+--
 -- Name: intervals id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
 --
 
-ALTER TABLE ONLY macrostrat.intervals ALTER COLUMN id SET DEFAULT nextval('macrostrat.intervals_new_id_seq1'::regclass);
+ALTER TABLE ONLY macrostrat.intervals ALTER COLUMN id SET DEFAULT nextval('macrostrat.intervals_id_seq'::regclass);
+
+
+--
+-- Name: lith_atts id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.lith_atts ALTER COLUMN id SET DEFAULT nextval('macrostrat.lith_atts_id_seq'::regclass);
+
+
+--
+-- Name: liths id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.liths ALTER COLUMN id SET DEFAULT nextval('macrostrat.liths_id_seq'::regclass);
+
+
+--
+-- Name: lookup_units unit_id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.lookup_units ALTER COLUMN unit_id SET DEFAULT nextval('macrostrat.lookup_units_unit_id_seq'::regclass);
 
 
 --
 -- Name: measuremeta id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
 --
 
-ALTER TABLE ONLY macrostrat.measuremeta ALTER COLUMN id SET DEFAULT nextval('macrostrat.measuremeta_new_id_seq1'::regclass);
+ALTER TABLE ONLY macrostrat.measuremeta ALTER COLUMN id SET DEFAULT nextval('macrostrat.measuremeta_id_seq'::regclass);
 
 
 --
@@ -1182,6 +1843,13 @@ ALTER TABLE ONLY macrostrat.measures ALTER COLUMN id SET DEFAULT nextval('macros
 
 
 --
+-- Name: places place_id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.places ALTER COLUMN place_id SET DEFAULT nextval('macrostrat.places_place_id_seq'::regclass);
+
+
+--
 -- Name: projects id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
 --
 
@@ -1189,31 +1857,87 @@ ALTER TABLE ONLY macrostrat.projects ALTER COLUMN id SET DEFAULT nextval('macros
 
 
 --
+-- Name: refs id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.refs ALTER COLUMN id SET DEFAULT nextval('macrostrat.refs_id_seq'::regclass);
+
+
+--
 -- Name: strat_names id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
 --
 
-ALTER TABLE ONLY macrostrat.strat_names ALTER COLUMN id SET DEFAULT nextval('macrostrat.strat_names_new_id_seq'::regclass);
+ALTER TABLE ONLY macrostrat.strat_names ALTER COLUMN id SET DEFAULT nextval('macrostrat.strat_names_id_seq'::regclass);
+
+
+--
+-- Name: strat_names_meta concept_id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.strat_names_meta ALTER COLUMN concept_id SET DEFAULT nextval('macrostrat.strat_names_meta_concept_id_seq'::regclass);
+
+
+--
+-- Name: timescales id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.timescales ALTER COLUMN id SET DEFAULT nextval('macrostrat.timescales_id_seq'::regclass);
+
+
+--
+-- Name: unit_econs id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.unit_econs ALTER COLUMN id SET DEFAULT nextval('macrostrat.unit_econs_id_seq'::regclass);
+
+
+--
+-- Name: unit_environs id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.unit_environs ALTER COLUMN id SET DEFAULT nextval('macrostrat.unit_environs_id_seq'::regclass);
+
+
+--
+-- Name: unit_lith_atts id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.unit_lith_atts ALTER COLUMN id SET DEFAULT nextval('macrostrat.unit_lith_atts_id_seq'::regclass);
+
+
+--
+-- Name: unit_liths id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.unit_liths ALTER COLUMN id SET DEFAULT nextval('macrostrat.unit_liths_id_seq'::regclass);
 
 
 --
 -- Name: unit_measures id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
 --
 
-ALTER TABLE ONLY macrostrat.unit_measures ALTER COLUMN id SET DEFAULT nextval('macrostrat.unit_measures_new_id_seq'::regclass);
+ALTER TABLE ONLY macrostrat.unit_measures ALTER COLUMN id SET DEFAULT nextval('macrostrat.unit_measures_id_seq'::regclass);
 
 
 --
 -- Name: unit_strat_names id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
 --
 
-ALTER TABLE ONLY macrostrat.unit_strat_names ALTER COLUMN id SET DEFAULT nextval('macrostrat.unit_strat_names_new_id_seq1'::regclass);
+ALTER TABLE ONLY macrostrat.unit_strat_names ALTER COLUMN id SET DEFAULT nextval('macrostrat.unit_strat_names_id_seq'::regclass);
+
+
+--
+-- Name: units id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.units ALTER COLUMN id SET DEFAULT nextval('macrostrat.units_id_seq'::regclass);
 
 
 --
 -- Name: units_sections id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
 --
 
-ALTER TABLE ONLY macrostrat.units_sections ALTER COLUMN id SET DEFAULT nextval('macrostrat.units_sections_new_id_seq1'::regclass);
+ALTER TABLE ONLY macrostrat.units_sections ALTER COLUMN id SET DEFAULT nextval('macrostrat.units_sections_id_seq'::regclass);
 
 
 --
@@ -2101,6 +2825,14 @@ ALTER TABLE ONLY macrostrat.cols
 
 
 --
+-- Name: cols cols_project_id_fkey; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.cols
+    ADD CONSTRAINT cols_project_id_fkey FOREIGN KEY (project_id) REFERENCES macrostrat.projects(id) ON DELETE CASCADE;
+
+
+--
 -- Name: concepts_places concepts_places_place_id_fkey; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
 --
 
@@ -2249,7 +2981,7 @@ ALTER TABLE ONLY macrostrat.unit_strat_names
 --
 
 ALTER TABLE ONLY macrostrat.units
-    ADD CONSTRAINT units_col_id_fkey FOREIGN KEY (col_id) REFERENCES macrostrat.cols(id);
+    ADD CONSTRAINT units_col_id_fkey FOREIGN KEY (col_id) REFERENCES macrostrat.cols(id) ON DELETE CASCADE;
 
 
 --
