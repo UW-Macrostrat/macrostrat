@@ -19,3 +19,7 @@ VALUES
 	(11, 'North American Cretaceous', 'Cretaceous-focused intermediate scale resolution section data set compiled by Shan Ye as part of his Ph.D.', 1),
 	(12, 'Indonesia', 'Composite column dataset for Indonesia. Compiled principally by Afiqah Ahmad Rafi as part of her senior thesis at UW-Madison.', 1),
 	(3, 'eODP', 'Comprehensive dataset capturing all offshore drilling sites and holes. Holes at each site are captured as ''section'' column types and meters below sea floor (mbsf) are encoded by ''t_pos'' and ''b_pos'' when ''show_position'' parameter is included. Project led by Andy Fraass, Leah LeVay, Jocelyn Sessa, and Shanan Peters.', 1);
+
+/* Set foreign key on col table */
+ALTER TABLE macrostrat.cols
+	ADD FOREIGN KEY (project_id) REFERENCES macrostrat.projects(id) ON DELETE CASCADE;
