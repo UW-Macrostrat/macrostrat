@@ -5,7 +5,7 @@ col_id = 112
 section_id = 871
 unit_id = 5071
 
-def test_root(client):
+def test_root(client, db): # keep db here! So it builds the db to begin!
     res = client.get("/")
     assert res.status_code == 200
     assert res.json() == {"Welcome": "Docs Future"}
