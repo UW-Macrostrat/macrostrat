@@ -1,3 +1,5 @@
 .env
 *.pytest_cache
 __pycache__
+*.next
+node_modules/
