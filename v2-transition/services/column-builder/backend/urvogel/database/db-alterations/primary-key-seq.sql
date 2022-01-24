@@ -1,6 +1,6 @@
 /* Add sequences and set next vals to be whatever the current max is */
 
-CREATE OR REPLACE FUNCTION make_into_serial(table_name TEXT, column_name TEXT) RETURNS INTEGER AS $$
+CREATE OR REPLACE FUNCTION macrostrat.make_into_serial(table_name TEXT, column_name TEXT) RETURNS INTEGER AS $$
 DECLARE
     start_with INTEGER;
     sequence_name TEXT;
@@ -19,7 +19,7 @@ $$ LANGUAGE plpgsql VOLATILE;
 
 
 /* loop through all primary keys in macrostrat schema and reset add auto-incrementing sequence */
-CREATE OR REPLACE PROCEDURE pg_reset_pkey_seq()
+CREATE OR REPLACE PROCEDURE macrostrat.pg_reset_pkey_seq()
 AS
 $$
 DECLARE
@@ -30,7 +30,7 @@ BEGIN
 
 sql_reset :=
 $sql$
-SELECT make_into_serial('%1$s.%2$s', '%3$s');
+SELECT macrostrat.make_into_serial('%1$s.%2$s', '%3$s');
 $sql$;
 
 FOR table_pkeys IN
@@ -53,4 +53,4 @@ END
 $$
 LANGUAGE plpgsql;
 
-call pg_reset_pkey_seq();
+call macrostrat.pg_reset_pkey_seq();
