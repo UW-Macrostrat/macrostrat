@@ -102,8 +102,8 @@ ON u.lo = lo.id;
 
 
 CREATE OR REPLACE VIEW macrostrat_api.col_sections AS
-SELECT c.id col_id, c.col_name, u.section_id, fo.interval_name name_fo, 
-lo.interval_name name_lo FROM macrostrat.cols c
+SELECT c.id col_id, c.col_name, u.section_id, u.position_top, u.position_bottom, fo.interval_name bottom, 
+lo.interval_name top FROM macrostrat.cols c
 LEFT JOIN macrostrat.units u
 ON u.col_id = c.id
 LEFT JOIN macrostrat.intervals fo
