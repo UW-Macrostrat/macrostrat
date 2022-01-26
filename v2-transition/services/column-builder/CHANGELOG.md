@@ -24,12 +24,16 @@ Troubles I had:
 
 # 01.19.22: Pydantic, FastAPI, & Postgrest
 
-I have added more database alterations including a procedure to update or create primary key sequences on 
-every primary key in the `macrostrat` schema. 
+I have added more database alterations including a procedure to update or create primary key sequences on
+every primary key in the `macrostrat` schema.
 
 I have created some Pydantic models for some of the major database modesl (Project, Column, Unit, etc). I also began creating a FastAPI with psycopg3 db bindings, however it quickly became apparent that the direction I was headed was creating a ORM, which for the purposes of this app, seemed overkill. The API doesn't need to handle much logic besides inserting and retrieving from the database.
 
 To simplfy the application I have installed Postgrest to work as the API. I have created a few tests for Postgrest that include retrieving data (GET), creating new models (POST), and editing existing models (PATCH).
 As well as linking two models via a foreign key insert into a joining table. These tests express the main functionality the application is meant to encompass.
 
-The `dump-burwell` script has been updated to include the latest db-alterations. 
+The `dump-burwell` script has been updated to include the latest db-alterations.
+
+# 01.25.22: PostGrest and Frontend
+
+Introductory frontend with NextJs is created aiming to mimic current functionality of `Dacite`. More postgrest development with a separate DB schema `macrostrat_api`.
