@@ -37,10 +37,10 @@ SELECT cg.id,
 cg.col_group,
 cg.col_group_long,
 c.project_id,
-array_agg(c.id) AS col_ids
+json_agg(json_build_object('col_id', c.id, 'status_code', c.status_code, 'col_number',c.col, 'col_name', c.col_name)) AS cols
 FROM macrostrat.col_groups cg
     LEFT JOIN macrostrat.cols c ON c.col_group_id = cg.id
-GROUP BY cg.id,c.project_id;
+GROUP BY cg.id, c.project_id;
 
 
 CREATE OR REPLACE VIEW macrostrat_api.environ_unit AS
