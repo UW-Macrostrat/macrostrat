@@ -110,3 +110,21 @@ LEFT JOIN macrostrat.intervals fo
 ON u.fo = fo.id
 LEFT JOIN macrostrat.intervals lo
 ON u.lo = lo.id;
+
+CREATE OR REPLACE VIEW macrostrat_api.col_form AS
+SELECT 
+c.id col_id, 
+c.col_name, 
+c.col col_number,
+json_build_object( 
+'id', r.id, 
+'pub_year', r.pub_year, 
+'author', r.author, 
+'ref', r.ref, 
+'doi',r.doi, 
+'url', r.url) ref
+FROM macrostrat.cols c
+LEFT JOIN macrostrat.col_refs cr
+ON c.id = cr.col_id
+LEFT JOIN macrostrat.refs r
+ON cr.ref_id = r.id;
