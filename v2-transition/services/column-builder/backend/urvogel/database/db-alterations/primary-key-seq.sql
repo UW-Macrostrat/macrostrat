@@ -11,6 +11,7 @@ BEGIN
     EXECUTE 'CREATE SEQUENCE IF NOT EXISTS ' || sequence_name ||
             ' START WITH ' || start_with ||
             ' OWNED BY ' || table_name || '.' || column_name;
+    EXECUTE 'SELECT setval(' || quote_literal(sequence_name)|| ',' || start_with || ') FROM ' || table_name;
     EXECUTE 'ALTER TABLE ' || table_name || ' ALTER COLUMN ' || column_name ||
             ' SET DEFAULT nextVal(''' || sequence_name || ''')';
     RETURN start_with;
