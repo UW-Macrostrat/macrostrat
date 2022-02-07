@@ -32,11 +32,14 @@ SELECT * FROM macrostrat.refs;
 CREATE OR REPLACE VIEW macrostrat_api.units AS
 SELECT * FROM macrostrat.units;
 
+CREATE OR REPLACE VIEW macrostrat_api.col_refs AS
+SELECT * FROM macrostrat.col_refs;
+
 CREATE OR REPLACE VIEW macrostrat_api.col_group_view AS
 SELECT cg.id,
 cg.col_group,
 cg.col_group_long,
-c.project_id,
+cg.project_id,
 json_agg(json_build_object('col_id', c.id, 'status_code', c.status_code, 'col_number',c.col, 'col_name', c.col_name)) AS cols
 FROM macrostrat.col_groups cg
     LEFT JOIN macrostrat.cols c ON c.col_group_id = cg.id

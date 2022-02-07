@@ -23,3 +23,12 @@ VALUES
 /* Set foreign key on col table */
 ALTER TABLE macrostrat.cols
 	ADD FOREIGN KEY (project_id) REFERENCES macrostrat.projects(id) ON DELETE CASCADE;
+
+/* Add project id constraint to col-groups */
+ALTER TABLE macrostrat.col_groups
+	ADD COLUMN project_id INT REFERENCES macrostrat.projects(id);
+
+UPDATE macrostrat.col_groups cg
+SET project_id = c.project_id
+FROM macrostrat.cols c 
+WHERE c.col_group_id = cg.id;
