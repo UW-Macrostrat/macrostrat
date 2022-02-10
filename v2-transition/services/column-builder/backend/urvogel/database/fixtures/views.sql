@@ -35,6 +35,12 @@ SELECT * FROM macrostrat.units;
 CREATE OR REPLACE VIEW macrostrat_api.col_refs AS
 SELECT * FROM macrostrat.col_refs;
 
+CREATE OR REPLACE VIEW macrostrat_api.unit_environs AS
+SELECT * FROM macrostrat.unit_environs;
+
+CREATE OR REPLACE VIEW macrostrat_api.unit_liths AS
+SELECT * FROM macrostrat.unit_liths;
+
 CREATE OR REPLACE VIEW macrostrat_api.col_group_view AS
 SELECT cg.id,
 cg.col_group,
