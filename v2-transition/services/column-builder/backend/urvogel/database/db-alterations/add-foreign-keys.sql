@@ -13,7 +13,6 @@
 
         What is cols.col? It doesn't seem to be unqiue, even within project.
 
-        'concepts' table is missing
         'sections' table is missing - columns have been added to 'units'
         'col_notes' table is missing
         'col_equv'  table is missing
@@ -112,3 +111,7 @@ ALTER TABLE macrostrat.units
 	ADD FOREIGN KEY (col_id) REFERENCES macrostrat.cols(id) ON DELETE CASCADE,
 	ADD FOREIGN KEY (fo) REFERENCES macrostrat.intervals(id) ON DELETE CASCADE,
 	ADD FOREIGN KEY (lo) REFERENCES macrostrat.intervals(id) ON DELETE CASCADE;
+
+/* Instead of having an adjancency list have a parent column that references another strat_name */
+ALTER TABLE macrostrat.strat_names
+	ADD COLUMN parent INT REFERENCES macrostrat.strat_names(id);
