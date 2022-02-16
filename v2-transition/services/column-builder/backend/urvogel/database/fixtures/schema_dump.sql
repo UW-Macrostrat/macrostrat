@@ -26,6 +26,15 @@ CREATE SCHEMA macrostrat;
 ALTER SCHEMA macrostrat OWNER TO postgres;
 
 --
+-- Name: macrostrat_api; Type: SCHEMA; Schema: -; Owner: postgres
+--
+
+CREATE SCHEMA macrostrat_api;
+
+
+ALTER SCHEMA macrostrat_api OWNER TO postgres;
+
+--
 -- Name: postgis; Type: EXTENSION; Schema: -; Owner: -
 --
 
@@ -40,10 +49,10 @@ COMMENT ON EXTENSION postgis IS 'PostGIS geometry and geography spatial types an
 
 
 --
--- Name: make_into_serial(text, text); Type: FUNCTION; Schema: public; Owner: postgres
+-- Name: make_into_serial(text, text); Type: FUNCTION; Schema: macrostrat; Owner: postgres
 --
 
-CREATE OR REPLACE FUNCTION public.make_into_serial(table_name text, column_name text) RETURNS integer
+CREATE FUNCTION macrostrat.make_into_serial(table_name text, column_name text) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
@@ -56,6 +65,7 @@ BEGIN
     EXECUTE 'CREATE SEQUENCE IF NOT EXISTS ' || sequence_name ||
             ' START WITH ' || start_with ||
             ' OWNED BY ' || table_name || '.' || column_name;
+    EXECUTE 'SELECT setval(' || quote_literal(sequence_name)|| ',' || start_with || ') FROM ' || table_name;
     EXECUTE 'ALTER TABLE ' || table_name || ' ALTER COLUMN ' || column_name ||
             ' SET DEFAULT nextVal(''' || sequence_name || ''')';
     RETURN start_with;
@@ -63,13 +73,13 @@ END;
 $$;
 
 
-ALTER FUNCTION public.make_into_serial(table_name text, column_name text) OWNER TO postgres;
+ALTER FUNCTION macrostrat.make_into_serial(table_name text, column_name text) OWNER TO postgres;
 
 --
--- Name: pg_reset_pkey_seq(); Type: PROCEDURE; Schema: public; Owner: postgres
+-- Name: pg_reset_pkey_seq(); Type: PROCEDURE; Schema: macrostrat; Owner: postgres
 --
 
-CREATE OR REPLACE PROCEDURE public.pg_reset_pkey_seq()
+CREATE PROCEDURE macrostrat.pg_reset_pkey_seq()
     LANGUAGE plpgsql
     AS $_$
 DECLARE
@@ -80,7 +90,7 @@ BEGIN
 
 sql_reset :=
 $sql$
-SELECT make_into_serial('%1$s.%2$s', '%3$s');
+SELECT macrostrat.make_into_serial('%1$s.%2$s', '%3$s');
 $sql$;
 
 FOR table_pkeys IN
@@ -103,7 +113,7 @@ END
 $_$;
 
 
-ALTER PROCEDURE public.pg_reset_pkey_seq() OWNER TO postgres;
+ALTER PROCEDURE macrostrat.pg_reset_pkey_seq() OWNER TO postgres;
 
 SET default_tablespace = '';
 
@@ -179,7 +189,8 @@ ALTER SEQUENCE macrostrat.col_areas_id_seq OWNED BY macrostrat.col_areas.id;
 CREATE TABLE macrostrat.col_groups (
     id integer NOT NULL,
     col_group character varying(100),
-    col_group_long character varying(100)
+    col_group_long character varying(100),
+    project_id integer
 );
 
 
@@ -1752,6 +1763,395 @@ ALTER SEQUENCE macrostrat.units_sections_new_id_seq1 OWNED BY macrostrat.units_s
 
 
 --
+-- Name: col_form; Type: VIEW; Schema: macrostrat_api; Owner: postgres
+--
+
+CREATE VIEW macrostrat_api.col_form AS
+ SELECT c.id AS col_id,
+    c.col_name,
+    c.col AS col_number,
+    json_build_object('id', r.id, 'pub_year', r.pub_year, 'author', r.author, 'ref', r.ref, 'doi', r.doi, 'url', r.url) AS ref
+   FROM ((macrostrat.cols c
+     LEFT JOIN macrostrat.col_refs cr ON ((c.id = cr.col_id)))
+     LEFT JOIN macrostrat.refs r ON ((cr.ref_id = r.id)));
+
+
+ALTER TABLE macrostrat_api.col_form OWNER TO postgres;
+
+--
+-- Name: col_group_view; Type: VIEW; Schema: macrostrat_api; Owner: postgres
+--
+
+CREATE VIEW macrostrat_api.col_group_view AS
+SELECT
+    NULL::integer AS id,
+    NULL::character varying(100) AS col_group,
+    NULL::character varying(100) AS col_group_long,
+    NULL::integer AS project_id,
+    NULL::json AS cols;
+
+
+ALTER TABLE macrostrat_api.col_group_view OWNER TO postgres;
+
+--
+-- Name: col_groups; Type: VIEW; Schema: macrostrat_api; Owner: postgres
+--
+
+CREATE VIEW macrostrat_api.col_groups AS
+ SELECT col_groups.id,
+    col_groups.col_group,
+    col_groups.col_group_long,
+    col_groups.project_id
+   FROM macrostrat.col_groups;
+
+
+ALTER TABLE macrostrat_api.col_groups OWNER TO postgres;
+
+--
+-- Name: col_refs; Type: VIEW; Schema: macrostrat_api; Owner: postgres
+--
+
+CREATE VIEW macrostrat_api.col_refs AS
+ SELECT col_refs.id,
+    col_refs.col_id,
+    col_refs.ref_id
+   FROM macrostrat.col_refs;
+
+
+ALTER TABLE macrostrat_api.col_refs OWNER TO postgres;
+
+--
+-- Name: col_sections; Type: VIEW; Schema: macrostrat_api; Owner: postgres
+--
+
+CREATE VIEW macrostrat_api.col_sections AS
+ SELECT c.id AS col_id,
+    c.col_name,
+    u.section_id,
+    u.position_top,
+    u.position_bottom,
+    fo.interval_name AS bottom,
+    lo.interval_name AS top
+   FROM (((macrostrat.cols c
+     LEFT JOIN macrostrat.units u ON ((u.col_id = c.id)))
+     LEFT JOIN macrostrat.intervals fo ON ((u.fo = fo.id)))
+     LEFT JOIN macrostrat.intervals lo ON ((u.lo = lo.id)));
+
+
+ALTER TABLE macrostrat_api.col_sections OWNER TO postgres;
+
+--
+-- Name: cols; Type: VIEW; Schema: macrostrat_api; Owner: postgres
+--
+
+CREATE VIEW macrostrat_api.cols AS
+ SELECT cols.id,
+    cols.col_group_id,
+    cols.project_id,
+    cols.col_type,
+    cols.status_code,
+    cols.col_position,
+    cols.col,
+    cols.col_name,
+    cols.lat,
+    cols.lng,
+    cols.col_area,
+    cols.coordinate,
+    cols.wkt,
+    cols.created,
+    cols.poly_geom
+   FROM macrostrat.cols;
+
+
+ALTER TABLE macrostrat_api.cols OWNER TO postgres;
+
+--
+-- Name: econ_unit; Type: VIEW; Schema: macrostrat_api; Owner: postgres
+--
+
+CREATE VIEW macrostrat_api.econ_unit AS
+ SELECT e.id,
+    e.econ,
+    e.econ_type,
+    e.econ_class,
+    e.econ_color,
+    ue.unit_id,
+    ue.ref_id
+   FROM (macrostrat.econs e
+     JOIN macrostrat.unit_econs ue ON ((e.id = ue.econ_id)));
+
+
+ALTER TABLE macrostrat_api.econ_unit OWNER TO postgres;
+
+--
+-- Name: environ_unit; Type: VIEW; Schema: macrostrat_api; Owner: postgres
+--
+
+CREATE VIEW macrostrat_api.environ_unit AS
+ SELECT e.id,
+    e.environ,
+    e.environ_type,
+    e.environ_class,
+    e.environ_color,
+    ue.unit_id,
+    ue.ref_id
+   FROM (macrostrat.environs e
+     JOIN macrostrat.unit_environs ue ON ((e.id = ue.environ_id)));
+
+
+ALTER TABLE macrostrat_api.environ_unit OWNER TO postgres;
+
+--
+-- Name: environs; Type: VIEW; Schema: macrostrat_api; Owner: postgres
+--
+
+CREATE VIEW macrostrat_api.environs AS
+ SELECT environs.id,
+    environs.environ,
+    environs.environ_type,
+    environs.environ_class,
+    environs.environ_color
+   FROM macrostrat.environs;
+
+
+ALTER TABLE macrostrat_api.environs OWNER TO postgres;
+
+--
+-- Name: intervals; Type: VIEW; Schema: macrostrat_api; Owner: postgres
+--
+
+CREATE VIEW macrostrat_api.intervals AS
+ SELECT intervals.id,
+    intervals.age_bottom,
+    intervals.age_top,
+    intervals.interval_name,
+    intervals.interval_abbrev,
+    intervals.interval_type,
+    intervals.interval_color,
+    intervals.rank
+   FROM macrostrat.intervals;
+
+
+ALTER TABLE macrostrat_api.intervals OWNER TO postgres;
+
+--
+-- Name: lith_attr_unit; Type: VIEW; Schema: macrostrat_api; Owner: postgres
+--
+
+CREATE VIEW macrostrat_api.lith_attr_unit AS
+ SELECT la.id AS lith_attr_id,
+    la.lith_att,
+    la.att_type,
+    la.lith_att_fill,
+    l.id,
+    l.lith,
+    l.lith_group,
+    l.lith_type,
+    l.lith_class,
+    l.lith_equiv,
+    l.lith_fill,
+    l.comp_coef,
+    l.initial_porosity,
+    l.bulk_density,
+    l.lith_color,
+    ul.unit_id
+   FROM (((macrostrat.lith_atts la
+     JOIN macrostrat.unit_lith_atts ula ON ((ula.lith_att_id = la.id)))
+     JOIN macrostrat.unit_liths ul ON ((ul.id = ula.unit_lith_id)))
+     JOIN macrostrat.liths l ON ((ul.lith_id = l.id)));
+
+
+ALTER TABLE macrostrat_api.lith_attr_unit OWNER TO postgres;
+
+--
+-- Name: lith_unit; Type: VIEW; Schema: macrostrat_api; Owner: postgres
+--
+
+CREATE VIEW macrostrat_api.lith_unit AS
+ SELECT l.id,
+    l.lith,
+    l.lith_group,
+    l.lith_type,
+    l.lith_class,
+    l.lith_color,
+    ul.prop,
+    ul.mod_prop,
+    ul.comp_prop,
+    ul.ref_id,
+    ul.unit_id
+   FROM (macrostrat.unit_liths ul
+     JOIN macrostrat.liths l ON ((ul.lith_id = l.id)));
+
+
+ALTER TABLE macrostrat_api.lith_unit OWNER TO postgres;
+
+--
+-- Name: liths; Type: VIEW; Schema: macrostrat_api; Owner: postgres
+--
+
+CREATE VIEW macrostrat_api.liths AS
+ SELECT liths.id,
+    liths.lith,
+    liths.lith_group,
+    liths.lith_type,
+    liths.lith_class,
+    liths.lith_equiv,
+    liths.lith_fill,
+    liths.comp_coef,
+    liths.initial_porosity,
+    liths.bulk_density,
+    liths.lith_color
+   FROM macrostrat.liths;
+
+
+ALTER TABLE macrostrat_api.liths OWNER TO postgres;
+
+--
+-- Name: projects; Type: VIEW; Schema: macrostrat_api; Owner: postgres
+--
+
+CREATE VIEW macrostrat_api.projects AS
+ SELECT projects.id,
+    projects.project,
+    projects.descrip,
+    projects.timescale_id
+   FROM macrostrat.projects;
+
+
+ALTER TABLE macrostrat_api.projects OWNER TO postgres;
+
+--
+-- Name: refs; Type: VIEW; Schema: macrostrat_api; Owner: postgres
+--
+
+CREATE VIEW macrostrat_api.refs AS
+ SELECT refs.id,
+    refs.pub_year,
+    refs.author,
+    refs.ref,
+    refs.doi,
+    refs.compilation_code,
+    refs.url,
+    refs.rgeom
+   FROM macrostrat.refs;
+
+
+ALTER TABLE macrostrat_api.refs OWNER TO postgres;
+
+--
+-- Name: strat_names; Type: VIEW; Schema: macrostrat_api; Owner: postgres
+--
+
+CREATE VIEW macrostrat_api.strat_names AS
+ SELECT strat_names.id,
+    strat_names.strat_name,
+    strat_names.rank,
+    strat_names.ref_id,
+    strat_names.concept_id
+   FROM macrostrat.strat_names;
+
+
+ALTER TABLE macrostrat_api.strat_names OWNER TO postgres;
+
+--
+-- Name: timescales; Type: VIEW; Schema: macrostrat_api; Owner: postgres
+--
+
+CREATE VIEW macrostrat_api.timescales AS
+ SELECT timescales.id,
+    timescales.timescale,
+    timescales.ref_id
+   FROM macrostrat.timescales;
+
+
+ALTER TABLE macrostrat_api.timescales OWNER TO postgres;
+
+--
+-- Name: unit_environs; Type: VIEW; Schema: macrostrat_api; Owner: postgres
+--
+
+CREATE VIEW macrostrat_api.unit_environs AS
+ SELECT unit_environs.id,
+    unit_environs.unit_id,
+    unit_environs.environ_id,
+    unit_environs.ref_id,
+    unit_environs.date_mod
+   FROM macrostrat.unit_environs;
+
+
+ALTER TABLE macrostrat_api.unit_environs OWNER TO postgres;
+
+--
+-- Name: unit_liths; Type: VIEW; Schema: macrostrat_api; Owner: postgres
+--
+
+CREATE VIEW macrostrat_api.unit_liths AS
+ SELECT unit_liths.id,
+    unit_liths.lith_id,
+    unit_liths.unit_id,
+    unit_liths.prop,
+    unit_liths.dom,
+    unit_liths.comp_prop,
+    unit_liths.mod_prop,
+    unit_liths.toc,
+    unit_liths.ref_id,
+    unit_liths.date_mod
+   FROM macrostrat.unit_liths;
+
+
+ALTER TABLE macrostrat_api.unit_liths OWNER TO postgres;
+
+--
+-- Name: units; Type: VIEW; Schema: macrostrat_api; Owner: postgres
+--
+
+CREATE VIEW macrostrat_api.units AS
+ SELECT units.id,
+    units.strat_name,
+    units.color,
+    units.outcrop,
+    units.fo,
+    units.lo,
+    units.position_bottom,
+    units.position_top,
+    units.max_thick,
+    units.min_thick,
+    units.section_id,
+    units.col_id
+   FROM macrostrat.units;
+
+
+ALTER TABLE macrostrat_api.units OWNER TO postgres;
+
+--
+-- Name: units_view; Type: VIEW; Schema: macrostrat_api; Owner: postgres
+--
+
+CREATE VIEW macrostrat_api.units_view AS
+ SELECT u.id,
+    u.strat_name,
+    u.color,
+    u.outcrop,
+    u.fo,
+    u.lo,
+    u.position_bottom,
+    u.position_top,
+    u.max_thick,
+    u.min_thick,
+    u.section_id,
+    u.col_id,
+    fo.interval_name AS name_fo,
+    fo.age_bottom,
+    lo.interval_name AS name_lo,
+    lo.age_top
+   FROM ((macrostrat.units u
+     LEFT JOIN macrostrat.intervals fo ON ((u.fo = fo.id)))
+     LEFT JOIN macrostrat.intervals lo ON ((u.lo = lo.id)));
+
+
+ALTER TABLE macrostrat_api.units_view OWNER TO postgres;
+
+--
 -- Name: col_areas id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
 --
 
@@ -2793,11 +3193,34 @@ CREATE INDEX units_sections_new_unit_id_idx1 ON macrostrat.units_sections USING 
 
 
 --
+-- Name: col_group_view _RETURN; Type: RULE; Schema: macrostrat_api; Owner: postgres
+--
+
+CREATE OR REPLACE VIEW macrostrat_api.col_group_view AS
+ SELECT cg.id,
+    cg.col_group,
+    cg.col_group_long,
+    cg.project_id,
+    json_agg(json_build_object('col_id', c.id, 'status_code', c.status_code, 'col_number', c.col, 'col_name', c.col_name)) AS cols
+   FROM (macrostrat.col_groups cg
+     LEFT JOIN macrostrat.cols c ON ((c.col_group_id = cg.id)))
+  GROUP BY cg.id, c.project_id;
+
+
+--
 -- Name: col_areas col_areas_col_id_fkey; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
 --
 
 ALTER TABLE ONLY macrostrat.col_areas
     ADD CONSTRAINT col_areas_col_id_fkey FOREIGN KEY (col_id) REFERENCES macrostrat.cols(id) ON DELETE CASCADE;
+
+
+--
+-- Name: col_groups col_groups_project_id_fkey; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.col_groups
+    ADD CONSTRAINT col_groups_project_id_fkey FOREIGN KEY (project_id) REFERENCES macrostrat.projects(id);
 
 
 --

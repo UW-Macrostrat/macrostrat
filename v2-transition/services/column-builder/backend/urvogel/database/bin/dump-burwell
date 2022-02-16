@@ -51,6 +51,7 @@ check $@
 
 docker-compose exec $container_name psql -c "DROP DATABASE $local_db WITH (FORCE);"
 docker-compose exec $container_name createdb -U$db_user $local_db
+docker-compose exec $container_name createdb -U$db_user col_test
 
 
 echo "Dumping Macrostrat database from Gunnison local_forward"

@@ -27,12 +27,11 @@ def db_():
 def setup(db_):
     schema = get_sql("schema_dump.sql")
     data_inserts = get_sql("test_inserts.sql")
-    views = get_sql("views.sql")
     with db_.conn.cursor() as cur:
+        cur.execute("DROP SCHEMA IF EXISTS macrostrat_api CASCADE;")
         cur.execute("DROP SCHEMA IF EXISTS macrostrat CASCADE;")
         cur.execute(schema)
         cur.execute(data_inserts)
-        cur.execute(views)
 
 # @pytest.fixture
 # def db(setup, connection):

@@ -1,13 +1,13 @@
 version: "3.7"
 services:
-  swagger:
-    image: swaggerapi/swagger-ui
-    ports:
-      - "8080:8080"
-    expose:
-      - "8080"
-    environment:
-      API_URL: http://localhost:3001/
+  # swagger:
+  #   image: swaggerapi/swagger-ui
+  #   ports:
+  #     - "8080:8080"
+  #   expose:
+  #     - "8080"
+  #   environment:
+  #     API_URL: http://localhost:3001/
   postgrest:
     image: postgrest/postgrest
     ports:
@@ -20,7 +20,7 @@ services:
     depends_on:
       - db
   db:
-    image: postgis/postgis:14-3.1
+    build: ./backend/urvogel/database
     environment:
       - PGUSER
       - POSTGRES_DB

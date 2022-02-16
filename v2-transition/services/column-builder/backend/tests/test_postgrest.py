@@ -4,7 +4,7 @@ from requests import get, post, patch, put
 """ A testing suite to test some postgrest functionlity """
 
 
-base= "http://127.0.0.1:3000"
+base= "http://127.0.0.1:3001"
 
 def test_projects():
     res = get(base + "/projects")
