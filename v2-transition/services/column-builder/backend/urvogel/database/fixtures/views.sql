@@ -23,8 +23,6 @@ SELECT * FROM macrostrat.intervals;
 CREATE OR REPLACE VIEW macrostrat_api.timescales AS
 SELECT * FROM macrostrat.timescales;
 
-CREATE OR REPLACE VIEW macrostrat_api.strat_names AS
-SELECT * FROM macrostrat.strat_names;
 
 CREATE OR REPLACE VIEW macrostrat_api.refs AS
 SELECT * FROM macrostrat.refs;
@@ -40,6 +38,22 @@ SELECT * FROM macrostrat.unit_environs;
 
 CREATE OR REPLACE VIEW macrostrat_api.unit_liths AS
 SELECT * FROM macrostrat.unit_liths;
+
+CREATE OR REPLACE VIEW macrostrat_api.strat_names AS
+SELECT 
+s.id, 
+s.strat_name, 
+s.rank, 
+row_to_json(r.*) ref, 
+row_to_json(sm.*) concept, 
+row_to_json(sn.*) parent 
+FROM macrostrat.strat_names s
+LEFT JOIN macrostrat.strat_names sn
+ON s.parent = sn.id
+LEFT JOIN macrostrat.refs r
+ON r.id = s.ref_id
+LEFT JOIN macrostrat.strat_names_meta sm
+ON sm.concept_id = s.concept_id; 
 
 CREATE OR REPLACE VIEW macrostrat_api.col_group_view AS
 SELECT cg.id,
@@ -97,17 +111,30 @@ ON ul.lith_id = l.id;
 
 /*LO is top and FO is bottom*/
 CREATE OR REPLACE VIEW macrostrat_api.units_view AS
-SELECT 
-u.*, 
-fo.interval_name name_fo, 
-fo.age_bottom, 
-lo.interval_name name_lo, 
-lo.age_top  
+SELECT u.id,
+u.strat_name unit_strat_name,
+s.strat_name,
+s.rank,
+s.id strat_name_id,
+u.color,
+u.outcrop,
+u.fo,
+u.lo,
+u.position_bottom,
+u.position_top,
+u.max_thick,
+u.min_thick,
+u.section_id,
+u.col_id,
+fo.interval_name AS name_fo,
+fo.age_bottom,
+lo.interval_name AS name_lo,
+lo.age_top
 FROM macrostrat.units u
-LEFT JOIN macrostrat.intervals fo
-ON u.fo = fo.id
-LEFT JOIN macrostrat.intervals lo
-ON u.lo = lo.id;
+    LEFT JOIN macrostrat.intervals fo ON u.fo = fo.id
+    LEFT JOIN macrostrat.intervals lo ON u.lo = lo.id
+    LEFT JOIN macrostrat.unit_strat_names usn ON usn.unit_id = u.id
+    LEFT JOIN macrostrat.strat_names s ON usn.strat_name_id = s.id;
 
 
 CREATE OR REPLACE VIEW macrostrat_api.col_sections AS
