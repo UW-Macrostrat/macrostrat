@@ -7,3 +7,4 @@ fastapi
 geojson_pydantic
 requests
 uvicorn
+pytest
