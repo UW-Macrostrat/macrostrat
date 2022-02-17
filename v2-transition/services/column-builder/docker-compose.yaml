@@ -30,6 +30,13 @@ services:
       - ${PG_PORT}:5432
     volumes:
       - db_cluster:/var/lib/postgresql/data
+  dacite:
+    build: ./frontend/dacite
+    ports:
+      - 1234:1234
+    volumes:
+      - ./frontend/dacite:/app/dacite
+      - /app/dacite/node_modules
   # db_backup:
   #   image: ghcr.io/uw-macrostrat/pg-backup-service:latest
   #   environment:
