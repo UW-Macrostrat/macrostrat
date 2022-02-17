@@ -20,7 +20,7 @@ services:
     depends_on:
       - db
   db:
-    build: ./backend/urvogel/database
+    build: ./database
     environment:
       - PGUSER
       - POSTGRES_DB
@@ -30,17 +30,17 @@ services:
       - ${PG_PORT}:5432
     volumes:
       - db_cluster:/var/lib/postgresql/data
-  db_backup:
-    image: ghcr.io/uw-macrostrat/pg-backup-service:latest
-    environment:
-      - DB_NAME=column_data
-      - DB_BACKUP_PREFIX=column_data
-      - PGHOST=database
-      - S3_ENDPOINT
-      - SCHEDULE=@weekly
-      - DB_BACKUP_MAX_N=5
-      - S3_ACCESS_KEY
-      - S3_SECRET_KEY
-      - S3_BACKUP_BUCKET
+  # db_backup:
+  #   image: ghcr.io/uw-macrostrat/pg-backup-service:latest
+  #   environment:
+  #     - DB_NAME=column_data
+  #     - DB_BACKUP_PREFIX=column_data
+  #     - PGHOST=database
+  #     - S3_ENDPOINT
+  #     - SCHEDULE=@weekly
+  #     - DB_BACKUP_MAX_N=5
+  #     - S3_ACCESS_KEY
+  #     - S3_SECRET_KEY
+  #     - S3_BACKUP_BUCKET
 volumes:
   db_cluster:
