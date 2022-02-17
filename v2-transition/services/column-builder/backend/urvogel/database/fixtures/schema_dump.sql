@@ -1157,7 +1157,8 @@ CREATE TABLE macrostrat.strat_names (
     strat_name character varying(100) NOT NULL,
     rank character varying(50),
     ref_id integer NOT NULL,
-    concept_id integer
+    concept_id integer,
+    parent integer
 );
 
 
@@ -2043,12 +2044,16 @@ ALTER TABLE macrostrat_api.refs OWNER TO postgres;
 --
 
 CREATE VIEW macrostrat_api.strat_names AS
- SELECT strat_names.id,
-    strat_names.strat_name,
-    strat_names.rank,
-    strat_names.ref_id,
-    strat_names.concept_id
-   FROM macrostrat.strat_names;
+ SELECT s.id,
+    s.strat_name,
+    s.rank,
+    row_to_json(r.*) AS ref,
+    row_to_json(sm.*) AS concept,
+    row_to_json(sn.*) AS parent
+   FROM (((macrostrat.strat_names s
+     LEFT JOIN macrostrat.strat_names sn ON ((s.parent = sn.id)))
+     LEFT JOIN macrostrat.refs r ON ((r.id = s.ref_id)))
+     LEFT JOIN macrostrat.strat_names_meta sm ON ((sm.concept_id = s.concept_id)));
 
 
 ALTER TABLE macrostrat_api.strat_names OWNER TO postgres;
@@ -2129,7 +2134,10 @@ ALTER TABLE macrostrat_api.units OWNER TO postgres;
 
 CREATE VIEW macrostrat_api.units_view AS
  SELECT u.id,
-    u.strat_name,
+    u.strat_name AS unit_strat_name,
+    s.strat_name,
+    s.rank,
+    s.id AS strat_name_id,
     u.color,
     u.outcrop,
     u.fo,
@@ -2144,9 +2152,11 @@ CREATE VIEW macrostrat_api.units_view AS
     fo.age_bottom,
     lo.interval_name AS name_lo,
     lo.age_top
-   FROM ((macrostrat.units u
+   FROM ((((macrostrat.units u
      LEFT JOIN macrostrat.intervals fo ON ((u.fo = fo.id)))
-     LEFT JOIN macrostrat.intervals lo ON ((u.lo = lo.id)));
+     LEFT JOIN macrostrat.intervals lo ON ((u.lo = lo.id)))
+     LEFT JOIN macrostrat.unit_strat_names usn ON ((usn.unit_id = u.id)))
+     LEFT JOIN macrostrat.strat_names s ON ((usn.strat_name_id = s.id)));
 
 
 ALTER TABLE macrostrat_api.units_view OWNER TO postgres;
@@ -3269,6 +3279,14 @@ ALTER TABLE ONLY macrostrat.concepts_places
 
 ALTER TABLE ONLY macrostrat.projects
     ADD CONSTRAINT projects_timescale_id_fkey FOREIGN KEY (timescale_id) REFERENCES macrostrat.timescales(id);
+
+
+--
+-- Name: strat_names strat_names_parent_fkey; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.strat_names
+    ADD CONSTRAINT strat_names_parent_fkey FOREIGN KEY (parent) REFERENCES macrostrat.strat_names(id);
 
 
 --
