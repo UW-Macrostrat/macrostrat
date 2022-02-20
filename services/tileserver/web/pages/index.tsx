@@ -4,6 +4,7 @@ import Image from "next/image";
 import styles from "../styles/Home.module.css";
 import fetch from "cross-fetch";
 import h from "@macrostrat/hyper";
+import Link from "next/link";
 
 export async function getStaticProps() {
   const res = await fetch("https://next.macrostrat.org/tiles/tables.json");
@@ -19,8 +20,9 @@ export async function getStaticProps() {
 function TableList({ tables }) {
   return h(
     "ul",
-    { class: styles.tableList },
-    tables.map((d) => h("li", d.id))
+    tables.map((d) =>
+      h("li", [h(Link, { href: `/${d.id}` }, h("a", null, d.id))])
+    )
   );
 }
 
