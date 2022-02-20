@@ -1,9 +1,11 @@
 import { useRef, useEffect } from "react";
 import { useRouter } from "next/router";
 import hyper from "@macrostrat/hyper";
-import { Map } from "mapbox-gl";
+import { Map, Popup } from "mapbox-gl";
+import MapboxInspect from "mapbox-gl-inspect";
 import styles from "../styles/map.module.sass";
 import "mapbox-gl/dist/mapbox-gl.css";
+import "mapbox-gl-inspect/dist/mapbox-gl-inspect.css";
 
 const h = hyper.styled(styles);
 
@@ -20,28 +22,45 @@ function TableInspector() {
       container: ref.current,
       accessToken: process.env.NEXT_PUBLIC_MAPBOX_TOKEN,
       trackResize: true,
+      style: "mapbox://styles/mapbox/streets-v11",
     });
 
-    map.addSource("table", {
-      type: "vector",
-      url: `https://next.macrostrat.org/tiles/${table}/tilejson.json`,
+    map.on("load", () => {
+      map.addSource("table", {
+        type: "vector",
+        url: `https://next.macrostrat.org/tiles/${table}/tilejson.json`,
+      });
+
+      map.addLayer({
+        id: "features",
+        type: "fill",
+        source: "table",
+        layout: {
+          // Make the layer visible by default.
+          visibility: "visible",
+        },
+        paint: {
+          "fill-color": "#088",
+          "fill-opacity": 0.5,
+          "fill-outline-color": "#088",
+        },
+        "source-layer": "default",
+      });
     });
 
-    map.addLayer({
-      id: "features",
-      type: "fill",
-      source: "table",
-      layout: {
-        // Make the layer visible by default.
-        visibility: "visible",
+    const inspector = new MapboxInspect({
+      showInspectMap: true,
+      showInspectButton: false,
+      popup: new Popup({
+        closeButton: false,
+        closeOnClick: false,
+      }),
+      queryParameters: {
+        layers: ["features"],
       },
-      paint: {
-        "fill-color": "#088",
-        "fill-opacity": 0.8,
-        "fill-outline-color": "#088",
-      },
-      "source-layer": "default",
     });
+
+    map.addControl(inspector);
 
     mapRef.current = map;
   }, [ref.current]);
