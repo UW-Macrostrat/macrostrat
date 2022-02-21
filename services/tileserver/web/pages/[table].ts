@@ -4,8 +4,10 @@ import hyper from "@macrostrat/hyper";
 import { Map, Popup } from "mapbox-gl";
 import MapboxInspect from "mapbox-gl-inspect";
 import styles from "../styles/map.module.sass";
+import { Navbar } from "@blueprintjs/core";
 import "mapbox-gl/dist/mapbox-gl.css";
 import "mapbox-gl-inspect/dist/mapbox-gl-inspect.css";
+import Link from "next/link";
 
 const h = hyper.styled(styles);
 
@@ -84,7 +86,18 @@ function TableInspector() {
   }, [ref.current]);
 
   return h("div.page-body", null, [
-    h("header", [h("h1", { className: "page-title" }, "Table Inspector")]),
+    h("div", [
+      h(Navbar, [
+        h(Navbar.Group, [
+          h(Navbar.Heading, null, [
+            h(Link, { href: "/" }, "Macrostrat Tile Server"),
+            " — ",
+            h("span.subtitle", null, "Table "),
+            h("code.table-name", table),
+          ]),
+        ]),
+      ]),
+    ]),
     h("div.map", { ref }),
   ]);
 }
