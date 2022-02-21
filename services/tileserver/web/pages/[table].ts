@@ -22,7 +22,7 @@ function TableInspector() {
       container: ref.current,
       accessToken: process.env.NEXT_PUBLIC_MAPBOX_TOKEN,
       trackResize: true,
-      style: "mapbox://styles/mapbox/streets-v11",
+      style: "mapbox://styles/jczaplewski/ckamy6uj253ys1ilc6r5yqm1r",
     });
 
     map.on("load", () => {
@@ -32,7 +32,7 @@ function TableInspector() {
       });
 
       map.addLayer({
-        id: "features",
+        id: "feature_fill",
         type: "fill",
         source: "table",
         layout: {
@@ -40,9 +40,25 @@ function TableInspector() {
           visibility: "visible",
         },
         paint: {
-          "fill-color": "#088",
-          "fill-opacity": 0.5,
-          "fill-outline-color": "#088",
+          "fill-color": "#08f",
+          "fill-opacity": 0.2,
+          "fill-outline-color": "#0af",
+        },
+        "source-layer": "default",
+      });
+
+      map.addLayer({
+        id: "feature_outline",
+        type: "line",
+        source: "table",
+        layout: {
+          // Make the layer visible by default.
+          visibility: "visible",
+        },
+        paint: {
+          "line-color": "#048",
+          "line-opacity": 0.8,
+          "line-width": 1.2,
         },
         "source-layer": "default",
       });
@@ -56,16 +72,21 @@ function TableInspector() {
         closeOnClick: false,
       }),
       queryParameters: {
-        layers: ["features"],
+        layers: ["feature_fill"],
       },
     });
 
     map.addControl(inspector);
 
+    map.showTileBoundaries = true;
+
     mapRef.current = map;
   }, [ref.current]);
 
-  return h("div", null, h("div.map", { ref }));
+  return h("div.page-body", null, [
+    h("header", [h("h1", { className: "page-title" }, "Table Inspector")]),
+    h("div.map", { ref }),
+  ]);
 }
 
 export default TableInspector;
