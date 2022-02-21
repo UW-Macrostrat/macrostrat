@@ -3,8 +3,32 @@
 # NOTE: we might want to make things a bit nicer here
 FROM python:3.9
 
-RUN apt-get update && \
-  pip install "poetry==1.1.12" && \
+# Install mapnik for compiling legacy image tiles
+RUN apt-get update -y && \
+  apt-get install -y --no-install-recommends \
+  build-essential software-properties-common curl \
+  libboost-dev libboost-filesystem-dev libboost-program-options-dev libboost-python-dev \
+  libboost-regex-dev libboost-system-dev libboost-thread-dev libicu-dev libtiff5-dev \
+  libfreetype-dev libpng-dev libxml2-dev libproj-dev libsqlite3-dev libgdal-dev \
+  libcairo-dev postgresql-contrib libharfbuzz-dev nodejs \
+  python-dev git python-setuptools
+
+# Mapnik
+ENV MAPNIK_VERSION 3.1.0
+RUN curl -L -s https://github.com/mapnik/mapnik/releases/download/v${MAPNIK_VERSION}/mapnik-v${MAPNIK_VERSION}.tar.bz2 | tar -xj -C /tmp/
+RUN cd /tmp/mapnik-v${MAPNIK_VERSION} && python scons/scons.py configure
+RUN cd /tmp/mapnik-v${MAPNIK_VERSION} && make JOBS=4 && make install JOBS=4
+
+ENV BOOST_PYTHON_LIB boost_python39
+
+# Python bindings to mapnik
+ENV PYTHON_MAPNIK_COMMIT 7da019cf9eb12af8f8aa88b7d75789dfcd1e901b
+RUN mkdir -p /opt/python-mapnik && curl -L https://github.com/mapnik/python-mapnik/archive/${PYTHON_MAPNIK_COMMIT}.tar.gz | tar xz -C /opt/python-mapnik --strip-components=1
+RUN cd /opt/python-mapnik && python3 setup.py install && rm -r /opt/python-mapnik/build
+
+# The rest of this (for vector tile generation and the server itself) should be easier.
+
+RUN pip install "poetry==1.1.12" && \
   rm -rf /var/lib/apt/lists/* && \
   poetry config virtualenvs.create false
 
