@@ -40,11 +40,6 @@ local_db=column_data
 container_name=db
 db_user=postgres
 local_forward=54381
-fk_file_path=`dirname $0`/../db-alterations/add-foreign-keys.sql
-projects_file_path=`dirname $0`/../db-alterations/projects-table.sql
-remove_unused=`dirname $0`/../db-alterations/remove-unused.sql
-sequence_reset=`dirname $0`/../db-alterations/primary-key-seq.sql
-views=`dirname $0`/../fixtures/views.sql
 
 ########################### main script ###############################
 check $@
