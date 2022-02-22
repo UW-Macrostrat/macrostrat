@@ -45,11 +45,8 @@ s.id,
 s.strat_name, 
 s.rank, 
 row_to_json(r.*) ref, 
-row_to_json(sm.*) concept, 
-row_to_json(sn.*) parent 
+row_to_json(sm.*) concept 
 FROM macrostrat.strat_names s
-LEFT JOIN macrostrat.strat_names sn
-ON s.parent = sn.id
 LEFT JOIN macrostrat.refs r
 ON r.id = s.ref_id
 LEFT JOIN macrostrat.strat_names_meta sm

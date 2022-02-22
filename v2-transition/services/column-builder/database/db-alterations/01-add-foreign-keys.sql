@@ -11,13 +11,10 @@
 		It might be nice to add a status_code at the project level and not just column level. for navigating
 		the api.
 
-        What is cols.col? It doesn't seem to be unqiue, even within project.
-
         'sections' table is missing - columns have been added to 'units'
         'col_notes' table is missing
         'col_equv'  table is missing
 
-	All primary key sequences need to be adjusted to allow for incrementing correct id values
 */
 
 /* deleted 68 rows where col_id didn't exist in cols
@@ -55,9 +52,12 @@ ALTER TABLE macrostrat.unit_econs
 	ADD FOREIGN KEY (ref_id) REFERENCES macrostrat.refs(id) ON DELETE CASCADE,
 	ADD FOREIGN KEY (unit_id) REFERENCES macrostrat.units(id) ON DELETE CASCADE;
 
-/* 23769 rows deleted because of bad reference ids... that seems like a lot */
-DELETE FROM macrostrat.unit_environs
-	WHERE ref_id NOT IN (SELECT id from macrostrat.refs);
+/* 
+23769 rows updated to have null ref_ids instead of 0...
+*/
+UPDATE macrostrat.unit_environs
+SET ref_id = NULL
+WHERE ref_id = 0;
 
 ALTER TABLE macrostrat.unit_environs
 	ADD FOREIGN KEY (environ_id) REFERENCES macrostrat.environs(id) ON DELETE CASCADE,
@@ -74,16 +74,36 @@ ALTER TABLE macrostrat.unit_lith_atts
 	ADD FOREIGN KEY (unit_lith_id) REFERENCES macrostrat.unit_liths(id) ON DELETE CASCADE,
 	ADD FOREIGN KEY (lith_att_id) REFERENCES macrostrat.lith_atts(id) ON DELETE CASCADE;
 
-/* deleted 2 rows from bad unit ids and 2 rows from bad strat_name ids*/
+/*
+ deleted 2 rows from bad unit ids and 2 rows from bad strat_name ids
+
+strat_name ids:
+	the ids are just wrong. The strat_names exist but as different records than what is recorded..
+	Need to update the table strat_name_ids where
+	three sisters: 75254 -> 6040 
+	jasper fm: 102656 -> 102650
+
+unit_ids:
+	It appears that units were removed.. there are no units with the corresponding strat_names
+*/
+UPDATE macrostrat.unit_strat_names
+SET strat_name_id = 6040
+WHERE strat_name_id = 75254;
+
+UPDATE macrostrat.unit_strat_names
+SET strat_name_id = 102650
+WHERE strat_name_id = 102656;
+
 DELETE FROM macrostrat.unit_strat_names
-	WHERE unit_id NOT IN (SELECT id from macrostrat.units)
-    OR strat_name_id NOT IN (SELECT id from macrostrat.strat_names);
+	WHERE unit_id NOT IN (SELECT id from macrostrat.units);
 
 ALTER TABLE macrostrat.unit_strat_names
 	ADD FOREIGN KEY (unit_id) REFERENCES macrostrat.units(id) ON DELETE CASCADE,
 	ADD FOREIGN KEY (strat_name_id) REFERENCES macrostrat.strat_names(id) ON DELETE CASCADE;
 
-/* 33 rows deleted b/c of non-matching strat_name ids */
+/* 33 rows deleted b/c of non-matching strat_name ids 
+there doesn't seem to be a way to recover the missing strat_names
+*/
 DELETE FROM macrostrat.strat_names_places
 	WHERE strat_name_id NOT IN (SELECT id from macrostrat.strat_names);
 
@@ -103,7 +123,10 @@ ALTER TABLE macrostrat.timescales_intervals
 	ADD FOREIGN KEY (timescale_id) REFERENCES macrostrat.timescales(id) ON DELETE CASCADE,
 	ADD FOREIGN KEY (interval_id) REFERENCES macrostrat.intervals(id) ON DELETE CASCADE;
 
-/* 2 rows deleted for a col_id of 0, one was a `test_delete_me` */
+/* 2 rows deleted for a col_id of 0, 
+one was a `test_delete_me` 
+the other was Lane Shale, unit_id 42143
+*/
 DELETE FROM macrostrat.units
 	WHERE col_id NOT IN (SELECT id FROM macrostrat.cols);
 
@@ -112,6 +135,4 @@ ALTER TABLE macrostrat.units
 	ADD FOREIGN KEY (fo) REFERENCES macrostrat.intervals(id) ON DELETE CASCADE,
 	ADD FOREIGN KEY (lo) REFERENCES macrostrat.intervals(id) ON DELETE CASCADE;
 
-/* Instead of having an adjancency list have a parent column that references another strat_name */
-ALTER TABLE macrostrat.strat_names
-	ADD COLUMN parent INT REFERENCES macrostrat.strat_names(id);
+/* Best practices for hierarchal data in postgres??*/
