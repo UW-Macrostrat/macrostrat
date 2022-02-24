@@ -1,0 +1,20 @@
+#!/usr/bin/env zsh
+
+## Basic stand alone script to run db alterations on the database using ports instead of container.
+
+local_db=column_data
+db_user=postgres
+local_forward=5434
+
+
+for file in `dirname $0`/../db-alterations/*.sql
+do
+    echo "Running $file"
+    psql -p $local_forward -h localhost -d $local_db -U $db_user -f $file
+done
+
+for f in `dirname $0`/../fixtures/*.sql
+do
+    echo "Running $f"
+    psql -p $local_forward -h localhost -d $local_db -U $db_user -f $f
+done
