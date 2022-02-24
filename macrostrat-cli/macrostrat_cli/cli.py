@@ -64,7 +64,7 @@ def pgConnection():
         host=credentials["pg_host"],
         port=credentials["pg_port"],
     )
-    pg_conn.set_client_encoding("Latin1")
+    pg_conn.set_client_encoding("utf8")
     return pg_conn
 
 

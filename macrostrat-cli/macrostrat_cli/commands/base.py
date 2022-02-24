@@ -37,7 +37,7 @@ class Base(object):
                 host=self.credentials["pg_host"],
                 port=self.credentials["pg_port"],
             )
-            pg_conn.set_client_encoding("Latin1")
+            pg_conn.set_client_encoding("utf8")
             return pg_conn
 
         self.mariadb = {
