@@ -135,14 +135,18 @@ ALTER TABLE macrostrat.units
 	ADD FOREIGN KEY (fo) REFERENCES macrostrat.intervals(id) ON DELETE CASCADE,
 	ADD FOREIGN KEY (lo) REFERENCES macrostrat.intervals(id) ON DELETE CASCADE;
 
-UPDATE TABLE macrostrat.strat_tree
+DELETE FROM macrostrat.strat_tree
+	WHERE child NOT IN (SELECT id FROM macrostrat.strat_names)
+	OR ref_id NOT IN (SELECT id FROM macrostrat.refs);
+
+UPDATE macrostrat.strat_tree
 	SET ref_id = NULL
 	WHERE ref_id = 0;
 
 ALTER TABLE macrostrat.strat_tree
-	ADD FOREIGN KEY (parent) REFERENCES macrostrat.strat_name(id) ON DELETE CASCADE,
-	ADD FOREIGN KEY (child) REFERENCES macrostrat.strat_name(id) ON DELETE CASCADE,
-	ADD FOREIGN KEY (ref_id) REFERENCES macrostrat.ref(id) ON DELETE CASCADE;
+	ADD FOREIGN KEY (parent) REFERENCES macrostrat.strat_names(id) ON DELETE CASCADE,
+	ADD FOREIGN KEY (child) REFERENCES macrostrat.strat_names(id) ON DELETE CASCADE,
+	ADD FOREIGN KEY (ref_id) REFERENCES macrostrat.refs(id) ON DELETE CASCADE;
 
 ALTER TABLE macrostrat.projects
 	ADD FOREIGN KEY (timescale_id) REFERENCES macrostrat.timescales(id) ON DELETE CASCADE;

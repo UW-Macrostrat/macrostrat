@@ -1,6 +1,6 @@
 /* Some views that may be helpful with postgrest */
 
-CREATE SCHEMA macrostrat_api
+CREATE SCHEMA IF NOT EXISTS macrostrat_api;
 
 CREATE OR REPLACE VIEW macrostrat_api.projects AS
 SELECT * FROM macrostrat.projects;
@@ -23,6 +23,8 @@ SELECT * FROM macrostrat.intervals;
 CREATE OR REPLACE VIEW macrostrat_api.timescales AS
 SELECT * FROM macrostrat.timescales;
 
+CREATE OR REPLACE VIEW macrostrat_api.strat_tree AS
+SELECT * FROM macrostrat.strat_tree;
 
 CREATE OR REPLACE VIEW macrostrat_api.refs AS
 SELECT * FROM macrostrat.refs;
