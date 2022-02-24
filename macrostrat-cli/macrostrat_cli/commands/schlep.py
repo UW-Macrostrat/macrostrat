@@ -27,10 +27,12 @@ class Schlep(Base):
         unit_strat_names
         units_sections
         strat_names
+        strat_tree
         unit_liths
         strat_names_places
         col_groups
         places
+        projects
         lookup_unit_intervals
         lith_atts
         lookup_unit_liths
@@ -96,7 +98,7 @@ class Schlep(Base):
             COMMENT ON TABLE macrostrat.%(table)s_new IS %(time)s;
             ALTER TABLE IF EXISTS macrostrat.%(table)s RENAME TO %(table)s_old;
             ALTER TABLE macrostrat.%(table)s_new RENAME TO %(table)s;
-            DROP TABLE IF EXISTS macrostrat.%(table)s_old;
+            DROP TABLE IF EXISTS macrostrat.%(table)s_old CASCADE;
         """,
             {
                 "table": AsIs(table),
