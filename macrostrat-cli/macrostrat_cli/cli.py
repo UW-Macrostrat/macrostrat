@@ -39,7 +39,7 @@ from . import commands
 
 # Load the credentials file
 with open(os.path.join(os.path.dirname(__file__), "../credentials.yml"), "r") as f:
-    credentials = yaml.load(f)
+    credentials = yaml.safe_load(f)
 
 # Connect to MySQL
 def mariaConnection():
@@ -50,7 +50,7 @@ def mariaConnection():
         user=credentials["mysql_user"],
         passwd=credentials["mysql_passwd"],
         db=credentials["mysql_db"],
-        unix_socket=credentials["mysql_socket"],
+        #unix_socket=credentials["mysql_socket"],
         cursorclass=pymysql.cursors.SSDictCursor,
         read_timeout=180,
     )

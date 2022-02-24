@@ -14,7 +14,7 @@ class Base(object):
         with open(
             os.path.join(os.path.dirname(__file__), "../../credentials.yml"), "r"
         ) as f:
-            self.credentials = yaml.load(f)
+            self.credentials = yaml.safe_load(f)
 
         # Connect to MySQL
         def mariaConnection():
@@ -25,7 +25,6 @@ class Base(object):
                 user=self.credentials["mysql_user"],
                 passwd=self.credentials["mysql_passwd"],
                 db=self.credentials["mysql_db"],
-                unix_socket=self.credentials["mysql_socket"],
                 cursorclass=pymysql.cursors.SSDictCursor,
                 read_timeout=180,
             )
