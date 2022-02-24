@@ -135,4 +135,29 @@ ALTER TABLE macrostrat.units
 	ADD FOREIGN KEY (fo) REFERENCES macrostrat.intervals(id) ON DELETE CASCADE,
 	ADD FOREIGN KEY (lo) REFERENCES macrostrat.intervals(id) ON DELETE CASCADE;
 
+UPDATE TABLE macrostrat.strat_tree
+	SET ref_id = NULL
+	WHERE ref_id = 0;
+
+ALTER TABLE macrostrat.strat_tree
+	ADD FOREIGN KEY (parent) REFERENCES macrostrat.strat_name(id) ON DELETE CASCADE,
+	ADD FOREIGN KEY (child) REFERENCES macrostrat.strat_name(id) ON DELETE CASCADE,
+	ADD FOREIGN KEY (ref_id) REFERENCES macrostrat.ref(id) ON DELETE CASCADE;
+
+ALTER TABLE macrostrat.projects
+	ADD FOREIGN KEY (timescale_id) REFERENCES macrostrat.timescales(id) ON DELETE CASCADE;
+
+/* Set foreign key on col table */
+ALTER TABLE macrostrat.cols
+	ADD FOREIGN KEY (project_id) REFERENCES macrostrat.projects(id) ON DELETE CASCADE;
+
+/* Add project id constraint to col-groups */
+ALTER TABLE macrostrat.col_groups
+	ADD COLUMN project_id INT REFERENCES macrostrat.projects(id);
+
+UPDATE macrostrat.col_groups cg
+SET project_id = c.project_id
+FROM macrostrat.cols c 
+WHERE c.col_group_id = cg.id;
+
 /* Best practices for hierarchal data in postgres??*/
