@@ -41,6 +41,9 @@ SELECT * FROM macrostrat.unit_environs;
 CREATE OR REPLACE VIEW macrostrat_api.unit_liths AS
 SELECT * FROM macrostrat.unit_liths;
 
+CREATE OR REPLACE VIEW macrostrat_api.sections AS
+SELECT * FROM macrostrat.sections;
+
 CREATE OR REPLACE VIEW macrostrat_api.strat_names AS
 SELECT 
 s.id, 
@@ -125,6 +128,7 @@ u.max_thick,
 u.min_thick,
 u.section_id,
 u.col_id,
+u.notes,
 fo.interval_name AS name_fo,
 fo.age_bottom,
 lo.interval_name AS name_lo,
@@ -151,6 +155,7 @@ SELECT
 c.id col_id, 
 c.col_name, 
 c.col col_number,
+c.notes,
 json_build_object( 
 'id', r.id, 
 'pub_year', r.pub_year, 
