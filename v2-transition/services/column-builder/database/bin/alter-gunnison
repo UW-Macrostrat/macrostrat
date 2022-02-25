@@ -49,6 +49,11 @@ export $(grep -v '^#' .env | xargs)
 dropdb -f -p $local_forward -h localhost -U postgres $local_db
 createdb -p $local_forward -h localhost -U $db_user $local_db
 
+echo "Running Pre-dump sql scripts"
+for file in `dirname $0`/../pre-runs/*.sql
+do
+    psql -p $local_forward -h localhost -d $local_db -U $db_user -f $file
+done
 
 echo "Dumping Macrostrat database from Gunnison local_forward"
 psql -p $local_forward -h localhost -U $db_user $local_db -c "CREATE EXTENSION postgis;"

@@ -1,6 +1,6 @@
 /* Some views that may be helpful with postgrest */
 
-CREATE SCHEMA macrostrat_api
+CREATE SCHEMA IF NOT EXISTS macrostrat_api;
 
 CREATE OR REPLACE VIEW macrostrat_api.projects AS
 SELECT * FROM macrostrat.projects;
@@ -23,6 +23,8 @@ SELECT * FROM macrostrat.intervals;
 CREATE OR REPLACE VIEW macrostrat_api.timescales AS
 SELECT * FROM macrostrat.timescales;
 
+CREATE OR REPLACE VIEW macrostrat_api.strat_tree AS
+SELECT * FROM macrostrat.strat_tree;
 
 CREATE OR REPLACE VIEW macrostrat_api.refs AS
 SELECT * FROM macrostrat.refs;
@@ -38,6 +40,9 @@ SELECT * FROM macrostrat.unit_environs;
 
 CREATE OR REPLACE VIEW macrostrat_api.unit_liths AS
 SELECT * FROM macrostrat.unit_liths;
+
+CREATE OR REPLACE VIEW macrostrat_api.sections AS
+SELECT * FROM macrostrat.sections;
 
 CREATE OR REPLACE VIEW macrostrat_api.strat_names AS
 SELECT 
@@ -109,10 +114,8 @@ ON ul.lith_id = l.id;
 /*LO is top and FO is bottom*/
 CREATE OR REPLACE VIEW macrostrat_api.units_view AS
 SELECT u.id,
-u.strat_name unit_strat_name,
-s.strat_name,
-s.rank,
-s.id strat_name_id,
+u.strat_name AS unit_strat_name,
+to_jsonb(s.*) as strat_name,
 u.color,
 u.outcrop,
 u.fo,
@@ -123,6 +126,7 @@ u.max_thick,
 u.min_thick,
 u.section_id,
 u.col_id,
+u.notes,
 fo.interval_name AS name_fo,
 fo.age_bottom,
 lo.interval_name AS name_lo,
@@ -130,8 +134,7 @@ lo.age_top
 FROM macrostrat.units u
     LEFT JOIN macrostrat.intervals fo ON u.fo = fo.id
     LEFT JOIN macrostrat.intervals lo ON u.lo = lo.id
-    LEFT JOIN macrostrat.unit_strat_names usn ON usn.unit_id = u.id
-    LEFT JOIN macrostrat.strat_names s ON usn.strat_name_id = s.id;
+    LEFT JOIN macrostrat.strat_names s ON u.strat_name_id = s.id;
 
 
 CREATE OR REPLACE VIEW macrostrat_api.col_sections AS
@@ -149,6 +152,7 @@ SELECT
 c.id col_id, 
 c.col_name, 
 c.col col_number,
+c.notes,
 json_build_object( 
 'id', r.id, 
 'pub_year', r.pub_year, 

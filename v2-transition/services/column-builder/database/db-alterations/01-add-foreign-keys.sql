@@ -59,6 +59,9 @@ UPDATE macrostrat.unit_environs
 SET ref_id = NULL
 WHERE ref_id = 0;
 
+DELETE FROM macrostrat.unit_environs
+WHERE unit_id not in (SELECT id from macrostrat.units);
+
 ALTER TABLE macrostrat.unit_environs
 	ADD FOREIGN KEY (environ_id) REFERENCES macrostrat.environs(id) ON DELETE CASCADE,
 	ADD FOREIGN KEY (ref_id) REFERENCES macrostrat.refs(id) ON DELETE CASCADE,
@@ -130,9 +133,46 @@ the other was Lane Shale, unit_id 42143
 DELETE FROM macrostrat.units
 	WHERE col_id NOT IN (SELECT id FROM macrostrat.cols);
 
+UPDATE macrostrat.units
+set section_id = NULL
+where section_id not in (select id from macrostrat.sections);
+
 ALTER TABLE macrostrat.units
 	ADD FOREIGN KEY (col_id) REFERENCES macrostrat.cols(id) ON DELETE CASCADE,
+	ADD FOREIGN KEY (section_id) REFERENCES macrostrat.sections(id) ON DELETE CASCADE,
 	ADD FOREIGN KEY (fo) REFERENCES macrostrat.intervals(id) ON DELETE CASCADE,
 	ADD FOREIGN KEY (lo) REFERENCES macrostrat.intervals(id) ON DELETE CASCADE;
+
+ALTER TABLE macrostrat.sections
+	ADD FOREIGN KEY (col_id) REFERENCES macrostrat.cols(id) ON DELETE CASCADE;
+
+DELETE FROM macrostrat.strat_tree
+	WHERE child NOT IN (SELECT id FROM macrostrat.strat_names)
+	OR ref_id NOT IN (SELECT id FROM macrostrat.refs);
+
+UPDATE macrostrat.strat_tree
+	SET ref_id = NULL
+	WHERE ref_id = 0;
+
+ALTER TABLE macrostrat.strat_tree
+	ADD FOREIGN KEY (parent) REFERENCES macrostrat.strat_names(id) ON DELETE CASCADE,
+	ADD FOREIGN KEY (child) REFERENCES macrostrat.strat_names(id) ON DELETE CASCADE,
+	ADD FOREIGN KEY (ref_id) REFERENCES macrostrat.refs(id) ON DELETE CASCADE;
+
+ALTER TABLE macrostrat.projects
+	ADD FOREIGN KEY (timescale_id) REFERENCES macrostrat.timescales(id) ON DELETE CASCADE;
+
+/* Set foreign key on col table */
+ALTER TABLE macrostrat.cols
+	ADD FOREIGN KEY (project_id) REFERENCES macrostrat.projects(id) ON DELETE CASCADE;
+
+/* Add project id constraint to col-groups */
+ALTER TABLE macrostrat.col_groups
+	ADD COLUMN project_id INT REFERENCES macrostrat.projects(id);
+
+UPDATE macrostrat.col_groups cg
+SET project_id = c.project_id
+FROM macrostrat.cols c 
+WHERE c.col_group_id = cg.id;
 
 /* Best practices for hierarchal data in postgres??*/
