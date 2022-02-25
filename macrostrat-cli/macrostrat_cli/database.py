@@ -26,7 +26,7 @@ def mariaConnection():
 # Connect to Postgres
 def pgConnection():
     pg_conn = psycopg2.connect(PG_DATABASE)
-    pg_conn.set_client_encoding("Latin1")
+    pg_conn.set_client_encoding("utf8")
     return pg_conn
 
 

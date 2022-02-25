@@ -1,3 +1,4 @@
 
-INSERT INTO macrostrat.lookup_unit_attrs_api_new (unit_id, lith, environ, econ, measure_short, measure_long) VALUES (%(unit_id)s, %(lith)s::json, %(environ)s::json, %(econ)s::json, %(measure_short)s::json, %(measure_long)s::json)
+INSERT INTO macrostrat.lookup_unit_attrs_api_new (unit_id, lith, environ, econ, measure_short, measure_long) VALUES 
+(%(unit_id)s, encode(%(lith)s, 'escape')::json, encode(%(environ)s, 'escape')::json, encode(%(econ)s, 'escape')::json, encode(%(measure_short)s, 'escape')::json, encode(%(measure_long)s, 'escape')::json)
 
