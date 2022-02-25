@@ -14,5 +14,6 @@ CREATE TABLE macrostrat.cols_new (
   coordinate geometry,
   wkt text,
   created text,
-  poly_geom geometry
+  poly_geom geometry,
+  notes text
 );

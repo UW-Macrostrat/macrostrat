@@ -13,6 +13,7 @@ CREATE TABLE macrostrat.units_new (
   max_thick numeric,
   min_thick numeric,
   section_id integer,
-  col_id integer
+  col_id integer,
+  notes text
 );
 
