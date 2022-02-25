@@ -114,10 +114,8 @@ ON ul.lith_id = l.id;
 /*LO is top and FO is bottom*/
 CREATE OR REPLACE VIEW macrostrat_api.units_view AS
 SELECT u.id,
-u.strat_name unit_strat_name,
-s.strat_name,
-s.rank,
-s.id strat_name_id,
+u.strat_name AS unit_strat_name,
+to_jsonb(s.*) as strat_name,
 u.color,
 u.outcrop,
 u.fo,
@@ -136,8 +134,7 @@ lo.age_top
 FROM macrostrat.units u
     LEFT JOIN macrostrat.intervals fo ON u.fo = fo.id
     LEFT JOIN macrostrat.intervals lo ON u.lo = lo.id
-    LEFT JOIN macrostrat.unit_strat_names usn ON usn.unit_id = u.id
-    LEFT JOIN macrostrat.strat_names s ON usn.strat_name_id = s.id;
+    LEFT JOIN macrostrat.strat_names s ON u.strat_name_id = s.id;
 
 
 CREATE OR REPLACE VIEW macrostrat_api.col_sections AS
