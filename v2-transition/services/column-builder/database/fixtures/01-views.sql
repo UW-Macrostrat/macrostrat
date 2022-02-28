@@ -45,6 +45,9 @@ CREATE OR REPLACE VIEW macrostrat_api.sections AS
 SELECT * FROM macrostrat.sections;
 
 CREATE OR REPLACE VIEW macrostrat_api.strat_names AS
+SELECT * FROM macrostrat.strat_names;
+
+CREATE OR REPLACE VIEW macrostrat_api.strat_names_view AS
 SELECT 
 s.id, 
 s.strat_name, 
