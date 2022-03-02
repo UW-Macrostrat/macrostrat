@@ -8,3 +8,5 @@ geojson_pydantic
 requests
 uvicorn
 pytest
+pyjwt
+requests_jwt

@@ -49,6 +49,39 @@ COMMENT ON EXTENSION postgis IS 'PostGIS geometry and geography spatial types an
 
 
 --
+-- Name: measurement_class; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public.measurement_class AS ENUM (
+    '',
+    'geophysical',
+    'geochemical',
+    'sedimentological'
+);
+
+
+ALTER TYPE public.measurement_class OWNER TO postgres;
+
+--
+-- Name: measurement_type; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public.measurement_type AS ENUM (
+    '',
+    'material properties',
+    'geochronological',
+    'major elements',
+    'minor elements',
+    'radiogenic isotopes',
+    'stable isotopes',
+    'petrologic',
+    'environmental'
+);
+
+
+ALTER TYPE public.measurement_type OWNER TO postgres;
+
+--
 -- Name: make_into_serial(text, text); Type: FUNCTION; Schema: macrostrat; Owner: postgres
 --
 
@@ -120,6 +153,42 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 --
+-- Name: projects; Type: TABLE; Schema: macrostrat; Owner: postgres
+--
+
+CREATE TABLE macrostrat.projects (
+    id integer NOT NULL,
+    project text,
+    descrip text,
+    timescale_id integer
+);
+
+
+ALTER TABLE macrostrat.projects OWNER TO postgres;
+
+--
+-- Name: TABLE projects; Type: COMMENT; Schema: macrostrat; Owner: postgres
+--
+
+COMMENT ON TABLE macrostrat.projects IS 'Last updated from MariaDB - 2022-02-25 14:40';
+
+
+--
+-- Name: get_projects(); Type: FUNCTION; Schema: macrostrat_api; Owner: postgres
+--
+
+CREATE FUNCTION macrostrat_api.get_projects() RETURNS SETOF macrostrat.projects
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  RETURN QUERY SELECT * FROM macrostrat.projects;
+END
+$$;
+
+
+ALTER FUNCTION macrostrat_api.get_projects() OWNER TO postgres;
+
+--
 -- Name: autocomplete; Type: TABLE; Schema: macrostrat; Owner: postgres
 --
 
@@ -137,7 +206,7 @@ ALTER TABLE macrostrat.autocomplete OWNER TO postgres;
 -- Name: TABLE autocomplete; Type: COMMENT; Schema: macrostrat; Owner: postgres
 --
 
-COMMENT ON TABLE macrostrat.autocomplete IS 'Last updated from MariaDB - 2021-08-30 11:28';
+COMMENT ON TABLE macrostrat.autocomplete IS 'Last updated from MariaDB - 2022-02-25 14:28';
 
 
 --
@@ -147,7 +216,7 @@ COMMENT ON TABLE macrostrat.autocomplete IS 'Last updated from MariaDB - 2021-08
 CREATE TABLE macrostrat.col_areas (
     id integer NOT NULL,
     col_id integer,
-    col_area public.geometry(Geometry,4326),
+    col_area public.geometry,
     wkt text
 );
 
@@ -158,7 +227,7 @@ ALTER TABLE macrostrat.col_areas OWNER TO postgres;
 -- Name: TABLE col_areas; Type: COMMENT; Schema: macrostrat; Owner: postgres
 --
 
-COMMENT ON TABLE macrostrat.col_areas IS 'Last updated from MariaDB - 2021-08-30 11:30';
+COMMENT ON TABLE macrostrat.col_areas IS 'Last updated from MariaDB - 2022-02-25 14:28';
 
 
 --
@@ -241,7 +310,7 @@ ALTER TABLE macrostrat.col_refs OWNER TO postgres;
 -- Name: TABLE col_refs; Type: COMMENT; Schema: macrostrat; Owner: postgres
 --
 
-COMMENT ON TABLE macrostrat.col_refs IS 'Last updated from MariaDB - 2021-08-30 11:25';
+COMMENT ON TABLE macrostrat.col_refs IS 'Last updated from MariaDB - 2022-02-25 14:28';
 
 
 --
@@ -281,10 +350,11 @@ CREATE TABLE macrostrat.cols (
     lat numeric,
     lng numeric,
     col_area numeric,
-    coordinate public.geometry(Geometry,4326),
+    coordinate public.geometry,
     wkt text,
     created text,
-    poly_geom public.geometry(Geometry,4326)
+    poly_geom public.geometry,
+    notes text
 );
 
 
@@ -294,7 +364,7 @@ ALTER TABLE macrostrat.cols OWNER TO postgres;
 -- Name: TABLE cols; Type: COMMENT; Schema: macrostrat; Owner: postgres
 --
 
-COMMENT ON TABLE macrostrat.cols IS 'Last updated from MariaDB - 2021-08-30 12:02';
+COMMENT ON TABLE macrostrat.cols IS 'Last updated from MariaDB - 2022-02-25 14:47';
 
 
 --
@@ -334,7 +404,7 @@ ALTER TABLE macrostrat.concepts_places OWNER TO postgres;
 -- Name: TABLE concepts_places; Type: COMMENT; Schema: macrostrat; Owner: postgres
 --
 
-COMMENT ON TABLE macrostrat.concepts_places IS 'Last updated from MariaDB - 2021-08-30 11:25';
+COMMENT ON TABLE macrostrat.concepts_places IS 'Last updated from MariaDB - 2022-02-25 14:28';
 
 
 --
@@ -356,7 +426,7 @@ ALTER TABLE macrostrat.econs OWNER TO postgres;
 -- Name: TABLE econs; Type: COMMENT; Schema: macrostrat; Owner: postgres
 --
 
-COMMENT ON TABLE macrostrat.econs IS 'Last updated from MariaDB - 2021-08-30 11:25';
+COMMENT ON TABLE macrostrat.econs IS 'Last updated from MariaDB - 2022-02-25 14:29';
 
 
 --
@@ -484,7 +554,7 @@ ALTER TABLE macrostrat.intervals OWNER TO postgres;
 -- Name: TABLE intervals; Type: COMMENT; Schema: macrostrat; Owner: postgres
 --
 
-COMMENT ON TABLE macrostrat.intervals IS 'Last updated from MariaDB - 2021-08-30 11:29';
+COMMENT ON TABLE macrostrat.intervals IS 'Last updated from MariaDB - 2022-02-25 14:28';
 
 
 --
@@ -509,10 +579,10 @@ ALTER SEQUENCE macrostrat.intervals_id_seq OWNED BY macrostrat.intervals.id;
 
 
 --
--- Name: intervals_new_id_seq1; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
+-- Name: intervals_new_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
 --
 
-CREATE SEQUENCE macrostrat.intervals_new_id_seq1
+CREATE SEQUENCE macrostrat.intervals_new_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -521,13 +591,13 @@ CREATE SEQUENCE macrostrat.intervals_new_id_seq1
     CACHE 1;
 
 
-ALTER TABLE macrostrat.intervals_new_id_seq1 OWNER TO postgres;
+ALTER TABLE macrostrat.intervals_new_id_seq OWNER TO postgres;
 
 --
--- Name: intervals_new_id_seq1; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
+-- Name: intervals_new_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
 --
 
-ALTER SEQUENCE macrostrat.intervals_new_id_seq1 OWNED BY macrostrat.intervals.id;
+ALTER SEQUENCE macrostrat.intervals_new_id_seq OWNED BY macrostrat.intervals.id;
 
 
 --
@@ -597,7 +667,7 @@ ALTER TABLE macrostrat.liths OWNER TO postgres;
 -- Name: TABLE liths; Type: COMMENT; Schema: macrostrat; Owner: postgres
 --
 
-COMMENT ON TABLE macrostrat.liths IS 'Last updated from MariaDB - 2021-08-30 11:29';
+COMMENT ON TABLE macrostrat.liths IS 'Last updated from MariaDB - 2022-02-25 14:28';
 
 
 --
@@ -680,7 +750,7 @@ ALTER TABLE macrostrat.lookup_unit_attrs_api OWNER TO postgres;
 -- Name: TABLE lookup_unit_attrs_api; Type: COMMENT; Schema: macrostrat; Owner: postgres
 --
 
-COMMENT ON TABLE macrostrat.lookup_unit_attrs_api IS 'Last updated from MariaDB - 2021-08-30 11:30';
+COMMENT ON TABLE macrostrat.lookup_unit_attrs_api IS 'Last updated from MariaDB - 2022-02-25 14:29';
 
 
 --
@@ -742,7 +812,7 @@ ALTER TABLE macrostrat.lookup_unit_liths OWNER TO postgres;
 -- Name: TABLE lookup_unit_liths; Type: COMMENT; Schema: macrostrat; Owner: postgres
 --
 
-COMMENT ON TABLE macrostrat.lookup_unit_liths IS 'Last updated from MariaDB - 2021-08-30 11:24';
+COMMENT ON TABLE macrostrat.lookup_unit_liths IS 'Last updated from MariaDB - 2022-02-25 14:28';
 
 
 --
@@ -819,6 +889,48 @@ ALTER SEQUENCE macrostrat.lookup_units_unit_id_seq OWNED BY macrostrat.lookup_un
 
 
 --
+-- Name: measurements; Type: TABLE; Schema: macrostrat; Owner: postgres
+--
+
+CREATE TABLE macrostrat.measurements (
+    id integer NOT NULL,
+    measurement_class public.measurement_class NOT NULL,
+    measurement_type public.measurement_type NOT NULL,
+    measurement text NOT NULL
+);
+
+
+ALTER TABLE macrostrat.measurements OWNER TO postgres;
+
+--
+-- Name: TABLE measurements; Type: COMMENT; Schema: macrostrat; Owner: postgres
+--
+
+COMMENT ON TABLE macrostrat.measurements IS 'Last updated from MariaDB - 2022-02-25 15:08';
+
+
+--
+-- Name: measurements_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
+--
+
+CREATE SEQUENCE macrostrat.measurements_id_seq
+    START WITH 125
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE macrostrat.measurements_id_seq OWNER TO postgres;
+
+--
+-- Name: measurements_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
+--
+
+ALTER SEQUENCE macrostrat.measurements_id_seq OWNED BY macrostrat.measurements.id;
+
+
+--
 -- Name: measurements_new_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
 --
 
@@ -832,6 +944,28 @@ CREATE SEQUENCE macrostrat.measurements_new_id_seq
 
 
 ALTER TABLE macrostrat.measurements_new_id_seq OWNER TO postgres;
+
+--
+-- Name: measurements_new_id_seq1; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
+--
+
+CREATE SEQUENCE macrostrat.measurements_new_id_seq1
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE macrostrat.measurements_new_id_seq1 OWNER TO postgres;
+
+--
+-- Name: measurements_new_id_seq1; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
+--
+
+ALTER SEQUENCE macrostrat.measurements_new_id_seq1 OWNED BY macrostrat.measurements.id;
+
 
 --
 -- Name: measuremeta; Type: TABLE; Schema: macrostrat; Owner: postgres
@@ -861,7 +995,7 @@ ALTER TABLE macrostrat.measuremeta OWNER TO postgres;
 -- Name: TABLE measuremeta; Type: COMMENT; Schema: macrostrat; Owner: postgres
 --
 
-COMMENT ON TABLE macrostrat.measuremeta IS 'Last updated from MariaDB - 2021-08-30 11:27';
+COMMENT ON TABLE macrostrat.measuremeta IS 'Last updated from MariaDB - 2022-02-25 14:29';
 
 
 --
@@ -886,10 +1020,10 @@ ALTER SEQUENCE macrostrat.measuremeta_id_seq OWNED BY macrostrat.measuremeta.id;
 
 
 --
--- Name: measuremeta_new_id_seq1; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
+-- Name: measuremeta_new_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
 --
 
-CREATE SEQUENCE macrostrat.measuremeta_new_id_seq1
+CREATE SEQUENCE macrostrat.measuremeta_new_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -898,13 +1032,13 @@ CREATE SEQUENCE macrostrat.measuremeta_new_id_seq1
     CACHE 1;
 
 
-ALTER TABLE macrostrat.measuremeta_new_id_seq1 OWNER TO postgres;
+ALTER TABLE macrostrat.measuremeta_new_id_seq OWNER TO postgres;
 
 --
--- Name: measuremeta_new_id_seq1; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
+-- Name: measuremeta_new_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
 --
 
-ALTER SEQUENCE macrostrat.measuremeta_new_id_seq1 OWNED BY macrostrat.measuremeta.id;
+ALTER SEQUENCE macrostrat.measuremeta_new_id_seq OWNED BY macrostrat.measuremeta.id;
 
 
 --
@@ -1014,7 +1148,7 @@ CREATE TABLE macrostrat.places (
     postal text,
     country text,
     country_abbrev text,
-    geom public.geometry(Geometry,4326)
+    geom public.geometry
 );
 
 
@@ -1024,7 +1158,7 @@ ALTER TABLE macrostrat.places OWNER TO postgres;
 -- Name: TABLE places; Type: COMMENT; Schema: macrostrat; Owner: postgres
 --
 
-COMMENT ON TABLE macrostrat.places IS 'Last updated from MariaDB - 2021-08-30 11:59';
+COMMENT ON TABLE macrostrat.places IS 'Last updated from MariaDB - 2022-02-25 14:29';
 
 
 --
@@ -1049,26 +1183,11 @@ ALTER SEQUENCE macrostrat.places_place_id_seq OWNED BY macrostrat.places.place_i
 
 
 --
--- Name: projects; Type: TABLE; Schema: macrostrat; Owner: postgres
---
-
-CREATE TABLE macrostrat.projects (
-    id integer NOT NULL,
-    project text,
-    descrip text,
-    timescale_id integer
-);
-
-
-ALTER TABLE macrostrat.projects OWNER TO postgres;
-
---
 -- Name: projects_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
 --
 
 CREATE SEQUENCE macrostrat.projects_id_seq
-    AS integer
-    START WITH 1
+    START WITH 13
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
@@ -1082,6 +1201,28 @@ ALTER TABLE macrostrat.projects_id_seq OWNER TO postgres;
 --
 
 ALTER SEQUENCE macrostrat.projects_id_seq OWNED BY macrostrat.projects.id;
+
+
+--
+-- Name: projects_new_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
+--
+
+CREATE SEQUENCE macrostrat.projects_new_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE macrostrat.projects_new_id_seq OWNER TO postgres;
+
+--
+-- Name: projects_new_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
+--
+
+ALTER SEQUENCE macrostrat.projects_new_id_seq OWNED BY macrostrat.projects.id;
 
 
 --
@@ -1131,6 +1272,68 @@ ALTER SEQUENCE macrostrat.refs_id_seq OWNED BY macrostrat.refs.id;
 
 
 --
+-- Name: sections; Type: TABLE; Schema: macrostrat; Owner: postgres
+--
+
+CREATE TABLE macrostrat.sections (
+    id integer NOT NULL,
+    col_id integer
+);
+
+
+ALTER TABLE macrostrat.sections OWNER TO postgres;
+
+--
+-- Name: TABLE sections; Type: COMMENT; Schema: macrostrat; Owner: postgres
+--
+
+COMMENT ON TABLE macrostrat.sections IS 'Last updated from MariaDB - 2022-02-25 14:41';
+
+
+--
+-- Name: sections_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
+--
+
+CREATE SEQUENCE macrostrat.sections_id_seq
+    START WITH 12737
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE macrostrat.sections_id_seq OWNER TO postgres;
+
+--
+-- Name: sections_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
+--
+
+ALTER SEQUENCE macrostrat.sections_id_seq OWNED BY macrostrat.sections.id;
+
+
+--
+-- Name: sections_new_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
+--
+
+CREATE SEQUENCE macrostrat.sections_new_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE macrostrat.sections_new_id_seq OWNER TO postgres;
+
+--
+-- Name: sections_new_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
+--
+
+ALTER SEQUENCE macrostrat.sections_new_id_seq OWNED BY macrostrat.sections.id;
+
+
+--
 -- Name: strat_name_footprints; Type: TABLE; Schema: macrostrat; Owner: postgres
 --
 
@@ -1157,8 +1360,7 @@ CREATE TABLE macrostrat.strat_names (
     strat_name character varying(100) NOT NULL,
     rank character varying(50),
     ref_id integer NOT NULL,
-    concept_id integer,
-    parent integer
+    concept_id integer
 );
 
 
@@ -1280,7 +1482,71 @@ ALTER TABLE macrostrat.strat_names_places OWNER TO postgres;
 -- Name: TABLE strat_names_places; Type: COMMENT; Schema: macrostrat; Owner: postgres
 --
 
-COMMENT ON TABLE macrostrat.strat_names_places IS 'Last updated from MariaDB - 2021-08-30 11:30';
+COMMENT ON TABLE macrostrat.strat_names_places IS 'Last updated from MariaDB - 2022-02-25 14:29';
+
+
+--
+-- Name: strat_tree; Type: TABLE; Schema: macrostrat; Owner: postgres
+--
+
+CREATE TABLE macrostrat.strat_tree (
+    id integer NOT NULL,
+    parent integer,
+    child integer,
+    ref_id integer
+);
+
+
+ALTER TABLE macrostrat.strat_tree OWNER TO postgres;
+
+--
+-- Name: TABLE strat_tree; Type: COMMENT; Schema: macrostrat; Owner: postgres
+--
+
+COMMENT ON TABLE macrostrat.strat_tree IS 'Last updated from MariaDB - 2022-02-25 14:40';
+
+
+--
+-- Name: strat_tree_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
+--
+
+CREATE SEQUENCE macrostrat.strat_tree_id_seq
+    START WITH 29785
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE macrostrat.strat_tree_id_seq OWNER TO postgres;
+
+--
+-- Name: strat_tree_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
+--
+
+ALTER SEQUENCE macrostrat.strat_tree_id_seq OWNED BY macrostrat.strat_tree.id;
+
+
+--
+-- Name: strat_tree_new_id_seq1; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
+--
+
+CREATE SEQUENCE macrostrat.strat_tree_new_id_seq1
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE macrostrat.strat_tree_new_id_seq1 OWNER TO postgres;
+
+--
+-- Name: strat_tree_new_id_seq1; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
+--
+
+ALTER SEQUENCE macrostrat.strat_tree_new_id_seq1 OWNED BY macrostrat.strat_tree.id;
 
 
 --
@@ -1340,7 +1606,7 @@ ALTER TABLE macrostrat.timescales_intervals OWNER TO postgres;
 -- Name: TABLE timescales_intervals; Type: COMMENT; Schema: macrostrat; Owner: postgres
 --
 
-COMMENT ON TABLE macrostrat.timescales_intervals IS 'Last updated from MariaDB - 2021-08-30 11:30';
+COMMENT ON TABLE macrostrat.timescales_intervals IS 'Last updated from MariaDB - 2022-02-25 14:29';
 
 
 --
@@ -1413,7 +1679,7 @@ COMMENT ON TABLE macrostrat.unit_environs IS 'Last updated from MariaDB - 2021-0
 --
 
 CREATE SEQUENCE macrostrat.unit_environs_id_seq
-    START WITH 85929
+    START WITH 85924
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
@@ -1496,7 +1762,7 @@ ALTER TABLE macrostrat.unit_liths OWNER TO postgres;
 -- Name: TABLE unit_liths; Type: COMMENT; Schema: macrostrat; Owner: postgres
 --
 
-COMMENT ON TABLE macrostrat.unit_liths IS 'Last updated from MariaDB - 2021-08-30 11:29';
+COMMENT ON TABLE macrostrat.unit_liths IS 'Last updated from MariaDB - 2022-02-25 14:28';
 
 
 --
@@ -1504,7 +1770,7 @@ COMMENT ON TABLE macrostrat.unit_liths IS 'Last updated from MariaDB - 2021-08-3
 --
 
 CREATE SEQUENCE macrostrat.unit_liths_id_seq
-    START WITH 130551
+    START WITH 132637
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
@@ -1603,7 +1869,7 @@ ALTER TABLE macrostrat.unit_strat_names OWNER TO postgres;
 -- Name: TABLE unit_strat_names; Type: COMMENT; Schema: macrostrat; Owner: postgres
 --
 
-COMMENT ON TABLE macrostrat.unit_strat_names IS 'Last updated from MariaDB - 2021-08-30 11:25';
+COMMENT ON TABLE macrostrat.unit_strat_names IS 'Last updated from MariaDB - 2022-02-25 14:28';
 
 
 --
@@ -1628,10 +1894,10 @@ ALTER SEQUENCE macrostrat.unit_strat_names_id_seq OWNED BY macrostrat.unit_strat
 
 
 --
--- Name: unit_strat_names_new_id_seq1; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
+-- Name: unit_strat_names_new_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
 --
 
-CREATE SEQUENCE macrostrat.unit_strat_names_new_id_seq1
+CREATE SEQUENCE macrostrat.unit_strat_names_new_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -1640,13 +1906,13 @@ CREATE SEQUENCE macrostrat.unit_strat_names_new_id_seq1
     CACHE 1;
 
 
-ALTER TABLE macrostrat.unit_strat_names_new_id_seq1 OWNER TO postgres;
+ALTER TABLE macrostrat.unit_strat_names_new_id_seq OWNER TO postgres;
 
 --
--- Name: unit_strat_names_new_id_seq1; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
+-- Name: unit_strat_names_new_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
 --
 
-ALTER SEQUENCE macrostrat.unit_strat_names_new_id_seq1 OWNED BY macrostrat.unit_strat_names.id;
+ALTER SEQUENCE macrostrat.unit_strat_names_new_id_seq OWNED BY macrostrat.unit_strat_names.id;
 
 
 --
@@ -1665,7 +1931,9 @@ CREATE TABLE macrostrat.units (
     max_thick numeric,
     min_thick numeric,
     section_id integer,
-    col_id integer
+    col_id integer,
+    notes text,
+    strat_name_id integer
 );
 
 
@@ -1675,7 +1943,7 @@ ALTER TABLE macrostrat.units OWNER TO postgres;
 -- Name: TABLE units; Type: COMMENT; Schema: macrostrat; Owner: postgres
 --
 
-COMMENT ON TABLE macrostrat.units IS 'Last updated from MariaDB - 2021-08-30 11:31';
+COMMENT ON TABLE macrostrat.units IS 'Last updated from MariaDB - 2022-02-25 14:47';
 
 
 --
@@ -1683,7 +1951,7 @@ COMMENT ON TABLE macrostrat.units IS 'Last updated from MariaDB - 2021-08-30 11:
 --
 
 CREATE SEQUENCE macrostrat.units_id_seq
-    START WITH 52384
+    START WITH 53232
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
@@ -1771,6 +2039,7 @@ CREATE VIEW macrostrat_api.col_form AS
  SELECT c.id AS col_id,
     c.col_name,
     c.col AS col_number,
+    c.notes,
     json_build_object('id', r.id, 'pub_year', r.pub_year, 'author', r.author, 'ref', r.ref, 'doi', r.doi, 'url', r.url) AS ref
    FROM ((macrostrat.cols c
      LEFT JOIN macrostrat.col_refs cr ON ((c.id = cr.col_id)))
@@ -1860,7 +2129,8 @@ CREATE VIEW macrostrat_api.cols AS
     cols.coordinate,
     cols.wkt,
     cols.created,
-    cols.poly_geom
+    cols.poly_geom,
+    cols.notes
    FROM macrostrat.cols;
 
 
@@ -2012,11 +2282,11 @@ ALTER TABLE macrostrat_api.liths OWNER TO postgres;
 --
 
 CREATE VIEW macrostrat_api.projects AS
- SELECT projects.id,
-    projects.project,
-    projects.descrip,
-    projects.timescale_id
-   FROM macrostrat.projects;
+ SELECT get_projects.id,
+    get_projects.project,
+    get_projects.descrip,
+    get_projects.timescale_id
+   FROM macrostrat_api.get_projects() get_projects(id, project, descrip, timescale_id);
 
 
 ALTER TABLE macrostrat_api.projects OWNER TO postgres;
@@ -2040,23 +2310,62 @@ CREATE VIEW macrostrat_api.refs AS
 ALTER TABLE macrostrat_api.refs OWNER TO postgres;
 
 --
+-- Name: sections; Type: VIEW; Schema: macrostrat_api; Owner: postgres
+--
+
+CREATE VIEW macrostrat_api.sections AS
+ SELECT sections.id,
+    sections.col_id
+   FROM macrostrat.sections;
+
+
+ALTER TABLE macrostrat_api.sections OWNER TO postgres;
+
+--
 -- Name: strat_names; Type: VIEW; Schema: macrostrat_api; Owner: postgres
 --
 
 CREATE VIEW macrostrat_api.strat_names AS
+ SELECT strat_names.id,
+    strat_names.strat_name,
+    strat_names.rank,
+    strat_names.ref_id,
+    strat_names.concept_id
+   FROM macrostrat.strat_names;
+
+
+ALTER TABLE macrostrat_api.strat_names OWNER TO postgres;
+
+--
+-- Name: strat_names_view; Type: VIEW; Schema: macrostrat_api; Owner: postgres
+--
+
+CREATE VIEW macrostrat_api.strat_names_view AS
  SELECT s.id,
     s.strat_name,
     s.rank,
     row_to_json(r.*) AS ref,
-    row_to_json(sm.*) AS concept,
-    row_to_json(sn.*) AS parent
-   FROM (((macrostrat.strat_names s
-     LEFT JOIN macrostrat.strat_names sn ON ((s.parent = sn.id)))
+    row_to_json(sm.*) AS concept
+   FROM ((macrostrat.strat_names s
      LEFT JOIN macrostrat.refs r ON ((r.id = s.ref_id)))
      LEFT JOIN macrostrat.strat_names_meta sm ON ((sm.concept_id = s.concept_id)));
 
 
-ALTER TABLE macrostrat_api.strat_names OWNER TO postgres;
+ALTER TABLE macrostrat_api.strat_names_view OWNER TO postgres;
+
+--
+-- Name: strat_tree; Type: VIEW; Schema: macrostrat_api; Owner: postgres
+--
+
+CREATE VIEW macrostrat_api.strat_tree AS
+ SELECT strat_tree.id,
+    strat_tree.parent,
+    strat_tree.child,
+    strat_tree.ref_id
+   FROM macrostrat.strat_tree;
+
+
+ALTER TABLE macrostrat_api.strat_tree OWNER TO postgres;
 
 --
 -- Name: timescales; Type: VIEW; Schema: macrostrat_api; Owner: postgres
@@ -2122,7 +2431,9 @@ CREATE VIEW macrostrat_api.units AS
     units.max_thick,
     units.min_thick,
     units.section_id,
-    units.col_id
+    units.col_id,
+    units.notes,
+    units.strat_name_id
    FROM macrostrat.units;
 
 
@@ -2135,9 +2446,7 @@ ALTER TABLE macrostrat_api.units OWNER TO postgres;
 CREATE VIEW macrostrat_api.units_view AS
  SELECT u.id,
     u.strat_name AS unit_strat_name,
-    s.strat_name,
-    s.rank,
-    s.id AS strat_name_id,
+    to_jsonb(s.*) AS strat_name,
     u.color,
     u.outcrop,
     u.fo,
@@ -2148,15 +2457,15 @@ CREATE VIEW macrostrat_api.units_view AS
     u.min_thick,
     u.section_id,
     u.col_id,
+    u.notes,
     fo.interval_name AS name_fo,
     fo.age_bottom,
     lo.interval_name AS name_lo,
     lo.age_top
-   FROM ((((macrostrat.units u
+   FROM (((macrostrat.units u
      LEFT JOIN macrostrat.intervals fo ON ((u.fo = fo.id)))
      LEFT JOIN macrostrat.intervals lo ON ((u.lo = lo.id)))
-     LEFT JOIN macrostrat.unit_strat_names usn ON ((usn.unit_id = u.id)))
-     LEFT JOIN macrostrat.strat_names s ON ((usn.strat_name_id = s.id)));
+     LEFT JOIN macrostrat.strat_names s ON ((u.strat_name_id = s.id)));
 
 
 ALTER TABLE macrostrat_api.units_view OWNER TO postgres;
@@ -2239,6 +2548,13 @@ ALTER TABLE ONLY macrostrat.lookup_units ALTER COLUMN unit_id SET DEFAULT nextva
 
 
 --
+-- Name: measurements id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.measurements ALTER COLUMN id SET DEFAULT nextval('macrostrat.measurements_id_seq'::regclass);
+
+
+--
 -- Name: measuremeta id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
 --
 
@@ -2274,6 +2590,13 @@ ALTER TABLE ONLY macrostrat.refs ALTER COLUMN id SET DEFAULT nextval('macrostrat
 
 
 --
+-- Name: sections id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.sections ALTER COLUMN id SET DEFAULT nextval('macrostrat.sections_id_seq'::regclass);
+
+
+--
 -- Name: strat_names id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
 --
 
@@ -2285,6 +2608,13 @@ ALTER TABLE ONLY macrostrat.strat_names ALTER COLUMN id SET DEFAULT nextval('mac
 --
 
 ALTER TABLE ONLY macrostrat.strat_names_meta ALTER COLUMN concept_id SET DEFAULT nextval('macrostrat.strat_names_meta_concept_id_seq'::regclass);
+
+
+--
+-- Name: strat_tree id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.strat_tree ALTER COLUMN id SET DEFAULT nextval('macrostrat.strat_tree_id_seq'::regclass);
 
 
 --
@@ -2367,11 +2697,11 @@ ALTER TABLE ONLY macrostrat.col_groups
 
 
 --
--- Name: col_refs col_refs_new_pkey1; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
+-- Name: col_refs col_refs_new_pkey; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
 --
 
 ALTER TABLE ONLY macrostrat.col_refs
-    ADD CONSTRAINT col_refs_new_pkey1 PRIMARY KEY (id);
+    ADD CONSTRAINT col_refs_new_pkey PRIMARY KEY (id);
 
 
 --
@@ -2383,11 +2713,11 @@ ALTER TABLE ONLY macrostrat.cols
 
 
 --
--- Name: econs econs_new_pkey; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
+-- Name: econs econs_new_pkey1; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
 --
 
 ALTER TABLE ONLY macrostrat.econs
-    ADD CONSTRAINT econs_new_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT econs_new_pkey1 PRIMARY KEY (id);
 
 
 --
@@ -2423,11 +2753,11 @@ ALTER TABLE ONLY macrostrat.lith_atts
 
 
 --
--- Name: liths liths_new_pkey1; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
+-- Name: liths liths_new_pkey; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
 --
 
 ALTER TABLE ONLY macrostrat.liths
-    ADD CONSTRAINT liths_new_pkey1 PRIMARY KEY (id);
+    ADD CONSTRAINT liths_new_pkey PRIMARY KEY (id);
 
 
 --
@@ -2439,27 +2769,35 @@ ALTER TABLE ONLY macrostrat.lookup_units
 
 
 --
--- Name: measuremeta measuremeta_new_pkey; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
+-- Name: measurements measurements_new_pkey; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.measurements
+    ADD CONSTRAINT measurements_new_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: measuremeta measuremeta_new_pkey1; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
 --
 
 ALTER TABLE ONLY macrostrat.measuremeta
-    ADD CONSTRAINT measuremeta_new_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT measuremeta_new_pkey1 PRIMARY KEY (id);
 
 
 --
--- Name: places places_new_pkey1; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
+-- Name: places places_new_pkey; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
 --
 
 ALTER TABLE ONLY macrostrat.places
-    ADD CONSTRAINT places_new_pkey1 PRIMARY KEY (place_id);
+    ADD CONSTRAINT places_new_pkey PRIMARY KEY (place_id);
 
 
 --
--- Name: projects projects_pkey; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
+-- Name: projects projects_new_pkey; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
 --
 
 ALTER TABLE ONLY macrostrat.projects
-    ADD CONSTRAINT projects_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT projects_new_pkey PRIMARY KEY (id);
 
 
 --
@@ -2468,6 +2806,14 @@ ALTER TABLE ONLY macrostrat.projects
 
 ALTER TABLE ONLY macrostrat.refs
     ADD CONSTRAINT refs_new_pkey1 PRIMARY KEY (id);
+
+
+--
+-- Name: sections sections_new_pkey; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.sections
+    ADD CONSTRAINT sections_new_pkey PRIMARY KEY (id);
 
 
 --
@@ -2484,6 +2830,14 @@ ALTER TABLE ONLY macrostrat.strat_names_meta
 
 ALTER TABLE ONLY macrostrat.strat_names
     ADD CONSTRAINT strat_names_new_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: strat_tree strat_tree_new_pkey1; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.strat_tree
+    ADD CONSTRAINT strat_tree_new_pkey1 PRIMARY KEY (id);
 
 
 --
@@ -2519,11 +2873,11 @@ ALTER TABLE ONLY macrostrat.unit_lith_atts
 
 
 --
--- Name: unit_liths unit_liths_new_pkey1; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
+-- Name: unit_liths unit_liths_new_pkey; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
 --
 
 ALTER TABLE ONLY macrostrat.unit_liths
-    ADD CONSTRAINT unit_liths_new_pkey1 PRIMARY KEY (id);
+    ADD CONSTRAINT unit_liths_new_pkey PRIMARY KEY (id);
 
 
 --
@@ -2535,11 +2889,11 @@ ALTER TABLE ONLY macrostrat.unit_measures
 
 
 --
--- Name: unit_strat_names unit_strat_names_new_pkey1; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
+-- Name: unit_strat_names unit_strat_names_new_pkey; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
 --
 
 ALTER TABLE ONLY macrostrat.unit_strat_names
-    ADD CONSTRAINT unit_strat_names_new_pkey1 PRIMARY KEY (id);
+    ADD CONSTRAINT unit_strat_names_new_pkey PRIMARY KEY (id);
 
 
 --
@@ -2559,31 +2913,31 @@ ALTER TABLE ONLY macrostrat.units_sections
 
 
 --
--- Name: autocomplete_new_category_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
+-- Name: autocomplete_new_category_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
 --
 
-CREATE INDEX autocomplete_new_category_idx1 ON macrostrat.autocomplete USING btree (category);
-
-
---
--- Name: autocomplete_new_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
-CREATE INDEX autocomplete_new_id_idx1 ON macrostrat.autocomplete USING btree (id);
+CREATE INDEX autocomplete_new_category_idx ON macrostrat.autocomplete USING btree (category);
 
 
 --
--- Name: autocomplete_new_name_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
+-- Name: autocomplete_new_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
 --
 
-CREATE INDEX autocomplete_new_name_idx1 ON macrostrat.autocomplete USING btree (name);
+CREATE INDEX autocomplete_new_id_idx ON macrostrat.autocomplete USING btree (id);
 
 
 --
--- Name: autocomplete_new_type_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
+-- Name: autocomplete_new_name_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
 --
 
-CREATE INDEX autocomplete_new_type_idx1 ON macrostrat.autocomplete USING btree (type);
+CREATE INDEX autocomplete_new_name_idx ON macrostrat.autocomplete USING btree (name);
+
+
+--
+-- Name: autocomplete_new_type_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
+--
+
+CREATE INDEX autocomplete_new_type_idx ON macrostrat.autocomplete USING btree (type);
 
 
 --
@@ -2608,17 +2962,17 @@ CREATE INDEX col_groups_new_id_idx1 ON macrostrat.col_groups USING btree (id);
 
 
 --
--- Name: col_refs_new_col_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
+-- Name: col_refs_new_col_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
 --
 
-CREATE INDEX col_refs_new_col_id_idx1 ON macrostrat.col_refs USING btree (col_id);
+CREATE INDEX col_refs_new_col_id_idx ON macrostrat.col_refs USING btree (col_id);
 
 
 --
--- Name: col_refs_new_ref_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
+-- Name: col_refs_new_ref_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
 --
 
-CREATE INDEX col_refs_new_ref_id_idx1 ON macrostrat.col_refs USING btree (ref_id);
+CREATE INDEX col_refs_new_ref_id_idx ON macrostrat.col_refs USING btree (ref_id);
 
 
 --
@@ -2671,38 +3025,38 @@ CREATE INDEX concepts_places_new_place_id_idx ON macrostrat.concepts_places USIN
 
 
 --
--- Name: intervals_new_age_bottom_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
+-- Name: intervals_new_age_bottom_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
 --
 
-CREATE INDEX intervals_new_age_bottom_idx1 ON macrostrat.intervals USING btree (age_bottom);
-
-
---
--- Name: intervals_new_age_top_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
-CREATE INDEX intervals_new_age_top_idx1 ON macrostrat.intervals USING btree (age_top);
+CREATE INDEX intervals_new_age_bottom_idx ON macrostrat.intervals USING btree (age_bottom);
 
 
 --
--- Name: intervals_new_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
+-- Name: intervals_new_age_top_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
 --
 
-CREATE INDEX intervals_new_id_idx1 ON macrostrat.intervals USING btree (id);
-
-
---
--- Name: intervals_new_interval_name_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
-CREATE INDEX intervals_new_interval_name_idx1 ON macrostrat.intervals USING btree (interval_name);
+CREATE INDEX intervals_new_age_top_idx ON macrostrat.intervals USING btree (age_top);
 
 
 --
--- Name: intervals_new_interval_type_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
+-- Name: intervals_new_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
 --
 
-CREATE INDEX intervals_new_interval_type_idx1 ON macrostrat.intervals USING btree (interval_type);
+CREATE INDEX intervals_new_id_idx ON macrostrat.intervals USING btree (id);
+
+
+--
+-- Name: intervals_new_interval_name_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
+--
+
+CREATE INDEX intervals_new_interval_name_idx ON macrostrat.intervals USING btree (interval_name);
+
+
+--
+-- Name: intervals_new_interval_type_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
+--
+
+CREATE INDEX intervals_new_interval_type_idx ON macrostrat.intervals USING btree (interval_type);
 
 
 --
@@ -2720,24 +3074,24 @@ CREATE INDEX lith_atts_new_lith_att_idx1 ON macrostrat.lith_atts USING btree (li
 
 
 --
--- Name: liths_new_lith_class_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
+-- Name: liths_new_lith_class_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
 --
 
-CREATE INDEX liths_new_lith_class_idx1 ON macrostrat.liths USING btree (lith_class);
-
-
---
--- Name: liths_new_lith_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
-CREATE INDEX liths_new_lith_idx1 ON macrostrat.liths USING btree (lith);
+CREATE INDEX liths_new_lith_class_idx ON macrostrat.liths USING btree (lith_class);
 
 
 --
--- Name: liths_new_lith_type_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
+-- Name: liths_new_lith_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
 --
 
-CREATE INDEX liths_new_lith_type_idx1 ON macrostrat.liths USING btree (lith_type);
+CREATE INDEX liths_new_lith_idx ON macrostrat.liths USING btree (lith);
+
+
+--
+-- Name: liths_new_lith_type_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
+--
+
+CREATE INDEX liths_new_lith_type_idx ON macrostrat.liths USING btree (lith_type);
 
 
 --
@@ -2846,24 +3200,45 @@ CREATE INDEX lookup_units_new_t_int_idx1 ON macrostrat.lookup_units USING btree 
 
 
 --
--- Name: measuremeta_new_lith_att_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
+-- Name: measurements_new_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
 --
 
-CREATE INDEX measuremeta_new_lith_att_id_idx1 ON macrostrat.measuremeta USING btree (lith_att_id);
-
-
---
--- Name: measuremeta_new_lith_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
-CREATE INDEX measuremeta_new_lith_id_idx1 ON macrostrat.measuremeta USING btree (lith_id);
+CREATE INDEX measurements_new_id_idx ON macrostrat.measurements USING btree (id);
 
 
 --
--- Name: measuremeta_new_ref_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
+-- Name: measurements_new_measurement_class_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
 --
 
-CREATE INDEX measuremeta_new_ref_id_idx1 ON macrostrat.measuremeta USING btree (ref_id);
+CREATE INDEX measurements_new_measurement_class_idx ON macrostrat.measurements USING btree (measurement_class);
+
+
+--
+-- Name: measurements_new_measurement_type_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
+--
+
+CREATE INDEX measurements_new_measurement_type_idx ON macrostrat.measurements USING btree (measurement_type);
+
+
+--
+-- Name: measuremeta_new_lith_att_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
+--
+
+CREATE INDEX measuremeta_new_lith_att_id_idx ON macrostrat.measuremeta USING btree (lith_att_id);
+
+
+--
+-- Name: measuremeta_new_lith_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
+--
+
+CREATE INDEX measuremeta_new_lith_id_idx ON macrostrat.measuremeta USING btree (lith_id);
+
+
+--
+-- Name: measuremeta_new_ref_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
+--
+
+CREATE INDEX measuremeta_new_ref_id_idx ON macrostrat.measuremeta USING btree (ref_id);
 
 
 --
@@ -2909,10 +3284,24 @@ CREATE INDEX pbdb_collections_new_late_age_idx ON macrostrat.pbdb_collections US
 
 
 --
--- Name: places_new_geom_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
+-- Name: places_new_geom_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
 --
 
-CREATE INDEX places_new_geom_idx1 ON macrostrat.places USING gist (geom);
+CREATE INDEX places_new_geom_idx ON macrostrat.places USING gist (geom);
+
+
+--
+-- Name: projects_new_project_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
+--
+
+CREATE INDEX projects_new_project_idx ON macrostrat.projects USING btree (project);
+
+
+--
+-- Name: projects_new_timescale_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
+--
+
+CREATE INDEX projects_new_timescale_id_idx ON macrostrat.projects USING btree (timescale_id);
 
 
 --
@@ -2920,6 +3309,20 @@ CREATE INDEX places_new_geom_idx1 ON macrostrat.places USING gist (geom);
 --
 
 CREATE INDEX refs_new_rgeom_idx1 ON macrostrat.refs USING gist (rgeom);
+
+
+--
+-- Name: sections_new_col_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
+--
+
+CREATE INDEX sections_new_col_id_idx ON macrostrat.sections USING btree (col_id);
+
+
+--
+-- Name: sections_new_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
+--
+
+CREATE INDEX sections_new_id_idx ON macrostrat.sections USING btree (id);
 
 
 --
@@ -2993,31 +3396,52 @@ CREATE INDEX strat_names_new_strat_name_idx ON macrostrat.strat_names USING btre
 
 
 --
--- Name: strat_names_places_new_place_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
+-- Name: strat_names_places_new_place_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
 --
 
-CREATE INDEX strat_names_places_new_place_id_idx1 ON macrostrat.strat_names_places USING btree (place_id);
-
-
---
--- Name: strat_names_places_new_strat_name_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
-CREATE INDEX strat_names_places_new_strat_name_id_idx1 ON macrostrat.strat_names_places USING btree (strat_name_id);
+CREATE INDEX strat_names_places_new_place_id_idx ON macrostrat.strat_names_places USING btree (place_id);
 
 
 --
--- Name: timescales_intervals_new_interval_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
+-- Name: strat_names_places_new_strat_name_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
 --
 
-CREATE INDEX timescales_intervals_new_interval_id_idx1 ON macrostrat.timescales_intervals USING btree (interval_id);
+CREATE INDEX strat_names_places_new_strat_name_id_idx ON macrostrat.strat_names_places USING btree (strat_name_id);
 
 
 --
--- Name: timescales_intervals_new_timescale_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
+-- Name: strat_tree_new_child_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
 --
 
-CREATE INDEX timescales_intervals_new_timescale_id_idx1 ON macrostrat.timescales_intervals USING btree (timescale_id);
+CREATE INDEX strat_tree_new_child_idx1 ON macrostrat.strat_tree USING btree (child);
+
+
+--
+-- Name: strat_tree_new_parent_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
+--
+
+CREATE INDEX strat_tree_new_parent_idx1 ON macrostrat.strat_tree USING btree (parent);
+
+
+--
+-- Name: strat_tree_new_ref_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
+--
+
+CREATE INDEX strat_tree_new_ref_id_idx1 ON macrostrat.strat_tree USING btree (ref_id);
+
+
+--
+-- Name: timescales_intervals_new_interval_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
+--
+
+CREATE INDEX timescales_intervals_new_interval_id_idx ON macrostrat.timescales_intervals USING btree (interval_id);
+
+
+--
+-- Name: timescales_intervals_new_timescale_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
+--
+
+CREATE INDEX timescales_intervals_new_timescale_id_idx ON macrostrat.timescales_intervals USING btree (timescale_id);
 
 
 --
@@ -3098,24 +3522,24 @@ CREATE INDEX unit_lith_atts_new_unit_lith_id_idx1 ON macrostrat.unit_lith_atts U
 
 
 --
--- Name: unit_liths_new_lith_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
+-- Name: unit_liths_new_lith_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
 --
 
-CREATE INDEX unit_liths_new_lith_id_idx1 ON macrostrat.unit_liths USING btree (lith_id);
-
-
---
--- Name: unit_liths_new_ref_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
-CREATE INDEX unit_liths_new_ref_id_idx1 ON macrostrat.unit_liths USING btree (ref_id);
+CREATE INDEX unit_liths_new_lith_id_idx ON macrostrat.unit_liths USING btree (lith_id);
 
 
 --
--- Name: unit_liths_new_unit_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
+-- Name: unit_liths_new_ref_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
 --
 
-CREATE INDEX unit_liths_new_unit_id_idx1 ON macrostrat.unit_liths USING btree (unit_id);
+CREATE INDEX unit_liths_new_ref_id_idx ON macrostrat.unit_liths USING btree (ref_id);
+
+
+--
+-- Name: unit_liths_new_unit_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
+--
+
+CREATE INDEX unit_liths_new_unit_id_idx ON macrostrat.unit_liths USING btree (unit_id);
 
 
 --
@@ -3140,17 +3564,17 @@ CREATE INDEX unit_measures_new_unit_id_idx ON macrostrat.unit_measures USING btr
 
 
 --
--- Name: unit_strat_names_new_strat_name_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
+-- Name: unit_strat_names_new_strat_name_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
 --
 
-CREATE INDEX unit_strat_names_new_strat_name_id_idx1 ON macrostrat.unit_strat_names USING btree (strat_name_id);
+CREATE INDEX unit_strat_names_new_strat_name_id_idx ON macrostrat.unit_strat_names USING btree (strat_name_id);
 
 
 --
--- Name: unit_strat_names_new_unit_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
+-- Name: unit_strat_names_new_unit_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
 --
 
-CREATE INDEX unit_strat_names_new_unit_id_idx1 ON macrostrat.unit_strat_names USING btree (unit_id);
+CREATE INDEX unit_strat_names_new_unit_id_idx ON macrostrat.unit_strat_names USING btree (unit_id);
 
 
 --
@@ -3278,15 +3702,15 @@ ALTER TABLE ONLY macrostrat.concepts_places
 --
 
 ALTER TABLE ONLY macrostrat.projects
-    ADD CONSTRAINT projects_timescale_id_fkey FOREIGN KEY (timescale_id) REFERENCES macrostrat.timescales(id);
+    ADD CONSTRAINT projects_timescale_id_fkey FOREIGN KEY (timescale_id) REFERENCES macrostrat.timescales(id) ON DELETE CASCADE;
 
 
 --
--- Name: strat_names strat_names_parent_fkey; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+-- Name: sections sections_col_id_fkey; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
 --
 
-ALTER TABLE ONLY macrostrat.strat_names
-    ADD CONSTRAINT strat_names_parent_fkey FOREIGN KEY (parent) REFERENCES macrostrat.strat_names(id);
+ALTER TABLE ONLY macrostrat.sections
+    ADD CONSTRAINT sections_col_id_fkey FOREIGN KEY (col_id) REFERENCES macrostrat.cols(id) ON DELETE CASCADE;
 
 
 --
@@ -3303,6 +3727,30 @@ ALTER TABLE ONLY macrostrat.strat_names_places
 
 ALTER TABLE ONLY macrostrat.strat_names_places
     ADD CONSTRAINT strat_names_places_strat_name_id_fkey FOREIGN KEY (strat_name_id) REFERENCES macrostrat.strat_names(id) ON DELETE CASCADE;
+
+
+--
+-- Name: strat_tree strat_tree_child_fkey; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.strat_tree
+    ADD CONSTRAINT strat_tree_child_fkey FOREIGN KEY (child) REFERENCES macrostrat.strat_names(id) ON DELETE CASCADE;
+
+
+--
+-- Name: strat_tree strat_tree_parent_fkey; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.strat_tree
+    ADD CONSTRAINT strat_tree_parent_fkey FOREIGN KEY (parent) REFERENCES macrostrat.strat_names(id) ON DELETE CASCADE;
+
+
+--
+-- Name: strat_tree strat_tree_ref_id_fkey; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.strat_tree
+    ADD CONSTRAINT strat_tree_ref_id_fkey FOREIGN KEY (ref_id) REFERENCES macrostrat.refs(id) ON DELETE CASCADE;
 
 
 --
@@ -3439,6 +3887,22 @@ ALTER TABLE ONLY macrostrat.units
 
 ALTER TABLE ONLY macrostrat.units
     ADD CONSTRAINT units_lo_fkey FOREIGN KEY (lo) REFERENCES macrostrat.intervals(id) ON DELETE CASCADE;
+
+
+--
+-- Name: units units_section_id_fkey; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.units
+    ADD CONSTRAINT units_section_id_fkey FOREIGN KEY (section_id) REFERENCES macrostrat.sections(id) ON DELETE CASCADE;
+
+
+--
+-- Name: units units_strat_name_id_fkey; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.units
+    ADD CONSTRAINT units_strat_name_id_fkey FOREIGN KEY (strat_name_id) REFERENCES macrostrat.strat_names(id) ON DELETE CASCADE;
 
 
 --

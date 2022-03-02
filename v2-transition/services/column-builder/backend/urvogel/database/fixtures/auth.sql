@@ -56,22 +56,32 @@ current_setting('request.jwt.claims', true)::json->>'email';
 
 */
 
-/* necesary extenstions */
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
-CREATE EXTENSION IF NOT EXISTS pgjwt;
-
 
 /* AUTH schema and functions */
 DROP SCHEMA auth CASCADE;
 CREATE SCHEMA auth;
 
+
+/* necesary extenstions */
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE EXTENSION IF NOT EXISTS pgjwt;
+
 /* an auth user table */
 CREATE TABLE IF NOT EXISTS 
 auth.users(
-  email    text primary key check ( email ~* '^.+@.+\..+$' ),
-  pass     text not null check (length(pass) < 512),
-  projects integer[],
-  role     name not null check (length(role) < 512)
+  id     serial primary key,
+  email  text check ( email ~* '^.+@.+\..+$' ),
+  pass   text not null check (length(pass) < 512),
+  role   name not null check (length(role) < 512)
+);
+
+/* Example of a basic data id to role */
+CREATE TABLE IF NOT EXISTS
+auth.user_projects(
+  id serial primary key,
+  user_ int REFERENCES auth.users(id),
+  project int REFERENCES macrostrat.projects(id),
+  role name not null check (length(role) < 512)
 );
 
 /* make sure the role being added to user table actually exists!! */
@@ -88,8 +98,8 @@ END
 $$ LANGUAGE plpgsql;
 
 DROP trigger IF EXISTS ensure_user_role_exists ON auth.users;
-CREATE CONSTRAINT trigger ensure_user_role_exists
-  AFTER INSERT OR UPDATE ON auth.users
+CREATE trigger ensure_user_role_exists
+  BEFORE INSERT OR UPDATE ON auth.users
   FOR EACH ROW
   EXECUTE PROCEDURE auth.check_role_exists();
 
@@ -99,15 +109,15 @@ CREATE OR REPLACE FUNCTION
 auth.encrypt_pass() RETURNS trigger AS $$
 BEGIN
   IF tg_op = 'INSERT' OR new.pass <> old.pass THEN
-    new.pass = crypt(new.pass, gen_salt('md5'));
+    new.pass := public.crypt(new.pass, public.gen_salt('md5'));
   END IF;
   RETURN new;
 END
 $$ LANGUAGE plpgsql;
 
 DROP trigger IF EXISTS encrypt_pass ON auth.users;
-CREATE CONSTRAINT trigger encrypt_pass
-  AFTER INSERT OR UPDATE ON auth.users
+CREATE trigger encrypt_pass
+  BEFORE INSERT OR UPDATE ON auth.users
   FOR EACH ROW
   EXECUTE PROCEDURE auth.encrypt_pass();
 
@@ -122,7 +132,7 @@ BEGIN
   RETURN (
   SELECT role FROM auth.users
    WHERE users.email = user_role.email
-     AND users.pass = crypt(user_role.pass, users.pass)
+     AND users.pass = public.crypt(user_role.pass, users.pass)
   );
 END;
 $$;
@@ -146,7 +156,7 @@ BEGIN
     END IF;
     -- sign function comes from pgjwt extension. 
     SELECT sign(
-            row_to_json(r), 'reallyreallyreallyreallyverysafe'
+            row_to_json(r), 'reallyreallyreallyreallyverysafesafesafesafe'
         ) AS token
         FROM (
             SELECT _role as role, login.email as email,
@@ -158,12 +168,12 @@ END
 $$ language plpgsql SECURITY DEFINER;
 
 CREATE OR REPLACE FUNCTION
-macrostrat_api.create_user(email text, pass text, role_ text) RETURNS BOOLEAN AS $$
+macrostrat_api.create_user(email text, pass text) RETURNS BOOLEAN AS $$
 DECLARE
   _role name;
 BEGIN
   INSERT INTO auth.users(email, pass, role) 
-    VALUES (email, pass, role_);
+    VALUES (email, public.crypt(pass, public.gen_salt('md5')), 'new_user');
   SELECT auth.user_role(email, pass) INTO _role;
 
   IF _role IS NULL THEN
@@ -176,6 +186,16 @@ $$ language plpgsql SECURITY DEFINER;
 
 
 /*####################### BASE DB ROLES ##########################*/
+
+-- these are the basic auth roles used by postgrest.
+DROP ROLE IF EXISTS anon;
+CREATE ROLE anon NOINHERIT;
+DROP ROLE IF EXISTS authenticator;
+CREATE ROLE authenticator NOINHERIT;
+GRANT anon TO authenticator;
+
+GRANT EXECUTE ON FUNCTION macrostrat_api.login(text,text) TO anon;
+GRANT EXECUTE ON FUNCTION macrostrat_api.create_user(text, text) TO anon;
 
 -- read only
 DROP ROLE IF EXISTS reader;
@@ -203,6 +223,66 @@ GRANT USAGE ON SCHEMA auth TO owner_;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA macrostrat_api TO owner_;
 GRANT SELECT, INSERT, UPDATE, DELETE ON auth.users TO owner_;
 
+-- a new user has only the option to create a new project
+DROP ROLE IF EXISTS new_user;
+CREATE ROLE new_user NOINHERIT;
+GRANT USAGE ON SCHEMA macrostrat_api TO new_user;
+GRANT USAGE ON SCHEMA macrostrat TO new_user;
+GRANT USAGE ON SCHEMA auth TO new_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA macrostrat_api TO new_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA macrostrat TO new_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON auth.users TO new_user;
 
 /* ################### Row level policies ################### */
 
+/* function to get email off of jwt claims*/
+CREATE OR REPLACE FUNCTION
+macrostrat_api.get_email() returns text AS $$
+DECLARE
+  email_ text;
+BEGIN
+  SELECT current_setting('request.jwt.claims', true)::json->>'email' INTO email_;
+RETURN email_;
+END
+$$language plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION
+auth.user_project_insert() RETURNS trigger AS $$
+DECLARE
+  email_ text;
+  id_
+BEGIN
+  IF tg_op = 'INSERT' THEN
+    select macrostrat_api.get_email() into email_;
+    select id from auth.users where users.email = email_ INTO id_;
+    INSERT INTO auth.user_pojects(user, project, role_) 
+      VALUES(id_, new.id, "owner_");
+  END IF;
+  RETURN new;
+END
+$$ LANGUAGE plpgsql;
+
+DROP trigger IF EXISTS encrypt_pass ON auth.users;
+CREATE trigger user_pojects
+  AFTER INSERT ON macrostrat.projects
+  FOR EACH ROW
+  EXECUTE PROCEDURE auth.user_project_insert();
+
+
+CREATE OR REPLACE FUNCTION
+macrostrat_api.current_user_projects() RETURNS TABLE(id int) AS $$
+DECLARE
+  email_ text;
+BEGIN
+  SELECT macrostrat_api.get_email() INTO email_;
+  RETURN QUERY
+    SELECT project FROM auth.user_projects
+    JOIN auth.users u
+    on u.email = email_;
+END
+$$ language plpgsql SECURITY DEFINER;
+
+ALTER TABLE macrostrat.projects ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY projects_ ON macrostrat.projects FOR SELECT
+USING (id IN (SELECT macrostrat_api.current_user_projects()));

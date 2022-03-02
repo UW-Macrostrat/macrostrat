@@ -30,6 +30,8 @@ def setup(db_):
     with db_.conn.cursor() as cur:
         cur.execute("DROP SCHEMA IF EXISTS macrostrat_api CASCADE;")
         cur.execute("DROP SCHEMA IF EXISTS macrostrat CASCADE;")
+        cur.execute("DROP TYPE IF EXISTS measurement_type CASCADE;")
+        cur.execute("DROP TYPE IF EXISTS measurement_class CASCADE;")
         cur.execute(schema)
         cur.execute(data_inserts)
 

@@ -8,7 +8,7 @@ result=$( docker ps -q -f name=postgrest )
 
 if [[ -n "$result" ]]; then
   echo "Rebuilding Postgrest Docker container for testing!"
-  POSTGRES_DB=col_test docker-compose up -d --build postgrest
+  POSTGRES_DB=col_test PGRST_DB_ANON_ROLE=anon docker-compose up -d --build postgrest
 else
   echo "Starting Docker"
   POSTGRES_DB=col_test docker-compose up -d

@@ -15,6 +15,7 @@ services:
     environment:
       PGRST_DB_URI: postgres://${PGUSER}:@db:5432/${POSTGRES_DB}
       PGRST_DB_SCHEMA: macrostrat_api
+      PGRST_JWT_SECRET: ${PGRST_JWT_SECRET}
       PGRST_DB_ANON_ROLE: ${PGUSER} #In production this role should not be the same as the one used for the connection
       PGRST_OPENAPI_SERVER_PROXY_URI: http://127.0.0.1:3001
     depends_on:

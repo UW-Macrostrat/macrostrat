@@ -2,8 +2,15 @@
 
 CREATE SCHEMA IF NOT EXISTS macrostrat_api;
 
+CREATE OR REPLACE FUNCTION
+macrostrat_api.get_projects() RETURNS SETOF macrostrat.projects AS $$
+BEGIN
+  RETURN QUERY SELECT * FROM macrostrat.projects;
+END
+$$ language plpgsql SECURITY INVOKER;
+
 CREATE OR REPLACE VIEW macrostrat_api.projects AS
-SELECT * FROM macrostrat.projects;
+SELECT * FROM macrostrat_api.get_projects();
 
 CREATE OR REPLACE VIEW macrostrat_api.cols AS
 SELECT * FROM macrostrat.cols;
