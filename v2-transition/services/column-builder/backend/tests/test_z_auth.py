@@ -10,6 +10,13 @@ auth_inserts = get_sql("test_auth_inserts.sql")
 email = "cidzikowski@wisc.edu"
 password = "gniessrocks"
 
+def login():
+    res = post(base+"/rpc/login", data={"email": email, "pass": password})
+    token = res.json().get('token')
+    headers = {"Prefer": "return=representation", "Authorization": f'bearer {token}'}
+
+    return headers
+
 def test_create_auth(db):
     with db.conn.cursor() as cur:
         cur.execute(auth)
@@ -94,14 +101,24 @@ def test_project_create(db):
     assert token is not None
     headers = {"Prefer": "return=representation", "Authorization": f'bearer {token}'}
 
-    ## Can't insert into the view bc it was created from a function!
     res = post(base + "/projects", headers=headers, data={"project":"CFP1", "descrip":"fake project owned by casey", "timescale_id": 1})
 
-    assert res.status_code == 200
+    assert res.status_code == 201
     res = get(base + "/projects", headers=headers)
     data = res.json()
 
     assert len(data) == 2
 
+def test_child_data(db):
+    """ add some col-group, col and unit and see that we can access it """
+    headers = login()
+
+    col_group = {"col_group": "CG1", "col_group_long": "Casey's first fake column group", "project_id":13}
+    res = post(base+"/col_groups", data=col_group, headers=headers)
+
+    assert res.status_code == 201
+
+    res = get(base + "/col_groups", headers=headers)
+    assert len(res.json()) == 1
 
 

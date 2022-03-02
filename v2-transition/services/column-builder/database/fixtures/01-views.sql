@@ -12,60 +12,164 @@ $$ language plpgsql SECURITY INVOKER;
 CREATE OR REPLACE VIEW macrostrat_api.projects AS
 SELECT * FROM macrostrat_api.get_projects();
 
+CREATE OR REPLACE FUNCTION
+macrostrat_api.get_cols() RETURNS SETOF macrostrat.cols AS $$
+BEGIN
+  RETURN QUERY SELECT * FROM macrostrat.cols;
+END
+$$ language plpgsql SECURITY INVOKER;
+
 CREATE OR REPLACE VIEW macrostrat_api.cols AS
-SELECT * FROM macrostrat.cols;
+SELECT * FROM macrostrat_api.get_cols();
+
+CREATE OR REPLACE FUNCTION
+macrostrat_api.get_col_groups() RETURNS SETOF macrostrat.col_groups AS $$
+BEGIN
+  RETURN QUERY SELECT * FROM macrostrat.col_groups;
+END
+$$ language plpgsql SECURITY INVOKER;
 
 CREATE OR REPLACE VIEW macrostrat_api.col_groups AS
-SELECT * FROM macrostrat.col_groups;
+SELECT * FROM macrostrat_api.get_col_groups();
+
+CREATE OR REPLACE FUNCTION
+macrostrat_api.get_envs() RETURNS SETOF macrostrat.environs AS $$
+BEGIN
+  RETURN QUERY SELECT * FROM macrostrat.environs;
+END
+$$ language plpgsql SECURITY INVOKER;
 
 CREATE OR REPLACE VIEW macrostrat_api.environs AS
-SELECT * FROM macrostrat.environs;
+SELECT * FROM macrostrat_api.get_envs();
+
+CREATE OR REPLACE FUNCTION
+macrostrat_api.get_liths() RETURNS SETOF macrostrat.liths AS $$
+BEGIN
+  RETURN QUERY SELECT * FROM macrostrat.liths;
+END
+$$ language plpgsql SECURITY INVOKER;
 
 CREATE OR REPLACE VIEW macrostrat_api.liths AS
-SELECT * FROM macrostrat.liths;
+SELECT * FROM macrostrat_api.get_liths();
+
+CREATE OR REPLACE FUNCTION
+macrostrat_api.get_intervals() RETURNS SETOF macrostrat.intervals AS $$
+BEGIN
+  RETURN QUERY SELECT * FROM macrostrat.intervals;
+END
+$$ language plpgsql SECURITY INVOKER;
 
 CREATE OR REPLACE VIEW macrostrat_api.intervals AS
-SELECT * FROM macrostrat.intervals;
+SELECT * FROM macrostrat_api.get_intervals();
+
+CREATE OR REPLACE FUNCTION
+macrostrat_api.get_timescales() RETURNS SETOF macrostrat.timescales AS $$
+BEGIN
+  RETURN QUERY SELECT * FROM macrostrat.timescales;
+END
+$$ language plpgsql SECURITY INVOKER;
 
 CREATE OR REPLACE VIEW macrostrat_api.timescales AS
-SELECT * FROM macrostrat.timescales;
+SELECT * FROM macrostrat_api.get_timescales();
+
+CREATE OR REPLACE FUNCTION
+macrostrat_api.get_strat_tree() RETURNS SETOF macrostrat.strat_tree AS $$
+BEGIN
+  RETURN QUERY SELECT * FROM macrostrat.strat_tree;
+END
+$$ language plpgsql SECURITY INVOKER;
 
 CREATE OR REPLACE VIEW macrostrat_api.strat_tree AS
-SELECT * FROM macrostrat.strat_tree;
+SELECT * FROM macrostrat_api.get_strat_tree();
+
+CREATE OR REPLACE FUNCTION
+macrostrat_api.get_refs() RETURNS SETOF macrostrat.refs AS $$
+BEGIN
+  RETURN QUERY SELECT * FROM macrostrat.refs;
+END
+$$ language plpgsql SECURITY INVOKER;
 
 CREATE OR REPLACE VIEW macrostrat_api.refs AS
-SELECT * FROM macrostrat.refs;
+SELECT * FROM macrostrat_api.get_refs();
+
+CREATE OR REPLACE FUNCTION
+macrostrat_api.get_units() RETURNS SETOF macrostrat.units AS $$
+BEGIN
+  RETURN QUERY SELECT * FROM macrostrat.units;
+END
+$$ language plpgsql SECURITY INVOKER;
 
 CREATE OR REPLACE VIEW macrostrat_api.units AS
-SELECT * FROM macrostrat.units;
+SELECT * FROM macrostrat_api.get_units();
+
+CREATE OR REPLACE FUNCTION
+macrostrat_api.get_col_refs() RETURNS SETOF macrostrat.col_refs AS $$
+BEGIN
+  RETURN QUERY SELECT * FROM macrostrat.col_refs;
+END
+$$ language plpgsql SECURITY INVOKER;
 
 CREATE OR REPLACE VIEW macrostrat_api.col_refs AS
-SELECT * FROM macrostrat.col_refs;
+SELECT * FROM macrostrat_api.get_col_refs();
+
+CREATE OR REPLACE FUNCTION
+macrostrat_api.get_unit_environs() RETURNS SETOF macrostrat.unit_environs AS $$
+BEGIN
+  RETURN QUERY SELECT * FROM macrostrat.unit_environs;
+END
+$$ language plpgsql SECURITY INVOKER;
 
 CREATE OR REPLACE VIEW macrostrat_api.unit_environs AS
-SELECT * FROM macrostrat.unit_environs;
+SELECT * FROM macrostrat_api.get_unit_environs();
+
+CREATE OR REPLACE FUNCTION
+macrostrat_api.get_unit_liths() RETURNS SETOF macrostrat.unit_liths AS $$
+BEGIN
+  RETURN QUERY SELECT * FROM macrostrat.unit_liths;
+END
+$$ language plpgsql SECURITY INVOKER;
 
 CREATE OR REPLACE VIEW macrostrat_api.unit_liths AS
-SELECT * FROM macrostrat.unit_liths;
+SELECT * FROM macrostrat_api.get_unit_liths();
+
+CREATE OR REPLACE FUNCTION
+macrostrat_api.get_sections() RETURNS SETOF macrostrat.sections AS $$
+BEGIN
+  RETURN QUERY SELECT * FROM macrostrat.sections;
+END
+$$ language plpgsql SECURITY INVOKER;
 
 CREATE OR REPLACE VIEW macrostrat_api.sections AS
-SELECT * FROM macrostrat.sections;
+SELECT * FROM macrostrat_api.get_sections();
+
+CREATE OR REPLACE FUNCTION
+macrostrat_api.get_strat_names() RETURNS SETOF macrostrat.strat_names AS $$
+BEGIN
+  RETURN QUERY SELECT * FROM macrostrat.strat_names;
+END
+$$ language plpgsql SECURITY INVOKER;
 
 CREATE OR REPLACE VIEW macrostrat_api.strat_names AS
-SELECT * FROM macrostrat.strat_names;
+SELECT * FROM macrostrat_api.get_strat_names();
 
-CREATE OR REPLACE VIEW macrostrat_api.strat_names_view AS
-SELECT 
-s.id, 
-s.strat_name, 
-s.rank, 
-row_to_json(r.*) ref, 
-row_to_json(sm.*) concept 
-FROM macrostrat.strat_names s
-LEFT JOIN macrostrat.refs r
-ON r.id = s.ref_id
-LEFT JOIN macrostrat.strat_names_meta sm
-ON sm.concept_id = s.concept_id; 
+CREATE OR REPLACE FUNCTION
+macrostrat_api.get_strat_names_view() RETURNS VOID AS $$
+BEGIN
+  CREATE VIEW macrostrat_api.strat_names_view AS SELECT 
+            s.id, 
+            s.strat_name, 
+            s.rank, 
+            row_to_json(r.*) ref, 
+            row_to_json(sm.*) concept 
+            FROM macrostrat.strat_names s
+            LEFT JOIN macrostrat.refs r
+            ON r.id = s.ref_id
+            LEFT JOIN macrostrat.strat_names_meta sm
+            ON sm.concept_id = s.concept_id; 
+END
+$$ language plpgsql SECURITY INVOKER;
+
+SELECT macrostrat_api.get_strat_names_view(); 
 
 CREATE OR REPLACE VIEW macrostrat_api.col_group_view AS
 SELECT cg.id,

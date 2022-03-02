@@ -173,7 +173,7 @@ DECLARE
   _role name;
 BEGIN
   INSERT INTO auth.users(email, pass, role) 
-    VALUES (email, public.crypt(pass, public.gen_salt('md5')), 'new_user');
+    VALUES (email, pass, 'new_user');
   SELECT auth.user_role(email, pass) INTO _role;
 
   IF _role IS NULL THEN
@@ -231,6 +231,9 @@ GRANT USAGE ON SCHEMA macrostrat TO new_user;
 GRANT USAGE ON SCHEMA auth TO new_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA macrostrat_api TO new_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA macrostrat TO new_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA auth TO new_user;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA auth TO new_user;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA macrostrat TO new_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON auth.users TO new_user;
 
 /* ################### Row level policies ################### */
@@ -250,24 +253,23 @@ CREATE OR REPLACE FUNCTION
 auth.user_project_insert() RETURNS trigger AS $$
 DECLARE
   email_ text;
-  id_
+  id_ int;
 BEGIN
   IF tg_op = 'INSERT' THEN
     select macrostrat_api.get_email() into email_;
     select id from auth.users where users.email = email_ INTO id_;
-    INSERT INTO auth.user_pojects(user, project, role_) 
-      VALUES(id_, new.id, "owner_");
+    INSERT INTO auth.user_projects(user_, project, role) 
+      VALUES(id_, new.id, 'owner_');
   END IF;
   RETURN new;
 END
 $$ LANGUAGE plpgsql;
 
-DROP trigger IF EXISTS encrypt_pass ON auth.users;
+DROP trigger IF EXISTS user_pojects ON macrostrat.projects;
 CREATE trigger user_pojects
   AFTER INSERT ON macrostrat.projects
   FOR EACH ROW
   EXECUTE PROCEDURE auth.user_project_insert();
-
 
 CREATE OR REPLACE FUNCTION
 macrostrat_api.current_user_projects() RETURNS TABLE(id int) AS $$
@@ -282,7 +284,46 @@ BEGIN
 END
 $$ language plpgsql SECURITY DEFINER;
 
+
+/* projects */
 ALTER TABLE macrostrat.projects ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY projects_ ON macrostrat.projects FOR SELECT
 USING (id IN (SELECT macrostrat_api.current_user_projects()));
+
+CREATE POLICY projects_insert ON macrostrat.projects FOR INSERT
+WITH CHECK(TRUE);
+
+CREATE OR REPLACE FUNCTION macrostrat_api.project_insert()
+RETURNS trigger AS $$
+BEGIN
+INSERT INTO macrostrat.projects(project, descrip, timescale_id)VALUES
+  (NEW.project, NEW.descrip, NEW.timescale_id);
+RETURN NEW;
+END 
+$$ language plpgsql;
+
+CREATE trigger project_instead_insert
+  INSTEAD OF INSERT ON macrostrat_api.projects
+  FOR EACH ROW EXECUTE PROCEDURE macrostrat_api.project_insert();
+
+/* col-groups */
+ALTER TABLE macrostrat.col_groups ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY col_groups_select ON macrostrat.col_groups FOR SELECT
+USING (project_id IN (SELECT macrostrat_api.current_user_projects()));
+
+/* cols */
+ALTER TABLE macrostrat.cols ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY cols_select ON macrostrat.cols FOR SELECT
+USING (project_id IN (SELECT macrostrat_api.current_user_projects()));
+
+/* units */
+ALTER TABLE macrostrat.units ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY units_select ON macrostrat.units FOR SELECT
+USING (col_id IN (
+  SELECT c.id from macrostrat.cols c 
+  WHERE c.project_id IN(
+    SELECT macrostrat_api.current_user_projects())));
