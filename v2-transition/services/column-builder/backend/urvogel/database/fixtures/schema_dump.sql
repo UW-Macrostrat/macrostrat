@@ -148,45 +148,26 @@ $_$;
 
 ALTER PROCEDURE macrostrat.pg_reset_pkey_seq() OWNER TO postgres;
 
-SET default_tablespace = '';
-
-SET default_table_access_method = heap;
-
 --
--- Name: projects; Type: TABLE; Schema: macrostrat; Owner: postgres
+-- Name: project_insert(); Type: FUNCTION; Schema: macrostrat_api; Owner: postgres
 --
 
-CREATE TABLE macrostrat.projects (
-    id integer NOT NULL,
-    project text,
-    descrip text,
-    timescale_id integer
-);
-
-
-ALTER TABLE macrostrat.projects OWNER TO postgres;
-
---
--- Name: TABLE projects; Type: COMMENT; Schema: macrostrat; Owner: postgres
---
-
-COMMENT ON TABLE macrostrat.projects IS 'Last updated from MariaDB - 2022-02-25 14:40';
-
-
---
--- Name: get_projects(); Type: FUNCTION; Schema: macrostrat_api; Owner: postgres
---
-
-CREATE FUNCTION macrostrat_api.get_projects() RETURNS SETOF macrostrat.projects
+CREATE FUNCTION macrostrat_api.project_insert() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
-  RETURN QUERY SELECT * FROM macrostrat.projects;
-END
+INSERT INTO macrostrat.projects(project, descrip, timescale_id)VALUES
+  (NEW.project, NEW.descrip, NEW.timescale_id);
+RETURN NEW;
+END 
 $$;
 
 
-ALTER FUNCTION macrostrat_api.get_projects() OWNER TO postgres;
+ALTER FUNCTION macrostrat_api.project_insert() OWNER TO postgres;
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
 
 --
 -- Name: autocomplete; Type: TABLE; Schema: macrostrat; Owner: postgres
@@ -1183,6 +1164,27 @@ ALTER SEQUENCE macrostrat.places_place_id_seq OWNED BY macrostrat.places.place_i
 
 
 --
+-- Name: projects; Type: TABLE; Schema: macrostrat; Owner: postgres
+--
+
+CREATE TABLE macrostrat.projects (
+    id integer NOT NULL,
+    project text,
+    descrip text,
+    timescale_id integer
+);
+
+
+ALTER TABLE macrostrat.projects OWNER TO postgres;
+
+--
+-- Name: TABLE projects; Type: COMMENT; Schema: macrostrat; Owner: postgres
+--
+
+COMMENT ON TABLE macrostrat.projects IS 'Last updated from MariaDB - 2022-02-25 14:40';
+
+
+--
 -- Name: projects_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
 --
 
@@ -2064,7 +2066,7 @@ SELECT
 ALTER TABLE macrostrat_api.col_group_view OWNER TO postgres;
 
 --
--- Name: col_groups; Type: VIEW; Schema: macrostrat_api; Owner: postgres
+-- Name: col_groups; Type: VIEW; Schema: macrostrat_api; Owner: api_views_owner
 --
 
 CREATE VIEW macrostrat_api.col_groups AS
@@ -2075,10 +2077,10 @@ CREATE VIEW macrostrat_api.col_groups AS
    FROM macrostrat.col_groups;
 
 
-ALTER TABLE macrostrat_api.col_groups OWNER TO postgres;
+ALTER TABLE macrostrat_api.col_groups OWNER TO api_views_owner;
 
 --
--- Name: col_refs; Type: VIEW; Schema: macrostrat_api; Owner: postgres
+-- Name: col_refs; Type: VIEW; Schema: macrostrat_api; Owner: api_views_owner
 --
 
 CREATE VIEW macrostrat_api.col_refs AS
@@ -2088,7 +2090,7 @@ CREATE VIEW macrostrat_api.col_refs AS
    FROM macrostrat.col_refs;
 
 
-ALTER TABLE macrostrat_api.col_refs OWNER TO postgres;
+ALTER TABLE macrostrat_api.col_refs OWNER TO api_views_owner;
 
 --
 -- Name: col_sections; Type: VIEW; Schema: macrostrat_api; Owner: postgres
@@ -2111,7 +2113,7 @@ CREATE VIEW macrostrat_api.col_sections AS
 ALTER TABLE macrostrat_api.col_sections OWNER TO postgres;
 
 --
--- Name: cols; Type: VIEW; Schema: macrostrat_api; Owner: postgres
+-- Name: cols; Type: VIEW; Schema: macrostrat_api; Owner: api_views_owner
 --
 
 CREATE VIEW macrostrat_api.cols AS
@@ -2134,7 +2136,7 @@ CREATE VIEW macrostrat_api.cols AS
    FROM macrostrat.cols;
 
 
-ALTER TABLE macrostrat_api.cols OWNER TO postgres;
+ALTER TABLE macrostrat_api.cols OWNER TO api_views_owner;
 
 --
 -- Name: econ_unit; Type: VIEW; Schema: macrostrat_api; Owner: postgres
@@ -2173,7 +2175,7 @@ CREATE VIEW macrostrat_api.environ_unit AS
 ALTER TABLE macrostrat_api.environ_unit OWNER TO postgres;
 
 --
--- Name: environs; Type: VIEW; Schema: macrostrat_api; Owner: postgres
+-- Name: environs; Type: VIEW; Schema: macrostrat_api; Owner: api_views_owner
 --
 
 CREATE VIEW macrostrat_api.environs AS
@@ -2185,10 +2187,10 @@ CREATE VIEW macrostrat_api.environs AS
    FROM macrostrat.environs;
 
 
-ALTER TABLE macrostrat_api.environs OWNER TO postgres;
+ALTER TABLE macrostrat_api.environs OWNER TO api_views_owner;
 
 --
--- Name: intervals; Type: VIEW; Schema: macrostrat_api; Owner: postgres
+-- Name: intervals; Type: VIEW; Schema: macrostrat_api; Owner: api_views_owner
 --
 
 CREATE VIEW macrostrat_api.intervals AS
@@ -2203,7 +2205,7 @@ CREATE VIEW macrostrat_api.intervals AS
    FROM macrostrat.intervals;
 
 
-ALTER TABLE macrostrat_api.intervals OWNER TO postgres;
+ALTER TABLE macrostrat_api.intervals OWNER TO api_views_owner;
 
 --
 -- Name: lith_attr_unit; Type: VIEW; Schema: macrostrat_api; Owner: postgres
@@ -2257,7 +2259,7 @@ CREATE VIEW macrostrat_api.lith_unit AS
 ALTER TABLE macrostrat_api.lith_unit OWNER TO postgres;
 
 --
--- Name: liths; Type: VIEW; Schema: macrostrat_api; Owner: postgres
+-- Name: liths; Type: VIEW; Schema: macrostrat_api; Owner: api_views_owner
 --
 
 CREATE VIEW macrostrat_api.liths AS
@@ -2275,24 +2277,24 @@ CREATE VIEW macrostrat_api.liths AS
    FROM macrostrat.liths;
 
 
-ALTER TABLE macrostrat_api.liths OWNER TO postgres;
+ALTER TABLE macrostrat_api.liths OWNER TO api_views_owner;
 
 --
--- Name: projects; Type: VIEW; Schema: macrostrat_api; Owner: postgres
+-- Name: projects; Type: VIEW; Schema: macrostrat_api; Owner: api_views_owner
 --
 
 CREATE VIEW macrostrat_api.projects AS
- SELECT get_projects.id,
-    get_projects.project,
-    get_projects.descrip,
-    get_projects.timescale_id
-   FROM macrostrat_api.get_projects() get_projects(id, project, descrip, timescale_id);
+ SELECT projects.id,
+    projects.project,
+    projects.descrip,
+    projects.timescale_id
+   FROM macrostrat.projects;
 
 
-ALTER TABLE macrostrat_api.projects OWNER TO postgres;
+ALTER TABLE macrostrat_api.projects OWNER TO api_views_owner;
 
 --
--- Name: refs; Type: VIEW; Schema: macrostrat_api; Owner: postgres
+-- Name: refs; Type: VIEW; Schema: macrostrat_api; Owner: api_views_owner
 --
 
 CREATE VIEW macrostrat_api.refs AS
@@ -2307,7 +2309,7 @@ CREATE VIEW macrostrat_api.refs AS
    FROM macrostrat.refs;
 
 
-ALTER TABLE macrostrat_api.refs OWNER TO postgres;
+ALTER TABLE macrostrat_api.refs OWNER TO api_views_owner;
 
 --
 -- Name: sections; Type: VIEW; Schema: macrostrat_api; Owner: postgres
@@ -2326,21 +2328,6 @@ ALTER TABLE macrostrat_api.sections OWNER TO postgres;
 --
 
 CREATE VIEW macrostrat_api.strat_names AS
- SELECT strat_names.id,
-    strat_names.strat_name,
-    strat_names.rank,
-    strat_names.ref_id,
-    strat_names.concept_id
-   FROM macrostrat.strat_names;
-
-
-ALTER TABLE macrostrat_api.strat_names OWNER TO postgres;
-
---
--- Name: strat_names_view; Type: VIEW; Schema: macrostrat_api; Owner: postgres
---
-
-CREATE VIEW macrostrat_api.strat_names_view AS
  SELECT s.id,
     s.strat_name,
     s.rank,
@@ -2351,10 +2338,10 @@ CREATE VIEW macrostrat_api.strat_names_view AS
      LEFT JOIN macrostrat.strat_names_meta sm ON ((sm.concept_id = s.concept_id)));
 
 
-ALTER TABLE macrostrat_api.strat_names_view OWNER TO postgres;
+ALTER TABLE macrostrat_api.strat_names OWNER TO postgres;
 
 --
--- Name: strat_tree; Type: VIEW; Schema: macrostrat_api; Owner: postgres
+-- Name: strat_tree; Type: VIEW; Schema: macrostrat_api; Owner: api_views_owner
 --
 
 CREATE VIEW macrostrat_api.strat_tree AS
@@ -2365,10 +2352,10 @@ CREATE VIEW macrostrat_api.strat_tree AS
    FROM macrostrat.strat_tree;
 
 
-ALTER TABLE macrostrat_api.strat_tree OWNER TO postgres;
+ALTER TABLE macrostrat_api.strat_tree OWNER TO api_views_owner;
 
 --
--- Name: timescales; Type: VIEW; Schema: macrostrat_api; Owner: postgres
+-- Name: timescales; Type: VIEW; Schema: macrostrat_api; Owner: api_views_owner
 --
 
 CREATE VIEW macrostrat_api.timescales AS
@@ -2378,7 +2365,7 @@ CREATE VIEW macrostrat_api.timescales AS
    FROM macrostrat.timescales;
 
 
-ALTER TABLE macrostrat_api.timescales OWNER TO postgres;
+ALTER TABLE macrostrat_api.timescales OWNER TO api_views_owner;
 
 --
 -- Name: unit_environs; Type: VIEW; Schema: macrostrat_api; Owner: postgres
@@ -2396,7 +2383,7 @@ CREATE VIEW macrostrat_api.unit_environs AS
 ALTER TABLE macrostrat_api.unit_environs OWNER TO postgres;
 
 --
--- Name: unit_liths; Type: VIEW; Schema: macrostrat_api; Owner: postgres
+-- Name: unit_liths; Type: VIEW; Schema: macrostrat_api; Owner: api_views_owner
 --
 
 CREATE VIEW macrostrat_api.unit_liths AS
@@ -2413,10 +2400,10 @@ CREATE VIEW macrostrat_api.unit_liths AS
    FROM macrostrat.unit_liths;
 
 
-ALTER TABLE macrostrat_api.unit_liths OWNER TO postgres;
+ALTER TABLE macrostrat_api.unit_liths OWNER TO api_views_owner;
 
 --
--- Name: units; Type: VIEW; Schema: macrostrat_api; Owner: postgres
+-- Name: units; Type: VIEW; Schema: macrostrat_api; Owner: api_views_owner
 --
 
 CREATE VIEW macrostrat_api.units AS
@@ -2437,7 +2424,7 @@ CREATE VIEW macrostrat_api.units AS
    FROM macrostrat.units;
 
 
-ALTER TABLE macrostrat_api.units OWNER TO postgres;
+ALTER TABLE macrostrat_api.units OWNER TO api_views_owner;
 
 --
 -- Name: units_view; Type: VIEW; Schema: macrostrat_api; Owner: postgres
@@ -3642,11 +3629,26 @@ CREATE OR REPLACE VIEW macrostrat_api.col_group_view AS
 
 
 --
+-- Name: projects project_instead_insert; Type: TRIGGER; Schema: macrostrat_api; Owner: api_views_owner
+--
+
+CREATE TRIGGER project_instead_insert INSTEAD OF INSERT ON macrostrat_api.projects FOR EACH ROW EXECUTE FUNCTION macrostrat_api.project_insert();
+
+
+--
 -- Name: col_areas col_areas_col_id_fkey; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
 --
 
 ALTER TABLE ONLY macrostrat.col_areas
     ADD CONSTRAINT col_areas_col_id_fkey FOREIGN KEY (col_id) REFERENCES macrostrat.cols(id) ON DELETE CASCADE;
+
+
+--
+-- Name: col_areas col_areas_col_id_fkey1; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.col_areas
+    ADD CONSTRAINT col_areas_col_id_fkey1 FOREIGN KEY (col_id) REFERENCES macrostrat.cols(id) ON DELETE CASCADE;
 
 
 --
@@ -3666,11 +3668,27 @@ ALTER TABLE ONLY macrostrat.col_refs
 
 
 --
+-- Name: col_refs col_refs_col_id_fkey1; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.col_refs
+    ADD CONSTRAINT col_refs_col_id_fkey1 FOREIGN KEY (col_id) REFERENCES macrostrat.cols(id) ON DELETE CASCADE;
+
+
+--
 -- Name: col_refs col_refs_ref_id_fkey; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
 --
 
 ALTER TABLE ONLY macrostrat.col_refs
     ADD CONSTRAINT col_refs_ref_id_fkey FOREIGN KEY (ref_id) REFERENCES macrostrat.refs(id) ON DELETE CASCADE;
+
+
+--
+-- Name: col_refs col_refs_ref_id_fkey1; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.col_refs
+    ADD CONSTRAINT col_refs_ref_id_fkey1 FOREIGN KEY (ref_id) REFERENCES macrostrat.refs(id) ON DELETE CASCADE;
 
 
 --
@@ -3682,11 +3700,27 @@ ALTER TABLE ONLY macrostrat.cols
 
 
 --
+-- Name: cols cols_col_group_id_fkey1; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.cols
+    ADD CONSTRAINT cols_col_group_id_fkey1 FOREIGN KEY (col_group_id) REFERENCES macrostrat.col_groups(id) ON DELETE CASCADE;
+
+
+--
 -- Name: cols cols_project_id_fkey; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
 --
 
 ALTER TABLE ONLY macrostrat.cols
     ADD CONSTRAINT cols_project_id_fkey FOREIGN KEY (project_id) REFERENCES macrostrat.projects(id) ON DELETE CASCADE;
+
+
+--
+-- Name: cols cols_project_id_fkey1; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.cols
+    ADD CONSTRAINT cols_project_id_fkey1 FOREIGN KEY (project_id) REFERENCES macrostrat.projects(id) ON DELETE CASCADE;
 
 
 --
@@ -3698,11 +3732,27 @@ ALTER TABLE ONLY macrostrat.concepts_places
 
 
 --
+-- Name: concepts_places concepts_places_place_id_fkey1; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.concepts_places
+    ADD CONSTRAINT concepts_places_place_id_fkey1 FOREIGN KEY (place_id) REFERENCES macrostrat.places(place_id) ON DELETE CASCADE;
+
+
+--
 -- Name: projects projects_timescale_id_fkey; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
 --
 
 ALTER TABLE ONLY macrostrat.projects
     ADD CONSTRAINT projects_timescale_id_fkey FOREIGN KEY (timescale_id) REFERENCES macrostrat.timescales(id) ON DELETE CASCADE;
+
+
+--
+-- Name: projects projects_timescale_id_fkey1; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.projects
+    ADD CONSTRAINT projects_timescale_id_fkey1 FOREIGN KEY (timescale_id) REFERENCES macrostrat.timescales(id) ON DELETE CASCADE;
 
 
 --
@@ -3714,11 +3764,27 @@ ALTER TABLE ONLY macrostrat.sections
 
 
 --
+-- Name: sections sections_col_id_fkey1; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.sections
+    ADD CONSTRAINT sections_col_id_fkey1 FOREIGN KEY (col_id) REFERENCES macrostrat.cols(id) ON DELETE CASCADE;
+
+
+--
 -- Name: strat_names_places strat_names_places_place_id_fkey; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
 --
 
 ALTER TABLE ONLY macrostrat.strat_names_places
     ADD CONSTRAINT strat_names_places_place_id_fkey FOREIGN KEY (place_id) REFERENCES macrostrat.places(place_id) ON DELETE CASCADE;
+
+
+--
+-- Name: strat_names_places strat_names_places_place_id_fkey1; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.strat_names_places
+    ADD CONSTRAINT strat_names_places_place_id_fkey1 FOREIGN KEY (place_id) REFERENCES macrostrat.places(place_id) ON DELETE CASCADE;
 
 
 --
@@ -3730,11 +3796,27 @@ ALTER TABLE ONLY macrostrat.strat_names_places
 
 
 --
+-- Name: strat_names_places strat_names_places_strat_name_id_fkey1; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.strat_names_places
+    ADD CONSTRAINT strat_names_places_strat_name_id_fkey1 FOREIGN KEY (strat_name_id) REFERENCES macrostrat.strat_names(id) ON DELETE CASCADE;
+
+
+--
 -- Name: strat_tree strat_tree_child_fkey; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
 --
 
 ALTER TABLE ONLY macrostrat.strat_tree
     ADD CONSTRAINT strat_tree_child_fkey FOREIGN KEY (child) REFERENCES macrostrat.strat_names(id) ON DELETE CASCADE;
+
+
+--
+-- Name: strat_tree strat_tree_child_fkey1; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.strat_tree
+    ADD CONSTRAINT strat_tree_child_fkey1 FOREIGN KEY (child) REFERENCES macrostrat.strat_names(id) ON DELETE CASCADE;
 
 
 --
@@ -3746,11 +3828,27 @@ ALTER TABLE ONLY macrostrat.strat_tree
 
 
 --
+-- Name: strat_tree strat_tree_parent_fkey1; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.strat_tree
+    ADD CONSTRAINT strat_tree_parent_fkey1 FOREIGN KEY (parent) REFERENCES macrostrat.strat_names(id) ON DELETE CASCADE;
+
+
+--
 -- Name: strat_tree strat_tree_ref_id_fkey; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
 --
 
 ALTER TABLE ONLY macrostrat.strat_tree
     ADD CONSTRAINT strat_tree_ref_id_fkey FOREIGN KEY (ref_id) REFERENCES macrostrat.refs(id) ON DELETE CASCADE;
+
+
+--
+-- Name: strat_tree strat_tree_ref_id_fkey1; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.strat_tree
+    ADD CONSTRAINT strat_tree_ref_id_fkey1 FOREIGN KEY (ref_id) REFERENCES macrostrat.refs(id) ON DELETE CASCADE;
 
 
 --
@@ -3762,11 +3860,27 @@ ALTER TABLE ONLY macrostrat.timescales_intervals
 
 
 --
+-- Name: timescales_intervals timescales_intervals_interval_id_fkey1; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.timescales_intervals
+    ADD CONSTRAINT timescales_intervals_interval_id_fkey1 FOREIGN KEY (interval_id) REFERENCES macrostrat.intervals(id) ON DELETE CASCADE;
+
+
+--
 -- Name: timescales_intervals timescales_intervals_timescale_id_fkey; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
 --
 
 ALTER TABLE ONLY macrostrat.timescales_intervals
     ADD CONSTRAINT timescales_intervals_timescale_id_fkey FOREIGN KEY (timescale_id) REFERENCES macrostrat.timescales(id) ON DELETE CASCADE;
+
+
+--
+-- Name: timescales_intervals timescales_intervals_timescale_id_fkey1; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.timescales_intervals
+    ADD CONSTRAINT timescales_intervals_timescale_id_fkey1 FOREIGN KEY (timescale_id) REFERENCES macrostrat.timescales(id) ON DELETE CASCADE;
 
 
 --
@@ -3778,11 +3892,27 @@ ALTER TABLE ONLY macrostrat.unit_econs
 
 
 --
+-- Name: unit_econs unit_econs_econ_id_fkey1; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.unit_econs
+    ADD CONSTRAINT unit_econs_econ_id_fkey1 FOREIGN KEY (econ_id) REFERENCES macrostrat.econs(id) ON DELETE CASCADE;
+
+
+--
 -- Name: unit_econs unit_econs_ref_id_fkey; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
 --
 
 ALTER TABLE ONLY macrostrat.unit_econs
     ADD CONSTRAINT unit_econs_ref_id_fkey FOREIGN KEY (ref_id) REFERENCES macrostrat.refs(id) ON DELETE CASCADE;
+
+
+--
+-- Name: unit_econs unit_econs_ref_id_fkey1; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.unit_econs
+    ADD CONSTRAINT unit_econs_ref_id_fkey1 FOREIGN KEY (ref_id) REFERENCES macrostrat.refs(id) ON DELETE CASCADE;
 
 
 --
@@ -3794,11 +3924,27 @@ ALTER TABLE ONLY macrostrat.unit_econs
 
 
 --
+-- Name: unit_econs unit_econs_unit_id_fkey1; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.unit_econs
+    ADD CONSTRAINT unit_econs_unit_id_fkey1 FOREIGN KEY (unit_id) REFERENCES macrostrat.units(id) ON DELETE CASCADE;
+
+
+--
 -- Name: unit_environs unit_environs_environ_id_fkey; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
 --
 
 ALTER TABLE ONLY macrostrat.unit_environs
     ADD CONSTRAINT unit_environs_environ_id_fkey FOREIGN KEY (environ_id) REFERENCES macrostrat.environs(id) ON DELETE CASCADE;
+
+
+--
+-- Name: unit_environs unit_environs_environ_id_fkey1; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.unit_environs
+    ADD CONSTRAINT unit_environs_environ_id_fkey1 FOREIGN KEY (environ_id) REFERENCES macrostrat.environs(id) ON DELETE CASCADE;
 
 
 --
@@ -3810,11 +3956,27 @@ ALTER TABLE ONLY macrostrat.unit_environs
 
 
 --
+-- Name: unit_environs unit_environs_ref_id_fkey1; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.unit_environs
+    ADD CONSTRAINT unit_environs_ref_id_fkey1 FOREIGN KEY (ref_id) REFERENCES macrostrat.refs(id) ON DELETE CASCADE;
+
+
+--
 -- Name: unit_environs unit_environs_unit_id_fkey; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
 --
 
 ALTER TABLE ONLY macrostrat.unit_environs
     ADD CONSTRAINT unit_environs_unit_id_fkey FOREIGN KEY (unit_id) REFERENCES macrostrat.units(id) ON DELETE CASCADE;
+
+
+--
+-- Name: unit_environs unit_environs_unit_id_fkey1; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.unit_environs
+    ADD CONSTRAINT unit_environs_unit_id_fkey1 FOREIGN KEY (unit_id) REFERENCES macrostrat.units(id) ON DELETE CASCADE;
 
 
 --
@@ -3826,11 +3988,27 @@ ALTER TABLE ONLY macrostrat.unit_lith_atts
 
 
 --
+-- Name: unit_lith_atts unit_lith_atts_lith_att_id_fkey1; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.unit_lith_atts
+    ADD CONSTRAINT unit_lith_atts_lith_att_id_fkey1 FOREIGN KEY (lith_att_id) REFERENCES macrostrat.lith_atts(id) ON DELETE CASCADE;
+
+
+--
 -- Name: unit_lith_atts unit_lith_atts_unit_lith_id_fkey; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
 --
 
 ALTER TABLE ONLY macrostrat.unit_lith_atts
     ADD CONSTRAINT unit_lith_atts_unit_lith_id_fkey FOREIGN KEY (unit_lith_id) REFERENCES macrostrat.unit_liths(id) ON DELETE CASCADE;
+
+
+--
+-- Name: unit_lith_atts unit_lith_atts_unit_lith_id_fkey1; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.unit_lith_atts
+    ADD CONSTRAINT unit_lith_atts_unit_lith_id_fkey1 FOREIGN KEY (unit_lith_id) REFERENCES macrostrat.unit_liths(id) ON DELETE CASCADE;
 
 
 --
@@ -3842,11 +4020,27 @@ ALTER TABLE ONLY macrostrat.unit_liths
 
 
 --
+-- Name: unit_liths unit_liths_lith_id_fkey1; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.unit_liths
+    ADD CONSTRAINT unit_liths_lith_id_fkey1 FOREIGN KEY (lith_id) REFERENCES macrostrat.liths(id) ON DELETE CASCADE;
+
+
+--
 -- Name: unit_liths unit_liths_unit_id_fkey; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
 --
 
 ALTER TABLE ONLY macrostrat.unit_liths
     ADD CONSTRAINT unit_liths_unit_id_fkey FOREIGN KEY (unit_id) REFERENCES macrostrat.units(id) ON DELETE CASCADE;
+
+
+--
+-- Name: unit_liths unit_liths_unit_id_fkey1; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.unit_liths
+    ADD CONSTRAINT unit_liths_unit_id_fkey1 FOREIGN KEY (unit_id) REFERENCES macrostrat.units(id) ON DELETE CASCADE;
 
 
 --
@@ -3858,11 +4052,27 @@ ALTER TABLE ONLY macrostrat.unit_strat_names
 
 
 --
+-- Name: unit_strat_names unit_strat_names_strat_name_id_fkey1; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.unit_strat_names
+    ADD CONSTRAINT unit_strat_names_strat_name_id_fkey1 FOREIGN KEY (strat_name_id) REFERENCES macrostrat.strat_names(id) ON DELETE CASCADE;
+
+
+--
 -- Name: unit_strat_names unit_strat_names_unit_id_fkey; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
 --
 
 ALTER TABLE ONLY macrostrat.unit_strat_names
     ADD CONSTRAINT unit_strat_names_unit_id_fkey FOREIGN KEY (unit_id) REFERENCES macrostrat.units(id) ON DELETE CASCADE;
+
+
+--
+-- Name: unit_strat_names unit_strat_names_unit_id_fkey1; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.unit_strat_names
+    ADD CONSTRAINT unit_strat_names_unit_id_fkey1 FOREIGN KEY (unit_id) REFERENCES macrostrat.units(id) ON DELETE CASCADE;
 
 
 --
@@ -3874,11 +4084,27 @@ ALTER TABLE ONLY macrostrat.units
 
 
 --
+-- Name: units units_col_id_fkey1; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.units
+    ADD CONSTRAINT units_col_id_fkey1 FOREIGN KEY (col_id) REFERENCES macrostrat.cols(id) ON DELETE CASCADE;
+
+
+--
 -- Name: units units_fo_fkey; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
 --
 
 ALTER TABLE ONLY macrostrat.units
     ADD CONSTRAINT units_fo_fkey FOREIGN KEY (fo) REFERENCES macrostrat.intervals(id) ON DELETE CASCADE;
+
+
+--
+-- Name: units units_fo_fkey1; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.units
+    ADD CONSTRAINT units_fo_fkey1 FOREIGN KEY (fo) REFERENCES macrostrat.intervals(id) ON DELETE CASCADE;
 
 
 --
@@ -3890,6 +4116,14 @@ ALTER TABLE ONLY macrostrat.units
 
 
 --
+-- Name: units units_lo_fkey1; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.units
+    ADD CONSTRAINT units_lo_fkey1 FOREIGN KEY (lo) REFERENCES macrostrat.intervals(id) ON DELETE CASCADE;
+
+
+--
 -- Name: units units_section_id_fkey; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
 --
 
@@ -3898,11 +4132,684 @@ ALTER TABLE ONLY macrostrat.units
 
 
 --
+-- Name: units units_section_id_fkey1; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
+--
+
+ALTER TABLE ONLY macrostrat.units
+    ADD CONSTRAINT units_section_id_fkey1 FOREIGN KEY (section_id) REFERENCES macrostrat.sections(id) ON DELETE CASCADE;
+
+
+--
 -- Name: units units_strat_name_id_fkey; Type: FK CONSTRAINT; Schema: macrostrat; Owner: postgres
 --
 
 ALTER TABLE ONLY macrostrat.units
     ADD CONSTRAINT units_strat_name_id_fkey FOREIGN KEY (strat_name_id) REFERENCES macrostrat.strat_names(id) ON DELETE CASCADE;
+
+
+--
+-- Name: SCHEMA macrostrat; Type: ACL; Schema: -; Owner: postgres
+--
+
+GRANT USAGE ON SCHEMA macrostrat TO api_views_owner;
+
+
+--
+-- Name: SCHEMA macrostrat_api; Type: ACL; Schema: -; Owner: postgres
+--
+
+GRANT USAGE ON SCHEMA macrostrat_api TO api_views_owner;
+
+
+--
+-- Name: TABLE autocomplete; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.autocomplete TO api_views_owner;
+
+
+--
+-- Name: TABLE col_areas; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.col_areas TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE col_areas_id_seq; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.col_areas_id_seq TO api_views_owner;
+
+
+--
+-- Name: TABLE col_groups; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.col_groups TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE col_groups_id_seq; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.col_groups_id_seq TO api_views_owner;
+
+
+--
+-- Name: TABLE col_refs; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.col_refs TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE col_refs_id_seq; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.col_refs_id_seq TO api_views_owner;
+
+
+--
+-- Name: TABLE cols; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.cols TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE cols_id_seq; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.cols_id_seq TO api_views_owner;
+
+
+--
+-- Name: TABLE concepts_places; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.concepts_places TO api_views_owner;
+
+
+--
+-- Name: TABLE econs; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.econs TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE econs_id_seq; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.econs_id_seq TO api_views_owner;
+
+
+--
+-- Name: TABLE environs; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.environs TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE environs_id_seq; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.environs_id_seq TO api_views_owner;
+
+
+--
+-- Name: TABLE grainsize; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.grainsize TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE grainsize_grain_id_seq; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.grainsize_grain_id_seq TO api_views_owner;
+
+
+--
+-- Name: TABLE intervals; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.intervals TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE intervals_id_seq; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.intervals_id_seq TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE intervals_new_id_seq; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.intervals_new_id_seq TO api_views_owner;
+
+
+--
+-- Name: TABLE lith_atts; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.lith_atts TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE lith_atts_id_seq; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.lith_atts_id_seq TO api_views_owner;
+
+
+--
+-- Name: TABLE liths; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.liths TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE liths_id_seq; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.liths_id_seq TO api_views_owner;
+
+
+--
+-- Name: TABLE lookup_strat_names; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.lookup_strat_names TO api_views_owner;
+
+
+--
+-- Name: TABLE lookup_unit_attrs_api; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.lookup_unit_attrs_api TO api_views_owner;
+
+
+--
+-- Name: TABLE lookup_unit_intervals; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.lookup_unit_intervals TO api_views_owner;
+
+
+--
+-- Name: TABLE lookup_unit_liths; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.lookup_unit_liths TO api_views_owner;
+
+
+--
+-- Name: TABLE lookup_units; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.lookup_units TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE lookup_units_unit_id_seq; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.lookup_units_unit_id_seq TO api_views_owner;
+
+
+--
+-- Name: TABLE measurements; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.measurements TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE measurements_id_seq; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.measurements_id_seq TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE measurements_new_id_seq; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.measurements_new_id_seq TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE measurements_new_id_seq1; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.measurements_new_id_seq1 TO api_views_owner;
+
+
+--
+-- Name: TABLE measuremeta; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.measuremeta TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE measuremeta_id_seq; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.measuremeta_id_seq TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE measuremeta_new_id_seq; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.measuremeta_new_id_seq TO api_views_owner;
+
+
+--
+-- Name: TABLE measures; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.measures TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE measures_new_id_seq; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.measures_new_id_seq TO api_views_owner;
+
+
+--
+-- Name: TABLE pbdb_collections; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.pbdb_collections TO api_views_owner;
+
+
+--
+-- Name: TABLE pbdb_collections_strat_names; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.pbdb_collections_strat_names TO api_views_owner;
+
+
+--
+-- Name: TABLE places; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.places TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE places_place_id_seq; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.places_place_id_seq TO api_views_owner;
+
+
+--
+-- Name: TABLE projects; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.projects TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE projects_id_seq; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.projects_id_seq TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE projects_new_id_seq; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.projects_new_id_seq TO api_views_owner;
+
+
+--
+-- Name: TABLE refs; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.refs TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE refs_id_seq; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.refs_id_seq TO api_views_owner;
+
+
+--
+-- Name: TABLE sections; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.sections TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE sections_id_seq; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.sections_id_seq TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE sections_new_id_seq; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.sections_new_id_seq TO api_views_owner;
+
+
+--
+-- Name: TABLE strat_name_footprints; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.strat_name_footprints TO api_views_owner;
+
+
+--
+-- Name: TABLE strat_names; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.strat_names TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE strat_names_id_seq; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.strat_names_id_seq TO api_views_owner;
+
+
+--
+-- Name: TABLE strat_names_meta; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.strat_names_meta TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE strat_names_meta_concept_id_seq; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.strat_names_meta_concept_id_seq TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE strat_names_new_id_seq; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.strat_names_new_id_seq TO api_views_owner;
+
+
+--
+-- Name: TABLE strat_names_places; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.strat_names_places TO api_views_owner;
+
+
+--
+-- Name: TABLE strat_tree; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.strat_tree TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE strat_tree_id_seq; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.strat_tree_id_seq TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE strat_tree_new_id_seq1; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.strat_tree_new_id_seq1 TO api_views_owner;
+
+
+--
+-- Name: TABLE timescales; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.timescales TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE timescales_id_seq; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.timescales_id_seq TO api_views_owner;
+
+
+--
+-- Name: TABLE timescales_intervals; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.timescales_intervals TO api_views_owner;
+
+
+--
+-- Name: TABLE unit_econs; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.unit_econs TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE unit_econs_id_seq; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.unit_econs_id_seq TO api_views_owner;
+
+
+--
+-- Name: TABLE unit_environs; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.unit_environs TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE unit_environs_id_seq; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.unit_environs_id_seq TO api_views_owner;
+
+
+--
+-- Name: TABLE unit_lith_atts; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.unit_lith_atts TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE unit_lith_atts_id_seq; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.unit_lith_atts_id_seq TO api_views_owner;
+
+
+--
+-- Name: TABLE unit_liths; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.unit_liths TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE unit_liths_id_seq; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.unit_liths_id_seq TO api_views_owner;
+
+
+--
+-- Name: TABLE unit_measures; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.unit_measures TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE unit_measures_id_seq; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.unit_measures_id_seq TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE unit_measures_new_id_seq; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.unit_measures_new_id_seq TO api_views_owner;
+
+
+--
+-- Name: TABLE unit_strat_names; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.unit_strat_names TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE unit_strat_names_id_seq; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.unit_strat_names_id_seq TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE unit_strat_names_new_id_seq; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.unit_strat_names_new_id_seq TO api_views_owner;
+
+
+--
+-- Name: TABLE units; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.units TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE units_id_seq; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.units_id_seq TO api_views_owner;
+
+
+--
+-- Name: TABLE units_sections; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat.units_sections TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE units_sections_id_seq; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.units_sections_id_seq TO api_views_owner;
+
+
+--
+-- Name: SEQUENCE units_sections_new_id_seq1; Type: ACL; Schema: macrostrat; Owner: postgres
+--
+
+GRANT SELECT,USAGE ON SEQUENCE macrostrat.units_sections_new_id_seq1 TO api_views_owner;
+
+
+--
+-- Name: TABLE col_form; Type: ACL; Schema: macrostrat_api; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat_api.col_form TO api_views_owner;
+
+
+--
+-- Name: TABLE col_group_view; Type: ACL; Schema: macrostrat_api; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat_api.col_group_view TO api_views_owner;
+
+
+--
+-- Name: TABLE col_sections; Type: ACL; Schema: macrostrat_api; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat_api.col_sections TO api_views_owner;
+
+
+--
+-- Name: TABLE econ_unit; Type: ACL; Schema: macrostrat_api; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat_api.econ_unit TO api_views_owner;
+
+
+--
+-- Name: TABLE environ_unit; Type: ACL; Schema: macrostrat_api; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat_api.environ_unit TO api_views_owner;
+
+
+--
+-- Name: TABLE lith_attr_unit; Type: ACL; Schema: macrostrat_api; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat_api.lith_attr_unit TO api_views_owner;
+
+
+--
+-- Name: TABLE lith_unit; Type: ACL; Schema: macrostrat_api; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat_api.lith_unit TO api_views_owner;
+
+
+--
+-- Name: TABLE sections; Type: ACL; Schema: macrostrat_api; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat_api.sections TO api_views_owner;
+
+
+--
+-- Name: TABLE strat_names; Type: ACL; Schema: macrostrat_api; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat_api.strat_names TO api_views_owner;
+
+
+--
+-- Name: TABLE unit_environs; Type: ACL; Schema: macrostrat_api; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat_api.unit_environs TO api_views_owner;
+
+
+--
+-- Name: TABLE units_view; Type: ACL; Schema: macrostrat_api; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat_api.units_view TO api_views_owner;
 
 
 --

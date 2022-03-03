@@ -11,7 +11,7 @@ if [[ -n "$result" ]]; then
   POSTGRES_DB=col_test PGRST_DB_ANON_ROLE=anon docker-compose up -d --build postgrest
 else
   echo "Starting Docker"
-  POSTGRES_DB=col_test docker-compose up -d
+  POSTGRES_DB=col_test PGRST_DB_ANON_ROLE=anon docker-compose up -d
 fi
 
 pytest --pdb

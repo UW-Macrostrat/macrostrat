@@ -36,7 +36,7 @@ def test_create_auth(db):
     res = db.query(sql).fetchall()
 
     for row in res:
-        assert row.get('rolname') in ['reader', 'writer', 'deleter', 'owner_','anon','authenticator', 'new_user']
+        assert row.get('rolname') in ['api_views_owner','reader', 'writer', 'deleter', 'owner_','anon','authenticator', 'new_user']
     
 def test_pg_extensions(db):
     sql = """ select extname from pg_extension; """
@@ -78,8 +78,8 @@ def test_login(db):
     assert len(data) == 0
 
     # make the user an owner
-    sql = """ insert into auth.user_projects(user_, project, role) 
-                values(1, 1, 'owner_') """
+    sql = """ insert into auth.user_projects(user_, project, can_upsert, can_delete) 
+                values(1, 1, FALSE, FALSE) """
 
     with db.conn.cursor() as cur:
         cur.execute(sql)
@@ -120,5 +120,3 @@ def test_child_data(db):
 
     res = get(base + "/col_groups", headers=headers)
     assert len(res.json()) == 1
-
-
