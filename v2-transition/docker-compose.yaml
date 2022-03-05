@@ -9,9 +9,17 @@ services:
       - CERTBOT_EMAIL
     volumes:
       - ./system/nginx-config:/etc/nginx/user_conf.d:ro
+  homepage:
+    # A markdown server for the homepage
+    image: dannyben/madness
+    expose: [3000]
+    volumes:
+      - ./docs:/docs:ro
   # DATABASE SERVICES
   mariadb:
     # The MariaDB service is Macrostrat's current database service.
+    # Eventually this will be removed from the active configuration
+    # or relegated to a 'legacy' profile
     image: mariadb:10.7
     ports:
       - "3306:3306"
