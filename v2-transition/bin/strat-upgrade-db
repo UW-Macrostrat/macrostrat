@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Description: Upgrade the burwell database
+
+cat "$STRAT_BASE/tools/upgrade-database/"*.sql \
+| strat compose exec -T postgres psql -Upostgres burwell
