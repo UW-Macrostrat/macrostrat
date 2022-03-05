@@ -4,15 +4,27 @@ PID=$(pgrep -f 'N -L 5439:')
 
 dbname=burwell
 
-strat compose exec postgres psql -Upostgres -c "DROP SCHEMA carto_new CASCADE;"
+#strat compose exec postgres psql -Upostgres -c "DROP SCHEMA carto_new CASCADE;"
 
-echo "Dumping Macrostrat map data from steno"
-pg_dump -Fc -p 5439 -h localhost -U postgres \
+copy_data() {
+  pg_dump -Fc -p 5439 -h localhost \
+    -U postgres $@ \
+    $dbname \
+  | pv \
+  | strat compose exec -T postgres \
+    pg_restore -v -Upostgres -d $dbname
+}
+
+echo "Dumping Macrostrat carto data from steno"
+copy_data \
   --schema=carto_new \
   --exclude-table=carto_new.hex_index \
   --exclude-table=carto_new.pbdb_hex_index \
-  $dbname \
-| pv \
-| strat compose exec -T postgres pg_restore -v -Upostgres -d $dbname
+
+echo "Dumping Macrostrat maps schema from steno"
+copy_data --schema=maps
+
+echo "Dumping Macrostrat lines schema from steno"
+copy_data --schema=lines
 
 kill $PID

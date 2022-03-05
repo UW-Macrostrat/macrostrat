@@ -20,4 +20,15 @@ pg_dump -Fc -p 5439 -h localhost -U postgres \
 | pv \
 | strat compose exec -T postgres pg_restore -v -Upostgres -d $dbname
 
+echo "Dumping Macrostrat measures from steno"
+pg_dump -Fc -p 5439 -h localhost -U postgres \
+  --table=macrostrat.strat_name_footprints \
+  --table=macrostrat.measures \
+  --table=macrostrat.measuremeta \
+  --table=macrostrat.lookup_unit_attrs_api \
+  --table=macrostrat.pbdb_collections \
+  $dbname \
+| pv \
+| strat compose exec -T postgres pg_restore -v -Upostgres -d $dbname
+
 kill $PID
