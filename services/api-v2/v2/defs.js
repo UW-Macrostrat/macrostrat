@@ -643,11 +643,11 @@
       "parameters": {
         "int_id": "integer, one or more comma-separated interval IDs",
         "all": "return all interval definitions",
-        "t_age": "integer, a late age in Ma",
-        "b_age": "integer, an early age in Ma",
+        "t_age": "number, a late age in Ma",
+        "b_age": "number, an early age in Ma",
         "name": "string, interval name",
         "true_colors": "boolean, returns original international time scale colors",
-        "rule": "if 'loose' provided along with an early_age and late_age, changes the querying of intervals",
+        "rule": "used with t_age and b_age to determine how intersecting intervals are identified: 'contains' returns intervals that fall entirely within t_age and b_age, 'exact' returns intervals with boundaries equal to t_age,b_age. Default is 'loose', returns any interval touching the range of t_age and b_age",
         "age": "integer, an age in Ma - will find all intervals that overlap with this age",
         "timescale": "string, a valid timescale name as defined in /api/v2/defs/timescales",
         "timescale_id": "integer, a valid timescale_id as defined in /api/v2/defs/timescales",
@@ -1154,6 +1154,7 @@
         "measure_id": "integer, specific measurement id",
         "measuremeta_id": "integer, specific id for measurment metadata (generally a sample)",
         "unit_id": "integer, one or more ids for unit containing measurements",
+        "interval_name": "string, an interval name to restrict measurements matched to units touching given age",
         "lith_id": "integer, one or more ids for lith (see /defs/lithologies)",
         "lith_type": "string, one or more lithology types",
         "lith_class": "string, one or more lithology classes",
@@ -1234,9 +1235,9 @@
         "topojson_bare"
       ],
       "examples": [
-        "api/measurements?leg=317",
-        "api/measurements?site=U1354",
-        "api/measurements?col_id=5092"
+        "api/eodp?leg=317",
+        "api/eodp?site=U1354",
+        "api/eodp?col_id=5092"
       ],
       "fields": [
         "col_group",
