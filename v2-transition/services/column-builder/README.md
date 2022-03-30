@@ -15,7 +15,7 @@ The frontend is written in [Reactjs](https://reactjs.org/) using the [Nextjs](ht
 There are two main things needed to get started developing this application:
 
 1.  Docker must be installed
-2.  A db dumb or a connection to the gunnison server, with a local forward of the db.
+2.  A db dump or a connection to the gunnison server, with a local forward of the db.
 
 ### Docker
 
