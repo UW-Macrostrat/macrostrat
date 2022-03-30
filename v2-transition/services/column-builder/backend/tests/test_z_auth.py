@@ -10,7 +10,7 @@ auth_inserts = get_sql("test_auth_inserts.sql")
 email = "cidzikowski@wisc.edu"
 password = "gniessrocks"
 
-def login():
+def login(email, password):
     res = post(base+"/rpc/login", data={"email": email, "pass": password})
     token = res.json().get('token')
     headers = {"Prefer": "return=representation", "Authorization": f'bearer {token}'}
@@ -36,7 +36,7 @@ def test_create_auth(db):
     res = db.query(sql).fetchall()
 
     for row in res:
-        assert row.get('rolname') in ['api_views_owner','reader', 'writer', 'deleter', 'owner_','anon','authenticator', 'new_user']
+        assert row.get('rolname') in ['api_views_owner','anon','authenticator', 'api_user']
     
 def test_pg_extensions(db):
     sql = """ select extname from pg_extension; """
@@ -78,8 +78,8 @@ def test_login(db):
     assert len(data) == 0
 
     # make the user an owner
-    sql = """ insert into auth.user_projects(user_, project, can_upsert, can_delete) 
-                values(1, 1, FALSE, FALSE) """
+    sql = """ insert into auth.user_projects(user_, project, privilege) 
+                values(1, 1, 'owner') """
 
     with db.conn.cursor() as cur:
         cur.execute(sql)
@@ -111,7 +111,7 @@ def test_project_create(db):
 
 def test_child_data(db):
     """ add some col-group, col and unit and see that we can access it """
-    headers = login()
+    headers = login(email, password)
 
     col_group = {"col_group": "CG1", "col_group_long": "Casey's first fake column group", "project_id":13}
     res = post(base+"/col_groups", data=col_group, headers=headers)
@@ -120,3 +120,22 @@ def test_child_data(db):
 
     res = get(base + "/col_groups", headers=headers)
     assert len(res.json()) == 1
+
+def test_rls(db):
+    """ create a new user with read only access to casey's project,
+        As owner I should be able to configure user privileges
+    """
+    email = 'app_user@gmail.com'
+    password = 'appuser1'
+    params = {"email": email, "pass": password}
+
+    res = post(base+"/rpc/create_user", data=params)
+
+    headers = login('app_user@gmail.com', 'appuser1')
+
+
+    res = get(base + "/projects", headers=headers)
+    data = res.json()
+
+    assert len(data) == 0
+
