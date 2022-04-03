@@ -24,14 +24,6 @@ will be things that the user creates themselves. But they should also be able to
 
 General DB roles:
 
-postgres- the ultimate super-user
-admin - can view, edit, create, and delete data and users
-creator/owner - can view, edit, create and delete their own data and can create new users with permissions for their data
-
-read-only - can only read specified data
-read+write - can select, update and insert
-read+write+delete - can select, update, insert and delete
-
 Handle users in-database:
 
 auth schema, users table
@@ -75,14 +67,18 @@ auth.users(
   role   name not null check (length(role) < 512)
 );
 
-/* 
-    data privilege descriptions:
-        - reader: can only SELECT on data
-        - writer: can SELECT, INSERT, and UPDATE
-        - deleter: can SELECT, INSERT, UPDATE, and DELETE
-        - owner: all privileges and can allow other users to access their data
- */
-CREATE TYPE auth.data_privileges AS ENUM ('reader', 'writer', 'deleter','owner');
+-- data privilege roles
+CREATE TABLE IF NOT EXISTS auth.data_roles(
+    id SERIAL PRIMARY KEY,
+    role text,
+    description text
+);
+-- default data roles
+INSERT INTO auth.data_roles(role, description) VALUES
+    ('reader', 'user can only perform SELECT on data'),
+    ('writer', 'user can SELECT, INSERT, and UPDATE'),
+    ('deleter', 'user can SELECT, INSERT, and UPDATE'),
+    ('manager', 'user encompasses privileges of deleter and can manage user permissions on data');
 
 /* Example of a basic data id to role */
 CREATE TABLE IF NOT EXISTS
@@ -90,7 +86,7 @@ auth.user_projects(
   id serial primary key,
   user_ int REFERENCES auth.users(id),
   project int REFERENCES macrostrat.projects(id),
-  privilege auth.data_privileges
+  role_id integer REFERENCES auth.data_roles(id)
 );
 
 /* make sure the role being added to user table actually exists!! */
@@ -198,11 +194,16 @@ $$ language plpgsql SECURITY DEFINER;
 DROP ROLE IF EXISTS anon;
 CREATE ROLE anon NOINHERIT;
 DROP ROLE IF EXISTS authenticator;
-CREATE ROLE authenticator NOINHERIT;
+CREATE ROLE authenticator NOINHERIT LOGIN;
 GRANT anon TO authenticator;
+
+GRANT USAGE ON SCHEMA macrostrat_api TO anon;
+GRANT USAGE ON SCHEMA macrostrat_api TO authenticator;
 
 GRANT EXECUTE ON FUNCTION macrostrat_api.login(text,text) TO anon;
 GRANT EXECUTE ON FUNCTION macrostrat_api.create_user(text, text) TO anon;
+GRANT EXECUTE ON FUNCTION macrostrat_api.login(text,text) TO authenticator;
+GRANT EXECUTE ON FUNCTION macrostrat_api.create_user(text, text) TO authenticator;
 
 -- a general api_user, data privileges depend on RLS
 DROP ROLE IF EXISTS api_user;
@@ -216,6 +217,8 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA auth TO api_user;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA auth TO api_user;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA macrostrat TO api_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON auth.users TO api_user;
+
+GRANT api_user to authenticator;
 
 /* ################### Row level policies ################### */
 
@@ -236,12 +239,14 @@ auth.user_project_insert() RETURNS trigger AS $$
 DECLARE
   email_ text;
   id_ int;
+  manager_id int;
 BEGIN
   IF tg_op = 'INSERT' THEN
     select macrostrat_api.get_email() into email_;
     select id from auth.users where users.email = email_ INTO id_;
-    INSERT INTO auth.user_projects(user_, project, privilege) 
-      VALUES(id_, new.id, 'owner');
+    SELECT id FROM auth.data_roles WHERE role = 'manager' INTO manager_id;
+    INSERT INTO auth.user_projects(user_, project, role_id) 
+      VALUES(id_, new.id, manager_id);
   END IF;
   RETURN new;
 END
@@ -254,15 +259,18 @@ CREATE trigger user_projects
   EXECUTE PROCEDURE auth.user_project_insert();
 
 CREATE OR REPLACE FUNCTION
-macrostrat_api.current_user_projects() RETURNS SETOF auth.user_projects AS $$
+macrostrat_api.current_user_projects() 
+RETURNS TABLE (project integer, role text) AS $$
 DECLARE
   email_ text;
 BEGIN
   SELECT macrostrat_api.get_email() INTO email_;
   RETURN QUERY
-    SELECT up.* FROM auth.user_projects up
-    RIGHT JOIN auth.users u
-    on u.email = email_
+    SELECT up.project, adr.role FROM auth.user_projects up
+    JOIN auth.users u
+    on u.id = up.user_
+    JOIN auth.data_roles adr
+    ON adr.id = up.role_id
     WHERE u.email = email_;
 END
 $$ language plpgsql SECURITY DEFINER;
@@ -277,14 +285,14 @@ WITH CHECK (email = macrostrat_api.get_email());
 /* user_projects mapping tables */
 ALTER TABLE auth.user_projects ENABLE ROW LEVEL SECURITY;
 
--- Only project owners can view and manipulate project privileges
-CREATE POLICY owner_projects ON auth.user_projects
+-- Only project managers can view and manipulate project privileges
+CREATE POLICY manager_projects ON auth.user_projects
 USING (project IN (
     SELECT project from macrostrat_api.current_user_projects() 
-    WHERE privilege = 'owner'))
+    WHERE role = 'manager'))
 WITH CHECK (project IN (
     SELECT project from macrostrat_api.current_user_projects() 
-    WHERE privilege = 'owner'));
+    WHERE role = 'manager'));
 
 
 /* projects */
@@ -293,17 +301,17 @@ ALTER TABLE macrostrat.projects ENABLE ROW LEVEL SECURITY;
 CREATE POLICY projects_ ON macrostrat.projects FOR SELECT
 USING (id IN (
   SELECT project FROM macrostrat_api.current_user_projects()  
-  WHERE privilege IN ('reader','writer','deleter','owner')));
+  WHERE role IN ('reader','writer','deleter','manager')));
 
 -- anyone can insert a new project
 CREATE POLICY projects_insert ON macrostrat.projects FOR INSERT
 WITH CHECK(TRUE);
 
--- Updates only allowable for writer, deleter or owner
+-- Updates only allowable for writer, deleter or manager
 CREATE POLICY projects_update ON macrostrat.projects FOR UPDATE
 WITH CHECK (id IN (
     SELECT project from macrostrat_api.current_user_projects()
-    WHERE privilege IN ('writer','deleter', 'owner')
+    WHERE role IN ('writer','deleter', 'manager')
 ));
 
 /* col-groups */
@@ -312,13 +320,13 @@ ALTER TABLE macrostrat.col_groups ENABLE ROW LEVEL SECURITY;
 CREATE POLICY col_groups_select ON macrostrat.col_groups FOR SELECT
 USING (project_id IN (
   SELECT project FROM macrostrat_api.current_user_projects()
-  WHERE privilege IN ('reader','writer','deleter','owner')));
+  WHERE role IN ('reader','writer','deleter','manager')));
 
 
 CREATE POLICY col_group_upsert ON macrostrat.col_groups
 WITH CHECK(project_id IN (
   SELECT project FROM macrostrat_api.current_user_projects() 
-  WHERE privilege IN ('writer', 'deleter', 'owner')));
+  WHERE role IN ('writer', 'deleter', 'manager')));
 
 /* cols */
 ALTER TABLE macrostrat.cols ENABLE ROW LEVEL SECURITY;
@@ -329,7 +337,7 @@ USING (project_id IN (SELECT project FROM macrostrat_api.current_user_projects()
 CREATE POLICY cols_upsert ON macrostrat.cols 
 WITH CHECK(project_id IN (
   SELECT project FROM macrostrat_api.current_user_projects()
-  WHERE privilege IN ('writer', 'deleter', 'owner')
+  WHERE role IN ('writer', 'deleter', 'manager')
 ));
 
 /* units */
@@ -346,4 +354,4 @@ WITH CHECK (col_id IN (
   SELECT c.id from macrostrat.cols c 
   WHERE c.project_id IN(
     SELECT project FROM macrostrat_api.current_user_projects()
-    WHERE privilege IN ('writer', 'deleter', 'owner'))));
+    WHERE role IN ('writer', 'deleter', 'manager'))));

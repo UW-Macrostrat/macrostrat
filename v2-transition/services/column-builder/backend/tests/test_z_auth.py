@@ -46,7 +46,7 @@ def test_pg_extensions(db):
     assert 'pgjwt' in extensions
     
 def test_add_user(db):
-
+    #assert 0 == 1
     params = {"email": email, "pass": password}
     res = post(base+"/rpc/create_user", data=params)
 
@@ -78,14 +78,14 @@ def test_login(db):
     assert len(data) == 0
 
     # make the user an owner
-    sql = """ insert into auth.user_projects(user_, project, privilege) 
-                values(1, 1, 'owner') """
+    sql = """ insert into auth.user_projects(user_, project, role_id) 
+                values(1, 1, 4) """
 
     with db.conn.cursor() as cur:
         cur.execute(sql)
     
     res = post(base + '/rpc/current_user_projects', headers=headers)
-    assert len(res.json()) == 1 and res.json()[0].get('id') == 1
+    assert len(res.json()) == 1 and res.json()[0].get('project') == 1
 
     res = get(base + "/projects", headers={"Prefer": "return=representation", "Authorization": f'bearer {token}'})
     data = res.json()
@@ -138,4 +138,3 @@ def test_rls(db):
     data = res.json()
 
     assert len(data) == 0
-
