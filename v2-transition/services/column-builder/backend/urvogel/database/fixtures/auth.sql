@@ -163,8 +163,8 @@ BEGIN
             row_to_json(r), 'reallyreallyreallyreallyverysafesafesafesafe'
         ) AS token
         FROM (
-            SELECT _role as role, login.email as email,
-            extract(epoch FROM now())::integer + 60*60 AS exp 
+            SELECT 'api_views_owner' as role, login.email as email,
+            extract(epoch FROM now())::integer + 86400 AS exp --expires in 1 day
         ) r
         INTO result;
     RETURN result;
@@ -177,7 +177,7 @@ DECLARE
   _role name;
 BEGIN
   INSERT INTO auth.users(email, pass, role) 
-    VALUES (email, pass, 'api_user');
+    VALUES (email, pass, 'api_views_owner');
   SELECT auth.user_role(email, pass) INTO _role;
 
   IF _role IS NULL THEN
@@ -206,19 +206,11 @@ GRANT EXECUTE ON FUNCTION macrostrat_api.login(text,text) TO authenticator;
 GRANT EXECUTE ON FUNCTION macrostrat_api.create_user(text, text) TO authenticator;
 
 -- a general api_user, data privileges depend on RLS
-DROP ROLE IF EXISTS api_user;
-CREATE ROLE api_user NOINHERIT;
-GRANT USAGE ON SCHEMA macrostrat_api TO api_user;
-GRANT USAGE ON SCHEMA macrostrat TO api_user;
-GRANT USAGE ON SCHEMA auth TO api_user;
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA macrostrat_api TO api_user;
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA macrostrat TO api_user;
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA auth TO api_user;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA auth TO api_user;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA macrostrat TO api_user;
-GRANT SELECT, INSERT, UPDATE, DELETE ON auth.users TO api_user;
+GRANT USAGE ON SCHEMA auth TO api_views_owner;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA auth TO api_views_owner;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA auth TO api_views_owner;
 
-GRANT api_user to authenticator;
+GRANT api_views_owner to authenticator;
 
 /* ################### Row level policies ################### */
 
@@ -355,3 +347,26 @@ WITH CHECK (col_id IN (
   WHERE c.project_id IN(
     SELECT project FROM macrostrat_api.current_user_projects()
     WHERE role IN ('writer', 'deleter', 'manager'))));
+
+CREATE OR REPLACE VIEW macrostrat_api.users AS
+SELECT * FROM auth.users;
+ALTER VIEW macrostrat_api.users OWNER TO api_views_owner;
+
+CREATE OR REPLACE VIEW macrostrat_api.user_projects AS
+SELECT * FROM auth.user_projects;
+ALTER VIEW macrostrat_api.user_projects OWNER TO api_views_owner;
+
+CREATE OR REPLACE VIEW macrostrat_api.data_roles AS
+SELECT * FROM auth.data_roles;
+ALTER VIEW macrostrat_api.data_roles OWNER TO api_views_owner;
+
+ALTER TABLE auth.data_roles ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY data_roles_select ON auth.data_roles FOR SELECT
+USING(TRUE);
+
+CREATE POLICY data_roles_update ON auth.data_roles FOR UPDATE
+USING (role NOT IN('reader','writer','deleter', 'manager'));
+
+CREATE POLICY data_roles_insert ON auth.data_roles FOR INSERT
+WITH CHECK(role NOT IN ('reader', 'writer', 'deleter', 'manager'));

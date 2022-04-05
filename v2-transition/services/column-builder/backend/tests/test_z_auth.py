@@ -1,7 +1,5 @@
-from email import header
 from requests import get, post, patch, put
 from urvogel.database.fixtures import get_sql
-from psycopg.sql import SQL, Literal
 
 base= "http://127.0.0.1:3001"
 
@@ -122,7 +120,8 @@ def test_child_data(db):
     assert len(res.json()) == 1
 
 def test_rls(db):
-    """ create a new user with read only access to casey's project,
+    """ 
+        create a new user with read only access to casey's project,
         As owner I should be able to configure user privileges
     """
     email = 'app_user@gmail.com'
@@ -138,3 +137,27 @@ def test_rls(db):
     data = res.json()
 
     assert len(data) == 0
+
+def test_user_management():
+    """  """
+    headers = login(email,password)
+
+    res = get(base + "/user_projects", headers=headers)
+
+    assert len(res.json()) == 2
+
+    headers_ = login('app_user@gmail.com', 'appuser1')
+    res = get(base + "/user_projects", headers=headers_)
+    assert len(res.json()) == 0
+
+    # make app_user a reader for project 13
+    data = {"user_":2, "project":13, "role_id": 1 }
+    res = post(base + "/user_projects", data=data, headers=headers)
+
+    assert res.status_code == 201
+    
+    res = get(base + "/projects", headers=headers_)
+    data = res.json()
+    assert len(data) == 1
+    assert data[0].get('id') == 13 
+    assert 0 ==1 
