@@ -151,7 +151,7 @@ END
 $$ language plpgsql SECURITY DEFINER;
 
 CREATE OR REPLACE FUNCTION
-macrostrat_api.create_user(username text, firstName text, lastName text, pass text) 
+macrostrat_api.create_user(firstname text, lastname text, pass text, username text) 
 RETURNS BOOLEAN AS $$
 DECLARE
   _role name;
