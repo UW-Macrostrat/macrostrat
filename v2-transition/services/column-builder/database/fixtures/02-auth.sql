@@ -39,6 +39,8 @@ CREATE EXTENSION IF NOT EXISTS pgjwt;
 CREATE TABLE IF NOT EXISTS 
 auth.users(
   id     serial primary key,
+  firstname text not null,
+  lastname text not null,
   username  text not null,
   pass   text not null check (length(pass) < 512),
   role   name not null check (length(role) < 512)
@@ -149,12 +151,13 @@ END
 $$ language plpgsql SECURITY DEFINER;
 
 CREATE OR REPLACE FUNCTION
-macrostrat_api.create_user(username text, pass text) RETURNS BOOLEAN AS $$
+macrostrat_api.create_user(username text, firstName text, lastName text, pass text) 
+RETURNS BOOLEAN AS $$
 DECLARE
   _role name;
 BEGIN
-  INSERT INTO auth.users(username, pass, role) 
-    VALUES (username, pass, 'api_user');
+  INSERT INTO auth.users(username, firstname, lastname, pass, role) 
+    VALUES (username, firstName, lastName, pass, 'api_user');
   SELECT auth.user_role(username, pass) INTO _role;
 
   IF _role IS NULL THEN
@@ -178,9 +181,9 @@ GRANT USAGE ON SCHEMA macrostrat_api TO anon;
 GRANT USAGE ON SCHEMA macrostrat_api TO authenticator;
 
 GRANT EXECUTE ON FUNCTION macrostrat_api.login(text,text) TO anon;
-GRANT EXECUTE ON FUNCTION macrostrat_api.create_user(text, text) TO anon;
+GRANT EXECUTE ON FUNCTION macrostrat_api.create_user(text,text,text, text) TO anon;
 GRANT EXECUTE ON FUNCTION macrostrat_api.login(text,text) TO authenticator;
-GRANT EXECUTE ON FUNCTION macrostrat_api.create_user(text, text) TO authenticator;
+GRANT EXECUTE ON FUNCTION macrostrat_api.create_user(text,text,text, text) TO authenticator;
 
 -- a general api_user, data privileges depend on RLS
 GRANT USAGE ON SCHEMA auth TO api_user;

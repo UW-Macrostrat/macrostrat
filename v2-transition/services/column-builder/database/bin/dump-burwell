@@ -35,7 +35,7 @@ check()
 }
 ############################ variables ################################
 
-dbname=burwell
+dbname=column_data
 local_db=column_data
 container_name=db
 db_user=postgres
@@ -68,25 +68,12 @@ pg_dump -Fc -p $local_forward -h localhost -U postgres \
   $dbname \
 | docker-compose exec -T $container_name pg_restore -v -U$db_user -d $local_db
 
-echo
-echo "Do you wish to make alterations?"
-echo "Alterations to be made: "
-echo "  - Add the projects table (data copy and based from MariaDB)"
-echo "  - Remove unused columns (ex. lo_h, fo_h from cols)"
-echo "  - Reset Primary Key Sequences"
-echo -n "Do you wish to continue?(Y/n): "
-read FK
-if [[ "$FK" = "Y" || "$FK" = "y" ]]
-  then 
-    for file in `dirname $0`/../db-alterations/*.sql
-    do
-        `dirname $0`/./run-sql-file -f $file -c $container_name -d $local_db -U $db_user
-    done
-    for f in `dirname $0`/../fixtures/*.sql
-    do
-      `dirname $0`/./run-sql-file -f $f -c $container_name -d $local_db -U $db_user
-    done
-  else
-    echo "Okay, your choice..."
-    exit 1;
-fi
+
+for file in `dirname $0`/../db-alterations/*.sql
+do
+    `dirname $0`/./run-sql-file -f $file -c $container_name -d $local_db -U $db_user
+done
+for f in `dirname $0`/../fixtures/*.sql
+do
+  `dirname $0`/./run-sql-file -f $f -c $container_name -d $local_db -U $db_user
+done
