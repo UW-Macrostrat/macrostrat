@@ -10,9 +10,8 @@ RUN apt-get update -y && \
   build-essential software-properties-common curl \
   libboost-dev libboost-filesystem-dev libboost-program-options-dev libboost-python-dev \
   libboost-regex-dev libboost-system-dev libboost-thread-dev libicu-dev libtiff5-dev \
-  libfreetype-dev libpng-dev libxml2-dev libproj-dev \
-  libcairo-dev postgresql-contrib libharfbuzz-dev \
-  python-dev git python-setuptools && \
+  libfreetype-dev libpng-dev libxml2-dev libproj-dev libcairo-dev \
+  postgresql-contrib libharfbuzz-dev python-dev && \
   rm -rf /var/lib/apt/lists/*
 
 # Mapnik
@@ -27,10 +26,16 @@ ARG PYTHON_MAPNIK_COMMIT=7da019cf9eb12af8f8aa88b7d75789dfcd1e901b
 RUN mkdir -p /opt/python-mapnik && curl -L https://github.com/mapnik/python-mapnik/archive/${PYTHON_MAPNIK_COMMIT}.tar.gz | tar xz -C /opt/python-mapnik --strip-components=1
 RUN cd /opt/python-mapnik && python3 setup.py install && rm -r /opt/python-mapnik/build
 
+# Remove build dependencies
+RUN apt-get remove -y \
+  build-essential software-properties-common curl \
+  libboost-dev libboost-filesystem-dev libboost-program-options-dev libboost-python-dev \
+  libboost-regex-dev libboost-system-dev libboost-thread-dev libicu-dev libtiff5-dev \
+  libfreetype-dev libpng-dev libxml2-dev libproj-dev libcairo-dev libharfbuzz-dev python-dev
+
 # The rest of this (for vector tile generation and the server itself) should be easier.
 
 RUN pip install "poetry==1.1.12" && \
-  rm -rf /var/lib/apt/lists/* && \
   poetry config virtualenvs.create false
 
 ENV PIP_DEFAULT_TIMEOUT=100 \

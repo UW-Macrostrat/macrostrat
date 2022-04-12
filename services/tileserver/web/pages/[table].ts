@@ -71,7 +71,7 @@ function TableInspector() {
       showInspectButton: false,
       popup: new Popup({
         closeButton: false,
-        closeOnClick: false,
+        closeOnClick: true,
       }),
       queryParameters: {
         layers: ["feature_fill"],
