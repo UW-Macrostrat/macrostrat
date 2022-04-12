@@ -13,10 +13,10 @@ services:
     ports:
       - "3001:3000"
     environment:
-      PGRST_DB_URI: postgres://authenticator:@db:5432/column_data_auth
+      PGRST_DB_URI: postgres://${AUTH_PGUSER}:@db:5432/${POSTGRES_DB}
       PGRST_DB_SCHEMA: macrostrat_api
       PGRST_JWT_SECRET: ${PGRST_JWT_SECRET}
-      PGRST_DB_ANON_ROLE: anon
+      PGRST_DB_ANON_ROLE: ${PGRST_DB_ANON_ROLE}
       PGRST_OPENAPI_SERVER_PROXY_URI: http://127.0.0.1:3001
     depends_on:
       - db
