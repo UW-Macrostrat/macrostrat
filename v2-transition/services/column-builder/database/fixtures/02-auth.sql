@@ -27,7 +27,7 @@ current_setting('request.jwt.claims', true)::json->>'username';
 
 
 /* AUTH schema and functions */
-DROP SCHEMA auth CASCADE;
+DROP SCHEMA IF EXISTS auth CASCADE;
 CREATE SCHEMA auth;
 
 
@@ -157,7 +157,7 @@ DECLARE
   _role name;
 BEGIN
   INSERT INTO auth.users(username, firstname, lastname, pass, role) 
-    VALUES (username, firstName, lastName, pass, 'api_user');
+    VALUES (username, firstname, lastname, pass, 'api_user');
   SELECT auth.user_role(username, pass) INTO _role;
 
   IF _role IS NULL THEN

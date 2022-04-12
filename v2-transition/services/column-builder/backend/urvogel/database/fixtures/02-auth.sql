@@ -2,37 +2,14 @@
 Postgrest uses JWT to authenticate incoming requests, but the db can authorize db queries based 
 on users.
 
-Postgrest has a db centered system for handling incoming requests. A limited db role called 'authenticator' has 
-the job to decrypt the incoming JWT and if correct, authenticator switches into the specified db role sent
-in the request. If not correct, authenticator switces to 'anon' another db role that should be very limited.
-With only the ability to login, or create a new user. Setting the names of anon and authenticator is done in 
-a configuration file. The JWT secret for decoding must also be provided in the config.
 
 authenticator is passed via db-uri
 anon: db-anon-role (PGRST_DB_ANON_ROLE)
 jwt-secret (PGRST_JWT_SECRET)
 
-anon and authenticator must be privelges must be configured in db by superuser. 
-
-In access control there is a distinction between application users and db users. Application users can 
-be thought of as your client users logging in and may be in the thousands or more. db users are the ROLEs
-that can be created and inherited. 
-
-For our purposes we can combine both. We will map app users to db users in a general way. But we will also 
-keep track of the projects, col, units, etc, that users can "SELECT, UPDATE, INSERT, DELETE". Generally, these
-will be things that the user creates themselves. But they should also be able to give permissions to other users.
-
-General DB roles:
-
-Handle users in-database:
-
-auth schema, users table
-keep track of project ids that user can view data for in table.
-Configure row level security by policies on table.
-
 
 HOW LOGIN WORKS --> {
-    take email and password,
+    take username and password,
     get the role and any other info we want tokenized,
     if login successful --> return json token
 }
@@ -43,14 +20,13 @@ https://app.bountysource.com/issues/89971002-example-code-to-show-how-to-install
 
 
 How to access info on JWT for the current user --> to be user in policy creation::
-current_setting('request.jwt.claims', true)::json->>'email';
+current_setting('request.jwt.claims', true)::json->>'username';
 
 
 */
 
-
 /* AUTH schema and functions */
-DROP SCHEMA auth CASCADE;
+DROP SCHEMA IF EXISTS auth CASCADE;
 CREATE SCHEMA auth;
 
 
@@ -62,7 +38,9 @@ CREATE EXTENSION IF NOT EXISTS pgjwt;
 CREATE TABLE IF NOT EXISTS 
 auth.users(
   id     serial primary key,
-  email  text check ( email ~* '^.+@.+\..+$' ),
+  firstname text not null,
+  lastname text not null,
+  username  text not null,
   pass   text not null check (length(pass) < 512),
   role   name not null check (length(role) < 512)
 );
@@ -129,13 +107,13 @@ CREATE trigger encrypt_pass
 /* Access the stored role on a user -- used in login! 
 */
 CREATE OR REPLACE FUNCTION
-auth.user_role(email TEXT, pass TEXT) RETURNS name
+auth.user_role(username TEXT, pass TEXT) RETURNS name
   LANGUAGE plpgsql
   AS $$
 BEGIN
   RETURN (
   SELECT role FROM auth.users
-   WHERE users.email = user_role.email
+   WHERE users.username = user_role.username
      AND users.pass = public.crypt(user_role.pass, users.pass)
   );
 END;
@@ -149,12 +127,12 @@ CREATE TYPE auth.jwt_token AS (
 Login function! 
  */
 CREATE OR REPLACE FUNCTION
-macrostrat_api.login(email text, pass text) RETURNS auth.jwt_token AS $$
+macrostrat_api.login(username text, pass text) RETURNS auth.jwt_token AS $$
 DECLARE
     _role name;
     result auth.jwt_token;
 BEGIN
-    SELECT auth.user_role(email, pass) INTO _role;
+    SELECT auth.user_role(username, pass) INTO _role;
     IF _role IS NULL THEN
         raise invalid_password using message = 'invalid user or password';
     END IF;
@@ -163,7 +141,7 @@ BEGIN
             row_to_json(r), 'reallyreallyreallyreallyverysafesafesafesafe'
         ) AS token
         FROM (
-            SELECT 'api_views_owner' as role, login.email as email,
+            SELECT 'api_views_owner' as role, login.username as username,
             extract(epoch FROM now())::integer + 86400 AS exp --expires in 1 day
         ) r
         INTO result;
@@ -172,13 +150,14 @@ END
 $$ language plpgsql SECURITY DEFINER;
 
 CREATE OR REPLACE FUNCTION
-macrostrat_api.create_user(email text, pass text) RETURNS BOOLEAN AS $$
+macrostrat_api.create_user(firstname text, lastname text, pass text, username text) 
+RETURNS BOOLEAN AS $$
 DECLARE
   _role name;
 BEGIN
-  INSERT INTO auth.users(email, pass, role) 
-    VALUES (email, pass, 'api_views_owner');
-  SELECT auth.user_role(email, pass) INTO _role;
+  INSERT INTO auth.users(username, firstname, lastname, pass, role) 
+    VALUES (username, firstname, lastname, pass, 'api_views_owner');
+  SELECT auth.user_role(username, pass) INTO _role;
 
   IF _role IS NULL THEN
     RETURN FALSE;
@@ -191,51 +170,51 @@ $$ language plpgsql SECURITY DEFINER;
 /*####################### BASE DB ROLES ##########################*/
 
 -- these are the basic auth roles used by postgrest.
-DROP ROLE IF EXISTS anon;
-CREATE ROLE anon NOINHERIT;
-DROP ROLE IF EXISTS authenticator;
-CREATE ROLE authenticator NOINHERIT LOGIN;
-GRANT anon TO authenticator;
+DROP ROLE IF EXISTS anon_test;
+CREATE ROLE anon_test NOINHERIT;
+DROP ROLE IF EXISTS authenticator_test;
+CREATE ROLE authenticator_test NOINHERIT LOGIN;
+GRANT anon_test TO authenticator_test;
 
-GRANT USAGE ON SCHEMA macrostrat_api TO anon;
-GRANT USAGE ON SCHEMA macrostrat_api TO authenticator;
+GRANT USAGE ON SCHEMA macrostrat_api TO anon_test;
+GRANT USAGE ON SCHEMA macrostrat_api TO authenticator_test;
 
-GRANT EXECUTE ON FUNCTION macrostrat_api.login(text,text) TO anon;
-GRANT EXECUTE ON FUNCTION macrostrat_api.create_user(text, text) TO anon;
-GRANT EXECUTE ON FUNCTION macrostrat_api.login(text,text) TO authenticator;
-GRANT EXECUTE ON FUNCTION macrostrat_api.create_user(text, text) TO authenticator;
+GRANT EXECUTE ON FUNCTION macrostrat_api.login(text,text) TO anon_test;
+GRANT EXECUTE ON FUNCTION macrostrat_api.create_user(text,text,text, text) TO anon_test;
+GRANT EXECUTE ON FUNCTION macrostrat_api.login(text,text) TO authenticator_test;
+GRANT EXECUTE ON FUNCTION macrostrat_api.create_user(text,text,text, text) TO authenticator_test;
 
--- a general api_user, data privileges depend on RLS
+-- a general api_views_owner, data privileges depend on RLS
 GRANT USAGE ON SCHEMA auth TO api_views_owner;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA auth TO api_views_owner;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA auth TO api_views_owner;
 
-GRANT api_views_owner to authenticator;
+GRANT api_views_owner to authenticator_test;
 
 /* ################### Row level policies ################### */
 
 
-/* function to get email off of jwt claims*/
+/* function to get username off of jwt claims*/
 CREATE OR REPLACE FUNCTION
-macrostrat_api.get_email() returns text AS $$
+macrostrat_api.get_username() returns text AS $$
 DECLARE
-  email_ text;
+  username_ text;
 BEGIN
-  SELECT current_setting('request.jwt.claims', true)::json->>'email' INTO email_;
-RETURN email_;
+  SELECT current_setting('request.jwt.claims', true)::json->>'username' INTO username_;
+RETURN username_;
 END
 $$language plpgsql SECURITY DEFINER;
 
 CREATE OR REPLACE FUNCTION
 auth.user_project_insert() RETURNS trigger AS $$
 DECLARE
-  email_ text;
+  username_ text;
   id_ int;
   manager_id int;
 BEGIN
   IF tg_op = 'INSERT' THEN
-    select macrostrat_api.get_email() into email_;
-    select id from auth.users where users.email = email_ INTO id_;
+    select macrostrat_api.get_username() into username_;
+    select id from auth.users where users.username = username_ INTO id_;
     SELECT id FROM auth.data_roles WHERE role = 'manager' INTO manager_id;
     INSERT INTO auth.user_projects(user_, project, role_id) 
       VALUES(id_, new.id, manager_id);
@@ -254,16 +233,16 @@ CREATE OR REPLACE FUNCTION
 macrostrat_api.current_user_projects() 
 RETURNS TABLE (project integer, role text) AS $$
 DECLARE
-  email_ text;
+  username_ text;
 BEGIN
-  SELECT macrostrat_api.get_email() INTO email_;
+  SELECT macrostrat_api.get_username() INTO username_;
   RETURN QUERY
     SELECT up.project, adr.role FROM auth.user_projects up
     JOIN auth.users u
     on u.id = up.user_
     JOIN auth.data_roles adr
     ON adr.id = up.role_id
-    WHERE u.email = email_;
+    WHERE u.username = username_;
 END
 $$ language plpgsql SECURITY DEFINER;
 
@@ -271,8 +250,8 @@ $$ language plpgsql SECURITY DEFINER;
 ALTER TABLE auth.users ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY secure_users ON auth.users 
-USING (email = macrostrat_api.get_email())
-WITH CHECK (email = macrostrat_api.get_email());
+USING (username = macrostrat_api.get_username())
+WITH CHECK (username = macrostrat_api.get_username());
 
 /* user_projects mapping tables */
 ALTER TABLE auth.user_projects ENABLE ROW LEVEL SECURITY;

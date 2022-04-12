@@ -1,15 +1,16 @@
 from requests import get, post, patch, put
 from urvogel.database.fixtures import get_sql
+import time
 
 base= "http://127.0.0.1:3001"
 
-auth = get_sql("auth.sql")
-auth_inserts = get_sql("test_auth_inserts.sql")
-email = "cidzikowski@wisc.edu"
+username = "cidzikowski"
 password = "gniessrocks"
 
-def login(email, password):
-    res = post(base+"/rpc/login", data={"email": email, "pass": password})
+auth = get_sql("02-auth.sql")
+
+def login(username, password):
+    res = post(base+"/rpc/login", data={"username": username, "pass": password})
     token = res.json().get('token')
     headers = {"Prefer": "return=representation", "Authorization": f'bearer {token}'}
 
@@ -34,7 +35,7 @@ def test_create_auth(db):
     res = db.query(sql).fetchall()
 
     for row in res:
-        assert row.get('rolname') in ['api_views_owner','anon','authenticator', 'api_user']
+        assert row.get('rolname') in ['api_views_owner','anon','authenticator','anon_test','authenticator_test', 'api_user']
     
 def test_pg_extensions(db):
     sql = """ select extname from pg_extension; """
@@ -44,21 +45,21 @@ def test_pg_extensions(db):
     assert 'pgjwt' in extensions
     
 def test_add_user(db):
-    #assert 0 == 1
-    params = {"email": email, "pass": password}
+    time.sleep(10) # if I don't wait it all fails. As if the sql is still being run....
+    params = {"firstname": "Casey", "lastname": "Idzikowski", "pass": password, "username": username}
     res = post(base+"/rpc/create_user", data=params)
 
     assert res.status_code == 200
 
     sql = """ 
-        SELECT email from auth.users;
+        SELECT username from auth.users;
          """
     res = db.query(sql).fetchone()
-    assert res.get('email') is not None
+    assert res.get('username') is not None
 
 def test_login(db):
 
-    res = post(base+"/rpc/login", data={"email": email, "pass": password})
+    res = post(base+"/rpc/login", data={"username": username, "pass": password})
 
     assert res.status_code == 200
 
@@ -66,9 +67,9 @@ def test_login(db):
     assert token is not None
     headers = {"Prefer": "return=representation", "Authorization": f'bearer {token}'}
 
-    res = post(base + "/rpc/get_email", headers=headers)
+    res = post(base + "/rpc/get_username", headers=headers)
 
-    assert res.json() == email
+    assert res.json() == username
 
     res = get(base + "/projects", headers=headers)
     data = res.json()
@@ -91,7 +92,7 @@ def test_login(db):
     assert len(data) == 1 and data[0].get('id') == 1
 
 def test_project_create(db):
-    res = post(base+"/rpc/login", data={"email": email, "pass": password})
+    res = post(base+"/rpc/login", data={"username": username, "pass": password})
 
     assert res.status_code == 200
 
@@ -109,7 +110,7 @@ def test_project_create(db):
 
 def test_child_data(db):
     """ add some col-group, col and unit and see that we can access it """
-    headers = login(email, password)
+    headers = login(username, password)
 
     col_group = {"col_group": "CG1", "col_group_long": "Casey's first fake column group", "project_id":13}
     res = post(base+"/col_groups", data=col_group, headers=headers)
@@ -124,9 +125,9 @@ def test_rls(db):
         create a new user with read only access to casey's project,
         As owner I should be able to configure user privileges
     """
-    email = 'app_user@gmail.com'
+    username = 'app_user@gmail.com'
     password = 'appuser1'
-    params = {"email": email, "pass": password}
+    params = {'firstname': 'appuser','lastname':'lastnameApp',"username": username, "pass": password}
 
     res = post(base+"/rpc/create_user", data=params)
 
@@ -138,9 +139,18 @@ def test_rls(db):
 
     assert len(data) == 0
 
+    res = post(base + "/projects", headers=headers, data={"project":"app1", "descrip":"fake project created and owned by app", "timescale_id": 1})
+
+    assert res.status_code == 201
+    res = get(base + "/projects", headers=headers)
+    data = res.json()
+
+    assert len(data) == 1
+
+
 def test_user_management():
     """  """
-    headers = login(email,password)
+    headers = login(username,password)
 
     res = get(base + "/user_projects", headers=headers)
 
@@ -148,7 +158,7 @@ def test_user_management():
 
     headers_ = login('app_user@gmail.com', 'appuser1')
     res = get(base + "/user_projects", headers=headers_)
-    assert len(res.json()) == 0
+    assert len(res.json()) == 1
 
     # make app_user a reader for project 13
     data = {"user_":2, "project":13, "role_id": 1 }
@@ -158,6 +168,5 @@ def test_user_management():
     
     res = get(base + "/projects", headers=headers_)
     data = res.json()
-    assert len(data) == 1
+    assert len(data) == 2
     assert data[0].get('id') == 13 
-    assert 0 ==1 
