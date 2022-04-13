@@ -1,5 +1,5 @@
 test:
-	backend/bin/run-tests
+	database/tests/bin/run-tests
 
 dump-burwell:
 	database/bin/dump-burwell
