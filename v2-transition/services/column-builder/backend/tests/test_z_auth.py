@@ -108,6 +108,9 @@ def test_project_create(db):
 
     assert len(data) == 2
 
+    res = patch(base + "/projects?id=eq.13", headers={"Authorization": f'bearer {token}','Prefer': 'return=minimal'}, data={"project": "CFP2"})
+    assert res.status_code != 404
+
 def test_child_data(db):
     """ add some col-group, col and unit and see that we can access it """
     headers = login(username, password)

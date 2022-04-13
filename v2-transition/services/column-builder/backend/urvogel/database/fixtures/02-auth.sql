@@ -280,6 +280,10 @@ WITH CHECK(TRUE);
 
 -- Updates only allowable for writer, deleter or manager
 CREATE POLICY projects_update ON macrostrat.projects FOR UPDATE
+USING(id IN (
+    SELECT project from macrostrat_api.current_user_projects()
+    WHERE role IN ('writer','deleter', 'manager')
+))
 WITH CHECK (id IN (
     SELECT project from macrostrat_api.current_user_projects()
     WHERE role IN ('writer','deleter', 'manager')
@@ -294,7 +298,12 @@ USING (project_id IN (
   WHERE role IN ('reader','writer','deleter','manager')));
 
 
-CREATE POLICY col_group_upsert ON macrostrat.col_groups
+CREATE POLICY col_group_update ON macrostrat.col_groups FOR UPDATE
+USING(project_id IN (
+  SELECT project FROM macrostrat_api.current_user_projects() 
+  WHERE role IN ('writer', 'deleter', 'manager')));
+
+CREATE POLICY col_group_insert ON macrostrat.col_groups FOR INSERT
 WITH CHECK(project_id IN (
   SELECT project FROM macrostrat_api.current_user_projects() 
   WHERE role IN ('writer', 'deleter', 'manager')));
@@ -305,7 +314,13 @@ ALTER TABLE macrostrat.cols ENABLE ROW LEVEL SECURITY;
 CREATE POLICY cols_select ON macrostrat.cols FOR SELECT
 USING (project_id IN (SELECT project FROM macrostrat_api.current_user_projects()));
 
-CREATE POLICY cols_upsert ON macrostrat.cols 
+CREATE POLICY cols_update ON macrostrat.cols for UPDATE
+USING(project_id IN (
+  SELECT project FROM macrostrat_api.current_user_projects()
+  WHERE role IN ('writer', 'deleter', 'manager')
+));
+
+CREATE POLICY cols_insert ON macrostrat.cols for INSERT
 WITH CHECK(project_id IN (
   SELECT project FROM macrostrat_api.current_user_projects()
   WHERE role IN ('writer', 'deleter', 'manager')
@@ -320,7 +335,14 @@ USING (col_id IN (
   WHERE c.project_id IN(
     SELECT project FROM macrostrat_api.current_user_projects())));
 
-CREATE POLICY units_upsert ON macrostrat.units
+CREATE POLICY units_update ON macrostrat.units FOR UPDATE
+USING (col_id IN (
+  SELECT c.id from macrostrat.cols c 
+  WHERE c.project_id IN(
+    SELECT project FROM macrostrat_api.current_user_projects()
+    WHERE role IN ('writer', 'deleter', 'manager'))));
+    
+CREATE POLICY units_insert ON macrostrat.units FOR INSERT
 WITH CHECK (col_id IN (
   SELECT c.id from macrostrat.cols c 
   WHERE c.project_id IN(
