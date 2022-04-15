@@ -1,0 +1,29 @@
+#!/usr/bin/env zsh
+
+## Runs every file in the postgrest-fixtures and then re-updates postgrest schema
+## https://postgrest.org/en/stable/schema_cache.html#schema-cache-reloading 
+
+local_db=column_data
+db_user=postgres
+local_forward=5434
+postgres_service=postgrest
+
+# check if docker is running first. 
+result=$( docker ps -q -f name=postgrest )
+
+if [[ -n "$result" ]]; then
+  echo "Applying data fixtures!"
+else
+  echo "Starting Docker"
+  docker-compose up -d
+  echo "Applying data fixtures!"
+fi
+
+for f in `dirname $0`/../../postgrest-fixtures/*.sql
+do
+    echo "Running $f"
+    psql -p $local_forward -h localhost -d $local_db -U $db_user -f $f
+done
+
+echo "Reloading Postgrest schema cache"
+docker-compose kill -s SIGUSR1 $postgres_service

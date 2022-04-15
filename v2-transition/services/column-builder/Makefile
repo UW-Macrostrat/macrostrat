@@ -6,3 +6,6 @@ dump-burwell:
 
 dump-schema:
 	database/tests/bin/dump-schema
+
+data-fixtures:
+	database/bin/run-fixtures
