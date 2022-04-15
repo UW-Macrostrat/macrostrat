@@ -3,6 +3,12 @@
 backup_server=teststrata
 backup_dir=/Volumes/database/backups/rockd
 
+data_dir=/var/data/rockd
+
+function sync-data() {
+  rsync -azv --delete $backup_server:"$backup_dir/$1/" "$data_dir/$1/"
+}
+
 # Find the newest backup on teststrata
 newest_backup=$(ssh $backup_server "ls -t $backup_dir/*.rockd.sql.gz | head -1")
 
@@ -19,3 +25,8 @@ strat compose exec postgres createdb -Upostgres $dbname
 
 # Pipe directly from backup into database
 ssh $backup_server "gzcat $newest_backup" | pv -cN zcat | strat compose exec -T postgres psql -Upostgres $dbname
+
+# Sync checkin photos and gravatars
+
+sync-data checkin-photos
+sync-data gravatars
