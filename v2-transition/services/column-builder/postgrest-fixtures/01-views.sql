@@ -1,4 +1,11 @@
-/* Some views that may be helpful with postgrest */
+/* 
+Macrostrat's postgrest api is expressed through the macrostrat_api schema.
+Any functions, views or tables in the macrostrat_api schema can be accessed 
+through the postgrest api.
+
+Below are a multitude of views that are made from the  macrostrat data schema. 
+Many are direct copies, however some are more customized data views for the frontend.
+*/
 
 CREATE SCHEMA IF NOT EXISTS macrostrat_api;
 
