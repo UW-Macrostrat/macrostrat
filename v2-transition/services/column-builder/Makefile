@@ -5,4 +5,4 @@ dump-burwell:
 	database/bin/dump-burwell
 
 dump-schema:
-	backend/urvogel/database/bin/dump-schema
+	database/tests/bin/dump-schema
