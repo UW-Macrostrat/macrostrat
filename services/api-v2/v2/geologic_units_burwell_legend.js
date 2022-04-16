@@ -69,7 +69,7 @@ module.exports = function(req, res, next, cb) {
       // scale
       function(callback) {
         if (req.query.scale) {
-          where.push('m.scale = ANY($' + (where.length + 1) + ')')
+          where.push('scale = ANY($' + (where.length + 1) + ')')
           params.push(larkin.parseMultipleStrings(req.query.scale))
         }
 
@@ -191,7 +191,7 @@ module.exports = function(req, res, next, cb) {
 //      var scaleSQL = buildSQL(req, where, limit);
 
 //      var toRun = "SELECT * FROM ( " + scaleSQL + ") doit";
-//  console.log(sql,params_combined);
+  console.log(sql,params_combined);
 
       larkin.queryPg("burwell", sql, params_combined, function(error, result) {
         if (error) {
