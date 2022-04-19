@@ -10,7 +10,7 @@
   "scripts": {
     "postinstall": "./postinstall.sh",
     "start": "node server.js",
-    "test": "mocha ./v1/test && mocha ./v2/test"
+    "test": "mocha ./v1/test/test.js"
   },
   "keywords": [
     "macrostrat",
