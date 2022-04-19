@@ -1,6 +1,6 @@
 #!/usr/bin/env zsh
 
-## Runs every file in the postgrest-fixtures and then re-updates postgrest schema
+## Runs every file in the api-views and then re-updates postgrest schema
 ## https://postgrest.org/en/stable/schema_cache.html#schema-cache-reloading 
 
 local_db=column_data
@@ -19,7 +19,7 @@ else
   echo "Applying data fixtures!"
 fi
 
-for f in `dirname $0`/../../postgrest-fixtures/*.sql
+for f in `dirname $0`/../../api-views/*.sql
 do
     echo "Running $f"
     psql -p $local_forward -h localhost -d $local_db -U $db_user -f $f
