@@ -7,5 +7,5 @@ dump-burwell:
 dump-schema:
 	database/tests/bin/dump-schema
 
-data-fixtures:
+create-fixtures:
 	database/bin/run-fixtures
