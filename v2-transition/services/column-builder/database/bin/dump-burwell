@@ -73,7 +73,7 @@ for file in `dirname $0`/../db-alterations/*.sql
 do
     `dirname $0`/./run-sql-file -f $file -c $container_name -d $local_db -U $db_user
 done
-for f in `dirname $0`/../fixtures/*.sql
+for f in `dirname $0`/../../api-views/*.sql
 do
   `dirname $0`/./run-sql-file -f $f -c $container_name -d $local_db -U $db_user
 done

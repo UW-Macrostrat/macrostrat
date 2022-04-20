@@ -13,7 +13,7 @@ do
     psql -p $local_forward -h localhost -d $local_db -U $db_user -f $file
 done
 
-for f in `dirname $0`/../fixtures/*.sql
+for f in `dirname $0`/../../api-views/*.sql
 do
     echo "Running $f"
     psql -p $local_forward -h localhost -d $local_db -U $db_user -f $f

@@ -1,4 +1,11 @@
-/* Some views that may be helpful with postgrest */
+/* 
+Macrostrat's postgrest api is expressed through the macrostrat_api schema.
+Any functions, views or tables in the macrostrat_api schema can be accessed 
+through the postgrest api.
+
+Below are a multitude of views that are made from the  macrostrat data schema. 
+Many are direct copies, however some are more customized data views for the frontend.
+*/
 
 CREATE SCHEMA IF NOT EXISTS macrostrat_api;
 
@@ -47,7 +54,7 @@ SELECT * FROM macrostrat.sections;
 CREATE OR REPLACE VIEW macrostrat_api.strat_names AS
 SELECT * FROM macrostrat.strat_names;
 
-CREATE OR REPLACE VIEW macrostrat_api.strat_names_view AS
+CREATE OR REPLACE VIEW macrostrat_api.strat_names_ref AS
 SELECT 
 s.id, 
 s.strat_name, 
@@ -60,7 +67,7 @@ ON r.id = s.ref_id
 LEFT JOIN macrostrat.strat_names_meta sm
 ON sm.concept_id = s.concept_id; 
 
-CREATE OR REPLACE VIEW macrostrat_api.col_group_view AS
+CREATE OR REPLACE VIEW macrostrat_api.col_group_with_cols AS
 SELECT cg.id,
 cg.col_group,
 cg.col_group_long,
@@ -115,7 +122,7 @@ JOIN macrostrat.liths l
 ON ul.lith_id = l.id;
 
 /*LO is top and FO is bottom*/
-CREATE OR REPLACE VIEW macrostrat_api.units_view AS
+CREATE OR REPLACE VIEW macrostrat_api.unit_strat_name_expanded AS
 SELECT u.id,
 u.strat_name AS unit_strat_name,
 to_jsonb(s.*) as strat_name,
@@ -150,7 +157,7 @@ ON u.fo = fo.id
 LEFT JOIN macrostrat.intervals lo
 ON u.lo = lo.id;
 
-CREATE OR REPLACE VIEW macrostrat_api.col_form AS
+CREATE OR REPLACE VIEW macrostrat_api.col_ref_expanded AS
 SELECT 
 c.id col_id, 
 c.col_name, 
