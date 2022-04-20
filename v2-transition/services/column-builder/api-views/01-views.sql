@@ -54,7 +54,7 @@ SELECT * FROM macrostrat.sections;
 CREATE OR REPLACE VIEW macrostrat_api.strat_names AS
 SELECT * FROM macrostrat.strat_names;
 
-CREATE OR REPLACE VIEW macrostrat_api.strat_names_view AS
+CREATE OR REPLACE VIEW macrostrat_api.strat_names_ref AS
 SELECT 
 s.id, 
 s.strat_name, 
@@ -67,7 +67,7 @@ ON r.id = s.ref_id
 LEFT JOIN macrostrat.strat_names_meta sm
 ON sm.concept_id = s.concept_id; 
 
-CREATE OR REPLACE VIEW macrostrat_api.col_group_view AS
+CREATE OR REPLACE VIEW macrostrat_api.col_group_with_cols AS
 SELECT cg.id,
 cg.col_group,
 cg.col_group_long,
@@ -122,7 +122,7 @@ JOIN macrostrat.liths l
 ON ul.lith_id = l.id;
 
 /*LO is top and FO is bottom*/
-CREATE OR REPLACE VIEW macrostrat_api.units_view AS
+CREATE OR REPLACE VIEW macrostrat_api.unit_strat_name_expanded AS
 SELECT u.id,
 u.strat_name AS unit_strat_name,
 to_jsonb(s.*) as strat_name,
@@ -157,7 +157,7 @@ ON u.fo = fo.id
 LEFT JOIN macrostrat.intervals lo
 ON u.lo = lo.id;
 
-CREATE OR REPLACE VIEW macrostrat_api.col_form AS
+CREATE OR REPLACE VIEW macrostrat_api.col_ref_expanded AS
 SELECT 
 c.id col_id, 
 c.col_name, 
