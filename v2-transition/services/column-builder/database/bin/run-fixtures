@@ -5,7 +5,7 @@
 
 local_db=column_data
 db_user=postgres
-local_forward=5434
+local_forward=54321
 postgres_service=postgrest
 
 # check if docker is running first. 
