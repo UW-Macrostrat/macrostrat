@@ -17,5 +17,5 @@ CREATE TABLE macrostrat.unit_boundaries (
   boundary_status boundary_status NOT NULL DEFAULT 'modeled',
   paleo_lat decimal(8,5),
   paleo_lng decimal(8,5),
-  ref_id integer NOT NULL DEFAULT 217,
+  ref_id integer NOT NULL DEFAULT 217
 );
