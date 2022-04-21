@@ -2,7 +2,7 @@
 
 ## schlep missing tables from mariaDB to postgres
 ## we use strat-cli to run the docker cli container
-tables=(projects sections units cols)
+tables=(projects sections units cols unit_boundaries)
 
 for table in ${tables[@]}; do
     strat cli schlep $table
