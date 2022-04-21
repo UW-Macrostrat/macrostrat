@@ -26,6 +26,7 @@ class Schlep(Base):
         lookup_strat_names
         unit_strat_names
         units_sections
+        unit_boundaries
         strat_names
         strat_tree
         unit_liths
