@@ -12,7 +12,7 @@ CREATE TABLE macrostrat.unit_boundaries (
   unit_id integer NOT NULL,
   unit_id_2 integer NOT NULL,
   section_id integer NOT NULL,
-  boundary_position decimal(6,2) unsigned DEFAULT NULL,
+  boundary_position decimal(6,2) DEFAULT NULL,
   boundary_type boundary_type NOT NULL DEFAULT '',
   boundary_status boundary_status NOT NULL DEFAULT 'modeled',
   paleo_lat decimal(8,5),
