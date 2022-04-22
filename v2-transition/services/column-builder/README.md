@@ -21,7 +21,13 @@ There are two main things needed to get started developing this application:
 
 This application leverages docker containers and docker-compose. To install docker go [here](https://www.docker.com/get-started). Once docker is installed, run `docker-compose up` to bring up the application, it may take some time the on initialization as it will need to pull images for postgres14, postgrest, and node. **NOTE** postgrest may fail and the frontend won't show anything because there is no database!
 
-The frontend application is currently NOT possible to access through docker, but will be soon.
+The frontend application is available through the `dacite` container in docker-compose. It is configured to reflect live code updates through local mounted volumes. However, you can also easily run the frontend outside of docker while running the database and postgrest API in docker. This functionality is encapsulated in environment variables, docker profiles, and a Makefile.
+
+### Env variables, docker profiles, and make commands
+
+To view the necesary env variables needed to run the application see the `env.example` in both the root project directory as well as the `dacite` directory. Many of these are set to defaults, however the ones for passwords and s3 buckets are obviously not real! If you copy and paste the others the application should work as designed.
+
+This application uses docker profiles to enable quick local development of the frontend, `dacite`, outside of docker. By default `docker-compose up` will run every container except the s3 backup service. This is accomplished similary with `make start`. To run just the backend services in docker and the frontend locally, you can use the `make local_dev` command **OR** change the `COMPOSE_PROFILES` in the `.env` to only `dev`. It is reccommended to use `make local_dev` so you can leave the default variables in place.
 
 ### Frontend
 
@@ -53,3 +59,7 @@ In `/database/bin` you will find a script called `dump-burwell` that is designed
 ```
 docker-compose exec -T db pg_restore -v -U postgres -d column_data > $$dump_file$$
 ```
+
+### Remote Database (beta)
+
+The `postgrest` container takes the `PGRST_DB_URI` env variable to configure a database connection. If you didn't want to have a local postgres instance, you could configure this variable to reference the database on Gunnison. This may change in the future if an authentication system is enabled, we will have to pass a specific restricted user to this URI.
