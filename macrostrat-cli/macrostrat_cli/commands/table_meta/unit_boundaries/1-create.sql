@@ -1,8 +1,8 @@
-DROP TYPE IF EXISTS boundary_type CASCADE;
-CREATE TYPE boundary_type AS ENUM('','unconformity','conformity','fault','disconformity','non-conformity','angular unconformity');
+DROP TYPE IF EXISTS macrostrat.boundary_type CASCADE;
+CREATE TYPE macrostrat.boundary_type AS ENUM('','unconformity','conformity','fault','disconformity','non-conformity','angular unconformity');
 
-DROP TYPE IF EXISTS boundary_status CASCADE;
-CREATE TYPE boundary_status AS ENUM('','modeled','relative','absolute','spike');
+DROP TYPE IF EXISTS macrostrat.boundary_status CASCADE;
+CREATE TYPE macrostrat.boundary_status AS ENUM('','modeled','relative','absolute','spike');
 
 CREATE TABLE macrostrat.unit_boundaries (
   id serial PRIMARY KEY,
@@ -13,8 +13,8 @@ CREATE TABLE macrostrat.unit_boundaries (
   unit_id_2 integer NOT NULL,
   section_id integer NOT NULL,
   boundary_position decimal(6,2) DEFAULT NULL,
-  boundary_type boundary_type NOT NULL DEFAULT '',
-  boundary_status boundary_status NOT NULL DEFAULT 'modeled',
+  boundary_type macrostrat.boundary_type NOT NULL DEFAULT '',
+  boundary_status macrostrat.boundary_status NOT NULL DEFAULT 'modeled',
   paleo_lat decimal(8,5),
   paleo_lng decimal(8,5),
   ref_id integer NOT NULL DEFAULT 217
