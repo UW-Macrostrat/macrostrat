@@ -1,3 +1,12 @@
+start:
+	docker-compose --profile dev --profile frontend_dev up -d
+
+local_dev:
+	docker-compose --profile dev up -d && cd dacite && npm run dev
+
+down:
+	docker-compose down
+
 test:
 	database/tests/bin/run-tests
 
