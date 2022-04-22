@@ -5,7 +5,6 @@
 
 local_db=column_data
 db_user=postgres
-local_forward=54321
 postgres_service=postgrest
 
 # check if docker is running first. 
@@ -22,7 +21,7 @@ fi
 for f in `dirname $0`/../../api-views/*.sql
 do
     echo "Running $f"
-    psql -p $local_forward -h localhost -d $local_db -U $db_user -f $f
+    cat $f | docker-compose exec -T db psql -U $db_user $local_db
 done
 
 echo "Reloading Postgrest schema cache"
