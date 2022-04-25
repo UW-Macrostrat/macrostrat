@@ -28,3 +28,6 @@ echo "Dumping Macrostrat lines schema from steno"
 copy_data --schema=lines
 
 kill $PID
+
+# Upgrade the database to conform to the latest schemas
+strat upgrade-db
