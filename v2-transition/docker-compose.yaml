@@ -1,7 +1,7 @@
 version: "3"
 services:
   gateway:
-    image: jonasal/nginx-certbot:latest
+    image: jonasal/nginx-certbot:3
     ports:
       - "80:80"
       - "443:443"
@@ -9,6 +9,7 @@ services:
       - CERTBOT_EMAIL
     volumes:
       - ./system/nginx-config:/etc/nginx/user_conf.d:ro
+      - nginx_secrets:/etc/letsencrypt
   homepage:
     # A markdown server for the homepage
     image: dannyben/madness
@@ -65,6 +66,12 @@ services:
         --port 8000
         --proxy-headers
         macrostrat_tileserver.main:app
+  rockd_api:
+    build: services/rockd-api/api
+    expose: [5500]
+    volumes:
+      - /var/data/rockd:/var/data/rockd
 volumes:
   mariadb_data:
   postgres_data:
+  nginx_secrets:
