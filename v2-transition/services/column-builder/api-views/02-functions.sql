@@ -1,10 +1,10 @@
 /* 
-    creates the view for a col and sections, needs to be run as a function
-    because it can be slow if we store it as a view. 
-    
-    It looks complicated but it removes complexity from the client side application i.e we are running 
-    more logic on the server and using postgres, which is more optimized to handle 
-    joins like this.
+    Creates the view for a col and sections, Not scaleable as a view, but runs quickly 
+    for each column.
+
+    Returns the top interval and bottom interval of each section in the column.
+    Top interval is defined as unit.lo where unit.position_bottom is smallest.
+    Likewise bottom interval is unit.fo where unit.position_bottom is greatest! 
  */
 DROP FUNCTION macrostrat_api.get_col_section_data(int);
 CREATE OR REPLACE FUNCTION macrostrat_api.get_col_section_data(column_id INT) 
