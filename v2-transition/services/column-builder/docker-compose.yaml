@@ -6,12 +6,11 @@ services:
       - dev
     image: postgrest/postgrest
     ports:
-      - "3001:3001"
+      - "3001:3000"
     environment:
       PGRST_DB_URI: ${PGRST_DB_URI}
       PGRST_DB_SCHEMA: macrostrat_api
       PGRST_DB_ANON_ROLE: ${PGUSER}
-      PGRST_OPENAPI_SERVER_PROXY_URI: http://127.0.0.1:3001
     depends_on:
       - db
   db:
@@ -22,7 +21,6 @@ services:
     environment:
       - PGUSER
       - POSTGRES_DB
-      # This allows connections without a password, which is expedient but insecure...
       - POSTGRES_HOST_AUTH_METHOD=trust
     ports:
       - ${PG_PORT}:5432
