@@ -6,7 +6,7 @@ services:
       - dev
     image: postgrest/postgrest
     ports:
-      - "3001:3000"
+      - "3001:3001"
     environment:
       PGRST_DB_URI: ${PGRST_DB_URI}
       PGRST_DB_SCHEMA: macrostrat_api
