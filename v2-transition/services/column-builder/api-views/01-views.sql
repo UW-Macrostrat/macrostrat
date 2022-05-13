@@ -163,6 +163,8 @@ c.id col_id,
 c.col_name, 
 c.col col_number,
 c.notes,
+c.lat,
+c.lng,
 json_build_object( 
 'id', r.id, 
 'pub_year', r.pub_year, 
