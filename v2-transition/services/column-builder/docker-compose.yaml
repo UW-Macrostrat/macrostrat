@@ -10,8 +10,7 @@ services:
     environment:
       PGRST_DB_URI: ${PGRST_DB_URI}
       PGRST_DB_SCHEMA: macrostrat_api
-      PGRST_DB_ANON_ROLE: ${PGUSER} 
-      PGRST_OPENAPI_SERVER_PROXY_URI: http://127.0.0.1:3001
+      PGRST_DB_ANON_ROLE: ${PGUSER}
     depends_on:
       - db
   db:
@@ -22,7 +21,6 @@ services:
     environment:
       - PGUSER
       - POSTGRES_DB
-      # This allows connections without a password, which is expedient but insecure...
       - POSTGRES_HOST_AUTH_METHOD=trust
     ports:
       - ${PG_PORT}:5432
@@ -40,19 +38,28 @@ services:
     volumes:
       - ./dacite:/app/dacite
       - /app/dacite/node_modules
-  db_backup:
+  dacite_prod:
+    image: dacite:latest
     profiles:
       - production
-    image: ghcr.io/uw-macrostrat/pg-backup-service:latest
     environment:
-      - DB_NAME=column_data
-      - DB_BACKUP_PREFIX=column_data
-      - PGHOST=database
-      - S3_ENDPOINT
-      - SCHEDULE=@weekly
-      - DB_BACKUP_MAX_N=5
-      - S3_ACCESS_KEY
-      - S3_SECRET_KEY
-      - S3_BACKUP_BUCKET
+      - NEXT_PUBLIC_SERVER_URL=${NEXT_PUBLIC_SERVER_URL}
+      - NEXT_PUBLIC_CLIENT_URL=${NEXT_PUBLIC_CLIENT_URL}
+    ports:
+      - 1234:1234
+  # db_backup:
+  #   profiles:
+  #     - production
+  #   image: ghcr.io/uw-macrostrat/pg-backup-service:latest
+  #   environment:
+  #     - DB_NAME=column_data
+  #     - DB_BACKUP_PREFIX=column_data
+  #     - PGHOST=database
+  #     - S3_ENDPOINT
+  #     - SCHEDULE=@weekly
+  #     - DB_BACKUP_MAX_N=5
+  #     - S3_ACCESS_KEY
+  #     - S3_SECRET_KEY
+  #     - S3_BACKUP_BUCKET
 volumes:
   db_cluster:
