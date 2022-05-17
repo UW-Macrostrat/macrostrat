@@ -117,3 +117,12 @@ const nextConfig = {
 
 module.exports = nextConfig;
 ```
+
+# 05.17.2022
+
+Major frontend updates:
+
+- "all column" view showing every unit in column with section dividers.
+- dragging can rearrange units and even move them between sections
+- add unit above, below, and edit current unit functionality added to table.
+- All functionality is wrapped in reducers with actions, none has database persistence yet.
