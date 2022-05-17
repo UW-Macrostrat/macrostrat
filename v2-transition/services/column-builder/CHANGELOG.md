@@ -61,3 +61,68 @@ A new script available through `make create-fixtures` allows for quickly updatin
 The frontend is no longer availble for development in Docker, there is a bug that I believe is related to SSR.
 
 SQL for api-views are front and center now at the root of the application.
+
+# 05.04.22: UI-Components submodule
+
+I have made the @macrostrat/ui-components monorepo a git submodule of this library it use and iterate on some of the new components being created in `packages/form-components` and `packages/data-components`.
+
+Configuring it was not incredibly straightforward. I had to set alias in both `tsconfig,json` and as well as extend the `Webpack` config in the `next.config.js`.
+
+#### tsconfig.json
+
+```json
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "~/*": ["./src/*"],
+      "@macrostrat/ui-components": [
+        "deps/ui-components/packages/ui-components/src/"
+      ],
+      "@macrostrat/form-components": [
+        "deps/ui-components/packages/form-components/src/"
+      ],
+      "@macrostrat/data-components": [
+        "deps/ui-components/packages/data-components/src/"
+      ]
+    }
+  }
+}
+```
+
+#### next.config.js
+
+```js
+/** @type {import('next').NextConfig} */
+const path = require("path");
+
+const packageSrc = (name) =>
+  path.resolve(__dirname, "deps", "ui-components", "packages", name, "src");
+
+const nextConfig = {
+  reactStrictMode: true,
+  webpack: (config, options) => {
+    (config.resolve.alias["~"] = path.resolve(__dirname, "src")),
+      (config.resolve.alias["@macrostrat/form-components"] =
+        packageSrc("form-components"));
+    config.resolve.alias["@macrostrat/data-components"] =
+      packageSrc("data-components");
+    config.resolve.alias["@macrostrat/ui-components"] =
+      packageSrc("ui-components");
+    config.resolve.alias["react"] = path.resolve("./node_modules/react");
+
+    return config;
+  },
+};
+
+module.exports = nextConfig;
+```
+
+# 05.17.2022
+
+Major frontend updates:
+
+- "all column" view showing every unit in column with section dividers.
+- dragging can rearrange units and even move them between sections
+- add unit above, below, and edit current unit functionality added to table.
+- All functionality is wrapped in reducers with actions, none has database persistence yet.

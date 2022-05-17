@@ -67,12 +67,17 @@ ALTER TABLE macrostrat.unit_environs
 	ADD FOREIGN KEY (ref_id) REFERENCES macrostrat.refs(id) ON DELETE CASCADE,
 	ADD FOREIGN KEY (unit_id) REFERENCES macrostrat.units(id) ON DELETE CASCADE;
 
-/* no issues */
+/* some 42k rows deleted */
+DELETE FROM macrostrat.unit_liths
+WHERE unit_id not in (SELECT id from macrostrat.units);
+
 ALTER TABLE macrostrat.unit_liths
 	ADD FOREIGN KEY (lith_id) REFERENCES macrostrat.liths(id) ON DELETE CASCADE,
 	ADD FOREIGN KEY (unit_id) REFERENCES macrostrat.units(id) ON DELETE CASCADE;
 
-/* no issues */
+DELETE FROM macrostrat.unit_lith_atts
+WHERE unit_lith_id not in (SELECT id from macrostrat.unit_liths);
+
 ALTER TABLE macrostrat.unit_lith_atts
 	ADD FOREIGN KEY (unit_lith_id) REFERENCES macrostrat.unit_liths(id) ON DELETE CASCADE,
 	ADD FOREIGN KEY (lith_att_id) REFERENCES macrostrat.lith_atts(id) ON DELETE CASCADE;
