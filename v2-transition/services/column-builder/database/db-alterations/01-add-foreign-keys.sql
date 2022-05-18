@@ -75,6 +75,7 @@ ALTER TABLE macrostrat.unit_liths
 	ADD FOREIGN KEY (lith_id) REFERENCES macrostrat.liths(id) ON DELETE CASCADE,
 	ADD FOREIGN KEY (unit_id) REFERENCES macrostrat.units(id) ON DELETE CASCADE;
 
+/* This deletes alot, and also sometimes hangs forever on the server... */
 DELETE FROM macrostrat.unit_lith_atts
 WHERE unit_lith_id not in (SELECT id from macrostrat.unit_liths);
 
