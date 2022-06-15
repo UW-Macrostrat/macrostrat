@@ -124,3 +124,40 @@ BEGIN
   WHERE id = ANY(section_ids[2:]);
 END
 $$ language plpgsql;
+
+/* 
+sophisticated ways of fetching related strat_names
+Returns only strat_name_records where it's connected to a 
+concept and that concept ref contains the point geom for the 
+column
+*/
+CREATE OR REPLACE FUNCTION macrostrat_api.get_col_strat_names(col_id int)
+RETURNS SETOF macrostrat.strat_names AS
+$$
+BEGIN
+  RETURN QUERY SELECT sn.* FROM macrostrat.strat_names sn 
+  JOIN macrostrat.strat_names_meta snm
+  ON sn.concept_id = snm.concept_id
+  JOIN macrostrat.refs r
+  ON r.id = snm.ref_id
+  WHERE sn.concept_id IS NOT NULL
+  AND ST_Intersects(r.rgeom, (
+  	select ST_SetSrid((coordinate)::geometry, 4326) 
+  	from macrostrat.cols where id = col_id
+  	)
+  );
+END
+$$ language plpgsql;
+
+CREATE OR REPLACE FUNCTION macrostrat_api.get_strat_names_col_priority(_col_id int)
+RETURNS SETOF macrostrat.strat_names AS
+$$
+BEGIN
+  RETURN QUERY
+    SELECT * FROM macrostrat_api.get_col_strat_names(_col_id) 
+    ORDER BY id IN (
+      SELECT DISTINCT(u.strat_name_id) FROM macrostrat.units u
+      WHERE u.col_id = _col_id AND u.strat_name_id is not null
+    ) DESC;
+END
+$$ language plpgsql;
