@@ -110,6 +110,25 @@ ALTER TABLE macrostrat.unit_strat_names
 	ADD FOREIGN KEY (unit_id) REFERENCES macrostrat.units(id) ON DELETE CASCADE,
 	ADD FOREIGN KEY (strat_name_id) REFERENCES macrostrat.strat_names(id) ON DELETE CASCADE;
 
+UPDATE macrostrat.strat_names
+	SET concept_id = NULL
+	WHERE concept_id = 0;
+
+/* BREAKS!!! there is a non-null constraint on ref_id.. but 0 means none so. */
+UPDATE macrostrat.strat_names
+	SET ref_id = NULL
+	WHERE ref_id = 0;
+
+DELETE FROM macrostrat.strat_names sn
+WHERE sn.concept_id NOT IN (SELECT concept_id FROM macrostrat.strat_names_meta);
+
+ALTER TABLE macrostrat.strat_names
+	ADD FOREIGN KEY (concept_id) REFERENCES macrostrat.strat_names_meta(concept_id) ON DELETE CASCADE;
+
+ALTER TABLE macrostrat.strat_names_meta
+	ADD FOREIGN KEY(interval_id) REFERENCES macrostrat.intervals(id) ON DELETE CASCADE,
+	ADD FOREIGN KEY(ref_id) REFERENCES macrostrat.refs(id) ON DELETE CASCADE;
+
 /* 33 rows deleted b/c of non-matching strat_name ids 
 there doesn't seem to be a way to recover the missing strat_names
 */

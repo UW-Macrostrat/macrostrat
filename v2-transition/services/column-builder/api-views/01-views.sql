@@ -133,7 +133,7 @@ ON ul.lith_id = l.id;
 CREATE OR REPLACE VIEW macrostrat_api.unit_strat_name_expanded AS
 SELECT u.id,
 u.strat_name AS unit_strat_name,
-to_jsonb(s.*) as strat_name,
+u.strat_name_id,
 u.color,
 u.outcrop,
 u.fo,
@@ -185,3 +185,6 @@ LEFT JOIN macrostrat.col_refs cr
 ON c.id = cr.col_id
 LEFT JOIN macrostrat.refs r
 ON cr.ref_id = r.id;
+
+CREATE OR REPLACE VIEW macrostrat_api.strat_names_meta AS
+SELECT * FROM macrostrat.strat_names_meta;
