@@ -200,4 +200,18 @@ SET project_id = c.project_id
 FROM macrostrat.cols c 
 WHERE c.col_group_id = cg.id;
 
+
+/* unit_boundaries table, needs a unit_id and ref_id fk
+	lots of 0's in the unit_id row... not sure why
+ */
+
+DELETE FROM macrostrat.unit_boundaries WHERE unit_id = 0 OR unit_id NOT IN (
+	SELECT id FROM macrostrat.units
+);
+
+ALTER TABLE macrostrat.unit_boundaries 
+	ADD FOREIGN KEY(unit_id) REFERENCES macrostrat.units(id) ON DELETE CASCADE,
+	ADD FOREIGN KEY(ref_id) REFERENCES macrostrat.refs(id) ON DELETE CASCADE;
+
 /* Best practices for hierarchal data in postgres??*/
+

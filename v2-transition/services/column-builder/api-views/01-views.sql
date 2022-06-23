@@ -188,3 +188,6 @@ ON cr.ref_id = r.id;
 
 CREATE OR REPLACE VIEW macrostrat_api.strat_names_meta AS
 SELECT * FROM macrostrat.strat_names_meta;
+
+CREATE OR REPLACE VIEW macrostrat_api.unit_boundaries AS
+SELECT * FROM macrostrat.unit_boundaries;
