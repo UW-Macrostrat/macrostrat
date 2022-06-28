@@ -1,5 +1,4 @@
 var mysql = require("mysql"),
-    pg = require("pg"),
     async = require("async"),
     _ = require("underscore"),
     credentials = require("./credentials"),
@@ -8,7 +7,18 @@ var mysql = require("mysql"),
     defs = require("./defs"),
     validator = require("validator"),
     http = require("http"),
-    portscanner = require("portscanner");
+  portscanner = require("portscanner");
+    
+const { Client } = require('pg');
+
+let clientRegistry = {}
+function getPGClient(db) {
+  if (!clientRegistry[db]) {
+    const connectionString = "postgresql://" + credentials.pg.user + (credentials.pg.password.length ? ':' + credentials.pg.password : '') + "@" + credentials.pg.host + ":" + credentials.pg.port + "/" + db;
+    clientRegistry[db] = new Client({ connectionString });
+  }
+  return clientRegistry[db];
+}
 
 (function() {
   var larkin = {};
@@ -26,25 +36,22 @@ var mysql = require("mysql"),
   };
 
 
-  larkin.queryPg = function(db, sql, params, callback) {
-    pg.connect("postgres://" + credentials.pg.user +  (credentials.pg.password.length ? ':' + credentials.pg.password : '') + "@" + credentials.pg.host + ":" + credentials.pg.port + "/" + db, function(err, client, done) {
-      if (err) {
-        this.log("error", "error connecting - " + err);
-        callback(err);
-      } else {
-        var query = client.query(sql, params, function(err, result) {
-          done();
-          if (err) {
-            this.log("error", err);
-            callback(err);
-          } else {
-            callback(null, result);
-          }
+  larkin.queryPg = function (db, sql, params, callback) {
+    /* We've reworked this connection flow substantially for modern Postgres bindings */
+    const client = getPGClient(db);
 
-        }.bind(this));
-        //console.log(query.text, query.values);
+    try {
+      client.connect()
+    } catch (error) {
+      console.error('error connecting to postgres', err)
+      return callback(error)
+    }
+    client.query(sql, params, (err, result) => {
+      if (err) {
+        return callback(err);
       }
-    }.bind(this));
+      callback(null, result);
+    });
   };
 
   larkin.toUnnamed = function(sql, params) {
