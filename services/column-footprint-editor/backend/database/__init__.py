@@ -23,7 +23,7 @@ project_info_insert = procedures / "project-meta-insert.sql"
 project_table = fixtures / "projects_table.sql"
 
 
-prod_url = "postgresql://postgres@db/geologic_map"
+prod_url = "postgresql://postgres:@db:5432/geologic_map"
 class Database:
     """ 
     Database class with built in SQL Formatter

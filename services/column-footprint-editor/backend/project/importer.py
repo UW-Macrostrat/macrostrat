@@ -25,13 +25,7 @@ class ProjectImporter:
 
     def get_project_json(self):
         project_id = self.project.id
-        url = f'https://macrostrat.org/api/v2/columns?project_id={project_id}&format=geojson_bare'
-        res = requests.get(url)
-        data = res.json()
-        if len(data['features']) > 0:
-            return data
-        
-        url = f'https://macrostrat.org/api/v2/columns?project_id={project_id}&format=geojson_bare&status_code=in%20process'
+        url = f'http://postgrest:3000/cols?project_id=eq.{project_id}'
         res = requests.get(url)
         data = res.json()
 
@@ -39,14 +33,13 @@ class ProjectImporter:
 
     def columns_import(self):
         data = self.get_project_json()
-        features = data['features']
+        features = data
         
         for feature in features:
-            loc = json.dumps(feature['geometry'])
-            properties = feature['properties']
-            params = {"project_id": properties['project_id'],
-            "col_name": properties["col_name"], "col_group_id": properties['col_group_id'],
-            "col_id": properties['col_id'],
+            loc = json.dumps(feature['poly_geom'])
+            params = {"project_id": feature['project_id'],
+            "col_name": feature["col_name"], "col_group_id": feature['col_group_id'],
+            "col_id": feature['id'],
             "location": loc}
             params['columns'] = 'columns'
 
