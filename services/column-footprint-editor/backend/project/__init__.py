@@ -25,7 +25,7 @@ class Project:
         if self.id is not None:
             q = queries / "does-project-exist.sql"
             data = self.db.exec_query(q, params={"project_id": self.id}).to_dict(orient="records")
-            return data[0]['exists']        
+            return data[0]['exists']  
         else:
             return False
 
