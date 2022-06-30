@@ -20,24 +20,23 @@ services:
       - dev
     environment:
       - PGUSER
-      - POSTGRES_DB
       - POSTGRES_HOST_AUTH_METHOD=trust
     ports:
       - ${PG_PORT}:5432
     volumes:
       - db_cluster:/var/lib/postgresql/data
-  dacite:
-    build: ./dacite
-    profiles:
-      - frontend_dev
-    environment:
-      - NEXT_PUBLIC_SERVER_URL=${NEXT_PUBLIC_SERVER_URL}
-      - NEXT_PUBLIC_CLIENT_URL=${NEXT_PUBLIC_CLIENT_URL}
-    ports:
-      - 1234:1234
-    volumes:
-      - ./dacite:/app/dacite
-      - /app/dacite/node_modules
+  # dacite:
+  #   build: ./dacite
+  #   profiles:
+  #     - frontend_dev
+  #   environment:
+  #     - NEXT_PUBLIC_SERVER_URL=${NEXT_PUBLIC_SERVER_URL}
+  #     - NEXT_PUBLIC_CLIENT_URL=${NEXT_PUBLIC_CLIENT_URL}
+  #   ports:
+  #     - 1234:1234
+  #   volumes:
+  #     - ./dacite:/app/dacite
+  #     - /app/dacite/node_modules
   dacite_prod:
     image: dacite:latest
     profiles:
@@ -47,6 +46,19 @@ services:
       - NEXT_PUBLIC_CLIENT_URL=${NEXT_PUBLIC_CLIENT_URL}
     ports:
       - 1234:1234
+  birdseye:
+    build: ./BirdsEye/frontend
+    ports:
+      - "1235:3000"
+  geologic_map_server:
+    build: ./BirdsEye/backend
+    environment:
+      - GEOLOGIC_MAP_CONFIG=/app/docker-assets/docker-map-config.json
+    entrypoint: "/python_app/docker-scripts/run"
+    ports:
+      - "40053:8000"
+    depends_on:
+      - db
   # db_backup:
   #   profiles:
   #     - production
