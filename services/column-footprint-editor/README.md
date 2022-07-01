@@ -1,5 +1,7 @@
 # Topology Editing
 
+## NOTE: This now depends upon a microservice in [this](https://github.com/UW-Macrostrat/column-builder/tree/develop) repository. It will no longer run independently.
+
 ### Introduction:
 
 Column-Topology is an application that is aimed at editing GeoJSON polygons **_while_** keeping topology. This application is being developed under the [UW-Macrostrat](https://macrostrat.org/) lab group.
