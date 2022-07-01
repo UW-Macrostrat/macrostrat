@@ -17,6 +17,12 @@ There are two main things needed to get started developing this application:
 1.  Docker must be installed
 2.  A db dump or a connection to the gunnison server, with a local forward of the db.
 
+This repository depends upon two submodules, `Web-Components` and `BirdsEye`. Upon cloning this repo, you will need to recursively initialize git submodules.
+
+```
+git submodule update --init --recursive
+```
+
 ### Docker
 
 This application leverages docker containers and docker-compose. To install docker go [here](https://www.docker.com/get-started). Once docker is installed, run `docker-compose up` to bring up the application, it may take some time the on initialization as it will need to pull images for postgres14, postgrest, and node. **NOTE** postgrest may fail and the frontend won't show anything because there is no database!
