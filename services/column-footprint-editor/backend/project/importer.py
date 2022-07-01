@@ -41,9 +41,13 @@ class ProjectImporter:
             "col_name": feature["col_name"], "col_group_id": feature['col_group_id'],
             "col_id": feature['id'],
             "location": loc}
+            params['point'] = json.dumps(feature['coordinate'])
             params['columns'] = 'columns'
 
-            self.db.insert_project_data(params)
+            if json.loads(params['location']) is None:
+                self.db.insert_project_data(params, no_location=True)
+            else:
+                self.db.insert_project_data(params)
 
     def import_column_topology(self):
         """ 

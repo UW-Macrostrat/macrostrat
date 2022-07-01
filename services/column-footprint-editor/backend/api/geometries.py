@@ -106,6 +106,40 @@ class Lines(HTTPEndpoint):
         except:
             return JSONResponse({"status": "error", "message": "different data structured expected"})
 
+class Points(HTTPEndpoint):
+    async def get(self, request):
+        project_id = request.path_params['project_id']
+        project = Project(project_id)
+        db = Database(project)
+
+        q = queries / "get-points.sql"
+        sql = open(q).read()
+
+        df = db.exec_query(sql)
+        cols = df.to_dict(orient="records")
+        cols = json.loads(simplejson.dumps(cols, ignore_nan=True))
+
+        json_ = []
+        for i in cols:
+            if i['point'] is None:
+                continue
+            obj = {}
+            obj['geometry'] = json.loads(i['point'])
+            i.pop('point')
+            obj['properties'] = i
+            json_.append(obj)
+
+        return JSONResponse({"type": "FeatureCollection", "features": json_})
+
+    async def put(self, request):
+        """ possible actions:
+            1. Update Point
+            2. Delete Point
+            3. Create Point
+
+        This will have to change point geometries in column table and in the data.polygon table
+        """
+        return JSONResponse({"Success": "Work in progress", "Come back": "Soon"})
 
 def is_json(myjson):
   try:
@@ -162,7 +196,7 @@ async def get_csv(request):
     project = Project(project_id)
 
     sql = '''SELECT ST_AsGeoJSON(c.geometry) polygon, 
-             ST_AsGeoJSON(ST_Centroid(p.geometry)) point,
+             ST_AsGeoJSON(c.point) point,
              c.id, 
              c.project_id, 
              c.col_id, 
@@ -170,10 +204,7 @@ async def get_csv(request):
              c.col_group_id, 
              c.col_group, 
              c.col_group_name 
-            from ${project_schema}.column_map_face c 
-            LEFT JOIN ${data_schema}.polygon p
-            ON p.col_id = c.id
-            ; '''
+            from ${project_schema}.column_map_face c; '''
     df = project.db.exec_query(sql)
     csv = df.to_csv()
 

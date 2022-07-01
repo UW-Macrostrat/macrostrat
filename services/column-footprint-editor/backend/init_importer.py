@@ -13,7 +13,7 @@ def is_json(myjson):
   return True
 
 if __name__ == "__main__":
-    ids = [1,10]
+    ids = [1,10,5,12,6,7,11]
     for i in ids:
         project = Project(i)
         project.remove_project()

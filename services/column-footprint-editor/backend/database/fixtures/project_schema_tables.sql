@@ -15,5 +15,6 @@ CREATE TABLE IF NOT EXISTS ${project_schema}.columns(
     col_id integer,
     col_name text,
     description text,
+    point geometry,
     location geometry 
 );

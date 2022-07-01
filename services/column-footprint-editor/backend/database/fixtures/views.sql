@@ -12,7 +12,8 @@ SELECT c.id,
 	   cg.col_group,
 	   cg.col_group_id,
 	   cg.col_group_name, 
-	   cg.color, 
+	   cg.color,
+	   c.point, 
 	   mtm.geometry 
 FROM ${topo_schema}.map_face mtm
 LEFT JOIN ${data_schema}.polygon mdp

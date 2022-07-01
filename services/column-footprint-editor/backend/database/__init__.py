@@ -14,6 +14,7 @@ procedures = here / "procedures"
 ################# SQL files #############################
 clear_project_data_sql = procedures / "clear_project_data.sql"
 project_insert_sql = procedures / "project_insert.sql"
+project_insert_no_location = procedures / "project_insert_no_loc.sql"
 create_view_sql = fixtures / "views.sql"
 create_core_table = fixtures / "project_schema_tables.sql"
 on_project_insert_sql = procedures / "on_project_insert.sql"
@@ -78,8 +79,11 @@ class Database:
     def clear_project_data(self):
         self.run_sql_file(clear_project_data_sql)
     
-    def insert_project_data(self, params={}):
-        self.run_sql_file(project_insert_sql, params=params)
+    def insert_project_data(self, params={}, no_location = False):
+        if no_location:
+            self.run_sql_file(project_insert_no_location, params=params)
+        else:
+            self.run_sql_file(project_insert_sql, params=params)
     
     def insert_project_info(self, params={}):
         self.run_sql_file(project_info_insert, params=params)
