@@ -48,10 +48,15 @@ services:
       - 1234:1234
   birdseye:
     build: ./BirdsEye/frontend
+    profiles:
+      - production
     ports:
       - "1235:3000"
   geologic_map_server:
     build: ./BirdsEye/backend
+    profiles:
+      - production
+      - dev
     environment:
       - GEOLOGIC_MAP_CONFIG=/app/docker-assets/docker-map-config.json
     entrypoint: "/python_app/docker-scripts/run"
