@@ -64,6 +64,7 @@ services:
       uvicorn
         --host 0.0.0.0
         --port 8000
+        --log-level debug
         --proxy-headers
         macrostrat_tileserver.main:app
   rockd_api:
@@ -71,6 +72,26 @@ services:
     expose: [5500]
     volumes:
       - /var/data/rockd:/var/data/rockd
+  dacite:
+    image: dacite:latest
+    environment:
+      - NEXT_PUBLIC_SERVER_URL=${NEXT_PUBLIC_SERVER_URL}
+      - NEXT_PUBLIC_CLIENT_URL=${NEXT_PUBLIC_CLIENT_URL}
+    ports:
+      - 1234:1234
+    depends_on:
+      - postgrest
+  postgrest:
+    image: postgrest/postgrest
+    ports: 
+      - "3001:3000"
+    environment:
+      PGRST_DB_URI: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/column_data
+      PGRST_DB_SCHEMA: macrostrat_api
+      PGRST_DB_ANON_ROLE: postgres
+      PGRST_SERVER_PORT: 3001
+    depends_on:
+      - postgres
 volumes:
   mariadb_data:
   postgres_data:

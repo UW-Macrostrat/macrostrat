@@ -10,3 +10,6 @@
 [submodule "services/tileserver"]
 	path = services/tileserver
 	url = https://github.com/UW-Macrostrat/tileserver.git
+[submodule "services/column-infrastructure"]
+	path = services/column-infrastructure
+	url = https://github.com/UW-Macrostrat/column-infrastructure.git
