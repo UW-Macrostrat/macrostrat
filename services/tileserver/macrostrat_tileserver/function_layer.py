@@ -42,21 +42,17 @@ class StoredFunction(Function):
             sql_query = clauses.Select(
                 Func(
                     self.function_name,
-                    ":xmin",
-                    ":ymin",
-                    ":xmax",
-                    ":ymax",
-                    ":epsg",
+                    ":x",
+                    ":y",
+                    ":z",
                     ":query_params::text::json",
                 ),
             )
             q, p = render(
                 str(sql_query),
-                xmin=bbox.left,
-                ymin=bbox.bottom,
-                xmax=bbox.right,
-                ymax=bbox.top,
-                epsg=tms.crs.to_epsg(),
+                x=tile.x,
+                y=tile.y,
+                z=tile.z,
                 query_params=json.dumps(kwargs),
             )
 

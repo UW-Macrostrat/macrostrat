@@ -2,12 +2,9 @@ CREATE SCHEMA IF NOT EXISTS tile_layers;
 
 CREATE OR REPLACE FUNCTION tile_layers.carto(
   -- bounding box
-  _xmin float,
-  _ymin float,
-  _xmax float,
-  _ymax float,
-  -- EPSG (SRID) of the bounding box coordinates
-  epsg integer,
+  x integer,
+  y integer,
+  z integer,
   -- additional parameters
   query_params json
 )
@@ -15,44 +12,40 @@ RETURNS bytea
 AS $$
 DECLARE
 srid integer;
+features record;
 mercator_bbox geometry;
 projected_bbox geometry;
 bedrock bytea;
 BEGIN
 
-mercator_bbox := ST_MakeEnvelope(
-  _xmin,
-  _ymin,
-  _xmax,
-  _ymax,
-  -- If EPSG is null we set it to 0
-  epsg
-);
+mercator_bbox := tile_utils.envelope(x, y, z);
 
 projected_bbox := ST_Transform(
   mercator_bbox,
   4326
 );
 
+
+WITH a AS (
+SELECT
+  map_id,
+  source_id,
+  ST_Simplify(
+    ST_AsMVTGeom(
+      ST_Transform(geom, 3857),
+      mercator_bbox,
+      4096
+    ),
+    1
+  ) geom
+FROM
+  carto_new.tiny
+WHERE
+  ST_Intersects(geom, projected_bbox)
+)
 SELECT
   ST_AsMVT(a) INTO bedrock
-FROM
-  (
-    SELECT
-      map_id,
-      source_id,
-      ST_Simplify(
-        ST_AsMVTGeom(
-          ST_Transform(geom, 3857),
-          mercator_bbox,
-          4096
-        ), 1
-      ) geom
-    FROM
-      carto_new.tiny
-    WHERE
-      ST_Intersects(geom, projected_bbox)
-  ) a;
+FROM a;
 
 RETURN bedrock;
 END;
