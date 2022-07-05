@@ -70,21 +70,25 @@ ELSE
   mapsize := 'large';
 END IF;
 
-WITH a AS (
+WITH mvt_features AS (
   SELECT
     map_id,
     source_id,
-    ST_Simplify(
-      ST_AsMVTGeom(
-        ST_Transform(geom, 3857),
-        mercator_bbox,
-        4096
-      ),
-      1
+    ST_AsMVTGeom(
+      ST_Transform(geom, 3857),
+      mercator_bbox,
+      4096
     ) geom
   FROM
     tile_layers.carto_data
   WHERE scale = mapsize AND ST_Intersects(geom, projected_bbox)
+), a AS (
+  SELECT
+    map_id,
+    source_id,
+    ST_Simplify(geom, 2) geom
+  FROM mvt_features
+  WHERE ST_Area(geom) > 2
 )
 SELECT
   ST_AsMVT(a) INTO bedrock
