@@ -39,12 +39,12 @@ mvt_tiler = VectorTilerFactory(
     with_viewer=True,
 )
 
-carto_layer = StoredFunction(
-    type="StoredFunction", sql="", id="carto-slim", function_name="tile_layers.carto_slim"
-)
 
-app.state.function_catalog.register(carto_layer)
-
+for layer in ["carto-slim", "carto"]:
+    lyr = StoredFunction(
+        type="StoredFunction", sql="", id=layer, function_name="tile_layers." + layer.replace("-", "_")
+    ) 
+    app.state.function_catalog.register(lyr)
 
 app.include_router(mvt_tiler.router, tags=["Tiles"])
 

@@ -251,3 +251,145 @@ RETURN bedrock || lines;
 
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
+
+
+--- CARTO
+CREATE OR REPLACE FUNCTION tile_layers.carto(
+  -- bounding box
+  x integer,
+  y integer,
+  z integer,
+  -- additional parameters
+  query_params json
+)
+RETURNS bytea
+AS $$
+DECLARE
+srid integer;
+features record;
+mapsize text;
+linesize text[];
+mercator_bbox geometry;
+projected_bbox geometry;
+bedrock bytea;
+lines bytea;
+BEGIN
+
+mercator_bbox := tile_utils.envelope(x, y, z);
+
+projected_bbox := ST_Transform(
+  mercator_bbox,
+  4326
+);
+
+IF z < 3 THEN
+  -- Select from carto.tiny table
+  mapsize := 'tiny';
+  linesize := ARRAY['tiny'];
+ELSIF z < 6 THEN
+  mapsize := 'small';
+  linesize := ARRAY['tiny', 'small'];
+ELSIF z < 9 THEN
+  mapsize := 'medium';
+  linesize := ARRAY['small', 'medium'];
+ELSE
+  mapsize := 'large';
+  linesize := ARRAY['medium', 'large'];
+END IF;
+
+-- Units
+WITH mvt_features AS (
+  SELECT
+    map_id,
+    source_id,
+    ST_AsMVTGeom(
+      ST_Transform(geom, 3857),
+      mercator_bbox,
+      4096
+    ) geom
+  FROM
+    tile_layers.carto_units
+  WHERE scale = mapsize AND ST_Intersects(geom, projected_bbox)
+), expanded AS (
+  SELECT
+    z.map_id,
+    z.source_id,
+    l.legend_id,
+    l.best_age_top :: numeric AS best_age_top,
+    l.best_age_bottom :: numeric AS best_age_bottom,
+    COALESCE(l.color, '#777777') AS color,
+    COALESCE(l.name, '') AS name,
+    COALESCE(l.age, '') AS age,
+    COALESCE(l.lith, '') AS lith,
+    COALESCE(l.descrip, '') AS descrip,
+    COALESCE(l.comments, '') AS comments,
+    l.t_interval AS t_int_id,
+    COALESCE(ta.interval_name, '') AS t_int,
+    l.b_interval AS b_int_id,
+    tb.interval_name AS b_int,
+    COALESCE(sources.url, '') AS ref_url,
+    COALESCE(sources.name, '') AS ref_name,
+    COALESCE(sources.ref_title, '') AS ref_title,
+    COALESCE(sources.authors, '') AS ref_authors,
+    COALESCE(sources.ref_source, '') AS ref_source,
+    COALESCE(sources.ref_year, '') AS ref_year,
+    COALESCE(sources.isbn_doi, '') AS ref_isbn,
+    ST_Simplify(z.geom, 2) AS geom
+  FROM
+    mvt_features z
+    LEFT JOIN maps.map_legend ON z.map_id = map_legend.map_id
+    LEFT JOIN maps.legend AS l ON l.legend_id = map_legend.legend_id
+    LEFT JOIN macrostrat.intervals ta ON ta.id = l.t_interval
+    LEFT JOIN macrostrat.intervals tb ON tb.id = l.b_interval
+    LEFT JOIN maps.sources ON l.source_id = sources.source_id
+  WHERE
+    sources.status_code = 'active'
+    AND ST_Area(geom) > 2
+)
+SELECT
+  ST_AsMVT(expanded, 'units')
+INTO bedrock
+FROM expanded;
+
+-- LINES
+WITH mvt_features AS (
+  SELECT
+    line_id,
+    source_id,
+    ST_AsMVTGeom(
+      ST_Transform(geom, 3857),
+      mercator_bbox,
+      4096
+    ) geom
+  FROM
+    tile_layers.carto_lines
+  WHERE
+    scale = mapsize
+    AND ST_Intersects(geom, projected_bbox)
+),
+expanded AS (
+  SELECT
+    z.line_id,
+    z.source_id,
+    coalesce(q.descrip, '') AS descrip,
+    coalesce(q.name, '') AS name,
+    coalesce(q.direction, '') AS direction,
+    coalesce(q.type, '') AS "type",
+    ST_Simplify(z.geom, 2) AS geom
+  FROM mvt_features z
+  LEFT JOIN tile_layers.line_data q
+    ON z.line_id = q.line_id
+  LEFT JOIN maps.sources
+    ON z.source_id = sources.source_id
+  WHERE sources.status_code = 'active'
+    AND q.scale = ANY(linesize)
+    AND ST_Length(geom) > 2
+)
+SELECT
+  ST_AsMVT(expanded, 'lines') INTO lines
+FROM expanded;
+
+RETURN bedrock || lines;
+
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
