@@ -11,6 +11,40 @@ import Link from "next/link";
 
 const h = hyper.styled(styles);
 
+function addLayer(map: Map, layerID: string) {
+  map.addLayer({
+    id: layerID+"_fill",
+    type: "fill",
+    source: "table",
+    layout: {
+      // Make the layer visible by default.
+      visibility: "visible",
+    },
+    paint: {
+      "fill-color": "#08f",
+      "fill-opacity": 0.2,
+      "fill-outline-color": "#0af",
+    },
+    "source-layer": layerID,
+  });
+
+  map.addLayer({
+    id: layerID+"_outline",
+    type: "line",
+    source: "table",
+    layout: {
+      // Make the layer visible by default.
+      visibility: "visible",
+    },
+    paint: {
+      "line-color": "#048",
+      "line-opacity": 0.8,
+      "line-width": 1.2,
+    },
+    "source-layer": layerID,
+  });
+}
+
 function TableInspector() {
   const ref = useRef<HTMLElement>(null);
   const mapRef = useRef<Map>(null);
@@ -30,40 +64,13 @@ function TableInspector() {
     map.on("load", () => {
       map.addSource("table", {
         type: "vector",
-        url: `https://next.macrostrat.org/tiles/${table}/tilejson.json`,
+        url: `http://localhost:8000/${table}/tilejson.json`,
       });
 
-      map.addLayer({
-        id: "feature_fill",
-        type: "fill",
-        source: "table",
-        layout: {
-          // Make the layer visible by default.
-          visibility: "visible",
-        },
-        paint: {
-          "fill-color": "#08f",
-          "fill-opacity": 0.2,
-          "fill-outline-color": "#0af",
-        },
-        "source-layer": "default",
-      });
+      addLayer(map, "default");
+      addLayer(map, "units");
+      addLayer(map, "lines");
 
-      map.addLayer({
-        id: "feature_outline",
-        type: "line",
-        source: "table",
-        layout: {
-          // Make the layer visible by default.
-          visibility: "visible",
-        },
-        paint: {
-          "line-color": "#048",
-          "line-opacity": 0.8,
-          "line-width": 1.2,
-        },
-        "source-layer": "default",
-      });
     });
 
     const inspector = new MapboxInspect({
@@ -71,10 +78,10 @@ function TableInspector() {
       showInspectButton: false,
       popup: new Popup({
         closeButton: false,
-        closeOnClick: false,
+        closeOnClick: true,
       }),
       queryParameters: {
-        layers: ["feature_fill"],
+        layers: ["default_fill", "units_fill", "lines_fill"],
       },
     });
 

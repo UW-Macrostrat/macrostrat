@@ -7,12 +7,16 @@ import h from "@macrostrat/hyper";
 import Link from "next/link";
 
 export async function getStaticProps() {
-  const res = await fetch("https://next.macrostrat.org/tiles/tables.json");
+  const res = await fetch("http://localhost:8000/tables.json");
   const data = await res.json();
+
+  const res1 = await fetch("http://localhost:8000/functions.json");
+  const data1 = await res1.json();
 
   return {
     props: {
       tables: data,
+      functions: data1,
     },
   };
 }
@@ -26,7 +30,7 @@ function TableList({ tables }) {
   );
 }
 
-const Home: NextPage = ({ tables = [] }) => {
+const Home: NextPage = ({ tables = [], functions = [] }) => {
   return (
     <div className={styles.container}>
       <Head>
@@ -40,7 +44,9 @@ const Home: NextPage = ({ tables = [] }) => {
 
       <main className={styles.main}>
         <h1 className={styles.title}>Macrostrat Tile Server</h1>
-        <h2>Endpoints</h2>
+        <h2>Generated layers</h2>
+        <TableList tables={functions} />
+        <h2>Tables</h2>
         <TableList tables={tables} />
       </main>
 
