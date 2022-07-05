@@ -14,10 +14,10 @@ root = (here).resolve()
 db_url = environ.get("DATABASE_URL")
 
 # App
-cli = Typer()
+_cli = Typer()
 
 
-@cli.command()
+@_cli.command()
 def sync():
     fixtures_dir = root / "fixtures"
 
