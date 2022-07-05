@@ -40,7 +40,7 @@ mvt_tiler = VectorTilerFactory(
 )
 
 carto_layer = StoredFunction(
-    type="StoredFunction", sql="", id="carto", function_name="tile_layers.carto"
+    type="StoredFunction", sql="", id="carto-slim", function_name="tile_layers.carto_slim"
 )
 
 app.state.function_catalog.register(carto_layer)
