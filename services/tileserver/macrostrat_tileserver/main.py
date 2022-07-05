@@ -1,11 +1,16 @@
+from ast import Store
 from timvt.db import close_db_connection, connect_to_db
 from timvt.factory import VectorTilerFactory
 from fastapi import FastAPI, Request
 from starlette_cramjam.middleware import CompressionMiddleware
 from starlette.responses import JSONResponse
+from timvt.layer import FunctionRegistry
+from .function_layer import StoredFunction
 
 # Create Application.
 app = FastAPI(root_path="/tiles")
+
+app.state.timvt_function_catalog = FunctionRegistry()
 
 # Register Start/Stop application event handler to setup/stop the database connection
 @app.on_event("startup")
@@ -18,6 +23,11 @@ async def startup_event():
 async def shutdown_event():
     """Application shutdown: de-register the database connection."""
     await close_db_connection(app)
+
+
+app.state.timvt_function_catalog.register(
+    StoredFunction(id="carto", function_name="tileserver.carto")
+)
 
 
 app.add_middleware(CompressionMiddleware, minimum_size=0)
