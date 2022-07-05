@@ -9,7 +9,7 @@ from timvt.errors import (
     MissingEPSGCode,
 )
 from timvt.settings import TileSettings
-from timvt.layers import Function
+from timvt.layer import Function
 
 tile_settings = TileSettings()
 
