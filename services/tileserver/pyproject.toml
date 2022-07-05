@@ -14,6 +14,7 @@ python = "^3.8"
 timvt = "0.7.0"
 typer = "^0.4.2"
 uvicorn = "0.16.0"
+python-dotenv = "^0.20.0"
 
 [build-system]
 build-backend = "poetry.core.masonry.api"

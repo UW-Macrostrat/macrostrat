@@ -30,7 +30,7 @@ function TableInspector() {
     map.on("load", () => {
       map.addSource("table", {
         type: "vector",
-        url: `https://next.macrostrat.org/tiles/${table}/tilejson.json`,
+        url: `http://localhost:8000/${table}/tilejson.json`,
       });
 
       map.addLayer({

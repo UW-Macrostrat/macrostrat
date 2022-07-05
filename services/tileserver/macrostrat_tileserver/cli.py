@@ -2,6 +2,9 @@ from os import environ
 from macrostrat.database import Database
 from macrostrat.utils import relative_path
 from typer import Typer
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Config loading
 
@@ -11,12 +14,13 @@ root = (here).resolve()
 db_url = environ.get("DATABASE_URL")
 
 # App
-app = Typer()
+cli = Typer()
 
 
-@app.command()
+@cli.command()
 def sync():
     fixtures_dir = root / "fixtures"
+
     db = Database(db_url)
 
     files = list(fixtures_dir.glob("*.sql"))
