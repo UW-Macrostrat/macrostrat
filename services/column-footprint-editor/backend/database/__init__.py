@@ -40,6 +40,10 @@ class Database:
     def run_sql(self, sql, params={}, **kwargs):
         sql = self.formatter.sql_config_format(sql, self.config)
         return run_sql(sql, params=params, session=self.Session(), **kwargs)
+    
+    def exec_sql(self, sql, params, **kwargs):
+        sql = self.formatter.sql_config_format(sql, self.config)
+        return self.Session().execute(sql, params=params)
 
     def run_sql_file(self, sql_file, params={}, **kwargs):
         sql = open(sql_file).read()
