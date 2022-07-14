@@ -5,46 +5,71 @@ from project import Project
 from pathlib import Path
 import json
 
+from collections import defaultdict
+
 here = Path(__file__).parent / ".."
 procedures = here / "database" /"procedures"
 queries= here / "database" / "queries"
 
 class VoronoiTesselator(HTTPEndpoint):
-    """ class to turn points and a bounding geometry into a 
-        voronoi tesselation.
-        To be DRY: we'll have a method that handles the tesselation with the DB
+    """ 
+    Allow for multiple bounding geometry options. Group by bounding geom from
+    project. Check if a point has a bounding geom. If it doesn't! Make it red 
+    by adding some property to be read by frontend.
 
-        A get and post will both call this method, however, the get will only return 
-        the res to the frontend.
-        A post will commit it to the DB
+    To start I can group points by bounding geometry ID in a dictionary.
+    And then get the polygons for all the entries in the dictionary
+
     """
 
     tesselate_sql = procedures / "tesselate.sql"
+    get_bounding_id = procedures / "get-bounding-id.sql"
+    point_buffer = procedures / "point-buffer.sql"
 
-    def create_multi_point(self, points):
-        string = 'SRID=4326;MULTIPOINT ('
-        for i,point in enumerate(points):
-            lng,lat = point
-            if i == len(points) - 1:
-                string += f'{lng} {lat}'
-            else:
-                string += f'{lng} {lat}, '
+    def group_points(self, db, points):
+        """ 
+        :points a list of geojson Point type
+
+        returns: A dictionary where each key corresponds to a map_face containing point OR 0 if not
+        contained within a geometry
+        """
+
+        grouped = defaultdict(list)
+        sql = open(self.get_bounding_id).read()
         
-        return string + ")"
+        for point in points:
+            b_id = db.exec_sql(sql, params={'point': json.dumps(point['geometry'])}, count=1)
+            if b_id:
+                grouped[b_id].append(point['geometry'])
+            else:
+                grouped[0].append(point['geometry'])
+        
+        return grouped
 
     def tesselate(self, db: Database, points):
-        """ need a procedure for st_voronoi 
-        points need to be a multipoint geometry
-        bounding_geom should be a line or polygon.
-        
-        I can expect to recieve a list of [lng,lats] for points
-        and bounding_geom will probably be geojson
         """
-        multi_point = self.create_multi_point(points)
+            ensure that points are within a bounding geometry, 
+            polygonize all by grouped bounding geom
+            return those.
+        """
+        grouped = self.group_points(db, points)
+        unbounded_points = grouped[0]
+        del grouped[0]
 
         sql = open(self.tesselate_sql).read()
-        res = db.exec_sql(sql, params={"multipoint": multi_point}).fetchall()
-        return [json.loads(dict(row)['voronoi']) for row in res]
+        p_buffer_sql = open(self.point_buffer).read()
+
+        polygons = []
+        for points in grouped.values():
+            params = {"points": json.dumps({"type": "GeometryCollection", "geometries": points})}
+            res = db.exec_sql(sql, params=params)
+            polygons = polygons + [json.loads(dict(row)['voronoi']) for row in res]
+        for point in unbounded_points:
+            params = {"point": json.dumps(point)}
+            res = db.exec_sql(p_buffer_sql, params=params)
+            polygons = polygons + [json.loads(dict(row)['buffered']) for row in res]
+
+        return polygons
 
 
     async def put(self, request):
