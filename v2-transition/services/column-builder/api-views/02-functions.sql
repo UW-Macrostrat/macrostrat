@@ -129,35 +129,87 @@ $$ language plpgsql;
 sophisticated ways of fetching related strat_names
 Returns only strat_name_records where it's connected to a 
 concept and that concept ref contains the point geom for the 
-column
+column.
+
+Unions searches for strat_names in column, ones in col-group, and geographically
+representative lexicon
 */
-CREATE OR REPLACE FUNCTION macrostrat_api.get_col_strat_names(col_id int)
-RETURNS SETOF macrostrat.strat_names AS
+CREATE OR REPLACE FUNCTION macrostrat_api.get_col_strat_names(_col_id int)
+RETURNS TABLE(
+  id integer,
+  strat_name VARCHAR(100),
+  rank VARCHAR(50),
+  ref_id integer,
+  concept_id integer,
+  source text
+) AS
 $$
 BEGIN
-  RETURN QUERY SELECT sn.* FROM macrostrat.strat_names sn 
-  JOIN macrostrat.strat_names_meta snm
+  RETURN QUERY 
+  WITH a AS(
+SELECT cc.*, ST_Distance(
+	ST_Transform(c.coordinate, 3857), 
+	ST_Transform(cc.coordinate, 3857)
+	) 
+	as distance FROM macrostrat.cols c
+JOIN macrostrat.cols cc
+	ON c.col_group_id = cc.col_group_id
+WHERE c.id = _col_id
+)
+SELECT sn.*, 'column' as source from macrostrat_api.units u 
+JOIN macrostrat_api.strat_names sn
+ ON u.strat_name_id = sn.id
+WHERE u.col_id = _col_id 
+AND sn.concept_id IS NULL
+UNION ALL
+SELECT DISTINCT ON(sn.id) sn.*, 'nearby' as source 
+FROM a, macrostrat_api.units u 
+JOIN macrostrat_api.strat_names sn
+ ON u.strat_name_id = sn.id
+WHERE u.col_id = _col_id or u.col_id = a.id
+UNION ALL
+SELECT DISTINCT ON(sn.id) sn.*, 'lexicon' as source FROM macrostrat.strat_names sn 
+  LEFT JOIN macrostrat.strat_names_meta snm
   ON sn.concept_id = snm.concept_id
-  JOIN macrostrat.refs r
+  LEFT JOIN macrostrat.refs r
   ON r.id = snm.ref_id
-  WHERE sn.concept_id IS NOT NULL
-  AND ST_Intersects(r.rgeom, (
+  WHERE ST_Intersects(r.rgeom, (
   	select ST_SetSrid((coordinate)::geometry, 4326) 
-  	from macrostrat.cols where id = col_id
+  	from macrostrat.cols c where c.id = _col_id
   	)
-  );
+)
+;
 END
 $$ language plpgsql;
 
 CREATE OR REPLACE FUNCTION macrostrat_api.get_strat_names_col_priority(_col_id int)
-RETURNS SETOF macrostrat.strat_names AS
+RETURNS TABLE(
+  id integer,
+  strat_name VARCHAR(100),
+  rank VARCHAR(50),
+  ref_id integer,
+  concept_id integer,
+  source text,
+  author VARCHAR(255),
+  parent text
+
+) AS
 $$
 BEGIN
   RETURN QUERY
-    SELECT * FROM macrostrat_api.get_col_strat_names(_col_id) 
-    ORDER BY id IN (
-      SELECT DISTINCT(u.strat_name_id) FROM macrostrat.units u
-      WHERE u.col_id = _col_id AND u.strat_name_id is not null
-    ) DESC;
+    SELECT 
+    gc.*, 
+    r.author, 
+    st.strat_name ||' '|| st.rank as parent 
+    FROM macrostrat_api.get_col_strat_names(_col_id) gc
+    LEFT JOIN macrostrat.strat_names_meta snm
+    ON snm.concept_id = gc.concept_id
+    LEFT JOIN macrostrat.refs r
+    ON r.id = snm.ref_id
+    LEFT JOIN macrostrat.strat_tree tree
+    ON tree.child = gc.id
+    LEFT JOIN macrostrat.strat_names st
+    ON st.id = tree.parent
+    ;
 END
 $$ language plpgsql;
