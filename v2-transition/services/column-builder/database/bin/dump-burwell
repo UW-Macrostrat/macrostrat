@@ -35,7 +35,7 @@ check()
 }
 ############################ variables ################################
 
-dbname=column_data
+dbname=burwell
 local_db=column_data
 container_name=db
 db_user=postgres
