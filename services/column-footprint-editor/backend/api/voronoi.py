@@ -25,6 +25,7 @@ class VoronoiTesselator(HTTPEndpoint):
     tesselate_sql = procedures / "tesselate.sql"
     get_bounding_id = procedures / "get-bounding-id.sql"
     point_buffer = procedures / "point-buffer.sql"
+    point_buffer_voronoi = procedures / "point-buffer-voronoi.sql"
 
     def group_points(self, db, points):
         """ 
@@ -57,15 +58,21 @@ class VoronoiTesselator(HTTPEndpoint):
         del grouped[0]
 
         sql = open(self.tesselate_sql).read()
-        p_buffer_sql = open(self.point_buffer).read()
 
         polygons = []
         for points in grouped.values():
             params = {"points": json.dumps({"type": "GeometryCollection", "geometries": points})}
             res = db.exec_sql(sql, params=params)
             polygons = polygons + [json.loads(dict(row)['voronoi']) for row in res]
-        for point in unbounded_points:
-            params = {"point": json.dumps(point)}
+
+        ## instead of doing each unbounded, make a collection, buffer, ST_Union and then voronoi.  
+        if unbounded_points:
+            p_sql = self.point_buffer
+            if len(unbounded_points) > 1:
+                p_sql = self.point_buffer_voronoi  
+
+            p_buffer_sql = open(p_sql).read()
+            params = {"points": json.dumps({"type": "GeometryCollection", "geometries": unbounded_points})}
             res = db.exec_sql(p_buffer_sql, params=params)
             polygons = polygons + [json.loads(dict(row)['buffered']) for row in res]
 
