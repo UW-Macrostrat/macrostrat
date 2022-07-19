@@ -63,6 +63,8 @@ class VoronoiTesselator(HTTPEndpoint):
         polygons = []
         for points in grouped.values():
             params = {"points": json.dumps({"type": "GeometryCollection", "geometries": points})}
+            params["quad_segs"] = 2
+            params['radius'] = 5
             res = db.exec_sql(sql, params=params)
             polygons = polygons + [json.loads(dict(row)['voronoi']) for row in res]
 
@@ -74,6 +76,8 @@ class VoronoiTesselator(HTTPEndpoint):
 
             p_buffer_sql = open(p_sql).read()
             params = {"points": json.dumps({"type": "GeometryCollection", "geometries": unbounded_points})}
+            params["quad_segs"] = 2
+            params['radius'] = 5
             res = db.exec_sql(p_buffer_sql, params=params)
             polygons = polygons + [json.loads(dict(row)['buffered']) for row in res]
 

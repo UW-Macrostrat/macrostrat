@@ -3,7 +3,7 @@ WITH a as (
 	SELECT ST_Buffer(
 				st_geomfromgeojson(
                       :points
-				      ),5,'quad_segs=2'
+				      ), :radius, :quad_segs
 				      )
 				       as bounds
 				       ),
