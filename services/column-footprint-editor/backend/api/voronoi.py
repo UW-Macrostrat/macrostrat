@@ -26,6 +26,7 @@ class VoronoiTesselator(HTTPEndpoint):
     get_bounding_id = procedures / "get-bounding-id.sql"
     point_buffer = procedures / "point-buffer.sql"
     point_buffer_voronoi = procedures / "point-buffer-voronoi.sql"
+    dump_voronoi_to_lines = procedures / "dump-voronoi-to-lines.sql"
 
     def group_points(self, db, points):
         """ 
@@ -96,4 +97,19 @@ class VoronoiTesselator(HTTPEndpoint):
         project = Project(project_id)
         db = Database(project)
 
-        return JSONResponse({"Status": "Not implemented yet"})
+        data = await request.json()
+        points = data["points"]
+
+        polygons = self.tesselate(db, points)
+        ## dump each polygon to multilinestring and insert!!
+        sql = open(self.dump_voronoi_to_lines).read()
+
+        try:
+            for polygon in polygons:
+                if 'geometry' not in polygon: continue
+                db.run_sql(sql, params={"polygon": json.dumps(polygon['geometry'])})
+            db.update_topology()
+            return JSONResponse({"status": "success"})
+
+        except:
+            return JSONResponse({"Status": "error", "message": "an error has occured"}, status_code=404)

@@ -1,4 +1,6 @@
-WITH a as (SELECT ST_Buffer(
+/* creates voronoi polygons from overlapping buffered points */
+WITH a as (
+	SELECT ST_Buffer(
 				st_geomfromgeojson(
                       :points
 				      ),5,'quad_segs=2'
@@ -6,14 +8,14 @@ WITH a as (SELECT ST_Buffer(
 				       as bounds
 				       ),
 b as(
-SELECT st_intersection((
-    st_dump(st_voronoipolygons(
-    	st_geomfromgeojson(:points)
-    ,0.0, a.bounds))).geom, a.bounds) as voronoi
+	SELECT st_intersection((
+		st_dump(st_voronoipolygons(
+			st_geomfromgeojson(:points)
+		,0.0, a.bounds))).geom, a.bounds) as voronoi
 FROM a
 ),
 c as(
-SELECT st_collect(geometry) as bounds from ${topo_schema}.map_face
+	SELECT st_collect(geometry) as bounds from ${topo_schema}.map_face
 )
 SELECT st_asgeojson(
 	st_dump(
