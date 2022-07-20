@@ -8,5 +8,5 @@ b AS (
 ) SELECT
     st_asgeojson(st_dump(st_difference(
         st_snaptogrid(a.buffered_point, 0.001), 
-        b.bounds))) as buffered
+        st_snaptogrid(b.bounds, 0.001)))) as buffered
     FROM b,a;
