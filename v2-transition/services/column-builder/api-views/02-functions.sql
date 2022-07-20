@@ -215,3 +215,58 @@ BEGIN
     ;
 END
 $$ language plpgsql;
+
+
+/* function that calculates proportions of lithologies based on 
+subdom and dom props.
+
+happens here: https://github.com/UW-Macrostrat/utils/blob/bba082956cc611af8458cf234c160b05e1cb3794/cli/commands/rebuild_scripts/lookup_unit_attrs_api.py#L40
+but as two separate queries. Makes more sense to make a function that calculates both sub and dom comp_prop for
+a unit and returns that for a update query
+*/
+CREATE OR REPLACE FUNCTION macrostrat.get_lith_comp_prop(_unit_id integer) 
+RETURNS TABLE(
+  dom_prop numeric,
+  sub_prop numeric
+) AS $$
+BEGIN
+  RETURN QUERY
+    WITH dom as (
+        SELECT
+            unit_id,
+            count(id) count,
+            'dom' AS dom
+        FROM macrostrat.unit_liths
+        WHERE dom = 'dom' and unit_id = _unit_id
+        GROUP BY unit_id
+      ), sub as(
+        SELECT
+          unit_id,
+          count(id) count,
+          'sub' AS dom
+        FROM macrostrat.unit_liths
+        WHERE dom = 'sub' and unit_id = _unit_id
+        GROUP BY unit_id
+      )
+    SELECT 
+      -- need at least one float to prevent truncating to 0
+      ROUND((5.0 / (COALESCE(sub.count, 0) + (dom.count * 5))),4) AS dom_prop, 
+      ROUND((1.0 / (COALESCE(sub.count, 0) + (dom.count * 5))),4) AS sub_prop 
+    FROM sub 
+    JOIN dom
+    ON dom.unit_id = sub.unit_id;
+END
+$$ language plpgsql;
+
+/* updates the comp_prop for unit_liths */
+CREATE OR REPLACE FUNCTION macrostrat.update_unit_lith_comp_props(_unit_id integer)
+RETURNS VOID as
+$$
+BEGIN
+  UPDATE macrostrat.unit_liths ul
+  SET 
+    comp_prop = (CASE WHEN ul.dom = 'sub' THEN prop.sub_prop ELSE prop.dom_prop END)
+  FROM (SELECT * FROM macrostrat.get_lith_comp_prop(_unit_id)) as prop
+  WHERE ul.unit_id = _unit_id;
+END
+$$ language plpgsql;
