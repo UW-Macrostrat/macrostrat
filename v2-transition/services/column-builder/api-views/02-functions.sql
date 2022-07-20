@@ -155,20 +155,22 @@ SELECT cc.*, ST_Distance(
 JOIN macrostrat.cols cc
 	ON c.col_group_id = cc.col_group_id
 WHERE c.id = _col_id
+), b AS(
+  SELECT c.col_name from macrostrat.cols c WHERE c.id = _col_id
 )
-SELECT sn.*, 'column' as source from macrostrat_api.units u 
+SELECT sn.*, b.col_name as source from b,macrostrat_api.units u 
 JOIN macrostrat_api.strat_names sn
  ON u.strat_name_id = sn.id
 WHERE u.col_id = _col_id 
 AND sn.concept_id IS NULL
 UNION ALL
-SELECT DISTINCT ON(sn.id) sn.*, 'nearby' as source 
+SELECT DISTINCT ON(sn.id) sn.*, a.col_name as source 
 FROM a, macrostrat_api.units u 
 JOIN macrostrat_api.strat_names sn
  ON u.strat_name_id = sn.id
 WHERE u.col_id = _col_id or u.col_id = a.id
 UNION ALL
-SELECT DISTINCT ON(sn.id) sn.*, 'lexicon' as source FROM macrostrat.strat_names sn 
+SELECT DISTINCT ON(sn.id) sn.*, 'nearby' as source FROM macrostrat.strat_names sn 
   LEFT JOIN macrostrat.strat_names_meta snm
   ON sn.concept_id = snm.concept_id
   LEFT JOIN macrostrat.refs r
