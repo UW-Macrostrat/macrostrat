@@ -117,7 +117,7 @@ class VoronoiTesselator(HTTPEndpoint):
             for polygon in polygons:
                 if 'geometry' not in polygon: continue
                 db.run_sql(sql, params={"polygon": json.dumps(polygon['geometry'])})
-            db.update_topology()
+            db.clean_topology()
             return JSONResponse({"status": "success"})
 
         except:

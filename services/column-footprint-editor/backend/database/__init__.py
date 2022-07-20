@@ -81,6 +81,10 @@ class Database:
         self.run_sql_file(project_table)
               
     #################### db procedure methods ###############################
+    def clean_topology(self):
+        self.update_topology()
+        self.redump_linework_from_edge()
+        self.update_topology()
     def create_project_schema(self):
         # need to run docker command and then create core tables
         run_docker_config(self.project_id, "create_tables")
