@@ -85,6 +85,8 @@ class Database:
         self.update_topology()
         self.redump_linework_from_edge()
         self.update_topology()
+        self.redump_linework_from_edge()
+
     def create_project_schema(self):
         # need to run docker command and then create core tables
         run_docker_config(self.project_id, "create_tables")
