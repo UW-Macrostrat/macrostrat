@@ -6,7 +6,7 @@
     Top interval is defined as unit.lo where unit.position_bottom is smallest.
     Likewise bottom interval is unit.fo where unit.position_bottom is greatest! 
  */
-DROP FUNCTION macrostrat_api.get_col_section_data(int);
+DROP FUNCTION IF EXISTS macrostrat_api.get_col_section_data(int);
 CREATE OR REPLACE FUNCTION macrostrat_api.get_col_section_data(column_id INT) 
 RETURNS TABLE (
     id INT, 
@@ -158,16 +158,20 @@ WHERE c.id = _col_id
 ), b AS(
   SELECT c.col_name from macrostrat.cols c WHERE c.id = _col_id
 )
-SELECT sn.*, b.col_name as source from b,macrostrat_api.units u 
+SELECT sn.*, b.col_name::text as source from b,macrostrat_api.units u 
+JOIN macrostrat_api.unit_strat_names usn
+ ON u.id = usn.unit_id
 JOIN macrostrat_api.strat_names sn
- ON u.strat_name_id = sn.id
+ ON usn.strat_name_id = sn.id
 WHERE u.col_id = _col_id 
 AND sn.concept_id IS NULL
 UNION ALL
-SELECT DISTINCT ON(sn.id) sn.*, a.col_name as source 
+SELECT DISTINCT ON(sn.id) sn.*, a.col_name::text as source 
 FROM a, macrostrat_api.units u 
+JOIN macrostrat_api.unit_strat_names usn
+ ON u.id = usn.unit_id
 JOIN macrostrat_api.strat_names sn
- ON u.strat_name_id = sn.id
+ ON usn.strat_name_id = sn.id
 WHERE u.col_id = _col_id or u.col_id = a.id
 UNION ALL
 SELECT DISTINCT ON(sn.id) sn.*, 'nearby' as source FROM macrostrat.strat_names sn 
@@ -216,6 +220,35 @@ BEGIN
 END
 $$ language plpgsql;
 
+CREATE OR REPLACE FUNCTION macrostrat_api.get_strat_name_info(strat_name_id int)
+RETURNS TABLE(
+  id integer,
+  strat_name VARCHAR(100),
+  rank VARCHAR(50),
+  author VARCHAR(255),
+  parent text
+)AS
+$$
+BEGIN
+RETURN QUERY
+  SELECT 
+  sn.id, 
+  sn.strat_name, 
+  sn.rank,
+  r.author,
+  st.strat_name ||' '|| st.rank as parent 
+  FROM macrostrat.strat_names sn
+  JOIN macrostrat.strat_names_meta snm
+    ON sn.concept_id = snm.concept_id
+  JOIN macrostrat.refs r
+    ON r.id = snm.ref_id
+  JOIN macrostrat.strat_tree tree
+    ON tree.child = sn.id
+  JOIN macrostrat.strat_names st
+    ON st.id = tree.parent
+    ;
+END
+$$ language plpgsql
 
 /* function that calculates proportions of lithologies based on 
 subdom and dom props.
