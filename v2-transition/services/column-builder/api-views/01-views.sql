@@ -136,7 +136,7 @@ ON ul.lith_id = l.id;
 CREATE OR REPLACE VIEW macrostrat_api.unit_strat_name_expanded AS
 SELECT 
 u.id,
-u.strat_name AS unit_strat_name,
+u.strat_name,
 u.color,
 u.outcrop,
 u.fo,

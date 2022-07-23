@@ -47,7 +47,7 @@ DROP FUNCTION IF EXISTS macrostrat_api.get_units_with_collections(int);
 CREATE OR REPLACE FUNCTION macrostrat_api.get_units_with_collections(column_id int)
 RETURNS TABLE(
 	id int,
-	unit_strat_name varchar(150),
+	strat_name varchar(150),
 	strat_name jsonb,
 	color varchar(20),
 	outcrop varchar(20),
@@ -80,7 +80,7 @@ RETURN QUERY
 	LEFT JOIN macrostrat_api.environ_unit eu
 	 ON eu.unit_id = u.id
 	WHERE u.col_id = column_id
-	GROUP BY u.id, u.unit_strat_name,u.strat_name, u.color,u.outcrop, u.fo, u.lo,u.position_bottom, u.position_top, u.max_thick, u.min_thick, u.section_id, u.col_id, u.notes, u.name_fo, u.age_bottom, u.name_lo, u.age_top
+	GROUP BY u.id, u.strat_name,u.strat_name, u.color,u.outcrop, u.fo, u.lo,u.position_bottom, u.position_top, u.max_thick, u.min_thick, u.section_id, u.col_id, u.notes, u.name_fo, u.age_bottom, u.name_lo, u.age_top
   ORDER BY u.position_bottom;
 END
 $$ LANGUAGE plpgsql;
@@ -246,9 +246,10 @@ RETURN QUERY
     ON tree.child = sn.id
   JOIN macrostrat.strat_names st
     ON st.id = tree.parent
+  WHERE sn.id = strat_name_id
     ;
 END
-$$ language plpgsql
+$$ language plpgsql;
 
 /* function that calculates proportions of lithologies based on 
 subdom and dom props.
