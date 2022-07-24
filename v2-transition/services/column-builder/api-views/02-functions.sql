@@ -141,6 +141,7 @@ RETURNS TABLE(
   rank VARCHAR(50),
   ref_id integer,
   concept_id integer,
+  author VARCHAR(255),
   source text
 ) AS
 $$
@@ -158,23 +159,28 @@ WHERE c.id = _col_id
 ), b AS(
   SELECT c.col_name from macrostrat.cols c WHERE c.id = _col_id
 )
-SELECT sn.*, b.col_name::text as source from b,macrostrat_api.units u 
+SELECT sn.*, r.author, b.col_name::text as source from b,macrostrat_api.units u 
 JOIN macrostrat_api.unit_strat_names usn
  ON u.id = usn.unit_id
 JOIN macrostrat_api.strat_names sn
  ON usn.strat_name_id = sn.id
+JOIN macrostrat_api.refs r
+  ON r.id = sn.ref_id
 WHERE u.col_id = _col_id 
 AND sn.concept_id IS NULL
 UNION ALL
-SELECT DISTINCT ON(sn.id) sn.*, a.col_name::text as source 
+SELECT DISTINCT ON(sn.id) sn.*, r.author, a.col_name::text as source 
 FROM a, macrostrat_api.units u 
 JOIN macrostrat_api.unit_strat_names usn
  ON u.id = usn.unit_id
 JOIN macrostrat_api.strat_names sn
  ON usn.strat_name_id = sn.id
-WHERE u.col_id = _col_id or u.col_id = a.id
+JOIN macrostrat_api.refs r
+  ON r.id = sn.ref_id
+WHERE u.col_id = _col_id AND sn.concept_id IS NULL or u.col_id = a.id
+AND sn.concept_id IS NULL
 UNION ALL
-SELECT DISTINCT ON(sn.id) sn.*, 'nearby' as source FROM macrostrat.strat_names sn 
+SELECT DISTINCT ON(sn.id) sn.*, r.author, 'nearby' as source FROM macrostrat.strat_names sn 
   LEFT JOIN macrostrat.strat_names_meta snm
   ON sn.concept_id = snm.concept_id
   LEFT JOIN macrostrat.refs r
@@ -184,6 +190,18 @@ SELECT DISTINCT ON(sn.id) sn.*, 'nearby' as source FROM macrostrat.strat_names s
   	from macrostrat.cols c where c.id = _col_id
   	)
 )
+UNION ALL
+SELECT DISTINCT ON(sn.id) sn.*, r.author, 'unrelated' as source 
+FROM macrostrat_api.units u 
+JOIN macrostrat_api.unit_strat_names usn
+ ON u.id = usn.unit_id
+JOIN macrostrat_api.strat_names sn
+ ON usn.strat_name_id = sn.id
+JOIN macrostrat_api.refs r
+  ON r.id = sn.ref_id
+WHERE u.col_id NOT IN (SELECT a.id FROM a) 
+	AND sn.concept_id IS NULL 
+	AND r.rgeom IS NULL
 ;
 END
 $$ language plpgsql;
@@ -195,8 +213,8 @@ RETURNS TABLE(
   rank VARCHAR(50),
   ref_id integer,
   concept_id integer,
-  source text,
   author VARCHAR(255),
+  source text,
   parent text
 
 ) AS
@@ -205,13 +223,8 @@ BEGIN
   RETURN QUERY
     SELECT 
     gc.*, 
-    r.author, 
     st.strat_name ||' '|| st.rank as parent 
     FROM macrostrat_api.get_col_strat_names(_col_id) gc
-    LEFT JOIN macrostrat.strat_names_meta snm
-    ON snm.concept_id = gc.concept_id
-    LEFT JOIN macrostrat.refs r
-    ON r.id = snm.ref_id
     LEFT JOIN macrostrat.strat_tree tree
     ON tree.child = gc.id
     LEFT JOIN macrostrat.strat_names st
