@@ -3,6 +3,7 @@ from starlette.responses import JSONResponse
 from database import Database
 from project import Project
 from os import error
+import simplejson
 
 class ColumnGroups(HTTPEndpoint):
     async def get(self, request):
@@ -18,9 +19,9 @@ class ColumnGroups(HTTPEndpoint):
         project_id = request.path_params['project_id']
         project = Project(project_id)
 
-        if 'col_group_id' in request.query_params:
-            id_ = request.query_params['col_group_id']
-            sql = 'SELECT * FROM ${project_schema}.column_groups WHERE col_group_id = ' + f'{id_};'
+        if 'id' in request.query_params:
+            id_ = request.query_params['id']
+            sql = 'SELECT * FROM ${project_schema}.column_groups WHERE id = ' + f'{id_};'
             
             try:
                 df = Database().exec_query(sql)
@@ -35,7 +36,8 @@ class ColumnGroups(HTTPEndpoint):
         try:
             df = project.db.exec_query(sql)
             col_groups = df.to_dict(orient='records')
-
+            col_groups = simplejson.loads(simplejson.dumps(col_groups, ignore_nan=True))
+            
             return JSONResponse({"status":"success", "data": col_groups})
         except error:
             return JSONResponse({"error": f"project {project_id} does not exist"}) 
@@ -44,8 +46,8 @@ class ColumnGroups(HTTPEndpoint):
     async def post(self, request):
         """ Endpoint for new Column Groups """
 
-        sql = """INSERT INTO ${project_schema}.column_groups(col_group_id, col_group, col_group_name, color)VALUES(
-            :col_group_id,:col_group,:col_group_name,:color
+        sql = """INSERT INTO ${project_schema}.column_groups(col_group, col_group_name, color)VALUES(
+            :col_group,:col_group_name,:color
         )  """
 
         project = Project(request.path_params['project_id'])
@@ -53,12 +55,13 @@ class ColumnGroups(HTTPEndpoint):
         res = await request.json()
 
         params = res['updatedModel']
-        if res.get('color') is None:
-            params['color'] = None
-        params['col_group_id'] = project.db.get_next_col_group_id()
 
         try:
             project.db.run_sql(sql, params)
+
+            sql = "SELECT id FROM ${project_schema}.column_groups WHERE col_group = :col_group"
+            res = project.db.exec_sql(sql, params=params, count=1)
+            params['col_group_id'] = res.id
         except error:
             return JSONResponse({"error": str(error)})
         
@@ -72,7 +75,7 @@ class ColumnGroups(HTTPEndpoint):
                 SET col_group = :col_group,
                 col_group_name = :col_group_name,
                 color = :color
-            WHERE cg.col_group_id = :col_group_id
+            WHERE cg.id = :col_group_id
          """
         project = Project(request.path_params['project_id'])
 

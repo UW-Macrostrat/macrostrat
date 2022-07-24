@@ -1,14 +1,11 @@
-WITH B as (WITH A as (
-    SELECT id from ${project_schema}.column_groups WHERE col_group_id = :col_group_id
-)
+WITH B as (
 INSERT INTO ${project_schema}.columns(project_id, col_id, col_name, col_group,location, description) 
-    SELECT :project_id, 
+    values (:project_id, 
             :col_id,
             :col_name,
-            A.id,
+            :col_group_id,
             (ST_Dump(ST_GeomFromGeoJSON(:location))).geom,
-            :description
-            FROM A
+            :description)
     RETURNING id
 )
 INSERT INTO ${data_schema}.polygon(geometry, col_id, type)
