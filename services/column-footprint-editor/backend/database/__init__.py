@@ -41,7 +41,7 @@ class Database:
         sql = self.formatter.sql_config_format(sql, self.config)
         return run_sql(sql, params=params, session=self.Session(), **kwargs)
     
-    def exec_sql(self, sql, params, count=None):
+    def exec_sql(self, sql, params=None, count=None):
         sql = self.formatter.sql_config_format(sql, self.config)
         res = None
         with self.Session() as session:

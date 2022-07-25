@@ -1,5 +1,6 @@
 ## Test import script
 from project import Project
+from project.exporter import ProjectExporter
 from utils import run_docker_config
 from database import Database
 import simplejson
@@ -13,10 +14,12 @@ def is_json(myjson):
   return True
 
 if __name__ == "__main__":
-    ids = [1001]
-    for i in ids:
-        project = Project(i)
-        project.remove_project()
+    # ids = [1001]
+    # for i in ids:
+    #     project = Project(i)
+    #     project.remove_project()
+    exporter = ProjectExporter(1001)
+    exporter.export_new_project()
     
 
     
