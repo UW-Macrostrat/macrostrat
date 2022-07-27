@@ -318,3 +318,27 @@ BEGIN
   WHERE ul.unit_id = _unit_id;
 END
 $$ language plpgsql;
+
+/* 
+  a insert or update trigger for cols. 
+
+  If a lat and long are passed but NOT a wkt or coordinate, 
+  we want to create those two columns and insert them as well
+ */
+CREATE OR REPLACE FUNCTION macrostrat.lng_lat_insert() 
+RETURNS trigger AS $$
+DECLARE
+BEGIN
+  IF tg_op = 'INSERT' OR new.lat <> old.lat OR new.lng <> old.lng THEN
+    new.wkt := 'POINT(' || c.lng || ' ' || c.lat || ')' 
+    new.coordinate := st_geomfromewkt('SRID=4326;POINT(' || c.lng || ' ' || c.lat || ')');
+  END IF;
+  RETURN new;
+END;
+$$ language plpgsql;
+
+DROP trigger IF EXISTS lng_lat_insert ON macrostrat.cols;
+CREATE trigger lng_lat_insert
+  BEFORE INSERT OR UPDATE ON macrostrat.cols
+  FOR EACH ROW
+  EXECUTE PROCEDURE macrostrat.lng_lat_insert();
