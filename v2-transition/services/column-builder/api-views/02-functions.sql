@@ -248,6 +248,7 @@ RETURN QUERY
   sn.id, 
   sn.strat_name, 
   sn.rank,
+  sn.concept_id,
   r.author,
   st.strat_name ||' '|| st.rank as parent 
   FROM macrostrat.strat_names sn
