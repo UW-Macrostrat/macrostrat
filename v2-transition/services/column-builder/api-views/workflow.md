@@ -6,6 +6,6 @@ Here, you'll also see that `PGRST_DB_SCHEMA` is set to `macrostrat_api`. This is
 
 ## Make new views
 
-During development it may be necesary to quickly iterate on new data views and this project's architecture supports that. To quickly make a new data view, you can add a new sql file to this directory or add new sql to an existing file and then run `make create-fixtures` at the root of this project.
+During development it may be necessary to quickly iterate on new data views and this project's architecture supports that. To quickly make a new data view, you can add a new sql file to this directory or add new sql to an existing file and then run `make create-fixtures` at the root of this project.
 
-**NOTE**: This will run the sql files on the database again, there may be some errors if a VIEW already exists, etc. This script also reloads the postgrest-shcema, which **_needs_** to happen if views are changed or new ones are created.
+**NOTE**: This will run the sql files on the database again, there may be some errors if a VIEW already exists, etc. This script also reloads the postgrest-schema, which **_needs_** to happen if views are changed or new ones are created.
