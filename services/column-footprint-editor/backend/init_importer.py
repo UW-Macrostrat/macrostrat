@@ -14,12 +14,12 @@ def is_json(myjson):
   return True
 
 if __name__ == "__main__":
-    # ids = [1001]
-    # for i in ids:
-    #     project = Project(i)
-    #     project.remove_project()
-    exporter = ProjectExporter(1001)
-    exporter.export_new_project()
+     ids = [10]
+     for i in ids:
+         project = Project(i)
+         project.remove_project()
+    #exporter = ProjectExporter(1001)
+    #exporter.export_new_project()
     
 
     
