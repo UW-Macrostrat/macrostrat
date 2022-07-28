@@ -61,6 +61,7 @@ class VoronoiTesselator(HTTPEndpoint):
         sql = open(self.tesselate_sql).read()
 
         polygons = []
+        # for each group of points bounded by a geom
         for points in grouped.values():
             params = {"points": json.dumps({"type": "GeometryCollection", "geometries": points})}
             params["quad_segs"] = quad_segs
