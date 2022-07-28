@@ -48,40 +48,53 @@ class VoronoiTesselator(HTTPEndpoint):
         
         return grouped
 
+    def get_bounded_polygons(self, grouped_points, radius, quad_segs, db: Database):
+        sql = open(self.tesselate_sql).read()
+
+        polygons = []
+        # for each group of points bounded by a geom
+        for points in grouped_points.values():
+            params = {"points": json.dumps({"type": "GeometryCollection", "geometries": points})}
+            params["quad_segs"] = quad_segs
+            params['radius'] = radius
+            res = db.exec_sql(sql, params=params)
+            polygons = polygons + [json.loads(dict(row)['voronoi']) for row in res]
+        
+        return polygons
+    
+    def get_unbounded_polygons(self, unbounded_points, radius, quad_segs, db):
+        p_sql = self.point_buffer
+        if len(unbounded_points) > 1:
+            p_sql = self.point_buffer_voronoi  
+
+        p_buffer_sql = open(p_sql).read()
+        params = {"points": json.dumps({"type": "GeometryCollection", "geometries": unbounded_points})}
+        params["quad_segs"] = quad_segs
+        params['radius'] = radius
+        res = db.exec_sql(p_buffer_sql, params=params)
+        return [json.loads(dict(row)['buffered']) for row in res]
+
+
     def tesselate(self, db: Database, points, radius, quad_segs):
         """
             ensure that points are within a bounding geometry, 
             polygonize all by grouped bounding geom
             return those.
         """
+        radius = radius / 100
         grouped = self.group_points(db, points)
         unbounded_points = grouped[0]
         del grouped[0]
-
-        sql = open(self.tesselate_sql).read()
-
         polygons = []
-        # for each group of points bounded by a geom
-        for points in grouped.values():
-            params = {"points": json.dumps({"type": "GeometryCollection", "geometries": points})}
-            params["quad_segs"] = quad_segs
-            params['radius'] = radius
-            res = db.exec_sql(sql, params=params)
-            polygons = polygons + [json.loads(dict(row)['voronoi']) for row in res]
+        
+        grouped_polygons = self.get_bounded_polygons(grouped, radius, quad_segs, db)
+        polygons = polygons + grouped_polygons
 
         ## instead of doing each unbounded, make a collection, buffer, ST_Union and then voronoi.  
         if unbounded_points:
-            p_sql = self.point_buffer
-            if len(unbounded_points) > 1:
-                p_sql = self.point_buffer_voronoi  
-
-            p_buffer_sql = open(p_sql).read()
-            params = {"points": json.dumps({"type": "GeometryCollection", "geometries": unbounded_points})}
-            params["quad_segs"] = quad_segs
-            params['radius'] = radius
-            res = db.exec_sql(p_buffer_sql, params=params)
-            polygons = polygons + [json.loads(dict(row)['buffered']) for row in res]
-
+            unbounded_polygons = self.get_unbounded_polygons(unbounded_points, radius, quad_segs, db)
+            polygons = polygons + unbounded_polygons
+        
         return polygons
 
 
