@@ -15,12 +15,16 @@ b as(
 FROM a
 ),
 c as(
-	SELECT st_collect(geometry) as bounds from ${topo_schema}.map_face
+	SELECT 
+		coalesce(
+			st_collect(geometry), 
+			st_geomfromtext('SRID=4326;POINT(80 180)')) as bounds 
+	FROM ${topo_schema}.map_face
 )
 SELECT st_asgeojson(
-	st_dump(
-		   st_difference(
-		   		b.voronoi,
-		   		c.bounds
-		   ))
+		st_dump(
+			st_difference(
+					b.voronoi,
+					c.bounds
+			))
 	) as buffered FROM b, c;
