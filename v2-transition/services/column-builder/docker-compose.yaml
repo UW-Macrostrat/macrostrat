@@ -59,6 +59,9 @@ services:
       - dev
     environment:
       - GEOLOGIC_MAP_CONFIG=/app/docker-assets/docker-map-config.json
+      - GEOLOGIC_MAP_DATABASE=${GEOLOGIC_MAP_DATABASE}
+      - IMPORTER_API=${IMPORTER_API}
+      - EXPORTER_API=${EXPORTER_API}
     entrypoint: "/python_app/docker-scripts/run"
     ports:
       - "40053:8000"
