@@ -154,10 +154,8 @@ async def get_line(request):
     """
     res = await request.json()
     data = res['location']
-
+ 
     location_parser = "ST_GeomFromText(%(location)s)"
-    if is_json(data):
-        location_parser = "ST_GeomFromGeoJSON(%(location)s)"
     
     sql = f"SELECT ST_AsGeoJSON(((ST_Dump(ST_Boundary({location_parser}))).geom))"
 
