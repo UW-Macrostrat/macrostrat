@@ -2,10 +2,10 @@ from sqlalchemy.ext.automap import automap_base
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from pathlib import Path
+from settings import DATABASE
 
-#from settings import DATABASE
-from utils import run_sql, config_check, run_docker_config, delete_config, id_check
-from sql_formatter import SqlFormatter
+from utils import run_sql, config_check, run_docker_config, delete_config
+from .sql_formatter import SqlFormatter
 
 here = Path(__file__).parent
 fixtures = here / "fixtures"
@@ -24,7 +24,6 @@ project_info_insert = procedures / "project-meta-insert.sql"
 project_table = fixtures / "projects_table.sql"
 
 
-prod_url = "postgresql://postgres:@db:5432/geologic_map"
 class Database:
     """ 
     Database class with built in SQL Formatter
@@ -32,7 +31,7 @@ class Database:
 
     def __init__(self, project = None):
         self.project_id = getattr(project, "id", None)
-        self.engine = create_engine(prod_url, echo=True)
+        self.engine = create_engine(DATABASE, echo=True)
         self.Session = sessionmaker(bind=self.engine)
         self.config = config_check(project)
         self.formatter = SqlFormatter(self.project_id)

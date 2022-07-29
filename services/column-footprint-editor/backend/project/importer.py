@@ -1,7 +1,7 @@
 import requests
 import json
 from project import Project
-
+from settings import IMPORTER_API
 
 class ProjectImporter:
     '''
@@ -22,10 +22,10 @@ class ProjectImporter:
     def __init__(self, project_id: int, name: str, description: str):
         self.project = Project(project_id, name, description)
         self.db = self.project.db
-
+        self.base_url = IMPORTER_API
     def get_project_json(self):
         project_id = self.project.id
-        url = f'http://postgrest:3000/cols?project_id=eq.{project_id}'
+        url = f'{self.base_url}cols?project_id=eq.{project_id}'
         res = requests.get(url)
         data = res.json()
 

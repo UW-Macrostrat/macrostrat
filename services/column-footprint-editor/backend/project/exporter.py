@@ -1,5 +1,6 @@
 import requests
 import json
+from settings import EXPORTER_API
 from project import Project
 from pathlib import Path
 
@@ -22,7 +23,7 @@ class ProjectExporter:
     '''
     
     rep_header = {"Prefer": "return=representation"}
-    base_url = f'http://postgrest:3000/'
+    base_url = EXPORTER_API
     cols_export = queries / "cols-export.sql"
 
     def __init__(self, project_id: int, name: str="", description: str=""):

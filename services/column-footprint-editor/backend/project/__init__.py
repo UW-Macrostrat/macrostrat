@@ -1,4 +1,5 @@
 from pathlib import Path
+from settings import IMPORTER_API
 from database import Database
 import requests
 
@@ -14,6 +15,7 @@ class Project:
         self.name = name
         self.description = description
         self.db = Database(self)
+        self.base_url = IMPORTER_API
 
     def create_new_project(self):
         if not self.project_in_db():
@@ -38,16 +40,14 @@ class Project:
         self.db.insert_project_info(params)
     
     def insert_project_column_groups(self):
-        route = f'https://macrostrat.org/api/defs/groups?project_id={self.id}'
-
+        route = f'{self.base_url}col_groups?project_id=eq.{self.id}'
         res = requests.get(route)
-        json_ = res.json()
-        data = json_['success']['data']
+        data = res.json()
         for column in data:
             params = {}
-            params['col_group_id'] = column['col_group_id']
+            params['col_group_id'] = column['id']
             params['col_group'] = column['col_group']
-            params['col_group_name'] = column['name'] 
+            params['col_group_name'] = column['col_group_long'] 
 
             self.db.insert_project_column_group(params)
 
