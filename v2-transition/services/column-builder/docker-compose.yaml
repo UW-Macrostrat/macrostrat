@@ -40,7 +40,7 @@ services:
     profiles:
       - production
     ports:
-      - "1235:3000"
+      - "1235:1235"
   geologic_map_server:
     build: ./BirdsEye/backend
     profiles:
