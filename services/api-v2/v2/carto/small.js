@@ -112,7 +112,7 @@ module.exports = function(req, res, next, cb) {
         ${where}
         ${limit}
       `
-      console.log(sql)
+      // console.log(sql)
 
       larkin.queryPg("burwell", sql, params, function(error, result) {
         if (error) {
