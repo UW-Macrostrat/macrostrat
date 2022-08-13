@@ -24,7 +24,7 @@ module.exports = function(req, res, next, cb) {
       function(callback) {
         if (req.query.lat && req.query.lng) {
           req.query.lng = larkin.normalizeLng(req.query.lng);
-          where.push("ST_Intersects(geom, ST_GeomFromText($1, 4326))");
+          where.push("ST_Intersects(s1.geom, ST_GeomFromText($1, 4326))");
           params.push("POINT(" + req.query.lng + " " + req.query.lat + ")");
         }
         callback(null);
@@ -112,6 +112,8 @@ module.exports = function(req, res, next, cb) {
         ${where}
         ${limit}
       `
+      console.log(sql)
+
       larkin.queryPg("burwell", sql, params, function(error, result) {
         if (error) {
           if (cb) return cb(error);
