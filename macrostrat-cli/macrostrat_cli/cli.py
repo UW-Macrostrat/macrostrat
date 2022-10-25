@@ -28,6 +28,7 @@ import sys
 
 # import all available commands
 from . import commands
+from .ingest import app
 
 
 def main():
@@ -39,6 +40,12 @@ def main():
 
     if sys.argv[1] == "--help" or sys.argv[1] == "-h":
         print(__doc__)
+        sys.exit()
+
+    if sys.argv[1] == "ingest":
+        # Switch over to the modernized ingest subcommand
+        sys.argv = sys.argv[1:]
+        app()
         sys.exit()
 
     if sys.argv[1] == "--version":

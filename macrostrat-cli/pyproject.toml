@@ -1,0 +1,38 @@
+[tool.poetry]
+authors = ["Daven Quinn <dev@davenquinn.com>"]
+description = "Macrostrat's command-line interface"
+name = "macrostrat.cli"
+
+packages = [{include = "macrostrat_cli"}]
+
+readme = "README.md"
+version = "2.2.0"
+
+[tool.poetry.dependencies]
+PyMySQL = "^1.0.2"
+python = "^3.10"
+psycopg2 = "^2.9.4"
+SQLAlchemy = "^1.4.42"
+numpy = "^1.23.4"
+scipy = "^1.9.3"
+shapely = "^1.8.5.post1"
+pyproj = "^3.4.0"
+spectra = "^0.0.11"
+Fiona = "^1.8.22"
+tqdm = "^4.64.1"
+PyYAML = "^6.0"
+geopandas = "^0.12.0"
+ipython = "^8.5.0"
+tiletanic = "^1.1.0"
+requests = "^2.28.1"
+typer = "^0.6.1"
+rich = "^12.6.0"
+"macrostrat.database" = "^1.0.2"
+pygeos = "^0.13"
+
+[tool.poetry.scripts]
+macrostrat = "macrostrat_cli.cli:main"
+
+[build-system]
+build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core"]
