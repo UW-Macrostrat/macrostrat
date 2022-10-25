@@ -8,7 +8,8 @@ have been exhausted. Also, most initial ingestion occurred in the Macrostrat lab
 by a small number of researchers and lab assistants.
 
 We've got very little coverage of quad-scale maps globally. Building this coverage will require a new model wherein researchers
-with a strong focus in a local area can contribute relevant mapping. This requires a high degree of automation guidance by researchers.
+with a strong focus in a local area can contribute relevant mapping. This requires a high degree of automation and
+guidance by external researchers.
 
 ## Envisioned stages of the Macrostrat mapping system
 
