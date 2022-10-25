@@ -73,7 +73,9 @@ services:
     volumes:
       - /var/data/rockd:/var/data/rockd
   dacite:
-    image: dacite:latest
+    build:
+      context: services/column-builder/dacite
+      dockerfile: prod.Dockerfile
     environment:
       - NEXT_PUBLIC_SERVER_URL=${NEXT_PUBLIC_SERVER_URL}
       - NEXT_PUBLIC_CLIENT_URL=${NEXT_PUBLIC_CLIENT_URL}
@@ -87,11 +89,28 @@ services:
       - "3001:3000"
     environment:
       PGRST_DB_URI: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/column_data
-      PGRST_DB_SCHEMA: macrostrat_api
+      PGRST_DB_SCHEMA: macrostrat_api,weaver_api
       PGRST_DB_ANON_ROLE: postgres
       PGRST_SERVER_PORT: 3001
     depends_on:
       - postgres
+  birdseye:
+    build: services/column-builder/BirdsEye/frontend
+    ports:
+      - "1235:1235"
+  geologic_map_server:
+    build: services/column-builder/BirdsEye/backend
+    environment:
+      - GEOLOGIC_MAP_CONFIG=/app/docker-assets/docker-map-config.json
+      - GEOLOGIC_MAP_DATABASE=${GEOLOGIC_MAP_DATABASE}
+      - IMPORTER_API=${IMPORTER_API}
+      - EXPORTER_API=${EXPORTER_API}
+    entrypoint: "/python_app/docker-scripts/run"
+    ports:
+      - "40053:8000"
+    depends_on:
+      - postgres
+
 volumes:
   mariadb_data:
   postgres_data:

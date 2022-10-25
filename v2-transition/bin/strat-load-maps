@@ -1,33 +1,48 @@
-ssh -Cfo ExitOnForwardFailure=yes -N -L 5439:localhost:5432 steno
-PID=$(pgrep -f 'N -L 5439:')
-[ "$PID" ] || exit 1
+#!bash -e
 
-dbname=burwell
+load_sources=0
+load_carto=0
+# Load sources if specified
 
-#strat compose exec postgres psql -Upostgres -c "DROP SCHEMA carto_new CASCADE;"
+for arg in "$@"; do
+  if [ "$arg" = "--sources" ]; then
+    load_sources=1
+  elif [ "$arg" = "--carto" ]; then
+    load_carto=1
+  elif [ "$arg" = "--all" ]; then
+    load_sources=1
+    load_carto=1
+  fi
+done
 
-copy_data() {
-  pg_dump -Fc -p 5439 -h localhost \
-    -U postgres $@ \
-    $dbname \
-  | pv \
-  | strat compose exec -T postgres \
-    pg_restore -v -Upostgres -d $dbname
-}
+if [ $load_sources -eq 0 ] && [ $load_carto -eq 0 ]; then
+  echo "Specify '--sources', '--carto', or '--all' to load"
+  exit 1
+fi
 
-echo "Dumping Macrostrat carto data from steno"
-copy_data \
-  --schema=carto_new \
-  --exclude-table=carto_new.hex_index \
-  --exclude-table=carto_new.pbdb_hex_index \
+# Load carto data
 
-echo "Dumping Macrostrat maps schema from steno"
-copy_data --schema=maps
+if [ $load_carto -eq 1 ]; then
+  echo "Loading Macrostrat maps schema from steno"
+  strat copy-data --schema=maps
 
-echo "Dumping Macrostrat lines schema from steno"
-copy_data --schema=lines
+  echo "Loading Macrostrat carto data from steno"
+  strat copy-data \
+    --schema=carto_new \
+    --exclude-table=carto_new.hex_index \
+    --exclude-table=carto_new.pbdb_hex_index
 
-kill $PID
+  echo "Loading Macrostrat lines schema from steno"
+  strat copy-data -t line_ids # For some reason the sequence is separate here
+  strat copy-data --schema=lines
 
-# Upgrade the database to conform to the latest schemas
-strat upgrade-db
+  # Upgrade the database to conform to the latest schemas
+  strat upgrade-db
+fi
+
+if [ $load_sources -eq 1 ]; then
+  echo "Loading Macrostrat sources schema from steno"
+  strat copy-data --schema=sources
+fi
+
+

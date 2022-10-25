@@ -13,3 +13,6 @@
 [submodule "services/column-infrastructure"]
 	path = services/column-infrastructure
 	url = https://github.com/UW-Macrostrat/column-infrastructure.git
+[submodule "weaver"]
+	path = tools/weaver
+	url = https://github.com/digitalcrust/weaver.git

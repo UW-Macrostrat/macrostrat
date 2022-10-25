@@ -1,34 +1,25 @@
-ssh -Cfo ExitOnForwardFailure=yes -N -L 5439:localhost:5432 steno
-PID=$(pgrep -f 'N -L 5439:')
-[ "$PID" ] || exit 1
-
 dbname=burwell
 
 strat compose exec postgres psql -Upostgres -c "DROP DATABASE $dbname WITH (FORCE);"
 strat compose exec postgres createdb -Upostgres $dbname
 
 echo "Dumping Macrostrat database from steno"
+
+strat copy-data --schema public --schema-only
+
 strat compose exec postgres psql -Upostgres $dbname -c "CREATE EXTENSION postgis;"
-pg_dump -Fc -p 5439 -h localhost -U postgres \
-  --schema=macrostrat \
+
+strat copy-data --schema=macrostrat \
   --exclude-table-data=macrostrat.strat_name_footprints \
   --exclude-table-data=macrostrat.measures \
   --exclude-table-data=macrostrat.measuremeta \
   --exclude-table-data=macrostrat.lookup_unit_attrs_api \
-  --exclude-table-data=macrostrat.pbdb_collections \
-  $dbname \
-| pv \
-| strat compose exec -T postgres pg_restore -v -Upostgres -d $dbname
+  --exclude-table-data=macrostrat.pbdb_collections
 
 echo "Dumping Macrostrat measures from steno"
-pg_dump -Fc -p 5439 -h localhost -U postgres \
+strat copy-data \
   --table=macrostrat.strat_name_footprints \
   --table=macrostrat.measures \
   --table=macrostrat.measuremeta \
   --table=macrostrat.lookup_unit_attrs_api \
-  --table=macrostrat.pbdb_collections \
-  $dbname \
-| pv \
-| strat compose exec -T postgres pg_restore -v -Upostgres -d $dbname
-
-kill $PID
+  --table=macrostrat.pbdb_collections

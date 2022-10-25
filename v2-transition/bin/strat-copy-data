@@ -1,0 +1,20 @@
+#!bash
+
+ssh -Cfo ExitOnForwardFailure=yes -N -L 5439:localhost:5432 steno
+PID=$(pgrep -f 'N -L 5439:')
+[ "$PID" ] || exit 1
+
+function finish {
+  kill $PID
+}
+
+trap finish exit
+
+dbname=burwell
+
+echo "Loading Macrostrat data from steno ($@)"
+pg_dump -Fc -p 5439 -h localhost -U postgres \
+  $@ \
+  $dbname \
+| pv \
+| strat compose exec -T postgres pg_restore -v -Upostgres -d $dbname
