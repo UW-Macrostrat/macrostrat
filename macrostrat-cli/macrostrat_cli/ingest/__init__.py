@@ -6,8 +6,11 @@ import pandas as P
 import IPython
 from collections import defaultdict
 from sqlalchemy import create_engine
+from geoalchemy2 import Geometry, WKBElement
+from sqlalchemy import *
 
 from rich.console import Console
+from rich.progress import Progress
 
 console = Console()
 app = Typer()
@@ -84,15 +87,29 @@ def ingest_map(
 
         table = f"{source_id}_{feature_type.lower()}s"
         schema = "map_staging"
+        chunksize = 100
 
-        console.print(f"Writing {feature_type}s to [cyan]{schema}.{table}")
         engine.execute(f"CREATE SCHEMA IF NOT EXISTS {schema}")
+
+        console.print(f"Writing [blue dim]{schema}.{table}")
         # Get first 10 rows
 
-        df.to_postgis(
-            table,
-            engine,
-            if_exists=if_exists,
-            schema=schema,
-            chunksize=100,
-        )
+        # Iterate through chunks and write to PostGIS
+        with Progress() as progress:
+            task = progress.add_task(
+                f"Writing {feature_type}s",
+                total=len(df),
+            )
+
+            for i, chunk in enumerate(chunker(df, chunksize)):
+                chunk.to_postgis(
+                    table,
+                    engine,
+                    schema=schema,
+                    if_exists=if_exists if i == 0 else "append",
+                )
+                progress.update(task, advance=len(chunk))
+
+
+def chunker(seq, size):
+    return (seq[pos : pos + size] for pos in range(0, len(seq), size))
