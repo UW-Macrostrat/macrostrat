@@ -9,6 +9,7 @@ Usage:
   macrostrat schlep <table>
   macrostrat seed <source_id>
   macrostrat export [coming soon]
+  macrostrat maps [New map ingestion CLI, if installed]
   macrostrat -h | --help
   macrostrat --version
 Options:
@@ -43,6 +44,10 @@ def main():
 
     if sys.argv[1] == "--version":
         print(("macrostrat-cli - %s" % (VERSION,)))
+        sys.exit()
+
+    if sys.argv[1] == "maps":
+        print("Error: map ingestion CLI is not installed")
         sys.exit()
 
     cmd = sys.argv[1]
