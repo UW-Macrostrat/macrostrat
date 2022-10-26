@@ -27,10 +27,7 @@ if [ $load_carto -eq 1 ]; then
   strat copy-data --schema=maps
 
   echo "Loading Macrostrat carto data from steno"
-  strat copy-data \
-    --schema=carto_new \
-    --exclude-table=carto_new.hex_index \
-    --exclude-table=carto_new.pbdb_hex_index
+  strat copy-data --schema=carto_new
 
   echo "Loading Macrostrat lines schema from steno"
   strat copy-data -t line_ids # For some reason the sequence is separate here

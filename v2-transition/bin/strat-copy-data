@@ -1,6 +1,6 @@
 #!bash
 
-ssh -Cfo ExitOnForwardFailure=yes -N -L 5439:localhost:5432 steno
+ssh -4 -Cfo ExitOnForwardFailure=yes -N -L 5439:localhost:5432 steno
 PID=$(pgrep -f 'N -L 5439:')
 [ "$PID" ] || exit 1
 
@@ -10,11 +10,11 @@ function finish {
 
 trap finish exit
 
-dbname=burwell
+export POSTGRES_DB="${POSTGRES_DB:-burwell}"
 
 echo "Loading Macrostrat data from steno ($@)"
 pg_dump -Fc -p 5439 -h localhost -U postgres \
   $@ \
-  $dbname \
+  $POSTGRES_DB \
 | pv \
-| strat compose exec -T postgres pg_restore -v -Upostgres -d $dbname
+| strat compose exec -T postgres pg_restore -v -Upostgres -d $POSTGRES_DB
