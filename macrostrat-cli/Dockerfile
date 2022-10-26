@@ -1,15 +1,16 @@
-FROM python:3.9
+FROM python:3.10
 
 WORKDIR /code
 
-COPY ./setup.py ./setup.cfg ./README.md /code/
-COPY ./macrostrat_cli/__init__.py /code/macrostrat_cli/
+RUN pip install "poetry==1.2.2"
 
-RUN python setup.py egg_info && pip install -r *.egg-info/requires.txt
+COPY poetry.lock pyproject.toml /code/
+
+RUN poetry config virtualenvs.create false \
+ && poetry install --no-interaction --no-ansi --no-root
 
 COPY ./ /code/
 
-RUN pip install -e .
+RUN poetry install --no-interaction --no-ansi
 
-
-CMD ["bash"]
+ENTRYPOINT ["macrostrat"]
