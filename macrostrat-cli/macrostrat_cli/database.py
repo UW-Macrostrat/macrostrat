@@ -4,6 +4,7 @@ from warnings import filterwarnings
 import psycopg2
 from .config import MYSQL_DATABASE, PG_DATABASE
 from sqlalchemy import create_engine
+from macrostrat.database import Database
 
 # Connect to MySQL
 def mariaConnection():
@@ -33,3 +34,6 @@ def pgConnection():
 def get_pg_credentials():
     engine = create_engine(PG_DATABASE)
     return engine.url
+
+
+db = Database(PG_DATABASE)
