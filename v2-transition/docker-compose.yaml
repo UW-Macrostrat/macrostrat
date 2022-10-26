@@ -46,6 +46,7 @@ services:
     expose: [5000]
   cli:
     build: tools/macrostrat-utils
+    container_name: macrostrat-cli
     environment:
       - MACROSTRAT_PG_DATABASE=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/burwell
       - MACROSTRAT_MYSQL_DATABASE=mysql://root:${MARIADB_ROOT_PASSWORD}@mariadb:3306/macrostrat
@@ -54,6 +55,8 @@ services:
       - TILE_CACHE_PATH_VECTOR
       - TILESERVER_SECRET
       - MBTILES_PATH
+    volumes:
+      - ./tools/macrostrat-utils:/code:ro
   tileserver:
     build: services/tileserver
     environment:
