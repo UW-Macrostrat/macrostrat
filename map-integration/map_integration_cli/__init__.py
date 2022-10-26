@@ -9,7 +9,7 @@ class IngestionCLI(Typer):
 
 
 app = IngestionCLI(no_args_is_help=True, add_completion=False)
-app.command(name="ingest")(ingest_map)
+app.add_command(ingest_map, name="ingest")
 
 
 @app.command(name="test")
@@ -18,7 +18,7 @@ def test():
 
 
 def main():
-    if len(sys.argv) > 1 and sys.argv[1] == "map":
+    if len(sys.argv) > 1 and sys.argv[1] == "maps":
         sys.argv = sys.argv[1:]
         app()
     else:

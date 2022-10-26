@@ -19,4 +19,5 @@ tiles/credentials.js
 tiles/compiled_styles
 
 elevation/srtm1/downloads/*
+.env
 

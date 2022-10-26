@@ -13,8 +13,10 @@ Multiscale geologic map integration. Contains scripts for importing maps, matchi
 + (Optional) Edit `tiles/config.js` with the proper paths to tiles
 
 
-## import
-To import a new dataset, you can use ````./import```` which reprojects a dataset to EPSG 4326 and imports it into PostGIS.
+# Import
+
+In version `2.0`, imports are now accomplished with the `macrostrat maps ingest` script, which reprojects a
+dataset to EPSG 4326 and imports it into PostGIS.
 
 It requires two parameters, a dataset name and a path to a shapefile, and accepts two optional parameters - append and encoding. If the dataset is spread out over multiple files, set append (the third positional parameter) to ````false```` or leave it blank for the first shapefile, and set it to ````true```` for subsequent shapefiles. If you see an encoding error, try the suggested encoding (usually ````LATIN1````).
 
@@ -39,7 +41,11 @@ _Import a single shapefile:_
 Note that if this script reports an error similar to ````Unable to open unprojected.shp or unprojected.SHP.````, try moving the directory containing the .shp file into a shorter path location. Long paths can cause failure.
 
 
-## processing
+# Homogenization
+
+Manual cleanup to tables to prepare them for importing. Not yet well-documented.
+
+# Processing
 Processing a source involves matching, refreshing lookup tables, building an `rgeom`, refreshing carto tables for lines, and rolling tiles. While these steps can be done individually, they should be done all at once by using `process_source.py`.
 
 **This should only be called after the units and lines for a given source have been imported into their respective homogenized tables!!!**

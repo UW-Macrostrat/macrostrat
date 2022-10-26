@@ -25,6 +25,7 @@ scipy = "^1.9.3"
 typer = "^0.6.1"
 
 "macrostrat.cli" = {path = "./deps/macrostrat-cli", develop = true}
+python-dotenv = "^0.21.0"
 
 [tool.poetry.scripts]
 # Override the default entrypoint for the macrostrat.cli package
