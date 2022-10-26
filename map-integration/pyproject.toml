@@ -31,6 +31,9 @@ python-dotenv = "^0.21.0"
 # Override the default entrypoint for the macrostrat.cli package
 macrostrat = "map_integration_cli:main"
 
+[tool.poetry.group.dev.dependencies]
+black = {version = "^22.10.0", allow-prereleases = true}
+
 [build-system]
 build-backend = "poetry.core.masonry.api"
 requires = ["poetry-core"]

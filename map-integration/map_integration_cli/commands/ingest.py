@@ -8,13 +8,14 @@ from sqlalchemy import create_engine
 from geoalchemy2 import Geometry, WKBElement
 from sqlalchemy import *
 
+from geopandas.io.sql import _get_geometry_type, _convert_to_ewkb, _psql_insert_copy
+
 from rich.console import Console
 from rich.progress import Progress
 
-console = Console()
+from ..database import db
 
-# Database connection
-engine = create_engine("postgresql://postgres:moovitbro@localhost:54381/burwell")
+console = Console()
 
 
 def ingest_map(
@@ -81,13 +82,13 @@ def ingest_map(
         # Columns
         console.print("Columns:")
         for col in df.columns:
-            echo(f"- {col}")
+            console.print(f"- {col}")
 
         table = f"{source_id}_{feature_type.lower()}s"
-        schema = "map_staging"
+        schema = "sources"
         chunksize = 10
 
-        engine.execute(f"CREATE SCHEMA IF NOT EXISTS {schema}")
+        db.engine.execute(f"CREATE SCHEMA IF NOT EXISTS {schema}")
 
         console.print(f"Writing [blue dim]{schema}.{table}")
         # Get first 10 rows
@@ -99,12 +100,18 @@ def ingest_map(
                 total=len(df),
             )
 
+            geom_name = df.geometry.name
+            geometry_type, has_curve = _get_geometry_type(df)
+            df = _convert_to_ewkb(df, geom_name, 4326)
+
             for i, chunk in enumerate(chunker(df, chunksize)):
-                chunk.to_postgis(
+                chunk.to_sql(
                     table,
-                    engine,
+                    db.engine,
                     schema=schema,
                     if_exists=if_exists if i == 0 else "append",
+                    dtype={geom_name: Geometry(geometry_type=geometry_type, srid=4326)},
+                    method=_psql_insert_copy,
                 )
                 progress.update(task, advance=len(chunk))
 
