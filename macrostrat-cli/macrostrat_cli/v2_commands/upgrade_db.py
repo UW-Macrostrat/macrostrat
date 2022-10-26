@@ -11,6 +11,9 @@ def upgrade_db():
     print(
         f"Connected to [dim green]{db.engine.url.database}[/dim green] on port [dim green]{db.engine.url.port}[/dim green]"
     )
+    files = Path(relative_path(__file__, "procedures")).glob("*.sql")
+    files = list(files)
+    files.sort()
 
-    filename = Path(relative_path(__file__, "procedures", "update-srid.sql"))
-    db.exec_sql(filename)
+    for file in files:
+        db.exec_sql(file)
