@@ -16,3 +16,6 @@
 [submodule "weaver"]
 	path = tools/weaver
 	url = https://github.com/digitalcrust/weaver.git
+[submodule "services/corelle"]
+	path = services/corelle
+	url = https://github.com/UW-Macrostrat/corelle.git
