@@ -70,6 +70,15 @@ services:
         --log-level debug
         --proxy-headers
         macrostrat_tileserver.main:app
+  corelle_api:
+    build: services/corelle
+    depends_on:
+      - postgres
+    expose: [5000]
+    volumes:
+      - ./services/corelle/data:/run/data:ro
+    environment:
+      - CORELLE_DB=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/burwell
   rockd_api:
     build: services/rockd-api/api
     expose: [5500]
