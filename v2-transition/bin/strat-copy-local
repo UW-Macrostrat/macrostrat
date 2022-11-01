@@ -1,0 +1,11 @@
+#!bash
+# Copy tables from one database to another locally
+
+# Usage: strat-copy-local <source_db> <target_db> <table_name>
+
+source=$1
+shift
+target=$1
+shift
+
+strat compose exec -T postgres bash -c "pg_dump -U postgres -d $1 $@ | psql -U postgres -d $2"

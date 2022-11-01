@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+dbname="map_ingestion"
+
+strat compose exec postgres createdb -Upostgres $dbname
+
+# Create the sources schema
+strat compose exec postgres psql -Upostgres $dbname -c "CREATE SCHEMA sources;"
+
+# Create a map ingestion user with restricted permissions
+strat compose exec postgres psql -Upostgres -c "CREATE USER map_ingestion WITH PASSWORD 'macrostrat-is-cool';"
+strat compose exec postgres psql -Upostgres -c "GRANT CONNECT ON DATABASE $dbname TO map_ingestion;"
+strat compose exec postgres psql -Upostgres -c "GRANT USAGE ON SCHEMA sources TO map_ingestion;"
+
+# Get an example dataset
+POSTGRES_DB=$dbname
+strat copy-data --table=maps.sources --table sources.az_mohave --table sources.az_mohave_lines
