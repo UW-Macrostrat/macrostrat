@@ -10,7 +10,7 @@ Usage:
   macrostrat seed <source_id>
   macrostrat export [coming soon]
   macrostrat maps [New map ingestion CLI, if installed]
-  macrostrat update-db    Update the database to the latest version
+  macrostrat v2    Version 2 commands
   macrostrat -h | --help
   macrostrat --version
 Options:
@@ -27,16 +27,10 @@ Help:
 from . import __version__ as VERSION
 from .database import pgConnection, mariaConnection
 import sys
-from typer import Typer
-
-from .v2_commands.upgrade_db import upgrade_db
 
 # import all available commands
 from . import commands
-
-app = Typer()
-
-app.command(name="upgrade-db")(upgrade_db)
+from .v2_commands import app
 
 
 def main():
@@ -58,7 +52,7 @@ def main():
         print("Error: map ingestion CLI is not installed")
         sys.exit()
 
-    if sys.argv[1] == "update-db":
+    if sys.argv[1] == "v2":
         sys.argv = sys.argv[1:]
         app()
 
