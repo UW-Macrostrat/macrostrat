@@ -50,6 +50,7 @@ services:
     environment:
       - MACROSTRAT_PG_DATABASE=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/burwell
       - MACROSTRAT_MYSQL_DATABASE=mysql://root:${MARIADB_ROOT_PASSWORD}@mariadb:3306/macrostrat
+      - MACROSTRAT_SCHEMA_EXTENSIONS=/data/schema-extensions
       - REDIS_PORT
       - TILE_CACHE_PATH
       - TILE_CACHE_PATH_VECTOR
@@ -57,6 +58,7 @@ services:
       - MBTILES_PATH
     volumes:
       - ./tools/macrostrat-utils:/code:ro
+      - ./schema:/data/schema-extensions:ro
   tileserver:
     build: services/tileserver
     environment:
@@ -70,15 +72,18 @@ services:
         --log-level debug
         --proxy-headers
         macrostrat_tileserver.main:app
-  corelle_api:
+  corelle:
     build: services/corelle
     depends_on:
       - postgres
     expose: [5000]
     volumes:
-      - ./services/corelle/data:/run/data:ro
+      - ./services/corelle/data:/code/data:ro
     environment:
       - CORELLE_DB=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/burwell
+      # This is a legacy argument...
+      - CORELLE_DB_ARGS=-h postgres -d burwell -p 5432 -U postgres
+      - PGPASSWORD=${POSTGRES_PASSWORD}
   rockd_api:
     build: services/rockd-api/api
     expose: [5500]
