@@ -74,13 +74,10 @@ END IF;
 
 
 mercator_bbox := tile_utils.envelope(x, y, z);
-
 projected_bbox := ST_Transform(
   mercator_bbox,
   4326
 );
-
-min_feature_size := ST_Area(projected_bbox) / 10000;
 
 IF z < 3 THEN
   -- Select from carto.tiny table
@@ -102,14 +99,23 @@ WITH rotation_info AS (
   SELECT DISTINCT ON (pp.plate_id)
     pp.plate_id,
     -- Get the tile bounding box rotated to the actual position of the plate on the modern globe
-    corelle.rotate_geometry(projected_bbox, corelle.invert_rotation(rc.rotation)) AS tile_envelope,
+    ST_Transform(
+      mercator_bbox,
+      corelle_macrostrat.rotated_web_mercator_proj(corelle.invert_rotation(rc.rotation)),
+      4326
+    ) AS tile_envelope,
     rc.rotation rotation
   FROM corelle.plate_polygon pp
   JOIN corelle.rotation_cache rc
     ON rc.plate_id = pp.plate_id
     AND rc.t_step = _t_step
     AND rc.model_id = _model_id
-  WHERE ST_Intersects(geometry, projected_bbox)
+    -- Get only plates that match the tile geometry
+  WHERE ST_Intersects(geometry, ST_Transform(
+      mercator_bbox,
+      corelle_macrostrat.rotated_web_mercator_proj(corelle.invert_rotation(rc.rotation)),
+      4326
+    ))
 ),
 mvt_features AS (
   SELECT
@@ -118,10 +124,10 @@ mvt_features AS (
     cpi.plate_id,
     cpi.model_id,
     ST_AsMVTGeom(
-      ST_Transform(
-        corelle.rotate_geometry(
-          coalesce(cpi.geom, u.geom),
-          ri.rotation
+      ST_SetSRID(
+        ST_Transform(
+          ST_SetSRID(coalesce(cpi.geom, u.geom), 4326),
+          corelle_macrostrat.rotated_web_mercator_proj(ri.rotation)
         ),
         3857
       ),
@@ -136,9 +142,9 @@ mvt_features AS (
   JOIN rotation_info ri
     ON ri.plate_id = cpi.plate_id
   WHERE
-    ST_Intersects(coalesce(cpi.geom, u.geom), ri.tile_envelope)
+    ST_Intersects(ST_SetSRID(u.geom, 4326), ri.tile_envelope)
     AND u.scale = mapsize
-    AND ST_Area(coalesce(cpi.geom, u.geom)) > min_feature_size
+    --AND ST_Area(ST_SetSRID(coalesce(cpi.geom, u.geom), 4326)) > min_feature_size
 ), expanded AS (
   SELECT
     z.plate_id,
@@ -200,3 +206,10 @@ RETURN bedrock;
 
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
+
+
+CREATE OR REPLACE FUNCTION corelle_macrostrat.rotated_web_mercator_proj(q numeric[]) RETURNS text AS $$
+BEGIN
+  RETURN '+proj=merc +a=6378137 +b=6378137 +lat_ts=0 +lon_0=10 +x_0=0 +y_0=0 +k=1 +units=m +nadgrids=@null +wktext +no_defs +type=crs';
+END;
+$$ LANGUAGE plpgsql IMMUTABLE STRICT;
