@@ -99,11 +99,11 @@ WITH rotation_info AS (
   SELECT DISTINCT ON (pp.plate_id)
     pp.plate_id,
     -- Get the tile bounding box rotated to the actual position of the plate on the modern globe
-    ST_WrapX(ST_Transform(
+    ST_Transform(
       mercator_bbox,
       corelle_macrostrat.rotated_web_mercator_proj(rc.rotation),
       4326
-    ), -180, 180) AS tile_envelope,
+    ) AS tile_envelope,
     rc.rotation
   FROM corelle.plate_polygon pp
   JOIN corelle.rotation_cache rc
@@ -135,7 +135,8 @@ mvt_features AS (
       ),
       mercator_bbox,
       4096,
-      1
+      1,
+      true
     ) geom
   FROM tile_layers.carto_units u
   JOIN corelle_macrostrat.carto_plate_index cpi
@@ -217,13 +218,27 @@ DECLARE
   point2 geometry;
   origin geometry;
   origin1 geometry;
+  dx numeric;
+  dy numeric;
   rotation numeric;
 BEGIN
   origin := ST_SetSRID(ST_MakePoint(0, 0), 4326);
-  point1 := corelle.rotate_point(ST_SetSRID(ST_MakePoint(0, 0), 4326), q);
   point2 := corelle.rotate_point(ST_SetSRID(ST_MakePoint(90, 0), 4326), q);
 
   origin1 := corelle.rotate_point(origin, q);
+
+  point1 := corelle.rotate_point(ST_SetSRID(ST_MakePoint(0.1, 0), 4326), q);
+
+  -- Get angular transformation
+  -- dx = ST_X(point1) - ST_X(origin1);
+  -- dy = ST_Y(point1) - ST_Y(origin1);
+  -- rotation = atan2(dy, dx) * 180 / pi();
+
+  -- Apply spherical law of cosines to find mercator skew
+  dx = ST_Distance(point1, origin1);
+  dy = ST_Distance(point2, origin1);
+  rotation = acos(dx / dy) * 180 / pi();
+
 
   -- angle the projection was rotated
   -- rotation := ST_Azimuth(origin, origin1) * 180 / pi();
@@ -235,7 +250,7 @@ BEGIN
   -- END IF;
 
   --RETURN '+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=-20 +x_0=0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext +no_defs';
-  RETURN format('+proj=omerc +a=6378137 +b=6378137 +lonc=%s +lat_0=%s +alpha=89 +x_0=0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext +no_defs', -ST_X(origin1), -ST_Y(origin1));
+  RETURN format('+proj=omerc +a=6378137 +b=6378137 +lonc=%s +lat_0=%s +alpha=%s +x_0=0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext +no_defs', -ST_X(origin1), -ST_Y(origin1), 90-rotation);
 
   --RETURN format('+proj=omerc +a=6378137 +b=6378137 +lon_1=%s +lat_1=%s +lon_2=%s +lat_2=%s +lon_0=%s +x_0=0 +y_0=0 +k=1 +units=m +nadgrids=@null +wktext +no_defs +type=crs', ST_X(point1), ST_Y(point1), ST_X(point2), ST_Y(point2), -ST_X(origin1));
 END; 
