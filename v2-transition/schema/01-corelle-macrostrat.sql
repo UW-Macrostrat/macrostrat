@@ -109,7 +109,7 @@ WITH rotation_info AS (
     ON rc.plate_id = pp.plate_id
     AND rc.t_step = _t_step
     AND rc.model_id = _model_id
-  WHERE ST_Intersects(geometry, projected_bbox)
+  WHERE ST_Intersects(geometry, corelle.rotate_geometry(projected_bbox, corelle.invert_rotation(rc.rotation)))
 ),
 mvt_features AS (
   SELECT
