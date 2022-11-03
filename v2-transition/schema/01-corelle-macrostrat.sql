@@ -99,23 +99,25 @@ WITH rotation_info AS (
   SELECT DISTINCT ON (pp.plate_id)
     pp.plate_id,
     -- Get the tile bounding box rotated to the actual position of the plate on the modern globe
-    ST_Transform(
+    ST_WrapX(ST_Transform(
       mercator_bbox,
-      corelle_macrostrat.rotated_web_mercator_proj(corelle.invert_rotation(rc.rotation)),
+      corelle_macrostrat.rotated_web_mercator_proj(rc.rotation),
       4326
-    ) AS tile_envelope,
-    rc.rotation rotation
+    ), -180, 180) AS tile_envelope,
+    rc.rotation
   FROM corelle.plate_polygon pp
   JOIN corelle.rotation_cache rc
     ON rc.plate_id = pp.plate_id
     AND rc.t_step = _t_step
     AND rc.model_id = _model_id
-    -- Get only plates that match the tile geometry
-  WHERE ST_Intersects(geometry, ST_Transform(
+  WHERE ST_Intersects(
+    pp.geometry,
+    ST_Transform(
       mercator_bbox,
-      corelle_macrostrat.rotated_web_mercator_proj(corelle.invert_rotation(rc.rotation)),
+      corelle_macrostrat.rotated_web_mercator_proj(rc.rotation),
       4326
-    ))
+    )
+  )
 ),
 mvt_features AS (
   SELECT
@@ -132,7 +134,8 @@ mvt_features AS (
         3857
       ),
       mercator_bbox,
-      4096
+      4096,
+      1
     ) geom
   FROM tile_layers.carto_units u
   JOIN corelle_macrostrat.carto_plate_index cpi
@@ -209,7 +212,30 @@ $$ LANGUAGE plpgsql IMMUTABLE;
 
 
 CREATE OR REPLACE FUNCTION corelle_macrostrat.rotated_web_mercator_proj(q numeric[]) RETURNS text AS $$
+DECLARE
+  point1 geometry;
+  point2 geometry;
+  origin geometry;
+  origin1 geometry;
+  rotation numeric;
 BEGIN
-  RETURN '+proj=merc +a=6378137 +b=6378137 +lat_ts=0 +lon_0=10 +x_0=0 +y_0=0 +k=1 +units=m +nadgrids=@null +wktext +no_defs +type=crs';
+  origin := ST_SetSRID(ST_MakePoint(0, 0), 4326);
+  point1 := corelle.rotate_point(ST_SetSRID(ST_MakePoint(0, 0), 4326), q);
+  point2 := corelle.rotate_point(ST_SetSRID(ST_MakePoint(90, 0), 4326), q);
+
+  origin1 := corelle.rotate_point(origin, q);
+
+  -- angle the projection was rotated
+  rotation := ST_Azimuth(origin, origin1) * 180 / pi();
+  IF rotation < -180 THEN
+    rotation := 360 + rotation;
+  END IF;
+  IF rotation > 180 THEN
+    rotation := rotation - 360;
+  END IF;
+
+  --RETURN '+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=-20 +x_0=0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext +no_defs';
+
+  RETURN format('+proj=omerc +a=6378137 +b=6378137 +lon_1=%s +lat_1=%s +lon_2=%s +lat_2=%s +lon_0=%s +x_0=0 +y_0=0 +k=1 +units=m +nadgrids=@null +wktext +no_defs +type=crs', ST_X(point1), ST_Y(point1), ST_X(point2), ST_Y(point2), 90);
 END;
 $$ LANGUAGE plpgsql IMMUTABLE STRICT;
