@@ -226,16 +226,17 @@ BEGIN
   origin1 := corelle.rotate_point(origin, q);
 
   -- angle the projection was rotated
-  rotation := ST_Azimuth(origin, origin1) * 180 / pi();
-  IF rotation < -180 THEN
-    rotation := 360 + rotation;
-  END IF;
-  IF rotation > 180 THEN
-    rotation := rotation - 360;
-  END IF;
+  -- rotation := ST_Azimuth(origin, origin1) * 180 / pi();
+  -- IF rotation < -180 THEN
+  --   rotation := 360 + rotation;
+  -- END IF;
+  -- IF rotation > 180 THEN
+  --   rotation := rotation - 360;
+  -- END IF;
 
   --RETURN '+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=-20 +x_0=0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext +no_defs';
+  RETURN format('+proj=omerc +a=6378137 +b=6378137 +lonc=%s +lat_0=%s +alpha=89 +x_0=0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext +no_defs', -ST_X(origin1), -ST_Y(origin1));
 
-  RETURN format('+proj=omerc +a=6378137 +b=6378137 +lon_1=%s +lat_1=%s +lon_2=%s +lat_2=%s +lon_0=%s +x_0=0 +y_0=0 +k=1 +units=m +nadgrids=@null +wktext +no_defs +type=crs', ST_X(point1), ST_Y(point1), ST_X(point2), ST_Y(point2), 90);
-END;
+  --RETURN format('+proj=omerc +a=6378137 +b=6378137 +lon_1=%s +lat_1=%s +lon_2=%s +lat_2=%s +lon_0=%s +x_0=0 +y_0=0 +k=1 +units=m +nadgrids=@null +wktext +no_defs +type=crs', ST_X(point1), ST_Y(point1), ST_X(point2), ST_Y(point2), -ST_X(origin1));
+END; 
 $$ LANGUAGE plpgsql IMMUTABLE STRICT;
