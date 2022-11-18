@@ -20,9 +20,9 @@ b AS (
 	SELECT
     layer,
     ext,
-    referrer,
-    app,
-    app_version,
+    coalesce(referrer, 'none'),
+    coalesce(app, 'none'),
+    coalesce(app_version, 'none'),
     date,
     count(*)
   FROM a
