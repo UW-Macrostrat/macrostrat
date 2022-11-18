@@ -1,0 +1,26 @@
+[tool.poetry]
+authors = ["Daven Quinn <dev@davenquinn.com>"]
+description = "Harvest tileserver statistics"
+license = "MIT"
+name = "tileserver_stats"
+packages = [{include = "tileserver_stats"}]
+readme = "README.md"
+version = "0.1.0"
+
+# Command-line scripts
+[tool.poetry.scripts]
+tileserver-stats = "tileserver_stats:app"
+
+[tool.poetry.dependencies]
+"macrostrat.database" = {version = "2.0.0.dev3", allow-prereleases = true}
+python = "^3.10"
+python-dotenv = "^0.21.0"
+rich = "^12.6.0"
+typer = "^0.6.1"
+
+[tool.poetry.group.dev.dependencies]
+black = "^22.8.0"
+
+[build-system]
+build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core"]
