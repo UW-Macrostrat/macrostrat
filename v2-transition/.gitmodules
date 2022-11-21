@@ -19,3 +19,6 @@
 [submodule "services/corelle"]
 	path = services/corelle
 	url = https://github.com/UW-Macrostrat/corelle.git
+[submodule "tileserver-stats"]
+	path = tools/tileserver-stats
+	url = https://github.com/UW-Macrostrat/tileserver-stats.git

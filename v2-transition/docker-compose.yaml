@@ -40,6 +40,8 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
   api:
     # Macrostrat API
     build: services/macrostrat-api
@@ -56,6 +58,8 @@ services:
       - TILE_CACHE_PATH_VECTOR
       - TILESERVER_SECRET
       - MBTILES_PATH
+      - TILESERVER_STATS_DATABASE
+      - TILESERVER_REQUESTS_DATABASE
     volumes:
       - ./tools/macrostrat-utils:/code:ro
       - ./schema:/data/schema-extensions:ro
