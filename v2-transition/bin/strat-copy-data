@@ -4,7 +4,9 @@ ssh -4 -Cfo ExitOnForwardFailure=yes -N -L 5439:localhost:5432 steno
 PID=$(pgrep -f 'N -L 5439:')
 [ "$PID" ] || exit 1
 
-function finish { kill $PID }
+function finish {
+  kill $PID
+}
 
 trap finish exit
 
