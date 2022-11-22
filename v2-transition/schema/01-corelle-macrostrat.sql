@@ -69,8 +69,8 @@ features record;
 mapsize text;
 linesize text[];
 mercator_bbox geometry;
-projected_bbox geometry;
 min_feature_size numeric;
+tile_width numeric;
 bedrock bytea;
 lines bytea;
 _t_step integer;
@@ -92,14 +92,6 @@ IF _model_id IS NULL THEN
   RAISE EXCEPTION 'model_id is required';
 END IF;
 
-
-mercator_bbox := tile_utils.envelope(x,y,z);
-
-projected_bbox := ST_Envelope(ST_Transform(
-  mercator_bbox,
-  4326
-));
-
 IF z < 3 THEN
   -- Select from carto.tiny table
   mapsize := 'tiny';
@@ -118,21 +110,12 @@ END IF;
 --wrap_bbox := NOT z = 0;
 
 -- Units
-WITH plate_links AS (
+WITH rotation_info AS (
   SELECT
     pp.plate_id,
     pp.model_id,
     -- Get the tile bounding box rotated to the actual position of the plate on the modern globe
-    CASE WHEN z = 0 THEN
-      projected_bbox
-    ELSE
-      -- I feel like this bbox needs to be inverted but it seems to work better if not...
-      corelle_macrostrat.rotate(
-        projected_bbox,
-        corelle.invert_rotation(rc.rotation),
-        true
-      )
-    END tile_envelope,
+    corelle_macrostrat.tile_envelope(rc.rotation, x, y, z) tile_envelope,
     geometry,
     rc.rotation rotation
   FROM corelle.plate_polygon pp
@@ -141,10 +124,8 @@ WITH plate_links AS (
     AND rc.model_id = pp.model_id
   WHERE rc.model_id = _model_id
     AND rc.t_step = _t_step
-),
-rotation_info AS (
-  SELECT * FROM plate_links
-  WHERE tile_envelope && geometry
+    AND corelle_macrostrat.tile_envelope(rc.rotation, x, y, z) && pp.geometry
+    AND ST_Intersects(corelle_macrostrat.tile_envelope(rc.rotation, x, y, z), pp.geometry)
 ),
 units AS (
   SELECT
@@ -201,8 +182,7 @@ units AS (
   LEFT JOIN maps.map_legend ON u.map_id = map_legend.map_id
   LEFT JOIN maps.legend AS l ON l.legend_id = map_legend.legend_id
   LEFT JOIN maps.sources ON l.source_id = sources.source_id
-  WHERE
-    ST_Intersects(coalesce(cpi.geom, u.geom), ri.tile_envelope)
+  WHERE u.geom && ri.tile_envelope
     AND u.scale = mapsize
     AND sources.status_code = 'active'
     AND l.best_age_top >= _t_step
@@ -226,7 +206,8 @@ land1 AS (
   JOIN rotation_info ri
     ON ri.plate_id = ix.plate_id
    AND ri.model_id = ix.model_id
-  --WHERE ST_Intersects(ix.geometry, ri.tile_envelope)
+  WHERE ix.geometry && ri.tile_envelope
+    --AND ST_Intersects(ix.geometry, ri.tile_envelope)
 ),
 columns AS (
   SELECT DISTINCT ON (col_id)
@@ -253,7 +234,7 @@ columns AS (
     ON u.col_id = c.col_id
   JOIN macrostrat.lookup_units u1
     ON u1.unit_id = u.id
-  WHERE ST_Intersects(ca.col_area, ri.tile_envelope)
+  WHERE ca.col_area && ri.tile_envelope
     AND t_age <= _t_step
     AND b_age >= _t_step
   ORDER BY col_id, max_thick DESC
@@ -274,14 +255,40 @@ u4 AS (
   SELECT ST_AsMVT(cols, 'columns') mvt4
   FROM columns cols
 )
-SELECT mvt1 || mvt3 || mvt4 AS mvt
-FROM u1, u3, u4
+SELECT mvt1 || mvt2 || mvt3 || mvt4 AS mvt
+FROM u1, u2, u3, u4
 INTO bedrock; --, plate_polygons;
 
 RETURN bedrock;
 
 END;
-$$ LANGUAGE plpgsql VOLATILE;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION corelle_macrostrat.tile_envelope(
+  rotation numeric[],
+  x integer,
+  y integer,
+  z integer
+) RETURNS geometry AS $$
+DECLARE
+  mercator_bbox geometry;
+  tile_width numeric;
+BEGIN
+  mercator_bbox := tile_utils.envelope(x, y, z);
+  tile_width := tile_utils.tile_width(z);
+  IF z = 0 THEN
+    RETURN ST_Transform(mercator_bbox, 4326);
+  ELSE
+    -- I feel like this bbox needs to be inverted but it seems to work better if not...
+    RETURN corelle_macrostrat.rotate(
+      --ST_Transform(mercator_bbox, 4326),
+      ST_Transform(ST_Segmentize(mercator_bbox, tile_width/8), 4326),
+      corelle.invert_rotation(rotation),
+      true
+    );
+  END IF;
+END;
+$$ LANGUAGE plpgsql STABLE;
 
 CREATE OR REPLACE FUNCTION corelle_macrostrat.build_tile_geom(
   geom geometry,
@@ -324,7 +331,7 @@ BEGIN
     8
   );
 END;
-$$ LANGUAGE plpgsql IMMUTABLE;
+$$ LANGUAGE plpgsql STABLE;
 
 CREATE OR REPLACE FUNCTION corelle_macrostrat.rotate(
   geom geometry,
@@ -355,7 +362,7 @@ BEGIN
   END IF;
   RETURN g1;
 END;
-$$ LANGUAGE plpgsql IMMUTABLE;
+$$ LANGUAGE plpgsql STABLE;
 
 -- Drop outdated functions
 DROP FUNCTION IF EXISTS corelle_macrostrat.rotate(geometry, numeric[], boolean);
