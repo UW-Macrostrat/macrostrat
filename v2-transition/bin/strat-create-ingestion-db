@@ -9,11 +9,28 @@ strat compose exec postgres psql -Upostgres -c "GRANT CONNECT ON DATABASE $dbnam
 strat compose exec postgres psql -Upostgres -c "GRANT ALL PRIVILEGES ON SCHEMA sources TO map_ingestion;"
 
 # Get an example dataset
-POSTGRES_DB=$dbname
+export POSTGRES_DEST_DB=$dbname
 
 # Create the sources schema
+strat compose exec postgres psql -Upostgres $dbname -c "CREATE EXTENSION postgis;"
 strat compose exec postgres psql -Upostgres $dbname -c "CREATE SCHEMA sources;"
+strat compose exec postgres psql -Upostgres $dbname -c "CREATE SCHEMA maps;"
 
-strat copy-data --table=maps.sources --table sources.az_mohave --table sources.az_mohave_lines
+strat copy-data --table sources.az_mohave --table sources.az_mohave_lines
+strat copy-data --table maps.sources --schema-only
 
-strat compose exec postgres psql -Upostgres $dbname -c "DELETE FROM maps.sources WHERE primary_table != 'az_mohave';"
+# Copy data from the maps.sources table for our example dataset
+ssh -4 -Cfo ExitOnForwardFailure=yes -N -L 5439:localhost:5432 steno
+PID=$(pgrep -f 'N -L 5439:')
+[ "$PID" ] || exit 1
+
+function finish {
+  kill $PID
+}
+
+trap finish exit
+
+source="az_mohave"
+echo "Copying data from maps.sources table for source $source"
+psql -p 5439 -h localhost -U postgres burwell -c "COPY (SELECT * FROM maps.sources WHERE primary_table='az_mohave') TO STDOUT WITH CSV HEADER" \
+| strat compose exec -T postgres psql -Upostgres $dbname -c "COPY maps.sources FROM STDIN WITH CSV HEADER"
