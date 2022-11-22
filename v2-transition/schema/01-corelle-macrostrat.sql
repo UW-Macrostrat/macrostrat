@@ -122,7 +122,10 @@ WITH rotation_info AS (
     pp.model_id,
     -- Get the tile bounding box rotated to the actual position of the plate on the modern globe
     ST_Envelope(
-      ST_SetSRID(ST_Transform(projected_bbox, rc.proj4inv), 4326)
+      corelle.rotate_geometry(
+        projected_bbox,
+        corelle.invert_rotation(rc.rotation)
+      )
     ) AS tile_envelope,
     geometry,
     rc.proj4text,
@@ -131,9 +134,13 @@ WITH rotation_info AS (
   JOIN corelle.rotation_cache rc
     ON rc.plate_id = pp.plate_id
     AND rc.model_id = pp.model_id
-  WHERE ST_Envelope(
-      ST_SetSRID(ST_Transform(projected_bbox, rc.proj4inv), 4326)
-    ) && projected_bbox
+  WHERE rc.envelope && projected_bbox
+    -- AND ST_Envelope(
+    --   corelle.rotate_geometry(
+    --     projected_bbox,
+    --     corelle.invert_rotation(rc.rotation)
+    --   )
+    -- ) && pp.geometry
     AND rc.model_id = _model_id
     AND rc.t_step = _t_step
 ),
@@ -217,7 +224,7 @@ land1 AS (
   JOIN rotation_info ri
     ON ri.plate_id = ix.plate_id
    AND ri.model_id = ix.model_id
-  --WHERE ST_Intersects(ix.geometry, ri.tile_envelope)
+  WHERE ST_Intersects(ix.geometry, ri.tile_envelope)
 ),
 columns AS (
   SELECT DISTINCT ON (col_id)
@@ -265,8 +272,8 @@ u4 AS (
   SELECT ST_AsMVT(cols, 'columns') mvt4
   FROM columns cols
 )
-SELECT mvt1 || mvt2 || mvt3 || mvt4 AS mvt
-FROM u1, u2, u3, u4
+SELECT mvt1 || mvt3 || mvt4 AS mvt
+FROM u1, u3, u4
 INTO bedrock; --, plate_polygons;
 
 RETURN bedrock;
@@ -285,24 +292,39 @@ RETURNS geometry
 AS $$
 DECLARE
   mercator_bbox geometry;
-  tile_envelope geometry;
+  wrap numeric;
   tile_geom geometry;
+  meridian geometry;
+  shifted geometry;
 BEGIN
   mercator_bbox := tile_utils.envelope(_x,_y,_z);
 
   -- Pre-simplify the geometry to reduce the size of the tile
-  --tile_geom := ST_Simplify(geom, 0.01/pow(2,_z));
+  geom := ST_SnapToGrid(geom, 0.001/pow(2,_z));
 
-  tile_geom := ST_MakeValid(corelle.rotate_geometry(geom, rotation));
+  tile_geom := corelle.rotate_geometry(geom, rotation);
 
-  -- Wrap geometry to the appropriate side of the tile
-  -- IF _x = 0 AND _z != 0 THEN
-  --   tile_geom := ST_WrapX(tile_geom, 0, -180);
-  -- END IF;
+  IF _x = 0 OR _x = pow(2, _z) - 1 THEN
+    -- Antimeridian split
+    -- https://gis.stackexchange.com/questions/182728/how-can-i-convert-postgis-geography-to-geometry-and-split-polygons-that-cross-th
+    -- https://macwright.com/2016/09/26/the-180th-meridian.html
+    meridian := ST_GeomFromText('LINESTRING(180 -90, 180 90)', 4326);
+    IF ST_XMin(tile_geom) < -160 AND ST_XMax(tile_geom) > 160 THEN
+      tile_geom := ST_WrapX(
+        ST_Split(
+          ST_MakeValid(ST_ShiftLongitude(tile_geom)),
+          meridian
+        ),
+        180,
+        -360
+      );
+    END IF;
+  END IF;
 
-  -- IF _x = pow(2, _z) - 1 AND _z != 0 THEN
-  --   tile_geom := ST_WrapX(tile_geom, 0, 180);
-  -- END IF;
+
+  --END IF;
+
+  --tile_geom := ST_WrapX(tile_geom, 0, wrap);
 
   RETURN ST_Simplify(
     ST_AsMVTGeom(
@@ -315,7 +337,7 @@ BEGIN
       12,
       true
     ),
-    2
+    8
   );
 END;
 $$ LANGUAGE plpgsql VOLATILE;
