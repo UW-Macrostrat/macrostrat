@@ -115,34 +115,36 @@ ELSE
   linesize := ARRAY['medium', 'large'];
 END IF;
 
+--wrap_bbox := NOT z = 0;
+
 -- Units
-WITH rotation_info AS (
+WITH plate_links AS (
   SELECT
     pp.plate_id,
     pp.model_id,
     -- Get the tile bounding box rotated to the actual position of the plate on the modern globe
-    ST_Envelope(
-      corelle.rotate_geometry(
+    CASE WHEN z = 0 THEN
+      projected_bbox
+    ELSE
+      -- I feel like this bbox needs to be inverted but it seems to work better if not...
+      corelle_macrostrat.rotate(
         projected_bbox,
-        corelle.invert_rotation(rc.rotation)
+        rc.rotation,
+        true
       )
-    ) AS tile_envelope,
+    END tile_envelope,
     geometry,
-    rc.proj4text,
     rc.rotation rotation
   FROM corelle.plate_polygon pp
   JOIN corelle.rotation_cache rc
     ON rc.plate_id = pp.plate_id
     AND rc.model_id = pp.model_id
-  WHERE rc.envelope && projected_bbox
-    -- AND ST_Envelope(
-    --   corelle.rotate_geometry(
-    --     projected_bbox,
-    --     corelle.invert_rotation(rc.rotation)
-    --   )
-    -- ) && pp.geometry
-    AND rc.model_id = _model_id
+  WHERE rc.model_id = _model_id
     AND rc.t_step = _t_step
+),
+rotation_info AS (
+  SELECT * FROM plate_links
+  WHERE tile_envelope && geometry
 ),
 units AS (
   SELECT
@@ -224,7 +226,7 @@ land1 AS (
   JOIN rotation_info ri
     ON ri.plate_id = ix.plate_id
    AND ri.model_id = ix.model_id
-  WHERE ST_Intersects(ix.geometry, ri.tile_envelope)
+  --WHERE ST_Intersects(ix.geometry, ri.tile_envelope)
 ),
 columns AS (
   SELECT DISTINCT ON (col_id)
@@ -302,25 +304,7 @@ BEGIN
   -- Pre-simplify the geometry to reduce the size of the tile
   geom := ST_SnapToGrid(geom, 0.001/pow(2,_z));
 
-  tile_geom := corelle.rotate_geometry(geom, rotation);
-
-  IF _x = 0 OR _x = pow(2, _z) - 1 THEN
-    -- Antimeridian split
-    -- https://gis.stackexchange.com/questions/182728/how-can-i-convert-postgis-geography-to-geometry-and-split-polygons-that-cross-th
-    -- https://macwright.com/2016/09/26/the-180th-meridian.html
-    meridian := ST_GeomFromText('LINESTRING(180 -90, 180 90)', 4326);
-    IF ST_XMin(tile_geom) < -160 AND ST_XMax(tile_geom) > 160 THEN
-      tile_geom := ST_WrapX(
-        ST_Split(
-          ST_MakeValid(ST_ShiftLongitude(tile_geom)),
-          meridian
-        ),
-        180,
-        -360
-      );
-    END IF;
-  END IF;
-
+  tile_geom := corelle_macrostrat.rotate(geom, rotation, true);
 
   --END IF;
 
@@ -340,7 +324,39 @@ BEGIN
     8
   );
 END;
-$$ LANGUAGE plpgsql VOLATILE;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION corelle_macrostrat.rotate(
+  geom geometry,
+  rotation double precision[],
+  wrap boolean DEFAULT false
+) RETURNS geometry AS $$
+DECLARE
+  g1 geometry;
+BEGIN
+  g1 := corelle.rotate_geometry(geom, rotation);
+  -- Heuristic to determine if the geometry crosses the antimeridian
+  -- https://gis.stackexchange.com/questions/182728/how-can-i-convert-postgis-geography-to-geometry-and-split-polygons-that-cross-th
+  -- https://macwright.com/2016/09/26/the-180th-meridian.html
+  -- This has to be run for each tile, because a lot of geometries that
+  -- don't properly intersect the tile are still included due to polygon winding effects.
+  -- We really should figure out how to exclude geometries with no points
+  -- in the tile envelope, so we don't have to run this check on every tile
+  IF wrap AND ST_XMin(g1) < -150 AND ST_XMax(g1) > 150 THEN
+    g1 := ST_WrapX(
+      ST_Split(
+        ST_MakeValid(ST_ShiftLongitude(g1)),
+        -- Antimeridian
+        ST_GeomFromText('LINESTRING(180 -90, 180 90)', 4326)
+      ),
+      180,
+      -360
+    );
+  END IF;
+  RETURN g1;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
 
 -- Drop outdated functions
+DROP FUNCTION IF EXISTS corelle_macrostrat.rotate(geometry, numeric[], boolean);
 DROP FUNCTION IF EXISTS corelle_macrostrat.rotated_web_mercator_proj(numeric[]);
