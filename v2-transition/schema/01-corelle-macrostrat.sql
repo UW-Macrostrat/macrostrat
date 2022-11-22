@@ -121,14 +121,19 @@ WITH rotation_info AS (
     pp.plate_id,
     pp.model_id,
     -- Get the tile bounding box rotated to the actual position of the plate on the modern globe
-    ST_MakeValid(ST_WrapX(ST_Envelope(corelle.rotate_geometry(projected_bbox, corelle.invert_rotation(rc.rotation))), -180, 180)) AS tile_envelope,
+    ST_Envelope(
+      ST_SetSRID(ST_Transform(projected_bbox, rc.proj4inv), 4326)
+    ) AS tile_envelope,
     geometry,
+    rc.proj4text,
     rc.rotation rotation
   FROM corelle.plate_polygon pp
   JOIN corelle.rotation_cache rc
     ON rc.plate_id = pp.plate_id
     AND rc.model_id = pp.model_id
-  WHERE ST_Intersects(geometry, ST_MakeValid(ST_WrapX(ST_Envelope(corelle.rotate_geometry(projected_bbox, corelle.invert_rotation(rc.rotation))), -180, 180)))
+  WHERE ST_Envelope(
+      ST_SetSRID(ST_Transform(projected_bbox, rc.proj4inv), 4326)
+    ) && projected_bbox
     AND rc.model_id = _model_id
     AND rc.t_step = _t_step
 ),
@@ -138,19 +143,9 @@ units AS (
     u.source_id,
     cpi.plate_id,
     cpi.model_id,
-    ST_Simplify(ST_AsMVTGeom(
-      ST_Transform(
-        corelle.rotate_geometry(
-          coalesce(cpi.geom, u.geom),
-          ri.rotation
-        ),
-        3857
-      ),
-      mercator_bbox,
-      4096,
-      12,
-      true
-    ), 2) geom,
+    corelle_macrostrat.build_tile_geom(
+      coalesce(cpi.geom, u.geom), ri.rotation, x, y, z
+    ) geom,
     l.legend_id,
     l.best_age_top :: numeric AS best_age_top,
     l.best_age_bottom :: numeric AS best_age_bottom,
@@ -201,7 +196,6 @@ units AS (
     ST_Intersects(coalesce(cpi.geom, u.geom), ri.tile_envelope)
     AND u.scale = mapsize
     AND sources.status_code = 'active'
-    AND ST_Area(coalesce(cpi.geom, u.geom)) > ST_Area(ri.tile_envelope) / 50000
     AND l.best_age_top >= _t_step
 ),
 -- ),
@@ -209,56 +203,26 @@ plate_polygons AS (
   SELECT
     plate_id,
     _t_step t_step,
-    ST_AsMVTGeom(
-      ST_Transform(
-        corelle.rotate_geometry(
-         ST_Intersection(ri.geometry, ri.tile_envelope),
-          rotation
-        ),
-        3857
-      ),
-      mercator_bbox,
-      4096,
-      12,
-      true
+    corelle_macrostrat.build_tile_geom(
+      ri.geometry, ri.rotation, x, y, z
     ) geom
   FROM rotation_info ri
 ),
 land1 AS (
   SELECT
-    ST_AsMVTGeom(
-      ST_Transform(
-        corelle.rotate_geometry(
-          ix.geometry,
-          ri.rotation
-        ),
-        3857
-      ),
-      mercator_bbox,
-      4096,
-      12,
-      true
+    corelle_macrostrat.build_tile_geom(
+      ix.geometry, ri.rotation, x, y, z
     ) geom
   FROM corelle_macrostrat.natural_earth_index ix
   JOIN rotation_info ri
     ON ri.plate_id = ix.plate_id
    AND ri.model_id = ix.model_id
-  WHERE ST_Intersects(ix.geometry, ri.tile_envelope)
+  --WHERE ST_Intersects(ix.geometry, ri.tile_envelope)
 ),
 columns AS (
   SELECT DISTINCT ON (col_id)
-    ST_AsMVTGeom(
-      ST_Transform(
-        corelle.rotate_geometry(
-          ca.col_area,
-          ri.rotation
-        ),
-        3857
-      ),
-      mercator_bbox,
-      4096,
-      12,
-      true
+    corelle_macrostrat.build_tile_geom(
+      ca.col_area, ri.rotation, x, y, z
     ) geom,
     u.col_id,
     u.id unit_id,
@@ -308,49 +272,53 @@ INTO bedrock; --, plate_polygons;
 RETURN bedrock;
 
 END;
-$$ LANGUAGE plpgsql IMMUTABLE;
+$$ LANGUAGE plpgsql VOLATILE;
 
-
-CREATE OR REPLACE FUNCTION corelle_macrostrat.rotated_web_mercator_proj(q numeric[]) RETURNS text AS $$
+CREATE OR REPLACE FUNCTION corelle_macrostrat.build_tile_geom(
+  geom geometry,
+  rotation numeric[],
+  _x integer,
+  _y integer,
+  _z integer
+)
+RETURNS geometry
+AS $$
 DECLARE
-  point1 geometry;
-  point2 geometry;
-  origin geometry;
-  origin1 geometry;
-  dx numeric;
-  dy numeric;
-  rotation numeric;
+  mercator_bbox geometry;
+  tile_envelope geometry;
+  tile_geom geometry;
 BEGIN
-  origin := ST_SetSRID(ST_MakePoint(0, 0), 4326);
-  point2 := corelle.rotate_point(ST_SetSRID(ST_MakePoint(90, 0), 4326), q);
+  mercator_bbox := tile_utils.envelope(_x,_y,_z);
 
-  origin1 := corelle.rotate_point(origin, q);
+  -- Pre-simplify the geometry to reduce the size of the tile
+  --tile_geom := ST_Simplify(geom, 0.01/pow(2,_z));
 
-  point1 := corelle.rotate_point(ST_SetSRID(ST_MakePoint(0.1, 0), 4326), q);
+  tile_geom := ST_MakeValid(corelle.rotate_geometry(geom, rotation));
 
-  -- Get angular transformation
-  -- dx = ST_X(point1) - ST_X(origin1);
-  -- dy = ST_Y(point1) - ST_Y(origin1);
-  -- rotation = atan2(dy, dx) * 180 / pi();
-
-  -- Apply spherical law of cosines to find mercator skew
-  dx = ST_Distance(point1, origin1);
-  dy = ST_Distance(point2, origin1);
-  rotation = acos(dx / dy) * 180 / pi();
-
-
-  -- angle the projection was rotated
-  -- rotation := ST_Azimuth(origin, origin1) * 180 / pi();
-  -- IF rotation < -180 THEN
-  --   rotation := 360 + rotation;
-  -- END IF;
-  -- IF rotation > 180 THEN
-  --   rotation := rotation - 360;
+  -- Wrap geometry to the appropriate side of the tile
+  -- IF _x = 0 AND _z != 0 THEN
+  --   tile_geom := ST_WrapX(tile_geom, 0, -180);
   -- END IF;
 
-  --RETURN '+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=-20 +x_0=0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext +no_defs';
-  RETURN format('+proj=omerc +a=6378137 +b=6378137 +lonc=%s +lat_0=%s +alpha=%s +x_0=0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext +no_defs', -ST_X(origin1), -ST_Y(origin1), 90-rotation);
+  -- IF _x = pow(2, _z) - 1 AND _z != 0 THEN
+  --   tile_geom := ST_WrapX(tile_geom, 0, 180);
+  -- END IF;
 
-  --RETURN format('+proj=omerc +a=6378137 +b=6378137 +lon_1=%s +lat_1=%s +lon_2=%s +lat_2=%s +lon_0=%s +x_0=0 +y_0=0 +k=1 +units=m +nadgrids=@null +wktext +no_defs +type=crs', ST_X(point1), ST_Y(point1), ST_X(point2), ST_Y(point2), -ST_X(origin1));
-END; 
-$$ LANGUAGE plpgsql IMMUTABLE STRICT;
+  RETURN ST_Simplify(
+    ST_AsMVTGeom(
+      ST_Transform(
+        tile_geom,
+        3857
+      ),
+      mercator_bbox,
+      4096,
+      12,
+      true
+    ),
+    2
+  );
+END;
+$$ LANGUAGE plpgsql VOLATILE;
+
+-- Drop outdated functions
+DROP FUNCTION IF EXISTS corelle_macrostrat.rotated_web_mercator_proj(numeric[]);
