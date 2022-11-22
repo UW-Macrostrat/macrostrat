@@ -129,7 +129,7 @@ WITH plate_links AS (
       -- I feel like this bbox needs to be inverted but it seems to work better if not...
       corelle_macrostrat.rotate(
         projected_bbox,
-        rc.rotation,
+        corelle.invert_rotation(rc.rotation),
         true
       )
     END tile_envelope,
