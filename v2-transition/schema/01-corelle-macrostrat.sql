@@ -301,6 +301,7 @@ RETURNS geometry
 AS $$
 DECLARE
   mercator_bbox geometry;
+  proj4text text;
   wrap numeric;
   tile_geom geometry;
   meridian geometry;
@@ -309,9 +310,14 @@ BEGIN
   mercator_bbox := tile_utils.envelope(_x,_y,_z);
 
   -- Pre-simplify the geometry to reduce the size of the tile
-  geom := ST_SnapToGrid(geom, 0.001/pow(2,_z));
+  --geom := ST_SnapToGrid(geom, 0.001/pow(2,_z));
 
-  tile_geom := corelle_macrostrat.rotate(geom, rotation, true);
+  proj4text := corelle.build_proj_string(
+    rotation,
+    '+o_proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +k=1.0 +units=m'
+  );
+
+  tile_geom := ST_SetSRID(ST_Transform(geom, proj4text), 3857);
 
   --END IF;
 
@@ -319,10 +325,7 @@ BEGIN
 
   RETURN ST_Simplify(
     ST_AsMVTGeom(
-      ST_Transform(
-        tile_geom,
-        3857
-      ),
+      tile_geom,
       mercator_bbox,
       4096,
       12,
