@@ -314,7 +314,7 @@ BEGIN
 
   proj4text := corelle.build_proj_string(
     rotation,
-    '+o_proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +k=1.0 +units=m'
+    '+o_proj=merc +R=6378137'
   );
 
   tile_geom := ST_SetSRID(ST_Transform(geom, proj4text), 3857);
