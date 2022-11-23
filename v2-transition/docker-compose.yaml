@@ -33,6 +33,7 @@ services:
     # Macrostrat's newer database clusters are based around PostgreSQL.
     # This should hopefully handle most of our databases going forward.
     image: postgis/postgis:14-3.1
+    shm_size: 1gb
     ports:
       - "5432:5432"
     environment:
