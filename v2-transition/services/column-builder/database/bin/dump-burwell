@@ -12,7 +12,7 @@ help()
    echo 
    echo "Syntax: scriptTemplate [ -p | -c | -d | -U | -h, --help]"
    echo "options:"
-   echo "-p            Port that gunnison is explosed to on your localhost, default 54381"
+   echo "-p            Port that gunnison is exposed to on your localhost, default 54381"
    echo "-c            Container name of db sql is being performed. Default db"
    echo "-d            Name of db in cluster. Default column_data"
    echo "-U            Name of db user. Default postgres"
