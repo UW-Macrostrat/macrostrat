@@ -68,55 +68,6 @@ I have made the @macrostrat/ui-components monorepo a git submodule of this libra
 
 Configuring it was not incredibly straightforward. I had to set alias in both `tsconfig,json` and as well as extend the `Webpack` config in the `next.config.js`.
 
-#### tsconfig.json
-
-```json
-{
-  "compilerOptions": {
-    "baseUrl": ".",
-    "paths": {
-      "~/*": ["./src/*"],
-      "@macrostrat/ui-components": [
-        "deps/ui-components/packages/ui-components/src/"
-      ],
-      "@macrostrat/form-components": [
-        "deps/ui-components/packages/form-components/src/"
-      ],
-      "@macrostrat/data-components": [
-        "deps/ui-components/packages/data-components/src/"
-      ]
-    }
-  }
-}
-```
-
-#### next.config.js
-
-```js
-/** @type {import('next').NextConfig} */
-const path = require("path");
-
-const packageSrc = (name) =>
-  path.resolve(__dirname, "deps", "ui-components", "packages", name, "src");
-
-const nextConfig = {
-  reactStrictMode: true,
-  webpack: (config, options) => {
-    (config.resolve.alias["~"] = path.resolve(__dirname, "src")),
-      (config.resolve.alias["@macrostrat/form-components"] =
-        packageSrc("form-components"));
-    config.resolve.alias["@macrostrat/data-components"] =
-      packageSrc("data-components");
-    config.resolve.alias["@macrostrat/ui-components"] =
-      packageSrc("ui-components");
-    config.resolve.alias["react"] = path.resolve("./node_modules/react");
-
-    return config;
-  },
-};
-
-module.exports = nextConfig;
-```
 
 # 05.17.2022
 
