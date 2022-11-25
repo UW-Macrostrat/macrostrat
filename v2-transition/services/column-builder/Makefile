@@ -19,5 +19,8 @@ dump-burwell:
 dump-schema:
 	database/tests/bin/dump-schema
 
+upgrade-db:
+	database/bin/run-alterations
+
 create-fixtures:
 	database/bin/run-fixtures

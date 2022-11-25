@@ -48,7 +48,7 @@ CREATE OR REPLACE FUNCTION macrostrat_api.get_units_with_collections(column_id i
 RETURNS TABLE(
 	id int,
 	strat_name varchar(150),
-	strat_name jsonb,
+	strat_name_data jsonb,
 	color varchar(20),
 	outcrop varchar(20),
 	fo int,
