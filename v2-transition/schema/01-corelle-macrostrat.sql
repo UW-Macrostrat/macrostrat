@@ -124,6 +124,8 @@ WITH rotation_info AS (
     AND rc.model_id = pp.model_id
   WHERE rc.model_id = _model_id
     AND rc.t_step = _t_step
+    AND coalesce(pp.old_lim, 4000) >= _t_step
+    AND coalesce(pp.young_lim, 0) <= _t_step
     AND corelle_macrostrat.tile_envelope(rc.rotation, x, y, z) && pp.geometry
     AND ST_Intersects(corelle_macrostrat.tile_envelope(rc.rotation, x, y, z), pp.geometry)
 ),
@@ -255,14 +257,14 @@ u4 AS (
   SELECT ST_AsMVT(cols, 'columns') mvt4
   FROM columns cols
 )
-SELECT mvt1 || mvt3 || mvt4 AS mvt
-FROM u1, u3, u4
+SELECT mvt1 || mvt2 || mvt3 || mvt4 AS mvt
+FROM u1, u2, u3, u4
 INTO bedrock; --, plate_polygons;
 
 RETURN bedrock;
 
 END;
-$$ LANGUAGE plpgsql STABLE;
+$$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 
 CREATE OR REPLACE FUNCTION corelle_macrostrat.tile_envelope(
   rotation numeric[],
@@ -288,7 +290,7 @@ BEGIN
     );
   END IF;
 END;
-$$ LANGUAGE plpgsql STABLE;
+$$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 
 CREATE OR REPLACE FUNCTION corelle_macrostrat.build_tile_geom(
   geom geometry,
@@ -315,48 +317,14 @@ BEGIN
   -- Pre-simplify the geometry to reduce the size of the tile
   geom := ST_SnapToGrid(geom, 0.001/pow(2,_z));
 
-  proj_additions := '+o_proj=merc +R=6378137 +over';
-
-  wrap := 0;
-  -- IF _x = 0 AND _z != 0 THEN
-  --   -- If the tile is on the left edge of the map, we need to wrap the geometry
-  --   -- around the world to the left side
-  --   wrap := tms_width/2;
-  --   proj_additions := proj_additions || format(' +x_0=%s', -tms_width/2);
-  --   tile_geom = ST_SetSRID(ST_Transform(tile_geom, '+proj=ob_tran +p_lat=90 +p_lon=-90 +o_proj=merc +R=6378137 +over'), 3857);
-  -- END IF;
-  
-  -- IF _x = pow(2,_z)-1 AND _z != 0 THEN
-  --   -- If the tile is on the right edge of the map, we need to wrap the geometry
-  --   -- around the world to the right side
-  --   wrap := -tms_width/2;
-  --   proj_additions := proj_additions || format(' +x_0=%s', tms_width/2);
-  -- END IF;
-
-  proj4text := corelle.build_proj_string(
-    rotation,
-    proj_additions
-  );
-
-  tile_geom := ST_SetSRID(ST_Transform(geom, proj4text), 3857);
-
-  IF _x = 0 AND _z != 0 THEN
-    -- If the tile is on the left edge of the map, we need to wrap the geometry
-    -- around the world to the left side
-    wrap := -tms_width/4;
-    tile_geom := ST_SetSRID(ST_Transform(tile_geom, '+proj=ob_tran +o_proj=merc  +o_lat_p=90 +o_lon_p=90 +R=6378137 +over'), 3857);
-  END IF;
-
-
-  IF _x = pow(2,_z)-1 AND _z != 0 THEN
-    -- If the tile is on the right edge of the map, we need to wrap the geometry
-    -- around the world to the right side
-    wrap := tms_width/4;
-    tile_geom := ST_SetSRID(ST_Transform(tile_geom, '+proj=ob_tran +o_proj=merc  +o_lat_p=90 +o_lon_p=-90 +R=6378137 +over'), 3857);
-  END IF;
-
-  IF wrap != 0 THEN
-    tile_geom := ST_Translate(tile_geom, wrap, 0);
+  IF (_x = 0 OR _x = pow(2,_z)-1) THEN
+    tile_geom := ST_Transform(corelle_macrostrat.rotate(geom, rotation, true), 3857);
+  ELSE
+    proj4text := corelle.build_proj_string(
+      rotation,
+      '+o_proj=merc +R=6378137 +over'
+    );
+    tile_geom := ST_SetSRID(ST_Transform(geom, proj4text), 3857); 
   END IF;
 
   RETURN ST_Simplify(
@@ -370,7 +338,7 @@ BEGIN
     8
   );
 END;
-$$ LANGUAGE plpgsql STABLE;
+$$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 
 CREATE OR REPLACE FUNCTION corelle_macrostrat.rotate(
   geom geometry,
