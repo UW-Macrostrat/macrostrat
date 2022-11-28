@@ -255,8 +255,8 @@ u4 AS (
   SELECT ST_AsMVT(cols, 'columns') mvt4
   FROM columns cols
 )
-SELECT mvt1 || mvt2 || mvt3 || mvt4 AS mvt
-FROM u1, u2, u3, u4
+SELECT mvt1 || mvt3 || mvt4 AS mvt
+FROM u1, u3, u4
 INTO bedrock; --, plate_polygons;
 
 RETURN bedrock;
@@ -302,26 +302,62 @@ AS $$
 DECLARE
   mercator_bbox geometry;
   proj4text text;
-  wrap numeric;
+  proj_additions text;
+  wrap numeric = 0;
   tile_geom geometry;
+  tms_width numeric;
   meridian geometry;
   shifted geometry;
 BEGIN
   mercator_bbox := tile_utils.envelope(_x,_y,_z);
+  tms_width := tile_utils.tile_width(0);
 
   -- Pre-simplify the geometry to reduce the size of the tile
-  --geom := ST_SnapToGrid(geom, 0.001/pow(2,_z));
+  geom := ST_SnapToGrid(geom, 0.001/pow(2,_z));
+
+  proj_additions := '+o_proj=merc +R=6378137 +over';
+
+  wrap := 0;
+  -- IF _x = 0 AND _z != 0 THEN
+  --   -- If the tile is on the left edge of the map, we need to wrap the geometry
+  --   -- around the world to the left side
+  --   wrap := tms_width/2;
+  --   proj_additions := proj_additions || format(' +x_0=%s', -tms_width/2);
+  --   tile_geom = ST_SetSRID(ST_Transform(tile_geom, '+proj=ob_tran +p_lat=90 +p_lon=-90 +o_proj=merc +R=6378137 +over'), 3857);
+  -- END IF;
+  
+  -- IF _x = pow(2,_z)-1 AND _z != 0 THEN
+  --   -- If the tile is on the right edge of the map, we need to wrap the geometry
+  --   -- around the world to the right side
+  --   wrap := -tms_width/2;
+  --   proj_additions := proj_additions || format(' +x_0=%s', tms_width/2);
+  -- END IF;
 
   proj4text := corelle.build_proj_string(
     rotation,
-    '+o_proj=merc +R=6378137'
+    proj_additions
   );
 
   tile_geom := ST_SetSRID(ST_Transform(geom, proj4text), 3857);
 
-  --END IF;
+  IF _x = 0 AND _z != 0 THEN
+    -- If the tile is on the left edge of the map, we need to wrap the geometry
+    -- around the world to the left side
+    wrap := -tms_width/4;
+    tile_geom := ST_SetSRID(ST_Transform(tile_geom, '+proj=ob_tran +o_proj=merc  +o_lat_p=90 +o_lon_p=90 +R=6378137 +over'), 3857);
+  END IF;
 
-  --tile_geom := ST_WrapX(tile_geom, 0, wrap);
+
+  IF _x = pow(2,_z)-1 AND _z != 0 THEN
+    -- If the tile is on the right edge of the map, we need to wrap the geometry
+    -- around the world to the right side
+    wrap := tms_width/4;
+    tile_geom := ST_SetSRID(ST_Transform(tile_geom, '+proj=ob_tran +o_proj=merc  +o_lat_p=90 +o_lon_p=-90 +R=6378137 +over'), 3857);
+  END IF;
+
+  IF wrap != 0 THEN
+    tile_geom := ST_Translate(tile_geom, wrap, 0);
+  END IF;
 
   RETURN ST_Simplify(
     ST_AsMVTGeom(
