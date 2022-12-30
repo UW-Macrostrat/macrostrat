@@ -114,6 +114,11 @@ ALTER TABLE macrostrat.unit_strat_names
 	ADD FOREIGN KEY (unit_id) REFERENCES macrostrat.units(id) ON DELETE CASCADE,
 	ADD FOREIGN KEY (strat_name_id) REFERENCES macrostrat.strat_names(id) ON DELETE CASCADE;
 
+ALTER TABLE macrostrat.units_sections
+	ADD FOREIGN KEY (unit_id) REFERENCES macrostrat.units(id) ON DELETE CASCADE,
+	ADD FOREIGN KEY (section_id) REFERENCES macrostrat.sections(id) ON DELETE CASCADE;
+	ADD FOREIGN KEY (col_id) REFERENCES macrostrat.cols(id) ON DELETE CASCADE;
+
 UPDATE macrostrat.strat_names
 	SET concept_id = NULL
 	WHERE concept_id = 0;

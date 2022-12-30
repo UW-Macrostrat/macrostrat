@@ -18,3 +18,6 @@ do
     echo "Running $f"
     psql -p $local_forward -h localhost -d $local_db -U $db_user -f $f
 done
+
+echo "Reloading Postgrest schema cache"
+docker-compose kill -s SIGUSR1 $postgres_service

@@ -48,7 +48,7 @@ CREATE OR REPLACE FUNCTION macrostrat_api.get_units_with_collections(column_id i
 RETURNS TABLE(
 	id int,
 	strat_name varchar(150),
-	strat_name jsonb,
+	strat_name_data jsonb,
 	color varchar(20),
 	outcrop varchar(20),
 	fo int,
@@ -325,20 +325,20 @@ $$ language plpgsql;
   If a lat and long are passed but NOT a wkt or coordinate, 
   we want to create those two columns and insert them as well
  */
-CREATE OR REPLACE FUNCTION macrostrat.lng_lat_insert() 
-RETURNS trigger AS $$
+CREATE OR REPLACE FUNCTION macrostrat.lng_lat_insert_trigger() 
+RETURNS TRIGGER AS $$
 DECLARE
 BEGIN
   IF tg_op = 'INSERT' OR new.lat <> old.lat OR new.lng <> old.lng THEN
-    new.wkt := 'POINT(' || c.lng || ' ' || c.lat || ')' 
-    new.coordinate := st_geomfromewkt('SRID=4326;POINT(' || c.lng || ' ' || c.lat || ')');
+    new.wkt := ST_AsText(ST_MakePoint(new.lng, new.lat)); 
+    new.coordinate := ST_SetSrid(new.wkt, 4326);
   END IF;
   RETURN new;
 END;
 $$ language plpgsql;
 
-DROP trigger IF EXISTS lng_lat_insert ON macrostrat.cols;
-CREATE trigger lng_lat_insert
+DROP TRIGGER IF EXISTS lng_lat_insert ON macrostrat.cols;
+CREATE TRIGGER lng_lat_insert_trigger
   BEFORE INSERT OR UPDATE ON macrostrat.cols
   FOR EACH ROW
-  EXECUTE PROCEDURE macrostrat.lng_lat_insert();
+  EXECUTE PROCEDURE macrostrat.lng_lat_insert_trigger();
