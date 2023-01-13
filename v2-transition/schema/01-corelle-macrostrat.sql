@@ -317,14 +317,14 @@ BEGIN
   -- Pre-simplify the geometry to reduce the size of the tile
   geom := ST_SnapToGrid(geom, 0.001/pow(2,_z));
 
-  IF (_x = 0 OR _x = pow(2,_z)-1) THEN
+  IF true THEN
     tile_geom := ST_Transform(corelle_macrostrat.rotate(geom, rotation, true), 3857);
   ELSE
     proj4text := corelle.build_proj_string(
       rotation,
       '+o_proj=merc +R=6378137 +over'
     );
-    tile_geom := ST_SetSRID(ST_Transform(geom, proj4text), 3857); 
+    --tile_geom := ST_SetSRID(ST_Transform(geom, proj4text), 3857); 
   END IF;
 
   RETURN ST_Simplify(
