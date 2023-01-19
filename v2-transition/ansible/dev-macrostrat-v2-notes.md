@@ -15,3 +15,9 @@ ansible-inventory -i "$(pwd)/hosts" --list -y
 `run-ansible` command created to always use `hosts` file here.
 
 `run-ansible all -v -m ping`
+
+# Notes on ansible
+
+We can run commands entirely on remote hosts, if we want.
+This can be advantageous to do things like copying databases easily.
+https://stackoverflow.com/questions/18900236/run-command-on-the-ansible-host
