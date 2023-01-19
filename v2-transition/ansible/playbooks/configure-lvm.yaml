@@ -1,0 +1,41 @@
+---
+- hosts: dev
+  name: Configure Logical Volume Manager to create a new disk with added volume
+  become: true
+  tasks:
+    - name: Output disk information
+      command: df -hT
+      register: out
+    - debug:
+        var: out.stdout_lines
+    - name: Output LVM information
+      debug:
+        var: ansible_lvm
+    - name: Add a new volume group for Macrostrat data
+      lvg:
+        vg: macrostrat-data
+        pvs: /dev/sdb
+        pvresize: true
+    - name: Create a new logical volume
+      lvol:
+        vg: macrostrat-data
+        lv:  data
+        size: 95%VG
+    - name: Create directory data if does not exist
+      file:
+        path: /data
+        state: directory
+        mode: '0755'
+    - name: format the xfs filesystem
+      filesystem:
+        fstype: ext4
+        dev: /dev/macrostrat-data/data
+    - name: mount the lv on /data
+      mount:
+        path: /data
+        src: /dev/macrostrat-data/data
+        fstype: ext4
+        state: mounted
+    - name: "Check that /data volume was successfully created and mounted"
+      stat:
+        path: /data
