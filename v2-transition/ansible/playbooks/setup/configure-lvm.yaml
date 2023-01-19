@@ -17,13 +17,14 @@
       lvol:
         vg: macrostrat-data
         lv:  data
+        # Make this volume 95% of the size of the volume group.
         size: 95%VG
     - name: Create directory data if does not exist
       file:
         path: /data
         state: directory
         mode: '0755'
-    - name: format the xfs filesystem
+    - name: Format the filesystem (ext4)
       filesystem:
         fstype: ext4
         dev: /dev/macrostrat-data/data

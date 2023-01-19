@@ -2,4 +2,4 @@
 
 cd "$(dirname "$0")/../.."
 
-ansible-playbook playbooks/configure-dev.yaml
+ansible-playbook ansible/playbooks/setup/configure-dev.yaml
