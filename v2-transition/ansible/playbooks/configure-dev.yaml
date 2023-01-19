@@ -1,6 +1,7 @@
 - import_playbook: configure-lvm.yaml
 - hosts: dev
   become: true
+  gather_facts: false
   tasks:
     - stat:
         path: /var/lib/docker

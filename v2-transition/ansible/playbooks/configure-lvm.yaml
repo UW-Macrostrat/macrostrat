@@ -5,15 +5,10 @@
   name: Configure Logical Volume Manager to create a new disk with added volume
   become: true
   tasks:
-    - name: Output disk information
-      command: df -hT
-      register: out
-    - debug:
-        var: out.stdout_lines
-    - name: Output LVM information
+    - name: Show LVM information
       debug:
         var: ansible_lvm
-    - name: Add a new volume group for Macrostrat data
+    - name: Add a volume group for Macrostrat data
       lvg:
         vg: macrostrat-data
         pvs: /dev/sdb
