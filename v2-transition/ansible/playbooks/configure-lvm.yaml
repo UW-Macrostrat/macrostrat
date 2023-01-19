@@ -1,3 +1,5 @@
+# Configure logical volume management on Macrostrat's dev host.
+# Warning: this can potentially destroy data.
 ---
 - hosts: dev
   name: Configure Logical Volume Manager to create a new disk with added volume

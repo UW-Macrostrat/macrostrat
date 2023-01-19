@@ -1,0 +1,5 @@
+#!/usr/bin/env zsh
+
+cd "$(dirname "$0")/.."
+
+ansible-playbook playbooks/configure-dev.yaml
