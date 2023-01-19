@@ -1,0 +1,3 @@
+#!/usr/bin/env zsh
+
+ansible dev -b -a 'ufw status'
