@@ -53,3 +53,14 @@
         name: "{{ ansible_user }}"
         groups: docker
         append: yes
+# We need to install python dependencies locally (not using sudo)
+# so we can run docker-compose properly using a non-root user.
+- name: Install python dependencies locally
+  gather_facts: false
+  hosts: dev
+  tasks:
+    - name: install 'Docker SDK for Python'
+      #become: true               <--- DO NOT DO THIS!!!
+      pip:
+        name: docker-compose
+        

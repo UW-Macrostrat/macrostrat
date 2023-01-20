@@ -1,0 +1,33 @@
+version: "3"
+services:
+  gateway:
+    image: nginx:1.21.3
+    ports:
+      - "80:80"
+      - "443:443"
+    restart: always
+  mariadb:
+    # The MariaDB service is Macrostrat's current database service.
+    # Eventually this will be removed from the active configuration
+    # or relegated to a 'legacy' profile
+    image: mariadb:10.10
+    ports:
+      - "3306:3306"
+    environment:
+      - MARIADB_ROOT_PASSWORD
+    volumes:
+      - /data/macrostrat/database-clusters/mariadb:/var/lib/mysql
+    restart: always
+  postgres:
+    # Macrostrat's newer database clusters are based around PostgreSQL.
+    # This should hopefully handle most of our databases going forward.
+    image: postgis/postgis:15-3.3
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_PASSWORD
+    volumes:
+      - /data/macrostrat/database-clusters/postgres:/var/lib/postgresql/data
+    restart: always
+volumes:
+  nginx_secrets:
