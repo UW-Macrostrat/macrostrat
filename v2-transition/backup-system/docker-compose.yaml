@@ -1,0 +1,26 @@
+version: "3"
+services:
+  # We should probably spin the tunnel up and down as needed,
+  # rather than keeping it on all the time. This likely requires
+  # it to be built into the backup service
+  ssh_tunnel:
+    image: cagataygurturk/docker-ssh-tunnel
+    volumes:
+      - $HOME/.ssh:/root/ssh:ro
+    environment:
+      SSH_DEBUG: "-v"
+      TUNNEL_HOST: strata
+      REMOTE_HOST: localhost
+      LOCAL_PORT: 54321
+      REMOTE_PORT: 5432
+  backup_service:
+    image: ghcr.io/uw-macrostrat/pg-backup-service:v2.1.1
+    volumes:
+      - /data/backups/macrostrat:/db-backups
+    environment:
+      DB_BACKUP_DIR: /db-backups
+      DB_BACKUP_MAX_N: 1
+      PGHOST: ssh_tunnel
+      PGPORT: 54321
+      PGDATABASE: burwell
+
