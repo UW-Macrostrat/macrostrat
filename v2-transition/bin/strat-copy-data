@@ -11,8 +11,9 @@ function finish {
 trap finish exit
 
 export POSTGRES_DB="${POSTGRES_DB:-burwell}"
+export POSTGRES_DEST_DB="${POSTGRES_DEST_DB:-$POSTGRES_DB}"
 
 echo "Loading Macrostrat data from steno ($@)"
 pg_dump -Fc -p 5439 -h localhost -U postgres $@ $POSTGRES_DB \
 | pv \
-| strat compose exec -T postgres pg_restore -v -Upostgres -d $POSTGRES_DB
+| strat compose exec -T postgres pg_restore -v -Upostgres -d $POSTGRES_DEST_DB

@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+source="$1"
+
+pg_dump -Fc -p 5439 -h localhost -U postgres $@ $POSTGRES_DB \
+| pv \
+| strat compose exec -T postgres pg_restore -v -Upostgres -d $POSTGRES_DEST_DB
+
+strat copy-data --table sources.$1 --table sources.$1_lines --table sources.$1_polygons --table sources.$1_points
+
+echo "Copying data from maps.sources table for source $source"
+psql -p 5432 -h localhost -U postgres burwell -c "COPY (SELECT * FROM maps.sources WHERE primary_table='$1') TO STDOUT WITH CSV HEADER" \
+| strat compose exec -T postgres psql -Upostgres map_ingestion -c "COPY maps.sources FROM STDIN WITH CSV HEADER"
