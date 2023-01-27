@@ -30,7 +30,7 @@ It requires two parameters, a dataset name and a path to a shapefile, and accept
 
 _Import a single shapefile:_
 ````
-./import france ~/Downloads/france/france.shp false
+macrostrat maps ingest ~/Downloads/france/france.shp
 ````
 
  _Import a dataset with same data structure spread out over two shapefiles with ````LATIN1```` encoding (note the use of ````false```` on the first command and ````true```` on the second!):_
@@ -44,6 +44,14 @@ Note that if this script reports an error similar to ````Unable to open unprojec
 # Homogenization
 
 Manual cleanup to tables to prepare them for importing. Not yet well-documented.
+
+We will import the `<source_id>_polygons` and `<source_id>_linestrings` table.
+`<source_id>_points` is ignored for now in Macrostrat's current processing, but should be
+retained in case we want to track point data (especially, bedding orientations) in the future.
+
+- Set the `ready` field to `true` for fields that have been prepared for import.
+  This allows data not matching Macrostrat's current structure (especially, contacts with
+  certainty information) to be retained for eventual use if desired.
 
 # Processing
 Processing a source involves matching, refreshing lookup tables, building an `rgeom`, refreshing carto tables for lines, and rolling tiles. While these steps can be done individually, they should be done all at once by using `process_source.py`.

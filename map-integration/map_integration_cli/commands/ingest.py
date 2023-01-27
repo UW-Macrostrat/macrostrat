@@ -4,11 +4,7 @@ import geopandas as G
 import pandas as P
 import IPython
 from collections import defaultdict
-from sqlalchemy import create_engine
-from geoalchemy2 import Geometry, WKBElement
 from sqlalchemy import *
-
-from geopandas.io.sql import _get_geometry_type, _convert_to_ewkb, _psql_insert_copy
 
 from rich.console import Console
 from rich.progress import Progress
@@ -100,18 +96,14 @@ def ingest_map(
                 total=len(df),
             )
 
-            geom_name = df.geometry.name
-            geometry_type, has_curve = _get_geometry_type(df)
-            df = _convert_to_ewkb(df, geom_name, 4326)
+            conn = db.engine.connect()
 
             for i, chunk in enumerate(chunker(df, chunksize)):
-                chunk.to_sql(
+                chunk.to_postgis(
                     table,
-                    db.engine,
+                    conn,
                     schema=schema,
                     if_exists=if_exists if i == 0 else "append",
-                    dtype={geom_name: Geometry(geometry_type=geometry_type, srid=4326)},
-                    method=_psql_insert_copy,
                 )
                 progress.update(task, advance=len(chunk))
 

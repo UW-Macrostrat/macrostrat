@@ -1,9 +1,22 @@
 from typer import Typer
+from typer.core import TyperGroup
 import sys
 from .commands.ingest import ingest_map
+from .commands.homogenize import prepare_fields
+from .commands.match_names import match_names
+
+
+class NaturalOrderGroup(TyperGroup):
+    """Allow listing commands in the order they are added."""
+
+    def list_commands(self, ctx):
+        return self.commands.keys()
 
 
 class IngestionCLI(Typer):
+    def __init__(self, **kwargs):
+        super().__init__(cls=NaturalOrderGroup, **kwargs)
+
     def add_command(self, func, **kwargs):
         self.command(**kwargs)(func)
 
@@ -11,10 +24,10 @@ class IngestionCLI(Typer):
 app = IngestionCLI(no_args_is_help=True, add_completion=False)
 app.add_command(ingest_map, name="ingest")
 
+app.add_command(prepare_fields, name="prepare-fields")
 
-@app.command(name="test")
-def test():
-    print("test")
+# Pass along other arguments to the match-names command
+app.add_command(match_names, name="match-names")
 
 
 def main():
