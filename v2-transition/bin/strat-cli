@@ -3,5 +3,4 @@
 # Rebuild the command line application just in case
 # we have updated the source code
 
-# Run the Macrostrat command line application
 strat compose run cli $@

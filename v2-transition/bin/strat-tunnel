@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+host=$1
+
+if [ -z "$host" ]; then
+    echo "Usage: strat-tunnel <host>"
+    exit 1
+fi
+
+PID=$(pgrep -f 'N -L 5439:')
+
+if [ ! -z "$PID" ]; then
+  echo "Killing existing tunnel"
+  kill $PID
+fi
+
+if [ $host = "stop" ]; then
+  exit 0
+fi
+
+echo "Starting tunnel to $host"
+
+ssh -4 -Cfo ExitOnForwardFailure=yes -N -L 5439:localhost:5432 $host
+PID=$(pgrep -f 'N -L 5439:')
+[ "$PID" ] || exit 1
