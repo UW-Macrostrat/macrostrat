@@ -1,3 +1,4 @@
 .env
 .ssh
 etc
+.strata-credentials
