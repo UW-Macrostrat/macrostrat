@@ -16,11 +16,11 @@ services:
   backup_service:
     image: ghcr.io/uw-macrostrat/pg-backup-service:v2.1.1
     volumes:
-      - /data/backups/macrostrat:/db-backups
+      - /data/backups/rockd:/db-backups
     environment:
       DB_BACKUP_DIR: /db-backups
       DB_BACKUP_MAX_N: 1
       PGHOST: ssh_tunnel
       PGPORT: 54321
-      PGDATABASE: burwell
-
+      PGDATABASE: rockd
+     

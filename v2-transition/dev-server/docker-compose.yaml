@@ -26,6 +26,8 @@ services:
       - "5432:5432"
     environment:
       - POSTGRES_PASSWORD
+      # The name of the superuser
+      - POSTGRES_USER
     volumes:
       - /data/macrostrat/database-clusters/postgres:/var/lib/postgresql/data
     restart: always
