@@ -23,10 +23,12 @@ async def startup_event():
     await connect_to_db(app)
     await register_table_catalog(app)
 
+
 @app.on_event("shutdown")
 async def shutdown_event():
     """Application shutdown: de-register the database connection."""
     await close_db_connection(app)
+
 
 app.state.function_catalog = FunctionRegistry()
 
@@ -42,9 +44,21 @@ mvt_tiler = VectorTilerFactory(
 
 for layer in ["carto-slim", "carto"]:
     lyr = StoredFunction(
-        type="StoredFunction", sql="", id=layer, function_name="tile_layers." + layer.replace("-", "_")
-    ) 
+        type="StoredFunction",
+        sql="",
+        id=layer,
+        function_name="tile_layers." + layer.replace("-", "_"),
+    )
     app.state.function_catalog.register(lyr)
+
+app.state.function_catalog.register(
+    StoredFunction(
+        type="StoredFunction",
+        sql="",
+        id="carto-slim-rotated",
+        function_name="corelle_macrostrat.carto_slim_rotated",
+    )
+)
 
 app.include_router(mvt_tiler.router, tags=["Tiles"])
 
