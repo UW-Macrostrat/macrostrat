@@ -14,7 +14,7 @@ from morecantile import tms
 from fastapi.middleware.cors import CORSMiddleware
 
 # Create Application.
-app = FastAPI(root_path="/")
+app = FastAPI(root_path="/tiles/")
 
 # Register Start/Stop application event handler to setup/stop the database connection
 @app.on_event("startup")
@@ -62,13 +62,13 @@ app.state.function_catalog.register(
 
 app.include_router(mvt_tiler.router, tags=["Tiles"])
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=["*"],
+#     allow_credentials=True,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
 
 
 @app.get("/", include_in_schema=False)
