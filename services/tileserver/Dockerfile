@@ -38,13 +38,13 @@ RUN apt-get remove -y \
 RUN pip install "poetry==1.1.12" && \
   poetry config virtualenvs.create false
 
-ENV PIP_DEFAULT_TIMEOUT=100 \
-  PIP_DISABLE_PIP_VERSION_CHECK=1
+ENV PIP_DEFAULT_TIMEOUT=100 PIP_DISABLE_PIP_VERSION_CHECK=1
 
 WORKDIR /app/
 
 # Copy only requirements to cache them in docker layer
-COPY ./pyproject.toml /app/
+# Right now, Poetry lock file must exist to avoid hanging on dependency resolution
+COPY ./pyproject.toml ./poetry.lock /app/
 
 RUN poetry install --no-interaction --no-ansi --no-root --no-dev
 
