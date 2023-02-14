@@ -4,7 +4,7 @@ from mapnik import Map, load_map_from_string, Image, render, Box2d
 from pathlib import Path
 from timvt.settings import TileSettings
 import time
-from .convert import make_mapnik_xml
+from .mapnik_styles import make_mapnik_xml
 from .config import scales, scale_zooms, scale_for_zoom
 
 tile_settings = TileSettings()

@@ -29,9 +29,7 @@ def make_carto_stylesheet(scale):
     )
 
     __here__ = Path(__file__).parent
-    cartoCSS = (__here__ / "styles" / "base-styles.mss").read_text()
-
-    cartoCSS += build_color_styles()
+    cartoCSS = (__here__ / "style.mss").read_text()
 
     return {
         "bounds": [-89, -179, 89, 179],
@@ -92,23 +90,6 @@ def make_carto_stylesheet(scale):
         "description": "burwell",
         "attribution": "Data providers, UW-Macrostrat",
     }
-
-
-# Cache the result of this function
-@lru_cache(maxsize=1)
-def build_color_styles():
-    # res = db.session.execute(
-    #     "SELECT DISTINCT color FROM maps.legend WHERE color IS NOT NULL AND color != ''"
-    # )
-
-    mss = ""
-    # for row in res:
-    mss += f"""
-    .units {{
-        polygon-fill: [color];
-    }}
-    """
-    return mss
 
 
 def make_mapnik_xml(scale):
