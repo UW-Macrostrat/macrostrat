@@ -45,7 +45,7 @@ def make_carto_stylesheet(scale):
                 "geometry": "polygon",
                 "Datasource": {
                     "type": "postgis",
-                    "table": f"(SELECT z.map_id, COALESCE(l.color, '#777777') AS color, z.geom FROM carto_new.{scale} z LEFT JOIN maps.map_legend ON z.map_id = map_legend.map_id LEFT JOIN maps.legend AS l ON l.legend_id = map_legend.legend_id LEFT JOIN maps.sources ON l.source_id = sources.source_id WHERE sources.status_code = 'active') subset",
+                    "table": f"(SELECT z.map_id, coalesce(nullif(l.color, ''), '#777777') AS color, z.geom FROM carto_new.{scale} z LEFT JOIN maps.map_legend ON z.map_id = map_legend.map_id LEFT JOIN maps.legend AS l ON l.legend_id = map_legend.legend_id LEFT JOIN maps.sources ON l.source_id = sources.source_id WHERE sources.status_code = 'active') subset",
                     "key_field": "map_id",
                     "geometry_field": "geom",
                     "extent_cache": "auto",
