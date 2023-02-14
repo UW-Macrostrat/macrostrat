@@ -8,7 +8,7 @@ from pathlib import Path
 from subprocess import check_output, CalledProcessError
 from json import dumps
 from .config import layer_order
-from functools import lru_cache
+from textwrap import dedent
 
 db = Database(environ.get("DATABASE_URL"))
 
@@ -31,6 +31,39 @@ def make_carto_stylesheet(scale):
     __here__ = Path(__file__).parent
     cartoCSS = (__here__ / "style.mss").read_text()
 
+    webmercator_srs = "+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0.0 +k=1.0 +units=m +nadgrids=@null +wktext +no_defs +over"
+
+    polygon_query = dedent(
+        f"""
+    SELECT
+        z.map_id,
+        coalesce(nullif(l.color, ''), '#777777') AS color,
+        z.geom FROM carto_new.{scale} z
+    LEFT JOIN maps.map_legend
+      ON z.map_id = map_legend.map_id
+    LEFT JOIN maps.legend AS l
+      ON l.legend_id = map_legend.legend_id
+    LEFT JOIN maps.sources
+      ON l.source_id = sources.source_id
+    WHERE sources.status_code = 'active'
+    """
+    )
+
+    line_query = dedent(
+        f"""
+        SELECT
+            x.line_id,
+            x.geom,
+            q.direction,
+            q.type
+        FROM carto_new.lines_{scale} x
+        LEFT JOIN ( {line_sql} ) q
+          ON q.line_id = x.line_id
+        LEFT JOIN maps.sources ON x.source_id = sources.source_id
+        WHERE sources.status_code = 'active'
+    """
+    )
+
     return {
         "bounds": [-89, -179, 89, 179],
         "center": [0, 0, 1],
@@ -38,14 +71,14 @@ def make_carto_stylesheet(scale):
         "interactivity": False,
         "minzoom": 0,
         "maxzoom": 16,
-        "srs": "+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0.0 +k=1.0 +units=m +nadgrids=@null +wktext +no_defs +over",
+        "srs": webmercator_srs,
         "Stylesheet": [{"id": "burwell", "data": cartoCSS}],
         "Layer": [
             {
                 "geometry": "polygon",
                 "Datasource": {
                     "type": "postgis",
-                    "table": f"(SELECT z.map_id, coalesce(nullif(l.color, ''), '#777777') AS color, z.geom FROM carto_new.{scale} z LEFT JOIN maps.map_legend ON z.map_id = map_legend.map_id LEFT JOIN maps.legend AS l ON l.legend_id = map_legend.legend_id LEFT JOIN maps.sources ON l.source_id = sources.source_id WHERE sources.status_code = 'active') subset",
+                    "table": f"({polygon_query}) subset",
                     "key_field": "map_id",
                     "geometry_field": "geom",
                     "extent_cache": "auto",
@@ -66,7 +99,7 @@ def make_carto_stylesheet(scale):
                 "geometry": "linestring",
                 "Datasource": {
                     "type": "postgis",
-                    "table": f"(SELECT x.line_id, x.geom, q.direction, q.type FROM carto_new.lines_{scale} x LEFT JOIN ( {line_sql} ) q on q.line_id = x.line_id LEFT JOIN maps.sources ON x.source_id = sources.source_id WHERE sources.status_code = 'active') subset",
+                    "table": f"({line_query}) subset",
                     "key_field": "line_id",
                     "geometry_field": "geom",
                     "extent_cache": "auto",
