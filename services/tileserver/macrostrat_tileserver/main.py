@@ -12,6 +12,7 @@ from starlette.responses import Response
 from timvt.resources.enums import MimeTypes
 from morecantile import tms
 from fastapi.middleware.cors import CORSMiddleware
+from .mapnik_layer import mapnik_layers
 
 # Create Application.
 app = FastAPI(root_path="/tiles/")
@@ -59,6 +60,8 @@ app.state.function_catalog.register(
         function_name="corelle_macrostrat.carto_slim_rotated",
     )
 )
+
+app.mount("/image-layers", mapnik_layers)
 
 app.include_router(mvt_tiler.router, tags=["Tiles"])
 
