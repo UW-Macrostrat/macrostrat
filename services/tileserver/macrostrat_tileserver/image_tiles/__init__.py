@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Response
-import morecantile
+from morecantile import Tile, tms
 from mapnik import Map, load_map_from_string, Image, render, Box2d
 from pathlib import Path
 from timvt.settings import TileSettings
@@ -26,13 +26,11 @@ def build_layer_cache():
 
 @mapnik_layers.get("/carto-image/{z}/{x}/{y}.png")
 async def root(z: int, x: int, y: int):
-    tms = morecantile.tms.get("WebMercatorQuad")
+    quad = tms.get("WebMercatorQuad")
+    tile = Tile(x, y, z)
+    bbox = quad.xy_bounds(tile)
 
-    tile = tms.tile(x, y, z)
-
-    bbox = tms.xy_bounds(tile)
-
-    # Get scale for this zoom level
+    # Get map scale for this zoom level
     scale = scale_for_zoom(z)
 
     # Path to mapnik XML file

@@ -12,10 +12,12 @@ from starlette.responses import Response
 from timvt.resources.enums import MimeTypes
 from morecantile import tms
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi_utils.timing import add_timing_middleware
 from .image_tiles import mapnik_layers, build_layer_cache
 
 # Create Application.
 app = FastAPI(root_path="/tiles/")
+add_timing_middleware(app)
 
 
 # Register Start/Stop application event handler to setup/stop the database connection

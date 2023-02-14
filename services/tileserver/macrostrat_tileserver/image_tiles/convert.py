@@ -1,5 +1,6 @@
 """
-Convert styles to mapnik xml
+Generate mapnik XML on the fly for each map scale.
+The stylesheets are regenerated every time the server is restarted.
 """
 from os import environ
 from macrostrat.database import Database
@@ -13,8 +14,6 @@ db = Database(environ.get("DATABASE_URL"))
 
 
 def make_carto_stylesheet(scale):
-    scale = "tiny"
-
     engine = db.engine
 
     pg_credentials = {
@@ -25,7 +24,7 @@ def make_carto_stylesheet(scale):
         "dbname": engine.url.database,
     }
 
-    line_sql = " UNION_ALL ".join(
+    line_sql = " UNION ALL ".join(
         f"SELECT * FROM lines.{s}" for s in layer_order[scale]
     )
 
