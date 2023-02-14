@@ -36,7 +36,7 @@ async def root(z: int, x: int, y: int):
     # Path to mapnik XML file
 
     # Load mapnik XML
-    map = Map(256, 256)
+    map = Map(512, 512)
     load_map_from_string(map, layer_cache[scale])
     # Set bbox of map
 
@@ -46,7 +46,7 @@ async def root(z: int, x: int, y: int):
     map.zoom_to_box(box)
 
     # Render map to image
-    im = Image(256, 256)
+    im = Image(512, 512)
     render(map, im)
     # Return image as binary
     img = im.tostring("png")

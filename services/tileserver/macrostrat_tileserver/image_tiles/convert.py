@@ -97,17 +97,17 @@ def make_carto_stylesheet(scale):
 # Cache the result of this function
 @lru_cache(maxsize=1)
 def build_color_styles():
-    res = db.session.execute(
-        "SELECT DISTINCT color FROM maps.legend WHERE color IS NOT NULL AND color != ''"
-    )
+    # res = db.session.execute(
+    #     "SELECT DISTINCT color FROM maps.legend WHERE color IS NOT NULL AND color != ''"
+    # )
 
     mss = ""
-    for row in res:
-        mss += f"""
-        .units[color="{row.color}"] {{
-            polygon-fill: {row.color};
-        }}
-        """
+    # for row in res:
+    mss += f"""
+    .units {{
+        polygon-fill: [color];
+    }}
+    """
     return mss
 
 
