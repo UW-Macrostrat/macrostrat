@@ -28,10 +28,19 @@ RUN cd /opt/python-mapnik && python3 setup.py install && rm -r /opt/python-mapni
 
 # Remove build dependencies
 RUN apt-get remove -y \
-  build-essential software-properties-common curl \
+  build-essential software-properties-common \
   libboost-dev libboost-filesystem-dev libboost-program-options-dev libboost-python-dev \
   libboost-regex-dev libboost-system-dev libboost-thread-dev libicu-dev libtiff5-dev \
   libfreetype-dev libpng-dev libxml2-dev libproj-dev libcairo-dev libharfbuzz-dev python-dev
+
+# CartoCSS stylesheet generation
+# Install nodejs
+RUN curl -sL https://deb.nodesource.com/setup_14.x | bash - && \
+  apt-get install -y nodejs && \
+  rm -rf /var/lib/apt/lists/*
+
+# Install carto
+RUN npm install -g carto
 
 # The rest of this (for vector tile generation and the server itself) should be easier.
 
