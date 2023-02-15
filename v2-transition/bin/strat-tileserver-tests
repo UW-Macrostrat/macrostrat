@@ -1,0 +1,1 @@
+strat run tileserver poetry run pytest

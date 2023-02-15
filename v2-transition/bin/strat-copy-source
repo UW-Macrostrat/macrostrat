@@ -2,12 +2,21 @@
 
 source="$1"
 
-pg_dump -Fc -p 5439 -h localhost -U postgres $@ $POSTGRES_DB \
+image="postgres:15"
+
+export PGPASSWORD="$POSTGRES_PASSWORD"
+export PGHOST="localhost"
+export PGUSER=postgres
+
+
+function docker-run {
+  docker run -i -e PGPASSWORD -e PGHOST -e PGUSER --network host $image $@
+}
+
+docker-run pg_dump -Fc burwell --schema macrostrat \
 | pv \
-| strat compose exec -T postgres pg_restore -v -Upostgres -d $POSTGRES_DEST_DB
+| docker-run pg_restore -v -d map_ingestion
 
-strat copy-data --table sources.$1 --table sources.$1_lines --table sources.$1_polygons --table sources.$1_points
-
-echo "Copying data from maps.sources table for source $source"
-psql -p 5432 -h localhost -U postgres burwell -c "COPY (SELECT * FROM maps.sources WHERE primary_table='$1') TO STDOUT WITH CSV HEADER" \
-| strat compose exec -T postgres psql -Upostgres map_ingestion -c "COPY maps.sources FROM STDIN WITH CSV HEADER"
+docker-run pg_dump -Fc burwell --table sources.$1\* \
+| pv \
+| docker-run pg_restore -v -d map_ingestion

@@ -22,4 +22,4 @@ docker-run psql -c "CREATE DATABASE $2"
 
 cat "$1" \
 | pv \
-| docker-run pg_restore -v -d $2
+| docker-run pg_restore -v --no-owner -d $2
