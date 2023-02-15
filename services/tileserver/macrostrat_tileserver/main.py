@@ -12,9 +12,13 @@ from starlette.responses import Response
 from timvt.resources.enums import MimeTypes
 from morecantile import tms
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi_utils.timing import add_timing_middleware
+from .image_tiles import mapnik_layers, build_layer_cache
 
 # Create Application.
 app = FastAPI(root_path="/tiles/")
+add_timing_middleware(app)
+
 
 # Register Start/Stop application event handler to setup/stop the database connection
 @app.on_event("startup")
@@ -22,6 +26,7 @@ async def startup_event():
     """Application startup: register the database connection and create table list."""
     await connect_to_db(app)
     await register_table_catalog(app)
+    build_layer_cache()
 
 
 @app.on_event("shutdown")
@@ -59,6 +64,8 @@ app.state.function_catalog.register(
         function_name="corelle_macrostrat.carto_slim_rotated",
     )
 )
+
+app.mount("/image-layers", mapnik_layers)
 
 app.include_router(mvt_tiler.router, tags=["Tiles"])
 
