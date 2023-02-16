@@ -1,30 +1,27 @@
-from timvt.db import close_db_connection, connect_to_db, register_table_catalog
-from timvt.factory import VectorTilerFactory
-from fastapi import FastAPI, Request
-from starlette_cramjam.middleware import CompressionMiddleware
-from starlette.responses import JSONResponse
-from timvt.layer import FunctionRegistry
-from timvt.factory import TILE_RESPONSE_PARAMS, queryparams_to_kwargs
-from .function_layer import StoredFunction
-from timvt.dependencies import TileParams
-from fastapi import Depends
-from starlette.responses import Response
-from timvt.resources.enums import MimeTypes
-from morecantile import tms
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi_utils.timing import add_timing_middleware
-from .image_tiles import mapnik_layers, build_layer_cache
-from macrostrat.utils import setup_stderr_logs
-from morecantile import Tile, TileMatrixSet
-from fastapi import BackgroundTasks
-from .utils import prepared_statement
-from buildpg import render
-from macrostrat.utils import get_logger
+from fastapi import BackgroundTasks, Depends, FastAPI, Request
+from macrostrat.utils import get_logger, setup_stderr_logs
 from macrostrat.utils.timer import Timer
+from morecantile import Tile, TileMatrixSet
+from starlette.responses import JSONResponse
+from starlette_cramjam.middleware import CompressionMiddleware
+from timvt.db import close_db_connection, connect_to_db, register_table_catalog
+from timvt.dependencies import TileParams
+from timvt.factory import (
+    TILE_RESPONSE_PARAMS,
+    VectorTilerFactory,
+    queryparams_to_kwargs,
+)
+from timvt.layer import FunctionRegistry
+
+from .cache import get_tile_from_cache, set_cached_tile
+from .function_layer import StoredFunction
+from .image_tiles import build_layer_cache, MapnikLayerFactory
+from .utils import TileResponse
+from fastapi_utils.tasks import repeat_every
+from buildpg import render
 
 log = get_logger(__name__)
 
-# Create Application.
 app = FastAPI(root_path="/tiles/")
 
 
@@ -36,6 +33,22 @@ async def startup_event():
     await connect_to_db(app)
     await register_table_catalog(app)
     build_layer_cache()
+
+
+@app.on_event("startup")
+@repeat_every(seconds=600)  # 10 minutes
+async def truncate_tile_cache_if_needed() -> None:
+    """Truncate the tile cache if it's too big."""
+    pool = app.state.pool
+    async with pool.acquire() as conn:
+        max_size = 1e10
+
+        q, p = render(
+            "SELECT tile_cache.remove_excess_tiles(:max_size)",
+            max_size=max_size,
+        )
+
+        await conn.execute(q, *p)
 
 
 @app.on_event("shutdown")
@@ -50,34 +63,6 @@ app.add_middleware(CompressionMiddleware, minimum_size=0)
 
 
 class CachedVectorTilerFactory(VectorTilerFactory):
-    async def get_tile_from_cache(self, pool, layer, tile, tms):
-        """Get tile data from cache."""
-        # Get the tile from the tile_cache.tile table
-        async with pool.acquire() as conn:
-            q, p = render(
-                prepared_statement("get-cached-tile"),
-                x=tile.x,
-                y=tile.y,
-                z=tile.z,
-                tms=None,
-                layer=layer.id,
-            )
-
-            return await conn.fetchval(q, *p)
-
-    async def set_cached_tile(self, pool, layer, tile, content):
-        async with pool.acquire() as conn:
-            q, p = render(
-                prepared_statement("set-cached-tile"),
-                x=tile.x,
-                y=tile.y,
-                z=tile.z,
-                tile=content,
-                layers=[layer.id],
-                profile=layer.id,
-            )
-            await conn.execute(q, *p)
-
     def register_tiles(self):
         """Register /tiles endpoints."""
         # super().register_tiles()
@@ -123,34 +108,20 @@ class CachedVectorTilerFactory(VectorTilerFactory):
             should_cache = isinstance(layer, StoredFunction)
 
             if should_cache:
-                content = await self.get_tile_from_cache(pool, layer, tile, tms)
+                content = await get_tile_from_cache(pool, layer.id, tile, None)
                 timer._add_step("check_cache")
                 if content is not None:
-                    return Response(
-                        content,
-                        media_type=MimeTypes.pbf.value,
-                        headers={
-                            "X-Tile-Cache": "hit",
-                            "Server-Timing": timer.server_timings(),
-                        },
-                    )
+                    return TileResponse(content, timer, cache_hit=True)
 
             content = await layer.get_tile(pool, tile, tms, **kwargs)
             timer._add_step("get_tile")
 
             if should_cache:
                 background_tasks.add_task(
-                    self.set_cached_tile, pool, layer, tile, content
+                    set_cached_tile, pool, layer.id, tile, content
                 )
 
-            return Response(
-                content,
-                media_type=MimeTypes.pbf.value,
-                headers={
-                    "X-Tile-Cache": "miss",
-                    "Server-Timing": timer.server_timings(),
-                },
-            )
+            return TileResponse(content, timer, cache_hit=False)
 
 
 # Register endpoints.
@@ -170,6 +141,8 @@ for layer in ["carto-slim", "carto"]:
     )
     app.state.function_catalog.register(lyr)
 
+MapnikLayerFactory(app)
+
 app.state.function_catalog.register(
     StoredFunction(
         type="StoredFunction",
@@ -178,8 +151,6 @@ app.state.function_catalog.register(
         function_name="corelle_macrostrat.carto_slim_rotated",
     )
 )
-
-app.mount("/image-layers", mapnik_layers)
 
 app.include_router(mvt_tiler.router, tags=["Tiles"])
 
