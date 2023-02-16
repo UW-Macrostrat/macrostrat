@@ -4,7 +4,7 @@ VALUES (
   :y,
   :z,
   :layers,
-  'mars_imagery',
+  :profile,
   :tile
 )
 ON CONFLICT (x,y,z,layers)

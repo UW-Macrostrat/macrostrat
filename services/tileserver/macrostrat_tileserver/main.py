@@ -15,6 +15,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi_utils.timing import add_timing_middleware
 from .image_tiles import mapnik_layers, build_layer_cache
 from macrostrat.utils import setup_stderr_logs
+from morecantile import Tile, TileMatrixSet
+from fastapi import BackgroundTasks
+from .utils import prepared_statement
+from buildpg import render
+from macrostrat.utils import get_logger
+
+log = get_logger(__name__)
 
 # Create Application.
 app = FastAPI(root_path="/tiles/")
@@ -40,8 +47,103 @@ app.state.function_catalog = FunctionRegistry()
 
 app.add_middleware(CompressionMiddleware, minimum_size=0)
 
+
+class CachedVectorTilerFactory(VectorTilerFactory):
+    async def get_tile_from_cache(self, pool, layer, tile, tms):
+        """Get tile data from cache."""
+        # Get the tile from the tile_cache.tile table
+        async with pool.acquire() as conn:
+            q, p = render(
+                prepared_statement("get-cached-tile"),
+                x=tile.x,
+                y=tile.y,
+                z=tile.z,
+                tms=tms.identifier,
+                layer=layer.id,
+            )
+
+            return await conn.fetchval(q, *p)
+
+    async def set_cached_tile(self, pool, layer, tile, content):
+        async with pool.acquire() as conn:
+            q, p = render(
+                prepared_statement("set-cached-tile"),
+                x=tile.x,
+                y=tile.y,
+                z=tile.z,
+                tile=content,
+                layers=[layer.id],
+                profile=layer.id,
+            )
+            await conn.execute(q, *p)
+
+    def register_tiles(self):
+        """Register /tiles endpoints."""
+        # super().register_tiles()
+
+        @self.router.get(
+            "/tiles/{layer}/{z}/{x}/{y}.pbf",
+            **TILE_RESPONSE_PARAMS,
+            tags=["Tiles"],
+            deprecated=True,
+        )
+        @self.router.get(
+            "/tiles/{TileMatrixSetId}/{layer}/{z}/{x}/{y}.pbf",
+            **TILE_RESPONSE_PARAMS,
+            tags=["Tiles"],
+            deprecated=True,
+        )
+        @self.router.get(
+            "/tiles/{layer}/{z}/{x}/{y}",
+            **TILE_RESPONSE_PARAMS,
+            tags=["Tiles"],
+        )
+        @self.router.get(
+            "/tiles/{TileMatrixSetId}/{layer}/{z}/{x}/{y}",
+            **TILE_RESPONSE_PARAMS,
+            tags=["Tiles"],
+        )
+        async def tile(
+            request: Request,
+            background_tasks: BackgroundTasks,
+            tile: Tile = Depends(TileParams),
+            tms: TileMatrixSet = Depends(self.tms_dependency),
+            layer=Depends(self.layer_dependency),
+        ):
+            """Return vector tile."""
+            pool = request.app.state.pool
+
+            kwargs = queryparams_to_kwargs(
+                request.query_params, ignore_keys=["tilematrixsetid"]
+            )
+
+            should_cache = isinstance(layer, StoredFunction)
+
+            if should_cache:
+                content = await self.get_tile_from_cache(pool, layer, tile, tms)
+                if content:
+                    return Response(
+                        bytes(content),
+                        media_type=MimeTypes.pbf.value,
+                        headers={"X-Tile-Cache": "HIT"},
+                    )
+
+            content = await layer.get_tile(pool, tile, tms, **kwargs)
+
+            if should_cache:
+                background_tasks.add_task(
+                    self.set_cached_tile, pool, layer, tile, content
+                )
+
+            return Response(
+                bytes(content),
+                media_type=MimeTypes.pbf.value,
+                headers={"X-Tile-Cache": "MISS"},
+            )
+
+
 # Register endpoints.
-mvt_tiler = VectorTilerFactory(
+mvt_tiler = CachedVectorTilerFactory(
     with_tables_metadata=True,
     with_functions_metadata=True,  # add Functions metadata endpoints (/functions.json, /{function_name}.json)
     with_viewer=True,

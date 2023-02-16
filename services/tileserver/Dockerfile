@@ -53,11 +53,12 @@ WORKDIR /app/
 # Right now, Poetry lock file must exist to avoid hanging on dependency resolution
 COPY ./pyproject.toml ./poetry.lock /app/
 
-# Create and activate a virtual envrionment
+# Create and activate our own virtual envrionment so that we can keep
+# our application dependencies separate from Poetry's
 RUN python3 -m venv /venv
 ENV PATH="/venv/bin:$PATH"
 
-RUN poetry install --no-interaction --no-ansi --no-root --only main
+RUN poetry install --no-interaction --no-ansi --no-root --no-dev
 
 EXPOSE 8000
 

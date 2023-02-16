@@ -1,5 +1,13 @@
 CREATE SCHEMA IF NOT EXISTS tile_layers;
 
+INSERT INTO tile_cache.profile
+  (name, format, content_type, minzoom, maxzoom)
+VALUES
+  ('carto', 'pbf', 'application/x-protobuf', 0, 14),
+  ('carto-slim', 'pbf', 'application/x-protobuf', 0, 14),
+  ('carto-image', 'png', 'image/png', 0, 14)
+ON CONFLICT (name) DO NOTHING;
+
 CREATE OR REPLACE VIEW tile_layers.carto_units AS
 SELECT
   map_id,
