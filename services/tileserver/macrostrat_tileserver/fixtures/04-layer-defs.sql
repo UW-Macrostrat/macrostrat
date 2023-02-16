@@ -8,6 +8,7 @@ VALUES
   ('carto-image', 'png', 'image/png', 0, 14)
 ON CONFLICT (name) DO NOTHING;
 
+/* This view is a little slow. We could speed things up by unifying the table perhaps */
 CREATE OR REPLACE VIEW tile_layers.carto_units AS
 SELECT
   map_id,
@@ -161,7 +162,8 @@ WITH mvt_features AS (
     ) geom
   FROM
     tile_layers.carto_units
-  WHERE scale = mapsize AND ST_Intersects(geom, projected_bbox)
+  WHERE scale = mapsize
+    AND ST_Intersects(geom, projected_bbox)
 ), expanded AS (
   SELECT
     z.map_id,

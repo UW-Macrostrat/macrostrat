@@ -20,6 +20,7 @@ from fastapi import BackgroundTasks
 from .utils import prepared_statement
 from buildpg import render
 from macrostrat.utils import get_logger
+from macrostrat.utils.timer import Timer
 
 log = get_logger(__name__)
 
@@ -58,7 +59,7 @@ class CachedVectorTilerFactory(VectorTilerFactory):
                 x=tile.x,
                 y=tile.y,
                 z=tile.z,
-                tms=tms.identifier,
+                tms=None,
                 layer=layer.id,
             )
 
@@ -113,6 +114,8 @@ class CachedVectorTilerFactory(VectorTilerFactory):
             """Return vector tile."""
             pool = request.app.state.pool
 
+            timer = Timer()
+
             kwargs = queryparams_to_kwargs(
                 request.query_params, ignore_keys=["tilematrixsetid"]
             )
@@ -121,14 +124,19 @@ class CachedVectorTilerFactory(VectorTilerFactory):
 
             if should_cache:
                 content = await self.get_tile_from_cache(pool, layer, tile, tms)
-                if content:
+                timer._add_step("check_cache")
+                if content is not None:
                     return Response(
-                        bytes(content),
+                        content,
                         media_type=MimeTypes.pbf.value,
-                        headers={"X-Tile-Cache": "HIT"},
+                        headers={
+                            "X-Tile-Cache": "hit",
+                            "Server-Timing": timer.server_timings(),
+                        },
                     )
 
             content = await layer.get_tile(pool, tile, tms, **kwargs)
+            timer._add_step("get_tile")
 
             if should_cache:
                 background_tasks.add_task(
@@ -136,9 +144,12 @@ class CachedVectorTilerFactory(VectorTilerFactory):
                 )
 
             return Response(
-                bytes(content),
+                content,
                 media_type=MimeTypes.pbf.value,
-                headers={"X-Tile-Cache": "MISS"},
+                headers={
+                    "X-Tile-Cache": "miss",
+                    "Server-Timing": timer.server_timings(),
+                },
             )
 
 

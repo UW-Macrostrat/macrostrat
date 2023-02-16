@@ -9,7 +9,7 @@ JOIN tile_cache.profile p
 WHERE t.x = :x
   AND t.y = :y
   AND t.z = :z
-  AND :layer = ANY(t.layers)
-  AND t.tms = :tms
+  AND t.profile = :layer
+  AND t.tms = coalesce(:tms, current_setting('tile_utils.default_tms')) 
   AND p.maxzoom >= :z
   AND coalesce(p.minzoom, 0) < :z
