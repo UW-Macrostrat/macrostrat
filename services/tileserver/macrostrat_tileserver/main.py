@@ -14,16 +14,17 @@ from morecantile import tms
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_utils.timing import add_timing_middleware
 from .image_tiles import mapnik_layers, build_layer_cache
+from macrostrat.utils import setup_stderr_logs
 
 # Create Application.
 app = FastAPI(root_path="/tiles/")
-add_timing_middleware(app)
 
 
 # Register Start/Stop application event handler to setup/stop the database connection
 @app.on_event("startup")
 async def startup_event():
     """Application startup: register the database connection and create table list."""
+    setup_stderr_logs("macrostrat_tileserver")
     await connect_to_db(app)
     await register_table_catalog(app)
     build_layer_cache()

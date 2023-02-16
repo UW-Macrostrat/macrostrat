@@ -43,11 +43,9 @@ RUN curl -sL https://deb.nodesource.com/setup_14.x | bash - && \
 RUN npm install -g carto
 
 # The rest of this (for vector tile generation and the server itself) should be easier.
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1 POETRY_VIRTUALENVS_CREATE=false
 
-RUN pip install "poetry==1.1.12" && \
-  poetry config virtualenvs.create false
-
-ENV PIP_DEFAULT_TIMEOUT=100 PIP_DISABLE_PIP_VERSION_CHECK=1
+RUN pip install "poetry==1.3.2"
 
 WORKDIR /app/
 
@@ -55,7 +53,11 @@ WORKDIR /app/
 # Right now, Poetry lock file must exist to avoid hanging on dependency resolution
 COPY ./pyproject.toml ./poetry.lock /app/
 
-RUN poetry install --no-interaction --no-ansi --no-root --no-dev
+# Create and activate a virtual envrionment
+RUN python3 -m venv /venv
+ENV PATH="/venv/bin:$PATH"
+
+RUN poetry install --no-interaction --no-ansi --no-root --only main
 
 EXPOSE 8000
 
