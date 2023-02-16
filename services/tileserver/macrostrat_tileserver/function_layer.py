@@ -11,11 +11,11 @@ from timvt.errors import (
 from timvt.settings import TileSettings
 from timvt.layer import Function
 
+
 tile_settings = TileSettings()
 
 
 class StoredFunction(Function):
-
     type: str = "StoredFunction"
 
     async def get_tile(
@@ -31,8 +31,6 @@ class StoredFunction(Function):
             raise MissingEPSGCode(
                 f"{tms.identifier}'s CRS does not have a valid EPSG code."
             )
-
-        bbox = tms.xy_bounds(tile)
 
         async with pool.acquire() as conn:
             transaction = conn.transaction()
@@ -58,7 +56,6 @@ class StoredFunction(Function):
 
             # execute the query
             content = await conn.fetchval(q, *p)
-
             # rollback
             await transaction.rollback()
 

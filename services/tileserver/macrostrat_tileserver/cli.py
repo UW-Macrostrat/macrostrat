@@ -26,4 +26,4 @@ def sync():
     files = list(fixtures_dir.glob("*.sql"))
     files.sort()
     for fn in files:
-        db.exec_sql(fn)
+        list(db.run_sql(fn))
