@@ -5,6 +5,7 @@ services:
     ports:
       - "80:80"
       - "443:443"
+      - "5000:5000"
     environment:
       - CERTBOT_EMAIL
     volumes:
@@ -84,9 +85,7 @@ services:
     environment:
       - REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY=/var/lib/registry
       - REGISTRY_STORAGE_DELETE_ENABLED=true
-      - REGISTRY_HTTP_PREFIX=/registry
-    ports:
-      - "5200:5000"
+    expose: [5000]
     volumes:
       - docker_images:/var/lib/registry 
   corelle:
