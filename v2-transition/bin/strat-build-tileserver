@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+cd $STRAT_BASE/services/tileserver
+
+
+registry_address="next.macrostrat.org/registry"
+container_name="macrostrat-tileserver"
+version="dev"
+# Log into local docker registry
+#docker login $registry_address
+
+docker build -t $container_name:$version .
+
+# Tag the image
+docker tag $container_name:$version $registry_address/$container_name:$version
+
+# Push the image
+docker push $registry_address/$container_name:$version

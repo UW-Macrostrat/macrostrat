@@ -77,6 +77,18 @@ services:
         --log-level debug
         --proxy-headers
         macrostrat_tileserver.main:app
+  registry:
+    # A docker registry for storing images
+    image: registry:2
+    restart: always
+    environment:
+      - REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY=/var/lib/registry
+      - REGISTRY_STORAGE_DELETE_ENABLED=true
+      - REGISTRY_HTTP_PREFIX=/registry
+    ports:
+      - "5200:5000"
+    volumes:
+      - docker_images:/var/lib/registry 
   corelle:
     build: services/corelle
     depends_on:
@@ -137,3 +149,4 @@ volumes:
   mariadb_data:
   postgres_data:
   nginx_secrets:
+  docker_images:
