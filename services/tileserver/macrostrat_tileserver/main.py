@@ -41,7 +41,7 @@ async def truncate_tile_cache_if_needed() -> None:
     """Truncate the tile cache if it's too big."""
     pool = app.state.pool
     async with pool.acquire() as conn:
-        max_size = 1e10
+        max_size = 1e6
 
         q, p = render(
             "SELECT tile_cache.remove_excess_tiles(:max_size)",
