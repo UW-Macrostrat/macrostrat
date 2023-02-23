@@ -3,7 +3,4 @@
 
 # Usage: strat-copy-local <source_db> <target_db> <table_name>
 
-dumpfile=$1
-shift
-
-strat compose exec -T postgres pg_dump -Fc -U postgres $@ > $dumpfile
+strat compose exec -T postgres pg_dump -Fc -U postgres $@
