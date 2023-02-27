@@ -74,6 +74,12 @@ class CachedVectorTilerFactory(VectorTilerFactory):
             deprecated=True,
         )
         @self.router.get(
+            "/tiles/{layer}/{z}/{x}/{y}.mvt",
+            **TILE_RESPONSE_PARAMS,
+            tags=["Tiles"],
+            deprecated=True,
+        )
+        @self.router.get(
             "/tiles/{TileMatrixSetId}/{layer}/{z}/{x}/{y}.pbf",
             **TILE_RESPONSE_PARAMS,
             tags=["Tiles"],
@@ -153,14 +159,6 @@ app.state.function_catalog.register(
 )
 
 app.include_router(mvt_tiler.router, tags=["Tiles"])
-
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=["*"],
-#     allow_credentials=True,
-#     allow_methods=["*"],
-#     allow_headers=["*"],
-# )
 
 
 @app.get("/", include_in_schema=False)
