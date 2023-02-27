@@ -1,0 +1,3 @@
+
+cd "$STRAT_BASE"
+ansible-playbook ansible/playbooks/deploy-dev.yaml

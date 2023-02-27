@@ -3,7 +3,7 @@
 cd $STRAT_BASE/services/tileserver
 
 
-registry_address="next.macrostrat.org:5000"
+registry_address="$MACROSTRAT_PRIVATE_REGISTRY"
 container_name="macrostrat/tileserver"
 version="dev"
 # Log into local docker registry
