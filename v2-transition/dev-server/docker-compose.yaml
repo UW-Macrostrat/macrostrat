@@ -5,11 +5,16 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    expose: [80, 443]
     environment:
       - CERTBOT_EMAIL
     volumes:
       - ./conf.d:/etc/nginx/user_conf.d:ro
       - nginx_secrets:/etc/letsencrypt
+  web:
+    image: ghcr.io/uw-macrostrat/web:develop
+    restart: always
+    expose: [80]
   mariadb:
     # The MariaDB service is Macrostrat's current database service.
     # Eventually this will be removed from the active configuration
