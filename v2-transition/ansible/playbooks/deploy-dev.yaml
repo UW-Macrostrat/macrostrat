@@ -26,17 +26,10 @@
         path: /data/macrostrat/app
         state: directory
         owner: "{{ ansible_user }}"
-        group: "macrostrat"
-        mode: 0775
-    - name: create config directory
-      become: true
-      file:
-        path: /data/macrostrat/app/conf.d
-        state: directory
-        owner: "{{ ansible_user }}"
-        group: "macrostrat"
+        group: "docker"
         mode: 0775
     - name: copy Docker Compose files
+      become: true
       copy:
         src: ../../dev-server/{{ item }}
         dest: /data/macrostrat/app/{{ item }}
@@ -45,6 +38,7 @@
         - docker-compose.yaml
         - .env
         - conf.d/
+        - varnish/
     # use files parameter to use multiple docker-compose.yml files
     - name: deploy Docker Compose stack
       docker_compose:
