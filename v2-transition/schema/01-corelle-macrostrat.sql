@@ -126,7 +126,7 @@ WITH rotation_info AS (
   WHERE pp.model_id = _model_id
   	AND t_step = _t_step
     AND pp.geometry && corelle_macrostrat.tile_envelope(rotation, x, y, z)
-    AND ST_Intersects(pp.geometry, corelle_macrostrat.tile_envelope(rotation, x, y, z))
+    --AND ST_Intersects(pp.geometry, corelle_macrostrat.tile_envelope(rotation, x, y, z))
 ),
 plate_polygons AS (
   SELECT
@@ -449,7 +449,7 @@ u2 AS (
 u3 AS (
   SELECT ST_AsMVT(land, 'land') mvt3
   FROM land1 land
-),
+)
 -- u4 AS (
 --   SELECT ST_AsMVT(cols, 'columns') mvt4
 --   FROM columns cols
@@ -470,25 +470,13 @@ CREATE OR REPLACE FUNCTION corelle_macrostrat.tile_envelope(
   y integer,
   z integer
 ) RETURNS geometry AS $$
-DECLARE
-  mercator_bbox geometry;
-  tile_width numeric;
-BEGIN
-  mercator_bbox := tile_utils.envelope(x, y, z);
-  tile_width := tile_utils.tile_width(z);
-  IF z = 0 THEN
-    RETURN ST_Transform(mercator_bbox, 4326);
-  ELSE
-    -- I feel like this bbox needs to be inverted but it seems to work better if not...
-    RETURN corelle_macrostrat.rotate(
-      --ST_Transform(mercator_bbox, 4326),
-      ST_Transform(ST_Segmentize(mercator_bbox, tile_width/8), 4326),
-      corelle.invert_rotation(rotation),
-      true
-    );
-  END IF;
-END;
-$$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
+  SELECT corelle_macrostrat.rotate(
+    --ST_Transform(mercator_bbox, 4326),
+    ST_Transform(ST_Segmentize(tile_utils.envelope(x, y, z), tile_utils.tile_width(z)/8), 4326),
+    corelle.invert_rotation(rotation),
+    false
+  );
+$$ LANGUAGE sql STABLE PARALLEL SAFE;
 
 CREATE OR REPLACE FUNCTION corelle_macrostrat.build_tile_geom(
   geom geometry,
@@ -522,7 +510,7 @@ BEGIN
       rotation,
       '+o_proj=merc +R=6378137 +over'
     );
-    --tile_geom := ST_SetSRID(ST_Transform(geom, proj4text), 3857); 
+    tile_geom := ST_SetSRID(ST_Transform(geom, proj4text), 3857); 
   END IF;
 
   RETURN ST_Simplify(
