@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+ssh acadia -C "docker exec -t macrostrat_tileserver_1 tileserver $@"
