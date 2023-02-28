@@ -157,25 +157,14 @@ CREATE OR REPLACE FUNCTION corelle_macrostrat.tile_envelope(
   y integer,
   z integer
 ) RETURNS geometry AS $$
-DECLARE
-  mercator_bbox geometry;
-  tile_width numeric;
-BEGIN
-  mercator_bbox := tile_utils.envelope(x, y, z);
-  IF z = 0 THEN
-    RETURN ST_Transform(mercator_bbox, 4326);
-  ELSE
-    tile_width := tile_utils.tile_width(z);
     -- I feel like this bbox needs to be inverted but it seems to work better if not...
-    RETURN corelle_macrostrat.rotate(
-      --ST_Transform(mercator_bbox, 4326),
-      ST_Transform(ST_Segmentize(mercator_bbox, tile_width/8), 4326),
-      corelle.invert_rotation(rotation),
-      true
-    );
-  END IF;
-END;
-$$ LANGUAGE plpgsql VOLATILE;
+  SELECT corelle_macrostrat.rotate(
+    --ST_Transform(mercator_bbox, 4326),
+    ST_Transform(ST_Segmentize(tile_utils.envelope(x, y, z), tile_utils.tile_width(z)/8), 4326),
+    corelle.invert_rotation(rotation),
+    true
+  );
+$$ LANGUAGE sql STABLE;
 
 CREATE OR REPLACE FUNCTION corelle_macrostrat.build_tile_geom(
   geom geometry,
@@ -211,7 +200,7 @@ BEGIN
     8
   );
 END;
-$$ LANGUAGE plpgsql VOLATILE;
+$$ LANGUAGE plpgsql STABLE; 
 
 CREATE OR REPLACE FUNCTION corelle_macrostrat.rotate(
   geom geometry,
@@ -242,7 +231,7 @@ BEGIN
   END IF;
   RETURN g1;
 END;
-$$ LANGUAGE plpgsql VOLATILE;
+$$ LANGUAGE plpgsql STABLE;
 
 -- Drop outdated functions
 --DROP FUNCTION IF EXISTS corelle_macrostrat.rotate(geometry, numeric[], boolean);
@@ -250,7 +239,7 @@ DROP FUNCTION IF EXISTS corelle_macrostrat.rotated_web_mercator_proj(numeric[]);
 
 
 
-CREATE OR REPLACE FUNCTION corelle_macrostrat.carto_slim_rotated_v1(
+CREATE OR REPLACE FUNCTION corelle_macrostrat.carto_slim_rotated(
   -- bounding box
   x integer,
   y integer,
