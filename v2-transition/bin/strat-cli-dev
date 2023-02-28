@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+# Rebuild the command line application just in case
+# we have updated the source code
+
+cd /data/macrostrat/tools/macrostrat-utils
+
+set -o allexport
+source /data/macrostrat/dev-server/.env
+set +o allexport
+
+export MACROSTRAT_PG_DATABASE="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@dev.macrostrat.org:5432/macrostrat_v2"
+export MACROSTRAT_SCHEMA_EXTENSIONS="/data/macrostrat/schema"
+poetry run macrostrat $@
