@@ -200,7 +200,7 @@ BEGIN
     8
   );
 END;
-$$ LANGUAGE plpgsql VOLATILE;
+$$ LANGUAGE plpgsql STABLE; 
 
 CREATE OR REPLACE FUNCTION corelle_macrostrat.rotate(
   geom geometry,
@@ -239,7 +239,7 @@ DROP FUNCTION IF EXISTS corelle_macrostrat.rotated_web_mercator_proj(numeric[]);
 
 
 
-CREATE OR REPLACE FUNCTION corelle_macrostrat.carto_slim_rotated_v1(
+CREATE OR REPLACE FUNCTION corelle_macrostrat.carto_slim_rotated(
   -- bounding box
   x integer,
   y integer,
