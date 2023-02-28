@@ -69,5 +69,11 @@ services:
       - /var/lib/varnish:exec
     volumes:
       - ./varnish/tile-cache.vcl:/etc/varnish/default.vcl:ro
+  api:
+    image: next.macrostrat.org:5000/macrostrat/api:develop
+    restart: always
+    expose: [5000]
+    volumes:
+      - ./system/api-credentials.js:/code/credentials.js:ro
 volumes:
   nginx_secrets:

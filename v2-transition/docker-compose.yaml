@@ -48,6 +48,8 @@ services:
     # Macrostrat API
     build: services/macrostrat-api
     expose: [5000]
+    volumes:
+      - ./system/api-credentials.js:/code/credentials.js:ro
   cli:
     build: tools/macrostrat-utils
     container_name: macrostrat-cli
