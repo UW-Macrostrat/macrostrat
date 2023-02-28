@@ -1,0 +1,60 @@
+---
+- hosts: dev
+  gather_facts: false
+  become: true
+  name: Set up users for running application
+  tasks:
+    # sudo groupadd docker
+    - name: Create "macrostrat" group
+      group:
+        name: macrostrat
+        state: present
+
+    # sudo usermod -aG docker root
+    - name: Add user to "macrostrat" group
+      user:
+        name: "{{ ansible_user }}"
+        groups: macrostrat
+        append: yes
+- hosts: dev
+  gather_facts: false
+  name: Install Macrostrat application
+  tasks:
+    - name: create app directory
+      become: true
+      file:
+        path: /data/macrostrat/app
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "docker"
+        mode: 0775
+    - name: copy Docker Compose files
+      become: true
+      copy:
+        src: ../../dev-server/{{ item }}
+        dest: /data/macrostrat/app/{{ item }}
+        directory_mode: yes
+      loop:
+        - docker-compose.yaml
+        - .env
+        - conf.d/
+        - varnish/
+    # use files parameter to use multiple docker-compose.yml files
+    - name: deploy Docker Compose stack
+      docker_compose:
+        project_src: /data/macrostrat/app
+        files:
+          - docker-compose.yaml
+        remove_orphans: true
+        pull: true
+        state: present
+    - name: Restart nginx server
+      docker_compose:
+        project_src: /data/macrostrat/app
+        files:
+          - docker-compose.yaml
+        build: false
+        restarted: true
+        services:
+          - gateway
+      register: output

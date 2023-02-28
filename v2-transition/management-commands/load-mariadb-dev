@@ -1,0 +1,16 @@
+#!/usr/bin/env zsh
+# Load a mariadb database onto the development server (acadia)
+# from a dump file.
+# Must be connected to the UW network
+
+source "${0:h}/secrets.zsh"
+
+function do-mysql {
+  docker run -i --network host mariadb mysql --host=$MACROSTRAT_DEV_HOST \
+    --user=$MACROSTRAT_DEV_MARIADB_USER --password=$MACROSTRAT_DEV_MARIADB_PASSWORD $@
+}
+
+do-mysql -e "DROP DATABASE macrostrat"
+do-mysql -e "CREATE DATABASE macrostrat"
+zcat "$1" | pv -cN zcat | do-mysql macrostrat
+

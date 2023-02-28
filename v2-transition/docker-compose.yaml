@@ -5,6 +5,7 @@ services:
     ports:
       - "80:80"
       - "443:443"
+      - "5000:5000"
     environment:
       - CERTBOT_EMAIL
     volumes:
@@ -33,6 +34,7 @@ services:
     # Macrostrat's newer database clusters are based around PostgreSQL.
     # This should hopefully handle most of our databases going forward.
     image: postgis/postgis:14-3.1
+    shm_size: 1gb
     ports:
       - "5432:5432"
     environment:
@@ -46,6 +48,8 @@ services:
     # Macrostrat API
     build: services/macrostrat-api
     expose: [5000]
+    volumes:
+      - ./system/api-credentials.js:/code/credentials.js:ro
   cli:
     build: tools/macrostrat-utils
     container_name: macrostrat-cli
@@ -76,6 +80,16 @@ services:
         --log-level debug
         --proxy-headers
         macrostrat_tileserver.main:app
+  registry:
+    # A docker registry for storing images
+    image: registry:2
+    restart: always
+    environment:
+      - REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY=/var/lib/registry
+      - REGISTRY_STORAGE_DELETE_ENABLED=true
+    expose: [5000]
+    volumes:
+      - docker_images:/var/lib/registry 
   corelle:
     build: services/corelle
     depends_on:
@@ -136,3 +150,4 @@ volumes:
   mariadb_data:
   postgres_data:
   nginx_secrets:
+  docker_images:

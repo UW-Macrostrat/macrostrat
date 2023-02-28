@@ -1,0 +1,30 @@
+- import_playbook: configure-lvm.yaml
+- hosts: dev
+  become: true
+  gather_facts: false
+  tasks:
+    - stat:
+        path: /var/lib/docker
+      register: dockerdata
+    - name: "Fail if docker data directory already exists"
+      fail:
+        msg: |
+          Docker data directory already exists in its standard location,
+          so moving it will not work. This playbook should only be run
+          on a fresh server. 
+      when: dockerdata.stat.exists
+    - name: Make docker config folder
+      file:
+        path: /etc/docker
+        state: directory
+        mode: '0755'
+    - name: "Change docker data directory"
+      copy:
+        content: "{ \"data-root\": \"/data/docker\"}"
+        dest: /etc/docker/daemon.json
+    - name: "Ensure Docker configuration file exists"
+      stat:
+        path: /etc/docker/daemon.json
+- import_playbook: install-docker.yaml
+
+

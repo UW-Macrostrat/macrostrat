@@ -1,2 +1,5 @@
 .env
 .ssh
+etc
+.strata-credentials
+system/api-credentials.js
