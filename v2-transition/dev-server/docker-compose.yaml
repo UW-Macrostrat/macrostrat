@@ -75,6 +75,6 @@ services:
     restart: always
     expose: [5000]
     volumes:
-      - ./system/api-credentials.js:/code/credentials.js:ro
+      - ./api-credentials.js:/code/credentials.js:ro
 volumes:
   nginx_secrets:
