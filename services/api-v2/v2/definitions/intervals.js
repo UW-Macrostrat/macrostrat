@@ -44,13 +44,18 @@ module.exports = function(req, res, next, cb) {
   }
 
   if (req.query.b_age && req.query.t_age) {
-    if (req.query.rule === "loose") {
-      where.push("intervals.age_bottom >= :b_age AND intervals.age_top <= t_age");
+    if (req.query.rule === "contains") {
+      where.push("intervals.age_top >= :t_age AND intervals.age_bottom <= :b_age");
       params["b_age"] = req.query.b_age;
       params["t_age"] = req.query.t_age;
 
-    } else {
-      where.push("((intervals.age_top <= :t_age AND intervals.age_bottom >= :b_age) OR (intervals.age_top >= :t_age AND intervals.age_bottom <= :b_age))");
+    } else if (req.query.rule === "exact") {
+      where.push("intervals.age_top = :t_age AND intervals.age_bottom = :b_age");
+      params["b_age"] = req.query.b_age;
+      params["t_age"] = req.query.t_age;
+
+    } else  {
+      where.push("intervals.age_bottom > :t_age AND intervals.age_top < :b_age");
       params["b_age"] = req.query.b_age;
       params["t_age"] = req.query.t_age;
     }

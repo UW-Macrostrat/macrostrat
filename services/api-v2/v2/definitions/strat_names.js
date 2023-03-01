@@ -54,6 +54,17 @@ module.exports = function(req, res, next, cb) {
       params["concept_id"] = larkin.parseMultipleIds(req.query.strat_name_concept_id);
     }
 
+    if (req.query.interval_name) {
+      where.push("early_age > (SELECT age_top from intervals where interval_name like :interval_name) and late_age < (SELECT age_bottom from intervals where interval_name like :interval_name2)");
+      params["interval_name"] = larkin.parseMultipleStrings(req.query.interval_name);
+      params["interval_name2"] = larkin.parseMultipleStrings(req.query.interval_name);
+    }
+
+    if (req.query.ref_id){
+      where.push("ref_id IN (:ref_id)")
+      params["ref_id"] = larkin.parseMultipleIds(req.query.ref_id);
+    }
+
     if (req.query.rank) {
       where.push("rank = :rank");
       params["rank"] = req.query.rank;
