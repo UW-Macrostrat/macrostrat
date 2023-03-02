@@ -5,6 +5,7 @@ import pandas as P
 import IPython
 from collections import defaultdict
 from sqlalchemy import *
+from geoalchemy2 import Geometry
 
 from rich.console import Console
 from rich.progress import Progress
@@ -20,11 +21,13 @@ def ingest_map(
     embed: bool = False,
     crs: str = None,
     if_exists: str = "replace",
+    chunksize: int = 100,
 ):
     """Ingest shapefiles into the database."""
     console.print("[bold]Ingesting map data for source [bold blue]" + source_id)
     # Read file with GeoPandas and dump to PostGIS
 
+    # We need to put multigeometries first, otherwise they might not be used in the
     frames = defaultdict(list)
 
     for file in files:
@@ -82,7 +85,6 @@ def ingest_map(
 
         table = f"{source_id}_{feature_type.lower()}s"
         schema = "sources"
-        chunksize = 10
 
         db.engine.execute(f"CREATE SCHEMA IF NOT EXISTS {schema}")
 
@@ -104,6 +106,13 @@ def ingest_map(
                     conn,
                     schema=schema,
                     if_exists=if_exists if i == 0 else "append",
+                    dtype={
+                        "geometry": Geometry(
+                            geometry_type="Multi" + feature_type,
+                            spatial_index=True,
+                            srid=4326,
+                        ),
+                    },
                 )
                 progress.update(task, advance=len(chunk))
 

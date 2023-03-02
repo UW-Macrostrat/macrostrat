@@ -31,18 +31,18 @@ app.add_command(match_names, name="match-names")
 
 
 def main():
-    if len(sys.argv) > 1 and sys.argv[1] == "maps":
-        sys.argv = sys.argv[1:]
-        app()
-    else:
-        # Fall back to rest of CLI if we're not dealing with maps
-        # NOTE: this should probably be inverted eventually.
-        # The map CLI should be a subcommand of the main CLI,
-        # not the other way around.
-        try:
-            from macrostrat_cli.cli import main
+    # if len(sys.argv) > 1 and sys.argv[1] == "maps":
+    #     sys.argv = sys.argv[1:]
+    app()
+    # else:
+    #     # Fall back to rest of CLI if we're not dealing with maps
+    #     # NOTE: this should probably be inverted eventually.
+    #     # The map CLI should be a subcommand of the main CLI,
+    #     # not the other way around.
+    #     try:
+    #         from macrostrat_cli.cli import main
 
-            main()
-        except ModuleNotFoundError:
-            print("macrostrat's main CLI is not installed")
-            return
+    #         main()
+    #     except ModuleNotFoundError:
+    #         print("macrostrat's main CLI is not installed")
+    #         return

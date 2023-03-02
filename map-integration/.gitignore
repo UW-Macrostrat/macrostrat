@@ -2,6 +2,7 @@
 .AppleDouble
 .LSOverride
 .venv
+__pycache__
 
 credentials.yml
 setup/credentials.py
