@@ -245,7 +245,7 @@ module.exports = function(req, res, next) {
             COALESCE(isbn_doi, '') isbn_doi
             FROM maps.sources
             WHERE source_id = m.source_id) r)::jsonb AS ref,
-          ST_Distance_Spheroid(m.geom, $1, 'SPHEROID["WGS 84",6378137,298.257223563]') AS distance
+          ST_DistanceSpheroid(m.geom, $1, 'SPHEROID["WGS 84",6378137,298.257223563]') AS distance
         FROM carto_new.lines_${scale} m
         JOIN LATERAL (
             SELECT * FROM lines.tiny
