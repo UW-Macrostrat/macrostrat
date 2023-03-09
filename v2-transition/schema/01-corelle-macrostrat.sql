@@ -53,7 +53,7 @@ JOIN corelle.plate_polygon pp
 JOIN corelle.model m
   ON m.id = pp.model_id;
 
-CREATE OR REPLACE FUNCTION corelle_macrostrat.carto_slim_rotated(
+CREATE OR REPLACE FUNCTION corelle_macrostrat.carto_slim_rotated_v1(
   -- bounding box
   x integer,
   y integer,
@@ -126,7 +126,7 @@ WITH rotation_info AS (
   WHERE pp.model_id = _model_id
   	AND t_step = _t_step
     AND pp.geometry && corelle_macrostrat.tile_envelope(rotation, x, y, z)
-    AND ST_Intersects(pp.geometry, corelle_macrostrat.tile_envelope(rotation, x, y, z))
+    --AND ST_Intersects(pp.geometry, corelle_macrostrat.tile_envelope(rotation, x, y, z))
 ),
 plate_polygons AS (
   SELECT
@@ -310,6 +310,8 @@ WITH rotation_info AS (
     AND rc.model_id = pp.model_id
   WHERE rc.model_id = _model_id
     AND rc.t_step = _t_step
+    AND coalesce(pp.old_lim, 4000) >= _t_step
+    AND coalesce(pp.young_lim, 0) <= _t_step
     AND corelle_macrostrat.tile_envelope(rc.rotation, x, y, z) && pp.geometry
     AND ST_Intersects(corelle_macrostrat.tile_envelope(rc.rotation, x, y, z), pp.geometry)
 ),
@@ -436,16 +438,114 @@ u2 AS (
 u3 AS (
   SELECT ST_AsMVT(land, 'land') mvt3
   FROM land1 land
-),
-u4 AS (
-  SELECT ST_AsMVT(cols, 'columns') mvt4
-  FROM columns cols
 )
-SELECT mvt1 || mvt2 || mvt3 || mvt4 AS mvt
-FROM u1, u2, u3, u4
+-- u4 AS (
+--   SELECT ST_AsMVT(cols, 'columns') mvt4
+--   FROM columns cols
+-- )
+SELECT mvt1 || mvt2 || mvt3 AS mvt
+
+FROM u1, u2, u3
 INTO bedrock; --, plate_polygons;
 
 RETURN bedrock;
 
 END;
+$$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION corelle_macrostrat.tile_envelope(
+  rotation numeric[],
+  x integer,
+  y integer,
+  z integer
+) RETURNS geometry AS $$
+  SELECT corelle_macrostrat.rotate(
+    --ST_Transform(mercator_bbox, 4326),
+    ST_Transform(ST_Segmentize(tile_utils.envelope(x, y, z), tile_utils.tile_width(z)/8), 4326),
+    corelle.invert_rotation(rotation),
+    false
+  );
+$$ LANGUAGE sql STABLE PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION corelle_macrostrat.build_tile_geom(
+  geom geometry,
+  rotation numeric[],
+  _x integer,
+  _y integer,
+  _z integer
+)
+RETURNS geometry
+AS $$
+DECLARE
+  mercator_bbox geometry;
+  proj4text text;
+  proj_additions text;
+  wrap numeric = 0;
+  tile_geom geometry;
+  tms_width numeric;
+  meridian geometry;
+  shifted geometry;
+BEGIN
+  mercator_bbox := tile_utils.envelope(_x,_y,_z);
+  tms_width := tile_utils.tile_width(0);
+
+  -- Pre-simplify the geometry to reduce the size of the tile
+  geom := ST_SnapToGrid(geom, 0.001/pow(2,_z));
+
+  IF true THEN
+    tile_geom := ST_Transform(corelle_macrostrat.rotate(geom, rotation, true), 3857);
+  ELSE
+    proj4text := corelle.build_proj_string(
+      rotation,
+      '+o_proj=merc +R=6378137 +over'
+    );
+    tile_geom := ST_SetSRID(ST_Transform(geom, proj4text), 3857); 
+  END IF;
+
+  RETURN ST_Simplify(
+    ST_AsMVTGeom(
+      tile_geom,
+      mercator_bbox,
+      4096,
+      12,
+      true
+    ),
+    8
+  );
+END;
+$$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION corelle_macrostrat.rotate(
+  geom geometry,
+  rotation double precision[],
+  wrap boolean DEFAULT false
+) RETURNS geometry AS $$
+DECLARE
+  g1 geometry;
+BEGIN
+  g1 := corelle.rotate_geometry(geom, rotation);
+  -- Heuristic to determine if the geometry crosses the antimeridian
+  -- https://gis.stackexchange.com/questions/182728/how-can-i-convert-postgis-geography-to-geometry-and-split-polygons-that-cross-th
+  -- https://macwright.com/2016/09/26/the-180th-meridian.html
+  -- This has to be run for each tile, because a lot of geometries that
+  -- don't properly intersect the tile are still included due to polygon winding effects.
+  -- We really should figure out how to exclude geometries with no points
+  -- in the tile envelope, so we don't have to run this check on every tile
+  IF wrap AND ST_XMin(g1) < -150 AND ST_XMax(g1) > 150 THEN
+    g1 := ST_WrapX(
+      ST_Split(
+        ST_MakeValid(ST_ShiftLongitude(g1)),
+        -- Antimeridian
+        ST_GeomFromText('LINESTRING(180 -90, 180 90)', 4326)
+      ),
+      180,
+      -360
+    );
+  END IF;
+  RETURN g1;
+END;
 $$ LANGUAGE plpgsql STABLE;
+
+-- Drop outdated functions
+DROP FUNCTION IF EXISTS corelle_macrostrat.rotate(geometry, numeric[], boolean);
+DROP FUNCTION IF EXISTS corelle_macrostrat.rotated_web_mercator_proj(numeric[]);

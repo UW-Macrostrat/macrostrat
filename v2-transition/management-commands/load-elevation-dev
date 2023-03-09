@@ -1,0 +1,21 @@
+#!/usr/bin/env zsh
+# Load a Postgres database onto the development server (acadia)
+# from Strata.
+
+source "${0:h}/secrets.zsh"
+
+image="ghcr.io/uw-macrostrat/pg-backup-service:v2.1.1"
+
+export PGPASSWORD="$MACROSTRAT_DEV_POSTGRES_PASSWORD"
+export PGHOST="$MACROSTRAT_DEV_HOST"
+export PGUSER="$MACROSTRAT_DEV_POSTGRES_USER"
+
+function docker-run {
+  docker run -i -e PGPASSWORD -e PGHOST -e PGUSER --network host $image $@
+}
+
+docker-run psql -c "CREATE DATABASE $1"
+
+ssh strata -C "pg_dump -U postgres -Fc -d $1" \
+| pv \
+| docker-run pg_restore -v --no-owner -d $1

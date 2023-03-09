@@ -22,3 +22,6 @@
 [submodule "tileserver-stats"]
 	path = tools/tileserver-stats
 	url = https://github.com/UW-Macrostrat/tileserver-stats.git
+[submodule "tools/map-integration"]
+	path = tools/map-integration
+	url = https://github.com/UW-Macrostrat/burwell.git

@@ -36,6 +36,7 @@
         directory_mode: yes
       loop:
         - docker-compose.yaml
+        - api-credentials.js
         - .env
         - conf.d/
         - varnish/
