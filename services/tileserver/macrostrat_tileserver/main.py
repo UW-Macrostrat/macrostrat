@@ -16,9 +16,10 @@ from timvt.layer import FunctionRegistry
 from .cache import get_tile_from_cache, set_cached_tile
 from .function_layer import StoredFunction
 from .image_tiles import build_layer_cache, MapnikLayerFactory
-from .utils import TileResponse
+from .utils import TileResponse, CacheMode, CacheStatus
 from fastapi_utils.tasks import repeat_every
 from buildpg import render
+from fastapi import HTTPException
 
 log = get_logger(__name__)
 
@@ -101,6 +102,8 @@ class CachedVectorTilerFactory(VectorTilerFactory):
             tile: Tile = Depends(TileParams),
             tms: TileMatrixSet = Depends(self.tms_dependency),
             layer=Depends(self.layer_dependency),
+            cache: CacheMode = CacheMode.prefer,
+            # If cache query arg is set, don't cache the tile
         ):
             """Return vector tile."""
             pool = request.app.state.pool
@@ -111,23 +114,37 @@ class CachedVectorTilerFactory(VectorTilerFactory):
                 request.query_params, ignore_keys=["tilematrixsetid"]
             )
 
-            should_cache = isinstance(layer, CachedStoredFunction)
+            should_cache = (
+                isinstance(layer, CachedStoredFunction) and cache != CacheMode.bypass
+            )
 
             if should_cache:
                 content = await get_tile_from_cache(pool, layer.id, tile, None)
                 timer._add_step("check_cache")
                 if content is not None:
-                    return TileResponse(content, timer, cache_hit=True)
+                    return TileResponse(content, timer, cache_status=CacheStatus.hit)
+
+            if cache == CacheMode.force:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Tile not found in cache",
+                    header={
+                        "Server-Timing": timer.server_timings(),
+                        "X-Tile-Cache": CacheStatus.miss,
+                    },
+                )
 
             content = await layer.get_tile(pool, tile, tms, **kwargs)
             timer._add_step("get_tile")
 
+            cache_status = CacheStatus.bypass
             if should_cache:
                 background_tasks.add_task(
                     set_cached_tile, pool, layer.id, tile, content
                 )
+                cache_status = CacheStatus.miss
 
-            return TileResponse(content, timer, cache_hit=False)
+            return TileResponse(content, timer, cache_status=cache_status)
 
 
 # Register endpoints.
