@@ -111,7 +111,7 @@ class CachedVectorTilerFactory(VectorTilerFactory):
                 request.query_params, ignore_keys=["tilematrixsetid"]
             )
 
-            should_cache = isinstance(layer, StoredFunction)
+            should_cache = isinstance(layer, CachedStoredFunction)
 
             if should_cache:
                 content = await get_tile_from_cache(pool, layer.id, tile, None)
@@ -138,8 +138,12 @@ mvt_tiler = CachedVectorTilerFactory(
 )
 
 
+class CachedStoredFunction(StoredFunction):
+    ...
+
+
 for layer in ["carto-slim", "carto"]:
-    lyr = StoredFunction(
+    lyr = CachedStoredFunction(
         type="StoredFunction",
         sql="",
         id=layer,
@@ -149,14 +153,15 @@ for layer in ["carto-slim", "carto"]:
 
 MapnikLayerFactory(app)
 
-app.state.function_catalog.register(
-    StoredFunction(
-        type="StoredFunction",
-        sql="",
-        id="carto-slim-rotated",
-        function_name="corelle_macrostrat.carto_slim_rotated",
+for layer in ["carto_slim_rotated", "igcp_orogens", "igcp_orogens_rotated"]:
+    app.state.function_catalog.register(
+        StoredFunction(
+            type="StoredFunction",
+            sql="",
+            id=layer.replace("_", "-"),
+            function_name="corelle_macrostrat." + layer,
+        )
     )
-)
 
 app.include_router(mvt_tiler.router, tags=["Tiles"])
 
