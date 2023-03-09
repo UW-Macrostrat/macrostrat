@@ -8,6 +8,7 @@ VALUES
   ('carto-image', 'png', 'image/png', 0, 14)
 ON CONFLICT (name) DO NOTHING;
 
+
 /* This view is a little slow. We could speed things up by unifying the table perhaps */
 CREATE OR REPLACE VIEW tile_layers.carto_units AS
 SELECT
@@ -126,9 +127,11 @@ mercator_bbox geometry;
 projected_bbox geometry;
 bedrock bytea;
 lines bytea;
+tolerance double precision;
 BEGIN
 
 mercator_bbox := tile_utils.envelope(x, y, z);
+tolerance := 6;
 
 projected_bbox := ST_Transform(
   mercator_bbox,
@@ -155,11 +158,7 @@ WITH mvt_features AS (
   SELECT
     map_id,
     source_id,
-    ST_AsMVTGeom(
-      ST_Transform(geom, 3857),
-      mercator_bbox,
-      4096
-    ) geom
+    geom
   FROM
     tile_layers.carto_units
   WHERE scale = mapsize
@@ -204,7 +203,7 @@ WITH mvt_features AS (
     l.all_lith_types [11] AS lith_type11,
     l.all_lith_types [12] AS lith_type12,
     l.all_lith_types [13] AS lith_type13,
-    ST_Simplify(z.geom, 2) AS geom
+    tile_layers.tile_geom(z.geom, mercator_bbox) AS geom
   FROM
     mvt_features z
     LEFT JOIN maps.map_legend ON z.map_id = map_legend.map_id
@@ -212,7 +211,7 @@ WITH mvt_features AS (
     LEFT JOIN maps.sources ON l.source_id = sources.source_id
   WHERE
     sources.status_code = 'active'
-    AND ST_Area(geom) > 2
+    --AND ST_Area(geom) > tolerance
 )
 SELECT
   ST_AsMVT(expanded, 'units')
@@ -224,11 +223,7 @@ WITH mvt_features AS (
   SELECT
     line_id,
     source_id,
-    ST_AsMVTGeom(
-      ST_Transform(geom, 3857),
-      mercator_bbox,
-      4096
-    ) geom
+    geom
   FROM
     tile_layers.carto_lines
   WHERE
@@ -243,7 +238,7 @@ expanded AS (
     coalesce(q.name, '') AS name,
     coalesce(q.direction, '') AS direction,
     coalesce(q.type, '') AS "type",
-    ST_Simplify(z.geom, 2) AS geom
+    tile_layers.tile_geom(z.geom, mercator_bbox) AS geom
   FROM mvt_features z
   LEFT JOIN tile_layers.line_data q
     ON z.line_id = q.line_id
@@ -251,7 +246,7 @@ expanded AS (
     ON z.source_id = sources.source_id
   WHERE sources.status_code = 'active'
     AND q.scale = ANY(linesize)
-    AND ST_Length(geom) > 2
+    --AND ST_Length(geom) > tolerance
 )
 SELECT
   ST_AsMVT(expanded, 'lines') INTO lines
@@ -312,11 +307,7 @@ WITH mvt_features AS (
   SELECT
     map_id,
     source_id,
-    ST_AsMVTGeom(
-      ST_Transform(geom, 3857),
-      mercator_bbox,
-      4096
-    ) geom
+    geom
   FROM
     tile_layers.carto_units
   WHERE scale = mapsize AND ST_Intersects(geom, projected_bbox)
@@ -344,7 +335,7 @@ WITH mvt_features AS (
     COALESCE(sources.ref_source, '') AS ref_source,
     COALESCE(sources.ref_year, '') AS ref_year,
     COALESCE(sources.isbn_doi, '') AS ref_isbn,
-    ST_Simplify(z.geom, 2) AS geom
+    tile_layers.tile_geom(z.geom, mercator_bbox) AS geom
   FROM
     mvt_features z
     LEFT JOIN maps.map_legend ON z.map_id = map_legend.map_id
@@ -354,7 +345,7 @@ WITH mvt_features AS (
     LEFT JOIN maps.sources ON l.source_id = sources.source_id
   WHERE
     sources.status_code = 'active'
-    AND ST_Area(geom) > 2
+    -- AND ST_Area(geom) > tolerance
 )
 SELECT
   ST_AsMVT(expanded, 'units')
@@ -366,11 +357,7 @@ WITH mvt_features AS (
   SELECT
     line_id,
     source_id,
-    ST_AsMVTGeom(
-      ST_Transform(geom, 3857),
-      mercator_bbox,
-      4096
-    ) geom
+    geom
   FROM
     tile_layers.carto_lines
   WHERE
@@ -385,7 +372,7 @@ expanded AS (
     coalesce(q.name, '') AS name,
     coalesce(q.direction, '') AS direction,
     coalesce(q.type, '') AS "type",
-    ST_Simplify(z.geom, 2) AS geom
+    tile_layers.tile_geom(z.geom, mercator_bbox) AS geom
   FROM mvt_features z
   LEFT JOIN tile_layers.line_data q
     ON z.line_id = q.line_id
@@ -393,7 +380,7 @@ expanded AS (
     ON z.source_id = sources.source_id
   WHERE sources.status_code = 'active'
     AND q.scale = ANY(linesize)
-    AND ST_Length(geom) > 2
+    --AND ST_Length(geom) > tolerance
 )
 SELECT
   ST_AsMVT(expanded, 'lines') INTO lines
@@ -403,3 +390,11 @@ RETURN bedrock || lines;
 
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION tile_layers.tile_geom(
+  geom geometry,
+  bbox geometry
+) RETURNS geometry AS $$
+  /* It is difficult to reduce tile precision quickly, so we just make a smaller vector tile and scale it up */
+  SELECT ST_Scale(ST_AsMVTGeom(ST_Transform(geom, 3857), bbox, 1024, 8, true), 4, 4);
+$$ LANGUAGE sql IMMUTABLE;
