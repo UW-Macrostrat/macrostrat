@@ -9,6 +9,7 @@ from .commands.ingest import ingest_map
 from .commands.homogenize import prepare_fields
 from .commands.match_names import match_names
 from .commands.sources import map_sources
+from .commands.rgeom import create_rgeom
 
 from .database import db
 
@@ -29,6 +30,9 @@ class IngestionCLI(Typer):
 
 
 app = IngestionCLI(no_args_is_help=True, add_completion=False)
+app.add_command(map_sources, name="sources")
+
+
 app.add_command(ingest_map, name="ingest")
 
 app.add_command(prepare_fields, name="prepare-fields")
@@ -36,7 +40,8 @@ app.add_command(prepare_fields, name="prepare-fields")
 # Pass along other arguments to the match-names command
 app.add_command(match_names, name="match-names")
 
-app.add_command(map_sources, name="sources")
+
+app.add_command(create_rgeom, name="create-rgeom")
 
 
 def main():
