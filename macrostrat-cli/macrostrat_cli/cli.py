@@ -26,6 +26,7 @@ Help:
 
 from . import __version__ as VERSION
 from .database import pgConnection, mariaConnection
+from subprocess import run
 import sys
 
 # import all available commands
@@ -49,7 +50,11 @@ def main():
         sys.exit()
 
     if sys.argv[1] == "maps":
-        print("Error: map ingestion CLI is not installed")
+        # Check if the macrostrat-maps command is available on the system
+        try:
+            run(["macrostrat-maps"] + sys.argv[2:], check=True)
+        except FileNotFoundError:
+            print("Error: map ingestion CLI is not installed")
         sys.exit()
 
     if sys.argv[1] == "v2":

@@ -17,7 +17,7 @@ def upgrade_db():
     files.sort()
 
     for file in files:
-        db.exec_sql(file)
+        list(db.run_sql(file))
 
 
 def extend_schema():
@@ -36,4 +36,4 @@ def extend_schema():
     files.sort()
 
     for file in files:
-        db.exec_sql(file)
+        list(db.run_sql(file))
