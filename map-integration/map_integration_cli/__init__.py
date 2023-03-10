@@ -11,7 +11,7 @@ from .commands.match_names import match_names
 from .commands.sources import map_sources
 from .commands.rgeom import create_rgeom, create_webgeom
 
-from .database import db
+from .database import db, create_fixtures
 
 
 class NaturalOrderGroup(TyperGroup):
@@ -30,6 +30,8 @@ class IngestionCLI(Typer):
 
 
 app = IngestionCLI(no_args_is_help=True, add_completion=False)
+
+app.add_command(create_fixtures, name="create-fixtures")
 app.add_command(map_sources, name="sources")
 
 
