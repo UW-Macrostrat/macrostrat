@@ -36,6 +36,7 @@ def create_rgeom(source_id: int):
 def create_webgeom(source_id: int):
     """Create a geometry for use on the web"""
 
-    conn = db.engine.connect()
+    sql = sql_file("set-webgeom")
+    print(sql)
     # Get the primary table of the target source
-    conn.execute(sql_file("set-webgeom"), dict(source_id=source_id))
+    db.session.execute(sql, params=dict(source_id=source_id))

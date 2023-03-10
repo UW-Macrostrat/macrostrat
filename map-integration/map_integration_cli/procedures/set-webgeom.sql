@@ -1,9 +1,8 @@
 WITH first as (
     select source_id, (ST_Dump(ST_Split(ST_SetSRID(rgeom, 4326), ST_SetSRID(ST_MakeLine(ST_MakePoint(-180, 90), ST_MakePoint(-180, -90)), 4326)))).geom
     FROM maps.sources
-    WHERE source_id = %(source_id)s
+    WHERE source_id = :source_id
 ),
-
 sides AS (
     SELECT source_id,
         CASE
@@ -15,7 +14,6 @@ sides AS (
     FROM first
     WHERE ST_Area(geom) > 0.01
 ),
-
 best_sides AS (
     SELECT source_id, side AS best_side, sum(area)
     FROM sides
@@ -23,7 +21,6 @@ best_sides AS (
     ORDER BY sum desc
     LIMIT 1
 ),
-
 final AS(
     SELECT sides.source_id,
         CASE
@@ -37,7 +34,6 @@ final AS(
     FROM sides
     JOIN best_sides ON sides.source_id = best_sides.source_id
 )
-
 UPDATE maps.sources
 SET web_geom = (
     SELECT
@@ -51,4 +47,4 @@ SET web_geom = (
   FROM final
   GROUP BY source_id
 )
-WHERE source_id = %(source_id)s;
+WHERE source_id = :source_id
