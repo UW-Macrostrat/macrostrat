@@ -6,7 +6,14 @@ import IPython
 from collections import defaultdict
 from sqlalchemy import *
 from geoalchemy2 import Geometry
-
+from shapely.geometry import (
+    Polygon,
+    MultiPolygon,
+    LineString,
+    MultiLineString,
+    Point,
+    MultiPoint,
+)
 from rich.console import Console
 from rich.progress import Progress
 
@@ -108,12 +115,17 @@ def ingest_map(
                     if_exists=if_exists if i == 0 else "append",
                     dtype={
                         "geometry": Geometry(
-                            geometry_type="Multi" + feature_type,
+                            geometry_type="Geometry",
                             spatial_index=True,
                             srid=4326,
                         ),
                     },
                 )
+                # Ensure multigeometries are used (brute force)
+                if i == 0:
+                    conn.execute(
+                        f"ALTER TABLE {schema}.{table} ALTER COLUMN geometry TYPE Geometry(Geometry, 4326)"
+                    )
                 progress.update(task, advance=len(chunk))
 
 

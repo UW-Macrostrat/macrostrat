@@ -7,6 +7,8 @@ Zip up all map files
 
 Copy them to the server
 
+```cd <directory>```
+
 ```pscp <source-file.zip> <user>@next.macrostrat.org:/data/map-ingestion/candidates```
 
 # On the server (in PuTTY command line)
