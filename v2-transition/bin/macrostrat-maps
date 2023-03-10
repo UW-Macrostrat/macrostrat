@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+# Activate the virtual environmenti
+export PATH=/data/macrostrat/tools/map-integration/.venv/bin:$PATH
+
+# Run the script
+macrostrat-maps $@
