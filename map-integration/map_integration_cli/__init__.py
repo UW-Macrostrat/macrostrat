@@ -29,7 +29,7 @@ class IngestionCLI(Typer):
         self.command(**kwargs)(func)
 
 
-app = IngestionCLI(no_args_is_help=True, add_completion=False)
+app = IngestionCLI(no_args_is_help=True, add_completion=False, name="map-ingestion")
 
 app.add_command(create_fixtures, name="create-fixtures")
 app.add_command(map_sources, name="sources")

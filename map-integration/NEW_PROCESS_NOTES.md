@@ -7,30 +7,44 @@ Zip up all map files
 
 Copy them to the server
 
-```cd <directory>```
+```cd ```
 
-```pscp <source-file.zip> <user>@next.macrostrat.org:/data/map-ingestion/candidates```
+```pscp <map-name.zip> <user>@next.macrostrat.org:/data/map-ingestion/candidates```
 
-# On the server (in PuTTY command line)
+# Preparing the data the server 
 
-```cd /data/map-ingestion/candidates```
+Enter the PuTTY command line
+
+- Move to the proper directory: `cd /data/map-ingestion/candidates`
 
 - `ls` to see what is in the directory
 
-- `unzip <Map>.zip`
-- `rm <Map>.zip`
+- Unzip the map and remove the zip file
+  - `unzip <map-name>.zip`
+  - `rm <map-name>.zip`
+- Check to ensure that there is a folder with the proper name:
+  -  `ls`
+  - If you need to rename the folder: `mv <old> <new>`
 
-If you need to rename the folder
-- `mv <old> <new>`
+## Ingesting the map
 
-- `cd ..` (to go into `/data/map-ingestion`)
+The Macrostrat map ingestion app is now accessible using the `macrostrat maps`
+command (note to Kate: this has changed! It now works without the dot and `sudo`, and can be run from any directory)
 
-- `sudo ./map-ingestion` (we will make this better soon).
 
-- `sudo ./map-ingestion ingest <map-name> candidates/<map-name>/*.shp` (sometimes it will be `*.gdb`)
+There are a few ways to run the ingestion command:
 
-Prepare fields for ingestion
+If you are in the `/data/map-ingestion` directory, and the Shapefiles are directly in the `/data/map-ingestion/candidates/<map-name>` folder:
+```macrostrat maps ingest <map-name> candidates/<map-name>/*.shp```
 
-- `sudo ./map-ingestion prepare-fields al_alabaster`
+If you are in a folder with Shapefiles:
+```macrostrat maps ingest <map-name> *.shp```
+
+If you are in the `/data/map-ingestion/candidates` directory and want to ingest all Shapefiles in the tree:
+```macrostrat maps ingest <map-name> <map-name>/**/*.shp```
+
+## Preparing fields for manual data entry
+
+```macrostrat maps prepare-fields <map-name>```
 
  Then you should be ready to go!
