@@ -26,6 +26,7 @@ typer = "^0.6.1"
 
 python-dotenv = "^0.21.0"
 pyyaml = "^6.0"
+shapely = "^2.0.1"
 
 [tool.poetry.scripts]
 # Override the default entrypoint for the macrostrat.cli package
