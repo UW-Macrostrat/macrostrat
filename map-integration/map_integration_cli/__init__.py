@@ -9,7 +9,7 @@ from .commands.ingest import ingest_map
 from .commands.homogenize import prepare_fields
 from .commands.match_names import match_names
 from .commands.sources import map_sources
-from .commands.rgeom import create_rgeom
+from .commands.rgeom import create_rgeom, create_webgeom
 
 from .database import db
 
@@ -42,6 +42,8 @@ app.add_command(match_names, name="match-names")
 
 
 app.add_command(create_rgeom, name="create-rgeom")
+
+app.add_command(create_webgeom, name="create-webgeom")
 
 
 def main():

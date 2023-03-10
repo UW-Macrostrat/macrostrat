@@ -53,6 +53,7 @@ retained in case we want to track point data (especially, bedding orientations) 
   This allows data not matching Macrostrat's current structure (especially, contacts with
   certainty information) to be retained for eventual use if desired.
 
+
 # Processing
 Processing a source involves matching, refreshing lookup tables, building an `rgeom`, refreshing carto tables for lines, and rolling tiles. While these steps can be done individually, they should be done all at once by using `process_source.py`.
 

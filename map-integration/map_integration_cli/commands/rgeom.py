@@ -1,4 +1,4 @@
-from ..database import db
+from ..database import db, sql_file
 from pathlib import Path
 from psycopg2.extensions import AsIs
 from sqlalchemy.exc import ProgrammingError
@@ -31,3 +31,11 @@ def create_rgeom(source_id: int):
     end = time.time()
 
     print(f"Done in {end - start} s")
+
+
+def create_webgeom(source_id: int):
+    """Create a geometry for use on the web"""
+
+    conn = db.engine.connect()
+    # Get the primary table of the target source
+    conn.execute(sql_file("set-webgeom"), dict(source_id=source_id))
