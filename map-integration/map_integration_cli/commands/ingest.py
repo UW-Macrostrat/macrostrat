@@ -37,6 +37,11 @@ def ingest_map(
     # We need to put multigeometries first, otherwise they might not be used in the
     frames = defaultdict(list)
 
+    # Add to map-sources table
+    db.engine.execute(
+        f"INSERT INTO maps.sources (primary_table) VALUES ('{source_id}') ON CONFLICT DO NOTHING"
+    )
+
     for file in files:
         df = G.read_file(file)
 

@@ -1,5 +1,6 @@
 from ..database import db
 from sqlalchemy.exc import ProgrammingError
+from rich import print
 
 
 def prepare_fields(source_prefix: str):
@@ -18,6 +19,10 @@ def prepare_fields(source_prefix: str):
     linework_table = f"{source_prefix}_linestrings"
     add_linework_columns(schema, linework_table)
     _set_source_id(schema, linework_table, source_id)
+
+    print(
+        f"\n[bold green]Source [bold cyan]{source_prefix}[green] prepared for manual cleaning!\n"
+    )
 
 
 def get_sources_record(source_prefix):
@@ -101,6 +106,7 @@ def exec_sql(sql, params=None):
     try:
         db.session.execute(sql, params)
         db.session.commit()
+        print("[dim]" + sql)
     except ProgrammingError as e:
-        print(e)
+        print("[dim red]" + str(sql))
         db.session.rollback()
