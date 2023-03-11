@@ -65,7 +65,7 @@ module.exports = (req, res, next, cb) => {
       SELECT
         ST_X(geom) AS lng,
         ST_Y(geom) AS lat,
-        round((ST_Distance_Sphere(geom, $2) * 0.001)::numeric, 2)::float AS d,
+        round((ST_DistanceSphere(geom, $2) * 0.001)::numeric, 2)::float AS d,
         (
           SELECT elevation
           FROM (

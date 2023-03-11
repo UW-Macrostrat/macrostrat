@@ -2,7 +2,9 @@ var api = require("../api"),
     larkin = require("../larkin"),
     multiline = require("multiline"),
     dbgeo = require("dbgeo"),
-    gp = require("geojson-precision");
+  gp = require("geojson-precision");
+    
+const credentials = require("../credentials");
 
 module.exports = function(req, res, next, cb) {
   if (Object.keys(req.query).length < 1) {
@@ -64,7 +66,7 @@ module.exports = function(req, res, next, cb) {
    ORDER BY ordering, new_priority
    ${('sample' in req.query) ? 'LIMIT 5': ''}
   `
-  larkin.queryPg("burwell", sql, params, function(error, result) {
+  larkin.queryPg(credentials.pg_macrostrat_database, sql, params, function(error, result) {
     if (error) {
       if (cb) {
         return cb(error);

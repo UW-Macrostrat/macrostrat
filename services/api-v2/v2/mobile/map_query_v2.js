@@ -267,7 +267,7 @@ function buildLineSQL(scale) {
             SELECT
               m.line_id,
               m.source_id,
-              ST_Distance_Spheroid(m.geom, $1, 'SPHEROID["WGS 84",6378137,298.257223563]') AS distance
+              ST_DistanceSpheroid(m.geom, $1, 'SPHEROID["WGS 84",6378137,298.257223563]') AS distance
             FROM carto_new.lines_${scale} m
             ORDER BY geom <-> $1
             LIMIT 10
