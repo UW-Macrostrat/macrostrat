@@ -473,9 +473,10 @@ class Units(Base):
                 FROM macrostrat.units
                 JOIN macrostrat.lookup_unit_intervals ON lookup_unit_intervals.unit_id = units.id
                 JOIN macrostrat.units_sections ON units.id = units_sections.unit_id
-                JOIN macrostrat.cols ON cols.id = units_sections.col_id
+                JOIN macrostrat.cols ON macrostrat.cols.id = units_sections.col_id
+                WHERE macrostrat.cols.status_code='active'
             ) units ON ST_Intersects(poly_geom, rgeom)
-            WHERE cols.status_code='active' and source_id = %(source_id)s;
+            WHERE source_id = %(source_id)s
         """,
             {"source_id": source_id},
         )
@@ -528,6 +529,7 @@ class Units(Base):
                     print("        + Excluding %s because it is null" % (field_name,))
 
             # Insert a new task for each matching field into the queue
+            print("Processing fields", fields)
             for field in fields:
                 Units.do_work(self, field)
         else:

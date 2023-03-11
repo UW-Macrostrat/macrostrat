@@ -6,6 +6,7 @@ from .config import MYSQL_DATABASE, PG_DATABASE
 from sqlalchemy import create_engine
 from macrostrat.database import Database
 
+
 # Connect to MySQL
 def mariaConnection():
     _url = MYSQL_DATABASE.replace("mysql://", "mysql+pymysql://")

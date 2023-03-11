@@ -66,7 +66,7 @@ class Process(Base):
             {
                 "pg": self.pg["raw_connection"],
                 "mariadb": self.mariadb["raw_connection"],
-                "credentials": self.credentials,
+                # "credentials": self.credentials,
             },
             self.args[2:],
         )

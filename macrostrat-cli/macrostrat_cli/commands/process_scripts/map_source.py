@@ -62,11 +62,11 @@ class MapSource(Base):
 
         source_id = source_id[0]
 
-        rgeom = RGeom({})
-        rgeom.run((source_id,))
+        # rgeom = RGeom({})
+        # rgeom.run((source_id,))
 
-        web_geom = WebGeom({})
-        web_geom.run((source_id,))
+        # web_geom = WebGeom({})
+        # web_geom.run((source_id,))
 
         leg = Legend({})
         leg.run((source_id,))
@@ -76,6 +76,8 @@ class MapSource(Base):
 
         u = units({})
         u.run(source_id)
+
+        print("Liths")
 
         l = liths({})
         l.run(source_id)
@@ -92,5 +94,5 @@ class MapSource(Base):
         carto_lines = CartoLines({})
         carto_lines.run((source_id,))
 
-        seed = Seed({}, True, source_id)
-        seed.run()
+        # seed = Seed({}, True, source_id)
+        # seed.run()

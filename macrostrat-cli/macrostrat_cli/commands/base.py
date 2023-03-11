@@ -21,6 +21,8 @@ class Base(object):
             cursor_factory=NamedTupleCursor
         )
 
+        self.credentials = None
+
         self.args = args
 
     @abstractmethod
