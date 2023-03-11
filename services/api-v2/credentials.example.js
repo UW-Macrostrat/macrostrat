@@ -17,6 +17,9 @@ exports.pg = {
   password : ''
 }
 
+exports.pg_macrostrt_database = "burwell"
+
+
 // This is the default Redis port
 // NOTE: Redis is not configured at the moment
 exports.redis = {
