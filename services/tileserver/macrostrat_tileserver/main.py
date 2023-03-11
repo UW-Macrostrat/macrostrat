@@ -32,7 +32,7 @@ async def startup_event():
     """Application startup: register the database connection and create table list."""
     setup_stderr_logs("macrostrat_tileserver")
     await connect_to_db(app)
-    await register_table_catalog(app)
+    # await register_table_catalog(app)
     build_layer_cache()
 
 

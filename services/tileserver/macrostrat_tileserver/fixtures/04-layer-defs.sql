@@ -396,5 +396,5 @@ CREATE OR REPLACE FUNCTION tile_layers.tile_geom(
   bbox geometry
 ) RETURNS geometry AS $$
   /* It is difficult to reduce tile precision quickly, so we just make a smaller vector tile and scale it up */
-  SELECT ST_Simplify(ST_Scale(ST_AsMVTGeom(ST_Transform(geom, 3857), bbox, 1024, 8, true), 4, 4), 5);
+  SELECT ST_Scale(ST_Simplify(ST_AsMVTGeom(ST_Transform(geom, 3857), bbox, 2048, 8, true), 1.5), 2, 2);
 $$ LANGUAGE sql IMMUTABLE;
