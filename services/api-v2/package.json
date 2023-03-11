@@ -16,6 +16,10 @@
     "macrostrat",
     "macrostratigraphy"
   ],
+  "workspaces": [
+    "./v1",
+    "./v2"
+  ],
   "contributors": [
     {
       "name": "John J Czaplewski"
