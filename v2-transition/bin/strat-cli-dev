@@ -10,5 +10,7 @@ source /data/macrostrat/dev-server/.env
 set +o allexport
 
 export MACROSTRAT_PG_DATABASE="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@dev.macrostrat.org:5432/macrostrat_v2"
+export MACROSTRAT_MYSQL_DATABASE="mysql://root:${MARIADB_ROOT_PASSWORD}@dev.macrostrat.org:3306/macrostrat"
+
 export MACROSTRAT_SCHEMA_EXTENSIONS="/data/macrostrat/schema"
 poetry run macrostrat $@
