@@ -28,7 +28,10 @@ var mysql = require("mysql"),
 
   larkin.queryPg = function (db, sql, params, callback) {
 
-    const cfg = "postgres://" + credentials.pg.user + (credentials.pg.password.length ? ':' + credentials.pg.password : '') + "@" + credentials.pg.host + ":" + credentials.pg.port + "/" + db;
+    const nameMapping = credentials.postgresDatabases ?? {}
+    const dbName = nameMapping[db] ?? db
+
+    const cfg = "postgres://" + credentials.pg.user + (credentials.pg.password.length ? ':' + credentials.pg.password : '') + "@" + credentials.pg.host + ":" + credentials.pg.port + "/" + dbName;
     const pool = new pg.Pool({ connectionString: cfg });
 
     pool.connect(function(err, client, done) {

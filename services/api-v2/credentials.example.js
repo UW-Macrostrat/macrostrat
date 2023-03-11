@@ -17,7 +17,10 @@ exports.pg = {
   password : ''
 }
 
-exports.pg_macrostrt_database = "burwell"
+exports.postgresDatabases = {
+  burwell: 'burwell',
+  geomacro: 'geomacro',
+}
 
 
 // This is the default Redis port
