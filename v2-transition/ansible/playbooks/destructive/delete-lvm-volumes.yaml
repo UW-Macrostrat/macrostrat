@@ -1,5 +1,5 @@
 - hosts: dev
-  name: Remove Logical Volumes entirely (this deletes all data)
+  name: Remove Logical Volumes entirely (this deletes all data on a server and starts from scratch)
   become: true
   tasks:
     - name: Remove logical volume group 
