@@ -25,7 +25,6 @@ fi
 
 bin="$base_dir/bin"
 
-export COMPOSE_FILE="$base_dir/docker-compose.yaml"
 
 if [ -z $1 ] || [ $1 = '--help' ]; then
   echo "$description"
