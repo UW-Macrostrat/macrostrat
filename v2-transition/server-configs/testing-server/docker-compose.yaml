@@ -9,14 +9,14 @@ services:
     environment:
       - CERTBOT_EMAIL
     volumes:
-      - ./system/nginx-config:/etc/nginx/user_conf.d:ro
+      - ./conf.d:/etc/nginx/user_conf.d:ro
       - nginx_secrets:/etc/letsencrypt
   homepage:
     # A markdown server for the homepage
     image: dannyben/madness
     expose: [3000]
     volumes:
-      - ./docs:/docs:ro
+      - ../../docs:/docs:ro
   # DATABASE SERVICES
   mariadb:
     # The MariaDB service is Macrostrat's current database service.
@@ -46,12 +46,12 @@ services:
       - "host.docker.internal:host-gateway"
   api:
     # Macrostrat API
-    build: services/macrostrat-api
+    build: ../../services/macrostrat-api
     expose: [5000]
     volumes:
-      - ./system/api-credentials.js:/code/credentials.js:ro
+      - ./api-credentials.js:/code/credentials.js:ro
   cli:
-    build: tools/macrostrat-utils
+    build: ../../tools/macrostrat-utils
     container_name: macrostrat-cli
     environment:
       - MACROSTRAT_PG_DATABASE=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/burwell
@@ -65,10 +65,10 @@ services:
       - TILESERVER_STATS_DATABASE
       - TILESERVER_REQUESTS_DATABASE
     volumes:
-      - ./tools/macrostrat-utils:/code:ro
-      - ./schema:/data/schema-extensions:ro
+      - ../../tools/macrostrat-utils:/code:ro
+      - ../../schema:/data/schema-extensions:ro
   tileserver:
-    build: services/tileserver
+    build: ../../services/tileserver
     environment:
       - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/burwell
       - FORWARDED_ALLOW_IPS=*
@@ -91,25 +91,25 @@ services:
     volumes:
       - docker_images:/var/lib/registry 
   corelle:
-    build: services/corelle
+    build: ../../services/corelle
     depends_on:
       - postgres
     expose: [5000]
     volumes:
-      - ./services/corelle/data:/code/data:ro
+      - ../../services/corelle/data:/code/data:ro
     environment:
       - CORELLE_DB=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/burwell
       # This is a legacy argument...
       - CORELLE_DB_ARGS=-h postgres -d burwell -p 5432 -U postgres
       - PGPASSWORD=${POSTGRES_PASSWORD}
   rockd_api:
-    build: services/rockd-api/api
+    build: ../../services/rockd-api/api
     expose: [5500]
     volumes:
       - /var/data/rockd:/var/data/rockd
   dacite:
     build:
-      context: services/column-builder/dacite
+      context: ../../services/column-builder/dacite
       dockerfile: prod.Dockerfile
     environment:
       - NEXT_PUBLIC_SERVER_URL=${NEXT_PUBLIC_SERVER_URL}
@@ -130,11 +130,11 @@ services:
     depends_on:
       - postgres
   birdseye:
-    build: services/column-builder/BirdsEye/frontend
+    build: ../../services/column-builder/BirdsEye/frontend
     ports:
       - "1235:1235"
   geologic_map_server:
-    build: services/column-builder/BirdsEye/backend
+    build: ../../services/column-builder/BirdsEye/backend
     environment:
       - GEOLOGIC_MAP_CONFIG=/app/docker-assets/docker-map-config.json
       - GEOLOGIC_MAP_DATABASE=${GEOLOGIC_MAP_DATABASE}

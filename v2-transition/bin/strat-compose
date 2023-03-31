@@ -1,2 +1,6 @@
 #!/usr/bin/env zsh
-docker-compose --project-dir "$STRAT_BASE" $@
+
+server_dir="$STRAT_BASE/server-configs/testing-server"
+
+export COMPOSE_FILE="$server_dir/docker-compose.yaml"
+docker-compose --project-dir "$server_dir" $@

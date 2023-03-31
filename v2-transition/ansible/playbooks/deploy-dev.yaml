@@ -31,7 +31,7 @@
     - name: copy Docker Compose files
       become: true
       copy:
-        src: ../../dev-server/{{ item }}
+        src: ../../server-configs/dev-server/{{ item }}
         dest: /data/macrostrat/app/{{ item }}
         directory_mode: yes
       loop:
