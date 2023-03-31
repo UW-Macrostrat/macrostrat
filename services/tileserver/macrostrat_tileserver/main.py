@@ -23,7 +23,7 @@ from fastapi import HTTPException
 
 log = get_logger(__name__)
 
-app = FastAPI(root_path="/tiles")
+app = FastAPI()
 
 
 # Register Start/Stop application event handler to setup/stop the database connection
@@ -69,30 +69,30 @@ class CachedVectorTilerFactory(VectorTilerFactory):
         # super().register_tiles()
 
         @self.router.get(
-            "/tiles/{layer}/{z}/{x}/{y}.pbf",
+            "/{layer}/{z}/{x}/{y}.pbf",
             **TILE_RESPONSE_PARAMS,
             tags=["Tiles"],
             deprecated=True,
         )
         @self.router.get(
-            "/tiles/{layer}/{z}/{x}/{y}.mvt",
+            "/{layer}/{z}/{x}/{y}.mvt",
             **TILE_RESPONSE_PARAMS,
             tags=["Tiles"],
             deprecated=True,
         )
         @self.router.get(
-            "/tiles/{TileMatrixSetId}/{layer}/{z}/{x}/{y}.pbf",
+            "/{TileMatrixSetId}/{layer}/{z}/{x}/{y}.pbf",
             **TILE_RESPONSE_PARAMS,
             tags=["Tiles"],
             deprecated=True,
         )
         @self.router.get(
-            "/tiles/{layer}/{z}/{x}/{y}",
+            "/{layer}/{z}/{x}/{y}",
             **TILE_RESPONSE_PARAMS,
             tags=["Tiles"],
         )
         @self.router.get(
-            "/tiles/{TileMatrixSetId}/{layer}/{z}/{x}/{y}",
+            "/{TileMatrixSetId}/{layer}/{z}/{x}/{y}",
             **TILE_RESPONSE_PARAMS,
             tags=["Tiles"],
         )

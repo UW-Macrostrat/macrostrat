@@ -27,8 +27,8 @@ def build_layer_cache():
 
 
 def MapnikLayerFactory(app):
-    @app.get("/tiles/carto/{z}/{x}/{y}.png")
-    @app.get("/tiles/carto-slim/{z}/{x}/{y}.png")
+    @app.get("/carto/{z}/{x}/{y}.png")
+    @app.get("/carto-slim/{z}/{x}/{y}.png")
     async def tile(
         request: Request,
         background_tasks: BackgroundTasks,
