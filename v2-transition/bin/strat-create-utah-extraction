@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+# Description: move a source from the ingestion database to the main system
+
+where_clause="source_id IN (SELECT source_id FROM maps.sources WHERE ref_source LIKE '%Utah%')"
+demo_source_id=az_mohave
+dst_database=macrostrat_utah
+
+image="postgres:15"
+
+function pg-src {
+  # Get environment variables from .env file
+  export $(grep -v '^#' ./server-configs/dev-server/.env | xargs)
+
+  export PGPASSWORD="$POSTGRES_PASSWORD"
+  export PGHOST="dev.macrostrat.org"
+  export PGUSER="$POSTGRES_USER"
+  docker run -i -e PGPASSWORD -e PGHOST -e PGUSER --network host $image "$@"
+}
+
+function pg-dst {
+  export $(grep -v '^#' ./server-configs/testing-server/.env | xargs)
+  export PGPASSWORD="$POSTGRES_PASSWORD"
+  export PGHOST="localhost"
+  export PGUSER=postgres
+  docker run -i -e PGPASSWORD -e PGHOST -e PGUSER --network host $image "$@" 
+}
+
+function dump {
+  pg-src pg_dump -Fc macrostrat_v2 $@ | pv | pg-dst pg_restore --no-owner -d $dst_database
+}
+
+function copy {
+  pg-src psql macrostrat_v2 -c "COPY ($1) TO STDOUT" \
+  | pv \
+  | pg-dst psql $dst_database -c "COPY $2 FROM STDIN"
+}
+
+function psql {
+  pg-dst psql $dst_database -c "$@"
+}
+
+echo "Dumping Macrostrat database"
+pg-dst psql -c "DROP DATABASE IF EXISTS $dst_database WITH (FORCE)"
+pg-dst createdb $dst_database
+psql "CREATE EXTENSION postgis;"
+
+echo "Dumping Macrostrat maps schema"
+dump \
+  --schema-only \
+  --schema=public \
+  --schema=maps \
+  --schema=lines
+
+# Dump all macrostrat tables except for measures and large lookup tables
+dump \
+  --schema=macrostrat \
+  --exclude-table-data=macrostrat.strat_name_footprints \
+  --exclude-table-data=macrostrat.measures \
+  --exclude-table-data=macrostrat.measuremeta \
+  --exclude-table-data=macrostrat.lookup_unit_attrs_api \
+  --exclude-table-data=macrostrat.pbdb_collections
+
+echo "Dumping a single macrostrat source as a template"
+psql "CREATE SCHEMA IF NOT EXISTS sources"
+
+dump --table sources.$demo_source_id\*
+
+# Maps tables
+for table in "maps.sources" "maps.legend" "maps.small" "maps.medium" "maps.large" "lines.small" "lines.medium" "lines.large"; do
+  psql "DELETE FROM $table WHERE $where_clause"
+  copy "SELECT * FROM $table WHERE $where_clause" $table
+done
+

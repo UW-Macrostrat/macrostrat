@@ -6,7 +6,7 @@
 cd /data/macrostrat/tools/macrostrat-utils
 
 set -o allexport
-source /data/macrostrat/dev-server/.env
+source /data/macrostrat/server-configs/dev-server/.env
 set +o allexport
 
 export MACROSTRAT_PG_DATABASE="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@dev.macrostrat.org:5432/macrostrat_v2"

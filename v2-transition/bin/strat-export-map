@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Description: Export a map to spatialite
+
+source_id=$1
+
+query=$(cat <<EOF
+SELECT
+  m.*,
+	b_int.age_bottom b_int_age,
+	t_int.age_top t_int_age
+FROM maps.medium m 
+JOIN macrostrat.intervals b_int
+  ON b_int.id = m.b_interval
+JOIN macrostrat.intervals t_int
+  ON t_int.id = m.t_interval
+WHERE source_id = $source_id;
+EOF
+)
+
+echo $query | strat export-query - $2 polygons
+
+echo "SELECT * FROM lines.medium m WHERE source_id = $source_id;" | strat export-query - $2 lines
