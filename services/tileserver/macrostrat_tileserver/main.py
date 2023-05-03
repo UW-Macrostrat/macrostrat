@@ -23,7 +23,7 @@ from fastapi import HTTPException
 
 log = get_logger(__name__)
 
-app = FastAPI()
+app = FastAPI(root_path="/tiles")
 
 
 # Register Start/Stop application event handler to setup/stop the database connection
