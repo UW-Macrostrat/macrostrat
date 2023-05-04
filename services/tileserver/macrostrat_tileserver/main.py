@@ -20,10 +20,11 @@ from .utils import TileResponse, CacheMode, CacheStatus
 from fastapi_utils.tasks import repeat_every
 from buildpg import render
 from fastapi import HTTPException
+from pydantic import BaseModel
 
 log = get_logger(__name__)
 
-app = FastAPI(root_path="/tiles")
+app = FastAPI(prefix="/tiles")
 
 
 # Register Start/Stop application event handler to setup/stop the database connection
@@ -151,13 +152,17 @@ class CachedVectorTilerFactory(VectorTilerFactory):
 mvt_tiler = CachedVectorTilerFactory(
     with_tables_metadata=True,
     with_functions_metadata=True,  # add Functions metadata endpoints (/functions.json, /{function_name}.json)
-    with_viewer=True,
+    with_viewer=False,
 )
 
 
 class CachedStoredFunction(StoredFunction):
     ...
 
+
+# Tile layer definitions start here.
+# Note: these are defined somewhat redundantly.
+# Our eventual goal will be to store these configurations in the database.
 
 for layer in ["carto-slim", "carto"]:
     lyr = CachedStoredFunction(
@@ -170,6 +175,7 @@ for layer in ["carto-slim", "carto"]:
 
 MapnikLayerFactory(app)
 
+# Corelle-macrostrat layers
 for layer in ["carto_slim_rotated", "igcp_orogens", "igcp_orogens_rotated"]:
     app.state.function_catalog.register(
         StoredFunction(
@@ -180,10 +186,41 @@ for layer in ["carto_slim_rotated", "igcp_orogens", "igcp_orogens_rotated"]:
         )
     )
 
+# Individual macrostrat maps
+app.state.function_catalog.register(
+    StoredFunction(
+        type="StoredFunction",
+        sql="",
+        id="map",
+        function_name="tile_layers.map",
+    )
+)
+
 app.include_router(mvt_tiler.router, tags=["Tiles"])
+
+# def MapLayerDepends():
+#     pass
+
+
+# single_map_tiler = VectorTilerFactory(
+#     with_tables_metadata=False,
+#     with_functions_metadata=False,  # add Functions metadata endpoints (/functions.json, /{function_name}.json)
+#     with_viewer=False,
+#     layer_dependency=MapLayerDepends(),
+# )
+
+# class MapParams(BaseModel):
+#     map_id: int
+
+# app.include_router(
+#     single_map_tiler.router,
+#     prefix="/map/{map_id}",
+#     tags=["map"],
+#     dependencies=[Depends(MapParams)],
+# )
 
 
 @app.get("/", include_in_schema=False)
 async def index(request: Request):
     """DEMO."""
-    return JSONResponse({"message": "Hello World!"})
+    return JSONResponse({"message": "Macrostrat Tileserver"})
