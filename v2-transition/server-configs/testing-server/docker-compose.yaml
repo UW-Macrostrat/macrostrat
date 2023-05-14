@@ -122,7 +122,7 @@ services:
   postgrest:
     image: postgrest/postgrest
     ports: 
-      - "3001:3000"
+      - "3001:3001"
     environment:
       PGRST_DB_URI: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/column_data
       PGRST_DB_SCHEMA: macrostrat_api,weaver_api
