@@ -186,6 +186,16 @@ for layer in ["carto_slim_rotated", "igcp_orogens", "igcp_orogens_rotated"]:
         )
     )
 
+# Weaver point-data management system
+app.state.function_catalog.register(
+    StoredFunction(
+        type="StoredFunction",
+        sql="",
+        id="weaver-tile",
+        function_name="weaver_api.weaver_tile",
+    )
+)
+
 # Individual macrostrat maps
 app.state.function_catalog.register(
     StoredFunction(
