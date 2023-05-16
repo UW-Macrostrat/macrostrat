@@ -23,13 +23,18 @@ main = app.control_command()
 
 main.add_typer(v2_app, name="v2")
 
+# Add subsystems if they are available.
+# This organization is a bit awkward, and we may change it eventually.
+try:
+    from macrostrat.map_integration import app as map_app
+    main.add_typer(map_app, name="maps", rich_help_panel="Subsystems", short_help="Map integration system (partial overlap with v1 commands)")
+except ImportError as err:
+    pass
 
-    # if args[0] == "maps":
-    #     # Check if the macrostrat-maps command is available on the system
-    #     try:
-    #         run(["macrostrat-maps"] + sys.argv[2:], check=True)
-    #     except FileNotFoundError:
-    #         print("Error: map ingestion CLI is not installed")
-    #     sys.exit()
+try:
+    from digitalcrust.weaver.cli import app as weaver_app
+    main.add_typer(weaver_app, name="weaver", rich_help_panel="Subsystems", short_help="Prototype geochemical data management system")
+except ImportError as err:
+    pass
 
 main.add_click_command(v1_cli, name="v1")

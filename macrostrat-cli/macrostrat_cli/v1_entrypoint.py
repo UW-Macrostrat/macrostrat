@@ -2,17 +2,15 @@
 macrostrat-cli: a command-line interface for working with Macrostrat data[bases]
 
 Usage:
-  macrostrat rebuild <table>
-  macrostrat match <cmd> <source_id>
-  macrostrat backup <db>
-  macrostrat process <cmd> <source_id>
-  macrostrat schlep <table>
-  macrostrat seed <source_id>
-  macrostrat export [coming soon]
-  macrostrat maps [New map ingestion CLI, if installed]
-  macrostrat v2    Version 2 commands
-  macrostrat -h | --help
-  macrostrat --version
+  macrostrat v1 rebuild <table>
+  macrostrat v1 match <cmd> <source_id>
+  macrostrat v1 backup <db>
+  macrostrat v1 process <cmd> <source_id>
+  macrostrat v1 schlep <table>
+  macrostrat v1 seed <source_id>
+  macrostrat v1 export [coming soon]
+  macrostrat v1 -h | --help
+  macrostrat v1 --version
 Options:
   -h --help                         Show this screen.
   --version                         Show version.
@@ -32,7 +30,6 @@ import click
 
 # import all available commands
 from . import commands
-from .v2_commands import app
 
 # CLI with unprocessed arguments
 
