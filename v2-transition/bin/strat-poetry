@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+# Use the project-level virtualenv
+export PATH=$PWD/.venv/bin:$PATH
+
+# Don't use subproject virtualenvs
+export POETRY_VIRTUALENVS_CREATE=false
+
+cd tools/macrostrat-utils
+
+poetry lock --no-update
+poetry install
