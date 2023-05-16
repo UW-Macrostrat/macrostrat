@@ -1,78 +1,35 @@
-"""
-macrostrat-cli: a command-line interface for working with Macrostrat data[bases]
+from macrostrat.app_frame import Application
+from pathlib import Path
+from .v1_entrypoint import v1_cli
+from .v2_commands import app as v2_app
+from dynaconf import Dynaconf
 
-Usage:
-  macrostrat rebuild <table>
-  macrostrat match <cmd> <source_id>
-  macrostrat backup <db>
-  macrostrat process <cmd> <source_id>
-  macrostrat schlep <table>
-  macrostrat seed <source_id>
-  macrostrat export [coming soon]
-  macrostrat maps [New map ingestion CLI, if installed]
-  macrostrat v2    Version 2 commands
-  macrostrat -h | --help
-  macrostrat --version
-Options:
-  -h --help                         Show this screen.
-  --version                         Show version.
-Examples:
-  macrostrat rebuild lookup_strat_names
-Help:
-  For help using this tool, please open an issue on the Github repository:
-  https://github.com/UW-Macrostrat/utils
-"""
+root_dir = None
+# Find root dir upwards
+next_dir = Path.cwd().resolve()
+while next_dir != next_dir.parent:
+    if (next_dir/"macrostrat.toml").exists():
+        root_dir = next_dir
+        break
+    next_dir = next_dir.parent
+if root_dir is None:
+    raise RuntimeError("Could not find macrostrat.toml")
 
+settings = Dynaconf(settings_files=[root_dir/"macrostrat.toml", root_dir/".secrets.toml"])
 
-from . import __version__ as VERSION
-from .database import pgConnection, mariaConnection
-from subprocess import run
-import sys
+app = Application("Macrostrat", root_dir=root_dir, load_dotenv=False, app_module="macrostrat")
 
-# import all available commands
-from . import commands
-from .v2_commands import app
+main = app.control_command()
+
+main.add_typer(v2_app, name="v2")
 
 
-def main():
-    """Main CLI entrypoint."""
-    # No parameters
-    if len(sys.argv) == 1:
-        print(__doc__)
-        sys.exit()
+    # if args[0] == "maps":
+    #     # Check if the macrostrat-maps command is available on the system
+    #     try:
+    #         run(["macrostrat-maps"] + sys.argv[2:], check=True)
+    #     except FileNotFoundError:
+    #         print("Error: map ingestion CLI is not installed")
+    #     sys.exit()
 
-    if sys.argv[1] == "--help" or sys.argv[1] == "-h":
-        print(__doc__)
-        sys.exit()
-
-    if sys.argv[1] == "--version":
-        print(("macrostrat-cli - %s" % (VERSION,)))
-        sys.exit()
-
-    if sys.argv[1] == "maps":
-        # Check if the macrostrat-maps command is available on the system
-        try:
-            run(["macrostrat-maps"] + sys.argv[2:], check=True)
-        except FileNotFoundError:
-            print("Error: map ingestion CLI is not installed")
-        sys.exit()
-
-    if sys.argv[1] == "v2":
-        sys.argv = sys.argv[1:]
-        app()
-
-    cmd = sys.argv[1]
-    if cmd not in dir(commands):
-        print(('Error: command "%s" is not valid' % (cmd,)))
-        sys.exit()
-
-    # Get the class associated with the provided table name
-    script = getattr(commands, cmd)
-
-    script = script({"pg": pgConnection, "mariadb": mariaConnection}, *sys.argv[1:])
-
-    if len(sys.argv) == 2 or sys.argv[2] == "--help" or sys.argv[2] == "-h":
-        print((script.__doc__))
-        sys.exit()
-
-    script.run()
+main.add_click_command(v1_cli, name="v1")
