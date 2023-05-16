@@ -1,0 +1,14 @@
+[tool.poetry]
+name = "macrostrat"
+version = "2.0.0-dev1"
+description = "A platform for geological data exploration, integration, and analysis"
+authors = ["Daven Quinn <dev@davenquinn.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
