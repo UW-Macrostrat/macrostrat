@@ -6,7 +6,7 @@ readme = "README.md"
 version = "2.0.0"
 
 packages = [
-  {include = "map_integration_cli"},
+  {include = "macrostrat"},
 ]
 
 [tool.poetry.dependencies]
@@ -30,7 +30,7 @@ shapely = "^2.0.1"
 
 [tool.poetry.scripts]
 # Override the default entrypoint for the macrostrat.cli package
-macrostrat-maps = "map_integration_cli:main"
+macrostrat-maps = "macrostrat.map_integration:main"
 
 [tool.poetry.group.dev.dependencies]
 black = {version = "^22.10.0", allow-prereleases = true}
