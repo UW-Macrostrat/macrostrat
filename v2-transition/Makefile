@@ -1,4 +1,5 @@
 install:
+	curl -sSL https://install.python-poetry.org | python3 -
 	pip3 install ansible
 	ansible-galaxy collection install community.docker
 

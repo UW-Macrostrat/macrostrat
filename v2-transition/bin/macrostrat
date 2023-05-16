@@ -1,11 +1,7 @@
 #!/usr/bin/env bash
 
-set -o allexport
-source /data/macrostrat/.env
-set +o allexport
-
 # Activate the virtual environment
-export PATH=/data/macrostrat/tools/macrostrat-utils/.venv/bin:$PATH
+export PATH="/data/macrostrat/.venv/bin:$PATH"
 
 export MACROSTRAT_PG_DATABASE="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@dev.macrostrat.org:5432/macrostrat_v2"
 export MACROSTRAT_SCHEMA_EXTENSIONS="/data/macrostrat/schema"
