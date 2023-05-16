@@ -6,6 +6,7 @@ readme = "README.md"
 version = "2.0.0-dev1"
 
 [tool.poetry.dependencies]
+"digitalcrust.weaver" = {path = "./tools/weaver", develop = true}
 "macrostrat.cli" = {path = "./tools/macrostrat-utils", develop = true}
 "macrostrat.map_integration" = {path = "./tools/map-integration", develop = true}
 python = "^3.10"

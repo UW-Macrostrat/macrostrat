@@ -267,6 +267,29 @@ files = [
 ]
 
 [[package]]
+name = "digitalcrust-weaver"
+version = "0.1.0"
+description = "A schema-based API to enable geoscience data interchange"
+category = "main"
+optional = false
+python-versions = "^3.10"
+files = []
+develop = true
+
+[package.dependencies]
+geojson-pydantic = "^0.4.3"
+"macrostrat.database" = "^2.1.2"
+pandas = "^2.0.1"
+pydantic = "^1.10.2"
+requests = "^2.30.0"
+rich = "^12.6.0||^13.0.0"
+typer = "^0.9"
+
+[package.source]
+type = "directory"
+url = "tools/weaver"
+
+[[package]]
 name = "dynaconf"
 version = "3.1.12"
 description = "The dynamic configurator for your Python Project"
@@ -374,6 +397,25 @@ files = [
     {file = "geojson-2.5.0-py2.py3-none-any.whl", hash = "sha256:ccbd13368dd728f4e4f13ffe6aaf725b6e802c692ba0dde628be475040c534ba"},
     {file = "geojson-2.5.0.tar.gz", hash = "sha256:6e4bb7ace4226a45d9c8c8b1348b3fc43540658359f93c3f7e03efa9f15f658a"},
 ]
+
+[[package]]
+name = "geojson-pydantic"
+version = "0.4.3"
+description = "Pydantic data models for the GeoJSON spec."
+category = "main"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "geojson-pydantic-0.4.3.tar.gz", hash = "sha256:34c9e43509012ef6ad7b0f600aa856da23fb13edbf55964dcca4a00a267385e0"},
+    {file = "geojson_pydantic-0.4.3-py3-none-any.whl", hash = "sha256:716cff5bbb2d3abafb7f45f40b22cb74858a4e282126c7a5871fbee3b888924f"},
+]
+
+[package.dependencies]
+pydantic = "*"
+
+[package.extras]
+dev = ["pre-commit"]
+test = ["pytest", "pytest-cov", "shapely"]
 
 [[package]]
 name = "geopandas"
@@ -596,14 +638,14 @@ url = "tools/macrostrat-utils"
 
 [[package]]
 name = "macrostrat-database"
-version = "2.1.1"
+version = "2.1.2"
 description = "A SQLAlchemy-based database toolkit."
 category = "main"
 optional = false
 python-versions = ">=3.8,<4.0"
 files = [
-    {file = "macrostrat_database-2.1.1-py3-none-any.whl", hash = "sha256:a9f1b44064eeb82cb34f0a5c358adbf883fb7b8e51f886939bc5fd18e4491a44"},
-    {file = "macrostrat_database-2.1.1.tar.gz", hash = "sha256:b5cf00c216352de56566a65e5c32f53c7d2195fab7d0bab41e18dcb24dc7b39e"},
+    {file = "macrostrat_database-2.1.2-py3-none-any.whl", hash = "sha256:8d96c60dfbf030de9dab4bf875310c57a64dcbf2ea981e1a6a5238d1ca454ba8"},
+    {file = "macrostrat_database-2.1.2.tar.gz", hash = "sha256:d39b0484b8d3191a67b75c8c3d1ee7ca8d8751a12bbf060f95754cb34c877e1d"},
 ]
 
 [package.dependencies]
@@ -1766,4 +1808,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "5e45f7f4f0bdb56f6aa83ed9402eae8566605e8bc209ed4c6d92a7388d17a2b5"
+content-hash = "1e0cc06c19c144a06c6318c87eae2b611d59f1608d262a53175884af8a09ffbf"
