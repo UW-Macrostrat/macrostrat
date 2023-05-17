@@ -51,23 +51,24 @@ services:
     expose: [5000]
     volumes:
       - ./api-credentials.js:/code/credentials.js:ro
-  cli:
-    build: ../../tools/macrostrat-utils
-    container_name: macrostrat-cli
-    environment:
-      - MACROSTRAT_PG_DATABASE=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/burwell
-      - MACROSTRAT_MYSQL_DATABASE=mysql://root:${MARIADB_ROOT_PASSWORD}@mariadb:3306/macrostrat
-      - MACROSTRAT_SCHEMA_EXTENSIONS=/data/schema-extensions
-      - REDIS_PORT
-      - TILE_CACHE_PATH
-      - TILE_CACHE_PATH_VECTOR
-      - TILESERVER_SECRET
-      - MBTILES_PATH
-      - TILESERVER_STATS_DATABASE
-      - TILESERVER_REQUESTS_DATABASE
-    volumes:
-      - ../../tools/macrostrat-utils:/code:ro
-      - ../../schema:/data/schema-extensions:ro
+  # For now, we are running the CLI locally in this config
+  # cli:
+  #   build: ../../tools/macrostrat-utils
+  #   container_name: macrostrat-cli
+  #   environment:
+  #     - MACROSTRAT_PG_DATABASE=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/burwell
+  #     - MACROSTRAT_MYSQL_DATABASE=mysql://root:${MARIADB_ROOT_PASSWORD}@mariadb:3306/macrostrat
+  #     - MACROSTRAT_SCHEMA_EXTENSIONS=/data/schema-extensions
+  #     - REDIS_PORT
+  #     - TILE_CACHE_PATH
+  #     - TILE_CACHE_PATH_VECTOR
+  #     - TILESERVER_SECRET
+  #     - MBTILES_PATH
+  #     - TILESERVER_STATS_DATABASE
+  #     - TILESERVER_REQUESTS_DATABASE
+  #   volumes:
+  #     - ../../tools/macrostrat-utils:/code:ro
+  #     - ../../schema:/data/schema-extensions:ro
   tileserver:
     build: ../../services/tileserver
     environment:
@@ -120,14 +121,16 @@ services:
     depends_on:
       - postgrest
   postgrest:
-    image: postgrest/postgrest
+    image: postgrest/postgrest:v11.0.1
     ports: 
       - "3001:3001"
     environment:
       PGRST_DB_URI: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/column_data
-      PGRST_DB_SCHEMA: macrostrat_api,weaver_api
+      PGRST_OPENAPI_SERVER_PROXY_URI: http://127.0.0.1:3001
+      PGRST_DB_SCHEMA: macrostrat_api, weaver_api
       PGRST_DB_ANON_ROLE: postgres
       PGRST_SERVER_PORT: 3001
+      PGRST_LOG_LEVEL: info
     depends_on:
       - postgres
   birdseye:

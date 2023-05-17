@@ -16,6 +16,7 @@ python = "^3.10"
 # of this monorepo. It may be beneficial to install this _outside_ of the monorepo
 # environment to avoid conflicts with the dependencies of the individual packages.
 "macrostrat.package-tools" = "^1.0.0"
+black = "^23.3.0"
 
 [build-system]
 build-backend = "poetry.core.masonry.api"
