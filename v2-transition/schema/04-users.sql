@@ -20,3 +20,11 @@ GRANT SELECT ON ALL TABLES IN SCHEMA carto_new TO macrostrat_read;
 GRANT USAGE ON SCHEMA lines TO macrostrat_read;
 GRANT SELECT ON ALL TABLES IN SCHEMA lines TO macrostrat_read;
 
+--- API Schemas --
+CREATE ROLE web_anon nologin;
+
+GRANT USAGE ON SCHEMA weaver_api to web_anon;
+GRANT SELECT ON ALL TABLES IN SCHEMA weaver_api TO web_anon;
+
+GRANT USAGE ON SCHEMA macrostrat_api to web_anon;
+GRANT SELECT ON ALL TABLES IN SCHEMA macrostrat_api TO web_anon;

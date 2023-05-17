@@ -128,7 +128,7 @@ services:
       PGRST_DB_URI: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/column_data
       PGRST_OPENAPI_SERVER_PROXY_URI: http://127.0.0.1:3001
       PGRST_DB_SCHEMA: macrostrat_api, weaver_api
-      PGRST_DB_ANON_ROLE: postgres
+      PGRST_DB_ANON_ROLE: web_anon
       PGRST_SERVER_PORT: 3001
       PGRST_LOG_LEVEL: info
     depends_on:
