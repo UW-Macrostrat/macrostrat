@@ -125,10 +125,12 @@ services:
     ports: 
       - "3001:3001"
     environment:
-      PGRST_DB_URI: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/column_data
+      PGRST_DB_URI: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/burwell
       PGRST_OPENAPI_SERVER_PROXY_URI: http://127.0.0.1:3001
       PGRST_DB_SCHEMA: macrostrat_api, weaver_api
       PGRST_DB_ANON_ROLE: web_anon
+      # Never return more than 1000 rows
+      PGRST_DB_MAX_ROWS: 100
       PGRST_SERVER_PORT: 3001
       PGRST_LOG_LEVEL: info
     depends_on:
