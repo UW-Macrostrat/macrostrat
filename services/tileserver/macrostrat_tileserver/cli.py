@@ -2,6 +2,7 @@ from os import environ
 from macrostrat.database import Database
 from macrostrat.utils import relative_path
 from typer import Typer
+from typer.core import TyperGroup
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -14,11 +15,11 @@ root = (here).resolve()
 db_url = environ.get("DATABASE_URL")
 
 # App
-_cli = Typer()
+_cli = Typer(no_args_is_help=True, cls=TyperGroup, name="tileserver")
 
 
-@_cli.command()
-def sync():
+@_cli.command(name="create-fixtures")
+def create_fixtures():
     fixtures_dir = root / "fixtures"
 
     db = Database(db_url)
@@ -27,3 +28,11 @@ def sync():
     files.sort()
     for fn in files:
         list(db.run_sql(fn))
+
+@_cli.command(name="list-layers")
+def list_layers():
+    from .main import app
+    for k,v in app.state.function_catalog.funcs.items():
+        print(k)
+        print(v)
+        print()
