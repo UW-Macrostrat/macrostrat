@@ -2,7 +2,6 @@ from os import environ
 from macrostrat.database import Database
 from macrostrat.utils import relative_path
 from typer import Typer
-from typer.core import TyperGroup
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -15,7 +14,7 @@ root = (here).resolve()
 db_url = environ.get("DATABASE_URL")
 
 # App
-_cli = Typer(no_args_is_help=True, cls=TyperGroup, name="tileserver")
+_cli = Typer(no_args_is_help=True, name="tileserver")
 
 
 @_cli.command(name="create-fixtures")
