@@ -215,7 +215,8 @@ WITH mvt_features AS (
     LEFT JOIN maps.map_legend ON z.map_id = map_legend.map_id
     LEFT JOIN tile_layers.map_legend_info AS l
       ON l.legend_id = map_legend.legend_id
-    LEFT JOIN maps.sources ON l.source_id = sources.source_id
+    LEFT JOIN maps.sources
+      ON z.source_id = sources.source_id
   WHERE
     sources.status_code = 'active'
     --AND ST_Area(geom) > tolerance
