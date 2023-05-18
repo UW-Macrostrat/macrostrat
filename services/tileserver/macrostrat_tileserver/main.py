@@ -215,12 +215,12 @@ app.state.function_catalog.register(
     StoredFunction(
         type="StoredFunction",
         sql="",
-        id="map",
+        id="all-maps",
         function_name="tile_layers.all_maps",
     )
 )
 
-
+# Legacy routes postfixed with ".mvt"
 app.include_router(mvt_tiler.router, tags=["Tiles"])
 
 # def MapLayerDepends():
