@@ -164,6 +164,7 @@ class CachedStoredFunction(StoredFunction):
 # Note: these are defined somewhat redundantly.
 # Our eventual goal will be to store these configurations in the database.
 
+# Core macrostrat layers
 for layer in ["carto-slim", "carto"]:
     lyr = CachedStoredFunction(
         type="StoredFunction",
@@ -173,6 +174,7 @@ for layer in ["carto-slim", "carto"]:
     )
     app.state.function_catalog.register(lyr)
 
+# Image maps
 MapnikLayerFactory(app)
 
 # Corelle-macrostrat layers
@@ -196,7 +198,7 @@ app.state.function_catalog.register(
     )
 )
 
-# Individual macrostrat maps
+# Serve a single macrostrat map
 app.state.function_catalog.register(
     StoredFunction(
         type="StoredFunction",
@@ -205,6 +207,19 @@ app.state.function_catalog.register(
         function_name="tile_layers.map",
     )
 )
+
+# All maps from the 'maps' schema.
+# Note: this is likely to be inefficient and should only be used
+# for internal purposes, and not cached
+app.state.function_catalog.register(
+    StoredFunction(
+        type="StoredFunction",
+        sql="",
+        id="map",
+        function_name="tile_layers.all_maps",
+    )
+)
+
 
 app.include_router(mvt_tiler.router, tags=["Tiles"])
 
