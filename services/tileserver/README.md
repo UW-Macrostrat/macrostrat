@@ -1,4 +1,8 @@
-# Macrostrat's v2 tile server
+# Macrostrat's tile server
+
+*A dynamic tile server for geologic maps*
+
+# Version 2 changes
 
 - Python-based instead of Node-based
 - A "dynamic tiler" based heavily on [TimVT](https://github.com/developmentseed/timvt)
