@@ -15,12 +15,12 @@ from timvt.layer import FunctionRegistry
 
 from .cache import get_tile_from_cache, set_cached_tile
 from .function_layer import StoredFunction
-from .image_tiles import build_layer_cache, MapnikLayerFactory
 from .utils import TileResponse, CacheMode, CacheStatus
 from fastapi_utils.tasks import repeat_every
 from buildpg import render
 from fastapi import HTTPException
 from pydantic import BaseModel
+from .image_tiles import prepare_image_tile_subsystem, MapnikLayerFactory
 
 log = get_logger(__name__)
 
@@ -34,7 +34,7 @@ async def startup_event():
     setup_stderr_logs("macrostrat_tileserver")
     await connect_to_db(app)
     # await register_table_catalog(app)
-    build_layer_cache()
+    prepare_image_tile_subsystem()
 
 
 @app.on_event("startup")
@@ -62,6 +62,9 @@ async def shutdown_event():
 app.state.function_catalog = FunctionRegistry()
 
 app.add_middleware(CompressionMiddleware, minimum_size=0)
+
+
+MapnikLayerFactory(app)
 
 
 class CachedVectorTilerFactory(VectorTilerFactory):
@@ -173,9 +176,6 @@ for layer in ["carto-slim", "carto"]:
         function_name="tile_layers." + layer.replace("-", "_"),
     )
     app.state.function_catalog.register(lyr)
-
-# Image maps
-MapnikLayerFactory(app)
 
 # Corelle-macrostrat layers
 for layer in ["carto_slim_rotated", "igcp_orogens", "igcp_orogens_rotated"]:
