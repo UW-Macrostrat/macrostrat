@@ -81,6 +81,7 @@ services:
         --port 8000
         --log-level debug
         --proxy-headers
+        --root-path /tiles
         macrostrat_tileserver.main:app
   registry:
     # A docker registry for storing images

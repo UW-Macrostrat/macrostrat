@@ -2,7 +2,6 @@
 
 cd $STRAT_BASE/services/macrostrat-api
 
-
 registry_address="$MACROSTRAT_PRIVATE_REGISTRY"
 container_name="macrostrat/api"
 version="develop"
