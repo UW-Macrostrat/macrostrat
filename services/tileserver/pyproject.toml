@@ -5,10 +5,10 @@ name = "macrostrat.tileserver"
 packages = [
   {include = "macrostrat_tileserver"},
 ]
-version = "2.0.0"
+version = "2.0.1"
 
 [tool.poetry.dependencies]
-fastapi = "*"
+fastapi = "^0.92.0"
 fastapi-utils = "^0.2.1"
 "macrostrat.database" = "^2.0"
 "macrostrat.utils" = "^1.1.0"
