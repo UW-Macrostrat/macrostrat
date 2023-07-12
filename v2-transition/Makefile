@@ -5,8 +5,7 @@ install:
 
 install-self:
 	curl -sSL https://install.python-poetry.org | python3 -
-	pip3 install ansible
-	ansible-galaxy collection install community.docker
+	poetry run ansible-galaxy collection install community.docker
 
 install-control-scripts:
 	sudo ln -sf $(shell pwd)/bin/strat /usr/local/bin
