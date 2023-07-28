@@ -1,16 +1,10 @@
-from macrostrat.app_frame import Application, compose
-from macrostrat.database import Database
+from dotenv import load_dotenv
 from pathlib import Path
-from .v1_entrypoint import v1_cli
-from .v2_commands import app as v2_app
 from os import environ
-from dynaconf import Dynaconf
-from sys import exit
+from sys import stderr
 from rich import print
 
-from dotenv import load_dotenv
-
-
+# Load config before we do anything else
 def find_config(start_dir: Path):
     """Find the macrostrat.toml config file"""
     next_dir = start_dir.resolve()
@@ -34,9 +28,27 @@ if macrostrat_root is None:
 if macrostrat_root is None:
     raise RuntimeError("Could not find macrostrat.toml")
 
-root_dir = macrostrat_root/"server-configs"/"testing-server"
+env = environ.get("MACROSTRAT_ENV", "dev")
+environments = ["dev", "testing"]
+if env not in environments:
+    print(f"Unknown environment {env}", file=stderr)
+    print(f"Valid environments are: {environments}", file=stderr)
+    exit(1)
+else:
+    print(f"Using environment [bold cyan]{env}[/] [dim](from MACROSTRAT_ENV)[/]", file=stderr)
+
+# Right now, the root dir must be manually edited here!
+root_dir = macrostrat_root/"server-configs"/f"{env}-server"
 
 load_dotenv(root_dir/".env")
+
+from macrostrat.app_frame import Application, compose
+from macrostrat.database import Database
+from .v1_entrypoint import v1_cli
+from .v2_commands import app as v2_app
+from dynaconf import Dynaconf
+from sys import exit
+
 
 # settings = Dynaconf(settings_files=[root_dir/"macrostrat.toml", root_dir/".secrets.toml"])
 
@@ -60,13 +72,13 @@ def run_all_sql(db: Database, dir: Path):
         print()
 
 def update_schema():
+    from .config import PG_DATABASE
+
     """Create schema additions"""
     schema_dir = macrostrat_root/"schema"
 
     # Loaded from env file
-    POSTGRES_PASSWORD = environ.get("POSTGRES_PASSWORD")
-    db_url = f"postgresql://postgres:{POSTGRES_PASSWORD}@localhost:5432/burwell"
-    db = Database(db_url)
+    db = Database(PG_DATABASE)
 
     subdirs = [d for d in schema_dir.iterdir()]
     subdirs.sort()
@@ -91,6 +103,15 @@ def update_schema():
 
 main.command(name="update-schema")(update_schema)
 
+
+@main.command()
+def config():
+    """Print all configuration values"""
+    from . import config as cfg
+    for k, v in cfg.__dict__.items():
+        # Only print uppercase values
+        if k.isupper():
+            print(f"{k}: {v}")
 
 main.add_typer(v2_app, name="v2")
 
