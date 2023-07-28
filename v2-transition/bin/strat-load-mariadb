@@ -1,8 +1,36 @@
 #!/usr/bin/env zsh
+# Load a mysql dump into the strat database
+# Usage: strat-load-mariadb <target-env> <dumpfile>
+#
+# Target env is one of: dev, next
 
-db=${1:A}
+target=${1}
+db=${2:A}
+
+if [ -z "$target" ]; then
+  echo "No target specified"
+  echo "Options are: dev, testing"
+  exit 1
+fi
+
+# Source the requisite .env file
+set -a
+source "$STRAT_BASE/server-configs/$target-server/.env"
+set +a
+
+if [ "$target" = "dev" ]; then
+  export DOCKER_HOST=ssh://acadia
+fi
+
+function run-mysql {
+  strat compose exec -T mariadb mysql --user=root --password="$MARIADB_ROOT_PASSWORD" $@
+}
+
+# Mysql dumps can be requested from Shanan and are stored
+# on strata in the /data/shananp directory.
 
 [ -z "$db" ] && echo "No dump file specified" && exit 1
 
-strat mysql -e "CREATE DATABASE macrostrat"
-zcat "$db" | pv -cN zcat | strat mysql macrostrat
+run-mysql -e "DROP DATABASE IF EXISTS macrostrat"
+run-mysql -e "CREATE DATABASE macrostrat"
+zcat "$db" | pv -cN zcat | run-mysql macrostrat

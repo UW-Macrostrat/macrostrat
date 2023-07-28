@@ -8,6 +8,7 @@ dst_database=macrostrat_utah
 image="postgres:15"
 
 function pg-src {
+  # Development instance of Postgres
   # Get environment variables from .env file
   export $(grep -v '^#' ./server-configs/dev-server/.env | xargs)
 
