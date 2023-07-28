@@ -3,7 +3,6 @@
 # Activate the virtual environment
 export PATH="/data/macrostrat/.venv/bin:$PATH"
 
-export MACROSTRAT_PG_DATABASE="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@dev.macrostrat.org:5432/macrostrat_v2"
 export MACROSTRAT_SCHEMA_EXTENSIONS="/data/macrostrat/schema"
 
 macrostrat $@
