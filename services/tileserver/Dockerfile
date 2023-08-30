@@ -1,7 +1,7 @@
 # From here:
 # https://stackoverflow.com/questions/53835198/integrating-python-poetry-with-docker
 # NOTE: we might want to make things a bit nicer here
-FROM python:3.9
+FROM python:3.9@sha256:c0dcc146710fed0a6d62cb55b92f00bfbfc3b931fff6218f4958bab58333c37b
 
 # MAPNIK
 # Install mapnik for compiling legacy image tiles
