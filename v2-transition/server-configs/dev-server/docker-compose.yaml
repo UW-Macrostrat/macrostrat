@@ -1,7 +1,7 @@
 version: "3"
 services:
   gateway:
-    image: jonasal/nginx-certbot:3
+    build: ./gateway 
     ports:
       - "80:80"
       - "443:443"
@@ -9,7 +9,6 @@ services:
     environment:
       - CERTBOT_EMAIL
     volumes:
-      - ./conf.d:/etc/nginx/user_conf.d:ro
       - nginx_secrets:/etc/letsencrypt
   web:
     image: ghcr.io/uw-macrostrat/web:develop
@@ -61,7 +60,7 @@ services:
   tileserver_cache:
     # Local registry for the tileserver cache image
     # https://www.crunchydata.com/blog/accelerating-spatial-postgres-varnish-cache-for-pg_tileserv-using-kustomize
-    image: varnish:7.1
+    build: ./varnish
     restart: always
     user: root
     environment:
@@ -69,14 +68,12 @@ services:
     expose: [80]
     tmpfs:
       - /var/lib/varnish:exec
-    volumes:
-      - ./varnish/tile-cache.vcl:/etc/varnish/default.vcl:ro
   api:
-    image: next.macrostrat.org:5000/macrostrat/api:develop
+    build:
+      context: .
+      dockerfile: Dockerfile.api 
     restart: always
     expose: [5000]
-    volumes:
-      - ./api-credentials.js:/code/credentials.js:ro
   # A small API that serves naukluft data. Definitely a "development" service
   naukluft_api:
     image: ghcr.io/davenquinn/naukluft-app/server:latest

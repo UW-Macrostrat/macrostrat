@@ -2,7 +2,6 @@
 
 cd $STRAT_BASE/services/tileserver
 
-
 registry_address="$MACROSTRAT_PRIVATE_REGISTRY"
 container_name="macrostrat/tileserver"
 version="dev"
@@ -14,5 +13,6 @@ docker build -t $container_name:$version .
 # Tag the image
 docker tag $container_name:$version $registry_address/$container_name:$version
 
+echo "Pushing image to $registry_address/$container_name:$version"
 # Push the image
 docker push $registry_address/$container_name:$version
