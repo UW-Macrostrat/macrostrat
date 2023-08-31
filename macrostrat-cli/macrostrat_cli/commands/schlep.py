@@ -110,6 +110,7 @@ class Schlep(Base):
         self.pg["connection"].commit()
 
     def run(self):
+        print(self.args)
         # Check if a command was provided
         if len(self.args) == 1:
             print("Please specify a table to move from MariaDB to Postgres")

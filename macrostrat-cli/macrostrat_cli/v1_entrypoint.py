@@ -58,7 +58,7 @@ def v1_cli(args):
     # Get the class associated with the provided table name
     script = getattr(commands, cmd)
 
-    script = script({"pg": pgConnection, "mariadb": mariaConnection}, args)
+    script = script({"pg": pgConnection, "mariadb": mariaConnection}, *args)
 
     if len(args) == 1 or args[1] == "--help" or args[1] == "-h":
         # Print script help
