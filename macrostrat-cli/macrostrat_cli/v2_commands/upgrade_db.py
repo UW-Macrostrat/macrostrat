@@ -3,11 +3,13 @@ from macrostrat.utils import relative_path
 from rich import print
 from os import environ
 
-from ..database import db
+from ..database import get_db
 
 
 def upgrade_db():
     """Apply PostgreSQL database upgrades to bring Macrostrat to the v2 standard"""
+
+    db = get_db()
 
     print(
         f"Connected to [dim green]{db.engine.url.database}[/dim green] on port [dim green]{db.engine.url.port}[/dim green]"
@@ -23,6 +25,7 @@ def upgrade_db():
 def extend_schema():
     """Extend the Macrostrat database schema to include new tables and columns"""
 
+    db = get_db()
     print(
         f"Connected to [dim green]{db.engine.url.database}[/dim green] on port [dim green]{db.engine.url.port}[/dim green]"
     )

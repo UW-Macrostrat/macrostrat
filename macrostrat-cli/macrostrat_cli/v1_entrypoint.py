@@ -22,21 +22,22 @@ Help:
 """
 
 
-from . import __version__ as VERSION
-from .database import pgConnection, mariaConnection
-from subprocess import run
 import sys
 import click
 
-# import all available commands
-from . import commands
 
 # CLI with unprocessed arguments
+
 
 @click.command(name="v1")
 @click.argument("args", nargs=-1, type=click.UNPROCESSED)
 def v1_cli(args):
     """Macrostrat CLI v1 commands"""
+    # import all available commands
+    from . import commands
+    from . import __version__ as VERSION
+    from .database import pgConnection, mariaConnection
+
     # No parameters
     if len(args) == 0:
         print(__doc__)

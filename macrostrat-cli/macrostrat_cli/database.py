@@ -4,7 +4,6 @@ from warnings import filterwarnings
 import psycopg2
 from .config import MYSQL_DATABASE, PG_DATABASE
 from sqlalchemy import create_engine
-from macrostrat.database import Database
 
 
 # Connect to MySQL
@@ -37,4 +36,14 @@ def get_pg_credentials():
     return engine.url
 
 
-db = Database(PG_DATABASE)
+# Lazily initialize Database
+db = None
+
+
+def get_db():
+    from macrostrat.database import Database
+
+    global db
+    if db is None:
+        db = Database(PG_DATABASE)
+    return db

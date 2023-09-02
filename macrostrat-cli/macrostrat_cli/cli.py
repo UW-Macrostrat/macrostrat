@@ -4,22 +4,25 @@ from os import environ
 from sys import stderr
 from rich import print
 
+
 # Load config before we do anything else
 def find_config(start_dir: Path):
     """Find the macrostrat.toml config file"""
+
     next_dir = start_dir.resolve()
     while next_dir != next_dir.parent:
-        if (next_dir/"macrostrat.toml").exists():
+        if (next_dir / "macrostrat.toml").exists():
             return next_dir
         next_dir = next_dir.parent
     return None
+
 
 macrostrat_root = None
 # Find root dir upwards
 macrostrat_root = find_config(Path.cwd())
 if macrostrat_root is None:
     # Find user-specific config in home dir
-    macrostrat_root = find_config(Path.home()/".config"/"macrostrat")
+    macrostrat_root = find_config(Path.home() / ".config" / "macrostrat")
 
 # Find config upwards from utils installation
 if macrostrat_root is None:
@@ -35,35 +38,42 @@ if env not in environments:
     print(f"Valid environments are: {environments}", file=stderr)
     exit(1)
 else:
-    print(f"Using environment [bold cyan]{env}[/] [dim](from MACROSTRAT_ENV)[/]", file=stderr)
+    print(
+        f"Using environment [bold cyan]{env}[/] [dim](from MACROSTRAT_ENV)[/]",
+        file=stderr,
+    )
 
 # Right now, the root dir must be manually edited here!
-root_dir = macrostrat_root/"server-configs"/f"{env}-server"
+root_dir = macrostrat_root / "server-configs" / f"{env}-server"
+dotenv_file = root_dir / ".env"
 
-load_dotenv(root_dir/".env")
+if dotenv_file.exists():
+    load_dotenv(root_dir / ".env")
 
 from macrostrat.app_frame import Application, compose
-from macrostrat.database import Database
+
 from .v1_entrypoint import v1_cli
 from .v2_commands import app as v2_app
-from dynaconf import Dynaconf
 from sys import exit
-
 
 # settings = Dynaconf(settings_files=[root_dir/"macrostrat.toml", root_dir/".secrets.toml"])
 
-compose_file = root_dir/"docker-compose.yaml"
-env_file = root_dir/".env"
+compose_file = root_dir / "docker-compose.yaml"
+env_file = root_dir / ".env"
 
-app = Application("Macrostrat",
-                root_dir=root_dir, 
-                app_module="macrostrat",
-                compose_files=[compose_file],
-                load_dotenv=env_file, restart_commands={"gateway": "nginx -s reload"})
+app = Application(
+    "Macrostrat",
+    root_dir=root_dir,
+    app_module="macrostrat",
+    compose_files=[compose_file],
+    load_dotenv=env_file,
+    restart_commands={"gateway": "nginx -s reload"},
+)
 
 main = app.control_command()
 
-def run_all_sql(db: Database, dir: Path):
+
+def run_all_sql(db, dir: Path):
     schema_files = list(dir.glob("*.sql"))
     schema_files.sort()
     for f in schema_files:
@@ -71,11 +81,13 @@ def run_all_sql(db: Database, dir: Path):
         db.run_sql(f)
         print()
 
+
 def update_schema():
     from .config import PG_DATABASE
+    from macrostrat.database import Database
 
     """Create schema additions"""
-    schema_dir = macrostrat_root/"schema"
+    schema_dir = macrostrat_root / "schema"
 
     # Loaded from env file
     db = Database(PG_DATABASE)
@@ -92,14 +104,15 @@ def update_schema():
 
     try:
         from digitalcrust.weaver.cli import create_models
+
         print("Creating models for [bold cyan]weaver[/] subsystem")
         create_models()
     except ImportError as err:
         pass
 
-
     # Reload the postgrest schema cache
     compose("kill -s SIGUSR1 postgrest")
+
 
 main.command(name="update-schema")(update_schema)
 
@@ -108,10 +121,12 @@ main.command(name="update-schema")(update_schema)
 def config():
     """Print all configuration values"""
     from . import config as cfg
+
     for k, v in cfg.__dict__.items():
         # Only print uppercase values
         if k.isupper():
             print(f"{k}: {v}")
+
 
 main.add_typer(v2_app, name="v2")
 
@@ -119,15 +134,26 @@ main.add_typer(v2_app, name="v2")
 # This organization is a bit awkward, and we may change it eventually.
 try:
     from macrostrat.map_integration import app as map_app
-    main.add_typer(map_app, name="maps", rich_help_panel="Subsystems", short_help="Map integration system (partial overlap with v1 commands)")
+
+    main.add_typer(
+        map_app,
+        name="maps",
+        rich_help_panel="Subsystems",
+        short_help="Map integration system (partial overlap with v1 commands)",
+    )
 except ImportError as err:
     pass
 
 try:
     from digitalcrust.weaver.cli import app as weaver_app
-    main.add_typer(weaver_app, name="weaver", rich_help_panel="Subsystems", short_help="Prototype geochemical data management system")
+
+    main.add_typer(
+        weaver_app,
+        name="weaver",
+        rich_help_panel="Subsystems",
+        short_help="Prototype geochemical data management system",
+    )
 except ImportError as err:
     pass
 
 main.add_click_command(v1_cli, name="v1")
-
