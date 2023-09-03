@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -o allexport
+source "$STRAT_BASE/chtc/.env"
+set +o allexport
+
+
+ssh strata -C "pg_dump -U postgres -Fc -d $1" \
+| pv \
+| aws s3 cp --endpoint $AWS_ENDPOINT - s3://transfer/$2.pg-dump

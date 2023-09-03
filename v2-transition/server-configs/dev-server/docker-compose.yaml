@@ -40,6 +40,19 @@ services:
     volumes:
       - /data/macrostrat/database-clusters/postgres:/var/lib/postgresql/data
     restart: always
+  postgrest_api:
+    image: postgrest/postgrest:v11.2.0
+    environment:
+      PGRST_DB_URI: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/macrostrat_v2
+      #PGRST_OPENAPI_SERVER_PROXY_URI: http://127.0.0.1:80
+      PGRST_DB_SCHEMA: macrostrat_api, weaver_api
+      PGRST_DB_ANON_ROLE: web_anon
+      # Never return more than 1000 rows
+      PGRST_DB_MAX_ROWS: 100
+      PGRST_SERVER_PORT: 80
+      PGRST_LOG_LEVEL: info
+    depends_on:
+      - postgres
   tileserver:
     # Local registry for the tileserver image
     image: next.macrostrat.org:5000/macrostrat/tileserver:dev
