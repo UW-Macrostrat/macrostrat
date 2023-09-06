@@ -6,11 +6,11 @@ from timvt.settings import TileSettings
 import time
 from .mapnik_styles import make_mapnik_xml
 from .config import scales, scale_for_zoom
-from fastapi import Depends, BackgroundTasks
+from fastapi import Depends, BackgroundTasks, HTTPException
 from macrostrat.utils.timer import Timer
 from timvt.resources.enums import MimeTypes
 from ..cache import get_tile_from_cache, set_cached_tile
-from ..utils import TileResponse
+from ..utils import TileResponse, CacheStatus, CacheMode
 
 tile_settings = TileSettings()
 
@@ -67,28 +67,39 @@ class ImageTileSubsystem:
         request: Request,
         background_tasks: BackgroundTasks,
         tile: Tile = Depends(TileParams),
+        cache: CacheMode = CacheMode.prefer
     ):
         """Return vector tile."""
         pool = request.app.state.pool
 
         timer = Timer()
 
-        should_cache = True
-
-        if should_cache:
+        # If cache is not bypassed and the tile is in the cache, return it
+        if cache != CacheMode.bypass:
             content = await get_tile_from_cache(pool, "carto-image", tile, None)
             timer._add_step("check_cache")
             if content is not None:
                 return TileResponse(
-                    content, timer, cache_hit=True, media_type="image/png"
+                    content, timer, cache_status=CacheStatus.hit, media_type="image/png"
                 )
+
+        # If the cache is forced and the tile is not in the cache, return a 404
+        if cache == CacheMode.force:
+            raise HTTPException(
+                status_code=404,
+                detail="Tile not found in cache",
+                header={
+                    "Server-Timing": timer.server_timings(),
+                    "X-Tile-Cache": CacheStatus.miss,
+                },
+            )
 
         content = self.get_tile(tile, tms)
         timer._add_step("get_tile")
 
-        if should_cache:
+        if cache != CacheMode.bypass:
             background_tasks.add_task(
                 set_cached_tile, pool, "carto-image", tile, content
             )
 
-        return TileResponse(content, timer, cache_hit=False, media_type="image/png")
+        return TileResponse(content, timer, cache_status=CacheStatus.miss, media_type="image/png")
