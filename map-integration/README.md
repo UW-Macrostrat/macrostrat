@@ -1,19 +1,12 @@
-# burwell
-Multiscale geologic map integration. Contains scripts for importing maps, matching to macrostrat, creation of build tables, and tiles.
+# Macrostrat's map integration system
 
-## TL;DR
-1. `./import tataouine ~/Downloads/tataouine.shp`
-2. `python process_source.py --source_id 1234`
+This repository holds the core of Macrostrat's system for integrating geologic maps across many scales.
+The repository contains scripts for importing maps, matching to macrostrat, creation of build tables, and tiles.
 
+Prior to 2023, this system used to be code-named "Burwell." But we're moving towards a more functional name now that the maps
+system is a central part of Macrostrat's capabilities and expansion plans.
 
-## Setup
-+ Edit ````setup/credentials.example.py```` with your credentials and rename to ````credentials.py````
-+ Run ````cd setup && ./setup.sh````
-+ Permissions for Postgres to write files to repo directory must be in place
-+ (Optional) Edit `tiles/config.js` with the proper paths to tiles
-
-
-# Import
+## Import
 
 In version `2.0`, imports are now accomplished with the `macrostrat maps ingest` script, which reprojects a
 dataset to EPSG 4326 and imports it into PostGIS.
