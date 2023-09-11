@@ -32,7 +32,7 @@ if macrostrat_root is None:
     raise RuntimeError("Could not find macrostrat.toml")
 
 env = environ.get("MACROSTRAT_ENV", "dev")
-environments = ["dev", "testing"]
+environments = ["dev", "testing", "chtc"]
 if env not in environments:
     print(f"Unknown environment {env}", file=stderr)
     print(f"Valid environments are: {environments}", file=stderr)

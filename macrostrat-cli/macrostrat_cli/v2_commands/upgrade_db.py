@@ -36,7 +36,9 @@ def extend_schema():
 
     files = Path(ext_dir).glob("*.sql")
     files = list(files)
+    files += list((Path(ext_dir)/"tileserver").glob("*.sql"))
     files.sort()
 
     for file in files:
+        print(file)
         list(db.run_sql(file))
