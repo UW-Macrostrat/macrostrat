@@ -508,7 +508,7 @@ var mysql = require("mysql"),
     async.parallel({
       unitSummary: function(callback) {
         // get all units and summarize for columns
-        http.get("http://localhost:5000/api/v2/units?all&response=long", function(res) {
+        http.get("http://localhost:5000/v2/units?all&response=long", function(res) {
           var body = "";
 
           res.on("data", function(chunk) {
