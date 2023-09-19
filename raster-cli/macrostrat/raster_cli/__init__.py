@@ -11,8 +11,6 @@ app = typer.Typer()
 @app.command(name="process")
 def _process_image(image: str, key: str = typer.Argument(None)):
     """Get an image from a URL or Path, convert to COG, and upload to S3"""
-    if key is None:
-        key = Path(image).name
     process_image(image, key)
 
 

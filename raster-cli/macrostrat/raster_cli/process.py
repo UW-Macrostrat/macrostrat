@@ -8,9 +8,12 @@ from pathlib import Path
 
 from rio_cogeo.cogeo import cog_translate, cog_validate
 from rio_cogeo.profiles import cog_profiles
-from zipfile import ZipFile, is_zipfile
+from rasterio.errors import RasterioIOError
+from zipfile import is_zipfile
+from os import path
+from subprocess import run
 
-from .settings import S3_ACCESS_KEY, S3_SECRET_KEY, S3_BUCKET_URL
+from .settings import S3_ACCESS_KEY, S3_SECRET_KEY, S3_BUCKET_NAME, S3_ENDPOINT_URL
 
 
 def _s3_download(path, key):
@@ -25,9 +28,10 @@ def _s3_download(path, key):
 
 def _upload(path, bucket, key):
     session = Session(
-        aws_access_key_id=S3_ACCESS_KEY, aws_secret_access_key=S3_SECRET_KEY
+        aws_access_key_id=S3_ACCESS_KEY,
+        aws_secret_access_key=S3_SECRET_KEY,
     )
-    s3 = session.client("s3")
+    s3 = session.client("s3", endpoint_url=S3_ENDPOINT_URL)
     with open(path, "rb") as data:
         s3.upload_fileobj(data, bucket, key)
     return True
@@ -51,17 +55,22 @@ def _translate(src_path, dst_path, profile="lzw", profile_options={}, **options)
         output_profile,
         config=config,
         in_memory=False,
-        quiet=True,
         **options,
     )
     return True
 
 
 @contextmanager
-def tempfile():
+def tempfile(extension=None):
+    """Create a temporary file."""
     name = str(uuid4())
-    yield name
-    Path(name).unlink()
+    if extension:
+        name += extension
+    name = path.join("/tmp", name)
+    try:
+        yield name
+    finally:
+        Path(name).unlink(missing_ok=True)
 
 
 def process_image(
@@ -73,13 +82,18 @@ def process_image(
     **options,
 ) -> str:
     """Download, convert and upload."""
-    url_info = urlparse(url.strip())
-    filename = url_info.path.split("/")[-1]
-    out_key = out_key or filename
+    url = url.strip()
+    url_info = urlparse(url)
+    filepath = Path(url_info.path)
+    ext = "".join(filepath.suffixes)
+
+    out_key = out_key or filepath.stem
     if not out_key.endswith(".tif"):
         out_key += ".tif"
 
-    with tempfile() as src_path, tempfile() as dst_path:
+    print(f"Processing {url} to {out_key}")
+
+    with tempfile(extension=ext) as src_path, tempfile(extension=".tif") as dst_path:
         if url_info.scheme.startswith("http"):
             wget.download(url, src_path)
         elif url_info.scheme == "s3":
@@ -87,19 +101,27 @@ def process_image(
         else:
             raise Exception(f"Unsuported scheme {url_info.scheme}")
 
-        # Unzip if needed
-        if is_zipfile(src_path):
-            with ZipFile(src_path, "r") as zip_ref:
-                # Get the largest file
-                files = zip_ref.namelist()
-                files.sort(key=lambda x: zip_ref.getinfo(x).file_size)
-                _target = files[-1]
-                zip_ref.extract(_target, src_path)
-            src_path = src_path.replace(".zip", ".tif")
+        should_copy = copy_valid_cog
+        # Use the appropriate GDAL VSI driver for zip files
+        if url.endswith(".zip") or is_zipfile(src_path):
+            src_path = "/vsizip/" + path.abspath(src_path)
+            should_copy = False
+        elif url.endswith(".tar.gz"):
+            src_path = "/vsitar/" + path.abspath(src_path)
+            should_copy = False
 
-        if copy_valid_cog and cog_validate(src_path):
+        if should_copy:
+            try:
+                should_copy = cog_validate(src_path)
+            except RasterioIOError:
+                pass
+
+        run(["gdalinfo", src_path])
+
+        if should_copy:
             dst_path = src_path
         else:
+            print("Converting to COG")
             _translate(
                 src_path,
                 dst_path,
@@ -108,6 +130,6 @@ def process_image(
                 **options,
             )
 
-        _upload(dst_path, S3_BUCKET_URL, out_key)
+        _upload(dst_path, S3_BUCKET_NAME, out_key)
 
-        return f"{S3_BUCKET_URL}/{out_key}"
+        return path.join(S3_ENDPOINT_URL, S3_BUCKET_NAME, out_key)
