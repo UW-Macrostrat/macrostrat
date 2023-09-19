@@ -4,13 +4,20 @@ version = "0.1.0"
 description = "Raster pipeline functions for Macrostrat"
 authors = ["Daven Quinn <dev@davenquinn.com>"]
 readme = "README.md"
-packages = [{include = "macrostrat"}]
+packages = [{ include = "macrostrat" }]
 
 [tool.poetry.dependencies]
 python = "^3.10"
 typer = "^0.9.0"
+rio-cogeo = "^5.0.0"
+boto3 = "^1.28.50"
+wget = "^3.2"
+python-dotenv = "^1.0.0"
 
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+macrostrat-raster = "macrostrat.raster_pipeline:app"
