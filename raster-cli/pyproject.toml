@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "macrostrat-raster-pipeline"
+name = "macrostrat.raster_cli"
 version = "0.1.0"
-description = "Raster pipeline functions for Macrostrat"
+description = "Prototype raster processing CLI for Macrostrat"
 authors = ["Daven Quinn <dev@davenquinn.com>"]
 readme = "README.md"
 packages = [{ include = "macrostrat" }]
@@ -20,4 +20,4 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-macrostrat-raster = "macrostrat.raster_pipeline:app"
+macrostrat-raster = "macrostrat.raster_cli:app"
