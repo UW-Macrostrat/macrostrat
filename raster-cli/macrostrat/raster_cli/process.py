@@ -98,6 +98,8 @@ def process_image(
             wget.download(url, src_path)
         elif url_info.scheme == "s3":
             _s3_download(url, src_path)
+        elif filepath.exists():
+            src_path = url
         else:
             raise Exception(f"Unsuported scheme {url_info.scheme}")
 
