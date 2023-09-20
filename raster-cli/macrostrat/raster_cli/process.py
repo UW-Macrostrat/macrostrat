@@ -116,7 +116,9 @@ def process_image(
             except RasterioIOError:
                 pass
 
-        run(["gdalinfo", src_path])
+        # This is not always available without a full GDAL install
+        # RasterIO tools should be used instead.
+        #run(["gdalinfo", src_path])
 
         if should_copy:
             dst_path = src_path
