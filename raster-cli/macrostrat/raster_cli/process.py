@@ -8,8 +8,9 @@ from pathlib import Path
 
 from rio_cogeo.cogeo import cog_translate, cog_validate
 from rio_cogeo.profiles import cog_profiles
+import rasterio
 from rasterio.errors import RasterioIOError
-from zipfile import is_zipfile
+from zipfile import is_zipfile, ZipFile
 from os import path
 from subprocess import run
 
@@ -98,32 +99,50 @@ def process_image(
             wget.download(url, src_path)
         elif url_info.scheme == "s3":
             _s3_download(url, src_path)
+        elif filepath.exists():
+            src_path = url
         else:
             raise Exception(f"Unsuported scheme {url_info.scheme}")
 
         should_copy = copy_valid_cog
+        rio_openable = None
         # Use the appropriate GDAL VSI driver for zip files
         if url.endswith(".zip") or is_zipfile(src_path):
-            src_path = "/vsizip/" + path.abspath(src_path)
+            zip_path = "/vsizip/" + path.abspath(src_path)
+            # Check if RasterIO can read the zip file directly
+            try:
+                rasterio.open(zip_path)
+                rio_openable = zip_path
+            except RasterioIOError:
+                # If not, find the largest file in the zip and use that
+                with ZipFile(src_path) as zf:
+                    largest = sorted(zf.filelist, key=lambda x: x.file_size)[-1]
+                    rio_openable = f"/vsizip/{path.abspath(src_path)}/{largest.filename}"
+
             should_copy = False
         elif url.endswith(".tar.gz"):
-            src_path = "/vsitar/" + path.abspath(src_path)
+            rio_openable = "/vsitar/" + path.abspath(src_path)
             should_copy = False
+
+        if rio_openable is None:
+            rio_openable = src_path
 
         if should_copy:
             try:
-                should_copy = cog_validate(src_path)
+                should_copy = cog_validate(rio_openable)
             except RasterioIOError:
                 pass
 
-        run(["gdalinfo", src_path])
+        # This is not always available without a full GDAL install
+        # RasterIO tools should be used instead.
+        #run(["gdalinfo", src_path])
 
         if should_copy:
             dst_path = src_path
         else:
             print("Converting to COG")
             _translate(
-                src_path,
+                rio_openable,
                 dst_path,
                 profile=profile,
                 profile_options=profile_options,
