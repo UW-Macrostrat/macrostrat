@@ -1,24 +1,18 @@
 # Macrostrat CLI
 
-````
-pip install -e .[test]
-````
+This module, formerly known as _utils_, contains the central
+command-line application for orchestrating and managing the Macrostrat
+system. It includes scripts for service inspection, data maintenance,
+and other management utilities.
 
-### rebuild
+## Installation
 
-Builds one of Macrostrat's lookup or build tables.
+- Install a recent version of `python3` and `poetry`
+- Run `poetry install` to build the application
+- Optionally, install subsystems for additional functionality (coming soon)
 
-````
-  macrostrat rebuild <table | all>
-````
+## Legacy code
 
-### schlep
-
-Moves a table from MariaDB to Postgres
-
-````
-  macrostrat schlep <table | all>
-````
-
-
-### geom.py
+The `utils` module that forms the core of this codebase was devised to manage
+the Macrostrat v1 system on a single server. This code is still available
+on the `v1` branch of this repository. 
