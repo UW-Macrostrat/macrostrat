@@ -127,8 +127,8 @@ DROP VIEW IF EXISTS tile_layers.map_legend_info CASCADE;
 CREATE OR REPLACE VIEW tile_layers.map_legend_info AS
 SELECT
   l.legend_id,
-  l.best_age_top :: numeric AS best_age_top,
-  l.best_age_bottom :: numeric AS best_age_bottom,
+  l.best_age_top::double precision AS best_age_top,
+  l.best_age_bottom::double precision AS best_age_bottom,
   coalesce(l.color, '#777777') AS color,
   l.all_lith_classes [1] AS lith_class1,
   l.all_lith_classes [2] AS lith_class2,
@@ -324,8 +324,8 @@ WITH mvt_features AS (
     z.map_id,
     z.source_id,
     l.legend_id,
-    l.best_age_top :: numeric AS best_age_top,
-    l.best_age_bottom :: numeric AS best_age_bottom,
+    l.best_age_top::double precision AS best_age_top,
+    l.best_age_bottom::double precision AS best_age_bottom,
     COALESCE(l.color, '#777777') AS color,
     COALESCE(l.name, '') AS name,
     COALESCE(l.age, '') AS age,
