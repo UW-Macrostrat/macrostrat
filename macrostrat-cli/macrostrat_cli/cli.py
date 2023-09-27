@@ -1,9 +1,11 @@
 from dotenv import load_dotenv
 from pathlib import Path
 from os import environ
-from sys import stderr
+from sys import stderr, argv
 from rich import print
-
+from subprocess import run
+from typing import Optional
+import typer
 
 # Load config before we do anything else
 def find_config(start_dir: Path):
@@ -116,6 +118,25 @@ def update_schema():
 
 main.command(name="update-schema")(update_schema)
 
+# Pass through arguments
+
+@main.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
+def psql(ctx: typer.Context):
+    """Run psql in the database container"""
+    from .config import PG_DATABASE
+    flags =[ "-i", "--rm", "--network", "host", ]
+    if len(ctx.args) == 0:
+        flags.append("-t")
+
+    run(["docker", "run", *flags, "postgres:15", "psql", PG_DATABASE, *ctx.args, *cmd])
+
+@main.command(name="tables")
+def list_tables():
+    """List all tables in the database"""
+    from .config import PG_DATABASE
+    # We could probably do this with the inspector too
+    run(["docker", "run", "-i", "--rm", "--network", "host", "postgres:15", "psql", PG_DATABASE, "-c", "\dt *.*"])
+
 
 @main.command()
 def config():
@@ -143,6 +164,21 @@ try:
     )
 except ImportError as err:
     pass
+
+try:
+    raster_app = typer.Typer()
+
+    @main.command(
+        name="raster",
+        rich_help_panel="Subsystems",
+        short_help="Raster data integration",
+        context_settings={"allow_extra_args": True, "ignore_unknown_options": True}
+    )
+    def rast(ctx: typer.Context):
+        run(["poetry", "run", "macrostrat-raster", *ctx.args], cwd="/data/macrostrat/tools/raster-cli")
+except ImportError as err:
+    pass
+
 
 try:
     from digitalcrust.weaver.cli import app as weaver_app
