@@ -25,3 +25,6 @@
 [submodule "tools/map-integration"]
 	path = tools/map-integration
 	url = https://github.com/UW-Macrostrat/burwell.git
+[submodule "tools/raster-cli"]
+	path = tools/raster-cli
+	url = https://github.com/UW-Macrostrat/raster-cli.git

@@ -1,4 +1,5 @@
 [tool.poetry]
+
 authors = ["Daven Quinn <dev@davenquinn.com>"]
 description = "A platform for geological data exploration, integration, and analysis"
 name = "macrostrat.infrastructure"
@@ -9,9 +10,11 @@ version = "2.0.0-dev1"
 "digitalcrust.weaver" = {path = "./tools/weaver", develop = true}
 "macrostrat.cli" = {path = "./tools/macrostrat-utils", develop = true}
 "macrostrat.map_integration" = {path = "./tools/map-integration", develop = true}
+"macrostrat.tileserver" = {path = "./services/tileserver", develop = true}
+
 python = "^3.10"
 ansible = "^8.0.0"
-
+ 
 [tool.poetry.group.dev.dependencies]
 # Macrostrat package_tools provides the 'mono' command for managing the dependencies
 # of this monorepo. It may be beneficial to install this _outside_ of the monorepo
