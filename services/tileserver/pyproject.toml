@@ -15,13 +15,16 @@ fastapi-utils = "^0.2.1"
 pytest = "^7.2.1"
 python = "^3.8"
 python-dotenv = "^1.0.0"
-timvt = "0.7.0"
+timvt = { path = "./deps/timvt", develop = true }
 typer = "^0.9"
 uvicorn = "0.16.0"
 
 [tool.poetry.extras]
 # Extra dependencies to compile raster tiles
 raster_tiles = ["mapnik"]
+
+[tool.poetry.group.dev.dependencies]
+isort = "^5.12.0"
 
 [build-system]
 build-backend = "poetry.core.masonry.api"
