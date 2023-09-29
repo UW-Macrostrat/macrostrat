@@ -46,3 +46,6 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          # Layer caching should significantly speed up builds
+          cache-from: type=registry,ref=hub.opensciencegrid.org/macrostrat/tileserver:latest
+          cache-to: type=inline
