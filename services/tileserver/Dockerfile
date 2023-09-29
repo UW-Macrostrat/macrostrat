@@ -51,7 +51,7 @@ WORKDIR /app/
 
 # Copy only requirements to cache them in docker layer
 # Right now, Poetry lock file must exist to avoid hanging on dependency resolution
-COPY ./pyproject.toml ./poetry.lock /app/
+COPY ./pyproject.toml ./poetry.lock ./deps/timvt /app/
 
 # Create and activate our own virtual envrionment so that we can keep
 # our application dependencies separate from Poetry's
