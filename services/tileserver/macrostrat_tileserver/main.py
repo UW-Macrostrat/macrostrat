@@ -1,5 +1,5 @@
 from typing import Any, Callable, Dict, List, Literal, Optional
-
+from os import environ
 from buildpg import render
 from fastapi import (BackgroundTasks, Depends, FastAPI, HTTPException, Path,
                      Query, Request)
@@ -39,6 +39,10 @@ from titiler.core.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from titiler.core.factory import TilerFactory
 
 from .image_tiles import MapnikLayerFactory, prepare_image_tile_subsystem
+
+# Wire up legacy postgres database
+if not environ.get("DATABASE_URL") and "POSTGRES_DB" in environ:
+    environ["DATABASE_URL"] = environ["POSTGRES_DB"]
 
 
 def _first_value(values: List[Any], default: Any = None):
