@@ -112,10 +112,7 @@ class CachedVectorTilerFactory(VectorTilerFactory):
             request: Request,
             background_tasks: BackgroundTasks,
             tile: Tile = Depends(TileParams),
-            TileMatrixSetId: Literal[tuple(self.supported_tms.list())] = Query(
-                self.default_tms,
-                description=f"TileMatrixSet Name (default: '{self.default_tms}')",
-            ),
+            TileMatrixSetId: Literal[tuple(self.supported_tms.list())] = self.default_tms,
             layer=Depends(self.layer_dependency),
             cache: CacheMode = CacheMode.prefer,
             # If cache query arg is set, don't cache the tile
@@ -177,10 +174,7 @@ class CachedVectorTilerFactory(VectorTilerFactory):
         async def tilejson(
             request: Request,
             layer=Depends(self.layer_dependency),
-            TileMatrixSetId: Literal[tuple(self.supported_tms.list())] = Query(
-                self.default_tms,
-                description=f"TileMatrixSet Name (default: '{self.default_tms}')",
-            ),
+            TileMatrixSetId: Literal[tuple(self.supported_tms.list())] = self.default_tms,
             minzoom: Optional[int] = Query(
                 None, description="Overwrite default minzoom."
             ),

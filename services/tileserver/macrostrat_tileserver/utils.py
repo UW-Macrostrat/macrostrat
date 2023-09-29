@@ -2,7 +2,7 @@ from pathlib import Path
 from starlette.responses import Response
 from timvt.resources.enums import MimeTypes
 from enum import Enum
-
+import titiler
 
 class CacheMode(str, Enum):
     prefer = "prefer"
