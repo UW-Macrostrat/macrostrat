@@ -1,15 +1,8 @@
 from typing import Any, Callable, Dict, List, Literal, Optional
 
 from buildpg import render
-from fastapi import (
-    BackgroundTasks,
-    Depends,
-    FastAPI,
-    HTTPException,
-    Path,
-    Query,
-    Request,
-)
+from fastapi import (BackgroundTasks, Depends, FastAPI, HTTPException, Path,
+                     Query, Request)
 from fastapi_utils.tasks import repeat_every
 from macrostrat.utils import get_logger, setup_stderr_logs
 from macrostrat.utils.timer import Timer
@@ -19,11 +12,8 @@ from starlette.responses import JSONResponse, Response
 from starlette_cramjam.middleware import CompressionMiddleware
 from timvt.db import close_db_connection, connect_to_db, register_table_catalog
 from timvt.dependencies import TileParams
-from timvt.factory import (
-    TILE_RESPONSE_PARAMS,
-    VectorTilerFactory,
-    queryparams_to_kwargs,
-)
+from timvt.factory import (TILE_RESPONSE_PARAMS, VectorTilerFactory,
+                           queryparams_to_kwargs)
 from timvt.layer import FunctionRegistry
 from timvt.resources.enums import MimeTypes
 
@@ -36,14 +26,17 @@ from .utils import CacheMode, CacheStatus, TileResponse
 from typing import Any, Callable, Dict, List, Literal, Optional
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, Path, Query
+from fastapi import APIRouter, Depends, FastAPI, Path, Query
 from morecantile import Tile
+from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from timvt.dependencies import LayerParams, TileParams
 from timvt.layer import Function, Layer, Table
 from timvt.models.mapbox import TileJSON
 from timvt.models.OGC import TileMatrixSetList
 from timvt.resources.enums import MimeTypes
+from titiler.core.errors import DEFAULT_STATUS_CODES, add_exception_handlers
+from titiler.core.factory import TilerFactory
 
 from .image_tiles import MapnikLayerFactory, prepare_image_tile_subsystem
 
@@ -98,6 +91,11 @@ app.add_middleware(CompressionMiddleware, minimum_size=0)
 
 
 MapnikLayerFactory(app)
+
+cog = TilerFactory()
+
+app.include_router(cog.router, prefix="/cog", tags=["Cloud Optimized GeoTIFF"])
+add_exception_handlers(app, DEFAULT_STATUS_CODES)
 
 
 class CachedVectorTilerFactory(VectorTilerFactory):
@@ -322,8 +320,8 @@ async def index(request: Request):
 
 
 # Open CORS policy
-@app.middleware("http")
-async def add_cors_header(request: Request, call_next):
-    response = await call_next(request)
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    return response
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+)
+
