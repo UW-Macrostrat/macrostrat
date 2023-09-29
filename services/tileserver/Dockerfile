@@ -45,7 +45,7 @@ RUN npm install -g carto
 # The rest of this (for vector tile generation and the server itself) should be easier.
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 POETRY_VIRTUALENVS_CREATE=false
 
-RUN pip install "poetry==1.3.2"
+RUN pip install "poetry==1.6.1"
 
 WORKDIR /app/
 
