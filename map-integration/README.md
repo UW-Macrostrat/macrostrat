@@ -6,7 +6,7 @@ The repository contains scripts for importing maps, matching to macrostrat, crea
 Prior to 2023, this system used to be code-named "Burwell." But we're moving towards a more functional name now that the maps
 system is a central part of Macrostrat's capabilities and expansion plans.
 
-## Import
+## Ingestion
 
 In version `2.0`, imports are now accomplished with the `macrostrat maps ingest` script, which reprojects a
 dataset to EPSG 4326 and imports it into PostGIS.
@@ -34,7 +34,7 @@ macrostrat maps ingest ~/Downloads/france/france.shp
 Note that if this script reports an error similar to ````Unable to open unprojected.shp or unprojected.SHP.````, try moving the directory containing the .shp file into a shorter path location. Long paths can cause failure.
 
 
-# Homogenization
+# Harmonization
 
 Manual cleanup to tables to prepare them for importing. Not yet well-documented.
 
