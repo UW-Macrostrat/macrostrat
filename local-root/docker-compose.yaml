@@ -1,0 +1,28 @@
+version: "3"
+services:
+  database:
+    # PostgreSQL 13 is needed in order to allow force-dropping the database
+    # (in testing mode)
+    image: postgis/postgis:15-3.3
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER
+      - POSTGRES_DB
+      # This allows connections without a password, which is expedient but insecure...
+      - POSTGRES_PASSWORD
+      - PGUSER=${POSTGRES_USER}
+      - PGPASSWORD=${POSTGRES_PASSWORD}
+      - PGPORT=5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "${MACROSTRAT_DB_PORT:-5432}:5432"
+    expose:
+      - 5432
+    volumes:
+      - db_cluster:/var/lib/postgresql/data
+volumes:
+  db_cluster:
