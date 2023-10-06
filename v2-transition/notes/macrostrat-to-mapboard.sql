@@ -1,3 +1,19 @@
+-- Update the map's SRID to a more local version (any UTM Zone 12N datum will do)
+ALTER TABLE provo_export.polgyons
+ALTER COLUMN geom TYPE geometry(MultiPolygon, 26912)
+USING ST_Transform(geom, 26912);
+
+ALTER TABLE provo_export.lines
+ALTER COLUMN geom TYPE geometry(MultiLineString, 26912)
+USING ST_Transform(geom, 26912);
+
+ALTER TABLE provo_export.points
+ALTER COLUMN geom TYPE geometry(Point, 26912)
+USING ST_Transform(geom, 26912);
+
+
+-- Start curating line certainty
+
 SET search_path TO mapboard,provo_export,public;
 
 SELECT DISTINCT descrip FROM lines;
@@ -11,6 +27,7 @@ UPDATE lines SET certainty = 5 WHERE descrip LIKE 'very approximately located%';
 UPDATE lines SET certainty = 2 WHERE descrip LIKE 'concealed%';
 
 -- magenta: #FF00FF
+-- Curate line types
 
 INSERT INTO mapboard.linework_type (id, name)
 SELECT DISTINCT new_type, new_type FROM lines;
@@ -39,7 +56,7 @@ JOIN legend l
 GROUP BY (p.name, l.legend_id, color, l.best_age_bottom, l.best_age_top)
 ORDER BY (l.best_age_bottom+l.best_age_top)/2;
 
--- Polygon seed function
+-- Generate polygon seeds
 CREATE OR REPLACE FUNCTION map_topology.build_polygon_seed(polygon geometry)
 RETURNS geometry AS
 $$
