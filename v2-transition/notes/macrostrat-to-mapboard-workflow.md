@@ -51,47 +51,10 @@ mapboard create --srid 26912 provo
 cat provo.pg-dump | mapboard compose exec -T db pg_restore -U mapboard_admin provo
 ```
 
-### Update SRIDs
-
-```sql
-ALTER TABLE provo_export.polgyons
-ALTER COLUMN geom TYPE geometry(MultiPolygon, 26912)
-USING ST_Transform(geom, 26912);
-
-ALTER TABLE provo_export.lines
-ALTER COLUMN geom TYPE geometry(MultiLineString, 26912)
-USING ST_Transform(geom, 26912);
-
-ALTER TABLE provo_export.points
-ALTER COLUMN geom TYPE geometry(Point, 26912)
-USING ST_Transform(geom, 26912);
-```
-
-```sql
---- PL/PGSQL function to build a large representative blob near the center of a polygon
-CREATE OR REPLACE FUNCTION map_topology.build_polygon_seed(polygon geometry)
-RETURNS geometry AS
-$$
-DECLARE
-  centroid geometry;
-  blob geometry;
-  factor double precision;
-BEGIN
-  centroid := ST_Centroid(polygon);
-  FOR i IN 1..10 LOOP
-    factor := 100 / pow(i, 2);
-    blob := ST_Buffer(centroid, factor);
-    blob := ST_Intersection(blob, ST_Buffer(polygon, -factor/2);
-    IF ST_Area(blob) > 0.01 THEN
-      EXIT;
-    END IF;
-  END LOOP;
-  RETURN blob;
-END;
-LANGUAGE plpgsql;
-```
-
-...lots more updates
+Then, we go through many more updates to clean and simplify the data, and move it into a topologically
+correct schema.
+See [macrostrat-to-mapboard.sql](macrostrat-to-mapboard.sql) for some of the gory details.
+We'll strive to automate this more in the future.
 
 # Run topology watcher
 
