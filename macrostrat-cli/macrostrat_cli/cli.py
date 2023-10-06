@@ -7,31 +7,7 @@ from subprocess import run
 from typing import Optional
 import typer
 
-# Load config before we do anything else
-def find_config(start_dir: Path):
-    """Find the macrostrat.toml config file"""
-
-    next_dir = start_dir.resolve()
-    while next_dir != next_dir.parent:
-        if (next_dir / "macrostrat.toml").exists():
-            return next_dir
-        next_dir = next_dir.parent
-    return None
-
-
-macrostrat_root = None
-# Find root dir upwards
-macrostrat_root = find_config(Path.cwd())
-if macrostrat_root is None:
-    # Find user-specific config in home dir
-    macrostrat_root = find_config(Path.home() / ".config" / "macrostrat")
-
-# Find config upwards from utils installation
-if macrostrat_root is None:
-    macrostrat_root = find_config(Path(__file__).parent)
-
-if macrostrat_root is None:
-    raise RuntimeError("Could not find macrostrat.toml")
+from .config import settings
 
 env = environ.get("MACROSTRAT_ENV", "dev")
 environments = ["dev", "testing", "chtc"]
