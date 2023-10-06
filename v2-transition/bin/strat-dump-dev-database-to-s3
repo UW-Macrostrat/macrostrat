@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -o allexport
+source "$STRAT_BASE/chtc/.env"
+set +o allexport
+
+function pg-src {
+  # Development instance of Postgres
+  # Get environment variables from .env file
+  export $(grep -v '^#' ./server-configs/dev-server/.env | xargs)
+
+  export PGPASSWORD="$POSTGRES_PASSWORD"
+  export PGHOST="dev.macrostrat.org"
+  export PGUSER="$POSTGRES_USER"
+  docker run --rm -i -e PGPASSWORD -e PGHOST -e PGUSER --network host postgres:15 "$@"
+}
+
+
+pg-src pg_dump --no-owner -Fc -d $1 \
+| pv \
+| aws s3 cp --endpoint $AWS_ENDPOINT - s3://transfer/$2.pg-dump
