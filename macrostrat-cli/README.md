@@ -8,7 +8,8 @@ and other management utilities.
 ## Installation
 
 - Install a recent version of `python3` and `poetry`
-- Run `poetry install` to build the application
+- `make` (runs `poetry install`)
+- `make install` (links the application into `/usr/local/bin`)
 - Optionally, install subsystems for additional functionality (coming soon)
 
 ## Legacy code
