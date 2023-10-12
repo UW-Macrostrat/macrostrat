@@ -48,6 +48,11 @@ retained in case we want to track point data (especially, bedding orientations) 
 
 
 # Processing
+
+**Cautionary note: the v1 processing scripts in this repository have been superseded by those in the UW-Macrostrat/cli repository.** We are in the process of ensuring that there aren't any missing pieces here that need to be retained.
+
+**The below documentation is retained for reference only**
+
 Processing a source involves matching, refreshing lookup tables, building an `rgeom`, refreshing carto tables for lines, and rolling tiles. While these steps can be done individually, they should be done all at once by using `process_source.py`.
 
 **This should only be called after the units and lines for a given source have been imported into their respective homogenized tables!!!**
