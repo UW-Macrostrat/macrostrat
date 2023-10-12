@@ -9,24 +9,25 @@ import typer
 
 from .config import settings
 
-env = environ.get("MACROSTRAT_ENV", "dev")
-environments = ["dev", "testing", "chtc"]
-if env not in environments:
-    print(f"Unknown environment {env}", file=stderr)
-    print(f"Valid environments are: {environments}", file=stderr)
-    exit(1)
-else:
-    print(
-        f"Using environment [bold cyan]{env}[/] [dim](from MACROSTRAT_ENV)[/]",
-        file=stderr,
-    )
+# Old environments configuration
+# env = environ.get("MACROSTRAT_ENV", "dev")
+# environments = ["dev", "testing", "chtc"]
+# if env not in environments:
+#     print(f"Unknown environment {env}", file=stderr)
+#     print(f"Valid environments are: {environments}", file=stderr)
+#     exit(1)
+# else:
+#     print(
+#         f"Using environment [bold cyan]{env}[/] [dim](from MACROSTRAT_ENV)[/]",
+#         file=stderr,
+#     )
 
 # Right now, the root dir must be manually edited here!
-root_dir = macrostrat_root / "server-configs" / f"{env}-server"
-dotenv_file = root_dir / ".env"
+# root_dir = macrostrat_root / "server-configs" / f"{env}-server"
+# dotenv_file = root_dir / ".env"
 
-if dotenv_file.exists():
-    load_dotenv(root_dir / ".env")
+# if dotenv_file.exists():
+#     load_dotenv(root_dir / ".env")
 
 from macrostrat.app_frame import Application, compose
 
@@ -36,9 +37,13 @@ from sys import exit
 
 # settings = Dynaconf(settings_files=[root_dir/"macrostrat.toml", root_dir/".secrets.toml"])
 
+root_dir = Path(settings.compose_root)
+# macrostrat_root = Path(settings.macrostrat_root)
+
 compose_file = root_dir / "docker-compose.yaml"
 env_file = root_dir / ".env"
 
+# Manage as a docker-compose application
 app = Application(
     "Macrostrat",
     root_dir=root_dir,
@@ -65,7 +70,7 @@ def update_schema():
     from macrostrat.database import Database
 
     """Create schema additions"""
-    schema_dir = macrostrat_root / "schema"
+    schema_dir = root_dir / "schema"
 
     # Loaded from env file
     db = Database(PG_DATABASE)
@@ -96,22 +101,47 @@ main.command(name="update-schema")(update_schema)
 
 # Pass through arguments
 
-@main.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
+
+@main.command(
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True}
+)
 def psql(ctx: typer.Context):
     """Run psql in the database container"""
     from .config import PG_DATABASE
-    flags =[ "-i", "--rm", "--network", "host", ]
+
+    flags = [
+        "-i",
+        "--rm",
+        "--network",
+        "host",
+    ]
     if len(ctx.args) == 0:
         flags.append("-t")
 
     run(["docker", "run", *flags, "postgres:15", "psql", PG_DATABASE, *ctx.args, *cmd])
 
+
 @main.command(name="tables")
 def list_tables():
     """List all tables in the database"""
     from .config import PG_DATABASE
+
     # We could probably do this with the inspector too
-    run(["docker", "run", "-i", "--rm", "--network", "host", "postgres:15", "psql", PG_DATABASE, "-c", "\dt *.*"])
+    run(
+        [
+            "docker",
+            "run",
+            "-i",
+            "--rm",
+            "--network",
+            "host",
+            "postgres:15",
+            "psql",
+            PG_DATABASE,
+            "-c",
+            "\dt *.*",
+        ]
+    )
 
 
 @main.command()
@@ -148,10 +178,14 @@ try:
         name="raster",
         rich_help_panel="Subsystems",
         short_help="Raster data integration",
-        context_settings={"allow_extra_args": True, "ignore_unknown_options": True}
+        context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
     )
     def rast(ctx: typer.Context):
-        run(["poetry", "run", "macrostrat-raster", *ctx.args], cwd="/data/macrostrat/tools/raster-cli")
+        run(
+            ["poetry", "run", "macrostrat-raster", *ctx.args],
+            cwd="/data/macrostrat/tools/raster-cli",
+        )
+
 except ImportError as err:
     pass
 

@@ -4,6 +4,7 @@ from warnings import filterwarnings
 import psycopg2
 from .config import MYSQL_DATABASE, PG_DATABASE
 from sqlalchemy import create_engine
+from typer import Typer
 
 
 # Connect to MySQL
