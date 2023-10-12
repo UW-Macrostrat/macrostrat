@@ -5,9 +5,7 @@ name = "macrostrat.map_integration"
 readme = "README.md"
 version = "2.0.0"
 
-packages = [
-  {include = "macrostrat"},
-]
+packages = [{ include = "macrostrat" }]
 
 [tool.poetry.dependencies]
 python = "^3.10"
@@ -18,7 +16,7 @@ ipython = "^8.5.0"
 "macrostrat.database" = "^2.0.0"
 numpy = "^1.23.4"
 psycopg2-binary = "^2.9.4"
-pygeos = "^0.13"
+pygeos = "^0.14"
 pyproj = "^3.4.0"
 rich = "^13"
 scipy = "^1.9.3"
@@ -33,7 +31,7 @@ shapely = "^2.0.1"
 macrostrat-maps = "macrostrat.map_integration:main"
 
 [tool.poetry.group.dev.dependencies]
-black = {version = "^22.10.0", allow-prereleases = true}
+black = { version = "^22.10.0", allow-prereleases = true }
 
 [build-system]
 build-backend = "poetry.core.masonry.api"
