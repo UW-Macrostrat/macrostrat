@@ -162,7 +162,11 @@ var mysql = require("mysql"),
 
 
   larkin.info = function(req, res, next) {
-    var formatted = (req.baseUrl + req.route.path).replace("/api/v" + api.version, "").replace("/api", "").replace(/\/$/, "");
+    var formatted = (req.baseUrl + req.route.path)
+        .replace("/api/v" + api.version, "")
+        .replace("/api", "")
+        .replace(/\/$/, "")
+        .replace("/v" + api.version, "");
     this.defineRoute(formatted, function(definition) {
       res.json({
         "success": definition
@@ -197,7 +201,11 @@ var mysql = require("mysql"),
           }
         });
     } else {
-      var formatted = (req.baseUrl + req.route.path).replace("/api/v" + api.version, "").replace("/api", "").replace(/\/$/, "");
+      var formatted = (req.baseUrl + req.route.path)
+          .replace("/api/v" + api.version, "")
+          .replace("/api", "")
+          .replace(/\/$/, "")
+          .replace("/v" + api.version, "");;
       this.defineRoute(formatted, function(definition) {
         res
           .status((code) ? code : 200)
