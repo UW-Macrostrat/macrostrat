@@ -1,5 +1,6 @@
 from os import environ
-from dynaconf import Dynaconf
+from dynaconf import Dynaconf, Validator
+from pathlib import Path
 
 from .utils import find_macrostrat_config
 from sqlalchemy.engine import make_url
@@ -12,6 +13,9 @@ settings = Dynaconf(
     environments=True,
     settings_files=[cfg],
     load_dotenv=False,
+    validators=[
+        Validator("compose_root", must_exist=False, cast=Path),
+    ],
 )
 
 macrostrat_env = environ.get("MACROSTRAT_ENV", "local")

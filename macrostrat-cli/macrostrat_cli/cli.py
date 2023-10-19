@@ -37,7 +37,7 @@ from sys import exit
 
 # settings = Dynaconf(settings_files=[root_dir/"macrostrat.toml", root_dir/".secrets.toml"])
 
-root_dir = Path(settings.compose_root)
+root_dir = Path(settings.compose_root).expanduser().resolve()
 # macrostrat_root = Path(settings.macrostrat_root)
 
 compose_file = root_dir / "docker-compose.yaml"
@@ -47,6 +47,7 @@ env_file = root_dir / ".env"
 app = Application(
     "Macrostrat",
     root_dir=root_dir,
+    project_prefix=settings.project_name,
     app_module="macrostrat",
     compose_files=[compose_file],
     load_dotenv=env_file,
@@ -118,7 +119,7 @@ def psql(ctx: typer.Context):
     if len(ctx.args) == 0:
         flags.append("-t")
 
-    run(["docker", "run", *flags, "postgres:15", "psql", PG_DATABASE, *ctx.args, *cmd])
+    run(["docker", "run", *flags, "postgres:15", "psql", PG_DATABASE, *ctx.args])
 
 
 @main.command(name="tables")
