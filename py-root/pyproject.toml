@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "macrostrat-local-system"
+version = "0.1.0"
+description = "A local installation of Macrostrat for development. This project basically wraps Macrostrat subsystems into a single package."
+authors = ["Daven Quinn"]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+"macrostrat.cli" = { path = "../../Infrastructure/macrostrat-cli", develop = true }
+"corelle.engine" = { path = "../../Software/corelle/py-packages/engine", develop = true }
+
+[tool.poetry.dev-dependencies]
+"macrostrat.package_tools" = { path = "../../Software/python-libraries/package-tools", develop = true }
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+macrostrat = "macrostrat.cli:cli"
