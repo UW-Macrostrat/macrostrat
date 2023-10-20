@@ -31,13 +31,7 @@ var mysql = require("mysql"),
     const nameMapping = credentials.postgresDatabases ?? {}
     const dbName = nameMapping[db] ?? db
 
-    const pool = new pg.Pool({
-      user: credentials.pg.user,
-      password: credentials.pg.password,
-      host: credentials.pg.host,
-      port: credentials.pg.port,
-      database: dbName
-    });
+    const pool = new pg.Pool({connectionString: credentials.pg.connectionString});
 
     pool.connect(function(err, client, done) {
       if (err) {
