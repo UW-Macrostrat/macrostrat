@@ -156,6 +156,16 @@ def config():
             print(f"{k}: {v}")
 
 
+@main.command()
+def install():
+    """Install Macrostrat subsystems if available."""
+    if hasattr(settings, "corelle_src"):
+        print("Installing corelle")
+        run(
+            ["poetry", "install"], cwd=Path(settings.corelle_src).expanduser().resolve()
+        )
+
+
 main.add_typer(v2_app, name="v2")
 
 # Add subsystems if they are available.
@@ -202,5 +212,44 @@ try:
     )
 except ImportError as err:
     pass
+
+try:
+    from macrostrat_tileserver.cli import _cli as tileserver_cli
+
+    environ["DATABASE_URL"] = settings.pg_database
+    main.add_typer(
+        tileserver_cli,
+        name="tileserver",
+        rich_help_panel="Subsystems",
+        short_help="Utilities for serving Macrostrat tiles",
+    )
+except ImportError as err:
+    pass
+
+try:
+    from corelle.engine import app as corelle_app
+
+    main.add_click_command(corelle_app, name="corelle", rich_help_panel="Subsystems")
+except ImportError as err:
+    pass
+
+# Commands to manage this command-line interface
+self_app = typer.Typer()
+
+
+@self_app.command()
+def inspect():
+    import IPython
+
+    IPython.embed()
+
+
+main.add_typer(
+    self_app,
+    name="self",
+    rich_help_panel="Subsystems",
+    short_help="Manage the Macrostrat CLI itself",
+)
+
 
 main.add_click_command(v1_cli, name="v1")

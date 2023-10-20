@@ -14,7 +14,7 @@ settings = Dynaconf(
     settings_files=[cfg],
     load_dotenv=False,
     validators=[
-        Validator("compose_root", must_exist=False, cast=Path),
+        Validator("COMPOSE_ROOT", "CORELLE_SRC", must_exist=False, cast=Path),
     ],
 )
 
