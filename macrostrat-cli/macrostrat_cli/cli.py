@@ -227,9 +227,14 @@ except ImportError as err:
     pass
 
 try:
-    from corelle.engine import app as corelle_app
+    environ["CORELLE_DB"] = settings.pg_database
+    from corelle.engine import cli as corelle_cli
 
-    main.add_click_command(corelle_app, name="corelle", rich_help_panel="Subsystems")
+    main.add_click_command(
+        corelle_cli,
+        name="corelle",
+        rich_help_panel="Subsystems",
+    )
 except ImportError as err:
     pass
 
