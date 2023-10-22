@@ -37,6 +37,15 @@ environ["PGDATABASE"] = url.database
 
 environ["COMPOSE_PROJECT_NAME"] = "macrostrat_" + macrostrat_env
 
+# Docker compose file
+compose_file = getattr(settings, "compose_file", None)
+if compose_file is None:
+    root = getattr(settings, "compose_root", None)
+    if root is not None:
+        compose_file = Path(settings.compose_root).expanduser() / "docker-compose.yaml"
+if compose_file is not None:
+    environ["COMPOSE_FILE"] = str(compose_file)
+
 settings.project_name = environ["COMPOSE_PROJECT_NAME"]
 
 # A database connection string for MySQL

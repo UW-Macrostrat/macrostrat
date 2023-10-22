@@ -37,7 +37,8 @@ from sys import exit
 
 # settings = Dynaconf(settings_files=[root_dir/"macrostrat.toml", root_dir/".secrets.toml"])
 
-root_dir = Path(settings.compose_root).expanduser().resolve()
+__here__ = Path(__file__).parent
+root_dir = __here__ / "fixtures"
 # macrostrat_root = Path(settings.macrostrat_root)
 
 compose_file = root_dir / "docker-compose.yaml"
@@ -67,12 +68,20 @@ def run_all_sql(db, dir: Path):
 
 
 def update_schema():
+    """Update the database schema"""
     from .config import PG_DATABASE
     from macrostrat.database import Database
 
-    """Create schema additions"""
-    schema_dir = root_dir / "schema"
+    try:
+        from corelle.engine.database import initialize
 
+        print("Creating models for [bold cyan]corelle[/] subsystem")
+        initialize(drop=False)
+    except ImportError as err:
+        pass
+
+    """Create schema additions"""
+    schema_dir = root_dir
     # Loaded from env file
     db = Database(PG_DATABASE)
 
@@ -221,7 +230,7 @@ try:
         tileserver_cli,
         name="tileserver",
         rich_help_panel="Subsystems",
-        short_help="Utilities for serving Macrostrat tiles",
+        short_help="Control Macrostrat's tileserver",
     )
 except ImportError as err:
     pass
@@ -230,9 +239,12 @@ try:
     environ["CORELLE_DB"] = settings.pg_database
     from corelle.engine import cli as corelle_cli
 
+    corelle_cli.name = "corelle"
+    corelle_cli.help = "Manage plate rotation models"
+
     main.add_click_command(
         corelle_cli,
-        name="corelle",
+        "corelle",
         rich_help_panel="Subsystems",
     )
 except ImportError as err:
