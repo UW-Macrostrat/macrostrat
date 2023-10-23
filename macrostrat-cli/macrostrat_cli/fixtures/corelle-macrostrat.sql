@@ -322,7 +322,7 @@ units AS (
     cpi.plate_id,
     cpi.model_id,
     corelle_macrostrat.build_tile_geom(
-      coalesce(cpi.geom, u.geom), ri.rotation, x, y, z
+      u.geom, ri.rotation, x, y, z
     ) geom,
     l.legend_id,
     l.best_age_top :: numeric AS best_age_top,
@@ -444,7 +444,6 @@ u3 AS (
 --   FROM columns cols
 -- )
 SELECT mvt1 || mvt2 || mvt3 AS mvt
-
 FROM u1, u2, u3
 INTO bedrock; --, plate_polygons;
 
