@@ -1,8 +1,18 @@
 from typing import Any, Callable, Dict, List, Literal, Optional
 from os import environ
 from buildpg import render
-from fastapi import (BackgroundTasks, Depends, FastAPI, HTTPException, Path,
-                     Query, Request)
+from fastapi import (
+    BackgroundTasks,
+    Depends,
+    FastAPI,
+    HTTPException,
+    Path,
+    Query,
+    Request,
+)
+import json
+import typing
+import decimal
 from fastapi_utils.tasks import repeat_every
 from macrostrat.utils import get_logger, setup_stderr_logs
 from macrostrat.utils.timer import Timer
@@ -12,8 +22,11 @@ from starlette.responses import JSONResponse, Response
 from starlette_cramjam.middleware import CompressionMiddleware
 from timvt.db import close_db_connection, connect_to_db, register_table_catalog
 from timvt.dependencies import TileParams
-from timvt.factory import (TILE_RESPONSE_PARAMS, VectorTilerFactory,
-                           queryparams_to_kwargs)
+from timvt.factory import (
+    TILE_RESPONSE_PARAMS,
+    VectorTilerFactory,
+    queryparams_to_kwargs,
+)
 from timvt.layer import FunctionRegistry
 from timvt.resources.enums import MimeTypes
 
@@ -114,7 +127,9 @@ class CachedVectorTilerFactory(VectorTilerFactory):
             request: Request,
             background_tasks: BackgroundTasks,
             tile: Tile = Depends(TileParams),
-            TileMatrixSetId: Literal[tuple(self.supported_tms.list())] = self.default_tms,
+            TileMatrixSetId: Literal[
+                tuple(self.supported_tms.list())
+            ] = self.default_tms,
             layer=Depends(self.layer_dependency),
             cache: CacheMode = CacheMode.prefer,
             # If cache query arg is set, don't cache the tile
@@ -176,7 +191,9 @@ class CachedVectorTilerFactory(VectorTilerFactory):
         async def tilejson(
             request: Request,
             layer=Depends(self.layer_dependency),
-            TileMatrixSetId: Literal[tuple(self.supported_tms.list())] = self.default_tms,
+            TileMatrixSetId: Literal[
+                tuple(self.supported_tms.list())
+            ] = self.default_tms,
             minzoom: Optional[int] = Query(
                 None, description="Overwrite default minzoom."
             ),
@@ -317,6 +334,35 @@ app.include_router(mvt_tiler.router, tags=["Tiles"])
 # )
 
 
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, decimal.Decimal):
+            return float(o)
+        return super(DecimalEncoder, self).default(o)
+
+
+class DecimalJSONResponse(JSONResponse):
+    def render(self, content: typing.Any) -> bytes:
+        return json.dumps(
+            content,
+            ensure_ascii=False,
+            allow_nan=False,
+            indent=None,
+            separators=(",", ":"),
+            cls=DecimalEncoder,
+        ).encode("utf-8")
+
+
+@app.get("/carto/rotation-models")
+async def rotation_models():
+    """Return a list of rotation models."""
+    pool = app.state.pool
+    q, p = render("SELECT * FROM corelle.model")
+    rows = await pool.fetch(q, *p)
+    data = [dict(row) for row in rows]
+    return DecimalJSONResponse(data)
+
+
 @app.get("/", include_in_schema=False)
 async def index(request: Request):
     """DEMO."""
@@ -328,4 +374,3 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
 )
-
