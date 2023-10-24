@@ -1,3 +1,7 @@
+/** This is an idempotent migration to apply partitioning
+  to Macrostrat's carto tables.
+*/
+
 -- https://www.postgresql.org/docs/current/ddl-partitioning.html
 
 CREATE TYPE map_scale AS ENUM ('tiny', 'small', 'medium', 'large');
