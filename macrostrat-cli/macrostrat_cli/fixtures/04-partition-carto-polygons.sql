@@ -4,8 +4,6 @@
 
 -- https://www.postgresql.org/docs/current/ddl-partitioning.html
 
-CREATE TYPE map_scale AS ENUM ('tiny', 'small', 'medium', 'large');
-
 /* Apply partitions to existing maps tables */
 
 CREATE SCHEMA IF NOT EXISTS carto;
@@ -109,3 +107,5 @@ FROM carto.polygons WHERE scale = 'medium';
 CREATE OR REPLACE VIEW carto_new.large
 AS SELECT map_id, source_id, geom, geom_scale::text AS scale
 FROM carto.polygons WHERE scale = 'large';
+
+CREATE INDEX IF NOT EXISTS carto_polygons_geom_gist ON carto.polygons USING gist (geom);

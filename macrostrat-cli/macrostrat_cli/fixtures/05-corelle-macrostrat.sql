@@ -23,20 +23,7 @@ FROM macrostrat.col_areas c
 JOIN corelle.plate_polygon pp
   ON ST_Intersects(ST_Centroid(col_area), pp.geometry);
 
-CREATE MATERIALIZED VIEW IF NOT EXISTS corelle_macrostrat.carto_plate_index AS
-WITH map_units AS (
-  SELECT
-    map_id,
-    'tiny' scale,
-    geom
-  FROM maps.tiny
-  UNION ALL
-  SELECT
-    map_id,
-    'small' scale,
-    geom
-  FROM maps.small
-)
+CREATE TABLE IF NOT EXISTS corelle_macrostrat.carto_plate_index AS
 SELECT
 	p.map_id,
 	p.scale,
@@ -47,11 +34,17 @@ SELECT
 	ELSE
 		ST_Intersection(pp.geometry, p.geom)
 	END AS geom
-FROM map_units p
+FROM carto.polygons p
 JOIN corelle.plate_polygon pp
   ON ST_Intersects(pp.geometry, p.geom)
 JOIN corelle.model m
   ON m.id = pp.model_id;
+
+ALTER TABLE corelle_macrostrat.carto_plate_index
+ADD CONSTRAINT carto_plate_index_pkey PRIMARY KEY (map_id, scale, model_id, plate_id);
+
+
+
 
 CREATE OR REPLACE FUNCTION corelle_macrostrat.carto_slim_rotated_v1(
   -- bounding box
@@ -360,7 +353,7 @@ units AS (
     l.all_lith_types [11] AS lith_type11,
     l.all_lith_types [12] AS lith_type12,
     l.all_lith_types [13] AS lith_type13
-  FROM tile_layers.carto_units u
+  FROM carto.polygons u
   JOIN corelle_macrostrat.carto_plate_index cpi
     ON cpi.map_id = u.map_id
     AND cpi.scale = u.scale
