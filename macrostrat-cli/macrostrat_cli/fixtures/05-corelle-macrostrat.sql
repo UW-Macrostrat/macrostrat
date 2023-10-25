@@ -23,35 +23,30 @@ FROM macrostrat.col_areas c
 JOIN corelle.plate_polygon pp
   ON ST_Intersects(ST_Centroid(col_area), pp.geometry);
 
-CREATE MATERIALIZED VIEW IF NOT EXISTS corelle_macrostrat.carto_plate_index AS
-WITH map_units AS (
-  SELECT
-    map_id,
-    'tiny' scale,
-    geom
-  FROM maps.tiny
-  UNION ALL
-  SELECT
-    map_id,
-    'small' scale,
-    geom
-  FROM maps.small
-)
+CREATE TABLE IF NOT EXISTS corelle_macrostrat.carto_plate_index AS
 SELECT
 	p.map_id,
 	p.scale,
 	m.id model_id,
 	pp.plate_id,
-	CASE WHEN ST_Covers(pp.geometry, p.geom) THEN
+	CASE WHEN ST_Covers(pp.geometry, ST_Union(p.geom)) THEN
 		NULL  
 	ELSE
-		ST_Intersection(pp.geometry, p.geom)
+		ST_Intersection(pp.geometry, ST_Union(p.geom))
 	END AS geom
-FROM map_units p
+FROM corelle_macrostrat.carto_plate_index
+FROM carto.polygons p
 JOIN corelle.plate_polygon pp
   ON ST_Intersects(pp.geometry, p.geom)
 JOIN corelle.model m
-  ON m.id = pp.model_id;
+  ON m.id = pp.model_id
+GROUP BY map_id, scale, model_id, plate_id;
+
+ALTER TABLE corelle_macrostrat.carto_plate_index
+ADD CONSTRAINT carto_plate_index_pkey PRIMARY KEY (map_id, scale, model_id, plate_id);
+
+
+
 
 CREATE OR REPLACE FUNCTION corelle_macrostrat.carto_slim_rotated_v1(
   -- bounding box
@@ -158,9 +153,9 @@ CREATE OR REPLACE FUNCTION corelle_macrostrat.tile_envelope(
   z integer
 ) RETURNS geometry AS $$
     -- I feel like this bbox needs to be inverted but it seems to work better if not...
-  SELECT corelle_macrostrat.rotate(
+  SELECT corelle_macrostrat.rotate_geometry(
     --ST_Transform(mercator_bbox, 4326),
-    ST_Transform(ST_Segmentize(tile_utils.envelope(x, y, z), tile_utils.tile_width(z)/8), 4326),
+    ST_TileEnvelope(_z, _x, _y),
     corelle.invert_rotation(rotation),
     true
   );
@@ -301,19 +296,26 @@ WITH rotation_info AS (
     pp.plate_id,
     pp.model_id,
     -- Get the tile bounding box rotated to the actual position of the plate on the modern globe
-    corelle_macrostrat.tile_envelope(rc.rotation, x, y, z) tile_envelope,
-    geometry,
+    --ST_Area(corelle_macrostrat.tile_envelope(rc.rotation, t.x, t.y, t.z)::geography)/ST_Area(ST_Transform(tile_utils.envelope(t.x, t.y, t.z), 4326)::geography) tile_area_ratio,
+    geometry::geography geometry,
+    corelle.rotate_geometry(ST_Transform(tile_utils.envelope(x, y, z), 4326), corelle.invert_rotation(rc.rotation))::geography tile_envelope,
     rc.rotation rotation
   FROM corelle.plate_polygon pp
+  JOIN tile t
+    ON true
   JOIN corelle.rotation_cache rc
     ON rc.plate_id = pp.plate_id
     AND rc.model_id = pp.model_id
-  WHERE rc.model_id = _model_id
     AND rc.t_step = _t_step
+  WHERE rc.model_id = _model_id
     AND coalesce(pp.old_lim, 4000) >= _t_step
     AND coalesce(pp.young_lim, 0) <= _t_step
-    AND corelle_macrostrat.tile_envelope(rc.rotation, x, y, z) && pp.geometry
-    AND ST_Intersects(corelle_macrostrat.tile_envelope(rc.rotation, x, y, z), pp.geometry)
+   AND pp.model_id = _model_id
+),
+relevant_plates AS (
+  SELECT *
+  FROM rotation_info
+  WHERE ST_Intersects(geometry, tile_envelope)
 ),
 units AS (
   SELECT
@@ -322,7 +324,7 @@ units AS (
     cpi.plate_id,
     cpi.model_id,
     corelle_macrostrat.build_tile_geom(
-      coalesce(cpi.geom, u.geom), ri.rotation, x, y, z
+      u.geom, ri.rotation, x, y, z
     ) geom,
     l.legend_id,
     l.best_age_top :: numeric AS best_age_top,
@@ -360,7 +362,7 @@ units AS (
     l.all_lith_types [11] AS lith_type11,
     l.all_lith_types [12] AS lith_type12,
     l.all_lith_types [13] AS lith_type13
-  FROM tile_layers.carto_units u
+  FROM carto.polygons u
   JOIN corelle_macrostrat.carto_plate_index cpi
     ON cpi.map_id = u.map_id
     AND cpi.scale = u.scale
@@ -383,7 +385,7 @@ plate_polygons AS (
     corelle_macrostrat.build_tile_geom(
       ri.geometry, ri.rotation, x, y, z
     ) geom
-  FROM rotation_info ri
+  FROM relevant_plates ri
 ),
 land1 AS (
   SELECT
@@ -391,7 +393,7 @@ land1 AS (
       ix.geometry, ri.rotation, x, y, z
     ) geom
   FROM corelle_macrostrat.natural_earth_index ix
-  JOIN rotation_info ri
+  JOIN relevant_plates ri
     ON ri.plate_id = ix.plate_id
    AND ri.model_id = ix.model_id
   WHERE ix.geometry && ri.tile_envelope
@@ -413,7 +415,7 @@ columns AS (
     u.color,
     u1.color color1
   FROM corelle_macrostrat.column_index c
-  JOIN rotation_info ri
+  JOIN relevant_plates ri
     ON ri.plate_id = c.plate_id
    AND ri.model_id = c.model_id
   JOIN macrostrat.col_areas ca
@@ -444,7 +446,6 @@ u3 AS (
 --   FROM columns cols
 -- )
 SELECT mvt1 || mvt2 || mvt3 AS mvt
-
 FROM u1, u2, u3
 INTO bedrock; --, plate_polygons;
 
