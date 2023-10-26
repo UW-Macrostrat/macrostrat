@@ -69,18 +69,14 @@ def run_all_sql(db, dir: Path):
         print()
 
 
+# Additional functions to run when updating schema
+subsystem_updates = []
+
+
 def update_schema():
     """Update the database schema"""
     from .config import PG_DATABASE
     from macrostrat.database import Database
-
-    try:
-        from corelle.engine.database import initialize
-
-        print("Creating models for [bold cyan]corelle[/] subsystem")
-        initialize(drop=False)
-    except ImportError as err:
-        pass
 
     """Create schema additions"""
     schema_dir = fixtures_dir
@@ -97,13 +93,9 @@ def update_schema():
         elif f.is_dir():
             run_all_sql(db, f)
 
-    try:
-        from digitalcrust.weaver.cli import create_models
-
-        print("Creating models for [bold cyan]weaver[/] subsystem")
-        create_models()
-    except ImportError as err:
-        pass
+    # Run subsystem updates
+    for func in subsystem_updates:
+        func()
 
     # Reload the postgrest schema cache
     compose("kill -s SIGUSR1 postgrest")
@@ -211,9 +203,10 @@ try:
 except ImportError as err:
     pass
 
-
+# Add weaver subsystem if available
 try:
     from digitalcrust.weaver.cli import app as weaver_app
+    from digitalcrust.weaver.cli import create_models
 
     main.add_typer(
         weaver_app,
@@ -221,11 +214,18 @@ try:
         rich_help_panel="Subsystems",
         short_help="Prototype geochemical data management system",
     )
+
+    def update_weaver():
+        print("Creating models for [bold cyan]weaver[/] subsystem")
+        create_models()
+
+    subsystem_updates.append(update_weaver)
 except ImportError as err:
     pass
 
 try:
     from macrostrat_tileserver.cli import _cli as tileserver_cli
+    from macrostrat_tileserver.cli import create_fixtures
 
     environ["DATABASE_URL"] = settings.pg_database
     main.add_typer(
@@ -234,12 +234,20 @@ try:
         rich_help_panel="Subsystems",
         short_help="Control Macrostrat's tileserver",
     )
+
+    def update_tileserver():
+        print("Creating models for [bold cyan]tileserver[/] subsystem")
+        create_fixtures()
+
+    subsystem_updates.append(update_tileserver)
+
 except ImportError as err:
-    pass
+    print("Could not import tileserver subsystem")
 
 try:
     environ["CORELLE_DB"] = settings.pg_database
     from corelle.engine import cli as corelle_cli
+    from corelle.engine.database import initialize
 
     corelle_cli.name = "corelle"
     corelle_cli.help = "Manage plate rotation models"
@@ -249,6 +257,13 @@ try:
         "corelle",
         rich_help_panel="Subsystems",
     )
+
+    def update_corelle():
+        print("Creating models for [bold cyan]corelle[/] subsystem")
+        initialize(drop=False)
+
+    subsystem_updates.append(update_corelle)
+
 except ImportError as err:
     pass
 
