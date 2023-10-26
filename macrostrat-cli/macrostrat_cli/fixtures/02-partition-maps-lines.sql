@@ -12,10 +12,10 @@ ALTER TABLE lines.lines_medium DROP CONSTRAINT IF EXISTS medium_pkey;
 ALTER TABLE lines.lines_large DROP CONSTRAINT IF EXISTS large_pkey;
 
 /* Remove old validity constraints */
-ALTER TABLE lines.lines_tiny DROP CONSTRAINT IF EXISTS enforce_valid_geom_lines_tiny;
+ALTER TABLE lines.lines_tiny DROP CONSTRAINT IF EXISTS "ST_IsValid(geom)";
 ALTER TABLE lines.lines_small DROP CONSTRAINT IF EXISTS enforce_valid_geom_lines_small;
 ALTER TABLE lines.lines_medium DROP CONSTRAINT IF EXISTS enforce_valid_geom_lines_medium;
-ALTER TABLE lines.lines_large DROP CONSTRAINT IF EXISTS enforce_valid_geom_lines_large;
+ALTER TABLE lines.lines_large DROP CONSTRAINT IF EXISTS "ST_IsValid(geom)";
 
 DROP INDEX lines.tiny_geom_idx;
 DROP INDEX lines.small_geom_idx;
@@ -69,6 +69,7 @@ ALTER TABLE maps.lines_medium ALTER COLUMN direction TYPE character varying(40);
 ALTER TABLE maps.lines_tiny ALTER COLUMN new_direction TYPE character varying(40);
 ALTER TABLE maps.lines_small ALTER COLUMN new_direction TYPE character varying(40);
 ALTER TABLE maps.lines_medium ALTER COLUMN new_direction TYPE character varying(40);
+
 
 CREATE TABLE maps.lines (
     line_id integer DEFAULT nextval('line_ids'::regclass),

@@ -38,8 +38,10 @@ from sys import exit
 # settings = Dynaconf(settings_files=[root_dir/"macrostrat.toml", root_dir/".secrets.toml"])
 
 __here__ = Path(__file__).parent
-root_dir = __here__ / "fixtures"
+fixtures_dir = __here__ / "fixtures"
 # macrostrat_root = Path(settings.macrostrat_root)
+
+root_dir = Path(settings.compose_root).expanduser().resolve()
 
 compose_file = root_dir / "docker-compose.yaml"
 env_file = root_dir / ".env"
@@ -81,7 +83,7 @@ def update_schema():
         pass
 
     """Create schema additions"""
-    schema_dir = root_dir
+    schema_dir = fixtures_dir
     # Loaded from env file
     db = Database(PG_DATABASE)
 
