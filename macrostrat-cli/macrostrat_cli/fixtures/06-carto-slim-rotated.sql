@@ -98,7 +98,9 @@ WITH rotation_info AS (
 relevant_plates AS (
   SELECT *
   FROM rotation_info
-  WHERE ST_Intersects(geom, tile_geom)
+  WHERE (z < 3 AND ST_Intersects(geom, tile_geom))
+    -- We have to break this out because we get weird antipodal-edge warnings otherwise
+    OR (z >= 3 AND ST_Intersects(geom::geography, tile_geom::geography))
 ),
 units AS (
   SELECT 
