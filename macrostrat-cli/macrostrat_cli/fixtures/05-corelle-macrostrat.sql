@@ -44,8 +44,8 @@ GROUP BY map_id, scale, pp.model_id, pp.geometry, plate_id;
 ALTER TABLE corelle_macrostrat.carto_plate_index
 ADD CONSTRAINT carto_plate_index_pkey PRIMARY KEY (map_id, scale, model_id, plate_id);
 
-
-
+CREATE INDEX carto_plate_index_model_plate_scale_idx ON corelle_macrostrat.carto_plate_index(model_id, plate_id, scale);
+CREATE INDEX carto_plate_index_geom_idx ON corelle_macrostrat.carto_plate_index USING gist (geom);
 
 CREATE OR REPLACE FUNCTION corelle_macrostrat.carto_slim_rotated_v1(
   -- bounding box
@@ -152,7 +152,7 @@ CREATE OR REPLACE FUNCTION corelle_macrostrat.tile_envelope(
   z integer
 ) RETURNS geometry AS $$
     -- I feel like this bbox needs to be inverted but it seems to work better if not...
-  SELECT corelle_macrostrat.rotate_geometry(
+  SELECT corelle_macrostrat.rotate(
     --ST_Transform(mercator_bbox, 4326),
     ST_Transform(ST_TileEnvelope(z, x, y), 4326),
     corelle.invert_rotation(rotation),
@@ -297,8 +297,8 @@ WITH rotation_info AS (
     pp.model_id,
     -- Get the tile bounding box rotated to the actual position of the plate on the modern globe
     --ST_Area(corelle_macrostrat.tile_envelope(rc.rotation, t.x, t.y, t.z)::geography)/ST_Area(ST_Transform(tile_utils.envelope(t.x, t.y, t.z), 4326)::geography) tile_area_ratio,
-    geometry::geography geom,
-    corelle.rotate_geometry(ST_Transform(tile_utils.envelope(x, y, z), 4326), corelle.invert_rotation(rc.rotation))::geography tile_geom,
+    geometry geom,
+    corelle.rotate_geometry(ST_Transform(tile_utils.envelope(x, y, z), 4326), corelle.invert_rotation(rc.rotation)) tile_geom,
     rc.rotation rotation
   FROM corelle.plate_polygon pp
   JOIN corelle.rotation_cache rc
@@ -311,28 +311,37 @@ WITH rotation_info AS (
    AND pp.model_id = _model_id
 ),
 relevant_plates AS (
-SELECT *
-FROM rotation_info
-WHERE ST_Intersects(geom, tile_geom)
+  SELECT *
+  FROM rotation_info
+  WHERE ST_Intersects(geom::geography, tile_geom::geography)
 ),
 units AS (
-  SELECT DISTINCT ON (u.map_id)
-    u.map_id,
-    u.source_id,
-    cpi.plate_id,
-    cpi.model_id,
+  SELECT
+    p.plate_id,
+    p.model_id,
+    '#888888' AS color,
     corelle_macrostrat.build_tile_geom(
-      coalesce(cpi.geom, u.geom), ri.rotation, x, y, z
-    ) geom
-  FROM carto.polygons u
-  JOIN corelle_macrostrat.carto_plate_index cpi
-    ON cpi.map_id = u.map_id
-   AND cpi.scale = u.scale
-   AND cpi.model_id = _model_id
-  JOIN relevant_plates ri
-    ON ri.plate_id = cpi.plate_id
-   AND ST_Intersects(coalesce(cpi.geom, u.geom)::geography, ri.tile_geom)
-    AND u.scale = mapsize
+      p.geom, p.rotation, x, y, z
+    ) geom 
+  FROM relevant_plates p
+
+  -- SELECT DISTINCT ON (u.map_id)
+  --   u.map_id,
+  --   u.source_id,
+  --   cpi.plate_id,
+  --   cpi.model_id,
+  --   corelle_macrostrat.build_tile_geom(
+  --     coalesce(cpi.geom, u.geom), ri.rotation, x, y, z
+  --   ) geom
+  -- FROM carto.polygons u
+  -- JOIN corelle_macrostrat.carto_plate_index cpi
+  --   ON cpi.map_id = u.map_id
+  --  AND cpi.scale = u.scale
+  --  AND cpi.model_id = _model_id
+  -- JOIN relevant_plates ri
+  --   ON ri.plate_id = cpi.plate_id
+  --  AND ST_Intersects(coalesce(cpi.geom, u.geom)::geography, ri.tile_geom)
+  --   AND u.scale = mapsize
 )
 SELECT ST_AsMVT(units) AS mvt
 FROM units
@@ -342,6 +351,8 @@ RETURN bedrock;
 
 END;
 $$ LANGUAGE plpgsql VOLATILE;
+
+
 
 CREATE OR REPLACE FUNCTION corelle_macrostrat.tile_envelope(
   rotation numeric[],
