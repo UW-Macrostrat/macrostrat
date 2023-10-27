@@ -92,3 +92,11 @@ ALTER TABLE maps.polygons ATTACH PARTITION maps.polygons_tiny FOR VALUES IN ('ti
 ALTER TABLE maps.polygons ATTACH PARTITION maps.polygons_small FOR VALUES IN ('small');
 ALTER TABLE maps.polygons ATTACH PARTITION maps.polygons_medium FOR VALUES IN ('medium');
 ALTER TABLE maps.polygons ATTACH PARTITION maps.polygons_large FOR VALUES IN ('large');
+
+/** Add indexes */
+CREATE INDEX polygons_b_interval_idx ON maps.polygons(b_interval);
+CREATE INDEX polygons_geom_idx ON maps.polygons USING GIST (geom);
+CREATE INDEX polygons_name_idx ON maps.polygons(name);
+CREATE INDEX polygons_orig_id_idx ON maps.polygons(orig_id);
+CREATE INDEX polygons_source_id_idx ON maps.polygons(source_id);
+CREATE INDEX polygons_t_interval_idx ON maps.polygons(t_interval);

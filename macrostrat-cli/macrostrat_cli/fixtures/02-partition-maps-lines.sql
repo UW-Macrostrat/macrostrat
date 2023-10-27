@@ -106,6 +106,14 @@ ALTER TABLE maps.lines RENAME COLUMN type TO type_legacy;
 ALTER TABLE maps.lines RENAME COLUMN new_direction TO direction;
 ALTER TABLE maps.lines RENAME COLUMN new_type TO type;
 
+ALTER TABLE maps.lines ADD CONSTRAINT lines_pkey PRIMARY KEY (line_id, scale);
+
+/* Add indices */
+CREATE INDEX lines_geom_idx ON maps.lines USING GIST (geom);
+CREATE INDEX lines_line_id_idx ON maps.lines(line_id);
+CREATE INDEX lines_orig_id_idx ON maps.lines(orig_id);
+CREATE INDEX lines_source_id_idx ON maps.lines(source_id);
+
 
 -- CREATE UNIQUE INDEX large_pkey ON lines.lines_large(line_id int4_ops);
 -- CREATE INDEX large_geom_idx ON lines.lines_large USING GIST (geom gist_geometry_ops_2d);
