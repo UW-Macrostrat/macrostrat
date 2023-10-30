@@ -14,10 +14,12 @@ def prepare_fields(source_prefix: str):
         # but the new one does.
         table = f"{source_prefix}{table_suffix}"
         add_polygon_columns(schema, table)
+        add_primary_key_column(schema, table)
         _set_source_id(schema, table, source_id)
 
     linework_table = f"{source_prefix}_linestrings"
     add_linework_columns(schema, linework_table)
+    add_primary_key_column(schema, linework_table)
     _set_source_id(schema, linework_table, source_id)
 
     print(
@@ -86,6 +88,19 @@ def _apply_column_mapping(schema, table_name, columns, rename_geometry=True):
     )
     exec_sql(sql)
 
+
+def add_primary_key_column(schema, table_name, column_name=None):
+
+    if column_name is None:
+        column_name = "db_id"
+
+    sql = "ALTER TABLE {schema}.{table_name} ADD COLUMN {column_name} SERIAL PRIMARY KEY".format(
+        schema=schema,
+        table_name=table_name,
+        column_name=column_name
+    )
+
+    exec_sql(sql)
 
 # Use dirty string formatting for now
 def add_column(**kwargs):
