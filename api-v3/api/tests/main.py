@@ -26,7 +26,8 @@ UNUSED_SOURCE_ID=9999
 class TEST_SOURCE_TABLE:
   source_id=295
   primary_table="test_id"
-
+  to_patch = "orig_id"
+  to_filter = {"PTYPE": "eq.Qff"}
 
 @pytest.fixture
 def api_client() -> TestClient:
@@ -80,6 +81,11 @@ class TestEngineDB:
 
 class TestAPI:
 
+  def test_get_sources(self, api_client: TestClient):
+    response = api_client.get("/sources")
+    assert response.status_code == 200
+
+
   def test_get_sources_tables(self, api_client: TestClient):
     response = api_client.get(f"/sources/{TEST_SOURCE_TABLE.source_id}/polygons")
     assert response.status_code == 200
@@ -97,6 +103,41 @@ class TestAPI:
     assert len(response_json) > 0
 
   def test_patch_source_tables(self, api_client):
-    response = api_client.patch(f"/sources/{TEST_SOURCE_TABLE.source_id}/polygons", json={"orig_id": random.randint(1, 999)})
+
+    id_temp_value = random.randint(1, 999)
+
+    response = api_client.patch(f"/sources/{TEST_SOURCE_TABLE.source_id}/polygons", json={TEST_SOURCE_TABLE.to_patch: id_temp_value})
 
     assert response.status_code == 204
+
+    response = api_client.get(f"/sources/{TEST_SOURCE_TABLE.source_id}/polygons")
+
+    assert response.status_code == 200
+    response_json = response.json()
+
+    assert all([x["orig_id"] == id_temp_value for x in response_json])
+
+
+  def test_patch_source_tables_with_filter(self, api_client):
+
+    id_temp_value = random.randint(1, 999)
+
+    response = api_client.patch(
+      f"/sources/{TEST_SOURCE_TABLE.source_id}/polygons",
+      json={TEST_SOURCE_TABLE.to_patch: id_temp_value},
+      params=TEST_SOURCE_TABLE.to_filter
+    )
+
+    assert response.status_code == 204
+
+    response = api_client.get(f"/sources/{TEST_SOURCE_TABLE.source_id}/polygons", params=TEST_SOURCE_TABLE.to_filter)
+
+    assert response.status_code == 200
+    response_json = response.json()
+
+    selected_values = filter(lambda x: x["PTYPE"] == "Qff", response_json)
+
+    assert all([x["orig_id"] == id_temp_value for x in selected_values])
+
+
+

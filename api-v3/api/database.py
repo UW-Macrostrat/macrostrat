@@ -54,21 +54,12 @@ async def source_id_to_primary_table(async_session: async_sessionmaker[AsyncSess
         return result.primary_table
 
 
-async def get_table_rows_by_orm(
-        async_session: async_sessionmaker[AsyncSession],
-        orm: Type[schemas.Base],
-        page: int = 1,
-        page_size: int = 100
-):
+async def get_sources(async_session: async_sessionmaker[AsyncSession], page: int = 1, page_size: int = 100):
     async with async_session() as session:
-        stmt = select(orm).offset(page_size * (page - 1)).limit(page_size)
+        stmt = select(schemas.Sources).offset(page_size * (page - 1)).limit(page_size).order_by(schemas.Sources.source_id)
         result = await session.scalars(stmt)
 
         return [*result]
-
-
-async def get_sources(async_session: async_sessionmaker[AsyncSession], page: int = 1, page_size: int = 100):
-    return await get_table_rows_by_orm(async_session, schemas.Sources, page, page_size)
 
 
 async def get_schema_tables(engine: AsyncEngine, schema: str):
@@ -123,7 +114,7 @@ async def select_sources_sub_table(engine: AsyncEngine, table_id: int, offset: i
         metadata = MetaData(schema="sources")
         table = await conn.run_sync(lambda sync_conn: Table(polygon_table, metadata, autoload_with=sync_conn))
 
-        ignored_columns = ['geom']  # No reason that this moment to pass this through
+        ignored_columns = ['geom', 'db_id']  # No reason that this moment to pass this through
         selected_columns = table.c[*[col.key for col in table.c if col.key not in ignored_columns]]
 
         stmt = select(selected_columns)\

@@ -29,14 +29,13 @@ app = FastAPI(lifespan=setup_engine)
 
 
 @app.get("/sources")
-async def get_sources(response: Response, page: int = 1, page_size: int = 100, include_geom: bool = False) -> Sources:
+async def get_sources(response: Response, page: int = 1, page_size: int = 100, include_geom: bool = False) -> List[Sources]:
     async_session = get_async_session(get_engine())
     sources = await db.get_sources(async_session, page, page_size)
 
     # Delete the geom if not required
     if not include_geom:
         for source in sources:
-            del source.geom
             del source.rgeom
             del source.web_geom
 
