@@ -537,13 +537,13 @@ testing = ["Django (<3.1)", "attrs", "colorama", "docopt", "pytest (<7.0.0)"]
 
 [[package]]
 name = "macrostrat-app-frame"
-version = "1.0.5"
+version = "1.1.0"
 description = "A control script framework for containerized applications."
 optional = false
 python-versions = ">=3.10,<4.0"
 files = [
-    {file = "macrostrat_app_frame-1.0.5-py3-none-any.whl", hash = "sha256:d3257b07e14289d87a09e02c29f5c108741a50c6dca833fbbbd1c10d86857ccb"},
-    {file = "macrostrat_app_frame-1.0.5.tar.gz", hash = "sha256:ff4664dc63e0359c15f3a67a301ef07c6c4e46a73f2b5391b4be0b0236ce476f"},
+    {file = "macrostrat_app_frame-1.1.0-py3-none-any.whl", hash = "sha256:e1f5f2ce8f8173cb13bd0f02217cef5f61ea0a97b1d244f6ccf5ddddd24cd466"},
+    {file = "macrostrat_app_frame-1.1.0.tar.gz", hash = "sha256:9df0defeded0100dc9c54a27c39de9018a7104749364b8af752be7ed5a6e1a47"},
 ]
 
 [package.dependencies]
@@ -1588,4 +1588,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "57d4f9025ae306b9245c663118166fddec9c226d2144472ad1aec044d926635b"
+content-hash = "8888c47a1e9d0053c150ec1478dd1b5d3080d7ff8ca8b1a0e2226d710c41b36e"

@@ -7,50 +7,27 @@ from subprocess import run
 from typing import Optional
 import typer
 
-# Load config before we do anything else
-def find_config(start_dir: Path):
-    """Find the macrostrat.toml config file"""
+from .config import settings
 
-    next_dir = start_dir.resolve()
-    while next_dir != next_dir.parent:
-        if (next_dir / "macrostrat.toml").exists():
-            return next_dir
-        next_dir = next_dir.parent
-    return None
-
-
-macrostrat_root = None
-# Find root dir upwards
-macrostrat_root = find_config(Path.cwd())
-if macrostrat_root is None:
-    # Find user-specific config in home dir
-    macrostrat_root = find_config(Path.home() / ".config" / "macrostrat")
-
-# Find config upwards from utils installation
-if macrostrat_root is None:
-    macrostrat_root = find_config(Path(__file__).parent)
-
-if macrostrat_root is None:
-    raise RuntimeError("Could not find macrostrat.toml")
-
-env = environ.get("MACROSTRAT_ENV", "dev")
-environments = ["dev", "testing", "chtc"]
-if env not in environments:
-    print(f"Unknown environment {env}", file=stderr)
-    print(f"Valid environments are: {environments}", file=stderr)
-    exit(1)
-else:
-    print(
-        f"Using environment [bold cyan]{env}[/] [dim](from MACROSTRAT_ENV)[/]",
-        file=stderr,
-    )
+# Old environments configuration
+# env = environ.get("MACROSTRAT_ENV", "dev")
+# environments = ["dev", "testing", "chtc"]
+# if env not in environments:
+#     print(f"Unknown environment {env}", file=stderr)
+#     print(f"Valid environments are: {environments}", file=stderr)
+#     exit(1)
+# else:
+#     print(
+#         f"Using environment [bold cyan]{env}[/] [dim](from MACROSTRAT_ENV)[/]",
+#         file=stderr,
+#     )
 
 # Right now, the root dir must be manually edited here!
-root_dir = macrostrat_root / "server-configs" / f"{env}-server"
-dotenv_file = root_dir / ".env"
+# root_dir = macrostrat_root / "server-configs" / f"{env}-server"
+# dotenv_file = root_dir / ".env"
 
-if dotenv_file.exists():
-    load_dotenv(root_dir / ".env")
+# if dotenv_file.exists():
+#     load_dotenv(root_dir / ".env")
 
 from macrostrat.app_frame import Application, compose
 
@@ -60,12 +37,20 @@ from sys import exit
 
 # settings = Dynaconf(settings_files=[root_dir/"macrostrat.toml", root_dir/".secrets.toml"])
 
+__here__ = Path(__file__).parent
+fixtures_dir = __here__ / "fixtures"
+# macrostrat_root = Path(settings.macrostrat_root)
+
+root_dir = Path(settings.compose_root).expanduser().resolve()
+
 compose_file = root_dir / "docker-compose.yaml"
 env_file = root_dir / ".env"
 
+# Manage as a docker-compose application
 app = Application(
     "Macrostrat",
     root_dir=root_dir,
+    project_prefix=settings.project_name,
     app_module="macrostrat",
     compose_files=[compose_file],
     load_dotenv=env_file,
@@ -84,13 +69,17 @@ def run_all_sql(db, dir: Path):
         print()
 
 
+# Additional functions to run when updating schema
+subsystem_updates = []
+
+
 def update_schema():
+    """Update the database schema"""
     from .config import PG_DATABASE
     from macrostrat.database import Database
 
     """Create schema additions"""
-    schema_dir = macrostrat_root / "schema"
-
+    schema_dir = fixtures_dir
     # Loaded from env file
     db = Database(PG_DATABASE)
 
@@ -104,13 +93,9 @@ def update_schema():
         elif f.is_dir():
             run_all_sql(db, f)
 
-    try:
-        from digitalcrust.weaver.cli import create_models
-
-        print("Creating models for [bold cyan]weaver[/] subsystem")
-        create_models()
-    except ImportError as err:
-        pass
+    # Run subsystem updates
+    for func in subsystem_updates:
+        func()
 
     # Reload the postgrest schema cache
     compose("kill -s SIGUSR1 postgrest")
@@ -120,22 +105,47 @@ main.command(name="update-schema")(update_schema)
 
 # Pass through arguments
 
-@main.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
+
+@main.command(
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True}
+)
 def psql(ctx: typer.Context):
     """Run psql in the database container"""
     from .config import PG_DATABASE
-    flags =[ "-i", "--rm", "--network", "host", ]
+
+    flags = [
+        "-i",
+        "--rm",
+        "--network",
+        "host",
+    ]
     if len(ctx.args) == 0:
         flags.append("-t")
 
-    run(["docker", "run", *flags, "postgres:15", "psql", PG_DATABASE, *ctx.args, *cmd])
+    run(["docker", "run", *flags, "postgres:15", "psql", PG_DATABASE, *ctx.args])
+
 
 @main.command(name="tables")
 def list_tables():
     """List all tables in the database"""
     from .config import PG_DATABASE
+
     # We could probably do this with the inspector too
-    run(["docker", "run", "-i", "--rm", "--network", "host", "postgres:15", "psql", PG_DATABASE, "-c", "\dt *.*"])
+    run(
+        [
+            "docker",
+            "run",
+            "-i",
+            "--rm",
+            "--network",
+            "host",
+            "postgres:15",
+            "psql",
+            PG_DATABASE,
+            "-c",
+            "\dt *.*",
+        ]
+    )
 
 
 @main.command()
@@ -147,6 +157,16 @@ def config():
         # Only print uppercase values
         if k.isupper():
             print(f"{k}: {v}")
+
+
+@main.command()
+def install():
+    """Install Macrostrat subsystems if available."""
+    if hasattr(settings, "corelle_src"):
+        print("Installing corelle")
+        run(
+            ["poetry", "install"], cwd=Path(settings.corelle_src).expanduser().resolve()
+        )
 
 
 main.add_typer(v2_app, name="v2")
@@ -172,16 +192,21 @@ try:
         name="raster",
         rich_help_panel="Subsystems",
         short_help="Raster data integration",
-        context_settings={"allow_extra_args": True, "ignore_unknown_options": True}
+        context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
     )
     def rast(ctx: typer.Context):
-        run(["poetry", "run", "macrostrat-raster", *ctx.args], cwd="/data/macrostrat/tools/raster-cli")
+        run(
+            ["poetry", "run", "macrostrat-raster", *ctx.args],
+            cwd="/data/macrostrat/tools/raster-cli",
+        )
+
 except ImportError as err:
     pass
 
-
+# Add weaver subsystem if available
 try:
     from digitalcrust.weaver.cli import app as weaver_app
+    from digitalcrust.weaver.cli import create_models
 
     main.add_typer(
         weaver_app,
@@ -189,7 +214,76 @@ try:
         rich_help_panel="Subsystems",
         short_help="Prototype geochemical data management system",
     )
+
+    def update_weaver():
+        print("Creating models for [bold cyan]weaver[/] subsystem")
+        create_models()
+
+    subsystem_updates.append(update_weaver)
 except ImportError as err:
     pass
+
+try:
+    from macrostrat_tileserver.cli import _cli as tileserver_cli
+    from macrostrat_tileserver.cli import create_fixtures
+
+    environ["DATABASE_URL"] = settings.pg_database
+    main.add_typer(
+        tileserver_cli,
+        name="tileserver",
+        rich_help_panel="Subsystems",
+        short_help="Control Macrostrat's tileserver",
+    )
+
+    def update_tileserver():
+        print("Creating models for [bold cyan]tileserver[/] subsystem")
+        create_fixtures()
+
+    subsystem_updates.append(update_tileserver)
+
+except ImportError as err:
+    print("Could not import tileserver subsystem")
+
+try:
+    environ["CORELLE_DB"] = settings.pg_database
+    from corelle.engine import cli as corelle_cli
+    from corelle.engine.database import initialize
+
+    corelle_cli.name = "corelle"
+    corelle_cli.help = "Manage plate rotation models"
+
+    main.add_click_command(
+        corelle_cli,
+        "corelle",
+        rich_help_panel="Subsystems",
+    )
+
+    def update_corelle():
+        print("Creating models for [bold cyan]corelle[/] subsystem")
+        initialize(drop=False)
+
+    subsystem_updates.append(update_corelle)
+
+except ImportError as err:
+    pass
+
+# Commands to manage this command-line interface
+self_app = typer.Typer()
+
+
+@self_app.command()
+def inspect():
+    import IPython
+
+    IPython.embed()
+
+
+main.add_typer(
+    self_app,
+    name="self",
+    rich_help_panel="Subsystems",
+    short_help="Manage the Macrostrat CLI itself",
+)
+
 
 main.add_click_command(v1_cli, name="v1")
