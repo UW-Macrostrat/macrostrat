@@ -40,31 +40,31 @@ def get_column_expression(column: Column, operators, value: str):
             return not_(get_column_expression(column, operators[1:], value))
 
         case "eq":
-            cast_to_column_type(column, value)
+            value = cast_to_column_type(column, value)
             return column.__eq__(value)
 
         case "lt":
-            cast_to_column_type(column, value)
+            value = cast_to_column_type(column, value)
             return column.__lt__(value)
 
         case "le":
-            cast_to_column_type(column, value)
+            value = cast_to_column_type(column, value)
             return column.__le__(value)
 
         case "gt":
-            cast_to_column_type(column, value)
+            value = cast_to_column_type(column, value)
             return column.__gt__(value)
 
         case "ge":
-            cast_to_column_type(column, value)
+            value = cast_to_column_type(column, value)
             return column.__ge__(value)
 
         case "ne":
-            cast_to_column_type(column, value)
+            value = cast_to_column_type(column, value)
             return column.__ne__(value)
 
         case "like":
-            cast_to_column_type(column, value)
+            value = cast_to_column_type(column, value)
             return column.like(value)
 
         case "in":
