@@ -135,6 +135,9 @@ units AS (
   LEFT JOIN tile_layers.map_legend_info AS l
     ON l.legend_id = map_legend.legend_id
   WHERE ST_Intersects(u.geom, u.tile_geom)
+  -- WHERE (z < 3 AND ST_Intersects(u.geom, u.tile_geom))
+  --   -- We have to break this out because we get weird antipodal-edge warnings otherwise
+  --   OR (z >= 3 AND ST_Intersects(u.geom::geography, u.tile_geom::geography))
 )
 SELECT
   ST_AsMVT(expanded, 'units')
