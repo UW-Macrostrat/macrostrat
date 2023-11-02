@@ -18,6 +18,7 @@ load_dotenv()
 from api.app import app
 from api.database import connect_engine, dispose_engine, get_engine
 import api.database as db
+from api.models import PolygonModel
 
 # Define some testing values
 
@@ -45,6 +46,12 @@ async def engine() -> AsyncEngine:
 async def session(engine: AsyncEngine):
   async_session = async_sessionmaker(engine)
   yield async_session
+
+
+class TestModels:
+
+  def test_polygon_model(self):
+    x = PolygonModel.model_validate({'descrip': 'TEst'})
 
 
 class TestUtils:
@@ -102,6 +109,7 @@ class TestAPI:
 
     assert len(response_json) > 0
 
+
   def test_patch_source_tables(self, api_client):
 
     id_temp_value = random.randint(1, 999)
@@ -117,27 +125,83 @@ class TestAPI:
 
     assert all([x["orig_id"] == id_temp_value for x in response_json])
 
+  def test_get_source_tables_with_filter_in(self, api_client):
+
+    db_ids = [*range(1,11)]
+    db_id_str = f"({','.join(map(str, db_ids))})"
+
+    response = api_client.get(
+      f"/sources/{TEST_SOURCE_TABLE.source_id}/polygons",
+      params={"db_id": f"in.{db_id_str}"},
+    )
+
+    assert response.status_code == 200
+
+    response_json = response.json()
+
+    assert all([x["db_id"] in db_ids for x in response_json])
+
+
+  def test_patch_source_tables_with_filter_in(self, api_client):
+    def test_patch_source_tables_with_filter(self, api_client):
+      id_temp_value = random.randint(1, 999)
+
+      response = api_client.patch(
+        f"/sources/{TEST_SOURCE_TABLE.source_id}/polygons",
+        json={
+          TEST_SOURCE_TABLE.to_patch: id_temp_value
+        },
+        params=TEST_SOURCE_TABLE.to_filter
+      )
+
+      assert response.status_code == 204
+
+      response = api_client.get(f"/sources/{TEST_SOURCE_TABLE.source_id}/polygons", params=TEST_SOURCE_TABLE.to_filter)
+
+      assert response.status_code == 200
+      response_json = response.json()
+
+      selected_values = filter(lambda x: x["PTYPE"] == "Qff", response_json)
+
+      assert all([x["orig_id"] == id_temp_value for x in selected_values])
+
 
   def test_patch_source_tables_with_filter(self, api_client):
 
+    body = {"descrip": "Test"}
+    params = {"db_id": "in.(1)"}
+
+
+    response = api_client.patch(
+      f"/sources/{TEST_SOURCE_TABLE.source_id}/polygons",
+      json=body,
+      params=params
+    )
+
+    assert response.status_code == 204
+
+    response = api_client.get(f"/sources/{TEST_SOURCE_TABLE.source_id}/polygons", params=params)
+
+    assert response.status_code == 200
+    response_json = response.json()
+
+    selected_values = filter(lambda x: x["db_id"] == 1, response_json)
+
+    assert all([x["descrip"] == "Test" for x in selected_values])
+
+  def test_patch_source_tables_with_filter_no_matches(self, api_client):
     id_temp_value = random.randint(1, 999)
 
     response = api_client.patch(
       f"/sources/{TEST_SOURCE_TABLE.source_id}/polygons",
       json={TEST_SOURCE_TABLE.to_patch: id_temp_value},
-      params=TEST_SOURCE_TABLE.to_filter
+      params={"PTYPE": "eq.Qff", "orig_id": "eq.999999"}
     )
 
-    assert response.status_code == 204
+    assert response.status_code == 400
 
-    response = api_client.get(f"/sources/{TEST_SOURCE_TABLE.source_id}/polygons", params=TEST_SOURCE_TABLE.to_filter)
-
-    assert response.status_code == 200
     response_json = response.json()
 
-    selected_values = filter(lambda x: x["PTYPE"] == "Qff", response_json)
-
-    assert all([x["orig_id"] == id_temp_value for x in selected_values])
-
+    assert response_json["detail"] == "No rows patched, if this is unexpected please report as bug"
 
 

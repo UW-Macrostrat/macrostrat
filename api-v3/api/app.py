@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from typing import List
 
 from fastapi import FastAPI, Response, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
 
 from sqlalchemy.exc import NoResultFound, NoSuchTableError
 
@@ -27,9 +28,22 @@ async def setup_engine(a: FastAPI):
 
 app = FastAPI(lifespan=setup_engine)
 
+origins = [
+    "http://localhost:3000",
+    "http://localhost:3000/"
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 @app.get("/sources")
-async def get_sources(response: Response, page: int = 1, page_size: int = 100, include_geom: bool = False) -> List[Sources]:
+async def get_sources(response: Response, page: int = 0, page_size: int = 100, include_geom: bool = False) -> List[Sources]:
     async_session = get_async_session(get_engine())
     sources = await db.get_sources(async_session, page, page_size)
 
@@ -47,30 +61,34 @@ async def get_sources(response: Response, page: int = 1, page_size: int = 100, i
 
 @app.get("/sources/{table_id}/polygons", response_model=List[PolygonModel])
 async def get_sub_sources(
+        response: Response,
         request: starlette.requests.Request,
         table_id: int,
-        offset: int = 0,
-        page_size: int = 100,
+        page: int = 0,
+        page_size: int = 100
 ):
 
     try:
-        column_expression = query_parser(request.query_params)
-
+        # Get the query results
+        filter_query_params = [*filter(lambda x: x[0] not in ["page", "page_size"], request.query_params.items())]
         result = await select_sources_sub_table(
             engine=get_engine(),
             table_id=table_id,
-            offset=offset,
+            page=page,
             page_size=page_size,
-            column_expression=column_expression
+            query_params=filter_query_params
         )
+
+        # Add metadata to the response
+        response.headers["X-Total-Count"] = str(await db.get_sources_sub_table_count(engine=get_engine(), table_id=table_id))
+
         return result.to_dict()
 
     except ParserException as e:
-        raise HTTPException(status_code=204, detail=e)
+        raise HTTPException(status_code=400, detail=e)
 
     except NoSuchTableError:
-        raise HTTPException(status_code=204, detail=f"Source table with id ({table_id}) not found")
-
+        raise HTTPException(status_code=400, detail=f"Source table with id ({table_id}) not found")
 
 
 @app.patch("/sources/{table_id}/polygons", response_model=List[PolygonModel])
@@ -81,27 +99,26 @@ async def patch_sub_sources(
 ):
 
     try:
-        column_expression = query_parser(request.query_params)
 
         result = await patch_sources_sub_table(
             engine=get_engine(),
             table_id=table_id,
             update_values=polygon_updates.model_dump(exclude_none=True),
-            column_expression=column_expression
+            query_params=request.query_params.items()
         )
 
-        if result.rowcount == 0:
-            raise HTTPException(status_code=204, detail="No rows patched, if this is unexpected please report as bug")
-
-        return Response(status_code=status.HTTP_204_NO_CONTENT)
-
     except ParserException as e:
-        raise HTTPException(status_code=204, detail=e)
+        raise HTTPException(status_code=400, detail=e)
 
     except NoSuchTableError:
-        raise HTTPException(status_code=204, detail=f"Source table with id ({table_id}) not found")
+        raise HTTPException(status_code=400, detail=f"Source table with id ({table_id}) not found")
+
+    if result.rowcount == 0:
+        raise HTTPException(status_code=400, detail="No rows patched, if this is unexpected please report as bug")
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000, headers=[("Access-Control-Allow-Origin", "*")])
+    uvicorn.run(app, host="0.0.0.0", port=8000, headers=[("Access-Control-Expose-Headers", "X-Total-Count")])

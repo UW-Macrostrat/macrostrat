@@ -11,18 +11,25 @@ import starlette.requests
 from fastapi import FastAPI, HTTPException
 
 from sqlalchemy.sql.expression import SQLColumnExpression
-from sqlalchemy import and_, Column, not_
+from sqlalchemy import and_, Column, not_, Table
 
 
 class ParserException(Exception):
     pass
 
+
+def cast_to_column_type(column: Column, value):
+    try:
+        return column.type.python_type(value)
+    except Exception:
+        raise ParserException(f"Value ({value}) could not be cast to appropriate python type ({column.type.python_type})")
+
+
 # Expectation is that the query will be formatted like so
 # field=eq.value
 # which translates to
 # field = 'value'
-
-def get_column_expression(column_name, operators, value):
+def get_column_expression(column: Column, operators, value: str):
 
     if len(operators) == 0:
         raise ParserException(f"Query parameters invalid")
@@ -30,36 +37,52 @@ def get_column_expression(column_name, operators, value):
     match operators[0]:
 
         case "not":
-            return not_(get_column_expression(column_name, operators[1:], value))
+            return not_(get_column_expression(column, operators[1:], value))
 
         case "eq":
-            return Column(column_name).__eq__(value)
+            cast_to_column_type(column, value)
+            return column.__eq__(value)
 
         case "lt":
-            return Column(column_name).__lt__(value)
+            cast_to_column_type(column, value)
+            return column.__lt__(value)
 
         case "le":
-            return Column(column_name).__le__(value)
+            cast_to_column_type(column, value)
+            return column.__le__(value)
 
         case "gt":
-            return Column(column_name).__gt__(value)
+            cast_to_column_type(column, value)
+            return column.__gt__(value)
 
         case "ge":
-            return Column(column_name).__ge__(value)
+            cast_to_column_type(column, value)
+            return column.__ge__(value)
 
         case "ne":
-            return Column(column_name).__ne__(value)
+            cast_to_column_type(column, value)
+            return column.__ne__(value)
 
         case "like":
-            return Column(column_name).like(value)
+            cast_to_column_type(column, value)
+            return column.like(value)
+
+        case "in":
+            if value[0] != "(" or value[-1] != ")":
+                raise ParserException(f"Query param value for in must be in form (x,y,z)")
+
+            values = value[1:-1].split(",")
+            clean_values = map(lambda x: cast_to_column_type(column, x), values)
+
+            return column.in_(clean_values)
 
         case "is":
             if value.lower() == "false":
-                return Column(column_name).is_(False)
+                return column.is_(False)
             elif value.lower() == "true":
-                return Column(column_name).is_(True)
+                return column.is_(True)
             elif value.lower() == "null":
-                return Column(column_name).is_(None)
+                return column.is_(None)
             else:
                 raise ParserException(f"Query params outside valid set: {operators}")
 
@@ -67,18 +90,21 @@ def get_column_expression(column_name, operators, value):
             raise ParserException(f"Query params outside valid set: {operators}")
 
 
-def query_parser(query_params: starlette.requests.QueryParams) -> SQLColumnExpression:
+def query_parser(query_params: list, table: Table) -> SQLColumnExpression:
 
     column_expressions = []
 
-    for column_name, encoded_expression in query_params.items():
+    for column_name, encoded_expression in query_params:
 
         encoded_expression_split = encoded_expression.split(".")
 
         operators, value = encoded_expression_split[:-1], encoded_expression_split[-1]
+
         value = urllib.parse.unquote(value)
 
-        column_expression = get_column_expression(column_name, operators, value)
+        column = table.c[column_name]
+
+        column_expression = get_column_expression(column, operators, value)
 
         column_expressions.append(column_expression)
 
