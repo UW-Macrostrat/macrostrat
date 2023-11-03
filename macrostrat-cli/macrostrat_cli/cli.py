@@ -159,14 +159,25 @@ def config():
             print(f"{k}: {v}")
 
 
+def local_install(path: Path):
+    run(
+        ["poetry", "install"],
+        cwd=path.expanduser().resolve(),
+        env={**environ, "POETRY_VIRTUALENVS_CREATE": "False"},
+    )
+
+
 @main.command()
 def install():
     """Install Macrostrat subsystems if available."""
     if hasattr(settings, "corelle_src"):
         print("Installing corelle")
-        run(
-            ["poetry", "install"], cwd=Path(settings.corelle_src).expanduser().resolve()
-        )
+        local_install(Path(settings.corelle_src))
+
+    # TODO: move map integration subsystem into this repository
+    if hasattr(settings, "map_integration_src"):
+        print("Installing map integration subsystem")
+        local_install(Path(settings.map_integration_src))
 
 
 main.add_typer(v2_app, name="v2")
@@ -266,6 +277,7 @@ try:
 
 except ImportError as err:
     pass
+
 
 # Commands to manage this command-line interface
 self_app = typer.Typer()
