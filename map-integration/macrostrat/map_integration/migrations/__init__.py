@@ -28,6 +28,7 @@ def change_legacy_table_names():
             "UPDATE maps.sources SET primary_table = :new_table_name WHERE source_id = :source_id",
             params=dict(new_table_name=new_table_name, source_id=source_id),
         )
+        db.session.commit()
 
 
 def change_column_names():
