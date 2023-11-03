@@ -24,6 +24,9 @@ def sql_file(key: str) -> str:
 
 
 def create_fixtures():
+    raise Exception(
+        "This is currently not representative of the Macrostrat v2 database design."
+    )
     sql_files = list(Path(__file__).parent.glob("fixtures/*.sql"))
     sql_files.sort()
     for f in sql_files:
