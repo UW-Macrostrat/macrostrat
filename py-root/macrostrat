@@ -1,8 +1,7 @@
 #!/usr/bin/env bash 
 # Run in this script's virtual environment
 # Get Poetry's virtual environment path
-poetry env info --path > /dev/null 2>&1
-if [ $? -eq 0 ]; then
+if [ -x "$(command -v poetry)" ]; then
   # Get script directory (reading symlink)
   SCRIPT_DIR="$(cd "$(dirname "$(readlink "$0")")" && pwd)"
   VENV_PATH="$(cd "$SCRIPT_DIR" && poetry env info --path)"
