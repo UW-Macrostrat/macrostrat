@@ -23,8 +23,6 @@ from api.query_parser import query_parser
 
 load_dotenv()
 
-INTEGRATION_DATABASE_URL = environ.get("DB_URL", None)
-
 engine: AsyncEngine = None
 
 
@@ -34,7 +32,17 @@ def get_engine():
 
 async def connect_engine() -> AsyncEngine:
     global engine
-    engine = create_async_engine(INTEGRATION_DATABASE_URL)
+
+    # Check the uri and DB_URL for the database connection string
+    # uri is how the Postgres Operator passes, DB_URL is nicer for .env files
+    db_url = environ.get("DB_URL", None)
+    db_url = environ.get("uri", db_url)
+
+    # Make sure this is all run async
+    if db_url.startswith("postgresql://"):
+        db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+    engine = create_async_engine(db_url)
 
 
 async def dispose_engine():
