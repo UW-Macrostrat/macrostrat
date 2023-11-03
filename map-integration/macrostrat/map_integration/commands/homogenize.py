@@ -1,23 +1,30 @@
 from ..database import db
 from rich import print
 from psycopg2.sql import Identifier, SQL
+from pathlib import Path
+from typer import Argument
 
 
-def prepare_fields(source_prefix: str):
+def prepare_fields(source_prefix: str = None, all: bool = False):
+    if all:
+        prepare_fields_for_all_sources()
+        return
+
+    if source_prefix is None:
+        raise ValueError("You must specify a source prefix or pass --all")
+
     """Prepare empty fields for manual cleaning."""
     schema = "sources"
-
     source_id = get_sources_record(source_prefix)
 
-    for table_suffix in ("_polygons", ""):
-        # The old format didn't specify the 'polygons' suffix
-        # but the new one does.
-        table = f"{source_prefix}{table_suffix}"
-        add_polygon_columns(schema, table)
-        add_primary_key_column(schema, table)
-        _set_source_id(schema, table, source_id)
+    # The old format didn't specify the 'polygons' suffix
+    # but the new one does.
+    poly_table = f"{source_prefix}_polygons"
+    add_polygon_columns(schema, poly_table)
+    add_primary_key_column(schema, poly_table)
+    _set_source_id(schema, poly_table, source_id)
 
-    linework_table = f"{source_prefix}_linestrings"
+    linework_table = f"{source_prefix}_lines"
     add_linework_columns(schema, linework_table)
     add_primary_key_column(schema, linework_table)
     _set_source_id(schema, linework_table, source_id)
@@ -27,14 +34,21 @@ def prepare_fields(source_prefix: str):
     )
 
 
+def prepare_fields_for_all_sources():
+    # Run prepare fields for all legacy map tables that don't have a _pkid column
+    sql = Path(__file__).parent.parent / "procedures" / "tables-without-pkid.sql"
+    for table in db.session.execute(sql.read_text()):
+        prepare_fields(table.slug)
+
+
 def get_sources_record(source_prefix):
     """Insert a record into the sources table."""
     return db.session.execute(
         """
-        INSERT INTO maps.sources (primary_table)
+        INSERT INTO maps.sources (slug)
         VALUES (:source_name)
-        ON CONFLICT (primary_table)
-        DO UPDATE SET primary_table = :source_name
+        ON CONFLICT (slug)
+        DO NOTHING
         RETURNING source_id
         """,
         params=dict(source_name=source_prefix),

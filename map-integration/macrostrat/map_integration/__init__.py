@@ -12,6 +12,7 @@ from .commands.sources import map_sources
 from .commands.rgeom import create_rgeom, create_webgeom
 
 from .database import db, create_fixtures
+from .migrations import run_migrations
 
 
 class NaturalOrderGroup(TyperGroup):
@@ -33,6 +34,8 @@ app = IngestionCLI(no_args_is_help=True, add_completion=False, name="map-ingesti
 
 app.add_command(create_fixtures, name="create-fixtures")
 app.add_command(map_sources, name="sources")
+
+app.add_command(run_migrations, name="migrate")
 
 
 app.add_command(ingest_map, name="ingest")
