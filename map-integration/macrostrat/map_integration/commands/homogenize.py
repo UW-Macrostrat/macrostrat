@@ -1,6 +1,6 @@
 from ..database import db
-from sqlalchemy.exc import ProgrammingError
 from rich import print
+from psycopg2.sql import Identifier, SQL
 
 
 def prepare_fields(source_prefix: str):
@@ -76,52 +76,38 @@ def add_polygon_columns(schema, table_name):
 
 
 def _apply_column_mapping(schema, table_name, columns, rename_geometry=True):
+    table = Identifier(schema, table_name)
+
+    sql = "ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} {type}"
     for name, type in columns.items():
-        add_column(schema=schema, table_name=table_name, name=name, type=type)
+        db.run_sql(
+            sql, params=dict(table=table, column=Identifier(name), type=SQL(type))
+        )
 
     # Rename the geometry column if necessary
     if not rename_geometry:
         return
 
-    sql = "ALTER TABLE {schema}.{table_name} RENAME COLUMN geometry TO geom".format(
-        schema=schema, table_name=table_name
+    db.run_sql(
+        "ALTER TABLE {table} RENAME COLUMN geometry TO geom",
+        params=dict(table=table),
     )
-    exec_sql(sql)
 
 
 def add_primary_key_column(schema, table_name, column_name=None):
-
     if column_name is None:
-        column_name = "db_id"
+        column_name = "_pkid"
 
-    sql = "ALTER TABLE {schema}.{table_name} ADD COLUMN {column_name} SERIAL PRIMARY KEY".format(
-        schema=schema,
-        table_name=table_name,
-        column_name=column_name
+    db.run_sql(
+        "ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} SERIAL PRIMARY KEY",
+        params=dict(
+            table=Identifier(schema, table_name), column=Identifier(column_name)
+        ),
     )
-
-    exec_sql(sql)
-
-# Use dirty string formatting for now
-def add_column(**kwargs):
-    sql = "ALTER TABLE {schema}.{table_name} ADD COLUMN IF NOT EXISTS {name} {type}".format(
-        **kwargs
-    )
-
-    exec_sql(sql)
 
 
 def _set_source_id(schema, table, source_id):
-    exec_sql(
-        f"UPDATE {schema}.{table} SET source_id = :source_id", dict(source_id=source_id)
+    db.run_sql(
+        "UPDATE {table} SET source_id = :source_id",
+        params=dict(table=Identifier(schema, table), source_id=source_id),
     )
-
-
-def exec_sql(sql, params=None):
-    try:
-        db.session.execute(sql, params)
-        db.session.commit()
-        print("[dim]" + sql)
-    except ProgrammingError as e:
-        print("[dim red]" + str(sql))
-        db.session.rollback()
