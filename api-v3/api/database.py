@@ -176,6 +176,8 @@ async def select_sources_sub_table(
             .where(column_expressions)
         )
 
+        x = str(stmt.compile(compile_kwargs={"literal_binds": True}))
+
         result = await conn.execute(stmt)
 
         response = SQLResponse(result.keys(), result.fetchall())

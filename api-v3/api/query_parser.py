@@ -13,6 +13,7 @@ from fastapi import FastAPI, HTTPException
 from sqlalchemy.sql.expression import SQLColumnExpression
 from sqlalchemy import and_, Column, not_, Table
 
+VALID_OPERATORS = ["not", "eq", "lt", "le", "gt", "ge", "ne", "like", "in", "is"]
 
 class ParserException(Exception):
     pass
@@ -64,6 +65,10 @@ def get_column_expression(column: Column, operators, value: str):
             return column.__ne__(value)
 
         case "like":
+
+            if value[0] != "%" or value[-1] != "%":
+                value = f"%{value}%"
+
             value = cast_to_column_type(column, value)
             return column.like(value)
 
@@ -90,15 +95,35 @@ def get_column_expression(column: Column, operators, value: str):
             raise ParserException(f"Query params outside valid set: {operators}")
 
 
+def decompose_encoded_expression(encoded_expression: str) -> tuple:
+
+    encoded_expression_split = encoded_expression.split(".")
+
+    if len(encoded_expression_split) == 2:
+        return encoded_expression_split[:1], encoded_expression_split[1]
+
+    else:
+        if encoded_expression_split[0] == "not":
+
+            if encoded_expression_split[1] in VALID_OPERATORS:
+                return encoded_expression_split[0:2], ".".join(encoded_expression_split[2:])
+
+            else:
+                raise ParserException(f"Query is invalid. Use these Operators only {VALID_OPERATORS}")
+
+        elif encoded_expression_split[0] in VALID_OPERATORS:
+
+            return encoded_expression_split[:1], ".".join(encoded_expression_split[1:])
+
+
+
 def query_parser(query_params: list, table: Table) -> SQLColumnExpression:
 
     column_expressions = []
 
     for column_name, encoded_expression in query_params:
 
-        encoded_expression_split = encoded_expression.split(".")
-
-        operators, value = encoded_expression_split[:-1], encoded_expression_split[-1]
+        operators, value = decompose_encoded_expression(encoded_expression)
 
         value = urllib.parse.unquote(value)
 

@@ -1,6 +1,9 @@
 import pytest
 
 import urllib.parse
+
+from sqlalchemy import Table, MetaData, Column, String
+
 from api.query_parser import query_parser
 
 from starlette.requests import QueryParams
@@ -148,3 +151,27 @@ class TestParser:
         sql = query_parser(query_params)
 
         assert compile_statement(sql) == "test_column NOT LIKE '%value%'"
+
+    def test_period_in_string(self):
+
+        params = {
+            'test_column': 'like.%2.5 Ga to 3.2 Ga%'
+        }
+
+        query_params = QueryParams(params)
+
+        sql = query_parser(query_params.items(), Table("test_table", MetaData(), Column("test_column", String)))
+
+        assert compile_statement(sql) == "test_table.test_column LIKE '%2.5 Ga to 3.2 Ga%'"
+
+    def test_period_in_string(self):
+
+        params = {
+            'test_column': 'like.Felsic'
+        }
+
+        query_params = QueryParams(params)
+
+        sql = query_parser(query_params.items(), Table("test_table", MetaData(), Column("test_column", String)))
+
+        assert compile_statement(sql) == "test_table.test_column LIKE '%Felsic%'"
