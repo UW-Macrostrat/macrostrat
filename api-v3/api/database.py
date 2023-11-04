@@ -54,20 +54,31 @@ def get_async_session(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
     return async_sessionmaker(engine)
 
 
-async def source_id_to_primary_table(async_session: async_sessionmaker[AsyncSession], source_id: id):
+async def source_id_to_primary_table(
+    async_session: async_sessionmaker[AsyncSession], source_id: id
+):
     async with async_session() as session:
         stmt = select(schemas.Sources).where(schemas.Sources.source_id == source_id)
         result = await session.scalar(stmt)
 
         if result is None:
-            raise NoResultFound(f"Could not find primary_table corresponding with source_id: {source_id}")
+            raise NoResultFound(
+                f"Could not find primary_table corresponding with source_id: {source_id}"
+            )
 
         return result.primary_table
 
 
-async def get_sources(async_session: async_sessionmaker[AsyncSession], page: int = 0, page_size: int = 100):
+async def get_sources(
+    async_session: async_sessionmaker[AsyncSession], page: int = 0, page_size: int = 100
+):
     async with async_session() as session:
-        stmt = select(schemas.Sources).offset(page_size * page).limit(page_size).order_by(schemas.Sources.source_id)
+        stmt = (
+            select(schemas.Sources)
+            .offset(page_size * page)
+            .limit(page_size)
+            .order_by(schemas.Sources.source_id)
+        )
         result = await session.scalars(stmt)
 
         return [*result]
@@ -75,8 +86,9 @@ async def get_sources(async_session: async_sessionmaker[AsyncSession], page: int
 
 async def get_schema_tables(engine: AsyncEngine, schema: str):
     async with engine.begin() as conn:
-
-        q = text("SELECT table_name FROM information_schema.tables WHERE table_schema = :schema")
+        q = text(
+            "SELECT table_name FROM information_schema.tables WHERE table_schema = :schema"
+        )
         params = {"schema": schema}
         q = q.bindparams(**params)
 
@@ -89,8 +101,8 @@ async def get_schema_tables(engine: AsyncEngine, schema: str):
 # Here starts the use on the engine object directly
 #
 
-class SQLResponse:
 
+class SQLResponse:
     def __init__(self, columns, results):
         self.columns = list(columns)
         self.results = results
@@ -102,7 +114,6 @@ class SQLResponse:
         for result in self.results:
             d = {}
             for i, v in enumerate(result):
-
                 d[self.columns[i]] = result[i]
 
             l.append(d)
@@ -113,18 +124,19 @@ class SQLResponse:
 async def get_polygon_table_name(engine: AsyncEngine, table_id: int) -> str:
     session = get_async_session(engine)
     try:
-        primary_table = await source_id_to_primary_table(session, table_id)
-        return f"{primary_table}_polygons"
+        return await source_id_to_primary_table(session, table_id)
     except NoResultFound as e:
         raise NoSuchTableError(e)
 
+
 async def get_sources_sub_table_count(engine: AsyncEngine, table_id: int) -> int:
     async with engine.begin() as conn:
-
         # Grabbing a table from the database as it is
         metadata = MetaData(schema="sources")
         polygon_table = await get_polygon_table_name(engine, table_id)
-        table = await conn.run_sync(lambda sync_conn: Table(polygon_table, metadata, autoload_with=sync_conn))
+        table = await conn.run_sync(
+            lambda sync_conn: Table(polygon_table, metadata, autoload_with=sync_conn)
+        )
 
         stmt = select(func.count()).select_from(table)
 
@@ -133,25 +145,36 @@ async def get_sources_sub_table_count(engine: AsyncEngine, table_id: int) -> int
         return result.scalar()
 
 
-async def select_sources_sub_table(engine: AsyncEngine, table_id: int, page: int = 0, page_size: int = 100, query_params: list = None) -> SQLResponse:
+async def select_sources_sub_table(
+    engine: AsyncEngine,
+    table_id: int,
+    page: int = 0,
+    page_size: int = 100,
+    query_params: list = None,
+) -> SQLResponse:
     async with engine.begin() as conn:
-
         # Grabbing a table from the database as it is
         metadata = MetaData(schema="sources")
         polygon_table = await get_polygon_table_name(engine, table_id)
-        table = await conn.run_sync(lambda sync_conn: Table(polygon_table, metadata, autoload_with=sync_conn))
+        table = await conn.run_sync(
+            lambda sync_conn: Table(polygon_table, metadata, autoload_with=sync_conn)
+        )
 
         # Extract filters from the query parameters
         column_expressions = query_parser(query_params, table)
 
         # Strip out the unwanted columns
-        ignored_columns = ['geom']  # No reason that this moment to pass this through
-        selected_columns = table.c[*[col.key for col in table.c if col.key not in ignored_columns]]
+        ignored_columns = ["geom"]  # No reason that this moment to pass this through
+        selected_columns = table.c[
+            *[col.key for col in table.c if col.key not in ignored_columns]
+        ]
 
-        stmt = select(selected_columns)\
-            .limit(page_size)\
-            .offset(page_size * page)\
+        stmt = (
+            select(selected_columns)
+            .limit(page_size)
+            .offset(page_size * page)
             .where(column_expressions)
+        )
 
         result = await conn.execute(stmt)
 
@@ -160,13 +183,16 @@ async def select_sources_sub_table(engine: AsyncEngine, table_id: int, page: int
         return response
 
 
-async def patch_sources_sub_table(engine: AsyncEngine, table_id: int, update_values: dict, query_params: list = None) -> CursorResult:
+async def patch_sources_sub_table(
+    engine: AsyncEngine, table_id: int, update_values: dict, query_params: list = None
+) -> CursorResult:
     async with engine.begin() as conn:
-
         # Grabbing a table from the database as it is
         metadata = MetaData(schema="sources")
         polygon_table = await get_polygon_table_name(engine, table_id)
-        table = await conn.run_sync(lambda sync_conn: Table(polygon_table, metadata, autoload_with=sync_conn))
+        table = await conn.run_sync(
+            lambda sync_conn: Table(polygon_table, metadata, autoload_with=sync_conn)
+        )
 
         # Extract filters from the query parameters
         column_expressions = query_parser(query_params, table)
