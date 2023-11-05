@@ -19,7 +19,7 @@ from starlette.requests import QueryParams
 from dotenv import load_dotenv
 
 import api.schemas as schemas
-from api.query_parser import query_parser
+from api.query_parser import QueryParser
 
 load_dotenv()
 
@@ -124,7 +124,8 @@ class SQLResponse:
 async def get_polygon_table_name(engine: AsyncEngine, table_id: int) -> str:
     session = get_async_session(engine)
     try:
-        return await source_id_to_primary_table(session, table_id)
+        primary_table = await source_id_to_primary_table(session, table_id)
+        return f"{primary_table}_polygons"
     except NoResultFound as e:
         raise NoSuchTableError(e)
 
@@ -160,21 +161,24 @@ async def select_sources_sub_table(
             lambda sync_conn: Table(polygon_table, metadata, autoload_with=sync_conn)
         )
 
-        # Extract filters from the query parameters
-        column_expressions = query_parser(query_params, table)
-
         # Strip out the unwanted columns
         ignored_columns = ["geom"]  # No reason that this moment to pass this through
         selected_columns = table.c[
             *[col.key for col in table.c if col.key not in ignored_columns]
         ]
 
-        stmt = (
-            select(selected_columns)
-            .limit(page_size)
-            .offset(page_size * page)
-            .where(column_expressions)
-        )
+        # Extract filters from the query parameters
+        query_parser = QueryParser(columns=selected_columns, query_params=query_params)
+        if query_parser.get_group_by_column() is not None:
+            selected_columns = query_parser.get_group_by_select_columns()
+
+        stmt = select(*selected_columns)\
+            .limit(page_size)\
+            .offset(page_size * page)\
+            .where(query_parser.where_expressions())
+
+        if query_parser.get_group_by_column() is not None:
+            stmt = stmt.group_by(query_parser.get_group_by_column())
 
         x = str(stmt.compile(compile_kwargs={"literal_binds": True}))
 
@@ -197,9 +201,9 @@ async def patch_sources_sub_table(
         )
 
         # Extract filters from the query parameters
-        column_expressions = query_parser(query_params, table)
+        query_parser = QueryParser(columns=table.columns, query_params=query_params)
 
-        stmt = update(table).where(column_expressions).values(**update_values)
+        stmt = update(table).where(query_parser.where_expressions()).values(**update_values)
 
         x = str(stmt.compile(compile_kwargs={"literal_binds": True}))
 

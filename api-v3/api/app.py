@@ -15,7 +15,7 @@ from sqlalchemy.exc import NoResultFound, NoSuchTableError
 from api.models import PolygonModel, Sources
 from api.database import get_engine, connect_engine, dispose_engine, select_sources_sub_table, patch_sources_sub_table, get_async_session
 import api.database as db
-from api.query_parser import query_parser, ParserException
+from api.query_parser import ParserException
 
 
 @asynccontextmanager

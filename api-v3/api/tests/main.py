@@ -204,4 +204,26 @@ class TestAPI:
 
     assert response_json["detail"] == "No rows patched, if this is unexpected please report as bug"
 
+  def test_group_by_source_table(self, api_client):
+    group_response = api_client.get(
+      f"/sources/{TEST_SOURCE_TABLE.source_id}/polygons",
+      params={"PTYPE": "group_by"}
+    )
+
+    assert group_response.status_code == 200
+
+    group_data = group_response.json()
+    comparison_values = {r['PTYPE']: r['_pkid'] for r in group_data}
+
+    assert len(group_data) > 0
+
+    full_response = api_client.get(f"/sources/{TEST_SOURCE_TABLE.source_id}/polygons")
+    assert full_response.status_code == 200
+    full_data = full_response.json()
+
+    for row in full_data:
+      assert str(row["_pkid"]) in comparison_values[row["PTYPE"]]
+
+
+
 
