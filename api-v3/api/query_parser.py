@@ -96,7 +96,7 @@ class QueryParser:
 
         return columns
 
-    def order_by_expressions(self):
+    def get_order_by_columns(self):
         """Returns the order by expressions for the query"""
 
         order_by_columns = []

@@ -187,3 +187,21 @@ class TestParser:
 
         assert stmt[0] == "STRING_AGG(DISTINCT CAST(test_table.string_column AS VARCHAR), ',')"
         assert stmt[1] == "test_table.int_column"
+
+    def test_order_by(self):
+        params = {
+            "int_column": "order_by"
+        }
+
+        query_parser = QueryParser(columns=TEST_TABLE.columns, query_params=params.items())
+        assert query_parser.get_order_by_columns()[0].name == "int_column"
+
+    def test_order_by_multiple(self):
+        params = {
+            "int_column": "order_by",
+            "string_column": "order_by"
+        }
+
+        query_parser = QueryParser(columns=TEST_TABLE.columns, query_params=params.items())
+        assert query_parser.get_order_by_columns()[0].name == "int_column"
+        assert query_parser.get_order_by_columns()[1].name == "string_column"

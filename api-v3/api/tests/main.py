@@ -132,14 +132,14 @@ class TestAPI:
 
     response = api_client.get(
       f"/sources/{TEST_SOURCE_TABLE.source_id}/polygons",
-      params={"db_id": f"in.{db_id_str}"},
+      params={"_pkid": f"in.{db_id_str}"},
     )
 
     assert response.status_code == 200
 
     response_json = response.json()
 
-    assert all([x["db_id"] in db_ids for x in response_json])
+    assert all([x["_pkid"] in db_ids for x in response_json])
 
 
   def test_patch_source_tables_with_filter_in(self, api_client):
@@ -169,7 +169,7 @@ class TestAPI:
   def test_patch_source_tables_with_filter(self, api_client):
 
     body = {"descrip": "Test"}
-    params = {"db_id": "in.(1)"}
+    params = {"_pkid": "in.(1)"}
 
 
     response = api_client.patch(
@@ -185,7 +185,7 @@ class TestAPI:
     assert response.status_code == 200
     response_json = response.json()
 
-    selected_values = filter(lambda x: x["db_id"] == 1, response_json)
+    selected_values = filter(lambda x: x["_pkid"] == 1, response_json)
 
     assert all([x["descrip"] == "Test" for x in selected_values])
 
@@ -224,6 +224,20 @@ class TestAPI:
     for row in full_data:
       assert str(row["_pkid"]) in comparison_values[row["PTYPE"]]
 
+
+  def test_order_by_source_table(self, api_client):
+    order_response = api_client.get(
+      f"/sources/{TEST_SOURCE_TABLE.source_id}/polygons",
+      params={"_pkid": "order_by"}
+    )
+
+    assert order_response.status_code == 200
+
+    order_data = order_response.json()
+
+    assert len(order_data) > 0
+
+    assert all([order_data[i]["_pkid"] <= order_data[i+1]["_pkid"] for i in range(len(order_data)-1)])
 
 
 
