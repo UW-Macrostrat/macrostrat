@@ -24,6 +24,8 @@ def prepare_fields(source_prefix: str = None, all: bool = False):
     add_primary_key_column(schema, poly_table)
     _set_source_id(schema, poly_table, source_id)
 
+    update_legacy_table_columns(schema, f"{source_prefix}_polygons")
+
     linework_table = f"{source_prefix}_lines"
     add_linework_columns(schema, linework_table)
     add_primary_key_column(schema, linework_table)
@@ -59,7 +61,8 @@ common_columns = {
     "source_id": "integer",
     "orig_id": "integer",
     "descrip": "text",
-    "ready": "boolean",  # Ready to be inserted?
+    "omit": "boolean",
+    # "ready": "boolean",  # Ready to be inserted?
 }
 
 
@@ -114,15 +117,22 @@ def add_primary_key_column(schema, table_name, column_name=None):
 
     params = dict(table=Identifier(schema, table_name), column=Identifier(column_name))
 
-    # Handle old tables that have a gid column instead of a _pkid column
-    db.run_sql(
-        "ALTER TABLE {table} RENAME COLUMN gid TO {column}",
-        params=params,
-    )
-
     db.run_sql(
         "ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} SERIAL PRIMARY KEY",
         params=params,
+    )
+
+
+def update_legacy_table_columns(schema, table_name):
+    """Legacy tables had different standard names for several columns."""
+
+    db.run_sql(
+        """
+    ALTER TABLE {table} RENAME COLUMN gid TO _pkid;
+    UPDATE {table} SET  t_interval = late_id, b_interval = early_id;
+    UPDATE {table} SET omit = not ready WHERE ready IS NOT NULL;  
+    """,
+        params=dict(table=Identifier(schema, table_name)),
     )
 
 
