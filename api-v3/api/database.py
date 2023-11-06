@@ -125,7 +125,7 @@ async def get_polygon_table_name(engine: AsyncEngine, table_id: int) -> str:
     session = get_async_session(engine)
     try:
         primary_table = await source_id_to_primary_table(session, table_id)
-        return f"{primary_table}_polygons"
+        return f"{primary_table}"
     except NoResultFound as e:
         raise NoSuchTableError(e)
 
@@ -172,15 +172,22 @@ async def select_sources_sub_table(
         if query_parser.get_group_by_column() is not None:
             selected_columns = query_parser.get_group_by_select_columns()
 
-        stmt = select(*selected_columns)\
-            .limit(page_size)\
-            .offset(page_size * page)\
+        stmt = (
+            select(*selected_columns)
+            .limit(page_size)
+            .offset(page_size * page)
             .where(query_parser.where_expressions())
+        )
 
         if query_parser.get_group_by_column() is not None:
-            stmt = stmt.group_by(query_parser.get_group_by_column()).order_by(query_parser.get_group_by_column())
+            stmt = stmt.group_by(query_parser.get_group_by_column()).order_by(
+                query_parser.get_group_by_column()
+            )
 
-        if query_parser.get_order_by_columns() is not None and query_parser.get_group_by_column() is None:
+        if (
+            query_parser.get_order_by_columns() is not None
+            and query_parser.get_group_by_column() is None
+        ):
             stmt = stmt.order_by(*query_parser.get_order_by_columns())
 
         x = str(stmt.compile(compile_kwargs={"literal_binds": True}))
@@ -206,7 +213,11 @@ async def patch_sources_sub_table(
         # Extract filters from the query parameters
         query_parser = QueryParser(columns=table.columns, query_params=query_params)
 
-        stmt = update(table).where(query_parser.where_expressions()).values(**update_values)
+        stmt = (
+            update(table)
+            .where(query_parser.where_expressions())
+            .values(**update_values)
+        )
 
         x = str(stmt.compile(compile_kwargs={"literal_binds": True}))
 

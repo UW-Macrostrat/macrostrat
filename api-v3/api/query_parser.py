@@ -8,13 +8,18 @@ import urllib.parse
 from dataclasses import dataclass
 
 import starlette.requests
-
+import logging
 from fastapi import FastAPI, HTTPException
+
 
 from sqlalchemy.sql.expression import SQLColumnExpression
 from sqlalchemy import and_, Column, not_, Table, func, distinct, cast, String
 
 VALID_OPERATORS = ["not", "eq", "lt", "le", "gt", "ge", "ne", "like", "in", "is"]
+
+
+log = logging.getLogger(__name__)
+
 
 class ParserException(Exception):
     pass
@@ -24,13 +29,16 @@ def cast_to_column_type(column: Column, value):
     try:
         return column.type.python_type(value)
     except Exception:
-        raise ParserException(f"Value ({value}) could not be cast to appropriate python type ({column.type.python_type})")
+        raise ParserException(
+            f"Value ({value}) could not be cast to appropriate python type ({column.type.python_type})"
+        )
 
 
 # Expectation is that the query will be formatted like so
 # field=eq.value
 # which translates to
 # field = 'value'
+
 
 @dataclass
 class QueryParameter:
@@ -56,7 +64,11 @@ class QueryParser:
 
         for query_param in self.decomposed_query_params.values():
             if query_param.operators[0] not in ["group_by", "order_by"]:
-                where_expressions.append(self._get_operator_expression(query_param.column, query_param.operators, query_param.value))
+                where_expressions.append(
+                    self._get_operator_expression(
+                        query_param.column, query_param.operators, query_param.value
+                    )
+                )
 
         if len(where_expressions) == 1:
             return where_expressions[0]
@@ -91,7 +103,9 @@ class QueryParser:
                 columns.append(column)
             else:
                 columns.append(
-                    func.STRING_AGG(distinct(cast(column, String)), ',').label(column.name)
+                    func.STRING_AGG(distinct(cast(column, String)), ",").label(
+                        column.name
+                    )
                 )
 
         return columns
@@ -108,24 +122,25 @@ class QueryParser:
         return order_by_columns
 
     def _decompose_query_params(self) -> dict:
-
         decomposed_query_params = {}
 
         for column_name, encoded_expression in self.query_params:
-
             operators, value = self._decompose_encoded_expression(encoded_expression)
             value = urllib.parse.unquote(value)
 
+            col = self.columns.get(column_name, None)
+            if col is None:
+                # We should eventually make this an error
+                log.warning(f"Column ({column_name}) not found in table")
+                continue
+
             decomposed_query_params[column_name] = QueryParameter(
-                column=self.columns[column_name],
-                operators=operators,
-                value=value
+                column=col, operators=operators, value=value
             )
 
         return decomposed_query_params
 
     def _decompose_encoded_expression(self, encoded_expression) -> tuple:
-
         encoded_expression_split = encoded_expression.split(".")
 
         # If group_by or order_by, then there is no value
@@ -140,27 +155,31 @@ class QueryParser:
 
         else:
             if encoded_expression_split[0] == "not":
-
                 if encoded_expression_split[1] in self.VALID_OPERATORS:
-                    return encoded_expression_split[0:2], ".".join(encoded_expression_split[2:])
+                    return encoded_expression_split[0:2], ".".join(
+                        encoded_expression_split[2:]
+                    )
 
                 else:
-                    raise ParserException(f"Query is invalid. Use these Operators only {self.VALID_OPERATORS}")
+                    raise ParserException(
+                        f"Query is invalid. Use these Operators only {self.VALID_OPERATORS}"
+                    )
 
             elif encoded_expression_split[0] in self.VALID_OPERATORS:
-
-                return encoded_expression_split[:1], ".".join(encoded_expression_split[1:])
+                return encoded_expression_split[:1], ".".join(
+                    encoded_expression_split[1:]
+                )
 
     @staticmethod
     def _get_operator_expression(column: Column, operators, value: str):
-
         if len(operators) == 0:
             raise ParserException(f"Query parameters invalid")
 
         match operators[0]:
-
             case "not":
-                return not_(QueryParser._get_operator_expression(column, operators[1:], value))
+                return not_(
+                    QueryParser._get_operator_expression(column, operators[1:], value)
+                )
 
             case "eq":
                 value = cast_to_column_type(column, value)
@@ -187,7 +206,6 @@ class QueryParser:
                 return column.__ne__(value)
 
             case "like":
-
                 if value[0] != "%" or value[-1] != "%":
                     value = f"%{value}%"
 
@@ -196,7 +214,9 @@ class QueryParser:
 
             case "in":
                 if value[0] != "(" or value[-1] != ")":
-                    raise ParserException(f"Query param value for in must be in form (x,y,z)")
+                    raise ParserException(
+                        f"Query param value for in must be in form (x,y,z)"
+                    )
 
                 values = value[1:-1].split(",")
                 clean_values = map(lambda x: cast_to_column_type(column, x), values)
@@ -211,10 +231,9 @@ class QueryParser:
                 elif value.lower() == "null":
                     return column.is_(None)
                 else:
-                    raise ParserException(f"Query params outside valid set: {operators}")
+                    raise ParserException(
+                        f"Query params outside valid set: {operators}"
+                    )
 
             case "_":
                 raise ParserException(f"Query params outside valid set: {operators}")
-
-
-
