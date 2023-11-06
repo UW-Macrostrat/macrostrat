@@ -112,11 +112,17 @@ def add_primary_key_column(schema, table_name, column_name=None):
     if column_name is None:
         column_name = "_pkid"
 
+    params = dict(table=Identifier(schema, table_name), column=Identifier(column_name))
+
+    # Handle old tables that have a gid column instead of a _pkid column
+    db.run_sql(
+        "ALTER TABLE {table} RENAME COLUMN gid TO {column}",
+        params=params,
+    )
+
     db.run_sql(
         "ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} SERIAL PRIMARY KEY",
-        params=dict(
-            table=Identifier(schema, table_name), column=Identifier(column_name)
-        ),
+        params=params,
     )
 
 
