@@ -1,8 +1,24 @@
-from fastapi import BackgroundTasks, Depends, FastAPI, Request
+from typing import Any, Callable, Dict, List, Literal, Optional
+from os import environ
+from buildpg import render
+from fastapi import (
+    BackgroundTasks,
+    Depends,
+    FastAPI,
+    HTTPException,
+    Path,
+    Query,
+    Request,
+)
+import json
+import typing
+import decimal
+from fastapi_utils.tasks import repeat_every
 from macrostrat.utils import get_logger, setup_stderr_logs
 from macrostrat.utils.timer import Timer
 from morecantile import Tile, TileMatrixSet
-from starlette.responses import JSONResponse
+from pydantic import BaseModel
+from starlette.responses import JSONResponse, Response
 from starlette_cramjam.middleware import CompressionMiddleware
 from timvt.db import close_db_connection, connect_to_db, register_table_catalog
 from timvt.dependencies import TileParams
@@ -12,32 +28,55 @@ from timvt.factory import (
     queryparams_to_kwargs,
 )
 from timvt.layer import FunctionRegistry
+from timvt.resources.enums import MimeTypes
 
 from .cache import get_tile_from_cache, set_cached_tile
 from .function_layer import StoredFunction
-from .utils import TileResponse, CacheMode, CacheStatus
-from fastapi_utils.tasks import repeat_every
-from buildpg import render
-from fastapi import HTTPException
-from pydantic import BaseModel
-from .image_tiles import prepare_image_tile_subsystem, MapnikLayerFactory
+from .utils import CacheMode, CacheStatus, TileResponse
+
+"""timvt.endpoints.factory: router factories."""
+
+from typing import Any, Callable, Dict, List, Literal, Optional
+from urllib.parse import urlencode
+
+from fastapi import APIRouter, Depends, FastAPI, Path, Query
+from morecantile import Tile
+from starlette.middleware.cors import CORSMiddleware
+from starlette.requests import Request
+from timvt.dependencies import LayerParams, TileParams
+from timvt.layer import Function, Layer, Table
+from timvt.models.mapbox import TileJSON
+from timvt.models.OGC import TileMatrixSetList
+from timvt.resources.enums import MimeTypes
+from titiler.core.errors import DEFAULT_STATUS_CODES, add_exception_handlers
+from titiler.core.factory import TilerFactory
+
+from .image_tiles import MapnikLayerFactory, prepare_image_tile_subsystem
+
+# Wire up legacy postgres database
+if not environ.get("DATABASE_URL") and "POSTGRES_DB" in environ:
+    environ["DATABASE_URL"] = environ["POSTGRES_DB"]
+
+
+def _first_value(values: List[Any], default: Any = None):
+    """Return the first not None value."""
+    return next(filter(lambda x: x is not None, values), default)
+
 
 log = get_logger(__name__)
 
-app = FastAPI(prefix="/tiles")
+app = FastAPI(prefix="/")
+
+app.state.timvt_function_catalog = FunctionRegistry()
 
 
 # Register Start/Stop application event handler to setup/stop the database connection
 @app.on_event("startup")
 async def startup_event():
     """Application startup: register the database connection and create table list."""
-    setup_stderr_logs("macrostrat_tileserver")
+    setup_stderr_logs("macrostrat_tileserver", "timvt")
     await connect_to_db(app)
-<<<<<<< HEAD
     # await register_table_catalog(app)
-=======
-    #await register_table_catalog(app)
->>>>>>> origin/carto-layer-fixes
     prepare_image_tile_subsystem()
 
 
@@ -70,51 +109,34 @@ app.add_middleware(CompressionMiddleware, minimum_size=0)
 
 MapnikLayerFactory(app)
 
+cog = TilerFactory()
+
+app.include_router(cog.router, prefix="/cog", tags=["Cloud Optimized GeoTIFF"])
+add_exception_handlers(app, DEFAULT_STATUS_CODES)
+
 
 class CachedVectorTilerFactory(VectorTilerFactory):
     def register_tiles(self):
         """Register /tiles endpoints."""
-        # super().register_tiles()
 
         @self.router.get(
-            "/{layer}/{z}/{x}/{y}.pbf",
-            **TILE_RESPONSE_PARAMS,
-            tags=["Tiles"],
-            deprecated=True,
+            "/{TileMatrixSetId}/{layer}/{z}/{x}/{y}", **TILE_RESPONSE_PARAMS
         )
-        @self.router.get(
-            "/{layer}/{z}/{x}/{y}.mvt",
-            **TILE_RESPONSE_PARAMS,
-            tags=["Tiles"],
-            deprecated=True,
-        )
-        @self.router.get(
-            "/{TileMatrixSetId}/{layer}/{z}/{x}/{y}.pbf",
-            **TILE_RESPONSE_PARAMS,
-            tags=["Tiles"],
-            deprecated=True,
-        )
-        @self.router.get(
-            "/{layer}/{z}/{x}/{y}",
-            **TILE_RESPONSE_PARAMS,
-            tags=["Tiles"],
-        )
-        @self.router.get(
-            "/{TileMatrixSetId}/{layer}/{z}/{x}/{y}",
-            **TILE_RESPONSE_PARAMS,
-            tags=["Tiles"],
-        )
+        @self.router.get("/{layer}/{z}/{x}/{y}", **TILE_RESPONSE_PARAMS)
         async def tile(
             request: Request,
             background_tasks: BackgroundTasks,
             tile: Tile = Depends(TileParams),
-            tms: TileMatrixSet = Depends(self.tms_dependency),
+            TileMatrixSetId: Literal[
+                tuple(self.supported_tms.list())
+            ] = self.default_tms,
             layer=Depends(self.layer_dependency),
             cache: CacheMode = CacheMode.prefer,
             # If cache query arg is set, don't cache the tile
         ):
             """Return vector tile."""
             pool = request.app.state.pool
+            tms = self.supported_tms.get(TileMatrixSetId)
 
             timer = Timer()
 
@@ -153,6 +175,69 @@ class CachedVectorTilerFactory(VectorTilerFactory):
                 cache_status = CacheStatus.miss
 
             return TileResponse(content, timer, cache_status=cache_status)
+
+        @self.router.get(
+            "/{TileMatrixSetId}/{layer}/tilejson.json",
+            response_model=TileJSON,
+            responses={200: {"description": "Return a tilejson"}},
+            response_model_exclude_none=True,
+        )
+        @self.router.get(
+            "/{layer}/tilejson.json",
+            response_model=TileJSON,
+            responses={200: {"description": "Return a tilejson"}},
+            response_model_exclude_none=True,
+        )
+        async def tilejson(
+            request: Request,
+            layer=Depends(self.layer_dependency),
+            TileMatrixSetId: Literal[
+                tuple(self.supported_tms.list())
+            ] = self.default_tms,
+            minzoom: Optional[int] = Query(
+                None, description="Overwrite default minzoom."
+            ),
+            maxzoom: Optional[int] = Query(
+                None, description="Overwrite default maxzoom."
+            ),
+        ):
+            """Return TileJSON document."""
+            tms = self.supported_tms.get(TileMatrixSetId)
+
+            path_params: Dict[str, Any] = {
+                "TileMatrixSetId": tms.identifier,
+                "layer": layer.id,
+                "z": "{z}",
+                "x": "{x}",
+                "y": "{y}",
+            }
+            tile_endpoint = self.url_for(request, "tile", **path_params)
+
+            qs_key_to_remove = ["tilematrixsetid", "minzoom", "maxzoom"]
+            query_params = [
+                (key, value)
+                for (key, value) in request.query_params._list
+                if key.lower() not in qs_key_to_remove
+            ]
+
+            if query_params:
+                tile_endpoint += f"?{urlencode(query_params)}"
+
+            # Get Min/Max zoom from layer settings if tms is the default tms
+            if tms.identifier == layer.default_tms:
+                minzoom = _first_value([minzoom, layer.minzoom])
+                maxzoom = _first_value([maxzoom, layer.maxzoom])
+
+            minzoom = minzoom if minzoom is not None else tms.minzoom
+            maxzoom = maxzoom if maxzoom is not None else tms.maxzoom
+
+            return {
+                "minzoom": minzoom,
+                "maxzoom": maxzoom,
+                "name": layer.id,
+                "bounds": layer.bounds,
+                "tiles": [tile_endpoint],
+            }
 
 
 # Register endpoints.
@@ -249,7 +334,43 @@ app.include_router(mvt_tiler.router, tags=["Tiles"])
 # )
 
 
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, decimal.Decimal):
+            return float(o)
+        return super(DecimalEncoder, self).default(o)
+
+
+class DecimalJSONResponse(JSONResponse):
+    def render(self, content: typing.Any) -> bytes:
+        return json.dumps(
+            content,
+            ensure_ascii=False,
+            allow_nan=False,
+            indent=None,
+            separators=(",", ":"),
+            cls=DecimalEncoder,
+        ).encode("utf-8")
+
+
+@app.get("/carto/rotation-models")
+async def rotation_models():
+    """Return a list of rotation models."""
+    pool = app.state.pool
+    q, p = render("SELECT * FROM corelle.model")
+    rows = await pool.fetch(q, *p)
+    data = [dict(row) for row in rows]
+    return DecimalJSONResponse(data)
+
+
 @app.get("/", include_in_schema=False)
 async def index(request: Request):
     """DEMO."""
     return JSONResponse({"message": "Macrostrat Tileserver"})
+
+
+# Open CORS policy
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+)

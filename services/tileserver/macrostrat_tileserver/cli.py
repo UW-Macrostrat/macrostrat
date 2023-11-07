@@ -11,7 +11,6 @@ load_dotenv()
 here = relative_path(__file__)
 root = (here).resolve()
 
-db_url = environ.get("DATABASE_URL")
 
 # App
 _cli = Typer(no_args_is_help=True, name="tileserver")
@@ -19,7 +18,9 @@ _cli = Typer(no_args_is_help=True, name="tileserver")
 
 @_cli.command(name="create-fixtures")
 def create_fixtures():
+    """Create database fixtures"""
     fixtures_dir = root / "fixtures"
+    db_url = environ.get("DATABASE_URL")
 
     db = Database(db_url)
 
@@ -28,10 +29,13 @@ def create_fixtures():
     for fn in files:
         list(db.run_sql(fn))
 
+
 @_cli.command(name="list-layers")
 def list_layers():
+    """List available map layers"""
     from .main import app
-    for k,v in app.state.function_catalog.funcs.items():
+
+    for k, v in app.state.function_catalog.funcs.items():
         print(k)
         print(v)
         print()

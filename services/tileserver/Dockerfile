@@ -45,12 +45,13 @@ RUN npm install -g carto
 # The rest of this (for vector tile generation and the server itself) should be easier.
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 POETRY_VIRTUALENVS_CREATE=false
 
-RUN pip install "poetry==1.3.2"
+RUN pip install "pip==23.2.1" && pip install "setuptools==68.2.2" && pip install "poetry==1.6.1"
 
 WORKDIR /app/
 
 # Copy only requirements to cache them in docker layer
 # Right now, Poetry lock file must exist to avoid hanging on dependency resolution
+COPY ./deps/timvt/ /app/deps/timvt/
 COPY ./pyproject.toml ./poetry.lock /app/
 
 # Create and activate our own virtual envrionment so that we can keep

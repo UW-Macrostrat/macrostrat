@@ -14,98 +14,22 @@ SELECT
   map_id,
   source_id,
   geom,
-  'tiny' scale
+  scale::text AS scale
 FROM
-  carto_new.tiny
-UNION ALL
-SELECT
-  map_id,
-  source_id,
-  geom,
-  'small' scale
-FROM
-  carto_new.small
-UNION ALL
-SELECT
-  map_id,
-  source_id,
-  geom,
-  'medium' scale
-FROM
-  carto_new.medium
-UNION ALL
-SELECT
-  map_id,
-  source_id,
-  geom,
-  'large' scale
-FROM carto_new.large;
+  carto.polygons;
 
 CREATE OR REPLACE VIEW tile_layers.line_data AS
 SELECT
-  line_id,
+  l.line_id,
   descrip::text AS descrip,
   name::text AS name,
-  new_direction::text AS direction,
-  new_type::text AS "type",
-  'tiny' scale
-FROM lines.tiny
-UNION ALL
-SELECT
-  line_id,
-  descrip::text AS descrip,
-  name::text AS name,
-  new_direction::text AS direction,
-  new_type::text AS "type",
-  'small' scale
-FROM lines.small
-UNION ALL
-SELECT
-  line_id,
-  descrip::text AS descrip,
-  name::text AS name,
-  new_direction::text AS direction,
-  new_type::text AS "type",
-  'medium' scale
-FROM lines.medium
-UNION ALL
-SELECT
-  line_id,
-  descrip::text AS descrip,
-  name::text AS name,
-  new_direction::text AS direction,
-  new_type::text AS "type",
-  'large' scale
-FROM lines.large;
+  direction::text AS direction,
+  type::text AS "type",
+  l.scale::text AS scale
+FROM carto.lines l
+JOIN maps.lines l1
+  ON l.line_id = l1.line_id;
 
-CREATE OR REPLACE VIEW tile_layers.carto_lines AS
-SELECT
-  x.line_id,
-  x.source_id,
-  x.geom,
-  'tiny' scale
-FROM carto_new.lines_tiny x
-UNION ALL
-SELECT
-  x.line_id,
-  x.source_id,
-  x.geom,
-  'small' scale
-FROM carto_new.lines_small x
-UNION ALL
-SELECT
-  x.line_id,
-  x.source_id,
-  x.geom,
-  'medium' scale
-FROM carto_new.lines_medium x
-UNION ALL
-SELECT
-  x.line_id,
-  x.source_id,
-  x.geom,
-  'large' scale
-FROM carto_new.lines_large x;
 
 /**
   == MAP LEGEND INFO ==
@@ -201,8 +125,8 @@ WITH mvt_features AS (
     source_id,
     geom
   FROM
-    tile_layers.carto_units
-  WHERE scale = mapsize
+    carto.polygons
+  WHERE scale::text = mapsize
     AND ST_Intersects(geom, projected_bbox)
 ), expanded AS (
   SELECT
@@ -233,27 +157,27 @@ WITH mvt_features AS (
     source_id,
     geom
   FROM
-    tile_layers.carto_lines
+    carto.lines
   WHERE
-    scale = mapsize
+    scale::text = mapsize
     AND ST_Intersects(geom, projected_bbox)
 ),
 expanded AS (
   SELECT
     z.line_id,
     z.source_id,
-    coalesce(q.descrip, '') AS descrip,
-    coalesce(q.name, '') AS name,
-    coalesce(q.direction, '') AS direction,
-    coalesce(q.type, '') AS "type",
+    coalesce(l.descrip, '') AS descrip,
+    coalesce(l.name, '') AS name,
+    coalesce(l.direction, '') AS direction,
+    coalesce(l.type, '') AS "type",
     tile_layers.tile_geom(z.geom, mercator_bbox) AS geom
   FROM mvt_features z
-  LEFT JOIN tile_layers.line_data q
-    ON z.line_id = q.line_id
+  LEFT JOIN maps.lines l
+    ON z.line_id = l.line_id
+    AND l.scale::text = ANY(linesize)
   LEFT JOIN maps.sources
     ON z.source_id = sources.source_id
   WHERE sources.status_code = 'active'
-    AND q.scale = ANY(linesize)
     --AND ST_Length(geom) > tolerance
 )
 SELECT
@@ -318,7 +242,8 @@ WITH mvt_features AS (
     geom
   FROM
     tile_layers.carto_units
-  WHERE scale = mapsize AND ST_Intersects(geom, projected_bbox)
+  WHERE scale::text = mapsize
+    AND ST_Intersects(geom, projected_bbox)
 ), expanded AS (
   SELECT
     z.map_id,
@@ -367,7 +292,7 @@ WITH mvt_features AS (
     source_id,
     geom
   FROM
-    tile_layers.carto_lines
+    carto.lines
   WHERE
     scale = mapsize
     AND ST_Intersects(geom, projected_bbox)
