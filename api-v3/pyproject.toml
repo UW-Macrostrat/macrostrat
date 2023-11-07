@@ -17,7 +17,16 @@ pytest-asyncio = "^0.21.1"
 uvicorn = "^0.23.2"
 geoalchemy2 = "^0.14.2"
 geojson-pydantic = "^1.0.1"
+pyjwt = "^2.8.0"
+werkzeug = "^3.0.1"
 
+[tool.poetry.group.dev.dependencies]
+bandit = "~1.7"
+black = "~23.10"
+isort = "~5.12"
+mypy = "~1.6"
+pylint = "~3.0"
+safety = "~2.3"
 
 [build-system]
 requires = ["poetry-core"]
@@ -25,3 +34,36 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+
+[tool.black]
+line-length = 96
+target-version = ["py311"]
+
+[tool.isort]
+line_length = 96
+profile = "black"
+
+[tool.mypy]
+explicit_package_bases = true
+namespace_packages = true
+
+check_untyped_defs = true
+strict_optional = true
+no_implicit_optional = true
+
+warn_no_return = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unreachable = true
+warn_unused_ignores = true
+
+color_output = false
+pretty = true
+show_error_codes = true
+
+incremental = true
+sqlite_cache = true
+
+[tool.pylint.messages-control]
+max-line-length = 96
+disable = "invalid-name,missing-class-docstring,missing-function-docstring"
