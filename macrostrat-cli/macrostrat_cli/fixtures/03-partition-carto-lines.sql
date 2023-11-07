@@ -64,3 +64,8 @@ ALTER TABLE carto.lines ATTACH PARTITION carto.lines_small FOR VALUES IN ('small
 ALTER TABLE carto.lines ATTACH PARTITION carto.lines_medium FOR VALUES IN ('medium');
 ALTER TABLE carto.lines ATTACH PARTITION carto.lines_large FOR VALUES IN ('large');
 
+-- Drop extra views that get created by the above
+DROP VIEW IF EXISTS carto_new.lines_tiny;
+DROP VIEW IF EXISTS carto_new.lines_small;
+DROP VIEW IF EXISTS carto_new.lines_medium;
+DROP VIEW IF EXISTS carto_new.lines_large;

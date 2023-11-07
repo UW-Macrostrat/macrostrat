@@ -110,3 +110,13 @@ FROM carto.polygons WHERE scale = 'large';
 
 CREATE INDEX IF NOT EXISTS carto_polygons_geom_gist ON carto.polygons USING gist (geom);
 
+-- Drop extra views that get created during the process
+DROP VIEW IF EXISTS carto_new.polygons_tiny;
+DROP VIEW IF EXISTS carto_new.polygons_small;
+DROP VIEW IF EXISTS carto_new.polygons_medium;
+DROP VIEW IF EXISTS carto_new.polygons_large;
+
+DROP VIEW IF EXISTS carto_new.lines_tiny;
+DROP VIEW IF EXISTS carto_new.lines_small;
+DROP VIEW IF EXISTS carto_new.lines_medium;
+DROP VIEW IF EXISTS carto_new.lines_large;

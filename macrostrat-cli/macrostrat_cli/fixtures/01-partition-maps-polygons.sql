@@ -103,3 +103,4 @@ CREATE INDEX polygons_name_idx ON maps.polygons(name);
 CREATE INDEX polygons_orig_id_idx ON maps.polygons(orig_id);
 CREATE INDEX polygons_source_id_idx ON maps.polygons(source_id);
 CREATE INDEX polygons_t_interval_idx ON maps.polygons(t_interval);
+

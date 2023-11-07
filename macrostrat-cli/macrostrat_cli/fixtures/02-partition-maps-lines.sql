@@ -179,3 +179,9 @@ SELECT
   type new_type,
   direction new_direction
 FROM maps.lines WHERE scale = 'large';
+
+-- Drop extra views that get created during the process
+DROP VIEW IF EXISTS  lines.lines_tiny;
+DROP VIEW IF EXISTS  lines.lines_small;
+DROP VIEW IF EXISTS  lines.lines_medium;
+DROP VIEW IF EXISTS  lines.lines_large;
