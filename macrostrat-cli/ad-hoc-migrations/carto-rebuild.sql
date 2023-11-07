@@ -5,6 +5,9 @@ tables. It would be better to have a unique constraint on map_id, but we can't
 do that until we've removed the duplicates.
 */
 
+ALTER TABLE carto.polygons ADD COLUMN updated boolean NOT NULL DEFAULT false;
+
+
 INSERT INTO carto.polygons_tiny (map_id, source_id, geom_scale, geom, scale, updated)
 SELECT
   map_id,
@@ -59,7 +62,11 @@ FROM carto.polygons_large
 GROUP BY (map_id, source_id, geom_scale, scale)
 HAVING count(map_id) > 1;
 
+DELETE FROM carto.polygons_tiny WHERE NOT updated AND map_id IN (SELECT map_id FROM carto.polygons_tiny WHERE updated);
+DELETE FROM carto.polygons_small WHERE NOT updated AND map_id IN (SELECT map_id FROM carto.polygons_small WHERE updated);
+DELETE FROM carto.polygons_medium WHERE NOT updated AND map_id IN (SELECT map_id FROM carto.polygons_medium WHERE updated);
 DELETE FROM carto.polygons_large WHERE NOT updated AND map_id IN (SELECT map_id FROM carto.polygons_large WHERE updated);
 
 /** Once we have reduced duplicate geometries, we can add a unique constraint */
 ALTER TABLE carto.polygons ADD CONSTRAINT polygons_pkey PRIMARY KEY (map_id, scale);
+ALTER TABLE carto.polygons DROP COLUMN updated;

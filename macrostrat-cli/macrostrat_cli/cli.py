@@ -125,7 +125,7 @@ def update_schema():
 
 
 # Commands to manage this command-line interface
-db_app = typer.Typer()
+db_app = typer.Typer(no_args_is_help=True)
 db_app.command(name="update-schema")(update_schema)
 
 # Pass through arguments
@@ -174,8 +174,6 @@ def list_tables():
 @db_app.command(name="sql")
 def run_migration(migration: str = Argument(None)):
     """Run an ad-hoc migration"""
-    from .config import PG_DATABASE_DOCKER
-
     pth = Path(__file__).parent.parent / "ad-hoc-migrations"
     files = list(pth.glob("*.sql"))
     files.sort()
