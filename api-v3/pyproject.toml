@@ -18,6 +18,7 @@ uvicorn = "^0.23.2"
 geoalchemy2 = "^0.14.2"
 geojson-pydantic = "^1.0.1"
 pyjwt = "^2.8.0"
+werkzeug = "^3.0.1"
 
 [tool.poetry.group.dev.dependencies]
 bandit = "~1.7"
