@@ -20,8 +20,8 @@ class PolygonModel(CommonModel):
     strat_name: Optional[str] = None
     age: Optional[str] = None
     comments: Optional[str] = None
-    t_interval: Optional[str] = None
-    b_interval: Optional[str] = None
+    t_interval: Optional[int] = None
+    b_interval: Optional[int] = None
     geom: Optional[Polygon] = None
 
 

@@ -24,4 +24,4 @@ RUN poetry update && poetry install
 COPY ./api /code/api
 
 #
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80"]
+CMD ["uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "80"]
