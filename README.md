@@ -1,2 +1,3 @@
-# macrostrat
-A geological data platform for exploration, integration, and analysis
+# Macrostrat
+
+A geological data platform for exploration, integration, and analysis (v2)
