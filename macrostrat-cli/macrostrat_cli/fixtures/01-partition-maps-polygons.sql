@@ -1,3 +1,6 @@
+-- Move the ID sequence to the maps schema
+ALTER SEQUENCE map_ids SET SCHEMA maps;
+
 /** Rename maps tables and create views for backwards compatibility */
 CREATE TYPE map_scale AS ENUM ('tiny', 'small', 'medium', 'large');
 
