@@ -9,8 +9,8 @@ from werkzeug.security import check_password_hash, generate_password_hash
 class CommonModel(BaseModel):
     model_config = ConfigDict(extra="allow")
 
-    source_id: Optional[int] = None
-    orig_id: Optional[int] = None
+    source_id: Optional[str |int] = None
+    orig_id: Optional[str |int] = None
     descrip: Optional[str] = None
     ready: Optional[bool] = None
 
@@ -20,8 +20,8 @@ class PolygonModel(CommonModel):
     strat_name: Optional[str] = None
     age: Optional[str] = None
     comments: Optional[str] = None
-    t_interval: Optional[int] = None
-    b_interval: Optional[int] = None
+    t_interval: Optional[str | int] = None
+    b_interval: Optional[str | int] = None
     geom: Optional[Polygon] = None
 
 

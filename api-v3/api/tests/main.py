@@ -102,7 +102,7 @@ class TestAPI:
 
 
   def test_get_sources_tables_default(self, api_client: TestClient):
-    response = api_client.get(f"/sources/{TEST_SOURCE_TABLE.source_id}/polygons?_pkid=order_by&page=0&page_size=999999")
+    response = api_client.get(f"/sources/1/polygons?strat_name=group_by&page=0&page_size=999999")
     assert response.status_code == 200
     response_json = response.json()
 
