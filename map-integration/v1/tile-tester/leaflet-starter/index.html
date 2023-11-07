@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta name="viewport" content="width=device-width" charset="UTF-8">
+    <title>tile-tester</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.2/dist/leaflet.css" />
+
+    <style>
+      body {
+        padding:0;
+        margin:0;
+      }
+      #map {
+        position:absolute;
+        width:100%;
+        height:100%;
+      }
+    </style>
+  </head>
+  <body>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.0.2/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-hash/0.2.1/leaflet-hash.min.js"></script>
+    <script>
+      var map = L.map('map', {
+        maxZoom: 18
+      }).setView([0, 0], 3)
+
+      var hash = new L.Hash(map)
+
+      var activeScale = 'tiny'
+
+      var scaleLookup = {
+        0: 'tiny',
+        1: 'tiny',
+        2: 'tiny',
+        3: 'tiny',
+        4: 'small',
+        5: 'small',
+        6: 'medium',
+        7: 'medium',
+        8: 'medium',
+        9: 'medium',
+        10: 'large',
+        11: 'large',
+        12: 'large',
+        13: 'large',
+        14: 'large',
+        15: 'large',
+        16: 'large',
+        17: 'large',
+        18: 'large'
+      }
+      map.on('zoomstart', function() {
+        Object.keys(geologyLayers).forEach(function(layer) {
+          map.removeLayer(layer)
+        })
+      })
+      map.on('zoomend', function() {
+        var z = map.getZoom()
+        activeScale = scaleLookup[z]
+        map.addLayer(geologyLayers[activeScale])
+      })
+
+      // add tile layer
+      L.tileLayer('https://api.mapbox.com/styles/v1/jczaplewski/cigmamq4n000xaaknfpuj1zdk/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoiamN6YXBsZXdza2kiLCJhIjoiWnQxSC01USJ9.oleZzfREJUKAK1TMeCD0bg', {
+        maxZoom: 18
+      }).addTo(map)
+
+      var geologyLayers = {
+        tiny:  L.tileLayer('http://localhost:5555/tiles/emphasized_tiny/{z}/{x}/{y}/tile.png', {
+          opacity: 0.5,
+          zIndex: 100
+        }),
+        small:  L.tileLayer('http://localhost:5555/tiles/emphasized_small/{z}/{x}/{y}/tile.png', {
+          opacity: 0.5,
+          zIndex: 100
+        }),
+        medium:  L.tileLayer('http://localhost:5555/tiles/emphasized_medium/{z}/{x}/{y}/tile.png', {
+          opacity: 0.5,
+          zIndex: 100
+        }),
+        large:  L.tileLayer('http://localhost:5555/tiles/emphasized_large/{z}/{x}/{y}/tile.png', {
+          opacity: 0.5,
+          zIndex: 100
+        })
+      }
+
+    </script>
+  </body>
+<html>

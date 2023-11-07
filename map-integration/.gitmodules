@@ -1,0 +1,3 @@
+[submodule "macrostrat-cli"]
+	path = deps/macrostrat-cli
+	url = https://github.com/UW-Macrostrat/utils.git

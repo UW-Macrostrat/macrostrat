@@ -1,0 +1,38 @@
+[tool.poetry]
+authors = ["Daven Quinn <dev@davenquinn.com>"]
+description = "Macrostrat tools for map integration"
+name = "macrostrat.map_integration"
+readme = "README.md"
+version = "2.0.0"
+
+packages = [{ include = "macrostrat" }]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+
+SQLAlchemy = "^1.4.42"
+geopandas = "^0.12.0"
+ipython = "^8.5.0"
+"macrostrat.database" = "^2.0.0"
+numpy = "^1.23.4"
+psycopg2-binary = "^2.9.4"
+pygeos = "^0.14"
+pyproj = "^3.4.0"
+rich = "^13"
+scipy = "^1.9.3"
+typer = "^0.9.0"
+
+python-dotenv = "^1"
+pyyaml = "^6.0"
+shapely = "^2.0.1"
+
+[tool.poetry.scripts]
+# Override the default entrypoint for the macrostrat.cli package
+macrostrat-maps = "macrostrat.map_integration:main"
+
+[tool.poetry.group.dev.dependencies]
+black = { version = "^22.10.0", allow-prereleases = true }
+
+[build-system]
+build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core"]
