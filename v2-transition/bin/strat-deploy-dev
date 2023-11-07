@@ -1,0 +1,3 @@
+
+cd "$STRAT_BASE"
+poetry run ansible-playbook ansible/playbooks/deploy-dev.yaml

@@ -1,0 +1,13 @@
+# Playbook to deploy and start a NGINX proxy server via docker
+# playbook.yml
+---
+- hosts: dev
+  tasks:
+    - name: deploy nginx docker container
+      docker_container:
+        image: nginx:stable
+        name: nginx
+        state: started
+        auto_remove: true
+        ports:
+          - "80:80"

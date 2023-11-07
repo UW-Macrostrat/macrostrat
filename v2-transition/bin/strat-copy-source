@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+source="$1"
+
+image="postgres:15"
+
+export PGPASSWORD="$POSTGRES_PASSWORD"
+export PGHOST="localhost"
+export PGUSER=postgres
+
+
+function docker-run {
+  docker run -i -e PGPASSWORD -e PGHOST -e PGUSER --network host $image $@
+}
+
+docker-run pg_dump -Fc burwell --schema macrostrat \
+| pv \
+| docker-run pg_restore -v -d map_ingestion
+
+docker-run pg_dump -Fc burwell --table sources.$1\* \
+| pv \
+| docker-run pg_restore -v -d map_ingestion

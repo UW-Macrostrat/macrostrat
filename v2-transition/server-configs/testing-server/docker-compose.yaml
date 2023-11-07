@@ -1,0 +1,160 @@
+version: "3"
+services:
+  gateway:
+    image: jonasal/nginx-certbot:3
+    ports:
+      - "80:80"
+      - "443:443"
+      - "5000:5000"
+    environment:
+      - CERTBOT_EMAIL
+    volumes:
+      - ./conf.d:/etc/nginx/user_conf.d:ro
+      - nginx_secrets:/etc/letsencrypt
+      - /data/share:/data/share:ro
+  homepage:
+    # A markdown server for the homepage
+    image: dannyben/madness
+    expose: [3000]
+    volumes:
+      - ../../docs:/docs:ro
+  # DATABASE SERVICES
+  mariadb:
+    # The MariaDB service is Macrostrat's current database service.
+    # Eventually this will be removed from the active configuration
+    # or relegated to a 'legacy' profile
+    image: mariadb:10.7
+    ports:
+      - "3306:3306"
+    environment:
+      - MARIADB_ROOT_PASSWORD
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    restart: unless-stopped
+  postgres:
+    # Macrostrat's newer database clusters are based around PostgreSQL.
+    # This should hopefully handle most of our databases going forward.
+    image: postgis/postgis:14-3.1
+    shm_size: 1gb
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_PASSWORD
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+  api:
+    # Macrostrat API
+    build: ../../services/macrostrat-api
+    expose: [5000]
+    volumes:
+      - ./api-credentials.js:/code/credentials.js:ro
+  # For now, we are running the CLI locally in this config
+  # cli:
+  #   build: ../../tools/macrostrat-utils
+  #   container_name: macrostrat-cli
+  #   environment:
+  #     - MACROSTRAT_PG_DATABASE=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/burwell
+  #     - MACROSTRAT_MYSQL_DATABASE=mysql://root:${MARIADB_ROOT_PASSWORD}@mariadb:3306/macrostrat
+  #     - MACROSTRAT_SCHEMA_EXTENSIONS=/data/schema-extensions
+  #     - REDIS_PORT
+  #     - TILE_CACHE_PATH
+  #     - TILE_CACHE_PATH_VECTOR
+  #     - TILESERVER_SECRET
+  #     - MBTILES_PATH
+  #     - TILESERVER_STATS_DATABASE
+  #     - TILESERVER_REQUESTS_DATABASE
+  #   volumes:
+  #     - ../../tools/macrostrat-utils:/code:ro
+  #     - ../../schema:/data/schema-extensions:ro
+  tileserver:
+    build: ../../services/tileserver
+    environment:
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/burwell
+      - FORWARDED_ALLOW_IPS=*
+    expose: [8000]
+    command: >
+      uvicorn
+        --host 0.0.0.0
+        --port 8000
+        --log-level debug
+        --proxy-headers
+        --root-path /tiles
+        macrostrat_tileserver.main:app
+  registry:
+    # A docker registry for storing images
+    image: registry:2
+    restart: always
+    environment:
+      - REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY=/var/lib/registry
+      - REGISTRY_STORAGE_DELETE_ENABLED=true
+    expose: [5000]
+    volumes:
+      - docker_images:/var/lib/registry 
+  corelle:
+    build: ../../services/corelle
+    depends_on:
+      - postgres
+    expose: [5000]
+    volumes:
+      - ../../services/corelle/data:/code/data:ro
+    environment:
+      - CORELLE_DB=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/burwell
+      # This is a legacy argument...
+      - CORELLE_DB_ARGS=-h postgres -d burwell -p 5432 -U postgres
+      - PGPASSWORD=${POSTGRES_PASSWORD}
+  rockd_api:
+    build: ../../services/rockd-api/api
+    expose: [5500]
+    volumes:
+      - /var/data/rockd:/var/data/rockd
+  dacite:
+    build:
+      context: ../../services/column-builder/dacite
+      dockerfile: prod.Dockerfile
+    environment:
+      - NEXT_PUBLIC_SERVER_URL=${NEXT_PUBLIC_SERVER_URL}
+      - NEXT_PUBLIC_CLIENT_URL=${NEXT_PUBLIC_CLIENT_URL}
+    ports:
+      - 1234:1234
+    depends_on:
+      - postgrest
+  postgrest:
+    image: postgrest/postgrest:v11.0.1
+    ports: 
+      - "3001:3001"
+    environment:
+      PGRST_DB_URI: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/burwell
+      PGRST_OPENAPI_SERVER_PROXY_URI: http://127.0.0.1:3001
+      PGRST_DB_SCHEMA: macrostrat_api, weaver_api
+      PGRST_DB_ANON_ROLE: web_anon
+      # Never return more than 1000 rows
+      PGRST_DB_MAX_ROWS: 100
+      PGRST_SERVER_PORT: 3001
+      PGRST_LOG_LEVEL: info
+    depends_on:
+      - postgres
+  birdseye:
+    build: ../../services/column-builder/BirdsEye/frontend
+    ports:
+      - "1235:1235"
+  geologic_map_server:
+    build: ../../services/column-builder/BirdsEye/backend
+    environment:
+      - GEOLOGIC_MAP_CONFIG=/app/docker-assets/docker-map-config.json
+      - GEOLOGIC_MAP_DATABASE=${GEOLOGIC_MAP_DATABASE}
+      - IMPORTER_API=${IMPORTER_API}
+      - EXPORTER_API=${EXPORTER_API}
+    entrypoint: "/python_app/docker-scripts/run"
+    ports:
+      - "40053:8000"
+    depends_on:
+      - postgres
+
+volumes:
+  mariadb_data:
+  postgres_data:
+  nginx_secrets:
+  docker_images:

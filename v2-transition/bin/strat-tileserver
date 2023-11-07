@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+strat run tileserver tileserver $@

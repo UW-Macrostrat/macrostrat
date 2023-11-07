@@ -1,0 +1,99 @@
+version: "3"
+services:
+  gateway:
+    build: ./gateway 
+    ports:
+      - "80:80"
+      - "443:443"
+    expose: [80, 443]
+    environment:
+      - CERTBOT_EMAIL
+    volumes:
+      - nginx_secrets:/etc/letsencrypt
+  web:
+    image: ghcr.io/uw-macrostrat/web:develop
+    restart: always
+    expose: [80]
+  mariadb:
+    # The MariaDB service is Macrostrat's current database service.
+    # Eventually this will be removed from the active configuration
+    # or relegated to a 'legacy' profile. But for now, we need it at least
+    # for continuity purposes.
+    image: mariadb:10.10
+    ports:
+      - "3306:3306"
+    environment:
+      - MARIADB_ROOT_PASSWORD
+    volumes:
+      - /data/macrostrat/database-clusters/mariadb:/var/lib/mysql
+    restart: always
+  postgres:
+    # Macrostrat's newer database clusters are based around PostgreSQL.
+    # This should hopefully handle most of our databases going forward.
+    image: postgis/postgis:15-3.3
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_PASSWORD
+      # The name of the superuser
+      - POSTGRES_USER
+    volumes:
+      - /data/macrostrat/database-clusters/postgres:/var/lib/postgresql/data
+    restart: always
+  postgrest_api:
+    image: postgrest/postgrest:v11.2.0
+    environment:
+      PGRST_DB_URI: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/macrostrat_v2
+      #PGRST_OPENAPI_SERVER_PROXY_URI: http://127.0.0.1:80
+      PGRST_DB_SCHEMA: macrostrat_api, weaver_api
+      PGRST_DB_ANON_ROLE: web_anon
+      # Never return more than 1000 rows
+      PGRST_DB_MAX_ROWS: 100
+      PGRST_SERVER_PORT: 80
+      PGRST_LOG_LEVEL: info
+    depends_on:
+      - postgres
+  tileserver:
+    # Local registry for the tileserver image
+    image: next.macrostrat.org:5000/macrostrat/tileserver:dev
+    restart: always
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/macrostrat_v2
+      - FORWARDED_ALLOW_IPS=*
+    expose: [8000]
+    command: >
+      uvicorn
+        --host 0.0.0.0
+        --port 8000
+        --workers 8
+        --log-level debug
+        --proxy-headers
+        --root-path /tiles
+        macrostrat_tileserver.main:app
+  tileserver_cache:
+    # Local registry for the tileserver cache image
+    # https://www.crunchydata.com/blog/accelerating-spatial-postgres-varnish-cache-for-pg_tileserv-using-kustomize
+    build: ./varnish
+    restart: always
+    user: root
+    environment:
+      - VARNISH_SIZE=1G
+    expose: [80]
+    tmpfs:
+      - /var/lib/varnish:exec
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api 
+    restart: always
+    expose: [5000]
+  # A small API that serves naukluft data. Definitely a "development" service
+  naukluft_api:
+    image: ghcr.io/davenquinn/naukluft-app/server:latest
+    restart: always
+    expose: [5555]
+    environment:
+      - NAUKLUFT_DB=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/naukluft
+      - FORWARDED_ALLOW_IPS=*
+volumes:
+  nginx_secrets:

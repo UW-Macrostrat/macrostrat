@@ -1,0 +1,16 @@
+# Playbook to report "facts" about disks including LVM state
+#!/usr/bin/env ansible-playbook
+- name: Lets look at some disks
+  hosts: dev
+  gather_facts: true
+  become: true
+  tasks:
+    - name: Report basic facts
+      debug:
+        var: ansible_facts
+    - name: Output disk information
+      debug:
+        var: hostvars[inventory_hostname].ansible_devices
+    - name: LVM information
+      debug:
+        var: ansible_lvm

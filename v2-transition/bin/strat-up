@@ -1,0 +1,11 @@
+#!/usr/bin/env zsh
+
+# If there are no arguments, then we're building the entire stack
+if [[ $# -eq 0 ]]; then
+  strat compose up --remove-orphans --build -d
+else
+  strat compose up --remove-orphans --build -d $@
+fi
+
+strat compose exec gateway nginx -s reload
+strat compose logs -f --tail=10 $@
