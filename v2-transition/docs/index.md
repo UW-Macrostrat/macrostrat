@@ -1,4 +1,16 @@
-# The Macrostrat development environment 
+# Macrostrat's v2 transition
+
+This repository contains Macrostrat's initial "infrastructure-as-code" experiments from 2021–2023 led by Daven Quinn.
+These efforts culminated in the **Macrostrat v2** effort, which
+includes a dramatic expansion funded by NSF and DARPA.
+As part of this effort, this repository is being integrated
+into new infrastructure and will be archived at this point.
+
+Subsequent updates after October 2023 will occur in the
+[`UW-Macrostrat/macrostrat`](https://github.com/UW-Macrostrat/macrostrat) repository. This code will be available in the
+`v2-transition` subdirectory as it is slowly integrated into the new environment.
+
+# Archived content
 
 This environment and server configuration aims to bring together independent
 components of the Macrostrat system into a testing environment to support their
