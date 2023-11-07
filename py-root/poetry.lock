@@ -1043,17 +1043,19 @@ name = "macrostrat-app-frame"
 version = "1.1.0"
 description = "A control script framework for containerized applications."
 optional = false
-python-versions = ">=3.10,<4.0"
-files = [
-    {file = "macrostrat_app_frame-1.1.0-py3-none-any.whl", hash = "sha256:e1f5f2ce8f8173cb13bd0f02217cef5f61ea0a97b1d244f6ccf5ddddd24cd466"},
-    {file = "macrostrat_app_frame-1.1.0.tar.gz", hash = "sha256:9df0defeded0100dc9c54a27c39de9018a7104749364b8af752be7ed5a6e1a47"},
-]
+python-versions = "^3.10"
+files = []
+develop = true
 
 [package.dependencies]
-"macrostrat.utils" = ">=1.1.0,<2.0.0"
-python-dotenv = ">=1.0.0,<2.0.0"
-rich = ">=13,<14"
-typer = ">=0.9.0,<0.10.0"
+"macrostrat.utils" = "^1.1.0"
+python-dotenv = "^1.0.0"
+rich = "^13"
+typer = "^0.9.0"
+
+[package.source]
+type = "directory"
+url = "../../../Software/python-libraries/app-frame"
 
 [[package]]
 name = "macrostrat-cli"
@@ -3190,4 +3192,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "917f2efcdf0b999a8e5305fdfe67a147d6b0be4ac8666b0d42acca8d99a7b360"
+content-hash = "02c2dfd72534535346445f48c705aef77aa1c31abcd4dfede48984ead1b902b7"

@@ -53,6 +53,7 @@ if compose_file is None:
 if compose_file is not None:
     environ["COMPOSE_FILE"] = str(compose_file)
 
+
 settings.project_name = environ["COMPOSE_PROJECT_NAME"]
 
 # A database connection string for MySQL
