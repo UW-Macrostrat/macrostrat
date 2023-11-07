@@ -44,6 +44,10 @@ environ["PGDATABASE"] = url.database
 
 environ["COMPOSE_PROJECT_NAME"] = "macrostrat_" + macrostrat_env
 
+# For map integration CLI
+environ["INTEGRATION_DATABASE_URL"] = PG_DATABASE
+environ["MACROSTRAT_DATABASE_URL"] = PG_DATABASE
+
 # Docker compose file
 compose_file = getattr(settings, "compose_file", None)
 if compose_file is None:

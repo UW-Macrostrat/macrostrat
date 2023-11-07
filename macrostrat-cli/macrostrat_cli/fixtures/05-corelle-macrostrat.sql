@@ -2,6 +2,7 @@ CREATE SCHEMA IF NOT EXISTS corelle_macrostrat;
 
 --DROP MATERIALIZED VIEW IF EXISTS corelle_macrostrat.carto_plate_index;
 
+
 CREATE MATERIALIZED VIEW IF NOT EXISTS corelle_macrostrat.natural_earth_index AS
 SELECT
   f.id,
@@ -23,6 +24,7 @@ FROM macrostrat.col_areas c
 JOIN corelle.plate_polygon pp
   ON ST_Intersects(ST_Centroid(col_area), pp.geometry);
 
+-- carto plate index
 CREATE TABLE IF NOT EXISTS corelle_macrostrat.carto_plate_index AS
 SELECT
 	p.map_id,
@@ -225,6 +227,8 @@ BEGIN
     );
   END IF;
   RETURN g1;
+EXCEPTION WHEN OTHERS THEN
+   RETURN null;
 END;
 $$ LANGUAGE plpgsql STABLE;
 
@@ -450,3 +454,18 @@ $$ LANGUAGE plpgsql STABLE;
 -- Drop outdated functions
 DROP FUNCTION IF EXISTS corelle_macrostrat.rotate(geometry, numeric[], boolean);
 DROP FUNCTION IF EXISTS corelle_macrostrat.rotated_web_mercator_proj(numeric[]);
+
+-- Adjust layers to have simplified geometries for rapid filtering
+ALTER TABLE corelle.plate_polygon ADD COLUMN geom_simple geometry(MultiPolygon, 4326);
+ALTER TABLE corelle.rotation_cache ADD COLUMN geom geometry(MultiPolygon, 4326);
+
+UPDATE corelle.plate_polygon SET
+  geom_simple = ST_Multi(ST_Simplify(ST_Buffer(geometry, 0.25), 0.25))
+WHERE geom_simple IS NULL;
+
+UPDATE corelle.rotation_cache rc SET
+  geom = ST_CollectionExtract(corelle_macrostrat.rotate(geom_simple, rotation, true), 3)
+FROM corelle.plate_polygon pp
+WHERE pp.model_id = rc.model_id
+  AND pp.plate_id = rc.plate_id
+  AND geom IS null;

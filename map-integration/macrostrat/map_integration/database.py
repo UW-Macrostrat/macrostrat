@@ -3,7 +3,7 @@ from macrostrat.database import Database
 from dotenv import load_dotenv
 from pathlib import Path
 
-load_dotenv()
+# $load_dotenv()
 
 INTEGRATION_DATABASE_URL = environ.get("INTEGRATION_DATABASE_URL", None)
 MACROSTRAT_DATABASE_URL = environ.get("MACROSTRAT_DATABASE_URL", None)
