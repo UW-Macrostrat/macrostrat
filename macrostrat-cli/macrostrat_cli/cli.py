@@ -6,7 +6,8 @@ from rich import print
 from typing import Optional
 import typer
 from macrostrat.utils.shell import run
-from typer import get_app_dir, Argument
+from typer import get_app_dir, Argument, Typer
+from time import sleep
 
 APP_NAME = "macrostrat"
 app_dir = Path(get_app_dir(APP_NAME))
@@ -49,6 +50,7 @@ from macrostrat.app_frame import Application, compose
 
 from .v1_entrypoint import v1_cli
 from .v2_commands import app as v2_app
+from .database import get_db
 from sys import exit
 
 
@@ -122,12 +124,14 @@ def update_schema():
     compose("kill -s SIGUSR1 postgrest")
 
 
-main.command(name="update-schema")(update_schema)
+# Commands to manage this command-line interface
+db_app = typer.Typer()
+db_app.command(name="update-schema")(update_schema)
 
 # Pass through arguments
 
 
-@main.command(
+@db_app.command(
     context_settings={"allow_extra_args": True, "ignore_unknown_options": True}
 )
 def psql(ctx: typer.Context):
@@ -146,7 +150,7 @@ def psql(ctx: typer.Context):
     run("docker", "run", *flags, "postgres:15", "psql", PG_DATABASE_DOCKER, *ctx.args)
 
 
-@main.command(name="tables")
+@db_app.command(name="tables")
 def list_tables():
     """List all tables in the database"""
     from .config import PG_DATABASE_DOCKER
@@ -165,6 +169,43 @@ def list_tables():
         "-c",
         "\dt *.*",
     )
+
+
+@db_app.command(name="sql")
+def run_migration(migration: str = Argument(None)):
+    """Run an ad-hoc migration"""
+    from .config import PG_DATABASE_DOCKER
+
+    pth = Path(__file__).parent.parent / "ad-hoc-migrations"
+    files = list(pth.glob("*.sql"))
+    files.sort()
+    if migration is None:
+        print("No migration specified", file=stderr)
+        print("Available migrations:", file=stderr)
+        for f in files:
+            print(f"  {f.stem}", file=stderr)
+        exit(1)
+    migration = pth / (migration + ".sql")
+    if not migration.exists():
+        print(f"Migration {migration} does not exist", file=stderr)
+        exit(1)
+
+    db = get_db()
+    db.run_sql(migration)
+
+
+@db_app.command(name="tunnel")
+def db_tunnel():
+    """Create a Kubernetes port-forward to the remote database"""
+
+    pod = getattr(settings, "pg_database_pod", None)
+    if pod is None:
+        raise Exception("No pod specified.")
+    port = environ.get("PGPORT", "5432")
+    run("kubectl", "port-forward", pod, f"{port}:5432")
+
+
+main.add_typer(db_app, name="db", short_help="Manage the database")
 
 
 @main.command()

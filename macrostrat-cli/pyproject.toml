@@ -36,6 +36,7 @@ spectra = "^0.0.11"
 tiletanic = "^1.1.0"
 tqdm = "^4.65.0"
 typer = "^0.9.0"
+portforward = "^0.6.0"
 
 [tool.poetry.scripts]
 macrostrat = "macrostrat_cli.cli:main"

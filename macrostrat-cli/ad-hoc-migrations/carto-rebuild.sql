@@ -1,6 +1,9 @@
-/** For some reason, we've got a lot of duplicated map_id entries in our carto
+/**
+Date: 2023-10-01
+For some reason, we've got a lot of duplicated map_id entries in our carto
 tables. It would be better to have a unique constraint on map_id, but we can't
-do that until we've removed the duplicates. */
+do that until we've removed the duplicates.
+*/
 
 INSERT INTO carto.polygons_tiny (map_id, source_id, geom_scale, geom, scale, updated)
 SELECT
