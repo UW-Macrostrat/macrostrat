@@ -264,6 +264,36 @@ def install():
         local_install(Path(settings.map_integration_src))
 
 
+@main.command()
+def create_user(username: str = Argument(...)):
+    """Create a new user"""
+    from getpass import getpass
+    from .database import get_db
+    from .auth import hash_password, is_correct_password
+
+    salt = getattr(settings, "secret_key", None)
+    if salt is None:
+        print("No secret key set", file=stderr)
+        exit(1)
+
+    # Get the password from a prompt
+    password = getpass("Enter the desired password: ")
+    conf = getpass("Confirm the password: ")
+    if password != conf:
+        print("Passwords do not match", file=stderr)
+        exit(1)
+
+    db = get_db()
+
+    hashed_pw = hash_password(salt, password)
+    assert is_correct_password(hashed_pw, salt, password)
+
+    db.run_sql(
+        "INSERT INTO auth.users (username, password) VALUES (:username, :password)",
+        params=dict(username=username, password=hashed_pw),
+    )
+
+
 main.add_typer(v2_app, name="v2")
 
 # Add subsystems if they are available.
