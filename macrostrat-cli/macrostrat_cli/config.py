@@ -13,17 +13,24 @@ settings = Dynaconf(
     environments=True,
     settings_files=[cfg],
     load_dotenv=False,
-    validators=[
-        Validator("COMPOSE_ROOT", "CORELLE_SRC", must_exist=False, cast=Path),
-    ],
+)
+
+settings.validators.register(
+    # `must_exist` is causing huge problems
+    # Validator("COMPOSE_ROOT", "CORELLE_SRC", must_exist=False, cast=Path),
+    Validator("COMPOSE_ROOT", "CORELLE_SRC", cast=Path)
 )
 
 macrostrat_env = environ.get("MACROSTRAT_ENV", "local")
 settings.namespace(macrostrat_env)
+settings.validators.validate()
 
 # A database connection string for PostgreSQL
 PG_DATABASE = settings.pg_database
 # environ.get("MACROSTRAT_PG_DATABASE", None)
+# On mac and windows, we need to use the docker host `host.docker.internal` or `host.lima.internal`, etc.
+docker_localhost = getattr(settings, "docker_localhost", "localhost")
+PG_DATABASE_DOCKER = PG_DATABASE.replace("localhost", docker_localhost)
 
 
 # Set environment variables

@@ -3,9 +3,25 @@ from pathlib import Path
 from os import environ
 from sys import stderr, argv
 from rich import print
-from subprocess import run
 from typing import Optional
 import typer
+from macrostrat.utils.shell import run
+from typer import get_app_dir, Argument
+
+APP_NAME = "macrostrat"
+app_dir = Path(get_app_dir(APP_NAME))
+active_env = app_dir / "~active_env"
+if "MACROSTAT_ENV" in environ:
+    print(f"Using environment [bold cyan]{environ['MACROSTRAT_ENV']}[/]", file=stderr)
+if "MACROSTRAT_ENV" not in environ and active_env.exists():
+    environ["MACROSTRAT_ENV"] = active_env.read_text().strip()
+    user_dir = str(Path("~").expanduser())
+    dir = str(active_env).replace(user_dir, "~")
+    print(
+        f"Using environment [bold cyan]{environ['MACROSTRAT_ENV']}[/]\n[dim] from {dir}[/]",
+        file=stderr,
+    )
+
 
 from .config import settings
 
@@ -35,16 +51,20 @@ from .v1_entrypoint import v1_cli
 from .v2_commands import app as v2_app
 from sys import exit
 
+
 # settings = Dynaconf(settings_files=[root_dir/"macrostrat.toml", root_dir/".secrets.toml"])
 
 __here__ = Path(__file__).parent
 fixtures_dir = __here__ / "fixtures"
 # macrostrat_root = Path(settings.macrostrat_root)
 
-root_dir = Path(settings.compose_root).expanduser().resolve()
-
-compose_file = root_dir / "docker-compose.yaml"
-env_file = root_dir / ".env"
+compose_files = []
+env_file = None
+root_dir = None
+if settings.get("compose_root", None) is not None:
+    root_dir = Path(settings.compose_root).expanduser().resolve()
+    compose_file = root_dir / "docker-compose.yaml"
+    env_file = root_dir / ".env"
 
 # Manage as a docker-compose application
 app = Application(
@@ -52,8 +72,9 @@ app = Application(
     root_dir=root_dir,
     project_prefix=settings.project_name,
     app_module="macrostrat",
-    compose_files=[compose_file],
+    compose_files=compose_files,
     load_dotenv=env_file,
+    # This only applies to Docker Compose
     restart_commands={"gateway": "nginx -s reload"},
 )
 
@@ -111,7 +132,7 @@ main.command(name="update-schema")(update_schema)
 )
 def psql(ctx: typer.Context):
     """Run psql in the database container"""
-    from .config import PG_DATABASE
+    from .config import PG_DATABASE_DOCKER
 
     flags = [
         "-i",
@@ -122,29 +143,27 @@ def psql(ctx: typer.Context):
     if len(ctx.args) == 0:
         flags.append("-t")
 
-    run(["docker", "run", *flags, "postgres:15", "psql", PG_DATABASE, *ctx.args])
+    run("docker", "run", *flags, "postgres:15", "psql", PG_DATABASE_DOCKER, *ctx.args)
 
 
 @main.command(name="tables")
 def list_tables():
     """List all tables in the database"""
-    from .config import PG_DATABASE
+    from .config import PG_DATABASE_DOCKER
 
     # We could probably do this with the inspector too
     run(
-        [
-            "docker",
-            "run",
-            "-i",
-            "--rm",
-            "--network",
-            "host",
-            "postgres:15",
-            "psql",
-            PG_DATABASE,
-            "-c",
-            "\dt *.*",
-        ]
+        "docker",
+        "run",
+        "-i",
+        "--rm",
+        "--network",
+        "host",
+        "postgres:15",
+        "psql",
+        PG_DATABASE_DOCKER,
+        "-c",
+        "\dt *.*",
     )
 
 
@@ -157,6 +176,31 @@ def config():
         # Only print uppercase values
         if k.isupper():
             print(f"{k}: {v}")
+
+
+@main.command()
+def shell():
+    """Start an IPython shell"""
+    import IPython
+
+    IPython.embed()
+
+
+@main.command(name="env")
+def set_env(env: str = Argument(None), unset: bool = False):
+    """Set the active environment"""
+    if env is None:
+        e = environ.get("MACROSTRAT_ENV")
+        if e is None:
+            print("No environment set", file=stderr)
+            exit(1)
+        print(e)
+        return
+    if unset:
+        active_env.unlink()
+    else:
+        active_env.parent.mkdir(exist_ok=True)
+        active_env.write_text(env)
 
 
 def local_install(path: Path):
@@ -194,7 +238,7 @@ try:
         short_help="Map integration system (partial overlap with v1 commands)",
     )
 except ImportError as err:
-    pass
+    print("Could not import map integration subsystem", err)
 
 try:
     raster_app = typer.Typer()
