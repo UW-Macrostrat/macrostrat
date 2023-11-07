@@ -5,7 +5,7 @@ WITH cached_tile AS (
     AND y = :y
     AND z = :z
     AND profile = :layer
-    AND tms = coalesce(:tms, current_setting('tile_utils.default_tms')) 
+    AND tms = coalesce(:tms, tile_utils.default_tms())
   RETURNING *
 )
 SELECT
