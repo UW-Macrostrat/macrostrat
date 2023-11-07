@@ -67,6 +67,7 @@ if settings.get("compose_root", None) is not None:
     root_dir = Path(settings.compose_root).expanduser().resolve()
     compose_file = root_dir / "docker-compose.yaml"
     env_file = root_dir / ".env"
+    compose_files.append(compose_file)
 
 # Manage as a docker-compose application
 app = Application(
