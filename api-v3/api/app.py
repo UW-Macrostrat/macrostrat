@@ -9,6 +9,7 @@ from fastapi import FastAPI, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.exc import NoResultFound, NoSuchTableError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from starlette.authentication import requires
 from starlette.middleware import Middleware
 from starlette.middleware.authentication import AuthenticationMiddleware
 
@@ -108,6 +109,7 @@ async def get_sub_sources(
 
 
 @app.patch("/sources/{table_id}/polygons", response_model=List[PolygonModel])
+@requires("authenticated")
 async def patch_sub_sources(
         request: starlette.requests.Request,
         table_id: int,
