@@ -485,7 +485,7 @@ shapely = "^1.8.5.post1||^2.0.0"
 
 [package.source]
 type = "directory"
-url = "../../Software/corelle/py-packages/client"
+url = "../../../Software/corelle/py-packages/client"
 
 [[package]]
 name = "corelle-engine"
@@ -513,7 +513,7 @@ wget = "^3.2"
 
 [package.source]
 type = "directory"
-url = "../../Software/corelle/py-packages/engine"
+url = "../../../Software/corelle/py-packages/engine"
 
 [[package]]
 name = "cramjam"
@@ -1072,6 +1072,7 @@ ipython = "^8.5.0"
 "macrostrat.app-frame" = "^1.1.0"
 "macrostrat.database" = "^2.0.0"
 numpy = "^1.23.4"
+portforward = "^0.6.0"
 psycopg2-binary = "^2.9.4"
 pygeos = "^0.14"
 PyMySQL = "^1.0.2"
@@ -1151,6 +1152,7 @@ files = []
 develop = true
 
 [package.dependencies]
+"macrostrat.utils" = "^1.0.0"
 requests = "^2.30.0"
 rich = "^13.3.5"
 toml = "^0.10.2"
@@ -1158,7 +1160,7 @@ typer = "^0.9.0"
 
 [package.source]
 type = "directory"
-url = "../../Software/python-libraries/package-tools"
+url = "../../../Software/python-libraries/package-tools"
 
 [[package]]
 name = "macrostrat-tileserver"
@@ -1186,7 +1188,7 @@ raster-tiles = []
 
 [package.source]
 type = "directory"
-url = "../../Software/tileserver"
+url = "../../../Software/tileserver"
 
 [[package]]
 name = "macrostrat-utils"
@@ -1700,6 +1702,36 @@ files = [
 [package.extras]
 dev = ["pre-commit", "tox"]
 testing = ["pytest", "pytest-benchmark"]
+
+[[package]]
+name = "portforward"
+version = "0.6.0"
+description = "Easy Kubernetes Port-Forward For Python"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "portforward-0.6.0-cp310-cp310-macosx_10_7_x86_64.whl", hash = "sha256:e228fff18b6a93772c54191b88f18f90c137469d104fe0966ce22af4fa4d80de"},
+    {file = "portforward-0.6.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:765b37ea0fb708b0eab5429a82b3e159d7f009a71227fab103a15b7aae1a8e4a"},
+    {file = "portforward-0.6.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:ab221793c0a0d51173726a7b20039b612040420442fa8b8fe69d3ef0f9c77f86"},
+    {file = "portforward-0.6.0-cp310-none-win_amd64.whl", hash = "sha256:3fd03812a64a77cf55711ae531e5a914f46018455e4915bd4a9004889a01fe40"},
+    {file = "portforward-0.6.0-cp311-cp311-macosx_10_7_x86_64.whl", hash = "sha256:e5c713574ada101863580979662d44a4bbe26c65bd22d20bf6c0626e61a458dc"},
+    {file = "portforward-0.6.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:731b8fe58312aad736e7cc1e565df511ef8f5683c79fac27d96baab4075cd4d8"},
+    {file = "portforward-0.6.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:24cc1b4dbdc7a8812ce2edfc81015a50fdb3397aac765b095e12e6e6738ef0c1"},
+    {file = "portforward-0.6.0-cp311-none-win_amd64.whl", hash = "sha256:22d87a3f5f6ee45ff477d88181529a802fb0fecb48b27b3d283bc927e4f17dbf"},
+    {file = "portforward-0.6.0-cp37-cp37m-macosx_10_7_x86_64.whl", hash = "sha256:8515ef05b36acf3e9bc9a5dd6085f4e1b6137bbe7a4da46f553502d64941f901"},
+    {file = "portforward-0.6.0-cp37-cp37m-macosx_11_0_arm64.whl", hash = "sha256:078bf0a76cc696082710f12e79e619f210fe1289a7ed4da691b5606c255d6a45"},
+    {file = "portforward-0.6.0-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:20bd8882e2d6db7b7c51f0c0c06c6a7f74541a0a567651e0818055bd790cd951"},
+    {file = "portforward-0.6.0-cp37-none-win_amd64.whl", hash = "sha256:6845503c96a4a84dca38bde10548b2e7932ef3a106533c9d80ca290e8cec0775"},
+    {file = "portforward-0.6.0-cp38-cp38-macosx_10_7_x86_64.whl", hash = "sha256:d22ee7078f16cbd6faea5736484bf947d3bf84cbcb01a9694f9607afe189c9bb"},
+    {file = "portforward-0.6.0-cp38-cp38-macosx_11_0_arm64.whl", hash = "sha256:cd4d19064c7e7cb31530d63df53d3dbba2690834660153837092c4790534847e"},
+    {file = "portforward-0.6.0-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:29a60a05719a88580c1b41411a48eca393b4b88de6fc86ae698ec6a58b0e1bf5"},
+    {file = "portforward-0.6.0-cp38-none-win_amd64.whl", hash = "sha256:3312620b08dbf0f094427a8cdf6e4677034ef6a4840f5bb0ae7fb4b99bbec0a0"},
+    {file = "portforward-0.6.0-cp39-cp39-macosx_10_7_x86_64.whl", hash = "sha256:cadaf34bc7a56c1b166d55ddcabb74721be5052e606698cbc2a7106483c768b1"},
+    {file = "portforward-0.6.0-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:58568102ae31fb5501084e89d35da6c72ecbf3dba1450a29740568eb49bd73af"},
+    {file = "portforward-0.6.0-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:652d4bc608331620bc30f8a7741f445ad1e988f3831e207a0821ab194d695a8c"},
+    {file = "portforward-0.6.0-cp39-none-win_amd64.whl", hash = "sha256:da8784aba934c0e6f9359b4957a9eff80e8b49af0081b97294f4ec1af74b423a"},
+    {file = "portforward-0.6.0.tar.gz", hash = "sha256:76370112ff5ba6e1bc9ac09fa1de459ba87485868325f506495723a4a781bab7"},
+]
 
 [[package]]
 name = "prompt-toolkit"
@@ -2910,7 +2942,7 @@ test = ["httpx", "mapbox-vector-tile", "numpy", "protobuf (>=3.0,<4.0)", "psycop
 
 [package.source]
 type = "directory"
-url = "../../Software/tileserver/deps/timvt"
+url = "../../../Software/tileserver/deps/timvt"
 
 [[package]]
 name = "titiler"
@@ -3158,4 +3190,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "03712f62a59d3ebcb51d19d5c42f3e5d100cd929ab0c58470c378e2352e52175"
+content-hash = "917f2efcdf0b999a8e5305fdfe67a147d6b0be4ac8666b0d42acca8d99a7b360"
