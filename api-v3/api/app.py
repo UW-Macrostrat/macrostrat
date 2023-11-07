@@ -1,3 +1,4 @@
+import secrets
 import urllib.parse
 from contextlib import asynccontextmanager
 from typing import List
@@ -8,6 +9,8 @@ from fastapi import FastAPI, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.exc import NoResultFound, NoSuchTableError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from starlette.middleware import Middleware
+from starlette.middleware.authentication import AuthenticationMiddleware
 
 import api.auth
 import api.database as db
@@ -21,6 +24,9 @@ from api.database import (
 )
 from api.models import PolygonModel, Sources
 from api.query_parser import ParserException
+
+# The key for signing JWTs indicating that the caller has been authenticated.
+JWT_SIGNING_KEY = secrets.token_hex(32)
 
 
 @asynccontextmanager
@@ -47,6 +53,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.state.auth_backend = api.auth.JWTAuthBackend(JWT_SIGNING_KEY)
+app.add_middleware(AuthenticationMiddleware, backend=app.state.auth_backend)
 app.include_router(api.auth.router)
 
 
