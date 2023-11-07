@@ -1,20 +1,25 @@
-import starlette.requests
-import uvicorn
 import urllib.parse
-
-from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
-
 from contextlib import asynccontextmanager
 from typing import List
 
-from fastapi import FastAPI, Response, HTTPException, status
+import starlette.requests
+import uvicorn
+from fastapi import FastAPI, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
-
 from sqlalchemy.exc import NoResultFound, NoSuchTableError
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from api.models import PolygonModel, Sources
-from api.database import get_engine, connect_engine, dispose_engine, select_sources_sub_table, patch_sources_sub_table, get_async_session
+import api.auth
 import api.database as db
+from api.database import (
+    connect_engine,
+    dispose_engine,
+    get_async_session,
+    get_engine,
+    patch_sources_sub_table,
+    select_sources_sub_table,
+)
+from api.models import PolygonModel, Sources
 from api.query_parser import ParserException
 
 
@@ -41,6 +46,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(api.auth.router)
 
 
 @app.get("/sources")
