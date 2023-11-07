@@ -3,7 +3,8 @@ services:
   database:
     # PostgreSQL 13 is needed in order to allow force-dropping the database
     # (in testing mode)
-    image: postgis/postgis:15-3.3
+    # docker pull imresamu/postgis:15-3.4
+    image: imresamu/postgis:15-3.4
     restart: unless-stopped
     environment:
       - POSTGRES_USER

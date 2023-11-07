@@ -1,0 +1,16 @@
+#!/bin/bash -e
+# Source the env file
+set -a
+source .env
+set +a
+
+# Check that the input file exists
+if [ ! -f "$1" ]; then
+    echo "File $1 does not exist"
+    exit 1
+fi
+
+docker compose exec -T database psql -U macrostrat_admin postgres -c "DROP DATABASE IF EXISTS $2 WITH (FORCE);"
+docker compose exec -T database psql -U macrostrat_admin postgres -c "CREATE DATABASE $2;"
+
+cat $1 | pv | docker compose exec -T database pg_restore --no-owner -U macrostrat_admin -d $2
