@@ -15,6 +15,7 @@ linesize text[];
 mercator_bbox geometry;
 projected_bbox geometry;
 bedrock bytea;
+plates bytea;
 lines bytea;
 tolerance double precision;
 _t_step integer;
@@ -29,11 +30,6 @@ SELECT
   (query_params->>'model_id')::integer AS _model_id
 INTO _t_step, _model_id;
 
-IF _t_step = 0 THEN
-  /* Just return the basic map layer */
-  return tile_layers.carto_slim(x, y, z, query_params);
-END IF;
-
 IF _model_id IS NULL THEN
   RAISE EXCEPTION 'model_id is required';
 END IF;
@@ -47,31 +43,39 @@ projected_bbox := ST_Transform(
   4326
 );
 
-IF z < 3 THEN
-  -- Select from carto.tiny table
-  _scale := 'tiny';
-  linesize := ARRAY['tiny'];
-ELSIF z < 6 THEN
-  _scale := 'small';
-  linesize := ARRAY['tiny', 'small'];
-ELSIF z < 9 THEN
-  _scale := 'medium';
-  linesize := ARRAY['small', 'medium'];
-ELSE
-  _scale := 'large';
-  linesize := ARRAY['medium', 'large'];
-END IF;
+WITH plates_basic AS (
+  SELECT
+    pp.plate_id,
+    pp.model_id,
+    -- Get the tile bounding box rotated to the actual position of the plate on the modern globe
+    --ST_Area(corelle_macrostrat.tile_envelope(rc.rotation, t.x, t.y, t.z)::geography)/ST_Area(ST_Transform(tile_utils.envelope(t.x, t.y, t.z), 4326)::geography) tile_area_ratio,
+    pp.geometry geom
+    -- corelle.rotate_geometry(
+    --   projected_bbox,
+    --   rc.rotation
+    -- ) tile_geom,
+    -- rc.rotation rotation
+  FROM corelle.plate_polygon pp
+  -- --JOIN tile ON true
+  -- JOIN corelle.rotation_cache rc
+  --   ON rc.plate_id = pp.plate_id
+  --   AND rc.model_id = pp.model_id
+  --   AND rc.t_step = _t_step
+  -- WHERE rc.model_id = _model_id
+  --   AND coalesce(pp.old_lim, 4000) >= _t_step
+  --   AND coalesce(pp.young_lim, 0) <= _t_step
+  --   AND pp.model_id = _model_id 
+   WHERE ST_Intersects(pp.geometry, projected_bbox)
+),
+plates_ AS (
+  SELECT
+    plate_id,
+    model_id,
+    tile_layers.tile_geom(u.geom, mercator_bbox) AS geom
+  FROM plates_basic u
+) 
+SELECT ST_AsMVT(plates_, 'plates') INTO plates FROM plates_;
 
--- Units
--- WITH tile AS (
---   SELECT 
---     x,
---     y,
---     z,
---     _model_id,
---     _t_step,
--- 	  _scale
--- ),
 WITH rotation_info AS (
   SELECT
     pp.plate_id,
@@ -139,12 +143,12 @@ units AS (
   --   -- We have to break this out because we get weird antipodal-edge warnings otherwise
   --   OR (z >= 3 AND ST_Intersects(u.geom::geography, u.tile_geom::geography))
 )
-SELECT
-  ST_AsMVT(expanded, 'units')
-INTO bedrock
-FROM expanded;
+SELECT null INTO bedrock;
+--   ST_AsMVT(expanded, 'units')
+-- INTO bedrock
+-- FROM expanded;
 
-RETURN bedrock;
+RETURN plates;
 
 END;
 $$ LANGUAGE plpgsql VOLATILE;
