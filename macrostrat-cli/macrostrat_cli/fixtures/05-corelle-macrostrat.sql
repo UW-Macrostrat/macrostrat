@@ -49,6 +49,24 @@ ADD CONSTRAINT carto_plate_index_pkey PRIMARY KEY (map_id, scale, model_id, plat
 CREATE INDEX carto_plate_index_model_plate_scale_idx ON corelle_macrostrat.carto_plate_index(model_id, plate_id, scale);
 CREATE INDEX carto_plate_index_geom_idx ON corelle_macrostrat.carto_plate_index USING gist (geom);
 
+-- Adjust layers to have simplified geometries for rapid filtering
+-- This should maybe be moved to Corelle
+ALTER TABLE corelle.plate_polygon ADD COLUMN geom_simple geometry(MultiPolygon, 4326);
+ALTER TABLE corelle.rotation_cache ADD COLUMN geom geometry(MultiPolygon, 4326);
+
+UPDATE corelle.plate_polygon SET
+  geom_simple = ST_Multi(ST_Simplify(ST_Buffer(geometry, 0.25), 0.25))
+WHERE geom_simple IS NULL;
+
+UPDATE corelle.rotation_cache rc SET
+  geom = ST_CollectionExtract(corelle_macrostrat.rotate(geom_simple, rotation, true), 3)
+FROM corelle.plate_polygon pp
+WHERE pp.model_id = rc.model_id
+  AND pp.plate_id = rc.plate_id
+  AND geom IS null;
+
+CREATE INDEX rotation_cache_geom_idx ON corelle.rotation_cache USING gist (geom);
+
 CREATE OR REPLACE FUNCTION corelle_macrostrat.carto_slim_rotated_v1(
   -- bounding box
   x integer,
@@ -454,18 +472,3 @@ $$ LANGUAGE plpgsql STABLE;
 -- Drop outdated functions
 DROP FUNCTION IF EXISTS corelle_macrostrat.rotate(geometry, numeric[], boolean);
 DROP FUNCTION IF EXISTS corelle_macrostrat.rotated_web_mercator_proj(numeric[]);
-
--- Adjust layers to have simplified geometries for rapid filtering
-ALTER TABLE corelle.plate_polygon ADD COLUMN geom_simple geometry(MultiPolygon, 4326);
-ALTER TABLE corelle.rotation_cache ADD COLUMN geom geometry(MultiPolygon, 4326);
-
-UPDATE corelle.plate_polygon SET
-  geom_simple = ST_Multi(ST_Simplify(ST_Buffer(geometry, 0.25), 0.25))
-WHERE geom_simple IS NULL;
-
-UPDATE corelle.rotation_cache rc SET
-  geom = ST_CollectionExtract(corelle_macrostrat.rotate(geom_simple, rotation, true), 3)
-FROM corelle.plate_polygon pp
-WHERE pp.model_id = rc.model_id
-  AND pp.plate_id = rc.plate_id
-  AND geom IS null;
