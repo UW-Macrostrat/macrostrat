@@ -49,25 +49,6 @@ ADD CONSTRAINT carto_plate_index_pkey PRIMARY KEY (map_id, scale, model_id, plat
 CREATE INDEX carto_plate_index_model_plate_scale_idx ON corelle_macrostrat.carto_plate_index(model_id, plate_id, scale);
 CREATE INDEX carto_plate_index_geom_idx ON corelle_macrostrat.carto_plate_index USING gist (geom);
 
--- Adjust layers to have simplified geometries for rapid filtering
--- This should maybe be moved to Corelle
-ALTER TABLE corelle.plate_polygon ADD COLUMN geom_simple geometry(Geometry, 4326);
-ALTER TABLE corelle.rotation_cache ADD COLUMN geom geometry(Geometry, 4326);
-
-UPDATE corelle.plate_polygon
-SET geom_simple = ST_CollectionExtract(corelle_macrostrat.antimeridian_split(ST_Multi(ST_Simplify(ST_Buffer(geometry, 0.1), 0.1))), 3)
-WHERE geom_simple IS NULL;
-
-UPDATE corelle.rotation_cache rc SET
-  geom = ST_CollectionExtract(corelle_macrostrat.antimeridian_split(coalesce(corelle_macrostrat.rotate(geom_simple, rotation, true), 'MULTIPOLYGON EMPTY'::geometry)), 3)
-FROM corelle.plate_polygon pp
-WHERE pp.model_id = rc.model_id
-  AND pp.plate_id = rc.plate_id
-  AND geom IS null;
-
-CREATE INDEX rotation_cache_geom_idx ON corelle.rotation_cache USING gist (geom);
-
-
 CREATE OR REPLACE FUNCTION corelle_macrostrat.tile_envelope(
   rotation numeric[],
   x integer,
@@ -124,19 +105,14 @@ CREATE OR REPLACE FUNCTION corelle_macrostrat.antimeridian_split(
 ) RETURNS geometry AS $$
 DECLARE
   g1 geometry;
+  meridian geometry;
 BEGIN
-  g1 := ST_WrapX(
-    ST_Split(
-      ST_MakeValid(ST_ShiftLongitude(g1)),
-      -- Antimeridian
-      ST_GeomFromText('LINESTRING(180 -90, 180 90)', 4326)
-    ),
-    180,
-    -360
-  );
+  g1 := ST_MakeValid(geom);
+  g1 := ST_WrapX(g1, -180, 180);
+  g1 := ST_WrapX(g1, 180, -180);
   RETURN g1;
 EXCEPTION WHEN OTHERS THEN
-   RETURN null;
+  RETURN null;
 END;
 $$ LANGUAGE plpgsql STABLE;
 
@@ -157,22 +133,30 @@ BEGIN
   -- don't properly intersect the tile are still included due to polygon winding effects.
   -- We really should figure out how to exclude geometries with no points
   -- in the tile envelope, so we don't have to run this check on every tile
-  IF wrap AND ST_XMin(g1) < -150 AND ST_XMax(g1) > 150 THEN
-    g1 := ST_WrapX(
-      ST_Split(
-        ST_MakeValid(ST_ShiftLongitude(g1)),
-        -- Antimeridian
-        ST_GeomFromText('LINESTRING(180 -90, 180 90)', 4326)
-      ),
-      180,
-      -360
-    );
-  END IF;
-  RETURN g1;
+  RETURN corelle_macrostrat.antimeridian_split(g1);
 EXCEPTION WHEN OTHERS THEN
-   RETURN null;
+    RETURN null;
 END;
 $$ LANGUAGE plpgsql STABLE;
+
+-- Adjust layers to have simplified geometries for rapid filtering
+-- This should maybe be moved to Corelle
+ALTER TABLE corelle.plate_polygon ADD COLUMN geom_simple geometry(Geometry, 4326);
+ALTER TABLE corelle.rotation_cache ADD COLUMN geom geometry(Geometry, 4326);
+
+UPDATE corelle.plate_polygon
+SET geom_simple = corelle_macrostrat.antimeridian_split(ST_Multi(ST_Simplify(ST_Buffer(geometry, 0.1), 0.1)))
+WHERE geom_simple IS NULL;
+
+UPDATE corelle.rotation_cache rc SET
+  geom = corelle_macrostrat.rotate(geom_simple, rotation, true)
+FROM corelle.plate_polygon pp
+WHERE pp.model_id = rc.model_id
+  AND pp.plate_id = rc.plate_id
+  AND geom IS null;
+
+CREATE INDEX rotation_cache_geom_idx ON corelle.rotation_cache USING gist (geom);
+
 
 -- Drop outdated functions
 DROP FUNCTION IF EXISTS corelle_macrostrat.rotate(geometry, numeric[], boolean);

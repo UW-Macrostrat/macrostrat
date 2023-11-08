@@ -49,23 +49,27 @@ WITH plates_basic AS (
     rc.model_id,
     -- Get the tile bounding box rotated to the actual position of the plate on the modern globe
     --ST_Area(corelle_macrostrat.tile_envelope(rc.rotation, t.x, t.y, t.z)::geography)/ST_Area(ST_Transform(tile_utils.envelope(t.x, t.y, t.z), 4326)::geography) tile_area_ratio,
-    rc.geom_simple geom
+    corelle_macrostrat.rotate(geom_simple, rotation, true) geom
     -- corelle.rotate_geometry(
     --   projected_bbox,
     --   rc.rotation
     -- ) tile_geom,
     -- rc.rotation rotation
-  FROM corelle.plate_polygon rc
+  FROM corelle.rotation_cache rc
+  JOIN corelle.plate_polygon pp
+    ON pp.plate_id = rc.plate_id
+    AND pp.model_id = rc.model_id
   WHERE rc.model_id = _model_id
-    --AND rc.t_step = _t_step
-    AND ST_Intersects(rc.geom_simple, projected_bbox)
+    AND rc.t_step = _t_step
 ),
 plates_ AS (
   SELECT
     plate_id,
     model_id,
-    tile_layers.tile_geom(u.geom, mercator_bbox) AS geom
+    tile_layers.tile_geom(ST_Intersection(u.geom, projected_bbox), mercator_bbox) AS geom
   FROM plates_basic u
+  WHERE ST_Intersects(u.geom, projected_bbox)
+
 ) 
 SELECT ST_AsMVT(plates_, 'plates') INTO plates FROM plates_;
 
