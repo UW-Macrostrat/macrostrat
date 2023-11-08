@@ -38,10 +38,7 @@ END IF;
 mercator_bbox := tile_utils.envelope(x, y, z);
 tolerance := 6;
 
-projected_bbox := ST_Transform(
-  mercator_bbox,
-  4326
-);
+projected_bbox := ST_Transform(mercator_bbox, 4326);
 
 WITH plates_basic AS (
   SELECT
@@ -75,33 +72,24 @@ SELECT ST_AsMVT(plates_, 'plates') INTO plates FROM plates_;
 
 WITH rotation_info AS (
   SELECT
-    pp.plate_id,
-    pp.model_id,
-    -- Get the tile bounding box rotated to the actual position of the plate on the modern globe
-    --ST_Area(corelle_macrostrat.tile_envelope(rc.rotation, t.x, t.y, t.z)::geography)/ST_Area(ST_Transform(tile_utils.envelope(t.x, t.y, t.z), 4326)::geography) tile_area_ratio,
-    geometry geom,
-    corelle.rotate_geometry(
-      ST_Transform(tile_utils.envelope(x, y, z), 4326),
-      corelle.invert_rotation(rc.rotation)
-    ) tile_geom,
+    rc.plate_id,
+    rc.model_id,
+    rc.geom rotated_plate_geom,
     rc.rotation rotation
   FROM corelle.plate_polygon pp
-  --JOIN tile ON true
   JOIN corelle.rotation_cache rc
     ON rc.plate_id = pp.plate_id
     AND rc.model_id = pp.model_id
     AND rc.t_step = _t_step
-  WHERE rc.model_id = _model_id
     AND coalesce(pp.old_lim, 4000) >= _t_step
     AND coalesce(pp.young_lim, 0) <= _t_step
    AND pp.model_id = _model_id
 ),
 relevant_plates AS (
-  SELECT *
+  SELECT *,
+    corelle_macrostrat.tile_envelope(rotation, x, y, z) tile_geom
   FROM rotation_info
-  WHERE (z < 3 AND ST_Intersects(geom, tile_geom))
-    -- We have to break this out because we get weird antipodal-edge warnings otherwise
-    OR (z >= 3 AND ST_Intersects(geom::geography, tile_geom::geography))
+  WHERE ST_Intersects(rotated_plate_geom, projected_bbox)
 ),
 units AS (
   SELECT 
@@ -113,6 +101,7 @@ units AS (
     coalesce(cpi.geom, u.geom) geom
   FROM relevant_plates rp
   --JOIN tile ON true
+  -- Right now we pre-cache tile intersections but we could probably skip this
   JOIN corelle_macrostrat.carto_plate_index cpi
     ON cpi.plate_id = rp.plate_id
    AND cpi.model_id = rp.model_id
