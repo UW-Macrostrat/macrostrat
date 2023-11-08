@@ -125,12 +125,16 @@ CREATE OR REPLACE FUNCTION corelle_macrostrat.antimeridian_split(
 DECLARE
   g1 geometry;
 BEGIN
-  -- g1 := ST_Split(
-  --   ST_MakeValid(ST_ShiftLongitude(geom)),
-  --   -- Antimeridian
-  --   ST_GeomFromText('LINESTRING(180 -90, 180 90)', 4326)
-  -- );
-  RETURN ST_WrapX(g1, 180, -360);
+  g1 := ST_WrapX(
+    ST_Split(
+      ST_MakeValid(ST_ShiftLongitude(g1)),
+      -- Antimeridian
+      ST_GeomFromText('LINESTRING(180 -90, 180 90)', 4326)
+    ),
+    180,
+    -360
+  );
+  RETURN g1;
 EXCEPTION WHEN OTHERS THEN
    RETURN null;
 END;
