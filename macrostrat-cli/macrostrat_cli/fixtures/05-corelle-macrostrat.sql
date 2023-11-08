@@ -54,12 +54,12 @@ CREATE INDEX carto_plate_index_geom_idx ON corelle_macrostrat.carto_plate_index 
 ALTER TABLE corelle.plate_polygon ADD COLUMN geom_simple geometry(Geometry, 4326);
 ALTER TABLE corelle.rotation_cache ADD COLUMN geom geometry(Geometry, 4326);
 
-UPDATE corelle.plate_polygon SET
-  geom_simple = corelle_macrostrat.antimeridian_split(ST_Multi(ST_Simplify(ST_Buffer(geometry, 0.1), 0.1)))
+UPDATE corelle.plate_polygon
+SET geom_simple = ST_CollectionExtract(corelle_macrostrat.antimeridian_split(ST_Multi(ST_Simplify(ST_Buffer(geometry, 0.1), 0.1))), 3)
 WHERE geom_simple IS NULL;
 
 UPDATE corelle.rotation_cache rc SET
-  geom = ST_CollectionExtract(coalesce(corelle_macrostrat.rotate(geom_simple, rotation, true), 'MULTIPOLYGON EMPTY'::geometry), 3)
+  geom = ST_CollectionExtract(corelle_macrostrat.antimeridian_split(coalesce(corelle_macrostrat.rotate(geom_simple, rotation, true), 'MULTIPOLYGON EMPTY'::geometry)), 3)
 FROM corelle.plate_polygon pp
 WHERE pp.model_id = rc.model_id
   AND pp.plate_id = rc.plate_id
