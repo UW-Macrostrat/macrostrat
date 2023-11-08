@@ -59,7 +59,7 @@ UPDATE corelle.plate_polygon SET
 WHERE geom_simple IS NULL;
 
 UPDATE corelle.rotation_cache rc SET
-  geom = ST_CollectionExtract(coalesce(corelle_macrostrat.rotate(geom_simple, rotation, true), 'MULTIPOLYGON EMPTY'::geometry), 3))
+  geom = ST_CollectionExtract(coalesce(corelle_macrostrat.rotate(geom_simple, rotation, true), 'MULTIPOLYGON EMPTY'::geometry), 3)
 FROM corelle.plate_polygon pp
 WHERE pp.model_id = rc.model_id
   AND pp.plate_id = rc.plate_id
