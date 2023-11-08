@@ -51,11 +51,11 @@ CREATE INDEX carto_plate_index_geom_idx ON corelle_macrostrat.carto_plate_index 
 
 -- Adjust layers to have simplified geometries for rapid filtering
 -- This should maybe be moved to Corelle
-ALTER TABLE corelle.plate_polygon ADD COLUMN geom_simple geometry(MultiPolygon, 4326);
-ALTER TABLE corelle.rotation_cache ADD COLUMN geom geometry(MultiPolygon, 4326);
+ALTER TABLE corelle.plate_polygon ADD COLUMN geom_simple geometry(Geometry, 4326);
+ALTER TABLE corelle.rotation_cache ADD COLUMN geom geometry(Geometry, 4326);
 
 UPDATE corelle.plate_polygon SET
-  geom_simple = ST_Multi(ST_Simplify(ST_Buffer(geometry, 0.25), 0.25))
+  geom_simple = corelle_macrostrat.antimeridian_split(ST_Multi(ST_Simplify(ST_Buffer(geometry, 0.1), 0.1)))
 WHERE geom_simple IS NULL;
 
 UPDATE corelle.rotation_cache rc SET
@@ -118,6 +118,23 @@ BEGIN
   );
 END;
 $$ LANGUAGE plpgsql STABLE; 
+
+CREATE OR REPLACE FUNCTION corelle_macrostrat.antimeridian_split(
+  geom geometry
+) RETURNS geometry AS $$
+DECLARE
+  g1 geometry;
+BEGIN
+  -- g1 := ST_Split(
+  --   ST_MakeValid(ST_ShiftLongitude(geom)),
+  --   -- Antimeridian
+  --   ST_GeomFromText('LINESTRING(180 -90, 180 90)', 4326)
+  -- );
+  RETURN ST_WrapX(g1, 180, -360);
+EXCEPTION WHEN OTHERS THEN
+   RETURN null;
+END;
+$$ LANGUAGE plpgsql STABLE;
 
 
 CREATE OR REPLACE FUNCTION corelle_macrostrat.rotate(
