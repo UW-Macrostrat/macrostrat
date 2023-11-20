@@ -8,6 +8,8 @@ from sqlalchemy.engine import make_url
 
 cfg = find_macrostrat_config()
 
+macrostrat_config_file = cfg
+
 settings = Dynaconf(
     envvar_prefix="MACROSTRAT",
     environments=True,

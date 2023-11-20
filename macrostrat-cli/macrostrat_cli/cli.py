@@ -264,6 +264,21 @@ def install():
         local_install(Path(settings.map_integration_src))
 
 
+cfg_app = Typer(name="config")
+
+
+@cfg_app.command(name="edit")
+def edit_cfg():
+    """Open config file in editor"""
+    from subprocess import run
+    from .config import macrostrat_config_file
+
+    run(["open", str(macrostrat_config_file)])
+
+
+main.add_typer(cfg_app)
+
+
 main.add_typer(v2_app, name="v2")
 
 # Add subsystems if they are available.
