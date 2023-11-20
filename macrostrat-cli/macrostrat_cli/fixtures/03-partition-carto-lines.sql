@@ -64,8 +64,19 @@ ALTER TABLE carto.lines ATTACH PARTITION carto.lines_small FOR VALUES IN ('small
 ALTER TABLE carto.lines ATTACH PARTITION carto.lines_medium FOR VALUES IN ('medium');
 ALTER TABLE carto.lines ATTACH PARTITION carto.lines_large FOR VALUES IN ('large');
 
--- Drop extra views that get created by the above
-DROP VIEW IF EXISTS carto_new.lines_tiny;
-DROP VIEW IF EXISTS carto_new.lines_small;
-DROP VIEW IF EXISTS carto_new.lines_medium;
-DROP VIEW IF EXISTS carto_new.lines_large;
+/* Create views mimicking the old tables */
+CREATE OR REPLACE VIEW carto_new.lines_tiny
+AS SELECT line_id, source_id, geom, geom_scale::text AS scale
+FROM carto.lines WHERE scale = 'tiny';
+
+CREATE OR REPLACE VIEW carto_new.lines_small
+AS SELECT line_id, source_id, geom, geom_scale::text AS scale
+FROM carto.lines WHERE scale = 'small';
+
+CREATE OR REPLACE VIEW carto_new.lines_medium
+AS SELECT line_id, source_id, geom, geom_scale::text AS scale
+FROM carto.lines WHERE scale = 'medium';
+
+CREATE OR REPLACE VIEW carto_new.lines_large
+AS SELECT line_id, source_id, geom, geom_scale::text AS scale
+FROM carto.lines WHERE scale = 'large';

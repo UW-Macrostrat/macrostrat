@@ -115,8 +115,3 @@ DROP VIEW IF EXISTS carto_new.polygons_tiny;
 DROP VIEW IF EXISTS carto_new.polygons_small;
 DROP VIEW IF EXISTS carto_new.polygons_medium;
 DROP VIEW IF EXISTS carto_new.polygons_large;
-
-DROP VIEW IF EXISTS carto_new.lines_tiny;
-DROP VIEW IF EXISTS carto_new.lines_small;
-DROP VIEW IF EXISTS carto_new.lines_medium;
-DROP VIEW IF EXISTS carto_new.lines_large;

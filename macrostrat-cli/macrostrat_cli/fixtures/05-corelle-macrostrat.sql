@@ -148,6 +148,8 @@ UPDATE corelle.plate_polygon
 SET geom_simple = corelle_macrostrat.antimeridian_split(ST_Multi(ST_Simplify(ST_Buffer(geometry, 0.1), 0.1)))
 WHERE geom_simple IS NULL;
 
+/** This isn't properly a "schema update". It is a required cache-filling operation. But it isn't
+    necessarily correct practice to run it every time the schema is regenerated. */
 UPDATE corelle.rotation_cache rc SET
   geom = corelle_macrostrat.rotate(geom_simple, rotation, true)
 FROM corelle.plate_polygon pp
