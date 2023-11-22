@@ -1,0 +1,23 @@
+[tool.poetry]
+authors = ["Daven Quinn <dev@davenquinn.com>"]
+description = "An API for Macrostrat structural modeling"
+name = "macrostrat.structure_api"
+version = "1.0.0"
+
+packages = [
+  {include = "macrostrat"},
+]
+
+[tool.poetry.dependencies]
+fastapi = "^0.92.0"
+"macrostrat.database" = "^1.0.2"
+pydantic = "^1.10.5"
+python = ">=3.8,<4.0"
+uvicorn = "^0.15.0"
+
+[tool.poetry.group.dev.dependencies]
+black = "^22.10.0"
+
+[build-system]
+build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core>=1.0.0"]

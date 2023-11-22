@@ -102,6 +102,11 @@ services:
       # This is a legacy argument...
       - CORELLE_DB_ARGS=-h postgres -d burwell -p 5432 -U postgres
       - PGPASSWORD=${POSTGRES_PASSWORD}
+  structure_api:
+    build: services/structure-api
+    expose: [8000]
+    environment:
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/burwell
   rockd_api:
     build: services/rockd-api/api
     expose: [5500]
