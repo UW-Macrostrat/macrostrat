@@ -43,6 +43,12 @@ strat copy-data \
   --exclude-table-data=macrostrat.lookup_unit_attrs_api \
   --exclude-table-data=macrostrat.pbdb_collections
 
+# We have to copy data for unit_boundaries from MariaDB, for now
+macrostrat schlep projects
+macrostrat schlep unit_boundaries
+macrostrat schlep sections
+macrostrat schlep strat_tree
+
 if [ $measures -eq 1 ]; then
   echo "Dumping Macrostrat measures from steno"
   strat copy-data \
