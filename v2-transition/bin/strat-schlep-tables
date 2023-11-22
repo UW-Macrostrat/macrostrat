@@ -1,0 +1,9 @@
+#!/usr/bin/env sh
+
+## schlep missing tables from mariaDB to postgres
+## we use strat-cli to run the docker cli container
+tables=(projects sections units cols unit_boundaries strat_tree)
+
+for table in ${tables[@]}; do
+    strat cli schlep $table
+done
