@@ -3,7 +3,6 @@ from typing import Optional
 
 from geojson_pydantic import Feature, Polygon
 from pydantic import BaseModel, ConfigDict
-from werkzeug.security import check_password_hash, generate_password_hash
 
 
 class CommonModel(BaseModel):
@@ -33,7 +32,6 @@ class LineworkModel(CommonModel):
 
 # Database Models
 
-
 class Sources(BaseModel):
     source_id: int
     name: Optional[str] = None
@@ -60,17 +58,4 @@ class Sources(BaseModel):
         orm_mode = True
 
 
-class User(BaseModel):
-    __tablename__ = "user"
-    __table_args__ = {"extend_existing": True}
 
-    # Columns are automagically mapped from database
-    # *NEVER* directly set the password column.
-
-    def set_password(self, plaintext):
-        salt = os.environ["PASSWORD_SALT"]
-        self.password = generate_password_hash(salt + str(plaintext))
-
-    def is_correct_password(self, plaintext):
-        salt = os.environ["PASSWORD_SALT"]
-        return check_password_hash(self.password, salt + str(plaintext))

@@ -44,6 +44,9 @@ async def connect_engine() -> AsyncEngine:
 
     engine = create_async_engine(db_url)
 
+    async with engine.begin() as conn:
+        await conn.run_sync(schemas.Base.metadata.create_all)
+
 
 async def dispose_engine():
     global engine

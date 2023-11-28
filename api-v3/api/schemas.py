@@ -1,11 +1,9 @@
 from typing import List
-from typing import Optional
-from sqlalchemy import ForeignKey
+import datetime
+from sqlalchemy import ForeignKey, func, DateTime
 from sqlalchemy.dialects.postgresql import VARCHAR, TEXT, INTEGER, ARRAY, BOOLEAN
 from sqlalchemy import String
-from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.orm import Mapped
-from sqlalchemy.orm import mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from geoalchemy2 import Geometry
 
 
@@ -36,3 +34,36 @@ class Sources(Base):
     web_geom: Mapped[str] = mapped_column(Geometry('POLYGON'))
     new_priority: Mapped[int] = mapped_column(INTEGER)
     status_code: Mapped[str] = mapped_column(TEXT)
+
+
+class GroupMembers(Base):
+    __tablename__ = "group_members"
+    __table_args__ = {'schema': 'macrostrat_auth'}
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    group_id: Mapped[int] = mapped_column(ForeignKey("macrostrat_auth.group.id"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("macrostrat_auth.user.id"))
+
+
+class Group(Base):
+    __tablename__ = "group"
+    __table_args__ = {'schema': 'macrostrat_auth'}
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(VARCHAR(255))
+    users: Mapped[List["User"]] = relationship(secondary="macrostrat_auth.group_members", back_populates="groups")
+
+
+class User(Base):
+    __tablename__ = "user"
+    __table_args__ = {'schema': 'macrostrat_auth'}
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    sub: Mapped[str] = mapped_column(VARCHAR(255))
+    name: Mapped[str] = mapped_column(VARCHAR(255))
+    email: Mapped[str] = mapped_column(VARCHAR(255))
+    groups: Mapped[List[Group]] = relationship(secondary="macrostrat_auth.group_members", back_populates="users")
+    created_on: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_on: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+

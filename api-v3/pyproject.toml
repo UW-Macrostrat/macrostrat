@@ -19,6 +19,7 @@ geoalchemy2 = "^0.14.2"
 geojson-pydantic = "^1.0.1"
 pyjwt = "^2.8.0"
 werkzeug = "^3.0.1"
+aiohttp = "^3.8.6"
 
 [tool.poetry.group.dev.dependencies]
 bandit = "~1.7"

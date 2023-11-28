@@ -10,10 +10,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.exc import NoResultFound, NoSuchTableError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from starlette.authentication import requires
-from starlette.middleware import Middleware
-from starlette.middleware.authentication import AuthenticationMiddleware
 
-import api.auth
+import dotenv
+dotenv.load_dotenv()
+
+import api.routes.security
 import api.database as db
 from api.database import (
     connect_engine,
@@ -26,10 +27,6 @@ from api.database import (
 from api.models import PolygonModel, Sources
 from api.query_parser import ParserException
 
-# The key for signing JWTs indicating that the caller has been authenticated.
-JWT_SIGNING_KEY = secrets.token_hex(32)
-
-
 @asynccontextmanager
 async def setup_engine(a: FastAPI):
     """Return database client instance."""
@@ -38,7 +35,9 @@ async def setup_engine(a: FastAPI):
     await dispose_engine()
 
 
-app = FastAPI(lifespan=setup_engine)
+app = FastAPI(
+    lifespan=setup_engine
+)
 
 origins = [
     "http://localhost:3000",
@@ -54,9 +53,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.state.auth_backend = api.auth.JWTAuthBackend(JWT_SIGNING_KEY)
-app.add_middleware(AuthenticationMiddleware, backend=app.state.auth_backend)
-app.include_router(api.auth.router)
+app.include_router(api.routes.security.router)
 
 
 @app.get("/sources")
@@ -109,7 +106,6 @@ async def get_sub_sources(
 
 
 @app.patch("/sources/{table_id}/polygons", response_model=List[PolygonModel])
-@requires("authenticated")
 async def patch_sub_sources(
         request: starlette.requests.Request,
         table_id: int,
