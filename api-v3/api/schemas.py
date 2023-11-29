@@ -49,7 +49,7 @@ class Group(Base):
     __table_args__ = {'schema': 'macrostrat_auth'}
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(VARCHAR(255))
-    users: Mapped[List["User"]] = relationship(secondary="macrostrat_auth.group_members", back_populates="groups")
+    users: Mapped[List["User"]] = relationship(secondary="macrostrat_auth.group_members", lazy="joined", back_populates="groups")
 
 
 class User(Base):
@@ -59,7 +59,7 @@ class User(Base):
     sub: Mapped[str] = mapped_column(VARCHAR(255))
     name: Mapped[str] = mapped_column(VARCHAR(255))
     email: Mapped[str] = mapped_column(VARCHAR(255))
-    groups: Mapped[List[Group]] = relationship(secondary="macrostrat_auth.group_members", back_populates="users")
+    groups: Mapped[List[Group]] = relationship(secondary="macrostrat_auth.group_members", lazy="joined", back_populates="users")
     created_on: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
