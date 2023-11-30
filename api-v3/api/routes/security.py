@@ -13,12 +13,13 @@ from jose import JWTError, jwt
 from pydantic import BaseModel
 from sqlalchemy import select
 
+import dotenv
+dotenv.load_dotenv()
+
 import api.schemas as schemas
 import api.database as db
 
-# to get a string like this run:
-# openssl rand -hex 32
-SECRET_KEY = "11937be5daeb452985fc2d4f8ab09841d2fa45f48d72960b470d52fd84f4088e"
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
@@ -111,7 +112,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, os.environ['SECRET_KEY'], algorithms=[os.environ['JWT_ENCRYPTION_ALGORITHM']])
         sub: str = payload.get("sub")
         if sub is None:
             raise credentials_exception
@@ -131,7 +132,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     else:
         expire = datetime.utcnow() + timedelta(minutes=15)
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, os.environ['SECRET_KEY'], algorithm=os.environ['JWT_ENCRYPTION_ALGORITHM'])
     return encoded_jwt
 
 
