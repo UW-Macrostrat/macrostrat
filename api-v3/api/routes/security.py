@@ -143,15 +143,17 @@ async def redirect_authorization(return_url: str = None):
         'scope': "openid profile email org.cilogon.userinfo",
         'client_id': os.environ['OAUTH_CLIENT_ID'],
         'response_type': "code",
-        'redirect_uri': 'http://localhost:8000/security/callback',
-        'state': return_url
+        'redirect_uri': 'http://localhost:8000/security/callback'
     }
+
+    if return_url is not None:
+        params['state'] = return_url
 
     return RedirectResponse(os.environ['OAUTH_AUTHORIZATION_URL'] + "?" + urllib.parse.urlencode(params))
 
 
 @router.get("/callback")
-async def redirect_callback(code: str, state: str):
+async def redirect_callback(code: str, state: Optional[str] = None):
     """Exchange the code for a token and redirect to the state URL"""
 
     data = {
@@ -222,3 +224,4 @@ async def read_users_me(user_token_data: TokenData = Depends(get_current_user)):
     """Return JWT content"""
 
     return user_token_data
+

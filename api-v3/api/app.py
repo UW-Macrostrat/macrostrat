@@ -5,7 +5,7 @@ from typing import List
 
 import starlette.requests
 import uvicorn
-from fastapi import FastAPI, HTTPException, Response, status
+from fastapi import FastAPI, HTTPException, Response, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.exc import NoResultFound, NoSuchTableError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -26,6 +26,7 @@ from api.database import (
 )
 from api.models import PolygonModel, Sources
 from api.query_parser import ParserException
+from api.routes.security import TokenData, get_current_user
 
 @asynccontextmanager
 async def setup_engine(a: FastAPI):
@@ -40,6 +41,7 @@ app = FastAPI(
 )
 
 origins = [
+    "http://localhost:8000",
     "http://localhost:3000",
     "http://localhost:3000/",
     "http://localhost:6006"
@@ -109,11 +111,14 @@ async def get_sub_sources(
 async def patch_sub_sources(
         request: starlette.requests.Request,
         table_id: int,
-        polygon_updates: PolygonModel
+        polygon_updates: PolygonModel,
+        user_token_data: TokenData = Depends(get_current_user)
 ):
 
-    try:
+    if "admin" not in user_token_data.groups:
+        raise HTTPException(status_code=401, detail="User is not in admin group")
 
+    try:
         result = await patch_sources_sub_table(
             engine=get_engine(),
             table_id=table_id,
