@@ -144,7 +144,7 @@ async def redirect_authorization(return_url: str = None):
         'scope': "openid profile email org.cilogon.userinfo",
         'client_id': os.environ['OAUTH_CLIENT_ID'],
         'response_type': "code",
-        'redirect_uri': 'http://localhost:8000/security/callback'
+        'redirect_uri': os.environ['REDIRECT_URI']
     }
 
     if return_url is not None:
