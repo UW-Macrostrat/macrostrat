@@ -162,6 +162,7 @@ async def redirect_callback(code: str, state: Optional[str] = None):
         'client_id': os.environ['OAUTH_CLIENT_ID'],
         'client_secret': os.environ['OAUTH_CLIENT_SECRET'],
         'code': code,
+        'redirect_uri': os.environ['REDIRECT_URI']
     }
 
     async with aiohttp.ClientSession() as session:
