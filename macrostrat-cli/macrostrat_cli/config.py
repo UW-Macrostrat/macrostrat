@@ -44,6 +44,10 @@ environ["PGPORT"] = str(url.port)
 environ["PGUSER"] = url.username
 environ["PGDATABASE"] = url.database
 
+environ["PG_DATABASE_CONTAINER"] = getattr(
+    settings, "pg_database_container", "postgis/postgis:15-3.4"
+)
+
 environ["COMPOSE_PROJECT_NAME"] = "macrostrat_" + macrostrat_env
 
 # For map integration CLI
