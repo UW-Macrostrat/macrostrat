@@ -21,7 +21,7 @@ import api.database as db
 
 
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
+ACCESS_TOKEN_EXPIRE_MINUTES = 1440  # 24 hours
 
 
 class Token(BaseModel):
