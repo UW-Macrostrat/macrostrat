@@ -1,21 +1,17 @@
 import asyncio
 from rich.console import Console
 from pathlib import Path
-from subprocess import run
-from sqlalchemy import text
-from sqlalchemy.engine import URL, make_url, Engine
+from sqlalchemy.engine import Engine
 from sqlalchemy_utils import create_database, database_exists
 import aiofiles
+from typing import Optional
 
 console = Console()
 
 
 def pg_restore(*args, **kwargs):
-    # loop = asyncio.get_event_loop()
     task = _pg_restore(*args, **kwargs)
     asyncio.run(task)
-    # loop.run_until_complete(task)
-    # loop.close()
 
 
 async def _pg_restore(
@@ -24,33 +20,27 @@ async def _pg_restore(
     database: str,
     *,
     create=False,
+    pg_restore: Optional[list] = None,
     postgres_container: str = "postgres:15",
 ):
     # Pipe file to pg_restore, mimicking
 
     new_database = engine.url.set(database=database)
-    print(new_database)
 
     db_exists = database_exists(new_database)
     if db_exists:
-        print(f"Database {new_database} already exists")
+        print(f"Database [bold cyan]{new_database}[/] already exists")
 
     if create and not db_exists:
-        print(f"Creating database {new_database}")
+        console.print(f"Creating database [bold cyan]{new_database}[/]")
         create_database(new_database)
 
-    print(dumpfile)
-
-    # Read file bit by bit
-    # source = await asyncio.create_subprocess_exec(
-    #     "cat",
-    #     str(dumpfile),
-    #     stdout=asyncio.subprocess.PIPE,
-    #     stderr=asyncio.subprocess.PIPE,
-    # )  # TODO: there has to be a more pythonic way to do this
-
-    # Use docker to run pg_restore
-    run_args = [
+    # Run pg_restore in a local Docker container
+    # TODO: this could also be run with pg_restore in a Kubernetes pod
+    # or another location, if more appropriate. Running on the remote
+    # host, if possible, is probably the fastest option. There should be
+    # multiple options ideally.
+    pg_restore = pg_restore or [
         "docker",
         "run",
         "-i",
@@ -58,11 +48,11 @@ async def _pg_restore(
         "--network",
         "host",
         postgres_container,
+        "pg_restore",
     ]
 
     proc = await asyncio.create_subprocess_exec(
-        *run_args,
-        "pg_restore",
+        *pg_restore 
         "-d",
         str(new_database),
         stdin=asyncio.subprocess.PIPE,
@@ -73,8 +63,6 @@ async def _pg_restore(
     async with aiofiles.open(dumpfile, mode="rb") as source:
         await asyncio.gather(
             asyncio.create_task(enqueue(source, proc.stdin)),
-            # # asyncio.create_task(dequeue(source.stderr)),
-            # proc.wait(),
             asyncio.create_task(dequeue(proc.stderr)),
         )
 
