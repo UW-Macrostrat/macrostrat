@@ -25,8 +25,11 @@ ALTER TABLE "macrostrat_auth"."group" OWNER TO macrostrat;
 -- Name: user; Type: TABLE; Schema: user; Owner: macrostrat
 --
 
+/** A user table designed for use with OpenID */
 CREATE TABLE "macrostrat_auth"."user" (
     id SERIAL NOT NULL primary key,
+    -- Subject Identifier
+    -- https://openid.net/specs/openid-connect-core-1_0.html#IDToken
     sub character varying(255) NOT NULL,
     name character varying(255) NOT NULL,
     email character varying(255) NOT NULL,
