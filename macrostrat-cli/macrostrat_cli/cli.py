@@ -151,6 +151,28 @@ def psql(ctx: typer.Context):
     run("docker", "run", *flags, "postgres:15", "psql", PG_DATABASE_DOCKER, *ctx.args)
 
 
+@db_app.command()
+def restore(dumpfile: Path, database: str, create=False):
+    """Restore the database from a dump file"""
+    from .config import PG_DATABASE_DOCKER
+    from ._dev.restore_database import pg_restore
+
+    db_conn = PG_DATABASE_DOCKER
+    # Replace the database name with the specified database
+
+    db_container = settings.get("pg_database_container", "postgres:15")
+
+    engine = get_db().engine
+
+    pg_restore(
+        dumpfile,
+        engine,
+        database,
+        postgres_container=db_container,
+        create=create,
+    )
+
+
 @db_app.command(name="tables")
 def list_tables():
     """List all tables in the database"""
