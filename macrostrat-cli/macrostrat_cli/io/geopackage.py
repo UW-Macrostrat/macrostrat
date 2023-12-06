@@ -1,11 +1,13 @@
 """
 Write a Macrostrat database to a GeoPackage file using the GeoPandas library.
+
+Currently, this represents the Macrostrat internal PostGIS schema more or less unmodified.
+As a next step, we will rework it to fit the CriticalMAAS TA1 output schema.
+https://github.com/DARPA-CRITICALMAAS/schemas/tree/main/ta1
 """
 
 from macrostrat.database import Database
 from geopandas import GeoDataFrame
-from pandas import read_sql
-from sqlalchemy import create_engine
 from pathlib import Path
 from rich import print
 
@@ -13,21 +15,22 @@ from rich import print
 def write_map_geopackage(
     db: Database, identifier: str | int, filename: str = None, overwrite: bool = False
 ):
-    """Write a map dataset to a GeoPackage file."""
+    """Write a Macrostrat map dataset (stored in PostGIS) to a GeoPackage file using GeoPandas and SQLAlchemy."""
 
     try:
         map_id = int(identifier)
-        map_slug = db.run_sql(
-            "SELECT slug FROM maps.sources WHERE source_id = %s", params=[map_id]
-        ).scalar()
+        map_slug = get_scalar(
+            db,
+            "SELECT slug FROM maps.sources WHERE source_id = %(source_id)s",
+            dict(source_id=map_id),
+        )
     except ValueError:
         map_slug = identifier
-        map_id = list(
-            db.run_sql(
-                "SELECT source_id FROM maps.sources WHERE slug = :slug",
-                params=dict(slug=map_slug),
-            )
-        )[0].scalar()
+        map_id = get_scalar(
+            db,
+            "SELECT source_id FROM maps.sources WHERE slug = %(slug)s",
+            params=dict(slug=map_slug),
+        )
 
     if filename is None:
         filename = f"{map_slug}.gpkg"
@@ -41,6 +44,8 @@ def write_map_geopackage(
 
     if file_exists and overwrite:
         fn.unlink()
+
+    params = {"source_id": map_id}
 
     sources_query = """
     SELECT
@@ -60,22 +65,24 @@ def write_map_geopackage(
     WHERE source_id = %(source_id)s
     """
 
-    # Create SQLite database
-    sqlite_engine = create_engine(f"sqlite:///{filename}")
-
     # Copy metadata
     df = GeoDataFrame.from_postgis(
-        sources_query, db.engine, geom_col="bounds", params={"source_id": map_id}
+        sources_query, db.engine, geom_col="bounds", params=params
     )
     df.to_file(filename, layer="map_meta", driver="GPKG")
 
     # Write map layers to GeoPackage
     for layer in ["points", "lines", "polygons"]:
         df = GeoDataFrame.from_postgis(
-            f"SELECT * FROM maps.{layer} WHERE source_id = %s",
+            f"SELECT * FROM maps.{layer} WHERE source_id = %(source_id)s",
             db.engine,
             geom_col="geom",
-            params=(map_id,),
+            params=params,
         )
         print(f"{len(df)} {layer}")
         df.to_file(filename, layer=layer, driver="GPKG")
+
+
+def get_scalar(db: Database, query: str, params: dict = None):
+    """Return a scalar value from a SQL query."""
+    return list(db.run_sql(query, params=params))[0].scalar()
