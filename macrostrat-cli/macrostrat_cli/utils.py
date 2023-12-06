@@ -1,5 +1,6 @@
 from pathlib import Path
 
+
 # Load config before we do anything else
 def find_config(start_dir: Path):
     """Find the macrostrat.toml config file"""
@@ -10,6 +11,7 @@ def find_config(start_dir: Path):
             return next_dir
         next_dir = next_dir.parent
     return None
+
 
 def find_macrostrat_config() -> Path:
     """Find the macrostrat.toml config file"""
@@ -26,5 +28,9 @@ def find_macrostrat_config() -> Path:
 
     if macrostrat_root is None:
         raise RuntimeError("Could not find macrostrat.toml")
-    
-    return macrostrat_root/"macrostrat.toml"
+
+    return macrostrat_root / "macrostrat.toml"
+
+
+def is_pg_url(url):
+    return (url.startswith("postgres") or url.startswith("postgresql")) and "://" in url

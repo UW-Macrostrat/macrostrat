@@ -283,10 +283,10 @@ def install():
         print("Installing corelle")
         local_install(Path(settings.corelle_src))
 
-    # TODO: move map integration subsystem into this repository
-    if hasattr(settings, "map_integration_src"):
-        print("Installing map integration subsystem")
-        local_install(Path(settings.map_integration_src))
+    # This could be made part of the Poetry installer...
+    ingestion_src = settings.srcroot / "map-integration"
+    print("Installing map ingestion subsystem")
+    local_install(ingestion_src)
 
 
 cfg_app = Typer(name="config")

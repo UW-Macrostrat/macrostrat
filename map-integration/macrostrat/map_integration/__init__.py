@@ -23,6 +23,10 @@ class NaturalOrderGroup(TyperGroup):
 
 
 class IngestionCLI(Typer):
+    """Command-line application to set up working tables for map ingestion. This is
+    designed to be run in an independent database from the main Macrostrat database.
+    It is not designed to handle integration, matching, or harmonization tasks."""
+
     def __init__(self, **kwargs):
         super().__init__(cls=NaturalOrderGroup, **kwargs)
 

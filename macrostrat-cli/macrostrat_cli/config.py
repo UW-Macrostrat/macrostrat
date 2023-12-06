@@ -2,7 +2,7 @@ from os import environ
 from dynaconf import Dynaconf, Validator
 from pathlib import Path
 
-from .utils import find_macrostrat_config
+from .utils import find_macrostrat_config, is_pg_url
 from sqlalchemy.engine import make_url
 
 
@@ -51,7 +51,15 @@ environ["PG_DATABASE_CONTAINER"] = getattr(
 environ["COMPOSE_PROJECT_NAME"] = "macrostrat_" + macrostrat_env
 
 # For map integration CLI
-environ["INTEGRATION_DATABASE_URL"] = PG_DATABASE
+if getattr(settings, "ingestion_database", None) is None:
+    settings.ingestion_database = PG_DATABASE
+
+if not is_pg_url(settings.ingestion_database):
+    # Set the ingestion database to the same cluster as the main database
+    settings.ingestion_database = str(url.set(database=settings.ingestion_database))
+
+
+environ["INTEGRATION_DATABASE_URL"] = settings.ingestion_database
 environ["MACROSTRAT_DATABASE_URL"] = PG_DATABASE
 
 # Docker compose file
@@ -82,3 +90,6 @@ MYSQL_DATABASE = getattr(settings, "mysql_database", None)
 
 # TILESERVER_SECRET = environ.get("TILESERVER_SECRET", None)
 # MBTILES_PATH = environ.get("MBTILES_PATH", None)
+
+# Path to the root of the Macrostrat repository
+settings.srcroot = Path(__file__).parent.parent.parent
