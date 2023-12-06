@@ -1,3 +1,3 @@
-def copy_macrostrat_map():
-    """Copy the macrostrat map from one database to another."""
+def copy_macrostrat_source():
+    """Copy a macrostrat source from one database to another."""
     pass
