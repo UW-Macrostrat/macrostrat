@@ -8,6 +8,7 @@ import typer
 from macrostrat.utils.shell import run
 from typer import get_app_dir, Argument, Typer
 from time import sleep
+from sqlalchemy import create_engine
 
 APP_NAME = "macrostrat"
 app_dir = Path(get_app_dir(APP_NAME))
@@ -152,17 +153,19 @@ def psql(ctx: typer.Context):
 
 
 @db_app.command()
-def restore(dumpfile: Path, database: str, create=False):
+def restore(dumpfile: Path, database: Optional[str] = None, create=False):
     """Restore the database from a dump file"""
-    from .config import PG_DATABASE_DOCKER
     from ._dev.restore_database import pg_restore
-
-    db_conn = PG_DATABASE_DOCKER
-    # Replace the database name with the specified database
 
     db_container = settings.get("pg_database_container", "postgres:15")
 
     engine = get_db().engine
+
+    # Specify the database to restore to
+    if database is not None:
+        # Replace the database name with the specified database
+        new_url = engine.url.set(database=database)
+        engine = create_engine(new_url)
 
     pg_restore(
         dumpfile,
@@ -280,10 +283,10 @@ def install():
         print("Installing corelle")
         local_install(Path(settings.corelle_src))
 
-    # TODO: move map integration subsystem into this repository
-    if hasattr(settings, "map_integration_src"):
-        print("Installing map integration subsystem")
-        local_install(Path(settings.map_integration_src))
+    # This could be made part of the Poetry installer...
+    ingestion_src = settings.srcroot / "map-integration"
+    print("Installing map ingestion subsystem")
+    local_install(ingestion_src)
 
 
 cfg_app = Typer(name="config")
