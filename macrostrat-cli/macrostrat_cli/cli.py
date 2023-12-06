@@ -303,10 +303,21 @@ main.add_typer(cfg_app)
 
 main.add_typer(v2_app, name="v2")
 
+
 # Add subsystems if they are available.
 # This organization is a bit awkward, and we may change it eventually.
 try:
     from macrostrat.map_integration import app as map_app
+
+    @map_app.command(name="write-geopackage")
+    def write_map_geopackage(
+        map: str = Argument(...), filename: Path = None, overwrite: bool = False
+    ):
+        """Write a geopackage from a map"""
+        from .io.geopackage import write_map_geopackage
+
+        db = get_db()
+        write_map_geopackage(db, map, filename, overwrite=overwrite)
 
     main.add_typer(
         map_app,
