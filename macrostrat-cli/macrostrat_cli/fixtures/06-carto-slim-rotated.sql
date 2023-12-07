@@ -44,7 +44,7 @@ WITH plates_basic AS (
   SELECT
     pp.plate_id,
     pp.model_id,
-    corelle_macrostrat.rotate_to_web_mercator(geom_simple, rotation, false) geom
+    corelle_macrostrat.rotate_to_web_mercator(geom_simple, rotation, true) geom
   FROM corelle.plate_polygon pp
   JOIN corelle.rotation_cache rc
    ON rc.model_id = pp.model_id
@@ -59,7 +59,7 @@ plates_ AS (
   SELECT
     plate_id,
     model_id,
-    CASE WHEN true
+    CASE WHEN ST_XMax(geom) - ST_XMin(geom) > 1.9 * pi() * 6378137
     THEN
     'rgba(200, 100, 200, 0.5)'
     ELSE

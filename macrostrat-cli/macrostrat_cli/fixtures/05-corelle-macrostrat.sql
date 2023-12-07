@@ -65,6 +65,7 @@ BEGIN
     corelle.invert_rotation(rotation),
     false
   );
+END;
 $$ LANGUAGE plpgsql VOLATILE;
 
 CREATE OR REPLACE FUNCTION corelle_macrostrat.build_tile_geom(
@@ -147,9 +148,29 @@ CREATE OR REPLACE FUNCTION corelle_macrostrat.rotate_to_web_mercator(
 ) RETURNS geometry AS $$
 DECLARE
   proj_string text;
+  g1 geometry;
+  threshold double precision;
 BEGIN
-  proj_string := corelle.build_proj_string(rotation, '+R=6378137 +o_proj=merc ');
-  RETURN ST_SetSRID(ST_Transform(geom, proj_string), 3857);
+  proj_string := corelle.build_proj_string(rotation, '+R=6378137 +o_proj=merc +over ');
+  g1 := ST_SetSRID(ST_Transform(geom, proj_string), 3857);
+
+  threshold := 20037508.342789;
+
+  IF ST_XMax(g1) - ST_XMin(g1) > 1.9 * pi() * 6378137 THEN
+    g1 := ST_Transform(g1, 4326);
+    g1 := ST_ShiftLongitude(g1);
+    --g1 := ST_WrapX(g1, -180, 180);
+    g1 := ST_Transform(g1, 3857);
+      --ST_Translate(geometry g1, threshold, 0)
+    --);
+    --RETURN null;
+  END IF;
+
+  -- Split geometries that cross the antimeridian in web mercator
+  -- g1 := ST_WrapX(g1, -20037508.342789, 20037508.342789);
+  -- g1 := ST_WrapX(g1, 20037508.342789, -20037508.342789);
+
+  RETURN g1;
 EXCEPTION WHEN OTHERS THEN
   RETURN null;
 END;
