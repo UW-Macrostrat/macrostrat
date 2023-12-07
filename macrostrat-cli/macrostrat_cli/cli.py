@@ -98,7 +98,7 @@ def run_all_sql(db, dir: Path):
 subsystem_updates = []
 
 
-def update_schema():
+def update_schema(match: str = Argument(None)):
     """Update the database schema"""
     from .config import PG_DATABASE
     from macrostrat.database import Database
@@ -112,6 +112,9 @@ def update_schema():
     subdirs.sort()
     for f in subdirs:
         if f.is_file() and f.suffix == ".sql":
+            if match is not None and match not in str(f):
+                continue
+
             print(f"[cyan bold]{f}[/]")
             db.run_sql(f)
             print()
