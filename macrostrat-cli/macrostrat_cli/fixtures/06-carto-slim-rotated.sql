@@ -51,7 +51,7 @@ WITH plates_basic AS (
    AND rc.plate_id = pp.plate_id
    AND rc.t_step = _t_step
   WHERE pp.model_id = _model_id
-    AND ST_Intersects(corelle_macrostrat.tile_envelope(rotation, x, y, z)::geography, geom_simple::geography)
+    --AND (z = 0 OR ST_Intersects(corelle_macrostrat.tile_envelope(rotation, x, y, z)::geography, geometry::geography))
     AND coalesce(pp.old_lim, 4000) >= _t_step
     AND coalesce(pp.young_lim, 0) <= _t_step
 ),

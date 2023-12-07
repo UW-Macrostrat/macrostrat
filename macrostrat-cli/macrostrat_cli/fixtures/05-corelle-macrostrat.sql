@@ -55,14 +55,17 @@ CREATE OR REPLACE FUNCTION corelle_macrostrat.tile_envelope(
   y integer,
   z integer
 ) RETURNS geometry AS $$
-    -- I feel like this bbox needs to be inverted but it seems to work better if not...
-  SELECT corelle_macrostrat.rotate(
-    --ST_Transform(mercator_bbox, 4326),
-    ST_Transform(ST_TileEnvelope(z, x, y), 4326),
+DECLARE
+  modern_bbox geometry;
+BEGIN
+  modern_bbox := ST_Transform(ST_TileEnvelope(z, x, y), 4326);
+  -- I feel like this bbox needs to be inverted but it seems to work better if not...
+  RETURN corelle_macrostrat.rotate(
+    modern_bbox,
     corelle.invert_rotation(rotation),
-    true
+    false
   );
-$$ LANGUAGE sql VOLATILE;
+$$ LANGUAGE plpgsql VOLATILE;
 
 CREATE OR REPLACE FUNCTION corelle_macrostrat.build_tile_geom(
   geom geometry,
@@ -133,7 +136,7 @@ BEGIN
   -- don't properly intersect the tile are still included due to polygon winding effects.
   -- We really should figure out how to exclude geometries with no points
   -- in the tile envelope, so we don't have to run this check on every tile
-  RETURN g1;
+  RETURN corelle_macrostrat.antimeridian_split(g1);
 END;
 $$ LANGUAGE plpgsql VOLATILE;
 
