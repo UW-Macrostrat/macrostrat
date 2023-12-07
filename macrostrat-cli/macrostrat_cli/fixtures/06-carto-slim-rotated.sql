@@ -44,14 +44,16 @@ WITH plates_basic AS (
   SELECT
     pp.plate_id,
     pp.model_id,
-    corelle_macrostrat.rotate_to_web_mercator(geometry, rotation, false) geom
+    corelle_macrostrat.rotate_to_web_mercator(geom_simple, rotation, false) geom
   FROM corelle.plate_polygon pp
   JOIN corelle.rotation_cache rc
    ON rc.model_id = pp.model_id
    AND rc.plate_id = pp.plate_id
    AND rc.t_step = _t_step
   WHERE pp.model_id = _model_id
-  -- AND ST_Intersects(corelle_macrostrat.tile_envelope(rotation, x, y, z), geometry)
+    AND ST_Intersects(corelle_macrostrat.tile_envelope(rotation, x, y, z)::geography, geom_simple::geography)
+    AND coalesce(pp.old_lim, 4000) >= _t_step
+    AND coalesce(pp.young_lim, 0) <= _t_step
 ),
 plates_ AS (
   SELECT

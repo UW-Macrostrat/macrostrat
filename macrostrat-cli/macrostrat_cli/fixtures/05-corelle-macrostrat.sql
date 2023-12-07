@@ -142,8 +142,15 @@ CREATE OR REPLACE FUNCTION corelle_macrostrat.rotate_to_web_mercator(
   rotation double precision[],
   wrap boolean DEFAULT false
 ) RETURNS geometry AS $$
-  SELECT ST_SetSRID(ST_Transform(geom, corelle.build_proj_string(rotation, '+R=6378137 +o_proj=merc ')), 3857);
-$$ LANGUAGE sql VOLATILE;
+DECLARE
+  proj_string text;
+BEGIN
+  proj_string := corelle.build_proj_string(rotation, '+R=6378137 +o_proj=merc ');
+  RETURN ST_SetSRID(ST_Transform(geom, proj_string), 3857);
+EXCEPTION WHEN OTHERS THEN
+  RETURN null;
+END;
+$$ LANGUAGE plpgsql VOLATILE;
 
 -- Adjust layers to have simplified geometries for rapid filtering
 -- This should maybe be moved to Corelle
