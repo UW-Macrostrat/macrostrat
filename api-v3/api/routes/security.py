@@ -193,7 +193,7 @@ async def redirect_callback(code: str, state: Optional[str] = None):
             )
 
             response = RedirectResponse(state if state else "/")
-            response.set_cookie(key="Authorization", value=f"Bearer {access_token}", httponly=True, samesite="strict")
+            response.set_cookie(key="Authorization", value=f"Bearer {access_token}", httponly=True, samesite="lax")
 
             return response
 
@@ -203,21 +203,6 @@ async def logout(response: Response):
     """Logout the active user"""
 
     response.delete_cookie(key="Authorization")
-    return response
-
-
-@router.get("/refresh")
-async def refresh(response: Response, user_token_data: Annotated[TokenData, Depends(get_current_user)]):
-    """Update groups and provide a new token"""
-
-    user = await get_user(user_token_data.sub)
-    access_token = create_access_token(
-        data={
-            "sub": user.sub,
-            "groups": [group.name for group in user.groups]
-        }
-    )
-    response.set_cookie(key="Authorization", value=f"Bearer {access_token}", httponly=True, samesite="strict")
     return response
 
 
