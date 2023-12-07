@@ -42,33 +42,34 @@ projected_bbox := ST_Transform(mercator_bbox, 4326);
 
 WITH plates_basic AS (
   SELECT
-    rc.plate_id,
-    rc.model_id,
-    -- Get the tile bounding box rotated to the actual position of the plate on the modern globe
-    --ST_Area(corelle_macrostrat.tile_envelope(rc.rotation, t.x, t.y, t.z)::geography)/ST_Area(ST_Transform(tile_utils.envelope(t.x, t.y, t.z), 4326)::geography) tile_area_ratio,
-    corelle_macrostrat.rotate(geom_simple, rotation, true) geom
-    -- corelle.rotate_geometry(
-    --   projected_bbox,
-    --   rc.rotation
-    -- ) tile_geom,
-    -- rc.rotation rotation
-  FROM corelle.rotation_cache rc
-  JOIN corelle.plate_polygon pp
-    ON pp.plate_id = rc.plate_id
-    AND pp.model_id = rc.model_id
-  WHERE rc.model_id = _model_id
-    AND rc.t_step = _t_step
+    pp.plate_id,
+    pp.model_id,
+    corelle_macrostrat.rotate_to_web_mercator(geometry, rotation, false) geom
+  FROM corelle.plate_polygon pp
+  JOIN corelle.rotation_cache rc
+   ON rc.model_id = pp.model_id
+   AND rc.plate_id = pp.plate_id
+   AND rc.t_step = _t_step
+  WHERE pp.model_id = _model_id
+  -- AND ST_Intersects(corelle_macrostrat.tile_envelope(rotation, x, y, z), geometry)
 ),
 plates_ AS (
   SELECT
     plate_id,
     model_id,
-    tile_layers.tile_geom(ST_Intersection(u.geom, projected_bbox), mercator_bbox) AS geom
+    CASE WHEN true
+    THEN
+    'rgba(200, 100, 200, 0.5)'
+    ELSE
+    'rgba(100, 200, 100, 0.5)'
+    END AS color,
+    tile_layers.tile_geom(u.geom, mercator_bbox) AS geom
   FROM plates_basic u
-  WHERE ST_Intersects(u.geom, projected_bbox)
-
+  WHERE ST_Intersects(u.geom, mercator_bbox)
 ) 
 SELECT ST_AsMVT(plates_, 'plates') INTO plates FROM plates_;
+
+RETURN plates;
 
 WITH rotation_info AS (
   SELECT

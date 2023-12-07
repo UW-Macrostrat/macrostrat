@@ -62,7 +62,7 @@ CREATE OR REPLACE FUNCTION corelle_macrostrat.tile_envelope(
     corelle.invert_rotation(rotation),
     true
   );
-$$ LANGUAGE sql STABLE;
+$$ LANGUAGE sql VOLATILE;
 
 CREATE OR REPLACE FUNCTION corelle_macrostrat.build_tile_geom(
   geom geometry,
@@ -133,11 +133,17 @@ BEGIN
   -- don't properly intersect the tile are still included due to polygon winding effects.
   -- We really should figure out how to exclude geometries with no points
   -- in the tile envelope, so we don't have to run this check on every tile
-  RETURN corelle_macrostrat.antimeridian_split(g1);
-EXCEPTION WHEN OTHERS THEN
-    RETURN null;
+  RETURN g1;
 END;
-$$ LANGUAGE plpgsql STABLE;
+$$ LANGUAGE plpgsql VOLATILE;
+
+CREATE OR REPLACE FUNCTION corelle_macrostrat.rotate_to_web_mercator(
+  geom geometry,
+  rotation double precision[],
+  wrap boolean DEFAULT false
+) RETURNS geometry AS $$
+  SELECT ST_SetSRID(ST_Transform(geom, corelle.build_proj_string(rotation, '+R=6378137 +o_proj=merc ')), 3857);
+$$ LANGUAGE sql VOLATILE;
 
 -- Adjust layers to have simplified geometries for rapid filtering
 -- This should maybe be moved to Corelle
