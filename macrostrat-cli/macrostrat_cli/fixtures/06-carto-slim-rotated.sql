@@ -40,35 +40,38 @@ tolerance := 6;
 
 projected_bbox := ST_Transform(mercator_bbox, 4326);
 
-WITH plates_basic AS (
+WITH rotated_plates AS (
   SELECT
     pp.plate_id,
     pp.model_id,
-    corelle_macrostrat.rotate_to_web_mercator(geom_simple, rotation, true) geom
+    corelle_macrostrat.rotate_to_web_mercator(geom_simple, rotation, true) geom,
+    rc.rotation rotation
   FROM corelle.plate_polygon pp
   JOIN corelle.rotation_cache rc
    ON rc.model_id = pp.model_id
-   AND rc.plate_id = pp.plate_id
-   AND rc.t_step = _t_step
-  WHERE pp.model_id = _model_id
-    --AND (z = 0 OR ST_Intersects(corelle_macrostrat.tile_envelope(rotation, x, y, z)::geography, geometry::geography))
-    AND coalesce(pp.old_lim, 4000) >= _t_step
-    AND coalesce(pp.young_lim, 0) <= _t_step
+  AND rc.plate_id = pp.plate_id
+  AND rc.t_step = _t_step
+  AND pp.model_id = _model_id
+  AND coalesce(pp.old_lim, 4000) >= _t_step
+  AND coalesce(pp.young_lim, 0) <= _t_step
+  --AND (z = 0 OR ST_Intersects(corelle_macrostrat.tile_envelope(rotation, x, y, z)::geography, geometry::geography))
+),
+relevant_plates AS (
+  SELECT
+    plate_id,
+    model_id,
+    u.geom,
+    corelle_macrostrat.tile_envelope(rotation, x, y, z) tile_geom
+  FROM rotated_plates u
+  WHERE ST_Intersects(u.geom, mercator_bbox)
 ),
 plates_ AS (
   SELECT
     plate_id,
     model_id,
-    CASE WHEN ST_XMax(geom) - ST_XMin(geom) > 1.9 * pi() * 6378137
-    THEN
-    'rgba(200, 100, 200, 0.5)'
-    ELSE
-    'rgba(100, 200, 100, 0.5)'
-    END AS color,
-    tile_layers.tile_geom(u.geom, mercator_bbox) AS geom
-  FROM plates_basic u
-  WHERE ST_Intersects(u.geom, mercator_bbox)
-) 
+    tile_layers.tile_geom(geom, mercator_bbox) AS geom
+  FROM relevant_plates
+)
 SELECT ST_AsMVT(plates_, 'plates') INTO plates FROM plates_;
 
 RETURN plates;
