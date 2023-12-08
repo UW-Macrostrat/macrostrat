@@ -6,7 +6,7 @@ from rich import print
 from typing import Optional
 import typer
 from macrostrat.utils.shell import run
-from typer import get_app_dir, Argument, Typer
+from typer import get_app_dir, Argument, Typer, Option
 from time import sleep
 from sqlalchemy import create_engine
 
@@ -153,7 +153,13 @@ def psql(ctx: typer.Context):
 
 
 @db_app.command()
-def restore(dumpfile: Path, database: str = Argument(None), *, create=False):
+def restore(
+    dumpfile: Path,
+    database: str = Argument(None),
+    *,
+    create: bool = False,
+    jobs: int = Option(None, "--jobs", "-j"),
+):
     """Restore the database from a dump file"""
     from ._dev.restore_database import pg_restore
 
@@ -167,11 +173,16 @@ def restore(dumpfile: Path, database: str = Argument(None), *, create=False):
         new_url = engine.url.set(database=database)
         engine = create_engine(new_url)
 
+    args = []
+    if jobs is not None:
+        args.extend(["--jobs", str(jobs)])
+
     pg_restore(
         dumpfile,
         engine,
         postgres_container=db_container,
         create=create,
+        args=args,
     )
 
 
