@@ -29,7 +29,7 @@ async def _pg_restore(
 
     db_exists = database_exists(database)
     if db_exists:
-        print(f"Database [bold cyan]{database}[/] already exists")
+        console.print(f"Database [bold cyan]{database}[/] already exists")
 
     if create and not db_exists:
         console.print(f"Creating database [bold cyan]{database}[/]")
