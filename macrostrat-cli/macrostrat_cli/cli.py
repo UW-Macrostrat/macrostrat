@@ -153,7 +153,7 @@ def psql(ctx: typer.Context):
 
 
 @db_app.command()
-def restore(dumpfile: Path, database: Optional[str] = None, create=False):
+def restore(dumpfile: Path, database: str = Argument(None), *, create=False):
     """Restore the database from a dump file"""
     from ._dev.restore_database import pg_restore
 
@@ -170,7 +170,6 @@ def restore(dumpfile: Path, database: Optional[str] = None, create=False):
     pg_restore(
         dumpfile,
         engine,
-        database,
         postgres_container=db_container,
         create=create,
     )
