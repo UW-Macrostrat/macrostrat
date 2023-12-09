@@ -17,16 +17,22 @@ def _docker_local_run_args(postgres_container: str = "postgres:15"):
 
 
 async def print_stream_progress(
-    in_stream: asyncio.StreamReader, out_stream: asyncio.StreamWriter
+    in_stream: asyncio.StreamReader, out_stream: asyncio.StreamWriter, chunk_size=1024
 ):
     megabytes_written = 0
+    has_more = True
     i = 0
-    async for line in in_stream:
+    # Read file in chunks of constant size
+
+    while has_more:
+        line = await in_stream.read(chunk_size)
+        has_more = len(line) == chunk_size
         megabytes_written += len(line) / 1_000_000
         out_stream.write(line)
+        print(megabytes_written)
         await out_stream.drain()
         i += 1
-        if i == 1000:
+        if i == 100:
             i = 0
             _print_progress(megabytes_written, end="\r")
 
