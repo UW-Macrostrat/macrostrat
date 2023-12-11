@@ -26,22 +26,28 @@ JOIN corelle.plate_polygon pp
 
 -- carto plate index
 CREATE TABLE IF NOT EXISTS corelle_macrostrat.carto_plate_index AS
+WITH plates AS (
 SELECT
-	p.map_id,
-	p.scale,
-	pp.model_id model_id,
-	pp.plate_id
+	plate_id,
+	model_id,
+	ST_Union(pp.geometry) geom
+FROM corelle.plate_polygon pp
+GROUP BY plate_id, model_id
+)
+SELECT DISTINCT ON (map_id, plate_id, model_id, geom_scale)
+  map_id,
+  pp.plate_id,
+  pp.model_id,
+  geom_scale scale
 FROM carto.polygons p
-JOIN corelle.plate_polygon pp
-  ON ST_Intersects(pp.geometry, p.geom)
-JOIN corelle.model m
-  ON m.id = pp.model_id
-GROUP BY map_id, scale, pp.model_id, pp.geometry, plate_id;
+JOIN plates pp
+  ON ST_Intersects(p.geom, pp.geom);
+
 
 ALTER TABLE corelle_macrostrat.carto_plate_index
-ADD CONSTRAINT carto_plate_index_pkey PRIMARY KEY (map_id, scale, model_id, plate_id);
+ADD CONSTRAINT carto_plate_index_pkey PRIMARY KEY (map_id, model_id, scale);
 
-CREATE INDEX carto_plate_index_model_plate_scale_idx ON corelle_macrostrat.carto_plate_index(model_id, plate_id, scale);
+-- CREATE INDEX carto_plate_index_model_plate_scale_idx ON corelle_macrostrat.carto_plate_index(model_id, plate_id, scale);
 
 CREATE OR REPLACE FUNCTION corelle_macrostrat.tile_envelope(
   rotation numeric[],
