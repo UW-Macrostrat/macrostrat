@@ -41,7 +41,7 @@ tolerance := 6;
 projected_bbox := ST_Transform(mercator_bbox, 4326);
 
 WITH rotated_plates AS (
-  SELECT
+  SELECT DISTINCT ON (plate_id, model_id, geometry)
     pp.plate_id,
     pp.model_id,
     corelle_macrostrat.rotate_to_web_mercator(geom_simple, rotation, true) geom,
