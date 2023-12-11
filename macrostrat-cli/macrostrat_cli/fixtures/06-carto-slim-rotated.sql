@@ -15,7 +15,7 @@ linesize text[];
 mercator_bbox geometry;
 projected_bbox geometry;
 bedrock bytea;
-plates bytea;
+result bytea;
 lines bytea;
 tolerance double precision;
 _t_step integer;
@@ -45,7 +45,7 @@ WITH rotated_plates AS (
     pp.plate_id,
     pp.model_id,
     corelle_macrostrat.rotate_to_web_mercator(geom_simple, rotation, true) geom,
-    rc.rotation rotation
+    rc.rotation
   FROM corelle.plate_polygon pp
   JOIN corelle.rotation_cache rc
    ON rc.model_id = pp.model_id
@@ -54,17 +54,58 @@ WITH rotated_plates AS (
   AND pp.model_id = _model_id
   AND coalesce(pp.old_lim, 4000) >= _t_step
   AND coalesce(pp.young_lim, 0) <= _t_step
-  --AND (z = 0 OR ST_Intersects(corelle_macrostrat.tile_envelope(rotation, x, y, z)::geography, geometry::geography))
+  -- AND (z < 3 OR ST_Intersects(corelle_macrostrat.tile_envelope(rotation, x, y, z)::geography, geometry::geography))
 ),
 relevant_plates AS (
   SELECT
     plate_id,
     model_id,
-    u.geom,
+    geom,
+    rotation,
     corelle_macrostrat.tile_envelope(rotation, x, y, z) tile_geom
-  FROM rotated_plates u
-  WHERE ST_Intersects(u.geom, mercator_bbox)
+  FROM rotated_plates
+  WHERE ST_Intersects(geom, mercator_bbox)
 ),
+-- units AS (
+--   SELECT 
+--     u.map_id,
+--     u.source_id,
+--     cpi.plate_id,
+--     rp.rotation,
+--     rp.tile_geom,
+--     coalesce(cpi.geom, u.geom) geom
+--   FROM relevant_plates rp
+--   --JOIN tile ON true
+--   -- Right now we pre-cache tile intersections but we could probably skip this
+--   JOIN corelle_macrostrat.carto_plate_index cpi
+--     ON cpi.plate_id = rp.plate_id
+--    AND cpi.model_id = rp.model_id
+--    AND cpi.scale = _scale
+--   JOIN carto.polygons u
+--     ON u.map_id = cpi.map_id
+--    AND u.scale = _scale
+-- ),
+-- bedrock_ AS (
+--   SELECT
+--     u.map_id,
+--     u.source_id,
+--     u.plate_id,
+--     l.*, -- legend info
+--     tile_layers.tile_geom(
+--       corelle_macrostrat.rotate_to_web_mercator(u.geom, u.rotation),
+--       mercator_bbox
+--     ) geom
+--   FROM units u
+--   --JOIN tile ON true
+--   LEFT JOIN maps.map_legend
+--     ON u.map_id = map_legend.map_id
+--   LEFT JOIN tile_layers.map_legend_info AS l
+--     ON l.legend_id = map_legend.legend_id
+--   WHERE ST_Intersects(u.geom, u.tile_geom)
+--   -- WHERE (z < 3 AND ST_Intersects(u.geom, u.tile_geom))
+--   --   -- We have to break this out because we get weird antipodal-edge warnings otherwise
+--   --   OR (z >= 3 AND ST_Intersects(u.geom::geography, u.tile_geom::geography))
+-- ),
 plates_ AS (
   SELECT
     plate_id,
@@ -72,75 +113,11 @@ plates_ AS (
     tile_layers.tile_geom(geom, mercator_bbox) AS geom
   FROM relevant_plates
 )
-SELECT ST_AsMVT(plates_, 'plates') INTO plates FROM plates_;
+SELECT ST_AsMVT(plates_, 'plates') -- || ST_AsMVT(bedrock_, 'units')
+INTO result
+FROM plates_;
 
-RETURN plates;
-
-WITH rotation_info AS (
-  SELECT
-    rc.plate_id,
-    rc.model_id,
-    rc.geom rotated_plate_geom,
-    rc.rotation rotation
-  FROM corelle.plate_polygon pp
-  JOIN corelle.rotation_cache rc
-    ON rc.plate_id = pp.plate_id
-    AND rc.model_id = pp.model_id
-    AND rc.t_step = _t_step
-    AND coalesce(pp.old_lim, 4000) >= _t_step
-    AND coalesce(pp.young_lim, 0) <= _t_step
-   AND pp.model_id = _model_id
-),
-relevant_plates AS (
-  SELECT *,
-    corelle_macrostrat.tile_envelope(rotation, x, y, z) tile_geom
-  FROM rotation_info
-  WHERE ST_Intersects(rotated_plate_geom, projected_bbox)
-),
-units AS (
-  SELECT 
-    u.map_id,
-    u.source_id,
-    cpi.plate_id,
-    rp.rotation,
-    rp.tile_geom,
-    coalesce(cpi.geom, u.geom) geom
-  FROM relevant_plates rp
-  --JOIN tile ON true
-  -- Right now we pre-cache tile intersections but we could probably skip this
-  JOIN corelle_macrostrat.carto_plate_index cpi
-    ON cpi.plate_id = rp.plate_id
-   AND cpi.model_id = rp.model_id
-   AND cpi.scale = _scale
-  JOIN carto.polygons u
-    ON u.map_id = cpi.map_id
-   AND u.scale = _scale
-), expanded AS (
-  SELECT
-    u.map_id,
-    u.source_id,
-    u.plate_id,
-    l.*, -- legend info
-    corelle_macrostrat.build_tile_geom(
-      u.geom, u.rotation, x, y, z
-    ) geom
-  FROM units u
-  --JOIN tile ON true
-  LEFT JOIN maps.map_legend
-    ON u.map_id = map_legend.map_id
-  LEFT JOIN tile_layers.map_legend_info AS l
-    ON l.legend_id = map_legend.legend_id
-  WHERE ST_Intersects(u.geom, u.tile_geom)
-  -- WHERE (z < 3 AND ST_Intersects(u.geom, u.tile_geom))
-  --   -- We have to break this out because we get weird antipodal-edge warnings otherwise
-  --   OR (z >= 3 AND ST_Intersects(u.geom::geography, u.tile_geom::geography))
-)
-SELECT null INTO bedrock;
---   ST_AsMVT(expanded, 'units')
--- INTO bedrock
--- FROM expanded;
-
-RETURN plates;
+RETURN result;
 
 END;
 $$ LANGUAGE plpgsql VOLATILE;
