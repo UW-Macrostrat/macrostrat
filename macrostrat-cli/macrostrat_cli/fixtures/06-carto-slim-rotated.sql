@@ -20,7 +20,7 @@ lines bytea;
 tolerance double precision;
 _t_step integer;
 _model_id integer;
-_scale map_scale;
+_scale macrostrat.map_scale;
 
 BEGIN
 
@@ -40,11 +40,23 @@ tolerance := 6;
 
 projected_bbox := ST_Transform(mercator_bbox, 4326);
 
+IF z < 4 THEN
+  -- Select from carto.tiny table
+  _scale := 'tiny'::map_scale;
+ELSIF z < 7 THEN
+  _scale := 'small'::map_scale;
+ELSIF z < 10 THEN
+  _scale := 'medium'::map_scale;
+ELSE
+  _scale := 'large'::map_scale;
+END IF;
+
 WITH rotated_plates AS (
   SELECT DISTINCT ON (plate_id, model_id, geometry)
     pp.plate_id,
     pp.model_id,
-    corelle_macrostrat.rotate_to_web_mercator(geom_simple, rotation, true) geom,
+    corelle_macrostrat.rotate_to_web_mercator(geom_simple, rotation, true) geom_merc,
+    geometry,
     rc.rotation
   FROM corelle.plate_polygon pp
   JOIN corelle.rotation_cache rc
@@ -60,62 +72,62 @@ relevant_plates AS (
   SELECT
     plate_id,
     model_id,
-    geom,
+    geom_merc,
+    geometry,
     rotation,
     corelle_macrostrat.tile_envelope(rotation, x, y, z) tile_geom
   FROM rotated_plates
-  WHERE ST_Intersects(geom, mercator_bbox)
+  WHERE ST_Intersects(geom_merc, mercator_bbox)
 ),
--- units AS (
---   SELECT 
---     u.map_id,
---     u.source_id,
---     cpi.plate_id,
---     rp.rotation,
---     rp.tile_geom,
---     coalesce(cpi.geom, u.geom) geom
---   FROM relevant_plates rp
---   --JOIN tile ON true
---   -- Right now we pre-cache tile intersections but we could probably skip this
---   JOIN corelle_macrostrat.carto_plate_index cpi
---     ON cpi.plate_id = rp.plate_id
---    AND cpi.model_id = rp.model_id
---    AND cpi.scale = _scale
---   JOIN carto.polygons u
---     ON u.map_id = cpi.map_id
---    AND u.scale = _scale
--- ),
--- bedrock_ AS (
---   SELECT
---     u.map_id,
---     u.source_id,
---     u.plate_id,
---     l.*, -- legend info
---     tile_layers.tile_geom(
---       corelle_macrostrat.rotate_to_web_mercator(u.geom, u.rotation),
---       mercator_bbox
---     ) geom
---   FROM units u
---   --JOIN tile ON true
---   LEFT JOIN maps.map_legend
---     ON u.map_id = map_legend.map_id
---   LEFT JOIN tile_layers.map_legend_info AS l
---     ON l.legend_id = map_legend.legend_id
---   WHERE ST_Intersects(u.geom, u.tile_geom)
---   -- WHERE (z < 3 AND ST_Intersects(u.geom, u.tile_geom))
---   --   -- We have to break this out because we get weird antipodal-edge warnings otherwise
---   --   OR (z >= 3 AND ST_Intersects(u.geom::geography, u.tile_geom::geography))
--- ),
+units AS (
+  SELECT DISTINCT ON (u.map_id, cpi.plate_id)
+    u.map_id,
+    u.source_id,
+    cpi.plate_id,
+    rp.rotation,
+    corelle_macrostrat.rotate_to_web_mercator(
+       ST_Intersection(u.geom, rp.geometry),
+       rp.rotation,
+       TRUE
+  ) geom
+  FROM relevant_plates rp
+  JOIN corelle_macrostrat.carto_plate_index cpi
+    ON cpi.plate_id = rp.plate_id
+   AND cpi.model_id = rp.model_id
+   AND cpi.scale = _scale
+  JOIN carto.polygons u
+    ON u.map_id = cpi.map_id
+   AND u.scale = _scale
+  WHERE ST_Intersects(u.geom, rp.tile_geom)
+),
+bedrock_ AS (
+  SELECT DISTINCT ON (u.map_id, u.plate_id)
+    u.map_id,
+    u.source_id,
+    u.plate_id,
+    l.*, -- legend info
+    tile_layers.tile_geom(
+      u.geom,
+      mercator_bbox
+    ) geom
+  FROM units u
+  LEFT JOIN maps.map_legend
+    ON u.map_id = map_legend.map_id
+  LEFT JOIN tile_layers.map_legend_info AS l
+    ON l.legend_id = map_legend.legend_id
+  WHERE ST_Intersects(u.geom, mercator_bbox)
+),
 plates_ AS (
   SELECT
     plate_id,
     model_id,
-    tile_layers.tile_geom(geom, mercator_bbox) AS geom
+    tile_layers.tile_geom(geom_merc, mercator_bbox) AS geom
   FROM relevant_plates
 )
-SELECT ST_AsMVT(plates_, 'plates') -- || ST_AsMVT(bedrock_, 'units')
-INTO result
-FROM plates_;
+SELECT
+ (SELECT ST_AsMVT(plates_, 'plates') FROM plates_) || 
+ (SELECT ST_AsMVT(bedrock_, 'units') FROM bedrock_)
+INTO result;
 
 RETURN result;
 
