@@ -425,6 +425,15 @@ except ImportError as err:
     pass
 
 
+@main.command(name="carto-plate-index")
+def build_carto_plate_index():
+    """Build a representation of the Carto map layers, split by plate polygons"""
+    from .corelle import build_carto_plate_index
+
+    db = get_db()
+    build_carto_plate_index(db.engine)
+
+
 # Commands to manage this command-line interface
 self_app = typer.Typer()
 
