@@ -431,7 +431,7 @@ def build_carto_plate_index():
     from .corelle import build_carto_plate_index
 
     db = get_db()
-    build_carto_plate_index(db.engine)
+    build_carto_plate_index(db)
 
 
 # Commands to manage this command-line interface
