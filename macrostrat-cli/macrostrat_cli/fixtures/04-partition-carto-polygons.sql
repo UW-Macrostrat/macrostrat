@@ -120,3 +120,5 @@ DROP VIEW IF EXISTS carto_new.polygons_large;
   If this fails, it means there are duplicate map_ids in the table.
   You need to run the 'carto-rebuild' migration to fix this. */
 ALTER TABLE carto.polygons ADD CONSTRAINT polygons_pkey PRIMARY KEY (map_id, scale);
+-- We have to also create a unique constraint in order to use this for foriegn keys, annoyingly
+ALTER TABLE carto.polygons ADD CONSTRAINT polygons_unique UNIQUE (map_id, scale);
