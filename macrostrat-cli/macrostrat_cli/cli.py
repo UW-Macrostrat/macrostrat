@@ -176,6 +176,29 @@ def psql(ctx: typer.Context, database: str = None):
     run("docker", "run", *flags, "postgres:15", "psql", _database, *ctx.args)
 
 
+@db_app.command(
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True}
+)
+def dump(
+    ctx: typer.Context,
+    dumpfile: Path,
+    database: str = None,
+):
+    """Dump the database to a file"""
+    from ._dev.dump_database import pg_dump
+
+    db_container = settings.get("pg_database_container", "postgres:15")
+
+    engine = _engine_for_db_name(database)
+
+    pg_dump(
+        dumpfile,
+        engine,
+        postgres_container=db_container,
+        args=ctx.args,
+    )
+
+
 @db_app.command()
 def restore(
     dumpfile: Path,

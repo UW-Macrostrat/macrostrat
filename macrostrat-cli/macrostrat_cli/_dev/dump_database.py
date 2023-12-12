@@ -6,6 +6,11 @@ import aiofiles
 from .utils import _docker_local_run_args, print_stream_progress, print_stdout
 
 
+def pg_dump(*args, **kwargs):
+    task = _pg_dump_to_file(*args, **kwargs)
+    asyncio.run(task)
+
+
 async def _pg_dump(
     engine: Engine,
     *,

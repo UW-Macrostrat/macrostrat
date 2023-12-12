@@ -24,7 +24,8 @@ async def print_stream_progress(
     async for line in in_stream:
         megabytes_written += len(line) / 1_000_000
         out_stream.write(line)
-        await out_stream.drain()
+        if hasattr(out_stream, "drain"):
+            await out_stream.drain()
         i += 1
         if i == 1000:
             i = 0
