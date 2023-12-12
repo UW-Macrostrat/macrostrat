@@ -1,9 +1,0 @@
-#!/usr/bin/env zsh
-
-# Run in this script's virtual environment
-venv_path="${0:A:h:h}/.venv"
-if [ -d $venv_path ]; then
-  source $venv_path/bin/activate
-fi
-
-macrostrat $@

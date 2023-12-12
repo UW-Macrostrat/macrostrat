@@ -283,7 +283,8 @@ def set_env(env: str = Argument(None), unset: bool = False):
 
 def local_install(path: Path):
     run(
-        ["poetry", "install"],
+        "poetry",
+        "install",
         cwd=path.expanduser().resolve(),
         env={**environ, "POETRY_VIRTUALENVS_CREATE": "False"},
     )
@@ -291,15 +292,12 @@ def local_install(path: Path):
 
 @main.command()
 def install():
-    """Install Macrostrat subsystems if available."""
-    if hasattr(settings, "corelle_src"):
-        print("Installing corelle")
-        local_install(Path(settings.corelle_src))
+    """Install Macrostrat subsystems into the Python root.
 
-    # This could be made part of the Poetry installer...
-    ingestion_src = settings.srcroot / "map-integration"
-    print("Installing map ingestion subsystem")
-    local_install(ingestion_src)
+    This is currently hard-coded for development purposes, but
+    this will be changed in the future.
+    """
+    local_install(Path(settings.srcroot) / "py-root")
 
 
 cfg_app = Typer(name="config")

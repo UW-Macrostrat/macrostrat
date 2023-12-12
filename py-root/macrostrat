@@ -6,7 +6,8 @@ if [ -x "$(command -v poetry)" ]; then
   SCRIPT_DIR="$(cd "$(dirname "$(readlink "$0")")" && pwd)"
   VENV_PATH="$(cd "$SCRIPT_DIR" && poetry env info --path)"
   export PATH="$VENV_PATH/bin:$PATH"
-  macrostrat $@
+
+  macrostrat "$@"
 else
   echo "Could not find Poetry's virtual environment path."
   exit 1
