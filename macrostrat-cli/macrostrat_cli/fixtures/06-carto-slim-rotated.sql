@@ -90,7 +90,7 @@ units AS (
        coalesce(cpi.geom, u.geom),
        rp.rotation,
        TRUE
-  ) geom
+    ) geom
   FROM relevant_plates rp
   JOIN corelle_macrostrat.carto_plate_index cpi
     ON cpi.plate_id = rp.plate_id
@@ -100,7 +100,6 @@ units AS (
   JOIN carto.polygons u
     ON u.map_id = cpi.map_id
    AND u.scale = _scale
-  WHERE ST_Intersects(u.geom, rp.tile_geom)
 ),
 bedrock_ AS (
   SELECT
