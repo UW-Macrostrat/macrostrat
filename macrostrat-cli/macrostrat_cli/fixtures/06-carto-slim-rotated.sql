@@ -40,21 +40,22 @@ tolerance := 6;
 
 projected_bbox := ST_Transform(mercator_bbox, 4326);
 
-IF z < 4 THEN
+IF z < 3 THEN
   -- Select from carto.tiny table
   _scale := 'tiny'::map_scale;
-ELSIF z < 7 THEN
+ELSIF z < 6 THEN
   _scale := 'small'::map_scale;
-ELSIF z < 10 THEN
+ELSIF z < 9 THEN
   _scale := 'medium'::map_scale;
 ELSE
   _scale := 'large'::map_scale;
 END IF;
 
 WITH rotated_plates AS (
-  SELECT DISTINCT ON (plate_id, model_id, geometry)
+  SELECT 
     pp.plate_id,
     pp.model_id,
+    pp.id plate_polygon_id,
     corelle_macrostrat.rotate_to_web_mercator(geom_simple, rotation, true) geom_merc,
     geometry,
     rc.rotation
@@ -72,21 +73,21 @@ relevant_plates AS (
   SELECT
     plate_id,
     model_id,
+    plate_polygon_id,
     geom_merc,
-    geometry,
     rotation,
     corelle_macrostrat.tile_envelope(rotation, x, y, z) tile_geom
   FROM rotated_plates
   WHERE ST_Intersects(geom_merc, mercator_bbox)
 ),
 units AS (
-  SELECT DISTINCT ON (u.map_id, cpi.plate_id)
+  SELECT
     u.map_id,
     u.source_id,
     cpi.plate_id,
     rp.rotation,
     corelle_macrostrat.rotate_to_web_mercator(
-       ST_Intersection(u.geom, rp.geometry),
+       coalesce(cpi.geom, u.geom),
        rp.rotation,
        TRUE
   ) geom
@@ -94,6 +95,7 @@ units AS (
   JOIN corelle_macrostrat.carto_plate_index cpi
     ON cpi.plate_id = rp.plate_id
    AND cpi.model_id = rp.model_id
+   AND cpi.plate_polygon_id = rp.plate_polygon_id
    AND cpi.scale = _scale
   JOIN carto.polygons u
     ON u.map_id = cpi.map_id
@@ -101,7 +103,7 @@ units AS (
   WHERE ST_Intersects(u.geom, rp.tile_geom)
 ),
 bedrock_ AS (
-  SELECT DISTINCT ON (u.map_id, u.plate_id)
+  SELECT
     u.map_id,
     u.source_id,
     u.plate_id,
