@@ -8,24 +8,38 @@ import typer
 from macrostrat.utils.shell import run
 from typer import get_app_dir, Argument, Typer, Option
 from time import sleep
-from sqlalchemy import create_engine
+from .utils import is_pg_url
+from sqlalchemy import create_engine, text
+
+
+def env_text():
+    return f"environment [bold cyan]{environ.get('MACROSTRAT_ENV')}[/]"
+
 
 APP_NAME = "macrostrat"
 app_dir = Path(get_app_dir(APP_NAME))
 active_env = app_dir / "~active_env"
 if "MACROSTAT_ENV" in environ:
-    print(f"Using environment [bold cyan]{environ['MACROSTRAT_ENV']}[/]", file=stderr)
+    print(f"Using {env_text()}", file=stderr)
 if "MACROSTRAT_ENV" not in environ and active_env.exists():
     environ["MACROSTRAT_ENV"] = active_env.read_text().strip()
     user_dir = str(Path("~").expanduser())
     dir = str(active_env).replace(user_dir, "~")
     print(
-        f"Using environment [bold cyan]{environ['MACROSTRAT_ENV']}[/]\n[dim] from {dir}[/]",
+        f"Using {env_text()}\n[dim] from {dir}[/]",
         file=stderr,
     )
 
 
-from .config import settings
+try:
+    from .config import settings
+except AttributeError as err:
+    print(f"Could not load settings for {env_text()}", file=stderr)
+    print(err, file=stderr)
+    print("Removing environment configuration", file=stderr)
+    active_env.unlink()
+    exit(1)
+
 
 # Old environments configuration
 # env = environ.get("MACROSTRAT_ENV", "dev")
@@ -139,9 +153,16 @@ db_app.command(name="update-schema")(update_schema)
 @db_app.command(
     context_settings={"allow_extra_args": True, "ignore_unknown_options": True}
 )
-def psql(ctx: typer.Context):
+def psql(ctx: typer.Context, database: str = None):
     """Run psql in the database container"""
     from .config import PG_DATABASE_DOCKER
+
+    _database = PG_DATABASE_DOCKER
+    if database is not None:
+        if is_pg_url(database):
+            _database = database
+        else:
+            _database = database
 
     flags = [
         "-i",
@@ -152,7 +173,7 @@ def psql(ctx: typer.Context):
     if len(ctx.args) == 0:
         flags.append("-t")
 
-    run("docker", "run", *flags, "postgres:15", "psql", PG_DATABASE_DOCKER, *ctx.args)
+    run("docker", "run", *flags, "postgres:15", "psql", _database, *ctx.args)
 
 
 @db_app.command()
@@ -168,13 +189,7 @@ def restore(
 
     db_container = settings.get("pg_database_container", "postgres:15")
 
-    engine = get_db().engine
-
-    # Specify the database to restore to
-    if database is not None:
-        # Replace the database name with the specified database
-        new_url = engine.url.set(database=database)
-        engine = create_engine(new_url)
+    engine = _engine_for_db_name(database)
 
     args = []
     if jobs is not None:
@@ -189,25 +204,38 @@ def restore(
     )
 
 
-@db_app.command(name="tables")
-def list_tables():
-    """List all tables in the database"""
-    from .config import PG_DATABASE_DOCKER
+def _engine_for_db_name(name: str | None):
+    engine = get_db().engine
+    if name is None:
+        return engine
+    url = engine.url.set(database=name)
+    return create_engine(url)
 
-    # We could probably do this with the inspector too
-    run(
-        "docker",
-        "run",
-        "-i",
-        "--rm",
-        "--network",
-        "host",
-        "postgres:15",
-        "psql",
-        PG_DATABASE_DOCKER,
-        "-c",
-        "\dt *.*",
+
+@db_app.command(name="tables")
+def list_tables(ctx: typer.Context, database: str = Argument(None), schema: str = None):
+    sql = """SELECT table_schema, table_name
+    FROM information_schema.tables
+    WHERE table_schema != 'pg_catalog' AND table_schema != 'information_schema'
+    """
+
+    kwargs = {}
+    if schema is not None:
+        sql += f"\nAND table_schema = :schema"
+        kwargs["schema"] = schema
+
+    sql += "\nORDER BY table_schema, table_name;"
+
+    engine = _engine_for_db_name(database)
+
+    print(
+        f"[dim]Tables in database: [bold cyan]{engine.url.database}[/]\n", file=stderr
     )
+
+    with engine.connect() as conn:
+        result = conn.execute(text(sql), **kwargs)
+        for row in result:
+            print(f"{row.table_schema}.{row.table_name}")
 
 
 @db_app.command(name="sql")
@@ -279,6 +307,7 @@ def set_env(env: str = Argument(None), unset: bool = False):
     else:
         active_env.parent.mkdir(exist_ok=True)
         active_env.write_text(env)
+        print(f"Activated {env_text()}")
 
 
 def local_install(path: Path):
