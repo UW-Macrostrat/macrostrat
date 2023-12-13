@@ -56,7 +56,7 @@ WITH rotated_plates AS (
     pp.plate_id,
     pp.model_id,
     pp.id plate_polygon_id,
-    corelle_macrostrat.rotate_to_web_mercator(geom_simple, rotation, true) geom_merc,
+    corelle_macrostrat.rotate_to_web_mercator(geometry, rotation, true) geom_merc,
     geometry,
     rc.rotation
   FROM corelle.plate_polygon pp
@@ -80,7 +80,61 @@ relevant_plates AS (
       corelle.invert_rotation(rotation)
     ) tile_geom
   FROM rotated_plates
-  WHERE ST_Intersects(geom_merc, mercator_bbox)
+  WHERE geom_merc && mercator_bbox
+),
+land1 AS (
+  SELECT
+    corelle_macrostrat.rotate_to_web_mercator(
+       ix.geometry,
+       ri.rotation,
+       TRUE
+    ) geom
+  FROM corelle_macrostrat.natural_earth_index ix
+  JOIN relevant_plates ri
+    ON ri.plate_id = ix.plate_id
+   AND ri.model_id = ix.model_id
+  WHERE ix.geometry && ri.tile_geom
+),
+land AS (
+  SELECT
+    tile_layers.tile_geom(geom, mercator_bbox) geom
+  FROM land1
+  WHERE ST_Intersects(geom, mercator_bbox)
+),
+columns AS (
+  SELECT DISTINCT ON (col_id)
+    tile_layers.tile_geom(
+      corelle_macrostrat.rotate_to_web_mercator(
+        ST_CollectionExtract(ca.col_area, 3),
+        ri.rotation,
+        true
+      ),
+      mercator_bbox
+    ) geom,
+    u.col_id,
+    u.id unit_id,
+    ri.model_id,
+    ri.plate_id,
+    u.strat_name,
+    nullif(outcrop, '') outcrop,
+    t_age,
+    b_age,
+    u.color,
+    u1.color color1
+  FROM corelle_macrostrat.column_index c
+  JOIN relevant_plates ri
+    ON ri.plate_id = c.plate_id
+   AND ri.model_id = c.model_id
+  JOIN macrostrat.col_areas ca
+    ON ca.col_id = c.col_id
+  JOIN macrostrat.units u
+    ON u.col_id = c.col_id
+  JOIN macrostrat.lookup_units u1
+    ON u1.unit_id = u.id
+  WHERE ca.col_area && ri.tile_geom
+    AND t_age <= _t_step
+    AND b_age >= _t_step
+  ORDER BY col_id, max_thick DESC
 ),
 units AS (
   -- We need this distinct because we have duplicates somewhere in our pipeline
@@ -131,11 +185,26 @@ plates_ AS (
     model_id,
     tile_layers.tile_geom(geom_merc, mercator_bbox) AS geom
   FROM relevant_plates
-)
-SELECT
- (SELECT ST_AsMVT(plates_, 'plates') FROM plates_) || 
- (SELECT ST_AsMVT(bedrock_, 'units') FROM bedrock_)
-INTO result;
+),
+u1 AS (
+  SELECT ST_AsMVT(pp, 'plates') mvt1
+  FROM plates_ pp
+),
+u2 AS (
+  SElECT ST_AsMVT(bedrock_, 'units') mvt2
+  FROM bedrock_
+) --,
+-- u3 AS (
+--   SELECT ST_AsMVT(land, 'land') mvt3
+--   FROM land
+-- ),
+-- u4 AS (
+--   SELECT ST_AsMVT(columns, 'columns') mvt4
+--   FROM columns
+-- )
+SELECT u1.mvt1 || u2.mvt2  --|| u4.mvt4
+INTO result
+FROM u1, u2 --, u4; --, u4;
 
 RETURN result;
 
