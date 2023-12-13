@@ -1,7 +1,7 @@
 from dotenv import load_dotenv
 from pathlib import Path
 from os import environ
-from sys import stderr, argv
+from sys import stderr, argv, stdin
 from rich import print
 from typing import Optional
 import typer
@@ -170,7 +170,7 @@ def psql(ctx: typer.Context, database: str = None):
         "--network",
         "host",
     ]
-    if len(ctx.args) == 0:
+    if len(ctx.args) == 0 and stdin.isatty():
         flags.append("-t")
 
     run("docker", "run", *flags, "postgres:15", "psql", _database, *ctx.args)
