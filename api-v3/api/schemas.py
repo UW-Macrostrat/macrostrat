@@ -67,3 +67,19 @@ class User(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
+
+class Token(Base):
+    __tablename__ = "token"
+    __table_args__ = {'schema': 'macrostrat_auth'}
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    token: Mapped[str] = mapped_column(VARCHAR(255), unique=True)
+    group: Mapped[Group] = mapped_column(ForeignKey("macrostrat_auth.group.id"))
+    used_on: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    expires_on: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True)
+    )
+    created_on: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )

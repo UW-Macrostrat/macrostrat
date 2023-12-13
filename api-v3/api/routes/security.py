@@ -2,11 +2,14 @@ from datetime import datetime, timedelta
 from typing import Annotated, Optional
 import os
 import urllib.parse
+import secrets
+import string
 
+import bcrypt
 import aiohttp
 from fastapi import HTTPException, APIRouter, Depends, status, Response, Request
 from fastapi.responses import RedirectResponse
-from fastapi.security import OAuth2AuthorizationCodeBearer
+from fastapi.security import OAuth2AuthorizationCodeBearer, HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.security.utils import get_authorization_scheme_param
 from starlette.status import HTTP_401_UNAUTHORIZED
 from jose import JWTError, jwt
@@ -22,6 +25,8 @@ import api.database as db
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 1440  # 24 hours
+GROUP_TOKEN_LENGTH = 32
+GROUP_TOKEN_SALT = b'$2b$12$yQrslvQGWDFjwmDBMURAUe'  # Hardcode salt so hashes are consistent
 
 
 class Token(BaseModel):
@@ -31,7 +36,7 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     sub: str
-    groups: list[str] = []
+    groups: list[int] = []
 
 
 class User(BaseModel):
@@ -39,6 +44,14 @@ class User(BaseModel):
     email: str | None = None
     full_name: str | None = None
     disabled: bool | None = None
+
+class AccessToken(BaseModel):
+    group: str
+    token: str
+
+class GroupTokenRequest(BaseModel):
+    expiration: int
+    group_id: int
 
 
 class OAuth2AuthorizationCodeBearerWithCookie(OAuth2AuthorizationCodeBearer):
@@ -61,14 +74,37 @@ class OAuth2AuthorizationCodeBearerWithCookie(OAuth2AuthorizationCodeBearer):
 
 oauth2_scheme = OAuth2AuthorizationCodeBearerWithCookie(
     authorizationUrl='/security/login',
-    tokenUrl="/security/callback"
+    tokenUrl="/security/callback",
+    auto_error=False
 )
+
+http_bearer = HTTPBearer(auto_error=False)
 
 router = APIRouter(
     prefix="/security",
     tags=["security"],
     responses={404: {"description": "Not found"}},
 )
+
+
+async def get_groups_from_header_token(header_token: Annotated[HTTPAuthorizationCredentials, Depends(http_bearer)]) -> int | None:
+    """Get the groups from the bearer token in the header"""
+
+    if header_token is None:
+        return None
+
+    token_hash = bcrypt.hashpw(header_token.credentials.encode(), GROUP_TOKEN_SALT)
+    token_hash_string = token_hash.decode('utf-8')
+
+    engine = db.get_engine()
+    async_session = db.get_async_session(engine)
+
+    token = await db.get_access_token(async_session=async_session, token=token_hash_string)
+
+    if token is None:
+        return None
+
+    return token.group
 
 
 async def get_user(sub: str) -> schemas.User | None:
@@ -103,24 +139,38 @@ async def create_user(sub: str, name: str, email: str) -> schemas.User:
     return await get_user(sub)
 
 
-async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
-    """Get the current user from the JWT token"""
+async def get_user_token_from_cookie(token: Annotated[str | None, Depends(oauth2_scheme)]):
+    """Get the current user from the JWT token in the cookies"""
 
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
+    # If there wasn't a token include in the request
+    if token is None:
+        return None
+
     try:
         payload = jwt.decode(token, os.environ['SECRET_KEY'], algorithms=[os.environ['JWT_ENCRYPTION_ALGORITHM']])
         sub: str = payload.get("sub")
-        if sub is None:
-            raise credentials_exception
-        token_data = TokenData(sub=sub, groups=payload.get("groups", []))
-    except JWTError:
-        raise credentials_exception
+        groups = payload.get("groups", [])
+        token_data = TokenData(sub=sub, groups=groups)
+    except JWTError as e:
+        return None
 
     return token_data
+
+
+async def get_groups(
+    user_token_data: TokenData | None = Depends(get_user_token_from_cookie),
+    header_token: int | None = Depends(get_groups_from_header_token)
+) -> list[int]:
+    """Get the groups from both the cookies and header"""
+
+    groups = []
+    if user_token_data is not None:
+        groups = user_token_data.groups
+
+    if header_token is not None:
+        groups.append(header_token)
+
+    return groups
 
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
@@ -188,7 +238,7 @@ async def redirect_callback(code: str, state: Optional[str] = None):
             access_token = create_access_token(
                 data={
                     "sub": user.sub,
-                    "groups": [group.name for group in user.groups]
+                    "groups": [group.id for group in user.groups]
                 }
             )
 
@@ -196,6 +246,29 @@ async def redirect_callback(code: str, state: Optional[str] = None):
             response.set_cookie(key="Authorization", value=f"Bearer {access_token}", httponly=True, samesite="lax")
 
             return response
+
+
+@router.post("/token", response_model=AccessToken)
+async def create_group_token(group_token_request: GroupTokenRequest, user_token: TokenData = Depends(get_user_token_from_cookie)):
+    """Get an access token for the current user"""
+
+    if group_token_request.group_id not in user_token.groups:
+        raise HTTPException(status_code=401, detail=f"User cannot create tokens for group {group_token_request.group_id}")
+
+    engine = db.get_engine()
+
+    token = ''.join(secrets.choice(string.ascii_letters + string.digits) for i in range(GROUP_TOKEN_LENGTH))
+    token_hash = bcrypt.hashpw(token.encode("utf-8"), GROUP_TOKEN_SALT)
+    token_hash_string = token_hash.decode('utf-8')
+
+    await db.insert_access_token(
+        engine=engine,
+        token=token_hash_string,
+        group_id=group_token_request.group_id,
+        expiration=datetime.fromtimestamp(group_token_request.expiration)
+    )
+
+    return AccessToken(group=group_token_request.group_id, token=token)
 
 
 @router.get("/logout")
@@ -206,9 +279,14 @@ async def logout(response: Response):
     return response
 
 
+@router.get("/groups")
+async def get_security_groups(groups: list[int] = Depends(get_groups)):
+    """Get the groups for the current user"""
+
+    return groups
+
 @router.get("/me")
-async def read_users_me(user_token_data: TokenData = Depends(get_current_user)):
+async def read_users_me(user_token_data: TokenData = Depends(get_user_token_from_cookie)):
     """Return JWT content"""
 
     return user_token_data
-

@@ -5,13 +5,13 @@
 #
 # On the bottom you will find the methods that do not use this method
 #
-
+import datetime
 from os import environ
 from typing import Type
 
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine
 from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
-from sqlalchemy import text, select, update, Table, MetaData, CursorResult, func
+from sqlalchemy import text, select, update, Table, MetaData, CursorResult, func, insert
 from sqlalchemy.exc import NoResultFound, NoSuchTableError
 
 from starlette.requests import QueryParams
@@ -100,10 +100,39 @@ async def get_schema_tables(engine: AsyncEngine, schema: str):
         return map(lambda x: x[0], result.fetchall())
 
 
+async def insert_access_token(engine: AsyncEngine, token: str, group_id: int, expiration: datetime.datetime):
+    async with engine.begin() as conn:
+
+        q = insert(schemas.Token).values(token=token, expires_on=expiration, group=group_id)
+        result = await conn.execute(q)
+
+        return result
+
+
+async def get_access_token(async_session: async_sessionmaker[AsyncSession], token: str):
+    async with async_session() as session:
+
+        select_stmt = select(schemas.Token).where(schemas.Token.token == token)
+
+        # Check that the token exists
+        result = (await session.scalars(select_stmt)).first()
+
+        # Check if it has expired
+        if result.expires_on < datetime.datetime.now(datetime.timezone.utc):
+            return None
+
+        # Update the used_on column
+        if result is not None:
+            stmt = update(schemas.Token).where(schemas.Token.token == token).values(used_on=datetime.datetime.utcnow())
+            await session.execute(stmt)
+            await session.commit()
+
+        return (await session.scalars(select_stmt)).first()
+
+
 #
 # Here starts the use on the engine object directly
 #
-
 
 class SQLResponse:
     def __init__(self, columns, results):
@@ -157,6 +186,9 @@ async def select_sources_sub_table(
     query_params: list = None,
 ) -> SQLResponse:
     async with engine.begin() as conn:
+
+        query_params = query_params if query_params is not None else []
+
         # Grabbing a table from the database as it is
         metadata = MetaData(schema="sources")
         polygon_table = await get_polygon_table_name(engine, table_id)
@@ -205,6 +237,9 @@ async def select_sources_sub_table(
 async def patch_sources_sub_table(
     engine: AsyncEngine, table_id: int, update_values: dict, query_params: list = None
 ) -> CursorResult:
+
+    query_params = query_params if query_params is not None else []
+
     async with engine.begin() as conn:
         # Grabbing a table from the database as it is
         metadata = MetaData(schema="sources")
@@ -223,6 +258,30 @@ async def patch_sources_sub_table(
         )
 
         x = str(stmt.compile(compile_kwargs={"literal_binds": True}))
+
+        result = await conn.execute(stmt)
+
+        return result
+
+async def patch_sources_sub_table_set_columns_equal(
+    engine: AsyncEngine, table_id: int, target_column: str, source_column: str, query_params: list = None
+) -> CursorResult:
+    async with engine.begin() as conn:
+        # Grabbing a table from the database as it is
+        metadata = MetaData(schema="sources")
+        polygon_table = await get_polygon_table_name(engine, table_id)
+        table = await conn.run_sync(
+            lambda sync_conn: Table(polygon_table, metadata, autoload_with=sync_conn)
+        )
+
+        # Extract filters from the query parameters
+        query_parser = QueryParser(columns=table.columns, query_params=query_params)
+
+        stmt = (
+            update(table)
+            .where(query_parser.where_expressions())
+            .values({getattr(table.c, target_column): getattr(table.c, source_column)})
+        )
 
         result = await conn.execute(stmt)
 

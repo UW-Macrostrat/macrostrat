@@ -24,9 +24,9 @@ from api.database import (
     patch_sources_sub_table,
     select_sources_sub_table,
 )
-from api.models import PolygonModel, Sources
+from api.models import PolygonModel, Sources, CopyColumnRequest
 from api.query_parser import ParserException
-from api.routes.security import TokenData, get_current_user
+from api.routes.security import TokenData, get_groups
 
 @asynccontextmanager
 async def setup_engine(a: FastAPI):
@@ -112,10 +112,10 @@ async def patch_sub_sources(
         request: starlette.requests.Request,
         table_id: int,
         polygon_updates: PolygonModel,
-        user_token_data: TokenData = Depends(get_current_user)
+        groups: list[int] = Depends(get_groups)
 ):
 
-    if "admin" not in user_token_data.groups:
+    if 1 not in groups:
         raise HTTPException(status_code=401, detail="User is not in admin group")
 
     try:
@@ -131,6 +131,38 @@ async def patch_sub_sources(
 
     except NoSuchTableError:
         raise HTTPException(status_code=400, detail=f"Source table with id ({table_id}) not found")
+
+    if result.rowcount == 0:
+        raise HTTPException(status_code=400, detail="No rows patched, if this is unexpected please report as bug")
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@app.patch("/sources/{table_id}/polygons/{target_column}", response_model=List[PolygonModel])
+async def patch_sub_sources(
+        request: starlette.requests.Request,
+        target_column: str,
+        copy_column: CopyColumnRequest,
+        groups: list[int] = Depends(get_groups)
+):
+
+    if 1 not in groups:
+        raise HTTPException(status_code=401, detail="User is not in admin group")
+
+    try:
+        result = await db.patch_sources_sub_table_set_columns_equal(
+            engine=get_engine(),
+            table_id=copy_column.table_id,
+            source_column=copy_column.source_column,
+            target_column=target_column,
+            query_params=request.query_params.items()
+        )
+
+    except ParserException as e:
+        raise HTTPException(status_code=400, detail=e)
+
+    except NoSuchTableError:
+        raise HTTPException(status_code=400, detail=f"Source table with id ({copy_column.table_id}) not found")
 
     if result.rowcount == 0:
         raise HTTPException(status_code=400, detail="No rows patched, if this is unexpected please report as bug")

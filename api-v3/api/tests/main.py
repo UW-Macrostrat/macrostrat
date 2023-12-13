@@ -1,12 +1,14 @@
 import pytest
 import os
 import json
+import random
+import datetime
+import random
 
 from sqlalchemy.ext.asyncio import AsyncEngine
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import NoResultFound
-import random
 
 from fastapi.testclient import TestClient
 
@@ -78,12 +80,40 @@ class TestSessionDB:
 class TestEngineDB:
 
   @pytest.mark.asyncio
+  async def test_token_insert(self, engine: AsyncEngine):
+
+    test_value = f"test-{random.randint(0,10000000)}"
+
+    result = await db.insert_access_token(engine, token=test_value, group_id=1, expiration=datetime.datetime.fromtimestamp(1))
+
+    assert result is not None
+
+  @pytest.mark.asyncio
   async def test_get_schema_tables(self, engine: AsyncEngine):
     result = await db.get_schema_tables(engine=engine, schema="sources")
 
     results = [*result]
 
     assert len(results) > 0
+
+  @pytest.mark.asyncio
+  async def test_patch_sources_sub_table_set_columns_equal(self, engine: AsyncEngine):
+
+    test_value = f"test-{random.randint(0,10000000)}"
+
+    await db.patch_sources_sub_table(engine=engine, table_id=TEST_SOURCE_TABLE.source_id, update_values={"comments": test_value}, query_params=[])
+
+    await db.patch_sources_sub_table_set_columns_equal(
+      engine=engine,
+      table_id=TEST_SOURCE_TABLE.source_id,
+      target_column="descrip",
+      source_column="comments",
+      query_params=[]
+    )
+
+    result = await db.select_sources_sub_table(table_id=TEST_SOURCE_TABLE.source_id, engine=engine, query_params=[])
+
+    assert all([x["descrip"] == test_value for x in result.to_dict()])
 
 
 class TestAPI:
@@ -122,7 +152,13 @@ class TestAPI:
 
     id_temp_value = random.randint(1, 999)
 
-    response = api_client.patch(f"/sources/{TEST_SOURCE_TABLE.source_id}/polygons", json={TEST_SOURCE_TABLE.to_patch: id_temp_value})
+    response = api_client.patch(
+      f"/sources/{TEST_SOURCE_TABLE.source_id}/polygons",
+      json={TEST_SOURCE_TABLE.to_patch: id_temp_value},
+      headers={
+        "Authorization": f"Bearer {os.environ['ADMIN_TOKEN']}"
+      }
+    )
 
     assert response.status_code == 204
 
@@ -151,27 +187,29 @@ class TestAPI:
 
 
   def test_patch_source_tables_with_filter_in(self, api_client):
-    def test_patch_source_tables_with_filter(self, api_client):
-      id_temp_value = random.randint(1, 999)
+    id_temp_value = random.randint(1, 999)
 
-      response = api_client.patch(
-        f"/sources/{TEST_SOURCE_TABLE.source_id}/polygons",
-        json={
-          TEST_SOURCE_TABLE.to_patch: id_temp_value
-        },
-        params=TEST_SOURCE_TABLE.to_filter
-      )
+    response = api_client.patch(
+      f"/sources/{TEST_SOURCE_TABLE.source_id}/polygons",
+      json={
+        TEST_SOURCE_TABLE.to_patch: id_temp_value
+      },
+      params=TEST_SOURCE_TABLE.to_filter,
+      headers={
+        "Authorization": f"Bearer {os.environ['ADMIN_TOKEN']}"
+      }
+    )
 
-      assert response.status_code == 204
+    assert response.status_code == 204
 
-      response = api_client.get(f"/sources/{TEST_SOURCE_TABLE.source_id}/polygons", params=TEST_SOURCE_TABLE.to_filter)
+    response = api_client.get(f"/sources/{TEST_SOURCE_TABLE.source_id}/polygons", params=TEST_SOURCE_TABLE.to_filter)
 
-      assert response.status_code == 200
-      response_json = response.json()
+    assert response.status_code == 200
+    response_json = response.json()
 
-      selected_values = filter(lambda x: x["PTYPE"] == "Qff", response_json)
+    selected_values = filter(lambda x: x["PTYPE"] == "Qff", response_json)
 
-      assert all([x["orig_id"] == id_temp_value for x in selected_values])
+    assert all([x["orig_id"] == id_temp_value for x in selected_values])
 
 
   def test_patch_source_tables_with_filter(self, api_client):
@@ -183,7 +221,10 @@ class TestAPI:
     response = api_client.patch(
       f"/sources/{TEST_SOURCE_TABLE.source_id}/polygons",
       json=body,
-      params=params
+      params=params,
+      headers={
+        "Authorization": f"Bearer {os.environ['ADMIN_TOKEN']}"
+      }
     )
 
     assert response.status_code == 204
@@ -203,7 +244,10 @@ class TestAPI:
     response = api_client.patch(
       f"/sources/{TEST_SOURCE_TABLE.source_id}/polygons",
       json={TEST_SOURCE_TABLE.to_patch: id_temp_value},
-      params={"PTYPE": "eq.Qff", "orig_id": "eq.999999"}
+      params={"PTYPE": "eq.Qff", "orig_id": "eq.999999"},
+      headers={
+        "Authorization": f"Bearer {os.environ['ADMIN_TOKEN']}"
+      }
     )
 
     assert response.status_code == 400
@@ -247,5 +291,43 @@ class TestAPI:
 
     assert all([order_data[i]["_pkid"] <= order_data[i+1]["_pkid"] for i in range(len(order_data)-1)])
 
+
+  def test_copy_column_values(self, api_client):
+
+    # First set all the 'descrip' values to a random value
+    test_value = f"test-{random.randint(0,10000000)}"
+
+    response = api_client.patch(
+      f"/sources/{TEST_SOURCE_TABLE.source_id}/polygons",
+      json={
+        "descrip": test_value
+      },
+      headers={
+        "Authorization": f"Bearer {os.environ['ADMIN_TOKEN']}"
+      }
+    )
+
+    assert response.status_code == 204
+
+    response = api_client.patch(
+      f"/sources/{TEST_SOURCE_TABLE.source_id}/polygons/comments",
+      json={
+        "source_column": "descrip",
+        "table_id": TEST_SOURCE_TABLE.source_id
+      },
+      headers={
+        "Authorization": f"Bearer {os.environ['ADMIN_TOKEN']}"
+      }
+    )
+
+    assert response.status_code == 204
+
+    response = api_client.get(f"/sources/{TEST_SOURCE_TABLE.source_id}/polygons")
+
+    assert response.status_code == 200
+
+    response_data = response.json()
+
+    assert all([x["descrip"] == x["comments"] for x in response_data])
 
 
