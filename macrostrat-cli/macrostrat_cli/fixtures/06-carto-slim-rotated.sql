@@ -67,7 +67,6 @@ WITH rotated_plates AS (
   AND pp.model_id = _model_id
   AND coalesce(pp.old_lim, 4000) >= _t_step
   AND coalesce(pp.young_lim, 0) <= _t_step
-  -- AND (z < 3 OR ST_Intersects(corelle_macrostrat.tile_envelope(rotation, x, y, z)::geography, geometry::geography))
 ),
 relevant_plates AS (
   SELECT
@@ -101,7 +100,7 @@ units AS (
     ON u.map_id = cpi.map_id
    AND u.scale = _scale
    -- This causes tile-boundary errors
-  WHERE ST_Intersects(coalesce(cpi.geom, u.geom), tile_geom)
+  WHERE _scale = 'tiny'::macrostrat.map_scale OR ST_Intersects(coalesce(cpi.geom, u.geom), tile_geom)
 ),
 bedrock_ AS (
   SELECT DISTINCT ON (u.map_id, u.source_id, u.plate_id, u.plate_polygon_id)
@@ -120,6 +119,8 @@ bedrock_ AS (
   JOIN tile_layers.map_legend_info AS l
     ON l.legend_id = map_legend.legend_id
   WHERE ST_Intersects(u.geom, mercator_bbox)
+    -- Get rid of young units
+    AND l.best_age_bottom >= _t_step
 ),
 plates_ AS (
   SELECT
