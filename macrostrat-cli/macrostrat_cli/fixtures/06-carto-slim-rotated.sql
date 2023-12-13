@@ -15,12 +15,12 @@ linesize text[];
 mercator_bbox geometry;
 projected_bbox geometry;
 bedrock bytea;
-plates bytea;
+result bytea;
 lines bytea;
 tolerance double precision;
 _t_step integer;
 _model_id integer;
-_scale map_scale;
+_scale macrostrat.map_scale;
 
 BEGIN
 
@@ -38,114 +38,106 @@ END IF;
 mercator_bbox := tile_utils.envelope(x, y, z);
 tolerance := 6;
 
-projected_bbox := ST_Transform(
-  mercator_bbox,
-  4326
-);
+projected_bbox := ST_Transform(mercator_bbox, 4326);
 
-WITH plates_basic AS (
+IF z < 3 THEN
+  -- Select from carto.tiny table
+  _scale := 'tiny'::map_scale;
+ELSIF z < 6 THEN
+  _scale := 'small'::map_scale;
+ELSIF z < 9 THEN
+  _scale := 'medium'::map_scale;
+ELSE
+  _scale := 'large'::map_scale;
+END IF;
+
+WITH rotated_plates AS (
+  SELECT 
+    pp.plate_id,
+    pp.model_id,
+    pp.id plate_polygon_id,
+    corelle_macrostrat.rotate_to_web_mercator(geom_simple, rotation, true) geom_merc,
+    geometry,
+    rc.rotation
+  FROM corelle.plate_polygon pp
+  JOIN corelle.rotation_cache rc
+   ON rc.model_id = pp.model_id
+  AND rc.plate_id = pp.plate_id
+  AND rc.t_step = _t_step
+  AND pp.model_id = _model_id
+  AND coalesce(pp.old_lim, 4000) >= _t_step
+  AND coalesce(pp.young_lim, 0) <= _t_step
+),
+relevant_plates AS (
   SELECT
-    rc.plate_id,
-    rc.model_id,
-    -- Get the tile bounding box rotated to the actual position of the plate on the modern globe
-    --ST_Area(corelle_macrostrat.tile_envelope(rc.rotation, t.x, t.y, t.z)::geography)/ST_Area(ST_Transform(tile_utils.envelope(t.x, t.y, t.z), 4326)::geography) tile_area_ratio,
-    corelle_macrostrat.rotate(geom_simple, rotation, true) geom
-    -- corelle.rotate_geometry(
-    --   projected_bbox,
-    --   rc.rotation
-    -- ) tile_geom,
-    -- rc.rotation rotation
-  FROM corelle.rotation_cache rc
-  JOIN corelle.plate_polygon pp
-    ON pp.plate_id = rc.plate_id
-    AND pp.model_id = rc.model_id
-  WHERE rc.model_id = _model_id
-    AND rc.t_step = _t_step
+    plate_id,
+    model_id,
+    plate_polygon_id,
+    geom_merc,
+    rotation,
+    corelle.rotate_geometry(
+      ST_Segmentize(projected_bbox, 0.5),
+      corelle.invert_rotation(rotation)
+    ) tile_geom
+  FROM rotated_plates
+  WHERE ST_Intersects(geom_merc, mercator_bbox)
+),
+units AS (
+  -- We need this distinct because we have duplicates somewhere in our pipeline
+  SELECT DISTINCT ON (u.map_id, u.source_id, cpi.plate_id, cpi.plate_polygon_id)
+    u.map_id,
+    u.source_id,
+    cpi.plate_id,
+    rp.rotation,
+    cpi.plate_polygon_id,
+    corelle_macrostrat.rotate_to_web_mercator(
+       coalesce(cpi.geom, u.geom),
+       rp.rotation,
+       TRUE
+    ) geom
+  FROM relevant_plates rp
+  JOIN corelle_macrostrat.carto_plate_index cpi
+    ON cpi.plate_polygon_id = rp.plate_polygon_id
+   AND cpi.scale = _scale
+  JOIN carto.polygons u
+    ON u.map_id = cpi.map_id
+   AND u.scale = _scale
+   -- This causes tile-boundary errors
+  WHERE _scale = 'tiny'::macrostrat.map_scale OR ST_Intersects(coalesce(cpi.geom, u.geom), tile_geom)
+),
+bedrock_ AS (
+  SELECT DISTINCT ON (u.map_id, u.source_id, u.plate_id, u.plate_polygon_id)
+    u.map_id,
+    u.source_id,
+    u.plate_id,
+    u.plate_polygon_id,
+    l.*, -- legend info
+    tile_layers.tile_geom(
+      u.geom,
+      mercator_bbox
+    ) geom
+  FROM units u
+  JOIN maps.map_legend
+    ON u.map_id = map_legend.map_id
+  JOIN tile_layers.map_legend_info AS l
+    ON l.legend_id = map_legend.legend_id
+  WHERE ST_Intersects(u.geom, mercator_bbox)
+    -- Get rid of young units
+    AND l.best_age_bottom >= _t_step
 ),
 plates_ AS (
   SELECT
     plate_id,
     model_id,
-    tile_layers.tile_geom(ST_Intersection(u.geom, projected_bbox), mercator_bbox) AS geom
-  FROM plates_basic u
-  WHERE ST_Intersects(u.geom, projected_bbox)
-
-) 
-SELECT ST_AsMVT(plates_, 'plates') INTO plates FROM plates_;
-
-WITH rotation_info AS (
-  SELECT
-    pp.plate_id,
-    pp.model_id,
-    -- Get the tile bounding box rotated to the actual position of the plate on the modern globe
-    --ST_Area(corelle_macrostrat.tile_envelope(rc.rotation, t.x, t.y, t.z)::geography)/ST_Area(ST_Transform(tile_utils.envelope(t.x, t.y, t.z), 4326)::geography) tile_area_ratio,
-    geometry geom,
-    corelle.rotate_geometry(
-      ST_Transform(tile_utils.envelope(x, y, z), 4326),
-      corelle.invert_rotation(rc.rotation)
-    ) tile_geom,
-    rc.rotation rotation
-  FROM corelle.plate_polygon pp
-  --JOIN tile ON true
-  JOIN corelle.rotation_cache rc
-    ON rc.plate_id = pp.plate_id
-    AND rc.model_id = pp.model_id
-    AND rc.t_step = _t_step
-  WHERE rc.model_id = _model_id
-    AND coalesce(pp.old_lim, 4000) >= _t_step
-    AND coalesce(pp.young_lim, 0) <= _t_step
-   AND pp.model_id = _model_id
-),
-relevant_plates AS (
-  SELECT *
-  FROM rotation_info
-  WHERE (z < 3 AND ST_Intersects(geom, tile_geom))
-    -- We have to break this out because we get weird antipodal-edge warnings otherwise
-    OR (z >= 3 AND ST_Intersects(geom::geography, tile_geom::geography))
-),
-units AS (
-  SELECT 
-    u.map_id,
-    u.source_id,
-    cpi.plate_id,
-    rp.rotation,
-    rp.tile_geom,
-    coalesce(cpi.geom, u.geom) geom
-  FROM relevant_plates rp
-  --JOIN tile ON true
-  JOIN corelle_macrostrat.carto_plate_index cpi
-    ON cpi.plate_id = rp.plate_id
-   AND cpi.model_id = rp.model_id
-   AND cpi.scale = _scale
-  JOIN carto.polygons u
-    ON u.map_id = cpi.map_id
-   AND u.scale = _scale
-), expanded AS (
-  SELECT
-    u.map_id,
-    u.source_id,
-    u.plate_id,
-    l.*, -- legend info
-    corelle_macrostrat.build_tile_geom(
-      u.geom, u.rotation, x, y, z
-    ) geom
-  FROM units u
-  --JOIN tile ON true
-  LEFT JOIN maps.map_legend
-    ON u.map_id = map_legend.map_id
-  LEFT JOIN tile_layers.map_legend_info AS l
-    ON l.legend_id = map_legend.legend_id
-  WHERE ST_Intersects(u.geom, u.tile_geom)
-  -- WHERE (z < 3 AND ST_Intersects(u.geom, u.tile_geom))
-  --   -- We have to break this out because we get weird antipodal-edge warnings otherwise
-  --   OR (z >= 3 AND ST_Intersects(u.geom::geography, u.tile_geom::geography))
+    tile_layers.tile_geom(geom_merc, mercator_bbox) AS geom
+  FROM relevant_plates
 )
-SELECT null INTO bedrock;
---   ST_AsMVT(expanded, 'units')
--- INTO bedrock
--- FROM expanded;
+SELECT
+ (SELECT ST_AsMVT(plates_, 'plates') FROM plates_) || 
+ (SELECT ST_AsMVT(bedrock_, 'units') FROM bedrock_)
+INTO result;
 
-RETURN plates;
+RETURN result;
 
 END;
 $$ LANGUAGE plpgsql VOLATILE;

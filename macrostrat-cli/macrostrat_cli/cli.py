@@ -98,7 +98,7 @@ def run_all_sql(db, dir: Path):
 subsystem_updates = []
 
 
-def update_schema():
+def update_schema(match: str = Argument(None)):
     """Update the database schema"""
     from .config import PG_DATABASE
     from macrostrat.database import Database
@@ -112,6 +112,9 @@ def update_schema():
     subdirs.sort()
     for f in subdirs:
         if f.is_file() and f.suffix == ".sql":
+            if match is not None and match not in str(f):
+                continue
+
             print(f"[cyan bold]{f}[/]")
             db.run_sql(f)
             print()
@@ -280,7 +283,8 @@ def set_env(env: str = Argument(None), unset: bool = False):
 
 def local_install(path: Path):
     run(
-        ["poetry", "install"],
+        "poetry",
+        "install",
         cwd=path.expanduser().resolve(),
         env={**environ, "POETRY_VIRTUALENVS_CREATE": "False"},
     )
@@ -288,15 +292,12 @@ def local_install(path: Path):
 
 @main.command()
 def install():
-    """Install Macrostrat subsystems if available."""
-    if hasattr(settings, "corelle_src"):
-        print("Installing corelle")
-        local_install(Path(settings.corelle_src))
+    """Install Macrostrat subsystems into the Python root.
 
-    # This could be made part of the Poetry installer...
-    ingestion_src = settings.srcroot / "map-integration"
-    print("Installing map ingestion subsystem")
-    local_install(ingestion_src)
+    This is currently hard-coded for development purposes, but
+    this will be changed in the future.
+    """
+    local_install(Path(settings.srcroot) / "py-root")
 
 
 cfg_app = Typer(name="config")
@@ -422,6 +423,15 @@ try:
 
 except ImportError as err:
     pass
+
+
+@main.command(name="carto-plate-index")
+def build_carto_plate_index():
+    """Build a representation of the Carto map layers, split by plate polygons"""
+    from .corelle import build_carto_plate_index
+
+    db = get_db()
+    build_carto_plate_index(db)
 
 
 # Commands to manage this command-line interface

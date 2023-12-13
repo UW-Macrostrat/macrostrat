@@ -24,27 +24,24 @@ FROM macrostrat.col_areas c
 JOIN corelle.plate_polygon pp
   ON ST_Intersects(ST_Centroid(col_area), pp.geometry);
 
--- carto plate index
-CREATE TABLE IF NOT EXISTS corelle_macrostrat.carto_plate_index AS
-SELECT
-	p.map_id,
-	p.scale,
-	pp.model_id model_id,
-	pp.plate_id,
-	CASE WHEN ST_Covers(pp.geometry, ST_Union(p.geom)) THEN
-		NULL  
-	ELSE
-		ST_Intersection(pp.geometry, ST_Union(p.geom))
-	END AS geom
-FROM carto.polygons p
-JOIN corelle.plate_polygon pp
-  ON ST_Intersects(pp.geometry, p.geom)
-JOIN corelle.model m
-  ON m.id = pp.model_id
-GROUP BY map_id, scale, pp.model_id, pp.geometry, plate_id;
+-- Create a needed index
+CREATE UNIQUE INDEX plate_polygon_unique_idx ON corelle.plate_polygon (id, plate_id, model_id);
 
-ALTER TABLE corelle_macrostrat.carto_plate_index
-ADD CONSTRAINT carto_plate_index_pkey PRIMARY KEY (map_id, scale, model_id, plate_id);
+-- Pre-split carto layers 
+CREATE TABLE IF NOT EXISTS corelle_macrostrat.carto_plate_index (
+  map_id integer NOT NULL,
+  scale macrostrat.map_scale NOT NULL,
+  model_id integer NOT NULL,
+  plate_id integer NOT NULL,
+  plate_polygon_id integer NOT NULL,
+  geom geometry(Geometry, 4326),
+  -- Foreign keys
+  PRIMARY KEY (map_id, scale, model_id, plate_polygon_id),
+  CONSTRAINT carto_plate_index_map_id_fkey FOREIGN KEY (map_id, scale)
+    REFERENCES carto.polygons (map_id, scale) ON DELETE CASCADE,
+  CONSTRAINT carto_plate_index_plate_polygon_fkey FOREIGN KEY (plate_polygon_id, plate_id, model_id)
+    REFERENCES corelle.plate_polygon (id, plate_id, model_id) ON DELETE CASCADE
+);
 
 CREATE INDEX carto_plate_index_model_plate_scale_idx ON corelle_macrostrat.carto_plate_index(model_id, plate_id, scale);
 CREATE INDEX carto_plate_index_geom_idx ON corelle_macrostrat.carto_plate_index USING gist (geom);
@@ -55,14 +52,18 @@ CREATE OR REPLACE FUNCTION corelle_macrostrat.tile_envelope(
   y integer,
   z integer
 ) RETURNS geometry AS $$
-    -- I feel like this bbox needs to be inverted but it seems to work better if not...
-  SELECT corelle_macrostrat.rotate(
-    --ST_Transform(mercator_bbox, 4326),
-    ST_Transform(ST_TileEnvelope(z, x, y), 4326),
+DECLARE
+  modern_bbox geometry;
+BEGIN
+  modern_bbox := ST_Transform(ST_TileEnvelope(z, x, y), 4326);
+  -- I feel like this bbox needs to be inverted but it seems to work better if not...
+  RETURN corelle_macrostrat.rotate(
+    modern_bbox,
     corelle.invert_rotation(rotation),
-    true
+    false
   );
-$$ LANGUAGE sql STABLE;
+END;
+$$ LANGUAGE plpgsql VOLATILE;
 
 CREATE OR REPLACE FUNCTION corelle_macrostrat.build_tile_geom(
   geom geometry,
@@ -134,30 +135,42 @@ BEGIN
   -- We really should figure out how to exclude geometries with no points
   -- in the tile envelope, so we don't have to run this check on every tile
   RETURN corelle_macrostrat.antimeridian_split(g1);
-EXCEPTION WHEN OTHERS THEN
-    RETURN null;
 END;
-$$ LANGUAGE plpgsql STABLE;
+$$ LANGUAGE plpgsql VOLATILE;
 
--- Adjust layers to have simplified geometries for rapid filtering
--- This should maybe be moved to Corelle
-ALTER TABLE corelle.plate_polygon ADD COLUMN geom_simple geometry(Geometry, 4326);
-ALTER TABLE corelle.rotation_cache ADD COLUMN geom geometry(Geometry, 4326);
+CREATE OR REPLACE FUNCTION corelle_macrostrat.rotate_to_web_mercator(
+  geom geometry,
+  rotation double precision[],
+  wrap boolean DEFAULT false
+) RETURNS geometry AS $$
+DECLARE
+  proj_string text;
+  proj_string2 text;
+  g1 geometry;
+  g2 geometry;
+  threshold double precision;
+  new_rotation double precision[];
+BEGIN
+  proj_string := corelle.build_proj_string(rotation, '+R=6378137 +o_proj=merc ');
+  g1 := ST_SetSRID(ST_Transform(geom, proj_string), 3857);
 
-UPDATE corelle.plate_polygon
-SET geom_simple = corelle_macrostrat.antimeridian_split(ST_Multi(ST_Simplify(ST_Buffer(geometry, 0.1), 0.1)))
-WHERE geom_simple IS NULL;
+  threshold := pi() * 6378137;
 
-/** This isn't properly a "schema update". It is a required cache-filling operation. But it isn't
-    necessarily correct practice to run it every time the schema is regenerated. */
-UPDATE corelle.rotation_cache rc SET
-  geom = corelle_macrostrat.rotate(geom_simple, rotation, true)
-FROM corelle.plate_polygon pp
-WHERE pp.model_id = rc.model_id
-  AND pp.plate_id = rc.plate_id
-  AND geom IS null;
+  IF ST_XMax(g1) - ST_XMin(g1) > 1.8 * threshold THEN
+    -- Rotate to the other side of the globe
+    proj_string := corelle.build_proj_string(rotation, '+R=6378137 +o_proj=merc ', pi());
+    g1 := ST_SetSRID(ST_Transform(geom, proj_string), 3857);
+    g1 := ST_Union(
+      ST_Translate(g1, -threshold, 0),
+      ST_Translate(g1, threshold, 0)
+    );
+  END IF;
+  RETURN g1;
+EXCEPTION WHEN OTHERS THEN
+  RETURN null;
+END;
+$$ LANGUAGE plpgsql VOLATILE;
 
-CREATE INDEX rotation_cache_geom_idx ON corelle.rotation_cache USING gist (geom);
 
 
 -- Drop outdated functions
