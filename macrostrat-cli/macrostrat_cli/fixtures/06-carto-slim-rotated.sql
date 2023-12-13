@@ -75,7 +75,10 @@ relevant_plates AS (
     plate_polygon_id,
     geom_merc,
     rotation,
-    corelle_macrostrat.tile_envelope(rotation, x, y, z) tile_geom
+    corelle.rotate_geometry(
+      ST_Segmentize(projected_bbox, 0.5),
+      corelle.invert_rotation(rotation)
+    ) tile_geom
   FROM rotated_plates
   WHERE ST_Intersects(geom_merc, mercator_bbox)
 ),
