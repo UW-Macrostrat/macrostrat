@@ -81,11 +81,13 @@ relevant_plates AS (
   WHERE ST_Intersects(geom_merc, mercator_bbox)
 ),
 units AS (
-  SELECT
+  -- We need this distinct because we have duplicates somewhere in our pipeline
+  SELECT DISTINCT ON (u.map_id, u.source_id, cpi.plate_id, cpi.plate_polygon_id)
     u.map_id,
     u.source_id,
     cpi.plate_id,
     rp.rotation,
+    cpi.plate_polygon_id,
     corelle_macrostrat.rotate_to_web_mercator(
        coalesce(cpi.geom, u.geom),
        rp.rotation,
@@ -93,28 +95,29 @@ units AS (
     ) geom
   FROM relevant_plates rp
   JOIN corelle_macrostrat.carto_plate_index cpi
-    ON cpi.plate_id = rp.plate_id
-   AND cpi.model_id = rp.model_id
-   AND cpi.plate_polygon_id = rp.plate_polygon_id
+    ON cpi.plate_polygon_id = rp.plate_polygon_id
    AND cpi.scale = _scale
   JOIN carto.polygons u
     ON u.map_id = cpi.map_id
    AND u.scale = _scale
+   -- This causes tile-boundary errors
+  WHERE ST_Intersects(coalesce(cpi.geom, u.geom), tile_geom)
 ),
 bedrock_ AS (
-  SELECT
+  SELECT DISTINCT ON (u.map_id, u.source_id, u.plate_id, u.plate_polygon_id)
     u.map_id,
     u.source_id,
     u.plate_id,
+    u.plate_polygon_id,
     l.*, -- legend info
     tile_layers.tile_geom(
       u.geom,
       mercator_bbox
     ) geom
   FROM units u
-  LEFT JOIN maps.map_legend
+  JOIN maps.map_legend
     ON u.map_id = map_legend.map_id
-  LEFT JOIN tile_layers.map_legend_info AS l
+  JOIN tile_layers.map_legend_info AS l
     ON l.legend_id = map_legend.legend_id
   WHERE ST_Intersects(u.geom, mercator_bbox)
 ),
