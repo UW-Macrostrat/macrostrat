@@ -35,6 +35,11 @@ IF _model_id IS NULL THEN
 END IF;
 
 
+IF _t_step = 0 THEN
+  /* Just return the basic map layer */
+  return tile_layers.carto_slim(x, y, z, query_params);
+END IF;
+
 mercator_bbox := tile_utils.envelope(x, y, z);
 tolerance := 6;
 
@@ -56,8 +61,11 @@ WITH rotated_plates AS (
     pp.plate_id,
     pp.model_id,
     pp.id plate_polygon_id,
-    corelle_macrostrat.rotate_to_web_mercator(geom_simple, rotation, true) geom_merc,
-    geometry,
+    corelle.rotate_geometry(
+      ST_Transform(tile_utils.envelope(x, y, z), 4326),
+      corelle.invert_rotation(rc.rotation)
+    ) tile_geom,
+    pp.geom_simple,
     rc.rotation
   FROM corelle.plate_polygon pp
   JOIN corelle.rotation_cache rc
@@ -67,41 +75,50 @@ WITH rotated_plates AS (
   AND pp.model_id = _model_id
   AND coalesce(pp.old_lim, 4000) >= _t_step
   AND coalesce(pp.young_lim, 0) <= _t_step
-  -- AND (z < 3 OR ST_Intersects(corelle_macrostrat.tile_envelope(rotation, x, y, z)::geography, geometry::geography))
 ),
 relevant_plates AS (
   SELECT
     plate_id,
     model_id,
     plate_polygon_id,
-    geom_merc,
+    corelle_macrostrat.rotate_to_web_mercator(geom_simple, rotation, true) geom_merc,
+    tile_geom,
     rotation,
-    corelle_macrostrat.tile_envelope(rotation, x, y, z) tile_geom
   FROM rotated_plates
-  WHERE ST_Intersects(geom_merc, mercator_bbox)
+  WHERE (z < 3 OR ST_Intersects(tile_geom::geography, geom_simple::geography))
 ),
-units AS (
-  -- We need this distinct because we have duplicates somewhere in our pipeline
-  SELECT DISTINCT ON (u.map_id, u.source_id, cpi.plate_id, cpi.plate_polygon_id)
-    u.map_id,
-    u.source_id,
-    cpi.plate_id,
-    rp.rotation,
-    cpi.plate_polygon_id,
-    corelle_macrostrat.rotate_to_web_mercator(
-       coalesce(cpi.geom, u.geom),
-       rp.rotation,
-       TRUE
-    ) geom
+units0 AS (
+  SELECT
+    plate_id,
+    model_id,
+    plate_polygon_id,
+    tile_geom,
+    coalesce(cpi.geom, u.geom) geom
   FROM relevant_plates rp
   JOIN corelle_macrostrat.carto_plate_index cpi
-    ON cpi.plate_polygon_id = rp.plate_polygon_id
+    ON cpi.plate_id = rp.plate_id
+   AND cpi.model_id = rp.model_id
+   AND cpi.plate_polygon_id = rp.plate_polygon_id
    AND cpi.scale = _scale
   JOIN carto.polygons u
     ON u.map_id = cpi.map_id
    AND u.scale = _scale
-   -- This causes tile-boundary errors
-  WHERE ST_Intersects(coalesce(cpi.geom, u.geom), tile_geom)
+)
+units AS (
+  -- We need this distinct because we have duplicates somewhere in our pipeline
+  SELECT
+    u.map_id,
+    u.source_id,
+    u.plate_id,
+    u.rotation,
+    u.plate_polygon_id,
+    corelle_macrostrat.rotate_to_web_mercator(
+       u.geom,
+       rp.rotation,
+       TRUE
+    ) geom
+  FROM units0 u
+  WHERE (z < 3 OR ST_Intersects(tile_geom::geography, geom::geography))  
 ),
 bedrock_ AS (
   SELECT DISTINCT ON (u.map_id, u.source_id, u.plate_id, u.plate_polygon_id)
