@@ -1,4 +1,5 @@
 import asyncio
+from aiofiles.threadpool.binary import AsyncBufferedIOBase
 from rich.console import Console
 
 console = Console()
@@ -17,14 +18,20 @@ def _docker_local_run_args(postgres_container: str = "postgres:15"):
 
 
 async def print_stream_progress(
-    in_stream: asyncio.StreamReader, out_stream: asyncio.StreamWriter
+    in_stream: asyncio.StreamReader,
+    out_stream: asyncio.StreamWriter | AsyncBufferedIOBase,
 ):
+    """This should be unified with print_stream_progress, but there seem to be
+    slight API differences between aiofiles and asyncio.StreamWriter APIs.?"""
     megabytes_written = 0
     i = 0
     async for line in in_stream:
         megabytes_written += len(line) / 1_000_000
-        out_stream.write(line)
-        if hasattr(out_stream, "drain"):
+        if isinstance(out_stream, AsyncBufferedIOBase):
+            await out_stream.write(line)
+            await out_stream.flush()
+        else:
+            out_stream.write(line)
             await out_stream.drain()
         i += 1
         if i == 1000:

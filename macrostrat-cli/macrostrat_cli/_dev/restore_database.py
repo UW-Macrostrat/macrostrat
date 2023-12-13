@@ -35,6 +35,12 @@ async def _pg_restore(
         console.print(f"Creating database [bold cyan]{database}[/]")
         create_database(database)
 
+    if not db_exists and not create:
+        raise ValueError(
+            f"Database [bold cyan]{database}[/] does not exist. "
+            "Use `--create` to create it."
+        )
+
     # Run pg_restore in a local Docker container
     # TODO: this could also be run with pg_restore in a Kubernetes pod
     # or another location, if more appropriate. Running on the remote
