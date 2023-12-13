@@ -1,4 +1,4 @@
-/** Query to select all legend entries linked to units and
+/** Select all legend entries linked to units and
   update for latest timescale updates.
 */
 WITH a AS (
