@@ -30,7 +30,6 @@ class LineworkModel(CommonModel):
     direction: Optional[str] = None
 
 class CopyColumnRequest(BaseModel):
-    table_id: int
     source_column: str
 
 # Database Models

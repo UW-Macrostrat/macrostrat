@@ -312,8 +312,7 @@ class TestAPI:
     response = api_client.patch(
       f"/sources/{TEST_SOURCE_TABLE.source_id}/polygons/comments",
       json={
-        "source_column": "descrip",
-        "table_id": TEST_SOURCE_TABLE.source_id
+        "source_column": "descrip"
       },
       headers={
         "Authorization": f"Bearer {os.environ['ADMIN_TOKEN']}"

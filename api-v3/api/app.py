@@ -142,6 +142,7 @@ async def patch_sub_sources(
 async def patch_sub_sources(
         request: starlette.requests.Request,
         target_column: str,
+        table_id: int,
         copy_column: CopyColumnRequest,
         groups: list[int] = Depends(get_groups)
 ):
@@ -152,7 +153,7 @@ async def patch_sub_sources(
     try:
         result = await db.patch_sources_sub_table_set_columns_equal(
             engine=get_engine(),
-            table_id=copy_column.table_id,
+            table_id=table_id,
             source_column=copy_column.source_column,
             target_column=target_column,
             query_params=request.query_params.items()
