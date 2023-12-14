@@ -6,6 +6,11 @@ import aiofiles
 from .utils import _docker_local_run_args, print_stream_progress, print_stdout
 
 
+def pg_dump(*args, **kwargs):
+    task = _pg_dump_to_file(*args, **kwargs)
+    asyncio.run(task)
+
+
 async def _pg_dump(
     engine: Engine,
     *,
@@ -13,6 +18,7 @@ async def _pg_dump(
     args: list = [],
     postgres_container: str = "postgres:15",
     user: Optional[str] = "postgres",
+    stdout=asyncio.subprocess.PIPE
 ):
     command_prefix = command_prefix or _docker_local_run_args(postgres_container)
 
@@ -27,7 +33,7 @@ async def _pg_dump(
         "-Fc",
         str(engine.url),
         *_args,
-        stdout=asyncio.subprocess.PIPE,
+        stdout=stdout,
         stderr=asyncio.subprocess.PIPE,
     )
 
