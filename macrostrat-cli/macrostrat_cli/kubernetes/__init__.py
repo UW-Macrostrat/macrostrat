@@ -37,7 +37,7 @@ def read_secret(text):
 
 
 def get_secret(settings, secret_name: Optional[str], *, secret_key: str = None):
-    namespace = getattr(settings, "kubernetes_namespace", None)
+    namespace = getattr(settings, "kube_namespace", None)
     if namespace is None:
         raise Exception("No Kubernetes namespace specified.")
 

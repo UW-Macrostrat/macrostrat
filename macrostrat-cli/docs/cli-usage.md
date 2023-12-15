@@ -25,7 +25,8 @@ Usage: `macrostrat <subcommand> [options]`
 
 ## Kubernetes utilities
 
-- `macrostrat secrets <name>`: Gets a secret in the active Kubernetes namespace (if `kubernetes_namespace` is defined in the config)
+- `macrostrat secrets <name>`: Gets a secret in the active Kubernetes namespace
+  (if `kube_namespace` is defined in the config)
 
 ## Self-inspection
 

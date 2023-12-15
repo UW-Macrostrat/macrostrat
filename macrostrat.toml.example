@@ -25,7 +25,7 @@ pg_database = "postgresql://macrostrat-admin:my-cool-password@dev.macrostrat.org
 # Use a Kubernetes namespace
 # Right now, using kubectl's default configuration and connection parameters is assumed
 # 
-kubernetes_namespace="<my-namespace>"
+kube_namespace="<my-namespace>"
 pg_database_pod = "dev-macrostrat-db"
 
 # A hypothetical remote implementation
