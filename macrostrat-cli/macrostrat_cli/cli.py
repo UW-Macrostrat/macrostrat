@@ -10,6 +10,8 @@ from typer import get_app_dir, Argument, Typer, Option
 from time import sleep
 from .utils import is_pg_url
 from sqlalchemy import create_engine, text
+import json
+from .kubernetes import get_secret
 
 
 def env_text():
@@ -305,6 +307,13 @@ def config():
         # Only print uppercase values
         if k.isupper():
             print(f"{k}: {v}")
+
+
+@main.command()
+def secrets(secret_name: Optional[str] = Argument(None), *, key: str = Option(None)):
+    """Get a secret from the Kubernetes cluster"""
+
+    print(json.dumps(get_secret(settings, secret_name, secret_key=key), indent=4))
 
 
 @main.command()
