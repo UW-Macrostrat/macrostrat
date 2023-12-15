@@ -23,6 +23,11 @@ Usage: `macrostrat <subcommand> [options]`
 
 - `macrostrat env`: Switch to another environment
 
+## Kubernetes utilities
+
+- `macrostrat secrets <name>`: Gets a secret in the active Kubernetes namespace
+  (if `kube_namespace` is defined in the config)
+
 ## Self-inspection
 
 - `macrostrat self`: Inspect the command-line application
