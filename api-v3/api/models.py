@@ -2,16 +2,22 @@ import os
 from typing import Optional
 
 from geojson_pydantic import Feature, Polygon
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 class CommonModel(BaseModel):
     model_config = ConfigDict(extra="allow")
 
-    source_id: Optional[str |int] = None
-    orig_id: Optional[str |int] = None
+    source_id: Optional[int] = None
+    orig_id: Optional[int] = None
     descrip: Optional[str] = None
     ready: Optional[bool] = None
+
+    @field_validator("source_id", "orig_id")
+    def transform_str_to_int(cls, v):
+        if isinstance(v, str):
+            return int(v)
+        return v
 
 
 class PolygonModel(CommonModel):
@@ -19,9 +25,15 @@ class PolygonModel(CommonModel):
     strat_name: Optional[str] = None
     age: Optional[str] = None
     comments: Optional[str] = None
-    t_interval: Optional[str | int] = None
-    b_interval: Optional[str | int] = None
+    t_interval: Optional[int] = None
+    b_interval: Optional[int] = None
     geom: Optional[Polygon] = None
+
+    @field_validator("t_interval", "b_interval")
+    def transform_str_to_int(cls, v):
+        if isinstance(v, str):
+            return int(v)
+        return v
 
 
 class LineworkModel(CommonModel):
