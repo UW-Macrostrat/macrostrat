@@ -36,7 +36,6 @@ CREATE TABLE "macrostrat_auth"."user" (
     created_on timestamp with time zone DEFAULT now() NOT NULL,
     updated_on timestamp with time zone DEFAULT now() NOT NULL
 );
-ALTER SEQUENCE "macrostrat_auth".user_id_seq OWNER TO macrostrat;
 
 -- Create a trigger function --
 CREATE OR REPLACE FUNCTION update_updated_on()
