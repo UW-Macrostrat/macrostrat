@@ -38,7 +38,8 @@ async def setup_engine(a: FastAPI):
 
 
 app = FastAPI(
-    lifespan=setup_engine
+    lifespan=setup_engine,
+    openapi_prefix="./",
 )
 
 origins = [
