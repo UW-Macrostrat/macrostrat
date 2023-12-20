@@ -24,9 +24,10 @@ from api.database import (
     patch_sources_sub_table,
     select_sources_sub_table,
 )
-from api.models import PolygonModel, Sources, CopyColumnRequest
+from api.models.source import PolygonModel, Sources, CopyColumnRequest
 from api.query_parser import ParserException
 from api.routes.security import TokenData, get_groups
+from api.routes.object import router as object_router
 
 @asynccontextmanager
 async def setup_engine(a: FastAPI):
@@ -56,6 +57,7 @@ app.add_middleware(
 )
 
 app.include_router(api.routes.security.router)
+app.include_router(object_router)
 
 
 @app.get("/sources")
@@ -169,6 +171,9 @@ async def patch_sub_sources(
         raise HTTPException(status_code=400, detail="No rows patched, if this is unexpected please report as bug")
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+
 
 
 

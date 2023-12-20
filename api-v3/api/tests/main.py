@@ -1,7 +1,6 @@
 import pytest
 import os
-import json
-import random
+import hashlib
 import datetime
 import random
 
@@ -20,7 +19,7 @@ load_dotenv()
 from api.app import app
 from api.database import connect_engine, dispose_engine, get_engine
 import api.database as db
-from api.models import PolygonModel
+from api.models.source import PolygonModel
 
 # Define some testing values
 
@@ -329,4 +328,78 @@ class TestAPI:
 
     assert all([x["descrip"] == x["comments"] for x in response_data])
 
+class TestObjectCRUD:
+
+  def test_object_post(self, api_client):
+    """Test posting an object to the database"""
+
+    key = f"test-{random.randint(0,10000000)}"
+
+    object_data = {
+      "scheme": "http",
+      "host": "test.com",
+      "bucket": "test",
+      "key": key,
+      "source": {"test_key": "test_value"},
+      "mime_type": "application/json",
+      "sha256_hash": hashlib.sha256(open(__file__, "rb").read()).hexdigest()
+    }
+
+    response = api_client.post(
+      "/object",
+      json=object_data,
+    )
+
+    assert response.status_code == 200
+
+  def test_get_objects(self, api_client):
+    response = api_client.get("/object")
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert len(data) > 0
+
+  def test_get_object(self, api_client):
+    response = api_client.get("/object")
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert len(data) > 0
+
+    response = api_client.get(f"/object/{data[0]['id']}")
+
+    assert response.status_code == 200
+
+    single_data = response.json()
+
+    assert single_data == data[0]
+
+  def test_delete_object(self, api_client):
+
+    key = f"test-{random.randint(0,10000000)}"
+
+    object_data = {
+      "scheme": "http",
+      "host": "test.com",
+      "bucket": "test",
+      "key": key,
+      "source": {"test_key": "test_value"},
+      "mime_type": "application/json",
+      "sha256_hash": hashlib.sha256(open(__file__, "rb").read()).hexdigest()
+    }
+
+    response = api_client.post("/object", json=object_data)
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert len(data) > 0
+
+    response = api_client.delete(f"/object/{data['id']}")
+    assert response.status_code == 200
+
+    response = api_client.get(f"/object/{data['id']}")
+    assert response.status_code == 404
 

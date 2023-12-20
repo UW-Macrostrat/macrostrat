@@ -7,8 +7,9 @@
 #
 import datetime
 from os import environ
-from typing import Type
+from typing import Type, List
 
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine
 from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 from sqlalchemy import text, select, update, Table, MetaData, CursorResult, func, insert
@@ -134,6 +135,15 @@ async def get_access_token(async_session: async_sessionmaker[AsyncSession], toke
 # Here starts the use on the engine object directly
 #
 
+def results_to_model(results, model: Type[BaseModel]) -> list[BaseModel]:
+    """Converts the results to a list of models"""
+
+    keys = list(results.keys())
+    return [
+        model(**{keys[i]: result[i] for i, v in enumerate(result)}) for result in results.fetchall()
+    ]
+
+
 class SQLResponse:
     def __init__(self, columns, results):
         self.columns = list(columns)
@@ -205,7 +215,7 @@ async def select_sources_sub_table(
         # Extract filters from the query parameters
         query_parser = QueryParser(columns=selected_columns, query_params=query_params)
         if query_parser.get_group_by_column() is not None:
-            selected_columns = query_parser.get_group_by_select_columns()
+            selected_columns = query_parser.get_select_columns()
 
         stmt = (
             select(*selected_columns)

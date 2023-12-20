@@ -1,7 +1,8 @@
+import enum
 from typing import List
 import datetime
-from sqlalchemy import ForeignKey, func, DateTime
-from sqlalchemy.dialects.postgresql import VARCHAR, TEXT, INTEGER, ARRAY, BOOLEAN
+from sqlalchemy import ForeignKey, func, DateTime, Enum, UniqueConstraint
+from sqlalchemy.dialects.postgresql import VARCHAR, TEXT, INTEGER, ARRAY, BOOLEAN, JSON
 from sqlalchemy import String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from geoalchemy2 import Geometry
@@ -82,4 +83,34 @@ class Token(Base):
     )
     created_on: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class SchemeEnum(enum.Enum):
+    http = "http"
+    s3 = "s3"
+
+
+class Objects(Base):
+    __tablename__ = "objects"
+    __table_args__ = (
+        UniqueConstraint('scheme', 'host', 'bucket', 'key', name='unique_file'),
+        {'schema': 'macrostrat'}
+    )
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    scheme: Mapped[str] = mapped_column(Enum(SchemeEnum))
+    host: Mapped[str] = mapped_column(VARCHAR(255), nullable=False)
+    bucket: Mapped[str] = mapped_column(VARCHAR(255), nullable=False)
+    key: Mapped[str] = mapped_column(VARCHAR(255), nullable=False)
+    source: Mapped[dict] = mapped_column(JSON)
+    mime_type: Mapped[str] = mapped_column(VARCHAR(255))
+    sha256_hash: Mapped[str] = mapped_column(VARCHAR(255))
+    created_on: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_on: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+    deleted_on: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )

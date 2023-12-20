@@ -181,7 +181,7 @@ class TestParser:
 
         assert query_parser.get_group_by_column().name == "int_column"
 
-        select_columns = query_parser.get_group_by_select_columns()
+        select_columns = query_parser.get_select_columns()
 
         stmt = [*map(lambda x: compile_statement(x), select_columns)]
 

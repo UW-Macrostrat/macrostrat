@@ -9,7 +9,7 @@ from dataclasses import dataclass
 
 import starlette.requests
 import logging
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 
 
 from sqlalchemy.sql.expression import SQLColumnExpression
@@ -23,6 +23,12 @@ log = logging.getLogger(__name__)
 
 class ParserException(Exception):
     pass
+
+
+def get_filter_query_params(request: Request) -> list[tuple[str, str]]:
+    """Returns the query params that are not page or page_size"""
+
+    return [*filter(lambda x: x[0] not in ["page", "page_size"], request.query_params.items())]
 
 
 def cast_to_column_type(column: Column, value):
@@ -91,11 +97,11 @@ class QueryParser:
 
         return group_by_columns[0]
 
-    def get_group_by_select_columns(self):
+    def get_select_columns(self) -> list[Column]:
         """Returns the group by expression which does a string aggregation of distinct values in the other columns"""
 
         if self.get_group_by_column() is None:
-            raise ParserException(f"Group by column must be set")
+            return [*self.columns.values()]
 
         columns = []
         for column in self.columns.values():

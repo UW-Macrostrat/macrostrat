@@ -1,4 +1,3 @@
-import os
 from typing import Optional
 
 from geojson_pydantic import Feature, Polygon
@@ -70,6 +69,5 @@ class Sources(BaseModel):
 
     class Config:
         orm_mode = True
-
 
 
