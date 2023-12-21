@@ -20,3 +20,9 @@ The Macrostrat _v2_ codebase requires `docker`, and either `docker compose` or
 To install the Python application that controls Macrostrat, head to the
 [py-root](py-root) directory. Running `make` will install the Python
 dependencies and build the application.
+
+## Documentation
+
+Documentation is a work in progress, but a starting point for documentation
+of the `macrostrat` command line app
+can be found [here](https://github.com/UW-Macrostrat/macrostrat/blob/main/macrostrat-cli/docs/cli-usage.md).
