@@ -7,7 +7,7 @@ import starlette.requests
 import uvicorn
 from fastapi import FastAPI, HTTPException, Response, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.exc import NoResultFound, NoSuchTableError
 
 import dotenv
@@ -88,7 +88,10 @@ async def get_source(source_id: int, include_geom: bool = False) -> Sources:
 
     async with async_session() as session:
 
-        select_stmt = select(*[c for c in schemas.Sources.__table__.c if c.name not in ['rgeom', 'webgeom']]).where(schemas.Sources.source_id == source_id)
+        select_stmt = select(
+            *[c for c in schemas.Sources.__table__.c if c.name not in ['rgeom', 'web_geom']],
+            func.ST_AsGeoJSON(schemas.Sources.rgeom).label("geometry"),
+        ).where(schemas.Sources.source_id == source_id)
 
         results = await session.execute(select_stmt)
 

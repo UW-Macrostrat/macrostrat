@@ -1,6 +1,7 @@
-from typing import Optional
+from typing import Optional, Union
+import json
 
-from geojson_pydantic import Feature, Polygon
+from geojson_pydantic import Feature, Polygon, MultiPolygon
 from pydantic import BaseModel, ConfigDict, field_validator
 
 
@@ -63,9 +64,14 @@ class Sources(BaseModel):
     priority: bool
     rgeom: Optional[Polygon] = None
     display_scales: Optional[list[str]] = None
-    web_geom: Optional[Polygon] = None
+    web_geom: Optional[MultiPolygon] = None
+    geometry: Optional[Union[Polygon, MultiPolygon]] = None
     new_priority: int
     status_code: str
+
+    @field_validator('geometry', mode='before')
+    def str_geom_to_dict(cls, value: str) -> dict:
+        return json.loads(value)
 
     class Config:
         orm_mode = True
