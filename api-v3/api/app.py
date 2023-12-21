@@ -7,9 +7,8 @@ import starlette.requests
 import uvicorn
 from fastapi import FastAPI, HTTPException, Response, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound, NoSuchTableError
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-from starlette.authentication import requires
 
 import dotenv
 dotenv.load_dotenv()
@@ -28,6 +27,8 @@ from api.models.source import PolygonModel, Sources, CopyColumnRequest
 from api.query_parser import ParserException
 from api.routes.security import TokenData, get_groups
 from api.routes.object import router as object_router
+
+import api.schemas as schemas
 
 @asynccontextmanager
 async def setup_engine(a: FastAPI):
@@ -76,6 +77,25 @@ async def get_sources(response: Response, page: int = 0, page_size: int = 100, i
     response.headers["Link"] = "/sources" + urllib.parse.urlencode({page: page + 1, page_size: page_size})
 
     return sources
+
+
+@app.get("/sources/{source_id}")
+async def get_source(source_id: int, include_geom: bool = False) -> Sources:
+    """Get a single object"""
+
+    engine = get_engine()
+    async_session = get_async_session(engine)
+
+    async with async_session() as session:
+
+        select_stmt = select(*[c for c in schemas.Sources.__table__.c if c.name not in ['rgeom', 'webgeom']]).where(schemas.Sources.source_id == source_id)
+
+        results = await session.execute(select_stmt)
+
+        if results is None:
+            raise HTTPException(status_code=404, detail=f"Object with id ({id}) not found")
+
+        return db.results_to_model(results, Sources)[0]
 
 
 @app.get("/sources/{table_id}/polygons", response_model=List[PolygonModel])

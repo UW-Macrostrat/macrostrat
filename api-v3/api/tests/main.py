@@ -122,6 +122,15 @@ class TestAPI:
     assert response.status_code == 200
 
 
+  def test_get_source(self, api_client: TestClient):
+    response = api_client.get(f"/sources/{TEST_SOURCE_TABLE.source_id}")
+    assert response.status_code == 200
+
+    response_json = response.json()
+
+    assert response_json["source_id"] == TEST_SOURCE_TABLE.source_id
+
+
   def test_get_sources_tables(self, api_client: TestClient):
     response = api_client.get(f"/sources/{TEST_SOURCE_TABLE.source_id}/polygons")
     assert response.status_code == 200
