@@ -14,8 +14,10 @@ import json
 from .kubernetes import get_secret
 
 
-def env_text():
-    return f"environment [bold cyan]{environ.get('MACROSTRAT_ENV')}[/]"
+def env_text(env: str = None):
+    if env is None:
+        env = environ.get("MACROSTRAT_ENV")
+    return f"environment [bold cyan]{env}[/]"
 
 
 APP_NAME = "macrostrat"
@@ -309,6 +311,15 @@ def config():
             print(f"{k}: {v}")
 
 
+@main.callback()
+def callback(env: str = Option(None)):
+    """
+    Manage users in the awesome CLI app.
+    """
+    if env is not None:
+        pass
+
+
 @main.command()
 def secrets(secret_name: Optional[str] = Argument(None), *, key: str = Option(None)):
     """Get a secret from the Kubernetes cluster"""
@@ -339,6 +350,7 @@ def set_env(env: str = Argument(None), unset: bool = False):
     else:
         active_env.parent.mkdir(exist_ok=True)
         active_env.write_text(env)
+        environ["MACROSTRAT_ENV"] = env
         print(f"Activated {env_text()}")
 
 
