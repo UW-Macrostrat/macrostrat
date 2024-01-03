@@ -8,10 +8,10 @@ from pydantic import BaseModel, ConfigDict, field_validator
 class CommonModel(BaseModel):
     model_config = ConfigDict(extra="allow")
 
-    source_id: Optional[int] = None
-    orig_id: Optional[int] = None
+    source_id: Optional[Union[int | str]] = None
+    orig_id: Optional[Union[int | str]] = None
     descrip: Optional[str] = None
-    ready: Optional[bool] = None
+    ready: Optional[Union[bool | str]] = None
 
     @field_validator("source_id", "orig_id")
     def transform_str_to_int(cls, v):
@@ -25,11 +25,13 @@ class PolygonModel(CommonModel):
     strat_name: Optional[str] = None
     age: Optional[str] = None
     comments: Optional[str] = None
-    t_interval: Optional[int] = None
-    b_interval: Optional[int] = None
+    t_interval: Optional[Union[int | str]] = None
+    b_interval: Optional[Union[int | str]] = None
     geom: Optional[Polygon] = None
 
-    @field_validator("t_interval", "b_interval")
+
+class PolygonRequestModel(PolygonModel):
+    @field_validator("t_interval", "b_interval", "source_id", "orig_id")
     def transform_str_to_int(cls, v):
         if isinstance(v, str):
             return int(v)

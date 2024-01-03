@@ -23,7 +23,7 @@ from api.database import (
     patch_sources_sub_table,
     select_sources_sub_table,
 )
-from api.models.source import PolygonModel, Sources, CopyColumnRequest
+from api.models.source import PolygonModel, PolygonRequestModel, Sources, CopyColumnRequest
 from api.query_parser import ParserException
 from api.routes.security import TokenData, get_groups
 from api.routes.object import router as object_router
@@ -112,7 +112,7 @@ async def get_sub_sources(
 
     try:
         # Get the query results
-        filter_query_params = [*filter(lambda x: x[0] not in ["page", "page_size"], request.query_params.items())]
+        filter_query_params = [*filter(lambda x: x[0] not in ["page", "page_size"], request.query_params.multi_items())]
         result = await select_sources_sub_table(
             engine=get_engine(),
             table_id=table_id,
@@ -137,7 +137,7 @@ async def get_sub_sources(
 async def patch_sub_sources(
         request: starlette.requests.Request,
         table_id: int,
-        polygon_updates: PolygonModel,
+        polygon_updates: PolygonRequestModel,
         groups: list[int] = Depends(get_groups)
 ):
 
@@ -149,7 +149,7 @@ async def patch_sub_sources(
             engine=get_engine(),
             table_id=table_id,
             update_values=polygon_updates.model_dump(exclude_none=True),
-            query_params=request.query_params.items()
+            query_params=request.query_params.multi_items()
         )
 
     except ParserException as e:
@@ -182,7 +182,7 @@ async def patch_sub_sources(
             table_id=table_id,
             source_column=copy_column.source_column,
             target_column=target_column,
-            query_params=request.query_params.items()
+            query_params=request.query_params.multi_items()
         )
 
     except ParserException as e:

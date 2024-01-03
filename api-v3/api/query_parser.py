@@ -68,7 +68,7 @@ class QueryParser:
 
         where_expressions = []
 
-        for query_param in self.decomposed_query_params.values():
+        for query_param in self.decomposed_query_params:
             if query_param.operators[0] not in ["group_by", "order_by"]:
                 where_expressions.append(
                     self._get_operator_expression(
@@ -86,7 +86,7 @@ class QueryParser:
         """Returns the group by expressions for the query"""
 
         group_by_columns = []
-        for query_param in self.decomposed_query_params.values():
+        for query_param in self.decomposed_query_params:
             if query_param.operators[0] == "group_by":
                 group_by_columns.append(query_param.column)
 
@@ -121,14 +121,14 @@ class QueryParser:
 
         order_by_columns = []
 
-        for query_param in self.decomposed_query_params.values():
+        for query_param in self.decomposed_query_params:
             if query_param.operators[0] == "order_by":
                 order_by_columns.append(query_param.column)
 
         return order_by_columns
 
-    def _decompose_query_params(self) -> dict:
-        decomposed_query_params = {}
+    def _decompose_query_params(self) -> list[QueryParameter]:
+        decomposed_query_params = []
 
         for column_name, encoded_expression in self.query_params:
             operators, value = self._decompose_encoded_expression(encoded_expression)
@@ -140,8 +140,8 @@ class QueryParser:
                 log.warning(f"Column ({column_name}) not found in table")
                 continue
 
-            decomposed_query_params[column_name] = QueryParameter(
-                column=col, operators=operators, value=value
+            decomposed_query_params.append(
+                QueryParameter(column=col, operators=operators, value=value)
             )
 
         return decomposed_query_params
