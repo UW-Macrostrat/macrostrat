@@ -12,6 +12,7 @@ from .utils import is_pg_url
 from sqlalchemy import create_engine, text
 import json
 from .kubernetes import get_secret
+from .copy_map import copy_macrostrat_source
 
 
 def env_text():
@@ -70,8 +71,6 @@ from .v2_commands import app as v2_app
 from .database import get_db
 from sys import exit
 
-
-# settings = Dynaconf(settings_files=[root_dir/"macrostrat.toml", root_dir/".secrets.toml"])
 
 __here__ = Path(__file__).parent
 fixtures_dir = __here__ / "fixtures"
@@ -296,6 +295,9 @@ def db_tunnel():
 
 
 main.add_typer(db_app, name="db", short_help="Manage the database")
+
+
+main.command(name="copy-source")(copy_macrostrat_source)
 
 
 @main.command()

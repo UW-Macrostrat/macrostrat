@@ -52,11 +52,11 @@ def add_missing_table_names(db: Database):
 
 # TODO: integrate this with the Macrostrat database module.
 def table_exists(db: Database, table_name: str, schema: str = "public") -> bool:
-    """Check if a table exists in the database."""
+    """Check if a table exists in a PostgreSQL database."""
     sql = """SELECT EXISTS (
         SELECT FROM information_schema.tables 
-        WHERE  table_schema = :schema
-        AND    table_name   = :table_name
+        WHERE table_schema = :schema
+          AND table_name = :table_name
     );"""
 
     return db.session.execute(
