@@ -12,7 +12,7 @@ from .utils import is_pg_url
 from sqlalchemy import create_engine, text
 import json
 from .kubernetes import get_secret
-from .copy_map import copy_macrostrat_source
+from .copy_map import copy_macrostrat_sources
 
 
 def env_text():
@@ -297,7 +297,7 @@ def db_tunnel():
 main.add_typer(db_app, name="db", short_help="Manage the database")
 
 
-main.command(name="copy-source")(copy_macrostrat_source)
+main.command(name="copy-sources")(copy_macrostrat_sources)
 
 
 @main.command()

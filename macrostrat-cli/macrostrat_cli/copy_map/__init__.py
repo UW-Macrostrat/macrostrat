@@ -1,20 +1,17 @@
+"""A command to copy a macrostrat source from one database to another.
+This should really be part of the map-integration package, but it's here
+on a temporary basis.
+"""
+
 from typer import Option
 from macrostrat.database import Database
-from macrostrat.database.postgresql import table_exists
+from macrostrat.database.postgresql import table_exists, on_conflict
 from psycopg2.sql import Identifier
+from sqlalchemy.dialects.postgresql import insert
 from .._dev.transfer_tables import transfer_tables
 
 
-class MacrostratCommandError(Exception):
-    base_error: Exception
-    description: str
-
-    def init(self, base_error: Exception, description: str):
-        self.base_error = base_error
-        self.description = description
-
-
-def copy_macrostrat_source(
+def copy_macrostrat_sources(
     slug: str,
     from_db: str = Option(None, "--from"),
     to_db: str = Option(None, "--to"),
@@ -44,6 +41,13 @@ def copy_macrostrat_source(
     # Add the source to the new database
     to_db.automap(schemas=["maps", "macrostrat_auth"])
 
+    # Copy the source
+    copy_macrostrat_source(from_db, to_db, slug, message=message, replace=replace)
+
+
+def copy_macrostrat_source(
+    from_db: Database, to_db: Database, slug: str, message: str, replace: bool
+):
     tables = [
         Identifier("sources", slug + "_" + dtype)
         for dtype in ["points", "lines", "polygons"]
@@ -154,14 +158,33 @@ def copy_sources_record(from_db: Database, to_db: Database, slug: str, replace=F
     old_source_id = source_vals.pop("source_id")
     del source_vals["_sa_instance_state"]
 
-    new_source = Sources2(**source_vals)
+    query = insert(Sources2.__table__).values(source_vals)
 
     if replace:
-        to_db.session.query(Sources2).filter_by(slug=slug).delete()
+        # Update the source_id with on_conflict_do_update
+        vals = {
+            name: value for name, value in source_vals.items() if name not in ["slug"]
+        }
 
-    to_db.session.add(new_source)
-    to_db.session.commit()
+        query = query.on_conflict_do_update(
+            index_elements=["slug"],
+            set_=vals,
+        )
+
+    with on_conflict("restrict"):
+        new_source_id = to_db.session.execute(
+            query.returning(Sources2.source_id)
+        ).scalar()
 
     # Get the new source_id
-    print("Added source to new database with ID", new_source.source_id)
-    return old_source_id, new_source.source_id
+    print("Added source to new database with ID", new_source_id)
+    return old_source_id, new_source_id
+
+
+class MacrostratCommandError(Exception):
+    base_error: Exception
+    description: str
+
+    def init(self, base_error: Exception, description: str):
+        self.base_error = base_error
+        self.description = description
