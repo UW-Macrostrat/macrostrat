@@ -5,10 +5,20 @@ from psycopg2.sql import Identifier
 from .._dev.transfer_tables import transfer_tables
 
 
+class MacrostratCommandError(Exception):
+    base_error: Exception
+    description: str
+
+    def init(self, base_error: Exception, description: str):
+        self.base_error = base_error
+        self.description = description
+
+
 def copy_macrostrat_source(
     slug: str,
     from_db: str = Option(None, "--from"),
     to_db: str = Option(None, "--to"),
+    message: str = Option(None, "--message"),
     replace: bool = False,
 ):
     """Copy a macrostrat source from one database to another."""
@@ -30,6 +40,10 @@ def copy_macrostrat_source(
     else:
         to_db = Database(_db.engine.url.set(database=to_db))
 
+    from_db.automap(schemas=["maps", "macrostrat_auth"])
+    # Add the source to the new database
+    to_db.automap(schemas=["maps", "macrostrat_auth"])
+
     tables = [
         Identifier("sources", slug + "_" + dtype)
         for dtype in ["points", "lines", "polygons"]
@@ -41,7 +55,9 @@ def copy_macrostrat_source(
             to_db.run_sql("DROP TABLE IF EXISTS {table}", params=dict(table=table))
 
     # Copy the sources record
-    source_id = copy_sources_record(from_db, to_db, slug, replace=replace)
+    old_source_id, new_source_id = copy_sources_record(
+        from_db, to_db, slug, replace=replace
+    )
 
     # Copy the tables
     transfer_tables(
@@ -60,26 +76,82 @@ def copy_macrostrat_source(
             UPDATE {table} SET source_id = :source_id;
             ALTER TABLE {table} ADD FOREIGN KEY (source_id) REFERENCES maps.sources (source_id);
             """,
-            params=dict(source_id=source_id, table=table),
+            params=dict(source_id=new_source_id, table=table),
         )
+
+    # Create an entry in the operations log
+    log_map_operation(
+        to_db,
+        source_id=new_source_id,
+        comments=message,
+        details=dict(
+            slug=slug, src_database=str(from_db.engine.url), src_source_id=old_source_id
+        ),
+    )
+
+    try:
+        copy_operations_from_src_database(from_db, to_db, old_source_id, new_source_id)
+    except Exception as err:
+        raise MacrostratCommandError(err, "Could not copy operations log")
+
+
+def log_map_operation(
+    db: Database,
+    **kwargs,
+):
+    Operation = db.model.maps_source_operations
+    op = Operation(operation="get-source", app="macrostrat-cli", **kwargs)
+    db.session.add(op)
+    db.session.commit()
+
+
+def copy_operations_from_src_database(
+    from_db: Database, to_db: Database, old_source_id: int, new_source_id: int
+):
+    """
+    Copy the operations log from one database to another.
+    """
+
+    Operation = to_db.model.maps_source_operations
+
+    # Sometimes the source isn't necessarily going to have an operations table
+    src_Operation = getattr(from_db.model, "maps_source_operations", None)
+    if src_Operation is not None:
+        # Get source operations
+        src_ops = from_db.session.query(src_Operation).filter_by(
+            source_id=old_source_id
+        )
+        for src_op in src_ops:
+            op = Operation(
+                source_id=new_source_id,
+                app=src_op.app,
+                operation=src_op.operation,
+                comments=src_op.comments,
+                details=dict(
+                    src_database=str(from_db.engine.url),
+                    src_source_id=src_op.source_id,
+                    src_user_id=src_op.user_id,
+                    **src_op.details,
+                ),
+                date=src_op.date,
+            )
+            to_db.session.add(op)
+        to_db.session.commit()
 
 
 def copy_sources_record(from_db: Database, to_db: Database, slug: str, replace=False):
     """Copy a maps.sources record from one database to another."""
 
-    from_db.automap(schemas=["maps"])
     Sources = from_db.model.maps_sources
 
     source = from_db.session.query(Sources).filter_by(slug=slug).one_or_none()
     if source is None:
         raise ValueError(f"Source {slug} not found in {from_db.engine.url.database}")
 
-    # Add the source to the new database
-    to_db.automap(schemas=["maps"])
     Sources2 = to_db.model.maps_sources
 
     source_vals = source.__dict__
-    del source_vals["source_id"]
+    old_source_id = source_vals.pop("source_id")
     del source_vals["_sa_instance_state"]
 
     new_source = Sources2(**source_vals)
@@ -92,4 +164,4 @@ def copy_sources_record(from_db: Database, to_db: Database, slug: str, replace=F
 
     # Get the new source_id
     print("Added source to new database with ID", new_source.source_id)
-    return new_source.source_id
+    return old_source_id, new_source.source_id
