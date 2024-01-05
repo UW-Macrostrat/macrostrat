@@ -3,20 +3,28 @@ This should really be part of the map-integration package, but it's here
 on a temporary basis.
 """
 
-from typer import Option
+from typer import Option, Argument
+from typing import Optional
 from macrostrat.database import Database
 from macrostrat.database.postgresql import table_exists, on_conflict
 from psycopg2.sql import Identifier
 from sqlalchemy.dialects.postgresql import insert
+import sys
 from .._dev.transfer_tables import transfer_tables
 
 
+def callback(value: Optional[list[str]]) -> list[str]:
+    return value if value else []
+
+
 def copy_macrostrat_sources(
-    slug: str,
+    slugs: Optional[list[str]] = Argument(None, callback=callback),
     from_db: str = Option(None, "--from"),
     to_db: str = Option(None, "--to"),
     message: str = Option(None, "--message"),
     replace: bool = False,
+    all_missing: bool = Option(False, "--all-missing", is_flag=True),
+    dry_run: bool = Option(False, "--dry-run", is_flag=True),
 ):
     """Copy a macrostrat source from one database to another."""
 
@@ -41,8 +49,37 @@ def copy_macrostrat_sources(
     # Add the source to the new database
     to_db.automap(schemas=["maps", "macrostrat_auth"])
 
+    if len(slugs) == 0 and not all_missing:
+        raise ValueError("Must specify at least one slug to copy")
+
+    if all_missing and len(slugs) > 0:
+        raise ValueError("Cannot specify both --all-missing and slugs")
+
+    if all_missing:
+        # Get all slugs in the source database
+        src_slugs = from_db.session.query(from_db.model.maps_sources.slug).all()
+        src_slugs = set([v.slug for v in src_slugs])
+
+        # Get all slugs in the destination database that are in the source database
+        dst_slugs = (
+            to_db.session.query(to_db.model.maps_sources.slug)
+            .filter(to_db.model.maps_sources.slug.in_(src_slugs))
+            .all()
+        )
+        dst_slugs = set([v.slug for v in dst_slugs])
+
+        # Get the slugs that are in the source database but not in the destination database
+        slugs = list(src_slugs - dst_slugs)
+
+    if dry_run:
+        print("Would copy the following maps:", file=sys.stderr)
+        for slug in slugs:
+            print(slug)
+        return
+
     # Copy the source
-    copy_macrostrat_source(from_db, to_db, slug, message=message, replace=replace)
+    for slug in slugs:
+        copy_macrostrat_source(from_db, to_db, slug, message=message, replace=replace)
 
 
 def copy_macrostrat_source(
