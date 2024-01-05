@@ -1,5 +1,6 @@
 from typer import Option
 from macrostrat.database import Database
+from macrostrat.database.postgresql import table_exists
 from .._dev.transfer_tables import transfer_tables
 
 
@@ -28,6 +29,21 @@ def copy_macrostrat_source(
     else:
         to_db = Database(_db.engine.url.set(database=to_db))
 
+    tables = [
+        f"sources.{slug}_points",
+        f"sources.{slug}_lines",
+        f"sources.{slug}_polygons",
+    ]
+
+    if replace:
+        # Delete the tables if they exist
+        for table in tables:
+            base_table = table.split(".")[1]
+            if not table_exists(to_db, base_table, "sources"):
+                continue
+
+            to_db.run_sql(f"DROP TABLE IF EXISTS {table};")
+
     # Copy the sources record
     source_id = copy_sources_record(from_db, to_db, slug, replace=replace)
 
@@ -35,21 +51,21 @@ def copy_macrostrat_source(
     transfer_tables(
         from_database=from_db.engine,
         to_database=to_db.engine,
-        tables=[
-            f"sources.{slug}_points",
-            f"sources.{slug}_lines",
-            f"sources.{slug}_polygons",
-        ],
+        tables=tables,
     )
 
-    to_db.run_sql(
-        f"""
-        UPDATE sources.{slug}_points SET source_id = :source_id;
-        UPDATE sources.{slug}_lines SET source_id = :source_id;
-        UPDATE sources.{slug}_polygons SET source_id = :source_id;
-        """,
-        params=dict(source_id=source_id),
-    )
+    for table in tables:
+        base_table = table.split(".")[1]
+        if not table_exists(to_db, base_table, "sources"):
+            continue
+
+        to_db.run_sql(
+            f"""
+            UPDATE {table} SET source_id = :source_id;
+            ALTER TABLE {table} ADD FOREIGN KEY (source_id) REFERENCES maps.sources (source_id);
+            """,
+            params=dict(source_id=source_id),
+        )
 
 
 def copy_sources_record(from_db: Database, to_db: Database, slug: str, replace=False):
