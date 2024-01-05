@@ -1,6 +1,7 @@
 from typer import Option
 from macrostrat.database import Database
 from macrostrat.database.postgresql import table_exists
+from psycopg2.sql import Identifier
 from .._dev.transfer_tables import transfer_tables
 
 
@@ -30,19 +31,14 @@ def copy_macrostrat_source(
         to_db = Database(_db.engine.url.set(database=to_db))
 
     tables = [
-        f"sources.{slug}_points",
-        f"sources.{slug}_lines",
-        f"sources.{slug}_polygons",
+        Identifier("sources", slug + "_" + dtype)
+        for dtype in ["points", "lines", "polygons"]
     ]
 
     if replace:
         # Delete the tables if they exist
         for table in tables:
-            base_table = table.split(".")[1]
-            if not table_exists(to_db, base_table, "sources"):
-                continue
-
-            to_db.run_sql(f"DROP TABLE IF EXISTS {table};")
+            to_db.run_sql("DROP TABLE IF EXISTS {table}", params=dict(table=table))
 
     # Copy the sources record
     source_id = copy_sources_record(from_db, to_db, slug, replace=replace)
@@ -51,25 +47,25 @@ def copy_macrostrat_source(
     transfer_tables(
         from_database=from_db.engine,
         to_database=to_db.engine,
-        tables=tables,
+        tables=[".".join(t.strings) for t in tables],
     )
 
     for table in tables:
-        base_table = table.split(".")[1]
-        if not table_exists(to_db, base_table, "sources"):
+        (schema, name) = table.strings
+        if not table_exists(to_db, name, schema=schema):
             continue
 
         to_db.run_sql(
-            f"""
+            """
             UPDATE {table} SET source_id = :source_id;
             ALTER TABLE {table} ADD FOREIGN KEY (source_id) REFERENCES maps.sources (source_id);
             """,
-            params=dict(source_id=source_id),
+            params=dict(source_id=source_id, table=table),
         )
 
 
 def copy_sources_record(from_db: Database, to_db: Database, slug: str, replace=False):
-    """Copy a macrostrat sources record from one database to another."""
+    """Copy a maps.sources record from one database to another."""
 
     from_db.automap(schemas=["maps"])
     Sources = from_db.model.maps_sources

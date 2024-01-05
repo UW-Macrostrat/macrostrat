@@ -2,8 +2,7 @@ from os import environ
 from macrostrat.database import Database
 from dotenv import load_dotenv
 from pathlib import Path
-
-# $load_dotenv()
+from sqlalchemy import text
 
 INTEGRATION_DATABASE_URL = environ.get("INTEGRATION_DATABASE_URL", None)
 MACROSTRAT_DATABASE_URL = environ.get("MACROSTRAT_DATABASE_URL", None)
@@ -20,7 +19,7 @@ def database_connection():
 
 def sql_file(key: str) -> str:
     """Return the contents of a SQL file."""
-    return (Path(__file__).parent / "procedures" / (key + ".sql")).read_text()
+    return text((Path(__file__).parent / "procedures" / (key + ".sql")).read_text())
 
 
 def create_fixtures():
@@ -31,13 +30,3 @@ def create_fixtures():
     sql_files.sort()
     for f in sql_files:
         db.exec_sql(f)
-
-
-def stage_source(source_id: int):
-    """Stage a source from the ingestion database to the macrostrat database."""
-
-    with psycopg.connect(dsn_src) as conn1, psycopg.connect(dsn_tgt) as conn2:
-        with conn1.cursor().copy("COPY src TO STDOUT") as copy1:
-            with conn2.cursor().copy("COPY tgt FROM STDIN") as copy2:
-                for data in copy1:
-                    copy2.write(data)
