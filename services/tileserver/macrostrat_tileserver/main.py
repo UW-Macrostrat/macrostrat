@@ -13,7 +13,7 @@ from fastapi import (
 import json
 import typing
 import decimal
-from fastapi_utils.tasks import repeat_every
+from .vendor.repeat_every import repeat_every
 from macrostrat.utils import get_logger, setup_stderr_logs
 from macrostrat.utils.timer import Timer
 from morecantile import Tile, TileMatrixSet
