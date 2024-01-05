@@ -7,10 +7,14 @@ from typer import Option, Argument
 from typing import Optional
 from macrostrat.database import Database
 from macrostrat.database.postgresql import table_exists, on_conflict
+from macrostrat.utils import get_logger
 from psycopg2.sql import Identifier
 from sqlalchemy.dialects.postgresql import insert
 import sys
 from .._dev.transfer_tables import transfer_tables
+
+
+log = get_logger(__name__)
 
 
 def callback(value: Optional[list[str]]) -> list[str]:
@@ -23,7 +27,8 @@ def copy_macrostrat_sources(
     to_db: str = Option(None, "--to"),
     message: str = Option(None, "--message"),
     replace: bool = False,
-    all_missing: bool = Option(False, "--all-missing", is_flag=True),
+    _missing: bool = Option(False, "--missing", is_flag=True),
+    _all: bool = Option(False, "--all", is_flag=True),
     dry_run: bool = Option(False, "--dry-run", is_flag=True),
 ):
     """Copy a macrostrat source from one database to another."""
@@ -49,27 +54,34 @@ def copy_macrostrat_sources(
     # Add the source to the new database
     to_db.automap(schemas=["maps", "macrostrat_auth"])
 
-    if len(slugs) == 0 and not all_missing:
-        raise ValueError("Must specify at least one slug to copy")
+    if _all and _missing:
+        raise ValueError("Cannot specify both --all and --missing")
 
-    if all_missing and len(slugs) > 0:
-        raise ValueError("Cannot specify both --all-missing and slugs")
+    has_flag = _missing or _all
+    active_flag = "--missing" if _missing else "--all"
 
-    if all_missing:
+    if len(slugs) == 0 and not has_flag:
+        raise ValueError("Must specify at least one map to copy")
+
+    if has_flag and len(slugs) > 0:
+        raise ValueError(f"Cannot specify both {active_flag} and individual maps")
+
+    if has_flag:
         # Get all slugs in the source database
-        src_slugs = from_db.session.query(from_db.model.maps_sources.slug).all()
-        src_slugs = set([v.slug for v in src_slugs])
+        slugs = from_db.session.query(from_db.model.maps_sources.slug).all()
+        slugs = set([v.slug for v in slugs])
 
-        # Get all slugs in the destination database that are in the source database
-        dst_slugs = (
-            to_db.session.query(to_db.model.maps_sources.slug)
-            .filter(to_db.model.maps_sources.slug.in_(src_slugs))
-            .all()
-        )
-        dst_slugs = set([v.slug for v in dst_slugs])
+        if _missing:
+            # Get all slugs in the destination database that are in the source database
+            dst_slugs = (
+                to_db.session.query(to_db.model.maps_sources.slug)
+                .filter(to_db.model.maps_sources.slug.in_(slugs))
+                .all()
+            )
+            dst_slugs = set([v.slug for v in dst_slugs])
 
-        # Get the slugs that are in the source database but not in the destination database
-        slugs = list(src_slugs - dst_slugs)
+            # Get the slugs that are in the source database but not in the destination database
+            slugs = list(slugs - dst_slugs)
 
     if dry_run:
         print("Would copy the following maps:", file=sys.stderr)
@@ -89,6 +101,14 @@ def copy_macrostrat_source(
         Identifier("sources", slug + "_" + dtype)
         for dtype in ["points", "lines", "polygons"]
     ]
+    # TODO: this only includes a very restricted set of tables per source, but maybe it needs to
+    # be more general to capture situations where several tables exist for a single source?
+
+    log.info(
+        f"Copying source {slug} from {from_db.engine.url.database} to {to_db.engine.url.database}"
+    )
+
+    log.info("Tables: " + ", ".join([str(t) for t in tables]))
 
     if replace:
         # Delete the tables if they exist
@@ -218,6 +238,8 @@ def copy_sources_record(from_db: Database, to_db: Database, slug: str, replace=F
         new_source_id = to_db.session.execute(
             query.returning(Sources2.source_id)
         ).scalar()
+
+        to_db.session.commit()
 
     # Get the new source_id
     print("Added source to new database with ID", new_source_id)
