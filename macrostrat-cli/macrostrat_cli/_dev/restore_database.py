@@ -5,7 +5,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy_utils import create_database, database_exists
 import aiofiles
 from typing import Optional
-from .utils import _docker_local_run_args, print_stream_progress, print_stdout
+from .utils import _create_command, print_stream_progress, print_stdout
 from macrostrat.utils import get_logger
 
 console = Console()
@@ -49,18 +49,7 @@ async def _pg_restore(
     # or another location, if more appropriate. Running on the remote
     # host, if possible, is probably the fastest option. There should be
     # multiple options ideally.
-    command_prefix = command_prefix or _docker_local_run_args(postgres_container)
-
-    _cmd = [
-        *command_prefix,
-        "pg_restore",
-        "-Fc",
-        "-d",
-        str(database),
-        *args,
-    ]
-
-    log.info(" ".join(_cmd))
+    _cmd = _create_command(engine, "pg_restore", "-d", args=args, prefix=command_prefix)
 
     return await asyncio.create_subprocess_exec(
         *_cmd,

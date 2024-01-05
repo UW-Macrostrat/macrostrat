@@ -29,13 +29,17 @@ def copy_macrostrat_source(
         to_db = Database(_db.engine.url.set(database=to_db))
 
     # Copy the sources record
-    source_id = copy_sources_record(from_db, to_db, slug, replace=True)
+    source_id = copy_sources_record(from_db, to_db, slug, replace=replace)
 
     # Copy the tables
     transfer_tables(
         from_database=from_db.engine,
         to_database=to_db.engine,
-        tables=[f"sources.{slug}_*"],
+        tables=[
+            f"sources.{slug}_points",
+            f"sources.{slug}_lines",
+            f"sources.{slug}_polygons",
+        ],
     )
 
     to_db.run_sql(
