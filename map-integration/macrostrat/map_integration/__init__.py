@@ -4,14 +4,14 @@ os.environ["USE_PYGEOS"] = "0"
 
 from typer import Typer
 from typer.core import TyperGroup
-import sys
 from .commands.ingest import ingest_map
 from .commands.homogenize import prepare_fields
 from .commands.match_names import match_names
 from .commands.sources import map_sources
 from .commands.rgeom import create_rgeom, create_webgeom
 
-from .database import db, create_fixtures
+from .database import create_fixtures
+from macrostrat.database import Database
 from .migrations import run_migrations
 
 
@@ -39,7 +39,27 @@ app = IngestionCLI(no_args_is_help=True, add_completion=False, name="map-ingesti
 app.add_command(create_fixtures, name="create-fixtures")
 app.add_command(map_sources, name="sources")
 
-app.add_command(run_migrations, name="migrate")
+
+# TODO: integrate this migration command with the main database migrations
+def _run_migrations(database: str = None):
+    """Run migrations to convert a Macrostrat v1 sources table to v2 format."""
+    from .database import db
+
+    database_url = db.engine.url
+    _db = db
+    if database is not None:
+        if database.startswith("postgres") and "//" in database:
+            database_url = database
+        else:
+            database_url = database_url.set(database=database)
+        _db = Database(database_url)
+
+    print(f"Running migrations on {database_url}")
+
+    run_migrations(_db)
+
+
+app.add_command(_run_migrations, name="migrate")
 
 
 app.add_command(ingest_map, name="ingest")
