@@ -83,6 +83,12 @@ def copy_macrostrat_source(
             params=dict(source_id=new_source_id, table=table),
         )
 
+    if replace:
+        # Delete any old operations log entries
+        to_db.session.query(to_db.model.maps_source_operations).filter_by(
+            source_id=new_source_id
+        ).delete()
+
     # Create an entry in the operations log
     log_map_operation(
         to_db,
