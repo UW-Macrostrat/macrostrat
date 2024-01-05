@@ -24,13 +24,9 @@ def copy_macrostrat_source(
         to_db = Database(_db.engine.url.set(database=to_db))
 
     # Copy the sources record
-    from_db.automap(schemas=["maps", "public"])
+    from_db.automap(schemas=["public", "maps"])
     # Sources = from_db.model.maps_sources
 
     import IPython
 
     IPython.embed()
-
-    s1 = from_db.session.fetch_one(Sources, slug=slug)
-
-    to_db.automap(schemas=["maps"])
