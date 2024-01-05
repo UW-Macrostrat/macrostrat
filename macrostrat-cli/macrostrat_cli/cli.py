@@ -90,7 +90,7 @@ app = Application(
     "Macrostrat",
     root_dir=root_dir,
     project_prefix=settings.project_name,
-    app_module="macrostrat",
+    app_module="macrostrat_cli",
     compose_files=compose_files,
     load_dotenv=env_file,
     # This only applies to Docker Compose

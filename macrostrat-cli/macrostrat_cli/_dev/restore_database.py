@@ -6,8 +6,11 @@ from sqlalchemy_utils import create_database, database_exists
 import aiofiles
 from typing import Optional
 from .utils import _docker_local_run_args, print_stream_progress, print_stdout
+from macrostrat.utils import get_logger
 
 console = Console()
+
+log = get_logger(__name__)
 
 
 def pg_restore(*args, **kwargs):
@@ -48,12 +51,19 @@ async def _pg_restore(
     # multiple options ideally.
     command_prefix = command_prefix or _docker_local_run_args(postgres_container)
 
-    return await asyncio.create_subprocess_exec(
+    _cmd = [
         *command_prefix,
         "pg_restore",
+        "-Fc",
         "-d",
         str(database),
         *args,
+    ]
+
+    log.info(" ".join(_cmd))
+
+    return await asyncio.create_subprocess_exec(
+        *_cmd,
         stdin=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
         limit=1024 * 1024 * 10,  # 10 MB windows

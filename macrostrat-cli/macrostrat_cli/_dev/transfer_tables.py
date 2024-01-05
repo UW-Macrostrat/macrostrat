@@ -5,6 +5,11 @@ from .dump_database import _pg_dump
 from .restore_database import _pg_restore
 
 
+def transfer_tables(*args, **kwargs):
+    """Transfer tables from one database to another."""
+    asyncio.run(_transfer_tables(*args, **kwargs))
+
+
 async def _transfer_tables(
     from_database: Engine,
     to_database: Engine,

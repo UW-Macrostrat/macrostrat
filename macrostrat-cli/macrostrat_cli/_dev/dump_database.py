@@ -4,6 +4,10 @@ from sqlalchemy.engine import Engine
 from pathlib import Path
 import aiofiles
 from .utils import _docker_local_run_args, print_stream_progress, print_stdout
+from macrostrat.utils import get_logger
+
+log = get_logger(__name__)
+print("Logger", __name__)
 
 
 def pg_dump(*args, **kwargs):
@@ -27,12 +31,12 @@ async def _pg_dump(
         _args += ["-U", user]
     _args += args
 
+    _cmd = [*command_prefix, "pg_dump", "-Fc", str(engine.url), *_args]
+
+    log.info(" ".join(_cmd))
+
     return await asyncio.create_subprocess_exec(
-        *command_prefix,
-        "pg_dump",
-        "-Fc",
-        str(engine.url),
-        *_args,
+        *_cmd,
         stdout=stdout,
         stderr=asyncio.subprocess.PIPE,
     )
