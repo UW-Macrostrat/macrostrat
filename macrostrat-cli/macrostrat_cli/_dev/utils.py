@@ -1,8 +1,12 @@
 import asyncio
 from aiofiles.threadpool.binary import AsyncBufferedIOBase
 from rich.console import Console
+from sqlalchemy.engine import Engine
+from macrostrat.utils import get_logger
 
 console = Console()
+
+log = get_logger(__name__)
 
 
 def _docker_local_run_args(postgres_container: str = "postgres:15"):
@@ -15,6 +19,31 @@ def _docker_local_run_args(postgres_container: str = "postgres:15"):
         "host",
         postgres_container,
     ]
+
+
+def _create_command(
+    engine: Engine,
+    *command,
+    args=[],
+    prefix=None | list[str],
+    container="postgres:15",
+):
+    command_prefix = prefix or _docker_local_run_args(container)
+    _cmd = [*command_prefix, *command, str(engine.url), *args]
+
+    log.info(" ".join(_cmd))
+
+    # Replace asterisks with the real password (if any). This is kind of backwards
+    # but it works.
+    if "***" in str(engine.url) and engine.url.password is not None:
+        _cmd = [
+            *command_prefix,
+            *command,
+            str(engine.url).replace("***", engine.url.password),
+            *args,
+        ]
+
+    return _cmd
 
 
 async def print_stream_progress(

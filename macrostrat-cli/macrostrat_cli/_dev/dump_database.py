@@ -3,7 +3,10 @@ from typing import Optional
 from sqlalchemy.engine import Engine
 from pathlib import Path
 import aiofiles
-from .utils import _docker_local_run_args, print_stream_progress, print_stdout
+from .utils import _create_command, print_stream_progress, print_stdout
+from macrostrat.utils import get_logger
+
+log = get_logger(__name__)
 
 
 def pg_dump(*args, **kwargs):
@@ -20,19 +23,22 @@ async def _pg_dump(
     user: Optional[str] = "postgres",
     stdout=asyncio.subprocess.PIPE
 ):
-    command_prefix = command_prefix or _docker_local_run_args(postgres_container)
-
     _args = []
     if user is not None:
         _args += ["-U", user]
     _args += args
 
-    return await asyncio.create_subprocess_exec(
-        *command_prefix,
+    _cmd = _create_command(
+        engine,
         "pg_dump",
         "-Fc",
-        str(engine.url),
-        *_args,
+        args=_args,
+        prefix=command_prefix,
+        container=postgres_container,
+    )
+
+    return await asyncio.create_subprocess_exec(
+        *_cmd,
         stdout=stdout,
         stderr=asyncio.subprocess.PIPE,
     )
