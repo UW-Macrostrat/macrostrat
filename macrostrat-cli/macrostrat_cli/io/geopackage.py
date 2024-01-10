@@ -7,14 +7,14 @@ https://github.com/DARPA-CRITICALMAAS/schemas/tree/main/ta1
 """
 
 from macrostrat.database import Database
-from geopandas import GeoDataFrame
 from pathlib import Path
 from rich import print
-from criticalmaas.ta1_geopackage import create_geopackage, enable_foreign_keys
+from criticalmaas.ta1_geopackage import GeopackageDatabase
 from shapely.geometry import mapping
 from geoalchemy2.elements import WKBElement
 from geoalchemy2.shape import to_shape
 import fiona
+from pydantic import BaseModel
 
 
 def write_map_geopackage(
@@ -22,25 +22,12 @@ def write_map_geopackage(
 ):
     """Write a Macrostrat map dataset (stored in PostGIS) to a GeoPackage file using GeoPandas and SQLAlchemy."""
 
-    try:
-        map_id = int(identifier)
-        map_slug = get_scalar(
-            db,
-            "SELECT slug FROM maps.sources WHERE source_id = %(source_id)s",
-            dict(source_id=map_id),
-        )
-    except ValueError:
-        map_slug = identifier
-        map_id = get_scalar(
-            db,
-            "SELECT source_id FROM maps.sources WHERE slug = %(slug)s",
-            params=dict(slug=map_slug),
-        )
+    _map = get_map_identifier(db, identifier)
 
     if filename is None:
-        filename = f"{map_slug}.gpkg"
+        filename = f"{_map.slug}.gpkg"
 
-    print(f"Map [bold cyan]{map_slug}[/] (#{map_id}) -> {filename}")
+    print(f"Map [bold cyan]{_map.slug}[/] (#{_map.id}) -> {filename}")
 
     fn = Path(filename)
     file_exists = fn.exists()
@@ -50,13 +37,10 @@ def write_map_geopackage(
     if file_exists and overwrite:
         fn.unlink()
 
-    params = {"source_id": map_id}
+    params = {"source_id": _map.id}
 
     # Create the GeoPackage
-    gpkg = create_geopackage(filename)
-    # Insert the map data
-    gpd = Database(gpkg.url)
-    enable_foreign_keys(gpd.engine)
+    gpd = GeopackageDatabase(filename)
 
     # Automap the database schema
     gpd.automap()
@@ -71,11 +55,11 @@ def write_map_geopackage(
     """
 
     res = next(db.run_sql(sources_query, params=params)).first()
-    map_id = res.slug
+    map_id = _map.slug
 
     # Create a model for the map
     Map = gpd.model.map(
-        id=map_id,
+        id=_map.slug,
         name=res.name,
         source_url=res.url,
         image_url="not applicable",
@@ -133,16 +117,7 @@ def write_map_geopackage(
         geometry = mapping(to_shape(WKBElement(vals.pop("map_geom"))))
         features.append({"geometry": geometry, "properties": vals})
 
-    # Geospatial layers must be opened with Fiona
-    with fiona.open(
-        filename,
-        "a",
-        driver="GPKG",
-        layer="line_feature",
-        crs="EPSG:4326",
-        PRELUDE_STATEMENTS="PRAGMA foreign_keys = ON",
-    ) as lines:
-        lines.writerecords(features)
+    gpd.write_features("line_feature", features)
 
     ### POINT FEATURES ###
     valid_types = set(
@@ -185,15 +160,7 @@ def write_map_geopackage(
         geometry = mapping(to_shape(WKBElement(vals.pop("geom"))))
         features.append({"geometry": geometry, "properties": vals})
 
-    with fiona.open(
-        filename,
-        "a",
-        driver="GPKG",
-        layer="point_feature",
-        crs="EPSG:4326",
-        PRELUDE_STATEMENTS="PRAGMA foreign_keys = ON",
-    ) as points:
-        points.writerecords(features)
+    gpd.write_features("point_feature", features)
 
     ### POLYGON FEATURES ###
 
@@ -278,15 +245,7 @@ def write_map_geopackage(
         geometry = mapping(to_shape(WKBElement(vals.pop("geom"))))
         features.append({"geometry": geometry, "properties": vals})
 
-    with fiona.open(
-        filename,
-        "a",
-        driver="GPKG",
-        layer="polygon_feature",
-        crs="EPSG:4326",
-        PRELUDE_STATEMENTS="PRAGMA foreign_keys = ON",
-    ) as polygons:
-        polygons.writerecords(features)
+    gpd.write_features("polygon_feature", features)
 
     ### MAP metadata ###
     res = db.run_sql(
@@ -311,6 +270,32 @@ def write_map_geopackage(
         )
         gpd.session.add(gpd.model.map_metadata(**vals))
     gpd.session.commit()
+
+
+class MapIdentifier(BaseModel):
+    """A Macrostrat map identifier."""
+
+    id: int
+    slug: str
+
+
+def get_map_identifier(db, identifier: str | int) -> MapIdentifier:
+    """Get a map identifier from a map ID or slug."""
+    try:
+        map_id = int(identifier)
+        map_slug = get_scalar(
+            db,
+            "SELECT slug FROM maps.sources WHERE source_id = %(source_id)s",
+            dict(source_id=map_id),
+        )
+    except ValueError:
+        map_slug = identifier
+        map_id = get_scalar(
+            db,
+            "SELECT source_id FROM maps.sources WHERE slug = %(slug)s",
+            params=dict(slug=map_slug),
+        )
+    return MapIdentifier(id=map_id, slug=map_slug)
 
 
 def get_scalar(db: Database, query: str, params: dict = None):
