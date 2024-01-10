@@ -41,10 +41,7 @@ def write_map_geopackage(
     params = {"source_id": _map.id}
 
     # Create the GeoPackage
-    gpd = GeopackageDatabase(filename)
-
-    # Automap the database schema
-    gpd.automap()
+    gpd = GeopackageDatabaseExt(filename)
 
     sources_query = """
     SELECT
@@ -56,7 +53,6 @@ def write_map_geopackage(
     """
 
     res = next(db.run_sql(sources_query, params=params)).first()
-    map_id = _map.slug
 
     # Create a model for the map
     Map = gpd.model.map(
@@ -67,153 +63,36 @@ def write_map_geopackage(
         image_width=-1,
         image_height=-1,
     )
-    gpd.session.add(Map)
-
-    gpd.session.commit()
+    gpd.write_models([Map])
 
     ### LINE FEATURES ###
 
     # Insert the line types
-    valid_types = set(
-        [v[0] for v in next(gpd.run_sql("SELECT name FROM enum_line_type"))]
-    )
-
-    # Get all the line types
-    res = db.run_sql(
-        """
-        SELECT DISTINCT type FROM maps.lines WHERE source_id = %(source_id)s;
-        """,
-        params=params,
-    )
-
-    for row in next(res):
-        type_name = row.type
-        if row.type not in valid_types:
-            type_name = "unknown"
-        gpd.session.add(gpd.model.line_type(name=type_name, id=row.type))
-    gpd.session.commit()
-
-    res = db.run_sql(
-        """
-        SELECT
-            line_id::TEXT id,
-            geom map_geom,
-            l.name,
-            l.type
-        FROM maps.lines l
-        WHERE l.source_id = %(source_id)s;
-        """,
-        params=params,
-    )
-
-    features = []
-    for row in next(res):
-        vals = dict(
-            **row._asdict(),
-            polarity="unknown",
-            map_id=map_id,
-            provenance="human verified",
-            confidence=None,
-        )
-        geometry = mapping(to_shape(WKBElement(vals.pop("map_geom"))))
-        features.append({"geometry": geometry, "properties": vals})
-
-    gpd.write_features("line_feature", features)
+    gpd.write_models(_build_line_types(db, _map, gpd))
+    gpd.write_features("line_feature", _build_line_features(db, _map))
 
     ### POINT FEATURES ###
-    valid_types = set(
-        [v[0] for v in next(gpd.run_sql("SELECT name FROM enum_point_type"))]
-    )
 
-    # Get all the point types
-    res = db.run_sql(
-        """
-        SELECT DISTINCT point_type type FROM maps.points WHERE source_id = %(source_id)s;
-        """,
-        params=params,
-    )
-
-    for row in next(res):
-        type_name = row.type
-        if row.type not in valid_types:
-            type_name = "unknown"
-        gpd.session.add(gpd.model.point_type(name=type_name, id=row.type))
-    gpd.session.commit()
-
-    res = db.run_sql(
-        """
-        SELECT
-            point_id id,
-            COALESCE(dip_dir, strike+90) dip_direction,
-            dip,
-            point_type "type",
-            geom
-        FROM maps.points p
-        WHERE p.source_id = %(source_id)s;
-        """,
-        params=params,
-    )
-    features = []
-    for row in next(res):
-        vals = dict(
-            **row._asdict(), map_id=map_id, provenance="human verified", confidence=None
-        )
-        geometry = mapping(to_shape(WKBElement(vals.pop("geom"))))
-        features.append({"geometry": geometry, "properties": vals})
-
-    gpd.write_features("point_feature", features)
+    gpd.write_models(_build_point_types(db, _map, gpd))
+    gpd.write_features("point_feature", _build_point_features(db, _map))
 
     ### POLYGON FEATURES ###
 
-    gpd.session.add_all(_build_polygon_types(db, _map.id))
-    gpd.session.commit()
-
-    res = db.run_sql(
-        """
-        SELECT DISTINCT ON (p.map_id)
-            p.map_id::text id,
-            p.geom,
-            ml.legend_id::text "type"
-        FROM maps.polygons p
-        JOIN maps.map_legend ml
-          ON p.map_id = ml.map_id
-        WHERE p.source_id = %(source_id)s;
-        """,
-        params=params,
-    )
-    features = []
-    for row in next(res):
-        vals = dict(
-            **row._asdict(), map_id=map_id, provenance="human verified", confidence=None
-        )
-        geometry = mapping(to_shape(WKBElement(vals.pop("geom"))))
-        features.append({"geometry": geometry, "properties": vals})
-
-    gpd.write_features("polygon_feature", features)
+    gpd.write_models(_build_polygon_types(db, _map, gpd))
+    gpd.write_features("polygon_feature", _build_polygon_features(db, _map))
 
     ### MAP metadata ###
-    res = db.run_sql(
-        """
-        SELECT
-            slug id,
-            slug map_id,
-            ref_title title,
-            authors,
-            ref_source publisher,
-            ref_year "year"
-        FROM maps.sources WHERE source_id = %(source_id)s
-        """,
-        params=params,
-    )
+    gpd.write_models(_build_map_metadata(db, _map, gpd))
 
-    for row in next(res):
-        vals = dict(
-            **row._asdict(),
-            provenance="human verified",
-            confidence=None,
-        )
-        gpd.session.add(gpd.model.map_metadata(**vals))
-    gpd.session.commit()
+
+class GeopackageDatabaseExt(GeopackageDatabase):
+    def __init__(self, filename: str, **kwargs):
+        super().__init__(filename, **kwargs)
+        self.automap()
+
+    def write_models(self, models: list):
+        self.session.add_all(models)
+        self.session.commit()
 
 
 class MapIdentifier(BaseModel):
@@ -247,7 +126,101 @@ def get_scalar(db: Database, query: str, params: dict = None):
     return list(db.run_sql(query, params=params))[0].scalar()
 
 
-def _build_polygon_types(db: Database, map_id: int) -> Generator[object, None, None]:
+def _build_point_types(db: Database, _map: MapIdentifier, gpd: GeopackageDatabaseExt):
+    valid_types = set(
+        [v[0] for v in next(gpd.run_sql("SELECT name FROM enum_point_type"))]
+    )
+
+    # Get all the point types
+    res = db.run_sql(
+        """
+        SELECT DISTINCT point_type type FROM maps.points WHERE source_id = %(source_id)s;
+        """,
+        params={"source_id": _map.id},
+    )
+
+    for row in next(res):
+        type_name = row.type
+        if row.type not in valid_types:
+            type_name = "unknown"
+        yield gpd.model.point_type(name=type_name, id=row.type)
+
+
+def _build_point_features(db: Database, _map: MapIdentifier):
+    res = db.run_sql(
+        """
+        SELECT
+            point_id id,
+            COALESCE(dip_dir, strike+90) dip_direction,
+            dip,
+            point_type "type",
+            geom
+        FROM maps.points p
+        WHERE p.source_id = %(source_id)s;
+        """,
+        params=dict(source_id=_map.id),
+    )
+    for row in next(res):
+        vals = dict(
+            **row._asdict(),
+            map_id=_map.slug,
+            provenance="human verified",
+            confidence=None,
+        )
+        geometry = mapping(to_shape(WKBElement(vals.pop("geom"))))
+        yield {"geometry": geometry, "properties": vals}
+
+
+def _build_line_types(db: Database, _map: MapIdentifier, gpd: GeopackageDatabaseExt):
+    # Insert the line types
+    valid_types = set(
+        [v[0] for v in next(gpd.run_sql("SELECT name FROM enum_line_type"))]
+    )
+
+    # Get all the line types
+    res = db.run_sql(
+        """
+        SELECT DISTINCT type FROM maps.lines WHERE source_id = %(source_id)s;
+        """,
+        params={"source_id": _map.id},
+    )
+
+    for row in next(res):
+        type_name = row.type
+        if row.type not in valid_types:
+            type_name = "unknown"
+        yield gpd.model.line_type(name=type_name, id=row.type)
+
+
+def _build_line_features(db: Database, _map: MapIdentifier):
+    res = db.run_sql(
+        """
+        SELECT
+            line_id::TEXT id,
+            geom map_geom,
+            l.name,
+            l.type
+        FROM maps.lines l
+        WHERE l.source_id = %(source_id)s;
+        """,
+        params=dict(source_id=_map.id),
+    )
+
+    for row in next(res):
+        vals = dict(
+            **row._asdict(),
+            polarity="unknown",
+            map_id=_map.slug,
+            provenance="human verified",
+            confidence=None,
+        )
+        geometry = mapping(to_shape(WKBElement(vals.pop("map_geom"))))
+        yield {"geometry": geometry, "properties": vals}
+
+
+def _build_polygon_types(
+    db: Database, _map: MapIdentifier, gpd: GeopackageDatabaseExt
+) -> Generator[object, None, None]:
     res = db.run_sql(
         """
         SELECT DISTINCT ON (l.legend_id)
@@ -278,11 +251,11 @@ def _build_polygon_types(db: Database, map_id: int) -> Generator[object, None, N
         ON b_int.id = l.b_interval
         WHERE p.source_id = %(source_id)s;
         """,
-        params=dict(source_id=map_id),
+        params=dict(source_id=_map.id),
     )
 
     for row in next(res):
-        unit = db.model.geologic_unit(
+        unit = gpd.model.geologic_unit(
             id=str(row.legend_id),
         )
         for field in [
@@ -298,10 +271,59 @@ def _build_polygon_types(db: Database, map_id: int) -> Generator[object, None, N
             setattr(unit, field, getattr(row, field))
         yield unit
 
-        ptype = db.model.polygon_type(
+        ptype = gpd.model.polygon_type(
             id=str(row.legend_id),
             name=row.type,
             color=row.color,
             map_unit=str(row.legend_id),
         )
         yield ptype
+
+
+def _build_polygon_features(db, _map: MapIdentifier):
+    res = db.run_sql(
+        """
+        SELECT DISTINCT ON (p.map_id)
+            p.map_id::text id,
+            p.geom,
+            ml.legend_id::text "type"
+        FROM maps.polygons p
+        JOIN maps.map_legend ml
+          ON p.map_id = ml.map_id
+        WHERE p.source_id = %(source_id)s;
+        """,
+        params=dict(source_id=_map.id),
+    )
+    for row in next(res):
+        vals = dict(
+            **row._asdict(),
+            map_id=_map.slug,
+            provenance="human verified",
+            confidence=None,
+        )
+        geometry = mapping(to_shape(WKBElement(vals.pop("geom"))))
+        yield {"geometry": geometry, "properties": vals}
+
+
+def _build_map_metadata(db, _map: MapIdentifier, gpd: GeopackageDatabaseExt):
+    res = db.run_sql(
+        """
+        SELECT
+            slug id,
+            slug map_id,
+            ref_title title,
+            authors,
+            ref_source publisher,
+            ref_year "year"
+        FROM maps.sources WHERE source_id = %(source_id)s
+        """,
+        params={"source_id": _map.id},
+    )
+
+    for row in next(res):
+        vals = dict(
+            **row._asdict(),
+            provenance="human verified",
+            confidence=None,
+        )
+        yield gpd.model.map_metadata(**vals)
