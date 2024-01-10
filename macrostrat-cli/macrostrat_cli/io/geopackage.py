@@ -10,6 +10,11 @@ from macrostrat.database import Database
 from geopandas import GeoDataFrame
 from pathlib import Path
 from rich import print
+from criticalmaas.ta1_geopackage import create_geopackage, enable_foreign_keys
+from shapely.geometry import mapping
+from geoalchemy2.elements import WKBElement
+from geoalchemy2.shape import to_shape
+import fiona
 
 
 def write_map_geopackage(
@@ -47,40 +52,92 @@ def write_map_geopackage(
 
     params = {"source_id": map_id}
 
+    # Create the GeoPackage
+    gpkg = create_geopackage(filename)
+    # Insert the map data
+    gpd = Database(gpkg.url)
+    enable_foreign_keys(gpd.engine)
+
+    # Automap the database schema
+    gpd.automap()
+
     sources_query = """
     SELECT
-    source_id,
     slug,
     name,
-    url,
-    ref_title,
-    authors,
-    ref_year,
-    ref_source,
-    isbn_doi,
-    scale,
-    licence, 
-    rgeom bounds
+    url
     FROM maps.sources
     WHERE source_id = %(source_id)s
     """
 
-    # Copy metadata
-    df = GeoDataFrame.from_postgis(
-        sources_query, db.engine, geom_col="bounds", params=params
-    )
-    df.to_file(filename, layer="map_meta", driver="GPKG")
+    res = next(db.run_sql(sources_query, params=params)).first()
+    map_id = res.slug
 
-    # Write map layers to GeoPackage
-    for layer in ["points", "lines", "polygons"]:
-        df = GeoDataFrame.from_postgis(
-            f"SELECT * FROM maps.{layer} WHERE source_id = %(source_id)s",
-            db.engine,
-            geom_col="geom",
+    # Create a model for the map
+    Map = gpd.model.map(
+        id=map_id,
+        name=res.name,
+        source_url=res.url,
+        image_url="not applicable",
+        image_width=-1,
+        image_height=-1,
+    )
+    gpd.session.add(Map)
+
+    gpd.session.commit()
+
+    # Insert the line types
+    valid_types = set(
+        [v[0] for v in next(gpd.run_sql("SELECT name FROM enum_line_type"))]
+    )
+
+    # Get all the line types
+    res = db.run_sql(
+        """
+        SELECT DISTINCT type FROM maps.lines WHERE source_id = %(source_id)s;
+        """,
+        params=params,
+    )
+
+    for row in next(res):
+        type_name = row.type
+        if row.type not in valid_types:
+            type_name = "unknown"
+        gpd.session.add(gpd.model.line_type(name=type_name, id=row.type))
+    gpd.session.commit()
+
+    # Geospatial layers must be opened with Fiona
+    with fiona.open(
+        filename,
+        "a",
+        driver="GPKG",
+        layer="line_feature",
+        crs="EPSG:4326",
+        PRELUDE_STATEMENTS="PRAGMA foreign_keys = ON",
+    ) as lines:
+        res = db.run_sql(
+            """
+            SELECT
+                line_id::TEXT id,
+                s.slug map_id,
+                geom map_geom,
+                l.name,
+                l.type
+            FROM maps.lines l
+            JOIN maps.sources s ON l.source_id = s.source_id 
+            WHERE s.source_id = %(source_id)s;
+            """,
             params=params,
         )
-        print(f"{len(df)} {layer}")
-        df.to_file(filename, layer=layer, driver="GPKG")
+        for row in next(res):
+            vals = dict(
+                **row._asdict(),
+                polarity="unknown",
+                provenance=None,
+                confidence=None,
+            )
+            geometry = mapping(to_shape(WKBElement(vals.pop("map_geom"))))
+            lines.write({"geometry": geometry, "properties": vals})
 
 
 def get_scalar(db: Database, query: str, params: dict = None):

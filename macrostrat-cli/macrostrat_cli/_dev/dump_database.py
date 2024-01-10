@@ -11,7 +11,7 @@ log = get_logger(__name__)
 
 def pg_dump(*args, **kwargs):
     task = _pg_dump_to_file(*args, **kwargs)
-    asyncio.run(task)
+    asyncio.run_coroutine_threadsafe(task)
 
 
 async def _pg_dump(
