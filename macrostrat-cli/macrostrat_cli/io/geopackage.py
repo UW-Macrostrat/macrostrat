@@ -127,7 +127,7 @@ def write_map_geopackage(
             **row._asdict(),
             polarity="unknown",
             map_id=map_id,
-            provenance=None,
+            provenance="human verified",
             confidence=None,
         )
         geometry = mapping(to_shape(WKBElement(vals.pop("map_geom"))))
@@ -179,7 +179,9 @@ def write_map_geopackage(
     )
     features = []
     for row in next(res):
-        vals = dict(**row._asdict(), map_id=map_id, provenance=None, confidence=None)
+        vals = dict(
+            **row._asdict(), map_id=map_id, provenance="human verified", confidence=None
+        )
         geometry = mapping(to_shape(WKBElement(vals.pop("geom"))))
         features.append({"geometry": geometry, "properties": vals})
 
@@ -270,7 +272,9 @@ def write_map_geopackage(
     )
     features = []
     for row in next(res):
-        vals = dict(**row._asdict(), map_id=map_id, provenance=None, confidence=None)
+        vals = dict(
+            **row._asdict(), map_id=map_id, provenance="human verified", confidence=None
+        )
         geometry = mapping(to_shape(WKBElement(vals.pop("geom"))))
         features.append({"geometry": geometry, "properties": vals})
 
@@ -283,6 +287,30 @@ def write_map_geopackage(
         PRELUDE_STATEMENTS="PRAGMA foreign_keys = ON",
     ) as polygons:
         polygons.writerecords(features)
+
+    ### MAP metadata ###
+    res = db.run_sql(
+        """
+        SELECT
+            slug id,
+            slug map_id,
+            ref_title title,
+            authors,
+            ref_source publisher,
+            ref_year "year"
+        FROM maps.sources WHERE source_id = %(source_id)s
+        """,
+        params=params,
+    )
+
+    for row in next(res):
+        vals = dict(
+            **row._asdict(),
+            provenance="human verified",
+            confidence=None,
+        )
+        gpd.session.add(gpd.model.map_metadata(**vals))
+    gpd.session.commit()
 
 
 def get_scalar(db: Database, query: str, params: dict = None):
