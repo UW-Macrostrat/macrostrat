@@ -15,6 +15,7 @@ from geoalchemy2.elements import WKBElement
 from geoalchemy2.shape import to_shape
 import fiona
 from pydantic import BaseModel
+from typing import Generator
 
 
 def write_map_geopackage(
@@ -164,64 +165,7 @@ def write_map_geopackage(
 
     ### POLYGON FEATURES ###
 
-    res = db.run_sql(
-        """
-        SELECT DISTINCT ON (l.legend_id)
-            p.name,
-            l.legend_id,
-            CASE WHEN p.name = 'water' THEN 'body of water' ELSE 'geologic unit' END "type",
-            color,
-            l.descrip description,
-            l.age age_text,
-            t_int.interval_name t_interval,
-            b_int.interval_name b_interval,
-            best_age_top t_age,
-            best_age_bottom b_age,
-            (SELECT string_agg(DISTINCT li.lith, ', ')
-            FROM maps.legend_liths ll
-            JOIN macrostrat.liths li
-                ON li.id = ll.lith_id
-                WHERE ll.legend_id = l.legend_id
-            ) AS lithology
-        FROM maps.polygons p
-        LEFT JOIN maps.map_legend ml
-        ON p.map_id = ml.map_id
-        LEFT JOIN maps.legend l
-        ON l.legend_id = ml.legend_id
-        LEFT JOIN macrostrat.intervals t_int
-        ON t_int.id = l.t_interval
-        LEFT JOIN macrostrat.intervals b_int
-        ON b_int.id = l.b_interval
-        WHERE p.source_id = %(source_id)s;
-        """,
-        params=params,
-    )
-
-    for row in next(res):
-        unit = db.model.geologic_unit(
-            id=str(row.legend_id),
-        )
-        for field in [
-            "name",
-            "description",
-            "age_text",
-            "t_interval",
-            "b_interval",
-            "t_age",
-            "b_age",
-            "lithology",
-        ]:
-            setattr(unit, field, getattr(row, field))
-        gpd.session.add(unit)
-
-        ptype = db.model.polygon_type(
-            id=str(row.legend_id),
-            name=row.type,
-            color=row.color,
-            map_unit=str(row.legend_id),
-        )
-        gpd.session.add(ptype)
-
+    gpd.session.add_all(_build_polygon_types(db, _map.id))
     gpd.session.commit()
 
     res = db.run_sql(
@@ -301,3 +245,63 @@ def get_map_identifier(db, identifier: str | int) -> MapIdentifier:
 def get_scalar(db: Database, query: str, params: dict = None):
     """Return a scalar value from a SQL query."""
     return list(db.run_sql(query, params=params))[0].scalar()
+
+
+def _build_polygon_types(db: Database, map_id: int) -> Generator[object, None, None]:
+    res = db.run_sql(
+        """
+        SELECT DISTINCT ON (l.legend_id)
+            p.name,
+            l.legend_id,
+            CASE WHEN p.name = 'water' THEN 'body of water' ELSE 'geologic unit' END "type",
+            color,
+            l.descrip description,
+            l.age age_text,
+            t_int.interval_name t_interval,
+            b_int.interval_name b_interval,
+            best_age_top t_age,
+            best_age_bottom b_age,
+            (SELECT string_agg(DISTINCT li.lith, ', ')
+            FROM maps.legend_liths ll
+            JOIN macrostrat.liths li
+                ON li.id = ll.lith_id
+                WHERE ll.legend_id = l.legend_id
+            ) AS lithology
+        FROM maps.polygons p
+        LEFT JOIN maps.map_legend ml
+        ON p.map_id = ml.map_id
+        LEFT JOIN maps.legend l
+        ON l.legend_id = ml.legend_id
+        LEFT JOIN macrostrat.intervals t_int
+        ON t_int.id = l.t_interval
+        LEFT JOIN macrostrat.intervals b_int
+        ON b_int.id = l.b_interval
+        WHERE p.source_id = %(source_id)s;
+        """,
+        params=dict(source_id=map_id),
+    )
+
+    for row in next(res):
+        unit = db.model.geologic_unit(
+            id=str(row.legend_id),
+        )
+        for field in [
+            "name",
+            "description",
+            "age_text",
+            "t_interval",
+            "b_interval",
+            "t_age",
+            "b_age",
+            "lithology",
+        ]:
+            setattr(unit, field, getattr(row, field))
+        yield unit
+
+        ptype = db.model.polygon_type(
+            id=str(row.legend_id),
+            name=row.type,
+            color=row.color,
+            map_unit=str(row.legend_id),
+        )
+        yield ptype
