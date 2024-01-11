@@ -7,6 +7,7 @@ https://github.com/DARPA-CRITICALMAAS/schemas/tree/main/ta1
 """
 
 from macrostrat.database import Database
+from macrostrat.database.mapper import BaseModel
 from pathlib import Path
 from rich import print
 from criticalmaas.ta1_geopackage import GeopackageDatabase
@@ -15,6 +16,7 @@ from geoalchemy2.elements import WKBElement
 from geoalchemy2.shape import to_shape
 from pydantic import BaseModel
 from typing import Generator
+from psycopg2.sql import Identifier
 
 
 def write_map_geopackage(
@@ -33,37 +35,54 @@ def write_map_geopackage(
     # Create the GeoPackage
     gpd = GeopackageDatabaseExt(filename)
 
+    # Get models automapped from the Geopackage schema
+    gpd.automap()
+    Map = gpd.model.map
+    MapMetadata = gpd.model.map_metadata
+    LineType = gpd.model.line_type
+    PolygonType = gpd.model.polygon_type
+    GeologicUnit = gpd.model.geologic_unit
+    PointType = gpd.model.point_type
+
     ### MAP metadata ###
-    gpd.write_models(_build_map_metadata(db, _map, gpd))
+
+    gpd.write_models(_build_map_metadata(db, _map, Map, MapMetadata))
 
     ### LINE FEATURES ###
 
     # Insert the line types
-    gpd.write_models(_build_line_types(db, _map, gpd))
+    valid_types = gpd.enum_values("line_type")
+    gpd.write_models(_build_line_types(db, _map, LineType, valid_types))
     gpd.write_features("line_feature", _build_line_features(db, _map))
 
     ### POINT FEATURES ###
-
-    gpd.write_models(_build_point_types(db, _map, gpd))
+    valid_types = gpd.enum_values("point_type")
+    gpd.write_models(_build_point_types(db, _map, PointType, valid_types))
     gpd.write_features("point_feature", _build_point_features(db, _map))
 
     ### POLYGON FEATURES ###
 
-    gpd.write_models(_build_polygon_types(db, _map, gpd))
+    gpd.write_models(_build_polygon_types(db, _map, PolygonType, GeologicUnit))
     gpd.write_features("polygon_feature", _build_polygon_features(db, _map))
 
 
-# Models
+# Helper classes
 
 
 class GeopackageDatabaseExt(GeopackageDatabase):
-    def __init__(self, filename: str, **kwargs):
-        super().__init__(filename, **kwargs)
-        self.automap()
-
     def write_models(self, models: list):
         self.session.add_all(models)
         self.session.commit()
+
+    def enum_values(self, enum_name: str):
+        """Get the values of an enum type."""
+        table_name = "enum_" + enum_name
+        query = self.run_sql(
+            f"SELECT name FROM {table_name}",
+            raise_errors=True,
+        )
+        # Insert the line types
+        return set([v[0] for v in next(query)])
 
 
 class MapIdentifier(BaseModel):
@@ -78,8 +97,10 @@ class MapIdentifier(BaseModel):
 # HELPER METHODS FOR SPECIFIC STEPS
 
 
-def _build_map_metadata(db, _map: MapIdentifier, gpd: GeopackageDatabaseExt):
-    yield gpd.model.map(
+def _build_map_metadata(
+    db, _map: MapIdentifier, Map: BaseModel, MapMetadata: BaseModel
+):
+    yield Map(
         id=_map.slug,
         name=_map.name,
         source_url=_map.url,
@@ -105,18 +126,16 @@ def _build_map_metadata(db, _map: MapIdentifier, gpd: GeopackageDatabaseExt):
 
     row = next(res).first()
 
-    yield gpd.model.map_metadata(
+    yield MapMetadata(
         **row._asdict(),
         provenance="human verified",
         confidence=None,
     )
 
 
-def _build_point_types(db: Database, _map: MapIdentifier, gpd: GeopackageDatabaseExt):
-    valid_types = set(
-        [v[0] for v in next(gpd.run_sql("SELECT name FROM enum_point_type"))]
-    )
-
+def _build_point_types(
+    db: Database, _map: MapIdentifier, PointType: BaseModel, valid_types: set[str]
+):
     # Get all the point types
     res = db.run_sql(
         """
@@ -129,7 +148,7 @@ def _build_point_types(db: Database, _map: MapIdentifier, gpd: GeopackageDatabas
         type_name = row.type
         if row.type not in valid_types:
             type_name = "unknown"
-        yield gpd.model.point_type(name=type_name, id=row.type)
+        yield PointType(name=type_name, id=row.type)
 
 
 def _build_point_features(db: Database, _map: MapIdentifier):
@@ -157,12 +176,9 @@ def _build_point_features(db: Database, _map: MapIdentifier):
         yield {"geometry": geometry, "properties": vals}
 
 
-def _build_line_types(db: Database, _map: MapIdentifier, gpd: GeopackageDatabaseExt):
-    # Insert the line types
-    valid_types = set(
-        [v[0] for v in next(gpd.run_sql("SELECT name FROM enum_line_type"))]
-    )
-
+def _build_line_types(
+    db: Database, _map: MapIdentifier, LineType: BaseModel, valid_types: set[str]
+):
     # Get all the line types
     res = db.run_sql(
         """
@@ -175,7 +191,7 @@ def _build_line_types(db: Database, _map: MapIdentifier, gpd: GeopackageDatabase
         type_name = row.type
         if row.type not in valid_types:
             type_name = "unknown"
-        yield gpd.model.line_type(name=type_name, id=row.type)
+        yield LineType(name=type_name, id=row.type)
 
 
 def _build_line_features(db: Database, _map: MapIdentifier):
@@ -205,7 +221,7 @@ def _build_line_features(db: Database, _map: MapIdentifier):
 
 
 def _build_polygon_types(
-    db: Database, _map: MapIdentifier, gpd: GeopackageDatabaseExt
+    db: Database, _map: MapIdentifier, PolygonType: BaseModel, GeologicUnit: BaseModel
 ) -> Generator[object, None, None]:
     res = db.run_sql(
         """
@@ -241,7 +257,7 @@ def _build_polygon_types(
     )
 
     for row in next(res):
-        unit = gpd.model.geologic_unit(
+        unit = GeologicUnit(
             id=str(row.legend_id),
         )
         for field in [
@@ -257,7 +273,7 @@ def _build_polygon_types(
             setattr(unit, field, getattr(row, field))
         yield unit
 
-        ptype = gpd.model.polygon_type(
+        ptype = PolygonType(
             id=str(row.legend_id),
             name=row.type,
             color=row.color,
