@@ -596,6 +596,26 @@ files = [
 ]
 
 [[package]]
+name = "criticalmaas-ta1-geopackage"
+version = "0.1.0"
+description = "GeoPackage schema for validating and storing vector geologic map data produced by computer-vision pipelines"
+optional = false
+python-versions = "^3.10"
+files = []
+develop = true
+
+[package.dependencies]
+fiona = "^1.9.5"
+geopandas = "^0.14.1"
+"macrostrat.database" = "^3.0.0"
+macrostrat-utils = "^1.2.0"
+sadisplay = {path = "deps/sadisplay", develop = true}
+
+[package.source]
+type = "directory"
+url = "../../../Software/criticalmaas-ta1-format"
+
+[[package]]
 name = "decorator"
 version = "5.1.1"
 description = "Decorators for Humans"
@@ -2490,6 +2510,23 @@ tilebench = ["pytest", "tilebench"]
 xarray = ["rioxarray", "xarray"]
 
 [[package]]
+name = "sadisplay"
+version = "0.4.9"
+description = "SqlAlchemy schema display script"
+optional = false
+python-versions = "*"
+files = []
+develop = true
+
+[package.dependencies]
+jinja2 = "*"
+SQLAlchemy = ">=0.5"
+
+[package.source]
+type = "directory"
+url = "../../../Software/criticalmaas-ta1-format/deps/sadisplay"
+
+[[package]]
 name = "scipy"
 version = "1.11.4"
 description = "Fundamental algorithms for scientific computing in Python"
@@ -3277,4 +3314,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "02c2dfd72534535346445f48c705aef77aa1c31abcd4dfede48984ead1b902b7"
+content-hash = "d3ef3dab4aed86f5cfe1e735c75263203e9fe9a73845db688dc75e1e9d653bd3"

@@ -391,7 +391,7 @@ try:
         map: str = Argument(...), filename: Path = None, overwrite: bool = False
     ):
         """Write a geopackage from a map"""
-        from .io.geopackage import write_map_geopackage
+        from .io.criticalmaas import write_map_geopackage
 
         db = get_db()
         write_map_geopackage(db, map, filename, overwrite=overwrite)
