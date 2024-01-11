@@ -13,7 +13,6 @@ from criticalmaas.ta1_geopackage import GeopackageDatabase
 from shapely.geometry import mapping
 from geoalchemy2.elements import WKBElement
 from geoalchemy2.shape import to_shape
-import fiona
 from pydantic import BaseModel
 from typing import Generator
 
@@ -26,44 +25,16 @@ def write_map_geopackage(
     _map = get_map_identifier(db, identifier)
 
     if filename is None:
-        filename = f"{_map.slug}.gpkg"
+        filename = Path(f"{_map.slug}.gpkg")
+    _unlink_if_exists(filename, overwrite=overwrite)
 
     print(f"Map [bold cyan]{_map.slug}[/] (#{_map.id}) -> {filename}")
-
-    fn = Path(filename)
-    file_exists = fn.exists()
-    if file_exists and not overwrite:
-        raise FileExistsError(f"File {filename} already exists")
-
-    if file_exists and overwrite:
-        fn.unlink()
-
-    params = {"source_id": _map.id}
 
     # Create the GeoPackage
     gpd = GeopackageDatabaseExt(filename)
 
-    sources_query = """
-    SELECT
-    slug,
-    name,
-    url
-    FROM maps.sources
-    WHERE source_id = %(source_id)s
-    """
-
-    res = next(db.run_sql(sources_query, params=params)).first()
-
-    # Create a model for the map
-    Map = gpd.model.map(
-        id=_map.slug,
-        name=res.name,
-        source_url=res.url,
-        image_url="not applicable",
-        image_width=-1,
-        image_height=-1,
-    )
-    gpd.write_models([Map])
+    ### MAP metadata ###
+    gpd.write_models(_build_map_metadata(db, _map, gpd))
 
     ### LINE FEATURES ###
 
@@ -81,8 +52,8 @@ def write_map_geopackage(
     gpd.write_models(_build_polygon_types(db, _map, gpd))
     gpd.write_features("polygon_feature", _build_polygon_features(db, _map))
 
-    ### MAP metadata ###
-    gpd.write_models(_build_map_metadata(db, _map, gpd))
+
+# Models
 
 
 class GeopackageDatabaseExt(GeopackageDatabase):
@@ -100,30 +71,45 @@ class MapIdentifier(BaseModel):
 
     id: int
     slug: str
+    url: str = None
+    name: str = None
 
 
-def get_map_identifier(db, identifier: str | int) -> MapIdentifier:
-    """Get a map identifier from a map ID or slug."""
-    try:
-        map_id = int(identifier)
-        map_slug = get_scalar(
-            db,
-            "SELECT slug FROM maps.sources WHERE source_id = %(source_id)s",
-            dict(source_id=map_id),
-        )
-    except ValueError:
-        map_slug = identifier
-        map_id = get_scalar(
-            db,
-            "SELECT source_id FROM maps.sources WHERE slug = %(slug)s",
-            params=dict(slug=map_slug),
-        )
-    return MapIdentifier(id=map_id, slug=map_slug)
+# HELPER METHODS FOR SPECIFIC STEPS
 
 
-def get_scalar(db: Database, query: str, params: dict = None):
-    """Return a scalar value from a SQL query."""
-    return list(db.run_sql(query, params=params))[0].scalar()
+def _build_map_metadata(db, _map: MapIdentifier, gpd: GeopackageDatabaseExt):
+    yield gpd.model.map(
+        id=_map.slug,
+        name=_map.name,
+        source_url=_map.url,
+        image_url="not applicable",
+        image_width=-1,
+        image_height=-1,
+    )
+
+    res = db.run_sql(
+        """
+        SELECT
+            slug id,
+            slug map_id,
+            ref_title title,
+            authors,
+            ref_source publisher,
+            ref_year "year"
+        FROM maps.sources WHERE source_id = %(source_id)s
+        """,
+        params={"source_id": _map.id},
+        raise_errors=True,
+    )
+
+    row = next(res).first()
+
+    yield gpd.model.map_metadata(
+        **row._asdict(),
+        provenance="human verified",
+        confidence=None,
+    )
 
 
 def _build_point_types(db: Database, _map: MapIdentifier, gpd: GeopackageDatabaseExt):
@@ -293,6 +279,7 @@ def _build_polygon_features(db, _map: MapIdentifier):
         WHERE p.source_id = %(source_id)s;
         """,
         params=dict(source_id=_map.id),
+        raise_errors=True,
     )
     for row in next(res):
         vals = dict(
@@ -305,25 +292,31 @@ def _build_polygon_features(db, _map: MapIdentifier):
         yield {"geometry": geometry, "properties": vals}
 
 
-def _build_map_metadata(db, _map: MapIdentifier, gpd: GeopackageDatabaseExt):
-    res = db.run_sql(
-        """
-        SELECT
-            slug id,
-            slug map_id,
-            ref_title title,
-            authors,
-            ref_source publisher,
-            ref_year "year"
-        FROM maps.sources WHERE source_id = %(source_id)s
-        """,
-        params={"source_id": _map.id},
-    )
+### HELPER METHODS ###
 
-    for row in next(res):
-        vals = dict(
-            **row._asdict(),
-            provenance="human verified",
-            confidence=None,
-        )
-        yield gpd.model.map_metadata(**vals)
+
+def get_map_identifier(db, identifier: str | int) -> MapIdentifier:
+    """Get a map identifier from a map ID or slug."""
+    query = "SELECT source_id, slug, name, url FROM maps.sources"
+    params = {}
+    try:
+        map_id = int(identifier)
+        query += " WHERE id = %(source_id)s"
+        params["source_id"] = map_id
+    except ValueError:
+        map_slug = identifier
+        query += " WHERE slug = %(slug)s"
+        params["slug"] = map_slug
+
+    res = next(db.run_sql(query, params=params)).first()
+
+    return MapIdentifier(id=res.source_id, slug=res.slug, url=res.url, name=res.name)
+
+
+def _unlink_if_exists(filename: Path, overwrite: bool = False):
+    file_exists = filename.exists()
+    if file_exists and not overwrite:
+        raise FileExistsError(f"File {filename} already exists")
+
+    if file_exists and overwrite:
+        filename.unlink()
