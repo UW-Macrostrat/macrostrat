@@ -77,12 +77,14 @@ class GeopackageDatabaseExt(GeopackageDatabase):
     def enum_values(self, enum_name: str):
         """Get the values of an enum type."""
         table_name = "enum_" + enum_name
-        query = self.run_sql(
-            f"SELECT name FROM {table_name}",
-            raise_errors=True,
-        )
+        try:
+            model = getattr(self.model, table_name)
+        except AttributeError:
+            raise ValueError(f"Enum type {enum_name} does not exist")
+
+        query = self.session.query(model.name)
         # Insert the line types
-        return set([v[0] for v in next(query)])
+        return set(query.all())
 
 
 class MapIdentifier(BaseModel):
