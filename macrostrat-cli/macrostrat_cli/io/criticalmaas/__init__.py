@@ -1,9 +1,8 @@
 """
-Write a Macrostrat database to a GeoPackage file using the GeoPandas library.
+Write a Macrostrat map to the CriticalMAAS TA1 Geopackage format
 
-Currently, this represents the Macrostrat internal PostGIS schema more or less unmodified.
-As a next step, we will rework it to fit the CriticalMAAS TA1 output schema.
-https://github.com/DARPA-CRITICALMAAS/schemas/tree/main/ta1
+- https://github.com/DARPA-CRITICALMAAS/ta1-geopackage
+- https://github.com/DARPA-CRITICALMAAS/schemas/tree/main/ta1
 """
 
 from macrostrat.database import Database
