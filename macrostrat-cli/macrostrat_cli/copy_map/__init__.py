@@ -10,6 +10,7 @@ from macrostrat.database.postgresql import table_exists, on_conflict
 from macrostrat.utils import get_logger
 from psycopg2.sql import Identifier
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.exc import IntegrityError
 import sys
 from .._dev.transfer_tables import transfer_tables
 
@@ -91,7 +92,13 @@ def copy_macrostrat_sources(
 
     # Copy the source
     for slug in slugs:
-        copy_macrostrat_source(from_db, to_db, slug, message=message, replace=replace)
+        try:
+            copy_macrostrat_source(
+                from_db, to_db, slug, message=message, replace=replace
+            )
+        except IntegrityError as err:
+            to_db.session.rollback()
+            print(f"Error copying source {slug}: {err}", file=sys.stderr)
 
 
 def copy_macrostrat_source(
