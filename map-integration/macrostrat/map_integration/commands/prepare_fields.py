@@ -2,10 +2,10 @@ from ..database import db
 from rich import print
 from psycopg2.sql import Identifier, SQL
 from pathlib import Path
-from typer import Argument
 
 
 def prepare_fields(source_prefix: str = None, all: bool = False):
+    """Prepare empty fields for manual cleaning."""
     if all:
         prepare_fields_for_all_sources()
         return

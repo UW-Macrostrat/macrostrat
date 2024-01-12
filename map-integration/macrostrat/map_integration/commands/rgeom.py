@@ -2,16 +2,16 @@ from ..database import db, sql_file
 from pathlib import Path
 from psycopg2.extensions import AsIs
 from sqlalchemy.exc import ProgrammingError
+from sqlalchemy.sql import text
 import time
 
 
 def create_rgeom(source_id: int):
-    """Create a unioned reference geometry for a given source"""
-
+    """Create a unioned reference geometry for a map source"""
     start = time.time()
 
-    q = "SELECT primary_table FROM maps.sources WHERE source_id = %(source_id)s"
-    key = db.engine.execute(q, dict(source_id=source_id)).scalar()
+    q = "SELECT slug FROM maps.sources WHERE source_id = %(source_id)s"
+    key = db.session.execute(text(q), dict(source_id=source_id)).scalar()
 
     print("Validating geometry...")
     cursor = db.engine.connect()
@@ -37,6 +37,5 @@ def create_webgeom(source_id: int):
     """Create a geometry for use on the web"""
 
     sql = sql_file("set-webgeom")
-    print(sql)
     # Get the primary table of the target source
-    db.session.execute(sql, params=dict(source_id=source_id))
+    db.session.execute(text(sql), params=dict(source_id=source_id))

@@ -5,7 +5,7 @@ os.environ["USE_PYGEOS"] = "0"
 from typer import Typer
 from typer.core import TyperGroup
 from .commands.ingest import ingest_map
-from .commands.homogenize import prepare_fields
+from .commands.prepare_fields import prepare_fields
 from .commands.match_names import match_names
 from .commands.sources import map_sources
 from .commands.rgeom import create_rgeom, create_webgeom
