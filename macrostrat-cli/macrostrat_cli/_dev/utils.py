@@ -26,7 +26,7 @@ def _create_command(
     *command,
     args=[],
     prefix=None | list[str],
-    container="postgres:15",
+    container="postgres:16",
 ):
     command_prefix = prefix or _docker_local_run_args(container)
     _cmd = [*command_prefix, *command, str(engine.url), *args]
