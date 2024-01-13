@@ -1129,7 +1129,7 @@ typer = "^0.9.0"
 
 [package.source]
 type = "directory"
-url = "../_cli"
+url = "../entrypoint"
 
 [[package]]
 name = "macrostrat-core"
@@ -3324,4 +3324,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "637919c49ad9f1034777eeed1ad8da0f942d952bdc0b7f483f1aa4637cf66ecc"
+content-hash = "13ad79ed3406b5f36aea826c0b082a54d8c46272b3d3e0b881d5ff6a1a08c124"
