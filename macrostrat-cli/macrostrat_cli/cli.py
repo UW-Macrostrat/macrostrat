@@ -1,70 +1,19 @@
-from dotenv import load_dotenv
 from pathlib import Path
 from os import environ
-from sys import stderr, argv, stdin
+from sys import stderr, stdin
 from rich import print
 from typing import Optional
 import typer
 from macrostrat.utils.shell import run
-from typer import get_app_dir, Argument, Typer, Option
-from time import sleep
+from typer import Argument, Typer, Option
 from .utils import is_pg_url
 from sqlalchemy import create_engine, text
 import json
 from .kubernetes import get_secret
 from .copy_map import copy_macrostrat_sources
+from .core import app
 
-
-def env_text():
-    return f"environment [bold cyan]{environ.get('MACROSTRAT_ENV')}[/]"
-
-
-APP_NAME = "macrostrat"
-app_dir = Path(get_app_dir(APP_NAME))
-active_env = app_dir / "~active_env"
-if "MACROSTAT_ENV" in environ:
-    print(f"Using {env_text()}", file=stderr)
-if "MACROSTRAT_ENV" not in environ and active_env.exists():
-    environ["MACROSTRAT_ENV"] = active_env.read_text().strip()
-    user_dir = str(Path("~").expanduser())
-    dir = str(active_env).replace(user_dir, "~")
-    print(
-        f"Using {env_text()}\n[dim] from {dir}[/]",
-        file=stderr,
-    )
-
-
-try:
-    from .config import settings
-except AttributeError as err:
-    print(f"Could not load settings for {env_text()}", file=stderr)
-    print(err, file=stderr)
-    print("Removing environment configuration", file=stderr)
-    active_env.unlink()
-    exit(1)
-
-
-# Old environments configuration
-# env = environ.get("MACROSTRAT_ENV", "dev")
-# environments = ["dev", "testing", "chtc"]
-# if env not in environments:
-#     print(f"Unknown environment {env}", file=stderr)
-#     print(f"Valid environments are: {environments}", file=stderr)
-#     exit(1)
-# else:
-#     print(
-#         f"Using environment [bold cyan]{env}[/] [dim](from MACROSTRAT_ENV)[/]",
-#         file=stderr,
-#     )
-
-# Right now, the root dir must be manually edited here!
-# root_dir = macrostrat_root / "server-configs" / f"{env}-server"
-# dotenv_file = root_dir / ".env"
-
-# if dotenv_file.exists():
-#     load_dotenv(root_dir / ".env")
-
-from macrostrat.app_frame import Application, compose
+from macrostrat.app_frame import compose
 
 from .v1_entrypoint import v1_cli
 from .v2_commands import app as v2_app
@@ -76,26 +25,8 @@ __here__ = Path(__file__).parent
 fixtures_dir = __here__ / "fixtures"
 # macrostrat_root = Path(settings.macrostrat_root)
 
-compose_files = []
-env_file = None
-root_dir = None
-if settings.get("compose_root", None) is not None:
-    root_dir = Path(settings.compose_root).expanduser().resolve()
-    compose_file = root_dir / "docker-compose.yaml"
-    env_file = root_dir / ".env"
-    compose_files.append(compose_file)
 
 # Manage as a docker-compose application
-app = Application(
-    "Macrostrat",
-    root_dir=root_dir,
-    project_prefix=settings.project_name,
-    app_module="macrostrat_cli",
-    compose_files=compose_files,
-    load_dotenv=env_file,
-    # This only applies to Docker Compose
-    restart_commands={"gateway": "nginx -s reload"},
-)
 
 main = app.control_command()
 
@@ -447,7 +378,7 @@ try:
     from macrostrat_tileserver.cli import _cli as tileserver_cli
     from macrostrat_tileserver.cli import create_fixtures
 
-    environ["DATABASE_URL"] = settings.pg_database
+    environ["DATABASE_URL"] = app.settings.pg_database
     main.add_typer(
         tileserver_cli,
         name="tileserver",
@@ -465,7 +396,7 @@ except ImportError as err:
     print("Could not import tileserver subsystem")
 
 try:
-    environ["CORELLE_DB"] = settings.pg_database
+    environ["CORELLE_DB"] = app.settings.pg_database
     from corelle.engine import cli as corelle_cli
     from corelle.engine.database import initialize
 
