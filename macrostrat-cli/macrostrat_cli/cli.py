@@ -15,34 +15,23 @@ from .v1_entrypoint import v1_cli
 from .v2_commands import app as v2_app
 from .database import get_db, db_app, db_subsystem
 from sys import exit
-
+from .core import get_app_env_file
 
 __here__ = Path(__file__).parent
 fixtures_dir = __here__ / "fixtures"
 
+
+app.subsystems.add(db_subsystem)
 
 # Manage as a docker-compose application
 
 settings = app.settings
 
 main = app.control_command()
-
-
 main.add_typer(db_app, name="db", short_help="Manage the database")
 
 
 main.command(name="copy-sources")(copy_macrostrat_sources)
-
-
-@main.command()
-def config():
-    """Print all configuration values"""
-    from . import config as cfg
-
-    for k, v in cfg.__dict__.items():
-        # Only print uppercase values
-        if k.isupper():
-            print(f"{k}: {v}")
 
 
 @main.command()
@@ -63,6 +52,7 @@ def shell():
 @main.command(name="env")
 def set_env(env: str = Argument(None), unset: bool = False):
     """Set the active environment"""
+    active_env = get_app_env_file()
     if env is None:
         e = environ.get("MACROSTRAT_ENV")
         if e is None:
@@ -97,7 +87,7 @@ def install():
     local_install(Path(settings.srcroot) / "py-root")
 
 
-cfg_app = Typer(name="config")
+cfg_app = Typer(name="config", short_help="Manage configuration")
 
 
 @cfg_app.command(name="edit")

@@ -1,26 +1,30 @@
-from macrostrat.app_frame import Application, SubsystemManager
+from macrostrat.app_frame import Application, SubsystemManager, Subsystem
 from pathlib import Path
 from os import environ
 from sys import stderr
 from rich import print
 from typer import get_app_dir, Typer
 from dynaconf import Dynaconf
+from macrostrat.utils import get_logger
+
+log = get_logger(__name__)
+
+
+def get_app_env_file() -> Path:
+    APP_NAME = "macrostrat"
+    app_dir = Path(get_app_dir(APP_NAME))
+    return app_dir / "~active_env"
 
 
 def load_settings():
-    APP_NAME = "macrostrat"
-    app_dir = Path(get_app_dir(APP_NAME))
-    active_env = app_dir / "~active_env"
+    active_env = get_app_env_file()
     if "MACROSTAT_ENV" in environ:
-        print(f"Using {env_text()}", file=stderr)
+        log.info("active environment: %s", env_text())
     if "MACROSTRAT_ENV" not in environ and active_env.exists():
         environ["MACROSTRAT_ENV"] = active_env.read_text().strip()
         user_dir = str(Path("~").expanduser())
         dir = str(active_env).replace(user_dir, "~")
-        print(
-            f"Using {env_text()}\n[dim] from {dir}[/]",
-            file=stderr,
-        )
+        log.info("active environment: %s", env_text())
 
     try:
         from .config import settings
@@ -32,6 +36,15 @@ def load_settings():
         exit(1)
 
     return settings
+
+
+class MacrostratSubsystem(Subsystem):
+    def __init__(self, app: Application):
+        self.app = app
+        self.settings = app.settings
+
+    def control_command(self, **kwargs):
+        return Typer(no_args_is_help=True, **kwargs)
 
 
 class Macrostrat(Application):
@@ -70,12 +83,3 @@ def env_text():
 
 
 app = Macrostrat()
-
-
-class MacrostratSubsystem:
-    def __init__(self, app: Macrostrat):
-        self.app = app
-        self.settings = app.settings
-
-    def control_command(self, **kwargs):
-        return Typer(no_args_is_help=True, **kwargs)

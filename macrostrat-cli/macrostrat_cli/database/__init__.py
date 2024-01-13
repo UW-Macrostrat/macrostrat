@@ -36,6 +36,8 @@ def run_all_sql(db, dir: Path):
 
 class DatabaseSubsystem(MacrostratSubsystem):
     # Additional functions to run when updating schema
+    name = "database"
+
     _queued_updates = []
 
 
@@ -68,6 +70,8 @@ def update_schema(match: str = Argument(None)):
     # Run subsystem updates
     for func in db_subsystem._queued_updates:
         func()
+
+    app.subsystems.run_hook("schema-update")
 
     # Reload the postgrest schema cache
     compose("kill -s SIGUSR1 postgrest")
