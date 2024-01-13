@@ -3,7 +3,7 @@ from pathlib import Path
 from os import environ
 from sys import stderr
 from rich import print
-from typer import get_app_dir
+from typer import get_app_dir, Typer
 from dynaconf import Dynaconf
 
 
@@ -70,3 +70,12 @@ def env_text():
 
 
 app = Macrostrat()
+
+
+class MacrostratSubsystem:
+    def __init__(self, app: Macrostrat):
+        self.app = app
+        self.settings = app.settings
+
+    def control_command(self, **kwargs):
+        return Typer(no_args_is_help=True, **kwargs)
