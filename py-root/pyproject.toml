@@ -6,8 +6,8 @@ authors = ["Daven Quinn"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-"macrostrat.cli" = { path = "../macrostrat-cli", develop = true }
-"macrostrat.app_frame" = { path = "../../../Software/python-libraries/app-frame", develop = true }
+"macrostrat.cli" = { path = "../_cli", develop = true }
+"macrostrat.core" = { path = "../core", develop = true }
 "macrostrat.map_integration" = { path = "../map-integration", develop = true }
 "corelle.engine" = { path = "../../../Software/corelle/py-packages/engine", develop = true }
 "macrostrat.tileserver" = { path = "../../../Software/tileserver", develop = true }
@@ -20,5 +20,4 @@ python = "^3.11"
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
-[tool.poetry.scripts]
-macrostrat = "macrostrat.cli:cli"
+

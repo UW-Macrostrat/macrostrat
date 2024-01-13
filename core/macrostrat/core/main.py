@@ -80,6 +80,3 @@ class Macrostrat(Application):
 
 def env_text():
     return f"environment [bold cyan]{environ.get('MACROSTRAT_ENV')}[/]"
-
-
-app = Macrostrat()

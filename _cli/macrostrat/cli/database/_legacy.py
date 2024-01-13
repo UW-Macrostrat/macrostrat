@@ -1,9 +1,11 @@
+from warnings import filterwarnings
+
+import psycopg2
 import pymysql
 from pymysql.cursors import SSDictCursor
-from warnings import filterwarnings
-import psycopg2
-from ..config import MYSQL_DATABASE, PG_DATABASE
 from sqlalchemy import create_engine
+
+from macrostrat.core.config import MYSQL_DATABASE, PG_DATABASE
 
 
 # Connect to MySQL

@@ -1,21 +1,18 @@
-from ._legacy import *
-
-from pathlib import Path
 from os import environ
-from sys import stderr, stdin
-from rich import print
+from pathlib import Path
+from sys import exit, stderr, stdin
+
 import typer
-from macrostrat.utils.shell import run
-from typer import Argument, Option
-from ..utils import is_pg_url
-from ..core import MacrostratSubsystem, app
-from sqlalchemy import create_engine, text
-
 from macrostrat.app_frame import compose
+from macrostrat.utils.shell import run
+from rich import print
+from sqlalchemy import create_engine, text
+from typer import Argument, Option
 
+from macrostrat.core import MacrostratSubsystem, app
+from macrostrat.core.utils import is_pg_url
 
-from sys import exit
-
+from ._legacy import *
 
 __here__ = Path(__file__).parent
 fixtures_dir = __here__.parent / "fixtures"
@@ -46,8 +43,9 @@ db_subsystem = DatabaseSubsystem(app)
 
 def update_schema(match: str = Argument(None)):
     """Update the database schema"""
-    from ..config import PG_DATABASE
     from macrostrat.database import Database
+
+    from ....core.macrostrat.core.config import PG_DATABASE
 
     """Create schema additions"""
     schema_dir = fixtures_dir
@@ -88,7 +86,7 @@ db_app.command(name="update-schema")(update_schema)
 )
 def psql(ctx: typer.Context, database: str = None):
     """Run psql in the database container"""
-    from ..config import PG_DATABASE_DOCKER
+    from ....core.macrostrat.core.config import PG_DATABASE_DOCKER
 
     _database = PG_DATABASE_DOCKER
     if database is not None:

@@ -1078,20 +1078,18 @@ name = "macrostrat-app-frame"
 version = "1.2.0"
 description = "A control script framework for containerized applications."
 optional = false
-python-versions = "^3.10"
-files = []
-develop = true
+python-versions = ">=3.10,<4.0"
+files = [
+    {file = "macrostrat_app_frame-1.2.0-py3-none-any.whl", hash = "sha256:da8acb8170356d4196ce6e8afc2aef055680b2a34ea16c9d3ab606d6bc79df20"},
+    {file = "macrostrat_app_frame-1.2.0.tar.gz", hash = "sha256:17ed68e4007b09f8abc50d62d27f955e1ff6f760d191c4139ee6687bc541ee4e"},
+]
 
 [package.dependencies]
-"macrostrat.utils" = "^1.1.0"
-python-dotenv = "^1.0.0"
-rich = "^13"
-toposort = "^1.5"
-typer = "^0.9.0"
-
-[package.source]
-type = "directory"
-url = "../../../Software/python-libraries/app-frame"
+"macrostrat.utils" = ">=1.1.0,<2.0.0"
+python-dotenv = ">=1.0.0,<2.0.0"
+rich = ">=13,<14"
+toposort = ">=1.5,<2.0"
+typer = ">=0.9.0,<0.10.0"
 
 [[package]]
 name = "macrostrat-cli"
@@ -1131,7 +1129,25 @@ typer = "^0.9.0"
 
 [package.source]
 type = "directory"
-url = "../macrostrat-cli"
+url = "../_cli"
+
+[[package]]
+name = "macrostrat-core"
+version = "2.0.0"
+description = "The core of the Macrostrat system"
+optional = false
+python-versions = "^3.11"
+files = []
+develop = true
+
+[package.dependencies]
+dynaconf = "^3.1.12"
+"macrostrat.app-frame" = "^1.2.0"
+python-dotenv = "^1.0.0"
+
+[package.source]
+type = "directory"
+url = "../core"
 
 [[package]]
 name = "macrostrat-database"
@@ -3308,4 +3324,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "d3ef3dab4aed86f5cfe1e735c75263203e9fe9a73845db688dc75e1e9d653bd3"
+content-hash = "637919c49ad9f1034777eeed1ad8da0f942d952bdc0b7f483f1aa4637cf66ecc"

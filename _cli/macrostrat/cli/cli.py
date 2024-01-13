@@ -1,21 +1,22 @@
-from pathlib import Path
+import json
 from os import environ
-from sys import stderr
-from rich import print
+from pathlib import Path
+from sys import exit, stderr
 from typing import Optional
+
 import typer
 from macrostrat.utils.shell import run
-from typer import Argument, Typer, Option
-import json
-from .kubernetes import get_secret
-from .copy_map import copy_macrostrat_sources
-from .core import app, env_text
+from rich import print
+from typer import Argument, Option, Typer
 
+from macrostrat.core import app
+from macrostrat.core.main import env_text, get_app_env_file
+
+from .copy_map import copy_macrostrat_sources
+from .database import db_app, db_subsystem, get_db
+from .kubernetes import get_secret
 from .v1_entrypoint import v1_cli
 from .v2_commands import app as v2_app
-from .database import get_db, db_app, db_subsystem
-from sys import exit
-from .core import get_app_env_file
 
 __here__ = Path(__file__).parent
 fixtures_dir = __here__ / "fixtures"
@@ -94,7 +95,8 @@ cfg_app = Typer(name="config", short_help="Manage configuration")
 def edit_cfg():
     """Open config file in editor"""
     from subprocess import run
-    from .config import macrostrat_config_file
+
+    from macrostrat.core.config import macrostrat_config_file
 
     run(["open", str(macrostrat_config_file)])
 

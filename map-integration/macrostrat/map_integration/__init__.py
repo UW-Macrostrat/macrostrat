@@ -61,14 +61,12 @@ def _run_migrations(database: str = None):
 
 app.add_command(_run_migrations, name="migrate")
 
-
 app.add_command(ingest_map, name="ingest")
 
 app.add_command(prepare_fields, name="prepare-fields")
 
 # Pass along other arguments to the match-names command
 app.add_command(match_names, name="match-names")
-
 
 app.add_command(create_rgeom, name="create-rgeom")
 
