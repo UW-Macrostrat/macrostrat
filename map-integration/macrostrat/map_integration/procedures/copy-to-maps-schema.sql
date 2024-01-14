@@ -33,8 +33,9 @@ SELECT
   comments,
   t_interval,
   b_interval
-FROM sources.{slug}_lines
-WHERE source_id = {source_id};
+FROM {polygons_table}
+WHERE source_id = {source_id}
+  AND NOT omit;
 
 
 INSERT INTO maps.lines (
@@ -56,8 +57,9 @@ SELECT
   direction,
   descrip,
   geom
-FROM sources.{slug}_lines
-WHERE source_id = {source_id};
+FROM {lines_table}
+WHERE source_id = {source_id}
+  AND NOT omit;
 
 
 INSERT INTO maps.points (
@@ -81,5 +83,6 @@ SELECT
   comments,
   geom,
   orig_id
-FROM sources.{slug}_points
-WHERE source_id = {source_id};
+FROM {points_table}
+WHERE source_id = {source_id}
+  AND NOT omit;

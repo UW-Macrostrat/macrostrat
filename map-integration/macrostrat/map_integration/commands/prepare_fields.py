@@ -1,38 +1,44 @@
-from ..database import db
-from rich import print
-from psycopg2.sql import Identifier, SQL
 from pathlib import Path
 
+from psycopg2.sql import SQL, Identifier
+from rich import print
 
-def prepare_fields(source_prefix: str = None, all: bool = False):
+from ..database import db
+
+
+def prepare_fields(slug: str = None, all: bool = False):
     """Prepare empty fields for manual cleaning."""
     if all:
         prepare_fields_for_all_sources()
         return
 
-    if source_prefix is None:
-        raise ValueError("You must specify a source prefix or pass --all")
+    if slug is None:
+        raise ValueError("You must specify a slug or pass --all")
 
     """Prepare empty fields for manual cleaning."""
     schema = "sources"
-    source_id = get_sources_record(source_prefix)
+    source_id = get_sources_record(slug)
 
     # The old format didn't specify the 'polygons' suffix
     # but the new one does.
-    poly_table = f"{source_prefix}_polygons"
+    poly_table = f"{slug}_polygons"
     add_polygon_columns(schema, poly_table)
     add_primary_key_column(schema, poly_table)
     _set_source_id(schema, poly_table, source_id)
 
-    update_legacy_table_columns(schema, f"{source_prefix}_polygons")
+    update_legacy_table_columns(schema, f"{slug}_polygons")
 
-    linework_table = f"{source_prefix}_lines"
+    linework_table = f"{slug}_lines"
     add_linework_columns(schema, linework_table)
     add_primary_key_column(schema, linework_table)
     _set_source_id(schema, linework_table, source_id)
 
+    points_table = f"{slug}_points"
+    add_points_columns(schema, points_table)
+    add_primary_key_column(schema, points_table)
+
     print(
-        f"\n[bold green]Source [bold cyan]{source_prefix}[green] prepared for manual cleaning!\n"
+        f"\n[bold green]Source [bold cyan]{slug}[green] prepared for manual cleaning!\n"
     )
 
 
@@ -43,9 +49,9 @@ def prepare_fields_for_all_sources():
         prepare_fields(table.slug)
 
 
-def get_sources_record(source_prefix):
+def get_sources_record(slug):
     """Insert a record into the sources table."""
-    return db.session.execute(
+    return db.run_query(
         """
         INSERT INTO maps.sources (slug)
         VALUES (:source_name)
@@ -53,14 +59,13 @@ def get_sources_record(source_prefix):
         DO NOTHING
         RETURNING source_id
         """,
-        params=dict(source_name=source_prefix),
+        dict(source_name=slug),
     ).scalar()
 
 
 common_columns = {
     "source_id": "integer",
     "orig_id": "integer",
-    "descrip": "text",
     "omit": "boolean",
     # "ready": "boolean",  # Ready to be inserted?
 }
@@ -69,6 +74,7 @@ common_columns = {
 def add_linework_columns(schema, table_name):
     columns = {
         **common_columns,
+        "descrip": "text",
         "name": "character varying(255)",
         "type": "character varying(100)",
         "direction": "character varying(20)",
@@ -85,9 +91,24 @@ def add_polygon_columns(schema, table_name):
         "strat_name": "text",
         "age": "text",
         "lith": "text",
+        "descrip": "text",
         "comments": "text",
         "t_interval": "integer",
         "b_interval": "integer",
+    }
+    _apply_column_mapping(schema, table_name, columns)
+
+
+def add_points_columns(schema, table_name):
+    """Add columns to the points table that are required for homogenization."""
+    columns = {
+        **common_columns,
+        "comments": "text",
+        "strike": "integer",
+        "dip": "integer",
+        "dip_dir": "integer",
+        "point_type": "character varying(100)",
+        "certainty": "character varying(100)",
     }
     _apply_column_mapping(schema, table_name, columns)
 
@@ -97,9 +118,7 @@ def _apply_column_mapping(schema, table_name, columns, rename_geometry=True):
 
     sql = "ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} {type}"
     for name, type in columns.items():
-        db.run_sql(
-            sql, params=dict(table=table, column=Identifier(name), type=SQL(type))
-        )
+        db.run_sql(sql, dict(table=table, column=Identifier(name), type=SQL(type)))
 
     # Rename the geometry column if necessary
     if not rename_geometry:
@@ -107,7 +126,7 @@ def _apply_column_mapping(schema, table_name, columns, rename_geometry=True):
 
     db.run_sql(
         "ALTER TABLE {table} RENAME COLUMN geometry TO geom",
-        params=dict(table=table),
+        dict(table=table),
     )
 
 
