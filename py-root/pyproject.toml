@@ -14,7 +14,7 @@ python = "^3.11"
 "criticalmaas.ta1_geopackage" = { path = "../../../Software/criticalmaas-ta1-format", develop = true }
 
 [tool.poetry.dev-dependencies]
-"macrostrat.package_tools" = { path = "../../../Software/python-libraries/package-tools", develop = true }
+"macrostrat.package_tools" = "^1.0.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

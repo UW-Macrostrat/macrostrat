@@ -2,16 +2,17 @@ import os
 
 os.environ["USE_PYGEOS"] = "0"
 
+from macrostrat.database import Database
 from typer import Typer
 from typer.core import TyperGroup
-from .commands.ingest import ingest_map
-from .commands.prepare_fields import prepare_fields
-from .commands.match_names import match_names
-from .commands.sources import map_sources
-from .commands.rgeom import create_rgeom, create_webgeom
 
-from .database import create_fixtures
-from macrostrat.database import Database
+from macrostrat.core import app
+
+from .commands.ingest import ingest_map
+from .commands.match_names import match_names
+from .commands.prepare_fields import prepare_fields
+from .commands.rgeom import create_rgeom, create_webgeom
+from .commands.sources import map_sources
 from .migrations import run_migrations
 
 
@@ -36,7 +37,6 @@ class IngestionCLI(Typer):
 
 app = IngestionCLI(no_args_is_help=True, add_completion=False, name="map-ingestion")
 
-app.add_command(create_fixtures, name="create-fixtures")
 app.add_command(map_sources, name="sources")
 
 
@@ -60,9 +60,7 @@ def _run_migrations(database: str = None):
 
 
 app.add_command(_run_migrations, name="migrate")
-
 app.add_command(ingest_map, name="ingest")
-
 app.add_command(prepare_fields, name="prepare-fields")
 
 # Pass along other arguments to the match-names command

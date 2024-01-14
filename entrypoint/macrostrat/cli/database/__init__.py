@@ -45,7 +45,7 @@ def update_schema(match: str = Argument(None)):
     """Update the database schema"""
     from macrostrat.database import Database
 
-    from ....core.macrostrat.core.config import PG_DATABASE
+    from macrostrat.core.config import PG_DATABASE
 
     """Create schema additions"""
     schema_dir = fixtures_dir
@@ -86,7 +86,7 @@ db_app.command(name="update-schema")(update_schema)
 )
 def psql(ctx: typer.Context, database: str = None):
     """Run psql in the database container"""
-    from ....core.macrostrat.core.config import PG_DATABASE_DOCKER
+    from macrostrat.core.config import PG_DATABASE_DOCKER
 
     _database = PG_DATABASE_DOCKER
     if database is not None:

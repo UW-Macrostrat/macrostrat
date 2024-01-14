@@ -1202,20 +1202,17 @@ name = "macrostrat-package-tools"
 version = "1.0.0"
 description = "Tools for managing Python packages in a monorepo"
 optional = false
-python-versions = "^3.10"
-files = []
-develop = true
+python-versions = ">=3.10,<4.0"
+files = [
+    {file = "macrostrat_package_tools-1.0.0-py3-none-any.whl", hash = "sha256:d909ef211c9f81c4850305119638c4b8adf703bc5af873925cf4b9e8829edae2"},
+    {file = "macrostrat_package_tools-1.0.0.tar.gz", hash = "sha256:21d4a98c88447374e870537b8d65a717a7d7547dbaa7ea96cb4c455189a748f8"},
+]
 
 [package.dependencies]
-"macrostrat.utils" = "^1.0.0"
-requests = "^2.30.0"
-rich = "^13.3.5"
-toml = "^0.10.2"
-typer = "^0.9.0"
-
-[package.source]
-type = "directory"
-url = "../../../Software/python-libraries/package-tools"
+requests = ">=2.30.0,<3.0.0"
+rich = ">=13.3.5,<14.0.0"
+toml = ">=0.10.2,<0.11.0"
+typer = ">=0.9.0,<0.10.0"
 
 [[package]]
 name = "macrostrat-tileserver"
@@ -3324,4 +3321,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "13ad79ed3406b5f36aea826c0b082a54d8c46272b3d3e0b881d5ff6a1a08c124"
+content-hash = "ca54352263d274a3e47f12a326c1042dedc28dd5ac698c2ec6667b9ac108e246"

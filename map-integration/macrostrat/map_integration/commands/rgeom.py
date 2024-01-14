@@ -1,9 +1,11 @@
-from ..database import db, sql_file
+import time
 from pathlib import Path
+
 from psycopg2.extensions import AsIs
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.sql import text
-import time
+
+from ..database import db, sql_file
 
 
 def create_rgeom(source_id: int):
@@ -11,16 +13,15 @@ def create_rgeom(source_id: int):
     start = time.time()
 
     q = "SELECT slug FROM maps.sources WHERE source_id = %(source_id)s"
-    key = db.session.execute(text(q), dict(source_id=source_id)).scalar()
+    key = next(db.run_sql(q, params=dict(source_id=source_id))).scalar()
 
     print("Validating geometry...")
-    cursor = db.engine.connect()
     q = "UPDATE sources.%(primary_table)s SET geom = ST_Buffer(geom, 0)"
     table = None
     for name in [key, f"{key}_polygons"]:
         try:
             table = AsIs(name)
-            cursor.execute(q, {"primary_table": table})
+            db.run_sql(q, params=dict(primary_table=table), raise_errors=True)
         except ProgrammingError:
             pass
 
