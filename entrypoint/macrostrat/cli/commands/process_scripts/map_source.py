@@ -1,16 +1,15 @@
+import sys
+
 from ..base import Base
-from .rgeom import RGeom
-from .web_geom import WebGeom
+from ..match_scripts import liths, strat_names, units
+from ..seed import Seed
+from .__legacy.rgeom import RGeom
+from .__legacy.web_geom import WebGeom
 from .burwell_lookup import BurwellLookup
-from .legend import Legend
-from .legend_lookup import LegendLookup
-from ..match_scripts import strat_names
-from ..match_scripts import units
-from ..match_scripts import liths
 from .carto import Carto
 from .carto_lines import CartoLines
-from ..seed import Seed
-import sys
+from .legend import Legend
+from .legend_lookup import LegendLookup
 
 
 class MapSource(Base):

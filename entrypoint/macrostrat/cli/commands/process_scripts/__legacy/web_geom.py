@@ -1,5 +1,6 @@
-from ..base import Base
 import sys
+
+from ...base import Base
 
 
 class WebGeom(Base):

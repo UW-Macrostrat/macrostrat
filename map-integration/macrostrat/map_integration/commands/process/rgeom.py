@@ -4,7 +4,7 @@ from pathlib import Path
 from psycopg2.sql import Identifier
 from sqlalchemy.sql import text
 
-from ..database import db, sql_file
+from ...database import db, sql_file
 
 
 def create_rgeom(source_id: int):
@@ -24,8 +24,7 @@ def create_rgeom(source_id: int):
     db.run_query(q, {"primary_table": table})
 
     print("Creating reference geometry...")
-    sqlfile = Path(__file__).parent.parent / "procedures" / "set-rgeom.sql"
-    db.run_query(sqlfile, dict(source_id=source_id, primary_table=table))
+    db.run_query(sql_file("set-rgeom"), dict(source_id=source_id, primary_table=table))
 
     end = time.time()
 

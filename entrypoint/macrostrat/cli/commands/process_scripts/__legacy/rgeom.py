@@ -1,8 +1,10 @@
-from subprocess import call
 import os
 import sys
-from ..base import Base
+from subprocess import call
+
 from psycopg2.extensions import AsIs
+
+from ...base import Base
 
 
 class RGeom(Base):

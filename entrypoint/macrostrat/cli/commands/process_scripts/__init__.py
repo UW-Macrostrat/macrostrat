@@ -1,9 +1,9 @@
-from .rgeom import RGeom as rgeom
-from .web_geom import WebGeom as web_geom
+from .__legacy.rgeom import RGeom as rgeom
+from .__legacy.web_geom import WebGeom as web_geom
+from .burwell_lookup import BurwellLookup as burwell_lookup
 from .carto import Carto as carto
 from .carto_lines import CartoLines as carto_lines
-from .burwell_lookup import BurwellLookup as burwell_lookup
-from .tesselate import Tesselate as tesselate
-from .map_source import MapSource as map_source
 from .legend import Legend as legend
 from .legend_lookup import LegendLookup as legend_lookup
+from .map_source import MapSource as map_source
+from .tesselate import Tesselate as tesselate
