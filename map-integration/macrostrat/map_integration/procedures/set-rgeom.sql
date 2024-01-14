@@ -2,7 +2,7 @@ UPDATE maps.sources
 SET rgeom = (
     WITH dump AS (
       SELECT (ST_Dump(geom)).geom
-      FROM sources.%(primary_table)s
+      FROM {primary_table}
     ),
     types AS (
       SELECT ST_GeometryType(geom), geom

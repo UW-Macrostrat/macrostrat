@@ -419,13 +419,13 @@ testing = ["Django (<3.1)", "attrs", "colorama", "docopt", "pytest (<7.0.0)"]
 
 [[package]]
 name = "macrostrat-database"
-version = "3.0.0"
+version = "3.1.0"
 description = "A SQLAlchemy-based database toolkit."
 optional = false
 python-versions = ">=3.8,<4.0"
 files = [
-    {file = "macrostrat_database-3.0.0-py3-none-any.whl", hash = "sha256:19a88fbf46da453be892652ab1dd8d21ff6809242a6a32167a8ace69ed59bc81"},
-    {file = "macrostrat_database-3.0.0.tar.gz", hash = "sha256:fa927c4c74f692083fcb130c5c41cb14be7a0666ab4c6d203d7f13327ebffb68"},
+    {file = "macrostrat_database-3.1.0-py3-none-any.whl", hash = "sha256:330bc21360d0945e238f315c97197fd3465cf2f500b8f2ec21ebde52c28dbe95"},
+    {file = "macrostrat_database-3.1.0.tar.gz", hash = "sha256:873e58007a0ac2080536a54707ca3cb027a6aa79b76a43e9264cfdca0e597077"},
 ]
 
 [package.dependencies]
@@ -1420,4 +1420,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "6e725c33acea2c936447123509c392cba0b2495672144ab3f7e049788bc72df7"
+content-hash = "56d26bdfb02e80ea89bcd5288bcd819ae54ad42069ea93be441c5255b0983c54"
