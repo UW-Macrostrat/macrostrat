@@ -191,7 +191,7 @@ def list_tables(ctx: typer.Context, database: str = Argument(None), schema: str 
 @db_app.command(name="sql")
 def run_migration(migration: str = Argument(None)):
     """Run an ad-hoc migration"""
-    pth = Path(__file__).parent.parent.parent / "ad-hoc-migrations"
+    pth = Path(__file__).parent.parent / "ad-hoc-migrations"
     files = list(pth.glob("*.sql"))
     files.sort()
     if migration is None:

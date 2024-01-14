@@ -44,7 +44,7 @@ def copy_to_maps(source: str, delete_existing: bool = False, scale: str = None):
         )
 
     if has_any_features:
-        db.run_query(
+        db.run_sql(
             """DELETE FROM maps.polygons WHERE source_id = :source_id;
             DELETE FROM maps.lines WHERE source_id = :source_id;
             DELETE FROM maps.points WHERE source_id = :source_id;""",
