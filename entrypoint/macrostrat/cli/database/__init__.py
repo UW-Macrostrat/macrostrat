@@ -16,10 +16,6 @@ from ._legacy import *
 
 __here__ = Path(__file__).parent
 fixtures_dir = __here__.parent / "fixtures"
-# macrostrat_root = Path(settings.macrostrat_root)
-
-
-# Manage as a docker-compose application
 
 
 def run_all_sql(db, dir: Path):

@@ -1,11 +1,12 @@
-from macrostrat.app_frame import Application, SubsystemManager, Subsystem
-from pathlib import Path
 from os import environ
+from pathlib import Path
 from sys import stderr
-from rich import print
-from typer import get_app_dir, Typer
+
 from dynaconf import Dynaconf
+from macrostrat.app_frame import Application, Subsystem, SubsystemManager
 from macrostrat.utils import get_logger
+from rich import print
+from typer import Typer, get_app_dir
 
 log = get_logger(__name__)
 
@@ -68,7 +69,7 @@ class Macrostrat(Application):
             "Macrostrat",
             root_dir=root_dir,
             project_prefix=self.settings.project_name,
-            app_module="macrostrat_cli",
+            app_module="macrostrat",
             compose_files=compose_files,
             load_dotenv=env_file,
             # This only applies to Docker Compose

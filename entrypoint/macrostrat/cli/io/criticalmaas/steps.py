@@ -1,15 +1,15 @@
+from typing import Generator
+
+from geoalchemy2.elements import WKBElement
+from geoalchemy2.shape import to_shape
 from macrostrat.database import Database
 from macrostrat.database.mapper import BaseModel
 from shapely.geometry import mapping
-from geoalchemy2.elements import WKBElement
-from geoalchemy2.shape import to_shape
-from typing import Generator
-from .helpers import MapIdentifier
+
+from .helpers import MapInfo
 
 
-def _build_map_metadata(
-    db, _map: MapIdentifier, Map: BaseModel, MapMetadata: BaseModel
-):
+def _build_map_metadata(db, _map: MapInfo, Map: BaseModel, MapMetadata: BaseModel):
     yield Map(
         id=_map.slug,
         name=_map.name,
@@ -44,7 +44,7 @@ def _build_map_metadata(
 
 
 def _build_point_types(
-    db: Database, _map: MapIdentifier, PointType: BaseModel, valid_types: set[str]
+    db: Database, _map: MapInfo, PointType: BaseModel, valid_types: set[str]
 ):
     # Get all the point types
     res = db.run_sql(
@@ -61,7 +61,7 @@ def _build_point_types(
         yield PointType(name=type_name, id=row.type)
 
 
-def _build_point_features(db: Database, _map: MapIdentifier):
+def _build_point_features(db: Database, _map: MapInfo):
     res = db.run_sql(
         """
         SELECT
@@ -87,7 +87,7 @@ def _build_point_features(db: Database, _map: MapIdentifier):
 
 
 def _build_line_types(
-    db: Database, _map: MapIdentifier, LineType: BaseModel, valid_types: set[str]
+    db: Database, _map: MapInfo, LineType: BaseModel, valid_types: set[str]
 ):
     # Get all the line types
     res = db.run_sql(
@@ -104,7 +104,7 @@ def _build_line_types(
         yield LineType(name=type_name, id=row.type)
 
 
-def _build_line_features(db: Database, _map: MapIdentifier):
+def _build_line_features(db: Database, _map: MapInfo):
     res = db.run_sql(
         """
         SELECT
@@ -131,7 +131,7 @@ def _build_line_features(db: Database, _map: MapIdentifier):
 
 
 def _build_polygon_types(
-    db: Database, _map: MapIdentifier, PolygonType: BaseModel, GeologicUnit: BaseModel
+    db: Database, _map: MapInfo, PolygonType: BaseModel, GeologicUnit: BaseModel
 ) -> Generator[object, None, None]:
     res = db.run_sql(
         """
@@ -192,7 +192,7 @@ def _build_polygon_types(
         yield ptype
 
 
-def _build_polygon_features(db, _map: MapIdentifier):
+def _build_polygon_features(db, _map: MapInfo):
     res = db.run_sql(
         """
         SELECT DISTINCT ON (p.map_id)

@@ -5,20 +5,22 @@ Write a Macrostrat map to the CriticalMAAS TA1 Geopackage format
 - https://github.com/DARPA-CRITICALMAAS/schemas/tree/main/ta1
 """
 
-from macrostrat.database import Database
 from pathlib import Path
-from rich import print
-from criticalmaas.ta1_geopackage import GeopackageDatabase
 
-from .helpers import get_map_identifier, _unlink_if_exists
+from criticalmaas.ta1_geopackage import GeopackageDatabase
+from macrostrat.database import Database
+from macrostrat.map_integration import get_map_info
+from rich import print
+
+from .helpers import _unlink_if_exists
 from .steps import (
-    _build_map_metadata,
-    _build_line_types,
     _build_line_features,
-    _build_point_types,
+    _build_line_types,
+    _build_map_metadata,
     _build_point_features,
-    _build_polygon_types,
+    _build_point_types,
     _build_polygon_features,
+    _build_polygon_types,
 )
 
 
@@ -27,7 +29,7 @@ def write_map_geopackage(
 ):
     """Write a Macrostrat map dataset (stored in PostGIS) to a GeoPackage file using GeoPandas and SQLAlchemy."""
 
-    _map = get_map_identifier(db, identifier)
+    _map = get_map_info(db, identifier)
 
     if filename is None:
         filename = Path(f"{_map.slug}.gpkg")

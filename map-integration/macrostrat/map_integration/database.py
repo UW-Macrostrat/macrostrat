@@ -17,4 +17,4 @@ def database_connection():
 
 def sql_file(key: str) -> str:
     """Return the contents of a SQL file."""
-    return text((Path(__file__).parent / "procedures" / (key + ".sql")).read_text())
+    return Path(__file__).parent / "procedures" / (key + ".sql")

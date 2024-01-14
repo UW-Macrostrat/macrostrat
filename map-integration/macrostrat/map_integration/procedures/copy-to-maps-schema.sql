@@ -1,10 +1,6 @@
 /**
-Script to create record in maps.{polygons,lines,points} from a record in sources.{slug}_{polygons,lines,points}
+Script to create record in the maps schema for all tables for a given source
 */
-
-DELETE FROM maps.polygons WHERE source_id = {source_id};
-DELETE FROM maps.lines WHERE source_id = {source_id};
-DELETE FROM maps.points WHERE source_id = {source_id};
 
 INSERT INTO maps.polygons (
   source_id,
@@ -25,17 +21,17 @@ SELECT
   {scale}::macrostrat.map_scale,
   orig_id,
   name,
-  geom.
   strat_name,
   age,
   lith,
   descrip,
   comments,
   t_interval,
-  b_interval
+  b_interval,
+  geom
 FROM {polygons_table}
 WHERE source_id = {source_id}
-  AND NOT omit;
+  AND NOT coalesce(omit, false);
 
 
 INSERT INTO maps.lines (
@@ -59,7 +55,7 @@ SELECT
   geom
 FROM {lines_table}
 WHERE source_id = {source_id}
-  AND NOT omit;
+  AND NOT coalesce(omit, false);
 
 
 INSERT INTO maps.points (
@@ -85,4 +81,4 @@ SELECT
   orig_id
 FROM {points_table}
 WHERE source_id = {source_id}
-  AND NOT omit;
+  AND NOT coalesce(omit, false);
