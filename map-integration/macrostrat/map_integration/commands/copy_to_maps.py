@@ -56,9 +56,9 @@ def copy_to_maps(source: str, delete_existing: bool = False, scale: str = None):
         queryfile,
         dict(
             source_id=Literal(source_id),
-            polygons_=Identifier("sources", slug + "_polygons"),
-            lines_=Identifier("sources", slug + "_lines"),
-            points_=Identifier("sources", slug + "_points"),
+            polygons_table=Identifier("sources", slug + "_polygons"),
+            lines_table=Identifier("sources", slug + "_lines"),
+            points_table=Identifier("sources", slug + "_points"),
             scale=Literal(scale),
         ),
     )

@@ -2,22 +2,26 @@ from pathlib import Path
 
 from psycopg2.sql import SQL, Identifier
 from rich import print
+from typer import Argument
 
 from ..database import db
+from ..utils import get_map_info
 
 
-def prepare_fields(slug: str = None, all: bool = False):
+def prepare_fields(identifier: str = Argument(None), all: bool = False):
     """Prepare empty fields for manual cleaning."""
     if all:
         prepare_fields_for_all_sources()
         return
 
-    if slug is None:
+    if identifier is None:
         raise ValueError("You must specify a slug or pass --all")
 
     """Prepare empty fields for manual cleaning."""
     schema = "sources"
-    source_id = get_sources_record(slug)
+    info = get_map_info(db, identifier)
+    slug = info.slug
+    source_id = info.id
 
     # The old format didn't specify the 'polygons' suffix
     # but the new one does.
