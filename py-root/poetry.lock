@@ -597,7 +597,7 @@ files = [
 
 [[package]]
 name = "criticalmaas-ta1-geopackage"
-version = "0.1.0"
+version = "0.1.1"
 description = "GeoPackage schema for validating and storing vector geologic map data produced by computer-vision pipelines"
 optional = false
 python-versions = "^3.10"
@@ -609,7 +609,6 @@ fiona = "^1.9.5"
 geopandas = "^0.14.1"
 "macrostrat.database" = "^3.0.0"
 macrostrat-utils = "^1.2.0"
-sadisplay = {path = "deps/sadisplay", develop = true}
 
 [package.source]
 type = "directory"
@@ -1076,22 +1075,21 @@ files = [
 
 [[package]]
 name = "macrostrat-app-frame"
-version = "1.1.0"
+version = "1.2.0"
 description = "A control script framework for containerized applications."
 optional = false
-python-versions = "^3.10"
-files = []
-develop = true
+python-versions = ">=3.10,<4.0"
+files = [
+    {file = "macrostrat_app_frame-1.2.0-py3-none-any.whl", hash = "sha256:da8acb8170356d4196ce6e8afc2aef055680b2a34ea16c9d3ab606d6bc79df20"},
+    {file = "macrostrat_app_frame-1.2.0.tar.gz", hash = "sha256:17ed68e4007b09f8abc50d62d27f955e1ff6f760d191c4139ee6687bc541ee4e"},
+]
 
 [package.dependencies]
-"macrostrat.utils" = "^1.1.0"
-python-dotenv = "^1.0.0"
-rich = "^13"
-typer = "^0.9.0"
-
-[package.source]
-type = "directory"
-url = "../../../Software/python-libraries/app-frame"
+"macrostrat.utils" = ">=1.1.0,<2.0.0"
+python-dotenv = ">=1.0.0,<2.0.0"
+rich = ">=13,<14"
+toposort = ">=1.5,<2.0"
+typer = ">=0.9.0,<0.10.0"
 
 [[package]]
 name = "macrostrat-cli"
@@ -1131,17 +1129,35 @@ typer = "^0.9.0"
 
 [package.source]
 type = "directory"
-url = "../macrostrat-cli"
+url = "../entrypoint"
+
+[[package]]
+name = "macrostrat-core"
+version = "2.0.0"
+description = "The core of the Macrostrat system"
+optional = false
+python-versions = "^3.11"
+files = []
+develop = true
+
+[package.dependencies]
+dynaconf = "^3.1.12"
+"macrostrat.app-frame" = "^1.2.0"
+python-dotenv = "^1.0.0"
+
+[package.source]
+type = "directory"
+url = "../core"
 
 [[package]]
 name = "macrostrat-database"
-version = "3.0.0"
+version = "3.1.0"
 description = "A SQLAlchemy-based database toolkit."
 optional = false
 python-versions = ">=3.8,<4.0"
 files = [
-    {file = "macrostrat_database-3.0.0-py3-none-any.whl", hash = "sha256:19a88fbf46da453be892652ab1dd8d21ff6809242a6a32167a8ace69ed59bc81"},
-    {file = "macrostrat_database-3.0.0.tar.gz", hash = "sha256:fa927c4c74f692083fcb130c5c41cb14be7a0666ab4c6d203d7f13327ebffb68"},
+    {file = "macrostrat_database-3.1.0-py3-none-any.whl", hash = "sha256:330bc21360d0945e238f315c97197fd3465cf2f500b8f2ec21ebde52c28dbe95"},
+    {file = "macrostrat_database-3.1.0.tar.gz", hash = "sha256:873e58007a0ac2080536a54707ca3cb027a6aa79b76a43e9264cfdca0e597077"},
 ]
 
 [package.dependencies]
@@ -1165,7 +1181,7 @@ develop = true
 [package.dependencies]
 geopandas = "^0.14.1"
 ipython = "^8.5.0"
-"macrostrat.database" = "^3.0.0"
+"macrostrat.database" = "^3.1.0"
 numpy = "^1.23.4"
 psycopg2-binary = "^2.9.4"
 pygeos = "^0.14"
@@ -1186,20 +1202,17 @@ name = "macrostrat-package-tools"
 version = "1.0.0"
 description = "Tools for managing Python packages in a monorepo"
 optional = false
-python-versions = "^3.10"
-files = []
-develop = true
+python-versions = ">=3.10,<4.0"
+files = [
+    {file = "macrostrat_package_tools-1.0.0-py3-none-any.whl", hash = "sha256:d909ef211c9f81c4850305119638c4b8adf703bc5af873925cf4b9e8829edae2"},
+    {file = "macrostrat_package_tools-1.0.0.tar.gz", hash = "sha256:21d4a98c88447374e870537b8d65a717a7d7547dbaa7ea96cb4c455189a748f8"},
+]
 
 [package.dependencies]
-"macrostrat.utils" = "^1.0.0"
-requests = "^2.30.0"
-rich = "^13.3.5"
-toml = "^0.10.2"
-typer = "^0.9.0"
-
-[package.source]
-type = "directory"
-url = "../../../Software/python-libraries/package-tools"
+requests = ">=2.30.0,<3.0.0"
+rich = ">=13.3.5,<14.0.0"
+toml = ">=0.10.2,<0.11.0"
+typer = ">=0.9.0,<0.10.0"
 
 [[package]]
 name = "macrostrat-tileserver"
@@ -2510,23 +2523,6 @@ tilebench = ["pytest", "tilebench"]
 xarray = ["rioxarray", "xarray"]
 
 [[package]]
-name = "sadisplay"
-version = "0.4.9"
-description = "SqlAlchemy schema display script"
-optional = false
-python-versions = "*"
-files = []
-develop = true
-
-[package.dependencies]
-jinja2 = "*"
-SQLAlchemy = ">=0.5"
-
-[package.source]
-type = "directory"
-url = "../../../Software/criticalmaas-ta1-format/deps/sadisplay"
-
-[[package]]
 name = "scipy"
 version = "1.11.4"
 description = "Fundamental algorithms for scientific computing in Python"
@@ -3172,6 +3168,17 @@ files = [
 ]
 
 [[package]]
+name = "toposort"
+version = "1.10"
+description = "Implements a topological sort algorithm."
+optional = false
+python-versions = "*"
+files = [
+    {file = "toposort-1.10-py3-none-any.whl", hash = "sha256:cbdbc0d0bee4d2695ab2ceec97fe0679e9c10eab4b2a87a9372b929e70563a87"},
+    {file = "toposort-1.10.tar.gz", hash = "sha256:bfbb479c53d0a696ea7402601f4e693c97b0367837c8898bc6471adfca37a6bd"},
+]
+
+[[package]]
 name = "tqdm"
 version = "4.66.1"
 description = "Fast, Extensible Progress Meter"
@@ -3314,4 +3321,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "d3ef3dab4aed86f5cfe1e735c75263203e9fe9a73845db688dc75e1e9d653bd3"
+content-hash = "ca54352263d274a3e47f12a326c1042dedc28dd5ac698c2ec6667b9ac108e246"
