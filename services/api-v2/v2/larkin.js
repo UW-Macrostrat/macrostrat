@@ -37,8 +37,36 @@ function getPGClient(db) {
 
 
   larkin.queryPg = function (db, sql, params, callback) {
+<<<<<<< HEAD
     /* We've reworked this connection flow substantially for modern Postgres bindings */
     const client = getPGClient(db);
+=======
+
+    const nameMapping = credentials.postgresDatabases ?? {}
+    const dbName = nameMapping[db] ?? db
+
+    const pool = new pg.Pool({
+      user: credentials.pg.user,
+      password: credentials.pg.password,
+      host: credentials.pg.host,
+      port: credentials.pg.port,
+      database: dbName
+    });
+
+    pool.connect(function(err, client, done) {
+      if (err) {
+        this.log("error", "error connecting - " + err);
+        callback(err);
+      } else {
+        var query = client.query(sql, params, function(err, result) {
+          done();
+          if (err) {
+            this.log("error", err);
+            callback(err);
+          } else {
+            callback(null, result);
+          }
+>>>>>>> main
 
     try {
       client.connect()

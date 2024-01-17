@@ -202,7 +202,7 @@ module.exports = function(req, res, next, callback) {
             larkin.error(req, res, next, "An error was incurred during conversion");
           } else {
             if (larkin.getOutputFormat(req.query.format) === "geojson") {
-              output = gp(output, 5);
+              output = gp(output, 4);
             }
 
             if (callback) return callback(null, output)

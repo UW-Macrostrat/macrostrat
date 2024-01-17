@@ -5,12 +5,10 @@
   "dependencies": {
     "async": "1.5.2",
     "dbgeo": "0.0.x",
-    "express-csv": "git+https://github.com/jczaplew/express-csv.git",
     "geojson-precision": "^0.2.3",
     "mysql": "2.3.x",
     "pg": "^8.7.1",
     "pg-native": "^3.0.0",
-    "nearest-feature": "git+https://github.com/jczaplew/nearest-feature.git",
     "turf-point": "^0.1.6",
     "wellknown": "^0.3.0"
   }

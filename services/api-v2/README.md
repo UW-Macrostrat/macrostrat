@@ -32,7 +32,7 @@ This will also run the script `postinstall.sh` which copies credentials files in
 For `v1/credentials.js` fill in your MariaDB and PostgreSQL user information. Do the same for `v2/credentials.js`, but also update the port for Redis if necessary, and follow the inline instructions for generating a cache refresh key. The cache refresh key is used as a secret parameter to programmatically refresh the column cache, such as in situations in which the underlying data has been changed (editing, adding, etc).
 
 ## Running
-To start the API simply run `node server.js` which will start a process on port 5000. To use a different port, you can specify it during startup as so: `node server.js 5151`.
+To start the API simply run `node server.js` which will start a process on port 5050. Note that the default port was changed from 5000 to 5050 to avoid a port conflict introduced in recent versions of commonly used OSs. To use a different port, you can specify it during startup as so: `node server.js 5151`.
 
 For production use `pm2` is recommended. To start as a single process:
 ````

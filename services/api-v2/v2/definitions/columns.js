@@ -15,7 +15,7 @@ module.exports = function(req, res, next, cb) {
       lat,
       lng,
       ${req.query.format && api.acceptedFormats.geo[req.query.format] ? 'lng, lat,' : ''}
-      SUM(col_area) as col_area,
+      col_area,
       SUM(max_thick) as max_thick,
       GROUP_CONCAT(DISTINCT ref_id SEPARATOR '|') AS ref_id,
       status_code AS status,

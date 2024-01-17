@@ -28,8 +28,20 @@ var mysql = require("mysql"),
   };
 
 
-  larkin.queryPg = function(db, sql, params, callback, send, res, format, next) {
-    pg.connect("postgres://" + credentials.pg.user +  (credentials.pg.password.length ? ':' + credentials.pg.password : '') + "@" + credentials.pg.host + ":" + credentials.pg.port + "/" + db, function(err, client, done) {
+  larkin.queryPg = function (db, sql, params, callback, send, res, format, next) {
+
+    const nameMapping = credentials.postgresDatabases ?? {}
+    const dbName = nameMapping[db] ?? db
+
+    const pool = new pg.Pool({
+      user: credentials.pg.user,
+      password: credentials.pg.password,
+      host: credentials.pg.host,
+      port: credentials.pg.port,
+      database: dbName
+    });
+
+    pool.connect(function(err, client, done) {
       if (err) {
         this.log("error", "error connecting - " + err);
         callback(err);
