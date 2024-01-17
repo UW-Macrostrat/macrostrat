@@ -1,6 +1,6 @@
 var express = require("express"),
     bodyParser = require("body-parser"),
-    v1 = require("./v1"),
+    //v1 = require("./v1"),
     v2 = require("./v2"),
     defs = require("./v2/defs"),
     app = express();
@@ -40,7 +40,6 @@ app.use(bodyParser.json())
 app.use(bodyParser.json({ type: "application/vnd.api+json" }))
 
 // Load and prefix all routes with /api and appropriate version
-app.use("/v1", v1);
 app.use("/v2", v2);
 
 // If no version specified, fall back to more current

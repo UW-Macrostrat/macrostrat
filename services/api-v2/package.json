@@ -1,6 +1,6 @@
 {
   "name": "macrostrat-api",
-  "version": "2.0.0",
+  "version": "3.0.0-dev",
   "description": "The API for SCIENCE",
   "main": "server.js",
   "repository": {
@@ -8,13 +8,15 @@
     "url": "https://github.com/UW-Macrostrat/macrostrat-api.git"
   },
   "scripts": {
-    "postinstall": "./postinstall.sh",
     "start": "node server.js",
-    "test": "mocha ./v1/test && mocha ./v2/test"
+    "test": "mocha ./v1/test/test.js"
   },
   "keywords": [
     "macrostrat",
     "macrostratigraphy"
+  ],
+  "workspaces": [
+    "./v2"
   ],
   "contributors": [
     {
@@ -33,7 +35,6 @@
     "csv-express": "^1.1.0",
     "express": "4.x.x",
     "microtime": "^3.0.0",
-    "sharp": "^0.27.1",
     "universal-analytics": "^0.4.6"
   },
   "devDependencies": {
@@ -43,5 +44,6 @@
     "should": "^4.0.4",
     "supertest": "^0.14.0",
     "validator": "^3.34.0"
-  }
+  },
+  "packageManager": "yarn@4.0.2"
 }
