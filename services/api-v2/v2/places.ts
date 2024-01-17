@@ -1,14 +1,14 @@
-'use strict'
-const larkin = require('./larkin')
-const api = require('./api')
-const dbgeo = require('dbgeo')
+"use strict";
+const larkin = require("./larkin");
+const api = require("./api");
+const dbgeo = require("dbgeo");
 
-const MAXRESULTS = 5000
+const MAXRESULTS = 5000;
 
 module.exports = (req, res, next, callback) => {
-  let where = []
-  let params = []
-  let limit = ('sample' in req.query) ? 'LIMIT 5' : ''
+  let where = [];
+  let params = [];
+  let limit = "sample" in req.query ? "LIMIT 5" : "";
 
   if (req.query.wof_id) {
     if (req.query.childtype) {
@@ -31,21 +31,27 @@ module.exports = (req, res, next, callback) => {
           END
 
           AND placetype = $2
-      )`)
-      params.push(req.query.wof_id, req.query.childtype)
+      )`);
+      params.push(req.query.wof_id, req.query.childtype);
     } else {
-      where.push(`a.wof_id = ANY(\$${where.length + 1})`)
-      params.push(larkin.parseMultipleIds(req.query.wof_id))
+      where.push(`a.wof_id = ANY(\$${where.length + 1})`);
+      params.push(larkin.parseMultipleIds(req.query.wof_id));
     }
   }
   if (req.query.placetype && !req.query.childtype) {
-    where.push(`a.placetype = ANY(\$${where.length + 1})`)
-    params.push(larkin.parseMultipleStrings(req.query.placetype))
+    where.push(`a.placetype = ANY(\$${where.length + 1})`);
+    params.push(larkin.parseMultipleStrings(req.query.placetype));
   }
   if (req.query.name) {
     if (req.query.childtype) {
       if (!req.query.placetype) {
-        return larkin.error(req, res, next, 'You must provide a "placetype" when querying for children with a "name"', 401)
+        return larkin.error(
+          req,
+          res,
+          next,
+          'You must provide a "placetype" when querying for children with a "name"',
+          401,
+        );
       }
 
       where.push(`a.wof_id IN (
@@ -67,27 +73,41 @@ module.exports = (req, res, next, callback) => {
           END
           
           AND placetype = $3
-      )`)
-      params.push(larkin.parseMultipleStrings(req.query.name), req.query.placetype, req.query.childtype)
+      )`);
+      params.push(
+        larkin.parseMultipleStrings(req.query.name),
+        req.query.placetype,
+        req.query.childtype,
+      );
     } else {
-      where.push(`a.name = ANY(\$${where.length + 1})`)
-      params.push(larkin.parseMultipleStrings(req.query.name))
+      where.push(`a.name = ANY(\$${where.length + 1})`);
+      params.push(larkin.parseMultipleStrings(req.query.name));
     }
   }
   if (req.query.name_like) {
-    where.push(`a.name = \$${where.length + 1}`)
-    params.push(`%${req.query.placetype}%`)
+    where.push(`a.name = \$${where.length + 1}`);
+    params.push(`%${req.query.placetype}%`);
   }
   if (req.query.lng && req.query.lat) {
-    where.push(`ST_Intersects(a.geom, ST_SetSRID(ST_MakePoint(\$${where.length + 1}, \$${where.length + 2}), 4326))`)
-    params.push(larkin.normalizeLng(req.query.lng), req.query.lat)
+    where.push(
+      `ST_Intersects(a.geom, ST_SetSRID(ST_MakePoint(\$${where.length + 1}, \$${where.length + 2}), 4326))`,
+    );
+    params.push(larkin.normalizeLng(req.query.lng), req.query.lat);
   }
 
-  if (!where.length && !('sample' in req.query)) {
-    return larkin.error(req, res, next, 'Please provide at least one valid parameter', 400)
+  if (!where.length && !("sample" in req.query)) {
+    return larkin.error(
+      req,
+      res,
+      next,
+      "Please provide at least one valid parameter",
+      400,
+    );
   }
 
-  larkin.queryPg('wof', `
+  larkin.queryPg(
+    "wof",
+    `
     SELECT
       COUNT(*) AS n_rows
     FROM places a
@@ -96,17 +116,27 @@ module.exports = (req, res, next, callback) => {
     LEFT JOIN places r ON r.wof_id = a.region
     LEFT JOIN places cntry ON cntry.wof_id = a.country
     LEFT JOIN places cnt ON cnt.wof_id = a.continent
-    WHERE ${where.join(' AND ')}
+    WHERE ${where.join(" AND ")}
     ${limit}
-  `, params, (error, result) => {
-    if (error || !result || !result.rows) {
-      return larkin.error(req, res, next, 'Internal error', 500)
-    }
-    if (result.rows[0].n_rows > MAXRESULTS) {
-      return larkin.error(req, res, next, 'Too many results returned by this query. Please refine your search and try again', 401)
-    }
+  `,
+    params,
+    (error, result) => {
+      if (error || !result || !result.rows) {
+        return larkin.error(req, res, next, "Internal error", 500);
+      }
+      if (result.rows[0].n_rows > MAXRESULTS) {
+        return larkin.error(
+          req,
+          res,
+          next,
+          "Too many results returned by this query. Please refine your search and try again",
+          401,
+        );
+      }
 
-    larkin.queryPg('wof', `
+      larkin.queryPg(
+        "wof",
+        `
       SELECT
         a.wof_id,
         a.placetype,
@@ -118,37 +148,57 @@ module.exports = (req, res, next, callback) => {
         (SELECT row_to_json(_) FROM (SELECT c.wof_id, c.name) _) AS county,
         (SELECT row_to_json(_) FROM (SELECT l.wof_id, l.name) _) AS locality,
         hstore_to_json(a.other_names) AS other_names
-        ${req.query.format && api.acceptedFormats.geo[req.query.format] ? ', a.geom' : ''}
+        ${req.query.format && api.acceptedFormats.geo[req.query.format] ? ", a.geom" : ""}
       FROM places a
       LEFT JOIN places l ON l.wof_id = a.locality
       LEFT JOIN places c ON c.wof_id = a.county
       LEFT JOIN places r ON r.wof_id = a.region
       LEFT JOIN places cntry ON cntry.wof_id = a.country
       LEFT JOIN places cnt ON cnt.wof_id = a.continent
-      WHERE ${where.join(' AND ')}
+      WHERE ${where.join(" AND ")}
       ${limit}
-    `, params, (error, result) => {
-      if (error) {
-        return larkin.error(req, res, next, 'Internal error', 500)
-      }
-      // if a geographic format is requested
-      if (req.query.format && api.acceptedFormats.geo[req.query.format]) {
-        dbgeo.parse(result.rows, {
-          'outputFormat': larkin.getOutputFormat(req.query.format),
-          'precision': 6
-        }, (error, result) => {
+    `,
+        params,
+        (error, result) => {
           if (error) {
-            return larkin.error(req, res, next, 'Internal error', 500)
+            return larkin.error(req, res, next, "Internal error", 500);
           }
-          larkin.sendData(req, res, next, {}, {
-            data: result
-          })
-        })
-      } else {
-        larkin.sendData(req, res, next, {}, {
-          data: result.rows
-        })
-      }
-    })
-  })
-}
+          // if a geographic format is requested
+          if (req.query.format && api.acceptedFormats.geo[req.query.format]) {
+            dbgeo.parse(
+              result.rows,
+              {
+                outputFormat: larkin.getOutputFormat(req.query.format),
+                precision: 6,
+              },
+              (error, result) => {
+                if (error) {
+                  return larkin.error(req, res, next, "Internal error", 500);
+                }
+                larkin.sendData(
+                  req,
+                  res,
+                  next,
+                  {},
+                  {
+                    data: result,
+                  },
+                );
+              },
+            );
+          } else {
+            larkin.sendData(
+              req,
+              res,
+              next,
+              {},
+              {
+                data: result.rows,
+              },
+            );
+          }
+        },
+      );
+    },
+  );
+};

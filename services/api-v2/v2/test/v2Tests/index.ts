@@ -1,5 +1,4 @@
-module.exports = function() {
-
+module.exports = function () {
   describe("root", require("./root"));
   describe("columns", require("./columns"));
   describe("sections", require("./sections"));
@@ -41,5 +40,4 @@ module.exports = function() {
   describe("mobile/macro_summary", require("./mobile_macro_summary"));
   describe("mobile/map_query", require("./mobile_map_query"));
   describe("Mancos test cases", require("./mancos_test_cases"));
-
-}
+};

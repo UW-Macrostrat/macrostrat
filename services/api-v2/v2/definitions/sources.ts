@@ -1,18 +1,18 @@
 var api = require("../api"),
-    larkin = require("../larkin"),
-    multiline = require("multiline"),
-    dbgeo = require("dbgeo"),
+  larkin = require("../larkin"),
+  multiline = require("multiline"),
+  dbgeo = require("dbgeo"),
   gp = require("geojson-precision");
-    
+
 const credentials = require("../credentials");
 
-module.exports = function(req, res, next, cb) {
+module.exports = function (req, res, next, cb) {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
 
-  var params = []
-  var where = []
+  var params = [];
+  var where = [];
 
   if (req.query.source_id) {
     where.push("source_id = ANY($" + (where.length + 1) + ")");
@@ -25,21 +25,34 @@ module.exports = function(req, res, next, cb) {
   }
 
   if (req.query.lat && req.query.lng) {
-    where.push("ST_Intersects(ST_SetSRID(sources.rgeom, 4326), ST_GeomFromText($" + (where.length + 1) + ", 4326))");
+    where.push(
+      "ST_Intersects(ST_SetSRID(sources.rgeom, 4326), ST_GeomFromText($" +
+        (where.length + 1) +
+        ", 4326))",
+    );
     params.push("POINT(" + req.query.lng + " " + req.query.lat + ")");
   }
 
   if (req.query.shape) {
-    var buffer = (req.query.buffer && !isNaN(parseInt(req.query.buffer))) ? parseInt(req.query.buffer)*1000 : 1;
+    var buffer =
+      req.query.buffer && !isNaN(parseInt(req.query.buffer))
+        ? parseInt(req.query.buffer) * 1000
+        : 1;
 
-    where.push("ST_Intersects(ST_SetSRID(sources.rgeom, 4326), ST_SetSRID(ST_Buffer($" + (where.length + 1) + "::geography , $" + (where.length + 2) + ")::geometry, 4326))");
+    where.push(
+      "ST_Intersects(ST_SetSRID(sources.rgeom, 4326), ST_SetSRID(ST_Buffer($" +
+        (where.length + 1) +
+        "::geography , $" +
+        (where.length + 2) +
+        ")::geometry, 4326))",
+    );
 
     params.push("SRID=4326;" + decodeURI(req.query.shape), buffer);
   }
 
   // Remove any empty sources and etopo1
-  where.push("sources.rgeom IS NOT NULL")
-  where.push("sources.status_code = 'active'")
+  where.push("sources.rgeom IS NOT NULL");
+  where.push("sources.status_code = 'active'");
 
   var sql = `
   SELECT
@@ -54,7 +67,7 @@ module.exports = function(req, res, next, cb) {
     COALESCE(scale, '') scale,
     features,
     area
-    ${api.acceptedFormats.geo[req.query.format] ? ', web_geom AS geom' : ''}
+    ${api.acceptedFormats.geo[req.query.format] ? ", web_geom AS geom" : ""}
   FROM maps.sources
   JOIN (values
     ('tiny', 0),
@@ -62,53 +75,77 @@ module.exports = function(req, res, next, cb) {
     ('medium', 2),
     ('large', 3)
    ) ord (s, ordering) ON sources.scale = ord.s
-   ${(where.length) ? (" WHERE " + where.join(" AND ")) : ""}
+   ${where.length ? " WHERE " + where.join(" AND ") : ""}
    ORDER BY ordering, new_priority
-   ${('sample' in req.query) ? 'LIMIT 5': ''}
-  `
-  larkin.queryPg(credentials.pg_macrostrat_database, sql, params, function(error, result) {
-    if (error) {
-      if (cb) {
-        return cb(error);
-      } else {
-        return larkin.error(req, res, next, error);
-      }
-    } else {
-      if (req.query.format && api.acceptedFormats.geo[req.query.format]) {
-        dbgeo.parse(result.rows, {
-          "outputFormat": larkin.getOutputFormat(req.query.format),
-          "precision": 5
-        }, function(error, geojson) {
-          if (error) {
-            larkin.error(req, res, next, error);
-          } else {
-            if (cb) {
-              cb(null, geojson);
-            } else {
-              larkin.sendData(req, res, next, {
-                format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
-                bare: (api.acceptedFormats.bare[req.query.format]) ? true : false
-              }, {
-                data: geojson
-              });
-            }
-
-          }
-        });
-      } else {
+   ${"sample" in req.query ? "LIMIT 5" : ""}
+  `;
+  larkin.queryPg(
+    credentials.pg_macrostrat_database,
+    sql,
+    params,
+    function (error, result) {
+      if (error) {
         if (cb) {
-          cb(null, result.rows);
+          return cb(error);
         } else {
-          larkin.sendData(req, res, next, {
-            format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
-            bare: (api.acceptedFormats.bare[req.query.format]) ? true : false
-          }, {
-            data: result.rows
-          });
+          return larkin.error(req, res, next, error);
         }
-
+      } else {
+        if (req.query.format && api.acceptedFormats.geo[req.query.format]) {
+          dbgeo.parse(
+            result.rows,
+            {
+              outputFormat: larkin.getOutputFormat(req.query.format),
+              precision: 5,
+            },
+            function (error, geojson) {
+              if (error) {
+                larkin.error(req, res, next, error);
+              } else {
+                if (cb) {
+                  cb(null, geojson);
+                } else {
+                  larkin.sendData(
+                    req,
+                    res,
+                    next,
+                    {
+                      format: api.acceptedFormats.standard[req.query.format]
+                        ? req.query.format
+                        : "json",
+                      bare: api.acceptedFormats.bare[req.query.format]
+                        ? true
+                        : false,
+                    },
+                    {
+                      data: geojson,
+                    },
+                  );
+                }
+              }
+            },
+          );
+        } else {
+          if (cb) {
+            cb(null, result.rows);
+          } else {
+            larkin.sendData(
+              req,
+              res,
+              next,
+              {
+                format: api.acceptedFormats.standard[req.query.format]
+                  ? req.query.format
+                  : "json",
+                bare: api.acceptedFormats.bare[req.query.format] ? true : false,
+              },
+              {
+                data: result.rows,
+              },
+            );
+          }
+        }
       }
-
-    }
-  });
-}
+    },
+  );
+};

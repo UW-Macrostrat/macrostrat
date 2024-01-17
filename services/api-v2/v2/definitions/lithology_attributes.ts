@@ -1,13 +1,14 @@
 var api = require("../api"),
-    larkin = require("../larkin");
+  larkin = require("../larkin");
 
-module.exports = function(req, res, next, cb) {
+module.exports = function (req, res, next, cb) {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
 
-  var sql = "SELECT lith_atts.id AS lith_att_id, lith_att AS name, att_type AS type, COUNT(DISTINCT unit_liths.unit_id) AS t_units FROM lith_atts LEFT JOIN unit_liths_atts ON unit_liths_atts.lith_att_id = lith_atts.id LEFT JOIN unit_liths ON unit_liths_atts.unit_lith_id = unit_liths.id ",
-      params = {};
+  var sql =
+      "SELECT lith_atts.id AS lith_att_id, lith_att AS name, att_type AS type, COUNT(DISTINCT unit_liths.unit_id) AS t_units FROM lith_atts LEFT JOIN unit_liths_atts ON unit_liths_atts.lith_att_id = lith_atts.id LEFT JOIN unit_liths ON unit_liths_atts.unit_lith_id = unit_liths.id ",
+    params = {};
 
   if (req.query.att_type) {
     sql += " WHERE att_type = :att_type";
@@ -26,25 +27,32 @@ module.exports = function(req, res, next, cb) {
     sql += " LIMIT 5";
   }
 
-  larkin.query(sql, params, function(error, data) {
+  larkin.query(sql, params, function (error, data) {
     if (error) {
       if (cb) {
         cb(error);
       } else {
         return larkin.error(req, res, next, error);
       }
-
     } else {
       if (cb) {
         cb(null, data);
       } else {
-        larkin.sendData(req, res, next, {
-          format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
-          bare: (api.acceptedFormats.bare[req.query.format]) ? true : false
-        }, {
-          data: data
-        });
+        larkin.sendData(
+          req,
+          res,
+          next,
+          {
+            format: api.acceptedFormats.standard[req.query.format]
+              ? req.query.format
+              : "json",
+            bare: api.acceptedFormats.bare[req.query.format] ? true : false,
+          },
+          {
+            data: data,
+          },
+        );
       }
     }
   });
-}
+};

@@ -1,4 +1,10 @@
-const { mysql, pg, redis, cacheRefreshKey, postgresDatabases = {} } = require("../credentials.ts");
+const {
+  mysql,
+  pg,
+  redis,
+  cacheRefreshKey,
+  postgresDatabases = {},
+} = require("../credentials.ts");
 
 exports.mysql = mysql;
 
@@ -8,4 +14,4 @@ exports.redis = redis;
 // Generate a hash by running: node -e "console.log(require('uuid/v4')())"
 exports.cacheRefreshKey = cacheRefreshKey;
 
-exports.postgresDatabases = postgresDatabases
+exports.postgresDatabases = postgresDatabases;

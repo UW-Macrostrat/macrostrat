@@ -1,10 +1,9 @@
 var sizeOf = require("image-size");
 
 module.exports = {
-
-  aSuccessfulRequest: function(res) {
+  aSuccessfulRequest: function (res) {
     if (res.statusCode !== 200) {
-      console.log(res.statusCode)
+      console.log(res.statusCode);
       throw new Error("Bad status code");
     }
     if (res.headers["access-control-allow-origin"] !== "*") {
@@ -12,8 +11,7 @@ module.exports = {
     }
   },
 
-
-  metadata: function(res) {
+  metadata: function (res) {
     // Make sure all the key metadata sections exist
     if (!res.body.success.description) {
       throw new Error("Route description missing");
@@ -63,7 +61,7 @@ module.exports = {
     }
   },
 
-  aSample: function(res) {
+  aSample: function (res) {
     // Make sure 5 records were returned
     if (res.body.success.data.type) {
       if (res.body.success.data.features.length !== 5) {
@@ -76,37 +74,42 @@ module.exports = {
     }
   },
 
-  geoJSON: function(res) {
+  geoJSON: function (res) {
     if (res.body.success.data.type !== "FeatureCollection") {
       throw new Error("GeoJSON was not returned");
     }
 
-    res.body.success.data.features.forEach(function(d) {
-      if (!d.geometry || !d.geometry.coordinates || !d.geometry.coordinates.length || !d.properties) {
+    res.body.success.data.features.forEach(function (d) {
+      if (
+        !d.geometry ||
+        !d.geometry.coordinates ||
+        !d.geometry.coordinates.length ||
+        !d.properties
+      ) {
         throw new Error("GeoJSON was malformed", d);
       }
     });
   },
 
-  topoJSON: function(res) {
-    if(res.body.success.data.type !== "Topology") {
+  topoJSON: function (res) {
+    if (res.body.success.data.type !== "Topology") {
       throw new Error("TopoJSON was not returned");
     }
   },
 
-  json: function(res) {
+  json: function (res) {
     if (!res.body.success && !res.body.error) {
       throw new Error("Request did not return valid JSON");
     }
   },
 
-  csv: function(res) {
+  csv: function (res) {
     if (res.body.length < 10) {
       throw new Error("No CSV output recieved");
     }
   },
 
-  tile: function(res) {
+  tile: function (res) {
     if (res.headers["content-type"] != "image/png") {
       throw new Error("Wrong content-type header on tile");
     }
@@ -119,9 +122,9 @@ module.exports = {
     }
   },
 
-  atLeastOneResult: function(res) {
+  atLeastOneResult: function (res) {
     if (res.body.success.data.length < 1) {
       throw new Error("Should have returned at least one result");
     }
-  }
-}
+  },
+};

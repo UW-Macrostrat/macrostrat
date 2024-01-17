@@ -11,6 +11,7 @@
 
 ## Debugging with VS Code
 
-- Added [VSCode debugger configuration](https://code.visualstudio.com/docs/nodejs/nodejs-debugging)
+- Added
+  [VSCode debugger configuration](https://code.visualstudio.com/docs/nodejs/nodejs-debugging)
 - Enable 'Auto attach' in the VSCode configuration
-- Run `npm start` *in VS Code's integrated terminal*.
+- Run `npm start` _in VS Code's integrated terminal_.

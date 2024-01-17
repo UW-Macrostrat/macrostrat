@@ -1,17 +1,19 @@
-'use strict'
-const api = require('./api')
-const larkin = require('./larkin')
+"use strict";
+const api = require("./api");
+const larkin = require("./larkin");
 
 module.exports = (req, res, next, cb) => {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
-  if ((req.query.lat && req.query.lng) || 'sample' in req.query) {
-    let lat = req.query.lat || 43.07
-    let lng = larkin.normalizeLng(req.query.lng) || -89.4
-    let point = `POINT(${lng} ${lat})`
+  if ((req.query.lat && req.query.lng) || "sample" in req.query) {
+    let lat = req.query.lat || 43.07;
+    let lng = larkin.normalizeLng(req.query.lng) || -89.4;
+    let point = `POINT(${lng} ${lat})`;
 
-    larkin.queryPg('elevation', `
+    larkin.queryPg(
+      "elevation",
+      `
       WITH first AS (
           SELECT ST_Value(rast, 1, ST_GeomFromText($1, 4326)) AS elevation, 1 as priority
           FROM sources.srtm1
@@ -26,32 +28,61 @@ module.exports = (req, res, next, cb) => {
       WHERE elevation IS NOT NULL
       ORDER BY priority ASC
       LIMIT 1
-    `, [ point ], (error, result) => {
-      if (error) {
-        if (cb) return cb(error)
-        return larkin.error(req, res, next, 'Error fetching elevation data')
-      }
-      if (cb) return cb(null, result.rows)
-      larkin.sendData(req, res, next, {
-        format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : 'json',
-        compact: true
-      }, {
-        data: result.rows
-      })
-    })
+    `,
+      [point],
+      (error, result) => {
+        if (error) {
+          if (cb) return cb(error);
+          return larkin.error(req, res, next, "Error fetching elevation data");
+        }
+        if (cb) return cb(null, result.rows);
+        larkin.sendData(
+          req,
+          res,
+          next,
+          {
+            format: api.acceptedFormats.standard[req.query.format]
+              ? req.query.format
+              : "json",
+            compact: true,
+          },
+          {
+            data: result.rows,
+          },
+        );
+      },
+    );
+  } else if (
+    req.query.start_lng &&
+    req.query.start_lat &&
+    req.query.end_lng &&
+    req.query.end_lat
+  ) {
+    req.query.start_lng = larkin.normalizeLng(req.query.start_lng);
+    req.query.end_lng = larkin.normalizeLng(req.query.end_lng);
 
-  } else if (req.query.start_lng && req.query.start_lat && req.query.end_lng && req.query.end_lat) {
-    req.query.start_lng = larkin.normalizeLng(req.query.start_lng)
-    req.query.end_lng = larkin.normalizeLng(req.query.end_lng)
+    let leftLng =
+      req.query.start_lng < req.query.end_lng
+        ? req.query.start_lng
+        : req.query.end_lng;
+    let leftLat =
+      req.query.start_lng < req.query.end_lng
+        ? req.query.start_lat
+        : req.query.end_lat;
+    let rightLng =
+      req.query.start_lng < req.query.end_lng
+        ? req.query.end_lng
+        : req.query.start_lng;
+    let rightLat =
+      req.query.start_lng < req.query.end_lng
+        ? req.query.end_lat
+        : req.query.start_lat;
+    let linestring = `SRID=4326;LINESTRING(${leftLng} ${leftLat}, ${rightLng} ${rightLat})`;
+    let westPoint = `SRID=4326;POINT(${leftLng} ${leftLat})`;
 
-    let leftLng = (req.query.start_lng < req.query.end_lng) ? req.query.start_lng : req.query.end_lng
-    let leftLat = (req.query.start_lng < req.query.end_lng) ? req.query.start_lat : req.query.end_lat
-    let rightLng = (req.query.start_lng < req.query.end_lng) ? req.query.end_lng : req.query.start_lng
-    let rightLat = (req.query.start_lng < req.query.end_lng) ? req.query.end_lat : req.query.start_lat
-    let linestring = `SRID=4326;LINESTRING(${leftLng} ${leftLat}, ${rightLng} ${rightLat})`
-    let westPoint = `SRID=4326;POINT(${leftLng} ${leftLat})`
-
-    larkin.queryPg('elevation', `
+    larkin.queryPg(
+      "elevation",
+      `
       WITH first AS (
         SELECT ST_SetSRID((ST_Dump(
         ST_LocateAlong(
@@ -82,20 +113,31 @@ module.exports = (req, res, next, cb) => {
           LIMIT 1
         ) AS elevation
       FROM first
-    `, [linestring, westPoint], (error, result) => {
-      if (error) {
-        if (cb) return cb(error)
-        return larkin.error(req, res, next, 'Internal error', 500)
-      }
-      if (cb) return cb(null, result.rows)
-      larkin.sendData(req, res, next, {
-        format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : 'json',
-        compact: true
-      }, {
-        data: result.rows
-      })
-    })
+    `,
+      [linestring, westPoint],
+      (error, result) => {
+        if (error) {
+          if (cb) return cb(error);
+          return larkin.error(req, res, next, "Internal error", 500);
+        }
+        if (cb) return cb(null, result.rows);
+        larkin.sendData(
+          req,
+          res,
+          next,
+          {
+            format: api.acceptedFormats.standard[req.query.format]
+              ? req.query.format
+              : "json",
+            compact: true,
+          },
+          {
+            data: result.rows,
+          },
+        );
+      },
+    );
   } else {
-    return larkin.error(req, res, next, 'Invalid Parameters', 401)
+    return larkin.error(req, res, next, "Invalid Parameters", 401);
   }
-}
+};

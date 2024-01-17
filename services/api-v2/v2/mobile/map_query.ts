@@ -1,155 +1,213 @@
-var api = require('../api')
-var async = require('async')
-var larkin = require('../larkin')
-var _ = require('underscore')
+var api = require("../api");
+var async = require("async");
+var larkin = require("../larkin");
+var _ = require("underscore");
 
-var LINE_TOLERANCE  = 20
+var LINE_TOLERANCE = 20;
 
 var scaleLookup = {
-  0: 'tiny',
-  1: 'tiny',
-  2: 'tiny',
-  3: 'tiny',
-  4: 'small',
-  5: 'small',
-  6: 'medium',
-  7: 'medium',
-  8: 'medium',
-  9: 'medium',
-  10: 'large',
-  11: 'large',
-  12: 'large',
-  13: 'large',
-  14: 'large',
-  15: 'large',
-  16: 'large',
-  17: 'large',
-  18: 'large',
-  19: 'large',
-  20: 'large',
-  21: 'large',
-  22: 'large',
-  23: 'large',
-  24: 'large'
-}
+  0: "tiny",
+  1: "tiny",
+  2: "tiny",
+  3: "tiny",
+  4: "small",
+  5: "small",
+  6: "medium",
+  7: "medium",
+  8: "medium",
+  9: "medium",
+  10: "large",
+  11: "large",
+  12: "large",
+  13: "large",
+  14: "large",
+  15: "large",
+  16: "large",
+  17: "large",
+  18: "large",
+  19: "large",
+  20: "large",
+  21: "large",
+  22: "large",
+  23: "large",
+  24: "large",
+};
 // Determine a priority order for each scale
 var priorities = {
-  'tiny': ['tiny'],
-  'small': ['small', 'tiny'],
-  'medium': ['medium', 'small', 'tiny'],
-  'large': ['large', 'medium', 'small', 'tiny']
-}
+  tiny: ["tiny"],
+  small: ["small", "tiny"],
+  medium: ["medium", "small", "tiny"],
+  large: ["large", "medium", "small", "tiny"],
+};
 const scaleIsIn = {
-  'tiny': ['tiny'],
-  'small': ['small', 'tiny'],
-  'medium': ['medium', 'small'],
-  'large': ['medium', 'large']
-}
+  tiny: ["tiny"],
+  small: ["small", "tiny"],
+  medium: ["medium", "small"],
+  large: ["medium", "large"],
+};
 
 // https://msdn.microsoft.com/en-us/library/bb259689.aspx
 // Calcucate m/px given a latitude and a zoom level
 function tolerance(lat, z) {
-  return (Math.cos(lat * Math.PI/180) * 2 * Math.PI * 6378137) / (256 * Math.pow(2, z))
+  return (
+    (Math.cos((lat * Math.PI) / 180) * 2 * Math.PI * 6378137) /
+    (256 * Math.pow(2, z))
+  );
 }
 
 function getBestFit(z, data) {
-  var currentScale = scaleLookup[z]
-  var returnedScales = _.uniq(data.map(function(d) { return d.scale }))
+  var currentScale = scaleLookup[z];
+  var returnedScales = _.uniq(
+    data.map(function (d) {
+      return d.scale;
+    }),
+  );
 
-  var targetScales = []
+  var targetScales = [];
 
   // Iterate on possible scales given our z
   for (var i = 0; i < priorities[currentScale].length; i++) {
     // If that scale is present, record it
-     if (returnedScales.indexOf(priorities[currentScale][i]) > -1) {
-       targetScales.push(priorities[currentScale][i])
-       if (currentScale != 'tiny' && currentScale != 'small') {
-         break
-       } else if (targetScales.length > 1) {
-         break
-       }
-     }
-   }
+    if (returnedScales.indexOf(priorities[currentScale][i]) > -1) {
+      targetScales.push(priorities[currentScale][i]);
+      if (currentScale != "tiny" && currentScale != "small") {
+        break;
+      } else if (targetScales.length > 1) {
+        break;
+      }
+    }
+  }
 
-   var bestFit = data.filter(function(d) {
-     if (targetScales.indexOf(d.scale) > -1) {
-       delete d.scale
-       return d
-     }
-   })
+  var bestFit = data.filter(function (d) {
+    if (targetScales.indexOf(d.scale) > -1) {
+      delete d.scale;
+      return d;
+    }
+  });
 
-   return bestFit
+  return bestFit;
 }
 
 function summarizeUnits(units, callback) {
-  var stratNames = units.map(function(d) { return {
-    name: d.strat_name_long,
-    id: d.strat_name_id
-  }})
-  var recorded = {}
-  var filteredStratNames = stratNames.filter(function(d) {
+  var stratNames = units.map(function (d) {
+    return {
+      name: d.strat_name_long,
+      id: d.strat_name_id,
+    };
+  });
+  var recorded = {};
+  var filteredStratNames = stratNames.filter(function (d) {
     if (!recorded[d.id]) {
-      recorded[d.id] = d
-      return d
+      recorded[d.id] = d;
+      return d;
     }
-  })
+  });
 
   callback({
-    ids: units.map(function(d) { return d.unit_id }),
+    ids: units.map(function (d) {
+      return d.unit_id;
+    }),
     strat_names: filteredStratNames,
-    rank_names: _.uniq(units.map(function(d) { return d.strat_name_long })).join(', '),
-    max_thick: _.reduce(units.map(function(d) { return d.max_thick}), function(a, b) { return a + b}, 0),
-    max_min_thick: _.reduce(units.map(function(d) {
-      if (d.min_thick === 0) {
-        return d.max_thick
-      } else {
-        return d.min_thick
-      }
-    }) , function(a, b) { return a + b}, 0),
-    min_min_thick: _.reduce(units.map(function(d) { return d.min_thick}) , function(a, b) { return a + b}, 0),
+    rank_names: _.uniq(
+      units.map(function (d) {
+        return d.strat_name_long;
+      }),
+    ).join(", "),
+    max_thick: _.reduce(
+      units.map(function (d) {
+        return d.max_thick;
+      }),
+      function (a, b) {
+        return a + b;
+      },
+      0,
+    ),
+    max_min_thick: _.reduce(
+      units.map(function (d) {
+        if (d.min_thick === 0) {
+          return d.max_thick;
+        } else {
+          return d.min_thick;
+        }
+      }),
+      function (a, b) {
+        return a + b;
+      },
+      0,
+    ),
+    min_min_thick: _.reduce(
+      units.map(function (d) {
+        return d.min_thick;
+      }),
+      function (a, b) {
+        return a + b;
+      },
+      0,
+    ),
 
-    b_age: _.max(units, function(d) { return d.b_age }).b_age,
-    t_age: _.min(units, function(d) { return d.t_age }).t_age,
-    b_int_name: _.max(units, function(d) { return d.b_age }).b_int_name,
-    t_int_name: _.min(units, function(d) { return d.t_age }).t_int_name,
+    b_age: _.max(units, function (d) {
+      return d.b_age;
+    }).b_age,
+    t_age: _.min(units, function (d) {
+      return d.t_age;
+    }).t_age,
+    b_int_name: _.max(units, function (d) {
+      return d.b_age;
+    }).b_int_name,
+    t_int_name: _.min(units, function (d) {
+      return d.t_age;
+    }).t_int_name,
 
-    pbdb_collections: _.reduce(units.map(function(d) { return d.pbdb_collections }), function(a, b) { return a + b}, 0),
-    lith: larkin.summarizeAttribute(units, 'lith'),
-    environ: larkin.summarizeAttribute(units, 'environ'),
-    econ: larkin.summarizeAttribute(units, 'econ'),
-    uniqueIntervals: (function() {
+    pbdb_collections: _.reduce(
+      units.map(function (d) {
+        return d.pbdb_collections;
+      }),
+      function (a, b) {
+        return a + b;
+      },
+      0,
+    ),
+    lith: larkin.summarizeAttribute(units, "lith"),
+    environ: larkin.summarizeAttribute(units, "environ"),
+    econ: larkin.summarizeAttribute(units, "econ"),
+    uniqueIntervals: (function () {
       var min_age = 9999,
-          min_age_interval = '',
-          max_age = -1,
-          max_age_interval = ''
+        min_age_interval = "",
+        max_age = -1,
+        max_age_interval = "";
 
-      units.forEach(function(d, i) {
+      units.forEach(function (d, i) {
         if (d.t_age < min_age) {
-          min_age = d.t_age
-          min_age_interval = d.t_int_name
+          min_age = d.t_age;
+          min_age_interval = d.t_int_name;
         }
         if (d.b_age > max_age) {
-          max_age = d.b_age
-          max_age_interval = d.b_int_name
+          max_age = d.b_age;
+          max_age_interval = d.b_int_name;
         }
-      })
-      return (max_age_interval === min_age_interval) ? min_age_interval : max_age_interval + ' - ' + min_age_interval
-    })()
-  })
+      });
+      return max_age_interval === min_age_interval
+        ? min_age_interval
+        : max_age_interval + " - " + min_age_interval;
+    })(),
+  });
 }
 
-
 function buildSQL(scale, where) {
-  let scaleJoin = scaleIsIn[scale].map(s => {
-    return `
+  let scaleJoin = scaleIsIn[scale]
+    .map((s) => {
+      return `
     SELECT * FROM maps.${s}
-    `
-  }).join(' UNION ALL ')
-  let lookupJoin = scaleIsIn[scale].map(s => {
-    return `
+    `;
+    })
+    .join(" UNION ALL ");
+  let lookupJoin = scaleIsIn[scale]
+    .map((s) => {
+      return `
     SELECT * FROM lookup_${s}
-    `
-  }).join(' UNION ALL ')
+    `;
+    })
+    .join(" UNION ALL ");
 
   return `
     SELECT
@@ -191,42 +249,53 @@ function buildSQL(scale, where) {
       LEFT JOIN macrostrat.intervals tb ON m.b_interval = tb.id
       ${where}
       ORDER BY sources.new_priority DESC
-  `
+  `;
 }
-
 
 // Accepts a longitude, a latitude, and a zoom level
 // Returns the proper burwell data and macrostrat data
-module.exports = function(req, res, next) {
+module.exports = function (req, res, next) {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
-  if ((!req.query.lng || !req.query.lat || !req.query.z) && !req.query.hasOwnProperty('sample')) {
-    return larkin.error(req, res, next, 'You are missing a required parameter', 400)
+  if (
+    (!req.query.lng || !req.query.lat || !req.query.z) &&
+    !req.query.hasOwnProperty("sample")
+  ) {
+    return larkin.error(
+      req,
+      res,
+      next,
+      "You are missing a required parameter",
+      400,
+    );
   }
 
-  if ('sample' in req.query) {
-    req.query.lng = -89.3
-    req.query.lat = 43.03
-    req.query.z = 10
+  if ("sample" in req.query) {
+    req.query.lng = -89.3;
+    req.query.lat = 43.03;
+    req.query.z = 10;
   }
 
-  req.query.lng = larkin.normalizeLng(req.query.lng)
-  req.query.z = parseInt(req.query.z || 0)
+  req.query.lng = larkin.normalizeLng(req.query.lng);
+  req.query.z = parseInt(req.query.z || 0);
 
-  async.parallel({
-    elevation: function(cb) {
-      require('../elevation')(req, null, null, function(error, data) {
-        if (data && data.length) {
-          cb(null, data[0].elevation)
-        } else {
-          cb(null, null)
-        }
-      })
-    },
-    lines: function(cb) {
-      var scale = scaleLookup[req.query.z]
-      larkin.queryPg('burwell', `
+  async.parallel(
+    {
+      elevation: function (cb) {
+        require("../elevation")(req, null, null, function (error, data) {
+          if (data && data.length) {
+            cb(null, data[0].elevation);
+          } else {
+            cb(null, null);
+          }
+        });
+      },
+      lines: function (cb) {
+        var scale = scaleLookup[req.query.z];
+        larkin.queryPg(
+          "burwell",
+          `
         SELECT
           m.line_id,
           COALESCE(s.name, '') AS name,
@@ -260,140 +329,187 @@ module.exports = function(req, res, next) {
         WHERE sources.status_code = 'active'
         ORDER BY m.geom <-> $1
         LIMIT 1
-      `, [`SRID=4326;POINT(${req.query.lng} ${req.query.lat})`], function(error, result) {
-        if (error) return cb(error);
+      `,
+          [`SRID=4326;POINT(${req.query.lng} ${req.query.lat})`],
+          function (error, result) {
+            if (error) return cb(error);
 
-        var bestFit = (result.rows && result.rows.length) ? result.rows[0] : {}
+            var bestFit =
+              result.rows && result.rows.length ? result.rows[0] : {};
 
-        // Verify that the best fit is within a clickable tolerance
-        if (bestFit.hasOwnProperty('distance') && bestFit.distance >= (tolerance(req.query.lat, req.query.z) * 20 )) {
-          bestFit = {}
+            // Verify that the best fit is within a clickable tolerance
+            if (
+              bestFit.hasOwnProperty("distance") &&
+              bestFit.distance >= tolerance(req.query.lat, req.query.z) * 20
+            ) {
+              bestFit = {};
+            }
+
+            if (bestFit.hasOwnProperty("distance")) {
+              delete bestFit.distance;
+            }
+
+            cb(null, bestFit);
+          },
+        );
+      },
+      burwell: function (cb) {
+        var where = [];
+        var params = [];
+        where.push(
+          "ST_Intersects(y.geom, ST_GeomFromText($" +
+            (where.length + 1) +
+            ", 4326))",
+        );
+        params.push(`SRID=4326;POINT(${req.query.lng} ${req.query.lat})`);
+
+        // If no valid parameters passed, return an Error
+        if (where.length < 1 && !("sample" in req.query)) {
+          return cb("No valid parameters passed");
         }
 
-        if (bestFit.hasOwnProperty('distance')) {
-          delete bestFit.distance
-        }
+        where.push(`sources.status_code = 'active'`);
 
-        cb(null, bestFit)
+        where = " WHERE " + where.join(" AND ");
 
-      })
+        let z = req.query.z || 10;
+        let sql = buildSQL(scaleLookup[z], where);
+
+        larkin.queryPg("burwell", sql, params, function (error, result) {
+          if (error) {
+            return cb(error);
+          } else {
+            var bestFit = result.rows[0] || {};
+            var macroUnits =
+              bestFit && bestFit.macro_units ? bestFit.macro_units : [];
+            var macroNames =
+              bestFit && bestFit.strat_names ? bestFit.strat_names : [];
+
+            if (macroUnits.length) {
+              require("../units")(
+                { query: { unit_id: macroUnits.join(",") } },
+                null,
+                null,
+                function (error, result) {
+                  if (error) console.log("Error fetching units", error);
+                  if (result && result.length) {
+                    // summarizeUnits
+                    summarizeUnits(result, function (summary) {
+                      if (macroNames.length) {
+                        require("../definitions/strat_names")(
+                          {
+                            query: {
+                              strat_name_id: macroNames.join(","),
+                            },
+                          },
+                          null,
+                          null,
+                          function (error, result) {
+                            if (error || !result || !result.length) {
+                              return cb(null, {
+                                burwell: bestFit,
+                                macrostrat: summary,
+                              });
+                            }
+                            summary.rank_names = _.uniq(
+                              result.map(function (d) {
+                                return d.strat_name_long;
+                              }),
+                            ).join(", ");
+                            summary.strat_names = result.map(function (d) {
+                              return {
+                                name: d.strat_name_long,
+                                id: d.strat_name_id,
+                              };
+                            });
+                            cb(null, {
+                              burwell: bestFit,
+                              macrostrat: summary,
+                            });
+                          },
+                        );
+                      } else {
+                        cb(null, {
+                          burwell: bestFit,
+                          macrostrat: summary,
+                        });
+                      }
+                    });
+                  } else {
+                    cb(null, {
+                      burwell: bestFit,
+                      macrostrat: {},
+                    });
+                  }
+                },
+              );
+            } else if (macroNames.length) {
+              require("../definitions/strat_names")(
+                {
+                  query: {
+                    strat_name_id: macroNames.join(","),
+                  },
+                },
+                null,
+                null,
+                function (error, result) {
+                  if (error || !result || !result.length) {
+                    console.log("Error fetching strat names ", error);
+                    return cb(null, {
+                      burwell: bestFit,
+                      macrostrat: {},
+                    });
+                  }
+                  cb(null, {
+                    burwell: bestFit,
+                    macrostrat: {
+                      rank_names: _.uniq(
+                        result.map(function (d) {
+                          return d.strat_name_long;
+                        }),
+                      ).join(", "),
+                      strat_names: result.map(function (d) {
+                        return {
+                          name: d.strat_name_long,
+                          id: d.strat_name_id,
+                        };
+                      }),
+                    },
+                  });
+                },
+              );
+            } else {
+              cb(null, {
+                burwell: bestFit,
+                macrostrat: {},
+              });
+            }
+          }
+        });
+      },
     },
-    burwell: function(cb) {
-      var where = []
-      var params = []
-      where.push('ST_Intersects(y.geom, ST_GeomFromText($' + (where.length + 1) + ', 4326))');
-      params.push(`SRID=4326;POINT(${req.query.lng} ${req.query.lat})`);
+    function (error, data) {
+      if (error) return larkin.error(req, res, next, error || null);
 
-      // If no valid parameters passed, return an Error
-      if (where.length < 1 && !('sample' in req.query)) {
-        return cb('No valid parameters passed')
-      }
-
-      where.push(`sources.status_code = 'active'`)
-
-      where = ' WHERE ' + where.join(' AND ')
-
-
-      let z = req.query.z || 10
-      let sql = buildSQL(scaleLookup[z], where)
-
-      larkin.queryPg('burwell', sql, params, function(error, result) {
-        if (error) {
-          return cb(error)
-        } else {
-
-           var bestFit = result.rows[0] || {}
-           var macroUnits = (bestFit && bestFit.macro_units) ? bestFit.macro_units : []
-           var macroNames = (bestFit && bestFit.strat_names) ? bestFit.strat_names : []
-
-           if (macroUnits.length) {
-             require('../units')({query: { unit_id: macroUnits.join(',') } }, null, null, function(error, result) {
-               if (error) console.log('Error fetching units', error);
-               if (result && result.length) {
-                 // summarizeUnits
-                 summarizeUnits(result, function(summary) {
-                   if (macroNames.length) {
-                     require('../definitions/strat_names')({
-                       query: {
-                         strat_name_id: macroNames.join(',')
-                       }
-                     }, null, null, function(error, result) {
-                       if (error || !result || !result.length) {
-                         return cb(null, {
-                           burwell: bestFit,
-                           macrostrat: summary
-                         })
-                       }
-                       summary.rank_names = _.uniq(result.map(function(d) { return d.strat_name_long })).join(', ')
-                       summary.strat_names = result.map(function(d) { return {
-                         name: d.strat_name_long,
-                         id: d.strat_name_id
-                       }})
-                       cb(null, {
-                         burwell: bestFit,
-                         macrostrat: summary
-                       })
-                     })
-                   } else {
-                     cb(null, {
-                       burwell: bestFit,
-                       macrostrat: summary
-                     })
-                   }
-                 })
-               } else {
-                 cb(null, {
-                   burwell: bestFit,
-                   macrostrat: {}
-                 })
-               }
-             })
-           } else if (macroNames.length) {
-             require('../definitions/strat_names')({
-               query: {
-                 strat_name_id: macroNames.join(',')
-               }
-             }, null, null, function(error, result) {
-               if (error || !result || !result.length) {
-                 console.log('Error fetching strat names ', error)
-                 return cb(null, {
-                   burwell: bestFit,
-                   macrostrat: {}
-                 })
-               }
-               cb(null, {
-                 burwell: bestFit,
-                 macrostrat: {
-                   rank_names: _.uniq(result.map(function(d) { return d.strat_name_long })).join(', '),
-                   strat_names: result.map(function(d) { return {
-                     name: d.strat_name_long,
-                     id: d.strat_name_id
-                   }})
-                 }
-               })
-             })
-           } else {
-             cb(null, {
-               burwell: bestFit,
-               macrostrat: {}
-             })
-           }
-        }
-      })
-    }
-  }, function(error, data) {
-    if (error) return larkin.error(req, res, next, error || null)
-
-    larkin.sendData(req, res, next, {
-      format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : 'json',
-      bare: (api.acceptedFormats.bare[req.query.format]) ? true : false
-    }, {
-      data: {
-        elevation: data.elevation,
-        burwell: [ data.burwell.burwell ],
-        macrostrat: data.burwell.macrostrat,
-        lines: data.lines
-      }
-    })
-  })
-}
+      larkin.sendData(
+        req,
+        res,
+        next,
+        {
+          format: api.acceptedFormats.standard[req.query.format]
+            ? req.query.format
+            : "json",
+          bare: api.acceptedFormats.bare[req.query.format] ? true : false,
+        },
+        {
+          data: {
+            elevation: data.elevation,
+            burwell: [data.burwell.burwell],
+            macrostrat: data.burwell.macrostrat,
+            lines: data.lines,
+          },
+        },
+      );
+    },
+  );
+};

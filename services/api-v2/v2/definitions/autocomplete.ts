@@ -10,16 +10,34 @@ LEFT JOIN intervals ON intervals.id = strat_names_meta.interval_id;
 
 */
 var api = require("../api"),
-    larkin = require("../larkin"),
-    _ = require("underscore");
+  larkin = require("../larkin"),
+  _ = require("underscore");
 
-module.exports = function(req, res, next) {
+module.exports = function (req, res, next) {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
 
-  var categories = ["columns", "econs", "econ_types", "econ_classes", "environments", "environment_types", "environment_classes", "groups", "intervals", "lithologies", "lithology_types", "lithology_classes", "lithology_attributes", "projects", "strat_name_concepts", "strat_name_orphans", "structures", "minerals"];
-
+  var categories = [
+    "columns",
+    "econs",
+    "econ_types",
+    "econ_classes",
+    "environments",
+    "environment_types",
+    "environment_classes",
+    "groups",
+    "intervals",
+    "lithologies",
+    "lithology_types",
+    "lithology_classes",
+    "lithology_attributes",
+    "projects",
+    "strat_name_concepts",
+    "strat_name_orphans",
+    "structures",
+    "minerals",
+  ];
 
   var types = [];
 
@@ -30,7 +48,6 @@ module.exports = function(req, res, next) {
         types.push(includes[i]);
       }
     }
-
   } else if (req.query.exclude) {
     var excludes = req.query.exclude.split(",");
     for (var j = 0; j < categories.length; j++) {
@@ -43,34 +60,44 @@ module.exports = function(req, res, next) {
   }
 
   if (req.query.query || "sample" in req.query) {
-    var limit = ("sample" in req.query) ? 100 : 100,
-        query = ("sample" in req.query) ? "ma%" : (req.query.query.toLowerCase() + "%");
+    var limit = "sample" in req.query ? 100 : 100,
+      query =
+        "sample" in req.query ? "ma%" : req.query.query.toLowerCase() + "%";
 
-    larkin.query("SELECT * FROM autocomplete WHERE name LIKE :query AND type IN (:types) LIMIT :limit", {"query": query, "types": types, "limit": limit}, function(error, result) {
-      if (error) {
-        larkin.error(req, res, next, error);
-      } else {
-        var parsed = _.groupBy(result, function(each) { return each.type });
-        var keys = Object.keys(parsed);
+    larkin.query(
+      "SELECT * FROM autocomplete WHERE name LIKE :query AND type IN (:types) LIMIT :limit",
+      { query: query, types: types, limit: limit },
+      function (error, result) {
+        if (error) {
+          larkin.error(req, res, next, error);
+        } else {
+          var parsed = _.groupBy(result, function (each) {
+            return each.type;
+          });
+          var keys = Object.keys(parsed);
 
-        for (var i = 0; i < keys.length; i++) {
-          for (var j = 0; j < parsed[keys[i]].length; j++) {
-            delete parsed[keys[i]][j].type;
+          for (var i = 0; i < keys.length; i++) {
+            for (var j = 0; j < parsed[keys[i]].length; j++) {
+              delete parsed[keys[i]][j].type;
+            }
           }
+
+          larkin.sendData(
+            req,
+            res,
+            next,
+            {
+              format: "json",
+              compact: true,
+            },
+            {
+              data: parsed,
+            },
+          );
         }
-
-        larkin.sendData(req, res, next, {
-          format: "json",
-          compact: true
-        }, {
-          data: parsed
-        });
-
-      }
-
-    });
+      },
+    );
   } else {
     return larkin.info(req, res, next);
   }
-
-}
+};

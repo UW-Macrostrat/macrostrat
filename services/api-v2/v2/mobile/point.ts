@@ -1,17 +1,17 @@
-'use strict'
+"use strict";
 
 var api = require("../api"),
-    async = require("async"),
-    larkin = require("../larkin");
+  async = require("async"),
+  larkin = require("../larkin");
 
-var _ = require("underscore")
+var _ = require("underscore");
 
 var priorities = {
-  'tiny': ['tiny', 'small', 'medium', 'large'],
-  'small': ['small', 'medium', 'large', 'tiny'],
-  'medium': ['medium', 'large', 'small', 'tiny'],
-  'large': ['large', 'medium', 'small', 'tiny']
-}
+  tiny: ["tiny", "small", "medium", "large"],
+  small: ["small", "medium", "large", "tiny"],
+  medium: ["medium", "large", "small", "tiny"],
+  large: ["large", "medium", "small", "tiny"],
+};
 
 function buildSQL(scale, where) {
   return `
@@ -44,96 +44,114 @@ function buildSQL(scale, where) {
       ${where}
       GROUP BY m.map_id
     )
-  `
+  `;
 }
 
-module.exports = function(req, res, next) {
+module.exports = function (req, res, next) {
   if (!req.query.lat || !req.query.lng) {
-    return larkin.info(req, res, next)
+    return larkin.info(req, res, next);
   }
 
-  async.parallel({
-    burwell: function(callback) {
-      let where = [`
+  async.parallel(
+    {
+      burwell: function (callback) {
+        let where = [
+          `
       ST_Intersects(m.geom, ST_GeomFromText($1, 4326))
-      `]
-      let params = [ `SRID=4326;POINT(${req.query.lng} ${req.query.lat})` ]
+      `,
+        ];
+        let params = [`SRID=4326;POINT(${req.query.lng} ${req.query.lat})`];
 
-      where = ' WHERE ' + where.join(' AND ')
+        where = " WHERE " + where.join(" AND ");
 
-      var scaleSQL = Object.keys(priorities).map(function(scale) {
-        return buildSQL(scale, where);
-      }).join(' UNION ');
+        var scaleSQL = Object.keys(priorities)
+          .map(function (scale) {
+            return buildSQL(scale, where);
+          })
+          .join(" UNION ");
 
-      var toRun = `SELECT * FROM ( ${scaleSQL} ) doit`;
+        var toRun = `SELECT * FROM ( ${scaleSQL} ) doit`;
 
-      larkin.queryPg("burwell", toRun, params, function(error, result) {
-        if (error || !result.rows || !result.rows.length) {
-          return callback(null, {})
-        }
+        larkin.queryPg("burwell", toRun, params, function (error, result) {
+          if (error || !result.rows || !result.rows.length) {
+            return callback(null, {});
+          }
 
-        var currentScale = "large"
-        var returnedScales = _.uniq(result.rows.map(function(d) { return d.scale }))
+          var currentScale = "large";
+          var returnedScales = _.uniq(
+            result.rows.map(function (d) {
+              return d.scale;
+            }),
+          );
 
-        var targetScales = []
+          var targetScales = [];
 
-        // Iterate on possible scales given our z
-        for (var i = 0; i < priorities[currentScale].length; i++) {
-          // If that scale is present, record it
-           if (returnedScales.indexOf(priorities[currentScale][i]) > -1) {
-             targetScales.push(priorities[currentScale][i])
-             if (currentScale != 'tiny' && currentScale != 'small') {
-               break
-             } else if (targetScales.length > 1) {
-               break
-             }
-           }
-         }
+          // Iterate on possible scales given our z
+          for (var i = 0; i < priorities[currentScale].length; i++) {
+            // If that scale is present, record it
+            if (returnedScales.indexOf(priorities[currentScale][i]) > -1) {
+              targetScales.push(priorities[currentScale][i]);
+              if (currentScale != "tiny" && currentScale != "small") {
+                break;
+              } else if (targetScales.length > 1) {
+                break;
+              }
+            }
+          }
 
-         var bestFit = result.rows.filter(function(d) {
-           if (targetScales.indexOf(d.scale) > -1) {
-             delete d.scale
-             return d
-           }
-         })[0]
-         callback(null, bestFit)
-      })
+          var bestFit = result.rows.filter(function (d) {
+            if (targetScales.indexOf(d.scale) > -1) {
+              delete d.scale;
+              return d;
+            }
+          })[0];
+          callback(null, bestFit);
+        });
+      },
+
+      // Query Macrostrat for polygon
+      column: function (callback) {
+        require("../columns")(req, null, null, (error, result) => {
+          if (error) return callback(error);
+
+          if (!result || !result.length) return callback(null, null);
+
+          callback(null, result[0].col_id);
+        });
+      },
     },
+    function (error, result) {
+      if (error) {
+        larkin.error(req, res, next, error);
+      } else {
+        var response = {
+          uid: result.burwell.map_id || "",
+          rocktype: result.burwell.liths_full || [],
+          age: result.burwell.age || "",
+          name: result.burwell.name || "",
+          desc: result.burwell.descrip || "",
+          comm: result.burwell.comments || "",
+          strat_unit: result.burwell.strat_name || "",
+          map_ref: result.burwell.ref || {},
+          col_id: result.column || "",
+        };
 
-    // Query Macrostrat for polygon
-    column: function(callback) {
-      require('../columns')(req, null, null, (error, result) => {
-        if (error) return callback(error)
-
-        if (!result || !result.length) return callback(null, null)
-
-        callback(null, result[0].col_id)
-      })
-    }
-
-  }, function(error, result) {
-    if (error) {
-      larkin.error(req, res, next, error);
-    } else {
-      var response = {
-        "uid": result.burwell.map_id || "",
-        "rocktype": result.burwell.liths_full || [],
-        "age": result.burwell.age || "",
-        "name": result.burwell.name || "",
-        "desc": result.burwell.descrip || "",
-        "comm": result.burwell.comments || "",
-        "strat_unit": result.burwell.strat_name || "",
-        "map_ref": result.burwell.ref || {},
-        "col_id": result.column || "",
-      };
-
-      larkin.sendData(req, res, next, {
-        format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
-        bare: (api.acceptedFormats.bare[req.query.format]) ? true : false,
-        compact: true
-      }, {
-        data: response
-      });
-    }
-  });
-}
+        larkin.sendData(
+          req,
+          res,
+          next,
+          {
+            format: api.acceptedFormats.standard[req.query.format]
+              ? req.query.format
+              : "json",
+            bare: api.acceptedFormats.bare[req.query.format] ? true : false,
+            compact: true,
+          },
+          {
+            data: response,
+          },
+        );
+      }
+    },
+  );
+};

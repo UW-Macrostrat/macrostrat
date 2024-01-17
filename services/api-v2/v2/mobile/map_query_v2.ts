@@ -1,60 +1,65 @@
-const api = require('../api')
-const async = require('async')
-const larkin = require('../larkin')
-const _ = require('underscore')
+const api = require("../api");
+const async = require("async");
+const larkin = require("../larkin");
+const _ = require("underscore");
 
-const LINE_TOLERANCE  = 20
+const LINE_TOLERANCE = 20;
 
 const scaleLookup = {
-  0: 'tiny',
-  1: 'tiny',
-  2: 'tiny',
-  3: 'small',
-  4: 'small',
-  5: 'small',
-  6: 'medium',
-  7: 'medium',
-  8: 'medium',
-  9: 'large',
-  10: 'large',
-  11: 'large',
-  12: 'large',
-  13: 'large',
-  14: 'large',
-  15: 'large',
-  16: 'large',
-  17: 'large',
-  18: 'large',
-  19: 'large',
-  20: 'large',
-  21: 'large',
-  22: 'large',
-  23: 'large',
-  24: 'large'
-}
+  0: "tiny",
+  1: "tiny",
+  2: "tiny",
+  3: "small",
+  4: "small",
+  5: "small",
+  6: "medium",
+  7: "medium",
+  8: "medium",
+  9: "large",
+  10: "large",
+  11: "large",
+  12: "large",
+  13: "large",
+  14: "large",
+  15: "large",
+  16: "large",
+  17: "large",
+  18: "large",
+  19: "large",
+  20: "large",
+  21: "large",
+  22: "large",
+  23: "large",
+  24: "large",
+};
 // Determine a priority order for each scale
 const priorities = {
-  'tiny': ['tiny'],
-  'small': ['small', 'tiny'],
-  'medium': ['medium', 'small', 'tiny'],
-  'large': ['large', 'medium', 'small', 'tiny']
-}
+  tiny: ["tiny"],
+  small: ["small", "tiny"],
+  medium: ["medium", "small", "tiny"],
+  large: ["large", "medium", "small", "tiny"],
+};
 
 const scaleIsIn = {
-  'tiny': ['tiny'],
-  'small': ['small', 'tiny'],
-  'medium': ['medium', 'small'],
-  'large': ['medium', 'large']
-}
+  tiny: ["tiny"],
+  small: ["small", "tiny"],
+  medium: ["medium", "small"],
+  large: ["medium", "large"],
+};
 // https://msdn.microsoft.com/en-us/library/bb259689.aspx
 // Calcucate m/px given a latitude and a zoom level
 function tolerance(lat, z) {
-  return (Math.cos(lat * Math.PI/180) * 2 * Math.PI * 6378137) / (256 * Math.pow(2, z))
+  return (
+    (Math.cos((lat * Math.PI) / 180) * 2 * Math.PI * 6378137) /
+    (256 * Math.pow(2, z))
+  );
 }
 
 function getUnits(params, callback) {
-  let p = (params.unit_ids) ? params.unit_ids : params.strat_name_ids
-  larkin.queryPg('burwell', `
+  let p = params.unit_ids ? params.unit_ids : params.strat_name_ids;
+  larkin.queryPg(
+    "burwell",
+    `
     SELECT
       (
            SELECT json_agg(w) FROM (
@@ -131,52 +136,65 @@ function getUnits(params, callback) {
     LEFT JOIN macrostrat.lookup_units ON units.id = lookup_units.unit_id
     LEFT JOIN macrostrat.units_sections ON units.id = units_sections.unit_id
     LEFT JOIN macrostrat.cols ON units_sections.col_id = cols.id
-    WHERE ${params.unit_ids ? 'units.id' : 'lookup_strat_names.strat_name_id'} = ANY($1)
-  `, [p], (error, result) => {
-    if (error) return callback(error)
-    callback(null, result.rows)
-  })
+    WHERE ${params.unit_ids ? "units.id" : "lookup_strat_names.strat_name_id"} = ANY($1)
+  `,
+    [p],
+    (error, result) => {
+      if (error) return callback(error);
+      callback(null, result.rows);
+    },
+  );
 }
 function getBestFit(z, data) {
-  var currentScale = scaleLookup[z]
-  let returnedScales = [...new Set(result.map(d => { return d.scale }))]
+  var currentScale = scaleLookup[z];
+  let returnedScales = [
+    ...new Set(
+      result.map((d) => {
+        return d.scale;
+      }),
+    ),
+  ];
 
-  var targetScales = []
+  var targetScales = [];
 
   // Iterate on possible scales given our z
   for (var i = 0; i < priorities[currentScale].length; i++) {
     // If that scale is present, record it
-     if (returnedScales.indexOf(priorities[currentScale][i]) > -1) {
-       targetScales.push(priorities[currentScale][i])
-       if (currentScale != 'tiny' && currentScale != 'small') {
-         break
-       } else if (targetScales.length > 1) {
-         break
-       }
-     }
-   }
+    if (returnedScales.indexOf(priorities[currentScale][i]) > -1) {
+      targetScales.push(priorities[currentScale][i]);
+      if (currentScale != "tiny" && currentScale != "small") {
+        break;
+      } else if (targetScales.length > 1) {
+        break;
+      }
+    }
+  }
 
-   var bestFit = data.filter(function(d) {
-     if (targetScales.indexOf(d.scale) > -1) {
-       delete d.scale
-       return d
-     }
-   })
+  var bestFit = data.filter(function (d) {
+    if (targetScales.indexOf(d.scale) > -1) {
+      delete d.scale;
+      return d;
+    }
+  });
 
-   return bestFit
+  return bestFit;
 }
 
 function buildSQL(scale, where) {
-  let scaleJoin = scaleIsIn[scale].map(s => {
-    return `
+  let scaleJoin = scaleIsIn[scale]
+    .map((s) => {
+      return `
     SELECT * FROM maps.${s}
-    `
-  }).join(' UNION ALL ')
-  let lookupJoin = scaleIsIn[scale].map(s => {
-    return `
+    `;
+    })
+    .join(" UNION ALL ");
+  let lookupJoin = scaleIsIn[scale]
+    .map((s) => {
+      return `
     SELECT * FROM lookup_${s}
-    `
-  }).join(' UNION ALL ')
+    `;
+    })
+    .join(" UNION ALL ");
 
   return `
     SELECT
@@ -240,16 +258,18 @@ function buildSQL(scale, where) {
     ) mm ON mm.map_id = m.map_id
     ${where}
     ORDER BY sources.new_priority DESC
-  `
+  `;
 }
 
 function buildLineSQL(scale) {
-  scale = scale || 'tiny'
-  let scaleJoin = scaleIsIn[scale].map(s => {
-    return `
+  scale = scale || "tiny";
+  let scaleJoin = scaleIsIn[scale]
+    .map((s) => {
+      return `
     SELECT * FROM lines.${s}
-    `
-  }).join(' UNION ALL ')
+    `;
+    })
+    .join(" UNION ALL ");
 
   return `
     SELECT
@@ -276,9 +296,8 @@ function buildLineSQL(scale) {
     ) bar
     JOIN ( ${scaleJoin} ) y ON y.line_id = bar.line_id
     WHERE row_number = 1
-  `
+  `;
 }
-
 
 // Accepts a longitude, a latitude, and a zoom level
 // Returns the proper burwell data and macrostrat data
@@ -287,60 +306,95 @@ module.exports = (req, res, next) => {
     return larkin.info(req, res, next);
   }
 
-  if ((!req.query.lng || !req.query.lat || !req.query.z) && !req.query.hasOwnProperty('sample')) {
-    return larkin.error(req, res, next, 'You are missing a required parameter', 400)
+  if (
+    (!req.query.lng || !req.query.lat || !req.query.z) &&
+    !req.query.hasOwnProperty("sample")
+  ) {
+    return larkin.error(
+      req,
+      res,
+      next,
+      "You are missing a required parameter",
+      400,
+    );
   }
 
-  if ('sample' in req.query) {
-    req.query.lng = -89.3
-    req.query.lat = 43.03
-    req.query.z = 10
+  if ("sample" in req.query) {
+    req.query.lng = -89.3;
+    req.query.lat = 43.03;
+    req.query.z = 10;
   }
 
-  req.query.lng = larkin.normalizeLng(req.query.lng)
-  req.query.z = parseInt(req.query.z || 0)
+  req.query.lng = larkin.normalizeLng(req.query.lng);
+  req.query.z = parseInt(req.query.z || 0);
 
-  async.parallel({
-    elevation: (cb) => {
-      require('../elevation')(req, null, null, (error, data) => {
-        if (data && data.length) {
-          cb(null, data[0].elevation)
-        } else {
-          cb(null, null)
-        }
-      })
-    },
+  async.parallel(
+    {
+      elevation: (cb) => {
+        require("../elevation")(req, null, null, (error, data) => {
+          if (data && data.length) {
+            cb(null, data[0].elevation);
+          } else {
+            cb(null, null);
+          }
+        });
+      },
 
-    lines: (cb) => {
-      larkin.queryPg('burwell', buildLineSQL(scaleLookup[req.query.z]), [ `SRID=4326;POINT(${req.query.lng} ${req.query.lat})` ], (error, result) => {
-        if (error) return cb(error)
-        result.rows = result.rows.filter(line => {
-           // Verify that the best fit is within a clickable tolerance
-           if (line.hasOwnProperty('distance') && line.distance <= (tolerance(req.query.lat, req.query.z) * 20 )) {
-             return line
-           }
-         }).map(line => {
-           delete line.distance
-           return line
-         })
+      lines: (cb) => {
+        larkin.queryPg(
+          "burwell",
+          buildLineSQL(scaleLookup[req.query.z]),
+          [`SRID=4326;POINT(${req.query.lng} ${req.query.lat})`],
+          (error, result) => {
+            if (error) return cb(error);
+            result.rows = result.rows
+              .filter((line) => {
+                // Verify that the best fit is within a clickable tolerance
+                if (
+                  line.hasOwnProperty("distance") &&
+                  line.distance <= tolerance(req.query.lat, req.query.z) * 20
+                ) {
+                  return line;
+                }
+              })
+              .map((line) => {
+                delete line.distance;
+                return line;
+              });
 
-         cb(null, result.rows)
-      })
-    },
+            cb(null, result.rows);
+          },
+        );
+      },
 
-    columns: (cb) => {
-      larkin.queryPg('burwell', `
+      columns: (cb) => {
+        larkin.queryPg(
+          "burwell",
+          `
         SELECT count(*) AS total_columns
         FROM macrostrat.cols
         WHERE poly_geom IS NOT NULL AND status_code = 'active' AND ST_Intersects(poly_geom, $1)
-      `, [ `SRID=4326;POINT(${req.query.lng} ${req.query.lat})` ], (error, result) => {
-        if (error) return cb(error)
-        cb(null, ((result && result.rows.length && result.rows[0].total_columns && result.rows[0].total_columns != 0) ? true : false))
-      })
-    },
+      `,
+          [`SRID=4326;POINT(${req.query.lng} ${req.query.lat})`],
+          (error, result) => {
+            if (error) return cb(error);
+            cb(
+              null,
+              result &&
+                result.rows.length &&
+                result.rows[0].total_columns &&
+                result.rows[0].total_columns != 0
+                ? true
+                : false,
+            );
+          },
+        );
+      },
 
-    regions: (cb) => {
-      larkin.queryPg('burwell', `
+      regions: (cb) => {
+        larkin.queryPg(
+          "burwell",
+          `
       SELECT sub.boundary_id, sub.name, sub.boundary_group, sub.boundary_type, sub.boundary_class, sub.descrip, sub.wiki_link,
         row_to_json(
           (SELECT x FROM (SELECT sources.source_id, sources.name, sources.url, sources.ref_title, sources.authors, sources.ref_year, sources.ref_source, COALESCE(sources.isbn_doi, '') AS isbn_doi) x)
@@ -362,98 +416,120 @@ module.exports = (req, res, next) => {
             ) sub
         JOIN geologic_boundaries.sources ON sub.source_id = sources.source_id
         WHERE rn = 1
-      `, [ `SRID=4326;POINT(${req.query.lng} ${req.query.lat})` ], (error, result) => {
-        if (error || !result || !result.rows) return cb(null, [])
-        cb(null, result.rows)
-      })
+      `,
+          [`SRID=4326;POINT(${req.query.lng} ${req.query.lat})`],
+          (error, result) => {
+            if (error || !result || !result.rows) return cb(null, []);
+            cb(null, result.rows);
+          },
+        );
+      },
+
+      burwell: (cb) => {
+        let where = [];
+        let params = [];
+
+        if (req.query.map_id) {
+          where = [`y.map_id = $1`];
+          params = [req.query.map_id];
+        } else if (req.query.legend_id) {
+          where = [`mm.legend_id = $1`];
+          params = [re.query.legend_id];
+        } else {
+          where = [`ST_Intersects(y.geom, ST_GeomFromText($1, 4326))`];
+          params = [`SRID=4326;POINT(${req.query.lng} ${req.query.lat})`];
+        }
+
+        // If no valid parameters passed, return an Error
+        if (where.length < 1 && !("sample" in req.query)) {
+          return cb("No valid parameters passed");
+        }
+
+        where = ` WHERE ${where.join(" AND ")}`;
+
+        larkin.queryPg(
+          "burwell",
+          buildSQL(scaleLookup[req.query.z], where),
+          params,
+          (error, result) => {
+            if (error) {
+              return cb(error);
+            }
+
+            async.mapLimit(
+              result.rows,
+              3,
+              (mapPolygon, done) => {
+                let params = {};
+                if (mapPolygon.macro_units.length) {
+                  params = { unit_ids: mapPolygon.macro_units };
+                } else if (mapPolygon.strat_names.length) {
+                  params = { strat_name_ids: mapPolygon.strat_names };
+                } else {
+                  mapPolygon.macrostrat = {};
+                  return done(null, mapPolygon);
+                }
+                delete mapPolygon.strat_names;
+                delete mapPolygon.macro_units;
+                getUnits(params, (error, units) => {
+                  if (error) {
+                    return cb(error);
+                  }
+                  if (units.length) {
+                    mapPolygon.macrostrat = units[0];
+                  } else if (params.strat_name_ids) {
+                    mapPolygon.macrostrat = {
+                      strat_names: params.strat_name_ids,
+                    };
+                  } else {
+                    mapPolygon.macrostrat = {};
+                  }
+
+                  done(null, mapPolygon);
+                });
+
+                // done(null, mapPolygon)
+              },
+              (error, results) => {
+                if (error) return larkin.error(req, res, next, error);
+
+                cb(null, results);
+              },
+            );
+          },
+        );
+      },
     },
+    (error, data) => {
+      if (error) return larkin.error(req, res, next, error || null);
 
-    burwell: (cb) => {
-      let where = []
-      let params = []
-
-      if (req.query.map_id) {
-        where = [ `y.map_id = $1` ]
-        params = [ req.query.map_id ]
-      } else if (req.query.legend_id) {
-        where = [ `mm.legend_id = $1` ]
-        params = [ re.query.legend_id ]
-      } else {
-        where = [`ST_Intersects(y.geom, ST_GeomFromText($1, 4326))`]
-        params = [`SRID=4326;POINT(${req.query.lng} ${req.query.lat})`]
-      }
-
-      // If no valid parameters passed, return an Error
-      if (where.length < 1 && !('sample' in req.query)) {
-        return cb('No valid parameters passed')
-      }
-
-      where = ` WHERE ${where.join(' AND ')}`
-
-      larkin.queryPg('burwell',  buildSQL(scaleLookup[req.query.z], where), params, (error, result) => {
-        if (error) {
-          return cb(error)
-        }
-
-         async.mapLimit(result.rows, 3, (mapPolygon, done) => {
-           let params = {}
-           if (mapPolygon.macro_units.length) {
-             params = { 'unit_ids': mapPolygon.macro_units  }
-           } else if (mapPolygon.strat_names.length) {
-             params = { 'strat_name_ids': mapPolygon.strat_names }
-           } else {
-             mapPolygon.macrostrat = {}
-             return done(null, mapPolygon)
-           }
-           delete mapPolygon.strat_names
-           delete mapPolygon.macro_units
-           getUnits(params, (error, units) => {
-             if (error) {
-               return cb(error)
-             }
-             if (units.length) {
-               mapPolygon.macrostrat = units[0]
-             } else if (params.strat_name_ids) {
-               mapPolygon.macrostrat = {
-                 strat_names: params.strat_name_ids
-               }
-             } else {
-               mapPolygon.macrostrat = {}
-             }
-
-             done(null, mapPolygon)
-           })
-
-           // done(null, mapPolygon)
-         }, (error, results) => {
-           if (error) return larkin.error(req, res, next, error)
-
-           cb(null, results)
-         })
-
-      })
-    }
-  }, (error, data) => {
-    if (error) return larkin.error(req, res, next, error || null)
-
-    for (let i = 0; i < data.burwell.length; i++) {
-      data.burwell[i].lines = []
-      for (let j = 0; j < data.lines.length; j++) {
-        if (data.burwell[i].source_id === data.lines[j].source_id) {
-          data.burwell[i].lines.push(data.lines[j])
+      for (let i = 0; i < data.burwell.length; i++) {
+        data.burwell[i].lines = [];
+        for (let j = 0; j < data.lines.length; j++) {
+          if (data.burwell[i].source_id === data.lines[j].source_id) {
+            data.burwell[i].lines.push(data.lines[j]);
+          }
         }
       }
-    }
-    larkin.sendData(req, res, next, {
-      format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : 'json',
-      bare: (api.acceptedFormats.bare[req.query.format]) ? true : false
-    }, {
-      data: {
-        elevation: data.elevation,
-        mapData: data.burwell,
-        regions: data.regions,
-        hasColumns: data.columns
-      }
-    })
-  })
-}
+      larkin.sendData(
+        req,
+        res,
+        next,
+        {
+          format: api.acceptedFormats.standard[req.query.format]
+            ? req.query.format
+            : "json",
+          bare: api.acceptedFormats.bare[req.query.format] ? true : false,
+        },
+        {
+          data: {
+            elevation: data.elevation,
+            mapData: data.burwell,
+            regions: data.regions,
+            hasColumns: data.columns,
+          },
+        },
+      );
+    },
+  );
+};

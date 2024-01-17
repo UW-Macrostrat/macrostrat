@@ -69,9 +69,13 @@
   "devDependencies": {
     "mocha": "^1.21.4",
     "node-uuid": "^1.4.3",
+    "prettier": "^3.2.3",
     "should": "^4.0.4",
     "supertest": "^0.14.0",
     "validator": "^3.34.0"
   },
-  "packageManager": "yarn@4.0.2"
+  "packageManager": "yarn@4.0.2",
+  "prettier": {
+    "proseWrap": "always"
+  }
 }

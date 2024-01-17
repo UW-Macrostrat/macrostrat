@@ -1,20 +1,20 @@
 var api = require("./api"),
-    async = require("async"),
-    larkin = require("./larkin");
+  async = require("async"),
+  larkin = require("./larkin");
 
 var parentOrder = {
-  "bed": ["mbr", "fm", "gp", "sgp"],
-  "mbr": ["fm", "gp", "sgp"],
-  "fm": ["gp", "sgp"],
-  "gp": ["sgp"],
-  "sgp": []
-}
+  bed: ["mbr", "fm", "gp", "sgp"],
+  mbr: ["fm", "gp", "sgp"],
+  fm: ["gp", "sgp"],
+  gp: ["sgp"],
+  sgp: [],
+};
 var abbrevs = {
-  "mbr": "Member",
-  "fm": "Formation",
-  "gp": "Group",
-  "sgp": "Supergroup"
-}
+  mbr: "Member",
+  fm: "Formation",
+  gp: "Group",
+  sgp: "Supergroup",
+};
 // To whom it may concern: sorry this is so hairy. Magic ain't cheap.
 var sql = {
   lithologies: `
@@ -133,10 +133,9 @@ var sql = {
   //   FROM first
   //   WHERE d < 80000;
   // `
-}
+};
 
-
-module.exports = function(req, res, next) {
+module.exports = function (req, res, next) {
   if (Object.keys(req.query).length < 1) {
     larkin.info(req, res, next);
     return;
@@ -147,12 +146,15 @@ module.exports = function(req, res, next) {
     return;
   }
 
-  req.query.lng = larkin.normalizeLng(parseFloat(req.query.lng).toFixed(4))
-  req.query.lat = parseFloat(req.query.lat).toFixed(4)
+  req.query.lng = larkin.normalizeLng(parseFloat(req.query.lng).toFixed(4));
+  req.query.lat = parseFloat(req.query.lat).toFixed(4);
 
-  async.waterfall([
-    function(cb) {
-      larkin.queryPg("burwell", `
+  async.waterfall(
+    [
+      function (cb) {
+        larkin.queryPg(
+          "burwell",
+          `
       SELECT
         CASE
           WHEN (
@@ -184,108 +186,147 @@ module.exports = function(req, res, next) {
           ) THEN 'small'
           ELSE 'large'
         END AS scale
-      `, [ req.query.lng, req.query.lat ], function(error, result) {
-        if (error || !result.rows) return cb(error)
-        cb(null, result.rows[0].scale)
-      })
-    }, function(scale, cb) {
-      if (scale === '') {
-        return cb(null, [])
-      }
-      async.parallel({
-        strat_names: function(callback) {
-          larkin.queryPg("burwell", sql.strat_names.replace(':scale', scale), [req.query.lng, req.query.lat], function(error, data) {
-            if (error) {
-              callback(error);
-            } else {
-              var names = data.rows.map( d => {
-                var rank = d.rank.toLowerCase()
-                if (rank === 'subgp') {
-                  return null
-                }
-                var parent = ''
-                for (var i = 0; i < parentOrder[rank].length; i++) {
-                  if (d[parentOrder[rank][i]]) {
-                    parent = d[parentOrder[rank][i]] + " " + abbrevs[parentOrder[rank][i]]
-                    continue
-                  }
-                }
-
-                return {
-                  strat_name_long: d.strat_name_long,
-                  strat_name_id: d.strat_name_id,
-                  strat_name: d.strat_name,
-                  b_age: d.b_age,
-                  b_period: d.b_period,
-                  t_age: d.t_age,
-                  t_period: d.t_period,
-                  parent: parent
-                }
-              })
-
-
-              callback(null, names)
-            }
-          });
-        },
-
-        lithologies: function(callback) {
-          larkin.queryPg("burwell", sql.lithologies.replace(':scale', scale), [req.query.lng, req.query.lat], function(error, data) {
-            if (error) {
-              callback(error);
-            } else {
-              callback(null, data.rows);
-            }
-          });
-        },
-
-        intervals: function(callback) {
-          larkin.queryPg("burwell", sql.intervals.replace(':scale', scale), [req.query.lng, req.query.lat], function(error, data) {
-            if (error) {
-              callback(error);
-            } else {
-              callback(null, data.rows);
-            }
-          });
-        },
-
-        map_units: function(callback) {
-          larkin.queryPg("burwell", sql.map_units.replace(/:scale/g, scale), [req.query.lng, req.query.lat], function(error, data) {
-            if (error) {
-              callback(error);
-            } else {
-              callback(null, data.rows);
-            }
-          })
-        },
-        //
-        // places: function(callback) {
-        //   larkin.queryPg("rockd", sql.places, ['SRID=4326;POINT(' + req.query.lng + ' ' + req.query.lat + ')'], function(error, data) {
-        //     if (error) {
-        //       callback(error);
-        //     } else {
-        //       callback(null, data.rows);
-        //     }
-        //   })
-        // }
-      }, function(error, results) {
-        if (error) {
-          cb(error)
-        } else {
-          cb(null, results)
+      `,
+          [req.query.lng, req.query.lat],
+          function (error, result) {
+            if (error || !result.rows) return cb(error);
+            cb(null, result.rows[0].scale);
+          },
+        );
+      },
+      function (scale, cb) {
+        if (scale === "") {
+          return cb(null, []);
         }
-      })
-    }
-  ], function(error, results) {
-    if (error) {
-      return larkin.error(req, res, next, error, 500)
-    }
-    larkin.sendData(req, res, next, {
-      format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
-      bare: (api.acceptedFormats.bare[req.query.format]) ? true : false,
-      compact: true
-    }, {
-      data: results
-    });
-  })
-}
+        async.parallel(
+          {
+            strat_names: function (callback) {
+              larkin.queryPg(
+                "burwell",
+                sql.strat_names.replace(":scale", scale),
+                [req.query.lng, req.query.lat],
+                function (error, data) {
+                  if (error) {
+                    callback(error);
+                  } else {
+                    var names = data.rows.map((d) => {
+                      var rank = d.rank.toLowerCase();
+                      if (rank === "subgp") {
+                        return null;
+                      }
+                      var parent = "";
+                      for (var i = 0; i < parentOrder[rank].length; i++) {
+                        if (d[parentOrder[rank][i]]) {
+                          parent =
+                            d[parentOrder[rank][i]] +
+                            " " +
+                            abbrevs[parentOrder[rank][i]];
+                          continue;
+                        }
+                      }
+
+                      return {
+                        strat_name_long: d.strat_name_long,
+                        strat_name_id: d.strat_name_id,
+                        strat_name: d.strat_name,
+                        b_age: d.b_age,
+                        b_period: d.b_period,
+                        t_age: d.t_age,
+                        t_period: d.t_period,
+                        parent: parent,
+                      };
+                    });
+
+                    callback(null, names);
+                  }
+                },
+              );
+            },
+
+            lithologies: function (callback) {
+              larkin.queryPg(
+                "burwell",
+                sql.lithologies.replace(":scale", scale),
+                [req.query.lng, req.query.lat],
+                function (error, data) {
+                  if (error) {
+                    callback(error);
+                  } else {
+                    callback(null, data.rows);
+                  }
+                },
+              );
+            },
+
+            intervals: function (callback) {
+              larkin.queryPg(
+                "burwell",
+                sql.intervals.replace(":scale", scale),
+                [req.query.lng, req.query.lat],
+                function (error, data) {
+                  if (error) {
+                    callback(error);
+                  } else {
+                    callback(null, data.rows);
+                  }
+                },
+              );
+            },
+
+            map_units: function (callback) {
+              larkin.queryPg(
+                "burwell",
+                sql.map_units.replace(/:scale/g, scale),
+                [req.query.lng, req.query.lat],
+                function (error, data) {
+                  if (error) {
+                    callback(error);
+                  } else {
+                    callback(null, data.rows);
+                  }
+                },
+              );
+            },
+            //
+            // places: function(callback) {
+            //   larkin.queryPg("rockd", sql.places, ['SRID=4326;POINT(' + req.query.lng + ' ' + req.query.lat + ')'], function(error, data) {
+            //     if (error) {
+            //       callback(error);
+            //     } else {
+            //       callback(null, data.rows);
+            //     }
+            //   })
+            // }
+          },
+          function (error, results) {
+            if (error) {
+              cb(error);
+            } else {
+              cb(null, results);
+            }
+          },
+        );
+      },
+    ],
+    function (error, results) {
+      if (error) {
+        return larkin.error(req, res, next, error, 500);
+      }
+      larkin.sendData(
+        req,
+        res,
+        next,
+        {
+          format: api.acceptedFormats.standard[req.query.format]
+            ? req.query.format
+            : "json",
+          bare: api.acceptedFormats.bare[req.query.format] ? true : false,
+          compact: true,
+        },
+        {
+          data: results,
+        },
+      );
+    },
+  );
+};

@@ -1,13 +1,14 @@
 var api = require("../api"),
-    larkin = require("../larkin"),
-    multiline = require("multiline");
+  larkin = require("../larkin"),
+  multiline = require("multiline");
 
-module.exports = function(req, res, next, cb) {
+module.exports = function (req, res, next, cb) {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
 
-  var sql = multiline(function() {/*
+  var sql = multiline(function () {
+      /*
     SELECT
       snm.concept_id as concept_id,
       snm.name,
@@ -23,8 +24,9 @@ module.exports = function(req, res, next, cb) {
       refs.author
      FROM strat_names_meta snm
      JOIN refs ON snm.ref_id = refs.id
-  */}),
-      params = {};
+  */
+    }),
+    params = {};
 
   if ("all" in req.query) {
     // do nothing
@@ -36,11 +38,13 @@ module.exports = function(req, res, next, cb) {
     if (req.query.concept_id) {
       params["concept_id"] = larkin.parseMultipleIds(req.query.concept_id);
     } else {
-      params["concept_id"] = larkin.parseMultipleIds(req.query.strat_name_concept_id);
+      params["concept_id"] = larkin.parseMultipleIds(
+        req.query.strat_name_concept_id,
+      );
     }
-
   } else if (req.query.strat_name_id) {
-    sql += " WHERE concept_id IN (SELECT concept_id FROM lookup_strat_names WHERE strat_name_id IN (:strat_name_ids))";
+    sql +=
+      " WHERE concept_id IN (SELECT concept_id FROM lookup_strat_names WHERE strat_name_id IN (:strat_name_ids))";
     params["strat_name_ids"] = larkin.parseMultipleIds(req.query.strat_name_id);
   }
 
@@ -50,16 +54,15 @@ module.exports = function(req, res, next, cb) {
     sql += " LIMIT 5";
   }
 
-  larkin.query(sql, params, function(error, result) {
+  larkin.query(sql, params, function (error, result) {
     if (error) {
       if (cb) {
         return cb(error);
       } else {
         return larkin.error(req, res, next, error);
       }
-
     } else {
-      result.forEach(function(d) {
+      result.forEach(function (d) {
         d.int_id = parseInt(d.int_id);
         d.refs = larkin.jsonifyPipes(d.refs, "integers");
       });
@@ -67,15 +70,22 @@ module.exports = function(req, res, next, cb) {
       if (cb) {
         cb(null, result);
       } else {
-        larkin.sendData(req, res, next, {
-          format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
-          bare: (api.acceptedFormats.bare[req.query.format]) ? true : false,
-          refs: "refs"
-        }, {
-          data: result
-        });
+        larkin.sendData(
+          req,
+          res,
+          next,
+          {
+            format: api.acceptedFormats.standard[req.query.format]
+              ? req.query.format
+              : "json",
+            bare: api.acceptedFormats.bare[req.query.format] ? true : false,
+            refs: "refs",
+          },
+          {
+            data: result,
+          },
+        );
       }
-
     }
   });
-}
+};

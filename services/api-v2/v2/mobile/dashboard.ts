@@ -1,17 +1,19 @@
-const api = require('../api')
-const larkin = require('../larkin')
-const async = require('async')
+const api = require("../api");
+const larkin = require("../larkin");
+const async = require("async");
 
 const above = {
-  'large': 'medium',
-  'medium': 'small',
-  'small': 'tiny'
-}
+  large: "medium",
+  medium: "small",
+  small: "tiny",
+};
 
 function queryCarto(scale, lng, lat, callback) {
-  scale = scale || 'large'
+  scale = scale || "large";
 
-  larkin.queryPg('burwell', `
+  larkin.queryPg(
+    "burwell",
+    `
     SELECT
       x.map_id,
       x.source_id,
@@ -89,23 +91,25 @@ function queryCarto(scale, lng, lat, callback) {
     JOIN maps.map_legend ml ON ml.map_id = x.map_id
     JOIN maps.legend l ON ml.legend_id = l.legend_id
     WHERE ST_Intersects(x.geom, $1)
-  `, [ `SRID=4326;POINT(${lng} ${lat})`], (error, result) => {
-    if (error) {
-      console.log('error here', scale, lng, lat)
-      return callback(error)
-    }
-    if (!result || !result.rows || !result.rows.length) {
-      // try going a scale up
-      if (above[scale]) {
-        queryCarto(above[scale], lng, lat, callback)
-      } else {
-        callback(null, null)
+  `,
+    [`SRID=4326;POINT(${lng} ${lat})`],
+    (error, result) => {
+      if (error) {
+        console.log("error here", scale, lng, lat);
+        return callback(error);
       }
-    } else {
-      callback(null, result.rows[0])
-    }
-
-  })
+      if (!result || !result.rows || !result.rows.length) {
+        // try going a scale up
+        if (above[scale]) {
+          queryCarto(above[scale], lng, lat, callback);
+        } else {
+          callback(null, null);
+        }
+      } else {
+        callback(null, result.rows[0]);
+      }
+    },
+  );
 }
 
 module.exports = (req, res, next) => {
@@ -114,26 +118,29 @@ module.exports = (req, res, next) => {
   }
 
   if (!req.query.lng || !req.query.lat) {
-    return larkin.error(req, res, next)
+    return larkin.error(req, res, next);
   }
-  req.query.lng = larkin.normalizeLng(req.query.lng)
+  req.query.lng = larkin.normalizeLng(req.query.lng);
 
-  async.parallel({
-    rocks: (callback) => {
-      queryCarto(null, req.query.lng, req.query.lat, (error, data) => {
-        callback(null, data)
-      })
-    },
+  async.parallel(
+    {
+      rocks: (callback) => {
+        queryCarto(null, req.query.lng, req.query.lat, (error, data) => {
+          callback(null, data);
+        });
+      },
 
-    elevation: (callback) => {
-      require('../elevation')(req, null, null, function(error, result) {
-        let elevation = (result && result.length) ? result[0].elevation : null
-        callback(null, elevation)
-      });
-    },
+      elevation: (callback) => {
+        require("../elevation")(req, null, null, function (error, result) {
+          let elevation = result && result.length ? result[0].elevation : null;
+          callback(null, elevation);
+        });
+      },
 
-    regions: (callback) => {
-      larkin.queryPg('burwell', `
+      regions: (callback) => {
+        larkin.queryPg(
+          "burwell",
+          `
         SELECT sub.boundary_id, sub.name, sub.boundary_group, sub.boundary_type, sub.boundary_class, sub.descrip, sub.wiki_link,
         row_to_json(
           (SELECT x FROM (SELECT sources.source_id, sources.name, sources.url, sources.ref_title, sources.authors, sources.ref_year, sources.ref_source, COALESCE(sources.isbn_doi, '') AS isbn_doi) x)
@@ -155,34 +162,48 @@ module.exports = (req, res, next) => {
             ) sub
         JOIN geologic_boundaries.sources ON sub.source_id = sources.source_id
         WHERE rn = 1
-      `, [`SRID=4326;POINT(${req.query.lng} ${req.query.lat})`], (error, result) => {
-        let regions = (result && result.rows && result.rows.length) ? result.rows : []
-        callback(null, regions)
-      })
-    }
-  }, (error, data) => {
-    if (error) {
-      return larkin.error(req, res, next)
-    }
-    let summary = data.rocks || {}
-    summary['elevation'] = data.elevation
-    summary['regions'] = data.regions
+      `,
+          [`SRID=4326;POINT(${req.query.lng} ${req.query.lat})`],
+          (error, result) => {
+            let regions =
+              result && result.rows && result.rows.length ? result.rows : [];
+            callback(null, regions);
+          },
+        );
+      },
+    },
+    (error, data) => {
+      if (error) {
+        return larkin.error(req, res, next);
+      }
+      let summary = data.rocks || {};
+      summary["elevation"] = data.elevation;
+      summary["regions"] = data.regions;
 
-    if (summary['b_age']) {
-      summary['b_age'] = parseFloat(summary['b_age'])
-    }
-    if (summary['t_age']) {
-      summary['t_age'] = parseFloat(summary['t_age'])
-    }
-    if (summary.lith && summary.lith.length) {
-      summary['lith_color'] = summary.lith[0].color
-    }
-    larkin.sendData(req, res, next, {
-      format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : 'json',
-      bare: (api.acceptedFormats.bare[req.query.format]) ? true : false,
-      compact: true
-    }, {
-      data: summary
-    })
-  })
-}
+      if (summary["b_age"]) {
+        summary["b_age"] = parseFloat(summary["b_age"]);
+      }
+      if (summary["t_age"]) {
+        summary["t_age"] = parseFloat(summary["t_age"]);
+      }
+      if (summary.lith && summary.lith.length) {
+        summary["lith_color"] = summary.lith[0].color;
+      }
+      larkin.sendData(
+        req,
+        res,
+        next,
+        {
+          format: api.acceptedFormats.standard[req.query.format]
+            ? req.query.format
+            : "json",
+          bare: api.acceptedFormats.bare[req.query.format] ? true : false,
+          compact: true,
+        },
+        {
+          data: summary,
+        },
+      );
+    },
+  );
+};

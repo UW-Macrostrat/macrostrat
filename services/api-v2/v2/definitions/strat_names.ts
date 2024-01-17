@@ -1,67 +1,86 @@
 var api = require("../api"),
-    larkin = require("../larkin"),
-    multiline = require("multiline");
+  larkin = require("../larkin"),
+  multiline = require("multiline");
 
-module.exports = function(req, res, next, cb) {
+module.exports = function (req, res, next, cb) {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
 
   var where = [],
-      params = {};
+    params = {};
 
   if (req.query.rule) {
     if (req.query.rule === "down") {
       if (req.query.strat_name) {
-        where.push("parent IN (SELECT strat_name_id FROM lookup_strat_names WHERE strat_name = :strat_name) OR strat_name_id IN (SELECT strat_name_id FROM lookup_strat_names WHERE strat_name = :strat_name)");
+        where.push(
+          "parent IN (SELECT strat_name_id FROM lookup_strat_names WHERE strat_name = :strat_name) OR strat_name_id IN (SELECT strat_name_id FROM lookup_strat_names WHERE strat_name = :strat_name)",
+        );
         params["strat_name"] = req.query.strat_name;
-
       } else if (req.query.strat_name_id) {
-        where.push("parent IN (:strat_name_id) OR l.strat_name_id IN (:strat_name_id)");
-        params["strat_name_id"] = larkin.parseMultipleIds(req.query.strat_name_id);
+        where.push(
+          "parent IN (:strat_name_id) OR l.strat_name_id IN (:strat_name_id)",
+        );
+        params["strat_name_id"] = larkin.parseMultipleIds(
+          req.query.strat_name_id,
+        );
       } else if (req.query.concept_id) {
-        where.push("parent IN (( SELECT DISTINCT strat_name_id FROM lookup_strat_names WHERE concept_id IN (:concept_id) )) OR l.strat_name_id IN (( SELECT DISTINCT strat_name_id FROM lookup_strat_names WHERE concept_id IN (:concept_id) ))")
+        where.push(
+          "parent IN (( SELECT DISTINCT strat_name_id FROM lookup_strat_names WHERE concept_id IN (:concept_id) )) OR l.strat_name_id IN (( SELECT DISTINCT strat_name_id FROM lookup_strat_names WHERE concept_id IN (:concept_id) ))",
+        );
         params["concept_id"] = larkin.parseMultipleIds(req.query.concept_id);
       }
-
     } else if (req.query.rule === "all") {
       if (req.query.strat_name) {
-        where.push("tree = (SELECT tree FROM lookup_strat_names WHERE strat_name = :strat_name)");
+        where.push(
+          "tree = (SELECT tree FROM lookup_strat_names WHERE strat_name = :strat_name)",
+        );
         params["strat_name"] = req.query.strat_name;
-
       } else if (req.query.strat_name_id) {
-        where.push("tree = (SELECT tree FROM lookup_strat_names WHERE strat_name_id IN (:strat_name_id))");
-        params["strat_name_id"] = larkin.parseMultipleIds(req.query.strat_name_id);
+        where.push(
+          "tree = (SELECT tree FROM lookup_strat_names WHERE strat_name_id IN (:strat_name_id))",
+        );
+        params["strat_name_id"] = larkin.parseMultipleIds(
+          req.query.strat_name_id,
+        );
       }
     }
   } else {
     if (req.query.strat_name_id) {
       where.push("strat_name_id IN (:strat_name_id)");
-      params["strat_name_id"] = larkin.parseMultipleIds(req.query.strat_name_id);
-
+      params["strat_name_id"] = larkin.parseMultipleIds(
+        req.query.strat_name_id,
+      );
     } else if (req.query.strat_name_like) {
       where.push("lower(strat_name) LIKE lower(:strat_name)");
       params["strat_name"] = req.query.strat_name_like + "%";
-
     } else if (req.query.strat_name) {
       where.push("lower(strat_name) LIKE lower(:strat_name)");
       params["strat_name"] = req.query.strat_name;
     } else if (req.query.concept_id) {
-      where.push("concept_id IN (:concept_id)")
+      where.push("concept_id IN (:concept_id)");
       params["concept_id"] = larkin.parseMultipleIds(req.query.concept_id);
     } else if (req.query.strat_name_concept_id) {
-      where.push("concept_id IN (:concept_id)")
-      params["concept_id"] = larkin.parseMultipleIds(req.query.strat_name_concept_id);
+      where.push("concept_id IN (:concept_id)");
+      params["concept_id"] = larkin.parseMultipleIds(
+        req.query.strat_name_concept_id,
+      );
     }
 
     if (req.query.interval_name) {
-      where.push("early_age > (SELECT age_top from intervals where interval_name like :interval_name) and late_age < (SELECT age_bottom from intervals where interval_name like :interval_name2)");
-      params["interval_name"] = larkin.parseMultipleStrings(req.query.interval_name);
-      params["interval_name2"] = larkin.parseMultipleStrings(req.query.interval_name);
+      where.push(
+        "early_age > (SELECT age_top from intervals where interval_name like :interval_name) and late_age < (SELECT age_bottom from intervals where interval_name like :interval_name2)",
+      );
+      params["interval_name"] = larkin.parseMultipleStrings(
+        req.query.interval_name,
+      );
+      params["interval_name2"] = larkin.parseMultipleStrings(
+        req.query.interval_name,
+      );
     }
 
-    if (req.query.ref_id){
-      where.push("ref_id IN (:ref_id)")
+    if (req.query.ref_id) {
+      where.push("ref_id IN (:ref_id)");
       params["ref_id"] = larkin.parseMultipleIds(req.query.ref_id);
     }
 
@@ -71,10 +90,9 @@ module.exports = function(req, res, next, cb) {
     }
 
     if (req.query.ref_id) {
-      where.push("ref_id IN (:ref_ids)")
-      params["ref_ids"] = larkin.parseMultipleIds(req.query.ref_id)
+      where.push("ref_id IN (:ref_ids)");
+      params["ref_ids"] = larkin.parseMultipleIds(req.query.ref_id);
     }
-
   }
 
   var sql = `
@@ -104,19 +122,17 @@ module.exports = function(req, res, next, cb) {
       t_units,
       ref_id
     FROM lookup_strat_names l
-  `
-
-
+  `;
 
   if (where.length > 0) {
-    sql += " WHERE " + where.join(" AND ")
+    sql += " WHERE " + where.join(" AND ");
   }
 
   if ("sample" in req.query) {
     sql += " LIMIT 5";
   }
 
-  larkin.query(sql, params, function(error, response) {
+  larkin.query(sql, params, function (error, response) {
     if (error) {
       console.log(error);
       if (cb) {
@@ -124,20 +140,27 @@ module.exports = function(req, res, next, cb) {
       } else {
         larkin.error(req, res, next, "Something went wrong");
       }
-
     } else {
       if (cb) {
         cb(null, response);
       } else {
-        larkin.sendData(req, res, next, {
-          format: (api.acceptedFormats.standard[req.query.format]) ? req.query.format : "json",
-          bare: (api.acceptedFormats.bare[req.query.format]) ? true : false,
-          compact: true,
-          refs: "ref_id"
-        }, {
-          data: response
-        });
+        larkin.sendData(
+          req,
+          res,
+          next,
+          {
+            format: api.acceptedFormats.standard[req.query.format]
+              ? req.query.format
+              : "json",
+            bare: api.acceptedFormats.bare[req.query.format] ? true : false,
+            compact: true,
+            refs: "ref_id",
+          },
+          {
+            data: response,
+          },
+        );
       }
     }
   });
-}
+};
