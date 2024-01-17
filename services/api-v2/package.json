@@ -8,10 +8,10 @@
     "url": "https://github.com/UW-Macrostrat/macrostrat-api.git"
   },
   "scripts": {
-    "start": "node server.js",
+    "start": "ts-node --transpileOnly server.ts",
     "test": "mocha ./v2",
-    "defs": "node ./v2/utilities/validateDefs.js",
-    "build-defs": "node ./v2/utilities/getOutputFields.js",
+    "defs": "ts-node --transpileOnly ./v2/utilities/validateDefs.ts",
+    "build-defs": "ts-node --transpileOnly ./v2/utilities/getOutputFields.ts",
     "build-changes": "grip ./v2/CHANGELOG.md --export ./v2/changes.html"
   },
   "keywords": [
@@ -34,6 +34,7 @@
     "@mapbox/polyline": "^0.2.0",
     "@turf/buffer": "^4.6.1",
     "@turf/envelope": "^4.6.0",
+    "@types/node": "^20.11.5",
     "async": "1.5.2",
     "body-parser": "^1.6.3",
     "brute-force-equal-area": "git+https://github.com/UW-Macrostrat/brute-force-equal-area.git",
@@ -55,10 +56,12 @@
     "tilestrata": "^2.0.1",
     "tilestrata-dependency": "^0.4.0",
     "topojson": "^1.6.19",
+    "ts-node": "^10.9.2",
     "turf-area": "^1.1.1",
     "turf-buffer": "^1.0.4",
     "turf-point": "^0.1.6",
     "turf-voronoi": "git+https://github.com/Turfjs/turf-voronoi.git",
+    "typescript": "^5.3.3",
     "underscore": "^1.8.3",
     "universal-analytics": "^0.4.6",
     "wellknown": "^0.3.0"

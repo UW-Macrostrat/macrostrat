@@ -1,4 +1,4 @@
-const { mysql, pg, redis, cacheRefreshKey, postgresDatabases = {} } = require("../credentials.js");
+const { mysql, pg, redis, cacheRefreshKey, postgresDatabases = {} } = require("../credentials.ts");
 
 exports.mysql = mysql;
 

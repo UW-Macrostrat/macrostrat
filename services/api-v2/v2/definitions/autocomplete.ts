@@ -10,7 +10,7 @@ LEFT JOIN intervals ON intervals.id = strat_names_meta.interval_id;
 
 */
 var api = require("../api"),
-    larkin = require("../larkin");
+    larkin = require("../larkin"),
     _ = require("underscore");
 
 module.exports = function(req, res, next) {

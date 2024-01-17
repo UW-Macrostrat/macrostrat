@@ -1,4 +1,4 @@
-// A file mirroring this structure should be placed at /code/credentials.js
+// A file mirroring this structure should be placed at /code/credentials.ts
 // in the Docker container.
 
 exports.mysql = {

@@ -99,7 +99,7 @@ api.route("/age_model")
   .get(require("./age_model"));
 
 api.route("/eodp")
-  .get(require("./eodp.js"));
+  .get(require("./eodp"));
 //api.route("/hillshade")
 //  .get(require("./hillshade"));
 

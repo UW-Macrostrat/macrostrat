@@ -9,7 +9,7 @@ var mysql = require("mysql"),
     http = require("http"),
   portscanner = require("portscanner");
     
-const { Client } = require('pg');
+const { Client, Pool } = require('pg');
 
 let clientRegistry = {}
 function getPGClient(db) {
@@ -37,15 +37,11 @@ function getPGClient(db) {
 
 
   larkin.queryPg = function (db, sql, params, callback) {
-<<<<<<< HEAD
-    /* We've reworked this connection flow substantially for modern Postgres bindings */
-    const client = getPGClient(db);
-=======
 
     const nameMapping = credentials.postgresDatabases ?? {}
     const dbName = nameMapping[db] ?? db
 
-    const pool = new pg.Pool({connectionString: credentials.pg.connectionString});
+    const pool = new Pool({connectionString: credentials.pg.connectionString});
 
     pool.connect(function(err, client, done) {
       if (err) {
@@ -60,19 +56,8 @@ function getPGClient(db) {
           } else {
             callback(null, result);
           }
->>>>>>> main
-
-    try {
-      client.connect()
-    } catch (error) {
-      console.error('error connecting to postgres', err)
-      return callback(error)
-    }
-    client.query(sql, params, (err, result) => {
-      if (err) {
-        return callback(err);
+        });
       }
-      callback(null, result);
     });
   };
 

@@ -47,7 +47,7 @@ app.use("/", v2);
 
 app.set("json spaces", 2);
 
-app.port = process.argv[2] || 5000;
+app.port = process.argv[2] || 5550;
 
 app.start = function() {
   app.listen(app.port, function() {
