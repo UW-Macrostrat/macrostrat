@@ -32,4 +32,4 @@ Icon
 .Spotlight-V100
 .Trashes
 
-.yarn
+.yarn/install-state.gz
