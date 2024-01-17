@@ -4,7 +4,7 @@
       "<node_internals>/**",
       "<rootDir>/node_modules/**",
       "<rootDir>/v1/node_modules/**",
-      "<rootDir>/v2/node_modules/**", 
+      "<rootDir>/v2/node_modules/**"
     ]
-  },
+  }
 }
