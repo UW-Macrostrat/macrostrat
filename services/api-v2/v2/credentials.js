@@ -1,4 +1,3 @@
-const { cache } = require("sharp");
 const { mysql, pg, redis, cacheRefreshKey, postgresDatabases = {} } = require("../credentials.js");
 
 exports.mysql = mysql;
