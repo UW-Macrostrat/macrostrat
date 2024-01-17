@@ -446,13 +446,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"bignumber.js@npm:1.4.0":
-  version: 1.4.0
-  resolution: "bignumber.js@npm:1.4.0"
-  checksum: 7689678241ce3cce55b3cde9849ffa642081d75e54b1909e10abb04b907a22d6962bc1f8ce87c39921348919630f577354aeeeb8ddab4df3eb4f460c1f2def97
-  languageName: node
-  linkType: hard
-
 "bignumber.js@npm:2.0.7":
   version: 2.0.7
   resolution: "bignumber.js@npm:2.0.7"
@@ -831,17 +824,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"concat-stream@npm:~1.4.5":
-  version: 1.4.11
-  resolution: "concat-stream@npm:1.4.11"
-  dependencies:
-    inherits: "npm:~2.0.1"
-    readable-stream: "npm:~1.1.9"
-    typedarray: "npm:~0.0.5"
-  checksum: ca98024b263d22ec8b41c8e7fb4ca6eab3d6f6758d76703afc8e5dfc6d840945ef20d3107300fc181810f728986bb594df5824227c4ba70e66aa2f711f76e28f
-  languageName: node
-  linkType: hard
-
 "concat-stream@npm:~1.5.0":
   version: 1.5.2
   resolution: "concat-stream@npm:1.5.2"
@@ -1046,17 +1028,6 @@ __metadata:
   version: 0.1.4
   resolution: "date-now@npm:0.1.4"
   checksum: 0e0a04d91deac395dfabc6f279b1bb7fbc66816552104b8dc5a7a5c32340a79eb2e2a27c83a20b6a46c0737dd2c55bf92aa44321911ba1f03adad413ad70ee3e
-  languageName: node
-  linkType: hard
-
-"dbgeo@npm:0.0.x":
-  version: 0.0.3
-  resolution: "dbgeo@npm:0.0.3"
-  dependencies:
-    async: "npm:~0.9.0"
-    topojson: "npm:~1.6.14"
-    wellknown: "npm:~0.2.0"
-  checksum: 5968c79ef6a35705a035c48d23cdf44dc9d4efcfb9b5e89d51a0a5da0b1914413914f7c518f8d5998e62adc81579a2d88896ed958b5db3ce23125f75cbfd3930
   languageName: node
   linkType: hard
 
@@ -1895,17 +1866,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"geojson-precision@npm:^0.2.3":
-  version: 0.2.3
-  resolution: "geojson-precision@npm:0.2.3"
-  dependencies:
-    commander: "npm:^2.4.0"
-  bin:
-    geojson-precision: ./bin/geojson-precision
-  checksum: 8e9483c51697f9796dbb038811e2ba3ae04be8cc865728840da896845de28ef6762030ca0398e4179b4d77f268be89c400bb0fba6251d6c37923361b1190b1ba
-  languageName: node
-  linkType: hard
-
 "geojson-precision@npm:^0.4.0":
   version: 0.4.0
   resolution: "geojson-precision@npm:0.4.0"
@@ -2598,21 +2558,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"macrostrat-api-v1@workspace:v1":
-  version: 0.0.0-use.local
-  resolution: "macrostrat-api-v1@workspace:v1"
-  dependencies:
-    async: "npm:1.5.2"
-    dbgeo: "npm:0.0.x"
-    geojson-precision: "npm:^0.2.3"
-    mysql: "npm:2.3.x"
-    pg: "npm:^8.7.1"
-    pg-native: "npm:^3.0.0"
-    turf-point: "npm:^0.1.6"
-    wellknown: "npm:^0.3.0"
-  languageName: unknown
-  linkType: soft
-
 "macrostrat-api-v2@workspace:v2":
   version: 0.0.0-use.local
   resolution: "macrostrat-api-v2@workspace:v2"
@@ -2886,13 +2831,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"minimist@npm:0.0.2":
-  version: 0.0.2
-  resolution: "minimist@npm:0.0.2"
-  checksum: 166f6befff12e52ebc421a4e1ca50d9be657b1e581012efd0dc609c1d55dfb922eaae349f3dc1c30a35237c650bc3afd94885f7ec94e77b56d7e76c8c914fa56
-  languageName: node
-  linkType: hard
-
 "minimist@npm:0.0.5":
   version: 0.0.5
   resolution: "minimist@npm:0.0.5"
@@ -3130,17 +3068,6 @@ __metadata:
   dependencies:
     strip-indent: "npm:^1.0.0"
   checksum: 73ab0c2361470ba239d7e969687799f3b5fa7569807e93c9b3b70e73ed5c52e7ae636c3aa94f7a90d46b2717e0340fb2e78c255bf54d32a04b2260f3046c0e50
-  languageName: node
-  linkType: hard
-
-"mysql@npm:2.3.x":
-  version: 2.3.2
-  resolution: "mysql@npm:2.3.2"
-  dependencies:
-    bignumber.js: "npm:1.4.0"
-    readable-stream: "npm:~1.1.13"
-    require-all: "npm:0.0.8"
-  checksum: 414c0d34973b7174cf811fde77986e62de245601da9fcc72df373ddd854f6dff405e7e4465c78ec7dbfa44e2280bb4efc94f5645efb38ba609777da094437a6f
   languageName: node
   linkType: hard
 
@@ -3866,7 +3793,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"readable-stream@npm:1.1, readable-stream@npm:1.1.x, readable-stream@npm:~1.1.13, readable-stream@npm:~1.1.9":
+"readable-stream@npm:1.1, readable-stream@npm:1.1.x, readable-stream@npm:~1.1.13":
   version: 1.1.14
   resolution: "readable-stream@npm:1.1.14"
   dependencies:
@@ -3997,13 +3924,6 @@ __metadata:
     tunnel-agent: "npm:^0.6.0"
     uuid: "npm:^3.3.2"
   checksum: 0ec66e7af1391e51ad231de3b1c6c6aef3ebd0a238aa50d4191c7a792dcdb14920eea8d570c702dc5682f276fe569d176f9b8ebc6031a3cf4a630a691a431a63
-  languageName: node
-  linkType: hard
-
-"require-all@npm:0.0.8":
-  version: 0.0.8
-  resolution: "require-all@npm:0.0.8"
-  checksum: 22a144db0beab5ebd76920ffa4699f09c7a9cf43caed390065726d8a201cbe29275af91dca350a1e3d28699399ead77be57c3cbe673c63e7bf84f388cac97659
   languageName: node
   linkType: hard
 
@@ -4791,7 +4711,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"topojson@npm:^1.6.19, topojson@npm:~1.6.14, topojson@npm:~1.6.26":
+"topojson@npm:^1.6.19, topojson@npm:~1.6.26":
   version: 1.6.27
   resolution: "topojson@npm:1.6.27"
   dependencies:
@@ -5081,18 +5001,6 @@ __metadata:
   bin:
     wellknown: cli.js
   checksum: 780c8b7e8f79229e24e23eeb8f3dbc11dd09601cd96d1da3e0e05fdd5f0223eb47018419d7e703d829236eb9e9c978aef44fa673625bbc4e17669561ebf24588
-  languageName: node
-  linkType: hard
-
-"wellknown@npm:~0.2.0":
-  version: 0.2.0
-  resolution: "wellknown@npm:0.2.0"
-  dependencies:
-    concat-stream: "npm:~1.4.5"
-    minimist: "npm:0.0.2"
-  bin:
-    wellknown: cli.js
-  checksum: 686ba23ed135baf98bc5756b098888cea67ab1f051ddaab5dccfd8475ef1554fc726b680bb8aced43205f0591d744168389157b14e621f7da899d5bdc8f5e6a3
   languageName: node
   linkType: hard
 

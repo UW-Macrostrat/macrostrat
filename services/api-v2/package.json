@@ -1,6 +1,6 @@
 {
   "name": "macrostrat-api",
-  "version": "3.0.0-dev1",
+  "version": "3.0.0-dev1w",
   "description": "The API for SCIENCE",
   "main": "server.js",
   "repository": {
@@ -8,7 +8,6 @@
     "url": "https://github.com/UW-Macrostrat/macrostrat-api.git"
   },
   "scripts": {
-    "postinstall": "./postinstall.sh",
     "start": "node server.js",
     "test": "mocha ./v1/test/test.js"
   },
@@ -17,7 +16,6 @@
     "macrostratigraphy"
   ],
   "workspaces": [
-    "./v1",
     "./v2"
   ],
   "contributors": [
