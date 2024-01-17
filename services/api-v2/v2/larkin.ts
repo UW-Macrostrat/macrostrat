@@ -1,5 +1,4 @@
-var mysql = require("mysql"),
-    async = require("async"),
+var async = require("async"),
     _ = require("underscore"),
     credentials = require("./credentials"),
     csv = require("csv-express"),
@@ -22,19 +21,6 @@ function getPGClient(db) {
 
 (function() {
   var larkin = {};
-
-  larkin.connectMySQL = function() {
-    // Non-blocking FTW
-    this.pool = mysql.createPool(credentials.mysql);
-
-    // Verify a connection has been made
-    this.pool.getConnection(function(error, connection) {
-      if (error) {
-        throw new Error("Unable to connect to MySQL. Please check your credentials");
-      };
-    });
-  };
-
 
   larkin.queryPg = function (db, sql, params, callback) {
 
@@ -78,28 +64,8 @@ function getPGClient(db) {
 
   larkin.query = function(sql, params, callback) {
     // See if the query is using :named_parameters or positional ?
-    if (sql.indexOf(':') > -1 && Object.keys(params).length > 0) {
-      var newQuery = larkin.toUnnamed(sql, params);
-      sql = newQuery[0];
-      params = newQuery[1];
-    }
-
-    this.pool.getConnection(function(err, connection) {
-      var query = connection.query(sql, params, function(error, result) {
-        // Remove the connection
-        connection.destroy();
-        if (error) {
-          if (callback) {
-            callback(error);
-          } else {
-            this.error(res, next, "Error retrieving from MySQL.", error);
-          }
-        } else {
-          callback(null, result);
-        }
-      }.bind(this));
-      //console.log(query.sql)
-    }.bind(this));
+    const error = new Error("MySQL connections are now invalid. Please update this route to use Postgres instead.")
+    callback(error)
   };
 
   larkin.sendImage = function(req, res, next, data, isCached) {
@@ -526,6 +492,7 @@ function getPGClient(db) {
           });
 
           res.on("end", function() {
+
             var result = JSON.parse(body).success.data;
 
             var cols = _.groupBy(result, function(d) {

@@ -1,9 +1,6 @@
 var api = require("./api"),
     larkin = require("./larkin");
 
-// Establish a connection to the database
-larkin.connectMySQL();
-
 // Set up the column and unit cache
 larkin.setupCache();
 
