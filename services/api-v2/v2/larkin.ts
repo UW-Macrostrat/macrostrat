@@ -7,8 +7,10 @@ var async = require("async"),
   validator = require("validator"),
   http = require("http"),
   portscanner = require("portscanner");
-
+const named = require("yesql").pg;
 const { Client, Pool } = require("pg");
+
+const printQueries = true;
 
 (function () {
   var larkin = {};
@@ -29,7 +31,7 @@ const { Client, Pool } = require("pg");
         var query = client.query(sql, params, function (err, result) {
           done();
           if (err) {
-            this.log("error", err);
+            larkin.log("error", err);
             callback(err);
           } else {
             callback(null, result);
@@ -59,9 +61,34 @@ const { Client, Pool } = require("pg");
   larkin.query = function (sql, params, callback) {
     // See if the query is using :named_parameters or positional ?
     const error = new Error(
-      "MySQL connections are now invalid. Please update this route to use Postgres instead.",
+      "Attempting to run MySQL route on Postgres. Please update this route to use Postgres instead.",
     );
-    callback(error);
+    // Warn the user that we are trying to use Postgres instead of MySQL
+    console.warn(error);
+
+    const pool = new Pool({
+      connectionString: credentials.pg.connectionString,
+    });
+
+    pool.connect(function (err, client, done) {
+      if (err) {
+        this.log("error", "error connecting - " + err);
+        callback(err);
+      } else {
+        if (printQueries) {
+          console.log(sql, params);
+        }
+        client.query(named(sql)(params), function (err, result) {
+          done();
+          if (err) {
+            larkin.log("error", err);
+            callback(err);
+          } else {
+            callback(null, result);
+          }
+        });
+      }
+    });
   };
 
   larkin.sendImage = function (req, res, next, data, isCached) {

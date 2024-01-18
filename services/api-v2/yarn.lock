@@ -2178,6 +2178,7 @@ __metadata:
     universal-analytics: "npm:^0.4.6"
     validator: "npm:^3.34.0"
     wellknown: "npm:^0.3.0"
+    yesql: "npm:^7.0.0"
   languageName: unknown
   linkType: soft
 
@@ -4329,6 +4330,13 @@ __metadata:
   version: 4.0.0
   resolution: "yallist@npm:4.0.0"
   checksum: 2286b5e8dbfe22204ab66e2ef5cc9bbb1e55dfc873bbe0d568aa943eb255d131890dfd5bf243637273d31119b870f49c18fcde2c6ffbb7a7a092b870dc90625a
+  languageName: node
+  linkType: hard
+
+"yesql@npm:^7.0.0":
+  version: 7.0.0
+  resolution: "yesql@npm:7.0.0"
+  checksum: 83485a0a2ec8889c3eb38a3cd561097dccf601430618da2926baeae9a63d353044e1f9cfad0151e4cc38327e531ccf54498c80f0311f497eb46248c1930d24fb
   languageName: node
   linkType: hard
 

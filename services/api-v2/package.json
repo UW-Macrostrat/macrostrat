@@ -64,7 +64,8 @@
     "typescript": "^5.3.3",
     "underscore": "^1.8.3",
     "universal-analytics": "^0.4.6",
-    "wellknown": "^0.3.0"
+    "wellknown": "^0.3.0",
+    "yesql": "^7.0.0"
   },
   "devDependencies": {
     "mocha": "^1.21.4",

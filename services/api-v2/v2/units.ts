@@ -16,7 +16,7 @@ module.exports = function (req, res, next, cb) {
     [
       function (callback) {
         if (req.query.interval_name) {
-          larkin.query(
+          larkin.queryPg(
             "SELECT age_bottom, age_top, interval_name FROM intervals WHERE interval_name = ? LIMIT 1",
             [req.query.interval_name],
             function (error, result) {
@@ -36,7 +36,7 @@ module.exports = function (req, res, next, cb) {
             },
           );
         } else if (req.query.int_id) {
-          larkin.query(
+          larkin.queryPg(
             "SELECT age_bottom, age_top, interval_name FROM intervals WHERE id = ? LIMIT 1",
             [req.query.int_id],
             function (error, result) {
@@ -507,10 +507,10 @@ module.exports = function (req, res, next, cb) {
       cols.col_area,
       units.strat_name AS unit_name,
       unit_strat_names.strat_name_id,
-      IFNULL(mbr_name, '') AS Mbr,
-      IFNULL(fm_name, '') AS Fm,
-      IFNULL(gp_name, '') AS Gp,
-      IFNULL(sgp_name, '') AS SGp,
+      coalesce(mbr_name, '') AS Mbr,
+      coalesce(fm_name, '') AS Fm,
+      coalesce(gp_name, '') AS Gp,
+      coalesce(sgp_name, '') AS SGp,
       lookup_units.t_age,
       lookup_units.b_age,
       units.max_thick,
@@ -524,7 +524,7 @@ module.exports = function (req, res, next, cb) {
       lookup_unit_attrs_api.environ,
       lookup_unit_attrs_api.econ,
       ::measure_field AS measure,
-      IFNULL(notes, '') AS notes,
+      coalesce(notes, '') AS notes,
       lookup_units.color,
       lookup_units.text_color,
       lookup_units.t_int AS t_int_id,
@@ -538,7 +538,7 @@ module.exports = function (req, res, next, cb) {
       lookup_units.b_prop,
       lookup_units.units_below,
       lookup_strat_names.rank_name AS strat_name_long,
-      GROUP_CONCAT(col_refs.ref_id SEPARATOR '|') AS refs
+      string_agg(DISTINCT lookup_strat_names.strat_name, ', ') AS refs
       `;
         if ("show_position" in req.query) {
           longSQL += ", position_top AS t_pos, position_bottom AS b_pos";
@@ -552,15 +552,15 @@ module.exports = function (req, res, next, cb) {
 
         var sql = `
         SELECT ${req.query.response === "long" || cb ? longSQL : shortSQL} ${geometry}
-        FROM units
-        LEFT JOIN lookup_unit_attrs_api ON lookup_unit_attrs_api.unit_id = units.id
-        LEFT JOIN lookup_units ON units.id = lookup_units.unit_id
-        LEFT JOIN unit_strat_names ON unit_strat_names.unit_id=units.id
-        LEFT JOIN units_sections ON units.id = units_sections.unit_id
-        LEFT JOIN cols ON units_sections.col_id = cols.id
-        LEFT JOIN col_refs ON cols.id = col_refs.col_id
-        LEFT JOIN lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id
-        LEFT JOIN unit_notes ON unit_notes.unit_id=units.id
+        FROM macrostrat.units
+        LEFT JOIN macrostrat.lookup_unit_attrs_api ON lookup_unit_attrs_api.unit_id = units.id
+        LEFT JOIN macrostrat.lookup_units ON units.id = lookup_units.unit_id
+        LEFT JOIN macrostrat.unit_strat_names ON unit_strat_names.unit_id=units.id
+        LEFT JOIN macrostrat.units_sections ON units.id = units_sections.unit_id
+        LEFT JOIN macrostrat.cols ON units_sections.col_id = cols.id
+        LEFT JOIN macrostrat.col_refs ON cols.id = col_refs.col_id
+        LEFT JOIN macrostrat.lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id
+        LEFT JOIN macrostrat.unit_notes ON unit_notes.unit_id=units.id
         WHERE
           ${where}
         GROUP BY units.id
@@ -568,7 +568,13 @@ module.exports = function (req, res, next, cb) {
       ${limit}
       `;
 
-        larkin.query(sql, params, function (error, result) {
+        // replace ::measure_field if present
+        const { measure_field, ...params1 } = params;
+        if (sql.indexOf("::measure_field") > -1) {
+          sql = sql.replace("::measure_field", measure_field);
+        }
+
+        larkin.query(sql, params1, function (error, result) {
           if (error) {
             console.log(error);
             callback(error);
