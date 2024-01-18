@@ -114,3 +114,20 @@ class Objects(Base):
     deleted_on: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+
+
+class IngestProcess(Base):
+    __tablename__ = "ingest_process"
+    __table_args__ = {'schema': 'macrostrat'}
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+
+    comments: Mapped[str] = mapped_column(TEXT, nullable=True)
+    group_id: Mapped[int] = mapped_column(ForeignKey("macrostrat_auth.group.id"), nullable=True)
+    object_id: Mapped[Objects] = mapped_column(ForeignKey("macrostrat.objects.id"))
+    object: Mapped[Objects] = relationship("Objects", lazy="joined")
+    created_on: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    completed_on: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )

@@ -412,3 +412,81 @@ class TestObjectCRUD:
     response = api_client.get(f"/object/{data['id']}")
     assert response.status_code == 404
 
+class TestIngestProcess:
+
+  def test_add_ingest_process(self, api_client):
+    """Test adding an ingest process"""
+
+    key = f"test-{random.randint(0, 10000000)}"
+
+    object_data = {
+      "scheme": "http",
+      "host": "test.com",
+      "bucket": "test",
+      "key": key,
+      "source": {
+        "test_key": "test_value"
+      },
+      "mime_type": "application/json",
+      "sha256_hash": hashlib.sha256(open(__file__, "rb").read()).hexdigest()
+    }
+
+    response = api_client.post(
+      "/object",
+      json=object_data,
+    )
+
+    assert response.status_code == 200
+    object = response.json()
+
+    ingest_process_data = {
+      "object_id": object['id']
+    }
+
+    response = api_client.post(
+      "/ingest-process",
+      json=ingest_process_data,
+    )
+
+    assert response.status_code == 200
+    assert response.json()['object']['key'] == key
+
+  def test_get_ingest_processes(self, api_client):
+    response = api_client.get("/ingest-process")
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert len(data) > 0
+
+  def test_get_ingest_process(self, api_client):
+    response = api_client.get("/ingest-process")
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert len(data) > 0
+
+    response = api_client.get(f"/ingest-process/{data[0]['id']}")
+
+    assert response.status_code == 200
+
+    single_data = response.json()
+
+    assert single_data == data[0]
+
+  def test_patch_ingest_process(self, api_client):
+    response = api_client.get("/ingest-process")
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert len(data) > 0
+
+    response = api_client.patch(f"/ingest-process/{data[0]['id']}", json={"comments": "test"})
+
+    assert response.status_code == 200
+
+    single_data = response.json()
+
+    assert single_data['comments'] == "test"

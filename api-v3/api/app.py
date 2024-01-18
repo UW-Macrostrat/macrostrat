@@ -27,6 +27,7 @@ from api.models.source import PolygonModel, PolygonRequestModel, Sources, CopyCo
 from api.query_parser import ParserException
 from api.routes.security import TokenData, get_groups
 from api.routes.object import router as object_router
+from api.routes.ingest import router as ingest_router
 
 import api.schemas as schemas
 
@@ -60,6 +61,7 @@ app.add_middleware(
 
 app.include_router(api.routes.security.router)
 app.include_router(object_router)
+app.include_router(ingest_router)
 
 
 @app.get("/sources")

@@ -13,12 +13,6 @@ class CommonModel(BaseModel):
     descrip: Optional[str] = None
     ready: Optional[Union[bool | str]] = None
 
-    @field_validator("source_id", "orig_id")
-    def transform_str_to_int(cls, v):
-        if isinstance(v, str):
-            return int(v)
-        return v
-
 
 class PolygonModel(CommonModel):
     name: Optional[str] = None

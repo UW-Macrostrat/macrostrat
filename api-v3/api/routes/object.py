@@ -20,7 +20,7 @@ router = APIRouter(
 )
 
 
-@router.get("/", response_model=list[ResponseObject])
+@router.get("", response_model=list[ResponseObject])
 async def get_objects(page: int = 0, page_size: int = 50, filter_query_params=Depends(get_filter_query_params), groups: list[str] = Depends(get_groups)):
     """Get all objects"""
 
@@ -72,7 +72,7 @@ async def get_object(id: int, groups: list[str] = Depends(get_groups)):
         return response
 
 
-@router.post("/", response_model=ResponseObject)
+@router.post("", response_model=ResponseObject)
 async def create_file(object: Object, groups: list[str] = Depends(get_groups)):
     """Create/Register a new object"""
 

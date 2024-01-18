@@ -54,8 +54,8 @@ async def dispose_engine():
     await engine.dispose()
 
 
-def get_async_session(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
-    return async_sessionmaker(engine)
+def get_async_session(engine: AsyncEngine, **kwargs) -> async_sessionmaker[AsyncSession]:
+    return async_sessionmaker(engine, **kwargs)
 
 
 async def source_id_to_primary_table(
