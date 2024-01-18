@@ -10,6 +10,8 @@ source "$COMPOSE_ROOT/.env"
 set +a
 
 function run-mysql {
+  cmd="mysql --user=root --password=\"$MARIADB_ROOT_PASSWORD\" $@"
+  echo "Running: $cmd"
   macrostrat compose exec -T mariadb mysql --user=root --password="$MARIADB_ROOT_PASSWORD" $@
 }
 

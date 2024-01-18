@@ -108,13 +108,13 @@ main.add_typer(v2_app, name="v2")
 
 
 @main.command(
-    context_settings={"allow_extra_args": True, "ignore_unknown_options": True}
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
+    name="run",
 )
-def run(
+def _run(
     ctx: typer.Context, command: str = Argument(help="Command to run", default=None)
 ):
     """Run a command in the Macrostrat command-line context"""
-    from subprocess import run
 
     bindir = Path(settings.srcroot) / "bin"
 
@@ -127,8 +127,7 @@ def run(
         return
 
     cmd = bindir / command
-
-    run([str(cmd), *ctx.args])
+    run(str(cmd), *ctx.args)
 
 
 # Add subsystems if they are available.
