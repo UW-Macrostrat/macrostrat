@@ -22,4 +22,5 @@ function run-mysql {
 
 run-mysql -e "DROP DATABASE IF EXISTS macrostrat"
 run-mysql -e "CREATE DATABASE macrostrat"
-zcat "$db" | pv -cN zcat | run-mysql macrostrat
+# We have to pipe to zcat because MacOS is weird
+cat "$db" | zcat | pv -cN zcat | run-mysql macrostrat
