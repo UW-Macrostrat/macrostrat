@@ -47,7 +47,7 @@ async def _pg_restore(
         *_cmd,
         stdin=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
-        limit=1024 * 1024 * 10,  # 10 MB windows
+        limit=1024 * 1024 * 1,  # 1 MB windows
     )
 
 
