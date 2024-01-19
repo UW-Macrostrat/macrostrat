@@ -33,6 +33,9 @@ def get_filter_query_params(request: Request) -> list[tuple[str, str]]:
 
 def cast_to_column_type(column: Column, value):
     try:
+        if value == "null":
+            return None
+
         return column.type.python_type(value)
     except Exception:
         raise ParserException(
