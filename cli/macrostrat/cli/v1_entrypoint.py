@@ -7,7 +7,6 @@ Usage:
   macrostrat v1 backup <db>
   macrostrat v1 process <cmd> <source_id>
   macrostrat v1 schlep <table>
-  macrostrat v1 seed <source_id>
   macrostrat v1 export [coming soon]
   macrostrat v1 -h | --help
   macrostrat v1 --version
@@ -23,8 +22,8 @@ Help:
 
 
 import sys
-import click
 
+import click
 
 # CLI with unprocessed arguments
 
@@ -34,9 +33,9 @@ import click
 def v1_cli(args):
     """Macrostrat CLI v1 commands"""
     # import all available commands
-    from . import commands
     from . import __version__ as VERSION
-    from .database import pgConnection, mariaConnection
+    from . import commands
+    from .database import mariaConnection, pgConnection
 
     # No parameters
     if len(args) == 0:

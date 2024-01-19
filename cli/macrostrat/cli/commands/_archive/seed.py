@@ -1,21 +1,24 @@
-from .base import Base
-import sys
 import datetime
-from tiletanic import tilecover
-from shapely import geometry
-from shapely.wkt import loads
-from tiletanic import tileschemes
-import requests
-from tqdm import *
-from subprocess import call
 import os
 import sqlite3
+import sys
 from multiprocessing.pool import Pool
-from .. import config as cfg
+from subprocess import call
+
+import requests
+from shapely import geometry
+from shapely.wkt import loads
+from tiletanic import tilecover, tileschemes
+from tqdm import *
+
+from macrostrat.core import config as cfg
+
 from ..database import get_pg_credentials
+from .base import Base
 
 THREADS = 4
 FNULL = open(os.devnull, "w")
+
 
 # Used for making requests to the seed server
 def http_request(params):

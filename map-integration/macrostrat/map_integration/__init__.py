@@ -12,7 +12,7 @@ from .commands.copy_to_maps import copy_to_maps
 from .commands.ingest import ingest_map
 from .commands.match_names import match_names
 from .commands.prepare_fields import prepare_fields
-from .commands.rgeom import create_rgeom, create_webgeom
+from .commands.process.rgeom import create_rgeom, create_webgeom
 from .commands.sources import map_sources
 from .migrations import run_migrations
 

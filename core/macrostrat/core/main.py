@@ -69,7 +69,7 @@ class Macrostrat(Application):
             "Macrostrat",
             root_dir=root_dir,
             project_prefix=self.settings.project_name,
-            app_module="macrostrat",
+            log_modules=["macrostrat"],
             compose_files=compose_files,
             load_dotenv=env_file,
             # This only applies to Docker Compose

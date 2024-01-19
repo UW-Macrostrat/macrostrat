@@ -1,6 +1,7 @@
-from .base import Base
-from . import rebuild_scripts
 import sys
+
+from . import rebuild_scripts
+from .base import Base
 
 
 class Rebuild(Base):
@@ -13,7 +14,7 @@ class Rebuild(Base):
         lookup_strat_names
         lookup_unit_attrs_api
         lookup_unit_intervals
-        lookup_units
+        lookup_units (now part of the main macrostrat rebuild command)
         pbdb_matches
         stats
         strat_name_footprints

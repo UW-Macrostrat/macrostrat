@@ -1,8 +1,11 @@
 import asyncio
+
 from aiofiles.threadpool.binary import AsyncBufferedIOBase
+from macrostrat.utils import get_logger
 from rich.console import Console
 from sqlalchemy.engine import Engine
-from macrostrat.utils import get_logger
+from sqlalchemy.engine.url import URL
+from sqlalchemy_utils import create_database, database_exists
 
 console = Console()
 
@@ -19,6 +22,23 @@ def _docker_local_run_args(postgres_container: str = "postgres:15"):
         "host",
         postgres_container,
     ]
+
+
+def _create_database_if_not_exists(_url: URL, create=False):
+    database = _url.database
+    db_exists = database_exists(_url)
+    if db_exists:
+        console.print(f"Database [bold cyan]{database}[/] already exists")
+
+    if create and not db_exists:
+        console.print(f"Creating database [bold cyan]{database}[/]")
+        create_database(_url)
+
+    if not db_exists and not create:
+        raise ValueError(
+            f"Database [bold cyan]{database}[/] does not exist. "
+            "Use `--create` to create it."
+        )
 
 
 def _create_command(

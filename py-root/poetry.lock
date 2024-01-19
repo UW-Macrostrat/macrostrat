@@ -1075,13 +1075,13 @@ files = [
 
 [[package]]
 name = "macrostrat-app-frame"
-version = "1.2.0"
+version = "1.2.2"
 description = "A control script framework for containerized applications."
 optional = false
 python-versions = ">=3.10,<4.0"
 files = [
-    {file = "macrostrat_app_frame-1.2.0-py3-none-any.whl", hash = "sha256:da8acb8170356d4196ce6e8afc2aef055680b2a34ea16c9d3ab606d6bc79df20"},
-    {file = "macrostrat_app_frame-1.2.0.tar.gz", hash = "sha256:17ed68e4007b09f8abc50d62d27f955e1ff6f760d191c4139ee6687bc541ee4e"},
+    {file = "macrostrat_app_frame-1.2.2-py3-none-any.whl", hash = "sha256:5e714399083010378a6f7b585c9d158566f9f4b89ad8da01cf8e469eb72c4b33"},
+    {file = "macrostrat_app_frame-1.2.2.tar.gz", hash = "sha256:1f774b171ebe202731090f6bb25f52fb5a26a2fad1304bb00e84ec2ff4a6e638"},
 ]
 
 [package.dependencies]
@@ -1107,8 +1107,8 @@ dynaconf = "^3.1.12"
 Fiona = "^1.8.22"
 geopandas = "^0.14.1"
 ipython = "^8.5.0"
-"macrostrat.app-frame" = "^1.1.0"
-"macrostrat.database" = "^3.0.0"
+"macrostrat.app-frame" = "^1.2.1"
+"macrostrat.database" = "^3.1.1"
 numpy = "^1.23.4"
 portforward = "^0.6.0"
 psycopg2-binary = "^2.9.4"
@@ -1129,7 +1129,7 @@ typer = "^0.9.0"
 
 [package.source]
 type = "directory"
-url = "../entrypoint"
+url = "../cli"
 
 [[package]]
 name = "macrostrat-core"
@@ -1142,7 +1142,7 @@ develop = true
 
 [package.dependencies]
 dynaconf = "^3.1.12"
-"macrostrat.app-frame" = "^1.2.0"
+"macrostrat.app-frame" = "^1.2.2"
 python-dotenv = "^1.0.0"
 
 [package.source]
@@ -1151,13 +1151,13 @@ url = "../core"
 
 [[package]]
 name = "macrostrat-database"
-version = "3.1.0"
+version = "3.1.1"
 description = "A SQLAlchemy-based database toolkit."
 optional = false
 python-versions = ">=3.8,<4.0"
 files = [
-    {file = "macrostrat_database-3.1.0-py3-none-any.whl", hash = "sha256:330bc21360d0945e238f315c97197fd3465cf2f500b8f2ec21ebde52c28dbe95"},
-    {file = "macrostrat_database-3.1.0.tar.gz", hash = "sha256:873e58007a0ac2080536a54707ca3cb027a6aa79b76a43e9264cfdca0e597077"},
+    {file = "macrostrat_database-3.1.1-py3-none-any.whl", hash = "sha256:9daa5f236ae1b604f8c00fc00c424a24edf183b8be2afc51514bc417f10396e0"},
+    {file = "macrostrat_database-3.1.1.tar.gz", hash = "sha256:61fcecb8252613759772df4415f3e59a254027099ff51c79001163d04df842bc"},
 ]
 
 [package.dependencies]
@@ -3321,4 +3321,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "ca54352263d274a3e47f12a326c1042dedc28dd5ac698c2ec6667b9ac108e246"
+content-hash = "59212d2311260f7541c1980bb253c1b0178c1776e6eeb59a6f52b1a43fe8fb84"

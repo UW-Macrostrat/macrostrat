@@ -572,30 +572,31 @@ testing = ["Django (<3.1)", "attrs", "colorama", "docopt", "pytest (<7.0.0)"]
 
 [[package]]
 name = "macrostrat-app-frame"
-version = "1.1.0"
+version = "1.2.1"
 description = "A control script framework for containerized applications."
 optional = false
 python-versions = ">=3.10,<4.0"
 files = [
-    {file = "macrostrat_app_frame-1.1.0-py3-none-any.whl", hash = "sha256:e1f5f2ce8f8173cb13bd0f02217cef5f61ea0a97b1d244f6ccf5ddddd24cd466"},
-    {file = "macrostrat_app_frame-1.1.0.tar.gz", hash = "sha256:9df0defeded0100dc9c54a27c39de9018a7104749364b8af752be7ed5a6e1a47"},
+    {file = "macrostrat_app_frame-1.2.1-py3-none-any.whl", hash = "sha256:154a93ecde91f1f4254a27ad5bba89e41227edb08584146542a24822616bb517"},
+    {file = "macrostrat_app_frame-1.2.1.tar.gz", hash = "sha256:fe2e8f5e35e4169e43883a93b08cf2b4c9e79af0e67c3aa35f63228e71a64738"},
 ]
 
 [package.dependencies]
 "macrostrat.utils" = ">=1.1.0,<2.0.0"
 python-dotenv = ">=1.0.0,<2.0.0"
 rich = ">=13,<14"
+toposort = ">=1.5,<2.0"
 typer = ">=0.9.0,<0.10.0"
 
 [[package]]
 name = "macrostrat-database"
-version = "3.0.0"
+version = "3.1.1"
 description = "A SQLAlchemy-based database toolkit."
 optional = false
 python-versions = ">=3.8,<4.0"
 files = [
-    {file = "macrostrat_database-3.0.0-py3-none-any.whl", hash = "sha256:19a88fbf46da453be892652ab1dd8d21ff6809242a6a32167a8ace69ed59bc81"},
-    {file = "macrostrat_database-3.0.0.tar.gz", hash = "sha256:fa927c4c74f692083fcb130c5c41cb14be7a0666ab4c6d203d7f13327ebffb68"},
+    {file = "macrostrat_database-3.1.1-py3-none-any.whl", hash = "sha256:9daa5f236ae1b604f8c00fc00c424a24edf183b8be2afc51514bc417f10396e0"},
+    {file = "macrostrat_database-3.1.1.tar.gz", hash = "sha256:61fcecb8252613759772df4415f3e59a254027099ff51c79001163d04df842bc"},
 ]
 
 [package.dependencies]
@@ -1597,6 +1598,17 @@ geojson = "*"
 shapely = ">=1.6"
 
 [[package]]
+name = "toposort"
+version = "1.10"
+description = "Implements a topological sort algorithm."
+optional = false
+python-versions = "*"
+files = [
+    {file = "toposort-1.10-py3-none-any.whl", hash = "sha256:cbdbc0d0bee4d2695ab2ceec97fe0679e9c10eab4b2a87a9372b929e70563a87"},
+    {file = "toposort-1.10.tar.gz", hash = "sha256:bfbb479c53d0a696ea7402601f4e693c97b0367837c8898bc6471adfca37a6bd"},
+]
+
+[[package]]
 name = "tornado"
 version = "6.4"
 description = "Tornado is a Python web framework and asynchronous networking library, originally developed at FriendFeed."
@@ -1741,4 +1753,4 @@ test = ["websockets"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "870019392b8e780f49f4faead4a6930385c476e7a450441173eb6f39764a8675"
+content-hash = "ffc5f417ea4d6ba5c22b96748d7f01da51e122722b8c0a1e525d99a4db5ff63b"

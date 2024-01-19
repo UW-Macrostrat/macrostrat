@@ -1,10 +1,10 @@
 from os import environ
-from dynaconf import Dynaconf, Validator
 from pathlib import Path
 
-from .utils import find_macrostrat_config, is_pg_url
+from dynaconf import Dynaconf, Validator
 from sqlalchemy.engine import make_url
 
+from .utils import find_macrostrat_config, is_pg_url
 
 cfg = find_macrostrat_config()
 
@@ -48,6 +48,7 @@ environ["PG_DATABASE_CONTAINER"] = getattr(
     settings, "pg_database_container", "postgis/postgis:15-3.4"
 )
 
+
 environ["COMPOSE_PROJECT_NAME"] = "macrostrat_" + macrostrat_env
 
 # For map integration CLI
@@ -67,7 +68,9 @@ compose_file = getattr(settings, "compose_file", None)
 if compose_file is None:
     root = getattr(settings, "compose_root", None)
     if root is not None:
-        compose_file = Path(settings.compose_root).expanduser() / "docker-compose.yaml"
+        compose_root = Path(root).expanduser()
+        environ["COMPOSE_ROOT"] = str(compose_root)
+        compose_file = compose_root / "docker-compose.yaml"
 if compose_file is not None:
     environ["COMPOSE_FILE"] = str(compose_file)
 
@@ -92,4 +95,6 @@ MYSQL_DATABASE = getattr(settings, "mysql_database", None)
 # MBTILES_PATH = environ.get("MBTILES_PATH", None)
 
 # Path to the root of the Macrostrat repository
-settings.srcroot = Path(__file__).parent.parent.parent
+settings.srcroot = Path(__file__).parent.parent.parent.parent
+
+environ["MACROSTRAT_ROOT"] = str(settings.srcroot)

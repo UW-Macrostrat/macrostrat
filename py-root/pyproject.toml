@@ -6,7 +6,7 @@ authors = ["Daven Quinn"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-"macrostrat.cli" = { path = "../entrypoint", develop = true }
+"macrostrat.cli" = { path = "../cli", develop = true }
 "macrostrat.core" = { path = "../core", develop = true }
 "macrostrat.map_integration" = { path = "../map-integration", develop = true }
 "corelle.engine" = { path = "../../../Software/corelle/py-packages/engine", develop = true }

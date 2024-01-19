@@ -1,12 +1,18 @@
 import asyncio
-from rich.console import Console
 from pathlib import Path
-from sqlalchemy.engine import Engine
-from sqlalchemy_utils import create_database, database_exists
-import aiofiles
 from typing import Optional
-from .utils import _create_command, print_stream_progress, print_stdout
+
+import aiofiles
 from macrostrat.utils import get_logger
+from rich.console import Console
+from sqlalchemy.engine import Engine
+
+from .utils import (
+    _create_command,
+    _create_database_if_not_exists,
+    print_stdout,
+    print_stream_progress,
+)
 
 console = Console()
 
@@ -28,21 +34,7 @@ async def _pg_restore(
 ):
     # Pipe file to pg_restore, mimicking
 
-    database = engine.url
-
-    db_exists = database_exists(database)
-    if db_exists:
-        console.print(f"Database [bold cyan]{database}[/] already exists")
-
-    if create and not db_exists:
-        console.print(f"Creating database [bold cyan]{database}[/]")
-        create_database(database)
-
-    if not db_exists and not create:
-        raise ValueError(
-            f"Database [bold cyan]{database}[/] does not exist. "
-            "Use `--create` to create it."
-        )
+    _create_database_if_not_exists(engine.url, create=create)
 
     # Run pg_restore in a local Docker container
     # TODO: this could also be run with pg_restore in a Kubernetes pod

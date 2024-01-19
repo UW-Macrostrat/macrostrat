@@ -76,13 +76,13 @@ yaml = ["ruamel.yaml"]
 
 [[package]]
 name = "macrostrat-app-frame"
-version = "1.2.0"
+version = "1.2.2"
 description = "A control script framework for containerized applications."
 optional = false
 python-versions = ">=3.10,<4.0"
 files = [
-    {file = "macrostrat_app_frame-1.2.0-py3-none-any.whl", hash = "sha256:da8acb8170356d4196ce6e8afc2aef055680b2a34ea16c9d3ab606d6bc79df20"},
-    {file = "macrostrat_app_frame-1.2.0.tar.gz", hash = "sha256:17ed68e4007b09f8abc50d62d27f955e1ff6f760d191c4139ee6687bc541ee4e"},
+    {file = "macrostrat_app_frame-1.2.2-py3-none-any.whl", hash = "sha256:5e714399083010378a6f7b585c9d158566f9f4b89ad8da01cf8e469eb72c4b33"},
+    {file = "macrostrat_app_frame-1.2.2.tar.gz", hash = "sha256:1f774b171ebe202731090f6bb25f52fb5a26a2fad1304bb00e84ec2ff4a6e638"},
 ]
 
 [package.dependencies]
@@ -371,4 +371,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "d5a5c025db46d911e0ea1a2a59820480ec39dead6af5bbb9d46aa8402fd9a071"
+content-hash = "76945effc8e4c463c219c4b31e9ba0cbc9601f2bc19d74fbe54981663f2ff99d"
