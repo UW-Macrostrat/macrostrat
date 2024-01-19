@@ -1075,13 +1075,13 @@ files = [
 
 [[package]]
 name = "macrostrat-app-frame"
-version = "1.2.1"
+version = "1.2.2"
 description = "A control script framework for containerized applications."
 optional = false
 python-versions = ">=3.10,<4.0"
 files = [
-    {file = "macrostrat_app_frame-1.2.1-py3-none-any.whl", hash = "sha256:154a93ecde91f1f4254a27ad5bba89e41227edb08584146542a24822616bb517"},
-    {file = "macrostrat_app_frame-1.2.1.tar.gz", hash = "sha256:fe2e8f5e35e4169e43883a93b08cf2b4c9e79af0e67c3aa35f63228e71a64738"},
+    {file = "macrostrat_app_frame-1.2.2-py3-none-any.whl", hash = "sha256:5e714399083010378a6f7b585c9d158566f9f4b89ad8da01cf8e469eb72c4b33"},
+    {file = "macrostrat_app_frame-1.2.2.tar.gz", hash = "sha256:1f774b171ebe202731090f6bb25f52fb5a26a2fad1304bb00e84ec2ff4a6e638"},
 ]
 
 [package.dependencies]
@@ -1142,7 +1142,7 @@ develop = true
 
 [package.dependencies]
 dynaconf = "^3.1.12"
-"macrostrat.app-frame" = "^1.2.1"
+"macrostrat.app-frame" = "^1.2.2"
 python-dotenv = "^1.0.0"
 
 [package.source]
