@@ -38,7 +38,7 @@ def ingest_map(
     frames = defaultdict(list)
 
     # Add to map-sources table
-    db.engine.execute(
+    db.run_sql(
         f"INSERT INTO maps.sources (primary_table) VALUES ('{source_id}') ON CONFLICT DO NOTHING"
     )
 
@@ -98,7 +98,7 @@ def ingest_map(
         table = f"{source_id}_{feature_type.lower()}s"
         schema = "sources"
 
-        db.engine.execute(f"CREATE SCHEMA IF NOT EXISTS {schema}")
+        db.run_sql(f"CREATE SCHEMA IF NOT EXISTS {schema}")
 
         console.print(f"Writing [blue dim]{schema}.{table}")
         # Get first 10 rows
