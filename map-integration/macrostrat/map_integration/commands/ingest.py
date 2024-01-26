@@ -129,7 +129,7 @@ def ingest_map(
                 # Ensure multigeometries are used (brute force)
                 if i == 0:
                     conn.execute(
-                        f"ALTER TABLE {schema}.{table} ALTER COLUMN geometry TYPE Geometry(Geometry, 4326)"
+                        text(f"ALTER TABLE {schema}.{table} ALTER COLUMN geometry TYPE Geometry(Geometry, 4326)")
                     )
                 progress.update(task, advance=len(chunk))
 
