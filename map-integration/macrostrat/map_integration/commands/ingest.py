@@ -39,7 +39,7 @@ def ingest_map(
 
     # Add to map-sources table
     db.run_sql(
-        f"INSERT INTO maps.sources (primary_table) VALUES ('{source_id}') ON CONFLICT DO NOTHING"
+        f"INSERT INTO maps.sources (primary_table, slug) VALUES ('{source_id}_polygons', '{source_id}') ON CONFLICT DO NOTHING"
     )
 
     for file in files:
