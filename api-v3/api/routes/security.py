@@ -46,7 +46,7 @@ class User(BaseModel):
     disabled: bool | None = None
 
 class AccessToken(BaseModel):
-    group: str
+    group: int
     token: str
 
 class GroupTokenRequest(BaseModel):
