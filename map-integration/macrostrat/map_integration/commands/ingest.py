@@ -39,7 +39,7 @@ def ingest_map(
 
     # Add to map-sources table
     db.run_sql(
-        f"INSERT INTO maps.sources (primary_table) VALUES ('{source_id}') ON CONFLICT DO NOTHING"
+        f"INSERT INTO maps.sources (primary_table, slug) VALUES ('{source_id}_polygons', '{source_id}') ON CONFLICT DO NOTHING"
     )
 
     for file in files:
@@ -129,7 +129,7 @@ def ingest_map(
                 # Ensure multigeometries are used (brute force)
                 if i == 0:
                     conn.execute(
-                        f"ALTER TABLE {schema}.{table} ALTER COLUMN geometry TYPE Geometry(Geometry, 4326)"
+                        text(f"ALTER TABLE {schema}.{table} ALTER COLUMN geometry TYPE Geometry(Geometry, 4326)")
                     )
                 progress.update(task, advance=len(chunk))
 

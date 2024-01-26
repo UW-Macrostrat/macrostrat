@@ -21,10 +21,10 @@ def create_rgeom(source_id: int):
     # TODO: figure out bug where we can't use $(primary_table)s here
     q = "UPDATE {primary_table} SET geom = ST_Buffer(geom, 0)"
     table = Identifier("sources", name)
-    db.run_query(q, {"primary_table": table})
+    db.run_sql(q, {"primary_table": table})
 
     print("Creating reference geometry...")
-    db.run_query(sql_file("set-rgeom"), dict(source_id=source_id, primary_table=table))
+    db.run_sql(sql_file("set-rgeom"), dict(source_id=source_id, primary_table=table))
 
     end = time.time()
 
@@ -34,4 +34,4 @@ def create_rgeom(source_id: int):
 def create_webgeom(source_id: int):
     """Create a geometry for use on the web"""
     sql = sql_file("set-webgeom")
-    db.run_query(sql, {"source_id": source_id})
+    db.run_sql(sql, {"source_id": source_id})
