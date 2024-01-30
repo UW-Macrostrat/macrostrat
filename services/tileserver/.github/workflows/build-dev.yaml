@@ -2,51 +2,47 @@ name: Build Development
 
 on:
   push:
+    branches: ["**"]
     tags:
-      - v[0-9]+.[0-9]+.[0-9]+-**  # Semver Pre-Release
+      - v[0-9]+.[0-9]+.[0-9]+-** # Semver Pre-Release
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   docker:
     runs-on: ubuntu-latest
     steps:
-      -
-        name: Checkout
-        uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          submodules: 'recursive'
-      -
-        name: Docker meta
+          submodules: "recursive"
+      - name: Docker meta
         id: meta
-        uses: docker/metadata-action@v4
+        uses: docker/metadata-action@v5
         with:
-          images: hub.opensciencegrid.org/macrostrat/tileserver
+          images: hub.opensciencegrid.org/macrostrat/web
           tags: |
             type=semver,pattern={{version}}
             type=raw,value=latest-itb
-            type=raw,value={{tag}}-{{date 'YYYYMMDDHHmmss'}}
+            type=ref,event=pr,suffix=-{{date 'YYYYMMDDHHmmss'}}
+            type=ref,event=branch,suffix=-{{date 'YYYYMMDDHHmmss'}}
+            type=ref,event=tag,suffix=-{{date 'YYYYMMDDHHmmss'}}
             type=raw,value=latest-itb-{{date 'YYYYMMDDHHmmss'}}
             type=raw,value=sha-{{sha}}
-      -
-        name: Set up Docker Buildx
+      - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-
-      -
-        name: Login to OSG DockerHub
+      - name: Login to OSG DockerHub
         uses: docker/login-action@v2
         with:
           registry: hub.opensciencegrid.org
           username: ${{ vars.HARBOR_CLI_NAME }}
           password: ${{ secrets.HARBOR_CLI_SECRET }}
-      -
-        name: Build and push
-        uses: docker/build-push-action@v3
+      - name: Build and push
+        uses: docker/build-push-action@v5
         with:
           context: .
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          # Layer caching should significantly speed up builds
-          cache-from: type=registry,ref=hub.opensciencegrid.org/macrostrat/tileserver:latest
-          cache-to: type=inline
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
