@@ -185,3 +185,12 @@ DROP VIEW IF EXISTS  lines.lines_tiny;
 DROP VIEW IF EXISTS  lines.lines_small;
 DROP VIEW IF EXISTS  lines.lines_medium;
 DROP VIEW IF EXISTS  lines.lines_large;
+
+-- Create views for backwards compatibility
+CREATE SCHEMA IF NOT EXISTS tile_layers;
+
+CREATE OR REPLACE VIEW tile_layers.map_lines AS
+SELECT * FROM maps.lines;
+
+CREATE OR REPLACE VIEW tile_layers.map_units AS
+SELECT * FROM maps.polygons;

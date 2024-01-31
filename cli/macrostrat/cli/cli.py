@@ -238,6 +238,9 @@ except ImportError as err:
     pass
 
 
+app.finish_loading_subsystems()
+
+
 @main.command(name="carto-plate-index")
 def build_carto_plate_index():
     """Build a representation of the Carto map layers, split by plate polygons"""
