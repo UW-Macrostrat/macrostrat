@@ -78,6 +78,9 @@ class Macrostrat(Application):
 
         self.subsystems._app = self
 
+    def finish_loading_subsystems(self):
+        self.subsystems.finalize(self)
+
 
 def env_text():
     return f"environment [bold cyan]{environ.get('MACROSTRAT_ENV')}[/]"
