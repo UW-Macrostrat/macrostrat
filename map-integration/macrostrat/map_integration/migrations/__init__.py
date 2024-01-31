@@ -1,7 +1,8 @@
-from macrostrat.database import Database
 from pathlib import Path
-from psycopg2.sql import Identifier
+
+from macrostrat.database import Database
 from macrostrat.utils import get_logger
+from psycopg2.sql import Identifier
 
 log = get_logger(__name__)
 
@@ -16,7 +17,7 @@ def change_legacy_table_names(db: Database):
             JOIN maps.sources ON slug = table_name
             WHERE table_schema = 'sources'"""
 
-    for table_name, source_id in db.session.execute(sql):
+    for table_name, source_id in db.run_query(sql):
         new_table_name = table_name + "_polygons"
         db.run_sql(
             "ALTER TABLE sources.{table_name} RENAME TO {new_table_name}",
@@ -29,7 +30,7 @@ def change_legacy_table_names(db: Database):
         # Update the sources table to reflect the new table name
         db.run_sql(
             "UPDATE maps.sources SET primary_table = :new_table_name WHERE source_id = :source_id",
-            params=dict(new_table_name=new_table_name, source_id=source_id),
+            dict(new_table_name=new_table_name, source_id=source_id),
         )
         db.session.commit()
 
@@ -37,7 +38,7 @@ def change_legacy_table_names(db: Database):
 def add_missing_table_names(db: Database):
     """For each source, check that the primary_table and primary_line_table are populated if
     the relevant tables exist."""
-    all_tables = db.session.execute(
+    all_tables = db.run_query(
         "SELECT slug, primary_table, primary_line_table FROM maps.sources WHERE slug IS NOT NULL"
     ).fetchall()
 
@@ -59,9 +60,7 @@ def table_exists(db: Database, table_name: str, schema: str = "public") -> bool:
           AND table_name = :table_name
     );"""
 
-    return db.session.execute(
-        sql, params=dict(schema=schema, table_name=table_name)
-    ).scalar()
+    return db.run_query(sql, dict(schema=schema, table_name=table_name)).scalar()
 
 
 def _add_missing_table_name(

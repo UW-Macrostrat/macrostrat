@@ -13,6 +13,7 @@ macrostrat_config_file = cfg
 settings = Dynaconf(
     envvar_prefix="MACROSTRAT",
     environments=True,
+    env_switcher="MACROSTRAT_ENV",
     settings_files=[cfg],
     load_dotenv=False,
 )
@@ -23,8 +24,8 @@ settings.validators.register(
     Validator("COMPOSE_ROOT", "CORELLE_SRC", cast=Path)
 )
 
-macrostrat_env = environ.get("MACROSTRAT_ENV", "local")
-settings.namespace(macrostrat_env)
+macrostrat_env = settings.env
+
 settings.validators.validate()
 
 # A database connection string for PostgreSQL

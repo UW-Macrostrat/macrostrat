@@ -55,7 +55,7 @@ def set_env(env: str = Argument(None), unset: bool = False):
     """Set the active environment"""
     active_env = get_app_env_file()
     if env is None:
-        e = environ.get("MACROSTRAT_ENV")
+        e = app.settings.env
         if e is None:
             print("No environment set", file=stderr)
             exit(1)
@@ -63,10 +63,11 @@ def set_env(env: str = Argument(None), unset: bool = False):
         return
     if unset:
         active_env.unlink()
-    else:
-        active_env.parent.mkdir(exist_ok=True)
-        active_env.write_text(env)
-        print(f"Activated {env_text()}")
+        return
+    environ["MACROSTRAT_ENV"] = env
+    active_env.parent.mkdir(exist_ok=True)
+    active_env.write_text(env)
+    print(f"Activated {env_text()}")
 
 
 def local_install(path: Path):
