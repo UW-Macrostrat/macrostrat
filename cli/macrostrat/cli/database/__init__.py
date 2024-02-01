@@ -109,9 +109,7 @@ def psql(ctx: typer.Context, database: str = None):
     context_settings={"allow_extra_args": True, "ignore_unknown_options": True}
 )
 def dump(
-    ctx: typer.Context,
-    dumpfile: Path,
-    database: str = None,
+    ctx: typer.Context, dumpfile: Path, database: str = None, schema: bool = False
 ):
     """Dump the database to a file"""
     from .._dev.dump_database import pg_dump
@@ -120,11 +118,18 @@ def dump(
 
     engine = _engine_for_db_name(database)
 
+    args = ctx.args
+    custom_format = True
+    if schema:
+        args.append("--schema-only")
+        custom_format = False
+
     pg_dump(
         dumpfile,
         engine,
         postgres_container=db_container,
         args=ctx.args,
+        custom_format=custom_format,
     )
 
 
