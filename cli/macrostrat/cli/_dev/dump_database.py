@@ -1,17 +1,19 @@
 import asyncio
-from typing import Optional
-from sqlalchemy.engine import Engine
 from pathlib import Path
+from typing import Optional
+
 import aiofiles
-from .utils import _create_command, print_stream_progress, print_stdout
 from macrostrat.utils import get_logger
+from sqlalchemy.engine import Engine
+
+from .utils import _create_command, print_stdout, print_stream_progress
 
 log = get_logger(__name__)
 
 
 def pg_dump(*args, **kwargs):
     task = _pg_dump_to_file(*args, **kwargs)
-    asyncio.run_coroutine_threadsafe(task)
+    asyncio.run(task)
 
 
 async def _pg_dump(
@@ -21,9 +23,13 @@ async def _pg_dump(
     args: list = [],
     postgres_container: str = "postgres:15",
     user: Optional[str] = "postgres",
-    stdout=asyncio.subprocess.PIPE
+    stdout=asyncio.subprocess.PIPE,
+    custom_format: bool = True,
 ):
     _args = []
+    if custom_format:
+        _args.append("-Fc")
+
     if user is not None:
         _args += ["-U", user]
     _args += args
@@ -31,7 +37,6 @@ async def _pg_dump(
     _cmd = _create_command(
         engine,
         "pg_dump",
-        "-Fc",
         args=_args,
         prefix=command_prefix,
         container=postgres_container,
