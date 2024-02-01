@@ -49,7 +49,7 @@ def prepare_fields(identifier: str = Argument(None), all: bool = False):
 def prepare_fields_for_all_sources():
     # Run prepare fields for all legacy map tables that don't have a _pkid column
     sql = Path(__file__).parent.parent / "procedures" / "tables-without-pkid.sql"
-    for table in db.session.execute(sql.read_text()):
+    for table in db.run_query(sql.read_text()):
         prepare_fields(table.slug)
 
 

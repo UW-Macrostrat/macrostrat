@@ -185,7 +185,7 @@ def list_tables(ctx: typer.Context, database: str = Argument(None), schema: str 
     )
 
     with engine.connect() as conn:
-        result = conn.execute(text(sql), **kwargs)
+        result = conn.execute(text(sql), kwargs)
         for row in result:
             print(f"{row.table_schema}.{row.table_name}")
 
