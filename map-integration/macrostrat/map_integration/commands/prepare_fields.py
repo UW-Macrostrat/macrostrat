@@ -2,24 +2,56 @@ from pathlib import Path
 
 from psycopg2.sql import SQL, Identifier
 from rich import print
-from typer import Argument
+from sqlalchemy.exc import NoResultFound
+from typer import Argument, Option
 
 from ..database import db
-from ..utils import get_map_info
+from ..utils import create_sources_record, get_map_info
 
 
-def prepare_fields(identifier: str = Argument(None), all: bool = False):
+def prepare_fields(
+    identifier: str = Argument(None),
+    all: bool = False,
+    recover: bool = Option(False, "--recover", help="Recover sources records"),
+):
     """Prepare empty fields for manual cleaning."""
     if all:
-        prepare_fields_for_all_sources()
+        prepare_fields_for_all_sources(recover=recover)
         return
 
     if identifier is None:
         raise ValueError("You must specify a slug or pass --all")
 
+    _prepare_fields(identifier, recover=recover)
+
+
+def _prepare_fields(identifier: str, recover: bool = False):
     """Prepare empty fields for manual cleaning."""
+
+    print(f"[bold]Preparing fields for source [cyan]{identifier}")
+
     schema = "sources"
-    info = get_map_info(db, identifier)
+    info = None
+    try:
+        info = get_map_info(db, identifier)
+    except NoResultFound:
+        print(f"[bold red]No source found with slug [bold cyan]{identifier}")
+        print(
+            f"[gray dim]Use [bold]--recover[/] to attempt to recover the record in the [bold]maps.sources[/] table."
+        )
+        if recover:
+            print(
+                f"[bold yellow]Attempting to recover source record for [bold cyan]{identifier}"
+            )
+            try:
+                info = create_sources_record(db, identifier)
+            except ValueError:
+                print(
+                    f"[bold red]Failed to recover source record for [bold cyan]{identifier}"
+                )
+    if info is None:
+        return
+
     slug = info.slug
     source_id = info.id
 
@@ -40,17 +72,18 @@ def prepare_fields(identifier: str = Argument(None), all: bool = False):
     points_table = f"{slug}_points"
     add_points_columns(schema, points_table)
     add_primary_key_column(schema, points_table)
+    _set_source_id(schema, points_table, source_id)
 
     print(
         f"\n[bold green]Source [bold cyan]{slug}[green] prepared for manual cleaning!\n"
     )
 
 
-def prepare_fields_for_all_sources():
+def prepare_fields_for_all_sources(recover=False):
     # Run prepare fields for all legacy map tables that don't have a _pkid column
-    sql = Path(__file__).parent.parent / "procedures" / "tables-without-pkid.sql"
-    for table in db.run_query(sql.read_text()):
-        prepare_fields(table.slug)
+    sql = Path(__file__).parent.parent / "procedures" / "all-candidate-source-slugs.sql"
+    for table in db.run_query(sql):
+        prepare_fields(table.slug, recover=recover)
 
 
 def get_sources_record(slug):
