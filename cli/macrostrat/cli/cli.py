@@ -7,6 +7,7 @@ from typing import Optional
 import typer
 from macrostrat.utils.shell import run
 from rich import print
+from toml import load as load_toml
 from typer import Argument, Option, Typer
 
 from macrostrat.core import app
@@ -100,6 +101,23 @@ def edit_cfg():
     from macrostrat.core.config import macrostrat_config_file
 
     run(["open", str(macrostrat_config_file)])
+
+
+@cfg_app.command(name="environments")
+def edit_cfg():
+    """Open config file in editor"""
+    from subprocess import run
+
+    from macrostrat.core.config import macrostrat_config_file
+
+    # Parse out top-level headers from TOML file
+    with open(macrostrat_config_file, "r") as f:
+        cfg = load_toml(f)
+        keys = iter(cfg.keys())
+        print("Available environments:")
+        next(keys)
+        for k in keys:
+            print("- [bold cyan]" + k)
 
 
 main.add_typer(cfg_app)

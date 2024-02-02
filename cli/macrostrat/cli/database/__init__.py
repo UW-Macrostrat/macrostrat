@@ -1,6 +1,7 @@
 from os import environ
 from pathlib import Path
 from sys import exit, stderr, stdin
+from urllib.parse import quote
 
 import typer
 from macrostrat.app_frame import compose
@@ -262,3 +263,27 @@ def import_legacy():
         str(dburl),
         str(url),
     )
+
+
+keys = ["username", "host", "port", "password", "database"]
+
+
+@db_app.command(name="connection-details")
+def connection_details():
+    """Print the database connection details"""
+    db = get_db()
+    url = str(db.engine.url)
+    url = url.replace("***", quote(db.engine.url.password))
+    for key in keys:
+        print(
+            field_title(key.capitalize()),
+            f"[dim bold green]{getattr(db.engine.url, key)}",
+        )
+    print(field_title("URL"), f"[dim white]{url}")
+
+
+def field_title(name):
+    title = name + ":"
+    # expand the title to 20 characters
+    title = title.ljust(12)
+    return "[dim]" + title + "[/]" + " "
