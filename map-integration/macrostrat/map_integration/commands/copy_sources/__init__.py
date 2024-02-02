@@ -10,6 +10,7 @@ from macrostrat.database import Database
 from macrostrat.database.postgresql import on_conflict, table_exists
 from macrostrat.utils import get_logger
 from psycopg2.sql import Identifier
+from rich import print
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from typer import Argument, Option
@@ -35,21 +36,18 @@ def copy_macrostrat_sources(
 ):
     """Copy a macrostrat source from one database to another."""
 
-    from macrostrat.database import Database
-
-    from ..database import get_db
+    from ...database import db as _db
 
     if from_db is None and to_db is None:
         raise ValueError("Must specify either --from or --to")
 
-    _db = get_db()
     if from_db is None:
         from_db = _db
     else:
         from_db = Database(_db.engine.url.set(database=from_db))
 
     if to_db is None:
-        to_db = get_db()
+        to_db = _db
     else:
         to_db = Database(_db.engine.url.set(database=to_db))
 
@@ -69,27 +67,41 @@ def copy_macrostrat_sources(
     if has_flag and len(slugs) > 0:
         raise ValueError(f"Cannot specify both {active_flag} and individual maps")
 
+    dst_slugs = set()
     if has_flag:
         # Get all slugs in the source database
         slugs = from_db.session.query(from_db.model.maps_sources.slug).all()
         slugs = set([v.slug for v in slugs])
 
-        if _missing:
-            # Get all slugs in the destination database that are in the source database
-            dst_slugs = (
-                to_db.session.query(to_db.model.maps_sources.slug)
-                .filter(to_db.model.maps_sources.slug.in_(slugs))
-                .all()
-            )
-            dst_slugs = set([v.slug for v in dst_slugs])
+        # Get all slugs in the destination database that are in the source database
+        _dst_slugs = (
+            to_db.session.query(to_db.model.maps_sources.slug)
+            .filter(to_db.model.maps_sources.slug.in_(slugs))
+            .all()
+        )
+        dst_slugs = set([v.slug for v in _dst_slugs])
 
+        if _missing:
             # Get the slugs that are in the source database but not in the destination database
             slugs = list(slugs - dst_slugs)
 
     if dry_run:
         print("Would copy the following maps:", file=sys.stderr)
-        for slug in slugs:
-            print(slug)
+        sorted_slugs = sorted(list(slugs))
+        for slug in sorted_slugs:
+            is_overwrite = slug in dst_slugs
+            txt = slug
+            if is_overwrite and has_flag:
+                txt += " [red bold](overwrite)"
+            print(txt)
+
+    if _all and not replace and len(dst_slugs) > 0:
+        raise ValueError(
+            "Cannot use --all without --replace when some sources are already in the destination database"
+        )
+
+    if dry_run:
+        print("[dim]Dry run, stopping before we do anything")
         return
 
     # Copy the source
