@@ -14,7 +14,11 @@ from typer import Argument, Option
 from macrostrat.core import MacrostratSubsystem, app
 from macrostrat.core.utils import is_pg_url
 
-from .._dev.utils import _create_database_if_not_exists, _docker_local_run_args
+from .._dev.utils import (
+    _create_database_if_not_exists,
+    _docker_local_run_args,
+    raw_database_url,
+)
 from ._legacy import *
 
 __here__ = Path(__file__).parent
@@ -272,8 +276,7 @@ keys = ["username", "host", "port", "password", "database"]
 def connection_details():
     """Print the database connection details"""
     db = get_db()
-    url = str(db.engine.url)
-    url = url.replace("***", quote(db.engine.url.password))
+    url = raw_database_url(db.engine.url)
     for key in keys:
         print(
             field_title(key.capitalize()),
