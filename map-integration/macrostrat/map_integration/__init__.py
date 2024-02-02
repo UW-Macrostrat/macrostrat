@@ -9,6 +9,7 @@ from typer.core import TyperGroup
 
 from macrostrat.core import app
 
+from .commands.copy_sources import copy_macrostrat_sources
 from .commands.copy_to_maps import copy_to_maps
 from .commands.ingest import ingest_map
 from .commands.match_names import match_names
@@ -73,6 +74,8 @@ app.add_command(create_rgeom, name="create-rgeom")
 app.add_command(create_webgeom, name="create-webgeom")
 
 app.add_command(copy_to_maps, name="insert")
+
+app.add_command(copy_macrostrat_sources, name="copy-sources")
 
 
 @app.command(name="delete-sources")

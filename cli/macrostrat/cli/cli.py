@@ -13,7 +13,6 @@ from typer import Argument, Option, Typer
 from macrostrat.core import app
 from macrostrat.core.main import env_text, get_app_env_file
 
-from .copy_map import copy_macrostrat_sources
 from .database import db_app, db_subsystem, get_db
 from .kubernetes import get_secret
 from .v1_entrypoint import v1_cli
@@ -31,9 +30,6 @@ settings = app.settings
 
 main = app.control_command()
 main.add_typer(db_app, name="db", short_help="Manage the database")
-
-
-main.command(name="copy-sources")(copy_macrostrat_sources)
 
 
 @main.command()

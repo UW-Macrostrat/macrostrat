@@ -3,17 +3,18 @@ This should really be part of the map-integration package, but it's here
 on a temporary basis.
 """
 
-from typer import Option, Argument
+import sys
 from typing import Optional
+
 from macrostrat.database import Database
-from macrostrat.database.postgresql import table_exists, on_conflict
+from macrostrat.database.postgresql import on_conflict, table_exists
 from macrostrat.utils import get_logger
 from psycopg2.sql import Identifier
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
-import sys
-from .._dev.transfer_tables import transfer_tables
+from typer import Argument, Option
 
+from macrostrat.cli._dev.transfer_tables import transfer_tables
 
 log = get_logger(__name__)
 
@@ -34,8 +35,9 @@ def copy_macrostrat_sources(
 ):
     """Copy a macrostrat source from one database to another."""
 
-    from ..database import get_db
     from macrostrat.database import Database
+
+    from ..database import get_db
 
     if from_db is None and to_db is None:
         raise ValueError("Must specify either --from or --to")
