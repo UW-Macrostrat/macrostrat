@@ -24,7 +24,7 @@ settings.validators.register(
     Validator("COMPOSE_ROOT", "CORELLE_SRC", cast=Path)
 )
 
-macrostrat_env = settings.env
+macrostrat_env = getattr(settings, "env", "default")
 
 settings.validators.validate()
 

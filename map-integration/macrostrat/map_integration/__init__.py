@@ -3,6 +3,7 @@ import os
 os.environ["USE_PYGEOS"] = "0"
 
 from macrostrat.database import Database
+from psycopg2.sql import Identifier
 from typer import Typer
 from typer.core import TyperGroup
 
@@ -72,3 +73,37 @@ app.add_command(create_rgeom, name="create-rgeom")
 app.add_command(create_webgeom, name="create-webgeom")
 
 app.add_command(copy_to_maps, name="insert")
+
+
+@app.command(name="delete-sources")
+def delete_sources(slugs: list[str]):
+    """Delete sources from the map ingestion database."""
+    from .database import db
+
+    for slug in slugs:
+        print(f"Deleting map {slug}")
+        print(slug)
+        tables = db.run_query(
+            "SELECT primary_table, primary_line_table FROM maps.sources WHERE slug = :slug",
+            dict(slug=slug),
+        ).fetchone()
+
+        line_table = None
+        poly_table = None
+        if tables is not None:
+            line_table = tables.primary_line_table
+            poly_table = tables.primary_table
+
+        if line_table is None:
+            line_table = f"{slug}_lines"
+        if poly_table is None:
+            poly_table = f"{slug}_polygons"
+        points_table = f"{slug}_points"
+
+        db.run_sql("DELETE FROM maps.sources WHERE slug = :slug", dict(slug=slug))
+
+        for table in [line_table, poly_table, points_table]:
+            db.run_sql(
+                "DROP TABLE IF EXISTS {table}",
+                dict(table=Identifier("sources", table)),
+            )
