@@ -43,6 +43,17 @@ def copy_to_maps(source: str, delete_existing: bool = False, scale: str = None):
             f"Source {source_id} already has data in the maps schema. Aborting."
         )
 
+    if scale is None:
+        scale = db.run_query(
+            "SELECT scale FROM maps.sources WHERE source_id = :source_id",
+            dict(source_id=source_id),
+        ).scalar()
+
+    if scale is None:
+        raise ValueError(
+            "No scale provided and no scale found in the sources table. Aborting."
+        )
+
     if has_any_features:
         db.run_sql(
             """DELETE FROM maps.polygons WHERE source_id = :source_id;
