@@ -15,9 +15,6 @@ compose_root = "./local-root"
 # Key for salting passwords
 secret_key = "really-secure-key"
 
-# A separate database for map ingestionm, if desired
-ingestion_database = "map_ingestion"
-
 # A kubernetes based development instance
 [development]
 pg_database = "postgresql://macrostrat-admin:my-cool-password@dev.macrostrat.org:5432/macrostrat"
