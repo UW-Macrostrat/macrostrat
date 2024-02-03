@@ -2,11 +2,11 @@ from pathlib import Path
 
 from psycopg2.sql import SQL, Identifier
 from rich import print
-from sqlalchemy.exc import NoResultFound
+from sqlalchemy.exc import NoResultFound, NoSuchTableError
 from typer import Argument, Option
 
 from ..database import db
-from ..utils import create_sources_record, get_map_info
+from ..utils import column_exists, create_sources_record, get_map_info, table_exists
 
 
 def prepare_fields(
@@ -25,6 +25,16 @@ def prepare_fields(
     _prepare_fields(identifier, recover=recover)
 
 
+def _recover_sources_row(identifier):
+    print(
+        f"[bold yellow]Attempting to recover source record for [bold cyan]{identifier}"
+    )
+    try:
+        return create_sources_record(db, identifier)
+    except ValueError:
+        print(f"[bold red]Failed to recover source record for [bold cyan]{identifier}")
+
+
 def _prepare_fields(identifier: str, recover: bool = False):
     """Prepare empty fields for manual cleaning."""
 
@@ -40,16 +50,9 @@ def _prepare_fields(identifier: str, recover: bool = False):
             f"[gray dim]Use [bold]--recover[/] to attempt to recover the record in the [bold]maps.sources[/] table."
         )
         if recover:
-            print(
-                f"[bold yellow]Attempting to recover source record for [bold cyan]{identifier}"
-            )
-            try:
-                info = create_sources_record(db, identifier)
-            except ValueError:
-                print(
-                    f"[bold red]Failed to recover source record for [bold cyan]{identifier}"
-                )
+            info = _recover_sources_row(identifier)
     if info is None:
+        print()
         return
 
     slug = info.slug
@@ -57,22 +60,20 @@ def _prepare_fields(identifier: str, recover: bool = False):
 
     # The old format didn't specify the 'polygons' suffix
     # but the new one does.
-    poly_table = f"{slug}_polygons"
-    add_polygon_columns(schema, poly_table)
-    add_primary_key_column(schema, poly_table)
-    _set_source_id(schema, poly_table, source_id)
+    try:
+        PolygonTableUpdater(db, f"{slug}_polygons", schema).run(source_id)
+    except NoSuchTableError:
+        print(f"[bold orange]No polygons table found for [bold cyan]{slug}")
 
-    update_legacy_table_columns(schema, f"{slug}_polygons")
+    try:
+        LineworkTableUpdater(db, f"{slug}_lines", schema).run(source_id)
+    except NoSuchTableError:
+        print(f"[bold orange]No lines table found for [bold cyan]{slug}")
 
-    linework_table = f"{slug}_lines"
-    add_linework_columns(schema, linework_table)
-    add_primary_key_column(schema, linework_table)
-    _set_source_id(schema, linework_table, source_id)
-
-    points_table = f"{slug}_points"
-    add_points_columns(schema, points_table)
-    add_primary_key_column(schema, points_table)
-    _set_source_id(schema, points_table, source_id)
+    try:
+        PointsTableUpdater(db, f"{slug}_points", schema).run(source_id)
+    except NoSuchTableError:
+        print(f"[bold orange]No points table found for [bold cyan]{slug}")
 
     print(
         f"\n[bold green]Source [bold cyan]{slug}[green] prepared for manual cleaning!\n"
@@ -108,21 +109,80 @@ common_columns = {
 }
 
 
-def add_linework_columns(schema, table_name):
-    columns = {
-        **common_columns,
-        "descrip": "text",
-        "name": "character varying(255)",
-        "type": "character varying(100)",
-        "direction": "character varying(20)",
-    }
-    _apply_column_mapping(schema, table_name, columns)
+class SourcesTableUpdater:
+    """Base class to bring a points, lines, or polygons sources table to the current standard."""
+
+    column_spec = {}
+
+    def __init__(self, db, table_name, schema=None):
+        if schema is None:
+            schema = "sources"
+        self._table_name = table_name
+        self._schema = schema
+        self.db = db
+        self._table = Identifier(schema, table_name)
+
+        # Check if the table exists
+        if not self._exists():
+            raise NoSuchTableError(f"Table {self._table} does not exist")
+
+    def _column_exists(self, column_name):
+        return column_exists(
+            self.db, self._table_name, column_name, schema=self._schema
+        )
+
+    def _run_sql(self, sql, params=None):
+        if params is None:
+            params = {}
+        params["table"] = self._table
+        return self.db.run_sql(sql, params)
+
+    def _exists(self):
+        return table_exists(self.db, self._table_name, schema=self._schema)
+
+    def _apply_column_mapping(self, columns, rename_geometry=True):
+        sql = "ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} {type}"
+        for name, type in columns.items():
+            self._run_sql(
+                sql, dict(table=self._table, column=Identifier(name), type=SQL(type))
+            )
+
+        # Rename the geometry column if necessary
+        if not rename_geometry:
+            return
+
+        _has_geometry = self._column_exists("geometry")
+        _has_geom = self._column_exists("geom")
+
+        if _has_geometry and not _has_geom:
+            self._run_sql(
+                "ALTER TABLE {table} RENAME COLUMN geometry TO geom",
+                dict(table=self._table),
+            )
+
+    def _set_source_id(self, source_id):
+        self._run_sql(
+            "UPDATE {table} SET source_id = :source_id",
+            dict(source_id=source_id),
+        )
+
+    def _add_primary_key_column(self, column_name="_pkid"):
+        self._run_sql(
+            "ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} SERIAL PRIMARY KEY",
+            dict(column=Identifier(column_name)),
+        )
+
+    def add_columns(self):
+        self._apply_column_mapping(self.column_spec)
+
+    def run(self, source_id):
+        self.add_columns()
+        self._add_primary_key_column()
+        self._set_source_id(source_id)
 
 
-def add_polygon_columns(schema, table_name):
-    """Add columns to the polygons table that are required for homogenization."""
-
-    columns = {
+class PolygonTableUpdater(SourcesTableUpdater):
+    column_spec = {
         **common_columns,
         "name": "text",
         "strat_name": "text",
@@ -133,12 +193,42 @@ def add_polygon_columns(schema, table_name):
         "t_interval": "integer",
         "b_interval": "integer",
     }
-    _apply_column_mapping(schema, table_name, columns)
+
+    def _update_legacy_polygon_columns(self):
+        """Legacy tables had different standard names for several columns."""
+
+        if self._column_exists("gid"):
+            self._run_sql(
+                "ALTER TABLE {table} RENAME COLUMN gid TO _pkid",
+            )
+
+        if self._column_exists("late_id") or self._column_exists("early_id"):
+            self._run_sql(
+                "UPDATE {table} SET  t_interval = late_id, b_interval = early_id",
+            )
+
+        if self._column_exists("ready"):
+            self._run_sql(
+                "UPDATE {table} SET omit = not ready WHERE ready IS NOT NULL",
+            )
+
+    def run(self, source_id):
+        super().run(source_id)
+        self._update_legacy_polygon_columns()
 
 
-def add_points_columns(schema, table_name):
-    """Add columns to the points table that are required for homogenization."""
-    columns = {
+class LineworkTableUpdater(SourcesTableUpdater):
+    column_spec = {
+        **common_columns,
+        "descrip": "text",
+        "name": "character varying(255)",
+        "type": "character varying(100)",
+        "direction": "character varying(20)",
+    }
+
+
+class PointsTableUpdater(SourcesTableUpdater):
+    column_spec = {
         **common_columns,
         "comments": "text",
         "strike": "integer",
@@ -147,53 +237,3 @@ def add_points_columns(schema, table_name):
         "point_type": "character varying(100)",
         "certainty": "character varying(100)",
     }
-    _apply_column_mapping(schema, table_name, columns)
-
-
-def _apply_column_mapping(schema, table_name, columns, rename_geometry=True):
-    table = Identifier(schema, table_name)
-
-    sql = "ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} {type}"
-    for name, type in columns.items():
-        db.run_sql(sql, dict(table=table, column=Identifier(name), type=SQL(type)))
-
-    # Rename the geometry column if necessary
-    if not rename_geometry:
-        return
-
-    db.run_sql(
-        "ALTER TABLE {table} RENAME COLUMN geometry TO geom",
-        dict(table=table),
-    )
-
-
-def add_primary_key_column(schema, table_name, column_name=None):
-    if column_name is None:
-        column_name = "_pkid"
-
-    params = dict(table=Identifier(schema, table_name), column=Identifier(column_name))
-
-    db.run_sql(
-        "ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} SERIAL PRIMARY KEY",
-        params=params,
-    )
-
-
-def update_legacy_table_columns(schema, table_name):
-    """Legacy tables had different standard names for several columns."""
-
-    db.run_sql(
-        """
-    ALTER TABLE {table} RENAME COLUMN gid TO _pkid;
-    UPDATE {table} SET  t_interval = late_id, b_interval = early_id;
-    UPDATE {table} SET omit = not ready WHERE ready IS NOT NULL;  
-    """,
-        params=dict(table=Identifier(schema, table_name)),
-    )
-
-
-def _set_source_id(schema, table, source_id):
-    db.run_sql(
-        "UPDATE {table} SET source_id = :source_id",
-        params=dict(table=Identifier(schema, table), source_id=source_id),
-    )

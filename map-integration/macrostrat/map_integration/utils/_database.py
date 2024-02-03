@@ -10,3 +10,20 @@ def table_exists(db: Database, table_name: str, schema: str = "public") -> bool:
     );"""
 
     return db.run_query(sql, dict(schema=schema, table_name=table_name)).scalar()
+
+
+def column_exists(db, table_name, column_name, schema="public"):
+    res = db.run_query(
+        """
+        SELECT count(*) FROM information_schema.columns c
+        WHERE c.table_schema = :schema
+          AND c.table_name = :table_name
+          AND c.column_name = :column_name
+        """,
+        dict(
+            schema=schema,
+            table_name=table_name,
+            column_name=column_name,
+        ),
+    )
+    return res.scalar() == 1
