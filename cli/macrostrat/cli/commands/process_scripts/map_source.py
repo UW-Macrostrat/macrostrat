@@ -2,7 +2,6 @@ import sys
 
 from ..base import Base
 from ..match_scripts import liths, strat_names, units
-from ..seed import Seed
 from .__legacy.rgeom import RGeom
 from .__legacy.web_geom import WebGeom
 from .burwell_lookup import BurwellLookup
@@ -90,6 +89,3 @@ class MapSource(Base):
 
         carto_lines = CartoLines({})
         carto_lines.run((source_id,))
-
-        seed = Seed({}, True, source_id)
-        seed.run()
