@@ -2,9 +2,11 @@ import os
 
 os.environ["USE_PYGEOS"] = "0"
 
+from sys import stdin
+
 from macrostrat.database import Database
 from psycopg2.sql import Identifier
-from typer import Typer
+from typer import Argument, Option, Typer
 from typer.core import TyperGroup
 
 from macrostrat.core import app
@@ -78,9 +80,22 @@ sources.add_command(map_sources, name="list")
 
 
 @sources.command(name="delete")
-def delete_sources(slugs: list[str]):
+def delete_sources(
+    slugs: list[str],
+    dry_run: bool = Option(False, "--dry-run"),
+):
     """Delete sources from the map ingestion database."""
     from .database import db
+
+    if not stdin.isatty() and len(slugs) == 1 and slugs[0] == "-":
+        slugs = [line.strip() for line in stdin]
+
+    if dry_run:
+        print("Deleting maps:")
+        print("  " + "\n  ".join(slugs))
+
+        print("\nDry run; not actually deleting anything")
+        return
 
     for slug in slugs:
         print(f"Deleting map {slug}")
@@ -102,13 +117,13 @@ def delete_sources(slugs: list[str]):
             poly_table = f"{slug}_polygons"
         points_table = f"{slug}_points"
 
-        db.run_sql("DELETE FROM maps.sources WHERE slug = :slug", dict(slug=slug))
-
         for table in [line_table, poly_table, points_table]:
             db.run_sql(
                 "DROP TABLE IF EXISTS {table}",
                 dict(table=Identifier("sources", table)),
             )
+
+        db.run_sql("DELETE FROM maps.sources WHERE slug = :slug", dict(slug=slug))
 
 
 sources.add_command(_run_migrations, name="migrate-schema")
