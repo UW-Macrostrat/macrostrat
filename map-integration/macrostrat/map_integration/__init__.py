@@ -15,6 +15,7 @@ from .commands.ingest import ingest_map
 from .commands.match_names import match_names
 from .commands.prepare_fields import prepare_fields
 from .commands.process.rgeom import create_rgeom, create_webgeom
+from .commands.source_info import source_info
 from .commands.sources import map_sources
 from .migrations import run_migrations
 
@@ -40,8 +41,6 @@ class IngestionCLI(Typer):
 
 app = IngestionCLI(no_args_is_help=True, add_completion=False, name="map-ingestion")
 
-app.add_command(map_sources, name="sources")
-
 
 # TODO: integrate this migration command with the main database migrations
 def _run_migrations(database: str = None):
@@ -62,7 +61,6 @@ def _run_migrations(database: str = None):
     run_migrations(_db)
 
 
-app.add_command(_run_migrations, name="migrate")
 app.add_command(ingest_map, name="ingest")
 app.add_command(prepare_fields, name="prepare-fields")
 
@@ -72,13 +70,14 @@ app.add_command(match_names, name="match-names")
 app.add_command(create_rgeom, name="create-rgeom")
 
 app.add_command(create_webgeom, name="create-webgeom")
-
 app.add_command(copy_to_maps, name="insert")
 
-app.add_command(copy_macrostrat_sources, name="copy-sources")
+sources = IngestionCLI(no_args_is_help=True)
+sources.add_command(copy_macrostrat_sources, name="copy")
+sources.add_command(map_sources, name="list")
 
 
-@app.command(name="delete-sources")
+@sources.command(name="delete")
 def delete_sources(slugs: list[str]):
     """Delete sources from the map ingestion database."""
     from .database import db
@@ -110,3 +109,10 @@ def delete_sources(slugs: list[str]):
                 "DROP TABLE IF EXISTS {table}",
                 dict(table=Identifier("sources", table)),
             )
+
+
+sources.add_command(_run_migrations, name="migrate-schema")
+
+sources.add_command(source_info, name="info")
+
+app.add_typer(sources, name="sources", help="Manage map sources")
