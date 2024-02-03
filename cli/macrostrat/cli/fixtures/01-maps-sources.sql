@@ -23,7 +23,7 @@ CREATE TABLE maps.sources (
 );
 COMMENT ON COLUMN maps.sources.slug IS 'Unique identifier for each Macrostrat source';
 
-CREATE OR REPLACE VIEW maps.sources_meta
+CREATE OR REPLACE VIEW maps.sources_metadata AS
 SELECT
     source_id,
     slug,
@@ -44,4 +44,4 @@ SELECT
 FROM maps.sources
 ORDER BY source_id DESC;
 
-COMMENT ON VIEW maps.sources_meta IS 'Convenience view for maps.sources with only metadata fields';
+COMMENT ON VIEW maps.sources_metadata IS 'Convenience view for maps.sources with only metadata fields';
