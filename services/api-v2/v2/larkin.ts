@@ -33,6 +33,7 @@ const printQueries = true;
   larkin.queryPg = function (db, sql, params, callback) {
     const nameMapping = credentials.postgresDatabases ?? {};
     const dbName = nameMapping[db] ?? db;
+    console.log(dbName, sql, params);
 
     const pool = new Pool({
       connectionString: credentials.pg.connectionString,
@@ -234,7 +235,7 @@ const printQueries = true;
   larkin.defineFields = function (route, callback) {
     var routeDefs = {};
     async.each(
-      defs[route].options.fields,
+      defs[route]?.options?.fields,
       function (field, callback) {
         if (defs.define.hasOwnProperty(field)) {
           routeDefs[field] = defs.define[field];
