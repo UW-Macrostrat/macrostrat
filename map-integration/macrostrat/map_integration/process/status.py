@@ -1,24 +1,10 @@
 from psycopg2.sql import Identifier
 from pydantic import BaseModel
 from rich import print
-from rich.columns import Columns
-from rich.table import Column, Table
-from typer import Argument
-from typing_extensions import Annotated
+from rich.table import Table
 
 from ..database import db
-from ..utils import MapInfo, feature_counts, get_map_info
-
-
-def complete_map_slugs(incomplete: str):
-    return (
-        db.run_query(
-            "SELECT slug FROM maps.sources WHERE slug ILIKE :incomplete",
-            {"incomplete": f"{incomplete}%"},
-        )
-        .scalars()
-        .all()
-    )
+from ..utils import MapInfo, feature_counts
 
 
 class MapProcessingStep(BaseModel):
@@ -47,17 +33,7 @@ class MapProcessingTable(Table):
         )
 
 
-def map_info_parser(identifier: str | int) -> MapInfo:
-    return get_map_info(db, identifier)
-
-
-MapInfoArgument = Annotated[
-    MapInfo,
-    Argument(..., autocompletion=complete_map_slugs, parser=map_info_parser),
-]
-
-
-def processing_status(map: MapInfoArgument):
+def processing_status(map: MapInfo):
     """Get the processing status for a source."""
     map_info = map
     source_id = map_info.id

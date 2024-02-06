@@ -12,7 +12,6 @@ from typer.core import TyperGroup
 from macrostrat.core import app
 
 from .commands.copy_sources import copy_macrostrat_sources
-from .commands.copy_to_maps import copy_to_maps
 from .commands.ingest import ingest_map
 from .commands.match_names import match_names
 from .commands.prepare_fields import prepare_fields
@@ -51,8 +50,6 @@ app.add_command(prepare_fields, name="prepare-fields")
 app.add_command(match_names, name="match-names")
 
 app.add_typer(_process, name="process")
-
-app.add_command(copy_to_maps, name="insert")
 
 app.add_command(source_info, name="info")
 
