@@ -104,7 +104,7 @@ def run_match_query(db, strictTime, strictSpace, strictName):
     name = describe_argument(strictName)
 
     print(
-        f"      - {time} time, {space} space, {name} name",
+        f"{time} time, {space} space, {name} name",
     )
 
     match_type = "strat_name"

@@ -196,9 +196,6 @@ JOIN filtered_words f
   ON nsn.words = f.words;
 
 CREATE INDEX ON temp_names (strat_name_id);
-
 CREATE INDEX ON temp_names (rank_name);
-
 CREATE INDEX ON temp_names (name_no_lith);
-
 CREATE INDEX ON temp_names (strat_name);
