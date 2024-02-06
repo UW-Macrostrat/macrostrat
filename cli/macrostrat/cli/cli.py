@@ -22,7 +22,7 @@ from .v2_commands import app as v2_app
 __here__ = Path(__file__).parent
 fixtures_dir = __here__ / "fixtures"
 
-install(show_locals=True)
+install(show_locals=False)
 
 
 app.subsystems.add(db_subsystem)
@@ -31,7 +31,7 @@ app.subsystems.add(db_subsystem)
 
 settings = app.settings
 
-main = app.control_command()
+main = app.control_command(add_completion=True)
 main.add_typer(db_app, name="db", short_help="Manage the Macrostrat database")
 
 

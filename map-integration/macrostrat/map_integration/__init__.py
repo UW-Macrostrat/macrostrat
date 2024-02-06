@@ -16,30 +16,11 @@ from .commands.copy_to_maps import copy_to_maps
 from .commands.ingest import ingest_map
 from .commands.match_names import match_names
 from .commands.prepare_fields import prepare_fields
-from .commands.process.rgeom import create_rgeom, create_webgeom
 from .commands.source_info import source_info
 from .commands.sources import map_sources
 from .migrations import run_migrations
-
-
-class NaturalOrderGroup(TyperGroup):
-    """Allow listing commands in the order they are added."""
-
-    def list_commands(self, ctx):
-        return self.commands.keys()
-
-
-class IngestionCLI(Typer):
-    """Command-line application to set up working tables for map ingestion. This is
-    designed to be run in an independent database from the main Macrostrat database.
-    It is not designed to handle integration, matching, or harmonization tasks."""
-
-    def __init__(self, **kwargs):
-        super().__init__(cls=NaturalOrderGroup, **kwargs)
-
-    def add_command(self, func, **kwargs):
-        self.command(**kwargs)(func)
-
+from .process import app as _process
+from .utils import IngestionCLI
 
 app = IngestionCLI(no_args_is_help=True, name="map-ingestion")
 
@@ -69,9 +50,8 @@ app.add_command(prepare_fields, name="prepare-fields")
 # Pass along other arguments to the match-names command
 app.add_command(match_names, name="match-names")
 
-app.add_command(create_rgeom, name="create-rgeom")
+app.add_typer(_process, name="process")
 
-app.add_command(create_webgeom, name="create-webgeom")
 app.add_command(copy_to_maps, name="insert")
 
 app.add_command(source_info, name="info")
