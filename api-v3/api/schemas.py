@@ -2,7 +2,7 @@ import enum
 from typing import List
 import datetime
 from sqlalchemy import ForeignKey, func, DateTime, Enum, UniqueConstraint
-from sqlalchemy.dialects.postgresql import VARCHAR, TEXT, INTEGER, ARRAY, BOOLEAN, JSON
+from sqlalchemy.dialects.postgresql import VARCHAR, TEXT, INTEGER, ARRAY, BOOLEAN, JSON, JSONB
 from sqlalchemy import String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from geoalchemy2 import Geometry
@@ -91,20 +91,21 @@ class SchemeEnum(enum.Enum):
     s3 = "s3"
 
 
-class Objects(Base):
-    __tablename__ = "objects"
+class Object(Base):
+    __tablename__ = "object"
     __table_args__ = (
         UniqueConstraint('scheme', 'host', 'bucket', 'key', name='unique_file'),
-        {'schema': 'macrostrat'}
+        {'schema': 'storage'}
     )
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    object_group_id: Mapped[int] = mapped_column(ForeignKey("storage.object_group.id"), nullable=True)
     scheme: Mapped[str] = mapped_column(Enum(SchemeEnum))
     host: Mapped[str] = mapped_column(VARCHAR(255), nullable=False)
     bucket: Mapped[str] = mapped_column(VARCHAR(255), nullable=False)
     key: Mapped[str] = mapped_column(VARCHAR(255), nullable=False)
-    source: Mapped[dict] = mapped_column(JSON)
-    mime_type: Mapped[str] = mapped_column(VARCHAR(255))
-    sha256_hash: Mapped[str] = mapped_column(VARCHAR(255))
+    source: Mapped[dict] = mapped_column(JSONB, nullable=True)
+    mime_type: Mapped[str] = mapped_column(VARCHAR(255), nullable=True)
+    sha256_hash: Mapped[str] = mapped_column(VARCHAR(255), nullable=True)
     created_on: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -115,19 +116,44 @@ class Objects(Base):
         DateTime(timezone=True), nullable=True
     )
 
+    # Relationships
+    object_group: Mapped["ObjectGroup"] = relationship(back_populates="objects")
+
+
+class ObjectGroup(Base):
+    __tablename__ = "object_group"
+    __table_args__ = {'schema': 'storage'}
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+
+    # Relationships
+    objects: Mapped[List["Object"]] = relationship(back_populates="object_group")
+    ingest_process: Mapped["IngestProcess"] = relationship(back_populates="object_group")
+
+
+class IngestState(enum.Enum):
+    pending = "pending"
+    ingested = "ingested"
+    prepared = "prepared"
+    failed = "failed"
+    abandoned = "abandoned"
+
 
 class IngestProcess(Base):
     __tablename__ = "ingest_process"
     __table_args__ = {'schema': 'macrostrat'}
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
+    state: Mapped[str] = mapped_column(Enum(IngestState, name="ingest_state"), nullable=True)
     comments: Mapped[str] = mapped_column(TEXT, nullable=True)
-    group_id: Mapped[int] = mapped_column(ForeignKey("macrostrat_auth.group.id"), nullable=True)
-    object_id: Mapped[Objects] = mapped_column(ForeignKey("macrostrat.objects.id"))
-    object: Mapped[Objects] = relationship("Objects", lazy="joined")
+    source_id: Mapped[int] = mapped_column(ForeignKey("maps.sources.source_id"), nullable=True)
+    access_group_id: Mapped[int] = mapped_column(ForeignKey("macrostrat_auth.group.id"), nullable=True)
+    object_group_id: Mapped[ObjectGroup] = mapped_column(ForeignKey("storage.object_group.id"))
     created_on: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
     completed_on: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+
+    # Relationships
+    object_group: Mapped[ObjectGroup] = relationship(back_populates="ingest_process", lazy="joined")

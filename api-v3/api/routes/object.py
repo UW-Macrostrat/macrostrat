@@ -9,8 +9,8 @@ from api.database import (
     results_to_model
 )
 from api.routes.security import get_groups
-from api.models.object import Object, ResponseObject
-from api.schemas import Objects
+import api.models.object as Object
+import api.schemas as schemas
 from api.query_parser import get_filter_query_params, QueryParser
 
 router = APIRouter(
@@ -20,14 +20,14 @@ router = APIRouter(
 )
 
 
-@router.get("", response_model=list[ResponseObject])
+@router.get("", response_model=list[Object.Get])
 async def get_objects(page: int = 0, page_size: int = 50, filter_query_params=Depends(get_filter_query_params), groups: list[str] = Depends(get_groups)):
     """Get all objects"""
 
     engine = get_engine()
     async_session = get_async_session(engine)
 
-    query_parser = QueryParser(columns=Objects.__table__.c, query_params=filter_query_params)
+    query_parser = QueryParser(columns=schemas.Object.__table__.c, query_params=filter_query_params)
 
     async with async_session() as session:
 
@@ -35,7 +35,7 @@ async def get_objects(page: int = 0, page_size: int = 50, filter_query_params=De
         select_stmt = select(*query_parser.get_select_columns())\
             .limit(page_size)\
             .offset(page_size * page)\
-            .where(and_(Objects.deleted_on == None, query_parser.where_expressions()))
+            .where(and_(schemas.Object.deleted_on == None, query_parser.where_expressions()))
 
         # Add grouping
         if query_parser.get_group_by_column() is not None:
@@ -49,10 +49,10 @@ async def get_objects(page: int = 0, page_size: int = 50, filter_query_params=De
 
         results = await session.execute(select_stmt)
 
-        return results_to_model(results, ResponseObject)
+        return results_to_model(results, Object.Get)
 
 
-@router.get("/{id}", response_model=ResponseObject)
+@router.get("/{id}", response_model=Object.Get)
 async def get_object(id: int, groups: list[str] = Depends(get_groups)):
     """Get a single object"""
 
@@ -61,19 +61,19 @@ async def get_object(id: int, groups: list[str] = Depends(get_groups)):
 
     async with async_session() as session:
 
-        select_stmt = select(Objects).where(and_(Objects.id == id, Objects.deleted_on == None))
+        select_stmt = select(schemas.Object).where(and_(schemas.Object.id == id, schemas.Object.deleted_on == None))
 
         result = await session.scalar(select_stmt)
 
         if result is None:
             raise HTTPException(status_code=404, detail=f"Object with id ({id}) not found")
 
-        response = ResponseObject(**result.__dict__)
+        response = Object.Get(**result.__dict__)
         return response
 
 
-@router.post("", response_model=ResponseObject)
-async def create_file(object: Object, groups: list[str] = Depends(get_groups)):
+@router.post("", response_model=Object.Get)
+async def create_object(object: Object.Post, groups: list[str] = Depends(get_groups)):
     """Create/Register a new object"""
 
     engine = get_engine()
@@ -81,16 +81,16 @@ async def create_file(object: Object, groups: list[str] = Depends(get_groups)):
 
     async with async_session() as session:
 
-        insert_stmt = insert(Objects).values(**object.dict()).returning(Objects)
+        insert_stmt = insert(schemas.Object).values(**object.model_dump()).returning(schemas.Object)
         server_object = await session.scalar(insert_stmt)
 
-        response = ResponseObject(**server_object.__dict__)
+        response = Object.Get(**server_object.__dict__)
         await session.commit()
         return response
 
 
-@router.patch("/{id}", response_model=ResponseObject)
-async def patch_object(id: int, object: Object, groups: list[str] = Depends(get_groups)) -> ResponseObject:
+@router.patch("/{id}", response_model=Object.Get)
+async def patch_object(id: int, object: Object.Patch, groups: list[str] = Depends(get_groups)):
     """Update a object"""
 
     engine = get_engine()
@@ -98,20 +98,20 @@ async def patch_object(id: int, object: Object, groups: list[str] = Depends(get_
 
     async with async_session() as session:
 
-        update_stmt = update(Objects)\
-            .where(Objects.id == id)\
-            .values(**object.dict())\
-            .returning(Objects)
+        update_stmt = update(schemas.Object)\
+            .where(schemas.Object.id == id)\
+            .values(**object.model_dump(exclude_unset=True))\
+            .returning(schemas.Object)
 
         server_object = await session.scalar(update_stmt)
 
-        response = ResponseObject(**server_object.__dict__)
+        response = Object.Get(**server_object.__dict__)
         await session.commit()
         return response
 
 
-@router.delete("/{id}")
-async def delete_object(id: int, groups: list[str] = Depends(get_groups)) -> ResponseObject:
+@router.delete("/{id}", response_model=Object.Get)
+async def delete_object(id: int, groups: list[str] = Depends(get_groups)):
     """Delete a object"""
 
     engine = get_engine()
@@ -119,13 +119,13 @@ async def delete_object(id: int, groups: list[str] = Depends(get_groups)) -> Res
 
     async with async_session() as session:
 
-        delete_stmt = update(Objects)\
-            .where(Objects.id == id)\
+        delete_stmt = update(schemas.Object)\
+            .where(schemas.Object.id == id)\
             .values(deleted_on=datetime.datetime.utcnow())\
-            .returning(Objects)
+            .returning(schemas.Object)
 
         server_object = await session.scalar(delete_stmt)
 
-        response = ResponseObject(**server_object.__dict__)
+        response = Object.Get(**server_object.__dict__)
         await session.commit()
         return response

@@ -385,6 +385,24 @@ class TestObjectCRUD:
 
     assert single_data == data[0]
 
+  def test_patch_object(self, api_client):
+
+    # Get a object
+    response = api_client.get("/object")
+    assert response.status_code == 200
+    object_data = response.json()
+    assert len(object_data) > 0
+
+    # Patch Object
+    response = api_client.patch(
+      f"/object/{object_data[0]['id']}",
+      json={"source": {"comments": "test"}}
+    )
+    assert response.status_code == 200
+    single_data = response.json()
+
+    assert single_data['source']['comments'] == "test"
+
   def test_delete_object(self, api_client):
 
     key = f"test-{random.randint(0,10000000)}"
@@ -417,30 +435,9 @@ class TestIngestProcess:
   def test_add_ingest_process(self, api_client):
     """Test adding an ingest process"""
 
-    key = f"test-{random.randint(0, 10000000)}"
-
-    object_data = {
-      "scheme": "http",
-      "host": "test.com",
-      "bucket": "test",
-      "key": key,
-      "source": {
-        "test_key": "test_value"
-      },
-      "mime_type": "application/json",
-      "sha256_hash": hashlib.sha256(open(__file__, "rb").read()).hexdigest()
-    }
-
-    response = api_client.post(
-      "/object",
-      json=object_data,
-    )
-
-    assert response.status_code == 200
-    object = response.json()
-
     ingest_process_data = {
-      "object_id": object['id']
+      "comments": "This is a test comment",
+      "state": "pending"
     }
 
     response = api_client.post(
@@ -449,7 +446,6 @@ class TestIngestProcess:
     )
 
     assert response.status_code == 200
-    assert response.json()['object']['key'] == key
 
   def test_get_ingest_processes(self, api_client):
     response = api_client.get("/ingest-process")
@@ -490,3 +486,60 @@ class TestIngestProcess:
     single_data = response.json()
 
     assert single_data['comments'] == "test"
+
+  def test_pair_object_to_ingest(self, api_client):
+    response = api_client.get("/ingest-process")
+    assert response.status_code == 200
+    ingest_data = response.json()[0]
+
+    response = api_client.get("/object")
+    assert response.status_code == 200
+    object_data = response.json()[0]
+
+    # Pair the object to the ingest process
+    response = api_client.patch(f"/object/{object_data['id']}", json={"object_group_id": ingest_data['object_group_id']})
+    assert response.status_code == 200
+
+  def test_get_objects(self, api_client):
+
+    # Add an ingest process
+    ingest_process_data = {
+      "comments": "This is a test comment",
+      "state": "pending"
+    }
+    ingest_response = api_client.post(
+      "/ingest-process",
+      json=ingest_process_data,
+    )
+    assert ingest_response.status_code == 200
+    ingest_data = ingest_response.json()
+
+    # Add some objects
+    keys = []
+    for i in range(4):
+      key = f"test-{random.randint(0,10000000)}"
+      keys.append(key)
+      object_data = {
+        "scheme": "http",
+        "host": "test.com",
+        "bucket": "test",
+        "key": key,
+        "source": {"test_key": "test_value"},
+        "mime_type": "application/json"
+      }
+      response = api_client.post("/object", json=object_data)
+      assert response.status_code == 200
+      object_data = response.json()
+
+      # Pair the object to the ingest process
+      response = api_client.patch(f"/object/{object_data['id']}", json={"object_group_id": ingest_data['object_group_id']})
+      assert response.status_code == 200
+
+    response = api_client.get(f"/ingest-process/{ingest_data['id']}/objects")
+    assert response.status_code == 200
+    objects = response.json()
+
+    assert len(objects) == 4
+    for object in objects:
+      assert object['key'] in keys
+

@@ -1,33 +1,32 @@
 import datetime
 from typing import Optional
+from enum import Enum
 
 from pydantic import BaseModel, ConfigDict
 
-from api.models.object import Object
+from api.schemas import IngestState
 
 
-class IngestProcess(BaseModel):
+class Post(BaseModel):
 
-    object_id: int
+    state: Optional[IngestState] = None
     comments: Optional[str] = None
+    source_id: Optional[int] = None
+    access_group_id: Optional[int] = None
 
     class Config:
         orm_mode = True
         extra = "ignore"
 
 
-class ResponseIngestProcess(IngestProcess):
+class Get(Post):
+
     id: int
-    group_id: Optional[int] = None
+    object_group_id: int
     created_on: datetime.datetime
     completed_on: Optional[datetime.datetime] = None
 
 
-class ResponseIngestProcessWithObject(ResponseIngestProcess):
-    object: Object
+class Patch(Post):
+    pass
 
-
-class IngestProcessPatch(BaseModel):
-    group_id: Optional[int] = None
-    comments: Optional[str] = None
-    completed_on: Optional[datetime.datetime] = None

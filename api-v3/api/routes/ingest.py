@@ -11,8 +11,9 @@ from api.database import (
     results_to_model
 )
 from api.routes.security import get_groups
-from api.models.ingest import IngestProcess, ResponseIngestProcess, ResponseIngestProcessWithObject, IngestProcessPatch
-from api.schemas import IngestProcess as IngestProcessSchema
+import api.models.ingest as IngestProcessModel
+import api.models.object as Object
+from api.schemas import IngestProcess as IngestProcessSchema, ObjectGroup
 from api.query_parser import get_filter_query_params, QueryParser
 
 router = APIRouter(
@@ -22,7 +23,7 @@ router = APIRouter(
 )
 
 
-@router.get("", response_model=list[ResponseIngestProcess])
+@router.get("", response_model=list[IngestProcessModel.Get])
 async def get_multiple_ingest_process(page: int = 0, page_size: int = 50, filter_query_params=Depends(get_filter_query_params), groups: list[str] = Depends(get_groups)):
     """Get all ingestion processes"""
 
@@ -54,7 +55,7 @@ async def get_multiple_ingest_process(page: int = 0, page_size: int = 50, filter
         return results.all()
 
 
-@router.get("/{id}", response_model=ResponseIngestProcess)
+@router.get("/{id}", response_model=IngestProcessModel.Get)
 async def get_ingest_process(id: int, groups: list[str] = Depends(get_groups)):
     """Get a single object"""
 
@@ -70,12 +71,12 @@ async def get_ingest_process(id: int, groups: list[str] = Depends(get_groups)):
         if result is None:
             raise HTTPException(status_code=404, detail=f"IngestProcess with id ({id}) not found")
 
-        response = ResponseIngestProcess(**result.__dict__)
+        response = IngestProcessModel.Get(**result.__dict__)
         return response
 
 
-@router.post("", response_model=ResponseIngestProcessWithObject)
-async def create_ingest_process(object: IngestProcess, groups: list[str] = Depends(get_groups)):
+@router.post("", response_model=IngestProcessModel.Get)
+async def create_ingest_process(object: IngestProcessModel.Post, groups: list[str] = Depends(get_groups)):
     """Create/Register a new object"""
 
     engine = get_engine()
@@ -83,7 +84,10 @@ async def create_ingest_process(object: IngestProcess, groups: list[str] = Depen
 
     async with async_session() as session:
 
-        stmt = insert(IngestProcessSchema).values(**object.dict()).returning(IngestProcessSchema).options(selectinload(IngestProcessSchema.object))
+        object_group_stmt = insert(ObjectGroup).values().returning(ObjectGroup)
+        object_group = await session.scalar(object_group_stmt)
+
+        stmt = insert(IngestProcessSchema).values(**object.model_dump(), object_group_id=object_group.id).returning(IngestProcessSchema)
         server_object = await session.scalar(stmt)
 
         await session.commit()
@@ -91,8 +95,8 @@ async def create_ingest_process(object: IngestProcess, groups: list[str] = Depen
     return server_object
 
 
-@router.patch("/{id}", response_model=ResponseIngestProcess)
-async def patch_ingest_process(id: int, object: IngestProcessPatch, groups: list[str] = Depends(get_groups)) -> ResponseIngestProcess:
+@router.patch("/{id}", response_model=IngestProcessModel.Get)
+async def patch_ingest_process(id: int, object: IngestProcessModel.Patch, groups: list[str] = Depends(get_groups)):
     """Update a object"""
 
     engine = get_engine()
@@ -102,32 +106,31 @@ async def patch_ingest_process(id: int, object: IngestProcessPatch, groups: list
 
         update_stmt = update(IngestProcessSchema)\
             .where(IngestProcessSchema.id == id)\
-            .values(**object.dict())\
+            .values(**object.model_dump(exclude_unset=True))\
             .returning(IngestProcessSchema)
 
         server_object = await session.scalar(update_stmt)
 
-        response = ResponseIngestProcess(**server_object.__dict__)
+        response = IngestProcessModel.Get(**server_object.__dict__)
         await session.commit()
         return response
 
 
-@router.delete("/{id}")
-async def delete_ingest_process(id: int, groups: list[str] = Depends(get_groups)) -> ResponseIngestProcess:
-    """Delete a object"""
+@router.get("/{id}/objects", response_model=list[Object.Get])
+async def get_ingest_process_objects(id: int, groups: list[str] = Depends(get_groups)):
+    """Get all objects for an ingestion process"""
 
     engine = get_engine()
     async_session = get_async_session(engine)
 
+    objects = None
     async with async_session() as session:
 
-        delete_stmt = update(IngestProcessSchema)\
-            .where(IngestProcessSchema.id == id)\
-            .values(deleted_on=datetime.datetime.utcnow())\
-            .returning(IngestProcessSchema)
+        select_stmt = select(IngestProcessSchema).where(and_(IngestProcessSchema.id == id))
+        ingest_process = await session.scalar(select_stmt)
 
-        server_object = await session.scalar(delete_stmt)
+        object_stmt = select(ObjectGroup).where(ObjectGroup.id == ingest_process.object_group_id).options(selectinload(ObjectGroup.objects))
+        objects_iterator = await session.execute(object_stmt)
+        objects = [Object.Get(x) for x in objects_iterator.scalar().objects]
 
-        response = ResponseIngestProcess(**server_object.__dict__)
-        await session.commit()
-        return response
+
