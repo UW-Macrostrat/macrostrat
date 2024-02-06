@@ -137,51 +137,63 @@ CREATE INDEX ON temp_rocks USING GiST (envelope);
 DROP TABLE IF EXISTS temp_names;
 
 CREATE TABLE temp_names AS
+WITH source_text AS (
+  SELECT
+    name match_text,
+    map_id
+  FROM
+    maps.polygons
+  WHERE
+    source_id = :source_id
+),
+source_words AS (
+  SELECT DISTINCT ON (words)
+    unnest(string_to_array(match_text, ' ')) AS words,
+    match_text,
+    map_id
+  FROM source_text
+),
+filtered_words AS (
+  SELECT
+    DISTINCT (words) words,
+    map_id,
+    match_text
+  FROM
+    source_words sub
+  WHERE lower(words) NOT IN (
+          SELECT lower(lith) FROM macrostrat.liths
+        )
+    AND lower(words) NOT IN (
+      'bed',
+      'member',
+      'formation',
+      'group',
+      'supergroup'
+    )
+),
+nearby_strat_names AS (
+  SELECT DISTINCT
+    lsn.strat_name_id,
+    lsn.strat_name,
+    unnest(string_to_array(lsn.rank_name, ' ')) AS words
+  FROM macrostrat.lookup_strat_names AS lsn
+  JOIN macrostrat.strat_name_footprints snf
+    ON snf.strat_name_id = lsn.strat_name_id
+  JOIN maps.sources
+    ON ST_Intersects(snf.geom, rgeom)
+  WHERE
+    sources.source_id = :source_id
+)
 SELECT
-  DISTINCT ON (sub.strat_name_id) lookup_strat_names.*
-FROM
-  (
-    SELECT
-      DISTINCT lsn4.strat_name_id,
-      lsn4.strat_name,
-      unnest(string_to_array(lsn4.rank_name, ' ')) AS words
-    FROM
-      macrostrat.lookup_strat_names AS lsn4
-      JOIN macrostrat.strat_name_footprints ON strat_name_footprints.strat_name_id = lsn4.strat_name_id
-      JOIN maps.sources ON ST_Intersects(strat_name_footprints.geom, rgeom)
-    WHERE
-      sources.source_id = :source_id
-  ) sub
-  JOIN macrostrat.lookup_strat_names ON sub.strat_name_id = lookup_strat_names.strat_name_id
-WHERE
-  words IN (
-    SELECT
-      DISTINCT words
-    FROM
-      (
-        SELECT
-          -- Can do this from the 'names' table
-          DISTINCT unnest(string_to_array(strat_name, ' ')) AS words
-        FROM
-          maps.polygons
-        where
-          source_id = :source_id
-      ) sub
-    WHERE
-      lower(words) NOT IN (
-        select
-          lower(lith)
-        from
-          macrostrat.liths
-      )
-      AND lower(words) NOT IN (
-        'bed',
-        'member',
-        'formation',
-        'group',
-        'supergroup'
-      )
-  );
+  DISTINCT ON (nsn.strat_name_id)
+  lsn.*,
+  f.map_id,
+  f.match_text
+FROM nearby_strat_names nsn
+JOIN macrostrat.lookup_strat_names lsn
+  ON nsn.strat_name_id = lsn.strat_name_id
+JOIN filtered_words f
+  ON nsn.words = f.words;
 
 CREATE INDEX ON temp_names (strat_name_id);
 
