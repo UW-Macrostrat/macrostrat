@@ -21,21 +21,25 @@ from ..utils import IngestionCLI
 from ..utils.map_info import MapInfo
 from .geometry import create_rgeom, create_webgeom
 from .insert import copy_to_maps
+from .match_strat_names import match_strat_names
 from .status import processing_status
 
 app = IngestionCLI(no_args_is_help=True, name="process")
 
 app.add_command(processing_status, name="status")
 
-app.add_command(copy_to_maps, name="insert", rich_help_panel="Steps")
-app.add_command(create_rgeom, name="rgeom", rich_help_panel="Steps")
-app.add_command(create_webgeom, name="web-geom", rich_help_panel="Steps")
+app.add_command(copy_to_maps, name="insert", rich_help_panel="Map")
+app.add_command(create_rgeom, name="rgeom", rich_help_panel="Map")
+app.add_command(create_webgeom, name="web-geom", rich_help_panel="Map")
 
 
-@app.command(name="legend")
+@app.command(name="legend", rich_help_panel="Map")
 def legend(map: MapInfo):
     """
     Update legend lookup tables for a given map source
     """
     proc = Path(__file__).parent / "procedures" / "update-legend.sql"
     db.run_sql(proc, {"source_id": map.id})
+
+
+app.add_command(match_strat_names, name="strat-names", rich_help_panel="Matching")

@@ -70,8 +70,8 @@ class MapSource(Base):
         # leg = Legend({})
         # leg.run((source_id,))
 
-        sn = strat_names({})
-        sn.run(source_id)
+        # sn = strat_names({})
+        # sn.run(source_id)
 
         u = units({})
         u.run(source_id)
