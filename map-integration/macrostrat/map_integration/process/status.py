@@ -4,6 +4,7 @@ from rich import print
 from rich.columns import Columns
 from rich.table import Column, Table
 from typer import Argument
+from typing_extensions import Annotated
 
 from ..database import db
 from ..utils import MapInfo, feature_counts, get_map_info
@@ -46,16 +47,22 @@ class MapProcessingTable(Table):
         )
 
 
-def processing_status(
-    identifier: str = Argument(
-        help="Autocompleted map ID", autocompletion=complete_map_slugs
-    )
-):
+def map_info_parser(identifier: str | int) -> MapInfo:
+    return get_map_info(db, identifier)
+
+
+MapInfoArgument = Annotated[
+    MapInfo,
+    Argument(..., autocompletion=complete_map_slugs, parser=map_info_parser),
+]
+
+
+def processing_status(map: MapInfoArgument):
     """Get the processing status for a source."""
-    info = get_map_info(db, identifier)
-    source_id = info.id
-    if info is None:
-        raise ValueError(f"No source found with slug {identifier}")
+    map_info = map
+    source_id = map_info.id
+    if map_info is None:
+        raise ValueError(f"No source found with slug {map_info.slug}")
 
     # Check if the source_id exists
     has_webgeom = _has_field(source_id, "web_geom")
@@ -63,9 +70,9 @@ def processing_status(
 
     print(f"Source ID: {source_id}")
 
-    table = MapProcessingTable(info)
+    table = MapProcessingTable(map_info)
 
-    counts = feature_counts(db, info)
+    counts = feature_counts(db, map_info)
     total = counts.n_polygons + counts.n_lines + counts.n_points
     has_data = total > 0
 

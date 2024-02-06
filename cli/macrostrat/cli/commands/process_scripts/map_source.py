@@ -7,7 +7,8 @@ from .__legacy.web_geom import WebGeom
 from .burwell_lookup import BurwellLookup
 from .carto import Carto
 from .carto_lines import CartoLines
-from .legend import Legend
+
+# from .legend import Legend
 from .legend_lookup import LegendLookup
 
 
@@ -66,8 +67,8 @@ class MapSource(Base):
         web_geom = WebGeom({})
         web_geom.run((source_id,))
 
-        leg = Legend({})
-        leg.run((source_id,))
+        # leg = Legend({})
+        # leg.run((source_id,))
 
         sn = strat_names({})
         sn.run(source_id)

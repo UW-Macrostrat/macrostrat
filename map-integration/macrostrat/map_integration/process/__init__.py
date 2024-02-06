@@ -15,6 +15,7 @@ Map processing pipeline (v2)
 
 """
 from ..utils import IngestionCLI
+from .copy_to_maps import insert
 from .geometry import create_rgeom, create_webgeom
 from .status import processing_status
 
@@ -22,5 +23,6 @@ app = IngestionCLI(no_args_is_help=True, name="process")
 
 app.add_command(processing_status, name="status")
 
+app.add_command(insert, name="insert", rich_help_panel="Steps")
 app.add_command(create_rgeom, name="rgeom", rich_help_panel="Steps")
 app.add_command(create_webgeom, name="web-geom", rich_help_panel="Steps")
