@@ -160,6 +160,7 @@ WHERE
     FROM
       (
         SELECT
+          -- Can do this from the 'names' table
           DISTINCT unnest(string_to_array(strat_name, ' ')) AS words
         FROM
           maps.polygons

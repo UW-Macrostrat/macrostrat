@@ -147,8 +147,7 @@ def run_match_query(db, strictTime, strictSpace, strictName):
             and lsn.strat_name_id = snft.strat_name_id"""
         )
 
-    # Handle no time in the query!!!
-    db.run_query(
+    query = (
         """
         INSERT INTO maps.map_strat_names
         SELECT unnest(map_ids), lsn.strat_name_id, %(match_type)s
@@ -163,7 +162,13 @@ def run_match_query(db, strictTime, strictSpace, strictName):
         + """
         JOIN macrostrat.intervals intervals_top on tr.t_interval = intervals_top.id
         JOIN macrostrat.intervals intervals_bottom on tr.b_interval = intervals_bottom.id
-        WHERE %(where)s
-    """,
-        {"match_type": match_type, "where": AsIs(where)},
+        WHERE 
+    """
+        + (where)
+    )
+
+    # Handle no time in the query!!!
+    db.run_sql(
+        query,
+        {"match_type": match_type},
     )
