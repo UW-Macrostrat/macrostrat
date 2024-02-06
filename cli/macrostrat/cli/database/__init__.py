@@ -1,6 +1,7 @@
 from os import environ
 from pathlib import Path
 from sys import exit, stderr, stdin
+from urllib.parse import quote
 
 import typer
 from macrostrat.app_frame import compose
@@ -13,7 +14,11 @@ from typer import Argument, Option
 from macrostrat.core import MacrostratSubsystem, app
 from macrostrat.core.utils import is_pg_url
 
-from .._dev.utils import _create_database_if_not_exists, _docker_local_run_args
+from .._dev.utils import (
+    _create_database_if_not_exists,
+    _docker_local_run_args,
+    raw_database_url,
+)
 from ._legacy import *
 
 __here__ = Path(__file__).parent
@@ -262,3 +267,26 @@ def import_legacy():
         str(dburl),
         str(url),
     )
+
+
+keys = ["username", "host", "port", "password", "database"]
+
+
+@db_app.command(name="connection-details")
+def connection_details():
+    """Print the database connection details"""
+    db = get_db()
+    url = raw_database_url(db.engine.url)
+    for key in keys:
+        print(
+            field_title(key.capitalize()),
+            f"[dim bold green]{getattr(db.engine.url, key)}",
+        )
+    print(field_title("URL"), f"[dim white]{url}")
+
+
+def field_title(name):
+    title = name + ":"
+    # expand the title to 20 characters
+    title = title.ljust(12)
+    return "[dim]" + title + "[/]" + " "

@@ -7,12 +7,12 @@ from typing import Optional
 import typer
 from macrostrat.utils.shell import run
 from rich import print
+from toml import load as load_toml
 from typer import Argument, Option, Typer
 
 from macrostrat.core import app
 from macrostrat.core.main import env_text, get_app_env_file
 
-from .copy_map import copy_macrostrat_sources
 from .database import db_app, db_subsystem, get_db
 from .kubernetes import get_secret
 from .v1_entrypoint import v1_cli
@@ -29,10 +29,7 @@ app.subsystems.add(db_subsystem)
 settings = app.settings
 
 main = app.control_command()
-main.add_typer(db_app, name="db", short_help="Manage the database")
-
-
-main.command(name="copy-sources")(copy_macrostrat_sources)
+main.add_typer(db_app, name="db", short_help="Manage the Macrostrat database")
 
 
 @main.command()
@@ -100,6 +97,23 @@ def edit_cfg():
     from macrostrat.core.config import macrostrat_config_file
 
     run(["open", str(macrostrat_config_file)])
+
+
+@cfg_app.command(name="environments")
+def edit_cfg():
+    """Open config file in editor"""
+    from subprocess import run
+
+    from macrostrat.core.config import macrostrat_config_file
+
+    # Parse out top-level headers from TOML file
+    with open(macrostrat_config_file, "r") as f:
+        cfg = load_toml(f)
+        keys = iter(cfg.keys())
+        print("Available environments:")
+        next(keys)
+        for k in keys:
+            print("- [bold cyan]" + k)
 
 
 main.add_typer(cfg_app)

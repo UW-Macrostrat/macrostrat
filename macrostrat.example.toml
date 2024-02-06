@@ -2,7 +2,6 @@
 # Source code for of individual services that we want to integrate
 # TODO: we may decide to organize these somewhat differently.
 corelle_src = "~/Projects/Macrostrat/Software/corelle"
-map_integration_src = "~/Projects/Macrostrat/Infrastructure/macrostrat/map-integration"
 
 # The remainder of the configuration expresses different settings per environment
 [local]
@@ -15,9 +14,6 @@ compose_root = "./local-root"
 
 # Key for salting passwords
 secret_key = "really-secure-key"
-
-# A separate database for map ingestionm, if desired
-ingestion_database = "map_ingestion"
 
 # A kubernetes based development instance
 [development]

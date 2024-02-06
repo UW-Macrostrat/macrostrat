@@ -4,6 +4,8 @@ from macrostrat.database import Database
 from macrostrat.utils import get_logger
 from psycopg2.sql import Identifier
 
+from ..utils import table_exists
+
 log = get_logger(__name__)
 
 
@@ -52,17 +54,6 @@ def add_missing_table_names(db: Database):
 
 
 # TODO: integrate this with the Macrostrat database module.
-def table_exists(db: Database, table_name: str, schema: str = "public") -> bool:
-    """Check if a table exists in a PostgreSQL database."""
-    sql = """SELECT EXISTS (
-        SELECT FROM information_schema.tables 
-        WHERE table_schema = :schema
-          AND table_name = :table_name
-    );"""
-
-    return db.run_query(sql, dict(schema=schema, table_name=table_name)).scalar()
-
-
 def _add_missing_table_name(
     db: Database, row: object, column_name: str, new_table_name: str
 ):

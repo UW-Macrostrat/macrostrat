@@ -1,4 +1,5 @@
 import asyncio
+from urllib.parse import quote
 
 from aiofiles.threadpool.binary import AsyncBufferedIOBase
 from macrostrat.utils import get_logger
@@ -59,7 +60,7 @@ def _create_command(
         _cmd = [
             *command_prefix,
             *command,
-            str(engine.url).replace("***", engine.url.password),
+            raw_database_url(engine.url),
             *args,
         ]
 
@@ -99,3 +100,7 @@ def _print_progress(megabytes: float, **kwargs):
 async def print_stdout(stream: asyncio.StreamReader):
     async for line in stream:
         console.print(line.decode("utf-8"), style="dim")
+
+
+def raw_database_url(url: URL):
+    return str(url).replace("***", quote(url.password, safe=""))

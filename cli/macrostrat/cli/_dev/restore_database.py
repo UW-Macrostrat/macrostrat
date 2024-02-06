@@ -41,7 +41,16 @@ async def _pg_restore(
     # or another location, if more appropriate. Running on the remote
     # host, if possible, is probably the fastest option. There should be
     # multiple options ideally.
-    _cmd = _create_command(engine, "pg_restore", "-d", args=args, prefix=command_prefix)
+    _cmd = _create_command(
+        engine,
+        "pg_restore",
+        "-d",
+        args=args,
+        prefix=command_prefix,
+        container=postgres_container,
+    )
+
+    log.debug(" ".join(_cmd))
 
     return await asyncio.create_subprocess_exec(
         *_cmd,

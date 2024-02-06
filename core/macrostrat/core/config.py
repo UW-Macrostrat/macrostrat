@@ -24,7 +24,7 @@ settings.validators.register(
     Validator("COMPOSE_ROOT", "CORELLE_SRC", cast=Path)
 )
 
-macrostrat_env = settings.env
+macrostrat_env = getattr(settings, "env", "default")
 
 settings.validators.validate()
 
@@ -52,16 +52,6 @@ environ["PG_DATABASE_CONTAINER"] = getattr(
 
 environ["COMPOSE_PROJECT_NAME"] = "macrostrat_" + macrostrat_env
 
-# For map integration CLI
-if getattr(settings, "ingestion_database", None) is None:
-    settings.ingestion_database = PG_DATABASE
-
-if not is_pg_url(settings.ingestion_database):
-    # Set the ingestion database to the same cluster as the main database
-    settings.ingestion_database = str(url.set(database=settings.ingestion_database))
-
-
-environ["INTEGRATION_DATABASE_URL"] = settings.ingestion_database
 environ["MACROSTRAT_DATABASE_URL"] = PG_DATABASE
 
 # Docker compose file

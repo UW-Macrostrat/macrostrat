@@ -7,7 +7,7 @@ from ..database import db
 def map_sources():
     """List all available map sources"""
     sources = db.run_query(
-        "SELECT source_id, slug, name FROM maps.sources ORDER BY source_id"
+        "SELECT source_id, slug, name FROM maps.sources ORDER BY source_id DESC"
     ).fetchall()
 
     table = Table(title="Macrostrat map sources")
