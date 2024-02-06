@@ -41,7 +41,7 @@ class IngestionCLI(Typer):
         self.command(**kwargs)(func)
 
 
-app = IngestionCLI(no_args_is_help=True, add_completion=False, name="map-ingestion")
+app = IngestionCLI(no_args_is_help=True, name="map-ingestion")
 
 
 # TODO: integrate this migration command with the main database migrations
@@ -73,6 +73,9 @@ app.add_command(create_rgeom, name="create-rgeom")
 
 app.add_command(create_webgeom, name="create-webgeom")
 app.add_command(copy_to_maps, name="insert")
+
+app.add_command(source_info, name="info")
+
 
 sources = IngestionCLI(no_args_is_help=True)
 sources.add_command(copy_macrostrat_sources, name="copy")
@@ -128,6 +131,5 @@ def delete_sources(
 
 sources.add_command(_run_migrations, name="migrate-schema")
 
-sources.add_command(source_info, name="info")
 
 app.add_typer(sources, name="sources", help="Manage map sources")

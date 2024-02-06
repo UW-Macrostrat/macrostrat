@@ -29,7 +29,7 @@ app.subsystems.add(db_subsystem)
 settings = app.settings
 
 main = app.control_command()
-main.add_typer(db_app, name="db", short_help="Manage the database")
+main.add_typer(db_app, name="db", short_help="Manage the Macrostrat database")
 
 
 @main.command()
