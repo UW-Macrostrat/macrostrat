@@ -7,6 +7,7 @@ from typing import Optional
 import typer
 from macrostrat.utils.shell import run
 from rich import print
+from rich.traceback import install
 from toml import load as load_toml
 from typer import Argument, Option, Typer
 
@@ -20,6 +21,8 @@ from .v2_commands import app as v2_app
 
 __here__ = Path(__file__).parent
 fixtures_dir = __here__ / "fixtures"
+
+install(show_locals=True)
 
 
 app.subsystems.add(db_subsystem)
