@@ -1,6 +1,7 @@
 from typing import Optional
 
 from macrostrat.database import Database
+from psycopg2.sql import Identifier
 from pydantic import BaseModel
 
 from ._database import table_exists
@@ -68,3 +69,20 @@ def create_sources_record(db, slug) -> MapInfo:
     db.session.commit()
 
     return MapInfo(id=source_id, slug=slug)
+
+
+def feature_counts(db, info: MapInfo):
+    res = db.run_query(
+        """SELECT
+            (SELECT count(*) FROM {poly_table} WHERE source_id = :source_id) AS n_polygons,
+            (SELECT count(*) FROM {line_table} WHERE source_id = :source_id) AS n_lines,
+            (SELECT count(*) FROM {point_table} WHERE source_id = :source_id) AS n_points
+        """,
+        dict(
+            poly_table=Identifier("maps", "polygons"),
+            line_table=Identifier("maps", "lines"),
+            point_table=Identifier("maps", "points"),
+            source_id=info.id,
+        ),
+    ).one()
+    return res
