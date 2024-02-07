@@ -140,7 +140,7 @@ class IngestState(enum.Enum):
 
 class IngestProcess(Base):
     __tablename__ = "ingest_process"
-    __table_args__ = {'schema': 'maps_metadata'}
+    __table_args__ = {'schema': 'macrostrat'}
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
     state: Mapped[str] = mapped_column(Enum(IngestState, name="ingest_state"), nullable=True)
