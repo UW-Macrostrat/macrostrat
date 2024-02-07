@@ -1,17 +1,13 @@
 import datetime
-import sys
 import time
 from enum import Enum
-from pathlib import Path
 
-from psycopg2.extensions import AsIs
 from psycopg2.sql import SQL, Identifier
 from rich import print
 
-from ..database import db
+from ..database import db, sql_file
 from ..utils import MapInfo
-
-__here__ = Path(__file__).parent
+from .utils import get_match_count
 
 
 class MatchType(Enum):
@@ -76,16 +72,14 @@ def describe_argument(match_type: MatchType | None):
 
 
 def prepare_match_strat_names(source_id: int):
-    db.run_sql(
-        __here__ / "procedures" / "prepare-match-strat-names.sql",
-        {"source_id": source_id},
-    )
+    proc = sql_file("prepare-match-strat-names")
+
+    db.run_sql(proc, {"source_id": source_id})
 
     # We now use the matched strat names for both this step and the
     # extract_strat_name_candidates step, so we use the same query file
-    matched_strat_names = __here__ / "procedures" / "matched-strat-names.sql"
-    create_temp_names_table = (
-        "CREATE TABLE temp_names AS \n" + matched_strat_names.read_text()
+    create_temp_names_table = "CREATE TABLE temp_names AS \n" + sql_file(
+        "matched-strat-names"
     )
 
     db.run_sql(
@@ -166,14 +160,3 @@ def run_match_query(
             "map_name_match": Identifier("tr", mapNameMatch),
         },
     )
-
-
-def get_match_count(source_id: int, table: Identifier):
-    return db.run_query(
-        """
-        SELECT count(*) FROM {table} sn
-        JOIN maps.polygons p ON p.map_id = sn.map_id
-        WHERE p.source_id = :source_id;
-        """,
-        {"source_id": source_id, "table": table},
-    ).scalar()

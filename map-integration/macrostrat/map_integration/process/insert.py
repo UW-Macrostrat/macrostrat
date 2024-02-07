@@ -52,9 +52,8 @@ def copy_to_maps(source: MapInfo, delete_existing: bool = False, scale: str = No
             dict(source_id=source_id),
         )
 
-    queryfile = sql_file("copy-to-maps-schema")
     db.run_sql(
-        queryfile,
+        sql_file("copy-to-maps-schema"),
         dict(
             source_id=Literal(source_id),
             polygons_table=Identifier("sources", slug + "_polygons"),

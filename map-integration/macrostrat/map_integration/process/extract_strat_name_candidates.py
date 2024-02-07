@@ -12,7 +12,7 @@ from psycopg2.sql import SQL, Identifier
 from rich import print
 from typer import Option
 
-from ..database import db
+from ..database import db, sql_file
 from ..utils import MapInfo
 
 __here__ = Path(__file__).parent
@@ -42,7 +42,7 @@ def extract_strat_name_candidates(
         fields = ", ".join(fields)
         field = f"concat_ws(' ', {fields})"
 
-    proc = __here__ / "procedures" / "matched-strat-names.sql"
+    proc = sql_file("matched-strat-names")
 
     table = Identifier("sources", poly_table)
     field = SQL(field)

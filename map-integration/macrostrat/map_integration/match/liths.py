@@ -1,12 +1,14 @@
-import datetime
 import sys
 import time
 
 from psycopg2.extensions import AsIs
 from psycopg2.extras import NamedTupleCursor
+from psycopg2.sql import Identifier
+from rich import print
 
 from ..database import db
 from ..utils import MapInfo
+from .utils import get_match_count
 
 
 def match_liths(map: MapInfo):
@@ -16,6 +18,24 @@ def match_liths(map: MapInfo):
     Uses all available fields of matching, including lith, name, strat_name, descrip, and comments.
     """
     Liths().run(map.id)
+
+    counts = get_lith_count(map.id)
+    mlc = counts["map_liths"]
+    llc = counts["legend_liths"]
+    print(f"Matched [bold cyan]{llc}[/] legend liths ([bold cyan]{mlc}[/] map liths)")
+
+
+def get_lith_count(source_id: int):
+    # Not sure where this gets created to be honest...
+    map_liths_count = get_match_count(source_id, Identifier("maps", "map_liths"))
+
+    lith_count = db.run_query(
+        """SELECT count(*) FROM maps.legend_liths sn
+        JOIN maps.legend p ON p.legend_id = sn.legend_id
+        WHERE p.source_id = :source_id""",
+        {"source_id": source_id},
+    ).scalar()
+    return {"map_liths": map_liths_count, "legend_liths": lith_count}
 
 
 class Liths:

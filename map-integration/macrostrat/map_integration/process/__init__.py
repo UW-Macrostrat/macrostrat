@@ -14,20 +14,15 @@ Map processing pipeline (v2)
 + macrostrat seed <source_id>
 
 """
-from pathlib import Path
 
-from macrostrat.core import app
-
-from ..database import db
+from ..database import db, sql_file
+from ..match import match_liths, match_strat_names, match_units
 from ..utils import IngestionCLI
 from ..utils.map_info import MapInfo
 from .extract_strat_name_candidates import extract_strat_name_candidates
 from .geometry import create_rgeom, create_webgeom
 from .insert import copy_to_maps
-from .liths import match_liths
-from .match_strat_names import match_strat_names
 from .status import processing_status
-from .units import match_units
 
 cli = IngestionCLI(no_args_is_help=True, name="process")
 
@@ -48,11 +43,10 @@ def legend(map: MapInfo):
     """
     Update legend lookup tables for a given map source
     """
-    proc = Path(__file__).parent / "procedures" / "update-legend.sql"
+    proc = sql_file("update-legend")
     db.run_sql(proc, {"source_id": map.id})
 
 
 cli.add_command(match_strat_names, name="strat-names", rich_help_panel="Matching")
-
 cli.add_command(match_units, name="units", rich_help_panel="Matching")
 cli.add_command(match_liths, name="liths", rich_help_panel="Matching")
