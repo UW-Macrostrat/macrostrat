@@ -1,29 +1,39 @@
 import time
 from pathlib import Path
 
-from psycopg2.sql import Identifier
+from psycopg2.sql import SQL, Identifier
 from sqlalchemy.sql import text
 
 from ..database import db, sql_file
+from ..utils import MapInfo
 
 
-def create_rgeom(source_id: int):
+def create_rgeom(source: MapInfo, use_maps_schema: bool = False):
     """Create a unioned reference geometry for a map source"""
     start = time.time()
+    source_id = source.id
 
-    q = "SELECT slug, primary_table FROM maps.sources WHERE source_id = :source_id"
+    q = "SELECT primary_table FROM maps.sources WHERE source_id = :source_id"
     row = db.run_query(q, {"source_id": source_id}).first()
 
-    key = row.slug
     name = row.primary_table
 
-    print("Validating geometry...")
-    q = "UPDATE {primary_table} SET geom = ST_Buffer(geom, 0)"
-    table = Identifier("sources", name)
-    db.run_query(q, {"primary_table": table})
+    if use_maps_schema:
+        table = Identifier("maps", "polygons")
+        where = "source_id = :source_id"
+    else:
+        table = Identifier("sources", name)
+        where = "not coalesce(omit, false)"
+
+        print("Validating geometry...")
+        q = "UPDATE {primary_table} SET geom = ST_Buffer(geom, 0)"
+        db.run_query(q, {"primary_table": table})
 
     print("Creating reference geometry...")
-    db.run_query(sql_file("set-rgeom"), dict(source_id=source_id, primary_table=table))
+    db.run_query(
+        sql_file("set-rgeom"),
+        dict(source_id=source_id, primary_table=table, where_clause=SQL(where)),
+    )
 
     end = time.time()
 

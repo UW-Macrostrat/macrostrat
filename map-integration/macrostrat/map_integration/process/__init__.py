@@ -21,6 +21,7 @@ from macrostrat.core import app
 from ..database import db
 from ..utils import IngestionCLI
 from ..utils.map_info import MapInfo
+from .extract_strat_name_candidates import extract_strat_name_candidates
 from .geometry import create_rgeom, create_webgeom
 from .insert import copy_to_maps
 from .match_strat_names import match_strat_names
@@ -30,10 +31,14 @@ cli = IngestionCLI(no_args_is_help=True, name="process")
 
 cli.add_command(processing_status, name="status")
 
+cli.add_command(create_rgeom, name="rgeom", rich_help_panel="Sources")
+cli.add_command(create_webgeom, name="web-geom", rich_help_panel="Sources")
+cli.add_command(
+    extract_strat_name_candidates, name="extract-strat-names", rich_help_panel="Sources"
+)
+
 
 cli.add_command(copy_to_maps, name="insert", rich_help_panel="Map")
-cli.add_command(create_rgeom, name="rgeom", rich_help_panel="Map")
-cli.add_command(create_webgeom, name="web-geom", rich_help_panel="Map")
 
 
 @cli.command(name="legend", rich_help_panel="Map")

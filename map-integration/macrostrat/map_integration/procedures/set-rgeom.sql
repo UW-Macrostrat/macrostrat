@@ -3,6 +3,7 @@ SET rgeom = (
     WITH dump AS (
       SELECT (ST_Dump(geom)).geom
       FROM {primary_table}
+      WHERE {where_clause}
     ),
     types AS (
       SELECT ST_GeometryType(geom), geom
@@ -45,4 +46,4 @@ SET rgeom = (
         END
     )
 )
-WHERE source_id = %(source_id)s
+WHERE source_id = :source_id
