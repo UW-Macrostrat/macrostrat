@@ -6,7 +6,7 @@ from psycopg2.extras import NamedTupleCursor
 from psycopg2.sql import Identifier
 from rich import print
 
-from ..database import db
+from ..database import LegacyCommandBase, db
 from ..utils import MapInfo
 from .utils import get_match_count
 
@@ -38,7 +38,7 @@ def get_lith_count(source_id: int):
     return {"map_liths": map_liths_count, "legend_liths": lith_count}
 
 
-class Liths:
+class Liths(LegacyCommandBase):
     """
     macrostrat match liths <source_id>:
         Match a given map source to Macrostrat lithologies.
@@ -61,13 +61,6 @@ class Liths:
     source_id = None
     table = None
     field = None
-
-    def __init__(self):
-        conn = db.engine.raw_connection()
-        self.pg = {
-            "connection": conn,
-            "cursor": conn.cursor(cursor_factory=NamedTupleCursor),
-        }
 
     def do_work(self, field):
         try:

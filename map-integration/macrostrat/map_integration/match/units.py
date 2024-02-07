@@ -7,7 +7,7 @@ from psycopg2.extras import NamedTupleCursor, RealDictCursor
 from psycopg2.sql import Identifier
 from rich import print
 
-from ..database import db
+from ..database import LegacyCommandBase, db
 from ..utils import MapInfo
 from .utils import get_match_count
 
@@ -25,17 +25,10 @@ def match_units(map: MapInfo):
     print(f"Matched [bold cyan]{count}[/] units")
 
 
-class Units:
+class Units(LegacyCommandBase):
     source_id = None
     table = None
     field = None
-
-    def __init__(self):
-        conn = db.engine.raw_connection()
-        self.pg = {
-            "connection": conn,
-            "cursor": conn.cursor(cursor_factory=NamedTupleCursor),
-        }
 
     def query_down(self, strictNameMatch, strictSpace, strictTime):
         match_type = self.field
