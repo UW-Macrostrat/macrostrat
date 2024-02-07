@@ -13,7 +13,6 @@ from macrostrat.core import app
 
 from .commands.copy_sources import copy_macrostrat_sources
 from .commands.ingest import ingest_map
-from .commands.match_names import match_names
 from .commands.prepare_fields import prepare_fields
 from .commands.source_info import source_info
 from .commands.sources import map_sources
@@ -41,9 +40,6 @@ def set_active_map(map: MapInfo = None):
 
 cli.add_command(ingest_map, name="ingest")
 cli.add_command(prepare_fields, name="prepare-fields")
-
-# Pass along other arguments to the match-names command
-cli.add_command(match_names, name="match-names")
 
 cli.add_typer(_process, name="process")
 
