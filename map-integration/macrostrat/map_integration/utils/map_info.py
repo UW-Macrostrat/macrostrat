@@ -34,6 +34,10 @@ def complete_map_slugs(incomplete: str):
 
 
 def map_info_parser(identifier: str | int) -> _MapInfo:
+    if identifier == "-" or identifier == "active":
+        identifier = app.state.get("active_map")
+        if identifier is None:
+            raise MacrostratError("No active map set")
     return get_map_info(db, identifier)
 
 
