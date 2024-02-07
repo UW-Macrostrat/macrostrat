@@ -2,7 +2,7 @@
 WITH source_text AS (
   SELECT
     {match_field} match_text,
-    map_id
+    {id_field} map_id
   FROM {match_table}
   WHERE
     source_id = :source_id
