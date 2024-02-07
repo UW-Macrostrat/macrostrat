@@ -1,15 +1,9 @@
-DELETE FROM
-  maps.map_strat_names
-WHERE
-  map_id IN (
-    SELECT
-      map_id
-    FROM
-      maps.polygons
-    WHERE
-      source_id = :source_id
-  )
-  AND basis_col NOT LIKE 'manual%';
+DELETE FROM maps.map_strat_names msn
+USING maps.polygons p
+WHERE msn.map_id = p.map_id
+AND p.source_id = :source_id
+AND msn.basis_col NOT LIKE 'manual%';
+
 
 DROP TABLE IF EXISTS temp_rocks;
 

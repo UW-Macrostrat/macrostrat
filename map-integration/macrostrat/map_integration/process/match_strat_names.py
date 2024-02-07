@@ -33,10 +33,7 @@ def match_strat_names(map: MapInfo):
 
     print("      Starting strat name match at ", str(datetime.datetime.now()))
 
-    db.run_sql(
-        __here__ / "procedures" / "prepare-match-strat-names.sql",
-        {"source_id": source_id},
-    )
+    prepare_match_strat_names(source_id)
 
     elapsed = int(time.time() - start_time)
     print(
@@ -73,6 +70,13 @@ def describe_argument(match_type: MatchType | None):
         return "fuzzy"
     else:
         return "no"
+
+
+def prepare_match_strat_names(source_id: int):
+    db.run_sql(
+        __here__ / "procedures" / "prepare-match-strat-names.sql",
+        {"source_id": source_id},
+    )
 
 
 def run_match_query(
