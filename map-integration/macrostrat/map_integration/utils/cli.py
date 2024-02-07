@@ -15,7 +15,7 @@ class IngestionCLI(Typer):
     It is not designed to handle integration, matching, or harmonization tasks."""
 
     def __init__(self, **kwargs):
-        super().__init__(cls=NaturalOrderGroup, **kwargs)
+        super().__init__(cls=NaturalOrderGroup, rich_markup_mode="rich", **kwargs)
 
     def add_command(self, func, **kwargs):
         self.command(**kwargs)(func)

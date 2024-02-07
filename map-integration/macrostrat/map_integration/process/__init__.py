@@ -16,6 +16,8 @@ Map processing pipeline (v2)
 """
 from pathlib import Path
 
+from macrostrat.core import app
+
 from ..database import db
 from ..utils import IngestionCLI
 from ..utils.map_info import MapInfo
@@ -24,16 +26,17 @@ from .insert import copy_to_maps
 from .match_strat_names import match_strat_names
 from .status import processing_status
 
-app = IngestionCLI(no_args_is_help=True, name="process")
+cli = IngestionCLI(no_args_is_help=True, name="process")
 
-app.add_command(processing_status, name="status")
-
-app.add_command(copy_to_maps, name="insert", rich_help_panel="Map")
-app.add_command(create_rgeom, name="rgeom", rich_help_panel="Map")
-app.add_command(create_webgeom, name="web-geom", rich_help_panel="Map")
+cli.add_command(processing_status, name="status")
 
 
-@app.command(name="legend", rich_help_panel="Map")
+cli.add_command(copy_to_maps, name="insert", rich_help_panel="Map")
+cli.add_command(create_rgeom, name="rgeom", rich_help_panel="Map")
+cli.add_command(create_webgeom, name="web-geom", rich_help_panel="Map")
+
+
+@cli.command(name="legend", rich_help_panel="Map")
 def legend(map: MapInfo):
     """
     Update legend lookup tables for a given map source
@@ -42,4 +45,4 @@ def legend(map: MapInfo):
     db.run_sql(proc, {"source_id": map.id})
 
 
-app.add_command(match_strat_names, name="strat-names", rich_help_panel="Matching")
+cli.add_command(match_strat_names, name="strat-names", rich_help_panel="Matching")

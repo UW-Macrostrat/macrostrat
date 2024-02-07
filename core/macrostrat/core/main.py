@@ -73,15 +73,25 @@ class MacrostratSubsystem(Subsystem):
         return Typer(no_args_is_help=True, **kwargs)
 
 
+class StateManager:
+    def get(self, key: str = None) -> str:
+        return get_app_state(key)
+
+    def set(self, key: str, value: str):
+        set_app_state(key, value)
+
+
 class Macrostrat(Application):
     subsystems: SubsystemManager
     settings: Dynaconf
     console: Console
+    state: StateManager
 
     def __init__(self, *args, **kwargs):
         self.settings = load_settings()
         self.subsystems = SubsystemManager()
         self.console = Console(theme=console_theme)
+        self.state = StateManager()
 
         compose_files = []
         env_file = None

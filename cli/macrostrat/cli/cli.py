@@ -32,7 +32,14 @@ app.subsystems.add(db_subsystem)
 
 settings = app.settings
 
-main = app.control_command(add_completion=True)
+help_text = f"""[bold]Macrostrat[/] control interface
+
+Active environment: [bold cyan]{environ.get('MACROSTRAT_ENV') or 'None'}[/]
+"""
+
+main = app.control_command(add_completion=True, rich_markup_mode="rich", help=help_text)
+
+
 main.add_typer(db_app, name="db", short_help="Manage the Macrostrat database")
 
 
@@ -121,9 +128,6 @@ def environments():
     """Get all available environments."""
     envs = app.settings.all_environments()
     app_console.print(_available_environments(envs))
-    print("Available environments:")
-    for k in envs:
-        print("- [bold cyan]" + k)
 
 
 main.add_typer(cfg_app)
@@ -158,7 +162,7 @@ def _run(
 # Add subsystems if they are available.
 # This organization is a bit awkward, and we may change it eventually.
 try:
-    from macrostrat.map_integration import app as map_app
+    from macrostrat.map_integration import cli as map_app
 
     @map_app.command(name="write-geopackage")
     def write_map_geopackage(
@@ -304,3 +308,9 @@ def show_app_dir():
 
 
 main = setup_exception_handling(main)
+
+
+@self_app.command()
+def state():
+    """Show the current state of the application"""
+    app.console.print(app.state.get())

@@ -6,6 +6,9 @@ from pydantic import BaseModel
 from typer import Argument
 from typing_extensions import Annotated
 
+from macrostrat.core import app
+from macrostrat.core.exc import MacrostratError
+
 from ..database import db
 from ._database import table_exists
 
@@ -46,7 +49,7 @@ def get_map_info(db: Database, identifier: str | int) -> MapInfo:
     params = {}
     try:
         map_id = int(identifier)
-        query += " WHERE id = %(source_id)s"
+        query += " WHERE source_id = %(source_id)s"
         params["source_id"] = map_id
     except ValueError:
         map_slug = identifier
