@@ -3,6 +3,7 @@ from pathlib import Path
 
 from dynaconf import Dynaconf, Validator
 from sqlalchemy.engine import make_url
+from toml import load as load_toml
 
 from .utils import find_macrostrat_config, is_pg_url
 
@@ -10,13 +11,31 @@ cfg = find_macrostrat_config()
 
 macrostrat_config_file = cfg
 
-settings = Dynaconf(
-    envvar_prefix="MACROSTRAT",
-    environments=True,
-    env_switcher="MACROSTRAT_ENV",
-    settings_files=[cfg],
-    load_dotenv=False,
-)
+
+class MacrostratConfig(Dynaconf):
+    config_file: Path
+
+    def __init__(self, *args, **kwargs):
+        cfg = find_macrostrat_config()
+        super().__init__(
+            envvar_prefix="MACROSTRAT",
+            environments=True,
+            env_switcher="MACROSTRAT_ENV",
+            settings_files=[cfg],
+            load_dotenv=False,
+        )
+        self.config_file = Path(cfg)
+
+    def all_environments(self):
+        # Parse out top-level headers from TOML file
+        with open(self.config_file, "r") as f:
+            cfg = load_toml(f)
+            keys = iter(cfg.keys())
+            next(keys)
+            return [k for k in keys]
+
+
+settings = MacrostratConfig()
 
 settings.validators.register(
     # `must_exist` is causing huge problems

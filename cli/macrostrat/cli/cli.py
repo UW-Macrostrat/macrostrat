@@ -12,7 +12,8 @@ from toml import load as load_toml
 from typer import Argument, Option, Typer
 
 from macrostrat.core import app
-from macrostrat.core.main import env_text, get_app_env_file
+from macrostrat.core.exc import MacrostratError, setup_exception_handling
+from macrostrat.core.main import env_text, get_app_state, set_app_state
 
 from .database import db_app, db_subsystem, get_db
 from .kubernetes import get_secret
@@ -53,21 +54,34 @@ def shell():
 @main.command(name="env")
 def set_env(env: str = Argument(None), unset: bool = False):
     """Set the active environment"""
-    active_env = get_app_env_file()
     if env is None:
-        e = app.settings.env
+        try:
+            e = app.settings.env
+        except AttributeError:
+            e = None
         if e is None:
-            print("No environment set", file=stderr)
-            exit(1)
+            raise MacrostratError("No environment set")
         print(e)
         return
     if unset:
-        active_env.unlink()
+        set_app_state("active_env", None)
         return
+    environments = app.settings.all_environments()
+    if env not in environments:
+        raise MacrostratError(
+            f"Environment [item]{env}[/item] is not valid",
+            details=_available_environments(environments),
+        )
+    set_app_state("active_env", env)
     environ["MACROSTRAT_ENV"] = env
-    active_env.parent.mkdir(exist_ok=True)
-    active_env.write_text(env)
     print(f"Activated {env_text()}")
+
+
+def _available_environments(environments):
+    res = "Available environments:\n"
+    for k in environments:
+        res += f"- [item]{k}[/item]\n"
+    return res
 
 
 def local_install(path: Path):
@@ -103,20 +117,13 @@ def edit_cfg():
 
 
 @cfg_app.command(name="environments")
-def edit_cfg():
-    """Open config file in editor"""
-    from subprocess import run
-
-    from macrostrat.core.config import macrostrat_config_file
-
-    # Parse out top-level headers from TOML file
-    with open(macrostrat_config_file, "r") as f:
-        cfg = load_toml(f)
-        keys = iter(cfg.keys())
-        print("Available environments:")
-        next(keys)
-        for k in keys:
-            print("- [bold cyan]" + k)
+def environments():
+    """Get all available environments."""
+    envs = app.settings.all_environments()
+    app_console.print(_available_environments(envs))
+    print("Available environments:")
+    for k in envs:
+        print("- [bold cyan]" + k)
 
 
 main.add_typer(cfg_app)
@@ -288,3 +295,12 @@ main.add_typer(
 
 
 main.add_click_command(v1_cli, name="v1")
+
+
+@self_app.command(name="settings-dir")
+def show_app_dir():
+    """Show the configuration directory"""
+    print(app.app_dir)
+
+
+main = setup_exception_handling(main)
