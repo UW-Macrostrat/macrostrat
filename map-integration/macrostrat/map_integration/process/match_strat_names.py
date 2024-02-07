@@ -1,6 +1,7 @@
 import datetime
 import sys
 import time
+from enum import Enum
 from pathlib import Path
 
 from psycopg2.extensions import AsIs
@@ -11,6 +12,11 @@ from ..database import db
 from ..utils import MapInfo
 
 __here__ = Path(__file__).parent
+
+
+class MatchType(Enum):
+    STRICT = True
+    FUZZY = False
 
 
 def match_strat_names(map: MapInfo):
@@ -44,41 +50,11 @@ def match_strat_names(map: MapInfo):
     # Time the process
     start_time = time.time()
 
-    # strict time - strict space - strict name
-    a = run_match_query(db, True, True, True)
-
-    # strict time - fuzzy space - strict name
-    b = run_match_query(db, True, False, True)
-
-    # fuzzy time - strict space - strict name
-    c = run_match_query(db, False, True, True)
-
-    # fuzzy time - fuzzy space - strict name
-    d = run_match_query(db, False, False, True)
-
-    # no time - strict space - strict name
-    e = run_match_query(db, None, True, True)
-
-    # no time - fuzzy space - strict name
-    f = run_match_query(db, None, False, True)
-
-    # strict time - strict space - fuzzy name
-    g = run_match_query(db, True, True, False)
-
-    # strict time - fuzzy space - fuzzy name
-    h = run_match_query(db, True, False, False)
-
-    # fuzzy time - strict space - fuzzy name
-    i = run_match_query(db, False, True, False)
-
-    # fuzzy time - fuzzy space - fuzzy name
-    j = run_match_query(db, False, False, False)
-
-    # no time - strict space - fuzzy name
-    k = run_match_query(db, None, True, False)
-
-    # no time - fuzzy space - fuzzy name
-    l = run_match_query(db, None, False, False)
+    # Run the match queries
+    for time_match in [MatchType.STRICT, MatchType.FUZZY, None]:
+        for space_match in [MatchType.STRICT, MatchType.FUZZY]:
+            for name_match in [MatchType.STRICT, MatchType.FUZZY]:
+                run_match_query(db, time_match, space_match, name_match)
 
     elapsed = int(time.time() - start_time)
     print(
@@ -90,19 +66,21 @@ def match_strat_names(map: MapInfo):
     )
 
 
-def describe_argument(match_type: bool | None):
-    if match_type == True:
+def describe_argument(match_type: MatchType | None):
+    if match_type == MatchType.STRICT:
         return "strict"
-    elif match_type == False:
+    elif match_type == MatchType.FUZZY:
         return "fuzzy"
     else:
         return "no"
 
 
-def run_match_query(db, strict_time, strict_space, strict_name):
-    time = describe_argument(strict_time)
-    space = describe_argument(strict_space)
-    name = describe_argument(strict_name)
+def run_match_query(
+    db, time_match: MatchType | None, space_match: MatchType, name_match: MatchType
+):
+    time = describe_argument(time_match)
+    space = describe_argument(space_match)
+    name = describe_argument(name_match)
 
     print(
         f"{time} time, {space} space, {name} name",
@@ -110,29 +88,29 @@ def run_match_query(db, strict_time, strict_space, strict_name):
 
     match_type = "strat_name"
 
-    if not strict_name:
+    if not name_match:
         match_type += "_fname"
 
-    if not strict_space:
+    if not space_match:
         match_type += "_fspace"
 
-    if strict_time == False:
+    if time_match == MatchType.FUZZY:
         match_type += "_ftime"
-    elif strict_time == None:
+    elif time_match is None:
         match_type += "_ntime"
 
-    macroNameMatch = "rank_name" if strict_name else "name_no_lith"
-    mapNameMatch = "strat_name" if strict_name else "strat_name_clean"
+    macroNameMatch = "rank_name" if name_match else "name_no_lith"
+    mapNameMatch = "strat_name" if name_match else "strat_name_clean"
 
     # Relax the matching constraints
-    space_buffer = 0 if strict_space else 1.2
+    space_buffer = 0 if space_match else 1.2
 
     # Time buffer
-    time_fuzz = 0 if strict_time else 25
+    time_fuzz = 0 if time_match else 25
 
     where_clause = "WHERE lsn.strat_name_id = snft.strat_name_id"
 
-    if strict_time is not None:
+    if time_match is not None:
         where_clause += """ AND ((lsn.late_age) < (intervals_bottom.age_bottom + :time_fuzz))
             AND ((lsn.early_age) > (intervals_top.age_top - :time_fuzz))"""
 
