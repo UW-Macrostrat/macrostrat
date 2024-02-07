@@ -33,11 +33,11 @@ def get_app_state(key: str = None) -> str:
     return state.get(key, None)
 
 
-def set_app_state(key: str, value: str):
+def set_app_state(key: str, value: str, wipe_others: bool = False):
     state_file = get_app_state_file()
     state_file.parent.mkdir(exist_ok=True)
     state = get_app_state()
-    if state is None:
+    if state is None or wipe_others:
         state = {}
     state[key] = value
     with state_file.open("w") as f:
@@ -55,7 +55,7 @@ def load_settings():
     try:
         from .config import settings
     except AttributeError as err:
-        set_app_state("active_env", None)
+        set_app_state("active_env", None, wipe_others=True)
         raise MacrostratError(
             f"Could not load settings for {env_text()}",
             details="Removing environment configuration",
@@ -77,8 +77,8 @@ class StateManager:
     def get(self, key: str = None) -> str:
         return get_app_state(key)
 
-    def set(self, key: str, value: str):
-        set_app_state(key, value)
+    def set(self, key: str, value: str, wipe_others: bool = False):
+        set_app_state(key, value, wipe_others=wipe_others)
 
 
 class Macrostrat(Application):

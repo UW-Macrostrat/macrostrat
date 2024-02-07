@@ -61,17 +61,17 @@ def shell():
 @main.command(name="env")
 def set_env(env: str = Argument(None), unset: bool = False):
     """Set the active environment"""
+    try:
+        current_env = app.settings.env
+    except AttributeError:
+        current_env = None
     if env is None:
-        try:
-            e = app.settings.env
-        except AttributeError:
-            e = None
-        if e is None:
+        if current_env is None:
             raise MacrostratError("No environment set")
-        print(e)
+        print(current_env)
         return
     if unset:
-        set_app_state("active_env", None)
+        set_app_state("active_env", None, wipe_others=True)
         return
     environments = app.settings.all_environments()
     if env not in environments:
@@ -79,7 +79,8 @@ def set_env(env: str = Argument(None), unset: bool = False):
             f"Environment [item]{env}[/item] is not valid",
             details=_available_environments(environments),
         )
-    set_app_state("active_env", env)
+    should_wipe = current_env != env
+    set_app_state("active_env", env, wipe_others=should_wipe)
     environ["MACROSTRAT_ENV"] = env
     print(f"Activated {env_text()}")
 
