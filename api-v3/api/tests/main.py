@@ -543,3 +543,14 @@ class TestIngestProcess:
     for object in objects:
       assert object['key'] in keys
 
+  #@pytest.skip("Manual testing only")
+  def test_get_objects_known_ingest_process(self, api_client):
+
+    ingest_process_id = 1
+
+    response = api_client.get(f"/ingest-process/{ingest_process_id}/objects")
+    assert response.status_code == 200
+    objects = response.json()
+
+    assert len(objects) > 0
+    assert objects[0]['pre_signed_url'] is not None

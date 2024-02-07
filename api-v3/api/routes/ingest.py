@@ -1,9 +1,9 @@
-import datetime
+import os
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import insert, select, update, and_
 from sqlalchemy.orm import selectinload, joinedload
-from pydantic import parse_obj_as
+import minio
 
 from api.database import (
     get_async_session,
@@ -116,14 +116,13 @@ async def patch_ingest_process(id: int, object: IngestProcessModel.Patch, groups
         return response
 
 
-@router.get("/{id}/objects", response_model=list[Object.Get])
+@router.get("/{id}/objects", response_model=list[Object.GetSecureURL])
 async def get_ingest_process_objects(id: int, groups: list[str] = Depends(get_groups)):
     """Get all objects for an ingestion process"""
 
     engine = get_engine()
     async_session = get_async_session(engine)
 
-    objects = None
     async with async_session() as session:
 
         select_stmt = select(IngestProcessSchema).where(and_(IngestProcessSchema.id == id))
@@ -131,6 +130,23 @@ async def get_ingest_process_objects(id: int, groups: list[str] = Depends(get_gr
 
         object_stmt = select(ObjectGroup).where(ObjectGroup.id == ingest_process.object_group_id).options(selectinload(ObjectGroup.objects))
         objects_iterator = await session.execute(object_stmt)
-        objects = [Object.Get(x) for x in objects_iterator.scalar().objects]
+        schema_objects = objects_iterator.scalar().objects
 
+    if len(schema_objects) == 0:
+        return []
 
+    try:
+        # Attach the secure url
+        first_object = schema_objects[0]
+        m = minio.Minio(endpoint=first_object.host, access_key=os.environ['access_key'], secret_key=os.environ['secret_key'], secure=True)
+
+        for obj in schema_objects:
+            obj.pre_signed_url = m.presigned_get_object(bucket_name=obj.bucket, object_name=obj.key)
+
+        return schema_objects
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get secure url for object: {e}"
+        )
