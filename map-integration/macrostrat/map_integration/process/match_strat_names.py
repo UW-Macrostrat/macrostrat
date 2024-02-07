@@ -62,6 +62,9 @@ def match_strat_names(map: MapInfo):
         " seconds",
     )
 
+    count = get_match_count(source_id, Identifier("maps", "map_strat_names"))
+    print(f"Matched [bold cyan]{count}[/] strat names")
+
 
 def describe_argument(match_type: MatchType | None):
     if match_type == MatchType.STRICT:
@@ -163,3 +166,14 @@ def run_match_query(
             "map_name_match": Identifier("tr", mapNameMatch),
         },
     )
+
+
+def get_match_count(source_id: int, table: Identifier):
+    return db.run_query(
+        """
+        SELECT count(*) FROM {table} sn
+        JOIN maps.polygons p ON p.map_id = sn.map_id
+        WHERE p.source_id = :source_id;
+        """,
+        {"source_id": source_id, "table": table},
+    ).scalar()

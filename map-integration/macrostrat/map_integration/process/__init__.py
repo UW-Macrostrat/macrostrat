@@ -24,8 +24,10 @@ from ..utils.map_info import MapInfo
 from .extract_strat_name_candidates import extract_strat_name_candidates
 from .geometry import create_rgeom, create_webgeom
 from .insert import copy_to_maps
+from .liths import match_liths
 from .match_strat_names import match_strat_names
 from .status import processing_status
+from .units import match_units
 
 cli = IngestionCLI(no_args_is_help=True, name="process")
 
@@ -51,3 +53,6 @@ def legend(map: MapInfo):
 
 
 cli.add_command(match_strat_names, name="strat-names", rich_help_panel="Matching")
+
+cli.add_command(match_units, name="units", rich_help_panel="Matching")
+cli.add_command(match_liths, name="liths", rich_help_panel="Matching")

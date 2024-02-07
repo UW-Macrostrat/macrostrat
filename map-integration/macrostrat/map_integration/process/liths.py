@@ -1,12 +1,24 @@
-from psycopg2.extensions import AsIs
-from psycopg2.extras import RealDictCursor
-import time
 import datetime
 import sys
-from ..base import Base
+import time
+
+from psycopg2.extensions import AsIs
+from psycopg2.extras import NamedTupleCursor
+
+from ..database import db
+from ..utils import MapInfo
 
 
-class Liths(Base):
+def match_liths(map: MapInfo):
+    """
+    Match a given map source to Macrostrat lithologies.
+    Populates the table maps.legend_liths.
+    Uses all available fields of matching, including lith, name, strat_name, descrip, and comments.
+    """
+    Liths().run(map.id)
+
+
+class Liths:
     """
     macrostrat match liths <source_id>:
         Match a given map source to Macrostrat lithologies.
@@ -26,19 +38,16 @@ class Liths(Base):
       https://github.com/UW-Macrostrat/macrostrat-cli
     """
 
-    meta = {
-        "mariadb": False,
-        "pg": True,
-        "usage": """
-            Matches burwell polygons to macrostrat liths
-        """,
-        "required_args": {"source_id": "A valid source_id"},
-    }
-
     source_id = None
+    table = None
+    field = None
 
-    def __init__(self, connections, *args):
-        Base.__init__(self, connections, *args)
+    def __init__(self):
+        conn = db.engine.raw_connection()
+        self.pg = {
+            "connection": conn,
+            "cursor": conn.cursor(cursor_factory=NamedTupleCursor),
+        }
 
     def do_work(self, field):
         try:

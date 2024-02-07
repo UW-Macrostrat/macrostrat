@@ -1,46 +1,35 @@
-from psycopg2.extensions import AsIs
-from psycopg2.extras import RealDictCursor
-import time
 import datetime
 import sys
-from ..base import Base
+import time
+
+from psycopg2.extensions import AsIs
+from psycopg2.extras import NamedTupleCursor, RealDictCursor
+
+from ..database import db
+from ..utils import MapInfo
 
 
-class Units(Base):
+def match_units(map: MapInfo):
+    """Match a given map source to Macrostrat units.
+
+    Populates the table maps.map_units.
+    Uses all available fields of matching, including name, strat_name, descrip, and comments.
     """
-    macrostrat match units <source_id>:
-        Match a given map source to Macrostrat units.
-        Populates the table maps.map_units.
-        Uses all available fields of matching, including name, strat_name, descrip, and comments.
+    source_id = map.id
+    Units().run(source_id)
 
-    Usage:
-      macrostrat match units <source_id>
-      macrostrat match units -h | --help
-    Options:
-      -h --help                         Show this screen.
-      --version                         Show version.
-    Examples:
-      macrostrat match units 123
-    Help:
-      For help using this tool, please open an issue on the Github repository:
-      https://github.com/UW-Macrostrat/macrostrat-cli
-    """
 
-    meta = {
-        "mariadb": False,
-        "pg": True,
-        "usage": """
-            Matches burwell polygons to macrostrat units
-        """,
-        "required_args": {"source_id": "A valid source_id"},
-    }
-
+class Units:
     source_id = None
     table = None
     field = None
 
-    def __init__(self, connections, *args):
-        Base.__init__(self, connections, *args)
+    def __init__(self):
+        conn = db.engine.raw_connection()
+        self.pg = {
+            "connection": conn,
+            "cursor": conn.cursor(cursor_factory=NamedTupleCursor),
+        }
 
     def query_down(self, strictNameMatch, strictSpace, strictTime):
         match_type = self.field
