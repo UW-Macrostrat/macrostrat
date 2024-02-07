@@ -1,6 +1,5 @@
 from os import environ
 from pathlib import Path
-from sys import stderr
 
 import toml
 from dynaconf import Dynaconf

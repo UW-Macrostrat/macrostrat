@@ -78,6 +78,26 @@ def prepare_match_strat_names(source_id: int):
         {"source_id": source_id},
     )
 
+    # We now use the matched strat names for both this step and the
+    # extract_strat_name_candidates step, so we use the same query file
+    matched_strat_names = __here__ / "procedures" / "matched-strat-names.sql"
+    create_temp_names_table = (
+        "CREATE TABLE temp_names AS \n" + matched_strat_names.read_text()
+    )
+
+    db.run_sql(
+        create_temp_names_table,
+        {
+            "source_id": source_id,
+            "id_field": Identifier("map_id"),
+            "match_field": Identifier("strat_name"),
+            "match_table": Identifier("maps", "polygons"),
+        },
+    )
+
+    for field in ["strat_name", "rank_name", "name_no_lith", "strat_name_id"]:
+        db.run_sql("CREATE INDEX ON temp_names ({field})", {"field": Identifier(field)})
+
 
 def run_match_query(
     db, time_match: MatchType | None, space_match: MatchType, name_match: MatchType
