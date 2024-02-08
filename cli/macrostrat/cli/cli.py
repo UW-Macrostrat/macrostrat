@@ -15,7 +15,7 @@ from macrostrat.core import app
 from macrostrat.core.exc import MacrostratError, setup_exception_handling
 from macrostrat.core.main import env_text, get_app_state, set_app_state
 
-from .database import db_app, db_subsystem, get_db
+from .database import SubsystemSchemaDefinition, db_app, db_subsystem, get_db
 from .kubernetes import get_secret
 from .v1_entrypoint import v1_cli
 from .v2_commands import app as v2_app
@@ -214,11 +214,11 @@ try:
         short_help="Prototype geochemical data management system",
     )
 
-    def update_weaver():
+    def update_weaver(db):
         print("Creating models for [bold cyan]weaver[/] subsystem")
         create_models()
 
-    db_subsystem._queued_updates.append(update_weaver)
+    db_subsystem.register_schema_part(name="weaver", callback=update_weaver)
 
 except ImportError as err:
     pass
@@ -235,11 +235,11 @@ try:
         short_help="Control Macrostrat's tileserver",
     )
 
-    def update_tileserver():
+    def update_tileserver(db):
         print("Creating models for [bold cyan]tileserver[/] subsystem")
         create_fixtures()
 
-    db_subsystem._queued_updates.append(update_tileserver)
+    db_subsystem.register_schema_part(name="tileserver", callback=update_tileserver)
 
 except ImportError as err:
     print("Could not import tileserver subsystem")
@@ -258,11 +258,16 @@ try:
         rich_help_panel="Subsystems",
     )
 
-    def update_corelle():
+    def update_corelle(db):
+        environ["CORELLE_DB"] = app.settings.pg_database
         print("Creating models for [bold cyan]corelle[/] subsystem")
         initialize(drop=False)
 
-    db_subsystem._queued_updates.append(update_corelle)
+    db_subsystem.register_schema_part(
+        name="corelle",
+        callback=update_corelle,
+    )
+
 
 except ImportError as err:
     pass
