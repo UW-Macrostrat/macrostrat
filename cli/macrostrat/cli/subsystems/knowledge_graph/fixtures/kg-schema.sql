@@ -29,4 +29,20 @@ JOIN macrostrat_kg.relationships_extracted re
  AND r.relationship_id = re.relationship_id
 JOIN macrostrat_kg.sources s
   ON re.source_id = s.src_id
- AND r.run_id = s.run_id
+ AND r.run_id = s.run_id;
+
+CREATE OR REPLACE VIEW macrostrat_api.strat_name_kg_relationships AS
+SELECT DISTINCT ON (r.id)
+ 	r.id,
+	strat_name_id,
+	lith_id,
+	l.lith,
+	l.lith_color,
+	source_id,
+	article_id,
+	paragraph_txt
+FROM macrostrat_kg.relationships_meta r
+JOIN macrostrat.liths l
+  ON l.id = r.lith_id
+WHERE strat_name_id IS NOT null
+  AND lith_id IS NOT null;
