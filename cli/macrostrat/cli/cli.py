@@ -320,3 +320,8 @@ main = setup_exception_handling(main)
 def state():
     """Show the current state of the application"""
     app.console.print(app.state.get())
+
+
+from .subsystems.knowledge_graph import kg_schema
+
+db_subsystem.schema_hunks.append(kg_schema)
