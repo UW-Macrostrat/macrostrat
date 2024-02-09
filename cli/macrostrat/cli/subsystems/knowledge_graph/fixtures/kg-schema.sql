@@ -31,8 +31,10 @@ JOIN macrostrat_kg.sources s
   ON re.source_id = s.src_id
  AND r.run_id = s.run_id;
 
+
+
 CREATE OR REPLACE VIEW macrostrat_api.strat_name_kg_relationships AS
-SELECT DISTINCT ON (r.id)
+SELECT DISTINCT ON (strat_name_id, lith_id, source_id)
  	r.id,
 	strat_name_id,
 	lith_id,
@@ -46,3 +48,22 @@ JOIN macrostrat.liths l
   ON l.id = r.lith_id
 WHERE strat_name_id IS NOT null
   AND lith_id IS NOT null;
+
+CREATE OR REPLACE VIEW macrostrat_api.unit_liths AS
+WITH unit_liths AS (
+  SELECT
+    ul.unit_id,
+    json_agg(json_build_object(
+      'id', l.id,
+      'name', l.lith,
+      'color', l.lith_color,
+      'prop', ul.comp_prop
+    )) liths
+  FROM macrostrat.unit_liths ul
+  JOIN macrostrat.liths l
+    ON l.id = ul.lith_id
+  GROUP BY ul.unit_id
+)
+SELECT id, strat_name, section_id, col_id, liths
+FROM macrostrat.units
+JOIN unit_liths ul ON units.id = ul.unit_id; 

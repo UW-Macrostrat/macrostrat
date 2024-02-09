@@ -5,3 +5,6 @@ CREATE ROLE web_anon NOLOGIN;
 
 -- Postgrest is our 'authenticator' role
 GRANT web_anon TO postgrest;
+
+GRANT USAGE ON SCHEMA macrostrat_api TO web_anon;
+GRANT SELECT ON ALL TABLES IN SCHEMA macrostrat_api TO web_anon;
