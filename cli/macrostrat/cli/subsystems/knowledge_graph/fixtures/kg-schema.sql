@@ -49,7 +49,7 @@ JOIN macrostrat.liths l
 WHERE strat_name_id IS NOT null
   AND lith_id IS NOT null;
 
-CREATE OR REPLACE VIEW macrostrat_api.unit_liths AS
+CREATE OR REPLACE VIEW macrostrat_api.unit_liths_agg AS
 WITH unit_liths AS (
   SELECT
     ul.unit_id,
