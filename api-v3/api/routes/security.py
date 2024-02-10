@@ -1,27 +1,30 @@
-from datetime import datetime, timedelta
-from typing import Annotated, Optional
 import os
-import urllib.parse
 import secrets
 import string
+import urllib.parse
+from datetime import datetime, timedelta
+from typing import Annotated, Optional
 
-import bcrypt
 import aiohttp
-from fastapi import HTTPException, APIRouter, Depends, status, Response, Request
+import bcrypt
+import dotenv
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
-from fastapi.security import OAuth2AuthorizationCodeBearer, HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import (
+    HTTPAuthorizationCredentials,
+    HTTPBearer,
+    OAuth2AuthorizationCodeBearer,
+)
 from fastapi.security.utils import get_authorization_scheme_param
-from starlette.status import HTTP_401_UNAUTHORIZED
 from jose import JWTError, jwt
 from pydantic import BaseModel
 from sqlalchemy import select
+from starlette.status import HTTP_401_UNAUTHORIZED
 
-import dotenv
 dotenv.load_dotenv()
 
-import api.schemas as schemas
 import api.database as db
-
+import api.schemas as schemas
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 1440  # 24 hours
@@ -238,6 +241,7 @@ async def redirect_callback(code: str, state: Optional[str] = None):
             access_token = create_access_token(
                 data={
                     "sub": user.sub,
+                    "role": "web_user", # For PostgREST
                     "groups": [group.id for group in user.groups],
 
                 }
