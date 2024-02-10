@@ -146,7 +146,10 @@ def update_schema(match: str = Option(None), subsystems: list[str] = Option(None
     app.subsystems.run_hook("schema-update")
 
     # Reload the postgrest schema cache
-    compose("kill -s SIGUSR1 postgrest")
+    if app.settings.get("compose_root", None) is not None:
+        compose("kill -s SIGUSR1 postgrest")
+    else:
+        db.run_sql("NOTIFY pgrst, 'reload schema';")
 
 
 db_app = db_subsystem.control_command()
