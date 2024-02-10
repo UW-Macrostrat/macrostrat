@@ -84,7 +84,8 @@ JOIN macrostrat.liths l
 LEFT JOIN macrostrat.lith_atts la
   ON la.id = r.lith_att_id
 WHERE strat_name_id IS NOT null
-  AND lith_id IS NOT null;
+  AND lith_id IS NOT null
+ORDER BY strat_name_id, lith_id, source_id, r.id;
 
 CREATE OR REPLACE VIEW macrostrat_api.unit_liths_agg AS
 WITH atts AS (
@@ -116,7 +117,8 @@ GROUP BY unit_lith_id
 )
 SELECT id, strat_name, section_id, col_id, liths
 FROM macrostrat.units
-JOIN unit_liths ul ON units.id = ul.unit_id;
+JOIN unit_liths ul ON units.id = ul.unit_id
+ORDER BY id;
 
 CREATE OR REPLACE VIEW macrostrat_api.strat_names_ext AS
 WITH concept_counts AS (
@@ -142,7 +144,8 @@ USING (concept_id)
 LEFT JOIN macrostrat.intervals i
   ON i.id = snm.interval_id
 LEFT JOIN concept_counts cc
-USING (concept_id);
+USING (concept_id)
+ORDER BY sn.id;
 
 CREATE OR REPLACE VIEW macrostrat_api.strat_names_units_kg AS
 WITH unit_info AS (
@@ -176,5 +179,6 @@ FROM macrostrat_api.strat_names_ext sn
 LEFT JOIN unit_info un
   ON sn.id = un.strat_name_id
 LEFT JOIN macrostrat_kg.strat_name_kg_liths kgl
-  ON kgl.strat_name_id = un.strat_name_id;
+  ON kgl.strat_name_id = un.strat_name_id
+ORDER BY id;
 
