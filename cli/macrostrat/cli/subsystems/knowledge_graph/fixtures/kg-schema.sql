@@ -10,12 +10,16 @@ SELECT
 	r.run_id model_run,
 	r.src_type head_type,
 	r.dst_type tail_type,
-	r.strat_name_id,
+	coalesce(r.strat_name_id, s.search_strat_id) strat_name_id,
 	r.lith_id,
 	r.lith_att_id,
 	s.src_id source_id,
 	s.article_id,
 	s.paragraph_txt,
+  s.search_strat_id,
+  s.search_strat_name,
+  s.search_strat_id = r.strat_name_id strat_name_correct,
+  r.strat_name_id IS NULL AND s.search_strat_id IS NOT NULL strat_name_implicit,
 	nullif(
     position(head IN lower(paragraph_txt)),
     0
@@ -32,17 +36,27 @@ JOIN macrostrat_kg.sources s
  AND r.run_id = s.run_id;
 
 CREATE OR REPLACE VIEW macrostrat_kg.strat_name_kg_liths AS
-WITH links AS (
-	SELECT DISTINCT ON (strat_name_id, lith_id)
+WITH atts AS (
+	SELECT
 		strat_name_id,
-		lith_id
+		lith_id,
+		lith_att_id
 	FROM macrostrat_kg.relationships_meta r
-	WHERE strat_name_id IS NOT null
-	  AND lith_id IS NOT null
+	WHERE lith_id IS NOT NULL
+	  AND strat_name_id IS NOT NULL
+), links AS (
+	SELECT
+		strat_name_id,
+		lith_id,
+		json_strip_nulls(json_agg(json_build_object('id', la.id, 'name', la.lith_att, 'type', la.att_type))) atts
+	FROM atts a
+	JOIN macrostrat.lith_atts la
+	  ON a.lith_att_id = la.id
+	GROUP BY strat_name_id, lith_id
 )
 SELECT
 	strat_name_id,
-	json_agg(json_build_object('id', lith_id, 'name', l.lith, 'color', l.lith_color)) kg_liths
+	json_agg(json_build_object('id', lith_id, 'name', l.lith, 'color', l.lith_color, 'atts', r.atts)) kg_liths
 FROM links r
 JOIN macrostrat.liths l
   ON l.id = r.lith_id
@@ -60,26 +74,44 @@ SELECT DISTINCT ON (strat_name_id, lith_id, source_id)
 	l.lith_color,
 	source_id,
 	article_id,
-	paragraph_txt
+	paragraph_txt,
+  la.id lith_att_id,
+  la.lith_att,
+  la.att_type
 FROM macrostrat_kg.relationships_meta r
 JOIN macrostrat.liths l
   ON l.id = r.lith_id
+LEFT JOIN macrostrat.lith_atts la
+  ON la.id = r.lith_att_id
 WHERE strat_name_id IS NOT null
   AND lith_id IS NOT null;
 
 CREATE OR REPLACE VIEW macrostrat_api.unit_liths_agg AS
-WITH unit_liths AS (
+WITH atts AS (
+	SELECT id, lith_att name, att_type type FROM macrostrat.lith_atts la
+), atts_agg AS (
+SELECT
+	unit_lith_id,
+	json_strip_nulls(json_agg(to_json(atts))) atts
+FROM macrostrat.unit_lith_atts ula
+JOIN atts
+  ON atts.id = ula.lith_att_id
+GROUP BY unit_lith_id
+), unit_liths AS (
   SELECT
     ul.unit_id,
     json_agg(json_build_object(
       'id', l.id,
       'name', l.lith,
       'color', l.lith_color,
-      'prop', ul.comp_prop
+      'prop', ul.comp_prop,
+      'atts', aa.atts
     )) liths
   FROM macrostrat.unit_liths ul
   JOIN macrostrat.liths l
     ON l.id = ul.lith_id
+  LEFT JOIN atts_agg aa
+    ON aa.unit_lith_id = ul.id
   GROUP BY ul.unit_id
 )
 SELECT id, strat_name, section_id, col_id, liths
