@@ -66,7 +66,11 @@ class Sources(BaseModel):
     status_code: str
 
     @field_validator('geometry', mode='before')
-    def str_geom_to_dict(cls, value: str) -> dict:
+    def str_geom_to_dict(cls, value: str) -> dict or None:
+
+        if value is None:
+            return None
+
         return json.loads(value)
 
     class Config:
