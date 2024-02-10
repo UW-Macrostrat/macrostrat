@@ -31,3 +31,13 @@ Usage: `macrostrat <subcommand> [options]`
 ## Self-inspection
 
 - `macrostrat self`: Inspect the command-line application
+
+## Quickly getting things done
+
+```bash
+# Replace a knowledge graph
+macrostrat env development
+macrostrat db psql -c "DROP SCHEMA macrostrat_kg CASCADE; CREATE SCHEMA macrostrat_kg;"
+cat "2024_02_10.sql" | macrostrat db psql
+macrostrat db update-schema --subsystems knowledge-graph
+```
