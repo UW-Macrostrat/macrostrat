@@ -64,10 +64,14 @@ WHERE strat_name_id IS NOT null
   AND lith_id IS NOT null
 GROUP BY strat_name_id;
 
-
+DROP VIEW IF EXISTS macrostrat_api.strat_name_kg_relationships CASCADE;
 CREATE OR REPLACE VIEW macrostrat_api.strat_name_kg_relationships AS
-SELECT DISTINCT ON (strat_name_id, lith_id, source_id)
+SELECT
  	r.id,
+	head,
+	tail,
+	head_pos,
+	tail_pos,
 	strat_name_id,
 	lith_id,
 	l.lith,
