@@ -77,7 +77,9 @@ SELECT DISTINCT ON (strat_name_id, lith_id, source_id)
 	paragraph_txt,
   la.id lith_att_id,
   la.lith_att,
-  la.att_type
+  la.att_type,
+	strat_name_correct,
+	strat_name_implicit
 FROM macrostrat_kg.relationships_meta r
 JOIN macrostrat.liths l
   ON l.id = r.lith_id
@@ -93,7 +95,7 @@ WITH atts AS (
 ), atts_agg AS (
 SELECT
 	unit_lith_id,
-	json_strip_nulls(json_agg(to_json(atts))) atts
+	jsonb_strip_nulls(jsonb_agg(DISTINCT to_jsonb(atts))) atts
 FROM macrostrat.unit_lith_atts ula
 JOIN atts
   ON atts.id = ula.lith_att_id
@@ -101,7 +103,7 @@ GROUP BY unit_lith_id
 ), unit_liths AS (
   SELECT
     ul.unit_id,
-    json_agg(json_build_object(
+    jsonb_agg(jsonb_build_object(
       'id', l.id,
       'name', l.lith,
       'color', l.lith_color,
@@ -151,7 +153,7 @@ CREATE OR REPLACE VIEW macrostrat_api.strat_names_units_kg AS
 WITH unit_info AS (
 SELECT
   usn.strat_name_id,
-  json_agg(json_build_object(
+  jsonb_agg(jsonb_build_object(
   	'id', u.id,
   	'name', u.strat_name,
   	'col_id', u.col_id,
