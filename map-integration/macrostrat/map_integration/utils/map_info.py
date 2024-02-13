@@ -1,12 +1,19 @@
 from typing import Optional
 
 from macrostrat.database import Database
+from psycopg2.sql import Identifier
 from pydantic import BaseModel
+from typer import Argument
+from typing_extensions import Annotated
 
+from macrostrat.core import app
+from macrostrat.core.exc import MacrostratError
+
+from ..database import db
 from ._database import table_exists
 
 
-class MapInfo(BaseModel):
+class _MapInfo(BaseModel):
     """Basic information about a map."""
 
     id: int
@@ -15,13 +22,38 @@ class MapInfo(BaseModel):
     name: Optional[str] = None
 
 
+def complete_map_slugs(incomplete: str):
+    return (
+        db.run_query(
+            "SELECT slug FROM maps.sources WHERE slug ILIKE :incomplete",
+            {"incomplete": f"{incomplete}%"},
+        )
+        .scalars()
+        .all()
+    )
+
+
+def map_info_parser(identifier: str | int) -> _MapInfo:
+    if identifier == "-" or identifier == "active":
+        identifier = app.state.get("active_map")
+        if identifier is None:
+            raise MacrostratError("No active map set")
+    return get_map_info(db, identifier)
+
+
+MapInfo = Annotated[
+    _MapInfo,
+    Argument(..., autocompletion=complete_map_slugs, parser=map_info_parser),
+]
+
+
 def get_map_info(db: Database, identifier: str | int) -> MapInfo:
     """Get map info for a map ID or slug."""
     query = "SELECT source_id, slug, name, url FROM maps.sources"
     params = {}
     try:
         map_id = int(identifier)
-        query += " WHERE id = %(source_id)s"
+        query += " WHERE source_id = %(source_id)s"
         params["source_id"] = map_id
     except ValueError:
         map_slug = identifier
@@ -68,3 +100,20 @@ def create_sources_record(db, slug) -> MapInfo:
     db.session.commit()
 
     return MapInfo(id=source_id, slug=slug)
+
+
+def feature_counts(db, info: MapInfo):
+    res = db.run_query(
+        """SELECT
+            (SELECT count(*) FROM {poly_table} WHERE source_id = :source_id) AS n_polygons,
+            (SELECT count(*) FROM {line_table} WHERE source_id = :source_id) AS n_lines,
+            (SELECT count(*) FROM {point_table} WHERE source_id = :source_id) AS n_points
+        """,
+        dict(
+            poly_table=Identifier("maps", "polygons"),
+            line_table=Identifier("maps", "lines"),
+            point_table=Identifier("maps", "points"),
+            source_id=info.id,
+        ),
+    ).one()
+    return res

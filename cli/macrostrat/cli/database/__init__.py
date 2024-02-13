@@ -1,11 +1,14 @@
 from os import environ
 from pathlib import Path
 from sys import exit, stderr, stdin
+from typing import Any, Callable
 from urllib.parse import quote
 
 import typer
 from macrostrat.app_frame import compose
+from macrostrat.database import Database
 from macrostrat.utils.shell import run
+from pydantic import BaseModel
 from rich import print
 from sqlalchemy import create_engine, text
 from sqlalchemy_utils import create_database
@@ -25,26 +28,108 @@ __here__ = Path(__file__).parent
 fixtures_dir = __here__.parent / "fixtures"
 
 
-def run_all_sql(db, dir: Path):
+def run_sql(db, f: Path, params, match: str = None):
+    if match is not None and match not in str(f):
+        return
+    print(f"[cyan bold]{f}[/]")
+    db.run_sql(f)
+    print()
+
+
+def run_all_sql(db, dir: Path, match: str = None):
     schema_files = list(dir.glob("*.sql"))
-    schema_files.sort()
-    for f in schema_files:
+    for f in sorted(schema_files):
+        if not f.is_file():
+            continue
+        run_sql(db, f, match)
+
+
+class SubsystemSchemaDefinition(BaseModel):
+    """A schema definition managed by a Macrostrat subsystem"""
+
+    class Config:
+        arbitrary_types_allowed = True
+
+    name: str
+    version: str = "0.0.0"
+    depends_on: list[str] = []
+    fixtures: list[Path] = []
+    params: dict[str, Any] | None = None
+    callback: Callable[[Database], None] | None = None
+
+    def _run_sql(self, db, f: Path, match: str = None):
+        if match is not None and match not in str(f):
+            return
         print(f"[cyan bold]{f}[/]")
-        db.run_sql(f)
+        db.run_sql(f, self.params)
         print()
+
+    def _run_all_sql(self, db, dir: Path, match: str = None):
+        schema_files = list(dir.glob("*.sql"))
+        for f in sorted(schema_files):
+            print(f)
+            if not f.is_file():
+                continue
+            self._run_sql(db, f, match)
+
+    def apply(self, db, match: str = None):
+        print(self.fixtures)
+        for f in self.fixtures:
+            print(f)
+            if f.is_file():
+                self._run_sql(db, f, match)
+            elif f.is_dir():
+                self._run_all_sql(db, f, match)
+
+        if self.callback is not None:
+            self.callback(db)
+
+
+# The core hunk contains all of Macrostrat's core schema
 
 
 class DatabaseSubsystem(MacrostratSubsystem):
     # Additional functions to run when updating schema
     name = "database"
 
-    _queued_updates = []
+    schema_hunks: list[SubsystemSchemaDefinition]
+
+    def __init__(self, app):
+        super().__init__(app)
+        self.schema_hunks = []
+
+    def register_schema_part(
+        self,
+        *,
+        name: str,
+        version: str = "0.0.0",
+        depends_on: list[str] = [],
+        fixtures: list[Path] = [],
+        params: dict[str, any] = None,
+        callback: Callable[[Database], None] | None = None,
+    ):
+        hunk = SubsystemSchemaDefinition(
+            name=name,
+            version=version,
+            depends_on=depends_on,
+            fixtures=fixtures,
+            params=params,
+            callback=callback,
+        )
+
+        self.schema_hunks.append(hunk)
 
 
 db_subsystem = DatabaseSubsystem(app)
 
 
-def update_schema(match: str = Argument(None)):
+db_subsystem.register_schema_part(
+    name="core",
+    fixtures=[fixtures_dir],
+)
+
+
+def update_schema(match: str = Option(None), subsystems: list[str] = Option(None)):
     """Update the database schema"""
     from macrostrat.database import Database
 
@@ -55,27 +140,23 @@ def update_schema(match: str = Argument(None)):
     # Loaded from env file
     db = Database(PG_DATABASE)
 
-    subdirs = [d for d in schema_dir.iterdir()]
-    subdirs.sort()
-    for f in subdirs:
-        if f.is_file() and f.suffix == ".sql":
-            if match is not None and match not in str(f):
-                continue
-
-            print(f"[cyan bold]{f}[/]")
-            db.run_sql(f)
-            print()
-        elif f.is_dir():
-            run_all_sql(db, f)
-
     # Run subsystem updates
-    for func in db_subsystem._queued_updates:
-        func()
+    for hunk in db_subsystem.schema_hunks:
+        if (
+            subsystems is not None
+            and len(subsystems) != 0
+            and hunk.name not in subsystems
+        ):
+            continue
+        hunk.apply(db)
 
     app.subsystems.run_hook("schema-update")
 
     # Reload the postgrest schema cache
-    compose("kill -s SIGUSR1 postgrest")
+    if app.settings.get("compose_root", None) is not None:
+        compose("kill -s SIGUSR1 postgrest")
+    else:
+        db.run_sql("NOTIFY pgrst, 'reload schema';")
 
 
 db_app = db_subsystem.control_command()

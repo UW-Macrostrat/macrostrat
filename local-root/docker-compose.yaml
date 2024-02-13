@@ -38,6 +38,17 @@ services:
     volumes:
       - mysql_cluster:/var/lib/mysql
     restart: always
+  postgrest:
+    image: postgrest/postgrest:v12.0.2
+    ports:
+      - "3050:3000"
+    environment:
+      - PGRST_DB_URI=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
+      - PGRST_DB_SCHEMA=macrostrat_api
+      - PGRST_DB_ANON_ROLE=web_anon
+      #- PGRST_SERVER_PROXY_URI=http://database:5432
+      - PGRST_SERVER_PORT=3000
+      - PGRST_SERVER_HOST=
 volumes:
   db_cluster:
   mysql_cluster:
