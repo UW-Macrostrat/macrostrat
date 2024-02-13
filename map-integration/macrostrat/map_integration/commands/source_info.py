@@ -1,13 +1,14 @@
 from psycopg2.sql import Identifier
+from rich import print
 
 from ..database import db
-from ..utils import get_map_info, table_exists
+from ..utils import MapInfo, feature_counts, get_map_info, table_exists
 
 
-def source_info(identifier: str):
+def source_info(source: MapInfo):
     """Get information about a map source."""
 
-    info = get_map_info(db, identifier)
+    info = source
 
     print(f"ID: {info.id}")
     print(f"Slug: {info.slug}")
@@ -32,12 +33,8 @@ def source_info(identifier: str):
     print()
 
     # Get info in maps schema
-    print("Maps schema info")
-    for table in ["polygons", "lines", "points"]:
-        table_name = Identifier("maps", table)
-        res = db.run_query(
-            "SELECT count(*) FROM {table_name} WHERE source_id = :source_id",
-            dict(table_name=table_name, source_id=info.id),
-        ).one()
-
-        print(f"maps.{table}: {res.count}")
+    print("[bold]Maps schema[/bold]")
+    counts = feature_counts(db, info)
+    print(f"Polygons: {counts.n_polygons}")
+    print(f"Lines: {counts.n_lines}")
+    print(f"Points: {counts.n_points}")

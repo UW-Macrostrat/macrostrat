@@ -12,69 +12,38 @@ from typer.core import TyperGroup
 from macrostrat.core import app
 
 from .commands.copy_sources import copy_macrostrat_sources
-from .commands.copy_to_maps import copy_to_maps
 from .commands.ingest import ingest_map
-from .commands.match_names import match_names
 from .commands.prepare_fields import prepare_fields
-from .commands.process.rgeom import create_rgeom, create_webgeom
 from .commands.source_info import source_info
 from .commands.sources import map_sources
 from .migrations import run_migrations
+from .process import cli as _process
+from .utils import IngestionCLI, MapInfo
+
+help_text = f"""Ingest maps into Macrostrat.
+
+Active map: [bold cyan]{app.state.get("active_map")}[/]
+"""
+
+cli = IngestionCLI(no_args_is_help=True, name="map-ingestion", help=help_text)
 
 
-class NaturalOrderGroup(TyperGroup):
-    """Allow listing commands in the order they are added."""
-
-    def list_commands(self, ctx):
-        return self.commands.keys()
-
-
-class IngestionCLI(Typer):
-    """Command-line application to set up working tables for map ingestion. This is
-    designed to be run in an independent database from the main Macrostrat database.
-    It is not designed to handle integration, matching, or harmonization tasks."""
-
-    def __init__(self, **kwargs):
-        super().__init__(cls=NaturalOrderGroup, **kwargs)
-
-    def add_command(self, func, **kwargs):
-        self.command(**kwargs)(func)
+@cli.command(name="set-active")
+def set_active_map(map: MapInfo = None):
+    """Set the active map for the current session."""
+    if map is None:
+        app.console.print("Clearing active map")
+    else:
+        app.console.print(f"Setting active map to [item]{map.slug}")
+    app.state.set("active_map", map.slug)
 
 
-app = IngestionCLI(no_args_is_help=True, name="map-ingestion")
+cli.add_command(ingest_map, name="ingest")
+cli.add_command(prepare_fields, name="prepare-fields")
 
+cli.add_typer(_process, name="process")
 
-# TODO: integrate this migration command with the main database migrations
-def _run_migrations(database: str = None):
-    """Run migrations to convert a Macrostrat v1 sources table to v2 format."""
-    from .database import db
-
-    database_url = db.engine.url
-    _db = db
-    if database is not None:
-        if database.startswith("postgres") and "//" in database:
-            database_url = database
-        else:
-            database_url = database_url.set(database=database)
-        _db = Database(database_url)
-
-    print(f"Running migrations on {database_url}")
-
-    run_migrations(_db)
-
-
-app.add_command(ingest_map, name="ingest")
-app.add_command(prepare_fields, name="prepare-fields")
-
-# Pass along other arguments to the match-names command
-app.add_command(match_names, name="match-names")
-
-app.add_command(create_rgeom, name="create-rgeom")
-
-app.add_command(create_webgeom, name="create-webgeom")
-app.add_command(copy_to_maps, name="insert")
-
-app.add_command(source_info, name="info")
+cli.add_command(source_info, name="info")
 
 
 sources = IngestionCLI(no_args_is_help=True)
@@ -129,7 +98,26 @@ def delete_sources(
         db.run_sql("DELETE FROM maps.sources WHERE slug = :slug", dict(slug=slug))
 
 
+# TODO: integrate this migration command with the main database migrations
+def _run_migrations(database: str = None):
+    """Run migrations to convert a Macrostrat v1 sources table to v2 format."""
+    from .database import db
+
+    database_url = db.engine.url
+    _db = db
+    if database is not None:
+        if database.startswith("postgres") and "//" in database:
+            database_url = database
+        else:
+            database_url = database_url.set(database=database)
+        _db = Database(database_url)
+
+    print(f"Running migrations on {database_url}")
+
+    run_migrations(_db)
+
+
 sources.add_command(_run_migrations, name="migrate-schema")
 
 
-app.add_typer(sources, name="sources", help="Manage map sources")
+cli.add_typer(sources, name="sources", help="Manage map sources")
