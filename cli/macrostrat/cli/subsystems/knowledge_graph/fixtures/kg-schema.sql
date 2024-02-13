@@ -50,7 +50,7 @@ WITH atts AS (
 		lith_id,
 		json_strip_nulls(json_agg(json_build_object('id', la.id, 'name', la.lith_att, 'type', la.att_type))) atts
 	FROM atts a
-	JOIN macrostrat.lith_atts la
+	LEFT JOIN macrostrat.lith_atts la
 	  ON a.lith_att_id = la.id
 	GROUP BY strat_name_id, lith_id
 )
@@ -83,7 +83,8 @@ SELECT
   la.lith_att,
   la.att_type,
 	strat_name_correct,
-	strat_name_implicit
+	strat_name_implicit,
+	search_strat_name
 FROM macrostrat_kg.relationships_meta r
 JOIN macrostrat.liths l
   ON l.id = r.lith_id
