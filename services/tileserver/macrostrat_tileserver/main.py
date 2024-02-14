@@ -1,5 +1,9 @@
-from typing import Any, Callable, Dict, List, Literal, Optional
+import decimal
+import json
+import typing
 from os import environ
+from typing import Any, Callable, Dict, List, Literal, Optional
+
 from buildpg import render
 from fastapi import (
     BackgroundTasks,
@@ -10,10 +14,6 @@ from fastapi import (
     Query,
     Request,
 )
-import json
-import typing
-import decimal
-from fastapi_utils.tasks import repeat_every
 from macrostrat.utils import get_logger, setup_stderr_logs
 from macrostrat.utils.timer import Timer
 from morecantile import Tile, TileMatrixSet
@@ -33,6 +33,7 @@ from timvt.resources.enums import MimeTypes
 from .cache import get_tile_from_cache, set_cached_tile
 from .function_layer import StoredFunction
 from .utils import CacheMode, CacheStatus, TileResponse
+from .vendor.repeat_every import repeat_every
 
 """timvt.endpoints.factory: router factories."""
 
@@ -76,7 +77,7 @@ async def startup_event():
     """Application startup: register the database connection and create table list."""
     setup_stderr_logs("macrostrat_tileserver", "timvt")
     await connect_to_db(app)
-    # await register_table_catalog(app)
+    await register_table_catalog(app, schemas=["sources"])
     prepare_image_tile_subsystem()
 
 
@@ -248,8 +249,7 @@ mvt_tiler = CachedVectorTilerFactory(
 )
 
 
-class CachedStoredFunction(StoredFunction):
-    ...
+class CachedStoredFunction(StoredFunction): ...
 
 
 # Tile layer definitions start here.

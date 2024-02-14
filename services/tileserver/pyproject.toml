@@ -3,13 +3,11 @@ authors = ["Daven Quinn <dev@davenquinn.com>"]
 description = "Macrostrat tile server"
 name = "macrostrat.tileserver"
 packages = [{ include = "macrostrat_tileserver" }]
-version = "2.0.1"
+version = "2.1.0"
 
 [tool.poetry.dependencies]
 fastapi = "^0.100.0"
-# Fastapi-utils that works with Pydantic v2
-fastapi-utils = { git = "https://github.com/shufflebits/fastapi-utils.git", rev = "c75a8c95b6b5610ab00697791ddafd4cd0483323" }
-"macrostrat.database" = "^2.0"
+"macrostrat.database" = "^3.0"
 "macrostrat.utils" = "^1.2.0"
 pytest = "^7.2.1"
 python = "^3.8"
