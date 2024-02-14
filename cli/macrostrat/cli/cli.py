@@ -173,7 +173,7 @@ def _run(
 try:
     from macrostrat.map_integration import cli as map_app
 
-    @map_app.command(name="write-geopackage")
+    @map_app.command(name="write-criticalmaas")
     def write_map_geopackage(
         map: str = Argument(...), filename: Path = None, overwrite: bool = False
     ):
