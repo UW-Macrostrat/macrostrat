@@ -19,6 +19,7 @@ class Sources(Base):
     name: Mapped[str] = mapped_column(VARCHAR(255))
     primary_table: Mapped[str] = mapped_column(VARCHAR(255))
     url: Mapped[str] = mapped_column(VARCHAR(255))
+    raster_url: Mapped[str] = mapped_column(VARCHAR(255))
     ref_title: Mapped[str] = mapped_column(TEXT)
     authors: Mapped[str] = mapped_column(VARCHAR(255))
     ref_year: Mapped[str] = mapped_column(TEXT)

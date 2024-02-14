@@ -47,6 +47,7 @@ class Sources(BaseModel):
     name: Optional[str] = None
     primary_table: str
     url: Optional[str] = None
+    raster_url: Optional[str] = None
     ref_title: Optional[str] = None
     authors: Optional[str] = None
     ref_year: Optional[str] = None
