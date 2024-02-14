@@ -93,23 +93,26 @@ def _available_environments(environments):
     return res
 
 
-def local_install(path: Path):
-    run(
-        "poetry",
-        "install",
+def local_install(path: Path, lock: bool = False):
+    kwargs = dict(
         cwd=path.expanduser().resolve(),
         env={**environ, "POETRY_VIRTUALENVS_CREATE": "False"},
     )
 
+    if lock:
+        run("poetry", "lock", "--no-update", **kwargs)
+
+    run("poetry", "install", **kwargs)
+
 
 @main.command()
-def install():
+def install(lock: bool = False):
     """Install Macrostrat subsystems into the Python root.
 
     This is currently hard-coded for development purposes, but
     this will be changed in the future.
     """
-    local_install(Path(settings.srcroot) / "py-root")
+    local_install(Path(settings.srcroot) / "py-root", lock=lock)
 
 
 cfg_app = Typer(name="config", short_help="Manage configuration")
