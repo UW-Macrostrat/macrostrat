@@ -4,8 +4,10 @@ import random
 import math
 
 import requests
-from sqlalchemy import create_engine, text
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine
+from sqlalchemy import create_engine, TEXT, text, FLOAT, insert
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine, async_sessionmaker
+from geoalchemy2 import Geometry, functions
 import greenlet
 
 import geopandas as g
@@ -18,7 +20,50 @@ dotenv.load_dotenv()
 
 INGEST_URL = os.getenv("INGEST_URL") or "https://web.development.svc.macrostrat.org/api/ingest"
 
-def import_geopackage_map(filename: str):
+
+class Base(DeclarativeBase):
+    pass
+
+
+def SourcePolygonsFactory(base, table_name: str, schema_name: str):
+    class SourcePolygons(base):
+        __tablename__ = table_name
+        __table_args__ = {'schema': schema_name}
+
+        _pkid: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+        name_polygon_type: Mapped[str] = mapped_column(TEXT, nullable=False)
+        name_geologic_unit: Mapped[str] = mapped_column(TEXT, nullable=True)
+        color: Mapped[str] = mapped_column(TEXT, nullable=False)
+        pattern: Mapped[str] = mapped_column(TEXT, nullable=True)
+        abbreviation: Mapped[str] = mapped_column(TEXT, nullable=True)
+        description_polygon_type: Mapped[str] = mapped_column(TEXT, nullable=True)
+        category: Mapped[str] = mapped_column(TEXT, nullable=True)
+        map_unit: Mapped[str] = mapped_column(TEXT, nullable=True)
+        geometry: Mapped[str] = mapped_column(Geometry('MULTIPOLYGON', srid=4326), nullable=False)
+        type: Mapped[str] = mapped_column(TEXT, nullable=True)
+        confidence: Mapped[float] = mapped_column(FLOAT, nullable=True)
+        provenance: Mapped[str] = mapped_column(TEXT, nullable=True)
+        description_geologic_unit: Mapped[str] = mapped_column(TEXT, nullable=True)
+        age_text: Mapped[str] = mapped_column(TEXT, nullable=True)
+        t_interval: Mapped[str] = mapped_column(TEXT, nullable=True)
+        b_interval: Mapped[str] = mapped_column(TEXT, nullable=True)
+        t_age: Mapped[float] = mapped_column(FLOAT, nullable=True)
+        b_age: Mapped[float] = mapped_column(FLOAT, nullable=True)
+        lithology: Mapped[str] = mapped_column(TEXT, nullable=True)
+        name: Mapped[str] = mapped_column(TEXT, nullable=True)
+        geom: Mapped[str] = mapped_column(Geometry('MULTIPOLYGON', srid=4326), nullable=False)
+        strat_name: Mapped[str] = mapped_column(TEXT, nullable=True)
+        age: Mapped[str] = mapped_column(TEXT, nullable=True)
+        lith: Mapped[str] = mapped_column(TEXT, nullable=True)
+        descrip: Mapped[str] = mapped_column(TEXT, nullable=True)
+        comments: Mapped[str] = mapped_column(TEXT, nullable=True)
+
+
+
+    return SourcePolygons
+
+
+async def import_geopackage_map(filename: str):
     """Read a Macrostrat map dataset from a GeoPackage file using GeoPandas and SQLAlchemy."""
 
     # Create the Ingest Process
@@ -36,23 +81,40 @@ def import_geopackage_map(filename: str):
 
     hash = "_temp_" + str(math.floor(random.random() * 100))
 
-    engine = create_engine(os.getenv("uri"))
-    with engine.connect() as conn:
+    db_url = os.environ["uri"]
+    if db_url.startswith("postgresql://"):
+        db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+
+    # Add the source row
+    async_engine = create_async_engine(db_url)
+    async with async_engine.connect() as conn:
 
         # TODO: Remove the string prefix that prevents id duplication
         source_insert_stmt = text(f"INSERT INTO macrostrat.maps.sources (name, primary_table, url, ref_title, authors, ref_year, scale, slug) VALUES ('{map['title']}', '{map['id']}{hash}_polygons', '{map['source_url']}', '{map['title']}', '{map['authors']}', '{map['year']}', '{map['year']}', '{map['id']}{hash}')")
-        conn.execute(source_insert_stmt)
+        await conn.execute(source_insert_stmt)
 
-        conn.commit()
+        await conn.commit()
 
-    # Add in the Polygon Table
+    # Create the polygon table
+    polygon_table_name = f"{map['id']}{hash}_polygons"
+    polygon_schema_name = "sources"
+
+    SourcePolygons = SourcePolygonsFactory(Base, polygon_table_name, polygon_schema_name)
+
+    engine = create_async_engine(db_url)
+    async with engine.connect() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+        await conn.commit()
+
+    # Get the polygon data
     polygon_features = gpd.get_dataframe("polygon_feature")
     polygon_type = gpd.get_dataframe("polygon_type")
     geologic_unit = gpd.get_dataframe("geologic_unit")
 
     df = polygon_features.merge(polygon_type, left_on="type", right_on="id", suffixes=("_polygon_feature", "_polygon_type")).merge(geologic_unit, left_on="map_unit", right_on="id", suffixes=("_polygon_type", "_geologic_unit"))
 
-    # Add in the macrostrat specific comments
+    # Add in the macrostrat specific columns
     df['geom'] = df['geometry']
     df['strat_name'] = None
     df['age'] = None
@@ -65,73 +127,27 @@ def import_geopackage_map(filename: str):
     df.drop("id", axis=1, inplace=True)
     df.drop("map_id", axis=1, inplace=True)
 
-    # Create the polygon table
-    polygon_table_name = f"{map['id']}{hash}_polygons"
-    polygon_schema_name = "macrostrat.sources"
-    polygon_full_table_name = f"{polygon_schema_name}.{polygon_table_name}"
-    with engine.connect() as conn:
-        table_creation_query = text(f"""
-        CREATE TABLE {polygon_full_table_name} (
-            name_polygon_type TEXT NOT NULL, -- name of the polygon type
-            name_geologic_unit TEXT,
-            color TEXT NOT NULL , -- color extracted from map/legend
-            pattern TEXT, -- pattern extracted from map/legend
-            abbreviation TEXT, -- abbreviation extracted from map/legend
-            description_polygon_type TEXT, -- description text extracted from legend
-            category TEXT, -- name of containing legend block
-            map_unit TEXT, -- map unit information
-            geometry geometry(MultiPolygon,4326) NOT NULL, -- polygon geometry, world coordinates
-            type TEXT, -- polygon type information
-            confidence REAL, -- confidence associated with this extraction
-            provenance TEXT, -- provenance for this extraction
-            description_geologic_unit TEXT, -- description of the geologic unit
-            age_text TEXT, -- age of the geologic unit, textual description
-            t_interval TEXT, -- geologic time interval, youngest
-            b_interval TEXT, -- geologic time interval, oldest
-            t_age REAL, -- Minimum age (Ma)
-            b_age REAL, -- Maximum age (Ma)
-            lithology TEXT, -- comma-separated array of lithology descriptors extracted from legend text
-            name TEXT,
-            geom geometry(MultiPolygon,4326),
-            strat_name TEXT,
-            age TEXT, 
-            lith TEXT, 
-            descrip TEXT,
-            comments TEXT
-        );
-        """)
-        conn.execute(table_creation_query)
-        conn.commit()
+    # Insert the polygon rows
+    engine = create_async_engine(db_url)
+    async with engine.connect() as conn:
 
-    db_url = os.environ["uri"]
-    if db_url.startswith("postgresql://") and False:
-        db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        values = [{**row, "geom": row['geometry'].wkt, "geometry": row['geometry'].wkt} for row in df.to_dict(orient="records")]
 
-    engine = create_engine(db_url)
-    conn = engine.raw_connection()
+        await conn.execute(
+            insert(SourcePolygons),
+            values
+        )
+        await conn.commit()
 
-    # Populate the polygon table from the geopanda
-    df.to_postgis(
-        polygon_table_name,
-        engine.connect(),
-        schema="sources",
-        if_exists="append"
-        # dtype={
-        #     "geometry": Geometry(
-        #         geometry_type="Geometry",
-        #         spatial_index=True,
-        #         srid=4326,
-        #     ),
-        # }
-    )
+
 
 def chunker(seq, size):
     return (seq[pos : pos + size] for pos in range(0, len(seq), size))
 
 
-def main():
-    response = import_geopackage_map("/Users/clock/PycharmProjects/macrostrat-cli/cli/macrostrat/cli/io/criticalmaas/test/data/bc_kananaskis.gpkg")
+async def main():
+    response = await import_geopackage_map("/Users/clock/PycharmProjects/macrostrat-cli/cli/macrostrat/cli/io/criticalmaas/test/data/bc_kananaskis.gpkg")
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
