@@ -45,3 +45,6 @@ FROM maps.sources
 ORDER BY source_id DESC;
 
 COMMENT ON VIEW maps.sources_metadata IS 'Convenience view for maps.sources with only metadata fields';
+
+CREATE OR REPLACE VIEW macrostrat_api.sources_metadata AS
+SELECT * FROM maps.sources_metadata;
