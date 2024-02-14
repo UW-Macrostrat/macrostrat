@@ -13,6 +13,7 @@ class Post(BaseModel):
     comments: Optional[str] = None
     source_id: Optional[int] = None
     access_group_id: Optional[int] = None
+    map_id: Optional[str] = None
 
     class Config:
         orm_mode = True
