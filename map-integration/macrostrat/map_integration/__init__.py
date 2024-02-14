@@ -16,6 +16,7 @@ from .commands.ingest import ingest_map
 from .commands.prepare_fields import prepare_fields
 from .commands.source_info import source_info
 from .commands.sources import map_sources
+from .criticalmaas import import_criticalmaas_map
 from .migrations import run_migrations
 from .process import cli as _process
 from .utils import IngestionCLI, MapInfo
@@ -118,6 +119,6 @@ def _run_migrations(database: str = None):
 
 
 sources.add_command(_run_migrations, name="migrate-schema")
-
+cli.add_command(import_criticalmaas_map, name="import-criticalmaas")
 
 cli.add_typer(sources, name="sources", help="Manage map sources")
