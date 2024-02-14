@@ -141,10 +141,11 @@ class IngestState(enum.Enum):
 class IngestProcess(Base):
     __tablename__ = "ingest_process"
     __table_args__ = {'schema': 'macrostrat'}
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     state: Mapped[str] = mapped_column(Enum(IngestState, name="ingest_state"), nullable=True)
     comments: Mapped[str] = mapped_column(TEXT, nullable=True)
+    map_id: Mapped[str] = mapped_column(TEXT, nullable=True)
     source_id: Mapped[int] = mapped_column(ForeignKey("maps.sources.source_id"), nullable=True)
     access_group_id: Mapped[int] = mapped_column(ForeignKey("macrostrat_auth.group.id"), nullable=True)
     object_group_id: Mapped[ObjectGroup] = mapped_column(ForeignKey("storage.object_group.id"))
