@@ -41,6 +41,7 @@ aiofiles = "^23.2.1"
 docker = "^6.1.3"
 toml = "^0.10.2"
 criticalmaas-ta1-geopackage = "^0.2.0"
+greenlet = "^3.0.3"
 
 [tool.poetry.scripts]
 macrostrat = "macrostrat.cli.cli:main"

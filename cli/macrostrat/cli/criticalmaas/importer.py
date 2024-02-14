@@ -1,24 +1,22 @@
 import asyncio
+import math
 import os
 import random
-import math
+from pathlib import Path
 
-import requests
-from sqlalchemy import create_engine, TEXT, text, FLOAT, insert
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine, async_sessionmaker
-from geoalchemy2 import Geometry, functions
 import greenlet
-
-import geopandas as g
-from geoalchemy2 import Geometry
-
+import requests
 from criticalmaas.ta1_geopackage import GeopackageDatabase
+from geoalchemy2 import Geometry
+from sqlalchemy import FLOAT, TEXT, create_engine, insert, text
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-import dotenv
-dotenv.load_dotenv()
+from macrostrat.core.config import PG_DATABASE
 
-INGEST_URL = os.getenv("INGEST_URL") or "https://web.development.svc.macrostrat.org/api/ingest"
+INGEST_URL = (
+    os.getenv("INGEST_URL") or "https://web.development.svc.macrostrat.org/api/ingest"
+)
 
 
 class Base(DeclarativeBase):
@@ -28,7 +26,7 @@ class Base(DeclarativeBase):
 def SourcePolygonsFactory(base, table_name: str, schema_name: str):
     class SourcePolygons(base):
         __tablename__ = table_name
-        __table_args__ = {'schema': schema_name}
+        __table_args__ = {"schema": schema_name}
 
         _pkid: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
         name_polygon_type: Mapped[str] = mapped_column(TEXT, nullable=False)
@@ -39,7 +37,9 @@ def SourcePolygonsFactory(base, table_name: str, schema_name: str):
         description_polygon_type: Mapped[str] = mapped_column(TEXT, nullable=True)
         category: Mapped[str] = mapped_column(TEXT, nullable=True)
         map_unit: Mapped[str] = mapped_column(TEXT, nullable=True)
-        geometry: Mapped[str] = mapped_column(Geometry('MULTIPOLYGON', srid=4326), nullable=False)
+        geometry: Mapped[str] = mapped_column(
+            Geometry("MULTIPOLYGON", srid=4326), nullable=False
+        )
         type: Mapped[str] = mapped_column(TEXT, nullable=True)
         confidence: Mapped[float] = mapped_column(FLOAT, nullable=True)
         provenance: Mapped[str] = mapped_column(TEXT, nullable=True)
@@ -51,56 +51,65 @@ def SourcePolygonsFactory(base, table_name: str, schema_name: str):
         b_age: Mapped[float] = mapped_column(FLOAT, nullable=True)
         lithology: Mapped[str] = mapped_column(TEXT, nullable=True)
         name: Mapped[str] = mapped_column(TEXT, nullable=True)
-        geom: Mapped[str] = mapped_column(Geometry('MULTIPOLYGON', srid=4326), nullable=False)
+        geom: Mapped[str] = mapped_column(
+            Geometry("MULTIPOLYGON", srid=4326), nullable=False
+        )
         strat_name: Mapped[str] = mapped_column(TEXT, nullable=True)
         age: Mapped[str] = mapped_column(TEXT, nullable=True)
         lith: Mapped[str] = mapped_column(TEXT, nullable=True)
         descrip: Mapped[str] = mapped_column(TEXT, nullable=True)
         comments: Mapped[str] = mapped_column(TEXT, nullable=True)
 
-
-
     return SourcePolygons
 
 
-async def import_geopackage_map(filename: str):
+async def import_criticalmaas(file: Path):
     """Read a Macrostrat map dataset from a GeoPackage file using GeoPandas and SQLAlchemy."""
-
+    db_url = str(PG_DATABASE)
     # Create the Ingest Process
-    ingest_process_data = {
-      "comments": "Ingested from GEOPackage",
-      "state": "pending"
-    }
-    ingest_process = requests.post(f"{INGEST_URL}/ingest-process", json=ingest_process_data).json()
+    ingest_process_data = {"comments": "Ingested from GEOPackage", "state": "pending"}
+    ingest_process = requests.post(
+        f"{INGEST_URL}/ingest-process", json=ingest_process_data
+    ).json()
+
+    filename = str(file.absolute())
+    print(f"Importing {filename} into Macrostrat")
 
     # Add in the sources data
     gpd = GeopackageDatabase(filename)
 
     # Add in the Sources Table
-    map = gpd.run_query("SELECT * FROM map JOIN map_metadata ON map_metadata.map_id = map.id").mappings().all()[0]
+    map = (
+        gpd.run_query(
+            "SELECT * FROM map JOIN map_metadata ON map_metadata.map_id = map.id"
+        )
+        .mappings()
+        .all()[0]
+    )
 
     hash = "_temp_" + str(math.floor(random.random() * 100))
 
-    db_url = os.environ["uri"]
     if db_url.startswith("postgresql://"):
         db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
-
 
     # Add the source row
     async_engine = create_async_engine(db_url)
     async with async_engine.connect() as conn:
 
         # TODO: Remove the string prefix that prevents id duplication
-        source_insert_stmt = text(f"INSERT INTO macrostrat.maps.sources (name, primary_table, url, ref_title, authors, ref_year, scale, slug) VALUES ('{map['title']}', '{map['id']}{hash}_polygons', '{map['source_url']}', '{map['title']}', '{map['authors']}', '{map['year']}', '{map['year']}', '{map['id']}{hash}')")
+        source_insert_stmt = text(
+            f"INSERT INTO macrostrat.maps.sources (name, primary_table, url, ref_title, authors, ref_year, scale, slug) VALUES ('{map['title']}', '{map['id']}{hash}_polygons', '{map['source_url']}', '{map['title']}', '{map['authors']}', '{map['year']}', '{map['year']}', '{map['id']}{hash}')"
+        )
         await conn.execute(source_insert_stmt)
-
         await conn.commit()
 
     # Create the polygon table
     polygon_table_name = f"{map['id']}{hash}_polygons"
     polygon_schema_name = "sources"
 
-    SourcePolygons = SourcePolygonsFactory(Base, polygon_table_name, polygon_schema_name)
+    SourcePolygons = SourcePolygonsFactory(
+        Base, polygon_table_name, polygon_schema_name
+    )
 
     engine = create_async_engine(db_url)
     async with engine.connect() as conn:
@@ -112,15 +121,25 @@ async def import_geopackage_map(filename: str):
     polygon_type = gpd.get_dataframe("polygon_type")
     geologic_unit = gpd.get_dataframe("geologic_unit")
 
-    df = polygon_features.merge(polygon_type, left_on="type", right_on="id", suffixes=("_polygon_feature", "_polygon_type")).merge(geologic_unit, left_on="map_unit", right_on="id", suffixes=("_polygon_type", "_geologic_unit"))
+    df = polygon_features.merge(
+        polygon_type,
+        left_on="type",
+        right_on="id",
+        suffixes=("_polygon_feature", "_polygon_type"),
+    ).merge(
+        geologic_unit,
+        left_on="map_unit",
+        right_on="id",
+        suffixes=("_polygon_type", "_geologic_unit"),
+    )
 
     # Add in the macrostrat specific columns
-    df['geom'] = df['geometry']
-    df['strat_name'] = None
-    df['age'] = None
-    df['lith'] = df['lithology']
-    df['descrip'] = df['description_polygon_type']
-    df['comments'] = None
+    df["geom"] = df["geometry"]
+    df["strat_name"] = None
+    df["age"] = None
+    df["lith"] = df["lithology"]
+    df["descrip"] = df["description_polygon_type"]
+    df["comments"] = None
 
     df.drop("id_polygon_feature", axis=1, inplace=True)
     df.drop("id_polygon_type", axis=1, inplace=True)
@@ -130,24 +149,16 @@ async def import_geopackage_map(filename: str):
     # Insert the polygon rows
     engine = create_async_engine(db_url)
     async with engine.connect() as conn:
+        print("Inserting polygons")
 
-        values = [{**row, "geom": row['geometry'].wkt, "geometry": row['geometry'].wkt} for row in df.to_dict(orient="records")]
+        values = [
+            {**row, "geom": row["geometry"].wkt, "geometry": row["geometry"].wkt}
+            for row in df.to_dict(orient="records")
+        ]
 
-        await conn.execute(
-            insert(SourcePolygons),
-            values
-        )
+        await conn.execute(insert(SourcePolygons), values)
         await conn.commit()
-
 
 
 def chunker(seq, size):
     return (seq[pos : pos + size] for pos in range(0, len(seq), size))
-
-
-async def main():
-    response = await import_geopackage_map("/Users/clock/PycharmProjects/macrostrat-cli/cli/macrostrat/cli/io/criticalmaas/test/data/bc_kananaskis.gpkg")
-
-
-if __name__ == "__main__":
-    asyncio.run(main())

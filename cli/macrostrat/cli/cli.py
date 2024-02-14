@@ -1,4 +1,5 @@
 import json
+from asyncio import run as asyncio_run
 from os import environ
 from pathlib import Path
 from sys import exit, stderr
@@ -135,6 +136,13 @@ main.add_typer(cfg_app)
 
 
 main.add_typer(v2_app, name="v2")
+
+from .criticalmaas.importer import import_criticalmaas
+
+
+@main.command(name="import-criticalmaas")
+def _import_criticalmaas(file: Path):
+    asyncio_run(import_criticalmaas(file))
 
 
 @main.command(
