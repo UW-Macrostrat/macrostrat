@@ -2,14 +2,10 @@ import sys
 
 from ..base import Base
 from ..match_scripts import liths, strat_names
-from .__legacy.rgeom import RGeom
-from .__legacy.web_geom import WebGeom
-from .burwell_lookup import BurwellLookup
 from .carto import Carto
 from .carto_lines import CartoLines
 
 # from .legend import Legend
-from .legend_lookup import LegendLookup
 
 
 class MapSource(Base):
@@ -78,12 +74,6 @@ class MapSource(Base):
 
         l = liths({})
         l.run(source_id)
-
-        burwell_lookup = BurwellLookup({})
-        burwell_lookup.run((source_id,))
-
-        leg_lookup = LegendLookup({})
-        leg_lookup.run((source_id,))
 
         carto = Carto({})
         carto.run((source_id,))

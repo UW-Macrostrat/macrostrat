@@ -1,36 +1,22 @@
-from ..base import Base
-from psycopg2.extensions import AsIs
-import sys
-import spectra
 import random
+import sys
+
+import spectra
+from psycopg2.extensions import AsIs
+
+from ..database import LegacyCommandBase
+from ..utils import MapInfo
 
 
-class LegendLookup(Base):
+def legend_lookup(source: MapInfo):
     """
-    macrostrat process legend_lookup <source_id>:
-        Updates the computed fields in maps.legend for a given source
-
-    Usage:
-      macrostrat process legend_lookup <source_id>
-      macrostrat process legend_lookup -h | --help
-    Options:
-      -h --help                         Show this screen.
-      --version                         Show version.
-    Examples:
-      macrostrat process legend_lookup 123
-    Help:
-      For help using this tool, please open an issue on the Github repository:
-      https://github.com/UW-Macrostrat/macrostrat-cli
+    Refresh the appropriate lookup tables for a given map source
     """
+    LegendLookup().run(source.id)
 
-    meta = {
-        "mariadb": False,
-        "pg": True,
-        "usage": """
-            Refresh the appropriate lookup tables for a given map source
-        """,
-        "required_args": {"source_id": "A valid source_id"},
-    }
+
+class LegendLookup(LegacyCommandBase):
+
     scaleIsIn = {
         "tiny": ["tiny", "small"],
         "small": ["small", "medium"],
@@ -38,16 +24,7 @@ class LegendLookup(Base):
         "large": ["large"],
     }
 
-    def __init__(self, connections, *args):
-        Base.__init__(self, connections, *args)
-
     def run(self, source_id):
-        if len(source_id) == 0 or source_id[0] == "--help" or source_id[0] == "-h":
-            print(LegendLookup.__doc__)
-            sys.exit()
-
-        source_id = source_id[0]
-
         self.pg["cursor"].execute(
             """
             SELECT scale
