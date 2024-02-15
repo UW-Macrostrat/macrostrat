@@ -37,7 +37,7 @@ class PolygonRequestModel(PolygonModel):
 
 
 class PolygonResponseModel(PolygonModel):
-    @field_validator("confidence")
+    @field_validator("confidence", "t_age", "b_age")
     def change_nan_to_none(cls, v):
         if type(v) == float and isnan(v):
             return None
