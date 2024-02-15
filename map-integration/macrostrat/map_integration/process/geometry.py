@@ -40,7 +40,11 @@ def create_rgeom(source: MapInfo, use_maps_schema: bool = False):
     print(f"Done in {end - start} s")
 
 
-def create_webgeom(source_id: int):
-    """Create a geometry for use on the web"""
-    sql = sql_file("set-webgeom")
-    db.run_sql(sql, {"source_id": source_id})
+def create_webgeom(source: MapInfo, legacy: bool = False):
+    """Create a simplified geometry for use on the web"""
+    sql = "UPDATE maps.sources SET web_geom = ST_Envelope(rgeom) WHERE source_id = :source_id;"
+    if legacy:
+        # legacy mode for complex maps
+        sql = sql_file("set-webgeom")
+
+    db.run_sql(sql, {"source_id": source.id})
