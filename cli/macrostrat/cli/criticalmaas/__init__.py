@@ -9,7 +9,8 @@ from pathlib import Path
 
 from criticalmaas.ta1_geopackage import GeopackageDatabase
 from macrostrat.database import Database
-from macrostrat.map_integration import get_map_info
+
+# from macrostrat.map_ingestion
 from rich import print
 
 from .helpers import _unlink_if_exists
@@ -24,12 +25,50 @@ from .steps import (
 )
 
 
+def read_map_geopackage(filename: str):
+    """Read a Macrostrat map dataset from a GeoPackage file using GeoPandas and SQLAlchemy."""
+
+    gpd = GeopackageDatabase(filename)
+
+    # Get models automapped from the Geopackage schema
+    Map = gpd.model.map
+    MapMetadata = gpd.model.map_metadata
+    LineType = gpd.model.line_type
+    PolygonType = gpd.model.polygon_type
+    GeologicUnit = gpd.model.geologic_unit
+    PointType = gpd.model.point_type
+
+    # Read the map metadata
+    map_metadata = gpd.read_models(MapMetadata)
+
+    # Read the line features
+    line_features = gpd.read_features("line_feature")
+
+    # Read the point features
+    point_features = gpd.read_features("point_feature")
+
+    # Read the polygon features
+    polygon_features = gpd.read_features("polygon_feature")
+
+    return {
+        "map": gpd.read_models(Map),
+        "map_metadata": map_metadata,
+        "line_types": gpd.read_models(LineType),
+        "line_features": line_features,
+        "point_types": gpd.read_models(PointType),
+        "point_features": point_features,
+        "polygon_types": gpd.read_models(PolygonType),
+        "geologic_units": gpd.read_models(GeologicUnit),
+        "polygon_features": polygon_features,
+    }
+
+
 def write_map_geopackage(
     db: Database, identifier: str | int, filename: str = None, overwrite: bool = False
 ):
     """Write a Macrostrat map dataset (stored in PostGIS) to a GeoPackage file using GeoPandas and SQLAlchemy."""
 
-    _map = get_map_info(db, identifier)
+    _map = None
 
     if filename is None:
         filename = Path(f"{_map.slug}.gpkg")

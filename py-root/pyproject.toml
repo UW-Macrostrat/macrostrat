@@ -11,7 +11,7 @@ python = "^3.11"
 "macrostrat.map_integration" = { path = "../map-integration", develop = true }
 "corelle.engine" = { path = "../../../Software/corelle/py-packages/engine", develop = true }
 "macrostrat.tileserver" = { path = "../../../Software/tileserver", develop = true }
-"criticalmaas.ta1_geopackage" = { path = "../../../Software/criticalmaas-ta1-format", develop = true }
+"criticalmaas.ta1_geopackage" = "^0.2.0" 
 
 [tool.poetry.dev-dependencies]
 "macrostrat.package_tools" = "^1.0.0"

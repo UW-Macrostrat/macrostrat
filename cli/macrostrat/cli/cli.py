@@ -1,4 +1,5 @@
 import json
+from asyncio import run as asyncio_run
 from os import environ
 from pathlib import Path
 from sys import exit, stderr
@@ -92,23 +93,26 @@ def _available_environments(environments):
     return res
 
 
-def local_install(path: Path):
-    run(
-        "poetry",
-        "install",
+def local_install(path: Path, lock: bool = False):
+    kwargs = dict(
         cwd=path.expanduser().resolve(),
         env={**environ, "POETRY_VIRTUALENVS_CREATE": "False"},
     )
 
+    if lock:
+        run("poetry", "lock", "--no-update", **kwargs)
+
+    run("poetry", "install", **kwargs)
+
 
 @main.command()
-def install():
+def install(lock: bool = False):
     """Install Macrostrat subsystems into the Python root.
 
     This is currently hard-coded for development purposes, but
     this will be changed in the future.
     """
-    local_install(Path(settings.srcroot) / "py-root")
+    local_install(Path(settings.srcroot) / "py-root", lock=lock)
 
 
 cfg_app = Typer(name="config", short_help="Manage configuration")
@@ -135,6 +139,13 @@ main.add_typer(cfg_app)
 
 
 main.add_typer(v2_app, name="v2")
+
+from .criticalmaas.importer import import_criticalmaas
+
+
+@main.command(name="import-criticalmaas")
+def _import_criticalmaas(file: Path):
+    asyncio_run(import_criticalmaas(file))
 
 
 @main.command(
@@ -165,7 +176,7 @@ def _run(
 try:
     from macrostrat.map_integration import cli as map_app
 
-    @map_app.command(name="write-geopackage")
+    @map_app.command(name="write-criticalmaas")
     def write_map_geopackage(
         map: str = Argument(...), filename: Path = None, overwrite: bool = False
     ):

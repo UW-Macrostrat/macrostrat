@@ -1,21 +1,22 @@
-from typing import List
-from pathlib import Path
-import geopandas as G
-import pandas as P
-import IPython
 from collections import defaultdict
-from sqlalchemy import *
+from pathlib import Path
+from typing import List
+
+import geopandas as G
+import IPython
+import pandas as P
 from geoalchemy2 import Geometry
-from shapely.geometry import (
-    Polygon,
-    MultiPolygon,
-    LineString,
-    MultiLineString,
-    Point,
-    MultiPoint,
-)
 from rich.console import Console
 from rich.progress import Progress
+from shapely.geometry import (
+    LineString,
+    MultiLineString,
+    MultiPoint,
+    MultiPolygon,
+    Point,
+    Polygon,
+)
+from sqlalchemy import *
 
 from ..database import db
 
@@ -23,7 +24,7 @@ console = Console()
 
 
 def ingest_map(
-    source_id: str,
+    slug: str,
     files: List[Path],
     embed: bool = False,
     crs: str = None,
@@ -31,7 +32,7 @@ def ingest_map(
     chunksize: int = 100,
 ):
     """Ingest shapefiles into the database."""
-    console.print("[bold]Ingesting map data for source [bold blue]" + source_id)
+    console.print("[bold]Ingesting map data for source [bold blue]" + slug)
     # Read file with GeoPandas and dump to PostGIS
 
     # We need to put multigeometries first, otherwise they might not be used in the
@@ -39,7 +40,7 @@ def ingest_map(
 
     # Add to map-sources table
     db.run_sql(
-        f"INSERT INTO maps.sources (primary_table, slug) VALUES ('{source_id}_polygons', '{source_id}') ON CONFLICT DO NOTHING"
+        f"INSERT INTO maps.sources (primary_table, slug) VALUES ('{slug}_polygons', '{slug}') ON CONFLICT DO NOTHING"
     )
 
     for file in files:
@@ -95,7 +96,7 @@ def ingest_map(
         for col in df.columns:
             console.print(f"- {col}")
 
-        table = f"{source_id}_{feature_type.lower()}s"
+        table = f"{slug}_{feature_type.lower()}s"
         schema = "sources"
 
         db.run_sql(f"CREATE SCHEMA IF NOT EXISTS {schema}")
@@ -129,7 +130,9 @@ def ingest_map(
                 # Ensure multigeometries are used (brute force)
                 if i == 0:
                     conn.execute(
-                        text(f"ALTER TABLE {schema}.{table} ALTER COLUMN geometry TYPE Geometry(Geometry, 4326)")
+                        text(
+                            f"ALTER TABLE {schema}.{table} ALTER COLUMN geometry TYPE Geometry(Geometry, 4326)"
+                        )
                     )
                 progress.update(task, advance=len(chunk))
 

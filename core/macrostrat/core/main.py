@@ -48,7 +48,9 @@ def load_settings():
         log.info("active environment: %s", env_text())
     active_env = get_app_state_file()
     if "MACROSTRAT_ENV" not in environ and active_env.exists():
-        environ["MACROSTRAT_ENV"] = get_app_state("active_env")
+        env = get_app_state("active_env")
+        if env is not None:
+            environ["MACROSTRAT_ENV"] = env
         log.info("active environment: %s", env_text())
 
     try:

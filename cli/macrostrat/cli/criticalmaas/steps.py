@@ -4,9 +4,8 @@ from geoalchemy2.elements import WKBElement
 from geoalchemy2.shape import to_shape
 from macrostrat.database import Database
 from macrostrat.database.mapper import BaseModel
+from macrostrat.map_integration import MapInfo
 from shapely.geometry import mapping
-
-from .helpers import MapInfo
 
 
 def _build_map_metadata(db, _map: MapInfo, Map: BaseModel, MapMetadata: BaseModel):
