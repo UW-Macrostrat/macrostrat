@@ -24,6 +24,8 @@ class PolygonModel(CommonModel):
     b_interval: Optional[Union[int | str]] = None
     geom: Optional[Polygon] = None
     confidence: Optional[float] = None
+    t_age: Optional[float] = None
+    b_age: Optional[float] = None
 
 
 class PolygonRequestModel(PolygonModel):
