@@ -23,6 +23,7 @@ aiohttp = "^3.8.6"
 python-jose = {extras = ["cryptography"], version = "^3.3.0"}
 bcrypt = "^4.1.1"
 minio = "^7.2.3"
+numpy = "^1.26.4"
 
 [tool.poetry.group.dev.dependencies]
 bandit = "~1.7"

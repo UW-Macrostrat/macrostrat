@@ -207,7 +207,7 @@ async def select_sources_sub_table(
         )
 
         # Strip out the unwanted columns
-        ignored_columns = ["geom"]  # No reason that this moment to pass this through
+        ignored_columns = ["geom", "geometry"]  # No reason that this moment to pass this through
         selected_columns = table.c[
             *[col.key for col in table.c if col.key not in ignored_columns]
         ]

@@ -23,7 +23,7 @@ from api.database import (
     patch_sources_sub_table,
     select_sources_sub_table,
 )
-from api.models.source import PolygonModel, PolygonRequestModel, Sources, CopyColumnRequest
+from api.models.source import PolygonModel, PolygonRequestModel, PolygonResponseModel, Sources, CopyColumnRequest
 from api.query_parser import ParserException
 from api.routes.security import TokenData, get_groups
 from api.routes.object import router as object_router
@@ -102,7 +102,7 @@ async def get_source(source_id: int, include_geom: bool = False) -> Sources:
         return db.results_to_model(results, Sources)[0]
 
 
-@app.get("/sources/{table_id}/polygons", response_model=List[PolygonModel])
+@app.get("/sources/{table_id}/polygons", response_model=List[PolygonResponseModel])
 async def get_sub_sources(
         response: Response,
         request: starlette.requests.Request,

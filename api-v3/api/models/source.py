@@ -3,6 +3,7 @@ import json
 
 from geojson_pydantic import Feature, Polygon, MultiPolygon
 from pydantic import BaseModel, ConfigDict, field_validator
+from numpy import isnan
 
 
 class CommonModel(BaseModel):
@@ -22,6 +23,7 @@ class PolygonModel(CommonModel):
     t_interval: Optional[Union[int | str]] = None
     b_interval: Optional[Union[int | str]] = None
     geom: Optional[Polygon] = None
+    confidence: Optional[float] = None
 
 
 class PolygonRequestModel(PolygonModel):
@@ -29,6 +31,14 @@ class PolygonRequestModel(PolygonModel):
     def transform_str_to_int(cls, v):
         if isinstance(v, str):
             return int(v)
+        return v
+
+
+class PolygonResponseModel(PolygonModel):
+    @field_validator("confidence")
+    def change_nan_to_none(cls, v):
+        if type(v) == float and isnan(v):
+            return None
         return v
 
 
