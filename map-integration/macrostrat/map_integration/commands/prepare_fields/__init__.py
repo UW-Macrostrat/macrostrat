@@ -5,16 +5,17 @@ from sqlalchemy.exc import NoResultFound, NoSuchTableError
 from typer import Argument, Option
 
 from ...database import db
-from ...utils import create_sources_record, get_map_info
+from ...utils import MapInfo, create_sources_record, get_map_info
 from .utils import LineworkTableUpdater, PointsTableUpdater, PolygonTableUpdater
 
 
 def prepare_fields(
-    identifier: str = Argument(None),
+    map: MapInfo,
     all: bool = False,
     recover: bool = Option(False, "--recover", help="Recover sources records"),
 ):
     """Prepare empty fields for manual cleaning."""
+    identifier = map.slug
     if all:
         prepare_fields_for_all_sources(recover=recover)
         return
@@ -22,7 +23,7 @@ def prepare_fields(
     if identifier is None:
         raise ValueError("You must specify a slug or pass --all")
 
-    _prepare_fields(identifier, recover=recover)
+    _prepare_fields(map, recover=recover)
 
 
 def _recover_sources_row(identifier):
@@ -35,22 +36,19 @@ def _recover_sources_row(identifier):
         print(f"[bold red]Failed to recover source record for [bold cyan]{identifier}")
 
 
-def _prepare_fields(identifier: str, recover: bool = False):
+def _prepare_fields(map: MapInfo | None, recover: bool = False):
     """Prepare empty fields for manual cleaning."""
+    identifier = map.slug
 
     print(f"[bold]Preparing fields for source [cyan]{identifier}")
 
     schema = "sources"
-    info = None
-    try:
-        info = get_map_info(db, identifier)
-    except NoResultFound:
-        print(f"[bold red]No source found with slug [bold cyan]{identifier}")
-        print(
-            f"[gray dim]Use [bold]--recover[/] to attempt to recover the record in the [bold]maps.sources[/] table."
-        )
-        if recover:
-            info = _recover_sources_row(identifier)
+    info = map
+    # print(
+    #     f"[gray dim]Use [bold]--recover[/] to attempt to recover the record in the [bold]maps.sources[/] table."
+    # )
+    if recover:
+        info = _recover_sources_row(identifier)
     if info is None:
         print()
         return
