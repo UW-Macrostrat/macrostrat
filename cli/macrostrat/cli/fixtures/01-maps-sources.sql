@@ -43,7 +43,8 @@ SELECT
     area,
     display_scales,
     new_priority priority,
-    status_code
+    status_code,
+    raster_url
 FROM maps.sources
 ORDER BY source_id DESC;
 
@@ -70,11 +71,12 @@ SELECT
     s.display_scales,
     s.priority,
     s.status_code,
+    s.raster_url,
     i.state,
     i.comments,
     i.created_on,
     i.completed_on,
-    i.map_id
+    i.map_id,
 FROM maps.sources_metadata s
 JOIN macrostrat.ingest_process i
   ON i.source_id = s.source_id;
