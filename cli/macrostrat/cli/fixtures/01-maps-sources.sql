@@ -76,7 +76,7 @@ SELECT
     i.comments,
     i.created_on,
     i.completed_on,
-    i.map_id,
+    i.map_id
 FROM maps.sources_metadata s
 JOIN macrostrat.ingest_process i
   ON i.source_id = s.source_id;
