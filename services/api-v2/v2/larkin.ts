@@ -1,4 +1,5 @@
-var async = require("async"),
+var mysql = require("mysql"),
+  async = require("async"),
   _ = require("underscore"),
   credentials = require("./credentials"),
   csv = require("csv-express"),
@@ -15,9 +16,24 @@ const printQueries = true;
 (function () {
   var larkin = {};
 
+  larkin.connectMySQL = function () {
+    // Non-blocking FTW
+    this.pool = mysql.createPool(credentials.mysql);
+
+    // Verify a connection has been made
+    this.pool.getConnection(function (error, connection) {
+      if (error) {
+        throw new Error(
+          "Unable to connect to MySQL. Please check your credentials",
+        );
+      }
+    });
+  };
+
   larkin.queryPg = function (db, sql, params, callback) {
     const nameMapping = credentials.postgresDatabases ?? {};
     const dbName = nameMapping[db] ?? db;
+    console.log(dbName, sql, params);
 
     const pool = new Pool({
       connectionString: credentials.pg.connectionString,
@@ -59,36 +75,34 @@ const printQueries = true;
   };
 
   larkin.query = function (sql, params, callback) {
-    // See if the query is using :named_parameters or positional ?
-    const error = new Error(
-      "Attempting to run MySQL route on Postgres. Please update this route to use Postgres instead.",
+    if (sql.indexOf(":") > -1 && Object.keys(params).length > 0) {
+      var newQuery = larkin.toUnnamed(sql, params);
+      sql = newQuery[0];
+      params = newQuery[1];
+    }
+
+    this.pool.getConnection(
+      function (err, connection) {
+        var query = connection.query(
+          sql,
+          params,
+          function (error, result) {
+            // Remove the connection
+            connection.destroy();
+            if (error) {
+              if (callback) {
+                callback(error);
+              } else {
+                this.error(res, next, "Error retrieving from MySQL.", error);
+              }
+            } else {
+              callback(null, result);
+            }
+          }.bind(this),
+        );
+        //console.log(query.sql)
+      }.bind(this),
     );
-    // Warn the user that we are trying to use Postgres instead of MySQL
-    console.warn(error);
-
-    const pool = new Pool({
-      connectionString: credentials.pg.connectionString,
-    });
-
-    pool.connect(function (err, client, done) {
-      if (err) {
-        this.log("error", "error connecting - " + err);
-        callback(err);
-      } else {
-        if (printQueries) {
-          console.log(sql, params);
-        }
-        client.query(named(sql)(params), function (err, result) {
-          done();
-          if (err) {
-            larkin.log("error", err);
-            callback(err);
-          } else {
-            callback(null, result);
-          }
-        });
-      }
-    });
   };
 
   larkin.sendImage = function (req, res, next, data, isCached) {
@@ -221,7 +235,7 @@ const printQueries = true;
   larkin.defineFields = function (route, callback) {
     var routeDefs = {};
     async.each(
-      defs[route].options.fields,
+      defs[route]?.options?.fields,
       function (field, callback) {
         if (defs.define.hasOwnProperty(field)) {
           routeDefs[field] = defs.define[field];

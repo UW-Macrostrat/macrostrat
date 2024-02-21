@@ -8,7 +8,8 @@
     "url": "https://github.com/UW-Macrostrat/macrostrat-api.git"
   },
   "scripts": {
-    "start": "ts-node --transpileOnly server.ts",
+    "start": "nodemon --watch server.ts --exec ts-node --transpileOnly server.ts",
+    "serve": "ts-node --transpileOnly server.ts",
     "test": "mocha ./v2",
     "defs": "ts-node --transpileOnly ./v2/utilities/validateDefs.ts",
     "build-defs": "ts-node --transpileOnly ./v2/utilities/getOutputFields.ts",
@@ -70,6 +71,7 @@
   "devDependencies": {
     "mocha": "^1.21.4",
     "node-uuid": "^1.4.3",
+    "nodemon": "^3.0.3",
     "prettier": "^3.2.3",
     "should": "^4.0.4",
     "supertest": "^0.14.0",
