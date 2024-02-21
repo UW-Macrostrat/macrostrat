@@ -11,8 +11,6 @@ var mysql = require("mysql"),
 const named = require("yesql").pg;
 const { Client, Pool } = require("pg");
 
-const printQueries = true;
-
 (function () {
   var larkin = {};
 
@@ -33,15 +31,25 @@ const printQueries = true;
   larkin.queryPg = function (db, sql, params, callback) {
     const nameMapping = credentials.postgresDatabases ?? {};
     const dbName = nameMapping[db] ?? db;
-    console.log(dbName, sql, params);
 
-    const pool = new Pool({
-      connectionString: credentials.pg.connectionString,
-    });
+    let connectionString = credentials.pg.connectionString;
+
+    if (dbName == "geomacro") {
+      console.warn(
+        "In Macrostrat v2, 'geomacro' is merged with 'burwell' into the 'macrostrat' database.",
+      );
+    }
+
+    if (dbName == "elevation") {
+      /** Special case for elevation database (temporary) */
+      connectionString = credentials.elevationDatabase;
+    }
+
+    const pool = new Pool({ connectionString });
 
     pool.connect(function (err, client, done) {
       if (err) {
-        this.log("error", "error connecting - " + err);
+        larkin.log("error", "error connecting - " + err);
         callback(err);
       } else {
         var query = client.query(sql, params, function (err, result) {
@@ -75,6 +83,7 @@ const printQueries = true;
   };
 
   larkin.query = function (sql, params, callback) {
+    //console.warn(`Deprecated MySQL query:\n${sql}`);
     if (sql.indexOf(":") > -1 && Object.keys(params).length > 0) {
       var newQuery = larkin.toUnnamed(sql, params);
       sql = newQuery[0];

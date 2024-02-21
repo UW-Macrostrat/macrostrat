@@ -4,6 +4,7 @@ const {
   redis,
   cacheRefreshKey,
   postgresDatabases = {},
+  elevationDatabase,
 } = require("../credentials.ts");
 
 exports.mysql = mysql;
@@ -15,3 +16,5 @@ exports.redis = redis;
 exports.cacheRefreshKey = cacheRefreshKey;
 
 exports.postgresDatabases = postgresDatabases;
+
+exports.elevationDatabase = elevationDatabase;

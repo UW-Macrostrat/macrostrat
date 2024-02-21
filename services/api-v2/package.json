@@ -8,7 +8,7 @@
     "url": "https://github.com/UW-Macrostrat/macrostrat-api.git"
   },
   "scripts": {
-    "start": "nodemon --watch server.ts --exec ts-node --transpileOnly server.ts",
+    "start": "nodemon --watch v2 --exec ts-node --transpileOnly server.ts",
     "serve": "ts-node --transpileOnly server.ts",
     "test": "mocha ./v2",
     "defs": "ts-node --transpileOnly ./v2/utilities/validateDefs.ts",
