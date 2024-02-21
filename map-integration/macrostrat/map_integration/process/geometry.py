@@ -26,11 +26,11 @@ def create_rgeom(source: MapInfo, use_maps_schema: bool = False):
         where = "not coalesce(omit, false)"
 
         print("Validating geometry...")
-        q = "UPDATE {primary_table} SET geom = ST_Buffer(geom, 0)"
+        q = "UPDATE {primary_table} SET geom = ST_Multi(ST_Buffer(geom, 0))"
         db.run_query(q, {"primary_table": table})
 
     print("Creating reference geometry...")
-    db.run_query(
+    db.run_sql(
         sql_file("set-rgeom"),
         dict(source_id=source_id, primary_table=table, where_clause=SQL(where)),
     )

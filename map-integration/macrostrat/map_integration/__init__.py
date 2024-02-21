@@ -12,8 +12,10 @@ from typer.core import TyperGroup
 from macrostrat.core import app
 
 from .commands.copy_sources import copy_macrostrat_sources
+from .commands.fix_geometries import fix_geometries
 from .commands.ingest import ingest_map
 from .commands.prepare_fields import prepare_fields
+from .commands.set_srid import apply_srid
 from .commands.source_info import source_info
 from .commands.sources import map_sources
 from .migrations import run_migrations
@@ -40,6 +42,8 @@ def set_active_map(map: MapInfo = None):
 
 cli.add_command(ingest_map, name="ingest")
 cli.add_command(prepare_fields, name="prepare-fields")
+cli.add_command(fix_geometries, name="fix-geometries")
+cli.add_command(apply_srid, name="apply-srid")
 
 cli.add_typer(_process, name="process")
 

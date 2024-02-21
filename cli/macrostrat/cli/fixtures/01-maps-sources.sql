@@ -43,7 +43,8 @@ SELECT
     area,
     display_scales,
     new_priority priority,
-    status_code
+    status_code,
+    raster_url
 FROM maps.sources
 ORDER BY source_id DESC;
 
@@ -70,6 +71,7 @@ SELECT
     s.display_scales,
     s.priority,
     s.status_code,
+    s.raster_url,
     i.state,
     i.comments,
     i.created_on,
@@ -79,7 +81,29 @@ FROM maps.sources_metadata s
 JOIN macrostrat.ingest_process i
   ON i.source_id = s.source_id;
 
--- This is a hack and should be handled centrally
+CREATE OR REPLACE VIEW macrostrat_api.sources AS
+SELECT
+    s.source_id,
+    s.slug,
+    s.name,
+    s.url,
+    s.ref_title,
+    s.authors,
+    s.ref_year,
+    s.ref_source,
+    s.isbn_doi,
+    s.licence,
+    s.scale,
+    s.features,
+    s.area,
+    s.display_scales,
+    s.priority,
+    s.status_code,
+    s.raster_url,
+    s.web_geom envelope
+FROM maps.sources s;
+
+-- This is a hack and should be handled centrally. Declarative role management?
 GRANT USAGE ON SCHEMA macrostrat_api TO web_anon;
 GRANT USAGE ON SCHEMA macrostrat_api TO web_user;
 GRANT SELECT ON ALL TABLES IN SCHEMA macrostrat_api TO web_anon;

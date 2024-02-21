@@ -1,6 +1,7 @@
 import sys
 
 from psycopg2.extensions import AsIs
+from psycopg2.sql import Identifier
 
 from ..database import LegacyCommandBase, sql_file
 from ..utils import MapInfo
@@ -38,7 +39,7 @@ class Lookup(LegacyCommandBase):
         self.pg["cursor"].execute(
             """
           WITH second AS (
-            SELECT ST_MakeValid(geom) geom FROM sources.%(primary_table)s
+            SELECT ST_MakeValid(geom) geom FROM sources."%(primary_table)s"
           ),
           third AS (
             SELECT round(sum(ST_Area(geom::geography)*0.000001)) area, COUNT(*) features
