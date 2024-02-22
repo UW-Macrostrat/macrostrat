@@ -213,7 +213,7 @@ WITH mvt_features AS (
     geom
   FROM
     tile_layers.map_units
-  WHERE scale = mapsize
+  WHERE scale::text = mapsize
     AND ST_Intersects(geom, projected_bbox)
 ), expanded AS (
   SELECT
@@ -254,7 +254,7 @@ expanded AS (
   FROM mvt_features z
   LEFT JOIN tile_layers.line_data q
     ON z.line_id = q.line_id
-  WHERE q.scale = ANY(linesize)
+  WHERE q.scale::text = ANY(linesize)
     --AND ST_Length(geom) > tolerance
 )
 SELECT
