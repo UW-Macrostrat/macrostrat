@@ -1,8 +1,6 @@
 import asyncio
 import os
-import random
-import math
-import datetime
+import tempfile
 
 import minio
 import requests
@@ -29,6 +27,7 @@ def get_async_engine():
         db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
 
     return create_async_engine(db_url)
+
 
 class Base(DeclarativeBase):
     pass
@@ -111,7 +110,7 @@ def SourcePointFactory(base, table_name: str, schema_name: str):
         confidence: Mapped[float] = mapped_column(FLOAT, nullable=True)
         dip: Mapped[float] = mapped_column(FLOAT, nullable=True)
         dip_direction: Mapped[float] = mapped_column(FLOAT, nullable=True)
-        geometry: Mapped[str] = mapped_column(Geometry('MULTIPOINT', srid=4326), nullable=False)
+        geometry: Mapped[str] = mapped_column(Geometry('POINT', srid=4326), nullable=False)
 
         # From the point type
         name: Mapped[str] = mapped_column(TEXT, nullable=True)
@@ -120,7 +119,7 @@ def SourcePointFactory(base, table_name: str, schema_name: str):
     return SourcePoint
 
 
-def get_gpkg(object: str, filename: str = "temp.gpkg"):
+def get_gpkg(object: str) -> tempfile.NamedTemporaryFile:
     client = minio.Minio(
         "storage.macrostrat.org",
         access_key=os.getenv("access_key"),
@@ -132,15 +131,15 @@ def get_gpkg(object: str, filename: str = "temp.gpkg"):
         response = client.get_object("map-inbox", object)
 
         # Read data from response.
-        with open(filename, "wb") as file_data:
-            for d in response.stream(32*1024):
-                file_data.write(d)
+        file = tempfile.NamedTemporaryFile(delete=False)
+        for d in response.stream(32*1024):
+            file.write(d)
 
     finally:
         response.close()
         response.release_conn()
 
-    return True
+    return file
 
 
 async def import_polygons(gpd: GeopackageDatabase, map_name: str, source_id: int, async_engine: AsyncEngine):
@@ -287,11 +286,10 @@ async def import_geopackage_map(object: str, map_name: str = None):
     async_engine = get_async_engine()
 
     # Get the file
-    TEMP_FILE = "temp.gpkg"
-    get_gpkg(object, TEMP_FILE)
+    file = get_gpkg(object)
 
     # Open the file as a GeoPackageDB
-    gpd = GeopackageDatabase(TEMP_FILE)
+    gpd = GeopackageDatabase(file.name)
 
     # Add the map to the sources table
     map = gpd.run_query("SELECT * FROM map LEFT JOIN map_metadata ON map_metadata.map_id = map.id").mappings().all()[0]
@@ -329,7 +327,10 @@ async def import_geopackage_map(object: str, map_name: str = None):
 
 
 async def auto_ingest(object):
-    name = "umn_usc_inferlink" + "_" + object.split("/")[-1].split(".")[0] + "_" + "v4"
+    name = "uncharted_p_only" + "_" + object.split("/")[-1].split(".")[0].replace("_point_extraction", "")
+
+    print(name)
+
     await import_geopackage_map(object, name)
 
 
@@ -343,15 +344,7 @@ async def ingest_s2_ls_output(objects: str):
 
 async def main():
 
-    f = """2024-02-15 18:11:16  143720448 umn-usc-inferlink/hackathon_6mth_results/geo_coord_gpkg/v4/169_34067.gpkg
-2024-02-15 18:11:47    9457664 umn-usc-inferlink/hackathon_6mth_results/geo_coord_gpkg/v4/17977_9267.gpkg
-2024-02-15 18:11:27   63987712 umn-usc-inferlink/hackathon_6mth_results/geo_coord_gpkg/v4/2188_1086.gpkg
-2024-02-15 18:12:05   40390656 umn-usc-inferlink/hackathon_6mth_results/geo_coord_gpkg/v4/22253_25695.gpkg
-2024-02-15 18:11:02   46219264 umn-usc-inferlink/hackathon_6mth_results/geo_coord_gpkg/v4/261_9030.gpkg
-2024-02-15 18:11:01  170156032 umn-usc-inferlink/hackathon_6mth_results/geo_coord_gpkg/v4/2639_10957.gpkg
-2024-02-15 18:12:01   96743424 umn-usc-inferlink/hackathon_6mth_results/geo_coord_gpkg/v4/2647_10991.gpkg
-2024-02-15 18:11:48     344064 umn-usc-inferlink/hackathon_6mth_results/geo_coord_gpkg/v4/31361_19154.gpkg
-2024-02-15 18:11:49  241238016 umn-usc-inferlink/hackathon_6mth_results/geo_coord_gpkg/v4/7064_9296.gpkg"""
+    f = """2024-02-15 12:26:49     237568 uncharted/hackathon_6mth_results/points_feature_extraction/geopackage_world_coords/8726_14746_point_extraction.gpkg"""
 
     await ingest_s2_ls_output(f)
 
