@@ -1,5 +1,5 @@
 CREATE TYPE ingest_state AS ENUM ("pending", "ingested", "prepared", "failed", "abandoned");
-CREATE TYPE ingest_type AS ENUM ("raster", "ta1_output");
+CREATE TYPE ingest_type AS ENUM ("vector", "ta1_output");
 
 CREATE TABLE ingest_process
 (
