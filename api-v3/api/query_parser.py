@@ -13,7 +13,7 @@ from fastapi import FastAPI, HTTPException, Request
 
 
 from sqlalchemy.sql.expression import SQLColumnExpression
-from sqlalchemy import and_, Column, not_, Table, func, distinct, cast, String
+from sqlalchemy import and_, Column, not_, Table, func, distinct, cast, String, case
 
 VALID_OPERATORS = ["not", "eq", "lt", "le", "gt", "ge", "ne", "like", "in", "is"]
 
@@ -112,9 +112,10 @@ class QueryParser:
                 columns.append(column)
             else:
                 columns.append(
-                    func.STRING_AGG(distinct(cast(column, String)), ",").label(
-                        column.name
-                    )
+                    case(
+                        (func.count(distinct(cast(column, String))) > 5, "Multiple Values"),
+                        else_=func.STRING_AGG(distinct(cast(column, String)), ",")
+                    ).label(column.name)
                 )
 
         return columns
