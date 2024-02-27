@@ -141,12 +141,20 @@ class IngestState(enum.Enum):
     abandoned = "abandoned"
 
 
+class IngestType(enum.Enum):
+    raster = "vector"
+    ta1_output = "ta1_output"
+
+
 class IngestProcess(Base):
     __tablename__ = "ingest_process"
     __table_args__ = {'schema': 'macrostrat'}
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+
     state: Mapped[str] = mapped_column(Enum(IngestState, name="ingest_state"), nullable=True)
+    type: Mapped[str] = mapped_column(Enum(IngestType, name="ingest_type"), nullable=True)
+
     comments: Mapped[str] = mapped_column(TEXT, nullable=True)
     map_id: Mapped[str] = mapped_column(TEXT, nullable=True)
     source_id: Mapped[int] = mapped_column(ForeignKey("maps.sources.source_id"), nullable=True)
