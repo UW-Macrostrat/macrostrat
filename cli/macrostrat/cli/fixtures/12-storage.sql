@@ -1,4 +1,4 @@
-CREATE TABLE object_group (
+CREATE TABLE storage.object_group (
     id serial
         primary key
 );
