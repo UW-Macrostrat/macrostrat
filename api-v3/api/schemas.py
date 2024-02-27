@@ -3,7 +3,6 @@ from typing import List
 import datetime
 from sqlalchemy import ForeignKey, func, DateTime, Enum, UniqueConstraint
 from sqlalchemy.dialects.postgresql import VARCHAR, TEXT, INTEGER, ARRAY, BOOLEAN, JSON, JSONB
-from sqlalchemy import String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from geoalchemy2 import Geometry
 
@@ -36,6 +35,9 @@ class Sources(Base):
     web_geom: Mapped[str] = mapped_column(Geometry('POLYGON'))
     new_priority: Mapped[int] = mapped_column(INTEGER)
     status_code: Mapped[str] = mapped_column(TEXT)
+
+    # Relationship
+    ingest_process: Mapped["IngestProcess"] = relationship(back_populates="source")
 
 
 class GroupMembers(Base):
@@ -159,3 +161,4 @@ class IngestProcess(Base):
 
     # Relationships
     object_group: Mapped[ObjectGroup] = relationship(back_populates="ingest_process", lazy="joined")
+    source: Mapped[Sources] = relationship(back_populates="ingest_process")

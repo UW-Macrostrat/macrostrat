@@ -23,7 +23,8 @@ from api.database import (
     patch_sources_sub_table,
     select_sources_sub_table,
 )
-from api.models.source import PolygonModel, PolygonRequestModel, PolygonResponseModel, Sources, CopyColumnRequest
+from api.models.geometries import PolygonModel, PolygonRequestModel, PolygonResponseModel, CopyColumnRequest
+from api.models.source import Sources
 from api.query_parser import ParserException
 from api.routes.security import TokenData, get_groups
 from api.routes.object import router as object_router

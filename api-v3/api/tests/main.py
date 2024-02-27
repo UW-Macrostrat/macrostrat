@@ -19,7 +19,7 @@ load_dotenv()
 from api.app import app
 from api.database import connect_engine, dispose_engine, get_engine
 import api.database as db
-from api.models.source import PolygonModel
+from api.models.geometries import PolygonModel
 
 # Define some testing values
 
@@ -429,6 +429,7 @@ class TestObjectCRUD:
 
     response = api_client.get(f"/object/{data['id']}")
     assert response.status_code == 404
+
 
 class TestIngestProcess:
 

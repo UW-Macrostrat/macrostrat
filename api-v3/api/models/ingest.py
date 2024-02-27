@@ -5,6 +5,7 @@ from enum import Enum
 from pydantic import BaseModel, ConfigDict
 
 from api.schemas import IngestState
+from .source import Sources
 
 
 class Post(BaseModel):
@@ -26,6 +27,7 @@ class Get(Post):
     object_group_id: int
     created_on: datetime.datetime
     completed_on: Optional[datetime.datetime] = None
+    source: Sources
 
 
 class Patch(Post):

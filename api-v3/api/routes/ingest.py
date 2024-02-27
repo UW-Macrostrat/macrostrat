@@ -2,7 +2,7 @@ import os
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import insert, select, update, and_
-from sqlalchemy.orm import selectinload, joinedload
+from sqlalchemy.orm import selectinload, joinedload, defer
 import minio
 
 from api.database import (
@@ -13,7 +13,7 @@ from api.database import (
 from api.routes.security import get_groups
 import api.models.ingest as IngestProcessModel
 import api.models.object as Object
-from api.schemas import IngestProcess as IngestProcessSchema, ObjectGroup
+from api.schemas import IngestProcess as IngestProcessSchema, ObjectGroup, Sources
 from api.query_parser import get_filter_query_params, QueryParser
 
 router = APIRouter(
@@ -35,24 +35,15 @@ async def get_multiple_ingest_process(page: int = 0, page_size: int = 50, filter
     async with async_session() as session:
 
         # TODO: This flow should likely be refactored into a function, lets see it used once more before making the move
-        select_stmt = select(*query_parser.get_select_columns())\
+        select_stmt = select(IngestProcessSchema)\
             .limit(page_size)\
             .offset(page_size * page)\
-            .where(and_(query_parser.where_expressions()))
-
-        # Add grouping
-        if query_parser.get_group_by_column() is not None:
-            select_stmt = select_stmt.group_by(query_parser.get_group_by_column()).order_by(
-                query_parser.get_group_by_column()
-            )
-
-        if query_parser.get_order_by_columns() is not None and \
-                query_parser.get_group_by_column() is None:
-            select_stmt = select_stmt.order_by(*query_parser.get_order_by_columns())
+            .where(and_(query_parser.where_expressions()))\
+            .options(joinedload(IngestProcessSchema.source).defer(Sources.rgeom).defer(Sources.web_geom))
 
         results = await session.execute(select_stmt)
 
-        return results.all()
+        return map(lambda x: x[0], results.all())
 
 
 @router.get("/{id}", response_model=IngestProcessModel.Get)
