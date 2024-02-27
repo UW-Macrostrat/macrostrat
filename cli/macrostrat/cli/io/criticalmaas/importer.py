@@ -326,6 +326,34 @@ async def import_geopackage_map(object: str, map_name: str = None):
     assert ingest_process_response.status_code == 200
 
 
+def get_map_id(map_name: str) -> int:
+    """Get the map id from the map name"""
+
+    # Required fields by the output
+    search_default = {
+        "bounding_box_polygon": None,
+        "georeferenced": True,
+        "not_georeferenced": True,
+        "page_number": 0,
+        "page_size": 10,
+        "scale_max": 1000000,
+        "scale_min": 0,
+        "validated": True
+    }
+
+    with requests.Session() as session:
+        r = session.post(f"https://auth.polymer.rocks/api/firstfactor", json={"username": os.getenv("POLYMER_USERNAME"), "password": os.getenv("POLYMER_PASSWORD")})
+
+        r = session.post(f"https://georef.polymer.rocks/api/map/maps_in_bbox", json={**search_default, "search_text": "2647_10991"})
+        d = r.json()
+
+        for map in d['maps']:
+            if map['name'] == map_name:
+                return map['map_id']
+
+        raise ValueError(f"Map {map_name} not found in Jatawares system")
+
+
 async def auto_ingest(object):
     name = "uncharted_p_only" + "_" + object.split("/")[-1].split(".")[0].replace("_point_extraction", "")
 
@@ -349,4 +377,5 @@ async def main():
     await ingest_s2_ls_output(f)
 
 if __name__ == "__main__":
+
     asyncio.run(main())
