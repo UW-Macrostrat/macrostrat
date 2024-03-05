@@ -21,7 +21,9 @@ rich = "^13"
 scipy = "^1.9.3"
 typer = "^0.9.0"
 
+minio = "^7.2.5"
 python-dotenv = "^1"
+python-magic = "^0.4.27"
 pyyaml = "^6.0"
 shapely = "^2.0.1"
 

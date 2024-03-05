@@ -1,0 +1,17 @@
+[default]
+# Set the MACROSTRAT_ENV environment variable to one of the sections below.
+
+#---------------------------------------------------------------------------
+
+[example]
+# The connection URL for the PostgreSQL `macrostrat` database.
+pg_database = "postgresql://macrostrat:password@db.example.com:5432/macrostrat"
+
+# The S3 object store where objects should be stored.
+s3_host = "storage.example.com"
+s3_access_key = ""
+s3_secret_key = ""
+s3_bucket = "my-bucket"
+
+# The prefix to prepend to the key for each object, without a trailing slash.
+s3_prefix = "my-prefix"
