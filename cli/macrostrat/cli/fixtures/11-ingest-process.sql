@@ -1,7 +1,7 @@
 CREATE TYPE ingest_state AS ENUM ('pending', 'ingested', 'prepared', 'failed', 'abandoned');
 CREATE TYPE ingest_type AS ENUM ('vector', 'ta1_output');
 
-CREATE TABLE ingest_process
+CREATE TABLE maps_meta.ingest_process
 (
     id                serial primary key,
     state             ingest_state,
