@@ -36,7 +36,7 @@ cd macrostrat-api
 Next, install dependencies:
 
 ```
-npm install
+yarn install
 ```
 
 NOTE: Postgres connections are completely broken in node v14 and v15 (as of
@@ -45,12 +45,11 @@ NOTE: Postgres connections are completely broken in node v14 and v15 (as of
 This will also run the script `postinstall.sh` which copies credentials files
 into place.
 
-For `v1/credentials.js` fill in your MariaDB and PostgreSQL user information. Do
-the same for `v2/credentials.js`, but also update the port for Redis if
-necessary, and follow the inline instructions for generating a cache refresh
-key. The cache refresh key is used as a secret parameter to programmatically
-refresh the column cache, such as in situations in which the underlying data has
-been changed (editing, adding, etc).
+For `credentials.ts` fill in your MariaDB and PostgreSQL user information,
+update the port for Redis if necessary, and follow the inline instructions for
+generating a cache refresh key. The cache refresh key is used as a secret
+parameter to programmatically refresh the column cache, such as in situations in
+which the underlying data has been changed (editing, adding, etc).
 
 ## Running
 
