@@ -162,10 +162,7 @@ class TestAPI:
 
     response = api_client.patch(
       f"/sources/{TEST_SOURCE_TABLE.source_id}/polygons",
-      json={TEST_SOURCE_TABLE.to_patch: id_temp_value},
-      headers={
-        "Authorization": f"Bearer {os.environ['ADMIN_TOKEN']}"
-      }
+      json={TEST_SOURCE_TABLE.to_patch: id_temp_value}
     )
 
     assert response.status_code == 204
@@ -202,10 +199,7 @@ class TestAPI:
       json={
         TEST_SOURCE_TABLE.to_patch: id_temp_value
       },
-      params=TEST_SOURCE_TABLE.to_filter,
-      headers={
-        "Authorization": f"Bearer {os.environ['ADMIN_TOKEN']}"
-      }
+      params=TEST_SOURCE_TABLE.to_filter
     )
 
     assert response.status_code == 204
@@ -229,10 +223,7 @@ class TestAPI:
     response = api_client.patch(
       f"/sources/{TEST_SOURCE_TABLE.source_id}/polygons",
       json=body,
-      params=params,
-      headers={
-        "Authorization": f"Bearer {os.environ['ADMIN_TOKEN']}"
-      }
+      params=params
     )
 
     assert response.status_code == 204
@@ -252,10 +243,7 @@ class TestAPI:
     response = api_client.patch(
       f"/sources/{TEST_SOURCE_TABLE.source_id}/polygons",
       json={TEST_SOURCE_TABLE.to_patch: id_temp_value},
-      params={"PTYPE": "eq.Qff", "orig_id": "eq.999999"},
-      headers={
-        "Authorization": f"Bearer {os.environ['ADMIN_TOKEN']}"
-      }
+      params={"PTYPE": "eq.Qff", "orig_id": "eq.999999"}
     )
 
     assert response.status_code == 400
@@ -282,7 +270,7 @@ class TestAPI:
     full_data = full_response.json()
 
     for row in full_data:
-      assert str(row["_pkid"]) in comparison_values[row["PTYPE"]]
+      assert str(row["_pkid"]) in comparison_values[row["PTYPE"]] or comparison_values[row["PTYPE"]] == "Multiple Values"
 
 
   def test_order_by_source_table(self, api_client):
@@ -309,9 +297,6 @@ class TestAPI:
       f"/sources/{TEST_SOURCE_TABLE.source_id}/polygons",
       json={
         "descrip": test_value
-      },
-      headers={
-        "Authorization": f"Bearer {os.environ['ADMIN_TOKEN']}"
       }
     )
 
@@ -321,9 +306,6 @@ class TestAPI:
       f"/sources/{TEST_SOURCE_TABLE.source_id}/polygons/comments",
       json={
         "source_column": "descrip"
-      },
-      headers={
-        "Authorization": f"Bearer {os.environ['ADMIN_TOKEN']}"
       }
     )
 

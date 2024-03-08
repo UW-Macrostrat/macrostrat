@@ -26,7 +26,7 @@ from api.database import (
 from api.models.geometries import PolygonModel, PolygonRequestModel, PolygonResponseModel, CopyColumnRequest
 from api.models.source import Sources
 from api.query_parser import ParserException
-from api.routes.security import TokenData, get_groups
+from api.routes.security import has_access
 from api.routes.object import router as object_router
 from api.routes.ingest import router as ingest_router
 
@@ -140,11 +140,11 @@ async def patch_sub_sources(
         request: starlette.requests.Request,
         table_id: int,
         polygon_updates: PolygonRequestModel,
-        groups: list[int] = Depends(get_groups)
+        user_has_access: bool = Depends(has_access),
 ):
 
-    if 1 not in groups:
-        raise HTTPException(status_code=401, detail="User is not in admin group")
+    if not user_has_access:
+        raise HTTPException(status_code=401, detail="User does not have access to patch object")
 
     try:
         result = await patch_sources_sub_table(
@@ -172,11 +172,11 @@ async def patch_sub_sources(
         target_column: str,
         table_id: int,
         copy_column: CopyColumnRequest,
-        groups: list[int] = Depends(get_groups)
+        user_has_access: bool = Depends(has_access),
 ):
 
-    if 1 not in groups:
-        raise HTTPException(status_code=401, detail="User is not in admin group")
+    if not user_has_access:
+        raise HTTPException(status_code=401, detail="User does not have access to patch object")
 
     try:
         result = await db.patch_sources_sub_table_set_columns_equal(

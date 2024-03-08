@@ -27,7 +27,7 @@ class Get(Post):
     object_group_id: int
     created_on: datetime.datetime
     completed_on: Optional[datetime.datetime] = None
-    source: Sources
+    source: Optional[Sources] = None
 
 
 class Patch(Post):

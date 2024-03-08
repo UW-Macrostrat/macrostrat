@@ -176,6 +176,15 @@ async def get_groups(
     return groups
 
 
+async def has_access(groups: list[int] = Depends(get_groups)) -> bool:
+    """Check if the user has access to the group"""
+
+    if os.environ['ENVIRONMENT'] == 'development':
+        return True
+
+    return 1 in groups
+
+
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     """Create a JWT token"""
 

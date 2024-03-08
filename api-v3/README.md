@@ -5,6 +5,30 @@
 This is a Fastapi application interfacing with a postgres database. It is designed to be deployed behind 
 Nginx on a kubernetes cluster.
 
+## Development
+
+.env
+```shell
+uri=postgresql://...
+
+REDIRECT_URI=http://localhost:8000/security/callback
+
+OAUTH_AUTHORIZATION_URL=https://cilogon.org/authorize
+OAUTH_TOKEN_URL=https://cilogon.org/oauth2/token
+OAUTH_USERINFO_URL=https://cilogon.org/oauth2/userinfo
+
+OAUTH_CLIENT_ID=
+OAUTH_CLIENT_SECRET=
+
+SECRET_KEY=<AnyRandomHash>
+JWT_ENCRYPTION_ALGORITHM=HS256
+
+access_key=<S3_ACCESS_KEY>
+secret_key=<S3_SECRET_KEY>
+
+ENVIRONMENT=development # This turns off authentication when running locally
+```
+
 ## Creating a token
 
 Assuming you are running locally on localhost:8000

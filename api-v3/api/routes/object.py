@@ -8,7 +8,7 @@ from api.database import (
     get_engine,
     results_to_model
 )
-from api.routes.security import get_groups
+from api.routes.security import has_access
 import api.models.object as Object
 import api.schemas as schemas
 from api.query_parser import get_filter_query_params, QueryParser
@@ -21,7 +21,7 @@ router = APIRouter(
 
 
 @router.get("", response_model=list[Object.Get])
-async def get_objects(page: int = 0, page_size: int = 50, filter_query_params=Depends(get_filter_query_params), groups: list[str] = Depends(get_groups)):
+async def get_objects(page: int = 0, page_size: int = 50, filter_query_params=Depends(get_filter_query_params)):
     """Get all objects"""
 
     engine = get_engine()
@@ -53,7 +53,7 @@ async def get_objects(page: int = 0, page_size: int = 50, filter_query_params=De
 
 
 @router.get("/{id}", response_model=Object.Get)
-async def get_object(id: int, groups: list[str] = Depends(get_groups)):
+async def get_object(id: int):
     """Get a single object"""
 
     engine = get_engine()
@@ -73,8 +73,11 @@ async def get_object(id: int, groups: list[str] = Depends(get_groups)):
 
 
 @router.post("", response_model=Object.Get)
-async def create_object(object: Object.Post, groups: list[str] = Depends(get_groups)):
+async def create_object(object: Object.Post, user_has_access: bool = Depends(has_access)):
     """Create/Register a new object"""
+
+    if not user_has_access:
+        raise HTTPException(status_code=403, detail="User does not have access to create object")
 
     engine = get_engine()
     async_session = get_async_session(engine)
@@ -90,8 +93,11 @@ async def create_object(object: Object.Post, groups: list[str] = Depends(get_gro
 
 
 @router.patch("/{id}", response_model=Object.Get)
-async def patch_object(id: int, object: Object.Patch, groups: list[str] = Depends(get_groups)):
+async def patch_object(id: int, object: Object.Patch, user_has_access: bool = Depends(has_access)):
     """Update a object"""
+
+    if not user_has_access:
+        raise HTTPException(status_code=403, detail="User does not have access to update object")
 
     engine = get_engine()
     async_session = get_async_session(engine)
@@ -111,8 +117,11 @@ async def patch_object(id: int, object: Object.Patch, groups: list[str] = Depend
 
 
 @router.delete("/{id}", response_model=Object.Get)
-async def delete_object(id: int, groups: list[str] = Depends(get_groups)):
+async def delete_object(id: int, has_access: bool = Depends(has_access)):
     """Delete a object"""
+
+    if not has_access:
+        raise HTTPException(status_code=403, detail="User does not have access to delete object")
 
     engine = get_engine()
     async_session = get_async_session(engine)
