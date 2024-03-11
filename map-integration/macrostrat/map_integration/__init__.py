@@ -19,6 +19,7 @@ from .commands.set_srid import apply_srid
 from .commands.source_info import source_info
 from .commands.sources import map_sources
 from .migrations import run_migrations
+from .pipeline import run_pipeline
 from .process import cli as _process
 from .utils import IngestionCLI, MapInfo
 
@@ -44,6 +45,7 @@ cli.add_command(ingest_map, name="ingest")
 cli.add_command(prepare_fields, name="prepare-fields")
 cli.add_command(fix_geometries, name="fix-geometries")
 cli.add_command(apply_srid, name="apply-srid")
+cli.add_command(run_pipeline, name="run-pipeline")
 
 cli.add_typer(_process, name="process")
 
