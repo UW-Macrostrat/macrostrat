@@ -20,7 +20,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: hub.opensciencegrid.org/macrostrat/web
+          images: hub.opensciencegrid.org/macrostrat/tileserver
           tags: |
             type=semver,pattern={{version}}
             type=raw,value=latest-itb
