@@ -17,6 +17,8 @@ optional. When the API starts requests for all columns and all units are cached.
 If Redis is available it will be used, otherwise they are cached in the
 application memory.
 
+The API requires `node` v14 or later to run. Recent testing has been conducted on `node` v18.
+
 #### Data
 
 The following databases must be in place:
