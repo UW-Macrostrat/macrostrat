@@ -1,5 +1,5 @@
 """
-Functions for implementing a pipeline for integrating maps into Macrostrat.
+A pipeline for ingesting maps into Macrostrat.
 """
 
 import datetime
@@ -32,6 +32,12 @@ from macrostrat.map_integration.process.geometry import create_rgeom, create_web
 from macrostrat.map_integration.utils.map_info import get_map_info
 
 console = Console()
+
+
+class IngestError(RuntimeError):
+    """
+    A runtime error from the map ingestion pipeline.
+    """
 
 
 def get_db_session(expire_on_commit=False) -> Session:
@@ -91,9 +97,7 @@ def update_object(id_: int, **data) -> Object:
 
 def get_ingest_process_by_id(id_: int) -> Optional[IngestProcess]:
     with get_db_session() as session:
-        ingest_process = session.scalar(
-            select(IngestProcess).where(IngestProcess.id == id_)
-        )
+        ingest_process = session.scalar(select(IngestProcess).where(IngestProcess.id == id_))
     return ingest_process
 
 
@@ -141,10 +145,7 @@ def get_source_by_slug(slug: str) -> Sources:
 def update_source(id_: int, **data) -> Sources:
     with get_db_session() as session:
         new_source = session.scalar(
-            update(Sources)
-            .values(**data)
-            .where(Sources.source_id == id_)
-            .returning(Sources)
+            update(Sources).values(**data).where(Sources.source_id == id_).returning(Sources)
         )
         session.commit()
     return new_source
@@ -206,14 +207,20 @@ def run_pipeline(
     """
     Ingest a local file containing a map into Macrostrat.
     """
+
+    ## Normalize identifiers.
+
+    slug = slug.lower()
+
+    ## Collect metadata.
+
     mime_type = magic.Magic(mime=True).from_file(local_file)
     hasher = hashlib.sha256()
     with open(local_file, mode="rb") as fp:
         while data := fp.read(config.CHUNK_SIZE):
             hasher.update(data)
     sha256_hash = hasher.hexdigest()
-
-    console.print(f"Detected {mime_type} with SHA-256 {sha256_hash[:8]}...")
+    console.print(f"Detected {mime_type} with SHA-256 {sha256_hash}")
 
     ## Upload the file.
 
@@ -223,9 +230,7 @@ def run_pipeline(
 
     if obj := get_object_by_loc(bucket, key):
         if not replace_object and obj.sha256_hash != sha256_hash:
-            raise RuntimeError(
-                "Attempting to upload a different version of this object"
-            )
+            raise IngestError("Attempting to upload a different version of this object")
 
     if not obj or obj.sha256_hash != sha256_hash or replace_object:
         console.print(f"Uploading file to S3 ({bucket}/{key})")
@@ -244,15 +249,13 @@ def run_pipeline(
     else:
         ingest_process = create_ingest_process()
     if not ingest_process:
-        raise RuntimeError("Failed to create or retrieve the object's ingest process")
+        raise IngestError("Failed to create or retrieve the object's ingest process")
     if uploaded_obj:
-        update_ingest_process(ingest_process.id, state=None)
-        ingest_process = get_ingest_process_by_id(ingest_process.id)
+        ingest_process = update_ingest_process(ingest_process.id, state=None)
     if ingest_process.state == IngestState.ingested:
         console.print("Ingest pipeline has already been completed")
         return obj
-    console.print(f"Using ingest process ID {ingest_process.id}")
-    console.print(f"Using object group ID {ingest_process.object_group_id}")
+    console.print(f"Found or created ingest process ID {ingest_process.id}")
 
     ## Create or update the object's DB entry.
 
@@ -271,7 +274,8 @@ def run_pipeline(
         obj = update_object(obj.id, **payload)
     else:
         obj = create_object(**payload)
-    console.print(f"Using object ID {obj.id}")
+    ingest_process = update_ingest_process(ingest_process.id, state=IngestState.pending)
+    console.print(f"Found or created object ID {obj.id}")
 
     ## Process anything that might have points, lines, and polygons.
 
@@ -282,15 +286,17 @@ def run_pipeline(
 
             with zipfile.ZipFile(local_file) as zf:
                 zf.extractall(path=tmp_dir)
+            shapefiles = list(tmp_dir.glob("**/*.shp"))
 
-            ingest_map(slug, list(tmp_dir.glob("**/*.shp")))
+            console.print(f"Ingesting {slug} from {shapefiles}")
+            ingest_map(slug, shapefiles)
         macrostrat_map = get_source_by_slug(slug)
     else:
-        raise RuntimeError("Unrecognized file format")
+        raise IngestError("Unrecognized file format")
 
     ## Prepare tables for human review.
 
-    console.print(f"Using source ID {macrostrat_map.id}")
+    console.print(f"Found or created source ID {macrostrat_map.id}")
 
     metadata = {"scale": scale}
     if name:
@@ -309,8 +315,10 @@ def run_pipeline(
     update_source(macrostrat_map.id, **metadata)
     update_ingest_process(ingest_process.id, source_id=macrostrat_map.id)
     prepare_fields(macrostrat_map)
+    ingest_process = update_ingest_process(ingest_process.id, state=IngestState.prepared)
     create_rgeom(macrostrat_map)
     create_webgeom(macrostrat_map)
     update_ingest_process(ingest_process.id, state=IngestState.ingested)
+    console.print("Finished running ingest pipeline")
 
     return obj
