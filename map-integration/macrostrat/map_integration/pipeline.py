@@ -29,16 +29,11 @@ from macrostrat.map_integration import config
 from macrostrat.map_integration.commands.ingest import ingest_map
 from macrostrat.map_integration.commands.prepare_fields import prepare_fields
 from macrostrat.map_integration.database import db as DB
+from macrostrat.map_integration.errors import IngestError
 from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
 from macrostrat.map_integration.utils.map_info import get_map_info
 
 console = Console()
-
-
-class IngestError(RuntimeError):
-    """
-    A runtime error from the map ingestion pipeline.
-    """
 
 
 def raise_ingest_error(

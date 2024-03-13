@@ -19,7 +19,7 @@ from shapely.geometry import (
 from sqlalchemy import *
 
 from ..database import db
-from ..pipeline import IngestError
+from ..errors import IngestError
 
 console = Console()
 
