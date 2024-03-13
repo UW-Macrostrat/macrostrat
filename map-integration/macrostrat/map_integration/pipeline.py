@@ -282,13 +282,17 @@ def run_pipeline(
     if local_file.name.endswith(".zip"):
         with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as td:
             tmp_dir = pathlib.Path(td)
-            console.print(f"Extracting zip archive into {tmp_dir}")
+            console.print(f"Extracting zip archive into\n{tmp_dir}")
 
             with zipfile.ZipFile(local_file) as zf:
                 zf.extractall(path=tmp_dir)
             shapefiles = list(tmp_dir.glob("**/*.shp"))
 
-            console.print(f"Ingesting {slug} from {shapefiles}")
+            if not shapefiles:
+                raise IngestError("Failed to locate any shapefiles")
+
+            shapefiles_str = "\n".join(str(x) for x in shapefiles)
+            console.print(f"Ingesting {slug} from\n{shapefiles_str}")
             ingest_map(slug, shapefiles)
         macrostrat_map = get_source_by_slug(slug)
     else:
