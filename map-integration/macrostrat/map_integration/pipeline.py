@@ -11,6 +11,7 @@ from typing import Annotated, Optional
 
 import magic
 import minio
+import psycopg2.errors  # type: ignore[import-untyped]
 from macrostrat.core.schemas import (  # type: ignore[import-untyped]
     IngestProcess,
     IngestState,
@@ -38,6 +39,19 @@ class IngestError(RuntimeError):
     """
     A runtime error from the map ingestion pipeline.
     """
+
+
+def raise_ingest_error(
+    ingest_process: IngestProcess,
+    message: str,
+    source_exn=None,
+) -> None:
+    update_ingest_process(
+        ingest_process.id,
+        state=IngestState.failed,
+        comments=message,
+    )
+    raise IngestError(message) from source_exn
 
 
 def get_db_session(expire_on_commit=False) -> Session:
@@ -259,7 +273,7 @@ def run_pipeline(
     if not ingest_process:
         raise IngestError("Failed to create or retrieve the object's ingest process")
     if uploaded_obj:
-        ingest_process = update_ingest_process(ingest_process.id, state=None)
+        ingest_process = update_ingest_process(ingest_process.id, state=None, comments=None)
     if ingest_process.state == IngestState.ingested:
         console.print("Ingest pipeline has already been completed")
         return obj
@@ -288,7 +302,11 @@ def run_pipeline(
         obj = update_object(obj.id, **payload)
     else:
         obj = create_object(**payload)
-    ingest_process = update_ingest_process(ingest_process.id, state=IngestState.pending)
+    ingest_process = update_ingest_process(
+        ingest_process.id,
+        state=IngestState.pending,
+        comments=None,
+    )
     console.print(f"Found or created object ID {obj.id}")
 
     ## Process anything that might have points, lines, and polygons.
@@ -303,14 +321,19 @@ def run_pipeline(
             shapefiles = list(tmp_dir.glob("**/*.shp"))
 
             if not shapefiles:
-                raise IngestError("Failed to locate any shapefiles")
+                raise_ingest_error(ingest_process, "Failed to locate any shapefiles")
 
             shapefiles_str = "\n".join(str(x) for x in shapefiles)
             console.print(f"Ingesting {slug} from\n{shapefiles_str}")
-            ingest_map(slug, shapefiles)
+            try:
+                ingest_map(slug, shapefiles)
+            except IngestError as exn:
+                raise_ingest_error(ingest_process, str(exn), exn)
+            except psycopg2.errors.InvalidTextRepresentation as exn:
+                raise_ingest_error(ingest_process, str(exn), exn)
         macrostrat_map = get_source_by_slug(slug)
     else:
-        raise IngestError("Unrecognized file format")
+        raise_ingest_error(ingest_process, "Unrecognized file format")
 
     ## Prepare tables for human review.
 
@@ -331,12 +354,24 @@ def run_pipeline(
         metadata["isbn_doi"] = ref_isbn_or_doi
 
     update_source(macrostrat_map.id, **metadata)
-    update_ingest_process(ingest_process.id, source_id=macrostrat_map.id)
+    ingest_process = update_ingest_process(
+        ingest_process.id,
+        source_id=macrostrat_map.id,
+        comments="created tables",
+    )
     prepare_fields(macrostrat_map)
-    ingest_process = update_ingest_process(ingest_process.id, state=IngestState.prepared)
+    ingest_process = update_ingest_process(
+        ingest_process.id,
+        state=IngestState.prepared,
+        comments=None,
+    )
     create_rgeom(macrostrat_map)
     create_webgeom(macrostrat_map)
-    update_ingest_process(ingest_process.id, state=IngestState.ingested)
+    ingest_process = update_ingest_process(
+        ingest_process.id,
+        state=IngestState.ingested,
+        comments=None,
+    )
     console.print("Finished running ingest pipeline")
 
     return obj

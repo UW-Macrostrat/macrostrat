@@ -19,6 +19,7 @@ from shapely.geometry import (
 from sqlalchemy import *
 
 from ..database import db
+from ..pipeline import IngestError
 
 console = Console()
 
@@ -65,7 +66,7 @@ def ingest_map(
             console.print(
                 "No CRS set. Please set a CRS before ingesting.", style="bold red"
             )
-            raise RuntimeError("No CRS set")
+            raise IngestError("No CRS set")
 
         # Convert geometry to WGS84
         console.print("Projecting to WGS84")
