@@ -6,6 +6,7 @@
 
 import urllib.parse
 from dataclasses import dataclass
+from functools import lru_cache
 
 import starlette.requests
 import logging
@@ -61,7 +62,12 @@ class QueryParser:
 
     VALID_OPERATORS = ["not", "eq", "lt", "le", "gt", "ge", "ne", "like", "in", "is"]
 
-    def __init__(self, columns: list[Column], query_params: list[dict]):
+    def __init__(self, columns: list[Column], query_params: list[dict] | None):
+
+        # If no query params, then set to empty list
+        if query_params is None:
+            query_params = []
+
         self.columns = {c.name: c for c in columns}
         self.query_params = query_params
         self.decomposed_query_params = self._decompose_query_params()
@@ -85,6 +91,7 @@ class QueryParser:
         else:
             return and_(*where_expressions)
 
+    @lru_cache
     def get_group_by_column(self):
         """Returns the group by expressions for the query"""
 

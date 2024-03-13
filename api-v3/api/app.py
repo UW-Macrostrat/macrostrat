@@ -124,7 +124,12 @@ async def get_sub_sources(
         )
 
         # Add metadata to the response
-        response.headers["X-Total-Count"] = str(await db.get_sources_sub_table_count(engine=get_engine(), table_id=table_id))
+        response.headers["X-Total-Count"] = str(
+            await db.get_sources_sub_table_count(
+                engine=get_engine(),
+                query_params=filter_query_params,
+                table_id=table_id)
+        )
 
         return result.to_dict()
 

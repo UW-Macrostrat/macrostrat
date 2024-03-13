@@ -172,7 +172,7 @@ async def get_polygon_table_name(engine: AsyncEngine, table_id: int) -> str:
         raise NoSuchTableError(e)
 
 
-async def get_sources_sub_table_count(engine: AsyncEngine, table_id: int) -> int:
+async def get_sources_sub_table_count(engine: AsyncEngine, table_id: int, query_params: list = None) -> int:
     async with engine.begin() as conn:
         # Grabbing a table from the database as it is
         metadata = MetaData(schema="sources")
@@ -181,7 +181,29 @@ async def get_sources_sub_table_count(engine: AsyncEngine, table_id: int) -> int
             lambda sync_conn: Table(polygon_table, metadata, autoload_with=sync_conn)
         )
 
-        stmt = select(func.count()).select_from(table)
+        # Extract filters from the query parameters
+        query_parser = QueryParser(columns=table.columns, query_params=query_params)
+
+        stmt = None
+        if query_parser.get_group_by_column() is not None:
+
+            sub_stmt = (
+                select(query_parser.get_group_by_column())
+                .where(query_parser.where_expressions())
+                .group_by(query_parser.get_group_by_column())
+            )
+
+            stmt = select(func.count("*")).select_from(sub_stmt)
+        else:
+            stmt = (
+                select(func.count())
+                .select_from(table)
+                .where(query_parser.where_expressions())
+            )
+
+        x = str(stmt.compile(compile_kwargs={
+            "literal_binds": True
+        }))
 
         result = await conn.execute(stmt)
 
@@ -196,8 +218,6 @@ async def select_sources_sub_table(
     query_params: list = None,
 ) -> SQLResponse:
     async with engine.begin() as conn:
-
-        query_params = query_params if query_params is not None else []
 
         # Grabbing a table from the database as it is
         metadata = MetaData(schema="sources")
@@ -247,8 +267,6 @@ async def select_sources_sub_table(
 async def patch_sources_sub_table(
     engine: AsyncEngine, table_id: int, update_values: dict, query_params: list = None
 ) -> CursorResult:
-
-    query_params = query_params if query_params is not None else []
 
     async with engine.begin() as conn:
         # Grabbing a table from the database as it is
