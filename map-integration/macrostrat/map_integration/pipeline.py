@@ -191,6 +191,14 @@ def run_pipeline(
         str,
         Option(help="The map's scale"),
     ] = "large",
+    url: Annotated[
+        Optional[str],
+        Option(help="The map's download URL"),
+    ] = None,
+    website: Annotated[
+        Optional[str],
+        Option(help="The map's website"),
+    ] = None,
     s3_bucket: Annotated[
         str,
         Option(help="The S3 bucket to upload this object to"),
@@ -259,13 +267,19 @@ def run_pipeline(
 
     ## Create or update the object's DB entry.
 
+    source_info = {}
+    if url:
+        source_info["url"] = url
+    if website:
+        source_info["website"] = website
+
     payload = {
         "object_group_id": ingest_process.object_group_id,
         "scheme": SchemeEnum.s3,
         "host": config.S3_HOST,
         "bucket": bucket,
         "key": key,
-        # FIXME: Add missing "source" information.
+        "source": source_info,
         "mime_type": mime_type,
         "sha256_hash": sha256_hash,
     }
