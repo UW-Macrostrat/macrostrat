@@ -179,7 +179,7 @@ async def get_groups(
 async def has_access(groups: list[int] = Depends(get_groups)) -> bool:
     """Check if the user has access to the group"""
 
-    if os.environ['ENVIRONMENT'] == 'development':
+    if 'ENVIRONMENT' in os.environ and os.environ['ENVIRONMENT'] == 'development':
         return True
 
     return 1 in groups
