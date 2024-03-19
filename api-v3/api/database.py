@@ -305,7 +305,7 @@ async def patch_sources_sub_table_set_columns_equal(
 ) -> CursorResult:
     async with engine.begin() as conn:
 
-        table = get_table(conn, table_id, geometry_type)
+        table = await get_table(conn, table_id, geometry_type)
 
         # Extract filters from the query parameters
         query_parser = QueryParser(columns=table.columns, query_params=query_params)
