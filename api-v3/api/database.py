@@ -7,7 +7,7 @@
 #
 import datetime
 from os import environ
-from typing import Type, List
+from typing import Type, List, Literal
 
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine
@@ -58,10 +58,11 @@ def get_async_session(engine: AsyncEngine, **kwargs) -> async_sessionmaker[Async
     return async_sessionmaker(engine, **kwargs)
 
 
-async def source_id_to_primary_table(
-    async_session: async_sessionmaker[AsyncSession], source_id: id
+async def source_id_to_slug(
+    async_engine: AsyncEngine,
+    source_id: id
 ):
-    async with async_session() as session:
+    async with get_async_session(async_engine)() as session:
         stmt = select(schemas.Sources).where(schemas.Sources.source_id == source_id)
         result = await session.scalar(stmt)
 
@@ -70,7 +71,7 @@ async def source_id_to_primary_table(
                 f"Could not find primary_table corresponding with source_id: {source_id}"
             )
 
-        return result.primary_table
+        return result.slug
 
 
 async def get_sources(
@@ -163,23 +164,29 @@ class SQLResponse:
         return l
 
 
-async def get_polygon_table_name(engine: AsyncEngine, table_id: int) -> str:
-    session = get_async_session(engine)
-    try:
-        primary_table = await source_id_to_primary_table(session, table_id)
-        return f"{primary_table}"
-    except NoResultFound as e:
-        raise NoSuchTableError(e)
+async def get_table(
+        conn,
+        table_id: int,
+        geometry_type: Literal["polygons", "points", "linestrings"]
+) -> Table:
+    metadata = MetaData(schema="sources")
+    table_slug = await source_id_to_slug(engine, table_id)
+    table_name = f"{table_slug}_{geometry_type}"
+    table = await conn.run_sync(
+        lambda sync_conn: Table(table_name, metadata, autoload_with=sync_conn)
+    )
+    return table
 
 
-async def get_sources_sub_table_count(engine: AsyncEngine, table_id: int, query_params: list = None) -> int:
+async def get_sources_sub_table_count(
+        engine: AsyncEngine,
+        table_id: int,
+        geometry_type: Literal["polygons", "points", "linestrings"],
+        query_params: list = None
+) -> int:
     async with engine.begin() as conn:
-        # Grabbing a table from the database as it is
-        metadata = MetaData(schema="sources")
-        polygon_table = await get_polygon_table_name(engine, table_id)
-        table = await conn.run_sync(
-            lambda sync_conn: Table(polygon_table, metadata, autoload_with=sync_conn)
-        )
+
+        table = await get_table(conn, table_id, geometry_type)
 
         # Extract filters from the query parameters
         query_parser = QueryParser(columns=table.columns, query_params=query_params)
@@ -213,18 +220,14 @@ async def get_sources_sub_table_count(engine: AsyncEngine, table_id: int, query_
 async def select_sources_sub_table(
     engine: AsyncEngine,
     table_id: int,
+    geometry_type: Literal["polygons", "points", "linestrings"],
     page: int = 0,
     page_size: int = 100,
     query_params: list = None,
 ) -> SQLResponse:
     async with engine.begin() as conn:
 
-        # Grabbing a table from the database as it is
-        metadata = MetaData(schema="sources")
-        polygon_table = await get_polygon_table_name(engine, table_id)
-        table = await conn.run_sync(
-            lambda sync_conn: Table(polygon_table, metadata, autoload_with=sync_conn)
-        )
+        table = await get_table(conn, table_id, geometry_type)
 
         # Strip out the unwanted columns
         ignored_columns = ["geom", "geometry"]  # No reason that this moment to pass this through
@@ -265,16 +268,16 @@ async def select_sources_sub_table(
 
 
 async def patch_sources_sub_table(
-    engine: AsyncEngine, table_id: int, update_values: dict, query_params: list = None
+    engine: AsyncEngine,
+    table_id: int,
+    geometry_type: Literal["polygons", "points", "linestrings"],
+    update_values: dict,
+    query_params: list = None
 ) -> CursorResult:
 
     async with engine.begin() as conn:
-        # Grabbing a table from the database as it is
-        metadata = MetaData(schema="sources")
-        polygon_table = await get_polygon_table_name(engine, table_id)
-        table = await conn.run_sync(
-            lambda sync_conn: Table(polygon_table, metadata, autoload_with=sync_conn)
-        )
+
+        table = await get_table(conn, table_id, geometry_type)
 
         # Extract filters from the query parameters
         query_parser = QueryParser(columns=table.columns, query_params=query_params)
@@ -291,16 +294,18 @@ async def patch_sources_sub_table(
 
         return result
 
+
 async def patch_sources_sub_table_set_columns_equal(
-    engine: AsyncEngine, table_id: int, target_column: str, source_column: str, query_params: list = None
+    engine: AsyncEngine,
+    table_id: int,
+    geometry_type: Literal["polygons", "points", "lines"],
+    target_column: str,
+    source_column: str,
+    query_params: list = None
 ) -> CursorResult:
     async with engine.begin() as conn:
-        # Grabbing a table from the database as it is
-        metadata = MetaData(schema="sources")
-        polygon_table = await get_polygon_table_name(engine, table_id)
-        table = await conn.run_sync(
-            lambda sync_conn: Table(polygon_table, metadata, autoload_with=sync_conn)
-        )
+
+        table = get_table(conn, table_id, geometry_type)
 
         # Extract filters from the query parameters
         query_parser = QueryParser(columns=table.columns, query_params=query_params)

@@ -35,6 +35,7 @@ class Sources(Base):
     web_geom: Mapped[str] = mapped_column(Geometry('POLYGON'))
     new_priority: Mapped[int] = mapped_column(INTEGER)
     status_code: Mapped[str] = mapped_column(TEXT)
+    slug: Mapped[str] = mapped_column(VARCHAR(255))
 
     # Relationship
     ingest_process: Mapped["IngestProcess"] = relationship(back_populates="source")

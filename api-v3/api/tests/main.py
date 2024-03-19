@@ -26,8 +26,8 @@ from api.models.geometries import PolygonModel
 UNUSED_SOURCE_ID=9999
 
 class TEST_SOURCE_TABLE:
-  source_id=295
-  primary_table="test_id"
+  source_id=898
+  slug="guam"
   to_patch = "orig_id"
   to_filter = {"PTYPE": "eq.Qff"}
 
@@ -58,14 +58,9 @@ class TestModels:
 class TestUtils:
 
   @pytest.mark.asyncio
-  async def test_source_id_to_primary_table(self, session: async_sessionmaker[AsyncSession]):
-    primary_table = await db.source_id_to_primary_table(session, TEST_SOURCE_TABLE.source_id)
-    assert primary_table == TEST_SOURCE_TABLE.primary_table
-
-  @pytest.mark.asyncio
-  async def test_source_id_to_primary_table(self, session: async_sessionmaker[AsyncSession]):
-    with pytest.raises(NoResultFound) as e_info:
-      await db.source_id_to_primary_table(session, UNUSED_SOURCE_ID)
+  async def test_source_id_to_slug(self, engine: AsyncEngine):
+    slug = await db.source_id_to_slug(engine, TEST_SOURCE_TABLE.source_id)
+    assert slug == TEST_SOURCE_TABLE.slug
 
 
 class TestSessionDB:
@@ -130,14 +125,33 @@ class TestAPI:
 
     assert response_json["source_id"] == TEST_SOURCE_TABLE.source_id
 
+  def test_get_sub_source_geometries(self, api_client: TestClient):
+    response = api_client.get(f"/sources/{1}/geometries")
+    assert response.status_code == 200
+    response_json = response.json()
 
-  def test_get_sources_tables(self, api_client: TestClient):
+    assert len(response_json) > 0
+
+  def test_get_sources_polygons_table(self, api_client: TestClient):
     response = api_client.get(f"/sources/{TEST_SOURCE_TABLE.source_id}/polygons")
     assert response.status_code == 200
     response_json = response.json()
 
     assert len(response_json) > 0
 
+  def test_get_sources_points_table(self, api_client: TestClient):
+    response = api_client.get(f"/sources/{TEST_SOURCE_TABLE.source_id}/points")
+    assert response.status_code == 200
+    response_json = response.json()
+
+    assert len(response_json) > 0
+
+  def test_get_source_linestrings_table(self, api_client: TestClient):
+    response = api_client.get(f"/sources/{TEST_SOURCE_TABLE.source_id}/linestrings")
+    assert response.status_code == 200
+    response_json = response.json()
+
+    assert len(response_json) > 0
 
   def test_get_sources_tables_default(self, api_client: TestClient):
     response = api_client.get(f"/sources/1/polygons?strat_name=group_by&page=0&page_size=999999")
@@ -145,7 +159,6 @@ class TestAPI:
     response_json = response.json()
 
     assert len(response_json) > 0
-
 
   def test_get_source_tables_filtered(self, api_client: TestClient):
     response = api_client.get(f"/sources/{TEST_SOURCE_TABLE.source_id}/polygons", params={"PTYPE": "eq.Qff"})

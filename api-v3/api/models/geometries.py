@@ -11,7 +11,23 @@ class CommonModel(BaseModel):
     source_id: Optional[Union[int | str]] = None
     orig_id: Optional[Union[int | str]] = None
     descrip: Optional[str] = None
-    ready: Optional[Union[bool | str]] = None
+    omit: Optional[Union[bool | str]] = None
+
+
+class LineStringModel(CommonModel):
+    name: Optional[str] = None
+    descrip: Optional[str] = None
+    type: Optional[str] = None
+    direction: Optional[str] = None
+
+
+class PointModel(CommonModel):
+    strike: Optional[Union[int | str]] = None
+    dip: Optional[Union[int | str]] = None
+    dip_dir: Optional[Union[int | str]] = None
+    point_type: Optional[str] = None
+    certainty: Optional[str] = None
+    comments: Optional[str] = None
 
 
 class PolygonModel(CommonModel):
@@ -40,12 +56,6 @@ class PolygonResponseModel(PolygonModel):
         if type(v) == float and isnan(v):
             return None
         return v
-
-
-class LineworkModel(CommonModel):
-    name: Optional[str] = None
-    type: Optional[str] = None
-    direction: Optional[str] = None
 
 
 class CopyColumnRequest(BaseModel):
