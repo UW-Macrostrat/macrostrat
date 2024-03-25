@@ -10,7 +10,7 @@ Overview
 Macrostrat-in-a-Box uses Docker Compose to start, stop, and orchestrate the
 services that make up the Macrostrat platform. It is not intended for
 production use, but the Docker Compose setup can be used as inspiration for
-a [production system](Macrostrat Online.md).
+a [production system](Macrostrat%20Online.md).
 
 
 System Requirements
