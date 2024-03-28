@@ -19,27 +19,27 @@ Scripts for staging maps into Macrostrat
 
        poetry install --sync
 
-4. Copy [`macrostrat.toml.template`](macrostrat.toml.template) to
-   `macrostrat.toml`, copy the `example` section, and set each key to an
-   appropriate value.
+4. Copy [macrostrat.toml.template](macrostrat.toml.template) to
+   `macrostrat.toml`, copy the `example` section to a new section named
+   `development`, and set each key to an appropriate value.
 
 
 ## CLI-based Bulk Ingest of Maps
 
-The `macrostrat.map_ingestion` package was written to support bulk ingest
-of maps using the `macrostrat maps run-pipeline` command.
+The `macrostrat.map_staging` package was written to support bulk ingest of
+maps using the `macrostrat maps run-pipeline` command.
 
-See [UW-Macrostrat/macrostrat](https://github.com/UW-Macrostrat/macrostrat)
-for the implementation of `run-pipeline`.
+See [../map-integration](../map-integration) for the implementation of
+`run-pipeline`.
 
 1. Scrape a data source by running
 
-       poetry run python3 -m macrostrat.map_ingestion.scrapers.${SCRAPER_MODULE} > maps.csv
+       poetry run python3 -m macrostrat.map_staging.scrapers.${SCRAPER_MODULE} > maps.csv
 
    Replace `${SCRAPER_MODULE}` with one of the modules in
-   [macrostrat/map_ingestion/scrapers](macrostrat/map_ingestion/scrapers).
+   [macrostrat/map_staging/scrapers](macrostrat/map_staging/scrapers).
 
 2. Process the maps listed in the CSV file produced by the previous step by
    running
 
-       poetry run python3 -m macrostrat.map_ingestion.driver maps.csv
+       poetry run python3 -m macrostrat.map_staging.driver maps.csv
