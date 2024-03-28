@@ -27,10 +27,9 @@ Scripts for staging maps into Macrostrat
 ## CLI-based Bulk Staging of Maps
 
 The `macrostrat.map_staging` package was written to support bulk staging of
-maps using the `macrostrat maps run-pipeline` command.
-
-> See [../map-integration](../map-integration) for the implementation of
-> `run-pipeline`.
+maps using the `macrostrat maps run-pipeline` command. (See
+[../map-integration](../map-integration) for the implementation of
+`run-pipeline`.)
 
 1. Scrape a data source by running
 
