@@ -24,13 +24,13 @@ Scripts for staging maps into Macrostrat
    `development`, and set each key to an appropriate value.
 
 
-## CLI-based Bulk Ingest of Maps
+## CLI-based Bulk Staging of Maps
 
-The `macrostrat.map_staging` package was written to support bulk ingest of
+The `macrostrat.map_staging` package was written to support bulk staging of
 maps using the `macrostrat maps run-pipeline` command.
 
-See [../map-integration](../map-integration) for the implementation of
-`run-pipeline`.
+> See [../map-integration](../map-integration) for the implementation of
+> `run-pipeline`.
 
 1. Scrape a data source by running
 
@@ -38,6 +38,9 @@ See [../map-integration](../map-integration) for the implementation of
 
    Replace `${SCRAPER_MODULE}` with one of the modules in
    [macrostrat/map_staging/scrapers](macrostrat/map_staging/scrapers).
+
+   The CSV file produced by each of the scrapers contains columns
+   corresponding to command-line arguments and options for `run-pipeline`.
 
 2. Process the maps listed in the CSV file produced by the previous step by
    running
