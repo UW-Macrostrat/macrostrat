@@ -1,7 +1,7 @@
 Macrostrat System Architecture
 ==============================
 
-<to be added: diagram of how the components below interact>
+(to be added: diagram of how the components below interact)
 
 
 Components

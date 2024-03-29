@@ -23,5 +23,14 @@ dependencies and build the application.
 
 ## Documentation
 
-Documentation is a work in progress, but a starting point for documentation of
-the `macrostrat` command line app can be found [here](cli/docs/cli-usage.md).
+Documentation is a work in progress. We have starting points for:
+
+* [Macrostrat's system architecture](docs/Macrostrat%20System%20Architecture.md)
+
+* [Macrostrat in a Box](docs/Macrostrat%20in%20a%20Box.md), a future Docker
+  Compose-based setup for running Macrostrat locally on a single host
+
+* [The `macrostrat` command line app](cli/docs/cli-usage.md)
+
+Other documentation of general interest can be found in the [docs/](docs/)
+directory.
