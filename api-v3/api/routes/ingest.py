@@ -84,6 +84,9 @@ async def create_ingest_process(object: IngestProcessModel.Post, user_has_access
         session.add(object_group)
         await session.commit()
 
+        if object.tags is None:
+            object.tags = []
+
         tags = [IngestProcessTag(tag=tag) for tag in object.tags]
         del object.tags
 

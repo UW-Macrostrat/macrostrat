@@ -433,8 +433,7 @@ class TestIngestProcess:
 
     ingest_process_data = {
       "comments": "This is a test comment",
-      "state": "pending",
-      "tags" : ["test_tag", "cool_tag"]
+      "state": "pending"
     }
 
     response = api_client.post(
@@ -448,7 +447,7 @@ class TestIngestProcess:
 
     assert data['comments'] == "This is a test comment"
     assert data['state'] == "pending"
-    assert data['tags'] == ["test_tag", "cool_tag"]
+    assert data['tags'] == []
 
   def test_get_ingest_processes(self, api_client):
     response = api_client.get("/ingest-process")
