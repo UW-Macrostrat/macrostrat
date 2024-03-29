@@ -148,8 +148,8 @@ class IngestType(enum.Enum):
 
 
 class IngestProcess(Base):
-    __tablename__ = "maps_meta"
-    __table_args__ = {'schema': 'macrostrat'}
+    __tablename__ = "ingest_process"
+    __table_args__ = {'schema': 'maps_meta'}
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
