@@ -1,7 +1,7 @@
 import enum
 from typing import List
 import datetime
-from sqlalchemy import ForeignKey, func, DateTime, Enum, UniqueConstraint
+from sqlalchemy import ForeignKey, func, DateTime, Enum, PrimaryKeyConstraint, UniqueConstraint
 from sqlalchemy.dialects.postgresql import VARCHAR, TEXT, INTEGER, ARRAY, BOOLEAN, JSON, JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from geoalchemy2 import Geometry
@@ -171,3 +171,18 @@ class IngestProcess(Base):
     # Relationships
     object_group: Mapped[ObjectGroup] = relationship(back_populates="ingest_process", lazy="joined")
     source: Mapped[Sources] = relationship(back_populates="ingest_process")
+    tags: Mapped[List["IngestProcessTag"]] = relationship(back_populates="ingest_process", lazy="joined")
+
+
+class IngestProcessTag(Base):
+    __tablename__ = "ingest_process_tag"
+    __table_args__ = (
+        PrimaryKeyConstraint('ingest_process_id', 'tag', name='pk_tag'),
+        {'schema': 'maps_metadata'}
+    )
+
+    ingest_process_id: Mapped[int] = mapped_column(ForeignKey("maps_metadata.ingest_process.id"))
+    tag: Mapped[str] = mapped_column(VARCHAR(255))
+
+    # Relationships
+    ingest_process: Mapped[IngestProcess] = relationship(back_populates="tags")

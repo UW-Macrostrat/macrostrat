@@ -433,7 +433,8 @@ class TestIngestProcess:
 
     ingest_process_data = {
       "comments": "This is a test comment",
-      "state": "pending"
+      "state": "pending",
+      "tags" : ["test_tag", "cool_tag"]
     }
 
     response = api_client.post(
@@ -442,6 +443,12 @@ class TestIngestProcess:
     )
 
     assert response.status_code == 200
+
+    data = response.json()
+
+    assert data['comments'] == "This is a test comment"
+    assert data['state'] == "pending"
+    assert data['tags'] == ["test_tag", "cool_tag"]
 
   def test_get_ingest_processes(self, api_client):
     response = api_client.get("/ingest-process")
@@ -482,6 +489,52 @@ class TestIngestProcess:
     single_data = response.json()
 
     assert single_data['comments'] == "test"
+
+  def test_add_tag_to_ingest_process(self, api_client):
+    """Test adding a tag to an ingest process"""
+
+    test_tag = f"new_tag-{random.randint(0,10000000)}"
+
+    response = api_client.get("/ingest-process")
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert len(data) > 0
+
+    response = api_client.post(f"/ingest-process/{data[0]['id']}/tags", json={"tag": test_tag})
+
+    assert response.status_code == 200
+
+    single_data = response.json()
+
+    assert test_tag in single_data
+
+  def test_delete_tag_from_ingest_process(self, api_client):
+    """Test deleting a tag from an ingest process"""
+
+    test_tag = f"new_tag-{random.randint(0,10000000)}"
+
+    response = api_client.get("/ingest-process")
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert len(data) > 0
+
+    response = api_client.post(f"/ingest-process/{data[0]['id']}/tags", json={"tag": test_tag})
+    post_data = response.json()
+
+    assert response.status_code == 200
+    assert test_tag in post_data
+
+    response = api_client.delete(f"/ingest-process/{data[0]['id']}/tags/{test_tag}")
+
+    assert response.status_code == 200
+
+    single_data = response.json()
+
+    assert test_tag not in single_data
 
   def test_pair_object_to_ingest(self, api_client):
     response = api_client.get("/ingest-process")

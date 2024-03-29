@@ -1,7 +1,7 @@
 import os
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import insert, select, update, and_
+from sqlalchemy import insert, select, update, and_, delete
 from sqlalchemy.orm import selectinload, joinedload, defer
 import minio
 
@@ -13,7 +13,7 @@ from api.database import (
 from api.routes.security import has_access
 import api.models.ingest as IngestProcessModel
 import api.models.object as Object
-from api.schemas import IngestProcess as IngestProcessSchema, ObjectGroup, Sources
+from api.schemas import IngestProcess as IngestProcessSchema, ObjectGroup, Sources, IngestProcessTag
 from api.query_parser import get_filter_query_params, QueryParser
 
 router = APIRouter(
@@ -39,7 +39,8 @@ async def get_multiple_ingest_process(page: int = 0, page_size: int = 50, filter
             .limit(page_size)\
             .offset(page_size * page)\
             .where(and_(query_parser.where_expressions()))\
-            .options(joinedload(IngestProcessSchema.source).defer(Sources.rgeom).defer(Sources.web_geom))
+            .options(joinedload(IngestProcessSchema.source).defer(Sources.rgeom).defer(Sources.web_geom))\
+            .options(selectinload(IngestProcessSchema.tags))
 
         results = await session.execute(select_stmt)
 
@@ -56,7 +57,8 @@ async def get_ingest_process(id: int):
     async with async_session() as session:
 
         select_stmt = select(IngestProcessSchema).where(and_(IngestProcessSchema.id == id))\
-            .options(joinedload(IngestProcessSchema.source).defer(Sources.rgeom).defer(Sources.web_geom))
+            .options(joinedload(IngestProcessSchema.source).defer(Sources.rgeom).defer(Sources.web_geom))\
+            .options(selectinload(IngestProcessSchema.tags))
 
         result = await session.scalar(select_stmt)
 
@@ -78,18 +80,25 @@ async def create_ingest_process(object: IngestProcessModel.Post, user_has_access
 
     async with async_session() as session:
 
-        object_group_stmt = insert(ObjectGroup).values().returning(ObjectGroup)
-        object_group = await session.scalar(object_group_stmt)
-
-        stmt = insert(IngestProcessSchema).values(**object.model_dump(), object_group_id=object_group.id).returning(IngestProcessSchema)
-
-        server_object = await session.scalar(stmt)
-
-        server_object.source = await session.scalar(select(Sources).where(Sources.source_id == server_object.source_id))
-
+        object_group = ObjectGroup()
+        session.add(object_group)
         await session.commit()
 
-    return server_object
+        tags = [IngestProcessTag(tag=tag) for tag in object.tags]
+        del object.tags
+
+        ingest_process = IngestProcessSchema(
+            **object.model_dump(),
+            object_group_id=object_group.id,
+            tags=tags
+        )
+
+        session.add(ingest_process)
+        await session.commit()
+
+        ingest_process.source = await session.get(Sources, object.source_id)
+
+    return ingest_process
 
 
 @router.patch("/{id}", response_model=IngestProcessModel.Get)
@@ -118,6 +127,62 @@ async def patch_ingest_process(
         response = IngestProcessModel.Get(**server_object.__dict__)
         await session.commit()
         return response
+
+@router.post("/{id}/tags", response_model=list[str])
+async def add_ingest_process_tag(
+    id: int,
+    tag: IngestProcessModel.Tag,
+    user_has_access: bool = Depends(has_access)
+):
+    """Add a tag to an ingest process"""
+
+    if not user_has_access:
+        raise HTTPException(status_code=403, detail="User does not have access to create an object")
+
+    engine = get_engine()
+    async_session = get_async_session(engine)
+
+    async with async_session() as session:
+
+        ingest_process = await session.get(IngestProcessSchema, id)
+
+        if ingest_process is None:
+            raise HTTPException(status_code=404, detail=f"IngestProcess with id ({id}) not found")
+
+        ingest_process.tags.append(IngestProcessTag(tag=tag.tag))
+        await session.commit()
+
+        ingest_process = await session.get(IngestProcessSchema, id)
+        return [tag.tag for tag in ingest_process.tags]
+
+    return None
+
+@router.delete("/{id}/tags/{tag}", response_model=list[str])
+async def delete_ingest_process_tag(id: int, tag: str, user_has_access: bool = Depends(has_access)):
+    """Delete a tag from an ingest process"""
+
+    if not user_has_access:
+        raise HTTPException(status_code=403, detail="User does not have access to create an object")
+
+    engine = get_engine()
+    async_session = get_async_session(engine)
+
+    async with async_session() as session:
+
+        ingest_process = await session.get(IngestProcessSchema, id)
+
+        if ingest_process is None:
+            raise HTTPException(status_code=404, detail=f"IngestProcess with id ({id}) not found")
+
+        tag_stmt = delete(IngestProcessTag).where(and_(IngestProcessTag.ingest_process_id == id, IngestProcessTag.tag == tag))
+        await session.execute(tag_stmt)
+        await session.commit()
+
+        ingest_process = await session.get(IngestProcessSchema, id)
+
+        return [tag.tag for tag in ingest_process.tags]
+
+    return ingest_process
 
 
 @router.get("/{id}/objects", response_model=list[Object.GetSecureURL])
