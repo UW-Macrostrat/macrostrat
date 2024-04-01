@@ -32,5 +32,8 @@ Documentation is a work in progress. We have starting points for:
 
 * [The `macrostrat` command line app](cli/docs/cli-usage.md)
 
+* [Map staging scripts](map-staging/README.md): ad-hoc scripts for scraping
+  vector maps from the web and uploading to Macrostrat
+
 Other documentation of general interest can be found in the [docs/](docs/)
 directory.
