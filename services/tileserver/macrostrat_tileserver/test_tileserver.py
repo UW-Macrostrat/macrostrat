@@ -4,9 +4,9 @@ Tests for Macrostrat's tileserver v2
 import pytest
 
 
+@pytest.mark.legacy_raster
 def test_mapnik_available():
     import mapnik
-
     assert mapnik
 
 
