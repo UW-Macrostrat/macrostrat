@@ -1,12 +1,14 @@
 """
 Tests for Macrostrat's tileserver v2
 """
+
 import pytest
 
 
 @pytest.mark.legacy_raster
 def test_mapnik_available():
     import mapnik
+
     assert mapnik
 
 
@@ -17,3 +19,9 @@ def test_mapnik_available():
 
 # tile 0, 0, 1
 # North america
+
+
+def test_database(db):
+    assert db
+    assert db.engine
+    assert db.engine.url
