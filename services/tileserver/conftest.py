@@ -1,7 +1,17 @@
 import pytest
+from dotenv import load_dotenv
+from macrostrat_tileserver.tests.fixtures import testing_db
+
+load_dotenv()
 
 def pytest_addoption(parser):
     parser.addoption("--skip-legacy-raster", action="store_true", help="Skip legacy raster tests")
+    parser.addoption(
+        "--no-drop",
+        action="store_true",
+        default=False,
+        help="Keep the database after tests",
+    )
 
 def pytest_configure(config):
     # register an additional marker
