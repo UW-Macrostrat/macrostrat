@@ -5,4 +5,4 @@ fast:
 	poetry run uvicorn macrostrat_tileserver.main:app --log-level debug --port 8000 --workers 8
 
 test:
-	strat compose run tileserver pytest
+	poetry run pytest -s -x macrostrat_tileserver
