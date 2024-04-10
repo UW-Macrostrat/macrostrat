@@ -250,4 +250,3 @@ async def get_ingest_process_objects(id: int):
             status_code=500,
             detail=f"Failed to get secure url for object: {e}"
         )
-

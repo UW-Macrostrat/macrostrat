@@ -59,8 +59,8 @@ def get_async_session(engine: AsyncEngine, **kwargs) -> async_sessionmaker[Async
 
 
 async def source_id_to_slug(
-    async_engine: AsyncEngine,
-    source_id: id
+        async_engine: AsyncEngine,
+        source_id: id
 ):
     async with get_async_session(async_engine)() as session:
         stmt = select(schemas.Sources).where(schemas.Sources.source_id == source_id)
@@ -75,7 +75,7 @@ async def source_id_to_slug(
 
 
 async def get_sources(
-    async_session: async_sessionmaker[AsyncSession], page: int = 0, page_size: int = 100
+        async_session: async_sessionmaker[AsyncSession], page: int = 0, page_size: int = 100
 ):
     async with async_session() as session:
         stmt = (
@@ -94,7 +94,9 @@ async def get_schema_tables(engine: AsyncEngine, schema: str):
         q = text(
             "SELECT table_name FROM information_schema.tables WHERE table_schema = :schema"
         )
-        params = {"schema": schema}
+        params = {
+            "schema": schema
+        }
         q = q.bindparams(**params)
 
         result = await conn.execute(q)
@@ -104,7 +106,6 @@ async def get_schema_tables(engine: AsyncEngine, schema: str):
 
 async def insert_access_token(engine: AsyncEngine, token: str, group_id: int, expiration: datetime.datetime):
     async with engine.begin() as conn:
-
         q = insert(schemas.Token).values(token=token, expires_on=expiration, group=group_id)
         result = await conn.execute(q)
 
@@ -218,12 +219,12 @@ async def get_sources_sub_table_count(
 
 
 async def select_sources_sub_table(
-    engine: AsyncEngine,
-    table_id: int,
-    geometry_type: Literal["polygons", "points", "linestrings"],
-    page: int = 0,
-    page_size: int = 100,
-    query_params: list = None,
+        engine: AsyncEngine,
+        table_id: int,
+        geometry_type: Literal["polygons", "points", "linestrings"],
+        page: int = 0,
+        page_size: int = 100,
+        query_params: list = None,
 ) -> SQLResponse:
     async with engine.begin() as conn:
 
@@ -253,12 +254,14 @@ async def select_sources_sub_table(
             )
 
         if (
-            query_parser.get_order_by_columns() is not None
-            and query_parser.get_group_by_column() is None
+                query_parser.get_order_by_columns() is not None
+                and query_parser.get_group_by_column() is None
         ):
             stmt = stmt.order_by(*query_parser.get_order_by_columns())
 
-        x = str(stmt.compile(compile_kwargs={"literal_binds": True}))
+        x = str(stmt.compile(compile_kwargs={
+            "literal_binds": True
+        }))
 
         result = await conn.execute(stmt)
 
@@ -268,15 +271,13 @@ async def select_sources_sub_table(
 
 
 async def patch_sources_sub_table(
-    engine: AsyncEngine,
-    table_id: int,
-    geometry_type: Literal["polygons", "points", "linestrings"],
-    update_values: dict,
-    query_params: list = None
+        engine: AsyncEngine,
+        table_id: int,
+        geometry_type: Literal["polygons", "points", "linestrings"],
+        update_values: dict,
+        query_params: list = None
 ) -> CursorResult:
-
     async with engine.begin() as conn:
-
         table = await get_table(conn, table_id, geometry_type)
 
         # Extract filters from the query parameters
@@ -288,7 +289,9 @@ async def patch_sources_sub_table(
             .values(**update_values)
         )
 
-        x = str(stmt.compile(compile_kwargs={"literal_binds": True}))
+        x = str(stmt.compile(compile_kwargs={
+            "literal_binds": True
+        }))
 
         result = await conn.execute(stmt)
 
@@ -296,15 +299,14 @@ async def patch_sources_sub_table(
 
 
 async def patch_sources_sub_table_set_columns_equal(
-    engine: AsyncEngine,
-    table_id: int,
-    geometry_type: Literal["polygons", "points", "lines"],
-    target_column: str,
-    source_column: str,
-    query_params: list = None
+        engine: AsyncEngine,
+        table_id: int,
+        geometry_type: Literal["polygons", "points", "lines"],
+        target_column: str,
+        source_column: str,
+        query_params: list = None
 ) -> CursorResult:
     async with engine.begin() as conn:
-
         table = await get_table(conn, table_id, geometry_type)
 
         # Extract filters from the query parameters
@@ -313,7 +315,9 @@ async def patch_sources_sub_table_set_columns_equal(
         stmt = (
             update(table)
             .where(query_parser.where_expressions())
-            .values({getattr(table.c, target_column): getattr(table.c, source_column)})
+            .values({
+                        getattr(table.c, target_column): getattr(table.c, source_column)
+                    })
         )
 
         result = await conn.execute(stmt)

@@ -5,8 +5,8 @@ from pydantic import BaseModel
 
 from api.schemas import SchemeEnum
 
-class Base(BaseModel):
 
+class Base(BaseModel):
     source: Optional[dict] = None
     mime_type: Optional[str] = None
     sha256_hash: Optional[str] = None
@@ -17,7 +17,6 @@ class Base(BaseModel):
 
 
 class Post(Base):
-
     scheme: SchemeEnum
     host: str
     bucket: str
@@ -39,9 +38,7 @@ class GetSecureURL(Get):
 
 
 class Patch(Base):
-
     object_group_id: Optional[int] = None
     created_on: Optional[datetime.datetime] = None
     updated_on: Optional[datetime.datetime] = None
     deleted_on: Optional[datetime.datetime] = None
-

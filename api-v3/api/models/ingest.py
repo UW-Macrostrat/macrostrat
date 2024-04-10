@@ -9,7 +9,6 @@ from .source import Sources
 
 
 class Post(BaseModel):
-
     state: Optional[IngestState] = None
     comments: Optional[str] = None
     source_id: Optional[int] = None
@@ -23,7 +22,6 @@ class Post(BaseModel):
 
 
 class Get(Post):
-
     id: int
     object_group_id: int
     created_on: datetime.datetime
@@ -48,4 +46,3 @@ class Patch(Post):
 
 class Tag(BaseModel):
     tag: str
-

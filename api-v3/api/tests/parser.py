@@ -13,8 +13,9 @@ from sqlalchemy.sql.expression import SQLColumnExpression
 
 
 def compile_statement(stmt: SQLColumnExpression):
-
-    return str(stmt.compile(compile_kwargs={"literal_binds": True}))
+    return str(stmt.compile(compile_kwargs={
+        "literal_binds": True
+    }))
 
 
 TEST_TABLE = Table(
@@ -24,10 +25,10 @@ TEST_TABLE = Table(
     Column("int_column", Integer)
 )
 
+
 class TestParser:
 
     def test_eq(self):
-
         params = {
             "string_column": "eq.test value"
         }
@@ -59,9 +60,7 @@ class TestParser:
 
         assert compile_statement(sql) == "test_table.string_column = 'test value'"
 
-
     def test_multiple_eq(self):
-
         params = {
             "int_column": "eq.1",
             "string_column": "eq.test value"
@@ -73,7 +72,6 @@ class TestParser:
         assert compile_statement(sql) == "test_table.int_column = 1 AND test_table.string_column = 'test value'"
 
     def test_like(self):
-
         params = {
             "string_column": "like.%its rock time%"
         }
@@ -84,7 +82,6 @@ class TestParser:
         assert compile_statement(sql) == "test_table.string_column LIKE '%its rock time%'"
 
     def test_encoded_like(self):
-
         params = {
             "string_column": "like.%its%20rock%20time%"
         }
@@ -95,7 +92,6 @@ class TestParser:
         assert compile_statement(sql) == "test_table.string_column LIKE '%its rock time%'"
 
     def test_is_null(self):
-
         params = {
             "int_column": "is.null"
         }
@@ -106,7 +102,6 @@ class TestParser:
         assert compile_statement(sql) == "test_table.int_column IS NULL"
 
     def test_is_true(self):
-
         params = {
             "int_column": "is.true"
         }
@@ -117,7 +112,6 @@ class TestParser:
         assert compile_statement(sql) == "test_table.int_column IS true"
 
     def test_is_false(self):
-
         params = {
             "int_column": "is.false"
         }
@@ -128,7 +122,6 @@ class TestParser:
         assert compile_statement(sql) == "test_table.int_column IS false"
 
     def test_is_not_null(self):
-
         params = {
             "string_column": "not.is.null"
         }
@@ -139,7 +132,6 @@ class TestParser:
         assert compile_statement(sql) == "test_table.string_column IS NOT NULL"
 
     def test_is_not_like(self):
-
         params = {
             "string_column": "not.like.%value%"
         }
@@ -150,7 +142,6 @@ class TestParser:
         assert compile_statement(sql) == "test_table.string_column NOT LIKE '%value%'"
 
     def test_period_in_string(self):
-
         params = {
             'string_column': 'like.%2.5 Ga to 3.2 Ga%'
         }
@@ -161,7 +152,6 @@ class TestParser:
         assert compile_statement(sql) == "test_table.string_column LIKE '%2.5 Ga to 3.2 Ga%'"
 
     def test_period_in_string(self):
-
         params = {
             'string_column': 'like.Felsic'
         }
@@ -172,7 +162,6 @@ class TestParser:
         assert compile_statement(sql) == "test_table.string_column LIKE '%Felsic%'"
 
     def test_group_by(self):
-
         params = {
             "int_column": "group_by"
         }
@@ -185,7 +174,8 @@ class TestParser:
 
         stmt = [*map(lambda x: compile_statement(x), select_columns)]
 
-        assert stmt[0] == "CASE WHEN (count(DISTINCT CAST(test_table.string_column AS VARCHAR)) > 5) THEN 'Multiple Values' ELSE STRING_AGG(DISTINCT CAST(test_table.string_column AS VARCHAR), ',') END"
+        assert stmt[
+                   0] == "CASE WHEN (count(DISTINCT CAST(test_table.string_column AS VARCHAR)) > 5) THEN 'Multiple Values' ELSE STRING_AGG(DISTINCT CAST(test_table.string_column AS VARCHAR), ',') END"
         assert stmt[1] == "test_table.int_column"
 
     def test_order_by(self):

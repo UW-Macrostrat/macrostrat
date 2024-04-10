@@ -14,12 +14,10 @@ import starlette.requests
 import logging
 from fastapi import FastAPI, HTTPException, Request
 
-
 from sqlalchemy.sql.expression import SQLColumnExpression
 from sqlalchemy import and_, Column, not_, Table, func, distinct, cast, String, case
 
 VALID_OPERATORS = ["not", "eq", "lt", "le", "gt", "ge", "ne", "like", "in", "is"]
-
 
 log = logging.getLogger(__name__)
 

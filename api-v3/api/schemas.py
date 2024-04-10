@@ -13,7 +13,9 @@ class Base(DeclarativeBase):
 
 class Sources(Base):
     __tablename__ = "sources"
-    __table_args__ = {'schema': 'maps'}
+    __table_args__ = {
+        'schema': 'maps'
+    }
     source_id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(VARCHAR(255))
     primary_table: Mapped[str] = mapped_column(VARCHAR(255))
@@ -43,7 +45,9 @@ class Sources(Base):
 
 class GroupMembers(Base):
     __tablename__ = "group_members"
-    __table_args__ = {'schema': 'macrostrat_auth'}
+    __table_args__ = {
+        'schema': 'macrostrat_auth'
+    }
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     group_id: Mapped[int] = mapped_column(ForeignKey("macrostrat_auth.group.id"))
     user_id: Mapped[int] = mapped_column(ForeignKey("macrostrat_auth.user.id"))
@@ -51,20 +55,26 @@ class GroupMembers(Base):
 
 class Group(Base):
     __tablename__ = "group"
-    __table_args__ = {'schema': 'macrostrat_auth'}
+    __table_args__ = {
+        'schema': 'macrostrat_auth'
+    }
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(VARCHAR(255))
-    users: Mapped[List["User"]] = relationship(secondary="macrostrat_auth.group_members", lazy="joined", back_populates="groups")
+    users: Mapped[List["User"]] = relationship(secondary="macrostrat_auth.group_members", lazy="joined",
+                                               back_populates="groups")
 
 
 class User(Base):
     __tablename__ = "user"
-    __table_args__ = {'schema': 'macrostrat_auth'}
+    __table_args__ = {
+        'schema': 'macrostrat_auth'
+    }
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     sub: Mapped[str] = mapped_column(VARCHAR(255))
     name: Mapped[str] = mapped_column(VARCHAR(255))
     email: Mapped[str] = mapped_column(VARCHAR(255))
-    groups: Mapped[List[Group]] = relationship(secondary="macrostrat_auth.group_members", lazy="joined", back_populates="users")
+    groups: Mapped[List[Group]] = relationship(secondary="macrostrat_auth.group_members", lazy="joined",
+                                               back_populates="users")
     created_on: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -75,7 +85,9 @@ class User(Base):
 
 class Token(Base):
     __tablename__ = "token"
-    __table_args__ = {'schema': 'macrostrat_auth'}
+    __table_args__ = {
+        'schema': 'macrostrat_auth'
+    }
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     token: Mapped[str] = mapped_column(VARCHAR(255), unique=True)
     group: Mapped[Group] = mapped_column(ForeignKey("macrostrat_auth.group.id"))
@@ -99,7 +111,9 @@ class Object(Base):
     __tablename__ = "object"
     __table_args__ = (
         UniqueConstraint('scheme', 'host', 'bucket', 'key', name='unique_file'),
-        {'schema': 'storage'}
+        {
+            'schema': 'storage'
+        }
     )
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     object_group_id: Mapped[int] = mapped_column(ForeignKey("storage.object_group.id"), nullable=True)
@@ -126,7 +140,9 @@ class Object(Base):
 
 class ObjectGroup(Base):
     __tablename__ = "object_group"
-    __table_args__ = {'schema': 'storage'}
+    __table_args__ = {
+        'schema': 'storage'
+    }
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
     # Relationships
@@ -149,7 +165,9 @@ class IngestType(enum.Enum):
 
 class IngestProcess(Base):
     __tablename__ = "ingest_process"
-    __table_args__ = {'schema': 'maps_metadata'}
+    __table_args__ = {
+        'schema': 'maps_metadata'
+    }
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
@@ -178,7 +196,9 @@ class IngestProcessTag(Base):
     __tablename__ = "ingest_process_tag"
     __table_args__ = (
         PrimaryKeyConstraint('ingest_process_id', 'tag', name='pk_tag'),
-        {'schema': 'maps_metadata'}
+        {
+            'schema': 'maps_metadata'
+        }
     )
 
     ingest_process_id: Mapped[int] = mapped_column(ForeignKey("maps_metadata.ingest_process.id"))

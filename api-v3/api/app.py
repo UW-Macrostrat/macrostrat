@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 import dotenv
+
 dotenv.load_dotenv()
 
 import api.routes.security

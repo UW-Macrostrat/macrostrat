@@ -48,9 +48,11 @@ class User(BaseModel):
     full_name: str | None = None
     disabled: bool | None = None
 
+
 class AccessToken(BaseModel):
     group: int
     token: str
+
 
 class GroupTokenRequest(BaseModel):
     expiration: int
@@ -68,7 +70,9 @@ class OAuth2AuthorizationCodeBearerWithCookie(OAuth2AuthorizationCodeBearer):
                 raise HTTPException(
                     status_code=HTTP_401_UNAUTHORIZED,
                     detail="Not authenticated",
-                    headers={"WWW-Authenticate": "Bearer"},
+                    headers={
+                        "WWW-Authenticate": "Bearer"
+                    },
                 )
             else:
                 return None  # pragma: nocover
@@ -86,11 +90,16 @@ http_bearer = HTTPBearer(auto_error=False)
 router = APIRouter(
     prefix="/security",
     tags=["security"],
-    responses={404: {"description": "Not found"}},
+    responses={
+        404: {
+            "description": "Not found"
+        }
+    },
 )
 
 
-async def get_groups_from_header_token(header_token: Annotated[HTTPAuthorizationCredentials, Depends(http_bearer)]) -> int | None:
+async def get_groups_from_header_token(
+        header_token: Annotated[HTTPAuthorizationCredentials, Depends(http_bearer)]) -> int | None:
     """Get the groups from the bearer token in the header"""
 
     if header_token is None:
@@ -161,8 +170,8 @@ async def get_user_token_from_cookie(token: Annotated[str | None, Depends(oauth2
 
 
 async def get_groups(
-    user_token_data: TokenData | None = Depends(get_user_token_from_cookie),
-    header_token: int | None = Depends(get_groups_from_header_token)
+        user_token_data: TokenData | None = Depends(get_user_token_from_cookie),
+        header_token: int | None = Depends(get_groups_from_header_token)
 ) -> list[int]:
     """Get the groups from both the cookies and header"""
 
@@ -193,7 +202,9 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
         expire = datetime.utcnow() + expires_delta
     else:
         expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
+    to_encode.update({
+                         "exp": expire
+                     })
     encoded_jwt = jwt.encode(to_encode, os.environ['SECRET_KEY'], algorithm=os.environ['JWT_ENCRYPTION_ALGORITHM'])
     return encoded_jwt
 
@@ -238,7 +249,8 @@ async def redirect_callback(code: str, state: Optional[str] = None):
         async with session.post(os.environ['OAUTH_USERINFO_URL'], data=response_data) as user_response:
 
             if user_response.status != 200:
-                raise HTTPException(status_code=400, detail=f"Couldn't get user information: {await user_response.text()} ")
+                raise HTTPException(status_code=400,
+                                    detail=f"Couldn't get user information: {await user_response.text()} ")
 
             user_data = await user_response.json()
 
@@ -250,7 +262,7 @@ async def redirect_callback(code: str, state: Optional[str] = None):
             access_token = create_access_token(
                 data={
                     "sub": user.sub,
-                    "role": "web_user", # For PostgREST
+                    "role": "web_user",  # For PostgREST
                     "groups": [group.id for group in user.groups],
 
                 }
@@ -263,11 +275,13 @@ async def redirect_callback(code: str, state: Optional[str] = None):
 
 
 @router.post("/token", response_model=AccessToken)
-async def create_group_token(group_token_request: GroupTokenRequest, user_token: TokenData = Depends(get_user_token_from_cookie)):
+async def create_group_token(group_token_request: GroupTokenRequest,
+                             user_token: TokenData = Depends(get_user_token_from_cookie)):
     """Get an access token for the current user"""
 
     if group_token_request.group_id not in user_token.groups:
-        raise HTTPException(status_code=401, detail=f"User cannot create tokens for group {group_token_request.group_id}")
+        raise HTTPException(status_code=401,
+                            detail=f"User cannot create tokens for group {group_token_request.group_id}")
 
     engine = db.get_engine()
 
@@ -298,6 +312,7 @@ async def get_security_groups(groups: list[int] = Depends(get_groups)):
     """Get the groups for the current user"""
 
     return groups
+
 
 @router.get("/me")
 async def read_users_me(user_token_data: TokenData = Depends(get_user_token_from_cookie)):

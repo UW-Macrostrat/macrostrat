@@ -27,8 +27,3 @@ class Sources(BaseModel):
     display_scales: Optional[list[str]] = None
     new_priority: int
     status_code: str
-
-
-
-
-

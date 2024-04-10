@@ -16,7 +16,11 @@ from api.query_parser import get_filter_query_params, QueryParser
 router = APIRouter(
     prefix="/object",
     tags=["file"],
-    responses={404: {"description": "Not found"}},
+    responses={
+        404: {
+            "description": "Not found"
+        }
+    },
 )
 
 
@@ -32,9 +36,9 @@ async def get_objects(page: int = 0, page_size: int = 50, filter_query_params=De
     async with async_session() as session:
 
         # TODO: This flow should likely be refactored into a function, lets see it used once more before making the move
-        select_stmt = select(*query_parser.get_select_columns())\
-            .limit(page_size)\
-            .offset(page_size * page)\
+        select_stmt = select(*query_parser.get_select_columns()) \
+            .limit(page_size) \
+            .offset(page_size * page) \
             .where(and_(schemas.Object.deleted_on == None, query_parser.where_expressions()))
 
         # Add grouping
@@ -60,7 +64,6 @@ async def get_object(id: int):
     async_session = get_async_session(engine)
 
     async with async_session() as session:
-
         select_stmt = select(schemas.Object).where(and_(schemas.Object.id == id, schemas.Object.deleted_on == None))
 
         result = await session.scalar(select_stmt)
@@ -83,7 +86,6 @@ async def create_object(object: Object.Post, user_has_access: bool = Depends(has
     async_session = get_async_session(engine)
 
     async with async_session() as session:
-
         insert_stmt = insert(schemas.Object).values(**object.model_dump()).returning(schemas.Object)
         server_object = await session.scalar(insert_stmt)
 
@@ -103,10 +105,9 @@ async def patch_object(id: int, object: Object.Patch, user_has_access: bool = De
     async_session = get_async_session(engine)
 
     async with async_session() as session:
-
-        update_stmt = update(schemas.Object)\
-            .where(schemas.Object.id == id)\
-            .values(**object.model_dump(exclude_unset=True))\
+        update_stmt = update(schemas.Object) \
+            .where(schemas.Object.id == id) \
+            .values(**object.model_dump(exclude_unset=True)) \
             .returning(schemas.Object)
 
         server_object = await session.scalar(update_stmt)
@@ -127,10 +128,9 @@ async def delete_object(id: int, has_access: bool = Depends(has_access)):
     async_session = get_async_session(engine)
 
     async with async_session() as session:
-
-        delete_stmt = update(schemas.Object)\
-            .where(schemas.Object.id == id)\
-            .values(deleted_on=datetime.datetime.utcnow())\
+        delete_stmt = update(schemas.Object) \
+            .where(schemas.Object.id == id) \
+            .values(deleted_on=datetime.datetime.utcnow()) \
             .returning(schemas.Object)
 
         server_object = await session.scalar(delete_stmt)

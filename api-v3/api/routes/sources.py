@@ -1,16 +1,14 @@
-import secrets
 import urllib.parse
-from contextlib import asynccontextmanager
 from typing import List, Literal, Union
 
 import starlette.requests
 import uvicorn
 from fastapi import APIRouter, HTTPException, Response, status, Depends
-from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import select, func
+from sqlalchemy import select, func, update
 from sqlalchemy.exc import NoResultFound, NoSuchTableError
 
 import dotenv
+
 dotenv.load_dotenv()
 
 import api.routes.security
@@ -34,11 +32,17 @@ import api.schemas as schemas
 router = APIRouter(
     prefix="/sources",
     tags=["sources"],
-    responses={404: {"description": "Not found"}},
+    responses={
+        404: {
+            "description": "Not found"
+        }
+    },
 )
 
+
 @router.get("")
-async def get_sources(response: Response, page: int = 0, page_size: int = 100, include_geom: bool = False) -> List[Sources]:
+async def get_sources(response: Response, page: int = 0, page_size: int = 100, include_geom: bool = False) -> List[
+    Sources]:
     async_session = get_async_session(get_engine())
     sources = await db.get_sources(async_session, page, page_size)
 
@@ -49,7 +53,10 @@ async def get_sources(response: Response, page: int = 0, page_size: int = 100, i
             del source.web_geom
 
     # Add the appropriate headers
-    response.headers["Link"] = "/sources" + urllib.parse.urlencode({page: page + 1, page_size: page_size})
+    response.headers["Link"] = "/sources" + urllib.parse.urlencode({
+                                                                       page: page + 1,
+                                                                       page_size: page_size
+                                                                   })
 
     return sources
 
@@ -62,7 +69,6 @@ async def get_source(source_id: int) -> Sources:
     async_session = get_async_session(engine)
 
     async with async_session() as session:
-
         select_stmt = select(
             *[c for c in schemas.Sources.__table__.c if c.name not in ['rgeom', 'web_geom']]
         ).where(schemas.Sources.source_id == source_id)
@@ -75,9 +81,28 @@ async def get_source(source_id: int) -> Sources:
         return db.results_to_model(results, Sources)[0]
 
 
+@router.patch("/{source_id}")
+async def patch_source(source_id: int, source: Sources, user_has_access: bool = Depends(has_access)) -> Sources:
+    """Patch a source"""
+
+    engine = get_engine()
+    async_session = get_async_session(engine)
+
+    async with async_session() as session:
+        update_stmt = update(schemas.Sources) \
+            .where(schemas.Sources.source_id == source_id) \
+            .values(**source.model_dump(exclude_none=True))
+
+        server_object = await session.scalar(update_stmt)
+
+        response = Sources.Get(**server_object.__dict__)
+        await session.commit()
+        return response
+
+
 @router.get("/{table_id}/geometries")
 async def get_sub_sources_geometries(
-    table_id: int
+        table_id: int
 ):
     result = {}
 
@@ -104,7 +129,6 @@ async def get_sub_sources_helper(
         page: int = 0,
         page_size: int = 100
 ) -> List[Union[PolygonResponseModel, LineStringModel, PointModel]]:
-
     try:
         # Get the query results
         filter_query_params = [*filter(lambda x: x[0] not in ["page", "page_size"], request.query_params.multi_items())]
@@ -177,7 +201,6 @@ async def patch_sub_sources(
         updates: Union[PolygonRequestModel, LineStringModel, PointModel],
         user_has_access: bool = Depends(has_access)
 ) -> List[Union[PolygonResponseModel, LineStringModel, PointModel]]:
-
     if not user_has_access:
         raise HTTPException(status_code=401, detail="User does not have access to patch object")
 
@@ -202,7 +225,8 @@ async def patch_sub_sources(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.patch("/{table_id}/{geometry_type}/{target_column}", response_model=List[Union[PolygonResponseModel, LineStringModel, PointModel]])
+@router.patch("/{table_id}/{geometry_type}/{target_column}",
+              response_model=List[Union[PolygonResponseModel, LineStringModel, PointModel]])
 async def patch_sub_sources(
         request: starlette.requests.Request,
         target_column: str,
@@ -211,7 +235,6 @@ async def patch_sub_sources(
         copy_column: CopyColumnRequest,
         user_has_access: bool = Depends(has_access),
 ):
-
     if not user_has_access:
         raise HTTPException(status_code=401, detail="User does not have access to patch object")
 
@@ -235,8 +258,3 @@ async def patch_sub_sources(
         raise HTTPException(status_code=400, detail="No rows patched, if this is unexpected please report as bug")
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
-
-
-
