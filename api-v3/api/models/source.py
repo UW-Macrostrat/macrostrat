@@ -7,10 +7,9 @@ from numpy import isnan
 
 
 # Database Models
-class Sources(BaseModel):
-    source_id: int
+class Post(BaseModel):
     name: Optional[str] = None
-    primary_table: str
+    primary_table: Optional[str] = None
     url: Optional[str] = None
     raster_url: Optional[str] = None
     ref_title: Optional[str] = None
@@ -23,7 +22,15 @@ class Sources(BaseModel):
     licence: Optional[str] = None
     features: Optional[int] = None
     area: Optional[int] = None
-    priority: bool
+    priority: Optional[bool] = None
     display_scales: Optional[list[str]] = None
-    new_priority: int
-    status_code: str
+    new_priority: Optional[int] = None
+    status_code: Optional[str] = None
+
+
+class Get(Post):
+    source_id: int
+
+
+class Patch(Post):
+    pass

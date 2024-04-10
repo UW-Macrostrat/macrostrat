@@ -5,7 +5,7 @@ from enum import Enum
 from pydantic import BaseModel, ConfigDict, field_validator
 
 from api.schemas import IngestState, IngestProcessTag
-from .source import Sources
+import api.models.source as Sources
 
 
 class Post(BaseModel):
@@ -26,7 +26,7 @@ class Get(Post):
     object_group_id: int
     created_on: datetime.datetime
     completed_on: Optional[datetime.datetime] = None
-    source: Optional[Sources] = None
+    source: Optional[Sources.Get] = None
 
     @field_validator("tags", mode="before")
     @classmethod

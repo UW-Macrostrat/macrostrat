@@ -23,7 +23,7 @@ from api.database import (
 from api.models.geometries import (
     PolygonModel, PolygonRequestModel, PolygonResponseModel, CopyColumnRequest, LineStringModel, PointModel
 )
-from api.models.source import Sources
+import api.models.source as Sources
 from api.query_parser import ParserException
 from api.routes.security import has_access
 
@@ -42,7 +42,7 @@ router = APIRouter(
 
 @router.get("")
 async def get_sources(response: Response, page: int = 0, page_size: int = 100, include_geom: bool = False) -> List[
-    Sources]:
+    Sources.Get]:
     async_session = get_async_session(get_engine())
     sources = await db.get_sources(async_session, page, page_size)
 
@@ -62,7 +62,7 @@ async def get_sources(response: Response, page: int = 0, page_size: int = 100, i
 
 
 @router.get("/{source_id}")
-async def get_source(source_id: int) -> Sources:
+async def get_source(source_id: int) -> Sources.Get:
     """Get a single object"""
 
     engine = get_engine()
@@ -78,20 +78,24 @@ async def get_source(source_id: int) -> Sources:
         if results is None:
             raise HTTPException(status_code=404, detail=f"Object with id ({id}) not found")
 
-        return db.results_to_model(results, Sources)[0]
+        return db.results_to_model(results, Sources.Get)[0]
 
 
 @router.patch("/{source_id}")
-async def patch_source(source_id: int, source: Sources, user_has_access: bool = Depends(has_access)) -> Sources:
+async def patch_source(source_id: int, source: Sources.Patch, user_has_access: bool = Depends(has_access)) -> Sources.Get:
     """Patch a source"""
+
+    if not user_has_access:
+        raise HTTPException(status_code=401, detail="User does not have access to patch object")
 
     engine = get_engine()
     async_session = get_async_session(engine)
 
     async with async_session() as session:
-        update_stmt = update(schemas.Sources) \
-            .where(schemas.Sources.source_id == source_id) \
-            .values(**source.model_dump(exclude_none=True))
+        update_stmt = update(schemas.Sources)\
+            .where(schemas.Sources.source_id == source_id)\
+            .values(**source.model_dump(exclude_none=True))\
+            .returning(schemas.Sources)
 
         server_object = await session.scalar(update_stmt)
 

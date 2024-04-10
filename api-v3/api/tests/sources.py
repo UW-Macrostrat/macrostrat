@@ -20,6 +20,22 @@ class TestAPI:
         assert response_json["source_id"] == TEST_SOURCE_TABLE.source_id
 
     def test_patch_source(self, api_client: TestClient):
+        response = api_client.patch(
+            f"/sources/{TEST_SOURCE_TABLE.source_id}",
+            json={
+                "url": "test"
+            }
+        )
+
+        assert response.status_code == 200
+
+        response = api_client.get(f"/sources/{TEST_SOURCE_TABLE.source_id}")
+
+        assert response.status_code == 200
+
+        response_json = response.json()
+
+        assert response_json["url"] == "test"
 
     def test_get_sub_source_geometries(self, api_client: TestClient):
         response = api_client.get(f"/sources/{1}/geometries")
