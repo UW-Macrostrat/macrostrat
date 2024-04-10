@@ -185,7 +185,7 @@ class TestParser:
 
         stmt = [*map(lambda x: compile_statement(x), select_columns)]
 
-        assert stmt[0] == "STRING_AGG(DISTINCT CAST(test_table.string_column AS VARCHAR), ',')"
+        assert stmt[0] == "CASE WHEN (count(DISTINCT CAST(test_table.string_column AS VARCHAR)) > 5) THEN 'Multiple Values' ELSE STRING_AGG(DISTINCT CAST(test_table.string_column AS VARCHAR), ',') END"
         assert stmt[1] == "test_table.int_column"
 
     def test_order_by(self):

@@ -168,7 +168,6 @@ class TestAPI:
 
     assert len(response_json) > 0
 
-
   def test_patch_source_tables(self, api_client):
 
     id_temp_value = random.randint(1, 999)
@@ -450,11 +449,19 @@ class TestIngestProcess:
     assert data['tags'] == []
 
   def test_get_ingest_processes(self, api_client):
-    response = api_client.get("/ingest-process")
+    response = api_client.get("/ingest-process?tags=eq.test")
     assert response.status_code == 200
 
     data = response.json()
 
+    assert len(data) > 0
+
+  def test_get_ingest_process_tags(self, api_client):
+    """Test getting tags for an ingest process"""
+
+    response = api_client.get("/ingest-process/tags")
+    assert response.status_code == 200
+    data = response.json()
     assert len(data) > 0
 
   def test_get_ingest_process(self, api_client):
