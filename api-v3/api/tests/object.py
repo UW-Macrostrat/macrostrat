@@ -33,9 +33,26 @@ class TestObjectCRUD:
     def test_object_file_post(self, api_client):
         """Test posting an object to the database"""
 
+        random_string = f"test-{random.randint(0, 10000000)}"
+
         response = api_client.post(
             "/object",
-            files={"object": open("./tests/data/test.txt", "rb")}
+            files=[
+                ("object", ("test.txt", open(f"./tests/data/{random_string}.txt", "rb"), "text/plain"))
+            ]
+        )
+
+        assert response.status_code == 200
+
+    def test_object_multi_file_post(self, api_client):
+        """Test posting an object to the database"""
+
+        response = api_client.post(
+            "/object",
+            files=[
+                ("object", ("test.txt", open("./tests/data/test.txt", "rb"), "text/plain")),
+                ("object", ("object.py", open("./tests/object.py", "rb"), "text/plain"))
+            ]
         )
 
         assert response.status_code == 200
@@ -46,6 +63,21 @@ class TestObjectCRUD:
         response = api_client.post(
             "/ingest-process/1/objects",
             files={"object": open("./tests/data/test.txt", "rb")}
+        )
+
+        assert response.status_code == 200
+
+    def test_object_multi_file_post_to_ingest_process(self, api_client):
+        """Test posting an object to the database"""
+
+        random_string = f"test-{random.randint(0, 10000000)}"
+
+        response = api_client.post(
+            "/ingest-process/1/objects",
+            files=[
+                ("object", (f"{random_string}.txt", open("./tests/data/test.txt", "rb"), "text/plain")),
+                ("object", (f"{random_string}.py", open("./tests/object.py", "rb"), "text/plain"))
+            ]
         )
 
         assert response.status_code == 200

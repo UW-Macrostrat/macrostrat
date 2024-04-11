@@ -2,7 +2,7 @@ import os
 from typing import Union
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
-from starlette.datastructures import UploadFile as StarletteUploadFile
+import starlette.requests
 from sqlalchemy import insert, select, update, and_, delete
 from sqlalchemy.orm import selectinload, joinedload, defer
 import minio
@@ -254,8 +254,13 @@ async def get_ingest_process_objects(id: int):
             detail=f"Failed to get secure url for object: {e}"
         )
 
-@router.post("/{id}/objects", response_model=Object.Get)
-async def create_object(id: int, object: UploadFile, user_has_access: bool = Depends(has_access)):
+@router.post("/{id}/objects", response_model=list[Object.Get])
+async def create_object(
+        request: starlette.requests.Request,
+        id: int,
+        object: list[UploadFile],
+        user_has_access: bool = Depends(has_access)
+):
     """Create/Register a new object"""
 
     if not user_has_access:
@@ -264,43 +269,47 @@ async def create_object(id: int, object: UploadFile, user_has_access: bool = Dep
     engine = get_engine()
     async_session = get_async_session(engine)
 
+    response_objects = []
+
     async with async_session() as session:
 
         ingest_stmt = select(IngestProcessSchema).where(IngestProcessSchema.id == id)
         ingest_process = await session.scalar(ingest_stmt)
 
-        # Upload the file to s3
-        m = minio.Minio(endpoint=os.environ['S3_HOST'], access_key=os.environ['access_key'],
-                        secret_key=os.environ['secret_key'], secure=True)
+        if "multipart/form-data" in request.headers['content-type']:
 
-        file_length = len(object.file.read())
-        object.file.seek(0)
+            files = (await request.form()).getlist("object")
+            for upload_file in files:
 
-        object_file_name = f"{ingest_process.id}/{object.filename}"
+                m = minio.Minio(endpoint=os.environ['S3_HOST'], access_key=os.environ['access_key'],
+                                secret_key=os.environ['secret_key'], secure=True)
 
-        m.put_object(
-            bucket_name=os.environ['S3_BUCKET'],
-            object_name=object_file_name,
-            data=object.file,
-            content_type=object.content_type,
-            length=file_length
-        )
+                object_file_name = f"{ingest_process.id}/{upload_file.filename}"
 
-        # Upload this file pointer to postgres
-        object = Object.Post(
-            mime_type=object.content_type,
-            key=object_file_name,
-            bucket=os.environ['S3_BUCKET'],
-            host=os.environ['S3_HOST'],
-            scheme=schemas.SchemeEnum.http,
-            object_group_id=ingest_process.object_group_id
-        )
+                m.put_object(
+                    bucket_name=os.environ['S3_BUCKET'],
+                    object_name=object_file_name,
+                    data=upload_file.file,
+                    content_type=upload_file.content_type,
+                    length=upload_file.size
+                )
 
-        insert_stmt = insert(schemas.Object)\
-            .values(**object.model_dump())\
-            .returning(schemas.Object)
-        server_object = await session.scalar(insert_stmt)
+                object = Object.Post(
+                    mime_type=upload_file.content_type,
+                    key=object_file_name,
+                    bucket=os.environ['S3_BUCKET'],
+                    host=os.environ['S3_HOST'],
+                    scheme=schemas.SchemeEnum.http,
+                    object_group_id=ingest_process.object_group_id
+                )
 
-        response = Object.Get(**server_object.__dict__)
-        await session.commit()
-        return response
+                insert_stmt = insert(schemas.Object) \
+                    .values(**object.model_dump()) \
+                    .returning(schemas.Object)
+                server_object = await session.scalar(insert_stmt)
+
+                response_objects.append(Object.Get(**server_object.__dict__))
+
+            await session.commit()
+
+    return response_objects

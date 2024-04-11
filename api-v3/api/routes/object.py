@@ -1,6 +1,7 @@
 import datetime
 from typing import Union
 
+import starlette.requests
 from fastapi import APIRouter, Depends, HTTPException, File, UploadFile
 from starlette.datastructures import UploadFile as StarletteUploadFile
 from sqlalchemy import insert, select, update, and_
@@ -79,34 +80,39 @@ async def get_object(id: int):
 
 
 @router.post("", response_model=Object.Get)
-async def create_object(object: Union[Object.Post, UploadFile], user_has_access: bool = Depends(has_access)):
+async def create_object(
+        request: starlette.requests.Request,
+        object: Union[Object.Post, list[UploadFile], UploadFile],
+        user_has_access: bool = Depends(has_access)
+):
     """Create/Register a new object"""
 
     if not user_has_access:
         raise HTTPException(status_code=403, detail="User does not have access to create object")
 
-    if isinstance(object, StarletteUploadFile):
-        m = minio.Minio(endpoint=os.environ['S3_HOST'], access_key=os.environ['access_key'],
-                        secret_key=os.environ['secret_key'], secure=True)
+    if "multipart/form-data" in request.headers['content-type']:
 
-        file_length = len(object.file.read())
-        object.file.seek(0)
+        files = (await request.form()).getlist("object")
+        for upload_file in files:
 
-        m.put_object(
-            bucket_name=os.environ['S3_BUCKET'],
-            object_name=object.filename,
-            data=object.file,
-            content_type=object.content_type,
-            length=file_length
-        )
+            m = minio.Minio(endpoint=os.environ['S3_HOST'], access_key=os.environ['access_key'],
+                            secret_key=os.environ['secret_key'], secure=True)
 
-        object = Object.Post(
-            mime_type=object.content_type,
-            key=object.filename,
-            bucket=os.environ['S3_BUCKET'],
-            host=os.environ['S3_HOST'],
-            scheme=schemas.SchemeEnum.http
-        )
+            m.put_object(
+                bucket_name=os.environ['S3_BUCKET'],
+                object_name=upload_file.filename,
+                data=upload_file.file,
+                content_type=upload_file.content_type,
+                length=upload_file.size
+            )
+
+            object = Object.Post(
+                mime_type=upload_file.content_type,
+                key=upload_file.filename,
+                bucket=os.environ['S3_BUCKET'],
+                host=os.environ['S3_HOST'],
+                scheme=schemas.SchemeEnum.http
+            )
 
     engine = get_engine()
     async_session = get_async_session(engine)
