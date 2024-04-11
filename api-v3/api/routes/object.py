@@ -1,7 +1,11 @@
 import datetime
+from typing import Union
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, File, UploadFile
+from starlette.datastructures import UploadFile as StarletteUploadFile
 from sqlalchemy import insert, select, update, and_
+import minio
+import os
 
 from api.database import (
     get_async_session,
@@ -22,7 +26,6 @@ router = APIRouter(
         }
     },
 )
-
 
 @router.get("", response_model=list[Object.Get])
 async def get_objects(page: int = 0, page_size: int = 50, filter_query_params=Depends(get_filter_query_params)):
@@ -76,11 +79,34 @@ async def get_object(id: int):
 
 
 @router.post("", response_model=Object.Get)
-async def create_object(object: Object.Post, user_has_access: bool = Depends(has_access)):
+async def create_object(object: Union[Object.Post, UploadFile], user_has_access: bool = Depends(has_access)):
     """Create/Register a new object"""
 
     if not user_has_access:
         raise HTTPException(status_code=403, detail="User does not have access to create object")
+
+    if isinstance(object, StarletteUploadFile):
+        m = minio.Minio(endpoint=os.environ['S3_HOST'], access_key=os.environ['access_key'],
+                        secret_key=os.environ['secret_key'], secure=True)
+
+        file_length = len(object.file.read())
+        object.file.seek(0)
+
+        m.put_object(
+            bucket_name=os.environ['S3_BUCKET'],
+            object_name=object.filename,
+            data=object.file,
+            content_type=object.content_type,
+            length=file_length
+        )
+
+        object = Object.Post(
+            mime_type=object.content_type,
+            key=object.filename,
+            bucket=os.environ['S3_BUCKET'],
+            host=os.environ['S3_HOST'],
+            scheme=schemas.SchemeEnum.http
+        )
 
     engine = get_engine()
     async_session = get_async_session(engine)
