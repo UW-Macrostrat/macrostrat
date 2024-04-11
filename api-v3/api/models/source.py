@@ -8,7 +8,7 @@ from numpy import isnan
 
 # Database Models
 class Post(BaseModel):
-    name: Optional[str] = None
+    name: str
     primary_table: Optional[str] = None
     url: Optional[str] = None
     raster_url: Optional[str] = None
@@ -26,6 +26,7 @@ class Post(BaseModel):
     display_scales: Optional[list[str]] = None
     new_priority: Optional[int] = None
     status_code: Optional[str] = None
+    slug: Optional[str] = None
 
 
 class Get(Post):

@@ -1,10 +1,10 @@
 import urllib.parse
 from typing import List, Literal, Union
 
+from slugify import slugify
 import starlette.requests
-import uvicorn
 from fastapi import APIRouter, HTTPException, Response, status, Depends
-from sqlalchemy import select, func, update
+from sqlalchemy import select, func, update, insert
 from sqlalchemy.exc import NoResultFound, NoSuchTableError
 
 import dotenv
@@ -98,6 +98,28 @@ async def patch_source(source_id: int, source: Sources.Patch, user_has_access: b
             .returning(schemas.Sources)
 
         server_object = await session.scalar(update_stmt)
+
+        response = Sources.Get(**server_object.__dict__)
+        await session.commit()
+        return response
+
+
+@router.post("")
+async def post_source(source: Sources.Post, user_has_access: bool = Depends(has_access)) -> Sources.Get:
+    """Post a source"""
+
+    if not user_has_access:
+        raise HTTPException(status_code=401, detail="User does not have access to post object")
+
+    engine = get_engine()
+    async_session = get_async_session(engine)
+
+    if source.slug is None:
+        source.slug = slugify(source.name, max_length=10)
+
+    async with async_session() as session:
+        insert_stmt = insert(schemas.Sources).values(**source.model_dump()).returning(schemas.Sources)
+        server_object = await session.scalar(insert_stmt)
 
         response = Sources.Get(**server_object.__dict__)
         await session.commit()

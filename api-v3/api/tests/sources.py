@@ -37,6 +37,29 @@ class TestAPI:
 
         assert response_json["url"] == "test"
 
+    def test_post_source(self, api_client: TestClient):
+
+        source = {
+            "name": "TestU&(&^()&*Y@#$%_(*HF_#Y(*&46_)*@&_NEUHOUI",
+            "url": "http://test.com",
+            "ref_title": "Test",
+            "authors": "Test",
+            "ref_year": "Test",
+            "isbn_doi": "Test",
+            "scale": "large",
+            "licence": "Test",
+            "area": 1,
+            "raster_url": "http://test.com"
+        }
+
+        response = api_client.post(
+            "/sources",
+            json=source
+        )
+
+        assert response.status_code == 200
+
+
     def test_get_sub_source_geometries(self, api_client: TestClient):
         response = api_client.get(f"/sources/{1}/geometries")
         assert response.status_code == 200
