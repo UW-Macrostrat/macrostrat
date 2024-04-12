@@ -25,7 +25,7 @@ bcrypt = "^4.1.1"
 minio = "^7.2.3"
 numpy = "^1.26.4"
 python-multipart = "^0.0.9"
-slugify = "^0.0.1"
+python-slugify = "^8.0.4"
 
 [tool.poetry.group.dev.dependencies]
 bandit = "~1.7"
