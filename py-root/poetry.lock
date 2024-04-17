@@ -1243,13 +1243,13 @@ url = "../../../Software/tileserver"
 
 [[package]]
 name = "macrostrat-utils"
-version = "1.2.0"
+version = "1.2.1"
 description = "Core utilities for Macrostrat and Sparrow"
 optional = false
 python-versions = ">=3.8,<4.0"
 files = [
-    {file = "macrostrat_utils-1.2.0-py3-none-any.whl", hash = "sha256:aad88f644766ceb37dec5f8dc3eb2a23ca4d902bda5e9ebf859b2228bc89e96d"},
-    {file = "macrostrat_utils-1.2.0.tar.gz", hash = "sha256:3acc07b6ddef8097766071c8e991325af87aa2d4003f8f6b8a6ae541f7710cc7"},
+    {file = "macrostrat_utils-1.2.1-py3-none-any.whl", hash = "sha256:80dd3c1e63fb7c1e1ed7aaee07034d80674be11f31a52759b53b8e6dbfb1bad3"},
+    {file = "macrostrat_utils-1.2.1.tar.gz", hash = "sha256:306c5c31af034caf7d10d3370c46f3bce28ffad0d1863a764522c95f5b19b8c4"},
 ]
 
 [package.dependencies]
@@ -3366,4 +3366,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "510678c20982d7d29588ff2e5c69ca5dd074100061cc530a350d7621044d7fb6"
+content-hash = "104af6b346e65065f7493bedd9fe0b73f1e9a35ad1ccb89dc6aee62afbcc1216"

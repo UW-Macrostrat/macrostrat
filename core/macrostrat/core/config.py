@@ -54,6 +54,8 @@ PG_DATABASE = settings.pg_database
 docker_localhost = getattr(settings, "docker_localhost", "localhost")
 PG_DATABASE_DOCKER = PG_DATABASE.replace("localhost", docker_localhost)
 
+if elevation_database := getattr(settings, "elevation_database", None):
+    environ["ELEVATION_DATABASE_URL"] = elevation_database
 
 # Set environment variables
 url = make_url(PG_DATABASE)
