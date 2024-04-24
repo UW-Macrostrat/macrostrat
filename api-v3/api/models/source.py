@@ -34,4 +34,4 @@ class Get(Post):
 
 
 class Patch(Post):
-    pass
+    name: Optional[str] = None
