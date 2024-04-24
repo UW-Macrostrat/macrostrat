@@ -333,6 +333,9 @@ def state():
     app.console.print(app.state.get())
 
 
+# Add basic schema hunks
 from .subsystems.knowledge_graph import kg_schema
+from .subsystems.legend_api import legend_api
 
 db_subsystem.schema_hunks.append(kg_schema)
+db_subsystem.schema_hunks.append(legend_api)
