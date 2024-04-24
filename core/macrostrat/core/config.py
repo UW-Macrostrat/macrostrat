@@ -57,6 +57,9 @@ PG_DATABASE_DOCKER = PG_DATABASE.replace("localhost", docker_localhost)
 if elevation_database := getattr(settings, "elevation_database", None):
     environ["ELEVATION_DATABASE_URL"] = elevation_database
 
+if api_srcroot := getattr(settings, "api_srcroot", None):
+    environ["MACROSTRAT_API_SRCROOT"] = api_srcroot
+
 # Set environment variables
 url = make_url(PG_DATABASE)
 
@@ -85,7 +88,6 @@ if compose_file is None:
         compose_file = compose_root / "docker-compose.yaml"
 if compose_file is not None:
     environ["COMPOSE_FILE"] = str(compose_file)
-
 
 settings.project_name = environ["COMPOSE_PROJECT_NAME"]
 
