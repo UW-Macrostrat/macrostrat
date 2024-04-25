@@ -11,8 +11,8 @@ concise, queryable format.
 
 #### Software
 
-MariaDB, PostgreSQL, Nodejs, Python, and
-[Macrostrat CLI](https://github.com/UW-Macrostrat/utils) are required. Redis is
+MariaDB, PostgreSQL, Nodejs, and the
+[Macrostrat system](https://github.com/UW-Macrostrat/macrostrat) are required. Redis is
 optional. When the API starts requests for all columns and all units are cached.
 If Redis is available it will be used, otherwise they are cached in the
 application memory.
