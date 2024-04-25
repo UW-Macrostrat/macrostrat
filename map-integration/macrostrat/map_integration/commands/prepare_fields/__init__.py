@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Annotated
 
 from rich import print
 from sqlalchemy.exc import NoResultFound, NoSuchTableError
@@ -12,7 +13,7 @@ from .utils import LineworkTableUpdater, PointsTableUpdater, PolygonTableUpdater
 def prepare_fields(
     map: MapInfo,
     all: bool = False,
-    recover: bool = Option(False, "--recover", help="Recover sources records"),
+    recover: Annotated[bool, Option("--recover", help="Recover sources records")] = False,
 ):
     """Prepare empty fields for manual cleaning."""
     identifier = map.slug

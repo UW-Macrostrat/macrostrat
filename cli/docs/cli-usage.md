@@ -6,6 +6,7 @@ Usage: `macrostrat <subcommand> [options]`
 
 - `db` - Manage the Macrostrat database
 - `env` - Manage Macrostrat environments
+- `maps` - Manage Macrostrat's maps
 - `self` - Inspect the command-line application
 
 ...and others yet to be implemented
@@ -22,6 +23,10 @@ Usage: `macrostrat <subcommand> [options]`
 ## Environment management
 
 - `macrostrat env`: Switch to another environment
+
+## Map management
+
+- `macrostrat maps run-pipeline`: Stage a map into Macrostrat
 
 ## Kubernetes utilities
 

@@ -19,6 +19,7 @@ from shapely.geometry import (
 from sqlalchemy import *
 
 from ..database import db
+from ..errors import IngestError
 
 console = Console()
 
@@ -65,7 +66,7 @@ def ingest_map(
             console.print(
                 "No CRS set. Please set a CRS before ingesting.", style="bold red"
             )
-            return
+            raise IngestError("No CRS set")
 
         # Convert geometry to WGS84
         console.print("Projecting to WGS84")
@@ -135,6 +136,8 @@ def ingest_map(
                         )
                     )
                 progress.update(task, advance=len(chunk))
+
+            conn.commit()
 
 
 def chunker(seq, size):
