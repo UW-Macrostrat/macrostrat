@@ -5,6 +5,7 @@ A pipeline for ingesting maps into Macrostrat.
 import datetime
 import hashlib
 import pathlib
+import re
 import tempfile
 import zipfile
 from typing import Annotated, Optional
@@ -227,7 +228,7 @@ def run_pipeline(
 
     ## Normalize identifiers.
 
-    slug = slug.lower()
+    slug = re.sub(r"\W", "_", slug).lower()
 
     ## Collect metadata.
 
