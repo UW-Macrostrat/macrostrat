@@ -111,7 +111,7 @@ async def create_object(
                 key=upload_file.filename,
                 bucket=os.environ['S3_BUCKET'],
                 host=os.environ['S3_HOST'],
-                scheme=schemas.SchemeEnum.http
+                scheme=schemas.SchemeEnum.s3
             )
 
     engine = get_engine()
