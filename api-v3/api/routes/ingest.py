@@ -299,7 +299,7 @@ async def create_object(
                     key=object_file_name,
                     bucket=os.environ['S3_BUCKET'],
                     host=os.environ['S3_HOST'],
-                    scheme=schemas.SchemeEnum.http,
+                    scheme=schemas.SchemeEnum.s3,
                     object_group_id=ingest_process.object_group_id
                 )
 
