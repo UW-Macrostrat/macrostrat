@@ -1,3 +1,4 @@
+import re
 import urllib.parse
 from typing import List, Literal, Union
 
@@ -115,7 +116,8 @@ async def post_source(source: Sources.Post, user_has_access: bool = Depends(has_
     async_session = get_async_session(engine)
 
     if source.slug is None:
-        source.slug = slugify(source.name, max_length=10).replace("-", "_")
+        source.slug = re.sub(r"\W", "_", slugify(source.name, max_length=10))
+    source.primary_table = source.slug + "_polygons"
 
     async with async_session() as session:
         insert_stmt = insert(schemas.Sources).values(**source.model_dump()).returning(schemas.Sources)
