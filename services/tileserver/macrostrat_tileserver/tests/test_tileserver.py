@@ -25,3 +25,9 @@ def test_database(db):
     assert db
     assert db.engine
     assert db.engine.url
+
+
+def test_get_tile(client):
+    res = client.get("/carto/13/1554/3078")
+    assert res.status_code == 200
+    assert res.headers["Content-Type"] == "application/x-protobuf"

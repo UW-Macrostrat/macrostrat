@@ -1,7 +1,8 @@
 from asyncio import run
-from os import getenv
+from os import environ, getenv
 from pathlib import Path
 
+from fastapi.testclient import TestClient
 from macrostrat.database import Database
 from macrostrat.database.transfer import pg_restore_from_file
 from macrostrat.database.utils import temp_database
@@ -21,6 +22,8 @@ def db(pytestconfig):
     # Check if we are dropping the database after tests
     drop = not pytestconfig.getoption("--no-drop")
 
+    print(f"Drop: {drop}")
+
     testing_db = getenv("TEST_DATABASE_URL")
     with temp_database(testing_db, drop=drop, ensure_empty=True) as engine:
         database = Database(engine.url)
@@ -32,3 +35,17 @@ def db(pytestconfig):
         )
 
         yield database
+
+
+@fixture(scope="session")
+def app(db):
+    environ["DATABASE_URL"] = getenv("TEST_DATABASE_URL")
+    from macrostrat_tileserver.main import app
+
+    yield app
+
+
+@fixture(scope="session")
+def client(app):
+    with TestClient(app) as _client:
+        yield _client

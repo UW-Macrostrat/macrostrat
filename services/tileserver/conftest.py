@@ -1,9 +1,9 @@
 import pytest
 from dotenv import load_dotenv
 
-from macrostrat_tileserver.tests.fixtures import db
-
 load_dotenv()
+
+from macrostrat_tileserver.tests.fixtures import app, client, db  # noqa
 
 
 def pytest_addoption(parser):
