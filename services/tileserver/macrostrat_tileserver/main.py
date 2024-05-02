@@ -120,9 +120,9 @@ class CachedVectorTilerFactory(VectorTilerFactory):
     def register_tiles(self):
         """Register /tiles endpoints."""
 
-        @self.router.get(
-            "/{TileMatrixSetId}/{layer}/{z}/{x}/{y}", **TILE_RESPONSE_PARAMS
-        )
+        # @self.router.get(
+        #     "/{TileMatrixSetId}/{layer}/{z}/{x}/{y}", **TILE_RESPONSE_PARAMS
+        # )
         @self.router.get("/{layer}/{z}/{x}/{y}", **TILE_RESPONSE_PARAMS)
         async def tile(
             request: Request,
@@ -311,6 +311,10 @@ app.state.function_catalog.register(
 
 # Legacy routes postfixed with ".mvt"
 app.include_router(mvt_tiler.router, tags=["Tiles"])
+
+from .filterable import router as filterable_router
+
+app.include_router(filterable_router, tags=["Filterable"], prefix="/v2")
 
 # def MapLayerDepends():
 #     pass
