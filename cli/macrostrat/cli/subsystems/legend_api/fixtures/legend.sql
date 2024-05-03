@@ -1,5 +1,6 @@
 /* Legend with lithology information */
 
+
 CREATE OR REPLACE VIEW macrostrat_api.legend AS
 WITH _intervals AS (
 SELECT
