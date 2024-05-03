@@ -294,7 +294,7 @@ WITH mvt_features AS (
   FROM
     carto.lines
   WHERE
-    scale = mapsize
+    scale::text = mapsize
     AND ST_Intersects(geom, projected_bbox)
 ),
 expanded AS (
@@ -312,7 +312,7 @@ expanded AS (
   LEFT JOIN maps.sources
     ON z.source_id = sources.source_id
   WHERE sources.status_code = 'active'
-    AND q.scale = ANY(linesize)
+    AND q.scale::text = ANY(linesize)
     --AND ST_Length(geom) > tolerance
 )
 SELECT
