@@ -4,14 +4,18 @@ A pipeline for ingesting maps into Macrostrat.
 
 import datetime
 import hashlib
+import os
 import pathlib
+import re
+import tarfile
 import tempfile
+import time
 import zipfile
-from typing import Annotated, Optional
+from typing import Annotated, NoReturn, Optional
 
 import magic
 import minio
-import psycopg2.errors  # type: ignore[import-untyped]
+import sqlalchemy.exc
 from macrostrat.core.schemas import (  # type: ignore[import-untyped]
     IngestProcess,
     IngestState,
@@ -36,17 +40,30 @@ from macrostrat.map_integration.utils.map_info import get_map_info
 console = Console()
 
 
-def raise_ingest_error(
+# --------------------------------------------------------------------------
+
+
+def record_ingest_error(
     ingest_process: IngestProcess,
     message: str,
-    source_exn=None,
 ) -> None:
     update_ingest_process(
         ingest_process.id,
         state=IngestState.failed,
         comments=message,
     )
+
+
+def raise_ingest_error(
+    ingest_process: IngestProcess,
+    message: str,
+    source_exn: Optional[Exception] = None,
+) -> NoReturn:
+    record_ingest_error(ingest_process, message)
     raise IngestError(message) from source_exn
+
+
+# --------------------------------------------------------------------------
 
 
 def get_db_session(expire_on_commit=False) -> Session:
@@ -106,14 +123,16 @@ def update_object(id_: int, **data) -> Object:
 
 def get_ingest_process_by_id(id_: int) -> Optional[IngestProcess]:
     with get_db_session() as session:
-        ingest_process = session.scalar(select(IngestProcess).where(IngestProcess.id == id_))
+        ingest_process = session.scalar(
+            select(IngestProcess).where(IngestProcess.id == id_),
+        )
     return ingest_process
 
 
 def get_ingest_process_by_object_group_id(id_: int) -> Optional[IngestProcess]:
     with get_db_session() as session:
         ingest_process = session.scalar(
-            select(IngestProcess).where(IngestProcess.object_group_id == id_)
+            select(IngestProcess).where(IngestProcess.object_group_id == id_),
         )
     return ingest_process
 
@@ -123,7 +142,7 @@ def create_ingest_process() -> IngestProcess:
         object_group = session.scalar(insert(ObjectGroup).returning(ObjectGroup))
         if not object_group:
             raise RuntimeError("Failed to create a new object group")
-        ingest_process = session.scalar(
+        new_ingest_process = session.scalar(
             insert(IngestProcess)
             .values(
                 object_group_id=object_group.id,
@@ -132,7 +151,7 @@ def create_ingest_process() -> IngestProcess:
             .returning(IngestProcess)
         )
         session.commit()
-    return ingest_process
+    return new_ingest_process
 
 
 def update_ingest_process(id_: int, **data) -> IngestProcess:
@@ -147,14 +166,31 @@ def update_ingest_process(id_: int, **data) -> IngestProcess:
     return new_ingest_process
 
 
-def get_source_by_slug(slug: str) -> Sources:
-    return get_map_info(DB, slug)
+def get_source_by_id(id_: int) -> Optional[Sources]:
+    with get_db_session() as session:
+        source = session.scalar(select(Sources).where(Sources.source_id == id_))
+    return source
+
+
+def get_source_by_slug(slug: str) -> Optional[Sources]:
+    with get_db_session() as session:
+        source = session.scalar(select(Sources).where(Sources.slug == slug))
+    return source
+
+
+def create_source(**data) -> Sources:
+    with get_db_session() as session:
+        new_source = session.scalar(
+            insert(Sources).values(**data).returning(Sources),
+        )
+        session.commit()
+    return new_source
 
 
 def update_source(id_: int, **data) -> Sources:
     with get_db_session() as session:
         new_source = session.scalar(
-            update(Sources).values(**data).where(Sources.source_id == id_).returning(Sources)
+            update(Sources).values(**data).where(Sources.source_id == id_).returning(Sources),
         )
         session.commit()
     return new_source
@@ -163,7 +199,7 @@ def update_source(id_: int, **data) -> Sources:
 # --------------------------------------------------------------------------
 
 
-def run_pipeline(
+def ingest_file(
     local_file: Annotated[
         pathlib.Path,
         Argument(help="Local file to ingest"),
@@ -227,7 +263,8 @@ def run_pipeline(
 
     ## Normalize identifiers.
 
-    slug = slug.lower()
+    slug = re.sub(r"\W", "_", slug).lower()
+    console.print(f"Normalized the provided slug to {slug}")
 
     ## Collect metadata.
 
@@ -250,7 +287,7 @@ def run_pipeline(
             raise IngestError("Attempting to upload a different version of this object")
 
     if not obj or obj.sha256_hash != sha256_hash or replace_object:
-        console.print(f"Uploading file to S3 ({bucket}/{key})")
+        console.print(f"Uploading {local_file} to S3 as {bucket}/{key}")
         s3 = minio.Minio(
             config.S3_HOST,
             access_key=config.S3_ACCESS_KEY,
@@ -258,6 +295,7 @@ def run_pipeline(
         )
         s3.fput_object(bucket, key, str(local_file))
         uploaded_obj = True
+        console.print("Finished upload")
 
     ## Create or retrieve the ingest process.
 
@@ -272,7 +310,7 @@ def run_pipeline(
     if ingest_process.state == IngestState.ingested:
         console.print("Ingest pipeline has already been completed")
         return obj
-    console.print(f"Found or created ingest process ID {ingest_process.id}")
+    console.print(f"Created or updated ingest process ID {ingest_process.id}")
 
     ## Create or update the object's DB entry.
 
@@ -302,39 +340,15 @@ def run_pipeline(
         state=IngestState.pending,
         comments=None,
     )
-    console.print(f"Found or created object ID {obj.id}")
+    console.print(f"Created or updated object ID {obj.id}")
 
-    ## Process anything that might have points, lines, and polygons.
+    ## Create the "sources" record.
 
-    if local_file.name.endswith(".zip"):
-        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as td:
-            tmp_dir = pathlib.Path(td)
-            console.print(f"Extracting zip archive into\n{tmp_dir}")
-
-            with zipfile.ZipFile(local_file) as zf:
-                zf.extractall(path=tmp_dir)
-            shapefiles = list(tmp_dir.glob("**/*.shp"))
-
-            if not shapefiles:
-                raise_ingest_error(ingest_process, "Failed to locate any shapefiles")
-
-            shapefiles_str = "\n".join(str(x) for x in shapefiles)
-            console.print(f"Ingesting {slug} from\n{shapefiles_str}")
-            try:
-                ingest_map(slug, shapefiles)
-            except IngestError as exn:
-                raise_ingest_error(ingest_process, str(exn), exn)
-            except psycopg2.errors.InvalidTextRepresentation as exn:
-                raise_ingest_error(ingest_process, str(exn), exn)
-        macrostrat_map = get_source_by_slug(slug)
-    else:
-        raise_ingest_error(ingest_process, "Unrecognized file format")
-
-    ## Prepare tables for human review.
-
-    console.print(f"Found or created source ID {macrostrat_map.id}")
-
-    metadata = {"scale": scale}
+    metadata = {
+        "slug": slug,
+        "primary_table": f"{slug}_polygons",
+        "scale": scale,
+    }
     if name:
         metadata["name"] = name
     if ref_title:
@@ -348,25 +362,141 @@ def run_pipeline(
     if ref_isbn_or_doi:
         metadata["isbn_doi"] = ref_isbn_or_doi
 
-    update_source(macrostrat_map.id, **metadata)
-    ingest_process = update_ingest_process(
-        ingest_process.id,
-        source_id=macrostrat_map.id,
-        comments="created tables",
+    source = create_source(**metadata)
+    ingest_process = update_ingest_process(ingest_process.id, source_id=source.source_id)
+    console.print(f"Created source ID {source.source_id}")
+
+    return ingest_object(obj.bucket, obj.key)
+
+
+def ingest_object(
+    bucket: Annotated[
+        str,
+        Argument(help="The object's bucket"),
+    ],
+    key: Annotated[
+        str,
+        Argument(help="The object's key"),
+    ],
+) -> Object:
+    """
+    Ingest an object directly from S3.
+
+    Assumes that database records for the "ingest process" and "sources"
+    tables have already been created.
+    """
+    obj = get_object_by_loc(bucket, key)
+    if not obj:
+        raise IngestError(f"No such object in the database: {bucket}/{key}")
+
+    ingest_process = get_ingest_process_by_object_group_id(obj.object_group_id)
+    if not ingest_process:
+        raise IngestError("No ingest process in the database for object ID {obj.id}")
+
+    source = get_source_by_id(ingest_process.source_id)
+    if not source:
+        raise_ingest_error(
+            ingest_process,
+            "No source ID in the database for ingest process ID {ingest_process.id}",
+        )
+
+    ## Download the object to a local, temporary file.
+
+    s3 = minio.Minio(
+        config.S3_HOST,
+        access_key=config.S3_ACCESS_KEY,
+        secret_key=config.S3_SECRET_KEY,
     )
+    obj_basename = key.split("/")[-1]
+    fd, local_filename = tempfile.mkstemp(suffix=f"-{obj_basename}")
+    os.close(fd)
+    local_file = pathlib.Path(local_filename)
+
+    console.print(f"Downloading archive into {local_file}")
+    s3.fget_object(bucket, key, str(local_file))
+    console.print("Finished downloading archive")
+
+    ## Process anything that might have points, lines, and polygons.
+
+    try:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as td:
+            tmp_dir = pathlib.Path(td)
+            console.print(f"Extracting archive into {tmp_dir}")
+
+            ## Extract the archive.
+
+            if local_file.name.endswith(".tar.gz") or local_file.name.endswith(".tgz"):
+                with tarfile.open(local_file) as tf:
+                    tf.extractall(path=tmp_dir, filter="data")
+            elif local_file.name.endswith(".zip"):
+                with zipfile.ZipFile(local_file) as zf:
+                    zf.extractall(path=tmp_dir)
+            else:
+                raise_ingest_error(ingest_process, "Unrecognized file format")
+
+            ## Locate files of interest.
+
+            gis_data = list(tmp_dir.glob("**/*.shp")) + list(tmp_dir.glob("**/*.geojson"))
+            if not gis_data:
+                raise_ingest_error(ingest_process, "Failed to locate GIS data")
+
+            ## Process the files.
+
+            console.print(f"Ingesting {source.slug} from {gis_data}")
+            try:
+                ingest_map(source.slug, gis_data)
+            except IngestError as exn:
+                raise_ingest_error(ingest_process, str(exn), exn)
+            except sqlalchemy.exc.DBAPIError as exn:
+                raise_ingest_error(ingest_process, str(exn), exn)
+    finally:
+        local_file.unlink()
+
+    ## Prepare tables for human review.
+
+    macrostrat_map = get_map_info(DB, source.slug)
+    console.print(f"Macrostrat map object: {macrostrat_map}")
+
     prepare_fields(macrostrat_map)
-    ingest_process = update_ingest_process(
-        ingest_process.id,
-        state=IngestState.prepared,
-        comments=None,
-    )
+    ingest_process = update_ingest_process(ingest_process.id, state=IngestState.prepared)
     create_rgeom(macrostrat_map)
     create_webgeom(macrostrat_map)
-    ingest_process = update_ingest_process(
-        ingest_process.id,
-        state=IngestState.ingested,
-        comments=None,
-    )
-    console.print("Finished running ingest pipeline")
+    ingest_process = update_ingest_process(ingest_process.id, state=IngestState.ingested)
 
     return obj
+
+
+# --------------------------------------------------------------------------
+
+
+def run_polling_loop(
+    polling_interval: Annotated[
+        int,
+        Argument(help="How often to poll, in seconds"),
+    ] = 30,
+) -> None:
+    """
+    Poll for and process pending ingest processes.
+    """
+    while True:
+        console.print("Starting iteration of polling loop")
+        with get_db_session() as session:
+            for ingest_process in session.scalars(
+                select(IngestProcess).where(
+                    IngestProcess.state == IngestState.pending,
+                )
+            ).unique():
+                console.print(f"Examining ingest process ID {ingest_process.id}")
+                for obj in session.scalars(
+                    select(Object).where(
+                        Object.object_group_id == ingest_process.object_group_id,
+                    )
+                ):
+                    console.print(f"Processing object ID {obj.id} ({obj.bucket}/{obj.key})")
+                    try:
+                        ingest_object(obj.bucket, obj.key)
+                    except IngestError as exn:
+                        record_ingest_error(ingest_process, str(exn))
+
+        console.print("Finished iteration of polling loop")
+        time.sleep(polling_interval)
