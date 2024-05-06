@@ -380,10 +380,11 @@ def ingest_object(
     ],
 ) -> Object:
     """
-    Ingest an object directly from S3.
+    Ingest an object in S3 containing a map into Macrostrat.
 
-    Assumes that database records for the "ingest process" and "sources"
-    tables have already been created.
+    This command/function assumes that database records for the "ingest
+    process" and "sources" tables have already been created. (The web UI's
+    upload form creates the required records.)
     """
     obj = get_object_by_loc(bucket, key)
     if not obj:
