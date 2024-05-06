@@ -28,7 +28,7 @@ Usage: `macrostrat <subcommand> [options]`
 
 The following commands require certain keys to be defined in the
 `macrostrat.toml` configuration file. Refer to the [template file in
-`../map-integration`](../map-integration/macrostrat.toml.template).
+*map-integration*](../../map-integration/macrostrat.toml.template).
 
 - `macrostrat maps ingest-file`:
   *Ingest a local file containing a map into Macrostrat*.
@@ -55,7 +55,7 @@ The following commands require certain keys to be defined in the
 
   This command will download the object from S3 and process it in a similar
   manner to the `ingest-file` command. (Technically, `ingest-file` actually
-  relies on this command to do most of its work.)
+  relies on this command to do much of its work.)
 
   The typical use for this command is to trigger the processing of a map
   that has been uploaded to Macrostrat's S3 storage via the web application.
