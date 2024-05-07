@@ -43,6 +43,8 @@ from macrostrat.map_integration.utils.map_info import get_map_info
 DOWNLOAD_ROOT_DIR = pathlib.Path("./tmp")
 FIELDS = [
     "slug",
+    "tag",
+    "filter",
     "name",
     "ref_title",
     "ref_authors",
@@ -50,8 +52,9 @@ FIELDS = [
     "ref_source",
     "ref_isbn_or_doi",
     "scale",
-    "url",
-    "website",
+    "archive_url",
+    "website_url",
+    "raster_url",
     "s3_bucket",
     "s3_prefix",
 ]
@@ -601,15 +604,18 @@ def ingest_from_csv(
 
     The first row of the CSV file should be a header listing the names of
     arguments and options to the ingest-file subcommand, with hyphens being
-    replaced by underscores. Instead of "local_file", there should be
-    a column for "url", which is where to download the map's archive file
-    from. There must be a column for "slug".
+    replaced by underscores.
+
+    Instead of the "local_file" argument, there must be a column for
+    "archive_url", which is where to download the map's archive file from.
+
+    There must also be a column for "slug".
     """
     with open(csv_file, mode="r", encoding="utf-8", newline="") as input_fp:
         reader = csv.DictReader(input_fp)
 
         for row in reader:
-            url = row["url"]
+            url = row["archive_url"]
             prefix = row.get("s3_prefix") or "ingest_from_csv"
 
             download_dir = DOWNLOAD_ROOT_DIR / prefix
