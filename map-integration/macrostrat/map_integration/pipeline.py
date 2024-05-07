@@ -20,6 +20,7 @@ import requests
 import sqlalchemy.exc
 from macrostrat.core.schemas import (  # type: ignore[import-untyped]
     IngestProcess,
+    IngestProcessTag,
     IngestState,
     Object,
     ObjectGroup,
@@ -172,6 +173,23 @@ def create_ingest_process() -> IngestProcess:
     return new_ingest_process
 
 
+def create_ingest_process_tag(
+    ingest_process_id: int,
+    tag: str,
+) -> IngestProcessTag:
+    with get_db_session() as session:
+        new_ingest_process_tag = session.scalar(
+            insert(IngestProcessTag)
+            .values(
+                ingest_process_id=ingest_process_id,
+                tag=tag,
+            )
+            .returning(IngestProcessTag)
+        )
+        session.commit()
+    return new_ingest_process_tag
+
+
 def update_ingest_process(id_: int, **data) -> IngestProcess:
     with get_db_session() as session:
         new_ingest_process = session.scalar(
@@ -224,8 +242,12 @@ def ingest_file(
     ],
     slug: Annotated[
         str,
-        Argument(help="Macrostrat slug to use for this map"),
+        Argument(help="The slug to use for this map"),
     ],
+    tag: Annotated[
+        Optional[str],
+        Option(help="A tag to apply to the map"),
+    ] = None,
     name: Annotated[
         Optional[str],
         Option(help="The map's name"),
@@ -328,6 +350,8 @@ def ingest_file(
     if ingest_process.state == IngestState.ingested:
         console.print("Ingest pipeline has already been completed")
         return obj
+    if tag:
+        create_ingest_process_tag(ingest_process.id, tag)
     console.print(f"Created or updated ingest process ID {ingest_process.id}")
 
     ## Create or update the object's DB entry.
