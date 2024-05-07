@@ -297,6 +297,10 @@ def ingest_file(
         Optional[str],
         Option(help="A tag to apply to the map"),
     ] = None,
+    filter: Annotated[
+        Optional[str],
+        Option(help="How to interpret the contents of the provided file"),
+    ] = None,
     name: Annotated[
         Optional[str],
         Option(help="The map's name"),
@@ -457,7 +461,7 @@ def ingest_file(
     ingest_process = update_ingest_process(ingest_process.id, source_id=source.source_id)
     console.print(f"Created source ID {source.source_id}")
 
-    return ingest_object(obj.bucket, obj.key)
+    return ingest_object(obj.bucket, obj.key, filter=filter)
 
 
 def ingest_object(
@@ -469,6 +473,11 @@ def ingest_object(
         str,
         Argument(help="The object's key"),
     ],
+    *,
+    filter: Annotated[
+        Optional[str],
+        Option(help="How to interpret the contents of the specified object"),
+    ] = None,
 ) -> Object:
     """
     Ingest an object in S3 containing a map into Macrostrat.
@@ -521,12 +530,28 @@ def ingest_object(
 
             ## Locate files of interest.
 
-            gis_data = list(tmp_dir.glob("**/*.shp")) + list(tmp_dir.glob("**/*.geojson"))
+            gis_files = (
+                list(tmp_dir.glob("**/*.shp"))
+                + list(tmp_dir.glob("**/*.geojson"))
+                + list(tmp_dir.glob("**/*.gpkg"))
+            )
+            gis_data = []
+            excluded_data = []
+
+            for gis_file in gis_files:
+                if filter == "TA1":
+                    if "_bbox" not in gis_file.name and "_legend" not in gis_file.name:
+                        gis_data.append(gis_file)
+                    else:
+                        excluded_data.append(gis_file)
+                else:
+                    gis_data.append(gis_file)
             if not gis_data:
                 raise_ingest_error(ingest_process, "Failed to locate GIS data")
 
             ## Process the files.
 
+            console.print(f"NOT ingesting {excluded_data}")
             console.print(f"Ingesting {source.slug} from {gis_data}")
             try:
                 ingest_map(source.slug, gis_data)
