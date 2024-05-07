@@ -18,7 +18,7 @@ from .commands.set_srid import apply_srid
 from .commands.source_info import source_info
 from .commands.sources import map_sources
 from .migrations import run_migrations
-from .pipeline import ingest_file, ingest_object, run_polling_loop
+from .pipeline import ingest_file, ingest_from_csv, ingest_object, run_polling_loop
 from .process import cli as _process
 from .utils import IngestionCLI, MapInfo
 
@@ -46,6 +46,7 @@ cli.add_command(fix_geometries, name="fix-geometries")
 cli.add_command(apply_srid, name="apply-srid")
 
 cli.add_command(ingest_file, name="ingest-file")
+cli.add_command(ingest_from_csv, name="ingest-from-csv")
 cli.add_command(ingest_object, name="ingest-object")
 cli.add_command(run_polling_loop, name="run-polling-loop")
 

@@ -31,7 +31,7 @@ The following commands require certain keys to be defined in the
 *map-integration*](../../map-integration/macrostrat.toml.template).
 
 - `macrostrat maps ingest-file`:
-  *Ingest a local file containing a map into Macrostrat*.
+  *Ingest a local file containing a map into Macrostrat.*
 
   This command has two required arguments: a path to a local file, which
   should be an archive containing GIS data, and a "slug", which should be
@@ -46,6 +46,15 @@ The following commands require certain keys to be defined in the
   using the `--help` option. These arguments can be used to describe the
   report that the map is a part of and to provide alternative configuration
   values for where in S3 to upload the archive to.
+
+- `macrostrat maps ingest-from-csv`:
+  *Ingest multiple maps as specified in a CSV file.*
+
+  This command has one required argument, a path to a CSV file. The format
+  of the CSV file is described by the `--help` option.
+
+  This command can be used to bulk ingest maps by specifying the arguments
+  to `ingest-file`, one row per map/invokation.
 
 - `macrostrat maps ingest-object`:
   *Ingest an object in S3 containing a map into Macrostrat.*

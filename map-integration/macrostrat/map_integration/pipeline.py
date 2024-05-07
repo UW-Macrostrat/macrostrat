@@ -2,6 +2,7 @@
 A pipeline for ingesting maps into Macrostrat.
 """
 
+import csv
 import datetime
 import hashlib
 import os
@@ -15,6 +16,7 @@ from typing import Annotated, NoReturn, Optional
 
 import magic
 import minio
+import requests
 import sqlalchemy.exc
 from macrostrat.core.schemas import (  # type: ignore[import-untyped]
     IngestProcess,
@@ -36,6 +38,22 @@ from macrostrat.map_integration.database import db as DB
 from macrostrat.map_integration.errors import IngestError
 from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
 from macrostrat.map_integration.utils.map_info import get_map_info
+
+DOWNLOAD_ROOT_DIR = pathlib.Path("./tmp")
+FIELDS = [
+    "slug",
+    "name",
+    "ref_title",
+    "ref_authors",
+    "ref_year",
+    "ref_source",
+    "ref_isbn_or_doi",
+    "scale",
+    "url",
+    "website",
+    "s3_bucket",
+    "s3_prefix",
+]
 
 console = Console()
 
@@ -465,6 +483,55 @@ def ingest_object(
     ingest_process = update_ingest_process(ingest_process.id, state=IngestState.ingested)
 
     return obj
+
+
+def ingest_from_csv(
+    csv_file: Annotated[
+        pathlib.Path,
+        Argument(help="CSV file containing arguments for ingest-file"),
+    ],
+) -> None:
+    """
+    Ingest multiple maps as specified in a CSV file.
+
+    This command/function enables the bulk ingest of maps by specifying
+    values for arguments and options to the ingest-file command/function,
+    with each row in the CSV file corresponding to one map/invocation.
+
+    The first row of the CSV file should be a header listing the names of
+    arguments and options to the ingest-file subcommand, with hyphens being
+    replaced by underscores. Instead of "local_file", there should be
+    a column for "url", which is where to download the map's archive file
+    from. There must be a column for "slug".
+    """
+    with open(csv_file, mode="r", encoding="utf-8", newline="") as input_fp:
+        reader = csv.DictReader(input_fp)
+
+        for row in reader:
+            url = row["url"]
+            prefix = row.get("s3_prefix") or "ingest_from_csv"
+
+            download_dir = DOWNLOAD_ROOT_DIR / prefix
+            download_dir.mkdir(parents=True, exist_ok=True)
+
+            filename = url.split("/")[-1]
+            partial_local_file = download_dir / (filename + ".partial")
+            local_file = download_dir / filename
+
+            if not local_file.exists():
+                response = requests.get(url, stream=True, timeout=config.TIMEOUT)
+                response.raise_for_status()
+
+                with open(partial_local_file, mode="wb") as local_fp:
+                    for chunk in response.iter_content(chunk_size=config.CHUNK_SIZE):
+                        local_fp.write(chunk)
+                partial_local_file.rename(local_file)
+
+            kwargs = {}
+            for f in FIELDS:
+                if row.get(f) is not None:
+                    kwargs[f] = row[f]
+            ingest_file(local_file, **kwargs)
 
 
 # --------------------------------------------------------------------------
