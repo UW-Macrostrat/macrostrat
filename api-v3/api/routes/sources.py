@@ -116,7 +116,7 @@ async def post_source(source: Sources.Post, user_has_access: bool = Depends(has_
     async_session = get_async_session(engine)
 
     if source.slug is None:
-        source.slug = re.sub(r"\W", "_", slugify(source.name, max_length=10))
+        source.slug = re.sub(r"\W", "_", slugify(source.name, max_length=30))
     source.primary_table = source.slug + "_polygons"
 
     async with async_session() as session:
