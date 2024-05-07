@@ -134,6 +134,56 @@ def extract_archive(
             )
 
 
+def set_alaska_metadata(source: Sources, data_dir: pathlib.Path) -> None:
+    metadata: dict[str, str] = {}
+    metadata_files = list(data_dir.glob("metadata/*.txt"))
+
+    if len(metadata_files) != 1:
+        return
+    with open(metadata_files[0], encoding="utf-8") as fp:
+        raw_metadata = fp.readlines()
+
+    ## NOTE: The metadata file looks like it could be parsed as YAML,
+    ## but alas, it is not YAML. Some hashes define a key multiple times,
+    ## and some values confuse PyYAMLs parser.
+
+    ## Skip the first line ("Identification_Information:").
+
+    raw_metadata.pop(0)
+
+    ## Scan for interesting lines until we reach the next section.
+
+    for line in raw_metadata:
+        if not line.startswith(" "):
+            break
+        line = line.strip()
+
+        if line.startswith("Originator: "):
+            author = line.replace("Originator: ", "")
+            if "authors" in metadata:
+                metadata["authors"] += f"; {author}"
+            else:
+                metadata["authors"] = author
+        elif line.startswith("Publication_Date: "):
+            year = line.replace("Publication_Date: ", "")
+            metadata["ref_year"] = year
+        elif line.startswith("Title: "):
+            title = line.replace("Title: ", "")
+            metadata["name"] = title
+            metadata["ref_title"] = title
+        elif line.startswith("Publisher: "):
+            publisher = line.replace("Publisher: ", "")
+            metadata["ref_source"] = publisher
+        elif line.startswith("Online_Linkage: "):
+            doi = line.replace("Online_Linkage: ", "")
+            metadata["isbn_doi"] = doi
+
+    ## Update the map's metadata.
+
+    if metadata:
+        update_source(source.source_id, **metadata)
+
+
 # --------------------------------------------------------------------------
 
 
@@ -572,6 +622,11 @@ def ingest_object(
                 raise_ingest_error(ingest_process, str(exn), exn)
             except sqlalchemy.exc.DBAPIError as exn:
                 raise_ingest_error(ingest_process, str(exn), exn)
+
+            ## Process any other data of interest.
+
+            if filter == "Alaska":
+                set_alaska_metadata(source, tmp_dir)
     finally:
         local_file.unlink()
 
