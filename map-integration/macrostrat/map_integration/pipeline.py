@@ -2,6 +2,7 @@
 A pipeline for ingesting maps into Macrostrat.
 """
 
+import csv
 import datetime
 import hashlib
 import os
@@ -15,9 +16,11 @@ from typing import Annotated, NoReturn, Optional
 
 import magic
 import minio
+import requests
 import sqlalchemy.exc
 from macrostrat.core.schemas import (  # type: ignore[import-untyped]
     IngestProcess,
+    IngestProcessTag,
     IngestState,
     Object,
     ObjectGroup,
@@ -36,6 +39,22 @@ from macrostrat.map_integration.database import db as DB
 from macrostrat.map_integration.errors import IngestError
 from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
 from macrostrat.map_integration.utils.map_info import get_map_info
+
+DOWNLOAD_ROOT_DIR = pathlib.Path("./tmp")
+FIELDS = [
+    "slug",
+    "name",
+    "ref_title",
+    "ref_authors",
+    "ref_year",
+    "ref_source",
+    "ref_isbn_or_doi",
+    "scale",
+    "url",
+    "website",
+    "s3_bucket",
+    "s3_prefix",
+]
 
 console = Console()
 
@@ -61,6 +80,55 @@ def raise_ingest_error(
 ) -> NoReturn:
     record_ingest_error(ingest_process, message)
     raise IngestError(message) from source_exn
+
+
+# --------------------------------------------------------------------------
+
+
+def extract_archive(
+    archive_file: pathlib.Path,
+    target_dir: pathlib.Path,
+    *,
+    ingest_process: Optional[IngestProcess] = None,
+    recursive: bool = True,
+    archives_to_skip: Optional[set[pathlib.Path]] = None,
+) -> None:
+    """
+    Extract an archive into a directory.
+
+    By default, any sub-archives will be extracted into the same directory.
+    This might not result in the expected layout for some archives.
+
+    If provided, the ingest process will be used to report any errors.
+    """
+    if archive_file.name.endswith(".tar.gz"):
+        with tarfile.open(archive_file) as tf:
+            tf.extractall(path=target_dir, filter="data")
+    elif archive_file.name.endswith(".tgz"):
+        with tarfile.open(archive_file) as tf:
+            tf.extractall(path=target_dir, filter="data")
+    elif archive_file.name.endswith(".zip"):
+        with zipfile.ZipFile(archive_file) as zf:
+            zf.extractall(path=target_dir)
+    else:
+        if ingest_process:
+            raise_ingest_error(ingest_process, "Unrecognized file format")
+
+    if recursive:
+        archives_to_skip = (archives_to_skip or set()) | set([archive_file])
+        sub_archives = set(
+            list(target_dir.glob("**/*.tar.gz"))
+            + list(target_dir.glob("**/*.tgz"))
+            + list(target_dir.glob("**/*.zip"))
+        )
+        for sub_archive in sub_archives - archives_to_skip:
+            extract_archive(
+                sub_archive,
+                target_dir,
+                ingest_process=ingest_process,
+                recursive=recursive,
+                archives_to_skip=archives_to_skip,
+            )
 
 
 # --------------------------------------------------------------------------
@@ -154,6 +222,23 @@ def create_ingest_process() -> IngestProcess:
     return new_ingest_process
 
 
+def create_ingest_process_tag(
+    ingest_process_id: int,
+    tag: str,
+) -> IngestProcessTag:
+    with get_db_session() as session:
+        new_ingest_process_tag = session.scalar(
+            insert(IngestProcessTag)
+            .values(
+                ingest_process_id=ingest_process_id,
+                tag=tag,
+            )
+            .returning(IngestProcessTag)
+        )
+        session.commit()
+    return new_ingest_process_tag
+
+
 def update_ingest_process(id_: int, **data) -> IngestProcess:
     with get_db_session() as session:
         new_ingest_process = session.scalar(
@@ -206,8 +291,16 @@ def ingest_file(
     ],
     slug: Annotated[
         str,
-        Argument(help="Macrostrat slug to use for this map"),
+        Argument(help="The slug to use for this map"),
     ],
+    tag: Annotated[
+        Optional[str],
+        Option(help="A tag to apply to the map"),
+    ] = None,
+    filter: Annotated[
+        Optional[str],
+        Option(help="How to interpret the contents of the provided file"),
+    ] = None,
     name: Annotated[
         Optional[str],
         Option(help="The map's name"),
@@ -310,6 +403,8 @@ def ingest_file(
     if ingest_process.state == IngestState.ingested:
         console.print("Ingest pipeline has already been completed")
         return obj
+    if tag:
+        create_ingest_process_tag(ingest_process.id, tag)
     console.print(f"Created or updated ingest process ID {ingest_process.id}")
 
     ## Create or update the object's DB entry.
@@ -366,7 +461,7 @@ def ingest_file(
     ingest_process = update_ingest_process(ingest_process.id, source_id=source.source_id)
     console.print(f"Created source ID {source.source_id}")
 
-    return ingest_object(obj.bucket, obj.key)
+    return ingest_object(obj.bucket, obj.key, filter=filter)
 
 
 def ingest_object(
@@ -378,12 +473,18 @@ def ingest_object(
         str,
         Argument(help="The object's key"),
     ],
+    *,
+    filter: Annotated[
+        Optional[str],
+        Option(help="How to interpret the contents of the specified object"),
+    ] = None,
 ) -> Object:
     """
-    Ingest an object directly from S3.
+    Ingest an object in S3 containing a map into Macrostrat.
 
-    Assumes that database records for the "ingest process" and "sources"
-    tables have already been created.
+    This command/function assumes that database records for the "ingest
+    process" and "sources" tables have already been created. (The web UI's
+    upload form creates the required records.)
     """
     obj = get_object_by_loc(bucket, key)
     if not obj:
@@ -425,23 +526,32 @@ def ingest_object(
 
             ## Extract the archive.
 
-            if local_file.name.endswith(".tar.gz") or local_file.name.endswith(".tgz"):
-                with tarfile.open(local_file) as tf:
-                    tf.extractall(path=tmp_dir, filter="data")
-            elif local_file.name.endswith(".zip"):
-                with zipfile.ZipFile(local_file) as zf:
-                    zf.extractall(path=tmp_dir)
-            else:
-                raise_ingest_error(ingest_process, "Unrecognized file format")
+            extract_archive(local_file, tmp_dir, ingest_process=ingest_process)
 
             ## Locate files of interest.
 
-            gis_data = list(tmp_dir.glob("**/*.shp")) + list(tmp_dir.glob("**/*.geojson"))
+            gis_files = (
+                list(tmp_dir.glob("**/*.shp"))
+                + list(tmp_dir.glob("**/*.geojson"))
+                + list(tmp_dir.glob("**/*.gpkg"))
+            )
+            gis_data = []
+            excluded_data = []
+
+            for gis_file in gis_files:
+                if filter == "TA1":
+                    if "_bbox" not in gis_file.name and "_legend" not in gis_file.name:
+                        gis_data.append(gis_file)
+                    else:
+                        excluded_data.append(gis_file)
+                else:
+                    gis_data.append(gis_file)
             if not gis_data:
                 raise_ingest_error(ingest_process, "Failed to locate GIS data")
 
             ## Process the files.
 
+            console.print(f"NOT ingesting {excluded_data}")
             console.print(f"Ingesting {source.slug} from {gis_data}")
             try:
                 ingest_map(source.slug, gis_data)
@@ -464,6 +574,55 @@ def ingest_object(
     ingest_process = update_ingest_process(ingest_process.id, state=IngestState.ingested)
 
     return obj
+
+
+def ingest_from_csv(
+    csv_file: Annotated[
+        pathlib.Path,
+        Argument(help="CSV file containing arguments for ingest-file"),
+    ],
+) -> None:
+    """
+    Ingest multiple maps as specified in a CSV file.
+
+    This command/function enables the bulk ingest of maps by specifying
+    values for arguments and options to the ingest-file command/function,
+    with each row in the CSV file corresponding to one map/invocation.
+
+    The first row of the CSV file should be a header listing the names of
+    arguments and options to the ingest-file subcommand, with hyphens being
+    replaced by underscores. Instead of "local_file", there should be
+    a column for "url", which is where to download the map's archive file
+    from. There must be a column for "slug".
+    """
+    with open(csv_file, mode="r", encoding="utf-8", newline="") as input_fp:
+        reader = csv.DictReader(input_fp)
+
+        for row in reader:
+            url = row["url"]
+            prefix = row.get("s3_prefix") or "ingest_from_csv"
+
+            download_dir = DOWNLOAD_ROOT_DIR / prefix
+            download_dir.mkdir(parents=True, exist_ok=True)
+
+            filename = url.split("/")[-1]
+            partial_local_file = download_dir / (filename + ".partial")
+            local_file = download_dir / filename
+
+            if not local_file.exists():
+                response = requests.get(url, stream=True, timeout=config.TIMEOUT)
+                response.raise_for_status()
+
+                with open(partial_local_file, mode="wb") as local_fp:
+                    for chunk in response.iter_content(chunk_size=config.CHUNK_SIZE):
+                        local_fp.write(chunk)
+                partial_local_file.rename(local_file)
+
+            kwargs = {}
+            for f in FIELDS:
+                if row.get(f) is not None:
+                    kwargs[f] = row[f]
+            ingest_file(local_file, **kwargs)
 
 
 # --------------------------------------------------------------------------
