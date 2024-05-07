@@ -46,7 +46,7 @@ cli.add_command(fix_geometries, name="fix-geometries")
 cli.add_command(apply_srid, name="apply-srid")
 
 cli.add_command(ingest_file, name="ingest-file")
-cli.add_command(ingest_from_csv, name="ingest-from-csv")
+cli.add_command(ingest_from_csv, name="ingest-from-csv", context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
 cli.add_command(ingest_object, name="ingest-object")
 cli.add_command(run_polling_loop, name="run-polling-loop")
 

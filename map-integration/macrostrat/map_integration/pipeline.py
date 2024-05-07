@@ -30,7 +30,7 @@ from macrostrat.core.schemas import (  # type: ignore[import-untyped]
 from rich.console import Console
 from sqlalchemy import and_, insert, select, update
 from sqlalchemy.orm import Session
-from typer import Argument, Option
+from typer import Argument, Context, Option
 
 from macrostrat.map_integration import config
 from macrostrat.map_integration.commands.ingest import ingest_map
@@ -562,7 +562,7 @@ def ingest_object(
             if not gis_data:
                 raise_ingest_error(ingest_process, "Failed to locate GIS data")
 
-            ## Process the files.
+            ## Process the GIS files.
 
             console.print(f"NOT ingesting {excluded_data}")
             console.print(f"Ingesting {source.slug} from {gis_data}")
@@ -590,6 +590,7 @@ def ingest_object(
 
 
 def ingest_from_csv(
+    ctx: Context,
     csv_file: Annotated[
         pathlib.Path,
         Argument(help="CSV file containing arguments for ingest-file"),
@@ -610,6 +611,10 @@ def ingest_from_csv(
     "archive_url", which is where to download the map's archive file from.
 
     There must also be a column for "slug".
+
+    Options for the ingest-file subcommand can be provided *after* the CSV
+    file, in which case they will override whatever is specified in the CSV
+    file itself. Note that mistyped options will result in verbose errors.
     """
     with open(csv_file, mode="r", encoding="utf-8", newline="") as input_fp:
         reader = csv.DictReader(input_fp)
@@ -636,8 +641,12 @@ def ingest_from_csv(
 
             kwargs = {}
             for f in FIELDS:
-                if row.get(f) is not None:
+                if row.get(f):
                     kwargs[f] = row[f]
+            while ctx.args:
+                k = ctx.args.pop(0)[2:].replace("-", "_")
+                v = ctx.args.pop(0)
+                kwargs[k] = v
             ingest_file(local_file, **kwargs)
 
 
