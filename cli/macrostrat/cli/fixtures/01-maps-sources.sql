@@ -28,7 +28,7 @@ ALTER TABLE maps.sources ADD COLUMN IF NOT EXISTS raster_url text;
 DROP VIEW maps.sources_metadata CASCADE;
 CREATE OR REPLACE VIEW maps.sources_metadata AS
 SELECT
-    source_id,
+    s.source_id,
     slug,
     name,
     url,
@@ -44,8 +44,17 @@ SELECT
     display_scales,
     new_priority priority,
     status_code,
-    raster_url
-FROM maps.sources
+    raster_url,
+    CASE
+       WHEN psi.source_id IS NULL THEN false
+       ELSE true
+    END AS is_mapped
+FROM maps.sources AS s
+LEFT JOIN (
+    SELECT
+        DISTINCT(polygons.source_id)
+    FROM maps.polygons
+) psi ON s.source_id = psi.source_id
 ORDER BY source_id DESC;
 
 COMMENT ON VIEW maps.sources_metadata IS 'Convenience view for maps.sources with only metadata fields';
