@@ -85,6 +85,55 @@ def raise_ingest_error(
 # --------------------------------------------------------------------------
 
 
+def extract_archive(
+    archive_file: pathlib.Path,
+    target_dir: pathlib.Path,
+    *,
+    ingest_process: Optional[IngestProcess] = None,
+    recursive: bool = True,
+    archives_to_skip: Optional[set[pathlib.Path]] = None,
+) -> None:
+    """
+    Extract an archive into a directory.
+
+    By default, any sub-archives will be extracted into the same directory.
+    This might not result in the expected layout for some archives.
+
+    If provided, the ingest process will be used to report any errors.
+    """
+    if archive_file.name.endswith(".tar.gz"):
+        with tarfile.open(archive_file) as tf:
+            tf.extractall(path=target_dir, filter="data")
+    elif archive_file.name.endswith(".tgz"):
+        with tarfile.open(archive_file) as tf:
+            tf.extractall(path=target_dir, filter="data")
+    elif archive_file.name.endswith(".zip"):
+        with zipfile.ZipFile(archive_file) as zf:
+            zf.extractall(path=target_dir)
+    else:
+        if ingest_process:
+            raise_ingest_error(ingest_process, "Unrecognized file format")
+
+    if recursive:
+        archives_to_skip = (archives_to_skip or set()) | set([archive_file])
+        sub_archives = set(
+            list(target_dir.glob("**/*.tar.gz"))
+            + list(target_dir.glob("**/*.tgz"))
+            + list(target_dir.glob("**/*.zip"))
+        )
+        for sub_archive in sub_archives - archives_to_skip:
+            extract_archive(
+                sub_archive,
+                target_dir,
+                ingest_process=ingest_process,
+                recursive=recursive,
+                archives_to_skip=archives_to_skip,
+            )
+
+
+# --------------------------------------------------------------------------
+
+
 def get_db_session(expire_on_commit=False) -> Session:
     # NOTE: By default, let ORM objects persist past commits, and let
     # consumers manage concurrent updates.
@@ -468,14 +517,7 @@ def ingest_object(
 
             ## Extract the archive.
 
-            if local_file.name.endswith(".tar.gz") or local_file.name.endswith(".tgz"):
-                with tarfile.open(local_file) as tf:
-                    tf.extractall(path=tmp_dir, filter="data")
-            elif local_file.name.endswith(".zip"):
-                with zipfile.ZipFile(local_file) as zf:
-                    zf.extractall(path=tmp_dir)
-            else:
-                raise_ingest_error(ingest_process, "Unrecognized file format")
+            extract_archive(local_file, tmp_dir, ingest_process=ingest_process)
 
             ## Locate files of interest.
 
