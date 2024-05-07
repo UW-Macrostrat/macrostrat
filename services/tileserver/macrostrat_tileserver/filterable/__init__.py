@@ -52,9 +52,9 @@ async def run_layer_query(con, layer_name, **params):
 
 
 def get_layer_sql(layer: str):
-    units_query = __here__ / "queries" / "units.sql"
+    query = __here__ / "queries" / (layer + ".sql")
 
-    q = units_query.read_text()
+    q = query.read_text()
     q = q.strip()
     if q.endswith(";"):
         q = q[:-1]

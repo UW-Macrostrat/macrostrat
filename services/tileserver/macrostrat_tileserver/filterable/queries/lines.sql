@@ -6,7 +6,7 @@ WITH mvt_features AS (
   FROM
     carto.lines
   WHERE
-    scale::text = ANY(:linesize)
+    scale::text = :mapsize
     AND ST_Intersects(geom, ST_Transform(:envelope, 4326))
 )
 SELECT
