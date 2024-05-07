@@ -329,13 +329,17 @@ def ingest_file(
         str,
         Option(help="The map's scale"),
     ] = "large",
-    url: Annotated[
+    archive_url: Annotated[
         Optional[str],
-        Option(help="The map's download URL"),
+        Option(help="The URL for the map's archive file"),
     ] = None,
-    website: Annotated[
+    website_url: Annotated[
         Optional[str],
-        Option(help="The map's website"),
+        Option(help="The URL for the map's canonical landing page"),
+    ] = None,
+    raster_url: Annotated[
+        Optional[str],
+        Option(help="The URL for the map's raster file"),
     ] = None,
     s3_bucket: Annotated[
         str,
@@ -410,10 +414,12 @@ def ingest_file(
     ## Create or update the object's DB entry.
 
     source_info = {}
-    if url:
-        source_info["url"] = url
-    if website:
-        source_info["website"] = website
+    if archive_url:
+        source_info["archive_url"] = archive_url
+    if raster_url:
+        source_info["raster_url"] = raster_url
+    if website_url:
+        source_info["website_url"] = website_url
 
     payload = {
         "object_group_id": ingest_process.object_group_id,
@@ -446,6 +452,8 @@ def ingest_file(
     }
     if name:
         metadata["name"] = name
+    if website_url:
+        metadata["url"] = website_url
     if ref_title:
         metadata["ref_title"] = ref_title
     if ref_authors:
@@ -456,6 +464,8 @@ def ingest_file(
         metadata["ref_source"] = ref_source
     if ref_isbn_or_doi:
         metadata["isbn_doi"] = ref_isbn_or_doi
+    if raster_url:
+        metadata["raster_url"] = raster_url
 
     source = create_source(**metadata)
     ingest_process = update_ingest_process(ingest_process.id, source_id=source.source_id)
