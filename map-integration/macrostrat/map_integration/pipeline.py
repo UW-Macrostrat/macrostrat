@@ -353,7 +353,7 @@ def ingest_file(
         Argument(help="The slug to use for this map"),
     ],
     tag: Annotated[
-        Optional[str],
+        Optional[list[str]],
         Option(help="A tag to apply to the map"),
     ] = None,
     filter: Annotated[
@@ -471,7 +471,11 @@ def ingest_file(
         console.print("Ingest pipeline has already been completed")
         return obj
     if tag:
-        create_ingest_process_tag(ingest_process.id, tag)
+        if isinstance(tag, list):
+            for t in tag:
+                create_ingest_process_tag(ingest_process.id, t)
+        else:
+            create_ingest_process_tag(ingest_process.id, tag)
     console.print(f"Created or updated ingest process ID {ingest_process.id}")
 
     ## Create or update the object's DB entry.
