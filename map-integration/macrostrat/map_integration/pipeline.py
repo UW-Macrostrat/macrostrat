@@ -570,6 +570,11 @@ def ingest_object(
             "No source ID in the database for ingest process ID {ingest_process.id}",
         )
 
+    ## Normalize the filter.
+
+    if filter:
+        filter = filter.lower()
+
     ## Download the object to a local, temporary file.
 
     s3 = minio.Minio(
@@ -608,7 +613,7 @@ def ingest_object(
             excluded_data = []
 
             for gis_file in gis_files:
-                if filter == "TA1":
+                if filter == "ta1":
                     if "_bbox" not in gis_file.name and "_legend" not in gis_file.name:
                         gis_data.append(gis_file)
                     else:
