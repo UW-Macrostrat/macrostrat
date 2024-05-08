@@ -408,6 +408,10 @@ def ingest_file(
         str,
         Option(help="The prefix, sans trailing slash, to use for this object's S3 key"),
     ] = config.S3_PREFIX,
+    append_data: Annotated[
+        bool,
+        Option(help="Whether to append data to the map when it already exists"),
+    ] = False,
     replace_object: Annotated[
         bool,
         Option(help="Replace the current version of this object"),
@@ -526,11 +530,14 @@ def ingest_file(
     if raster_url:
         metadata["raster_url"] = raster_url
 
-    source = create_source(**metadata)
+    if source := get_source_by_slug(slug):
+        source = update_source(source.source_id, **metadata)
+    else:
+        source = create_source(**metadata)
     ingest_process = update_ingest_process(ingest_process.id, source_id=source.source_id)
-    console.print(f"Created source ID {source.source_id}")
+    console.print(f"Created or updated source ID {source.source_id}")
 
-    return ingest_object(obj.bucket, obj.key, filter=filter)
+    return ingest_object(obj.bucket, obj.key, filter=filter, append_data=append_data)
 
 
 def ingest_object(
@@ -547,6 +554,10 @@ def ingest_object(
         Optional[str],
         Option(help="How to interpret the contents of the specified object"),
     ] = None,
+    append_data: Annotated[
+        bool,
+        Option(help="Whether to append data to the map when it already exists"),
+    ] = False,
 ) -> Object:
     """
     Ingest an object in S3 containing a map into Macrostrat.
@@ -690,6 +701,8 @@ def ingest_from_csv(
     file, in which case they will override whatever is specified in the CSV
     file itself. Note that mistyped options will result in verbose errors.
     """
+    slugs_seen = []
+
     with open(csv_file, mode="r", encoding="utf-8", newline="") as input_fp:
         reader = csv.DictReader(input_fp)
 
@@ -724,6 +737,10 @@ def ingest_from_csv(
                 k = ctx.args[i][2:].replace("-", "_")
                 v = ctx.args[i + 1]
                 kwargs[k] = v
+
+            kwargs["append_data"] = row["slug"] in slugs_seen
+            slugs_seen.append(row["slug"])
+
             try:
                 ingest_file(local_file, **kwargs)
             except Exception as exn:
