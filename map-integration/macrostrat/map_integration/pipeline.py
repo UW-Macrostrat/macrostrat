@@ -715,9 +715,9 @@ def ingest_from_csv(
             for f in FIELDS:
                 if row.get(f):
                     kwargs[f] = row[f]
-            while ctx.args:
-                k = ctx.args.pop(0)[2:].replace("-", "_")
-                v = ctx.args.pop(0)
+            for i in range(0, len(ctx.args), 2):
+                k = ctx.args[i][2:].replace("-", "_")
+                v = ctx.args[i + 1]
                 kwargs[k] = v
             try:
                 ingest_file(local_file, **kwargs)
