@@ -299,7 +299,7 @@ async def create_group_token(group_token_request: GroupTokenRequest,
     return AccessToken(group=group_token_request.group_id, token=token)
 
 
-@router.get("/logout")
+@router.post("/logout")
 async def logout(response: Response):
     """Logout the active user"""
 
