@@ -99,8 +99,7 @@ def extract_archive(
     target_dir: pathlib.Path,
     *,
     ingest_process: Optional[IngestProcess] = None,
-    recursive: bool = True,
-    archives_to_skip: Optional[set[pathlib.Path]] = None,
+    extract_subarchives: bool = True,
 ) -> None:
     """
     Extract an archive into a directory.
@@ -110,10 +109,7 @@ def extract_archive(
 
     If provided, the ingest process will be used to report any errors.
     """
-    if archive_file.name.endswith(".tar.gz"):
-        with tarfile.open(archive_file) as tf:
-            tf.extractall(path=target_dir, filter="data")
-    elif archive_file.name.endswith(".tgz"):
+    if archive_file.name.endswith((".tgz", ".tar.gz")):
         with tarfile.open(archive_file) as tf:
             tf.extractall(path=target_dir, filter="data")
     elif archive_file.name.endswith(".zip"):
@@ -123,20 +119,18 @@ def extract_archive(
         if ingest_process:
             raise_ingest_error(ingest_process, "Unrecognized file format")
 
-    if recursive:
-        archives_to_skip = (archives_to_skip or set()) | set([archive_file])
+    if extract_subarchives:
         sub_archives = set(
             list(target_dir.glob("**/*.tar.gz"))
             + list(target_dir.glob("**/*.tgz"))
             + list(target_dir.glob("**/*.zip"))
         )
-        for sub_archive in sub_archives - archives_to_skip:
+        for sub_archive in sub_archives - set([archive_file]):
             extract_archive(
                 sub_archive,
                 target_dir,
                 ingest_process=ingest_process,
-                recursive=recursive,
-                archives_to_skip=archives_to_skip,
+                extract_subarchives=False,
             )
 
 
