@@ -154,28 +154,28 @@ def set_alaska_metadata(source: Sources, data_dir: pathlib.Path) -> None:
     ## Scan for interesting lines until we reach the next section.
 
     for line in raw_metadata:
-        if not line.startswith(" "):
+        if not line.startswith(" ") or "Description:" in line:
             break
         line = line.strip()
 
-        if line.startswith("Originator: "):
-            author = line.replace("Originator: ", "")
+        if line.startswith("Originator:"):
+            author = line.replace("Originator:", "").strip()
             if "authors" in metadata:
                 metadata["authors"] += f"; {author}"
             else:
                 metadata["authors"] = author
-        elif line.startswith("Publication_Date: "):
-            year = line.replace("Publication_Date: ", "")
+        elif line.startswith("Publication_Date:"):
+            year = line.replace("Publication_Date:", "").strip()
             metadata["ref_year"] = year
-        elif line.startswith("Title: "):
-            title = line.replace("Title: ", "")
+        elif line.startswith("Title:"):
+            title = line.replace("Title:", "").strip()
             metadata["name"] = title
             metadata["ref_title"] = title
-        elif line.startswith("Publisher: "):
-            publisher = line.replace("Publisher: ", "")
+        elif line.startswith("Publisher:"):
+            publisher = line.replace("Publisher:", "").strip()
             metadata["ref_source"] = publisher
-        elif line.startswith("Online_Linkage: "):
-            doi = line.replace("Online_Linkage: ", "")
+        elif line.startswith("Online_Linkage:"):
+            doi = line.replace("Online_Linkage:", "").strip()
             metadata["isbn_doi"] = doi
 
     ## Update the map's metadata.
