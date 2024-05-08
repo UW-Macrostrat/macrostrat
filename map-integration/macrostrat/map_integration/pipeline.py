@@ -17,7 +17,6 @@ from typing import Annotated, NoReturn, Optional
 import magic
 import minio
 import requests
-import sqlalchemy.exc
 from macrostrat.core.schemas import (  # type: ignore[import-untyped]
     IngestProcess,
     IngestProcessTag,
@@ -624,16 +623,21 @@ def ingest_object(
             console.print(f"NOT ingesting {excluded_data}")
             console.print(f"Ingesting {source.slug} from {gis_data}")
             try:
-                ingest_map(source.slug, gis_data)
-            except IngestError as exn:
-                raise_ingest_error(ingest_process, str(exn), exn)
-            except sqlalchemy.exc.DBAPIError as exn:
+                ingest_map(
+                    source.slug,
+                    gis_data,
+                    if_exists="append" if append_data else "replace",
+                )
+            except Exception as exn:
                 raise_ingest_error(ingest_process, str(exn), exn)
 
             ## Process any other data of interest.
 
-            if filter == "Alaska":
-                set_alaska_metadata(source, tmp_dir)
+            try:
+                if filter == "alaska":
+                    set_alaska_metadata(source, tmp_dir)
+            except Exception as exn:
+                raise_ingest_error(ingest_process, str(exn), exn)
     finally:
         local_file.unlink()
 
@@ -642,11 +646,14 @@ def ingest_object(
     macrostrat_map = get_map_info(DB, source.slug)
     console.print(f"Macrostrat map object: {macrostrat_map}")
 
-    prepare_fields(macrostrat_map)
-    ingest_process = update_ingest_process(ingest_process.id, state=IngestState.prepared)
-    create_rgeom(macrostrat_map)
-    create_webgeom(macrostrat_map)
-    ingest_process = update_ingest_process(ingest_process.id, state=IngestState.ingested)
+    try:
+        prepare_fields(macrostrat_map)
+        ingest_process = update_ingest_process(ingest_process.id, state=IngestState.prepared)
+        create_rgeom(macrostrat_map)
+        create_webgeom(macrostrat_map)
+        ingest_process = update_ingest_process(ingest_process.id, state=IngestState.ingested)
+    except Exception as exn:
+        raise_ingest_error(ingest_process, str(exn), exn)
 
     return obj
 
@@ -694,7 +701,10 @@ def ingest_from_csv(
 
             if not local_file.exists():
                 response = requests.get(url, stream=True, timeout=config.TIMEOUT)
-                response.raise_for_status()
+
+                if not response.ok:
+                    console.print(f"Failed to download {url}")
+                    continue
 
                 with open(partial_local_file, mode="wb") as local_fp:
                     for chunk in response.iter_content(chunk_size=config.CHUNK_SIZE):
@@ -709,7 +719,10 @@ def ingest_from_csv(
                 k = ctx.args.pop(0)[2:].replace("-", "_")
                 v = ctx.args.pop(0)
                 kwargs[k] = v
-            ingest_file(local_file, **kwargs)
+            try:
+                ingest_file(local_file, **kwargs)
+            except Exception as exn:
+                console.print(f"Exception: {exn}")
 
 
 # --------------------------------------------------------------------------
@@ -741,7 +754,7 @@ def run_polling_loop(
                     console.print(f"Processing object ID {obj.id} ({obj.bucket}/{obj.key})")
                     try:
                         ingest_object(obj.bucket, obj.key)
-                    except IngestError as exn:
+                    except Exception as exn:
                         record_ingest_error(ingest_process, str(exn))
 
         console.print("Finished iteration of polling loop")
