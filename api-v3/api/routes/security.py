@@ -303,8 +303,13 @@ async def create_group_token(group_token_request: GroupTokenRequest,
 async def logout(response: Response):
     """Logout the active user"""
 
-    response.delete_cookie(key="Authorization")
-    return response
+    try:
+        response.delete_cookie(key="Authorization")
+
+    except KeyError:
+        return {"status": "error", "message": "User is not logged in"}
+
+    return {"status": "success"}
 
 
 @router.get("/groups")
@@ -317,6 +322,9 @@ async def get_security_groups(groups: list[int] = Depends(get_groups)):
 @router.get("/me")
 async def read_users_me(user_token_data: TokenData = Depends(get_user_token_from_cookie)):
     """Return JWT content"""
+
+    if user_token_data is None:
+        raise HTTPException(status_code=401, detail="User not found")
 
     engine = db.get_engine()
     async_session = db.get_async_session(engine)
