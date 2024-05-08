@@ -318,4 +318,16 @@ async def get_security_groups(groups: list[int] = Depends(get_groups)):
 async def read_users_me(user_token_data: TokenData = Depends(get_user_token_from_cookie)):
     """Return JWT content"""
 
-    return user_token_data
+    engine = db.get_engine()
+    async_session = db.get_async_session(engine)
+
+    async with async_session() as session:
+
+        user_stmt = select(schemas.User).filter(schemas.User.sub == user_token_data.sub)
+
+        user = await session.scalar(user_stmt)
+
+        if user is None:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        return user
