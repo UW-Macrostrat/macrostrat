@@ -88,6 +88,12 @@ def raise_ingest_error(
 # --------------------------------------------------------------------------
 
 
+def truncate_str(data: str, *, limit: int = 255) -> str:
+    if len(data) > limit:
+        data = data[: limit - 3] + "..."
+    return data
+
+
 def extract_archive(
     archive_file: pathlib.Path,
     target_dir: pathlib.Path,
@@ -326,6 +332,13 @@ def create_source(**data) -> Sources:
 
 
 def update_source(id_: int, **data) -> Sources:
+    data = data.copy()
+    for col in ["name", "url", "authors", "ref_source"]:
+        if col in data:
+            data[col] = truncate_str(data[col], limit=255)
+    for col in ["isbn_doi", "licence"]:
+        if col in data:
+            data[col] = truncate_str(data[col], limit=100)
     with get_db_session() as session:
         new_source = session.scalar(
             update(Sources).values(**data).where(Sources.source_id == id_).returning(Sources),
