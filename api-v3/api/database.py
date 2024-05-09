@@ -243,6 +243,7 @@ async def select_sources_sub_table(
 
         stmt = (
             select(*selected_columns)
+            .order_by(*query_parser.get_order_by_columns())
             .limit(page_size)
             .offset(page_size * page)
             .where(query_parser.where_expressions())
@@ -252,12 +253,6 @@ async def select_sources_sub_table(
             stmt = stmt.group_by(query_parser.get_group_by_column()).order_by(
                 query_parser.get_group_by_column()
             )
-
-        if (
-                query_parser.get_order_by_columns() is not None
-                and query_parser.get_group_by_column() is None
-        ):
-            stmt = stmt.order_by(*query_parser.get_order_by_columns())
 
         x = str(stmt.compile(compile_kwargs={
             "literal_binds": True

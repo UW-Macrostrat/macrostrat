@@ -29,7 +29,7 @@ class ParserException(Exception):
 def get_filter_query_params(request: Request) -> list[tuple[str, str]]:
     """Returns the query params that are not page or page_size"""
 
-    return [*filter(lambda x: x[0] not in ["page", "page_size"], request.query_params.items())]
+    return [*filter(lambda x: x[0] not in ["page", "page_size"], request.query_params.multi_items())]
 
 
 def cast_to_column_type(column: Column, value):
@@ -224,7 +224,17 @@ class QueryParser:
                 continue
 
             if query_param.operators[0] == "order_by":
-                order_by_columns.append(query_param.column)
+                # Check if the order_by is valid
+                if query_param.value not in ["asc", "desc"]:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Query is invalid. Use asc or desc for order_by"
+                    )
+
+                if query_param.value == "asc":
+                    order_by_columns.append(query_param.column.asc())
+                else:
+                    order_by_columns.append(query_param.column.desc())
 
         return order_by_columns
 
@@ -257,7 +267,7 @@ class QueryParser:
 
         # If group_by or order_by, then there is no value
         if len(encoded_expression_split) == 1:
-            if encoded_expression_split[0] not in ["group_by", "order_by"]:
+            if encoded_expression_split[0] not in ["group_by"]:
                 raise ParserException(f"Query is invalid.")
 
             return encoded_expression_split[:1], ""
