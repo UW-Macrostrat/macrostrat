@@ -39,7 +39,10 @@ from macrostrat.map_integration.errors import IngestError
 from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
 from macrostrat.map_integration.utils.map_info import get_map_info
 
+## The directory into which ingest_from_csv will download files.
 DOWNLOAD_ROOT_DIR = pathlib.Path("./tmp")
+
+## The list of arguments to ingest_file that ingest_from_cvs will handle.
 FIELDS = [
     "slug",
     "tag",
@@ -640,8 +643,9 @@ def ingest_object(
 
             ## Process the GIS files.
 
-            console.print(f"NOT ingesting {excluded_data}")
             console.print(f"Ingesting {source.slug} from {gis_data}")
+            if excluded_data:
+                console.print(f"NOT ingesting {excluded_data}")
             try:
                 ingest_map(
                     source.slug,
@@ -758,7 +762,7 @@ def run_polling_loop(
     polling_interval: Annotated[
         int,
         Argument(help="How often to poll, in seconds"),
-    ] = 30,
+    ] = 60,
 ) -> None:
     """
     Poll for and process pending ingest processes.
