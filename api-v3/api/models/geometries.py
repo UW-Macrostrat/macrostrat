@@ -37,9 +37,9 @@ class PolygonModel(CommonModel):
     comments: Optional[str] = None
     t_interval: Optional[Union[int | str]] = None
     b_interval: Optional[Union[int | str]] = None
-    confidence: Optional[float] = None
-    t_age: Optional[float] = None
-    b_age: Optional[float] = None
+    confidence: Optional[Union[float | str]] = None
+    t_age: Optional[Union[float | str]] = None
+    b_age: Optional[Union[float | str]] = None
 
 
 class PolygonRequestModel(PolygonModel):

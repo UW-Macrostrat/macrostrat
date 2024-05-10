@@ -3,14 +3,14 @@ from typing import Union
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 import starlette.requests
-from sqlalchemy import insert, select, update, and_, delete
+from sqlalchemy import insert, select, update, and_, delete, func
 from sqlalchemy.orm import selectinload, joinedload, defer
 import minio
+from starlette.responses import Response
 
 from api.database import (
     get_async_session,
-    get_engine,
-    results_to_model
+    get_engine
 )
 from api.routes.security import has_access
 import api.models.ingest as IngestProcessModel
@@ -26,13 +26,17 @@ router = APIRouter(
         404: {
             "description": "Not found"
         }
-    },
+    }
 )
 
 
 @router.get("", response_model=list[IngestProcessModel.Get])
-async def get_multiple_ingest_process(page: int = 0, page_size: int = 50,
-                                      filter_query_params=Depends(get_filter_query_params)):
+async def get_multiple_ingest_process(
+        response: Response,
+        page: int = 0,
+        page_size: int = 50,
+        filter_query_params=Depends(get_filter_query_params)
+):
     """Get all ingestion processes"""
 
     engine = get_engine()
@@ -41,7 +45,7 @@ async def get_multiple_ingest_process(page: int = 0, page_size: int = 50,
     query_parser = QueryParser(columns=IngestProcessSchema.__table__.c, query_params=filter_query_params)
 
     async with async_session() as session:
-        # TODO: This flow should likely be refactored into a function, lets see it used once more before making the move
+
         select_stmt = select(IngestProcessSchema) \
             .limit(page_size) \
             .offset(page_size * page) \
@@ -58,6 +62,8 @@ async def get_multiple_ingest_process(page: int = 0, page_size: int = 50,
             select_stmt = select_stmt.filter(IngestProcessSchema.tags.any(operation_expression))
 
         results = await session.execute(select_stmt)
+
+        response.headers["X-Total-Count"] = str(await session.scalar(select(func.count("*")).select_from(select_stmt.subquery())))
 
         return map(lambda x: x[0], results.all())
 
