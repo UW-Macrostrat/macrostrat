@@ -46,7 +46,14 @@ cli.add_command(fix_geometries, name="fix-geometries")
 cli.add_command(apply_srid, name="apply-srid")
 
 cli.add_command(ingest_file, name="ingest-file")
-cli.add_command(ingest_from_csv, name="ingest-from-csv", context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
+cli.add_command(
+    ingest_from_csv,
+    name="ingest-from-csv",
+    context_settings={
+        "allow_extra_args": True,
+        "ignore_unknown_options": True,
+    },
+)
 cli.add_command(ingest_object, name="ingest-object")
 cli.add_command(run_polling_loop, name="run-polling-loop")
 
@@ -102,6 +109,29 @@ def delete_sources(
             db.run_sql(
                 "DROP TABLE IF EXISTS {table}",
                 dict(table=Identifier("sources", table)),
+            )
+
+        ingest_process = db.run_query(
+            """
+            SELECT id FROM maps_metadata.ingest_process
+            JOIN maps.sources ON maps.sources.source_id = maps_metadata.ingest_process.source_id
+            WHERE maps.sources.slug = :slug
+            """,
+            dict(slug=slug),
+        ).fetchone()
+
+        if ingest_process:
+            ingest_process_id = ingest_process[0]
+
+            print("Ingest Process ID", ingest_process_id)
+
+            db.run_sql(
+                "DELETE FROM maps_metadata.ingest_process_tag WHERE ingest_process_id = :ingest_process_id",
+                dict(ingest_process_id=ingest_process_id),
+            )
+            db.run_sql(
+                "DELETE FROM maps_metadata.ingest_process WHERE id = :ingest_process_id",
+                dict(ingest_process_id=ingest_process_id),
             )
 
         db.run_sql("DELETE FROM maps.sources WHERE slug = :slug", dict(slug=slug))
