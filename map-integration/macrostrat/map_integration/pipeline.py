@@ -746,6 +746,15 @@ def ingest_from_csv(
                 v = ctx.args[i + 1]
                 kwargs[k] = v
 
+            ## Take into account the fact that we might be trying to
+            ## set multiple tags.
+
+            if "tag" in kwargs and "," in kwargs["tag"]:
+                kwargs["tag"] = kwargs["tag"].split(",")
+
+            ## Take into account the fact that we might be bulk ingesting
+            ## multiple files/objects for the same slug.
+
             kwargs["append_data"] = row["slug"] in slugs_seen
             slugs_seen.append(row["slug"])
 
