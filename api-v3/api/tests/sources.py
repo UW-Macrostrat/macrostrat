@@ -81,8 +81,8 @@ class TestAPI:
 
         assert len(response_json) > 0
 
-    def test_get_source_linestrings_table(self, api_client: TestClient):
-        response = api_client.get(f"/sources/{TEST_SOURCE_TABLE.source_id}/linestrings")
+    def test_get_source_lines_table(self, api_client: TestClient):
+        response = api_client.get(f"/sources/{TEST_SOURCE_TABLE.source_id}/lines")
         assert response.status_code == 200
         response_json = response.json()
 

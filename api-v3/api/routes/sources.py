@@ -137,7 +137,7 @@ async def get_sub_sources_geometries(
     engine = get_engine()
     async with engine.begin() as conn:
 
-        for geometry in ["polygons", "linestrings", "points"]:
+        for geometry in ["polygons", "lines", "points"]:
 
             try:
                 table = await get_table(conn, table_id, geometry)
@@ -153,7 +153,7 @@ async def get_sub_sources_helper(
         response: Response,
         request: starlette.requests.Request,
         table_id: int,
-        geometry_type: Literal["polygons", "linestrings", "points"],
+        geometry_type: Literal["polygons", "lines", "points"],
         page: int = 0,
         page_size: int = 100
 ) -> List[Union[PolygonResponseModel, LineStringModel, PointModel]]:
@@ -210,7 +210,7 @@ async def get_sub_sources(
     return await get_sub_sources_helper(response, request, table_id, "points", page, page_size)
 
 
-@router.get("/{table_id}/linestrings", response_model=List[LineStringModel])
+@router.get("/{table_id}/lines", response_model=List[LineStringModel])
 async def get_sub_sources(
         response: Response,
         request: starlette.requests.Request,
@@ -218,14 +218,14 @@ async def get_sub_sources(
         page: int = 0,
         page_size: int = 100
 ):
-    return await get_sub_sources_helper(response, request, table_id, "linestrings", page, page_size)
+    return await get_sub_sources_helper(response, request, table_id, "lines", page, page_size)
 
 
 @router.patch("/{table_id}/{geometry_type}")
 async def patch_sub_sources(
         request: starlette.requests.Request,
         table_id: int,
-        geometry_type: Literal["polygons", "linestrings", "points"],
+        geometry_type: Literal["polygons", "lines", "points"],
         updates: Union[PolygonRequestModel, LineStringModel, PointModel],
         user_has_access: bool = Depends(has_access)
 ) -> List[Union[PolygonResponseModel, LineStringModel, PointModel]]:
@@ -259,7 +259,7 @@ async def patch_sub_sources(
         request: starlette.requests.Request,
         target_column: str,
         table_id: int,
-        geometry_type: Literal["polygons", "linestrings", "points"],
+        geometry_type: Literal["polygons", "lines", "points"],
         copy_column: CopyColumnRequest,
         user_has_access: bool = Depends(has_access),
 ):

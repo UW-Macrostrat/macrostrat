@@ -168,7 +168,7 @@ class SQLResponse:
 async def get_table(
         conn,
         table_id: int,
-        geometry_type: Literal["polygons", "points", "linestrings"]
+        geometry_type: Literal["polygons", "points", "lines"]
 ) -> Table:
     metadata = MetaData(schema="sources")
     table_slug = await source_id_to_slug(engine, table_id)
@@ -182,7 +182,7 @@ async def get_table(
 async def get_sources_sub_table_count(
         engine: AsyncEngine,
         table_id: int,
-        geometry_type: Literal["polygons", "points", "linestrings"],
+        geometry_type: Literal["polygons", "points", "lines"],
         query_params: list = None
 ) -> int:
     async with engine.begin() as conn:
@@ -221,7 +221,7 @@ async def get_sources_sub_table_count(
 async def select_sources_sub_table(
         engine: AsyncEngine,
         table_id: int,
-        geometry_type: Literal["polygons", "points", "linestrings"],
+        geometry_type: Literal["polygons", "points", "lines"],
         page: int = 0,
         page_size: int = 100,
         query_params: list = None,
@@ -268,7 +268,7 @@ async def select_sources_sub_table(
 async def patch_sources_sub_table(
         engine: AsyncEngine,
         table_id: int,
-        geometry_type: Literal["polygons", "points", "linestrings"],
+        geometry_type: Literal["polygons", "points", "lines"],
         update_values: dict,
         query_params: list = None
 ) -> CursorResult:
