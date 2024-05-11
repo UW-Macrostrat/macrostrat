@@ -4,11 +4,12 @@ os.environ["USE_PYGEOS"] = "0"
 
 from sys import stdin
 
-from macrostrat.core import app
 from macrostrat.database import Database
 from psycopg2.sql import Identifier
 from typer import Argument, Option, Typer
 from typer.core import TyperGroup
+
+from macrostrat.core import app
 
 from .commands.copy_sources import copy_macrostrat_sources
 from .commands.fix_geometries import fix_geometries
@@ -137,6 +138,55 @@ def delete_sources(
         db.run_sql("DELETE FROM maps.sources WHERE slug = :slug", dict(slug=slug))
 
 
+@cli.command(name="change-slug")
+def change_slug(map: MapInfo, new_slug: str, dry_run: bool = False):
+    """Change a map's slug."""
+
+    from .database import db
+
+    # Normalize the new slug
+    new_slug = new_slug.lower().replace(" ", "_").replace("_", "-")
+
+    if new_slug == map.slug:
+        return
+
+    print(f"Changing slug for map {map.id} from {map.slug} to {new_slug}")
+
+    # Check that the new slug is not already in use
+    existing = db.run_query(
+        "SELECT source_id FROM maps.sources WHERE slug = :slug",
+        dict(slug=new_slug),
+    ).fetchone()
+    if existing is not None:
+        raise ValueError(f"Slug {new_slug} already in use")
+
+    with db.transaction():
+        # Change sources table names
+        for table in ["polygons", "lines", "points"]:
+            if dry_run:
+                print(f"Would rename {map.slug}_{table} to {new_slug}_{table}")
+                continue
+            old_table = f"{map.slug}_{table}"
+            new_table = f"{new_slug}_{table}"
+            db.run_query(
+                "ALTER TABLE {old_table} RENAME TO {new_table}",
+                dict(
+                    old_table=Identifier("sources", old_table),
+                    new_table=Identifier(new_table),
+                ),
+            )
+
+        if dry_run:
+            return
+
+        db.run_sql(
+            "UPDATE maps.sources SET slug = :new_slug WHERE source_id = :source_id",
+            dict(new_slug=new_slug, source_id=map.id),
+        )
+        db.session.commit()
+        print(f"Changed slug from {map.slug} to {new_slug}")
+
+
 # TODO: integrate this migration command with the main database migrations
 def _run_migrations(database: str = None):
     """Run migrations to convert a Macrostrat v1 sources table to v2 format."""
@@ -157,6 +207,5 @@ def _run_migrations(database: str = None):
 
 
 sources.add_command(_run_migrations, name="migrate-schema")
-
 
 cli.add_typer(sources, name="sources", help="Manage map sources")
