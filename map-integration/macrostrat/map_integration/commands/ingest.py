@@ -97,7 +97,11 @@ def ingest_map(
         for col in df.columns:
             console.print(f"- {col}")
 
-        table = f"{slug}_{feature_type.lower()}s"
+        feature_suffix = feature_type.lower() + "s"
+        if feature_suffix == "linestrings":
+            feature_suffix = "lines"
+
+        table = f"{slug}_{feature_suffix}"
         schema = "sources"
 
         db.run_sql(f"CREATE SCHEMA IF NOT EXISTS {schema}")

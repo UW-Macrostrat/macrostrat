@@ -26,7 +26,9 @@ from .legend_lookup import legend_lookup
 from .lookup import make_lookup
 from .status import processing_status
 
-cli = IngestionCLI(no_args_is_help=True, name="process")
+cli = IngestionCLI(
+    no_args_is_help=True, name="process", help="Process map data once ingested"
+)
 
 cli.add_command(processing_status, name="status")
 

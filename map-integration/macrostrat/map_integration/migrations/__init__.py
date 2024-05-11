@@ -37,6 +37,31 @@ def change_legacy_table_names(db: Database):
         db.session.commit()
 
 
+def change_linestrings_tables_to_lines(db: Database):
+    """Change linestring table names to lines"""
+    sql = """SELECT table_name, slug, source_id
+            FROM information_schema.tables
+            JOIN maps.sources ON table_name = slug || '_linestrings'
+            WHERE table_schema = 'sources'"""
+
+    for row in db.run_query(sql):
+        new_table_name = row.slug + "_lines"
+        db.run_sql(
+            "ALTER TABLE {table_name} RENAME TO {new_table_name}",
+            params=dict(
+                table_name=Identifier("sources", row.table_name),
+                new_table_name=Identifier(new_table_name),
+            ),
+        )
+
+        if table_exists(db, new_table_name, schema="sources"):
+            db.run_sql(
+                "UPDATE maps.sources SET primary_line_table = :new_table_name WHERE source_id = :source_id",
+                dict(new_table_name=new_table_name, source_id=row.source_id),
+            )
+            db.session.commit()
+
+
 def add_missing_table_names(db: Database):
     """For each source, check that the primary_table and primary_line_table are populated if
     the relevant tables exist."""
@@ -46,9 +71,7 @@ def add_missing_table_names(db: Database):
 
     for row in all_tables:
         _add_missing_table_name(db, row, "primary_table", row.slug + "_polygons")
-        _add_missing_table_name(
-            db, row, "primary_line_table", row.slug + "_linestrings"
-        )
+        _add_missing_table_name(db, row, "primary_line_table", row.slug + "_lines")
 
         db.session.commit()
 
@@ -88,4 +111,5 @@ def run_migrations(db: Database):
     """Run database migrations for map ingestion."""
     change_column_names(db)
     change_legacy_table_names(db)
+    change_linestrings_tables_to_lines(db)
     add_missing_table_names(db)
