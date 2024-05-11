@@ -21,7 +21,7 @@ from .commands.sources import map_sources
 from .migrations import run_migrations
 from .pipeline import ingest_file, ingest_from_csv, ingest_object, run_polling_loop
 from .process import cli as _process
-from .utils import IngestionCLI, MapInfo
+from .utils import IngestionCLI, MapInfo, table_exists
 
 help_text = f"""Ingest maps into Macrostrat.
 
@@ -163,6 +163,10 @@ def change_slug(map: MapInfo, new_slug: str, dry_run: bool = False):
     with db.transaction():
         # Change sources table names
         for table in ["polygons", "lines", "points"]:
+            # Check if the table exists
+            if not table_exists(db, f"{map.slug}_{table}", schema="sources"):
+                continue
+
             if dry_run:
                 print(f"Would rename {map.slug}_{table} to {new_slug}_{table}")
                 continue
@@ -179,7 +183,7 @@ def change_slug(map: MapInfo, new_slug: str, dry_run: bool = False):
         if dry_run:
             return
 
-        db.run_sql(
+        db.run_query(
             "UPDATE maps.sources SET slug = :new_slug WHERE source_id = :source_id",
             dict(new_slug=new_slug, source_id=map.id),
         )
