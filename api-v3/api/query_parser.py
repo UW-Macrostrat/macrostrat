@@ -37,6 +37,10 @@ def cast_to_column_type(column: Column, value):
         if value == "null":
             return None
 
+        # If value is a string and the column is a boolean, then cast to boolean
+        if column.type.python_type == bool:
+            return value.lower() == "true"
+
         return column.type.python_type(value)
     except Exception:
         raise ParserException(
@@ -100,6 +104,14 @@ class QueryParameter:
             case "ne":
                 value = cast_to_column_type(column, value)
                 return column.__ne__(value)
+
+            case "is_distinct_from":
+                value = cast_to_column_type(column, value)
+                return column.is_distinct_from(value)
+
+            case "is_not_distinct_from":
+                value = cast_to_column_type(column, value)
+                return column.is_not_distinct_from(value)
 
             case "like":
                 if value[0] != "%" or value[-1] != "%":
