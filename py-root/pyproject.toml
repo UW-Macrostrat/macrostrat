@@ -3,13 +3,14 @@ name = "macrostrat-local-system"
 version = "0.1.0"
 description = "A local installation of Macrostrat for development. This project basically wraps Macrostrat subsystems into a single package."
 authors = ["Daven Quinn"]
+package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.11"
 "macrostrat.cli" = { path = "../cli", develop = true }
 "macrostrat.core" = { path = "../core", develop = true }
 "macrostrat.map_integration" = { path = "../map-integration", develop = true }
-"corelle.engine" = { path = "../../../Software/corelle/py-packages/engine", develop = true }
+# "corelle.engine" = { path = "../../../Software/corelle/py-packages/engine", develop = true }
 "macrostrat.tileserver" = { path = "../../../Software/tileserver", develop = true }
 "criticalmaas.ta1_geopackage" = "^0.2.0" 
 macrostrat-utils = "^1.2.1"
