@@ -6,7 +6,7 @@ from sys import stdin
 
 from macrostrat.database import Database
 from psycopg2.sql import Identifier
-from typer import Argument, Option, Typer
+from typer import Option
 from typer.core import TyperGroup
 
 from macrostrat.core import app

@@ -32,6 +32,28 @@ cli = IngestionCLI(
 
 cli.add_command(processing_status, name="status")
 
+
+@cli.command(name="pipeline")
+def pipeline(source: MapInfo, delete_existing: bool = False, scale: str = None):
+    """
+    Run the full post-pipeline for a given map source
+
+    This includes:
+    - Copy to maps schema
+    - Match strat names
+    - Match units
+    - Match liths
+    - Make lookup
+    *Legend lookup is ignored because it hangs currently*
+    """
+    copy_to_maps(source, delete_existing=delete_existing, scale=scale)
+    match_strat_names(source)
+    match_units(source)
+    match_liths(source)
+    make_lookup(source)
+    # legend_lookup(source)
+
+
 cli.add_command(create_rgeom, name="rgeom", rich_help_panel="Sources")
 cli.add_command(create_webgeom, name="web-geom", rich_help_panel="Sources")
 cli.add_command(
