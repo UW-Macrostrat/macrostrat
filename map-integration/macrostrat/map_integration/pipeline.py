@@ -726,6 +726,7 @@ def ingest_from_csv(
             local_file = download_dir / filename
 
             if not local_file.exists():
+                console.print(f"Downloading {url}")
                 response = requests.get(url, stream=True, timeout=config.TIMEOUT)
 
                 if not response.ok:
