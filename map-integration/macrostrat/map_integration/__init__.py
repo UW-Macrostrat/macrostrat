@@ -46,17 +46,22 @@ cli.add_command(prepare_fields, name="prepare-fields")
 cli.add_command(fix_geometries, name="fix-geometries")
 cli.add_command(apply_srid, name="apply-srid")
 
-cli.add_command(ingest_file, name="ingest-file")
+cli.add_command(ingest_file, name="ingest-file", rich_help_panel="Ingestion Pipeline")
 cli.add_command(
     ingest_from_csv,
     name="ingest-from-csv",
+    rich_help_panel="Ingestion Pipeline",
     context_settings={
         "allow_extra_args": True,
         "ignore_unknown_options": True,
     },
 )
-cli.add_command(ingest_object, name="ingest-object")
-cli.add_command(run_polling_loop, name="run-polling-loop")
+cli.add_command(
+    ingest_object, name="ingest-object", rich_help_panel="Ingestion Pipeline"
+)
+cli.add_command(
+    run_polling_loop, name="run-polling-loop", rich_help_panel="Ingestion Pipeline"
+)
 
 cli.add_typer(_process, name="process")
 
