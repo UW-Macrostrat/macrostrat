@@ -4,12 +4,6 @@
 #---------------------------------------------------------------------------
 
 [example]
-# The base URL for the object registration API, without a trailing slash.
-api_base_url = "https://example.com/api/ingest"
-
-# The Bearer token to use for accessing the object registration API.
-api_token = "a1b2c3d4"
-
 # The connection URL for the PostgreSQL `macrostrat` database.
 pg_database = "postgresql://macrostrat:password@db.example.com:5432/macrostrat"
 
