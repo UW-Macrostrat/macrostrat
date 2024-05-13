@@ -1,6 +1,6 @@
-# macrostrat-map-ingestion
+# macrostrat-map-staging
 
-Scripts for ingesting maps into Macrostrat
+Scripts for bulk ingest of maps into Macrostrat
 
 
 ## CriticalMAAS
@@ -11,8 +11,7 @@ been re-packaged into the following commands of the Macrostrat CLI:
 * `macrostrat maps ingest-file`
 * `macrostrat maps ingest-from-csv`
 
-See [UW-Macrostrat/macrostrat/map-integration](https://github.com/UW-Macrostrat/macrostrat/tree/main/map-integration)
-for the implementation of these commands.
+See [../map-integration](../map-integration) for the implementation of these commands.
 
 
 ## Basic Setup and Configuration
