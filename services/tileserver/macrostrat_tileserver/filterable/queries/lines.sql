@@ -4,7 +4,7 @@ WITH mvt_features AS (
     source_id,
     geom
   FROM
-    carto.lines
+    :compilation
   WHERE
     scale::text = :mapsize
     AND ST_Intersects(geom, ST_Transform(:envelope, 4326))
