@@ -48,13 +48,7 @@ cli.add_command(apply_srid, name="apply-srid")
 
 cli.add_command(ingest_file, name="ingest-file", rich_help_panel="Ingestion Pipeline")
 cli.add_command(
-    ingest_from_csv,
-    name="ingest-from-csv",
-    rich_help_panel="Ingestion Pipeline",
-    context_settings={
-        "allow_extra_args": True,
-        "ignore_unknown_options": True,
-    },
+    ingest_from_csv, name="ingest-from-csv", rich_help_panel="Ingestion Pipeline"
 )
 cli.add_command(
     ingest_object, name="ingest-object", rich_help_panel="Ingestion Pipeline"
