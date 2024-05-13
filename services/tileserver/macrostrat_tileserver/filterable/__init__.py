@@ -1,17 +1,24 @@
 from asyncio import gather
+from enum import Enum
 from pathlib import Path
 
-from buildpg import render
+from buildpg import V, render
 from fastapi import APIRouter, Request, Response
 from timvt.resources.enums import MimeTypes
+
+
+class Compilation(str, Enum):
+    Carto = "carto"
+    Maps = "maps"
+
 
 router = APIRouter()
 
 __here__ = Path(__file__).parent
 
 
-@router.get("/carto/{z}/{x}/{y}")
-async def get_tile(request: Request, z: int, x: int, y: int):
+@router.get("/{compilation}/{z}/{x}/{y}")
+async def get_tile(request: Request, compilation: Compilation, z: int, x: int, y: int):
     """Get a tile from the tileserver."""
     pool = request.app.state.pool
 
@@ -29,10 +36,27 @@ async def get_tile(request: Request, z: int, x: int, y: int):
         mapsize = "large"
         linesize = ["medium", "large"]
 
+    compilation_name = compilation.value
+
     async with pool.acquire() as con:
-        units_ = await run_layer_query(con, "units", z=z, x=x, y=y, mapsize=mapsize)
+        units_ = await run_layer_query(
+            con,
+            "units",
+            z=z,
+            x=x,
+            y=y,
+            mapsize=mapsize,
+            compilation=V(compilation_name + ".polygons"),
+        )
         lines_ = await run_layer_query(
-            con, "lines", z=z, x=x, y=y, mapsize=mapsize, linesize=linesize
+            con,
+            "lines",
+            z=z,
+            x=x,
+            y=y,
+            mapsize=mapsize,
+            linesize=linesize,
+            compilation=V(compilation_name + ".lines"),
         )
     data = join_layers([units_, lines_])
     kwargs = {}

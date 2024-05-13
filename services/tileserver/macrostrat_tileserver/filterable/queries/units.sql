@@ -4,7 +4,7 @@ SELECT
   source_id,
   geom
 FROM
-  carto.polygons
+  :compilation
 WHERE scale::text = :mapsize
   AND ST_Intersects(geom, ST_Transform(:envelope, 4326))
 )
