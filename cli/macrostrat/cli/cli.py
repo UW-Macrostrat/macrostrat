@@ -339,3 +339,9 @@ from .subsystems.legend_api import legend_api
 
 db_subsystem.schema_hunks.append(kg_schema)
 db_subsystem.schema_hunks.append(legend_api)
+
+from .commands.isopach import create_macrostrat_isopach_map
+
+main.command(name="create-isopach-map", rich_help_panel="Tools")(
+    create_macrostrat_isopach_map
+)
