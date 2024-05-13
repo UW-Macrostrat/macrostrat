@@ -284,6 +284,15 @@ except ImportError as err:
     pass
 
 
+# Add other subsystems (temporary)
+from .subsystems.mapboard import MapboardSubsystem
+
+if mapboard_url := getattr(settings, "mapboard_database", None):
+    _mapboard = MapboardSubsystem(app)
+    app.subsystems.add(_mapboard)
+    main.add_typer(_mapboard.control_command(), rich_help_panel="Subsystems")
+
+
 app.finish_loading_subsystems()
 
 
@@ -313,6 +322,8 @@ main.add_typer(
     rich_help_panel="Subsystems",
     short_help="Manage the Macrostrat CLI itself",
 )
+
+app.subsystems.run_hook("add-commands", main)
 
 
 main.add_click_command(v1_cli, name="v1")
