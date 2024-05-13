@@ -4,27 +4,20 @@ from typing import Any, List
 from buildpg import render
 from fastapi import FastAPI, Request
 from macrostrat.utils import get_logger, setup_stderr_logs
+from starlette.middleware.cors import CORSMiddleware
+from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette_cramjam.middleware import CompressionMiddleware
 from timvt.db import close_db_connection, connect_to_db, register_table_catalog
 from timvt.layer import FunctionRegistry
-
-from .function_layer import StoredFunction
-from .vendor.repeat_every import repeat_every
-
-"""timvt.endpoints.factory: router factories."""
-
-from typing import Any, List
-
-from fastapi import FastAPI
-from starlette.middleware.cors import CORSMiddleware
-from starlette.requests import Request
 from titiler.core.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from titiler.core.factory import TilerFactory
 
 from .cached_tiler import CachedStoredFunction, CachedVectorTilerFactory
+from .function_layer import StoredFunction
 from .image_tiles import MapnikLayerFactory, prepare_image_tile_subsystem
 from .utils import DecimalJSONResponse
+from .vendor.repeat_every import repeat_every
 
 # Wire up legacy postgres database
 if not environ.get("DATABASE_URL") and "POSTGRES_DB" in environ:
@@ -168,6 +161,13 @@ async def rotation_models():
 async def index(request: Request):
     """DEMO."""
     return JSONResponse({"message": "Macrostrat Tileserver"})
+
+
+@app.get("/refresh", include_in_schema=False)
+async def refresh(request: Request):
+    """Refresh the table catalog."""
+    await register_table_catalog(app, schemas=["sources"])
+    return JSONResponse({"message": "Table catalog refreshed."})
 
 
 # Open CORS policy
