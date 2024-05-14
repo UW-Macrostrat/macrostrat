@@ -77,10 +77,10 @@ async def get_tile(
 def get_lithology_clause(lithologies: List[str]):
 
     LITHOLOGY_COLUMNS = [
-        "lith_group",
-        "lith_class",
-        "lith_type",
-        "lith",
+        "liths.lith_group",
+        "liths.lith_class",
+        "liths.lith_type",
+        "liths.lith",
     ]
 
     if lithologies is None or len(lithologies) == 0:

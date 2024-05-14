@@ -1,7 +1,7 @@
 WITH mvt_features AS (
 SELECT
-  map_id,
-  source_id
+  p.map_id,
+  p.source_id
 FROM
   :compilation AS p
 LEFT JOIN maps.map_liths AS ml ON ml.map_id = p.map_id
