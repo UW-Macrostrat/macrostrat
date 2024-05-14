@@ -86,7 +86,7 @@ def get_lithology_clause(lithologies: List[str]):
     if lithologies is None or len(lithologies) == 0:
         return Empty()
 
-    return Empty() & funcs.OR(*map(lambda l: V(l).in_(lithologies), LITHOLOGY_COLUMNS))
+    return Empty() & funcs.OR(*map(lambda l: V(l) == funcs.any(funcs.cast(lithologies, "textarray")), LITHOLOGY_COLUMNS))
 
 
 def join_layers(layers):
@@ -97,7 +97,13 @@ def join_layers(layers):
 async def run_layer_query(con, layer_name, **params):
     query = get_layer_sql(layer_name)
     q, p = render(query, layer_name=layer_name, **params)
-    print(q, p)
+
+    # Overcomes a shortcoming in buildpg that deems casting to an array as unsafe
+    # https://github.com/samuelcolvin/buildpg/blob/e2a16abea5c7607b53c501dbae74a5765ba66e15/buildpg/components.py#L21
+    q.replace("textarray", "text[]")
+
+    print(q,p)
+
     return await con.fetchval(q, *p)
 
 
