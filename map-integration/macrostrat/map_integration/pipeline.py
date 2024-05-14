@@ -12,11 +12,11 @@ import tarfile
 import tempfile
 import time
 import zipfile
-from typing import Annotated, NoReturn, Optional
+from typing import Annotated, Any, NoReturn, Optional
 
 import magic
 import minio
-import requests
+import requests  # type: ignore[import-untyped]
 from macrostrat.core.schemas import (  # type: ignore[import-untyped]
     IngestProcess,
     IngestProcessTag,
@@ -37,14 +37,14 @@ from macrostrat.map_integration.commands.prepare_fields import prepare_fields
 from macrostrat.map_integration.database import db as DB
 from macrostrat.map_integration.errors import IngestError
 from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
-from macrostrat.map_integration.utils.map_info import get_map_info
+from macrostrat.map_integration.utils.map_info import MapInfo, get_map_info
 
-## The list of arguments to ingest_file that ingest_from_cvs will handle.
+## The list of arguments to upload_file that ingest_csv will handle.
 FIELDS = [
     "slug",
-    "tag",
-    "filter",
     "name",
+    "filter",
+    "tag",
     "ref_title",
     "ref_authors",
     "ref_year",
@@ -58,16 +58,17 @@ FIELDS = [
     "s3_prefix",
 ]
 
+## The current terminal, with support for displaying rich text.
 console = Console()
 
 
 # --------------------------------------------------------------------------
-# Short-ish helper functions.
+# Assorted helper functions.
 
 
 def normalize_slug(slug: str) -> str:
     """
-    Replace characters that are invalid in an SQL table name with `_`.
+    Replace characters that are invalid in an SQL table name with an underscore.
     """
     return re.sub(r"\W", "_", slug).lower()
 
@@ -78,10 +79,10 @@ def truncate_str(data: str, *, limit: int = 255) -> str:
     """
     if len(data) > limit:
         data = data[: limit - 3] + "..."
-    return data
+    return data[:limit]
 
 
-def truncate_source_metadata(**data):
+def truncate_source_metadata(data: dict[str, Any]) -> dict[str, Any]:
     """
     Ensure that metadata fields for a `maps.sources` record are not too long.
     """
@@ -99,7 +100,7 @@ def raise_ingest_error(
     ingest_process: IngestProcess, comments: str, source_exn: Optional[Exception] = None
 ) -> NoReturn:
     """
-    Set an ingest process to "failed" with the given comments, and then raise an Exception.
+    Set an ingest process to "failed", and then raise an Exception.
     """
     record_ingest_error(ingest_process, comments)
     raise IngestError(comments) from source_exn
@@ -107,12 +108,13 @@ def raise_ingest_error(
 
 def record_ingest_error(ingest_process: IngestProcess, comments: str) -> None:
     """
-    Set an ingest process to "failed" with the given comments.
+    Set an ingest process to "failed".
     """
     update_ingest_process(ingest_process.id, state=IngestState.failed, comments=comments)
 
 
 # --------------------------------------------------------------------------
+# Extracting and analyzing archive files.
 
 
 def extract_archive(
@@ -123,10 +125,11 @@ def extract_archive(
     extract_subarchives: bool = True,
 ) -> None:
     """
-    Extract an archive into a directory.
+    Extract an archive file into a directory.
 
-    By default, any sub-archives will be extracted into the same directory.
-    This might not result in the expected layout for some archives.
+    By default, any extracted files that are themselves archives will be
+    expanded into the same directory. This might not result in the expected
+    layout for some archives.
 
     If provided, the ingest process will be used to report any errors.
     """
@@ -136,16 +139,16 @@ def extract_archive(
     elif archive_file.name.endswith(".zip"):
         with zipfile.ZipFile(archive_file) as zf:
             zf.extractall(path=target_dir)
+    elif ingest_process:
+        raise_ingest_error(ingest_process, "Unrecognized archive file format")
     else:
-        if ingest_process:
-            raise_ingest_error(ingest_process, "Unrecognized file format")
+        raise RuntimeError("Unrecognized archive file format")
 
     if extract_subarchives:
-        sub_archives = set(
-            list(target_dir.glob("**/*.tar.gz"))
-            + list(target_dir.glob("**/*.tgz"))
-            + list(target_dir.glob("**/*.zip"))
-        )
+        sub_archives = set(target_dir.glob("**/*.tgz"))
+        sub_archives |= set(target_dir.glob("**/*.tar.gz"))
+        sub_archives |= set(target_dir.glob("**/*.zip"))
+
         for sub_archive in sub_archives - set([archive_file]):
             extract_archive(
                 sub_archive,
@@ -156,17 +159,20 @@ def extract_archive(
 
 
 def set_alaska_metadata(source: Sources, data_dir: pathlib.Path) -> None:
+    """
+    Set metadata for an archive from the Alaska Division of Geological & Geophysical Surveys.
+    """
     metadata: dict[str, str] = {}
     metadata_files = list(data_dir.glob("metadata/*.txt"))
+
+    ## NOTE: The metadata file looks like it could be parsed as YAML,
+    ## but alas, it is not YAML. Some would-be hashes define a key multiple
+    ## times, and some values confuse PyYAML's parser.
 
     if len(metadata_files) != 1:
         return
     with open(metadata_files[0], encoding="utf-8") as fp:
         raw_metadata = fp.readlines()
-
-    ## NOTE: The metadata file looks like it could be parsed as YAML,
-    ## but alas, it is not YAML. Some would-be hashes define a key multiple
-    ## times, and some values confuse PyYAMLs parser.
 
     ## Skip the first line ("Identification_Information:").
 
@@ -179,25 +185,22 @@ def set_alaska_metadata(source: Sources, data_dir: pathlib.Path) -> None:
             break
         line = line.strip()
 
-        if line.startswith("Originator:"):
-            author = line.replace("Originator:", "").strip()
+        if match := re.match(r"(\s*)Originator:(\s*)", line):
+            author = match.group(2).strip()
             if "authors" in metadata:
                 metadata["authors"] += f"; {author}"
             else:
                 metadata["authors"] = author
-        elif line.startswith("Publication_Date:"):
-            year = line.replace("Publication_Date:", "").strip()
-            metadata["ref_year"] = year
-        elif line.startswith("Title:"):
-            title = line.replace("Title:", "").strip()
+        if match := re.match(r"(\s*)Publication_Date:(\s*)", line):
+            metadata["ref_year"] = match.group(2).strip()
+        if match := re.match(r"(\s*)Title:(\s*)", line):
+            title = match.group(2).strip()
             metadata["name"] = title
             metadata["ref_title"] = title
-        elif line.startswith("Publisher:"):
-            publisher = line.replace("Publisher:", "").strip()
-            metadata["ref_source"] = publisher
-        elif line.startswith("Online_Linkage:"):
-            doi = line.replace("Online_Linkage:", "").strip()
-            metadata["isbn_doi"] = doi
+        if match := re.match(r"(\s*)Publisher:(\s*)", line):
+            metadata["ref_source"] = match.group(2).strip()
+        if match := re.match(r"(\s*)Online_Linkage:(\s*)", line):
+            metadata["isbn_doi"] = match.group(2).strip()
 
     ## Update the map's metadata.
 
@@ -206,6 +209,7 @@ def set_alaska_metadata(source: Sources, data_dir: pathlib.Path) -> None:
 
 
 # --------------------------------------------------------------------------
+# Querying the database.
 
 
 def get_db_session(expire_on_commit=False) -> Session:
@@ -279,7 +283,15 @@ def get_ingest_process_by_object_group_id(id_: int) -> Optional[IngestProcess]:
     return ingest_process
 
 
-def create_ingest_process() -> IngestProcess:
+def get_ingest_process_by_source_id(id_: int) -> Optional[IngestProcess]:
+    with get_db_session() as session:
+        ingest_process = session.scalar(
+            select(IngestProcess).where(IngestProcess.source_id == id_),
+        )
+    return ingest_process
+
+
+def create_ingest_process(**data) -> IngestProcess:
     with get_db_session() as session:
         object_group = session.scalar(insert(ObjectGroup).returning(ObjectGroup))
         if not object_group:
@@ -289,6 +301,7 @@ def create_ingest_process() -> IngestProcess:
             .values(
                 object_group_id=object_group.id,
                 created_on=datetime.datetime.utcnow(),
+                **data,
             )
             .returning(IngestProcess)
         )
@@ -358,28 +371,177 @@ def update_source(id_: int, **data) -> Sources:
 
 
 # --------------------------------------------------------------------------
+# Creating and ingesting slugs (a.k.a. maps).
 
 
-def ingest_file(
-    local_file: Annotated[
-        pathlib.Path,
-        Argument(help="Local file to ingest"),
-    ],
+def create_slug(
     slug: Annotated[
         str,
         Argument(help="The slug to use for this map"),
     ],
+    *,
+    name: Annotated[
+        Optional[str],
+        Option(help="The map's name"),
+    ] = None,
     tag: Annotated[
         Optional[list[str]],
         Option(help="A tag to apply to the map"),
     ] = None,
+    ref_title: Annotated[
+        Optional[str],
+        Option(help="The map's report's title"),
+    ] = None,
+    ref_authors: Annotated[
+        Optional[str],
+        Option(help="The map's report's authors"),
+    ] = None,
+    ref_year: Annotated[
+        Optional[str],
+        Option(help="The map's report's year"),
+    ] = None,
+    ref_source: Annotated[
+        Optional[str],
+        Option(help="The map's report's source"),
+    ] = None,
+    ref_isbn_or_doi: Annotated[
+        Optional[str],
+        Option(help="The map's report's ISBN or DOI"),
+    ] = None,
+    scale: Annotated[
+        str,
+        Option(help="The map's scale"),
+    ] = "large",
+    website_url: Annotated[
+        Optional[str],
+        Option(help="The URL for the map's canonical landing page"),
+    ] = None,
+    raster_url: Annotated[
+        Optional[str],
+        Option(help="The URL for the map's raster file"),
+    ] = None,
+) -> tuple[Sources, IngestProcess]:
+    """
+    Ensure that a map exists in the database with the provided metadata.
+    """
+
+    ## Normalize identifiers.
+
+    slug = normalize_slug(slug)
+    console.print(f"Normalized the provided slug to {slug}")
+
+    ## Create the `sources` record.
+
+    metadata = {
+        "slug": slug,
+        "primary_table": f"{slug}_polygons",
+        "scale": scale,
+    }
+    if name:
+        metadata["name"] = name
+    if website_url:
+        metadata["url"] = website_url
+    if ref_title:
+        metadata["ref_title"] = ref_title
+    if ref_authors:
+        metadata["authors"] = ref_authors
+    if ref_year:
+        metadata["ref_year"] = ref_year
+    if ref_source:
+        metadata["ref_source"] = ref_source
+    if ref_isbn_or_doi:
+        metadata["isbn_doi"] = ref_isbn_or_doi
+    if raster_url:
+        metadata["raster_url"] = raster_url
+
+    if source := get_source_by_slug(slug):
+        source = update_source(source.source_id, **metadata)
+    else:
+        source = create_source(**metadata)
+    console.print(f"Created or updated source ID {source.source_id}")
+
+    ## Create the `ingest_process` record.
+
+    if not (ingest_process := get_ingest_process_by_source_id(source.source_id)):
+        ingest_process = create_ingest_process(source_id=source.source_id)
+    for t in tag or []:
+        create_ingest_process_tag(ingest_process.id, t)
+    console.print(f"Created or updated ingest process ID {ingest_process.id}")
+
+    return (source, ingest_process)
+
+
+def ingest_slug(
+    map_info: MapInfo,
+    *,
     filter: Annotated[
         Optional[str],
-        Option(help="How to interpret the contents of the provided file"),
+        Option(help="How to interpret the contents of the source's objects"),
     ] = None,
+) -> Sources:
+    """
+    Ingest a map from its already uploaded files.
+    """
+    source = get_source_by_id(map_info.id)
+    ingest_process = get_ingest_process_by_source_id(map_info.id)
+
+    if not source or not ingest_process:
+        raise RuntimeError(f"Internal data model error for source {map_info}")
+
+    with get_db_session() as session:
+        objs = session.scalars(
+            select(Object).where(Object.object_group_id == ingest_process.object_group_id)
+        ).all()
+
+    for i, obj in enumerate(objs):
+        append_data = i != 0
+        load_object(obj.bucket, obj.key, filter=filter, append_data=append_data)
+
+    ## Prepare tables for human review.
+
+    macrostrat_map = get_map_info(DB, source.slug)
+    console.print(f"Macrostrat map object: {macrostrat_map}")
+
+    try:
+        prepare_fields(macrostrat_map)
+        ingest_process = update_ingest_process(ingest_process.id, state=IngestState.prepared)
+        create_rgeom(macrostrat_map)
+        create_webgeom(macrostrat_map)
+        ingest_process = update_ingest_process(ingest_process.id, state=IngestState.ingested)
+    except Exception as exn:
+        raise_ingest_error(ingest_process, str(exn), exn)
+
+    return source
+
+
+# --------------------------------------------------------------------------
+
+
+def upload_file(
+    slug: Annotated[
+        str,
+        Argument(help="The slug to use for this map"),
+    ],
+    local_file: Annotated[
+        pathlib.Path,
+        Argument(help="Local file to ingest"),
+    ],
+    *,
+    s3_bucket: Annotated[
+        str,
+        Option(help="The S3 bucket to upload this object to"),
+    ],
+    s3_prefix: Annotated[
+        str,
+        Option(help="The prefix, sans trailing slash, to use for this object's S3 key"),
+    ],
     name: Annotated[
         Optional[str],
         Option(help="The map's name"),
+    ] = None,
+    tag: Annotated[
+        Optional[list[str]],
+        Option(help="A tag to apply to the map"),
     ] = None,
     ref_title: Annotated[
         Optional[str],
@@ -417,31 +579,31 @@ def ingest_file(
         Optional[str],
         Option(help="The URL for the map's raster file"),
     ] = None,
-    s3_bucket: Annotated[
-        str,
-        Option(help="The S3 bucket to upload this object to"),
-    ] = config.S3_BUCKET,
-    s3_prefix: Annotated[
-        str,
-        Option(help="The prefix, sans trailing slash, to use for this object's S3 key"),
-    ] = config.S3_PREFIX,
-    append_data: Annotated[
-        bool,
-        Option(help="Whether to append data to the map when it already exists"),
-    ] = False,
-    replace_object: Annotated[
-        bool,
-        Option(help="Replace the current version of this object"),
-    ] = False,
 ) -> Object:
     """
-    Ingest a local file containing a map into Macrostrat.
+    Upload a local archive file for a map to the object store.
     """
 
     ## Normalize identifiers.
 
     slug = normalize_slug(slug)
     console.print(f"Normalized the provided slug to {slug}")
+
+    ## Create / update / locate the sources record and ingest_process.
+
+    (_, ingest_process) = create_slug(
+        slug,
+        name=name,
+        tag=tag,
+        ref_title=ref_title,
+        ref_authors=ref_authors,
+        ref_year=ref_year,
+        ref_source=ref_source,
+        ref_isbn_or_doi=ref_isbn_or_doi,
+        scale=scale,
+        website_url=website_url,
+        raster_url=raster_url,
+    )
 
     ## Collect metadata.
 
@@ -457,43 +619,23 @@ def ingest_file(
 
     bucket = s3_bucket
     key = f"{s3_prefix}/{local_file.name}"
-    uploaded_obj = False
 
-    if obj := get_object_by_loc(bucket, key):
-        if not replace_object and obj.sha256_hash != sha256_hash:
-            raise IngestError("Attempting to upload a different version of this object")
+    obj = get_object_by_loc(bucket, key)
 
-    if not obj or obj.sha256_hash != sha256_hash or replace_object:
+    if not obj or obj.sha256_hash != sha256_hash:
         console.print(f"Uploading {local_file} to S3 as {bucket}/{key}")
         s3 = minio.Minio(
-            config.S3_HOST,
+            config.S3_HOST,  # type: ignore[arg-type]
             access_key=config.S3_ACCESS_KEY,
             secret_key=config.S3_SECRET_KEY,
         )
         s3.fput_object(bucket, key, str(local_file))
-        uploaded_obj = True
+        ingest_process = update_ingest_process(
+            ingest_process.id, state=IngestState.pending, comments=None
+        )
         console.print("Finished upload")
-
-    ## Create or retrieve the ingest process.
-
-    if obj:
-        ingest_process = get_ingest_process_by_object_group_id(obj.object_group_id)
     else:
-        ingest_process = create_ingest_process()
-    if not ingest_process:
-        raise IngestError("Failed to create or retrieve the object's ingest process")
-    if uploaded_obj:
-        ingest_process = update_ingest_process(ingest_process.id, state=None, comments=None)
-    if ingest_process.state == IngestState.ingested:
-        console.print("Ingest pipeline has already been completed")
-        return obj
-    if tag:
-        if isinstance(tag, list):
-            for t in tag:
-                create_ingest_process_tag(ingest_process.id, t)
-        else:
-            create_ingest_process_tag(ingest_process.id, tag)
-    console.print(f"Created or updated ingest process ID {ingest_process.id}")
+        console.print("Object already present with the same SHA-256")
 
     ## Create or update the object's DB entry.
 
@@ -520,48 +662,12 @@ def ingest_file(
         obj = update_object(obj.id, **payload)
     else:
         obj = create_object(**payload)
-    ingest_process = update_ingest_process(
-        ingest_process.id,
-        state=IngestState.pending,
-        comments=None,
-    )
     console.print(f"Created or updated object ID {obj.id}")
 
-    ## Create the "sources" record.
-
-    metadata = {
-        "slug": slug,
-        "primary_table": f"{slug}_polygons",
-        "scale": scale,
-    }
-    if name:
-        metadata["name"] = name
-    if website_url:
-        metadata["url"] = website_url
-    if ref_title:
-        metadata["ref_title"] = ref_title
-    if ref_authors:
-        metadata["authors"] = ref_authors
-    if ref_year:
-        metadata["ref_year"] = ref_year
-    if ref_source:
-        metadata["ref_source"] = ref_source
-    if ref_isbn_or_doi:
-        metadata["isbn_doi"] = ref_isbn_or_doi
-    if raster_url:
-        metadata["raster_url"] = raster_url
-
-    if source := get_source_by_slug(slug):
-        source = update_source(source.source_id, **metadata)
-    else:
-        source = create_source(**metadata)
-    ingest_process = update_ingest_process(ingest_process.id, source_id=source.source_id)
-    console.print(f"Created or updated source ID {source.source_id}")
-
-    return ingest_object(obj.bucket, obj.key, filter=filter, append_data=append_data)
+    return obj
 
 
-def ingest_object(
+def load_object(
     bucket: Annotated[
         str,
         Argument(help="The object's bucket"),
@@ -610,7 +716,7 @@ def ingest_object(
     ## Download the object to a local, temporary file.
 
     s3 = minio.Minio(
-        config.S3_HOST,
+        config.S3_HOST,  # type: ignore[arg-type]
         access_key=config.S3_ACCESS_KEY,
         secret_key=config.S3_SECRET_KEY,
     )
@@ -679,31 +785,28 @@ def ingest_object(
     finally:
         local_file.unlink()
 
-    ## Prepare tables for human review.
-
-    macrostrat_map = get_map_info(DB, source.slug)
-    console.print(f"Macrostrat map object: {macrostrat_map}")
-
-    try:
-        prepare_fields(macrostrat_map)
-        ingest_process = update_ingest_process(ingest_process.id, state=IngestState.prepared)
-        create_rgeom(macrostrat_map)
-        create_webgeom(macrostrat_map)
-        ingest_process = update_ingest_process(ingest_process.id, state=IngestState.ingested)
-    except Exception as exn:
-        raise_ingest_error(ingest_process, str(exn), exn)
-
     return obj
 
 
-def ingest_from_csv(
+# --------------------------------------------------------------------------
+
+
+def ingest_csv(
     csv_file: Annotated[
         pathlib.Path,
-        Argument(help="CSV file containing arguments for ingest-file"),
+        Argument(help="CSV file containing arguments for upload-file"),
     ],
     download_dir: Annotated[
         pathlib.Path,
-        Argument(help="Directory into which to download archive files"),
+        Option(help="Directory into which to download archive files"),
+    ],
+    s3_bucket: Annotated[
+        str,
+        Option(help="The S3 bucket to upload objects to"),
+    ],
+    s3_prefix: Annotated[
+        str,
+        Option(help="The prefix, sans trailing slash, to use for objects' S3 keys"),
     ],
     tag: Annotated[
         Optional[list[str]],
@@ -713,24 +816,17 @@ def ingest_from_csv(
         Optional[str],
         Option(help="How to interpret the contents of archive files"),
     ] = None,
-    s3_bucket: Annotated[
-        Optional[str],
-        Option(help="The S3 bucket to upload objects to"),
-    ] = None,
-    s3_prefix: Annotated[
-        Optional[str],
-        Option(help="The prefix, sans trailing slash, to use for objects' S3 keys"),
-    ] = None,
 ) -> None:
     """
-    Ingest multiple maps as specified in a CSV file.
+    Ingest multiple maps from their descriptions in a CSV file.
 
-    This command/function enables the bulk ingest of maps by specifying
-    values for arguments and options to the ingest-file command/function,
-    with each row in the CSV file corresponding to one map/invocation.
+    This command enables the bulk ingest of maps by specifying values for
+    arguments and options to the upload-file command, with each row in the
+    CSV file corresponding to one file. Once all files have been uploaded,
+    each resulting source will be processed with ingest-source.
 
     The first row of the CSV file should be a header listing the names of
-    arguments and options to the ingest-file subcommand, with hyphens being
+    arguments and options to the upload-file subcommand, with hyphens being
     replaced by underscores.
 
     Instead of the "local_file" argument, there must be a column for
@@ -748,7 +844,6 @@ def ingest_from_csv(
 
         for row in reader:
             url = row["archive_url"]
-            prefix = row.get("s3_prefix") or "ingest_from_csv"
 
             filename = url.split("/")[-1]
             partial_local_file = download_dir / (filename + ".partial")
@@ -776,21 +871,21 @@ def ingest_from_csv(
                 kwargs["tag"] = tag
             if filter:
                 kwargs["filter"] = filter
-            if s3_bucket:
-                kwargs["s3_bucket"] = s3_bucket
-            if s3_prefix:
-                kwargs["s3_prefix"] = s3_prefix
 
-            ## Take into account the fact that we might be bulk ingesting
-            ## multiple files/objects for the same slug.
-
-            kwargs["append_data"] = row["slug"] in slugs_seen
+            upload_file(
+                row["slug"],
+                local_file,
+                s3_bucket=s3_bucket,
+                s3_prefix=s3_prefix,
+                **kwargs,
+            )
             slugs_seen.append(row["slug"])
 
-            try:
-                ingest_file(local_file, **kwargs)
-            except Exception as exn:
-                console.print(f"Exception: {exn}")
+    for slug in set(slugs_seen):
+        try:
+            ingest_slug(get_map_info(DB, slug), filter=filter)
+        except Exception as exn:
+            console.print(f"Exception: {exn}")
 
 
 # --------------------------------------------------------------------------
@@ -803,27 +898,34 @@ def run_polling_loop(
     ] = 60,
 ) -> None:
     """
-    Poll for and process pending ingest processes.
+    Poll for and process pending maps.
     """
     while True:
         console.print("Starting iteration of polling loop")
+        bad_pending = 0
+        bad_source_id = 0
+
         with get_db_session() as session:
             for ingest_process in session.scalars(
                 select(IngestProcess).where(
                     IngestProcess.state == IngestState.pending,
                 )
             ).unique():
-                console.print(f"Examining ingest process ID {ingest_process.id}")
-                for obj in session.scalars(
-                    select(Object).where(
-                        Object.object_group_id == ingest_process.object_group_id,
-                    )
-                ):
-                    console.print(f"Processing object ID {obj.id} ({obj.bucket}/{obj.key})")
-                    try:
-                        ingest_object(obj.bucket, obj.key)
-                    except Exception as exn:
-                        record_ingest_error(ingest_process, str(exn))
+                if ingest_process.source_id:
+                    if map_info := get_map_info(DB, ingest_process.source_id):
+                        console.print(f"Processing {map_info}")
+                        try:
+                            ingest_slug(map_info)
+                        except Exception as exn:
+                            record_ingest_error(ingest_process, str(exn))
+                    else:
+                        bad_source_id += 1
+                else:
+                    bad_pending += 1
 
+        if bad_pending:
+            console.print(f"Skipped {bad_pending} ingests (missing source_id)")
+        if bad_source_id:
+            console.print(f"Skipped {bad_source_id} ingests (missing source record?)")
         console.print("Finished iteration of polling loop")
         time.sleep(polling_interval)

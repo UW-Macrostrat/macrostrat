@@ -11,6 +11,7 @@ from typer.core import TyperGroup
 
 from macrostrat.core import app
 
+from . import pipeline
 from .commands.copy_sources import copy_macrostrat_sources
 from .commands.fix_geometries import fix_geometries
 from .commands.ingest import ingest_map
@@ -19,7 +20,6 @@ from .commands.set_srid import apply_srid
 from .commands.source_info import source_info
 from .commands.sources import map_sources
 from .migrations import run_migrations
-from .pipeline import ingest_file, ingest_from_csv, ingest_object, run_polling_loop
 from .process import cli as _process
 from .utils import IngestionCLI, MapInfo, table_exists
 
@@ -46,16 +46,13 @@ cli.add_command(prepare_fields, name="prepare-fields")
 cli.add_command(fix_geometries, name="fix-geometries")
 cli.add_command(apply_srid, name="apply-srid")
 
-cli.add_command(ingest_file, name="ingest-file", rich_help_panel="Ingestion Pipeline")
-cli.add_command(
-    ingest_from_csv, name="ingest-from-csv", rich_help_panel="Ingestion Pipeline"
-)
-cli.add_command(
-    ingest_object, name="ingest-object", rich_help_panel="Ingestion Pipeline"
-)
-cli.add_command(
-    run_polling_loop, name="run-polling-loop", rich_help_panel="Ingestion Pipeline"
-)
+_pipeline = IngestionCLI(no_args_is_help=True, help="Ingest map data from archive files.")
+_pipeline.add_command(pipeline.upload_file, name="upload-file")
+_pipeline.add_command(pipeline.ingest_slug, name="ingest-map")
+_pipeline.add_command(pipeline.ingest_csv, name="ingest-csv")
+_pipeline.add_command(pipeline.run_polling_loop, name="run-polling-loop", rich_help_panel="Daemons")
+_pipeline.add_command(pipeline.create_slug, name="init-map", rich_help_panel="Metadata")
+cli.add_typer(_pipeline, name="pipeline")
 
 cli.add_typer(_process, name="process")
 
