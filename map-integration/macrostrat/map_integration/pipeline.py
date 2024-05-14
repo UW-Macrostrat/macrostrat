@@ -29,7 +29,7 @@ from macrostrat.core.schemas import (  # type: ignore[import-untyped]
 from rich.console import Console
 from sqlalchemy import and_, insert, select, update
 from sqlalchemy.orm import Session
-from typer import Argument, Context, Option
+from typer import Argument, Option
 
 from macrostrat.map_integration import config
 from macrostrat.map_integration.commands.ingest import ingest_map
@@ -683,11 +683,26 @@ def ingest_object(
 
 
 def ingest_from_csv(
-    ctx: Context,
     csv_file: Annotated[
         pathlib.Path,
         Argument(help="CSV file containing arguments for ingest-file"),
     ],
+    tag: Annotated[
+        Optional[list[str]],
+        Option(help="A tag to apply to ingested maps"),
+    ] = None,
+    filter: Annotated[
+        Optional[str],
+        Option(help="How to interpret the contents of archive files"),
+    ] = None,
+    s3_bucket: Annotated[
+        Optional[str],
+        Option(help="The S3 bucket to upload objects to"),
+    ] = None,
+    s3_prefix: Annotated[
+        Optional[str],
+        Option(help="The prefix, sans trailing slash, to use for objects' S3 keys"),
+    ] = None,
 ) -> None:
     """
     Ingest multiple maps as specified in a CSV file.
@@ -705,9 +720,8 @@ def ingest_from_csv(
 
     There must also be a column for "slug".
 
-    Options for the ingest-file subcommand can be provided *after* the CSV
-    file, in which case they will override whatever is specified in the CSV
-    file itself. Note that mistyped options will result in verbose errors.
+    Command-line options that are shared with the ingest-file subcommand
+    will override whatever is specified in the CSV file itself.
     """
     slugs_seen = []
 
@@ -742,16 +756,15 @@ def ingest_from_csv(
             for f in FIELDS:
                 if row.get(f):
                     kwargs[f] = row[f]
-            for i in range(0, len(ctx.args), 2):
-                k = ctx.args[i][2:].replace("-", "_")
-                v = ctx.args[i + 1]
-                kwargs[k] = v
 
-            ## Take into account the fact that we might be trying to
-            ## set multiple tags.
-
-            if "tag" in kwargs and "," in kwargs["tag"]:
-                kwargs["tag"] = kwargs["tag"].split(",")
+            if tag:
+                kwargs["tag"] = tag
+            if filter:
+                kwargs["filter"] = filter
+            if s3_bucket:
+                kwargs["s3_bucket"] = s3_bucket
+            if s3_prefix:
+                kwargs["s3_prefix"] = s3_prefix
 
             ## Take into account the fact that we might be bulk ingesting
             ## multiple files/objects for the same slug.
