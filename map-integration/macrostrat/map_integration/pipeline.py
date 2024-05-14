@@ -65,35 +65,57 @@ console = Console()
 
 
 # --------------------------------------------------------------------------
+# Short-ish helper functions.
 
 
-def record_ingest_error(
-    ingest_process: IngestProcess,
-    message: str,
-) -> None:
-    update_ingest_process(
-        ingest_process.id,
-        state=IngestState.failed,
-        comments=message,
-    )
-
-
-def raise_ingest_error(
-    ingest_process: IngestProcess,
-    message: str,
-    source_exn: Optional[Exception] = None,
-) -> NoReturn:
-    record_ingest_error(ingest_process, message)
-    raise IngestError(message) from source_exn
-
-
-# --------------------------------------------------------------------------
+def normalize_slug(slug: str) -> str:
+    """
+    Replace characters that are invalid in an SQL table name with `_`.
+    """
+    return re.sub(r"\W", "_", slug).lower()
 
 
 def truncate_str(data: str, *, limit: int = 255) -> str:
+    """
+    Replace the end of a string with "..." if its length exceeds some limit.
+    """
     if len(data) > limit:
         data = data[: limit - 3] + "..."
     return data
+
+
+def truncate_source_metadata(**data):
+    """
+    Ensure that metadata fields for a `maps.sources` record are not too long.
+    """
+    data = data.copy()
+    for col in ["name", "url", "authors", "ref_source"]:
+        if col in data:
+            data[col] = truncate_str(data[col], limit=255)
+    for col in ["isbn_doi", "licence"]:
+        if col in data:
+            data[col] = truncate_str(data[col], limit=100)
+    return data
+
+
+def raise_ingest_error(
+    ingest_process: IngestProcess, comments: str, source_exn: Optional[Exception] = None
+) -> NoReturn:
+    """
+    Set an ingest process to "failed" with the given comments, and then raise an Exception.
+    """
+    record_ingest_error(ingest_process, comments)
+    raise IngestError(comments) from source_exn
+
+
+def record_ingest_error(ingest_process: IngestProcess, comments: str) -> None:
+    """
+    Set an ingest process to "failed" with the given comments.
+    """
+    update_ingest_process(ingest_process.id, state=IngestState.failed, comments=comments)
+
+
+# --------------------------------------------------------------------------
 
 
 def extract_archive(
@@ -146,8 +168,8 @@ def set_alaska_metadata(source: Sources, data_dir: pathlib.Path) -> None:
         raw_metadata = fp.readlines()
 
     ## NOTE: The metadata file looks like it could be parsed as YAML,
-    ## but alas, it is not YAML. Some hashes define a key multiple times,
-    ## and some values confuse PyYAMLs parser.
+    ## but alas, it is not YAML. Some would-be hashes define a key multiple
+    ## times, and some values confuse PyYAMLs parser.
 
     ## Skip the first line ("Identification_Information:").
 
@@ -319,6 +341,7 @@ def get_source_by_slug(slug: str) -> Optional[Sources]:
 
 
 def create_source(**data) -> Sources:
+    data = truncate_source_metadata(data)
     with get_db_session() as session:
         new_source = session.scalar(
             insert(Sources).values(**data).returning(Sources),
@@ -328,13 +351,7 @@ def create_source(**data) -> Sources:
 
 
 def update_source(id_: int, **data) -> Sources:
-    data = data.copy()
-    for col in ["name", "url", "authors", "ref_source"]:
-        if col in data:
-            data[col] = truncate_str(data[col], limit=255)
-    for col in ["isbn_doi", "licence"]:
-        if col in data:
-            data[col] = truncate_str(data[col], limit=100)
+    data = truncate_source_metadata(data)
     with get_db_session() as session:
         new_source = session.scalar(
             update(Sources).values(**data).where(Sources.source_id == id_).returning(Sources),
@@ -426,7 +443,7 @@ def ingest_file(
 
     ## Normalize identifiers.
 
-    slug = re.sub(r"\W", "_", slug).lower()
+    slug = normalize_slug(slug)
     console.print(f"Normalized the provided slug to {slug}")
 
     ## Collect metadata.
