@@ -100,7 +100,7 @@ async def run_layer_query(con, layer_name, **params):
 
     # Overcomes a shortcoming in buildpg that deems casting to an array as unsafe
     # https://github.com/samuelcolvin/buildpg/blob/e2a16abea5c7607b53c501dbae74a5765ba66e15/buildpg/components.py#L21
-    q.replace("textarray", "text[]")
+    q = q.replace("textarray", "text[]")
 
     print(q,p)
 
