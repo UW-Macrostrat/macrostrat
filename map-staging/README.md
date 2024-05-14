@@ -63,7 +63,14 @@ The input CSV file here was provided by the CriticalMAAS program.
 The resulting output is in [data/criticalmaas_09.csv](data/criticalmaas_09.csv).
 
 When running `macrostrat maps ingest-from-csv`, the `--filter ta1` option
-can be used to attempt to exclude bounding boxes and map legends.
+can be used to attempt to exclude bounding boxes and map legends. A complete
+command invocation might look as follows:
+
+    poetry run macrostrat maps ingest-from-csv data/criticalmaas_09.csv \
+      --filter ta1 \
+      --tag "9 Month Hackathon" --tag "TA1 Output" \
+      --s3-bucket map-ingest --s3-prefix criticalmaas/month-09 \
+      | tee -a criticalmaas_09.log
 
 
 ### National Geologic Map Database
