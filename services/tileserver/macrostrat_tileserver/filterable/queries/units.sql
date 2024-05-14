@@ -3,7 +3,7 @@ SELECT
   map_id,
   source_id
 FROM
-  :compilatiom AS p
+  :compilation AS p
 LEFT JOIN maps.map_liths AS ml ON ml.map_id = p.map_id
 LEFT JOIN macrostrat.liths AS liths ON liths.id = ml.lith_id
 WHERE scale::text = 'large'
