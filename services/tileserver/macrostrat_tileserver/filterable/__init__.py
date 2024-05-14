@@ -97,6 +97,7 @@ def join_layers(layers):
 async def run_layer_query(con, layer_name, **params):
     query = get_layer_sql(layer_name)
     q, p = render(query, layer_name=layer_name, **params)
+    print(q, p)
     return await con.fetchval(q, *p)
 
 
