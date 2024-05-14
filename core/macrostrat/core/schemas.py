@@ -154,6 +154,7 @@ class IngestState(enum.Enum):
     pending = "pending"
     ingested = "ingested"
     prepared = "prepared"
+    post_harmonization = "post_harmonization"
     failed = "failed"
     abandoned = "abandoned"
 
