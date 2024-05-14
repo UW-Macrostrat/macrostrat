@@ -1,8 +1,9 @@
 from asyncio import gather
+from typing import List
 from enum import Enum
 from pathlib import Path
 
-from buildpg import V, render
+from buildpg import V, render, Empty, funcs
 from fastapi import APIRouter, Request, Response
 from timvt.resources.enums import MimeTypes
 
@@ -18,7 +19,14 @@ __here__ = Path(__file__).parent
 
 
 @router.get("/{compilation}/{z}/{x}/{y}")
-async def get_tile(request: Request, compilation: Compilation, z: int, x: int, y: int):
+async def get_tile(
+        request: Request,
+        compilation: Compilation,
+        z: int,
+        x: int,
+        y: int,
+        lithology: List[str]
+):
     """Get a tile from the tileserver."""
     pool = request.app.state.pool
 
@@ -37,6 +45,7 @@ async def get_tile(request: Request, compilation: Compilation, z: int, x: int, y
         linesize = ["medium", "large"]
 
     compilation_name = compilation.value
+    where_lithology = get_lithology_clause(lithology)
 
     async with pool.acquire() as con:
         units_ = await run_layer_query(
@@ -47,6 +56,7 @@ async def get_tile(request: Request, compilation: Compilation, z: int, x: int, y
             y=y,
             mapsize=mapsize,
             compilation=V(compilation_name + ".polygons"),
+            where_lithology=where_lithology
         )
         lines_ = await run_layer_query(
             con,
@@ -56,12 +66,27 @@ async def get_tile(request: Request, compilation: Compilation, z: int, x: int, y
             y=y,
             mapsize=mapsize,
             linesize=linesize,
-            compilation=V(compilation_name + ".lines"),
+            compilation=V(compilation_name + ".lines")
         )
     data = join_layers([units_, lines_])
     kwargs = {}
     kwargs.setdefault("media_type", MimeTypes.pbf.value)
     return Response(data, **kwargs)
+
+
+def get_lithology_clause(lithologies: List[str]):
+
+    LITHOLOGY_COLUMNS = [
+        "lith_group",
+        "lith_class",
+        "lith_type",
+        "lith",
+    ]
+
+    if not lithologies or len(lithologies) == 0:
+        return Empty()
+
+    return Empty() & funcs.OR(*map(lambda l: V(l).in_(lithologies), LITHOLOGY_COLUMNS))
 
 
 def join_layers(layers):

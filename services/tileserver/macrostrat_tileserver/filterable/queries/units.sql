@@ -1,12 +1,14 @@
 WITH mvt_features AS (
 SELECT
   map_id,
-  source_id,
-  geom
+  source_id
 FROM
-  :compilation
-WHERE scale::text = :mapsize
+  :compilatiom AS p
+LEFT JOIN maps.map_liths AS ml ON ml.map_id = p.map_id
+LEFT JOIN macrostrat.liths AS liths ON liths.id = ml.lith_id
+WHERE scale::text = 'large'
   AND ST_Intersects(geom, ST_Transform(:envelope, 4326))
+  :where_lithology
 )
 SELECT
   z.map_id,
