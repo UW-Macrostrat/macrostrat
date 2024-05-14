@@ -4,7 +4,7 @@ from enum import Enum
 from pathlib import Path
 
 from buildpg import V, render, Empty, funcs
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, Request, Response, Query
 from timvt.resources.enums import MimeTypes
 
 
@@ -25,7 +25,7 @@ async def get_tile(
         z: int,
         x: int,
         y: int,
-        lithology: List[str]
+        lithology: List[str] = Query(None)
 ):
     """Get a tile from the tileserver."""
     pool = request.app.state.pool
@@ -83,7 +83,7 @@ def get_lithology_clause(lithologies: List[str]):
         "lith",
     ]
 
-    if not lithologies or len(lithologies) == 0:
+    if lithologies is None or len(lithologies) == 0:
         return Empty()
 
     return Empty() & funcs.OR(*map(lambda l: V(l).in_(lithologies), LITHOLOGY_COLUMNS))
