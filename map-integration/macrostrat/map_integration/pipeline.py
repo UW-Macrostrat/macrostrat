@@ -39,9 +39,6 @@ from macrostrat.map_integration.errors import IngestError
 from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
 from macrostrat.map_integration.utils.map_info import get_map_info
 
-## The directory into which ingest_from_csv will download files.
-DOWNLOAD_ROOT_DIR = pathlib.Path("./tmp")
-
 ## The list of arguments to ingest_file that ingest_from_cvs will handle.
 FIELDS = [
     "slug",
@@ -704,6 +701,10 @@ def ingest_from_csv(
         pathlib.Path,
         Argument(help="CSV file containing arguments for ingest-file"),
     ],
+    download_dir: Annotated[
+        pathlib.Path,
+        Argument(help="Directory into which to download archive files"),
+    ],
     tag: Annotated[
         Optional[list[str]],
         Option(help="A tag to apply to ingested maps"),
@@ -748,9 +749,6 @@ def ingest_from_csv(
         for row in reader:
             url = row["archive_url"]
             prefix = row.get("s3_prefix") or "ingest_from_csv"
-
-            download_dir = DOWNLOAD_ROOT_DIR / prefix
-            download_dir.mkdir(parents=True, exist_ok=True)
 
             filename = url.split("/")[-1]
             partial_local_file = download_dir / (filename + ".partial")
