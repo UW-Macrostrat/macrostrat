@@ -7,7 +7,7 @@ FROM
   :compilation AS p
 LEFT JOIN maps.map_liths AS ml ON ml.map_id = p.map_id
 LEFT JOIN macrostrat.liths AS liths ON liths.id = ml.lith_id
-WHERE scale::text = 'large'
+WHERE scale::text = :mapsize
   AND ST_Intersects(geom, ST_Transform(:envelope, 4326))
   :where_lithology
 )
