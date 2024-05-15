@@ -5,8 +5,12 @@ SELECT
   p.geom
 FROM
   :compilation AS p
-LEFT JOIN maps.map_liths AS ml ON ml.map_id = p.map_id
-LEFT JOIN macrostrat.liths AS liths ON liths.id = ml.lith_id
+LEFT JOIN
+        maps.legend as l ON l.source_id = p.source_id
+LEFT JOIN
+        maps.legend_liths as ll on ll.legend_id = l.legend_id
+LEFT JOIN
+        macrostrat.liths as liths ON liths.id = ll.lith_id
 WHERE scale::text = :mapsize
   AND ST_Intersects(geom, ST_Transform(:envelope, 4326))
   :where_lithology
