@@ -72,6 +72,13 @@ def normalize_slug(slug: str) -> str:
     return re.sub(r"\W", "_", slug).lower()
 
 
+def strify_list(xs: list[Any]) -> list[str]:
+    """
+    Convert the provided list to a list of strings.
+    """
+    return [str(x) for x in xs]
+
+
 def truncate_str(data: str, *, limit: int = 255) -> str:
     """
     Replace the end of a string with "..." if its length exceeds some limit.
@@ -217,19 +224,6 @@ def get_db_session(expire_on_commit=False) -> Session:
     return Session(DB.engine, expire_on_commit=expire_on_commit)
 
 
-def get_object_by_id(id_: int) -> Optional[Object]:
-    with get_db_session() as session:
-        obj = session.scalar(
-            select(Object).where(
-                and_(
-                    Object.id == id_,
-                    Object.deleted_on == None,
-                )
-            )
-        )
-    return obj
-
-
 def get_object_by_loc(bucket: str, key: str) -> Optional[Object]:
     with get_db_session() as session:
         obj = session.scalar(
@@ -266,14 +260,6 @@ def update_object(id_: int, **data) -> Object:
     return new_obj
 
 
-def get_ingest_process_by_id(id_: int) -> Optional[IngestProcess]:
-    with get_db_session() as session:
-        ingest_process = session.scalar(
-            select(IngestProcess).where(IngestProcess.id == id_),
-        )
-    return ingest_process
-
-
 def get_ingest_process_by_object_group_id(id_: int) -> Optional[IngestProcess]:
     with get_db_session() as session:
         ingest_process = session.scalar(
@@ -308,6 +294,18 @@ def create_ingest_process(**data) -> IngestProcess:
     return new_ingest_process
 
 
+def update_ingest_process(id_: int, **data) -> IngestProcess:
+    with get_db_session() as session:
+        new_ingest_process = session.scalar(
+            update(IngestProcess)
+            .values(**data)
+            .where(IngestProcess.id == id_)
+            .returning(IngestProcess)
+        )
+        session.commit()
+    return new_ingest_process
+
+
 def create_ingest_process_tag(
     ingest_process_id: int,
     tag: str,
@@ -323,18 +321,6 @@ def create_ingest_process_tag(
         )
         session.commit()
     return new_ingest_process_tag
-
-
-def update_ingest_process(id_: int, **data) -> IngestProcess:
-    with get_db_session() as session:
-        new_ingest_process = session.scalar(
-            update(IngestProcess)
-            .values(**data)
-            .where(IngestProcess.id == id_)
-            .returning(IngestProcess)
-        )
-        session.commit()
-    return new_ingest_process
 
 
 def get_source_by_id(id_: int) -> Optional[Sources]:
@@ -370,7 +356,7 @@ def update_source(id_: int, **data) -> Sources:
 
 
 # --------------------------------------------------------------------------
-# Creating and ingesting slugs (a.k.a. maps).
+# Creating and ingesting a single slug (a.k.a. map).
 
 
 def create_slug(
@@ -514,6 +500,7 @@ def ingest_slug(
 
 
 # --------------------------------------------------------------------------
+# Working with files and objects.
 
 
 def upload_file(
@@ -678,7 +665,7 @@ def load_object(
     *,
     filter: Annotated[
         Optional[str],
-        Option(help="How to interpret the contents of the specified object"),
+        Option(help="How to interpret the contents of the object"),
     ] = None,
     append_data: Annotated[
         bool,
@@ -750,7 +737,16 @@ def load_object(
             excluded_data = []
 
             for gis_file in gis_files:
-                if filter == "ta1":
+                if filter == "polymer":
+                    if (
+                        "_bbox" not in gis_file.name
+                        and "_legend" not in gis_file.name
+                        and gis_file.name.startswith("polymer")
+                    ):
+                        gis_data.append(gis_file)
+                    else:
+                        excluded_data.append(gis_file)
+                elif filter == "ta1":
                     if "_bbox" not in gis_file.name and "_legend" not in gis_file.name:
                         gis_data.append(gis_file)
                     else:
@@ -762,9 +758,9 @@ def load_object(
 
             ## Process the GIS files.
 
-            console.print(f"Ingesting {source.slug} from {gis_data}")
+            console.print(f"Ingesting {source.slug} from {strify_list(gis_data)}")
             if excluded_data:
-                console.print(f"NOT ingesting {excluded_data}")
+                console.print(f"NOT ingesting {strify_list(excluded_data)}")
             try:
                 ingest_map(
                     source.slug,
@@ -788,6 +784,7 @@ def load_object(
 
 
 # --------------------------------------------------------------------------
+# Creating and ingesting multiple slugs (a.k.a. maps).
 
 
 def ingest_csv(
@@ -859,14 +856,11 @@ def ingest_csv(
                 partial_local_file.rename(local_file)
 
             kwargs = {}
-            for f in FIELDS:
+            for f in set(FIELDS) - {"slug"}:
                 if row.get(f):
                     kwargs[f] = row[f]
-
             if tag:
                 kwargs["tag"] = tag
-            if filter:
-                kwargs["filter"] = filter
 
             upload_file(
                 row["slug"],
@@ -884,9 +878,6 @@ def ingest_csv(
             ingest_slug(get_map_info(DB, slug), filter=filter)
         except Exception as exn:
             console.print(f"Exception: {exn}")
-
-
-# --------------------------------------------------------------------------
 
 
 def run_polling_loop(
