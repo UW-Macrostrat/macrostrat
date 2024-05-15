@@ -1,3 +1,4 @@
+# pylint: disable=imports,too-many-arguments,too-many-branches,too-many-locals
 """
 A pipeline for ingesting maps into Macrostrat.
 """
@@ -872,7 +873,7 @@ def ingest_csv(
                 local_file,
                 s3_bucket=s3_bucket,
                 s3_prefix=s3_prefix,
-                **kwargs,
+                **kwargs,  # type: ignore[arg-type]
             )
             slugs_seen.append(row["slug"])
 
