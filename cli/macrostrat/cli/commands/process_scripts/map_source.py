@@ -1,7 +1,8 @@
 import sys
 
 from ..base import Base
-from ..match_scripts import liths, strat_names
+
+# from ..match_scripts import liths, strat_names
 from .carto import Carto
 from .carto_lines import CartoLines
 

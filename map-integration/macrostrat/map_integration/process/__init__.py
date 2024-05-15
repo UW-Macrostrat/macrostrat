@@ -40,6 +40,7 @@ def pipeline(source: MapInfo, delete_existing: bool = False, scale: str = None):
 
     This includes:
     - Copy to maps schema
+    - Legend lookup table generation
     - Match strat names
     - Match units
     - Match liths
@@ -47,6 +48,7 @@ def pipeline(source: MapInfo, delete_existing: bool = False, scale: str = None):
     *Legend lookup is ignored because it hangs currently*
     """
     copy_to_maps(source, delete_existing=delete_existing, scale=scale)
+    legend(source)
     match_strat_names(source)
     match_units(source)
     match_liths(source)
