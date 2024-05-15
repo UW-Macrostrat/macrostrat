@@ -1,16 +1,19 @@
-from .base import Base
-import sys
-from subprocess import call
 import datetime
 import os
-from psycopg2.extensions import AsIs
+import sys
+from subprocess import call
+
 import fiona
-from shapely.wkb import loads
+from psycopg2.extensions import AsIs
 from shapely.geometry import MultiPolygon, mapping
+from shapely.wkb import loads
+
+from .base import Base
 
 cwd = os.getcwd()
-from psycopg2.extras import RealDictCursor
 import sqlite3
+
+from psycopg2.extras import RealDictCursor
 
 
 class Export(Base):
@@ -270,9 +273,9 @@ class Export(Base):
                 # Make sure data types are correct
                 for key in row:
                     # Postgres often returns these as decimals
-                    if table_schema[key] == "float":
+                    if table_schema[key] == "float" and row[key] is not None:
                         row[key] = float(row[key])
-                    elif table_schema[key] == "str":
+                    elif table_schema[key] == "str" and row[key] is not None:
                         row[key] = str(row[key])
                 # Write the row to the GeoPackage
                 output.write({"geometry": geometry, "properties": row})
@@ -311,29 +314,29 @@ class Export(Base):
             layer_schema, select = Export.get_table_schema(
                 self, "sources", source_info["primary_table"]
             )
-            Export.write_layer(
-                self,
-                filename,
-                "original_units",
-                "MultiPolygon",
-                select,
-                {},
-                layer_schema,
-            )
+            # Export.write_layer(
+            #     self,
+            #     filename,
+            #     "original_units",
+            #     "MultiPolygon",
+            #     select,
+            #     {},
+            #     layer_schema,
+            # )
 
             # Write original lines
             layer_schema, select = Export.get_table_schema(
                 self, "sources", source_info["primary_line_table"]
             )
-            Export.write_layer(
-                self,
-                filename,
-                "original_lines",
-                "MultiLineString",
-                select,
-                {},
-                layer_schema,
-            )
+            # Export.write_layer(
+            #     self,
+            #     filename,
+            #     "original_lines",
+            #     "MultiLineString",
+            #     select,
+            #     {},
+            #     layer_schema,
+            # )
 
             # Write homogenized units
             select = Export.maps_select % (

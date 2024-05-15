@@ -35,6 +35,8 @@ class LegendLookup(LegacyCommandBase):
         )
         scale = self.pg["cursor"].fetchone()
 
+        print("Starting to process source %s" % (source_id,))
+
         if scale is None:
             print("Source ID %s was not found in maps.sources" % (source_id,))
             sys.exit(1)
@@ -158,6 +160,8 @@ class LegendLookup(LegacyCommandBase):
             {"scale": AsIs(scale), "source_id": source_id},
         )
         self.pg["connection"].commit()
+
+        print("Ran first command")
 
         self.pg["cursor"].execute(
             """
@@ -285,6 +289,8 @@ class LegendLookup(LegacyCommandBase):
         )
         self.pg["connection"].commit()
 
+        print("Ran second command")
+
         # Update specific liths
         self.pg["cursor"].execute(
             """
@@ -334,6 +340,8 @@ class LegendLookup(LegacyCommandBase):
         )
         self.pg["connection"].commit()
 
+        print("Ran third command")
+
         # Update all liths
         self.pg["cursor"].execute(
             """
@@ -359,6 +367,8 @@ class LegendLookup(LegacyCommandBase):
             {"source_id": source_id},
         )
         self.pg["connection"].commit()
+
+        print("Ran fourth command")
 
         # Update concept_ids and strat_name_children
         self.pg["cursor"].execute(
@@ -455,6 +465,8 @@ class LegendLookup(LegacyCommandBase):
         )
         self.pg["connection"].commit()
 
+        print("Ran fifth command")
+
         # Update best_age_top and best_age_bottom and color
         self.pg["cursor"].execute(
             """
@@ -501,6 +513,8 @@ class LegendLookup(LegacyCommandBase):
         )
         self.pg["connection"].commit()
 
+        print("Ran sixth command")
+
         # Shift colors where needed
         self.pg["cursor"].execute(
             """
@@ -516,6 +530,8 @@ class LegendLookup(LegacyCommandBase):
             {"source_id": source_id},
         )
         colors = self.pg["cursor"].fetchall()
+
+        print("Ran seventh command")
 
         for color in colors:
             if color.color is None:
@@ -571,6 +587,8 @@ class LegendLookup(LegacyCommandBase):
 
             self.pg["connection"].commit()
 
+        print("Ran eighth command")
+
         # Now go back and homogenize similar units
         self.pg["cursor"].execute(
             """
@@ -589,10 +607,14 @@ class LegendLookup(LegacyCommandBase):
         )
         similar_units = self.pg["cursor"].fetchall()
 
+        print("Ran ninth command")
+
         for idx, unit in enumerate(similar_units):
             # print '%s of %s' % (idx, len(similar_units), )
             # Just pick the first color
             color = unit.colors[0]
+
+            print(unit.legend_ids)
 
             self.pg["cursor"].execute(
                 """
@@ -603,3 +625,5 @@ class LegendLookup(LegacyCommandBase):
                 {"color": color, "legend_id": unit.legend_ids},
             )
             self.pg["connection"].commit()
+
+        print("Done")
