@@ -1,6 +1,8 @@
 # pylint: disable=imports,too-many-arguments,too-many-branches,too-many-locals
 """
-A pipeline for ingesting maps into Macrostrat.
+Ingest map data from archive files.
+
+A.k.a., a pipeline for ingesting maps into Macrostrat.
 """
 
 import csv
@@ -148,14 +150,14 @@ def extract_archive(
     elif ingest_process:
         raise_ingest_error(ingest_process, "Unrecognized archive file format")
     else:
-        raise RuntimeError("Unrecognized archive file format")
+        raise IngestError("Unrecognized archive file format")
 
     if extract_subarchives:
         sub_archives = set(target_dir.glob("**/*.tgz"))
         sub_archives |= set(target_dir.glob("**/*.tar.gz"))
         sub_archives |= set(target_dir.glob("**/*.zip"))
 
-        for sub_archive in sub_archives - set([archive_file]):
+        for sub_archive in sub_archives - {archive_file}:
             extract_archive(
                 sub_archive,
                 target_dir,
@@ -164,7 +166,7 @@ def extract_archive(
             )
 
 
-def set_alaska_metadata(source: Sources, data_dir: pathlib.Path) -> None:
+def update_alaska_metadata(source: Sources, data_dir: pathlib.Path) -> None:
     """
     Set metadata for an archive from the Alaska Division of Geological & Geophysical Surveys.
     """
@@ -208,8 +210,6 @@ def set_alaska_metadata(source: Sources, data_dir: pathlib.Path) -> None:
         if match := re.match(r"(\s*)Online_Linkage:(\s*)", line):
             metadata["isbn_doi"] = match.group(2).strip()
 
-    ## Update the map's metadata.
-
     if metadata:
         update_source(source.source_id, **metadata)
 
@@ -224,7 +224,7 @@ def get_db_session(expire_on_commit=False) -> Session:
     return Session(DB.engine, expire_on_commit=expire_on_commit)
 
 
-def get_object_by_loc(bucket: str, key: str) -> Optional[Object]:
+def get_object(bucket: str, key: str) -> Optional[Object]:
     with get_db_session() as session:
         obj = session.scalar(
             select(Object).where(
@@ -277,17 +277,14 @@ def get_ingest_process_by_source_id(id_: int) -> Optional[IngestProcess]:
 
 
 def create_ingest_process(**data) -> IngestProcess:
+    data = data.copy()
+    data["created_on"] = datetime.datetime.utcnow()
     with get_db_session() as session:
-        object_group = session.scalar(insert(ObjectGroup).returning(ObjectGroup))
-        if not object_group:
-            raise RuntimeError("Failed to create a new object group")
+        if not (object_group := session.scalar(insert(ObjectGroup).returning(ObjectGroup))):
+            raise IngestError("Failed to create a new object group")
         new_ingest_process = session.scalar(
             insert(IngestProcess)
-            .values(
-                object_group_id=object_group.id,
-                created_on=datetime.datetime.utcnow(),
-                **data,
-            )
+            .values(object_group_id=object_group.id, **data)
             .returning(IngestProcess)
         )
         session.commit()
@@ -306,17 +303,11 @@ def update_ingest_process(id_: int, **data) -> IngestProcess:
     return new_ingest_process
 
 
-def create_ingest_process_tag(
-    ingest_process_id: int,
-    tag: str,
-) -> IngestProcessTag:
+def create_ingest_process_tag(ingest_process_id: int, tag: str) -> IngestProcessTag:
     with get_db_session() as session:
         new_ingest_process_tag = session.scalar(
             insert(IngestProcessTag)
-            .values(
-                ingest_process_id=ingest_process_id,
-                tag=tag,
-            )
+            .values(ingest_process_id=ingest_process_id, tag=tag)
             .returning(IngestProcessTag)
         )
         session.commit()
@@ -471,27 +462,33 @@ def ingest_slug(
     ingest_process = get_ingest_process_by_source_id(map_info.id)
 
     if not source or not ingest_process:
-        raise RuntimeError(f"Internal data model error for source {map_info}")
+        raise IngestError(f"Internal data model error for map {map_info}")
 
     with get_db_session() as session:
         objs = session.scalars(
-            select(Object).where(Object.object_group_id == ingest_process.object_group_id)
+            select(Object).where(
+                and_(
+                    Object.object_group_id == ingest_process.object_group_id,
+                    Object.deleted_on == None,
+                )
+            )
         ).all()
 
     for i, obj in enumerate(objs):
         append_data = i != 0
-        load_object(obj.bucket, obj.key, filter=filter, append_data=append_data)
+        try:
+            load_object(obj.bucket, obj.key, filter=filter, append_data=append_data)
+        except Exception as exn:
+            raise_ingest_error(ingest_process, str(exn), exn)
 
-    ## Prepare tables for human review.
+    ## Prepare points, lines, and polygons tables for human review.
 
-    macrostrat_map = get_map_info(DB, source.slug)
-    console.print(f"Macrostrat map object: {macrostrat_map}")
-
+    console.print(f"Preparing map {map_info}")
     try:
-        prepare_fields(macrostrat_map)
+        prepare_fields(map_info)
         ingest_process = update_ingest_process(ingest_process.id, state=IngestState.prepared)
-        create_rgeom(macrostrat_map)
-        create_webgeom(macrostrat_map)
+        create_rgeom(map_info)
+        create_webgeom(map_info)
         ingest_process = update_ingest_process(ingest_process.id, state=IngestState.ingested)
     except Exception as exn:
         raise_ingest_error(ingest_process, str(exn), exn)
@@ -575,7 +572,7 @@ def upload_file(
     slug = normalize_slug(slug)
     console.print(f"Normalized the provided slug to {slug}")
 
-    ## Create / update / locate the sources record and ingest_process.
+    ## Create or update the `sources` and `ingest_process` records.
 
     (_, ingest_process) = create_slug(
         slug,
@@ -591,7 +588,7 @@ def upload_file(
         raster_url=raster_url,
     )
 
-    ## Collect metadata.
+    ## Collect metadata for the archive file.
 
     mime_type = magic.Magic(mime=True).from_file(local_file)
     hasher = hashlib.sha256()
@@ -606,9 +603,9 @@ def upload_file(
     bucket = s3_bucket
     key = f"{s3_prefix}/{local_file.name}"
 
-    obj = get_object_by_loc(bucket, key)
+    obj = get_object(bucket, key)
 
-    if not obj or obj.sha256_hash != sha256_hash:
+    if not obj or sha256_hash != obj.sha256_hash:
         console.print(f"Uploading {local_file} to S3 as {bucket}/{key}")
         s3 = minio.Minio(
             config.S3_HOST,  # type: ignore[arg-type]
@@ -616,12 +613,10 @@ def upload_file(
             secret_key=config.S3_SECRET_KEY,
         )
         s3.fput_object(bucket, key, str(local_file))
-        ingest_process = update_ingest_process(
-            ingest_process.id, state=IngestState.pending, comments=None
-        )
+        ingest_process = update_ingest_process(ingest_process.id, state=IngestState.pending)
         console.print("Finished upload")
     else:
-        console.print("Object already present with the same SHA-256")
+        console.print("Object with the same SHA-256 already present in S3")
 
     ## Create or update the object's DB entry.
 
@@ -669,26 +664,20 @@ def load_object(
     ] = None,
     append_data: Annotated[
         bool,
-        Option(help="Whether to append data to the map when it already exists"),
+        Option(help="Whether to append data to the associated map when it already exists"),
     ] = False,
 ) -> Object:
     """
     Ingest an object in S3 containing a map into Macrostrat.
 
-    This command/function assumes that database records for the "ingest
-    process" and "sources" tables have already been created. (The web UI's
-    upload form creates the required records.)
+    Assumes that database records for the `sources` and `ingest_process`
+    tables have already been created.
     """
-    obj = get_object_by_loc(bucket, key)
-    if not obj:
+    if not (obj := get_object(bucket, key)):
         raise IngestError(f"No such object in the database: {bucket}/{key}")
-
-    ingest_process = get_ingest_process_by_object_group_id(obj.object_group_id)
-    if not ingest_process:
-        raise IngestError("No ingest process in the database for object ID {obj.id}")
-
-    source = get_source_by_id(ingest_process.source_id)
-    if not source:
+    if not (ingest_process := get_ingest_process_by_object_group_id(obj.object_group_id)):
+        raise IngestError(f"No ingest process in the database for object ID {obj.id}")
+    if not (source := get_source_by_id(ingest_process.source_id)):
         raise_ingest_error(
             ingest_process,
             "No source ID in the database for ingest process ID {ingest_process.id}",
@@ -715,15 +704,12 @@ def load_object(
     s3.fget_object(bucket, key, str(local_file))
     console.print("Finished downloading archive")
 
-    ## Process anything that might have points, lines, and polygons.
+    ## Process anything that might have points, lines, or polygons.
 
     try:
         with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as td:
             tmp_dir = pathlib.Path(td)
             console.print(f"Extracting archive into {tmp_dir}")
-
-            ## Extract the archive.
-
             extract_archive(local_file, tmp_dir, ingest_process=ingest_process)
 
             ## Locate files of interest.
@@ -739,9 +725,9 @@ def load_object(
             for gis_file in gis_files:
                 if filter == "polymer":
                     if (
-                        "_bbox" not in gis_file.name
+                        gis_file.name.startswith("polymer")
+                        and "_bbox" not in gis_file.name
                         and "_legend" not in gis_file.name
-                        and gis_file.name.startswith("polymer")
                     ):
                         gis_data.append(gis_file)
                     else:
@@ -758,9 +744,11 @@ def load_object(
 
             ## Process the GIS files.
 
-            console.print(f"Ingesting {source.slug} from {strify_list(gis_data)}")
+            console.print(f"Loading into {source.slug}")
+            console.print(f"Loading {strify_list(gis_data)}")
             if excluded_data:
-                console.print(f"NOT ingesting {strify_list(excluded_data)}")
+                console.print(f"Skipping over / not loading {strify_list(excluded_data)}")
+            console.print(f"Appending data? {append_data}")
             try:
                 ingest_map(
                     source.slug,
@@ -774,7 +762,7 @@ def load_object(
 
             try:
                 if filter == "alaska":
-                    set_alaska_metadata(source, tmp_dir)
+                    update_alaska_metadata(source, tmp_dir)
             except Exception as exn:
                 raise_ingest_error(ingest_process, str(exn), exn)
     finally:
@@ -877,7 +865,7 @@ def ingest_csv(
         try:
             ingest_slug(get_map_info(DB, slug), filter=filter)
         except Exception as exn:
-            console.print(f"Exception: {exn}")
+            console.print(f"Exception while attempting to ingest a CSV file: {exn}")
 
 
 def run_polling_loop(
@@ -892,29 +880,22 @@ def run_polling_loop(
     while True:
         console.print("Starting iteration of polling loop")
         bad_pending = 0
-        bad_source_id = 0
 
         with get_db_session() as session:
             for ingest_process in session.scalars(
-                select(IngestProcess).where(
-                    IngestProcess.state == IngestState.pending,
-                )
+                select(IngestProcess).where(IngestProcess.state == IngestState.pending)
             ).unique():
                 if ingest_process.source_id:
-                    if map_info := get_map_info(DB, ingest_process.source_id):
-                        console.print(f"Processing {map_info}")
-                        try:
-                            ingest_slug(map_info)
-                        except Exception as exn:
-                            record_ingest_error(ingest_process, str(exn))
-                    else:
-                        bad_source_id += 1
+                    map_info = get_map_info(DB, ingest_process.source_id)
+                    console.print(f"Processing {map_info}")
+                    try:
+                        ingest_slug(map_info)
+                    except Exception as exn:
+                        record_ingest_error(ingest_process, str(exn))
                 else:
                     bad_pending += 1
 
         if bad_pending:
-            console.print(f"Skipped {bad_pending} ingests (missing source_id)")
-        if bad_source_id:
-            console.print(f"Skipped {bad_source_id} ingests (missing source record?)")
+            console.print(f"Skipped {bad_pending} ingests because of a missing source_id")
         console.print("Finished iteration of polling loop")
         time.sleep(polling_interval)
