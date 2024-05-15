@@ -39,12 +39,12 @@ from macrostrat.map_integration.errors import IngestError
 from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
 from macrostrat.map_integration.utils.map_info import MapInfo, get_map_info
 
-## The list of arguments to upload_file that ingest_csv will handle.
+# The list of arguments to upload_file that ingest_csv will look
+# for in the CSV file given to it.
 FIELDS = [
     "slug",
     "name",
-    "filter",
-    "tag",
+    # "tag",  # use the CLI, which supports applying multiple tags
     "ref_title",
     "ref_authors",
     "ref_year",
@@ -54,11 +54,9 @@ FIELDS = [
     "archive_url",
     "website_url",
     "raster_url",
-    "s3_bucket",
-    "s3_prefix",
 ]
 
-## The current terminal, with support for displaying rich text.
+# The current terminal, with support for displaying rich text.
 console = Console()
 
 
@@ -476,7 +474,7 @@ def ingest_slug(
     *,
     filter: Annotated[
         Optional[str],
-        Option(help="How to interpret the contents of the source's objects"),
+        Option(help="How to interpret the contents of the map's objects"),
     ] = None,
 ) -> Sources:
     """
@@ -524,16 +522,16 @@ def upload_file(
     ],
     local_file: Annotated[
         pathlib.Path,
-        Argument(help="Local file to ingest"),
+        Argument(help="The local archive file to upload"),
     ],
     *,
     s3_bucket: Annotated[
         str,
-        Option(help="The S3 bucket to upload this object to"),
+        Option(help="The S3 bucket to upload the file to"),
     ],
     s3_prefix: Annotated[
         str,
-        Option(help="The prefix, sans trailing slash, to use for this object's S3 key"),
+        Option(help="The prefix, sans trailing slash, to use for the file's S3 key"),
     ],
     name: Annotated[
         Optional[str],
@@ -569,7 +567,7 @@ def upload_file(
     ] = "large",
     archive_url: Annotated[
         Optional[str],
-        Option(help="The URL for the map's archive file"),
+        Option(help="The URL for the archive file"),
     ] = None,
     website_url: Annotated[
         Optional[str],
@@ -798,23 +796,23 @@ def ingest_csv(
     ],
     download_dir: Annotated[
         pathlib.Path,
-        Option(help="Directory into which to download archive files"),
+        Option(help="Directory into which to download the maps' archive files"),
     ],
     s3_bucket: Annotated[
         str,
-        Option(help="The S3 bucket to upload objects to"),
+        Option(help="The S3 bucket to upload the files to"),
     ],
     s3_prefix: Annotated[
         str,
-        Option(help="The prefix, sans trailing slash, to use for objects' S3 keys"),
+        Option(help="The prefix, sans trailing slash, to use for the files' S3 keys"),
     ],
     tag: Annotated[
         Optional[list[str]],
-        Option(help="A tag to apply to ingested maps"),
+        Option(help="A tag to apply to the maps"),
     ] = None,
     filter: Annotated[
         Optional[str],
-        Option(help="How to interpret the contents of archive files"),
+        Option(help="How to interpret the contents of the maps' files"),
     ] = None,
 ) -> None:
     """
@@ -823,7 +821,7 @@ def ingest_csv(
     This command enables the bulk ingest of maps by specifying values for
     arguments and options to the upload-file command, with each row in the
     CSV file corresponding to one file. Once all files have been uploaded,
-    each resulting source will be processed with ingest-source.
+    each resulting map will be processed with ingest-map.
 
     The first row of the CSV file should be a header listing the names of
     arguments and options to the upload-file subcommand, with hyphens being
@@ -833,9 +831,6 @@ def ingest_csv(
     "archive_url", which is where to download the map's archive file from.
 
     There must also be a column for "slug".
-
-    Command-line options that are shared with the ingest-file subcommand
-    will override whatever is specified in the CSV file itself.
     """
     slugs_seen = []
 
@@ -880,6 +875,8 @@ def ingest_csv(
                 **kwargs,
             )
             slugs_seen.append(row["slug"])
+
+    ## Ingest only those maps with successful uploads.
 
     for slug in set(slugs_seen):
         try:

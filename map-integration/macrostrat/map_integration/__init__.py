@@ -51,7 +51,7 @@ _pipeline.add_command(pipeline.upload_file, name="upload-file")
 _pipeline.add_command(pipeline.ingest_slug, name="ingest-map")
 _pipeline.add_command(pipeline.ingest_csv, name="ingest-csv")
 _pipeline.add_command(pipeline.run_polling_loop, name="run-polling-loop", rich_help_panel="Daemons")
-_pipeline.add_command(pipeline.create_slug, name="init-map", rich_help_panel="Metadata")
+_pipeline.add_command(pipeline.create_slug, name="init-map", rich_help_panel="Low-level")
 cli.add_typer(_pipeline, name="pipeline")
 
 cli.add_typer(_process, name="process")
