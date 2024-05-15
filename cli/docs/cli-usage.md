@@ -30,47 +30,37 @@ The following commands require certain keys to be defined in the
 `macrostrat.toml` configuration file. Refer to the [template file in
 *map-integration*](../../map-integration/macrostrat.toml.template).
 
-- `macrostrat maps ingest-file`:
-  *Ingest a local file containing a map into Macrostrat.*
+In order to load a new map into Macrostrat, the basic flow is:
 
-  This command has two required arguments: a path to a local file, which
-  should be an archive containing GIS data, and a "slug", which should be
-  a short string that can be used as a human-readable identifier for the
-  map.
+- `macrostrat maps pipeline upload-file`:
+  *Upload a local archive file for a map to the object store.*
 
-  This command will upload the archive to S3 and then attempt to locate
-  files containing GIS data, which will be used to populate database tables
-  with lines, points, and polygons.
+  To add a new map to Macrostrat, or to update an existing one, the first
+  step is to upload the required files to the object store.
 
-  This command also has numerous optional arguments, which can be listed
-  using the `--help` option. These arguments can be used to describe the
-  report that the map is a part of and to provide alternative configuration
-  values for where in S3 to upload the archive to.
+  This command has two required arguments: a "slug", something that can
+  serve as a human-readable identifier for the map, and a path to a local
+  archive file, which should be an archive that contains with GIS data.
 
-- `macrostrat maps ingest-from-csv`:
-  *Ingest multiple maps as specified in a CSV file.*
+- `macrostrat maps pipeline ingest-map`:
+  *Ingest a map from its already uploaded files*.
 
-  This command has one required argument, a path to a CSV file. The format
-  of the CSV file is described by the `--help` option.
+  Once the required files for a map have been uploaded to the object store,
+  the map can be ingested.
 
-  This command can be used to bulk ingest maps by specifying the arguments
-  to `ingest-file`, one row per map/invokation.
+  This command has one required argument: a "slug", the human-readable
+  identifier for the map. (Technically, the internal "source ID" can also be
+  used.)
 
-- `macrostrat maps ingest-object`:
-  *Ingest an object in S3 containing a map into Macrostrat.*
+In order to load _many_ new maps intos Macrostrat:
 
-  This command has two required arguments: the bucket and key for an object
-  in Macrostrat's S3 storage.
+- `macrostrat maps pipeline ingest-csv`:
+  *Ingest multiple maps from their descriptions in a CSV file.*
 
-  This command will download the object from S3 and process it in a similar
-  manner to the `ingest-file` command. (Technically, `ingest-file` actually
-  relies on this command to do much of its work.)
-
-  The typical use for this command is to trigger the processing of a map
-  that has been uploaded to Macrostrat's S3 storage via the web application.
+  Use the `--help` option to view the documentation for this command.
 
 - `macrostrat maps run-polling-loop`:
-  *Poll for and process pending ingest processes.*
+  *Poll for and process pending maps.*
 
   This command will periodically poll Macrostrat's database for "pending
   ingest process" records, which typically indicate that a map has been
