@@ -8,8 +8,9 @@ Scripts for bulk ingest of maps into Macrostrat
 The map ingestion code written for TA4 tasks at the 6-month hackathon has
 been re-packaged into the following commands of the Macrostrat CLI:
 
-* `macrostrat maps ingest-file`
-* `macrostrat maps ingest-from-csv`
+* `macrostrat maps pipeline upload-file`
+* `macrostrat maps pipeline ingest-map`
+* `macrostrat maps pipeline ingest-csv`
 
 See [../map-integration](../map-integration) for the implementation of these commands.
 
@@ -44,14 +45,14 @@ The import process can be divided into two phases:
 
 The scripts in the [`macrostrat.map_staging`](macrostrat/map_staging)
 package address the first of these two steps. Each script outputs a CSV file
-that can be fed into `macrostrat maps ingest-from-csv`, which addresses the
-second of these two steps.
+that can be fed into `macrostrat maps pipeline ingest-csv`, which addresses
+the second of these two steps.
 
 
 ## Examples
 
 Each example below describes how to scrape a data source and produce a CSV
-file for the `macrostrat maps ingest-file` command.
+file for the `macrostrat maps pipeline ingest-csv` command.
 
 
 ### CriticalMAAS 9 Month Hackathon
@@ -62,13 +63,14 @@ The input CSV file here was provided by the CriticalMAAS program.
 
 The resulting output is in [data/criticalmaas_09.csv](data/criticalmaas_09.csv).
 
-When running `macrostrat maps ingest-from-csv`, the `--filter ta1` option
-can be used to attempt to exclude bounding boxes and map legends. A complete
-command invocation might look as follows:
+When running `macrostrat maps pipeline ingest-csv`, the `--filter ta1`
+option can be used to attempt to exclude bounding boxes and map legends.
+A complete command invocation might look as follows:
 
-    poetry run macrostrat maps ingest-from-csv data/criticalmaas_09.csv \
+    poetry run macrostrat maps pipeline ingest-csv data/criticalmaas_09.csv \
       --filter ta1 \
       --tag "9 Month Hackathon" --tag "TA1 Output" \
+      --download-dir ./tmp \
       --s3-bucket map-ingest --s3-prefix criticalmaas/month-09 \
       | tee -a criticalmaas_09.log
 
@@ -91,9 +93,9 @@ The resulting output is in [data/alaska_all.csv](data/alaska_all.csv).
 Several of these maps pose problems for Macrostrat's ingestion pipeline.
 Deleting the corresponding rows yields [data/alaska.csv](data/alaska.csv).
 
-When running `macrostrat maps ingest-from-csv`, the `--filter alaska` option
-can be used to attempt to parse additional metadata from the files contained
-in each archive.
+When running `macrostrat maps pipeline ingest-csv`, the `--filter alaska`
+option can be used to attempt to parse additional metadata from the files
+contained in each archive.
 
 
 ### Nevada Bureau of Mines and Geology
