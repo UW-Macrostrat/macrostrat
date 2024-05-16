@@ -39,6 +39,7 @@ def main() -> None:
 
         for row in reader:
             if re.match(r"^[0-9A-Fa-f]{64}", row["COG ID"]):
+                website_url = row.get("NGMDB Product Link", "")
                 archive_url = (
                     "https://s3.amazonaws.com/public.cdr.land/results/" + row["COG ID"] + ".zip"
                 )
@@ -46,7 +47,7 @@ def main() -> None:
                 year = None
                 source = None
 
-                if website_url := row["NGMDB Product Link"]:
+                if website_url.startswith("http"):
                     slug = "criticalmaas_09_ngmdb_" + row["NGMDB ProdID"]
                     name = f'TA1 NGMDB {row["NGMDB ProdID"]}'
 
