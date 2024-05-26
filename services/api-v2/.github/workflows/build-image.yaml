@@ -1,11 +1,11 @@
-name: Build Development
-
+name: Build image
 on:
   push:
+    branches: ["main"]
     tags:
-      - v[0-9]+.[0-9]+.[0-9]+-**  # Semver Pre-Release
+      - v[0-9]+.[0-9]+.[0-9]+(-[a-zA-Z0-9]+)?$ # regex for semver tags (including prereleases)
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   docker:
@@ -22,12 +22,19 @@ jobs:
         uses: docker/metadata-action@v4
         with:
           images: hub.opensciencegrid.org/macrostrat/macrostrat-api
+          # New: apply the 'latest' tag only to non-prerelease semver tags
           tags: |
-            type=semver,pattern={{version}}
-            type=raw,value=latest-itb
-            type=raw,value={{tag}}-{{date 'YYYYMMDDHHmmss'}}
-            type=raw,value=latest-itb-{{date 'YYYYMMDDHHmmss'}}
             type=raw,value=sha-{{sha}}
+            type=raw,value=latest-itb
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-')}}
+            type=raw,value=latest-itb-{{date 'YYYYMMDDHHmmss'}}
+            type=ref,event=pr,suffix=-{{date 'YYYYMMDDHHmmss'}}
+            type=ref,event=branch,suffix=-{{date 'YYYYMMDDHHmmss'}}
+            type=ref,event=tag,suffix=-{{date 'YYYYMMDDHHmmss'}}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{version}}-{{date 'YYYYMMDDHHmmss'}}
+          flavor: |
+            latest=false
       -
         name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
