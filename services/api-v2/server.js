@@ -40,11 +40,11 @@ app.use(bodyParser.json())
 app.use(bodyParser.json({ type: "application/vnd.api+json" }))
 
 // Load and prefix all routes with /api and appropriate version
-app.use("/api/v1", v1);
-app.use("/api/v2", v2);
+app.use("/v1", v1);
+app.use("/v2", v2);
 
 // If no version specified, fall back to more current
-app.use("/api", v2);
+app.use("/", v2);
 
 app.set("json spaces", 2);
 

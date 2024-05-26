@@ -31,13 +31,7 @@ var mysql = require("mysql"),
     const nameMapping = credentials.postgresDatabases ?? {}
     const dbName = nameMapping[db] ?? db
 
-    const pool = new pg.Pool({
-      user: credentials.pg.user,
-      password: credentials.pg.password,
-      host: credentials.pg.host,
-      port: credentials.pg.port,
-      database: dbName
-    });
+    const pool = new pg.Pool({connectionString: credentials.pg.connectionString});
 
     pool.connect(function(err, client, done) {
       if (err) {
@@ -162,7 +156,11 @@ var mysql = require("mysql"),
 
 
   larkin.info = function(req, res, next) {
-    var formatted = (req.baseUrl + req.route.path).replace("/api/v" + api.version, "").replace("/api", "").replace(/\/$/, "");
+    var formatted = (req.baseUrl + req.route.path)
+        .replace("/api/v" + api.version, "")
+        .replace("/api", "")
+        .replace(/\/$/, "")
+        .replace("/v" + api.version, "");
     this.defineRoute(formatted, function(definition) {
       res.json({
         "success": definition
@@ -197,7 +195,11 @@ var mysql = require("mysql"),
           }
         });
     } else {
-      var formatted = (req.baseUrl + req.route.path).replace("/api/v" + api.version, "").replace("/api", "").replace(/\/$/, "");
+      var formatted = (req.baseUrl + req.route.path)
+          .replace("/api/v" + api.version, "")
+          .replace("/api", "")
+          .replace(/\/$/, "")
+          .replace("/v" + api.version, "");;
       this.defineRoute(formatted, function(definition) {
         res
           .status((code) ? code : 200)
@@ -508,7 +510,7 @@ var mysql = require("mysql"),
     async.parallel({
       unitSummary: function(callback) {
         // get all units and summarize for columns
-        http.get("http://localhost:5000/api/v2/units?all&response=long", function(res) {
+        http.get("http://localhost:5000/v2/units?all&response=long", function(res) {
           var body = "";
 
           res.on("data", function(chunk) {
