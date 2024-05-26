@@ -31,7 +31,15 @@ var mysql = require("mysql"),
     const nameMapping = credentials.postgresDatabases ?? {}
     const dbName = nameMapping[db] ?? db
 
-    const pool = new pg.Pool({connectionString: credentials.pg.connectionString});
+    // Hacky way to get the connection string for a specific database on the same cluster.
+    // This will need to be revisited to create a separate environment variable for each expected database.
+    const connString = credentials.pg.connectionString
+
+    let prefix = connString.split('/').slice(0, -1).join('/')
+    const connectionString = `${prefix}/${dbName}`
+
+
+    const pool = new pg.Pool({connectionString});
 
     pool.connect(function(err, client, done) {
       if (err) {
