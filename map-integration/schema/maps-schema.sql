@@ -13,11 +13,12 @@ CREATE FUNCTION maps.polygons_geom_is_valid(geom public.geometry) RETURNS boolea
   SELECT ST_IsValid(geom) AND ST_GeometryType(geom) IN ('ST_Polygon', 'ST_MultiPolygon');
 $$;
 
+-- Used to define at what scale a map is displayed. This could be made configurable
 CREATE TYPE maps.map_scale AS ENUM (
     'tiny',
     'small',
     'medium',
-    'large'
+    'large' -- All CriticalMAAS maps are probably 'large'
 );
 
 CREATE TABLE maps.sources (
@@ -33,9 +34,9 @@ CREATE TABLE maps.sources (
     license character varying(100),
     features integer,
     area integer,
-    rgeom public.geometry,
+    rgeom geometry(Geometry,4326),
     display_scales text[],
-    web_geom public.geometry,
+    web_geom geometry(Geometry,4326),
     priority integer DEFAULT 0,
     status_code text DEFAULT 'active'::text,
     slug text UNIQUE NOT NULL,
@@ -55,7 +56,7 @@ CREATE TABLE maps.polygons (
     comments text,
     t_interval integer,
     b_interval integer,
-    geom public.geometry(Geometry,4326) NOT NULL,
+    geom geometry(Geometry,4326) NOT NULL,
     CONSTRAINT maps_polygons_geom_check CHECK (maps.polygons_geom_is_valid(geom))
 );
 
@@ -83,7 +84,7 @@ CREATE TABLE maps.points (
     point_type character varying(100),
     certainty character varying(100),
     comments text,
-    geom public.geometry(Geometry,4326),
+    geom geometry(Geometry,4326),
     orig_id integer,
     CONSTRAINT dip_lt_90 CHECK ((dip <= 90)),
     CONSTRAINT dip_positive CHECK ((dip >= 0)),
@@ -97,18 +98,19 @@ CREATE TABLE maps.points (
 CREATE TABLE maps.legend (
     legend_id serial PRIMARY KEY,
     source_id integer NOT NULL REFERENCES maps.sources(source_id),
+    -- Legend fields from each map polygon
     name text,
     strat_name text,
     age text,
     lith text,
     descrip text,
     comments text,
+    -- Macrostrat data links (synthesized by scripts)
     b_interval integer,
     t_interval integer,
     best_age_bottom numeric,
     best_age_top numeric,
     color text,
-    -- Macrostrat data links (synthesized by scripts)
     unit_ids integer[],
     concept_ids integer[],
     strat_name_ids integer[],
