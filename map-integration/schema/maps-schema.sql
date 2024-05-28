@@ -108,6 +108,7 @@ CREATE TABLE maps.legend (
     best_age_bottom numeric,
     best_age_top numeric,
     color text,
+    -- Macrostrat data links (synthesized by scripts)
     unit_ids integer[],
     concept_ids integer[],
     strat_name_ids integer[],
@@ -171,6 +172,7 @@ CREATE TABLE maps.map_units (
     PRIMARY KEY (map_id, unit_id, basis_col)
 );
 
+-- Map indexes
 CREATE INDEX polygons_b_interval_idx ON ONLY maps.polygons USING btree (b_interval);
 CREATE INDEX polygons_geom_idx ON ONLY maps.polygons USING gist (geom);
 CREATE INDEX polygons_name_idx ON ONLY maps.polygons USING btree (name);
