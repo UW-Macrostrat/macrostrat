@@ -13,7 +13,8 @@ CREATE FUNCTION maps.polygons_geom_is_valid(geom public.geometry) RETURNS boolea
   SELECT ST_IsValid(geom) AND ST_GeometryType(geom) IN ('ST_Polygon', 'ST_MultiPolygon');
 $$;
 
--- Used to define at what scale a map is displayed. This could be made configurable
+-- Used to define at what scale a map is displayed. This could be made more configurable
+-- or switched to a numeric scale.
 CREATE TYPE maps.map_scale AS ENUM (
     'tiny',
     'small',
@@ -21,6 +22,7 @@ CREATE TYPE maps.map_scale AS ENUM (
     'large' -- All CriticalMAAS maps are probably 'large'
 );
 
+/** The Sources table represents an individual map source and its reference data. */
 CREATE TABLE maps.sources (
     source_id serial PRIMARY KEY,
     name character varying(255),
@@ -43,6 +45,10 @@ CREATE TABLE maps.sources (
     raster_url text
 );
 
+/** The next three tables, polygons, lines, and points, represent the actual map data
+* integrated from a GIS dataset. The legend information in each row is intentionally denormalized so that
+* each row represents a single feature on a map. This allows for easy spatial querying and
+* is faithful to how GIS data is structured. */
 CREATE TABLE maps.polygons (
     map_id serial PRIMARY KEY,
     source_id integer NOT NULL REFERENCES maps.sources(source_id),
@@ -65,8 +71,6 @@ CREATE TABLE maps.lines (
     source_id integer NOT NULL REFERENCES maps.sources(source_id),
     orig_id integer,
     name character varying(255),
-    type_legacy character varying(100),
-    direction_legacy character varying(40),
     descrip text,
     geom geometry(Geometry,4326) NOT NULL,
     type character varying(100),
@@ -95,6 +99,12 @@ CREATE TABLE maps.points (
     CONSTRAINT strike_positive CHECK ((strike >= 0))
 );
 
+/** The legend table represents the normalized store of legend information. All polygons
+that share attributes will be linked to the same legend entry.
+
+Additional fields house links to Macrostrat lithology dictionaries, but these can
+be empty for a technically-compliant integration
+*/
 CREATE TABLE maps.legend (
     legend_id serial PRIMARY KEY,
     source_id integer NOT NULL REFERENCES maps.sources(source_id),
