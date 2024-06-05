@@ -5,7 +5,14 @@ CREATE OR REPLACE VIEW macrostrat_api.legend AS
 WITH _intervals AS (
 SELECT
 	id,
-	json_build_object('id', id, 'name', interval_name, 'color', interval_color, 'rank', rank) _interval
+	json_build_object(
+    'id', id,
+    'name', interval_name,
+    'color', interval_color,
+    'rank', rank,
+    'b_age', intervals.age_bottom,
+    't_age', intervals.age_top
+  ) _interval
 FROM macrostrat.intervals
 ),
 legend_liths AS (
