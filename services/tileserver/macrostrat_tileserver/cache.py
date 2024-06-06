@@ -2,12 +2,18 @@ from typing import Optional
 
 from buildpg import asyncpg, render
 from morecantile import Tile
+from hashlib import md5
+from json import dumps
 
 from .utils import prepared_statement
 
 
 async def get_tile_from_cache(
-    pool: asyncpg.BuildPgPool, layer: str, tile: Tile, tms: str = "WebMercatorQuad"
+    pool: asyncpg.BuildPgPool,
+    layer: str,
+    params: dict[str, str],
+    tile: Tile,
+    tms: str = "WebMercatorQuad",
 ) -> Optional[bytes]:
     """Get tile data from cache."""
     # Get the tile from the tile_cache.tile table
@@ -17,6 +23,7 @@ async def get_tile_from_cache(
             x=tile.x,
             y=tile.y,
             z=tile.z,
+            params=create_params_hash(params),
             tms=tms,
             layer=layer,
         )
@@ -25,7 +32,11 @@ async def get_tile_from_cache(
 
 
 async def set_cached_tile(
-    pool: asyncpg.BuildPgPool, layer: str, tile: Tile, content: bytes
+    pool: asyncpg.BuildPgPool,
+    layer: str,
+    params: dict[str, str],
+    tile: Tile,
+    content: bytes,
 ):
     async with pool.acquire() as conn:
         q, p = render(
@@ -33,8 +44,13 @@ async def set_cached_tile(
             x=tile.x,
             y=tile.y,
             z=tile.z,
+            params=create_params_hash(params),
             tile=content,
-            layers=[layer],
             profile=layer,
         )
         await conn.execute(q, *p)
+
+
+def create_params_hash(params: dict[str, str]) -> str:
+    """Create a hash from the params."""
+    return md5(dumps(params, sort_keys=True).encode()).digest()

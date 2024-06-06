@@ -59,7 +59,7 @@ class CachedVectorTilerFactory(VectorTilerFactory):
             )
 
             if should_cache:
-                content = await get_tile_from_cache(pool, layer.id, tile, None)
+                content = await get_tile_from_cache(pool, layer.id, kwargs, tile, None)
                 timer._add_step("check_cache")
                 if content is not None:
                     return TileResponse(content, timer, cache_status=CacheStatus.hit)
@@ -80,7 +80,7 @@ class CachedVectorTilerFactory(VectorTilerFactory):
             cache_status = CacheStatus.bypass
             if should_cache:
                 background_tasks.add_task(
-                    set_cached_tile, pool, layer.id, tile, content
+                    set_cached_tile, pool, layer.id, kwargs, tile, content
                 )
                 cache_status = CacheStatus.miss
 
@@ -160,7 +160,13 @@ def _first_value(values: List[Any], default: Any = None):
 # Register endpoints.
 
 
-class CachedStoredFunction(StoredFunction): ...
+class CachedStoredFunction(StoredFunction):
+    max_cache_zoom: int = 12
+
+    def __init__(self, *args, **kwargs):
+        max_cache_zoom = kwargs.pop("max_cache_zoom", self.max_cache_zoom)
+        super().__init__(*args, **kwargs)
+        self.max_cache_zoom = max_cache_zoom
 
 
 class DecimalEncoder(json.JSONEncoder):
