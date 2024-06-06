@@ -31,3 +31,8 @@ def build_carto_plate_index(db):
             progress.update(task, advance=chunk_size)
 
     console.print("Done!")
+
+fixtures = Path(relative_path(__file__, "fixtures"))
+
+def create_corelle_fixtures(db):
+    db.run_fixtures(fixtures)

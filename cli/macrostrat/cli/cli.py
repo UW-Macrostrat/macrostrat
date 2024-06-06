@@ -259,6 +259,7 @@ try:
     environ["CORELLE_DB"] = app.settings.pg_database
     from corelle.engine import cli as corelle_cli
     from corelle.engine.database import initialize
+    from .corelle import create_corelle_fixtures
 
     corelle_cli.name = "corelle"
     corelle_cli.help = "Manage plate rotation models"
@@ -273,6 +274,7 @@ try:
         environ["CORELLE_DB"] = app.settings.pg_database
         print("Creating models for [bold cyan]corelle[/] subsystem")
         initialize(drop=False)
+        create_corelle_fixtures(db)
 
     db_subsystem.register_schema_part(
         name="corelle",
