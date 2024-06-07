@@ -33,26 +33,25 @@ IF _model_id IS NULL THEN
   RAISE EXCEPTION 'model_id is required';
 END IF;
 
-IF _t_step = 0 THEN
-  RETURN corelle_macrostrat.carto_slim_rotated_present(x, y, z, query_params);
-END IF;
-
-
-mercator_bbox := tile_utils.envelope(x, y, z);
-tolerance := 6;
-
-projected_bbox := ST_Transform(mercator_bbox, 4326);
-
 IF z < 3 THEN
   -- Select from carto.tiny table
   _scale := 'tiny'::map_scale;
 ELSIF z < 6 THEN
   _scale := 'small'::map_scale;
-ELSIF z < 9 THEN
+ELSIF z < 11 THEN
   _scale := 'medium'::map_scale;
 ELSE
-  _scale := 'large'::map_scale;
+  RAISE EXCEPTION 'only zoom levels <= 10 are supported';
 END IF;
+
+IF _t_step = 0 THEN
+  RETURN corelle_macrostrat.carto_slim_rotated_present(x, y, z, query_params);
+END IF;
+
+mercator_bbox := tile_utils.envelope(x, y, z);
+tolerance := 6;
+
+projected_bbox := ST_Transform(mercator_bbox, 4326);
 
 WITH rotated_plates AS (
   SELECT 
@@ -182,6 +181,17 @@ IF _t_step != 0 THEN
   RAISE EXCEPTION 'only works for the present';
 END IF;
 
+IF z < 3 THEN
+  -- Select from carto.tiny table
+  mapsize := 'tiny';
+ELSIF z < 6 THEN
+  mapsize := 'small';
+ELSIF z < 11 THEN
+  mapsize := 'medium';
+ELSE
+  RAISE EXCEPTION 'only zoom levels <= 10 are supported';
+END IF;
+
 mercator_bbox := tile_utils.envelope(x, y, z);
 tolerance := 6;
 
@@ -189,17 +199,6 @@ projected_bbox := ST_Transform(
   mercator_bbox,
   4326
 );
-
-IF z < 3 THEN
-  -- Select from carto.tiny table
-  mapsize := 'tiny';
-ELSIF z < 6 THEN
-  mapsize := 'small';
-ELSIF z < 9 THEN
-  mapsize := 'medium';
-ELSE
-  mapsize := 'large';
-END IF;
 
 -- Units
 WITH mvt_features AS (
