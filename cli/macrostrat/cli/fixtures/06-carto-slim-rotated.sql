@@ -10,7 +10,6 @@ RETURNS bytea
 AS $$
 DECLARE
 srid integer;
-features record;
 linesize text[];
 mercator_bbox geometry;
 projected_bbox geometry;
@@ -32,6 +31,10 @@ INTO _t_step, _model_id;
 
 IF _model_id IS NULL THEN
   RAISE EXCEPTION 'model_id is required';
+END IF;
+
+IF _t_step = 0 THEN
+  RETURN corelle_macrostrat.carto_slim_rotated_present(x, y, z, query_params);
 END IF;
 
 
@@ -64,9 +67,9 @@ WITH rotated_plates AS (
    ON rc.model_id = pp.model_id
   AND rc.plate_id = pp.plate_id
   AND rc.t_step = _t_step
-  AND pp.model_id = _model_id
-  AND coalesce(pp.old_lim, 4000) >= _t_step
-  AND coalesce(pp.young_lim, 0) <= _t_step
+  WHERE pp.model_id = _model_id
+    AND coalesce(pp.old_lim, 4000) >= _t_step
+    AND coalesce(pp.young_lim, 0) <= _t_step
 ),
 relevant_plates AS (
   SELECT
@@ -89,7 +92,7 @@ units AS (
     u.source_id,
     cpi.plate_id,
     rp.rotation,
-    cpi.plate_polygon_id,
+    rp.plate_polygon_id,
     corelle_macrostrat.rotate_to_web_mercator(
        coalesce(cpi.geom, u.geom),
        rp.rotation,
@@ -141,3 +144,124 @@ RETURN result;
 
 END;
 $$ LANGUAGE plpgsql VOLATILE;
+
+
+CREATE OR REPLACE FUNCTION corelle_macrostrat.carto_slim_rotated_present(
+  -- bounding box
+  x integer,
+  y integer,
+  z integer,
+  -- additional parameters
+  query_params json
+)
+RETURNS bytea
+AS $$
+DECLARE
+srid integer;
+mapsize text;
+_t_step integer;
+_model_id integer;
+mercator_bbox geometry;
+projected_bbox geometry;
+bedrock bytea;
+plates bytea;
+tolerance double precision;
+BEGIN
+
+-- Get the time step and model requested from the query parameters
+SELECT
+  coalesce((query_params->>'t_step')::integer, 0) AS _t_step,
+  (query_params->>'model_id')::integer AS _model_id
+INTO _t_step, _model_id;
+
+IF _model_id IS NULL THEN
+  RAISE EXCEPTION 'model_id is required';
+END IF;
+
+IF _t_step != 0 THEN
+  RAISE EXCEPTION 'only works for the present';
+END IF;
+
+mercator_bbox := tile_utils.envelope(x, y, z);
+tolerance := 6;
+
+projected_bbox := ST_Transform(
+  mercator_bbox,
+  4326
+);
+
+IF z < 3 THEN
+  -- Select from carto.tiny table
+  mapsize := 'tiny';
+ELSIF z < 6 THEN
+  mapsize := 'small';
+ELSIF z < 9 THEN
+  mapsize := 'medium';
+ELSE
+  mapsize := 'large';
+END IF;
+
+-- Units
+WITH mvt_features AS (
+  SELECT
+    map_id,
+    source_id,
+    geom
+  FROM
+    carto.polygons
+  WHERE scale::text = mapsize
+    AND ST_Intersects(geom, projected_bbox)
+), expanded AS (
+  SELECT
+    z.map_id,
+    z.source_id,
+    l.*, -- legend info
+    tile_layers.tile_geom(z.geom, mercator_bbox) AS geom
+  FROM
+    mvt_features z
+    LEFT JOIN maps.map_legend ON z.map_id = map_legend.map_id
+    LEFT JOIN tile_layers.map_legend_info AS l
+      ON l.legend_id = map_legend.legend_id
+    LEFT JOIN maps.sources
+      ON z.source_id = sources.source_id
+  WHERE
+    sources.status_code = 'active'
+    --AND ST_Area(geom) > tolerance
+)
+SELECT
+  ST_AsMVT(expanded, 'units')
+INTO bedrock
+FROM expanded;
+
+-- Plate polygons
+WITH mvt_features AS (
+  SELECT
+    plate_id,
+    model_id,
+    id,
+    old_lim,
+    young_lim,
+    geometry geom
+  FROM
+    corelle.plate_polygon pp
+  WHERE pp.model_id = _model_id
+    AND coalesce(pp.old_lim, 4000) >= _t_step
+    AND coalesce(pp.young_lim, 0) <= _t_step
+    AND ST_Intersects(pp.geom_simple, projected_bbox)
+),
+expanded AS (
+  SELECT
+    plate_id,
+    model_id,
+    id,
+    tile_layers.tile_geom(z.geom, mercator_bbox) AS geom
+  FROM mvt_features z
+)
+SELECT
+  ST_AsMVT(expanded, 'plates') INTO plates
+FROM expanded;
+
+RETURN bedrock || plates;
+
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
