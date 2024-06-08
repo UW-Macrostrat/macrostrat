@@ -10,7 +10,9 @@ from timvt.errors import (
 )
 from timvt.settings import TileSettings
 from timvt.layer import Function
-from logging import getLogger
+from macrostrat.utils import get_logger
+
+log = get_logger(__name__)
 
 
 tile_settings = TileSettings()
@@ -19,7 +21,9 @@ tile_settings = TileSettings()
 class StoredFunction(Function):
     type: str = "StoredFunction"
 
-    def render_query(self, tile: morecantile.Tile, tms: morecantile.TileMatrixSet, **kwargs: Any):
+    def render_query(
+        self, tile: morecantile.Tile, tms: morecantile.TileMatrixSet, **kwargs: Any
+    ):
         # Build the query
         sql_query = clauses.Select(
             Func(
@@ -53,7 +57,7 @@ class StoredFunction(Function):
             )
 
         q, p = self.render_query(tile, tms, **kwargs)
-        print(f"Query: {q}, Params: {p}")
+        log.debug("Executing query: %s, %s", q, p)
         async with pool.acquire() as conn:
             transaction = conn.transaction()
             await transaction.start()

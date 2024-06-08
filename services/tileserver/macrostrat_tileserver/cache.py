@@ -4,13 +4,18 @@ from buildpg import asyncpg, render
 from morecantile import Tile
 from hashlib import md5
 from json import dumps
+from ctypes import c_int32
 
 from .utils import prepared_statement
+
+from macrostrat.utils import get_logger
+
+log = get_logger(__name__)
 
 
 async def get_tile_from_cache(
     pool: asyncpg.BuildPgPool,
-    layer: str,
+    layer: int,
     params: dict[str, str],
     tile: Tile,
     tms: str = "WebMercatorQuad",
@@ -33,24 +38,32 @@ async def get_tile_from_cache(
 
 async def set_cached_tile(
     pool: asyncpg.BuildPgPool,
-    layer: str,
+    layer: int,
     params: dict[str, str],
     tile: Tile,
     content: bytes,
 ):
+
+    hash = create_params_hash(params)
+    log.debug("Setting cached tile: %s", hash)
+
     async with pool.acquire() as conn:
         q, p = render(
             prepared_statement("set-cached-tile"),
             x=tile.x,
             y=tile.y,
             z=tile.z,
-            params=create_params_hash(params),
+            params=hash,
             tile=content,
             profile=layer,
         )
         await conn.execute(q, *p)
 
 
-def create_params_hash(params: dict[str, str]) -> str:
-    """Create a hash from the params."""
-    return md5(dumps(params, sort_keys=True).encode()).digest()
+def create_params_hash(params: dict[str, str] | None) -> int:
+    """Create a hash from the params, as an integer"""
+    if params is None:
+        return 0
+    val = md5(dumps(params, sort_keys=True).encode()).hexdigest()
+    # Restrict to 32 bits
+    return c_int32(int(val, 16)).value

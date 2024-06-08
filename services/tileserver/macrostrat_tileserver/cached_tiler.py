@@ -17,6 +17,7 @@ from timvt.factory import (
     queryparams_to_kwargs,
 )
 from timvt.models.mapbox import TileJSON
+from buildpg import asyncpg, render
 
 from .cache import get_tile_from_cache, set_cached_tile
 from .function_layer import StoredFunction
@@ -26,12 +27,23 @@ log = get_logger(__name__)
 
 
 class CachedVectorTilerFactory(VectorTilerFactory):
+
+    async def get_cache_profile_id(self, pool, layer):
+        if layer.profile_id is not None:
+            return layer.profile_id
+        # Set the cache profile id from the database
+        async with pool.acquire() as conn:
+            q, p = render(
+                "SELECT id FROM tile_cache.profile WHERE name = :layer",
+                layer=layer.id,
+            )
+            res = await conn.fetchval(q, *p)
+            layer.profile_id = res
+            return res
+
     def register_tiles(self):
         """Register /tiles endpoints."""
 
-        # @self.router.get(
-        #     "/{TileMatrixSetId}/{layer}/{z}/{x}/{y}", **TILE_RESPONSE_PARAMS
-        # )
         @self.router.get("/{layer}/{z}/{x}/{y}", **TILE_RESPONSE_PARAMS)
         async def tile(
             request: Request,
@@ -59,7 +71,8 @@ class CachedVectorTilerFactory(VectorTilerFactory):
             )
 
             if should_cache:
-                content = await get_tile_from_cache(pool, layer.id, kwargs, tile, None)
+                profile = await self.get_cache_profile_id(pool, layer)
+                content = await get_tile_from_cache(pool, profile, kwargs, tile, None)
                 timer._add_step("check_cache")
                 if content is not None:
                     return TileResponse(content, timer, cache_status=CacheStatus.hit)
@@ -79,8 +92,9 @@ class CachedVectorTilerFactory(VectorTilerFactory):
 
             cache_status = CacheStatus.bypass
             if should_cache:
+                profile = await self.get_cache_profile_id(pool, layer)
                 background_tasks.add_task(
-                    set_cached_tile, pool, layer.id, kwargs, tile, content
+                    set_cached_tile, pool, profile, kwargs, tile, content
                 )
                 cache_status = CacheStatus.miss
 
@@ -161,12 +175,7 @@ def _first_value(values: List[Any], default: Any = None):
 
 
 class CachedStoredFunction(StoredFunction):
-    max_cache_zoom: int = 12
-
-    def __init__(self, *args, **kwargs):
-        max_cache_zoom = kwargs.pop("max_cache_zoom", self.max_cache_zoom)
-        super().__init__(*args, **kwargs)
-        self.max_cache_zoom = max_cache_zoom
+    profile_id: int | None = None
 
 
 class DecimalEncoder(json.JSONEncoder):
