@@ -175,7 +175,7 @@ def _first_value(values: List[Any], default: Any = None):
 
 
 class CachedStoredFunction(StoredFunction):
-    profile_id = None
+    profile_id: Optional[int] = None
 
 
 class DecimalEncoder(json.JSONEncoder):
