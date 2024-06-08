@@ -60,7 +60,7 @@ async def set_cached_tile(
         await conn.execute(q, *p)
 
 
-def create_params_hash(params: dict[str, str] | None) -> int:
+def create_params_hash(params) -> int:
     """Create a hash from the params, as an integer"""
     if params is None:
         return 0
