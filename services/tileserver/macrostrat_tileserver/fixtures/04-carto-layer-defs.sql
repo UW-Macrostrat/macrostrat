@@ -5,7 +5,8 @@ INSERT INTO tile_cache.profile
 VALUES
   ('carto', 'pbf', 'application/x-protobuf', 0, 14),
   ('carto-slim', 'pbf', 'application/x-protobuf', 0, 14),
-  ('carto-image', 'png', 'image/png', 0, 14)
+  ('carto-image', 'png', 'image/png', 0, 14),
+  ('carto-slim-rotated', 'pbf', 'application/x-protobuf', 0, 14)
 ON CONFLICT (name) DO NOTHING;
 
 /* This view is a little slow. We could speed things up by unifying the table perhaps */

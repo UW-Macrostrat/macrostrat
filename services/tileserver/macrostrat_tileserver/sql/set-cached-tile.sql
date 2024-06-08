@@ -1,13 +1,13 @@
-INSERT INTO tile_cache.tile (x, y, z, layers, profile, tile)
+INSERT INTO tile_cache.tile (x, y, z, args_hash, profile, tile)
 VALUES (
   :x,
   :y,
   :z,
-  :layers,
+  :params,
   :profile,
   :tile
 )
-ON CONFLICT (x,y,z,layers)
+ON CONFLICT (x, y, z, args_hash, profile)
 DO UPDATE
 SET 
   tile = EXCLUDED.tile,

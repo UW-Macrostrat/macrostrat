@@ -5,14 +5,14 @@ WITH cached_tile AS (
     AND y = :y
     AND z = :z
     AND profile = :layer
-    AND tms = coalesce(:tms, tile_utils.default_tms())
+    AND args_hash = :params
   RETURNING *
 )
 SELECT
   t.tile,
-  t.layers,
-  p.content_type,
-  p.name
+  t.args_hash,
+  p.id profile,
+  p.content_type
 FROM cached_tile t
 JOIN tile_cache.profile p
-  ON t.profile = p.name
+  ON t.profile = p.id

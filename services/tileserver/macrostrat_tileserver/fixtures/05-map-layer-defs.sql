@@ -20,6 +20,8 @@ SELECT
   'large' scale
 FROM maps.large;
 
+DROP VIEW IF EXISTS tile_layers.map_lines;
+
 CREATE OR REPLACE VIEW tile_layers.map_lines AS
 SELECT
   *,

@@ -67,7 +67,6 @@ async def shutdown_event():
 
 app.add_middleware(CompressionMiddleware, minimum_size=0)
 
-
 MapnikLayerFactory(app)
 
 cog = TilerFactory()
@@ -96,8 +95,17 @@ for layer in ["carto-slim", "carto"]:
     )
     app.state.function_catalog.register(lyr)
 
+app.state.function_catalog.register(
+    CachedStoredFunction(
+        type="StoredFunction",
+        sql="",
+        id="carto-slim-rotated",
+        function_name="corelle_macrostrat.carto_slim_rotated",
+    )
+)
+
 # Corelle-macrostrat layers
-for layer in ["carto_slim_rotated", "igcp_orogens", "igcp_orogens_rotated"]:
+for layer in ["igcp_orogens", "igcp_orogens_rotated"]:
     app.state.function_catalog.register(
         StoredFunction(
             type="StoredFunction",
