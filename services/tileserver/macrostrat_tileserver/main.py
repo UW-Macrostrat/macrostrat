@@ -1,5 +1,5 @@
 from os import environ
-from typing import Any, List
+from typing import Any, List, Optional
 
 from buildpg import render
 from fastapi import FastAPI, Request
@@ -18,6 +18,7 @@ from .function_layer import StoredFunction
 from .image_tiles import MapnikLayerFactory, prepare_image_tile_subsystem
 from .utils import DecimalJSONResponse
 from .vendor.repeat_every import repeat_every
+from .paleogeography import PaleoGeographyLayer
 
 # Wire up legacy postgres database
 if not environ.get("DATABASE_URL") and "POSTGRES_DB" in environ:
@@ -85,67 +86,29 @@ mvt_tiler = CachedVectorTilerFactory(
 # Note: these are defined somewhat redundantly.
 # Our eventual goal will be to store these configurations in the database.
 
-# Core macrostrat layers
-for layer in ["carto-slim", "carto"]:
-    lyr = CachedStoredFunction(
-        type="StoredFunction",
-        sql="",
-        id=layer,
-        function_name="tile_layers." + layer.replace("-", "_"),
-    )
-    app.state.function_catalog.register(lyr)
+cached_functions = [
+    "tile_layers.carto",
+    "tile_layers.carto_slim",
+]
 
-app.state.function_catalog.register(
-    CachedStoredFunction(
-        type="StoredFunction",
-        sql="",
-        id="carto-slim-rotated",
-        function_name="corelle_macrostrat.carto_slim_rotated",
-    )
-)
 
-# Corelle-macrostrat layers
-for layer in ["igcp_orogens", "igcp_orogens_rotated"]:
-    app.state.function_catalog.register(
-        StoredFunction(
-            type="StoredFunction",
-            sql="",
-            id=layer.replace("_", "-"),
-            function_name="corelle_macrostrat." + layer,
-        )
-    )
+functions = [
+    "corelle_macrostrat.igcp_orogens",
+    "corelle_macrostrat.igcp_orogens_rotated",
+    "weaver_api.weaver_tile",
+    "tile_layers.map",
+    "tile_layers.all_maps",
+]
 
-# Weaver point-data management system
-app.state.function_catalog.register(
-    StoredFunction(
-        type="StoredFunction",
-        sql="",
-        id="weaver-tile",
-        function_name="weaver_api.weaver_tile",
-    )
-)
+layers = [CachedStoredFunction(l) for l in cached_functions] + [
+    StoredFunction(l) for l in functions
+]
 
-# Serve a single macrostrat map
-app.state.function_catalog.register(
-    StoredFunction(
-        type="StoredFunction",
-        sql="",
-        id="map",
-        function_name="tile_layers.map",
-    )
-)
+layers.append(PaleoGeographyLayer())
 
-# All maps from the 'maps' schema.
-# Note: this is likely to be inefficient and should only be used
-# for internal purposes, and not cached
-app.state.function_catalog.register(
-    StoredFunction(
-        type="StoredFunction",
-        sql="",
-        id="all-maps",
-        function_name="tile_layers.all_maps",
-    )
-)
+for layer in layers:
+    app.state.function_catalog.register(layer)
+
 
 # Legacy routes postfixed with ".mvt"
 app.include_router(mvt_tiler.router, tags=["Tiles"])

@@ -19,6 +19,17 @@ tile_settings = TileSettings()
 
 
 class StoredFunction(Function):
+    def __init__(self, function_name: str):
+        if "." in function_name:
+            id = function_name.split(".")[1]
+        id = id.replace("_", "-")
+
+        super().__init__(
+            sql="",
+            id=id,
+            function_name=function_name,
+        )
+
     type: str = "StoredFunction"
 
     def render_query(
@@ -50,6 +61,7 @@ class StoredFunction(Function):
         **kwargs: Any,
     ):
         """Get Tile Data."""
+
         # We only support TMS with valid EPSG code
         if not tms.crs.to_epsg():
             raise MissingEPSGCode(
@@ -67,3 +79,13 @@ class StoredFunction(Function):
             await transaction.rollback()
 
         return content
+
+    async def validate_request(
+        self,
+        pool: asyncpg.BuildPgPool,
+        tile: morecantile.Tile,
+        tms: morecantile.TileMatrixSet,
+        **kwargs: Any,
+    ):
+        """Validate request."""
+        pass
