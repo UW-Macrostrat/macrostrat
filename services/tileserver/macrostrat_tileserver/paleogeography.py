@@ -4,7 +4,7 @@ from buildpg import render
 
 
 class PaleoGeographyLayer(CachedStoredFunction):
-    _model_info: Optional[dict[str, Any]] = None
+    _model_info: dict[int, dict[str, Any]] = {}
 
     def __init__(self):
         super().__init__(
@@ -51,11 +51,11 @@ class PaleoGeographyLayer(CachedStoredFunction):
             )
 
     async def get_model_info(self, pool, model_id) -> dict[str, Any]:
-        if self._model_info is not None:
-            return self._model_info
+        if model_id in self._model_info:
+            return self._model_info[model_id]
         sql = "SELECT * FROM corelle.model WHERE id = :model_id"
         q, p = render(sql, model_id=model_id)
         async with pool.acquire() as conn:
             model_info = await conn.fetchrow(q, *p)
-            self._model_info = dict(model_info)
-        return self._model_info
+            self._model_info[model_id] = dict(model_info)
+        return self._model_info[model_id]
