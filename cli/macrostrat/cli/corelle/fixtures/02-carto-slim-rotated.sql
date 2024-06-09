@@ -38,6 +38,7 @@ IF z < 3 THEN
   _scale := 'tiny'::map_scale;
 ELSIF z < 6 THEN
   _scale := 'small'::map_scale;
+-- Normally we would do less than 9, but we don't have a 'large' scale right now...
 ELSIF z < 11 THEN
   _scale := 'medium'::map_scale;
 ELSE
@@ -59,7 +60,6 @@ WITH rotated_plates AS (
     pp.model_id,
     pp.id plate_polygon_id,
     corelle_macrostrat.rotate_to_web_mercator(geom_simple, rotation, true) geom_merc,
-    geometry,
     rc.rotation
   FROM corelle.plate_polygon pp
   JOIN corelle.rotation_cache rc
@@ -105,7 +105,8 @@ units AS (
     ON u.map_id = cpi.map_id
    AND u.scale = _scale
    -- This causes tile-boundary errors
-  WHERE _scale = 'tiny'::macrostrat.map_scale OR ST_Intersects(coalesce(cpi.geom, u.geom), tile_geom)
+  WHERE _scale = 'tiny'::macrostrat.map_scale
+     OR ST_Intersects(coalesce(cpi.geom, u.geom), tile_geom)
 ),
 bedrock_ AS (
   SELECT DISTINCT ON (u.map_id, u.source_id, u.plate_id, u.plate_polygon_id)
@@ -131,6 +132,7 @@ plates_ AS (
   SELECT
     plate_id,
     model_id,
+    array_to_string(array(select round(unnest(rotation), 3)),',') rotation,
     tile_layers.tile_geom(geom_merc, mercator_bbox) AS geom
   FROM relevant_plates
 )
@@ -253,6 +255,7 @@ expanded AS (
     plate_id,
     model_id,
     id,
+    '1,0,0,0' rotation,
     tile_layers.tile_geom(z.geom, mercator_bbox) AS geom
   FROM mvt_features z
 )
