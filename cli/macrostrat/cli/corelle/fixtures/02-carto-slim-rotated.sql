@@ -132,7 +132,7 @@ plates_ AS (
   SELECT
     plate_id,
     model_id,
-    array_to_string(array(select round(unnest(rotation), 3)),',') rotation,
+    corelle_macrostrat.rotation_text(rotation) rotation,
     tile_layers.tile_geom(geom_merc, mercator_bbox) AS geom
   FROM relevant_plates
 )

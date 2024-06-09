@@ -172,6 +172,11 @@ END;
 $$ LANGUAGE plpgsql VOLATILE;
 
 
+CREATE OR REPLACE FUNCTION corelle_macrostrat.rotation_text(
+  rotation numeric[]
+) RETURNS text AS $$
+  SELECT array_to_string(array(select round(unnest(rotation), 3)),',');
+$$ LANGUAGE sql IMMUTABLE;
 
 -- Drop outdated functions
 DROP FUNCTION IF EXISTS corelle_macrostrat.rotate(geometry, numeric[], boolean);
