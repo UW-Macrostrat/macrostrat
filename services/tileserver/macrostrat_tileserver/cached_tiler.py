@@ -70,6 +70,11 @@ class CachedVectorTilerFactory(VectorTilerFactory):
                 isinstance(layer, CachedStoredFunction) and cache != CacheMode.bypass
             )
 
+            try:
+                await layer.validate_request(pool, tile, tms, **kwargs)
+            except ValueError as e:
+                raise HTTPException(status_code=400, detail=str(e))
+
             if should_cache:
                 profile = await self.get_cache_profile_id(pool, layer)
                 content = await get_tile_from_cache(pool, profile, kwargs, tile, None)
