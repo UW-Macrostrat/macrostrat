@@ -58,14 +58,18 @@ WITH rotated_plates AS (
   SELECT 
     pp.plate_id,
     pp.model_id,
+    p.name,
     pp.id plate_polygon_id,
     corelle_macrostrat.rotate_to_web_mercator(geom_simple, rotation, true) geom_merc,
     rc.rotation
   FROM corelle.plate_polygon pp
   JOIN corelle.rotation_cache rc
    ON rc.model_id = pp.model_id
-  AND rc.plate_id = pp.plate_id
-  AND rc.t_step = _t_step
+  JOIN corelle.plate p
+   ON p.id = pp.plate_id
+   AND p.model_id = pp.model_id
+   AND rc.plate_id = pp.plate_id
+   AND rc.t_step = _t_step
   WHERE pp.model_id = _model_id
     AND coalesce(pp.old_lim, 4000) >= _t_step
     AND coalesce(pp.young_lim, 0) <= _t_step
@@ -75,6 +79,7 @@ relevant_plates AS (
     plate_id,
     model_id,
     plate_polygon_id,
+    name,
     geom_merc,
     rotation,
     corelle.rotate_geometry(
@@ -130,8 +135,10 @@ bedrock_ AS (
 ),
 plates_ AS (
   SELECT
+    name,
     plate_id,
     model_id,
+    plate_polygon_id,
     corelle_macrostrat.rotation_text(rotation) rotation,
     tile_layers.tile_geom(geom_merc, mercator_bbox) AS geom
   FROM relevant_plates

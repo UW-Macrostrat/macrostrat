@@ -63,7 +63,7 @@ BEGIN
     false
   );
 END;
-$$ LANGUAGE plpgsql VOLATILE;
+$$ LANGUAGE plpgsql IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION corelle_macrostrat.build_tile_geom(
   geom geometry,
@@ -99,7 +99,7 @@ BEGIN
     8
   );
 END;
-$$ LANGUAGE plpgsql STABLE; 
+$$ LANGUAGE plpgsql IMMUTABLE; 
 
 CREATE OR REPLACE FUNCTION corelle_macrostrat.antimeridian_split(
   geom geometry
@@ -115,7 +115,7 @@ BEGIN
 EXCEPTION WHEN OTHERS THEN
   RETURN null;
 END;
-$$ LANGUAGE plpgsql STABLE;
+$$ LANGUAGE plpgsql IMMUTABLE;
 
 
 CREATE OR REPLACE FUNCTION corelle_macrostrat.rotate(
@@ -136,7 +136,7 @@ BEGIN
   -- in the tile envelope, so we don't have to run this check on every tile
   RETURN corelle_macrostrat.antimeridian_split(g1);
 END;
-$$ LANGUAGE plpgsql VOLATILE;
+$$ LANGUAGE plpgsql IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION corelle_macrostrat.rotate_to_web_mercator(
   geom geometry,
@@ -169,7 +169,7 @@ BEGIN
 EXCEPTION WHEN OTHERS THEN
   RETURN null;
 END;
-$$ LANGUAGE plpgsql VOLATILE;
+$$ LANGUAGE plpgsql IMMUTABLE;
 
 
 CREATE OR REPLACE FUNCTION corelle_macrostrat.rotation_text(
