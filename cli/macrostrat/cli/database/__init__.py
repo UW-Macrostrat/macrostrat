@@ -67,15 +67,12 @@ class SubsystemSchemaDefinition(BaseModel):
     def _run_all_sql(self, db, dir: Path, match: str = None):
         schema_files = list(dir.glob("*.sql"))
         for f in sorted(schema_files):
-            print(f)
             if not f.is_file():
                 continue
             self._run_sql(db, f, match)
 
     def apply(self, db, match: str = None):
-        print(self.fixtures)
         for f in self.fixtures:
-            print(f)
             if f.is_file():
                 self._run_sql(db, f, match)
             elif f.is_dir():
@@ -144,6 +141,10 @@ def update_schema(
     # Loaded from env file
     db = Database(PG_DATABASE)
 
+    if match is not None and len(subsystems) == 0:
+        # core is implicit
+        subsystems = ["core"]
+
     if not _all and len(subsystems) == 0:
         print("Please specify --all or --subsystems to update the schema")
         print("Available subsystems:")
@@ -159,7 +160,7 @@ def update_schema(
             and hunk.name not in subsystems
         ):
             continue
-        hunk.apply(db)
+        hunk.apply(db, match=match)
 
     app.subsystems.run_hook("schema-update")
 

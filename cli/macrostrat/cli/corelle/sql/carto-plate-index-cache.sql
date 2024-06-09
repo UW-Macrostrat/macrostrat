@@ -2,14 +2,14 @@ WITH next_polygons AS (
   SELECT
     map_id,
     scale,
-    geom,
-    row_number() OVER () AS row_num
+    geom
   FROM carto.polygons
-  ORDER BY map_id, scale
+  WHERE scale = :scale
+  ORDER BY map_id
 ),
 next_cursor AS (
   SELECT * FROM next_polygons
-  WHERE row_num > :last_row
+  WHERE map_id > :last_row
   LIMIT :chunk_size
 ),
 ingested AS (
@@ -30,5 +30,5 @@ ingested AS (
     ON ST_Intersects(p.geom, pp.geometry)
   ON CONFLICT DO NOTHING
 )
-SELECT max(row_num) last_row
+SELECT max(map_id) last_row
 FROM next_cursor;
