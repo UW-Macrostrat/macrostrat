@@ -85,6 +85,13 @@ interest to the CriticalMAAS program.
 The resulting output is in [data/ngmdb.csv](data/ngmdb.csv).
 
 
+### Arizona Geological Survey
+
+    poetry run python3 macrostrat/map_staging/arizona.py
+
+The resulting output is in [data/arizona.csv](data/arizona.csv).
+
+
 ### Alaska Division of Geological & Geophysical Surveys
 
     poetry run python3 macrostrat/map_staging/alaska.py
