@@ -11,6 +11,7 @@ import hashlib
 import os
 import pathlib
 import re
+import shutil
 import tarfile
 import tempfile
 import time
@@ -123,6 +124,13 @@ def record_ingest_error(ingest_process: IngestProcess, comments: str) -> None:
 
 # --------------------------------------------------------------------------
 # Extracting and analyzing archive files.
+
+
+def is_archive(file: pathlib.Path) -> bool:
+    """
+    Return whether a file appears to be an archive, based on its name.
+    """
+    return file.name.endswith((".tgz", ".tar.gz", ".zip"))
 
 
 def extract_archive(
@@ -601,7 +609,7 @@ def upload_file(
     ## Upload the file.
 
     bucket = s3_bucket
-    key = f"{s3_prefix}/{local_file.name}"
+    key = f"{s3_prefix}/{slug}/{local_file.name}"
 
     obj = get_object(bucket, key)
 
@@ -709,15 +717,20 @@ def load_object(
     try:
         with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as td:
             tmp_dir = pathlib.Path(td)
-            console.print(f"Extracting archive into {tmp_dir}")
-            extract_archive(local_file, tmp_dir, ingest_process=ingest_process)
+
+            if is_archive(local_file):
+                console.print(f"Extracting archive into {tmp_dir}")
+                extract_archive(local_file, tmp_dir, ingest_process=ingest_process)
+            else:
+                shutil.copy(local_file, tmp_dir)
 
             ## Locate files of interest.
 
             gis_files = (
-                list(tmp_dir.glob("**/*.shp"))
+                list(tmp_dir.glob("**/*.gdb"))
                 + list(tmp_dir.glob("**/*.geojson"))
                 + list(tmp_dir.glob("**/*.gpkg"))
+                + list(tmp_dir.glob("**/*.shp"))
             )
             gis_data = []
             excluded_data = []
@@ -825,10 +838,13 @@ def ingest_csv(
 
         for row in reader:
             url = row["archive_url"]
-
             filename = url.split("/")[-1]
-            partial_local_file = download_dir / (filename + ".partial")
-            local_file = download_dir / filename
+
+            download_dir_for_slug = download_dir / row["slug"]
+            download_dir_for_slug.mkdir(parents=True, exist_ok=True)
+
+            partial_local_file = download_dir_for_slug / (filename + ".partial")
+            local_file = download_dir_for_slug / filename
 
             if not local_file.exists():
                 console.print(f"Downloading {url}")

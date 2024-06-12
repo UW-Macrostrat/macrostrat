@@ -5,7 +5,7 @@ Settings that define the ingestion process.
 from macrostrat.core.config import settings  # type: ignore[import-untyped]
 
 CHUNK_SIZE = 8 * 1024 * 1024  # 8 MB
-TIMEOUT = 10  # seconds
+TIMEOUT = 60  # seconds
 
 PG_DATABASE = getattr(settings, "pg_database")
 S3_HOST = getattr(settings, "s3_host", None)
