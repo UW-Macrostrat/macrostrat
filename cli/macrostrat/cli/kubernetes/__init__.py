@@ -81,6 +81,23 @@ def secrets(secret_name: Optional[str] = Argument(None), *, key: str = Option(No
 
 
 @app.command()
+def s3_users():
+    """
+    List available S3 users.
+    """
+    res = _kubectl(
+        settings,
+        ["get", "secrets", "-o", "jsonpath={.items[*].metadata.name}"],
+        capture_output=True,
+        text=True,
+    )
+    prefix = "s3-user-"
+    print(
+        [r.replace(prefix, "") for r in res.stdout.split(" ") if r.startswith(prefix)]
+    )
+
+
+@app.command()
 def mirror_bucket(
     src: Optional[str] = Argument(None),
     dst: Optional[str] = Argument(None),
@@ -92,23 +109,42 @@ def mirror_bucket(
     """
     # Build and run a Docker container with mc
 
-    op = f"mirror src/{src} src/{dst}"
+    op = None
+    script = ""
+
+    buckets = []
+    for bucket, destination in zip([src, dst], ["source", "destination"]):
+        if bucket is None:
+            raise Exception(f"No {destination} bucket specified.")
+
+        user = None
+        if ":" in bucket:
+            # We have a username and bucket name
+            user, bucket = bucket.split(":")
+
+        if user is None:
+            user = getattr(settings, "s3_user", None)
+
+        if user is None:
+            raise Exception(f"No S3 user specified for {destination}.")
+
+        cfg = get_secret(settings, "s3-user-" + user)
+        if cfg is None:
+            raise Exception(f"No secret found for S3 user {user}.")
+
+        access_key = cfg["access_key"]
+        secret_key = cfg["secret_key"]
+        endpoint = getattr(settings, "s3_endpoint")
+
+        script += f"mc alias set {destination} {endpoint} {access_key} {secret_key} --api s3v4\n"
+        buckets.append(f"{destination}/{bucket}/")
+
+    script += f"mc mb " + buckets[1] + "\n"
+    script += f"mc mirror " + " ".join(buckets)
     if overwrite:
-        op += " --overwrite"
+        script += " --overwrite"
 
-    if src is None and dst is None:
-        print("No source or destination bucket specified.")
-        op = "ls src"
-
-    if user is None:
-        raise Exception("Must specify a S3 user name.")
-
-    cfg = get_secret(settings, "s3-user-" + user)
-
-    script = f"""
-    mc alias set src {getattr(settings, "s3_endpoint")} {cfg["access_key"]} {cfg["secret_key"]} --api s3v4
-    mc {op}
-    """
+    print(script)
 
     run(
         [
@@ -128,44 +164,3 @@ def mirror_bucket(
             **environ,
         },
     )
-
-    # Redirect stderr to devnull
-    # _stderr = sys.stderr
-    # sys.stderr = open(devnull, "w")
-    # docker = DockerClient(
-    #     base_url=getattr(settings, "docker_base_url", "unix://var/run/docker.sock"),
-    #     use_ssh_client=True,
-    # )
-    #
-    # res = docker.containers.run(
-    #     "minio/mc:latest",
-    #     command=["-c", script],
-    #     remove=True,
-    #     detach=False,
-    #     entrypoint="/bin/sh",
-    #     stdout=True,
-    #     stderr=False,
-    #     tty=True,
-    # )
-    # print(res.decode("utf-8"))
-    #
-    # # Restore stderr
-    # sys.stderr = _stderr
-
-    # _kubectl(
-    #     settings,
-    #     [
-    #         "run",
-    #         "s3-mirror",
-    #         "--restart=Never",
-    #         "--image=docker.io/minio/mc:latest",
-    #         "--rm",
-    #         "--command",
-    #         "--attach",
-    #         "--",
-    #         "echo",
-    #         "Hello, world!",
-    #         # "-c",
-    #         # script,
-    #     ],
-    # )
