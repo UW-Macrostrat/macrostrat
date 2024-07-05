@@ -116,16 +116,19 @@ class DatabaseSubsystem(MacrostratSubsystem):
 
         self.schema_hunks.append(hunk)
 
+    def initialize(self):
+        self.register_schema_part(
+            name="core",
+            fixtures=[fixtures_dir],
+        )
+
 
 db_subsystem = DatabaseSubsystem(app)
 
-
-db_subsystem.register_schema_part(
-    name="core",
-    fixtures=[fixtures_dir],
-)
+db_app = typer.Typer(no_args_is_help=True)
 
 
+@db_app.command(name="update")
 def update_schema(
     match: str = Option(None),
     subsystems: list[str] = Option(None),
@@ -135,6 +138,8 @@ def update_schema(
     from macrostrat.database import Database
 
     from macrostrat.core.config import PG_DATABASE
+
+    db_subsystem = app.subsystems.get("database")
 
     """Create schema additions"""
     schema_dir = fixtures_dir
@@ -169,12 +174,6 @@ def update_schema(
         compose("kill -s SIGUSR1 postgrest")
     else:
         db.run_sql("NOTIFY pgrst, 'reload schema';")
-
-
-db_app = db_subsystem.control_command()
-db_app.command(name="update")(update_schema)
-
-# Pass through arguments
 
 
 @db_app.command(

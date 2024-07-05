@@ -16,8 +16,13 @@ from macrostrat.core import app
 from macrostrat.core.exc import MacrostratError, setup_exception_handling
 from macrostrat.core.main import env_text, get_app_state, set_app_state
 
-from .database import SubsystemSchemaDefinition, db_app, db_subsystem, get_db
-from .kubernetes import get_secret
+from .database import (
+    SubsystemSchemaDefinition,
+    db_app,
+    db_subsystem,
+    get_db,
+    DatabaseSubsystem,
+)
 from .v1_entrypoint import v1_cli
 from .v2_commands import app as v2_app
 
@@ -26,8 +31,7 @@ fixtures_dir = __here__ / "fixtures"
 
 install(show_locals=False)
 
-
-app.subsystems.add(db_subsystem)
+# app.subsystems.add(DatabaseSubsystem)
 
 # Manage as a docker-compose application
 
@@ -42,13 +46,6 @@ main = app.control_command(add_completion=True, rich_markup_mode="rich", help=he
 
 
 main.add_typer(db_app, name="db", short_help="Manage the Macrostrat database")
-
-
-@main.command()
-def secrets(secret_name: Optional[str] = Argument(None), *, key: str = Option(None)):
-    """Get a secret from the Kubernetes cluster"""
-
-    print(json.dumps(get_secret(settings, secret_name, secret_key=key), indent=4))
 
 
 @main.command()
@@ -285,6 +282,18 @@ try:
 except ImportError as err:
     pass
 
+try:
+    from .kubernetes import app as kube_app
+
+    main.add_typer(
+        kube_app,
+        name="kube",
+        short_help="Kubernetes utilities",
+        rich_help_panel="Subsystems",
+    )
+except ImportError as err:
+    print("Could not import Kubernetes subsystem")
+
 
 # Add other subsystems (temporary)
 from .subsystems.mapboard import MapboardSubsystem
@@ -295,7 +304,7 @@ if mapboard_url := getattr(settings, "mapboard_database", None):
     main.add_typer(_mapboard.control_command(), rich_help_panel="Subsystems")
 
 
-app.finish_loading_subsystems()
+# app.finish_loading_subsystems()
 
 
 @main.command(name="carto-plate-index")
@@ -325,7 +334,7 @@ main.add_typer(
     short_help="Manage the Macrostrat CLI itself",
 )
 
-app.subsystems.run_hook("add-commands", main)
+# app.subsystems.run_hook("add-commands", main)
 
 
 main.add_click_command(v1_cli, name="v1")
