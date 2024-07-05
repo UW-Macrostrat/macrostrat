@@ -72,13 +72,6 @@ main.add_typer(
 
 
 @main.command()
-def secrets(secret_name: Optional[str] = Argument(None), *, key: str = Option(None)):
-    """Get a secret from the Kubernetes cluster"""
-
-    print(json.dumps(get_secret(settings, secret_name, secret_key=key), indent=4))
-
-
-@main.command()
 def shell():
     """Start an IPython shell"""
     import IPython
@@ -272,8 +265,21 @@ app = load_paleogeography_subsystem(app, main, db_subsystem)
 
 if mapboard_url := getattr(settings, "mapboard_database", None):
     from .subsystems.mapboard import MapboardSubsystem
-
     app.subsystems.add(MapboardSubsystem(app))
+
+try:
+    from .kubernetes import app as kube_app
+
+    main.add_typer(
+        kube_app,
+        name="kube",
+        short_help="Kubernetes utilities",
+        rich_help_panel="Subsystems",
+    )
+except ImportError as err:
+    print("Could not import Kubernetes subsystem")
+
+
 # Add other subsystems (temporary)
 from .subsystems.mapboard import MapboardSubsystem
 

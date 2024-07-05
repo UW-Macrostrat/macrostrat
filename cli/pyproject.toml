@@ -44,6 +44,7 @@ aiofiles = "^23.2.1"
 docker = "^7"
 toml = "^0.10.2"
 greenlet = "^3.0.3"
+paramiko = "^3.4.0"
 
 [tool.poetry.scripts]
 macrostrat = "macrostrat.cli.cli:main"
