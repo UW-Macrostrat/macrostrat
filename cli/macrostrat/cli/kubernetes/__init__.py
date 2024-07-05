@@ -6,7 +6,14 @@ import base64
 import json
 from os import environ
 from subprocess import run
-from typing import Optional
+from typing import Optional, List
+
+from macrostrat.core import app as app_
+from rich import print
+from typer import Argument, Option
+from typer import Typer
+
+settings = app_.settings
 
 
 def read_secret(text):
@@ -80,11 +87,7 @@ def secrets(secret_name: Optional[str] = Argument(None), *, key: str = Option(No
     print(json.dumps(get_secret(settings, secret_name, secret_key=key), indent=4))
 
 
-@app.command()
-def s3_users():
-    """
-    List available S3 users.
-    """
+def _s3_users():
     res = _kubectl(
         settings,
         ["get", "secrets", "-o", "jsonpath={.items[*].metadata.name}"],
@@ -92,8 +95,73 @@ def s3_users():
         text=True,
     )
     prefix = "s3-user-"
-    print(
-        [r.replace(prefix, "") for r in res.stdout.split(" ") if r.startswith(prefix)]
+    return [
+        r.replace(prefix, "") for r in res.stdout.split(" ") if r.startswith(prefix)
+    ]
+
+
+@app.command()
+def s3_users():
+    """
+    List available S3 users.
+    """
+    print(_s3_users())
+
+
+@app.command(
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True}
+)
+def mc(args: List[str] = Argument(None)):
+    """
+    Run the Minio client in a Docker container.
+    """
+
+    script = "mc"
+    if args is not None:
+        script += " " + " ".join(args)
+
+    _mc(script)
+
+
+def _mc(command: str, **kwargs):
+    """
+    Run the Minio client in a Docker container.
+    """
+    _script = []
+    for user in _s3_users():
+        cfg = get_secret(settings, "s3-user-" + user)
+        if cfg is None:
+            raise Exception(f"No secret found for S3 user {user}.")
+
+        access_key = cfg["access_key"]
+        secret_key = cfg["secret_key"]
+        endpoint = getattr(settings, "s3_endpoint")
+
+        _script.append(
+            f"mc alias set {user} {endpoint} {access_key} {secret_key} --api s3v4 > /dev/null 2>&1"
+        )
+
+    _script.append(command)
+    script = "\n".join(_script)
+
+    return run(
+        [
+            "docker",
+            "run",
+            "--rm",
+            "-it",
+            "--entrypoint=/bin/sh",
+            "minio/mc:latest",
+            "-c",
+            script,
+        ],
+        env={
+            "DOCKER_HOST": getattr(
+                settings, "docker_base_url", "unix://var/run/docker.sock"
+            ),
+            **environ,
+        },
+        **kwargs,
     )
 
 
@@ -109,58 +177,13 @@ def mirror_bucket(
     """
     # Build and run a Docker container with mc
 
-    op = None
-    script = ""
+    if src is None or dst is None:
+        raise Exception("Both source and destination buckets must be specified.")
 
-    buckets = []
-    for bucket, destination in zip([src, dst], ["source", "destination"]):
-        if bucket is None:
-            raise Exception(f"No {destination} bucket specified.")
-
-        user = None
-        if ":" in bucket:
-            # We have a username and bucket name
-            user, bucket = bucket.split(":")
-
-        if user is None:
-            user = getattr(settings, "s3_user", None)
-
-        if user is None:
-            raise Exception(f"No S3 user specified for {destination}.")
-
-        cfg = get_secret(settings, "s3-user-" + user)
-        if cfg is None:
-            raise Exception(f"No secret found for S3 user {user}.")
-
-        access_key = cfg["access_key"]
-        secret_key = cfg["secret_key"]
-        endpoint = getattr(settings, "s3_endpoint")
-
-        script += f"mc alias set {destination} {endpoint} {access_key} {secret_key} --api s3v4\n"
-        buckets.append(f"{destination}/{bucket}/")
-
-    script += f"mc mb " + buckets[1] + "\n"
-    script += f"mc mirror " + " ".join(buckets)
+    flags = ""
     if overwrite:
-        script += " --overwrite"
+        flags = "--overwrite"
 
-    print(script)
+    script = "\n".join([f"mc mb {dst}", f"mc mirror {flags} {src} {dst}"])
 
-    run(
-        [
-            "docker",
-            "run",
-            "--rm",
-            "-t",
-            "--entrypoint=/bin/sh",
-            "minio/mc:latest",
-            "-c",
-            script,
-        ],
-        env={
-            "DOCKER_HOST": getattr(
-                settings, "docker_base_url", "unix://var/run/docker.sock"
-            ),
-            **environ,
-        },
-    )
+    _mc(script)
