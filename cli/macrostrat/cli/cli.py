@@ -290,10 +290,7 @@ except ImportError as err:
 from .subsystems.mapboard import MapboardSubsystem
 
 if mapboard_url := getattr(settings, "mapboard_database", None):
-    _mapboard = MapboardSubsystem(app)
-    app.subsystems.add(_mapboard)
-    main.add_typer(_mapboard.control_command(), rich_help_panel="Subsystems")
-
+    app.subsystems.add(MapboardSubsystem)
 
 app.finish_loading_subsystems()
 
