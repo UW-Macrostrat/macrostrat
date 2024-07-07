@@ -2,24 +2,23 @@ import json
 from asyncio import run as asyncio_run
 from os import environ
 from pathlib import Path
-from sys import exit, stderr
 from typing import Optional
 
 import typer
 from macrostrat.utils.shell import run
 from rich import print
 from rich.traceback import install
-from toml import load as load_toml
 from typer import Argument, Option, Typer
 
 from macrostrat.core import app
 from macrostrat.core.exc import MacrostratError, setup_exception_handling
-from macrostrat.core.main import env_text, get_app_state, set_app_state
+from macrostrat.core.main import env_text, set_app_state
 
-from .database import SubsystemSchemaDefinition, db_app, db_subsystem, get_db
+from .database import db_app, db_subsystem, get_db
 from .kubernetes import get_secret
 from .v1_entrypoint import v1_cli
 from .v2_commands import app as v2_app
+from .subsystems.paleogeography import load_paleogeography_subsystem
 
 __here__ = Path(__file__).parent
 fixtures_dir = __here__ / "fixtures"
@@ -255,35 +254,7 @@ try:
 except ImportError as err:
     print("Could not import tileserver subsystem")
 
-try:
-    environ["CORELLE_DB"] = app.settings.pg_database
-    from corelle.engine import cli as corelle_cli
-    from corelle.engine.database import initialize
-    from .corelle import create_corelle_fixtures
-
-    corelle_cli.name = "corelle"
-    corelle_cli.help = "Manage plate rotation models"
-
-    main.add_click_command(
-        corelle_cli,
-        "corelle",
-        rich_help_panel="Subsystems",
-    )
-
-    def update_corelle(db):
-        environ["CORELLE_DB"] = app.settings.pg_database
-        print("Creating models for [bold cyan]corelle[/] subsystem")
-        initialize(drop=False)
-        create_corelle_fixtures(db)
-
-    db_subsystem.register_schema_part(
-        name="corelle",
-        callback=update_corelle,
-    )
-
-
-except ImportError as err:
-    pass
+app = load_paleogeography_subsystem(app, main, db_subsystem)
 
 
 # Add other subsystems (temporary)
@@ -293,15 +264,6 @@ if mapboard_url := getattr(settings, "mapboard_database", None):
     app.subsystems.add(MapboardSubsystem)
 
 app.finish_loading_subsystems()
-
-
-@main.command(name="carto-plate-index")
-def build_carto_plate_index():
-    """Build a representation of the Carto map layers, split by plate polygons"""
-    from .corelle import build_carto_plate_index
-
-    db = get_db()
-    build_carto_plate_index(db)
 
 
 # Commands to manage this command-line interface
