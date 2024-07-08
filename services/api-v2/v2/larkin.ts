@@ -44,6 +44,46 @@ const { Client, Pool } = require("pg");
       /** Special case for elevation database (temporary) */
       connectionString = credentials.elevationDatabase;
     }
+    const pool = new Pool({
+      connectionString,
+      ...otherConnectionDetails,
+    });
+
+    pool.connect(function (err, client, done) {
+      if (err) {
+        larkin.log("error", "error connecting - " + err);
+        callback(err);
+      } else {
+        var query = client.query(sql, params, function (err, result) {
+          done();
+          if (err) {
+            larkin.log("error", err);
+            callback(err);
+          } else {
+            callback(null, result);
+          }
+        });
+      }
+    });
+  };
+
+  //added new method to query from Maria data in the new PG database after migration
+  larkin.queryPgMaria = function (db, sql, params, callback) {
+    const nameMapping = credentials.postgresDatabases ?? {};
+    const dbName = nameMapping[db] ?? db;
+
+    let { connectionString, ...otherConnectionDetails } = credentials.pgMaria;
+
+    if (dbName == "geomacro") {
+      console.warn(
+        "In Macrostrat v2, 'geomacro' is merged with 'burwell' into the 'macrostrat' database.",
+      );
+    }
+
+    if (dbName == "elevation") {
+      /** Special case for elevation database (temporary) */
+      connectionString = credentials.elevationDatabase;
+    }
 
     const pool = new Pool({
       connectionString,
@@ -67,6 +107,8 @@ const { Client, Pool } = require("pg");
       }
     });
   };
+
+
 
   larkin.toUnnamed = function (sql, params) {
     var placeholders = sql.match(

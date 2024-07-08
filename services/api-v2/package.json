@@ -9,6 +9,7 @@
   },
   "scripts": {
     "start": "nodemon --watch v2 --exec ts-node --transpileOnly server.ts",
+    "docker": "docker build -t macrostrat-api . && docker run --rm -it -p 5550:5550 macrostrat-api",
     "serve": "ts-node --transpileOnly server.ts",
     "test": "mocha ./v2",
     "defs": "ts-node --transpileOnly ./v2/utilities/validateDefs.ts",
