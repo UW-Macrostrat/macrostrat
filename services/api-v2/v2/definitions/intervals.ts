@@ -7,10 +7,15 @@ module.exports = function (req, res, next, cb) {
   }
 
   var sql =
-    "SELECT intervals.id AS int_id, interval_name AS name, interval_abbrev abbrev, age_top AS t_age, age_bottom AS b_age, interval_type AS int_type, GROUP_CONCAT(CONCAT(timescales.timescale, '--', timescales.id) SEPARATOR '|') AS timescales,  ";
-
-  var params = {},
-    where = [];
+    `SELECT intervals.id AS int_id,
+     interval_name AS name,
+     interval_abbrev abbrev,
+     age_top AS t_age,
+     age_bottom AS b_age,
+     interval_type AS int_type,
+     STRING_AGG(timescales.timescale || '--' || timescales.id, '|') AS timescales,
+     orig_color AS color
+     `
 
   if (req.query.true_colors) {
     sql += "orig_color AS color ";
@@ -18,12 +23,19 @@ module.exports = function (req, res, next, cb) {
     sql += "interval_color AS color ";
   }
 
-  sql +=
-    "FROM intervals LEFT JOIN timescales_intervals ON interval_id=intervals.id LEFT JOIN timescales ON timescale_id=timescales.id ";
+  let params = []
+  let where = []
+
+  sql += `
+  FROM macrostrat_temp.intervals 
+  LEFT JOIN macrostrat_temp.timescales_intervals ON interval_id=intervals.id 
+  LEFT JOIN macrostrat_temp.timescales ON timescale_id=timescales.id `
+  console.log(sql)
+  let count = 1
 
   if (req.query.timescale) {
-    where.push(" timescale = :timescale");
-    params["timescale"] = req.query.timescale;
+    where.push(` timescale = $${count}`);
+    params.push(req.query.timescale);
   } else if (req.query.timescale_id) {
     where.push("timescales.id IN (:timescale_id)");
     params["timescale_id"] = larkin.parseMultipleIds(req.query.timescale_id);

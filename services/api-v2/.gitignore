@@ -15,9 +15,9 @@ v1/utilities/scripts/credentials.py
 .idea
 venv
 
+v2/credentials.ts
 credentials.ts
 !v1/credentials.ts
-v2/credentials.ts
 v2/utilities/scripts/credentials.py
 
 .DS_Store
