@@ -8,11 +8,14 @@ class Migration:
     description: str
     subsystem: str
 
-    def __init__(self, db: Database):
-        self.db = db
-
     def should_apply(self, database: Database):
         raise NotImplementedError
 
     def apply(self, database: Database):
         raise NotImplementedError
+
+    def is_satisfied(self, database: Database):
+        """In some cases, we may want to note that a migration does not need to be run
+        (e.g. if the database is already in the correct state) without actually running it.
+        """
+        return not self.should_apply(database)

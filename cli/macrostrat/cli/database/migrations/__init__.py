@@ -5,7 +5,6 @@ from typing import ClassVar
 from .partition_maps import PartitionMapsMigration
 from .partition_carto import PartitionCartoMigration
 
-
 def run_migrations(apply: bool = False, name: str = None, force: bool = False):
     """Apply database migrations"""
     db = get_db()
@@ -22,7 +21,7 @@ def run_migrations(apply: bool = False, name: str = None, force: bool = False):
 
     for cls in migrations:
         # Initialize migration
-        _migration = cls(db)
+        _migration = cls()
         _name = _migration.name
         if name is not None and name != _name:
             continue

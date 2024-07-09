@@ -16,16 +16,20 @@ class PartitionMapsMigration(Migration):
 
     def should_apply(self, db: Database):
         # Check if the maps.polygons table exists
-        insp = db.inspector
 
-        for table in ["lines", "polygons"]:
-            if insp.has_table(table, schema="maps"):
-                return False
+        if self.is_satisfied(db):
+            return False
 
         for scale in ["tiny", "small", "medium", "large"]:
-            if not insp.has_table(scale, schema="maps") and not insp.has_table(
+            if not db.inspector.has_table(scale, schema="maps") and not insp.has_table(
                 scale, schema="lines"
             ):
+                return False
+        return True
+
+    def is_satisfied(self, db: Database):
+        for table in ["lines", "polygons"]:
+            if not db.inspector.has_table(table, schema="maps"):
                 return False
         return True
 
