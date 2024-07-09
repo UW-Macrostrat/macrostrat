@@ -13,7 +13,7 @@ CREATE TYPE macrostrat.schemeenum AS ENUM (
 
 ALTER TYPE macrostrat.schemeenum OWNER TO macrostrat;
 
-CREATE TABLE storage.object (
+CREATE TABLE IF NOT EXISTS storage.object (
     id integer NOT NULL,
     object_group_id integer references storage.object_group(id) ON DELETE CASCADE,
     scheme macrostrat.schemeenum NOT NULL,

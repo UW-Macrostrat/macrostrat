@@ -1,9 +1,51 @@
+from macrostrat.database import Database
+
 from .._legacy import get_db
 from rich import print
 from .base import Migration
 from typing import ClassVar
+from pathlib import Path
 from .partition_maps import PartitionMapsMigration
 from .partition_carto import PartitionCartoMigration
+
+__dir__ = Path(__file__).parent
+
+
+class StorageSchemeMigration(Migration):
+    name = "storage-scheme"
+
+    def apply(self, db: Database):
+        db.run_sql(
+            """
+        CREATE TYPE storage.scheme AS ENUM ('s3', 'https');
+
+        -- Lock the table to prevent concurrent updates
+        LOCK TABLE storage.object IN ACCESS EXCLUSIVE MODE;
+
+        ALTER TABLE storage.object
+        ALTER COLUMN scheme
+              TYPE storage.scheme USING scheme::text::storage.scheme;
+
+        -- Unlock the table
+        COMMIT;
+
+        DROP TYPE IF EXISTS macrostrat.schemeenum;
+        """
+        )
+
+    def should_apply(self, db: Database):
+        return has_enum(db, "schemeenum", schema="macrostrat")
+
+
+def has_enum(db: Database, name: str, schema: str = None):
+    sql = "select count(*) from pg_type where typname = :name"
+    if schema is not None:
+        sql += (
+            " and typnamespace = (select oid from pg_namespace where nspname = :schema)"
+        )
+
+    return db.run_query(f"select exists ({sql})", dict(name=name, schema=schema))
+
 
 def run_migrations(apply: bool = False, name: str = None, force: bool = False):
     """Apply database migrations"""
@@ -17,6 +59,7 @@ def run_migrations(apply: bool = False, name: str = None, force: bool = False):
     migrations: list[ClassVar[Migration]] = [
         PartitionMapsMigration,
         PartitionCartoMigration,
+        StorageSchemeMigration,
     ]
 
     for cls in migrations:
