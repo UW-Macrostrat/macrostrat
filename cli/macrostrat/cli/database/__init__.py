@@ -13,6 +13,7 @@ from rich import print
 from sqlalchemy import create_engine, text
 from sqlalchemy_utils import create_database
 from typer import Argument, Option
+from .migrations import run_migrations
 
 from macrostrat.core import MacrostratSubsystem, app
 from macrostrat.core.utils import is_pg_url
@@ -383,3 +384,6 @@ def field_title(name):
     # expand the title to 20 characters
     title = title.ljust(12)
     return "[dim]" + title + "[/]" + " "
+
+
+db_app.command(name="migrations")(run_migrations)
