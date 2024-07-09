@@ -66,26 +66,30 @@ module.exports = function (req, res, next, cb) {
   if (req.query.b_age && req.query.t_age) {
     if (req.query.rule === "contains") {
       where.push(
-        "intervals.age_top >= :t_age AND intervals.age_bottom <= :b_age",
+        `intervals.age_top >= $${count+1} AND intervals.age_bottom <= $${count}`,
       );
-      params["b_age"] = req.query.b_age;
-      params["t_age"] = req.query.t_age;
+      params.push(req.query.b_age);
+      params.push(req.query.t_age);
+      count = count + 2;
     } else if (req.query.rule === "exact") {
       where.push(
-        "intervals.age_top = :t_age AND intervals.age_bottom = :b_age",
+        `intervals.age_top = $${count+1} AND intervals.age_bottom = $${count}`,
       );
-      params["b_age"] = req.query.b_age;
-      params["t_age"] = req.query.t_age;
+      params.push(req.query.b_age);
+      params.push(req.query.t_age);
+      count = count + 2;
     } else {
       where.push(
-        "intervals.age_bottom > :t_age AND intervals.age_top < :b_age",
+        `intervals.age_bottom > $${count+1} AND intervals.age_top < $${count}`,
       );
-      params["b_age"] = req.query.b_age;
-      params["t_age"] = req.query.t_age;
+      params.push(req.query.b_age);
+      params.push(req.query.t_age);
+      count = count + 2;
     }
   } else if (req.query.age) {
-    where.push("intervals.age_top <= :age AND intervals.age_bottom >= :age");
-    params["age"] = req.query.age;
+    where.push(`intervals.age_top <= $${count} AND intervals.age_bottom >= $${count}`);
+    params.push(req.query.age);
+    count++;
   }
 
   if (where.length > 0) {
@@ -128,7 +132,7 @@ module.exports = function (req, res, next, cb) {
       }*/
 
       if (cb) {
-        cb(null, result);
+        cb(null, result.rows);
       } else {
         larkin.sendData(
           req,
@@ -141,7 +145,7 @@ module.exports = function (req, res, next, cb) {
             bare: api.acceptedFormats.bare[req.query.format] ? true : false,
           },
           {
-            data: result,
+            data: result.rows,
           },
         );
       };
