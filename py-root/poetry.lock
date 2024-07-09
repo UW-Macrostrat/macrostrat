@@ -1145,6 +1145,8 @@ greenlet = "^3.0.3"
 ipython = "^8.5.0"
 "macrostrat.app-frame" = "^1.2.4"
 "macrostrat.database" = "^3.1.1"
+macrostrat-dinosaur = "^3.0.1"
+"mapboard.topology-manager" = {path = "../deps/topology-manager", develop = true}
 numpy = "^1.23.4"
 psycopg2-binary = "^2.9.4"
 PyMySQL = "^1.0.2"
@@ -1208,6 +1210,29 @@ rich = ">=13.7.1,<14.0.0"
 SQLAlchemy = ">=2.0.18,<3.0.0"
 SQLAlchemy-Utils = ">=0.41.1,<0.42.0"
 sqlparse = ">=0.4.4,<0.5.0"
+
+[[package]]
+name = "macrostrat-dinosaur"
+version = "3.0.1"
+description = "Diff-based database migrations"
+optional = false
+python-versions = ">=3.8,<4.0"
+files = [
+    {file = "macrostrat_dinosaur-3.0.1-py3-none-any.whl", hash = "sha256:1caba5f9196abef41b4ac35a8224946f442e47d96a34a088234605b4e692560d"},
+    {file = "macrostrat_dinosaur-3.0.1.tar.gz", hash = "sha256:3339b2fad6b71d31d5a1b563a53dc96b97ebaf2bbf5fb1ab0dde28772f78facb"},
+]
+
+[package.dependencies]
+docker = ">=6.0.1,<7.0.0"
+GeoAlchemy2 = ">=0.14.0,<0.15.0"
+"macrostrat.database" = ">=3.1.2,<4.0.0"
+"macrostrat.utils" = ">=1.2.1,<2.0.0"
+migra = ">=3.0.1621480950,<4.0.0"
+psycopg2-binary = ">=2.9.1,<3.0.0"
+schemainspect = ">=3.0.1616029793,<4.0.0"
+SQLAlchemy = ">=2.0.0,<3.0.0"
+SQLAlchemy-Utils = ">=0.41.1,<0.42.0"
+sqlparse = ">=0.4.0,<0.5.0"
 
 [[package]]
 name = "macrostrat-map-integration"
@@ -1297,6 +1322,26 @@ files = [
 [package.dependencies]
 colorlog = ">=6.5.0,<7.0.0"
 pydantic = ">=1.10.4,<3.0.0"
+
+[[package]]
+name = "mapboard-topology-manager"
+version = "4.0.0"
+description = "A PostGIS-based iterative system for building geologic maps"
+optional = false
+python-versions = "^3.10"
+files = []
+develop = true
+
+[package.dependencies]
+"macrostrat.database" = "^3.3.0"
+"macrostrat.utils" = "^1.2.1"
+python-dotenv = "^1.0.1"
+rich = "^13.7.1"
+typer = "^0.9.0"
+
+[package.source]
+type = "directory"
+url = "../deps/topology-manager"
 
 [[package]]
 name = "markdown-it-py"
@@ -1415,6 +1460,25 @@ files = [
     {file = "mdurl-0.1.2-py3-none-any.whl", hash = "sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8"},
     {file = "mdurl-0.1.2.tar.gz", hash = "sha256:bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba"},
 ]
+
+[[package]]
+name = "migra"
+version = "3.0.1663481299"
+description = "Like `diff` but for PostgreSQL schemas"
+optional = false
+python-versions = ">=3.7,<4"
+files = [
+    {file = "migra-3.0.1663481299-py3-none-any.whl", hash = "sha256:061643e9af63488e085d729f267ed4af4249789979732b703ddeb2c478ec9a93"},
+    {file = "migra-3.0.1663481299.tar.gz", hash = "sha256:0cf0c125d553008d9ff5402663a51703ccc474bb65b5a4f4727906dbf58e217f"},
+]
+
+[package.dependencies]
+schemainspect = ">=3.1.1663480743"
+six = "*"
+sqlbag = "*"
+
+[package.extras]
+pg = ["psycopg2-binary"]
 
 [[package]]
 name = "minio"
@@ -2239,13 +2303,13 @@ six = ">=1.5"
 
 [[package]]
 name = "python-dotenv"
-version = "1.0.0"
+version = "1.0.1"
 description = "Read key-value pairs from a .env file and set them as environment variables"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "python-dotenv-1.0.0.tar.gz", hash = "sha256:a8df96034aae6d2d50a4ebe8216326c61c3eb64836776504fcca410e5937a3ba"},
-    {file = "python_dotenv-1.0.0-py3-none-any.whl", hash = "sha256:f5971a9226b701070a4bf2c38c89e5a3f0d64de8debda981d1db98583009122a"},
+    {file = "python-dotenv-1.0.1.tar.gz", hash = "sha256:e324ee90a023d808f1959c46bcbc04446a10ced277783dc6ee09987c37ec10ca"},
+    {file = "python_dotenv-1.0.1-py3-none-any.whl", hash = "sha256:f7b63ef50f1b690dddf550d03497b66d609393b40b564ed0d674909a68ebf16a"},
 ]
 
 [package.extras]
@@ -2517,6 +2581,20 @@ s3 = ["boto3"]
 test = ["boto3", "pytest", "pytest-cov", "rioxarray", "xarray"]
 tilebench = ["pytest", "tilebench"]
 xarray = ["rioxarray", "xarray"]
+
+[[package]]
+name = "schemainspect"
+version = "3.1.1663587362"
+description = "Schema inspection for PostgreSQL (and possibly others)"
+optional = false
+python-versions = ">=3.7,<4"
+files = [
+    {file = "schemainspect-3.1.1663587362-py3-none-any.whl", hash = "sha256:3071265712863c4d4e742940a4b44ac685135af3c93416872ec1bb6c822c4aca"},
+    {file = "schemainspect-3.1.1663587362.tar.gz", hash = "sha256:a295ad56f7a19c09e5e1ef9f16dadbf6392e26196cb5f05b5afe613c99ce7468"},
+]
+
+[package.dependencies]
+sqlalchemy = "*"
 
 [[package]]
 name = "scipy"
@@ -2907,6 +2985,27 @@ test = ["Jinja2 (>=2.3)", "Pygments (>=1.2)", "backports.zoneinfo", "docutils (>
 test-all = ["Babel (>=1.3)", "Jinja2 (>=2.3)", "Pygments (>=1.2)", "arrow (>=0.3.4)", "backports.zoneinfo", "colour (>=0.0.4)", "cryptography (>=0.6)", "docutils (>=0.10)", "flake8 (>=2.4.0)", "flexmock (>=0.9.7)", "furl (>=0.4.1)", "intervals (>=0.7.1)", "isort (>=4.2.2)", "passlib (>=1.6,<2.0)", "pendulum (>=2.0.5)", "pg8000 (>=1.12.4)", "phonenumbers (>=5.9.2)", "psycopg (>=3.1.8)", "psycopg2 (>=2.5.1)", "psycopg2cffi (>=2.8.1)", "pymysql", "pyodbc", "pytest (>=2.7.1)", "python-dateutil", "python-dateutil (>=2.6)", "pytz (>=2014.2)"]
 timezone = ["python-dateutil"]
 url = ["furl (>=0.4.1)"]
+
+[[package]]
+name = "sqlbag"
+version = "0.1.1617247075"
+description = "various snippets of SQL-related boilerplate"
+optional = false
+python-versions = "*"
+files = [
+    {file = "sqlbag-0.1.1617247075-py2.py3-none-any.whl", hash = "sha256:ecdef26d661f8640711030ac6ee618deb92b91f9f0fc2efbf8a3b133af13092d"},
+    {file = "sqlbag-0.1.1617247075.tar.gz", hash = "sha256:b9d7862c3b2030356d796ca872907962fd54704066978d7ae89383f5123366ed"},
+]
+
+[package.dependencies]
+packaging = "*"
+six = "*"
+sqlalchemy = "*"
+
+[package.extras]
+maria = ["pymysql"]
+pendulum = ["pendulum", "relativedelta"]
+pg = ["psycopg2"]
 
 [[package]]
 name = "sqlparse"

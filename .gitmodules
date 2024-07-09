@@ -1,0 +1,3 @@
+[submodule "deps/topology-manager"]
+	path = deps/topology-manager
+	url = https://github.com/Mapboard/topology-manager.git
