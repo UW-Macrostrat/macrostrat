@@ -38,13 +38,15 @@ class StorageSchemeMigration(Migration):
 
 
 def has_enum(db: Database, name: str, schema: str = None):
-    sql = "select count(*) from pg_type where typname = :name"
+    sql = "select 1 from pg_type where typname = :name"
     if schema is not None:
         sql += (
             " and typnamespace = (select oid from pg_namespace where nspname = :schema)"
         )
 
-    return db.run_query(f"select exists ({sql})", dict(name=name, schema=schema))
+    return db.run_query(
+        f"select exists ({sql})", dict(name=name, schema=schema)
+    ).scalar()
 
 
 def run_migrations(apply: bool = False, name: str = None, force: bool = False):
