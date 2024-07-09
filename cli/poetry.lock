@@ -607,13 +607,13 @@ typer = ">=0.9.0,<0.10.0"
 
 [[package]]
 name = "macrostrat-database"
-version = "3.1.1"
+version = "3.1.2"
 description = "A SQLAlchemy-based database toolkit."
 optional = false
 python-versions = ">=3.8,<4.0"
 files = [
-    {file = "macrostrat_database-3.1.1-py3-none-any.whl", hash = "sha256:9daa5f236ae1b604f8c00fc00c424a24edf183b8be2afc51514bc417f10396e0"},
-    {file = "macrostrat_database-3.1.1.tar.gz", hash = "sha256:61fcecb8252613759772df4415f3e59a254027099ff51c79001163d04df842bc"},
+    {file = "macrostrat_database-3.1.2-py3-none-any.whl", hash = "sha256:481ef7d7696c5e7cb3d537ca4e178eba97423b44dddb01af5bc2729eb89c90a4"},
+    {file = "macrostrat_database-3.1.2.tar.gz", hash = "sha256:92d9e61c24428dcd485fa174e731e2da181de7b0e02c43027c82bf48e483ca21"},
 ]
 
 [package.dependencies]
@@ -624,6 +624,29 @@ psycopg2-binary = ">=2.9.6,<3.0.0"
 SQLAlchemy = ">=2.0.18,<3.0.0"
 SQLAlchemy-Utils = ">=0.41.1,<0.42.0"
 sqlparse = ">=0.4.4,<0.5.0"
+
+[[package]]
+name = "macrostrat-dinosaur"
+version = "3.0.1"
+description = "Diff-based database migrations"
+optional = false
+python-versions = ">=3.8,<4.0"
+files = [
+    {file = "macrostrat_dinosaur-3.0.1-py3-none-any.whl", hash = "sha256:1caba5f9196abef41b4ac35a8224946f442e47d96a34a088234605b4e692560d"},
+    {file = "macrostrat_dinosaur-3.0.1.tar.gz", hash = "sha256:3339b2fad6b71d31d5a1b563a53dc96b97ebaf2bbf5fb1ab0dde28772f78facb"},
+]
+
+[package.dependencies]
+docker = ">=6.0.1,<7.0.0"
+GeoAlchemy2 = ">=0.14.0,<0.15.0"
+"macrostrat.database" = ">=3.1.2,<4.0.0"
+"macrostrat.utils" = ">=1.2.1,<2.0.0"
+migra = ">=3.0.1621480950,<4.0.0"
+psycopg2-binary = ">=2.9.1,<3.0.0"
+schemainspect = ">=3.0.1616029793,<4.0.0"
+SQLAlchemy = ">=2.0.0,<3.0.0"
+SQLAlchemy-Utils = ">=0.41.1,<0.42.0"
+sqlparse = ">=0.4.0,<0.5.0"
 
 [[package]]
 name = "macrostrat-utils"
@@ -688,6 +711,25 @@ files = [
     {file = "mdurl-0.1.2-py3-none-any.whl", hash = "sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8"},
     {file = "mdurl-0.1.2.tar.gz", hash = "sha256:bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba"},
 ]
+
+[[package]]
+name = "migra"
+version = "3.0.1663481299"
+description = "Like `diff` but for PostgreSQL schemas"
+optional = false
+python-versions = ">=3.7,<4"
+files = [
+    {file = "migra-3.0.1663481299-py3-none-any.whl", hash = "sha256:061643e9af63488e085d729f267ed4af4249789979732b703ddeb2c478ec9a93"},
+    {file = "migra-3.0.1663481299.tar.gz", hash = "sha256:0cf0c125d553008d9ff5402663a51703ccc474bb65b5a4f4727906dbf58e217f"},
+]
+
+[package.dependencies]
+schemainspect = ">=3.1.1663480743"
+six = "*"
+sqlbag = "*"
+
+[package.extras]
+pg = ["psycopg2-binary"]
 
 [[package]]
 name = "networkx"
@@ -1285,6 +1327,20 @@ pygments = ">=2.13.0,<3.0.0"
 jupyter = ["ipywidgets (>=7.5.1,<9)"]
 
 [[package]]
+name = "schemainspect"
+version = "3.1.1663587362"
+description = "Schema inspection for PostgreSQL (and possibly others)"
+optional = false
+python-versions = ">=3.7,<4"
+files = [
+    {file = "schemainspect-3.1.1663587362-py3-none-any.whl", hash = "sha256:3071265712863c4d4e742940a4b44ac685135af3c93416872ec1bb6c822c4aca"},
+    {file = "schemainspect-3.1.1663587362.tar.gz", hash = "sha256:a295ad56f7a19c09e5e1ef9f16dadbf6392e26196cb5f05b5afe613c99ce7468"},
+]
+
+[package.dependencies]
+sqlalchemy = "*"
+
+[[package]]
 name = "scipy"
 version = "1.9.3"
 description = "Fundamental algorithms for scientific computing in Python"
@@ -1546,6 +1602,27 @@ timezone = ["python-dateutil"]
 url = ["furl (>=0.4.1)"]
 
 [[package]]
+name = "sqlbag"
+version = "0.1.1617247075"
+description = "various snippets of SQL-related boilerplate"
+optional = false
+python-versions = "*"
+files = [
+    {file = "sqlbag-0.1.1617247075-py2.py3-none-any.whl", hash = "sha256:ecdef26d661f8640711030ac6ee618deb92b91f9f0fc2efbf8a3b133af13092d"},
+    {file = "sqlbag-0.1.1617247075.tar.gz", hash = "sha256:b9d7862c3b2030356d796ca872907962fd54704066978d7ae89383f5123366ed"},
+]
+
+[package.dependencies]
+packaging = "*"
+six = "*"
+sqlalchemy = "*"
+
+[package.extras]
+maria = ["pymysql"]
+pendulum = ["pendulum", "relativedelta"]
+pg = ["psycopg2"]
+
+[[package]]
 name = "sqlparse"
 version = "0.4.4"
 description = "A non-validating SQL parser."
@@ -1763,4 +1840,4 @@ test = ["websockets"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "4556b4ca96aa0af02fc61e44d9aeb533687fc8552fd4d76f6988637651b026a2"
+content-hash = "2492acb363222b18285ed823951258f67d09e3a8fcb52e2308ca13ef2ddfb786"

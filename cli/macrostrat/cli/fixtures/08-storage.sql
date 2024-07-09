@@ -6,17 +6,17 @@ CREATE TABLE storage.object_group (
 
 ALTER TABLE storage.object_group OWNER TO macrostrat;
 
-CREATE TYPE macrostrat.schemeenum AS ENUM (
+CREATE TYPE storage.scheme AS ENUM (
     's3',
     'https'
 );
 
 ALTER TYPE macrostrat.schemeenum OWNER TO macrostrat;
 
-CREATE TABLE storage.object (
+CREATE TABLE IF NOT EXISTS storage.object (
     id integer NOT NULL,
     object_group_id integer references storage.object_group(id) ON DELETE CASCADE,
-    scheme macrostrat.schemeenum NOT NULL,
+    scheme storage.scheme NOT NULL,
     host character varying(255) NOT NULL,
     bucket character varying(255) NOT NULL,
     key character varying(255) NOT NULL,

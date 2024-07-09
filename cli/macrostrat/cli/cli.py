@@ -261,7 +261,7 @@ app = load_paleogeography_subsystem(app, main, db_subsystem)
 from .subsystems.mapboard import MapboardSubsystem
 
 if mapboard_url := getattr(settings, "mapboard_database", None):
-    app.subsystems.add(MapboardSubsystem)
+    app.subsystems.add(MapboardSubsystem(app))
 
 app.finish_loading_subsystems()
 
