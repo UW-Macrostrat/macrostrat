@@ -6,33 +6,43 @@ module.exports = function (req, res, next, cb) {
     return larkin.info(req, res, next);
   }
 
-  var sql =
-      "SELECT environs.id AS environ_id, environ AS name, environ_type AS type, environ_class AS class, environ_color AS color, COUNT(distinct units_sections.unit_id) AS t_units FROM environs LEFT JOIN unit_environs ON unit_environs.environ_id = environs.id LEFT JOIN units_sections ON units_sections.unit_id = unit_environs.unit_id ",
-    environ = "";
+  let sql =
+      `SELECT environs.id AS environ_id, 
+       environ AS name, 
+       environ_type AS type, 
+       environ_class AS class, 
+       environ_color AS color, 
+       COUNT(distinct units_sections.unit_id) AS t_units 
+    FROM macrostrat_temp.environs 
+        LEFT JOIN macrostrat_temp.unit_environs ON unit_environs.environ_id = environs.id 
+        LEFT JOIN macrostrat_temp.units_sections ON units_sections.unit_id = unit_environs.unit_id
+    `
+  let environ = [];
 
   if (req.query.all) {
     // do nothing
   } else if (req.query.environ_class) {
-    sql += " WHERE environ_class= ?";
-    environ = req.query.environ_class;
+    sql += "WHERE environ_class = $1";
+    environ.push(req.query.environ_class);
   } else if (req.query.environ_type) {
-    sql += " WHERE environ_type = ?";
-    environ = req.query.environ_type;
+    sql += "WHERE environ_type = $1";
+    environ.push(req.query.environ_type);
   } else if (req.query.environ) {
-    sql += " WHERE environ = ?";
-    environ = req.query.environ;
+    sql += "WHERE environ = $1";
+    environ.push(req.query.environ);
   } else if (req.query.environ_id) {
-    sql += " WHERE environs.id = ?";
-    environ = req.query.environ_id;
+    sql += "WHERE environs.id = $1";
+    environ.push(req.query.environ_id);
   }
 
-  sql += " GROUP BY environs.id ";
+  sql += "GROUP BY environs.id\n";
 
   if ("sample" in req.query) {
     sql += " LIMIT 5";
   }
-
-  larkin.query(sql, [environ], function (error, data) {
+  console.log(sql)
+  console.log(environ)
+  larkin.queryPgMaria("macrostrat_two", sql, environ, function (error, data) {
     if (error) {
       if (cb) {
         cb(error);
@@ -42,7 +52,7 @@ module.exports = function (req, res, next, cb) {
     }
 
     if (cb) {
-      cb(null, data);
+      cb(null, data.rows);
     } else {
       larkin.sendData(
         req,
@@ -53,9 +63,10 @@ module.exports = function (req, res, next, cb) {
             ? req.query.format
             : "json",
           bare: api.acceptedFormats.bare[req.query.format] ? true : false,
+          compact: true,
         },
         {
-          data: data,
+          data: data.rows,
         },
       );
     }
