@@ -11,32 +11,32 @@ module.exports = function (req, res, next, cb) {
       liths.id AS lith_id,
       lith AS name,
       lith_type AS type,
-      COALESCE(lith_group, '') AS 'group',
-      lith_class AS 'class',
+      COALESCE(lith_group::text, '') AS "group",
+      lith_class AS "class",
       lith_color AS color,
       lith_fill AS fill,
       COUNT(distinct units_sections.unit_id) AS t_units
-    FROM liths
-    LEFT JOIN unit_liths ON unit_liths.lith_id = liths.id
-    LEFT JOIN units_sections ON units_sections.unit_id = unit_liths.unit_id
+    FROM macrostrat_temp.liths
+    LEFT JOIN macrostrat_temp.unit_liths ON unit_liths.lith_id = liths.id
+    LEFT JOIN macrostrat_temp.units_sections ON units_sections.unit_id = unit_liths.unit_id
   `;
   var where = [];
   var params = {};
 
   if (req.query.lith_class) {
-    where.push("lith_class IN (:lith_class)");
+    where.push("lith_class = ANY(:lith_class)");
     params["lith_class"] = larkin.parseMultipleStrings(req.query.lith_class);
   }
   if (req.query.lith_type) {
-    where.push("lith_type IN (:lith_type)");
+    where.push("lith_type = ANY(:lith_type)");
     params["lith_type"] = larkin.parseMultipleStrings(req.query.lith_type);
   }
   if (req.query.lith) {
-    where.push("lith IN (:lith)");
+    where.push("lith = ANY(:lith)");
     params["lith"] = larkin.parseMultipleStrings(req.query.lith);
   }
   if (req.query.lith_id) {
-    where.push("liths.id IN (:lith_id)");
+    where.push("liths.id = ANY(:lith_id)");
     params["lith_id"] = larkin.parseMultipleIds(req.query.lith_id);
   }
   if (req.query.lith_like) {
@@ -44,7 +44,7 @@ module.exports = function (req, res, next, cb) {
     params["lith"] = req.query.lith_like + "%";
   }
   if (req.query.lith_group) {
-    where.push("lith_group IN (:lith_group)");
+    where.push("lith_group = ANY(:lith_group)");
     params["lith_group"] = larkin.parseMultipleStrings(req.query.lith_group);
   }
 
@@ -58,7 +58,7 @@ module.exports = function (req, res, next, cb) {
     sql += " LIMIT 5";
   }
 
-  larkin.query(sql, params, function (error, data) {
+  larkin.queryPgMaria("macrostrat_two", sql, params, function (error, data) {
     if (error) {
       if (cb) {
         cb(error);
@@ -68,7 +68,7 @@ module.exports = function (req, res, next, cb) {
     }
 
     if (cb) {
-      cb(null, data);
+      cb(null, data.rows);
     } else {
       larkin.sendData(
         req,
@@ -82,7 +82,7 @@ module.exports = function (req, res, next, cb) {
           compact: true,
         },
         {
-          data: data,
+          data: data.rows,
         },
       );
     }
