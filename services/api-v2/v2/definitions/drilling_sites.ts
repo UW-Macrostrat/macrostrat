@@ -9,33 +9,50 @@ module.exports = function (req, res, next, cb) {
 
   var sql = `
     SELECT
-      epoch,leg,site,hole,lat,lng,col_id,col_group_id,penetration,cored,recovered,recovery,drilled_interval,drilled_intervals,cores,date_started,date_finished,comments,ref_id
-    FROM offshore_sites
+      epoch,
+      leg,
+      site,
+      hole,lat,
+      lng,
+      col_id,
+      col_group_id,
+      penetration,
+      cored,
+      recovered,
+      recovery,
+      drilled_interval,
+      drilled_intervals,
+      cores,
+      date_started,
+      date_finished,
+      comments,
+      ref_id
+    FROM macrostrat_temp.offshore_sites
   `;
   var where = [];
   var params = {};
 
   if (req.query.epoch) {
-    where.push("epoch in (:epoch)");
+    where.push("epoch = ANY(:epoch)");
     params["epoch"] = larkin.parseMultipleStrings(req.query.epoch);
   }
 
   if (req.query.leg) {
-    where.push("exp in (:leg)");
+    where.push("exp = ANY(:leg)");
     params["leg"] = larkin.parseMultipleStrings(req.query.leg);
   }
   if (req.query.site) {
-    where.push("site IN (:site)");
+    where.push("site = ANY(:site)");
     params["site"] = larkin.parseMultipleStrings(req.query.site);
   }
 
   if (req.query.col_id) {
-    where.push("col_id IN (:col_id)");
+    where.push("col_id = ANY(:col_id)");
     params["col_id"] = larkin.parseMultipleIds(req.query.col_id);
   }
 
   if (req.query.col_group_id) {
-    where.push("site IN (:col_group_id)");
+    where.push("site = ANY(:col_group_id)");
     params["col_group_id"] = larkin.parseMultipleIds(req.query.col_group_id);
   }
 
@@ -47,9 +64,11 @@ module.exports = function (req, res, next, cb) {
     sql += " LIMIT 5";
   }
 
-  // console.log(sql);
+  console.log(sql)
+  console.log(params)
 
-  larkin.query(sql, params, function (error, result) {
+
+  larkin.queryPgMaria("macrostrat_two", sql, params, function (error, result) {
     if (error) {
       if (cb) {
         cb(error);
@@ -75,7 +94,7 @@ module.exports = function (req, res, next, cb) {
             }
             return larkin.error(req, res, next, "Internal error", 500);
           }
-
+          //send results for geo format
           larkin.sendData(
             req,
             res,
@@ -93,7 +112,12 @@ module.exports = function (req, res, next, cb) {
           );
         },
       );
-    } else {
+    }
+    //send results if no geo format requested
+    if (cb) {
+      cb(null, result.rows);
+    }
+    else {
       larkin.sendData(
         req,
         res,
@@ -106,7 +130,7 @@ module.exports = function (req, res, next, cb) {
           refs: "ref_id",
         },
         {
-          data: result,
+          data: result.rows,
         },
       );
     }
