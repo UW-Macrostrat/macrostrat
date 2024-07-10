@@ -117,6 +117,9 @@ from .filterable import router as filterable_router
 
 app.include_router(filterable_router, tags=["Filterable"], prefix="/v2")
 
+from .map_bounds import router as map_bounds_router
+app.include_router(map_bounds_router, tags=["Map Bounds"], prefix="/v2")
+
 
 @app.get("/carto/rotation-models")
 async def rotation_models():
