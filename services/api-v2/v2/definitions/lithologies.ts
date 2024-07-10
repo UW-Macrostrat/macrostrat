@@ -70,6 +70,7 @@ module.exports = function (req, res, next, cb) {
     if (cb) {
       cb(null, data.rows);
     } else {
+      /*TODO Fix t_units data type from str to bigint to match prod json's*/
       larkin.sendData(
         req,
         res,
