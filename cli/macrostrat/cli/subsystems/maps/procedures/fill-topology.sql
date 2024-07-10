@@ -15,6 +15,6 @@ INSERT INTO map_bounds.map_layer_linework_type (map_layer, type)
 VALUES (1, 'map_bounds');
 
 INSERT INTO map_bounds.linework (geometry, source_id, type, map_layer)
-SELECT ST_Boundary(rgeom), source_id, 'map_bounds', 1
+SELECT ST_MakeValid(ST_Boundary(rgeom)), source_id, 'map_bounds', 1
   FROM maps.sources
   WHERE rgeom IS NOT NULL;
