@@ -64,17 +64,19 @@ module.exports = function (req, res, next) {
       query =
         "sample" in req.query ? "ma%" : req.query.query.toLowerCase() + "%";
 
-    larkin.query(
-      "SELECT * FROM autocomplete WHERE name LIKE :query AND type IN (:types) LIMIT :limit",
+    larkin.queryPgMaria("macrostrat_two",
+      "SELECT * FROM macrostrat_temp.autocomplete WHERE name LIKE :query AND type = ANY(:types) LIMIT :limit",
       { query: query, types: types, limit: limit },
       function (error, result) {
         if (error) {
           larkin.error(req, res, next, error);
-        } else {
+        }
+        else {
           var parsed = _.groupBy(result, function (each) {
             return each.type;
           });
           var keys = Object.keys(parsed);
+          /* TODO format the json output identical to prod
 
           for (var i = 0; i < keys.length; i++) {
             for (var j = 0; j < parsed[keys[i]].length; j++) {
@@ -82,6 +84,8 @@ module.exports = function (req, res, next) {
             }
           }
 
+          console.log(parsed)
+          console.log(keys)
           larkin.sendData(
             req,
             res,
@@ -95,7 +99,7 @@ module.exports = function (req, res, next) {
             },
           );
         }
-      },
+      },*/
     );
   } else {
     return larkin.info(req, res, next);
