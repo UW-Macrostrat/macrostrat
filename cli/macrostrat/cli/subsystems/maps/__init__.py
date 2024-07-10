@@ -1,14 +1,17 @@
+from os import environ
+from pathlib import Path
+from subprocess import run
+
 from macrostrat.database.transfer.utils import raw_database_url
 from macrostrat.utils import working_directory
-from subprocess import run
-from macrostrat.core import MacrostratSubsystem
 from typer import Typer
 
+from macrostrat.core import MacrostratSubsystem
+from mapboard.topology_manager import create_tables, drop_tables
+from mapboard.topology_manager.commands.update import _update
+from mapboard.topology_manager.database import _get_instance_params
 from ...database import _engine_for_db_name
 from ...database._legacy import get_db
-from mapboard.topology_manager import create_tables, drop_tables
-from pathlib import Path
-from os import environ
 
 __dir__ = Path(__file__).parent
 
@@ -43,7 +46,6 @@ def create_fixtures():
 def clean():
     """Drop topology fixtures"""
     db = get_db()
-
     drop_tables(db, **config)
 
 
@@ -59,6 +61,8 @@ def fill():
 def update():
     """Update topology fixtures"""
     db = get_db()
+    db.instance_params = _get_instance_params(**config)
+    _update(db)
 
 
 @cli.command("test")
