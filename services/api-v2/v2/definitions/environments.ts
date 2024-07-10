@@ -17,32 +17,30 @@ module.exports = function (req, res, next, cb) {
         LEFT JOIN macrostrat_temp.unit_environs ON unit_environs.environ_id = environs.id 
         LEFT JOIN macrostrat_temp.units_sections ON units_sections.unit_id = unit_environs.unit_id
     `
-  let environ = [];
+  let environ = {};
 
   if (req.query.all) {
     // do nothing
   } else if (req.query.environ_class) {
-    sql += "WHERE environ_class = $1";
-    environ.push(req.query.environ_class);
+    sql += "WHERE environ_class = :environ_class";
+    environ["environ_class"] = req.query.environ_class;
   } else if (req.query.environ_type) {
-    sql += "WHERE environ_type = $1";
-    environ.push(req.query.environ_type);
+    sql += "WHERE environ_type = :environ_type";
+    environ["environ_type"] =req.query.environ_type;
   } else if (req.query.environ) {
-    sql += "WHERE environ = $1";
-    environ.push(req.query.environ);
+    sql += "WHERE environ = :environ";
+    environ["environ"] = req.query.environ;
   } else if (req.query.environ_id) {
     sql += "WHERE environs.id = $1";
     environ.push(req.query.environ_id);
   }
 
-  sql += "GROUP BY environs.id\n";
+  sql += "\nGROUP BY environs.id\n";
 
   if ("sample" in req.query) {
     sql += " LIMIT 5";
   }
-  console.log(sql)
-  console.log(environ)
-  larkin.queryPgMaria("macrostrat_two", sql, environ, function (error, data) {
+  larkin.queryPgMariaYesql("macrostrat_two", sql, environ, function (error, data) {
     if (error) {
       if (cb) {
         cb(error);

@@ -9,7 +9,7 @@ module.exports = function (req, res, next, cb) {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
-  let params = []
+  let params = {}
 
 
   // First determine age range component of query, if any.
@@ -18,8 +18,9 @@ module.exports = function (req, res, next, cb) {
     [
       function (callback) {
         if (req.query.interval_name) {
-          params.push(req.query.interval_name)
-          let sql = `SELECT age_bottom, age_top, interval_name FROM macrostrat_temp.intervals WHERE interval_name = $1 LIMIT 1`
+          //params.push(req.query.interval_name)
+          params["interval_name"] = [req.query.interval_name];
+          let sql = `SELECT age_bottom, age_top, interval_name FROM macrostrat_temp.intervals WHERE interval_name = ${params["interval_name"]} LIMIT 1`
           larkin.queryPgMaria("macrostrat_two",
             sql,
             params,

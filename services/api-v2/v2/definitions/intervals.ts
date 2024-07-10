@@ -37,6 +37,7 @@ module.exports = function (req, res, next, cb) {
     params.push(req.query.timescale);
     count++;
   } else if (req.query.timescale_id) {
+
     where.push(`timescales.id = ANY($${count})`);
     params.push(larkin.parseMultipleIds(req.query.timescale_id));
     count++;
@@ -87,7 +88,7 @@ module.exports = function (req, res, next, cb) {
       count = count + 2;
     }
   } else if (req.query.age) {
-    where.push(`intervals.age_top <= $${count} AND intervals.age_bottom >= $${count}`);
+    where.push(`intervals.age_top <= $${count} AND intervals.age_bottom >= ${req.query.age}`);
     params.push(req.query.age);
     count++;
   }

@@ -108,6 +108,52 @@ const { Client, Pool } = require("pg");
     });
   };
 
+  //Adding new function to test out yesql lib for named parameters syntax
+
+  larkin.queryPgMariaYesql = function (db, sql, params, callback) {
+    console.log(sql)
+    console.log(params)
+    const nameMapping = credentials.postgresDatabases ?? {};
+    const dbName = nameMapping[db] ?? db;
+
+    let { connectionString, ...otherConnectionDetails } = credentials.pgMaria;
+
+    if (dbName == "geomacro") {
+      console.warn(
+        "In Macrostrat v2, 'geomacro' is merged with 'burwell' into the 'macrostrat' database.",
+      );
+    }
+    if (dbName == "elevation") {
+      /** Special case for elevation database (temporary) */
+      connectionString = credentials.elevationDatabase;
+    }
+
+    const pool = new Pool({
+      connectionString,
+      ...otherConnectionDetails,
+    });
+
+    pool.connect(function (err, client, done) {
+      if (err) {
+        larkin.log("error", "error connecting - " + err);
+        callback(err);
+      } else {
+        const preparedQuery = named(sql)(params);
+        var query = client.query(preparedQuery.text, preparedQuery.values, function (err, result) {
+          done();
+          if (err) {
+            larkin.log("error", err);
+            callback(err);
+          } else {
+            callback(null, result);
+          }
+        });
+      }
+    });
+  };
+
+
+
 
 
   larkin.toUnnamed = function (sql, params) {
