@@ -1,10 +1,14 @@
+from macrostrat.database.transfer.utils import raw_database_url
 from macrostrat.utils import working_directory
 from subprocess import run
 from macrostrat.core import MacrostratSubsystem
 from typer import Typer
+
+from ...database import _engine_for_db_name
 from ...database._legacy import get_db
 from mapboard.topology_manager import create_tables, drop_tables
 from pathlib import Path
+from os import environ
 
 __dir__ = Path(__file__).parent
 
@@ -62,7 +66,12 @@ def test():
     """Test topology fixtures"""
     from macrostrat.core import app
 
+    db_engine = _engine_for_db_name("map_topology_test")
+    db_url = raw_database_url(db_engine.url)
+
+    environ["TOPO_TESTING_DATABASE_URL"] = db_url
+
     srcroot = app.settings.srcroot
     topo_mgr = srcroot / "deps/topology-manager"
     with working_directory(topo_mgr):
-        run(["pytest", "-S"])
+        run(["pytest", "-s"])
