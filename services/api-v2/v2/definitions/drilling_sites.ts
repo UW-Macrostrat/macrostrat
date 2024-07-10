@@ -113,7 +113,7 @@ module.exports = function (req, res, next, cb) {
         },
       );
     }
-    //send results if no geo format requested
+    //send results if no geo format requested.
     if (cb) {
       cb(null, result.rows);
     }
