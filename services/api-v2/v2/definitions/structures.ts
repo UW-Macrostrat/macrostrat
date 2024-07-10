@@ -7,30 +7,33 @@ module.exports = function (req, res, next, cb) {
   }
 
   var where = [];
-  var params = [];
+  //changed back to dict
+  var params = {};
   var limit = req.query.hasOwnProperty("sample") ? "LIMIT 5" : "";
-  console.log(req.query)
 
+  //updated sql variables to named parameters using yesql
   if (req.query.structure_class) {
-    where.push(`structure_class = ANY($1)`);
-    params.push(larkin.parseMultipleStrings(req.query.structure_class));
-  } else if (req.query.structure_type) {
-    where.push(`structure_type = ANY($1)`);
-    params.push(larkin.parseMultipleStrings(req.query.structure_type));
-  } else if (req.query.structure) {
-    where.push(`structure = ANY($1)`);
-    params.push(larkin.parseMultipleStrings(req.query.structure));
-  } else if (req.query.structure_id) {
-    where.push(`structures.id = ANY($1)`);
-    params.push(larkin.parseMultipleIds(req.query.structure_id));
-  } else if (req.query.structure_like) {
-    where.push(`structure LIKE $1`);
-    params.push(`%${req.query.structure_like}%`);
+    where.push(`structure_class = ANY(:structure_class)`);
+    params["structure_class"] = larkin.parseMultipleStrings(req.query.structure_class);
+  }
+  else if (req.query.structure_type) {
+    where.push(`structure_type = ANY(:structure_type)`);
+    params["structure_type"] = larkin.parseMultipleStrings(req.query.structure_type);
+  }
+  else if (req.query.structure) {
+    where.push(`structure = ANY(:structure)`);
+    params["structure"] = larkin.parseMultipleStrings(req.query.structure);
+  }
+  else if (req.query.structure_id) {
+    where.push(`structures.id = ANY(:structure_id)`);
+    params["structure_id"] = larkin.parseMultipleIds(req.query.structure_id);
+  }
+  else if (req.query.structure_like) {
+    where.push(`structure LIKE :structure_like`);
+    params["structure_like"] = `%${req.query.structure_like}%`;
   }
 
   where = where.length ? "WHERE " + where.join(" AND ") : "";
-  console.log(params)
-  console.log(where)
 
   var sql =`
     SELECT
@@ -44,7 +47,6 @@ module.exports = function (req, res, next, cb) {
     GROUP BY structures.id
     ${limit}
   `
-  console.log(sql)
 
   larkin.queryPgMaria("macrostrat_two",
     sql,

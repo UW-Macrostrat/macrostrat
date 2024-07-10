@@ -1,3 +1,6 @@
+//This endpoint requires trailing / for it to execute. We'll need to handle non-trailing / as well.
+
+
 var api = require("../api"),
   larkin = require("../larkin");
 
@@ -17,31 +20,36 @@ module.exports = function (req, res, next, cb) {
        LEFT JOIN macrostrat_temp.unit_econs ON unit_econs.econ_id = econs.id 
        LEFT JOIN macrostrat_temp.units_sections ON units_sections.unit_id = unit_econs.unit_id 
        `
-  let params = [];
+  //changed params from array back to dict.
+  let params = {};
 
+  //Need to output an error message for any other parameters passed beyond the list below. Right now, data is being
+  //returned for invalid params such as t_units
   if ("all" in req.query) {
     // do nothing
-  } else if (req.query.econ_id) {
-    sql += " WHERE econs.id = ANY($1)";
-    params.push(larkin.parseMultipleIds(req.query.econ_id));
-  } else if (req.query.econ) {
-    sql += " WHERE econ = $1";
-    params.push(req.query.econ);
-  } else if (req.query.econ_type) {
-    sql += " WHERE econ_type = $1";
-    params.push(req.query.econ_type);
-  } else if (req.query.econ_class) {
-    sql += " WHERE econ_class = $1";
-    params.push(req.query.econ_class);
+  }
+  else if (req.query.econ_id) {
+    sql += " WHERE econs.id = ANY(:econ_id)";
+    params["econ_id"] = larkin.parseMultipleIds(req.query.econ_id);
+  }
+  else if (req.query.econ) {
+    sql += " WHERE econ = :econ";
+    params["econ"] = req.query.econ;
+  }
+  else if (req.query.econ_type) {
+    sql += " WHERE econ_type = :econ_type";
+    params["econ_type"] = req.query.econ_type;
+  }
+  else if (req.query.econ_class) {
+    sql += " WHERE econ_class = :econ_class";
+    params["econ_class"] = req.query.econ_class;
   }
 
   sql += "\nGROUP BY econs.id ";
-
   if ("sample" in req.query) {
     sql += "\nLIMIT 5";
   }
-  console.log(sql)
-  console.log(params)
+
   larkin.queryPgMaria("macrostrat_two", sql, params, function (error, data) {
     if (error) {
       if (cb) {

@@ -1,3 +1,6 @@
+//This endpoint requires trailing / for it to execute. We'll need to handle non-trailing / as well.
+//Ex.   {{LocalHost}}defs/intervals/   executes, {{LocalHost}}defs/intervals   does not execute.
+
 var api = require("../api"),
   larkin = require("../larkin");
 
@@ -22,75 +25,67 @@ module.exports = function (req, res, next, cb) {
     sql += "interval_color AS color ";
   }
 
-  let params = []
+  //updated params back to dict
+  let params = {}
   let where = []
 
   sql += `
   FROM macrostrat_temp.intervals 
   LEFT JOIN macrostrat_temp.timescales_intervals ON interval_id=intervals.id 
   LEFT JOIN macrostrat_temp.timescales ON timescale_id=timescales.id\n `
-  console.log(sql)
-  let count = 1
 
+  //need to refactor the ifs and else ifs of parameter handling
   if (req.query.timescale) {
-    where.push(` timescale = $${count}`);
-    params.push(req.query.timescale);
-    count++;
-  } else if (req.query.timescale_id) {
-
-    where.push(`timescales.id = ANY($${count})`);
-    params.push(larkin.parseMultipleIds(req.query.timescale_id));
-    count++;
-    console.log(where)
-    console.log(params)
+    where.push(` timescale = :timescale`);
+    params["timescale"] = req.query.timescale;
+  }
+  else if (req.query.timescale_id) {
+    where.push(`timescales.id = ANY(:timescale_id)`);
+    params["timescale_id"] = larkin.parseMultipleIds(req.query.timescale_id);
   }
 
   if (req.query.name) {
-    where.push(`intervals.interval_name LIKE $${count}`);
-    params.push(req.query.name);
-    count++;
+    where.push(`intervals.interval_name LIKE :name`);
+    params["name"] = req.query.name;
   }
 
   if (req.query.name_like) {
-    where.push(`intervals.interval_name LIKE $${count}`);
+    where.push(`intervals.interval_name LIKE :name_like`);
     //may want to update to "%" + req.query.name_like + "%"
-    params.push(req.query.name_like + "%");
-    count++;
+    params["name_like"] = req.query.name_like + "%";
   }
 
   if (req.query.int_id) {
-    where.push(`intervals.id = ANY($${count})`);
-    params.push(larkin.parseMultipleIds(req.query.int_id));
-    count++;
+    where.push(`intervals.id = ANY(:int_id)`);
+    params["int_id"] = larkin.parseMultipleIds(req.query.int_id);
   }
 
   if (req.query.b_age && req.query.t_age) {
     if (req.query.rule === "contains") {
       where.push(
-        `intervals.age_top >= $${count+1} AND intervals.age_bottom <= $${count}`,
+        `intervals.age_top >= :t_age AND intervals.age_bottom <= :b_age`,
       );
-      params.push(req.query.b_age);
-      params.push(req.query.t_age);
-      count = count + 2;
-    } else if (req.query.rule === "exact") {
-      where.push(
-        `intervals.age_top = $${count+1} AND intervals.age_bottom = $${count}`,
-      );
-      params.push(req.query.b_age);
-      params.push(req.query.t_age);
-      count = count + 2;
-    } else {
-      where.push(
-        `intervals.age_bottom > $${count+1} AND intervals.age_top < $${count}`,
-      );
-      params.push(req.query.b_age);
-      params.push(req.query.t_age);
-      count = count + 2;
+      params["b_age"] = req.query.b_age;
+      params["t_age"] = req.query.t_age;
     }
-  } else if (req.query.age) {
-    where.push(`intervals.age_top <= $${count} AND intervals.age_bottom >= ${req.query.age}`);
-    params.push(req.query.age);
-    count++;
+    else if (req.query.rule === "exact") {
+      where.push(
+        `intervals.age_top = :t_age AND intervals.age_bottom = :b_age`,
+      );
+      params["b_age"] = req.query.b_age;
+      params["t_age"] = req.query.t_age;
+    }
+    else {
+      where.push(
+        `intervals.age_bottom > :t_age AND intervals.age_top < :b_age}`,
+      );
+      params["b_age"] = req.query.b_age;
+      params["t_age"] = req.query.t_age;
+    }
+  }
+  else if (req.query.age) {
+    where.push(`intervals.age_top <= :age AND intervals.age_bottom >= :age`);
+    params["age"] = req.query.age;
   }
 
   if (where.length > 0) {
@@ -103,8 +98,6 @@ module.exports = function (req, res, next, cb) {
   if ("sample" in req.query) {
     sql += " LIMIT 5";
   }
-  console.log(sql)
-  console.log(params)
 
   larkin.queryPgMaria("macrostrat_two",
       sql,
@@ -115,7 +108,11 @@ module.exports = function (req, res, next, cb) {
       } else {
         return larkin.error(req, res, next, "Something went wrong");
       }
-    } /*else {
+    }
+    /*
+    TO DO: modify the json format to match prod's output
+
+    else {
       if (req.query.format !== "csv") {
         result.forEach(function (d) {
           //  d.timescale_id = larkin.jsonifyPipes(d.timescale_id, "integers");
@@ -130,7 +127,8 @@ module.exports = function (req, res, next, cb) {
             d.timescales = [];
           }
         });
-      }*/
+      }
+      */
 
       if (cb) {
         cb(null, result.rows);

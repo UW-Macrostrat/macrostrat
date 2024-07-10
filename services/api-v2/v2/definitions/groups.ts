@@ -5,29 +5,30 @@ module.exports = function (req, res, next, cb) {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
-//changes similar to structures.ts:
+  //changes similar to structures.ts:
   //change params from dict to array. add params.push to array
   //add schema to sql table in the from and join clauses
   //change sql where syntax to = ANY($1)
   //update larkin.querypgmaria function
 
-  let params = [];
-  let where = []
+  //changing params from array back to dict
+  let params = {};
+  let where = [];
 
   if (req.query.col_group_id) {
-    where.push("col_groups.id = ANY($1)")
-    params.push(larkin.parseMultipleIds(req.query.col_group_id))
-  } else if (req.query.project_id) {
-    where.push("cols.project_id = ANY($1)")
-    params.push(larkin.parseMultipleIds(req.query.project_id))
-  } else if (req.query.col_id) {
-    where.push("cols.id = ANY($1)")
-    params.push(larkin.parseMultipleIds(req.query.col_id))
+    where.push("col_groups.id = ANY(:col_group_id)")
+    params["col_group_id"] = larkin.parseMultipleIds(req.query.col_group_id);
+  }
+  else if (req.query.project_id) {
+    where.push("cols.project_id = ANY(:project_id)")
+    params["project_id"] = larkin.parseMultipleIds(req.query.project_id);
+  }
+  else if (req.query.col_id) {
+    where.push("cols.id = ANY(:col_id)")
+    params["col_id"] = larkin.parseMultipleIds(req.query.col_id);
   }
 
   where = where.length ? "WHERE " + where.join(" AND ") : "";
-
-  console.log(where)
 
   let sql = `SELECT col_groups.id AS col_group_id,
        col_group,
@@ -40,9 +41,6 @@ module.exports = function (req, res, next, cb) {
     LEFT JOIN macrostrat_temp.units_sections ON units_sections.col_id = cols.id
     ${where}
     GROUP BY col_groups.id, cols.project_id;`
-
-  console.log(req.query)
-  console.log(sql)
 
   if ("sample" in req.query) {
     sql += " LIMIT 5";

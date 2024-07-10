@@ -31,8 +31,8 @@ module.exports = function (req, res, next, cb) {
     sql += "WHERE environ = :environ";
     environ["environ"] = req.query.environ;
   } else if (req.query.environ_id) {
-    sql += "WHERE environs.id = $1";
-    environ.push(req.query.environ_id);
+    sql += "WHERE environs.id = :environ_id";
+    environ["environ_id"]= req.query.environ_id;
   }
 
   sql += "\nGROUP BY environs.id\n";
@@ -40,7 +40,7 @@ module.exports = function (req, res, next, cb) {
   if ("sample" in req.query) {
     sql += " LIMIT 5";
   }
-  larkin.queryPgMariaYesql("macrostrat_two", sql, environ, function (error, data) {
+  larkin.queryPgMaria("macrostrat_two", sql, environ, function (error, data) {
     if (error) {
       if (cb) {
         cb(error);

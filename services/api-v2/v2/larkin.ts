@@ -69,48 +69,7 @@ const { Client, Pool } = require("pg");
 
   //added new method to query from Maria data in the new PG database after migration
   larkin.queryPgMaria = function (db, sql, params, callback) {
-    const nameMapping = credentials.postgresDatabases ?? {};
-    const dbName = nameMapping[db] ?? db;
-
-    let { connectionString, ...otherConnectionDetails } = credentials.pgMaria;
-
-    if (dbName == "geomacro") {
-      console.warn(
-        "In Macrostrat v2, 'geomacro' is merged with 'burwell' into the 'macrostrat' database.",
-      );
-    }
-
-    if (dbName == "elevation") {
-      /** Special case for elevation database (temporary) */
-      connectionString = credentials.elevationDatabase;
-    }
-
-    const pool = new Pool({
-      connectionString,
-      ...otherConnectionDetails,
-    });
-
-    pool.connect(function (err, client, done) {
-      if (err) {
-        larkin.log("error", "error connecting - " + err);
-        callback(err);
-      } else {
-        var query = client.query(sql, params, function (err, result) {
-          done();
-          if (err) {
-            larkin.log("error", err);
-            callback(err);
-          } else {
-            callback(null, result);
-          }
-        });
-      }
-    });
-  };
-
-  //Adding new function to test out yesql lib for named parameters syntax
-
-  larkin.queryPgMariaYesql = function (db, sql, params, callback) {
+    //add console.logs for debug mode in the future
     console.log(sql)
     console.log(params)
     const nameMapping = credentials.postgresDatabases ?? {};
@@ -123,6 +82,7 @@ const { Client, Pool } = require("pg");
         "In Macrostrat v2, 'geomacro' is merged with 'burwell' into the 'macrostrat' database.",
       );
     }
+
     if (dbName == "elevation") {
       /** Special case for elevation database (temporary) */
       connectionString = credentials.elevationDatabase;
@@ -138,6 +98,8 @@ const { Client, Pool } = require("pg");
         larkin.log("error", "error connecting - " + err);
         callback(err);
       } else {
+        //named uses yesql to modify the params dict and sql named parameters into an array before querying PG.
+        //client.query can only accept numerical indices in sql syntax and an array for parameter values.
         const preparedQuery = named(sql)(params);
         var query = client.query(preparedQuery.text, preparedQuery.values, function (err, result) {
           done();
