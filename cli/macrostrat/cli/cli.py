@@ -24,6 +24,7 @@ __here__ = Path(__file__).parent
 fixtures_dir = __here__ / "fixtures"
 
 install(show_locals=False)
+# Activate the virtual environment
 
 
 app.subsystems.add(db_subsystem)
@@ -166,8 +167,12 @@ def _run(
                 print(f.name)
         return
 
-    cmd = bindir / command
-    run(str(cmd), *ctx.args)
+    command_exists = (bindir / command).exists()
+    if command_exists:
+        cmd = bindir / command
+        run(str(cmd), *ctx.args)
+    else:
+        run(command, *ctx.args)
 
 
 # Add subsystems if they are available.
@@ -266,6 +271,15 @@ if mapboard_url := getattr(settings, "mapboard_database", None):
 app.finish_loading_subsystems()
 
 
+from .subsystems.maps import cli as maps_cli
+
+main.add_typer(
+    maps_cli,
+    name="topo",
+    rich_help_panel="Subsystems",
+    short_help="Manage the Macrostrat maps topology",
+)
+
 # Commands to manage this command-line interface
 self_app = typer.Typer()
 
@@ -283,6 +297,7 @@ main.add_typer(
     rich_help_panel="Subsystems",
     short_help="Manage the Macrostrat CLI itself",
 )
+
 
 app.subsystems.run_hook("add-commands", main)
 
