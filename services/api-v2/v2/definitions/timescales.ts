@@ -6,13 +6,23 @@ module.exports = function (req, res, next, cb) {
     return larkin.info(req, res, next);
   }
   var sql =
-    "SELECT timescales.id AS timescale_id, timescale, count(distinct intervals.id) AS n_intervals, MAX( age_bottom ) AS max_age, MIN( age_top ) AS min_age, ref_id FROM timescales JOIN timescales_intervals ti ON ti.timescale_id = timescales.id JOIN intervals ON interval_id = intervals.id GROUP BY timescales.id ORDER BY  timescales.id ASC ";
+    `SELECT timescales.id AS timescale_id, 
+       timescale, 
+       count(distinct intervals.id)::integer AS n_intervals, 
+       MAX( age_bottom )::float AS max_age, 
+       MIN( age_top )::float AS min_age, 
+       ref_id 
+    FROM macrostrat_temp.timescales 
+    JOIN macrostrat_temp.timescales_intervals ti ON ti.timescale_id = timescales.id 
+    JOIN macrostrat_temp.intervals ON interval_id = intervals.id 
+    GROUP BY timescales.id 
+    ORDER BY  timescales.id ASC `;
 
   if ("sample" in req.query) {
     sql += " LIMIT 5";
   }
 
-  larkin.query(sql, [], function (error, data) {
+  larkin.queryPgMaria("macrostrat_two", sql, [], function (error, data) {
     if (error) {
       if (cb) {
         return cb(error);
@@ -22,7 +32,7 @@ module.exports = function (req, res, next, cb) {
     }
 
     if (cb) {
-      cb(null, data);
+      cb(null, data.rows);
     } else {
       larkin.sendData(
         req,
@@ -35,7 +45,7 @@ module.exports = function (req, res, next, cb) {
           bare: api.acceptedFormats.bare[req.query.format] ? true : false,
         },
         {
-          data: data,
+          data: data.rows,
         },
       );
     }
