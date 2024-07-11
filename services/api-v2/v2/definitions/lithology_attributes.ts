@@ -7,7 +7,14 @@ module.exports = function (req, res, next, cb) {
   }
 
   var sql =
-      "SELECT lith_atts.id AS lith_att_id, lith_att AS name, att_type AS type, COUNT(DISTINCT unit_liths.unit_id) AS t_units FROM lith_atts LEFT JOIN unit_liths_atts ON unit_liths_atts.lith_att_id = lith_atts.id LEFT JOIN unit_liths ON unit_liths_atts.unit_lith_id = unit_liths.id ",
+      `SELECT lith_atts.id AS lith_att_id, 
+      lith_att AS name, 
+      att_type AS type, 
+      COUNT(DISTINCT unit_liths.unit_id) AS t_units 
+      FROM macrostrat_temp.lith_atts 
+      LEFT JOIN macrostrat_temp.unit_liths_atts ON unit_liths_atts.lith_att_id = lith_atts.id 
+      LEFT JOIN macrostrat_temp.unit_liths ON unit_liths_atts.unit_lith_id = unit_liths.id 
+      `,
     params = {};
 
   if (req.query.att_type) {
@@ -17,7 +24,7 @@ module.exports = function (req, res, next, cb) {
     sql += " WHERE lith_att = :lith_att";
     params["lith_att"] = req.query.lith_att;
   } else if (req.query.lith_att_id) {
-    sql += " WHERE lith_atts.id IN (:lith_att_id)";
+    sql += " WHERE lith_atts.id = ANY(:lith_att_id)";
     params["lith_att_id"] = larkin.parseMultipleIds(req.query.lith_att_id);
   }
 
@@ -27,7 +34,8 @@ module.exports = function (req, res, next, cb) {
     sql += " LIMIT 5";
   }
 
-  larkin.query(sql, params, function (error, data) {
+  larkin.queryPgMaria("macrostrat_two", sql, params, function (error, data) {
+    /*TODO Update t_units data type from str to bigint*/
     if (error) {
       if (cb) {
         cb(error);
@@ -36,7 +44,7 @@ module.exports = function (req, res, next, cb) {
       }
     } else {
       if (cb) {
-        cb(null, data);
+        cb(null, data.rows);
       } else {
         larkin.sendData(
           req,
@@ -49,7 +57,7 @@ module.exports = function (req, res, next, cb) {
             bare: api.acceptedFormats.bare[req.query.format] ? true : false,
           },
           {
-            data: data,
+            data: data.rows,
           },
         );
       }
