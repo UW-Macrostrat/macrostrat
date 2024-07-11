@@ -5,6 +5,7 @@ from buildpg import render
 from fastapi import FastAPI, Request
 from macrostrat.utils import get_logger, setup_stderr_logs
 from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware import Middleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette_cramjam.middleware import CompressionMiddleware
@@ -27,7 +28,9 @@ if not environ.get("DATABASE_URL") and "POSTGRES_DB" in environ:
 
 log = get_logger(__name__)
 
-app = FastAPI(prefix="/")
+app = FastAPI(prefix="/", middleware=[
+    Middleware(CORSMiddleware, allow_origins=["*"])
+])
 
 
 app.state.timvt_function_catalog = FunctionRegistry()
@@ -119,7 +122,7 @@ from .filterable import router as filterable_router
 app.include_router(filterable_router, tags=["Filterable"], prefix="/v2")
 
 from .map_bounds import router as map_bounds_router
-app.include_router(map_bounds_router, tags=["Map Bounds"], prefix="/v2")
+app.include_router(map_bounds_router, tags=["Maps"], prefix="/maps")
 
 
 @app.get("/carto/rotation-models")
@@ -143,10 +146,3 @@ async def refresh(request: Request):
     """Refresh the table catalog."""
     await register_table_catalog(app, schemas=["sources"])
     return JSONResponse({"message": "Table catalog refreshed."})
-
-
-# Open CORS policy
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-)
