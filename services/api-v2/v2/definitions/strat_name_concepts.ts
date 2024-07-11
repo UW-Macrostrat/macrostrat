@@ -12,18 +12,18 @@ module.exports = function (req, res, next, cb) {
     SELECT
       snm.concept_id as concept_id,
       snm.name,
-      COALESCE(snm.geologic_age, '') geologic_age,
-      COALESCE(snm.interval_id, '') int_id,
-      COALESCE(snm.b_int, '') b_int_id,
-      COALESCE(snm.t_int, '') t_int_id,
+      COALESCE(snm.geologic_age::text, '') geologic_age,
+      COALESCE(snm.interval_id::text, '') int_id,
+      COALESCE(snm.b_int::text, '') b_int_id,
+      COALESCE(snm.t_int::text, '') t_int_id,
       COALESCE(snm.usage_notes, '') usage_notes,
       COALESCE(snm.other, '') other,
       COALESCE(snm.province, '') province,
-      GROUP_CONCAT(snm.ref_id SEPARATOR '|') AS refs,
+      STRING_AGG(snm.ref_id::text, '|') AS refs,
       COALESCE(snm.url, '') url,
       refs.author
-     FROM strat_names_meta snm
-     JOIN refs ON snm.ref_id = refs.id
+     FROM macrostrat_temp.strat_names_meta snm
+     JOIN macrostrat_temp.refs ON snm.ref_id = refs.id
   */
     }),
     params = {};
@@ -31,10 +31,10 @@ module.exports = function (req, res, next, cb) {
   if ("all" in req.query) {
     // do nothing
   } else if ("concept_name" in req.query) {
-    sql += " WHERE name IN (:concept_name)";
+    sql += " WHERE name = ANY(:concept_name)";
     params["concept_name"] = req.query.concept_name;
   } else if (req.query.concept_id || req.query.strat_name_concept_id) {
-    sql += " WHERE concept_id IN (:concept_id)";
+    sql += " WHERE concept_id = ANY(:concept_id)";
     if (req.query.concept_id) {
       params["concept_id"] = larkin.parseMultipleIds(req.query.concept_id);
     } else {
@@ -44,17 +44,17 @@ module.exports = function (req, res, next, cb) {
     }
   } else if (req.query.strat_name_id) {
     sql +=
-      " WHERE concept_id IN (SELECT concept_id FROM lookup_strat_names WHERE strat_name_id IN (:strat_name_ids))";
+      " WHERE concept_id IN (SELECT concept_id FROM macrostrat_temp.lookup_strat_names WHERE strat_name_id IN (:strat_name_ids))";
     params["strat_name_ids"] = larkin.parseMultipleIds(req.query.strat_name_id);
   }
 
-  sql += " GROUP BY concept_id ORDER BY concept_id";
+  sql += " GROUP BY concept_id, author ORDER BY concept_id";
 
   if ("sample" in req.query) {
     sql += " LIMIT 5";
   }
 
-  larkin.query(sql, params, function (error, result) {
+  larkin.queryPgMaria("macrostrat_two", sql, params, function (error, result) {
     if (error) {
       if (cb) {
         return cb(error);
@@ -62,13 +62,15 @@ module.exports = function (req, res, next, cb) {
         return larkin.error(req, res, next, error);
       }
     } else {
+
+      /*TODO: update data types and foreach function.
       result.forEach(function (d) {
         d.int_id = parseInt(d.int_id);
         d.refs = larkin.jsonifyPipes(d.refs, "integers");
-      });
+      });*/
 
       if (cb) {
-        cb(null, result);
+        cb(null, result.rows);
       } else {
         larkin.sendData(
           req,
@@ -82,7 +84,7 @@ module.exports = function (req, res, next, cb) {
             refs: "refs",
           },
           {
-            data: result,
+            data: result.rows,
           },
         );
       }
