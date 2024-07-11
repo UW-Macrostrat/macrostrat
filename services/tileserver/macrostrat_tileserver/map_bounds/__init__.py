@@ -12,7 +12,6 @@ __here__ = Path(__file__).parent
 @router.get("/rgeom/{z}/{x}/{y}")
 async def rgeom(
     request: Request,
-    compilation: Compilation,
     z: int,
     x: int,
     y: int,

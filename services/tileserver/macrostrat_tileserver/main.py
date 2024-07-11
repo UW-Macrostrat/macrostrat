@@ -29,6 +29,7 @@ log = get_logger(__name__)
 
 app = FastAPI(prefix="/")
 
+
 app.state.timvt_function_catalog = FunctionRegistry()
 app.state.function_catalog = FunctionRegistry()
 
