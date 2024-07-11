@@ -9,10 +9,9 @@ router = APIRouter()
 __here__ = Path(__file__).parent
 
 
-@router.get("/rgeom/{z}/{x}/{y}")
+@router.get("/bounds/{z}/{x}/{y}")
 async def rgeom(
     request: Request,
-    compilation: Compilation,
     z: int,
     x: int,
     y: int,
@@ -23,12 +22,11 @@ async def rgeom(
     async with pool.acquire() as con:
         data = await run_layer_query(
             con,
-            "rgeom",
+            "bounds",
             z=z,
             x=x,
             y=y,
         )
-    data = join_layers([units_, lines_])
     kwargs = {}
     kwargs.setdefault("media_type", MimeTypes.pbf.value)
     return Response(data, **kwargs)
@@ -41,8 +39,6 @@ async def run_layer_query(con, layer_name, **params):
     # Overcomes a shortcoming in buildpg that deems casting to an array as unsafe
     # https://github.com/samuelcolvin/buildpg/blob/e2a16abea5c7607b53c501dbae74a5765ba66e15/buildpg/components.py#L21
     q = q.replace("textarray", "text[]")
-
-    print(q,p)
 
     return await con.fetchval(q, *p)
 
