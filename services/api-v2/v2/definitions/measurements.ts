@@ -7,23 +7,31 @@ module.exports = function (req, res, next, cb) {
   }
 
   var sql =
-      "SELECT measurements.id AS measure_id, measurement AS name, measurement_type AS type, measurement_class AS class, COUNT(DISTINCT unit_measures.unit_id) AS t_units FROM measurements LEFT JOIN measures ON measures.measurement_id = measurements.id LEFT JOIN unit_measures ON unit_measures.measuremeta_id = measures.measuremeta_id",
+      `SELECT measurements.id AS measure_id,
+       measurement AS name, 
+       measurement_type AS type, 
+       measurement_class AS class, 
+       COUNT(DISTINCT unit_measures.unit_id)::integer AS t_units 
+FROM macrostrat_temp.measurements 
+    LEFT JOIN macrostrat_temp.measures ON measures.measurement_id = measurements.id 
+    LEFT JOIN macrostrat_temp.unit_measures ON unit_measures.measuremeta_id = measures.measuremeta_id
+    `,
     params = {};
 
   if (req.query.all) {
     // do nothing
   } else if (req.query.measurement_class) {
-    sql += " WHERE measurement_class = :meas";
-    params["meas"] = req.query.measurement_class;
+    sql += " WHERE measurement_class = :measurement_class";
+    params["measurement_class"] = req.query.measurement_class;
   } else if (req.query.measurement_type) {
-    sql += " WHERE measurement_type = :meas";
-    params["meas"] = req.query.measurement_type;
+    sql += " WHERE measurement_type = :measurement_type";
+    params["measurement_type"] = req.query.measurement_type;
   } else if (req.query.measurement) {
-    sql += " WHERE measurement = :meas";
-    params["meas"] = req.query.measurement;
+    sql += " WHERE measurement = :measurement";
+    params["measurement"] = req.query.measurement;
   } else if (req.query.measure_id) {
-    sql += " WHERE measurements.id IN (:meas) ";
-    params["meas"] = larkin.parseMultipleIds(req.query.measure_id);
+    sql += " WHERE measurements.id = ANY(:measure_id) ";
+    params["measure_id"] = larkin.parseMultipleIds(req.query.measure_id);
   }
 
   sql += " GROUP BY measurements.id";
@@ -32,7 +40,7 @@ module.exports = function (req, res, next, cb) {
     sql += " LIMIT 5";
   }
 
-  larkin.query(sql, params, function (error, data) {
+  larkin.queryPgMaria("macrostrat_two", sql, params, function (error, data) {
     if (error) {
       if (error) {
         return cb(error);
@@ -42,7 +50,7 @@ module.exports = function (req, res, next, cb) {
     }
 
     if (cb) {
-      cb(null, data);
+      cb(null, data.rows);
     } else {
       larkin.sendData(
         req,
@@ -55,7 +63,7 @@ module.exports = function (req, res, next, cb) {
           bare: api.acceptedFormats.bare[req.query.format] ? true : false,
         },
         {
-          data: data,
+          data: data.rows,
         },
       );
     }
