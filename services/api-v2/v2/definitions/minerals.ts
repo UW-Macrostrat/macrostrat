@@ -7,22 +7,33 @@ module.exports = function (req, res, next, cb) {
   }
 
   var sql =
-    "SELECT minerals.id AS mineral_id, mineral AS mineral, min_type as mineral_type, formula AS formula, formula_tags AS formula_tags, url AS url, hardness_min AS hardness_min, hardness_max AS hardness_max, crystal_form AS crystal_form, color AS mineral_color, lustre AS lustre FROM minerals";
+    `SELECT minerals.id AS mineral_id, 
+       mineral AS mineral, 
+       min_type as mineral_type, 
+       formula AS formula, 
+       formula_tags AS formula_tags, 
+       url AS url, 
+       hardness_min::float AS hardness_min, 
+       hardness_max::float AS hardness_max, 
+       crystal_form AS crystal_form, 
+       color AS mineral_color, 
+       lustre AS lustre 
+    FROM macrostrat_temp.minerals
+`;
 
   var params = {};
 
   if (req.query.mineral_id) {
-    sql += " WHERE minerals.id IN (:mineral_id)";
+    sql += " WHERE minerals.id = ANY(:mineral_id)";
     params["mineral_id"] = larkin.parseMultipleIds(req.query.mineral_id);
   } else if (req.query.mineral) {
-    sql += " WHERE mineral IN (:mineral)";
+    sql += " WHERE mineral = ANY(:mineral)";
     params["mineral"] = larkin.parseMultipleStrings(req.query.mineral);
   } else if (req.query.mineral_type) {
-    sql += " WHERE min_type IN (:mineral_type)";
-    params["mineral_type"] = larkin.parseMultipleStrings(
-      req.query.mineral_type,
-    );
+    sql += " WHERE min_type = ANY(:mineral_type)";
+    params["mineral_type"] = larkin.parseMultipleStrings(req.query.mineral_type);
   } else if (req.query.element) {
+    /*TODO ensure element param works with abbreviations*/
     var parsedElements = larkin
       .parseMultipleStrings(req.query.element)
       .join("|");
@@ -41,7 +52,7 @@ module.exports = function (req, res, next, cb) {
     sql += " LIMIT 5";
   }
 
-  larkin.query(sql, params, function (error, data) {
+  larkin.queryPgMaria("macrostrat_two", sql, params, function (error, data) {
     if (error) {
       if (cb) {
         cb(error);
@@ -51,7 +62,7 @@ module.exports = function (req, res, next, cb) {
     }
 
     if (cb) {
-      cb(null, data);
+      cb(null, data.rows);
     } else {
       larkin.sendData(
         req,
@@ -65,7 +76,7 @@ module.exports = function (req, res, next, cb) {
           compact: true,
         },
         {
-          data: data,
+          data: data.rows,
         },
       );
     }
