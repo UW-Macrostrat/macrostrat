@@ -10,7 +10,7 @@ module.exports = function (req, res, next, cb) {
     params = [];
 
   if (req.query.plate_id) {
-    sql += " WHERE plateid = ANY($1)";
+    sql += " WHERE plateid = ANY(:plate_id)";
     params.push(larkin.parseMultipleIds(req.query.plate_id));
   }
 
