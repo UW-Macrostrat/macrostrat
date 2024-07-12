@@ -52,10 +52,10 @@ module.exports = function (req, res, next, cb) {
         req.query.strat_name_id,
       );
     } else if (req.query.strat_name_like) {
-      where.push("lower(strat_name) LIKE lower(:strat_name)");
+      where.push("lower(strat_name) ILIKE lower(:strat_name)");
       params["strat_name"] = req.query.strat_name_like + "%";
     } else if (req.query.strat_name) {
-      where.push("lower(strat_name) LIKE lower(:strat_name)");
+      where.push("lower(strat_name) ILIKE lower(:strat_name)");
       params["strat_name"] = req.query.strat_name;
     } else if (req.query.concept_id) {
       where.push("concept_id = ANY(:concept_id)");

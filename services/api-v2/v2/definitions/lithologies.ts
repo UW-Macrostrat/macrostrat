@@ -15,7 +15,7 @@ module.exports = function (req, res, next, cb) {
       lith_class AS "class",
       lith_color AS color,
       lith_fill AS fill,
-      COUNT(distinct units_sections.unit_id) AS t_units
+      COUNT(distinct units_sections.unit_id)::integer AS t_units
     FROM macrostrat_temp.liths
     LEFT JOIN macrostrat_temp.unit_liths ON unit_liths.lith_id = liths.id
     LEFT JOIN macrostrat_temp.units_sections ON units_sections.unit_id = unit_liths.unit_id
@@ -70,7 +70,6 @@ module.exports = function (req, res, next, cb) {
     if (cb) {
       cb(null, data.rows);
     } else {
-      /*TODO Fix t_units data type from str to bigint to match prod json's*/
       larkin.sendData(
         req,
         res,
