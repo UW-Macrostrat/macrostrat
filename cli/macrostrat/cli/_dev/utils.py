@@ -1,5 +1,6 @@
 import asyncio
 from urllib.parse import quote
+import sys
 
 from aiofiles.threadpool.binary import AsyncBufferedIOBase
 from macrostrat.utils import get_logger
@@ -7,6 +8,7 @@ from rich.console import Console
 from sqlalchemy.engine import Engine
 from sqlalchemy.engine.url import URL
 from sqlalchemy_utils import create_database, database_exists
+
 
 console = Console()
 
@@ -70,36 +72,40 @@ def _create_command(
 async def print_stream_progress(
     in_stream: asyncio.StreamReader,
     out_stream: asyncio.StreamWriter | AsyncBufferedIOBase,
+    *,
+    chunk_size: int = 64 * 1024,  # 64 KB
+    prefix: str = "Dumped",
 ):
     """This should be unified with print_stream_progress, but there seem to be
     slight API differences between aiofiles and asyncio.StreamWriter APIs.?"""
     megabytes_written = 0
-    i = 0
-    async for line in in_stream:
-        megabytes_written += len(line) / 1_000_000
+    while True:
+        chunk = await in_stream.read(chunk_size)
+        if not chunk:
+            break
+        megabytes_written += len(chunk) / 1_000_000
         if isinstance(out_stream, AsyncBufferedIOBase):
-            await out_stream.write(line)
+            await out_stream.write(chunk)
             await out_stream.flush()
         else:
-            out_stream.write(line)
+            out_stream.write(chunk)
             await out_stream.drain()
-        i += 1
-        if i == 1000:
-            i = 0
-            _print_progress(megabytes_written, end="\r")
-
-    out_stream.close()
+        _print_progress(megabytes_written, end="\r")
+    if hasattr(out_stream, "close"):
+        out_stream.close()
     _print_progress(megabytes_written)
 
 
 def _print_progress(megabytes: float, **kwargs):
-    progress = f"Dumped {megabytes:.1f} MB"
+    prefix = kwargs.get("prefix", "Dumped")
+    progress = f"{prefix} {megabytes:.1f} MB"
+    kwargs.setdefault("file", sys.stderr)
     print(progress, **kwargs)
 
 
 async def print_stdout(stream: asyncio.StreamReader):
     async for line in stream:
-        console.print(line.decode("utf-8"), style="dim")
+        console.print(line.decode("utf-8"), style="dim", end="")
 
 
 def raw_database_url(url: URL):
