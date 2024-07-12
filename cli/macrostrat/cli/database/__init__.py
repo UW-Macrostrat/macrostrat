@@ -208,7 +208,10 @@ def psql(ctx: typer.Context, database: str = None):
     context_settings={"allow_extra_args": True, "ignore_unknown_options": True}
 )
 def dump(
-    ctx: typer.Context, dumpfile: Path, database: str = None, schema: bool = False
+    ctx: typer.Context,
+    dumpfile: Path,
+    database: str = None,
+    schema: bool = False,
 ):
     """Dump the database to a file"""
     from .._dev.dump_database import pg_dump
