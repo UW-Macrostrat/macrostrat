@@ -332,3 +332,38 @@ CREATE OR REPLACE FUNCTION tile_layers.tile_geom(
   /* It is difficult to reduce tile precision quickly, so we just make a smaller vector tile and scale it up */
   SELECT ST_Scale(ST_Simplify(ST_AsMVTGeom(ST_Transform(geom, 3857), bbox, 2048, 8, true), 1.5), 2, 2);
 $$ LANGUAGE sql IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION tile_layers.geographic_envelope(
+  _x integer,
+  _y integer,
+  _z integer,
+  margin double precision = 0
+) RETURNS geometry AS $$
+DECLARE
+  _envelope geometry;
+  _width double precision;
+BEGIN
+  IF margin <= 0 OR (_x > 0 AND _x < (2^_z-1)) THEN
+    RETURN ST_Transform(ST_TileEnvelope(_z, _x, _y, margin => margin), 4326);
+  END IF;
+
+  -- Special case for tiles near the antimeridian (create longitudes spanning the antimeridian)
+
+  _envelope := tile_utils.envelope(_x, _y, _z);
+  _width := ST_XMax(_envelope) - ST_XMin(_envelope);
+  -- Expand height before projection
+  _envelope := ST_Expand(_envelope, 0, _width * margin);
+  -- Project envelope to geographic coordinates
+  _envelope := ST_Transform(_envelope, 4326);
+  -- Get width of projected envelope
+  _width := ST_XMax(_envelope) - ST_XMin(_envelope);
+
+  RETURN ST_MakeEnvelope(
+    ST_XMin(_envelope)-_width*margin,
+    ST_YMin(_envelope),
+    ST_XMax(_envelope)+_width*margin,
+    ST_YMax(_envelope),
+    4326
+  );
+END;
+$$ LANGUAGE plpgsql VOLATILE;
