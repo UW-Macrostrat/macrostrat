@@ -1,32 +1,22 @@
 WITH tile AS (
   SELECT ST_TileEnvelope(:z, :x, :y) AS envelope,
-         ST_Transform(ST_TileEnvelope(:z, :x, :y, margin => 0.01), 4326) AS envelope_4326
+         tile_layers.geographic_envelope(:x, :y, :z, 0.01) AS envelope_4326
+
 ), sources AS (
   SELECT
     source_id,
     name,
     slug,
     scale,
-    rgeom AS geom
-  FROM maps.sources
+    tile_layers.tile_geom(
+     ST_Intersection(rgeom, envelope_4326),
+      envelope
+    ) AS geom
+  FROM maps.sources, tile
   WHERE
     rgeom is NOT NULL
     AND status_code = 'active'
-), features AS (
-  SELECT
-    source_id,
-    name,
-    slug,
-    scale,
-    ST_Intersection(geom, envelope_4326) AS geom
-  FROM sources, tile
-  WHERE ST_Intersects(geom, ST_Transform(envelope, 4326))
+    AND ST_Intersects(rgeom, envelope_4326)
 )
-SELECT
-  source_id,
-  name,
-  slug,
-  scale,
-  tile_layers.tile_geom(z.geom, envelope) AS geom
-FROM features z, tile
+SELECT * FROM sources z
 WHERE z.geom IS NOT NULL;

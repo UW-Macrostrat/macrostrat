@@ -10,6 +10,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette_cramjam.middleware import CompressionMiddleware
 from timvt.db import close_db_connection, connect_to_db, register_table_catalog
+from timvt.settings import PostgresSettings
 from timvt.layer import FunctionRegistry
 from titiler.core.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from titiler.core.factory import TilerFactory
@@ -20,6 +21,10 @@ from .image_tiles import MapnikLayerFactory, prepare_image_tile_subsystem
 from .utils import DecimalJSONResponse
 from .vendor.repeat_every import repeat_every
 from .paleogeography import PaleoGeographyLayer
+from macrostrat.database import Database
+from pathlib import Path
+from time import time
+
 
 # Wire up legacy postgres database
 if not environ.get("DATABASE_URL") and "POSTGRES_DB" in environ:
@@ -28,14 +33,18 @@ if not environ.get("DATABASE_URL") and "POSTGRES_DB" in environ:
 
 log = get_logger(__name__)
 
+__here__ = Path(__file__).parent
+
 app = FastAPI(prefix="/", middleware=[
     Middleware(CORSMiddleware, allow_origins=["*"])
 ])
 
 
+db_settings = PostgresSettings()
+
+
 app.state.timvt_function_catalog = FunctionRegistry()
 app.state.function_catalog = FunctionRegistry()
-
 
 # Register Start/Stop application event handler to setup/stop the database connection
 @app.on_event("startup")
@@ -43,7 +52,10 @@ async def startup_event():
     """Application startup: register the database connection and create table list."""
     # Don't rely on poort TimVT handling of database connections
     setup_stderr_logs("macrostrat_tileserver", "timvt")
-    await connect_to_db(app)
+    await connect_to_db(app, db_settings)
+    # Apply fixtures
+    apply_fixtures(db_settings.database_url)
+
     await register_table_catalog(app, schemas=["sources"])
     prepare_image_tile_subsystem()
 
@@ -62,6 +74,14 @@ async def truncate_tile_cache_if_needed() -> None:
         )
 
         await conn.execute(q, *p)
+
+def apply_fixtures(url: str):
+    """Apply fixtures."""
+    start = time()
+    db = Database(url)
+    db.run_fixtures(__here__/"fixtures")
+    end = time()
+    log.info(f"Fixtures applied in {end-start:.2f} seconds.")
 
 
 @app.on_event("shutdown")
