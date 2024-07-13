@@ -333,6 +333,11 @@ CREATE OR REPLACE FUNCTION tile_layers.tile_geom(
   SELECT ST_Scale(ST_Simplify(ST_AsMVTGeom(ST_Transform(geom, 3857), bbox, 2048, 8, true), 1.5), 2, 2);
 $$ LANGUAGE sql IMMUTABLE;
 
+/**
+  Create an envelope in geographic coordinates that extends across the antimeridian at the edges
+  of the tile matrix. This is useful to get the geographic bounds for geometries in order to
+  filter and clip them to tile boundaries efficiently using spatial indices.
+ */
 CREATE OR REPLACE FUNCTION tile_layers.geographic_envelope(
   _x integer,
   _y integer,
