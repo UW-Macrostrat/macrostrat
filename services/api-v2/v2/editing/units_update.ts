@@ -2,13 +2,13 @@ var async = require("async"),
   larkin = require("../larkin");
 
 module.exports = function (req, res, next) {
+    //TODO need to rewrite passcode into an ENV file.
   if (req.body.passcode && req.body.passcode === "phylum" && req.body.units) {
-    // do work, son
     async.each(
       req.body.units,
       function (each, callback) {
-        larkin.query(
-          "UPDATE units SET position_bottom = ? WHERE id = ?",
+        larkin.queryPgMaria("macrostrat_two",
+          "UPDATE macrostrat_temp.units SET position_bottom = :position_bottom WHERE id = :units",
           [each.position_bottom, each.unit],
           function (error, result) {
             if (error) {
