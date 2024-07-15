@@ -1,10 +1,11 @@
 var larkin = require("../larkin");
-
+//not using require(api). section.ts does not use this file for sections endpoint execution. It uses /v2/sections.ts Pointed to PG Maria db anyways.
+//can probably remove this file.
 module.exports = function (req, res, next) {
   if (!req.query.section_id) {
     res.json("Need a section_id");
   } else {
-    larkin.query(
+    larkin.queryPgMaria("macrostrat_two",
       `SELECT ub.id, 
        u1.strat_name AS below, 
        u2.strat_name AS above, 
