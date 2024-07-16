@@ -10,7 +10,7 @@ import time
 
 from macrostrat.core import MacrostratSubsystem
 from mapboard.topology_manager import create_tables, drop_tables
-from mapboard.topology_manager.commands.update import _update
+from mapboard.topology_manager.commands.update import _update, _clean_topology
 from mapboard.topology_manager.database import _get_instance_params
 from ...database import _engine_for_db_name
 from ...database._legacy import get_db
@@ -31,7 +31,7 @@ config = dict(
     data_schema="map_bounds",
     topo_schema="map_bounds_topology",
     srid=4326,
-    tolerance=0.01,
+    tolerance=0.0001,
 )
 
 
@@ -67,19 +67,31 @@ def update():
     db.instance_params = _get_instance_params(**config)
     # _update(db, bulk=True)
 
-    all_bounds = db.run_query(
-        "SELECT source_id FROM map_bounds.linework WHERE topo IS null ORDER BY source_id"
+    update_map_layer(db, 2, "Grid")
+    update_map_layer(db, 1, "Map boundaries")
+
+    grid_lines = db.run_query(
+        "SELECT id FROM map_bounds.linework WHERE topo IS null AND map_layer ="
     ).all()
+
+
+def update_map_layer(db, id: int, name: str):
+
+    all_rows = db.run_query(
+        "SELECT id FROM map_bounds.linework WHERE topo IS null AND map_layer = :id ORDER BY id",
+        dict(id=id),
+    ).all()
+    print("Updating layer", name)
     db.run_sql("SET session_replication_role = replica;")
-    for row in all_bounds:
-        print("Source", row.source_id)
+    for i, row in enumerate(all_rows):
+        print("Row", row.id)
         # Record start time
         start_time = time.time()
 
         # Your code block to time
         db.run_sql(
             __dir__ / "procedures" / "update-topology-row.sql",
-            dict(source_id=row.source_id),
+            dict(id=row.id),
         )
         db.session.commit()
 
@@ -91,6 +103,9 @@ def update():
 
         # Print or log the execution time
         print(f"...{execution_time:.3f} seconds")
+
+        if i % 10 == 0:
+            _clean_topology(db)
 
 
 @cli.command("test")
