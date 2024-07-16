@@ -18,7 +18,7 @@ module.exports = function (req, res, next) {
   }
 
   var where = [];
-  var params = [];
+  var params = {};
   var limit = "";
   var geo =
     req.query.format && api.acceptedFormats.geo[req.query.format]
@@ -26,12 +26,12 @@ module.exports = function (req, res, next) {
       : false;
 
   if (req.query.col_id) {
-    where.push("units_sections.col_id IN (:col_id)");
+    where.push("units_sections.col_id = ANY(:col_id)");
     params["col_id"] = larkin.parseMultipleIds(req.query.col_id);
   }
 
   if (req.query.section_id) {
-    where.push("units_sections.section_id IN (:section_id)");
+    where.push("units_sections.section_id = ANY(:section_id)");
     params["section_id"] = larkin.parseMultipleIds(req.query.section_id);
   }
   if (where.length) {
@@ -51,10 +51,10 @@ module.exports = function (req, res, next) {
     units_sections.section_id,
     t1 as interval_id,
     interval_name,
-    age_bottom,
-    age_top,
-    t1_prop AS rel_position,
-    t1_age AS model_age,
+    age_bottom::float,
+    age_top::float,
+    t1_prop::float AS rel_position,
+    t1_age::float AS model_age,
     boundary_status,
     boundary_type,
     boundary_position,
@@ -64,20 +64,21 @@ module.exports = function (req, res, next) {
 
   var sql = `SELECT
     ${select}
-    FROM unit_boundaries
-    JOIN units_sections USING (section_id)
-    JOIN intervals ON t1=intervals.id
+    FROM macrostrat_temp.unit_boundaries
+    JOIN macrostrat_temp.units_sections USING (section_id)
+    JOIN macrostrat_temp.intervals ON t1=intervals.id
     ${where}
-    GROUP BY unit_boundaries.id
+    GROUP BY unit_boundaries.id, units_sections.col_id, units_sections.section_id,
+         interval_name, age_bottom, age_top
+    ORDER BY unit_boundaries.id ASC
     ${limit}
   `;
-  //console.log(sql)
 
   var format = api.acceptedFormats.standard[req.query.format]
     ? req.query.format
     : "json";
 
-  larkin.query(sql, params, function (error, response) {
+  larkin.queryPgMaria("macrostrat_two", sql, params, function (error, response) {
     if (error) {
       larkin.error(req, res, next, error);
     } else {
@@ -107,7 +108,7 @@ module.exports = function (req, res, next) {
                   refs: "refs",
                 },
                 {
-                  data: response,
+                  data: response.rows,
                 },
               );
             }
@@ -126,7 +127,7 @@ module.exports = function (req, res, next) {
             refs: "ref_id",
           },
           {
-            data: response,
+            data: response.rows,
           },
         );
       }
