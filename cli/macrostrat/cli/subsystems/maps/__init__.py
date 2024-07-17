@@ -1,20 +1,19 @@
+import time
 from os import environ
 from pathlib import Path
 from subprocess import run
 
-from macrostrat.database.transfer.utils import raw_database_url
-from macrostrat.utils import working_directory
+from mapboard.topology_manager import create_tables, drop_tables
+from mapboard.topology_manager.commands.update import _clean_topology, _update
+from mapboard.topology_manager.database import _get_instance_params
 from typer import Typer
 
-import time
-
 from macrostrat.core import MacrostratSubsystem
-from mapboard.topology_manager import create_tables, drop_tables
-from mapboard.topology_manager.commands.update import _update, _clean_topology
-from mapboard.topology_manager.database import _get_instance_params
+from macrostrat.database.transfer.utils import raw_database_url
+from macrostrat.utils import working_directory
+
 from ...database import _engine_for_db_name
 from ...database._legacy import get_db
-
 
 __dir__ = Path(__file__).parent
 
