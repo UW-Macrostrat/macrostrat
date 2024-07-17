@@ -38,7 +38,7 @@ ON CONFLICT DO NOTHING;
 
 
 INSERT INTO map_bounds.linework (geometry, source_id, type, map_layer)
-SELECT ST_MakeValid(ST_SnapToGrid(ST_Boundary(rgeom), 0.00001)), source_id, 'map_bounds', 1
+SELECT ST_MakeValid(ST_SnapToGrid((ST_Dump(ST_Boundary(rgeom))).geom, 0.0001)), source_id, 'map_bounds', 1
   FROM maps.sources
   WHERE rgeom IS NOT NULL
     AND status_code = 'active';
