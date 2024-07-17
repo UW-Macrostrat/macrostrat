@@ -1,2 +1,4 @@
 .venv
 __pycache__
+/MariaDB Migration to PostgreSQL/.idea
+/MariaDB Migration to PostgreSQL/Constants.py
