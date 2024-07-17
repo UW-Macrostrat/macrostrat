@@ -13,6 +13,7 @@
       <sourceFolder url="file://$MODULE_DIR$/core" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/deps/topology-manager" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/map-integration" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/raster-cli" isTestSource="false" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />

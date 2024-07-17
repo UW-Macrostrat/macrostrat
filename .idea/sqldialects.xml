@@ -4,6 +4,7 @@
     <file url="file://$PROJECT_DIR$/cli/macrostrat/cli/ad-hoc-migrations/rotation-cache-cleanup.sql" dialect="PostgreSQL" />
     <file url="file://$PROJECT_DIR$/cli/macrostrat/cli/fixtures/09-ingest-process.sql" dialect="PostgreSQL" />
     <file url="file://$PROJECT_DIR$/cli/macrostrat/cli/subsystems/paleogeography/corelle/fixtures/01-corelle-macrostrat.sql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/integrations/sed-geochemistry-project/samples.sql" dialect="PostgreSQL" />
     <file url="PROJECT" dialect="PostgreSQL" />
   </component>
 </project>
