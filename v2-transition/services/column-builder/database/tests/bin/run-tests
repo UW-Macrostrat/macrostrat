@@ -1,0 +1,19 @@
+#! /usr/bin/env sh
+
+# A script to run tests, restarts postgrest container if running to connect to the
+# testing db!
+# TODO: Take pystest args.. 
+
+result=$( docker ps -q -f name=postgrest )
+
+if [[ -n "$result" ]]; then
+  echo "Rebuilding Postgrest Docker container for testing!"
+  POSTGRES_DB=col_test docker-compose up -d --build postgrest
+else
+  echo "Starting Docker"
+  POSTGRES_DB=col_test docker-compose up -d
+fi
+
+pytest --pdb
+
+docker-compose down
