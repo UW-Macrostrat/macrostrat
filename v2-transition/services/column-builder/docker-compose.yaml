@@ -14,7 +14,7 @@ services:
     depends_on:
       - db
   db:
-    build: ./database
+    build: ./data-fixes
     profiles:
       - production
       - dev
