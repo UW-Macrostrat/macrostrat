@@ -49,3 +49,31 @@ New views have been added and updated for postgrest access.
 easier way to construct the parent-child relationship for strat-name hierarchy. This is similar to how things were done in sparrow for sub-samples.
 
 Strides have been made to design and implement database access control. The main drivers have been the auth tutorial on [postgrest](https://postgrest.org/en/stable/auth.html). The main id is to keep everythin db centered by creating base DB roles that have certain table level priveleges. And row-level priveleges can be tracked by assigning project or other data model ids to a specific web-user (stored in auth.users) who is mapped to a db role. Some introductory tests have been created but it is still very much a WORK IN PROGRESS.
+
+# 04.20.22: Major Refactors
+
+The backend python api has been removed as it is not necesary anymore. Frontend changes include, better page routing using dynamic slugs, database persistence working for all pages, except strat_name, and Increased loading speed using SSR. There are also several new helper functions for fetching data from the Postgrest API. I've moved as much data fetching as possible into the `getServerSideProps` function that enables SSR.
+
+The `column_data` database is available on the `gunnison` server and is at this moment up-to-date with the current needs for this application.
+
+A new script available through `make create-fixtures` allows for quickly updating the api-views and reloading the `postgrest-api` schema.
+
+The frontend is no longer availble for development in Docker, there is a bug that I believe is related to SSR.
+
+SQL for api-views are front and center now at the root of the application.
+
+# 05.04.22: UI-Components submodule
+
+I have made the @macrostrat/ui-components monorepo a git submodule of this library it use and iterate on some of the new components being created in `packages/form-components` and `packages/data-components`.
+
+Configuring it was not incredibly straightforward. I had to set alias in both `tsconfig,json` and as well as extend the `Webpack` config in the `next.config.js`.
+
+
+# 05.17.2022
+
+Major frontend updates:
+
+- "all column" view showing every unit in column with section dividers.
+- dragging can rearrange units and even move them between sections
+- add unit above, below, and edit current unit functionality added to table.
+- All functionality is wrapped in reducers with actions, none has database persistence yet.

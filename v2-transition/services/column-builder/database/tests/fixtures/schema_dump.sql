@@ -2034,10 +2034,10 @@ ALTER SEQUENCE macrostrat.units_sections_new_id_seq1 OWNED BY macrostrat.units_s
 
 
 --
--- Name: col_form; Type: VIEW; Schema: macrostrat_api; Owner: postgres
+-- Name: col_ref_expanded; Type: VIEW; Schema: macrostrat_api; Owner: postgres
 --
 
-CREATE VIEW macrostrat_api.col_form AS
+CREATE VIEW macrostrat_api.col_ref_expanded AS
  SELECT c.id AS col_id,
     c.col_name,
     c.col AS col_number,
@@ -2048,13 +2048,13 @@ CREATE VIEW macrostrat_api.col_form AS
      LEFT JOIN macrostrat.refs r ON ((cr.ref_id = r.id)));
 
 
-ALTER TABLE macrostrat_api.col_form OWNER TO postgres;
+ALTER TABLE macrostrat_api.col_ref_expanded OWNER TO postgres;
 
 --
--- Name: col_group_view; Type: VIEW; Schema: macrostrat_api; Owner: postgres
+-- Name: col_group_with_cols; Type: VIEW; Schema: macrostrat_api; Owner: postgres
 --
 
-CREATE VIEW macrostrat_api.col_group_view AS
+CREATE VIEW macrostrat_api.col_group_with_cols AS
 SELECT
     NULL::integer AS id,
     NULL::character varying(100) AS col_group,
@@ -2063,7 +2063,7 @@ SELECT
     NULL::json AS cols;
 
 
-ALTER TABLE macrostrat_api.col_group_view OWNER TO postgres;
+ALTER TABLE macrostrat_api.col_group_with_cols OWNER TO postgres;
 
 --
 -- Name: col_groups; Type: VIEW; Schema: macrostrat_api; Owner: api_views_owner
@@ -2427,10 +2427,10 @@ CREATE VIEW macrostrat_api.units AS
 ALTER TABLE macrostrat_api.units OWNER TO api_views_owner;
 
 --
--- Name: units_view; Type: VIEW; Schema: macrostrat_api; Owner: postgres
+-- Name: unit_strat_name_expanded; Type: VIEW; Schema: macrostrat_api; Owner: postgres
 --
 
-CREATE VIEW macrostrat_api.units_view AS
+CREATE VIEW macrostrat_api.unit_strat_name_expanded AS
  SELECT u.id,
     u.strat_name AS unit_strat_name,
     to_jsonb(s.*) AS strat_name,
@@ -2455,7 +2455,7 @@ CREATE VIEW macrostrat_api.units_view AS
      LEFT JOIN macrostrat.strat_names s ON ((u.strat_name_id = s.id)));
 
 
-ALTER TABLE macrostrat_api.units_view OWNER TO postgres;
+ALTER TABLE macrostrat_api.unit_strat_name_expanded OWNER TO postgres;
 
 --
 -- Name: col_areas id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
@@ -3614,10 +3614,10 @@ CREATE INDEX units_sections_new_unit_id_idx1 ON macrostrat.units_sections USING 
 
 
 --
--- Name: col_group_view _RETURN; Type: RULE; Schema: macrostrat_api; Owner: postgres
+-- Name: col_group_with_cols _RETURN; Type: RULE; Schema: macrostrat_api; Owner: postgres
 --
 
-CREATE OR REPLACE VIEW macrostrat_api.col_group_view AS
+CREATE OR REPLACE VIEW macrostrat_api.col_group_with_cols AS
  SELECT cg.id,
     cg.col_group,
     cg.col_group_long,

@@ -29,6 +29,10 @@ ALTER TABLE macrostrat.col_refs
 	ADD FOREIGN KEY (col_id) REFERENCES macrostrat.cols(id) ON DELETE CASCADE,
 	ADD FOREIGN KEY (ref_id) REFERENCES macrostrat.refs(id) ON DELETE CASCADE;
 
+/* I had to make the id the primary key of intervals first before adding the foreign key */
+ALTER TABLE macrostrat.intervals
+	ADD PRIMARY KEY (id);
+
 /* no issues 
     col_notes were not perserved, in mariaDB this is a separte table.
 */
@@ -67,15 +71,21 @@ ALTER TABLE macrostrat.unit_environs
 	ADD FOREIGN KEY (ref_id) REFERENCES macrostrat.refs(id) ON DELETE CASCADE,
 	ADD FOREIGN KEY (unit_id) REFERENCES macrostrat.units(id) ON DELETE CASCADE;
 
-/* no issues */
+/* some 42k rows deleted */
+DELETE FROM macrostrat.unit_liths
+WHERE unit_id not in (SELECT id from macrostrat.units);
+
 ALTER TABLE macrostrat.unit_liths
 	ADD FOREIGN KEY (lith_id) REFERENCES macrostrat.liths(id) ON DELETE CASCADE,
 	ADD FOREIGN KEY (unit_id) REFERENCES macrostrat.units(id) ON DELETE CASCADE;
 
-/* no issues */
-ALTER TABLE macrostrat.unit_lith_atts
-	ADD FOREIGN KEY (unit_lith_id) REFERENCES macrostrat.unit_liths(id) ON DELETE CASCADE,
-	ADD FOREIGN KEY (lith_att_id) REFERENCES macrostrat.lith_atts(id) ON DELETE CASCADE;
+/* This deletes alot, and also sometimes hangs forever on the server... */
+-- DELETE FROM macrostrat.unit_lith_atts
+-- WHERE unit_lith_id not in (SELECT id from macrostrat.unit_liths);
+
+-- ALTER TABLE macrostrat.unit_lith_atts
+-- 	ADD FOREIGN KEY (unit_lith_id) REFERENCES macrostrat.unit_liths(id) ON DELETE CASCADE,
+-- 	ADD FOREIGN KEY (lith_att_id) REFERENCES macrostrat.lith_atts(id) ON DELETE CASCADE;
 
 /*
  deleted 2 rows from bad unit ids and 2 rows from bad strat_name ids
@@ -104,6 +114,30 @@ ALTER TABLE macrostrat.unit_strat_names
 	ADD FOREIGN KEY (unit_id) REFERENCES macrostrat.units(id) ON DELETE CASCADE,
 	ADD FOREIGN KEY (strat_name_id) REFERENCES macrostrat.strat_names(id) ON DELETE CASCADE;
 
+ALTER TABLE macrostrat.units_sections
+	ADD FOREIGN KEY (unit_id) REFERENCES macrostrat.units(id) ON DELETE CASCADE,
+	ADD FOREIGN KEY (section_id) REFERENCES macrostrat.sections(id) ON DELETE CASCADE;
+	ADD FOREIGN KEY (col_id) REFERENCES macrostrat.cols(id) ON DELETE CASCADE;
+
+UPDATE macrostrat.strat_names
+	SET concept_id = NULL
+	WHERE concept_id = 0;
+
+/* BREAKS!!! there is a non-null constraint on ref_id.. but 0 means none so. */
+UPDATE macrostrat.strat_names
+	SET ref_id = NULL
+	WHERE ref_id = 0;
+
+DELETE FROM macrostrat.strat_names sn
+WHERE sn.concept_id NOT IN (SELECT concept_id FROM macrostrat.strat_names_meta);
+
+ALTER TABLE macrostrat.strat_names
+	ADD FOREIGN KEY (concept_id) REFERENCES macrostrat.strat_names_meta(concept_id) ON DELETE CASCADE;
+
+ALTER TABLE macrostrat.strat_names_meta
+	ADD FOREIGN KEY(interval_id) REFERENCES macrostrat.intervals(id) ON DELETE CASCADE,
+	ADD FOREIGN KEY(ref_id) REFERENCES macrostrat.refs(id) ON DELETE CASCADE;
+
 /* 33 rows deleted b/c of non-matching strat_name ids 
 there doesn't seem to be a way to recover the missing strat_names
 */
@@ -117,10 +151,6 @@ ALTER TABLE macrostrat.strat_names_places
 /* 1 row deleted b/c of bad interval id */
 DELETE FROM macrostrat.timescales_intervals
 	WHERE interval_id NOT IN (SELECT id from macrostrat.intervals);
-
-/* I had to make the id the primary key of intervals first before adding the foreign key */
-ALTER TABLE macrostrat.intervals
-	ADD PRIMARY KEY (id);
 
 ALTER TABLE macrostrat.timescales_intervals
 	ADD FOREIGN KEY (timescale_id) REFERENCES macrostrat.timescales(id) ON DELETE CASCADE,
@@ -146,13 +176,16 @@ ALTER TABLE macrostrat.units
 ALTER TABLE macrostrat.sections
 	ADD FOREIGN KEY (col_id) REFERENCES macrostrat.cols(id) ON DELETE CASCADE;
 
+INSERT INTO macrostrat.refs(id, pub_year, author, ref)VALUES(
+	0,
+	2022,
+	'Unknown',
+	'Catch all for 0 ref_ids'
+);
+
 DELETE FROM macrostrat.strat_tree
 	WHERE child NOT IN (SELECT id FROM macrostrat.strat_names)
 	OR ref_id NOT IN (SELECT id FROM macrostrat.refs);
-
-UPDATE macrostrat.strat_tree
-	SET ref_id = NULL
-	WHERE ref_id = 0;
 
 ALTER TABLE macrostrat.strat_tree
 	ADD FOREIGN KEY (parent) REFERENCES macrostrat.strat_names(id) ON DELETE CASCADE,
@@ -175,4 +208,18 @@ SET project_id = c.project_id
 FROM macrostrat.cols c 
 WHERE c.col_group_id = cg.id;
 
+
+/* unit_boundaries table, needs a unit_id and ref_id fk
+	lots of 0's in the unit_id row... not sure why
+ */
+
+DELETE FROM macrostrat.unit_boundaries WHERE unit_id = 0 OR unit_id NOT IN (
+	SELECT id FROM macrostrat.units
+);
+
+ALTER TABLE macrostrat.unit_boundaries 
+	ADD FOREIGN KEY(unit_id) REFERENCES macrostrat.units(id) ON DELETE CASCADE,
+	ADD FOREIGN KEY(ref_id) REFERENCES macrostrat.refs(id) ON DELETE CASCADE;
+
 /* Best practices for hierarchal data in postgres??*/
+

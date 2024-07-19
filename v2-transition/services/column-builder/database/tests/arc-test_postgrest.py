@@ -1,4 +1,3 @@
-from urvogel.models import Project, Column, Unit, Environ, Lith
 from requests import get, post, patch, put
 
 """ A testing suite to test some postgrest functionlity """
@@ -6,7 +5,7 @@ from requests import get, post, patch, put
 
 base= "http://127.0.0.1:3001"
 
-def test_projects():
+def test_projects(db):
     res = get(base + "/projects")
 
     data = res.json()
@@ -48,9 +47,8 @@ def test_create_environ_add_to_unit():
     unit_id = 4575
     headers={"Prefer": "return=representation"}
 
-    env = Environ(environ="test-env",environ_class="marine", environ_color="#669900")
     # try inserting directly into the environ_unit
-    data = env.dict()
+    data = dict(environ="test-env",environ_class="marine", environ_color="#669900")
     res = post(base + "/environs", data, headers=headers)
     environ_id = res.json()[0].get('id')
     assert environ_id is not None

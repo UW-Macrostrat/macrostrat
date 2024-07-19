@@ -12,7 +12,7 @@ help()
    echo 
    echo "Syntax: scriptTemplate [ -p | -c | -d | -U | -h, --help]"
    echo "options:"
-   echo "-p            Port that gunnison is explosed to on your localhost, default 54381"
+   echo "-p            Port that gunnison is exposed to on your localhost, default 54381"
    echo "-c            Container name of db sql is being performed. Default db"
    echo "-d            Name of db in cluster. Default column_data"
    echo "-U            Name of db user. Default postgres"
@@ -46,35 +46,8 @@ check $@
 
 export $(grep -v '^#' .env | xargs)
 
-dropdb -f -p $local_forward -h localhost -U postgres $local_db
-createdb -p $local_forward -h localhost -U $db_user $local_db
-
-echo "Running Pre-dump sql scripts"
-for file in `dirname $0`/../pre-runs/*.sql
-do
-    psql -p $local_forward -h localhost -d $local_db -U $db_user -f $file
-done
-
-echo "Dumping Macrostrat database from Gunnison local_forward"
-psql -p $local_forward -h localhost -U $db_user $local_db -c "CREATE EXTENSION postgis;"
+echo "Dumping Macrostrat table $1 from Gunnison local_forward"
 pg_dump -Fc -p $local_forward -h localhost -U postgres \
-  --schema=macrostrat \
-  --exclude-table-data=macrostrat.strat_name_footprints \
-  --exclude-table-data=macrostrat.measures \
-  --exclude-table-data=macrostrat.measuremeta \
-  --exclude-table-data=macrostrat.lookup_unit_attrs_api \
-  --exclude-table-data=macrostrat.pbdb_collections \
+  --table=$1 \
   $dbname \
-| pg_restore -v -p $local_forward -h localhost -U $db_user -d $local_db
-
-for file in `dirname $0`/../db-alterations/*.sql
-do
-    echo "Running $file"
-    psql -p $local_forward -h localhost -d $local_db -U $db_user -f $file
-done
-
-for f in `dirname $0`/../../api-views/*.sql
-do
-    echo "Running $f"
-    psql -p $local_forward -h localhost -d $local_db -U $db_user -f $f
-done
+| docker-compose exec -T $container_name pg_restore -v -U$db_user -d $local_db

@@ -1,18 +1,18 @@
 #!/usr/bin/env zsh
 
 ## Shell script to dump macrostrat-lite from gunnison into a docker db.
-### this is a trash and restart kind of thing. 
+### this is a trash and restart kind of thing.
 
 ########################## functions #################################
 help()
 {
-   echo  
+   echo
    echo "Script to dump postgres instance of macrostrat schema from gunnison"
    echo "WARNING: this will first drop the database specified in -d"
-   echo 
+   echo
    echo "Syntax: scriptTemplate [ -p | -c | -d | -U | -h, --help]"
    echo "options:"
-   echo "-p            Port that gunnison is explosed to on your localhost, default 54381"
+   echo "-p            Port that gunnison is exposed to on your localhost, default 54381"
    echo "-c            Container name of db sql is being performed. Default db"
    echo "-d            Name of db in cluster. Default column_data"
    echo "-U            Name of db user. Default postgres"
@@ -24,12 +24,12 @@ check()
 {
     echo "Gathering arguments"
     while getopts ":c:d:U:h" opt; do
-        case $opt in 
+        case $opt in
             c) container_name=$OPTARG;;
             d) local_db=$OPTARG;;
             U) db_user=$OPTARG;;
-            h) help; exit 1 ;; 
-           \?) help; exit 1 ;; 
+            h) help; exit 1 ;;
+           \?) help; exit 1 ;;
         esac
     done
 }
@@ -73,7 +73,7 @@ for file in `dirname $0`/../db-alterations/*.sql
 do
     `dirname $0`/./run-sql-file -f $file -c $container_name -d $local_db -U $db_user
 done
-for f in `dirname $0`/../fixtures/*.sql
+for f in `dirname $0`/../../api-views/*.sql
 do
   `dirname $0`/./run-sql-file -f $f -c $container_name -d $local_db -U $db_user
 done

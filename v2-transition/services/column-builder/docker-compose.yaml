@@ -1,14 +1,9 @@
 version: "3.7"
 services:
-  # swagger:
-  #   image: swaggerapi/swagger-ui
-  #   ports:
-  #     - "8080:8080"
-  #   expose:
-  #     - "8080"
-  #   environment:
-  #     API_URL: http://localhost:3001/
   postgrest:
+    profiles:
+      - production
+      - dev
     image: postgrest/postgrest
     ports:
       - "3001:3000"
@@ -22,6 +17,9 @@ services:
       - db
   db:
     build: ./database
+    profiles:
+      - production
+      - dev
     environment:
       - PGUSER
       - POSTGRES_DB
@@ -31,14 +29,42 @@ services:
       - ${PG_PORT}:5432
     volumes:
       - db_cluster:/var/lib/postgresql/data
-  # dacite:
-  #   build: ./frontend/dacite
-  #   ports:
-  #     - 1234:1234
-  #   volumes:
-  #     - ./frontend/dacite:/app/dacite
-  #     - /app/dacite/node_modules
+  dacite_prod:
+    build:
+      context: ./dacite
+      dockerfile: prod.Dockerfile
+    profiles:
+      - production
+    environment:
+      - NEXT_PUBLIC_SERVER_URL=${NEXT_PUBLIC_SERVER_URL}
+      - NEXT_PUBLIC_CLIENT_URL=${NEXT_PUBLIC_CLIENT_URL}
+      - NEXT_PUBLIC_TOPOLOGY_URL=${NEXT_PUBLIC_TOPOLOGY_URL}
+    ports:
+      - 1234:1234
+  birdseye:
+    build: ./BirdsEye/frontend
+    profiles:
+      - production
+    ports:
+      - "1235:1235"
+  geologic_map_server:
+    build: ./BirdsEye/backend
+    profiles:
+      - production
+      - dev
+    environment:
+      - GEOLOGIC_MAP_CONFIG=/app/docker-assets/docker-map-config.json
+      - GEOLOGIC_MAP_DATABASE=${GEOLOGIC_MAP_DATABASE}
+      - IMPORTER_API=${IMPORTER_API}
+      - EXPORTER_API=${EXPORTER_API}
+    entrypoint: "/python_app/docker-scripts/run"
+    ports:
+      - "40053:8000"
+    depends_on:
+      - db
   # db_backup:
+  #   profiles:
+  #     - production
   #   image: ghcr.io/uw-macrostrat/pg-backup-service:latest
   #   environment:
   #     - DB_NAME=column_data
