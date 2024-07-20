@@ -173,7 +173,7 @@ def update_schema(
 
 
 db_app = db_subsystem.control_command()
-db_app.command(name="update")(update_schema)
+db_app.command(name="update", rich_help_panel="Schema management")(update_schema)
 
 # Pass through arguments
 
@@ -270,6 +270,7 @@ def _engine_for_db_name(name: str | None):
 
 @db_app.command(name="tables")
 def list_tables(ctx: typer.Context, database: str = Argument(None), schema: str = None):
+    """List tables in the database"""
     sql = """SELECT table_schema, table_name
     FROM information_schema.tables
     WHERE table_schema != 'pg_catalog' AND table_schema != 'information_schema'
@@ -294,15 +295,15 @@ def list_tables(ctx: typer.Context, database: str = Argument(None), schema: str 
             print(f"{row.table_schema}.{row.table_name}")
 
 
-@db_app.command(name="sql")
+@db_app.command(name="scripts", rich_help_panel="Schema management")
 def run_migration(migration: str = Argument(None)):
-    """Run an ad-hoc migration"""
+    """Ad-hoc migration scripts"""
     pth = Path(__file__).parent.parent / "ad-hoc-migrations"
     files = list(pth.glob("*.sql"))
     files.sort()
     if migration is None:
-        print("No migration specified", file=stderr)
-        print("Available migrations:", file=stderr)
+        print("[yellow bold]No script specified\n", file=stderr)
+        print("[bold]Available scripts:", file=stderr)
         for f in files:
             print(f"  {f.stem}", file=stderr)
         exit(1)
@@ -326,7 +327,35 @@ def db_tunnel():
     run("kubectl", "port-forward", pod, f"{port}:5432")
 
 
-@db_app.command(name="import-mariadb")
+keys = ["username", "host", "port", "password", "database"]
+
+
+@db_app.command(name="connection-details")
+def connection_details():
+    """Print the database connection details"""
+    db = get_db()
+    url = raw_database_url(db.engine.url)
+    for key in keys:
+        print(
+            field_title(key.capitalize()),
+            f"[dim bold green]{getattr(db.engine.url, key)}",
+        )
+    print(field_title("URL"), f"[dim white]{url}")
+
+
+def field_title(name):
+    title = name + ":"
+    # expand the title to 20 characters
+    title = title.ljust(12)
+    return "[dim]" + title + "[/]" + " "
+
+
+db_app.command(name="migrations", rich_help_panel="Schema management")(run_migrations)
+
+
+@db_app.command(
+    name="import-mariadb", rich_help_panel="Schema management", deprecated=True
+)
 def import_legacy():
     """Import legacy MariaDB database to PostgreSQL using pgloader"""
     # Run pgloader in docker
@@ -361,29 +390,3 @@ def import_legacy():
         str(dburl),
         str(url),
     )
-
-
-keys = ["username", "host", "port", "password", "database"]
-
-
-@db_app.command(name="connection-details")
-def connection_details():
-    """Print the database connection details"""
-    db = get_db()
-    url = raw_database_url(db.engine.url)
-    for key in keys:
-        print(
-            field_title(key.capitalize()),
-            f"[dim bold green]{getattr(db.engine.url, key)}",
-        )
-    print(field_title("URL"), f"[dim white]{url}")
-
-
-def field_title(name):
-    title = name + ":"
-    # expand the title to 20 characters
-    title = title.ljust(12)
-    return "[dim]" + title + "[/]" + " "
-
-
-db_app.command(name="migrations")(run_migrations)

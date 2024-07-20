@@ -233,6 +233,9 @@ try:
 except ImportError as err:
     pass
 
+
+# TODO: consider removing tileserver config - or adjusting, as fixtures
+# are now run automatically on tileserver startup.
 try:
     from macrostrat_tileserver.cli import _cli as tileserver_cli
     from macrostrat_tileserver.cli import create_fixtures
@@ -308,6 +311,8 @@ def state():
 # Add basic schema hunks
 from .subsystems.knowledge_graph import kg_schema
 from .subsystems.legend_api import legend_api
+from .subsystems.macrostrat_api import macrostrat_api
 
 db_subsystem.schema_hunks.append(kg_schema)
 db_subsystem.schema_hunks.append(legend_api)
+db_subsystem.schema_hunks.append(macrostrat_api)
