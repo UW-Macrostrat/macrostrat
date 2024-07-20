@@ -48,6 +48,8 @@ def run_all_sql(db, dir: Path, match: str = None):
 class SubsystemSchemaDefinition(BaseModel):
     """A schema definition managed by a Macrostrat subsystem"""
 
+    # TODO: These could also be recast as "idempotent migrations" that can be run at any time
+
     class Config:
         arbitrary_types_allowed = True
 
@@ -319,6 +321,7 @@ def run_migration(migration: str = Argument(None)):
 @db_app.command(name="tunnel")
 def db_tunnel():
     """Create a Kubernetes port-forward to the remote database"""
+    # TODO: Check if we are running in a Kubernetes environment
 
     pod = getattr(app.settings, "pg_database_pod", None)
     if pod is None:
