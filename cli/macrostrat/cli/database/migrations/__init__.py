@@ -7,6 +7,7 @@ from typing import ClassVar
 from pathlib import Path
 from .partition_maps import PartitionMapsMigration
 from .partition_carto import PartitionCartoMigration
+from .update_macrostrat import MacrostratCoreMigration
 
 __dir__ = Path(__file__).parent
 
@@ -17,7 +18,9 @@ class StorageSchemeMigration(Migration):
     def apply(self, db: Database):
         db.run_sql(
             """
-        CREATE TYPE storage.scheme AS ENUM ('s3', 'https');
+        CREATE TYPE storage.scheme AS ENUM ('s3', 'https', 'http');
+        ALTER TYPE storage.scheme ADD VALUE 'https' AFTER 's3';
+        ALTER TYPE storage.scheme ADD VALUE 'http' AFTER 'https';
 
         -- Lock the table to prevent concurrent updates
         LOCK TABLE storage.object IN ACCESS EXCLUSIVE MODE;
@@ -62,6 +65,7 @@ def run_migrations(apply: bool = False, name: str = None, force: bool = False):
         PartitionMapsMigration,
         PartitionCartoMigration,
         StorageSchemeMigration,
+        MacrostratCoreMigration,
     ]
 
     for cls in migrations:

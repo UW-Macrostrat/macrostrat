@@ -1,3 +1,4 @@
+/** TODO: it might be useful to put some logic around these to run them conditionally, add types if necessary. */
 CREATE TYPE measurement_class AS ENUM(
   '','geophysical','geochemical','sedimentological');
 CREATE TYPE measurement_type AS ENUM(

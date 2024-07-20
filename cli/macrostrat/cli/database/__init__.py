@@ -297,6 +297,65 @@ def list_tables(ctx: typer.Context, database: str = Argument(None), schema: str 
             print(f"{row.table_schema}.{row.table_name}")
 
 
+class TableInspector:
+    def __init__(self, db: Database, table, schema=None):
+        self.db = db
+        self.table = table
+        self.schema = schema
+        self._insp = db.inspector
+
+    def __getattr__(self, name, **kwargs):
+        return getattr(self.insp, name)(self.table, schema=self.schema, **kwargs)
+
+    @property
+    def foreign_keys(self):
+        return self._insp.get_foreign_keys(self.table, schema=self.schema)
+
+    @property
+    def indexes(self):
+        return self._insp.get_indexes(self.table, schema=self.schema)
+
+    @property
+    def columns(self):
+        return self._insp.get_columns(self.table, schema=self.schema)
+
+    @property
+    def pk_constraint(self):
+        return self._insp.get_pk_constraint(self.table, schema=self.schema)
+
+    @property
+    def unique_constraints(self):
+        return self._insp.get_unique_constraints(self.table, schema=self.schema)
+
+    @property
+    def check_constraints(self):
+        return self._insp.get_check_constraints(self.table, schema=self.schema)
+
+
+@db_app.command(name="inspect")
+def inspect_table(table: str):
+    """Inspect a table in the database"""
+    db = get_db()
+
+    schema = None
+    if "." in table:
+        schema, table = table.split(".")
+
+    if not db.inspector.has_table(table, schema=schema):
+        print(f"Table {table} does not exist", file=stderr)
+        exit(1)
+
+    insp = TableInspector(db, table, schema=schema)
+
+    print(f"[dim]Inspecting table: [bold cyan]{table}[/]\n", file=stderr)
+    from IPython import embed
+
+    embed(
+        header=f"""Inspecting table {table} in database {db.engine.url.database}.
+        Use the 'db' object to interact with the database and 'insp' to interact with the inspector."""
+    )
+
+
 @db_app.command(name="scripts", rich_help_panel="Schema management")
 def run_migration(migration: str = Argument(None)):
     """Ad-hoc migration scripts"""
