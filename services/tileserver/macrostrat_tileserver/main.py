@@ -35,9 +35,7 @@ log = get_logger(__name__)
 
 __here__ = Path(__file__).parent
 
-app = FastAPI(prefix="/", middleware=[
-    Middleware(CORSMiddleware, allow_origins=["*"])
-])
+app = FastAPI(prefix="/", middleware=[Middleware(CORSMiddleware, allow_origins=["*"])])
 
 
 db_settings = PostgresSettings()
@@ -45,6 +43,7 @@ db_settings = PostgresSettings()
 
 app.state.timvt_function_catalog = FunctionRegistry()
 app.state.function_catalog = FunctionRegistry()
+
 
 # Register Start/Stop application event handler to setup/stop the database connection
 @app.on_event("startup")
@@ -54,10 +53,11 @@ async def startup_event():
     setup_stderr_logs("macrostrat_tileserver", "timvt")
     await connect_to_db(app, db_settings)
     # Apply fixtures
-    apply_fixtures(db_settings.database_url)
+    # apply_fixtures(db_settings.database_url)
 
     await register_table_catalog(app, schemas=["sources"])
     prepare_image_tile_subsystem()
+    print("Application started.")
 
 
 @app.on_event("startup")
@@ -75,11 +75,12 @@ async def truncate_tile_cache_if_needed() -> None:
 
         await conn.execute(q, *p)
 
+
 def apply_fixtures(url: str):
     """Apply fixtures."""
     start = time()
     db = Database(url)
-    db.run_fixtures(__here__/"fixtures")
+    db.run_fixtures(__here__ / "fixtures")
     end = time()
     log.info(f"Fixtures applied in {end-start:.2f} seconds.")
 
@@ -142,6 +143,7 @@ from .filterable import router as filterable_router
 app.include_router(filterable_router, tags=["Filterable"], prefix="/v2")
 
 from .map_bounds import router as map_bounds_router
+
 app.include_router(map_bounds_router, tags=["Maps"], prefix="/maps")
 
 
