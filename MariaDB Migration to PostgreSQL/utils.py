@@ -1,3 +1,4 @@
+import pandas as pd
 from sqlalchemy import text, create_engine, inspect
 from Constants import *
 import os
@@ -154,6 +155,22 @@ def compare_data_counts(db1_rows, db2_rows, db1_columns, db2_columns, db1, db2):
 
     return row_count_difference, col_count_difference
 
+def find_row_variances(database_name_one, schema_one, database_name_two, schema_two, username, password, table):
+    SQLALCHEMY_DATABASE_URI = f"postgresql://{username}:{password}@{pg_server}/{database_name_one}"
+    engine = create_engine(SQLALCHEMY_DATABASE_URI)
+    with engine.connect() as conn:
+        query = text(f"SELECT * FROM {schema_one}.{table}")
+    result = conn.execute(query)
+    df = pd.DataFrame(result)
+    engine.dispose()
+    SQLALCHEMY_DATABASE_URI = f"postgresql://{username}:{password}@{pg_server}/{database_name_two}"
+    engine = create_engine(SQLALCHEMY_DATABASE_URI)
+    with engine.connect() as conn:
+        query = text(f"SELECT * FROM {schema_two}.{table}")
+    result = conn.execute(query)
+    df_two = pd.DataFrame(result)
+    engine.dispose()
+    return df, df_two
 
 
 #connect pg_loader to external macrostrat_two database rather than schema
@@ -355,18 +372,20 @@ if __name__ == "__main__":
     #pg_loader_pre_script()
     #pg_loader()
     #pg_loader_post_script()
-    maria_rows, maria_columns = get_data_counts_maria()
-    pg_rows, pg_columns = get_data_counts_pg(pg_db_name, pg_user, pg_pass_encoded, 'macrostrat')
-    pg_macrostrat_two_rows, pg_macrostrat_two_columns = get_data_counts_pg(pg_db_name_two, pg_user_migrate, pg_pass_migrate, 'macrostrat_temp')
-    print('\nMARIADB (db1) comparison to PG MACROSTRAT_TWO (db2). These should be clones. ')
-    db1 = 'MariaDB'
-    db2 = 'PG Macrostrat_Two'
-    row_variance, column_variance = compare_data_counts(maria_rows, pg_macrostrat_two_rows, maria_columns,
-                                                        pg_macrostrat_two_columns, db1, db2)
-    print('\nPG MACROSTRAT_TWO (db1 maria db clone) comparison to PG MACROSTRAT (db2). This will show what data '
-          'needs to be moved over from Maria to PG prod.')
-    db1 = 'PG Macrostrat_Two'
-    db2 = 'PG Macrostrat'
-    row_variance_two, column_variance_two = compare_data_counts(pg_macrostrat_two_rows, pg_rows, pg_macrostrat_two_columns,
-                                                        pg_columns, db1, db2)
+    #maria_rows, maria_columns = get_data_counts_maria()
+    #pg_rows, pg_columns = get_data_counts_pg(pg_db_name, pg_user, pg_pass_encoded, 'macrostrat')
+    #pg_macrostrat_two_rows, pg_macrostrat_two_columns = get_data_counts_pg(pg_db_name_two, pg_user_migrate, pg_pass_migrate, 'macrostrat_temp')
+    #print('\nMARIADB (db1) comparison to PG MACROSTRAT_TWO (db2). These should be clones. ')
+    #db1 = 'MariaDB'
+    #db2 = 'PG Macrostrat_Two'
+    #row_variance, column_variance = compare_data_counts(maria_rows, pg_macrostrat_two_rows, maria_columns,
+                                                        #pg_macrostrat_two_columns, db1, db2)
+    #print('\nPG MACROSTRAT_TWO (db1 maria db clone) comparison to PG MACROSTRAT (db2). This will show what data '
+          #'needs to be moved over from Maria to PG prod.')
+    #db1 = 'PG Macrostrat_Two'
+    #db2 = 'PG Macrostrat'
+    #row_variance_two, column_variance_two = compare_data_counts(pg_macrostrat_two_rows, pg_rows, pg_macrostrat_two_columns,
+                                                        #pg_columns, db1, db2)
     #reset()
+    df, df_two = find_row_variances(pg_db_name, pg_db_name, pg_db_name_two, maria_db_name_two,
+                                    pg_user, pg_pass_new, 'cols')
