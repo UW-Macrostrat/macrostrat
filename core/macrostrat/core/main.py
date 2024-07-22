@@ -7,7 +7,8 @@ from macrostrat.app_frame import Application, Subsystem, SubsystemManager
 from macrostrat.utils import get_logger
 from rich import print
 from rich.console import Console
-from typer import Typer, get_app_dir
+from typer import Typer, get_app_dir, Context
+from typer.core import TyperGroup
 
 from .console import console_theme
 from .exc import MacrostratError
@@ -65,13 +66,19 @@ def load_settings():
     return settings
 
 
+class OrderCommands(TyperGroup):
+    def list_commands(self, ctx: Context):
+        """Return list of commands in the order appear."""
+        return list(self.commands)  # get commands using self.commands
+
+
 class MacrostratSubsystem(Subsystem):
     def __init__(self, app: Application):
         self.app = app
         self.settings = app.settings
 
     def control_command(self, **kwargs):
-        return Typer(no_args_is_help=True, **kwargs)
+        return Typer(no_args_is_help=True, cls=OrderCommands, **kwargs)
 
 
 class StateManager:
