@@ -10,18 +10,21 @@ module.exports = function (req, res, next) {
     async.waterfall(
       [
         function (callback) {
+          let params = {}
           if (req.query.age) {
             callback(null, req.query.age);
           } else if (req.query.interval_name) {
-            larkin.query(
-              "SELECT (age_bottom + age_top)/2 AS mid FROM intervals WHERE interval_name = ?",
-              [req.query.interval_name],
+              let sql = `SELECT (age_bottom + age_top)/2 AS mid FROM macrostrat_temp.intervals WHERE interval_name = :interval_name`
+              params['interval_name'] = req.query.interval_name
+            larkin.queryPgMaria("macrostrat_two",
+              sql,
+               params,
               function (error, result) {
                 if (error) {
                   callback(error);
                 } else {
                   if (result.length === 1) {
-                    callback(null, parseInt(result[0].mid));
+                    callback(null, parseInt(result.rows[0].mid));
                   } else {
                     larkin.error(req, res, next, "interval not found");
                   }
@@ -76,7 +79,7 @@ module.exports = function (req, res, next) {
                       : false,
                   },
                   {
-                    data: result,
+                    data: result.rows,
                   },
                 );
               }

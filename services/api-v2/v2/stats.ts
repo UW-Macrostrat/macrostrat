@@ -12,13 +12,13 @@ module.exports = function (req, res, next) {
     SELECT
       project_id,
       project,
-      columns,
-      packages,
-      units,
-      pbdb_collections,
-      measurements,
-      burwell_polygons AS t_polys
-    FROM stats
+      columns::integer,
+      packages::integer,
+      units::integer,
+      pbdb_collections::integer,
+      measurements::integer,
+      burwell_polygons::integer AS t_polys
+    FROM macrostrat_temp.stats
   */
   });
 
@@ -26,7 +26,7 @@ module.exports = function (req, res, next) {
     ? req.query.format
     : "json";
 
-  larkin.query(sql, [], function (error, data) {
+  larkin.queryPgMaria("macrostrat_two", sql, [], function (error, data) {
     if (error) {
       larkin.error(req, res, next, error);
     } else {
@@ -41,7 +41,7 @@ module.exports = function (req, res, next) {
           bare: api.acceptedFormats.bare[req.query.format] ? true : false,
         },
         {
-          data: data,
+          data: data.rows,
         },
       );
     }
