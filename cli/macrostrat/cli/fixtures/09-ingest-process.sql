@@ -1,4 +1,4 @@
-CREATE TYPE ingest_state AS ENUM ('pending', 'ingested', 'prepared', 'failed', 'abandoned');
+CREATE TYPE ingest_state AS ENUM ('pending', 'ingested', 'prepared', 'failed', 'abandoned', 'post_harmonization');
 CREATE TYPE ingest_type AS ENUM ('vector', 'ta1_output');
 
 CREATE TABLE maps_metadata.ingest_process
@@ -20,3 +20,11 @@ CREATE TABLE maps_metadata.ingest_process
 
 ALTER TABLE ingest_process
     owner to macrostrat;
+
+CREATE TABLE maps_metadata.ingest_process_tag (
+    ingest_process_id integer NOT NULL
+        references maps_metadata.ingest_process,
+    tag character varying(255) NOT NULL
+);
+
+ALTER TABLE maps_metadata.ingest_process_tag OWNER TO macrostrat;
