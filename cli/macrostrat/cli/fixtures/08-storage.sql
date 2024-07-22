@@ -11,7 +11,7 @@ CREATE TYPE storage.scheme AS ENUM (
     'https'
 );
 
-ALTER TYPE macrostrat.schemeenum OWNER TO macrostrat;
+ALTER TYPE storage.scheme OWNER TO macrostrat;
 
 CREATE TABLE IF NOT EXISTS storage.object (
     id integer NOT NULL,

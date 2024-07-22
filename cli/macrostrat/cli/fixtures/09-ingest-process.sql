@@ -1,3 +1,5 @@
+CREATE SCHEMA IF NOT EXISTS maps_metadata;
+
 CREATE TYPE ingest_state AS ENUM ('pending', 'ingested', 'prepared', 'failed', 'abandoned', 'post_harmonization');
 CREATE TYPE ingest_type AS ENUM ('vector', 'ta1_output');
 
