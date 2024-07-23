@@ -162,7 +162,6 @@ const { Client, Pool } = require("pg");
             }
           }.bind(this),
         );
-        //console.log(query.sql)
       }.bind(this),
     );
   };

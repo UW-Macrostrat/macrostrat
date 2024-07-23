@@ -99,7 +99,7 @@ module.exports = function (req, res, next) {
 
   if (req.query.col_id) {
     where.push(
-      "(measuremeta_cols.col_id IN (:col_id1) OR units_sections.col_id IN (:col_id2))",
+      "(measuremeta_cols.col_id = ANY(:col_id1) OR units_sections.col_id = ANY(:col_id2))",
     );
     params["col_id1"] = larkin.parseMultipleIds(req.query.col_id);
     params["col_id2"] = larkin.parseMultipleIds(req.query.col_id);
@@ -107,19 +107,19 @@ module.exports = function (req, res, next) {
 
   if (req.query.interval_name) {
     where.push(
-      "b_age>(SELECT age_top from intervals where interval_name IN (:intname1) and t_age<(SELECT age_bottom from intervals where interval_name in (:intname2)))",
+      "b_age>(SELECT age_top from intervals where interval_name = ANY(:intname1) and t_age<(SELECT age_bottom from macrostrat_temp.intervals where interval_name = ANY(:intname2)))",
     );
     params["intname1"] = larkin.parseMultipleStrings(req.query.interval_name);
     params["intname2"] = larkin.parseMultipleStrings(req.query.interval_name);
   }
 
   if (req.query.lith_type) {
-    where.push("lith_type IN (:lith_type)");
+    where.push("lith_type = ANY(:lith_type)");
     params["lith_type"] = larkin.parseMultipleStrings(req.query.lith_type);
   }
 
   if (req.query.lith_class) {
-    where.push("lith_class IN (:lith_class)");
+    where.push("lith_class = ANY(:lith_class)");
     params["lith_class"] = larkin.parseMultipleStrings(req.query.lith_class);
   }
 
@@ -175,38 +175,37 @@ module.exports = function (req, res, next) {
   if (geo && req.query.response !== "long") {
     select += ", measuremeta.lat as lat, measuremeta.lng as lng";
   }
-
   if ("show_values" in req.query) {
     select += `,
-            GROUP_CONCAT(measure_value ORDER BY measures.id SEPARATOR '|') AS measure_value,
-            GROUP_CONCAT(v_error ORDER BY measures.id SEPARATOR '|') AS measure_error `;
+            STRING_AGG(measure_value::text, '|' ORDER BY measures.id ) AS measure_value,
+            STRING_AGG(v_error::text, '|' ORDER BY measures.id) AS measure_error `;
     if (req.query.response !== "light")
       select +=
-        ", GROUP_CONCAT(samp_pos order by measures.id SEPARATOR '|') AS measure_position";
+        ", STRING_AGG(samp_pos::text,  '|' order by measures.id) AS measure_position";
     if (req.query.response === "long")
       select +=
-        ", GROUP_CONCAT(v_n ORDER BY measures.id SEPARATOR '|') AS measure_n, GROUP_CONCAT(sample_no ORDER BY measures.id SEPARATOR '|') AS sample_no";
+        ", STRING_AGG(v_n::text, '|' ORDER BY measures.id ) AS measure_n, STRING_AGG(sample_no::text, '|' ORDER BY measures.id) AS sample_no";
     select += ", v_error_units as error_units";
   }
 
   var sql = `SELECT
     ${select}
-    FROM measures
-    JOIN measurements on measurement_id=measurements.id
-    JOIN measuremeta ON measuremeta.id=measures.measuremeta_id
-	  LEFT JOIN unit_measures ON unit_measures.measuremeta_id=measuremeta.id
-    LEFT JOIN measuremeta_cols ON measuremeta.id=measuremeta_cols.measuremeta_id
-    LEFT JOIN units_sections USING (unit_id)
-    LEFT JOIN cols ON units_sections.col_id=cols.id
-    LEFT JOIN lookup_unit_intervals USING (unit_id)
-    LEFT JOIN liths ON lith_id=liths.id
+    FROM macrostrat_temp.measures
+    JOIN macrostrat_temp.measurements on measurement_id=measurements.id
+    JOIN macrostrat_temp.measuremeta ON measuremeta.id=measures.measuremeta_id
+	LEFT JOIN macrostrat_temp.unit_measures ON unit_measures.measuremeta_id=measuremeta.id
+    LEFT JOIN macrostrat_temp.measuremeta_cols ON measuremeta.id=measuremeta_cols.measuremeta_id
+    LEFT JOIN macrostrat_temp.units_sections USING (unit_id)
+    LEFT JOIN macrostrat_temp.cols ON units_sections.col_id=cols.id
+    LEFT JOIN macrostrat_temp.lookup_unit_intervals USING (unit_id)
+    LEFT JOIN macrostrat_temp.liths ON lith_id=liths.id
     ${where}
-    GROUP BY measuremeta.id,measurements.id
+    GROUP BY measuremeta.id,measurements.id, measure_units, measure_phase, method, v_error_units
     ${limit}
   `;
   // console.log(sql)
 
-  larkin.query(sql, params, function (error, response) {
+  larkin.queryPgMaria("macrostrat_two", sql, params, function (error, response) {
     if (error) {
       larkin.error(req, res, next, error);
     } else {
@@ -284,7 +283,7 @@ module.exports = function (req, res, next) {
             refs: "ref_id",
           },
           {
-            data: response,
+            data: response.rows,
           },
         );
       }
