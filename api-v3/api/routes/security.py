@@ -214,7 +214,7 @@ async def redirect_authorization(return_url: str = None):
     """Redirect to the authorization URL with the appropriate parameters"""
 
     params = {
-        'scope': "openid profile email org.cilogon.userinfo",
+        'scope': "openid profile email",
         'client_id': os.environ['OAUTH_CLIENT_ID'],
         'response_type': "code",
         'redirect_uri': os.environ['REDIRECT_URI']
