@@ -91,16 +91,16 @@ module.exports = function (req, res, next) {
           }
 
           if (req.query.unit_id) {
-            where += " AND pbdb_matches.unit_id IN (:unit_id)";
+            where += " AND pbdb_matches.unit_id = ANY(:unit_id)";
             params["unit_id"] = larkin.parseMultipleIds(req.query.unit_id);
           } else if (req.query.col_id) {
-            where += " AND units_sections.col_id IN (:col_id)";
+            where += " AND units_sections.col_id = ANY(:col_id)";
             params["col_id"] = larkin.parseMultipleIds(req.query.col_id);
           }
 
           if (req.query.strat_name_id) {
             where +=
-              " AND (lookup_strat_names.bed_id IN (:strat_name_ids) OR lookup_strat_names.mbr_id IN (:strat_name_ids) OR lookup_strat_names.fm_id IN (:strat_name_ids) OR lookup_strat_names.gp_id IN (:strat_name_ids) OR lookup_strat_names.sgp_id IN (:strat_name_ids)) ";
+              " AND (lookup_strat_names.bed_id = ANY(:strat_name_ids) OR lookup_strat_names.mbr_id = ANY(:strat_name_ids) OR lookup_strat_names.fm_id = ANY(:strat_name_ids) OR lookup_strat_names.gp_id = ANY(:strat_name_ids) OR lookup_strat_names.sgp_id = ANY(:strat_name_ids)) ";
             params["strat_name_ids"] = larkin.parseMultipleIds(
               req.query.strat_name_id,
             );
@@ -108,43 +108,42 @@ module.exports = function (req, res, next) {
 
           if (req.query.strat_name_concept_id) {
             where +=
-              " AND lookup_strat_names.strat_name_id IN (SELECT strat_name_id FROM lookup_strat_names WHERE concept_id IN (:concept_id))";
+              " AND lookup_strat_names.strat_name_id = ANY(SELECT strat_name_id FROM lookup_strat_names WHERE concept_id = ANY(:concept_id))";
             params["concept_id"] = larkin.parseMultipleIds(
               req.query.strat_name_concept_id,
             );
           }
 
           if (req.query.col_group_id) {
-            where += " AND col_group_id IN (:col_group_ids)";
+            where += " AND col_group_id = ANY(:col_group_ids)";
             params["col_group_ids"] = larkin.parseMultipleIds(
               req.query.col_group_id,
             );
           }
 
           if (req.query.project_id) {
-            where += " AND cols.project_id IN (:project_ids)";
+            where += " AND cols.project_id = ANY(:project_ids)";
             params["project_ids"] = larkin.parseMultipleIds(
               req.query.project_id,
             );
           }
-
-          larkin.query(
+          //TODO there is no pbdb table, so I removed LEFT JOIN pbdb.occ_matrix ON pbdb.coll_matrix.collection_no = pbdb.occ_matrix.collection_no
+          //I also removed           LEFT JOIN pbdb.taxon_lower ON pbdb.occ_matrix.orig_no = pbdb.taxon_lower.orig_no
+          //removed           JOIN pbdb.coll_matrix ON pbdb_matches.collection_no = pbdb.coll_matrix.collection_no
+          larkin.queryPgMaria("macrostrat_two",
             "SELECT pbdb_matches.collection_no AS cltn_id, collection_name AS cltn_name, lookup_unit_intervals.t_age, lookup_unit_intervals.b_age, n_occs AS pbdb_occs, COALESCE(GROUP_CONCAT(distinct pbdb.taxon_lower.genus_no), '') AS genus_no,  COALESCE(GROUP_CONCAT(distinct pbdb.occ_matrix.taxon_no), '') AS taxon_no, \
           pbdb_matches.unit_id, cols.id as col_id, CONCAT(pbdb_matches.ref_id, '|') AS refs " +
               (geo ? ", AsWKT(pbdb_matches.coordinate) AS geometry" : "") +
               ", lookup_strat_names.concept_id AS strat_name_concept_id \
-          FROM pbdb_matches \
-          JOIN units ON pbdb_matches.unit_id = units.id \
-          JOIN units_sections ON units_sections.unit_id = units.id \
-          JOIN cols ON cols.id = units_sections.col_id \
-          JOIN lookup_unit_intervals ON units_sections.unit_id=lookup_unit_intervals.unit_id \
-          JOIN pbdb.coll_matrix ON pbdb_matches.collection_no = pbdb.coll_matrix.collection_no \
-          LEFT JOIN pbdb.occ_matrix ON pbdb.coll_matrix.collection_no = pbdb.occ_matrix.collection_no \
-          LEFT JOIN pbdb.taxon_lower ON pbdb.occ_matrix.orig_no = pbdb.taxon_lower.orig_no \
-          LEFT JOIN unit_strat_names ON unit_strat_names.unit_id = units.id \
-          LEFT JOIN lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id \
-          WHERE pbdb_matches.release_date < now() AND \
-          cols.status_code = 'active' " +
+          FROM macrostrat_temp.pbdb_matches \
+          JOIN macrostrat_temp.units ON pbdb_matches.unit_id = units.id \
+          JOIN macrostrat_temp.units_sections ON units_sections.unit_id = units.id \
+          JOIN macrostrat_temp.cols ON cols.id = units_sections.col_id \
+          JOIN macrostrat_temp.lookup_unit_intervals ON units_sections.unit_id=lookup_unit_intervals.unit_id \
+          LEFT JOIN macrostrat_temp.unit_strat_names ON unit_strat_names.unit_id = units.id \
+          LEFT JOIN macrostrat_temp.lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id \
+          WHERE macrostrat_temp.pbdb_matches.release_date < now() AND \
+          macrostrat_temp.cols.status_code = 'active' " +
               where +
               " GROUP BY pbdb_matches.collection_no" +
               limit,
