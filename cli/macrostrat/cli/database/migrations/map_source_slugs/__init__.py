@@ -28,7 +28,7 @@ class MapSourceSlugsMigration(Migration):
         self._rename_primary_tables(db)
     
     def _rename_primary_tables(self, db: Database):
-        for table_name in db.run_query(MATCHES_SLUG_SQL):
+        for table_name, in db.run_query(MATCHES_SLUG_SQL):
             new_table_name = table_name + "_polygons"
             db.run_sql(
                 "ALTER TABLE sources.{table_name} RENAME TO {new_table_name}",
