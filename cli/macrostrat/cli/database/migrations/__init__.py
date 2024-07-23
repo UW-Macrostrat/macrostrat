@@ -6,7 +6,7 @@ from .base import Migration
 from typing import ClassVar
 from pathlib import Path
 from . import (
-    baseline, partition_carto, partition_maps, update_macrostrat, map_source_slugs
+    baseline, partition_carto, partition_maps, update_macrostrat, map_source_slugs, map_sources, column_builder
 )
 __dir__ = Path(__file__).parent
 

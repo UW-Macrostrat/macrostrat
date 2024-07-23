@@ -10,15 +10,12 @@ JOIN maps.sources ON slug = table_name
 WHERE table_schema = 'sources'"""
 
 class MapSourceSlugsMigration(Migration):
-    name = "01-slugs"
+    name = "01-map-source-slugs"
     subsystem = "core"
     description = """
     Starting from a Macrostrat v1 map database (burwell), create the maps.sources.slugs column,
-    then add a '_polygons' suffix to the associated primary_table in the sources schema
+    then add a '_polygons' suffix to the associated primary table name in the sources schema.
     """
-    # Basic sanity check, just confirm that the first table created in the migration is present
-    expected_tables = ["carto.flat_large"]
-
 
     def apply(self, db: Database):
         # First, run sql migrations to add the slugs column and rename primary_table
