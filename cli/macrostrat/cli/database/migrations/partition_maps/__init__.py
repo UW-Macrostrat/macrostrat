@@ -16,6 +16,7 @@ class PartitionMapsMigration(Migration):
 
     def should_apply(self, db: Database):
         # Check if the maps.polygons table exists
+        insp = db.inspector
 
         if self.is_satisfied(db):
             return False

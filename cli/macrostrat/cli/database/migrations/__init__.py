@@ -5,6 +5,7 @@ from rich import print
 from .base import Migration
 from typing import ClassVar
 from pathlib import Path
+from .baseline import BaselineMigration
 from .partition_maps import PartitionMapsMigration
 from .partition_carto import PartitionCartoMigration
 from .update_macrostrat import MacrostratCoreMigration
@@ -62,6 +63,7 @@ def run_migrations(apply: bool = False, name: str = None, force: bool = False):
         raise ValueError("--force can only be applied with --name")
 
     migrations: list[ClassVar[Migration]] = [
+        BaselineMigration,
         PartitionMapsMigration,
         PartitionCartoMigration,
         StorageSchemeMigration,
