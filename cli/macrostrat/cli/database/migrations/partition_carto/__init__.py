@@ -6,8 +6,7 @@ __dir__ = Path(__file__).parent
 
 
 class PartitionCartoMigration(Migration):
-    name = "partition-carto"
-    # This partition is required
+    name = "02-partition-carto"
     subsystem = "maps"
     description = """
     Starting from a Macrostrat v1 map database (burwell), integrate the tiny, small, medium, and large map tables (+lines)
@@ -16,20 +15,13 @@ class PartitionCartoMigration(Migration):
 
     def should_apply(self, db: Database):
         # Check if the maps.polygons table exists
-        insp = db.inspector
+        self.expected_tables = []
 
         for table in ["lines", "polygons"]:
-            if insp.has_table(table, schema="carto"):
-                return False
+            self.expected_tables.append(f"carto.{table}")
 
         for scale in ["tiny", "small", "medium", "large"]:
-            if not insp.has_table(scale, schema="carto_new") and not insp.has_table(
-                "lines_" + scale, schema="carto_new"
-            ):
-                return False
-        return True
+            self.expected_tables.append(f"carto_new.{scale}")
+            self.expected_tables.append(f"carto_new.lines_{scale}")
 
-    def apply(self, db: Database):
-        # We should sync this with the 'engine' configuration
-
-        db.run_fixtures(__dir__)
+        return super().should_apply(db)

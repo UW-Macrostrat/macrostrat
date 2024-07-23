@@ -6,7 +6,7 @@ __dir__ = Path(__file__).parent
 
 
 class PartitionMapsMigration(Migration):
-    name = "partition-maps"
+    name = "03-partition-maps"
     # This partition is required
     subsystem = "maps"
     description = """
@@ -33,7 +33,3 @@ class PartitionMapsMigration(Migration):
             if not db.inspector.has_table(table, schema="maps"):
                 return False
         return True
-
-    def apply(self, db: Database):
-        # We should sync this with the 'engine' configuration
-        db.run_fixtures(__dir__)

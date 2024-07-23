@@ -1,8 +1,8 @@
 from ..base import Migration
 
 class BaselineMigration(Migration):
-    name = "baseline"
-    subsystem = "base"
+    name = "00-baseline"
+    subsystem = "core"
     description = """
     Starting from an empty database, create the baseline macrostrat schemas as of 2023-08-29. 
     """

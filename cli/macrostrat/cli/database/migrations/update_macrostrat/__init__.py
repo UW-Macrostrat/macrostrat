@@ -6,13 +6,14 @@ __dir__ = Path(__file__).parent
 
 
 class MacrostratCoreMigration(Migration):
-    name = "macrostrat-core-v2"
+    name = "04-macrostrat-core-v2"
     # This partition is required
     subsystem = "core"
     description = """
     Update the Macrostrat core schema ('macrostrat') with foreign keys and data transformations to
     stabilize the schema in PostgreSQL after transformation from MariaDB.
     """
+    expected_tables = ['macrostrat.units', 'macrostrat.sections']
     # TODO: break this into smaller atomic migrations
 
     def should_apply(self, db: Database):

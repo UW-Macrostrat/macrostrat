@@ -15,7 +15,7 @@ class Migration:
         `self.expected_tables` exists. """
         insp = database.inspector
         for table_name in self.expected_tables:
-            table, schema = table_name.split('.')
+            schema, table = table_name.split('.')
             if not insp.has_table(table, schema=schema):
                 return True
         return False
@@ -23,8 +23,8 @@ class Migration:
     def apply(self, database: Database):
         """ Apply the migrations defined by this class. By default, run every sql file 
         in the same directory as the class definition. """
-        __dir__ = Path(inspect.getfile(self.__class__)).parent
-        database.run_fixtures(__dir__)
+        child_cls_dir = Path(inspect.getfile(self.__class__)).parent
+        database.run_fixtures(child_cls_dir)
 
     def is_satisfied(self, database: Database):
         """In some cases, we may want to note that a migration does not need to be run

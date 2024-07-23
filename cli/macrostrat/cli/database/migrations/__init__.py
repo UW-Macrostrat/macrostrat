@@ -5,11 +5,9 @@ from rich import print
 from .base import Migration
 from typing import ClassVar
 from pathlib import Path
-from .baseline import BaselineMigration
-from .partition_maps import PartitionMapsMigration
-from .partition_carto import PartitionCartoMigration
-from .update_macrostrat import MacrostratCoreMigration
-
+from . import (
+    baseline, partition_carto, partition_maps, update_macrostrat, map_source_slugs
+)
 __dir__ = Path(__file__).parent
 
 
@@ -62,17 +60,15 @@ def run_migrations(apply: bool = False, name: str = None, force: bool = False):
     if force and not name:
         raise ValueError("--force can only be applied with --name")
 
-    migrations: list[ClassVar[Migration]] = [
-        BaselineMigration,
-        PartitionMapsMigration,
-        PartitionCartoMigration,
-        StorageSchemeMigration,
-        MacrostratCoreMigration,
-    ]
+    # Find all subclasses of Migration among imported modules
+    migrations = Migration.__subclasses__() 
 
-    for cls in migrations:
+    # Instantiate each migration, then sort alphabetically by migration name
+    instances = [cls() for cls in migrations]
+    instances.sort(key=lambda c: c.name)
+
+    for _migration in instances:
         # Initialize migration
-        _migration = cls()
         _name = _migration.name
         if name is not None and name != _name:
             continue
