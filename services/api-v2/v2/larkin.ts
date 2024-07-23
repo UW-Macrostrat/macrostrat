@@ -648,8 +648,12 @@ const { Client, Pool } = require("pg");
               });
 
               res.on("end", function () {
-                var result = JSON.parse(body).success.data;
-
+              var parsedBody = JSON.parse(body);
+              if (parsedBody && parsedBody.success && parsedBody.success.data) {
+                var result = parsedBody.success.data;
+              } else {
+                console.error('Invalid response body:', body);
+                }
                 var cols = _.groupBy(result, function (d) {
                   return d.col_id;
                 });
@@ -743,7 +747,7 @@ const { Client, Pool } = require("pg");
           col_groups.id AS col_group_id,
           col AS group_col_id,
           round(cols.col_area, 1) AS col_area,
-          project_id,
+          cols.project_id,
           string_agg(col_refs.ref_id::varchar, '|') AS refs,
           ST_AsGeoJSON(col_areas.col_area) geojson
         FROM macrostrat.cols
@@ -779,7 +783,7 @@ const { Client, Pool } = require("pg");
           col_groups.id AS col_group_id,
           col AS group_col_id,
           round(cols.col_area, 1) AS col_area,
-          project_id,
+          cols.project_id,
           string_agg(col_refs.ref_id::varchar, '|') AS refs
         FROM macrostrat.cols
         LEFT JOIN macrostrat.col_areas on col_areas.col_id = cols.id

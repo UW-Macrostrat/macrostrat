@@ -352,7 +352,7 @@ module.exports = function (req, res, next, cb) {
             JOIN macrostrat_temp.unit_liths_atts ON unit_liths_atts.unit_lith_id = unit_liths.id
             JOIN macrostrat_temp.lith_atts ON unit_liths_atts.lith_att_id = lith_atts.id
             WHERE :lith_att_field`;
-
+          //why is the syntax lith_att)) ?
           if (req.query.lith_att_id) {
             where += " = ANY(:lith_att)) ";
             params["lith_att_field"] = "unit_liths_atts.lith_att_id";
@@ -379,29 +379,27 @@ module.exports = function (req, res, next, cb) {
         }
 
         if (req.query.unit_id) {
-          where += " AND units.id = ANY(:unit_ids)";
-          params["unit_ids"] = larkin.parseMultipleIds(req.query.unit_id);
+          where += " AND units.id = ANY(:unit_id)";
+          params["unit_id"] = larkin.parseMultipleIds(req.query.unit_id);
           orderby.push(
-            "FIELD(units.id, " +
-              larkin.parseMultipleIds(req.query.unit_id).join(",") +
-              ")",
+            " units.id ",
           );
         }
 
         if (req.query.section_id) {
-          where += " AND units_sections.section_id = ANY(:section_ids)";
-          params["section_ids"] = larkin.parseMultipleIds(req.query.section_id);
+          where += " AND units_sections.section_id = ANY(:section_id)";
+          params["section_id"] = larkin.parseMultipleIds(req.query.section_id);
         }
 
-        if ("col_ids" in data) {
-          where += " AND units_sections.col_id = ANY(:col_ids)";
-          if (!data.col_ids.length) {
-            data.col_ids = [""];
+        if ("col_id" in data) {
+          where += " AND units_sections.col_id = ANY(:col_id)";
+          if (!data.col_id.length) {
+            data.col_id = [""];
           }
-          params["col_ids"] = data.col_ids;
+          params["col_id"] = data.col_id;
         } else if (req.query.col_id) {
-          where += " AND units_sections.col_id = ANY(:col_ids)";
-          params["col_ids"] = larkin.parseMultipleIds(req.query.col_id);
+          where += " AND units_sections.col_id = ANY(:col_id)";
+          params["col_id"] = larkin.parseMultipleIds(req.query.col_id);
         }
 
         if (data.strat_ids) {
@@ -514,24 +512,24 @@ module.exports = function (req, res, next, cb) {
       cols.col_area,
       units.strat_name AS unit_name,
       unit_strat_names.strat_name_id,
-      IFNULL(mbr_name, '') AS Mbr,
-      IFNULL(fm_name, '') AS Fm,
-      IFNULL(gp_name, '') AS Gp,
-      IFNULL(sgp_name, '') AS SGp,
-      lookup_units.t_age,
-      lookup_units.b_age,
-      units.max_thick,
-      units.min_thick,
+      COALESCE(mbr_name, '') AS Mbr,
+      COALESCE(fm_name, '') AS Fm,
+      COALESCE(gp_name, '') AS Gp,
+      COALESCE(sgp_name, '') AS SGp,
+      lookup_units.t_age::float,
+      lookup_units.b_age::float,
+      units.max_thick::float,
+      units.min_thick::float,
       units.outcrop,
-      lookup_units.pbdb_collections,
-      lookup_units.pbdb_occurrences`;
+      lookup_units.pbdb_collections::integer,
+      lookup_units.pbdb_occurrences::integer`;
 
         var longSQL = `${shortSQL},
       lookup_unit_attrs_api.lith,
       lookup_unit_attrs_api.environ,
       lookup_unit_attrs_api.econ,
       :measure_field AS measure,
-      IFNULL(notes, '') AS notes,
+      COALESCE(notes, '') AS notes,
       lookup_units.color,
       lookup_units.text_color,
       lookup_units.t_int AS t_int_id,
@@ -570,8 +568,10 @@ module.exports = function (req, res, next, cb) {
         LEFT JOIN macrostrat_temp.unit_notes ON unit_notes.unit_id=units.id
         WHERE
           ${where}
-        GROUP BY units.id
-      ORDER BY ${orderby.length > 0 ? orderby.join(", ") + "," : ""} t_age ASC
+        GROUP BY units.id, units_sections.section_id, lookup_units.t_age, units_sections.col_id,
+         cols.project_id, cols.col_area, unit_strat_names.strat_name_id, mbr_name, fm_name, gp_name, sgp_name,
+         lookup_units.b_age,lookup_units.pbdb_collections, lookup_units.pbdb_occurrences
+      ORDER BY ${orderby.length > 0 ? orderby.join(", ") + "," : ""} lookup_units.t_age ASC
       ${limit}
       `;
 
@@ -587,7 +587,6 @@ module.exports = function (req, res, next, cb) {
                 result.rows[i].environ = JSON.parse(result.rows[i].environ) || [];
                 result.rows[i].econ = JSON.parse(result.rows[i].econ) || [];
                 result.rows[i].measure = JSON.parse(result.rows[i].measure) || [];
-
                 result.rows[i].units_above = larkin.jsonifyPipes(
                   result.rows[i].units_above,
                   "integers",
@@ -673,8 +672,9 @@ module.exports = function (req, res, next, cb) {
           return larkin.error(req, res, next, "Something went wrong");
         }
       } else {
+
         if (cb) {
-          cb(null, result.rows);
+          cb(null, result);
         } else {
           return larkin.sendData(
             req,
@@ -688,7 +688,7 @@ module.exports = function (req, res, next, cb) {
               refs: req.query.response === "long" ? "refs" : false,
             },
             {
-              data: result.rows,
+              data: result,
             },
           );
         }
