@@ -6,7 +6,7 @@ __dir__ = Path(__file__).parent
 
 
 class MacrostratCoreMigration(Migration):
-    name = "04-macrostrat-core-v2"
+    name = "macrostrat-core-v2"
     # This partition is required
     subsystem = "core"
     description = """
@@ -14,9 +14,14 @@ class MacrostratCoreMigration(Migration):
     stabilize the schema in PostgreSQL after transformation from MariaDB.
     """
     expected_tables = ['macrostrat.units', 'macrostrat.sections']
+    depends_on = ['api-v3']
     # TODO: break this into smaller atomic migrations
 
     def should_apply(self, db: Database):
+        # Check if tables added since previous prod dump exist
+        for table in ["projects", "sections", "strat_tree","unit_boundaries"]:
+            if not db.inspector.has_table(table, schema="macrostrat"):
+                return True
         # Check if foreign keys exist
         for table in ["units", "sections"]:
             if not db.inspector.has_table(table, schema="macrostrat"):

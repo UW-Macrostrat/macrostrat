@@ -9,6 +9,7 @@ class Migration:
     description: str
     subsystem: str
     expected_tables : list[str] = []
+    depends_on: list[str] = []
 
     def should_apply(self, database: Database):
         """ Determine whether this migration needs to be run. By default, check that every table in
@@ -31,3 +32,13 @@ class Migration:
         (e.g. if the database is already in the correct state) without actually running it.
         """
         return not self.should_apply(database)
+
+
+    @staticmethod
+    def compare(m1: "Migration", m2: "Migration"):
+        if m2.name in m1.depends_on:
+            return -1
+        elif m1.name in m2.depends_on:
+            return 1
+        else:
+            return 0

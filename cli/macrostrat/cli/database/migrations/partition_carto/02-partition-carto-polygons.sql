@@ -13,6 +13,11 @@ ALTER TABLE carto_new.small RENAME TO polygons_small;
 ALTER TABLE carto_new.medium RENAME TO polygons_medium;
 ALTER TABLE carto_new.large RENAME TO polygons_large;
 
+DROP TABLE IF EXISTS carto.polygons_tiny;
+DROP TABLE IF EXISTS carto.polygons_small;
+DROP TABLE IF EXISTS carto.polygons_medium;
+DROP TABLE IF EXISTS carto.polygons_large;
+
 ALTER TABLE carto_new.polygons_tiny SET SCHEMA carto;
 ALTER TABLE carto_new.polygons_small SET SCHEMA carto;
 ALTER TABLE carto_new.polygons_medium SET SCHEMA carto;

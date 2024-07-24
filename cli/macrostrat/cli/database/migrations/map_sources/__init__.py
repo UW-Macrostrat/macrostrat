@@ -2,16 +2,18 @@ from macrostrat.database import Database
 from ..base import Migration
 
 class MapsSourcesMetadataMigration(Migration):
-    name = "02-maps-sources-metadata"
+    name = "maps-sources"
     subsystem = "core"
     description = """
-    Starting from a database with migration 01-map-source-slugs applied, create associated
+    Starting from a database with migration map-source-slugs applied, create associated
     metadata views for maps.sources
     """
     expected_views = {
         'maps': ['sources_metadata'],
         'macrostrat_api': ['sources_metadata', 'sources_ingestion', 'sources']
     }
+
+    depends_on = ["api-v3","column-builder"]
 
     def should_apply(self, database: Database):
         inst = database.inspector

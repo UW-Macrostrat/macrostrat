@@ -10,12 +10,14 @@ JOIN maps.sources ON slug = table_name
 WHERE table_schema = 'sources'"""
 
 class ColumnBuilderMigration(Migration):
-    name = "02-column-builder-api-schema"
+    name = "column-builder"
     subsystem = "core"
     description = """
     Starting from a Macrostrat v1 map database (burwell), create the macrostrat_api schema,
     then populate a number of views into the schema.
     """
+
+    depends_on = ['macrostrat-core-v2']
 
     def should_apply(self, db: Database):
         return not db.inspector.has_schema('macrostrat_api')

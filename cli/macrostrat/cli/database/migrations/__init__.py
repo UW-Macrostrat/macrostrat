@@ -5,14 +5,18 @@ from rich import print
 from .base import Migration
 from typing import ClassVar
 from pathlib import Path
+from graphlib import TopologicalSorter
 from . import (
-    baseline, partition_carto, partition_maps, update_macrostrat, map_source_slugs, map_sources, column_builder
+    baseline, partition_carto, partition_maps, update_macrostrat, map_source_slugs, map_sources, 
+    column_builder, api_v3
 )
 __dir__ = Path(__file__).parent
 
 
 class StorageSchemeMigration(Migration):
     name = "storage-scheme"
+
+    depends_on = ['api-v3']
 
     def apply(self, db: Database):
         db.run_sql(
@@ -65,7 +69,9 @@ def run_migrations(apply: bool = False, name: str = None, force: bool = False):
 
     # Instantiate each migration, then sort alphabetically by migration name
     instances = [cls() for cls in migrations]
-    instances.sort(key=lambda c: c.name)
+    graph = {inst.name: inst.depends_on for inst in instances}
+    order = list(TopologicalSorter(graph).static_order())
+    instances.sort(key=lambda i: order.index(i.name))
 
     for _migration in instances:
         # Initialize migration

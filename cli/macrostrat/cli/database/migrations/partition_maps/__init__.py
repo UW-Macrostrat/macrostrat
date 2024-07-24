@@ -6,13 +6,14 @@ __dir__ = Path(__file__).parent
 
 
 class PartitionMapsMigration(Migration):
-    name = "03-partition-maps"
+    name = "partition-maps"
     # This partition is required
     subsystem = "maps"
     description = """
     Starting from a Macrostrat v1 map database (burwell), integrate the tiny, small, medium, and large map tables (+lines)
     into a single map table, partitioned by scale to retain the original table structure and avoid copying data.
     """
+    depends_on = ['macrostrat-core-v2']
 
     def should_apply(self, db: Database):
         # Check if the maps.polygons table exists

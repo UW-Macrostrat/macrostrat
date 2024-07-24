@@ -10,12 +10,14 @@ JOIN maps.sources ON slug = table_name
 WHERE table_schema = 'sources'"""
 
 class MapSourceSlugsMigration(Migration):
-    name = "01-map-source-slugs"
+    name = "map-source-slug"
     subsystem = "core"
     description = """
     Starting from a Macrostrat v1 map database (burwell), create the maps.sources.slugs column,
     then add a '_polygons' suffix to the associated primary table name in the sources schema.
     """
+
+    depends_on = ['baseline']
 
     def apply(self, db: Database):
         # First, run sql migrations to add the slugs column and rename primary_table
