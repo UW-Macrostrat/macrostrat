@@ -2,7 +2,7 @@ from macrostrat.database import Database
 
 from .._legacy import get_db
 from rich import print
-from .base import Migration
+from .base import Migration, ApplicationStatus
 from typing import ClassVar
 from pathlib import Path
 from graphlib import TopologicalSorter
@@ -78,11 +78,15 @@ def run_migrations(apply: bool = False, name: str = None, force: bool = False):
         _name = _migration.name
         if name is not None and name != _name:
             continue
+            
+        apply_status = _migration.should_apply(db)
 
-        if _migration.should_apply(db) or force:
+        if force or apply_status == ApplicationStatus.CAN_APPLY:
             if not apply:
                 print(f"Would apply migration [cyan]{_name}[/cyan]")
             else:
                 _migration.apply(db)
+        elif apply_status == ApplicationStatus.APPLIED:
+            print(f"Migration [cyan]{_name}[/cyan] already applied")
         else:
-            print(f"Migration [cyan]{_name}[/cyan] not required")
+            print(f"Migration [cyan]{_name}[/cyan] cannot apply yet")

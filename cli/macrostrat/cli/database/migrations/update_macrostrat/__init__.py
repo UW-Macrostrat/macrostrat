@@ -1,4 +1,4 @@
-from ..base import Migration
+from ..base import Migration, exists, has_fks
 from macrostrat.database import Database
 from pathlib import Path
 
@@ -16,6 +16,13 @@ class MacrostratCoreMigration(Migration):
     expected_tables = ['macrostrat.units', 'macrostrat.sections']
     depends_on = ['api-v3']
     # TODO: break this into smaller atomic migrations
+
+    preconditions = [exists()]
+
+    postconditions = [
+        exists('macrostrat.units', 'macrostrat.sections'),
+        has_fks('macrostrat.units', 'macrostrat.sections')
+    ]
 
     def should_apply(self, db: Database):
         # Check if tables added since previous prod dump exist

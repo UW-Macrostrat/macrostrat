@@ -1,5 +1,5 @@
 from macrostrat.database import Database
-from ..base import Migration
+from ..base import Migration, ApplicationStatus
 
 from psycopg2.sql import Identifier
 
@@ -42,22 +42,22 @@ class MapSourceSlugsMigration(Migration):
 
         # Check that maps.sources exists, and has a 'slug' column
         if not insp.has_table('sources', 'maps'):
-            return True
+            return ApplicationStatus.CANT_APPLY
 
         col_names = [c['name'] for c in insp.get_columns('sources','maps')]
         if not 'slug' in col_names:
-            return True
+            return ApplicationStatus.CAN_APPLY
 
         # Check that the primary_table column has appropriate values
         non_polygon_table_names = db.run_query(
             "SELECT primary_table FROM maps.sources WHERE primary_table NOT LIKE '%_polygons'")
         if non_polygon_table_names.first() is not None:
-            return True
+            return ApplicationStatus.CAN_APPLY
 
         # Check that tables in sources match primary_table instead of slug
         non_polygon_tables = db.run_query(MATCHES_SLUG_SQL)
         if non_polygon_tables.first() is not None:
-            return True
+            return ApplicationStatus.CAN_APPLY
 
-        return False 
+        return ApplicationStatus.APPLIED
 

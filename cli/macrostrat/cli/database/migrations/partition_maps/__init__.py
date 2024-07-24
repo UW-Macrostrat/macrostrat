@@ -1,4 +1,4 @@
-from ..base import Migration
+from ..base import Migration, ApplicationStatus
 from macrostrat.database import Database
 from pathlib import Path
 
@@ -20,14 +20,14 @@ class PartitionMapsMigration(Migration):
         insp = db.inspector
 
         if self.is_satisfied(db):
-            return False
+            return ApplicationStatus.APPLIED
 
         for scale in ["tiny", "small", "medium", "large"]:
             if not db.inspector.has_table(scale, schema="maps") and not insp.has_table(
                 scale, schema="lines"
             ):
-                return False
-        return True
+                return ApplicationStatus.APPLIED
+        return ApplicationStatus.CAN_APPLY
 
     def is_satisfied(self, db: Database):
         for table in ["lines", "polygons"]:

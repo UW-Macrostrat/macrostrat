@@ -1,4 +1,4 @@
-from ..base import Migration
+from ..base import Migration, not_exists, view_exists
 from macrostrat.database import Database
 from pathlib import Path
 
@@ -15,15 +15,7 @@ class PartitionCartoMigration(Migration):
 
     depends_on = ['macrostrat-core-v2']
 
-    def should_apply(self, db: Database):
-        # Check if the maps.polygons table exists
-        self.expected_tables = []
-
-        for table in ["lines", "polygons"]:
-            self.expected_tables.append(f"carto.{table}")
-
-        for scale in ["tiny", "small", "medium", "large"]:
-            self.expected_tables.append(f"carto_new.{scale}")
-            self.expected_tables.append(f"carto_new.lines_{scale}")
-
-        return super().should_apply(db)
+    preconditions = [not_exists('carto.lines_tiny', 'carto.lines_small', 'carto.lines_medium', 'carto.lines_large')]
+    postconditions = [
+        view_exists('carto_new', 'lines_tiny', 'lines_small', 'lines_medium', 'lines_large')
+    ]
