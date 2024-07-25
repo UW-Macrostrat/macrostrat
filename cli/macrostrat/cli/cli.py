@@ -19,6 +19,7 @@ from .kubernetes import get_secret
 from .v1_entrypoint import v1_cli
 from .v2_commands import app as v2_app
 from .subsystems.paleogeography import load_paleogeography_subsystem
+from .subsystems.macrostrat_api import MacrostratAPISubsystem
 
 __here__ = Path(__file__).parent
 fixtures_dir = __here__ / "fixtures"
@@ -265,6 +266,9 @@ from .subsystems.mapboard import MapboardSubsystem
 
 if mapboard_url := getattr(settings, "mapboard_database", None):
     app.subsystems.add(MapboardSubsystem(app))
+
+
+app.subsystems.add(MacrostratAPISubsystem(app))
 
 app.finish_loading_subsystems()
 
