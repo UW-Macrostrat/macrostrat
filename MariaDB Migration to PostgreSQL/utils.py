@@ -237,8 +237,14 @@ def pg_loader_pre_script():
         SET col_areas_6April2016.col_area_text = ST_AsText(col_area);
         ALTER TABLE macrostrat_temp.col_areas_6April2016 DROP COLUMN col_area;
     """
+
+    query_liths = """
+    UPDATE macrostrat_temp.liths
+    SET macrostrat_temp.lith_group = null
+    where macrostrat_temp.lith_group = '';"""
+
     pre_script_queries = [query_pbdb_matches, query_places, query_refs, query_unit_contacts, query_cols, query_col_areas,
-                          query_col_areas_6April2016]
+                          query_col_areas_6April2016, query_liths]
 
     URL = f"mysql+pymysql://{maria_super_user}:{maria_super_pass}@{maria_server}/{maria_db_name_two}"
     engine = create_engine(URL)
@@ -376,9 +382,9 @@ def reset():
 if __name__ == "__main__":
     #maria_dump(maria_server, maria_super_user, maria_super_pass, maria_db_name)
     #maria_restore(maria_server, maria_super_user, maria_super_pass, maria_db_name_two)
-    pg_loader_pre_script()
+    #pg_loader_pre_script()
     #pg_loader()
-    pg_loader_post_script()
+    #pg_loader_post_script()
     maria_rows, maria_columns = get_data_counts_maria()
     pg_rows, pg_columns = get_data_counts_pg(pg_db_name, pg_user, pg_pass_new, 'macrostrat')
     pg_macrostrat_two_rows, pg_macrostrat_two_columns = get_data_counts_pg(pg_db_name_two, pg_user_migrate, pg_pass_migrate, 'macrostrat_temp')
