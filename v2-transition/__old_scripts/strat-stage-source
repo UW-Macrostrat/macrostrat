@@ -18,10 +18,10 @@ function pg-src {
 }
 
 function pg-dst {
-  export PGPASSWORD="smarmy25seasnake"
+  export PGPASSWORD="<redacted>"
   export PGHOST="dev.macrostrat.org"
-  export PGUSER=macrostrat_admin
-  docker run -i -e PGPASSWORD -e PGHOST -e PGUSER --network host $image "$@" 
+  export PGUSER=<redacted>
+  docker run -i -e PGPASSWORD -e PGHOST -e PGUSER --network host $image "$@"
 }
 
 # Primary table in the 'real' system (not the ingestion system) has _polygons appended
