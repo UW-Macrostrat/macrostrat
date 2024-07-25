@@ -40,7 +40,10 @@ class StorageSchemeMigration(Migration):
         )
 
     def should_apply(self, db: Database):
-        return has_enum(db, "schemeenum", schema="macrostrat")
+        if has_enum(db, "schemeenum", schema="macrostrat"):
+            return ApplicationStatus.CAN_APPLY
+        else:
+            return ApplicationStatus.APPLIED
 
 
 def has_enum(db: Database, name: str, schema: str = None):
@@ -67,26 +70,29 @@ def run_migrations(apply: bool = False, name: str = None, force: bool = False):
     # Find all subclasses of Migration among imported modules
     migrations = Migration.__subclasses__() 
 
-    # Instantiate each migration, then sort alphabetically by migration name
+    # Instantiate each migration, then sort topologically according to dependency order
     instances = [cls() for cls in migrations]
     graph = {inst.name: inst.depends_on for inst in instances}
     order = list(TopologicalSorter(graph).static_order())
     instances.sort(key=lambda i: order.index(i.name))
 
+    # While iterating over migrations, keep track of which have already applied
     completed_migrations = []
 
     for _migration in instances:
-        # Initialize migration
         _name = _migration.name
+
+        # Check whether the migration is capable of applying, or has already applied
         apply_status = _migration.should_apply(db)
         if apply_status == ApplicationStatus.APPLIED:
             completed_migrations.append(_migration.name)
 
+        # If --name is specified, only run the migration with the matching name
         if name is not None and name != _name:
             continue
             
+        # By default, don't run migrations that depend on other non-applied migrations
         dependencies_met = all(d in completed_migrations for d in _migration.depends_on)
-
         if not dependencies_met and not force:
             print(f"Dependencies not met for migration [cyan]{_name}[/cyan]")
             continue
@@ -95,8 +101,8 @@ def run_migrations(apply: bool = False, name: str = None, force: bool = False):
             if not apply:
                 print(f"Would apply migration [cyan]{_name}[/cyan]")
             else:
+                print(f"Applying migration [cyan]{_name}[/cyan]")
                 _migration.apply(db)
-
                 # After running migration, reload the database and confirm that application was sucessful
                 db = refresh_db()
                 if _migration.should_apply(db) == ApplicationStatus.APPLIED:
@@ -106,5 +112,6 @@ def run_migrations(apply: bool = False, name: str = None, force: bool = False):
         else:
             print(f"Migration [cyan]{_name}[/cyan] cannot apply")
 
+        # Short circuit after applying the migration specified by --name
         if name is not None and name == _name:
             break

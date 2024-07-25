@@ -8,5 +8,4 @@ class BaselineMigration(Migration):
     """
 
     # Basic sanity check, just confirm that the first table created in the migration is present
-    preconditions = [not_exists("carto", "flat_large")]
     postconditions = [exists("carto", "flat_large")]

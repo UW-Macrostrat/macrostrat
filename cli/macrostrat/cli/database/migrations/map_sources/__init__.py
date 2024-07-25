@@ -5,8 +5,7 @@ class MapsSourcesMetadataMigration(Migration):
     name = "maps-sources"
     subsystem = "core"
     description = """
-    Starting from a database with migration map-source-slugs applied, create associated
-    metadata views for maps.sources
+    Create views for sources_metadata and ingest_process in the maps and macrostrat_api schemas
     """
 
     depends_on = ["api-v3", "column-builder"]
