@@ -1,34 +1,40 @@
-import pandas as pd
-from sqlalchemy import text, create_engine, inspect
+from sqlalchemy import text, create_engine
 from Constants import *
 import os
 from sqlalchemy.exc import SQLAlchemyError
+import pandas as pd
+
 import time
 
 """
 Copies table structure and table data from one schema to another schema on the same host.
 Command line in cmd.exe language
 """
-def pg_dump():
+def pg_dump(server, user, password, dbname):
     os.system(f'pg_dump  -h {pg_server} -d {pg_db_name} -U {pg_user} -W -F d -f ./postgres_dump')
     os.system(f'{pg_pass}')
     print('Starting database export........')
     return
 
-def pg_restore():
+def pg_restore(server, user, password, dbname):
     os.system(f'pg_dump  -h {pg_server} -d {pg_db_name_two} -U {pg_user} -W -F d ./postgres_dump')
     os.system(f'{pg_pass}')
     return
 
 
-def maria_dump():
+def maria_dump(server, user, password, dbname):
+    SQLALCHEMY_DATABASE_URI = f"mysql+pymysql://{user}:{password}@{server}/{dbname}"
+    engine = create_engine(SQLALCHEMY_DATABASE_URI)
+    with engine.connect() as conn:
+        conn.execute(text(f"CREATE DATABASE IF NOT EXISTS {maria_db_name_two};"))
+    engine.dispose()
     output_file = './maria_dump.sql'
     maria_dump_command = [
         'mysqldump',
-        '-h', maria_server,
-        '-d', maria_db_name,
-        '-u', maria_super_user,
-        f'-p{maria_super_pass}',
+        '-h', server,
+        '-d', dbname,
+        '-u', user,
+        f'-p{password}',
         '--ssl-verify-server-cert=false',
         '--no-data=false',
         '--verbose',
@@ -38,15 +44,10 @@ def maria_dump():
     return
 
 
-def maria_restore():
-    SQLALCHEMY_DATABASE_URI = f"mysql://{maria_super_user}:{maria_super_pass}@{maria_server}"
-    engine = create_engine(SQLALCHEMY_DATABASE_URI)
-    with engine.connect() as conn:
-        conn.execute(text(f"CREATE DATABASE IF NOT EXISTS {maria_db_name_two};"))
-        print(f'Database created: {maria_db_name_two} ')
-    engine.dispose()
-    maria_restore_input = f'mariadb -h {maria_server} -u {maria_super_user} -p{maria_super_pass} --ssl-verify-server-cert=false ' \
-                          f'{maria_db_name_two} < ./maria_dump.sql'
+def maria_restore(server, user, password, dbname):
+
+    maria_restore_input = f'mariadb -h {server} -u {user} -p{password} --ssl-verify-server-cert=false ' \
+                          f'{dbname} < ./maria_dump.sql'
 
     print('Restoring new Maria database....')
     os.system(maria_restore_input)
@@ -155,6 +156,10 @@ def compare_data_counts(db1_rows, db2_rows, db1_columns, db2_columns, db1, db2):
 
     return row_count_difference, col_count_difference
 
+
+"""
+Script to output dataframes for comparing data between two databases and tables.
+"""
 def find_row_variances(database_name_one, schema_one, database_name_two, schema_two, username, password, table):
     SQLALCHEMY_DATABASE_URI = f"postgresql://{username}:{password}@{pg_server}/{database_name_one}"
     engine = create_engine(SQLALCHEMY_DATABASE_URI)
@@ -173,44 +178,31 @@ def find_row_variances(database_name_one, schema_one, database_name_two, schema_
     return df, df_two
 
 
-#connect pg_loader to external macrostrat_two database rather than schema
-#test if mariadb and postgresql connections work in docker container:
-#docker interactive: docker run -it --rm --network host dimitri/pgloader /bin/bash
-#docker udpate: apt-get update
-#docker install postgresql and mysql client: apt-get install -y postgresql-client mysql-client curl
-#docker test postgresql connection: psql -h db.development.svc.macrostrat.org -U macrostrat-admin -d macrostrat_two
-#manually type in macrostrat-admin password: *@I/TW.-kSY5M,l[o4@9AuU}
-#execute query to test connection: select * from pg_catalog.pg_amop
-#
 def pg_loader_pre_script():
-    # Query alters the MariaDB pbdb_matches table by adding a new column for the text data,
+    # Query alters the MariaDB tables by adding a new column for geom -> text data,
     # setting the datatype of the new column data to WKT format,
     # dropping the old geometry column,
     # adding default values for data formats that pgloader accepts
-    SQLALCHEMY_DATABASE_URI = f"mysql://{maria_super_user}:{maria_super_pass}@{maria_server}/{maria_db_name_two}"
-    engine = create_engine(SQLALCHEMY_DATABASE_URI)
-    pre_script_queries = []
-    query_pbdb_matches = text("""
-        ALTER TABLE macrostrat_temp.pbdb_matches ADD COLUMN coordinate_point_text TEXT;
-        UPDATE macrostrat_temp.pbdb_matches SET coordinate_point_text = ST_AsText(coordinate);
-        ALTER TABLE macrostrat_temp.pbdb_matches DROP COLUMN coordinate;
-        UPDATE macrostrat_temp.pbdb_matches SET release_date = '2000-01-01' WHERE release_date = '0000-00-00 00:00:00';""")
+    query_pbdb_matches = """ALTER TABLE macrostrat_temp.pbdb_matches ADD COLUMN coordinate_point_text TEXT;
+    UPDATE macrostrat_temp.pbdb_matches SET coordinate_point_text = ST_AsText(coordinate);
+    ALTER TABLE macrostrat_temp.pbdb_matches DROP COLUMN coordinate;
+    UPDATE macrostrat_temp.pbdb_matches SET release_date = '2000-01-01' WHERE release_date = '0000-00-00 00:00:00';"""
 
-    query_places = text("""
+    query_places = """
         ALTER TABLE macrostrat_temp.places ADD COLUMN geom_text LONGTEXT;
         UPDATE macrostrat_temp.places
         SET geom_text = ST_AsText(geom);
         ALTER TABLE macrostrat_temp.places DROP COLUMN geom;
-    """)
+    """
 
-    query_refs = text("""
+    query_refs = """
         ALTER TABLE macrostrat_temp.refs ADD COLUMN rgeom_text LONGTEXT;
         UPDATE macrostrat_temp.refs
         SET rgeom_text = ST_AsText(rgeom);
         ALTER TABLE macrostrat_temp.refs DROP COLUMN rgeom;
-    """)
+    """
 
-    query_unit_contacts = text("""
+    query_unit_contacts = """
         UPDATE unit_contacts
         -- Enum data type can't be null so set to enum option 'below'.
         SET contact = 'below'
@@ -219,47 +211,60 @@ def pg_loader_pre_script():
         -- enum data type can't be null so set to enum option 'above'.
         SET old_contact = 'above'
         WHERE old_contact = '';
-    """)
+    """
 
-    query_cols = text("""
-       ALTER TABLE macrostrat_temp.cols ADD COLUMN coordinate_text LONGTEXT;
+    query_cols = """
+        ALTER TABLE macrostrat_temp.cols ADD COLUMN coordinate_text LONGTEXT;
         UPDATE macrostrat_temp.cols
         SET coordinate_text = ST_AsText(coordinate);
         ALTER TABLE macrostrat_temp.cols DROP COLUMN coordinate;
         UPDATE macrostrat_temp.cols
         SET created = '2000-01-01'
         WHERE created = '0000-00-00 00:00:00';
-    """)
+    """
 
-    query_col_areas = text("""
-       ALTER TABLE macrostrat_temp.col_areas ADD COLUMN col_area_text LONGTEXT;
+    query_col_areas = """
+        ALTER TABLE macrostrat_temp.col_areas ADD COLUMN col_area_text LONGTEXT;
         UPDATE macrostrat_temp.col_areas
         SET col_areas.col_area_text = ST_AsText(col_area);
         ALTER TABLE macrostrat_temp.col_areas DROP COLUMN col_area;
 
-    """)
+    """
 
-    query_col_areas_6April2016 = text("""
-       ALTER TABLE macrostrat_temp.col_areas_6April2016 ADD COLUMN col_area_text LONGTEXT;
+    query_col_areas_6April2016 = """
+        ALTER TABLE macrostrat_temp.col_areas_6April2016 ADD COLUMN col_area_text LONGTEXT;
         UPDATE macrostrat_temp.col_areas_6April2016
         SET col_areas_6April2016.col_area_text = ST_AsText(col_area);
         ALTER TABLE macrostrat_temp.col_areas_6April2016 DROP COLUMN col_area;
-    """)
+    """
     pre_script_queries = [query_pbdb_matches, query_places, query_refs, query_unit_contacts, query_cols, query_col_areas,
                           query_col_areas_6April2016]
 
+    URL = f"mysql+pymysql://{maria_super_user}:{maria_super_pass}@{maria_server}/{maria_db_name_two}"
+    engine = create_engine(URL)
     with engine.connect() as conn:
-
         for query in pre_script_queries:
-            try:
-                result = conn.execute(query)
-            except Exception as e:
-                print(f"Error with {query}: {e}")
-            finally:
-                print(f"Successfully executed {query}.")
-
+            statements = query.split(';')
+            for statement in statements:
+                if statement.strip():
+                    try:
+                        conn.execute(text(statement))
+                        print(f"Successfully executed: {statement}")
+                    except Exception as e:
+                        print(f"Error with statement: {statement}\n{e}")
     engine.dispose()
     return
+'''
+    #create db, create temp user before pgloader
+    URL = f"postgresql://{pg_user}:{pg_pass_new}@{pg_server}/{pg_db_name}"
+    pg_engine = create_engine(URL)
+    with pg_engine.connect() as conn:
+        conn.execute(text(f"CREATE DATABASE {pg_db_name_two}"))
+        conn.execute(text(f"DROP USER IF EXISTS {pg_user_maria_temp};"))
+        conn.execute(text(f"CREATE USER maria_migrate WITH PASSWORD '{pg_pass_maria_temp}'"))
+        conn.execute(text(f"GRANT CONNECT ON DATABASE {pg_db_name_two} TO {pg_user_maria_temp};"))
+    pg_engine.dispose()'''
+
 
 
 def pg_loader_post_script():
@@ -268,6 +273,7 @@ def pg_loader_post_script():
     # dropping the old geometry column,
     # adding default values for data formats that pgloader accepts
     #vaccuum...refresh postgresql database after pgloader
+    #CREATE EXTENSION IF NOT EXISTS postgis;
     SQLALCHEMY_DATABASE_URI = f"postgresql://{pg_user_migrate}:{pg_pass_migrate}@{pg_server}/{pg_db_name_two}?sslmode=prefer"
     engine = create_engine(SQLALCHEMY_DATABASE_URI) #connect_args={'options': '-csearch_path=public,macrostrat_temp'
 
@@ -339,14 +345,15 @@ def pg_loader():
 
     input_command = f"--with \"prefetch rows = 1000\" --verbose " \
                     f"mysql://root:{maria_super_pass}@{maria_server}/{maria_db_name_two} " \
-                    f"postgresql://{pg_user_migrate}:{pg_pass_migrate}@{pg_server}/{pg_db_name_two}?sslmode=prefer"\
+                    f"postgresql://{pg_user_migrate}:{pg_pass_migrate}@{pg_server}/{pg_db_name_two}?sslmode=prefer"
 
+    print(input_command)
     os.system(f"docker run -i --rm pgloader-test pgloader {input_command}")
     return
 
 
 def reset():
-    SQLALCHEMY_DATABASE_URI = f"postgresql://{pg_user_migrate}:{pg_pass_migrate}@{pg_server}/{pg_db_name_two}"
+    SQLALCHEMY_DATABASE_URI = f"{pg_user_maria_temp}:{pg_pass_maria_temp}@{pg_server}/{pg_db_name_two}"
     pg_engine = create_engine(SQLALCHEMY_DATABASE_URI)
     pg_drop_query = text(f"DROP SCHEMA macrostrat_temp CASCADE") # {new_migrate_schema_name}
 
@@ -367,25 +374,26 @@ def reset():
 
 
 if __name__ == "__main__":
-    #maria_dump()
-    #maria_restore()
-    #pg_loader_pre_script()
+    #maria_dump(maria_server, maria_super_user, maria_super_pass, maria_db_name)
+    #maria_restore(maria_server, maria_super_user, maria_super_pass, maria_db_name_two)
+    pg_loader_pre_script()
     #pg_loader()
-    #pg_loader_post_script()
-    #maria_rows, maria_columns = get_data_counts_maria()
-    #pg_rows, pg_columns = get_data_counts_pg(pg_db_name, pg_user, pg_pass_encoded, 'macrostrat')
-    #pg_macrostrat_two_rows, pg_macrostrat_two_columns = get_data_counts_pg(pg_db_name_two, pg_user_migrate, pg_pass_migrate, 'macrostrat_temp')
-    #print('\nMARIADB (db1) comparison to PG MACROSTRAT_TWO (db2). These should be clones. ')
-    #db1 = 'MariaDB'
-    #db2 = 'PG Macrostrat_Two'
-    #row_variance, column_variance = compare_data_counts(maria_rows, pg_macrostrat_two_rows, maria_columns,
-                                                        #pg_macrostrat_two_columns, db1, db2)
-    #print('\nPG MACROSTRAT_TWO (db1 maria db clone) comparison to PG MACROSTRAT (db2). This will show what data '
-          #'needs to be moved over from Maria to PG prod.')
-    #db1 = 'PG Macrostrat_Two'
-    #db2 = 'PG Macrostrat'
-    #row_variance_two, column_variance_two = compare_data_counts(pg_macrostrat_two_rows, pg_rows, pg_macrostrat_two_columns,
-                                                        #pg_columns, db1, db2)
+    pg_loader_post_script()
+    maria_rows, maria_columns = get_data_counts_maria()
+    pg_rows, pg_columns = get_data_counts_pg(pg_db_name, pg_user, pg_pass_new, 'macrostrat')
+    pg_macrostrat_two_rows, pg_macrostrat_two_columns = get_data_counts_pg(pg_db_name_two, pg_user_migrate, pg_pass_migrate, 'macrostrat_temp')
+
+    print('\nMARIADB (db1) comparison to PG MACROSTRAT_TWO (db2). These should be clones. ')
+    db1 = 'MariaDB'
+    db2 = 'PG Macrostrat_Two'
+    row_variance, column_variance = compare_data_counts(maria_rows, pg_macrostrat_two_rows, maria_columns,
+                                                        pg_macrostrat_two_columns, db1, db2)
+    print('\nPG MACROSTRAT_TWO (db1 maria db clone) comparison to PG MACROSTRAT (db2). This will show what data '
+          'needs to be moved over from Maria to PG prod.')
+    db1 = 'PG Macrostrat_Two'
+    db2 = 'PG Macrostrat'
+    row_variance_two, column_variance_two = compare_data_counts(pg_macrostrat_two_rows, pg_rows, pg_macrostrat_two_columns,
+                                                        pg_columns, db1, db2)
     #reset()
-    df, df_two = find_row_variances(pg_db_name, pg_db_name, pg_db_name_two, maria_db_name_two,
-                                    pg_user, pg_pass_new, 'cols')
+    #df, df_two = find_row_variances(pg_db_name, pg_db_name, pg_db_name_two, maria_db_name_two,
+                                   #pg_user, pg_pass_new, 'cols')
