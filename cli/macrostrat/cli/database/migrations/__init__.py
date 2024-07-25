@@ -8,7 +8,7 @@ from pathlib import Path
 from graphlib import TopologicalSorter
 from . import (
     baseline, macrostrat_mariadb, partition_carto, partition_maps, update_macrostrat, map_source_slugs, map_sources, 
-    column_builder, api_v3
+    column_builder, api_v3, points, maps_source_operations
 )
 __dir__ = Path(__file__).parent
 
