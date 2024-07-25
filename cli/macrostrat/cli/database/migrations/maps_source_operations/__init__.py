@@ -1,6 +1,6 @@
 from ..base import Migration, exists, view_exists
 
-class BaselineMigration(Migration):
+class MapsSoureOperationsMigration(Migration):
     name = "maps-source-operations"
     subsystem = "core"
     description = """ Create table for tracking map management operations """

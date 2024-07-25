@@ -1,6 +1,6 @@
 from ..base import Migration, exists, view_exists
 
-class BaselineMigration(Migration):
+class PointsMigration(Migration):
     name = "points"
     subsystem = "core"
     description = """ Move the points table to schema maps """
