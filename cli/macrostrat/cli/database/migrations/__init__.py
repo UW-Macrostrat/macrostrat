@@ -1,6 +1,6 @@
 from macrostrat.database import Database
 
-from .._legacy import get_db
+from .._legacy import get_db, refresh_db
 from rich import print
 from .base import Migration, ApplicationStatus
 from typing import ClassVar
@@ -96,6 +96,11 @@ def run_migrations(apply: bool = False, name: str = None, force: bool = False):
                 print(f"Would apply migration [cyan]{_name}[/cyan]")
             else:
                 _migration.apply(db)
+
+                # After running migration, reload the database and confirm that application was sucessful
+                db = refresh_db()
+                if _migration.should_apply(db) == ApplicationStatus.APPLIED:
+                    completed_migrations.append(_migration.name)
         elif apply_status == ApplicationStatus.APPLIED:
             print(f"Migration [cyan]{_name}[/cyan] already applied")
         else:

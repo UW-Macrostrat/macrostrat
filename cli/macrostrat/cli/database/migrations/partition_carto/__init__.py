@@ -15,7 +15,7 @@ class PartitionCartoMigration(Migration):
 
     depends_on = ['macrostrat-core-v2']
 
-    preconditions = [not_exists('carto.lines_tiny', 'carto.lines_small', 'carto.lines_medium', 'carto.lines_large')]
     postconditions = [
-        view_exists('carto_new', 'lines_tiny', 'lines_small', 'lines_medium', 'lines_large')
+        view_exists('carto_new', 'lines_tiny', 'lines_small', 'lines_medium', 'lines_large'),
+        view_exists('carto_new', 'tiny', 'small', 'medium', 'large'),
     ]

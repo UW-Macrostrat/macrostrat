@@ -11,8 +11,6 @@ class MapsSourcesMetadataMigration(Migration):
 
     depends_on = ["api-v3", "column-builder"]
 
-    preconditions = [schema_exists("macrostrat_api")]
-
     postconditions = [
         view_exists("maps", "sources_metadata", "ingest_process"),
         view_exists("macrostrat_api", "sources_metadata", "sources_ingestion", "sources"),

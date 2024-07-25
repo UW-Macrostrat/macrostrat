@@ -2,50 +2,50 @@
 
 -- DROP TYPE IF EXISTS macrostrat.boundary_status;
 
-CREATE TYPE macrostrat.boundary_status AS ENUM
+CREATE TYPE boundary_status AS ENUM
     ('', 'modeled', 'relative', 'absolute', 'spike');
 
-ALTER TYPE macrostrat.boundary_status
+ALTER TYPE boundary_status
     OWNER TO macrostrat;
 
 -- Type: boundary_type
 
 -- DROP TYPE IF EXISTS macrostrat.boundary_type;
 
-CREATE TYPE macrostrat.boundary_type AS ENUM
+CREATE TYPE boundary_type AS ENUM
     ('', 'unconformity', 'conformity', 'fault', 'disconformity', 'non-conformity', 'angular unconformity');
 
-ALTER TYPE macrostrat.boundary_type
+ALTER TYPE boundary_type
     OWNER TO macrostrat;
 
 -- Type: ingest_state
 
 -- DROP TYPE IF EXISTS macrostrat.ingest_state;
 
-CREATE TYPE macrostrat.ingest_state AS ENUM
+CREATE TYPE ingest_state AS ENUM
     ('pending', 'ingested', 'prepared', 'failed', 'abandoned');
 
-ALTER TYPE macrostrat.ingest_state
+ALTER TYPE ingest_state
     OWNER TO macrostrat;
 
 -- Type: ingest_type
 
 -- DROP TYPE IF EXISTS macrostrat.ingest_type;
 
-CREATE TYPE macrostrat.ingest_type AS ENUM
+CREATE TYPE ingest_type AS ENUM
     ('raster', 'ta1_output');
 
-ALTER TYPE macrostrat.ingest_type
+ALTER TYPE ingest_type
     OWNER TO macrostrat;
 
 -- Type: map_scale
 
 -- DROP TYPE IF EXISTS macrostrat.map_scale;
 
-CREATE TYPE macrostrat.map_scale AS ENUM
+CREATE TYPE map_scale AS ENUM
     ('tiny', 'small', 'medium', 'large');
 
-ALTER TYPE macrostrat.map_scale
+ALTER TYPE map_scale
     OWNER TO macrostrat;
 
 
@@ -53,10 +53,10 @@ ALTER TYPE macrostrat.map_scale
 
 -- DROP TYPE IF EXISTS macrostrat.schemeenum;
 
-CREATE TYPE macrostrat.schemeenum AS ENUM
+CREATE TYPE schemeenum AS ENUM
     ('http', 's3');
 
-ALTER TYPE macrostrat.schemeenum
+ALTER TYPE schemeenum
     OWNER TO macrostrat;
 
 --
@@ -163,8 +163,8 @@ CREATE TABLE IF NOT EXISTS macrostrat.unit_boundaries
     unit_id_2 integer NOT NULL,
     section_id integer NOT NULL,
     boundary_position numeric(6,2) DEFAULT NULL::numeric,
-    boundary_type macrostrat.boundary_type NOT NULL DEFAULT ''::macrostrat.boundary_type,
-    boundary_status macrostrat.boundary_status NOT NULL DEFAULT 'modeled'::macrostrat.boundary_status,
+    boundary_type boundary_type NOT NULL DEFAULT ''::boundary_type,
+    boundary_status boundary_status NOT NULL DEFAULT 'modeled'::boundary_status,
     paleo_lat numeric(8,5),
     paleo_lng numeric(8,5),
     ref_id integer NOT NULL DEFAULT 217,

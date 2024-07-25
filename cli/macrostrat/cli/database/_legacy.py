@@ -49,3 +49,13 @@ def get_db():
     if db is None:
         db = Database(PG_DATABASE)
     return db
+
+def refresh_db():
+    from macrostrat.database import Database, scoped_session
+
+    global db
+    if db is not None:
+        db.session.flush()
+        db.session.close()
+    db = Database(PG_DATABASE)
+    return db
