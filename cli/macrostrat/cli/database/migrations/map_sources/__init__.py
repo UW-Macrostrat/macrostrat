@@ -9,17 +9,11 @@ class MapsSourcesMetadataMigration(Migration):
     metadata views for maps.sources
     """
 
+    depends_on = ["api-v3", "column-builder"]
+
     preconditions = [schema_exists("macrostrat_api")]
 
     postconditions = [
-        view_exists("maps", "source_metadata"),
+        view_exists("maps", "sources_metadata", "ingest_process"),
         view_exists("macrostrat_api", "sources_metadata", "sources_ingestion", "sources"),
     ]
-
-    depends_on = ["api-v3", "column-builder"]
-
-    def should_apply(self, database: Database):
-        inst = database.inspector
-        for schema, views in self.expected_views.items():
-            if any(v not in inst.get_view_names(schema) for v in views):
-                return True

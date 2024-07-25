@@ -1,4 +1,4 @@
-from ..base import Migration, ApplicationStatus
+from ..base import Migration, ApplicationStatus, exists, view_exists
 from macrostrat.database import Database
 from pathlib import Path
 
@@ -15,22 +15,7 @@ class PartitionMapsMigration(Migration):
     """
     depends_on = ['macrostrat-core-v2']
 
-    def should_apply(self, db: Database):
-        # Check if the maps.polygons table exists
-        insp = db.inspector
-
-        if self.is_satisfied(db):
-            return ApplicationStatus.APPLIED
-
-        for scale in ["tiny", "small", "medium", "large"]:
-            if not db.inspector.has_table(scale, schema="maps") and not insp.has_table(
-                scale, schema="lines"
-            ):
-                return ApplicationStatus.APPLIED
-        return ApplicationStatus.CAN_APPLY
-
-    def is_satisfied(self, db: Database):
-        for table in ["lines", "polygons"]:
-            if not db.inspector.has_table(table, schema="maps"):
-                return False
-        return True
+    postconditions = [
+        exists("maps", "lines", "polygons"),
+        view_exists("lines", "tiny", "small", "medium", "large"),
+    ]

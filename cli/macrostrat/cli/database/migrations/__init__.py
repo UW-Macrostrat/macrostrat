@@ -7,7 +7,7 @@ from typing import ClassVar
 from pathlib import Path
 from graphlib import TopologicalSorter
 from . import (
-    baseline, partition_carto, partition_maps, update_macrostrat, map_source_slugs, map_sources, 
+    baseline, macrostrat_mariadb, partition_carto, partition_maps, update_macrostrat, map_source_slugs, map_sources, 
     column_builder, api_v3
 )
 __dir__ = Path(__file__).parent
@@ -73,13 +73,23 @@ def run_migrations(apply: bool = False, name: str = None, force: bool = False):
     order = list(TopologicalSorter(graph).static_order())
     instances.sort(key=lambda i: order.index(i.name))
 
+    completed_migrations = []
+
     for _migration in instances:
         # Initialize migration
         _name = _migration.name
+        apply_status = _migration.should_apply(db)
+        if apply_status == ApplicationStatus.APPLIED:
+            completed_migrations.append(_migration.name)
+
         if name is not None and name != _name:
             continue
             
-        apply_status = _migration.should_apply(db)
+        dependencies_met = all(d in completed_migrations for d in _migration.depends_on)
+
+        if not dependencies_met and not force:
+            print(f"Dependencies not met for migration [cyan]{_name}[/cyan]")
+            continue
 
         if force or apply_status == ApplicationStatus.CAN_APPLY:
             if not apply:
@@ -89,4 +99,7 @@ def run_migrations(apply: bool = False, name: str = None, force: bool = False):
         elif apply_status == ApplicationStatus.APPLIED:
             print(f"Migration [cyan]{_name}[/cyan] already applied")
         else:
-            print(f"Migration [cyan]{_name}[/cyan] cannot apply yet")
+            print(f"Migration [cyan]{_name}[/cyan] cannot apply")
+
+        if name is not None and name == _name:
+            break

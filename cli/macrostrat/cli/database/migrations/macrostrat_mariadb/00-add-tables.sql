@@ -60,39 +60,6 @@ ALTER TYPE macrostrat.schemeenum
     OWNER TO macrostrat;
 
 --
--- macrostrat.ingest_process
---
-CREATE TABLE IF NOT EXISTS macrostrat.ingest_process
-(
-    id BIGSERIAL,
-    state macrostrat.ingest_state,
-    comments text COLLATE pg_catalog."default",
-    source_id integer,
-    access_group_id integer,
-    object_group_id integer NOT NULL,
-    created_on timestamp with time zone NOT NULL DEFAULT now(),
-    completed_on timestamp with time zone,
-    CONSTRAINT ingest_process_pkey PRIMARY KEY (id),
-    CONSTRAINT ingest_process_access_group_id_fkey FOREIGN KEY (access_group_id)
-        REFERENCES macrostrat_auth."group" (id) MATCH SIMPLE
-        ON UPDATE NO ACTION
-        ON DELETE NO ACTION,
-    CONSTRAINT ingest_process_object_group_id_fkey FOREIGN KEY (object_group_id)
-        REFERENCES storage.object_group (id) MATCH SIMPLE
-        ON UPDATE NO ACTION
-        ON DELETE NO ACTION,
-    CONSTRAINT ingest_process_source_id_fkey FOREIGN KEY (source_id)
-        REFERENCES maps.sources (source_id) MATCH SIMPLE
-        ON UPDATE NO ACTION
-        ON DELETE NO ACTION
-)
-
-TABLESPACE pg_default;
-
-ALTER TABLE IF EXISTS macrostrat.ingest_process
-    OWNER to macrostrat;
-
---
 -- macrostrat.projects
 --
 

@@ -4,50 +4,25 @@ import inspect
 from typing import Callable
 from enum import Enum
 
+""" Higher-order functions that return a function that evaluates whether a condition is met on the database """
 DbEvaluator = Callable[[Database], bool]
 
-""" Higher-order function that returns """
-def exists(*table_names: str):
-    def _exists(db: Database):
-        for table_name in table_names:
-            schema, table = table_name.split('.')
-            if not db.inspector.has_table(table, schema=schema):
-                return False
-        return True
-    return _exists
+def exists(schema: str, *table_names: str) -> DbEvaluator:
+    return lambda db: all(db.inspector.has_table(t, schema=schema) for t in table_names)
 
-def not_exists(*table_names: str):
-    def _not_exists(db: Database):
-        for table_name in table_names:
-            schema, table = table_name.split('.')
-            if db.inspector.has_table(table, schema=schema):
-                return False
-        return True
-    return _not_exists
+def not_exists(schema: str, *table_names: str) -> DbEvaluator:
+    return lambda db: all(not db.inspector.has_table(t, schema=schema) for t in table_names)
 
-def schema_exists(schema_name: str):
-    def _schema_exists(db: Database):
-        return db.inspector.has_schema(schema_name)
-    return _schema_exists
+def schema_exists(schema: str) -> DbEvaluator:
+    return lambda db: db.inspector.has_schema(schema)
 
-def view_exists(schema_name: str, *view_names: str):
-    def _view_exists(db: Database):
-        for view_name in view_names:
-            if not view_name in db.inspector.get_view_names(schema_name):
-                return False
-        return True
-    return _view_exists
+def view_exists(schema: str, *view_names: str) -> DbEvaluator:
+    return lambda db: all(v in db.inspector.get_view_names(schema) for v in view_names)
 
-
-def has_fks(*table_names: str):
-    def _has_fks(db: Database):
-        for table_name in table_names:
-            schema, table = table_name.split('.')
-            fks = db.inspector.get_foreign_keys(table, schema=schema)
-            if len(fks) == 0:
-                return False
-        return True
-    return _has_fks
+def has_fks(schema: str, *table_names: str) -> DbEvaluator:
+    return lambda db: all(
+        db.inspector.has_table(t, schema=schema) and 
+        len(db.inspector.get_foreign_keys(t, schema=schema)) for t in table_names)
 
 class ApplicationStatus(Enum):
     CANT_APPLY = "cant_apply"

@@ -20,6 +20,3 @@ class ColumnBuilderMigration(Migration):
     depends_on = ['macrostrat-core-v2']
 
     postconditions = [schema_exists('macrostrat_api')]
-
-    def should_apply(self, db: Database):
-        return not db.inspector.has_schema('macrostrat_api')
