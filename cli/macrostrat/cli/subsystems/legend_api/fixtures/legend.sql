@@ -17,7 +17,7 @@ FROM macrostrat.intervals
 ),
 legend_liths AS (
 SELECT
-	legend_id, 
+	legend_id,
 	lith_id,
 	json_agg(basis_col) basis_cols
 FROM maps.legend_liths
@@ -66,9 +66,3 @@ SELECT
 FROM maps.legend l
 JOIN legend_liths2 ll USING (legend_id)
 GROUP BY legend_id;
-
-/* These GRANTS are duplicated elsewhere and should be simplified */
-GRANT USAGE ON SCHEMA macrostrat_api TO web_anon;
-GRANT USAGE ON SCHEMA macrostrat_api TO web_user;
-GRANT SELECT ON ALL TABLES IN SCHEMA macrostrat_api TO web_anon;
-GRANT SELECT ON ALL TABLES IN SCHEMA macrostrat_api TO web_user;

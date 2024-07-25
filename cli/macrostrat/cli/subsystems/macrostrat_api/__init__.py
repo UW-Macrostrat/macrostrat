@@ -18,7 +18,7 @@ macrostrat_api = SubsystemSchemaDefinition(
     fixtures=[fixtures_dir],
 )
 
-# TODO: get schema migrations/fixtures to align with subsystems
+# TODO: align schema migrations/fixtures with subsystems
 
 
 class MacrostratAPISubsystem(MacrostratSubsystem):
@@ -28,17 +28,12 @@ class MacrostratAPISubsystem(MacrostratSubsystem):
         """Set permissions on tables in the Macrostrat API subsystem
         TODO: make this only apply the minimum set of changes given the current
         GRANTs on the tables
+
+        NOTE: this hook runs no matter which subsystems are being updated
         """
         self.app.console.print("Setting roles for Macrostrat API", style="green bold")
         db = get_db()
-        db.run_sql(
-            """
-            GRANT USAGE ON SCHEMA macrostrat_api TO web_anon;
-            GRANT USAGE ON SCHEMA macrostrat_api TO web_user;
-            GRANT SELECT ON ALL TABLES IN SCHEMA macrostrat_api TO web_anon;
-            GRANT SELECT ON ALL TABLES IN SCHEMA macrostrat_api TO web_user;
-            """
-        )
+        db.run_fixtures(__here__ / "roles.sql")
 
         self.app.console.print(
             "Reloading the PostgREST schema cache", style="green bold"
