@@ -5,7 +5,6 @@ from typing import Any, Callable
 from urllib.parse import quote
 
 import typer
-from macrostrat.app_frame import compose
 from macrostrat.database import Database
 from macrostrat.utils.shell import run
 from pydantic import BaseModel
@@ -13,6 +12,7 @@ from rich import print
 from sqlalchemy import create_engine, text
 from sqlalchemy_utils import create_database
 from typer import Argument, Option
+from .migrations import run_migrations
 
 from macrostrat.core import MacrostratSubsystem, app
 from macrostrat.core.utils import is_pg_url
@@ -46,6 +46,8 @@ def run_all_sql(db, dir: Path, match: str = None):
 
 class SubsystemSchemaDefinition(BaseModel):
     """A schema definition managed by a Macrostrat subsystem"""
+
+    # TODO: These could also be recast as "idempotent migrations" that can be run at any time
 
     class Config:
         arbitrary_types_allowed = True
@@ -164,15 +166,9 @@ def update_schema(
 
     app.subsystems.run_hook("schema-update")
 
-    # Reload the postgrest schema cache
-    if app.settings.get("compose_root", None) is not None:
-        compose("kill -s SIGUSR1 postgrest")
-    else:
-        db.run_sql("NOTIFY pgrst, 'reload schema';")
-
 
 db_app = db_subsystem.control_command()
-db_app.command(name="update")(update_schema)
+db_app.command(name="update", rich_help_panel="Schema management")(update_schema)
 
 # Pass through arguments
 
@@ -269,6 +265,7 @@ def _engine_for_db_name(name: str | None):
 
 @db_app.command(name="tables")
 def list_tables(ctx: typer.Context, database: str = Argument(None), schema: str = None):
+    """List tables in the database"""
     sql = """SELECT table_schema, table_name
     FROM information_schema.tables
     WHERE table_schema != 'pg_catalog' AND table_schema != 'information_schema'
@@ -293,15 +290,74 @@ def list_tables(ctx: typer.Context, database: str = Argument(None), schema: str 
             print(f"{row.table_schema}.{row.table_name}")
 
 
-@db_app.command(name="sql")
+class TableInspector:
+    def __init__(self, db: Database, table, schema=None):
+        self.db = db
+        self.table = table
+        self.schema = schema
+        self._insp = db.inspector
+
+    def __getattr__(self, name, **kwargs):
+        return getattr(self.insp, name)(self.table, schema=self.schema, **kwargs)
+
+    @property
+    def foreign_keys(self):
+        return self._insp.get_foreign_keys(self.table, schema=self.schema)
+
+    @property
+    def indexes(self):
+        return self._insp.get_indexes(self.table, schema=self.schema)
+
+    @property
+    def columns(self):
+        return self._insp.get_columns(self.table, schema=self.schema)
+
+    @property
+    def pk_constraint(self):
+        return self._insp.get_pk_constraint(self.table, schema=self.schema)
+
+    @property
+    def unique_constraints(self):
+        return self._insp.get_unique_constraints(self.table, schema=self.schema)
+
+    @property
+    def check_constraints(self):
+        return self._insp.get_check_constraints(self.table, schema=self.schema)
+
+
+@db_app.command(name="inspect")
+def inspect_table(table: str):
+    """Inspect a table in the database"""
+    db = get_db()
+
+    schema = None
+    if "." in table:
+        schema, table = table.split(".")
+
+    if not db.inspector.has_table(table, schema=schema):
+        print(f"Table {table} does not exist", file=stderr)
+        exit(1)
+
+    insp = TableInspector(db, table, schema=schema)
+
+    print(f"[dim]Inspecting table: [bold cyan]{table}[/]\n", file=stderr)
+    from IPython import embed
+
+    embed(
+        header=f"""Inspecting table {table} in database {db.engine.url.database}.
+        Use the 'db' object to interact with the database and 'insp' to interact with the inspector."""
+    )
+
+
+@db_app.command(name="scripts", rich_help_panel="Schema management")
 def run_migration(migration: str = Argument(None)):
-    """Run an ad-hoc migration"""
+    """Ad-hoc migration scripts"""
     pth = Path(__file__).parent.parent / "ad-hoc-migrations"
     files = list(pth.glob("*.sql"))
     files.sort()
     if migration is None:
-        print("No migration specified", file=stderr)
-        print("Available migrations:", file=stderr)
+        print("[yellow bold]No script specified\n", file=stderr)
+        print("[bold]Available scripts:", file=stderr)
         for f in files:
             print(f"  {f.stem}", file=stderr)
         exit(1)
@@ -317,6 +373,7 @@ def run_migration(migration: str = Argument(None)):
 @db_app.command(name="tunnel")
 def db_tunnel():
     """Create a Kubernetes port-forward to the remote database"""
+    # TODO: Check if we are running in a Kubernetes environment
 
     pod = getattr(app.settings, "pg_database_pod", None)
     if pod is None:
@@ -325,7 +382,35 @@ def db_tunnel():
     run("kubectl", "port-forward", pod, f"{port}:5432")
 
 
-@db_app.command(name="import-mariadb")
+keys = ["username", "host", "port", "password", "database"]
+
+
+@db_app.command(name="connection-details")
+def connection_details():
+    """Print the database connection details"""
+    db = get_db()
+    url = raw_database_url(db.engine.url)
+    for key in keys:
+        print(
+            field_title(key.capitalize()),
+            f"[dim bold green]{getattr(db.engine.url, key)}",
+        )
+    print(field_title("URL"), f"[dim white]{url}")
+
+
+def field_title(name):
+    title = name + ":"
+    # expand the title to 20 characters
+    title = title.ljust(12)
+    return "[dim]" + title + "[/]" + " "
+
+
+db_app.command(name="migrations", rich_help_panel="Schema management")(run_migrations)
+
+
+@db_app.command(
+    name="import-mariadb", rich_help_panel="Schema management", deprecated=True
+)
 def import_legacy():
     """Import legacy MariaDB database to PostgreSQL using pgloader"""
     # Run pgloader in docker
@@ -360,26 +445,3 @@ def import_legacy():
         str(dburl),
         str(url),
     )
-
-
-keys = ["username", "host", "port", "password", "database"]
-
-
-@db_app.command(name="connection-details")
-def connection_details():
-    """Print the database connection details"""
-    db = get_db()
-    url = raw_database_url(db.engine.url)
-    for key in keys:
-        print(
-            field_title(key.capitalize()),
-            f"[dim bold green]{getattr(db.engine.url, key)}",
-        )
-    print(field_title("URL"), f"[dim white]{url}")
-
-
-def field_title(name):
-    title = name + ":"
-    # expand the title to 20 characters
-    title = title.ljust(12)
-    return "[dim]" + title + "[/]" + " "

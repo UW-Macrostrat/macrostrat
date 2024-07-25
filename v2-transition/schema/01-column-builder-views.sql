@@ -1,1 +1,0 @@
-../services/column-builder/api-views/01-views.sql

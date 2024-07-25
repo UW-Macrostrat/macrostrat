@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# Description: move a source from the ingestion database to the main system
+
+source="$1"
+scale="${2:-"medium"}"
+
+if [ "$3" = '--force' ]; then
+  force=1
+fi
+
+image="postgres:15"
+
+function pg-src {
+  export PGPASSWORD="$POSTGRES_PASSWORD"
+  export PGHOST="localhost"
+  export PGUSER=postgres
+  docker run -i -e PGPASSWORD -e PGHOST -e PGUSER --network host $image "$@"
+}
+
+function pg-dst {
+  export PGPASSWORD="<redacted>"
+  export PGHOST="dev.macrostrat.org"
+  export PGUSER=<redacted>
+  docker run -i -e PGPASSWORD -e PGHOST -e PGUSER --network host $image "$@"
+}
+
+# Primary table in the 'real' system (not the ingestion system) has _polygons appended
+primary_table="${source}_polygons"
+
+# Check if this row already exists
+exists=$(pg-dst psql macrostrat_v2 -t -c "SELECT count(*) FROM maps.sources WHERE primary_table = '$primary_table'")
+if [ $exists -gt 0 ]; then
+  echo "Source $primary_table already exists in the database"
+  if [ $force ]; then
+    echo "Forcing overwrite"
+    pg-dst psql macrostrat_v2 -c "DELETE FROM maps.sources WHERE primary_table = '$primary_table'"
+  else
+    exit 1
+  fi
+fi
+
+# Get maxval of source_id
+maxval=$(pg-dst psql macrostrat_v2 -t -c "SELECT MAX(source_id)+1 FROM maps.sources")
+echo $maxval
+
+pg-src psql map_ingestion -c "COPY (SELECT $maxval, name, '$primary_table', url, ref_title, authors, ref_year, ref_source, isbn_doi, '$scale', primary_line_table, null, null, null, null, rgeom, ARRAY['$scale'], web_geom, null, null FROM maps.sources WHERE primary_table = '$source') TO STDOUT" \
+| pg-dst psql macrostrat_v2 -c "COPY maps.sources FROM STDIN"
+
+exit 0
+
+pg-src pg_dump -Fc map_ingestion --no-owner --table sources.$1\* \
+| pv \
+| pg-dst pg_restore -v -d macrostrat_v2
