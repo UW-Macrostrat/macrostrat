@@ -86,12 +86,3 @@ SELECT
     s.raster_url,
     s.web_geom envelope
 FROM maps.sources s;
-<<<<<<< HEAD:cli/macrostrat/cli/database/migrations/map_sources/01-maps-sources.sql
-
--- This is a hack and should be handled centrally. Declarative role management?
-GRANT USAGE ON SCHEMA macrostrat_api TO web_anon;
-GRANT USAGE ON SCHEMA macrostrat_api TO web_user;
-GRANT SELECT ON ALL TABLES IN SCHEMA macrostrat_api TO web_anon;
-GRANT SELECT ON ALL TABLES IN SCHEMA macrostrat_api TO web_user;
-=======
->>>>>>> main:cli/macrostrat/cli/fixtures/01-maps-sources.sql
