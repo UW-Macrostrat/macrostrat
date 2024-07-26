@@ -125,19 +125,22 @@ def get_data_counts_pg(database_name, username, password, schema):
              AND table_type = 'BASE TABLE' AND table_schema = :table_schema""",
             dict(table_schema=schema, table_catalog=database_name),
         )
+
         table_result = conn.execute(table_query)
         pg_tables = [row[0] for row in table_result]
         for table in pg_tables:
-            row_query = text(f"SELECT COUNT(*) FROM {database_name}.{schema}.{table};")
-            row_result = conn.execute(row_query)
+            row_result = run_query(
+                conn,
+                "SELECT COUNT(*) FROM {table}",
+                dict(table=Identifier(schema, table)),
+            )
             row_count = row_result.scalar()
             pg_rows[table.lower()] = row_count
 
-            column_query = text(
-                f"SELECT COUNT(*) FROM information_schema.columns WHERE table_catalog = '{database_name}' "
-                f"AND table_schema = '{schema}' AND table_name = '{table}';"
+            column_result = run_query(
+                "SELECT COUNT(*) FROM information_schema.columns WHERE table_catalog = :table_catalog AND table_schema = :schema AND table_name = :table",
+                dict(table_catalog=database_name, schema=schema, table=table),
             )
-            column_result = conn.execute(column_query)
             column_count = column_result.scalar()
             pg_columns[table.lower()] = column_count
     engine.dispose()
