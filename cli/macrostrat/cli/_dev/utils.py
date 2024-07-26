@@ -66,20 +66,12 @@ def _create_command(
     if container is not None:
         _args = _docker_local_run_args(container)
 
-    # We keep a separate list of arguments for logging purposes
-    # in order to avoid logging the password in the URL
-    _log_args = _args.copy()
     for arg in command:
-        log_arg = arg
         if isinstance(arg, Engine):
             arg = arg.url
         if isinstance(arg, URL):
-            log_arg = str(arg)
             arg = raw_database_url(arg)
-        _log_args.append(log_arg)
         _args.append(arg)
-
-    log.info(" ".join(_log_args))
 
     return _args
 
