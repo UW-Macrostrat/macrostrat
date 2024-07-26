@@ -5,6 +5,7 @@ from sqlalchemy.exc import SQLAlchemyError
 import pandas as pd
 from macrostrat.database.utils import run_query, run_sql
 from psycopg2.sql import Identifier
+from pathlib import Path
 
 import time
 
@@ -12,6 +13,8 @@ import time
 Copies table structure and table data from one schema to another schema on the same host.
 Command line in cmd.exe language
 """
+
+__here__ = Path(__file__).parent
 
 
 def pg_dump(server, user, password, dbname):
@@ -94,11 +97,12 @@ def get_data_counts_maria():
             )
             row_count = row_result.scalar()
             maria_rows[table.lower()] = row_count
-
-            column_query = text(
-                f"SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = '{maria_db_name_two}' AND table_name = '{table}';"
+            column_result = run_query(
+                conn,
+                "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = :table_schema AND table_name = :table_name",
+                dict(table_schema=maria_db_name_two, table_name=table),
             )
-            column_result = conn.execute(column_query)
+
             column_count = column_result.scalar()
             maria_columns[table.lower()] = column_count
 
@@ -115,10 +119,11 @@ def get_data_counts_pg(database_name, username, password, schema):
     pg_columns = {}
 
     with engine.connect() as conn:
-        table_query = text(
-            f"SELECT table_name FROM information_schema.tables WHERE table_catalog = '{database_name}'"
-            " AND table_type = 'BASE TABLE'"
-            f" AND table_schema = '{schema}'"
+        table_query = run_query(
+            conn,
+            """SELECT table_name FROM information_schema.tables WHERE table_catalog = :table_catalog
+             AND table_type = 'BASE TABLE' AND table_schema = :table_schema""",
+            dict(table_schema=schema, table_catalog=database_name),
         )
         table_result = conn.execute(table_query)
         pg_tables = [row[0] for row in table_result]
@@ -139,12 +144,11 @@ def get_data_counts_pg(database_name, username, password, schema):
     return pg_rows, pg_columns
 
 
-"""
-Compares the data counts between tables, rows, and columns that vary between any two db's
-"""
-
-
 def compare_data_counts(db1_rows, db2_rows, db1_columns, db2_columns, db1, db2):
+    """
+    Compares the data counts between tables, rows, and columns that vary between any two db's
+    """
+
     db1_rows_not_in_db2 = {
         table_name: (db1_rows[table_name], 0)
         for table_name in db1_rows
@@ -258,95 +262,12 @@ def find_row_variances(
 
 
 def pg_loader_pre_script():
-    # Query alters the MariaDB tables by adding a new column for geom -> text data,
-    # setting the datatype of the new column data to WKT format,
-    # dropping the old geometry column,
-    # adding default values for data formats that pgloader accepts
-    query_pbdb_matches = """ALTER TABLE macrostrat_temp.pbdb_matches ADD COLUMN coordinate_point_text TEXT;
-    UPDATE macrostrat_temp.pbdb_matches SET coordinate_point_text = ST_AsText(coordinate);
-    ALTER TABLE macrostrat_temp.pbdb_matches DROP COLUMN coordinate;
-    UPDATE macrostrat_temp.pbdb_matches SET release_date = '2000-01-01' WHERE release_date = '0000-00-00 00:00:00';"""
-
-    query_places = """
-        ALTER TABLE macrostrat_temp.places ADD COLUMN geom_text LONGTEXT;
-        UPDATE macrostrat_temp.places
-        SET geom_text = ST_AsText(geom);
-        ALTER TABLE macrostrat_temp.places DROP COLUMN geom;
-    """
-
-    query_refs = """
-        ALTER TABLE macrostrat_temp.refs ADD COLUMN rgeom_text LONGTEXT;
-        UPDATE macrostrat_temp.refs
-        SET rgeom_text = ST_AsText(rgeom);
-        ALTER TABLE macrostrat_temp.refs DROP COLUMN rgeom;
-    """
-
-    query_unit_contacts = """
-        UPDATE unit_contacts
-        -- Enum data type can't be null so set to enum option 'below'.
-        SET contact = 'below'
-        WHERE contact = '';
-        UPDATE unit_contacts
-        -- enum data type can't be null so set to enum option 'above'.
-        SET old_contact = 'above'
-        WHERE old_contact = '';
-    """
-
-    query_cols = """
-        ALTER TABLE macrostrat_temp.cols ADD COLUMN coordinate_text LONGTEXT;
-        UPDATE macrostrat_temp.cols
-        SET coordinate_text = ST_AsText(coordinate);
-        ALTER TABLE macrostrat_temp.cols DROP COLUMN coordinate;
-        UPDATE macrostrat_temp.cols
-        SET created = '2000-01-01'
-        WHERE created = '0000-00-00 00:00:00';
-    """
-
-    query_col_areas = """
-        ALTER TABLE macrostrat_temp.col_areas ADD COLUMN col_area_text LONGTEXT;
-        UPDATE macrostrat_temp.col_areas
-        SET col_areas.col_area_text = ST_AsText(col_area);
-        ALTER TABLE macrostrat_temp.col_areas DROP COLUMN col_area;
-
-    """
-
-    query_col_areas_6April2016 = """
-        ALTER TABLE macrostrat_temp.col_areas_6April2016 ADD COLUMN col_area_text LONGTEXT;
-        UPDATE macrostrat_temp.col_areas_6April2016
-        SET col_areas_6April2016.col_area_text = ST_AsText(col_area);
-        ALTER TABLE macrostrat_temp.col_areas_6April2016 DROP COLUMN col_area;
-    """
-
-    query_liths = """
-    UPDATE macrostrat_temp.liths
-    SET macrostrat_temp.lith_group = null
-    where macrostrat_temp.lith_group = '';"""
-
-    pre_script_queries = [
-        query_pbdb_matches,
-        query_places,
-        query_refs,
-        query_unit_contacts,
-        query_cols,
-        query_col_areas,
-        query_col_areas_6April2016,
-        query_liths,
-    ]
+    pre_script = __here__ / "pgloader-pre-script.sql"
 
     URL = f"mysql+pymysql://{maria_super_user}:{maria_super_pass}@{maria_server}/{maria_db_name_two}"
     engine = create_engine(URL)
-    with engine.connect() as conn:
-        for query in pre_script_queries:
-            statements = query.split(";")
-            for statement in statements:
-                if statement.strip():
-                    try:
-                        conn.execute(text(statement))
-                        print(f"Successfully executed: {statement}")
-                    except Exception as e:
-                        print(f"Error with statement: {statement}\n{e}")
+    run_sql(engine, pre_script)
     engine.dispose()
-    return
 
 
 """
@@ -373,76 +294,9 @@ def pg_loader_post_script():
         SQLALCHEMY_DATABASE_URI
     )  # connect_args={'options': '-csearch_path=public,macrostrat_temp'
 
-    query_pbdb_matches = text(
-        """
-        ALTER TABLE macrostrat_two.macrostrat_temp.pbdb_matches ADD COLUMN coordinate geometry(Point, 4326);
-        UPDATE macrostrat_two.macrostrat_temp.pbdb_matches SET coordinate = ST_GeomFromText(coordinate_point_text, 4326);
-        ALTER TABLE macrostrat_two.macrostrat_temp.pbdb_matches DROP COLUMN coordinate_point_text;
-        SELECT * FROM macrostrat_two.macrostrat_temp.pbdb_matches LIMIT 5;"""
-    )
-
-    query_places = text(
-        """
-        ALTER TABLE macrostrat_two.macrostrat_temp.places ADD COLUMN geom geometry;
-        UPDATE macrostrat_two.macrostrat_temp.places SET geom = ST_GeomFromText(geom_text, 4326);
-        ALTER TABLE macrostrat_two.macrostrat_temp.places DROP COLUMN geom_text;
-        SELECT * FROM macrostrat_two.macrostrat_temp.places LIMIT 5;"""
-    )
-
-    query_refs = text(
-        """
-        ALTER TABLE macrostrat_two.macrostrat_temp.refs ADD COLUMN rgeom geometry;
-        UPDATE macrostrat_two.macrostrat_temp.refs SET rgeom = ST_GeomFromText(rgeom_text, 4326);
-        ALTER TABLE macrostrat_two.macrostrat_temp.refs DROP COLUMN rgeom_text;
-        SELECT * FROM macrostrat_two.macrostrat_temp.refs LIMIT 5;"""
-    )
-
-    query_cols = text(
-        """
-        ALTER TABLE macrostrat_two.macrostrat_temp.cols ADD COLUMN coordinate geometry;
-        UPDATE macrostrat_two.macrostrat_temp.cols SET coordinate = ST_GeomFromText(coordinate_text, 4326);
-        ALTER TABLE macrostrat_two.macrostrat_temp.cols DROP COLUMN coordinate_text;
-        SELECT * FROM macrostrat_two.macrostrat_temp.cols LIMIT 5;"""
-    )
-
-    query_col_areas = text(
-        """
-        ALTER TABLE macrostrat_two.macrostrat_temp.col_areas ADD COLUMN col_area geometry;
-        UPDATE macrostrat_two.macrostrat_temp.col_areas SET col_area = ST_GeomFromText(col_area_text, 4326);
-        ALTER TABLE macrostrat_two.macrostrat_temp.col_areas DROP COLUMN col_area_text;
-        SELECT * FROM macrostrat_two.macrostrat_temp.col_areas LIMIT 5;"""
-    )
-
-    query_col_areas_6April2016 = text(
-        """
-        ALTER TABLE macrostrat_two.macrostrat_temp.col_areas_6April2016 ADD COLUMN col_area geometry;
-        UPDATE macrostrat_two.macrostrat_temp.col_areas_6April2016 SET col_area = ST_GeomFromText(col_area_text, 4326);
-        ALTER TABLE macrostrat_two.macrostrat_temp.col_areas_6April2016 DROP COLUMN col_area_text;
-        SELECT * FROM macrostrat_two.macrostrat_temp.col_areas_6April2016 LIMIT 5;"""
-    )
-
-    post_script_queries = [
-        query_pbdb_matches,
-        query_refs,
-        query_cols,
-        query_places,
-        query_col_areas,
-        query_col_areas_6April2016,
-    ]
     print("Starting PostScript execution....")
-    with engine.connect() as conn:
-        for query in post_script_queries:
-            try:
-                result = conn.execute(query.execution_options(autocommit=True))
-                for row in result:
-                    print(row)
-            except SQLAlchemyError as e:
-                print(f"Error: {e}")
-                # rollback the transaction if an error occurs
-                conn.execute(text("ROLLBACK;"))
-
-    engine.dispose()
-    return
+    post_script = __here__ / "pgloader-post-script.sql"
+    run_sql(engine, post_script)
 
 
 def pg_loader():
