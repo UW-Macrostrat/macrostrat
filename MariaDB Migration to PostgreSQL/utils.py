@@ -1,4 +1,4 @@
-from sqlalchemy import text, create_engine
+from sqlalchemy import text, create_engine, inspect
 from Constants import *
 import os
 from sqlalchemy.exc import SQLAlchemyError
@@ -10,15 +10,23 @@ import time
 Copies table structure and table data from one schema to another schema on the same host.
 Command line in cmd.exe language
 """
-def pg_dump(server, user, password, dbname):
-    os.system(f'pg_dump  -h {pg_server} -d {pg_db_name} -U {pg_user} -W -F d -f ./postgres_dump')
-    os.system(f'{pg_pass}')
+
+def pg_dump(server, user, password, dbname, schema):
+    pg_dump_command = f'pg_dump -h {server} -d {dbname} -U {user} --schema={schema} -W -F d -f ./postgres_dump'
+    pg_dump_command_two = f'{password}'
+    print(pg_dump_command)
+    print(pg_dump_command_two)
+    #os.system(pg_dump_command)
+    #os.system(pg_dump_command_two)
     print('Starting database export........')
     return
 
-def pg_restore(server, user, password, dbname):
-    os.system(f'pg_dump  -h {pg_server} -d {pg_db_name_two} -U {pg_user} -W -F d ./postgres_dump')
-    os.system(f'{pg_pass}')
+def pg_restore(server, user, password, dbname, schema):
+    pg_restore = f'pg_restore  -h {server} -d {dbname} -U {user} --schema={schema} -W -F d ./postgres_dump'
+    pg_restore_two = f'{password}'
+    print(pg_restore)
+    print(pg_restore_two)
+
     return
 
 
@@ -160,22 +168,30 @@ def compare_data_counts(db1_rows, db2_rows, db1_columns, db2_columns, db1, db2):
 """
 Script to output dataframes for comparing data between two databases and tables.
 """
-def find_row_variances(database_name_one, schema_one, database_name_two, schema_two, username, password, table):
+def find_row_variances(database_name_one, schema_one, schema_two, username, password, tables):
     SQLALCHEMY_DATABASE_URI = f"postgresql://{username}:{password}@{pg_server}/{database_name_one}"
     engine = create_engine(SQLALCHEMY_DATABASE_URI)
+    insp = inspect(engine)
+
     with engine.connect() as conn:
-        query = text(f"SELECT * FROM {schema_one}.{table}")
-    result = conn.execute(query)
-    df = pd.DataFrame(result)
+        for table in tables:
+            # Get the actual first column name for each table
+            columns = insp.get_columns(table, schema=schema_one)
+            first_column_name = columns[0]['name']
+            query = f"""
+                   SELECT m.{first_column_name}
+                   FROM macrostrat.macrostrat.{table} m
+                   RIGHT JOIN macrostrat.macrostrat_temp.{table} t ON m.{first_column_name} = t.{first_column_name}
+                   WHERE t.{first_column_name} IS NULL;
+               """
+            result_df = pd.read_sql_query(query, engine)
+            print(f"Macrostrat rows not in Macrostrat_two rows for table {table}:")
+            print(result_df)
     engine.dispose()
-    SQLALCHEMY_DATABASE_URI = f"postgresql://{username}:{password}@{pg_server}/{database_name_two}"
-    engine = create_engine(SQLALCHEMY_DATABASE_URI)
-    with engine.connect() as conn:
-        query = text(f"SELECT * FROM {schema_two}.{table}")
-    result = conn.execute(query)
-    df_two = pd.DataFrame(result)
-    engine.dispose()
-    return df, df_two
+    return
+
+
+
 
 
 def pg_loader_pre_script():
@@ -385,21 +401,56 @@ if __name__ == "__main__":
     #pg_loader_pre_script()
     #pg_loader()
     #pg_loader_post_script()
-    maria_rows, maria_columns = get_data_counts_maria()
-    pg_rows, pg_columns = get_data_counts_pg(pg_db_name, pg_user, pg_pass_new, 'macrostrat')
-    pg_macrostrat_two_rows, pg_macrostrat_two_columns = get_data_counts_pg(pg_db_name_two, pg_user_migrate, pg_pass_migrate, 'macrostrat_temp')
+    #maria_rows, maria_columns = get_data_counts_maria()
+    #pg_rows, pg_columns = get_data_counts_pg(pg_db_name, pg_user, pg_pass_new, 'macrostrat')
+    #pg_macrostrat_two_rows, pg_macrostrat_two_columns = get_data_counts_pg(pg_db_name_two, pg_user_migrate, pg_pass_migrate, 'macrostrat_temp')
 
-    print('\nMARIADB (db1) comparison to PG MACROSTRAT_TWO (db2). These should be clones. ')
-    db1 = 'MariaDB'
-    db2 = 'PG Macrostrat_Two'
-    row_variance, column_variance = compare_data_counts(maria_rows, pg_macrostrat_two_rows, maria_columns,
-                                                        pg_macrostrat_two_columns, db1, db2)
-    print('\nPG MACROSTRAT_TWO (db1 maria db clone) comparison to PG MACROSTRAT (db2). This will show what data '
-          'needs to be moved over from Maria to PG prod.')
-    db1 = 'PG Macrostrat_Two'
-    db2 = 'PG Macrostrat'
-    row_variance_two, column_variance_two = compare_data_counts(pg_macrostrat_two_rows, pg_rows, pg_macrostrat_two_columns,
-                                                        pg_columns, db1, db2)
+    #print('\nMARIADB (db1) comparison to PG MACROSTRAT_TWO (db2). These should be clones. ')
+    #db1 = 'MariaDB'
+    #db2 = 'PG Macrostrat_Two'
+    #row_variance, column_variance = compare_data_counts(maria_rows, pg_macrostrat_two_rows, maria_columns,
+     #                                                   pg_macrostrat_two_columns, db1, db2)
+    #print('\nPG MACROSTRAT_TWO (db1 maria db clone) comparison to PG MACROSTRAT (db2). This will show what data '
+     #     'needs to be moved over from Maria to PG prod.')
+    #db1 = 'PG Macrostrat_Two'
+    #db2 = 'PG Macrostrat'
+    #row_variance_two, column_variance_two = compare_data_counts(pg_macrostrat_two_rows, pg_rows, pg_macrostrat_two_columns,
+     #                                                   pg_columns, db1, db2)
     #reset()
-    #df, df_two = find_row_variances(pg_db_name, pg_db_name, pg_db_name_two, maria_db_name_two,
-                                   #pg_user, pg_pass_new, 'cols')
+    pg_restore(pg_server, pg_user, pg_pass_new, pg_db_name, maria_db_name_two)
+
+    tables = [
+        "sections",
+        "strat_names",
+        "strat_names_places",
+        "strat_tree",
+        "units",
+        "timescales",
+        "timescales_intervals",
+        "units_sections",
+        "unit_boundaries",
+        "unit_econs",
+        "unit_measures",
+        "unit_strat_names",
+        "unit_environs",
+        "unit_liths",
+        "autocomplete",
+        "cols",
+        "col_areas",
+        "col_groups",
+        "col_refs",
+        "intervals",
+        "liths",
+        "lookup_strat_names",
+        "lookup_units",
+        "lookup_unit_attrs_api",
+        "lookup_unit_intervals",
+        "refs"
+    ]
+
+
+
+
+    results = find_row_variances(pg_db_name, pg_db_name, maria_db_name_two, pg_user, pg_pass_new, tables)
+
+
