@@ -45,7 +45,7 @@ async def print_stdout(stream: asyncio.StreamReader):
 
 
 class DecodingStreamReader(asyncio.StreamReader):
-    """A StreamReader that decompresses gzip files and decodes bytes to strings"""
+    """A StreamReader that decompresses gzip files (if compressed)"""
 
     # https://ejosh.co/de/2022/08/stream-a-massive-gzipped-json-file-in-python/
 

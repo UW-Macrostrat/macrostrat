@@ -16,7 +16,11 @@ from ..._dev.utils import (
     _create_command,
     _create_database_if_not_exists,
 )
-from ..._dev.stream_utils import print_stream_progress, print_stdout
+from ..._dev.stream_utils import (
+    print_stream_progress,
+    print_stdout,
+    DecodingStreamReader,
+)
 
 console = Console()
 
@@ -90,8 +94,3 @@ async def _restore_mariadb_from_file(dumpfile: Path, engine: Engine, *args, **kw
             ),
             asyncio.create_task(print_stdout(proc.stderr)),
         )
-
-        # asyncio.create_task(print_stdout(proc.stderr)),
-
-
-
