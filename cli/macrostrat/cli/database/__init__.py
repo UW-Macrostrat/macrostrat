@@ -14,7 +14,6 @@ from .migrations import run_migrations
 
 from macrostrat.core import MacrostratSubsystem, app
 from macrostrat.core.utils import is_pg_url
-from .mariadb_migration import import_mariadb
 
 from .._dev.utils import (
     raw_database_url,
@@ -403,7 +402,3 @@ def field_title(name):
 
 
 db_app.command(name="migrations", rich_help_panel="Schema management")(run_migrations)
-
-db_app.command(
-    name="import-mariadb", rich_help_panel="Schema management", deprecated=True
-)(import_mariadb)

@@ -51,7 +51,8 @@ def restore_mariadb(_input: Optional[str], engine: Engine, *args, **kwargs):
 
 
 async def _restore_mariadb(engine: Engine, *args, **kwargs):
-    """Load MariaDB dump (GZipped SQL file) into a database."""
+    """Load MariaDB dump (GZipped SQL file) into a database, using centrally managed credentials,
+    a Docker containerized `mariadb` client, and a streaming approach."""
     overwrite = kwargs.pop("overwrite", False)
     create = kwargs.pop("create", overwrite)
     container = kwargs.pop("container", "mariadb:10.10")
@@ -61,8 +62,7 @@ async def _restore_mariadb(engine: Engine, *args, **kwargs):
     )
     conn = build_connection_args(docker_internal_url(engine.url))
 
-    # Run pg_restore in a local Docker container
-    # TODO: this could also be run with pg_restore in a Kubernetes pod
+    # Run mariadb in a local Docker container
     # or another location, if more appropriate. Running on the remote
     # host, if possible, is probably the fastest option. There should be
     # multiple options ideally.

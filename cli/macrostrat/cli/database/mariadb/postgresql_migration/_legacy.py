@@ -1,9 +1,9 @@
 from macrostrat.utils.shell import run
-from .._legacy import get_db
+from cli.macrostrat.cli.database._legacy import get_db
 
 from macrostrat.core import app
 
-from ..._dev.utils import (
+from cli.macrostrat.cli._dev.utils import (
     _create_database_if_not_exists,
     _docker_local_run_args,
 )
