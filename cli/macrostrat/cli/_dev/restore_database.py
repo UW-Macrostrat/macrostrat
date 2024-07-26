@@ -10,9 +10,8 @@ from sqlalchemy.engine import Engine
 from .utils import (
     _create_command,
     _create_database_if_not_exists,
-    print_stdout,
-    print_stream_progress,
 )
+from .stream_utils import print_stream_progress, print_stdout
 
 console = Console()
 

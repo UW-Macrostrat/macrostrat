@@ -15,9 +15,8 @@ from macrostrat.core.config import docker_internal_url
 from ..._dev.utils import (
     _create_command,
     _create_database_if_not_exists,
-    print_stdout,
-    print_stream_progress,
 )
+from ..._dev.stream_utils import print_stream_progress, print_stdout
 
 console = Console()
 
@@ -95,48 +94,4 @@ async def _restore_mariadb_from_file(dumpfile: Path, engine: Engine, *args, **kw
         # asyncio.create_task(print_stdout(proc.stderr)),
 
 
-import zlib
 
-
-class DecodingStreamReader(asyncio.StreamReader):
-    """A StreamReader that decompresses gzip files and decodes bytes to strings"""
-
-    # https://ejosh.co/de/2022/08/stream-a-massive-gzipped-json-file-in-python/
-
-    def __init__(self, stream, encoding="utf-8", errors="strict"):
-        super().__init__()
-        self.stream = stream
-        self._is_gzipped = None
-        self.d = zlib.decompressobj(zlib.MAX_WBITS | 16)
-
-    def decompress(self, input: bytes) -> bytes:
-        decompressed = self.d.decompress(input)
-        data = b""
-        while self.d.unused_data != b"":
-            buf = self.d.unused_data
-            self.d = zlib.decompressobj(zlib.MAX_WBITS | 16)
-            data = self.d.decompress(buf)
-        return decompressed + data
-
-    def transform_data(self, data):
-        if self._is_gzipped is None:
-            self._is_gzipped = data[:2] == b"\x1f\x8b"
-            log.info("is_gzipped: %s", self._is_gzipped)
-        if self._is_gzipped:
-            # Decompress the data
-            data = self.decompress(data)
-        return data
-
-    async def read(self, n=-1):
-        data = await self.stream.read(n)
-        return self.transform_data(data)
-
-    async def readline(self):
-        res = b""
-        while res == b"":
-            # Read next line
-            line = await self.stream.readline()
-            if not line:
-                break
-            res += self.transform_data(line)
-        return res
