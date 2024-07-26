@@ -8,3 +8,5 @@ class MapboardSubsystem(MacrostratSubsystem):
         @cli.command("export-mapboard", rich_help_panel="Export")
         def export_map():
             print("Hello, world!")
+
+        cli.add_typer(self.control_command(), rich_help_panel="Subsystems")

@@ -1,4 +1,0 @@
-#!/usr/bin/env zsh
-eval $(ssh-agent) > /dev/null
-
-strat compose run --rm --entrypoint "/usr/bin/env" $@

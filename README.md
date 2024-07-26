@@ -14,12 +14,49 @@ caching and harmonization).
 
 ## Installation
 
-The Macrostrat _v2_ codebase requires `docker`, and either `docker compose` or
-`kubectl` (for Kubernetes) to run.
-
 To install the Python application that controls Macrostrat, head to the
 [py-root](py-root) directory. Running `make` will install the Python
 dependencies and build the application.
+
+## Usage
+
+Once a Macrostrat configuration file is defined, the Macrostrat command-line app
+presents a broad list of management functionality for Macrostrat's system. **Subsystems**
+(*in progress*) define functionality for specific aspects of the system.
+
+This CLI is rapidly evolving so expect breakage!
+
+Most functionality requires `docker`, and either `docker compose` or
+`kubectl` (for Kubernetes) to run.
+
+```
+ Usage: macrostrat [OPTIONS] COMMAND [ARGS]...
+
+ Macrostrat control interface
+ Active environment: local
+
+╭─ Options ──────────────────────────────────────────────────────────────────────────────────╮
+│ --verbose                                             [env var: MACROSTRAT_LOCAL_VERBOSE]  │
+│ --help                                                Show this message and exit.          │
+╰────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ─────────────────────────────────────────────────────────────────────────────────╮
+│ secrets                   Get a secret from the Kubernetes cluster                         │
+│ shell                     Start an IPython shell                                           │
+│ env                       Set the active environment                                       │
+│ install                   Install Macrostrat subsystems into the Python root.              │
+│ run                       Run a command in the Macrostrat command-line context             │
+│ db                        Manage the Macrostrat database                                   │
+│ config                    Manage configuration                                             │
+│ v1                        Macrostrat CLI v1 commands                                       │
+╰────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Subsystems ───────────────────────────────────────────────────────────────────────────────╮
+│ raster              Raster data integration                                                │
+│ maps                Map integration system (partial overlap with v1 commands)              │
+│ tileserver          Control Macrostrat's tileserver                                        │
+│ paleogeography      Manage paleogeography data                                             │
+│ self                Manage the Macrostrat CLI itself                                       │
+╰────────────────────────────────────────────────────────────────────────────────────────────╯
+```
 
 ## Documentation
 

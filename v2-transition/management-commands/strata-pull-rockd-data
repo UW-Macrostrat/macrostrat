@@ -1,9 +1,0 @@
-#!/usr/bin/env zsh
-
-src=/data/projects/rockd/rockd-ionic
-dest=/data/backups/rockd-data
-
-mkdir -p $dest
-
-rsync -az --delete strata:$src/checkin-photos/ $dest/checkin-photos/
-rsync -az --delete strata:$src/gravatars/ $dest/gravatars/

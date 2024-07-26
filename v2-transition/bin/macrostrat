@@ -1,8 +1,0 @@
-#!/usr/bin/env bash
-
-# Activate the virtual environment
-export PATH="/data/macrostrat/.venv/bin:$PATH"
-
-export MACROSTRAT_SCHEMA_EXTENSIONS="/data/macrostrat/schema"
-
-macrostrat $@
