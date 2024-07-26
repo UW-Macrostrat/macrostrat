@@ -26,10 +26,8 @@ def pg_restore(*args, **kwargs):
 
 async def _pg_restore(
     engine: Engine,
-    *,
+    *args,
     create=False,
-    command_prefix: Optional[list] = None,
-    args: list = [],
     postgres_container: str = "postgres:15",
 ):
     # Pipe file to pg_restore, mimicking
@@ -42,11 +40,10 @@ async def _pg_restore(
     # host, if possible, is probably the fastest option. There should be
     # multiple options ideally.
     _cmd = _create_command(
-        engine,
         "pg_restore",
         "-d",
-        args=args,
-        prefix=command_prefix,
+        engine,
+        *args,
         container=postgres_container,
     )
 

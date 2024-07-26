@@ -56,7 +56,9 @@ docker_localhost = getattr(settings, "docker_localhost", "localhost")
 PG_DATABASE_DOCKER = PG_DATABASE.replace("localhost", docker_localhost)
 
 mysql_database = getattr(settings, "mysql_database", None)
-# TODO: handle this more intelligently
+if mysql_database is not None:
+    mysql_database: URL = make_url(mysql_database).set(drivername="mysql+pymysql")
+    # TODO: handle this more intelligently
 
 
 if elevation_database := getattr(settings, "elevation_database", None):
@@ -120,5 +122,6 @@ environ["MACROSTRAT_ROOT"] = str(settings.srcroot)
 def docker_internal_url(url: URL | str) -> URL:
     url = make_url(url)
     if url.host == "localhost":
+        docker_localhost = getattr(settings, "docker_localhost", "localhost")
         url = url.set(host=docker_localhost)
     return url
