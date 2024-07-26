@@ -165,14 +165,12 @@ def compare_data_counts(db1_rows, db2_rows, db1_columns, db2_columns, db1, db2):
     return row_count_difference, col_count_difference
 
 
-"""
-Script to output dataframes for comparing data between two databases and tables.
-"""
+
+
 def find_row_variances(database_name_one, schema_one, schema_two, username, password, tables):
     SQLALCHEMY_DATABASE_URI = f"postgresql://{username}:{password}@{pg_server}/{database_name_one}"
     engine = create_engine(SQLALCHEMY_DATABASE_URI)
     insp = inspect(engine)
-
     with engine.connect() as conn:
         for table in tables:
             # Get the actual first column name for each table
@@ -190,8 +188,67 @@ def find_row_variances(database_name_one, schema_one, schema_two, username, pass
     engine.dispose()
     return
 
+#strat_tree column names renamed from this_name and that_name to parent and child in Macrostrat. Determine how to merge.
+#possibly rename after the merge and update the API.
+
+def find_col_variances(database_name_one, schema_one, schema_two, username, password, tables):
+    SQLALCHEMY_DATABASE_URI = f"postgresql://{username}:{password}@{pg_server}/{database_name_one}"
+    engine = create_engine(SQLALCHEMY_DATABASE_URI)
+    insp = inspect(engine)
+    table_one = []
+    table_two = []
+    col_not_in_macrostrat_two = []
+    with engine.connect() as conn:
+        for table in tables:
+            dict = []
+            dict_two = []
+            table_one = []
+            table_two = []
+            columns_one = insp.get_columns(table, schema=schema_one)
+            columns_two = insp.get_columns(table, schema=schema_two)
+            for index in range(0, len(columns_one)-1):
+                dict = columns_one[index]
+                table_one.append(dict['name'])
+            for index_two in range(0, len(columns_two)-1):
+                dict_two = columns_two[index_two]
+                table_two.append(dict_two['name'])
+            for col in table_one:
+                if col not in table_two:
+                    col_not_in_macrostrat_two.append(col)
+            if len(col_not_in_macrostrat_two) > 0:
+                print(f"Columns that exist in Macrostrat and NOT in macrostrat_two for {table}:", col_not_in_macrostrat_two)
+            else:
+                print("Success! All columns in Macrostrat exist in Macrostrat_two")
+    engine.dispose()
+    return
 
 
+def find_row_variances_primary_key(database_name_one, schema_one, schema_two, username, password, tables):
+    SQLALCHEMY_DATABASE_URI = f"postgresql://{username}:{password}@{pg_server}/{database_name_one}"
+    engine = create_engine(SQLALCHEMY_DATABASE_URI)
+    insp = inspect(engine)
+    with engine.connect() as conn:
+        for table in tables:
+            # Get the primary key constraint for each table
+            pk_constraint = insp.get_pk_constraint(table, schema=schema_one)
+            try:
+                pk_column_name = pk_constraint['constrained_columns'][0]
+            except Exception as e:
+                pk_column_name = None
+            if pk_column_name:
+                query = f"""
+                    SELECT m.{pk_column_name}
+                    FROM macrostrat.macrostrat.{table} m
+                    RIGHT JOIN macrostrat.macrostrat_temp.{table} t ON m.{pk_column_name} = t.{pk_column_name}
+                    WHERE t.{pk_column_name} IS NULL;
+                """
+                result_df = pd.read_sql_query(query, engine)
+                print(f"Macrostrat rows not in Macrostrat_two rows for table {table}:")
+                print(result_df)
+            else:
+                print(f"Table macrostrat.{table} does not have a primary key.")
+    engine.dispose()
+    return
 
 
 def pg_loader_pre_script():
@@ -419,7 +476,7 @@ if __name__ == "__main__":
     #reset()
     pg_restore(pg_server, pg_user, pg_pass_new, pg_db_name, maria_db_name_two)
 
-    tables = [
+    table_rows = [
         "sections",
         "strat_names",
         "strat_names_places",
@@ -448,9 +505,22 @@ if __name__ == "__main__":
         "refs"
     ]
 
+    table_cols = ['sections',
+                  'strat_names',
+                  'strat_tree',
+                  'units',
+                  'unit_strat_names',
+                  'unit_environs',
+                  'cols',
+                  'environs',
+                  'lith_atts',
+                  'lookup_strat_names',
+                  'lookup_unit_intervals',
+                  'measuremeta',
+                  'measures']
 
 
+    #results = find_row_variances(pg_db_name, pg_db_name, maria_db_name_two, pg_user, pg_pass_new, table_rows)
 
-    results = find_row_variances(pg_db_name, pg_db_name, maria_db_name_two, pg_user, pg_pass_new, tables)
-
+    results_two = find_col_variances(pg_db_name, pg_db_name, maria_db_name_two, pg_user, pg_pass_new, table_cols)
 
