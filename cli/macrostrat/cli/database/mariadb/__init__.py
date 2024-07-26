@@ -18,7 +18,7 @@ mariadb_container = "mariadb:10.10"
     context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
 )
 def cli_command(ctx: Context):
-    """Run psql in the database container"""
+    """Run the MariaDB CLI against the Macrostrat database."""
     from macrostrat.core.config import docker_internal_url, mysql_database
 
     _database: URL = docker_internal_url(mysql_database)
@@ -26,8 +26,6 @@ def cli_command(ctx: Context):
     flags = [
         "-i",
         "--rm",
-        "--network",
-        "host",
     ]
 
     if len(ctx.args) == 0 and stdin.isatty():
