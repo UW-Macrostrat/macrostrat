@@ -1,3 +1,7 @@
+"""
+Script to output dataframes for comparing data between two databases and tables.
+"""
+
 import pandas as pd
 from macrostrat.database import run_query
 from psycopg2.sql import Identifier
@@ -51,8 +55,11 @@ def get_data_counts_pg(database_name, username, password, schema):
     with engine.connect() as conn:
         table_query = run_query(
             conn,
-            """SELECT table_name FROM information_schema.tables WHERE table_catalog = :table_catalog
-             AND table_type = 'BASE TABLE' AND table_schema = :table_schema""",
+            """
+            SELECT table_name FROM information_schema.tables
+            WHERE table_catalog = :table_catalog
+            AND table_type = 'BASE TABLE' AND table_schema = :table_schema
+            """,
             dict(table_schema=schema, table_catalog=database_name),
         )
 
@@ -68,7 +75,12 @@ def get_data_counts_pg(database_name, username, password, schema):
             pg_rows[table.lower()] = row_count
 
             column_result = run_query(
-                "SELECT COUNT(*) FROM information_schema.columns WHERE table_catalog = :table_catalog AND table_schema = :schema AND table_name = :table",
+                """
+                SELECT COUNT(*) FROM information_schema.columns
+                WHERE table_catalog = :table_catalog
+                  AND table_schema = :schema
+                  AND table_name = :table
+                """,
                 dict(table_catalog=database_name, schema=schema, table=table),
             )
             column_count = column_result.scalar()

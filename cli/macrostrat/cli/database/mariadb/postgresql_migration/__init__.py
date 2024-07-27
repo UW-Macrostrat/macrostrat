@@ -1,89 +1,31 @@
 from sqlalchemy import text, create_engine
-from Constants import *
 import os
 from macrostrat.database.utils import run_sql
 from pathlib import Path
+from sqlalchemy.engine import Engine
+from ..restore import copy_mariadb_database
 
 import time
 from .db_changes import get_data_counts_maria, get_data_counts_pg, compare_data_counts
 
-"""
-Copies table structure and table data from one schema to another schema on the same host.
-Command line in cmd.exe language
-"""
-
 __here__ = Path(__file__).parent
 
 
-def pg_dump(server, user, password, dbname):
-    # TODO: integrate with existing PostgreSQL database utilities
-    os.system(
-        f"pg_dump  -h {pg_server} -d {pg_db_name} -U {pg_user} -W -F d -f ./postgres_dump"
-    )
-    os.system(f"{pg_pass}")
-    print("Starting database export........")
-    return
+def migrate_mariadb_to_postgresql(engine: Engine, overwrite: bool = False):
+    """Migrate the entire Macrostrat database from MariaDB to PostgreSQL."""
+    temp_db_name = engine.url.database + "_temp"
+
+    copy_mariadb_database(engine, temp_db_name, overwrite=overwrite)
+
+    # pg_loader_pre_script()
+    # pg_loader()
+    # pg_loader_post_script()
 
 
-def pg_restore(server, user, password, dbname):
-    # TODO: integrate with existing PostgreSQL database utilities
-    os.system(
-        f"pg_dump  -h {pg_server} -d {pg_db_name_two} -U {pg_user} -W -F d ./postgres_dump"
-    )
-    os.system(f"{pg_pass}")
-    return
-
-
-def maria_dump(server, user, password, dbname):
-    # TODO: integrate with streaming approach
-    SQLALCHEMY_DATABASE_URI = f"mysql+pymysql://{user}:{password}@{server}/{dbname}"
-    engine = create_engine(SQLALCHEMY_DATABASE_URI)
-    with engine.connect() as conn:
-        conn.execute(text(f"CREATE DATABASE IF NOT EXISTS {maria_db_name_two};"))
-    engine.dispose()
-    output_file = "./maria_dump.sql"
-    maria_dump_command = [
-        "mysqldump",
-        "-h",
-        server,
-        "-d",
-        dbname,
-        "-u",
-        user,
-        f"-p{password}",
-        "--ssl-verify-server-cert=false",
-        "--no-data=false",
-        "--verbose",
-        "--result-file=./maria_dump.sql",
-    ]
-    os.system(" ".join(maria_dump_command))
-    return
-
-
-def maria_restore(server, user, password, dbname):
-
-    maria_restore_input = (
-        f"mariadb -h {server} -u {user} -p{password} --ssl-verify-server-cert=false "
-        f"{dbname} < ./maria_dump.sql"
-    )
-
-    print("Restoring new Maria database....")
-    os.system(maria_restore_input)
-    return
-
-
-"""
-Script to output dataframes for comparing data between two databases and tables.
-"""
-
-
-def pg_loader_pre_script():
+def pgloader_pre_script(engine: Engine):
+    assert engine.dialect.startswith("mysql")
     pre_script = __here__ / "pgloader-pre-script.sql"
-
-    URL = f"mysql+pymysql://{maria_super_user}:{maria_super_pass}@{maria_server}/{maria_db_name_two}"
-    engine = create_engine(URL)
     run_sql(engine, pre_script)
-    engine.dispose()
 
 
 """
@@ -98,24 +40,14 @@ def pg_loader_pre_script():
     pg_engine.dispose()"""
 
 
-def pg_loader_post_script():
-    # Query alters the MariaDB pbdb_matches table by adding a new column for the text data,
-    # setting the datatype of the new column data to WKT format,
-    # dropping the old geometry column,
-    # adding default values for data formats that pgloader accepts
-    # vaccuum...refresh postgresql database after pgloader
-    # CREATE EXTENSION IF NOT EXISTS postgis;
-    SQLALCHEMY_DATABASE_URI = f"postgresql://{pg_user_migrate}:{pg_pass_migrate}@{pg_server}/{pg_db_name_two}?sslmode=prefer"
-    engine = create_engine(
-        SQLALCHEMY_DATABASE_URI
-    )  # connect_args={'options': '-csearch_path=public,macrostrat_temp'
-
+def pgloader_post_script(engine: Engine):
+    assert engine.dialect.startswith("postgresql")
     print("Starting PostScript execution....")
     post_script = __here__ / "pgloader-post-script.sql"
     run_sql(engine, post_script)
 
 
-def pg_loader():
+def pgloader():
     """
     Command terminal to run pgloader. Ensure Docker app is running.
     """
