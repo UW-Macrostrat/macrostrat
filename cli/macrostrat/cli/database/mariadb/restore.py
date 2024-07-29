@@ -150,6 +150,12 @@ async def _dump_mariadb_to_file(engine: Engine, dumpfile: Path, *args, **kwargs)
 
 def copy_mariadb_database(engine: Engine, new_engine: Engine, *args, **kwargs):
     """Copy a MariaDB database to a new database in the same cluster"""
+    task = _copy_mariadb_database(engine, new_engine, *args, **kwargs)
+    asyncio.run(task)
+
+
+async def _copy_mariadb_database(engine: Engine, new_engine: Engine, *args, **kwargs):
+    """Copy a MariaDB database to a new database in the same cluster"""
     container = kwargs.pop("container", "mariadb:10.10")
 
     overwrite = kwargs.pop("overwrite", False)
@@ -160,19 +166,21 @@ def copy_mariadb_database(engine: Engine, new_engine: Engine, *args, **kwargs):
         )
         return
 
-    # Get a temporary file to store the dump
-    # Right now this is necessary because we can't properly pipe mysqldump to mariadb
-    with _tempfile(suffix=".sql") as tmp:
-        log.info(f"Copying {engine.url.database} to {new_engine.url.database}")
-        log.info(f"Dumping {engine.url.database} to {tmp}")
-        dump_mariadb(engine, tmp, *args, container=container)
-        log.info(f"Restoring {engine.url.database} from {tmp}")
-        restore_mariadb(tmp, new_engine, overwrite=overwrite, container=container)
+    dump = await _dump_mariadb(engine, *args, container=container)
+    restore = await _restore_mariadb(
+        new_engine, overwrite=overwrite, create=create, container=container
+    )
+
+    return await asyncio.gather(
+        asyncio.create_task(print_stream_progress(dump.stdout, restore.stdin, prefix="Copied")),
+        asyncio.create_task(print_stdout(dump.stderr)),
+        asyncio.create_task(print_stdout(restore.stderr)),
+    )
 
 
 @contextmanager
 def _tempfile(suffix: str = ""):
-    with NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-        pth = Path(tmp.name)
-        yield pth
+    pth = Path("/tmp/sql-dump.sql")
+    if pth.is_file():
         pth.unlink()
+    yield pth
