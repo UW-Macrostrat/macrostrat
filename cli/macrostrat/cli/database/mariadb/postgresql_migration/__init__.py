@@ -1,3 +1,5 @@
+from io import StringIO
+
 import docker
 from sqlalchemy import text, create_engine
 import os
@@ -15,6 +17,7 @@ from macrostrat.utils.shell import run
 from macrostrat.core import app
 from textwrap import dedent
 import docker
+from io import BytesIO
 
 import time
 from .db_changes import get_data_counts_maria, get_data_counts_pg, compare_data_counts
@@ -24,30 +27,30 @@ __here__ = Path(__file__).parent
 log = get_logger(__name__)
 
 
-def migrate_mariadb_to_postgresql(engine: Engine, overwrite: bool = False):
+def migrate_mariadb_to_postgresql(
+    maria_engine: Engine, pg_engine: Engine, overwrite: bool = False
+):
     """Migrate the entire Macrostrat database from MariaDB to PostgreSQL."""
-    temp_db_name = engine.url.database + "_temp"
+    temp_db_name = maria_engine.url.database + "_temp"
 
-    temp_engine = create_engine(engine.url.set(database=temp_db_name))
+    maria_temp_engine = create_engine(maria_engine.url.set(database=temp_db_name))
 
-    if database_exists(temp_engine.url) and not overwrite:
+    if database_exists(maria_temp_engine.url) and not overwrite:
         header(
             "Database [bold cyan]macrostrat_temp[/] already exists. Use --overwrite to overwrite."
         )
     else:
-        copy_mariadb_database(engine, temp_engine, overwrite=overwrite)
-
-    pg_engine = get_db().engine
+        copy_mariadb_database(maria_engine, maria_temp_engine, overwrite=overwrite)
 
     pg_temp_engine = create_engine(pg_engine.url.set(database=temp_db_name))
 
-    pgloader_pre_script(temp_engine)
+    pgloader_pre_script(maria_temp_engine)
 
-    pgloader(temp_engine, pg_temp_engine, overwrite=overwrite)
+    pgloader(maria_temp_engine, pg_temp_engine, overwrite=overwrite)
 
     pgloader_post_script(pg_temp_engine)
 
-    compare_row_counts(engine, pg_temp_engine, pg_engine)
+    compare_row_counts(maria_engine, pg_temp_engine, pg_engine)
 
 
 def pgloader_pre_script(engine: Engine):
@@ -85,6 +88,7 @@ def pgloader(source: Engine, dest: Engine, overwrite=False):
         if overwrite:
             header("Dropping PostgreSQL database")
             drop_database(dest.url)
+            db_exists = False
         else:
             header(
                 f"PostgreSQL database [bold cyan]{dest.url.database}[/] already exists. Skipping pgloader."
@@ -95,7 +99,7 @@ def pgloader(source: Engine, dest: Engine, overwrite=False):
         header("Creating PostgreSQL database")
         create_database(dest.url)
 
-    header("Building pgloader")
+    header("Building pgloader-runner Docker image")
 
     dockerfile = dedent(
         """FROM dimitri/pgloader:latest
@@ -104,18 +108,14 @@ def pgloader(source: Engine, dest: Engine, overwrite=False):
         """
     )
 
-    # Check if docker container exists
-
-    client = docker.from_env()
-
-    _image_exists = client.images.get("pgloader-runner:latest")
-
-    if _image_exists:
-        app.console.print("pgloader-runner image already exists.")
-
-    if not _image_exists or overwrite:
-        app.console.print("Building pgloader-runner image.")
-        client.images.build(dockerfile, tag="pgloader-runner:latest")
+    run(
+        "docker",
+        "build",
+        "-t",
+        "pgloader-runner:latest",
+        "-",
+        input=dockerfile.encode("utf-8"),
+    )
 
     header("Running pgloader")
 

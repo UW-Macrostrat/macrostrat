@@ -12,8 +12,10 @@ log = get_logger(__name__)
 async def print_stream_progress(
     input: asyncio.StreamReader | asyncio.subprocess.Process,
     out_stream: asyncio.StreamWriter | None,
+    *,
     verbose: bool = False,
     chunk_size: int = 1024,
+    prefix: str = None,
 ):
     """This should be unified with print_stream_progress, but there seem to be
     slight API differences between aiofiles and asyncio.StreamWriter APIs.?"""
@@ -43,11 +45,11 @@ async def print_stream_progress(
             i += 1
             if i == 100:
                 i = 0
-                _print_progress(megabytes_written, end="\r")
+                _print_progress(megabytes_written, end="\r", prefix=prefix)
     except asyncio.CancelledError:
         pass
     finally:
-        _print_progress(megabytes_written)
+        _print_progress(megabytes_written, prefix=prefix)
 
         if isinstance(out_stream, AsyncBufferedIOBase):
             out_stream.close()
@@ -57,7 +59,10 @@ async def print_stream_progress(
 
 
 def _print_progress(megabytes: float, **kwargs):
-    progress = f"Dumped {megabytes:.1f} MB"
+    prefix = kwargs.pop("prefix", None)
+    if prefix is None:
+        prefix = "Dumped"
+    progress = f"{prefix} {megabytes:.1f} MB"
     kwargs["file"] = sys.stderr
     print(progress, **kwargs)
 

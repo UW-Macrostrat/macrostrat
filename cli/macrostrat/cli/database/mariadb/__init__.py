@@ -1,6 +1,7 @@
 from typer import Typer, Context, Argument
 from sys import stdin
 from macrostrat.utils.shell import run
+from .._legacy import get_db
 from sqlalchemy.engine import create_engine
 from sqlalchemy.engine.url import URL, make_url
 from pathlib import Path
@@ -100,5 +101,6 @@ def migrate_to_postgres_command(overwrite: bool = False):
     from .postgresql_migration import migrate_mariadb_to_postgresql
 
     engine = mysql_engine()
+    dest = get_db().engine
 
-    migrate_mariadb_to_postgresql(engine, overwrite=overwrite)
+    migrate_mariadb_to_postgresql(engine, dest, overwrite=overwrite)

@@ -1,15 +1,16 @@
 import asyncio
 from pathlib import Path
-from typing import Optional
+from typing import Union
 from sys import stdin
-from subprocess import run
 
 from macrostrat.utils import get_logger
+from macrostrat.database import database_exists
 from rich.console import Console
-from sqlalchemy.engine import Engine, URL, create_engine
+from sqlalchemy.engine import Engine, URL
 from macrostrat.core.exc import MacrostratError
 import aiofiles
 from tempfile import NamedTemporaryFile
+from contextlib import contextmanager
 
 from .utils import build_connection_args, ParameterStyle
 from ..utils import docker_internal_url
@@ -18,7 +19,6 @@ from ..utils import docker_internal_url
 from ..._dev.utils import (
     _create_command,
     _create_database_if_not_exists,
-    _docker_local_run_args,
 )
 from ..._dev.stream_utils import (
     print_stream_progress,
@@ -31,11 +31,11 @@ console = Console()
 log = get_logger(__name__)
 
 
-def restore_mariadb(_input: Optional[str], engine: Engine, *args, **kwargs):
+def restore_mariadb(_input: Union[str, Path, None], engine: Engine, *args, **kwargs):
     """Restore a MariaDB database from a dump file or stream"""
 
     if _input is not None:
-        if _input.startswith("http"):
+        if str(_input).startswith("http"):
             raise NotImplementedError("http(s) restore not yet implemented")
 
         _input = Path(_input)
@@ -103,7 +103,7 @@ async def _restore_mariadb_from_file(dumpfile: Path, engine: Engine, *args, **kw
     async with aiofiles.open(dumpfile, mode="rb") as source:
         s1 = DecodingStreamReader(source)
         await asyncio.gather(
-            print_stream_progress(s1, proc.stdin),
+            print_stream_progress(s1, proc.stdin, prefix="Restored"),
             print_stdout(proc.stderr),
         )
 
@@ -154,18 +154,25 @@ def copy_mariadb_database(engine: Engine, new_engine: Engine, *args, **kwargs):
 
     overwrite = kwargs.pop("overwrite", False)
     create = kwargs.pop("create", True)
-    _create_database_if_not_exists(
-        new_engine.url, create=create, allow_exists=False, overwrite=overwrite
-    )
+    if database_exists(new_engine.url) and not overwrite:
+        console.print(
+            f"Database [bold underline]{new_engine.url.database}[/] already exists. Use --overwrite to overwrite."
+        )
+        return
 
     # Get a temporary file to store the dump
     # Right now this is necessary because we can't properly pipe mysqldump to mariadb
-    with NamedTemporaryFile(delete=True) as tmp:
+    with _tempfile(suffix=".sql") as tmp:
         log.info(f"Copying {engine.url.database} to {new_engine.url.database}")
-        tmp_file = Path(tmp.name)
-        log.info(f"Dumping {engine.url.database} to {tmp.name}")
-        dump_mariadb(engine, tmp_file, *args, container=container)
-        log.info(f"Restoring {engine.url.database} from {tmp.name}")
-        restore_mariadb(
-            str(tmp_file), new_engine, *args, overwrite=overwrite, container=container
-        )
+        log.info(f"Dumping {engine.url.database} to {tmp}")
+        dump_mariadb(engine, tmp, *args, container=container)
+        log.info(f"Restoring {engine.url.database} from {tmp}")
+        restore_mariadb(tmp, new_engine, overwrite=overwrite, container=container)
+
+
+@contextmanager
+def _tempfile(suffix: str = ""):
+    with NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        pth = Path(tmp.name)
+        yield pth
+        pth.unlink()
