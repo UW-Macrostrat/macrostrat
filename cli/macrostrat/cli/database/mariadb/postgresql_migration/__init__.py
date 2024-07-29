@@ -1,36 +1,34 @@
-from io import StringIO
-
-import docker
-from sqlalchemy import text, create_engine
-import os
-from macrostrat.database.utils import run_sql
-from macrostrat.app_frame.exc import ApplicationError
 from pathlib import Path
-from sqlalchemy.engine import Engine
+from textwrap import dedent
+
 from macrostrat.database import database_exists, create_database, drop_database
-from ..restore import copy_mariadb_database
-from ...._dev.utils import raw_database_url
-from ...utils import engine_for_db_name, docker_internal_url
-from ..._legacy import get_db
+from macrostrat.database.utils import run_sql
 from macrostrat.utils import get_logger
 from macrostrat.utils.shell import run
-from macrostrat.core import app
-from textwrap import dedent
-import docker
-from io import BytesIO
+from sqlalchemy import text, create_engine
+from sqlalchemy.engine import Engine
 
-import time
+from macrostrat.core import app
 from .db_changes import get_data_counts_maria, get_data_counts_pg, compare_data_counts
+from ..restore import copy_mariadb_database
+from ..utils import mariadb_engine
+from ..._legacy import get_db
+from ...utils import docker_internal_url
+from ...._dev.utils import raw_database_url
 
 __here__ = Path(__file__).parent
 
 log = get_logger(__name__)
 
 
-def migrate_mariadb_to_postgresql(
-    maria_engine: Engine, pg_engine: Engine, overwrite: bool = False
-):
-    """Migrate the entire Macrostrat database from MariaDB to PostgreSQL."""
+def migrate_mariadb_to_postgresql(overwrite: bool = False):
+    """Migrate the legacy Macrostrat database from MariaDB to PostgreSQL."""
+
+    # Get the default MariaDB and PostgreSQL engines from the Macrostrat app's
+    # configuration (macrostrat.toml).
+    maria_engine = mariadb_engine()
+    pg_engine = get_db().engine
+
     temp_db_name = maria_engine.url.database + "_temp"
 
     maria_temp_engine = create_engine(maria_engine.url.set(database=temp_db_name))

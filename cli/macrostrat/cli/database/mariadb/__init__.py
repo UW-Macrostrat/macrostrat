@@ -1,14 +1,15 @@
-from typer import Typer, Context, Argument
-from sys import stdin
-from macrostrat.utils.shell import run
-from .._legacy import get_db
-from sqlalchemy.engine import create_engine
-from sqlalchemy.engine.url import URL, make_url
 from pathlib import Path
+from sys import stdin
 
-from ..utils import docker_internal_url
-from .utils import build_connection_args
+from macrostrat.utils.shell import run
+from sqlalchemy.engine.url import URL
+from typer import Typer, Context, Argument
+
 from .restore import restore_mariadb, dump_mariadb
+from .utils import build_connection_args, mariadb_engine
+from ..utils import docker_internal_url
+from .postgresql_migration import migrate_mariadb_to_postgresql
+
 
 app = Typer(no_args_is_help=True)
 
@@ -57,7 +58,7 @@ def dump_command(
     database: str = Argument(None, help="Database to dump"),
 ):
     """Dump a MariaDB database to a file."""
-    engine = mysql_engine(database)
+    engine = mariadb_engine(database)
 
     if output is None:
         output = Path("/dev/stdout")
@@ -74,7 +75,7 @@ def restore_command(
     overwrite: bool = False,
 ):
     """Restore a MariaDB database from a dump file or stream."""
-    engine = mysql_engine(database)
+    engine = mariadb_engine(database)
 
     restore_mariadb(
         input,
@@ -85,22 +86,4 @@ def restore_command(
     )
 
 
-def mysql_engine(database: str = None):
-    from macrostrat.core.config import mysql_database
-
-    _database: URL = make_url(mysql_database)
-    _database = _database.set(drivername="mysql+pymysql")
-    if database is not None:
-        _database = _database.set(database=database)
-    return create_engine(_database)
-
-
-@app.command("migrate-to-postgres")
-def migrate_to_postgres_command(overwrite: bool = False):
-    """Import legacy MariaDB database to PostgreSQL using pgloader"""
-    from .postgresql_migration import migrate_mariadb_to_postgresql
-
-    engine = mysql_engine()
-    dest = get_db().engine
-
-    migrate_mariadb_to_postgresql(engine, dest, overwrite=overwrite)
+app.command("migrate-to-postgres")(migrate_mariadb_to_postgresql)
