@@ -7,6 +7,9 @@ from macrostrat.database import run_query
 from psycopg2.sql import Identifier
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
+from macrostrat.core import app
+
+console = app.console
 
 
 def get_data_counts_maria(engine: Engine):
@@ -108,20 +111,20 @@ def compare_data_counts(db1_rows, db2_rows, db1_columns, db2_columns, db1, db2):
     }
 
     if len(db1_rows_not_in_db2) == 0 and len(db2_rows_not_in_db1) == 0:
-        print(
-            f"\nSuccess! All tables exist in both {db1} and {db2}. Checking row counts....\n"
-        )
+        success(f"All tables exist in both {db1} and {db2}.")
     else:
         if len(db1_rows_not_in_db2) > 0:
-            print(
-                f"\nERROR: {db1} tables that are not in {db2}:\n",
+            error(f"{len(db1_rows_not_in_db2)} {db1} tables not found in {db2}:")
+            console.print(
                 [key for key in db1_rows_not_in_db2],
             )
         if len(db2_rows_not_in_db1) > 0:
-            print(
-                f"\nERROR: {db2} tables that are not in {db1}: \n",
+            error(f"{len(db2_rows_not_in_db1)} {db2} tables not found in {db1}:")
+            console.print(
                 [key for key in db2_rows_not_in_db1],
             )
+
+    console.print("\n[bold]Checking row counts...")
 
     row_count_difference = {
         key: (db1_rows[key], db2_rows[key])
@@ -140,27 +143,39 @@ def compare_data_counts(db1_rows, db2_rows, db1_columns, db2_columns, db1, db2):
     # col_count_difference.update(db2_cols_not_in_db1)
 
     if len(row_count_difference) == 0:
-        print(
-            f"Success! All row counts in all tables are the same in both {db1} and {db2}!\n"
-        )
+        success(f"All row counts in all tables are the same in {db1} and {db2}!")
     else:
-        print(
-            f"\nERROR: Row count differences for {len(row_count_difference)} tables in both {db1} and {db2} databases:\n"
-            f"Table Name: ({db1} Rows, {db2} Rows)\n"
-            f"{row_count_difference}"
+        error(
+            f"Row count differences for {len(row_count_difference)} tables in {db1} and {db2} databases"
         )
+        print_counts(row_count_difference)
+
     if len(col_count_difference) == 0:
-        print(
-            f"Success! All column counts in all tables are the same in both {db1} and {db2}!\n"
-        )
+        success(f"All column counts in all tables are the same in {db1} and {db2}!\n")
     else:
-        print(
-            f"\nERROR: Column count differences for {len(col_count_difference)} tables in both {db1} and {db2} databases:\n"
-            f"Table Name: ({db1} Columns, {db2} Columns)\n"
-            f"{col_count_difference}"
+        error(
+            f"Column count differences for {len(col_count_difference)} tables in {db1} and {db2} databases"
         )
+        print_counts(col_count_difference)
 
     return row_count_difference, col_count_difference
+
+
+def print_counts(counts):
+    for key, (v1, v2) in counts.items():
+        diff = v1 - v2
+        col = "red" if diff < 0 else "green"
+        diff = f"[{col}]{diff:+8d}[/]"
+
+        console.print(f"{key:30s} {v1:9d} {v2:9d} [dim]{diff}[/dim]")
+
+
+def error(message):
+    console.print(f"\n[red bold]ERROR:[red] {message}")
+
+
+def success(message):
+    console.print(f"\n[green bold]SUCCESS:[green] {message}")
 
 
 def find_row_variances(

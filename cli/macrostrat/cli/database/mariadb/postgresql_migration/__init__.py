@@ -137,64 +137,55 @@ def pgloader(source: Engine, dest: Engine, overwrite=False):
     )
 
 
-def reset():
-    SQLALCHEMY_DATABASE_URI = (
-        f"{pg_user_maria_temp}:{pg_pass_maria_temp}@{pg_server}/{pg_db_name_two}"
-    )
-    pg_engine = create_engine(SQLALCHEMY_DATABASE_URI)
-    pg_drop_query = text(
-        f"DROP SCHEMA macrostrat_temp CASCADE"
-    )  # {new_migrate_schema_name}
-
-    with pg_engine.connect() as conn:
-        conn.execute(pg_drop_query)
-    pg_engine.dispose()
-
-    SQLALCHEMY_DATABASE_URI = (
-        f"mysql+pymysql://{maria_super_user}:"
-        f"{maria_super_pass}@{maria_server}/{maria_db_name_two}"
-    )
-    maria_engine = create_engine(SQLALCHEMY_DATABASE_URI)
-    maria_drop_query = text(f"DROP DATABASE {maria_db_name_two}")
-
-    with maria_engine.connect() as conn:
-        conn.execute(maria_drop_query)
-    maria_engine.dispose()
-
-
 def compare_row_counts(maria: Engine, pg_temp: Engine, pg_final: Engine):
 
+    console = app.console
+
     maria_rows, maria_columns = get_data_counts_maria(maria)
-    pg_rows, pg_columns = get_data_counts_pg(pg_final, "macrostrat")
-    pg_macrostrat_two_rows, pg_macrostrat_two_columns = get_data_counts_pg(
+    pg_macrostrat_temp_rows, pg_macrostrat_temp_columns = get_data_counts_pg(
         pg_temp, "macrostrat_temp"
     )
 
-    print(
-        "\nMARIADB (db1) comparison to PG MACROSTRAT_TWO (db2). These should be clones. "
-    )
-    db1 = "MariaDB"
-    db2 = "PG Macrostrat_Two"
+    db1 = db_identifier(maria)
+    db2 = db_identifier(pg_temp)
+    db3 = db_identifier(pg_final)
+
+    header(f"\n\nComparing [cyan]{db1}[/] to [cyan]{db2}[/].")
+
     row_variance, column_variance = compare_data_counts(
         maria_rows,
-        pg_macrostrat_two_rows,
+        pg_macrostrat_temp_rows,
         maria_columns,
-        pg_macrostrat_two_columns,
+        pg_macrostrat_temp_columns,
         db1,
         db2,
     )
-    print(
-        "\nPG MACROSTRAT_TWO (db1 maria db clone) comparison to PG MACROSTRAT (db2). This will show what data "
-        "needs to be moved over from Maria to PG prod."
-    )
-    db1 = "PG Macrostrat_Two"
-    db2 = "PG Macrostrat"
+
+    pg_rows, pg_columns = get_data_counts_pg(pg_final, "macrostrat")
+
+    header(f"\n\nComparing [cyan]{db2}[/] to [cyan]{db3}[/].")
+
     row_variance_two, column_variance_two = compare_data_counts(
-        pg_macrostrat_two_rows, pg_rows, pg_macrostrat_two_columns, pg_columns, db1, db2
+        pg_macrostrat_temp_rows,
+        pg_rows,
+        pg_macrostrat_temp_columns,
+        pg_columns,
+        db2,
+        db3,
     )
     # reset()
     # df, df_two = find_row_variances(pg_db_name, pg_db_name, pg_db_name_two, maria_db_name_two,
     # pg_user, pg_pass_new, 'cols')
+
+
+def db_identifier(engine: Engine):
+    driver = engine.url.drivername
+    if driver.startswith("postgresql"):
+        driver = "PostgreSQL"
+    elif driver.startswith("mysql"):
+        driver = "MariaDB"
+
+    return f"{engine.url.database} ({driver})"
 
 
 def header(text):
