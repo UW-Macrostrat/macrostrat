@@ -20,35 +20,56 @@ __here__ = Path(__file__).parent
 
 log = get_logger(__name__)
 
+from enum import Enum
 
-def migrate_mariadb_to_postgresql(overwrite: bool = False):
+
+class MariaDBMigrationStep(Enum):
+    COPY_MARIADB = "copy-mariadb"
+    PGLOADER = "pgloader"
+    CHECK_DATA = "check-data"
+    FINALIZE = "finalize"
+
+
+_all_steps = {
+    MariaDBMigrationStep.COPY_MARIADB,
+    MariaDBMigrationStep.PGLOADER,
+    MariaDBMigrationStep.CHECK_DATA,
+    MariaDBMigrationStep.FINALIZE,
+}
+
+
+def migrate_mariadb_to_postgresql(
+    overwrite: bool = False, step: list[MariaDBMigrationStep] = None
+):
     """Migrate the legacy Macrostrat database from MariaDB to PostgreSQL."""
 
     # Get the default MariaDB and PostgreSQL engines from the Macrostrat app's
     # configuration (macrostrat.toml).
     maria_engine = mariadb_engine()
     pg_engine = get_db().engine
-
     temp_db_name = maria_engine.url.database + "_temp"
-
     maria_temp_engine = create_engine(maria_engine.url.set(database=temp_db_name))
-
-    if database_exists(maria_temp_engine.url) and not overwrite:
-        header(
-            "Database [bold cyan]macrostrat_temp[/] already exists. Use --overwrite to overwrite."
-        )
-    else:
-        copy_mariadb_database(maria_engine, maria_temp_engine, overwrite=overwrite)
-
     pg_temp_engine = create_engine(pg_engine.url.set(database=temp_db_name))
 
-    pgloader_pre_script(maria_temp_engine)
+    steps: set[MariaDBMigrationStep] = _all_steps
+    if step is not None and len(step) > 0:
+        steps = set(step)
 
-    pgloader(maria_temp_engine, pg_temp_engine, overwrite=overwrite)
+    if MariaDBMigrationStep.COPY_MARIADB in steps:
+        copy_mariadb_database(maria_engine, maria_temp_engine, overwrite=overwrite)
 
-    pgloader_post_script(pg_temp_engine)
+    if MariaDBMigrationStep.PGLOADER in steps:
+        pgloader_pre_script(maria_temp_engine)
+        pgloader(maria_temp_engine, pg_temp_engine, overwrite=overwrite)
+        pgloader_post_script(pg_temp_engine)
 
-    compare_row_counts(maria_engine, pg_temp_engine, pg_engine)
+    if MariaDBMigrationStep.CHECK_DATA in steps:
+        should_proceed = compare_row_counts(maria_engine, pg_temp_engine, pg_engine)
+        if not should_proceed:
+            raise ValueError("Data comparison failed. Aborting migration.")
+
+    if MariaDBMigrationStep.FINALIZE in steps:
+        raise NotImplementedError("Copy to Macrostrat database not yet implemented")
 
 
 def pgloader_pre_script(engine: Engine):
