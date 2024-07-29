@@ -65,6 +65,10 @@ class Migration:
     # List of checks on the database that should all evaluate to true after the migration has run successfully
     postconditions: list[DbEvaluator] = []
 
+    # Flag for whether running this migration will cause data changes in the database in addition to
+    # schema changes
+    destructive: bool = False
+
     def should_apply(self, database: Database) -> ApplicationStatus:
         """ Determine whether this migration can run, or has already run.  """
         # If all post-conditions are met, the migration is already applied

@@ -15,7 +15,10 @@ class PartitionCartoMigration(Migration):
 
     depends_on = ['partition-maps']
 
+    destructive = True
+
     postconditions = [
         view_exists('carto_new', 'lines_tiny', 'lines_small', 'lines_medium', 'lines_large'),
         view_exists('carto_new', 'tiny', 'small', 'medium', 'large'),
     ]
+

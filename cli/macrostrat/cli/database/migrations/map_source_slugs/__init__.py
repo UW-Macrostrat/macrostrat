@@ -19,6 +19,8 @@ class MapSourceSlugsMigration(Migration):
 
     depends_on = ['baseline']
 
+    destructive = True
+
     def apply(self, db: Database):
         # First, run sql migrations to add the slugs column and rename primary_table
         super().apply(db)

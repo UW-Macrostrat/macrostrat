@@ -58,7 +58,7 @@ def has_enum(db: Database, name: str, schema: str = None):
     ).scalar()
 
 
-def run_migrations(apply: bool = False, name: str = None, force: bool = False):
+def run_migrations(apply: bool = False, name: str = None, force: bool = False, data_changes: bool = False):
     """Apply database migrations"""
     db = get_db()
 
@@ -101,6 +101,10 @@ def run_migrations(apply: bool = False, name: str = None, force: bool = False):
             if not apply:
                 print(f"Would apply migration [cyan]{_name}[/cyan]")
             else:
+                if _migration.destructive and not data_changes and not force:
+                    print(f"Migration [cyan]{_name}[/cyan] would alter data in the database. Run with --force or --data-changes")
+                    return
+                    
                 print(f"Applying migration [cyan]{_name}[/cyan]")
                 _migration.apply(db)
                 # After running migration, reload the database and confirm that application was sucessful
