@@ -1,14 +1,6 @@
 from macrostrat.database import Database
 from ..base import Migration, schema_exists
 
-from psycopg2.sql import Identifier
-
-MATCHES_SLUG_SQL = """
-SELECT table_name
-FROM information_schema.tables
-JOIN maps.sources ON slug = table_name
-WHERE table_schema = 'sources'"""
-
 class ColumnBuilderMigration(Migration):
     name = "column-builder"
     subsystem = "core"

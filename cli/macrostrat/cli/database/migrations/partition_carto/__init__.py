@@ -13,7 +13,7 @@ class PartitionCartoMigration(Migration):
     into a single map table, partitioned by scale to retain the original table structure and avoid copying data.
     """
 
-    depends_on = ['macrostrat-core-v2']
+    depends_on = ['partition-maps']
 
     postconditions = [
         view_exists('carto_new', 'lines_tiny', 'lines_small', 'lines_medium', 'lines_large'),
