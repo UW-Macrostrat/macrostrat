@@ -117,11 +117,3 @@ MYSQL_DATABASE = getattr(settings, "mysql_database", None)
 settings.srcroot = Path(__file__).parent.parent.parent.parent
 
 environ["MACROSTRAT_ROOT"] = str(settings.srcroot)
-
-
-def docker_internal_url(url: URL | str) -> URL:
-    url = make_url(url)
-    if url.host == "localhost":
-        docker_localhost = getattr(settings, "docker_localhost", "localhost")
-        url = url.set(host=docker_localhost)
-    return url

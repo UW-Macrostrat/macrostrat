@@ -18,9 +18,9 @@ def _docker_local_run_args(postgres_container: str = "postgres:15"):
         "docker",
         "run",
         "-i",
+        "--log-driver",
+        "none",
         "--rm",
-        "--network",
-        "host",
         postgres_container,
     ]
 

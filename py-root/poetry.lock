@@ -756,7 +756,7 @@ geopandas = "^0.14.1"
 greenlet = "^3.0.3"
 ipython = "^8.5.0"
 "macrostrat.app-frame" = "^1.2.4"
-"macrostrat.database" = "^3.1.1"
+"macrostrat.database" = "^3.3.1"
 macrostrat-dinosaur = "^3.0.1"
 numpy = "^1.23.4"
 psycopg2-binary = "^2.9.4"
@@ -802,13 +802,13 @@ url = "../core"
 
 [[package]]
 name = "macrostrat-database"
-version = "3.3.0"
+version = "3.3.1"
 description = "A SQLAlchemy-based database toolkit."
 optional = false
 python-versions = "<4.0,>=3.8"
 files = [
-    {file = "macrostrat_database-3.3.0-py3-none-any.whl", hash = "sha256:5a45c7d67a4fe006728842b2ff67b86f217271822da354fc884762864acb6732"},
-    {file = "macrostrat_database-3.3.0.tar.gz", hash = "sha256:dafaac5ef28a668ff75f215caa8edda4345b2a2b4c273d0cdae3ac18b9a97b78"},
+    {file = "macrostrat_database-3.3.1-py3-none-any.whl", hash = "sha256:3a7adb0d3b3dc1f1e1c84a2b764bfe210f0c850d3c93e0a2256c8fd379875b75"},
+    {file = "macrostrat_database-3.3.1.tar.gz", hash = "sha256:51ccc801fc5884001d6c7393ddf595688ffdc49bde0252cd65f9027619a1c51e"},
 ]
 
 [package.dependencies]

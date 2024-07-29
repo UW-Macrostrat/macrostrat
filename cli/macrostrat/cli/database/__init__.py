@@ -11,6 +11,8 @@ from rich import print
 from sqlalchemy import text
 from typer import Argument, Option
 from .migrations import run_migrations
+from .utils import engine_for_db_name
+
 
 from macrostrat.core import MacrostratSubsystem, app
 from macrostrat.core.utils import is_pg_url
@@ -206,7 +208,7 @@ def dump(
 
     db_container = app.settings.get("pg_database_container", "postgres:15")
 
-    engine = _engine_for_db_name(database)
+    engine = engine_for_db_name(database)
 
     args = ctx.args
     custom_format = True
@@ -236,7 +238,7 @@ def restore(
 
     db_container = app.settings.get("pg_database_container", "postgres:15")
 
-    engine = _engine_for_db_name(database)
+    engine = engine_for_db_name(database)
 
     args = []
     if jobs is not None:
@@ -249,14 +251,6 @@ def restore(
         create=create,
         args=args,
     )
-
-
-def _engine_for_db_name(name: str | None):
-    engine = get_db().engine
-    if name is None:
-        return engine
-    url = engine.url.set(database=name)
-    return create_engine(url)
 
 
 @db_app.command(name="tables")
@@ -274,7 +268,7 @@ def list_tables(ctx: typer.Context, database: str = Argument(None), schema: str 
 
     sql += "\nORDER BY table_schema, table_name;"
 
-    engine = _engine_for_db_name(database)
+    engine = engine_for_db_name(database)
 
     print(
         f"[dim]Tables in database: [bold cyan]{engine.url.database}[/]\n", file=stderr

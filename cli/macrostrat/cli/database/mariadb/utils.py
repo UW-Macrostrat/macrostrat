@@ -23,7 +23,7 @@ def build_connection_args(
         args.extend(["-p" + str(url.password)])
 
     if style == ParameterStyle.MariaDB:
-        args.extend(["-D", url.database])
+        args.extend([url.database])
     elif style == ParameterStyle.MySQLDump:
         args.extend(["--databases", url.database])
 

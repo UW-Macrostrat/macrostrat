@@ -5,12 +5,15 @@ from sqlalchemy.engine import create_engine
 from sqlalchemy.engine.url import URL, make_url
 from pathlib import Path
 
+from ..utils import docker_internal_url
 from .utils import build_connection_args
 from .restore import restore_mariadb, dump_mariadb
 
 app = Typer(no_args_is_help=True)
 
 mariadb_container = "mariadb:10.10"
+
+# TODO: Adjust Typer context to ignore unconsumed arguments or arguments after "--"
 
 
 @app.command(
@@ -20,7 +23,7 @@ mariadb_container = "mariadb:10.10"
 )
 def cli_command(ctx: Context):
     """Run the MariaDB CLI against the Macrostrat database."""
-    from macrostrat.core.config import docker_internal_url, mysql_database
+    from macrostrat.core.config import mysql_database
 
     _database: URL = docker_internal_url(mysql_database)
 
@@ -88,7 +91,7 @@ def mysql_engine(database: str = None):
     _database = _database.set(drivername="mysql+pymysql")
     if database is not None:
         _database = _database.set(database=database)
-    return create_engine(mysql_database)
+    return create_engine(_database)
 
 
 @app.command("migrate-to-postgres")

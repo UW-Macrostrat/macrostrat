@@ -1,29 +1,48 @@
 from sqlalchemy import text, create_engine
 import os
 from macrostrat.database.utils import run_sql
+from macrostrat.app_frame.exc import ApplicationError
 from pathlib import Path
 from sqlalchemy.engine import Engine
+from macrostrat.database import database_exists, create_database
 from ..restore import copy_mariadb_database
+from ...._dev.utils import raw_database_url
+from ...utils import engine_for_db_name, docker_internal_url
+from macrostrat.utils import get_logger
+from macrostrat.utils.shell import run
+from macrostrat.core import app
+from textwrap import dedent
 
 import time
 from .db_changes import get_data_counts_maria, get_data_counts_pg, compare_data_counts
 
 __here__ = Path(__file__).parent
 
+log = get_logger(__name__)
+
 
 def migrate_mariadb_to_postgresql(engine: Engine, overwrite: bool = False):
     """Migrate the entire Macrostrat database from MariaDB to PostgreSQL."""
     temp_db_name = engine.url.database + "_temp"
 
-    copy_mariadb_database(engine, temp_db_name, overwrite=overwrite)
+    temp_engine = create_engine(engine.url.set(database=temp_db_name))
 
-    # pg_loader_pre_script()
-    # pg_loader()
+    if database_exists(temp_engine.url) and not overwrite:
+        app.console.print(
+            "Database [bold cyan]macrostrat_temp[/] already exists. Use --overwrite to overwrite."
+        )
+    else:
+        copy_mariadb_database(engine, temp_engine, overwrite=overwrite)
+
+    pg_engine = engine_for_db_name("macrostrat_temp")
+
+    pgloader_pre_script(temp_engine)
+    pgloader(temp_engine, pg_engine)
     # pg_loader_post_script()
 
 
 def pgloader_pre_script(engine: Engine):
-    assert engine.dialect.startswith("mysql")
+    assert engine.url.drivername.startswith("mysql")
     pre_script = __here__ / "pgloader-pre-script.sql"
     run_sql(engine, pre_script)
 
@@ -47,28 +66,44 @@ def pgloader_post_script(engine: Engine):
     run_sql(engine, post_script)
 
 
-def pgloader():
+def pgloader(source: Engine, dest: Engine):
     """
     Command terminal to run pgloader. Ensure Docker app is running.
     """
-    dockerfile_content = (
-        "FROM dimitri/pgloader:latest\n"
-        "RUN apt-get update && apt-get install -y postgresql-client\n"
-        "RUN apt-get install -y ca-certificates"
-    )
-    with open("Dockerfile", "w") as dockerfile:
-        dockerfile.write(dockerfile_content)
-    os.system("docker build -t pgloader-test .")
-
-    input_command = (
-        f'--with "prefetch rows = 1000" --verbose '
-        f"mysql://root:{maria_super_pass}@{maria_server}/{maria_db_name_two} "
-        f"postgresql://{pg_user_migrate}:{pg_pass_migrate}@{pg_server}/{pg_db_name_two}?sslmode=prefer"
+    dockerfile = dedent(
+        """FROM dimitri/pgloader:latest
+        RUN apt-get update && apt-get install -y postgresql-client ca-certificates && rm -rf /var/lib/apt/lists/*
+        ENTRYPOINT ["pgloader"]
+        """
     )
 
-    print(input_command)
-    os.system(f"docker run -i --rm pgloader-test pgloader {input_command}")
-    return
+    run(
+        "docker",
+        "build",
+        "-t",
+        "pgloader-runner",
+        "-",
+        input=dockerfile.encode("utf-8"),
+    )
+
+    # PyMySQL is not installed in the pgloader image, so we need to use the mysql client
+    # to connect to the MariaDB database.
+    source_url = source.url.set(drivername="mysql")
+
+    create_database(dest.url)
+
+    run(
+        "docker",
+        "run",
+        "-i",
+        "--rm",
+        "pgloader-runner",
+        "--with",
+        "prefetch rows = 1000",
+        "--verbose",
+        raw_database_url(docker_internal_url(source_url)),
+        raw_database_url(docker_internal_url(dest.url)),
+    )
 
 
 def reset():
