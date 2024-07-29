@@ -6,14 +6,11 @@ import pandas as pd
 from macrostrat.database import run_query
 from psycopg2.sql import Identifier
 from sqlalchemy import create_engine, text
+from sqlalchemy.engine import Engine
 
 
-def get_data_counts_maria():
-    SQLALCHEMY_DATABASE_URI = (
-        f"mysql+pymysql://{maria_super_user}:"
-        f"{maria_super_pass}@{maria_server}/{maria_db_name_two}"
-    )
-    engine = create_engine(SQLALCHEMY_DATABASE_URI)
+def get_data_counts_maria(engine: Engine):
+    db_name = engine.url.database
     maria_rows = {}
     maria_columns = {}
 
@@ -21,20 +18,18 @@ def get_data_counts_maria():
         row_result = run_query(
             conn,
             "SELECT table_name FROM information_schema.tables WHERE table_schema = :table_schema AND table_type = 'BASE TABLE'",
-            {"table_schema": maria_db_name_two},
+            {"table_schema": db_name},
         )
 
         maria_tables = [row[0] for row in row_result]
         for table in maria_tables:
-            row_result = run_query(
-                conn, "SELECT COUNT(*) FROM {table}", dict(table=Identifier(table))
-            )
+            row_result = run_query(conn, f"SELECT COUNT(*) FROM {table}")
             row_count = row_result.scalar()
             maria_rows[table.lower()] = row_count
             column_result = run_query(
                 conn,
                 "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = :table_schema AND table_name = :table_name",
-                dict(table_schema=maria_db_name_two, table_name=table),
+                dict(table_schema=db_name, table_name=table),
             )
 
             column_count = column_result.scalar()
@@ -44,16 +39,14 @@ def get_data_counts_maria():
     return maria_rows, maria_columns
 
 
-def get_data_counts_pg(database_name, username, password, schema):
-    SQLALCHEMY_DATABASE_URI = (
-        f"postgresql://{username}:{password}@{pg_server}/{database_name}"
-    )
-    engine = create_engine(SQLALCHEMY_DATABASE_URI)
+def get_data_counts_pg(engine: Engine, schema):
+    database_name = engine.url.database
+
     pg_rows = {}
     pg_columns = {}
 
     with engine.connect() as conn:
-        table_query = run_query(
+        table_result = run_query(
             conn,
             """
             SELECT table_name FROM information_schema.tables
@@ -62,8 +55,6 @@ def get_data_counts_pg(database_name, username, password, schema):
             """,
             dict(table_schema=schema, table_catalog=database_name),
         )
-
-        table_result = conn.execute(table_query)
         pg_tables = [row[0] for row in table_result]
         for table in pg_tables:
             row_result = run_query(
@@ -75,6 +66,7 @@ def get_data_counts_pg(database_name, username, password, schema):
             pg_rows[table.lower()] = row_count
 
             column_result = run_query(
+                conn,
                 """
                 SELECT COUNT(*) FROM information_schema.columns
                 WHERE table_catalog = :table_catalog

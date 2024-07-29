@@ -1,17 +1,20 @@
+import docker
 from sqlalchemy import text, create_engine
 import os
 from macrostrat.database.utils import run_sql
 from macrostrat.app_frame.exc import ApplicationError
 from pathlib import Path
 from sqlalchemy.engine import Engine
-from macrostrat.database import database_exists, create_database
+from macrostrat.database import database_exists, create_database, drop_database
 from ..restore import copy_mariadb_database
 from ...._dev.utils import raw_database_url
 from ...utils import engine_for_db_name, docker_internal_url
+from ..._legacy import get_db
 from macrostrat.utils import get_logger
 from macrostrat.utils.shell import run
 from macrostrat.core import app
 from textwrap import dedent
+import docker
 
 import time
 from .db_changes import get_data_counts_maria, get_data_counts_pg, compare_data_counts
@@ -28,17 +31,23 @@ def migrate_mariadb_to_postgresql(engine: Engine, overwrite: bool = False):
     temp_engine = create_engine(engine.url.set(database=temp_db_name))
 
     if database_exists(temp_engine.url) and not overwrite:
-        app.console.print(
+        header(
             "Database [bold cyan]macrostrat_temp[/] already exists. Use --overwrite to overwrite."
         )
     else:
         copy_mariadb_database(engine, temp_engine, overwrite=overwrite)
 
-    pg_engine = engine_for_db_name("macrostrat_temp")
+    pg_engine = get_db().engine
+
+    pg_temp_engine = create_engine(pg_engine.url.set(database=temp_db_name))
 
     pgloader_pre_script(temp_engine)
-    pgloader(temp_engine, pg_engine)
-    # pg_loader_post_script()
+
+    pgloader(temp_engine, pg_temp_engine, overwrite=overwrite)
+
+    pgloader_post_script(pg_temp_engine)
+
+    compare_row_counts(engine, pg_temp_engine, pg_engine)
 
 
 def pgloader_pre_script(engine: Engine):
@@ -60,16 +69,34 @@ def pgloader_pre_script(engine: Engine):
 
 
 def pgloader_post_script(engine: Engine):
-    assert engine.dialect.startswith("postgresql")
-    print("Starting PostScript execution....")
+    app.console.print("\n[bold]Running post-migration script[/]")
+    assert engine.url.drivername.startswith("postgres")
     post_script = __here__ / "pgloader-post-script.sql"
     run_sql(engine, post_script)
 
 
-def pgloader(source: Engine, dest: Engine):
+def pgloader(source: Engine, dest: Engine, overwrite=False):
     """
     Command terminal to run pgloader. Ensure Docker app is running.
     """
+    db_exists = database_exists(dest.url)
+
+    if db_exists:
+        if overwrite:
+            header("Dropping PostgreSQL database")
+            drop_database(dest.url)
+        else:
+            header(
+                f"PostgreSQL database [bold cyan]{dest.url.database}[/] already exists. Skipping pgloader."
+            )
+            return
+
+    if not db_exists:
+        header("Creating PostgreSQL database")
+        create_database(dest.url)
+
+    header("Building pgloader")
+
     dockerfile = dedent(
         """FROM dimitri/pgloader:latest
         RUN apt-get update && apt-get install -y postgresql-client ca-certificates && rm -rf /var/lib/apt/lists/*
@@ -77,20 +104,24 @@ def pgloader(source: Engine, dest: Engine):
         """
     )
 
-    run(
-        "docker",
-        "build",
-        "-t",
-        "pgloader-runner",
-        "-",
-        input=dockerfile.encode("utf-8"),
-    )
+    # Check if docker container exists
+
+    client = docker.from_env()
+
+    _image_exists = client.images.get("pgloader-runner:latest")
+
+    if _image_exists:
+        app.console.print("pgloader-runner image already exists.")
+
+    if not _image_exists or overwrite:
+        app.console.print("Building pgloader-runner image.")
+        client.images.build(dockerfile, tag="pgloader-runner:latest")
+
+    header("Running pgloader")
 
     # PyMySQL is not installed in the pgloader image, so we need to use the mysql client
     # to connect to the MariaDB database.
     source_url = source.url.set(drivername="mysql")
-
-    create_database(dest.url)
 
     run(
         "docker",
@@ -131,18 +162,12 @@ def reset():
     maria_engine.dispose()
 
 
-if __name__ == "__main__":
-    # maria_dump(maria_server, maria_super_user, maria_super_pass, maria_db_name)
-    # maria_restore(maria_server, maria_super_user, maria_super_pass, maria_db_name_two)
-    # pg_loader_pre_script()
-    # pg_loader()
-    # pg_loader_post_script()
-    maria_rows, maria_columns = get_data_counts_maria()
-    pg_rows, pg_columns = get_data_counts_pg(
-        pg_db_name, pg_user, pg_pass_new, "macrostrat"
-    )
+def compare_row_counts(maria: Engine, pg_temp: Engine, pg_final: Engine):
+
+    maria_rows, maria_columns = get_data_counts_maria(maria)
+    pg_rows, pg_columns = get_data_counts_pg(pg_final, "macrostrat")
     pg_macrostrat_two_rows, pg_macrostrat_two_columns = get_data_counts_pg(
-        pg_db_name_two, pg_user_migrate, pg_pass_migrate, "macrostrat_temp"
+        pg_temp, "macrostrat_temp"
     )
 
     print(
@@ -170,3 +195,7 @@ if __name__ == "__main__":
     # reset()
     # df, df_two = find_row_variances(pg_db_name, pg_db_name, pg_db_name_two, maria_db_name_two,
     # pg_user, pg_pass_new, 'cols')
+
+
+def header(text):
+    app.console.print(f"\n[bold]{text}[/]\n")
