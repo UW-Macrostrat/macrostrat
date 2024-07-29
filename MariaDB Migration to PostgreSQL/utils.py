@@ -75,6 +75,7 @@ def get_data_counts_maria():
         row_result = conn.execute(tables_query)
         maria_tables = [row[0] for row in row_result]
         for table in maria_tables:
+            print(table)
             row_query = text(f"SELECT COUNT(*) FROM {table};")
             row_result = conn.execute(row_query)
             row_count = row_result.scalar()
@@ -195,30 +196,20 @@ def find_col_variances(database_name_one, schema_one, schema_two, username, pass
     SQLALCHEMY_DATABASE_URI = f"postgresql://{username}:{password}@{pg_server}/{database_name_one}"
     engine = create_engine(SQLALCHEMY_DATABASE_URI)
     insp = inspect(engine)
-    table_one = []
-    table_two = []
-    col_not_in_macrostrat_two = []
-    with engine.connect() as conn:
-        for table in tables:
-            dict = []
-            dict_two = []
-            table_one = []
-            table_two = []
-            columns_one = insp.get_columns(table, schema=schema_one)
-            columns_two = insp.get_columns(table, schema=schema_two)
-            for index in range(0, len(columns_one)-1):
-                dict = columns_one[index]
-                table_one.append(dict['name'])
-            for index_two in range(0, len(columns_two)-1):
-                dict_two = columns_two[index_two]
-                table_two.append(dict_two['name'])
-            for col in table_one:
-                if col not in table_two:
-                    col_not_in_macrostrat_two.append(col)
-            if len(col_not_in_macrostrat_two) > 0:
-                print(f"Columns that exist in Macrostrat and NOT in macrostrat_two for {table}:", col_not_in_macrostrat_two)
-            else:
-                print("Success! All columns in Macrostrat exist in Macrostrat_two")
+    for table in tables:
+        columns_one = insp.get_columns(table, schema=schema_one)
+        columns_two = insp.get_columns(table, schema=schema_two)
+
+        col_names_one = {col['name'] for col in columns_one}
+        col_names_two = {col['name'] for col in columns_two}
+
+        col_not_in_schema_two = col_names_one - col_names_two
+
+        if col_not_in_schema_two:
+            print(f"Columns that exist in {schema_one} but NOT in {schema_two} for {table}: {col_not_in_schema_two}")
+        else:
+            print(f"All columns in {schema_one} exist in {schema_two} for {table}")
+
     engine.dispose()
     return
 
@@ -353,60 +344,59 @@ def pg_loader_post_script():
     # adding default values for data formats that pgloader accepts
     #vaccuum...refresh postgresql database after pgloader
     #CREATE EXTENSION IF NOT EXISTS postgis;
-    SQLALCHEMY_DATABASE_URI = f"postgresql://{pg_user_migrate}:{pg_pass_migrate}@{pg_server}/{pg_db_name_two}?sslmode=prefer"
+    SQLALCHEMY_DATABASE_URI = f"postgresql://{pg_user}:{pg_pass_new}@{pg_server}/{pg_db_name}?sslmode=prefer"
     engine = create_engine(SQLALCHEMY_DATABASE_URI) #connect_args={'options': '-csearch_path=public,macrostrat_temp'
 
 
-    query_pbdb_matches = text("""
-        ALTER TABLE macrostrat_two.macrostrat_temp.pbdb_matches ADD COLUMN coordinate geometry(Point, 4326);
-        UPDATE macrostrat_two.macrostrat_temp.pbdb_matches SET coordinate = ST_GeomFromText(coordinate_point_text, 4326);
-        ALTER TABLE macrostrat_two.macrostrat_temp.pbdb_matches DROP COLUMN coordinate_point_text;
-        SELECT * FROM macrostrat_two.macrostrat_temp.pbdb_matches LIMIT 5;""")
+    query_pbdb_matches = """
+        ALTER TABLE macrostrat.macrostrat_temp.pbdb_matches ADD COLUMN coordinate geometry(Point, 4326);
+        UPDATE macrostrat.macrostrat_temp.pbdb_matches SET coordinate = ST_GeomFromText(coordinate_point_text, 4326);
+        ALTER TABLE macrostrat.macrostrat_temp.pbdb_matches DROP COLUMN coordinate_point_text;
+        SELECT * FROM macrostrat.macrostrat_temp.pbdb_matches LIMIT 5;"""
 
-    query_places = text("""
-        ALTER TABLE macrostrat_two.macrostrat_temp.places ADD COLUMN geom geometry;
-        UPDATE macrostrat_two.macrostrat_temp.places SET geom = ST_GeomFromText(geom_text, 4326);
-        ALTER TABLE macrostrat_two.macrostrat_temp.places DROP COLUMN geom_text;
-        SELECT * FROM macrostrat_two.macrostrat_temp.places LIMIT 5;""")
+    query_places = """
+        ALTER TABLE macrostrat.macrostrat_temp.places ADD COLUMN geom geometry;
+        UPDATE macrostrat.macrostrat_temp.places SET geom = ST_GeomFromText(geom_text, 4326);
+        ALTER TABLE macrostrat.macrostrat_temp.places DROP COLUMN geom_text;
+        SELECT * FROM macrostrat.macrostrat_temp.places LIMIT 5;"""
 
-    query_refs = text("""
-        ALTER TABLE macrostrat_two.macrostrat_temp.refs ADD COLUMN rgeom geometry;
-        UPDATE macrostrat_two.macrostrat_temp.refs SET rgeom = ST_GeomFromText(rgeom_text, 4326);
-        ALTER TABLE macrostrat_two.macrostrat_temp.refs DROP COLUMN rgeom_text;
-        SELECT * FROM macrostrat_two.macrostrat_temp.refs LIMIT 5;""")
+    query_refs = """
+        ALTER TABLE macrostrat.macrostrat_temp.refs ADD COLUMN rgeom geometry;
+        UPDATE macrostrat.macrostrat_temp.refs SET rgeom = ST_GeomFromText(rgeom_text, 4326);
+        ALTER TABLE macrostrat.macrostrat_temp.refs DROP COLUMN rgeom_text;
+        SELECT * FROM macrostrat.macrostrat_temp.refs LIMIT 5;"""
 
 
-    query_cols = text("""
-        ALTER TABLE macrostrat_two.macrostrat_temp.cols ADD COLUMN coordinate geometry;
-        UPDATE macrostrat_two.macrostrat_temp.cols SET coordinate = ST_GeomFromText(coordinate_text, 4326);
-        ALTER TABLE macrostrat_two.macrostrat_temp.cols DROP COLUMN coordinate_text;
-        SELECT * FROM macrostrat_two.macrostrat_temp.cols LIMIT 5;""")
+    query_cols = """
+        ALTER TABLE macrostrat.macrostrat_temp.cols ADD COLUMN coordinate geometry;
+        UPDATE macrostrat.macrostrat_temp.cols SET coordinate = ST_GeomFromText(coordinate_text, 4326);
+        ALTER TABLE macrostrat.macrostrat_temp.cols DROP COLUMN coordinate_text;
+        SELECT * FROM macrostrat.macrostrat_temp.cols LIMIT 5;"""
 
-    query_col_areas = text("""
-        ALTER TABLE macrostrat_two.macrostrat_temp.col_areas ADD COLUMN col_area geometry;
-        UPDATE macrostrat_two.macrostrat_temp.col_areas SET col_area = ST_GeomFromText(col_area_text, 4326);
-        ALTER TABLE macrostrat_two.macrostrat_temp.col_areas DROP COLUMN col_area_text;
-        SELECT * FROM macrostrat_two.macrostrat_temp.col_areas LIMIT 5;""")
+    query_col_areas = """
+        ALTER TABLE macrostrat.macrostrat_temp.col_areas ADD COLUMN col_area geometry;
+        UPDATE macrostrat.macrostrat_temp.col_areas SET col_area = ST_GeomFromText(col_area_text, 4326);
+        ALTER TABLE macrostrat.macrostrat_temp.col_areas DROP COLUMN col_area_text;
+        SELECT * FROM macrostrat.macrostrat_temp.col_areas LIMIT 5;"""
 
-    query_col_areas_6April2016 = text("""
-        ALTER TABLE macrostrat_two.macrostrat_temp.col_areas_6April2016 ADD COLUMN col_area geometry;
-        UPDATE macrostrat_two.macrostrat_temp.col_areas_6April2016 SET col_area = ST_GeomFromText(col_area_text, 4326);
-        ALTER TABLE macrostrat_two.macrostrat_temp.col_areas_6April2016 DROP COLUMN col_area_text;
-        SELECT * FROM macrostrat_two.macrostrat_temp.col_areas_6April2016 LIMIT 5;""")
+    query_col_areas_6April2016 = """
+        ALTER TABLE macrostrat.macrostrat_temp.col_areas_6April2016 ADD COLUMN col_area geometry;
+        UPDATE macrostrat.macrostrat_temp.col_areas_6April2016 SET col_area = ST_GeomFromText(col_area_text, 4326);
+        ALTER TABLE macrostrat.macrostrat_temp.col_areas_6April2016 DROP COLUMN col_area_text;
+        SELECT * FROM macrostrat.macrostrat_temp.col_areas_6April2016 LIMIT 5;"""
 
     post_script_queries = [query_pbdb_matches, query_refs, query_cols, query_places, query_col_areas, query_col_areas_6April2016]
     print('Starting PostScript execution....')
     with engine.connect() as conn:
         for query in post_script_queries:
-            try:
-                result = conn.execute(query.execution_options(autocommit=True))
-                for row in result:
-                    print(row)
-            except SQLAlchemyError as e:
-                print(f"Error: {e}")
-                #rollback the transaction if an error occurs
-                conn.execute(text("ROLLBACK;"))
-
+            statements = query.split(';')
+            for statement in statements:
+                if statement.strip():
+                    try:
+                        conn.execute(text(statement))
+                        print(f"Successfully executed: {statement}")
+                    except Exception as e:
+                        print(f"Error with statement: {statement}\n{e}")
     engine.dispose()
     return
 
@@ -455,9 +445,9 @@ def reset():
 if __name__ == "__main__":
     #maria_dump(maria_server, maria_super_user, maria_super_pass, maria_db_name)
     #maria_restore(maria_server, maria_super_user, maria_super_pass, maria_db_name_two)
-    #pg_loader_pre_script()
+    pg_loader_pre_script()
     #pg_loader()
-    #pg_loader_post_script()
+    pg_loader_post_script()
     #maria_rows, maria_columns = get_data_counts_maria()
     #pg_rows, pg_columns = get_data_counts_pg(pg_db_name, pg_user, pg_pass_new, 'macrostrat')
     #pg_macrostrat_two_rows, pg_macrostrat_two_columns = get_data_counts_pg(pg_db_name_two, pg_user_migrate, pg_pass_migrate, 'macrostrat_temp')
@@ -474,7 +464,7 @@ if __name__ == "__main__":
     #row_variance_two, column_variance_two = compare_data_counts(pg_macrostrat_two_rows, pg_rows, pg_macrostrat_two_columns,
      #                                                   pg_columns, db1, db2)
     #reset()
-    pg_restore(pg_server, pg_user, pg_pass_new, pg_db_name, maria_db_name_two)
+    #pg_restore(pg_server, pg_user, pg_pass_new, pg_db_name, maria_db_name_two)
 
     table_rows = [
         "sections",
@@ -505,19 +495,45 @@ if __name__ == "__main__":
         "refs"
     ]
 
-    table_cols = ['sections',
-                  'strat_names',
-                  'strat_tree',
-                  'units',
-                  'unit_strat_names',
-                  'unit_environs',
-                  'cols',
-                  'environs',
-                  'lith_atts',
-                  'lookup_strat_names',
-                  'lookup_unit_intervals',
-                  'measuremeta',
-                  'measures']
+    table_cols = ['col_refs',
+    'lookup_unit_attrs_api',
+    'lookup_unit_intervals',
+    'strat_names_meta',
+    'sections',
+    'unit_econs',
+    'lookup_strat_names',
+    'measures',
+    'projects',
+    'timescales',
+    'strat_tree',
+    'refs',
+    'unit_liths',
+    'lookup_units',
+    'measurements',
+    'units',
+    'autocomplete',
+    'col_areas',
+    'unit_strat_names',
+    'unit_environs',
+    'cols',
+    'intervals',
+    'lith_atts',
+    'timescales_intervals',
+    'unit_boundaries',
+    'econs',
+    'environs',
+    'units_sections',
+    'unit_measures',
+    'strat_names',
+    'lookup_unit_liths',
+    'liths',
+    'concepts_places',
+    'strat_names_places',
+    'col_groups',
+    'measuremeta',
+    'places']
+
+    print(len(table_cols))
 
 
     #results = find_row_variances(pg_db_name, pg_db_name, maria_db_name_two, pg_user, pg_pass_new, table_rows)
