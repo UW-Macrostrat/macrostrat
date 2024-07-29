@@ -172,7 +172,9 @@ async def _copy_mariadb_database(engine: Engine, new_engine: Engine, *args, **kw
     )
 
     return await asyncio.gather(
-        asyncio.create_task(print_stream_progress(dump.stdout, restore.stdin, prefix="Copied")),
+        asyncio.create_task(
+            print_stream_progress(dump.stdout, restore.stdin, prefix="Copied")
+        ),
         asyncio.create_task(print_stdout(dump.stderr)),
         asyncio.create_task(print_stdout(restore.stderr)),
     )
