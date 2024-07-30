@@ -63,6 +63,7 @@ mercator_bbox geometry;
 projected_bbox geometry;
 bedrock bytea;
 lines bytea;
+points bytea;
 tolerance double precision;
 BEGIN
 
