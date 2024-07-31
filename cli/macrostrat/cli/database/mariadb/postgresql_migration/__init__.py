@@ -152,7 +152,8 @@ def pgloader(source: Engine, dest: Engine, overwrite=False):
         "prefetch rows = 1000",
         "--verbose",
         raw_database_url(docker_internal_url(source_url)),
-        raw_database_url(docker_internal_url(dest.url)),
+        raw_database_url(docker_internal_url(dest.url))+"?sslmode=prefer",
+
     )
 
 
