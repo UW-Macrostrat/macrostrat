@@ -7,7 +7,7 @@ from macrostrat.utils import get_logger
 from macrostrat.utils.shell import run
 from sqlalchemy import text, create_engine
 from sqlalchemy.engine import Engine
-
+from macrostrat.core.config import settings
 from macrostrat.core import app
 from .db_changes import get_data_counts_maria, get_data_counts_pg, compare_data_counts
 from ..restore import copy_mariadb_database
@@ -49,8 +49,8 @@ def migrate_mariadb_to_postgresql(
     pg_engine = get_db().engine
     temp_db_name = maria_engine.url.database + "_temp"
     maria_temp_engine = create_engine(maria_engine.url.set(database=temp_db_name))
-    pg_temp_engine = create_engine(pg_engine.url.set(database=temp_db_name))
-
+    #pg_temp_engine = create_engine(pg_engine.url.set(database=temp_db_name))
+    pg_temp_engine = create_engine(settings.pgloader_target_database)
     steps: set[MariaDBMigrationStep] = _all_steps
     if step is not None and len(step) > 0:
         steps = set(step)
