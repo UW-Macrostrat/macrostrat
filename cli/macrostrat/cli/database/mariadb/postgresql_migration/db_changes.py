@@ -5,7 +5,7 @@ Script to output dataframes for comparing data between two databases and tables.
 import pandas as pd
 from macrostrat.database import run_query
 from psycopg2.sql import Identifier
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, inspect
 from sqlalchemy.engine import Engine
 from macrostrat.core import app
 
@@ -184,28 +184,26 @@ def find_row_variances(
         schema_two,
         username,
         password,
-        tables
+        tables,
+        pg_engine
 ):
-    SQLALCHEMY_DATABASE_URI = (
-        f"postgresql://{username}:{password}@{pg_server}/{database_name_one}"
-    )
-    engine = create_engine(SQLALCHEMY_DATABASE_URI)
-    insp = inspect(engine)
-    with engine.connect() as conn:
+    insp = inspect(pg_engine)
+    count = 0
+    with pg_engine.connect() as conn:
         for table in tables:
             # Get the actual first column name for each table
             columns = insp.get_columns(table, schema=schema_one)
             first_column_name = columns[0]['name']
             query = f"""
-                   SELECT m.{first_column_name}
+                   SELECT COUNT(m.{first_column_name})
                    FROM macrostrat.macrostrat.{table} m
                    RIGHT JOIN macrostrat.macrostrat_temp.{table} t ON m.{first_column_name} = t.{first_column_name}
                    WHERE t.{first_column_name} IS NULL;
                """
-            result_df = pd.read_sql_query(query, engine)
-            print(f"Macrostrat rows not in Macrostrat_two rows for table {table}:")
-            print(result_df)
-    engine.dispose()
+            result = conn.execute(text(query))
+            for row in result:
+                print(row[0], table)
+        pg_engine.dispose()
     return
 
 def find_col_variances(
@@ -214,26 +212,20 @@ def find_col_variances(
     schema_two,
     username,
     password,
-    tables
+    tables,
+    pg_engine
 ):
-    SQLALCHEMY_DATABASE_URI = (
-        f"postgresql://{username}:{password}@{pg_server}/{database_name_one}"
-    )
-    engine = create_engine(SQLALCHEMY_DATABASE_URI)
-    insp = inspect(engine)
+
+    insp = inspect(pg_engine)
     for table in tables:
         columns_one = insp.get_columns(table, schema=schema_one)
         columns_two = insp.get_columns(table, schema=schema_two)
-
         col_names_one = {col['name'] for col in columns_one}
         col_names_two = {col['name'] for col in columns_two}
-
         col_not_in_schema_two = col_names_one - col_names_two
-
         if col_not_in_schema_two:
             print(f"Columns that exist in {schema_one} but NOT in {schema_two} for {table}: {col_not_in_schema_two}")
         else:
             print(f"All columns in {schema_one} exist in {schema_two} for {table}")
-
-    engine.dispose()
+    pg_engine.dispose()
     return

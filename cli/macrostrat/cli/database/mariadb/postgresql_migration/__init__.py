@@ -5,11 +5,11 @@ from macrostrat.database import database_exists, create_database, drop_database
 from macrostrat.database.utils import run_sql
 from macrostrat.utils import get_logger
 from macrostrat.utils.shell import run
-from sqlalchemy import text, create_engine
+from sqlalchemy import text, create_engine, inspect
 from sqlalchemy.engine import Engine
 from macrostrat.core.config import settings
 from macrostrat.core import app
-from .db_changes import get_data_counts_maria, get_data_counts_pg, compare_data_counts
+from .db_changes import get_data_counts_maria, get_data_counts_pg, compare_data_counts, find_row_variances, find_col_variances
 from ..restore import copy_mariadb_database
 from ..utils import mariadb_engine
 from ..._legacy import get_db
@@ -50,7 +50,8 @@ def migrate_mariadb_to_postgresql(
     temp_db_name = maria_engine.url.database + "_temp"
     maria_temp_engine = create_engine(maria_engine.url.set(database=temp_db_name))
     #pg_temp_engine = create_engine(pg_engine.url.set(database=temp_db_name))
-    pg_temp_engine = create_engine(settings.pgloader_target_database)
+    pg_temp_engine = create_engine(pg_engine.url.set(database=temp_db_name))
+
     steps: set[MariaDBMigrationStep] = _all_steps
     if step is not None and len(step) > 0:
         steps = set(step)
@@ -65,6 +66,7 @@ def migrate_mariadb_to_postgresql(
 
     if MariaDBMigrationStep.CHECK_DATA in steps:
         should_proceed = compare_row_counts(maria_engine, pg_temp_engine, pg_engine)
+        find_row_col_variances(pg_engine)
         if not should_proceed:
             raise ValueError("Data comparison failed. Aborting migration.")
 
@@ -196,6 +198,54 @@ def compare_row_counts(maria: Engine, pg_temp: Engine, pg_final: Engine):
     # reset()
     # df, df_two = find_row_variances(pg_db_name, pg_db_name, pg_db_name_two, maria_db_name_two,
     # pg_user, pg_pass_new, 'cols')
+
+def find_row_col_variances(pg_engine: Engine):
+    tables = ['col_refs',
+    'lookup_unit_attrs_api',
+    'lookup_unit_intervals',
+    'strat_names_meta',
+    'sections',
+    'unit_econs',
+    'lookup_strat_names',
+    'measures',
+    'projects',
+    'timescales',
+    'strat_tree',
+    'refs',
+    'unit_liths',
+    'lookup_units',
+    'measurements',
+    'units',
+    'autocomplete',
+    'col_areas',
+    'unit_strat_names',
+    'unit_environs',
+    'cols',
+    'intervals',
+    'lith_atts',
+    'timescales_intervals',
+    'unit_boundaries',
+    'econs',
+    'environs',
+    'units_sections',
+    'unit_measures',
+    'strat_names',
+    'lookup_unit_liths',
+    'liths',
+    'concepts_places',
+    'strat_names_places',
+    'col_groups',
+    'measuremeta',
+    'places']
+    find_row_variances(
+        pg_engine.url.database, pg_engine.url.database, "macrostrat_temp", pg_engine.url.username, pg_engine.url.password, tables,
+        pg_engine
+    )
+    find_col_variances(
+        pg_engine.url.database, pg_engine.url.database, "macrostrat_temp", pg_engine.url.username, pg_engine.url.password, tables,
+        pg_engine
+    )
+
 
 
 def db_identifier(engine: Engine):
