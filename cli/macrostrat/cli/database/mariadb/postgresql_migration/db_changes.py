@@ -179,30 +179,61 @@ def success(message):
 
 
 def find_row_variances(
-    database_name_one,
-    schema_one,
-    database_name_two,
-    schema_two,
-    username,
-    password,
-    table,
+        database_name_one,
+        schema_one,
+        schema_two,
+        username,
+        password,
+        tables
 ):
     SQLALCHEMY_DATABASE_URI = (
         f"postgresql://{username}:{password}@{pg_server}/{database_name_one}"
     )
     engine = create_engine(SQLALCHEMY_DATABASE_URI)
+    insp = inspect(engine)
     with engine.connect() as conn:
-        query = text(f"SELECT * FROM {schema_one}.{table}")
-    result = conn.execute(query)
-    df = pd.DataFrame(result)
+        for table in tables:
+            # Get the actual first column name for each table
+            columns = insp.get_columns(table, schema=schema_one)
+            first_column_name = columns[0]['name']
+            query = f"""
+                   SELECT m.{first_column_name}
+                   FROM macrostrat.macrostrat.{table} m
+                   RIGHT JOIN macrostrat.macrostrat_temp.{table} t ON m.{first_column_name} = t.{first_column_name}
+                   WHERE t.{first_column_name} IS NULL;
+               """
+            result_df = pd.read_sql_query(query, engine)
+            print(f"Macrostrat rows not in Macrostrat_two rows for table {table}:")
+            print(result_df)
     engine.dispose()
+    return
+
+def find_col_variances(
+    database_name_one,
+    schema_one,
+    schema_two,
+    username,
+    password,
+    tables
+):
     SQLALCHEMY_DATABASE_URI = (
-        f"postgresql://{username}:{password}@{pg_server}/{database_name_two}"
+        f"postgresql://{username}:{password}@{pg_server}/{database_name_one}"
     )
     engine = create_engine(SQLALCHEMY_DATABASE_URI)
-    with engine.connect() as conn:
-        query = text(f"SELECT * FROM {schema_two}.{table}")
-    result = conn.execute(query)
-    df_two = pd.DataFrame(result)
+    insp = inspect(engine)
+    for table in tables:
+        columns_one = insp.get_columns(table, schema=schema_one)
+        columns_two = insp.get_columns(table, schema=schema_two)
+
+        col_names_one = {col['name'] for col in columns_one}
+        col_names_two = {col['name'] for col in columns_two}
+
+        col_not_in_schema_two = col_names_one - col_names_two
+
+        if col_not_in_schema_two:
+            print(f"Columns that exist in {schema_one} but NOT in {schema_two} for {table}: {col_not_in_schema_two}")
+        else:
+            print(f"All columns in {schema_one} exist in {schema_two} for {table}")
+
     engine.dispose()
-    return df, df_two
+    return
