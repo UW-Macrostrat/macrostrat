@@ -57,8 +57,9 @@ def migrate_mariadb_to_postgresql(
     temp_db_name = "macrostrat_temp"
     maria_temp_engine = create_engine(maria_engine.url.set(database=temp_db_name))
 
-    # Final schema in the PostgreSQL database
-    schema = temp_db_name
+    # Destination schemas in the PostgreSQL database
+    temp_schema = temp_db_name
+    final_schema = "macrostrat"
 
     steps: set[MariaDBMigrationStep] = _all_steps
     if step is not None and len(step) > 0:
@@ -68,7 +69,7 @@ def migrate_mariadb_to_postgresql(
         copy_mariadb_database(maria_engine, maria_temp_engine, overwrite=overwrite)
 
     if MariaDBMigrationStep.PGLOADER in steps:
-        pgloader(maria_temp_engine, pg_engine, schema, overwrite=overwrite)
+        pgloader(maria_temp_engine, pg_engine, temp_schema, overwrite=overwrite)
 
     if MariaDBMigrationStep.CHECK_DATA in steps:
         # NOTE: the temp schema and the final schema must be provided
