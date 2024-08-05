@@ -264,7 +264,7 @@ async def redirect_callback(code: str, state: Optional[str] = None):
                     "sub": user.sub,
                     "role": "web_user",  # For PostgREST
                     "groups": [group.id for group in user.groups],
-
+                    "group_names": [group.name for group in user.groups]
                 }
             )
 
