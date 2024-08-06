@@ -16,14 +16,12 @@ def get_data_counts_maria(engine: Engine):
     db_name = engine.url.database
     maria_rows = {}
     maria_columns = {}
-
     with engine.connect() as conn:
         row_result = run_query(
             conn,
             "SELECT table_name FROM information_schema.tables WHERE table_schema = :table_schema AND table_type = 'BASE TABLE'",
             {"table_schema": db_name},
         )
-
         maria_tables = [row[0] for row in row_result]
         for table in maria_tables:
             row_result = run_query(conn, f"SELECT COUNT(*) FROM {table}")
@@ -34,20 +32,16 @@ def get_data_counts_maria(engine: Engine):
                 "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = :table_schema AND table_name = :table_name",
                 dict(table_schema=db_name, table_name=table),
             )
-
             column_count = column_result.scalar()
             maria_columns[table.lower()] = column_count
-
     engine.dispose()
     return maria_rows, maria_columns
 
 
 def get_data_counts_pg(engine: Engine, schema):
     database_name = engine.url.database
-
     pg_rows = {}
     pg_columns = {}
-
     with engine.connect() as conn:
         table_result = run_query(
             conn,
@@ -56,14 +50,15 @@ def get_data_counts_pg(engine: Engine, schema):
             WHERE table_catalog = :table_catalog
             AND table_type = 'BASE TABLE' AND table_schema = :table_schema
             """,
-            dict(table_schema=schema, table_catalog=database_name),
+            dict(table_catalog=database_name, table_schema=schema),
         )
         pg_tables = [row[0] for row in table_result]
+        print(pg_tables)
+
         for table in pg_tables:
             row_result = run_query(
                 conn,
-                "SELECT COUNT(*) FROM {table}",
-                dict(table=Identifier(schema, table)),
+                f"SELECT COUNT(*) FROM {schema}.{table}",
             )
             row_count = row_result.scalar()
             pg_rows[table.lower()] = row_count

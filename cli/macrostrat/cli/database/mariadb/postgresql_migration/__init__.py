@@ -6,7 +6,7 @@ from macrostrat.database.utils import run_sql
 from macrostrat.utils import get_logger
 from macrostrat.utils.shell import run
 from sqlalchemy import text, create_engine, inspect
-from sqlalchemy.engine import Engine
+from sqlalchemy.engine import Engine, make_url
 from macrostrat.core.config import settings
 from macrostrat.core import app
 from .db_changes import get_data_counts_maria, get_data_counts_pg, compare_data_counts, find_row_variances, find_col_variances
@@ -49,8 +49,8 @@ def migrate_mariadb_to_postgresql(
     pg_engine = get_db().engine
     temp_db_name = maria_engine.url.database + "_temp"
     maria_temp_engine = create_engine(maria_engine.url.set(database=temp_db_name))
-    #pg_temp_engine = create_engine(pg_engine.url.set(database=temp_db_name))
-    pg_temp_engine = create_engine(pg_engine.url.set(database=temp_db_name))
+    #had to set mariadb_migrator user as admin before running pgloader
+    pg_temp_engine = create_engine(make_url(settings.pgloader_target_database))
 
     steps: set[MariaDBMigrationStep] = _all_steps
     if step is not None and len(step) > 0:
@@ -61,6 +61,7 @@ def migrate_mariadb_to_postgresql(
 
     if MariaDBMigrationStep.PGLOADER in steps:
         pgloader_pre_script(maria_temp_engine)
+        # had to set mariadb_migrator user as admin before running pgloader: ALTER USER mariadb_migrator WITH SUPERUSER
         pgloader(maria_temp_engine, pg_temp_engine, overwrite=overwrite)
         pgloader_post_script(pg_temp_engine)
 
@@ -104,6 +105,7 @@ def pgloader(source: Engine, dest: Engine, overwrite=False):
     Command terminal to run pgloader. Ensure Docker app is running.
     """
     db_exists = database_exists(dest.url)
+    print(dest.url)
 
     if db_exists:
         if overwrite:
@@ -115,6 +117,7 @@ def pgloader(source: Engine, dest: Engine, overwrite=False):
                 f"PostgreSQL database [bold cyan]{dest.url.database}[/] already exists. Skipping pgloader."
             )
             return
+    
 
     if not db_exists:
         header("Creating PostgreSQL database")
@@ -167,6 +170,10 @@ def compare_row_counts(maria: Engine, pg_temp: Engine, pg_final: Engine):
     pg_macrostrat_temp_rows, pg_macrostrat_temp_columns = get_data_counts_pg(
         pg_temp, "macrostrat_temp"
     )
+    #print(pg_macrostrat_temp_rows)
+    #print(len(pg_macrostrat_temp_rows))
+    #print(pg_macrostrat_temp_columns)
+    #print(len(pg_macrostrat_temp_columns))
 
     db1 = db_identifier(maria)
     db2 = db_identifier(pg_temp)
