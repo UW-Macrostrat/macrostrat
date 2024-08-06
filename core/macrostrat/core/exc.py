@@ -30,7 +30,7 @@ def setup_exception_handling(app: Typer):
     def wrapped_app():
         try:
             app()
-        except MacrostratError as error:
+        except ApplicationError as error:
             rendered = Padding(error.render(), (1, 2))
             err_console.print(rendered)
             exit(1)
