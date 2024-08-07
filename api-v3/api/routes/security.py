@@ -257,7 +257,11 @@ async def redirect_callback(code: str, state: Optional[str] = None):
             user = await get_user(user_data['sub'])
 
             if user is None:
-                user = await create_user(user_data['sub'], user_data.get('given_name', '') + user_data.get('family_name', ''), user_data.get('email', ''))
+                user = await create_user(
+                    user_data['sub'],
+                    user_data.get('given_name', '') + " " + user_data.get('family_name', ''),
+                    user_data.get('email', '')
+                )
 
             access_token = create_access_token(
                 data={
