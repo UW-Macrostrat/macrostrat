@@ -20,7 +20,7 @@ CREATE TABLE maps_metadata.ingest_process
     map_id            text
 );
 
-ALTER TABLE ingest_process
+ALTER TABLE maps_metadata.ingest_process
     owner to macrostrat;
 
 CREATE TABLE maps_metadata.ingest_process_tag (

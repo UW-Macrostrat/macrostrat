@@ -1,3 +1,8 @@
+DROP TABLE IF EXISTS carto.lines_tiny;
+DROP TABLE IF EXISTS carto.lines_small;
+DROP TABLE IF EXISTS carto.lines_medium;
+DROP TABLE IF EXISTS carto.lines_large;
+
 ALTER TABLE carto_new.lines_tiny SET SCHEMA carto;
 ALTER TABLE carto_new.lines_small SET SCHEMA carto;
 ALTER TABLE carto_new.lines_medium SET SCHEMA carto;

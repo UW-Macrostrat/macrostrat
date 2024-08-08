@@ -6,6 +6,7 @@
 
   NOTE: this runs in MariaDB, not PostgreSQL
  */
+
 ALTER TABLE macrostrat_temp.pbdb_matches ADD COLUMN coordinate_point_text TEXT;
 
 UPDATE macrostrat_temp.pbdb_matches SET coordinate_point_text = ST_AsText(coordinate);
@@ -61,5 +62,4 @@ SET col_areas_6April2016.col_area_text = ST_AsText(col_area);
 ALTER TABLE macrostrat_temp.col_areas_6April2016 DROP COLUMN col_area;
 
 UPDATE macrostrat_temp.liths
-SET macrostrat_temp.lith_group = null
-WHERE macrostrat_temp.lith_group = '';
+SET lith_group = NULL WHERE lith_group = '';

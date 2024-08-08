@@ -8,6 +8,11 @@ CREATE ROLE web_user NOLOGIN;
 GRANT web_anon TO postgrest;
 GRANT web_user TO postgrest;
 
+GRANT USAGE ON SCHEMA macrostrat TO web_anon;
+GRANT USAGE ON SCHEMA macrostrat TO web_user;
+GRANT SELECT ON ALL TABLES IN SCHEMA macrostrat TO web_anon;
+GRANT SELECT ON ALL TABLES IN SCHEMA macrostrat TO web_user;
+
 GRANT USAGE ON SCHEMA macrostrat_api TO web_anon;
 GRANT USAGE ON SCHEMA macrostrat_api TO web_user;
 GRANT SELECT ON ALL TABLES IN SCHEMA macrostrat_api TO web_anon;

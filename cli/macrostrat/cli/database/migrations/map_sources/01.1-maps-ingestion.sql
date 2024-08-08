@@ -2,4 +2,4 @@
   * in order to keep the macrostrat schema clean and dedicated to stratigraphy.
   */
 CREATE VIEW maps.ingest_process AS
-SELECT * FROM macrostrat.ingest_process;
+SELECT * FROM maps_metadata.ingest_process;

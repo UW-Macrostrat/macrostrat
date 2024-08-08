@@ -56,7 +56,7 @@ def migrate_mariadb_to_postgresql(
     pg_engine = get_db().engine
     temp_db_name = "macrostrat_temp"
     maria_temp_engine = create_engine(maria_engine.url.set(database=temp_db_name))
-    pg_temp_engine = create_engine(make_url(settings.pgloader_target_database))
+    #pg_temp_engine = create_engine(make_url(settings.pgloader_target_database))
 
     # Destination schemas in the PostgreSQL database
     temp_schema = temp_db_name
@@ -74,15 +74,12 @@ def migrate_mariadb_to_postgresql(
 
     if MariaDBMigrationStep.CHECK_DATA in steps:
         # NOTE: the temp schema and the final schema must be provided
-        should_proceed = compare_row_counts(
-            maria_temp_engine, pg_temp_engine, pg_engine
-        )
-        # TODO: integrate this with the previous function
-        find_row_col_variances(pg_engine)
+        should_proceed = compare_row_counts(maria_temp_engine, pg_engine, temp_schema)
         if not should_proceed:
             raise ValueError("Data comparison failed. Aborting migration.")
 
     if MariaDBMigrationStep.FINALIZE in steps:
+        should_proceed = preserve_macrostrat_data(pg_engine, temp_schema)
         raise NotImplementedError("Copy to macrostrat schema not yet implemented")
 
 
@@ -193,18 +190,18 @@ def _build_pgloader():
     )
 
 
-def compare_row_counts(maria: Engine, pg_temp: Engine, pg_final: Engine):
+def compare_row_counts(maria: Engine, pg_engine: Engine, schema):
 
     console = app.console
 
     maria_rows, maria_columns = get_data_counts_maria(maria)
     pg_macrostrat_temp_rows, pg_macrostrat_temp_columns = get_data_counts_pg(
-        pg_temp, "macrostrat_temp"
+        pg_engine, schema
     )
 
     db1 = db_identifier(maria)
-    db2 = db_identifier(pg_temp)
-    db3 = db_identifier(pg_final)
+    db2 = schema
+    db3 = db_identifier(pg_engine)
 
     header(f"\n\nComparing [cyan]{db1}[/] to [cyan]{db2}[/].")
 
@@ -217,7 +214,7 @@ def compare_row_counts(maria: Engine, pg_temp: Engine, pg_final: Engine):
         db2,
     )
 
-    pg_rows, pg_columns = get_data_counts_pg(pg_final, "macrostrat")
+    pg_rows, pg_columns = get_data_counts_pg(pg_engine, "macrostrat")
 
     header(f"\n\nComparing [cyan]{db2}[/] to [cyan]{db3}[/].")
 
@@ -233,8 +230,6 @@ def compare_row_counts(maria: Engine, pg_temp: Engine, pg_final: Engine):
     # df, df_two = find_row_variances(pg_db_name, pg_db_name, pg_db_name_two, maria_db_name_two,
     # pg_user, pg_pass_new, 'cols')
 
-
-def find_row_col_variances(pg_engine: Engine):
     tables = [
         "col_refs",
         "lookup_unit_attrs_api",
@@ -293,6 +288,11 @@ def find_row_col_variances(pg_engine: Engine):
         pg_engine,
     )
 
+def preserve_macrostrat_data(engine: Engine, schema):
+    app.console.print("\n[bold]Running  script[/]")
+    assert engine.url.drivername.startswith("postgres")
+    preserve_macrostrat_data = __here__ / "preserve-macrostrat-data.sql"
+    run_sql(engine, preserve_macrostrat_data)
 
 def db_identifier(engine: Engine):
     driver = engine.url.drivername
