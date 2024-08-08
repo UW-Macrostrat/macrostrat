@@ -2,27 +2,25 @@ from os import environ
 from pathlib import Path
 from sys import exit, stderr, stdin
 from typing import Any, Callable
-from urllib.parse import quote
 
 import typer
 from macrostrat.database import Database
 from macrostrat.utils.shell import run
 from pydantic import BaseModel
 from rich import print
-from sqlalchemy import create_engine, text
-from sqlalchemy_utils import create_database
+from sqlalchemy import text
 from typer import Argument, Option
 from .migrations import run_migrations
+from .utils import engine_for_db_name
+
 
 from macrostrat.core import MacrostratSubsystem, app
 from macrostrat.core.utils import is_pg_url
 
 from .._dev.utils import (
-    _create_database_if_not_exists,
-    _docker_local_run_args,
     raw_database_url,
 )
-from ._legacy import *
+from ._legacy import get_db
 
 __here__ = Path(__file__).parent
 fixtures_dir = __here__.parent / "fixtures"
@@ -210,7 +208,7 @@ def dump(
 
     db_container = app.settings.get("pg_database_container", "postgres:15")
 
-    engine = _engine_for_db_name(database)
+    engine = engine_for_db_name(database)
 
     args = ctx.args
     custom_format = True
@@ -240,7 +238,7 @@ def restore(
 
     db_container = app.settings.get("pg_database_container", "postgres:15")
 
-    engine = _engine_for_db_name(database)
+    engine = engine_for_db_name(database)
 
     args = []
     if jobs is not None:
@@ -253,14 +251,6 @@ def restore(
         create=create,
         args=args,
     )
-
-
-def _engine_for_db_name(name: str | None):
-    engine = get_db().engine
-    if name is None:
-        return engine
-    url = engine.url.set(database=name)
-    return create_engine(url)
 
 
 @db_app.command(name="tables")
@@ -278,7 +268,7 @@ def list_tables(ctx: typer.Context, database: str = Argument(None), schema: str 
 
     sql += "\nORDER BY table_schema, table_name;"
 
-    engine = _engine_for_db_name(database)
+    engine = engine_for_db_name(database)
 
     print(
         f"[dim]Tables in database: [bold cyan]{engine.url.database}[/]\n", file=stderr
@@ -406,42 +396,3 @@ def field_title(name):
 
 
 db_app.command(name="migrations", rich_help_panel="Schema management")(run_migrations)
-
-
-@db_app.command(
-    name="import-mariadb", rich_help_panel="Schema management", deprecated=True
-)
-def import_legacy():
-    """Import legacy MariaDB database to PostgreSQL using pgloader"""
-    # Run pgloader in docker
-
-    cfg = app.settings
-
-    args = _docker_local_run_args(postgres_container="dimitri/pgloader")
-
-    # Get the database URL
-    db = get_db()
-    url = db.engine.url
-    url = url.set(database="macrostrat_v1")
-
-    _create_database_if_not_exists(url, create=True)
-
-    pg_url = str(url)
-    # Repl
-
-    pg_url = cfg.get("pg_database", None)
-
-    url = pg_url + "_v1"
-
-    dburl = cfg.get("mysql_database", None)
-    if dburl is None:
-        raise Exception("No MariaDB database URL available in configuration")
-
-    run(
-        *args,
-        "pgloader",
-        "--with",
-        "prefetch rows = 1000",
-        str(dburl),
-        str(url),
-    )

@@ -270,6 +270,18 @@ if mapboard_url := getattr(settings, "mapboard_database", None):
 
 app.subsystems.add(MacrostratAPISubsystem(app))
 
+# Mariadb CLI
+if mariadb_url := getattr(settings, "mysql_database", None):
+    from .database.mariadb import app as mariadb_app
+
+    main.add_typer(
+        mariadb_app,
+        name="mariadb",
+        rich_help_panel="Subsystems",
+        short_help="Manage the MariaDB database",
+    )
+
+
 app.finish_loading_subsystems()
 
 
