@@ -79,9 +79,11 @@ def migrate_mariadb_to_postgresql(
             raise ValueError("Data comparison failed. Aborting migration.")
 
     if MariaDBMigrationStep.FINALIZE in steps:
-        should_proceed = preserve_macrostrat_data(pg_engine, temp_schema)
-        raise NotImplementedError("Copy to macrostrat schema not yet implemented")
-
+        should_proceed = preserve_macrostrat_data(pg_engine)
+        if should_proceed:
+            raise NotImplementedError("Copy to macrostrat schema not yet implemented")
+        else:
+            print("Completed!")
 
 def pgloader(source: Engine, dest: Engine, target_schema: str, overwrite: bool = False):
     _build_pgloader()
@@ -288,11 +290,11 @@ def compare_row_counts(maria: Engine, pg_engine: Engine, schema):
         pg_engine,
     )
 
-def preserve_macrostrat_data(engine: Engine, schema):
-    app.console.print("\n[bold]Running  script[/]")
+def preserve_macrostrat_data(engine: Engine):
+    app.console.print("\n[bold]Running script[/]")
     assert engine.url.drivername.startswith("postgres")
-    preserve_macrostrat_data = __here__ / "preserve-macrostrat-data.sql"
-    run_sql(engine, preserve_macrostrat_data)
+    preserve_data = __here__ / "preserve-macrostrat-data.sql"
+    run_sql(engine, preserve_data)
 
 def db_identifier(engine: Engine):
     driver = engine.url.drivername

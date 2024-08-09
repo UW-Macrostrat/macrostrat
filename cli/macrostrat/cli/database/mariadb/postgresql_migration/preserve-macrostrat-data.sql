@@ -1,3 +1,37 @@
+--This query adds columns and data that exist in macrostrat and not in macrostrat_temp
+
+--Used this script to add best_interval_id column into macrostrat_temp.lookup_unit_intervals
+--https://github.com/UW-Macrostrat/macrostrat/blob/7aefe2d0cc89a738b356ff444b7b3dd0fd85e607/cli/macrostrat/cli/commands/table_meta/lookup_unit_intervals/4-process.sql#L21
+ALTER TABLE macrostrat.macrostrat_temp.lookup_unit_intervals ADD COLUMN best_interval_id INTEGER;
+
+WITH bests AS (
+  select unit_id,
+    CASE
+      WHEN age_id > 0 THEN
+        age_id
+      WHEN epoch_id > 0 THEN
+        epoch_id
+      WHEN period_id > 0 THEN
+        period_id
+      WHEN era_id > 0 THEN
+        era_id
+      WHEN eon_id > 0 THEN
+        eon_id
+      ELSE
+        0
+    END
+   AS b_interval_id from macrostrat_temp.lookup_unit_intervals
+)
+UPDATE macrostrat_temp.lookup_unit_intervals lui
+SET best_interval_id = b_interval_id
+FROM bests
+WHERE lui.unit_id = bests.unit_id;
+/*
+This query copies the table configuration and all data from macrostrat.macrostrat and inserts it
+into the macrostrat.temp schema. This is to preserve the data that exists in macrostrat and NOT in
+MariaDB before we run the migration.
+*/
+
 DO $$
 DECLARE
     table_name text;
@@ -7,10 +41,7 @@ DECLARE
         'strat_name_footprints',
         'grainsize',
         'pbdb_collections',
-        'pbdb_collections_strat_names',
-        'temp_rocks',
-        'temp_names',
-        'unit_lith_atts'
+        'pbdb_collections_strat_names'
     ];
 BEGIN
     FOREACH table_name IN ARRAY tables
@@ -19,3 +50,10 @@ BEGIN
         EXECUTE format('INSERT INTO %I.%I SELECT * FROM %I.%I', target_schema, table_name, source_schema, table_name);
     END LOOP;
 END $$;
+
+
+
+INSERT INTO macrostrat_temp.strat_tree (parent, child)
+SELECT parent, child
+FROM macrostrat.strat_tree;
+

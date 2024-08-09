@@ -22,6 +22,13 @@ SET geom_text = ST_AsText(geom);
 ALTER TABLE macrostrat_temp.places DROP COLUMN geom;
 
 
+--Added query below to match the PG macrostrat database. Will need to review the API to ensure it doesn't break.
+--https://github.com/UW-Macrostrat/macrostrat/blob/7aefe2d0cc89a738b356ff444b7b3dd0fd85e607/cli/macrostrat/cli/commands/table_meta/strat_tree/0-dump.sql
+ALTER TABLE macrostrat_temp.strat_tree RENAME COLUMN this_name TO parent;
+ALTER TABLE macrostrat_temp.strat_tree RENAME COLUMN that_name TO child;
+
+
+
 ALTER TABLE macrostrat_temp.refs ADD COLUMN rgeom_text LONGTEXT;
 UPDATE macrostrat_temp.refs
 SET rgeom_text = ST_AsText(rgeom);

@@ -42,3 +42,21 @@ UPDATE macrostrat_temp.col_areas_6April2016 SET col_area = ST_GeomFromText(col_a
 ALTER TABLE macrostrat_temp.col_areas_6April2016 DROP COLUMN col_area_text;
 SELECT * FROM macrostrat_temp.col_areas_6April2016 LIMIT 5;
 
+--added query below since column exists in macrostrat and not in macrostrat_temp.
+ALTER TABLE macrostrat_temp.measuremeta ADD COLUMN geometry geometry(Point, 4326);
+UPDATE macrostrat_temp.measuremeta SET geometry = ST_SetSRID(ST_makepoint(lng, lat), 4326);
+
+--added query below since column exists in macrostrat and not in macrostrat_temp.
+
+ALTER TABLE macrostrat_temp.col_areas ADD COLUMN wkt text;
+UPDATE macrostrat_temp.col_areas SET wkt = ST_AsText(col_area);
+
+--added query below since column exists in macrostrat and not in macrostrat_temp.
+
+ALTER TABLE macrostrat_temp.cols ADD COLUMN wkt text;
+ALTER TABLE macrostrat_temp.cols ADD COLUMN poly_geom geometry;
+UPDATE macrostrat_temp.cols SET wkt = ST_AsText(coordinate);
+UPDATE macrostrat_temp.cols c SET poly_geom = a.col_area
+FROM macrostrat_temp.col_areas a WHERE c.id = a.col_id;
+UPDATE macrostrat_temp.cols SET poly_geom = ST_SetSRID(poly_geom, 4326);
+
