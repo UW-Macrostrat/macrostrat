@@ -46,6 +46,8 @@ SELECT * FROM macrostrat_temp.col_areas_6April2016 LIMIT 5;
 ALTER TABLE macrostrat_temp.measuremeta ADD COLUMN geometry geometry(Point, 4326);
 UPDATE macrostrat_temp.measuremeta SET geometry = ST_SetSRID(ST_makepoint(lng, lat), 4326);
 
+ALTER TABLE macrostrat.macrostrat_temp.lookup_unit_intervals ADD COLUMN best_interval_id INTEGER;
+
 --added query below since column exists in macrostrat and not in macrostrat_temp.
 
 ALTER TABLE macrostrat_temp.col_areas ADD COLUMN wkt text;

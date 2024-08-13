@@ -2,7 +2,6 @@
 
 --Used this script to add best_interval_id column into macrostrat_temp.lookup_unit_intervals
 --https://github.com/UW-Macrostrat/macrostrat/blob/7aefe2d0cc89a738b356ff444b7b3dd0fd85e607/cli/macrostrat/cli/commands/table_meta/lookup_unit_intervals/4-process.sql#L21
-ALTER TABLE macrostrat.macrostrat_temp.lookup_unit_intervals ADD COLUMN best_interval_id INTEGER;
 
 WITH bests AS (
   select unit_id,
