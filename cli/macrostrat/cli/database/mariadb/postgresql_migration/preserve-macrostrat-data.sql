@@ -53,7 +53,11 @@ END $$;
 
 
 
-INSERT INTO macrostrat_temp.strat_tree (parent, child)
-SELECT parent, child
-FROM macrostrat.strat_tree;
-
+--from schlep scripts
+UPDATE macrostrat_temp.intervals SET rank = 6 WHERE interval_type = 'age';
+UPDATE macrostrat_temp.intervals SET rank = 5 WHERE interval_type = 'epoch';
+UPDATE macrostrat_temp.intervals SET rank = 4 WHERE interval_type = 'period';
+UPDATE macrostrat_temp.intervals SET rank = 3 WHERE interval_type = 'era';
+UPDATE macrostrat_temp.intervals SET rank = 2 WHERE interval_type = 'eon';
+UPDATE macrostrat_temp.intervals SET rank = 1 WHERE interval_type = 'supereon';
+UPDATE macrostrat_temp.intervals SET rank = 0 WHERE rank IS NULL;

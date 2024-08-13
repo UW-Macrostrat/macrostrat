@@ -75,15 +75,18 @@ def migrate_mariadb_to_postgresql(
     if MariaDBMigrationStep.CHECK_DATA in steps:
         # NOTE: the temp schema and the final schema must be provided
         should_proceed = compare_row_counts(maria_temp_engine, pg_engine, temp_schema)
-        if not should_proceed:
+        if should_proceed:
             raise ValueError("Data comparison failed. Aborting migration.")
+        else:
+            print("check-data completed!")
+
 
     if MariaDBMigrationStep.FINALIZE in steps:
         should_proceed = preserve_macrostrat_data(pg_engine)
         if should_proceed:
             raise NotImplementedError("Copy to macrostrat schema not yet implemented")
         else:
-            print("Completed!")
+            print("finalize completed!")
 
 def pgloader(source: Engine, dest: Engine, target_schema: str, overwrite: bool = False):
     _build_pgloader()

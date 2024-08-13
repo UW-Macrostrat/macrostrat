@@ -60,3 +60,8 @@ UPDATE macrostrat_temp.cols c SET poly_geom = a.col_area
 FROM macrostrat_temp.col_areas a WHERE c.id = a.col_id;
 UPDATE macrostrat_temp.cols SET poly_geom = ST_SetSRID(poly_geom, 4326);
 
+
+--add rank column since this column only exists in macrostrat and not macrostrat_temp
+
+ALTER TABLE macrostrat_temp.intervals ADD COLUMN rank integer;
+
