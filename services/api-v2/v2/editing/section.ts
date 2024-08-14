@@ -5,7 +5,7 @@ module.exports = function (req, res, next) {
   if (!req.query.section_id) {
     res.json("Need a section_id");
   } else {
-    larkin.queryPgMaria("macrostrat_two",
+    larkin.queryPg("burwell",
       `SELECT ub.id, 
        u1.strat_name AS below, 
        u2.strat_name AS above, 

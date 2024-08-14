@@ -34,7 +34,7 @@ module.exports = function (req, res, next, cb) {
     sql += " LIMIT 5";
   }
 
-  larkin.queryPgMaria("macrostrat_two", sql, params, function (error, data) {
+  larkin.queryPg("burwell", sql, params, function (error, data) {
     /*TODO Update t_units data type from str to bigint*/
     if (error) {
       if (cb) {

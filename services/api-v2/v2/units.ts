@@ -21,7 +21,7 @@ module.exports = function (req, res, next, cb) {
         if (req.query.interval_name) {
           params["interval_name"] = [req.query.interval_name];
           let sql = `SELECT age_bottom, age_top, interval_name FROM macrostrat_temp.intervals WHERE interval_name = :interval_name LIMIT 1`
-          larkin.queryPgMaria("macrostrat_two",
+          larkin.queryPg("burwell",
             sql,
             params,
             function (error, result) {
@@ -43,7 +43,7 @@ module.exports = function (req, res, next, cb) {
         } else if (req.query.int_id) {
           let sql = "SELECT age_bottom, age_top, interval_name FROM macrostrat_temp.intervals WHERE id = :int_id LIMIT 1"
           params["int_id"] =req.query.int_id
-          larkin.queryPgMaria("macrostrat_two",
+          larkin.queryPg("burwell",
             sql,
             params,
             function (error, result) {
@@ -162,8 +162,8 @@ module.exports = function (req, res, next, cb) {
             }
           });
         } else if (req.query.col_group_id) {
-          larkin.queryPgMaria(
-              "macrostrat_two",
+          larkin.queryPg(
+              "burwell",
             "SELECT id FROM macrostrat_temp.cols WHERE col_group_id = ANY(:col_group_ids)",
             { col_group_ids: larkin.parseMultipleIds(req.query.col_group_id) },
             function (error, data) {
@@ -178,7 +178,7 @@ module.exports = function (req, res, next, cb) {
             },
           );
         } else if (req.query.strat_name) {
-          larkin.queryPgMaria("macrostrat_two",
+          larkin.queryPg("burwell",
             "SELECT strat_name_id FROM macrostrat_temp.lookup_strat_names WHERE strat_name LIKE :strat_name ",
               {'strat_name': "%" + req.query.strat_name + "%"},
             function (error, result) {
@@ -202,7 +202,7 @@ module.exports = function (req, res, next, cb) {
             },
           );
         } else if (req.query.strat_name_concept_id) {
-          larkin.queryPgMaria("macrostrat_two",
+          larkin.queryPg("burwell",
             "SELECT id FROM macrostrat_temp.strat_names WHERE concept_id = ANY(:strat_name_concept_ids) ",
             {
               strat_name_concept_ids: larkin.parseMultipleIds(
@@ -575,7 +575,7 @@ module.exports = function (req, res, next, cb) {
       ${limit}
       `;
 
-        larkin.queryPgMaria("macrostrat_two", sql, params, function (error, result) {
+        larkin.queryPg("burwell", sql, params, function (error, result) {
           if (error) {
             console.log(error);
             callback(error);

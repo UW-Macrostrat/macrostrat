@@ -6,7 +6,7 @@ module.exports = function (req, res, next) {
     if ("sample" in req.query) {
       req.query.unit_id = 15176;
     }
-    larkin.queryPgMaria("macrostrat_two",
+    larkin.queryPg("burwell",
       "SELECT DISTINCT collection_no AS cltn_id, collection_name AS cltn_name FROM macrostrat_temp.pbdb_matches WHERE unit_id = ? AND occs > 0 and release_date<NOW()",
       [req.query.unit_id],
       function (error, result) {

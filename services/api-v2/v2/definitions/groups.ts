@@ -9,7 +9,7 @@ module.exports = function (req, res, next, cb) {
   //change params from dict to array. add params.push to array
   //add schema to sql table in the from and join clauses
   //change sql where syntax to = ANY($1)
-  //update larkin.querypgmaria function
+  //update larkin.queryPg function
 
   //changing params from array back to dict
   let params = {};
@@ -46,7 +46,7 @@ module.exports = function (req, res, next, cb) {
     sql += " LIMIT 5";
   }
 
-  larkin.queryPgMaria("macrostrat_two",
+  larkin.queryPg("burwell",
     sql,
     params,
     function (error, data) {

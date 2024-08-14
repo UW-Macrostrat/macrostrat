@@ -85,7 +85,7 @@ module.exports = function (req, res, next) {
                 GROUP BY units.id, period, unit_class, lith_short
                 ORDER BY units.id ASC;`
 
-                larkin.queryPgMaria("macrostrat_two", sql, [column.col_id], function (error, result) {
+                larkin.queryPg("burwell", sql, [column.col_id], function (error, result) {
                   if (error) {
                     callbackB(error);
                   } else {
@@ -190,7 +190,7 @@ module.exports = function (req, res, next) {
               },
 
               function (column, callbackB) {
-                larkin.queryPgMaria("macrostrat_two",
+                larkin.queryPg("burwell",
                     `
                 SELECT units.id AS unit_id, units.strat_name, period, max_thick, min_thick, colors.unit_class, count(distinct collection_no) pbdb_cltns, lith_short AS lith
                 FROM macrostrat_temp.units

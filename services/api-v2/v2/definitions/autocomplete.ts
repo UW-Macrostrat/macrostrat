@@ -64,7 +64,7 @@ module.exports = function (req, res, next) {
       query =
         "sample" in req.query ? "ma%" : req.query.query.toLowerCase() + "%";
 
-    larkin.queryPgMaria("macrostrat_two",
+    larkin.queryPg("burwell",
       "SELECT id::integer, name, type, category FROM macrostrat_temp.autocomplete WHERE name ILIKE :query AND type = ANY(:types) LIMIT :limit",
       { query: query, types: types, limit: limit },
       function (error, result) {

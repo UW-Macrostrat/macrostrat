@@ -26,7 +26,7 @@ module.exports = function (req, res, next) {
     ? req.query.format
     : "json";
 
-  larkin.queryPgMaria("macrostrat_two", sql, [], function (error, data) {
+  larkin.queryPg("burwell", sql, [], function (error, data) {
     if (error) {
       larkin.error(req, res, next, error);
     } else {

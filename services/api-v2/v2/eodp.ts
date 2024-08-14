@@ -70,7 +70,7 @@ module.exports = function (req, res, next) {
   }
 
 
-  larkin.queryPgMaria("macrostrat_two",sql, params, function (error, response) {
+  larkin.queryPg("burwell",sql, params, function (error, response) {
     if (error) {
       larkin.error(req, res, next, error);
     } else {

@@ -130,7 +130,7 @@ module.exports = function (req, res, next) {
           //TODO there is no pbdb table, so I removed LEFT JOIN pbdb.occ_matrix ON pbdb.coll_matrix.collection_no = pbdb.occ_matrix.collection_no
           //I also removed           LEFT JOIN pbdb.taxon_lower ON pbdb.occ_matrix.orig_no = pbdb.taxon_lower.orig_no
           //removed           JOIN pbdb.coll_matrix ON pbdb_matches.collection_no = pbdb.coll_matrix.collection_no
-          larkin.queryPgMaria("macrostrat_two",
+          larkin.queryPg("burwell",
             "SELECT pbdb_matches.collection_no AS cltn_id, collection_name AS cltn_name, lookup_unit_intervals.t_age, lookup_unit_intervals.b_age, n_occs AS pbdb_occs, COALESCE(GROUP_CONCAT(distinct pbdb.taxon_lower.genus_no), '') AS genus_no,  COALESCE(GROUP_CONCAT(distinct pbdb.occ_matrix.taxon_no), '') AS taxon_no, \
           pbdb_matches.unit_id, cols.id as col_id, CONCAT(pbdb_matches.ref_id, '|') AS refs " +
               (geo ? ", AsWKT(pbdb_matches.coordinate) AS geometry" : "") +

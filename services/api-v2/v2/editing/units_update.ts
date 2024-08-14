@@ -7,7 +7,7 @@ module.exports = function (req, res, next) {
     async.each(
       req.body.units,
       function (each, callback) {
-        larkin.queryPgMaria("macrostrat_two",
+        larkin.queryPg("burwell",
           "UPDATE macrostrat_temp.units SET position_bottom = :position_bottom WHERE id = :units",
           [each.position_bottom, each.unit],
           function (error, result) {

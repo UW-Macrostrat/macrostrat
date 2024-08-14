@@ -40,7 +40,7 @@ module.exports = function (req, res, next, cb) {
   if ("sample" in req.query) {
     sql += " LIMIT 5";
   }
-  larkin.queryPgMaria("macrostrat_two", sql, environ, function (error, data) {
+  larkin.queryPg("burwell", sql, environ, function (error, data) {
     if (error) {
       if (cb) {
         cb(error);

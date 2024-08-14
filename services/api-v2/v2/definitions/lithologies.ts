@@ -58,7 +58,7 @@ module.exports = function (req, res, next, cb) {
     sql += " LIMIT 5";
   }
 
-  larkin.queryPgMaria("macrostrat_two", sql, params, function (error, data) {
+  larkin.queryPg("burwell", sql, params, function (error, data) {
     if (error) {
       if (cb) {
         cb(error);

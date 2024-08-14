@@ -68,7 +68,7 @@ module.exports = function (req, res, next, cb) {
   console.log(params)
 
 
-  larkin.queryPgMaria("macrostrat_two", sql, params, function (error, result) {
+  larkin.queryPg"burwell", sql, params, function (error, result) {
     if (error) {
       if (cb) {
         cb(error);

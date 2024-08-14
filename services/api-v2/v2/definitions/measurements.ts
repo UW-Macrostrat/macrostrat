@@ -40,7 +40,7 @@ FROM macrostrat_temp.measurements
     sql += " LIMIT 5";
   }
 
-  larkin.queryPgMaria("macrostrat_two", sql, params, function (error, data) {
+  larkin.queryPg("burwell", sql, params, function (error, data) {
     if (error) {
       if (error) {
         return cb(error);
