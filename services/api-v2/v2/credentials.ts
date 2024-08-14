@@ -1,4 +1,4 @@
-exports.pgTwo = {
+exports.pg = {
   host: process.env.host,
   port: process.env.port,
   user: process.env.user,
