@@ -270,6 +270,11 @@ if mapboard_url := getattr(settings, "mapboard_database", None):
 
 app.subsystems.add(MacrostratAPISubsystem(app))
 
+# Add SGP subsystem (temporary)
+from .subsystems.sgp import sgp
+
+main.add_typer(sgp)
+
 app.finish_loading_subsystems()
 
 

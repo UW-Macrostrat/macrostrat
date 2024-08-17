@@ -42,7 +42,9 @@ WITH a AS (SELECT
 SELECT *
 FROM a
 WHERE data_source IN ('USGS-CMIBS', 'USGS-NGDB')
-             AND age_by IN ('Husson', 'Peters')
+             AND age_by IN ('Husson', 'Peters');
 
 -- Target count: 49505
--- Actual count (current): 49673
+-- Actual count (initial): 49673
+---- Now that we have updated the WHERE statement,
+---- we have hit the target count.
