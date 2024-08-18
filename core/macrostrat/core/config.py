@@ -60,11 +60,18 @@ if elevation_database := getattr(settings, "elevation_database", None):
 # Set environment variables
 url = make_url(PG_DATABASE)
 
-environ["PGPASSWORD"] = url.password
 environ["PGHOST"] = url.host
 environ["PGPORT"] = str(url.port)
-environ["PGUSER"] = url.username
-environ["PGDATABASE"] = url.database
+
+for v in ("PGPASSWORD", "POSTGRES_PASSWORD"):
+    environ[v] = url.password
+
+for v in ("PGUSER", "POSTGRES_USER"):
+    environ[v] = url.username
+
+for v in ("PGDATABASE", "POSTGRES_DB"):
+    environ[v] = url.database
+
 
 environ["PG_DATABASE_CONTAINER"] = getattr(
     settings, "pg_database_container", "postgis/postgis:15-3.4"
