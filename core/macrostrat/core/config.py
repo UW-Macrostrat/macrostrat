@@ -72,6 +72,8 @@ for v in ("PGUSER", "POSTGRES_USER"):
 for v in ("PGDATABASE", "POSTGRES_DB"):
     environ[v] = url.database
 
+# Used for local running of Macrostrat
+environ["MACROSTRAT_DB_PORT"] = str(url.port)
 
 environ["PG_DATABASE_CONTAINER"] = getattr(
     settings, "pg_database_container", "postgis/postgis:15-3.4"
