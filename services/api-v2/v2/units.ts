@@ -568,9 +568,6 @@ module.exports = function (req, res, next, cb) {
         LEFT JOIN macrostrat_temp.unit_notes ON unit_notes.unit_id=units.id
         WHERE
           ${where}
-        GROUP BY units.id, units_sections.section_id, lookup_units.t_age, units_sections.col_id,
-         cols.project_id, cols.col_area, unit_strat_names.strat_name_id, mbr_name, fm_name, gp_name, sgp_name,
-         lookup_units.b_age,lookup_units.pbdb_collections, lookup_units.pbdb_occurrences
       ORDER BY ${orderby.length > 0 ? orderby.join(", ") + "," : ""} lookup_units.t_age ASC
       ${limit}
       `;
