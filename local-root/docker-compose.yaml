@@ -38,6 +38,12 @@ services:
     volumes:
       - mysql_cluster:/var/lib/mysql
     restart: always
+  api:
+    build: ${MACROSTRAT_API_SRC:-""}
+    ports:
+      - "3002:5550"
+    environment:
+      - MACROSTRAT_DATABASE=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
   postgrest:
     image: postgrest/postgrest:v12.0.2
     ports:
