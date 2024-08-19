@@ -499,12 +499,12 @@ module.exports = function (req, res, next, cb) {
             " AND units_sections.col_id = ANY(92, 488, 463, 289, 430, 481, 261, 534, 369, 798, 771, 1675) ";
         }
 
-        params["measure_field"] =
+        const measureField =
           "summarize_measures" in req.query
             ? "lookup_unit_attrs_api.measure_long"
             : "lookup_unit_attrs_api.measure_short";
 
-        var shortSQL = `
+        var columnList = `
       units.id AS unit_id,
       units_sections.section_id AS section_id,
       units_sections.col_id AS col_id,
@@ -524,11 +524,17 @@ module.exports = function (req, res, next, cb) {
       lookup_units.pbdb_collections::integer,
       lookup_units.pbdb_occurrences::integer`;
 
-        var longSQL = `${shortSQL},
+        if (req.query.response === "long" || cb) {
+          // This part deals with 'long' queries
+          const colRefsSubquery = `
+          SELECT string_agg(col_refs.ref_id::text, '|') FROM macrostrat_temp.col_refs
+          WHERE col_refs.col_id = cols.id`;
+
+          columnList += `,
       lookup_unit_attrs_api.lith,
       lookup_unit_attrs_api.environ,
       lookup_unit_attrs_api.econ,
-      :measure_field AS measure,
+      ${measureField} AS measure,
       COALESCE(notes, '') AS notes,
       lookup_units.color,
       lookup_units.text_color,
@@ -543,20 +549,20 @@ module.exports = function (req, res, next, cb) {
       lookup_units.b_prop,
       lookup_units.units_below,
       lookup_strat_names.rank_name AS strat_name_long,
-      STRING_AGG(col_refs.ref_id::integer, '|') AS refs
+      (${colRefsSubquery}) AS refs
       `;
         if ("show_position" in req.query) {
-          longSQL += ", position_top AS t_pos, position_bottom AS b_pos";
+          columnList += ", position_top AS t_pos, position_bottom AS b_pos";
+        }
+      }
+
+        if ((req.query.format && api.acceptedFormats.geo[req.query.format]) ||
+          req.query.response === "long") {
+          columnList += ", lookup_units.clat, lookup_units.clng, lookup_units.t_plat, lookup_units.t_plng, lookup_units.b_plat, lookup_units.b_plng "
         }
 
-        var geometry =
-          (req.query.format && api.acceptedFormats.geo[req.query.format]) ||
-          req.query.response === "long"
-            ? ", lookup_units.clat, lookup_units.clng, lookup_units.t_plat, lookup_units.t_plng, lookup_units.b_plat, lookup_units.b_plng "
-            : "";
-
         var sql = `
-        SELECT ${req.query.response === "long" || cb ? longSQL : shortSQL} ${geometry}
+        SELECT ${columnList}
         FROM macrostrat_temp.units
         LEFT JOIN macrostrat_temp.lookup_unit_attrs_api ON lookup_unit_attrs_api.unit_id = units.id
         LEFT JOIN macrostrat_temp.lookup_units ON units.id = lookup_units.unit_id
@@ -566,11 +572,9 @@ module.exports = function (req, res, next, cb) {
         LEFT JOIN macrostrat_temp.col_refs ON cols.id = col_refs.col_id
         LEFT JOIN macrostrat_temp.lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id
         LEFT JOIN macrostrat_temp.unit_notes ON unit_notes.unit_id=units.id
-        WHERE
-          ${where}
+        WHERE ${where}
       ORDER BY ${orderby.length > 0 ? orderby.join(", ") + "," : ""} lookup_units.t_age ASC
-      ${limit}
-      `;
+      ${limit}`;
 
         larkin.queryPg("burwell", sql, params, function (error, result) {
           if (error) {
