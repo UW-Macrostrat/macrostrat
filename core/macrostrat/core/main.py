@@ -118,7 +118,7 @@ class Macrostrat(Application):
             compose_files=compose_files,
             load_dotenv=env_file,
             # This only applies to Docker Compose
-            restart_commands={"gateway": "nginx -s reload"},
+            restart_commands={"gateway": "caddy reload --config /etc/caddy/Caddyfile"},
         )
 
         self.subsystems._app = self

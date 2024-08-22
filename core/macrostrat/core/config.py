@@ -125,3 +125,9 @@ environ["MACROSTRAT_DB_PORT"] = str(url.port)
 
 if srcroot := getattr(settings, "api_srcroot", None):
     environ["MACROSTRAT_API_SRC"] = srcroot
+
+if srcroot := getattr(settings, "tileserver_srcroot", None):
+    environ["MACROSTRAT_TILESERVER_SRC"] = srcroot
+
+if srcroot := getattr(settings, "api_v3_srcroot", None):
+    environ["MACROSTRAT_API_V3_SRC"] = srcroot
