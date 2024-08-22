@@ -1,0 +1,15 @@
+http://localhost:80
+
+handle_path /api/v2/* {
+	reverse_proxy api:5550
+}
+
+handle_path /api/pg/* {
+    reverse_proxy postgrest:3000
+}
+
+handle_path /tiles/* {
+    reverse_proxy tileserver:8000
+}
+
+respond / "Welcome to your local installation of Macrostrat"

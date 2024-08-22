@@ -272,17 +272,18 @@ colors = ["colorama (>=0.4.6)"]
 
 [[package]]
 name = "macrostrat-app-frame"
-version = "1.2.4"
+version = "1.2.5"
 description = "A control script framework for containerized applications."
 optional = false
 python-versions = "<4.0,>=3.10"
 files = [
-    {file = "macrostrat_app_frame-1.2.4-py3-none-any.whl", hash = "sha256:162e38d7c8b97ac7e62bc275e240f935f7a35e30d20c108e67cee49838e1bbf9"},
-    {file = "macrostrat_app_frame-1.2.4.tar.gz", hash = "sha256:1e3664a0216631707d8eac2c249c12e4559aea23da404c560dd079eeb02ae9d9"},
+    {file = "macrostrat_app_frame-1.2.5-py3-none-any.whl", hash = "sha256:45e0c01246631fdad0717a42c1f74ce7a88aa0dccb063424b32f89cb7aa0803e"},
+    {file = "macrostrat_app_frame-1.2.5.tar.gz", hash = "sha256:ea25334ee0903901efe7af3ca76d7193f0cc010aa14e681f9efd37ddbabc0b26"},
 ]
 
 [package.dependencies]
 "macrostrat.utils" = ">=1.1.0,<2.0.0"
+packaging = ">=23.2,<24.0"
 python-dotenv = ">=1.0.0,<2.0.0"
 rich = ">=13,<14"
 toposort = ">=1.5,<2.0"
@@ -892,4 +893,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "0ea517fa0083a01cddf8cae8700120dba128feb5da342d254b315e9a1386e231"
+content-hash = "b3bf31dd1fbfaab22c4f983964aa7f10d0defadeaff4fda8e4cb11a76ef07d44"
