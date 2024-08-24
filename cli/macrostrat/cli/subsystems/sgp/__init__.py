@@ -12,6 +12,7 @@ from rich.progress import Progress
 from geopandas import GeoDataFrame, sjoin
 from shapely.geometry import Point
 from sqlalchemy.sql import text
+from pandas import read_sql
 
 
 sgp = Typer(name="sgp", no_args_is_help=True)
@@ -62,6 +63,7 @@ def import_sgp_data():
     counts = grouped.size().value_counts()
     res = grouped.aggregate("first")
     res.rename(columns={"index_right": "col_id"}, inplace=True)
+    res.drop(columns=["geom"], inplace=True)
 
     n_total = len(res)
     n_too_many = counts[counts.index > 1].sum()
@@ -83,3 +85,26 @@ def import_sgp_data():
         )
     if n_too_many + n_not_matched == 0:
         app.console.print("All measurements matched to a single column.", style="green")
+
+    # Augment the samples with the matched column
+    samples = samples.join(res, on="sample_id")
+
+    # Step through columns and try to match samples to units
+
+    samples.groupby("col_id").apply(match_samples_to_column_units)
+
+
+def match_samples_to_column_units(df):
+    # Get the column units
+    M = get_db()
+    sql = """
+        SELECT * FROM macrostrat.units u
+        WHERE u.col_id = :col_id
+    """
+    units = read_sql(
+        text(sql), M.engine.connect(), params={"col_id": int(df["col_id"].iloc[0])}
+    )
+    import IPython
+
+    IPython.embed()
+    raise
