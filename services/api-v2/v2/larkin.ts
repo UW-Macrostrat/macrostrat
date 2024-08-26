@@ -551,7 +551,7 @@ const { Client, Pool } = require("pg");
       });
     }
 
-    // Get unique ref_ids
+
     var ref_ids = _.uniq(
       _.flatten(
         data.map(function (d) {
@@ -559,6 +559,7 @@ const { Client, Pool } = require("pg");
         }),
       ),
     );
+
 
 
 

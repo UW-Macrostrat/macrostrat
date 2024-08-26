@@ -498,7 +498,7 @@ module.exports = function (req, res, next, cb) {
           where +=
             " AND units_sections.col_id = ANY(92, 488, 463, 289, 430, 481, 261, 534, 369, 798, 771, 1675) ";
         }
-
+        //TODO: fix this output field in the API
         params["measure_field"] =
           "summarize_measures" in req.query
             ? "lookup_unit_attrs_api.measure_long"
@@ -543,7 +543,7 @@ module.exports = function (req, res, next, cb) {
       lookup_units.b_prop,
       lookup_units.units_below,
       lookup_strat_names.rank_name AS strat_name_long,
-      STRING_AGG(col_refs.ref_id::integer, '|') AS refs
+      STRING_AGG(col_refs.ref_id::text, '') AS refs
       `;
         if ("show_position" in req.query) {
           longSQL += ", position_top AS t_pos, position_bottom AS b_pos";
@@ -554,6 +554,17 @@ module.exports = function (req, res, next, cb) {
           req.query.response === "long"
             ? ", lookup_units.clat, lookup_units.clng, lookup_units.t_plat, lookup_units.t_plng, lookup_units.b_plat, lookup_units.b_plng "
             : "";
+
+        let groupby = ''
+        if (req.query.response === "long" || cb) {
+          groupby = `
+         ,lookup_unit_attrs_api.lith, lookup_unit_attrs_api.environ, lookup_unit_attrs_api.econ, lookup_units.text_color,
+         unit_notes.notes, lookup_units.color, lookup_units.t_int, lookup_units.t_int_name,lookup_units.t_int_age,
+         lookup_units.t_prop, lookup_units.units_above, lookup_units.b_int, lookup_units.b_int_name, lookup_units.b_int_age,
+         lookup_units.b_prop,lookup_units.units_below, lookup_strat_names.rank_name,lookup_units.clat, lookup_units.clng,
+         lookup_units.t_plat, lookup_units.t_plng, lookup_units.b_plat, lookup_units.b_plng
+          `
+        }
 
         var sql = `
         SELECT ${req.query.response === "long" || cb ? longSQL : shortSQL} ${geometry}
@@ -570,10 +581,12 @@ module.exports = function (req, res, next, cb) {
           ${where}
         GROUP BY units.id, units_sections.section_id, lookup_units.t_age, units_sections.col_id,
          cols.project_id, cols.col_area, unit_strat_names.strat_name_id, mbr_name, fm_name, gp_name, sgp_name,
-         lookup_units.b_age,lookup_units.pbdb_collections, lookup_units.pbdb_occurrences
+         lookup_units.b_age,lookup_units.pbdb_collections, lookup_units.pbdb_occurrences ${groupby}
       ORDER BY ${orderby.length > 0 ? orderby.join(", ") + "," : ""} lookup_units.t_age ASC
       ${limit}
       `;
+
+
 
         larkin.queryPg("burwell", sql, params, function (error, result) {
           if (error) {
@@ -581,22 +594,22 @@ module.exports = function (req, res, next, cb) {
             callback(error);
           } else {
             if (req.query.response === "long" || cb) {
-              for (var i = 0; i < result.rows.length; i++) {
+              for (var i = 0; i < result.length; i++) {
                 // These come back as JSON strings, so we need to make them real JSON
-                result.rows[i].lith = JSON.parse(result.rows[i].lith) || [];
-                result.rows[i].environ = JSON.parse(result.rows[i].environ) || [];
-                result.rows[i].econ = JSON.parse(result.rows[i].econ) || [];
-                result.rows[i].measure = JSON.parse(result.rows[i].measure) || [];
-                result.rows[i].units_above = larkin.jsonifyPipes(
-                  result.rows[i].units_above,
+                result[i].lith = JSON.parse(result[i].lith) || [];
+                result[i].environ = JSON.parse(result[i].environ) || [];
+                result[i].econ = JSON.parse(result[i].econ) || [];
+                result[i].measure = JSON.parse(result[i].measure) || [];
+                result[i].units_above = larkin.jsonifyPipes(
+                  result[i].units_above,
                   "integers",
                 );
-                result.rows[i].units_below = larkin.jsonifyPipes(
-                  result.rows[i].units_below,
+                result[i].units_below = larkin.jsonifyPipes(
+                  result[i].units_below,
                   "integers",
                 );
-                result.rows[i].refs = larkin.jsonifyPipes(
-                  result.rows[i].refs,
+                result[i].refs = larkin.jsonifyPipes(
+                  result[i].refs,
                   "integers",
                 );
               }
@@ -607,15 +620,13 @@ module.exports = function (req, res, next, cb) {
               req.query.response === "long" &&
               !cb
             ) {
-              for (var i = 0; i < result.rows.length; i++) {
-                result.rows[i].units_above = result.rows[i].units_above.join(",");
-                result.rows[i].units_below = result.rows[i].units_below.join(",");
-
-                result.rows[i].lith = larkin.pipifyAttrs(result.rows[i].lith);
-                result.rows[i].environ = larkin.pipifyAttrs(result.rows[i].environ);
-                result.rows[i].econ = larkin.pipifyAttrs(result.rows[i].econ);
-
-                result.rows[i].refs = result.rows[i].refs.join("|");
+              for (var i = 0; i < result.length; i++) {
+                result[i].units_above = result[i].units_above.join(",");
+                result[i].units_below = result[i].units_below.join(",");
+                result[i].lith = larkin.pipifyAttrs(result[i].lith);
+                result[i].environ = larkin.pipifyAttrs(result[i].environ);
+                result[i].econ = larkin.pipifyAttrs(result[i].econ);
+                result[i].refs = result[i].refs.join("|");
               }
             }
 
@@ -632,7 +643,7 @@ module.exports = function (req, res, next, cb) {
                     : ["clng", "clat"];
 
               dbgeo.parse(
-                result.rows,
+                result,
                 {
                   geometryType: "ll",
                   geometryColumn: geomAge,
@@ -657,13 +668,23 @@ module.exports = function (req, res, next, cb) {
                 },
               );
             } else {
-              callback(null, data, result.rows);
+              callback(null, data, result);
             }
           }
         });
       },
     ],
     function (error, data, result) {
+      //console.log(result)
+
+      for (let key in result.rows) {
+        let obj = result.rows[key];
+        if (obj['refs'] == '1|1') {  // or use obj.refs if 'refs' is a standard property name
+          console.log(obj);
+        }
+      }
+
+
       if (error) {
         console.log(error);
         if (cb) {
@@ -688,11 +709,12 @@ module.exports = function (req, res, next, cb) {
               refs: req.query.response === "long" ? "refs" : false,
             },
             {
-              data: result,
+              data: result.rows,
             },
           );
         }
       }
     },
   );
-};
+}
+
