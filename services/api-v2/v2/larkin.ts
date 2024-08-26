@@ -652,9 +652,10 @@ const { Client, Pool } = require("pg");
               res.on("data", function (chunk) {
                 body += chunk;
               });
-
+              console.log(body)
               res.on("end", function () {
               var parsedBody = JSON.parse(body);
+              console.log(parsedBody)
               if (parsedBody && parsedBody.success && parsedBody.success.data) {
                 var result = parsedBody.success.data;
               } else {
