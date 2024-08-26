@@ -7,6 +7,7 @@ var //mysql = require("mysql"),
   defs = require("./defs"),
   validator = require("validator"),
   http = require("http"),
+  https = require("https"),
   portscanner = require("portscanner");
 const named = require("yesql").pg;
 const { Client, Pool } = require("pg");
@@ -643,7 +644,7 @@ const { Client, Pool } = require("pg");
       {
         unitSummary: function (callback) {
           // get all units and summarize for columns
-          http.get(
+          https.get(
               //TODO: cahnge url to match env.
             "https://web.staging.svc.macrostrat.org/api/v2/units?all&response=long",
             function (res) {
