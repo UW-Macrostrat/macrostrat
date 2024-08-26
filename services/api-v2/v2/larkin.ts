@@ -644,7 +644,8 @@ const { Client, Pool } = require("pg");
         unitSummary: function (callback) {
           // get all units and summarize for columns
           http.get(
-            "http://localhost:5550/v2/units?all&response=long",
+              //TODO: cahnge url to match env.
+            "https://web.staging.svc.macrostrat.org/api/v2/units?all&response=long",
             function (res) {
               var body = "";
 
