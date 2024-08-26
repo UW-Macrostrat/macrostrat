@@ -653,6 +653,8 @@ const { Client, Pool } = require("pg");
                 body += chunk;
               });
               console.log(body)
+              console.log(res.statusCode)
+
               res.on("end", function () {
               var parsedBody = JSON.parse(body);
               console.log(parsedBody)
