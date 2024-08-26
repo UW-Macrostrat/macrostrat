@@ -645,19 +645,29 @@ const { Client, Pool } = require("pg");
           //get all units and summarize for columns
           http.get(
               //TODO: cahnge url to match env.
-            "https://web.staging.svc.macrostrat.org/api/v2/units?all&response=long",
+            "http://web.staging.svc.macrostrat.org/api/v2/units?all&response=long",
             function (res) {
               var body = "";
-
               res.on("data", function (chunk) {
                 body += chunk;
               });
+
+              console.log(res)
               console.log(body)
               console.log(res.statusCode)
+              console.log("redirected to ", res.headers.location)
+
 
               res.on("end", function () {
-              var parsedBody = JSON.parse(body);
-              console.log(parsedBody)
+              try {
+                var parsedBody = JSON.parse(body);
+                // Process the JSON as needed
+              } catch (e) {
+                console.error('Failed to parse JSON:', e);
+                console.error('Response body:', body); // Log the actual body for debugging
+              }
+
+
               if (parsedBody && parsedBody.success && parsedBody.success.data) {
                 var result = parsedBody.success.data;
               } else {
