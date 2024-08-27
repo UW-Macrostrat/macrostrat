@@ -12,6 +12,14 @@ from pydantic import BaseModel
 from ...database import get_db
 
 
+def clean_strat_name_text(text):
+    names = clean_strat_name(text)
+    if len(names) == 0:
+        return None
+    assert len(names) == 1
+    return names[0].name
+
+
 def clean_strat_name(text, bypass=False):
     if bypass:
         return [StratNameTextMatch(name=text, rank=None)]
@@ -151,6 +159,8 @@ def get_rank_signifier(text: str) -> StratRank | None:
         return StratRank.Formation
     if text in ["group", "gr", "gp", "grp"]:
         return StratRank.Group
+    if text in ["sgp", "supergroup", "sgroup", "supergrp"]:
+        return StratRank.Supergroup
     if text in ["member", "mbr", "mem", "memb"]:
         return StratRank.Member
     try:

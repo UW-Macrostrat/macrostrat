@@ -6,6 +6,7 @@ from unittest.mock import inplace
 
 from dynaconf.utils import deduplicate
 from numpy.f2py.crackfortran import verbose
+from rich.progress import Progress
 from typer import Typer
 
 from .clean_strat_name import (
@@ -13,6 +14,7 @@ from .clean_strat_name import (
     format_name,
     StratNameTextMatch,
     StratRank,
+    clean_strat_name_text,
 )
 from ...database import get_db
 from macrostrat.core import app
@@ -67,9 +69,6 @@ def import_sgp_data(verbose: bool = False):
         index_col="sample_id",
     )
 
-    # Sample first 1000 rows
-    samples = samples.head(1000)
-
     # Join samples to columns
 
     sample_locs = samples.drop(columns=[i for i in samples.columns if i != "geom"])
@@ -105,37 +104,54 @@ def import_sgp_data(verbose: bool = False):
     # Augment the samples with the matched column
     samples = samples.join(res, on="sample_id")
 
-    for level in ["member", "formation", "group"]:
-        standardize_strat_column(samples, level, add_suffix=" " + level.capitalize())
-    # Standardize the strat names
-    standardize_strat_column(samples, "verbatim_strat")
+    samples["source_text"] = samples.apply(merge_text, axis=1)
 
-    samples["strat_names"] = samples["strat_names"].apply(deduplicate_strat_names)
-
-    # Make sure that we can group by strat names
-    samples["strat_names"] = samples["strat_names"].apply(lambda x: tuple(sorted(x)))
+    # Delete now-extraneous columns
+    for original_column in ["member", "formation", "group", "verbatim_strat"]:
+        samples.drop(columns=[original_column], inplace=True)
 
     # Group by column and strat names; these will be our matching groups
-    counts = samples.groupby(["col_id", "strat_names"]).size().reset_index(name="count")
+    counts = samples.groupby(["col_id", "source_text"]).size().reset_index(name="count")
+
+    # Make sure that we can group by strat names
+    counts["strat_names"] = (
+        counts["source_text"]
+        .apply(standardize_names)
+        .apply(deduplicate_strat_names)
+        .apply(lambda x: tuple(sorted(x)))
+    )
 
     app.console.print(f"Grouped {len(counts)} unique stratigraphic name groups.")
-
-    counts["matches"] = counts.apply(
-        lambda x: get_matched_unit(x.col_id, x.strat_names), axis=1
-    )
 
     if verbose:
         for ix, row in counts.iterrows():
             print(f"{row['count']} samples in column {row['col_id']}")
-            print("  " + ", ".join([format_name(i) for i in row["strat_names"]]))
-            print("  " + ", ".join([format_name(i) for i in row["matches"]]))
+            print("  " + format_names(row["strat_names"]))
         print()
 
     # Summarize the counts
     match = counts["strat_names"].apply(lambda x: len(x) > 0)
     print_counts("candidate stratigraphic name", counts[match], n_total)
 
-    match = counts["matches"].notnull()
+    # Create an empty column for matched units
+    counts["match"] = None
+
+    success = 0
+    total = 0
+    with M.engine.connect() as conn:
+        for ix, row in counts.iterrows():
+            match = get_matched_unit(conn, row["col_id"], row["strat_names"])
+            message = ": [red bold]no match[/]"
+            if match is not None:
+                success += 1
+                counts[ix, "match"] = match
+                message = f" → {match.strat_name_clean}"
+            total += 1
+            print(
+                f"{success}/{total}: [dim italic]{row.source_text}[/] → {format_names(row.strat_names)} {message}"
+            )
+
+    match = counts["match"].notnull()
     print_counts("matched unit", counts[match], n_total)
 
 
@@ -152,56 +168,79 @@ def print_counts(category, subset, target):
         )
 
 
-def get_matched_unit(col_id, strat_names):
+def format_names(strat_names):
+    return ", ".join([format_name(i) for i in strat_names])
+
+
+_column_unit_index = {}
+
+
+def get_column_units(conn, col_id):
+    """
+    Get a unit that matches a given stratigraphic name
+    """
+    global _column_unit_index
+
     M = get_db()
-    sql = """
-    SELECT
-      sn.id,
-      sn.strat_name,
-      rank,
-      u.col_id,
-      u.id unit_id,
-      u.strat_name verbatim_strat_name
-    FROM macrostrat.strat_names sn
-    JOIN macrostrat.unit_strat_names usn ON sn.id = usn.strat_name_id
-    JOIN macrostrat.units u ON usn.unit_id = u.id
-    WHERE u.col_id = :col_id
-      AND sn.strat_name ILIKE '%'|| :strat_name ||'%'
-      OR '%' || sn.strat_name || '%' ILIKE :strat_name"""
 
-    results = []
+    sql = Path(__file__).parent / "column-strat-names.sql"
+
+    if col_id in _column_unit_index:
+        return _column_unit_index[col_id]
+
+    units_df = read_sql(
+        text(sql.read_text()),
+        conn,
+        params=dict(col_id=col_id, use_concepts=True, use_adjacent_cols=True),
+        coerce_float=False,
+    )
+
+    units_df["strat_name_clean"] = units_df["strat_name"].apply(clean_strat_name_text)
+
+    _column_unit_index[col_id] = units_df
+    return units_df
+
+
+def get_matched_unit(conn, col_id, strat_names):
+    """
+    Get a unit that matches a given stratigraphic name
+    """
+
+    units = get_column_units(conn, col_id)
+    u1 = units[units.strat_name_clean != None]
+
+    u1.sort_values(by="strat_name_clean", inplace=True)
+
     for strat_name in strat_names:
-        results = M.run_query(
-            sql,
-            params=dict(col_id=col_id, strat_name=strat_name.name),
-        ).all()
-        if len(results) > 0:
-            break
+        # Try for an exact match with all strat names
+        for ix, row in u1.iterrows():
+            name = row["strat_name_clean"]
+            if strat_name.name == name:
+                return row
 
-    for result in results:
-        rank = None
-        try:
-            rank = StratRank(result.rank.lower())
-        except ValueError:
-            pass
-        return StratNameTextMatch(
-            name=result.strat_name,
-            rank=rank,
-        )
     return None
 
 
-def standardize_strat_column(df, column_name, add_suffix="", drop_original=True):
-    if "strat_names" not in df.columns:
-        df["strat_names"] = df.apply(lambda x: list(), axis=1)
+def standardize_names(source_text):
+    res = []
+    names = source_text.split(";")
+    for name in names:
+        out_name = clean_strat_name(name)
+        for n1 in out_name:
+            res.append(n1)
+    return res
 
-    ix = df[column_name].notnull()
-    for ix, row in df[ix].iterrows():
-        names = clean_strat_name(row[column_name] + add_suffix)
-        for name in names:
-            row.strat_names.append(name)
-    if drop_original:
-        df.drop(columns=[column_name], inplace=True)
+
+def merge_text(row):
+    names = []
+    for level in ["member", "formation", "group"]:
+        lvl = row.get(level, None)
+        if lvl is not None:
+            names.append(lvl + " " + level.capitalize())
+    lvl = row.get("verbatim_text", None)
+    if lvl is not None:
+        names.append(lvl)
+    return "; ".join(names)
 
 
 def match_samples_to_column_units(df):
