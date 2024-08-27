@@ -1,6 +1,6 @@
 exports.pg = {
   host: process.env.host,
-  port: process.env.port,
+  port: process.env.PORT,
   user: process.env.user,
   password: process.env.password,
   database: process.env.database
