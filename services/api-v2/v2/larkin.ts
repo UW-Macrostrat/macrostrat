@@ -645,21 +645,12 @@ const { Client, Pool } = require("pg");
           //get all units and summarize for columns
           http.get(
               //TODO: change url to match env.
-            "http://localhost:5432/v2/units?all&response=long",
+            "http://localhost:5432/api/v2/units?all&response=long",
             function (res) {
               var body = "";
               res.on("data", function (chunk) {
                 body += chunk;
               });
-
-              console.log(res)
-              console.log(body)
-              console.log(res.statusCode)
-              console.log(res.headers)
-
-              console.log("redirected to ", res.headers.location)
-
-
               res.on("end", function () {
               try {
                 var parsedBody = JSON.parse(body);
