@@ -644,8 +644,8 @@ const { Client, Pool } = require("pg");
         unitSummary: function (callback) {
           //get all units and summarize for columns
           http.get(
-              //TODO: cahnge url to match env.
-            "http://localhost:5000/v2/units?all&response=long",
+              //TODO: change url to match env.
+            "http://localhost:5432/v2/units?all&response=long",
             function (res) {
               var body = "";
               res.on("data", function (chunk) {
