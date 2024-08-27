@@ -54,7 +54,7 @@ app.use("/", v2);
 app.set("json spaces", 2);
 
 //TODO: update port to designated env.
-app.port = process.argv[2] || process.env.PORT;
+app.port = process.argv[2] || 5000;
 
 app.start = function () {
   app.listen(app.port, function () {
