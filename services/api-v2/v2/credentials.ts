@@ -1,9 +1,5 @@
 exports.pg = {
-  host: process.env.host,
-  port: process.env.port,
-  user: process.env.user,
-  password: process.env.password,
-  database: process.env.database
+  connectionString: process.env.MACROSTRAT_DATABASE,
 };
 
 exports.postgresDatabases = {
@@ -18,4 +14,5 @@ exports.redis = {
 };
 
 // Generate a hash by running: node -e "console.log(require('uuid/v4')())"
+// NOTE: this is outdated and may not be used
 exports.cacheRefreshKey = "put-hash-here";
