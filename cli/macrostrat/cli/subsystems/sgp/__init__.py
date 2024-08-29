@@ -19,7 +19,7 @@ from pathlib import Path
 from rich import print
 from geopandas import GeoDataFrame, sjoin
 from sqlalchemy.sql import text
-from pandas import read_sql, Series
+from pandas import read_sql
 from enum import Enum
 
 from rich.live import Live
@@ -360,22 +360,6 @@ def merge_text(row):
     if lvl is not None:
         names.append(lvl)
     return "; ".join(names)
-
-
-def match_samples_to_column_units(df):
-    # Get the column units
-    M = get_db()
-    sql = """
-        SELECT * FROM macrostrat.units u
-        WHERE u.col_id = :col_id
-    """
-    units = read_sql(
-        text(sql), M.engine.connect(), params={"col_id": int(df["col_id"].iloc[0])}
-    )
-    import IPython
-
-    IPython.embed()
-    raise
 
 
 def deduplicate_strat_names(samples):

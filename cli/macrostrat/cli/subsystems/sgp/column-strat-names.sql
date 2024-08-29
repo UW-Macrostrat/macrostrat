@@ -133,6 +133,8 @@ with_footprints_index AS (
   FROM macrostrat.strat_name_footprints snf
   -- Use a permissive spatial filter
   WHERE ST_Intersects(geom, (SELECT ST_Union(col_area) FROM adjacent_cols))
+    AND best_t_age IS NOT NULL
+    AND best_b_age IS NOT NULL
     AND :use_footprint_index
 )
 SELECT DISTINCT ON (strat_name_id) * FROM with_footprints_index
