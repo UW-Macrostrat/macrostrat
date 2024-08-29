@@ -2,6 +2,8 @@
 Subsystem for SGP matching
 """
 
+import IPython
+
 from pydantic import BaseModel
 from typer import Typer
 
@@ -19,7 +21,7 @@ from pathlib import Path
 from rich import print
 from geopandas import GeoDataFrame, sjoin
 from sqlalchemy.sql import text
-from pandas import read_sql
+from pandas import read_sql, DataFrame
 from enum import Enum
 
 from rich.live import Live
@@ -64,8 +66,9 @@ class MatchComparison(Enum):
     name="match-units",
 )
 def import_sgp_data(
+    out_file: Path = None,
     verbose: bool = False,
-    sample: bool = False,
+    sample: int = None,
     match: list[MatchType] = None,
     # comparison: MatchComparison = MatchComparison.Included.value,
 ):
@@ -87,8 +90,9 @@ def import_sgp_data(
         index_col="sample_id",
     )
 
-    if sample:
-        samples = samples.sample(1000)
+    # Run a small sample for testing
+    if sample is not None:
+        samples = samples.sample(sample)
 
     # Standardize text columns
     samples["source_text"] = samples.apply(merge_text, axis=1)
@@ -154,14 +158,16 @@ def import_sgp_data(
     _match = counts["strat_names"].apply(lambda x: len(x) > 0)
     print_counts(app.console, "candidate stratigraphic name", counts[_match], n_total)
 
-    # Create an empty column for matched units
-    counts["match_unit"] = None
+    # Add empty columns for match information
 
     status = MatchStatus(
         success=0,
         done=0,
         total=n_total,
     )
+
+    # Create a data frame of matches with the same index as the counts
+    matches = {}
 
     with Live(
         generate_table(status)
@@ -174,30 +180,79 @@ def import_sgp_data(
                 types=match,
                 # comparison=comparison,
             )
-            message = "[red bold]no match[/]"
-            if _match is not None:
-                counts.loc[ix, "match_unit"] = _match.unit_id
-                message = "[green bold]" + _match.strat_name_clean + "[/]"
-                message += f" [dim italic]{_match.basis}[/]"
+            matches[ix] = _match
             status.increment(row["count"], _match is not None)
-            sep = ""
-            if verbose or _match is None:
-                sep = "\n"
-                live.console.print(
-                    f"[dim italic]{row.source_text}[/]{sep}→ {format_names(row.strat_names)}{sep}→ {message}"
-                )
-            if verbose or _match is None:
-                live.console.print("[dim]- col_id", int(row.col_id))
-                if _match is not None:
-                    live.console.print("[dim]- unit_id", _match.unit_id)
-                    live.console.print(
-                        f"[dim]- ages", f"{_match.b_age:.1f}-{_match.t_age:.1f} Ma"
-                    )
-                live.console.print()
+            log_match_data(row, _match, verbose=verbose, console=live.console)
             live.update(generate_table(status))
 
-        _match = counts["match_unit"].notnull()
-        print_counts(live.console, "matched unit", counts[_match], n_total)
+    # Create a data frame of matches with the same index as the counts
+    matches = DataFrame(matches).T
+    # Rename columns
+
+    # Add interpreted age information by taking the midpoint ages
+    ix = matches.columns.get_loc("b_age")
+    matches.insert(ix, "mid_age", (matches["b_age"] + matches["t_age"]) / 2)
+
+    matches.rename(
+        columns={k: f"match_{k}" for k in matches.columns},
+        inplace=True,
+    )
+
+    # Merge the matches with the counts
+    counts = counts.join(matches, how="left")
+
+    _match = counts["match_unit_id"].notnull()
+    print_counts(live.console, "matched unit", counts[_match], n_total)
+
+    samples = samples.merge(counts, on=["col_id", "source_text"])
+
+    if out_file is not None:
+        # Convert field to be more suitable for export
+        samples["strat_names"] = samples["strat_names"].apply(
+            lambda x: format_names(x, use_rich=False)
+        )
+        # Convert to a standard data frame
+        samples["longitude"] = samples["geom"].x
+        samples["latitude"] = samples["geom"].y
+        samples.drop(columns=["geom"], inplace=True)
+        samples = DataFrame(samples)
+
+        # Write to file
+        if out_file.suffix == ".csv":
+            samples.to_csv(out_file)
+        elif out_file.suffix == ".tsv":
+            samples.to_csv(out_file, sep="\t")
+        elif out_file.suffix == ".parquet":
+            samples.to_parquet(out_file)
+        elif out_file.suffix == ".feather":
+            samples.to_feather(out_file)
+        elif out_file.suffix == ".xlsx":
+            samples.to_excel(out_file)
+        else:
+            raise ValueError(
+                "Unsupported file format (use .tsv, .parquet, .xlsx, or .feather)"
+            )
+    else:
+        IPython.embed()
+
+
+def log_match_data(row, _match, *, verbose=False, console=app.console):
+    message = "[red bold]no match[/]"
+    if _match is not None:
+        message = "[green bold]" + _match.strat_name_clean + "[/]"
+        message += f" [dim italic]{_match.basis}[/]"
+        message += f" [dim italic]{_match.spatial_basis}[/]"
+    if verbose or _match is None:
+        sep = "\n"
+        console.print(
+            f"[dim italic]{row.source_text}[/]{sep}→ {format_names(row.strat_names)}{sep}→ {message}"
+        )
+    if verbose or _match is None:
+        console.print("[dim]- col_id", int(row.col_id))
+        if _match is not None:
+            console.print("[dim]- unit_id", _match.unit_id)
+            console.print(f"[dim]- ages", f"{_match.b_age:.1f}-{_match.t_age:.1f} Ma")
+        console.print()
 
 
 class MatchStatus(BaseModel):
@@ -245,8 +300,8 @@ def print_counts(console, category, subset, target):
         )
 
 
-def format_names(strat_names):
-    return ", ".join([format_name(i) for i in strat_names])
+def format_names(strat_names, **kwargs):
+    return ", ".join([format_name(i, **kwargs) for i in strat_names])
 
 
 _column_unit_index = {}
@@ -264,7 +319,12 @@ def get_column_units(conn, col_id, types: list[MatchType] = None):
         return _column_unit_index[col_id]
 
     if types is None or len(types) == 0:
-        types = [MatchType.FootprintIndex, MatchType.AdjacentCols]
+        types = [
+            MatchType.ColumnUnits,
+            MatchType.Concepts,
+            MatchType.FootprintIndex,
+            MatchType.AdjacentCols,
+        ]
 
     units_df = read_sql(
         text(sql.read_text()),
@@ -279,7 +339,11 @@ def get_column_units(conn, col_id, types: list[MatchType] = None):
         coerce_float=False,
     )
 
-    units_df["strat_name_clean"] = units_df["strat_name"].apply(clean_strat_name_text)
+    # Insert column strat_name_clean after strat_name
+    ix = units_df.columns.get_loc("strat_name")
+    units_df.insert(
+        ix + 1, "strat_name_clean", units_df["strat_name"].apply(clean_strat_name_text)
+    )
 
     _column_unit_index[col_id] = units_df
     return units_df

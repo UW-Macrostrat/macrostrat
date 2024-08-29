@@ -87,15 +87,15 @@ all_results AS (
 ),
 with_linked_concepts AS (
   /** Expand the search to higher-order "concepts" linked to units */
-  SELECT DISTINCT ON (strat_name_id)
+  SELECT
     *,
     'column unit' basis
   FROM all_results
   WHERE :use_column_units
   UNION ALL
-  SELECT DISTINCT ON (snm.concept_id)
+  SELECT
     sn.strat_name_id,
-    snm.name,
+    snm.name strat_name,
     null,
     null,
     snm.concept_id,
@@ -103,7 +103,7 @@ with_linked_concepts AS (
     sn.col_id,
     sn.depth,
     'concept' basis
-  FROM all_results sn
+    FROM all_results sn
   JOIN macrostrat.strat_names_meta snm
     ON sn.concept_id = snm.concept_id
   -- Toggle to turn off concept linking
@@ -111,16 +111,27 @@ with_linked_concepts AS (
 ),
 with_footprints_index AS (
   -- Prioritize direct linking over the footprint index
-  SELECT lc.*,
-         lu.t_age,
-         lu.b_age
+  SELECT DISTINCT ON (strat_name_id)
+    strat_name_id,
+    lc.strat_name,
+    rank,
+    parent_id,
+    concept_id,
+    lc.unit_id,
+    lc.col_id,
+    depth,
+    lc.basis,
+    lu.t_age,
+    lu.b_age,
+    0 AS sort_order,
+    (col_id = (SELECT col_id FROM selected_col))::integer AS is_selected_column
   FROM with_linked_concepts lc
   JOIN macrostrat.lookup_units lu
     ON lc.unit_id = lu.unit_id
   UNION ALL
   SELECT
     strat_name_id,
-    snf.rank_name name,
+    snf.rank_name strat_name,
     null rank,
     null parent_id,
     snf.concept_id,
@@ -129,12 +140,33 @@ with_footprints_index AS (
     null depth,
     'footprint index' AS basis,
     best_t_age t_age,
-    best_b_age b_age
+    best_b_age b_age,
+    1 AS sort_order,
+    ST_Intersects(geom, (SELECT col_area FROM selected_col))::integer
   FROM macrostrat.strat_name_footprints snf
+  JOIN adjacent_cols
+    ON ST_Intersects(geom, col_area)
   -- Use a permissive spatial filter
-  WHERE ST_Intersects(geom, (SELECT ST_Union(col_area) FROM adjacent_cols))
-    AND best_t_age IS NOT NULL
+  WHERE best_t_age IS NOT NULL
     AND best_b_age IS NOT NULL
+    -- Only use the index if the name is not already linked
     AND :use_footprint_index
+  ORDER BY sort_order ASC, is_selected_column DESC NULLS LAST
 )
-SELECT DISTINCT ON (strat_name_id) * FROM with_footprints_index
+SELECT DISTINCT ON (strat_name_id)
+  strat_name_id,
+  strat_name,
+  rank,
+  parent_id,
+  concept_id,
+  unit_id,
+  col_id,
+  depth,
+  basis,
+  t_age,
+  b_age,
+  CASE WHEN is_selected_column != 0
+  THEN 'overlapping column'
+  ELSE 'adjacent column'
+  END AS spatial_basis
+FROM with_footprints_index

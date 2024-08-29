@@ -195,10 +195,19 @@ class StratNameTextMatch(BaseModel):
             yield "rank", self.rank
 
 
-def format_name(name: StratNameTextMatch):
-    if name.rank is None:
-        return name.name
-    return f"[bold]{name.name}[/bold] ({name.rank.value})"
+def format_name(name: StratNameTextMatch, use_rich=True):
+    # Additional data
+    data = []
+    if name.rank is not None:
+        data.append(name.rank.value)
+    if name.confidence is Confidence.Low:
+        data.append("low confidence")
+    suffix = ""
+    if len(data) > 0:
+        suffix = " (" + ", ".join(data) + ")"
+    if not use_rich:
+        return f"{name.name}{suffix}"
+    return f"[bold]{name.name}[/bold]{suffix}"
 
 
 def get_rank_signifier(text: str) -> StratRank | None:
