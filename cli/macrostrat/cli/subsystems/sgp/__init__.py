@@ -2,11 +2,7 @@
 Subsystem for SGP matching
 """
 
-from unittest.mock import inplace
-
-from dynaconf.utils import deduplicate
-from numpy.f2py.crackfortran import verbose
-from rich.progress import Progress
+from pydantic import BaseModel
 from typer import Typer
 
 from .clean_strat_name import (
@@ -22,9 +18,12 @@ from macrostrat.database import Database
 from pathlib import Path
 from rich import print
 from geopandas import GeoDataFrame, sjoin
-from shapely.geometry import Point
 from sqlalchemy.sql import text
 from pandas import read_sql, Series
+from enum import Enum
+
+from rich.live import Live
+from rich.table import Table
 
 sgp = Typer(name="sgp", no_args_is_help=True)
 
@@ -47,10 +46,29 @@ def get_columns_data_frame():
     return gdf
 
 
+class MatchType(Enum):
+    Concepts = "concepts"
+    AdjacentCols = "adjacent-cols"
+    ColumnUnits = "column-units"
+    FootprintIndex = "footprint-index"
+
+
+class MatchComparison(Enum):
+    Exact = "exact"
+    Included = "included"
+    Bidirectional = "bidirectional"
+    Fuzzy = "fuzzy"
+
+
 @sgp.command(
     name="match-units",
 )
-def import_sgp_data(verbose: bool = False):
+def import_sgp_data(
+    verbose: bool = False,
+    sample: bool = False,
+    match: list[MatchType] = None,
+    # comparison: MatchComparison = MatchComparison.Included.value,
+):
     M = get_db()
 
     # TODO: simplify this
@@ -58,9 +76,9 @@ def import_sgp_data(verbose: bool = False):
     uri_ = str(uri).replace("***", uri.password)
     sgp_db = Database(uri_)
 
-    sql = here / "measurements-to-match.sql"
+    # Get samples data frame from SGP database
 
-    columns = get_columns_data_frame()
+    sql = here / "measurements-to-match.sql"
 
     samples = GeoDataFrame.from_postgis(
         text(sql.read_text()),
@@ -69,8 +87,17 @@ def import_sgp_data(verbose: bool = False):
         index_col="sample_id",
     )
 
-    # Join samples to columns
+    if sample:
+        samples = samples.sample(1000)
 
+    # Standardize text columns
+    samples["source_text"] = samples.apply(merge_text, axis=1)
+    samples.drop(
+        columns=["member", "formation", "group", "verbatim_strat"], inplace=True
+    )
+
+    # Join samples to columns
+    columns = get_columns_data_frame()
     sample_locs = samples.drop(columns=[i for i in samples.columns if i != "geom"])
 
     join = sjoin(sample_locs, columns, how="left", op="intersects")
@@ -104,12 +131,6 @@ def import_sgp_data(verbose: bool = False):
     # Augment the samples with the matched column
     samples = samples.join(res, on="sample_id")
 
-    samples["source_text"] = samples.apply(merge_text, axis=1)
-
-    # Delete now-extraneous columns
-    for original_column in ["member", "formation", "group", "verbatim_strat"]:
-        samples.drop(columns=[original_column], inplace=True)
-
     # Group by column and strat names; these will be our matching groups
     counts = samples.groupby(["col_id", "source_text"]).size().reset_index(name="count")
 
@@ -130,39 +151,95 @@ def import_sgp_data(verbose: bool = False):
         print()
 
     # Summarize the counts
-    match = counts["strat_names"].apply(lambda x: len(x) > 0)
-    print_counts("candidate stratigraphic name", counts[match], n_total)
+    _match = counts["strat_names"].apply(lambda x: len(x) > 0)
+    print_counts(app.console, "candidate stratigraphic name", counts[_match], n_total)
 
     # Create an empty column for matched units
-    counts["match"] = None
+    counts["match_unit"] = None
 
-    success = 0
-    total = 0
-    with M.engine.connect() as conn:
+    status = MatchStatus(
+        success=0,
+        done=0,
+        total=n_total,
+    )
+
+    with Live(
+        generate_table(status)
+    ) as live, M.engine.connect() as conn:  # update 4 times a second to feel fluid
         for ix, row in counts.iterrows():
-            match = get_matched_unit(conn, row["col_id"], row["strat_names"])
-            message = ": [red bold]no match[/]"
-            if match is not None:
-                success += 1
-                counts[ix, "match"] = match
-                message = f" → {match.strat_name_clean}"
-            total += 1
-            print(
-                f"{success}/{total}: [dim italic]{row.source_text}[/] → {format_names(row.strat_names)} {message}"
+            _match = get_matched_unit(
+                conn,
+                row["col_id"],
+                row["strat_names"],
+                types=match,
+                # comparison=comparison,
             )
+            message = "[red bold]no match[/]"
+            if _match is not None:
+                counts.loc[ix, "match_unit"] = _match.unit_id
+                message = "[green bold]" + _match.strat_name_clean + "[/]"
+                message += f" [dim italic]{_match.basis}[/]"
+            status.increment(row["count"], _match is not None)
+            sep = ""
+            if verbose or _match is None:
+                sep = "\n"
+                live.console.print(
+                    f"[dim italic]{row.source_text}[/]{sep}→ {format_names(row.strat_names)}{sep}→ {message}"
+                )
+            if verbose or _match is None:
+                live.console.print("[dim]- col_id", int(row.col_id))
+                if _match is not None:
+                    live.console.print("[dim]- unit_id", _match.unit_id)
+                    live.console.print(
+                        f"[dim]- ages", f"{_match.b_age:.1f}-{_match.t_age:.1f} Ma"
+                    )
+                live.console.print()
+            live.update(generate_table(status))
 
-    match = counts["match"].notnull()
-    print_counts("matched unit", counts[match], n_total)
+        _match = counts["match_unit"].notnull()
+        print_counts(live.console, "matched unit", counts[_match], n_total)
 
 
-def print_counts(category, subset, target):
+class MatchStatus(BaseModel):
+    success: int
+    done: int
+    total: int
+
+    @property
+    def failed(self):
+        return self.done - self.success
+
+    def increment(self, count, success=True):
+        self.done += count
+        if success:
+            self.success += count
+
+
+def generate_table(status: MatchStatus):
+    table = Table()
+    table.add_column("Successful matches")
+    table.add_column("Failed matches")
+    table.add_column("Completion")
+
+    if status.done == 0:
+        return table
+
+    table.add_row(
+        f"[green]{status.success}[/green]",
+        f"[red]{status.failed}[/red]",
+        f"{status.success/status.done*100:.1f}%",
+    )
+    return table
+
+
+def print_counts(console, category, subset, target):
     match_count = subset["count"].sum()
-    app.console.print(
+    console.print(
         f"{match_count} samples have at least one {category}.",
         style="green bold" if match_count == target else None,
     )
     if match_count < target:
-        app.console.print(
+        console.print(
             f"{target - match_count} samples have no {category}.",
             style="yellow",
         )
@@ -175,23 +252,30 @@ def format_names(strat_names):
 _column_unit_index = {}
 
 
-def get_column_units(conn, col_id):
+def get_column_units(conn, col_id, types: list[MatchType] = None):
     """
     Get a unit that matches a given stratigraphic name
     """
     global _column_unit_index
-
-    M = get_db()
 
     sql = Path(__file__).parent / "column-strat-names.sql"
 
     if col_id in _column_unit_index:
         return _column_unit_index[col_id]
 
+    if types is None or len(types) == 0:
+        types = [MatchType.FootprintIndex, MatchType.AdjacentCols]
+
     units_df = read_sql(
         text(sql.read_text()),
         conn,
-        params=dict(col_id=col_id, use_concepts=True, use_adjacent_cols=True),
+        params=dict(
+            col_id=col_id,
+            use_concepts=MatchType.Concepts in types,
+            use_adjacent_cols=MatchType.AdjacentCols in types,
+            use_footprint_index=MatchType.FootprintIndex in types,
+            use_column_units=MatchType.ColumnUnits in types,
+        ),
         coerce_float=False,
     )
 
@@ -201,21 +285,54 @@ def get_column_units(conn, col_id):
     return units_df
 
 
-def get_matched_unit(conn, col_id, strat_names):
+def get_matched_unit(
+    conn,
+    col_id,
+    strat_names,
+    comparison=MatchComparison.Included,
+    types: list[MatchType] = None,
+):
     """
     Get a unit that matches a given stratigraphic name
     """
 
-    units = get_column_units(conn, col_id)
+    units = get_column_units(conn, col_id, types=types)
     u1 = units[units.strat_name_clean != None]
 
     u1.sort_values(by="strat_name_clean", inplace=True)
+
+    if comparison == MatchComparison.Fuzzy:
+        raise NotImplementedError("Fuzzy matching not implemented")
 
     for strat_name in strat_names:
         # Try for an exact match with all strat names
         for ix, row in u1.iterrows():
             name = row["strat_name_clean"]
             if strat_name.name == name:
+                return row
+
+    if comparison == MatchComparison.Exact:
+        return None
+
+    for strat_name in strat_names:
+        # Try for a "like" match, which might catch verbatim strat names better
+        for ix, row in u1.iterrows():
+            name = row["strat_name_clean"]
+            if name is None:
+                continue
+            if name in strat_name.name:
+                return row
+
+    if comparison == MatchComparison.Included:
+        return None
+
+    for strat_name in strat_names:
+        # Finally check that our cleaned strat name does not include the cleaned name as a subset
+        for ix, row in u1.iterrows():
+            name = row["strat_name_clean"]
+            if name is None:
+                continue
+            if strat_name.name in name:
                 return row
 
     return None
@@ -235,9 +352,11 @@ def merge_text(row):
     names = []
     for level in ["member", "formation", "group"]:
         lvl = row.get(level, None)
+        if lvl in ["unknown", "uncertain", ""]:
+            continue
         if lvl is not None:
             names.append(lvl + " " + level.capitalize())
-    lvl = row.get("verbatim_text", None)
+    lvl = row.get("verbatim_strat", None)
     if lvl is not None:
         names.append(lvl)
     return "; ".join(names)

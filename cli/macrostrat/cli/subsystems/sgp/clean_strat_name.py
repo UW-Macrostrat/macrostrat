@@ -12,70 +12,95 @@ from pydantic import BaseModel
 from ...database import get_db
 
 
+class Confidence(enum.Enum):
+    Low = "low"
+    High = "high"
+    NotIndicated = "not indicated"
+
+
 def clean_strat_name_text(text):
-    names = clean_strat_name(text)
+    names = clean_strat_name(text, split_names=False)
     if len(names) == 0:
         return None
     assert len(names) == 1
     return names[0].name
 
 
-def clean_strat_name(text, bypass=False):
-    if bypass:
-        return [StratNameTextMatch(name=text, rank=None)]
-
-    global _ignore_list
-    if _ignore_list is None:
-        _ignore_list = build_ignore_list()
+def clean_strat_name(text, split_names=True):
 
     # Remove gremlins
     for g in gremlins:
         text = text.replace(g, gremlins[g])
 
-    text = text.lower()
+    # Standardize Unicode to ASCII and convert to lowercase
+    text = text.encode("ascii", "ignore").decode().lower()
 
-    # We could also do this split later
-    # names = split_names(text)
+    confidence = Confidence.NotIndicated
+
+    # Strip parenthetical text, which is often confidence information
+    # denoted by a question mark
+    matches = re.findall(r"\((.+?)\)", text)
+    for match in matches:
+        text = text.replace(match, ";")
+        if "?" in match:
+            confidence = Confidence.Low
+
     names = [text]
-    matches = []
+    if split_names:
+        names = _split_names(text)
 
-    for name in names:
-        # Remove punctuation
-        for d in delete:
-            name = name.replace(d, " ")
-
-        # Collapse whitespace
-        name = " ".join(name.split())
-
-        # Standardize Unicode to ASCII
-        name = name.encode("ascii", "ignore").decode()
-
-        # Get list of tokens
-        tokens = name.split()
-        collected_text = []
-        for token in tokens:
-            # Replace abbreviations
-            if token in replace:
-                token = replace[token]
-            # If token should be ignored
-            if token in _ignore_list:
-                continue
-            if rank := get_rank_signifier(token) or token in stop_words:
-                if len(collected_text) > 0:
-                    match = StratNameTextMatch(name=" ".join(collected_text), rank=rank)
-                    matches.append(match)
-                    collected_text = []
-            else:
-                collected_text.append(token)
-        # Put any remaining tokens in a match
-        if len(collected_text) > 0:
-            match = StratNameTextMatch(name=" ".join(collected_text), rank=None)
-            matches.append(match)
-
-    return matches
+    # Concatenate the cleaned names
+    return reduce(
+        lambda x, y: x + y,
+        (list(_clean_name(name, confidence=confidence)) for name in names),
+        [],
+    )
 
 
-def split_names(name) -> list[str]:
+def _clean_name(name, confidence=Confidence.NotIndicated):
+    global _ignore_list
+    if _ignore_list is None:
+        _ignore_list = build_ignore_list()
+
+    # Remove punctuation
+    for d in delete:
+        name = name.replace(d, " ")
+
+    # Collapse whitespace
+    name = " ".join(name.split())
+
+    # Get list of tokens
+    rank = None
+    tokens = name.split()
+    collected_text = []
+    for token in tokens:
+        if token.endswith("?"):
+            confidence = Confidence.Low
+            token = token[:-1]
+        # Replace abbreviations
+        if token in replace:
+            token = replace[token]
+        # If token should be ignored
+        if token in _ignore_list:
+            continue
+        _rank = get_rank_signifier(token)
+        if _rank is not None or token in stop_words:
+            rank = _rank
+            if len(collected_text) > 0:
+                yield StratNameTextMatch(
+                    name=" ".join(collected_text), rank=rank, confidence=confidence
+                )
+                collected_text = []
+        else:
+            collected_text.append(token)
+    # Put any remaining tokens in a match
+    if len(collected_text) > 0:
+        yield StratNameTextMatch(
+            name=" ".join(collected_text), rank=rank, confidence=confidence
+        )
+
+
+def _split_names(name) -> list[str]:
     """Split a stratigraphic name on one of several common delimiters."""
     acc = ""
     out = []
@@ -94,6 +119,7 @@ class StratRank(enum.Enum):
     Group = "gp"
     Formation = "fm"
     Member = "mbr"
+    Bed = "bed"
     Series = "series"
     Assemblage = "assemblage"
     Suite = "suite"
@@ -109,6 +135,7 @@ class StratRank(enum.Enum):
 class StratNameTextMatch(BaseModel):
     name: str
     rank: StratRank | None
+    confidence: Confidence
     # Extra information about lithology and age
     # lith_signifiers: list[str]
     # age_signifiers: list[str]
@@ -120,6 +147,7 @@ class StratNameTextMatch(BaseModel):
             StratRank.Formation,
             StratRank.Series,
             StratRank.Group,
+            StratRank.Bed,
             StratRank.Assemblage,
             StratRank.Supergroup,
             StratRank.Suite,
@@ -163,6 +191,8 @@ def get_rank_signifier(text: str) -> StratRank | None:
         return StratRank.Supergroup
     if text in ["member", "mbr", "mem", "memb"]:
         return StratRank.Member
+    if text in ["bed"]:
+        return StratRank.Bed
     try:
         return StratRank(text)
     except ValueError:
@@ -226,7 +256,7 @@ def build_ignore_list():
 
 
 # STRINGS TO BE DELETED
-delete = [l for l in punctuation if l not in ["-", "/"]]
+delete = [l for l in punctuation if l not in ["-", "/", "?"]]
 
 # SOME INSTANCES DIVIDE STRAT NAMES ON WITH THESE MODIFIERS
 to_split = ["\s*-\s*", "\s*/\s*"]
