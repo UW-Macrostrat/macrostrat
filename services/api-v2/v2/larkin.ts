@@ -72,8 +72,6 @@ const { Client, Pool } = require("pg");
   //added new method to query from Maria data in the new PG database after migration
   larkin.queryPg = function (db, sql, params, callback) {
     //add console.logs for debug mode in the future
-    console.log(sql)
-    console.log(params)
     const nameMapping = credentials.postgresDatabases ?? {};
     const dbName = nameMapping[db] ?? db;
 
@@ -103,6 +101,8 @@ const { Client, Pool } = require("pg");
         //named uses yesql to modify the params dict and sql named parameters into an array before querying PG.
         //client.query can only accept numerical indices in sql syntax and an array for parameter values.
         const preparedQuery = named(sql)(params);
+        console.log("Prepared Query Text:", preparedQuery.text);
+        console.log("Prepared Query Values:", preparedQuery.values);
         var query = client.query(preparedQuery.text, preparedQuery.values, function (err, result) {
           done();
           if (err) {

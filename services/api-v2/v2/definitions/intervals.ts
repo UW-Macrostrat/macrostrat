@@ -8,6 +8,12 @@ module.exports = function (req, res, next, cb) {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
+  let color;
+  if (req.query.true_colors) {
+    color = "orig_color AS color ";
+  } else {
+    color = "interval_color AS color ";
+  }
 
   var sql =
     `SELECT intervals.id AS int_id,
@@ -16,23 +22,18 @@ module.exports = function (req, res, next, cb) {
      age_top AS t_age,
      age_bottom AS b_age,
      interval_type AS int_type,
-     STRING_AGG(timescales.timescale || '--' || timescales.id, '|') AS timescales,
-     `
+    ${color},
+    STRING_AGG(timescales.timescale::text || '--' || timescales.id::text, '|') AS timescales
+    FROM macrostrat_temp.intervals 
+    LEFT JOIN macrostrat_temp.timescales_intervals ON interval_id=intervals.id 
+    LEFT JOIN macrostrat_temp.timescales ON timescale_id=timescales.id
+    `;
 
-  if (req.query.true_colors) {
-    sql += "orig_color AS color ";
-  } else {
-    sql += "interval_color AS color ";
-  }
+
 
   //updated params back to dict
   let params = {}
   let where = []
-
-  sql += `
-  FROM macrostrat_temp.intervals 
-  LEFT JOIN macrostrat_temp.timescales_intervals ON interval_id=intervals.id 
-  LEFT JOIN macrostrat_temp.timescales ON timescale_id=timescales.id\n `
 
   //need to refactor the ifs and else ifs of parameter handling
   if (req.query.timescale) {
@@ -45,12 +46,12 @@ module.exports = function (req, res, next, cb) {
   }
 
   if (req.query.name) {
-    where.push(`intervals.interval_name LIKE :name`);
+    where.push(`intervals.interval_name ILIKE :name`);
     params["name"] = req.query.name;
   }
 
   if (req.query.name_like) {
-    where.push(`intervals.interval_name LIKE :name_like`);
+    where.push(`intervals.interval_name ILIKE :name_like`);
     //may want to update to "%" + req.query.name_like + "%"
     params["name_like"] = req.query.name_like + "%";
   }
@@ -77,7 +78,7 @@ module.exports = function (req, res, next, cb) {
     }
     else {
       where.push(
-        `intervals.age_bottom > :t_age AND intervals.age_top < :b_age}`,
+        `intervals.age_bottom > :t_age AND intervals.age_top < :b_age`,
       );
       params["b_age"] = req.query.b_age;
       params["t_age"] = req.query.t_age;
@@ -92,11 +93,11 @@ module.exports = function (req, res, next, cb) {
     sql += "WHERE " + where.join(" AND ") + "\n";
   }
 
-  sql += " GROUP BY intervals.id, age_top\n" +
-      "ORDER BY age_top ASC\n";
+  sql += "GROUP BY intervals.id, age_top\n" +
+         "ORDER BY age_top ASC\n";
 
   if ("sample" in req.query) {
-    sql += " LIMIT 5";
+    sql += "LIMIT 5";
   }
 
   larkin.queryPg("burwell",
@@ -109,13 +110,11 @@ module.exports = function (req, res, next, cb) {
         return larkin.error(req, res, next, "Something went wrong");
       }
     }
-    /*
-    TO DO: modify the json format to match prod's output
 
     else {
-      if (req.query.format !== "csv") {
+      if (req.query.format !== "csv" || req.query.format == undefined) {
         result.forEach(function (d) {
-          //  d.timescale_id = larkin.jsonifyPipes(d.timescale_id, "integers");
+          d.timescale_id = larkin.jsonifyPipes(d.timescale_id, "integers");
           if (d.timescales) {
             d.timescales = d.timescales.split("|").map(function (j) {
               return {
@@ -128,7 +127,7 @@ module.exports = function (req, res, next, cb) {
           }
         });
       }
-      */
+
 
       if (cb) {
         cb(null, result.rows);
@@ -147,7 +146,7 @@ module.exports = function (req, res, next, cb) {
             data: result.rows,
           },
         );
-      };
-    });
-  };
-//};
+      }
+    }
+  });
+};

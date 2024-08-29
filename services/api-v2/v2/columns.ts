@@ -199,7 +199,7 @@ module.exports = function (req, res, next, callback) {
         cols.lat,
         cols.lng,
         round(cols.col_area, 1) AS col_area,
-        project_id,
+        cols.project_id,
         COALESCE(cols.col_type, '') AS col_type,
         string_agg(col_refs.ref_id::varchar, '|') AS refs
         ${geo}
