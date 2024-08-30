@@ -12,7 +12,7 @@ from string import punctuation
 
 from pydantic import BaseModel
 
-from ...database import get_db
+from macrostrat.cli.database import get_db
 
 
 class Confidence(enum.Enum):
