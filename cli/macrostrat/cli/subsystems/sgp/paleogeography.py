@@ -5,7 +5,7 @@ from sqlalchemy.sql import text
 from pathlib import Path
 
 
-def compute_paleo_positions(out_file: Path = None):
+def compute_paleo_positions(out_file: Path = None, sample: int = None):
     """Compute paleogeographic positions for all SGP samples"""
 
     M = get_db()
@@ -35,13 +35,17 @@ def compute_paleo_positions(out_file: Path = None):
     samples = get_sgp_samples("paleogeography-samples")
     samples["plate_model"] = None
 
+    if sample is not None:
+        samples = samples.sample(n=sample)
+
     # Spatial join of samples and plates
     samples = sjoin(samples, plates, how="left", op="intersects")
     samples.loc[samples["plate_id"].notnull(), "plate_model"] = model_name
+    samples.drop(columns=["index_right"], inplace=True)
 
     # Add columns
-    samples["paleo_lat"] = None
-    samples["paleo_lon"] = None
+    samples["paleo_lat"] = float("nan")
+    samples["paleo_lon"] = float("nan")
 
     # Rotate samples to paleogeographic positions
     n_total = len(samples["plate_id"].notnull())
@@ -56,7 +60,16 @@ def compute_paleo_positions(out_file: Path = None):
             samples.loc[i, "paleo_lon"] = res[0]
             samples.loc[i, "paleo_lat"] = res[1]
 
-        print(f"Processed {n_done} of {n_total} samples ({n_failed} failed)", end="\r")
+        is_last = n_done == n_total
+        print(
+            f"Processed {n_done} of {n_total} samples ({n_failed} failed)",
+            end="\n" if is_last else "\r",
+        )
+
+    # Set types
+    samples["paleo_lat"] = samples["paleo_lat"].round(3)
+    samples["paleo_lon"] = samples["paleo_lon"].round(3)
+    samples["plate_id"] = samples["plate_id"].round(0)
 
     if out_file is not None:
         write_to_file(samples, out_file)

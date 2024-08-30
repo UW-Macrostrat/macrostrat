@@ -13,6 +13,7 @@ python = "^3.11"
 "criticalmaas.ta1_geopackage" = "^0.2.0" 
 macrostrat-utils = "^1.2.1"
 matplotlib = "^3.9.2"
+openpyxl = "^3.1.5"
 
 [tool.poetry.dev-dependencies]
 "macrostrat.package_tools" = "^1.0.0"
