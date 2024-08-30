@@ -1,1 +1,0 @@
-INSERT INTO macrostrat.sections_new(id, col_id) VALUES (%(id)s,%(col_id)s)
