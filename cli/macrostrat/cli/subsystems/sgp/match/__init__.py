@@ -5,7 +5,6 @@ Subsystem for SGP matching
 import IPython
 
 from pydantic import BaseModel
-from typer import Typer
 
 from .clean_strat_name import (
     clean_strat_name,
@@ -15,9 +14,10 @@ from .clean_strat_name import (
     clean_strat_name_text,
 )
 
+from ..utils import get_sgp_samples, write_to_file
+
 from macrostrat.cli.database import get_db
 from macrostrat.core import app
-from macrostrat.database import Database
 from pathlib import Path
 from geopandas import GeoDataFrame, sjoin
 from sqlalchemy.sql import text
@@ -27,7 +27,7 @@ from enum import Enum
 from rich.live import Live
 from rich.table import Table
 
-sgp = Typer(name="sgp", no_args_is_help=True)
+from ..utils import stored_procedure
 
 here = Path(__file__).parent
 
@@ -71,23 +71,12 @@ def import_sgp_data(
     match: list[MatchType] = None,
     # comparison: MatchComparison = MatchComparison.Included.value,
 ):
+    """
+    Match SGP samples to Macrostrat units
+    """
     M = get_db()
 
-    # TODO: simplify this
-    uri = M.engine.url.set(database="sgp")
-    uri_ = str(uri).replace("***", uri.password)
-    sgp_db = Database(uri_)
-
-    # Get samples data frame from SGP database
-
-    measurements_query = sql("measurements-to-match")
-
-    samples = GeoDataFrame.from_postgis(
-        measurements_query,
-        sgp_db.engine.connect(),
-        geom_col="geom",
-        index_col="sample_id",
-    )
+    samples = get_sgp_samples("initial-match-samples")
 
     # Run a small sample for testing
     if sample is not None:
@@ -234,28 +223,7 @@ def import_sgp_data(
         samples["strat_names"] = samples["strat_names"].apply(
             format_names, use_rich=False
         )
-        # Convert to a standard data frame
-        samples.insert(0, "sample_id", samples.index)
-        samples.insert(1, "longitude", samples["geom"].x)
-        samples.insert(2, "latitude", samples["geom"].y)
-        samples.drop(columns=["geom"], inplace=True)
-        samples = DataFrame(samples)
-
-        # Write to file
-        if out_file.suffix == ".csv":
-            samples.to_csv(out_file)
-        elif out_file.suffix == ".tsv":
-            samples.to_csv(out_file, sep="\t")
-        elif out_file.suffix == ".parquet":
-            samples.to_parquet(out_file)
-        elif out_file.suffix == ".feather":
-            samples.to_feather(out_file)
-        elif out_file.suffix == ".xlsx":
-            samples.to_excel(out_file)
-        else:
-            raise ValueError(
-                "Unsupported file format (use .tsv, .parquet, .xlsx, or .feather)"
-            )
+        write_to_file(samples, out_file)
     else:
         IPython.embed()
 
@@ -329,17 +297,6 @@ def format_names(strat_names, **kwargs):
 
 
 _column_unit_index = {}
-_query_cache = {}
-
-
-def sql(key: str):
-    global _query_cache
-    if key in _query_cache:
-        return _query_cache[key]
-    fn = Path(__file__).parent / (key + ".sql")
-    sql = text(fn.read_text())
-    _query_cache[key] = sql
-    return sql
 
 
 def get_column_units(conn, col_id, types: list[MatchType] = None):
@@ -361,7 +318,7 @@ def get_column_units(conn, col_id, types: list[MatchType] = None):
         ]
 
     units_df = read_sql(
-        sql("column-strat-names"),
+        stored_procedure("column-strat-names"),
         conn,
         params=dict(
             col_id=col_id,
