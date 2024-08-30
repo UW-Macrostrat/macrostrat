@@ -53,6 +53,7 @@ class MatchType(Enum):
     AdjacentCols = "adjacent-cols"
     ColumnUnits = "column-units"
     FootprintIndex = "footprint-index"
+    Synonyms = "synonyms"
 
 
 class MatchComparison(Enum):
@@ -69,6 +70,7 @@ def import_sgp_data(
     out_file: Path = None,
     verbose: bool = False,
     sample: int = None,
+    column: int = None,
     match: list[MatchType] = None,
     # comparison: MatchComparison = MatchComparison.Included.value,
 ):
@@ -81,10 +83,10 @@ def import_sgp_data(
 
     # Get samples data frame from SGP database
 
-    sql = here / "measurements-to-match.sql"
+    measurements_query = sql("measurements-to-match")
 
     samples = GeoDataFrame.from_postgis(
-        text(sql.read_text()),
+        measurements_query,
         sgp_db.engine.connect(),
         geom_col="geom",
         index_col="sample_id",
@@ -134,6 +136,12 @@ def import_sgp_data(
 
     # Augment the samples with the matched column
     samples = samples.join(res, on="sample_id")
+
+    # If we have specified a single column, filter to that column
+    if column is not None:
+        samples = samples[samples["col_id"] == column]
+
+    n_total = len(samples)
 
     # Group by column and strat names; these will be our matching groups
     counts = samples.groupby(["col_id", "source_text"]).size().reset_index(name="count")
@@ -190,8 +198,11 @@ def import_sgp_data(
     # Rename columns
 
     # Add interpreted age information by taking the midpoint ages
-    ix = matches.columns.get_loc("b_age")
-    matches.insert(ix, "mid_age", (matches["b_age"] + matches["t_age"]) / 2)
+    ix = matches.columns.get_loc("max_age")
+    matches.insert(ix + 1, "mid_age", (matches["min_age"] + matches["max_age"]) / 2)
+
+    # Age spans
+    matches.insert(ix + 2, "age_span", matches["max_age"] - matches["min_age"])
 
     matches.rename(
         columns={k: f"match_{k}" for k in matches.columns},
@@ -204,16 +215,32 @@ def import_sgp_data(
     _match = counts["match_unit_id"].notnull()
     print_counts(live.console, "matched unit", counts[_match], n_total)
 
-    samples = samples.merge(counts, on=["col_id", "source_text"])
+    # Complex statement that basically keeps the sample index while merging the counts
+    # into that data frame.
+    samples = (
+        samples.reset_index()
+        .merge(counts, on=["col_id", "source_text"])
+        .set_index("sample_id")
+    )
+
+    samples["age_span_delta"] = (
+        samples["match_age_span"].astype(float)
+        - (samples["max_age"] - samples["min_age"])
+    ).round(2)
+
+    samples["mid_age_delta"] = (
+        samples["match_mid_age"].astype(float) - samples["interpreted_age"]
+    ).round(2)
 
     if out_file is not None:
         # Convert field to be more suitable for export
         samples["strat_names"] = samples["strat_names"].apply(
-            lambda x: format_names(x, use_rich=False)
+            format_names, use_rich=False
         )
         # Convert to a standard data frame
-        samples["longitude"] = samples["geom"].x
-        samples["latitude"] = samples["geom"].y
+        samples.insert(0, "sample_id", samples.index)
+        samples.insert(1, "longitude", samples["geom"].x)
+        samples.insert(2, "latitude", samples["geom"].y)
         samples.drop(columns=["geom"], inplace=True)
         samples = DataFrame(samples)
 
@@ -305,6 +332,17 @@ def format_names(strat_names, **kwargs):
 
 
 _column_unit_index = {}
+_query_cache = {}
+
+
+def sql(key: str):
+    global _query_cache
+    if key in _query_cache:
+        return _query_cache[key]
+    fn = Path(__file__).parent / (key + ".sql")
+    sql = text(fn.read_text())
+    _query_cache[key] = sql
+    return sql
 
 
 def get_column_units(conn, col_id, types: list[MatchType] = None):
@@ -312,8 +350,6 @@ def get_column_units(conn, col_id, types: list[MatchType] = None):
     Get a unit that matches a given stratigraphic name
     """
     global _column_unit_index
-
-    sql = Path(__file__).parent / "column-strat-names.sql"
 
     if col_id in _column_unit_index:
         return _column_unit_index[col_id]
@@ -324,14 +360,16 @@ def get_column_units(conn, col_id, types: list[MatchType] = None):
             MatchType.Concepts,
             MatchType.FootprintIndex,
             MatchType.AdjacentCols,
+            MatchType.Synonyms,
         ]
 
     units_df = read_sql(
-        text(sql.read_text()),
+        sql("column-strat-names"),
         conn,
         params=dict(
             col_id=col_id,
             use_concepts=MatchType.Concepts in types,
+            use_synonyms=MatchType.Synonyms in types,
             use_adjacent_cols=MatchType.AdjacentCols in types,
             use_footprint_index=MatchType.FootprintIndex in types,
             use_column_units=MatchType.ColumnUnits in types,
@@ -362,8 +400,6 @@ def get_matched_unit(
 
     units = get_column_units(conn, col_id, types=types)
     u1 = units[units.strat_name_clean != None]
-
-    u1.sort_values(by="strat_name_clean", inplace=True)
 
     if comparison == MatchComparison.Fuzzy:
         raise NotImplementedError("Fuzzy matching not implemented")
@@ -405,10 +441,18 @@ def get_matched_unit(
 def standardize_names(source_text):
     res = []
     names = source_text.split(";")
+    name_index = set()
+
     for name in names:
         out_name = clean_strat_name(name)
+
         for n1 in out_name:
+            if n1.name in name_index:
+                continue
+            # Tracker for names
+            name_index.add(n1.name)
             res.append(n1)
+
     return res
 
 

@@ -7,8 +7,6 @@
     <file url="file://$PROJECT_DIR$/cli/macrostrat/cli/subsystems/sgp/column-strat-names.sql" dialect="PostgreSQL" />
     <file url="file://$PROJECT_DIR$/cli/macrostrat/cli/subsystems/sgp/get-strat-name-footprints.sql" dialect="PostgreSQL" />
     <file url="file://$PROJECT_DIR$/cli/macrostrat/cli/subsystems/sgp/measurements-to-match.sql" dialect="PostgreSQL" />
-    <file url="file://$PROJECT_DIR$/integrations/sed-geochemistry-project/replicate-jhusson-match.sql" dialect="PostgreSQL" />
-    <file url="file://$PROJECT_DIR$/integrations/sed-geochemistry-project/samples.sql" dialect="PostgreSQL" />
     <file url="PROJECT" dialect="PostgreSQL" />
   </component>
 </project>
