@@ -1,5 +1,14 @@
-exports.pg = {
+/*exports.pg = {
   connectionString: process.env.MACROSTRAT_DATABASE,
+};
+*/
+
+exports.pg = {
+  host: process.env.host,
+  port: process.env.port,
+  user: process.env.user,
+  password: process.env.password,
+  database: process.env.database
 };
 
 exports.postgresDatabases = {
