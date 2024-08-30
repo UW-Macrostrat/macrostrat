@@ -29,8 +29,6 @@ module.exports = function (req, res, next, cb) {
     LEFT JOIN macrostrat_temp.timescales ON timescale_id=timescales.id
     `;
 
-
-
   //updated params back to dict
   let params = {}
   let where = []
