@@ -1,10 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="SqlDialectMappings">
-    <file url="file://$PROJECT_DIR$/cli/macrostrat/cli/ad-hoc-migrations/rotation-cache-cleanup.sql" dialect="PostgreSQL" />
-    <file url="file://$PROJECT_DIR$/cli/macrostrat/cli/fixtures/09-ingest-process.sql" dialect="PostgreSQL" />
-    <file url="file://$PROJECT_DIR$/cli/macrostrat/cli/subsystems/paleogeography/corelle/fixtures/01-corelle-macrostrat.sql" dialect="PostgreSQL" />
     <file url="PROJECT" dialect="PostgreSQL" />
-    <file url="file://$PROJECT_DIR$/cli/macrostrat/cli/database/migrations/update_macrostrat/03-primary-key-seq.sql" dialect="PostgreSQL" />
   </component>
 </project>
