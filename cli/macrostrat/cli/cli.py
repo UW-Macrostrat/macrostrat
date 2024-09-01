@@ -139,9 +139,6 @@ def environments():
 main.add_typer(cfg_app)
 
 
-main.add_typer(v2_app, name="v2", deprecated=True)
-
-
 @main.command(
     context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
     name="run",
@@ -264,8 +261,13 @@ app = load_paleogeography_subsystem(app, main, db_subsystem)
 # Add other subsystems (temporary)
 from .subsystems.mapboard import MapboardSubsystem
 
-if mapboard_url := getattr(settings, "mapboard_database", None):
-    app.subsystems.add(MapboardSubsystem(app))
+if subsystems.get("mapboard", False):
+    if mapboard_url := getattr(settings, "mapboard_database", None):
+        app.subsystems.add(MapboardSubsystem(app))
+    else:
+        app.console.print(
+            "Mapboard subsystem enabled, but no mapboard_database setting found"
+        )
 
 
 app.subsystems.add(MacrostratAPISubsystem(app))
@@ -310,6 +312,9 @@ app.subsystems.run_hook("add-commands", main)
 def _vi_command(ctx: typer.Context):
     """Macrostrat version 1 commands"""
     v1_cli(ctx.args)
+
+
+main.add_typer(v2_app, name="v2", deprecated=True)
 
 
 # main.add_click_command(v1_cli, name="v1")
