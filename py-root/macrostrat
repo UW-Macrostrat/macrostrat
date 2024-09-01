@@ -1,60 +1,9 @@
 #!/usr/bin/env bash
-# Run in this script's virtual environment
-# Get Poetry's virtual environment path
 
+# This command is deprecated, go to the actual one
 
-if [ -x "$(command -v poetry)" ]; then
-  # Get script directory (reading symlink)
-  SCRIPT_DIR="$(cd "$(dirname "$(readlink "$0")")" && pwd)"
+BIN_DIR="$(cd "$(dirname "$(readlink "$0")")" && cd ../bin && pwd)"
 
-  # If we've defined our own root directory, use that instead
-  if [ -n "$MACROSTRAT_PYROOT" ] ; then
-    # Print a warning that this might be a bad idea (in yellow)
-    echo -e "\033[33mMACROSTRAT_PYROOT: $MACROSTRAT_PYROOT
-  Using a custom Python root is not recommended for most users of Macrostrat's CLI\033[0m"
+export MACROSTRAT_SHOULD_REINSTALL=1
+$BIN_DIR/macrostrat "$@"
 
-    if [ ! -d "$MACROSTRAT_PYROOT" ] ; then
-      echo -e "\033[31mMACROSTRAT_PYROOT directory does not exist\033[0m"
-      exit 1
-    fi
-
-    if [ ! -f "$MACROSTRAT_PYROOT/pyproject.toml" ] ; then
-      # Print error in red
-      echo -e "\033[31mMACROSTRAT_PYROOT does not contain a pyproject.toml file\033[0m"
-      exit 1
-    fi
-
-    SCRIPT_DIR="$MACROSTRAT_PYROOT"
-  fi
-
-  # If first argument is "poetry", run poetry directly
-  # Set the poetry root directory to the script directory
-  if [ "$1" = "poetry" ]; then
-    shift
-    poetry --directory "$SCRIPT_DIR" "$@"
-    exit $?
-  fi
-
-  if [ "$1" = "install" ]; then
-    shift
-    poetry --directory "$SCRIPT_DIR" install "$@"
-    exit $?
-  fi
-
-  VIRTUAL_ENV=$(poetry --directory "$SCRIPT_DIR" env info --path)
-
-  if [ -z "$VIRTUAL_ENV" ]; then
-    echo -e "Could not find Poetry virtual environment. Please run \033[36mmacrostrat install\033[0m."
-    exit 1
-  fi
-
-  # Activate the virtual environment
-  export PATH="$VIRTUAL_ENV/bin:$PATH"
-
-  echo $(which macrostrat)
-
-  $VIRTUAL_ENV/bin/macrostrat "$@"
-else
-  echo -e "\033[31mCould not find Poetry executable.\033[0m"
-  exit 1
-fi

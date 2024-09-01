@@ -37,6 +37,7 @@ help_text = f"""[bold]Macrostrat[/] control interface
 Active environment: [bold cyan]{environ.get('MACROSTRAT_ENV') or 'None'}[/]
 """
 
+
 main = app.control_command(add_completion=True, rich_markup_mode="rich", help=help_text)
 
 main.add_typer(db_app, name="database", short_help="Manage the Macrostrat database")

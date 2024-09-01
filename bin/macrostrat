@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+# Run in this script's virtual environment
+# Get Poetry's virtual environment path
+
+install_loc=/usr/local/bin/macrostrat
+
+## TODO: move some of these admonitions into the Python app itself.
+## We have some cases where the location of the Macrostrat command might have changed
+if [ -n "$MACROSTRAT_SHOULD_REINSTALL" ]; then
+  echo -e "\033[33mMacrostrat command location has changed. Please run \033[36mmacrostrat install\033[33m to update it.\033[0m"
+fi
+
+if [ -z "$MACROSTRAT_SHOULD_REINSTALL" ]; then
+  if [ -x "$(command -v macrostrat)" ]; then
+    install_loc=$(command -v macrostrat)
+  fi
+  # If the command is not found, we should ask the user to install it
+  if [ ! -f "$install_loc" ]; then
+    MACROSTRAT_SHOULD_REINSTALL=1
+    echo -e "\033[33mMacrostrat command not found on path. Please run \033[36mmacrostrat install\033[33m to install it.\033[0m"
+  fi
+fi
+
+if [ -x "$(command -v poetry)" ]; then
+  # Get script directory (reading symlink)
+  SCRIPT_DIR="$(cd "$(dirname "$(readlink "$0")")" && cd ../cli && pwd)"
+
+  # If we've defined our own root directory, use that instead
+  if [ -n "$MACROSTRAT_PYROOT" ] ; then
+    # Print a warning that this might be a bad idea (in yellow)
+    echo -e "\033[33mMACROSTRAT_PYROOT: $MACROSTRAT_PYROOT
+  Using a custom Python root is not recommended for most users of Macrostrat's CLI\033[0m"
+
+    if [ ! -d "$MACROSTRAT_PYROOT" ] ; then
+      echo -e "\033[31mMACROSTRAT_PYROOT directory does not exist\033[0m"
+      exit 1
+    fi
+
+    if [ ! -f "$MACROSTRAT_PYROOT/pyproject.toml" ] ; then
+      # Print error in red
+      echo -e "\033[31mMACROSTRAT_PYROOT does not contain a pyproject.toml file\033[0m"
+      exit 1
+    fi
+
+    SCRIPT_DIR="$MACROSTRAT_PYROOT"
+  fi
+
+  # If first argument is "poetry", run poetry directly
+  # Set the poetry root directory to the script directory
+  if [ "$1" = "poetry" ]; then
+    shift
+    poetry --directory "$SCRIPT_DIR" "$@"
+    exit $?
+  fi
+
+  if [ "$1" = "install" ]; then
+    # If the macrostrat command is not installed on the path, install it
+    if [ -n "$MACROSTRAT_SHOULD_REINSTALL" ]; then
+      echo -e "\033[33mInstalling macrostrat command to $install_loc\033[0m"
+      # If we cannot write the file prompt to re-run with sudo
+      if [ ! -w "$(dirname "$install_loc")" ]; then
+        echo -e "\033[31mCannot write to $install_loc. Please run \033[36msudo macrostrat install\033[0m."
+        exit 1
+      fi
+      ln -s "$install_loc" /usr/local/bin/macrostrat
+    fi
+
+    shift
+    poetry --directory "$SCRIPT_DIR" install "$@"
+    exit $?
+  fi
+
+  VIRTUAL_ENV=$(poetry --directory "$SCRIPT_DIR" env info --path)
+
+  if [ -z "$VIRTUAL_ENV" ]; then
+    echo -e "Could not find Poetry virtual environment. Please run \033[36mmacrostrat install\033[0m."
+    exit 1
+  fi
+
+  # Activate the virtual environment
+  export PATH="$VIRTUAL_ENV/bin:$PATH"
+
+  $VIRTUAL_ENV/bin/macrostrat "$@"
+else
+  echo -e "\033[31mCould not find Poetry executable.\033[0m"
+  exit 1
+fi
