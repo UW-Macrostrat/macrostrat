@@ -54,6 +54,8 @@ async def _pg_dump_to_file(dumpfile: Path, *args, **kwargs):
     # Open dump file as an async stream
     async with aiofiles.open(dumpfile, mode="wb") as dest:
         await asyncio.gather(
-            asyncio.create_task(print_stream_progress(proc.stdout, dest)),
+            asyncio.create_task(
+                print_stream_progress(proc.stdout, dest, prefix="Dumped")
+            ),
             asyncio.create_task(print_stdout(proc.stderr)),
         )

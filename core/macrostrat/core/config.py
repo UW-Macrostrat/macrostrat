@@ -60,11 +60,18 @@ if elevation_database := getattr(settings, "elevation_database", None):
 # Set environment variables
 url = make_url(PG_DATABASE)
 
-environ["PGPASSWORD"] = url.password
 environ["PGHOST"] = url.host
 environ["PGPORT"] = str(url.port)
-environ["PGUSER"] = url.username
-environ["PGDATABASE"] = url.database
+
+for v in ("PGPASSWORD", "POSTGRES_PASSWORD"):
+    environ[v] = url.password
+
+for v in ("PGUSER", "POSTGRES_USER"):
+    environ[v] = url.username
+
+for v in ("PGDATABASE", "POSTGRES_DB"):
+    environ[v] = url.database
+
 
 environ["PG_DATABASE_CONTAINER"] = getattr(
     settings, "pg_database_container", "postgis/postgis:15-3.4"
@@ -110,3 +117,17 @@ MYSQL_DATABASE = getattr(settings, "mysql_database", None)
 settings.srcroot = Path(__file__).parent.parent.parent.parent
 
 environ["MACROSTRAT_ROOT"] = str(settings.srcroot)
+
+# Settings for local installation
+
+# Used for local running of Macrostrat
+environ["MACROSTRAT_DB_PORT"] = str(url.port)
+
+if srcroot := getattr(settings, "api_srcroot", None):
+    environ["MACROSTRAT_API_SRC"] = srcroot
+
+if srcroot := getattr(settings, "tileserver_srcroot", None):
+    environ["MACROSTRAT_TILESERVER_SRC"] = srcroot
+
+if srcroot := getattr(settings, "api_v3_srcroot", None):
+    environ["MACROSTRAT_API_V3_SRC"] = srcroot
