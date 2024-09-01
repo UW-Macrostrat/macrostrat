@@ -140,7 +140,7 @@ main.add_typer(cfg_app)
 
 main.add_typer(v2_app, name="v2")
 
-from .criticalmaas.importer import import_criticalmaas
+from .subsystems.criticalmaas.importer import import_criticalmaas
 
 
 @main.command(name="import-criticalmaas")
