@@ -116,28 +116,6 @@ def _available_environments(environments):
     return res
 
 
-def local_install(path: Path, lock: bool = False):
-    kwargs = dict(
-        cwd=path.expanduser().resolve(),
-        env={**environ, "POETRY_VIRTUALENVS_CREATE": "False"},
-    )
-
-    if lock:
-        run("poetry", "lock", "--no-update", **kwargs)
-
-    run("poetry", "install", **kwargs)
-
-
-@main.command()
-def install(lock: bool = False):
-    """Install Macrostrat subsystems into the Python root.
-
-    This is currently hard-coded for development purposes, but
-    this will be changed in the future.
-    """
-    local_install(Path(settings.srcroot) / "py-root", lock=lock)
-
-
 cfg_app = Typer(name="config", short_help="Manage configuration")
 
 
@@ -324,9 +302,34 @@ main.add_typer(
     self_app,
     name="self",
     short_help="Manage the Macrostrat CLI itself",
+    rich_help_panel="Meta",
 )
 
 app.subsystems.run_hook("add-commands", main)
+
+
+@main.command(rich_help_panel="Meta")
+def poetry():
+    """[cyan]poetry[/] CLI wrapper"""
+    raise RuntimeError("This command is currently implemented in a wrapping script")
+
+
+# def local_install(path: Path, lock: bool = False):
+#     kwargs = dict(
+#         cwd=path.expanduser().resolve(),
+#         env={**environ, "POETRY_VIRTUALENVS_CREATE": "False"},
+#     )
+#
+#     if lock:
+#         run("poetry", "lock", "--no-update", **kwargs)
+#
+#     run("poetry", "install", **kwargs)
+
+
+@main.command(rich_help_panel="Meta")
+def install():
+    """Install Macrostrat dependencies"""
+    raise RuntimeError("This command is currently implemented in a wrapping script")
 
 
 # Add the v1 CLI
