@@ -140,6 +140,7 @@ main.add_typer(cfg_app)
 
 main.add_typer(v2_app, name="v2")
 
+
 from .criticalmaas.importer import import_criticalmaas
 
 
@@ -261,19 +262,18 @@ except ImportError as err:
 app = load_paleogeography_subsystem(app, main, db_subsystem)
 
 
-# Add other subsystems (temporary)
-from .subsystems.mapboard import MapboardSubsystem
-
 if mapboard_url := getattr(settings, "mapboard_database", None):
+    from .subsystems.mapboard import MapboardSubsystem
+
     app.subsystems.add(MapboardSubsystem(app))
 
 
 app.subsystems.add(MacrostratAPISubsystem(app))
 
-# Add SGP subsystem (temporary)
-from .subsystems.sgp import sgp
+if sgp_url := getattr(settings, "sgp_database", None):
+    from .subsystems.sgp import sgp
 
-main.add_typer(sgp)
+    main.add_typer(sgp, rich_help_panel="Subsystems")
 
 app.finish_loading_subsystems()
 
@@ -292,7 +292,6 @@ def inspect():
 main.add_typer(
     self_app,
     name="self",
-    rich_help_panel="Subsystems",
     short_help="Manage the Macrostrat CLI itself",
 )
 
