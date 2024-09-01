@@ -39,7 +39,10 @@ Active environment: [bold cyan]{environ.get('MACROSTRAT_ENV') or 'None'}[/]
 
 main = app.control_command(add_completion=True, rich_markup_mode="rich", help=help_text)
 
-main.add_typer(db_app, name="db", short_help="Manage the Macrostrat database")
+main.add_typer(db_app, name="database", short_help="Manage the Macrostrat database")
+main.add_typer(
+    db_app, name="db", short_help="Manage the Macrostrat database", deprecated=True
+)
 
 
 @main.command()
@@ -136,7 +139,7 @@ def environments():
 main.add_typer(cfg_app)
 
 
-main.add_typer(v2_app, name="v2")
+main.add_typer(v2_app, name="v2", deprecated=True)
 
 
 @main.command(
@@ -249,8 +252,10 @@ if subsystems.get("criticalmaas", False):
 
     main.add_typer(
         criticalmaas_app,
+        name="criticalmaas",
         rich_help_panel="Subsystems",
         short_help="Integrate with the CriticalMAAS program",
+        deprecated=True,
     )
 
 app = load_paleogeography_subsystem(app, main, db_subsystem)
@@ -294,14 +299,20 @@ def inspect():
 main.add_typer(
     self_app,
     name="self",
-    rich_help_panel="Subsystems",
     short_help="Manage the Macrostrat CLI itself",
 )
 
 app.subsystems.run_hook("add-commands", main)
 
 
-main.add_click_command(v1_cli, name="v1")
+# Add the v1 CLI
+@main.command(name="v1", deprecated=True)
+def _vi_command(ctx: typer.Context):
+    """Macrostrat version 1 commands"""
+    v1_cli(ctx.args)
+
+
+# main.add_click_command(v1_cli, name="v1")
 
 
 @self_app.command(name="settings-dir")
