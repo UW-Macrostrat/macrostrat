@@ -63,7 +63,11 @@ main = app.control_command(
 
 main.add_typer(db_app, name="database", short_help="Manage the Macrostrat database")
 main.add_typer(
-    db_app, name="db", short_help="Manage the Macrostrat database", deprecated=True
+    db_app,
+    name="db",
+    short_help="Manage the Macrostrat database",
+    deprecated=True,
+    hidden=True,
 )
 
 
