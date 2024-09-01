@@ -2,12 +2,18 @@
 # Run in this script's virtual environment
 # Get Poetry's virtual environment path
 
-install_loc=/usr/local/bin/macrostrat
+# Set the default install location
 
-## TODO: move some of these admonitions into the Python app itself.
-## We have some cases where the location of the Macrostrat command might have changed
-if [ -n "$MACROSTRAT_SHOULD_REINSTALL" ]; then
-  echo -e "\033[33mMacrostrat command location has changed. Please run \033[36mmacrostrat install\033[33m to update it.\033[0m"
+INSTALL_PATH="${INSTALL_PATH:-/usr/local}"
+MACROSTRAT_INSTALL_PATH="${MACROSTRAT_INSTALL_PATH:-$INSTALL_PATH}"
+
+# THIS FILE LOCATION
+this_file=$(readlink -f "${BASH_SOURCE[0]}")
+
+# Set the default install location
+install_loc=$(command -v macrostrat)
+if [ -z "$install_loc" ]; then
+  install_loc=${MACROSTRAT_INSTALL_PATH}/bin/macrostrat
 fi
 
 if [ -z "$MACROSTRAT_SHOULD_REINSTALL" ]; then
@@ -16,21 +22,17 @@ if [ -z "$MACROSTRAT_SHOULD_REINSTALL" ]; then
   fi
   # If the command is not found, we should ask the user to install it
   if [ ! -f "$install_loc" ]; then
-    MACROSTRAT_SHOULD_REINSTALL=1
-    echo -e "\033[33mMacrostrat command not found on path. Please run \033[36mmacrostrat install\033[33m to install it.\033[0m"
+    MACROSTRAT_SHOULD_REINSTALL="Macrostrat command not found on path."
   fi
 fi
 
 if [ -x "$(command -v poetry)" ]; then
   # Get script directory (reading symlink)
-  SCRIPT_DIR="$(cd "$(dirname "$(readlink "$0")")" && cd ../cli && pwd)"
+  SCRIPT_DIR="$(cd "$(dirname "$this_file")" && cd ../cli && pwd)"
 
   # If we've defined our own root directory, use that instead
   if [ -n "$MACROSTRAT_PYROOT" ] ; then
     # Print a warning that this might be a bad idea (in yellow)
-    echo -e "\033[33mMACROSTRAT_PYROOT: $MACROSTRAT_PYROOT
-  Using a custom Python root is not recommended for most users of Macrostrat's CLI\033[0m"
-
     if [ ! -d "$MACROSTRAT_PYROOT" ] ; then
       echo -e "\033[31mMACROSTRAT_PYROOT directory does not exist\033[0m"
       exit 1
@@ -58,11 +60,15 @@ if [ -x "$(command -v poetry)" ]; then
     if [ -n "$MACROSTRAT_SHOULD_REINSTALL" ]; then
       echo -e "\033[33mInstalling macrostrat command to $install_loc\033[0m"
       # If we cannot write the file prompt to re-run with sudo
+      SUDO=""
       if [ ! -w "$(dirname "$install_loc")" ]; then
-        echo -e "\033[31mCannot write to $install_loc. Please run \033[36msudo macrostrat install\033[0m."
-        exit 1
+        # If user can upgrade to root, use sudo
+        SUDO="sudo"
+        echo -e "\033[31mCannot write to $install_loc. You may be asked for your password.\033[0m"
+        # Check that sudo works
+        sudo bash -c "echo ''" || echo "Cannot run sudo. Attempting to install without sudo." && SUDO=""
       fi
-      ln -s "$install_loc" /usr/local/bin/macrostrat
+      $SUDO ln -sf "$this_file" "$install_loc"
     fi
 
     shift

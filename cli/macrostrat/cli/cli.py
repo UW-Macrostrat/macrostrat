@@ -34,11 +34,32 @@ settings = app.settings
 
 help_text = f"""[bold]Macrostrat[/] control interface
 
+
 Active environment: [bold cyan]{environ.get('MACROSTRAT_ENV') or 'None'}[/]
 """
 
+warnings = []
+if not settings.pg_database:
+    warnings.append("No database URL found in settings")
+reinstall_warning = environ.get("MACROSTRAT_SHOULD_REINSTALL")
+if reinstall_warning is not None:
+    if len(reinstall_warning) < 2:
+        reinstall_warning = "Macrostrat needs to be reinstalled."
+    warnings.append(f"{reinstall_warning} Please run [bold cyan]macrostrat install[/].")
+if environ.get("MACROSTRAT_PYROOT") is not None:
+    warnings.append(
+        "Using a custom [bold cyan]MACROSTRAT_PYROOT[/]. This is not recommended for normal operation."
+    )
 
-main = app.control_command(add_completion=True, rich_markup_mode="rich", help=help_text)
+if warnings:
+    help_text += "\n[bold yellow]Warnings[/]:\n"
+    help_text += "\n".join([f"- [yellow]{w}[/]" for w in warnings]) + "\n"
+
+main = app.control_command(
+    add_completion=True,
+    rich_markup_mode="rich",
+    help=help_text,
+)
 
 main.add_typer(db_app, name="database", short_help="Manage the Macrostrat database")
 main.add_typer(
