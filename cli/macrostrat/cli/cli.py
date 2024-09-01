@@ -1,5 +1,4 @@
 import json
-from asyncio import run as asyncio_run
 from os import environ
 from pathlib import Path
 from typing import Optional
@@ -39,7 +38,6 @@ Active environment: [bold cyan]{environ.get('MACROSTRAT_ENV') or 'None'}[/]
 """
 
 main = app.control_command(add_completion=True, rich_markup_mode="rich", help=help_text)
-
 
 main.add_typer(db_app, name="db", short_help="Manage the Macrostrat database")
 
@@ -140,13 +138,6 @@ main.add_typer(cfg_app)
 
 main.add_typer(v2_app, name="v2")
 
-from .subsystems.criticalmaas.importer import import_criticalmaas
-
-
-@main.command(name="import-criticalmaas")
-def _import_criticalmaas(file: Path):
-    asyncio_run(import_criticalmaas(file))
-
 
 @main.command(
     context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
@@ -175,16 +166,6 @@ def _run(
 # This organization is a bit awkward, and we may change it eventually.
 try:
     from macrostrat.map_integration import cli as map_app
-
-    @map_app.command(name="write-criticalmaas")
-    def write_map_geopackage(
-        map: str = Argument(...), filename: Path = None, overwrite: bool = False
-    ):
-        """Write a geopackage from a map"""
-        from .io.criticalmaas import write_map_geopackage
-
-        db = get_db()
-        write_map_geopackage(db, map, filename, overwrite=overwrite)
 
     main.add_typer(
         map_app,
@@ -257,6 +238,20 @@ try:
 
 except ImportError as err:
     print("Could not import tileserver subsystem")
+
+# Get subsystems config
+subsystems = getattr(settings, "subsystems", {})
+if subsystems.get("criticalmaas", False):
+    # TODO: add a hint somewhere for which subsystems are disabled
+    # - This could also provide ways to dynamically load them and report
+    #   errors etc.
+    from .subsystems.criticalmaas import app as criticalmaas_app
+
+    main.add_typer(
+        criticalmaas_app,
+        rich_help_panel="Subsystems",
+        short_help="Integrate with the CriticalMAAS program",
+    )
 
 app = load_paleogeography_subsystem(app, main, db_subsystem)
 
