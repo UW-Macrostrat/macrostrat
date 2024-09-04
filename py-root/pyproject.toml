@@ -12,6 +12,7 @@ python = "^3.11"
 "macrostrat.map_integration" = { path = "../map-integration", develop = true }
 "criticalmaas.ta1_geopackage" = "^0.2.0" 
 macrostrat-utils = "^1.2.1"
+macrostrat-package-tools = "^1.0.0"
 
 [tool.poetry.dev-dependencies]
 "macrostrat.package_tools" = "^1.0.0"

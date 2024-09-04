@@ -1,13 +1,12 @@
-import asyncio
 from urllib.parse import quote
 import sys
 
-from aiofiles.threadpool.binary import AsyncBufferedIOBase
 from macrostrat.utils import get_logger
 from rich.console import Console
 from sqlalchemy.engine import Engine
 from sqlalchemy.engine.url import URL
-from sqlalchemy_utils import create_database, database_exists
+from sqlalchemy_utils import create_database, database_exists, drop_database
+from macrostrat.core.exc import MacrostratError
 
 
 console = Console()
@@ -20,53 +19,64 @@ def _docker_local_run_args(postgres_container: str = "postgres:15"):
         "docker",
         "run",
         "-i",
+        "--attach",
+        "stdin",
+        "--attach",
+        "stdout",
+        "--attach",
+        "stderr",
+        "--log-driver",
+        "none",
         "--rm",
-        "--network",
-        "host",
         postgres_container,
     ]
 
 
-def _create_database_if_not_exists(_url: URL, create=False):
+def _create_database_if_not_exists(
+    _url: URL, *, create=False, allow_exists=True, overwrite=False
+):
     database = _url.database
+    if overwrite:
+        create = True
     db_exists = database_exists(_url)
     if db_exists:
-        console.print(f"Database [bold cyan]{database}[/] already exists")
+        msg = f"Database [bold underline]{database}[/] already exists"
+        if overwrite:
+            console.print(f"{msg}, overwriting")
+            drop_database(_url)
+            db_exists = False
+        elif not allow_exists:
+            raise MacrostratError(msg, details="Use `--overwrite` to overwrite")
+        else:
+            console.print(msg)
 
     if create and not db_exists:
         console.print(f"Creating database [bold cyan]{database}[/]")
         create_database(_url)
 
     if not db_exists and not create:
-        raise ValueError(
+        raise MacrostratError(
             f"Database [bold cyan]{database}[/] does not exist. "
             "Use `--create` to create it."
         )
 
 
 def _create_command(
-    engine: Engine,
     *command,
-    args=[],
-    prefix=None | list[str],
-    container="postgres:16",
+    container=None | str,
 ):
-    command_prefix = prefix or _docker_local_run_args(container)
-    _cmd = [*command_prefix, *command, str(engine.url), *args]
+    """Create a command for operating on a database"""
+    _args = []
+    if container is not None:
+        _args = _docker_local_run_args(container)
 
-    log.info(" ".join(_cmd))
-
-    # Replace asterisks with the real password (if any). This is kind of backwards
-    # but it works.
-    if "***" in str(engine.url) and engine.url.password is not None:
-        _cmd = [
-            *command_prefix,
-            *command,
-            raw_database_url(engine.url),
-            *args,
-        ]
-
-    return _cmd
+    for arg in command:
+        if isinstance(arg, Engine):
+            arg = arg.url
+        if isinstance(arg, URL):
+            arg = raw_database_url(arg)
+        _args.append(arg)
+    return _args
 
 
 async def print_stream_progress(
@@ -109,4 +119,8 @@ async def print_stdout(stream: asyncio.StreamReader):
 
 
 def raw_database_url(url: URL):
-    return str(url).replace("***", quote(url.password, safe=""))
+    """Replace the password asterisks with the actual password, in order to pass to other commands."""
+    _url = str(url)
+    if "***" not in _url or url.password is None:
+        return _url
+    return _url.replace("***", quote(url.password, safe=""))

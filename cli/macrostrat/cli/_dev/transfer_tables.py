@@ -1,5 +1,5 @@
 import asyncio
-from .utils import print_stream_progress, print_stdout
+from .stream_utils import print_stream_progress, print_stdout
 from sqlalchemy.engine import Engine
 from .dump_database import _pg_dump
 from .restore_database import _pg_restore
