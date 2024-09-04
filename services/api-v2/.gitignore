@@ -11,12 +11,13 @@ npm-debug.log
 node_modules
 v1/node_modules/*
 v1/npm-debug.log
-
 v1/utilities/scripts/credentials.py
+.idea
+venv
 
-credentials.js
-!v1/credentials.js
-!v2/credentials.js
+!v2/credentials.ts
+credentials.ts
+!v1/credentials.ts
 v2/utilities/scripts/credentials.py
 
 .DS_Store
@@ -31,3 +32,4 @@ Icon
 # Files that might appear on external disk
 .Spotlight-V100
 .Trashes
+.yarn/install-state.gz
