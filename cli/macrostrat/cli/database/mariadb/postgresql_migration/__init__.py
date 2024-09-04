@@ -78,7 +78,7 @@ def migrate_mariadb_to_postgresql(
         if should_proceed:
             raise ValueError("Data comparison failed. Aborting migration.")
         else:
-            print("check-data completed!")
+            print("\ncheck-data completed!")
 
 
     if MariaDBMigrationStep.FINALIZE in steps:
