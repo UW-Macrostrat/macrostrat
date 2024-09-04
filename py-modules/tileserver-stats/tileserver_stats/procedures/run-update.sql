@@ -11,7 +11,7 @@ WITH a AS (
 		app_version,
 		date_trunc('day', time) date
 	FROM requests
-  WHERE req_id > (SELECT last_row_id FROM stats.processing_status)
+  WHERE req_id > (SELECT last_row_id FROM stats.processing_status ORDER BY last_row_time DESC LIMIT 1)
 	ORDER BY req_id
 	LIMIT 100000
 ),
@@ -37,7 +37,7 @@ reduced_complexity_locations AS (
     layer,
     ext,
     CASE WHEN z > 8 THEN
-      x >> (z - 8) -- Bit shift right by the difference between the current zoom level and 8 
+      x >> (z - 8) -- Bit shift right by the difference between the current zoom level and 8
     ELSE x END x,
     CASE WHEN z > 8 THEN
       y >> (z - 8)
@@ -62,13 +62,8 @@ c AS (
   DO UPDATE SET
     num_requests = stats.location_index.num_requests + EXCLUDED.num_requests
 ),
-max_row AS (
-  SELECT max(req_id) id FROM a
-),
 d AS (
-  UPDATE stats.processing_status
-  SET last_row_id = id
-  FROM max_row
-  WHERE id IS NOT NULL
+  INSERT INTO stats.processing_status (last_row_id, last_row_time)
+  SELECT req_id, time FROM requests WHERE req_id = (SELECT max(req_id) FROM a)
 )
 SELECT max(req_id) last_row_id, count(*) n_rows FROM a;
