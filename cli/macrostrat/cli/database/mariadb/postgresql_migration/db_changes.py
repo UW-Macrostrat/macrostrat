@@ -215,6 +215,7 @@ def compare_data_counts(db1_rows, db2_rows, db1_columns, db2_columns, db1, db2):
 
 
     console.print("\n[bold]Checking column counts...")
+    array = ['cols', 'col_areas', 'environs','intervals' ,'lith_atts' ,'measures', 'sections', 'strat_names', 'units', 'unit_environs', 'unit_strat_names', 'lookup_strat_names', 'strat_tree']
 
     if len(col_count_difference) == 0:
         success(f"All column counts in all tables are the same in {db1} and {db2}!\n")
@@ -224,7 +225,7 @@ def compare_data_counts(db1_rows, db2_rows, db1_columns, db2_columns, db1, db2):
             f"Columns for {len(col_count_difference)} tables successfully copied over from macrostrat (PostgreSQL) into {db2}, to retain data!"
         )
         print_col_counts(col_count_difference)
-    elif list(col_count_difference.keys()) == ['cols', 'col_areas', 'environs','intervals' ,'lith_atts' ,'measures', 'sections', 'strat_names', 'units', 'unit_environs', 'unit_strat_names', 'lookup_strat_names', 'strat_tree']:
+    elif list(col_count_difference.keys()).sort() == array.sort():
         success(
             f"Columns for {len(col_count_difference)-1} are greater in {db1} rather than {db2}. This indicates data retention!"
         )
