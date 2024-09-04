@@ -24,9 +24,9 @@ module.exports = function (req, res, next, cb) {
      interval_type AS int_type,
     ${color},
     STRING_AGG(timescales.timescale::text || '--' || timescales.id::text, '|') AS timescales
-    FROM macrostrat_temp.intervals 
-    LEFT JOIN macrostrat_temp.timescales_intervals ON interval_id=intervals.id 
-    LEFT JOIN macrostrat_temp.timescales ON timescale_id=timescales.id
+    FROM macrostrat.intervals 
+    LEFT JOIN macrostrat.timescales_intervals ON interval_id=intervals.id 
+    LEFT JOIN macrostrat.timescales ON timescale_id=timescales.id
     `;
 
 

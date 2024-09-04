@@ -14,7 +14,7 @@ module.exports = function (req, res, next, cb) {
     if (req.query.rule === "down") {
       if (req.query.strat_name) {
         where.push(
-          "parent IN (SELECT strat_name_id FROM macrostrat_temp.lookup_strat_names WHERE strat_name = :strat_name) OR strat_name_id = ANY(SELECT strat_name_id FROM macrostrat_temp.lookup_strat_names WHERE strat_name = :strat_name)",
+          "parent IN (SELECT strat_name_id FROM macrostrat.lookup_strat_names WHERE strat_name = :strat_name) OR strat_name_id = ANY(SELECT strat_name_id FROM macrostrat.lookup_strat_names WHERE strat_name = :strat_name)",
         );
         params["strat_name"] = req.query.strat_name;
       } else if (req.query.strat_name_id) {
@@ -26,19 +26,19 @@ module.exports = function (req, res, next, cb) {
         );
       } else if (req.query.concept_id) {
         where.push(
-          "parent IN (( SELECT DISTINCT strat_name_id FROM macrostrat_temp.lookup_strat_names WHERE concept_id = ANY(:concept_id) )) OR l.strat_name_id = ANY(( SELECT DISTINCT strat_name_id FROM macrostrat_temp.lookup_strat_names WHERE concept_id IN (:concept_id) ))",
+          "parent IN (( SELECT DISTINCT strat_name_id FROM macrostrat.lookup_strat_names WHERE concept_id = ANY(:concept_id) )) OR l.strat_name_id = ANY(( SELECT DISTINCT strat_name_id FROM macrostrat.lookup_strat_names WHERE concept_id IN (:concept_id) ))",
         );
         params["concept_id"] = larkin.parseMultipleIds(req.query.concept_id);
       }
     } else if (req.query.rule === "all") {
       if (req.query.strat_name) {
         where.push(
-          "tree = (SELECT tree FROM macrostrat_temp.lookup_strat_names WHERE strat_name = :strat_name)",
+          "tree = (SELECT tree FROM macrostrat.lookup_strat_names WHERE strat_name = :strat_name)",
         );
         params["strat_name"] = req.query.strat_name;
       } else if (req.query.strat_name_id) {
         where.push(
-          "tree = (SELECT tree FROM macrostrat_temp.lookup_strat_names WHERE strat_name_id IN (:strat_name_id))",
+          "tree = (SELECT tree FROM macrostrat.lookup_strat_names WHERE strat_name_id IN (:strat_name_id))",
         );
         params["strat_name_id"] = larkin.parseMultipleIds(
           req.query.strat_name_id,
@@ -69,7 +69,7 @@ module.exports = function (req, res, next, cb) {
 
     if (req.query.interval_name) {
       where.push(
-        "early_age > (SELECT age_top from macrostrat_temp.intervals where interval_name like :interval_name) and late_age < (SELECT age_bottom from macrostrat_temp.intervals where interval_name like :interval_name2)",
+        "early_age > (SELECT age_top from macrostrat.intervals where interval_name like :interval_name) and late_age < (SELECT age_bottom from macrostrat.intervals where interval_name like :interval_name2)",
       );
       params["interval_name"] = larkin.parseMultipleStrings(
         req.query.interval_name,
@@ -121,7 +121,7 @@ module.exports = function (req, res, next, cb) {
       COALESCE(c_interval, '') AS c_interval,
       t_units,
       ref_id
-    FROM macrostrat_temp.lookup_strat_names l
+    FROM macrostrat.lookup_strat_names l
   `;
 
   if (where.length > 0) {

@@ -8,8 +8,8 @@ module.exports = function (req, res, next, cb) {
   //There will be a discrepancy with a key in production. Updated in_proccess_cols to in_process_cols key. Values are
   //still the same.
   var sql =
-    `WITH RECURSIVE in_proc AS (SELECT count(distinct id) c,project_id from macrostrat_temp.cols where status_code='in process' group by project_id),
-               obs AS (SELECT count(distinct id) co,project_id from macrostrat_temp.cols where status_code='obsolete' group by project_id)
+    `WITH RECURSIVE in_proc AS (SELECT count(distinct id) c,project_id from macrostrat.cols where status_code='in process' group by project_id),
+               obs AS (SELECT count(distinct id) co,project_id from macrostrat.cols where status_code='obsolete' group by project_id)
     SELECT projects.id AS project_id,
            project,
            descrip,
@@ -19,9 +19,9 @@ module.exports = function (req, res, next, cb) {
            coalesce(co,0)::integer as obsolete_cols,
            COUNT(DISTINCT units_sections.unit_id)::integer AS t_units,
            round(SUM(cols.col_area)::integer,0)::integer as area
-    FROM macrostrat_temp.projects
-    LEFT JOIN macrostrat_temp.cols ON projects.id = cols.project_id
-    LEFT JOIN macrostrat_temp.units_sections ON units_sections.col_id = cols.id
+    FROM macrostrat.projects
+    LEFT JOIN macrostrat.cols ON projects.id = cols.project_id
+    LEFT JOIN macrostrat.units_sections ON units_sections.col_id = cols.id
     LEFT JOIN in_proc using (project_id)
     left join obs using (project_id)
     `;

@@ -22,8 +22,8 @@ module.exports = function (req, res, next, cb) {
       STRING_AGG(snm.ref_id::text, '|') AS refs,
       COALESCE(snm.url, '') url,
       refs.author
-     FROM macrostrat_temp.strat_names_meta snm
-     JOIN macrostrat_temp.refs ON snm.ref_id = refs.id
+     FROM macrostrat.strat_names_meta snm
+     JOIN macrostrat.refs ON snm.ref_id = refs.id
   */
     }),
     params = {};
@@ -44,7 +44,7 @@ module.exports = function (req, res, next, cb) {
     }
   } else if (req.query.strat_name_id) {
     sql +=
-      " WHERE concept_id IN (SELECT concept_id FROM macrostrat_temp.lookup_strat_names WHERE strat_name_id IN (:strat_name_ids))";
+      " WHERE concept_id IN (SELECT concept_id FROM macrostrat.lookup_strat_names WHERE strat_name_id IN (:strat_name_ids))";
     params["strat_name_ids"] = larkin.parseMultipleIds(req.query.strat_name_id);
   }
 

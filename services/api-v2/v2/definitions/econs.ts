@@ -16,9 +16,9 @@ module.exports = function (req, res, next, cb) {
        econ_class AS class, 
        econ_color AS color, 
        COUNT(distinct units_sections.unit_id) AS t_units 
-       FROM macrostrat_temp.econs 
-       LEFT JOIN macrostrat_temp.unit_econs ON unit_econs.econ_id = econs.id 
-       LEFT JOIN macrostrat_temp.units_sections ON units_sections.unit_id = unit_econs.unit_id 
+       FROM macrostrat.econs 
+       LEFT JOIN macrostrat.unit_econs ON unit_econs.econ_id = econs.id 
+       LEFT JOIN macrostrat.units_sections ON units_sections.unit_id = unit_econs.unit_id 
        `
   //changed params from array back to dict.
   let params = {};

@@ -42,7 +42,7 @@ module.exports = function (req, res, next, cb) {
       structure_type AS structure_type,
       COALESCE(structure_group::text, '') AS "group",
       structure_class AS class
-    FROM macrostrat_temp.structures
+    FROM macrostrat.structures
     ${where}
     GROUP BY structures.id
     ${limit}

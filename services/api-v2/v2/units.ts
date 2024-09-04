@@ -20,7 +20,7 @@ module.exports = function (req, res, next, cb) {
       function (callback) {
         if (req.query.interval_name) {
           params["interval_name"] = [req.query.interval_name];
-          let sql = `SELECT age_bottom, age_top, interval_name FROM macrostrat_temp.intervals WHERE interval_name = :interval_name LIMIT 1`
+          let sql = `SELECT age_bottom, age_top, interval_name FROM macrostrat.intervals WHERE interval_name = :interval_name LIMIT 1`
           larkin.queryPg("burwell",
             sql,
             params,
@@ -41,7 +41,7 @@ module.exports = function (req, res, next, cb) {
             },
           );
         } else if (req.query.int_id) {
-          let sql = "SELECT age_bottom, age_top, interval_name FROM macrostrat_temp.intervals WHERE id = :int_id LIMIT 1"
+          let sql = "SELECT age_bottom, age_top, interval_name FROM macrostrat.intervals WHERE id = :int_id LIMIT 1"
           params["int_id"] =req.query.int_id
           larkin.queryPg("burwell",
             sql,
@@ -164,7 +164,7 @@ module.exports = function (req, res, next, cb) {
         } else if (req.query.col_group_id) {
           larkin.queryPg(
               "burwell",
-            "SELECT id FROM macrostrat_temp.cols WHERE col_group_id = ANY(:col_group_ids)",
+            "SELECT id FROM macrostrat.cols WHERE col_group_id = ANY(:col_group_ids)",
             { col_group_ids: larkin.parseMultipleIds(req.query.col_group_id) },
             function (error, data) {
               callback(null, {
@@ -179,7 +179,7 @@ module.exports = function (req, res, next, cb) {
           );
         } else if (req.query.strat_name) {
           larkin.queryPg("burwell",
-            "SELECT strat_name_id FROM macrostrat_temp.lookup_strat_names WHERE strat_name LIKE :strat_name ",
+            "SELECT strat_name_id FROM macrostrat.lookup_strat_names WHERE strat_name LIKE :strat_name ",
               {'strat_name': "%" + req.query.strat_name + "%"},
             function (error, result) {
               if (error) {
@@ -203,7 +203,7 @@ module.exports = function (req, res, next, cb) {
           );
         } else if (req.query.strat_name_concept_id) {
           larkin.queryPg("burwell",
-            "SELECT id FROM macrostrat_temp.strat_names WHERE concept_id = ANY(:strat_name_concept_ids) ",
+            "SELECT id FROM macrostrat.strat_names WHERE concept_id = ANY(:strat_name_concept_ids) ",
             {
               strat_name_concept_ids: larkin.parseMultipleIds(
                 req.query.strat_name_concept_id),
@@ -302,7 +302,7 @@ module.exports = function (req, res, next, cb) {
           req.query.lith_group
         ) {
           where +=
-            " AND units.id = ANY(SELECT unit_liths.unit_id FROM macrostrat_temp.unit_liths JOIN macrostrat_temp.liths ON lith_id = liths.id WHERE ";
+            " AND units.id = ANY(SELECT unit_liths.unit_id FROM macrostrat.unit_liths JOIN macrostrat.liths ON lith_id = liths.id WHERE ";
           var lithWhere = [];
 
           if (req.query.lith) {
@@ -347,10 +347,10 @@ module.exports = function (req, res, next, cb) {
           where += `
           AND units.id = ANY(
             SELECT unit_liths.unit_id
-            FROM macrostrat_temp.unit_liths
-            JOIN macrostrat_temp.liths ON lith_id = liths.id
-            JOIN macrostrat_temp.unit_liths_atts ON unit_liths_atts.unit_lith_id = unit_liths.id
-            JOIN macrostrat_temp.lith_atts ON unit_liths_atts.lith_att_id = lith_atts.id
+            FROM macrostrat.unit_liths
+            JOIN macrostrat.liths ON lith_id = liths.id
+            JOIN macrostrat.unit_liths_atts ON unit_liths_atts.unit_lith_id = unit_liths.id
+            JOIN macrostrat.lith_atts ON unit_liths_atts.lith_att_id = lith_atts.id
             WHERE :lith_att_field`;
           //why is the syntax lith_att)) ?
           if (req.query.lith_att_id) {
@@ -420,7 +420,7 @@ module.exports = function (req, res, next, cb) {
           req.query.environ_type
         ) {
           where +=
-            " AND units.id = ANY(SELECT unit_environs.unit_id FROM macrostrat_temp.unit_environs JOIN macrostrat_temp.environs on environ_id=environs.id WHERE ";
+            " AND units.id = ANY(SELECT unit_environs.unit_id FROM macrostrat.unit_environs JOIN macrostrat.environs on environ_id=environs.id WHERE ";
           var environWhere = [];
 
           if (req.query.environ) {
@@ -459,7 +459,7 @@ module.exports = function (req, res, next, cb) {
           req.query.econ_class
         ) {
           where +=
-            " AND units.id = ANY(SELECT unit_econs.unit_id FROM macrostrat_temp.unit_econs JOIN macrostrat_temp.econs on econ_id=econs.id WHERE :econ_field";
+            " AND units.id = ANY(SELECT unit_econs.unit_id FROM macrostrat.unit_econs JOIN macrostrat.econs on econ_id=econs.id WHERE :econ_field";
 
           if (req.query.econ_id) {
             where += " = ANY(:econ))";
@@ -484,7 +484,7 @@ module.exports = function (req, res, next, cb) {
 
         if (req.query.cltn_id) {
           where +=
-            " AND units.id = ANY(SELECT unit_id FROM macrostrat_temp.pbdb_matches WHERE collection_no = ANY(:cltn_ids))";
+            " AND units.id = ANY(SELECT unit_id FROM macrostrat.pbdb_matches WHERE collection_no = ANY(:cltn_ids))";
           params["cltn_ids"] = larkin.parseMultipleIds(req.query.cltn_id);
         }
 
@@ -527,7 +527,7 @@ module.exports = function (req, res, next, cb) {
         if (req.query.response === "long" || cb) {
           // This part deals with 'long' queries
           const colRefsSubquery = `
-          SELECT string_agg(col_refs.ref_id::text, '|') FROM macrostrat_temp.col_refs
+          SELECT string_agg(col_refs.ref_id::text, '|') FROM macrostrat.col_refs
           WHERE col_refs.col_id = cols.id`;
 
           columnList += `,
@@ -563,15 +563,15 @@ module.exports = function (req, res, next, cb) {
 
         var sql = `
         SELECT ${columnList}
-        FROM macrostrat_temp.units
-        LEFT JOIN macrostrat_temp.lookup_unit_attrs_api ON lookup_unit_attrs_api.unit_id = units.id
-        LEFT JOIN macrostrat_temp.lookup_units ON units.id = lookup_units.unit_id
-        LEFT JOIN macrostrat_temp.unit_strat_names ON unit_strat_names.unit_id=units.id
-        LEFT JOIN macrostrat_temp.units_sections ON units.id = units_sections.unit_id
-        LEFT JOIN macrostrat_temp.cols ON units_sections.col_id = cols.id
-        LEFT JOIN macrostrat_temp.col_refs ON cols.id = col_refs.col_id
-        LEFT JOIN macrostrat_temp.lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id
-        LEFT JOIN macrostrat_temp.unit_notes ON unit_notes.unit_id=units.id
+        FROM macrostrat.units
+        LEFT JOIN macrostrat.lookup_unit_attrs_api ON lookup_unit_attrs_api.unit_id = units.id
+        LEFT JOIN macrostrat.lookup_units ON units.id = lookup_units.unit_id
+        LEFT JOIN macrostrat.unit_strat_names ON unit_strat_names.unit_id=units.id
+        LEFT JOIN macrostrat.units_sections ON units.id = units_sections.unit_id
+        LEFT JOIN macrostrat.cols ON units_sections.col_id = cols.id
+        LEFT JOIN macrostrat.col_refs ON cols.id = col_refs.col_id
+        LEFT JOIN macrostrat.lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id
+        LEFT JOIN macrostrat.unit_notes ON unit_notes.unit_id=units.id
         WHERE ${where}
       ORDER BY ${orderby.length > 0 ? orderby.join(", ") + "," : ""} lookup_units.t_age ASC
       ${limit}`;

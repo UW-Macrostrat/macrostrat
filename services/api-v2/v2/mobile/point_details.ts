@@ -73,14 +73,14 @@ module.exports = function (req, res, next) {
               function (column, callbackB) {
                 var sql =
                   `SELECT units.id AS unit_id, units.strat_name, period, max_thick, min_thick, colors.unit_class, count(distinct collection_no) pbdb_cltns, lith_short AS lith
-                FROM macrostrat_temp.units
-                JOIN macrostrat_temp.colors ON colors.color::text = units.color::text
-                JOIN macrostrat_temp.units_sections ON units_sections.unit_id = units.id
-                JOIN macrostrat_temp.lookup_unit_liths ON lookup_unit_liths.unit_id=units.id
-                JOIN macrostrat_temp.lookup_unit_intervals ON units.id=lookup_unit_intervals.unit_id
-                LEFT JOIN macrostrat_temp.unit_strat_names ON unit_strat_names.unit_id=units.id
-                LEFT JOIN macrostrat_temp.lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id
-                LEFT JOIN macrostrat_temp.pbdb_matches ON pbdb_matches.unit_id=units.id and pbdb_matches.release_date < now()
+                FROM macrostrat.units
+                JOIN macrostrat.colors ON colors.color::text = units.color::text
+                JOIN macrostrat.units_sections ON units_sections.unit_id = units.id
+                JOIN macrostrat.lookup_unit_liths ON lookup_unit_liths.unit_id=units.id
+                JOIN macrostrat.lookup_unit_intervals ON units.id=lookup_unit_intervals.unit_id
+                LEFT JOIN macrostrat.unit_strat_names ON unit_strat_names.unit_id=units.id
+                LEFT JOIN macrostrat.lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id
+                LEFT JOIN macrostrat.pbdb_matches ON pbdb_matches.unit_id=units.id and pbdb_matches.release_date < now()
                 WHERE units_sections.col_id = ?
                 GROUP BY units.id, period, unit_class, lith_short
                 ORDER BY units.id ASC;`
@@ -193,14 +193,14 @@ module.exports = function (req, res, next) {
                 larkin.queryPg("burwell",
                     `
                 SELECT units.id AS unit_id, units.strat_name, period, max_thick, min_thick, colors.unit_class, count(distinct collection_no) pbdb_cltns, lith_short AS lith
-                FROM macrostrat_temp.units
-                JOIN macrostrat_temp.colors ON colors.color::text = units.color::text
-                JOIN macrostrat_temp.units_sections ON units_sections.unit_id = units.id
-                JOIN macrostrat_temp.lookup_unit_liths ON lookup_unit_liths.unit_id=units.id
-                JOIN macrostrat_temp.lookup_unit_intervals ON units.id=lookup_unit_intervals.unit_id
-                LEFT JOIN macrostrat_temp.unit_strat_names ON unit_strat_names.unit_id=units.id
-                LEFT JOIN macrostrat_temp.lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id
-                LEFT JOIN macrostrat_temp.pbdb_matches ON pbdb_matches.unit_id=units.id and pbdb_matches.release_date < now()
+                FROM macrostrat.units
+                JOIN macrostrat.colors ON colors.color::text = units.color::text
+                JOIN macrostrat.units_sections ON units_sections.unit_id = units.id
+                JOIN macrostrat.lookup_unit_liths ON lookup_unit_liths.unit_id=units.id
+                JOIN macrostrat.lookup_unit_intervals ON units.id=lookup_unit_intervals.unit_id
+                LEFT JOIN macrostrat.unit_strat_names ON unit_strat_names.unit_id=units.id
+                LEFT JOIN macrostrat.lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id
+                LEFT JOIN macrostrat.pbdb_matches ON pbdb_matches.unit_id=units.id and pbdb_matches.release_date < now()
                 WHERE units_sections.col_id = ?
                 GROUP BY units.id, period, unit_class, lith_short
                 ORDER BY units.id ASC;`,

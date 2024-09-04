@@ -11,9 +11,9 @@ module.exports = function (req, res, next, cb) {
       lith_att AS name, 
       att_type AS type, 
       COUNT(DISTINCT unit_liths.unit_id) AS t_units 
-      FROM macrostrat_temp.lith_atts 
-      LEFT JOIN macrostrat_temp.unit_liths_atts ON unit_liths_atts.lith_att_id = lith_atts.id 
-      LEFT JOIN macrostrat_temp.unit_liths ON unit_liths_atts.unit_lith_id = unit_liths.id 
+      FROM macrostrat.lith_atts 
+      LEFT JOIN macrostrat.unit_liths_atts ON unit_liths_atts.lith_att_id = lith_atts.id 
+      LEFT JOIN macrostrat.unit_liths ON unit_liths_atts.unit_lith_id = unit_liths.id 
       `,
     params = {};
 

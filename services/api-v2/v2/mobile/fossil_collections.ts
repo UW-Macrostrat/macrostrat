@@ -7,7 +7,7 @@ module.exports = function (req, res, next) {
       req.query.unit_id = 15176;
     }
     larkin.queryPg("burwell",
-      "SELECT DISTINCT collection_no AS cltn_id, collection_name AS cltn_name FROM macrostrat_temp.pbdb_matches WHERE unit_id = ? AND occs > 0 and release_date<NOW()",
+      "SELECT DISTINCT collection_no AS cltn_id, collection_name AS cltn_name FROM macrostrat.pbdb_matches WHERE unit_id = ? AND occs > 0 and release_date<NOW()",
       [req.query.unit_id],
       function (error, result) {
         if (error) {

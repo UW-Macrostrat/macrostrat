@@ -107,7 +107,7 @@ module.exports = function (req, res, next) {
 
   if (req.query.interval_name) {
     where.push(
-      "b_age>(SELECT age_top from intervals where interval_name = ANY(:intname1) and t_age<(SELECT age_bottom from macrostrat_temp.intervals where interval_name = ANY(:intname2)))",
+      "b_age>(SELECT age_top from intervals where interval_name = ANY(:intname1) and t_age<(SELECT age_bottom from macrostrat.intervals where interval_name = ANY(:intname2)))",
     );
     params["intname1"] = larkin.parseMultipleStrings(req.query.interval_name);
     params["intname2"] = larkin.parseMultipleStrings(req.query.interval_name);
@@ -190,15 +190,15 @@ module.exports = function (req, res, next) {
 
   var sql = `SELECT
     ${select}
-    FROM macrostrat_temp.measures
-    JOIN macrostrat_temp.measurements on measurement_id=measurements.id
-    JOIN macrostrat_temp.measuremeta ON measuremeta.id=measures.measuremeta_id
-	LEFT JOIN macrostrat_temp.unit_measures ON unit_measures.measuremeta_id=measuremeta.id
-    LEFT JOIN macrostrat_temp.measuremeta_cols ON measuremeta.id=measuremeta_cols.measuremeta_id
-    LEFT JOIN macrostrat_temp.units_sections USING (unit_id)
-    LEFT JOIN macrostrat_temp.cols ON units_sections.col_id=cols.id
-    LEFT JOIN macrostrat_temp.lookup_unit_intervals USING (unit_id)
-    LEFT JOIN macrostrat_temp.liths ON lith_id=liths.id
+    FROM macrostrat.measures
+    JOIN macrostrat.measurements on measurement_id=measurements.id
+    JOIN macrostrat.measuremeta ON measuremeta.id=measures.measuremeta_id
+	LEFT JOIN macrostrat.unit_measures ON unit_measures.measuremeta_id=measuremeta.id
+    LEFT JOIN macrostrat.measuremeta_cols ON measuremeta.id=measuremeta_cols.measuremeta_id
+    LEFT JOIN macrostrat.units_sections USING (unit_id)
+    LEFT JOIN macrostrat.cols ON units_sections.col_id=cols.id
+    LEFT JOIN macrostrat.lookup_unit_intervals USING (unit_id)
+    LEFT JOIN macrostrat.liths ON lith_id=liths.id
     ${where}
     GROUP BY measuremeta.id,measurements.id, measure_units, measure_phase, method, v_error_units
     ${limit}

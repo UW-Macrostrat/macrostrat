@@ -25,9 +25,9 @@ module.exports = function (req, res, next) {
            STRING_AGG(trim(concat_WS(' ',principal_lith_prefix_cleaned,cleaned_lith,principal_lith_suffix_cleaned)),'|' ORDER BY top_depth) as primary_lith,
            STRING_AGG(lith_id::text,'|' ORDER BY top_depth) as lith_id,
             STRING_AGG(standard_minor_lith,'|' ORDER BY top_depth) as minor_lith
-    FROM macrostrat_temp.offshore_baggage ob 
-        JOIN macrostrat_temp.offshore_sites USING (col_id) 
-        JOIN macrostrat_temp.col_groups on col_group_id=col_groups.id
+    FROM macrostrat.offshore_baggage ob 
+        JOIN macrostrat.offshore_sites USING (col_id) 
+        JOIN macrostrat.col_groups on col_group_id=col_groups.id
   `;
   var where = [];
   var params = {};

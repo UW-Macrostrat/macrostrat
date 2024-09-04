@@ -12,9 +12,9 @@ module.exports = function (req, res, next, cb) {
        MAX( age_bottom )::float AS max_age, 
        MIN( age_top )::float AS min_age, 
        ref_id 
-    FROM macrostrat_temp.timescales 
-    JOIN macrostrat_temp.timescales_intervals ti ON ti.timescale_id = timescales.id 
-    JOIN macrostrat_temp.intervals ON interval_id = intervals.id 
+    FROM macrostrat.timescales 
+    JOIN macrostrat.timescales_intervals ti ON ti.timescale_id = timescales.id 
+    JOIN macrostrat.intervals ON interval_id = intervals.id 
     GROUP BY timescales.id 
     ORDER BY  timescales.id ASC `;
 

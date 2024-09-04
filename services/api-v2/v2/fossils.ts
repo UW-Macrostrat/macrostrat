@@ -135,15 +135,15 @@ module.exports = function (req, res, next) {
           pbdb_matches.unit_id, cols.id as col_id, CONCAT(pbdb_matches.ref_id, '|') AS refs " +
               (geo ? ", AsWKT(pbdb_matches.coordinate) AS geometry" : "") +
               ", lookup_strat_names.concept_id AS strat_name_concept_id \
-          FROM macrostrat_temp.pbdb_matches \
-          JOIN macrostrat_temp.units ON pbdb_matches.unit_id = units.id \
-          JOIN macrostrat_temp.units_sections ON units_sections.unit_id = units.id \
-          JOIN macrostrat_temp.cols ON cols.id = units_sections.col_id \
-          JOIN macrostrat_temp.lookup_unit_intervals ON units_sections.unit_id=lookup_unit_intervals.unit_id \
-          LEFT JOIN macrostrat_temp.unit_strat_names ON unit_strat_names.unit_id = units.id \
-          LEFT JOIN macrostrat_temp.lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id \
-          WHERE macrostrat_temp.pbdb_matches.release_date < now() AND \
-          macrostrat_temp.cols.status_code = 'active' " +
+          FROM macrostrat.pbdb_matches \
+          JOIN macrostrat.units ON pbdb_matches.unit_id = units.id \
+          JOIN macrostrat.units_sections ON units_sections.unit_id = units.id \
+          JOIN macrostrat.cols ON cols.id = units_sections.col_id \
+          JOIN macrostrat.lookup_unit_intervals ON units_sections.unit_id=lookup_unit_intervals.unit_id \
+          LEFT JOIN macrostrat.unit_strat_names ON unit_strat_names.unit_id = units.id \
+          LEFT JOIN macrostrat.lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id \
+          WHERE macrostrat.pbdb_matches.release_date < now() AND \
+          macrostrat.cols.status_code = 'active' " +
               where +
               " GROUP BY pbdb_matches.collection_no" +
               limit,

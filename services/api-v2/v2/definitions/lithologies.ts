@@ -16,9 +16,9 @@ module.exports = function (req, res, next, cb) {
       lith_color AS color,
       lith_fill AS fill,
       COUNT(distinct units_sections.unit_id)::integer AS t_units
-    FROM macrostrat_temp.liths
-    LEFT JOIN macrostrat_temp.unit_liths ON unit_liths.lith_id = liths.id
-    LEFT JOIN macrostrat_temp.units_sections ON units_sections.unit_id = unit_liths.unit_id
+    FROM macrostrat.liths
+    LEFT JOIN macrostrat.unit_liths ON unit_liths.lith_id = liths.id
+    LEFT JOIN macrostrat.units_sections ON units_sections.unit_id = unit_liths.unit_id
   `;
   var where = [];
   var params = {};

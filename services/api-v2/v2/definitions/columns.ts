@@ -23,11 +23,11 @@ module.exports = function (req, res, next, cb) {
       count(distinct units_sections.unit_id) AS t_units,
       project_id,
       notes
-    FROM macrostrat_temp.cols
-    LEFT JOIN macrostrat_temp.col_refs ON col_id = cols.id
-    LEFT JOIN macrostrat_temp.col_notes on cols.id=col_notes.col_id
-    LEFT JOIN macrostrat_temp.units_sections ON units_sections.col_id = cols.id
-    LEFT JOIN macrostrat_temp.units ON units_sections.unit_id=units.id
+    FROM macrostrat.cols
+    LEFT JOIN macrostrat.col_refs ON col_id = cols.id
+    LEFT JOIN macrostrat.col_notes on cols.id=col_notes.col_id
+    LEFT JOIN macrostrat.units_sections ON units_sections.col_id = cols.id
+    LEFT JOIN macrostrat.units ON units_sections.unit_id=units.id
   `;
   var where = [];
   var params = {};

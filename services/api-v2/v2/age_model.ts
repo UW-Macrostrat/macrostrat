@@ -64,9 +64,9 @@ module.exports = function (req, res, next) {
 
   var sql = `SELECT
     ${select}
-    FROM macrostrat_temp.unit_boundaries
-    JOIN macrostrat_temp.units_sections USING (section_id)
-    JOIN macrostrat_temp.intervals ON t1=intervals.id
+    FROM macrostrat.unit_boundaries
+    JOIN macrostrat.units_sections USING (section_id)
+    JOIN macrostrat.intervals ON t1=intervals.id
     ${where}
     GROUP BY unit_boundaries.id, units_sections.col_id, units_sections.section_id,
          interval_name, age_bottom, age_top

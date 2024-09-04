@@ -15,10 +15,10 @@ SELECT refs.id AS ref_id,
        refs.doi, 
        url, 
        STRING_AGG(distinct measurement::text, '|') AS measurements 
-FROM macrostrat_temp.refs 
-    JOIN macrostrat_temp.measuremeta ON refs.id=ref_id 
-    JOIN macrostrat_temp.distinct_measures ON measuremeta_id=measuremeta.id 
-    JOIN macrostrat_temp.measurements on measurement_id=measurements.id`,
+FROM macrostrat.refs 
+    JOIN macrostrat.measuremeta ON refs.id=ref_id 
+    JOIN macrostrat.distinct_measures ON measuremeta_id=measuremeta.id 
+    JOIN macrostrat.measurements on measurement_id=measurements.id`,
 
     params = {};
 

@@ -13,9 +13,9 @@ module.exports = function (req, res, next, cb) {
        environ_class AS class, 
        environ_color AS color, 
        COUNT(distinct units_sections.unit_id) AS t_units 
-    FROM macrostrat_temp.environs 
-        LEFT JOIN macrostrat_temp.unit_environs ON unit_environs.environ_id = environs.id 
-        LEFT JOIN macrostrat_temp.units_sections ON units_sections.unit_id = unit_environs.unit_id
+    FROM macrostrat.environs 
+        LEFT JOIN macrostrat.unit_environs ON unit_environs.environ_id = environs.id 
+        LEFT JOIN macrostrat.units_sections ON units_sections.unit_id = unit_environs.unit_id
     `
   let environ = {};
 

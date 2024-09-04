@@ -12,9 +12,9 @@ module.exports = function (req, res, next, cb) {
        measurement_type AS type, 
        measurement_class AS class, 
        COUNT(DISTINCT unit_measures.unit_id)::integer AS t_units 
-FROM macrostrat_temp.measurements 
-    LEFT JOIN macrostrat_temp.measures ON measures.measurement_id = measurements.id 
-    LEFT JOIN macrostrat_temp.unit_measures ON unit_measures.measuremeta_id = measures.measuremeta_id
+FROM macrostrat.measurements 
+    LEFT JOIN macrostrat.measures ON measures.measurement_id = measurements.id 
+    LEFT JOIN macrostrat.unit_measures ON unit_measures.measuremeta_id = measures.measuremeta_id
     `,
     params = {};
 

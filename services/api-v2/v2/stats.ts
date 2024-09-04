@@ -18,7 +18,7 @@ module.exports = function (req, res, next) {
       pbdb_collections::integer,
       measurements::integer,
       burwell_polygons::integer AS t_polys
-    FROM macrostrat_temp.stats
+    FROM macrostrat.stats
   */
   });
 

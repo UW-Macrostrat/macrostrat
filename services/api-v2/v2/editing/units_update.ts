@@ -8,7 +8,7 @@ module.exports = function (req, res, next) {
       req.body.units,
       function (each, callback) {
         larkin.queryPg("burwell",
-          "UPDATE macrostrat_temp.units SET position_bottom = :position_bottom WHERE id = :units",
+          "UPDATE macrostrat.units SET position_bottom = :position_bottom WHERE id = :units",
           [each.position_bottom, each.unit],
           function (error, result) {
             if (error) {

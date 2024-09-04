@@ -18,7 +18,7 @@ module.exports = function (req, res, next, cb) {
        crystal_form AS crystal_form, 
        color AS mineral_color, 
        lustre AS lustre 
-    FROM macrostrat_temp.minerals
+    FROM macrostrat.minerals
 `;
 
   var params = {};

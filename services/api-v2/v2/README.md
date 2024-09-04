@@ -103,3 +103,7 @@ someStrings = larkin.jsonifyPipes(someStrings);
 
     --> someStrings now equals ["carbonate", "marine", "shallow subtidal"]
 ```
+
+
+All the queries and functions re-routed from MariaDB to PG are [**here.**](https://github.com/UW-Macrostrat/macrostrat-api/compare/5d9d20fd591080f1db154782f3ad0292fa75fd67...3ba940954bdb18f6183ea733273509ae6a6c43f8)
+

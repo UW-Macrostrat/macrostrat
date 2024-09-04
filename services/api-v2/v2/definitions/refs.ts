@@ -14,9 +14,9 @@ module.exports = function (req, res, next, cb) {
        doi, 
        url, 
        COUNT(DISTINCT units_sections.unit_id)::integer AS t_units 
-FROM macrostrat_temp.refs 
-    LEFT JOIN macrostrat_temp.col_refs ON col_refs.ref_id = refs.id 
-    LEFT JOIN macrostrat_temp.units_sections ON units_sections.col_id = col_refs.col_id`,
+FROM macrostrat.refs 
+    LEFT JOIN macrostrat.col_refs ON col_refs.ref_id = refs.id 
+    LEFT JOIN macrostrat.units_sections ON units_sections.col_id = col_refs.col_id`,
     params = {};
 
   if ("all" in req.query) {

@@ -36,9 +36,9 @@ module.exports = function (req, res, next, cb) {
        COUNT(DISTINCT cols.id) AS t_cols,
        COUNT(DISTINCT units_sections.unit_id) AS t_units,
        cols.project_id
-    FROM macrostrat_temp.col_groups
-    LEFT JOIN macrostrat_temp.cols ON cols.col_group_id = col_groups.id
-    LEFT JOIN macrostrat_temp.units_sections ON units_sections.col_id = cols.id
+    FROM macrostrat.col_groups
+    LEFT JOIN macrostrat.cols ON cols.col_group_id = col_groups.id
+    LEFT JOIN macrostrat.units_sections ON units_sections.col_id = cols.id
     ${where}
     GROUP BY col_groups.id, cols.project_id;`
 

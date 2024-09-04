@@ -27,7 +27,7 @@ module.exports = function (req, res, next, cb) {
       date_finished,
       comments,
       ref_id
-    FROM macrostrat_temp.offshore_sites
+    FROM macrostrat.offshore_sites
   `;
   var where = [];
   var params = {};
