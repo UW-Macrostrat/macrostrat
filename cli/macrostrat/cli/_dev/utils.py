@@ -79,45 +79,6 @@ def _create_command(
     return _args
 
 
-async def print_stream_progress(
-    in_stream: asyncio.StreamReader,
-    out_stream: asyncio.StreamWriter | AsyncBufferedIOBase,
-    *,
-    chunk_size: int = 64 * 1024,  # 64 KB
-    prefix: str = "Dumped",
-):
-    """This should be unified with print_stream_progress, but there seem to be
-    slight API differences between aiofiles and asyncio.StreamWriter APIs.?"""
-    megabytes_written = 0
-    while True:
-        chunk = await in_stream.read(chunk_size)
-        if not chunk:
-            break
-        megabytes_written += len(chunk) / 1_000_000
-        if isinstance(out_stream, AsyncBufferedIOBase):
-            await out_stream.write(chunk)
-            await out_stream.flush()
-        else:
-            out_stream.write(chunk)
-            await out_stream.drain()
-        _print_progress(megabytes_written, end="\r")
-    if hasattr(out_stream, "close"):
-        out_stream.close()
-    _print_progress(megabytes_written)
-
-
-def _print_progress(megabytes: float, **kwargs):
-    prefix = kwargs.get("prefix", "Dumped")
-    progress = f"{prefix} {megabytes:.1f} MB"
-    kwargs.setdefault("file", sys.stderr)
-    print(progress, **kwargs)
-
-
-async def print_stdout(stream: asyncio.StreamReader):
-    async for line in stream:
-        console.print(line.decode("utf-8"), style="dim", end="")
-
-
 def raw_database_url(url: URL):
     """Replace the password asterisks with the actual password, in order to pass to other commands."""
     _url = str(url)
