@@ -13,7 +13,7 @@ from macrostrat.core import app
 from macrostrat.core.exc import MacrostratError, setup_exception_handling
 from macrostrat.core.main import env_text, set_app_state
 
-from .database import db_app, db_subsystem, get_db
+from .database import db_app, db_subsystem
 from .kubernetes import get_secret
 from .v1_entrypoint import v1_cli
 from .v2_commands import app as v2_app
@@ -178,7 +178,7 @@ try:
         short_help="Map integration system (partial overlap with v1 commands)",
     )
 except ImportError as err:
-    print("Could not import map integration subsystem", err)
+    app.console.print("Could not import map integration subsystem", err)
 
 try:
     raster_app = typer.Typer()
@@ -211,7 +211,7 @@ try:
     )
 
     def update_weaver(db):
-        print("Creating models for [bold cyan]weaver[/] subsystem")
+        app.console.print("Creating models for [bold cyan]weaver[/] subsystem")
         create_models()
 
     db_subsystem.register_schema_part(name="weaver", callback=update_weaver)
@@ -235,13 +235,13 @@ try:
     )
 
     def update_tileserver(db):
-        print("Creating models for [bold cyan]tileserver[/] subsystem")
+        app.console.print("Creating models for [bold cyan]tileserver[/] subsystem")
         create_fixtures()
 
     db_subsystem.register_schema_part(name="tileserver", callback=update_tileserver)
 
 except ImportError as err:
-    print("Could not import tileserver subsystem")
+    app.console.print("Could not import tileserver subsystem")
 
 # Get subsystems config
 subsystems = getattr(settings, "subsystems", {})
@@ -318,18 +318,6 @@ def poetry():
     raise RuntimeError("This command is currently implemented in a wrapping script")
 
 
-# def local_install(path: Path, lock: bool = False):
-#     kwargs = dict(
-#         cwd=path.expanduser().resolve(),
-#         env={**environ, "POETRY_VIRTUALENVS_CREATE": "False"},
-#     )
-#
-#     if lock:
-#         run("poetry", "lock", "--no-update", **kwargs)
-#
-#     run("poetry", "install", **kwargs)
-
-
 @main.command(rich_help_panel="Meta")
 def install():
     """Install Macrostrat dependencies"""
@@ -337,13 +325,8 @@ def install():
 
 
 # Add the v1 CLI
-@main.command(name="v1", deprecated=True)
-def _vi_command(ctx: typer.Context):
-    """Macrostrat version 1 commands"""
-    v1_cli(ctx.args)
-
-
-main.add_typer(v2_app, name="v2", deprecated=True)
+main.add_click_command(v1_cli, name="v1", deprecated=True, rich_help_panel="Legacy")
+main.add_typer(v2_app, name="v2", deprecated=True, rich_help_panel="Legacy")
 
 
 # main.add_click_command(v1_cli, name="v1")
@@ -352,7 +335,7 @@ main.add_typer(v2_app, name="v2", deprecated=True)
 @self_app.command(name="settings-dir")
 def show_app_dir():
     """Show the configuration directory"""
-    print(app.app_dir)
+    app.console.print(app.app_dir)
 
 
 main = setup_exception_handling(main)

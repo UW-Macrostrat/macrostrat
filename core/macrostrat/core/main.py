@@ -4,6 +4,8 @@ from pathlib import Path
 import toml
 from dynaconf import Dynaconf
 from macrostrat.app_frame import Application, Subsystem, SubsystemManager
+from macrostrat.app_frame.control_command import OrderCommands
+
 from macrostrat.utils import get_logger
 from rich import print
 from rich.console import Console
@@ -64,12 +66,6 @@ def load_settings():
         )
 
     return settings
-
-
-class OrderCommands(TyperGroup):
-    def list_commands(self, ctx: Context):
-        """Return list of commands in the order appear."""
-        return list(self.commands)  # get commands using self.commands
 
 
 class MacrostratSubsystem(Subsystem):
