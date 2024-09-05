@@ -715,22 +715,22 @@ testing = ["Django", "attrs", "colorama", "docopt", "pytest (<7.0.0)"]
 
 [[package]]
 name = "macrostrat-app-frame"
-version = "1.2.5"
+version = "2.0.0"
 description = "A control script framework for containerized applications."
 optional = false
-python-versions = "<4.0,>=3.10"
+python-versions = "<4.0,>=3.8"
 files = [
-    {file = "macrostrat_app_frame-1.2.5-py3-none-any.whl", hash = "sha256:45e0c01246631fdad0717a42c1f74ce7a88aa0dccb063424b32f89cb7aa0803e"},
-    {file = "macrostrat_app_frame-1.2.5.tar.gz", hash = "sha256:ea25334ee0903901efe7af3ca76d7193f0cc010aa14e681f9efd37ddbabc0b26"},
+    {file = "macrostrat_app_frame-2.0.0-py3-none-any.whl", hash = "sha256:e5e345e1074529b4f9b4bb68e6ce7e7cd31f2016c52d77740844c83ebe2ee974"},
+    {file = "macrostrat_app_frame-2.0.0.tar.gz", hash = "sha256:a5daa65ba9060f45644bbb236fd77c90a18e2f68f0c9e34cb3b300b78b127791"},
 ]
 
 [package.dependencies]
 "macrostrat.utils" = ">=1.1.0,<2.0.0"
-packaging = ">=23.2,<24.0"
+packaging = ">=24.1,<25.0"
 python-dotenv = ">=1.0.0,<2.0.0"
 rich = ">=13,<14"
 toposort = ">=1.5,<2.0"
-typer = ">=0.9.0,<0.10.0"
+typer = ">=0.12.5,<0.13.0"
 
 [[package]]
 name = "macrostrat-core"
@@ -744,7 +744,7 @@ develop = true
 [package.dependencies]
 dynaconf = "^3.1.12"
 geoalchemy2 = "^0.14.6"
-"macrostrat.app-frame" = "^1.2.5"
+"macrostrat.app-frame" = "^2.0.0"
 python-dotenv = "^1.0.0"
 sqlalchemy = "^2.0.28"
 toml = "^0.10.2"
@@ -822,7 +822,7 @@ pyyaml = "^6.0"
 rich = "^13"
 scipy = "^1.9.3"
 shapely = "^2.0.1"
-typer = "^0.9.0"
+typer = "^0.12.0"
 
 [package.source]
 type = "directory"
@@ -830,20 +830,21 @@ url = "../map-integration"
 
 [[package]]
 name = "macrostrat-package-tools"
-version = "1.0.0"
+version = "1.1.0"
 description = "Tools for managing Python packages in a monorepo"
 optional = false
-python-versions = ">=3.10,<4.0"
+python-versions = "<4.0,>=3.10"
 files = [
-    {file = "macrostrat_package_tools-1.0.0-py3-none-any.whl", hash = "sha256:d909ef211c9f81c4850305119638c4b8adf703bc5af873925cf4b9e8829edae2"},
-    {file = "macrostrat_package_tools-1.0.0.tar.gz", hash = "sha256:21d4a98c88447374e870537b8d65a717a7d7547dbaa7ea96cb4c455189a748f8"},
+    {file = "macrostrat_package_tools-1.1.0-py3-none-any.whl", hash = "sha256:900a824c3e0be05ac0295095bfddc9d3097bf518d974eca9ccd22f87de67ec60"},
+    {file = "macrostrat_package_tools-1.1.0.tar.gz", hash = "sha256:79256fa12d858bdf5d315065c98ca2a86023a76abcce74d33d566689043a9ef3"},
 ]
 
 [package.dependencies]
+"macrostrat.utils" = ">=1.0.0,<2.0.0"
 requests = ">=2.30.0,<3.0.0"
 rich = ">=13.3.5,<14.0.0"
 toml = ">=0.10.2,<0.11.0"
-typer = ">=0.9.0,<0.10.0"
+typer = ">=0.12.0,<0.13.0"
 
 [[package]]
 name = "macrostrat-utils"
@@ -1011,13 +1012,13 @@ files = [
 
 [[package]]
 name = "packaging"
-version = "23.2"
+version = "24.1"
 description = "Core utilities for Python packages"
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 files = [
-    {file = "packaging-23.2-py3-none-any.whl", hash = "sha256:8c491190033a9af7e1d931d0b5dacc2ef47509b34dd0de67ed209b5203fc88c7"},
-    {file = "packaging-23.2.tar.gz", hash = "sha256:048fb0e9405036518eaaf48a55953c750c11e1a1b68e0dd1a9d62ed0c092cfc5"},
+    {file = "packaging-24.1-py3-none-any.whl", hash = "sha256:5b8f2217dbdbd2f7f384c41c628544e6d52f2d0f53c6d0c3ea61aa5d1d7ff124"},
+    {file = "packaging-24.1.tar.gz", hash = "sha256:026ed72c8ed3fcce5bf8950572258698927fd1dbda10a5e981cdf0ac37f4f002"},
 ]
 
 [[package]]
@@ -1826,6 +1827,17 @@ docs = ["matplotlib", "numpydoc (==1.1.*)", "sphinx", "sphinx-book-theme", "sphi
 test = ["pytest", "pytest-cov"]
 
 [[package]]
+name = "shellingham"
+version = "1.5.4"
+description = "Tool to Detect Surrounding Shell"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "shellingham-1.5.4-py2.py3-none-any.whl", hash = "sha256:7ecfff8f2fd72616f7481040475a65b2bf8af90a56c89140852d1120324e8686"},
+    {file = "shellingham-1.5.4.tar.gz", hash = "sha256:8dbca0739d487e5bd35ab3ca4b36e11c4078f3a234bfce294b0a0291363404de"},
+]
+
+[[package]]
 name = "six"
 version = "1.16.0"
 description = "Python 2 and 3 compatibility utilities"
@@ -2129,24 +2141,20 @@ test = ["argcomplete (>=3.0.3)", "mypy (>=1.7.0)", "pre-commit", "pytest (>=7.0,
 
 [[package]]
 name = "typer"
-version = "0.9.4"
+version = "0.12.5"
 description = "Typer, build great CLIs. Easy to code. Based on Python type hints."
 optional = false
-python-versions = ">=3.6"
+python-versions = ">=3.7"
 files = [
-    {file = "typer-0.9.4-py3-none-any.whl", hash = "sha256:aa6c4a4e2329d868b80ecbaf16f807f2b54e192209d7ac9dd42691d63f7a54eb"},
-    {file = "typer-0.9.4.tar.gz", hash = "sha256:f714c2d90afae3a7929fcd72a3abb08df305e1ff61719381384211c4070af57f"},
+    {file = "typer-0.12.5-py3-none-any.whl", hash = "sha256:62fe4e471711b147e3365034133904df3e235698399bc4de2b36c8579298d52b"},
+    {file = "typer-0.12.5.tar.gz", hash = "sha256:f592f089bedcc8ec1b974125d64851029c3b1af145f04aca64d69410f0c9b722"},
 ]
 
 [package.dependencies]
-click = ">=7.1.1,<9.0.0"
+click = ">=8.0.0"
+rich = ">=10.11.0"
+shellingham = ">=1.3.0"
 typing-extensions = ">=3.7.4.3"
-
-[package.extras]
-all = ["colorama (>=0.4.3,<0.5.0)", "rich (>=10.11.0,<14.0.0)", "shellingham (>=1.3.0,<2.0.0)"]
-dev = ["autoflake (>=1.3.1,<2.0.0)", "flake8 (>=3.8.3,<4.0.0)", "pre-commit (>=2.17.0,<3.0.0)"]
-doc = ["cairosvg (>=2.5.2,<3.0.0)", "mdx-include (>=1.4.1,<2.0.0)", "mkdocs (>=1.1.2,<2.0.0)", "mkdocs-material (>=8.1.4,<9.0.0)", "pillow (>=9.3.0,<10.0.0)"]
-test = ["black (>=22.3.0,<23.0.0)", "coverage (>=6.2,<7.0)", "isort (>=5.0.6,<6.0.0)", "mypy (==0.971)", "pytest (>=4.4.0,<8.0.0)", "pytest-cov (>=2.10.0,<5.0.0)", "pytest-sugar (>=0.9.4,<0.10.0)", "pytest-xdist (>=1.32.0,<4.0.0)", "rich (>=10.11.0,<14.0.0)", "shellingham (>=1.3.0,<2.0.0)"]
 
 [[package]]
 name = "typing-extensions"
@@ -2217,4 +2225,4 @@ test = ["websockets"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "8ae380fb6167bfa81f7c4481ff71589b53ecb0f39daa3fe034a04ec65ea4f398"
+content-hash = "f49879223fe01faab7926658968ac6bad4dc711880f80b3605dff903b8033051"
