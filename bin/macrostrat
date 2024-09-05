@@ -51,13 +51,21 @@ if [ -n "$MACROSTRAT_PYROOT" ] ; then
   SCRIPT_DIR="$MACROSTRAT_PYROOT"
 fi
 
+# Get path to poetry outside of the virtual environment
+_poetry=$(command -v poetry)
+
+# Activate the virtual environment
+export VIRTUAL_ENV=$(poetry --directory "$SCRIPT_DIR" env info --path)
+export PATH="$VIRTUAL_ENV/bin:$PATH"
+
 # If first argument is "poetry", run poetry directly
 # Set the poetry root directory to the script directory
 if [ "$1" = "poetry" ]; then
   shift
-  poetry --directory "$SCRIPT_DIR" "$@"
+  $_poetry "$@"
   exit $?
 fi
+
 
 if [ "$1" = "install" ]; then
   # If the macrostrat command is not installed on the path, install it
@@ -80,18 +88,16 @@ if [ "$1" = "install" ]; then
   fi
 
   shift
-  poetry --directory "$SCRIPT_DIR" install "$@"
+  $_poetry --directory "$SCRIPT_DIR" install "$@"
   exit $?
 fi
 
-VIRTUAL_ENV=$(poetry --directory "$SCRIPT_DIR" env info --path)
 
 if [ -z "$VIRTUAL_ENV" ]; then
   echo -e "Could not find virtual environment. Please run \033[36mmacrostrat install\033[0m."
   exit 1
 fi
 
-# Activate the virtual environment
-export PATH="$VIRTUAL_ENV/bin:$PATH"
+
 
 $VIRTUAL_ENV/bin/macrostrat "$@"
