@@ -12,8 +12,8 @@
       <sourceFolder url="file://$MODULE_DIR$/core" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/deps/topology-manager" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/map-integration" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/raster-cli" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/cli/.venv" />
-      <excludeFolder url="file://$MODULE_DIR$/py-root/.venv" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />

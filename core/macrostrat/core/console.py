@@ -8,6 +8,7 @@ console_theme = Theme(
         "danger": "bold red",
         "item": "bold blue",
         "details": "dim",
+        "success": "green",
     }
 )
 

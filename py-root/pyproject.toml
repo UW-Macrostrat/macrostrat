@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "macrostrat-local-system"
+version = "0.1.0"
+description = "A local installation of Macrostrat for development. This project basically wraps Macrostrat subsystems into a single package."
+authors = ["Daven Quinn"]
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.11"
+"macrostrat.cli" = { path = "../cli", develop = true }
+"macrostrat.core" = { path = "../core", develop = true }
+"macrostrat.map_integration" = { path = "../map-integration", develop = true }
+"criticalmaas.ta1_geopackage" = "^0.2.0"
+macrostrat-utils = "^1.2.1"
+
+[tool.poetry.dev-dependencies]
+"macrostrat.package_tools" = "^1.0.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+

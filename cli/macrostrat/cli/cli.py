@@ -143,6 +143,17 @@ def environments():
 main.add_typer(cfg_app)
 
 
+main.add_typer(v2_app, name="v2")
+
+
+from .criticalmaas.importer import import_criticalmaas
+
+
+@main.command(name="import-criticalmaas")
+def _import_criticalmaas(file: Path):
+    asyncio_run(import_criticalmaas(file))
+
+
 @main.command(
     context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
     name="run",
@@ -262,6 +273,10 @@ if subsystems.get("criticalmaas", False):
 app = load_paleogeography_subsystem(app, main, db_subsystem)
 
 
+if mapboard_url := getattr(settings, "mapboard_database", None):
+    from .subsystems.mapboard import MapboardSubsystem
+
+    app.subsystems.add(MapboardSubsystem(app))
 # Add other subsystems (temporary)
 from .subsystems.mapboard import MapboardSubsystem
 
@@ -275,6 +290,11 @@ if subsystems.get("mapboard", False):
 
 
 app.subsystems.add(MacrostratAPISubsystem(app))
+
+if sgp_url := getattr(settings, "sgp_database", None):
+    from .subsystems.sgp import sgp
+
+    main.add_typer(sgp, rich_help_panel="Subsystems")
 
 # Mariadb CLI
 if mariadb_url := getattr(settings, "mysql_database", None):
