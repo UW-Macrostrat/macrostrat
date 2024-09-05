@@ -153,7 +153,7 @@ def compare_data_counts(db1_rows, db2_rows, db1_columns, db2_columns, db1, db2):
             'unit_liths_atts'
         ]
 
-        if list(db1_rows_not_in_db2.keys()) == maria_tables:
+        if list(db1_rows_not_in_db2.keys()).sort() == maria_tables.sort():
             success(f"{len(db1_rows_not_in_db2)} {db1} tables copied over from MariaDB that do not exist in {db2}. This confirms data retention!")
             console.print(
                 [key for key in db1_rows_not_in_db2],
