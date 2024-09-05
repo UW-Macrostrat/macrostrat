@@ -3,7 +3,7 @@ on:
   push:
     branches: ["main"]
     tags:
-      - '^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$' # regex for semver tags (including prereleases)
+      - 'v*.*.*' # glob for semver tags (including prereleases)
   pull_request:
     branches: [main]
 
