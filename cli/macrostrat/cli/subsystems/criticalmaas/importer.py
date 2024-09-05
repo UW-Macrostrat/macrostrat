@@ -1,10 +1,8 @@
-import asyncio
 import math
 import os
 import random
 from pathlib import Path
 
-import greenlet
 import requests
 from criticalmaas.ta1_geopackage import GeopackageDatabase
 from geoalchemy2 import Geometry
