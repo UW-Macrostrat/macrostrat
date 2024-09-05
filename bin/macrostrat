@@ -26,68 +26,72 @@ if [ -z "$MACROSTRAT_SHOULD_REINSTALL" ]; then
   fi
 fi
 
-if [ -x "$(command -v poetry)" ]; then
-  # Get script directory (reading symlink)
-  SCRIPT_DIR="$(cd "$(dirname "$this_file")" && cd ../cli && pwd)"
-
-  # If we've defined our own root directory, use that instead
-  if [ -n "$MACROSTRAT_PYROOT" ] ; then
-    # Print a warning that this might be a bad idea (in yellow)
-    if [ ! -d "$MACROSTRAT_PYROOT" ] ; then
-      echo -e "\033[31mMACROSTRAT_PYROOT directory does not exist\033[0m"
-      exit 1
-    fi
-
-    if [ ! -f "$MACROSTRAT_PYROOT/pyproject.toml" ] ; then
-      # Print error in red
-      echo -e "\033[31mMACROSTRAT_PYROOT does not contain a pyproject.toml file\033[0m"
-      exit 1
-    fi
-
-    SCRIPT_DIR="$MACROSTRAT_PYROOT"
-  fi
-
-  # If first argument is "poetry", run poetry directly
-  # Set the poetry root directory to the script directory
-  if [ "$1" = "poetry" ]; then
-    shift
-    poetry --directory "$SCRIPT_DIR" "$@"
-    exit $?
-  fi
-
-  if [ "$1" = "install" ]; then
-    # If the macrostrat command is not installed on the path, install it
-    if [ -n "$MACROSTRAT_SHOULD_REINSTALL" ]; then
-      echo -e "\033[33mInstalling macrostrat command to $install_loc\033[0m"
-      # If we cannot write the file prompt to re-run with sudo
-      SUDO=""
-      if [ ! -w "$(dirname "$install_loc")" ]; then
-        # If user can upgrade to root, use sudo
-        SUDO="sudo"
-        echo -e "\033[31mCannot write to $install_loc. You may be asked for your password.\033[0m"
-        # Check that sudo works
-        sudo bash -c "echo ''" || echo "Cannot run sudo. Attempting to install without sudo." && SUDO=""
-      fi
-      $SUDO ln -sf "$this_file" "$install_loc"
-    fi
-
-    shift
-    poetry --directory "$SCRIPT_DIR" install "$@"
-    exit $?
-  fi
-
-  VIRTUAL_ENV=$(poetry --directory "$SCRIPT_DIR" env info --path)
-
-  if [ -z "$VIRTUAL_ENV" ]; then
-    echo -e "Could not find Poetry virtual environment. Please run \033[36mmacrostrat install\033[0m."
-    exit 1
-  fi
-
-  # Activate the virtual environment
-  export PATH="$VIRTUAL_ENV/bin:$PATH"
-
-  $VIRTUAL_ENV/bin/macrostrat "$@"
-else
+if [ ! -x "$(command -v poetry)" ]; then
   echo -e "\033[31mCould not find Poetry executable.\033[0m"
   exit 1
 fi
+
+# Get script directory (reading symlink)
+SCRIPT_DIR="$(cd "$(dirname "$this_file")" && cd ../cli && pwd)"
+
+# If we've defined our own root directory, use that instead
+if [ -n "$MACROSTRAT_PYROOT" ] ; then
+  # Print a warning that this might be a bad idea (in yellow)
+  if [ ! -d "$MACROSTRAT_PYROOT" ] ; then
+    echo -e "\033[31mMACROSTRAT_PYROOT directory does not exist\033[0m"
+    exit 1
+  fi
+
+  if [ ! -f "$MACROSTRAT_PYROOT/pyproject.toml" ] ; then
+    # Print error in red
+    echo -e "\033[31mMACROSTRAT_PYROOT does not contain a pyproject.toml file\033[0m"
+    exit 1
+  fi
+
+  SCRIPT_DIR="$MACROSTRAT_PYROOT"
+fi
+
+# If first argument is "poetry", run poetry directly
+# Set the poetry root directory to the script directory
+if [ "$1" = "poetry" ]; then
+  shift
+  poetry --directory "$SCRIPT_DIR" "$@"
+  exit $?
+fi
+
+if [ "$1" = "install" ]; then
+  # If the macrostrat command is not installed on the path, install it
+  if [ -n "$MACROSTRAT_SHOULD_REINSTALL" ]; then
+    echo -e "\033[33mInstalling macrostrat command to $install_loc\033[0m"
+    # If we cannot write the file prompt to re-run with sudo
+    SUDO=""
+    install_dir="$(dirname "$install_loc")"
+    if [ -w "$install_dir" ]; then
+      echo -e "$install_dir is writable."
+    else
+      # If user can upgrade to root, use sudo
+      SUDO="sudo"
+      echo -e "\033[31mCannot write to $install_dir. You may be asked for your password.\033[0m"
+      # Check that sudo works
+      sudo bash -c "echo ''" || (echo "Cannot run sudo. Attempting to install without sudo." && SUDO="")
+    fi
+    $SUDO rm -f "$install_loc"
+    $SUDO ln -sf "$this_file" "$install_loc"
+  fi
+
+  shift
+  poetry --directory "$SCRIPT_DIR" install "$@"
+  exit $?
+fi
+
+VIRTUAL_ENV=$(poetry --directory "$SCRIPT_DIR" env info --path)
+
+if [ -z "$VIRTUAL_ENV" ]; then
+  echo -e "Could not find virtual environment. Please run \033[36mmacrostrat install\033[0m."
+  exit 1
+fi
+
+# Activate the virtual environment
+export PATH="$VIRTUAL_ENV/bin:$PATH"
+
+$VIRTUAL_ENV/bin/macrostrat "$@"
