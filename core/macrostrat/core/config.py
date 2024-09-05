@@ -4,6 +4,7 @@ from pathlib import Path
 from dynaconf import Dynaconf, Validator
 from sqlalchemy.engine import make_url
 from toml import load as load_toml
+from sqlalchemy.engine.url import URL
 
 from .utils import find_macrostrat_config, is_pg_url
 
@@ -53,6 +54,12 @@ PG_DATABASE = settings.pg_database
 # On mac and windows, we need to use the docker host `host.docker.internal` or `host.lima.internal`, etc.
 docker_localhost = getattr(settings, "docker_localhost", "localhost")
 PG_DATABASE_DOCKER = PG_DATABASE.replace("localhost", docker_localhost)
+
+mysql_database = getattr(settings, "mysql_database", None)
+if mysql_database is not None:
+    mysql_database: URL = make_url(mysql_database).set(drivername="mysql+pymysql")
+    # TODO: handle this more intelligently
+
 
 if elevation_database := getattr(settings, "elevation_database", None):
     environ["ELEVATION_DATABASE_URL"] = elevation_database

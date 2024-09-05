@@ -6,7 +6,8 @@ import aiofiles
 from macrostrat.utils import get_logger
 from sqlalchemy.engine import Engine
 
-from .utils import _create_command, print_stdout, print_stream_progress
+from .utils import _create_command
+from .stream_utils import print_stream_progress, print_stdout
 
 log = get_logger(__name__)
 

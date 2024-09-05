@@ -52,7 +52,7 @@ class MapSourceSlugsMigration(Migration):
 
         # Check that the primary_table column has appropriate values
         non_polygon_table_names = db.run_query(
-            "SELECT primary_table FROM maps.sources WHERE primary_table NOT LIKE '%_polygons'")
+            "SELECT primary_table FROM maps.sources WHERE primary_table NOT LIKE '%_polygons' AND primary_table != 'unknown'")
         if non_polygon_table_names.first() is not None:
             return ApplicationStatus.CAN_APPLY
 

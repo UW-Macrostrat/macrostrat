@@ -275,6 +275,18 @@ if sgp_url := getattr(settings, "sgp_database", None):
 
     main.add_typer(sgp, rich_help_panel="Subsystems")
 
+# Mariadb CLI
+if mariadb_url := getattr(settings, "mysql_database", None):
+    from .database.mariadb import app as mariadb_app
+
+    main.add_typer(
+        mariadb_app,
+        name="mariadb",
+        rich_help_panel="Subsystems",
+        short_help="Manage the MariaDB database",
+    )
+
+
 app.finish_loading_subsystems()
 
 
@@ -292,6 +304,7 @@ def inspect():
 main.add_typer(
     self_app,
     name="self",
+    rich_help_panel="Subsystems",
     short_help="Manage the Macrostrat CLI itself",
 )
 
