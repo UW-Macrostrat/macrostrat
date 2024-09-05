@@ -3,7 +3,7 @@ on:
   push:
     branches: ["main"]
     tags:
-      - v[0-9]+.[0-9]+.[0-9]+(-.+)? # regex for semver tags (including prereleases)
+      - v[0-9]+.[0-9]+.[0-9].* # regex for semver tags (including prereleases)
   pull_request:
     branches: [main]
 
