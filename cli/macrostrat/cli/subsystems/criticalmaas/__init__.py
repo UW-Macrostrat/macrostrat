@@ -9,11 +9,14 @@ from pathlib import Path
 
 from criticalmaas.ta1_geopackage import GeopackageDatabase
 from macrostrat.database import Database
-
-# from macrostrat.map_ingestion
 from rich import print
+from typer import Typer, Argument
+from asyncio import run
+from macrostrat.cli.database import get_db
+
 
 from .helpers import _unlink_if_exists
+from .importer import import_criticalmaas
 from .steps import (
     _build_line_features,
     _build_line_types,
@@ -107,3 +110,21 @@ def write_map_geopackage(
 
     gpd.write_models(_build_polygon_types(db, _map, PolygonType, GeologicUnit))
     gpd.write_features("polygon_feature", _build_polygon_features(db, _map))
+
+
+app = Typer(no_args_is_help=True)
+
+
+@app.command(name="import")
+def _import_criticalmaas(file: Path):
+    """Import a CriticalMAAS TA1 Geopackage into Macrostrat"""
+    run(import_criticalmaas(file))
+
+
+@app.command(name="export")
+def write_map_geopackage(
+    map: str = Argument(...), filename: Path = None, overwrite: bool = False
+):
+    """Write a CriticalMAAS geopackage from a map"""
+    db = get_db()
+    write_map_geopackage(db, map, filename, overwrite=overwrite)

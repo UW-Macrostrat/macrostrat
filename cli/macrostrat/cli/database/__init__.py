@@ -18,6 +18,8 @@ from macrostrat.core import MacrostratSubsystem, app
 from macrostrat.core.utils import is_pg_url
 
 from .._dev.utils import (
+    _create_database_if_not_exists,
+    _docker_local_run_args,
     raw_database_url,
 )
 from ._legacy import get_db
@@ -175,7 +177,7 @@ db_app.command(name="update", rich_help_panel="Schema management")(update_schema
     context_settings={"allow_extra_args": True, "ignore_unknown_options": True}
 )
 def psql(ctx: typer.Context, database: str = None):
-    """Run psql in the database container"""
+    """Explore a database using [cyan]psql[/cyan]"""
     from macrostrat.core.config import PG_DATABASE_DOCKER
 
     _database = PG_DATABASE_DOCKER
@@ -203,10 +205,13 @@ def psql(ctx: typer.Context, database: str = None):
 def dump(
     ctx: typer.Context,
     dumpfile: Path,
-    database: str = None,
+    database: str = Option(
+        None,
+        "--database",
+    ),
     schema: bool = False,
 ):
-    """Dump the database to a file"""
+    """Export a database using [cyan]pg_dump[/]"""
     from .._dev.dump_database import pg_dump
 
     db_container = app.settings.get("pg_database_container", "postgres:15")
@@ -236,7 +241,7 @@ def restore(
     create: bool = False,
     jobs: int = Option(None, "--jobs", "-j"),
 ):
-    """Restore the database from a dump file"""
+    """Load a database using [cyan]pg_restore[/]"""
     from .._dev.restore_database import pg_restore
 
     db_container = app.settings.get("pg_database_container", "postgres:15")
@@ -256,7 +261,7 @@ def restore(
     )
 
 
-@db_app.command(name="tables")
+@db_app.command(name="tables", rich_help_panel="Helpers")
 def list_tables(ctx: typer.Context, database: str = Argument(None), schema: str = None):
     """List tables in the database"""
     sql = """SELECT table_schema, table_name
@@ -318,7 +323,7 @@ class TableInspector:
         return self._insp.get_check_constraints(self.table, schema=self.schema)
 
 
-@db_app.command(name="inspect")
+@db_app.command(name="inspect", rich_help_panel="Helpers")
 def inspect_table(table: str):
     """Inspect a table in the database"""
     db = get_db()
@@ -363,24 +368,57 @@ def run_migration(migration: str = Argument(None)):
     db.run_sql(migration)
 
 
-@db_app.command(name="tunnel")
-def db_tunnel():
-    """Create a Kubernetes port-forward to the remote database"""
-    # TODO: Check if we are running in a Kubernetes environment
+db_app.command(name="migrations", rich_help_panel="Schema management")(run_migrations)
 
-    pod = getattr(app.settings, "pg_database_pod", None)
-    if pod is None:
-        raise Exception("No pod specified.")
-    port = environ.get("PGPORT", "5432")
-    run("kubectl", "port-forward", pod, f"{port}:5432")
+
+@db_app.command(
+    name="import-mariadb", rich_help_panel="Schema management", deprecated=True
+)
+def import_legacy():
+    """Import legacy MariaDB database to PostgreSQL using pgloader"""
+    # Run pgloader in docker
+
+    cfg = app.settings
+
+    args = _docker_local_run_args(postgres_container="dimitri/pgloader")
+
+    # Get the database URL
+    db = get_db()
+    url = db.engine.url
+    url = url.set(database="macrostrat_v1")
+
+    _create_database_if_not_exists(url, create=True)
+
+    pg_url = str(url)
+    # Repl
+
+    pg_url = cfg.get("pg_database", None)
+
+    url = pg_url + "_v1"
+
+    dburl = cfg.get("mysql_database", None)
+    if dburl is None:
+        raise Exception("No MariaDB database URL available in configuration")
+
+    run(
+        *args,
+        "pgloader",
+        "--with",
+        "prefetch rows = 1000",
+        str(dburl),
+        str(url),
+    )
+
+
+### Helpers
 
 
 keys = ["username", "host", "port", "password", "database"]
 
 
-@db_app.command(name="connection-details")
+@db_app.command(name="credentials", rich_help_panel="Helpers")
 def connection_details():
-    """Print the database connection details"""
+    """Show PostgreSQL connection credentials"""
     db = get_db()
     url = raw_database_url(db.engine.url)
     for key in keys:
@@ -398,4 +436,13 @@ def field_title(name):
     return "[dim]" + title + "[/]" + " "
 
 
-db_app.command(name="migrations", rich_help_panel="Schema management")(run_migrations)
+@db_app.command(name="tunnel", deprecated=True, rich_help_panel="Helpers")
+def db_tunnel():
+    """Kubernetes port-forward to a remote database"""
+    # TODO: Check if we are running in a Kubernetes environment
+
+    pod = getattr(app.settings, "pg_database_pod", None)
+    if pod is None:
+        raise Exception("No pod specified.")
+    port = environ.get("PGPORT", "5432")
+    run("kubectl", "port-forward", pod, f"{port}:5432")

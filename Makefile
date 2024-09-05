@@ -1,5 +1,8 @@
 all:
-	cd py-root && make
-	
+	poetry --directory cli lock --no-update
+	poetry --directory cli install --only=dev
+	cd cli && macrostrat poetry run mono install
+	poetry --directory cli install
+
 install:
-	cd py-root && make install
+	cli/macrostrat install
