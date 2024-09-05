@@ -758,7 +758,7 @@ const { Client, Pool } = require("pg");
           col_group,
           col_groups.id AS col_group_id,
           col AS group_col_id,
-          round(cols.col_area, 1) AS col_area,
+          round(cols.col_area::numeric, 1) AS col_area,
           cols.project_id,
           string_agg(col_refs.ref_id::varchar, '|') AS refs,
           ST_AsGeoJSON(col_areas.col_area) geojson
@@ -794,7 +794,7 @@ const { Client, Pool } = require("pg");
           col_group,
           col_groups.id AS col_group_id,
           col AS group_col_id,
-          round(cols.col_area, 1) AS col_area,
+          round(cols.col_area::numeric, 1) AS col_area,
           cols.project_id,
           string_agg(col_refs.ref_id::varchar, '|') AS refs
         FROM macrostrat.cols

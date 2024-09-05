@@ -3,6 +3,7 @@
 };
 */
 
+
 exports.pg = {
   host: process.env.host,
   port: process.env.port,
@@ -10,6 +11,7 @@ exports.pg = {
   password: process.env.password,
   database: process.env.database
 };
+
 
 
 exports.postgresDatabases = {

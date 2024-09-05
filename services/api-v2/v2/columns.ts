@@ -144,26 +144,29 @@ module.exports = function (req, res, next, callback) {
         }
 
         var geo = "";
-        var params = [
+        var params = { "col_id":
           Object.keys(new_cols).map(function (d) {
             return parseInt(d);
           }),
-        ];
+        };
+
+
         var limit = "sample" in req.query ? " LIMIT 5" : "";
         var groupBy = "";
         var orderby = "";
 
+        console.log("COLUMN PARAMS", params)
         if (req.query.status_code) {
-          params.push(decodeURI(req.query.status_code));
+          params["status_code"]= decodeURI(req.query.status_code);
         } else {
-          params.push("active");
+          params["status_code"] = "active";
         }
 
         if (req.query.format && api.acceptedFormats.geo[req.query.format]) {
           if (req.query.shape) {
             geo =
-              ", ST_AsGeoJSON(ST_Intersection(col_areas.col_area, ST_MakeValid($3))) geojson";
-            params.push(req.query.shape);
+              ", ST_AsGeoJSON(ST_Intersection(col_areas.col_area, ST_MakeValid(:shape))) geojson";
+            params["shape"] = req.query.shape;
           } else {
             geo = ", ST_AsGeoJSON(col_areas.col_area) geojson";
           }
@@ -172,21 +175,24 @@ module.exports = function (req, res, next, callback) {
 
         if (req.query.lat && req.query.lng && req.query.adjacents) {
           orderby =
-            "ORDER BY ST_Distance(ST_SetSRID(col_areas.col_area, 4326), ST_GeometryFromText($3, 4326))";
-          params.push(
+            "ORDER BY ST_Distance(ST_SetSRID(col_areas.col_area, 4326), ST_GeometryFromText(:point, 4326))";
+          params["point"] =
             "POINT(" +
               larkin.normalizeLng(req.query.lng) +
               " " +
               req.query.lat +
-              ")",
-          );
+              ")"
+
           groupBy = ", col_areas.col_area";
         } else if (req.query.col_id && req.query.adjacents) {
           orderby =
-            "ORDER BY ST_Distance(ST_Centroid(col_areas.col_area), (SELECT ST_Centroid(col_area) FROM macrostrat.col_areas WHERE col_id = $3))";
-          params.push(req.query.col_id);
+            "ORDER BY ST_Distance(ST_Centroid(col_areas.col_area), (SELECT ST_Centroid(col_area) FROM macrostrat.col_areas WHERE col_id = :col_id))";
+          params["col_id"] = req.query.col_id;
           groupBy = ", col_areas.col_area";
         }
+
+        //removing  COALESCE(cols.col_type, '') AS col_type,in SQL query since ddl specifies
+        //    col_type macrostrat_temp.cols_col_type not null
         larkin.queryPg(
           "burwell",
           `
@@ -198,17 +204,17 @@ module.exports = function (req, res, next, callback) {
         col AS group_col_id,
         cols.lat,
         cols.lng,
-        round(cols.col_area, 1) AS col_area,
+        round(cols.col_area::numeric, 1) AS col_area,
         cols.project_id,
-        COALESCE(cols.col_type, '') AS col_type,
+        cols.col_type,
         string_agg(col_refs.ref_id::varchar, '|') AS refs
         ${geo}
       FROM macrostrat.cols
       LEFT JOIN macrostrat.col_areas on col_areas.col_id = cols.id
       LEFT JOIN macrostrat.col_groups ON col_groups.id = cols.col_group_id
       LEFT JOIN macrostrat.col_refs ON cols.id = col_refs.col_id
-      WHERE cols.status_code = $2
-        AND cols.id = ANY($1)
+      WHERE cols.status_code = :status_code
+        AND cols.id = ANY(:col_id)
       GROUP BY col_areas.col_id, cols.id, col_groups.col_group, col_groups.id ${groupBy}
       ${orderby}
       ${limit}
