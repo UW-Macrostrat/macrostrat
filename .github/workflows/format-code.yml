@@ -1,0 +1,35 @@
+name: Format code and sort imports
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cache/pypoetry
+            ~/.virtualenvs
+          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
+      - name: Install Poetry
+        run: curl -sSL https://install.python-poetry.org | python3 -
+      - name: Install dependencies
+        run: poetry install --only dev
+      - name: Run formatting commands
+        run: make format
+      - name: Commit changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: Format code and sort imports
+          branch: ${{ github.head_ref }}
