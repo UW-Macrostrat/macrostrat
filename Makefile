@@ -6,3 +6,7 @@ all:
 
 install:
 	cli/macrostrat install
+
+format:
+	poetry --directory cli run black .
+	poetry --directory cli run isort .
