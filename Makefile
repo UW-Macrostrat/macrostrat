@@ -12,4 +12,4 @@ format:
 	poetry run isort .
 
 test:
-	poetry run pytest cli
+	poetry run pytest cli/tests

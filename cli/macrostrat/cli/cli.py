@@ -381,4 +381,4 @@ for entry_point in discovered_plugins:
     if isinstance(plugin, typer.Typer):
         main.add_typer(plugin, name=entry_point.name, rich_help_panel="Subsystems")
 
-main = setup_exception_handling(main)
+# main = setup_exception_handling(main)

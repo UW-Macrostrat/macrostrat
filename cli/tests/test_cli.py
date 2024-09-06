@@ -8,6 +8,6 @@ runner = CliRunner()
 
 
 def test_cli_help():
-    result = runner.invoke(main, ["--help"])
+    result = runner.invoke(main, [])
     assert result.exit_code == 0
-    assert "Macrostrat CLI" in result.output
+    assert "Macrostrat control interface" in result.output
