@@ -56,7 +56,8 @@ function tolerance(lat, z) {
 }
 
 function getUnits(params, callback) {
-  let p = params.unit_ids ? params.unit_ids : params.strat_name_ids;
+  let p = {}
+    p['unit_strat_ids'] = [params.unit_ids ? params.unit_ids : params.strat_name_ids];
   larkin.queryPg(
     "burwell",
     `
@@ -136,9 +137,9 @@ function getUnits(params, callback) {
     LEFT JOIN macrostrat.lookup_units ON units.id = lookup_units.unit_id
     LEFT JOIN macrostrat.units_sections ON units.id = units_sections.unit_id
     LEFT JOIN macrostrat.cols ON units_sections.col_id = cols.id
-    WHERE ${params.unit_ids ? "units.id" : "lookup_strat_names.strat_name_id"} = ANY($1)
+    WHERE ${params.unit_ids ? "units.id" : "lookup_strat_names.strat_name_id"} = ANY(:unit_strat_ids)
   `,
-    [p],
+    p,
     (error, result) => {
       if (error) return callback(error);
       callback(null, result.rows);
@@ -368,14 +369,17 @@ module.exports = (req, res, next) => {
       },
 
       columns: (cb) => {
+          let param = {}
+          param["point"] = `SRID=4326;POINT(${req.query.lng} ${req.query.lat})`
+
         larkin.queryPg(
           "burwell",
           `
         SELECT count(*) AS total_columns
         FROM macrostrat.cols
-        WHERE poly_geom IS NOT NULL AND status_code = 'active' AND ST_Intersects(poly_geom, $1)
+        WHERE poly_geom IS NOT NULL AND status_code = 'active' AND ST_Intersects(poly_geom, :point)
       `,
-          [`SRID=4326;POINT(${req.query.lng} ${req.query.lat})`],
+          param,
           (error, result) => {
             if (error) return cb(error);
             cb(
@@ -392,6 +396,8 @@ module.exports = (req, res, next) => {
       },
 
       regions: (cb) => {
+          let param = {}
+          param["point"] = `SRID=4326;POINT(${req.query.lng} ${req.query.lat})`
         larkin.queryPg(
           "burwell",
           `
@@ -412,12 +418,12 @@ module.exports = (req, res, next) => {
                 COALESCE(wiki_link, '') AS wiki_link,
                 row_number() OVER(PARTITION BY boundary_class ORDER BY ST_Area(geom) ASC) as rn
             FROM geologic_boundaries.boundaries
-            WHERE ST_Intersects(geom, $1)
+            WHERE ST_Intersects(geom, :point)
             ) sub
         JOIN geologic_boundaries.sources ON sub.source_id = sources.source_id
         WHERE rn = 1
       `,
-          [`SRID=4326;POINT(${req.query.lng} ${req.query.lat})`],
+          param,
           (error, result) => {
             if (error || !result || !result.rows) return cb(null, []);
             cb(null, result.rows);
@@ -427,17 +433,17 @@ module.exports = (req, res, next) => {
 
       burwell: (cb) => {
         let where = [];
-        let params = [];
+        let params = {};
 
         if (req.query.map_id) {
-          where = [`y.map_id = $1`];
-          params = [req.query.map_id];
+          where = [`y.map_id = :map_id`];
+          params['map_id'] = req.query.map_id;
         } else if (req.query.legend_id) {
-          where = [`mm.legend_id = $1`];
-          params = [re.query.legend_id];
+          where = [`mm.legend_id = :legend_id`];
+          params['legend_id'] = req.query.legend_id;
         } else {
-          where = [`ST_Intersects(y.geom, ST_GeomFromText($1, 4326))`];
-          params = [`SRID=4326;POINT(${req.query.lng} ${req.query.lat})`];
+          where = [`ST_Intersects(y.geom, ST_GeomFromText(:point, 4326))`];
+          params['point'] = `SRID=4326;POINT(${req.query.lng} ${req.query.lat})`;
         }
 
         // If no valid parameters passed, return an Error

@@ -1,8 +1,3 @@
-/*exports.pg = {
-  connectionString: process.env.MACROSTRAT_DATABASE,
-};
-*/
-
 
 exports.pg = {
   host: process.env.host,
@@ -13,10 +8,10 @@ exports.pg = {
 };
 
 
-
 exports.postgresDatabases = {
   burwell: "macrostrat",
-  geomacro: "geomacro"
+  geomacro: "geomacro",
+  elevation: "elevation"
 };
 
 // This is the default Redis port

@@ -14,6 +14,7 @@ v1/npm-debug.log
 v1/utilities/scripts/credentials.py
 .idea
 venv
+.env
 
 !v2/credentials.ts
 credentials.ts

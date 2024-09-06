@@ -9,19 +9,20 @@ module.exports = (req, res, next, cb) => {
   if ((req.query.lat && req.query.lng) || "sample" in req.query) {
     let lat = req.query.lat || 43.07;
     let lng = larkin.normalizeLng(req.query.lng) || -89.4;
-    let point = `POINT(${lng} ${lat})`;
+    let param = {}
+        param['point']= `POINT(${lng} ${lat})`;
 
     larkin.queryPg(
       "elevation",
       `
       WITH first AS (
-          SELECT ST_Value(rast, 1, ST_GeomFromText($1, 4326)) AS elevation, 1 as priority
+          SELECT ST_Value(rast, 1, ST_GeomFromText(:point, 4326)) AS elevation, 1 as priority
           FROM sources.srtm1
-          WHERE ST_Intersects(ST_GeomFromText($1, 4326), rast)
+          WHERE ST_Intersects(ST_GeomFromText(:point, 4326), rast)
           UNION ALL
-          SELECT ST_Value(rast, 1, ST_GeomFromText($1, 4326)) AS elevation, 2 as priority
+          SELECT ST_Value(rast, 1, ST_GeomFromText(:point, 4326)) AS elevation, 2 as priority
           FROM sources.etopo1
-          WHERE ST_Intersects(ST_GeomFromText($1, 4326), rast)
+          WHERE ST_Intersects(ST_GeomFromText(:point, 4326), rast)
       )
       SELECT elevation
       FROM first
@@ -29,7 +30,7 @@ module.exports = (req, res, next, cb) => {
       ORDER BY priority ASC
       LIMIT 1
     `,
-      [point],
+      param,
       (error, result) => {
         if (error) {
           if (cb) return cb(error);
