@@ -8,6 +8,11 @@ python = "^3.11"
 [tool.poetry.group.dev.dependencies]
 black = "^24.8.0"
 isort = "^5.13.2"
+pytest = "^8.3.2"
+
+[tool.black]
+line-length = 88
+extend-exclude = "__archive"
 
 [tool.isort]
 profile = "black"

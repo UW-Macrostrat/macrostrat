@@ -8,5 +8,8 @@ install:
 	cli/macrostrat install
 
 format:
-	-poetry run black .
-	-poetry run isort .
+	poetry run black .
+	poetry run isort .
+
+test:
+	poetry run pytest cli
