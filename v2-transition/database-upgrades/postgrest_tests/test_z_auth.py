@@ -1,7 +1,6 @@
 from .fixtures import get_sql
 
-
-base= "http://127.0.0.1:3001"
+base = "http://127.0.0.1:3001"
 
 auth = get_sql("auth.sql")
 auth_inserts = get_sql("test_auth_inserts.sql")
@@ -12,7 +11,7 @@ auth_inserts = get_sql("test_auth_inserts.sql")
 #         ##cur.execute(auth_inserts)
 
 #     sql =""" SELECT EXISTS (
-#             SELECT FROM information_schema.tables 
+#             SELECT FROM information_schema.tables
 #             WHERE  table_schema = 'auth'
 #             AND    table_name   = 'users'
 #             ); """
@@ -20,7 +19,7 @@ auth_inserts = get_sql("test_auth_inserts.sql")
 #     res = db.query(sql).fetchone()
 #     assert res.get("exists") == True
 
-#     sql = """ 
+#     sql = """
 #     SELECT rolname FROM pg_catalog.pg_roles WHERE rolinherit = FALSE;
 #      """
 #     res = db.query(sql).fetchall()

@@ -1,5 +1,6 @@
 from ..base import Migration, exists, not_exists
 
+
 class BaselineMigration(Migration):
     name = "baseline"
     subsystem = "core"

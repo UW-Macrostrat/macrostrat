@@ -1,27 +1,29 @@
 from pathlib import Path
 from textwrap import dedent
 
-from macrostrat.database import database_exists, create_database, drop_database
-from macrostrat.database.utils import run_sql, run_query
+from psycopg2.sql import Identifier
+from sqlalchemy import create_engine, inspect, text
+from sqlalchemy.engine import Engine, make_url
+
+from macrostrat.core import app
+from macrostrat.core.config import settings
+from macrostrat.database import create_database, database_exists, drop_database
+from macrostrat.database.utils import run_query, run_sql
 from macrostrat.utils import get_logger
 from macrostrat.utils.shell import run
-from sqlalchemy import text, create_engine, inspect
-from sqlalchemy.engine import Engine, make_url
-from macrostrat.core.config import settings
-from macrostrat.core import app
-from .db_changes import (
-    get_data_counts_maria,
-    get_data_counts_pg,
-    compare_data_counts,
-    find_row_variances,
-    find_col_variances,
-)
-from psycopg2.sql import Identifier
-from ..restore import copy_mariadb_database
-from ..utils import mariadb_engine
+
+from ...._dev.utils import raw_database_url
 from ..._legacy import get_db
 from ...utils import docker_internal_url, pg_temp_user
-from ...._dev.utils import raw_database_url
+from ..restore import copy_mariadb_database
+from ..utils import mariadb_engine
+from .db_changes import (
+    compare_data_counts,
+    find_col_variances,
+    find_row_variances,
+    get_data_counts_maria,
+    get_data_counts_pg,
+)
 
 __here__ = Path(__file__).parent
 
@@ -56,7 +58,7 @@ def migrate_mariadb_to_postgresql(
     pg_engine = get_db().engine
     temp_db_name = "macrostrat_temp"
     maria_temp_engine = create_engine(maria_engine.url.set(database=temp_db_name))
-    #pg_temp_engine = create_engine(make_url(settings.pgloader_target_database))
+    # pg_temp_engine = create_engine(make_url(settings.pgloader_target_database))
 
     # Destination schemas in the PostgreSQL database
     temp_schema = temp_db_name
@@ -80,13 +82,13 @@ def migrate_mariadb_to_postgresql(
         else:
             print("\ncheck-data completed!")
 
-
     if MariaDBMigrationStep.FINALIZE in steps:
         should_proceed = preserve_macrostrat_data(pg_engine)
         if should_proceed:
             raise NotImplementedError("Copy to macrostrat schema not yet implemented")
         else:
             print("finalize completed!")
+
 
 def pgloader(source: Engine, dest: Engine, target_schema: str, overwrite: bool = False):
     _build_pgloader()
@@ -293,11 +295,13 @@ def compare_row_counts(maria: Engine, pg_engine: Engine, schema):
         pg_engine,
     )
 
+
 def preserve_macrostrat_data(engine: Engine):
     app.console.print("\n[bold]Running script[/]")
     assert engine.url.drivername.startswith("postgres")
     preserve_data = __here__ / "preserve-macrostrat-data.sql"
     run_sql(engine, preserve_data)
+
 
 def db_identifier(engine: Engine):
     driver = engine.url.drivername

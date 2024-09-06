@@ -1,19 +1,23 @@
-import sys
-from psycopg2.extensions import AsIs
-from psycopg2.extras import NamedTupleCursor
-import numpy as np
-from scipy.spatial import Voronoi
-from shapely.ops import cascaded_union
-from shapely.geometry import Polygon, Point, MultiPoint, mapping, shape
-import shapely.ops as ops
-from shapely.wkt import loads
-import pyproj
-from functools import partial
 import json
 import re
+import sys
+import urllib.error
+import urllib.parse
+import urllib.request
+from functools import partial
+
+import numpy as np
+import pyproj
+import shapely.ops as ops
+from psycopg2.extensions import AsIs
+from psycopg2.extras import NamedTupleCursor
+from scipy.spatial import Voronoi
+from shapely.geometry import MultiPoint, Point, Polygon, mapping, shape
+from shapely.ops import cascaded_union
+from shapely.wkt import loads
+
 from .. import schlep
 from ..base import Base
-import urllib.request, urllib.error, urllib.parse
 
 
 class Tesselate(Base):

@@ -3,8 +3,8 @@ from pathlib import Path
 
 from dynaconf import Dynaconf, Validator
 from sqlalchemy.engine import make_url
-from toml import load as load_toml
 from sqlalchemy.engine.url import URL
+from toml import load as load_toml
 
 from .utils import find_macrostrat_config, is_pg_url
 

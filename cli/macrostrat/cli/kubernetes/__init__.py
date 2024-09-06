@@ -2,12 +2,12 @@
 Functions for working with a Macrostrat instance in a Kubernetes cluster.
 """
 
+import base64
+import json
 from contextlib import contextmanager
 from os import environ
 from subprocess import run
 from typing import Optional
-import base64
-import json
 
 
 def read_secret(text):

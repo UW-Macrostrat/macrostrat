@@ -3,7 +3,9 @@ import sys
 import zlib
 
 from aiofiles.threadpool import AsyncBufferedIOBase
+
 from macrostrat.utils import get_logger
+
 from .utils import console
 
 log = get_logger(__name__)

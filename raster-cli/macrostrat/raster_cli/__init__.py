@@ -1,5 +1,7 @@
-import typer
 from pathlib import Path
+
+import typer
+
 from .process import process_image
 
 # See this code

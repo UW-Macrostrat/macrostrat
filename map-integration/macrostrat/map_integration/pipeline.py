@@ -21,6 +21,11 @@ from typing import Annotated, Any, NoReturn, Optional
 import magic
 import minio
 import requests  # type: ignore[import-untyped]
+from rich.console import Console
+from sqlalchemy import and_, insert, select, update
+from sqlalchemy.orm import Session
+from typer import Argument, Option
+
 from macrostrat.core.schemas import (  # type: ignore[import-untyped]
     IngestProcess,
     IngestProcessTag,
@@ -30,11 +35,6 @@ from macrostrat.core.schemas import (  # type: ignore[import-untyped]
     SchemeEnum,
     Sources,
 )
-from rich.console import Console
-from sqlalchemy import and_, insert, select, update
-from sqlalchemy.orm import Session
-from typer import Argument, Option
-
 from macrostrat.map_integration import config
 from macrostrat.map_integration.commands.ingest import ingest_map
 from macrostrat.map_integration.commands.prepare_fields import prepare_fields
@@ -119,7 +119,9 @@ def record_ingest_error(ingest_process: IngestProcess, comments: str) -> None:
     """
     Set an ingest process to "failed".
     """
-    update_ingest_process(ingest_process.id, state=IngestState.failed, comments=comments)
+    update_ingest_process(
+        ingest_process.id, state=IngestState.failed, comments=comments
+    )
 
 
 # --------------------------------------------------------------------------
@@ -288,7 +290,9 @@ def create_ingest_process(**data) -> IngestProcess:
     data = data.copy()
     data["created_on"] = datetime.datetime.utcnow()
     with get_db_session() as session:
-        if not (object_group := session.scalar(insert(ObjectGroup).returning(ObjectGroup))):
+        if not (
+            object_group := session.scalar(insert(ObjectGroup).returning(ObjectGroup))
+        ):
             raise IngestError("Failed to create a new object group")
         new_ingest_process = session.scalar(
             insert(IngestProcess)
@@ -348,7 +352,10 @@ def update_source(id_: int, **data) -> Sources:
     data = truncate_source_metadata(data)
     with get_db_session() as session:
         new_source = session.scalar(
-            update(Sources).values(**data).where(Sources.source_id == id_).returning(Sources),
+            update(Sources)
+            .values(**data)
+            .where(Sources.source_id == id_)
+            .returning(Sources),
         )
         session.commit()
     return new_source
@@ -494,10 +501,14 @@ def ingest_slug(
     console.print(f"Preparing map {map_info}")
     try:
         prepare_fields(map_info)
-        ingest_process = update_ingest_process(ingest_process.id, state=IngestState.prepared)
+        ingest_process = update_ingest_process(
+            ingest_process.id, state=IngestState.prepared
+        )
         create_rgeom(map_info)
         create_webgeom(map_info)
-        ingest_process = update_ingest_process(ingest_process.id, state=IngestState.ingested)
+        ingest_process = update_ingest_process(
+            ingest_process.id, state=IngestState.ingested
+        )
     except Exception as exn:
         raise_ingest_error(ingest_process, str(exn), exn)
 
@@ -621,7 +632,9 @@ def upload_file(
             secret_key=config.S3_SECRET_KEY,
         )
         s3.fput_object(bucket, key, str(local_file))
-        ingest_process = update_ingest_process(ingest_process.id, state=IngestState.pending)
+        ingest_process = update_ingest_process(
+            ingest_process.id, state=IngestState.pending
+        )
         console.print("Finished upload")
     else:
         console.print("Object with the same SHA-256 already present in S3")
@@ -672,7 +685,9 @@ def load_object(
     ] = None,
     append_data: Annotated[
         bool,
-        Option(help="Whether to append data to the associated map when it already exists"),
+        Option(
+            help="Whether to append data to the associated map when it already exists"
+        ),
     ] = False,
 ) -> Object:
     """
@@ -683,7 +698,9 @@ def load_object(
     """
     if not (obj := get_object(bucket, key)):
         raise IngestError(f"No such object in the database: {bucket}/{key}")
-    if not (ingest_process := get_ingest_process_by_object_group_id(obj.object_group_id)):
+    if not (
+        ingest_process := get_ingest_process_by_object_group_id(obj.object_group_id)
+    ):
         raise IngestError(f"No ingest process in the database for object ID {obj.id}")
     if not (source := get_source_by_id(ingest_process.source_id)):
         raise_ingest_error(
@@ -760,7 +777,9 @@ def load_object(
             console.print(f"Loading into {source.slug}")
             console.print(f"Loading {strify_list(gis_data)}")
             if excluded_data:
-                console.print(f"Skipping over / not loading {strify_list(excluded_data)}")
+                console.print(
+                    f"Skipping over / not loading {strify_list(excluded_data)}"
+                )
             console.print(f"Appending data? {append_data}")
             try:
                 ingest_map(
@@ -912,6 +931,8 @@ def run_polling_loop(
                     bad_pending += 1
 
         if bad_pending:
-            console.print(f"Skipped {bad_pending} ingests because of a missing source_id")
+            console.print(
+                f"Skipped {bad_pending} ingests because of a missing source_id"
+            )
         console.print("Finished iteration of polling loop")
         time.sleep(polling_interval)

@@ -1,8 +1,11 @@
-from .utils import get_sgp_samples, write_to_file
-from geopandas import GeoDataFrame, sjoin
-from macrostrat.cli.database import get_db
-from sqlalchemy.sql import text
 from pathlib import Path
+
+from geopandas import GeoDataFrame, sjoin
+from sqlalchemy.sql import text
+
+from macrostrat.cli.database import get_db
+
+from .utils import get_sgp_samples, write_to_file
 
 
 def compute_paleo_positions(out_file: Path = None, sample: int = None):
@@ -81,7 +84,7 @@ def compute_paleo_positions(out_file: Path = None, sample: int = None):
 
 
 def rotate_point(row):
-    from corelle.engine.rotate import get_plate_id, get_rotation, sph2cart, cart2sph, Q
+    from corelle.engine.rotate import Q, cart2sph, get_plate_id, get_rotation, sph2cart
 
     plate_id = row["plate_id"]
 

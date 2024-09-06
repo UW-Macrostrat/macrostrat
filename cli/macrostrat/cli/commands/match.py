@@ -1,6 +1,7 @@
-from .base import Base
-from . import match_scripts
 import sys
+
+from . import match_scripts
+from .base import Base
 
 
 class Match(Base):

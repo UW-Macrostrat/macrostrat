@@ -1,5 +1,6 @@
 from ..base import Migration, exists, view_exists
 
+
 class MapsSoureOperationsMigration(Migration):
     name = "maps-source-operations"
     subsystem = "core"
@@ -7,4 +8,4 @@ class MapsSoureOperationsMigration(Migration):
 
     depends_on = ["api-v3"]
 
-    postconditions = [ exists("maps", "source_operations") ]
+    postconditions = [exists("maps", "source_operations")]

@@ -4,12 +4,12 @@ os.environ["USE_PYGEOS"] = "0"
 
 from sys import stdin
 
-from macrostrat.database import Database
 from psycopg2.sql import Identifier
 from typer import Option
 from typer.core import TyperGroup
 
 from macrostrat.core import app
+from macrostrat.database import Database
 
 from . import pipeline
 from .commands.copy_sources import copy_macrostrat_sources
@@ -46,12 +46,18 @@ cli.add_command(prepare_fields, name="prepare-fields")
 cli.add_command(fix_geometries, name="fix-geometries")
 cli.add_command(apply_srid, name="apply-srid")
 
-_pipeline = IngestionCLI(no_args_is_help=True, help="Ingest map data from archive files.")
+_pipeline = IngestionCLI(
+    no_args_is_help=True, help="Ingest map data from archive files."
+)
 _pipeline.add_command(pipeline.upload_file, name="upload-file")
 _pipeline.add_command(pipeline.ingest_slug, name="ingest-map")
 _pipeline.add_command(pipeline.ingest_csv, name="ingest-csv")
-_pipeline.add_command(pipeline.run_polling_loop, name="run-polling-loop", rich_help_panel="Daemons")
-_pipeline.add_command(pipeline.create_slug, name="init-map", rich_help_panel="Low-level")
+_pipeline.add_command(
+    pipeline.run_polling_loop, name="run-polling-loop", rich_help_panel="Daemons"
+)
+_pipeline.add_command(
+    pipeline.create_slug, name="init-map", rich_help_panel="Low-level"
+)
 cli.add_typer(_pipeline, name="pipeline")
 
 cli.add_typer(_process, name="process")

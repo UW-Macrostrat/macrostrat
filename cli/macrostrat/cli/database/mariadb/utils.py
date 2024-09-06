@@ -1,6 +1,7 @@
-from sqlalchemy.engine.url import URL, make_url
-from sqlalchemy.engine import create_engine
 from enum import Enum
+
+from sqlalchemy.engine import create_engine
+from sqlalchemy.engine.url import URL, make_url
 
 
 class ParameterStyle(Enum):

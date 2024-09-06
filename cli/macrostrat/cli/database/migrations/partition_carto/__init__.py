@@ -1,6 +1,8 @@
-from ..base import Migration, not_exists, view_exists
-from macrostrat.database import Database
 from pathlib import Path
+
+from macrostrat.database import Database
+
+from ..base import Migration, not_exists, view_exists
 
 __dir__ = Path(__file__).parent
 
@@ -13,12 +15,13 @@ class PartitionCartoMigration(Migration):
     into a single map table, partitioned by scale to retain the original table structure and avoid copying data.
     """
 
-    depends_on = ['partition-maps']
+    depends_on = ["partition-maps"]
 
     destructive = True
 
     postconditions = [
-        view_exists('carto_new', 'lines_tiny', 'lines_small', 'lines_medium', 'lines_large'),
-        view_exists('carto_new', 'tiny', 'small', 'medium', 'large'),
+        view_exists(
+            "carto_new", "lines_tiny", "lines_small", "lines_medium", "lines_large"
+        ),
+        view_exists("carto_new", "tiny", "small", "medium", "large"),
     ]
-

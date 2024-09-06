@@ -1,7 +1,8 @@
 from typing import Union
 
-from macrostrat.utils import get_logger
 from psycopg2.sql import Identifier, Literal
+
+from macrostrat.utils import get_logger
 
 from ..database import db, sql_file
 from ..utils import MapInfo, feature_counts

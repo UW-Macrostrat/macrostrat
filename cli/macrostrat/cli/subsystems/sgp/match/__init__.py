@@ -2,32 +2,28 @@
 Subsystem for SGP matching
 """
 
+from enum import Enum
+from pathlib import Path
+
 import IPython
-
+from geopandas import GeoDataFrame, sjoin
+from pandas import DataFrame, read_sql
 from pydantic import BaseModel
-
-from .clean_strat_name import (
-    clean_strat_name,
-    format_name,
-    StratNameTextMatch,
-    StratRank,
-    clean_strat_name_text,
-)
-
-from ..utils import get_sgp_samples, write_to_file
+from rich.live import Live
+from rich.table import Table
+from sqlalchemy.sql import text
 
 from macrostrat.cli.database import get_db
 from macrostrat.core import app
-from pathlib import Path
-from geopandas import GeoDataFrame, sjoin
-from sqlalchemy.sql import text
-from pandas import read_sql, DataFrame
-from enum import Enum
 
-from rich.live import Live
-from rich.table import Table
-
-from ..utils import stored_procedure
+from ..utils import get_sgp_samples, stored_procedure, write_to_file
+from .clean_strat_name import (
+    StratNameTextMatch,
+    StratRank,
+    clean_strat_name,
+    clean_strat_name_text,
+    format_name,
+)
 
 here = Path(__file__).parent
 

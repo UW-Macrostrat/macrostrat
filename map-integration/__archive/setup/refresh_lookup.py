@@ -1,10 +1,12 @@
-import psycopg2
-from psycopg2.extensions import AsIs
-import psycopg2.extras
-import sys, os
 import argparse
+import os
+import sys
 import time
+
+import psycopg2
+import psycopg2.extras
 import yaml
+from psycopg2.extensions import AsIs
 
 with open(os.path.join(os.path.dirname(__file__), '../credentials.yml'), 'r') as f:
     credentials = yaml.load(f)

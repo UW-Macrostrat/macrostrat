@@ -1,9 +1,11 @@
+from pathlib import Path
+
+from rich.console import Console
+from rich.progress import Progress
+from sqlalchemy import text
+
 from macrostrat.database import run_sql
 from macrostrat.utils import relative_path
-from pathlib import Path
-from rich.progress import Progress
-from rich.console import Console
-from sqlalchemy import text
 
 query_file = Path(relative_path(__file__, "sql", "carto-plate-index-cache.sql"))
 
@@ -41,7 +43,9 @@ def build_carto_plate_index_for_scale(db, scale):
 
     console.print("Done!")
 
+
 fixtures = Path(relative_path(__file__, "fixtures"))
+
 
 def create_corelle_fixtures(db):
     db.run_fixtures(fixtures)

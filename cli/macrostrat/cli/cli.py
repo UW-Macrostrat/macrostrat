@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Optional
 
 import typer
-from macrostrat.utils.shell import run
 from rich import print
 from rich.traceback import install
 from typer import Argument, Option, Typer
@@ -12,13 +11,14 @@ from typer import Argument, Option, Typer
 from macrostrat.core import app
 from macrostrat.core.exc import MacrostratError, setup_exception_handling
 from macrostrat.core.main import env_text, set_app_state
+from macrostrat.utils.shell import run
 
 from .database import db_app, db_subsystem
 from .kubernetes import get_secret
+from .subsystems.macrostrat_api import MacrostratAPISubsystem
+from .subsystems.paleogeography import load_paleogeography_subsystem
 from .v1_entrypoint import v1_cli
 from .v2_commands import app as v2_app
-from .subsystems.paleogeography import load_paleogeography_subsystem
-from .subsystems.macrostrat_api import MacrostratAPISubsystem
 
 __here__ = Path(__file__).parent
 fixtures_dir = __here__ / "fixtures"

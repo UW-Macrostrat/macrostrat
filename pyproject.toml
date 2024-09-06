@@ -3,6 +3,7 @@ package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.11"
+"macrostrat.cli" = { path = "../macrostrat/cli", develop = true }
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.8.0"

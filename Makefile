@@ -1,12 +1,12 @@
 all:
-	poetry --directory cli lock --no-update
-	poetry --directory cli install --only=dev
-	cd cli && macrostrat poetry run mono install
-	poetry --directory cli install
+	poetry lock --no-update
+	poetry install --only=dev
+	macrostrat poetry run mono install
+	poetry install
 
 install:
 	cli/macrostrat install
 
 format:
-	poetry --directory cli run black .
-	poetry --directory cli run isort .
+	-poetry run black .
+	-poetry run isort .

@@ -5,15 +5,15 @@ Write a Macrostrat map to the CriticalMAAS TA1 Geopackage format
 - https://github.com/DARPA-CRITICALMAAS/schemas/tree/main/ta1
 """
 
+from asyncio import run
 from pathlib import Path
 
 from criticalmaas.ta1_geopackage import GeopackageDatabase
-from macrostrat.database import Database
 from rich import print
-from typer import Typer, Argument
-from asyncio import run
-from macrostrat.cli.database import get_db
+from typer import Argument, Typer
 
+from macrostrat.cli.database import get_db
+from macrostrat.database import Database
 
 from .helpers import _unlink_if_exists
 from .importer import import_criticalmaas

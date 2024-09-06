@@ -41,7 +41,9 @@ def main() -> None:
             if re.match(r"^[0-9A-Fa-f]{64}", row["COG ID"]):
                 website_url = row.get("NGMDB Product Link", "")
                 archive_url = (
-                    "https://s3.amazonaws.com/public.cdr.land/results/" + row["COG ID"] + ".zip"
+                    "https://s3.amazonaws.com/public.cdr.land/results/"
+                    + row["COG ID"]
+                    + ".zip"
                 )
                 authors = None
                 year = None
@@ -59,10 +61,14 @@ def main() -> None:
                             name = match.group(2).strip()
                         if match := re.match(r"(\s*)Author[(]s[)]:(.*)", span.text):
                             authors = match.group(2).strip()
-                        if match := re.match(r"(\s*)Publishing Organization:(.*)", span.text):
+                        if match := re.match(
+                            r"(\s*)Publishing Organization:(.*)", span.text
+                        ):
                             source = match.group(2).strip()
                     for list_item in soup.find_all("li"):
-                        if match := re.match(r"(\s*)Publication Date:(.*)", list_item.text):
+                        if match := re.match(
+                            r"(\s*)Publication Date:(.*)", list_item.text
+                        ):
                             year = match.group(2).strip()
                 else:
                     slug = "criticalmaas_09_cog_" + row["COG ID"][:16]

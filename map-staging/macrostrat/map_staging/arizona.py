@@ -82,7 +82,9 @@ def main() -> None:
                 ref_authors = author["person"]
 
         for file in map["metadata"]["files"]:
-            base_url = f"https://data.azgs.arizona.edu/api/v1/collections/{collection_id}"
+            base_url = (
+                f"https://data.azgs.arizona.edu/api/v1/collections/{collection_id}"
+            )
             filename = file["name"]
             archive_url = f"{base_url}/{filename}"
 
