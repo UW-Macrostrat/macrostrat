@@ -20,7 +20,7 @@ secret_key = "really-secure-key"
 pg_database = "postgresql://macrostrat-admin:my-cool-password@dev.macrostrat.org:5432/macrostrat"
 # Use a Kubernetes namespace
 # Right now, using kubectl's default configuration and connection parameters is assumed
-# 
+#
 kube_namespace="<my-namespace>"
 pg_database_pod = "dev-macrostrat-db"
 
@@ -30,3 +30,4 @@ pg_database_pod = "dev-macrostrat-db"
 [criticalmaas]
 
 pg_database = "postgresql://remote_user:remote_password@cool-other-server.usgs.gov:5432/criticalmaas_maps"
+

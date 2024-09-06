@@ -123,6 +123,14 @@ def _available_environments(environments):
 cfg_app = Typer(name="config", short_help="Manage configuration")
 
 
+@cfg_app.command(name="show")
+def show_cfg():
+    """Show the current configuration"""
+    from macrostrat.core.config import macrostrat_config_file
+
+    print(str(macrostrat_config_file))
+
+
 @cfg_app.command(name="edit")
 def edit_cfg():
     """Open config file in editor"""
@@ -141,17 +149,6 @@ def environments():
 
 
 main.add_typer(cfg_app)
-
-
-main.add_typer(v2_app, name="v2")
-
-
-from .criticalmaas.importer import import_criticalmaas
-
-
-@main.command(name="import-criticalmaas")
-def _import_criticalmaas(file: Path):
-    asyncio_run(import_criticalmaas(file))
 
 
 @main.command(
@@ -358,9 +355,6 @@ def show_app_dir():
     app.console.print(app.app_dir)
 
 
-main = setup_exception_handling(main)
-
-
 @self_app.command()
 def state():
     """Show the current state of the application"""
@@ -375,3 +369,16 @@ from .subsystems.macrostrat_api import macrostrat_api
 db_subsystem.schema_hunks.append(kg_schema)
 db_subsystem.schema_hunks.append(legend_api)
 db_subsystem.schema_hunks.append(macrostrat_api)
+
+# Discover subsystems in third-party packages
+# https://packaging.python.org/en/latest/guides/creating-and-discovering-plugins/
+
+from importlib.metadata import entry_points
+
+discovered_plugins = entry_points(group="macrostrat.subsystems")
+for entry_point in discovered_plugins:
+    plugin = entry_point.load()
+    if isinstance(plugin, typer.Typer):
+        main.add_typer(plugin, name=entry_point.name, rich_help_panel="Subsystems")
+
+main = setup_exception_handling(main)
