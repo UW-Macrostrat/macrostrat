@@ -27,7 +27,8 @@ def find_macrostrat_config() -> Path:
         macrostrat_root = find_config(Path(__file__).parent)
 
     if macrostrat_root is None:
-        raise RuntimeError("Could not find macrostrat.toml")
+        return None
+        # raise RuntimeError("Could not find macrostrat.toml")
 
     return macrostrat_root / "macrostrat.toml"
 

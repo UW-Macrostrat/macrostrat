@@ -8,6 +8,7 @@ runner = CliRunner()
 
 
 def test_cli_help():
-    result = runner.invoke(main, [])
-    assert result.exit_code == 0
-    assert "Macrostrat control interface" in result.output
+    with runner.isolated_filesystem():
+        result = runner.invoke(main, [])
+        assert result.exit_code == 0
+        assert "Macrostrat control interface" in result.output
