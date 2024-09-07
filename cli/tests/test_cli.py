@@ -1,8 +1,9 @@
 """Basic tests that the CLI runs without crashing."""
 
+from pathlib import Path
+
 from typer.testing import CliRunner
 
-from pathlib import Path
 from macrostrat.utils import override_environment
 
 runner = CliRunner()

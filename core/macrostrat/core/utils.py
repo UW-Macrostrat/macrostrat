@@ -1,5 +1,5 @@
-from pathlib import Path
 from os import environ
+from pathlib import Path
 
 
 # Load config before we do anything else
