@@ -4,25 +4,23 @@ from sys import exit, stderr, stdin
 from typing import Any, Callable
 
 import typer
+from macrostrat.database import Database
+from macrostrat.utils.shell import run
 from pydantic import BaseModel
 from rich import print
 from sqlalchemy import text
-from sqlalchemy_utils.types.enriched_datetime.arrow_datetime import arrow
 from typer import Argument, Option
 
 from macrostrat.core import MacrostratSubsystem, app
 from macrostrat.core.utils import is_pg_url
-from macrostrat.database import Database
-from macrostrat.utils.shell import run
-
+from ._legacy import get_db
+from .migrations import run_migrations
+from .utils import engine_for_db_name
 from .._dev.utils import (
     _create_database_if_not_exists,
     _docker_local_run_args,
     raw_database_url,
 )
-from ._legacy import get_db
-from .migrations import run_migrations
-from .utils import engine_for_db_name
 
 __here__ = Path(__file__).parent
 fixtures_dir = __here__.parent / "fixtures"

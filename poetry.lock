@@ -822,7 +822,7 @@ greenlet = "^3.0.3"
 ipython = "^8.5.0"
 "macrostrat.app-frame" = "^2.0.0"
 "macrostrat.core" = {path = "../core", develop = true}
-"macrostrat.database" = "^3.1.1"
+"macrostrat.database" = "^3.3.2"
 "macrostrat.dinosaur" = "^3.0.1"
 "macrostrat.map-integration" = {path = "../map-integration", develop = true}
 "macrostrat.utils" = "^1.2.2"
@@ -870,13 +870,13 @@ url = "core"
 
 [[package]]
 name = "macrostrat-database"
-version = "3.3.1"
+version = "3.3.2"
 description = "A SQLAlchemy-based database toolkit."
 optional = false
 python-versions = "<4.0,>=3.8"
 files = [
-    {file = "macrostrat_database-3.3.1-py3-none-any.whl", hash = "sha256:3a7adb0d3b3dc1f1e1c84a2b764bfe210f0c850d3c93e0a2256c8fd379875b75"},
-    {file = "macrostrat_database-3.3.1.tar.gz", hash = "sha256:51ccc801fc5884001d6c7393ddf595688ffdc49bde0252cd65f9027619a1c51e"},
+    {file = "macrostrat_database-3.3.2-py3-none-any.whl", hash = "sha256:3abd44c201bef1257a8cae1f85589722a2cf5d342b538127fcc0542da113090c"},
+    {file = "macrostrat_database-3.3.2.tar.gz", hash = "sha256:2a77366cb29a8cd0de313a927bf39839279c7d97e230d9ef470c19ad311389e5"},
 ]
 
 [package.dependencies]

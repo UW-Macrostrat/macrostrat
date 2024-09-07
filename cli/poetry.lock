@@ -756,13 +756,13 @@ url = "../core"
 
 [[package]]
 name = "macrostrat-database"
-version = "3.3.1"
+version = "3.3.2"
 description = "A SQLAlchemy-based database toolkit."
 optional = false
 python-versions = "<4.0,>=3.8"
 files = [
-    {file = "macrostrat_database-3.3.1-py3-none-any.whl", hash = "sha256:3a7adb0d3b3dc1f1e1c84a2b764bfe210f0c850d3c93e0a2256c8fd379875b75"},
-    {file = "macrostrat_database-3.3.1.tar.gz", hash = "sha256:51ccc801fc5884001d6c7393ddf595688ffdc49bde0252cd65f9027619a1c51e"},
+    {file = "macrostrat_database-3.3.2-py3-none-any.whl", hash = "sha256:3abd44c201bef1257a8cae1f85589722a2cf5d342b538127fcc0542da113090c"},
+    {file = "macrostrat_database-3.3.2.tar.gz", hash = "sha256:2a77366cb29a8cd0de313a927bf39839279c7d97e230d9ef470c19ad311389e5"},
 ]
 
 [package.dependencies]
@@ -2210,4 +2210,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "60da86a0d1afeb052b9fcd6178593eb9c93a88f112f20747b070266be2e686e7"
+content-hash = "693910170c00817017753af7ac8e28a8a6ad64944ae1e1686c23c56425f932f0"
