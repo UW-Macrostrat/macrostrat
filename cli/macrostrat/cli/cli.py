@@ -135,6 +135,7 @@ def show_cfg():
 def edit_cfg():
     """Open config file in editor"""
     from subprocess import run
+
     from macrostrat.core.config import settings
 
     run(["open", str(settings.config_file)])
