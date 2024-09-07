@@ -3,8 +3,9 @@
 from pathlib import Path
 
 import typer.core
-from macrostrat.utils import override_environment
 from typer.testing import CliRunner
+
+from macrostrat.utils import override_environment
 
 typer.core.rich = True
 
