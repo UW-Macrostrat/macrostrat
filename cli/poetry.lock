@@ -426,24 +426,25 @@ files = [
 
 [[package]]
 name = "docker"
-version = "6.1.3"
+version = "7.1.0"
 description = "A Python library for the Docker Engine API."
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 files = [
-    {file = "docker-6.1.3-py3-none-any.whl", hash = "sha256:aecd2277b8bf8e506e484f6ab7aec39abe0038e29fa4a6d3ba86c3fe01844ed9"},
-    {file = "docker-6.1.3.tar.gz", hash = "sha256:aa6d17830045ba5ef0168d5eaa34d37beeb113948c413affe1d5991fc11f9a20"},
+    {file = "docker-7.1.0-py3-none-any.whl", hash = "sha256:c96b93b7f0a746f9e77d325bcfb87422a3d8bd4f03136ae8a85b37f1898d5fc0"},
+    {file = "docker-7.1.0.tar.gz", hash = "sha256:ad8c70e6e3f8926cb8a92619b832b4ea5299e2831c14284663184e200546fa6c"},
 ]
 
 [package.dependencies]
-packaging = ">=14.0"
 pywin32 = {version = ">=304", markers = "sys_platform == \"win32\""}
 requests = ">=2.26.0"
 urllib3 = ">=1.26.0"
-websocket-client = ">=0.32.0"
 
 [package.extras]
+dev = ["coverage (==7.2.7)", "pytest (==7.4.2)", "pytest-cov (==4.1.0)", "pytest-timeout (==2.1.0)", "ruff (==0.1.8)"]
+docs = ["myst-parser (==0.18.0)", "sphinx (==5.1.1)"]
 ssh = ["paramiko (>=2.4.3)"]
+websockets = ["websocket-client (>=1.3.0)"]
 
 [[package]]
 name = "dynaconf"
@@ -755,13 +756,13 @@ url = "../core"
 
 [[package]]
 name = "macrostrat-database"
-version = "3.3.1"
+version = "3.3.2"
 description = "A SQLAlchemy-based database toolkit."
 optional = false
 python-versions = "<4.0,>=3.8"
 files = [
-    {file = "macrostrat_database-3.3.1-py3-none-any.whl", hash = "sha256:3a7adb0d3b3dc1f1e1c84a2b764bfe210f0c850d3c93e0a2256c8fd379875b75"},
-    {file = "macrostrat_database-3.3.1.tar.gz", hash = "sha256:51ccc801fc5884001d6c7393ddf595688ffdc49bde0252cd65f9027619a1c51e"},
+    {file = "macrostrat_database-3.3.2-py3-none-any.whl", hash = "sha256:3abd44c201bef1257a8cae1f85589722a2cf5d342b538127fcc0542da113090c"},
+    {file = "macrostrat_database-3.3.2.tar.gz", hash = "sha256:2a77366cb29a8cd0de313a927bf39839279c7d97e230d9ef470c19ad311389e5"},
 ]
 
 [package.dependencies]
@@ -777,17 +778,17 @@ sqlparse = ">=0.4.4,<0.5.0"
 
 [[package]]
 name = "macrostrat-dinosaur"
-version = "3.0.1"
+version = "3.1.0"
 description = "Diff-based database migrations"
 optional = false
-python-versions = ">=3.8,<4.0"
+python-versions = "<4.0,>=3.8"
 files = [
-    {file = "macrostrat_dinosaur-3.0.1-py3-none-any.whl", hash = "sha256:1caba5f9196abef41b4ac35a8224946f442e47d96a34a088234605b4e692560d"},
-    {file = "macrostrat_dinosaur-3.0.1.tar.gz", hash = "sha256:3339b2fad6b71d31d5a1b563a53dc96b97ebaf2bbf5fb1ab0dde28772f78facb"},
+    {file = "macrostrat_dinosaur-3.1.0-py3-none-any.whl", hash = "sha256:943ef2436c7e1fca78e07d38fd119fe5101d589ea517d3c4ca6e3761d02ed556"},
+    {file = "macrostrat_dinosaur-3.1.0.tar.gz", hash = "sha256:5219dc19f11b727c0a30e571182c8a6fd63bdc776b9931bf37f6e739fa24990d"},
 ]
 
 [package.dependencies]
-docker = ">=6.0.1,<7.0.0"
+docker = ">=7.0.0,<8.0.0"
 GeoAlchemy2 = ">=0.14.0,<0.15.0"
 "macrostrat.database" = ">=3.1.2,<4.0.0"
 "macrostrat.utils" = ">=1.2.1,<2.0.0"
@@ -848,13 +849,13 @@ typer = ">=0.12.0,<0.13.0"
 
 [[package]]
 name = "macrostrat-utils"
-version = "1.2.1"
+version = "1.2.2"
 description = "Core utilities for Macrostrat and Sparrow"
 optional = false
-python-versions = ">=3.8,<4.0"
+python-versions = "<4.0,>=3.8"
 files = [
-    {file = "macrostrat_utils-1.2.1-py3-none-any.whl", hash = "sha256:80dd3c1e63fb7c1e1ed7aaee07034d80674be11f31a52759b53b8e6dbfb1bad3"},
-    {file = "macrostrat_utils-1.2.1.tar.gz", hash = "sha256:306c5c31af034caf7d10d3370c46f3bce28ffad0d1863a764522c95f5b19b8c4"},
+    {file = "macrostrat_utils-1.2.2-py3-none-any.whl", hash = "sha256:616f4c83cbbb99aa7264ef2184622b9bb065bdc5a891ccb4fcffdb695e7b1649"},
+    {file = "macrostrat_utils-1.2.2.tar.gz", hash = "sha256:2e14b9452e4eab41cc06dcb1b0e7c6006e932d94c30ab7c0c8c45a2dabd1c1dd"},
 ]
 
 [package.dependencies]
@@ -2206,23 +2207,7 @@ files = [
     {file = "wcwidth-0.2.13.tar.gz", hash = "sha256:72ea0c06399eb286d978fdedb6923a9eb47e1c486ce63e9b4e64fc18303972b5"},
 ]
 
-[[package]]
-name = "websocket-client"
-version = "1.8.0"
-description = "WebSocket client for Python with low level API options"
-optional = false
-python-versions = ">=3.8"
-files = [
-    {file = "websocket_client-1.8.0-py3-none-any.whl", hash = "sha256:17b44cc997f5c498e809b22cdf2d9c7a9e71c02c8cc2b6c56e7c2d1239bfa526"},
-    {file = "websocket_client-1.8.0.tar.gz", hash = "sha256:3239df9f44da632f96012472805d40a23281a991027ce11d2f45a6f24ac4c3da"},
-]
-
-[package.extras]
-docs = ["Sphinx (>=6.0)", "myst-parser (>=2.0.0)", "sphinx-rtd-theme (>=1.1.0)"]
-optional = ["python-socks", "wsaccel"]
-test = ["websockets"]
-
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "f49879223fe01faab7926658968ac6bad4dc711880f80b3605dff903b8033051"
+content-hash = "693910170c00817017753af7ac8e28a8a6ad64944ae1e1686c23c56425f932f0"

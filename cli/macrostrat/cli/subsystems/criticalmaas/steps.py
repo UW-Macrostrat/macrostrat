@@ -2,10 +2,11 @@ from typing import Generator
 
 from geoalchemy2.elements import WKBElement
 from geoalchemy2.shape import to_shape
+from shapely.geometry import mapping
+
 from macrostrat.database import Database
 from macrostrat.database.mapper import BaseModel
 from macrostrat.map_integration import MapInfo
-from shapely.geometry import mapping
 
 
 def _build_map_metadata(db, _map: MapInfo, Map: BaseModel, MapMetadata: BaseModel):

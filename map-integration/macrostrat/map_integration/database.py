@@ -1,9 +1,9 @@
 from pathlib import Path
 
-from macrostrat.database import Database
 from psycopg2.extras import NamedTupleCursor
 
 from macrostrat.core.config import PG_DATABASE
+from macrostrat.database import Database
 
 db = Database(PG_DATABASE)
 

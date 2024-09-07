@@ -1,11 +1,12 @@
+import os
+import subprocess
+import sys
+
 import MySQLdb
 import MySQLdb.cursors
-import os
 import psycopg2
-from psycopg2.extensions import AsIs
-import sys
-import subprocess
 import yaml
+from psycopg2.extensions import AsIs
 
 with open(os.path.join(os.path.dirname(__file__), '../credentials.yml'), 'r') as f:
     credentials = yaml.load(f)

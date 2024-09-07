@@ -1,8 +1,11 @@
 from os import environ
-from .corelle import create_corelle_fixtures, build_carto_plate_index
-from ...database import get_db
+
+from typer import Context, Typer
+
 from macrostrat.app_frame.control_command import ControlCommand
-from typer import Typer, Context
+
+from ...database import get_db
+from .corelle import build_carto_plate_index, create_corelle_fixtures
 
 
 def load_paleogeography_subsystem(app, main, db_subsystem):

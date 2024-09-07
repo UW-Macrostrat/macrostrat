@@ -1,8 +1,10 @@
 import argparse
-import sys, os
+import os
+import sys
+
 import psycopg2
-from psycopg2.extensions import AsIs
 import yaml
+from psycopg2.extensions import AsIs
 
 with open(os.path.join(os.path.dirname(__file__), '../credentials.yml'), 'r') as f:
     credentials = yaml.load(f)

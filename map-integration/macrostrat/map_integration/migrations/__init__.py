@@ -1,8 +1,9 @@
 from pathlib import Path
 
+from psycopg2.sql import Identifier
+
 from macrostrat.database import Database
 from macrostrat.utils import get_logger
-from psycopg2.sql import Identifier
 
 from ..utils import table_exists
 

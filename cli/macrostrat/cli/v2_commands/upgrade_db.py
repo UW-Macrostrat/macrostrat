@@ -1,7 +1,9 @@
-from pathlib import Path
-from macrostrat.utils import relative_path
-from rich import print
 from os import environ
+from pathlib import Path
+
+from rich import print
+
+from macrostrat.utils import relative_path
 
 from ..database import get_db
 
@@ -36,7 +38,7 @@ def extend_schema():
 
     files = Path(ext_dir).glob("*.sql")
     files = list(files)
-    files += list((Path(ext_dir)/"tileserver").glob("*.sql"))
+    files += list((Path(ext_dir) / "tileserver").glob("*.sql"))
     files.sort()
 
     for file in files:

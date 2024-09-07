@@ -3,14 +3,10 @@ from pathlib import Path
 
 from dynaconf import Dynaconf, Validator
 from sqlalchemy.engine import make_url
-from toml import load as load_toml
 from sqlalchemy.engine.url import URL
+from toml import load as load_toml
 
 from .utils import find_macrostrat_config, is_pg_url
-
-cfg = find_macrostrat_config()
-
-macrostrat_config_file = cfg
 
 
 class MacrostratConfig(Dynaconf):
@@ -18,14 +14,21 @@ class MacrostratConfig(Dynaconf):
 
     def __init__(self, *args, **kwargs):
         cfg = find_macrostrat_config()
+        settings = []
+        if cfg is not None:
+            settings.append(cfg)
+
         super().__init__(
             envvar_prefix="MACROSTRAT",
             environments=True,
             env_switcher="MACROSTRAT_ENV",
-            settings_files=[cfg],
+            settings_files=settings,
             load_dotenv=False,
         )
-        self.config_file = Path(cfg)
+
+        self.config_file = None
+        if cfg is not None:
+            self.config_file = Path(cfg)
 
     def all_environments(self):
         # Parse out top-level headers from TOML file

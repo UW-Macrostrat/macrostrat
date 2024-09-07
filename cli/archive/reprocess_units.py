@@ -1,7 +1,7 @@
-from ..macrostrat_cli.database import pgConnection, mariaConnection
-
 from macrostrat_cli.commands.match_scripts import units
 from macrostrat_cli.commands.process_scripts import burwell_lookup
+
+from ..macrostrat_cli.database import mariaConnection, pgConnection
 
 opts = {"pg": pgConnection, "mariadb": mariaConnection}
 

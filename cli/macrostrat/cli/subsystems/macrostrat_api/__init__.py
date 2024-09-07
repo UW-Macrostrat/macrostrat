@@ -5,9 +5,10 @@ primarily in Macrostrat's column-builder application and set of routes.
 
 from pathlib import Path
 
-from ...database import SubsystemSchemaDefinition, get_db
-from macrostrat.core import MacrostratSubsystem
 from macrostrat.app_frame import compose
+from macrostrat.core import MacrostratSubsystem
+
+from ...database import SubsystemSchemaDefinition, get_db
 
 __here__ = Path(__file__).parent
 fixtures_dir = __here__ / "schema"

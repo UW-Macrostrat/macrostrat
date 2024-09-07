@@ -1,15 +1,15 @@
 from pathlib import Path
 from sys import stdin
 
-from macrostrat.utils.shell import run
 from sqlalchemy.engine.url import URL
-from typer import Typer, Context, Argument
+from typer import Argument, Context, Typer
 
-from .restore import restore_mariadb, dump_mariadb
-from .utils import build_connection_args, mariadb_engine
+from macrostrat.utils.shell import run
+
 from ..utils import docker_internal_url
 from .postgresql_migration import migrate_mariadb_to_postgresql
-
+from .restore import dump_mariadb, restore_mariadb
+from .utils import build_connection_args, mariadb_engine
 
 app = Typer(no_args_is_help=True)
 

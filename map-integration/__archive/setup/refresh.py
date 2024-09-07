@@ -1,5 +1,6 @@
 from psycopg2.extensions import AsIs
 
+
 def source_stats(cursor, connection, source_id):
     cursor.execute("""
       SELECT primary_table FROM maps.sources WHERE source_id = %(source_id)s

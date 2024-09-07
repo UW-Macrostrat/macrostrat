@@ -1,13 +1,15 @@
-from ._legacy import get_db
-from sqlalchemy.engine import create_engine
-from sqlalchemy.engine.url import URL, make_url
-from macrostrat.core.config import settings
-from sqlalchemy.engine import Engine
-from macrostrat.database.utils import run_sql, run_query
-from psycopg2.sql import Identifier
 from contextlib import contextmanager
-from uuid import uuid4
 from typing import Optional
+from uuid import uuid4
+
+from psycopg2.sql import Identifier
+from sqlalchemy.engine import Engine, create_engine
+from sqlalchemy.engine.url import URL, make_url
+
+from macrostrat.core.config import settings
+from macrostrat.database.utils import run_query, run_sql
+
+from ._legacy import get_db
 
 
 def engine_for_db_name(name: str | None):

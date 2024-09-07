@@ -1,9 +1,12 @@
 import asyncio
-from .stream_utils import print_stream_progress, print_stdout
+
 from sqlalchemy.engine import Engine
+
+from macrostrat.utils import get_logger
+
 from .dump_database import _pg_dump
 from .restore_database import _pg_restore
-from macrostrat.utils import get_logger
+from .stream_utils import print_stdout, print_stream_progress
 
 log = get_logger(__name__)
 

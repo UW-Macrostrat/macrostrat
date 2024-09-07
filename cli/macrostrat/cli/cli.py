@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Optional
 
 import typer
-from macrostrat.utils.shell import run
 from rich import print
 from rich.traceback import install
 from typer import Argument, Option, Typer
@@ -12,13 +11,14 @@ from typer import Argument, Option, Typer
 from macrostrat.core import app
 from macrostrat.core.exc import MacrostratError, setup_exception_handling
 from macrostrat.core.main import env_text, set_app_state
+from macrostrat.utils.shell import run
 
 from .database import db_app, db_subsystem
 from .kubernetes import get_secret
+from .subsystems.macrostrat_api import MacrostratAPISubsystem
+from .subsystems.paleogeography import load_paleogeography_subsystem
 from .v1_entrypoint import v1_cli
 from .v2_commands import app as v2_app
-from .subsystems.paleogeography import load_paleogeography_subsystem
-from .subsystems.macrostrat_api import MacrostratAPISubsystem
 
 __here__ = Path(__file__).parent
 fixtures_dir = __here__ / "fixtures"
@@ -126,9 +126,9 @@ cfg_app = Typer(name="config", short_help="Manage configuration")
 @cfg_app.command(name="show")
 def show_cfg():
     """Show the current configuration"""
-    from macrostrat.core.config import macrostrat_config_file
+    from macrostrat.core.config import settings
 
-    print(str(macrostrat_config_file))
+    print(str(settings.config_file))
 
 
 @cfg_app.command(name="edit")
@@ -136,16 +136,16 @@ def edit_cfg():
     """Open config file in editor"""
     from subprocess import run
 
-    from macrostrat.core.config import macrostrat_config_file
+    from macrostrat.core.config import settings
 
-    run(["open", str(macrostrat_config_file)])
+    run(["open", str(settings.config_file)])
 
 
 @cfg_app.command(name="environments")
 def environments():
     """Get all available environments."""
     envs = app.settings.all_environments()
-    app_console.print(_available_environments(envs))
+    app.console.print(_available_environments(envs))
 
 
 main.add_typer(cfg_app)
@@ -381,4 +381,4 @@ for entry_point in discovered_plugins:
     if isinstance(plugin, typer.Typer):
         main.add_typer(plugin, name=entry_point.name, rich_help_panel="Subsystems")
 
-main = setup_exception_handling(main)
+# main = setup_exception_handling(main)

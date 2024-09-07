@@ -1,10 +1,26 @@
+import datetime
 import enum
 from typing import List
-import datetime
-from sqlalchemy import ForeignKey, func, DateTime, Enum, PrimaryKeyConstraint, UniqueConstraint
-from sqlalchemy.dialects.postgresql import VARCHAR, TEXT, INTEGER, ARRAY, BOOLEAN, JSON, JSONB
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
 from geoalchemy2 import Geometry
+from sqlalchemy import (
+    DateTime,
+    Enum,
+    ForeignKey,
+    PrimaryKeyConstraint,
+    UniqueConstraint,
+    func,
+)
+from sqlalchemy.dialects.postgresql import (
+    ARRAY,
+    BOOLEAN,
+    INTEGER,
+    JSON,
+    JSONB,
+    TEXT,
+    VARCHAR,
+)
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
 class Base(DeclarativeBase):
@@ -13,9 +29,7 @@ class Base(DeclarativeBase):
 
 class Sources(Base):
     __tablename__ = "sources"
-    __table_args__ = {
-        'schema': 'maps'
-    }
+    __table_args__ = {"schema": "maps"}
     source_id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(VARCHAR(255))
     primary_table: Mapped[str] = mapped_column(VARCHAR(255))
@@ -32,9 +46,9 @@ class Sources(Base):
     features: Mapped[int] = mapped_column(INTEGER)
     area: Mapped[int] = mapped_column(INTEGER)
     priority: Mapped[bool] = mapped_column(BOOLEAN)
-    rgeom: Mapped[str] = mapped_column(Geometry('POLYGON'))
+    rgeom: Mapped[str] = mapped_column(Geometry("POLYGON"))
     display_scales: Mapped[list[str]] = mapped_column(ARRAY(TEXT))
-    web_geom: Mapped[str] = mapped_column(Geometry('POLYGON'))
+    web_geom: Mapped[str] = mapped_column(Geometry("POLYGON"))
     new_priority: Mapped[int] = mapped_column(INTEGER)
     status_code: Mapped[str] = mapped_column(TEXT)
     slug: Mapped[str] = mapped_column(VARCHAR(255))
@@ -45,9 +59,7 @@ class Sources(Base):
 
 class GroupMembers(Base):
     __tablename__ = "group_members"
-    __table_args__ = {
-        'schema': 'macrostrat_auth'
-    }
+    __table_args__ = {"schema": "macrostrat_auth"}
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     group_id: Mapped[int] = mapped_column(ForeignKey("macrostrat_auth.group.id"))
     user_id: Mapped[int] = mapped_column(ForeignKey("macrostrat_auth.user.id"))
@@ -55,26 +67,26 @@ class GroupMembers(Base):
 
 class Group(Base):
     __tablename__ = "group"
-    __table_args__ = {
-        'schema': 'macrostrat_auth'
-    }
+    __table_args__ = {"schema": "macrostrat_auth"}
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(VARCHAR(255))
-    users: Mapped[List["User"]] = relationship(secondary="macrostrat_auth.group_members", lazy="joined",
-                                               back_populates="groups")
+    users: Mapped[List["User"]] = relationship(
+        secondary="macrostrat_auth.group_members",
+        lazy="joined",
+        back_populates="groups",
+    )
 
 
 class User(Base):
     __tablename__ = "user"
-    __table_args__ = {
-        'schema': 'macrostrat_auth'
-    }
+    __table_args__ = {"schema": "macrostrat_auth"}
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     sub: Mapped[str] = mapped_column(VARCHAR(255))
     name: Mapped[str] = mapped_column(VARCHAR(255))
     email: Mapped[str] = mapped_column(VARCHAR(255))
-    groups: Mapped[List[Group]] = relationship(secondary="macrostrat_auth.group_members", lazy="joined",
-                                               back_populates="users")
+    groups: Mapped[List[Group]] = relationship(
+        secondary="macrostrat_auth.group_members", lazy="joined", back_populates="users"
+    )
     created_on: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -85,18 +97,14 @@ class User(Base):
 
 class Token(Base):
     __tablename__ = "token"
-    __table_args__ = {
-        'schema': 'macrostrat_auth'
-    }
+    __table_args__ = {"schema": "macrostrat_auth"}
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     token: Mapped[str] = mapped_column(VARCHAR(255), unique=True)
     group: Mapped[Group] = mapped_column(ForeignKey("macrostrat_auth.group.id"))
     used_on: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    expires_on: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True)
-    )
+    expires_on: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True))
     created_on: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -110,13 +118,13 @@ class SchemeEnum(enum.Enum):
 class Object(Base):
     __tablename__ = "object"
     __table_args__ = (
-        UniqueConstraint('scheme', 'host', 'bucket', 'key', name='unique_file'),
-        {
-            'schema': 'storage'
-        }
+        UniqueConstraint("scheme", "host", "bucket", "key", name="unique_file"),
+        {"schema": "storage"},
     )
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    object_group_id: Mapped[int] = mapped_column(ForeignKey("storage.object_group.id"), nullable=True)
+    object_group_id: Mapped[int] = mapped_column(
+        ForeignKey("storage.object_group.id"), nullable=True
+    )
     scheme: Mapped[str] = mapped_column(Enum(SchemeEnum))
     host: Mapped[str] = mapped_column(VARCHAR(255), nullable=False)
     bucket: Mapped[str] = mapped_column(VARCHAR(255), nullable=False)
@@ -140,14 +148,14 @@ class Object(Base):
 
 class ObjectGroup(Base):
     __tablename__ = "object_group"
-    __table_args__ = {
-        'schema': 'storage'
-    }
+    __table_args__ = {"schema": "storage"}
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
     # Relationships
     objects: Mapped[List["Object"]] = relationship(back_populates="object_group")
-    ingest_process: Mapped["IngestProcess"] = relationship(back_populates="object_group")
+    ingest_process: Mapped["IngestProcess"] = relationship(
+        back_populates="object_group"
+    )
 
 
 class IngestState(enum.Enum):
@@ -166,20 +174,28 @@ class IngestType(enum.Enum):
 
 class IngestProcess(Base):
     __tablename__ = "ingest_process"
-    __table_args__ = {
-        'schema': 'maps_metadata'
-    }
+    __table_args__ = {"schema": "maps_metadata"}
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
-    state: Mapped[str] = mapped_column(Enum(IngestState, name="ingest_state"), nullable=True)
-    type: Mapped[str] = mapped_column(Enum(IngestType, name="ingest_type"), nullable=True)
+    state: Mapped[str] = mapped_column(
+        Enum(IngestState, name="ingest_state"), nullable=True
+    )
+    type: Mapped[str] = mapped_column(
+        Enum(IngestType, name="ingest_type"), nullable=True
+    )
 
     comments: Mapped[str] = mapped_column(TEXT, nullable=True)
     map_id: Mapped[str] = mapped_column(TEXT, nullable=True)
-    source_id: Mapped[int] = mapped_column(ForeignKey("maps.sources.source_id"), nullable=True)
-    access_group_id: Mapped[int] = mapped_column(ForeignKey("macrostrat_auth.group.id"), nullable=True)
-    object_group_id: Mapped[ObjectGroup] = mapped_column(ForeignKey("storage.object_group.id"))
+    source_id: Mapped[int] = mapped_column(
+        ForeignKey("maps.sources.source_id"), nullable=True
+    )
+    access_group_id: Mapped[int] = mapped_column(
+        ForeignKey("macrostrat_auth.group.id"), nullable=True
+    )
+    object_group_id: Mapped[ObjectGroup] = mapped_column(
+        ForeignKey("storage.object_group.id")
+    )
     created_on: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -188,21 +204,25 @@ class IngestProcess(Base):
     )
 
     # Relationships
-    object_group: Mapped[ObjectGroup] = relationship(back_populates="ingest_process", lazy="joined")
+    object_group: Mapped[ObjectGroup] = relationship(
+        back_populates="ingest_process", lazy="joined"
+    )
     source: Mapped[Sources] = relationship(back_populates="ingest_process")
-    tags: Mapped[List["IngestProcessTag"]] = relationship(back_populates="ingest_process", lazy="joined")
+    tags: Mapped[List["IngestProcessTag"]] = relationship(
+        back_populates="ingest_process", lazy="joined"
+    )
 
 
 class IngestProcessTag(Base):
     __tablename__ = "ingest_process_tag"
     __table_args__ = (
-        PrimaryKeyConstraint('ingest_process_id', 'tag', name='pk_tag'),
-        {
-            'schema': 'maps_metadata'
-        }
+        PrimaryKeyConstraint("ingest_process_id", "tag", name="pk_tag"),
+        {"schema": "maps_metadata"},
     )
 
-    ingest_process_id: Mapped[int] = mapped_column(ForeignKey("maps_metadata.ingest_process.id"))
+    ingest_process_id: Mapped[int] = mapped_column(
+        ForeignKey("maps_metadata.ingest_process.id")
+    )
     tag: Mapped[str] = mapped_column(VARCHAR(255))
 
     # Relationships

@@ -1,13 +1,14 @@
-import multiprocessing
-from match_units_multi import *
 import argparse
+import datetime
+import multiprocessing
+import os
+import sys
+
 import psycopg2
 import psycopg2.extras
-from psycopg2.extensions import AsIs
-import sys
-import os
-import datetime
 import yaml
+from match_units_multi import *
+from psycopg2.extensions import AsIs
 
 with open(os.path.join(os.path.dirname(__file__), '../credentials.yml'), 'r') as f:
     credentials = yaml.load(f)

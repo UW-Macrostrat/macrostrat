@@ -1,8 +1,9 @@
 from sys import stderr
 
-from macrostrat.app_frame import ApplicationError
 from rich.padding import Padding
 from typer import Typer
+
+from macrostrat.app_frame import ApplicationError
 
 from .console import err_console
 

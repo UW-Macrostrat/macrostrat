@@ -50,6 +50,7 @@ def get_db():
         db = Database(PG_DATABASE)
     return db
 
+
 def refresh_db():
     from macrostrat.database import Database, scoped_session
 

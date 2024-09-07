@@ -1,0 +1,3 @@
+[default]
+
+pg_database = "postgresql://user:password@localhost:5432/macrostrat"

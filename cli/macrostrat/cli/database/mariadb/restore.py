@@ -1,30 +1,26 @@
 import asyncio
-from pathlib import Path
-from typing import Union
-from sys import stdin
-
-from macrostrat.utils import get_logger
-from macrostrat.database import database_exists
-from rich.console import Console
-from sqlalchemy.engine import Engine, URL
-from macrostrat.core.exc import MacrostratError
-import aiofiles
-from tempfile import NamedTemporaryFile
 from contextlib import contextmanager
+from pathlib import Path
+from sys import stdin
+from tempfile import NamedTemporaryFile
+from typing import Union
 
-from .utils import build_connection_args, ParameterStyle
-from ..utils import docker_internal_url
+import aiofiles
+from rich.console import Console
+from sqlalchemy.engine import URL, Engine
 
+from macrostrat.core.exc import MacrostratError
+from macrostrat.database import database_exists
+from macrostrat.utils import get_logger
 
-from ..._dev.utils import (
-    _create_command,
-    _create_database_if_not_exists,
-)
 from ..._dev.stream_utils import (
-    print_stream_progress,
-    print_stdout,
     DecodingStreamReader,
+    print_stdout,
+    print_stream_progress,
 )
+from ..._dev.utils import _create_command, _create_database_if_not_exists
+from ..utils import docker_internal_url
+from .utils import ParameterStyle, build_connection_args
 
 console = Console()
 

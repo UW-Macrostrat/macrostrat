@@ -1,5 +1,7 @@
 from macrostrat.database import Database
+
 from ..base import Migration, schema_exists
+
 
 class ColumnBuilderMigration(Migration):
     name = "column-builder"
@@ -9,6 +11,6 @@ class ColumnBuilderMigration(Migration):
     then populate a number of views into the schema.
     """
 
-    depends_on = ['macrostrat-core-v2']
+    depends_on = ["macrostrat-core-v2"]
 
-    postconditions = [schema_exists('macrostrat_api')]
+    postconditions = [schema_exists("macrostrat_api")]

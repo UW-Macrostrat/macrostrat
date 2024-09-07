@@ -1,5 +1,7 @@
 from macrostrat.database import Database
-from ..base import Migration, view_exists, schema_exists
+
+from ..base import Migration, schema_exists, view_exists
+
 
 class MapsSourcesMetadataMigration(Migration):
     name = "maps-sources"
@@ -12,5 +14,7 @@ class MapsSourcesMetadataMigration(Migration):
 
     postconditions = [
         view_exists("maps", "sources_metadata", "ingest_process"),
-        view_exists("macrostrat_api", "sources_metadata", "sources_ingestion", "sources"),
+        view_exists(
+            "macrostrat_api", "sources_metadata", "sources_ingestion", "sources"
+        ),
     ]

@@ -1,8 +1,10 @@
-from .base import Base
-import sys
 import datetime
+import sys
+
 from psycopg2.extensions import AsIs
+
 from . import process_scripts
+from .base import Base
 
 
 class Process(Base):

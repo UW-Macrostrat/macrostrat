@@ -3,11 +3,12 @@ Script to output dataframes for comparing data between two databases and tables.
 """
 
 import pandas as pd
-from macrostrat.database import run_query
 from psycopg2.sql import Identifier
-from sqlalchemy import create_engine, text, inspect
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import Engine
+
 from macrostrat.core import app
+from macrostrat.database import run_query
 
 console = app.console
 
@@ -111,70 +112,92 @@ def compare_data_counts(db1_rows, db2_rows, db1_columns, db2_columns, db1, db2):
     else:
         count = 0
         maria_tables = [
-            'unit_notes',
-            'col_areas_6april2016',
-            'col_equiv',
-            'col_notes',
-            'interval_boundaries',
-            'interval_boundaries_scratch',
-            'measuremeta_cols',
-            'minerals',
-            'offshore_baggage',
-            'offshore_baggage_units',
-            'offshore_fossils',
-            'pbdb_matches',
-            'rockd_features',
-            'ronov_sediment',
-            'stats',
-            'strat_names_lookup',
-            'structures',
-            'structure_atts',
-            'tectonics',
-            'temp_areas',
-            'uniquedatafiles2',
-            'units_datafiles',
-            'unit_boundaries_backup',
-            'unit_boundaries_scratch',
-            'unit_boundaries_scratch_old',
-            'unit_contacts',
-            'unit_dates',
-            'unit_measures_pbdb',
-            'unit_seq_strat',
-            'unit_tectonics',
-            'canada_lexicon_dump',
-            'colors',
-            'lookup_measurements',
-            'offshore_sections',
-            'offshore_hole_ages',
-            'offshore_sites',
-            'pbdb_intervals',
-            'pbdb_liths',
-            'unit_equiv',
-            'unit_liths_atts'
+            "unit_notes",
+            "col_areas_6april2016",
+            "col_equiv",
+            "col_notes",
+            "interval_boundaries",
+            "interval_boundaries_scratch",
+            "measuremeta_cols",
+            "minerals",
+            "offshore_baggage",
+            "offshore_baggage_units",
+            "offshore_fossils",
+            "pbdb_matches",
+            "rockd_features",
+            "ronov_sediment",
+            "stats",
+            "strat_names_lookup",
+            "structures",
+            "structure_atts",
+            "tectonics",
+            "temp_areas",
+            "uniquedatafiles2",
+            "units_datafiles",
+            "unit_boundaries_backup",
+            "unit_boundaries_scratch",
+            "unit_boundaries_scratch_old",
+            "unit_contacts",
+            "unit_dates",
+            "unit_measures_pbdb",
+            "unit_seq_strat",
+            "unit_tectonics",
+            "canada_lexicon_dump",
+            "colors",
+            "lookup_measurements",
+            "offshore_sections",
+            "offshore_hole_ages",
+            "offshore_sites",
+            "pbdb_intervals",
+            "pbdb_liths",
+            "unit_equiv",
+            "unit_liths_atts",
         ]
 
         if list(db1_rows_not_in_db2.keys()).sort() == maria_tables.sort():
-            success(f"{len(db1_rows_not_in_db2)} {db1} tables copied over from MariaDB that do not exist in {db2}. This confirms data retention!")
+            success(
+                f"{len(db1_rows_not_in_db2)} {db1} tables copied over from MariaDB that do not exist in {db2}. This confirms data retention!"
+            )
             console.print(
                 [key for key in db1_rows_not_in_db2],
             )
-        elif len(db1_rows_not_in_db2) > 0 and list(db1_rows_not_in_db2.keys()) != maria_tables:
+        elif (
+            len(db1_rows_not_in_db2) > 0
+            and list(db1_rows_not_in_db2.keys()) != maria_tables
+        ):
             error(f"{len(db1_rows_not_in_db2)} {db1} tables not found in {db2}:")
             console.print(
                 [key for key in db1_rows_not_in_db2],
             )
-        if list(db2_rows_not_in_db1.keys()) == ['strat_name_footprints', 'grainsize', 'pbdb_collections', 'pbdb_collections_strat_names']:
-            success(f"{len(db2_rows_not_in_db1)} macrostrat (PostgreSQL) tables succesfully copied into {db2} to retain data!")
-            console.print(
-                [key for key in db2_rows_not_in_db1],
-            )
-        if list(db2_rows_not_in_db1.keys()) == ['temp_rocks', 'temp_names', 'unit_lith_atts']:
+        if list(db2_rows_not_in_db1.keys()) == [
+            "strat_name_footprints",
+            "grainsize",
+            "pbdb_collections",
+            "pbdb_collections_strat_names",
+        ]:
             success(
-                f"{len(db2_rows_not_in_db1)} {db2} tables did not copy into {db1}. These tables are irrelevant and do not need to be retained.")
+                f"{len(db2_rows_not_in_db1)} macrostrat (PostgreSQL) tables succesfully copied into {db2} to retain data!"
+            )
             console.print(
                 [key for key in db2_rows_not_in_db1],
             )
-        elif len(db2_rows_not_in_db1) > 0 and list(db2_rows_not_in_db1.keys()) != ['strat_name_footprints', 'grainsize', 'pbdb_collections', 'pbdb_collections_strat_names']:
+        if list(db2_rows_not_in_db1.keys()) == [
+            "temp_rocks",
+            "temp_names",
+            "unit_lith_atts",
+        ]:
+            success(
+                f"{len(db2_rows_not_in_db1)} {db2} tables did not copy into {db1}. These tables are irrelevant and do not need to be retained."
+            )
+            console.print(
+                [key for key in db2_rows_not_in_db1],
+            )
+        elif len(db2_rows_not_in_db1) > 0 and list(db2_rows_not_in_db1.keys()) != [
+            "strat_name_footprints",
+            "grainsize",
+            "pbdb_collections",
+            "pbdb_collections_strat_names",
+        ]:
             error(f"{len(db2_rows_not_in_db1)} {db2} tables not found in {db1}:")
             console.print(
                 [key for key in db2_rows_not_in_db1],
@@ -200,7 +223,11 @@ def compare_data_counts(db1_rows, db2_rows, db1_columns, db2_columns, db1, db2):
 
     if len(row_count_difference) == 0:
         success(f"All row counts in all tables are the same in {db1} and {db2}!")
-    elif db1 == 'macrostrat_temp' and db2 ==  'macrostrat (PostgreSQL)' and len(row_count_difference) == 26:
+    elif (
+        db1 == "macrostrat_temp"
+        and db2 == "macrostrat (PostgreSQL)"
+        and len(row_count_difference) == 26
+    ):
         success(
             f"Row counts are greater in {db1} rather than {db2} for {len(row_count_difference)} tables, indicating data retention from Mariadb!"
         )
@@ -212,15 +239,32 @@ def compare_data_counts(db1_rows, db2_rows, db1_columns, db2_columns, db1, db2):
         )
         print_counts(row_count_difference)
 
-
-
     console.print("\n[bold]Checking column counts...")
-    array = ['cols', 'col_areas', 'environs','intervals' ,'lith_atts' ,'measures', 'sections', 'strat_names', 'units', 'unit_environs', 'unit_strat_names', 'lookup_strat_names', 'strat_tree']
+    array = [
+        "cols",
+        "col_areas",
+        "environs",
+        "intervals",
+        "lith_atts",
+        "measures",
+        "sections",
+        "strat_names",
+        "units",
+        "unit_environs",
+        "unit_strat_names",
+        "lookup_strat_names",
+        "strat_tree",
+    ]
 
     if len(col_count_difference) == 0:
         success(f"All column counts in all tables are the same in {db1} and {db2}!\n")
 
-    if db1 == "macrostrat_temp (MariaDB)" and db2 == "macrostrat_temp" and list(col_count_difference.keys()) == ['lookup_unit_intervals', 'col_areas', 'cols', 'intervals', 'measuremeta']:
+    if (
+        db1 == "macrostrat_temp (MariaDB)"
+        and db2 == "macrostrat_temp"
+        and list(col_count_difference.keys())
+        == ["lookup_unit_intervals", "col_areas", "cols", "intervals", "measuremeta"]
+    ):
         success(
             f"Columns for {len(col_count_difference)} tables successfully copied over from macrostrat (PostgreSQL) into {db2}, to retain data!"
         )
@@ -248,6 +292,7 @@ def print_counts(counts):
 
         console.print(f"{key:30s} {v1:9d} {v2:9d} [dim]{diff}[/dim]")
 
+
 def print_col_counts(counts):
     for key, (v1, v2) in counts.items():
         diff = v2 - v1
@@ -255,6 +300,7 @@ def print_col_counts(counts):
         diff = f"[{col}]{diff:+8d}[/]"
 
         console.print(f"{key:30s} {v1:9d} {v2:9d} [dim]{diff}[/dim]")
+
 
 def error(message):
     console.print(f"\n[red bold]ERROR:[red] {message}")
@@ -265,13 +311,7 @@ def success(message):
 
 
 def find_row_variances(
-        database_name_one,
-        schema_one,
-        schema_two,
-        username,
-        password,
-        tables,
-        pg_engine
+    database_name_one, schema_one, schema_two, username, password, tables, pg_engine
 ):
     insp = inspect(pg_engine)
     count = 0
@@ -279,7 +319,7 @@ def find_row_variances(
         for table in tables:
             # Get the actual first column name for each table
             columns = insp.get_columns(table, schema=schema_one)
-            first_column_name = columns[0]['name']
+            first_column_name = columns[0]["name"]
             query = f"""
                    SELECT COUNT(m.{first_column_name})
                    FROM macrostrat.macrostrat.{table} m
@@ -296,14 +336,9 @@ def find_row_variances(
         print_counts(dict)
     return
 
+
 def find_col_variances(
-    database_name_one,
-    schema_one,
-    schema_two,
-    username,
-    password,
-    tables,
-    pg_engine
+    database_name_one, schema_one, schema_two, username, password, tables, pg_engine
 ):
 
     insp = inspect(pg_engine)
@@ -311,14 +346,18 @@ def find_col_variances(
     for table in tables:
         columns_one = insp.get_columns(table, schema=schema_one)
         columns_two = insp.get_columns(table, schema=schema_two)
-        col_names_one = {col['name'] for col in columns_one}
-        col_names_two = {col['name'] for col in columns_two}
+        col_names_one = {col["name"] for col in columns_one}
+        col_names_two = {col["name"] for col in columns_two}
         col_not_in_schema_two = col_names_one - col_names_two
-        ['units', 'cols' ]
-        if col_not_in_schema_two == {'notes'}:
-            success(f"Notes column exists {schema_one} but NOT in {schema_two} for {table}. {schema_two}.{table}.notes is its own table from Mariadb.")
-        if col_not_in_schema_two and col_not_in_schema_two != {'notes'}:
-            error(f"Columns that exist in {schema_one} but NOT in {schema_two} for {table}: {col_not_in_schema_two}")
+        ["units", "cols"]
+        if col_not_in_schema_two == {"notes"}:
+            success(
+                f"Notes column exists {schema_one} but NOT in {schema_two} for {table}. {schema_two}.{table}.notes is its own table from Mariadb."
+            )
+        if col_not_in_schema_two and col_not_in_schema_two != {"notes"}:
+            error(
+                f"Columns that exist in {schema_one} but NOT in {schema_two} for {table}: {col_not_in_schema_two}"
+            )
         else:
             results.append(table)
 
