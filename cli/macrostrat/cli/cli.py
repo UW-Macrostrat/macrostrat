@@ -126,26 +126,25 @@ cfg_app = Typer(name="config", short_help="Manage configuration")
 @cfg_app.command(name="show")
 def show_cfg():
     """Show the current configuration"""
-    from macrostrat.core.config import macrostrat_config_file
+    from macrostrat.core.config import settings
 
-    print(str(macrostrat_config_file))
+    print(str(settings.config_file))
 
 
 @cfg_app.command(name="edit")
 def edit_cfg():
     """Open config file in editor"""
     from subprocess import run
+    from macrostrat.core.config import settings
 
-    from macrostrat.core.config import macrostrat_config_file
-
-    run(["open", str(macrostrat_config_file)])
+    run(["open", str(settings.config_file)])
 
 
 @cfg_app.command(name="environments")
 def environments():
     """Get all available environments."""
     envs = app.settings.all_environments()
-    app_console.print(_available_environments(envs))
+    app.console.print(_available_environments(envs))
 
 
 main.add_typer(cfg_app)

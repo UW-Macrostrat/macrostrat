@@ -848,13 +848,13 @@ typer = ">=0.12.0,<0.13.0"
 
 [[package]]
 name = "macrostrat-utils"
-version = "1.2.1"
+version = "1.2.2"
 description = "Core utilities for Macrostrat and Sparrow"
 optional = false
-python-versions = ">=3.8,<4.0"
+python-versions = "<4.0,>=3.8"
 files = [
-    {file = "macrostrat_utils-1.2.1-py3-none-any.whl", hash = "sha256:80dd3c1e63fb7c1e1ed7aaee07034d80674be11f31a52759b53b8e6dbfb1bad3"},
-    {file = "macrostrat_utils-1.2.1.tar.gz", hash = "sha256:306c5c31af034caf7d10d3370c46f3bce28ffad0d1863a764522c95f5b19b8c4"},
+    {file = "macrostrat_utils-1.2.2-py3-none-any.whl", hash = "sha256:616f4c83cbbb99aa7264ef2184622b9bb065bdc5a891ccb4fcffdb695e7b1649"},
+    {file = "macrostrat_utils-1.2.2.tar.gz", hash = "sha256:2e14b9452e4eab41cc06dcb1b0e7c6006e932d94c30ab7c0c8c45a2dabd1c1dd"},
 ]
 
 [package.dependencies]
@@ -2225,4 +2225,4 @@ test = ["websockets"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "f49879223fe01faab7926658968ac6bad4dc711880f80b3605dff903b8033051"
+content-hash = "abd64f98eb8dc0f4840b7511f93d880750443c9f939db4ec32c55525579d456e"
