@@ -7,6 +7,7 @@ import typer
 from pydantic import BaseModel
 from rich import print
 from sqlalchemy import text
+from sqlalchemy_utils.types.enriched_datetime.arrow_datetime import arrow
 from typer import Argument, Option
 
 from macrostrat.core import MacrostratSubsystem, app
@@ -47,9 +48,9 @@ class SubsystemSchemaDefinition(BaseModel):
     """A schema definition managed by a Macrostrat subsystem"""
 
     # TODO: These could also be recast as "idempotent migrations" that can be run at any time
-
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = dict(
+        arbitrary_types_allowed=True,
+    )
 
     name: str
     version: str = "0.0.0"

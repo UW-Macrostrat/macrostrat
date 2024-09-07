@@ -13,3 +13,6 @@ format:
 
 test:
 	poetry run pytest cli/tests
+
+test-warnings:
+	poetry run pytest cli/tests -W error
