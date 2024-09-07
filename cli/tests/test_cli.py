@@ -2,8 +2,9 @@
 
 from pathlib import Path
 
-from macrostrat.utils import override_environment
 from typer.testing import CliRunner
+
+from macrostrat.utils import override_environment
 
 runner = CliRunner()
 
