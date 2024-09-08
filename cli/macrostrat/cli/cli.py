@@ -1,20 +1,16 @@
-import json
 from os import environ
 from pathlib import Path
-from typing import Optional
 
 import typer
+from macrostrat.utils.shell import run
 from rich import print
 from rich.traceback import install
-from typer import Argument, Option, Typer
+from typer import Argument, Typer
 
 from macrostrat.core import app
-from macrostrat.core.exc import MacrostratError, setup_exception_handling
+from macrostrat.core.exc import MacrostratError
 from macrostrat.core.main import env_text, set_app_state
-from macrostrat.utils.shell import run
-
 from .database import db_app, db_subsystem
-from .kubernetes import get_secret
 from .subsystems.macrostrat_api import MacrostratAPISubsystem
 from .subsystems.paleogeography import load_paleogeography_subsystem
 from .v1_entrypoint import v1_cli
@@ -242,7 +238,8 @@ try:
     db_subsystem.register_schema_part(name="tileserver", callback=update_tileserver)
 
 except ImportError as err:
-    app.console.print("Could not import tileserver subsystem")
+    pass
+    # app.console.print("Could not import tileserver subsystem")
 
 # Get subsystems config
 subsystems = getattr(settings, "subsystems", {})
@@ -265,6 +262,7 @@ app = load_paleogeography_subsystem(app, main, db_subsystem)
 
 if mapboard_url := getattr(settings, "mapboard_database", None):
     from .subsystems.mapboard import MapboardSubsystem
+
     app.subsystems.add(MapboardSubsystem(app))
 
 try:

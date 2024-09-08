@@ -8,10 +8,10 @@ from os import environ
 from subprocess import run
 from typing import Optional, List
 
-from macrostrat.core import app as app_
 from rich import print
-from typer import Argument, Option
-from typer import Typer
+from typer import Argument, Option, Typer
+
+from macrostrat.core import app as app_
 
 settings = app_.settings
 
@@ -72,7 +72,7 @@ def get_secret(settings, secret_name: Optional[str], *, secret_key: str = None):
     return secret
 
 
-app = Typer()
+app = Typer(no_args_is_help=True)
 
 
 @app.command()
@@ -109,7 +109,8 @@ def s3_users():
 
 
 @app.command(
-    context_settings={"allow_extra_args": True, "ignore_unknown_options": True}
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
+    add_help_option=False,
 )
 def mc(args: List[str] = Argument(None)):
     """
@@ -140,6 +141,10 @@ def _mc(command: str, **kwargs):
         _script.append(
             f"mc alias set {user} {endpoint} {access_key} {secret_key} --api s3v4 > /dev/null 2>&1"
         )
+
+    # Delete common aliases
+    for alias in ["gcs", "local", "play", "s3"]:
+        _script.append(f"mc alias remove {alias} > /dev/null 2>&1")
 
     _script.append(command)
     script = "\n".join(_script)
