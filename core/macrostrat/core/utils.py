@@ -34,8 +34,6 @@ def find_macrostrat_config() -> Path:
         return None
         # raise RuntimeError("Could not find macrostrat.toml")
 
-    print(macrostrat_root)
-
     return macrostrat_root / "macrostrat.toml"
 
 
