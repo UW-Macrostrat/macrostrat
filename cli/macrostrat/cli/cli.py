@@ -260,12 +260,7 @@ if subsystems.get("criticalmaas", False):
 app = load_paleogeography_subsystem(app, main, db_subsystem)
 
 
-if mapboard_url := getattr(settings, "mapboard_database", None):
-    from .subsystems.mapboard import MapboardSubsystem
-
-    app.subsystems.add(MapboardSubsystem(app))
-
-try:
+if kube_namespace := getattr(settings, "kube_namespace", None):
     from .kubernetes import app as kube_app
 
     main.add_typer(
@@ -274,11 +269,18 @@ try:
         short_help="Kubernetes utilities",
         rich_help_panel="Subsystems",
     )
-except ImportError as err:
-    print("Could not import Kubernetes subsystem")
 
 
-# Add other subsystems (temporary)
+from .subsystems.storage import app as storage_app
+
+main.add_typer(
+    storage_app,
+    name="storage",
+    short_help="Manage storage buckets",
+    rich_help_panel="Subsystems",
+)
+
+
 from .subsystems.mapboard import MapboardSubsystem
 
 if subsystems.get("mapboard", False):

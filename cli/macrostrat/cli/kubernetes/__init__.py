@@ -6,7 +6,7 @@ import base64
 import json
 from os import environ
 from subprocess import run
-from typing import Optional, List
+from typing import Optional
 
 from rich import print
 from typer import Argument, Option, Typer
@@ -85,110 +85,3 @@ def secrets(secret_name: Optional[str] = Argument(None), *, key: str = Option(No
         return
 
     print(json.dumps(get_secret(settings, secret_name, secret_key=key), indent=4))
-
-
-def _s3_users():
-    res = _kubectl(
-        settings,
-        ["get", "secrets", "-o", "jsonpath={.items[*].metadata.name}"],
-        capture_output=True,
-        text=True,
-    )
-    prefix = "s3-user-"
-    return [
-        r.replace(prefix, "") for r in res.stdout.split(" ") if r.startswith(prefix)
-    ]
-
-
-@app.command()
-def s3_users():
-    """
-    List available S3 users.
-    """
-    print(_s3_users())
-
-
-@app.command(
-    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
-    add_help_option=False,
-)
-def mc(args: List[str] = Argument(None)):
-    """
-    Run the Minio client in a Docker container.
-    """
-
-    script = "mc"
-    if args is not None:
-        script += " " + " ".join(args)
-
-    _mc(script)
-
-
-def _mc(command: str, **kwargs):
-    """
-    Run the Minio client in a Docker container.
-    """
-    _script = []
-    for user in _s3_users():
-        cfg = get_secret(settings, "s3-user-" + user)
-        if cfg is None:
-            raise Exception(f"No secret found for S3 user {user}.")
-
-        access_key = cfg["access_key"]
-        secret_key = cfg["secret_key"]
-        endpoint = getattr(settings, "s3_endpoint")
-
-        _script.append(
-            f"mc alias set {user} {endpoint} {access_key} {secret_key} --api s3v4 > /dev/null 2>&1"
-        )
-
-    # Delete common aliases
-    for alias in ["gcs", "local", "play", "s3"]:
-        _script.append(f"mc alias remove {alias} > /dev/null 2>&1")
-
-    _script.append(command)
-    script = "\n".join(_script)
-
-    return run(
-        [
-            "docker",
-            "run",
-            "--rm",
-            "-it",
-            "--entrypoint=/bin/sh",
-            "minio/mc:latest",
-            "-c",
-            script,
-        ],
-        env={
-            "DOCKER_HOST": getattr(
-                settings, "docker_base_url", "unix://var/run/docker.sock"
-            ),
-            **environ,
-        },
-        **kwargs,
-    )
-
-
-@app.command()
-def mirror_bucket(
-    src: Optional[str] = Argument(None),
-    dst: Optional[str] = Argument(None),
-    user=None,
-    overwrite=False,
-):
-    """
-    Mirror two S3 buckets using a worker on the Kubernetes cluster.
-    """
-    # Build and run a Docker container with mc
-
-    if src is None or dst is None:
-        raise Exception("Both source and destination buckets must be specified.")
-
-    flags = ""
-    if overwrite:
-        flags = "--overwrite"
-
-    script = "\n".join([f"mc mb {dst}", f"mc mirror {flags} {src} {dst}"])
-
-    _mc(script)
