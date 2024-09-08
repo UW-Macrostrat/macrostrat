@@ -2,13 +2,14 @@ import asyncio
 from pathlib import Path
 
 import aiofiles
-from macrostrat.utils import get_logger
 from rich.console import Console
 from sqlalchemy.engine import Engine
 
+from macrostrat.utils import get_logger
+
+from ..database.utils import docker_internal_url
 from .stream_utils import print_stdout, print_stream_progress
 from .utils import _create_command, _create_database_if_not_exists
-from ..database.utils import docker_internal_url
 
 console = Console()
 
