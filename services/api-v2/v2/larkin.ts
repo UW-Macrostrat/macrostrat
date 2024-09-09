@@ -75,7 +75,6 @@ const { Client, Pool } = require("pg");
     const nameMapping = credentials.postgresDatabases ?? {};
     const dbName = nameMapping[db] ?? db;
 
-    let { connectionString, ...otherConnectionDetails } = credentials.pg;
 
     if (dbName == "geomacro") {
       console.warn(
@@ -84,14 +83,18 @@ const { Client, Pool } = require("pg");
     }
 
     if (dbName == "elevation") {
-      /** Special case for elevation database (temporary) */
-      connectionString = credentials.elevationDatabase;
+      /* Special case for elevation database (temporary) */
+      let { connectionString, ...otherConnectionDetails } = credentials.elevationDatabase;
+    } else {
+        let { connectionString, ...otherConnectionDetails } = credentials.pg;
     }
 
     const pool = new Pool({
       connectionString,
       ...otherConnectionDetails,
     });
+
+    console.log(pool)
 
     pool.connect(function (err, client, done) {
       if (err) {

@@ -6,16 +6,14 @@ module.exports = (req, res, next, cb) => {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
+  console.log(req.query)
+    let param = {}
+
   if ((req.query.lat && req.query.lng) || "sample" in req.query) {
     let lat = req.query.lat || 43.07;
     let lng = larkin.normalizeLng(req.query.lng) || -89.4;
-    let param = {}
         param['point']= `POINT(${lng} ${lat})`;
-
-    larkin.queryPg(
-      "elevation",
-      `
-      WITH first AS (
+    let sql = `WITH first AS (
           SELECT ST_Value(rast, 1, ST_GeomFromText(:point, 4326)) AS elevation, 1 as priority
           FROM sources.srtm1
           WHERE ST_Intersects(ST_GeomFromText(:point, 4326), rast)
@@ -28,10 +26,14 @@ module.exports = (req, res, next, cb) => {
       FROM first
       WHERE elevation IS NOT NULL
       ORDER BY priority ASC
-      LIMIT 1
-    `,
+      LIMIT 1`;
+
+    larkin.queryPg(
+      "elevation",
+      sql,
       param,
       (error, result) => {
+          console.log(result)
         if (error) {
           if (cb) return cb(error);
           return larkin.error(req, res, next, "Error fetching elevation data");
@@ -83,10 +85,7 @@ module.exports = (req, res, next, cb) => {
     params['linestring'] = `SRID=4326;LINESTRING(${leftLng} ${leftLat}, ${rightLng} ${rightLat})`;
     params['westPoint'] = `SRID=4326;POINT(${leftLng} ${leftLat})`;
 
-    larkin.queryPg(
-      "elevation",
-      `
-      WITH first AS (
+    let sql = `WITH first AS (
         SELECT ST_SetSRID((ST_Dump(
         ST_LocateAlong(
           ST_AddMeasure(my_line, 0, 200), generate_series(0, 200)
@@ -115,8 +114,10 @@ module.exports = (req, res, next, cb) => {
           ORDER BY priority ASC
           LIMIT 1
         ) AS elevation
-      FROM first
-    `,
+      FROM first`;
+    larkin.queryPg(
+      "elevation",
+      sql,
       params,
       (error, result) => {
         if (error) {
