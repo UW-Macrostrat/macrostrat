@@ -1,3 +1,5 @@
+import {stringify} from "querystring";
+
 const api = require("../api");
 const async = require("async");
 const larkin = require("../larkin");
@@ -299,13 +301,17 @@ function buildLineSQL(scale) {
   `;
 }
 
+
+
+
+
 // Accepts a longitude, a latitude, and a zoom level
 // Returns the proper burwell data and macrostrat data
 module.exports = (req, res, next) => {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
-
+  let params = {};
   if (
     (!req.query.lng || !req.query.lat || !req.query.z) &&
     !req.query.hasOwnProperty("sample")
@@ -324,17 +330,28 @@ module.exports = (req, res, next) => {
     req.query.lat = 43.03;
     req.query.z = 10;
   }
-
   req.query.lng = larkin.normalizeLng(req.query.lng);
   req.query.z = parseInt(req.query.z || 0);
+
+
+    req.query.lng = stringify(req.query.lng);
+    req.query.lat = stringify(req.query.lat);
+    req.query.z = stringify(req.query.z);
+    console.log(params)
 
   async.parallel(
     {
       elevation: (cb) => {
         require("../elevation")(req, null, null, (error, data) => {
+            console.log(req)
+            console.log(data)
+
           if (data && data.length) {
+              console.log(data)
+              console.log(data.length)
             cb(null, data[0].elevation);
           } else {
+              console.log("cb is null")
             cb(null, null);
           }
         });
@@ -434,7 +451,7 @@ module.exports = (req, res, next) => {
           params = [req.query.map_id];
         } else if (req.query.legend_id) {
           where = [`mm.legend_id = $1`];
-          params = [re.query.legend_id];
+          params = [req.query.legend_id];
         } else {
           where = [`ST_Intersects(y.geom, ST_GeomFromText($1, 4326))`];
           params = [`SRID=4326;POINT(${req.query.lng} ${req.query.lat})`];
@@ -502,7 +519,6 @@ module.exports = (req, res, next) => {
     },
     (error, data) => {
       if (error) return larkin.error(req, res, next, error || null);
-
       for (let i = 0; i < data.burwell.length; i++) {
         data.burwell[i].lines = [];
         for (let j = 0; j < data.lines.length; j++) {
@@ -530,6 +546,6 @@ module.exports = (req, res, next) => {
           },
         },
       );
-    },
+    }
   );
 };

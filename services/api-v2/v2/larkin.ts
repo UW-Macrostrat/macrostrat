@@ -89,12 +89,7 @@ const { Client, Pool } = require("pg");
         let { connectionString, ...otherConnectionDetails } = credentials.pg;
     }
 
-    const pool = new Pool({
-      connectionString,
-      ...otherConnectionDetails,
-    });
-
-    console.log(pool)
+    const pool = new Pool({ connectionString, ...otherConnectionDetails });
 
     pool.connect(function (err, client, done) {
       if (err) {
