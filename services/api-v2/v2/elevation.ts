@@ -78,8 +78,10 @@ module.exports = (req, res, next, cb) => {
       req.query.start_lng < req.query.end_lng
         ? req.query.end_lat
         : req.query.start_lat;
-    let linestring = `SRID=4326;LINESTRING(${leftLng} ${leftLat}, ${rightLng} ${rightLat})`;
-    let westPoint = `SRID=4326;POINT(${leftLng} ${leftLat})`;
+    let params = {}
+
+    params['linestring'] = `SRID=4326;LINESTRING(${leftLng} ${leftLat}, ${rightLng} ${rightLat})`;
+    params['westPoint'] = `SRID=4326;POINT(${leftLng} ${leftLat})`;
 
     larkin.queryPg(
       "elevation",
@@ -90,16 +92,14 @@ module.exports = (req, res, next, cb) => {
           ST_AddMeasure(my_line, 0, 200), generate_series(0, 200)
         )
         )).geom, 4326) AS geom FROM (
-          SELECT ST_GeomFromText($1) AS my_line
+          SELECT ST_GeomFromText(:linestring) AS my_line
         ) q
       )
       
-      
-
       SELECT
         ST_X(geom) AS lng,
         ST_Y(geom) AS lat,
-        round((ST_DistanceSphere(geom, $2) * 0.001)::numeric, 2)::float AS d,
+        round((ST_DistanceSphere(geom, :westPoint) * 0.001)::numeric, 2)::float AS d,
         (
           SELECT elevation
           FROM (
@@ -117,7 +117,7 @@ module.exports = (req, res, next, cb) => {
         ) AS elevation
       FROM first
     `,
-      [linestring, westPoint],
+      params,
       (error, result) => {
         if (error) {
           if (cb) return cb(error);
