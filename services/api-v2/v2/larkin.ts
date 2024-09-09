@@ -118,8 +118,6 @@ const { Client, Pool } = require("pg");
 
 
 
-
-
   larkin.toUnnamed = function (sql, params) {
     var placeholders = sql.match(
         /(?:\?)|(?::(\d+|(?::?[a-zA-Z][a-zA-Z0-9_]*)))/g,
