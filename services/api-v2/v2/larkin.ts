@@ -81,15 +81,14 @@ const { Client, Pool } = require("pg");
         "In Macrostrat v2, 'geomacro' is merged with 'burwell' into the 'macrostrat' database.",
       );
     }
+    let connectionDetails = credentials.pg;
 
     if (dbName == "elevation") {
       /* Special case for elevation database (temporary) */
-      let { connectionString, ...otherConnectionDetails } = credentials.elevationDatabase;
-    } else {
-        let { connectionString, ...otherConnectionDetails } = credentials.pg;
+      connectionDetails.database = 'elevation'
     }
-
-    const pool = new Pool({ connectionString, ...otherConnectionDetails });
+    console.log(connectionDetails)
+    const pool = new Pool(connectionDetails);
 
     pool.connect(function (err, client, done) {
       if (err) {
