@@ -93,6 +93,8 @@ module.exports = (req, res, next, cb) => {
           SELECT ST_GeomFromText($1) AS my_line
         ) q
       )
+      
+      
 
       SELECT
         ST_X(geom) AS lng,
