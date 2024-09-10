@@ -333,28 +333,22 @@ module.exports = (req, res, next) => {
   req.query.lng = larkin.normalizeLng(req.query.lng);
   req.query.z = parseInt(req.query.z || 0);
 
-
-    req.query.lng = stringify(req.query.lng);
-    req.query.lat = stringify(req.query.lat);
-    req.query.z = stringify(req.query.z);
     console.log(params)
 
   async.parallel(
     {
       elevation: (cb) => {
         require("../elevation")(req, null, null, (error, data) => {
-            console.log(req)
-            console.log(data)
-
           if (data && data.length) {
               console.log(data)
-              console.log(data.length)
             cb(null, data[0].elevation);
           } else {
               console.log("cb is null")
             cb(null, null);
           }
         });
+        console.log('ELEVATION IS COMPLETE')
+
       },
 
       lines: (cb) => {

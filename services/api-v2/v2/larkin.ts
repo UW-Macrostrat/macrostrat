@@ -87,20 +87,31 @@ const { Client, Pool } = require("pg");
       /* Special case for elevation database (temporary) */
       connectionDetails.database = 'elevation'
     }
-    console.log(connectionDetails)
+
     const pool = new Pool(connectionDetails);
 
     pool.connect(function (err, client, done) {
       if (err) {
         larkin.log("error", "error connecting - " + err);
         callback(err);
-      } else {
+      } else if (typeof(params) === 'object') {
         //named uses yesql to modify the params dict and sql named parameters into an array before querying PG.
         //client.query can only accept numerical indices in sql syntax and an array for parameter values.
         const preparedQuery = named(sql)(params);
         console.log("Prepared Query Text:", preparedQuery.text);
         console.log("Prepared Query Values:", preparedQuery.values);
-        var query = client.query(preparedQuery.text, preparedQuery.values, function (err, result) {
+        client.query(preparedQuery.text, preparedQuery.values, function (err, result) {
+          done();
+          if (err) {
+            larkin.log("error", err);
+            callback(err);
+          } else {
+            callback(null, result);
+          }
+        });
+      }
+      else if (params.isArray) {
+        client.query(sql, params, function (err, result) {
           done();
           if (err) {
             larkin.log("error", err);

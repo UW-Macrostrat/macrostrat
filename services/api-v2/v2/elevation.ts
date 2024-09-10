@@ -6,8 +6,7 @@ module.exports = (req, res, next, cb) => {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
-  console.log(req.query)
-    let param = {}
+  let param = {}
 
   if ((req.query.lat && req.query.lng) || "sample" in req.query) {
     let lat = req.query.lat || 43.07;
@@ -33,7 +32,6 @@ module.exports = (req, res, next, cb) => {
       sql,
       param,
       (error, result) => {
-          console.log(result)
         if (error) {
           if (cb) return cb(error);
           return larkin.error(req, res, next, "Error fetching elevation data");
