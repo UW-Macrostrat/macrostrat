@@ -75,13 +75,12 @@ const { Client, Pool } = require("pg");
     const nameMapping = credentials.postgresDatabases ?? {};
     const dbName = nameMapping[db] ?? db;
 
-
     if (dbName == "geomacro") {
       console.warn(
         "In Macrostrat v2, 'geomacro' is merged with 'burwell' into the 'macrostrat' database.",
       );
     }
-    let connectionDetails = credentials.pg;
+    let connectionDetails = {...credentials.pg};
 
     if (dbName == "elevation") {
       /* Special case for elevation database (temporary) */
@@ -89,18 +88,16 @@ const { Client, Pool } = require("pg");
     }
 
     const pool = new Pool(connectionDetails);
+    console.log(connectionDetails)
 
     pool.connect(function (err, client, done) {
       if (err) {
         larkin.log("error", "error connecting - " + err);
         callback(err);
-      } else if (typeof(params) === 'object') {
-        //named uses yesql to modify the params dict and sql named parameters into an array before querying PG.
-        //client.query can only accept numerical indices in sql syntax and an array for parameter values.
-        const preparedQuery = named(sql)(params);
-        console.log("Prepared Query Text:", preparedQuery.text);
-        console.log("Prepared Query Values:", preparedQuery.values);
-        client.query(preparedQuery.text, preparedQuery.values, function (err, result) {
+      } else if (Array.isArray(params)) {
+        console.log("Params is array: \n", sql)
+        console.log(params)
+        client.query(sql, params, function (err, result) {
           done();
           if (err) {
             larkin.log("error", err);
@@ -109,9 +106,13 @@ const { Client, Pool } = require("pg");
             callback(null, result);
           }
         });
-      }
-      else if (params.isArray) {
-        client.query(sql, params, function (err, result) {
+      } else if (typeof(params) === 'object') {
+        console.log("Params is object, using yesql: \n", sql)
+        console.log(params)
+        //named uses yesql to modify the params dict and sql named parameters into an array before querying PG.
+        //client.query can only accept numerical indices in sql syntax and an array for parameter values.
+        const preparedQuery = named(sql)(params);
+        client.query(preparedQuery.text, preparedQuery.values, function (err, result) {
           done();
           if (err) {
             larkin.log("error", err);

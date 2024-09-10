@@ -98,7 +98,12 @@ module.exports = function (req, res, next, cb) {
          age_bottom AS b_age,
          interval_type AS int_type,
          ${color},
-         json_agg(json_build_object('timescale_id', timescales.id, 'name', timescales.timescale)) AS timescales
+         json_agg(
+             json_build_object(
+                 'timescale_id',
+                 timescales.id,
+                 'name',
+                 timescales.timescale)) AS timescales
     FROM macrostrat.intervals
     LEFT JOIN macrostrat.timescales_intervals ON intervals.id = macrostrat.timescales_intervals.interval_id
     LEFT JOIN macrostrat.timescales ON macrostrat.timescales.id = macrostrat.timescales_intervals.timescale_id

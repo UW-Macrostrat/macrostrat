@@ -1,5 +1,3 @@
-import {stringify} from "querystring";
-
 const api = require("../api");
 const async = require("async");
 const larkin = require("../larkin");
@@ -64,7 +62,8 @@ function getUnits(params, callback) {
     `
     SELECT
       (
-           SELECT json_agg(w) FROM (
+           SELECT json_agg(w) 
+           FROM (
                SELECT split_part(q, '|', 1)::int AS strat_name_id, split_part(q, '|', 2) AS rank_name
                FROM (
                   SELECT unnest(array_agg(DISTINCT concat(lookup_strat_names.strat_name_id, '|', lookup_strat_names.rank_name))) q
@@ -301,17 +300,13 @@ function buildLineSQL(scale) {
   `;
 }
 
-
-
-
-
 // Accepts a longitude, a latitude, and a zoom level
 // Returns the proper burwell data and macrostrat data
 module.exports = (req, res, next) => {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
-  let params = {};
+
   if (
     (!req.query.lng || !req.query.lat || !req.query.z) &&
     !req.query.hasOwnProperty("sample")
@@ -330,28 +325,25 @@ module.exports = (req, res, next) => {
     req.query.lat = 43.03;
     req.query.z = 10;
   }
+
   req.query.lng = larkin.normalizeLng(req.query.lng);
   req.query.z = parseInt(req.query.z || 0);
-
-    console.log(params)
 
   async.parallel(
     {
       elevation: (cb) => {
+          console.log("running elevation")
         require("../elevation")(req, null, null, (error, data) => {
           if (data && data.length) {
-              console.log(data)
             cb(null, data[0].elevation);
           } else {
-              console.log("cb is null")
             cb(null, null);
           }
         });
-        console.log('ELEVATION IS COMPLETE')
-
       },
 
       lines: (cb) => {
+          console.log("running lines")
         larkin.queryPg(
           "burwell",
           buildLineSQL(scaleLookup[req.query.z]),
@@ -379,6 +371,7 @@ module.exports = (req, res, next) => {
       },
 
       columns: (cb) => {
+          console.log("running columns")
         larkin.queryPg(
           "burwell",
           `
@@ -403,6 +396,7 @@ module.exports = (req, res, next) => {
       },
 
       regions: (cb) => {
+          console.log("running regions")
         larkin.queryPg(
           "burwell",
           `
@@ -437,6 +431,7 @@ module.exports = (req, res, next) => {
       },
 
       burwell: (cb) => {
+          console.log("running burwell")
         let where = [];
         let params = [];
 
@@ -466,7 +461,7 @@ module.exports = (req, res, next) => {
             if (error) {
               return cb(error);
             }
-
+            //may be where the issue lies
             async.mapLimit(
               result.rows,
               3,
@@ -486,6 +481,7 @@ module.exports = (req, res, next) => {
                   if (error) {
                     return cb(error);
                   }
+                  console.log("getUnits function test", units)
                   if (units.length) {
                     mapPolygon.macrostrat = units[0];
                   } else if (params.strat_name_ids) {
@@ -513,6 +509,7 @@ module.exports = (req, res, next) => {
     },
     (error, data) => {
       if (error) return larkin.error(req, res, next, error || null);
+
       for (let i = 0; i < data.burwell.length; i++) {
         data.burwell[i].lines = [];
         for (let j = 0; j < data.lines.length; j++) {
@@ -540,6 +537,6 @@ module.exports = (req, res, next) => {
           },
         },
       );
-    }
+    },
   );
 };
