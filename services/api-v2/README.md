@@ -1,7 +1,7 @@
 # Macrostrat API
 
 The API for SCIENCE
-
+ 
 ## About
 
 The Macrostrat API provides diverse macrostratigraphic and geologic data in a
