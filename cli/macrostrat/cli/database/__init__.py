@@ -117,14 +117,16 @@ class DatabaseSubsystem(MacrostratSubsystem):
 
         self.schema_hunks.append(hunk)
 
+    def initialize(self):
+        self.register_schema_part(
+            name="core",
+            fixtures=[fixtures_dir],
+        )
+
 
 db_subsystem = DatabaseSubsystem(app)
 
-
-db_subsystem.register_schema_part(
-    name="core",
-    fixtures=[fixtures_dir],
-)
+db_app = typer.Typer(no_args_is_help=True)
 
 
 def update_schema(
@@ -135,6 +137,8 @@ def update_schema(
     """Update the database schema"""
     from macrostrat.core.config import PG_DATABASE
     from macrostrat.database import Database
+
+    db_subsystem = app.subsystems.get("database")
 
     """Create schema additions"""
     schema_dir = fixtures_dir

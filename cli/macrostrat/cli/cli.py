@@ -1,20 +1,16 @@
-import json
 from os import environ
 from pathlib import Path
-from typing import Optional
 
 import typer
+from macrostrat.utils.shell import run
 from rich import print
 from rich.traceback import install
-from typer import Argument, Option, Typer
+from typer import Argument, Typer
 
 from macrostrat.core import app
-from macrostrat.core.exc import MacrostratError, setup_exception_handling
+from macrostrat.core.exc import MacrostratError
 from macrostrat.core.main import env_text, set_app_state
-from macrostrat.utils.shell import run
-
 from .database import db_app, db_subsystem
-from .kubernetes import get_secret
 from .subsystems.macrostrat_api import MacrostratAPISubsystem
 from .subsystems.paleogeography import load_paleogeography_subsystem
 from .v1_entrypoint import v1_cli
@@ -69,13 +65,6 @@ main.add_typer(
     deprecated=True,
     hidden=True,
 )
-
-
-@main.command()
-def secrets(secret_name: Optional[str] = Argument(None), *, key: str = Option(None)):
-    """Get a secret from the Kubernetes cluster"""
-
-    print(json.dumps(get_secret(settings, secret_name, secret_key=key), indent=4))
 
 
 @main.command()
@@ -249,7 +238,8 @@ try:
     db_subsystem.register_schema_part(name="tileserver", callback=update_tileserver)
 
 except ImportError as err:
-    app.console.print("Could not import tileserver subsystem")
+    pass
+    # app.console.print("Could not import tileserver subsystem")
 
 # Get subsystems config
 subsystems = getattr(settings, "subsystems", {})
@@ -270,11 +260,27 @@ if subsystems.get("criticalmaas", False):
 app = load_paleogeography_subsystem(app, main, db_subsystem)
 
 
-if mapboard_url := getattr(settings, "mapboard_database", None):
-    from .subsystems.mapboard import MapboardSubsystem
+if kube_namespace := getattr(settings, "kube_namespace", None):
+    from .kubernetes import app as kube_app
 
-    app.subsystems.add(MapboardSubsystem(app))
-# Add other subsystems (temporary)
+    main.add_typer(
+        kube_app,
+        name="kube",
+        short_help="Kubernetes utilities",
+        rich_help_panel="Subsystems",
+    )
+
+
+from .subsystems.storage import app as storage_app
+
+main.add_typer(
+    storage_app,
+    name="storage",
+    short_help="Manage storage buckets",
+    rich_help_panel="Subsystems",
+)
+
+
 from .subsystems.mapboard import MapboardSubsystem
 
 if subsystems.get("mapboard", False):
