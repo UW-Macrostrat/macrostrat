@@ -94,8 +94,8 @@ module.exports = function (req, res, next, cb) {
   let sql = `SELECT intervals.id AS int_id,
          interval_name AS name,
          interval_abbrev AS abbrev,
-         age_top AS t_age,
-         age_bottom AS b_age,
+         age_top::float AS t_age,
+         age_bottom::float AS b_age,
          interval_type AS int_type,
          ${color},
          json_agg(
@@ -145,6 +145,8 @@ module.exports = function (req, res, next, cb) {
       if (cb) {
         cb(null, result.rows);
       } else {
+        result.rows
+
         larkin.sendData(
           req,
           res,
