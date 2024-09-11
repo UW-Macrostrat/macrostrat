@@ -4,14 +4,15 @@ Storage system management
 
 from os import environ
 from subprocess import run
-from typing import Optional, List
+from typing import List, Optional
 
-from macrostrat.utils import get_logger
 from rich import print
 from typer import Argument, Option, Typer
 
 from macrostrat.core import app as app_
-from ..kubernetes import get_secret, _kubectl
+from macrostrat.utils import get_logger
+
+from ..kubernetes import _kubectl, get_secret
 
 settings = app_.settings
 
