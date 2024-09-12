@@ -4,6 +4,8 @@ from sys import exit, stderr, stdin
 from typing import Any, Callable
 
 import typer
+from macrostrat.database import Database
+from macrostrat.utils.shell import run
 from pydantic import BaseModel
 from rich import print
 from sqlalchemy import text
@@ -11,17 +13,14 @@ from typer import Argument, Option
 
 from macrostrat.core import MacrostratSubsystem, app
 from macrostrat.core.utils import is_pg_url
-from macrostrat.database import Database
-from macrostrat.utils.shell import run
-
+from ._legacy import get_db
+from .migrations import run_migrations
+from .utils import engine_for_db_name
 from .._dev.utils import (
     _create_database_if_not_exists,
     _docker_local_run_args,
     raw_database_url,
 )
-from ._legacy import get_db
-from .migrations import run_migrations
-from .utils import engine_for_db_name
 
 __here__ = Path(__file__).parent
 fixtures_dir = __here__.parent / "fixtures"
@@ -350,8 +349,8 @@ def inspect_table(table: str):
 
 
 @db_app.command(name="scripts", rich_help_panel="Schema management")
-def run_migration(migration: str = Argument(None)):
-    """Ad-hoc migration scripts"""
+def run_scripts(migration: str = Argument(None)):
+    """Ad-hoc database management scripts"""
     pth = Path(__file__).parent.parent / "ad-hoc-migrations"
     files = list(pth.glob("*.sql"))
     files.sort()
@@ -363,7 +362,7 @@ def run_migration(migration: str = Argument(None)):
         exit(1)
     migration = pth / (migration + ".sql")
     if not migration.exists():
-        print(f"Migration {migration} does not exist", file=stderr)
+        print(f"Script {migration} does not exist", file=stderr)
         exit(1)
 
     db = get_db()
