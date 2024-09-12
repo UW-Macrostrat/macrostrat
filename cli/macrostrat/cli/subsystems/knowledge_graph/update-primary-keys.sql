@@ -10,7 +10,7 @@
   - The source_text table contains nearly-identical source text windows that differ only by post-processing,
     which makes it hard to represent different relationships together. this may be a problem with Weaviate
   - We haven't yet figured out how to integrate feedback and the user model.
-  
+
  */
 
 /** Update entity and relationship tables to use integer ids */
@@ -115,7 +115,7 @@ ALTER TABLE relationship ADD CONSTRAINT fk_source_id FOREIGN KEY (source_id) REF
 ALTER TABLE entity ADD CONSTRAINT entity_unique UNIQUE (model_run_id, name, type, source_id);
 ALTER TABLE relationship ADD CONSTRAINT relationship_unique UNIQUE (model_run_id, src_entity_id, dst_entity_id, source_id);
 
-/** Entity and relationship types */
+/** Update entity and relationship types */
 ALTER TABLE entity ALTER COLUMN type SET DATA TYPE text USING type::text;
 DROP TYPE IF EXISTS entity_type;
 
@@ -123,7 +123,6 @@ CREATE TABLE macrostrat_xdd.entity_type (
     name TEXT NOT NULL PRIMARY KEY,
     description TEXT
 );
-
 
 
 INSERT INTO macrostrat_xdd.entity_type (name) SELECT DISTINCT type FROM entity;
@@ -144,3 +143,32 @@ INSERT INTO macrostrat_xdd.relationship_type (name) SELECT DISTINCT type FROM re
 
 ALTER TABLE relationship ALTER COLUMN type SET NOT NULL;
 ALTER TABLE relationship ADD CONSTRAINT fk_relationship_type FOREIGN KEY (type) REFERENCES macrostrat_xdd.relationship_type(name);
+
+/** Link to macrostrat tables */
+ALTER TABLE entity
+  ADD CONSTRAINT fk_strat_name_id
+  FOREIGN KEY (strat_name_id)
+  REFERENCES macrostrat.strat_names(id);
+
+ALTER TABLE entity
+  ADD CONSTRAINT fk_lith_id
+  FOREIGN KEY (lith_id)
+  REFERENCES macrostrat.liths(id);
+
+ALTER TABLE entity
+  ADD CONSTRAINT fk_lith_att_id
+  FOREIGN KEY (lith_att_id)
+  REFERENCES macrostrat.lith_atts(id);
+
+/** Try to fill the start_index and end_index columns */
+ALTER TABLE entity ADD COLUMN start_index integer;
+ALTER TABLE entity ADD COLUMN end_index integer;
+
+UPDATE entity
+SET start_index = position(name IN paragraph_text) - 1,
+    end_index = position(name IN paragraph_text) + length(name) - 1
+FROM source_text s
+WHERE entity.source_id = s.id;
+
+ALTER TABLE entity ALTER COLUMN start_index SET NOT NULL;
+ALTER TABLE entity ALTER COLUMN end_index SET NOT NULL;
