@@ -1,6 +1,5 @@
 from graphlib import TopologicalSorter
 from pathlib import Path
-from typing import ClassVar
 
 from rich import print
 
@@ -18,6 +17,7 @@ from . import (
     partition_carto,
     partition_maps,
     points,
+    tileserver,
     update_macrostrat,
 )
 from .base import ApplicationStatus, Migration
