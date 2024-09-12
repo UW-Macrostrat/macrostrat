@@ -7,7 +7,6 @@ var request = require("supertest");
 import * as fs from 'fs';
 import * as path from 'path';
 
-// List of all the test files you want to import
 const testFiles = [
     'carto_small.ts',
     'columns.ts',
@@ -48,15 +47,14 @@ const testFiles = [
     'units.ts'
 ];
 
-// Path to the v2Tests directory
 const testDir = path.join(__dirname, 'v2Tests');
 
-// Mocha `describe` block to group all tests
-describe('API Tests', function () {
-    // Iterate through the test files and require each one
-    testFiles.forEach((file) => {
-        console.log(`Loading test file: ${file}`);
-        require(path.join(testDir, file)); // Dynamically require each test file
+
+testFiles.forEach((file) => {
+    describe(file, function () {
+    console.log(`Loading test file: ${file}`);
+    require(path.join(testDir, file));
     });
 });
+
 

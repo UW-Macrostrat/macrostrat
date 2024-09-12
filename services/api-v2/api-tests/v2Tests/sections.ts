@@ -1,4 +1,3 @@
-module.exports = function () {
   var request = require("supertest"),
     validators = require("../validators"),
     settings = require("../settings");
@@ -48,4 +47,3 @@ module.exports = function () {
         done();
       });
   });
-};

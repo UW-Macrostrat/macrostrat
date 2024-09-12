@@ -41,7 +41,7 @@ request(settings.host)
   });
 });
 
-it("/defs/intervals?timescale= should accept a timescale parameter", function (done) {
+it("should accept a timescale parameter", function (done) {
 request(settings.host)
   .get("/defs/intervals?timescale=new%20zealand%20ages")
   .expect(validators.aSuccessfulRequest)
@@ -53,7 +53,7 @@ request(settings.host)
   });
 });
 
-it("/defs/intervals?id= should accept an interval id", function (done) {
+it("should accept an interval id", function (done) {
 request(settings.host)
   .get("/defs/intervals?id=366")
   .expect(validators.aSuccessfulRequest)
@@ -66,7 +66,7 @@ request(settings.host)
 });
 
 
-it("/defs/intervals?all should return all definitions", function (done) {
+it("should return all definitions", function (done) {
 request(settings.host)
   .get("/defs/intervals?all")
   .expect(validators.aSuccessfulRequest)
@@ -78,7 +78,7 @@ request(settings.host)
   });
 });
 
-it("/defs/intervals?timescale=...&format=csv should return CSV", function (done) {
+it("should return CSV", function (done) {
 request(settings.host)
   .get("/defs/intervals?timescale=new%20zealand%20ages&format=csv")
   .expect(validators.aSuccessfulRequest)
@@ -90,7 +90,7 @@ request(settings.host)
   });
 });
 
-it("/defs/intervals?late_age=...&early_age=... should accept an early and late age", function (done) {
+it("should accept an early and late age", function (done) {
 request(settings.host)
   .get("/defs/intervals?late_age=0&early_age=130")
   .expect(validators.aSuccessfulRequest)
@@ -102,7 +102,7 @@ request(settings.host)
   });
 });
 
-it("/defs/intervals?age=... should accept an age", function (done) {
+it(" should accept an age", function (done) {
 request(settings.host)
   .get("/defs/intervals?age=200")
   .expect(validators.aSuccessfulRequest)
@@ -117,7 +117,7 @@ request(settings.host)
 
 it("should accept an interval_name", function (done) {
 request(settings.host)
-  .get("/intervals?name=Permian")
+  .get("/intervals?interval_name=Permian")
   .expect(validators.aSuccessfulRequest)
   .expect(validators.json)
   .expect(validators.atLeastOneResult)
