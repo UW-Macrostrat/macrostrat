@@ -2,14 +2,16 @@
   *  to use an overall simpler schema. Major changes include:
   *  - Using integer ids instead of UUIDs
   *  - Using an extensible, foreign-keyed table for entity and relationship types (instead of a custom enum)
-  *  - Simpler, terser column/table names
+  *  - Terser column/table names
+  *  - A data model for citation information
+  *  - Explicit start/end indices for entitites in text
 
-  The script is not complete and was run in parts, with manual checks in between.
+  The script is not complete and was run in parts, with manual checks/interventions in between.
   There are a few inconsistencies remaining, like
   - A triangular dependency graph between model_run, source_text, and entity/relationship tables.
   - The source_text table contains nearly-identical source text windows that differ only by post-processing,
     which makes it hard to represent different relationships together. this may be a problem with Weaviate
-  - We haven't yet figured out how to integrate feedback and the user model.
+  - We will need some more small changes to integrate feedback and the user model.
 
  */
 
@@ -182,3 +184,6 @@ CREATE TABLE macrostrat_xdd.publication (
   url text,
   citation jsonb not null
 );
+
+-- Add foreign key cascades
+
