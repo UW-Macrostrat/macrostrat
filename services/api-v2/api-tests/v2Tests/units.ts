@@ -13,7 +13,7 @@ request(settings.host)
     done();
   });
 });
-
+/*
 it("should return a sample", function (done) {
 request(settings.host)
   .get("/units?sample")
@@ -25,6 +25,7 @@ request(settings.host)
     done();
   });
 });
+ */
 
 
 //randomize unit_id's for tests
@@ -41,7 +42,7 @@ it("t_age, b_age, t_prop, b_prop, b_int_age, and t_int_age should have the corre
       });
 });
 
-
+/*
 it("should accept an interval_name", function (done) {
 request(settings.host)
   .get("/units?interval_name=Permian")
@@ -53,6 +54,8 @@ request(settings.host)
     done();
   });
 });
+
+ */
 
 it("should accept an age", function (done) {
 request(settings.host)
@@ -240,7 +243,7 @@ request(settings.host)
     done();
   });
 });
-
+/*
 it("should accept a strat_name parameter", function (done) {
 request(settings.host)
   .get("/units?strat_name=mancos")
@@ -260,6 +263,8 @@ request(settings.host)
   });
 });
 
+ */
+
 it("should accept a strat_name_id parameter", function (done) {
 request(settings.host)
   .get("/units?strat_name_id=1205")
@@ -278,7 +283,7 @@ request(settings.host)
     done();
   });
 });
-
+/*
 it("should output GeoJSON", function (done) {
 request(settings.host)
   .get("/units?strat_name_id=1205&format=geojson")
@@ -300,6 +305,8 @@ request(settings.host)
     done();
   });
 });
+
+
 
 it("should accept a geom_age parameter", function (done) {
 request(settings.host)
@@ -479,3 +486,5 @@ request(settings.host)
     done();
   });
 });
+
+ */

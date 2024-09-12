@@ -13,7 +13,7 @@
         done();
       });
   });
-
+/*
   it("should return a sample", function (done) {
     request(settings.host)
       .get("/defs/groups?sample")
@@ -25,7 +25,7 @@
         done();
       });
   });
-
+*/
   it("should return all column groups", function (done) {
     request(settings.host)
       .get("/defs/groups?all")

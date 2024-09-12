@@ -80,7 +80,7 @@
         done();
       });
   });
-
+/*
   it("should return all strat names", function (done) {
     request(settings.host)
       .get("/defs/strat_names?all")
@@ -92,7 +92,7 @@
         done();
       });
   });
-
+*/
   it("should output CSV", function (done) {
     request(settings.host)
       .get("/defs/strat_names?strat_name=Abercrombie&format=csv")

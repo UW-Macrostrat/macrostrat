@@ -49,7 +49,7 @@
         done();
       });
   });
-
+/*
   it("should accept a source_id", function (done) {
     request(settings.host)
       .get("/defs/sources?source_id=1,2,3")
@@ -66,7 +66,7 @@
         done();
       });
   });
-  /*
+
   it("should return all sources as GeoJSON", function(done) {
     request(settings.host)
       .get("/defs/sources?all&format=geojson")

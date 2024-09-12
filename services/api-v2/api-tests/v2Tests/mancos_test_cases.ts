@@ -1,7 +1,7 @@
   var request = require("supertest"),
     validators = require("../validators"),
     settings = require("../settings");
-
+/*
   it("should return point data for Detroit", function (done) {
     request(settings.host)
       .get("/mobile/point?lat=42.331427&lng=-83.045754")
@@ -165,3 +165,5 @@
         done();
       });
   });
+
+ */

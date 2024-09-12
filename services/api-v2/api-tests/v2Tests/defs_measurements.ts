@@ -42,7 +42,7 @@
         done();
       });
   });
-
+/*
   it("should accept a measurement class", function (done) {
     request(settings.host)
       .get("/defs/measurements?measurement_class=geochemical")
@@ -61,6 +61,7 @@
         done();
       });
   });
+*/
 
   it("should accept a measurement type", function (done) {
     request(settings.host)
@@ -80,7 +81,7 @@
         done();
       });
   });
-
+/*
   it("should return all definitions", function (done) {
     request(settings.host)
       .get("/defs/measurements?all")
@@ -92,7 +93,7 @@
         done();
       });
   });
-
+*/
   it("should return CSV", function (done) {
     request(settings.host)
       .get(

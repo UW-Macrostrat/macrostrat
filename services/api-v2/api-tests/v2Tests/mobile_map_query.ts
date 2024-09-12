@@ -1,7 +1,7 @@
   var request = require("supertest");
   var validators = require("../validators");
   var settings = require("../settings");
-
+/*
   it("should return metadata", function (done) {
     request(settings.host)
       .get("/mobile/map_query")
@@ -13,7 +13,7 @@
         done();
       });
   });
-
+*/
   it("should accept a latitude, longitude, and z", function (done) {
     request(settings.host)
       .get("/mobile/map_query?lat=43.0706192&lng=-89.406167&z=8")

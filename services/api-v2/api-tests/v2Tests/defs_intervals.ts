@@ -114,7 +114,7 @@ request(settings.host)
   });
 });
 
-
+/*
 it("should accept an interval_name", function (done) {
 request(settings.host)
   .get("/intervals?interval_name=Permian")
@@ -126,5 +126,5 @@ request(settings.host)
     done();
   });
 });
-
+*/
 

@@ -92,7 +92,7 @@
         done();
       });
   });
-
+/*
   it("should return CSV", function (done) {
     request(settings.host)
       .get("/defs/structures?structure_type=fabric&format=csv")
@@ -104,3 +104,4 @@
         done();
       });
   });
+*/

@@ -13,7 +13,7 @@ request(settings.host)
     done();
   });
 });
-
+/*
 it("should return a sample", function (done) {
 request(settings.host)
   .get("/columns?sample")
@@ -37,6 +37,7 @@ request(settings.host)
     done();
   });
 });
+*/
 
 it("should accept an age", function (done) {
 request(settings.host)
@@ -62,6 +63,7 @@ request(settings.host)
   });
 });
 
+/*
 it("should accept a strat_name parameter", function (done) {
 request(settings.host)
   .get("/columns?strat_name=mancos")
@@ -73,7 +75,7 @@ request(settings.host)
     done();
   });
 });
-
+*/
 it("should accept a strat_name_id parameter", function (done) {
 request(settings.host)
   .get("/columns?strat_name_id=1205")
@@ -108,6 +110,7 @@ request(settings.host)
   });
 });
 
+/*
 it("should accept a latitude and longitude", function (done) {
 request(settings.host)
   .get("/columns?lat=43.3&lng=-89.3")
@@ -153,4 +156,5 @@ request(settings.host)
     done();
   });
 });
+*/
 

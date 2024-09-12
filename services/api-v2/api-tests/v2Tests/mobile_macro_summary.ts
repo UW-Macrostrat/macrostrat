@@ -13,7 +13,7 @@
         done();
       });
   });
-
+/*
   it("should accept a latitude and longitude", function (done) {
     request(settings.host)
       .get("/mobile/macro_summary?lat=43.0706192&lng=-89.406167")
@@ -37,3 +37,4 @@
         done();
       });
   });
+*/

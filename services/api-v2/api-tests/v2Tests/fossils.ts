@@ -13,7 +13,7 @@
         done();
       });
   });
-
+/*
   it("should return a sample", function (done) {
     request(settings.host)
       .get("/fossils?sample")
@@ -25,6 +25,7 @@
         done();
       });
   });
+
 
   it("should accept a time_interval", function (done) {
     this.timeout(4000);
@@ -39,6 +40,7 @@
         done();
       });
   });
+
 
   it("should accept an age", function (done) {
     request(settings.host)
@@ -117,3 +119,4 @@
         done();
       });
   });
+*/

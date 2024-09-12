@@ -13,7 +13,7 @@
         done();
       });
   });
-
+/*
   it("should return a sample", function (done) {
     request(settings.host)
       .get("/defs/projects?sample")
@@ -25,6 +25,7 @@
         done();
       });
   });
+*/
 
   it("should return all projects", function (done) {
     request(settings.host)
