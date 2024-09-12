@@ -1,22 +1,15 @@
 from pathlib import Path
 from textwrap import dedent
 
-from psycopg2.sql import Identifier
-from sqlalchemy import create_engine, inspect, text
-from sqlalchemy.engine import Engine, make_url
-
-from macrostrat.core import app
-from macrostrat.core.config import settings
-from macrostrat.database import create_database, database_exists, drop_database
+from macrostrat.database import create_database, database_exists
 from macrostrat.database.utils import run_query, run_sql
 from macrostrat.utils import get_logger
 from macrostrat.utils.shell import run
+from psycopg2.sql import Identifier
+from sqlalchemy import create_engine
+from sqlalchemy.engine import Engine
 
-from ...._dev.utils import raw_database_url
-from ..._legacy import get_db
-from ...utils import docker_internal_url, pg_temp_user
-from ..restore import copy_mariadb_database
-from ..utils import mariadb_engine
+from macrostrat.core import app
 from .db_changes import (
     compare_data_counts,
     find_col_variances,
@@ -24,6 +17,12 @@ from .db_changes import (
     get_data_counts_maria,
     get_data_counts_pg,
 )
+from ..restore import copy_mariadb_database
+from ..utils import mariadb_engine
+from ..._legacy import get_db
+from ...migrations import migration_has_been_run
+from ...utils import docker_internal_url, pg_temp_user
+from ...._dev.utils import raw_database_url
 
 __here__ = Path(__file__).parent
 
@@ -48,7 +47,9 @@ _all_steps = {
 
 
 def migrate_mariadb_to_postgresql(
-    overwrite: bool = False, step: list[MariaDBMigrationStep] = None
+    overwrite: bool = False,
+    step: list[MariaDBMigrationStep] = None,
+    force: bool = False,
 ):
     """Migrate the legacy Macrostrat database from MariaDB to PostgreSQL."""
 
@@ -84,10 +85,20 @@ def migrate_mariadb_to_postgresql(
 
     if MariaDBMigrationStep.FINALIZE in steps:
         should_proceed = preserve_macrostrat_data(pg_engine)
-        if should_proceed:
-            raise NotImplementedError("Copy to macrostrat schema not yet implemented")
-        else:
-            print("finalize completed!")
+        if not should_proceed:
+            raise ValueError("Data would be destroyed. Aborting migration.")
+        if should_proceed and not force:
+            raise ValueError(
+                "This will overwrite the macrostrat schema. Use --force to proceed."
+            )
+
+        get_db().run_sql(
+            "ALTER SCHEMA {temp_schema} RENAME TO {final_schema}",
+            dict(
+                temp_schema=Identifier(temp_schema),
+                final_schema=Identifier(final_schema),
+            ),
+        )
 
 
 def pgloader(source: Engine, dest: Engine, target_schema: str, overwrite: bool = False):
@@ -301,6 +312,14 @@ def preserve_macrostrat_data(engine: Engine):
     assert engine.url.drivername.startswith("postgres")
     preserve_data = __here__ / "preserve-macrostrat-data.sql"
     run_sql(engine, preserve_data)
+
+    # Check if necessary migrations are satisfied
+    did_migrate = migration_has_been_run("maps-scale-type")
+    if not did_migrate:
+        raise ValueError(
+            "Migration 'maps-scale-type' has not been run. Please run `macrostrat db migrations` before proceeding."
+        )
+    return True
 
 
 def db_identifier(engine: Engine):
