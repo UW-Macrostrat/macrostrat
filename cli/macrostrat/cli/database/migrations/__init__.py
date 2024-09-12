@@ -17,6 +17,7 @@ from . import (
     points,
     tileserver,
     update_macrostrat,
+    maps_scale_custom_type,
 )
 from .base import ApplicationStatus, Migration
 from .._legacy import get_db, refresh_db

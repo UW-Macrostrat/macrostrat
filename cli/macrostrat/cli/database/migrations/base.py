@@ -40,6 +40,11 @@ def has_fks(schema: str, *table_names: str) -> DbEvaluator:
     )
 
 
+def custom_type_exists(schema: str, *type_names: str) -> DbEvaluator:
+    """Return a function that evaluates to true when every given custom type in the given schema exists"""
+    return lambda db: all(db.inspector.has_type(t, schema=schema) for t in type_names)
+
+
 class ApplicationStatus(Enum):
     """Enum for the possible"""
 
