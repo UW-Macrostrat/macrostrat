@@ -1,25 +1,21 @@
-import json
-from asyncio import run as asyncio_run
 from os import environ
 from pathlib import Path
-from typing import Optional
 
 import typer
-from macrostrat.utils.shell import run
 from rich import print
 from rich.traceback import install
-from typer import Argument, Option, Typer
+from typer import Argument, Typer
 
 from macrostrat.core import app
-from macrostrat.core.exc import MacrostratError, setup_exception_handling
+from macrostrat.core.exc import MacrostratError
 from macrostrat.core.main import env_text, set_app_state
+from macrostrat.utils.shell import run
 
-from .database import db_app, db_subsystem, get_db
-from .kubernetes import get_secret
+from .database import db_app, db_subsystem
+from .subsystems.macrostrat_api import MacrostratAPISubsystem
+from .subsystems.paleogeography import load_paleogeography_subsystem
 from .v1_entrypoint import v1_cli
 from .v2_commands import app as v2_app
-from .subsystems.paleogeography import load_paleogeography_subsystem
-from .subsystems.macrostrat_api import MacrostratAPISubsystem
 
 __here__ = Path(__file__).parent
 fixtures_dir = __here__ / "fixtures"
@@ -35,20 +31,41 @@ settings = app.settings
 
 help_text = f"""[bold]Macrostrat[/] control interface
 
+
 Active environment: [bold cyan]{environ.get('MACROSTRAT_ENV') or 'None'}[/]
 """
 
-main = app.control_command(add_completion=True, rich_markup_mode="rich", help=help_text)
+warnings = []
+if not settings.pg_database:
+    warnings.append("No database URL found in settings")
+reinstall_warning = environ.get("MACROSTRAT_SHOULD_REINSTALL")
+if reinstall_warning is not None:
+    if len(reinstall_warning) < 2:
+        reinstall_warning = "Macrostrat needs to be reinstalled."
+    warnings.append(f"{reinstall_warning} Please run [bold cyan]macrostrat install[/].")
+if environ.get("MACROSTRAT_PYROOT") is not None:
+    warnings.append(
+        "Using a custom [bold cyan]MACROSTRAT_PYROOT[/]. This is not recommended for normal operation."
+    )
 
+if warnings:
+    help_text += "\n[bold yellow]Warnings[/]:\n"
+    help_text += "\n".join([f"- [yellow]{w}[/]" for w in warnings]) + "\n"
 
-main.add_typer(db_app, name="db", short_help="Manage the Macrostrat database")
+main = app.control_command(
+    add_completion=True,
+    rich_markup_mode="rich",
+    help=help_text,
+)
 
-
-@main.command()
-def secrets(secret_name: Optional[str] = Argument(None), *, key: str = Option(None)):
-    """Get a secret from the Kubernetes cluster"""
-
-    print(json.dumps(get_secret(settings, secret_name, secret_key=key), indent=4))
+main.add_typer(db_app, name="database", short_help="Manage the Macrostrat database")
+main.add_typer(
+    db_app,
+    name="db",
+    short_help="Manage the Macrostrat database",
+    deprecated=True,
+    hidden=True,
+)
 
 
 @main.command()
@@ -93,29 +110,15 @@ def _available_environments(environments):
     return res
 
 
-def local_install(path: Path, lock: bool = False):
-    kwargs = dict(
-        cwd=path.expanduser().resolve(),
-        env={**environ, "POETRY_VIRTUALENVS_CREATE": "False"},
-    )
-
-    if lock:
-        run("poetry", "lock", "--no-update", **kwargs)
-
-    run("poetry", "install", **kwargs)
-
-
-@main.command()
-def install(lock: bool = False):
-    """Install Macrostrat subsystems into the Python root.
-
-    This is currently hard-coded for development purposes, but
-    this will be changed in the future.
-    """
-    local_install(Path(settings.srcroot) / "py-root", lock=lock)
-
-
 cfg_app = Typer(name="config", short_help="Manage configuration")
+
+
+@cfg_app.command(name="show")
+def show_cfg():
+    """Show the current configuration"""
+    from macrostrat.core.config import settings
+
+    print(str(settings.config_file))
 
 
 @cfg_app.command(name="edit")
@@ -123,29 +126,19 @@ def edit_cfg():
     """Open config file in editor"""
     from subprocess import run
 
-    from macrostrat.core.config import macrostrat_config_file
+    from macrostrat.core.config import settings
 
-    run(["open", str(macrostrat_config_file)])
+    run(["open", str(settings.config_file)])
 
 
 @cfg_app.command(name="environments")
 def environments():
     """Get all available environments."""
     envs = app.settings.all_environments()
-    app_console.print(_available_environments(envs))
+    app.console.print(_available_environments(envs))
 
 
 main.add_typer(cfg_app)
-
-
-main.add_typer(v2_app, name="v2")
-
-from .criticalmaas.importer import import_criticalmaas
-
-
-@main.command(name="import-criticalmaas")
-def _import_criticalmaas(file: Path):
-    asyncio_run(import_criticalmaas(file))
 
 
 @main.command(
@@ -176,16 +169,6 @@ def _run(
 try:
     from macrostrat.map_integration import cli as map_app
 
-    @map_app.command(name="write-criticalmaas")
-    def write_map_geopackage(
-        map: str = Argument(...), filename: Path = None, overwrite: bool = False
-    ):
-        """Write a geopackage from a map"""
-        from .io.criticalmaas import write_map_geopackage
-
-        db = get_db()
-        write_map_geopackage(db, map, filename, overwrite=overwrite)
-
     main.add_typer(
         map_app,
         name="maps",
@@ -193,7 +176,7 @@ try:
         short_help="Map integration system (partial overlap with v1 commands)",
     )
 except ImportError as err:
-    print("Could not import map integration subsystem", err)
+    app.console.print("Could not import map integration subsystem", err)
 
 try:
     raster_app = typer.Typer()
@@ -226,7 +209,7 @@ try:
     )
 
     def update_weaver(db):
-        print("Creating models for [bold cyan]weaver[/] subsystem")
+        app.console.print("Creating models for [bold cyan]weaver[/] subsystem")
         create_models()
 
     db_subsystem.register_schema_part(name="weaver", callback=update_weaver)
@@ -250,25 +233,84 @@ try:
     )
 
     def update_tileserver(db):
-        print("Creating models for [bold cyan]tileserver[/] subsystem")
+        app.console.print("Creating models for [bold cyan]tileserver[/] subsystem")
         create_fixtures()
 
     db_subsystem.register_schema_part(name="tileserver", callback=update_tileserver)
 
 except ImportError as err:
-    print("Could not import tileserver subsystem")
+    pass
+    # app.console.print("Could not import tileserver subsystem")
+
+# Get subsystems config
+subsystems = getattr(settings, "subsystems", {})
+if subsystems.get("criticalmaas", False):
+    # TODO: add a hint somewhere for which subsystems are disabled
+    # - This could also provide ways to dynamically load them and report
+    #   errors etc.
+    from .subsystems.criticalmaas import app as criticalmaas_app
+
+    main.add_typer(
+        criticalmaas_app,
+        name="criticalmaas",
+        rich_help_panel="Subsystems",
+        short_help="Integrate with the CriticalMAAS program",
+        deprecated=True,
+    )
 
 app = load_paleogeography_subsystem(app, main, db_subsystem)
 
 
-# Add other subsystems (temporary)
+if kube_namespace := getattr(settings, "kube_namespace", None):
+    from .kubernetes import app as kube_app
+
+    main.add_typer(
+        kube_app,
+        name="kube",
+        short_help="Kubernetes utilities",
+        rich_help_panel="Subsystems",
+    )
+
+
+from .subsystems.storage import app as storage_app
+
+main.add_typer(
+    storage_app,
+    name="storage",
+    short_help="Manage storage buckets",
+    rich_help_panel="Subsystems",
+)
+
+
 from .subsystems.mapboard import MapboardSubsystem
 
-if mapboard_url := getattr(settings, "mapboard_database", None):
-    app.subsystems.add(MapboardSubsystem(app))
+if subsystems.get("mapboard", False):
+    if mapboard_url := getattr(settings, "mapboard_database", None):
+        app.subsystems.add(MapboardSubsystem(app))
+    else:
+        app.console.print(
+            "Mapboard subsystem enabled, but no mapboard_database setting found"
+        )
 
 
 app.subsystems.add(MacrostratAPISubsystem(app))
+
+if sgp_url := getattr(settings, "sgp_database", None):
+    from .subsystems.sgp import sgp
+
+    main.add_typer(sgp, rich_help_panel="Subsystems")
+
+# Mariadb CLI
+if mariadb_url := getattr(settings, "mysql_database", None):
+    from .database.mariadb import app as mariadb_app
+
+    main.add_typer(
+        mariadb_app,
+        name="mariadb",
+        rich_help_panel="Subsystems",
+        short_help="Manage the MariaDB database",
+    )
+
 
 app.finish_loading_subsystems()
 
@@ -287,23 +329,37 @@ def inspect():
 main.add_typer(
     self_app,
     name="self",
-    rich_help_panel="Subsystems",
     short_help="Manage the Macrostrat CLI itself",
+    rich_help_panel="Meta",
 )
 
 app.subsystems.run_hook("add-commands", main)
 
 
-main.add_click_command(v1_cli, name="v1")
+@main.command(rich_help_panel="Meta")
+def poetry():
+    """[cyan]poetry[/] CLI wrapper"""
+    raise RuntimeError("This command is currently implemented in a wrapping script")
+
+
+@main.command(rich_help_panel="Meta")
+def install():
+    """Install Macrostrat dependencies"""
+    raise RuntimeError("This command is currently implemented in a wrapping script")
+
+
+# Add the v1 CLI
+main.add_click_command(v1_cli, name="v1", deprecated=True, rich_help_panel="Legacy")
+main.add_typer(v2_app, name="v2", deprecated=True, rich_help_panel="Legacy")
+
+
+# main.add_click_command(v1_cli, name="v1")
 
 
 @self_app.command(name="settings-dir")
 def show_app_dir():
     """Show the configuration directory"""
-    print(app.app_dir)
-
-
-main = setup_exception_handling(main)
+    app.console.print(app.app_dir)
 
 
 @self_app.command()
@@ -320,3 +376,16 @@ from .subsystems.macrostrat_api import macrostrat_api
 db_subsystem.schema_hunks.append(kg_schema)
 db_subsystem.schema_hunks.append(legend_api)
 db_subsystem.schema_hunks.append(macrostrat_api)
+
+# Discover subsystems in third-party packages
+# https://packaging.python.org/en/latest/guides/creating-and-discovering-plugins/
+
+from importlib.metadata import entry_points
+
+discovered_plugins = entry_points(group="macrostrat.subsystems")
+for entry_point in discovered_plugins:
+    plugin = entry_point.load()
+    if isinstance(plugin, typer.Typer):
+        main.add_typer(plugin, name=entry_point.name, rich_help_panel="Subsystems")
+
+# main = setup_exception_handling(main)

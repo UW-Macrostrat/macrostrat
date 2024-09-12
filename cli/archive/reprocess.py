@@ -1,10 +1,10 @@
-from ..macrostrat_cli.database import pgConnection, mariaConnection
-
 # from cli.commands.process_scripts import map_source
 # from cli.commands.process_scripts import legend
 # from cli.commands.match_scripts import liths
 # from cli.commands.process_scripts import burwell_lookup
 from macrostrat_cli.commands.process_scripts import legend_lookup
+
+from ..macrostrat_cli.database import mariaConnection, pgConnection
 
 opts = {"pg": pgConnection, "mariadb": mariaConnection}
 

@@ -1,20 +1,19 @@
-from urllib.parse import urlparse
-
-import wget
-from uuid import uuid4
 from contextlib import contextmanager
-from boto3.session import Session
+from os import path
 from pathlib import Path
+from subprocess import run
+from urllib.parse import urlparse
+from uuid import uuid4
+from zipfile import ZipFile, is_zipfile
 
+import rasterio
+import wget
+from boto3.session import Session
+from rasterio.errors import RasterioIOError
 from rio_cogeo.cogeo import cog_translate, cog_validate
 from rio_cogeo.profiles import cog_profiles
-import rasterio
-from rasterio.errors import RasterioIOError
-from zipfile import is_zipfile, ZipFile
-from os import path
-from subprocess import run
 
-from .settings import S3_ACCESS_KEY, S3_SECRET_KEY, S3_BUCKET_NAME, S3_ENDPOINT_URL
+from .settings import S3_ACCESS_KEY, S3_BUCKET_NAME, S3_ENDPOINT_URL, S3_SECRET_KEY
 
 
 def _s3_download(path, key):
@@ -117,7 +116,9 @@ def process_image(
                 # If not, find the largest file in the zip and use that
                 with ZipFile(src_path) as zf:
                     largest = sorted(zf.filelist, key=lambda x: x.file_size)[-1]
-                    rio_openable = f"/vsizip/{path.abspath(src_path)}/{largest.filename}"
+                    rio_openable = (
+                        f"/vsizip/{path.abspath(src_path)}/{largest.filename}"
+                    )
 
             should_copy = False
         elif url.endswith(".tar.gz"):
@@ -135,7 +136,7 @@ def process_image(
 
         # This is not always available without a full GDAL install
         # RasterIO tools should be used instead.
-        #run(["gdalinfo", src_path])
+        # run(["gdalinfo", src_path])
 
         if should_copy:
             dst_path = src_path

@@ -1,8 +1,9 @@
 from sys import stderr
 
-from macrostrat.app_frame import ApplicationError
 from rich.padding import Padding
 from typer import Typer
+
+from macrostrat.app_frame import ApplicationError
 
 from .console import err_console
 
@@ -30,7 +31,7 @@ def setup_exception_handling(app: Typer):
     def wrapped_app():
         try:
             app()
-        except MacrostratError as error:
+        except ApplicationError as error:
             rendered = Padding(error.render(), (1, 2))
             err_console.print(rendered)
             exit(1)

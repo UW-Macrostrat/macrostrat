@@ -3,10 +3,13 @@ from pathlib import Path
 from typing import Optional
 
 import aiofiles
-from macrostrat.utils import get_logger
 from sqlalchemy.engine import Engine
 
-from .utils import _create_command, print_stdout, print_stream_progress
+from macrostrat.utils import get_logger
+
+from ..database.utils import docker_internal_url
+from .stream_utils import print_stdout, print_stream_progress
+from .utils import _create_command
 
 log = get_logger(__name__)
 
@@ -18,9 +21,7 @@ def pg_dump(*args, **kwargs):
 
 async def _pg_dump(
     engine: Engine,
-    *,
-    command_prefix: Optional[list] = None,
-    args: list = [],
+    *args: str,
     postgres_container: str = "postgres:15",
     user: Optional[str] = "postgres",
     stdout=asyncio.subprocess.PIPE,
@@ -35,13 +36,12 @@ async def _pg_dump(
     _args += args
 
     _cmd = _create_command(
-        engine,
         "pg_dump",
-        args=_args,
-        prefix=command_prefix,
+        docker_internal_url(engine.url),
+        *_args,
         container=postgres_container,
     )
-
+    log.debug(" ".join(_cmd))
     return await asyncio.create_subprocess_exec(
         *_cmd,
         stdout=stdout,

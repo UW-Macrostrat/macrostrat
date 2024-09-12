@@ -13,7 +13,9 @@ from .utils import LineworkTableUpdater, PointsTableUpdater, PolygonTableUpdater
 def prepare_fields(
     map: MapInfo,
     all: bool = False,
-    recover: Annotated[bool, Option("--recover", help="Recover sources records")] = False,
+    recover: Annotated[
+        bool, Option("--recover", help="Recover sources records")
+    ] = False,
 ):
     """Prepare empty fields for manual cleaning."""
     identifier = map.slug

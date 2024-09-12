@@ -2,12 +2,18 @@
 Functions for working with a Macrostrat instance in a Kubernetes cluster.
 """
 
-from contextlib import contextmanager
+import base64
+import json
 from os import environ
 from subprocess import run
 from typing import Optional
-import base64
-import json
+
+from rich import print
+from typer import Argument, Option, Typer
+
+from macrostrat.core import app as app_
+
+settings = app_.settings
 
 
 def read_secret(text):
@@ -22,11 +28,26 @@ def read_secret(text):
     return secret
 
 
-def get_secret(settings, secret_name: Optional[str], *, secret_key: str = None):
+def _kubectl(settings, args, **kwargs):
+    """
+    Run a kubectl command.
+    """
     namespace = getattr(settings, "kube_namespace", None)
     if namespace is None:
         raise Exception("No Kubernetes namespace specified.")
 
+    proxy = getattr(settings, "kube_proxy", None)
+    env = environ
+    if proxy:
+        env = {
+            **env,
+            "HTTPS_PROXY": proxy,
+            "HTTP_PROXY": proxy,
+        }
+    return run(["kubectl", *args], env=env, **kwargs)
+
+
+def get_secret(settings, secret_name: Optional[str], *, secret_key: str = None):
     args = []
     if secret_name is not None:
         args = [
@@ -35,7 +56,9 @@ def get_secret(settings, secret_name: Optional[str], *, secret_key: str = None):
             "json",
         ]
 
-    password = run(["kubectl", "get", "secrets", *args], capture_output=True, text=True)
+    password = _kubectl(
+        settings, ["get", "secrets", *args], capture_output=True, text=True
+    )
 
     if secret_name is None:
         return password.stdout
@@ -47,3 +70,18 @@ def get_secret(settings, secret_name: Optional[str], *, secret_key: str = None):
     for key in keys:
         secret = secret[key]
     return secret
+
+
+app = Typer(no_args_is_help=True)
+
+
+@app.command()
+def secrets(secret_name: Optional[str] = Argument(None), *, key: str = Option(None)):
+    """Get a secret from the Kubernetes cluster"""
+
+    if secret_name is None:
+        print("Available secrets:")
+        print(get_secret(settings, None))
+        return
+
+    print(json.dumps(get_secret(settings, secret_name, secret_key=key), indent=4))

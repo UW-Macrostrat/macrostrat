@@ -1,5 +1,6 @@
 from ..base import Migration, exists, view_exists
 
+
 class PointsMigration(Migration):
     name = "points"
     subsystem = "core"
@@ -7,4 +8,4 @@ class PointsMigration(Migration):
 
     depends_on = ["baseline"]
 
-    postconditions = [exists("maps", "points"), view_exists("points","points")]
+    postconditions = [exists("maps", "points"), view_exists("points", "points")]

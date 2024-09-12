@@ -1,9 +1,12 @@
-import sys, os, time
-from subprocess import call
 import argparse
+import os
+import sys
+import time
+from subprocess import call
+
 import psycopg2
-from psycopg2.extensions import AsIs
 import yaml
+from psycopg2.extensions import AsIs
 
 with open(os.path.join(os.path.dirname(__file__), '../credentials.yml'), 'r') as f:
     credentials = yaml.load(f)

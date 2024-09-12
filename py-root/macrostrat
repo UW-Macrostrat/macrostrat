@@ -1,12 +1,11 @@
-#!/usr/bin/env bash 
-# Run in this script's virtual environment
-# Get Poetry's virtual environment path
-if [ -x "$(command -v poetry)" ]; then
-  # Get script directory (reading symlink)
-  SCRIPT_DIR="$(cd "$(dirname "$(readlink "$0")")" && pwd)"
-  VENV_PATH="$(cd "$SCRIPT_DIR" && poetry env info --path)"
-  $VENV_PATH/bin/macrostrat "$@"
-else
-  echo "Could not find Poetry's virtual environment path."
-  exit 1
-fi
+#!/usr/bin/env bash
+
+# This command is deprecated, go to the actual one
+
+# THIS FILE LOCATION
+this_file=$(readlink -f "${BASH_SOURCE[0]}")
+BIN_DIR="$(cd "$(dirname "$this_file")" && cd ../bin && pwd)"
+
+export MACROSTRAT_SHOULD_REINSTALL="Your macrostrat command should be relinked."
+$BIN_DIR/macrostrat "$@"
+

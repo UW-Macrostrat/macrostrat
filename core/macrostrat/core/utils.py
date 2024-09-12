@@ -1,3 +1,4 @@
+from os import environ
 from pathlib import Path
 
 
@@ -15,7 +16,10 @@ def find_config(start_dir: Path):
 
 def find_macrostrat_config() -> Path:
     """Find the macrostrat.toml config file"""
-    macrostrat_root = None
+    # If the MACROSTRAT_CONFIG env var is set, use that
+    if "MACROSTRAT_CONFIG" in environ:
+        return Path(environ["MACROSTRAT_CONFIG"])
+
     # Find root dir upwards
     macrostrat_root = find_config(Path.cwd())
     if macrostrat_root is None:
@@ -27,7 +31,8 @@ def find_macrostrat_config() -> Path:
         macrostrat_root = find_config(Path(__file__).parent)
 
     if macrostrat_root is None:
-        raise RuntimeError("Could not find macrostrat.toml")
+        return None
+        # raise RuntimeError("Could not find macrostrat.toml")
 
     return macrostrat_root / "macrostrat.toml"
 

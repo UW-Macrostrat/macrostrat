@@ -1,18 +1,15 @@
 import asyncio
 from pathlib import Path
-from typing import Optional
 
 import aiofiles
-from macrostrat.utils import get_logger
 from rich.console import Console
 from sqlalchemy.engine import Engine
 
-from .utils import (
-    _create_command,
-    _create_database_if_not_exists,
-    print_stdout,
-    print_stream_progress,
-)
+from macrostrat.utils import get_logger
+
+from ..database.utils import docker_internal_url
+from .stream_utils import print_stdout, print_stream_progress
+from .utils import _create_command, _create_database_if_not_exists
 
 console = Console()
 
@@ -26,10 +23,8 @@ def pg_restore(*args, **kwargs):
 
 async def _pg_restore(
     engine: Engine,
-    *,
+    *args,
     create=False,
-    command_prefix: Optional[list] = None,
-    args: list = [],
     postgres_container: str = "postgres:15",
 ):
     # Pipe file to pg_restore, mimicking
@@ -42,11 +37,10 @@ async def _pg_restore(
     # host, if possible, is probably the fastest option. There should be
     # multiple options ideally.
     _cmd = _create_command(
-        engine,
         "pg_restore",
         "-d",
-        args=args,
-        prefix=command_prefix,
+        docker_internal_url(engine.url),
+        *args,
         container=postgres_container,
     )
 

@@ -1,9 +1,11 @@
-from .base import Base
-import sys
-from subprocess import call
 import datetime
 import os
+import sys
+from subprocess import call
+
 from psycopg2.extensions import AsIs
+
+from .base import Base
 
 cwd = os.getcwd()
 
@@ -335,10 +337,13 @@ class Backup(Base):
                 )
 
                 # bookkeeping for the giant command
-                carto_cmd += "<(cat %s/export_scripts/delete_carto.sql | sed 's/::source_id::/%s/g; s/::scale::/%s/g')" % (
-                    os.path.dirname(__file__),
-                    self.args[1],
-                    scale,
+                carto_cmd += (
+                    "<(cat %s/export_scripts/delete_carto.sql | sed 's/::source_id::/%s/g; s/::scale::/%s/g')"
+                    % (
+                        os.path.dirname(__file__),
+                        self.args[1],
+                        scale,
+                    )
                 )
 
                 carto_tables += "carto_%s.tsv carto_lines_%s.tsv" % (

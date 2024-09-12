@@ -1,12 +1,12 @@
 # Adapted/borrowed from http://stackoverflow.com/a/7556042/1956065
 import multiprocessing
-import psycopg2
-from psycopg2.extensions import AsIs
-import time
-import sys
 import os
-import yaml
+import sys
+import time
 
+import psycopg2
+import yaml
+from psycopg2.extensions import AsIs
 
 with open(os.path.join(os.path.dirname(__file__), '../credentials.yml'), 'r') as f:
     credentials = yaml.load(f)

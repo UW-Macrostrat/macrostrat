@@ -2,27 +2,26 @@ from os import environ
 from pathlib import Path
 from sys import exit, stderr, stdin
 from typing import Any, Callable
-from urllib.parse import quote
 
 import typer
-from macrostrat.database import Database
-from macrostrat.utils.shell import run
 from pydantic import BaseModel
 from rich import print
-from sqlalchemy import create_engine, text
-from sqlalchemy_utils import create_database
+from sqlalchemy import text
 from typer import Argument, Option
-from .migrations import run_migrations
 
 from macrostrat.core import MacrostratSubsystem, app
 from macrostrat.core.utils import is_pg_url
+from macrostrat.database import Database
+from macrostrat.utils.shell import run
 
 from .._dev.utils import (
     _create_database_if_not_exists,
     _docker_local_run_args,
     raw_database_url,
 )
-from ._legacy import *
+from ._legacy import get_db
+from .migrations import run_migrations
+from .utils import engine_for_db_name
 
 __here__ = Path(__file__).parent
 fixtures_dir = __here__.parent / "fixtures"
@@ -48,9 +47,9 @@ class SubsystemSchemaDefinition(BaseModel):
     """A schema definition managed by a Macrostrat subsystem"""
 
     # TODO: These could also be recast as "idempotent migrations" that can be run at any time
-
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = dict(
+        arbitrary_types_allowed=True,
+    )
 
     name: str
     version: str = "0.0.0"
@@ -118,14 +117,16 @@ class DatabaseSubsystem(MacrostratSubsystem):
 
         self.schema_hunks.append(hunk)
 
+    def initialize(self):
+        self.register_schema_part(
+            name="core",
+            fixtures=[fixtures_dir],
+        )
+
 
 db_subsystem = DatabaseSubsystem(app)
 
-
-db_subsystem.register_schema_part(
-    name="core",
-    fixtures=[fixtures_dir],
-)
+db_app = typer.Typer(no_args_is_help=True)
 
 
 def update_schema(
@@ -134,9 +135,10 @@ def update_schema(
     _all: bool = Option(None, "--all"),
 ):
     """Update the database schema"""
+    from macrostrat.core.config import PG_DATABASE
     from macrostrat.database import Database
 
-    from macrostrat.core.config import PG_DATABASE
+    db_subsystem = app.subsystems.get("database")
 
     """Create schema additions"""
     schema_dir = fixtures_dir
@@ -177,7 +179,7 @@ db_app.command(name="update", rich_help_panel="Schema management")(update_schema
     context_settings={"allow_extra_args": True, "ignore_unknown_options": True}
 )
 def psql(ctx: typer.Context, database: str = None):
-    """Run psql in the database container"""
+    """Explore a database using [cyan]psql[/cyan]"""
     from macrostrat.core.config import PG_DATABASE_DOCKER
 
     _database = PG_DATABASE_DOCKER
@@ -205,15 +207,18 @@ def psql(ctx: typer.Context, database: str = None):
 def dump(
     ctx: typer.Context,
     dumpfile: Path,
-    database: str = None,
+    database: str = Option(
+        None,
+        "--database",
+    ),
     schema: bool = False,
 ):
-    """Dump the database to a file"""
+    """Export a database using [cyan]pg_dump[/]"""
     from .._dev.dump_database import pg_dump
 
     db_container = app.settings.get("pg_database_container", "postgres:15")
 
-    engine = _engine_for_db_name(database)
+    engine = engine_for_db_name(database)
 
     args = ctx.args
     custom_format = True
@@ -224,8 +229,8 @@ def dump(
     pg_dump(
         dumpfile,
         engine,
+        *args,
         postgres_container=db_container,
-        args=ctx.args,
         custom_format=custom_format,
     )
 
@@ -238,12 +243,12 @@ def restore(
     create: bool = False,
     jobs: int = Option(None, "--jobs", "-j"),
 ):
-    """Restore the database from a dump file"""
+    """Load a database using [cyan]pg_restore[/]"""
     from .._dev.restore_database import pg_restore
 
     db_container = app.settings.get("pg_database_container", "postgres:15")
 
-    engine = _engine_for_db_name(database)
+    engine = engine_for_db_name(database)
 
     args = []
     if jobs is not None:
@@ -252,21 +257,13 @@ def restore(
     pg_restore(
         dumpfile,
         engine,
+        *args,
         postgres_container=db_container,
         create=create,
-        args=args,
     )
 
 
-def _engine_for_db_name(name: str | None):
-    engine = get_db().engine
-    if name is None:
-        return engine
-    url = engine.url.set(database=name)
-    return create_engine(url)
-
-
-@db_app.command(name="tables")
+@db_app.command(name="tables", rich_help_panel="Helpers")
 def list_tables(ctx: typer.Context, database: str = Argument(None), schema: str = None):
     """List tables in the database"""
     sql = """SELECT table_schema, table_name
@@ -281,7 +278,7 @@ def list_tables(ctx: typer.Context, database: str = Argument(None), schema: str 
 
     sql += "\nORDER BY table_schema, table_name;"
 
-    engine = _engine_for_db_name(database)
+    engine = engine_for_db_name(database)
 
     print(
         f"[dim]Tables in database: [bold cyan]{engine.url.database}[/]\n", file=stderr
@@ -328,7 +325,7 @@ class TableInspector:
         return self._insp.get_check_constraints(self.table, schema=self.schema)
 
 
-@db_app.command(name="inspect")
+@db_app.command(name="inspect", rich_help_panel="Helpers")
 def inspect_table(table: str):
     """Inspect a table in the database"""
     db = get_db()
@@ -373,41 +370,6 @@ def run_migration(migration: str = Argument(None)):
     db.run_sql(migration)
 
 
-@db_app.command(name="tunnel")
-def db_tunnel():
-    """Create a Kubernetes port-forward to the remote database"""
-    # TODO: Check if we are running in a Kubernetes environment
-
-    pod = getattr(app.settings, "pg_database_pod", None)
-    if pod is None:
-        raise Exception("No pod specified.")
-    port = environ.get("PGPORT", "5432")
-    run("kubectl", "port-forward", pod, f"{port}:5432")
-
-
-keys = ["username", "host", "port", "password", "database"]
-
-
-@db_app.command(name="connection-details")
-def connection_details():
-    """Print the database connection details"""
-    db = get_db()
-    url = raw_database_url(db.engine.url)
-    for key in keys:
-        print(
-            field_title(key.capitalize()),
-            f"[dim bold green]{getattr(db.engine.url, key)}",
-        )
-    print(field_title("URL"), f"[dim white]{url}")
-
-
-def field_title(name):
-    title = name + ":"
-    # expand the title to 20 characters
-    title = title.ljust(12)
-    return "[dim]" + title + "[/]" + " "
-
-
 db_app.command(name="migrations", rich_help_panel="Schema management")(run_migrations)
 
 
@@ -448,3 +410,41 @@ def import_legacy():
         str(dburl),
         str(url),
     )
+
+
+### Helpers
+
+
+keys = ["username", "host", "port", "password", "database"]
+
+
+@db_app.command(name="credentials", rich_help_panel="Helpers")
+def connection_details():
+    """Show PostgreSQL connection credentials"""
+    db = get_db()
+    url = raw_database_url(db.engine.url)
+    for key in keys:
+        print(
+            field_title(key.capitalize()),
+            f"[dim bold green]{getattr(db.engine.url, key)}",
+        )
+    print(field_title("URL"), f"[dim white]{url}")
+
+
+def field_title(name):
+    title = name + ":"
+    # expand the title to 20 characters
+    title = title.ljust(12)
+    return "[dim]" + title + "[/]" + " "
+
+
+@db_app.command(name="tunnel", deprecated=True, rich_help_panel="Helpers")
+def db_tunnel():
+    """Kubernetes port-forward to a remote database"""
+    # TODO: Check if we are running in a Kubernetes environment
+
+    pod = getattr(app.settings, "pg_database_pod", None)
+    if pod is None:
+        raise Exception("No pod specified.")
+    port = environ.get("PGPORT", "5432")
+    run("kubectl", "port-forward", pod, f"{port}:5432")

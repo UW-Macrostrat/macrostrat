@@ -5,6 +5,7 @@ a combination of spatial and string matching against the Macrostrat database.
 It would ideally be done in a sources.*_polygons table, but can also be applied
 directly to the maps schema.
 """
+
 from collections import defaultdict
 from pathlib import Path
 

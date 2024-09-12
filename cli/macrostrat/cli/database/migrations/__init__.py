@@ -1,22 +1,34 @@
+from graphlib import TopologicalSorter
+from pathlib import Path
+
+from rich import print
+
 from macrostrat.database import Database
 
 from .._legacy import get_db, refresh_db
-from rich import print
-from .base import Migration, ApplicationStatus
-from typing import ClassVar
-from pathlib import Path
-from graphlib import TopologicalSorter
 from . import (
-    baseline, macrostrat_mariadb, partition_carto, partition_maps, update_macrostrat, map_source_slugs, map_sources, 
-    column_builder, api_v3, points, maps_source_operations, tileserver
+    api_v3,
+    baseline,
+    column_builder,
+    macrostrat_mariadb,
+    map_source_slugs,
+    map_sources,
+    maps_source_operations,
+    partition_carto,
+    partition_maps,
+    points,
+    tileserver,
+    update_macrostrat,
 )
+from .base import ApplicationStatus, Migration
+
 __dir__ = Path(__file__).parent
 
 
 class StorageSchemeMigration(Migration):
     name = "storage-scheme"
 
-    depends_on = ['api-v3']
+    depends_on = ["api-v3"]
 
     def apply(self, db: Database):
         db.run_sql(
@@ -58,7 +70,12 @@ def has_enum(db: Database, name: str, schema: str = None):
     ).scalar()
 
 
-def run_migrations(apply: bool = False, name: str = None, force: bool = False, data_changes: bool = False):
+def run_migrations(
+    apply: bool = False,
+    name: str = None,
+    force: bool = False,
+    data_changes: bool = False,
+):
     """Apply database migrations"""
     db = get_db()
 
@@ -68,7 +85,7 @@ def run_migrations(apply: bool = False, name: str = None, force: bool = False, d
         raise ValueError("--force can only be applied with --name")
 
     # Find all subclasses of Migration among imported modules
-    migrations = Migration.__subclasses__() 
+    migrations = Migration.__subclasses__()
 
     # Instantiate each migration, then sort topologically according to dependency order
     instances = [cls() for cls in migrations]
@@ -90,7 +107,7 @@ def run_migrations(apply: bool = False, name: str = None, force: bool = False, d
         # If --name is specified, only run the migration with the matching name
         if name is not None and name != _name:
             continue
-            
+
         # By default, don't run migrations that depend on other non-applied migrations
         dependencies_met = all(d in completed_migrations for d in _migration.depends_on)
         if not dependencies_met and not force:
@@ -102,9 +119,11 @@ def run_migrations(apply: bool = False, name: str = None, force: bool = False, d
                 print(f"Would apply migration [cyan]{_name}[/cyan]")
             else:
                 if _migration.destructive and not data_changes and not force:
-                    print(f"Migration [cyan]{_name}[/cyan] would alter data in the database. Run with --force or --data-changes")
+                    print(
+                        f"Migration [cyan]{_name}[/cyan] would alter data in the database. Run with --force or --data-changes"
+                    )
                     return
-                    
+
                 print(f"Applying migration [cyan]{_name}[/cyan]")
                 _migration.apply(db)
                 # After running migration, reload the database and confirm that application was sucessful

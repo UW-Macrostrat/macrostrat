@@ -20,7 +20,6 @@ Help:
   https://github.com/UW-Macrostrat/utils
 """
 
-
 import sys
 
 import click

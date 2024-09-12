@@ -1,8 +1,10 @@
-from psycopg2.extensions import AsIs
-from psycopg2.extras import NamedTupleCursor
-import time
 import datetime
 import sys
+import time
+
+from psycopg2.extensions import AsIs
+from psycopg2.extras import NamedTupleCursor
+
 from ..base import Base
 
 """

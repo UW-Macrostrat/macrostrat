@@ -25,7 +25,7 @@ def create_rgeom(source: MapInfo, use_maps_schema: bool = False):
         table = Identifier("sources", name)
         where = "not coalesce(omit, false)"
 
-        if table_exists(db, name, schema = "sources"):
+        if table_exists(db, name, schema="sources"):
             print("Validating geometry...")
             q = "UPDATE {primary_table} SET geom = ST_Multi(ST_Buffer(geom, 0))"
             db.run_query(q, {"primary_table": table})
