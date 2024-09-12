@@ -15,6 +15,8 @@
 
 /** Update entity and relationship tables to use integer ids */
 
+ALTER SCHEMA macrostrat_kg_new RENAME TO macrostrat_xdd;
+
 UPDATE source_text
 SET model_run_id = m.id
 FROM model_run m
@@ -172,3 +174,11 @@ WHERE entity.source_id = s.id;
 
 ALTER TABLE entity ALTER COLUMN start_index SET NOT NULL;
 ALTER TABLE entity ALTER COLUMN end_index SET NOT NULL;
+
+/** Create references table */
+CREATE TABLE macrostrat_xdd.publication (
+  paper_id text primary key,
+  doi text,
+  url text,
+  citation jsonb not null
+);

@@ -2,6 +2,7 @@ from os import environ
 from pathlib import Path
 
 import typer
+from macrostrat.utils.shell import run
 from rich import print
 from rich.traceback import install
 from typer import Argument, Typer
@@ -9,8 +10,6 @@ from typer import Argument, Typer
 from macrostrat.core import app
 from macrostrat.core.exc import MacrostratError
 from macrostrat.core.main import env_text, set_app_state
-from macrostrat.utils.shell import run
-
 from .database import db_app, db_subsystem
 from .subsystems.macrostrat_api import MacrostratAPISubsystem
 from .subsystems.paleogeography import load_paleogeography_subsystem
@@ -310,6 +309,16 @@ if mariadb_url := getattr(settings, "mysql_database", None):
         rich_help_panel="Subsystems",
         short_help="Manage the MariaDB database",
     )
+
+# Knowledge graph CLI
+from .subsystems.knowledge_graph import cli as kg_cli
+
+main.add_typer(
+    kg_cli,
+    name="xdd",
+    rich_help_panel="Subsystems",
+    short_help="Manage xDD integration",
+)
 
 
 app.finish_loading_subsystems()
