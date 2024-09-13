@@ -4,10 +4,8 @@ from macrostrat.core.config import settings
 from pytest import main
 from typer import Typer
 
-# TODO: Rework using pytest
-
 cli = Typer(
-    short_help="The testing suite",
+    short_help="Macrostrat tests",
     no_args_is_help=True,
     add_completion=False,
 )
