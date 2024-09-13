@@ -1,8 +1,9 @@
 from pathlib import Path
 
-from macrostrat.core.config import settings
 from pytest import main
 from typer import Typer
+
+from macrostrat.core.config import settings
 
 cli = Typer(
     short_help="Macrostrat tests",
