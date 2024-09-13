@@ -321,6 +321,11 @@ main.add_typer(
     short_help="Manage xDD integration",
 )
 
+## Testing subsystem
+from .subsystems.test import cli as test_app
+
+main.add_typer(test_app, name="test", rich_help_panel="Subsystems")
+
 
 app.finish_loading_subsystems()
 
