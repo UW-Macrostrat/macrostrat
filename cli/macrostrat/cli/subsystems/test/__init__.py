@@ -1,4 +1,6 @@
-from rich import print
+from pathlib import Path
+
+from pytest import main
 from typer import Typer
 
 # TODO: Rework using pytest
@@ -9,8 +11,10 @@ cli = Typer(
     add_completion=False,
 )
 
+__here__ = Path(__file__).parent
+
 
 @cli.command(name="runtime")
 def runtime_tests():
     """Test the deployed application"""
-    print("[bold green]All tests passed!")
+    main(["-v", __here__])

@@ -16,24 +16,32 @@ from requests import Session
 client = Session()
 
 tileserver = "https://tileserver.development.svc.macrostrat.org"
+website = "https://dev2.macrostrat.org"
+
+
+# Exponential backoff for up to 20 seconds
+def exponential_backoff(url):
+    for i in range(5):
+        res = client.get(url)
+        if res.status_code == 200:
+            yield res
+        sleep(2**i)
+    yield res
 
 
 def test_tile_cache():
     # Get a random tile
     url = tileserver + "/carto-slim/3/1/2"
 
+    for res in exponential_backoff(url):
+        if res.headers.get("x-cache") == "hit":
+            return
+    assert False, "Tile cache did not work"
+
+
+def test_web_unknown_page():
+    url = website + "/this-is-a-404"
+
     res = client.get(url)
 
-    assert res.status_code == 200
-
-    xcache = res.headers.get("x-cache")
-
-    if xcache == "miss":
-        # Try again, the cache may need to be warmed
-        # TODO: we could add a backoff here
-        sleep(1)
-        res = client.get(url)
-        assert res.status_code == 200
-        xcache = res.headers.get("x-cache")
-
-    assert xcache == "hit"
+    assert res.status_code == 404
