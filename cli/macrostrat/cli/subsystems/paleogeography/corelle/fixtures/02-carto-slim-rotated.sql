@@ -19,7 +19,7 @@ lines bytea;
 tolerance double precision;
 _t_step integer;
 _model_id integer;
-_scale macrostrat.map_scale;
+_scale maps.map_scale;
 
 BEGIN
 
@@ -55,7 +55,7 @@ tolerance := 6;
 projected_bbox := ST_Transform(mercator_bbox, 4326);
 
 WITH rotated_plates AS (
-  SELECT 
+  SELECT
     pp.plate_id,
     pp.model_id,
     p.name,
@@ -110,7 +110,7 @@ units AS (
     ON u.map_id = cpi.map_id
    AND u.scale = _scale
    -- This causes tile-boundary errors
-  WHERE _scale = 'tiny'::macrostrat.map_scale
+  WHERE _scale = 'tiny'::maps.map_scale
      OR ST_Intersects(coalesce(cpi.geom, u.geom), tile_geom)
 ),
 bedrock_ AS (
@@ -144,7 +144,7 @@ plates_ AS (
   FROM relevant_plates
 )
 SELECT
- (SELECT ST_AsMVT(plates_, 'plates') FROM plates_) || 
+ (SELECT ST_AsMVT(plates_, 'plates') FROM plates_) ||
  (SELECT ST_AsMVT(bedrock_, 'units') FROM bedrock_)
 INTO result;
 

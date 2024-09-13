@@ -13,6 +13,7 @@ from . import (
     macrostrat_mariadb,
     map_source_slugs,
     map_sources,
+    maps_scale_custom_type,
     maps_source_operations,
     partition_carto,
     partition_maps,
@@ -138,3 +139,19 @@ def run_migrations(
         # Short circuit after applying the migration specified by --name
         if name is not None and name == _name:
             break
+
+
+def migration_has_been_run(*names: str):
+    db = get_db()
+    migrations = Migration.__subclasses__()
+
+    available_migrations = {m.name for m in migrations}
+    if not set(names).issubset(available_migrations):
+        raise ValueError(f"Unknown migrations: {set(names) - available_migrations}")
+
+    for _migration in migrations:
+        if _migration.name in names:
+            apply_status = _migration.should_apply(db)
+            if apply_status != ApplicationStatus.APPLIED:
+                return True
+    return False
