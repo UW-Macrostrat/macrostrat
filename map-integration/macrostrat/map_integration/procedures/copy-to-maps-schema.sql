@@ -16,9 +16,9 @@ INSERT INTO maps.polygons (
   b_interval,
   geom
 )
-SELECT 
+SELECT
   source_id,
-  {scale}::macrostrat.map_scale,
+  {scale}::maps.map_scale,
   orig_id,
   name,
   strat_name,
@@ -44,9 +44,9 @@ INSERT INTO maps.lines (
   descrip,
   geom
 )
-SELECT 
+SELECT
   source_id,
-  {scale}::macrostrat.map_scale,
+  {scale}::maps.map_scale,
   orig_id,
   name,
   type,
@@ -69,7 +69,7 @@ INSERT INTO maps.points (
   geom,
   orig_id
 )
-SELECT 
+SELECT
   source_id,
   strike,
   dip,

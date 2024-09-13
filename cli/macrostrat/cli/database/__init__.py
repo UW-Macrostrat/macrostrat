@@ -140,6 +140,9 @@ def update_schema(
 
     db_subsystem = app.subsystems.get("database")
 
+    if subsystems is None:
+        subsystems = []
+
     """Create schema additions"""
     schema_dir = fixtures_dir
     # Loaded from env file
@@ -350,8 +353,8 @@ def inspect_table(table: str):
 
 
 @db_app.command(name="scripts", rich_help_panel="Schema management")
-def run_migration(migration: str = Argument(None)):
-    """Ad-hoc migration scripts"""
+def run_scripts(migration: str = Argument(None)):
+    """Ad-hoc database management scripts"""
     pth = Path(__file__).parent.parent / "ad-hoc-migrations"
     files = list(pth.glob("*.sql"))
     files.sort()
@@ -363,7 +366,7 @@ def run_migration(migration: str = Argument(None)):
         exit(1)
     migration = pth / (migration + ".sql")
     if not migration.exists():
-        print(f"Migration {migration} does not exist", file=stderr)
+        print(f"Script {migration} does not exist", file=stderr)
         exit(1)
 
     db = get_db()

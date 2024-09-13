@@ -27,10 +27,10 @@ JOIN corelle.plate_polygon pp
 -- Create a needed index
 CREATE UNIQUE INDEX plate_polygon_unique_idx ON corelle.plate_polygon (id, plate_id, model_id);
 
--- Pre-split carto layers 
+-- Pre-split carto layers
 CREATE TABLE IF NOT EXISTS corelle_macrostrat.carto_plate_index (
   map_id integer NOT NULL,
-  scale macrostrat.map_scale NOT NULL,
+  scale maps.map_scale NOT NULL,
   model_id integer NOT NULL,
   plate_id integer NOT NULL,
   plate_polygon_id integer NOT NULL,
@@ -99,7 +99,7 @@ BEGIN
     8
   );
 END;
-$$ LANGUAGE plpgsql IMMUTABLE; 
+$$ LANGUAGE plpgsql IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION corelle_macrostrat.antimeridian_split(
   geom geometry
