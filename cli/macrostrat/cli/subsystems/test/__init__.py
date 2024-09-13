@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from macrostrat.core.config import settings
 from pytest import main
 from typer import Typer
 
@@ -17,4 +18,14 @@ __here__ = Path(__file__).parent
 @cli.command(name="runtime")
 def runtime_tests():
     """Test the deployed application"""
-    main(["-v", __here__])
+    print("Running runtime tests")
+
+    main(["-v", settings.srcroot / "runtime-tests"])
+
+
+@cli.command(name="cli")
+def cli_tests():
+    """Test the CLI"""
+    print("Running CLI tests")
+
+    main(["-v", settings.srcroot / "cli" / "tests"])

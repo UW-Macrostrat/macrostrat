@@ -1,5 +1,5 @@
 """
-Runtime tests for the Macrostrat system.
+Simple tests for the Macrostrat system.
 
 These tests are designed to run against a deployed instance
 of Macrostrat to ensure that the system is functioning as expected.
@@ -11,22 +11,13 @@ As such, they may need to evolve with Macrostrat's data holdings.
 
 from time import sleep
 
+from pytest import mark
 from requests import Session
 
 client = Session()
 
 tileserver = "https://tileserver.development.svc.macrostrat.org"
 website = "https://dev2.macrostrat.org"
-
-
-# Exponential backoff for up to 20 seconds
-def exponential_backoff(url):
-    for i in range(5):
-        res = client.get(url)
-        if res.status_code == 200:
-            yield res
-        sleep(2**i)
-    yield res
 
 
 def test_tile_cache():
@@ -45,3 +36,22 @@ def test_web_unknown_page():
     res = client.get(url)
 
     assert res.status_code == 404
+
+
+valid_urls = ["/", "/api/v2", "/api/columns", "/columns", "/projects", "/docs", "/map"]
+
+
+@mark.parametrize("url", valid_urls)
+def test_web_pages(url):
+    res = client.get(website + url)
+    assert res.status_code == 200
+
+
+# Exponential backoff for up to 20 seconds
+def exponential_backoff(url):
+    for i in range(5):
+        res = client.get(url)
+        if res.status_code == 200:
+            yield res
+        sleep(2**i)
+    yield res

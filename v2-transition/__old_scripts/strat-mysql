@@ -1,2 +1,0 @@
-#!/usr/bin/env zsh
-strat compose exec -T mariadb mysql --user=root --password="$MARIADB_ROOT_PASSWORD" $@
