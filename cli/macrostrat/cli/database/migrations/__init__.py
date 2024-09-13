@@ -1,9 +1,11 @@
 from graphlib import TopologicalSorter
 from pathlib import Path
 
-from macrostrat.database import Database
 from rich import print
 
+from macrostrat.database import Database
+
+from .._legacy import get_db, refresh_db
 from . import (
     api_v3,
     baseline,
@@ -11,16 +13,15 @@ from . import (
     macrostrat_mariadb,
     map_source_slugs,
     map_sources,
+    maps_scale_custom_type,
     maps_source_operations,
     partition_carto,
     partition_maps,
     points,
     tileserver,
     update_macrostrat,
-    maps_scale_custom_type,
 )
 from .base import ApplicationStatus, Migration
-from .._legacy import get_db, refresh_db
 
 __dir__ = Path(__file__).parent
 

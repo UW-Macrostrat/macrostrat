@@ -3,8 +3,8 @@ from sys import stderr
 
 from typer import Context, Typer
 
-from .corelle import build_carto_plate_index, create_corelle_fixtures
 from ...database import get_db
+from .corelle import build_carto_plate_index, create_corelle_fixtures
 
 
 def load_paleogeography_subsystem(app, main, db_subsystem):
