@@ -139,6 +139,9 @@ def update_schema(
 
     db_subsystem = app.subsystems.get("database")
 
+    if subsystems is None:
+        subsystems = []
+
     """Create schema additions"""
     schema_dir = fixtures_dir
     # Loaded from env file

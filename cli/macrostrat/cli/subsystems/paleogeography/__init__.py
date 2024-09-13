@@ -1,11 +1,10 @@
 from os import environ
+from sys import stderr
 
 from typer import Context, Typer
 
-from macrostrat.app_frame.control_command import ControlCommand
-
-from ...database import get_db
 from .corelle import build_carto_plate_index, create_corelle_fixtures
+from ...database import get_db
 
 
 def load_paleogeography_subsystem(app, main, db_subsystem):
@@ -14,6 +13,7 @@ def load_paleogeography_subsystem(app, main, db_subsystem):
         from corelle.engine import cli as corelle_cli
         from corelle.engine.database import initialize
     except ImportError as err:
+        print("Corelle subsystem not available", err, file=stderr)
         return app
 
     paleo_app = Typer(name="paleogeography", no_args_is_help=True)
