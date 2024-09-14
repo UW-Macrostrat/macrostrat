@@ -6,24 +6,30 @@ DROP VIEW IF EXISTS macrostrat_api.strat_name_kg_relationships;
 DROP VIEW IF EXISTS macrostrat_kg.strat_name_kg_liths;
 DROP VIEW IF EXISTS macrostrat_kg.relationships_meta;
 
-DROP VIEW IF EXISTS macrostrat_api.kg_entities;
+DROP VIEW IF EXISTS macrostrat_api.kg_entities CASCADE;
+DROP VIEW IF EXISTS macrostrat_api.kg_relationships;
+DROP VIEW IF EXISTS macrostrat_api.kg_entity_tree;
+DROP VIEW IF EXISTS macrostrat_api.kg_publication_entities;
+DROP VIEW IF EXISTS macrostrat_api.kg_context_entities;
+
 CREATE OR REPLACE VIEW macrostrat_api.kg_entities AS
 WITH strat_names AS (
     SELECT
-        id,
+        id strat_name_id,
         concept_id,
         strat_name AS name,
         rank
     FROM macrostrat.strat_names
 ),
 liths AS (
-    SELECT id,
+    SELECT id lith_id,
            lith name,
            lith_color color
     FROM macrostrat.liths
 ),
 lith_atts AS (
-    SELECT *
+    SELECT id lith_att_id,
+           lith_att name
     FROM macrostrat.lith_atts
 )
 SELECT
@@ -33,17 +39,15 @@ SELECT
     ARRAY[start_index, end_index] AS indices,
     model_run_id model_run,
     source_id source,
-    to_json(sn) AS strat_name,
-    to_json(l) AS lith,
-    to_json(la) AS lith_att
+    coalesce(to_json(sn), to_json(l), to_json(la)) AS match
     -- JSON for the strat_name
 FROM macrostrat_xdd.entity e
 LEFT JOIN strat_names sn
-    ON sn.id = e.strat_name_id
+    ON sn.strat_name_id = e.strat_name_id
 LEFT JOIN liths l
-    ON l.id = e.lith_id
+    ON l.lith_id = e.lith_id
 LEFT JOIN lith_atts la
-    ON la.id = e.lith_att_id;
+    ON la.lith_att_id = e.lith_att_id;
 
 CREATE OR REPLACE VIEW macrostrat_api.kg_relationships AS
 SELECT
@@ -71,8 +75,9 @@ LEFT JOIN macrostrat_xdd.relationship r
 WHERE r.dst_entity_id IS NULL;
 
 
---CREATE OR REPLACE VIEW macrostrat_api.kg_entity_tree AS
+DROP VIEW IF EXISTS macrostrat_api.kg_entity_tree;
 
+CREATE OR REPLACE VIEW macrostrat_api.kg_entity_tree AS
 WITH RECURSIVE start_entities AS (
     -- Entities not parents of relationship
     SELECT id
@@ -82,11 +87,11 @@ WITH RECURSIVE start_entities AS (
     FROM relationship
 ), e0 AS (SELECT e.source,
                  e.id,
-                 jsonb_strip_nulls(to_jsonb(e) - 'model_run') tree
+                 jsonb_strip_nulls(to_jsonb(e) - 'model_run' - 'source') tree
           FROM macrostrat_api.kg_entities e),
     tree AS (
     -- Walk the tree of entity relationships
-    SELECT se.source_id source,
+    SELECT e0.source,
            r.src_entity_id parent_id,
            se.id         entity_id,
            e0.tree,
@@ -111,30 +116,61 @@ WITH RECURSIVE start_entities AS (
                    ON e0.id = a.parent_id
      GROUP BY a.source, a.depth, e0.tree, a.src_entity_id, a.parent_id
 )
-SELECT source, entity_id root_entity, tree entity_tree, depth
+SELECT
+    st.paper_id,
+    source source_id,
+    entity_id entity,
+    tree ->> 'type' AS type,
+    st.model_run_id model_run,
+    tree,
+    depth
 FROM tree
+JOIN macrostrat_xdd.source_text st
+    ON st.id = source
 WHERE parent_id IS NULL
-ORDER BY depth DESC;
+ORDER BY paper_id, source, depth DESC;
 
+CREATE OR REPLACE VIEW macrostrat_api.kg_publication_entities AS
+WITH paper_strat_names AS (SELECT p.paper_id,
+                                  array_agg(DISTINCT strat_name_id) strat_name_matches,
+                                  count(DISTINCT strat_name_id)                 n_matches
+                           FROM publication p
+                                    JOIN source_text st ON st.paper_id = p.paper_id
+                                    JOIN entity e ON e.source_id = st.id
+                           WHERE e.strat_name_id IS NOT NULL
+                           GROUP BY p.paper_id),
+entities AS (SELECT paper_id,
+                    jsonb_agg(tree || jsonb_build_object('model_run', model_run, 'depth', depth, 'source',
+                                                         source_id)) AS entities
+             FROM macrostrat_api.kg_entity_tree
+             GROUP BY paper_id)
+SELECT e.paper_id,
+         e.entities,
+         p.strat_name_matches,
+         p.n_matches,
+        pub.citation
+FROM entities e
+            JOIN paper_strat_names p ON p.paper_id = e.paper_id
+            JOIN publication pub ON pub.paper_id = e.paper_id
+ORDER BY p.n_matches DESC;
 
+CREATE VIEW macrostrat_api.kg_context_entities AS
+WITH entities AS (SELECT source_id, paper_id, model_run, jsonb_agg(tree) entities
+                  FROM macrostrat_api.kg_entity_tree
 
-WITH strat_names AS (
-SELECT p.paper_id,
-
-    e.name,
-    e.type,
-    strat_name_id,
-    strat_name_id IS NOT null AS strat_name_present
-FROM publication p
-  JOIN source_text st ON st.paper_id = p.paper_id
-LEFT JOIN entity e ON e.source_id = st.id
-)
-SELECT s.*, sn.*
-FROM strat_names s
-JOIN macrostrat.strat_names sn
- ON sn.id = s.strat_name_id;
-
-
-
-
-SELECT count(*) FROM entity WHERE strat_name_id IS NOT null;
+                  GROUP BY source_id, paper_id, model_run)
+SELECT e.source_id,
+         e.paper_id,
+         e.model_run,
+         e.entities,
+         st.weaviate_id,
+         st.paragraph_text,
+            st.hashed_text,
+            st.preprocessor_id,
+            mr.model_id,
+            mr.version_id
+FROM entities e
+JOIN macrostrat_xdd.source_text st
+    ON st.id = e.source_id
+JOIN macrostrat_xdd.model_run mr
+  ON st.model_run_id = mr.id
