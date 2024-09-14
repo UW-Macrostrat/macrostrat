@@ -68,13 +68,18 @@ WITH RECURSIVE start_entities AS (
     EXCEPT
     SELECT src_entity_id
     FROM macrostrat_xdd.relationship
-), e0 AS (SELECT e.source,
-                 e.id,
-                 jsonb_strip_nulls(to_jsonb(e) - 'model_run' - 'source') tree,
-                 (e.match IS NOT null)::integer AS n_matches
-          FROM macrostrat_api.kg_entities e),
-    tree AS (
-    -- Walk the tree of entity relationships
+),
+e0 AS (
+    SELECT
+        e.source,
+        e.id,
+        jsonb_strip_nulls(to_jsonb(e) - 'model_run' - 'source') tree,
+        (e.match IS NOT null)::integer AS n_matches
+    FROM macrostrat_api.kg_entities e
+),
+tree AS (
+    /** Walk the tree of entity relationships, grouping by parent and
+    aggregating as we go */
     SELECT e0.source,
            r.src_entity_id parent_id,
            se.id         entity_id,
@@ -95,14 +100,27 @@ WITH RECURSIVE start_entities AS (
             a.depth + 1,
             sum(a.n_entities)::integer + 1,
             sum(a.n_matches)::integer + e0.n_matches
-     FROM (
-         SELECT * FROM tree
-                           LEFT JOIN macrostrat_xdd.relationship r1
-                                     ON r1.dst_entity_id = tree.parent_id
-          ) a
-              JOIN e0
-                   ON e0.id = a.parent_id
-     GROUP BY a.source, a.depth, e0.tree, e0.n_matches, a.src_entity_id, a.parent_id
+    FROM (
+        SELECT
+            tree.source,
+            r1.src_entity_id,
+            tree.parent_id,
+            tree.tree,
+            tree.depth,
+            tree.n_entities,
+            tree.n_matches
+        FROM tree
+        LEFT JOIN macrostrat_xdd.relationship r1
+            ON r1.dst_entity_id = tree.parent_id
+    ) a
+    JOIN e0 ON e0.id = a.parent_id
+    GROUP BY
+        a.source,
+        a.depth,
+        e0.tree,
+        e0.n_matches,
+        a.src_entity_id,
+        a.parent_id
 )
 SELECT
     st.paper_id,
@@ -117,8 +135,7 @@ SELECT
 FROM tree
 JOIN macrostrat_xdd.source_text st
     ON st.id = source
-WHERE parent_id IS NULL
-ORDER BY n_matches DESC;
+WHERE parent_id IS NULL;
 
 CREATE OR REPLACE VIEW macrostrat_api.kg_publication_entities AS
 WITH paper_strat_names AS (SELECT p.paper_id,
