@@ -6,11 +6,12 @@ DROP VIEW IF EXISTS macrostrat_api.strat_name_kg_relationships;
 DROP VIEW IF EXISTS macrostrat_kg.strat_name_kg_liths;
 DROP VIEW IF EXISTS macrostrat_kg.relationships_meta;
 
-DROP VIEW IF EXISTS macrostrat_api.kg_entities CASCADE;
-DROP VIEW IF EXISTS macrostrat_api.kg_relationships;
-DROP VIEW IF EXISTS macrostrat_api.kg_entity_tree;
 DROP VIEW IF EXISTS macrostrat_api.kg_publication_entities;
 DROP VIEW IF EXISTS macrostrat_api.kg_context_entities;
+DROP VIEW IF EXISTS macrostrat_api.kg_entity_tree;
+DROP VIEW IF EXISTS macrostrat_api.kg_relationships;
+DROP VIEW IF EXISTS macrostrat_api.kg_entity_tree;
+DROP VIEW IF EXISTS macrostrat_api.kg_entities;
 
 CREATE OR REPLACE VIEW macrostrat_api.kg_entities AS
 WITH strat_names AS (
@@ -57,34 +58,16 @@ SELECT
     source_id source,
     src_entity_id src,
     dst_entity_id dst
-FROM relationship;
-
--- Walk the tree of entity relationships
-SELECT source,
-       r.dst_entity_id,
-       to_json(e) entity
-FROM macrostrat_api.kg_entities e
-LEFT JOIN macrostrat_xdd.relationship r
-    ON r.src_entity_id = e.id
-EXCEPT SELECT source,
-             r.dst_entity_id,
-             to_json(e) entity
-FROM macrostrat_api.kg_entities e
-LEFT JOIN macrostrat_xdd.relationship r
-    ON r.src_entity_id = e.id
-WHERE r.dst_entity_id IS NULL;
-
-
-DROP VIEW IF EXISTS macrostrat_api.kg_entity_tree;
+FROM macrostrat_xdd.relationship;
 
 CREATE OR REPLACE VIEW macrostrat_api.kg_entity_tree AS
 WITH RECURSIVE start_entities AS (
-    -- Entities not parents of relationship
+    -- Entities that are not parents of any relationship
     SELECT id
-    FROM entity
+    FROM macrostrat_xdd.entity
     EXCEPT
     SELECT src_entity_id
-    FROM relationship
+    FROM macrostrat_xdd.relationship
 ), e0 AS (SELECT e.source,
                  e.id,
                  jsonb_strip_nulls(to_jsonb(e) - 'model_run' - 'source') tree
@@ -134,9 +117,9 @@ CREATE OR REPLACE VIEW macrostrat_api.kg_publication_entities AS
 WITH paper_strat_names AS (SELECT p.paper_id,
                                   array_agg(DISTINCT strat_name_id) strat_name_matches,
                                   count(DISTINCT strat_name_id)                 n_matches
-                           FROM publication p
-                                    JOIN source_text st ON st.paper_id = p.paper_id
-                                    JOIN entity e ON e.source_id = st.id
+                           FROM macrostrat_xdd.publication p
+                                    JOIN macrostrat_xdd.source_text st ON st.paper_id = p.paper_id
+                                    JOIN macrostrat_xdd.entity e ON e.source_id = st.id
                            WHERE e.strat_name_id IS NOT NULL
                            GROUP BY p.paper_id),
 entities AS (SELECT paper_id,
@@ -151,13 +134,12 @@ SELECT e.paper_id,
         pub.citation
 FROM entities e
             JOIN paper_strat_names p ON p.paper_id = e.paper_id
-            JOIN publication pub ON pub.paper_id = e.paper_id
+            JOIN macrostrat_xdd.publication pub ON pub.paper_id = e.paper_id
 ORDER BY p.n_matches DESC;
 
 CREATE VIEW macrostrat_api.kg_context_entities AS
 WITH entities AS (SELECT source_id, paper_id, model_run, jsonb_agg(tree) entities
                   FROM macrostrat_api.kg_entity_tree
-
                   GROUP BY source_id, paper_id, model_run)
 SELECT e.source_id,
          e.paper_id,
