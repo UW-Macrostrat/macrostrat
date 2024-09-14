@@ -70,7 +70,8 @@ WITH RECURSIVE start_entities AS (
     FROM macrostrat_xdd.relationship
 ), e0 AS (SELECT e.source,
                  e.id,
-                 jsonb_strip_nulls(to_jsonb(e) - 'model_run' - 'source') tree
+                 jsonb_strip_nulls(to_jsonb(e) - 'model_run' - 'source') tree,
+                 (e.match IS NOT null)::integer AS n_matches
           FROM macrostrat_api.kg_entities e),
     tree AS (
     -- Walk the tree of entity relationships
@@ -78,7 +79,9 @@ WITH RECURSIVE start_entities AS (
            r.src_entity_id parent_id,
            se.id         entity_id,
            e0.tree,
-           0 depth
+           0 depth,
+           1 n_entities,
+           e0.n_matches
     FROM e0
     JOIN start_entities se
       ON se.id = e0.id
@@ -89,7 +92,9 @@ WITH RECURSIVE start_entities AS (
             a.src_entity_id,
             a.parent_id,
             e0.tree || jsonb_build_object('children', json_agg(a.tree)),
-            a.depth + 1
+            a.depth + 1,
+            sum(a.n_entities)::integer + 1,
+            sum(a.n_matches)::integer + e0.n_matches
      FROM (
          SELECT * FROM tree
                            LEFT JOIN macrostrat_xdd.relationship r1
@@ -97,7 +102,7 @@ WITH RECURSIVE start_entities AS (
           ) a
               JOIN e0
                    ON e0.id = a.parent_id
-     GROUP BY a.source, a.depth, e0.tree, a.src_entity_id, a.parent_id
+     GROUP BY a.source, a.depth, e0.tree, e0.n_matches, a.src_entity_id, a.parent_id
 )
 SELECT
     st.paper_id,
@@ -105,13 +110,15 @@ SELECT
     entity_id entity,
     tree ->> 'type' AS type,
     st.model_run_id model_run,
+    n_entities,
+    n_matches,
     tree,
     depth
 FROM tree
 JOIN macrostrat_xdd.source_text st
     ON st.id = source
 WHERE parent_id IS NULL
-ORDER BY paper_id, source, depth DESC;
+ORDER BY n_matches DESC;
 
 CREATE OR REPLACE VIEW macrostrat_api.kg_publication_entities AS
 WITH paper_strat_names AS (SELECT p.paper_id,
@@ -155,4 +162,5 @@ FROM entities e
 JOIN macrostrat_xdd.source_text st
     ON st.id = e.source_id
 JOIN macrostrat_xdd.model_run mr
-  ON st.model_run_id = mr.id
+  ON st.model_run_id = mr.id;
+
