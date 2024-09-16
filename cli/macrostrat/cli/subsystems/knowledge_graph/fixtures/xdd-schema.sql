@@ -50,6 +50,7 @@ LEFT JOIN liths l
 LEFT JOIN lith_atts la
     ON la.lith_att_id = e.lith_att_id;
 
+
 CREATE OR REPLACE VIEW macrostrat_api.kg_relationships AS
 SELECT
     id,
@@ -59,6 +60,7 @@ SELECT
     src_entity_id src,
     dst_entity_id dst
 FROM macrostrat_xdd.relationship;
+
 
 CREATE OR REPLACE VIEW macrostrat_api.kg_entity_tree AS
 WITH RECURSIVE start_entities AS (
@@ -138,46 +140,94 @@ JOIN macrostrat_xdd.source_text st
 WHERE parent_id IS NULL;
 
 CREATE OR REPLACE VIEW macrostrat_api.kg_publication_entities AS
-WITH paper_strat_names AS (SELECT p.paper_id,
-                                  array_agg(DISTINCT strat_name_id) strat_name_matches,
-                                  count(DISTINCT strat_name_id)                 n_matches
-                           FROM macrostrat_xdd.publication p
-                                    JOIN macrostrat_xdd.source_text st ON st.paper_id = p.paper_id
-                                    JOIN macrostrat_xdd.entity e ON e.source_id = st.id
-                           WHERE e.strat_name_id IS NOT NULL
-                           GROUP BY p.paper_id),
-entities AS (SELECT paper_id,
-                    jsonb_agg(tree || jsonb_build_object('model_run', model_run, 'depth', depth, 'source',
-                                                         source_id)) AS entities
-             FROM macrostrat_api.kg_entity_tree
-             GROUP BY paper_id)
-SELECT e.paper_id,
-         e.entities,
-         p.strat_name_matches,
-         p.n_matches,
-        pub.citation
-FROM entities e
-            JOIN paper_strat_names p ON p.paper_id = e.paper_id
-            JOIN macrostrat_xdd.publication pub ON pub.paper_id = e.paper_id
+WITH paper_strat_names AS (
+    SELECT
+        p.paper_id,
+        array_agg(DISTINCT strat_name_id) strat_name_matches,
+        count(DISTINCT strat_name_id) n_matches
+    FROM macrostrat_xdd.publication p
+    JOIN macrostrat_xdd.source_text st ON st.paper_id = p.paper_id
+    JOIN macrostrat_xdd.entity e ON e.source_id = st.id
+    WHERE e.strat_name_id IS NOT NULL
+    GROUP BY p.paper_id
+),
+entities AS (
+    SELECT
+        paper_id,
+        jsonb_agg(
+            tree ||
+            jsonb_build_object(
+                'model_run', model_run,
+                'depth', depth,
+                'source', source_id
+            )
+        ) AS entities
+    FROM macrostrat_api.kg_entity_tree
+    GROUP BY paper_id
+)
+SELECT
+    p.paper_id,
+    p.strat_name_matches,
+    p.n_matches,
+    pub.citation,
+    e.entities
+FROM paper_strat_names p
+JOIN macrostrat_xdd.publication pub
+    ON pub.paper_id = p.paper_id
+JOIN entities e
+     ON p.paper_id = e.paper_id
 ORDER BY p.n_matches DESC;
 
 CREATE VIEW macrostrat_api.kg_context_entities AS
-WITH entities AS (SELECT source_id, paper_id, model_run, jsonb_agg(tree) entities
-                  FROM macrostrat_api.kg_entity_tree
-                  GROUP BY source_id, paper_id, model_run)
-SELECT e.source_id,
-         e.paper_id,
-         e.model_run,
-         e.entities,
-         st.weaviate_id,
-         st.paragraph_text,
-            st.hashed_text,
-            st.preprocessor_id,
-            mr.model_id,
-            mr.version_id
+WITH entities AS (
+    SELECT
+        source_id,
+        paper_id,
+        model_run,
+        jsonb_agg(tree) entities
+    FROM macrostrat_api.kg_entity_tree
+    GROUP BY source_id, paper_id, model_run
+)
+SELECT
+    e.source_id,
+    e.paper_id,
+    e.model_run,
+    e.entities,
+    st.weaviate_id,
+    st.paragraph_text,
+    st.hashed_text,
+    st.preprocessor_id,
+    mr.model_id,
+    mr.version_id
 FROM entities e
 JOIN macrostrat_xdd.source_text st
     ON st.id = e.source_id
 JOIN macrostrat_xdd.model_run mr
   ON st.model_run_id = mr.id;
 
+SELECT
+  m.id,
+  m.name,
+  m.description,
+  m.url,
+  min(mr.timestamp) first_run,
+  max(mr.timestamp) last_run,
+  count(distinct mr.id) n_runs,
+  count(distinct e.id) n_entities,
+  count((coalesce(e.strat_name_id, e.lith_id, e.lith_att_id)::boolean)) n_matches,
+  count(e.strat_name_id::boolean) n_strat_names
+FROM model m
+JOIN model_run mr
+  ON mr.model_id = m.id
+JOIN entity e
+  ON e.model_run_id = mr.id
+GROUP BY m.id;
+
+ALTER TABLE macrostrat_xdd.publication OWNER TO "xdd-writer";
+ALTER TABLE macrostrat_xdd.entity_type OWNER TO "xdd-writer";
+ALTER TABLE macrostrat_xdd.relationship_type OWNER TO xdd_writer;
+ALTER TABLE macrostrat_xdd.entity OWNER TO xdd_writer;
+ALTER TABLE macrostrat_xdd.relationship OWNER TO xdd_writer;
+ALTER TABLE macrostrat_xdd.publication OWNER TO xdd_writer;
+ALTER TABLE macrostrat_xdd.entity_type OWNER TO xdd_writer;
+ALTER TABLE macrostrat_xdd.relationship_type OWNER TO xdd_writer;

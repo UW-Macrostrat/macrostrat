@@ -1,6 +1,7 @@
 from json import dumps
 from pathlib import Path
 
+from psycopg2.sql import Identifier
 from requests import get
 from rich import print
 from typer import Typer
@@ -17,6 +18,31 @@ kg_schema = SubsystemSchemaDefinition(
 
 
 cli = Typer(no_args_is_help=True)
+
+
+@cli.command()
+def permissions():
+    """Set permissions on tables in the knowledge graph subsystem"""
+
+    db = get_db()
+
+    schema = "macrostrat_xdd"
+    owner = "xdd-writer"
+    tables = db.run_query(
+        "SELECT table_name FROM information_schema.tables WHERE table_schema = :schema",
+        dict(schema=schema),
+    )
+    stmts = []
+    for table in tables.scalars():
+        stmts.append(
+            (
+                "ALTER TABLE {table} OWNER TO {owner}",
+                dict(table=Identifier(schema, table), owner=Identifier(owner)),
+            )
+        )
+
+    for stmt in stmts:
+        db.run_sql(*stmt)
 
 
 @cli.command()
