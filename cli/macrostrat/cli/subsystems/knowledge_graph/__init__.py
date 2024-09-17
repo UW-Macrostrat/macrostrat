@@ -32,12 +32,24 @@ def permissions():
         "SELECT table_name FROM information_schema.tables WHERE table_schema = :schema",
         dict(schema=schema),
     )
-    stmts = []
+    stmts = [
+        (
+            "GRANT USAGE ON SCHEMA {schema} TO {owner}",
+            dict(schema=Identifier(schema), owner=Identifier(owner)),
+        )
+    ]
     for table in tables.scalars():
+        params = dict(table=Identifier(schema, table), owner=Identifier(owner))
         stmts.append(
             (
                 "ALTER TABLE {table} OWNER TO {owner}",
-                dict(table=Identifier(schema, table), owner=Identifier(owner)),
+                params,
+            )
+        )
+        stmts.append(
+            (
+                "GRANT ALL ON {table} TO {owner}",
+                params,
             )
         )
 
