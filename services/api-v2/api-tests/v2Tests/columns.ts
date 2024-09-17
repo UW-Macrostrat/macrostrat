@@ -13,7 +13,8 @@ request(settings.host)
     done();
   });
 });
-/*
+
+//Fixed this test to work on dev and local
 it("should return a sample", function (done) {
 request(settings.host)
   .get("/columns?sample")
@@ -26,6 +27,7 @@ request(settings.host)
   });
 });
 
+//Fixed this test to work on dev and local
 it("should accept an interval name", function (done) {
 request(settings.host)
   .get("/columns?interval_name=Permian")
@@ -37,7 +39,7 @@ request(settings.host)
     done();
   });
 });
-*/
+
 
 it("should accept an age", function (done) {
 request(settings.host)
@@ -51,6 +53,7 @@ request(settings.host)
   });
 });
 
+
 it("should accept an age_top and age_bottom", function (done) {
 request(settings.host)
   .get("/columns?age_top=200&age_bottom=250")
@@ -63,7 +66,7 @@ request(settings.host)
   });
 });
 
-/*
+//fixed test in dev and it is now working.
 it("should accept a strat_name parameter", function (done) {
 request(settings.host)
   .get("/columns?strat_name=mancos")
@@ -75,13 +78,33 @@ request(settings.host)
     done();
   });
 });
-*/
+
 it("should accept a strat_name_id parameter", function (done) {
 request(settings.host)
   .get("/columns?strat_name_id=1205")
   .expect(validators.aSuccessfulRequest)
   .expect(validators.json)
   .expect(validators.atLeastOneResult)
+  .end(function (error: any, res: any) {
+    if (error) return done(error);
+    done();
+  });
+});
+
+
+//Checking to see if the rest of the tests below work in prod.
+//count for max number of columns ~50?
+it("should accept a latitude and longitude", function (done) {
+request(settings.host)
+  .get("/columns?lat=43.3&lng=-89.3")
+  .expect(validators.aSuccessfulRequest)
+  .expect(validators.json)
+  .expect(validators.atLeastOneResult)
+  .expect(function (res: { body: { success: { data: { col_id: number; }[]; }; }; }) {
+    if (res.body.success.data[0].col_id != 187) {
+      throw new Error("Columns returning the wrong column for the lat/lng");
+    }
+  })
   .end(function (error: any, res: any) {
     if (error) return done(error);
     done();
@@ -110,23 +133,6 @@ request(settings.host)
   });
 });
 
-/*
-it("should accept a latitude and longitude", function (done) {
-request(settings.host)
-  .get("/columns?lat=43.3&lng=-89.3")
-  .expect(validators.aSuccessfulRequest)
-  .expect(validators.json)
-  .expect(validators.atLeastOneResult)
-  .expect(function (res: { body: { success: { data: { col_id: number; }[]; }; }; }) {
-    if (res.body.success.data[0].col_id != 187) {
-      throw new Error("Columns returning the wrong column for the lat/lng");
-    }
-  })
-  .end(function (error: any, res: any) {
-    if (error) return done(error);
-    done();
-  });
-});
 
 it("should accept a project_id", function (done) {
 request(settings.host)
@@ -141,7 +147,7 @@ request(settings.host)
 });
 
 it("should accept a lat/lng and return all adjacent columns", function (done) {
-request(settings.host)
+    request(settings.host)
   .get("/columns?lat=43.3&lng=-89.3&adjacents=true")
   .expect(validators.aSuccessfulRequest)
   .expect(validators.json)
@@ -156,5 +162,4 @@ request(settings.host)
     done();
   });
 });
-*/
 

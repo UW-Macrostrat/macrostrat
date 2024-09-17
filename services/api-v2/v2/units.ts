@@ -19,12 +19,13 @@ module.exports = function (req, res, next, cb) {
     [
       function (callback) {
         if (req.query.interval_name) {
-          params["interval_name"] = [req.query.interval_name];
+          params["interval_name"] = req.query.interval_name;
           let sql = `SELECT age_bottom, age_top, interval_name FROM macrostrat.intervals WHERE interval_name = :interval_name LIMIT 1`
           larkin.queryPg("burwell",
             sql,
             params,
             function (error, result) {
+            console.log(result)
               if (error) {
                 callback(error);
               } else {
@@ -101,16 +102,19 @@ module.exports = function (req, res, next, cb) {
             },
           );
         } else if (req.query.lat && req.query.lng) {
+
+          //TODO: review and see why all cols are returning with lat and lng.
           var sql =
             req.query.adjacents === "true"
               ? "WITH containing_geom AS (SELECT poly_geom FROM macrostrat.cols WHERE ST_Contains(poly_geom, ST_GeomFromText(:point, 4326))) SELECT id FROM macrostrat.cols WHERE ST_Intersects((SELECT * FROM containing_geom), poly_geom) ORDER BY ST_Distance(ST_Centroid(poly_geom), ST_GeomFromText($1, 4326))"
-              : "SELECT id FROM macrostrat.cols WHERE ST_Contains(poly_geom, st_setsrid(ST_GeomFromText(:point), 4326)) ORDER BY ST_Distance(ST_Centroid(poly_geom), ST_GeomFromText($1, 4326))";
+              : "SELECT id FROM macrostrat.cols WHERE ST_Contains(poly_geom, st_setsrid(ST_GeomFromText(:point), 4326)) ORDER BY ST_Distance(ST_Centroid(poly_geom), ST_GeomFromText(:point, 4326))";
           params['point'] =
               "POINT(" +
                 larkin.normalizeLng(req.query.lng) +
                 " " +
                 req.query.lat +
                 ")"
+
           larkin.queryPg(
             "burwell",
             sql,
@@ -119,19 +123,19 @@ module.exports = function (req, res, next, cb) {
               if (error) {
                 callback(error);
               } else {
-                callback(null, {
+                return callback(null, {
                   interval_name: "none",
                   age_bottom: 99999,
                   age_top: 0,
                   col_ids: response.rows.map(function (d) {
-                    return d.id;
+                            return d.id;
                   }),
                 });
               }
             },
           );
         } else if (req.query.col_id && req.query.adjacents) {
-          var col_ids = larkin.parseMultipleIds(req.query.col_id),
+            var col_ids = larkin.parseMultipleIds(req.query.col_id),
             placeholders = col_ids.map(function (d, i) {
               return "$" + (i + 1);
             });
@@ -178,7 +182,7 @@ module.exports = function (req, res, next, cb) {
           );
         } else if (req.query.strat_name) {
           larkin.queryPg("burwell",
-            "SELECT strat_name_id FROM macrostrat.lookup_strat_names WHERE strat_name LIKE :strat_name ",
+            "SELECT strat_name_id FROM macrostrat.lookup_strat_names WHERE strat_name ILIKE :strat_name ",
               {'strat_name': "%" + req.query.strat_name + "%"},
             function (error, result) {
               if (error) {
@@ -283,6 +287,8 @@ module.exports = function (req, res, next, cb) {
           limit = "sample" in req.query ? (cb ? " LIMIT 15 " : " LIMIT 5") : "",
           orderby = [],
           params = {};
+
+        console.log(data)
 
         if (req.query.status_code) {
           where += "cols.status_code = ANY(:status_code)";
@@ -389,17 +395,18 @@ module.exports = function (req, res, next, cb) {
           where += " AND units_sections.section_id = ANY(:section_id)";
           params["section_id"] = larkin.parseMultipleIds(req.query.section_id);
         }
-
-        if ("col_id" in data) {
+        console.log(data)
+        if ("col_ids" in data) {
           where += " AND units_sections.col_id = ANY(:col_id)";
-          if (!data.col_id.length) {
-            data.col_id = [""];
+          if (!data.col_ids.length) {
+            data.col_ids = [""];
           }
-          params["col_id"] = data.col_id;
+          params["col_id"] = data.col_ids;
         } else if (req.query.col_id) {
           where += " AND units_sections.col_id = ANY(:col_id)";
           params["col_id"] = larkin.parseMultipleIds(req.query.col_id);
         }
+        console.log(where)
 
         if (data.strat_ids) {
           where +=
@@ -495,7 +502,7 @@ module.exports = function (req, res, next, cb) {
         if ("sample" in req.query) {
           // Speeds things up...
           where +=
-            " AND units_sections.col_id = ANY(92, 488, 463, 289, 430, 481, 261, 534, 369, 798, 771, 1675) ";
+            " AND units_sections.col_id = ANY(ARRAY[92, 488, 463, 289, 430, 481, 261, 534, 369, 798, 771, 1675]) ";
         }
 
         const measureField =

@@ -39,6 +39,8 @@ request(settings.host)
 });
 
 /*
+//These tests fail production and dev. They are commented out for now.
+
 it("should return geometry when asked", function (done) {
 request(settings.host)
   .get("/carto/small?lat=43&lng=-89.3&format=geojson")

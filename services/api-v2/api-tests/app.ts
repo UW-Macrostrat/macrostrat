@@ -49,11 +49,10 @@ const testFiles = [
 
 const testDir = path.join(__dirname, 'v2Tests');
 
-
 testFiles.forEach((file) => {
     describe(file, function () {
-    console.log(`Loading test file: ${file}`);
-    require(path.join(testDir, file));
+        console.log(`Loading test file: ${file}`);
+        require(path.join(testDir, file));
     });
 });
 
