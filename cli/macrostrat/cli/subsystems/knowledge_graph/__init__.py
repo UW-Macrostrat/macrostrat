@@ -34,7 +34,7 @@ def permissions():
     )
     stmts = [
         (
-            "GRANT USAGE ON SCHEMA {schema} TO {owner}",
+            "GRANT ALL ON SCHEMA {schema} TO {owner}",
             dict(schema=Identifier(schema), owner=Identifier(owner)),
         )
     ]
@@ -55,6 +55,7 @@ def permissions():
 
     for stmt in stmts:
         db.run_sql(*stmt)
+        db.session.commit()
 
 
 @cli.command()
