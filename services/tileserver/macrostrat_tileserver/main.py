@@ -14,6 +14,7 @@ from timvt.settings import PostgresSettings
 from timvt.layer import FunctionRegistry
 from titiler.core.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from titiler.core.factory import TilerFactory
+from pydantic_settings import SettingsConfigDict
 
 from .cached_tiler import CachedStoredFunction, CachedVectorTilerFactory
 from .function_layer import StoredFunction
@@ -38,7 +39,16 @@ __here__ = Path(__file__).parent
 app = FastAPI(prefix="/", middleware=[Middleware(CORSMiddleware, allow_origins=["*"])])
 
 
-db_settings = PostgresSettings()
+class TileServerSettings(PostgresSettings):
+    # XDD embedding service URL
+    xdd_embedding_service_url: Optional[str] = None
+
+    model_config = SettingsConfigDict(
+        extra="allow",
+    )
+
+
+db_settings = TileServerSettings()
 
 
 app.state.timvt_function_catalog = FunctionRegistry()
@@ -100,6 +110,7 @@ cog = TilerFactory()
 app.include_router(cog.router, prefix="/cog", tags=["Cloud Optimized GeoTIFF"])
 add_exception_handlers(app, DEFAULT_STATUS_CODES)
 
+
 # Register endpoints.
 mvt_tiler = CachedVectorTilerFactory(
     with_tables_metadata=True,
@@ -145,6 +156,10 @@ app.include_router(filterable_router, tags=["Filterable"], prefix="/v2")
 from .map_bounds import router as map_bounds_router
 
 app.include_router(map_bounds_router, tags=["Maps"], prefix="/maps")
+
+from .embeddings import router as embeddings_router
+
+app.include_router(embeddings_router, tags=["Vector search"], prefix="/search")
 
 
 @app.get("/carto/rotation-models")

@@ -1,34 +1,10 @@
 import decimal
 import json
 import typing
-from enum import Enum
-from pathlib import Path
 
 from starlette.responses import JSONResponse, Response
 from timvt.resources.enums import MimeTypes
-
-
-class CacheMode(str, Enum):
-    prefer = "prefer"
-    force = "force"
-    bypass = "bypass"
-
-
-class CacheStatus(str, Enum):
-    hit = "hit"
-    miss = "miss"
-    bypass = "bypass"
-
-
-stmt_cache = {}
-
-
-def prepared_statement(id):
-    cached = stmt_cache.get(id)
-    if cached is None:
-        stmt_cache[id] = (Path(__file__).parent / "sql" / f"{id}.sql").open("r").read()
-    return stmt_cache[id]
-
+from .cache import CacheStatus
 
 def TileResponse(content, timer, cache_status: CacheStatus = None, **kwargs):
     kwargs["headers"] = {
@@ -58,3 +34,16 @@ class DecimalJSONResponse(JSONResponse):
             separators=(",", ":"),
             cls=DecimalEncoder,
         ).encode("utf-8")
+
+class VectorTileResponse(Response):
+    media_type = MimeTypes.pbf.value
+
+    def __init__(self, *layers, **kwargs):
+        data = join_layers(layers)
+        kwargs.setdefault("media_type", MimeTypes.pbf.value)
+        super().__init__(data, **kwargs)
+
+
+def join_layers(layers):
+    """Join tiles together."""
+    return b"".join(layers)
