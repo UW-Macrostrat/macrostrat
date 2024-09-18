@@ -4,9 +4,13 @@ from sys import exit, stderr, stdin, stdout
 from typing import Any, Callable, Iterable
 
 import typer
+from macrostrat.database import Database
+from macrostrat.dinosaur import _create_migration
+from macrostrat.utils.shell import run
 from pydantic import BaseModel
 from rich import print
-from sqlalchemy import make_url, text
+from sqlalchemy import text, create_engine
+from sqlalchemy import make_url
 from typer import Argument, Option
 
 from macrostrat.core import MacrostratSubsystem, app
@@ -247,6 +251,49 @@ def dump(
         custom_format=custom_format,
     )
     asyncio.run(task)
+
+
+@db_app.command()
+def diff(
+    target: str,
+    schema: str = None,
+    database: str = None,
+    apply: bool = False,
+    allow_unsafe: bool = False,
+):
+    """Create a diff with another database"""
+
+    db = get_db()
+    if database is None:
+        database = db.engine.url.database
+
+    url = interpret_target(target)
+
+    print(
+        f"Comparing [cyan]{db.engine.url.database}[/cyan] to [cyan]{url}[/cyan]",
+        file=stderr,
+    )
+
+    m = _create_migration(
+        db.engine, create_engine(url), safe=not allow_unsafe, schema=schema
+    )
+
+    stmts = m.statements
+    print("===MIGRATION BELOW THIS LINE===", file=stderr)
+    for stmt in stmts:
+        if apply:
+            run_sql(database.session, stmt)
+        else:
+            print(stmt, file=stdout)
+
+
+def interpret_target(target: str):
+    if target.startswith("postgres://") or target.startswith("postgresql://"):
+        return target
+    # Check if the target the name of an environment, and if so, get the URL
+    env1 = app.settings.from_env(target)
+    if env1 is not None:
+        return env1.get("pg_database", None)
 
 
 @db_app.command()
