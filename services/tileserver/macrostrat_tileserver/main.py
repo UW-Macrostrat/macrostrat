@@ -100,6 +100,7 @@ cog = TilerFactory()
 app.include_router(cog.router, prefix="/cog", tags=["Cloud Optimized GeoTIFF"])
 add_exception_handlers(app, DEFAULT_STATUS_CODES)
 
+
 # Register endpoints.
 mvt_tiler = CachedVectorTilerFactory(
     with_tables_metadata=True,
@@ -145,6 +146,9 @@ app.include_router(filterable_router, tags=["Filterable"], prefix="/v2")
 from .map_bounds import router as map_bounds_router
 
 app.include_router(map_bounds_router, tags=["Maps"], prefix="/maps")
+
+from .embeddings import router as embeddings_router
+app.include_router(embeddings_router, tags=["Vector search"], prefix="/search")
 
 
 @app.get("/carto/rotation-models")

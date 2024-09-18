@@ -12,14 +12,9 @@ router = APIRouter()
 __here__ = Path(__file__).parent
 
 
-@router.get("/{model}/{z}/{x}/{y}")
+@router.get("/{model}/tiles/{z}/{x}/{y}")
 async def get_tile(
-    request: Request,
-    model: str,
-    z: int,
-    x: int,
-    y: int,
-    lithology: List[str] = Query(None)
+    request: Request, model: str, z: int, x: int, y: int, term: str = Query(None)
 ):
     """Get a tile from the tileserver."""
     pool = request.app.state.pool
@@ -36,24 +31,13 @@ async def get_tile(
 
     async with pool.acquire() as con:
         units_ = await run_layer_query(
-            con,
-            "units",
-            compilation=V("carto.polygons"),
-            **params
-        )
-        lines_ = await run_layer_query(
-            con,
-            "lines",
-            compilation=V("carto.lines"),
-            **params
+            con, "units", compilation=V("carto.polygons"), **params
         )
 
-    return VectorTileResponse(units_, lines_)
+    return VectorTileResponse(units_)
 
 
 async def run_layer_query(con, layer_name, **params):
-    query = get_layer_sql(layer_name)
+    query = get_layer_sql(__here__ / "queries", layer_name)
     q, p = render(query, layer_name=layer_name, **params)
     return await con.fetchval(q, *p)
-
-
