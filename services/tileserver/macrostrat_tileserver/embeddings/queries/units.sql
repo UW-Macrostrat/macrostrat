@@ -26,7 +26,7 @@ f1 AS (SELECT z.map_id,
 )
 SELECT
   f1.*,
-  le.embedding_vector <-> (SELECT le.embedding_vector FROM text_vectors.legend_embedding LIMIT 1) AS similarity
+  coalesce(le.embedding_vector <=> :term_embedding::vector, 0) AS similarity
 FROM f1
 LEFT JOIN text_vectors.legend_embedding AS le
 ON f1.legend_id = le.legend_id

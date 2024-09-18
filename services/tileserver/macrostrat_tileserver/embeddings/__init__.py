@@ -3,6 +3,12 @@ from pathlib import Path
 
 from buildpg import V, render
 from fastapi import APIRouter, Request, Query
+from os import environ
+from httpx import AsyncClient
+from contextvars import ContextVar
+from json import dumps
+
+client = AsyncClient()
 
 from ..utils import scales_for_zoom, get_layer_sql, VectorTileResponse
 
@@ -19,6 +25,13 @@ async def get_tile(
     """Get a tile from the tileserver."""
     pool = request.app.state.pool
 
+    if term:
+        term, vector = await get_search_term_embedding(term, model)
+    else:
+        raise ValueError("No term provided")
+
+    # Check if there is a query term in the cache and if not, add it
+
     mapsize, linesize = scales_for_zoom(z)
 
     params = dict(
@@ -27,6 +40,7 @@ async def get_tile(
         y=y,
         mapsize=mapsize,
         linesize=linesize,
+        term_embedding=dumps(vector),
     )
 
     async with pool.acquire() as con:
@@ -41,3 +55,38 @@ async def run_layer_query(con, layer_name, **params):
     query = get_layer_sql(__here__ / "queries", layer_name)
     q, p = render(query, layer_name=layer_name, **params)
     return await con.fetchval(q, *p)
+
+
+_term_index = ContextVar("term_index", default={})
+
+
+async def get_search_term_embedding(term, model):
+    """Get the embedding for a search term."""
+
+    term_index = _term_index.get()
+    if term in term_index:
+        return term_index[term]
+
+    # url = environ.get("XDD_EMBEDDING_SERVICE_URL")
+    url = "https://xdddev.chtc.io/triton/v2"
+    url += f"/models/cm_bert/infer"
+
+    data = {
+        "inputs": [
+            {
+                "name": "prompt",
+                "shape": [1],
+                "datatype": "BYTES",
+                "data": [term],
+            }
+        ]
+    }
+
+    response = await client.post(url, json=data)
+    response.raise_for_status()
+
+    vector = response.json()["outputs"][0]["data"]
+
+    _term_index.set({**_term_index.get(), term: vector})
+
+    return term, vector
