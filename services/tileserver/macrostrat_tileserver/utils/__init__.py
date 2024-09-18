@@ -3,7 +3,7 @@ from enum import Enum
 from pathlib import Path
 
 from .cache import CacheMode, CacheStatus
-from .output import TileResponse, DecimalJSONResponse
+from .output import TileResponse, DecimalJSONResponse, VectorTileResponse
 
 
 def scales_for_zoom(z):
@@ -54,10 +54,6 @@ def get_layer_sql(base_dir: Path, filename: str, as_mvt: bool = True):
         return f"WITH feature_query AS ({q}) SELECT ST_AsMVT(feature_query, :layer_name) FROM feature_query"
 
     return q
-
-def join_layers(layers):
-    """Join tiles together."""
-    return b"".join(layers)
 
 
 def prepared_statement(id):

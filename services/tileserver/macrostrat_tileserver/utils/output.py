@@ -34,3 +34,16 @@ class DecimalJSONResponse(JSONResponse):
             separators=(",", ":"),
             cls=DecimalEncoder,
         ).encode("utf-8")
+
+class VectorTileResponse(Response):
+    media_type = MimeTypes.pbf.value
+
+    def __init__(self, *layers, **kwargs):
+        data = join_layers(layers)
+        kwargs.setdefault("media_type", MimeTypes.pbf.value)
+        super().__init__(data, **kwargs)
+
+
+def join_layers(layers):
+    """Join tiles together."""
+    return b"".join(layers)

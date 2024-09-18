@@ -1,12 +1,11 @@
-from typing import List
 from pathlib import Path
+from typing import List
 
-from buildpg import V, render, SqlBlock
-from fastapi import APIRouter, Request, Response, Query
-from timvt.resources.enums import MimeTypes
-from ..utils import scales_for_zoom, MapCompilation, get_layer_sql, join_layers
-
+from buildpg import V, render
+from fastapi import APIRouter, Request, Query
 from macrostrat.utils import get_logger
+
+from ..utils import scales_for_zoom, MapCompilation, get_layer_sql, VectorTileResponse
 
 log = get_logger(__name__)
 
@@ -30,7 +29,6 @@ async def get_tile(
     mapsize, linesize = scales_for_zoom(z)
 
     compilation_name = compilation.value
-    where_lithology = get_lithology_clause(lithology)
 
     params = dict(
         z=z,
@@ -45,7 +43,6 @@ async def get_tile(
             con,
             "units",
             compilation=V(compilation_name + ".polygons"),
-            where_lithology=where_lithology,
             lithology=lithology,
             **params
         )
@@ -55,13 +52,10 @@ async def get_tile(
             compilation=V(compilation_name + ".lines"),
             **params
         )
-    data = join_layers([units_, lines_])
-    kwargs = {}
-    kwargs.setdefault("media_type", MimeTypes.pbf.value)
-    return Response(data, **kwargs)
+    return VectorTileResponse(units_, lines_)
 
-
-def get_lithology_clause(lithology: List[str]):
+def build_lithology_clause(lithology: List[str]):
+    """Build a WHERE clause to filter by lithology."""
     if lithology is None or len(lithology) == 0:
         return "true"
 
@@ -79,13 +73,8 @@ def get_lithology_clause(lithology: List[str]):
 
 async def run_layer_query(con, layer_name, **params):
     query = get_layer_sql( __here__ / "queries",  layer_name)
-    lith_clause = get_lithology_clause(params.get("lithology"))
-    query = query.replace(":where_lithology", lith_clause)
-
+    if ":where_lithology" in query:
+        lith_clause = build_lithology_clause(params.get("lithology"))
+        query = query.replace(":where_lithology", lith_clause)
     q, p = render(query, layer_name=layer_name, **params)
-
-    # Overcomes a shortcoming in buildpg that deems casting to an array as unsafe
-    # https://github.com/samuelcolvin/buildpg/blob/e2a16abea5c7607b53c501dbae74a5765ba66e15/buildpg/components.py#L21
-    log.info(q)
-
     return await con.fetchval(q, *p)
