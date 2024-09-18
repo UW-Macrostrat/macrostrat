@@ -63,13 +63,14 @@ _term_index = ContextVar("term_index", default={})
 async def get_search_term_embedding(term, model):
     """Get the embedding for a search term."""
 
+    # Get the settings model
+    from ..main import db_settings
+
     term_index = _term_index.get()
     if term in term_index:
         return term_index[term]
 
-    # url = environ.get("XDD_EMBEDDING_SERVICE_URL")
-    url = "https://xdddev.chtc.io/triton/v2"
-    url += f"/models/cm_bert/infer"
+    url = db_settings.xdd_embedding_service_url
 
     data = {
         "inputs": [
@@ -82,7 +83,7 @@ async def get_search_term_embedding(term, model):
         ]
     }
 
-    response = await client.post(url, json=data)
+    response = await client.post(url, json=data, timeout=30)
     response.raise_for_status()
 
     vector = response.json()["outputs"][0]["data"]
