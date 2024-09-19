@@ -1,4 +1,5 @@
 import asyncio
+import sys
 from pathlib import Path
 from typing import Optional
 
@@ -14,8 +15,11 @@ from .utils import _create_command
 log = get_logger(__name__)
 
 
-def pg_dump(*args, **kwargs):
-    task = _pg_dump_to_file(*args, **kwargs)
+def pg_dump(dumpfile: Path, *args, **kwargs):
+    if dumpfile is None or dumpfile == sys.stdout:
+        task = _pg_dump_to_stdout(*args, **kwargs)
+    else:
+        task = _pg_dump_to_file(dumpfile, *args, **kwargs)
     asyncio.run(task)
 
 
@@ -46,6 +50,14 @@ async def _pg_dump(
         *_cmd,
         stdout=stdout,
         stderr=asyncio.subprocess.PIPE,
+    )
+
+
+async def _pg_dump_to_stdout(*args, **kwargs):
+    proc = await _pg_dump(*args, **kwargs)
+    await asyncio.gather(
+        asyncio.create_task(print_stdout(proc.stdout)),
+        asyncio.create_task(print_stream_progress(proc.stderr)),
     )
 
 

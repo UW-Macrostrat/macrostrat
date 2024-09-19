@@ -311,6 +311,16 @@ if mariadb_url := getattr(settings, "mysql_database", None):
         short_help="Manage the MariaDB database",
     )
 
+# Knowledge graph CLI
+from .subsystems.xdd import cli as kg_cli
+
+main.add_typer(
+    kg_cli,
+    name="xdd",
+    rich_help_panel="Subsystems",
+    short_help="Manage xDD integration",
+)
+
 ## Testing subsystem
 from .subsystems.test import cli as test_app
 
@@ -373,12 +383,13 @@ def state():
     app.console.print(app.state.get())
 
 
-# Add basic schema hunks
-from .subsystems.knowledge_graph import kg_schema
 from .subsystems.legend_api import legend_api
 from .subsystems.macrostrat_api import macrostrat_api
 
-db_subsystem.schema_hunks.append(kg_schema)
+# Add basic schema hunks
+from .subsystems.xdd import xdd_schema
+
+db_subsystem.schema_hunks.append(xdd_schema)
 db_subsystem.schema_hunks.append(legend_api)
 db_subsystem.schema_hunks.append(macrostrat_api)
 

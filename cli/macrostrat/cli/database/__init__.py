@@ -1,6 +1,6 @@
 from os import environ
 from pathlib import Path
-from sys import exit, stderr, stdin
+from sys import exit, stderr, stdin, stdout
 from typing import Any, Callable
 
 import typer
@@ -43,6 +43,9 @@ def run_all_sql(db, dir: Path, match: str = None):
         run_sql(db, f, match)
 
 
+DBCallable = Callable[[Database], None]
+
+
 class SubsystemSchemaDefinition(BaseModel):
     """A schema definition managed by a Macrostrat subsystem"""
 
@@ -54,9 +57,9 @@ class SubsystemSchemaDefinition(BaseModel):
     name: str
     version: str = "0.0.0"
     depends_on: list[str] = []
-    fixtures: list[Path] = []
+    fixtures: list[Path | DBCallable] = []
     params: dict[str, Any] | None = None
-    callback: Callable[[Database], None] | None = None
+    callback: DBCallable | None = None
 
     def _run_sql(self, db, f: Path, match: str = None):
         if match is not None and match not in str(f):
@@ -74,7 +77,9 @@ class SubsystemSchemaDefinition(BaseModel):
 
     def apply(self, db, match: str = None):
         for f in self.fixtures:
-            if f.is_file():
+            if callable(f):
+                f(db)
+            elif f.is_file():
                 self._run_sql(db, f, match)
             elif f.is_dir():
                 self._run_all_sql(db, f, match)
@@ -209,7 +214,7 @@ def psql(ctx: typer.Context, database: str = None):
 )
 def dump(
     ctx: typer.Context,
-    dumpfile: Path,
+    dumpfile: Path = Argument("-", help="Output file"),
     database: str = Option(
         None,
         "--database",
@@ -223,7 +228,11 @@ def dump(
 
     engine = engine_for_db_name(database)
 
+    if dumpfile == "-":
+        dumpfile = stdout
+
     args = ctx.args
+    print(args)
     custom_format = True
     if schema:
         args.append("--schema-only")
