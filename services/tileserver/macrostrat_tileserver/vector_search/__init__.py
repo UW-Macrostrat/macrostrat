@@ -106,6 +106,7 @@ async def get_search_term_id(pool, term, model) -> int:
         text=term,
         model_name=res.model_name,
         model_version=res.model_version,
+        sample_size=5000,
         text_vector=dumps(res.vector),
     )
 
