@@ -4,6 +4,7 @@ from uuid import uuid4
 
 from macrostrat.database.utils import run_query, run_sql
 from psycopg2.sql import Identifier
+from rich import print
 from sqlalchemy.engine import Engine, create_engine
 from sqlalchemy.engine.url import URL, make_url
 
@@ -158,6 +159,10 @@ def grant_schema_ownership(schema, owner):
 
     def setup_permissions(db):
         """Set permissions on tables in the knowledge graph subsystem"""
+        print(
+            f"Granting ownership of schema [cyan bold]{schema}[/] to [cyan bold]{owner}[/]"
+        )
+
         tables = db.run_query(
             "SELECT table_name FROM information_schema.tables WHERE table_schema = :schema",
             dict(schema=schema),

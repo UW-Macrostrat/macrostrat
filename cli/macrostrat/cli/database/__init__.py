@@ -42,6 +42,9 @@ def run_all_sql(db, dir: Path, match: str = None):
         run_sql(db, f, match)
 
 
+DBCallable = Callable[[Database], None]
+
+
 class SubsystemSchemaDefinition(BaseModel):
     """A schema definition managed by a Macrostrat subsystem"""
 
@@ -53,9 +56,9 @@ class SubsystemSchemaDefinition(BaseModel):
     name: str
     version: str = "0.0.0"
     depends_on: list[str] = []
-    fixtures: list[Path] = []
+    fixtures: list[Path | DBCallable] = []
     params: dict[str, Any] | None = None
-    callback: Callable[[Database], None] | None = None
+    callback: DBCallable | None = None
 
     def _run_sql(self, db, f: Path, match: str = None):
         if match is not None and match not in str(f):
@@ -73,7 +76,9 @@ class SubsystemSchemaDefinition(BaseModel):
 
     def apply(self, db, match: str = None):
         for f in self.fixtures:
-            if f.is_file():
+            if callable(f):
+                f(db)
+            elif f.is_file():
                 self._run_sql(db, f, match)
             elif f.is_dir():
                 self._run_all_sql(db, f, match)

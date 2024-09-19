@@ -12,10 +12,13 @@ __here__ = Path(__file__).parent
 fixtures_dir = __here__ / "fixtures"
 
 
-kg_schema = SubsystemSchemaDefinition(
-    name="knowledge-graph",
-    fixtures=[fixtures_dir],
-    callback=grant_schema_ownership("macrostrat_xdd", "xdd-writer"),
+xdd_schema = SubsystemSchemaDefinition(
+    name="xdd",
+    fixtures=[
+        fixtures_dir,
+        grant_schema_ownership("macrostrat_xdd", "xdd-writer"),
+        grant_schema_ownership("text_vectors", "xdd-writer"),
+    ],
 )
 
 
