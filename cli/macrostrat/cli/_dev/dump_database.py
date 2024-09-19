@@ -4,12 +4,13 @@ from pathlib import Path
 from typing import Optional
 
 import aiofiles
-from macrostrat.utils import get_logger
 from sqlalchemy.engine import Engine
 
+from macrostrat.utils import get_logger
+
+from ..database.utils import docker_internal_url
 from .stream_utils import print_stdout, print_stream_progress
 from .utils import _create_command
-from ..database.utils import docker_internal_url
 
 log = get_logger(__name__)
 

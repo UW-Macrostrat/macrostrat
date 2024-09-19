@@ -2,13 +2,14 @@ from contextlib import contextmanager
 from typing import Optional
 from uuid import uuid4
 
-from macrostrat.database.utils import run_query, run_sql
 from psycopg2.sql import Identifier
 from rich import print
 from sqlalchemy.engine import Engine, create_engine
 from sqlalchemy.engine.url import URL, make_url
 
 from macrostrat.core.config import settings
+from macrostrat.database.utils import run_query, run_sql
+
 from ._legacy import get_db
 
 
