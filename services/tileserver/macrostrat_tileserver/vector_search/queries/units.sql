@@ -1,6 +1,10 @@
 WITH envelope AS (
   SELECT tile_utils.envelope(:x, :y, :z) AS geom
-), mvt_features AS (
+),
+term AS (
+  SELECT id, text_vector FROM text_vectors.search_vector WHERE id = :term_id
+),
+mvt_features AS (
 SELECT
   p.map_id,
   p.source_id,
@@ -26,8 +30,11 @@ f1 AS (SELECT z.map_id,
 )
 SELECT
   f1.*,
-  coalesce(le.embedding_vector <=> :term_embedding::vector, 0) AS similarity
+  -- cosine similarity between the term and the legend embedding
+  coalesce(le.embedding_vector <=> term.text_vector, 0) AS similarity
 FROM f1
+LEFT JOIN term
+  ON true
 LEFT JOIN text_vectors.legend_embedding AS le
-ON f1.legend_id = le.legend_id
+  ON f1.legend_id = le.legend_id
 WHERE geom IS NOT NULL;
