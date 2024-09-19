@@ -1,3 +1,7 @@
+CREATE SCHEMA IF NOT EXISTS text_vectors;
+
+CREATE EXTENSION IF NOT EXISTS vector;
+
 CREATE TABLE IF NOT EXISTS text_vectors.search_vector (
     text text NOT NULL,
     model text NOT NULL,
