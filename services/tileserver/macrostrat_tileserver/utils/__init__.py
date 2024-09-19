@@ -6,12 +6,13 @@ from .cache import CacheMode, CacheStatus
 from .output import TileResponse, DecimalJSONResponse, VectorTileResponse
 
 
-def scales_for_zoom(z):
-    if z < 3:
+def scales_for_zoom(z: int, dz: int = 0):
+    _z = z - dz
+    if _z < 3:
         return "tiny", ["tiny"]
-    elif z < 6:
+    elif _z < 6:
         return "small", ["tiny", "small"]
-    elif z < 9:
+    elif _z < 9:
         return "medium", ["small", "medium"]
     else:
         return "large", ["medium", "large"]

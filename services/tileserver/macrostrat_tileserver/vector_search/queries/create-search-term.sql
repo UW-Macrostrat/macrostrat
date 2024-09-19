@@ -18,7 +18,7 @@ WITH new_data AS (
   SELECT
     legend_id,
     sv.source_text,
-    le.embedding_vector <=> sv.text_vector distance
+    1 - (le.embedding_vector <=> sv.text_vector) distance
   FROM text_vectors.legend_embedding le,
        new_data sv
   WHERE random() < (SELECT frac FROM target)

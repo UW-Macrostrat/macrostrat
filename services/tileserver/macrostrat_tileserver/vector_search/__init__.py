@@ -51,6 +51,7 @@ async def get_tile(
         x=x,
         y=y,
         mapsize=mapsize,
+        model_name=model_name,
         linesize=linesize,
         term_id=term_id,
         layer_name="units",
