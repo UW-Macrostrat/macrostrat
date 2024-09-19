@@ -2,6 +2,7 @@ from os import environ
 from pathlib import Path
 
 import typer
+from macrostrat.utils.shell import run
 from rich import print
 from rich.traceback import install
 from typer import Argument, Typer
@@ -9,8 +10,6 @@ from typer import Argument, Typer
 from macrostrat.core import app
 from macrostrat.core.exc import MacrostratError
 from macrostrat.core.main import env_text, set_app_state
-from macrostrat.utils.shell import run
-
 from .database import db_app, db_subsystem
 from .subsystems.macrostrat_api import MacrostratAPISubsystem
 from .subsystems.paleogeography import load_paleogeography_subsystem
@@ -383,12 +382,15 @@ def state():
     app.console.print(app.state.get())
 
 
+# TODO: subsystem dependencies
+from .subsystems.core import core_schema
 from .subsystems.legend_api import legend_api
 from .subsystems.macrostrat_api import macrostrat_api
 
 # Add basic schema hunks
 from .subsystems.xdd import xdd_schema
 
+db_subsystem.schema_hunks.append(core_schema)
 db_subsystem.schema_hunks.append(xdd_schema)
 db_subsystem.schema_hunks.append(legend_api)
 db_subsystem.schema_hunks.append(macrostrat_api)

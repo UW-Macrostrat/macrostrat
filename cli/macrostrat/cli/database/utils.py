@@ -2,14 +2,13 @@ from contextlib import contextmanager
 from typing import Optional
 from uuid import uuid4
 
+from macrostrat.database.utils import run_query, run_sql
 from psycopg2.sql import Identifier
 from rich import print
 from sqlalchemy.engine import Engine, create_engine
 from sqlalchemy.engine.url import URL, make_url
 
 from macrostrat.core.config import settings
-from macrostrat.database.utils import run_query, run_sql
-
 from ._legacy import get_db
 
 
@@ -155,13 +154,21 @@ def reassign_privileges(
     )
 
 
-def grant_schema_ownership(schema, owner):
-    """Higher-order function to grant ownership of a schema to a user"""
+def grant_permissions(schema, user, *_permissions, owner=False):
+    """Higher-order function to grant permissions on a schema to a user"""
 
     def setup_permissions(db):
         """Set permissions on tables in the knowledge graph subsystem"""
+        permissions = [p for p in _permissions]
+        if owner:
+            permissions = ["ALL"]
+
+        if len(permissions) == 0:
+            permissions = ["SELECT"]
+
+        _perms = ", ".join(permissions)
         print(
-            f"Granting ownership of schema [cyan bold]{schema}[/] to [cyan bold]{owner}[/]"
+            f"Grant {_perms} on  schema [cyan bold]{schema}[/] to [cyan bold]{user}[/]"
         )
 
         tables = db.run_query(
@@ -170,27 +177,34 @@ def grant_schema_ownership(schema, owner):
         )
         stmts = [
             (
-                "GRANT ALL ON SCHEMA {schema} TO {owner}",
-                dict(schema=Identifier(schema), owner=Identifier(owner)),
+                "GRANT USAGE ON SCHEMA {schema} TO {user}",
+                dict(schema=Identifier(schema), user=Identifier(user)),
             )
         ]
         for table in tables.scalars():
-            params = dict(table=Identifier(schema, table), owner=Identifier(owner))
-            stmts.append(
-                (
-                    "ALTER TABLE {table} OWNER TO {owner}",
-                    params,
+            params = dict(table=Identifier(schema, table), user=Identifier(user))
+            if owner:
+                stmts.append(
+                    (
+                        "ALTER TABLE {table} OWNER TO {user}",
+                        params,
+                    )
                 )
-            )
-            stmts.append(
-                (
-                    "GRANT ALL ON {table} TO {owner}",
-                    params,
+            for perm in permissions:
+                stmts.append(
+                    (
+                        "GRANT " + perm + " ON {table} TO {user}",
+                        params,
+                    )
                 )
-            )
 
         for stmt in stmts:
             db.run_sql(*stmt)
             db.session.commit()
 
     return setup_permissions
+
+
+def grant_schema_ownership(schema, owner):
+    """Higher-order function to grant ownership of a schema to a user"""
+    return grant_permissions(schema, owner, owner=True)
