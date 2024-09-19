@@ -2,13 +2,12 @@ from contextlib import contextmanager
 from typing import Optional
 from uuid import uuid4
 
+from macrostrat.database.utils import run_query, run_sql
 from psycopg2.sql import Identifier
 from sqlalchemy.engine import Engine, create_engine
 from sqlalchemy.engine.url import URL, make_url
 
 from macrostrat.core.config import settings
-from macrostrat.database.utils import run_query, run_sql
-
 from ._legacy import get_db
 
 
@@ -152,3 +151,40 @@ def reassign_privileges(
         "REASSIGN OWNED BY {from_user} TO {to_user}",
         dict(from_user=Identifier(from_user), to_user=Identifier(to_user)),
     )
+
+
+def grant_schema_ownership(schema, owner):
+    """Higher-order function to grant ownership of a schema to a user"""
+
+    def setup_permissions(db):
+        """Set permissions on tables in the knowledge graph subsystem"""
+        tables = db.run_query(
+            "SELECT table_name FROM information_schema.tables WHERE table_schema = :schema",
+            dict(schema=schema),
+        )
+        stmts = [
+            (
+                "GRANT ALL ON SCHEMA {schema} TO {owner}",
+                dict(schema=Identifier(schema), owner=Identifier(owner)),
+            )
+        ]
+        for table in tables.scalars():
+            params = dict(table=Identifier(schema, table), owner=Identifier(owner))
+            stmts.append(
+                (
+                    "ALTER TABLE {table} OWNER TO {owner}",
+                    params,
+                )
+            )
+            stmts.append(
+                (
+                    "GRANT ALL ON {table} TO {owner}",
+                    params,
+                )
+            )
+
+        for stmt in stmts:
+            db.run_sql(*stmt)
+            db.session.commit()
+
+    return setup_permissions

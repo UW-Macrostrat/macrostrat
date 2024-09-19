@@ -38,28 +38,19 @@ SELECT
     e.type,
     e.name,
     ARRAY[start_index, end_index] AS indices,
-    model_run_id model_run,
-    source_id source,
+    mr.id model_run,
+    mr.source_text_id source,
     coalesce(to_json(sn), to_json(l), to_json(la)) AS match
     -- JSON for the strat_name
 FROM macrostrat_xdd.entity e
+JOIN macrostrat_xdd.model_run mr
+    ON mr.id = e.model_run_id
 LEFT JOIN strat_names sn
     ON sn.strat_name_id = e.strat_name_id
 LEFT JOIN liths l
     ON l.lith_id = e.lith_id
 LEFT JOIN lith_atts la
     ON la.lith_att_id = e.lith_att_id;
-
-
-CREATE OR REPLACE VIEW macrostrat_api.kg_relationships AS
-SELECT
-    id,
-    type,
-    model_run_id model_run,
-    source_id source,
-    src_entity_id src,
-    dst_entity_id dst
-FROM macrostrat_xdd.relationship;
 
 
 CREATE OR REPLACE VIEW macrostrat_api.kg_entity_tree AS
@@ -73,7 +64,7 @@ WITH RECURSIVE start_entities AS (
 ),
 e0 AS (
     SELECT
-        e.source,
+        e.model_run,
         e.id,
         jsonb_strip_nulls(to_jsonb(e) - 'model_run' - 'source') tree,
         (e.match IS NOT null)::integer AS n_matches
@@ -82,7 +73,7 @@ e0 AS (
 tree AS (
     /** Walk the tree of entity relationships, grouping by parent and
     aggregating as we go */
-    SELECT e0.source,
+    SELECT e0.model_run,
            r.src_entity_id parent_id,
            se.id         entity_id,
            e0.tree,
@@ -95,7 +86,7 @@ tree AS (
     LEFT JOIN macrostrat_xdd.relationship r
       ON r.dst_entity_id = se.id
     UNION
-    SELECT a.source,
+    SELECT a.model_run,
             a.src_entity_id,
             a.parent_id,
             e0.tree || jsonb_build_object('children', json_agg(a.tree)),
@@ -104,7 +95,7 @@ tree AS (
             sum(a.n_matches)::integer + e0.n_matches
     FROM (
         SELECT
-            tree.source,
+            tree.model_run,
             r1.src_entity_id,
             tree.parent_id,
             tree.tree,
@@ -117,7 +108,7 @@ tree AS (
     ) a
     JOIN e0 ON e0.id = a.parent_id
     GROUP BY
-        a.source,
+        a.model_run,
         a.depth,
         e0.tree,
         e0.n_matches,
@@ -126,17 +117,19 @@ tree AS (
 )
 SELECT
     st.paper_id,
-    source source_id,
+    model_run,
     entity_id entity,
     tree ->> 'type' AS type,
-    st.model_run_id model_run,
+    mr.source_text_id source_text,
     n_entities,
     n_matches,
     tree,
     depth
 FROM tree
+JOIN macrostrat_xdd.model_run mr
+    ON mr.id = tree.model_run
 JOIN macrostrat_xdd.source_text st
-    ON st.id = source
+    ON st.id = mr.source_text_id
 WHERE parent_id IS NULL;
 
 CREATE OR REPLACE VIEW macrostrat_api.kg_publication_entities AS
@@ -147,7 +140,8 @@ WITH paper_strat_names AS (
         count(DISTINCT strat_name_id) n_matches
     FROM macrostrat_xdd.publication p
     JOIN macrostrat_xdd.source_text st ON st.paper_id = p.paper_id
-    JOIN macrostrat_xdd.entity e ON e.source_id = st.id
+    JOIN macrostrat_xdd.model_run mr ON mr.source_text_id = st.id
+    JOIN macrostrat_xdd.entity e ON mr.id = e.model_run_id
     WHERE e.strat_name_id IS NOT NULL
     GROUP BY p.paper_id
 ),
@@ -159,7 +153,7 @@ entities AS (
             jsonb_build_object(
                 'model_run', model_run,
                 'depth', depth,
-                'source', source_id
+                'source', source_text
             )
         ) AS entities
     FROM macrostrat_api.kg_entity_tree
@@ -181,15 +175,15 @@ ORDER BY p.n_matches DESC;
 CREATE VIEW macrostrat_api.kg_context_entities AS
 WITH entities AS (
     SELECT
-        source_id,
+        source_text,
         paper_id,
         model_run,
         jsonb_agg(tree) entities
     FROM macrostrat_api.kg_entity_tree
-    GROUP BY source_id, paper_id, model_run
+    GROUP BY source_text, paper_id, model_run
 )
 SELECT
-    e.source_id,
+    source_text,
     e.paper_id,
     e.model_run,
     e.entities,
@@ -200,10 +194,11 @@ SELECT
     mr.model_id,
     mr.version_id
 FROM entities e
-JOIN macrostrat_xdd.source_text st
-    ON st.id = e.source_id
 JOIN macrostrat_xdd.model_run mr
-  ON st.model_run_id = mr.id;
+    ON e.model_run = mr.id
+JOIN macrostrat_xdd.source_text st
+    ON mr.source_text_id = st.id;
+
 
 SELECT
   m.id,
@@ -223,11 +218,3 @@ JOIN entity e
   ON e.model_run_id = mr.id
 GROUP BY m.id;
 
-ALTER TABLE macrostrat_xdd.publication OWNER TO "xdd-writer";
-ALTER TABLE macrostrat_xdd.entity_type OWNER TO "xdd-writer";
-ALTER TABLE macrostrat_xdd.relationship_type OWNER TO xdd_writer;
-ALTER TABLE macrostrat_xdd.entity OWNER TO xdd_writer;
-ALTER TABLE macrostrat_xdd.relationship OWNER TO xdd_writer;
-ALTER TABLE macrostrat_xdd.publication OWNER TO xdd_writer;
-ALTER TABLE macrostrat_xdd.entity_type OWNER TO xdd_writer;
-ALTER TABLE macrostrat_xdd.relationship_type OWNER TO xdd_writer;

@@ -1,61 +1,25 @@
 from json import dumps
 from pathlib import Path
 
-from psycopg2.sql import Identifier
 from requests import get
 from rich import print
 from typer import Typer
 
 from ...database import SubsystemSchemaDefinition, get_db
+from ...database.utils import grant_schema_ownership
 
 __here__ = Path(__file__).parent
 fixtures_dir = __here__ / "fixtures"
 
+
 kg_schema = SubsystemSchemaDefinition(
     name="knowledge-graph",
     fixtures=[fixtures_dir],
+    callback=grant_schema_ownership("macrostrat_xdd", "xdd-writer"),
 )
 
 
 cli = Typer(no_args_is_help=True)
-
-
-@cli.command()
-def permissions():
-    """Set permissions on tables in the knowledge graph subsystem"""
-
-    db = get_db()
-
-    schema = "macrostrat_xdd"
-    owner = "xdd-writer"
-    tables = db.run_query(
-        "SELECT table_name FROM information_schema.tables WHERE table_schema = :schema",
-        dict(schema=schema),
-    )
-    stmts = [
-        (
-            "GRANT ALL ON SCHEMA {schema} TO {owner}",
-            dict(schema=Identifier(schema), owner=Identifier(owner)),
-        )
-    ]
-    for table in tables.scalars():
-        params = dict(table=Identifier(schema, table), owner=Identifier(owner))
-        stmts.append(
-            (
-                "ALTER TABLE {table} OWNER TO {owner}",
-                params,
-            )
-        )
-        stmts.append(
-            (
-                "GRANT ALL ON {table} TO {owner}",
-                params,
-            )
-        )
-
-    for stmt in stmts:
-        db.run_sql(*stmt)
-        db.session.commit()
 
 
 @cli.command()
