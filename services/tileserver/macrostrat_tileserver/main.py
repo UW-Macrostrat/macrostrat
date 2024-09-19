@@ -157,9 +157,9 @@ from .map_bounds import router as map_bounds_router
 
 app.include_router(map_bounds_router, tags=["Maps"], prefix="/maps")
 
-from .embeddings import router as embeddings_router
+from .vector_search import router as search_router
 
-app.include_router(embeddings_router, tags=["Vector search"], prefix="/search")
+app.include_router(search_router, tags=["Vector search"], prefix="/search")
 
 
 @app.get("/carto/rotation-models")

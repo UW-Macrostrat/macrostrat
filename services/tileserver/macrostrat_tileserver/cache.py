@@ -44,8 +44,8 @@ async def set_cached_tile(
     content: bytes,
 ):
 
-    hash = create_params_hash(params)
-    log.debug("Setting cached tile: %s", hash)
+    _hash = create_params_hash(params)
+    log.debug("Setting cached tile: %s", _hash)
 
     async with pool.acquire() as conn:
         q, p = render(
@@ -53,7 +53,7 @@ async def set_cached_tile(
             x=tile.x,
             y=tile.y,
             z=tile.z,
-            params=hash,
+            params=_hash,
             tile=content,
             profile=layer,
         )
