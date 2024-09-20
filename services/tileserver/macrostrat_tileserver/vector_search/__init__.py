@@ -18,22 +18,19 @@ log = get_logger(__name__)
 
 
 async def on_startup(app):
-    # Create the search term index
-    pool = app.state.pool
-    # This doesn't work with multiple pods
-    return
 
     if not hasattr(app.state, "settings"):
         app.state.settings = {}
 
-    try:
-        stmt = get_sql(__here__ / "queries" / "startup.sql")
-        # Truncate the search term cache as we may have changed the math
-        async with pool.acquire() as con:
-            await con.execute(stmt)
-    except Exception as e:
-        log.error("Error refreshing vector search term cache")
-        app.state.settings["vector_search_error"] = str(e)
+    # This doesn't work with multiple pods
+    # try:
+    #     stmt = get_sql(__here__ / "queries" / "startup.sql")
+    #     # Truncate the search term cache as we may have changed the math
+    #     async with pool.acquire() as con:
+    #         await con.execute(stmt)
+    # except Exception as e:
+    #     log.error("Error refreshing vector search term cache")
+    #     app.state.settings["vector_search_error"] = str(e)
 
 
 router = APIRouter()
