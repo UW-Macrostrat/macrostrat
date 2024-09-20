@@ -1,15 +1,12 @@
 from dataclasses import dataclass
-from decimal import Context
 from json import dumps
 from typing import List
 from pathlib import Path
 
 from buildpg import V, render
 from fastapi import APIRouter, Request, Query
-from os import environ
 from httpx import AsyncClient
 from contextvars import ContextVar
-
 
 client = AsyncClient()
 
@@ -109,6 +106,7 @@ async def get_search_term_id(pool, term, model) -> int:
         model_version=res.model_version,
         sample_size=5000,
         text_vector=dumps(res.vector),
+        norm_vector=dumps(res.norm_vector),
     )
 
     if term_id:
@@ -129,6 +127,7 @@ class XDDEmbeddingResponse:
     model_name: str
     model_version: str
     vector: List[float]
+    norm_vector: List[float]
 
 
 async def get_search_term_embedding(term, model) -> XDDEmbeddingResponse:
@@ -160,11 +159,17 @@ async def get_search_term_embedding(term, model) -> XDDEmbeddingResponse:
     model_name = standardize_model_name(res.get("model_name"))
     assert model_name == model
 
+    norm = sum(x**2 for x in vector) ** 0.5
+    # Normalize the vector
+    norm_vector = [x / norm for x in vector]
+    # convert to list
+
     return XDDEmbeddingResponse(
         term=term,
         model_name=model_name,
         model_version=res.get("model_version"),
         vector=vector,
+        norm_vector=norm_vector,
     )
 
 
