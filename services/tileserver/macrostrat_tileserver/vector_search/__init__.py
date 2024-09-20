@@ -21,6 +21,9 @@ async def on_startup(app):
     # Create the search term index
     pool = app.state.pool
 
+    if not hasattr(app.state, "settings"):
+        app.state.settings = {}
+
     try:
         stmt = get_sql(__here__ / "queries" / "startup.sql")
         # Truncate the search term cache as we may have changed the math
