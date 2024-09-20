@@ -20,11 +20,15 @@ log = get_logger(__name__)
 async def on_startup(app):
     # Create the search term index
     pool = app.state.pool
-    _index.index.set({})
-    stmt = get_sql(__here__ / "queries" / "startup.sql")
-    # Truncate the search term cache as we may have changed the math
-    async with pool.acquire() as con:
-        await con.execute(stmt)
+
+    try:
+        stmt = get_sql(__here__ / "queries" / "startup.sql")
+        # Truncate the search term cache as we may have changed the math
+        async with pool.acquire() as con:
+            await con.execute(stmt)
+    except Exception as e:
+        log.error("Error refreshing vector search term cache")
+        app.state.settings["vector_search_error"] = str(e)
 
 
 router = APIRouter()
@@ -41,6 +45,10 @@ async def get_tile(
 
     if not term:
         raise ValueError("No term provided")
+
+    # make sure we're not in an error state
+    if "vector_search_error" in request.app.state.settings:
+        raise ValueError(request.app.state.settings["vector_search_error"])
 
     model_name = standardize_model_name(model)
 
