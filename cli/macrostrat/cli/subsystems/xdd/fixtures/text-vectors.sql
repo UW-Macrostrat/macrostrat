@@ -9,8 +9,11 @@ CREATE TABLE text_vectors.search_vector (
     model_name text NOT NULL,
     model_version text NOT NULL,
     text_vector vector NOT NULL,
+    norm_vector vector NOT NULL,
     lower_bound float NOT NULL,
     upper_bound float NOT NULL,
+    lower_bound_norm float NOT NULL,
+    upper_bound_norm float NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     UNIQUE (text, model_name)
 );
