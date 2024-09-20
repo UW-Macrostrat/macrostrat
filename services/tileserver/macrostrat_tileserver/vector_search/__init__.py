@@ -20,6 +20,8 @@ log = get_logger(__name__)
 async def on_startup(app):
     # Create the search term index
     pool = app.state.pool
+    # This doesn't work with multiple pods
+    return
 
     if not hasattr(app.state, "settings"):
         app.state.settings = {}
