@@ -16,6 +16,17 @@ from macrostrat.utils import get_logger
 
 log = get_logger(__name__)
 
+
+async def on_startup(app):
+    # Create the search term index
+    pool = app.state.pool
+    _index.index.set({})
+    stmt = get_sql(__here__ / "queries" / "startup.sql")
+    # Truncate the search term cache as we may have changed the math
+    async with pool.acquire() as con:
+        await con.execute(stmt)
+
+
 router = APIRouter()
 
 __here__ = Path(__file__).parent
@@ -85,7 +96,12 @@ async def get_search_term_id(pool, term, model) -> int:
     # Check the database to see if the term exists
     term_id = await fetchval(
         pool,
-        "SELECT id FROM text_vectors.search_vector WHERE text = :term AND model_name = :model",
+        """
+        SELECT sv.id FROM text_vectors.search_vector sv
+        JOIN text_vectors.model m
+          ON m.id = sv.model_id
+        WHERE text = :term AND m.name = :model
+        """,
         term=term,
         model=model,
     )

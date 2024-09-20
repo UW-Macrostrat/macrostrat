@@ -1,7 +1,7 @@
 WITH new_data AS (
   SELECT
     :text AS source_text,
-    :model_name AS model_name,
+    (SELECT id FROM text_vectors.model WHERE name = :model_name) AS model_id,
     :model_version AS model_version,
     :text_vector::vector AS text_vector,
     :norm_vector::vector AS norm_vector
@@ -19,8 +19,9 @@ WITH new_data AS (
   SELECT
     legend_id,
     sv.source_text,
-    1 - (le.embedding_vector <=> sv.text_vector) distance,
-    le.normalized_vector <#> sv.norm_vector norm_distance -- inner product of the normalized vectors
+    -- Squared Cosine similarity, to enhance high similarity outliers
+    text_vectors.distance(le.embedding_vector, sv.text_vector) distance,
+    text_vectors.norm_distance(le.normalized_vector, sv.norm_vector) norm_distance
   FROM text_vectors.legend_embedding le,
        new_data sv
   WHERE random() < (SELECT frac FROM target)
@@ -36,27 +37,25 @@ stats AS (
     count(*)         n
   FROM sample
   GROUP BY source_text
-),
--- model the population-level 99% CI for the variance
-values AS (
-  SELECT
-    d.source_text,
-    d.model_name,
-    d.model_version,
-    d.text_vector,
-    mean - 2 * stdev AS ci_lower,
-    mean + 2 * stdev AS ci_upper,
-    mean_norm - 2 * stdev_norm AS ci_lower_norm,
-    mean_norm + 2 * stdev_norm AS ci_upper_norm
-  FROM stats s
-  JOIN new_data d ON s.source_text = d.source_text
 )
-INSERT INTO text_vectors.search_vector (text, model_name, model_version, text_vector, lower_bound, upper_bound, lower_bound_norm, upper_bound_norm)
-SELECT source_text, model_name, model_version, text_vector, ci_lower, ci_upper, ci_lower_norm, ci_upper_norm
-FROM values
-ON CONFLICT (text, model_name)
+INSERT INTO text_vectors.search_vector (text, model_id, model_version, text_vector, norm_vector, lower_bound, upper_bound, lower_bound_norm, upper_bound_norm)
+-- model the population-level 99% CI for the variance
+SELECT
+  d.source_text,
+  d.model_id,
+  d.model_version,
+  d.text_vector,
+  d.norm_vector,
+  mean - 1 * stdev,
+  mean + 1 * stdev,
+  mean_norm - 2 * stdev_norm,
+  mean_norm + 2 * stdev_norm
+FROM stats s
+       JOIN new_data d ON s.source_text = d.source_text
+ON CONFLICT (text, model_id)
 DO UPDATE SET
             text_vector = excluded.text_vector,
+            norm_vector = excluded.norm_vector,
             model_version = excluded.model_version,
             lower_bound = excluded.lower_bound,
             upper_bound = excluded.upper_bound,
