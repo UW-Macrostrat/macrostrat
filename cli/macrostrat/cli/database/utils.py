@@ -181,6 +181,19 @@ def grant_permissions(schema, user, *_permissions, owner=False):
                 dict(schema=Identifier(schema), user=Identifier(user)),
             )
         ]
+
+        has_create = "CREATE" in permissions or "ALL" in permissions
+        table_perms = [p for p in permissions if p != "CREATE"]
+
+        # Give permissions to create objects in the schema
+        if owner or has_create:
+            stmts.append(
+                (
+                    "GRANT CREATE ON SCHEMA {schema} TO {user}",
+                    dict(schema=Identifier(schema), user=Identifier(user)),
+                )
+            )
+
         for table in tables.scalars():
             params = dict(table=Identifier(schema, table), user=Identifier(user))
             if owner:
@@ -190,10 +203,57 @@ def grant_permissions(schema, user, *_permissions, owner=False):
                         params,
                     )
                 )
-            for perm in permissions:
+            for perm in table_perms:
                 stmts.append(
                     (
                         "GRANT " + perm + " ON {table} TO {user}",
+                        params,
+                    )
+                )
+
+        # Functions
+        functions = db.run_query(
+            "SELECT routine_name FROM information_schema.routines WHERE routine_schema = :schema",
+            dict(schema=schema),
+        )
+        # Grant usage of functions
+        fn_perms = [p for p in permissions if p in ("EXECUTE", "ALL")]
+        for function in functions.scalars():
+            params = dict(function=Identifier(schema, function), user=Identifier(user))
+            for perm in fn_perms:
+                stmts.append(
+                    (
+                        "GRANT " + perm + " ON FUNCTION {function} TO {user}",
+                        params,
+                    )
+                )
+
+            # Grant ownership of functions
+            if owner:
+                params = dict(
+                    function=Identifier(schema, function), user=Identifier(user)
+                )
+                stmts.append(
+                    (
+                        "ALTER FUNCTION {function} OWNER TO {user}",
+                        params,
+                    )
+                )
+
+        # Views
+        views = db.run_query(
+            "SELECT table_name FROM information_schema.views WHERE table_schema = :schema",
+            dict(schema=schema),
+        )
+        # Grant usage of views
+        view_perms = [p for p in permissions if p in ("SELECT", "ALL")]
+
+        for view in views.scalars():
+            params = dict(view=Identifier(schema, view), user=Identifier(user))
+            for perm in view_perms:
+                stmts.append(
+                    (
+                        "GRANT " + perm + " ON {view} TO {user}",
                         params,
                     )
                 )
