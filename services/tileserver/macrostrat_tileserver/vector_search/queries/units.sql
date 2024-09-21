@@ -36,19 +36,38 @@ f1 AS (
         JOIN maps.sources
                   ON z.source_id = sources.source_id
  WHERE sources.status_code = 'active'
+),
+res AS (
+  SELECT f1.*,
+    term.id AS term_id,
+    -- cosine similarity between the term and the legend embedding
+    text_vectors.distance(le.embedding_vector, term.text_vector) AS raw_similarity
+  FROM f1
+  JOIN term ON true
+  JOIN text_vectors.legend_embedding AS le
+      ON f1.legend_id = le.legend_id
+        AND le.model_id = term.model_id
+  WHERE geom IS NOT NULL
+),
+boundaries AS (
+  SELECT
+    term.lower_bound,
+    term.upper_bound
+  FROM term
+  WHERE :norm_method = 'global'
+  UNION ALL
+  SELECT
+    min(raw_similarity) AS lower_bound,
+    max(raw_similarity) AS upper_bound
+  FROM res
+  WHERE :norm_method = 'tile'
+),
+res2 AS (
+  SELECT
+    res.*,
+    -- cosine similarity between the term and the legend embedding
+    (raw_similarity - lower_bound) / (upper_bound - lower_bound)  AS similarity
+  FROM res
+  JOIN boundaries ON true
 )
-SELECT
-  f1.*,
-  term.id AS term_id,
-  -- cosine similarity between the term and the legend embedding
-  text_vectors.distance(le.embedding_vector, term.text_vector) AS raw_similarity,
-  (text_vectors.distance(le.embedding_vector, term.text_vector) - term.lower_bound) / (term.upper_bound - term.lower_bound) AS similarity,
-  -- normalized inner product between the term and the legend embedding (same as cosine similarity)
-  text_vectors.norm_distance(le.normalized_vector, term.norm_vector) AS raw_norm_similarity,
-  (text_vectors.norm_distance(le.normalized_vector, term.norm_vector) - term.lower_bound_norm) / (term.upper_bound_norm - term.lower_bound_norm) AS norm_similarity
-FROM f1
-JOIN term ON true
-JOIN text_vectors.legend_embedding AS le
-  ON f1.legend_id = le.legend_id
-  AND le.model_id = term.model_id
-WHERE geom IS NOT NULL
+SELECT * FROM res2

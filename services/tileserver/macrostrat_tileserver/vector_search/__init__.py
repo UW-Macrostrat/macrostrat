@@ -24,7 +24,13 @@ __here__ = Path(__file__).parent
 
 @router.get("/{model}/tiles/{z}/{x}/{y}")
 async def get_tile(
-    request: Request, model: str, z: int, x: int, y: int, term: str = Query(None)
+    request: Request,
+    model: str,
+    z: int,
+    x: int,
+    y: int,
+    term: str = Query(None),
+    norm_method: str = Query("tile"),
 ):
     """Get a tile from the tileserver."""
     pool = request.app.state.pool
@@ -52,6 +58,7 @@ async def get_tile(
         model_name=model_name,
         linesize=linesize,
         term_id=term_id,
+        norm_method=norm_method,
         layer_name="units",
     )
 
