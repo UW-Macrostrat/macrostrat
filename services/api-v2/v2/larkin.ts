@@ -573,7 +573,18 @@ const { Client, Pool } = require("pg");
     // Macrostrat refs
     if (key === "refs" || key === "ref_id") {
       larkin.queryPg("burwell",
-        "SELECT refs.id AS ref_id, pub_year, author, ref, doi, url, COUNT(DISTINCT units_sections.unit_id) AS t_units FROM macrostrat.refs LEFT JOIN macrostrat.col_refs ON col_refs.ref_id = refs.id LEFT JOIN macrostrat.units_sections ON units_sections.col_id = col_refs.col_id WHERE refs.id = ANY(:ref_id) GROUP BY refs.id",
+        `SELECT refs.id                                AS ref_id,
+                pub_year,
+                author,
+                ref,
+                doi,
+                url,
+                COUNT(DISTINCT units_sections.unit_id) AS t_units
+         FROM macrostrat.refs
+                LEFT JOIN macrostrat.col_refs ON col_refs.ref_id = refs.id
+                LEFT JOIN macrostrat.units_sections ON units_sections.col_id = col_refs.col_id
+         WHERE refs.id = ANY (:ref_id)
+         GROUP BY refs.id`,
         { ref_id: ref_ids },
         function (error, data) {
           var refs = {};
@@ -596,7 +607,16 @@ const { Client, Pool } = require("pg");
     } else {
       larkin.queryPg(
         "burwell",
-        "SELECT source_id, name, COALESCE(url, '') url, COALESCE(ref_title, '') ref_title, COALESCE(authors, '') authors, COALESCE(ref_year, '') ref_year, COALESCE(ref_source, '') ref_source, COALESCE(isbn_doi, '') isbn_doi FROM maps.sources WHERE source_id = ANY($1)",
+        `SELECT source_id,
+                name,
+                COALESCE(url, '') url,
+                COALESCE(ref_title, '') ref_title,
+                COALESCE(authors, '') authors,
+                COALESCE(ref_year, '') ref_year,
+                COALESCE(ref_source, '') ref_source,
+                COALESCE(isbn_doi, '') isbn_doi
+         FROM maps.sources
+         WHERE source_id = ANY ($1)`,
         [ref_ids],
         function (error, result) {
           var refs = {};
