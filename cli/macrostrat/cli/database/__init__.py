@@ -275,11 +275,22 @@ def restore(
     *,
     create: bool = False,
     jobs: int = Option(None, "--jobs", "-j"),
+    version: str = Option(
+        None,
+        "--version",
+        "-v",
+        help="Postgres version or docker container to restore with",
+    ),
 ):
     """Load a database using [cyan]pg_restore[/]"""
     from .._dev.restore_database import pg_restore
 
     db_container = app.settings.get("pg_database_container", "postgres:15")
+    if version is not None:
+        if ":" in version:
+            db_container = version
+        else:
+            db_container = f"postgres:{version}"
 
     engine = engine_for_db_name(database)
 
@@ -385,7 +396,7 @@ def inspect_table(table: str):
 @db_app.command(name="scripts", rich_help_panel="Schema management")
 def run_scripts(migration: str = Argument(None)):
     """Ad-hoc database management scripts"""
-    pth = Path(__file__).parent.parent / "ad-hoc-migrations"
+    pth = Path(__file__).parent.parent / "sql-scripts"
     files = list(pth.glob("*.sql"))
     files.sort()
     if migration is None:
