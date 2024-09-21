@@ -183,9 +183,15 @@ db_app.command(name="update", rich_help_panel="Schema management")(update_schema
 
 
 @db_app.command(
-    context_settings={"allow_extra_args": True, "ignore_unknown_options": True}
+    context_settings={
+        "allow_extra_args": True,
+        "ignore_unknown_options": True,
+        "help_option_names": [],
+    },
 )
-def psql(ctx: typer.Context):
+def psql(
+    ctx: typer.Context,
+):
     """Explore a database using [cyan]psql[/cyan]"""
     from macrostrat.core.config import PG_DATABASE_DOCKER
 
@@ -216,11 +222,16 @@ def psql(ctx: typer.Context):
     if stdin.isatty():
         flags.append("-t")
 
-    run("docker", "run", *flags, "postgres:15", "psql", *ctx.args)
+    db_container = app.settings.get("pg_database_container", "postgres:15")
+
+    run("docker", "run", *flags, db_container, "psql", *ctx.args)
 
 
 @db_app.command(
-    context_settings={"allow_extra_args": True, "ignore_unknown_options": True}
+    context_settings={
+        "allow_extra_args": True,
+        "ignore_unknown_options": True,
+    }
 )
 def dump(
     ctx: typer.Context,
