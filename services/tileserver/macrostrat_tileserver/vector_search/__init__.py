@@ -75,7 +75,6 @@ async def get_search_term_id(pool, term, model) -> int:
     )
 
     if term_id:
-        _index.set_term(model, term, term_id)
         return term_id
 
     # If the term doesn't exist, create it
@@ -92,9 +91,6 @@ async def get_search_term_id(pool, term, model) -> int:
         text_vector=dumps(res.vector),
         norm_vector=dumps(res.norm_vector),
     )
-
-    if term_id:
-        _index.set_term(model, term, term_id)
 
     return term_id
 
