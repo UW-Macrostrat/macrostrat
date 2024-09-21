@@ -199,7 +199,7 @@ JOIN macrostrat_xdd.model_run mr
 JOIN macrostrat_xdd.source_text st
     ON mr.source_text_id = st.id;
 
-
+CREATE VIEW macrostrat_api.kg_model AS
 SELECT
   m.id,
   m.name,
@@ -211,10 +211,10 @@ SELECT
   count(distinct e.id) n_entities,
   count((coalesce(e.strat_name_id, e.lith_id, e.lith_att_id)::boolean)) n_matches,
   count(e.strat_name_id::boolean) n_strat_names
-FROM model m
-JOIN model_run mr
+FROM macrostrat_xdd.model m
+JOIN macrostrat_xdd.model_run mr
   ON mr.model_id = m.id
-JOIN entity e
+JOIN macrostrat_xdd.entity e
   ON e.model_run_id = mr.id
 GROUP BY m.id;
 
