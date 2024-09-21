@@ -584,7 +584,7 @@ const { Client, Pool } = require("pg");
                 LEFT JOIN macrostrat.col_refs ON col_refs.ref_id = refs.id
                 LEFT JOIN macrostrat.units_sections ON units_sections.col_id = col_refs.col_id
          WHERE refs.id = ANY (:ref_id)
-         GROUP BY refs.id`,
+         GROUP BY refs.id, pub_year, author, ref, doi, url`,
         { ref_id: ref_ids },
         function (error, data) {
           var refs = {};
