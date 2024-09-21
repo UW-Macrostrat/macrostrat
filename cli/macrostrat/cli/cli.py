@@ -383,12 +383,15 @@ def state():
     app.console.print(app.state.get())
 
 
+# TODO: subsystem dependencies
+from .subsystems.core import core_schema
 from .subsystems.legend_api import legend_api
 from .subsystems.macrostrat_api import macrostrat_api
 
 # Add basic schema hunks
 from .subsystems.xdd import xdd_schema
 
+db_subsystem.schema_hunks.append(core_schema)
 db_subsystem.schema_hunks.append(xdd_schema)
 db_subsystem.schema_hunks.append(legend_api)
 db_subsystem.schema_hunks.append(macrostrat_api)
