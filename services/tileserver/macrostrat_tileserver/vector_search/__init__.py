@@ -17,22 +17,6 @@ from macrostrat.utils import get_logger
 log = get_logger(__name__)
 
 
-async def on_startup(app):
-
-    if not hasattr(app.state, "settings"):
-        app.state.settings = {}
-
-    # This doesn't work with multiple pods
-    # try:
-    #     stmt = get_sql(__here__ / "queries" / "startup.sql")
-    #     # Truncate the search term cache as we may have changed the math
-    #     async with pool.acquire() as con:
-    #         await con.execute(stmt)
-    # except Exception as e:
-    #     log.error("Error refreshing vector search term cache")
-    #     app.state.settings["vector_search_error"] = str(e)
-
-
 router = APIRouter()
 
 __here__ = Path(__file__).parent
@@ -47,10 +31,6 @@ async def get_tile(
 
     if not term:
         raise ValueError("No term provided")
-
-    # make sure we're not in an error state
-    if "vector_search_error" in request.app.state.settings:
-        raise ValueError(request.app.state.settings["vector_search_error"])
 
     model_name = standardize_model_name(model)
 
@@ -78,30 +58,8 @@ async def get_tile(
     return VectorTileResponse(units_)
 
 
-class TermIndex(dict):
-    index: ContextVar[dict] = ContextVar("term_index", default={})
-
-    def get_term(self, model, term) -> int:
-        return self.index.get().get(model, {}).get(term)
-
-    def set_term(self, model: str, term: str, term_id: int):
-        self.index.set(
-            {
-                **self.index.get(),
-                model: {**self.index.get().get(model, {}), term: term_id},
-            }
-        )
-
-
-_index = TermIndex()
-
-
 async def get_search_term_id(pool, term, model) -> int:
     """Get the ID of a search term from the database, or create it if it doesn't exist."""
-
-    term_id = _index.get_term(model, term)
-    if term_id:
-        return term_id
 
     # Check the database to see if the term exists
     term_id = await fetchval(

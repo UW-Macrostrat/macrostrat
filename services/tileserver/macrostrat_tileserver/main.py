@@ -16,7 +16,6 @@ from titiler.core.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from titiler.core.factory import TilerFactory
 from pydantic_settings import SettingsConfigDict
 
-from .vector_search import on_startup
 from .cached_tiler import CachedStoredFunction, CachedVectorTilerFactory
 from .function_layer import StoredFunction
 from .image_tiles import MapnikLayerFactory, prepare_image_tile_subsystem
@@ -63,9 +62,6 @@ async def startup_event():
     # Don't rely on poort TimVT handling of database connections
     setup_stderr_logs("macrostrat_tileserver", "timvt")
     await connect_to_db(app, db_settings)
-
-    # Truncate the search term index
-    await on_startup(app)
 
     # Apply fixtures
     # apply_fixtures(db_settings.database_url)
