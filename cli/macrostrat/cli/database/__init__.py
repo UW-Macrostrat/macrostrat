@@ -4,24 +4,25 @@ from sys import exit, stderr, stdin, stdout
 from typing import Any, Callable
 
 import typer
+from macrostrat.database import Database
+from macrostrat.utils import get_logger
+from macrostrat.utils.shell import run
 from pydantic import BaseModel
 from rich import print
-from sqlalchemy import text
+from sqlalchemy import text, make_url
 from typer import Argument, Option
 
 from macrostrat.core import MacrostratSubsystem, app
-from macrostrat.core.utils import is_pg_url
-from macrostrat.database import Database
-from macrostrat.utils.shell import run
-
+from ._legacy import get_db
+from .migrations import run_migrations
+from .utils import engine_for_db_name
 from .._dev.utils import (
     _create_database_if_not_exists,
     _docker_local_run_args,
     raw_database_url,
 )
-from ._legacy import get_db
-from .migrations import run_migrations
-from .utils import engine_for_db_name
+
+log = get_logger(__name__)
 
 __here__ = Path(__file__).parent
 fixtures_dir = __here__.parent / "fixtures"
@@ -180,33 +181,42 @@ def update_schema(
 db_app = db_subsystem.control_command()
 db_app.command(name="update", rich_help_panel="Schema management")(update_schema)
 
-# Pass through arguments
-
 
 @db_app.command(
     context_settings={"allow_extra_args": True, "ignore_unknown_options": True}
 )
-def psql(ctx: typer.Context, database: str = None):
+def psql(ctx: typer.Context):
     """Explore a database using [cyan]psql[/cyan]"""
     from macrostrat.core.config import PG_DATABASE_DOCKER
 
-    _database = PG_DATABASE_DOCKER
-    if database is not None:
-        if is_pg_url(database):
-            _database = database
-        else:
-            _database = database
+    # Clumsy way to get the correct host for Docker
+    url = make_url(PG_DATABASE_DOCKER)
+
+    # Set default arguments
+    env_flags = [
+        "-e",
+        "PGDATABASE",
+        "-e",
+        "PGUSER",
+        "-e",
+        "PGPASSWORD",
+        "-e",
+        f"PGHOST={url.host}",
+        "-e",
+        "PGPORT",
+    ]
 
     flags = [
         "-i",
         "--rm",
         "--network",
         "host",
+        *env_flags,
     ]
-    if len(ctx.args) == 0 and stdin.isatty():
+    if stdin.isatty():
         flags.append("-t")
 
-    run("docker", "run", *flags, "postgres:15", "psql", _database, *ctx.args)
+    run("docker", "run", *flags, "postgres:15", "psql", *ctx.args)
 
 
 @db_app.command(
