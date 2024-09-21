@@ -1,11 +1,21 @@
-
-exports.pg = {
-  host: process.env.host,
-  port: process.env.port,
-  user: process.env.user,
-  password: process.env.password,
-  database: process.env.database
-};
+if (process.env.MACROSTRAT_DATABASE != null) {
+  // Connect using a database URL
+  const macrostratDatabaseURL = process.env.MACROSTRAT_DATABASE
+  const elevationDatabaseURL = process.env.ELEVATION_DATABASE ?? macrostratDatabaseURL.replace("/macrostrat", "/elevation");
+  exports.pg = {
+    macrostratDatabaseURL,
+    elevationDatabaseURL
+  };
+} else {
+  console.warn("Using deprecated database configuration, please migrate to the MACROSTRAT_DATABASE=<url> format");
+  exports.pg = {
+    host: process.env.host,
+    port: process.env.port,
+    user: process.env.user,
+    password: process.env.password,
+    database: process.env.database
+  };
+}
 
 
 exports.postgresDatabases = {

@@ -6,6 +6,6 @@ DOCKER_TAG = latest
 
 run:
 	docker build -t macrostrat-api .
-    docker run --env-file .env --rm -it -p 5000:5000 macrostrat-api
+	docker run --env-file .env --rm -it -p 5000:5000 macrostrat-api
 
 
