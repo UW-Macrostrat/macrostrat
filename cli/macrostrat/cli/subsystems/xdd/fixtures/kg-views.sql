@@ -13,6 +13,7 @@ DROP VIEW IF EXISTS macrostrat_api.kg_relationships;
 DROP VIEW IF EXISTS macrostrat_api.kg_entity_tree;
 DROP VIEW IF EXISTS macrostrat_api.kg_entities;
 
+
 CREATE OR REPLACE VIEW macrostrat_api.kg_entities AS
 WITH strat_names AS (
     SELECT
@@ -35,7 +36,7 @@ lith_atts AS (
 )
 SELECT
     e.id,
-    e.type,
+    et.id type,
     e.name,
     ARRAY[start_index, end_index] AS indices,
     mr.id model_run,
@@ -43,6 +44,8 @@ SELECT
     coalesce(to_json(sn), to_json(l), to_json(la)) AS match
     -- JSON for the strat_name
 FROM macrostrat_xdd.entity e
+JOIN macrostrat_xdd.entity_type et
+  ON et.id = e.entity_type_id
 JOIN macrostrat_xdd.model_run mr
     ON mr.id = e.model_run_id
 LEFT JOIN strat_names sn
