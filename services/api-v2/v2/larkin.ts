@@ -86,11 +86,11 @@ const postgresDatabases = {
         "In Macrostrat v2, 'geomacro' is merged with 'burwell' into the 'macrostrat' database.",
       );
     }
-    let connectionDetails = process.env.MACROSTRAT_DEV_URL;
+    let connectionDetails = process.env.MACROSTRAT_DB_URL;
 
     if (dbName == "elevation") {
       /* Special case for elevation database (temporary) */
-      connectionDetails = process.env.ELEVATION_DEV_URL;
+      connectionDetails = process.env.ELEVATION_DB_URL;
     }
 
     const pool = new Pool({
