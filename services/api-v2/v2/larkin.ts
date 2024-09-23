@@ -80,7 +80,7 @@ const { Client, Pool } = require("pg");
         "In Macrostrat v2, 'geomacro' is merged with 'burwell' into the 'macrostrat' database.",
       );
     }
-    let connectionDetails = {...credentials.pg};
+    let connectionDetails = {...process.env.MACROSTRAT_DEV_URL};
 
     if (dbName == "elevation") {
       /* Special case for elevation database (temporary) */
