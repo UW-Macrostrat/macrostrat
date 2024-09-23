@@ -4,7 +4,6 @@ var api = require("../api"),
   dbgeo = require("dbgeo"),
   gp = require("geojson-precision");
 
-const credentials = require("../credentials");
 
 module.exports = function (req, res, next, cb) {
   if (Object.keys(req.query).length < 1) {
@@ -80,7 +79,7 @@ module.exports = function (req, res, next, cb) {
    ${"sample" in req.query ? "LIMIT 5" : ""}
   `;
   larkin.queryPg(
-    credentials.pg_macrostrat_database,
+    "burwell",
     sql,
     params,
     function (error, result) {

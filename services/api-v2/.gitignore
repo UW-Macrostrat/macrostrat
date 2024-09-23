@@ -16,8 +16,6 @@ v1/utilities/scripts/credentials.py
 venv
 .env
 
-!v2/credentials.ts
-credentials.ts
 !v1/credentials.ts
 v2/utilities/scripts/credentials.py
 

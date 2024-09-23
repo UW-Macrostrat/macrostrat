@@ -1,7 +1,6 @@
 var //mysql = require("mysql"),
   async = require("async"),
   _ = require("underscore"),
-  credentials = require("./credentials"),
   csv = require("csv-express"),
   api = require("./api"),
   defs = require("./defs"),
@@ -11,6 +10,13 @@ var //mysql = require("mysql"),
 const named = require("yesql").pg;
 const { Client, Pool } = require("pg");
 
+require('dotenv').config();
+
+const postgresDatabases = {
+  burwell: "macrostrat",
+  geomacro: "geomacro",
+  elevation: "elevation",
+};
 (function () {
   var larkin = {};
 
@@ -72,7 +78,7 @@ const { Client, Pool } = require("pg");
   //added new method to query from Maria data in the new PG database after migration
   larkin.queryPg = function (db, sql, params, callback) {
     //add console.logs for debug mode in the future
-    const nameMapping = credentials.postgresDatabases ?? {};
+    const nameMapping = postgresDatabases ?? {};
     const dbName = nameMapping[db] ?? db;
 
     if (dbName == "geomacro") {
@@ -80,15 +86,16 @@ const { Client, Pool } = require("pg");
         "In Macrostrat v2, 'geomacro' is merged with 'burwell' into the 'macrostrat' database.",
       );
     }
-    let connectionDetails = {...process.env.MACROSTRAT_DEV_URL};
+    let connectionDetails = process.env.MACROSTRAT_DEV_URL;
 
     if (dbName == "elevation") {
       /* Special case for elevation database (temporary) */
-      connectionDetails.database = 'elevation'
+      connectionDetails = process.env.ELEVATION_DEV_URL;
     }
 
-    const pool = new Pool(connectionDetails);
-    console.log(connectionDetails)
+    const pool = new Pool({
+      connectionString: connectionDetails
+    });
 
     pool.connect(function (err, client, done) {
       if (err) {
