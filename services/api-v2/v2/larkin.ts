@@ -17,6 +17,14 @@ const postgresDatabases = {
   geomacro: "geomacro",
   elevation: "elevation",
 };
+
+const pgConnection = {
+  host: process.env.MACRO_HOST,
+  user: process.env.MACRO_USER,
+  password: process.env.MACRO_PASSWORD,
+  database: process.env.MACRO_DATABASE
+}
+
 (function () {
   var larkin = {};
 
@@ -86,16 +94,18 @@ const postgresDatabases = {
         "In Macrostrat v2, 'geomacro' is merged with 'burwell' into the 'macrostrat' database.",
       );
     }
-    let connectionDetails = process.env.MACROSTRAT_DB_URL;
+    //TODO - PG operator only generates a single connection, so this is not suitable for multiple databases
+
+    let connectionDetails = {...pgConnection};
 
     if (dbName == "elevation") {
-      /* Special case for elevation database (temporary) */
-      connectionDetails = process.env.ELEVATION_DB_URL;
+      // Special case for elevation database (temporary)
+      pgConnection.database
+      connectionDetails.database = 'elevation';
     }
 
-    const pool = new Pool({
-      connectionString: connectionDetails
-    });
+    const pool = new Pool({connectionDetails});
+    console.log(connectionDetails)
 
     pool.connect(function (err, client, done) {
       if (err) {
