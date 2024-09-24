@@ -1,3 +1,8 @@
+if (process.env.MACROSTRAT_DB_URL != null && process.env.MACROSTRAT_DATABASE == null) {
+  console.warn("Using deprecated database configuration, please migrate to the MACROSTRAT_DATABASE=<url> format");
+  process.env.MACROSTRAT_DATABASE = process.env.MACROSTRAT_DB_URL;
+}
+
 if (process.env.MACROSTRAT_DATABASE != null) {
   // Connect using a database URL
   const macrostratDatabaseURL = process.env.MACROSTRAT_DATABASE
