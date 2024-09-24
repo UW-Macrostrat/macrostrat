@@ -1,6 +1,7 @@
 var //mysql = require("mysql"),
   async = require("async"),
   _ = require("underscore"),
+  credentials = require("./credentials"),
   csv = require("csv-express"),
   api = require("./api"),
   defs = require("./defs"),
@@ -9,21 +10,6 @@ var //mysql = require("mysql"),
   portscanner = require("portscanner");
 const named = require("yesql").pg;
 const { Client, Pool } = require("pg");
-
-require('dotenv').config();
-
-const postgresDatabases = {
-  burwell: "macrostrat",
-  geomacro: "geomacro",
-  elevation: "elevation",
-};
-
-const pgConnection = {
-  host: process.env.MACRO_HOST,
-  user: process.env.MACRO_USER,
-  password: process.env.MACRO_PASSWORD,
-  database: process.env.MACRO_DATABASE
-}
 
 (function () {
   var larkin = {};
@@ -86,7 +72,7 @@ const pgConnection = {
   //added new method to query from Maria data in the new PG database after migration
   larkin.queryPg = function (db, sql, params, callback) {
     //add console.logs for debug mode in the future
-    const nameMapping = postgresDatabases ?? {};
+    const nameMapping = credentials.postgresDatabases ?? {};
     const dbName = nameMapping[db] ?? db;
 
     if (dbName == "geomacro") {
@@ -94,17 +80,28 @@ const pgConnection = {
         "In Macrostrat v2, 'geomacro' is merged with 'burwell' into the 'macrostrat' database.",
       );
     }
-    //TODO - PG operator only generates a single connection, so this is not suitable for multiple databases
 
-    let connectionDetails = {...pgConnection};
+    let connectionDetails;
 
-    if (dbName == "elevation") {
-      // Special case for elevation database (temporary)
-      pgConnection.database
-      connectionDetails.database = 'elevation';
+    const postgresCfg = credentials.pg;
+
+    const inURLMode = postgresCfg.macrostratDatabaseURL != null;
+    if (inURLMode) {
+      let connectionString = postgresCfg.macrostratDatabaseURL
+      if (dbName == "elevation") {
+        connectionString = postgresCfg.elevationDatabaseURL
+      }
+      connectionDetails = { connectionString }
+
+    } else {
+      connectionDetails = {...credentials.pg}
+      if (dbName == "elevation") {
+        /* Special case for elevation database (temporary) */
+        connectionDetails.database = 'elevation'
+      }
     }
 
-    const pool = new Pool({connectionDetails});
+    const pool = new Pool(connectionDetails);
     console.log(connectionDetails)
 
     pool.connect(function (err, client, done) {
