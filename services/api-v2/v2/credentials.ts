@@ -6,7 +6,7 @@ if (process.env.MACROSTRAT_DB_URL != null && process.env.MACROSTRAT_DATABASE == 
 if (process.env.MACROSTRAT_DATABASE != null) {
   // Connect using a database URL
   const macrostratDatabaseURL = process.env.MACROSTRAT_DATABASE
-  const elevationDatabaseURL = process.env.ELEVATION_DATABASE ?? macrostratDatabaseURL.replace("/macrostrat", "/elevation");
+  const elevationDatabaseURL = process.env.ELEVATION_DATABASE ?? macrostratDatabaseURL.replace("5432/macrostrat", "5432/elevation");
   exports.pg = {
     macrostratDatabaseURL,
     elevationDatabaseURL

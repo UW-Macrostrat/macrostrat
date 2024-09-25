@@ -84,6 +84,7 @@ const { Client, Pool } = require("pg");
     let connectionDetails;
 
     const postgresCfg = credentials.pg;
+    console.log(postgresCfg.elevationDatabaseURL)
 
     const inURLMode = postgresCfg.macrostratDatabaseURL != null;
     if (inURLMode) {
