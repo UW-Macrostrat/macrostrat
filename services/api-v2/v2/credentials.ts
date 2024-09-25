@@ -11,15 +11,17 @@ if (process.env.MACROSTRAT_DATABASE != null) {
     macrostratDatabaseURL,
     elevationDatabaseURL
   };
-} else {
+}
+//added exports.pg to https://github.com/UW-Macrostrat/tiger-macrostrat-config/blob/main/manifests/development/dev-web-stack/credentials.js
+else {
   console.warn("Using deprecated database configuration, please migrate to the MACROSTRAT_DATABASE=<url> format");
-  exports.pg = {
-    host: process.env.host,
-    port: process.env.port,
-    user: process.env.user,
-    password: process.env.password,
-    database: process.env.database
-  };
+exports.pg = {
+  host: process.env.host,
+  port: process.env.port,
+  user: process.env.user,
+  password: process.env.password,
+  database: 'macrostrat'
+};
 }
 
 

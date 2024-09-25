@@ -82,9 +82,7 @@ const { Client, Pool } = require("pg");
     }
 
     let connectionDetails;
-
     const postgresCfg = credentials.pg;
-    console.log(postgresCfg.elevationDatabaseURL)
 
     const inURLMode = postgresCfg.macrostratDatabaseURL != null;
     if (inURLMode) {
@@ -95,7 +93,7 @@ const { Client, Pool } = require("pg");
       connectionDetails = { connectionString }
 
     } else {
-      connectionDetails = {...credentials.pg}
+      connectionDetails = { ...credentials.pg }
       if (dbName == "elevation") {
         /* Special case for elevation database (temporary) */
         connectionDetails.database = 'elevation'
