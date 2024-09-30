@@ -13,6 +13,9 @@ DROP VIEW IF EXISTS macrostrat_api.kg_relationships;
 DROP VIEW IF EXISTS macrostrat_api.kg_entity_tree;
 DROP VIEW IF EXISTS macrostrat_api.kg_entities;
 
+CREATE OR REPLACE VIEW macrostrat_api.kg_entity_type AS
+SELECT id, name, description
+FROM macrostrat_xdd.entity_type;
 
 CREATE OR REPLACE VIEW macrostrat_api.kg_entities AS
 WITH strat_names AS (
