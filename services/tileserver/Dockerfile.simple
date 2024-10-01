@@ -13,6 +13,12 @@ RUN curl -sSL https://install.python-poetry.org | python3 -
 
 WORKDIR /app/
 
+# Make this work on ARM64
+# We can remove this once
+RUN apt-get update && apt-get install -y libpq-dev libproj-dev libgeos-dev gdal-bin && rm -rf /var/lib/apt/lists/*
+
+
+
 # Copy only requirements to cache them in docker layer
 # Right now, Poetry lock file must exist to avoid hanging on dependency resolution
 COPY ./deps/timvt/ /app/deps/timvt/
@@ -23,12 +29,8 @@ COPY ./pyproject.toml ./poetry.lock /app/
 RUN python3 -m venv /venv
 ENV PATH="/venv/bin:$PATH"
 
-# Make this work on ARM64
-# We can remove this once
-RUN apt-get update && apt-get install -y libpq-dev libproj-dev libgeos-dev gdal-bin && rm -rf /var/lib/apt/lists/*
-
 # Command that always fails
-RUN false
+#RUN false
 
 RUN poetry install --no-interaction --no-ansi --no-root --no-dev
 

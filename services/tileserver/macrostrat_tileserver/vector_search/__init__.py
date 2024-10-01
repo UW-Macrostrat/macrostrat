@@ -30,7 +30,7 @@ async def get_tile(
     x: int,
     y: int,
     term: str = Query(None),
-    norm_method: str = Query("tile"),
+    norm_method: str = Query("global"),
 ):
     """Get a tile from the tileserver."""
     pool = request.app.state.pool

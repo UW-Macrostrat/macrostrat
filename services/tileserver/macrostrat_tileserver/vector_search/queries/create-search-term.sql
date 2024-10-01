@@ -46,8 +46,8 @@ SELECT
   d.model_version,
   d.text_vector,
   d.norm_vector,
-  mean - 1 * stdev,
-  mean + 1 * stdev,
+  mean - 2 * stdev,
+  mean + 2 * stdev,
   mean_norm - 2 * stdev_norm,
   mean_norm + 2 * stdev_norm
 FROM stats s
