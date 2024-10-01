@@ -155,13 +155,21 @@ def reassign_privileges(
     )
 
 
-def grant_schema_ownership(schema, owner):
-    """Higher-order function to grant ownership of a schema to a user"""
+def grant_permissions(schema, user, *_permissions, owner=False):
+    """Higher-order function to grant permissions on a schema to a user"""
 
     def setup_permissions(db):
         """Set permissions on tables in the knowledge graph subsystem"""
+        permissions = [p for p in _permissions]
+        if owner:
+            permissions = ["ALL"]
+
+        if len(permissions) == 0:
+            permissions = ["SELECT"]
+
+        _perms = ", ".join(permissions)
         print(
-            f"Granting ownership of schema [cyan bold]{schema}[/] to [cyan bold]{owner}[/]"
+            f"Grant {_perms} on  schema [cyan bold]{schema}[/] to [cyan bold]{user}[/]"
         )
 
         tables = db.run_query(
@@ -170,27 +178,94 @@ def grant_schema_ownership(schema, owner):
         )
         stmts = [
             (
-                "GRANT ALL ON SCHEMA {schema} TO {owner}",
-                dict(schema=Identifier(schema), owner=Identifier(owner)),
+                "GRANT USAGE ON SCHEMA {schema} TO {user}",
+                dict(schema=Identifier(schema), user=Identifier(user)),
             )
         ]
+
+        has_create = "CREATE" in permissions or "ALL" in permissions
+        table_perms = [p for p in permissions if p != "CREATE"]
+
+        # Give permissions to create objects in the schema
+        if owner or has_create:
+            stmts.append(
+                (
+                    "GRANT CREATE ON SCHEMA {schema} TO {user}",
+                    dict(schema=Identifier(schema), user=Identifier(user)),
+                )
+            )
+
         for table in tables.scalars():
-            params = dict(table=Identifier(schema, table), owner=Identifier(owner))
-            stmts.append(
-                (
-                    "ALTER TABLE {table} OWNER TO {owner}",
-                    params,
+            params = dict(table=Identifier(schema, table), user=Identifier(user))
+            if owner:
+                stmts.append(
+                    (
+                        "ALTER TABLE {table} OWNER TO {user}",
+                        params,
+                    )
                 )
-            )
-            stmts.append(
-                (
-                    "GRANT ALL ON {table} TO {owner}",
-                    params,
+            for perm in table_perms:
+                stmts.append(
+                    (
+                        "GRANT " + perm + " ON {table} TO {user}",
+                        params,
+                    )
                 )
-            )
+
+        # Functions
+        functions = db.run_query(
+            "SELECT routine_name FROM information_schema.routines WHERE routine_schema = :schema",
+            dict(schema=schema),
+        )
+        # Grant usage of functions
+        fn_perms = [p for p in permissions if p in ("EXECUTE", "ALL")]
+        for function in functions.scalars():
+            params = dict(function=Identifier(schema, function), user=Identifier(user))
+            for perm in fn_perms:
+                stmts.append(
+                    (
+                        "GRANT " + perm + " ON FUNCTION {function} TO {user}",
+                        params,
+                    )
+                )
+
+            # Grant ownership of functions
+            if owner:
+                params = dict(
+                    function=Identifier(schema, function), user=Identifier(user)
+                )
+                stmts.append(
+                    (
+                        "ALTER FUNCTION {function} OWNER TO {user}",
+                        params,
+                    )
+                )
+
+        # Views
+        views = db.run_query(
+            "SELECT table_name FROM information_schema.views WHERE table_schema = :schema",
+            dict(schema=schema),
+        )
+        # Grant usage of views
+        view_perms = [p for p in permissions if p in ("SELECT", "ALL")]
+
+        for view in views.scalars():
+            params = dict(view=Identifier(schema, view), user=Identifier(user))
+            for perm in view_perms:
+                stmts.append(
+                    (
+                        "GRANT " + perm + " ON {view} TO {user}",
+                        params,
+                    )
+                )
 
         for stmt in stmts:
             db.run_sql(*stmt)
             db.session.commit()
 
     return setup_permissions
+
+
+def grant_schema_ownership(schema, owner):
+    """Higher-order function to grant ownership of a schema to a user"""
+    return grant_permissions(schema, owner, owner=True)

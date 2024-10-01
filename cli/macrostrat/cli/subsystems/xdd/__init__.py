@@ -25,6 +25,8 @@ text_vector_schema = SubsystemSchemaDefinition(
     fixtures=[
         fixtures_dir / "text-vectors.sql",
         grant_schema_ownership("text_vectors", "xdd-writer"),
+        # Needed for tileserver to read the schema
+        grant_schema_ownership("text_vectors", "macrostrat"),
     ],
 )
 
