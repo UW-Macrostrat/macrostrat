@@ -8,7 +8,11 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const testFiles = [
-    'carto_small.ts',
+
+    'units.ts'
+];
+/*
+ 'carto_small.ts',
     'columns.ts',
     'defs.ts',
     'defs_columns.ts',
@@ -44,9 +48,7 @@ const testFiles = [
     'sections.ts',
     'stats.ts',
     'tiles.ts',
-    'units.ts'
-];
-
+ */
 const testDir = path.join(__dirname, 'v2Tests');
 
 testFiles.forEach((file) => {

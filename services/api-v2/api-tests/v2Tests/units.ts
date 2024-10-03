@@ -13,7 +13,8 @@ request(settings.host)
     done();
   });
 });
-/*
+
+//this test works now
 it("should return a sample", function (done) {
 request(settings.host)
   .get("/units?sample")
@@ -25,7 +26,7 @@ request(settings.host)
     done();
   });
 });
- */
+
 
 
 //randomize unit_id's for tests
@@ -42,7 +43,7 @@ it("t_age, b_age, t_prop, b_prop, b_int_age, and t_int_age should have the corre
       });
 });
 
-/*
+////fixed api this test works now
 it("should accept an interval_name", function (done) {
 request(settings.host)
   .get("/units?interval_name=Permian")
@@ -55,7 +56,7 @@ request(settings.host)
   });
 });
 
- */
+
 
 it("should accept an age", function (done) {
 request(settings.host)
@@ -243,7 +244,8 @@ request(settings.host)
     done();
   });
 });
-/*
+
+//fixed api this test works now
 it("should accept a strat_name parameter", function (done) {
 request(settings.host)
   .get("/units?strat_name=mancos")
@@ -263,7 +265,6 @@ request(settings.host)
   });
 });
 
- */
 
 it("should accept a strat_name_id parameter", function (done) {
 request(settings.host)
@@ -283,7 +284,7 @@ request(settings.host)
     done();
   });
 });
-/*
+//fixed api this test works now
 it("should output GeoJSON", function (done) {
 request(settings.host)
   .get("/units?strat_name_id=1205&format=geojson")
@@ -294,7 +295,7 @@ request(settings.host)
     done();
   });
 });
-
+//fixed api this test works now
 it("should output TopoJSON", function (done) {
 request(settings.host)
   .get("/units?strat_name_id=1205&format=topojson")
@@ -307,7 +308,7 @@ request(settings.host)
 });
 
 
-
+//working on this test
 it("should accept a geom_age parameter", function (done) {
 request(settings.host)
   .get("/units?strat_name_id=1205&format=geojson&geom_age=top")
@@ -331,7 +332,7 @@ request(settings.host)
     done();
   });
 });
-
+//fixed api this test works now
 it("should output CSV", function (done) {
 request(settings.host)
   .get("/units?section_id=107&format=csv")
@@ -342,7 +343,7 @@ request(settings.host)
     done();
   });
 });
-
+//working on this test
 it("should accept an econ_id filter", function (done) {
 request(settings.host)
   .get("/units?econ_id=4&response=long")
@@ -367,7 +368,7 @@ request(settings.host)
     done();
   });
 });
-
+//working on this test
 it("should accept an econ filter", function (done) {
 request(settings.host)
   .get("/units?econ=uranium%20ore&response=long")
@@ -392,7 +393,7 @@ request(settings.host)
     done();
   });
 });
-
+//working on this test
 it("should accept an econ_type filter", function (done) {
 request(settings.host)
   .get("/units?econ_type=nuclear&response=long")
@@ -417,7 +418,7 @@ request(settings.host)
     done();
   });
 });
-
+//working on this test
 it("should accept an econ_class filter", function (done) {
 request(settings.host)
   .get("/units?econ_class=energy&response=long")
@@ -444,7 +445,7 @@ request(settings.host)
     done();
   });
 });
-
+//fixed api this test works now
 it("should accept a PBDB collection filter", function (done) {
 request(settings.host)
   .get("/units?cltn_id=185,191")
@@ -487,4 +488,4 @@ request(settings.host)
   });
 });
 
- */
+

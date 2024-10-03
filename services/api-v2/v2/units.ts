@@ -511,6 +511,7 @@ module.exports = function (req, res, next, cb) {
             : "lookup_unit_attrs_api.measure_short";
 
         var columnList = `
+      DISTINCT ON (units.id)
       units.id AS unit_id,
       units_sections.section_id AS section_id,
       units_sections.col_id AS col_id,
@@ -564,7 +565,7 @@ module.exports = function (req, res, next, cb) {
 
         if ((req.query.format && api.acceptedFormats.geo[req.query.format]) ||
           req.query.response === "long") {
-          columnList += ", lookup_units.clat, lookup_units.clng, lookup_units.t_plat, lookup_units.t_plng, lookup_units.b_plat, lookup_units.b_plng "
+          columnList += ", lookup_units.clat::float, lookup_units.clng::float, lookup_units.t_plat::float, lookup_units.t_plng::float, lookup_units.b_plat::float, lookup_units.b_plng::float "
         }
 
         var sql = `
@@ -579,7 +580,7 @@ module.exports = function (req, res, next, cb) {
         LEFT JOIN macrostrat.lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id
         LEFT JOIN macrostrat.unit_notes ON unit_notes.unit_id=units.id
         WHERE ${where}
-      ORDER BY ${orderby.length > 0 ? orderby.join(", ") + "," : ""} lookup_units.t_age ASC
+      ORDER BY ${orderby.length > 0 ? orderby.join(", ") + "," : ""} units.id, lookup_units.t_age ASC
       ${limit}`;
 
         larkin.queryPg("burwell", sql, params, function (error, result) {
