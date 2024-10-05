@@ -17,8 +17,6 @@ from ._legacy import get_db
 from .migrations import run_migrations
 from .utils import engine_for_db_name
 from .._dev.utils import (
-    _create_database_if_not_exists,
-    _docker_local_run_args,
     raw_database_url,
 )
 
@@ -415,45 +413,6 @@ def run_scripts(migration: str = Argument(None)):
 
 
 db_app.command(name="migrations", rich_help_panel="Schema management")(run_migrations)
-
-
-@db_app.command(
-    name="import-mariadb", rich_help_panel="Schema management", deprecated=True
-)
-def import_legacy():
-    """Import legacy MariaDB database to PostgreSQL using pgloader"""
-    # Run pgloader in docker
-
-    cfg = app.settings
-
-    args = _docker_local_run_args(postgres_container="dimitri/pgloader")
-
-    # Get the database URL
-    db = get_db()
-    url = db.engine.url
-    url = url.set(database="macrostrat_v1")
-
-    _create_database_if_not_exists(url, create=True)
-
-    pg_url = str(url)
-    # Repl
-
-    pg_url = cfg.get("pg_database", None)
-
-    url = pg_url + "_v1"
-
-    dburl = cfg.get("mysql_database", None)
-    if dburl is None:
-        raise Exception("No MariaDB database URL available in configuration")
-
-    run(
-        *args,
-        "pgloader",
-        "--with",
-        "prefetch rows = 1000",
-        str(dburl),
-        str(url),
-    )
 
 
 ### Helpers
