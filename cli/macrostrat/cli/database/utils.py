@@ -2,14 +2,13 @@ from contextlib import contextmanager
 from typing import Optional
 from uuid import uuid4
 
+from macrostrat.database.utils import run_query, run_sql
 from psycopg2.sql import Identifier
 from rich import print
 from sqlalchemy.engine import Engine, create_engine
 from sqlalchemy.engine.url import URL, make_url
 
 from macrostrat.core.config import settings
-from macrostrat.database.utils import run_query, run_sql
-
 from ._legacy import get_db
 
 
@@ -79,6 +78,22 @@ class OwnedByPolicy(Enum):
     Reassign = "reassign"
     Drop = "drop"
     Restrict = "restrict"
+
+
+class Permission(Enum):
+    Select = "SELECT"
+    Insert = "INSERT"
+    Update = "UPDATE"
+    Delete = "DELETE"
+    Truncate = "TRUNCATE"
+    References = "REFERENCES"
+    Trigger = "TRIGGER"
+    Create = "CREATE"
+    Connect = "CONNECT"
+    Temporary = "TEMPORARY"
+    Usage = "USAGE"
+    Execute = "EXECUTE"
+    All = "ALL"
 
 
 def drop_user(
@@ -155,6 +170,16 @@ def reassign_privileges(
     )
 
 
+def get_table_permissions(db, schema, table, user) -> set[Permission]:
+    """Check if a user has the required permissions on a table"""
+    db = get_db()
+    perms = db.run_query(
+        "SELECT privilege_type FROM information_schema.table_privileges WHERE table_schema = :schema AND table_name = :table AND grantee = :user",
+        dict(schema=schema, table=table, user=user),
+    )
+    return {Permission(p) for p in perms.scalars()}
+
+
 def grant_permissions(schema, user, *_permissions, owner=False):
     """Higher-order function to grant permissions on a schema to a user"""
 
@@ -197,6 +222,8 @@ def grant_permissions(schema, user, *_permissions, owner=False):
 
         for table in tables.scalars():
             params = dict(table=Identifier(schema, table), user=Identifier(user))
+            existing_perms = get_table_permissions(db, schema, table, user)
+
             if owner:
                 stmts.append(
                     (
@@ -205,6 +232,8 @@ def grant_permissions(schema, user, *_permissions, owner=False):
                     )
                 )
             for perm in table_perms:
+                if Permission(perm) in existing_perms:
+                    continue
                 stmts.append(
                     (
                         "GRANT " + perm + " ON {table} TO {user}",

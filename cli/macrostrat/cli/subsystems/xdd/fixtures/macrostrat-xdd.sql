@@ -1,7 +1,7 @@
 /**
   macrostrat_xdd schema
 
-  Fixtures for the macrostrat_xdd schema
+  Fixtures for the macrostrat_xdd schema.
  */
 
 CREATE TABLE macrostrat_xdd.entity_type (
