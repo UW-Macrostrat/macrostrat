@@ -142,6 +142,7 @@ CREATE OR REPLACE VIEW macrostrat_api.kg_publication_entities AS
 WITH paper_strat_names AS (
     SELECT
         p.paper_id,
+        array_agg(DISTINCT mr.model_id) models,
         array_agg(DISTINCT strat_name_id) strat_name_matches,
         count(DISTINCT strat_name_id) n_matches
     FROM macrostrat_xdd.publication p
@@ -166,16 +167,17 @@ entities AS (
     GROUP BY paper_id
 )
 SELECT
-    p.paper_id,
+    pub.paper_id,
+    pub.citation,
     p.strat_name_matches,
     p.n_matches,
-    pub.citation,
+    p.models,
     e.entities
-FROM paper_strat_names p
-JOIN macrostrat_xdd.publication pub
-    ON pub.paper_id = p.paper_id
+FROM macrostrat_xdd.publication pub
+JOIN paper_strat_names p
+  ON pub.paper_id = p.paper_id
 JOIN entities e
-     ON p.paper_id = e.paper_id
+  ON p.paper_id = e.paper_id
 ORDER BY p.n_matches DESC;
 
 CREATE VIEW macrostrat_api.kg_context_entities AS
@@ -224,3 +226,25 @@ JOIN macrostrat_xdd.entity e
   ON e.model_run_id = mr.id
 GROUP BY m.id;
 
+CREATE OR REPLACE VIEW macrostrat_api.kg_model_run AS
+SELECT
+  mr.id,
+  mr.user_id,
+  mr.timestamp,
+  mr.model_id,
+  m.name model_name,
+  mr.version_id,
+  mr.source_text_id,
+  st.source_text_type,
+  st.map_legend_id,
+  st.weaviate_id,
+  mr.supersedes,
+  mr1.id superseded_by
+FROM macrostrat_xdd.model_run mr
+LEFT JOIN macrostrat_xdd.model_run mr1
+  ON mr1.supersedes = mr.id
+JOIN macrostrat_xdd.model m
+  ON m.id = mr.model_id
+JOIN macrostrat_xdd.source_text st
+  ON st.id = mr.source_text_id
+ORDER BY mr.id;
