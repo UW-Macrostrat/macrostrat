@@ -58,7 +58,6 @@ LEFT JOIN liths l
 LEFT JOIN lith_atts la
     ON la.lith_att_id = e.lith_att_id;
 
-
 CREATE OR REPLACE VIEW macrostrat_api.kg_entity_tree AS
 WITH RECURSIVE start_entities AS (
     -- Entities that are not parents of any relationship
@@ -174,13 +173,13 @@ SELECT
     p.models,
     e.entities
 FROM macrostrat_xdd.publication pub
-JOIN paper_strat_names p
+LEFT JOIN paper_strat_names p
   ON pub.paper_id = p.paper_id
-JOIN entities e
+LEFT JOIN entities e
   ON p.paper_id = e.paper_id
 ORDER BY p.n_matches DESC;
 
-CREATE VIEW macrostrat_api.kg_context_entities AS
+CREATE OR REPLACE VIEW macrostrat_api.kg_context_entities AS
 WITH entities AS (
     SELECT
         source_text,
@@ -191,23 +190,23 @@ WITH entities AS (
     GROUP BY source_text, paper_id, model_run
 )
 SELECT
-    source_text,
-    e.paper_id,
-    e.model_run,
-    e.entities,
+    st.id source_text,
+    st.paper_id,
+    mr.id model_run,
+    coalesce(e.entities, '[]'::jsonb) entities,
     st.weaviate_id,
     st.paragraph_text,
     st.hashed_text,
     st.preprocessor_id,
     mr.model_id,
     mr.version_id
-FROM entities e
-JOIN macrostrat_xdd.model_run mr
-    ON e.model_run = mr.id
-JOIN macrostrat_xdd.source_text st
-    ON mr.source_text_id = st.id;
+FROM  macrostrat_xdd.source_text st
+LEFT JOIN macrostrat_xdd.model_run mr
+  ON mr.source_text_id = st.id
+LEFT JOIN entities e
+  ON e.model_run = mr.id;
 
-CREATE VIEW macrostrat_api.kg_model AS
+CREATE OR REPLACE VIEW macrostrat_api.kg_model AS
 SELECT
   m.id,
   m.name,
@@ -220,9 +219,9 @@ SELECT
   count((coalesce(e.strat_name_id, e.lith_id, e.lith_att_id)::boolean)) n_matches,
   count(e.strat_name_id::boolean) n_strat_names
 FROM macrostrat_xdd.model m
-JOIN macrostrat_xdd.model_run mr
+LEFT JOIN macrostrat_xdd.model_run mr
   ON mr.model_id = m.id
-JOIN macrostrat_xdd.entity e
+LEFT JOIN macrostrat_xdd.entity e
   ON e.model_run_id = mr.id
 GROUP BY m.id;
 
