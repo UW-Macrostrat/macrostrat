@@ -468,21 +468,21 @@ module.exports = function (req, res, next, cb) {
             " AND units.id = ANY(SELECT unit_econs.unit_id FROM macrostrat.unit_econs JOIN macrostrat.econs on econ_id=econs.id WHERE :econ_field";
 
           if (req.query.econ_id) {
-            where += " = ANY(:econ))";
+            where += " = ANY(ARRAY[:econ]))";
             params["econ"] = larkin.parseMultipleIds(req.query.econ_id);
             params["econ_field"] = "econs.id";
           } else if (req.query.econ) {
-            where += " = ANY(:econ))";
+            where += " = ANY(ARRAY[:econ]))";
             params["econ"] = larkin.parseMultipleStrings(req.query.econ);
             params["econ_field"] = "econs.econ";
           }
           if (req.query.econ_type) {
-            where += " = ANY(:econ))";
+            where += " = ANY(ARRAY[:econ]))";
             params["econ"] = larkin.parseMultipleStrings(req.query.econ_type);
             params["econ_field"] = "econs.econ_type";
           }
           if (req.query.econ_class) {
-            where += " = ANY(:econ))";
+            where += " = ANY(ARRAY[:econ]))";
             params["econ"] = larkin.parseMultipleStrings(req.query.econ_class);
             params["econ_field"] = "econs.econ_class";
           }
@@ -558,6 +558,7 @@ module.exports = function (req, res, next, cb) {
       lookup_strat_names.rank_name AS strat_name_long,
       (${colRefsSubquery}) AS refs
       `;
+          //TODO fix how refs are outputting if 1 ref or multiple
         if ("show_position" in req.query) {
           columnList += ", position_top AS t_pos, position_bottom AS b_pos";
         }
@@ -599,14 +600,8 @@ module.exports = function (req, res, next, cb) {
                   result.rows[i].units_above,
                   "integers",
                 );
-                result.rows[i].units_below = larkin.jsonifyPipes(
-                  result.rows[i].units_below,
-                  "integers",
-                );
-                result.rows[i].refs = larkin.jsonifyPipes(
-                  result.rows[i].refs,
-                  "integers",
-                );
+                result.rows[i].units_below = larkin.jsonifyPipes(result.rows[i].units_below, "integers",);
+                result.rows[i].refs = larkin.jsonifyPipes(result.rows[i].refs,"integers",);
               }
             }
 
