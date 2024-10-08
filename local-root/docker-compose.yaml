@@ -47,14 +47,16 @@ services:
       - mysql_cluster:/var/lib/mysql
     restart: always
   api:
-    #image: hub.opensciencegrid.org/macrostrat/macrostrat-api:latest
+    image: hub.opensciencegrid.org/macrostrat/macrostrat-api:latest
     build: ${MACROSTRAT_API_SRC:-""}
     environment:
-      - MACROSTRAT_DATABASE=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
+      - MACROSTRAT_DATABASE=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
   api_v3:
     build: ${MACROSTRAT_API_V3_SRC:-""}
     environment:
-      - DB_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
+      - DB_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
+    ports:
+      - "5000:5000"
   postgrest:
     image: postgrest/postgrest:v12.0.2
     environment:
@@ -66,12 +68,13 @@ services:
       - PGRST_SERVER_HOST=
   # Tileserver
   tileserver:
-    #image: hub.opensciencegrid.org/macrostrat/tileserver:latest
-    build:
-      context: ${MACROSTRAT_TILESERVER_SRC:-""}
-      dockerfile: Dockerfile.simple
+    image: hub.opensciencegrid.org/macrostrat/tileserver:latest
+#    profiles: ['tileserver']
+#    build:
+#      context: ${MACROSTRAT_TILESERVER_SRC:-""}
     environment:
-      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
+
   # Schema-only Test DB instance for applying migrations
   migrations-test-db:
     image: postgis-with-audit

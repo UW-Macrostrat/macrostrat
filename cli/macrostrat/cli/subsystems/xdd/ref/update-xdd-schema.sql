@@ -187,3 +187,11 @@ CREATE TABLE macrostrat_xdd.publication (
 
 -- Add foreign key cascades
 
+
+-- Update entity types (2024-09-21)
+-- Ensure that entities schema is up to date
+-- Note: this should be a migration
+UPDATE macrostrat_xdd.entity e
+SET entity_type_id = (SELECT id FROM macrostrat_xdd.entity_type et WHERE e.type = et.name)
+WHERE e.type IS NOT null AND e.entity_type_id IS NULL;
+

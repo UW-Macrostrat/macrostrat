@@ -4,24 +4,23 @@ from sys import exit, stderr, stdin, stdout
 from typing import Any, Callable
 
 import typer
+from macrostrat.database import Database
+from macrostrat.utils import get_logger
+from macrostrat.utils.shell import run
 from pydantic import BaseModel
 from rich import print
-from sqlalchemy import text
+from sqlalchemy import text, make_url
 from typer import Argument, Option
 
 from macrostrat.core import MacrostratSubsystem, app
-from macrostrat.core.utils import is_pg_url
-from macrostrat.database import Database
-from macrostrat.utils.shell import run
-
-from .._dev.utils import (
-    _create_database_if_not_exists,
-    _docker_local_run_args,
-    raw_database_url,
-)
 from ._legacy import get_db
 from .migrations import run_migrations
 from .utils import engine_for_db_name
+from .._dev.utils import (
+    raw_database_url,
+)
+
+log = get_logger(__name__)
 
 __here__ = Path(__file__).parent
 fixtures_dir = __here__.parent / "fixtures"
@@ -180,37 +179,57 @@ def update_schema(
 db_app = db_subsystem.control_command()
 db_app.command(name="update", rich_help_panel="Schema management")(update_schema)
 
-# Pass through arguments
-
 
 @db_app.command(
-    context_settings={"allow_extra_args": True, "ignore_unknown_options": True}
+    context_settings={
+        "allow_extra_args": True,
+        "ignore_unknown_options": True,
+        "help_option_names": [],
+    },
 )
-def psql(ctx: typer.Context, database: str = None):
+def psql(
+    ctx: typer.Context,
+):
     """Explore a database using [cyan]psql[/cyan]"""
     from macrostrat.core.config import PG_DATABASE_DOCKER
 
-    _database = PG_DATABASE_DOCKER
-    if database is not None:
-        if is_pg_url(database):
-            _database = database
-        else:
-            _database = database
+    # Clumsy way to get the correct host for Docker
+    url = make_url(PG_DATABASE_DOCKER)
+
+    # Set default arguments
+    env_flags = [
+        "-e",
+        "PGDATABASE",
+        "-e",
+        "PGUSER",
+        "-e",
+        "PGPASSWORD",
+        "-e",
+        f"PGHOST={url.host}",
+        "-e",
+        "PGPORT",
+    ]
 
     flags = [
         "-i",
         "--rm",
         "--network",
         "host",
+        *env_flags,
     ]
-    if len(ctx.args) == 0 and stdin.isatty():
+    if stdin.isatty():
         flags.append("-t")
 
-    run("docker", "run", *flags, "postgres:15", "psql", _database, *ctx.args)
+    db_container = app.settings.get("pg_database_container", "postgres:15")
+
+    run("docker", "run", *flags, db_container, "psql", *ctx.args)
 
 
 @db_app.command(
-    context_settings={"allow_extra_args": True, "ignore_unknown_options": True}
+    context_settings={
+        "allow_extra_args": True,
+        "ignore_unknown_options": True,
+    }
 )
 def dump(
     ctx: typer.Context,
@@ -254,11 +273,22 @@ def restore(
     *,
     create: bool = False,
     jobs: int = Option(None, "--jobs", "-j"),
+    version: str = Option(
+        None,
+        "--version",
+        "-v",
+        help="Postgres version or docker container to restore with",
+    ),
 ):
     """Load a database using [cyan]pg_restore[/]"""
     from .._dev.restore_database import pg_restore
 
     db_container = app.settings.get("pg_database_container", "postgres:15")
+    if version is not None:
+        if ":" in version:
+            db_container = version
+        else:
+            db_container = f"postgres:{version}"
 
     engine = engine_for_db_name(database)
 
@@ -364,7 +394,7 @@ def inspect_table(table: str):
 @db_app.command(name="scripts", rich_help_panel="Schema management")
 def run_scripts(migration: str = Argument(None)):
     """Ad-hoc database management scripts"""
-    pth = Path(__file__).parent.parent / "ad-hoc-migrations"
+    pth = Path(__file__).parent.parent / "sql-scripts"
     files = list(pth.glob("*.sql"))
     files.sort()
     if migration is None:
@@ -383,45 +413,6 @@ def run_scripts(migration: str = Argument(None)):
 
 
 db_app.command(name="migrations", rich_help_panel="Schema management")(run_migrations)
-
-
-@db_app.command(
-    name="import-mariadb", rich_help_panel="Schema management", deprecated=True
-)
-def import_legacy():
-    """Import legacy MariaDB database to PostgreSQL using pgloader"""
-    # Run pgloader in docker
-
-    cfg = app.settings
-
-    args = _docker_local_run_args(postgres_container="dimitri/pgloader")
-
-    # Get the database URL
-    db = get_db()
-    url = db.engine.url
-    url = url.set(database="macrostrat_v1")
-
-    _create_database_if_not_exists(url, create=True)
-
-    pg_url = str(url)
-    # Repl
-
-    pg_url = cfg.get("pg_database", None)
-
-    url = pg_url + "_v1"
-
-    dburl = cfg.get("mysql_database", None)
-    if dburl is None:
-        raise Exception("No MariaDB database URL available in configuration")
-
-    run(
-        *args,
-        "pgloader",
-        "--with",
-        "prefetch rows = 1000",
-        str(dburl),
-        str(url),
-    )
 
 
 ### Helpers

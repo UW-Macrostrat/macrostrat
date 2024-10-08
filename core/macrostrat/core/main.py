@@ -3,14 +3,11 @@ from pathlib import Path
 
 import toml
 from dynaconf import Dynaconf
-from rich import print
-from rich.console import Console
-from typer import Context, Typer, get_app_dir
-from typer.core import TyperGroup
-
 from macrostrat.app_frame import Application, Subsystem, SubsystemManager
 from macrostrat.app_frame.control_command import OrderCommands
 from macrostrat.utils import get_logger
+from rich.console import Console
+from typer import Typer, get_app_dir
 
 from .console import console_theme
 from .exc import MacrostratError
@@ -116,6 +113,12 @@ class Macrostrat(Application):
             # This only applies to Docker Compose
             restart_commands={"gateway": "caddy reload --config /etc/caddy/Caddyfile"},
         )
+
+        # Remove DOCKER_BUILDKIT=1 from the environment if we are in offline mode
+        # This should possible be merged in upstream
+        if self.settings.offline:
+            cfg = environ["DOCKER_BUILDKIT"] = "0"
+            log.info("Disabling Docker BuildKit for offline mode")
 
         self.subsystems._app = self
 

@@ -6,7 +6,7 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.engine.url import URL
 from toml import load as load_toml
 
-from .utils import find_macrostrat_config, is_pg_url
+from .utils import find_macrostrat_config
 
 
 class MacrostratConfig(Dynaconf):
@@ -86,6 +86,10 @@ for v in ("PGDATABASE", "POSTGRES_DB"):
 environ["PG_DATABASE_CONTAINER"] = getattr(
     settings, "pg_database_container", "postgis/postgis:15-3.4"
 )
+
+# Set defaults
+# Ideally we should be able to do this in the settings object
+settings.offline = getattr(settings, "offline", False)
 
 
 environ["COMPOSE_PROJECT_NAME"] = "macrostrat_" + macrostrat_env

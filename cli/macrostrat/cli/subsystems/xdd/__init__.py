@@ -15,8 +15,15 @@ fixtures_dir = __here__ / "fixtures"
 xdd_schema = SubsystemSchemaDefinition(
     name="xdd",
     fixtures=[
-        fixtures_dir,
+        fixtures_dir / "kg-views.sql",
         grant_schema_ownership("macrostrat_xdd", "xdd-writer"),
+    ],
+)
+
+text_vector_schema = SubsystemSchemaDefinition(
+    name="vectors",
+    fixtures=[
+        fixtures_dir / "text-vectors.sql",
         grant_schema_ownership("text_vectors", "xdd-writer"),
         # Needed for tileserver to read the schema
         grant_schema_ownership("text_vectors", "macrostrat"),
