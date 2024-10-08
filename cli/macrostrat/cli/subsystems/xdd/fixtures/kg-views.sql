@@ -14,7 +14,7 @@ DROP VIEW IF EXISTS macrostrat_api.kg_entity_tree;
 DROP VIEW IF EXISTS macrostrat_api.kg_entities;
 
 CREATE OR REPLACE VIEW macrostrat_api.kg_entity_type AS
-SELECT id, name, description
+SELECT id, name, description, color
 FROM macrostrat_xdd.entity_type;
 
 CREATE OR REPLACE VIEW macrostrat_api.kg_entities AS
