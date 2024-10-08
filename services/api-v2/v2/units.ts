@@ -464,29 +464,30 @@ module.exports = function (req, res, next, cb) {
           req.query.econ_type ||
           req.query.econ_class
         ) {
-          where +=
-            " AND units.id = ANY(SELECT unit_econs.unit_id FROM macrostrat.unit_econs JOIN macrostrat.econs on econ_id=econs.id WHERE :econ_field";
-
+          let econ_field;
           if (req.query.econ_id) {
-            where += " = ANY(ARRAY[:econ]))";
             params["econ"] = larkin.parseMultipleIds(req.query.econ_id);
-            params["econ_field"] = "econs.id";
+            econ_field = "econs.id";
           } else if (req.query.econ) {
-            where += " = ANY(ARRAY[:econ]))";
             params["econ"] = larkin.parseMultipleStrings(req.query.econ);
-            params["econ_field"] = "econs.econ";
+            econ_field = "econs.econ";
           }
           if (req.query.econ_type) {
-            where += " = ANY(ARRAY[:econ]))";
             params["econ"] = larkin.parseMultipleStrings(req.query.econ_type);
-            params["econ_field"] = "econs.econ_type";
+            econ_field = "econs.econ_type";
           }
           if (req.query.econ_class) {
-            where += " = ANY(ARRAY[:econ]))";
             params["econ"] = larkin.parseMultipleStrings(req.query.econ_class);
-            params["econ_field"] = "econs.econ_class";
+            econ_field = "econs.econ_class";
           }
+
+          where +=
+            ` AND units.id = ANY(SELECT unit_econs.unit_id 
+            FROM macrostrat.unit_econs 
+            JOIN macrostrat.econs on econ_id=${econ_field}
+            WHERE ${econ_field} = ANY(:econ))`;
         }
+
 
         if (req.query.cltn_id) {
           where +=
@@ -509,9 +510,8 @@ module.exports = function (req, res, next, cb) {
           "summarize_measures" in req.query
             ? "lookup_unit_attrs_api.measure_long"
             : "lookup_unit_attrs_api.measure_short";
-
+        //TODO add DISTINCT ON (units.id) to output only unique unit objects
         var columnList = `
-      DISTINCT ON (units.id)
       units.id AS unit_id,
       units_sections.section_id AS section_id,
       units_sections.col_id AS col_id,
@@ -519,10 +519,10 @@ module.exports = function (req, res, next, cb) {
       cols.col_area,
       units.strat_name AS unit_name,
       unit_strat_names.strat_name_id,
-      COALESCE(mbr_name, '') AS Mbr,
-      COALESCE(fm_name, '') AS Fm,
-      COALESCE(gp_name, '') AS Gp,
-      COALESCE(sgp_name, '') AS SGp,
+      COALESCE(mbr_name, '') AS "Mbr",
+      COALESCE(fm_name, '') AS "Fm",
+      COALESCE(gp_name, '') AS "Gp",
+      COALESCE(sgp_name, '') AS "SGp",
       lookup_units.t_age::float,
       lookup_units.b_age::float,
       units.max_thick::float,
@@ -585,6 +585,7 @@ module.exports = function (req, res, next, cb) {
       ${limit}`;
 
         larkin.queryPg("burwell", sql, params, function (error, result) {
+          console.log(result)
           if (error) {
             console.log(error);
             callback(error);
