@@ -49,25 +49,11 @@ res AS (
         AND le.model_id = term.model_id
   WHERE geom IS NOT NULL
 ),
-boundaries AS (
-  SELECT
-    term.lower_bound,
-    term.upper_bound
-  FROM term
-  WHERE :norm_method = 'global'
-  UNION ALL
-  SELECT
-    min(raw_similarity) AS lower_bound,
-    max(raw_similarity) AS upper_bound
-  FROM res
-  WHERE :norm_method = 'tile'
-),
 res2 AS (
   SELECT
     res.*,
     -- cosine similarity between the term and the legend embedding
-    (raw_similarity - lower_bound) / (upper_bound - lower_bound)  AS similarity
-  FROM res
-  JOIN boundaries ON true
+    (raw_similarity - term.lower_bound) / (term.upper_bound - term.lower_bound)  AS similarity
+  FROM res, term
 )
 SELECT * FROM res2

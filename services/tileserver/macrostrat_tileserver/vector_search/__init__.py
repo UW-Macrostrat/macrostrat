@@ -58,7 +58,7 @@ async def get_tile(
         model_name=model_name,
         linesize=linesize,
         term_id=term_id,
-        norm_method=norm_method,
+        # norm_method=norm_method,
         layer_name="units",
     )
 
