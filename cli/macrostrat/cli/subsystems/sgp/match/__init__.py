@@ -8,12 +8,12 @@ from pathlib import Path
 from geoalchemy2 import Geometry, WKBElement
 from geopandas import GeoDataFrame, sjoin
 from pandas import DataFrame, read_sql
-from psycopg2.extensions import register_adapter, QuotedString
 from pydantic import BaseModel
 from rich.live import Live
 from rich.table import Table
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql import text
+from typer import Option
 
 from macrostrat.cli.database import get_db
 from macrostrat.core import app
@@ -27,10 +27,6 @@ from .clean_strat_name import (
 from ..utils import get_sgp_samples, stored_procedure, write_to_file
 
 here = Path(__file__).parent
-
-register_adapter(
-    StratNameTextMatch, lambda x: QuotedString(format_name(x, use_rich=False))
-)
 
 
 def get_columns_data_frame():
@@ -64,6 +60,11 @@ class MatchComparison(Enum):
     Fuzzy = "fuzzy"
 
 
+class MatchSet(Enum):
+    Initial = "initial"
+    All = "all"
+
+
 def import_sgp_data(
     out_file: Path = None,
     verbose: bool = False,
@@ -71,6 +72,7 @@ def import_sgp_data(
     column: int = None,
     match: list[MatchType] = None,
     reset: bool = False,
+    _set: MatchSet = Option(MatchSet.Initial, "--set"),
     # comparison: MatchComparison = MatchComparison.Included.value,
 ):
     """
@@ -78,7 +80,7 @@ def import_sgp_data(
     """
     M = get_db()
 
-    samples = get_sgp_samples("initial-match-samples")
+    samples = get_sgp_samples(f"{_set.value}-match-samples")
 
     # Run a small sample for testing
     if sample is not None:
@@ -152,6 +154,7 @@ def import_sgp_data(
 
     # Summarize the counts
     _match = counts["strat_names"].apply(lambda x: len(x) > 0)
+
     print_counts(app.console, "candidate stratigraphic name", counts[_match], n_total)
 
     # Add empty columns for match information
@@ -184,6 +187,10 @@ def import_sgp_data(
     # Create a data frame of matches with the same index as the counts
     matches = DataFrame(matches).T
     # Rename columns
+
+    if matches.empty:
+        app.console.print("No matches found.")
+        return
 
     # Add interpreted age information by taking the midpoint ages
     ix = matches.columns.get_loc("max_age")
@@ -220,11 +227,11 @@ def import_sgp_data(
         samples["match_mid_age"].astype(float) - samples["interpreted_age"]
     ).round(2)
 
+    samples["strat_names"] = samples["strat_names"].apply(format_names, use_rich=False)
+
     if out_file is not None:
         # Convert field to be more suitable for export
-        samples["strat_names"] = samples["strat_names"].apply(
-            format_names, use_rich=False
-        )
+
         write_to_file(samples, out_file)
     else:
         # Check if table exists
@@ -232,7 +239,7 @@ def import_sgp_data(
             M.run_sql(here.parent / "sql" / "schema.sql")
 
         # Create columns to store how the match was made
-        samples["match_set"] = "initial"
+        samples["match_set"] = _set.value
 
         samples["geom"] = samples["geom"].apply(lambda x: WKBElement(x.wkb, srid=4326))
         # samples.drop(columns=["geom"], inplace=True)
@@ -302,6 +309,9 @@ def generate_table(status: MatchStatus):
 
 
 def print_counts(console, category, subset, target):
+    if len(subset) == 0:
+        console.print(f"No samples have any {category}.", style="yellow")
+        return
     match_count = subset["count"].sum()
     console.print(
         f"{match_count} samples have at least one {category}.",
