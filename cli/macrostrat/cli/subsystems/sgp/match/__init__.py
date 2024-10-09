@@ -13,7 +13,6 @@ from rich.live import Live
 from rich.table import Table
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql import text
-from typer import Option
 
 from macrostrat.cli.database import get_db
 from macrostrat.core import app
@@ -60,11 +59,6 @@ class MatchComparison(Enum):
     Fuzzy = "fuzzy"
 
 
-class MatchSet(Enum):
-    Initial = "initial"
-    All = "all"
-
-
 def import_sgp_data(
     out_file: Path = None,
     verbose: bool = False,
@@ -72,7 +66,6 @@ def import_sgp_data(
     column: int = None,
     match: list[MatchType] = None,
     reset: bool = False,
-    _set: MatchSet = Option(MatchSet.Initial, "--set"),
     # comparison: MatchComparison = MatchComparison.Included.value,
 ):
     """
@@ -80,7 +73,12 @@ def import_sgp_data(
     """
     M = get_db()
 
-    samples = get_sgp_samples(f"{_set.value}-match-samples")
+    samples = get_sgp_samples("all-match-samples")
+
+    app.console.print(
+        f"Got {len(samples)} samples from the SGP database.",
+        style="green",
+    )
 
     # Run a small sample for testing
     if sample is not None:
@@ -105,8 +103,10 @@ def import_sgp_data(
 
     n_total = len(res)
     n_too_many = counts[counts.index > 1].sum()
-    n_matched = counts[1]
-    n_not_matched = counts.get(0, 0)
+
+    # get number with col_id
+    n_matched = len(res[res["col_id"].notnull()])
+    n_not_matched = len(res[res["col_id"].isnull()])
 
     app.console.print(
         f"Matched {n_matched} of {n_total} measurements to a Macrostrat column.",
@@ -144,7 +144,7 @@ def import_sgp_data(
         .apply(lambda x: tuple(sorted(x)))
     )
 
-    app.console.print(f"Grouped {len(counts)} unique stratigraphic name groups.")
+    app.console.print(f"Found {len(counts)} unique stratigraphic name groups.")
 
     if verbose:
         for ix, row in counts.iterrows():
@@ -238,13 +238,7 @@ def import_sgp_data(
         if reset or not M.inspector.has_table("sgp_matches", schema="sgp"):
             M.run_sql(here.parent / "sql" / "schema.sql")
 
-        # Create columns to store how the match was made
-        samples["match_set"] = _set.value
-
         samples["geom"] = samples["geom"].apply(lambda x: WKBElement(x.wkb, srid=4326))
-        # samples.drop(columns=["geom"], inplace=True)
-
-        # Write to database
 
         samples.to_sql(
             "sgp_matches",
@@ -309,6 +303,8 @@ def generate_table(status: MatchStatus):
 
 
 def print_counts(console, category, subset, target):
+    console.print(category.capitalize() + "s", style="bold")
+
     if len(subset) == 0:
         console.print(f"No samples have any {category}.", style="yellow")
         return
@@ -322,6 +318,7 @@ def print_counts(console, category, subset, target):
             f"{target - match_count} samples have no {category}.",
             style="yellow",
         )
+    console.print()
 
 
 def format_names(strat_names, **kwargs):

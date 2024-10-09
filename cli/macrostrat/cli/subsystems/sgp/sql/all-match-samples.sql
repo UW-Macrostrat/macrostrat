@@ -36,12 +36,9 @@ WITH a AS (SELECT
         ia.interpreted_age_notes, ia.min_age, ia.max_age
   ORDER BY s.sample_id
 )
-SELECT *
+SELECT a.*,
+  CASE WHEN (data_source IN ('USGS-CMIBS', 'USGS-NGDB') AND age_by IN ('Husson', 'Peters'))
+  THEN 'samples matched to Macrostrat units prior to 2024'
+  ELSE 'new match attempt'
+  END AS match_set
 FROM a
--- Don't include samples from USGS-CMIBS and USGS-NGDB
-WHERE NOT (
-    data_source IN ('USGS-CMIBS', 'USGS-NGDB')
-    AND age_by IN ('Husson', 'Peters')
-  )
-AND geom IS NOT NULL;
-
