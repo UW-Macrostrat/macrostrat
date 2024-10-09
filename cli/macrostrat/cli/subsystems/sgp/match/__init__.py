@@ -7,7 +7,7 @@ from pathlib import Path
 
 from geoalchemy2 import Geometry, WKBElement
 from geopandas import GeoDataFrame, sjoin
-from pandas import DataFrame, read_sql
+from pandas import DataFrame, read_sql, isna
 from pydantic import BaseModel
 from rich.live import Live
 from rich.table import Table
@@ -90,6 +90,8 @@ def import_sgp_data(
         columns=["member", "formation", "group", "verbatim_strat"], inplace=True
     )
 
+    app.console.print("\nMacrostrat columns", style="bold")
+
     # Join samples to columns
     columns = get_columns_data_frame()
     sample_locs = samples.drop(columns=[i for i in samples.columns if i != "geom"])
@@ -109,23 +111,23 @@ def import_sgp_data(
     n_not_matched = len(res[res["col_id"].isnull()])
 
     app.console.print(
-        f"Matched {n_matched} of {n_total} measurements to a Macrostrat column.",
+        f"Matched {n_matched} of {n_total} samples to a Macrostrat column.",
         style="green",
     )
 
     if n_too_many > 0:
         app.console.print(
-            f"{n_too_many} measurements have multiple matched columns.", style="yellow"
+            f"{n_too_many} samples have multiple matched columns.", style="yellow"
         )
     if n_not_matched > 0:
         app.console.print(
-            f"{n_not_matched} measurements have no matched columns.", style="yellow"
+            f"{n_not_matched} samples have no matched columns.", style="yellow"
         )
     if n_too_many + n_not_matched == 0:
         app.console.print("All measurements matched to a single column.", style="green")
 
     # Augment the samples with the matched column
-    samples = samples.join(res, on="sample_id")
+    samples = samples.join(res, on="sample_id", how="left")
 
     # If we have specified a single column, filter to that column
     if column is not None:
@@ -144,6 +146,8 @@ def import_sgp_data(
         .apply(lambda x: tuple(sorted(x)))
     )
 
+    app.console.print("\nStratigraphic names", style="bold")
+
     app.console.print(f"Found {len(counts)} unique stratigraphic name groups.")
 
     if verbose:
@@ -158,6 +162,21 @@ def import_sgp_data(
     print_counts(app.console, "candidate stratigraphic name", counts[_match], n_total)
 
     # Add empty columns for match information
+
+    app.console.print("\nUnit matching", style="bold")
+
+    type_list = join_items(
+        [f"[underline]{v.value}[/underline]" for v in get_match_types(match)],
+        sep=", ",
+        last=" or ",
+    )
+
+    app.console.print(
+        "Matching based on",
+        type_list,
+        "\n",
+        style="dim",
+    )
 
     status = MatchStatus(
         success=0,
@@ -214,7 +233,7 @@ def import_sgp_data(
     # into that data frame.
     samples = (
         samples.reset_index()
-        .merge(counts, on=["col_id", "source_text"])
+        .merge(counts, on=["col_id", "source_text"], how="left")
         .set_index("sample_id")
     )
 
@@ -238,7 +257,9 @@ def import_sgp_data(
         if reset or not M.inspector.has_table("sgp_matches", schema="sgp"):
             M.run_sql(here.parent / "sql" / "schema.sql")
 
-        samples["geom"] = samples["geom"].apply(lambda x: WKBElement(x.wkb, srid=4326))
+        samples["geom"] = samples["geom"].apply(
+            lambda x: x if isna(x) else WKBElement(x.wkb, srid=4326)
+        )
 
         samples.to_sql(
             "sgp_matches",
@@ -303,14 +324,13 @@ def generate_table(status: MatchStatus):
 
 
 def print_counts(console, category, subset, target):
-    console.print(category.capitalize() + "s", style="bold")
 
     if len(subset) == 0:
         console.print(f"No samples have any {category}.", style="yellow")
         return
     match_count = subset["count"].sum()
     console.print(
-        f"{match_count} samples have at least one {category}.",
+        f"{match_count} samples have one or more {category}.",
         style="green bold" if match_count == target else None,
     )
     if match_count < target:
@@ -322,10 +342,25 @@ def print_counts(console, category, subset, target):
 
 
 def format_names(strat_names, **kwargs):
+    # Ignore nan values
+    if isna(strat_names):
+        return strat_names
     return ", ".join([format_name(i, **kwargs) for i in strat_names])
 
 
 _column_unit_index = {}
+
+
+def get_match_types(types: list[MatchType] | None) -> list[MatchType]:
+    if types is None:
+        return [
+            MatchType.ColumnUnits,
+            MatchType.Concepts,
+            MatchType.FootprintIndex,
+            MatchType.AdjacentCols,
+            MatchType.Synonyms,
+        ]
+    return types
 
 
 def get_column_units(conn, col_id, types: list[MatchType] = None):
@@ -337,14 +372,7 @@ def get_column_units(conn, col_id, types: list[MatchType] = None):
     if col_id in _column_unit_index:
         return _column_unit_index[col_id]
 
-    if types is None or len(types) == 0:
-        types = [
-            MatchType.ColumnUnits,
-            MatchType.Concepts,
-            MatchType.FootprintIndex,
-            MatchType.AdjacentCols,
-            MatchType.Synonyms,
-        ]
+    types = get_match_types(types)
 
     units_df = read_sql(
         stored_procedure("column-strat-names"),
@@ -469,3 +497,11 @@ def postgres_upsert(table, conn, keys, data_iter):
         set_={c.key: c for c in insert_statement.excluded},
     )
     conn.execute(upsert_statement)
+
+
+def join_items(items, sep=", ", last=" and "):
+    if len(items) == 0:
+        return ""
+    if len(items) == 1:
+        return items[0]
+    return sep.join(items[:-1]) + last + items[-1]
