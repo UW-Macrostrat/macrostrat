@@ -510,8 +510,9 @@ module.exports = function (req, res, next, cb) {
           "summarize_measures" in req.query
             ? "lookup_unit_attrs_api.measure_long"
             : "lookup_unit_attrs_api.measure_short";
-        //TODO add DISTINCT ON (units.id) to output only unique unit objects
+
         var columnList = `
+        DISTINCT ON (units.id)
       units.id AS unit_id,
       units_sections.section_id AS section_id,
       units_sections.col_id AS col_id,
