@@ -3,11 +3,12 @@ from pathlib import Path
 
 import toml
 from dynaconf import Dynaconf
+from rich.console import Console
+from typer import Typer, get_app_dir
+
 from macrostrat.app_frame import Application, Subsystem, SubsystemManager
 from macrostrat.app_frame.control_command import OrderCommands
 from macrostrat.utils import get_logger
-from rich.console import Console
-from typer import Typer, get_app_dir
 
 from .console import console_theme
 from .exc import MacrostratError
