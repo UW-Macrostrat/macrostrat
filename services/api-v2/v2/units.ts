@@ -512,6 +512,7 @@ module.exports = function (req, res, next, cb) {
             : "lookup_unit_attrs_api.measure_short";
 
         var columnList = `
+        DISTINCT ON (units.id)
       units.id AS unit_id,
       units_sections.section_id AS section_id,
       units_sections.col_id AS col_id,
@@ -570,7 +571,7 @@ module.exports = function (req, res, next, cb) {
         }
 
         var sql = `
-        SELECT ${columnList}
+        WITH orig_query AS (SELECT ${columnList}
         FROM macrostrat.units
         LEFT JOIN macrostrat.lookup_unit_attrs_api ON lookup_unit_attrs_api.unit_id = units.id
         LEFT JOIN macrostrat.lookup_units ON units.id = lookup_units.unit_id
@@ -581,8 +582,10 @@ module.exports = function (req, res, next, cb) {
         LEFT JOIN macrostrat.lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id
         LEFT JOIN macrostrat.unit_notes ON unit_notes.unit_id=units.id
         WHERE ${where}
-      ORDER BY ${orderby.length > 0 ? orderby.join(", ") + "," : ""} lookup_units.t_age ASC
-      ${limit}`;
+      ${orderby.length > 0 ? `ORDER BY ${orderby.join(", ")} ASC` : ""}
+      ${limit})
+      SELECT * FROM orig_query
+      ORDER BY t_age ASC`
 
         larkin.queryPg("burwell", sql, params, function (error, result) {
           if (error) {
