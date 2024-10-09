@@ -5,18 +5,18 @@ Subsystem for SGP matching
 from enum import Enum
 from pathlib import Path
 
-import IPython
+from geoalchemy2 import Geometry, WKBElement
 from geopandas import GeoDataFrame, sjoin
 from pandas import DataFrame, read_sql
+from psycopg2.extensions import register_adapter, QuotedString
 from pydantic import BaseModel
 from rich.live import Live
 from rich.table import Table
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql import text
 
 from macrostrat.cli.database import get_db
 from macrostrat.core import app
-
-from ..utils import get_sgp_samples, stored_procedure, write_to_file
 from .clean_strat_name import (
     StratNameTextMatch,
     StratRank,
@@ -24,8 +24,13 @@ from .clean_strat_name import (
     clean_strat_name_text,
     format_name,
 )
+from ..utils import get_sgp_samples, stored_procedure, write_to_file
 
 here = Path(__file__).parent
+
+register_adapter(
+    StratNameTextMatch, lambda x: QuotedString(format_name(x, use_rich=False))
+)
 
 
 def get_columns_data_frame():
@@ -65,6 +70,7 @@ def import_sgp_data(
     sample: int = None,
     column: int = None,
     match: list[MatchType] = None,
+    reset: bool = False,
     # comparison: MatchComparison = MatchComparison.Included.value,
 ):
     """
@@ -221,7 +227,27 @@ def import_sgp_data(
         )
         write_to_file(samples, out_file)
     else:
-        IPython.embed()
+        # Check if table exists
+        if reset or not M.inspector.has_table("sgp_matches", schema="sgp"):
+            M.run_sql(here.parent / "sql" / "schema.sql")
+
+        # Create columns to store how the match was made
+        samples["match_set"] = "initial"
+
+        samples["geom"] = samples["geom"].apply(lambda x: WKBElement(x.wkb, srid=4326))
+        # samples.drop(columns=["geom"], inplace=True)
+
+        # Write to database
+
+        samples.to_sql(
+            "sgp_matches",
+            M.engine,
+            if_exists="append",
+            schema="sgp",
+            method=postgres_upsert,
+            chunksize=1000,
+            dtype={"geom": Geometry("POINT", srid=4326)},
+        )
 
 
 def log_match_data(row, _match, *, verbose=False, console=app.console):
@@ -422,3 +448,17 @@ def merge_text(row):
 
 def deduplicate_strat_names(samples):
     return list(set(samples))
+
+
+def postgres_upsert(table, conn, keys, data_iter):
+    # Get name of primary key constraint from DDL
+
+    data = [dict(zip(keys, row)) for row in data_iter]
+
+    insert_statement = insert(table.table).values(data)
+    upsert_statement = insert_statement.on_conflict_do_update(
+        # constraint=f"{table.table.name}_pkey",
+        index_elements=["sample_id"],
+        set_={c.key: c for c in insert_statement.excluded},
+    )
+    conn.execute(upsert_statement)
