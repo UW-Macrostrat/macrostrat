@@ -4,7 +4,7 @@ Subsystem for SGP matching
 
 from typer import Typer
 
-from .match import import_sgp_data
+from .match import import_sgp_data, log_matches
 from .paleogeography import compute_paleo_positions
 
 sgp = Typer(
@@ -14,3 +14,4 @@ sgp = Typer(
 )
 sgp.command(name="match-units")(import_sgp_data)
 sgp.command(name="paleogeography")(compute_paleo_positions)
+sgp.command(name="log-matches")(log_matches)

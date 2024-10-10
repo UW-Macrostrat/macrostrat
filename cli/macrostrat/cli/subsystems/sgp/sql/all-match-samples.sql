@@ -4,9 +4,6 @@ WITH a AS (SELECT
   s.is_standard,
   s.max_depth,
   s.composite_height_m,
-  st.section_name,
-  st.country,
-  st.state_province,
   ST_SetSRID(ST_MakePoint(st.long_dec, st.lat_dec), 4326) AS geom,
   l.verbatim_strat,
   dl.gp                                                                AS "group",
@@ -32,19 +29,16 @@ WITH a AS (SELECT
       JOIN data_source ds ON ds.data_source_id = dsb.data_source_id
   GROUP BY s.sample_id, ds.data_source, s.original_num, gc.geol_context_id, s.coll_event_id,
         s.height_depth_m,
-        st.section_name, st.site_type, st.country, st.state_province, st.county, st.lat_dec, st.long_dec,
+        st.lat_dec, st.long_dec,
         st.metamorphic_bin,
         l.verbatim_strat, dl.gp, dl.fm, dl.mbr,
         ia.interpreted_age,
         ia.interpreted_age_notes, ia.min_age, ia.max_age
   ORDER BY s.sample_id
 )
-SELECT *
+SELECT a.*,
+  CASE WHEN (data_source IN ('USGS-CMIBS', 'USGS-NGDB') AND age_by IN ('Husson', 'Peters'))
+  THEN 'samples matched to Macrostrat units prior to 2024'
+  ELSE 'new match attempt'
+  END AS match_set
 FROM a
-WHERE data_source IN ('USGS-CMIBS', 'USGS-NGDB')
-  AND age_by IN ('Husson', 'Peters');
-
--- Target count: 49505
--- Actual count (initial): 49673
----- Now that we have updated the WHERE statement,
----- we have hit the target count.

@@ -6,7 +6,7 @@ from rich import print
 from typer import Typer
 
 from ...database import SubsystemSchemaDefinition, get_db
-from ...database.utils import grant_schema_ownership
+from ...database.utils import grant_schema_ownership, grant_permissions
 
 __here__ = Path(__file__).parent
 fixtures_dir = __here__ / "fixtures"
@@ -26,7 +26,7 @@ text_vector_schema = SubsystemSchemaDefinition(
         fixtures_dir / "text-vectors.sql",
         grant_schema_ownership("text_vectors", "xdd-writer"),
         # Needed for tileserver to read the schema
-        grant_schema_ownership("text_vectors", "macrostrat"),
+        grant_permissions("text_vectors", "macrostrat", "ALL"),
     ],
 )
 
