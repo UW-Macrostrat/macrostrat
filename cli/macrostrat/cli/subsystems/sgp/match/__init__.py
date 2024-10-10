@@ -200,7 +200,7 @@ def import_sgp_data(
             )
             matches[ix] = _match
             status.increment(row["count"], _match is not None)
-            log_match_data(row, _match, verbose=verbose, console=live.console)
+            # log_match_data(row, _match, verbose=verbose, console=live.console)
             live.update(generate_table(status))
 
     # Create a data frame of matches with the same index as the counts
@@ -255,7 +255,7 @@ def import_sgp_data(
     else:
         # Check if table exists
         if reset or not M.inspector.has_table("sgp_matches", schema="sgp"):
-            M.run_sql(here.parent / "sql" / "schema.sql")
+            M.run_sql(stored_procedure("schema"))
 
         samples["geom"] = samples["geom"].apply(
             lambda x: x if isna(x) else WKBElement(x.wkb, srid=4326)
@@ -280,15 +280,49 @@ def log_match_data(row, _match, *, verbose=False, console=app.console):
         message += f" [dim italic]{_match.spatial_basis}[/]"
     if verbose or _match is None:
         sep = "\n"
+        txt = row.source_text
+        if txt == "":
+            txt = "<empty string>"
         console.print(
-            f"[dim italic]{row.source_text}[/]{sep}→ {format_names(row.strat_names)}{sep}→ {message}"
+            f"Text: [dim italic]{txt}[/]{sep}→ Matches: {format_names(row.strat_names)}{sep}→ {message}"
         )
     if verbose or _match is None:
-        console.print("[dim]- col_id", int(row.col_id))
+        if isna(row.col_id):
+            console.print("[dim]- No matched column.")
+        else:
+            console.print("[dim]- col_id", int(row.col_id))
         if _match is not None:
             console.print("[dim]- unit_id", _match.unit_id)
             console.print(f"[dim]- ages", f"{_match.b_age:.1f}-{_match.t_age:.1f} Ma")
+
+        if row["n_samples"]:
+            console.print(f"- {row['n_samples']} samples", style="dim")
         console.print()
+
+
+def log_match_row(row, *, verbose=False, console=app.console):
+    match = None
+    if not isna(row["unit_id"]):
+        match = row
+    log_match_data(row, match, verbose=verbose, console=console)
+
+
+def log_matches(verbose: bool = False):
+    console = app.console
+    M = get_db()
+
+    # Get the matches
+    matches = read_sql(
+        stored_procedure("match-results"),
+        M.engine,
+    )
+
+    if matches.empty:
+        console.print("No matches found.")
+        return
+
+    for ix, row in matches.iterrows():
+        log_match_row(row, verbose=verbose, console=console)
 
 
 class MatchStatus(BaseModel):
@@ -345,6 +379,10 @@ def format_names(strat_names, **kwargs):
     # Ignore nan values
     if isna(strat_names):
         return strat_names
+    # if it's already a string, return it
+    if isinstance(strat_names, str):
+        return strat_names
+
     return ", ".join([format_name(i, **kwargs) for i in strat_names])
 
 
