@@ -6,7 +6,7 @@ from rich import print
 from typer import Typer
 
 from ...database import SubsystemSchemaDefinition, get_db
-from ...database.utils import grant_schema_ownership, grant_permissions
+from ...database.utils import grant_permissions, grant_schema_ownership
 
 __here__ = Path(__file__).parent
 fixtures_dir = __here__ / "fixtures"
