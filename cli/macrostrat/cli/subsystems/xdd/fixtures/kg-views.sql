@@ -249,17 +249,20 @@ JOIN macrostrat_xdd.source_text st
 ORDER BY mr.id;
 
 CREATE OR REPLACE VIEW macrostrat_api.kg_source_text AS
-SELECT * FROM macrostrat_xdd.source_text
-JOIN LATERAL (
-    SELECT
-        count(distinct mr.id) n_runs,
-        count(distinct e.id) n_entities,
-        count((coalesce(e.strat_name_id, e.lith_id, e.lith_att_id)::boolean)) n_matches,
-        count(e.strat_name_id::boolean) n_strat_names,
-        min(mr.timestamp) created,
-        max(mr.timestamp) last_update
-    FROM macrostrat_xdd.model_run mr
-    LEFT JOIN macrostrat_xdd.entity e
-      ON e.model_run_id = mr.id
-    WHERE mr.source_text_id = source_text.id
-) stats ON true;
+WITH stats AS (
+  SELECT
+    mr.source_text_id,
+    count(distinct mr.id) n_runs,
+    count(distinct e.id) n_entities,
+    count((coalesce(e.strat_name_id, e.lith_id, e.lith_att_id)::boolean)) n_matches,
+    count(e.strat_name_id::boolean) n_strat_names,
+    min(mr.timestamp) created,
+    max(mr.timestamp) last_update
+  FROM macrostrat_xdd.model_run mr
+         LEFT JOIN macrostrat_xdd.entity e
+                   ON e.model_run_id = mr.id
+  GROUP BY mr.source_text_id
+)
+SELECT st.*, n_runs, n_entities, n_matches, n_strat_names, created, last_update
+FROM macrostrat_xdd.source_text st
+JOIN stats s ON s.source_text_id = st.id;
