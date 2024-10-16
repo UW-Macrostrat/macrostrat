@@ -230,13 +230,19 @@ async def redirect_authorization(return_url: str = None):
 async def redirect_callback(code: str, state: Optional[str] = None):
     """Exchange the code for a token and redirect to the state URL"""
 
+    uri = os.environ['REDIRECT_URI']
     data = {
         'grant_type': 'authorization_code',
         'client_id': os.environ['OAUTH_CLIENT_ID'],
         'client_secret': os.environ['OAUTH_CLIENT_SECRET'],
         'code': code,
-        'redirect_uri': os.environ['REDIRECT_URI']
+        'redirect_uri': uri
     }
+
+    # Get the domain for the redirect URL
+    parsed_url = urllib.parse.urlparse(uri)
+    domain = parsed_url.netloc
+
 
     async with aiohttp.ClientSession() as session:
         async with session.post(os.environ['OAUTH_TOKEN_URL'], data=data) as token_response:
@@ -284,7 +290,16 @@ async def redirect_callback(code: str, state: Optional[str] = None):
             )
 
             response = RedirectResponse(state if state else "/")
-            response.set_cookie(key="Authorization", value=f"Bearer {access_token}", httponly=True, samesite="lax")
+            redirect_domain = urllib.parse.urlparse(state).netloc
+
+            # Set a cookie for the API domain
+            response.set_cookie(key="Authorization", value=f"Bearer {access_token}", httponly=True, samesite="lax",
+                                domain=domain)
+            # Set the same cookie for localhost if we're doing a redirect to another domain (this is likely a dev mode request)
+            # We may want to restrict this to development environments in the future...
+            if redirect_domain not in [domain, ""]:
+                response.set_cookie(key="Authorization", value=f"Bearer {access_token}", httponly=True, samesite="lax",
+                                    domain="localhost")
 
             return response
 
