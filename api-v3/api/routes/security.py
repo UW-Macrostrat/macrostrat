@@ -267,12 +267,19 @@ async def redirect_callback(code: str, state: Optional[str] = None):
                     user_data.get('email', '')
                 )
 
+            names = [group.name for group in user.groups]
+
+            # Check if the user is in the admin group to set the appropriate database role
+            role = "web_user"
+            if "admin" in names:
+                role = "web_admin"
+
             access_token = create_access_token(
                 data={
                     "sub": user.sub,
-                    "role": "web_user",  # For PostgREST
+                    "role": role,  # For PostgREST
                     "groups": [group.id for group in user.groups],
-                    "group_names": [group.name for group in user.groups]
+                    "group_names": names
                 }
             )
 
