@@ -20,6 +20,7 @@ from jose import JWTError, jwt
 from pydantic import BaseModel
 from sqlalchemy import select
 from starlette.status import HTTP_401_UNAUTHORIZED
+from warnings import warn
 
 dotenv.load_dotenv()
 
@@ -58,12 +59,24 @@ class GroupTokenRequest(BaseModel):
     expiration: int
     group_id: int
 
+access_token_key = "access_token"
+# Coming soon
+# refresh_token_key = "refresh_token"
 
 class OAuth2AuthorizationCodeBearerWithCookie(OAuth2AuthorizationCodeBearer):
     """Tweak FastAPI's OAuth2AuthorizationCodeBearer to use a cookie instead of a header"""
 
     async def __call__(self, request: Request) -> Optional[str]:
-        authorization = request.cookies.get("Authorization")  # authorization = request.headers.get("Authorization")
+        authorization = request.cookies.get(access_token_key)
+        if authorization is None:
+            # Fall back to deprecated cookie name
+            authorization = request.cookies.get("Authorization")
+            if authorization is not None:
+                warn("Authorization cookie is deprecated, please use access_token instead", DeprecationWarning)
+        if authorization is None:
+            # Use the header if the cookie isn't set
+            authorization = request.headers.get("Authorization")
+
         scheme, param = get_authorization_scheme_param(authorization)
         if not authorization or scheme.lower() != "bearer":
             if self.auto_error:
@@ -293,12 +306,15 @@ async def redirect_callback(code: str, state: Optional[str] = None):
             redirect_domain = urllib.parse.urlparse(state).netloc
 
             # Set a cookie for the API domain
+            response.set_cookie(key=access_token_key, value=f"Bearer {access_token}", httponly=True, samesite="lax",
+                                domain=domain)
+            # Continue setting deprecated cookie for backwards compatibility
             response.set_cookie(key="Authorization", value=f"Bearer {access_token}", httponly=True, samesite="lax",
                                 domain=domain)
             # Set the same cookie for localhost if we're doing a redirect to another domain (this is likely a dev mode request)
             # We may want to restrict this to development environments in the future...
             if redirect_domain not in [domain, ""]:
-                response.set_cookie(key="Authorization", value=f"Bearer {access_token}", httponly=True, samesite="lax",
+                response.set_cookie(key=access_token_key, value=f"Bearer {access_token}", httponly=True, samesite="lax",
                                     domain="localhost")
 
             return response
@@ -335,6 +351,7 @@ async def logout(response: Response):
 
     try:
         response.delete_cookie(key="Authorization")
+        response.delete_cookie(key=access_token_key)
 
     except KeyError:
         return {"status": "error", "message": "User is not logged in"}
