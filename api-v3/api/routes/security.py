@@ -69,11 +69,6 @@ class OAuth2AuthorizationCodeBearerWithCookie(OAuth2AuthorizationCodeBearer):
     async def __call__(self, request: Request) -> Optional[str]:
         authorization = request.cookies.get(access_token_key)
         if authorization is None:
-            # Fall back to deprecated cookie name
-            authorization = request.cookies.get("Authorization")
-            if authorization is not None:
-                warn("Authorization cookie is deprecated, please use access_token instead", DeprecationWarning)
-        if authorization is None:
             # Use the header if the cookie isn't set
             authorization = request.headers.get("Authorization")
 
@@ -308,14 +303,6 @@ async def redirect_callback(code: str, state: Optional[str] = None):
             # Set a cookie for the API domain
             response.set_cookie(key=access_token_key, value=f"Bearer {access_token}", httponly=True, samesite="lax",
                                 domain=domain)
-            # Continue setting deprecated cookie for backwards compatibility
-            response.set_cookie(key="Authorization", value=f"Bearer {access_token}", httponly=True, samesite="lax",
-                                domain=domain)
-            # Set the same cookie for localhost if we're doing a redirect to another domain (this is likely a dev mode request)
-            # We may want to restrict this to development environments in the future...
-            if redirect_domain not in [domain, ""]:
-                response.set_cookie(key=access_token_key, value=f"Bearer {access_token}", httponly=True, samesite="lax",
-                                    domain="localhost")
 
             return response
 
@@ -350,9 +337,7 @@ async def logout(response: Response):
     """Logout the active user"""
 
     try:
-        response.delete_cookie(key="Authorization")
         response.delete_cookie(key=access_token_key)
-
     except KeyError:
         return {"status": "error", "message": "User is not logged in"}
 
