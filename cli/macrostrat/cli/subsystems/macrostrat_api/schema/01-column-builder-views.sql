@@ -194,6 +194,9 @@ ON c.id = cr.col_id
 LEFT JOIN macrostrat.refs r
 ON cr.ref_id = r.id;
 
+
+
+
 CREATE OR REPLACE VIEW macrostrat_api.strat_names_meta AS
 SELECT * FROM macrostrat.strat_names_meta;
 
