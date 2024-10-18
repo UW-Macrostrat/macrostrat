@@ -13,6 +13,9 @@ DROP VIEW IF EXISTS macrostrat_api.kg_relationships;
 DROP VIEW IF EXISTS macrostrat_api.kg_entity_tree;
 DROP VIEW IF EXISTS macrostrat_api.kg_entities;
 
+
+CREATE ROLE "xdd-writer";
+
 CREATE OR REPLACE VIEW macrostrat_api.kg_entity_type AS
 SELECT id, name, description, color
 FROM macrostrat_xdd.entity_type;
