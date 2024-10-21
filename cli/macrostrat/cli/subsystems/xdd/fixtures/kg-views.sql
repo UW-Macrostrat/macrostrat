@@ -24,6 +24,18 @@ FROM macrostrat_xdd.entity_type;
 GRANT SELECT, INSERT, UPDATE, DELETE
   ON macrostrat_api.kg_entity_type TO web_admin;
 
+/** Create a view to mirror the all_runs table to model_runs.
+  This is a temporary view until Devesh and I can figure
+  out the right schema design for this.
+ */
+CREATE OR REPLACE VIEW macrostrat_xdd.model_run AS
+  SELECT *
+FROM macrostrat_xdd.all_runs;
+
+
+
+
+
 
 CREATE OR REPLACE VIEW macrostrat_api.kg_entities AS
 WITH strat_names AS (
@@ -58,7 +70,7 @@ FROM macrostrat_xdd.entity e
 JOIN macrostrat_xdd.entity_type et
   ON et.id = e.entity_type_id
 JOIN macrostrat_xdd.model_run mr
-    ON mr.id = e.model_run_id
+    ON mr.id = e.run_id
 LEFT JOIN strat_names sn
     ON sn.strat_name_id = e.strat_name_id
 LEFT JOIN liths l
@@ -155,7 +167,7 @@ WITH paper_strat_names AS (
     FROM macrostrat_xdd.publication p
     JOIN macrostrat_xdd.source_text st ON st.paper_id = p.paper_id
     JOIN macrostrat_xdd.model_run mr ON mr.source_text_id = st.id
-    JOIN macrostrat_xdd.entity e ON mr.id = e.model_run_id
+    JOIN macrostrat_xdd.entity e ON mr.id = e.run_id
     WHERE e.strat_name_id IS NOT NULL
     GROUP BY p.paper_id
 ),
@@ -230,7 +242,7 @@ FROM macrostrat_xdd.model m
 LEFT JOIN macrostrat_xdd.model_run mr
   ON mr.model_id = m.id
 LEFT JOIN macrostrat_xdd.entity e
-  ON e.model_run_id = mr.id
+  ON e.run_id = mr.id
 GROUP BY m.id;
 
 CREATE OR REPLACE VIEW macrostrat_api.kg_model_run AS
@@ -268,7 +280,7 @@ WITH stats AS (
     max(mr.timestamp) last_update
   FROM macrostrat_xdd.model_run mr
          LEFT JOIN macrostrat_xdd.entity e
-                   ON e.model_run_id = mr.id
+                   ON e.run_id = mr.id
   GROUP BY mr.source_text_id
 )
 SELECT st.*, n_runs, n_entities, n_matches, n_strat_names, created, last_update
