@@ -2,13 +2,13 @@ from contextlib import contextmanager
 from typing import Optional
 from uuid import uuid4
 
+from macrostrat.core.config import settings
+from macrostrat.database import Database
+from macrostrat.database.utils import run_query, run_sql
 from psycopg2.sql import Identifier
 from rich import print
 from sqlalchemy.engine import Engine, create_engine
 from sqlalchemy.engine.url import URL, make_url
-
-from macrostrat.core.config import settings
-from macrostrat.database.utils import run_query, run_sql
 
 from ._legacy import get_db
 
@@ -299,3 +299,39 @@ def grant_permissions(schema, user, *_permissions, owner=False):
 def grant_schema_ownership(schema, owner):
     """Higher-order function to grant ownership of a schema to a user"""
     return grant_permissions(schema, owner, owner=True)
+
+
+def grant_schema_usage(
+    db: Database,
+    schema: str,
+    role: str,
+    *,
+    tables: bool = True,
+    sequences: bool = False,
+):
+    """
+    Some basic permissions need to be set in order for the PostgREST service to
+    be able to access the schema.
+    :return:
+    """
+    params = dict(schema=Identifier(schema), role=Identifier(role))
+
+    db.run_sql("GRANT USAGE ON SCHEMA {schema} TO {role}", params)
+
+    if tables:
+        db.run_sql(
+            """
+        GRANT SELECT ON ALL TABLES IN SCHEMA {schema} TO {role};
+        ALTER DEFAULT PRIVILEGES IN SCHEMA {schema} GRANT SELECT ON TABLES TO {role};
+        """,
+            params,
+        )
+
+    if sequences:
+        db.run_sql(
+            """
+        GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA {schema} TO {role};
+        ALTER DEFAULT PRIVILEGES IN SCHEMA {schema} GRANT USAGE, SELECT ON SEQUENCES TO {role};
+        """,
+            params,
+        )

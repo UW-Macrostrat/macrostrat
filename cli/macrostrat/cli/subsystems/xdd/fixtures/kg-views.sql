@@ -21,7 +21,7 @@ SELECT id, name, description, color
 FROM macrostrat_xdd.entity_type;
 
 /** Allow entity types to be modified by administrators */
-GRANT SELECT, INSERT, UPDATE(name, description, color), DELETE
+GRANT SELECT, INSERT, UPDATE, DELETE
   ON macrostrat_api.kg_entity_type TO web_admin;
 
 
