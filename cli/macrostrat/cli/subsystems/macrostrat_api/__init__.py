@@ -47,6 +47,8 @@ class MacrostratAPISubsystem(MacrostratSubsystem):
         db = get_db()
         db.run_fixtures(__here__ / "roles.sql")
 
+        setup_postgrest_access("macrostrat_api")(db)
+
         self.app.console.print(
             "Reloading the PostgREST schema cache", style="green bold"
         )

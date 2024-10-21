@@ -17,8 +17,8 @@ xdd_schema = SubsystemSchemaDefinition(
     name="xdd",
     fixtures=[
         fixtures_dir / "kg-views.sql",
-        grant_schema_ownership("macrostrat_xdd", "xdd-writer"),
         setup_postgrest_access("macrostrat_xdd"),
+        grant_schema_ownership("macrostrat_xdd", "xdd-writer"),
     ],
 )
 
