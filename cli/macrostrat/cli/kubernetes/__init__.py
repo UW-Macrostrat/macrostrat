@@ -8,10 +8,9 @@ from os import environ
 from subprocess import run
 from typing import Optional
 
+from macrostrat.core import app as app_
 from rich import print
 from typer import Argument, Option, Typer
-
-from macrostrat.core import app as app_
 
 settings = app_.settings
 
@@ -32,6 +31,15 @@ def _kubectl(settings, args, **kwargs):
     """
     Run a kubectl command.
     """
+    proxy = settings.get("setup.kube_proxy", None)
+    shell = getattr(proxy, "shell", None)
+    if shell is not None:
+        command = getattr(proxy, "command")
+        # Run command in the appropriate shell and harvest environment variables
+        # into the Python context
+        proc = run(command, shell=True, capture_output=True, **kwargs)
+        # Update the environment with the output of the command
+
     namespace = getattr(settings, "kube_namespace", None)
     if namespace is None:
         raise Exception("No Kubernetes namespace specified.")

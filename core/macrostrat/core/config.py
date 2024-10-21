@@ -41,6 +41,16 @@ class MacrostratConfig(Dynaconf):
             next(keys)
             return [k for k in keys]
 
+    def get(self, key, default=None):
+        """Get a value from the settings object"""
+        key_path = key.split(".")
+        obj = self
+        for k in key_path:
+            obj = getattr(obj, k, None)
+            if obj is None:
+                return default
+        return obj
+
 
 settings = MacrostratConfig()
 
