@@ -189,10 +189,6 @@ async def get_groups(
 
 async def has_access(groups: list[int] = Depends(get_groups)) -> bool:
     """Check if the user has access to the group"""
-
-    if "ENVIRONMENT" in os.environ and os.environ["ENVIRONMENT"] == "development":
-        return True
-
     return 1 in groups
 
 
@@ -209,6 +205,11 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
         to_encode, os.environ["SECRET_KEY"], algorithm=os.environ["JWT_ENCRYPTION_ALGORITHM"]
     )
     return encoded_jwt
+
+
+def get_domain(url: str):
+    parsed_url = urllib.parse.urlparse(url)
+    return parsed_url.netloc
 
 
 @router.get("/login")
@@ -354,11 +355,10 @@ async def create_group_token(
 async def logout(response: Response):
     """Logout the active user"""
 
-    try:
-        response.delete_cookie(key=access_token_key)
-    except KeyError:
-        return {"status": "error", "message": "User is not logged in"}
-
+    main_domain = get_domain(os.environ["REDIRECT_URI"])
+    # Delete all instances of cookies that we might conceivably have set
+    for domain in [main_domain, "localhost", "127.0.0.1", None]:
+        response.delete_cookie(key=access_token_key, domain=domain)
     return {"status": "success"}
 
 
