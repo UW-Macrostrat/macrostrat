@@ -72,7 +72,7 @@ class OAuth2AuthorizationCodeBearerWithCookie(OAuth2AuthorizationCodeBearer):
         authorization = request.cookies.get(access_token_key)
         if authorization is None:
             # Use the header if the cookie isn't set
-            authorization = request.headers.get("Authorization")
+            authorization = request.headers.get(access_token_key)
 
         scheme, param = get_authorization_scheme_param(authorization)
         if not authorization or scheme.lower() != "bearer":
