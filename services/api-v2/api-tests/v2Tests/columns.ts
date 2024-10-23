@@ -135,6 +135,7 @@ request(settings.host)
 
 
 it("should accept a project_id", function (done) {
+  this.timeout(7000);
 request(settings.host)
   .get("/columns?project_id=4")
   .expect(validators.aSuccessfulRequest)

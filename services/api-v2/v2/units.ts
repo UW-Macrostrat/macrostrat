@@ -582,10 +582,10 @@ module.exports = function (req, res, next, cb) {
         LEFT JOIN macrostrat.lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id
         LEFT JOIN macrostrat.unit_notes ON unit_notes.unit_id=units.id
         WHERE ${where}
-      ${orderby.length > 0 ? `ORDER BY ${orderby.join(", ")} ASC` : ""}
-      ${limit})
+      ${orderby.length > 0 ? `ORDER BY ${orderby.join(", ")} ASC` : ""})
       SELECT * FROM orig_query
-      ORDER BY t_age ASC`
+      ORDER BY t_age ASC
+      ${limit}`
 
         larkin.queryPg("burwell", sql, params, function (error, result) {
           if (error) {
