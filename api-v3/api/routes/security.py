@@ -61,7 +61,7 @@ class GroupTokenRequest(BaseModel):
 
 
 access_token_key = "access_token"
-# Coming soon
+# TODO: Refresh tokens
 # refresh_token_key = "refresh_token"
 
 
