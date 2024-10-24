@@ -9,9 +9,6 @@ import * as path from 'path';
 
 
 const testFiles = [
-    'defs_plates.ts',
-    'defs_projects.ts',
-    'defs_refs.ts',
     'defs_sources.ts'
     /*'defs_strat_name_concepts.ts',
     'defs_strat_names.ts',

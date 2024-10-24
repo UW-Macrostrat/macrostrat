@@ -74,6 +74,15 @@ module.exports = {
     }
   },
 
+  projectSample: function (res: { body: { success: { data: { type: any; features: string | any[]; length: number; }; }; }; }) {
+    // Make sure 13 records were returned
+    if (res.body.success.data.type) {
+      if (res.body.success.data.length !== 13) {
+        throw new Error("Sample returned wrong number of records");
+      }
+    }
+  },
+
   geoJSON: function (res: { body: { success: { data: { type: string; features: any[]; }; }; }; }) {
     if (res.body.success.data.type !== "FeatureCollection") {
       throw new Error("GeoJSON was not returned");

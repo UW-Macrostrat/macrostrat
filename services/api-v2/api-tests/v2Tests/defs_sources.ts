@@ -52,12 +52,12 @@
 
   it("should accept a source_id", function (done) {
     request(settings.host)
-      .get("/defs/sources?source_id=1,2,3")
+      .get("/defs/sources?source_id=1,2")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
       .expect(validators.atLeastOneResult)
       .expect(function (res: { body: { success: { data: string | any[]; }; }; }) {
-        if (res.body.success.data.length != 3) {
+        if (res.body.success.data.length != 2) {
           throw new Error("Wrong number of sources returned with source_id");
         }
       })

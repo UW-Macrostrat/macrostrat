@@ -6,7 +6,9 @@ module.exports = function (req, res, next, cb) {
     return larkin.info(req, res, next);
   }
 
-  var sql = "SELECT plateid AS plate_id, names AS name FROM name_lookup",
+  //TODO need to figure out how to implement the alice db connection in larkin or
+  //merge the alice db into macrostrat.
+  var sql = "SELECT plateid AS plate_id, names AS name FROM alice.public.name_lookup",
     params = [];
 
   if (req.query.plate_id) {

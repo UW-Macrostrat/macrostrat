@@ -19,7 +19,7 @@
       .get("/defs/projects?sample")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.json)
-      .expect(validators.aSample)
+      .expect(validators.projectSample)
       .end(function (error: any, res: any) {
         if (error) return done(error);
         done();

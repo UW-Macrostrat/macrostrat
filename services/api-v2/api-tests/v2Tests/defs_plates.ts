@@ -2,6 +2,8 @@
     validators = require("../validators"),
     settings = require("../settings");
 
+ //TODO need to figure out how to implement the alice db connection in larkin or
+  //merge the alice db into macrostrat.
   it("should return metadata", function (done) {
     request(settings.host)
       .get("/defs/plates")
