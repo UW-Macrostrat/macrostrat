@@ -40,7 +40,7 @@ module.exports = function (req, res, next, cb) {
     LEFT JOIN macrostrat.cols ON cols.col_group_id = col_groups.id
     LEFT JOIN macrostrat.units_sections ON units_sections.col_id = cols.id
     ${where}
-    GROUP BY col_groups.id, cols.project_id;`
+    GROUP BY col_groups.id, cols.project_id `
 
   if ("sample" in req.query) {
     sql += " LIMIT 5";

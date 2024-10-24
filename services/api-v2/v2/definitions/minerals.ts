@@ -27,10 +27,10 @@ module.exports = function (req, res, next, cb) {
     sql += " WHERE minerals.id = ANY(:mineral_id)";
     params["mineral_id"] = larkin.parseMultipleIds(req.query.mineral_id);
   } else if (req.query.mineral) {
-    sql += " WHERE mineral = ANY(:mineral)";
+    sql += " WHERE mineral ILIKE ANY(:mineral)";
     params["mineral"] = larkin.parseMultipleStrings(req.query.mineral);
   } else if (req.query.mineral_type) {
-    sql += " WHERE min_type = ANY(:mineral_type)";
+    sql += " WHERE min_type ILIKE ANY(:mineral_type)";
     params["mineral_type"] = larkin.parseMultipleStrings(req.query.mineral_type);
   } else if (req.query.element) {
     /*TODO ensure element param works with abbreviations*/

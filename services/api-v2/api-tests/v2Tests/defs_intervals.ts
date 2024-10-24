@@ -114,10 +114,10 @@ request(settings.host)
   });
 });
 
-/*
+
 it("should accept an interval_name", function (done) {
 request(settings.host)
-  .get("/intervals?interval_name=Permian")
+  .get("/defs/intervals?interval_name=Permian")
   .expect(validators.aSuccessfulRequest)
   .expect(validators.json)
   .expect(validators.atLeastOneResult)
@@ -126,5 +126,5 @@ request(settings.host)
     done();
   });
 });
-*/
+
 

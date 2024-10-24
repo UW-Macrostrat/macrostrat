@@ -13,7 +13,7 @@
         done();
       });
   });
-/*
+
   it("should return a sample", function (done) {
     request(settings.host)
       .get("/defs/plates?sample")
@@ -49,4 +49,3 @@
         done();
       });
   });
-*/

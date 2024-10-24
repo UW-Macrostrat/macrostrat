@@ -37,7 +37,7 @@
         done();
       });
   });
-/*
+
   it("should accept a mineral name", function (done) {
     request(settings.host)
       .get("/defs/minerals?mineral=abhurite")
@@ -49,7 +49,7 @@
         done();
       });
   });
-*/
+
   it("should accept a mineral type", function (done) {
     request(settings.host)
       .get("/defs/minerals?minerals?mineral_type=clinopyroxene")

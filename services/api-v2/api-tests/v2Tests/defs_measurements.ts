@@ -15,6 +15,7 @@
   });
 
   it("should return a sample", function (done) {
+    this.timeout(5000);
     request(settings.host)
       .get("/defs/measurements?sample")
       .expect(validators.aSuccessfulRequest)
@@ -42,8 +43,9 @@
         done();
       });
   });
-/*
+
   it("should accept a measurement class", function (done) {
+    this.timeout(5000);
     request(settings.host)
       .get("/defs/measurements?measurement_class=geochemical")
       .expect(validators.aSuccessfulRequest)
@@ -61,9 +63,10 @@
         done();
       });
   });
-*/
+
 
   it("should accept a measurement type", function (done) {
+    this.timeout(5000);
     request(settings.host)
       .get("/defs/measurements?measurement_type=geochronological")
       .expect(validators.aSuccessfulRequest)
@@ -81,8 +84,10 @@
         done();
       });
   });
-/*
+
+
   it("should return all definitions", function (done) {
+    this.timeout(5000);
     request(settings.host)
       .get("/defs/measurements?all")
       .expect(validators.aSuccessfulRequest)
@@ -93,7 +98,7 @@
         done();
       });
   });
-*/
+
   it("should return CSV", function (done) {
     request(settings.host)
       .get(

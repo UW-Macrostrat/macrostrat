@@ -29,7 +29,7 @@ module.exports = function (req, res, next, cb) {
 
   if (req.query.interval_name) {
     where.push("intervals.interval_name ILIKE :name");
-    params["name"] = req.query.interval_name;
+    params["name"] = '%' + req.query.interval_name + '%';
   }
 
   if (req.query.name_like) {
