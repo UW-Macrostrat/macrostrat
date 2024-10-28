@@ -37,7 +37,7 @@
         done();
       });
   });
-/*
+
   it("should output CSV", function (done) {
     request(settings.host)
       .get("/defs/strat_name_concepts?all&format=csv")
@@ -49,4 +49,3 @@
         done();
       });
   });
-*/

@@ -80,8 +80,9 @@
         done();
       });
   });
-/*
+
   it("should return all strat names", function (done) {
+    this.timeout(5000)
     request(settings.host)
       .get("/defs/strat_names?all")
       .expect(validators.aSuccessfulRequest)
@@ -92,7 +93,7 @@
         done();
       });
   });
-*/
+
   it("should output CSV", function (done) {
     request(settings.host)
       .get("/defs/strat_names?strat_name=Abercrombie&format=csv")

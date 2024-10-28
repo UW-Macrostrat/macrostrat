@@ -91,6 +91,7 @@ const { Client, Pool } = require("pg");
         connectionString = postgresCfg.elevationDatabaseURL
       }
       connectionDetails = { connectionString }
+      //add alice db connection
 
     } else {
       connectionDetails = { ...credentials.pg }
@@ -98,6 +99,7 @@ const { Client, Pool } = require("pg");
         /* Special case for elevation database (temporary) */
         connectionDetails.database = 'elevation'
       }
+      //add alice db connection
     }
 
     const pool = new Pool(connectionDetails);

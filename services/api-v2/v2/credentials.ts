@@ -7,6 +7,7 @@ if (process.env.MACROSTRAT_DATABASE != null) {
   // Connect using a database URL
   const macrostratDatabaseURL = process.env.MACROSTRAT_DATABASE
   const elevationDatabaseURL = process.env.ELEVATION_DATABASE ?? macrostratDatabaseURL.replace("5432/macrostrat", "5432/elevation");
+  //add alice db connection
   exports.pg = {
     macrostratDatabaseURL,
     elevationDatabaseURL
@@ -29,6 +30,7 @@ exports.postgresDatabases = {
   burwell: "macrostrat",
   geomacro: "geomacro",
   elevation: "elevation",
+  alice: "alice"
 };
 
 // This is the default Redis port

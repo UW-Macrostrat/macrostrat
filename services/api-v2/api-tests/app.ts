@@ -9,16 +9,13 @@ import * as path from 'path';
 
 
 const testFiles = [
-    'defs_sources.ts'
-    /*'defs_strat_name_concepts.ts',
-    'defs_strat_names.ts',
-    'defs_structures.ts',
-    'defs_timescales.ts',
-    'fossils.ts',
+    //'defs_sources.ts'
+  //'defs_structures.ts'
+    //'fossils.ts',
     'geologic_units_burwell.ts',
     'geologic_units_gmna.ts',
-    'geologic_units_gmus.ts',
-    'index.ts',
+    'geologic_units_gmus.ts'
+    /*'index.ts',
     'mancos_test_cases.ts',
     'mobile_fossil_collections.ts',
     'mobile_macro_summary.ts',

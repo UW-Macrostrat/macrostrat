@@ -13,7 +13,7 @@
         done();
       });
   });
-/*
+
   it("should return a sample", function (done) {
     request(settings.host)
       .get("/geologic_units/gmna?sample")
@@ -90,4 +90,4 @@
       });
   });
 
- */
+
