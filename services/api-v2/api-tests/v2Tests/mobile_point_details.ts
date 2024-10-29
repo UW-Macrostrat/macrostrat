@@ -13,7 +13,7 @@
         done();
       });
   });
-/*
+
   it("should accept a lat and lng", function (done) {
     request(settings.host)
       .get("/mobile/point_details?lat=43&lng=-89")
@@ -53,4 +53,4 @@
       });
   });
 
- */
+

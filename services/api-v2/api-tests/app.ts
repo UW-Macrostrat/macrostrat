@@ -9,26 +9,20 @@ import * as path from 'path';
 
 
 const testFiles = [
-    //'defs_sources.ts'
-  //'defs_structures.ts'
-    //'fossils.ts',
-    'geologic_units_burwell.ts',
-    'geologic_units_gmna.ts',
-    'geologic_units_gmus.ts'
-    /*'index.ts',
-    'mancos_test_cases.ts',
-    'mobile_fossil_collections.ts',
-    'mobile_macro_summary.ts',
-    'mobile_map_query.ts',
-    'mobile_point.ts',
-    'mobile_point_details.ts',
-    'paleogeography.ts',
-    'root.ts',
-    'sections.ts',
-    'stats.ts',
-    'tiles.ts',
-    'units.ts'*/
+    // waiting for confirmation to implement solution for 'defs_sources.ts',
+    'fossils.ts',
+   //'geologic_units_burwell.ts',
+    //'geologic_units_gmna.ts',
+    //'geologic_units_gmus.ts'
+    //'mancos_test_cases.ts',
+    //'mobile_macro_summary.ts',
+    //'mobile_map_query.ts',
+    //'mobile_point_details.ts',
+    //'paleogeography.ts',
+    //'tiles.ts', need to test on dev url
+   // 'units.ts'
 ];
+
 /*
  'carto_small.ts',
     'columns.ts',

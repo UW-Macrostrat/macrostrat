@@ -7,10 +7,13 @@ if (process.env.MACROSTRAT_DATABASE != null) {
   // Connect using a database URL
   const macrostratDatabaseURL = process.env.MACROSTRAT_DATABASE
   const elevationDatabaseURL = process.env.ELEVATION_DATABASE ?? macrostratDatabaseURL.replace("5432/macrostrat", "5432/elevation");
-  //add alice db connection
+  const aliceDatabaseURL = process.env.ALICE_DATABASE ?? macrostratDatabaseURL.replace("5432/macrostrat", "5432/alice");
+  const rockdDatabaseURL = process.env.ROCKD_DATABASE ?? macrostratDatabaseURL.replace("5432/macrostrat", "5432/rockd");
   exports.pg = {
     macrostratDatabaseURL,
-    elevationDatabaseURL
+    elevationDatabaseURL,
+    aliceDatabaseURL,
+    rockdDatabaseURL
   };
 }
 //added exports.pg to https://github.com/UW-Macrostrat/tiger-macrostrat-config/blob/main/manifests/development/dev-web-stack/credentials.js
@@ -30,7 +33,8 @@ exports.postgresDatabases = {
   burwell: "macrostrat",
   geomacro: "geomacro",
   elevation: "elevation",
-  alice: "alice"
+  alice: "alice",
+  rockd: "rockd"
 };
 
 // This is the default Redis port

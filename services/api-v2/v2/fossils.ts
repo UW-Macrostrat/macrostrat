@@ -128,16 +128,14 @@ module.exports = function (req, res, next) {
             );
           }
           //TODO there is no pbdb table, so I removed LEFT JOIN pbdb.occ_matrix ON pbdb.coll_matrix.collection_no = pbdb.occ_matrix.collection_no
-          //I also removed           LEFT JOIN pbdb.taxon_lower ON pbdb.occ_matrix.orig_no = pbdb.taxon_lower.orig_no
-          //removed           JOIN pbdb.coll_matrix ON pbdb_matches.collection_no = pbdb.coll_matrix.collection_no
-
+          //I also removed LEFT JOIN pbdb.taxon_lower ON pbdb.occ_matrix.orig_no = pbdb.taxon_lower.orig_no
+          //removed JOIN pbdb.coll_matrix ON pbdb_matches.collection_no = pbdb.coll_matrix.collection_no
+          //removed from the SELECT statement:  n_occs AS pbdb_occs,COALESCE(GROUP_CONCAT(distinct pbdb.taxon_lower.genus_no), '') AS genus_no,  COALESCE(GROUP_CONCAT(distinct pbdb.occ_matrix.taxon_no), '') AS taxon_no,
           //need dump and restore of pbdb or a copy of only the tables needed for the api to function in postgresql
-          //find number of routes affected
-          //find mariadb endpoint notes
           //"genus_no": [], "taxon_no": "" are always null
           larkin.queryPg("burwell",
-            "SELECT pbdb_matches.collection_no AS cltn_id, collection_name AS cltn_name, lookup_unit_intervals.t_age, lookup_unit_intervals.b_age, n_occs AS pbdb_occs, COALESCE(GROUP_CONCAT(distinct pbdb.taxon_lower.genus_no), '') AS genus_no,  COALESCE(GROUP_CONCAT(distinct pbdb.occ_matrix.taxon_no), '') AS taxon_no, \
-          pbdb_matches.unit_id, cols.id as col_id, CONCAT(pbdb_matches.ref_id, '|') AS refs " +
+            "SELECT pbdb_matches.collection_no AS cltn_id, collection_name AS cltn_name, lookup_unit_intervals.t_age::float, lookup_unit_intervals.b_age::float, \
+          occs as pbdb_occs, pbdb_matches.unit_id, cols.id as col_id, CONCAT(pbdb_matches.ref_id, '|') AS refs " +
               (geo ? ", AsWKT(pbdb_matches.coordinate) AS geometry" : "") +
               ", lookup_strat_names.concept_id AS strat_name_concept_id \
           FROM macrostrat.pbdb_matches \
@@ -150,24 +148,44 @@ module.exports = function (req, res, next) {
           WHERE macrostrat.pbdb_matches.release_date < now() AND \
           macrostrat.cols.status_code = 'active' " +
               where +
-              " GROUP BY pbdb_matches.collection_no" +
+              " GROUP BY pbdb_matches.collection_no, pbdb_matches.collection_name, lookup_unit_intervals.t_age, lookup_unit_intervals.b_age, pbdb_matches.occs, pbdb_matches.unit_id, cols.id, pbdb_matches.ref_id, lookup_strat_names.concept_id " +
               limit,
             params,
             function (error, result) {
               if (error) {
                 callback(error);
               } else {
-                result.forEach(function (d) {
-                  d.genus_no = d.genus_no.length
+                result.rows = result.rows.map(function (d) {
+                  //we are hardcoding the genus_no and taxon_no to empty arrays and empty strings. This is because there
+                  //are a few missing pbdb tables that do not reside in postgresql and these fields are always empty in prod.
+                  // We will handle the pbdb data in api v3
+                  d.genus_no = []
+                  d.taxon_no = "";
+
+                    /*d.genus_no.length
                     ? d.genus_no.split(",").map(function (d) {
                         return parseInt(d);
                       })
-                    : [];
+                    : [];*/
                   d.refs = larkin.jsonifyPipes(d.refs, "integers");
                   if (req.query.format && req.query.format === "csv") {
                     d.refs = d.refs.join("|");
-                    d.genus_no = d.genus_no.join("|");
+                    d.genus_no = [] //d.genus_no.join("|");
+                    d.taxon_no = "";
                   }
+                  return {
+                        cltn_id: d.cltn_id,
+                        cltn_name: d.cltn_name,
+                        t_age: d.t_age,
+                        b_age: d.b_age,
+                        pbdb_occs: d.pbdb_occs,
+                        genus_no: d.genus_no,
+                        taxon_no: d.taxon_no,
+                        unit_id: d.unit_id,
+                        col_id: d.col_id,
+                        refs: d.refs,
+                        strat_name_concept_id: d.strat_name_concept_id
+                  };
                 });
                 callback(null, data, result);
               }
@@ -213,6 +231,7 @@ module.exports = function (req, res, next) {
               },
             );
           } else {
+            console.log(results)
             larkin.sendData(
               req,
               res,
@@ -224,7 +243,7 @@ module.exports = function (req, res, next) {
                 refs: "refs",
               },
               {
-                data: results,
+                data: results.rows,
               },
             );
           }

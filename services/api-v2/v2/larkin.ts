@@ -90,14 +90,22 @@ const { Client, Pool } = require("pg");
       if (dbName == "elevation") {
         connectionString = postgresCfg.elevationDatabaseURL
       }
-      connectionDetails = { connectionString }
+      if (dbName == "alice") {
+        connectionString = postgresCfg.aliceDatabaseURL
+      }
       //add alice db connection
+
+
+      connectionDetails = { connectionString }
 
     } else {
       connectionDetails = { ...credentials.pg }
       if (dbName == "elevation") {
         /* Special case for elevation database (temporary) */
         connectionDetails.database = 'elevation'
+      }
+       if (dbName == "alice") {
+        connectionDetails.database = 'alice'
       }
       //add alice db connection
     }

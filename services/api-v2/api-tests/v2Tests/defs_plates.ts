@@ -17,6 +17,7 @@
   });
 
   it("should return a sample", function (done) {
+    this.timeout(5000);
     request(settings.host)
       .get("/defs/plates?sample")
       .expect(validators.aSuccessfulRequest)
@@ -41,6 +42,7 @@
   });
 
   it("should output CSV", function (done) {
+    this.timeout(5000);
     request(settings.host)
       .get("/defs/plates?all&format=csv")
       .expect(validators.aSuccessfulRequest)

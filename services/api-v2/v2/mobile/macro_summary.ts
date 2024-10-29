@@ -1,6 +1,7 @@
 var api = require("../api"),
   async = require("async"),
-  larkin = require("../larkin");
+  larkin = require("../larkin"),
+ _ = require('underscore');
 
 function buildSQL(req, scale, where, limit) {
   return (

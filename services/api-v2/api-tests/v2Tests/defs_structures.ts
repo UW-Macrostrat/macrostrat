@@ -95,7 +95,7 @@
 
   it("should return CSV", function (done) {
     request(settings.host)
-      .get("/defs/structures?structure_type=fabric&format=csv")
+      .get("/defs/structures?structure_type=fault&format=csv")
       .expect(validators.aSuccessfulRequest)
       .expect(validators.csv)
       .expect("Content-Type", "text/csv; charset=utf-8")

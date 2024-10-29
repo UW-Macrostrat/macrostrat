@@ -1,7 +1,7 @@
   var request = require("supertest"),
     validators = require("../validators"),
     settings = require("../settings");
-/*
+
   it("should return a tile for original", function (done) {
     request(settings.host)
       .get("/maps/burwell/3/2/4/tile.png")
@@ -35,4 +35,3 @@
       });
   });
 
- */

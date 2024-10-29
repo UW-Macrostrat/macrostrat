@@ -88,14 +88,15 @@ module.exports = {
       throw new Error("GeoJSON was not returned");
     }
 
-    res.body.success.data.features.forEach(function (d) {
+    res.body.success.data.features.forEach(function (d, index) {
       if (
         !d.geometry ||
         !d.geometry.coordinates ||
         !d.geometry.coordinates.length ||
         !d.properties
       ) {
-        throw new Error(`GeoJSON was malformed ${d}`);
+        console.error("Malformed feature at index:", index, d); // Log issue for inspection
+      throw new Error(`GeoJSON was malformed at feature index ${index}`);
       }
     });
   },
