@@ -136,7 +136,7 @@ module.exports = function (req, res, next) {
           larkin.queryPg("burwell",
             "SELECT pbdb_matches.collection_no AS cltn_id, collection_name AS cltn_name, lookup_unit_intervals.t_age::float, lookup_unit_intervals.b_age::float, \
           occs as pbdb_occs, pbdb_matches.unit_id, cols.id as col_id, CONCAT(pbdb_matches.ref_id, '|') AS refs " +
-              (geo ? ", AsWKT(pbdb_matches.coordinate) AS geometry" : "") +
+              (geo ? ", ST_AsText(pbdb_matches.coordinate) AS geometry" : "") +
               ", lookup_strat_names.concept_id AS strat_name_concept_id \
           FROM macrostrat.pbdb_matches \
           JOIN macrostrat.units ON pbdb_matches.unit_id = units.id \
@@ -148,7 +148,7 @@ module.exports = function (req, res, next) {
           WHERE macrostrat.pbdb_matches.release_date < now() AND \
           macrostrat.cols.status_code = 'active' " +
               where +
-              " GROUP BY pbdb_matches.collection_no, pbdb_matches.collection_name, lookup_unit_intervals.t_age, lookup_unit_intervals.b_age, pbdb_matches.occs, pbdb_matches.unit_id, cols.id, pbdb_matches.ref_id, lookup_strat_names.concept_id " +
+              " GROUP BY pbdb_matches.collection_no, pbdb_matches.collection_name, lookup_unit_intervals.t_age, lookup_unit_intervals.b_age, pbdb_matches.occs, pbdb_matches.unit_id, cols.id, pbdb_matches.ref_id, pbdb_matches.coordinate, lookup_strat_names.concept_id " +
               limit,
             params,
             function (error, result) {
@@ -200,7 +200,7 @@ module.exports = function (req, res, next) {
         } else {
           if (geo) {
             dbgeo.parse(
-              results,
+              results.rows,
               {
                 outputFormat: larkin.getOutputFormat(req.query.format),
                 geometryColumn: "geometry",
@@ -231,7 +231,6 @@ module.exports = function (req, res, next) {
               },
             );
           } else {
-            console.log(results)
             larkin.sendData(
               req,
               res,

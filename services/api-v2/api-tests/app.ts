@@ -10,7 +10,6 @@ import * as path from 'path';
 
 const testFiles = [
     // waiting for confirmation to implement solution for 'defs_sources.ts',
-    'fossils.ts',
    //'geologic_units_burwell.ts',
     //'geologic_units_gmna.ts',
     //'geologic_units_gmus.ts'
