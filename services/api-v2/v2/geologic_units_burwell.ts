@@ -67,8 +67,7 @@ module.exports = function (req, res, next, cb) {
     var where = [],
       params = [],
       limit;
-
-    if ("sample" in req.query) {
+    if (req.query.sample === "") {
       limit = " LIMIT 5";
       req.query.scale = "medium";
     } else {
@@ -171,7 +170,7 @@ module.exports = function (req, res, next, cb) {
       ],
       function () {
         // If no valid parameters passed, return an Error
-        if (where.length < 1 && !("sample" in req.query)) {
+        if (where.length < 1 && (req.query.sample === undefined)) {
           if (cb) return cb("No valid parameters passed");
           return larkin.error(req, res, next, "No valid parameters passed");
         }
@@ -182,9 +181,10 @@ module.exports = function (req, res, next, cb) {
           where = "";
         }
 
+        console.log(req.query.scale)
         if (req.query.scale) {
           var requestedScales = larkin.parseMultipleStrings(req.query.scale);
-          scales = requestedScales.filter(function (d) {
+          var scales = requestedScales.filter(function (d) {
             if (["tiny", "small", "medium", "large"].indexOf(d) > -1) {
               return d;
             }
@@ -209,6 +209,7 @@ module.exports = function (req, res, next, cb) {
           .join(" UNION ");
 
         var toRun = "SELECT * FROM ( " + scaleSQL + ") doit";
+        console.log(toRun)
 
         larkin.queryPg("burwell", toRun, params, function (error, result) {
           if (error) {
@@ -256,6 +257,7 @@ module.exports = function (req, res, next, cb) {
               );
             } else {
               if (cb) return cb(null, result.rows);
+              console.log(result)
               larkin.sendData(
                 req,
                 res,
