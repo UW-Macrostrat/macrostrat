@@ -16,9 +16,14 @@ module.exports = function (req, res, next) {
 
     var where = [],
       params = [],
-      limit = "sample" in req.query ? " LIMIT 5" : "",
       geomField = geo ? ", ST_AsGeoJSON(geom) AS geometry" : "",
+      limit,
       from = "";
+    if (req.query.sample === "") {
+      limit = " LIMIT 5";
+    } else {
+      limit = "";
+    }
 
     if (req.query.gid && req.query.gid != "undefined") {
       where.push(" gid = $" + (where.length + 1));
@@ -72,14 +77,14 @@ module.exports = function (req, res, next) {
         : "";
     }
 
-    if (where.length < 1 && !("sample" in req.query)) {
+    if (where.length < 1 && !(req.query.sample)) {
       return larkin.error(req, res, next, "Invalid params");
     }
 
     if (where.length > 0) {
       where = " WHERE " + where.join(", ");
     }
-
+    //todo modify query to use macrostrat schema.
     larkin.queryPg(
       "geomacro",
       "SELECT gid, unit_abbre, COALESCE(rocktype, '') AS rocktype, COALESCE(lithology, '') AS lith, lith_type, lith_class, min_interval AS t_interval, min_age::float AS t_age, max_interval AS b_interval, max_age::float AS b_age, containing_interval, interval_color AS color" +

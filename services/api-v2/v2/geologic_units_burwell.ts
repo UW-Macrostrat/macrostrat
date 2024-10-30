@@ -181,7 +181,6 @@ module.exports = function (req, res, next, cb) {
           where = "";
         }
 
-        console.log(req.query.scale)
         if (req.query.scale) {
           var requestedScales = larkin.parseMultipleStrings(req.query.scale);
           var scales = requestedScales.filter(function (d) {

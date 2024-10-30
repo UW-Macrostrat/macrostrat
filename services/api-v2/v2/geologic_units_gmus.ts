@@ -18,11 +18,17 @@ module.exports = function (req, res, next) {
 
     var where = [],
       params = [],
-      limit = "sample" in req.query ? " LIMIT 5" : "",
+      limit,
       from =
         "gmus.lookup_units lu JOIN gmus.ages a ON lu.unit_link = a.unit_link LEFT JOIN gmus.liths l ON lu.unit_link = l.unit_link LEFT JOIN gmus.best_geounits_macrounits gm ON lu.gid = gm.geologic_unit_gid",
       geomQuery = geo ? ", ST_AsGeoJSON(geom) AS geometry" : "",
       orderBy = "";
+
+    if (req.query.sample === "") {
+      limit = " LIMIT 5";
+    } else {
+      limit = "";
+    }
 
     async.parallel(
       [
@@ -194,7 +200,7 @@ module.exports = function (req, res, next) {
         },
       ],
       function () {
-        if (where.length < 1 && !("sample" in req.query)) {
+        if (where.length < 1 && !(req.query.sample)) {
           return larkin.error(req, res, next, "Invalid params");
         }
 
