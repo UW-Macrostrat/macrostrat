@@ -7,6 +7,7 @@ from typer import Typer
 
 from ...database import SubsystemSchemaDefinition, get_db
 from ...database.utils import grant_permissions, grant_schema_ownership
+from ..macrostrat_api import setup_postgrest_access
 
 __here__ = Path(__file__).parent
 fixtures_dir = __here__ / "fixtures"
@@ -16,6 +17,7 @@ xdd_schema = SubsystemSchemaDefinition(
     name="xdd",
     fixtures=[
         fixtures_dir / "kg-views.sql",
+        setup_postgrest_access("macrostrat_xdd"),
         grant_schema_ownership("macrostrat_xdd", "xdd-writer"),
     ],
 )
