@@ -14,17 +14,18 @@ module.exports = function (req, res, next) {
           if (req.query.age) {
             callback(null, req.query.age);
           } else if (req.query.interval_name) {
-              let sql = `SELECT (age_bottom + age_top)/2 AS mid FROM macrostrat.intervals WHERE interval_name = :interval_name`
-              params['interval_name'] = req.query.interval_name
+            let sql = `SELECT (age_bottom + age_top)/2 AS mid FROM macrostrat.intervals WHERE interval_name = :interval_name`;
+            params['interval_name'] = req.query.interval_name;
             larkin.queryPg("burwell",
               sql,
-               params,
+              params,
               function (error, result) {
+              console.log("results", result)
                 if (error) {
                   callback(error);
                 } else {
-                  if (result.length === 1) {
-                    callback(null, parseInt(result[0].mid));
+                  if (result.rows.length === 1) {
+                    callback(null, parseInt(result.rows[0].mid));
                   } else {
                     larkin.error(req, res, next, "interval not found");
                   }
@@ -46,7 +47,7 @@ module.exports = function (req, res, next) {
               limit,
             [],
             function (error, result) {
-              callback(null, result);
+              callback(null, result.rows);
             },
           );
         },

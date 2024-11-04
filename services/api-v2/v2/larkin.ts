@@ -135,6 +135,8 @@ const { Client, Pool } = require("pg");
         //named uses yesql to modify the params dict and sql named parameters into an array before querying PG.
         //client.query can only accept numerical indices in sql syntax and an array for parameter values.
         const preparedQuery = named(sql)(params);
+        console.log("Yesql parsed query: ", preparedQuery.text);
+        console.log("Yesql parsed parameters: ", preparedQuery.values);
         client.query(preparedQuery.text, preparedQuery.values, function (err, result) {
           done();
           if (err) {
