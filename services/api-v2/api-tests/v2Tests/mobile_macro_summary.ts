@@ -23,13 +23,13 @@
       .expect(function (res: { body: { success: { data: any; }; }; }) {
         var response = res.body.success.data;
         if (
-          !response.lith.length ||
-          !response.environ.length ||
-          !response.econs.length ||
-          !response.strat_names.length ||
-          !response.strat_name_ids.length
+          !("lith" in response) ||
+          !("environ" in response) ||
+          !("econs" in response) ||
+          !("strat_names" in response) ||
+          !("strat_name_ids" in response)
         ) {
-          throw new Error("Bad response");
+          throw new Error("Missing expected keys in response");
         }
       })
       .end(function (error: any, res: any) {

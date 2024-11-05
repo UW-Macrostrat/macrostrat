@@ -17,6 +17,7 @@ module.exports = function (req, res, next) {
               if (error) {
                 callback(error);
               } else {
+                console.log("RESULTS: ", result)
                 callback(null, result.rows[0]);
               }
             },
@@ -50,6 +51,8 @@ module.exports = function (req, res, next) {
                               ")",
                           ],
                           function (error, result) {
+                            console.log("RESULTS: ", result)
+
                             if (error) {
                               callback(error);
 
@@ -81,7 +84,7 @@ module.exports = function (req, res, next) {
                 LEFT JOIN macrostrat.unit_strat_names ON unit_strat_names.unit_id=units.id
                 LEFT JOIN macrostrat.lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id
                 LEFT JOIN macrostrat.pbdb_matches ON pbdb_matches.unit_id=units.id and pbdb_matches.release_date < now()
-                WHERE units_sections.col_id = ?
+                WHERE units_sections.col_id = $1
                 GROUP BY units.id, period, unit_class, lith_short
                 ORDER BY units.id ASC;`
 
@@ -92,7 +95,7 @@ module.exports = function (req, res, next) {
                     result.forEach(function (d) {
                       d.lith = larkin.fixLiths(d.lith);
                     });
-
+                    console.log("RESULTS: ", result)
                     callbackB(null, column, result.rows);
                   }
                 });
@@ -131,6 +134,8 @@ module.exports = function (req, res, next) {
           console.log(error);
           larkin.error(req, res, next, "Something went wrong");
         } else {
+          console.log("RESULTS: ", results)
+
           larkin.sendData(
             req,
             res,
@@ -161,6 +166,7 @@ module.exports = function (req, res, next) {
               if (error) {
                 callback(error);
               } else {
+                console.log("RESULTS: ", result)
                 callback(null, result.rows[0]);
               }
             },
@@ -179,6 +185,8 @@ module.exports = function (req, res, next) {
                     if (error) {
                       callbackB(error);
                     } else {
+                      console.log("RESULTS: ", result)
+
                       if (result.rows.length === 0) {
                         callback(null);
                       } else {
@@ -209,6 +217,8 @@ module.exports = function (req, res, next) {
                     if (error) {
                       callbackB(error);
                     } else {
+                      console.log("RESULTS: ", result)
+
                       result.forEach(function (d) {
                         d.lith = larkin.fixLiths(d.lith);
                       });
@@ -248,6 +258,8 @@ module.exports = function (req, res, next) {
           console.log(error);
           larkin.error(req, res, next, "Something went wrong");
         } else {
+          console.log("RESULTS: ", results)
+
           larkin.sendData(
             req,
             res,

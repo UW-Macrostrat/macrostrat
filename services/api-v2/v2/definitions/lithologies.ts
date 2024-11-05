@@ -36,7 +36,7 @@ module.exports = function (req, res, next, cb) {
     params["lith"] = larkin.parseMultipleStrings(req.query.lith);
   }
   if (req.query.lith_id) {
-    where.push("liths.id = ANY(:lith_id)");
+    where.push("liths.id = ANY(ARRAY[:lith_id::integer])");
     params["lith_id"] = larkin.parseMultipleIds(req.query.lith_id);
   }
   if (req.query.lith_like) {

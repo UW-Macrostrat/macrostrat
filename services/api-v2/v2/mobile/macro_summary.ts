@@ -426,11 +426,11 @@ module.exports = function (req, res, next) {
             },
           );
         },
-
+        //TODO move places table to macrostrat API
         function (unit_summary, callback) {
           larkin.queryPg(
             "rockd",
-            "SELECT CONCAT(name, ', ', state) AS place FROM places ORDER BY geom <#> $1 LIMIT 1",
+            "SELECT CONCAT(name, ', ', state) AS place FROM public.places ORDER BY geom <#> $1 LIMIT 1",
             [
               "SRID=4326;POINT(" +
                 larkin.normalizeLng(req.query.lng) +

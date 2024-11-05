@@ -93,8 +93,9 @@ const { Client, Pool } = require("pg");
       if (dbName == "alice") {
         connectionString = postgresCfg.aliceDatabaseURL
       }
-      //add alice db connection
-
+      if (dbName == "rockd") {
+        connectionString = postgresCfg.aliceDatabaseURL
+      }
 
       connectionDetails = { connectionString }
 
@@ -104,11 +105,14 @@ const { Client, Pool } = require("pg");
         /* Special case for elevation database (temporary) */
         connectionDetails.database = 'elevation'
       }
-       if (dbName == "alice") {
+      if (dbName == "alice") {
         connectionDetails.database = 'alice'
       }
-      //add alice db connection
+      if (dbName == "rockd") {
+        connectionDetails.database = 'rockd'
+      }
     }
+    //TODO add error handling to keep api running if there are connection issues. Maybe implement pgpromise similar to rockd api?
 
     const pool = new Pool(connectionDetails);
     console.log(connectionDetails)
@@ -130,12 +134,10 @@ const { Client, Pool } = require("pg");
           }
         });
       } else if (typeof(params) === 'object') {
-        console.log("Params is object, using yesql: \n", sql)
-        console.log(params)
         //named uses yesql to modify the params dict and sql named parameters into an array before querying PG.
         //client.query can only accept numerical indices in sql syntax and an array for parameter values.
         const preparedQuery = named(sql)(params);
-        console.log("Yesql parsed query: ", preparedQuery.text);
+        console.log("Params is object, Yesql parsed query: ", preparedQuery.text);
         console.log("Yesql parsed parameters: ", preparedQuery.values);
         client.query(preparedQuery.text, preparedQuery.values, function (err, result) {
           done();

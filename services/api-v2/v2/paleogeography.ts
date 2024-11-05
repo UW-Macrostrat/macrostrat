@@ -2,7 +2,6 @@ var api = require("./api"),
   async = require("async"),
   dbgeo = require("dbgeo"),
   larkin = require("./larkin");
-//TODO test this endpoint. cannot test error: relation "earthbyte2013_raw.reconstructed_2" does not exist
 module.exports = function (req, res, next) {
   if (!req.query.age && !req.query.interval_name && !("sample" in req.query)) {
     larkin.info(req, res, next);

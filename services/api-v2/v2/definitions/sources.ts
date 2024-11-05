@@ -51,9 +51,7 @@ module.exports = function (req, res, next, cb) {
 
   // Remove any empty sources and etopo1
   where.push("sources.rgeom IS NOT NULL");
-  //TODO need to confirm if we want to include or exclude objects with a null webgeom field
-  //where.push("sources.webgeom IS NOT NULL");
-
+  where.push("sources.web_geom IS NOT NULL");
   where.push("sources.status_code = 'active'");
 
   var sql = `

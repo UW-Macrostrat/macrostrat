@@ -2,6 +2,7 @@
   var validators = require("../validators");
   var settings = require("../settings");
 
+  /* We only need v2 to show up in definitions list. deactivating this test for v1
   it("should return metadata", function (done) {
     request(settings.host)
       .get("/mobile/map_query")
@@ -13,6 +14,7 @@
         done();
       });
   });
+  */
 
   it("should accept a latitude, longitude, and z", function (done) {
     request(settings.host)
