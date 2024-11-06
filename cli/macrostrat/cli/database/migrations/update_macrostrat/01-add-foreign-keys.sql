@@ -221,6 +221,16 @@ WHERE u.id = us.unit_id
   AND u.col_id = us.col_id;
 
 
+/** Update legacy section_id field for cases where it references a non-existent section.
+TODO: we may want to delete this legacy field if it isn't needed.
+*/
+UPDATE macrostrat.units u
+SET section_id = us.section_id
+FROM macrostrat.units_sections us
+WHERE u.id = us.unit_id
+  AND u.col_id = us.col_id
+  AND u.section_id NOT IN (SELECT id FROM macrostrat.sections);
+
 /** Only a few units that are totally unlinked to sections
   SELECT * FROM macrostrat.units
   WHERE id NOT IN (SELECT unit_id FROM macrostrat.units_sections)
@@ -236,15 +246,17 @@ WHERE u.id = us.unit_id
    legacy purposes.
 */
 UPDATE macrostrat.units u
-SET section_id = (SELECT unit_id FROM macrostrat.units_sections WHERE unit_id = u.id)
-WHERE section_id not in (select id from macrostrat.sections);
-
+SET section_id = us.section_id,
+    col_id = us.col_id
+FROM macrostrat.units_sections us
+WHERE u.id = us.unit_id
+  AND u.section_id NOT IN (SELECT id FROM macrostrat.sections);
 
 ALTER TABLE macrostrat.units
 	ADD CONSTRAINT units_cols_fk FOREIGN KEY (col_id) REFERENCES macrostrat.cols(id) ON DELETE CASCADE,
 	ADD CONSTRAINT units_sections_fk FOREIGN KEY (section_id) REFERENCES macrostrat.sections(id) ON DELETE CASCADE,
-	ADD CONSTRAINT units_intervals_fo_fk FOREIGN KEY (fo) REFERENCES macrostrat.intervals(id) ON DELETE CASCADE,
-	ADD CONSTRAINT units_intervals_lo_fk FOREIGN KEY (lo) REFERENCES macrostrat.intervals(id) ON DELETE CASCADE;
+	ADD CONSTRAINT units_intervals_fo_fk FOREIGN KEY (fo) REFERENCES macrostrat.intervals(id) ON DELETE RESTRICT,
+	ADD CONSTRAINT units_intervals_lo_fk FOREIGN KEY (lo) REFERENCES macrostrat.intervals(id) ON DELETE RESTRICT;
 
 ALTER TABLE macrostrat.sections
 	ADD CONSTRAINT sections_cols_fk FOREIGN KEY (col_id) REFERENCES macrostrat.cols(id) ON DELETE CASCADE;
