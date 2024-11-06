@@ -76,6 +76,7 @@ SELECT
     cg.col_group,
     cg.col_group_long,
     cg.project_id,
+    p.project,
     COALESCE(jsonb_agg(
         jsonb_build_object(
         'col_id', c.id,
@@ -86,7 +87,8 @@ SELECT
             AS cols
 FROM macrostrat.col_groups cg
     LEFT JOIN macrostrat.cols c ON c.col_group_id = cg.id
-GROUP BY cg.id, c.project_id;
+    LEFT JOIN macrostrat.projects p ON p.id = cg.project_id
+GROUP BY cg.id, c.project_id, p.project;
 
 
 CREATE OR REPLACE VIEW macrostrat_api.environ_unit AS
