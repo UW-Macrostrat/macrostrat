@@ -30,8 +30,7 @@ ALTER TABLE macrostrat.col_refs
 	ADD CONSTRAINT col_refs_ref_fk FOREIGN KEY (ref_id) REFERENCES macrostrat.refs(id) ON DELETE CASCADE;
 
 /* I had to make the id the primary key of intervals first before adding the foreign key */
-ALTER TABLE macrostrat.intervals
-	ADD PRIMARY KEY (id);
+ALTER TABLE macrostrat.intervals ADD PRIMARY KEY (id);
 
 /* no issues
     col_notes were not perserved, in mariaDB this is a separte table.
@@ -59,6 +58,8 @@ ALTER TABLE macrostrat.unit_econs
 /*
 23769 rows updated to have null ref_ids instead of 0...
 */
+-- pg_loader apparently adds NOT NULL constraints in some cases
+ALTER TABLE macrostrat.unit_environs ALTER COLUMN ref_id DROP NOT NULL;
 UPDATE macrostrat.unit_environs
 SET ref_id = NULL
 WHERE ref_id = 0;
@@ -77,7 +78,8 @@ ALTER TABLE macrostrat.unit_liths
 	ADD CONSTRAINT unit_liths_units_fk FOREIGN KEY (unit_id) REFERENCES macrostrat.units(id) ON DELETE CASCADE;
 
 /* no issues */
-ALTER TABLE macrostrat.unit_lith_atts
+-- now, we have renamed the table unit_lith_atts -> unit_liths_atts
+ALTER TABLE macrostrat.unit_liths_atts
 	ADD CONSTRAINT unit_liths_atts_unit_liths_fk FOREIGN KEY (unit_lith_id) REFERENCES macrostrat.unit_liths(id) ON DELETE CASCADE,
 	ADD CONSTRAINT unit_liths_atts_lith_atts_fk FOREIGN KEY (lith_att_id) REFERENCES macrostrat.lith_atts(id) ON DELETE CASCADE;
 
@@ -108,11 +110,15 @@ ALTER TABLE macrostrat.unit_strat_names
 	ADD CONSTRAINT unit_strat_names_units_fk FOREIGN KEY (unit_id) REFERENCES macrostrat.units(id) ON DELETE CASCADE,
 	ADD CONSTRAINT unit_strat_names_strat_names_fk FOREIGN KEY (strat_name_id) REFERENCES macrostrat.strat_names(id) ON DELETE CASCADE;
 
+-- Remove the NOT NULL constraint on concept_id
+ALTER TABLE macrostrat.strat_names ALTER COLUMN concept_id DROP NOT NULL;
 UPDATE macrostrat.strat_names
 	SET concept_id = NULL
 	WHERE concept_id = 0;
 
 /* BREAKS!!! there is a non-null constraint on ref_id.. but 0 means none so. */
+-- Remove the NOT NULL constraint on ref_id
+ALTER TABLE macrostrat.strat_names ALTER COLUMN ref_id DROP NOT NULL;
 UPDATE macrostrat.strat_names
 	SET ref_id = NULL
 	WHERE ref_id = 0;
@@ -122,6 +128,13 @@ WHERE sn.concept_id NOT IN (SELECT concept_id FROM macrostrat.strat_names_meta);
 
 ALTER TABLE macrostrat.strat_names
 	ADD CONSTRAINT strat_names_strat_names_meta_fk FOREIGN KEY (concept_id) REFERENCES macrostrat.strat_names_meta(concept_id) ON DELETE CASCADE;
+
+-- There are 6,000+ strat_name_meta entries with interval_id = 0
+
+ALTER TABLE macrostrat.strat_names_meta ALTER COLUMN interval_id DROP NOT NULL;
+UPDATE macrostrat.strat_names_meta
+  SET interval_id = NULL
+  WHERE interval_id = 0;
 
 ALTER TABLE macrostrat.strat_names_meta
 	ADD CONSTRAINT strat_names_meta_intervals_fk FOREIGN KEY(interval_id) REFERENCES macrostrat.intervals(id) ON DELETE CASCADE,
@@ -141,20 +154,25 @@ ALTER TABLE macrostrat.strat_names_places
 DELETE FROM macrostrat.timescales_intervals
 	WHERE interval_id NOT IN (SELECT id from macrostrat.intervals);
 
-/* I had to make the id the primary key of intervals first before adding the foreign key */
-ALTER TABLE macrostrat.intervals
-	ADD PRIMARY KEY (id);
-
 ALTER TABLE macrostrat.timescales_intervals
 	ADD CONSTRAINT timescales_intervals_timescales_fk FOREIGN KEY (timescale_id) REFERENCES macrostrat.timescales(id) ON DELETE CASCADE,
 	ADD CONSTRAINT timescales_intervals_intervals_fk FOREIGN KEY (interval_id) REFERENCES macrostrat.intervals(id) ON DELETE CASCADE;
 
 /* 2 rows deleted for a col_id of 0,
 one was a `test_delete_me`
-the other was Lane Shale, unit_id 42143
-*/
+the other was Lane Shale, unit_id 42143 */
 DELETE FROM macrostrat.units
-	WHERE col_id NOT IN (SELECT id FROM macrostrat.cols);
+	WHERE col_id NOT IN (SELECT id FROM macrostrat.cols)
+	-- Ensure that a maximum of two units are deleted, just for sanity.
+  AND ((SELECT count(*) FROM macrostrat.units WHERE col_id = 0) <= 2);
+
+/* Some units are not present in an existing section... */
+
+-- 17 units exist with section_id = 0
+-- 941 units exist with a section_id that is not a valid section
+
+SELECT count(*) FROM macrostrat.units
+WHERE section_id NOT IN (select id from macrostrat.sections);
 
 UPDATE macrostrat.units
 set section_id = NULL
@@ -197,6 +215,7 @@ UPDATE macrostrat.col_groups cg
 SET project_id = c.project_id
 FROM macrostrat.cols c
 WHERE c.col_group_id = cg.id;
+
 
 --
 -- /* unit_boundaries table, needs a unit_id and ref_id fk
