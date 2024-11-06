@@ -166,17 +166,79 @@ DELETE FROM macrostrat.units
 	-- Ensure that a maximum of two units are deleted, just for sanity.
   AND ((SELECT count(*) FROM macrostrat.units WHERE col_id = 0) <= 2);
 
-/* Some units are not present in an existing section... */
 
--- 17 units exist with section_id = 0
--- 941 units exist with a section_id that is not a valid section
+-- Create fk constraints on units_sections table
+-- Delete bad units_sections record
+DELETE FROM macrostrat.units_sections WHERE unit_id NOT IN (SELECT id FROM macrostrat.units);
 
-SELECT count(*) FROM macrostrat.units
-WHERE section_id NOT IN (select id from macrostrat.sections);
+ALTER TABLE macrostrat.units_sections
+  ADD CONSTRAINT units_sections_units_fk FOREIGN KEY (unit_id) REFERENCES macrostrat.units(id) ON DELETE CASCADE,
+  ADD CONSTRAINT units_sections_sections_fk FOREIGN KEY (section_id) REFERENCES macrostrat.sections(id) ON DELETE CASCADE;
 
-UPDATE macrostrat.units
-set section_id = NULL
-where section_id not in (select id from macrostrat.sections);
+
+/* Some units are not tied to the correct sections... */
+/** New addition 2024-11-06
+  We want to keep the NOT NULL constraint on section_id (at least for now)
+  so we have to reconstruct sections in a few cases.
+
+- 17 units exist with section_id = 0
+- 941 units exist with a section_id that is not a valid section,
+  however all but 5 of those (all from New Zealand)
+  have a valid section_id in the units_sections table.
+
+  SELECT * FROM macrostrat.units
+  WHERE section_id NOT IN (select id from macrostrat.sections)
+  AND section_id NOT IN (SELECT id FROM macrostrat.sections);
+*/
+
+/** Add sections to contain a few stray units from New Zealand */
+WITH units AS (
+  SELECT id, col_id, fo, lo, fo_h, lo_h
+  FROM macrostrat.units
+  WHERE id NOT IN (SELECT unit_id FROM macrostrat.units_sections)
+   AND section_id NOT IN (SELECT id FROM macrostrat.sections)
+  LIMIT 5 -- there should be only 5 units that match this criteria
+), new_sections  AS (
+  INSERT INTO macrostrat.sections (col_id, fo, lo, fo_h, lo_h)
+  SELECT
+    col_id, fo, lo, fo_h, lo_h
+  FROM units
+  GROUP BY col_id, fo, lo, fo_h, lo_h
+  RETURNING col_id, id section_id
+), new_units_sections AS (
+  INSERT INTO macrostrat.units_sections (unit_id, section_id, col_id)
+    SELECT u.id, ns.section_id, ns.col_id
+    FROM units u
+           JOIN new_sections ns
+                ON u.col_id = ns.col_id
+    RETURNING unit_id, section_id, col_id
+)
+  -- Update legacy unit.section_id relationships to mirror the macrostrat.units_sections links
+UPDATE macrostrat.units u
+SET section_id = us.section_id
+FROM new_units_sections us
+WHERE u.id = us.unit_id
+  AND u.col_id = us.col_id;
+
+
+/** Only a few units that are totally unlinked to sections
+  SELECT * FROM macrostrat.units
+  WHERE id NOT IN (SELECT unit_id FROM macrostrat.units_sections)
+  AND section_id NOT IN (SELECT id FROM macrostrat.sections);
+
+  -- fo, lo, fo_h and lo_h seem to match in all cases
+ */
+
+
+/* Reconstruct section_id field from units_sections table.
+  TODO: the col_id and section_id fields in the "units_columns" table
+   are the 'master' version of the link, and the others are around for
+   legacy purposes.
+*/
+UPDATE macrostrat.units u
+SET section_id = (SELECT unit_id FROM macrostrat.units_sections WHERE unit_id = u.id)
+WHERE section_id not in (select id from macrostrat.sections);
+
 
 ALTER TABLE macrostrat.units
 	ADD CONSTRAINT units_cols_fk FOREIGN KEY (col_id) REFERENCES macrostrat.cols(id) ON DELETE CASCADE,
