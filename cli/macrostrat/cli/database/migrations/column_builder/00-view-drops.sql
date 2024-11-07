@@ -30,3 +30,4 @@ DROP VIEW IF EXISTS macrostrat_api.col_sections;
 DROP VIEW IF EXISTS macrostrat_api.col_ref_expanded;
 DROP VIEW IF EXISTS macrostrat_api.strat_names_meta;
 DROP VIEW IF EXISTS macrostrat_api.unit_boundaries;
+DROP VIEW IF EXISTS macrostrat_api.col_section_data;
