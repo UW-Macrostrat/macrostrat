@@ -1,47 +1,47 @@
-/* 
-    Creates the view for a col and sections, Not scaleable as a view, but runs quickly 
+/*
+    Creates the view for a col and sections, Not scaleable as a view, but runs quickly
     for each column.
 
     Returns the top interval and bottom interval of each section in the column.
     Top interval is defined as unit.lo where unit.position_bottom is smallest.
-    Likewise bottom interval is unit.fo where unit.position_bottom is greatest! 
+    Likewise bottom interval is unit.fo where unit.position_bottom is greatest!
  */
-DROP FUNCTION IF EXISTS macrostrat_api.get_col_section_data(int);
-CREATE OR REPLACE FUNCTION macrostrat_api.get_col_section_data(column_id INT) 
-RETURNS TABLE (
-    id INT, 
-    unit_count BIGINT, 
-    top varchar(200), 
-    bottom varchar(200)) 
-AS
-$$
-BEGIN 
-RETURN QUERY
-    SELECT 
-        s.id,
-        COUNT(uc) as unit_count,
-        lo.interval_name as top,
-        fo.interval_name as bottom
-    FROM macrostrat.sections s 
-    JOIN macrostrat.units uc 
-      ON uc.section_id = s.id
-    JOIN macrostrat.units u 
-      ON u.section_id = s.id
-    JOIN macrostrat.units un
-      ON un.section_id = s.id
-    JOIN macrostrat.intervals fo
-      ON un.fo = fo.id
-    JOIN macrostrat.intervals lo
-      ON u.lo = lo.id
-    WHERE u.position_bottom = (
-        SELECT MIN(position_bottom) FROM macrostrat.units WHERE section_id = u.section_id
-    ) AND un.position_bottom = (
-        SELECT MAX(position_bottom) FROM macrostrat.units WHERE section_id = un.section_id
-    ) AND s.col_id = column_id
-    GROUP BY s.id, lo.interval_name, fo.interval_name, fo.age_bottom ORDER BY fo.age_bottom
-    ;
-END
-$$ LANGUAGE plpgsql;
+DROP FUNCTION IF EXISTS macrostrat_api.get_col_section_data(integer);
+
+/** New (2024-11-07) create a view that is more efficient and flexible than the above function */
+CREATE OR REPLACE VIEW macrostrat_api.col_section_data AS
+WITH a AS (SELECT us.unit_id,
+                  us.section_id,
+                  us.col_id,
+                  u.fo,
+                  fo.age_bottom    AS fo_age,
+                  fo.interval_name AS fo_name,
+                  u.lo,
+                  lo.age_top       AS lo_age,
+                  lo.interval_name AS lo_name
+           FROM macrostrat.units_sections us
+                  JOIN macrostrat.units u
+                       ON us.unit_id = u.id
+                  JOIN macrostrat.intervals fo
+                       ON u.fo = fo.id
+                  JOIN macrostrat.intervals lo
+                       ON u.lo = lo.id
+           )
+SELECT DISTINCT ON (col_id, section_id)
+  col_id,
+  section_id,
+  count(*) OVER w AS unit_count,
+  first_value(fo) OVER w AS fo,
+  first_value(lo) OVER w AS lo,
+  first_value(fo_name) OVER w AS bottom,
+  first_value(fo_age) OVER w AS fo_age,
+  first_value(lo_name) OVER w1 AS top,
+  first_value(lo_age) OVER w1 AS lo_age
+FROM a
+WINDOW w AS (PARTITION BY col_id, section_id ORDER BY fo_age DESC),
+       w1 AS (PARTITION BY col_id, section_id ORDER BY lo_age)
+ORDER BY col_id, section_id;
+
 
 DROP FUNCTION IF EXISTS macrostrat_api.get_units_with_collections(int);
 CREATE OR REPLACE FUNCTION macrostrat_api.get_units_with_collections(column_id int)
@@ -70,10 +70,10 @@ RETURNS TABLE(
 $$
 BEGIN
 RETURN QUERY
-	SELECT 
-		u.*, 
-		COALESCE(jsonb_agg(lu.*) FILTER (WHERE lu.unit_id IS NOT NULL), '[]') as lith_unit, 
-		COALESCE(jsonb_agg(eu.*) FILTER (WHERE eu.unit_id IS NOT NULL),'[]') as environ_unit 
+	SELECT
+		u.*,
+		COALESCE(jsonb_agg(lu.*) FILTER (WHERE lu.unit_id IS NOT NULL), '[]') as lith_unit,
+		COALESCE(jsonb_agg(eu.*) FILTER (WHERE eu.unit_id IS NOT NULL),'[]') as environ_unit
 	FROM macrostrat_api.unit_strat_name_expanded u
 	LEFT JOIN macrostrat_api.lith_unit lu
 	 ON lu.unit_id = u.id
@@ -85,7 +85,7 @@ RETURN QUERY
 END
 $$ LANGUAGE plpgsql;
 
-/* 
+/*
 Functions for Combing and Splitting Sections!
 */
 CREATE OR REPLACE FUNCTION macrostrat_api.split_section(unit_ids int[])
@@ -98,13 +98,13 @@ BEGIN
   SELECT col_id FROM macrostrat.units WHERE id = unit_ids[0] INTO _col_id;
   INSERT INTO macrostrat.sections(col_id) VALUES (_col_id) RETURNING id INTO _section_id;
   UPDATE macrostrat.units
-    SET 
+    SET
       section_id = _section_id
-    WHERE id = ANY(unit_ids); 
+    WHERE id = ANY(unit_ids);
 END
 $$ language plpgsql;
 
-/* 
+/*
 Combine 2 or more sections
 */
 CREATE OR REPLACE FUNCTION macrostrat_api.combine_sections(section_ids int[])
@@ -125,10 +125,10 @@ BEGIN
 END
 $$ language plpgsql;
 
-/* 
+/*
 sophisticated ways of fetching related strat_names
-Returns only strat_name_records where it's connected to a 
-concept and that concept ref contains the point geom for the 
+Returns only strat_name_records where it's connected to a
+concept and that concept ref contains the point geom for the
 column.
 
 Unions searches for strat_names in column, ones in col-group, and geographically
@@ -146,12 +146,12 @@ RETURNS TABLE(
 ) AS
 $$
 BEGIN
-  RETURN QUERY 
+  RETURN QUERY
   WITH a AS(
 SELECT cc.*, ST_Distance(
-	ST_Transform(c.coordinate, 3857), 
+	ST_Transform(c.coordinate, 3857),
 	ST_Transform(cc.coordinate, 3857)
-	) 
+	)
 	as distance FROM macrostrat.cols c
 JOIN macrostrat.cols cc
 	ON c.col_group_id = cc.col_group_id
@@ -159,18 +159,18 @@ WHERE c.id = _col_id
 ), b AS(
   SELECT c.col_name from macrostrat.cols c WHERE c.id = _col_id
 )
-SELECT sn.*, r.author, b.col_name::text as source from b,macrostrat_api.units u 
+SELECT sn.*, r.author, b.col_name::text as source from b,macrostrat_api.units u
 JOIN macrostrat_api.unit_strat_names usn
  ON u.id = usn.unit_id
 JOIN macrostrat_api.strat_names sn
  ON usn.strat_name_id = sn.id
 JOIN macrostrat_api.refs r
   ON r.id = sn.ref_id
-WHERE u.col_id = _col_id 
+WHERE u.col_id = _col_id
 AND sn.concept_id IS NULL
 UNION ALL
-SELECT DISTINCT ON(sn.id) sn.*, r.author, a.col_name::text as source 
-FROM a, macrostrat_api.units u 
+SELECT DISTINCT ON(sn.id) sn.*, r.author, a.col_name::text as source
+FROM a, macrostrat_api.units u
 JOIN macrostrat_api.unit_strat_names usn
  ON u.id = usn.unit_id
 JOIN macrostrat_api.strat_names sn
@@ -180,27 +180,27 @@ JOIN macrostrat_api.refs r
 WHERE u.col_id = _col_id AND sn.concept_id IS NULL or u.col_id = a.id
 AND sn.concept_id IS NULL
 UNION ALL
-SELECT DISTINCT ON(sn.id) sn.*, r.author, 'nearby' as source FROM macrostrat.strat_names sn 
+SELECT DISTINCT ON(sn.id) sn.*, r.author, 'nearby' as source FROM macrostrat.strat_names sn
   LEFT JOIN macrostrat.strat_names_meta snm
   ON sn.concept_id = snm.concept_id
   LEFT JOIN macrostrat.refs r
   ON r.id = snm.ref_id
   WHERE ST_Intersects(r.rgeom, (
-  	select ST_SetSrid((coordinate)::geometry, 4326) 
+  	select ST_SetSrid((coordinate)::geometry, 4326)
   	from macrostrat.cols c where c.id = _col_id
   	)
 )
 UNION ALL
-SELECT DISTINCT ON(sn.id) sn.*, r.author, 'unrelated' as source 
-FROM macrostrat_api.units u 
+SELECT DISTINCT ON(sn.id) sn.*, r.author, 'unrelated' as source
+FROM macrostrat_api.units u
 JOIN macrostrat_api.unit_strat_names usn
  ON u.id = usn.unit_id
 JOIN macrostrat_api.strat_names sn
  ON usn.strat_name_id = sn.id
 JOIN macrostrat_api.refs r
   ON r.id = sn.ref_id
-WHERE u.col_id NOT IN (SELECT a.id FROM a) 
-	AND sn.concept_id IS NULL 
+WHERE u.col_id NOT IN (SELECT a.id FROM a)
+	AND sn.concept_id IS NULL
 	AND r.rgeom IS NULL
 ;
 END
@@ -221,9 +221,9 @@ RETURNS TABLE(
 $$
 BEGIN
   RETURN QUERY
-    SELECT 
-    gc.*, 
-    st.strat_name ||' '|| st.rank as parent 
+    SELECT
+    gc.*,
+    st.strat_name ||' '|| st.rank as parent
     FROM macrostrat_api.get_col_strat_names(_col_id) gc
     LEFT JOIN macrostrat.strat_tree tree
     ON tree.child = gc.id
@@ -244,13 +244,13 @@ RETURNS TABLE(
 $$
 BEGIN
 RETURN QUERY
-  SELECT 
-  sn.id, 
-  sn.strat_name, 
+  SELECT
+  sn.id,
+  sn.strat_name,
   sn.rank,
   sn.concept_id,
   r.author,
-  st.strat_name ||' '|| st.rank as parent 
+  st.strat_name ||' '|| st.rank as parent
   FROM macrostrat.strat_names sn
   JOIN macrostrat.strat_names_meta snm
     ON sn.concept_id = snm.concept_id
@@ -265,14 +265,14 @@ RETURN QUERY
 END
 $$ language plpgsql;
 
-/* function that calculates proportions of lithologies based on 
+/* function that calculates proportions of lithologies based on
 subdom and dom props.
 
 happens here: https://github.com/UW-Macrostrat/utils/blob/bba082956cc611af8458cf234c160b05e1cb3794/cli/commands/rebuild_scripts/lookup_unit_attrs_api.py#L40
 but as two separate queries. Makes more sense to make a function that calculates both sub and dom comp_prop for
 a unit and returns that for a update query
 */
-CREATE OR REPLACE FUNCTION macrostrat.get_lith_comp_prop(_unit_id integer) 
+CREATE OR REPLACE FUNCTION macrostrat.get_lith_comp_prop(_unit_id integer)
 RETURNS TABLE(
   dom_prop numeric,
   sub_prop numeric
@@ -296,11 +296,11 @@ BEGIN
         WHERE dom = 'sub' and unit_id = _unit_id
         GROUP BY unit_id
       )
-    SELECT 
+    SELECT
       -- need at least one float to prevent truncating to 0
-      ROUND((5.0 / (COALESCE(sub.count, 0) + (dom.count * 5))),4) AS dom_prop, 
-      ROUND((1.0 / (COALESCE(sub.count, 0) + (dom.count * 5))),4) AS sub_prop 
-    FROM sub 
+      ROUND((5.0 / (COALESCE(sub.count, 0) + (dom.count * 5))),4) AS dom_prop,
+      ROUND((1.0 / (COALESCE(sub.count, 0) + (dom.count * 5))),4) AS sub_prop
+    FROM sub
     JOIN dom
     ON dom.unit_id = sub.unit_id;
 END
@@ -312,25 +312,25 @@ RETURNS VOID as
 $$
 BEGIN
   UPDATE macrostrat.unit_liths ul
-  SET 
+  SET
     comp_prop = (CASE WHEN ul.dom = 'sub' THEN prop.sub_prop ELSE prop.dom_prop END)
   FROM (SELECT * FROM macrostrat.get_lith_comp_prop(_unit_id)) as prop
   WHERE ul.unit_id = _unit_id;
 END
 $$ language plpgsql;
 
-/* 
-  a insert or update trigger for cols. 
+/*
+  a insert or update trigger for cols.
 
-  If a lat and long are passed but NOT a wkt or coordinate, 
+  If a lat and long are passed but NOT a wkt or coordinate,
   we want to create those two columns and insert them as well
  */
-CREATE OR REPLACE FUNCTION macrostrat.lng_lat_insert_trigger() 
+CREATE OR REPLACE FUNCTION macrostrat.lng_lat_insert_trigger()
 RETURNS TRIGGER AS $$
 DECLARE
 BEGIN
   IF tg_op = 'INSERT' OR new.lat <> old.lat OR new.lng <> old.lng THEN
-    new.wkt := ST_AsText(ST_MakePoint(new.lng, new.lat)); 
+    new.wkt := ST_AsText(ST_MakePoint(new.lng, new.lat));
     new.coordinate := ST_SetSrid(new.wkt, 4326);
   END IF;
   RETURN new;

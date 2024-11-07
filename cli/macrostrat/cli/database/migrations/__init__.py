@@ -140,6 +140,9 @@ def run_migrations(
         if name is not None and name == _name:
             break
 
+    # Notify PostgREST to reload the schema cache
+    db.run_sql("NOTIFY pgrst, 'reload schema';")
+
 
 def migration_has_been_run(*names: str):
     db = get_db()
