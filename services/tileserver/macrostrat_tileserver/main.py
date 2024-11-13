@@ -135,6 +135,8 @@ functions = [
     "weaver_api.weaver_tile",
     "tile_layers.map",
     "tile_layers.all_maps",
+    #added new function here
+    "public.checkins_tiles"
 ]
 
 layers = [CachedStoredFunction(l) for l in cached_functions] + [
