@@ -17,7 +17,7 @@ from timvt.factory import (
     queryparams_to_kwargs,
 )
 from timvt.models.mapbox import TileJSON
-from buildpg import asyncpg, render
+from buildpg import render
 
 from .cache import get_tile_from_cache, set_cached_tile
 from .function_layer import StoredFunction
@@ -42,8 +42,6 @@ class CachedVectorTilerFactory(VectorTilerFactory):
             return res
 
     def register_tiles(self):
-        """Register /tiles endpoints."""
-
         @self.router.get("/{layer}/{z}/{x}/{y}", **TILE_RESPONSE_PARAMS)
         async def tile(
             request: Request,
@@ -70,10 +68,12 @@ class CachedVectorTilerFactory(VectorTilerFactory):
                 isinstance(layer, CachedStoredFunction) and cache != CacheMode.bypass
             )
 
-            try:
-                await layer.validate_request(pool, tile, tms, **kwargs)
-            except ValueError as e:
-                raise HTTPException(status_code=400, detail=str(e))
+            # "Table" layers don't have a validate_request method
+            if hasattr(layer, "validate_request"):
+                try:
+                    await layer.validate_request(pool, tile, tms, **kwargs)
+                except ValueError as e:
+                    raise HTTPException(status_code=400, detail=str(e))
 
             if should_cache:
                 profile = await self.get_cache_profile_id(pool, layer)
