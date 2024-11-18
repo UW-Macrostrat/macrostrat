@@ -8,7 +8,7 @@ router = APIRouter()
 __here__ = Path(__file__).parent
 
 
-@router.get("/checkins/{z}/{x}/{y}")
+@router.get("/{z}/{x}/{y}")
 async def rgeom(
     request: Request,
     z: int,
@@ -33,10 +33,8 @@ async def rgeom(
 async def run_layer_query(con, layer_name, **params):
     query = get_layer_sql(layer_name)
     q, p = render(query, layer_name=layer_name, **params)
-    try:
-        return await con.fetchval(q, *p)
-    except Exception as e:
-        raise RuntimeError(f"Error executing layer query: {e}")
+    return await con.fetchval(q, *p)
+
 
 
 def get_layer_sql(layer: str):
@@ -49,6 +47,6 @@ def get_layer_sql(layer: str):
 
     # Replace the envelope with the function call. Kind of awkward.
     q = q.replace(":envelope", "tile_utils.envelope(:x, :y, :z)")
-
+    print(q)
     # Wrap with MVT creation
     return q

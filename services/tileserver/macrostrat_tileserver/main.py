@@ -67,7 +67,6 @@ async def startup_event():
     # apply_fixtures(db_settings.database_url)
     await register_table_catalog(app, schemas=["sources"])
     prepare_image_tile_subsystem()
-
     print("Application started.")
 
 
@@ -143,16 +142,14 @@ layers = [CachedStoredFunction(l) for l in cached_functions] + [
     StoredFunction(l) for l in functions
 ]
 
-if hasattr(app.state, 'rockd_pool'):
-    checkins_tile_layer = StoredFunction("public.checkins_tile", connection=app.state.rockd_pool)
-    app.state.function_catalog.register(checkins_tile_layer)
+
 
 layers.append(PaleoGeographyLayer())
 
 for layer in layers:
     app.state.function_catalog.register(layer)
 
-
+# fix the api route format and order
 # Legacy routes postfixed with ".mvt"
 app.include_router(mvt_tiler.router, tags=["Tiles"])
 
@@ -170,7 +167,7 @@ app.include_router(search_router, tags=["Vector search"], prefix="/search")
 
 from .rockd_checkins import router as checkins_router
 
-app.include_router(checkins_router, tags=["checkins"], prefix="/checkins")
+app.include_router(checkins_router, tags=["Checkins"], prefix="/checkins/tiles")
 
 
 @app.get("/carto/rotation-models")
