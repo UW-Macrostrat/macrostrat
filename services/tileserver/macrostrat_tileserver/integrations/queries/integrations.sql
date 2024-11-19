@@ -11,7 +11,8 @@ WITH tile AS (
     dt.name type_name,
     dt.organization,
     ST_AsMVTGeom(ST_Transform(geom, 3857), tile.envelope)
-  FROM integrations.dataset d, tile
+  FROM integrations.dataset d
+  JOIN tile ON true
   JOIN integrations.dataset_type dt ON d.type = dt.id
   WHERE ST_Intersects(geom,ST_Transform(tile.envelope, 4326))
     AND dt.organization = :organization
