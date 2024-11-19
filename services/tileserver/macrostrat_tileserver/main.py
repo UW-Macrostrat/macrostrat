@@ -9,7 +9,7 @@ from starlette.middleware import Middleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette_cramjam.middleware import CompressionMiddleware
-from timvt.db import close_db_connection, connect_to_db, register_table_catalog
+from timvt.db import close_db_connection, connect_to_db, connect_to_rockd_db, register_table_catalog
 from timvt.settings import PostgresSettings
 from timvt.layer import FunctionRegistry
 from titiler.core.errors import DEFAULT_STATUS_CODES, add_exception_handlers
@@ -42,14 +42,13 @@ app = FastAPI(prefix="/", middleware=[Middleware(CORSMiddleware, allow_origins=[
 class TileServerSettings(PostgresSettings):
     # XDD embedding service URL
     xdd_embedding_service_url: Optional[str] = None
-
+    rockd_database_url: Optional[str] = None
     model_config = SettingsConfigDict(
         extra="allow",
     )
 
-
 db_settings = TileServerSettings()
-
+db_settings.rockd_database_url
 
 app.state.timvt_function_catalog = FunctionRegistry()
 app.state.function_catalog = FunctionRegistry()
@@ -62,10 +61,10 @@ async def startup_event():
     # Don't rely on poort TimVT handling of database connections
     setup_stderr_logs("macrostrat_tileserver", "timvt")
     await connect_to_db(app, db_settings)
+    await connect_to_rockd_db(app, db_settings)
 
     # Apply fixtures
     # apply_fixtures(db_settings.database_url)
-
     await register_table_catalog(app, schemas=["sources"])
     prepare_image_tile_subsystem()
     print("Application started.")
@@ -102,6 +101,7 @@ async def shutdown_event():
     await close_db_connection(app)
 
 
+
 app.add_middleware(CompressionMiddleware, minimum_size=0)
 
 MapnikLayerFactory(app)
@@ -135,18 +135,21 @@ functions = [
     "weaver_api.weaver_tile",
     "tile_layers.map",
     "tile_layers.all_maps",
+
 ]
 
 layers = [CachedStoredFunction(l) for l in cached_functions] + [
     StoredFunction(l) for l in functions
 ]
 
+
+
 layers.append(PaleoGeographyLayer())
 
 for layer in layers:
     app.state.function_catalog.register(layer)
 
-
+# fix the api route format and order
 # Legacy routes postfixed with ".mvt"
 app.include_router(mvt_tiler.router, tags=["Tiles"])
 
@@ -161,6 +164,10 @@ app.include_router(map_bounds_router, tags=["Maps"], prefix="/maps")
 from .vector_search import router as search_router
 
 app.include_router(search_router, tags=["Vector search"], prefix="/search")
+
+from .rockd_checkins import router as checkins_router
+
+app.include_router(checkins_router, tags=["Checkins"], prefix="/checkins/tiles")
 
 
 @app.get("/carto/rotation-models")
