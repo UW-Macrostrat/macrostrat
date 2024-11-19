@@ -48,7 +48,7 @@ async def connect_to_rockd_db(
     if not settings:
         settings = PostgresSettings()
 
-    app.state.pool = await asyncpg.create_pool_b(
+    app.state.rockd_pool = await asyncpg.create_pool_b(
         settings.rockd_database_url,
         min_size=settings.db_min_conn_size,
         max_size=settings.db_max_conn_size,
