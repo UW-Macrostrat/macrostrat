@@ -2,6 +2,7 @@ from os import environ
 from pathlib import Path
 
 import typer
+from macrostrat.utils.shell import run
 from rich import print
 from rich.traceback import install
 from typer import Argument, Typer
@@ -9,8 +10,6 @@ from typer import Argument, Typer
 from macrostrat.core import app
 from macrostrat.core.exc import MacrostratError
 from macrostrat.core.main import env_text, set_app_state
-from macrostrat.utils.shell import run
-
 from .database import db_app, db_subsystem
 from .subsystems.macrostrat_api import MacrostratAPISubsystem
 from .subsystems.paleogeography import load_paleogeography_subsystem
@@ -292,13 +291,22 @@ if subsystems.get("mapboard", False):
             "Mapboard subsystem enabled, but no mapboard_database setting found"
         )
 
+from macrostrat.integrations import cli_apps
+
+for key, _app in cli_apps.items():
+    main.add_typer(
+        _app,
+        name=key,
+        rich_help_panel="Integrations",
+    )
+
 
 app.subsystems.add(MacrostratAPISubsystem(app))
 
 if sgp_url := getattr(settings, "sgp_database", None):
     from .subsystems.sgp import sgp
 
-    main.add_typer(sgp, rich_help_panel="Subsystems")
+    main.add_typer(sgp, rich_help_panel="Integrations")
 
 # Mariadb CLI
 if mariadb_url := getattr(settings, "mysql_database", None):
@@ -317,7 +325,7 @@ from .subsystems.xdd import cli as kg_cli
 main.add_typer(
     kg_cli,
     name="xdd",
-    rich_help_panel="Subsystems",
+    rich_help_panel="Integrations",
     short_help="Manage xDD integration",
 )
 

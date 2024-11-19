@@ -1,7 +1,8 @@
-from typer import Typer
+from .strabospot import app as strabospot_app
 
-
-app = Typer(no_args_is_help=True)
+cli_apps = {
+    "strabospot": strabospot_app,
+}
 
 
 def register_migrations():

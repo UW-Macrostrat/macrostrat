@@ -113,6 +113,7 @@ def run_migrations(
     name: str = None,
     force: bool = False,
     data_changes: bool = False,
+    subsystem: str = None,
 ):
     """Apply database migrations"""
     db = get_database()
@@ -136,6 +137,7 @@ def run_migrations(
 
     for _migration in instances:
         _name = _migration.name
+        _subsystem = getattr(_migration, "subsystem", None)
 
         # Check whether the migration is capable of applying, or has already applied
         apply_status = _migration.should_apply(db)
@@ -144,6 +146,10 @@ def run_migrations(
 
         # If --name is specified, only run the migration with the matching name
         if name is not None and name != _name:
+            continue
+
+        # If --subsystem is specified, only run migrations that match the subsystem
+        if subsystem is not None and subsystem != _subsystem:
             continue
 
         # By default, don't run migrations that depend on other non-applied migrations
