@@ -1,8 +1,6 @@
-from graphlib import TopologicalSorter
 from pathlib import Path
 
 from macrostrat.database import Database
-from rich import print
 
 from macrostrat.core.migrations import ApplicationStatus, Migration
 from . import (
@@ -20,7 +18,6 @@ from . import (
     tileserver,
     update_macrostrat,
 )
-from .._legacy import get_db, refresh_db
 
 __dir__ = Path(__file__).parent
 
@@ -68,92 +65,3 @@ def has_enum(db: Database, name: str, schema: str = None):
     return db.run_query(
         f"select exists ({sql})", dict(name=name, schema=schema)
     ).scalar()
-
-
-def run_migrations(
-    apply: bool = False,
-    name: str = None,
-    force: bool = False,
-    data_changes: bool = False,
-):
-    """Apply database migrations"""
-    db = get_db()
-
-    # Check if migrations need to be run and if not, run them
-
-    if force and not name:
-        raise ValueError("--force can only be applied with --name")
-
-    # Find all subclasses of Migration among imported modules
-    migrations = Migration.__subclasses__()
-
-    # Instantiate each migration, then sort topologically according to dependency order
-    instances = [cls() for cls in migrations]
-    graph = {inst.name: inst.depends_on for inst in instances}
-    order = list(TopologicalSorter(graph).static_order())
-    instances.sort(key=lambda i: order.index(i.name))
-
-    # While iterating over migrations, keep track of which have already applied
-    completed_migrations = []
-
-    for _migration in instances:
-        _name = _migration.name
-
-        # Check whether the migration is capable of applying, or has already applied
-        apply_status = _migration.should_apply(db)
-        if apply_status == ApplicationStatus.APPLIED:
-            completed_migrations.append(_migration.name)
-
-        # If --name is specified, only run the migration with the matching name
-        if name is not None and name != _name:
-            continue
-
-        # By default, don't run migrations that depend on other non-applied migrations
-        dependencies_met = all(d in completed_migrations for d in _migration.depends_on)
-        if not dependencies_met and not force:
-            print(f"Dependencies not met for migration [cyan]{_name}[/cyan]")
-            continue
-
-        if force or apply_status == ApplicationStatus.CAN_APPLY:
-            if not apply:
-                print(f"Would apply migration [cyan]{_name}[/cyan]")
-            else:
-                if _migration.destructive and not data_changes and not force:
-                    print(
-                        f"Migration [cyan]{_name}[/cyan] would alter data in the database. Run with --force or --data-changes"
-                    )
-                    return
-
-                print(f"Applying migration [cyan]{_name}[/cyan]")
-                _migration.apply(db)
-                # After running migration, reload the database and confirm that application was sucessful
-                db = refresh_db()
-                if _migration.should_apply(db) == ApplicationStatus.APPLIED:
-                    completed_migrations.append(_migration.name)
-        elif apply_status == ApplicationStatus.APPLIED:
-            print(f"Migration [cyan]{_name}[/cyan] already applied")
-        else:
-            print(f"Migration [cyan]{_name}[/cyan] cannot apply")
-
-        # Short circuit after applying the migration specified by --name
-        if name is not None and name == _name:
-            break
-
-    # Notify PostgREST to reload the schema cache
-    db.run_sql("NOTIFY pgrst, 'reload schema';")
-
-
-def migration_has_been_run(*names: str):
-    db = get_db()
-    migrations = Migration.__subclasses__()
-
-    available_migrations = {m.name for m in migrations}
-    if not set(names).issubset(available_migrations):
-        raise ValueError(f"Unknown migrations: {set(names) - available_migrations}")
-
-    for _migration in migrations:
-        if _migration.name in names:
-            apply_status = _migration.should_apply(db)
-            if apply_status != ApplicationStatus.APPLIED:
-                return True
-    return False

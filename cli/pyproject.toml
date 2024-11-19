@@ -25,6 +25,7 @@ ipython = "^8.5.0"
 "macrostrat.utils" = "^1.2.2"
 "macrostrat.dinosaur" = "^3.0.1"
 "macrostrat.core" = { path = "../core", develop = true }
+"macrostrat.integrations" = { path = "../integrations", develop = true }
 "macrostrat.map-integration" = { path = "../map-integration", develop = true }
 "criticalmaas.ta1-geopackage" = "^0.2.0"
 numpy = "^1.23.4"
