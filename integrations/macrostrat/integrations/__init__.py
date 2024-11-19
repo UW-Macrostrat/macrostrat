@@ -10,6 +10,7 @@ pipelines = {
 from typer import Typer
 
 from macrostrat.core.migrations import run_migrations
+
 from .schema import IntegrationsBaseSchema
 
 app = Typer(

@@ -1,8 +1,8 @@
 from pathlib import Path
 
+from macrostrat.core.migrations import ApplicationStatus, Migration
 from macrostrat.database import Database
 
-from macrostrat.core.migrations import ApplicationStatus, Migration
 from . import (
     api_v3,
     baseline,
