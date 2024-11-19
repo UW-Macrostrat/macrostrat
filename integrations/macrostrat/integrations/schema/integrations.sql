@@ -23,7 +23,12 @@ CREATE TABLE IF NOT EXISTS integrations.dataset (
 
 -- Create a view to expose the integration datasets to the API
 CREATE OR REPLACE VIEW macrostrat_api.dataset AS
-  SELECT * FROM integrations.dataset;
+  SELECT d.*,
+        dt.name type_name,
+        dt.organization
+  FROM integrations.dataset d
+  JOIN integrations.dataset_type dt ON d.type = dt.id;
+
 
 CREATE OR REPLACE VIEW macrostrat_api.dataset_type AS
   SELECT * FROM integrations.dataset_type;
