@@ -21,3 +21,9 @@ CREATE TABLE IF NOT EXISTS integrations.dataset (
   updated_at timestamp DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Create a view to expose the integration datasets to the API
+CREATE OR REPLACE VIEW macrostrat_api.dataset AS
+  SELECT * FROM integrations.dataset;
+
+CREATE OR REPLACE VIEW macrostrat_api.dataset_type AS
+  SELECT * FROM integrations.dataset_type;

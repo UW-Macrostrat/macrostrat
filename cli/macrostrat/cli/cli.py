@@ -291,14 +291,14 @@ if subsystems.get("mapboard", False):
             "Mapboard subsystem enabled, but no mapboard_database setting found"
         )
 
-from macrostrat.integrations import cli_apps
+from macrostrat.integrations import app as integrations_app
 
-for key, _app in cli_apps.items():
-    main.add_typer(
-        _app,
-        name=key,
-        rich_help_panel="Integrations",
-    )
+main.add_typer(
+    integrations_app,
+    name="integrations",
+    short_help="Integrations with other data systems",
+    rich_help_panel="Subsystems",
+)
 
 
 app.subsystems.add(MacrostratAPISubsystem(app))

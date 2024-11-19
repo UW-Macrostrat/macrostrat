@@ -3,36 +3,12 @@ import uuid
 from geoalchemy2.shape import from_shape
 from httpx import get
 from shapely.geometry import shape
-from typer import Typer
 
 from macrostrat.core.database import get_database
-from macrostrat.core.migrations import run_migrations
-from .schema import StrabospotBaseSchema
-
-app = Typer(
-    no_args_is_help=True,
-    help="StraboSpot structural geology data system",
-)
 
 
-@app.command()
-def migrate(
-    apply: bool = False,
-    force: bool = False,
-    data_changes: bool = False,
-):
-    """Run migrations for the integrations subsystem"""
-    run_migrations(
-        subsystem="integrations",
-        apply=apply,
-        force=force,
-        data_changes=data_changes,
-    )
-
-
-@app.command()
-def populate():
-    """Populate the StraboSpot database"""
+def populate_strabospot():
+    """Populate StraboSpot notable spots"""
     api = "https://strabospot.org/REST/notableSpots"
     db = get_database()
     # Todo: improve the model here.
@@ -43,11 +19,15 @@ def populate():
     type_id = db.run_query(
         """
         INSERT INTO integrations.dataset_type (name, organization)
-        VALUES (:name, :organization) ON CONFLICT DO NOTHING
+        VALUES (:name, :organization)
+        ON CONFLICT (name, organization)
+        DO UPDATE SET updated_at = now()
         RETURNING id
         """,
         dict(name="Notable spots", organization="StraboSpot"),
     ).scalar()
+
+    assert type_id is not None
 
     # Right now, we have to reset the table before we can insert data
     db.run_sql(

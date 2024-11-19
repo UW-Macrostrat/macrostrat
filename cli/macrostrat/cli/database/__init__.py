@@ -12,15 +12,12 @@ from typer import Argument, Option
 
 from macrostrat.core import MacrostratSubsystem, app
 from macrostrat.core.migrations import run_migrations
-from macrostrat.integrations import register_migrations
 from ._legacy import get_db
 # First, register all migrations
 # NOTE: right now, this is quite implicit.
 from .migrations import *
 from .utils import engine_for_db_name
 from .._dev.utils import raw_database_url
-
-register_migrations()
 
 log = get_logger(__name__)
 
