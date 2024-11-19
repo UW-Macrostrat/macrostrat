@@ -1,3 +1,5 @@
+import uuid
+
 from geoalchemy2.shape import from_shape
 from httpx import get
 from shapely.geometry import shape
@@ -19,9 +21,9 @@ def migrate(
     force: bool = False,
     data_changes: bool = False,
 ):
-    """Run migrations for the StraboSpot integration"""
+    """Run migrations for the integrations subsystem"""
     run_migrations(
-        subsystem="strabospot-integration",
+        subsystem="integrations",
         apply=apply,
         force=force,
         data_changes=data_changes,
@@ -34,25 +36,38 @@ def populate():
     api = "https://strabospot.org/REST/notableSpots"
     db = get_database()
     # Todo: improve the model here.
-    db.automap(schemas=["strabospot"])
-    model = db.model.strabospot_featured_spots
+    db.automap(schemas=["integrations"])
+    model = db.model.integrations_dataset
+
+    # Get or create type for general integrations
+    type_id = db.run_query(
+        """
+        INSERT INTO integrations.dataset_type (name, organization)
+        VALUES (:name, :organization) ON CONFLICT DO NOTHING
+        RETURNING id
+        """,
+        dict(name="Notable spots", organization="StraboSpot"),
+    ).scalar()
 
     # Right now, we have to reset the table before we can insert data
-    db.run_sql("TRUNCATE TABLE strabospot.featured_spots")
+    db.run_sql(
+        "DELETE FROM integrations.dataset WHERE type = :type_id",
+        dict(type_id=type_id),
+    )
 
-    data = feature_iterator(api)
+    data = feature_iterator(api, type_id)
 
     insert_data(db, model, data)
 
 
-def feature_iterator(base_url):
+def feature_iterator(base_url, type):
     """Iterate over features from the StraboSpot API"""
     for bbox_params in get_bbox_params():
         print(f"Getting data for {bbox_params}")
         data = get_data(base_url, bbox_params)
         print(f"   {len(data)} features")
         for feature in data:
-            yield process_feature(feature)
+            yield process_feature(feature, type)
 
 
 def insert_data(db, model, data):
@@ -76,15 +91,21 @@ def insert_data(db, model, data):
         print(f"Inserted {n_inserted} rows")
 
 
-def process_feature(feature):
+def process_feature(feature, type):
     """Process a feature from the StraboSpot API"""
     # GeoJSON to WKB
     geom = shape(feature["geometry"]).centroid
     geom_wkb = from_shape(geom, srid=4326)
     props = feature["properties"]
+    # hash ID to uuid
+    # _id = props.get("id")
+
     return dict(
         geom=geom_wkb,
-        spot_id=props.get("id"),
+        uid=uuid.uuid4(),  # Ideally we'd do a better job of hashing the ID
+        url=props.get("landing_page", None),
+        type=type,
+        name=props.get("name", None),
         created_at=props.get("date"),
         data=props,
     )

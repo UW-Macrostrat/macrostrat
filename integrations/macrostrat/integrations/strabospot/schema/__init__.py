@@ -2,8 +2,8 @@ from macrostrat.core.migrations import Migration, exists
 
 
 class StrabospotBaseSchema(Migration):
-    name = "strabospot-integration"
-    subsystem = "strabospot-integration"
+    name = "integrations-tables"
+    subsystem = "integrations"
     description = """ Create tables for StraboSpot integration."""
 
-    postconditions = [exists("strabospot", "featured_spots")]
+    postconditions = [exists("integrations", "dataset", "dataset_type")]
