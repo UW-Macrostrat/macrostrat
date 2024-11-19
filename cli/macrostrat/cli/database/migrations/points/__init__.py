@@ -1,4 +1,4 @@
-from ..base import Migration, exists, view_exists
+from macrostrat.core.migrations import Migration, exists, view_exists
 
 
 class PointsMigration(Migration):

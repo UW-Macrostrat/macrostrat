@@ -1,6 +1,6 @@
 from macrostrat.database import Database
 
-from ..base import Migration, custom_type_exists
+from macrostrat.core.migrations import Migration, custom_type_exists
 
 
 class MapsScaleCustomTypeMigration(Migration):

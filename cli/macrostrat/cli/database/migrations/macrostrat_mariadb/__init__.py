@@ -1,8 +1,6 @@
 from pathlib import Path
 
-from macrostrat.database import Database
-
-from ..base import Migration, exists, has_fks
+from macrostrat.core.migrations import Migration, exists
 
 __dir__ = Path(__file__).parent
 

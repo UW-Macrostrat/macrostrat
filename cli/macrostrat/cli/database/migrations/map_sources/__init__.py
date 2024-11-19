@@ -1,6 +1,4 @@
-from macrostrat.database import Database
-
-from ..base import Migration, schema_exists, view_exists
+from macrostrat.core.migrations import Migration, view_exists
 
 
 class MapsSourcesMetadataMigration(Migration):
