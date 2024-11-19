@@ -36,7 +36,6 @@ async def run_layer_query(con, layer_name, **params):
     return await con.fetchval(q, *p)
 
 
-
 def get_layer_sql(layer: str):
     query = __here__ / "queries" / (layer + ".sql")
 

@@ -1,5 +1,5 @@
 serve:
-    poetry run uvicorn macrostrat_tileserver.main:app --host localhost --port 8000 --reload
+	poetry run uvicorn macrostrat_tileserver.main:app --log-level debug --reload --port 8000
 
 fast:
 	poetry run uvicorn macrostrat_tileserver.main:app --log-level debug --port 8000 --workers 8
