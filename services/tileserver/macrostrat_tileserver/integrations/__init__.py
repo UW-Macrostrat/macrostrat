@@ -2,13 +2,16 @@ from pathlib import Path
 from buildpg import render
 from fastapi import APIRouter, Request, Response
 from timvt.resources.enums import MimeTypes
+from macrostrat.utils import get_logger
 
 router = APIRouter()
 
 __here__ = Path(__file__).parent
 
+log = get_logger(__name__)
 
-@router.get("/{organization}/{type}/tile/{z}/{x}/{y}")
+
+@router.get("/{organization}/{type}/tiles/{z}/{x}/{y}")
 async def integrations_tile(
     request: Request,
     organization: str,
@@ -36,11 +39,11 @@ async def integrations_tile(
 
 async def run_layer_query(con, layer_name, **params):
     query = get_layer_sql(layer_name)
-    q, p = render(query, **params)
+    q, p = render(query, layer_name="default", **params)
     return await con.fetchval(q, *p)
 
 
-def get_layer_sql(layer: str):
+def get_layer_sql(layer: str, layer_name="default"):
     query = __here__ / "queries" / (layer + ".sql")
 
     q = query.read_text()
@@ -50,6 +53,6 @@ def get_layer_sql(layer: str):
 
     # Replace the envelope with the function call. Kind of awkward.
     q = q.replace(":envelope", "tile_utils.envelope(:x, :y, :z)")
-    print(q)
+
     # Wrap with MVT creation
-    return q
+    return f"WITH feature_query AS ({q}) SELECT ST_AsMVT(feature_query, :layer_name) FROM feature_query"

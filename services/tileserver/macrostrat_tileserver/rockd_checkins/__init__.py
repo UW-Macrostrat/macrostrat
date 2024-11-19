@@ -46,6 +46,5 @@ def get_layer_sql(layer: str):
 
     # Replace the envelope with the function call. Kind of awkward.
     q = q.replace(":envelope", "tile_utils.envelope(:x, :y, :z)")
-    print(q)
     # Wrap with MVT creation
     return q
