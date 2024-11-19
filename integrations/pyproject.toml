@@ -1,0 +1,23 @@
+[tool.poetry]
+authors = [
+    "Daven Quinn <dev@davenquinn.com>",
+]
+description = "Macrostrat system integrations"
+name = "macrostrat.integrations"
+
+packages = [{ include = "macrostrat" }]
+
+readme = "README.md"
+version = "1.0.0"
+
+[tool.poetry.dependencies]
+"macrostrat.database" = "^3.3.3"
+"macrostrat.utils" = "^1.2.2"
+"macrostrat.core" = { path = "../core", develop = true }
+"macrostrat.map-integration" = { path = "../map-integration", develop = true }
+"criticalmaas.ta1-geopackage" = "^0.2.0"
+typer = "^0.12"
+
+[build-system]
+build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core"]
