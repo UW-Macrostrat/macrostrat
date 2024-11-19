@@ -5,6 +5,7 @@ WITH tile AS (
   SELECT
     checkin_id id,
     person_id person,
+    photo,
     notes,
     rating,
     date_part('year', coalesce(updated, created)) AS year,
