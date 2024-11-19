@@ -201,6 +201,10 @@ from .rockd_checkins import router as checkins_router
 
 app.include_router(checkins_router, tags=["Checkins"], prefix="/checkins/tiles")
 
+from .integrations import router as integrations_router
+
+app.include_router(integrations_router, tags=["Integrations"], prefix="/integrations")
+
 
 @app.get("/carto/rotation-models")
 async def rotation_models():
