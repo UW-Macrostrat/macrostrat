@@ -9,7 +9,11 @@ from starlette.middleware import Middleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette_cramjam.middleware import CompressionMiddleware
-from timvt.db import close_db_connection, connect_to_db, connect_to_rockd_db, register_table_catalog
+from timvt.db import (
+    close_db_connection,
+    connect_to_db,
+    register_table_catalog,
+)
 from timvt.settings import PostgresSettings
 from timvt.layer import FunctionRegistry
 from titiler.core.errors import DEFAULT_STATUS_CODES, add_exception_handlers
@@ -27,9 +31,39 @@ from pathlib import Path
 from time import time
 
 
+from typing import Any, Optional
+from buildpg import asyncpg
+from fastapi import FastAPI
+from timvt.settings import PostgresSettings
+from timvt.db import con_init
+
+
+# TODO: move this or improve it
+async def connect_to_rockd_db(
+    app: FastAPI,
+    settings: Optional[PostgresSettings] = None,
+    **kwargs,
+) -> None:
+    """Connect."""
+    if not settings:
+        settings = PostgresSettings()
+
+    app.state.pool = await asyncpg.create_pool_b(
+        settings.rockd_database_url,
+        min_size=settings.db_min_conn_size,
+        max_size=settings.db_max_conn_size,
+        max_queries=settings.db_max_queries,
+        max_inactive_connection_lifetime=settings.db_max_inactive_conn_lifetime,
+        init=con_init,
+        **kwargs,
+    )
+
+
 # Wire up legacy postgres database
 if not environ.get("DATABASE_URL") and "POSTGRES_DB" in environ:
     environ["DATABASE_URL"] = environ["POSTGRES_DB"]
+
+# We need to provide the Rockd database URL or else the whole thing doesn't start up
 
 
 log = get_logger(__name__)
@@ -46,6 +80,7 @@ class TileServerSettings(PostgresSettings):
     model_config = SettingsConfigDict(
         extra="allow",
     )
+
 
 db_settings = TileServerSettings()
 db_settings.rockd_database_url
@@ -101,7 +136,6 @@ async def shutdown_event():
     await close_db_connection(app)
 
 
-
 app.add_middleware(CompressionMiddleware, minimum_size=0)
 
 MapnikLayerFactory(app)
@@ -135,13 +169,11 @@ functions = [
     "weaver_api.weaver_tile",
     "tile_layers.map",
     "tile_layers.all_maps",
-
 ]
 
 layers = [CachedStoredFunction(l) for l in cached_functions] + [
     StoredFunction(l) for l in functions
 ]
-
 
 
 layers.append(PaleoGeographyLayer())
