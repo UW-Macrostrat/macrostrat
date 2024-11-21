@@ -4,7 +4,7 @@ FROM node:14-bullseye
 
 RUN apt-get -y update && \
     apt-get -y install redis-tools postgresql-client && \
-    apt-get -y install ca-certificates
+    apt-get -y install ca-certificates supervisor
 
 WORKDIR /code
 
@@ -26,4 +26,5 @@ ENV NODE_PG_FORCE_NATIVE=1
 
 COPY ./ /code/
 
-CMD npm start
+COPY ./supervisor/api.conf /etc/supervisor/conf.d/
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf", "-n"]
