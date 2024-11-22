@@ -292,13 +292,22 @@ if subsystems.get("mapboard", False):
             "Mapboard subsystem enabled, but no mapboard_database setting found"
         )
 
+from macrostrat.integrations import app as integrations_app
+
+main.add_typer(
+    integrations_app,
+    name="integrations",
+    short_help="Integrations with other data systems",
+    rich_help_panel="Subsystems",
+)
+
 
 app.subsystems.add(MacrostratAPISubsystem(app))
 
 if sgp_url := getattr(settings, "sgp_database", None):
     from .subsystems.sgp import sgp
 
-    main.add_typer(sgp, rich_help_panel="Subsystems")
+    main.add_typer(sgp, rich_help_panel="Integrations")
 
 # Mariadb CLI
 if mariadb_url := getattr(settings, "mysql_database", None):
@@ -317,7 +326,7 @@ from .subsystems.xdd import cli as kg_cli
 main.add_typer(
     kg_cli,
     name="xdd",
-    rich_help_panel="Subsystems",
+    rich_help_panel="Integrations",
     short_help="Manage xDD integration",
 )
 

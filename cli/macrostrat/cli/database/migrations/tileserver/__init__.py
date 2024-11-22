@@ -4,9 +4,7 @@
 
 from pathlib import Path
 
-from macrostrat.database import Database
-
-from ..base import Migration, schema_exists
+from macrostrat.core.migrations import Migration, schema_exists
 
 __dir__ = Path(__file__).parent
 
