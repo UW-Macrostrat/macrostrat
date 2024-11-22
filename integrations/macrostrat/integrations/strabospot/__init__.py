@@ -62,7 +62,7 @@ def insert_data(db, model, data):
         to_insert.append(row)
         if len(to_insert) == 100:
             db.session.bulk_insert_mappings(model, to_insert)
-            db.sesion.commit()
+            db.session.commit()
             to_insert = []
             print(f"Inserted {n_inserted} rows")
     if to_insert:
