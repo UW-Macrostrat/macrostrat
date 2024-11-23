@@ -5,10 +5,10 @@ from sys import exit
 import toml
 from dynaconf import Dynaconf
 from macrostrat.app_frame import Application, Subsystem, SubsystemManager
-from macrostrat.app_frame.control_command import OrderCommands
+from macrostrat.app_frame.control_command import CommandBase
 from macrostrat.utils import get_logger
 from rich.console import Console
-from typer import Typer, get_app_dir
+from typer import get_app_dir
 
 from .console import console_theme
 from .exc import MacrostratError
@@ -76,7 +76,7 @@ class MacrostratSubsystem(Subsystem):
         self.settings = app.settings
 
     def control_command(self, **kwargs):
-        return Typer(no_args_is_help=True, cls=OrderCommands, **kwargs)
+        return CommandBase(**kwargs)
 
 
 class StateManager:

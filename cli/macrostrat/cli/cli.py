@@ -2,6 +2,7 @@ from os import environ
 from pathlib import Path
 
 import typer
+from macrostrat.utils.shell import run
 from rich import print
 from rich.traceback import install
 from typer import Argument, Typer
@@ -9,8 +10,6 @@ from typer import Argument, Typer
 from macrostrat.core import app
 from macrostrat.core.exc import MacrostratError
 from macrostrat.core.main import env_text, set_app_state
-from macrostrat.utils.shell import run
-
 from .database import db_app, db_subsystem
 from .subsystems.macrostrat_api import MacrostratAPISubsystem
 from .subsystems.paleogeography import load_paleogeography_subsystem
@@ -58,13 +57,11 @@ main = app.control_command(
     help=help_text,
 )
 
-main.add_typer(db_app, name="database", short_help="Manage the Macrostrat database")
 main.add_typer(
     db_app,
-    name="db",
+    name="database",
     short_help="Manage the Macrostrat database",
-    deprecated=True,
-    hidden=True,
+    aliases=["db"],
 )
 
 
@@ -253,8 +250,8 @@ if subsystems.get("criticalmaas", False):
     main.add_typer(
         criticalmaas_app,
         name="criticalmaas",
-        rich_help_panel="Subsystems",
-        short_help="Integrate with the CriticalMAAS program",
+        rich_help_panel="Integrations",
+        short_help="Tools for the CriticalMAAS program",
         deprecated=True,
     )
 
