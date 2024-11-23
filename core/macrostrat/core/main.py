@@ -1,14 +1,14 @@
 from os import environ
 from pathlib import Path
+from sys import exit
 
 import toml
 from dynaconf import Dynaconf
-from rich.console import Console
-from typer import Typer, get_app_dir
-
 from macrostrat.app_frame import Application, Subsystem, SubsystemManager
 from macrostrat.app_frame.control_command import OrderCommands
 from macrostrat.utils import get_logger
+from rich.console import Console
+from typer import Typer, get_app_dir
 
 from .console import console_theme
 from .exc import MacrostratError
@@ -44,7 +44,7 @@ def set_app_state(key: str, value: str, wipe_others: bool = False):
         toml.dump(state, f)
 
 
-def load_settings():
+def load_settings(console: Console):
     if "MACROSTAT_ENV" in environ:
         log.info("active environment: %s", env_text())
     active_env = get_app_state_file()
@@ -62,6 +62,10 @@ def load_settings():
             f"Could not load settings for {env_text()}",
             details="Removing environment configuration",
         )
+    except Exception as err:
+        # Fake it till we make it with error handling
+        console.print_exception(show_locals=False)
+        exit(1)
 
     return settings
 
@@ -90,9 +94,9 @@ class Macrostrat(Application):
     state: StateManager
 
     def __init__(self, *args, **kwargs):
-        self.settings = load_settings()
-        self.subsystems = SubsystemManager()
         self.console = Console(theme=console_theme)
+        self.settings = load_settings(self.console)
+        self.subsystems = SubsystemManager()
         self.state = StateManager()
 
         compose_files = []

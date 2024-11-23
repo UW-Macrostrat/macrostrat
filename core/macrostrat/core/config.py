@@ -2,6 +2,7 @@ from os import environ
 from pathlib import Path
 
 from dynaconf import Dynaconf, Validator
+from macrostrat.app_frame.control_command import BackendType
 from sqlalchemy.engine import make_url
 from sqlalchemy.engine.url import URL
 from toml import load as load_toml
@@ -10,6 +11,8 @@ from .utils import find_macrostrat_config
 
 
 class MacrostratConfig(Dynaconf):
+    """Macrostrat config manager that reads from a TOML file"""
+
     config_file: Path
 
     def __init__(self, *args, **kwargs):
@@ -44,7 +47,10 @@ settings = MacrostratConfig()
 settings.validators.register(
     # `must_exist` is causing huge problems
     # Validator("COMPOSE_ROOT", "CORELLE_SRC", must_exist=False, cast=Path),
-    Validator("COMPOSE_ROOT", "CORELLE_SRC", cast=Path)
+    Validator("COMPOSE_ROOT", "CORELLE_SRC", cast=Path),
+    Validator("pg_database", must_exist=True),
+    # Backend information. We could potentially infer this from other environment variables
+    Validator("backend", default="kubernetes", cast=BackendType),
 )
 
 macrostrat_env = getattr(settings, "env", "default")
