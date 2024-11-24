@@ -1,11 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="SqlDialectMappings">
-    <file url="file://$PROJECT_DIR$/macrostrat_tileserver/filterable/queries/units.sql" dialect="PostgreSQL" />
     <file url="file://$PROJECT_DIR$/macrostrat_tileserver/fixtures/04-carto-layer-defs.sql" dialect="PostgreSQL" />
-    <file url="file://$PROJECT_DIR$/macrostrat_tileserver/map_bounds/queries/bounds.sql" dialect="PostgreSQL" />
-    <file url="file://$PROJECT_DIR$/macrostrat_tileserver/vector_search/queries/create-search-term.sql" dialect="PostgreSQL" />
-    <file url="file://$PROJECT_DIR$/macrostrat_tileserver/vector_search/queries/units.sql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/macrostrat_tileserver/rockd_checkins/queries/checkins.sql" dialect="PostgreSQL" />
     <file url="PROJECT" dialect="PostgreSQL" />
   </component>
 </project>
