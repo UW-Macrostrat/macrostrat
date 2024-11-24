@@ -1,11 +1,12 @@
 # From here:
 # https://stackoverflow.com/questions/53835198/integrating-python-poetry-with-docker
 # NOTE: we might want to make things a bit nicer here
-FROM python:3.11
+FROM python:3.9
 
 RUN apt-get update -y && \
-  apt-get install -y python3.11-dev && \
-    rm -rf /var/lib/apt/lists/*
+  apt-get install -y --no-install-recommends \
+  libgdal-dev libproj-dev libgeos-dev && \
+  rm -rf /var/lib/apt/lists/*
 
 # The rest of this (for vector tile generation and the server itself) should be easier.
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 POETRY_VIRTUALENVS_CREATE=false
