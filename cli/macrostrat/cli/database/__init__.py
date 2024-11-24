@@ -12,6 +12,7 @@ from typer import Argument, Option
 from macrostrat.core import MacrostratSubsystem, app
 from macrostrat.core.migrations import run_migrations
 from ._legacy import get_db
+
 # First, register all migrations
 # NOTE: right now, this is quite implicit.
 from .migrations import *

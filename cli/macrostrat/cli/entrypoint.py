@@ -66,14 +66,6 @@ main.add_typer(
 )
 
 
-@main.command()
-def shell():
-    """Start an IPython shell"""
-    import IPython
-
-    IPython.embed()
-
-
 @main.command(name="env")
 def set_env(env: str = Argument(None), unset: bool = False):
     """Set the active environment"""

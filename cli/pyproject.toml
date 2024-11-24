@@ -48,7 +48,7 @@ greenlet = "^3.0.3"
 paramiko = "^3.4.0"
 
 [tool.poetry.scripts]
-macrostrat = "macrostrat.cli.cli:main"
+macrostrat = "macrostrat.cli:main"
 
 [tool.poetry.group.dev.dependencies]
 snakeviz = "^2.2.0"
