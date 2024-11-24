@@ -3,6 +3,7 @@ Tests for Macrostrat's tileserver v2
 """
 
 import pytest
+from mapbox_vector_tile import decode
 
 
 @pytest.mark.legacy_raster
@@ -43,3 +44,17 @@ def test_get_tile(client, source_id, z, x, y):
     tile = res.content
     # Check that there are features
     assert len(tile) > 0
+
+    res = decode(tile=tile)
+    features = res["units"]["features"]
+    assert len(features) > 0
+    for feature in features:
+        assert feature["properties"]["source_id"] == source_id
+
+    if source_id == 154:
+        return
+
+    features = res["lines"]["features"]
+    assert len(features) > 0
+    for feature in features:
+        assert feature["properties"]["source_id"] == source_id
