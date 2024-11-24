@@ -2,6 +2,7 @@ from os import environ
 from pathlib import Path
 
 import typer
+from macrostrat.app_frame import CommandBase
 from macrostrat.utils.shell import run
 from rich import print
 from rich.traceback import install
@@ -338,11 +339,13 @@ app.finish_loading_subsystems()
 
 
 # Commands to manage this command-line interface
-self_app = typer.Typer()
+self_app = CommandBase()
 
 
 @self_app.command()
 def inspect():
+    """Run a IPython shell in the application context"""
+
     import IPython
 
     IPython.embed()
