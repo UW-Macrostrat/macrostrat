@@ -27,7 +27,8 @@ def test_database_url():
     # Get the database URL from the environment
     url = getenv("TEST_DATABASE_URL", None)
     if url is not None:
-        return url
+        yield url
+        return
 
     # If we haven't provided a database URL , try to run a temporary database in Docker
     image = getenv("TEST_POSTGRES_IMAGE", "imresamu/postgis:15-3.4")
@@ -54,6 +55,10 @@ def db(pytestconfig, test_database_url):
         restore_database(
             database.engine, __here__ / "test-fixtures" / "tileserver-test.pg-dump"
         )
+        # Run test fixtures
+        database.run_fixtures(__here__ / "test-fixtures" / "setup.sql")
+        ## Create fixtures
+        database.run_fixtures(__here__ / ".." / "fixtures")
 
         yield database
 
