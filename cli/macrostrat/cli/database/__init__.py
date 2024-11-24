@@ -1,8 +1,9 @@
-from os import environ
 from sys import exit, stderr, stdin, stdout
 from typing import Any, Callable
 
 import typer
+from macrostrat.utils import get_logger
+from macrostrat.utils.shell import run
 from pydantic import BaseModel
 from rich import print
 from sqlalchemy import make_url, text
@@ -10,16 +11,13 @@ from typer import Argument, Option
 
 from macrostrat.core import MacrostratSubsystem, app
 from macrostrat.core.migrations import run_migrations
-from macrostrat.utils import get_logger
-from macrostrat.utils.shell import run
-
-from .._dev.utils import raw_database_url
 from ._legacy import get_db
 
 # First, register all migrations
 # NOTE: right now, this is quite implicit.
 from .migrations import *
 from .utils import engine_for_db_name
+from .._dev.utils import raw_database_url
 
 log = get_logger(__name__)
 
@@ -49,7 +47,8 @@ DBCallable = Callable[[Database], None]
 class SubsystemSchemaDefinition(BaseModel):
     """A schema definition managed by a Macrostrat subsystem"""
 
-    # TODO: These could also be recast as "idempotent migrations" that can be run at any time
+    # TODO: These could be recast as "idempotent migrations" that can be run at any time
+    # and integrated with the migrations system
     model_config = dict(
         arbitrary_types_allowed=True,
     )
@@ -440,15 +439,3 @@ def field_title(name):
     # expand the title to 20 characters
     title = title.ljust(12)
     return "[dim]" + title + "[/]" + " "
-
-
-@db_app.command(name="tunnel", deprecated=True, rich_help_panel="Helpers")
-def db_tunnel():
-    """Kubernetes port-forward to a remote database"""
-    # TODO: Check if we are running in a Kubernetes environment
-
-    pod = getattr(app.settings, "pg_database_pod", None)
-    if pod is None:
-        raise Exception("No pod specified.")
-    port = environ.get("PGPORT", "5432")
-    run("kubectl", "port-forward", pod, f"{port}:5432")

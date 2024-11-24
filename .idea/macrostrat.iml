@@ -14,6 +14,7 @@
       <sourceFolder url="file://$MODULE_DIR$/map-integration" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/cli" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/raster-cli" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/integrations" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/cli/.venv" />
       <excludeFolder url="file://$MODULE_DIR$/py-root/.venv" />
       <excludeFolder url="file://$MODULE_DIR$/.venv" />

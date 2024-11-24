@@ -5,7 +5,7 @@ all:
 	poetry install
 
 install:
-	cli/macrostrat install
+	ln -sf $(shell pwd)/bin/macrostrat /usr/local/bin/macrostrat
 
 format:
 	poetry run black .

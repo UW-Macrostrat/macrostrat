@@ -1,14 +1,14 @@
 from os import environ
 from pathlib import Path
+from sys import exit
 
 import toml
 from dynaconf import Dynaconf
-from rich.console import Console
-from typer import Typer, get_app_dir
-
 from macrostrat.app_frame import Application, Subsystem, SubsystemManager
-from macrostrat.app_frame.control_command import OrderCommands
+from macrostrat.app_frame.control_command import CommandBase
 from macrostrat.utils import get_logger
+from rich.console import Console
+from typer import get_app_dir
 
 from .console import console_theme
 from .exc import MacrostratError
@@ -44,7 +44,7 @@ def set_app_state(key: str, value: str, wipe_others: bool = False):
         toml.dump(state, f)
 
 
-def load_settings():
+def load_settings(console: Console):
     if "MACROSTAT_ENV" in environ:
         log.info("active environment: %s", env_text())
     active_env = get_app_state_file()
@@ -62,6 +62,10 @@ def load_settings():
             f"Could not load settings for {env_text()}",
             details="Removing environment configuration",
         )
+    except Exception as err:
+        # Fake it till we make it with error handling
+        console.print_exception(show_locals=False)
+        exit(1)
 
     return settings
 
@@ -72,7 +76,7 @@ class MacrostratSubsystem(Subsystem):
         self.settings = app.settings
 
     def control_command(self, **kwargs):
-        return Typer(no_args_is_help=True, cls=OrderCommands, **kwargs)
+        return CommandBase(**kwargs)
 
 
 class StateManager:
@@ -90,9 +94,9 @@ class Macrostrat(Application):
     state: StateManager
 
     def __init__(self, *args, **kwargs):
-        self.settings = load_settings()
-        self.subsystems = SubsystemManager()
         self.console = Console(theme=console_theme)
+        self.settings = load_settings(self.console)
+        self.subsystems = SubsystemManager()
         self.state = StateManager()
 
         compose_files = []
@@ -114,12 +118,6 @@ class Macrostrat(Application):
             # This only applies to Docker Compose
             restart_commands={"gateway": "caddy reload --config /etc/caddy/Caddyfile"},
         )
-
-        # Remove DOCKER_BUILDKIT=1 from the environment if we are in offline mode
-        # This should possible be merged in upstream
-        if self.settings.offline:
-            cfg = environ["DOCKER_BUILDKIT"] = "0"
-            log.info("Disabling Docker BuildKit for offline mode")
 
         self.subsystems._app = self
 

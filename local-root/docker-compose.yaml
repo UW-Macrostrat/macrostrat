@@ -2,7 +2,7 @@ services:
   gateway:
     image: caddy:2-alpine
     ports:
-      - "8000:80"
+      - "8080:80"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
   database:

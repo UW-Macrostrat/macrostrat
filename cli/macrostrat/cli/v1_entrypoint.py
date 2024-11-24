@@ -1,6 +1,10 @@
 """
 macrostrat-cli: a command-line interface for working with Macrostrat data[bases]
 
+This is the legacy command-line application that was used to interact with Macrostrat
+v1 and is now deprecated. Commands referenced here will be moved to other parts of the
+system going forward.
+
 Usage:
   macrostrat v1 rebuild <table>
   macrostrat v1 match <cmd> <source_id>
@@ -23,6 +27,7 @@ Help:
 import sys
 
 import click
+
 
 # CLI with unprocessed arguments
 

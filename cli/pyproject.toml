@@ -20,8 +20,8 @@ SQLAlchemy = "^2.0.0"
 dynaconf = "^3.1.12"
 geopandas = "^0.14.1"
 ipython = "^8.5.0"
-"macrostrat.app-frame" = "^2.0.0"
-"macrostrat.database" = "^3.3.3"
+"macrostrat.app-frame" = "^2.1.0"
+"macrostrat.database" = "^3.4.0"
 "macrostrat.utils" = "^1.2.2"
 "macrostrat.dinosaur" = "^3.0.1"
 "macrostrat.core" = { path = "../core", develop = true }
@@ -48,7 +48,7 @@ greenlet = "^3.0.3"
 paramiko = "^3.4.0"
 
 [tool.poetry.scripts]
-macrostrat = "macrostrat.cli.cli:main"
+macrostrat = "macrostrat.cli:main"
 
 [tool.poetry.group.dev.dependencies]
 snakeviz = "^2.2.0"

@@ -3,7 +3,7 @@ all:
 	poetry install
 
 install:
-	ln -sf $(shell pwd)/bin/macrostrat /usr/local/bin/macrostrat
+	ln -sf $(shell pwd)/../bin/macrostrat /usr/local/bin/macrostrat
 
 CACHE_DIR := .pytest_cache
 

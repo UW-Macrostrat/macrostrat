@@ -1,12 +1,12 @@
 from urllib.parse import quote
 
+from macrostrat.utils import get_logger
 from rich.console import Console
 from sqlalchemy.engine import Engine
 from sqlalchemy.engine.url import URL
 from sqlalchemy_utils import create_database, database_exists, drop_database
 
 from macrostrat.core.exc import MacrostratError
-from macrostrat.utils import get_logger
 
 console = Console()
 
@@ -18,6 +18,8 @@ def _docker_local_run_args(postgres_container: str = "postgres:15"):
         "docker",
         "run",
         "-i",
+        "--network",
+        "host",
         "--attach",
         "stdin",
         "--attach",
