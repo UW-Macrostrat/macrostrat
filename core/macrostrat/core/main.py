@@ -119,12 +119,6 @@ class Macrostrat(Application):
             restart_commands={"gateway": "caddy reload --config /etc/caddy/Caddyfile"},
         )
 
-        # Remove DOCKER_BUILDKIT=1 from the environment if we are in offline mode
-        # This should possible be merged in upstream
-        if self.settings.offline:
-            cfg = environ["DOCKER_BUILDKIT"] = "0"
-            log.info("Disabling Docker BuildKit for offline mode")
-
         self.subsystems._app = self
 
     def finish_loading_subsystems(self):
