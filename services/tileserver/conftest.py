@@ -3,7 +3,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from macrostrat_tileserver.tests.fixtures import app, client, db  # noqa
+from macrostrat_tileserver.tests.fixtures import (
+    app,
+    client,
+    db,
+    test_database_url,
+)  # noqa
 
 
 def pytest_addoption(parser):
