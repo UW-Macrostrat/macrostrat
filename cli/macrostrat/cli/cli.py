@@ -125,7 +125,8 @@ def edit_cfg():
 
     from macrostrat.core.config import settings
 
-    run(["open", str(settings.config_file)])
+    editor = environ.get("EDITOR", "open")
+    run([editor, str(settings.config_file)])
 
 
 @cfg_app.command(name="environments")

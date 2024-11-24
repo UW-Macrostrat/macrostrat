@@ -46,7 +46,8 @@ DBCallable = Callable[[Database], None]
 class SubsystemSchemaDefinition(BaseModel):
     """A schema definition managed by a Macrostrat subsystem"""
 
-    # TODO: These could also be recast as "idempotent migrations" that can be run at any time
+    # TODO: These could be recast as "idempotent migrations" that can be run at any time
+    # and integrated with the migrations system
     model_config = dict(
         arbitrary_types_allowed=True,
     )
