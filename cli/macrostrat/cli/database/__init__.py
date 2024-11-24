@@ -2,8 +2,6 @@ from sys import exit, stderr, stdin, stdout
 from typing import Any, Callable
 
 import typer
-from macrostrat.utils import get_logger
-from macrostrat.utils.shell import run
 from pydantic import BaseModel
 from rich import print
 from sqlalchemy import make_url, text
@@ -11,13 +9,16 @@ from typer import Argument, Option
 
 from macrostrat.core import MacrostratSubsystem, app
 from macrostrat.core.migrations import run_migrations
+from macrostrat.utils import get_logger
+from macrostrat.utils.shell import run
+
+from .._dev.utils import raw_database_url
 from ._legacy import get_db
 
 # First, register all migrations
 # NOTE: right now, this is quite implicit.
 from .migrations import *
 from .utils import engine_for_db_name
-from .._dev.utils import raw_database_url
 
 log = get_logger(__name__)
 
