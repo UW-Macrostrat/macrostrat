@@ -58,3 +58,13 @@ def test_get_tile(client, source_id, z, x, y):
     assert len(features) > 0
     for feature in features:
         assert feature["properties"]["source_id"] == source_id
+
+
+def test_get_empty_tile(client):
+    res = client.get("/carto/10/321/354")
+    assert res.status_code == 200
+    assert res.headers["Content-Type"] == "application/x-protobuf"
+    # Get the tile
+    tile = res.content
+    # Check that there are features
+    assert len(tile) == 0
