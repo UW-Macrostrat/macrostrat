@@ -27,7 +27,19 @@ def test_database(db):
     assert db.engine.url
 
 
-def test_get_tile(client):
-    res = client.get("/carto/13/1554/3078")
+@pytest.mark.parametrize(
+    "source_id,z,x,y",
+    [
+        (251, 13, 1554, 3078),
+        (251, 10, 194, 384),
+        (154, 1, 0, 0),
+    ],
+)
+def test_get_tile(client, source_id, z, x, y):
+    res = client.get(f"/carto/{z}/{x}/{y}")
     assert res.status_code == 200
     assert res.headers["Content-Type"] == "application/x-protobuf"
+    # Get the tile
+    tile = res.content
+    # Check that there are features
+    assert len(tile) > 0
