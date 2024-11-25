@@ -22,7 +22,7 @@ geopandas = "^0.14.1"
 ipython = "^8.5.0"
 "macrostrat.app-frame" = "^2.1.0"
 "macrostrat.database" = "^3.4.0"
-"macrostrat.utils" = "^1.2.2"
+"macrostrat.utils" = "^1.2.3"
 "macrostrat.dinosaur" = "^3.0.1"
 "macrostrat.core" = { path = "../core", develop = true }
 "macrostrat.integrations" = { path = "../integrations", develop = true }
