@@ -14,7 +14,6 @@ from macrostrat.utils.shell import run
 
 from .._dev.utils import raw_database_url
 from ._legacy import get_db
-
 # First, register all migrations
 # NOTE: right now, this is quite implicit.
 from .migrations import *
@@ -252,7 +251,6 @@ def dump(
         dumpfile = stdout
 
     args = ctx.args
-    print(args)
     custom_format = True
     if schema:
         args.append("--schema-only")
@@ -261,7 +259,7 @@ def dump(
     pg_dump(
         dumpfile,
         engine,
-        *args,
+        args=args,
         postgres_container=db_container,
         custom_format=custom_format,
     )
@@ -300,7 +298,7 @@ def restore(
     pg_restore(
         dumpfile,
         engine,
-        *args,
+        args=args,
         postgres_container=db_container,
         create=create,
     )
