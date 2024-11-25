@@ -10,7 +10,6 @@ Usage:
   macrostrat v1 match <cmd> <source_id>
   macrostrat v1 backup <db>
   macrostrat v1 process <cmd> <source_id>
-  macrostrat v1 schlep <table>
   macrostrat v1 export [coming soon]
   macrostrat v1 -h | --help
   macrostrat v1 --version
