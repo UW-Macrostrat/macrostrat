@@ -11,7 +11,7 @@ RUN apt-get update -y && \
         libboost-dev libboost-filesystem-dev libboost-program-options-dev libboost-python-dev \
         libboost-regex-dev libboost-system-dev libboost-thread-dev libicu-dev libtiff5-dev \
         libfreetype-dev libpng-dev libxml2-dev libgdal-dev libgeos-dev libproj-dev libcairo-dev \
-        postgresql-contrib libharfbuzz-dev && \
+        libharfbuzz-dev postgresql-contrib && \
     rm -rf /var/lib/apt/lists/*
 
 # Mapnik
@@ -22,11 +22,21 @@ WORKDIR /tmp/
 RUN git clone --depth 1 --branch v${MAPNIK_VERSION} https://github.com/mapnik/mapnik.git && cd mapnik && git submodule update --init deps
 # Install mapnik
 WORKDIR /tmp/mapnik
-RUN ./configure && make && make install
+RUN ./configure && make JOBS=4 && make install
 
 ENV BOOST_PYTHON_LIB=boost_python310
 
+# Remove build dependencies
+RUN apt-get remove -y \
+  build-essential software-properties-common \
+  libboost-dev libboost-filesystem-dev libboost-program-options-dev libboost-python-dev \
+  libboost-regex-dev libboost-system-dev libboost-thread-dev libicu-dev libtiff5-dev \
+  libfreetype-dev libpng-dev libxml2-dev libproj-dev libgdal-dev libgeos-dev libcairo-dev libharfbuzz-dev
+
+# Software needed to actually run the tileserver
+
 # CartoCSS stylesheet generation
+# TODO: we could make this run as a separate step, potentially
 # Install nodejs
 RUN curl -sL https://deb.nodesource.com/setup_14.x | bash - && \
   apt-get install -y nodejs && \
