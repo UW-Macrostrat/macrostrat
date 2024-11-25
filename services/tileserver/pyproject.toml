@@ -19,12 +19,7 @@ titiler = "^0.18.5"
 httpx = "^0.27.2"
 mapbox-vector-tile = "^2.1.0"
 
-
-[tool.poetry.group.raster-tiles]
-optional = true
-
-[tool.poetry.group.raster-tiles.dependencies]
-mapnik = { git = "https://github.com/mapnik/python-mapnik.git", rev = "7db74a3a473df454634eef9bf8b92a8623da9940" }
+# Raster tiles dependencies cannot be installed with poetry
 
 [tool.poetry.group.dev.dependencies]
 isort = "^5.12.0"

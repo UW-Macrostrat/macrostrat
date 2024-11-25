@@ -2995,10 +2995,7 @@ files = [
     {file = "websockets-14.1.tar.gz", hash = "sha256:398b10c77d471c0aab20a845e7a60076b6390bfdaac7a6d2edb0d2c59d75e8d8"},
 ]
 
-[extras]
-raster-tiles = []
-
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "a5ab870948d5aff084b5db8691c54ed81b7afced637a42c5d3c3b7cba998ad2f"
+content-hash = "755bd62d1e57efc3e2b1d38828eec589394c8ce410f74109fa3a6e5485bacc88"

@@ -26,6 +26,26 @@ RUN ./configure && make JOBS=4 && make install
 
 ENV BOOST_PYTHON_LIB=boost_python310
 
+# The rest of this (for vector tile generation and the server itself) should be easier.
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1 POETRY_VIRTUALENVS_CREATE=false
+
+RUN pip install "pip==24.3.1" "setuptools>=75.6.0" "poetry==1.8.4"
+
+# Create and activate our own virtual envrionment so that we can keep
+# our application dependencies separate from Poetry's
+RUN python3 -m venv /venv
+ENV PATH="/venv/bin:$PATH"
+
+WORKDIR /tmp/
+# Clone the mapnik python bindings and install them
+RUN git clone https://github.com/mapnik/python-mapnik.git && \
+    cd python-mapnik && \
+    git checkout 10315a6d898ed341f5df5975395f3dc67814ebf6
+WORKDIR /tmp/python-mapnik
+RUN pip install "pybind11==2.13.6" && pip install .
+
+RUN rm -rf /tmp/*
+
 # Remove build dependencies
 RUN apt-get remove -y \
   build-essential software-properties-common \
@@ -37,18 +57,11 @@ RUN apt-get remove -y \
 
 # CartoCSS stylesheet generation
 # TODO: we could make this run as a separate step, potentially
-# Install nodejs
-RUN curl -sL https://deb.nodesource.com/setup_14.x | bash - && \
-  apt-get install -y nodejs && \
-  rm -rf /var/lib/apt/lists/*
+# Install nodejs version 20
+RUN curl -sL https://deb.nodesource.com/setup_20.x | bash - && apt-get install -y nodejs && npm install -g carto
 
 # Install carto
 RUN npm install -g carto
-
-# The rest of this (for vector tile generation and the server itself) should be easier.
-ENV PIP_DISABLE_PIP_VERSION_CHECK=1 POETRY_VIRTUALENVS_CREATE=false
-
-RUN pip install "pip==23.2.1" && pip install "setuptools==68.2.2" && pip install "poetry==1.8.4"
 
 WORKDIR /app/
 
@@ -56,11 +69,6 @@ WORKDIR /app/
 # Right now, Poetry lock file must exist to avoid hanging on dependency resolution
 COPY ./deps/timvt/ /app/deps/timvt/
 COPY ./pyproject.toml ./poetry.lock /app/
-
-# Create and activate our own virtual envrionment so that we can keep
-# our application dependencies separate from Poetry's
-RUN python3 -m venv /venv
-ENV PATH="/venv/bin:$PATH"
 
 RUN poetry install --no-interaction --no-ansi --no-root --no-dev
 
