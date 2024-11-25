@@ -92,7 +92,7 @@ module.exports = function (req, res, next) {
                   if (error) {
                     callbackB(error);
                   } else {
-                    result.forEach(function (d) {
+                    result.rows.forEach(function (d) {
                       d.lith = larkin.fixLiths(d.lith);
                     });
                     console.log("RESULTS: ", result)
@@ -219,7 +219,7 @@ module.exports = function (req, res, next) {
                     } else {
                       console.log("RESULTS: ", result)
 
-                      result.forEach(function (d) {
+                      result.rows.forEach(function (d) {
                         d.lith = larkin.fixLiths(d.lith);
                       });
 

@@ -395,7 +395,6 @@ module.exports = function (req, res, next, cb) {
           where += " AND units_sections.section_id = ANY(:section_id)";
           params["section_id"] = larkin.parseMultipleIds(req.query.section_id);
         }
-        console.log(data)
         if ("col_ids" in data) {
           where += " AND units_sections.col_id = ANY(:col_id)";
           if (!data.col_ids.length) {
@@ -406,7 +405,6 @@ module.exports = function (req, res, next, cb) {
           where += " AND units_sections.col_id = ANY(:col_id)";
           params["col_id"] = larkin.parseMultipleIds(req.query.col_id);
         }
-        console.log(where)
 
         if (data.strat_ids) {
           where +=
@@ -484,7 +482,7 @@ module.exports = function (req, res, next, cb) {
           where +=
             ` AND units.id = ANY(SELECT unit_econs.unit_id 
             FROM macrostrat.unit_econs 
-            JOIN macrostrat.econs on econ_id=${econ_field}
+            JOIN macrostrat.econs on econ_id=econs.id
             WHERE ${econ_field} = ANY(:econ))`;
         }
 

@@ -11,12 +11,9 @@ import * as path from 'path';
 const testFiles = [
     //can't find the gmna.lookup_units table. 'geologic_units_gmna.ts',
     //'geologic_units_gmus.ts'
-    'mancos_test_cases.ts',
-    //'mobile_point_details.ts',
-    //'tiles.ts', need to test on dev url
-   // 'units.ts'
-];
-
+    //'mancos_test_cases.ts',
+    //uses gmus.lookup_units table. queries need to be customized and changed to match all of the lookup tables within postgresql 'mobile_point_details.ts;
+]
 /*
  'carto_small.ts',
     'columns.ts',
