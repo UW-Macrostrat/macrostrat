@@ -1,37 +1,30 @@
 # From here:
 # https://stackoverflow.com/questions/53835198/integrating-python-poetry-with-docker
 # NOTE: we might want to make things a bit nicer here
-FROM python:3.9@sha256:c0dcc146710fed0a6d62cb55b92f00bfbfc3b931fff6218f4958bab58333c37b
+FROM python:3.10
 
 # MAPNIK
 # Install mapnik for compiling legacy image tiles
 RUN apt-get update -y && \
-  apt-get install -y --no-install-recommends \
-  build-essential software-properties-common curl \
-  libboost-dev libboost-filesystem-dev libboost-program-options-dev libboost-python-dev \
-  libboost-regex-dev libboost-system-dev libboost-thread-dev libicu-dev libtiff5-dev \
-  libfreetype-dev libpng-dev libxml2-dev libproj-dev libcairo-dev \
-  postgresql-contrib libharfbuzz-dev python-dev && \
-  rm -rf /var/lib/apt/lists/*
+    apt-get install -y --no-install-recommends \
+        build-essential software-properties-common curl \
+        libboost-dev libboost-filesystem-dev libboost-program-options-dev libboost-python-dev \
+        libboost-regex-dev libboost-system-dev libboost-thread-dev libicu-dev libtiff5-dev \
+        libfreetype-dev libpng-dev libxml2-dev libgdal-dev libgeos-dev libproj-dev libcairo-dev \
+        postgresql-contrib libharfbuzz-dev && \
+    rm -rf /var/lib/apt/lists/*
 
 # Mapnik
-ARG MAPNIK_VERSION=3.1.0
-RUN curl -L -s https://github.com/mapnik/mapnik/releases/download/v${MAPNIK_VERSION}/mapnik-v${MAPNIK_VERSION}.tar.bz2 | tar -xj -C /tmp/
-RUN cd /tmp/mapnik-v${MAPNIK_VERSION} && python scons/scons.py configure
-RUN cd /tmp/mapnik-v${MAPNIK_VERSION} && make JOBS=4 && make install JOBS=4
+ARG MAPNIK_VERSION=4.0.3
 
-ENV BOOST_PYTHON_LIB=boost_python39
-# Python bindings to mapnik
-ARG PYTHON_MAPNIK_COMMIT=7da019cf9eb12af8f8aa88b7d75789dfcd1e901b
-RUN mkdir -p /opt/python-mapnik && curl -L https://github.com/mapnik/python-mapnik/archive/${PYTHON_MAPNIK_COMMIT}.tar.gz | tar xz -C /opt/python-mapnik --strip-components=1
-RUN cd /opt/python-mapnik && python3 setup.py install && rm -r /opt/python-mapnik/build
+WORKDIR /tmp/
 
-# Remove build dependencies
-RUN apt-get remove -y \
-  build-essential software-properties-common \
-  libboost-dev libboost-filesystem-dev libboost-program-options-dev libboost-python-dev \
-  libboost-regex-dev libboost-system-dev libboost-thread-dev libicu-dev libtiff5-dev \
-  libfreetype-dev libpng-dev libxml2-dev libproj-dev libcairo-dev libharfbuzz-dev python-dev
+RUN git clone --depth 1 --branch v${MAPNIK_VERSION} https://github.com/mapnik/mapnik.git && cd mapnik && git submodule update --init deps
+# Install mapnik
+WORKDIR /tmp/mapnik
+RUN ./configure && make && make install
+
+ENV BOOST_PYTHON_LIB=boost_python310
 
 # CartoCSS stylesheet generation
 # Install nodejs
@@ -45,7 +38,7 @@ RUN npm install -g carto
 # The rest of this (for vector tile generation and the server itself) should be easier.
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 POETRY_VIRTUALENVS_CREATE=false
 
-RUN pip install "pip==23.2.1" && pip install "setuptools==68.2.2" && pip install "poetry==1.6.1"
+RUN pip install "pip==23.2.1" && pip install "setuptools==68.2.2" && pip install "poetry==1.8.4"
 
 WORKDIR /app/
 

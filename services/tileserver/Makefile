@@ -9,3 +9,6 @@ test-dev:
 
 test:
 	poetry run pytest -s -x
+
+docker-build:
+	docker build -t macrostrat-tileserver .
