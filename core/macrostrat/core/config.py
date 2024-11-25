@@ -2,10 +2,11 @@ from os import environ
 from pathlib import Path
 
 from dynaconf import Dynaconf, Validator
-from macrostrat.app_frame.control_command import BackendType
 from sqlalchemy.engine import make_url
 from sqlalchemy.engine.url import URL
 from toml import load as load_toml
+
+from macrostrat.app_frame.control_command import BackendType
 
 from .utils import find_macrostrat_config
 
