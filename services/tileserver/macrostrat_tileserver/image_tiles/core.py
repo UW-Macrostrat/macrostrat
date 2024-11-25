@@ -14,6 +14,8 @@ from ..utils import TileResponse, CacheStatus, CacheMode
 
 tile_settings = TileSettings()
 
+db = Database(environ.get("DATABASE_URL"))
+
 
 class ImageTileSubsystem:
     """Macrostrat's image tile subsystem allows image tiles to be generated using Mapnik.
@@ -32,7 +34,7 @@ class ImageTileSubsystem:
         for scale in scales:
             # Log timings
             t = time.time()
-            self.layer_cache[scale] = make_mapnik_xml(scale)
+            self.layer_cache[scale] = make_mapnik_xml(scale, db.engine.url)
             print(
                 f"Generated mapnik XML for scale {scale} in {time.time() - t} seconds"
             )
@@ -67,7 +69,7 @@ class ImageTileSubsystem:
         request: Request,
         background_tasks: BackgroundTasks,
         tile: Tile = Depends(TileParams),
-        cache: CacheMode = CacheMode.prefer
+        cache: CacheMode = CacheMode.prefer,
     ):
         """Return vector tile."""
         pool = request.app.state.pool
@@ -102,4 +104,6 @@ class ImageTileSubsystem:
                 set_cached_tile, pool, "carto-image", tile, content
             )
 
-        return TileResponse(content, timer, cache_status=CacheStatus.miss, media_type="image/png")
+        return TileResponse(
+            content, timer, cache_status=CacheStatus.miss, media_type="image/png"
+        )

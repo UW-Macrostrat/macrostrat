@@ -12,3 +12,7 @@ test:
 
 docker-build:
 	docker build -t macrostrat-tileserver .
+
+styles:
+	npm install -g carto
+	poetry run tileserver create-mapnik-xml mapnik-xml-test
