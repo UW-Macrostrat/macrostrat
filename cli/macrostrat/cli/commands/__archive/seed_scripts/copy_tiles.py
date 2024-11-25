@@ -21,7 +21,7 @@ sink_cursor.execute(
 metadata_exists = sink_cursor.fetchone()
 
 if metadata_exists is None:
-    with open("./json_schema.json", "r") as in_schema:
+    with open("json_schema.json", "r") as in_schema:
         schema = in_schema.read()
         sink_cursor.execute(
             """
