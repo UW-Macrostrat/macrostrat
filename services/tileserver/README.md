@@ -37,7 +37,7 @@ There is a bundled `tileserver` CLI that will create the layers. In Docker:
 
 > docker run macrostrat/tileserver \
 >   -e POSTGRES_DB=postgresql://user:password@db.server:5432 \
->   tileserver create-fixtures  
+>   tileserver create-fixtures
 
 Or in the running docker container:
 
@@ -66,3 +66,14 @@ Macrostrat core layers:
 - New layers can be defined using SQL or PL/PGSQL functions.
 - Currently, layers must be initialized by editing the `macrostrat_tileserver/main.py` file to
   add the appropriate initialization function. This will be improved in the future.
+
+## Testing
+
+Testing is done with `pytest`. To run the tests, use:
+
+```make test```.
+
+To omit legacy raster tests, use
+
+  ```make test-dev```.
+
