@@ -52,6 +52,7 @@ services:
     build: ${MACROSTRAT_API_SRC:-""}
     environment:
       - MACROSTRAT_DATABASE=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
+      - ELEVATION_DATABASE=${ELEVATION_DATABASE_URL}
   api_v3:
     build: ${MACROSTRAT_API_V3_SRC:-""}
     environment:
@@ -69,10 +70,10 @@ services:
       - PGRST_SERVER_HOST=
   # Tileserver
   tileserver:
-    image: hub.opensciencegrid.org/macrostrat/tileserver:latest
-#    profiles: ['tileserver']
-#    build:
-#      context: ${MACROSTRAT_TILESERVER_SRC:-""}
+    image: hub.opensciencegrid.org/macrostrat/tileserver:latest-itb
+    #profiles: ['tileserver']
+    build:
+      context: ${MACROSTRAT_TILESERVER_SRC:-""}
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
 

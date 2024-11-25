@@ -982,13 +982,13 @@ testing = ["Django", "attrs", "colorama", "docopt", "pytest (<9.0.0)"]
 
 [[package]]
 name = "macrostrat-app-frame"
-version = "2.0.0"
+version = "2.1.0"
 description = "A control script framework for containerized applications."
 optional = false
 python-versions = "<4.0,>=3.8"
 files = [
-    {file = "macrostrat_app_frame-2.0.0-py3-none-any.whl", hash = "sha256:e5e345e1074529b4f9b4bb68e6ce7e7cd31f2016c52d77740844c83ebe2ee974"},
-    {file = "macrostrat_app_frame-2.0.0.tar.gz", hash = "sha256:a5daa65ba9060f45644bbb236fd77c90a18e2f68f0c9e34cb3b300b78b127791"},
+    {file = "macrostrat_app_frame-2.1.0-py3-none-any.whl", hash = "sha256:8ff5fb835ce9dc35015eedfbae7ad7020c6b778ca1fe14f33812618f55e574c6"},
+    {file = "macrostrat_app_frame-2.1.0.tar.gz", hash = "sha256:9dc3898342ed0d93e5cadcfa6af90fc516dde45ecb174d72575c977660cb781c"},
 ]
 
 [package.dependencies]
@@ -1017,9 +1017,9 @@ Fiona = "^1.8.22"
 geopandas = "^0.14.1"
 greenlet = "^3.0.3"
 ipython = "^8.5.0"
-"macrostrat.app-frame" = "^2.0.0"
+"macrostrat.app-frame" = "^2.1.0"
 "macrostrat.core" = {path = "../core", develop = true}
-"macrostrat.database" = "^3.3.3"
+"macrostrat.database" = "^3.4.0"
 "macrostrat.dinosaur" = "^3.0.1"
 "macrostrat.integrations" = {path = "../integrations", develop = true}
 "macrostrat.map-integration" = {path = "../map-integration", develop = true}
