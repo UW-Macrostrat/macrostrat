@@ -3,9 +3,8 @@ from sys import exit, stderr, stdin, stdout
 from typing import Any, Callable, Iterable
 
 import typer
-from macrostrat.core import MacrostratSubsystem, app
-from macrostrat.core.migrations import run_migrations
 from macrostrat.database.transfer import pg_restore_from_file, pg_dump_to_file
+from macrostrat.database.transfer.utils import raw_database_url
 from macrostrat.database.utils import get_sql_files
 from macrostrat.utils import get_logger
 from macrostrat.utils.shell import run
@@ -14,12 +13,13 @@ from rich import print
 from sqlalchemy import make_url, text
 from typer import Argument, Option
 
+from macrostrat.core import MacrostratSubsystem, app
+from macrostrat.core.migrations import run_migrations
 from ._legacy import get_db
 # First, register all migrations
 # NOTE: right now, this is quite implicit.
 from .migrations import *
 from .utils import engine_for_db_name
-from .._dev.utils import raw_database_url
 
 log = get_logger(__name__)
 
@@ -271,18 +271,14 @@ def restore(
     if jobs is not None:
         args.extend(["--jobs", str(jobs)])
 
-
-def pg_restore(dumpfile: Path, engine: Engine, **kwargs):
-    task = pg_restore_from_file(dumpfile, engine, **kwargs)
-    asyncio.run(task)
-
-    pg_restore(
+    task = pg_restore_from_file(
         dumpfile,
         engine,
         args=args,
         postgres_container=db_container,
         create=create,
     )
+    asyncio.run(task)
 
 
 @db_app.command(name="tables", rich_help_panel="Helpers")
