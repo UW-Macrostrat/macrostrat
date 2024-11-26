@@ -1,8 +1,11 @@
+import asyncio
 from sys import exit, stderr, stdin, stdout
 from typing import Any, Callable, Iterable
 
 import typer
-from macrostrat.database.transfer import pg_restore_from_file
+from macrostrat.core import MacrostratSubsystem, app
+from macrostrat.core.migrations import run_migrations
+from macrostrat.database.transfer import pg_restore_from_file, pg_dump_to_file
 from macrostrat.database.utils import get_sql_files
 from macrostrat.utils import get_logger
 from macrostrat.utils.shell import run
@@ -11,8 +14,6 @@ from rich import print
 from sqlalchemy import make_url, text
 from typer import Argument, Option
 
-from macrostrat.core import MacrostratSubsystem, app
-from macrostrat.core.migrations import run_migrations
 from ._legacy import get_db
 # First, register all migrations
 # NOTE: right now, this is quite implicit.
@@ -217,7 +218,6 @@ def dump(
     schema: bool = False,
 ):
     """Export a database using [cyan]pg_dump[/]"""
-    from .._dev.dump_database import pg_dump
 
     db_container = app.settings.get("pg_database_container", "postgres:15")
 
@@ -232,13 +232,14 @@ def dump(
         args.append("--schema-only")
         custom_format = False
 
-    pg_dump(
-        dumpfile,
+    task = pg_dump_to_file(
         engine,
+        dumpfile,
         args=args,
         postgres_container=db_container,
         custom_format=custom_format,
     )
+    asyncio.run(task)
 
 
 @db_app.command()
