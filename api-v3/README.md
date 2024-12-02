@@ -40,4 +40,3 @@ Assuming you are running locally on localhost:8000
    POST [http://localhost:8000/docs#/security/create_group_token_security_token_post](http://localhost:8000/docs#/security/create_group_token_security_token_post)
 
    Set the group_id to 1 ( admin group ) and the expiration to the future ( 1832530128 = 2028-01-26 )
-   
