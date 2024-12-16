@@ -286,3 +286,22 @@ WITH stats AS (
 SELECT st.*, n_runs, n_entities, n_matches, n_strat_names, created, last_update
 FROM macrostrat_xdd.source_text st
 JOIN stats s ON s.source_text_id = st.id;
+
+
+/** Function that returns an ID of the "next" model run to be targeted for annotation */
+CREATE OR REPLACE FUNCTION macrostrat_xdd.next_model_run_id()
+RETURNS integer AS $$
+  WITH next_run AS (
+    SELECT mr.id, mr.timestamp, coalesce(sum((mr1.supersedes = mr.id)::integer), 0) n_superseding
+    FROM macrostrat_xdd.model_run mr
+    LEFT JOIN macrostrat_xdd.model_run mr1
+      ON mr1.supersedes = mr.id
+    JOIN macrostrat_xdd.source_text st
+      ON st.id = mr.source_text_id
+    WHERE st.xdd_tags ILIKE '%geo_entities%'
+    GROUP BY mr.id, mr.timestamp
+    ORDER BY n_superseding, timestamp
+    LIMIT 1
+  )
+  SELECT id FROM next_run;
+$$ LANGUAGE SQL;
