@@ -1,23 +1,8 @@
 from pathlib import Path
 
-from macrostrat.core.migrations import ApplicationStatus, Migration
 from macrostrat.database import Database
 
-from . import (
-    api_v3,
-    baseline,
-    column_builder,
-    macrostrat_mariadb,
-    map_source_slugs,
-    map_sources,
-    maps_scale_custom_type,
-    maps_source_operations,
-    partition_carto,
-    partition_maps,
-    points,
-    tileserver,
-    update_macrostrat,
-)
+from macrostrat.core.migrations import ApplicationStatus, Migration
 
 __dir__ = Path(__file__).parent
 
