@@ -4,8 +4,9 @@ from graphlib import TopologicalSorter
 from pathlib import Path
 from typing import Callable
 
-from macrostrat.database import Database
 from rich import print
+
+from macrostrat.database import Database
 
 from ..database import get_database, refresh_database
 

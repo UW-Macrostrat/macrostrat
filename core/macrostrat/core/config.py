@@ -2,10 +2,11 @@ from os import environ
 from pathlib import Path
 
 from dynaconf import Dynaconf, Validator
-from macrostrat.app_frame.control_command import BackendType
 from sqlalchemy.engine import make_url
 from sqlalchemy.engine.url import URL
 from toml import load as load_toml
+
+from macrostrat.app_frame.control_command import BackendType
 
 from .utils import find_macrostrat_config
 
@@ -32,7 +33,6 @@ class MacrostratConfig(Dynaconf):
         self.config_file = None
         if cfg is not None:
             self.config_file = Path(cfg)
-
 
     def all_environments(self):
         # Parse out top-level headers from TOML file

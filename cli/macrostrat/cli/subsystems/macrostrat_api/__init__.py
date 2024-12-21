@@ -6,8 +6,8 @@ primarily in Macrostrat's column-builder application and set of routes.
 from pathlib import Path
 
 from macrostrat.app_frame import compose
-
 from macrostrat.core import MacrostratSubsystem
+
 from ...database import SubsystemSchemaDefinition, get_db
 from ...database.utils import grant_schema_usage
 

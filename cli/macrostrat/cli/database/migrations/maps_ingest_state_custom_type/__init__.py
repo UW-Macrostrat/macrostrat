@@ -1,4 +1,4 @@
-from macrostrat.core.migrations import Migration, custom_type_exists, _not
+from macrostrat.core.migrations import Migration, _not, custom_type_exists
 from macrostrat.database import Database
 
 
