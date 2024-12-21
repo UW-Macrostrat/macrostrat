@@ -6,8 +6,8 @@ primarily in Macrostrat's column-builder application and set of routes.
 from pathlib import Path
 
 from macrostrat.app_frame import compose
-from macrostrat.core import MacrostratSubsystem
 
+from macrostrat.core import MacrostratSubsystem
 from ...database import SubsystemSchemaDefinition, get_db
 from ...database.utils import grant_schema_usage
 
@@ -58,3 +58,13 @@ class MacrostratAPISubsystem(MacrostratSubsystem):
         # fully reloaded the schema.
         if self.app.settings.get("compose_root", None) is not None:
             compose("kill -s SIGUSR1 postgrest")
+
+
+def check_view_is_changed(db, schema, view_name, new_statement):
+    pass
+
+
+def get_view_definition(db, schema, view_name):
+    """Get the definition of a view in a schema"""
+    _sql = "SELECT view_definition FROM information_schema.views WHERE table_schema = :schema AND table_name = :view_name"
+    return db.run_query(_sql, dict(schema=schema, view_name=view_name)).scalar()

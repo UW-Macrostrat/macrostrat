@@ -20,9 +20,7 @@ def exists(schema: str, *table_names: str) -> DbEvaluator:
 
 def not_exists(schema: str, *table_names: str) -> DbEvaluator:
     """Return a function that evaluates to true when every given table in the given schema doesn't exist"""
-    return lambda db: all(
-        not db.inspector.has_table(t, schema=schema) for t in table_names
-    )
+    return _not(exists(schema, *table_names))
 
 
 def schema_exists(schema: str) -> DbEvaluator:
