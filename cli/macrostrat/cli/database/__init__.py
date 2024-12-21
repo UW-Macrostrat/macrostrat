@@ -1,26 +1,26 @@
 import asyncio
+from pathlib import Path
 from sys import exit, stderr, stdin, stdout
 from typing import Any, Callable, Iterable
 
 import typer
+from macrostrat.core import MacrostratSubsystem, app
+from macrostrat.core.migrations import run_migrations
+from macrostrat.database import Database
+from macrostrat.database.transfer import pg_restore_from_file, pg_dump_to_file
+from macrostrat.database.transfer.utils import raw_database_url
+from macrostrat.database.utils import get_sql_files
+from macrostrat.utils import get_logger
+from macrostrat.utils.shell import run
 from pydantic import BaseModel
 from rich import print
 from sqlalchemy import make_url, text
 from typer import Argument, Option
 
-from macrostrat.core import MacrostratSubsystem, app
-from macrostrat.core.migrations import run_migrations
-from macrostrat.database.transfer import pg_dump_to_file, pg_restore_from_file
-from macrostrat.database.transfer.utils import raw_database_url
-from macrostrat.database.utils import get_sql_files
-from macrostrat.utils import get_logger
-from macrostrat.utils.shell import run
-
 from ._legacy import get_db
-
 # First, register all migrations
 # NOTE: right now, this is quite implicit.
-from .migrations import *
+from .migrations import load_migrations
 from .utils import engine_for_db_name
 
 log = get_logger(__name__)
@@ -30,6 +30,9 @@ fixtures_dir = __here__.parent / "fixtures"
 
 
 DBCallable = Callable[[Database], None]
+
+
+load_migrations()
 
 
 class SubsystemSchemaDefinition(BaseModel):

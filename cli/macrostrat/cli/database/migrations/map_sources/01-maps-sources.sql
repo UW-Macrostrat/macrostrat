@@ -1,6 +1,8 @@
 ALTER TABLE maps.sources ADD COLUMN IF NOT EXISTS raster_url text;
 
+DROP VIEW IF EXISTS macrostrat_api.sources_metadata CASCADE;
 DROP VIEW IF EXISTS maps.sources_metadata CASCADE;
+
 CREATE OR REPLACE VIEW maps.sources_metadata AS
 SELECT
     s.source_id,

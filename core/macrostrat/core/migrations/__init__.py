@@ -4,9 +4,8 @@ from graphlib import TopologicalSorter
 from pathlib import Path
 from typing import Callable
 
-from rich import print
-
 from macrostrat.database import Database
+from rich import print
 
 from ..database import get_database, refresh_database
 
@@ -48,6 +47,11 @@ def has_fks(schema: str, *table_names: str) -> DbEvaluator:
 def custom_type_exists(schema: str, *type_names: str) -> DbEvaluator:
     """Return a function that evaluates to true when every given custom type in the given schema exists"""
     return lambda db: all(db.inspector.has_type(t, schema=schema) for t in type_names)
+
+
+def _not(f: DbEvaluator) -> DbEvaluator:
+    """Return a function that evaluates to true when the given function evaluates to false"""
+    return lambda db: not f(db)
 
 
 class ApplicationStatus(Enum):
