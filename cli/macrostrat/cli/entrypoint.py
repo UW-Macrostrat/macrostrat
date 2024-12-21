@@ -57,6 +57,7 @@ main = app.control_command(
     add_completion=True,
     rich_markup_mode="rich",
     help=help_text,
+    backend=app.settings.backend,
 )
 
 main.add_typer(
