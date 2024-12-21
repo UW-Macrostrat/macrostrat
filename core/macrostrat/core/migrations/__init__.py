@@ -113,6 +113,16 @@ class Migration:
         database.run_fixtures(child_cls_dir)
 
 
+class MigrationState(Enum):
+    """Enum for the possible states of a migration before application"""
+
+    COMPLETE = "complete"
+    UNMET_DEPENDENCIES = "unmet_dependencies"
+    CANNOT_APPLY = "cannot_apply"
+    SHOULD_APPLY = "should_apply"
+    DISALLOWED = "disallowed"
+
+
 def run_migrations(
     apply: bool = False,
     name: str = None,
@@ -140,6 +150,11 @@ def run_migrations(
     # While iterating over migrations, keep track of which have already applied
     completed_migrations = []
 
+    # Get max width of migration names for formatting
+    name_max_width = max(len(m.name) for m in instances)
+
+    print("Migrations:")
+
     for _migration in instances:
         _name = _migration.name
         _subsystem = getattr(_migration, "subsystem", None)
@@ -157,39 +172,34 @@ def run_migrations(
         if subsystem is not None and subsystem != _subsystem:
             continue
 
+        _status = _get_status(_migration, completed_migrations)
+
+        _print_status(_name, _status, name_max_width=name_max_width)
+
         # By default, don't run migrations that depend on other non-applied migrations
         dependencies_met = all(d in completed_migrations for d in _migration.depends_on)
         if not dependencies_met and not force:
-            print(f"Dependencies not met for migration [cyan]{_name}[/cyan]")
             continue
 
-        if force or apply_status == ApplicationStatus.CAN_APPLY:
-            if not apply:
-                print(f"Would apply migration [cyan]{_name}[/cyan]")
-            else:
-                if _migration.destructive and not data_changes and not force:
-                    print(
-                        f"Migration [cyan]{_name}[/cyan] would alter data in the database. Run with --force or --data-changes"
-                    )
-                    return
+        if (force or apply_status == ApplicationStatus.CAN_APPLY) and apply:
+            if _migration.destructive and not data_changes and not force:
+                return
 
-                print(f"Applying migration [cyan]{_name}[/cyan]")
-                _migration.apply(db)
-                # After running migration, reload the database and confirm that application was sucessful
-                db = refresh_database()
-                if _migration.should_apply(db) == ApplicationStatus.APPLIED:
-                    completed_migrations.append(_migration.name)
-        elif apply_status == ApplicationStatus.APPLIED:
-            print(f"Migration [cyan]{_name}[/cyan] already applied")
-        else:
-            print(f"Migration [cyan]{_name}[/cyan] cannot apply")
+            _migration.apply(db)
+            # After running migration, reload the database and confirm that application was sucessful
+            db = refresh_database()
+            if _migration.should_apply(db) == ApplicationStatus.APPLIED:
+                completed_migrations.append(_migration.name)
 
         # Short circuit after applying the migration specified by --name
         if name is not None and name == _name:
             break
 
-    # Notify PostgREST to reload the schema cache
-    db.run_sql("NOTIFY pgrst, 'reload schema';")
+    if apply:
+        # Notify PostgREST to reload the schema cache
+        db.run_sql("NOTIFY pgrst, 'reload schema';")
+    else:
+        print("\n[dim]To apply the migrations, run with --apply")
 
 
 def migration_has_been_run(*names: str):
@@ -206,3 +216,45 @@ def migration_has_been_run(*names: str):
             if apply_status != ApplicationStatus.APPLIED:
                 return True
     return False
+
+
+def _get_status(
+    _migration: Migration, completed_migrations: set[str]
+) -> MigrationState:
+    """Get the status of a migration"""
+    name = _migration.name
+
+    # By default, don't run migrations that depend on other non-applied migrations
+    dependencies_met = all(d in completed_migrations for d in _migration.depends_on)
+    if not dependencies_met and not force:
+        return MigrationState.UNMET_DEPENDENCIES
+
+    if name in completed_migrations:
+        return MigrationState.COMPLETE
+
+    if force or apply_status == ApplicationStatus.CAN_APPLY:
+        if not apply:
+            return MigrationState.SHOULD_APPLY
+        else:
+            if _migration.destructive and not data_changes and not force:
+                return MigrationState.DISALLOWED
+            return MigrationState.SHOULD_APPLY
+
+    return MigrationState.CANNOT_APPLY
+
+
+def _print_status(name, status: MigrationState, *, name_max_width=40):
+    padding = " " * (name_max_width - len(name))
+    print(f"- [bold cyan]{name}[/]: " + padding, end="")
+    if status == MigrationState.COMPLETE:
+        print("[green]already applied[/green]")
+    elif status == MigrationState.UNMET_DEPENDENCIES:
+        print("[yellow]has unmet dependencies[/yellow]")
+    elif status == MigrationState.CANNOT_APPLY:
+        print("[red]cannot be applied[/red]")
+    elif status == MigrationState.SHOULD_APPLY:
+        print("[yellow]should be applied[/yellow]")
+    elif status == MigrationState.DISALLOWED:
+        print("[red]cannot be applied without --force or --data-changes[/red]")
+    else:
+        raise ValueError(f"Unknown migration status: {status}")
