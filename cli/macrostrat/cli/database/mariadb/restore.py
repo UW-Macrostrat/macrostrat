@@ -5,6 +5,9 @@ from sys import stdin
 from typing import Union
 
 import aiofiles
+from rich.console import Console
+from sqlalchemy.engine import URL, Engine
+
 from macrostrat.core.exc import MacrostratError
 from macrostrat.database import database_exists
 from macrostrat.database.transfer.stream_utils import (
@@ -17,11 +20,9 @@ from macrostrat.database.transfer.utils import (
     _create_database_if_not_exists,
 )
 from macrostrat.utils import get_logger
-from rich.console import Console
-from sqlalchemy.engine import URL, Engine
 
-from .utils import ParameterStyle, build_connection_args
 from ..utils import docker_internal_url
+from .utils import ParameterStyle, build_connection_args
 
 console = Console()
 

@@ -6,15 +6,16 @@ on a temporary basis.
 import sys
 from typing import Optional
 
-from macrostrat.database import Database
-from macrostrat.database.postgresql import on_conflict, table_exists
-from macrostrat.database.transfer import move_tables
-from macrostrat.utils import get_logger
 from psycopg2.sql import Identifier
 from rich import print
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from typer import Argument, Option
+
+from macrostrat.database import Database
+from macrostrat.database.postgresql import on_conflict, table_exists
+from macrostrat.database.transfer import move_tables
+from macrostrat.utils import get_logger
 
 log = get_logger(__name__)
 

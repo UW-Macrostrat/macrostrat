@@ -1,6 +1,7 @@
-from macrostrat.utils import ApplicationError
 from rich.padding import Padding
 from typer import Typer
+
+from macrostrat.utils import ApplicationError
 
 from .console import err_console
 

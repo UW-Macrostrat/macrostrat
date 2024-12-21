@@ -1,17 +1,22 @@
 from pathlib import Path
 from textwrap import dedent
 
-from macrostrat.database import create_database, database_exists
-from macrostrat.database.transfer.utils import raw_database_url
-from macrostrat.database.utils import run_query, run_sql
-from macrostrat.utils import get_logger
-from macrostrat.utils.shell import run
 from psycopg2.sql import Identifier
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 
 from macrostrat.core import app
 from macrostrat.core.migrations import migration_has_been_run
+from macrostrat.database import create_database, database_exists
+from macrostrat.database.transfer.utils import raw_database_url
+from macrostrat.database.utils import run_query, run_sql
+from macrostrat.utils import get_logger
+from macrostrat.utils.shell import run
+
+from ..._legacy import get_db
+from ...utils import docker_internal_url, pg_temp_user
+from ..restore import copy_mariadb_database
+from ..utils import mariadb_engine
 from .db_changes import (
     compare_data_counts,
     find_col_variances,
@@ -19,10 +24,6 @@ from .db_changes import (
     get_data_counts_maria,
     get_data_counts_pg,
 )
-from ..restore import copy_mariadb_database
-from ..utils import mariadb_engine
-from ..._legacy import get_db
-from ...utils import docker_internal_url, pg_temp_user
 
 __here__ = Path(__file__).parent
 
