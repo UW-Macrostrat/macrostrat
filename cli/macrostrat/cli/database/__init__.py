@@ -1,7 +1,13 @@
+import asyncio
 from sys import exit, stderr, stdin, stdout
-from typing import Any, Callable
+from typing import Any, Callable, Iterable
 
 import typer
+from macrostrat.database.transfer import pg_restore_from_file, pg_dump_to_file
+from macrostrat.database.transfer.utils import raw_database_url
+from macrostrat.database.utils import get_sql_files
+from macrostrat.utils import get_logger
+from macrostrat.utils.shell import run
 from pydantic import BaseModel
 from rich import print
 from sqlalchemy import make_url, text
@@ -9,12 +15,7 @@ from typer import Argument, Option
 
 from macrostrat.core import MacrostratSubsystem, app
 from macrostrat.core.migrations import run_migrations
-from macrostrat.utils import get_logger
-from macrostrat.utils.shell import run
-
-from .._dev.utils import raw_database_url
 from ._legacy import get_db
-
 # First, register all migrations
 # NOTE: right now, this is quite implicit.
 from .migrations import *
@@ -24,22 +25,6 @@ log = get_logger(__name__)
 
 __here__ = Path(__file__).parent
 fixtures_dir = __here__.parent / "fixtures"
-
-
-def run_sql(db, f: Path, params, match: str = None):
-    if match is not None and match not in str(f):
-        return
-    print(f"[cyan bold]{f}[/]")
-    db.run_sql(f)
-    print()
-
-
-def run_all_sql(db, dir: Path, match: str = None):
-    schema_files = list(dir.glob("*.sql"))
-    for f in sorted(schema_files):
-        if not f.is_file():
-            continue
-        run_sql(db, f, match)
 
 
 DBCallable = Callable[[Database], None]
@@ -61,34 +46,25 @@ class SubsystemSchemaDefinition(BaseModel):
     params: dict[str, Any] | None = None
     callback: DBCallable | None = None
 
-    def _run_sql(self, db, f: Path, match: str = None):
-        if match is not None and match not in str(f):
-            return
-        print(f"[cyan bold]{f}[/]")
-        db.run_sql(f, self.params)
-        print()
-
-    def _run_all_sql(self, db, dir: Path, match: str = None):
-        schema_files = list(dir.glob("*.sql"))
-        for f in sorted(schema_files):
-            if not f.is_file():
-                continue
-            self._run_sql(db, f, match)
-
     def apply(self, db, match: str = None):
         for f in self.fixtures:
             if callable(f):
                 f(db)
-            elif f.is_file():
-                self._run_sql(db, f, match)
-            elif f.is_dir():
-                self._run_all_sql(db, f, match)
+                return
+            # This does the same as the upstream "Apply fixtures" function
+            # but it has support for a 'match' parameter
+            files = _match_paths(get_sql_files(f), match)
+            db.run_fixtures(files)
 
         if self.callback is not None:
             self.callback(db)
 
 
-# The core hunk contains all of Macrostrat's core schema
+def _match_paths(paths: Iterable[Path], match: str | None):
+    for path in paths:
+        if match is not None and match not in str(path):
+            continue
+        yield path
 
 
 class DatabaseSubsystem(MacrostratSubsystem):
@@ -242,7 +218,6 @@ def dump(
     schema: bool = False,
 ):
     """Export a database using [cyan]pg_dump[/]"""
-    from .._dev.dump_database import pg_dump
 
     db_container = app.settings.get("pg_database_container", "postgres:15")
 
@@ -252,19 +227,19 @@ def dump(
         dumpfile = stdout
 
     args = ctx.args
-    print(args)
     custom_format = True
     if schema:
         args.append("--schema-only")
         custom_format = False
 
-    pg_dump(
-        dumpfile,
+    task = pg_dump_to_file(
         engine,
-        *args,
+        dumpfile,
+        args=args,
         postgres_container=db_container,
         custom_format=custom_format,
     )
+    asyncio.run(task)
 
 
 @db_app.command()
@@ -282,7 +257,6 @@ def restore(
     ),
 ):
     """Load a database using [cyan]pg_restore[/]"""
-    from .._dev.restore_database import pg_restore
 
     db_container = app.settings.get("pg_database_container", "postgres:15")
     if version is not None:
@@ -297,13 +271,14 @@ def restore(
     if jobs is not None:
         args.extend(["--jobs", str(jobs)])
 
-    pg_restore(
+    task = pg_restore_from_file(
         dumpfile,
         engine,
-        *args,
+        args=args,
         postgres_container=db_container,
         create=create,
     )
+    asyncio.run(task)
 
 
 @db_app.command(name="tables", rich_help_panel="Helpers")
