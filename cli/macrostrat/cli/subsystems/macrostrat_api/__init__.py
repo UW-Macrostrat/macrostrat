@@ -6,10 +6,9 @@ primarily in Macrostrat's column-builder application and set of routes.
 from pathlib import Path
 
 from macrostrat.app_frame import compose
-from macrostrat.database import Database
 
 from macrostrat.core import MacrostratSubsystem
-from macrostrat.core.migrations import Migration, ApplicationStatus
+from macrostrat.core.migrations import Migration, view_exists
 from ...database import SubsystemSchemaDefinition, get_db
 from ...database.utils import grant_schema_usage
 
@@ -65,8 +64,7 @@ class MacrostratAPISubsystem(MacrostratSubsystem):
 class MacrostratAPIMigration(Migration):
     name = "macrostrat-api"
 
-    def should_apply(self, database: Database) -> ApplicationStatus:
-        return ApplicationStatus.CAN_APPLY
+    postconditions = [view_exists("macrostrat_api", "projects")]
 
     def apply(self, db):
         db.run_fixtures(fixtures_dir)
