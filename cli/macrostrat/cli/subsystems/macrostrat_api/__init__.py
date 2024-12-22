@@ -6,8 +6,10 @@ primarily in Macrostrat's column-builder application and set of routes.
 from pathlib import Path
 
 from macrostrat.app_frame import compose
-from macrostrat.core import MacrostratSubsystem
+from macrostrat.database import Database
 
+from macrostrat.core import MacrostratSubsystem
+from macrostrat.core.migrations import Migration, ApplicationStatus
 from ...database import SubsystemSchemaDefinition, get_db
 from ...database.utils import grant_schema_usage
 
@@ -60,11 +62,12 @@ class MacrostratAPISubsystem(MacrostratSubsystem):
             compose("kill -s SIGUSR1 postgrest")
 
 
-def check_view_is_changed(db, schema, view_name, new_statement):
-    pass
+class MacrostratAPIMigration(Migration):
+    name = "macrostrat-api"
 
+    def should_apply(self, database: Database) -> ApplicationStatus:
+        return ApplicationStatus.CAN_APPLY
 
-def get_view_definition(db, schema, view_name):
-    """Get the definition of a view in a schema"""
-    _sql = "SELECT view_definition FROM information_schema.views WHERE table_schema = :schema AND table_name = :view_name"
-    return db.run_query(_sql, dict(schema=schema, view_name=view_name)).scalar()
+    def apply(self, db):
+        db.run_fixtures(fixtures_dir)
+        setup_postgrest_access("macrostrat_api")(db)

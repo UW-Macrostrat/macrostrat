@@ -2,11 +2,11 @@ import inspect
 from enum import Enum
 from graphlib import TopologicalSorter
 from pathlib import Path
+from time import time
 from typing import Callable
 
-from rich import print
-
 from macrostrat.database import Database
+from rich import print
 
 from ..database import get_database, refresh_database
 
@@ -131,6 +131,8 @@ def run_migrations(
 ):
     """Apply database migrations"""
     db = get_database()
+    # Start time
+    t_start = time()
 
     # Check if migrations need to be run and if not, run them
 
@@ -154,6 +156,8 @@ def run_migrations(
 
     print("Migrations:")
 
+    migrations_to_run = []
+
     for _migration in instances:
         _name = _migration.name
         _subsystem = getattr(_migration, "subsystem", None)
@@ -175,30 +179,46 @@ def run_migrations(
 
         _print_status(_name, _status, name_max_width=name_max_width)
 
+        migrations_to_run.append(_migration)
+
+    if not apply:
+        print("\n[dim]To apply the migrations, run with --apply")
+        return
+
+    run_counter = 0
+
+
+    for _migration in migrations_to_run:
+        _name = _migration.name
+        _subsystem = getattr(_migration, "subsystem", None)
+
         # By default, don't run migrations that depend on other non-applied migrations
         dependencies_met = all(d in completed_migrations for d in _migration.depends_on)
-        if not dependencies_met and not force:
-            continue
 
-        if (force or apply_status == ApplicationStatus.CAN_APPLY) and apply:
-            if _migration.destructive and not data_changes and not force:
-                return
+        if not force:
+            if not dependencies_met:
+                continue
 
-            _migration.apply(db)
-            # After running migration, reload the database and confirm that application was sucessful
-            db = refresh_database()
-            if _migration.should_apply(db) == ApplicationStatus.APPLIED:
-                completed_migrations.append(_migration.name)
+            if _name in completed_migrations:
+                continue
 
-        # Short circuit after applying the migration specified by --name
-        if name is not None and name == _name:
-            break
+            if _migration.destructive and not data_changes:
+                continue
 
-    if apply:
-        # Notify PostgREST to reload the schema cache
-        db.run_sql("NOTIFY pgrst, 'reload schema';")
-    else:
-        print("\n[dim]To apply the migrations, run with --apply")
+
+        _migration.apply(db)
+        run_counter += 1
+    # After running migration, reload the database and confirm that application was sucessful
+        db = refresh_database()
+        if _migration.should_apply(db) == ApplicationStatus.APPLIED:
+            completed_migrations.append(_migration.name)
+
+    # Notify PostgREST to reload the schema cache
+    db.run_sql("NOTIFY pgrst, 'reload schema';")
+
+    t_delta = time() - t_start
+
+    print(f"\nApplied {run_counter} migrations in {t_delta:.2f} seconds")
 
 
 def migration_has_been_run(*names: str):
@@ -218,7 +238,9 @@ def migration_has_been_run(*names: str):
 
 
 def _get_status(
-    _migration: Migration, completed_migrations: set[str]
+    _migration: Migration,
+    completed_migrations: set[str],
+    data_changes: bool = False
 ) -> MigrationState:
     """Get the status of a migration"""
     name = _migration.name
@@ -231,15 +253,10 @@ def _get_status(
     if name in completed_migrations:
         return MigrationState.COMPLETE
 
-    if force or apply_status == ApplicationStatus.CAN_APPLY:
-        if not apply:
-            return MigrationState.SHOULD_APPLY
-        else:
-            if _migration.destructive and not data_changes and not force:
-                return MigrationState.DISALLOWED
-            return MigrationState.SHOULD_APPLY
+    if _migration.destructive and not data_changes:
+        return MigrationState.DISALLOWED
+    return MigrationState.SHOULD_APPLY
 
-    return MigrationState.CANNOT_APPLY
 
 
 def _print_status(name, status: MigrationState, *, name_max_width=40):
