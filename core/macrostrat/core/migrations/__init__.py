@@ -179,7 +179,13 @@ def dry_run_migrations(wait=False):
                 print("No changes in applyable migrations, exiting")
                 return
 
+            _migrations = _next_migrations
             n_applied = _run_migrations(db, apply=True, data_changes=True)
+
+            # Re-create the database object to refresh the inspector
+            db = Database(url)
+
+            assert exists("maps", "sources")(db)
 
             _next_migrations = applyable_migrations(db, allow_destructive=True)
             n_migrations = len(_next_migrations)
@@ -303,6 +309,7 @@ def applyable_migrations(db, allow_destructive=False) -> set[str]:
         apply_status = _migration.should_apply(db)
         if apply_status == ApplicationStatus.CAN_APPLY:
             _res.add(_migration.name)
+    print(_res)
     return _res
 
 
