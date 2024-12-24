@@ -3,13 +3,14 @@ from enum import Enum
 from functools import lru_cache
 from graphlib import TopologicalSorter
 from pathlib import Path
-from time import time
 from typing import Callable
 
 import docker
 from macrostrat.database import Database
+from macrostrat.database.utils import OutputMode
 from macrostrat.dinosaur.upgrade_cluster.utils import database_cluster
 from rich import print
+from time import time
 
 from ..config import settings
 from ..database import get_database
@@ -97,6 +98,8 @@ class Migration:
     # schema changes
     destructive: bool = False
 
+    output_mode: OutputMode = OutputMode.SUMMARY
+
     def should_apply(self, database: Database) -> ApplicationStatus:
         """Determine whether this migration can run, or has already run."""
         # If all post-conditions are met, the migration is already applied
@@ -109,11 +112,11 @@ class Migration:
         else:
             return ApplicationStatus.CANT_APPLY
 
-    def apply(self, database: Database):
+    def apply(self, database: Database) -> ApplicationStatus:
         """Apply the migrations defined by this class. By default, run every sql file
         in the same directory as the class definition."""
         child_cls_dir = Path(inspect.getfile(self.__class__)).parent
-        database.run_fixtures(child_cls_dir)
+        database.run_fixtures(child_cls_dir, output_mode=self.output_mode)
 
 
 class MigrationState(Enum):
@@ -133,7 +136,7 @@ def run_migrations(
     data_changes: bool = False,
     subsystem: str = None,
     dry_run: bool = False,
-    wait: bool = False
+    wait: bool = False,
 ):
 
     if dry_run:
@@ -180,12 +183,9 @@ def dry_run_migrations(wait=False):
                 return
 
             _migrations = _next_migrations
-            n_applied = _run_migrations(db, apply=True, data_changes=True)
-
-            # Re-create the database object to refresh the inspector
-            db = Database(url)
-
-            assert exists("maps", "sources")(db)
+            n_applied = _run_migrations(
+                db, apply=True, data_changes=True, verbose=False
+            )
 
             _next_migrations = applyable_migrations(db, allow_destructive=True)
             n_migrations = len(_next_migrations)
@@ -207,6 +207,7 @@ def _get_all_migrations():
     instances.sort(key=lambda i: order.index(i.name))
     return instances
 
+
 def _run_migrations(
     db: Database,
     apply: bool = False,
@@ -214,6 +215,7 @@ def _run_migrations(
     force: bool = False,
     data_changes: bool = False,
     subsystem: str = None,
+    verbose: bool = True,
 ):
     """Apply database migrations"""
     # Start time
@@ -225,6 +227,8 @@ def _run_migrations(
         raise ValueError("--force can only be applied with --name")
 
     instances = _get_all_migrations()
+
+    output_mode = OutputMode.SUMMARY if verbose else OutputMode.NONE
 
     # While iterating over migrations, keep track of which have already applied
     completed_migrations = []
@@ -282,13 +286,15 @@ def _run_migrations(
             if _migration.destructive and not data_changes:
                 continue
 
+        # Hack to allow migrations to follow output mode
+        _migration.output_mode = output_mode
         _migration.apply(db)
         run_counter += 1
         # After running migration, reload the database and confirm that application was sucessful
-        db.session.flush()
-        db.session.close()
-        if _migration.should_apply(db) == ApplicationStatus.APPLIED:
-            completed_migrations.append(_migration.name)
+        db.refresh_schema()
+
+    if _migration.should_apply(db) == ApplicationStatus.APPLIED:
+        completed_migrations.append(_migration.name)
 
     # Notify PostgREST to reload the schema cache
     db.run_sql("NOTIFY pgrst, 'reload schema';")
@@ -298,6 +304,7 @@ def _run_migrations(
     print(f"\nApplied {run_counter} migrations in {t_delta:.2f} seconds")
 
     return run_counter
+
 
 def applyable_migrations(db, allow_destructive=False) -> set[str]:
     """Check if there are any migrations that can be applied"""
