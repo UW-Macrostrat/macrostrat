@@ -1,7 +1,3 @@
---
--- PostgreSQL database dump
---
-
 -- Dumped from database version 15.3
 -- Dumped by pg_dump version 15.6
 
@@ -16,150 +12,56 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
---
--- Name: carto; Type: SCHEMA; Schema: -; Owner: postgres
---
-
 CREATE SCHEMA carto;
 
-
-ALTER SCHEMA carto OWNER TO postgres;
-
---
--- Name: carto_new; Type: SCHEMA; Schema: -; Owner: postgres
---
 
 CREATE SCHEMA carto_new;
 
 
-ALTER SCHEMA carto_new OWNER TO postgres;
-
---
--- Name: detrital_zircon; Type: SCHEMA; Schema: -; Owner: postgres
---
-
 CREATE SCHEMA detrital_zircon;
 
-
-ALTER SCHEMA detrital_zircon OWNER TO postgres;
-
---
--- Name: geologic_boundaries; Type: SCHEMA; Schema: -; Owner: postgres
---
 
 CREATE SCHEMA geologic_boundaries;
 
 
-ALTER SCHEMA geologic_boundaries OWNER TO postgres;
-
---
--- Name: hexgrids; Type: SCHEMA; Schema: -; Owner: postgres
---
-
 CREATE SCHEMA hexgrids;
 
-
-ALTER SCHEMA hexgrids OWNER TO postgres;
-
---
--- Name: lines; Type: SCHEMA; Schema: -; Owner: postgres
---
 
 CREATE SCHEMA lines;
 
 
-ALTER SCHEMA lines OWNER TO postgres;
-
---
--- Name: macrostrat; Type: SCHEMA; Schema: -; Owner: postgres
---
-
 CREATE SCHEMA macrostrat;
 
-
-ALTER SCHEMA macrostrat OWNER TO postgres;
-
---
--- Name: maps; Type: SCHEMA; Schema: -; Owner: postgres
---
 
 CREATE SCHEMA maps;
 
 
-ALTER SCHEMA maps OWNER TO postgres;
-
---
--- Name: points; Type: SCHEMA; Schema: -; Owner: postgres
---
-
 CREATE SCHEMA points;
 
-
-ALTER SCHEMA points OWNER TO postgres;
-
---
--- Name: sources; Type: SCHEMA; Schema: -; Owner: postgres
---
 
 CREATE SCHEMA sources;
 
 
-ALTER SCHEMA sources OWNER TO postgres;
-
---
--- Name: topology; Type: SCHEMA; Schema: -; Owner: postgres
---
-
 CREATE SCHEMA topology;
 
-
-ALTER SCHEMA topology OWNER TO postgres;
-
---
--- Name: pg_stat_statements; Type: EXTENSION; Schema: -; Owner: -
---
 
 CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA public;
 
 
---
--- Name: pgaudit; Type: EXTENSION; Schema: -; Owner: -
---
-
 CREATE EXTENSION IF NOT EXISTS pgaudit WITH SCHEMA public;
 
-
---
--- Name: postgis; Type: EXTENSION; Schema: -; Owner: -
---
 
 CREATE EXTENSION IF NOT EXISTS postgis WITH SCHEMA public;
 
 
---
--- Name: postgis_raster; Type: EXTENSION; Schema: -; Owner: -
---
-
 CREATE EXTENSION IF NOT EXISTS postgis_raster WITH SCHEMA public;
 
-
---
--- Name: postgis_topology; Type: EXTENSION; Schema: -; Owner: -
---
 
 CREATE EXTENSION IF NOT EXISTS postgis_topology WITH SCHEMA topology;
 
 
---
--- Name: postgres_fdw; Type: EXTENSION; Schema: -; Owner: -
---
-
 CREATE EXTENSION IF NOT EXISTS postgres_fdw WITH SCHEMA public;
 
-
---
--- Name: measurement_class; Type: TYPE; Schema: public; Owner: postgres
---
 
 CREATE TYPE public.measurement_class AS ENUM (
     '',
@@ -169,12 +71,6 @@ CREATE TYPE public.measurement_class AS ENUM (
 );
 
 
-ALTER TYPE public.measurement_class OWNER TO postgres;
-
---
--- Name: measurement_class_new; Type: TYPE; Schema: public; Owner: postgres
---
-
 CREATE TYPE public.measurement_class_new AS ENUM (
     '',
     'geophysical',
@@ -182,12 +78,6 @@ CREATE TYPE public.measurement_class_new AS ENUM (
     'sedimentological'
 );
 
-
-ALTER TYPE public.measurement_class_new OWNER TO postgres;
-
---
--- Name: measurement_type; Type: TYPE; Schema: public; Owner: postgres
---
 
 CREATE TYPE public.measurement_type AS ENUM (
     '',
@@ -202,12 +92,6 @@ CREATE TYPE public.measurement_type AS ENUM (
 );
 
 
-ALTER TYPE public.measurement_type OWNER TO postgres;
-
---
--- Name: measurement_type_new; Type: TYPE; Schema: public; Owner: postgres
---
-
 CREATE TYPE public.measurement_type_new AS ENUM (
     '',
     'material properties',
@@ -220,12 +104,6 @@ CREATE TYPE public.measurement_type_new AS ENUM (
     'environmental'
 );
 
-
-ALTER TYPE public.measurement_type_new OWNER TO postgres;
-
---
--- Name: count_estimate(text); Type: FUNCTION; Schema: public; Owner: postgres
---
 
 CREATE FUNCTION public.count_estimate(query text) RETURNS integer
     LANGUAGE plpgsql STRICT
@@ -243,24 +121,12 @@ END;
 $$;
 
 
-ALTER FUNCTION public.count_estimate(query text) OWNER TO postgres;
-
---
--- Name: array_agg_mult(anycompatiblearray); Type: AGGREGATE; Schema: public; Owner: postgres
---
-
 CREATE AGGREGATE public.array_agg_mult(anycompatiblearray) (
     SFUNC = array_cat,
     STYPE = anycompatiblearray,
     INITCOND = '{}'
 );
 
-
-ALTER AGGREGATE public.array_agg_mult(anycompatiblearray) OWNER TO postgres;
-
---
--- Name: elevation; Type: SERVER; Schema: -; Owner: postgres
---
 
 CREATE SERVER elevation FOREIGN DATA WRAPPER postgres_fdw OPTIONS (
     dbname 'elevation',
@@ -270,15 +136,9 @@ CREATE SERVER elevation FOREIGN DATA WRAPPER postgres_fdw OPTIONS (
 );
 
 
-ALTER SERVER elevation OWNER TO postgres;
-
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
-
---
--- Name: flat_large; Type: TABLE; Schema: carto; Owner: postgres
---
 
 CREATE TABLE carto.flat_large (
     map_id integer,
@@ -286,23 +146,11 @@ CREATE TABLE carto.flat_large (
 );
 
 
-ALTER TABLE carto.flat_large OWNER TO postgres;
-
---
--- Name: flat_medium; Type: TABLE; Schema: carto; Owner: postgres
---
-
 CREATE TABLE carto.flat_medium (
     map_id integer,
     geom public.geometry
 );
 
-
-ALTER TABLE carto.flat_medium OWNER TO postgres;
-
---
--- Name: large; Type: TABLE; Schema: carto; Owner: postgres
---
 
 CREATE TABLE carto.large (
     map_id integer,
@@ -329,12 +177,6 @@ CREATE TABLE carto.large (
 );
 
 
-ALTER TABLE carto.large OWNER TO postgres;
-
---
--- Name: lines_large; Type: TABLE; Schema: carto; Owner: postgres
---
-
 CREATE TABLE carto.lines_large (
     line_id integer,
     scale text,
@@ -346,12 +188,6 @@ CREATE TABLE carto.lines_large (
     geom public.geometry
 );
 
-
-ALTER TABLE carto.lines_large OWNER TO postgres;
-
---
--- Name: lines_medium; Type: TABLE; Schema: carto; Owner: postgres
---
 
 CREATE TABLE carto.lines_medium (
     line_id integer,
@@ -365,12 +201,6 @@ CREATE TABLE carto.lines_medium (
 );
 
 
-ALTER TABLE carto.lines_medium OWNER TO postgres;
-
---
--- Name: lines_small; Type: TABLE; Schema: carto; Owner: postgres
---
-
 CREATE TABLE carto.lines_small (
     line_id integer,
     scale text,
@@ -383,12 +213,6 @@ CREATE TABLE carto.lines_small (
 );
 
 
-ALTER TABLE carto.lines_small OWNER TO postgres;
-
---
--- Name: lines_tiny; Type: TABLE; Schema: carto; Owner: postgres
---
-
 CREATE TABLE carto.lines_tiny (
     line_id integer,
     geom public.geometry(Geometry,4326),
@@ -400,12 +224,6 @@ CREATE TABLE carto.lines_tiny (
     descrip text
 );
 
-
-ALTER TABLE carto.lines_tiny OWNER TO postgres;
-
---
--- Name: medium; Type: TABLE; Schema: carto; Owner: postgres
---
 
 CREATE TABLE carto.medium (
     map_id integer,
@@ -432,12 +250,6 @@ CREATE TABLE carto.medium (
 );
 
 
-ALTER TABLE carto.medium OWNER TO postgres;
-
---
--- Name: small; Type: TABLE; Schema: carto; Owner: postgres
---
-
 CREATE TABLE carto.small (
     map_id integer,
     orig_id integer,
@@ -462,12 +274,6 @@ CREATE TABLE carto.small (
     geom public.geometry
 );
 
-
-ALTER TABLE carto.small OWNER TO postgres;
-
---
--- Name: tiny; Type: TABLE; Schema: carto; Owner: postgres
---
 
 CREATE TABLE carto.tiny (
     map_id integer,
@@ -494,24 +300,12 @@ CREATE TABLE carto.tiny (
 );
 
 
-ALTER TABLE carto.tiny OWNER TO postgres;
-
---
--- Name: hex_index; Type: TABLE; Schema: carto_new; Owner: postgres
---
-
 CREATE TABLE carto_new.hex_index (
     map_id integer NOT NULL,
     scale text,
     hex_id integer
 );
 
-
-ALTER TABLE carto_new.hex_index OWNER TO postgres;
-
---
--- Name: large; Type: TABLE; Schema: carto_new; Owner: postgres
---
 
 CREATE TABLE carto_new.large (
     map_id integer,
@@ -521,12 +315,6 @@ CREATE TABLE carto_new.large (
 );
 
 
-ALTER TABLE carto_new.large OWNER TO postgres;
-
---
--- Name: lines_large; Type: TABLE; Schema: carto_new; Owner: postgres
---
-
 CREATE TABLE carto_new.lines_large (
     line_id integer,
     source_id integer,
@@ -534,12 +322,6 @@ CREATE TABLE carto_new.lines_large (
     geom public.geometry
 );
 
-
-ALTER TABLE carto_new.lines_large OWNER TO postgres;
-
---
--- Name: lines_medium; Type: TABLE; Schema: carto_new; Owner: postgres
---
 
 CREATE TABLE carto_new.lines_medium (
     line_id integer,
@@ -549,12 +331,6 @@ CREATE TABLE carto_new.lines_medium (
 );
 
 
-ALTER TABLE carto_new.lines_medium OWNER TO postgres;
-
---
--- Name: lines_small; Type: TABLE; Schema: carto_new; Owner: postgres
---
-
 CREATE TABLE carto_new.lines_small (
     line_id integer,
     source_id integer,
@@ -562,12 +338,6 @@ CREATE TABLE carto_new.lines_small (
     geom public.geometry
 );
 
-
-ALTER TABLE carto_new.lines_small OWNER TO postgres;
-
---
--- Name: lines_tiny; Type: TABLE; Schema: carto_new; Owner: postgres
---
 
 CREATE TABLE carto_new.lines_tiny (
     line_id integer,
@@ -577,12 +347,6 @@ CREATE TABLE carto_new.lines_tiny (
 );
 
 
-ALTER TABLE carto_new.lines_tiny OWNER TO postgres;
-
---
--- Name: medium; Type: TABLE; Schema: carto_new; Owner: postgres
---
-
 CREATE TABLE carto_new.medium (
     map_id integer,
     source_id integer,
@@ -591,24 +355,12 @@ CREATE TABLE carto_new.medium (
 );
 
 
-ALTER TABLE carto_new.medium OWNER TO postgres;
-
---
--- Name: pbdb_hex_index; Type: TABLE; Schema: carto_new; Owner: postgres
---
-
 CREATE TABLE carto_new.pbdb_hex_index (
     collection_no integer NOT NULL,
     scale text,
     hex_id integer
 );
 
-
-ALTER TABLE carto_new.pbdb_hex_index OWNER TO postgres;
-
---
--- Name: small; Type: TABLE; Schema: carto_new; Owner: postgres
---
 
 CREATE TABLE carto_new.small (
     map_id integer,
@@ -618,12 +370,6 @@ CREATE TABLE carto_new.small (
 );
 
 
-ALTER TABLE carto_new.small OWNER TO postgres;
-
---
--- Name: tiny; Type: TABLE; Schema: carto_new; Owner: postgres
---
-
 CREATE TABLE carto_new.tiny (
     map_id integer,
     source_id integer,
@@ -632,12 +378,6 @@ CREATE TABLE carto_new.tiny (
 );
 
 
-ALTER TABLE carto_new.tiny OWNER TO postgres;
-
---
--- Name: located_query_bounds; Type: TABLE; Schema: detrital_zircon; Owner: postgres
---
-
 CREATE TABLE detrital_zircon.located_query_bounds (
     id integer NOT NULL,
     geometry public.geometry(MultiPolygon,4326) NOT NULL,
@@ -645,12 +385,6 @@ CREATE TABLE detrital_zircon.located_query_bounds (
     notes text
 );
 
-
-ALTER TABLE detrital_zircon.located_query_bounds OWNER TO postgres;
-
---
--- Name: located_query_bounds_id_seq; Type: SEQUENCE; Schema: detrital_zircon; Owner: postgres
---
 
 CREATE SEQUENCE detrital_zircon.located_query_bounds_id_seq
     AS integer
@@ -661,18 +395,8 @@ CREATE SEQUENCE detrital_zircon.located_query_bounds_id_seq
     CACHE 1;
 
 
-ALTER TABLE detrital_zircon.located_query_bounds_id_seq OWNER TO postgres;
-
---
--- Name: located_query_bounds_id_seq; Type: SEQUENCE OWNED BY; Schema: detrital_zircon; Owner: postgres
---
-
 ALTER SEQUENCE detrital_zircon.located_query_bounds_id_seq OWNED BY detrital_zircon.located_query_bounds.id;
 
-
---
--- Name: boundaries; Type: TABLE; Schema: geologic_boundaries; Owner: postgres
---
 
 CREATE TABLE geologic_boundaries.boundaries (
     boundary_id integer NOT NULL,
@@ -688,12 +412,6 @@ CREATE TABLE geologic_boundaries.boundaries (
 );
 
 
-ALTER TABLE geologic_boundaries.boundaries OWNER TO postgres;
-
---
--- Name: boundaries_boundary_id_seq; Type: SEQUENCE; Schema: geologic_boundaries; Owner: postgres
---
-
 CREATE SEQUENCE geologic_boundaries.boundaries_boundary_id_seq
     START WITH 1
     INCREMENT BY 1
@@ -702,18 +420,8 @@ CREATE SEQUENCE geologic_boundaries.boundaries_boundary_id_seq
     CACHE 1;
 
 
-ALTER TABLE geologic_boundaries.boundaries_boundary_id_seq OWNER TO postgres;
-
---
--- Name: boundaries_boundary_id_seq; Type: SEQUENCE OWNED BY; Schema: geologic_boundaries; Owner: postgres
---
-
 ALTER SEQUENCE geologic_boundaries.boundaries_boundary_id_seq OWNED BY geologic_boundaries.boundaries.boundary_id;
 
-
---
--- Name: geologic_boundary_source_seq; Type: SEQUENCE; Schema: public; Owner: postgres
---
 
 CREATE SEQUENCE public.geologic_boundary_source_seq
     START WITH 1
@@ -722,12 +430,6 @@ CREATE SEQUENCE public.geologic_boundary_source_seq
     NO MAXVALUE
     CACHE 1;
 
-
-ALTER TABLE public.geologic_boundary_source_seq OWNER TO postgres;
-
---
--- Name: sources; Type: TABLE; Schema: geologic_boundaries; Owner: postgres
---
 
 CREATE TABLE geologic_boundaries.sources (
     source_id integer DEFAULT nextval('public.geologic_boundary_source_seq'::regclass) NOT NULL,
@@ -751,24 +453,12 @@ CREATE TABLE geologic_boundaries.sources (
 );
 
 
-ALTER TABLE geologic_boundaries.sources OWNER TO postgres;
-
---
--- Name: bedrock_index; Type: TABLE; Schema: hexgrids; Owner: postgres
---
-
 CREATE TABLE hexgrids.bedrock_index (
     legend_id integer NOT NULL,
     hex_id integer NOT NULL,
     coverage numeric
 );
 
-
-ALTER TABLE hexgrids.bedrock_index OWNER TO postgres;
-
---
--- Name: hexgrids; Type: TABLE; Schema: hexgrids; Owner: postgres
---
 
 CREATE TABLE hexgrids.hexgrids (
     hex_id integer NOT NULL,
@@ -777,23 +467,11 @@ CREATE TABLE hexgrids.hexgrids (
 );
 
 
-ALTER TABLE hexgrids.hexgrids OWNER TO postgres;
-
---
--- Name: pbdb_index; Type: TABLE; Schema: hexgrids; Owner: postgres
---
-
 CREATE TABLE hexgrids.pbdb_index (
     collection_no integer NOT NULL,
     hex_id integer NOT NULL
 );
 
-
-ALTER TABLE hexgrids.pbdb_index OWNER TO postgres;
-
---
--- Name: r10; Type: TABLE; Schema: hexgrids; Owner: postgres
---
 
 CREATE TABLE hexgrids.r10 (
     hex_id integer NOT NULL,
@@ -801,12 +479,6 @@ CREATE TABLE hexgrids.r10 (
     web_geom public.geometry
 );
 
-
-ALTER TABLE hexgrids.r10 OWNER TO postgres;
-
---
--- Name: r10_ogc_fid_seq; Type: SEQUENCE; Schema: hexgrids; Owner: postgres
---
 
 CREATE SEQUENCE hexgrids.r10_ogc_fid_seq
     AS integer
@@ -817,18 +489,8 @@ CREATE SEQUENCE hexgrids.r10_ogc_fid_seq
     CACHE 1;
 
 
-ALTER TABLE hexgrids.r10_ogc_fid_seq OWNER TO postgres;
-
---
--- Name: r10_ogc_fid_seq; Type: SEQUENCE OWNED BY; Schema: hexgrids; Owner: postgres
---
-
 ALTER SEQUENCE hexgrids.r10_ogc_fid_seq OWNED BY hexgrids.r10.hex_id;
 
-
---
--- Name: r11; Type: TABLE; Schema: hexgrids; Owner: postgres
---
 
 CREATE TABLE hexgrids.r11 (
     hex_id integer NOT NULL,
@@ -836,12 +498,6 @@ CREATE TABLE hexgrids.r11 (
     web_geom public.geometry
 );
 
-
-ALTER TABLE hexgrids.r11 OWNER TO postgres;
-
---
--- Name: r11_ogc_fid_seq; Type: SEQUENCE; Schema: hexgrids; Owner: postgres
---
 
 CREATE SEQUENCE hexgrids.r11_ogc_fid_seq
     AS integer
@@ -852,18 +508,8 @@ CREATE SEQUENCE hexgrids.r11_ogc_fid_seq
     CACHE 1;
 
 
-ALTER TABLE hexgrids.r11_ogc_fid_seq OWNER TO postgres;
-
---
--- Name: r11_ogc_fid_seq; Type: SEQUENCE OWNED BY; Schema: hexgrids; Owner: postgres
---
-
 ALTER SEQUENCE hexgrids.r11_ogc_fid_seq OWNED BY hexgrids.r11.hex_id;
 
-
---
--- Name: r12; Type: TABLE; Schema: hexgrids; Owner: postgres
---
 
 CREATE TABLE hexgrids.r12 (
     hex_id integer NOT NULL,
@@ -871,12 +517,6 @@ CREATE TABLE hexgrids.r12 (
     web_geom public.geometry
 );
 
-
-ALTER TABLE hexgrids.r12 OWNER TO postgres;
-
---
--- Name: r12_ogc_fid_seq; Type: SEQUENCE; Schema: hexgrids; Owner: postgres
---
 
 CREATE SEQUENCE hexgrids.r12_ogc_fid_seq
     AS integer
@@ -887,18 +527,8 @@ CREATE SEQUENCE hexgrids.r12_ogc_fid_seq
     CACHE 1;
 
 
-ALTER TABLE hexgrids.r12_ogc_fid_seq OWNER TO postgres;
-
---
--- Name: r12_ogc_fid_seq; Type: SEQUENCE OWNED BY; Schema: hexgrids; Owner: postgres
---
-
 ALTER SEQUENCE hexgrids.r12_ogc_fid_seq OWNED BY hexgrids.r12.hex_id;
 
-
---
--- Name: r5; Type: TABLE; Schema: hexgrids; Owner: postgres
---
 
 CREATE TABLE hexgrids.r5 (
     hex_id integer NOT NULL,
@@ -906,12 +536,6 @@ CREATE TABLE hexgrids.r5 (
     web_geom public.geometry
 );
 
-
-ALTER TABLE hexgrids.r5 OWNER TO postgres;
-
---
--- Name: r5_ogc_fid_seq; Type: SEQUENCE; Schema: hexgrids; Owner: postgres
---
 
 CREATE SEQUENCE hexgrids.r5_ogc_fid_seq
     AS integer
@@ -922,18 +546,8 @@ CREATE SEQUENCE hexgrids.r5_ogc_fid_seq
     CACHE 1;
 
 
-ALTER TABLE hexgrids.r5_ogc_fid_seq OWNER TO postgres;
-
---
--- Name: r5_ogc_fid_seq; Type: SEQUENCE OWNED BY; Schema: hexgrids; Owner: postgres
---
-
 ALTER SEQUENCE hexgrids.r5_ogc_fid_seq OWNED BY hexgrids.r5.hex_id;
 
-
---
--- Name: r6; Type: TABLE; Schema: hexgrids; Owner: postgres
---
 
 CREATE TABLE hexgrids.r6 (
     hex_id integer NOT NULL,
@@ -941,12 +555,6 @@ CREATE TABLE hexgrids.r6 (
     web_geom public.geometry
 );
 
-
-ALTER TABLE hexgrids.r6 OWNER TO postgres;
-
---
--- Name: r6_ogc_fid_seq; Type: SEQUENCE; Schema: hexgrids; Owner: postgres
---
 
 CREATE SEQUENCE hexgrids.r6_ogc_fid_seq
     AS integer
@@ -957,18 +565,8 @@ CREATE SEQUENCE hexgrids.r6_ogc_fid_seq
     CACHE 1;
 
 
-ALTER TABLE hexgrids.r6_ogc_fid_seq OWNER TO postgres;
-
---
--- Name: r6_ogc_fid_seq; Type: SEQUENCE OWNED BY; Schema: hexgrids; Owner: postgres
---
-
 ALTER SEQUENCE hexgrids.r6_ogc_fid_seq OWNED BY hexgrids.r6.hex_id;
 
-
---
--- Name: r7; Type: TABLE; Schema: hexgrids; Owner: postgres
---
 
 CREATE TABLE hexgrids.r7 (
     hex_id integer NOT NULL,
@@ -976,12 +574,6 @@ CREATE TABLE hexgrids.r7 (
     web_geom public.geometry
 );
 
-
-ALTER TABLE hexgrids.r7 OWNER TO postgres;
-
---
--- Name: r7_ogc_fid_seq; Type: SEQUENCE; Schema: hexgrids; Owner: postgres
---
 
 CREATE SEQUENCE hexgrids.r7_ogc_fid_seq
     AS integer
@@ -992,18 +584,8 @@ CREATE SEQUENCE hexgrids.r7_ogc_fid_seq
     CACHE 1;
 
 
-ALTER TABLE hexgrids.r7_ogc_fid_seq OWNER TO postgres;
-
---
--- Name: r7_ogc_fid_seq; Type: SEQUENCE OWNED BY; Schema: hexgrids; Owner: postgres
---
-
 ALTER SEQUENCE hexgrids.r7_ogc_fid_seq OWNED BY hexgrids.r7.hex_id;
 
-
---
--- Name: r8; Type: TABLE; Schema: hexgrids; Owner: postgres
---
 
 CREATE TABLE hexgrids.r8 (
     hex_id integer NOT NULL,
@@ -1011,12 +593,6 @@ CREATE TABLE hexgrids.r8 (
     web_geom public.geometry
 );
 
-
-ALTER TABLE hexgrids.r8 OWNER TO postgres;
-
---
--- Name: r8_ogc_fid_seq; Type: SEQUENCE; Schema: hexgrids; Owner: postgres
---
 
 CREATE SEQUENCE hexgrids.r8_ogc_fid_seq
     AS integer
@@ -1027,18 +603,8 @@ CREATE SEQUENCE hexgrids.r8_ogc_fid_seq
     CACHE 1;
 
 
-ALTER TABLE hexgrids.r8_ogc_fid_seq OWNER TO postgres;
-
---
--- Name: r8_ogc_fid_seq; Type: SEQUENCE OWNED BY; Schema: hexgrids; Owner: postgres
---
-
 ALTER SEQUENCE hexgrids.r8_ogc_fid_seq OWNED BY hexgrids.r8.hex_id;
 
-
---
--- Name: r9; Type: TABLE; Schema: hexgrids; Owner: postgres
---
 
 CREATE TABLE hexgrids.r9 (
     hex_id integer NOT NULL,
@@ -1046,12 +612,6 @@ CREATE TABLE hexgrids.r9 (
     web_geom public.geometry
 );
 
-
-ALTER TABLE hexgrids.r9 OWNER TO postgres;
-
---
--- Name: r9_ogc_fid_seq; Type: SEQUENCE; Schema: hexgrids; Owner: postgres
---
 
 CREATE SEQUENCE hexgrids.r9_ogc_fid_seq
     AS integer
@@ -1062,18 +622,8 @@ CREATE SEQUENCE hexgrids.r9_ogc_fid_seq
     CACHE 1;
 
 
-ALTER TABLE hexgrids.r9_ogc_fid_seq OWNER TO postgres;
-
---
--- Name: r9_ogc_fid_seq; Type: SEQUENCE OWNED BY; Schema: hexgrids; Owner: postgres
---
-
 ALTER SEQUENCE hexgrids.r9_ogc_fid_seq OWNED BY hexgrids.r9.hex_id;
 
-
---
--- Name: line_ids; Type: SEQUENCE; Schema: public; Owner: postgres
---
 
 CREATE SEQUENCE public.line_ids
     START WITH 1
@@ -1082,12 +632,6 @@ CREATE SEQUENCE public.line_ids
     NO MAXVALUE
     CACHE 1;
 
-
-ALTER TABLE public.line_ids OWNER TO postgres;
-
---
--- Name: large; Type: TABLE; Schema: lines; Owner: postgres
---
 
 CREATE TABLE lines.large (
     line_id integer DEFAULT nextval('public.line_ids'::regclass) NOT NULL,
@@ -1104,12 +648,6 @@ CREATE TABLE lines.large (
 );
 
 
-ALTER TABLE lines.large OWNER TO postgres;
-
---
--- Name: medium; Type: TABLE; Schema: lines; Owner: postgres
---
-
 CREATE TABLE lines.medium (
     line_id integer DEFAULT nextval('public.line_ids'::regclass) NOT NULL,
     orig_id integer,
@@ -1124,12 +662,6 @@ CREATE TABLE lines.medium (
     CONSTRAINT enforce_valid_geom_lines_medium CHECK (public.st_isvalid(geom))
 );
 
-
-ALTER TABLE lines.medium OWNER TO postgres;
-
---
--- Name: small; Type: TABLE; Schema: lines; Owner: postgres
---
 
 CREATE TABLE lines.small (
     line_id integer DEFAULT nextval('public.line_ids'::regclass) NOT NULL,
@@ -1146,12 +678,6 @@ CREATE TABLE lines.small (
 );
 
 
-ALTER TABLE lines.small OWNER TO postgres;
-
---
--- Name: tiny; Type: TABLE; Schema: lines; Owner: postgres
---
-
 CREATE TABLE lines.tiny (
     line_id integer DEFAULT nextval('public.line_ids'::regclass) NOT NULL,
     orig_id integer,
@@ -1167,12 +693,6 @@ CREATE TABLE lines.tiny (
 );
 
 
-ALTER TABLE lines.tiny OWNER TO postgres;
-
---
--- Name: autocomplete; Type: TABLE; Schema: macrostrat; Owner: postgres
---
-
 CREATE TABLE macrostrat.autocomplete (
     id integer NOT NULL,
     name text,
@@ -1180,12 +700,6 @@ CREATE TABLE macrostrat.autocomplete (
     category text
 );
 
-
-ALTER TABLE macrostrat.autocomplete OWNER TO postgres;
-
---
--- Name: col_areas; Type: TABLE; Schema: macrostrat; Owner: postgres
---
 
 CREATE TABLE macrostrat.col_areas (
     id integer NOT NULL,
@@ -1195,12 +709,6 @@ CREATE TABLE macrostrat.col_areas (
 );
 
 
-ALTER TABLE macrostrat.col_areas OWNER TO postgres;
-
---
--- Name: col_groups; Type: TABLE; Schema: macrostrat; Owner: postgres
---
-
 CREATE TABLE macrostrat.col_groups (
     id integer NOT NULL,
     col_group character varying(100),
@@ -1208,24 +716,12 @@ CREATE TABLE macrostrat.col_groups (
 );
 
 
-ALTER TABLE macrostrat.col_groups OWNER TO postgres;
-
---
--- Name: col_refs; Type: TABLE; Schema: macrostrat; Owner: postgres
---
-
 CREATE TABLE macrostrat.col_refs (
     id integer NOT NULL,
     col_id integer,
     ref_id integer
 );
 
-
-ALTER TABLE macrostrat.col_refs OWNER TO postgres;
-
---
--- Name: cols; Type: TABLE; Schema: macrostrat; Owner: postgres
---
 
 CREATE TABLE macrostrat.cols (
     id integer NOT NULL,
@@ -1246,23 +742,11 @@ CREATE TABLE macrostrat.cols (
 );
 
 
-ALTER TABLE macrostrat.cols OWNER TO postgres;
-
---
--- Name: concepts_places; Type: TABLE; Schema: macrostrat; Owner: postgres
---
-
 CREATE TABLE macrostrat.concepts_places (
     concept_id integer NOT NULL,
     place_id integer NOT NULL
 );
 
-
-ALTER TABLE macrostrat.concepts_places OWNER TO postgres;
-
---
--- Name: econs; Type: TABLE; Schema: macrostrat; Owner: postgres
---
 
 CREATE TABLE macrostrat.econs (
     id integer NOT NULL,
@@ -1273,12 +757,6 @@ CREATE TABLE macrostrat.econs (
 );
 
 
-ALTER TABLE macrostrat.econs OWNER TO postgres;
-
---
--- Name: environs; Type: TABLE; Schema: macrostrat; Owner: postgres
---
-
 CREATE TABLE macrostrat.environs (
     id integer NOT NULL,
     environ text,
@@ -1287,12 +765,6 @@ CREATE TABLE macrostrat.environs (
     environ_color text
 );
 
-
-ALTER TABLE macrostrat.environs OWNER TO postgres;
-
---
--- Name: grainsize; Type: TABLE; Schema: macrostrat; Owner: postgres
---
 
 CREATE TABLE macrostrat.grainsize (
     grain_id integer NOT NULL,
@@ -1306,12 +778,6 @@ CREATE TABLE macrostrat.grainsize (
 );
 
 
-ALTER TABLE macrostrat.grainsize OWNER TO postgres;
-
---
--- Name: intervals; Type: TABLE; Schema: macrostrat; Owner: postgres
---
-
 CREATE TABLE macrostrat.intervals (
     id integer NOT NULL,
     age_bottom numeric,
@@ -1324,12 +790,6 @@ CREATE TABLE macrostrat.intervals (
 );
 
 
-ALTER TABLE macrostrat.intervals OWNER TO postgres;
-
---
--- Name: intervals_new_id_seq1; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
---
-
 CREATE SEQUENCE macrostrat.intervals_new_id_seq1
     AS integer
     START WITH 1
@@ -1339,18 +799,8 @@ CREATE SEQUENCE macrostrat.intervals_new_id_seq1
     CACHE 1;
 
 
-ALTER TABLE macrostrat.intervals_new_id_seq1 OWNER TO postgres;
-
---
--- Name: intervals_new_id_seq1; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
---
-
 ALTER SEQUENCE macrostrat.intervals_new_id_seq1 OWNED BY macrostrat.intervals.id;
 
-
---
--- Name: lith_atts; Type: TABLE; Schema: macrostrat; Owner: postgres
---
 
 CREATE TABLE macrostrat.lith_atts (
     id integer NOT NULL,
@@ -1359,12 +809,6 @@ CREATE TABLE macrostrat.lith_atts (
     lith_att_fill integer
 );
 
-
-ALTER TABLE macrostrat.lith_atts OWNER TO postgres;
-
---
--- Name: liths; Type: TABLE; Schema: macrostrat; Owner: postgres
---
 
 CREATE TABLE macrostrat.liths (
     id integer NOT NULL,
@@ -1380,12 +824,6 @@ CREATE TABLE macrostrat.liths (
     lith_color character varying(12)
 );
 
-
-ALTER TABLE macrostrat.liths OWNER TO postgres;
-
---
--- Name: lookup_strat_names; Type: TABLE; Schema: macrostrat; Owner: postgres
---
 
 CREATE TABLE macrostrat.lookup_strat_names (
     strat_name_id integer,
@@ -1413,12 +851,6 @@ CREATE TABLE macrostrat.lookup_strat_names (
 );
 
 
-ALTER TABLE macrostrat.lookup_strat_names OWNER TO postgres;
-
---
--- Name: lookup_unit_attrs_api; Type: TABLE; Schema: macrostrat; Owner: postgres
---
-
 CREATE TABLE macrostrat.lookup_unit_attrs_api (
     unit_id integer,
     lith json,
@@ -1428,12 +860,6 @@ CREATE TABLE macrostrat.lookup_unit_attrs_api (
     measure_long json
 );
 
-
-ALTER TABLE macrostrat.lookup_unit_attrs_api OWNER TO postgres;
-
---
--- Name: lookup_unit_intervals; Type: TABLE; Schema: macrostrat; Owner: postgres
---
 
 CREATE TABLE macrostrat.lookup_unit_intervals (
     unit_id integer,
@@ -1459,12 +885,6 @@ CREATE TABLE macrostrat.lookup_unit_intervals (
 );
 
 
-ALTER TABLE macrostrat.lookup_unit_intervals OWNER TO postgres;
-
---
--- Name: lookup_unit_liths; Type: TABLE; Schema: macrostrat; Owner: postgres
---
-
 CREATE TABLE macrostrat.lookup_unit_liths (
     unit_id integer,
     lith_class character varying(100),
@@ -1476,12 +896,6 @@ CREATE TABLE macrostrat.lookup_unit_liths (
     environ character varying(255)
 );
 
-
-ALTER TABLE macrostrat.lookup_unit_liths OWNER TO postgres;
-
---
--- Name: lookup_units; Type: TABLE; Schema: macrostrat; Owner: postgres
---
 
 CREATE TABLE macrostrat.lookup_units (
     unit_id integer NOT NULL,
@@ -1522,12 +936,6 @@ CREATE TABLE macrostrat.lookup_units (
 );
 
 
-ALTER TABLE macrostrat.lookup_units OWNER TO postgres;
-
---
--- Name: measurements; Type: TABLE; Schema: macrostrat; Owner: postgres
---
-
 CREATE TABLE macrostrat.measurements (
     id integer NOT NULL,
     measurement_class public.measurement_class NOT NULL,
@@ -1535,12 +943,6 @@ CREATE TABLE macrostrat.measurements (
     measurement text NOT NULL
 );
 
-
-ALTER TABLE macrostrat.measurements OWNER TO postgres;
-
---
--- Name: measurements_new_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
---
 
 CREATE SEQUENCE macrostrat.measurements_new_id_seq
     AS integer
@@ -1551,18 +953,8 @@ CREATE SEQUENCE macrostrat.measurements_new_id_seq
     CACHE 1;
 
 
-ALTER TABLE macrostrat.measurements_new_id_seq OWNER TO postgres;
-
---
--- Name: measurements_new_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
---
-
 ALTER SEQUENCE macrostrat.measurements_new_id_seq OWNED BY macrostrat.measurements.id;
 
-
---
--- Name: measuremeta; Type: TABLE; Schema: macrostrat; Owner: postgres
---
 
 CREATE TABLE macrostrat.measuremeta (
     id integer NOT NULL,
@@ -1582,12 +974,6 @@ CREATE TABLE macrostrat.measuremeta (
 );
 
 
-ALTER TABLE macrostrat.measuremeta OWNER TO postgres;
-
---
--- Name: measuremeta_new_id_seq1; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
---
-
 CREATE SEQUENCE macrostrat.measuremeta_new_id_seq1
     AS integer
     START WITH 1
@@ -1597,18 +983,8 @@ CREATE SEQUENCE macrostrat.measuremeta_new_id_seq1
     CACHE 1;
 
 
-ALTER TABLE macrostrat.measuremeta_new_id_seq1 OWNER TO postgres;
-
---
--- Name: measuremeta_new_id_seq1; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
---
-
 ALTER SEQUENCE macrostrat.measuremeta_new_id_seq1 OWNED BY macrostrat.measuremeta.id;
 
-
---
--- Name: measures; Type: TABLE; Schema: macrostrat; Owner: postgres
---
 
 CREATE TABLE macrostrat.measures (
     id integer NOT NULL,
@@ -1626,12 +1002,6 @@ CREATE TABLE macrostrat.measures (
 );
 
 
-ALTER TABLE macrostrat.measures OWNER TO postgres;
-
---
--- Name: measures_new_id_seq1; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
---
-
 CREATE SEQUENCE macrostrat.measures_new_id_seq1
     AS integer
     START WITH 1
@@ -1641,18 +1011,8 @@ CREATE SEQUENCE macrostrat.measures_new_id_seq1
     CACHE 1;
 
 
-ALTER TABLE macrostrat.measures_new_id_seq1 OWNER TO postgres;
-
---
--- Name: measures_new_id_seq1; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
---
-
 ALTER SEQUENCE macrostrat.measures_new_id_seq1 OWNED BY macrostrat.measures.id;
 
-
---
--- Name: pbdb_collections; Type: TABLE; Schema: macrostrat; Owner: postgres
---
 
 CREATE TABLE macrostrat.pbdb_collections (
     collection_no integer NOT NULL,
@@ -1673,24 +1033,12 @@ CREATE TABLE macrostrat.pbdb_collections (
 );
 
 
-ALTER TABLE macrostrat.pbdb_collections OWNER TO postgres;
-
---
--- Name: pbdb_collections_strat_names; Type: TABLE; Schema: macrostrat; Owner: postgres
---
-
 CREATE TABLE macrostrat.pbdb_collections_strat_names (
     collection_no integer NOT NULL,
     strat_name_id integer NOT NULL,
     basis_col text
 );
 
-
-ALTER TABLE macrostrat.pbdb_collections_strat_names OWNER TO postgres;
-
---
--- Name: places; Type: TABLE; Schema: macrostrat; Owner: postgres
---
 
 CREATE TABLE macrostrat.places (
     place_id integer NOT NULL,
@@ -1702,12 +1050,6 @@ CREATE TABLE macrostrat.places (
     geom public.geometry
 );
 
-
-ALTER TABLE macrostrat.places OWNER TO postgres;
-
---
--- Name: refs; Type: TABLE; Schema: macrostrat; Owner: postgres
---
 
 CREATE TABLE macrostrat.refs (
     id integer NOT NULL,
@@ -1721,12 +1063,6 @@ CREATE TABLE macrostrat.refs (
 );
 
 
-ALTER TABLE macrostrat.refs OWNER TO postgres;
-
---
--- Name: strat_name_footprints; Type: TABLE; Schema: macrostrat; Owner: postgres
---
-
 CREATE TABLE macrostrat.strat_name_footprints (
     strat_name_id integer,
     name_no_lith character varying(100),
@@ -1739,12 +1075,6 @@ CREATE TABLE macrostrat.strat_name_footprints (
 );
 
 
-ALTER TABLE macrostrat.strat_name_footprints OWNER TO postgres;
-
---
--- Name: strat_names; Type: TABLE; Schema: macrostrat; Owner: postgres
---
-
 CREATE TABLE macrostrat.strat_names (
     id integer NOT NULL,
     strat_name character varying(100) NOT NULL,
@@ -1753,12 +1083,6 @@ CREATE TABLE macrostrat.strat_names (
     concept_id integer
 );
 
-
-ALTER TABLE macrostrat.strat_names OWNER TO postgres;
-
---
--- Name: strat_names_meta; Type: TABLE; Schema: macrostrat; Owner: postgres
---
 
 CREATE TABLE macrostrat.strat_names_meta (
     concept_id integer NOT NULL,
@@ -1776,12 +1100,6 @@ CREATE TABLE macrostrat.strat_names_meta (
 );
 
 
-ALTER TABLE macrostrat.strat_names_meta OWNER TO postgres;
-
---
--- Name: strat_names_new_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
---
-
 CREATE SEQUENCE macrostrat.strat_names_new_id_seq
     AS integer
     START WITH 1
@@ -1791,30 +1109,14 @@ CREATE SEQUENCE macrostrat.strat_names_new_id_seq
     CACHE 1;
 
 
-ALTER TABLE macrostrat.strat_names_new_id_seq OWNER TO postgres;
-
---
--- Name: strat_names_new_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
---
-
 ALTER SEQUENCE macrostrat.strat_names_new_id_seq OWNED BY macrostrat.strat_names.id;
 
-
---
--- Name: strat_names_places; Type: TABLE; Schema: macrostrat; Owner: postgres
---
 
 CREATE TABLE macrostrat.strat_names_places (
     strat_name_id integer NOT NULL,
     place_id integer NOT NULL
 );
 
-
-ALTER TABLE macrostrat.strat_names_places OWNER TO postgres;
-
---
--- Name: timescales; Type: TABLE; Schema: macrostrat; Owner: postgres
---
 
 CREATE TABLE macrostrat.timescales (
     id integer NOT NULL,
@@ -1823,23 +1125,11 @@ CREATE TABLE macrostrat.timescales (
 );
 
 
-ALTER TABLE macrostrat.timescales OWNER TO postgres;
-
---
--- Name: timescales_intervals; Type: TABLE; Schema: macrostrat; Owner: postgres
---
-
 CREATE TABLE macrostrat.timescales_intervals (
     timescale_id integer,
     interval_id integer
 );
 
-
-ALTER TABLE macrostrat.timescales_intervals OWNER TO postgres;
-
---
--- Name: unit_econs; Type: TABLE; Schema: macrostrat; Owner: postgres
---
 
 CREATE TABLE macrostrat.unit_econs (
     id integer NOT NULL,
@@ -1850,12 +1140,6 @@ CREATE TABLE macrostrat.unit_econs (
 );
 
 
-ALTER TABLE macrostrat.unit_econs OWNER TO postgres;
-
---
--- Name: unit_environs; Type: TABLE; Schema: macrostrat; Owner: postgres
---
-
 CREATE TABLE macrostrat.unit_environs (
     id integer NOT NULL,
     unit_id integer,
@@ -1865,12 +1149,6 @@ CREATE TABLE macrostrat.unit_environs (
 );
 
 
-ALTER TABLE macrostrat.unit_environs OWNER TO postgres;
-
---
--- Name: unit_lith_atts; Type: TABLE; Schema: macrostrat; Owner: postgres
---
-
 CREATE TABLE macrostrat.unit_lith_atts (
     id integer NOT NULL,
     unit_lith_id integer,
@@ -1879,12 +1157,6 @@ CREATE TABLE macrostrat.unit_lith_atts (
     date_mod text
 );
 
-
-ALTER TABLE macrostrat.unit_lith_atts OWNER TO postgres;
-
---
--- Name: unit_liths; Type: TABLE; Schema: macrostrat; Owner: postgres
---
 
 CREATE TABLE macrostrat.unit_liths (
     id integer NOT NULL,
@@ -1900,12 +1172,6 @@ CREATE TABLE macrostrat.unit_liths (
 );
 
 
-ALTER TABLE macrostrat.unit_liths OWNER TO postgres;
-
---
--- Name: unit_measures; Type: TABLE; Schema: macrostrat; Owner: postgres
---
-
 CREATE TABLE macrostrat.unit_measures (
     id integer NOT NULL,
     measuremeta_id integer NOT NULL,
@@ -1916,12 +1182,6 @@ CREATE TABLE macrostrat.unit_measures (
 );
 
 
-ALTER TABLE macrostrat.unit_measures OWNER TO postgres;
-
---
--- Name: unit_measures_new_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
---
-
 CREATE SEQUENCE macrostrat.unit_measures_new_id_seq
     AS integer
     START WITH 1
@@ -1931,18 +1191,8 @@ CREATE SEQUENCE macrostrat.unit_measures_new_id_seq
     CACHE 1;
 
 
-ALTER TABLE macrostrat.unit_measures_new_id_seq OWNER TO postgres;
-
---
--- Name: unit_measures_new_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
---
-
 ALTER SEQUENCE macrostrat.unit_measures_new_id_seq OWNED BY macrostrat.unit_measures.id;
 
-
---
--- Name: unit_strat_names; Type: TABLE; Schema: macrostrat; Owner: postgres
---
 
 CREATE TABLE macrostrat.unit_strat_names (
     id integer NOT NULL,
@@ -1950,12 +1200,6 @@ CREATE TABLE macrostrat.unit_strat_names (
     strat_name_id integer NOT NULL
 );
 
-
-ALTER TABLE macrostrat.unit_strat_names OWNER TO postgres;
-
---
--- Name: unit_strat_names_new_id_seq1; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
---
 
 CREATE SEQUENCE macrostrat.unit_strat_names_new_id_seq1
     AS integer
@@ -1966,18 +1210,8 @@ CREATE SEQUENCE macrostrat.unit_strat_names_new_id_seq1
     CACHE 1;
 
 
-ALTER TABLE macrostrat.unit_strat_names_new_id_seq1 OWNER TO postgres;
-
---
--- Name: unit_strat_names_new_id_seq1; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
---
-
 ALTER SEQUENCE macrostrat.unit_strat_names_new_id_seq1 OWNED BY macrostrat.unit_strat_names.id;
 
-
---
--- Name: units; Type: TABLE; Schema: macrostrat; Owner: postgres
---
 
 CREATE TABLE macrostrat.units (
     id integer NOT NULL,
@@ -1997,12 +1231,6 @@ CREATE TABLE macrostrat.units (
 );
 
 
-ALTER TABLE macrostrat.units OWNER TO postgres;
-
---
--- Name: units_sections; Type: TABLE; Schema: macrostrat; Owner: postgres
---
-
 CREATE TABLE macrostrat.units_sections (
     id integer NOT NULL,
     unit_id integer NOT NULL,
@@ -2010,12 +1238,6 @@ CREATE TABLE macrostrat.units_sections (
     col_id integer NOT NULL
 );
 
-
-ALTER TABLE macrostrat.units_sections OWNER TO postgres;
-
---
--- Name: units_sections_new_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: postgres
---
 
 CREATE SEQUENCE macrostrat.units_sections_new_id_seq
     AS integer
@@ -2026,18 +1248,8 @@ CREATE SEQUENCE macrostrat.units_sections_new_id_seq
     CACHE 1;
 
 
-ALTER TABLE macrostrat.units_sections_new_id_seq OWNER TO postgres;
-
---
--- Name: units_sections_new_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat; Owner: postgres
---
-
 ALTER SEQUENCE macrostrat.units_sections_new_id_seq OWNED BY macrostrat.units_sections.id;
 
-
---
--- Name: map_ids; Type: SEQUENCE; Schema: public; Owner: postgres
---
 
 CREATE SEQUENCE public.map_ids
     START WITH 1
@@ -2046,12 +1258,6 @@ CREATE SEQUENCE public.map_ids
     NO MAXVALUE
     CACHE 1;
 
-
-ALTER TABLE public.map_ids OWNER TO postgres;
-
---
--- Name: large; Type: TABLE; Schema: maps; Owner: postgres
---
 
 CREATE TABLE maps.large (
     map_id integer DEFAULT nextval('public.map_ids'::regclass) NOT NULL,
@@ -2070,12 +1276,6 @@ CREATE TABLE maps.large (
     CONSTRAINT enforce_valid_geom_large CHECK (public.st_isvalid(geom))
 );
 
-
-ALTER TABLE maps.large OWNER TO postgres;
-
---
--- Name: legend; Type: TABLE; Schema: maps; Owner: postgres
---
 
 CREATE TABLE maps.legend (
     legend_id integer NOT NULL,
@@ -2109,12 +1309,6 @@ CREATE TABLE maps.legend (
 );
 
 
-ALTER TABLE maps.legend OWNER TO postgres;
-
---
--- Name: legend_legend_id_seq; Type: SEQUENCE; Schema: maps; Owner: postgres
---
-
 CREATE SEQUENCE maps.legend_legend_id_seq
     AS integer
     START WITH 1
@@ -2124,18 +1318,8 @@ CREATE SEQUENCE maps.legend_legend_id_seq
     CACHE 1;
 
 
-ALTER TABLE maps.legend_legend_id_seq OWNER TO postgres;
-
---
--- Name: legend_legend_id_seq; Type: SEQUENCE OWNED BY; Schema: maps; Owner: postgres
---
-
 ALTER SEQUENCE maps.legend_legend_id_seq OWNED BY maps.legend.legend_id;
 
-
---
--- Name: legend_liths; Type: TABLE; Schema: maps; Owner: postgres
---
 
 CREATE TABLE maps.legend_liths (
     legend_id integer NOT NULL,
@@ -2143,12 +1327,6 @@ CREATE TABLE maps.legend_liths (
     basis_col text NOT NULL
 );
 
-
-ALTER TABLE maps.legend_liths OWNER TO postgres;
-
---
--- Name: manual_matches; Type: TABLE; Schema: maps; Owner: postgres
---
 
 CREATE TABLE maps.manual_matches (
     match_id integer NOT NULL,
@@ -2161,12 +1339,6 @@ CREATE TABLE maps.manual_matches (
 );
 
 
-ALTER TABLE maps.manual_matches OWNER TO postgres;
-
---
--- Name: manual_matches_match_id_seq; Type: SEQUENCE; Schema: maps; Owner: postgres
---
-
 CREATE SEQUENCE maps.manual_matches_match_id_seq
     START WITH 1
     INCREMENT BY 1
@@ -2175,30 +1347,14 @@ CREATE SEQUENCE maps.manual_matches_match_id_seq
     CACHE 1;
 
 
-ALTER TABLE maps.manual_matches_match_id_seq OWNER TO postgres;
-
---
--- Name: manual_matches_match_id_seq; Type: SEQUENCE OWNED BY; Schema: maps; Owner: postgres
---
-
 ALTER SEQUENCE maps.manual_matches_match_id_seq OWNED BY maps.manual_matches.match_id;
 
-
---
--- Name: map_legend; Type: TABLE; Schema: maps; Owner: postgres
---
 
 CREATE TABLE maps.map_legend (
     legend_id integer NOT NULL,
     map_id integer NOT NULL
 );
 
-
-ALTER TABLE maps.map_legend OWNER TO postgres;
-
---
--- Name: map_liths; Type: TABLE; Schema: maps; Owner: postgres
---
 
 CREATE TABLE maps.map_liths (
     map_id integer NOT NULL,
@@ -2207,12 +1363,6 @@ CREATE TABLE maps.map_liths (
 );
 
 
-ALTER TABLE maps.map_liths OWNER TO postgres;
-
---
--- Name: map_strat_names; Type: TABLE; Schema: maps; Owner: postgres
---
-
 CREATE TABLE maps.map_strat_names (
     map_id integer NOT NULL,
     strat_name_id integer NOT NULL,
@@ -2220,24 +1370,12 @@ CREATE TABLE maps.map_strat_names (
 );
 
 
-ALTER TABLE maps.map_strat_names OWNER TO postgres;
-
---
--- Name: map_units; Type: TABLE; Schema: maps; Owner: postgres
---
-
 CREATE TABLE maps.map_units (
     map_id integer NOT NULL,
     unit_id integer NOT NULL,
     basis_col character varying(50)
 );
 
-
-ALTER TABLE maps.map_units OWNER TO postgres;
-
---
--- Name: medium; Type: TABLE; Schema: maps; Owner: postgres
---
 
 CREATE TABLE maps.medium (
     map_id integer DEFAULT nextval('public.map_ids'::regclass) NOT NULL,
@@ -2257,12 +1395,6 @@ CREATE TABLE maps.medium (
 );
 
 
-ALTER TABLE maps.medium OWNER TO postgres;
-
---
--- Name: small; Type: TABLE; Schema: maps; Owner: postgres
---
-
 CREATE TABLE maps.small (
     map_id integer DEFAULT nextval('public.map_ids'::regclass) NOT NULL,
     orig_id integer,
@@ -2280,12 +1412,6 @@ CREATE TABLE maps.small (
     CONSTRAINT enforce_valid_geom_small CHECK (public.st_isvalid(geom))
 );
 
-
-ALTER TABLE maps.small OWNER TO postgres;
-
---
--- Name: sources; Type: TABLE; Schema: maps; Owner: postgres
---
 
 CREATE TABLE maps.sources (
     source_id integer NOT NULL,
@@ -2311,12 +1437,6 @@ CREATE TABLE maps.sources (
 );
 
 
-ALTER TABLE maps.sources OWNER TO postgres;
-
---
--- Name: sources_source_id_seq; Type: SEQUENCE; Schema: maps; Owner: postgres
---
-
 CREATE SEQUENCE maps.sources_source_id_seq
     START WITH 1
     INCREMENT BY 1
@@ -2325,18 +1445,8 @@ CREATE SEQUENCE maps.sources_source_id_seq
     CACHE 1;
 
 
-ALTER TABLE maps.sources_source_id_seq OWNER TO postgres;
-
---
--- Name: sources_source_id_seq; Type: SEQUENCE OWNED BY; Schema: maps; Owner: postgres
---
-
 ALTER SEQUENCE maps.sources_source_id_seq OWNED BY maps.sources.source_id;
 
-
---
--- Name: tiny; Type: TABLE; Schema: maps; Owner: postgres
---
 
 CREATE TABLE maps.tiny (
     map_id integer DEFAULT nextval('public.map_ids'::regclass) NOT NULL,
@@ -2355,12 +1465,6 @@ CREATE TABLE maps.tiny (
     CONSTRAINT enforce_valid_geom_medium CHECK (public.st_isvalid(geom))
 );
 
-
-ALTER TABLE maps.tiny OWNER TO postgres;
-
---
--- Name: points; Type: TABLE; Schema: points; Owner: postgres
---
 
 CREATE TABLE points.points (
     source_id integer NOT NULL,
@@ -2383,12 +1487,6 @@ CREATE TABLE points.points (
 );
 
 
-ALTER TABLE points.points OWNER TO postgres;
-
---
--- Name: points_point_id_seq; Type: SEQUENCE; Schema: points; Owner: postgres
---
-
 CREATE SEQUENCE points.points_point_id_seq
     START WITH 1
     INCREMENT BY 1
@@ -2397,18 +1495,8 @@ CREATE SEQUENCE points.points_point_id_seq
     CACHE 1;
 
 
-ALTER TABLE points.points_point_id_seq OWNER TO postgres;
-
---
--- Name: points_point_id_seq; Type: SEQUENCE OWNED BY; Schema: points; Owner: postgres
---
-
 ALTER SEQUENCE points.points_point_id_seq OWNED BY points.points.point_id;
 
-
---
--- Name: agebzepllj; Type: TABLE; Schema: public; Owner: postgres
---
 
 CREATE TABLE public.agebzepllj (
     id integer,
@@ -2416,23 +1504,11 @@ CREATE TABLE public.agebzepllj (
 );
 
 
-ALTER TABLE public.agebzepllj OWNER TO postgres;
-
---
--- Name: aofhmuuyjq; Type: TABLE; Schema: public; Owner: postgres
---
-
 CREATE TABLE public.aofhmuuyjq (
     id integer,
     geom public.geometry
 );
 
-
-ALTER TABLE public.aofhmuuyjq OWNER TO postgres;
-
---
--- Name: bmbtwjmdgn; Type: TABLE; Schema: public; Owner: postgres
---
 
 CREATE TABLE public.bmbtwjmdgn (
     id integer,
@@ -2440,23 +1516,11 @@ CREATE TABLE public.bmbtwjmdgn (
 );
 
 
-ALTER TABLE public.bmbtwjmdgn OWNER TO postgres;
-
---
--- Name: emma5k5jzl; Type: TABLE; Schema: public; Owner: postgres
---
-
 CREATE TABLE public.emma5k5jzl (
     id integer,
     geom public.geometry
 );
 
-
-ALTER TABLE public.emma5k5jzl OWNER TO postgres;
-
---
--- Name: i9kzotjhgr; Type: TABLE; Schema: public; Owner: postgres
---
 
 CREATE TABLE public.i9kzotjhgr (
     id integer,
@@ -2464,23 +1528,11 @@ CREATE TABLE public.i9kzotjhgr (
 );
 
 
-ALTER TABLE public.i9kzotjhgr OWNER TO postgres;
-
---
--- Name: impervious; Type: TABLE; Schema: public; Owner: postgres
---
-
 CREATE TABLE public.impervious (
     rid integer NOT NULL,
     rast public.raster
 );
 
-
-ALTER TABLE public.impervious OWNER TO postgres;
-
---
--- Name: impervious_rid_seq; Type: SEQUENCE; Schema: public; Owner: postgres
---
 
 CREATE SEQUENCE public.impervious_rid_seq
     AS integer
@@ -2491,18 +1543,8 @@ CREATE SEQUENCE public.impervious_rid_seq
     CACHE 1;
 
 
-ALTER TABLE public.impervious_rid_seq OWNER TO postgres;
-
---
--- Name: impervious_rid_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
---
-
 ALTER SEQUENCE public.impervious_rid_seq OWNED BY public.impervious.rid;
 
-
---
--- Name: land; Type: TABLE; Schema: public; Owner: postgres
---
 
 CREATE TABLE public.land (
     gid integer NOT NULL,
@@ -2512,12 +1554,6 @@ CREATE TABLE public.land (
 );
 
 
-ALTER TABLE public.land OWNER TO postgres;
-
---
--- Name: land_gid_seq; Type: SEQUENCE; Schema: public; Owner: postgres
---
-
 CREATE SEQUENCE public.land_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -2526,18 +1562,8 @@ CREATE SEQUENCE public.land_gid_seq
     CACHE 1;
 
 
-ALTER TABLE public.land_gid_seq OWNER TO postgres;
-
---
--- Name: land_gid_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
---
-
 ALTER SEQUENCE public.land_gid_seq OWNED BY public.land.gid;
 
-
---
--- Name: lookup_large; Type: TABLE; Schema: public; Owner: postgres
---
 
 CREATE TABLE public.lookup_large (
     map_id integer,
@@ -2555,12 +1581,6 @@ CREATE TABLE public.lookup_large (
 );
 
 
-ALTER TABLE public.lookup_large OWNER TO postgres;
-
---
--- Name: lookup_medium; Type: TABLE; Schema: public; Owner: postgres
---
-
 CREATE TABLE public.lookup_medium (
     map_id integer,
     unit_ids integer[],
@@ -2576,12 +1596,6 @@ CREATE TABLE public.lookup_medium (
     legend_id integer
 );
 
-
-ALTER TABLE public.lookup_medium OWNER TO postgres;
-
---
--- Name: lookup_small; Type: TABLE; Schema: public; Owner: postgres
---
 
 CREATE TABLE public.lookup_small (
     map_id integer,
@@ -2599,12 +1613,6 @@ CREATE TABLE public.lookup_small (
 );
 
 
-ALTER TABLE public.lookup_small OWNER TO postgres;
-
---
--- Name: lookup_tiny; Type: TABLE; Schema: public; Owner: postgres
---
-
 CREATE TABLE public.lookup_tiny (
     map_id integer,
     unit_ids integer[],
@@ -2621,23 +1629,11 @@ CREATE TABLE public.lookup_tiny (
 );
 
 
-ALTER TABLE public.lookup_tiny OWNER TO postgres;
-
---
--- Name: macrostrat_union; Type: TABLE; Schema: public; Owner: postgres
---
-
 CREATE TABLE public.macrostrat_union (
     id integer NOT NULL,
     geom public.geometry
 );
 
-
-ALTER TABLE public.macrostrat_union OWNER TO postgres;
-
---
--- Name: macrostrat_union_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
---
 
 CREATE SEQUENCE public.macrostrat_union_id_seq
     AS integer
@@ -2648,18 +1644,8 @@ CREATE SEQUENCE public.macrostrat_union_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.macrostrat_union_id_seq OWNER TO postgres;
-
---
--- Name: macrostrat_union_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
---
-
 ALTER SEQUENCE public.macrostrat_union_id_seq OWNED BY public.macrostrat_union.id;
 
-
---
--- Name: npb9s0ubia; Type: TABLE; Schema: public; Owner: postgres
---
 
 CREATE TABLE public.npb9s0ubia (
     id integer,
@@ -2667,24 +1653,12 @@ CREATE TABLE public.npb9s0ubia (
 );
 
 
-ALTER TABLE public.npb9s0ubia OWNER TO postgres;
-
---
--- Name: ref_boundaries; Type: TABLE; Schema: public; Owner: postgres
---
-
 CREATE TABLE public.ref_boundaries (
     ref_id integer,
     ref text,
     geom public.geometry
 );
 
-
-ALTER TABLE public.ref_boundaries OWNER TO postgres;
-
---
--- Name: srtm1; Type: FOREIGN TABLE; Schema: public; Owner: postgres
---
 
 CREATE FOREIGN TABLE public.srtm1 (
     rid integer,
@@ -2697,23 +1671,11 @@ OPTIONS (
 );
 
 
-ALTER FOREIGN TABLE public.srtm1 OWNER TO postgres;
-
---
--- Name: temp_containers; Type: TABLE; Schema: public; Owner: postgres
---
-
 CREATE TABLE public.temp_containers (
     geom public.geometry,
     row_no bigint
 );
 
-
-ALTER TABLE public.temp_containers OWNER TO postgres;
-
---
--- Name: temp_names; Type: TABLE; Schema: public; Owner: postgres
---
 
 CREATE TABLE public.temp_names (
     strat_name_id integer,
@@ -2741,23 +1703,11 @@ CREATE TABLE public.temp_names (
 );
 
 
-ALTER TABLE public.temp_names OWNER TO postgres;
-
---
--- Name: temp_rings; Type: TABLE; Schema: public; Owner: postgres
---
-
 CREATE TABLE public.temp_rings (
     geom public.geometry,
     row_no bigint
 );
 
-
-ALTER TABLE public.temp_rings OWNER TO postgres;
-
---
--- Name: temp_rocks; Type: TABLE; Schema: public; Owner: postgres
---
 
 CREATE TABLE public.temp_rocks (
     map_ids integer[],
@@ -2775,24 +1725,12 @@ CREATE TABLE public.temp_rocks (
 );
 
 
-ALTER TABLE public.temp_rocks OWNER TO postgres;
-
---
--- Name: test_rgeom; Type: TABLE; Schema: public; Owner: postgres
---
-
 CREATE TABLE public.test_rgeom (
     gid integer NOT NULL,
     fid smallint,
     geom public.geometry(MultiPolygon,4326)
 );
 
-
-ALTER TABLE public.test_rgeom OWNER TO postgres;
-
---
--- Name: test_rgeom_gid_seq; Type: SEQUENCE; Schema: public; Owner: postgres
---
 
 CREATE SEQUENCE public.test_rgeom_gid_seq
     AS integer
@@ -2803,18 +1741,8 @@ CREATE SEQUENCE public.test_rgeom_gid_seq
     CACHE 1;
 
 
-ALTER TABLE public.test_rgeom_gid_seq OWNER TO postgres;
-
---
--- Name: test_rgeom_gid_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
---
-
 ALTER SEQUENCE public.test_rgeom_gid_seq OWNED BY public.test_rgeom.gid;
 
-
---
--- Name: units; Type: TABLE; Schema: public; Owner: postgres
---
 
 CREATE TABLE public.units (
     mapunit text,
@@ -2822,23 +1750,11 @@ CREATE TABLE public.units (
 );
 
 
-ALTER TABLE public.units OWNER TO postgres;
-
---
--- Name: zphuctzzhp; Type: TABLE; Schema: public; Owner: postgres
---
-
 CREATE TABLE public.zphuctzzhp (
     id integer,
     geom public.geometry
 );
 
-
-ALTER TABLE public.zphuctzzhp OWNER TO postgres;
-
---
--- Name: ab_spray; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ab_spray (
     gid integer NOT NULL,
@@ -2868,12 +1784,6 @@ CREATE TABLE sources.ab_spray (
 );
 
 
-ALTER TABLE sources.ab_spray OWNER TO postgres;
-
---
--- Name: ab_spray_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ab_spray_gid_seq
     AS integer
     START WITH 1
@@ -2883,18 +1793,8 @@ CREATE SEQUENCE sources.ab_spray_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ab_spray_gid_seq OWNER TO postgres;
-
---
--- Name: ab_spray_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ab_spray_gid_seq OWNED BY sources.ab_spray.gid;
 
-
---
--- Name: ab_spray_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ab_spray_lines (
     gid integer NOT NULL,
@@ -2922,12 +1822,6 @@ CREATE TABLE sources.ab_spray_lines (
 );
 
 
-ALTER TABLE sources.ab_spray_lines OWNER TO postgres;
-
---
--- Name: ab_spray_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ab_spray_lines_gid_seq
     AS integer
     START WITH 1
@@ -2937,18 +1831,8 @@ CREATE SEQUENCE sources.ab_spray_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ab_spray_lines_gid_seq OWNER TO postgres;
-
---
--- Name: ab_spray_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ab_spray_lines_gid_seq OWNED BY sources.ab_spray_lines.gid;
 
-
---
--- Name: ab_spray_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ab_spray_points (
     gid integer NOT NULL,
@@ -2980,12 +1864,6 @@ CREATE TABLE sources.ab_spray_points (
 );
 
 
-ALTER TABLE sources.ab_spray_points OWNER TO postgres;
-
---
--- Name: ab_spray_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ab_spray_points_gid_seq
     AS integer
     START WITH 1
@@ -2995,18 +1873,8 @@ CREATE SEQUENCE sources.ab_spray_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ab_spray_points_gid_seq OWNER TO postgres;
-
---
--- Name: ab_spray_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ab_spray_points_gid_seq OWNED BY sources.ab_spray_points.gid;
 
-
---
--- Name: ab_stimson; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ab_stimson (
     gid integer NOT NULL,
@@ -3036,12 +1904,6 @@ CREATE TABLE sources.ab_stimson (
 );
 
 
-ALTER TABLE sources.ab_stimson OWNER TO postgres;
-
---
--- Name: ab_stimson_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ab_stimson_gid_seq
     AS integer
     START WITH 1
@@ -3051,18 +1913,8 @@ CREATE SEQUENCE sources.ab_stimson_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ab_stimson_gid_seq OWNER TO postgres;
-
---
--- Name: ab_stimson_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ab_stimson_gid_seq OWNED BY sources.ab_stimson.gid;
 
-
---
--- Name: ab_stimson_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ab_stimson_lines (
     gid integer NOT NULL,
@@ -3092,12 +1944,6 @@ CREATE TABLE sources.ab_stimson_lines (
 );
 
 
-ALTER TABLE sources.ab_stimson_lines OWNER TO postgres;
-
---
--- Name: ab_stimson_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ab_stimson_lines_gid_seq
     AS integer
     START WITH 1
@@ -3107,18 +1953,8 @@ CREATE SEQUENCE sources.ab_stimson_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ab_stimson_lines_gid_seq OWNER TO postgres;
-
---
--- Name: ab_stimson_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ab_stimson_lines_gid_seq OWNED BY sources.ab_stimson_lines.gid;
 
-
---
--- Name: ab_stimson_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ab_stimson_points (
     gid integer NOT NULL,
@@ -3152,12 +1988,6 @@ CREATE TABLE sources.ab_stimson_points (
 );
 
 
-ALTER TABLE sources.ab_stimson_points OWNER TO postgres;
-
---
--- Name: ab_stimson_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ab_stimson_points_gid_seq
     AS integer
     START WITH 1
@@ -3167,18 +1997,8 @@ CREATE SEQUENCE sources.ab_stimson_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ab_stimson_points_gid_seq OWNER TO postgres;
-
---
--- Name: ab_stimson_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ab_stimson_points_gid_seq OWNED BY sources.ab_stimson_points.gid;
 
-
---
--- Name: afghan; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.afghan (
     gid integer NOT NULL,
@@ -3198,12 +2018,6 @@ CREATE TABLE sources.afghan (
 );
 
 
-ALTER TABLE sources.afghan OWNER TO postgres;
-
---
--- Name: afghan_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.afghan_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -3212,18 +2026,8 @@ CREATE SEQUENCE sources.afghan_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.afghan_gid_seq OWNER TO postgres;
-
---
--- Name: afghan_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.afghan_gid_seq OWNED BY sources.afghan.gid;
 
-
---
--- Name: afghan_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.afghan_lines (
     gid integer NOT NULL,
@@ -3236,12 +2040,6 @@ CREATE TABLE sources.afghan_lines (
 );
 
 
-ALTER TABLE sources.afghan_lines OWNER TO postgres;
-
---
--- Name: afghan_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.afghan_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -3250,18 +2048,8 @@ CREATE SEQUENCE sources.afghan_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.afghan_lines_gid_seq OWNER TO postgres;
-
---
--- Name: afghan_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.afghan_lines_gid_seq OWNED BY sources.afghan_lines.gid;
 
-
---
--- Name: africa; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.africa (
     gid integer NOT NULL,
@@ -3277,12 +2065,6 @@ CREATE TABLE sources.africa (
 );
 
 
-ALTER TABLE sources.africa OWNER TO postgres;
-
---
--- Name: africa_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.africa_gid_seq
     AS integer
     START WITH 1
@@ -3292,18 +2074,8 @@ CREATE SEQUENCE sources.africa_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.africa_gid_seq OWNER TO postgres;
-
---
--- Name: africa_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.africa_gid_seq OWNED BY sources.africa.gid;
 
-
---
--- Name: africa_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.africa_lines (
     gid integer NOT NULL,
@@ -3313,12 +2085,6 @@ CREATE TABLE sources.africa_lines (
     new_type text
 );
 
-
-ALTER TABLE sources.africa_lines OWNER TO postgres;
-
---
--- Name: ak; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ak (
     gid integer NOT NULL,
@@ -3348,12 +2114,6 @@ CREATE TABLE sources.ak (
 );
 
 
-ALTER TABLE sources.ak OWNER TO postgres;
-
---
--- Name: ak_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ak_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -3362,18 +2122,8 @@ CREATE SEQUENCE sources.ak_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ak_gid_seq OWNER TO postgres;
-
---
--- Name: ak_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ak_gid_seq OWNED BY sources.ak.gid;
 
-
---
--- Name: ak_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ak_lines (
     gid integer NOT NULL,
@@ -3391,12 +2141,6 @@ CREATE TABLE sources.ak_lines (
 );
 
 
-ALTER TABLE sources.ak_lines OWNER TO postgres;
-
---
--- Name: ak_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ak_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -3405,18 +2149,8 @@ CREATE SEQUENCE sources.ak_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ak_lines_gid_seq OWNER TO postgres;
-
---
--- Name: ak_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ak_lines_gid_seq OWNED BY sources.ak_lines.gid;
 
-
---
--- Name: al_greenwood; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.al_greenwood (
     gid integer NOT NULL,
@@ -3435,12 +2169,6 @@ CREATE TABLE sources.al_greenwood (
 );
 
 
-ALTER TABLE sources.al_greenwood OWNER TO postgres;
-
---
--- Name: al_greenwood_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.al_greenwood_lines (
     gid integer NOT NULL,
     linetype text,
@@ -3450,12 +2178,6 @@ CREATE TABLE sources.al_greenwood_lines (
     new_type text
 );
 
-
-ALTER TABLE sources.al_greenwood_lines OWNER TO postgres;
-
---
--- Name: al_greenwood_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.al_greenwood_points (
     gid integer NOT NULL,
@@ -3467,12 +2189,6 @@ CREATE TABLE sources.al_greenwood_points (
     dip_dir integer
 );
 
-
-ALTER TABLE sources.al_greenwood_points OWNER TO postgres;
-
---
--- Name: ca_alameda_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ca_alameda_lines (
     gid integer NOT NULL,
@@ -3493,12 +2209,6 @@ CREATE TABLE sources.ca_alameda_lines (
 );
 
 
-ALTER TABLE sources.ca_alameda_lines OWNER TO postgres;
-
---
--- Name: alam_fault_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.alam_fault_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -3507,18 +2217,8 @@ CREATE SEQUENCE sources.alam_fault_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.alam_fault_gid_seq OWNER TO postgres;
-
---
--- Name: alam_fault_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.alam_fault_gid_seq OWNED BY sources.ca_alameda_lines.gid;
 
-
---
--- Name: ca_alameda; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ca_alameda (
     gid integer NOT NULL,
@@ -3538,12 +2238,6 @@ CREATE TABLE sources.ca_alameda (
 );
 
 
-ALTER TABLE sources.ca_alameda OWNER TO postgres;
-
---
--- Name: alamedageology2_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.alamedageology2_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -3552,18 +2246,8 @@ CREATE SEQUENCE sources.alamedageology2_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.alamedageology2_gid_seq OWNER TO postgres;
-
---
--- Name: alamedageology2_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.alamedageology2_gid_seq OWNED BY sources.ca_alameda.gid;
 
-
---
--- Name: endikai_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.endikai_lines (
     gid integer NOT NULL,
@@ -3579,12 +2263,6 @@ CREATE TABLE sources.endikai_lines (
 );
 
 
-ALTER TABLE sources.endikai_lines OWNER TO postgres;
-
---
--- Name: albanel_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.albanel_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -3593,18 +2271,8 @@ CREATE SEQUENCE sources.albanel_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.albanel_lines_gid_seq OWNER TO postgres;
-
---
--- Name: albanel_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.albanel_lines_gid_seq OWNED BY sources.endikai_lines.gid;
 
-
---
--- Name: alberta; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.alberta (
     gid integer NOT NULL,
@@ -3621,24 +2289,12 @@ CREATE TABLE sources.alberta (
 );
 
 
-ALTER TABLE sources.alberta OWNER TO postgres;
-
---
--- Name: alberta_faults; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.alberta_faults (
     gid integer NOT NULL,
     type character varying(30),
     geom public.geometry(MultiLineString,4326)
 );
 
-
-ALTER TABLE sources.alberta_faults OWNER TO postgres;
-
---
--- Name: alberta_faults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.alberta_faults_gid_seq
     START WITH 1
@@ -3648,18 +2304,8 @@ CREATE SEQUENCE sources.alberta_faults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.alberta_faults_gid_seq OWNER TO postgres;
-
---
--- Name: alberta_faults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.alberta_faults_gid_seq OWNED BY sources.alberta_faults.gid;
 
-
---
--- Name: alberta_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.alberta_gid_seq
     START WITH 1
@@ -3669,18 +2315,8 @@ CREATE SEQUENCE sources.alberta_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.alberta_gid_seq OWNER TO postgres;
-
---
--- Name: alberta_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.alberta_gid_seq OWNED BY sources.alberta.gid;
 
-
---
--- Name: ar_buffalo_nriver; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ar_buffalo_nriver (
     gid integer NOT NULL,
@@ -3697,12 +2333,6 @@ CREATE TABLE sources.ar_buffalo_nriver (
 );
 
 
-ALTER TABLE sources.ar_buffalo_nriver OWNER TO postgres;
-
---
--- Name: ar_buffalo_nriver_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ar_buffalo_nriver_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -3711,18 +2341,8 @@ CREATE SEQUENCE sources.ar_buffalo_nriver_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ar_buffalo_nriver_gid_seq OWNER TO postgres;
-
---
--- Name: ar_buffalo_nriver_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ar_buffalo_nriver_gid_seq OWNED BY sources.ar_buffalo_nriver.gid;
 
-
---
--- Name: ar_buffalo_nriver_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ar_buffalo_nriver_lines (
     gid integer NOT NULL,
@@ -3735,12 +2355,6 @@ CREATE TABLE sources.ar_buffalo_nriver_lines (
 );
 
 
-ALTER TABLE sources.ar_buffalo_nriver_lines OWNER TO postgres;
-
---
--- Name: ar_buffalo_nriver_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ar_buffalo_nriver_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -3749,18 +2363,8 @@ CREATE SEQUENCE sources.ar_buffalo_nriver_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ar_buffalo_nriver_lines_gid_seq OWNER TO postgres;
-
---
--- Name: ar_buffalo_nriver_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ar_buffalo_nriver_lines_gid_seq OWNED BY sources.ar_buffalo_nriver_lines.gid;
 
-
---
--- Name: ar_hasty; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ar_hasty (
     gid integer NOT NULL,
@@ -3782,12 +2386,6 @@ CREATE TABLE sources.ar_hasty (
 );
 
 
-ALTER TABLE sources.ar_hasty OWNER TO postgres;
-
---
--- Name: ar_hasty_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ar_hasty_lines (
     gid integer NOT NULL,
     length double precision,
@@ -3799,12 +2397,6 @@ CREATE TABLE sources.ar_hasty_lines (
     new_direction text
 );
 
-
-ALTER TABLE sources.ar_hasty_lines OWNER TO postgres;
-
---
--- Name: ar_hasty_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ar_hasty_points (
     gid integer NOT NULL,
@@ -3829,12 +2421,6 @@ CREATE TABLE sources.ar_hasty_points (
     certainty text
 );
 
-
-ALTER TABLE sources.ar_hasty_points OWNER TO postgres;
-
---
--- Name: ar_hotsprings_np; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ar_hotsprings_np (
     gid integer NOT NULL,
@@ -3861,12 +2447,6 @@ CREATE TABLE sources.ar_hotsprings_np (
 );
 
 
-ALTER TABLE sources.ar_hotsprings_np OWNER TO postgres;
-
---
--- Name: ar_hotsprings_np_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ar_hotsprings_np_lines (
     gid integer NOT NULL,
     objectid numeric(10,0),
@@ -3891,12 +2471,6 @@ CREATE TABLE sources.ar_hotsprings_np_lines (
     new_direction text
 );
 
-
-ALTER TABLE sources.ar_hotsprings_np_lines OWNER TO postgres;
-
---
--- Name: ar_hotsprings_np_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ar_hotsprings_np_points (
     gid integer NOT NULL,
@@ -3923,12 +2497,6 @@ CREATE TABLE sources.ar_hotsprings_np_points (
 );
 
 
-ALTER TABLE sources.ar_hotsprings_np_points OWNER TO postgres;
-
---
--- Name: ar_jasper; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ar_jasper (
     gid integer NOT NULL,
     area numeric,
@@ -3948,12 +2516,6 @@ CREATE TABLE sources.ar_jasper (
 );
 
 
-ALTER TABLE sources.ar_jasper OWNER TO postgres;
-
---
--- Name: ar_jasper_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ar_jasper_lines (
     gid integer NOT NULL,
     fnode_ double precision,
@@ -3970,12 +2532,6 @@ CREATE TABLE sources.ar_jasper_lines (
     new_direction text
 );
 
-
-ALTER TABLE sources.ar_jasper_lines OWNER TO postgres;
-
---
--- Name: ar_ponca; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ar_ponca (
     gid integer NOT NULL,
@@ -3998,12 +2554,6 @@ CREATE TABLE sources.ar_ponca (
 );
 
 
-ALTER TABLE sources.ar_ponca OWNER TO postgres;
-
---
--- Name: ar_ponca_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ar_ponca_lines (
     gid integer NOT NULL,
     symbol integer,
@@ -4015,12 +2565,6 @@ CREATE TABLE sources.ar_ponca_lines (
     new_direction text
 );
 
-
-ALTER TABLE sources.ar_ponca_lines OWNER TO postgres;
-
---
--- Name: arctic; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.arctic (
     gid integer NOT NULL,
@@ -4065,12 +2609,6 @@ CREATE TABLE sources.arctic (
 );
 
 
-ALTER TABLE sources.arctic OWNER TO postgres;
-
---
--- Name: arctic_orig; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.arctic_orig (
     gid integer NOT NULL,
     objectid integer,
@@ -4112,12 +2650,6 @@ CREATE TABLE sources.arctic_orig (
 );
 
 
-ALTER TABLE sources.arctic_orig OWNER TO postgres;
-
---
--- Name: arctic_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.arctic_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -4126,18 +2658,8 @@ CREATE SEQUENCE sources.arctic_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.arctic_gid_seq OWNER TO postgres;
-
---
--- Name: arctic_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.arctic_gid_seq OWNED BY sources.arctic_orig.gid;
 
-
---
--- Name: arctic_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.arctic_lines (
     gid integer NOT NULL,
@@ -4160,12 +2682,6 @@ CREATE TABLE sources.arctic_lines (
 );
 
 
-ALTER TABLE sources.arctic_lines OWNER TO postgres;
-
---
--- Name: arctic_newgeom_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.arctic_newgeom_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -4174,18 +2690,8 @@ CREATE SEQUENCE sources.arctic_newgeom_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.arctic_newgeom_gid_seq OWNER TO postgres;
-
---
--- Name: arctic_newgeom_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.arctic_newgeom_gid_seq OWNED BY sources.arctic.gid;
 
-
---
--- Name: arcticrus_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.arcticrus_lines_gid_seq
     START WITH 1
@@ -4195,18 +2701,8 @@ CREATE SEQUENCE sources.arcticrus_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.arcticrus_lines_gid_seq OWNER TO postgres;
-
---
--- Name: arcticrus_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.arcticrus_lines_gid_seq OWNED BY sources.arctic_lines.gid;
 
-
---
--- Name: australia; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.australia (
     gid integer NOT NULL,
@@ -4245,12 +2741,6 @@ CREATE TABLE sources.australia (
 );
 
 
-ALTER TABLE sources.australia OWNER TO postgres;
-
---
--- Name: australia2; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.australia2 (
     gid integer NOT NULL,
     mapsymbol character varying(20),
@@ -4285,12 +2775,6 @@ CREATE TABLE sources.australia2 (
     late_id integer
 );
 
-
-ALTER TABLE sources.australia2 OWNER TO postgres;
-
---
--- Name: australia2_faults; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.australia2_faults (
     gid integer NOT NULL,
@@ -4334,12 +2818,6 @@ CREATE TABLE sources.australia2_faults (
 );
 
 
-ALTER TABLE sources.australia2_faults OWNER TO postgres;
-
---
--- Name: australia2_faults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.australia2_faults_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -4348,18 +2826,8 @@ CREATE SEQUENCE sources.australia2_faults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.australia2_faults_gid_seq OWNER TO postgres;
-
---
--- Name: australia2_faults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.australia2_faults_gid_seq OWNED BY sources.australia2_faults.gid;
 
-
---
--- Name: australia2_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.australia2_gid_seq
     START WITH 1
@@ -4369,18 +2837,8 @@ CREATE SEQUENCE sources.australia2_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.australia2_gid_seq OWNER TO postgres;
-
---
--- Name: australia2_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.australia2_gid_seq OWNED BY sources.australia2.gid;
 
-
---
--- Name: australia_faults; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.australia_faults (
     gid integer NOT NULL,
@@ -4424,12 +2882,6 @@ CREATE TABLE sources.australia_faults (
 );
 
 
-ALTER TABLE sources.australia_faults OWNER TO postgres;
-
---
--- Name: australia_faults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.australia_faults_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -4438,18 +2890,8 @@ CREATE SEQUENCE sources.australia_faults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.australia_faults_gid_seq OWNER TO postgres;
-
---
--- Name: australia_faults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.australia_faults_gid_seq OWNED BY sources.australia_faults.gid;
 
-
---
--- Name: australia_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.australia_gid_seq
     START WITH 1
@@ -4459,18 +2901,8 @@ CREATE SEQUENCE sources.australia_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.australia_gid_seq OWNER TO postgres;
-
---
--- Name: australia_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.australia_gid_seq OWNED BY sources.australia.gid;
 
-
---
--- Name: az_fredonia; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.az_fredonia (
     gid integer NOT NULL,
@@ -4491,12 +2923,6 @@ CREATE TABLE sources.az_fredonia (
 );
 
 
-ALTER TABLE sources.az_fredonia OWNER TO postgres;
-
---
--- Name: az_fredonia_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.az_fredonia_lines (
     gid integer NOT NULL,
     ltype24k character varying(150),
@@ -4509,12 +2935,6 @@ CREATE TABLE sources.az_fredonia_lines (
 );
 
 
-ALTER TABLE sources.az_fredonia_lines OWNER TO postgres;
-
---
--- Name: az_fredonia_lines_one_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.az_fredonia_lines_one_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -4523,18 +2943,8 @@ CREATE SEQUENCE sources.az_fredonia_lines_one_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.az_fredonia_lines_one_gid_seq OWNER TO postgres;
-
---
--- Name: az_fredonia_lines_one_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.az_fredonia_lines_one_gid_seq OWNED BY sources.az_fredonia_lines.gid;
 
-
---
--- Name: az_fredonia_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.az_fredonia_points (
     gid integer NOT NULL,
@@ -4550,12 +2960,6 @@ CREATE TABLE sources.az_fredonia_points (
 );
 
 
-ALTER TABLE sources.az_fredonia_points OWNER TO postgres;
-
---
--- Name: az_fredonia_point_two_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.az_fredonia_point_two_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -4564,18 +2968,8 @@ CREATE SEQUENCE sources.az_fredonia_point_two_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.az_fredonia_point_two_gid_seq OWNER TO postgres;
-
---
--- Name: az_fredonia_point_two_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.az_fredonia_point_two_gid_seq OWNED BY sources.az_fredonia_points.gid;
 
-
---
--- Name: az_fredonia_polygon_one_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.az_fredonia_polygon_one_gid_seq
     START WITH 1
@@ -4585,18 +2979,8 @@ CREATE SEQUENCE sources.az_fredonia_polygon_one_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.az_fredonia_polygon_one_gid_seq OWNER TO postgres;
-
---
--- Name: az_fredonia_polygon_one_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.az_fredonia_polygon_one_gid_seq OWNED BY sources.az_fredonia.gid;
 
-
---
--- Name: az_mohave; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.az_mohave (
     gid integer NOT NULL,
@@ -4615,12 +2999,6 @@ CREATE TABLE sources.az_mohave (
 );
 
 
-ALTER TABLE sources.az_mohave OWNER TO postgres;
-
---
--- Name: az_mohave_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.az_mohave_lines (
     gid integer NOT NULL,
     ltype100k character varying(35),
@@ -4633,12 +3011,6 @@ CREATE TABLE sources.az_mohave_lines (
     comments character varying(250)
 );
 
-
-ALTER TABLE sources.az_mohave_lines OWNER TO postgres;
-
---
--- Name: az_peachsprings; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.az_peachsprings (
     gid integer NOT NULL,
@@ -4657,12 +3029,6 @@ CREATE TABLE sources.az_peachsprings (
 );
 
 
-ALTER TABLE sources.az_peachsprings OWNER TO postgres;
-
---
--- Name: az_peachsprings_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.az_peachsprings_lines (
     gid integer NOT NULL,
     ltype character varying(50),
@@ -4675,12 +3041,6 @@ CREATE TABLE sources.az_peachsprings_lines (
     descrip character varying(75)
 );
 
-
-ALTER TABLE sources.az_peachsprings_lines OWNER TO postgres;
-
---
--- Name: az_prescott; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.az_prescott (
     gid integer NOT NULL,
@@ -4705,12 +3065,6 @@ CREATE TABLE sources.az_prescott (
 );
 
 
-ALTER TABLE sources.az_prescott OWNER TO postgres;
-
---
--- Name: az_prescott_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.az_prescott_lines (
     gid integer NOT NULL,
     fnode_ integer,
@@ -4728,12 +3082,6 @@ CREATE TABLE sources.az_prescott_lines (
     new_direction text
 );
 
-
-ALTER TABLE sources.az_prescott_lines OWNER TO postgres;
-
---
--- Name: az_whitehills; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.az_whitehills (
     gid integer NOT NULL,
@@ -4756,12 +3104,6 @@ CREATE TABLE sources.az_whitehills (
 );
 
 
-ALTER TABLE sources.az_whitehills OWNER TO postgres;
-
---
--- Name: az_whitehills_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.az_whitehills_gid_seq
     AS integer
     START WITH 1
@@ -4771,18 +3113,8 @@ CREATE SEQUENCE sources.az_whitehills_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.az_whitehills_gid_seq OWNER TO postgres;
-
---
--- Name: az_whitehills_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.az_whitehills_gid_seq OWNED BY sources.az_whitehills.gid;
 
-
---
--- Name: az_whitehills_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.az_whitehills_lines (
     gid integer NOT NULL,
@@ -4802,12 +3134,6 @@ CREATE TABLE sources.az_whitehills_lines (
 );
 
 
-ALTER TABLE sources.az_whitehills_lines OWNER TO postgres;
-
---
--- Name: az_whitehills_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.az_whitehills_lines_gid_seq
     AS integer
     START WITH 1
@@ -4817,18 +3143,8 @@ CREATE SEQUENCE sources.az_whitehills_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.az_whitehills_lines_gid_seq OWNER TO postgres;
-
---
--- Name: az_whitehills_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.az_whitehills_lines_gid_seq OWNED BY sources.az_whitehills_lines.gid;
 
-
---
--- Name: az_whitehills_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.az_whitehills_points (
     gid integer NOT NULL,
@@ -4846,12 +3162,6 @@ CREATE TABLE sources.az_whitehills_points (
 );
 
 
-ALTER TABLE sources.az_whitehills_points OWNER TO postgres;
-
---
--- Name: az_whitehills_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.az_whitehills_points_gid_seq
     AS integer
     START WITH 1
@@ -4861,18 +3171,8 @@ CREATE SEQUENCE sources.az_whitehills_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.az_whitehills_points_gid_seq OWNER TO postgres;
-
---
--- Name: az_whitehills_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.az_whitehills_points_gid_seq OWNED BY sources.az_whitehills_points.gid;
 
-
---
--- Name: az_winslow; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.az_winslow (
     gid integer NOT NULL,
@@ -4893,12 +3193,6 @@ CREATE TABLE sources.az_winslow (
 );
 
 
-ALTER TABLE sources.az_winslow OWNER TO postgres;
-
---
--- Name: az_winslow_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.az_winslow_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -4907,18 +3201,8 @@ CREATE SEQUENCE sources.az_winslow_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.az_winslow_gid_seq OWNER TO postgres;
-
---
--- Name: az_winslow_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.az_winslow_gid_seq OWNED BY sources.az_winslow.gid;
 
-
---
--- Name: az_winslow_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.az_winslow_lines (
     gid integer NOT NULL,
@@ -4931,12 +3215,6 @@ CREATE TABLE sources.az_winslow_lines (
 );
 
 
-ALTER TABLE sources.az_winslow_lines OWNER TO postgres;
-
---
--- Name: az_winslow_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.az_winslow_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -4945,18 +3223,8 @@ CREATE SEQUENCE sources.az_winslow_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.az_winslow_lines_gid_seq OWNER TO postgres;
-
---
--- Name: az_winslow_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.az_winslow_lines_gid_seq OWNED BY sources.az_winslow_lines.gid;
 
-
---
--- Name: az_winslow_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.az_winslow_points (
     gid integer NOT NULL,
@@ -4971,12 +3239,6 @@ CREATE TABLE sources.az_winslow_points (
 );
 
 
-ALTER TABLE sources.az_winslow_points OWNER TO postgres;
-
---
--- Name: az_winslow_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.az_winslow_points_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -4985,18 +3247,8 @@ CREATE SEQUENCE sources.az_winslow_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.az_winslow_points_gid_seq OWNER TO postgres;
-
---
--- Name: az_winslow_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.az_winslow_points_gid_seq OWNED BY sources.az_winslow_points.gid;
 
-
---
--- Name: bc; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc (
     gid integer NOT NULL,
@@ -5034,12 +3286,6 @@ CREATE TABLE sources.bc (
 );
 
 
-ALTER TABLE sources.bc OWNER TO postgres;
-
---
--- Name: bc_2017; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.bc_2017 (
     gid integer NOT NULL,
     __gid double precision,
@@ -5076,12 +3322,6 @@ CREATE TABLE sources.bc_2017 (
 );
 
 
-ALTER TABLE sources.bc_2017 OWNER TO postgres;
-
---
--- Name: bc_2017_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_2017_gid_seq
     AS integer
     START WITH 1
@@ -5091,18 +3331,8 @@ CREATE SEQUENCE sources.bc_2017_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_2017_gid_seq OWNER TO postgres;
-
---
--- Name: bc_2017_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_2017_gid_seq OWNED BY sources.bc_2017.gid;
 
-
---
--- Name: bc_2017_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_2017_lines (
     gid integer NOT NULL,
@@ -5120,12 +3350,6 @@ CREATE TABLE sources.bc_2017_lines (
 );
 
 
-ALTER TABLE sources.bc_2017_lines OWNER TO postgres;
-
---
--- Name: bc_2017_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_2017_lines_gid_seq
     AS integer
     START WITH 1
@@ -5135,18 +3359,8 @@ CREATE SEQUENCE sources.bc_2017_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_2017_lines_gid_seq OWNER TO postgres;
-
---
--- Name: bc_2017_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_2017_lines_gid_seq OWNED BY sources.bc_2017_lines.gid;
 
-
---
--- Name: bc_2017_quat; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_2017_quat (
     gid integer NOT NULL,
@@ -5165,12 +3379,6 @@ CREATE TABLE sources.bc_2017_quat (
 );
 
 
-ALTER TABLE sources.bc_2017_quat OWNER TO postgres;
-
---
--- Name: bc_2017_quat_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_2017_quat_gid_seq
     AS integer
     START WITH 1
@@ -5180,18 +3388,8 @@ CREATE SEQUENCE sources.bc_2017_quat_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_2017_quat_gid_seq OWNER TO postgres;
-
---
--- Name: bc_2017_quat_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_2017_quat_gid_seq OWNED BY sources.bc_2017_quat.gid;
 
-
---
--- Name: bc_abruzzi; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_abruzzi (
     gid integer NOT NULL,
@@ -5221,12 +3419,6 @@ CREATE TABLE sources.bc_abruzzi (
 );
 
 
-ALTER TABLE sources.bc_abruzzi OWNER TO postgres;
-
---
--- Name: bc_abruzzi_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_abruzzi_gid_seq
     AS integer
     START WITH 1
@@ -5236,18 +3428,8 @@ CREATE SEQUENCE sources.bc_abruzzi_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_abruzzi_gid_seq OWNER TO postgres;
-
---
--- Name: bc_abruzzi_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_abruzzi_gid_seq OWNED BY sources.bc_abruzzi.gid;
 
-
---
--- Name: bc_abruzzi_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_abruzzi_lines (
     gid integer NOT NULL,
@@ -5276,12 +3458,6 @@ CREATE TABLE sources.bc_abruzzi_lines (
 );
 
 
-ALTER TABLE sources.bc_abruzzi_lines OWNER TO postgres;
-
---
--- Name: bc_abruzzi_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_abruzzi_lines_gid_seq
     AS integer
     START WITH 1
@@ -5291,18 +3467,8 @@ CREATE SEQUENCE sources.bc_abruzzi_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_abruzzi_lines_gid_seq OWNER TO postgres;
-
---
--- Name: bc_abruzzi_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_abruzzi_lines_gid_seq OWNED BY sources.bc_abruzzi_lines.gid;
 
-
---
--- Name: bc_abruzzi_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_abruzzi_points (
     gid integer NOT NULL,
@@ -5338,12 +3504,6 @@ CREATE TABLE sources.bc_abruzzi_points (
 );
 
 
-ALTER TABLE sources.bc_abruzzi_points OWNER TO postgres;
-
---
--- Name: bc_abruzzi_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_abruzzi_points_gid_seq
     AS integer
     START WITH 1
@@ -5353,18 +3513,8 @@ CREATE SEQUENCE sources.bc_abruzzi_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_abruzzi_points_gid_seq OWNER TO postgres;
-
---
--- Name: bc_abruzzi_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_abruzzi_points_gid_seq OWNED BY sources.bc_abruzzi_points.gid;
 
-
---
--- Name: bc_assini; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_assini (
     gid integer NOT NULL,
@@ -5394,12 +3544,6 @@ CREATE TABLE sources.bc_assini (
 );
 
 
-ALTER TABLE sources.bc_assini OWNER TO postgres;
-
---
--- Name: bc_assini_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_assini_gid_seq
     AS integer
     START WITH 1
@@ -5409,18 +3553,8 @@ CREATE SEQUENCE sources.bc_assini_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_assini_gid_seq OWNER TO postgres;
-
---
--- Name: bc_assini_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_assini_gid_seq OWNED BY sources.bc_assini.gid;
 
-
---
--- Name: bc_assini_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_assini_lines (
     gid integer NOT NULL,
@@ -5448,12 +3582,6 @@ CREATE TABLE sources.bc_assini_lines (
 );
 
 
-ALTER TABLE sources.bc_assini_lines OWNER TO postgres;
-
---
--- Name: bc_assini_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_assini_lines_gid_seq
     AS integer
     START WITH 1
@@ -5463,18 +3591,8 @@ CREATE SEQUENCE sources.bc_assini_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_assini_lines_gid_seq OWNER TO postgres;
-
---
--- Name: bc_assini_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_assini_lines_gid_seq OWNED BY sources.bc_assini_lines.gid;
 
-
---
--- Name: bc_assini_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_assini_points (
     gid integer NOT NULL,
@@ -5510,12 +3628,6 @@ CREATE TABLE sources.bc_assini_points (
 );
 
 
-ALTER TABLE sources.bc_assini_points OWNER TO postgres;
-
---
--- Name: bc_assini_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_assini_points_gid_seq
     AS integer
     START WITH 1
@@ -5525,18 +3637,8 @@ CREATE SEQUENCE sources.bc_assini_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_assini_points_gid_seq OWNER TO postgres;
-
---
--- Name: bc_assini_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_assini_points_gid_seq OWNED BY sources.bc_assini_points.gid;
 
-
---
--- Name: bc_chinook; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_chinook (
     gid integer NOT NULL,
@@ -5566,12 +3668,6 @@ CREATE TABLE sources.bc_chinook (
 );
 
 
-ALTER TABLE sources.bc_chinook OWNER TO postgres;
-
---
--- Name: bc_chinook_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_chinook_gid_seq
     AS integer
     START WITH 1
@@ -5581,18 +3677,8 @@ CREATE SEQUENCE sources.bc_chinook_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_chinook_gid_seq OWNER TO postgres;
-
---
--- Name: bc_chinook_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_chinook_gid_seq OWNED BY sources.bc_chinook.gid;
 
-
---
--- Name: bc_chinook_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_chinook_lines (
     gid integer NOT NULL,
@@ -5622,12 +3708,6 @@ CREATE TABLE sources.bc_chinook_lines (
 );
 
 
-ALTER TABLE sources.bc_chinook_lines OWNER TO postgres;
-
---
--- Name: bc_chinook_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_chinook_lines_gid_seq
     AS integer
     START WITH 1
@@ -5637,18 +3717,8 @@ CREATE SEQUENCE sources.bc_chinook_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_chinook_lines_gid_seq OWNER TO postgres;
-
---
--- Name: bc_chinook_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_chinook_lines_gid_seq OWNED BY sources.bc_chinook_lines.gid;
 
-
---
--- Name: bc_chinook_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_chinook_points (
     gid integer NOT NULL,
@@ -5681,12 +3751,6 @@ CREATE TABLE sources.bc_chinook_points (
 );
 
 
-ALTER TABLE sources.bc_chinook_points OWNER TO postgres;
-
---
--- Name: bc_chinook_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_chinook_points_gid_seq
     AS integer
     START WITH 1
@@ -5696,18 +3760,8 @@ CREATE SEQUENCE sources.bc_chinook_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_chinook_points_gid_seq OWNER TO postgres;
-
---
--- Name: bc_chinook_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_chinook_points_gid_seq OWNED BY sources.bc_chinook_points.gid;
 
-
---
--- Name: bc_eight; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_eight (
     gid integer NOT NULL,
@@ -5737,12 +3791,6 @@ CREATE TABLE sources.bc_eight (
 );
 
 
-ALTER TABLE sources.bc_eight OWNER TO postgres;
-
---
--- Name: bc_eight_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_eight_gid_seq
     AS integer
     START WITH 1
@@ -5752,18 +3800,8 @@ CREATE SEQUENCE sources.bc_eight_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_eight_gid_seq OWNER TO postgres;
-
---
--- Name: bc_eight_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_eight_gid_seq OWNED BY sources.bc_eight.gid;
 
-
---
--- Name: bc_eight_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_eight_lines (
     gid integer NOT NULL,
@@ -5792,12 +3830,6 @@ CREATE TABLE sources.bc_eight_lines (
 );
 
 
-ALTER TABLE sources.bc_eight_lines OWNER TO postgres;
-
---
--- Name: bc_eight_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_eight_lines_gid_seq
     AS integer
     START WITH 1
@@ -5807,18 +3839,8 @@ CREATE SEQUENCE sources.bc_eight_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_eight_lines_gid_seq OWNER TO postgres;
-
---
--- Name: bc_eight_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_eight_lines_gid_seq OWNED BY sources.bc_eight_lines.gid;
 
-
---
--- Name: bc_eight_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_eight_points (
     gid integer NOT NULL,
@@ -5850,12 +3872,6 @@ CREATE TABLE sources.bc_eight_points (
 );
 
 
-ALTER TABLE sources.bc_eight_points OWNER TO postgres;
-
---
--- Name: bc_eight_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_eight_points_gid_seq
     AS integer
     START WITH 1
@@ -5865,18 +3881,8 @@ CREATE SEQUENCE sources.bc_eight_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_eight_points_gid_seq OWNER TO postgres;
-
---
--- Name: bc_eight_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_eight_points_gid_seq OWNED BY sources.bc_eight_points.gid;
 
-
---
--- Name: bc_faults; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_faults (
     gid integer NOT NULL,
@@ -5890,12 +3896,6 @@ CREATE TABLE sources.bc_faults (
 );
 
 
-ALTER TABLE sources.bc_faults OWNER TO postgres;
-
---
--- Name: bc_faults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_faults_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -5904,18 +3904,8 @@ CREATE SEQUENCE sources.bc_faults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_faults_gid_seq OWNER TO postgres;
-
---
--- Name: bc_faults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_faults_gid_seq OWNED BY sources.bc_faults.gid;
 
-
---
--- Name: bc_fernie; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_fernie (
     gid integer NOT NULL,
@@ -5945,12 +3935,6 @@ CREATE TABLE sources.bc_fernie (
 );
 
 
-ALTER TABLE sources.bc_fernie OWNER TO postgres;
-
---
--- Name: bc_fernie_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_fernie_gid_seq
     AS integer
     START WITH 1
@@ -5960,18 +3944,8 @@ CREATE SEQUENCE sources.bc_fernie_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_fernie_gid_seq OWNER TO postgres;
-
---
--- Name: bc_fernie_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_fernie_gid_seq OWNED BY sources.bc_fernie.gid;
 
-
---
--- Name: bc_fernie_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_fernie_lines (
     gid integer NOT NULL,
@@ -6001,12 +3975,6 @@ CREATE TABLE sources.bc_fernie_lines (
 );
 
 
-ALTER TABLE sources.bc_fernie_lines OWNER TO postgres;
-
---
--- Name: bc_fernie_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_fernie_lines_gid_seq
     AS integer
     START WITH 1
@@ -6016,18 +3984,8 @@ CREATE SEQUENCE sources.bc_fernie_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_fernie_lines_gid_seq OWNER TO postgres;
-
---
--- Name: bc_fernie_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_fernie_lines_gid_seq OWNED BY sources.bc_fernie_lines.gid;
 
-
---
--- Name: bc_fernie_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_fernie_points (
     gid integer NOT NULL,
@@ -6060,12 +4018,6 @@ CREATE TABLE sources.bc_fernie_points (
 );
 
 
-ALTER TABLE sources.bc_fernie_points OWNER TO postgres;
-
---
--- Name: bc_fernie_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_fernie_points_gid_seq
     AS integer
     START WITH 1
@@ -6075,18 +4027,8 @@ CREATE SEQUENCE sources.bc_fernie_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_fernie_points_gid_seq OWNER TO postgres;
-
---
--- Name: bc_fernie_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_fernie_points_gid_seq OWNED BY sources.bc_fernie_points.gid;
 
-
---
--- Name: bc_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.bc_gid_seq
     START WITH 1
@@ -6096,18 +4038,8 @@ CREATE SEQUENCE sources.bc_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_gid_seq OWNER TO postgres;
-
---
--- Name: bc_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_gid_seq OWNED BY sources.bc.gid;
 
-
---
--- Name: bc_grayling; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_grayling (
     gid integer NOT NULL,
@@ -6137,12 +4069,6 @@ CREATE TABLE sources.bc_grayling (
 );
 
 
-ALTER TABLE sources.bc_grayling OWNER TO postgres;
-
---
--- Name: bc_grayling_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_grayling_gid_seq
     AS integer
     START WITH 1
@@ -6152,18 +4078,8 @@ CREATE SEQUENCE sources.bc_grayling_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_grayling_gid_seq OWNER TO postgres;
-
---
--- Name: bc_grayling_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_grayling_gid_seq OWNED BY sources.bc_grayling.gid;
 
-
---
--- Name: bc_grayling_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_grayling_lines (
     gid integer NOT NULL,
@@ -6192,12 +4108,6 @@ CREATE TABLE sources.bc_grayling_lines (
 );
 
 
-ALTER TABLE sources.bc_grayling_lines OWNER TO postgres;
-
---
--- Name: bc_grayling_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_grayling_lines_gid_seq
     AS integer
     START WITH 1
@@ -6207,18 +4117,8 @@ CREATE SEQUENCE sources.bc_grayling_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_grayling_lines_gid_seq OWNER TO postgres;
-
---
--- Name: bc_grayling_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_grayling_lines_gid_seq OWNED BY sources.bc_grayling_lines.gid;
 
-
---
--- Name: bc_grayling_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_grayling_points (
     gid integer NOT NULL,
@@ -6250,12 +4150,6 @@ CREATE TABLE sources.bc_grayling_points (
 );
 
 
-ALTER TABLE sources.bc_grayling_points OWNER TO postgres;
-
---
--- Name: bc_grayling_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_grayling_points_gid_seq
     AS integer
     START WITH 1
@@ -6265,18 +4159,8 @@ CREATE SEQUENCE sources.bc_grayling_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_grayling_points_gid_seq OWNER TO postgres;
-
---
--- Name: bc_grayling_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_grayling_points_gid_seq OWNED BY sources.bc_grayling_points.gid;
 
-
---
--- Name: bc_kananaskis; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_kananaskis (
     gid integer NOT NULL,
@@ -6307,12 +4191,6 @@ CREATE TABLE sources.bc_kananaskis (
 );
 
 
-ALTER TABLE sources.bc_kananaskis OWNER TO postgres;
-
---
--- Name: bc_kananaskis_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_kananaskis_gid_seq
     AS integer
     START WITH 1
@@ -6322,18 +4200,8 @@ CREATE SEQUENCE sources.bc_kananaskis_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_kananaskis_gid_seq OWNER TO postgres;
-
---
--- Name: bc_kananaskis_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_kananaskis_gid_seq OWNED BY sources.bc_kananaskis.gid;
 
-
---
--- Name: bc_kananaskis_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_kananaskis_lines (
     gid integer NOT NULL,
@@ -6361,12 +4229,6 @@ CREATE TABLE sources.bc_kananaskis_lines (
 );
 
 
-ALTER TABLE sources.bc_kananaskis_lines OWNER TO postgres;
-
---
--- Name: bc_kananaskis_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_kananaskis_lines_gid_seq
     AS integer
     START WITH 1
@@ -6376,18 +4238,8 @@ CREATE SEQUENCE sources.bc_kananaskis_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_kananaskis_lines_gid_seq OWNER TO postgres;
-
---
--- Name: bc_kananaskis_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_kananaskis_lines_gid_seq OWNED BY sources.bc_kananaskis_lines.gid;
 
-
---
--- Name: bc_kananaskis_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_kananaskis_points (
     gid integer NOT NULL,
@@ -6419,12 +4271,6 @@ CREATE TABLE sources.bc_kananaskis_points (
 );
 
 
-ALTER TABLE sources.bc_kananaskis_points OWNER TO postgres;
-
---
--- Name: bc_kananaskis_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_kananaskis_points_gid_seq
     AS integer
     START WITH 1
@@ -6434,18 +4280,8 @@ CREATE SEQUENCE sources.bc_kananaskis_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_kananaskis_points_gid_seq OWNER TO postgres;
-
---
--- Name: bc_kananaskis_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_kananaskis_points_gid_seq OWNED BY sources.bc_kananaskis_points.gid;
 
-
---
--- Name: bc_prudence; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_prudence (
     gid integer NOT NULL,
@@ -6474,12 +4310,6 @@ CREATE TABLE sources.bc_prudence (
 );
 
 
-ALTER TABLE sources.bc_prudence OWNER TO postgres;
-
---
--- Name: bc_prudence_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_prudence_gid_seq
     AS integer
     START WITH 1
@@ -6489,18 +4319,8 @@ CREATE SEQUENCE sources.bc_prudence_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_prudence_gid_seq OWNER TO postgres;
-
---
--- Name: bc_prudence_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_prudence_gid_seq OWNED BY sources.bc_prudence.gid;
 
-
---
--- Name: bc_prudence_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_prudence_lines (
     gid integer NOT NULL,
@@ -6529,12 +4349,6 @@ CREATE TABLE sources.bc_prudence_lines (
 );
 
 
-ALTER TABLE sources.bc_prudence_lines OWNER TO postgres;
-
---
--- Name: bc_prudence_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_prudence_lines_gid_seq
     AS integer
     START WITH 1
@@ -6544,18 +4358,8 @@ CREATE SEQUENCE sources.bc_prudence_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_prudence_lines_gid_seq OWNER TO postgres;
-
---
--- Name: bc_prudence_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_prudence_lines_gid_seq OWNED BY sources.bc_prudence_lines.gid;
 
-
---
--- Name: bc_prudence_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_prudence_points (
     gid integer NOT NULL,
@@ -6589,12 +4393,6 @@ CREATE TABLE sources.bc_prudence_points (
 );
 
 
-ALTER TABLE sources.bc_prudence_points OWNER TO postgres;
-
---
--- Name: bc_prudence_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_prudence_points_gid_seq
     AS integer
     START WITH 1
@@ -6604,18 +4402,8 @@ CREATE SEQUENCE sources.bc_prudence_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_prudence_points_gid_seq OWNER TO postgres;
-
---
--- Name: bc_prudence_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_prudence_points_gid_seq OWNED BY sources.bc_prudence_points.gid;
 
-
---
--- Name: bc_redfern; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_redfern (
     gid integer NOT NULL,
@@ -6641,12 +4429,6 @@ CREATE TABLE sources.bc_redfern (
 );
 
 
-ALTER TABLE sources.bc_redfern OWNER TO postgres;
-
---
--- Name: bc_redfern_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_redfern_gid_seq
     AS integer
     START WITH 1
@@ -6656,18 +4438,8 @@ CREATE SEQUENCE sources.bc_redfern_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_redfern_gid_seq OWNER TO postgres;
-
---
--- Name: bc_redfern_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_redfern_gid_seq OWNED BY sources.bc_redfern.gid;
 
-
---
--- Name: bc_redfern_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_redfern_lines (
     gid integer NOT NULL,
@@ -6688,12 +4460,6 @@ CREATE TABLE sources.bc_redfern_lines (
 );
 
 
-ALTER TABLE sources.bc_redfern_lines OWNER TO postgres;
-
---
--- Name: bc_redfern_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_redfern_lines_gid_seq
     AS integer
     START WITH 1
@@ -6703,18 +4469,8 @@ CREATE SEQUENCE sources.bc_redfern_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_redfern_lines_gid_seq OWNER TO postgres;
-
---
--- Name: bc_redfern_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_redfern_lines_gid_seq OWNED BY sources.bc_redfern_lines.gid;
 
-
---
--- Name: bc_redfern_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_redfern_points (
     gid integer NOT NULL,
@@ -6742,12 +4498,6 @@ CREATE TABLE sources.bc_redfern_points (
 );
 
 
-ALTER TABLE sources.bc_redfern_points OWNER TO postgres;
-
---
--- Name: bc_redfern_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_redfern_points_gid_seq
     AS integer
     START WITH 1
@@ -6757,18 +4507,8 @@ CREATE SEQUENCE sources.bc_redfern_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_redfern_points_gid_seq OWNER TO postgres;
-
---
--- Name: bc_redfern_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_redfern_points_gid_seq OWNED BY sources.bc_redfern_points.gid;
 
-
---
--- Name: bc_tangle; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_tangle (
     gid integer NOT NULL,
@@ -6798,12 +4538,6 @@ CREATE TABLE sources.bc_tangle (
 );
 
 
-ALTER TABLE sources.bc_tangle OWNER TO postgres;
-
---
--- Name: bc_tangle_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_tangle_gid_seq
     AS integer
     START WITH 1
@@ -6813,18 +4547,8 @@ CREATE SEQUENCE sources.bc_tangle_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_tangle_gid_seq OWNER TO postgres;
-
---
--- Name: bc_tangle_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_tangle_gid_seq OWNED BY sources.bc_tangle.gid;
 
-
---
--- Name: bc_tangle_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_tangle_lines (
     gid integer NOT NULL,
@@ -6852,12 +4576,6 @@ CREATE TABLE sources.bc_tangle_lines (
 );
 
 
-ALTER TABLE sources.bc_tangle_lines OWNER TO postgres;
-
---
--- Name: bc_tangle_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_tangle_lines_gid_seq
     AS integer
     START WITH 1
@@ -6867,18 +4585,8 @@ CREATE SEQUENCE sources.bc_tangle_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_tangle_lines_gid_seq OWNER TO postgres;
-
---
--- Name: bc_tangle_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_tangle_lines_gid_seq OWNED BY sources.bc_tangle_lines.gid;
 
-
---
--- Name: bc_tangle_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_tangle_points (
     gid integer NOT NULL,
@@ -6914,12 +4622,6 @@ CREATE TABLE sources.bc_tangle_points (
 );
 
 
-ALTER TABLE sources.bc_tangle_points OWNER TO postgres;
-
---
--- Name: bc_tangle_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_tangle_points_gid_seq
     AS integer
     START WITH 1
@@ -6929,18 +4631,8 @@ CREATE SEQUENCE sources.bc_tangle_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_tangle_points_gid_seq OWNER TO postgres;
-
---
--- Name: bc_tangle_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_tangle_points_gid_seq OWNED BY sources.bc_tangle_points.gid;
 
-
---
--- Name: bc_toad; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_toad (
     gid integer NOT NULL,
@@ -6972,12 +4664,6 @@ CREATE TABLE sources.bc_toad (
 );
 
 
-ALTER TABLE sources.bc_toad OWNER TO postgres;
-
---
--- Name: bc_toad_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_toad_gid_seq
     AS integer
     START WITH 1
@@ -6987,18 +4673,8 @@ CREATE SEQUENCE sources.bc_toad_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_toad_gid_seq OWNER TO postgres;
-
---
--- Name: bc_toad_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_toad_gid_seq OWNED BY sources.bc_toad.gid;
 
-
---
--- Name: bc_toad_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_toad_lines (
     gid integer NOT NULL,
@@ -7029,12 +4705,6 @@ CREATE TABLE sources.bc_toad_lines (
 );
 
 
-ALTER TABLE sources.bc_toad_lines OWNER TO postgres;
-
---
--- Name: bc_toad_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_toad_lines_gid_seq
     AS integer
     START WITH 1
@@ -7044,18 +4714,8 @@ CREATE SEQUENCE sources.bc_toad_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_toad_lines_gid_seq OWNER TO postgres;
-
---
--- Name: bc_toad_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_toad_lines_gid_seq OWNED BY sources.bc_toad_lines.gid;
 
-
---
--- Name: bc_toad_ne; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_toad_ne (
     gid integer NOT NULL,
@@ -7085,12 +4745,6 @@ CREATE TABLE sources.bc_toad_ne (
 );
 
 
-ALTER TABLE sources.bc_toad_ne OWNER TO postgres;
-
---
--- Name: bc_toad_ne_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_toad_ne_gid_seq
     AS integer
     START WITH 1
@@ -7100,18 +4754,8 @@ CREATE SEQUENCE sources.bc_toad_ne_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_toad_ne_gid_seq OWNER TO postgres;
-
---
--- Name: bc_toad_ne_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_toad_ne_gid_seq OWNED BY sources.bc_toad_ne.gid;
 
-
---
--- Name: bc_toad_ne_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_toad_ne_lines (
     gid integer NOT NULL,
@@ -7140,12 +4784,6 @@ CREATE TABLE sources.bc_toad_ne_lines (
 );
 
 
-ALTER TABLE sources.bc_toad_ne_lines OWNER TO postgres;
-
---
--- Name: bc_toad_ne_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_toad_ne_lines_gid_seq
     AS integer
     START WITH 1
@@ -7155,18 +4793,8 @@ CREATE SEQUENCE sources.bc_toad_ne_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_toad_ne_lines_gid_seq OWNER TO postgres;
-
---
--- Name: bc_toad_ne_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_toad_ne_lines_gid_seq OWNED BY sources.bc_toad_ne_lines.gid;
 
-
---
--- Name: bc_toad_ne_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_toad_ne_points (
     gid integer NOT NULL,
@@ -7198,12 +4826,6 @@ CREATE TABLE sources.bc_toad_ne_points (
 );
 
 
-ALTER TABLE sources.bc_toad_ne_points OWNER TO postgres;
-
---
--- Name: bc_toad_ne_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_toad_ne_points_gid_seq
     AS integer
     START WITH 1
@@ -7213,18 +4835,8 @@ CREATE SEQUENCE sources.bc_toad_ne_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_toad_ne_points_gid_seq OWNER TO postgres;
-
---
--- Name: bc_toad_ne_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_toad_ne_points_gid_seq OWNED BY sources.bc_toad_ne_points.gid;
 
-
---
--- Name: bc_toad_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_toad_points (
     gid integer NOT NULL,
@@ -7260,12 +4872,6 @@ CREATE TABLE sources.bc_toad_points (
 );
 
 
-ALTER TABLE sources.bc_toad_points OWNER TO postgres;
-
---
--- Name: bc_toad_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_toad_points_gid_seq
     AS integer
     START WITH 1
@@ -7275,18 +4881,8 @@ CREATE SEQUENCE sources.bc_toad_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_toad_points_gid_seq OWNER TO postgres;
-
---
--- Name: bc_toad_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_toad_points_gid_seq OWNED BY sources.bc_toad_points.gid;
 
-
---
--- Name: bc_ware; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_ware (
     gid integer NOT NULL,
@@ -7315,12 +4911,6 @@ CREATE TABLE sources.bc_ware (
 );
 
 
-ALTER TABLE sources.bc_ware OWNER TO postgres;
-
---
--- Name: bc_ware_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_ware_gid_seq
     AS integer
     START WITH 1
@@ -7330,18 +4920,8 @@ CREATE SEQUENCE sources.bc_ware_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_ware_gid_seq OWNER TO postgres;
-
---
--- Name: bc_ware_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_ware_gid_seq OWNED BY sources.bc_ware.gid;
 
-
---
--- Name: bc_ware_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bc_ware_lines (
     gid integer NOT NULL,
@@ -7367,12 +4947,6 @@ CREATE TABLE sources.bc_ware_lines (
 );
 
 
-ALTER TABLE sources.bc_ware_lines OWNER TO postgres;
-
---
--- Name: bc_ware_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bc_ware_lines_gid_seq
     AS integer
     START WITH 1
@@ -7382,18 +4956,8 @@ CREATE SEQUENCE sources.bc_ware_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bc_ware_lines_gid_seq OWNER TO postgres;
-
---
--- Name: bc_ware_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bc_ware_lines_gid_seq OWNED BY sources.bc_ware_lines.gid;
 
-
---
--- Name: bigbend; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bigbend (
     gid integer NOT NULL,
@@ -7410,12 +4974,6 @@ CREATE TABLE sources.bigbend (
 );
 
 
-ALTER TABLE sources.bigbend OWNER TO postgres;
-
---
--- Name: bigbend_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bigbend_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -7424,18 +4982,8 @@ CREATE SEQUENCE sources.bigbend_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bigbend_gid_seq OWNER TO postgres;
-
---
--- Name: bigbend_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bigbend_gid_seq OWNED BY sources.bigbend.gid;
 
-
---
--- Name: bigbend_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.bigbend_lines (
     gid integer NOT NULL,
@@ -7448,12 +4996,6 @@ CREATE TABLE sources.bigbend_lines (
 );
 
 
-ALTER TABLE sources.bigbend_lines OWNER TO postgres;
-
---
--- Name: bigbend_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.bigbend_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -7462,18 +5004,8 @@ CREATE SEQUENCE sources.bigbend_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.bigbend_lines_gid_seq OWNER TO postgres;
-
---
--- Name: bigbend_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.bigbend_lines_gid_seq OWNED BY sources.bigbend_lines.gid;
 
-
---
--- Name: blackhills; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.blackhills (
     gid integer NOT NULL,
@@ -7492,12 +5024,6 @@ CREATE TABLE sources.blackhills (
     age text
 );
 
-
-ALTER TABLE sources.blackhills OWNER TO postgres;
-
---
--- Name: blackhills_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.blackhills_lines (
     gid integer NOT NULL,
@@ -7526,12 +5052,6 @@ CREATE TABLE sources.blackhills_lines (
 );
 
 
-ALTER TABLE sources.blackhills_lines OWNER TO postgres;
-
---
--- Name: blackhills_foldsfaults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.blackhills_foldsfaults_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -7540,18 +5060,8 @@ CREATE SEQUENCE sources.blackhills_foldsfaults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.blackhills_foldsfaults_gid_seq OWNER TO postgres;
-
---
--- Name: blackhills_foldsfaults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.blackhills_foldsfaults_gid_seq OWNED BY sources.blackhills_lines.gid;
 
-
---
--- Name: blackhillsgeology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.blackhillsgeology_gid_seq
     START WITH 1
@@ -7561,18 +5071,8 @@ CREATE SEQUENCE sources.blackhillsgeology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.blackhillsgeology_gid_seq OWNER TO postgres;
-
---
--- Name: blackhillsgeology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.blackhillsgeology_gid_seq OWNED BY sources.blackhills.gid;
 
-
---
--- Name: boulder; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.boulder (
     gid integer NOT NULL,
@@ -7591,12 +5091,6 @@ CREATE TABLE sources.boulder (
 );
 
 
-ALTER TABLE sources.boulder OWNER TO postgres;
-
---
--- Name: boulder_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.boulder_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -7605,18 +5099,8 @@ CREATE SEQUENCE sources.boulder_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.boulder_gid_seq OWNER TO postgres;
-
---
--- Name: boulder_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.boulder_gid_seq OWNED BY sources.boulder.gid;
 
-
---
--- Name: boulder_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.boulder_lines (
     gid integer NOT NULL,
@@ -7635,12 +5119,6 @@ CREATE TABLE sources.boulder_lines (
 );
 
 
-ALTER TABLE sources.boulder_lines OWNER TO postgres;
-
---
--- Name: boulder_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.boulder_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -7649,18 +5127,8 @@ CREATE SEQUENCE sources.boulder_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.boulder_lines_gid_seq OWNER TO postgres;
-
---
--- Name: boulder_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.boulder_lines_gid_seq OWNED BY sources.boulder_lines.gid;
 
-
---
--- Name: brazil; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.brazil (
     gid integer NOT NULL,
@@ -7726,12 +5194,6 @@ CREATE TABLE sources.brazil (
 );
 
 
-ALTER TABLE sources.brazil OWNER TO postgres;
-
---
--- Name: brazil_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.brazil_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -7740,18 +5202,8 @@ CREATE SEQUENCE sources.brazil_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.brazil_gid_seq OWNER TO postgres;
-
---
--- Name: brazil_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.brazil_gid_seq OWNED BY sources.brazil.gid;
 
-
---
--- Name: brazil_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.brazil_lines (
     gid integer NOT NULL,
@@ -7817,12 +5269,6 @@ CREATE TABLE sources.brazil_lines (
 );
 
 
-ALTER TABLE sources.brazil_lines OWNER TO postgres;
-
---
--- Name: brazil_sp; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.brazil_sp (
     gid integer NOT NULL,
     sigla_unid character varying(30),
@@ -7875,12 +5321,6 @@ CREATE TABLE sources.brazil_sp (
 );
 
 
-ALTER TABLE sources.brazil_sp OWNER TO postgres;
-
---
--- Name: brazil_sp_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.brazil_sp_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -7889,18 +5329,8 @@ CREATE SEQUENCE sources.brazil_sp_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.brazil_sp_gid_seq OWNER TO postgres;
-
---
--- Name: brazil_sp_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.brazil_sp_gid_seq OWNED BY sources.brazil_sp.gid;
 
-
---
--- Name: brycecanyon_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.brycecanyon_lines (
     gid integer NOT NULL,
@@ -7922,12 +5352,6 @@ CREATE TABLE sources.brycecanyon_lines (
 );
 
 
-ALTER TABLE sources.brycecanyon_lines OWNER TO postgres;
-
---
--- Name: brycecanyon_faults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.brycecanyon_faults_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -7936,18 +5360,8 @@ CREATE SEQUENCE sources.brycecanyon_faults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.brycecanyon_faults_gid_seq OWNER TO postgres;
-
---
--- Name: brycecanyon_faults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.brycecanyon_faults_gid_seq OWNED BY sources.brycecanyon_lines.gid;
 
-
---
--- Name: brycecanyonnationalparkgeology; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.brycecanyonnationalparkgeology (
     gid integer NOT NULL,
@@ -7973,12 +5387,6 @@ CREATE TABLE sources.brycecanyonnationalparkgeology (
 );
 
 
-ALTER TABLE sources.brycecanyonnationalparkgeology OWNER TO postgres;
-
---
--- Name: brycecanyonnationalparkgeology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.brycecanyonnationalparkgeology_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -7987,18 +5395,8 @@ CREATE SEQUENCE sources.brycecanyonnationalparkgeology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.brycecanyonnationalparkgeology_gid_seq OWNER TO postgres;
-
---
--- Name: brycecanyonnationalparkgeology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.brycecanyonnationalparkgeology_gid_seq OWNED BY sources.brycecanyonnationalparkgeology.gid;
 
-
---
--- Name: ca_cambria; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ca_cambria (
     gid integer NOT NULL,
@@ -8017,12 +5415,6 @@ CREATE TABLE sources.ca_cambria (
 );
 
 
-ALTER TABLE sources.ca_cambria OWNER TO postgres;
-
---
--- Name: ca_cambria_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ca_cambria_lines (
     gid integer NOT NULL,
     objectid numeric(10,0),
@@ -8038,12 +5430,6 @@ CREATE TABLE sources.ca_cambria_lines (
     new_direction text
 );
 
-
-ALTER TABLE sources.ca_cambria_lines OWNER TO postgres;
-
---
--- Name: ca_carizoplain_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ca_carizoplain_lines (
     gid integer NOT NULL,
@@ -8064,12 +5450,6 @@ CREATE TABLE sources.ca_carizoplain_lines (
 );
 
 
-ALTER TABLE sources.ca_carizoplain_lines OWNER TO postgres;
-
---
--- Name: ca_carizonplains_geo_arc_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ca_carizonplains_geo_arc_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -8078,18 +5458,8 @@ CREATE SEQUENCE sources.ca_carizonplains_geo_arc_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ca_carizonplains_geo_arc_gid_seq OWNER TO postgres;
-
---
--- Name: ca_carizonplains_geo_arc_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ca_carizonplains_geo_arc_gid_seq OWNED BY sources.ca_carizoplain_lines.gid;
 
-
---
--- Name: ca_carizoplain; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ca_carizoplain (
     gid integer NOT NULL,
@@ -8111,12 +5481,6 @@ CREATE TABLE sources.ca_carizoplain (
 );
 
 
-ALTER TABLE sources.ca_carizoplain OWNER TO postgres;
-
---
--- Name: ca_carizonplains_geo_polygon_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ca_carizonplains_geo_polygon_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -8125,18 +5489,8 @@ CREATE SEQUENCE sources.ca_carizonplains_geo_polygon_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ca_carizonplains_geo_polygon_gid_seq OWNER TO postgres;
-
---
--- Name: ca_carizonplains_geo_polygon_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ca_carizonplains_geo_polygon_gid_seq OWNED BY sources.ca_carizoplain.gid;
 
-
---
--- Name: ca_carizoplain_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ca_carizoplain_points (
     gid integer NOT NULL,
@@ -8159,12 +5513,6 @@ CREATE TABLE sources.ca_carizoplain_points (
 );
 
 
-ALTER TABLE sources.ca_carizoplain_points OWNER TO postgres;
-
---
--- Name: ca_carizonplains_point_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ca_carizonplains_point_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -8173,18 +5521,8 @@ CREATE SEQUENCE sources.ca_carizonplains_point_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ca_carizonplains_point_gid_seq OWNER TO postgres;
-
---
--- Name: ca_carizonplains_point_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ca_carizonplains_point_gid_seq OWNED BY sources.ca_carizoplain_points.gid;
 
-
---
--- Name: ca_contracosta; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ca_contracosta (
     gid integer NOT NULL,
@@ -8207,12 +5545,6 @@ CREATE TABLE sources.ca_contracosta (
 );
 
 
-ALTER TABLE sources.ca_contracosta OWNER TO postgres;
-
---
--- Name: ca_contracosta_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ca_contracosta_lines (
     gid integer NOT NULL,
     ltype character varying(55),
@@ -8222,12 +5554,6 @@ CREATE TABLE sources.ca_contracosta_lines (
     new_direction text
 );
 
-
-ALTER TABLE sources.ca_contracosta_lines OWNER TO postgres;
-
---
--- Name: ca_elcajon; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ca_elcajon (
     gid integer NOT NULL,
@@ -8250,12 +5576,6 @@ CREATE TABLE sources.ca_elcajon (
 );
 
 
-ALTER TABLE sources.ca_elcajon OWNER TO postgres;
-
---
--- Name: ca_elcajon_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ca_elcajon_lines (
     gid integer NOT NULL,
     fnode_ numeric(10,0),
@@ -8272,12 +5592,6 @@ CREATE TABLE sources.ca_elcajon_lines (
 );
 
 
-ALTER TABLE sources.ca_elcajon_lines OWNER TO postgres;
-
---
--- Name: ca_elcajon_geo_arc_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ca_elcajon_geo_arc_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -8286,18 +5600,8 @@ CREATE SEQUENCE sources.ca_elcajon_geo_arc_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ca_elcajon_geo_arc_gid_seq OWNER TO postgres;
-
---
--- Name: ca_elcajon_geo_arc_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ca_elcajon_geo_arc_gid_seq OWNED BY sources.ca_elcajon_lines.gid;
 
-
---
--- Name: ca_elcajon_geo_polygon_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.ca_elcajon_geo_polygon_gid_seq
     START WITH 1
@@ -8307,18 +5611,8 @@ CREATE SEQUENCE sources.ca_elcajon_geo_polygon_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ca_elcajon_geo_polygon_gid_seq OWNER TO postgres;
-
---
--- Name: ca_elcajon_geo_polygon_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ca_elcajon_geo_polygon_gid_seq OWNED BY sources.ca_elcajon.gid;
 
-
---
--- Name: ca_funeralmtns; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ca_funeralmtns (
     gid integer NOT NULL,
@@ -8337,12 +5631,6 @@ CREATE TABLE sources.ca_funeralmtns (
 );
 
 
-ALTER TABLE sources.ca_funeralmtns OWNER TO postgres;
-
---
--- Name: ca_funeralmtns_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ca_funeralmtns_gid_seq
     AS integer
     START WITH 1
@@ -8352,18 +5640,8 @@ CREATE SEQUENCE sources.ca_funeralmtns_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ca_funeralmtns_gid_seq OWNER TO postgres;
-
---
--- Name: ca_funeralmtns_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ca_funeralmtns_gid_seq OWNED BY sources.ca_funeralmtns.gid;
 
-
---
--- Name: ca_funeralmtns_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ca_funeralmtns_lines (
     gid integer NOT NULL,
@@ -8375,12 +5653,6 @@ CREATE TABLE sources.ca_funeralmtns_lines (
 );
 
 
-ALTER TABLE sources.ca_funeralmtns_lines OWNER TO postgres;
-
---
--- Name: ca_funeralmtns_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ca_funeralmtns_lines_gid_seq
     AS integer
     START WITH 1
@@ -8390,18 +5662,8 @@ CREATE SEQUENCE sources.ca_funeralmtns_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ca_funeralmtns_lines_gid_seq OWNER TO postgres;
-
---
--- Name: ca_funeralmtns_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ca_funeralmtns_lines_gid_seq OWNED BY sources.ca_funeralmtns_lines.gid;
 
-
---
--- Name: ca_funeralmtns_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ca_funeralmtns_points (
     gid integer NOT NULL,
@@ -8414,12 +5676,6 @@ CREATE TABLE sources.ca_funeralmtns_points (
 );
 
 
-ALTER TABLE sources.ca_funeralmtns_points OWNER TO postgres;
-
---
--- Name: ca_funeralmtns_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ca_funeralmtns_points_gid_seq
     AS integer
     START WITH 1
@@ -8429,18 +5685,8 @@ CREATE SEQUENCE sources.ca_funeralmtns_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ca_funeralmtns_points_gid_seq OWNER TO postgres;
-
---
--- Name: ca_funeralmtns_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ca_funeralmtns_points_gid_seq OWNED BY sources.ca_funeralmtns_points.gid;
 
-
---
--- Name: ca_long_beach; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ca_long_beach (
     gid integer NOT NULL,
@@ -8470,12 +5716,6 @@ CREATE TABLE sources.ca_long_beach (
 );
 
 
-ALTER TABLE sources.ca_long_beach OWNER TO postgres;
-
---
--- Name: ca_long_beach_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ca_long_beach_lines (
     gid integer NOT NULL,
     objectid numeric(10,0),
@@ -8496,12 +5736,6 @@ CREATE TABLE sources.ca_long_beach_lines (
 );
 
 
-ALTER TABLE sources.ca_long_beach_lines OWNER TO postgres;
-
---
--- Name: ca_long_beach_points; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ca_long_beach_points (
     gid integer NOT NULL,
     objectid numeric(10,0),
@@ -8521,12 +5755,6 @@ CREATE TABLE sources.ca_long_beach_points (
     dip_dir integer
 );
 
-
-ALTER TABLE sources.ca_long_beach_points OWNER TO postgres;
-
---
--- Name: ca_los_angeles; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ca_los_angeles (
     gid integer NOT NULL,
@@ -8551,12 +5779,6 @@ CREATE TABLE sources.ca_los_angeles (
 );
 
 
-ALTER TABLE sources.ca_los_angeles OWNER TO postgres;
-
---
--- Name: ca_los_angeles_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ca_los_angeles_lines (
     gid integer NOT NULL,
     fnode_ numeric(10,0),
@@ -8575,12 +5797,6 @@ CREATE TABLE sources.ca_los_angeles_lines (
 );
 
 
-ALTER TABLE sources.ca_los_angeles_lines OWNER TO postgres;
-
---
--- Name: ca_marin; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ca_marin (
     gid integer NOT NULL,
     area double precision,
@@ -8596,12 +5812,6 @@ CREATE TABLE sources.ca_marin (
     late_id integer
 );
 
-
-ALTER TABLE sources.ca_marin OWNER TO postgres;
-
---
--- Name: ca_marin_fixed; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ca_marin_fixed (
     gid integer,
@@ -8620,12 +5830,6 @@ CREATE TABLE sources.ca_marin_fixed (
 );
 
 
-ALTER TABLE sources.ca_marin_fixed OWNER TO postgres;
-
---
--- Name: ca_marin_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ca_marin_lines (
     gid integer NOT NULL,
     length double precision,
@@ -8635,12 +5839,6 @@ CREATE TABLE sources.ca_marin_lines (
     new_direction text
 );
 
-
-ALTER TABLE sources.ca_marin_lines OWNER TO postgres;
-
---
--- Name: ca_marin_lines_fixed; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ca_marin_lines_fixed (
     gid integer,
@@ -8661,12 +5859,6 @@ CREATE TABLE sources.ca_marin_lines_fixed (
 );
 
 
-ALTER TABLE sources.ca_marin_lines_fixed OWNER TO postgres;
-
---
--- Name: ca_marin_lines_nad27; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ca_marin_lines_nad27 (
     gid integer NOT NULL,
     userid numeric(10,0),
@@ -8684,12 +5876,6 @@ CREATE TABLE sources.ca_marin_lines_nad27 (
 );
 
 
-ALTER TABLE sources.ca_marin_lines_nad27 OWNER TO postgres;
-
---
--- Name: ca_marin_lines_nad27_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ca_marin_lines_nad27_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -8698,18 +5884,8 @@ CREATE SEQUENCE sources.ca_marin_lines_nad27_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ca_marin_lines_nad27_gid_seq OWNER TO postgres;
-
---
--- Name: ca_marin_lines_nad27_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ca_marin_lines_nad27_gid_seq OWNED BY sources.ca_marin_lines_nad27.gid;
 
-
---
--- Name: ca_marin_nad27; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ca_marin_nad27 (
     gid integer NOT NULL,
@@ -8722,12 +5898,6 @@ CREATE TABLE sources.ca_marin_nad27 (
 );
 
 
-ALTER TABLE sources.ca_marin_nad27 OWNER TO postgres;
-
---
--- Name: ca_marin_nad27_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ca_marin_nad27_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -8736,18 +5906,8 @@ CREATE SEQUENCE sources.ca_marin_nad27_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ca_marin_nad27_gid_seq OWNER TO postgres;
-
---
--- Name: ca_marin_nad27_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ca_marin_nad27_gid_seq OWNED BY sources.ca_marin_nad27.gid;
 
-
---
--- Name: ca_monterey; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ca_monterey (
     gid integer NOT NULL,
@@ -8765,12 +5925,6 @@ CREATE TABLE sources.ca_monterey (
 );
 
 
-ALTER TABLE sources.ca_monterey OWNER TO postgres;
-
---
--- Name: ca_monterey_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ca_monterey_lines (
     ltype character varying(35),
     shape_leng numeric,
@@ -8780,12 +5934,6 @@ CREATE TABLE sources.ca_monterey_lines (
 );
 
 
-ALTER TABLE sources.ca_monterey_lines OWNER TO postgres;
-
---
--- Name: ca_monterey_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ca_monterey_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -8794,18 +5942,8 @@ CREATE SEQUENCE sources.ca_monterey_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ca_monterey_lines_gid_seq OWNER TO postgres;
-
---
--- Name: ca_monterey_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ca_monterey_lines_gid_seq OWNED BY sources.ca_monterey_lines.gid;
 
-
---
--- Name: ca_monterrey_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.ca_monterrey_gid_seq
     START WITH 1
@@ -8815,18 +5953,8 @@ CREATE SEQUENCE sources.ca_monterrey_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ca_monterrey_gid_seq OWNER TO postgres;
-
---
--- Name: ca_monterrey_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ca_monterrey_gid_seq OWNED BY sources.ca_monterey.gid;
 
-
---
--- Name: ca_napa; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ca_napa (
     gid integer NOT NULL,
@@ -8856,12 +5984,6 @@ CREATE TABLE sources.ca_napa (
 );
 
 
-ALTER TABLE sources.ca_napa OWNER TO postgres;
-
---
--- Name: ca_napa_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ca_napa_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -8870,18 +5992,8 @@ CREATE SEQUENCE sources.ca_napa_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ca_napa_gid_seq OWNER TO postgres;
-
---
--- Name: ca_napa_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ca_napa_gid_seq OWNED BY sources.ca_napa.gid;
 
-
---
--- Name: ca_napa_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ca_napa_lines (
     objectid numeric,
@@ -8903,12 +6015,6 @@ CREATE TABLE sources.ca_napa_lines (
 );
 
 
-ALTER TABLE sources.ca_napa_lines OWNER TO postgres;
-
---
--- Name: ca_napa_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ca_napa_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -8917,18 +6023,8 @@ CREATE SEQUENCE sources.ca_napa_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ca_napa_lines_gid_seq OWNER TO postgres;
-
---
--- Name: ca_napa_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ca_napa_lines_gid_seq OWNED BY sources.ca_napa_lines.gid;
 
-
---
--- Name: ca_napa_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ca_napa_points (
     gid integer NOT NULL,
@@ -8952,12 +6048,6 @@ CREATE TABLE sources.ca_napa_points (
 );
 
 
-ALTER TABLE sources.ca_napa_points OWNER TO postgres;
-
---
--- Name: ca_napa_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ca_napa_points_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -8966,18 +6056,8 @@ CREATE SEQUENCE sources.ca_napa_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ca_napa_points_gid_seq OWNER TO postgres;
-
---
--- Name: ca_napa_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ca_napa_points_gid_seq OWNED BY sources.ca_napa_points.gid;
 
-
---
--- Name: ca_north_santabarb; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ca_north_santabarb (
     gid integer NOT NULL,
@@ -9001,12 +6081,6 @@ CREATE TABLE sources.ca_north_santabarb (
 );
 
 
-ALTER TABLE sources.ca_north_santabarb OWNER TO postgres;
-
---
--- Name: ca_north_santabarb_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ca_north_santabarb_lines (
     gid integer NOT NULL,
     name character varying(150),
@@ -9019,12 +6093,6 @@ CREATE TABLE sources.ca_north_santabarb_lines (
     new_direction text
 );
 
-
-ALTER TABLE sources.ca_north_santabarb_lines OWNER TO postgres;
-
---
--- Name: ca_northeastsanfran; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ca_northeastsanfran (
     ptype character varying(35),
@@ -9039,12 +6107,6 @@ CREATE TABLE sources.ca_northeastsanfran (
 );
 
 
-ALTER TABLE sources.ca_northeastsanfran OWNER TO postgres;
-
---
--- Name: ca_northeastsanfran_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ca_northeastsanfran_lines (
     gid integer NOT NULL,
     ltype character varying(55),
@@ -9054,12 +6116,6 @@ CREATE TABLE sources.ca_northeastsanfran_lines (
 );
 
 
-ALTER TABLE sources.ca_northeastsanfran_lines OWNER TO postgres;
-
---
--- Name: ca_northeastsanfran_union_gid_new_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ca_northeastsanfran_union_gid_new_seq
     START WITH 1
     INCREMENT BY 1
@@ -9068,18 +6124,8 @@ CREATE SEQUENCE sources.ca_northeastsanfran_union_gid_new_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ca_northeastsanfran_union_gid_new_seq OWNER TO postgres;
-
---
--- Name: ca_northeastsanfran_union_gid_new_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ca_northeastsanfran_union_gid_new_seq OWNED BY sources.ca_northeastsanfran.gid;
 
-
---
--- Name: ca_northofsanfran; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ca_northofsanfran (
     gid integer NOT NULL,
@@ -9097,12 +6143,6 @@ CREATE TABLE sources.ca_northofsanfran (
 );
 
 
-ALTER TABLE sources.ca_northofsanfran OWNER TO postgres;
-
---
--- Name: ca_northofsanfran_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ca_northofsanfran_lines (
     gid integer NOT NULL,
     length double precision,
@@ -9113,12 +6153,6 @@ CREATE TABLE sources.ca_northofsanfran_lines (
     new_direction text
 );
 
-
-ALTER TABLE sources.ca_northofsanfran_lines OWNER TO postgres;
-
---
--- Name: ca_oakland; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ca_oakland (
     gid integer NOT NULL,
@@ -9137,12 +6171,6 @@ CREATE TABLE sources.ca_oakland (
 );
 
 
-ALTER TABLE sources.ca_oakland OWNER TO postgres;
-
---
--- Name: ca_oakland_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ca_oakland_lines (
     gid integer,
     fnode_ numeric(10,0),
@@ -9160,12 +6188,6 @@ CREATE TABLE sources.ca_oakland_lines (
 );
 
 
-ALTER TABLE sources.ca_oakland_lines OWNER TO postgres;
-
---
--- Name: ca_oakland_unioned; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ca_oakland_unioned (
     descrip text,
     age text,
@@ -9178,12 +6200,6 @@ CREATE TABLE sources.ca_oakland_unioned (
 );
 
 
-ALTER TABLE sources.ca_oakland_unioned OWNER TO postgres;
-
---
--- Name: ca_oakland_unioned_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ca_oakland_unioned_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -9192,18 +6208,8 @@ CREATE SEQUENCE sources.ca_oakland_unioned_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ca_oakland_unioned_gid_seq OWNER TO postgres;
-
---
--- Name: ca_oakland_unioned_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ca_oakland_unioned_gid_seq OWNED BY sources.ca_oakland_unioned.gid;
 
-
---
--- Name: ca_oceanside; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ca_oceanside (
     gid integer NOT NULL,
@@ -9221,12 +6227,6 @@ CREATE TABLE sources.ca_oceanside (
 );
 
 
-ALTER TABLE sources.ca_oceanside OWNER TO postgres;
-
---
--- Name: ca_oceanside_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ca_oceanside_lines (
     gid integer NOT NULL,
     ltype character varying(50),
@@ -9238,12 +6238,6 @@ CREATE TABLE sources.ca_oceanside_lines (
 );
 
 
-ALTER TABLE sources.ca_oceanside_lines OWNER TO postgres;
-
---
--- Name: ca_oceanside_points; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ca_oceanside_points (
     gid integer NOT NULL,
     pttype character varying(60),
@@ -9254,12 +6248,6 @@ CREATE TABLE sources.ca_oceanside_points (
     dip_dir integer
 );
 
-
-ALTER TABLE sources.ca_oceanside_points OWNER TO postgres;
-
---
--- Name: ca_point_reyes; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ca_point_reyes (
     gid integer NOT NULL,
@@ -9283,12 +6271,6 @@ CREATE TABLE sources.ca_point_reyes (
 );
 
 
-ALTER TABLE sources.ca_point_reyes OWNER TO postgres;
-
---
--- Name: ca_point_reyes_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ca_point_reyes_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -9297,18 +6279,8 @@ CREATE SEQUENCE sources.ca_point_reyes_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ca_point_reyes_gid_seq OWNER TO postgres;
-
---
--- Name: ca_point_reyes_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ca_point_reyes_gid_seq OWNED BY sources.ca_point_reyes.gid;
 
-
---
--- Name: ca_point_reyes_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ca_point_reyes_lines (
     gid integer,
@@ -9322,12 +6294,6 @@ CREATE TABLE sources.ca_point_reyes_lines (
     name character varying(65)
 );
 
-
-ALTER TABLE sources.ca_point_reyes_lines OWNER TO postgres;
-
---
--- Name: ca_providence_mtns; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ca_providence_mtns (
     gid integer NOT NULL,
@@ -9345,12 +6311,6 @@ CREATE TABLE sources.ca_providence_mtns (
 );
 
 
-ALTER TABLE sources.ca_providence_mtns OWNER TO postgres;
-
---
--- Name: ca_providence_mtns_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ca_providence_mtns_gid_seq
     AS integer
     START WITH 1
@@ -9360,18 +6320,8 @@ CREATE SEQUENCE sources.ca_providence_mtns_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ca_providence_mtns_gid_seq OWNER TO postgres;
-
---
--- Name: ca_providence_mtns_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ca_providence_mtns_gid_seq OWNED BY sources.ca_providence_mtns.gid;
 
-
---
--- Name: ca_providence_mtns_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ca_providence_mtns_lines (
     gid integer NOT NULL,
@@ -9384,12 +6334,6 @@ CREATE TABLE sources.ca_providence_mtns_lines (
 );
 
 
-ALTER TABLE sources.ca_providence_mtns_lines OWNER TO postgres;
-
---
--- Name: ca_providence_mtns_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ca_providence_mtns_lines_gid_seq
     AS integer
     START WITH 1
@@ -9399,18 +6343,8 @@ CREATE SEQUENCE sources.ca_providence_mtns_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ca_providence_mtns_lines_gid_seq OWNER TO postgres;
-
---
--- Name: ca_providence_mtns_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ca_providence_mtns_lines_gid_seq OWNED BY sources.ca_providence_mtns_lines.gid;
 
-
---
--- Name: ca_providence_mtns_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ca_providence_mtns_points (
     gid integer NOT NULL,
@@ -9423,12 +6357,6 @@ CREATE TABLE sources.ca_providence_mtns_points (
 );
 
 
-ALTER TABLE sources.ca_providence_mtns_points OWNER TO postgres;
-
---
--- Name: ca_providence_mtns_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ca_providence_mtns_points_gid_seq
     AS integer
     START WITH 1
@@ -9438,18 +6366,8 @@ CREATE SEQUENCE sources.ca_providence_mtns_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ca_providence_mtns_points_gid_seq OWNER TO postgres;
-
---
--- Name: ca_providence_mtns_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ca_providence_mtns_points_gid_seq OWNED BY sources.ca_providence_mtns_points.gid;
 
-
---
--- Name: ca_providencemountains; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ca_providencemountains (
     gid integer NOT NULL,
@@ -9468,12 +6386,6 @@ CREATE TABLE sources.ca_providencemountains (
 );
 
 
-ALTER TABLE sources.ca_providencemountains OWNER TO postgres;
-
---
--- Name: ca_providencemountains_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ca_providencemountains_lines (
     gid integer NOT NULL,
     ltype character varying(35),
@@ -9484,12 +6396,6 @@ CREATE TABLE sources.ca_providencemountains_lines (
 );
 
 
-ALTER TABLE sources.ca_providencemountains_lines OWNER TO postgres;
-
---
--- Name: ca_providencemountains_arc_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ca_providencemountains_arc_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -9498,18 +6404,8 @@ CREATE SEQUENCE sources.ca_providencemountains_arc_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ca_providencemountains_arc_gid_seq OWNER TO postgres;
-
---
--- Name: ca_providencemountains_arc_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ca_providencemountains_arc_gid_seq OWNED BY sources.ca_providencemountains_lines.gid;
 
-
---
--- Name: ca_providencemountains_polygon_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.ca_providencemountains_polygon_gid_seq
     START WITH 1
@@ -9519,18 +6415,8 @@ CREATE SEQUENCE sources.ca_providencemountains_polygon_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ca_providencemountains_polygon_gid_seq OWNER TO postgres;
-
---
--- Name: ca_providencemountains_polygon_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ca_providencemountains_polygon_gid_seq OWNED BY sources.ca_providencemountains.gid;
 
-
---
--- Name: ca_san_diego; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ca_san_diego (
     gid integer,
@@ -9546,12 +6432,6 @@ CREATE TABLE sources.ca_san_diego (
 );
 
 
-ALTER TABLE sources.ca_san_diego OWNER TO postgres;
-
---
--- Name: ca_san_diego_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ca_san_diego_lines (
     gid integer NOT NULL,
     objectid numeric,
@@ -9563,12 +6443,6 @@ CREATE TABLE sources.ca_san_diego_lines (
 );
 
 
-ALTER TABLE sources.ca_san_diego_lines OWNER TO postgres;
-
---
--- Name: ca_san_diego_points; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ca_san_diego_points (
     gid integer NOT NULL,
     objectid numeric,
@@ -9579,12 +6453,6 @@ CREATE TABLE sources.ca_san_diego_points (
     point_type text
 );
 
-
-ALTER TABLE sources.ca_san_diego_points OWNER TO postgres;
-
---
--- Name: ca_sanberno; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ca_sanberno (
     gid integer NOT NULL,
@@ -9608,12 +6476,6 @@ CREATE TABLE sources.ca_sanberno (
 );
 
 
-ALTER TABLE sources.ca_sanberno OWNER TO postgres;
-
---
--- Name: ca_sanberno_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ca_sanberno_lines (
     gid integer NOT NULL,
     fnode_ double precision,
@@ -9633,12 +6495,6 @@ CREATE TABLE sources.ca_sanberno_lines (
 );
 
 
-ALTER TABLE sources.ca_sanberno_lines OWNER TO postgres;
-
---
--- Name: ca_sanjose; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ca_sanjose (
     gid integer NOT NULL,
     area double precision,
@@ -9656,12 +6512,6 @@ CREATE TABLE sources.ca_sanjose (
 );
 
 
-ALTER TABLE sources.ca_sanjose OWNER TO postgres;
-
---
--- Name: ca_sanjose_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ca_sanjose_lines (
     gid integer NOT NULL,
     fnode_ double precision,
@@ -9677,12 +6527,6 @@ CREATE TABLE sources.ca_sanjose_lines (
     new_direction text
 );
 
-
-ALTER TABLE sources.ca_sanjose_lines OWNER TO postgres;
-
---
--- Name: ca_sanmateo; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ca_sanmateo (
     gid integer NOT NULL,
@@ -9702,12 +6546,6 @@ CREATE TABLE sources.ca_sanmateo (
 );
 
 
-ALTER TABLE sources.ca_sanmateo OWNER TO postgres;
-
---
--- Name: ca_sanmateo_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ca_sanmateo_lines (
     gid integer NOT NULL,
     length double precision,
@@ -9720,12 +6558,6 @@ CREATE TABLE sources.ca_sanmateo_lines (
     name text
 );
 
-
-ALTER TABLE sources.ca_sanmateo_lines OWNER TO postgres;
-
---
--- Name: ca_santabarbara; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ca_santabarbara (
     gid integer NOT NULL,
@@ -9753,12 +6585,6 @@ CREATE TABLE sources.ca_santabarbara (
 );
 
 
-ALTER TABLE sources.ca_santabarbara OWNER TO postgres;
-
---
--- Name: ca_santabarbara_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ca_santabarbara_lines (
     gid integer NOT NULL,
     objectid numeric,
@@ -9778,12 +6604,6 @@ CREATE TABLE sources.ca_santabarbara_lines (
 );
 
 
-ALTER TABLE sources.ca_santabarbara_lines OWNER TO postgres;
-
---
--- Name: ca_santabarbara_geol_arc_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ca_santabarbara_geol_arc_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -9792,18 +6612,8 @@ CREATE SEQUENCE sources.ca_santabarbara_geol_arc_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ca_santabarbara_geol_arc_gid_seq OWNER TO postgres;
-
---
--- Name: ca_santabarbara_geol_arc_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ca_santabarbara_geol_arc_gid_seq OWNED BY sources.ca_santabarbara_lines.gid;
 
-
---
--- Name: ca_santabarbara_geol_polygon_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.ca_santabarbara_geol_polygon_gid_seq
     START WITH 1
@@ -9813,18 +6623,8 @@ CREATE SEQUENCE sources.ca_santabarbara_geol_polygon_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ca_santabarbara_geol_polygon_gid_seq OWNER TO postgres;
-
---
--- Name: ca_santabarbara_geol_polygon_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ca_santabarbara_geol_polygon_gid_seq OWNED BY sources.ca_santabarbara.gid;
 
-
---
--- Name: ca_santabarbara_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ca_santabarbara_points (
     gid integer NOT NULL,
@@ -9848,12 +6648,6 @@ CREATE TABLE sources.ca_santabarbara_points (
 );
 
 
-ALTER TABLE sources.ca_santabarbara_points OWNER TO postgres;
-
---
--- Name: ca_santabarbara_structure_point_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ca_santabarbara_structure_point_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -9862,18 +6656,8 @@ CREATE SEQUENCE sources.ca_santabarbara_structure_point_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ca_santabarbara_structure_point_gid_seq OWNER TO postgres;
-
---
--- Name: ca_santabarbara_structure_point_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ca_santabarbara_structure_point_gid_seq OWNED BY sources.ca_santabarbara_points.gid;
 
-
---
--- Name: ca_santacruz; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ca_santacruz (
     gid integer NOT NULL,
@@ -9894,12 +6678,6 @@ CREATE TABLE sources.ca_santacruz (
 );
 
 
-ALTER TABLE sources.ca_santacruz OWNER TO postgres;
-
---
--- Name: ca_santacruz_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ca_santacruz_lines (
     gid integer NOT NULL,
     ltype character varying(35),
@@ -9908,12 +6686,6 @@ CREATE TABLE sources.ca_santacruz_lines (
     new_direction text
 );
 
-
-ALTER TABLE sources.ca_santacruz_lines OWNER TO postgres;
-
---
--- Name: ca_southsanfran; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ca_southsanfran (
     gid integer NOT NULL,
@@ -9934,12 +6706,6 @@ CREATE TABLE sources.ca_southsanfran (
 );
 
 
-ALTER TABLE sources.ca_southsanfran OWNER TO postgres;
-
---
--- Name: ca_southsanfran_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ca_southsanfran_lines (
     gid integer NOT NULL,
     __gid numeric(10,0),
@@ -9951,12 +6717,6 @@ CREATE TABLE sources.ca_southsanfran_lines (
     geom public.geometry(MultiLineString,4326)
 );
 
-
-ALTER TABLE sources.ca_southsanfran_lines OWNER TO postgres;
-
---
--- Name: ca_yosemite; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ca_yosemite (
     gid integer,
@@ -9976,12 +6736,6 @@ CREATE TABLE sources.ca_yosemite (
 );
 
 
-ALTER TABLE sources.ca_yosemite OWNER TO postgres;
-
---
--- Name: ca_yosemite_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ca_yosemite_lines (
     gid integer NOT NULL,
     userid numeric(10,0),
@@ -9999,12 +6753,6 @@ CREATE TABLE sources.ca_yosemite_lines (
 );
 
 
-ALTER TABLE sources.ca_yosemite_lines OWNER TO postgres;
-
---
--- Name: ca_yosemite_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ca_yosemite_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -10013,18 +6761,8 @@ CREATE SEQUENCE sources.ca_yosemite_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ca_yosemite_lines_gid_seq OWNER TO postgres;
-
---
--- Name: ca_yosemite_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ca_yosemite_lines_gid_seq OWNED BY sources.ca_yosemite_lines.gid;
 
-
---
--- Name: ca_yosemite_units; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ca_yosemite_units (
     gid integer NOT NULL,
@@ -10035,12 +6773,6 @@ CREATE TABLE sources.ca_yosemite_units (
 );
 
 
-ALTER TABLE sources.ca_yosemite_units OWNER TO postgres;
-
---
--- Name: ca_yosemite_units_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ca_yosemite_units_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -10049,18 +6781,8 @@ CREATE SEQUENCE sources.ca_yosemite_units_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ca_yosemite_units_gid_seq OWNER TO postgres;
-
---
--- Name: ca_yosemite_units_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ca_yosemite_units_gid_seq OWNED BY sources.ca_yosemite_units.gid;
 
-
---
--- Name: cambria_faults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.cambria_faults_gid_seq
     START WITH 1
@@ -10070,18 +6792,8 @@ CREATE SEQUENCE sources.cambria_faults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.cambria_faults_gid_seq OWNER TO postgres;
-
---
--- Name: cambria_faults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.cambria_faults_gid_seq OWNED BY sources.ca_cambria_lines.gid;
 
-
---
--- Name: cambriacageology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.cambriacageology_gid_seq
     START WITH 1
@@ -10091,18 +6803,8 @@ CREATE SEQUENCE sources.cambriacageology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.cambriacageology_gid_seq OWNER TO postgres;
-
---
--- Name: cambriacageology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.cambriacageology_gid_seq OWNED BY sources.ca_cambria.gid;
 
-
---
--- Name: catalunya50k; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.catalunya50k (
     gid integer NOT NULL,
@@ -10126,12 +6828,6 @@ CREATE TABLE sources.catalunya50k (
 );
 
 
-ALTER TABLE sources.catalunya50k OWNER TO postgres;
-
---
--- Name: catalunya50k_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.catalunya50k_lines (
     gid integer NOT NULL,
     codi_cas character varying(15),
@@ -10142,12 +6838,6 @@ CREATE TABLE sources.catalunya50k_lines (
 );
 
 
-ALTER TABLE sources.catalunya50k_lines OWNER TO postgres;
-
---
--- Name: catalunya50k_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.catalunya50k_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -10156,18 +6846,8 @@ CREATE SEQUENCE sources.catalunya50k_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.catalunya50k_lines_gid_seq OWNER TO postgres;
-
---
--- Name: catalunya50k_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.catalunya50k_lines_gid_seq OWNED BY sources.catalunya50k_lines.gid;
 
-
---
--- Name: catalunya50k_redo_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.catalunya50k_redo_gid_seq
     START WITH 1
@@ -10177,18 +6857,8 @@ CREATE SEQUENCE sources.catalunya50k_redo_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.catalunya50k_redo_gid_seq OWNER TO postgres;
-
---
--- Name: catalunya50k_redo_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.catalunya50k_redo_gid_seq OWNED BY sources.catalunya50k.gid;
 
-
---
--- Name: co_arkansa_riv; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.co_arkansa_riv (
     gid integer NOT NULL,
@@ -10209,12 +6879,6 @@ CREATE TABLE sources.co_arkansa_riv (
 );
 
 
-ALTER TABLE sources.co_arkansa_riv OWNER TO postgres;
-
---
--- Name: co_arkansa_riv_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.co_arkansa_riv_gid_seq
     AS integer
     START WITH 1
@@ -10224,18 +6888,8 @@ CREATE SEQUENCE sources.co_arkansa_riv_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.co_arkansa_riv_gid_seq OWNER TO postgres;
-
---
--- Name: co_arkansa_riv_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.co_arkansa_riv_gid_seq OWNED BY sources.co_arkansa_riv.gid;
 
-
---
--- Name: co_arkansa_riv_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.co_arkansa_riv_lines (
     gid integer NOT NULL,
@@ -10250,12 +6904,6 @@ CREATE TABLE sources.co_arkansa_riv_lines (
 );
 
 
-ALTER TABLE sources.co_arkansa_riv_lines OWNER TO postgres;
-
---
--- Name: co_arkansa_riv_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.co_arkansa_riv_lines_gid_seq
     AS integer
     START WITH 1
@@ -10265,18 +6913,8 @@ CREATE SEQUENCE sources.co_arkansa_riv_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.co_arkansa_riv_lines_gid_seq OWNER TO postgres;
-
---
--- Name: co_arkansa_riv_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.co_arkansa_riv_lines_gid_seq OWNED BY sources.co_arkansa_riv_lines.gid;
 
-
---
--- Name: co_arkansa_riv_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.co_arkansa_riv_points (
     gid integer NOT NULL,
@@ -10291,12 +6929,6 @@ CREATE TABLE sources.co_arkansa_riv_points (
 );
 
 
-ALTER TABLE sources.co_arkansa_riv_points OWNER TO postgres;
-
---
--- Name: co_arkansa_riv_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.co_arkansa_riv_points_gid_seq
     AS integer
     START WITH 1
@@ -10306,18 +6938,8 @@ CREATE SEQUENCE sources.co_arkansa_riv_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.co_arkansa_riv_points_gid_seq OWNER TO postgres;
-
---
--- Name: co_arkansa_riv_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.co_arkansa_riv_points_gid_seq OWNED BY sources.co_arkansa_riv_points.gid;
 
-
---
--- Name: co_denver; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.co_denver (
     gid integer NOT NULL,
@@ -10338,12 +6960,6 @@ CREATE TABLE sources.co_denver (
     late_id integer
 );
 
-
-ALTER TABLE sources.co_denver OWNER TO postgres;
-
---
--- Name: co_ftcollins; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.co_ftcollins (
     gid integer NOT NULL,
@@ -10369,12 +6985,6 @@ CREATE TABLE sources.co_ftcollins (
 );
 
 
-ALTER TABLE sources.co_ftcollins OWNER TO postgres;
-
---
--- Name: co_ftcollins_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.co_ftcollins_gid_seq
     AS integer
     START WITH 1
@@ -10384,18 +6994,8 @@ CREATE SEQUENCE sources.co_ftcollins_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.co_ftcollins_gid_seq OWNER TO postgres;
-
---
--- Name: co_ftcollins_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.co_ftcollins_gid_seq OWNED BY sources.co_ftcollins.gid;
 
-
---
--- Name: co_ftcollins_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.co_ftcollins_lines (
     gid integer NOT NULL,
@@ -10421,12 +7021,6 @@ CREATE TABLE sources.co_ftcollins_lines (
 );
 
 
-ALTER TABLE sources.co_ftcollins_lines OWNER TO postgres;
-
---
--- Name: co_ftcollins_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.co_ftcollins_lines_gid_seq
     AS integer
     START WITH 1
@@ -10436,18 +7030,8 @@ CREATE SEQUENCE sources.co_ftcollins_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.co_ftcollins_lines_gid_seq OWNER TO postgres;
-
---
--- Name: co_ftcollins_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.co_ftcollins_lines_gid_seq OWNED BY sources.co_ftcollins_lines.gid;
 
-
---
--- Name: co_ftcollins_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.co_ftcollins_points (
     gid integer NOT NULL,
@@ -10473,12 +7057,6 @@ CREATE TABLE sources.co_ftcollins_points (
 );
 
 
-ALTER TABLE sources.co_ftcollins_points OWNER TO postgres;
-
---
--- Name: co_ftcollins_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.co_ftcollins_points_gid_seq
     AS integer
     START WITH 1
@@ -10488,18 +7066,8 @@ CREATE SEQUENCE sources.co_ftcollins_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.co_ftcollins_points_gid_seq OWNER TO postgres;
-
---
--- Name: co_ftcollins_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.co_ftcollins_points_gid_seq OWNED BY sources.co_ftcollins_points.gid;
 
-
---
--- Name: co_grandjunction; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.co_grandjunction (
     gid integer NOT NULL,
@@ -10522,12 +7090,6 @@ CREATE TABLE sources.co_grandjunction (
 );
 
 
-ALTER TABLE sources.co_grandjunction OWNER TO postgres;
-
---
--- Name: co_grandjunction_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.co_grandjunction_lines (
     gid integer NOT NULL,
     fnode_ numeric(10,0),
@@ -10542,12 +7104,6 @@ CREATE TABLE sources.co_grandjunction_lines (
     new_type text
 );
 
-
-ALTER TABLE sources.co_grandjunction_lines OWNER TO postgres;
-
---
--- Name: co_greatsanddunes; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.co_greatsanddunes (
     gid integer NOT NULL,
@@ -10568,12 +7124,6 @@ CREATE TABLE sources.co_greatsanddunes (
 );
 
 
-ALTER TABLE sources.co_greatsanddunes OWNER TO postgres;
-
---
--- Name: co_greatsanddunes_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.co_greatsanddunes_lines (
     gid integer NOT NULL,
     objectid integer,
@@ -10584,12 +7134,6 @@ CREATE TABLE sources.co_greatsanddunes_lines (
 );
 
 
-ALTER TABLE sources.co_greatsanddunes_lines OWNER TO postgres;
-
---
--- Name: co_greatsanddunes_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.co_greatsanddunes_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -10598,18 +7142,8 @@ CREATE SEQUENCE sources.co_greatsanddunes_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.co_greatsanddunes_lines_gid_seq OWNER TO postgres;
-
---
--- Name: co_greatsanddunes_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.co_greatsanddunes_lines_gid_seq OWNED BY sources.co_greatsanddunes_lines.gid;
 
-
---
--- Name: co_homestake; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.co_homestake (
     gid integer NOT NULL,
@@ -10633,12 +7167,6 @@ CREATE TABLE sources.co_homestake (
 );
 
 
-ALTER TABLE sources.co_homestake OWNER TO postgres;
-
---
--- Name: co_homestake_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.co_homestake_lines (
     gid integer NOT NULL,
     type character varying(100) NOT NULL,
@@ -10658,12 +7186,6 @@ CREATE TABLE sources.co_homestake_lines (
 );
 
 
-ALTER TABLE sources.co_homestake_lines OWNER TO postgres;
-
---
--- Name: co_homestake_lines_objectid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.co_homestake_lines_objectid_seq
     AS integer
     START WITH 1
@@ -10673,18 +7195,8 @@ CREATE SEQUENCE sources.co_homestake_lines_objectid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.co_homestake_lines_objectid_seq OWNER TO postgres;
-
---
--- Name: co_homestake_lines_objectid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.co_homestake_lines_objectid_seq OWNED BY sources.co_homestake_lines.gid;
 
-
---
--- Name: co_homestake_objectid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.co_homestake_objectid_seq
     AS integer
@@ -10695,18 +7207,8 @@ CREATE SEQUENCE sources.co_homestake_objectid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.co_homestake_objectid_seq OWNER TO postgres;
-
---
--- Name: co_homestake_objectid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.co_homestake_objectid_seq OWNED BY sources.co_homestake.gid;
 
-
---
--- Name: co_homestake_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.co_homestake_points (
     gid integer NOT NULL,
@@ -10732,12 +7234,6 @@ CREATE TABLE sources.co_homestake_points (
 );
 
 
-ALTER TABLE sources.co_homestake_points OWNER TO postgres;
-
---
--- Name: co_homestake_points_objectid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.co_homestake_points_objectid_seq
     AS integer
     START WITH 1
@@ -10747,18 +7243,8 @@ CREATE SEQUENCE sources.co_homestake_points_objectid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.co_homestake_points_objectid_seq OWNER TO postgres;
-
---
--- Name: co_homestake_points_objectid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.co_homestake_points_objectid_seq OWNED BY sources.co_homestake_points.gid;
 
-
---
--- Name: colombia; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.colombia (
     gid integer NOT NULL,
@@ -10782,12 +7268,6 @@ CREATE TABLE sources.colombia (
 );
 
 
-ALTER TABLE sources.colombia OWNER TO postgres;
-
---
--- Name: colombia_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.colombia_lines (
     gid integer NOT NULL,
     objectid numeric(10,0),
@@ -10802,12 +7282,6 @@ CREATE TABLE sources.colombia_lines (
 );
 
 
-ALTER TABLE sources.colombia_lines OWNER TO postgres;
-
---
--- Name: colombia_faults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.colombia_faults_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -10816,18 +7290,8 @@ CREATE SEQUENCE sources.colombia_faults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.colombia_faults_gid_seq OWNER TO postgres;
-
---
--- Name: colombia_faults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.colombia_faults_gid_seq OWNED BY sources.colombia_lines.gid;
 
-
---
--- Name: colombia_geo_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.colombia_geo_gid_seq
     START WITH 1
@@ -10837,18 +7301,8 @@ CREATE SEQUENCE sources.colombia_geo_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.colombia_geo_gid_seq OWNER TO postgres;
-
---
--- Name: colombia_geo_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.colombia_geo_gid_seq OWNED BY sources.colombia.gid;
 
-
---
--- Name: congareenationalpark_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.congareenationalpark_lines (
     gid integer NOT NULL,
@@ -10871,12 +7325,6 @@ CREATE TABLE sources.congareenationalpark_lines (
 );
 
 
-ALTER TABLE sources.congareenationalpark_lines OWNER TO postgres;
-
---
--- Name: congaree_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.congaree_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -10885,18 +7333,8 @@ CREATE SEQUENCE sources.congaree_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.congaree_lines_gid_seq OWNER TO postgres;
-
---
--- Name: congaree_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.congaree_lines_gid_seq OWNED BY sources.congareenationalpark_lines.gid;
 
-
---
--- Name: congareenationalparkgeology; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.congareenationalparkgeology (
     gid integer NOT NULL,
@@ -10921,12 +7359,6 @@ CREATE TABLE sources.congareenationalparkgeology (
 );
 
 
-ALTER TABLE sources.congareenationalparkgeology OWNER TO postgres;
-
---
--- Name: congareenationalparkgeology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.congareenationalparkgeology_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -10935,18 +7367,8 @@ CREATE SEQUENCE sources.congareenationalparkgeology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.congareenationalparkgeology_gid_seq OWNER TO postgres;
-
---
--- Name: congareenationalparkgeology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.congareenationalparkgeology_gid_seq OWNED BY sources.congareenationalparkgeology.gid;
 
-
---
--- Name: contracostafaults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.contracostafaults_gid_seq
     START WITH 1
@@ -10956,18 +7378,8 @@ CREATE SEQUENCE sources.contracostafaults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.contracostafaults_gid_seq OWNER TO postgres;
-
---
--- Name: contracostafaults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.contracostafaults_gid_seq OWNED BY sources.ca_contracosta_lines.gid;
 
-
---
--- Name: contracostageology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.contracostageology_gid_seq
     START WITH 1
@@ -10977,18 +7389,8 @@ CREATE SEQUENCE sources.contracostageology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.contracostageology_gid_seq OWNER TO postgres;
-
---
--- Name: contracostageology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.contracostageology_gid_seq OWNED BY sources.ca_contracosta.gid;
 
-
---
--- Name: dane_co; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.dane_co (
     gid integer NOT NULL,
@@ -11006,12 +7408,6 @@ CREATE TABLE sources.dane_co (
 );
 
 
-ALTER TABLE sources.dane_co OWNER TO postgres;
-
---
--- Name: dane_co_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.dane_co_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -11020,18 +7416,8 @@ CREATE SEQUENCE sources.dane_co_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.dane_co_gid_seq OWNER TO postgres;
-
---
--- Name: dane_co_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.dane_co_gid_seq OWNED BY sources.dane_co.gid;
 
-
---
--- Name: dane_faults; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.dane_faults (
     gid integer NOT NULL,
@@ -11044,12 +7430,6 @@ CREATE TABLE sources.dane_faults (
 );
 
 
-ALTER TABLE sources.dane_faults OWNER TO postgres;
-
---
--- Name: dane_faults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.dane_faults_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -11058,18 +7438,8 @@ CREATE SEQUENCE sources.dane_faults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.dane_faults_gid_seq OWNER TO postgres;
-
---
--- Name: dane_faults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.dane_faults_gid_seq OWNED BY sources.dane_faults.gid;
 
-
---
--- Name: dc_bedrock; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.dc_bedrock (
     gid integer,
@@ -11142,12 +7512,6 @@ CREATE TABLE sources.dc_bedrock (
 );
 
 
-ALTER TABLE sources.dc_bedrock OWNER TO postgres;
-
---
--- Name: dc_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.dc_lines (
     gid integer NOT NULL,
     fnode_ numeric(10,0),
@@ -11171,12 +7535,6 @@ CREATE TABLE sources.dc_lines (
 );
 
 
-ALTER TABLE sources.dc_lines OWNER TO postgres;
-
---
--- Name: dc_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.dc_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -11185,18 +7543,8 @@ CREATE SEQUENCE sources.dc_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.dc_lines_gid_seq OWNER TO postgres;
-
---
--- Name: dc_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.dc_lines_gid_seq OWNED BY sources.dc_lines.gid;
 
-
---
--- Name: dc_surficial; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.dc_surficial (
     gid integer,
@@ -11269,12 +7617,6 @@ CREATE TABLE sources.dc_surficial (
 );
 
 
-ALTER TABLE sources.dc_surficial OWNER TO postgres;
-
---
--- Name: ut_delta_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ut_delta_lines (
     gid integer NOT NULL,
     fnode_ integer,
@@ -11294,12 +7636,6 @@ CREATE TABLE sources.ut_delta_lines (
 );
 
 
-ALTER TABLE sources.ut_delta_lines OWNER TO postgres;
-
---
--- Name: delta_faults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.delta_faults_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -11308,18 +7644,8 @@ CREATE SEQUENCE sources.delta_faults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.delta_faults_gid_seq OWNER TO postgres;
-
---
--- Name: delta_faults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.delta_faults_gid_seq OWNED BY sources.ut_delta_lines.gid;
 
-
---
--- Name: ut_delta; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_delta (
     gid integer NOT NULL,
@@ -11338,12 +7664,6 @@ CREATE TABLE sources.ut_delta (
 );
 
 
-ALTER TABLE sources.ut_delta OWNER TO postgres;
-
---
--- Name: deltautah_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.deltautah_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -11352,18 +7672,8 @@ CREATE SEQUENCE sources.deltautah_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.deltautah_gid_seq OWNER TO postgres;
-
---
--- Name: deltautah_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.deltautah_gid_seq OWNED BY sources.ut_delta.gid;
 
-
---
--- Name: denver; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.denver (
     gid integer NOT NULL,
@@ -11382,12 +7692,6 @@ CREATE TABLE sources.denver (
 );
 
 
-ALTER TABLE sources.denver OWNER TO postgres;
-
---
--- Name: denver_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.denver_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -11396,18 +7700,8 @@ CREATE SEQUENCE sources.denver_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.denver_gid_seq OWNER TO postgres;
-
---
--- Name: denver_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.denver_gid_seq OWNED BY sources.denver.gid;
 
-
---
--- Name: denver_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.denver_lines (
     gid integer NOT NULL,
@@ -11424,12 +7718,6 @@ CREATE TABLE sources.denver_lines (
 );
 
 
-ALTER TABLE sources.denver_lines OWNER TO postgres;
-
---
--- Name: denver_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.denver_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -11438,18 +7726,8 @@ CREATE SEQUENCE sources.denver_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.denver_lines_gid_seq OWNER TO postgres;
-
---
--- Name: denver_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.denver_lines_gid_seq OWNED BY sources.denver_lines.gid;
 
-
---
--- Name: denvergeology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.denvergeology_gid_seq
     START WITH 1
@@ -11459,18 +7737,8 @@ CREATE SEQUENCE sources.denvergeology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.denvergeology_gid_seq OWNER TO postgres;
-
---
--- Name: denvergeology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.denvergeology_gid_seq OWNED BY sources.co_denver.gid;
 
-
---
--- Name: devils_tower; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.devils_tower (
     gid integer NOT NULL,
@@ -11490,12 +7758,6 @@ CREATE TABLE sources.devils_tower (
 );
 
 
-ALTER TABLE sources.devils_tower OWNER TO postgres;
-
---
--- Name: devils_tower_geo_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.devils_tower_geo_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -11504,18 +7766,8 @@ CREATE SEQUENCE sources.devils_tower_geo_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.devils_tower_geo_gid_seq OWNER TO postgres;
-
---
--- Name: devils_tower_geo_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.devils_tower_geo_gid_seq OWNED BY sources.devils_tower.gid;
 
-
---
--- Name: devils_tower_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.devils_tower_lines (
     gid integer NOT NULL,
@@ -11529,12 +7781,6 @@ CREATE TABLE sources.devils_tower_lines (
 );
 
 
-ALTER TABLE sources.devils_tower_lines OWNER TO postgres;
-
---
--- Name: devils_tower_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.devils_tower_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -11543,18 +7789,8 @@ CREATE SEQUENCE sources.devils_tower_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.devils_tower_lines_gid_seq OWNER TO postgres;
-
---
--- Name: devils_tower_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.devils_tower_lines_gid_seq OWNED BY sources.devils_tower_lines.gid;
 
-
---
--- Name: ut_dutchjohn_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_dutchjohn_lines (
     gid integer NOT NULL,
@@ -11575,12 +7811,6 @@ CREATE TABLE sources.ut_dutchjohn_lines (
 );
 
 
-ALTER TABLE sources.ut_dutchjohn_lines OWNER TO postgres;
-
---
--- Name: dutchjohn_faults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.dutchjohn_faults_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -11589,18 +7819,8 @@ CREATE SEQUENCE sources.dutchjohn_faults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.dutchjohn_faults_gid_seq OWNER TO postgres;
-
---
--- Name: dutchjohn_faults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.dutchjohn_faults_gid_seq OWNED BY sources.ut_dutchjohn_lines.gid;
 
-
---
--- Name: ut_dutchjohn; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_dutchjohn (
     gid integer NOT NULL,
@@ -11619,12 +7839,6 @@ CREATE TABLE sources.ut_dutchjohn (
 );
 
 
-ALTER TABLE sources.ut_dutchjohn OWNER TO postgres;
-
---
--- Name: dutchjohn_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.dutchjohn_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -11633,18 +7847,8 @@ CREATE SEQUENCE sources.dutchjohn_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.dutchjohn_gid_seq OWNER TO postgres;
-
---
--- Name: dutchjohn_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.dutchjohn_gid_seq OWNED BY sources.ut_dutchjohn.gid;
 
-
---
--- Name: endikai; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.endikai (
     gid integer NOT NULL,
@@ -11662,12 +7866,6 @@ CREATE TABLE sources.endikai (
 );
 
 
-ALTER TABLE sources.endikai OWNER TO postgres;
-
---
--- Name: endikai_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.endikai_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -11676,18 +7874,8 @@ CREATE SEQUENCE sources.endikai_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.endikai_gid_seq OWNER TO postgres;
-
---
--- Name: endikai_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.endikai_gid_seq OWNED BY sources.endikai.gid;
 
-
---
--- Name: etopo1_rid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.etopo1_rid_seq
     START WITH 1
@@ -11696,12 +7884,6 @@ CREATE SEQUENCE sources.etopo1_rid_seq
     NO MAXVALUE
     CACHE 1;
 
-
-ALTER TABLE sources.etopo1_rid_seq OWNER TO postgres;
-
---
--- Name: europe_5m; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.europe_5m (
     gid integer NOT NULL,
@@ -11737,12 +7919,6 @@ CREATE TABLE sources.europe_5m (
 );
 
 
-ALTER TABLE sources.europe_5m OWNER TO postgres;
-
---
--- Name: europe_5m_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.europe_5m_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -11751,18 +7927,8 @@ CREATE SEQUENCE sources.europe_5m_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.europe_5m_gid_seq OWNER TO postgres;
-
---
--- Name: europe_5m_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.europe_5m_gid_seq OWNED BY sources.europe_5m.gid;
 
-
---
--- Name: europe_5m_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.europe_5m_lines (
     gid integer NOT NULL,
@@ -11774,12 +7940,6 @@ CREATE TABLE sources.europe_5m_lines (
 );
 
 
-ALTER TABLE sources.europe_5m_lines OWNER TO postgres;
-
---
--- Name: europe_5m_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.europe_5m_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -11788,18 +7948,8 @@ CREATE SEQUENCE sources.europe_5m_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.europe_5m_lines_gid_seq OWNER TO postgres;
-
---
--- Name: europe_5m_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.europe_5m_lines_gid_seq OWNED BY sources.europe_5m_lines.gid;
 
-
---
--- Name: gmna_faults; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.gmna_faults (
     gid integer NOT NULL,
@@ -11813,12 +7963,6 @@ CREATE TABLE sources.gmna_faults (
 );
 
 
-ALTER TABLE sources.gmna_faults OWNER TO postgres;
-
---
--- Name: faults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.faults_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -11827,18 +7971,8 @@ CREATE SEQUENCE sources.faults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.faults_gid_seq OWNER TO postgres;
-
---
--- Name: faults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.faults_gid_seq OWNED BY sources.gmna_faults.gid;
 
-
---
--- Name: florissant; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.florissant (
     gid integer NOT NULL,
@@ -11862,12 +7996,6 @@ CREATE TABLE sources.florissant (
 );
 
 
-ALTER TABLE sources.florissant OWNER TO postgres;
-
---
--- Name: florissant_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.florissant_lines (
     gid integer NOT NULL,
     objectid numeric,
@@ -11886,12 +8014,6 @@ CREATE TABLE sources.florissant_lines (
 );
 
 
-ALTER TABLE sources.florissant_lines OWNER TO postgres;
-
---
--- Name: florissant-lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources."florissant-lines_gid_seq"
     AS integer
     START WITH 1
@@ -11901,18 +8023,8 @@ CREATE SEQUENCE sources."florissant-lines_gid_seq"
     CACHE 1;
 
 
-ALTER TABLE sources."florissant-lines_gid_seq" OWNER TO postgres;
-
---
--- Name: florissant-lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources."florissant-lines_gid_seq" OWNED BY sources.florissant_lines.gid;
 
-
---
--- Name: florissant_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.florissant_gid_seq
     AS integer
@@ -11923,18 +8035,8 @@ CREATE SEQUENCE sources.florissant_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.florissant_gid_seq OWNER TO postgres;
-
---
--- Name: florissant_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.florissant_gid_seq OWNED BY sources.florissant.gid;
 
-
---
--- Name: france; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.france (
     gid integer NOT NULL,
@@ -11964,12 +8066,6 @@ CREATE TABLE sources.france (
 );
 
 
-ALTER TABLE sources.france OWNER TO postgres;
-
---
--- Name: france_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.france_gid_seq
     AS integer
     START WITH 1
@@ -11979,18 +8075,8 @@ CREATE SEQUENCE sources.france_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.france_gid_seq OWNER TO postgres;
-
---
--- Name: france_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.france_gid_seq OWNED BY sources.france.gid;
 
-
---
--- Name: france_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.france_lines (
     gid integer NOT NULL,
@@ -12011,12 +8097,6 @@ CREATE TABLE sources.france_lines (
 );
 
 
-ALTER TABLE sources.france_lines OWNER TO postgres;
-
---
--- Name: france_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.france_lines_gid_seq
     AS integer
     START WITH 1
@@ -12026,18 +8106,8 @@ CREATE SEQUENCE sources.france_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.france_lines_gid_seq OWNER TO postgres;
-
---
--- Name: france_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.france_lines_gid_seq OWNED BY sources.france_lines.gid;
 
-
---
--- Name: wv_gauley_river; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wv_gauley_river (
     gid integer NOT NULL,
@@ -12059,12 +8129,6 @@ CREATE TABLE sources.wv_gauley_river (
 );
 
 
-ALTER TABLE sources.wv_gauley_river OWNER TO postgres;
-
---
--- Name: gauleyriver_geo_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.gauleyriver_geo_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -12073,18 +8137,8 @@ CREATE SEQUENCE sources.gauleyriver_geo_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.gauleyriver_geo_gid_seq OWNER TO postgres;
-
---
--- Name: gauleyriver_geo_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.gauleyriver_geo_gid_seq OWNED BY sources.wv_gauley_river.gid;
 
-
---
--- Name: wv_gauley_river_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wv_gauley_river_lines (
     gid integer NOT NULL,
@@ -12105,12 +8159,6 @@ CREATE TABLE sources.wv_gauley_river_lines (
 );
 
 
-ALTER TABLE sources.wv_gauley_river_lines OWNER TO postgres;
-
---
--- Name: gauleyriver_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.gauleyriver_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -12119,18 +8167,8 @@ CREATE SEQUENCE sources.gauleyriver_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.gauleyriver_lines_gid_seq OWNER TO postgres;
-
---
--- Name: gauleyriver_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.gauleyriver_lines_gid_seq OWNED BY sources.wv_gauley_river_lines.gid;
 
-
---
--- Name: geo_lgm; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.geo_lgm (
     gid integer NOT NULL,
@@ -12141,12 +8179,6 @@ CREATE TABLE sources.geo_lgm (
 );
 
 
-ALTER TABLE sources.geo_lgm OWNER TO postgres;
-
---
--- Name: geo_ice_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.geo_ice_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -12155,18 +8187,8 @@ CREATE SEQUENCE sources.geo_ice_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.geo_ice_gid_seq OWNER TO postgres;
-
---
--- Name: geo_ice_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.geo_ice_gid_seq OWNED BY sources.geo_lgm.gid;
 
-
---
--- Name: geo_regions; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.geo_regions (
     gid integer NOT NULL,
@@ -12181,12 +8203,6 @@ CREATE TABLE sources.geo_regions (
     geom public.geometry(MultiPolygon,4326)
 );
 
-
-ALTER TABLE sources.geo_regions OWNER TO postgres;
-
---
--- Name: geo_regions_canada; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.geo_regions_canada (
     gid integer NOT NULL,
@@ -12218,12 +8234,6 @@ CREATE TABLE sources.geo_regions_canada (
 );
 
 
-ALTER TABLE sources.geo_regions_canada OWNER TO postgres;
-
---
--- Name: geo_regions_canada_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.geo_regions_canada_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -12232,18 +8242,8 @@ CREATE SEQUENCE sources.geo_regions_canada_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.geo_regions_canada_gid_seq OWNER TO postgres;
-
---
--- Name: geo_regions_canada_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.geo_regions_canada_gid_seq OWNED BY sources.geo_regions_canada.gid;
 
-
---
--- Name: geo_regions_europe; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.geo_regions_europe (
     gid integer NOT NULL,
@@ -12290,12 +8290,6 @@ CREATE TABLE sources.geo_regions_europe (
 );
 
 
-ALTER TABLE sources.geo_regions_europe OWNER TO postgres;
-
---
--- Name: geo_regions_europe_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.geo_regions_europe_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -12304,18 +8298,8 @@ CREATE SEQUENCE sources.geo_regions_europe_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.geo_regions_europe_gid_seq OWNER TO postgres;
-
---
--- Name: geo_regions_europe_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.geo_regions_europe_gid_seq OWNED BY sources.geo_regions_europe.gid;
 
-
---
--- Name: geo_regions_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.geo_regions_gid_seq
     START WITH 1
@@ -12325,18 +8309,8 @@ CREATE SEQUENCE sources.geo_regions_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.geo_regions_gid_seq OWNER TO postgres;
-
---
--- Name: geo_regions_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.geo_regions_gid_seq OWNED BY sources.geo_regions.gid;
 
-
---
--- Name: geo_regions_us; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.geo_regions_us (
     gid integer NOT NULL,
@@ -12356,12 +8330,6 @@ CREATE TABLE sources.geo_regions_us (
 );
 
 
-ALTER TABLE sources.geo_regions_us OWNER TO postgres;
-
---
--- Name: geo_regions_us_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.geo_regions_us_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -12370,18 +8338,8 @@ CREATE SEQUENCE sources.geo_regions_us_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.geo_regions_us_gid_seq OWNER TO postgres;
-
---
--- Name: geo_regions_us_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.geo_regions_us_gid_seq OWNED BY sources.geo_regions_us.gid;
 
-
---
--- Name: german_nuremburg; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.german_nuremburg (
     gid integer NOT NULL,
@@ -12421,12 +8379,6 @@ CREATE TABLE sources.german_nuremburg (
 );
 
 
-ALTER TABLE sources.german_nuremburg OWNER TO postgres;
-
---
--- Name: german_nuremburg_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.german_nuremburg_lines (
     gid integer NOT NULL,
     shape_leng numeric,
@@ -12438,12 +8390,6 @@ CREATE TABLE sources.german_nuremburg_lines (
 );
 
 
-ALTER TABLE sources.german_nuremburg_lines OWNER TO postgres;
-
---
--- Name: german_nuremburg_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.german_nuremburg_lines_gid_seq
     AS integer
     START WITH 1
@@ -12453,18 +8399,8 @@ CREATE SEQUENCE sources.german_nuremburg_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.german_nuremburg_lines_gid_seq OWNER TO postgres;
-
---
--- Name: german_nuremburg_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.german_nuremburg_lines_gid_seq OWNED BY sources.german_nuremburg_lines.gid;
 
-
---
--- Name: german_nurenburg_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.german_nurenburg_gid_seq
     AS integer
@@ -12475,18 +8411,8 @@ CREATE SEQUENCE sources.german_nurenburg_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.german_nurenburg_gid_seq OWNER TO postgres;
-
---
--- Name: german_nurenburg_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.german_nurenburg_gid_seq OWNED BY sources.german_nuremburg.gid;
 
-
---
--- Name: germany; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.germany (
     gid integer NOT NULL,
@@ -12516,12 +8442,6 @@ CREATE TABLE sources.germany (
 );
 
 
-ALTER TABLE sources.germany OWNER TO postgres;
-
---
--- Name: germany_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.germany_lines (
     gid integer NOT NULL,
     __gid numeric(10,0),
@@ -12535,12 +8455,6 @@ CREATE TABLE sources.germany_lines (
 );
 
 
-ALTER TABLE sources.germany_lines OWNER TO postgres;
-
---
--- Name: germanygeology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.germanygeology_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -12549,18 +8463,8 @@ CREATE SEQUENCE sources.germanygeology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.germanygeology_gid_seq OWNER TO postgres;
-
---
--- Name: germanygeology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.germanygeology_gid_seq OWNED BY sources.germany.gid;
 
-
---
--- Name: glacier_np_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.glacier_np_lines (
     gid integer NOT NULL,
@@ -12581,12 +8485,6 @@ CREATE TABLE sources.glacier_np_lines (
 );
 
 
-ALTER TABLE sources.glacier_np_lines OWNER TO postgres;
-
---
--- Name: glacier_dikes_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.glacier_dikes_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -12595,18 +8493,8 @@ CREATE SEQUENCE sources.glacier_dikes_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.glacier_dikes_gid_seq OWNER TO postgres;
-
---
--- Name: glacier_dikes_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.glacier_dikes_gid_seq OWNED BY sources.glacier_np_lines.gid;
 
-
---
--- Name: glaciernationalparkgeology; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.glaciernationalparkgeology (
     gid integer NOT NULL,
@@ -12632,12 +8520,6 @@ CREATE TABLE sources.glaciernationalparkgeology (
 );
 
 
-ALTER TABLE sources.glaciernationalparkgeology OWNER TO postgres;
-
---
--- Name: glaciernationalparkgeology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.glaciernationalparkgeology_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -12646,18 +8528,8 @@ CREATE SEQUENCE sources.glaciernationalparkgeology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.glaciernationalparkgeology_gid_seq OWNER TO postgres;
-
---
--- Name: glaciernationalparkgeology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.glaciernationalparkgeology_gid_seq OWNED BY sources.glaciernationalparkgeology.gid;
 
-
---
--- Name: glines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.glines_gid_seq
     START WITH 1
@@ -12667,18 +8539,8 @@ CREATE SEQUENCE sources.glines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.glines_gid_seq OWNER TO postgres;
-
---
--- Name: glines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.glines_gid_seq OWNED BY sources.germany_lines.gid;
 
-
---
--- Name: global2; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.global2 (
     gid integer NOT NULL,
@@ -12703,12 +8565,6 @@ CREATE TABLE sources.global2 (
 );
 
 
-ALTER TABLE sources.global2 OWNER TO postgres;
-
---
--- Name: global2_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.global2_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -12717,18 +8573,8 @@ CREATE SEQUENCE sources.global2_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.global2_gid_seq OWNER TO postgres;
-
---
--- Name: global2_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.global2_gid_seq OWNED BY sources.global2.gid;
 
-
---
--- Name: global2_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.global2_lines (
     gid integer NOT NULL,
@@ -12747,12 +8593,6 @@ CREATE TABLE sources.global2_lines (
 );
 
 
-ALTER TABLE sources.global2_lines OWNER TO postgres;
-
---
--- Name: global2_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.global2_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -12761,18 +8601,8 @@ CREATE SEQUENCE sources.global2_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.global2_lines_gid_seq OWNER TO postgres;
-
---
--- Name: global2_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.global2_lines_gid_seq OWNED BY sources.global2_lines.gid;
 
-
---
--- Name: global_ecoregions; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.global_ecoregions (
     gid integer NOT NULL,
@@ -12796,12 +8626,6 @@ CREATE TABLE sources.global_ecoregions (
 );
 
 
-ALTER TABLE sources.global_ecoregions OWNER TO postgres;
-
---
--- Name: global_ecoregions_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.global_ecoregions_gid_seq
     AS integer
     START WITH 1
@@ -12811,18 +8635,8 @@ CREATE SEQUENCE sources.global_ecoregions_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.global_ecoregions_gid_seq OWNER TO postgres;
-
---
--- Name: global_ecoregions_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.global_ecoregions_gid_seq OWNED BY sources.global_ecoregions.gid;
 
-
---
--- Name: ma_glouster; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ma_glouster (
     gid integer NOT NULL,
@@ -12844,12 +8658,6 @@ CREATE TABLE sources.ma_glouster (
 );
 
 
-ALTER TABLE sources.ma_glouster OWNER TO postgres;
-
---
--- Name: gloucester_rockport_geo2_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.gloucester_rockport_geo2_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -12858,18 +8666,8 @@ CREATE SEQUENCE sources.gloucester_rockport_geo2_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.gloucester_rockport_geo2_gid_seq OWNER TO postgres;
-
---
--- Name: gloucester_rockport_geo2_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.gloucester_rockport_geo2_gid_seq OWNED BY sources.ma_glouster.gid;
 
-
---
--- Name: gmna; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.gmna (
     gid integer,
@@ -12895,12 +8693,6 @@ CREATE TABLE sources.gmna (
     age_name character varying(150)
 );
 
-
-ALTER TABLE sources.gmna OWNER TO postgres;
-
---
--- Name: gmus; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.gmus (
     gid integer,
@@ -12938,12 +8730,6 @@ CREATE TABLE sources.gmus (
     fixlith text
 );
 
-
-ALTER TABLE sources.gmus OWNER TO postgres;
-
---
--- Name: gmus2; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.gmus2 (
     gid integer NOT NULL,
@@ -12991,12 +8777,6 @@ CREATE TABLE sources.gmus2 (
 );
 
 
-ALTER TABLE sources.gmus2 OWNER TO postgres;
-
---
--- Name: gmus2_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.gmus2_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -13005,18 +8785,8 @@ CREATE SEQUENCE sources.gmus2_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.gmus2_gid_seq OWNER TO postgres;
-
---
--- Name: gmus2_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.gmus2_gid_seq OWNED BY sources.gmus2.gid;
 
-
---
--- Name: gmus2_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.gmus2_lines (
     gid integer NOT NULL,
@@ -13038,12 +8808,6 @@ CREATE TABLE sources.gmus2_lines (
 );
 
 
-ALTER TABLE sources.gmus2_lines OWNER TO postgres;
-
---
--- Name: gmus2_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.gmus2_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -13052,18 +8816,8 @@ CREATE SEQUENCE sources.gmus2_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.gmus2_lines_gid_seq OWNER TO postgres;
-
---
--- Name: gmus2_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.gmus2_lines_gid_seq OWNED BY sources.gmus2_lines.gid;
 
-
---
--- Name: gmus_faults; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.gmus_faults (
     fnode_ integer,
@@ -13088,12 +8842,6 @@ CREATE TABLE sources.gmus_faults (
     CONSTRAINT enforce_srid_the_geom CHECK ((public.st_srid(the_geom) = 4326))
 );
 
-
-ALTER TABLE sources.gmus_faults OWNER TO postgres;
-
---
--- Name: gmus_old; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.gmus_old (
     gid integer,
@@ -13121,12 +8869,6 @@ CREATE TABLE sources.gmus_old (
 );
 
 
-ALTER TABLE sources.gmus_old OWNER TO postgres;
-
---
--- Name: grand_junction_geo_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.grand_junction_geo_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -13135,18 +8877,8 @@ CREATE SEQUENCE sources.grand_junction_geo_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.grand_junction_geo_gid_seq OWNER TO postgres;
-
---
--- Name: grand_junction_geo_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.grand_junction_geo_gid_seq OWNED BY sources.co_grandjunction.gid;
 
-
---
--- Name: grand_junction_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.grand_junction_lines_gid_seq
     START WITH 1
@@ -13156,18 +8888,8 @@ CREATE SEQUENCE sources.grand_junction_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.grand_junction_lines_gid_seq OWNER TO postgres;
-
---
--- Name: grand_junction_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.grand_junction_lines_gid_seq OWNED BY sources.co_grandjunction_lines.gid;
 
-
---
--- Name: grandcanyon; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.grandcanyon (
     gid integer NOT NULL,
@@ -13187,12 +8909,6 @@ CREATE TABLE sources.grandcanyon (
 );
 
 
-ALTER TABLE sources.grandcanyon OWNER TO postgres;
-
---
--- Name: grandcanyon_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.grandcanyon_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -13201,18 +8917,8 @@ CREATE SEQUENCE sources.grandcanyon_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.grandcanyon_gid_seq OWNER TO postgres;
-
---
--- Name: grandcanyon_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.grandcanyon_gid_seq OWNED BY sources.grandcanyon.gid;
 
-
---
--- Name: grandcanyon_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.grandcanyon_lines (
     gid integer NOT NULL,
@@ -13227,12 +8933,6 @@ CREATE TABLE sources.grandcanyon_lines (
 );
 
 
-ALTER TABLE sources.grandcanyon_lines OWNER TO postgres;
-
---
--- Name: grandcanyon_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.grandcanyon_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -13241,18 +8941,8 @@ CREATE SEQUENCE sources.grandcanyon_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.grandcanyon_lines_gid_seq OWNER TO postgres;
-
---
--- Name: grandcanyon_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.grandcanyon_lines_gid_seq OWNED BY sources.grandcanyon_lines.gid;
 
-
---
--- Name: grandcanyon_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.grandcanyon_points (
     gid integer NOT NULL,
@@ -13267,12 +8957,6 @@ CREATE TABLE sources.grandcanyon_points (
 );
 
 
-ALTER TABLE sources.grandcanyon_points OWNER TO postgres;
-
---
--- Name: grandcanyon_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.grandcanyon_points_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -13281,18 +8965,8 @@ CREATE SEQUENCE sources.grandcanyon_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.grandcanyon_points_gid_seq OWNER TO postgres;
-
---
--- Name: grandcanyon_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.grandcanyon_points_gid_seq OWNED BY sources.grandcanyon_points.gid;
 
-
---
--- Name: greatbasinnationalpark_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.greatbasinnationalpark_lines (
     gid integer NOT NULL,
@@ -13309,12 +8983,6 @@ CREATE TABLE sources.greatbasinnationalpark_lines (
 );
 
 
-ALTER TABLE sources.greatbasinnationalpark_lines OWNER TO postgres;
-
---
--- Name: greatbasin_contacts_faults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.greatbasin_contacts_faults_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -13323,18 +8991,8 @@ CREATE SEQUENCE sources.greatbasin_contacts_faults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.greatbasin_contacts_faults_gid_seq OWNER TO postgres;
-
---
--- Name: greatbasin_contacts_faults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.greatbasin_contacts_faults_gid_seq OWNED BY sources.greatbasinnationalpark_lines.gid;
 
-
---
--- Name: greatbasinnationalparkgeology; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.greatbasinnationalparkgeology (
     gid integer NOT NULL,
@@ -13357,12 +9015,6 @@ CREATE TABLE sources.greatbasinnationalparkgeology (
 );
 
 
-ALTER TABLE sources.greatbasinnationalparkgeology OWNER TO postgres;
-
---
--- Name: greatbasinnationalparkgeology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.greatbasinnationalparkgeology_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -13371,18 +9023,8 @@ CREATE SEQUENCE sources.greatbasinnationalparkgeology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.greatbasinnationalparkgeology_gid_seq OWNER TO postgres;
-
---
--- Name: greatbasinnationalparkgeology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.greatbasinnationalparkgeology_gid_seq OWNED BY sources.greatbasinnationalparkgeology.gid;
 
-
---
--- Name: greenwood_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.greenwood_lines_gid_seq
     START WITH 1
@@ -13392,18 +9034,8 @@ CREATE SEQUENCE sources.greenwood_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.greenwood_lines_gid_seq OWNER TO postgres;
-
---
--- Name: greenwood_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.greenwood_lines_gid_seq OWNED BY sources.al_greenwood_lines.gid;
 
-
---
--- Name: greenwood_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.greenwood_points_gid_seq
     START WITH 1
@@ -13413,18 +9045,8 @@ CREATE SEQUENCE sources.greenwood_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.greenwood_points_gid_seq OWNER TO postgres;
-
---
--- Name: greenwood_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.greenwood_points_gid_seq OWNED BY sources.al_greenwood_points.gid;
 
-
---
--- Name: greenwoodalgeology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.greenwoodalgeology_gid_seq
     START WITH 1
@@ -13434,18 +9056,8 @@ CREATE SEQUENCE sources.greenwoodalgeology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.greenwoodalgeology_gid_seq OWNER TO postgres;
-
---
--- Name: greenwoodalgeology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.greenwoodalgeology_gid_seq OWNED BY sources.al_greenwood.gid;
 
-
---
--- Name: gsd_co_geology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.gsd_co_geology_gid_seq
     START WITH 1
@@ -13455,18 +9067,8 @@ CREATE SEQUENCE sources.gsd_co_geology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.gsd_co_geology_gid_seq OWNER TO postgres;
-
---
--- Name: gsd_co_geology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.gsd_co_geology_gid_seq OWNED BY sources.co_greatsanddunes.gid;
 
-
---
--- Name: guam; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.guam (
     gid integer NOT NULL,
@@ -13487,12 +9089,6 @@ CREATE TABLE sources.guam (
 );
 
 
-ALTER TABLE sources.guam OWNER TO postgres;
-
---
--- Name: guamgeology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.guamgeology_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -13501,18 +9097,8 @@ CREATE SEQUENCE sources.guamgeology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.guamgeology_gid_seq OWNER TO postgres;
-
---
--- Name: guamgeology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.guamgeology_gid_seq OWNED BY sources.guam.gid;
 
-
---
--- Name: gumo; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.gumo (
     gid integer NOT NULL,
@@ -13537,12 +9123,6 @@ CREATE TABLE sources.gumo (
 );
 
 
-ALTER TABLE sources.gumo OWNER TO postgres;
-
---
--- Name: gumo_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.gumo_gid_seq
     AS integer
     START WITH 1
@@ -13552,18 +9132,8 @@ CREATE SEQUENCE sources.gumo_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.gumo_gid_seq OWNER TO postgres;
-
---
--- Name: gumo_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.gumo_gid_seq OWNED BY sources.gumo.gid;
 
-
---
--- Name: gumo_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.gumo_lines (
     gid integer NOT NULL,
@@ -13589,12 +9159,6 @@ CREATE TABLE sources.gumo_lines (
 );
 
 
-ALTER TABLE sources.gumo_lines OWNER TO postgres;
-
---
--- Name: gumo_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.gumo_lines_gid_seq
     AS integer
     START WITH 1
@@ -13604,18 +9168,8 @@ CREATE SEQUENCE sources.gumo_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.gumo_lines_gid_seq OWNER TO postgres;
-
---
--- Name: gumo_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.gumo_lines_gid_seq OWNED BY sources.gumo_lines.gid;
 
-
---
--- Name: gumo_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.gumo_points (
     gid integer NOT NULL,
@@ -13638,12 +9192,6 @@ CREATE TABLE sources.gumo_points (
 );
 
 
-ALTER TABLE sources.gumo_points OWNER TO postgres;
-
---
--- Name: gumo_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.gumo_points_gid_seq
     AS integer
     START WITH 1
@@ -13653,18 +9201,8 @@ CREATE SEQUENCE sources.gumo_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.gumo_points_gid_seq OWNER TO postgres;
-
---
--- Name: gumo_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.gumo_points_gid_seq OWNED BY sources.gumo_points.gid;
 
-
---
--- Name: hasty_geo_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.hasty_geo_gid_seq
     START WITH 1
@@ -13674,18 +9212,8 @@ CREATE SEQUENCE sources.hasty_geo_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.hasty_geo_gid_seq OWNER TO postgres;
-
---
--- Name: hasty_geo_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.hasty_geo_gid_seq OWNED BY sources.ar_hasty.gid;
 
-
---
--- Name: hasty_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.hasty_points_gid_seq
     START WITH 1
@@ -13695,18 +9223,8 @@ CREATE SEQUENCE sources.hasty_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.hasty_points_gid_seq OWNER TO postgres;
-
---
--- Name: hasty_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.hasty_points_gid_seq OWNED BY sources.ar_hasty_points.gid;
 
-
---
--- Name: hastylines2_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.hastylines2_gid_seq
     START WITH 1
@@ -13716,18 +9234,8 @@ CREATE SEQUENCE sources.hastylines2_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.hastylines2_gid_seq OWNER TO postgres;
-
---
--- Name: hastylines2_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.hastylines2_gid_seq OWNED BY sources.ar_hasty_lines.gid;
 
-
---
--- Name: hawaii; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.hawaii (
     gid integer NOT NULL,
@@ -13755,12 +9263,6 @@ CREATE TABLE sources.hawaii (
 );
 
 
-ALTER TABLE sources.hawaii OWNER TO postgres;
-
---
--- Name: hawaii_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.hawaii_lines (
     gid integer NOT NULL,
     island character varying(10),
@@ -13779,12 +9281,6 @@ CREATE TABLE sources.hawaii_lines (
 );
 
 
-ALTER TABLE sources.hawaii_lines OWNER TO postgres;
-
---
--- Name: hawaii_dikes_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.hawaii_dikes_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -13793,18 +9289,8 @@ CREATE SEQUENCE sources.hawaii_dikes_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.hawaii_dikes_gid_seq OWNER TO postgres;
-
---
--- Name: hawaii_dikes_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.hawaii_dikes_gid_seq OWNED BY sources.hawaii_lines.gid;
 
-
---
--- Name: hawaii_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.hawaii_gid_seq
     START WITH 1
@@ -13814,18 +9300,8 @@ CREATE SEQUENCE sources.hawaii_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.hawaii_gid_seq OWNER TO postgres;
-
---
--- Name: hawaii_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.hawaii_gid_seq OWNED BY sources.hawaii.gid;
 
-
---
--- Name: honduras; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.honduras (
     gid integer NOT NULL,
@@ -13853,12 +9329,6 @@ CREATE TABLE sources.honduras (
 );
 
 
-ALTER TABLE sources.honduras OWNER TO postgres;
-
---
--- Name: honduras_geo_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.honduras_geo_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -13867,18 +9337,8 @@ CREATE SEQUENCE sources.honduras_geo_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.honduras_geo_gid_seq OWNER TO postgres;
-
---
--- Name: honduras_geo_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.honduras_geo_gid_seq OWNED BY sources.honduras.gid;
 
-
---
--- Name: hot_springs_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.hot_springs_lines_gid_seq
     START WITH 1
@@ -13888,18 +9348,8 @@ CREATE SEQUENCE sources.hot_springs_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.hot_springs_lines_gid_seq OWNER TO postgres;
-
---
--- Name: hot_springs_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.hot_springs_lines_gid_seq OWNED BY sources.ar_hotsprings_np_lines.gid;
 
-
---
--- Name: hot_springs_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.hot_springs_points_gid_seq
     START WITH 1
@@ -13909,18 +9359,8 @@ CREATE SEQUENCE sources.hot_springs_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.hot_springs_points_gid_seq OWNER TO postgres;
-
---
--- Name: hot_springs_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.hot_springs_points_gid_seq OWNED BY sources.ar_hotsprings_np_points.gid;
 
-
---
--- Name: hotspringsnationalparkgeology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.hotspringsnationalparkgeology_gid_seq
     START WITH 1
@@ -13930,18 +9370,8 @@ CREATE SEQUENCE sources.hotspringsnationalparkgeology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.hotspringsnationalparkgeology_gid_seq OWNER TO postgres;
-
---
--- Name: hotspringsnationalparkgeology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.hotspringsnationalparkgeology_gid_seq OWNED BY sources.ar_hotsprings_np.gid;
 
-
---
--- Name: ut_huntington_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_huntington_lines (
     gid integer NOT NULL,
@@ -13962,12 +9392,6 @@ CREATE TABLE sources.ut_huntington_lines (
 );
 
 
-ALTER TABLE sources.ut_huntington_lines OWNER TO postgres;
-
---
--- Name: huntington_faults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.huntington_faults_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -13976,18 +9400,8 @@ CREATE SEQUENCE sources.huntington_faults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.huntington_faults_gid_seq OWNER TO postgres;
-
---
--- Name: huntington_faults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.huntington_faults_gid_seq OWNED BY sources.ut_huntington_lines.gid;
 
-
---
--- Name: ut_huntington; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_huntington (
     gid integer NOT NULL,
@@ -14006,12 +9420,6 @@ CREATE TABLE sources.ut_huntington (
 );
 
 
-ALTER TABLE sources.ut_huntington OWNER TO postgres;
-
---
--- Name: huntingtonutahgeology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.huntingtonutahgeology_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -14020,18 +9428,8 @@ CREATE SEQUENCE sources.huntingtonutahgeology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.huntingtonutahgeology_gid_seq OWNER TO postgres;
-
---
--- Name: huntingtonutahgeology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.huntingtonutahgeology_gid_seq OWNED BY sources.ut_huntington.gid;
 
-
---
--- Name: id_arco; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.id_arco (
     gid integer NOT NULL,
@@ -14054,12 +9452,6 @@ CREATE TABLE sources.id_arco (
 );
 
 
-ALTER TABLE sources.id_arco OWNER TO postgres;
-
---
--- Name: id_arco_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.id_arco_lines (
     gid integer NOT NULL,
     type character varying(255),
@@ -14071,12 +9463,6 @@ CREATE TABLE sources.id_arco_lines (
 );
 
 
-ALTER TABLE sources.id_arco_lines OWNER TO postgres;
-
---
--- Name: id_arco_lines_objectid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.id_arco_lines_objectid_seq
     AS integer
     START WITH 1
@@ -14086,18 +9472,8 @@ CREATE SEQUENCE sources.id_arco_lines_objectid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.id_arco_lines_objectid_seq OWNER TO postgres;
-
---
--- Name: id_arco_lines_objectid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.id_arco_lines_objectid_seq OWNED BY sources.id_arco_lines.gid;
 
-
---
--- Name: id_arco_objectid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.id_arco_objectid_seq
     AS integer
@@ -14108,18 +9484,8 @@ CREATE SEQUENCE sources.id_arco_objectid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.id_arco_objectid_seq OWNER TO postgres;
-
---
--- Name: id_arco_objectid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.id_arco_objectid_seq OWNED BY sources.id_arco.gid;
 
-
---
--- Name: id_bonners; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.id_bonners (
     gid integer NOT NULL,
@@ -14140,12 +9506,6 @@ CREATE TABLE sources.id_bonners (
 );
 
 
-ALTER TABLE sources.id_bonners OWNER TO postgres;
-
---
--- Name: id_bonners_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.id_bonners_lines (
     gid integer NOT NULL,
     type character varying(255),
@@ -14157,12 +9517,6 @@ CREATE TABLE sources.id_bonners_lines (
 );
 
 
-ALTER TABLE sources.id_bonners_lines OWNER TO postgres;
-
---
--- Name: id_bonners_lines_objectid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.id_bonners_lines_objectid_seq
     AS integer
     START WITH 1
@@ -14172,18 +9526,8 @@ CREATE SEQUENCE sources.id_bonners_lines_objectid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.id_bonners_lines_objectid_seq OWNER TO postgres;
-
---
--- Name: id_bonners_lines_objectid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.id_bonners_lines_objectid_seq OWNED BY sources.id_bonners_lines.gid;
 
-
---
--- Name: id_bonners_objectid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.id_bonners_objectid_seq
     AS integer
@@ -14194,18 +9538,8 @@ CREATE SEQUENCE sources.id_bonners_objectid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.id_bonners_objectid_seq OWNER TO postgres;
-
---
--- Name: id_bonners_objectid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.id_bonners_objectid_seq OWNED BY sources.id_bonners.gid;
 
-
---
--- Name: id_deadwood; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.id_deadwood (
     gid integer NOT NULL,
@@ -14234,12 +9568,6 @@ CREATE TABLE sources.id_deadwood (
 );
 
 
-ALTER TABLE sources.id_deadwood OWNER TO postgres;
-
---
--- Name: id_deadwood_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.id_deadwood_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -14248,18 +9576,8 @@ CREATE SEQUENCE sources.id_deadwood_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.id_deadwood_gid_seq OWNER TO postgres;
-
---
--- Name: id_deadwood_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.id_deadwood_gid_seq OWNED BY sources.id_deadwood.gid;
 
-
---
--- Name: id_deadwood_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.id_deadwood_lines (
     gid integer NOT NULL,
@@ -14292,12 +9610,6 @@ CREATE TABLE sources.id_deadwood_lines (
 );
 
 
-ALTER TABLE sources.id_deadwood_lines OWNER TO postgres;
-
---
--- Name: id_deadwood_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.id_deadwood_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -14306,18 +9618,8 @@ CREATE SEQUENCE sources.id_deadwood_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.id_deadwood_lines_gid_seq OWNER TO postgres;
-
---
--- Name: id_deadwood_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.id_deadwood_lines_gid_seq OWNED BY sources.id_deadwood_lines.gid;
 
-
---
--- Name: id_deadwood_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.id_deadwood_points (
     gid integer NOT NULL,
@@ -14353,12 +9655,6 @@ CREATE TABLE sources.id_deadwood_points (
 );
 
 
-ALTER TABLE sources.id_deadwood_points OWNER TO postgres;
-
---
--- Name: id_deadwood_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.id_deadwood_points_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -14367,18 +9663,8 @@ CREATE SEQUENCE sources.id_deadwood_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.id_deadwood_points_gid_seq OWNER TO postgres;
-
---
--- Name: id_deadwood_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.id_deadwood_points_gid_seq OWNED BY sources.id_deadwood_points.gid;
 
-
---
--- Name: id_fairfield; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.id_fairfield (
     gid integer NOT NULL,
@@ -14404,12 +9690,6 @@ CREATE TABLE sources.id_fairfield (
 );
 
 
-ALTER TABLE sources.id_fairfield OWNER TO postgres;
-
---
--- Name: id_fairfield_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.id_fairfield_lines (
     gid integer NOT NULL,
     type character varying(255),
@@ -14421,12 +9701,6 @@ CREATE TABLE sources.id_fairfield_lines (
 );
 
 
-ALTER TABLE sources.id_fairfield_lines OWNER TO postgres;
-
---
--- Name: id_fairfield_lines_objectid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.id_fairfield_lines_objectid_seq
     AS integer
     START WITH 1
@@ -14436,18 +9710,8 @@ CREATE SEQUENCE sources.id_fairfield_lines_objectid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.id_fairfield_lines_objectid_seq OWNER TO postgres;
-
---
--- Name: id_fairfield_lines_objectid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.id_fairfield_lines_objectid_seq OWNED BY sources.id_fairfield_lines.gid;
 
-
---
--- Name: id_fairfield_objectid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.id_fairfield_objectid_seq
     AS integer
@@ -14458,18 +9722,8 @@ CREATE SEQUENCE sources.id_fairfield_objectid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.id_fairfield_objectid_seq OWNER TO postgres;
-
---
--- Name: id_fairfield_objectid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.id_fairfield_objectid_seq OWNED BY sources.id_fairfield.gid;
 
-
---
--- Name: id_grangeville; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.id_grangeville (
     gid integer NOT NULL,
@@ -14490,12 +9744,6 @@ CREATE TABLE sources.id_grangeville (
     use_age text
 );
 
-
-ALTER TABLE sources.id_grangeville OWNER TO postgres;
-
---
--- Name: id_grangeville_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.id_grangeville_lines (
     gid integer NOT NULL,
@@ -14527,12 +9775,6 @@ CREATE TABLE sources.id_grangeville_lines (
 );
 
 
-ALTER TABLE sources.id_grangeville_lines OWNER TO postgres;
-
---
--- Name: id_grangeville_lines_objectid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.id_grangeville_lines_objectid_seq
     AS integer
     START WITH 1
@@ -14542,18 +9784,8 @@ CREATE SEQUENCE sources.id_grangeville_lines_objectid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.id_grangeville_lines_objectid_seq OWNER TO postgres;
-
---
--- Name: id_grangeville_lines_objectid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.id_grangeville_lines_objectid_seq OWNED BY sources.id_grangeville_lines.gid;
 
-
---
--- Name: id_grangeville_objectid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.id_grangeville_objectid_seq
     AS integer
@@ -14564,18 +9796,8 @@ CREATE SEQUENCE sources.id_grangeville_objectid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.id_grangeville_objectid_seq OWNER TO postgres;
-
---
--- Name: id_grangeville_objectid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.id_grangeville_objectid_seq OWNED BY sources.id_grangeville.gid;
 
-
---
--- Name: id_idahocity; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.id_idahocity (
     gid integer NOT NULL,
@@ -14597,12 +9819,6 @@ CREATE TABLE sources.id_idahocity (
 );
 
 
-ALTER TABLE sources.id_idahocity OWNER TO postgres;
-
---
--- Name: id_idahocity_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.id_idahocity_lines (
     gid integer NOT NULL,
     type character varying(255),
@@ -14614,12 +9830,6 @@ CREATE TABLE sources.id_idahocity_lines (
 );
 
 
-ALTER TABLE sources.id_idahocity_lines OWNER TO postgres;
-
---
--- Name: id_idahocity_lines_objectid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.id_idahocity_lines_objectid_seq
     AS integer
     START WITH 1
@@ -14629,18 +9839,8 @@ CREATE SEQUENCE sources.id_idahocity_lines_objectid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.id_idahocity_lines_objectid_seq OWNER TO postgres;
-
---
--- Name: id_idahocity_lines_objectid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.id_idahocity_lines_objectid_seq OWNED BY sources.id_idahocity_lines.gid;
 
-
---
--- Name: id_idahocity_objectid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.id_idahocity_objectid_seq
     AS integer
@@ -14651,18 +9851,8 @@ CREATE SEQUENCE sources.id_idahocity_objectid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.id_idahocity_objectid_seq OWNER TO postgres;
-
---
--- Name: id_idahocity_objectid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.id_idahocity_objectid_seq OWNED BY sources.id_idahocity.gid;
 
-
---
--- Name: id_murphy; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.id_murphy (
     gid integer NOT NULL,
@@ -14685,12 +9875,6 @@ CREATE TABLE sources.id_murphy (
 );
 
 
-ALTER TABLE sources.id_murphy OWNER TO postgres;
-
---
--- Name: id_murphy_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.id_murphy_lines (
     gid integer NOT NULL,
     type character varying(255),
@@ -14703,12 +9887,6 @@ CREATE TABLE sources.id_murphy_lines (
 );
 
 
-ALTER TABLE sources.id_murphy_lines OWNER TO postgres;
-
---
--- Name: id_murphy_lines_objectid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.id_murphy_lines_objectid_seq
     AS integer
     START WITH 1
@@ -14718,18 +9896,8 @@ CREATE SEQUENCE sources.id_murphy_lines_objectid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.id_murphy_lines_objectid_seq OWNER TO postgres;
-
---
--- Name: id_murphy_lines_objectid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.id_murphy_lines_objectid_seq OWNED BY sources.id_murphy_lines.gid;
 
-
---
--- Name: id_murphy_objectid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.id_murphy_objectid_seq
     AS integer
@@ -14740,18 +9908,8 @@ CREATE SEQUENCE sources.id_murphy_objectid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.id_murphy_objectid_seq OWNER TO postgres;
-
---
--- Name: id_murphy_objectid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.id_murphy_objectid_seq OWNED BY sources.id_murphy.gid;
 
-
---
--- Name: id_salmon; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.id_salmon (
     objectid integer NOT NULL,
@@ -14774,12 +9932,6 @@ CREATE TABLE sources.id_salmon (
 );
 
 
-ALTER TABLE sources.id_salmon OWNER TO postgres;
-
---
--- Name: id_salmon_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.id_salmon_gid_seq
     AS integer
     START WITH 1
@@ -14789,18 +9941,8 @@ CREATE SEQUENCE sources.id_salmon_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.id_salmon_gid_seq OWNER TO postgres;
-
---
--- Name: id_salmon_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.id_salmon_gid_seq OWNED BY sources.id_salmon.gid;
 
-
---
--- Name: id_salmon_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.id_salmon_lines (
     objectid integer NOT NULL,
@@ -14814,12 +9956,6 @@ CREATE TABLE sources.id_salmon_lines (
 );
 
 
-ALTER TABLE sources.id_salmon_lines OWNER TO postgres;
-
---
--- Name: id_salmon_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.id_salmon_lines_gid_seq
     AS integer
     START WITH 1
@@ -14829,18 +9965,8 @@ CREATE SEQUENCE sources.id_salmon_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.id_salmon_lines_gid_seq OWNER TO postgres;
-
---
--- Name: id_salmon_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.id_salmon_lines_gid_seq OWNED BY sources.id_salmon_lines.gid;
 
-
---
--- Name: id_salmon_lines_objectid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.id_salmon_lines_objectid_seq
     AS integer
@@ -14851,18 +9977,8 @@ CREATE SEQUENCE sources.id_salmon_lines_objectid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.id_salmon_lines_objectid_seq OWNER TO postgres;
-
---
--- Name: id_salmon_lines_objectid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.id_salmon_lines_objectid_seq OWNED BY sources.id_salmon_lines.objectid;
 
-
---
--- Name: id_salmon_objectid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.id_salmon_objectid_seq
     AS integer
@@ -14873,18 +9989,8 @@ CREATE SEQUENCE sources.id_salmon_objectid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.id_salmon_objectid_seq OWNER TO postgres;
-
---
--- Name: id_salmon_objectid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.id_salmon_objectid_seq OWNED BY sources.id_salmon.objectid;
 
-
---
--- Name: id_sandpoint; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.id_sandpoint (
     gid integer NOT NULL,
@@ -14904,12 +10010,6 @@ CREATE TABLE sources.id_sandpoint (
     late_id integer
 );
 
-
-ALTER TABLE sources.id_sandpoint OWNER TO postgres;
-
---
--- Name: id_sandpoint_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.id_sandpoint_lines (
     gid integer NOT NULL,
@@ -14941,12 +10041,6 @@ CREATE TABLE sources.id_sandpoint_lines (
 );
 
 
-ALTER TABLE sources.id_sandpoint_lines OWNER TO postgres;
-
---
--- Name: id_sandpoint_lines_objectid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.id_sandpoint_lines_objectid_seq
     AS integer
     START WITH 1
@@ -14956,18 +10050,8 @@ CREATE SEQUENCE sources.id_sandpoint_lines_objectid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.id_sandpoint_lines_objectid_seq OWNER TO postgres;
-
---
--- Name: id_sandpoint_lines_objectid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.id_sandpoint_lines_objectid_seq OWNED BY sources.id_sandpoint_lines.gid;
 
-
---
--- Name: id_sandpoint_objectid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.id_sandpoint_objectid_seq
     AS integer
@@ -14978,18 +10062,8 @@ CREATE SEQUENCE sources.id_sandpoint_objectid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.id_sandpoint_objectid_seq OWNER TO postgres;
-
---
--- Name: id_sandpoint_objectid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.id_sandpoint_objectid_seq OWNED BY sources.id_sandpoint.gid;
 
-
---
--- Name: id_twinfalls; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.id_twinfalls (
     gid integer NOT NULL,
@@ -15013,12 +10087,6 @@ CREATE TABLE sources.id_twinfalls (
 );
 
 
-ALTER TABLE sources.id_twinfalls OWNER TO postgres;
-
---
--- Name: id_twinfalls_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.id_twinfalls_lines (
     gid integer NOT NULL,
     type character varying(255),
@@ -15031,12 +10099,6 @@ CREATE TABLE sources.id_twinfalls_lines (
 );
 
 
-ALTER TABLE sources.id_twinfalls_lines OWNER TO postgres;
-
---
--- Name: id_twinfalls_lines_objectid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.id_twinfalls_lines_objectid_seq
     AS integer
     START WITH 1
@@ -15046,18 +10108,8 @@ CREATE SEQUENCE sources.id_twinfalls_lines_objectid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.id_twinfalls_lines_objectid_seq OWNER TO postgres;
-
---
--- Name: id_twinfalls_lines_objectid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.id_twinfalls_lines_objectid_seq OWNED BY sources.id_twinfalls_lines.gid;
 
-
---
--- Name: id_twinfalls_objectid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.id_twinfalls_objectid_seq
     AS integer
@@ -15068,18 +10120,8 @@ CREATE SEQUENCE sources.id_twinfalls_objectid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.id_twinfalls_objectid_seq OWNER TO postgres;
-
---
--- Name: id_twinfalls_objectid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.id_twinfalls_objectid_seq OWNED BY sources.id_twinfalls.gid;
 
-
---
--- Name: in_allen; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.in_allen (
     gid integer NOT NULL,
@@ -15100,12 +10142,6 @@ CREATE TABLE sources.in_allen (
 );
 
 
-ALTER TABLE sources.in_allen OWNER TO postgres;
-
---
--- Name: in_allen_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.in_allen_gid_seq
     AS integer
     START WITH 1
@@ -15115,18 +10151,8 @@ CREATE SEQUENCE sources.in_allen_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.in_allen_gid_seq OWNER TO postgres;
-
---
--- Name: in_allen_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.in_allen_gid_seq OWNED BY sources.in_allen.gid;
 
-
---
--- Name: in_bartholomew; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.in_bartholomew (
     gid integer NOT NULL,
@@ -15155,12 +10181,6 @@ CREATE TABLE sources.in_bartholomew (
 );
 
 
-ALTER TABLE sources.in_bartholomew OWNER TO postgres;
-
---
--- Name: in_lawrence; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.in_lawrence (
     gid integer NOT NULL,
     objectid numeric,
@@ -15184,12 +10204,6 @@ CREATE TABLE sources.in_lawrence (
 );
 
 
-ALTER TABLE sources.in_lawrence OWNER TO postgres;
-
---
--- Name: in_lawrence_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.in_lawrence_gid_seq
     AS integer
     START WITH 1
@@ -15199,18 +10213,8 @@ CREATE SEQUENCE sources.in_lawrence_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.in_lawrence_gid_seq OWNER TO postgres;
-
---
--- Name: in_lawrence_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.in_lawrence_gid_seq OWNED BY sources.in_lawrence.gid;
 
-
---
--- Name: in_lawrence_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.in_lawrence_lines (
     gid integer NOT NULL,
@@ -15230,12 +10234,6 @@ CREATE TABLE sources.in_lawrence_lines (
 );
 
 
-ALTER TABLE sources.in_lawrence_lines OWNER TO postgres;
-
---
--- Name: in_lawrence_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.in_lawrence_lines_gid_seq
     AS integer
     START WITH 1
@@ -15245,18 +10243,8 @@ CREATE SEQUENCE sources.in_lawrence_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.in_lawrence_lines_gid_seq OWNER TO postgres;
-
---
--- Name: in_lawrence_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.in_lawrence_lines_gid_seq OWNED BY sources.in_lawrence_lines.gid;
 
-
---
--- Name: in_marion; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.in_marion (
     gid integer NOT NULL,
@@ -15278,12 +10266,6 @@ CREATE TABLE sources.in_marion (
 );
 
 
-ALTER TABLE sources.in_marion OWNER TO postgres;
-
---
--- Name: in_marion_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.in_marion_gid_seq
     AS integer
     START WITH 1
@@ -15293,18 +10275,8 @@ CREATE SEQUENCE sources.in_marion_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.in_marion_gid_seq OWNER TO postgres;
-
---
--- Name: in_marion_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.in_marion_gid_seq OWNED BY sources.in_marion.gid;
 
-
---
--- Name: in_morresville_w; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.in_morresville_w (
     gid integer NOT NULL,
@@ -15324,12 +10296,6 @@ CREATE TABLE sources.in_morresville_w (
 );
 
 
-ALTER TABLE sources.in_morresville_w OWNER TO postgres;
-
---
--- Name: in_morresville_w_objectid_1_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.in_morresville_w_objectid_1_seq
     AS integer
     START WITH 1
@@ -15339,18 +10305,8 @@ CREATE SEQUENCE sources.in_morresville_w_objectid_1_seq
     CACHE 1;
 
 
-ALTER TABLE sources.in_morresville_w_objectid_1_seq OWNER TO postgres;
-
---
--- Name: in_morresville_w_objectid_1_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.in_morresville_w_objectid_1_seq OWNED BY sources.in_morresville_w.gid;
 
-
---
--- Name: in_swhitleyw; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.in_swhitleyw (
     gid integer NOT NULL,
@@ -15375,12 +10331,6 @@ CREATE TABLE sources.in_swhitleyw (
 );
 
 
-ALTER TABLE sources.in_swhitleyw OWNER TO postgres;
-
---
--- Name: in_swhitleyw_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.in_swhitleyw_gid_seq
     AS integer
     START WITH 1
@@ -15390,18 +10340,8 @@ CREATE SEQUENCE sources.in_swhitleyw_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.in_swhitleyw_gid_seq OWNER TO postgres;
-
---
--- Name: in_swhitleyw_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.in_swhitleyw_gid_seq OWNED BY sources.in_swhitleyw.gid;
 
-
---
--- Name: iowa; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.iowa (
     gid integer NOT NULL,
@@ -15417,12 +10357,6 @@ CREATE TABLE sources.iowa (
     late_id integer
 );
 
-
-ALTER TABLE sources.iowa OWNER TO postgres;
-
---
--- Name: iowa_co_wi; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.iowa_co_wi (
     gid integer NOT NULL,
@@ -15440,12 +10374,6 @@ CREATE TABLE sources.iowa_co_wi (
 );
 
 
-ALTER TABLE sources.iowa_co_wi OWNER TO postgres;
-
---
--- Name: iowa_co_wi_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.iowa_co_wi_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -15454,18 +10382,8 @@ CREATE SEQUENCE sources.iowa_co_wi_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.iowa_co_wi_gid_seq OWNER TO postgres;
-
---
--- Name: iowa_co_wi_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.iowa_co_wi_gid_seq OWNED BY sources.iowa_co_wi.gid;
 
-
---
--- Name: iowa_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.iowa_gid_seq
     START WITH 1
@@ -15475,18 +10393,8 @@ CREATE SEQUENCE sources.iowa_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.iowa_gid_seq OWNER TO postgres;
-
---
--- Name: iowa_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.iowa_gid_seq OWNED BY sources.iowa.gid;
 
-
---
--- Name: iowa_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.iowa_lines (
     gid integer NOT NULL,
@@ -15497,12 +10405,6 @@ CREATE TABLE sources.iowa_lines (
 );
 
 
-ALTER TABLE sources.iowa_lines OWNER TO postgres;
-
---
--- Name: iowa_lines2_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.iowa_lines2_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -15511,18 +10413,8 @@ CREATE SEQUENCE sources.iowa_lines2_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.iowa_lines2_gid_seq OWNER TO postgres;
-
---
--- Name: iowa_lines2_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.iowa_lines2_gid_seq OWNED BY sources.iowa_lines.gid;
 
-
---
--- Name: iran; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.iran (
     gid integer NOT NULL,
@@ -15537,12 +10429,6 @@ CREATE TABLE sources.iran (
 );
 
 
-ALTER TABLE sources.iran OWNER TO postgres;
-
---
--- Name: iran_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.iran_gid_seq
     AS integer
     START WITH 1
@@ -15552,18 +10438,8 @@ CREATE SEQUENCE sources.iran_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.iran_gid_seq OWNER TO postgres;
-
---
--- Name: iran_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.iran_gid_seq OWNED BY sources.iran.gid;
 
-
---
--- Name: iran_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.iran_lines (
     gid integer NOT NULL,
@@ -15574,12 +10450,6 @@ CREATE TABLE sources.iran_lines (
 );
 
 
-ALTER TABLE sources.iran_lines OWNER TO postgres;
-
---
--- Name: iran_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.iran_lines_gid_seq
     AS integer
     START WITH 1
@@ -15589,18 +10459,8 @@ CREATE SEQUENCE sources.iran_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.iran_lines_gid_seq OWNER TO postgres;
-
---
--- Name: iran_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.iran_lines_gid_seq OWNED BY sources.iran_lines.gid;
 
-
---
--- Name: jaspergeo_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.jaspergeo_gid_seq
     START WITH 1
@@ -15610,18 +10470,8 @@ CREATE SEQUENCE sources.jaspergeo_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.jaspergeo_gid_seq OWNER TO postgres;
-
---
--- Name: jaspergeo_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.jaspergeo_gid_seq OWNED BY sources.ar_jasper.gid;
 
-
---
--- Name: jasperlines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.jasperlines_gid_seq
     START WITH 1
@@ -15631,18 +10481,8 @@ CREATE SEQUENCE sources.jasperlines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.jasperlines_gid_seq OWNER TO postgres;
-
---
--- Name: jasperlines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.jasperlines_gid_seq OWNED BY sources.ar_jasper_lines.gid;
 
-
---
--- Name: joshuatree; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.joshuatree (
     gid integer NOT NULL,
@@ -15663,12 +10503,6 @@ CREATE TABLE sources.joshuatree (
 );
 
 
-ALTER TABLE sources.joshuatree OWNER TO postgres;
-
---
--- Name: joshuatree_faults; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.joshuatree_faults (
     gid integer NOT NULL,
     geologicfe character varying(254),
@@ -15688,12 +10522,6 @@ CREATE TABLE sources.joshuatree_faults (
 );
 
 
-ALTER TABLE sources.joshuatree_faults OWNER TO postgres;
-
---
--- Name: joshuatree_faults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.joshuatree_faults_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -15702,18 +10530,8 @@ CREATE SEQUENCE sources.joshuatree_faults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.joshuatree_faults_gid_seq OWNER TO postgres;
-
---
--- Name: joshuatree_faults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.joshuatree_faults_gid_seq OWNED BY sources.joshuatree_faults.gid;
 
-
---
--- Name: joshuatree_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.joshuatree_gid_seq
     START WITH 1
@@ -15723,18 +10541,8 @@ CREATE SEQUENCE sources.joshuatree_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.joshuatree_gid_seq OWNER TO postgres;
-
---
--- Name: joshuatree_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.joshuatree_gid_seq OWNED BY sources.joshuatree.gid;
 
-
---
--- Name: ky24k; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ky24k (
     gid integer NOT NULL,
@@ -15771,12 +10579,6 @@ CREATE TABLE sources.ky24k (
 );
 
 
-ALTER TABLE sources.ky24k OWNER TO postgres;
-
---
--- Name: ky24k_faults; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ky24k_faults (
     gid integer NOT NULL,
     identifier character varying(254),
@@ -15808,12 +10610,6 @@ CREATE TABLE sources.ky24k_faults (
 );
 
 
-ALTER TABLE sources.ky24k_faults OWNER TO postgres;
-
---
--- Name: ky24k_faults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ky24k_faults_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -15822,18 +10618,8 @@ CREATE SEQUENCE sources.ky24k_faults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ky24k_faults_gid_seq OWNER TO postgres;
-
---
--- Name: ky24k_faults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ky24k_faults_gid_seq OWNED BY sources.ky24k_faults.gid;
 
-
---
--- Name: ky24k_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.ky24k_gid_seq
     START WITH 1
@@ -15843,18 +10629,8 @@ CREATE SEQUENCE sources.ky24k_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ky24k_gid_seq OWNER TO postgres;
-
---
--- Name: ky24k_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ky24k_gid_seq OWNED BY sources.ky24k.gid;
 
-
---
--- Name: ky_descrip; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ky_descrip (
     id integer NOT NULL,
@@ -15862,12 +10638,6 @@ CREATE TABLE sources.ky_descrip (
     new_desc text
 );
 
-
-ALTER TABLE sources.ky_descrip OWNER TO postgres;
-
---
--- Name: ky_descrip_id_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.ky_descrip_id_seq
     START WITH 1
@@ -15877,18 +10647,8 @@ CREATE SEQUENCE sources.ky_descrip_id_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ky_descrip_id_seq OWNER TO postgres;
-
---
--- Name: ky_descrip_id_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ky_descrip_id_seq OWNED BY sources.ky_descrip.id;
 
-
---
--- Name: wi_lacrosse; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wi_lacrosse (
     gid integer NOT NULL,
@@ -15910,12 +10670,6 @@ CREATE TABLE sources.wi_lacrosse (
 );
 
 
-ALTER TABLE sources.wi_lacrosse OWNER TO postgres;
-
---
--- Name: lacrosse_geo_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.lacrosse_geo_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -15924,18 +10678,8 @@ CREATE SEQUENCE sources.lacrosse_geo_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.lacrosse_geo_gid_seq OWNER TO postgres;
-
---
--- Name: lacrosse_geo_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.lacrosse_geo_gid_seq OWNED BY sources.wi_lacrosse.gid;
 
-
---
--- Name: lake_mead; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.lake_mead (
     gid integer NOT NULL,
@@ -15956,12 +10700,6 @@ CREATE TABLE sources.lake_mead (
 );
 
 
-ALTER TABLE sources.lake_mead OWNER TO postgres;
-
---
--- Name: lake_mead_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.lake_mead_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -15970,18 +10708,8 @@ CREATE SEQUENCE sources.lake_mead_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.lake_mead_gid_seq OWNER TO postgres;
-
---
--- Name: lake_mead_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.lake_mead_gid_seq OWNED BY sources.lake_mead.gid;
 
-
---
--- Name: lake_mead_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.lake_mead_lines (
     gid integer,
@@ -15992,12 +10720,6 @@ CREATE TABLE sources.lake_mead_lines (
     new_direction text
 );
 
-
-ALTER TABLE sources.lake_mead_lines OWNER TO postgres;
-
---
--- Name: laketahoe; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.laketahoe (
     gid integer NOT NULL,
@@ -16017,12 +10739,6 @@ CREATE TABLE sources.laketahoe (
 );
 
 
-ALTER TABLE sources.laketahoe OWNER TO postgres;
-
---
--- Name: laketahoe_geology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.laketahoe_geology_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -16031,18 +10747,8 @@ CREATE SEQUENCE sources.laketahoe_geology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.laketahoe_geology_gid_seq OWNER TO postgres;
-
---
--- Name: laketahoe_geology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.laketahoe_geology_gid_seq OWNED BY sources.laketahoe.gid;
 
-
---
--- Name: laketahoe_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.laketahoe_lines (
     gid integer NOT NULL,
@@ -16055,12 +10761,6 @@ CREATE TABLE sources.laketahoe_lines (
 );
 
 
-ALTER TABLE sources.laketahoe_lines OWNER TO postgres;
-
---
--- Name: laketahoe_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.laketahoe_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -16069,18 +10769,8 @@ CREATE SEQUENCE sources.laketahoe_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.laketahoe_lines_gid_seq OWNER TO postgres;
-
---
--- Name: laketahoe_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.laketahoe_lines_gid_seq OWNED BY sources.laketahoe_lines.gid;
 
-
---
--- Name: laketahoe_point; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.laketahoe_point (
     gid integer NOT NULL,
@@ -16094,12 +10784,6 @@ CREATE TABLE sources.laketahoe_point (
 );
 
 
-ALTER TABLE sources.laketahoe_point OWNER TO postgres;
-
---
--- Name: laketahoe_point_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.laketahoe_point_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -16108,18 +10792,8 @@ CREATE SEQUENCE sources.laketahoe_point_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.laketahoe_point_gid_seq OWNER TO postgres;
-
---
--- Name: laketahoe_point_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.laketahoe_point_gid_seq OWNED BY sources.laketahoe_point.gid;
 
-
---
--- Name: wy_laramie; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_laramie (
     gid integer NOT NULL,
@@ -16143,12 +10817,6 @@ CREATE TABLE sources.wy_laramie (
 );
 
 
-ALTER TABLE sources.wy_laramie OWNER TO postgres;
-
---
--- Name: laramie_geo_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.laramie_geo_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -16157,18 +10825,8 @@ CREATE SEQUENCE sources.laramie_geo_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.laramie_geo_gid_seq OWNER TO postgres;
-
---
--- Name: laramie_geo_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.laramie_geo_gid_seq OWNED BY sources.wy_laramie.gid;
 
-
---
--- Name: wy_laramie_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_laramie_lines (
     gid integer NOT NULL,
@@ -16188,12 +10846,6 @@ CREATE TABLE sources.wy_laramie_lines (
 );
 
 
-ALTER TABLE sources.wy_laramie_lines OWNER TO postgres;
-
---
--- Name: laramie_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.laramie_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -16202,18 +10854,8 @@ CREATE SEQUENCE sources.laramie_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.laramie_lines_gid_seq OWNER TO postgres;
-
---
--- Name: laramie_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.laramie_lines_gid_seq OWNED BY sources.wy_laramie_lines.gid;
 
-
---
--- Name: lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.lines_gid_seq
     AS integer
@@ -16224,18 +10866,8 @@ CREATE SEQUENCE sources.lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.lines_gid_seq OWNER TO postgres;
-
---
--- Name: lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.lines_gid_seq OWNED BY sources.africa_lines.gid;
 
-
---
--- Name: lissadellaustralia; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.lissadellaustralia (
     gid integer NOT NULL,
@@ -16262,12 +10894,6 @@ CREATE TABLE sources.lissadellaustralia (
 );
 
 
-ALTER TABLE sources.lissadellaustralia OWNER TO postgres;
-
---
--- Name: lissadellaustralia_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.lissadellaustralia_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -16276,18 +10902,8 @@ CREATE SEQUENCE sources.lissadellaustralia_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.lissadellaustralia_gid_seq OWNER TO postgres;
-
---
--- Name: lissadellaustralia_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.lissadellaustralia_gid_seq OWNED BY sources.lissadellaustralia.gid;
 
-
---
--- Name: ut_logan_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_logan_lines (
     gid integer NOT NULL,
@@ -16308,12 +10924,6 @@ CREATE TABLE sources.ut_logan_lines (
 );
 
 
-ALTER TABLE sources.ut_logan_lines OWNER TO postgres;
-
---
--- Name: logan_faults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.logan_faults_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -16322,18 +10932,8 @@ CREATE SEQUENCE sources.logan_faults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.logan_faults_gid_seq OWNER TO postgres;
-
---
--- Name: logan_faults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.logan_faults_gid_seq OWNED BY sources.ut_logan_lines.gid;
 
-
---
--- Name: long_beach_ca_geo_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.long_beach_ca_geo_gid_seq
     START WITH 1
@@ -16343,18 +10943,8 @@ CREATE SEQUENCE sources.long_beach_ca_geo_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.long_beach_ca_geo_gid_seq OWNER TO postgres;
-
---
--- Name: long_beach_ca_geo_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.long_beach_ca_geo_gid_seq OWNED BY sources.ca_long_beach.gid;
 
-
---
--- Name: long_beach_ca_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.long_beach_ca_lines_gid_seq
     START WITH 1
@@ -16364,18 +10954,8 @@ CREATE SEQUENCE sources.long_beach_ca_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.long_beach_ca_lines_gid_seq OWNER TO postgres;
-
---
--- Name: long_beach_ca_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.long_beach_ca_lines_gid_seq OWNED BY sources.ca_long_beach_lines.gid;
 
-
---
--- Name: long_beach_ca_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.long_beach_ca_points_gid_seq
     START WITH 1
@@ -16385,18 +10965,8 @@ CREATE SEQUENCE sources.long_beach_ca_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.long_beach_ca_points_gid_seq OWNER TO postgres;
-
---
--- Name: long_beach_ca_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.long_beach_ca_points_gid_seq OWNED BY sources.ca_long_beach_points.gid;
 
-
---
--- Name: los_angeles_geo_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.los_angeles_geo_gid_seq
     START WITH 1
@@ -16406,18 +10976,8 @@ CREATE SEQUENCE sources.los_angeles_geo_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.los_angeles_geo_gid_seq OWNER TO postgres;
-
---
--- Name: los_angeles_geo_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.los_angeles_geo_gid_seq OWNED BY sources.ca_los_angeles.gid;
 
-
---
--- Name: los_angeles_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.los_angeles_lines_gid_seq
     START WITH 1
@@ -16427,18 +10987,8 @@ CREATE SEQUENCE sources.los_angeles_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.los_angeles_lines_gid_seq OWNER TO postgres;
-
---
--- Name: los_angeles_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.los_angeles_lines_gid_seq OWNED BY sources.ca_los_angeles_lines.gid;
 
-
---
--- Name: ma_glouster_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ma_glouster_lines (
     gid integer NOT NULL,
@@ -16456,12 +11006,6 @@ CREATE TABLE sources.ma_glouster_lines (
     new_type text
 );
 
-
-ALTER TABLE sources.ma_glouster_lines OWNER TO postgres;
-
---
--- Name: manitoba; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.manitoba (
     gid integer NOT NULL,
@@ -16490,12 +11034,6 @@ CREATE TABLE sources.manitoba (
 );
 
 
-ALTER TABLE sources.manitoba OWNER TO postgres;
-
---
--- Name: manitoba_faults; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.manitoba_faults (
     gid integer NOT NULL,
     faults_ln_ numeric(10,0),
@@ -16506,12 +11044,6 @@ CREATE TABLE sources.manitoba_faults (
 );
 
 
-ALTER TABLE sources.manitoba_faults OWNER TO postgres;
-
---
--- Name: manitoba_faults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.manitoba_faults_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -16520,18 +11052,8 @@ CREATE SEQUENCE sources.manitoba_faults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.manitoba_faults_gid_seq OWNER TO postgres;
-
---
--- Name: manitoba_faults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.manitoba_faults_gid_seq OWNED BY sources.manitoba_faults.gid;
 
-
---
--- Name: manitoba_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.manitoba_gid_seq
     START WITH 1
@@ -16541,18 +11063,8 @@ CREATE SEQUENCE sources.manitoba_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.manitoba_gid_seq OWNER TO postgres;
-
---
--- Name: manitoba_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.manitoba_gid_seq OWNED BY sources.manitoba.gid;
 
-
---
--- Name: ut_manti_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_manti_lines (
     gid integer NOT NULL,
@@ -16573,12 +11085,6 @@ CREATE TABLE sources.ut_manti_lines (
 );
 
 
-ALTER TABLE sources.ut_manti_lines OWNER TO postgres;
-
---
--- Name: manti_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.manti_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -16587,18 +11093,8 @@ CREATE SEQUENCE sources.manti_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.manti_lines_gid_seq OWNER TO postgres;
-
---
--- Name: manti_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.manti_lines_gid_seq OWNED BY sources.ut_manti_lines.gid;
 
-
---
--- Name: ut_manti; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_manti (
     gid integer NOT NULL,
@@ -16617,12 +11113,6 @@ CREATE TABLE sources.ut_manti (
 );
 
 
-ALTER TABLE sources.ut_manti OWNER TO postgres;
-
---
--- Name: mantiutgeology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.mantiutgeology_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -16631,18 +11121,8 @@ CREATE SEQUENCE sources.mantiutgeology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.mantiutgeology_gid_seq OWNER TO postgres;
-
---
--- Name: mantiutgeology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.mantiutgeology_gid_seq OWNED BY sources.ut_manti.gid;
 
-
---
--- Name: saipan; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.saipan (
     gid integer NOT NULL,
@@ -16668,12 +11148,6 @@ CREATE TABLE sources.saipan (
 );
 
 
-ALTER TABLE sources.saipan OWNER TO postgres;
-
---
--- Name: marianaislandsgeology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.marianaislandsgeology_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -16682,18 +11156,8 @@ CREATE SEQUENCE sources.marianaislandsgeology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.marianaislandsgeology_gid_seq OWNER TO postgres;
-
---
--- Name: marianaislandsgeology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.marianaislandsgeology_gid_seq OWNED BY sources.saipan.gid;
 
-
---
--- Name: marin_co_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.marin_co_gid_seq
     START WITH 1
@@ -16703,18 +11167,8 @@ CREATE SEQUENCE sources.marin_co_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.marin_co_gid_seq OWNER TO postgres;
-
---
--- Name: marin_co_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.marin_co_gid_seq OWNED BY sources.ca_marin.gid;
 
-
---
--- Name: md_catocinfurnace; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.md_catocinfurnace (
     gid integer NOT NULL,
@@ -16739,12 +11193,6 @@ CREATE TABLE sources.md_catocinfurnace (
 );
 
 
-ALTER TABLE sources.md_catocinfurnace OWNER TO postgres;
-
---
--- Name: md_catocinfurnace_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.md_catocinfurnace_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -16753,18 +11201,8 @@ CREATE SEQUENCE sources.md_catocinfurnace_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.md_catocinfurnace_gid_seq OWNER TO postgres;
-
---
--- Name: md_catocinfurnace_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.md_catocinfurnace_gid_seq OWNED BY sources.md_catocinfurnace.gid;
 
-
---
--- Name: md_catocinfurnace_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.md_catocinfurnace_lines (
     gid integer NOT NULL,
@@ -16787,12 +11225,6 @@ CREATE TABLE sources.md_catocinfurnace_lines (
 );
 
 
-ALTER TABLE sources.md_catocinfurnace_lines OWNER TO postgres;
-
---
--- Name: md_catocinfurnace_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.md_catocinfurnace_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -16801,18 +11233,8 @@ CREATE SEQUENCE sources.md_catocinfurnace_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.md_catocinfurnace_lines_gid_seq OWNER TO postgres;
-
---
--- Name: md_catocinfurnace_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.md_catocinfurnace_lines_gid_seq OWNED BY sources.md_catocinfurnace_lines.gid;
 
-
---
--- Name: md_catocinfurnace_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.md_catocinfurnace_points (
     gid integer NOT NULL,
@@ -16842,12 +11264,6 @@ CREATE TABLE sources.md_catocinfurnace_points (
 );
 
 
-ALTER TABLE sources.md_catocinfurnace_points OWNER TO postgres;
-
---
--- Name: md_catocinfurnace_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.md_catocinfurnace_points_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -16856,18 +11272,8 @@ CREATE SEQUENCE sources.md_catocinfurnace_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.md_catocinfurnace_points_gid_seq OWNER TO postgres;
-
---
--- Name: md_catocinfurnace_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.md_catocinfurnace_points_gid_seq OWNED BY sources.md_catocinfurnace_points.gid;
 
-
---
--- Name: md_catocinfurnace_q; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.md_catocinfurnace_q (
     gid integer,
@@ -16891,12 +11297,6 @@ CREATE TABLE sources.md_catocinfurnace_q (
     late_id integer
 );
 
-
-ALTER TABLE sources.md_catocinfurnace_q OWNER TO postgres;
-
---
--- Name: md_clearspring; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.md_clearspring (
     gid integer NOT NULL,
@@ -16927,12 +11327,6 @@ CREATE TABLE sources.md_clearspring (
 );
 
 
-ALTER TABLE sources.md_clearspring OWNER TO postgres;
-
---
--- Name: md_clearspring_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.md_clearspring_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -16941,18 +11335,8 @@ CREATE SEQUENCE sources.md_clearspring_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.md_clearspring_gid_seq OWNER TO postgres;
-
---
--- Name: md_clearspring_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.md_clearspring_gid_seq OWNED BY sources.md_clearspring.gid;
 
-
---
--- Name: md_clearspring_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.md_clearspring_lines (
     gid integer NOT NULL,
@@ -16976,12 +11360,6 @@ CREATE TABLE sources.md_clearspring_lines (
 );
 
 
-ALTER TABLE sources.md_clearspring_lines OWNER TO postgres;
-
---
--- Name: md_clearspring_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.md_clearspring_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -16990,18 +11368,8 @@ CREATE SEQUENCE sources.md_clearspring_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.md_clearspring_lines_gid_seq OWNER TO postgres;
-
---
--- Name: md_clearspring_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.md_clearspring_lines_gid_seq OWNED BY sources.md_clearspring_lines.gid;
 
-
---
--- Name: md_clearspring_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.md_clearspring_points (
     gid integer NOT NULL,
@@ -17032,12 +11400,6 @@ CREATE TABLE sources.md_clearspring_points (
 );
 
 
-ALTER TABLE sources.md_clearspring_points OWNER TO postgres;
-
---
--- Name: md_clearspring_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.md_clearspring_points_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -17046,18 +11408,8 @@ CREATE SEQUENCE sources.md_clearspring_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.md_clearspring_points_gid_seq OWNER TO postgres;
-
---
--- Name: md_clearspring_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.md_clearspring_points_gid_seq OWNED BY sources.md_clearspring_points.gid;
 
-
---
--- Name: md_clearspring_q; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.md_clearspring_q (
     gid integer,
@@ -17088,12 +11440,6 @@ CREATE TABLE sources.md_clearspring_q (
 );
 
 
-ALTER TABLE sources.md_clearspring_q OWNER TO postgres;
-
---
--- Name: md_frederick; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.md_frederick (
     gid integer NOT NULL,
     area numeric,
@@ -17117,12 +11463,6 @@ CREATE TABLE sources.md_frederick (
 );
 
 
-ALTER TABLE sources.md_frederick OWNER TO postgres;
-
---
--- Name: md_frederick_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.md_frederick_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -17131,18 +11471,8 @@ CREATE SEQUENCE sources.md_frederick_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.md_frederick_gid_seq OWNER TO postgres;
-
---
--- Name: md_frederick_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.md_frederick_gid_seq OWNED BY sources.md_frederick.gid;
 
-
---
--- Name: md_frederick_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.md_frederick_lines (
     gid integer NOT NULL,
@@ -17165,12 +11495,6 @@ CREATE TABLE sources.md_frederick_lines (
 );
 
 
-ALTER TABLE sources.md_frederick_lines OWNER TO postgres;
-
---
--- Name: md_frederick_linestwo_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.md_frederick_linestwo_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -17179,18 +11503,8 @@ CREATE SEQUENCE sources.md_frederick_linestwo_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.md_frederick_linestwo_gid_seq OWNER TO postgres;
-
---
--- Name: md_frederick_linestwo_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.md_frederick_linestwo_gid_seq OWNED BY sources.md_frederick_lines.gid;
 
-
---
--- Name: md_frederick_point; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.md_frederick_point (
     gid integer NOT NULL,
@@ -17220,12 +11534,6 @@ CREATE TABLE sources.md_frederick_point (
 );
 
 
-ALTER TABLE sources.md_frederick_point OWNER TO postgres;
-
---
--- Name: md_frederick_point_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.md_frederick_point_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -17234,18 +11542,8 @@ CREATE SEQUENCE sources.md_frederick_point_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.md_frederick_point_gid_seq OWNER TO postgres;
-
---
--- Name: md_frederick_point_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.md_frederick_point_gid_seq OWNED BY sources.md_frederick_point.gid;
 
-
---
--- Name: md_keedysville; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.md_keedysville (
     gid integer NOT NULL,
@@ -17270,12 +11568,6 @@ CREATE TABLE sources.md_keedysville (
 );
 
 
-ALTER TABLE sources.md_keedysville OWNER TO postgres;
-
---
--- Name: md_keedysville_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.md_keedysville_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -17284,18 +11576,8 @@ CREATE SEQUENCE sources.md_keedysville_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.md_keedysville_gid_seq OWNER TO postgres;
-
---
--- Name: md_keedysville_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.md_keedysville_gid_seq OWNED BY sources.md_keedysville.gid;
 
-
---
--- Name: md_keedysville_line; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.md_keedysville_line (
     gid integer NOT NULL,
@@ -17313,12 +11595,6 @@ CREATE TABLE sources.md_keedysville_line (
     descrip text
 );
 
-
-ALTER TABLE sources.md_keedysville_line OWNER TO postgres;
-
---
--- Name: md_keedysville_q; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.md_keedysville_q (
     gid integer,
@@ -17343,12 +11619,6 @@ CREATE TABLE sources.md_keedysville_q (
 );
 
 
-ALTER TABLE sources.md_keedysville_q OWNER TO postgres;
-
---
--- Name: md_myerssmith; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.md_myerssmith (
     gid integer NOT NULL,
     area numeric,
@@ -17372,12 +11642,6 @@ CREATE TABLE sources.md_myerssmith (
 );
 
 
-ALTER TABLE sources.md_myerssmith OWNER TO postgres;
-
---
--- Name: md_myerssmith_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.md_myerssmith_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -17386,18 +11650,8 @@ CREATE SEQUENCE sources.md_myerssmith_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.md_myerssmith_gid_seq OWNER TO postgres;
-
---
--- Name: md_myerssmith_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.md_myerssmith_gid_seq OWNED BY sources.md_myerssmith.gid;
 
-
---
--- Name: md_myerssmith_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.md_myerssmith_lines (
     gid integer NOT NULL,
@@ -17415,12 +11669,6 @@ CREATE TABLE sources.md_myerssmith_lines (
 );
 
 
-ALTER TABLE sources.md_myerssmith_lines OWNER TO postgres;
-
---
--- Name: md_myerssmith_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.md_myerssmith_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -17429,18 +11677,8 @@ CREATE SEQUENCE sources.md_myerssmith_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.md_myerssmith_lines_gid_seq OWNER TO postgres;
-
---
--- Name: md_myerssmith_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.md_myerssmith_lines_gid_seq OWNED BY sources.md_myerssmith_lines.gid;
 
-
---
--- Name: md_myerssmith_q; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.md_myerssmith_q (
     gid integer,
@@ -17464,12 +11702,6 @@ CREATE TABLE sources.md_myerssmith_q (
     late_id integer
 );
 
-
-ALTER TABLE sources.md_myerssmith_q OWNER TO postgres;
-
---
--- Name: md_newwindsor; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.md_newwindsor (
     gid integer NOT NULL,
@@ -17496,12 +11728,6 @@ CREATE TABLE sources.md_newwindsor (
 );
 
 
-ALTER TABLE sources.md_newwindsor OWNER TO postgres;
-
---
--- Name: md_newwindsor_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.md_newwindsor_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -17510,18 +11736,8 @@ CREATE SEQUENCE sources.md_newwindsor_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.md_newwindsor_gid_seq OWNER TO postgres;
-
---
--- Name: md_newwindsor_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.md_newwindsor_gid_seq OWNED BY sources.md_newwindsor.gid;
 
-
---
--- Name: md_newwindsor_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.md_newwindsor_lines (
     gid integer NOT NULL,
@@ -17546,12 +11762,6 @@ CREATE TABLE sources.md_newwindsor_lines (
 );
 
 
-ALTER TABLE sources.md_newwindsor_lines OWNER TO postgres;
-
---
--- Name: md_newwindsor_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.md_newwindsor_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -17560,18 +11770,8 @@ CREATE SEQUENCE sources.md_newwindsor_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.md_newwindsor_lines_gid_seq OWNER TO postgres;
-
---
--- Name: md_newwindsor_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.md_newwindsor_lines_gid_seq OWNED BY sources.md_newwindsor_lines.gid;
 
-
---
--- Name: md_newwindsor_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.md_newwindsor_points (
     gid integer NOT NULL,
@@ -17604,12 +11804,6 @@ CREATE TABLE sources.md_newwindsor_points (
 );
 
 
-ALTER TABLE sources.md_newwindsor_points OWNER TO postgres;
-
---
--- Name: md_newwindsor_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.md_newwindsor_points_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -17618,18 +11812,8 @@ CREATE SEQUENCE sources.md_newwindsor_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.md_newwindsor_points_gid_seq OWNER TO postgres;
-
---
--- Name: md_newwindsor_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.md_newwindsor_points_gid_seq OWNED BY sources.md_newwindsor_points.gid;
 
-
---
--- Name: md_western; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.md_western (
     gid integer NOT NULL,
@@ -17652,12 +11836,6 @@ CREATE TABLE sources.md_western (
 );
 
 
-ALTER TABLE sources.md_western OWNER TO postgres;
-
---
--- Name: md_western_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.md_western_gid_seq
     AS integer
     START WITH 1
@@ -17667,18 +11845,8 @@ CREATE SEQUENCE sources.md_western_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.md_western_gid_seq OWNER TO postgres;
-
---
--- Name: md_western_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.md_western_gid_seq OWNED BY sources.md_western.gid;
 
-
---
--- Name: md_western_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.md_western_lines (
     gid integer NOT NULL,
@@ -17701,12 +11869,6 @@ CREATE TABLE sources.md_western_lines (
 );
 
 
-ALTER TABLE sources.md_western_lines OWNER TO postgres;
-
---
--- Name: md_western_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.md_western_lines_gid_seq
     AS integer
     START WITH 1
@@ -17716,18 +11878,8 @@ CREATE SEQUENCE sources.md_western_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.md_western_lines_gid_seq OWNER TO postgres;
-
---
--- Name: md_western_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.md_western_lines_gid_seq OWNED BY sources.md_western_lines.gid;
 
-
---
--- Name: mexico; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.mexico (
     gid integer NOT NULL,
@@ -17758,12 +11910,6 @@ CREATE TABLE sources.mexico (
 );
 
 
-ALTER TABLE sources.mexico OWNER TO postgres;
-
---
--- Name: mexico_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.mexico_lines (
     gid integer NOT NULL,
     objectid numeric(10,0),
@@ -17789,12 +11935,6 @@ CREATE TABLE sources.mexico_lines (
 );
 
 
-ALTER TABLE sources.mexico_lines OWNER TO postgres;
-
---
--- Name: mexicogeology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.mexicogeology_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -17803,18 +11943,8 @@ CREATE SEQUENCE sources.mexicogeology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.mexicogeology_gid_seq OWNER TO postgres;
-
---
--- Name: mexicogeology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.mexicogeology_gid_seq OWNED BY sources.mexico.gid;
 
-
---
--- Name: mexicolines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.mexicolines_gid_seq
     START WITH 1
@@ -17824,18 +11954,8 @@ CREATE SEQUENCE sources.mexicolines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.mexicolines_gid_seq OWNER TO postgres;
-
---
--- Name: mexicolines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.mexicolines_gid_seq OWNED BY sources.mexico_lines.gid;
 
-
---
--- Name: mn_houston_co; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.mn_houston_co (
     gid integer NOT NULL,
@@ -17861,12 +11981,6 @@ CREATE TABLE sources.mn_houston_co (
 );
 
 
-ALTER TABLE sources.mn_houston_co OWNER TO postgres;
-
---
--- Name: mn_houston_co_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.mn_houston_co_lines (
     gid integer NOT NULL,
     type character varying(2),
@@ -17879,12 +11993,6 @@ CREATE TABLE sources.mn_houston_co_lines (
 );
 
 
-ALTER TABLE sources.mn_houston_co_lines OWNER TO postgres;
-
---
--- Name: mn_houston_co_faults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.mn_houston_co_faults_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -17893,18 +12001,8 @@ CREATE SEQUENCE sources.mn_houston_co_faults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.mn_houston_co_faults_gid_seq OWNER TO postgres;
-
---
--- Name: mn_houston_co_faults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.mn_houston_co_faults_gid_seq OWNED BY sources.mn_houston_co_lines.gid;
 
-
---
--- Name: mn_houston_co_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.mn_houston_co_gid_seq
     START WITH 1
@@ -17914,18 +12012,8 @@ CREATE SEQUENCE sources.mn_houston_co_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.mn_houston_co_gid_seq OWNER TO postgres;
-
---
--- Name: mn_houston_co_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.mn_houston_co_gid_seq OWNED BY sources.mn_houston_co.gid;
 
-
---
--- Name: mn_redwood_co; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.mn_redwood_co (
     gid integer NOT NULL,
@@ -17955,12 +12043,6 @@ CREATE TABLE sources.mn_redwood_co (
 );
 
 
-ALTER TABLE sources.mn_redwood_co OWNER TO postgres;
-
---
--- Name: mn_redwood_co_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.mn_redwood_co_lines (
     gid integer NOT NULL,
     fnode_ numeric(10,0),
@@ -17979,12 +12061,6 @@ CREATE TABLE sources.mn_redwood_co_lines (
 );
 
 
-ALTER TABLE sources.mn_redwood_co_lines OWNER TO postgres;
-
---
--- Name: mn_redwood_co_faults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.mn_redwood_co_faults_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -17993,18 +12069,8 @@ CREATE SEQUENCE sources.mn_redwood_co_faults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.mn_redwood_co_faults_gid_seq OWNER TO postgres;
-
---
--- Name: mn_redwood_co_faults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.mn_redwood_co_faults_gid_seq OWNED BY sources.mn_redwood_co_lines.gid;
 
-
---
--- Name: mn_redwood_co_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.mn_redwood_co_gid_seq
     START WITH 1
@@ -18014,18 +12080,8 @@ CREATE SEQUENCE sources.mn_redwood_co_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.mn_redwood_co_gid_seq OWNER TO postgres;
-
---
--- Name: mn_redwood_co_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.mn_redwood_co_gid_seq OWNED BY sources.mn_redwood_co.gid;
 
-
---
--- Name: mn_washington_co; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.mn_washington_co (
     gid integer NOT NULL,
@@ -18049,12 +12105,6 @@ CREATE TABLE sources.mn_washington_co (
 );
 
 
-ALTER TABLE sources.mn_washington_co OWNER TO postgres;
-
---
--- Name: mn_washington_co_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.mn_washington_co_lines (
     gid integer NOT NULL,
     length numeric,
@@ -18067,12 +12117,6 @@ CREATE TABLE sources.mn_washington_co_lines (
 );
 
 
-ALTER TABLE sources.mn_washington_co_lines OWNER TO postgres;
-
---
--- Name: mn_washington_co_faults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.mn_washington_co_faults_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -18081,18 +12125,8 @@ CREATE SEQUENCE sources.mn_washington_co_faults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.mn_washington_co_faults_gid_seq OWNER TO postgres;
-
---
--- Name: mn_washington_co_faults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.mn_washington_co_faults_gid_seq OWNED BY sources.mn_washington_co_lines.gid;
 
-
---
--- Name: mn_washington_co_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.mn_washington_co_gid_seq
     START WITH 1
@@ -18102,18 +12136,8 @@ CREATE SEQUENCE sources.mn_washington_co_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.mn_washington_co_gid_seq OWNER TO postgres;
-
---
--- Name: mn_washington_co_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.mn_washington_co_gid_seq OWNED BY sources.mn_washington_co.gid;
 
-
---
--- Name: mn_winona_co; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.mn_winona_co (
     gid integer NOT NULL,
@@ -18138,12 +12162,6 @@ CREATE TABLE sources.mn_winona_co (
 );
 
 
-ALTER TABLE sources.mn_winona_co OWNER TO postgres;
-
---
--- Name: mn_winona_co_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.mn_winona_co_lines (
     gid integer NOT NULL,
     id integer,
@@ -18151,12 +12169,6 @@ CREATE TABLE sources.mn_winona_co_lines (
     geom public.geometry(MultiLineString,4326)
 );
 
-
-ALTER TABLE sources.mn_winona_co_lines OWNER TO postgres;
-
---
--- Name: mn_winona_co_fold_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.mn_winona_co_fold_gid_seq
     START WITH 1
@@ -18166,18 +12178,8 @@ CREATE SEQUENCE sources.mn_winona_co_fold_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.mn_winona_co_fold_gid_seq OWNER TO postgres;
-
---
--- Name: mn_winona_co_fold_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.mn_winona_co_fold_gid_seq OWNED BY sources.mn_winona_co_lines.gid;
 
-
---
--- Name: mn_winona_co_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.mn_winona_co_gid_seq
     START WITH 1
@@ -18187,18 +12189,8 @@ CREATE SEQUENCE sources.mn_winona_co_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.mn_winona_co_gid_seq OWNER TO postgres;
-
---
--- Name: mn_winona_co_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.mn_winona_co_gid_seq OWNED BY sources.mn_winona_co.gid;
 
-
---
--- Name: mohaveazgeology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.mohaveazgeology_gid_seq
     START WITH 1
@@ -18208,18 +12200,8 @@ CREATE SEQUENCE sources.mohaveazgeology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.mohaveazgeology_gid_seq OWNER TO postgres;
-
---
--- Name: mohaveazgeology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.mohaveazgeology_gid_seq OWNED BY sources.az_mohave.gid;
 
-
---
--- Name: mohavecoconino_faults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.mohavecoconino_faults_gid_seq
     START WITH 1
@@ -18229,18 +12211,8 @@ CREATE SEQUENCE sources.mohavecoconino_faults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.mohavecoconino_faults_gid_seq OWNER TO postgres;
-
---
--- Name: mohavecoconino_faults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.mohavecoconino_faults_gid_seq OWNED BY sources.az_peachsprings_lines.gid;
 
-
---
--- Name: mohavecoconinoazgeology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.mohavecoconinoazgeology_gid_seq
     START WITH 1
@@ -18250,18 +12222,8 @@ CREATE SEQUENCE sources.mohavecoconinoazgeology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.mohavecoconinoazgeology_gid_seq OWNER TO postgres;
-
---
--- Name: mohavecoconinoazgeology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.mohavecoconinoazgeology_gid_seq OWNED BY sources.az_peachsprings.gid;
 
-
---
--- Name: mohavefault_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.mohavefault_lines_gid_seq
     START WITH 1
@@ -18271,18 +12233,8 @@ CREATE SEQUENCE sources.mohavefault_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.mohavefault_lines_gid_seq OWNER TO postgres;
-
---
--- Name: mohavefault_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.mohavefault_lines_gid_seq OWNED BY sources.az_mohave_lines.gid;
 
-
---
--- Name: mt_trumbull; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.mt_trumbull (
     gid integer NOT NULL,
@@ -18305,12 +12257,6 @@ CREATE TABLE sources.mt_trumbull (
 );
 
 
-ALTER TABLE sources.mt_trumbull OWNER TO postgres;
-
---
--- Name: mt_trumbull_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.mt_trumbull_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -18319,18 +12265,8 @@ CREATE SEQUENCE sources.mt_trumbull_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.mt_trumbull_gid_seq OWNER TO postgres;
-
---
--- Name: mt_trumbull_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.mt_trumbull_gid_seq OWNED BY sources.mt_trumbull.gid;
 
-
---
--- Name: mt_trumbull_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.mt_trumbull_lines (
     gid integer NOT NULL,
@@ -18343,12 +12279,6 @@ CREATE TABLE sources.mt_trumbull_lines (
 );
 
 
-ALTER TABLE sources.mt_trumbull_lines OWNER TO postgres;
-
---
--- Name: mt_trumbull_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.mt_trumbull_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -18357,18 +12287,8 @@ CREATE SEQUENCE sources.mt_trumbull_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.mt_trumbull_lines_gid_seq OWNER TO postgres;
-
---
--- Name: mt_trumbull_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.mt_trumbull_lines_gid_seq OWNED BY sources.mt_trumbull_lines.gid;
 
-
---
--- Name: ut_nephi_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_nephi_lines (
     gid integer NOT NULL,
@@ -18389,12 +12309,6 @@ CREATE TABLE sources.ut_nephi_lines (
 );
 
 
-ALTER TABLE sources.ut_nephi_lines OWNER TO postgres;
-
---
--- Name: nephi_faults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nephi_faults_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -18403,18 +12317,8 @@ CREATE SEQUENCE sources.nephi_faults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nephi_faults_gid_seq OWNER TO postgres;
-
---
--- Name: nephi_faults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nephi_faults_gid_seq OWNED BY sources.ut_nephi_lines.gid;
 
-
---
--- Name: ut_nephi; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_nephi (
     gid integer NOT NULL,
@@ -18433,12 +12337,6 @@ CREATE TABLE sources.ut_nephi (
 );
 
 
-ALTER TABLE sources.ut_nephi OWNER TO postgres;
-
---
--- Name: nephiutahgeology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nephiutahgeology_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -18447,18 +12345,8 @@ CREATE SEQUENCE sources.nephiutahgeology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nephiutahgeology_gid_seq OWNER TO postgres;
-
---
--- Name: nephiutahgeology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nephiutahgeology_gid_seq OWNED BY sources.ut_nephi.gid;
 
-
---
--- Name: nesffaults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.nesffaults_gid_seq
     START WITH 1
@@ -18468,18 +12356,8 @@ CREATE SEQUENCE sources.nesffaults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nesffaults_gid_seq OWNER TO postgres;
-
---
--- Name: nesffaults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nesffaults_gid_seq OWNED BY sources.ca_northeastsanfran_lines.gid;
 
-
---
--- Name: new_river_gorge; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.new_river_gorge (
     gid integer NOT NULL,
@@ -18503,12 +12381,6 @@ CREATE TABLE sources.new_river_gorge (
 );
 
 
-ALTER TABLE sources.new_river_gorge OWNER TO postgres;
-
---
--- Name: new_river_gorge_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.new_river_gorge_lines (
     gid integer NOT NULL,
     objectid numeric(10,0),
@@ -18529,12 +12401,6 @@ CREATE TABLE sources.new_river_gorge_lines (
 );
 
 
-ALTER TABLE sources.new_river_gorge_lines OWNER TO postgres;
-
---
--- Name: new_river_gorge_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.new_river_gorge_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -18543,18 +12409,8 @@ CREATE SEQUENCE sources.new_river_gorge_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.new_river_gorge_lines_gid_seq OWNER TO postgres;
-
---
--- Name: new_river_gorge_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.new_river_gorge_lines_gid_seq OWNED BY sources.new_river_gorge_lines.gid;
 
-
---
--- Name: newrivergorge_geo_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.newrivergorge_geo_gid_seq
     START WITH 1
@@ -18564,18 +12420,8 @@ CREATE SEQUENCE sources.newrivergorge_geo_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.newrivergorge_geo_gid_seq OWNER TO postgres;
-
---
--- Name: newrivergorge_geo_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.newrivergorge_geo_gid_seq OWNED BY sources.new_river_gorge.gid;
 
-
---
--- Name: newzealand; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.newzealand (
     gid integer NOT NULL,
@@ -18620,12 +12466,6 @@ CREATE TABLE sources.newzealand (
 );
 
 
-ALTER TABLE sources.newzealand OWNER TO postgres;
-
---
--- Name: newzealand_faults; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.newzealand_faults (
     gid integer NOT NULL,
     accuracy character varying(20),
@@ -18668,12 +12508,6 @@ CREATE TABLE sources.newzealand_faults (
 );
 
 
-ALTER TABLE sources.newzealand_faults OWNER TO postgres;
-
---
--- Name: newzealand_faults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.newzealand_faults_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -18682,18 +12516,8 @@ CREATE SEQUENCE sources.newzealand_faults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.newzealand_faults_gid_seq OWNER TO postgres;
-
---
--- Name: newzealand_faults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.newzealand_faults_gid_seq OWNED BY sources.newzealand_faults.gid;
 
-
---
--- Name: newzealand_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.newzealand_gid_seq
     START WITH 1
@@ -18703,18 +12527,8 @@ CREATE SEQUENCE sources.newzealand_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.newzealand_gid_seq OWNER TO postgres;
-
---
--- Name: newzealand_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.newzealand_gid_seq OWNED BY sources.newzealand.gid;
 
-
---
--- Name: newzealandq; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.newzealandq (
     gid integer NOT NULL,
@@ -18760,12 +12574,6 @@ CREATE TABLE sources.newzealandq (
 );
 
 
-ALTER TABLE sources.newzealandq OWNER TO postgres;
-
---
--- Name: newzealandq_dikes; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.newzealandq_dikes (
     gid integer NOT NULL,
     identifier character varying(30),
@@ -18799,12 +12607,6 @@ CREATE TABLE sources.newzealandq_dikes (
 );
 
 
-ALTER TABLE sources.newzealandq_dikes OWNER TO postgres;
-
---
--- Name: newzealandq_dikes_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.newzealandq_dikes_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -18813,18 +12615,8 @@ CREATE SEQUENCE sources.newzealandq_dikes_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.newzealandq_dikes_gid_seq OWNER TO postgres;
-
---
--- Name: newzealandq_dikes_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.newzealandq_dikes_gid_seq OWNED BY sources.newzealandq_dikes.gid;
 
-
---
--- Name: newzealandq_faults; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.newzealandq_faults (
     gid integer NOT NULL,
@@ -18852,12 +12644,6 @@ CREATE TABLE sources.newzealandq_faults (
 );
 
 
-ALTER TABLE sources.newzealandq_faults OWNER TO postgres;
-
---
--- Name: newzealandq_faults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.newzealandq_faults_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -18866,18 +12652,8 @@ CREATE SEQUENCE sources.newzealandq_faults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.newzealandq_faults_gid_seq OWNER TO postgres;
-
---
--- Name: newzealandq_faults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.newzealandq_faults_gid_seq OWNED BY sources.newzealandq_faults.gid;
 
-
---
--- Name: newzealandq_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.newzealandq_gid_seq
     START WITH 1
@@ -18887,18 +12663,8 @@ CREATE SEQUENCE sources.newzealandq_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.newzealandq_gid_seq OWNER TO postgres;
-
---
--- Name: newzealandq_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.newzealandq_gid_seq OWNED BY sources.newzealandq.gid;
 
-
---
--- Name: nh_lisbon; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nh_lisbon (
     gid integer NOT NULL,
@@ -18916,12 +12682,6 @@ CREATE TABLE sources.nh_lisbon (
 );
 
 
-ALTER TABLE sources.nh_lisbon OWNER TO postgres;
-
---
--- Name: nh_lisbon_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nh_lisbon_gid_seq
     AS integer
     START WITH 1
@@ -18931,18 +12691,8 @@ CREATE SEQUENCE sources.nh_lisbon_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nh_lisbon_gid_seq OWNER TO postgres;
-
---
--- Name: nh_lisbon_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nh_lisbon_gid_seq OWNED BY sources.nh_lisbon.gid;
 
-
---
--- Name: nh_lisbon_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nh_lisbon_lines (
     gid integer NOT NULL,
@@ -18959,12 +12709,6 @@ CREATE TABLE sources.nh_lisbon_lines (
 );
 
 
-ALTER TABLE sources.nh_lisbon_lines OWNER TO postgres;
-
---
--- Name: nh_lisbon_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nh_lisbon_lines_gid_seq
     AS integer
     START WITH 1
@@ -18974,18 +12718,8 @@ CREATE SEQUENCE sources.nh_lisbon_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nh_lisbon_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nh_lisbon_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nh_lisbon_lines_gid_seq OWNED BY sources.nh_lisbon_lines.gid;
 
-
---
--- Name: nh_lisbon_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nh_lisbon_points (
     gid integer NOT NULL,
@@ -19005,12 +12739,6 @@ CREATE TABLE sources.nh_lisbon_points (
 );
 
 
-ALTER TABLE sources.nh_lisbon_points OWNER TO postgres;
-
---
--- Name: nh_lisbon_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nh_lisbon_points_gid_seq
     AS integer
     START WITH 1
@@ -19020,18 +12748,8 @@ CREATE SEQUENCE sources.nh_lisbon_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nh_lisbon_points_gid_seq OWNER TO postgres;
-
---
--- Name: nh_lisbon_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nh_lisbon_points_gid_seq OWNED BY sources.nh_lisbon_points.gid;
 
-
---
--- Name: nl_baieverte; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nl_baieverte (
     gid integer NOT NULL,
@@ -19052,12 +12770,6 @@ CREATE TABLE sources.nl_baieverte (
 );
 
 
-ALTER TABLE sources.nl_baieverte OWNER TO postgres;
-
---
--- Name: nl_baieverte_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nl_baieverte_gid_seq
     AS integer
     START WITH 1
@@ -19067,18 +12779,8 @@ CREATE SEQUENCE sources.nl_baieverte_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nl_baieverte_gid_seq OWNER TO postgres;
-
---
--- Name: nl_baieverte_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nl_baieverte_gid_seq OWNED BY sources.nl_baieverte.gid;
 
-
---
--- Name: nl_baieverte_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nl_baieverte_lines (
     gid integer NOT NULL,
@@ -19096,12 +12798,6 @@ CREATE TABLE sources.nl_baieverte_lines (
 );
 
 
-ALTER TABLE sources.nl_baieverte_lines OWNER TO postgres;
-
---
--- Name: nl_baieverte_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nl_baieverte_lines_gid_seq
     AS integer
     START WITH 1
@@ -19111,18 +12807,8 @@ CREATE SEQUENCE sources.nl_baieverte_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nl_baieverte_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nl_baieverte_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nl_baieverte_lines_gid_seq OWNED BY sources.nl_baieverte_lines.gid;
 
-
---
--- Name: nl_baieverte_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nl_baieverte_points (
     gid integer NOT NULL,
@@ -19149,12 +12835,6 @@ CREATE TABLE sources.nl_baieverte_points (
 );
 
 
-ALTER TABLE sources.nl_baieverte_points OWNER TO postgres;
-
---
--- Name: nl_baieverte_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nl_baieverte_points_gid_seq
     AS integer
     START WITH 1
@@ -19164,18 +12844,8 @@ CREATE SEQUENCE sources.nl_baieverte_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nl_baieverte_points_gid_seq OWNER TO postgres;
-
---
--- Name: nl_baieverte_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nl_baieverte_points_gid_seq OWNED BY sources.nl_baieverte_points.gid;
 
-
---
--- Name: nl_king; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nl_king (
     gid integer NOT NULL,
@@ -19195,12 +12865,6 @@ CREATE TABLE sources.nl_king (
 );
 
 
-ALTER TABLE sources.nl_king OWNER TO postgres;
-
---
--- Name: nl_king_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nl_king_gid_seq
     AS integer
     START WITH 1
@@ -19210,18 +12874,8 @@ CREATE SEQUENCE sources.nl_king_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nl_king_gid_seq OWNER TO postgres;
-
---
--- Name: nl_king_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nl_king_gid_seq OWNED BY sources.nl_king.gid;
 
-
---
--- Name: nl_king_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nl_king_lines (
     gid integer NOT NULL,
@@ -19239,12 +12893,6 @@ CREATE TABLE sources.nl_king_lines (
 );
 
 
-ALTER TABLE sources.nl_king_lines OWNER TO postgres;
-
---
--- Name: nl_king_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nl_king_lines_gid_seq
     AS integer
     START WITH 1
@@ -19254,18 +12902,8 @@ CREATE SEQUENCE sources.nl_king_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nl_king_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nl_king_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nl_king_lines_gid_seq OWNED BY sources.nl_king_lines.gid;
 
-
---
--- Name: nl_king_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nl_king_points (
     gid integer NOT NULL,
@@ -19292,12 +12930,6 @@ CREATE TABLE sources.nl_king_points (
 );
 
 
-ALTER TABLE sources.nl_king_points OWNER TO postgres;
-
---
--- Name: nl_king_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nl_king_points_gid_seq
     AS integer
     START WITH 1
@@ -19307,18 +12939,8 @@ CREATE SEQUENCE sources.nl_king_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nl_king_points_gid_seq OWNER TO postgres;
-
---
--- Name: nl_king_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nl_king_points_gid_seq OWNED BY sources.nl_king_points.gid;
 
-
---
--- Name: nl_nippers; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nl_nippers (
     gid integer NOT NULL,
@@ -19338,12 +12960,6 @@ CREATE TABLE sources.nl_nippers (
 );
 
 
-ALTER TABLE sources.nl_nippers OWNER TO postgres;
-
---
--- Name: nl_nippers_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nl_nippers_gid_seq
     AS integer
     START WITH 1
@@ -19353,18 +12969,8 @@ CREATE SEQUENCE sources.nl_nippers_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nl_nippers_gid_seq OWNER TO postgres;
-
---
--- Name: nl_nippers_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nl_nippers_gid_seq OWNED BY sources.nl_nippers.gid;
 
-
---
--- Name: nl_nippers_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nl_nippers_lines (
     gid integer NOT NULL,
@@ -19382,12 +12988,6 @@ CREATE TABLE sources.nl_nippers_lines (
 );
 
 
-ALTER TABLE sources.nl_nippers_lines OWNER TO postgres;
-
---
--- Name: nl_nippers_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nl_nippers_lines_gid_seq
     AS integer
     START WITH 1
@@ -19397,18 +12997,8 @@ CREATE SEQUENCE sources.nl_nippers_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nl_nippers_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nl_nippers_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nl_nippers_lines_gid_seq OWNED BY sources.nl_nippers_lines.gid;
 
-
---
--- Name: nl_nippers_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nl_nippers_points (
     gid integer NOT NULL,
@@ -19435,12 +13025,6 @@ CREATE TABLE sources.nl_nippers_points (
 );
 
 
-ALTER TABLE sources.nl_nippers_points OWNER TO postgres;
-
---
--- Name: nl_nippers_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nl_nippers_points_gid_seq
     AS integer
     START WITH 1
@@ -19450,18 +13034,8 @@ CREATE SEQUENCE sources.nl_nippers_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nl_nippers_points_gid_seq OWNER TO postgres;
-
---
--- Name: nl_nippers_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nl_nippers_points_gid_seq OWNED BY sources.nl_nippers_points.gid;
 
-
---
--- Name: nm_albuquerque; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nm_albuquerque (
     gid integer NOT NULL,
@@ -19482,12 +13056,6 @@ CREATE TABLE sources.nm_albuquerque (
 );
 
 
-ALTER TABLE sources.nm_albuquerque OWNER TO postgres;
-
---
--- Name: nm_albuquerque_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nm_albuquerque_gid_seq
     AS integer
     START WITH 1
@@ -19497,18 +13065,8 @@ CREATE SEQUENCE sources.nm_albuquerque_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nm_albuquerque_gid_seq OWNER TO postgres;
-
---
--- Name: nm_albuquerque_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nm_albuquerque_gid_seq OWNED BY sources.nm_albuquerque.gid;
 
-
---
--- Name: nm_albuquerque_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nm_albuquerque_lines (
     gid integer NOT NULL,
@@ -19528,12 +13086,6 @@ CREATE TABLE sources.nm_albuquerque_lines (
 );
 
 
-ALTER TABLE sources.nm_albuquerque_lines OWNER TO postgres;
-
---
--- Name: nm_albuquerque_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nm_albuquerque_lines_gid_seq
     AS integer
     START WITH 1
@@ -19543,18 +13095,8 @@ CREATE SEQUENCE sources.nm_albuquerque_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nm_albuquerque_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nm_albuquerque_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nm_albuquerque_lines_gid_seq OWNED BY sources.nm_albuquerque_lines.gid;
 
-
---
--- Name: nm_albuquerque_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nm_albuquerque_points (
     gid integer NOT NULL,
@@ -19575,12 +13117,6 @@ CREATE TABLE sources.nm_albuquerque_points (
 );
 
 
-ALTER TABLE sources.nm_albuquerque_points OWNER TO postgres;
-
---
--- Name: nm_albuquerque_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nm_albuquerque_points_gid_seq
     AS integer
     START WITH 1
@@ -19590,18 +13126,8 @@ CREATE SEQUENCE sources.nm_albuquerque_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nm_albuquerque_points_gid_seq OWNER TO postgres;
-
---
--- Name: nm_albuquerque_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nm_albuquerque_points_gid_seq OWNED BY sources.nm_albuquerque_points.gid;
 
-
---
--- Name: nm_espanola; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nm_espanola (
     gid integer NOT NULL,
@@ -19627,12 +13153,6 @@ CREATE TABLE sources.nm_espanola (
 );
 
 
-ALTER TABLE sources.nm_espanola OWNER TO postgres;
-
---
--- Name: nm_espanola_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nm_espanola_gid_seq
     AS integer
     START WITH 1
@@ -19642,18 +13162,8 @@ CREATE SEQUENCE sources.nm_espanola_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nm_espanola_gid_seq OWNER TO postgres;
-
---
--- Name: nm_espanola_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nm_espanola_gid_seq OWNED BY sources.nm_espanola.gid;
 
-
---
--- Name: nm_espanola_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nm_espanola_lines (
     gid integer NOT NULL,
@@ -19688,12 +13198,6 @@ CREATE TABLE sources.nm_espanola_lines (
 );
 
 
-ALTER TABLE sources.nm_espanola_lines OWNER TO postgres;
-
---
--- Name: nm_espanola_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nm_espanola_lines_gid_seq
     AS integer
     START WITH 1
@@ -19703,18 +13207,8 @@ CREATE SEQUENCE sources.nm_espanola_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nm_espanola_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nm_espanola_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nm_espanola_lines_gid_seq OWNED BY sources.nm_espanola_lines.gid;
 
-
---
--- Name: nm_espanola_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nm_espanola_points (
     gid integer NOT NULL,
@@ -19754,12 +13248,6 @@ CREATE TABLE sources.nm_espanola_points (
 );
 
 
-ALTER TABLE sources.nm_espanola_points OWNER TO postgres;
-
---
--- Name: nm_espanola_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nm_espanola_points_gid_seq
     AS integer
     START WITH 1
@@ -19769,18 +13257,8 @@ CREATE SEQUENCE sources.nm_espanola_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nm_espanola_points_gid_seq OWNER TO postgres;
-
---
--- Name: nm_espanola_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nm_espanola_points_gid_seq OWNED BY sources.nm_espanola_points.gid;
 
-
---
--- Name: nm_latir; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nm_latir (
     gid integer NOT NULL,
@@ -19802,12 +13280,6 @@ CREATE TABLE sources.nm_latir (
 );
 
 
-ALTER TABLE sources.nm_latir OWNER TO postgres;
-
---
--- Name: nm_latir_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nm_latir_gid_seq
     AS integer
     START WITH 1
@@ -19817,18 +13289,8 @@ CREATE SEQUENCE sources.nm_latir_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nm_latir_gid_seq OWNER TO postgres;
-
---
--- Name: nm_latir_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nm_latir_gid_seq OWNED BY sources.nm_latir.gid;
 
-
---
--- Name: nm_latir_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nm_latir_lines (
     gid integer NOT NULL,
@@ -19850,12 +13312,6 @@ CREATE TABLE sources.nm_latir_lines (
 );
 
 
-ALTER TABLE sources.nm_latir_lines OWNER TO postgres;
-
---
--- Name: nm_latir_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nm_latir_lines_gid_seq
     AS integer
     START WITH 1
@@ -19865,18 +13321,8 @@ CREATE SEQUENCE sources.nm_latir_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nm_latir_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nm_latir_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nm_latir_lines_gid_seq OWNED BY sources.nm_latir_lines.gid;
 
-
---
--- Name: nm_latir_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nm_latir_points (
     gid integer NOT NULL,
@@ -19898,12 +13344,6 @@ CREATE TABLE sources.nm_latir_points (
 );
 
 
-ALTER TABLE sources.nm_latir_points OWNER TO postgres;
-
---
--- Name: nm_latir_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nm_latir_points_gid_seq
     AS integer
     START WITH 1
@@ -19913,18 +13353,8 @@ CREATE SEQUENCE sources.nm_latir_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nm_latir_points_gid_seq OWNER TO postgres;
-
---
--- Name: nm_latir_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nm_latir_points_gid_seq OWNED BY sources.nm_latir_points.gid;
 
-
---
--- Name: nm_petroglyps; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nm_petroglyps (
     gid integer NOT NULL,
@@ -19952,12 +13382,6 @@ CREATE TABLE sources.nm_petroglyps (
 );
 
 
-ALTER TABLE sources.nm_petroglyps OWNER TO postgres;
-
---
--- Name: nm_petroglyps_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.nm_petroglyps_lines (
     gid integer NOT NULL,
     type character varying(100) NOT NULL,
@@ -19979,12 +13403,6 @@ CREATE TABLE sources.nm_petroglyps_lines (
 );
 
 
-ALTER TABLE sources.nm_petroglyps_lines OWNER TO postgres;
-
---
--- Name: nm_petroglyps_lines_objectid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nm_petroglyps_lines_objectid_seq
     AS integer
     START WITH 1
@@ -19994,18 +13412,8 @@ CREATE SEQUENCE sources.nm_petroglyps_lines_objectid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nm_petroglyps_lines_objectid_seq OWNER TO postgres;
-
---
--- Name: nm_petroglyps_lines_objectid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nm_petroglyps_lines_objectid_seq OWNED BY sources.nm_petroglyps_lines.gid;
 
-
---
--- Name: nm_petroglyps_objectid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.nm_petroglyps_objectid_seq
     AS integer
@@ -20016,18 +13424,8 @@ CREATE SEQUENCE sources.nm_petroglyps_objectid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nm_petroglyps_objectid_seq OWNER TO postgres;
-
---
--- Name: nm_petroglyps_objectid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nm_petroglyps_objectid_seq OWNED BY sources.nm_petroglyps.gid;
 
-
---
--- Name: nm_tularosa; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nm_tularosa (
     gid integer NOT NULL,
@@ -20047,12 +13445,6 @@ CREATE TABLE sources.nm_tularosa (
 );
 
 
-ALTER TABLE sources.nm_tularosa OWNER TO postgres;
-
---
--- Name: nm_tularosa_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.nm_tularosa_lines (
     gid integer NOT NULL,
     tulflt_ double precision,
@@ -20068,12 +13460,6 @@ CREATE TABLE sources.nm_tularosa_lines (
     new_type text
 );
 
-
-ALTER TABLE sources.nm_tularosa_lines OWNER TO postgres;
-
---
--- Name: nm_vermejo; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nm_vermejo (
     gid integer NOT NULL,
@@ -20097,12 +13483,6 @@ CREATE TABLE sources.nm_vermejo (
 );
 
 
-ALTER TABLE sources.nm_vermejo OWNER TO postgres;
-
---
--- Name: nm_vermejo_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nm_vermejo_gid_seq
     AS integer
     START WITH 1
@@ -20112,18 +13492,8 @@ CREATE SEQUENCE sources.nm_vermejo_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nm_vermejo_gid_seq OWNER TO postgres;
-
---
--- Name: nm_vermejo_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nm_vermejo_gid_seq OWNED BY sources.nm_vermejo.gid;
 
-
---
--- Name: nm_vermejo_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nm_vermejo_lines (
     gid integer NOT NULL,
@@ -20144,12 +13514,6 @@ CREATE TABLE sources.nm_vermejo_lines (
 );
 
 
-ALTER TABLE sources.nm_vermejo_lines OWNER TO postgres;
-
---
--- Name: nm_vermejo_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nm_vermejo_lines_gid_seq
     AS integer
     START WITH 1
@@ -20159,18 +13523,8 @@ CREATE SEQUENCE sources.nm_vermejo_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nm_vermejo_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nm_vermejo_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nm_vermejo_lines_gid_seq OWNED BY sources.nm_vermejo_lines.gid;
 
-
---
--- Name: nm_vermejo_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nm_vermejo_points (
     gid integer NOT NULL,
@@ -20192,12 +13546,6 @@ CREATE TABLE sources.nm_vermejo_points (
 );
 
 
-ALTER TABLE sources.nm_vermejo_points OWNER TO postgres;
-
---
--- Name: nm_vermejo_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nm_vermejo_points_gid_seq
     AS integer
     START WITH 1
@@ -20207,18 +13555,8 @@ CREATE SEQUENCE sources.nm_vermejo_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nm_vermejo_points_gid_seq OWNER TO postgres;
-
---
--- Name: nm_vermejo_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nm_vermejo_points_gid_seq OWNED BY sources.nm_vermejo_points.gid;
 
-
---
--- Name: northbay_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.northbay_lines_gid_seq
     START WITH 1
@@ -20228,18 +13566,8 @@ CREATE SEQUENCE sources.northbay_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.northbay_lines_gid_seq OWNER TO postgres;
-
---
--- Name: northbay_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.northbay_lines_gid_seq OWNED BY sources.ca_marin_lines.gid;
 
-
---
--- Name: northofsanfrangeology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.northofsanfrangeology_gid_seq
     START WITH 1
@@ -20249,18 +13577,8 @@ CREATE SEQUENCE sources.northofsanfrangeology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.northofsanfrangeology_gid_seq OWNER TO postgres;
-
---
--- Name: northofsanfrangeology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.northofsanfrangeology_gid_seq OWNED BY sources.ca_northofsanfran.gid;
 
-
---
--- Name: northofsanfranlines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.northofsanfranlines_gid_seq
     START WITH 1
@@ -20270,18 +13588,8 @@ CREATE SEQUENCE sources.northofsanfranlines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.northofsanfranlines_gid_seq OWNER TO postgres;
-
---
--- Name: northofsanfranlines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.northofsanfranlines_gid_seq OWNED BY sources.ca_northofsanfran_lines.gid;
 
-
---
--- Name: nova_scotia; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nova_scotia (
     gid integer NOT NULL,
@@ -20329,12 +13637,6 @@ CREATE TABLE sources.nova_scotia (
 );
 
 
-ALTER TABLE sources.nova_scotia OWNER TO postgres;
-
---
--- Name: nova_scotia_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.nova_scotia_lines (
     gid integer NOT NULL,
     dataset_id character varying(8),
@@ -20357,12 +13659,6 @@ CREATE TABLE sources.nova_scotia_lines (
 );
 
 
-ALTER TABLE sources.nova_scotia_lines OWNER TO postgres;
-
---
--- Name: nova_scotia_faults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nova_scotia_faults_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -20371,18 +13667,8 @@ CREATE SEQUENCE sources.nova_scotia_faults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nova_scotia_faults_gid_seq OWNER TO postgres;
-
---
--- Name: nova_scotia_faults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nova_scotia_faults_gid_seq OWNED BY sources.nova_scotia_lines.gid;
 
-
---
--- Name: nova_scotia_geo_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.nova_scotia_geo_gid_seq
     START WITH 1
@@ -20392,18 +13678,8 @@ CREATE SEQUENCE sources.nova_scotia_geo_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nova_scotia_geo_gid_seq OWNER TO postgres;
-
---
--- Name: nova_scotia_geo_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nova_scotia_geo_gid_seq OWNED BY sources.nova_scotia.gid;
 
-
---
--- Name: nsantabarbgeology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.nsantabarbgeology_gid_seq
     START WITH 1
@@ -20413,18 +13689,8 @@ CREATE SEQUENCE sources.nsantabarbgeology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nsantabarbgeology_gid_seq OWNER TO postgres;
-
---
--- Name: nsantabarbgeology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nsantabarbgeology_gid_seq OWNED BY sources.ca_north_santabarb.gid;
 
-
---
--- Name: nsbarblines2_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.nsbarblines2_gid_seq
     START WITH 1
@@ -20434,18 +13700,8 @@ CREATE SEQUENCE sources.nsbarblines2_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nsbarblines2_gid_seq OWNER TO postgres;
-
---
--- Name: nsbarblines2_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nsbarblines2_gid_seq OWNED BY sources.ca_north_santabarb_lines.gid;
 
-
---
--- Name: nsw_bathurst; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nsw_bathurst (
     gid integer NOT NULL,
@@ -20470,12 +13726,6 @@ CREATE TABLE sources.nsw_bathurst (
 );
 
 
-ALTER TABLE sources.nsw_bathurst OWNER TO postgres;
-
---
--- Name: nsw_bathurst_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nsw_bathurst_gid_seq
     AS integer
     START WITH 1
@@ -20485,18 +13735,8 @@ CREATE SEQUENCE sources.nsw_bathurst_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nsw_bathurst_gid_seq OWNER TO postgres;
-
---
--- Name: nsw_bathurst_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nsw_bathurst_gid_seq OWNED BY sources.nsw_bathurst.gid;
 
-
---
--- Name: nsw_bathurst_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nsw_bathurst_lines (
     gid integer NOT NULL,
@@ -20522,12 +13762,6 @@ CREATE TABLE sources.nsw_bathurst_lines (
 );
 
 
-ALTER TABLE sources.nsw_bathurst_lines OWNER TO postgres;
-
---
--- Name: nsw_bathurst_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nsw_bathurst_lines_gid_seq
     AS integer
     START WITH 1
@@ -20537,18 +13771,8 @@ CREATE SEQUENCE sources.nsw_bathurst_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nsw_bathurst_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nsw_bathurst_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nsw_bathurst_lines_gid_seq OWNED BY sources.nsw_bathurst_lines.gid;
 
-
---
--- Name: nsw_bogangate; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nsw_bogangate (
     gid integer NOT NULL,
@@ -20582,12 +13806,6 @@ CREATE TABLE sources.nsw_bogangate (
 );
 
 
-ALTER TABLE sources.nsw_bogangate OWNER TO postgres;
-
---
--- Name: nsw_bogangate_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nsw_bogangate_gid_seq
     AS integer
     START WITH 1
@@ -20597,18 +13815,8 @@ CREATE SEQUENCE sources.nsw_bogangate_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nsw_bogangate_gid_seq OWNER TO postgres;
-
---
--- Name: nsw_bogangate_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nsw_bogangate_gid_seq OWNED BY sources.nsw_bogangate.gid;
 
-
---
--- Name: nsw_bogangate_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nsw_bogangate_lines (
     gid integer NOT NULL,
@@ -20639,12 +13847,6 @@ CREATE TABLE sources.nsw_bogangate_lines (
 );
 
 
-ALTER TABLE sources.nsw_bogangate_lines OWNER TO postgres;
-
---
--- Name: nsw_bogangate_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nsw_bogangate_lines_gid_seq
     AS integer
     START WITH 1
@@ -20654,18 +13856,8 @@ CREATE SEQUENCE sources.nsw_bogangate_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nsw_bogangate_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nsw_bogangate_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nsw_bogangate_lines_gid_seq OWNED BY sources.nsw_bogangate_lines.gid;
 
-
---
--- Name: nsw_boorowa; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nsw_boorowa (
     gid integer NOT NULL,
@@ -20718,12 +13910,6 @@ CREATE TABLE sources.nsw_boorowa (
 );
 
 
-ALTER TABLE sources.nsw_boorowa OWNER TO postgres;
-
---
--- Name: nsw_boorowa_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nsw_boorowa_gid_seq
     AS integer
     START WITH 1
@@ -20733,18 +13919,8 @@ CREATE SEQUENCE sources.nsw_boorowa_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nsw_boorowa_gid_seq OWNER TO postgres;
-
---
--- Name: nsw_boorowa_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nsw_boorowa_gid_seq OWNED BY sources.nsw_boorowa.gid;
 
-
---
--- Name: nsw_boorowa_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nsw_boorowa_lines (
     gid integer NOT NULL,
@@ -20773,12 +13949,6 @@ CREATE TABLE sources.nsw_boorowa_lines (
 );
 
 
-ALTER TABLE sources.nsw_boorowa_lines OWNER TO postgres;
-
---
--- Name: nsw_boorowa_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nsw_boorowa_lines_gid_seq
     AS integer
     START WITH 1
@@ -20788,18 +13958,8 @@ CREATE SEQUENCE sources.nsw_boorowa_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nsw_boorowa_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nsw_boorowa_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nsw_boorowa_lines_gid_seq OWNED BY sources.nsw_boorowa_lines.gid;
 
-
---
--- Name: nsw_boorowa_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nsw_boorowa_points (
     gid integer NOT NULL,
@@ -20828,12 +13988,6 @@ CREATE TABLE sources.nsw_boorowa_points (
 );
 
 
-ALTER TABLE sources.nsw_boorowa_points OWNER TO postgres;
-
---
--- Name: nsw_boorowa_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nsw_boorowa_points_gid_seq
     AS integer
     START WITH 1
@@ -20843,18 +13997,8 @@ CREATE SEQUENCE sources.nsw_boorowa_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nsw_boorowa_points_gid_seq OWNER TO postgres;
-
---
--- Name: nsw_boorowa_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nsw_boorowa_points_gid_seq OWNED BY sources.nsw_boorowa_points.gid;
 
-
---
--- Name: nsw_bunda; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nsw_bunda (
     gid integer NOT NULL,
@@ -20882,12 +14026,6 @@ CREATE TABLE sources.nsw_bunda (
 );
 
 
-ALTER TABLE sources.nsw_bunda OWNER TO postgres;
-
---
--- Name: nsw_bunda_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nsw_bunda_gid_seq
     AS integer
     START WITH 1
@@ -20897,18 +14035,8 @@ CREATE SEQUENCE sources.nsw_bunda_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nsw_bunda_gid_seq OWNER TO postgres;
-
---
--- Name: nsw_bunda_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nsw_bunda_gid_seq OWNED BY sources.nsw_bunda.gid;
 
-
---
--- Name: nsw_bunda_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nsw_bunda_lines (
     gid integer NOT NULL,
@@ -20939,12 +14067,6 @@ CREATE TABLE sources.nsw_bunda_lines (
 );
 
 
-ALTER TABLE sources.nsw_bunda_lines OWNER TO postgres;
-
---
--- Name: nsw_bunda_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nsw_bunda_lines_gid_seq
     AS integer
     START WITH 1
@@ -20954,18 +14076,8 @@ CREATE SEQUENCE sources.nsw_bunda_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nsw_bunda_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nsw_bunda_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nsw_bunda_lines_gid_seq OWNED BY sources.nsw_bunda_lines.gid;
 
-
---
--- Name: nsw_bunda_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nsw_bunda_points (
     gid integer NOT NULL,
@@ -20995,12 +14107,6 @@ CREATE TABLE sources.nsw_bunda_points (
 );
 
 
-ALTER TABLE sources.nsw_bunda_points OWNER TO postgres;
-
---
--- Name: nsw_bunda_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nsw_bunda_points_gid_seq
     AS integer
     START WITH 1
@@ -21010,18 +14116,8 @@ CREATE SEQUENCE sources.nsw_bunda_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nsw_bunda_points_gid_seq OWNER TO postgres;
-
---
--- Name: nsw_bunda_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nsw_bunda_points_gid_seq OWNED BY sources.nsw_bunda_points.gid;
 
-
---
--- Name: nsw_cobar; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nsw_cobar (
     gid integer NOT NULL,
@@ -21044,12 +14140,6 @@ CREATE TABLE sources.nsw_cobar (
 );
 
 
-ALTER TABLE sources.nsw_cobar OWNER TO postgres;
-
---
--- Name: nsw_cobar_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nsw_cobar_gid_seq
     AS integer
     START WITH 1
@@ -21059,18 +14149,8 @@ CREATE SEQUENCE sources.nsw_cobar_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nsw_cobar_gid_seq OWNER TO postgres;
-
---
--- Name: nsw_cobar_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nsw_cobar_gid_seq OWNED BY sources.nsw_cobar.gid;
 
-
---
--- Name: nsw_cobar_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nsw_cobar_lines (
     gid integer NOT NULL,
@@ -21083,12 +14163,6 @@ CREATE TABLE sources.nsw_cobar_lines (
 );
 
 
-ALTER TABLE sources.nsw_cobar_lines OWNER TO postgres;
-
---
--- Name: nsw_cobar_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nsw_cobar_lines_gid_seq
     AS integer
     START WITH 1
@@ -21098,18 +14172,8 @@ CREATE SEQUENCE sources.nsw_cobar_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nsw_cobar_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nsw_cobar_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nsw_cobar_lines_gid_seq OWNED BY sources.nsw_cobar_lines.gid;
 
-
---
--- Name: nsw_cobbora; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nsw_cobbora (
     gid integer NOT NULL,
@@ -21148,12 +14212,6 @@ CREATE TABLE sources.nsw_cobbora (
 );
 
 
-ALTER TABLE sources.nsw_cobbora OWNER TO postgres;
-
---
--- Name: nsw_cobbora_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nsw_cobbora_gid_seq
     AS integer
     START WITH 1
@@ -21163,18 +14221,8 @@ CREATE SEQUENCE sources.nsw_cobbora_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nsw_cobbora_gid_seq OWNER TO postgres;
-
---
--- Name: nsw_cobbora_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nsw_cobbora_gid_seq OWNED BY sources.nsw_cobbora.gid;
 
-
---
--- Name: nsw_cobbora_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nsw_cobbora_lines (
     gid integer NOT NULL,
@@ -21187,12 +14235,6 @@ CREATE TABLE sources.nsw_cobbora_lines (
 );
 
 
-ALTER TABLE sources.nsw_cobbora_lines OWNER TO postgres;
-
---
--- Name: nsw_cobbora_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nsw_cobbora_lines_gid_seq
     AS integer
     START WITH 1
@@ -21202,18 +14244,8 @@ CREATE SEQUENCE sources.nsw_cobbora_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nsw_cobbora_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nsw_cobbora_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nsw_cobbora_lines_gid_seq OWNED BY sources.nsw_cobbora_lines.gid;
 
-
---
--- Name: nsw_cobbora_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nsw_cobbora_points (
     gid integer NOT NULL,
@@ -21232,12 +14264,6 @@ CREATE TABLE sources.nsw_cobbora_points (
 );
 
 
-ALTER TABLE sources.nsw_cobbora_points OWNER TO postgres;
-
---
--- Name: nsw_cobbora_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nsw_cobbora_points_gid_seq
     AS integer
     START WITH 1
@@ -21247,18 +14273,8 @@ CREATE SEQUENCE sources.nsw_cobbora_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nsw_cobbora_points_gid_seq OWNER TO postgres;
-
---
--- Name: nsw_cobbora_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nsw_cobbora_points_gid_seq OWNED BY sources.nsw_cobbora_points.gid;
 
-
---
--- Name: nsw_cobham; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nsw_cobham (
     gid integer NOT NULL,
@@ -21296,12 +14312,6 @@ CREATE TABLE sources.nsw_cobham (
 );
 
 
-ALTER TABLE sources.nsw_cobham OWNER TO postgres;
-
---
--- Name: nsw_cobham_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nsw_cobham_gid_seq
     AS integer
     START WITH 1
@@ -21311,18 +14321,8 @@ CREATE SEQUENCE sources.nsw_cobham_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nsw_cobham_gid_seq OWNER TO postgres;
-
---
--- Name: nsw_cobham_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nsw_cobham_gid_seq OWNED BY sources.nsw_cobham.gid;
 
-
---
--- Name: nsw_cobham_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nsw_cobham_lines (
     gid integer NOT NULL,
@@ -21349,12 +14349,6 @@ CREATE TABLE sources.nsw_cobham_lines (
 );
 
 
-ALTER TABLE sources.nsw_cobham_lines OWNER TO postgres;
-
---
--- Name: nsw_cobham_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nsw_cobham_lines_gid_seq
     AS integer
     START WITH 1
@@ -21364,18 +14358,8 @@ CREATE SEQUENCE sources.nsw_cobham_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nsw_cobham_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nsw_cobham_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nsw_cobham_lines_gid_seq OWNED BY sources.nsw_cobham_lines.gid;
 
-
---
--- Name: nsw_cobham_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nsw_cobham_points (
     gid integer NOT NULL,
@@ -21403,12 +14387,6 @@ CREATE TABLE sources.nsw_cobham_points (
 );
 
 
-ALTER TABLE sources.nsw_cobham_points OWNER TO postgres;
-
---
--- Name: nsw_cobham_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nsw_cobham_points_gid_seq
     AS integer
     START WITH 1
@@ -21418,18 +14396,8 @@ CREATE SEQUENCE sources.nsw_cobham_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nsw_cobham_points_gid_seq OWNER TO postgres;
-
---
--- Name: nsw_cobham_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nsw_cobham_points_gid_seq OWNED BY sources.nsw_cobham_points.gid;
 
-
---
--- Name: nsw_cool; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nsw_cool (
     gid integer NOT NULL,
@@ -21454,12 +14422,6 @@ CREATE TABLE sources.nsw_cool (
 );
 
 
-ALTER TABLE sources.nsw_cool OWNER TO postgres;
-
---
--- Name: nsw_cool_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nsw_cool_gid_seq
     AS integer
     START WITH 1
@@ -21469,18 +14431,8 @@ CREATE SEQUENCE sources.nsw_cool_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nsw_cool_gid_seq OWNER TO postgres;
-
---
--- Name: nsw_cool_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nsw_cool_gid_seq OWNED BY sources.nsw_cool.gid;
 
-
---
--- Name: nsw_cool_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nsw_cool_lines (
     gid integer NOT NULL,
@@ -21512,12 +14464,6 @@ CREATE TABLE sources.nsw_cool_lines (
 );
 
 
-ALTER TABLE sources.nsw_cool_lines OWNER TO postgres;
-
---
--- Name: nsw_cool_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nsw_cool_lines_gid_seq
     AS integer
     START WITH 1
@@ -21527,18 +14473,8 @@ CREATE SEQUENCE sources.nsw_cool_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nsw_cool_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nsw_cool_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nsw_cool_lines_gid_seq OWNED BY sources.nsw_cool_lines.gid;
 
-
---
--- Name: nsw_cool_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nsw_cool_points (
     gid integer NOT NULL,
@@ -21567,12 +14503,6 @@ CREATE TABLE sources.nsw_cool_points (
 );
 
 
-ALTER TABLE sources.nsw_cool_points OWNER TO postgres;
-
---
--- Name: nsw_cool_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nsw_cool_points_gid_seq
     AS integer
     START WITH 1
@@ -21582,18 +14512,8 @@ CREATE SEQUENCE sources.nsw_cool_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nsw_cool_points_gid_seq OWNER TO postgres;
-
---
--- Name: nsw_cool_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nsw_cool_points_gid_seq OWNED BY sources.nsw_cool_points.gid;
 
-
---
--- Name: nsw_gosford; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nsw_gosford (
     gid integer NOT NULL,
@@ -21640,12 +14560,6 @@ CREATE TABLE sources.nsw_gosford (
 );
 
 
-ALTER TABLE sources.nsw_gosford OWNER TO postgres;
-
---
--- Name: nsw_gosford_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nsw_gosford_gid_seq
     AS integer
     START WITH 1
@@ -21655,18 +14569,8 @@ CREATE SEQUENCE sources.nsw_gosford_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nsw_gosford_gid_seq OWNER TO postgres;
-
---
--- Name: nsw_gosford_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nsw_gosford_gid_seq OWNED BY sources.nsw_gosford.gid;
 
-
---
--- Name: nsw_gosford_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nsw_gosford_lines (
     gid integer NOT NULL,
@@ -21696,12 +14600,6 @@ CREATE TABLE sources.nsw_gosford_lines (
 );
 
 
-ALTER TABLE sources.nsw_gosford_lines OWNER TO postgres;
-
---
--- Name: nsw_gosford_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nsw_gosford_lines_gid_seq
     AS integer
     START WITH 1
@@ -21711,18 +14609,8 @@ CREATE SEQUENCE sources.nsw_gosford_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nsw_gosford_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nsw_gosford_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nsw_gosford_lines_gid_seq OWNED BY sources.nsw_gosford_lines.gid;
 
-
---
--- Name: nsw_gosford_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nsw_gosford_points (
     gid integer NOT NULL,
@@ -21750,12 +14638,6 @@ CREATE TABLE sources.nsw_gosford_points (
 );
 
 
-ALTER TABLE sources.nsw_gosford_points OWNER TO postgres;
-
---
--- Name: nsw_gosford_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nsw_gosford_points_gid_seq
     AS integer
     START WITH 1
@@ -21765,18 +14647,8 @@ CREATE SEQUENCE sources.nsw_gosford_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nsw_gosford_points_gid_seq OWNER TO postgres;
-
---
--- Name: nsw_gosford_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nsw_gosford_points_gid_seq OWNED BY sources.nsw_gosford_points.gid;
 
-
---
--- Name: nsw_goul; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nsw_goul (
     gid integer NOT NULL,
@@ -21841,12 +14713,6 @@ CREATE TABLE sources.nsw_goul (
 );
 
 
-ALTER TABLE sources.nsw_goul OWNER TO postgres;
-
---
--- Name: nsw_goul_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nsw_goul_gid_seq
     AS integer
     START WITH 1
@@ -21856,18 +14722,8 @@ CREATE SEQUENCE sources.nsw_goul_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nsw_goul_gid_seq OWNER TO postgres;
-
---
--- Name: nsw_goul_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nsw_goul_gid_seq OWNED BY sources.nsw_goul.gid;
 
-
---
--- Name: nsw_goul_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nsw_goul_lines (
     gid integer NOT NULL,
@@ -21895,12 +14751,6 @@ CREATE TABLE sources.nsw_goul_lines (
 );
 
 
-ALTER TABLE sources.nsw_goul_lines OWNER TO postgres;
-
---
--- Name: nsw_goul_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nsw_goul_lines_gid_seq
     AS integer
     START WITH 1
@@ -21910,18 +14760,8 @@ CREATE SEQUENCE sources.nsw_goul_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nsw_goul_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nsw_goul_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nsw_goul_lines_gid_seq OWNED BY sources.nsw_goul_lines.gid;
 
-
---
--- Name: nsw_goul_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nsw_goul_points (
     gid integer NOT NULL,
@@ -21949,12 +14789,6 @@ CREATE TABLE sources.nsw_goul_points (
 );
 
 
-ALTER TABLE sources.nsw_goul_points OWNER TO postgres;
-
---
--- Name: nsw_goul_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nsw_goul_points_gid_seq
     AS integer
     START WITH 1
@@ -21964,18 +14798,8 @@ CREATE SEQUENCE sources.nsw_goul_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nsw_goul_points_gid_seq OWNER TO postgres;
-
---
--- Name: nsw_goul_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nsw_goul_points_gid_seq OWNED BY sources.nsw_goul_points.gid;
 
-
---
--- Name: nsw_sussex; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nsw_sussex (
     gid integer NOT NULL,
@@ -22004,12 +14828,6 @@ CREATE TABLE sources.nsw_sussex (
 );
 
 
-ALTER TABLE sources.nsw_sussex OWNER TO postgres;
-
---
--- Name: nsw_sussex_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nsw_sussex_gid_seq
     AS integer
     START WITH 1
@@ -22019,18 +14837,8 @@ CREATE SEQUENCE sources.nsw_sussex_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nsw_sussex_gid_seq OWNER TO postgres;
-
---
--- Name: nsw_sussex_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nsw_sussex_gid_seq OWNED BY sources.nsw_sussex.gid;
 
-
---
--- Name: nsw_sussex_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nsw_sussex_lines (
     gid integer NOT NULL,
@@ -22059,12 +14867,6 @@ CREATE TABLE sources.nsw_sussex_lines (
 );
 
 
-ALTER TABLE sources.nsw_sussex_lines OWNER TO postgres;
-
---
--- Name: nsw_sussex_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nsw_sussex_lines_gid_seq
     AS integer
     START WITH 1
@@ -22074,18 +14876,8 @@ CREATE SEQUENCE sources.nsw_sussex_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nsw_sussex_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nsw_sussex_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nsw_sussex_lines_gid_seq OWNED BY sources.nsw_sussex_lines.gid;
 
-
---
--- Name: nsw_sussex_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nsw_sussex_points (
     gid integer NOT NULL,
@@ -22113,12 +14905,6 @@ CREATE TABLE sources.nsw_sussex_points (
 );
 
 
-ALTER TABLE sources.nsw_sussex_points OWNER TO postgres;
-
---
--- Name: nsw_sussex_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nsw_sussex_points_gid_seq
     AS integer
     START WITH 1
@@ -22128,18 +14914,8 @@ CREATE SEQUENCE sources.nsw_sussex_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nsw_sussex_points_gid_seq OWNER TO postgres;
-
---
--- Name: nsw_sussex_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nsw_sussex_points_gid_seq OWNED BY sources.nsw_sussex_points.gid;
 
-
---
--- Name: nsw_wonnaminta; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nsw_wonnaminta (
     gid integer NOT NULL,
@@ -22165,12 +14941,6 @@ CREATE TABLE sources.nsw_wonnaminta (
 );
 
 
-ALTER TABLE sources.nsw_wonnaminta OWNER TO postgres;
-
---
--- Name: nsw_wonnaminta_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nsw_wonnaminta_gid_seq
     AS integer
     START WITH 1
@@ -22180,18 +14950,8 @@ CREATE SEQUENCE sources.nsw_wonnaminta_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nsw_wonnaminta_gid_seq OWNER TO postgres;
-
---
--- Name: nsw_wonnaminta_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nsw_wonnaminta_gid_seq OWNED BY sources.nsw_wonnaminta.gid;
 
-
---
--- Name: nsw_wonnaminta_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nsw_wonnaminta_lines (
     gid integer NOT NULL,
@@ -22222,12 +14982,6 @@ CREATE TABLE sources.nsw_wonnaminta_lines (
 );
 
 
-ALTER TABLE sources.nsw_wonnaminta_lines OWNER TO postgres;
-
---
--- Name: nsw_wonnaminta_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nsw_wonnaminta_lines_gid_seq
     AS integer
     START WITH 1
@@ -22237,18 +14991,8 @@ CREATE SEQUENCE sources.nsw_wonnaminta_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nsw_wonnaminta_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nsw_wonnaminta_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nsw_wonnaminta_lines_gid_seq OWNED BY sources.nsw_wonnaminta_lines.gid;
 
-
---
--- Name: nsw_wonnaminta_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nsw_wonnaminta_points (
     gid integer NOT NULL,
@@ -22278,12 +15022,6 @@ CREATE TABLE sources.nsw_wonnaminta_points (
 );
 
 
-ALTER TABLE sources.nsw_wonnaminta_points OWNER TO postgres;
-
---
--- Name: nsw_wonnaminta_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nsw_wonnaminta_points_gid_seq
     AS integer
     START WITH 1
@@ -22293,18 +15031,8 @@ CREATE SEQUENCE sources.nsw_wonnaminta_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nsw_wonnaminta_points_gid_seq OWNER TO postgres;
-
---
--- Name: nsw_wonnaminta_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nsw_wonnaminta_points_gid_seq OWNED BY sources.nsw_wonnaminta_points.gid;
 
-
---
--- Name: nu_chidliak_n; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nu_chidliak_n (
     gid integer NOT NULL,
@@ -22329,12 +15057,6 @@ CREATE TABLE sources.nu_chidliak_n (
 );
 
 
-ALTER TABLE sources.nu_chidliak_n OWNER TO postgres;
-
---
--- Name: nu_chidliak_n_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nu_chidliak_n_gid_seq
     AS integer
     START WITH 1
@@ -22344,18 +15066,8 @@ CREATE SEQUENCE sources.nu_chidliak_n_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nu_chidliak_n_gid_seq OWNER TO postgres;
-
---
--- Name: nu_chidliak_n_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nu_chidliak_n_gid_seq OWNED BY sources.nu_chidliak_n.gid;
 
-
---
--- Name: nu_chidliak_s; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nu_chidliak_s (
     gid integer NOT NULL,
@@ -22380,12 +15092,6 @@ CREATE TABLE sources.nu_chidliak_s (
 );
 
 
-ALTER TABLE sources.nu_chidliak_s OWNER TO postgres;
-
---
--- Name: nu_chidliak_s_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nu_chidliak_s_gid_seq
     AS integer
     START WITH 1
@@ -22395,18 +15101,8 @@ CREATE SEQUENCE sources.nu_chidliak_s_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nu_chidliak_s_gid_seq OWNER TO postgres;
-
---
--- Name: nu_chidliak_s_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nu_chidliak_s_gid_seq OWNED BY sources.nu_chidliak_s.gid;
 
-
---
--- Name: nu_chidliak_s_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nu_chidliak_s_lines (
     gid integer NOT NULL,
@@ -22453,12 +15149,6 @@ CREATE TABLE sources.nu_chidliak_s_lines (
 );
 
 
-ALTER TABLE sources.nu_chidliak_s_lines OWNER TO postgres;
-
---
--- Name: nu_chidliak_s_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nu_chidliak_s_lines_gid_seq
     AS integer
     START WITH 1
@@ -22468,18 +15158,8 @@ CREATE SEQUENCE sources.nu_chidliak_s_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nu_chidliak_s_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nu_chidliak_s_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nu_chidliak_s_lines_gid_seq OWNED BY sources.nu_chidliak_s_lines.gid;
 
-
---
--- Name: nu_circle; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nu_circle (
     gid integer NOT NULL,
@@ -22515,12 +15195,6 @@ CREATE TABLE sources.nu_circle (
 );
 
 
-ALTER TABLE sources.nu_circle OWNER TO postgres;
-
---
--- Name: nu_circle_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nu_circle_gid_seq
     AS integer
     START WITH 1
@@ -22530,18 +15204,8 @@ CREATE SEQUENCE sources.nu_circle_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nu_circle_gid_seq OWNER TO postgres;
-
---
--- Name: nu_circle_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nu_circle_gid_seq OWNED BY sources.nu_circle.gid;
 
-
---
--- Name: nu_circle_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nu_circle_lines (
     gid integer NOT NULL,
@@ -22558,12 +15222,6 @@ CREATE TABLE sources.nu_circle_lines (
 );
 
 
-ALTER TABLE sources.nu_circle_lines OWNER TO postgres;
-
---
--- Name: nu_circle_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nu_circle_lines_gid_seq
     AS integer
     START WITH 1
@@ -22573,18 +15231,8 @@ CREATE SEQUENCE sources.nu_circle_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nu_circle_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nu_circle_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nu_circle_lines_gid_seq OWNED BY sources.nu_circle_lines.gid;
 
-
---
--- Name: nu_circle_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nu_circle_points (
     gid integer NOT NULL,
@@ -22617,12 +15265,6 @@ CREATE TABLE sources.nu_circle_points (
 );
 
 
-ALTER TABLE sources.nu_circle_points OWNER TO postgres;
-
---
--- Name: nu_circle_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nu_circle_points_gid_seq
     AS integer
     START WITH 1
@@ -22632,18 +15274,8 @@ CREATE SEQUENCE sources.nu_circle_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nu_circle_points_gid_seq OWNER TO postgres;
-
---
--- Name: nu_circle_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nu_circle_points_gid_seq OWNED BY sources.nu_circle_points.gid;
 
-
---
--- Name: nu_ellef_s; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nu_ellef_s (
     gid integer NOT NULL,
@@ -22676,12 +15308,6 @@ CREATE TABLE sources.nu_ellef_s (
 );
 
 
-ALTER TABLE sources.nu_ellef_s OWNER TO postgres;
-
---
--- Name: nu_ellef_s_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nu_ellef_s_gid_seq
     AS integer
     START WITH 1
@@ -22691,18 +15317,8 @@ CREATE SEQUENCE sources.nu_ellef_s_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nu_ellef_s_gid_seq OWNER TO postgres;
-
---
--- Name: nu_ellef_s_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nu_ellef_s_gid_seq OWNED BY sources.nu_ellef_s.gid;
 
-
---
--- Name: nu_ellef_s_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nu_ellef_s_lines (
     gid integer NOT NULL,
@@ -22733,12 +15349,6 @@ CREATE TABLE sources.nu_ellef_s_lines (
 );
 
 
-ALTER TABLE sources.nu_ellef_s_lines OWNER TO postgres;
-
---
--- Name: nu_ellef_s_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nu_ellef_s_lines_gid_seq
     AS integer
     START WITH 1
@@ -22748,18 +15358,8 @@ CREATE SEQUENCE sources.nu_ellef_s_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nu_ellef_s_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nu_ellef_s_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nu_ellef_s_lines_gid_seq OWNED BY sources.nu_ellef_s_lines.gid;
 
-
---
--- Name: nu_ellef_s_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nu_ellef_s_points (
     gid integer NOT NULL,
@@ -22798,12 +15398,6 @@ CREATE TABLE sources.nu_ellef_s_points (
 );
 
 
-ALTER TABLE sources.nu_ellef_s_points OWNER TO postgres;
-
---
--- Name: nu_ellef_s_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nu_ellef_s_points_gid_seq
     AS integer
     START WITH 1
@@ -22813,18 +15407,8 @@ CREATE SEQUENCE sources.nu_ellef_s_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nu_ellef_s_points_gid_seq OWNER TO postgres;
-
---
--- Name: nu_ellef_s_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nu_ellef_s_points_gid_seq OWNED BY sources.nu_ellef_s_points.gid;
 
-
---
--- Name: nu_grinnell; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nu_grinnell (
     gid integer NOT NULL,
@@ -22844,12 +15428,6 @@ CREATE TABLE sources.nu_grinnell (
 );
 
 
-ALTER TABLE sources.nu_grinnell OWNER TO postgres;
-
---
--- Name: nu_grinnell_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nu_grinnell_gid_seq
     AS integer
     START WITH 1
@@ -22859,18 +15437,8 @@ CREATE SEQUENCE sources.nu_grinnell_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nu_grinnell_gid_seq OWNER TO postgres;
-
---
--- Name: nu_grinnell_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nu_grinnell_gid_seq OWNED BY sources.nu_grinnell.gid;
 
-
---
--- Name: nu_grinnell_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nu_grinnell_lines (
     gid integer NOT NULL,
@@ -22900,12 +15468,6 @@ CREATE TABLE sources.nu_grinnell_lines (
 );
 
 
-ALTER TABLE sources.nu_grinnell_lines OWNER TO postgres;
-
---
--- Name: nu_grinnell_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nu_grinnell_lines_gid_seq
     AS integer
     START WITH 1
@@ -22915,18 +15477,8 @@ CREATE SEQUENCE sources.nu_grinnell_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nu_grinnell_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nu_grinnell_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nu_grinnell_lines_gid_seq OWNED BY sources.nu_grinnell_lines.gid;
 
-
---
--- Name: nu_grinnell_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nu_grinnell_points (
     gid integer NOT NULL,
@@ -22955,12 +15507,6 @@ CREATE TABLE sources.nu_grinnell_points (
 );
 
 
-ALTER TABLE sources.nu_grinnell_points OWNER TO postgres;
-
---
--- Name: nu_grinnell_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nu_grinnell_points_gid_seq
     AS integer
     START WITH 1
@@ -22970,18 +15516,8 @@ CREATE SEQUENCE sources.nu_grinnell_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nu_grinnell_points_gid_seq OWNER TO postgres;
-
---
--- Name: nu_grinnell_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nu_grinnell_points_gid_seq OWNED BY sources.nu_grinnell_points.gid;
 
-
---
--- Name: nu_irvine_s; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nu_irvine_s (
     gid integer NOT NULL,
@@ -23005,12 +15541,6 @@ CREATE TABLE sources.nu_irvine_s (
 );
 
 
-ALTER TABLE sources.nu_irvine_s OWNER TO postgres;
-
---
--- Name: nu_irvine_s_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nu_irvine_s_gid_seq
     AS integer
     START WITH 1
@@ -23020,18 +15550,8 @@ CREATE SEQUENCE sources.nu_irvine_s_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nu_irvine_s_gid_seq OWNER TO postgres;
-
---
--- Name: nu_irvine_s_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nu_irvine_s_gid_seq OWNED BY sources.nu_irvine_s.gid;
 
-
---
--- Name: nu_irvine_s_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nu_irvine_s_lines (
     gid integer NOT NULL,
@@ -23073,12 +15593,6 @@ CREATE TABLE sources.nu_irvine_s_lines (
 );
 
 
-ALTER TABLE sources.nu_irvine_s_lines OWNER TO postgres;
-
---
--- Name: nu_irvine_s_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nu_irvine_s_lines_gid_seq
     AS integer
     START WITH 1
@@ -23088,18 +15602,8 @@ CREATE SEQUENCE sources.nu_irvine_s_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nu_irvine_s_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nu_irvine_s_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nu_irvine_s_lines_gid_seq OWNED BY sources.nu_irvine_s_lines.gid;
 
-
---
--- Name: nu_irvine_s_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nu_irvine_s_points (
     gid integer NOT NULL,
@@ -23134,12 +15638,6 @@ CREATE TABLE sources.nu_irvine_s_points (
 );
 
 
-ALTER TABLE sources.nu_irvine_s_points OWNER TO postgres;
-
---
--- Name: nu_irvine_s_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nu_irvine_s_points_gid_seq
     AS integer
     START WITH 1
@@ -23149,18 +15647,8 @@ CREATE SEQUENCE sources.nu_irvine_s_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nu_irvine_s_points_gid_seq OWNER TO postgres;
-
---
--- Name: nu_irvine_s_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nu_irvine_s_points_gid_seq OWNED BY sources.nu_irvine_s_points.gid;
 
-
---
--- Name: nu_mumiksaa; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nu_mumiksaa (
     gid integer NOT NULL,
@@ -23182,12 +15670,6 @@ CREATE TABLE sources.nu_mumiksaa (
 );
 
 
-ALTER TABLE sources.nu_mumiksaa OWNER TO postgres;
-
---
--- Name: nu_mumiksaa_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nu_mumiksaa_gid_seq
     AS integer
     START WITH 1
@@ -23197,18 +15679,8 @@ CREATE SEQUENCE sources.nu_mumiksaa_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nu_mumiksaa_gid_seq OWNER TO postgres;
-
---
--- Name: nu_mumiksaa_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nu_mumiksaa_gid_seq OWNED BY sources.nu_mumiksaa.gid;
 
-
---
--- Name: nu_mumiksaa_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nu_mumiksaa_lines (
     gid integer NOT NULL,
@@ -23250,12 +15722,6 @@ CREATE TABLE sources.nu_mumiksaa_lines (
 );
 
 
-ALTER TABLE sources.nu_mumiksaa_lines OWNER TO postgres;
-
---
--- Name: nu_mumiksaa_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nu_mumiksaa_lines_gid_seq
     AS integer
     START WITH 1
@@ -23265,18 +15731,8 @@ CREATE SEQUENCE sources.nu_mumiksaa_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nu_mumiksaa_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nu_mumiksaa_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nu_mumiksaa_lines_gid_seq OWNED BY sources.nu_mumiksaa_lines.gid;
 
-
---
--- Name: nu_mumiksaa_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nu_mumiksaa_points (
     gid integer NOT NULL,
@@ -23322,12 +15778,6 @@ CREATE TABLE sources.nu_mumiksaa_points (
 );
 
 
-ALTER TABLE sources.nu_mumiksaa_points OWNER TO postgres;
-
---
--- Name: nu_mumiksaa_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nu_mumiksaa_points_gid_seq
     AS integer
     START WITH 1
@@ -23337,18 +15787,8 @@ CREATE SEQUENCE sources.nu_mumiksaa_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nu_mumiksaa_points_gid_seq OWNER TO postgres;
-
---
--- Name: nu_mumiksaa_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nu_mumiksaa_points_gid_seq OWNED BY sources.nu_mumiksaa_points.gid;
 
-
---
--- Name: nu_paquet; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nu_paquet (
     gid integer NOT NULL,
@@ -23371,12 +15811,6 @@ CREATE TABLE sources.nu_paquet (
 );
 
 
-ALTER TABLE sources.nu_paquet OWNER TO postgres;
-
---
--- Name: nu_paquet_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nu_paquet_gid_seq
     AS integer
     START WITH 1
@@ -23386,18 +15820,8 @@ CREATE SEQUENCE sources.nu_paquet_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nu_paquet_gid_seq OWNER TO postgres;
-
---
--- Name: nu_paquet_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nu_paquet_gid_seq OWNED BY sources.nu_paquet.gid;
 
-
---
--- Name: nu_paquet_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nu_paquet_lines (
     gid integer NOT NULL,
@@ -23439,12 +15863,6 @@ CREATE TABLE sources.nu_paquet_lines (
 );
 
 
-ALTER TABLE sources.nu_paquet_lines OWNER TO postgres;
-
---
--- Name: nu_paquet_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nu_paquet_lines_gid_seq
     AS integer
     START WITH 1
@@ -23454,18 +15872,8 @@ CREATE SEQUENCE sources.nu_paquet_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nu_paquet_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nu_paquet_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nu_paquet_lines_gid_seq OWNED BY sources.nu_paquet_lines.gid;
 
-
---
--- Name: nu_paquet_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nu_paquet_points (
     gid integer NOT NULL,
@@ -23510,12 +15918,6 @@ CREATE TABLE sources.nu_paquet_points (
 );
 
 
-ALTER TABLE sources.nu_paquet_points OWNER TO postgres;
-
---
--- Name: nu_paquet_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nu_paquet_points_gid_seq
     AS integer
     START WITH 1
@@ -23525,18 +15927,8 @@ CREATE SEQUENCE sources.nu_paquet_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nu_paquet_points_gid_seq OWNER TO postgres;
-
---
--- Name: nu_paquet_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nu_paquet_points_gid_seq OWNED BY sources.nu_paquet_points.gid;
 
-
---
--- Name: nu_pritzler; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nu_pritzler (
     gid integer NOT NULL,
@@ -23556,12 +15948,6 @@ CREATE TABLE sources.nu_pritzler (
 );
 
 
-ALTER TABLE sources.nu_pritzler OWNER TO postgres;
-
---
--- Name: nu_pritzler_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nu_pritzler_gid_seq
     AS integer
     START WITH 1
@@ -23571,18 +15957,8 @@ CREATE SEQUENCE sources.nu_pritzler_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nu_pritzler_gid_seq OWNER TO postgres;
-
---
--- Name: nu_pritzler_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nu_pritzler_gid_seq OWNED BY sources.nu_pritzler.gid;
 
-
---
--- Name: nu_pritzler_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nu_pritzler_lines (
     gid integer NOT NULL,
@@ -23612,12 +15988,6 @@ CREATE TABLE sources.nu_pritzler_lines (
 );
 
 
-ALTER TABLE sources.nu_pritzler_lines OWNER TO postgres;
-
---
--- Name: nu_pritzler_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nu_pritzler_lines_gid_seq
     AS integer
     START WITH 1
@@ -23627,18 +15997,8 @@ CREATE SEQUENCE sources.nu_pritzler_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nu_pritzler_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nu_pritzler_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nu_pritzler_lines_gid_seq OWNED BY sources.nu_pritzler_lines.gid;
 
-
---
--- Name: nu_pritzler_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nu_pritzler_points (
     gid integer NOT NULL,
@@ -23667,12 +16027,6 @@ CREATE TABLE sources.nu_pritzler_points (
 );
 
 
-ALTER TABLE sources.nu_pritzler_points OWNER TO postgres;
-
---
--- Name: nu_pritzler_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nu_pritzler_points_gid_seq
     AS integer
     START WITH 1
@@ -23682,18 +16036,8 @@ CREATE SEQUENCE sources.nu_pritzler_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nu_pritzler_points_gid_seq OWNER TO postgres;
-
---
--- Name: nu_pritzler_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nu_pritzler_points_gid_seq OWNED BY sources.nu_pritzler_points.gid;
 
-
---
--- Name: nu_rae; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nu_rae (
     gid integer NOT NULL,
@@ -23721,12 +16065,6 @@ CREATE TABLE sources.nu_rae (
 );
 
 
-ALTER TABLE sources.nu_rae OWNER TO postgres;
-
---
--- Name: nu_rae_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nu_rae_gid_seq
     AS integer
     START WITH 1
@@ -23736,18 +16074,8 @@ CREATE SEQUENCE sources.nu_rae_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nu_rae_gid_seq OWNER TO postgres;
-
---
--- Name: nu_rae_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nu_rae_gid_seq OWNED BY sources.nu_rae.gid;
 
-
---
--- Name: nu_rae_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nu_rae_lines (
     gid integer NOT NULL,
@@ -23763,12 +16091,6 @@ CREATE TABLE sources.nu_rae_lines (
 );
 
 
-ALTER TABLE sources.nu_rae_lines OWNER TO postgres;
-
---
--- Name: nu_rae_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nu_rae_lines_gid_seq
     AS integer
     START WITH 1
@@ -23778,18 +16100,8 @@ CREATE SEQUENCE sources.nu_rae_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nu_rae_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nu_rae_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nu_rae_lines_gid_seq OWNED BY sources.nu_rae_lines.gid;
 
-
---
--- Name: nu_sunneshine; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nu_sunneshine (
     gid integer NOT NULL,
@@ -23815,12 +16127,6 @@ CREATE TABLE sources.nu_sunneshine (
 );
 
 
-ALTER TABLE sources.nu_sunneshine OWNER TO postgres;
-
---
--- Name: nu_sunneshine_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nu_sunneshine_gid_seq
     AS integer
     START WITH 1
@@ -23830,18 +16136,8 @@ CREATE SEQUENCE sources.nu_sunneshine_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nu_sunneshine_gid_seq OWNER TO postgres;
-
---
--- Name: nu_sunneshine_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nu_sunneshine_gid_seq OWNED BY sources.nu_sunneshine.gid;
 
-
---
--- Name: nu_sunneshine_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nu_sunneshine_lines (
     gid integer NOT NULL,
@@ -23858,12 +16154,6 @@ CREATE TABLE sources.nu_sunneshine_lines (
 );
 
 
-ALTER TABLE sources.nu_sunneshine_lines OWNER TO postgres;
-
---
--- Name: nu_sunneshine_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nu_sunneshine_lines_gid_seq
     AS integer
     START WITH 1
@@ -23873,18 +16163,8 @@ CREATE SEQUENCE sources.nu_sunneshine_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nu_sunneshine_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nu_sunneshine_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nu_sunneshine_lines_gid_seq OWNED BY sources.nu_sunneshine_lines.gid;
 
-
---
--- Name: nu_sunneshine_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nu_sunneshine_points (
     gid integer NOT NULL,
@@ -23917,12 +16197,6 @@ CREATE TABLE sources.nu_sunneshine_points (
 );
 
 
-ALTER TABLE sources.nu_sunneshine_points OWNER TO postgres;
-
---
--- Name: nu_sunneshine_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nu_sunneshine_points_gid_seq
     AS integer
     START WITH 1
@@ -23932,18 +16206,8 @@ CREATE SEQUENCE sources.nu_sunneshine_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nu_sunneshine_points_gid_seq OWNER TO postgres;
-
---
--- Name: nu_sunneshine_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nu_sunneshine_points_gid_seq OWNED BY sources.nu_sunneshine_points.gid;
 
-
---
--- Name: nu_sylvia_s; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nu_sylvia_s (
     gid integer NOT NULL,
@@ -23964,12 +16228,6 @@ CREATE TABLE sources.nu_sylvia_s (
 );
 
 
-ALTER TABLE sources.nu_sylvia_s OWNER TO postgres;
-
---
--- Name: nu_sylvia_s_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nu_sylvia_s_gid_seq
     AS integer
     START WITH 1
@@ -23979,18 +16237,8 @@ CREATE SEQUENCE sources.nu_sylvia_s_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nu_sylvia_s_gid_seq OWNER TO postgres;
-
---
--- Name: nu_sylvia_s_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nu_sylvia_s_gid_seq OWNED BY sources.nu_sylvia_s.gid;
 
-
---
--- Name: nu_sylvia_s_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nu_sylvia_s_lines (
     gid integer NOT NULL,
@@ -24032,12 +16280,6 @@ CREATE TABLE sources.nu_sylvia_s_lines (
 );
 
 
-ALTER TABLE sources.nu_sylvia_s_lines OWNER TO postgres;
-
---
--- Name: nu_sylvia_s_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nu_sylvia_s_lines_gid_seq
     AS integer
     START WITH 1
@@ -24047,18 +16289,8 @@ CREATE SEQUENCE sources.nu_sylvia_s_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nu_sylvia_s_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nu_sylvia_s_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nu_sylvia_s_lines_gid_seq OWNED BY sources.nu_sylvia_s_lines.gid;
 
-
---
--- Name: nu_sylvia_s_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nu_sylvia_s_points (
     gid integer NOT NULL,
@@ -24105,12 +16337,6 @@ CREATE TABLE sources.nu_sylvia_s_points (
 );
 
 
-ALTER TABLE sources.nu_sylvia_s_points OWNER TO postgres;
-
---
--- Name: nu_sylvia_s_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nu_sylvia_s_points_gid_seq
     AS integer
     START WITH 1
@@ -24120,18 +16346,8 @@ CREATE SEQUENCE sources.nu_sylvia_s_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nu_sylvia_s_points_gid_seq OWNER TO postgres;
-
---
--- Name: nu_sylvia_s_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nu_sylvia_s_points_gid_seq OWNED BY sources.nu_sylvia_s_points.gid;
 
-
---
--- Name: nu_tebesjuak; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nu_tebesjuak (
     gid integer NOT NULL,
@@ -24161,12 +16377,6 @@ CREATE TABLE sources.nu_tebesjuak (
 );
 
 
-ALTER TABLE sources.nu_tebesjuak OWNER TO postgres;
-
---
--- Name: nu_tebesjuak_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nu_tebesjuak_gid_seq
     AS integer
     START WITH 1
@@ -24176,18 +16386,8 @@ CREATE SEQUENCE sources.nu_tebesjuak_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nu_tebesjuak_gid_seq OWNER TO postgres;
-
---
--- Name: nu_tebesjuak_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nu_tebesjuak_gid_seq OWNED BY sources.nu_tebesjuak.gid;
 
-
---
--- Name: nu_tebesjuak_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nu_tebesjuak_lines (
     gid integer NOT NULL,
@@ -24216,12 +16416,6 @@ CREATE TABLE sources.nu_tebesjuak_lines (
 );
 
 
-ALTER TABLE sources.nu_tebesjuak_lines OWNER TO postgres;
-
---
--- Name: nu_tebesjuak_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nu_tebesjuak_lines_gid_seq
     AS integer
     START WITH 1
@@ -24231,18 +16425,8 @@ CREATE SEQUENCE sources.nu_tebesjuak_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nu_tebesjuak_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nu_tebesjuak_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nu_tebesjuak_lines_gid_seq OWNED BY sources.nu_tebesjuak_lines.gid;
 
-
---
--- Name: nu_tebesjuak_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nu_tebesjuak_points (
     gid integer NOT NULL,
@@ -24276,12 +16460,6 @@ CREATE TABLE sources.nu_tebesjuak_points (
 );
 
 
-ALTER TABLE sources.nu_tebesjuak_points OWNER TO postgres;
-
---
--- Name: nu_tebesjuak_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nu_tebesjuak_points_gid_seq
     AS integer
     START WITH 1
@@ -24291,18 +16469,8 @@ CREATE SEQUENCE sources.nu_tebesjuak_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nu_tebesjuak_points_gid_seq OWNER TO postgres;
-
---
--- Name: nu_tebesjuak_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nu_tebesjuak_points_gid_seq OWNED BY sources.nu_tebesjuak_points.gid;
 
-
---
--- Name: nu_terra; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nu_terra (
     gid integer NOT NULL,
@@ -24322,12 +16490,6 @@ CREATE TABLE sources.nu_terra (
 );
 
 
-ALTER TABLE sources.nu_terra OWNER TO postgres;
-
---
--- Name: nu_terra_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nu_terra_gid_seq
     AS integer
     START WITH 1
@@ -24337,18 +16499,8 @@ CREATE SEQUENCE sources.nu_terra_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nu_terra_gid_seq OWNER TO postgres;
-
---
--- Name: nu_terra_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nu_terra_gid_seq OWNED BY sources.nu_terra.gid;
 
-
---
--- Name: nu_terra_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nu_terra_lines (
     gid integer NOT NULL,
@@ -24378,12 +16530,6 @@ CREATE TABLE sources.nu_terra_lines (
 );
 
 
-ALTER TABLE sources.nu_terra_lines OWNER TO postgres;
-
---
--- Name: nu_terra_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nu_terra_lines_gid_seq
     AS integer
     START WITH 1
@@ -24393,18 +16539,8 @@ CREATE SEQUENCE sources.nu_terra_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nu_terra_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nu_terra_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nu_terra_lines_gid_seq OWNED BY sources.nu_terra_lines.gid;
 
-
---
--- Name: nu_terra_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nu_terra_points (
     gid integer NOT NULL,
@@ -24433,12 +16569,6 @@ CREATE TABLE sources.nu_terra_points (
 );
 
 
-ALTER TABLE sources.nu_terra_points OWNER TO postgres;
-
---
--- Name: nu_terra_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nu_terra_points_gid_seq
     AS integer
     START WITH 1
@@ -24448,18 +16578,8 @@ CREATE SEQUENCE sources.nu_terra_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nu_terra_points_gid_seq OWNER TO postgres;
-
---
--- Name: nu_terra_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nu_terra_points_gid_seq OWNED BY sources.nu_terra_points.gid;
 
-
---
--- Name: nv_beatty; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nv_beatty (
     gid integer NOT NULL,
@@ -24481,12 +16601,6 @@ CREATE TABLE sources.nv_beatty (
 );
 
 
-ALTER TABLE sources.nv_beatty OWNER TO postgres;
-
---
--- Name: nv_beatty_geo_poly_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nv_beatty_geo_poly_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -24495,18 +16609,8 @@ CREATE SEQUENCE sources.nv_beatty_geo_poly_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nv_beatty_geo_poly_gid_seq OWNER TO postgres;
-
---
--- Name: nv_beatty_geo_poly_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nv_beatty_geo_poly_gid_seq OWNED BY sources.nv_beatty.gid;
 
-
---
--- Name: nv_beatty_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nv_beatty_lines (
     gid integer NOT NULL,
@@ -24526,12 +16630,6 @@ CREATE TABLE sources.nv_beatty_lines (
 );
 
 
-ALTER TABLE sources.nv_beatty_lines OWNER TO postgres;
-
---
--- Name: nv_beatty_line_annotation_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nv_beatty_line_annotation_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -24540,18 +16638,8 @@ CREATE SEQUENCE sources.nv_beatty_line_annotation_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nv_beatty_line_annotation_gid_seq OWNER TO postgres;
-
---
--- Name: nv_beatty_line_annotation_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nv_beatty_line_annotation_gid_seq OWNED BY sources.nv_beatty_lines.gid;
 
-
---
--- Name: nv_las_vegas; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nv_las_vegas (
     gid integer,
@@ -24572,12 +16660,6 @@ CREATE TABLE sources.nv_las_vegas (
 );
 
 
-ALTER TABLE sources.nv_las_vegas OWNER TO postgres;
-
---
--- Name: nv_las_vegas_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.nv_las_vegas_lines (
     gid integer NOT NULL,
     fnode_ double precision,
@@ -24593,12 +16675,6 @@ CREATE TABLE sources.nv_las_vegas_lines (
 );
 
 
-ALTER TABLE sources.nv_las_vegas_lines OWNER TO postgres;
-
---
--- Name: nv_las_vegas_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nv_las_vegas_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -24607,18 +16683,8 @@ CREATE SEQUENCE sources.nv_las_vegas_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nv_las_vegas_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nv_las_vegas_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nv_las_vegas_lines_gid_seq OWNED BY sources.nv_las_vegas_lines.gid;
 
-
---
--- Name: nv_las_vegas_units; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nv_las_vegas_units (
     gid integer NOT NULL,
@@ -24632,12 +16698,6 @@ CREATE TABLE sources.nv_las_vegas_units (
 );
 
 
-ALTER TABLE sources.nv_las_vegas_units OWNER TO postgres;
-
---
--- Name: nv_las_vegas_units_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nv_las_vegas_units_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -24646,18 +16706,8 @@ CREATE SEQUENCE sources.nv_las_vegas_units_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nv_las_vegas_units_gid_seq OWNER TO postgres;
-
---
--- Name: nv_las_vegas_units_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nv_las_vegas_units_gid_seq OWNED BY sources.nv_las_vegas_units.gid;
 
-
---
--- Name: nw_lacmaunoir; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nw_lacmaunoir (
     gid integer NOT NULL,
@@ -24687,12 +16737,6 @@ CREATE TABLE sources.nw_lacmaunoir (
 );
 
 
-ALTER TABLE sources.nw_lacmaunoir OWNER TO postgres;
-
---
--- Name: nw_lacmaunoir_drift; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.nw_lacmaunoir_drift (
     gid integer NOT NULL,
     map_theme character varying(50),
@@ -24719,12 +16763,6 @@ CREATE TABLE sources.nw_lacmaunoir_drift (
 );
 
 
-ALTER TABLE sources.nw_lacmaunoir_drift OWNER TO postgres;
-
---
--- Name: nw_lacmaunoir_drift_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nw_lacmaunoir_drift_gid_seq
     AS integer
     START WITH 1
@@ -24734,18 +16772,8 @@ CREATE SEQUENCE sources.nw_lacmaunoir_drift_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nw_lacmaunoir_drift_gid_seq OWNER TO postgres;
-
---
--- Name: nw_lacmaunoir_drift_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nw_lacmaunoir_drift_gid_seq OWNED BY sources.nw_lacmaunoir_drift.gid;
 
-
---
--- Name: nw_lacmaunoir_folds; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nw_lacmaunoir_folds (
     gid integer NOT NULL,
@@ -24774,12 +16802,6 @@ CREATE TABLE sources.nw_lacmaunoir_folds (
 );
 
 
-ALTER TABLE sources.nw_lacmaunoir_folds OWNER TO postgres;
-
---
--- Name: nw_lacmaunoir_folds_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nw_lacmaunoir_folds_gid_seq
     AS integer
     START WITH 1
@@ -24789,18 +16811,8 @@ CREATE SEQUENCE sources.nw_lacmaunoir_folds_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nw_lacmaunoir_folds_gid_seq OWNER TO postgres;
-
---
--- Name: nw_lacmaunoir_folds_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nw_lacmaunoir_folds_gid_seq OWNED BY sources.nw_lacmaunoir_folds.gid;
 
-
---
--- Name: nw_lacmaunoir_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.nw_lacmaunoir_gid_seq
     AS integer
@@ -24811,18 +16823,8 @@ CREATE SEQUENCE sources.nw_lacmaunoir_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nw_lacmaunoir_gid_seq OWNER TO postgres;
-
---
--- Name: nw_lacmaunoir_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nw_lacmaunoir_gid_seq OWNED BY sources.nw_lacmaunoir.gid;
 
-
---
--- Name: nw_lacmaunoir_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nw_lacmaunoir_points (
     gid integer NOT NULL,
@@ -24852,12 +16854,6 @@ CREATE TABLE sources.nw_lacmaunoir_points (
 );
 
 
-ALTER TABLE sources.nw_lacmaunoir_points OWNER TO postgres;
-
---
--- Name: nw_lacmaunoir_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nw_lacmaunoir_points_gid_seq
     AS integer
     START WITH 1
@@ -24867,18 +16863,8 @@ CREATE SEQUENCE sources.nw_lacmaunoir_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nw_lacmaunoir_points_gid_seq OWNER TO postgres;
-
---
--- Name: nw_lacmaunoir_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nw_lacmaunoir_points_gid_seq OWNED BY sources.nw_lacmaunoir_points.gid;
 
-
---
--- Name: nw_slave_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nw_slave_lines (
     gid integer NOT NULL,
@@ -24901,12 +16887,6 @@ CREATE TABLE sources.nw_slave_lines (
 );
 
 
-ALTER TABLE sources.nw_slave_lines OWNER TO postgres;
-
---
--- Name: nw_slave_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nw_slave_lines_gid_seq
     AS integer
     START WITH 1
@@ -24916,18 +16896,8 @@ CREATE SEQUENCE sources.nw_slave_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nw_slave_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nw_slave_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nw_slave_lines_gid_seq OWNED BY sources.nw_slave_lines.gid;
 
-
---
--- Name: nw_slave_rv; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nw_slave_rv (
     gid integer NOT NULL,
@@ -24957,12 +16927,6 @@ CREATE TABLE sources.nw_slave_rv (
 );
 
 
-ALTER TABLE sources.nw_slave_rv OWNER TO postgres;
-
---
--- Name: nw_slave_rv_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nw_slave_rv_gid_seq
     AS integer
     START WITH 1
@@ -24972,18 +16936,8 @@ CREATE SEQUENCE sources.nw_slave_rv_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nw_slave_rv_gid_seq OWNER TO postgres;
-
---
--- Name: nw_slave_rv_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nw_slave_rv_gid_seq OWNED BY sources.nw_slave_rv.gid;
 
-
---
--- Name: nwt_calder; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nwt_calder (
     gid integer NOT NULL,
@@ -25013,12 +16967,6 @@ CREATE TABLE sources.nwt_calder (
 );
 
 
-ALTER TABLE sources.nwt_calder OWNER TO postgres;
-
---
--- Name: nwt_calder_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nwt_calder_gid_seq
     AS integer
     START WITH 1
@@ -25028,18 +16976,8 @@ CREATE SEQUENCE sources.nwt_calder_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nwt_calder_gid_seq OWNER TO postgres;
-
---
--- Name: nwt_calder_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nwt_calder_gid_seq OWNED BY sources.nwt_calder.gid;
 
-
---
--- Name: nwt_calder_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nwt_calder_lines (
     gid integer NOT NULL,
@@ -25052,12 +16990,6 @@ CREATE TABLE sources.nwt_calder_lines (
 );
 
 
-ALTER TABLE sources.nwt_calder_lines OWNER TO postgres;
-
---
--- Name: nwt_calder_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nwt_calder_lines_gid_seq
     AS integer
     START WITH 1
@@ -25067,18 +16999,8 @@ CREATE SEQUENCE sources.nwt_calder_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nwt_calder_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nwt_calder_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nwt_calder_lines_gid_seq OWNED BY sources.nwt_calder_lines.gid;
 
-
---
--- Name: nwt_calder_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nwt_calder_points (
     gid integer NOT NULL,
@@ -25092,12 +17014,6 @@ CREATE TABLE sources.nwt_calder_points (
 );
 
 
-ALTER TABLE sources.nwt_calder_points OWNER TO postgres;
-
---
--- Name: nwt_calder_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nwt_calder_points_gid_seq
     AS integer
     START WITH 1
@@ -25107,18 +17023,8 @@ CREATE SEQUENCE sources.nwt_calder_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nwt_calder_points_gid_seq OWNER TO postgres;
-
---
--- Name: nwt_calder_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nwt_calder_points_gid_seq OWNED BY sources.nwt_calder_points.gid;
 
-
---
--- Name: nwt_campbell; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nwt_campbell (
     gid integer NOT NULL,
@@ -25149,12 +17055,6 @@ CREATE TABLE sources.nwt_campbell (
 );
 
 
-ALTER TABLE sources.nwt_campbell OWNER TO postgres;
-
---
--- Name: nwt_campbell_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nwt_campbell_gid_seq
     AS integer
     START WITH 1
@@ -25164,18 +17064,8 @@ CREATE SEQUENCE sources.nwt_campbell_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nwt_campbell_gid_seq OWNER TO postgres;
-
---
--- Name: nwt_campbell_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nwt_campbell_gid_seq OWNED BY sources.nwt_campbell.gid;
 
-
---
--- Name: nwt_campbell_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nwt_campbell_lines (
     gid integer NOT NULL,
@@ -25205,12 +17095,6 @@ CREATE TABLE sources.nwt_campbell_lines (
 );
 
 
-ALTER TABLE sources.nwt_campbell_lines OWNER TO postgres;
-
---
--- Name: nwt_campbell_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nwt_campbell_lines_gid_seq
     AS integer
     START WITH 1
@@ -25220,18 +17104,8 @@ CREATE SEQUENCE sources.nwt_campbell_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nwt_campbell_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nwt_campbell_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nwt_campbell_lines_gid_seq OWNED BY sources.nwt_campbell_lines.gid;
 
-
---
--- Name: nwt_campbell_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nwt_campbell_points (
     gid integer NOT NULL,
@@ -25267,12 +17141,6 @@ CREATE TABLE sources.nwt_campbell_points (
 );
 
 
-ALTER TABLE sources.nwt_campbell_points OWNER TO postgres;
-
---
--- Name: nwt_campbell_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nwt_campbell_points_gid_seq
     AS integer
     START WITH 1
@@ -25282,18 +17150,8 @@ CREATE SEQUENCE sources.nwt_campbell_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nwt_campbell_points_gid_seq OWNER TO postgres;
-
---
--- Name: nwt_campbell_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nwt_campbell_points_gid_seq OWNED BY sources.nwt_campbell_points.gid;
 
-
---
--- Name: nwt_carcajou; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nwt_carcajou (
     gid integer NOT NULL,
@@ -25323,12 +17181,6 @@ CREATE TABLE sources.nwt_carcajou (
 );
 
 
-ALTER TABLE sources.nwt_carcajou OWNER TO postgres;
-
---
--- Name: nwt_carcajou_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nwt_carcajou_gid_seq
     AS integer
     START WITH 1
@@ -25338,18 +17190,8 @@ CREATE SEQUENCE sources.nwt_carcajou_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nwt_carcajou_gid_seq OWNER TO postgres;
-
---
--- Name: nwt_carcajou_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nwt_carcajou_gid_seq OWNED BY sources.nwt_carcajou.gid;
 
-
---
--- Name: nwt_carcajou_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nwt_carcajou_lines (
     gid integer NOT NULL,
@@ -25376,12 +17218,6 @@ CREATE TABLE sources.nwt_carcajou_lines (
 );
 
 
-ALTER TABLE sources.nwt_carcajou_lines OWNER TO postgres;
-
---
--- Name: nwt_carcajou_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nwt_carcajou_lines_gid_seq
     AS integer
     START WITH 1
@@ -25391,18 +17227,8 @@ CREATE SEQUENCE sources.nwt_carcajou_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nwt_carcajou_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nwt_carcajou_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nwt_carcajou_lines_gid_seq OWNED BY sources.nwt_carcajou_lines.gid;
 
-
---
--- Name: nwt_carcajou_ne; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nwt_carcajou_ne (
     gid integer NOT NULL,
@@ -25432,12 +17258,6 @@ CREATE TABLE sources.nwt_carcajou_ne (
 );
 
 
-ALTER TABLE sources.nwt_carcajou_ne OWNER TO postgres;
-
---
--- Name: nwt_carcajou_ne_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nwt_carcajou_ne_gid_seq
     AS integer
     START WITH 1
@@ -25447,18 +17267,8 @@ CREATE SEQUENCE sources.nwt_carcajou_ne_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nwt_carcajou_ne_gid_seq OWNER TO postgres;
-
---
--- Name: nwt_carcajou_ne_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nwt_carcajou_ne_gid_seq OWNED BY sources.nwt_carcajou_ne.gid;
 
-
---
--- Name: nwt_carcajou_ne_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nwt_carcajou_ne_lines (
     gid integer NOT NULL,
@@ -25486,12 +17296,6 @@ CREATE TABLE sources.nwt_carcajou_ne_lines (
 );
 
 
-ALTER TABLE sources.nwt_carcajou_ne_lines OWNER TO postgres;
-
---
--- Name: nwt_carcajou_ne_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nwt_carcajou_ne_lines_gid_seq
     AS integer
     START WITH 1
@@ -25501,18 +17305,8 @@ CREATE SEQUENCE sources.nwt_carcajou_ne_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nwt_carcajou_ne_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nwt_carcajou_ne_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nwt_carcajou_ne_lines_gid_seq OWNED BY sources.nwt_carcajou_ne_lines.gid;
 
-
---
--- Name: nwt_carcajou_ne_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nwt_carcajou_ne_points (
     gid integer NOT NULL,
@@ -25541,12 +17335,6 @@ CREATE TABLE sources.nwt_carcajou_ne_points (
 );
 
 
-ALTER TABLE sources.nwt_carcajou_ne_points OWNER TO postgres;
-
---
--- Name: nwt_carcajou_ne_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nwt_carcajou_ne_points_gid_seq
     AS integer
     START WITH 1
@@ -25556,18 +17344,8 @@ CREATE SEQUENCE sources.nwt_carcajou_ne_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nwt_carcajou_ne_points_gid_seq OWNER TO postgres;
-
---
--- Name: nwt_carcajou_ne_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nwt_carcajou_ne_points_gid_seq OWNED BY sources.nwt_carcajou_ne_points.gid;
 
-
---
--- Name: nwt_carcajou_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nwt_carcajou_points (
     gid integer NOT NULL,
@@ -25599,12 +17377,6 @@ CREATE TABLE sources.nwt_carcajou_points (
 );
 
 
-ALTER TABLE sources.nwt_carcajou_points OWNER TO postgres;
-
---
--- Name: nwt_carcajou_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nwt_carcajou_points_gid_seq
     AS integer
     START WITH 1
@@ -25614,18 +17386,8 @@ CREATE SEQUENCE sources.nwt_carcajou_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nwt_carcajou_points_gid_seq OWNER TO postgres;
-
---
--- Name: nwt_carcajou_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nwt_carcajou_points_gid_seq OWNED BY sources.nwt_carcajou_points.gid;
 
-
---
--- Name: nwt_carcajou_se; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nwt_carcajou_se (
     gid integer NOT NULL,
@@ -25655,12 +17417,6 @@ CREATE TABLE sources.nwt_carcajou_se (
 );
 
 
-ALTER TABLE sources.nwt_carcajou_se OWNER TO postgres;
-
---
--- Name: nwt_carcajou_se_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nwt_carcajou_se_gid_seq
     AS integer
     START WITH 1
@@ -25670,18 +17426,8 @@ CREATE SEQUENCE sources.nwt_carcajou_se_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nwt_carcajou_se_gid_seq OWNER TO postgres;
-
---
--- Name: nwt_carcajou_se_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nwt_carcajou_se_gid_seq OWNED BY sources.nwt_carcajou_se.gid;
 
-
---
--- Name: nwt_carcajou_se_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nwt_carcajou_se_lines (
     gid integer NOT NULL,
@@ -25708,12 +17454,6 @@ CREATE TABLE sources.nwt_carcajou_se_lines (
 );
 
 
-ALTER TABLE sources.nwt_carcajou_se_lines OWNER TO postgres;
-
---
--- Name: nwt_carcajou_se_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nwt_carcajou_se_lines_gid_seq
     AS integer
     START WITH 1
@@ -25723,18 +17463,8 @@ CREATE SEQUENCE sources.nwt_carcajou_se_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nwt_carcajou_se_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nwt_carcajou_se_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nwt_carcajou_se_lines_gid_seq OWNED BY sources.nwt_carcajou_se_lines.gid;
 
-
---
--- Name: nwt_carcajou_se_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nwt_carcajou_se_points (
     gid integer NOT NULL,
@@ -25766,12 +17496,6 @@ CREATE TABLE sources.nwt_carcajou_se_points (
 );
 
 
-ALTER TABLE sources.nwt_carcajou_se_points OWNER TO postgres;
-
---
--- Name: nwt_carcajou_se_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nwt_carcajou_se_points_gid_seq
     AS integer
     START WITH 1
@@ -25781,18 +17505,8 @@ CREATE SEQUENCE sources.nwt_carcajou_se_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nwt_carcajou_se_points_gid_seq OWNER TO postgres;
-
---
--- Name: nwt_carcajou_se_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nwt_carcajou_se_points_gid_seq OWNED BY sources.nwt_carcajou_se_points.gid;
 
-
---
--- Name: nwt_carcajou_sw; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nwt_carcajou_sw (
     gid integer NOT NULL,
@@ -25822,12 +17536,6 @@ CREATE TABLE sources.nwt_carcajou_sw (
 );
 
 
-ALTER TABLE sources.nwt_carcajou_sw OWNER TO postgres;
-
---
--- Name: nwt_carcajou_sw_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nwt_carcajou_sw_gid_seq
     AS integer
     START WITH 1
@@ -25837,18 +17545,8 @@ CREATE SEQUENCE sources.nwt_carcajou_sw_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nwt_carcajou_sw_gid_seq OWNER TO postgres;
-
---
--- Name: nwt_carcajou_sw_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nwt_carcajou_sw_gid_seq OWNED BY sources.nwt_carcajou_sw.gid;
 
-
---
--- Name: nwt_carcajou_sw_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nwt_carcajou_sw_lines (
     gid integer NOT NULL,
@@ -25875,12 +17573,6 @@ CREATE TABLE sources.nwt_carcajou_sw_lines (
 );
 
 
-ALTER TABLE sources.nwt_carcajou_sw_lines OWNER TO postgres;
-
---
--- Name: nwt_carcajou_sw_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nwt_carcajou_sw_lines_gid_seq
     AS integer
     START WITH 1
@@ -25890,18 +17582,8 @@ CREATE SEQUENCE sources.nwt_carcajou_sw_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nwt_carcajou_sw_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nwt_carcajou_sw_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nwt_carcajou_sw_lines_gid_seq OWNED BY sources.nwt_carcajou_sw_lines.gid;
 
-
---
--- Name: nwt_carcajou_sw_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nwt_carcajou_sw_points (
     gid integer NOT NULL,
@@ -25933,12 +17615,6 @@ CREATE TABLE sources.nwt_carcajou_sw_points (
 );
 
 
-ALTER TABLE sources.nwt_carcajou_sw_points OWNER TO postgres;
-
---
--- Name: nwt_carcajou_sw_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nwt_carcajou_sw_points_gid_seq
     AS integer
     START WITH 1
@@ -25948,18 +17624,8 @@ CREATE SEQUENCE sources.nwt_carcajou_sw_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nwt_carcajou_sw_points_gid_seq OWNER TO postgres;
-
---
--- Name: nwt_carcajou_sw_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nwt_carcajou_sw_points_gid_seq OWNED BY sources.nwt_carcajou_sw_points.gid;
 
-
---
--- Name: nwt_mahony_sw; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nwt_mahony_sw (
     gid integer NOT NULL,
@@ -25989,12 +17655,6 @@ CREATE TABLE sources.nwt_mahony_sw (
 );
 
 
-ALTER TABLE sources.nwt_mahony_sw OWNER TO postgres;
-
---
--- Name: nwt_mahony_sw_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nwt_mahony_sw_gid_seq
     AS integer
     START WITH 1
@@ -26004,18 +17664,8 @@ CREATE SEQUENCE sources.nwt_mahony_sw_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nwt_mahony_sw_gid_seq OWNER TO postgres;
-
---
--- Name: nwt_mahony_sw_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nwt_mahony_sw_gid_seq OWNED BY sources.nwt_mahony_sw.gid;
 
-
---
--- Name: nwt_mahony_sw_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nwt_mahony_sw_lines (
     gid integer NOT NULL,
@@ -26043,12 +17693,6 @@ CREATE TABLE sources.nwt_mahony_sw_lines (
 );
 
 
-ALTER TABLE sources.nwt_mahony_sw_lines OWNER TO postgres;
-
---
--- Name: nwt_mahony_sw_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nwt_mahony_sw_lines_gid_seq
     AS integer
     START WITH 1
@@ -26058,18 +17702,8 @@ CREATE SEQUENCE sources.nwt_mahony_sw_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nwt_mahony_sw_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nwt_mahony_sw_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nwt_mahony_sw_lines_gid_seq OWNED BY sources.nwt_mahony_sw_lines.gid;
 
-
---
--- Name: nwt_mahony_sw_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nwt_mahony_sw_points (
     gid integer NOT NULL,
@@ -26098,12 +17732,6 @@ CREATE TABLE sources.nwt_mahony_sw_points (
 );
 
 
-ALTER TABLE sources.nwt_mahony_sw_points OWNER TO postgres;
-
---
--- Name: nwt_mahony_sw_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nwt_mahony_sw_points_gid_seq
     AS integer
     START WITH 1
@@ -26113,18 +17741,8 @@ CREATE SEQUENCE sources.nwt_mahony_sw_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nwt_mahony_sw_points_gid_seq OWNER TO postgres;
-
---
--- Name: nwt_mahony_sw_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nwt_mahony_sw_points_gid_seq OWNED BY sources.nwt_mahony_sw_points.gid;
 
-
---
--- Name: nwt_norman_nw; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nwt_norman_nw (
     gid integer NOT NULL,
@@ -26155,12 +17773,6 @@ CREATE TABLE sources.nwt_norman_nw (
 );
 
 
-ALTER TABLE sources.nwt_norman_nw OWNER TO postgres;
-
---
--- Name: nwt_norman_nw_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nwt_norman_nw_gid_seq
     AS integer
     START WITH 1
@@ -26170,18 +17782,8 @@ CREATE SEQUENCE sources.nwt_norman_nw_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nwt_norman_nw_gid_seq OWNER TO postgres;
-
---
--- Name: nwt_norman_nw_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nwt_norman_nw_gid_seq OWNED BY sources.nwt_norman_nw.gid;
 
-
---
--- Name: nwt_norman_nw_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nwt_norman_nw_lines (
     gid integer NOT NULL,
@@ -26209,12 +17811,6 @@ CREATE TABLE sources.nwt_norman_nw_lines (
 );
 
 
-ALTER TABLE sources.nwt_norman_nw_lines OWNER TO postgres;
-
---
--- Name: nwt_norman_nw_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nwt_norman_nw_lines_gid_seq
     AS integer
     START WITH 1
@@ -26224,18 +17820,8 @@ CREATE SEQUENCE sources.nwt_norman_nw_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nwt_norman_nw_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nwt_norman_nw_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nwt_norman_nw_lines_gid_seq OWNED BY sources.nwt_norman_nw_lines.gid;
 
-
---
--- Name: nwt_norman_nw_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nwt_norman_nw_points (
     gid integer NOT NULL,
@@ -26264,12 +17850,6 @@ CREATE TABLE sources.nwt_norman_nw_points (
 );
 
 
-ALTER TABLE sources.nwt_norman_nw_points OWNER TO postgres;
-
---
--- Name: nwt_norman_nw_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nwt_norman_nw_points_gid_seq
     AS integer
     START WITH 1
@@ -26279,18 +17859,8 @@ CREATE SEQUENCE sources.nwt_norman_nw_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nwt_norman_nw_points_gid_seq OWNER TO postgres;
-
---
--- Name: nwt_norman_nw_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nwt_norman_nw_points_gid_seq OWNED BY sources.nwt_norman_nw_points.gid;
 
-
---
--- Name: nwt_norman_se; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nwt_norman_se (
     gid integer NOT NULL,
@@ -26320,12 +17890,6 @@ CREATE TABLE sources.nwt_norman_se (
 );
 
 
-ALTER TABLE sources.nwt_norman_se OWNER TO postgres;
-
---
--- Name: nwt_norman_se_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nwt_norman_se_gid_seq
     AS integer
     START WITH 1
@@ -26335,18 +17899,8 @@ CREATE SEQUENCE sources.nwt_norman_se_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nwt_norman_se_gid_seq OWNER TO postgres;
-
---
--- Name: nwt_norman_se_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nwt_norman_se_gid_seq OWNED BY sources.nwt_norman_se.gid;
 
-
---
--- Name: nwt_norman_se_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nwt_norman_se_lines (
     gid integer NOT NULL,
@@ -26373,12 +17927,6 @@ CREATE TABLE sources.nwt_norman_se_lines (
 );
 
 
-ALTER TABLE sources.nwt_norman_se_lines OWNER TO postgres;
-
---
--- Name: nwt_norman_se_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nwt_norman_se_lines_gid_seq
     AS integer
     START WITH 1
@@ -26388,18 +17936,8 @@ CREATE SEQUENCE sources.nwt_norman_se_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nwt_norman_se_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nwt_norman_se_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nwt_norman_se_lines_gid_seq OWNED BY sources.nwt_norman_se_lines.gid;
 
-
---
--- Name: nwt_norman_se_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nwt_norman_se_points (
     gid integer NOT NULL,
@@ -26428,12 +17966,6 @@ CREATE TABLE sources.nwt_norman_se_points (
 );
 
 
-ALTER TABLE sources.nwt_norman_se_points OWNER TO postgres;
-
---
--- Name: nwt_norman_se_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nwt_norman_se_points_gid_seq
     AS integer
     START WITH 1
@@ -26443,18 +17975,8 @@ CREATE SEQUENCE sources.nwt_norman_se_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nwt_norman_se_points_gid_seq OWNER TO postgres;
-
---
--- Name: nwt_norman_se_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nwt_norman_se_points_gid_seq OWNED BY sources.nwt_norman_se_points.gid;
 
-
---
--- Name: nwt_taki; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nwt_taki (
     gid integer NOT NULL,
@@ -26476,12 +17998,6 @@ CREATE TABLE sources.nwt_taki (
 );
 
 
-ALTER TABLE sources.nwt_taki OWNER TO postgres;
-
---
--- Name: nwt_taki_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nwt_taki_gid_seq
     AS integer
     START WITH 1
@@ -26491,18 +18007,8 @@ CREATE SEQUENCE sources.nwt_taki_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nwt_taki_gid_seq OWNER TO postgres;
-
---
--- Name: nwt_taki_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nwt_taki_gid_seq OWNED BY sources.nwt_taki.gid;
 
-
---
--- Name: nwt_taki_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nwt_taki_lines (
     gid integer NOT NULL,
@@ -26523,12 +18029,6 @@ CREATE TABLE sources.nwt_taki_lines (
 );
 
 
-ALTER TABLE sources.nwt_taki_lines OWNER TO postgres;
-
---
--- Name: nwt_taki_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nwt_taki_lines_gid_seq
     AS integer
     START WITH 1
@@ -26538,18 +18038,8 @@ CREATE SEQUENCE sources.nwt_taki_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nwt_taki_lines_gid_seq OWNER TO postgres;
-
---
--- Name: nwt_taki_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nwt_taki_lines_gid_seq OWNED BY sources.nwt_taki_lines.gid;
 
-
---
--- Name: nwt_taki_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.nwt_taki_points (
     gid integer NOT NULL,
@@ -26586,12 +18076,6 @@ CREATE TABLE sources.nwt_taki_points (
 );
 
 
-ALTER TABLE sources.nwt_taki_points OWNER TO postgres;
-
---
--- Name: nwt_taki_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.nwt_taki_points_gid_seq
     AS integer
     START WITH 1
@@ -26601,18 +18085,8 @@ CREATE SEQUENCE sources.nwt_taki_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.nwt_taki_points_gid_seq OWNER TO postgres;
-
---
--- Name: nwt_taki_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.nwt_taki_points_gid_seq OWNED BY sources.nwt_taki_points.gid;
 
-
---
--- Name: oceanside_ca_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.oceanside_ca_lines_gid_seq
     START WITH 1
@@ -26622,18 +18096,8 @@ CREATE SEQUENCE sources.oceanside_ca_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.oceanside_ca_lines_gid_seq OWNER TO postgres;
-
---
--- Name: oceanside_ca_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.oceanside_ca_lines_gid_seq OWNED BY sources.ca_oceanside_lines.gid;
 
-
---
--- Name: oceanside_pointorn_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.oceanside_pointorn_gid_seq
     START WITH 1
@@ -26643,18 +18107,8 @@ CREATE SEQUENCE sources.oceanside_pointorn_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.oceanside_pointorn_gid_seq OWNER TO postgres;
-
---
--- Name: oceanside_pointorn_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.oceanside_pointorn_gid_seq OWNED BY sources.ca_oceanside_points.gid;
 
-
---
--- Name: ontario; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ontario (
     gid integer NOT NULL,
@@ -26688,12 +18142,6 @@ CREATE TABLE sources.ontario (
 );
 
 
-ALTER TABLE sources.ontario OWNER TO postgres;
-
---
--- Name: ontario_dikes; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ontario_dikes (
     gid integer NOT NULL,
     feature character varying(50),
@@ -26707,12 +18155,6 @@ CREATE TABLE sources.ontario_dikes (
 );
 
 
-ALTER TABLE sources.ontario_dikes OWNER TO postgres;
-
---
--- Name: ontario_dikes_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ontario_dikes_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -26721,18 +18163,8 @@ CREATE SEQUENCE sources.ontario_dikes_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ontario_dikes_gid_seq OWNER TO postgres;
-
---
--- Name: ontario_dikes_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ontario_dikes_gid_seq OWNED BY sources.ontario_dikes.gid;
 
-
---
--- Name: ontario_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.ontario_gid_seq
     START WITH 1
@@ -26742,18 +18174,8 @@ CREATE SEQUENCE sources.ontario_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ontario_gid_seq OWNER TO postgres;
-
---
--- Name: ontario_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ontario_gid_seq OWNED BY sources.ontario.gid;
 
-
---
--- Name: ontario_pz; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ontario_pz (
     gid integer NOT NULL,
@@ -26786,12 +18208,6 @@ CREATE TABLE sources.ontario_pz (
 );
 
 
-ALTER TABLE sources.ontario_pz OWNER TO postgres;
-
---
--- Name: ontario_pz_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ontario_pz_lines (
     gid integer NOT NULL,
     fnode_ integer,
@@ -26811,12 +18227,6 @@ CREATE TABLE sources.ontario_pz_lines (
 );
 
 
-ALTER TABLE sources.ontario_pz_lines OWNER TO postgres;
-
---
--- Name: ontario_pz_mod; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ontario_pz_mod (
     unit_name character varying(50),
     strat_name text,
@@ -26830,12 +18240,6 @@ CREATE TABLE sources.ontario_pz_mod (
 );
 
 
-ALTER TABLE sources.ontario_pz_mod OWNER TO postgres;
-
---
--- Name: ontario_pz_mod_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ontario_pz_mod_gid_seq
     AS integer
     START WITH 1
@@ -26845,18 +18249,8 @@ CREATE SEQUENCE sources.ontario_pz_mod_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ontario_pz_mod_gid_seq OWNER TO postgres;
-
---
--- Name: ontario_pz_mod_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ontario_pz_mod_gid_seq OWNED BY sources.ontario_pz_mod.gid;
 
-
---
--- Name: ontario_pz_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ontario_pz_points (
     gid integer NOT NULL,
@@ -26874,12 +18268,6 @@ CREATE TABLE sources.ontario_pz_points (
     geom public.geometry(Point,4269)
 );
 
-
-ALTER TABLE sources.ontario_pz_points OWNER TO postgres;
-
---
--- Name: oregon; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.oregon (
     gid integer NOT NULL,
@@ -26916,12 +18304,6 @@ CREATE TABLE sources.oregon (
 );
 
 
-ALTER TABLE sources.oregon OWNER TO postgres;
-
---
--- Name: oregon_faults; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.oregon_faults (
     gid integer NOT NULL,
     imp_ftype character varying(254),
@@ -26942,12 +18324,6 @@ CREATE TABLE sources.oregon_faults (
 );
 
 
-ALTER TABLE sources.oregon_faults OWNER TO postgres;
-
---
--- Name: oregon_faults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.oregon_faults_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -26956,18 +18332,8 @@ CREATE SEQUENCE sources.oregon_faults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.oregon_faults_gid_seq OWNER TO postgres;
-
---
--- Name: oregon_faults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.oregon_faults_gid_seq OWNED BY sources.oregon_faults.gid;
 
-
---
--- Name: oregon_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.oregon_gid_seq
     START WITH 1
@@ -26977,18 +18343,8 @@ CREATE SEQUENCE sources.oregon_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.oregon_gid_seq OWNER TO postgres;
-
---
--- Name: oregon_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.oregon_gid_seq OWNED BY sources.oregon.gid;
 
-
---
--- Name: pakistan_westcentral; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.pakistan_westcentral (
     gid integer NOT NULL,
@@ -27005,12 +18361,6 @@ CREATE TABLE sources.pakistan_westcentral (
 );
 
 
-ALTER TABLE sources.pakistan_westcentral OWNER TO postgres;
-
---
--- Name: pakistan_westcentral_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.pakistan_westcentral_lines (
     gid integer NOT NULL,
     objectid numeric(10,0),
@@ -27023,12 +18373,6 @@ CREATE TABLE sources.pakistan_westcentral_lines (
 );
 
 
-ALTER TABLE sources.pakistan_westcentral_lines OWNER TO postgres;
-
---
--- Name: paleo_fault_arc_objectid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.paleo_fault_arc_objectid_seq
     AS integer
     START WITH 1
@@ -27038,18 +18382,8 @@ CREATE SEQUENCE sources.paleo_fault_arc_objectid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.paleo_fault_arc_objectid_seq OWNER TO postgres;
-
---
--- Name: paleo_fault_arc_objectid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.paleo_fault_arc_objectid_seq OWNED BY sources.ontario_pz_lines.gid;
 
-
---
--- Name: paleo_point_point_objectid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.paleo_point_point_objectid_seq
     AS integer
@@ -27060,18 +18394,8 @@ CREATE SEQUENCE sources.paleo_point_point_objectid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.paleo_point_point_objectid_seq OWNER TO postgres;
-
---
--- Name: paleo_point_point_objectid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.paleo_point_point_objectid_seq OWNED BY sources.ontario_pz_points.gid;
 
-
---
--- Name: paleo_poly_polygon_objectid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.paleo_poly_polygon_objectid_seq
     AS integer
@@ -27082,18 +18406,8 @@ CREATE SEQUENCE sources.paleo_poly_polygon_objectid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.paleo_poly_polygon_objectid_seq OWNER TO postgres;
-
---
--- Name: paleo_poly_polygon_objectid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.paleo_poly_polygon_objectid_seq OWNED BY sources.ontario_pz.gid;
 
-
---
--- Name: va_middletown_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.va_middletown_points (
     gid integer NOT NULL,
@@ -27107,12 +18421,6 @@ CREATE TABLE sources.va_middletown_points (
 );
 
 
-ALTER TABLE sources.va_middletown_points OWNER TO postgres;
-
---
--- Name: points_ogc_fid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.points_ogc_fid_seq
     AS integer
     START WITH 1
@@ -27122,18 +18430,8 @@ CREATE SEQUENCE sources.points_ogc_fid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.points_ogc_fid_seq OWNER TO postgres;
-
---
--- Name: points_ogc_fid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.points_ogc_fid_seq OWNED BY sources.va_middletown_points.gid;
 
-
---
--- Name: poncafaults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.poncafaults_gid_seq
     START WITH 1
@@ -27143,18 +18441,8 @@ CREATE SEQUENCE sources.poncafaults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.poncafaults_gid_seq OWNER TO postgres;
-
---
--- Name: poncafaults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.poncafaults_gid_seq OWNED BY sources.ar_ponca_lines.gid;
 
-
---
--- Name: poncageo_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.poncageo_gid_seq
     START WITH 1
@@ -27164,18 +18452,8 @@ CREATE SEQUENCE sources.poncageo_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.poncageo_gid_seq OWNER TO postgres;
-
---
--- Name: poncageo_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.poncageo_gid_seq OWNED BY sources.ar_ponca.gid;
 
-
---
--- Name: prescottgeology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.prescottgeology_gid_seq
     START WITH 1
@@ -27185,18 +18463,8 @@ CREATE SEQUENCE sources.prescottgeology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.prescottgeology_gid_seq OWNER TO postgres;
-
---
--- Name: prescottgeology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.prescottgeology_gid_seq OWNED BY sources.az_prescott.gid;
 
-
---
--- Name: prescottlines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.prescottlines_gid_seq
     START WITH 1
@@ -27206,18 +18474,8 @@ CREATE SEQUENCE sources.prescottlines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.prescottlines_gid_seq OWNER TO postgres;
-
---
--- Name: prescottlines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.prescottlines_gid_seq OWNED BY sources.az_prescott_lines.gid;
 
-
---
--- Name: ut_price; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_price (
     gid integer NOT NULL,
@@ -27236,12 +18494,6 @@ CREATE TABLE sources.ut_price (
 );
 
 
-ALTER TABLE sources.ut_price OWNER TO postgres;
-
---
--- Name: price_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.price_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -27250,18 +18502,8 @@ CREATE SEQUENCE sources.price_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.price_gid_seq OWNER TO postgres;
-
---
--- Name: price_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.price_gid_seq OWNED BY sources.ut_price.gid;
 
-
---
--- Name: ut_provo_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_provo_lines (
     gid integer NOT NULL,
@@ -27283,12 +18525,6 @@ CREATE TABLE sources.ut_provo_lines (
 );
 
 
-ALTER TABLE sources.ut_provo_lines OWNER TO postgres;
-
---
--- Name: provo_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.provo_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -27297,18 +18533,8 @@ CREATE SEQUENCE sources.provo_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.provo_lines_gid_seq OWNER TO postgres;
-
---
--- Name: provo_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.provo_lines_gid_seq OWNED BY sources.ut_provo_lines.gid;
 
-
---
--- Name: ut_provo; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_provo (
     gid integer NOT NULL,
@@ -27326,12 +18552,6 @@ CREATE TABLE sources.ut_provo (
 );
 
 
-ALTER TABLE sources.ut_provo OWNER TO postgres;
-
---
--- Name: provoutahgeology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.provoutahgeology_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -27340,18 +18560,8 @@ CREATE SEQUENCE sources.provoutahgeology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.provoutahgeology_gid_seq OWNER TO postgres;
-
---
--- Name: provoutahgeology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.provoutahgeology_gid_seq OWNED BY sources.ut_provo.gid;
 
-
---
--- Name: puerto_rico; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.puerto_rico (
     gid integer NOT NULL,
@@ -27373,12 +18583,6 @@ CREATE TABLE sources.puerto_rico (
 );
 
 
-ALTER TABLE sources.puerto_rico OWNER TO postgres;
-
---
--- Name: puerto_rico_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.puerto_rico_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -27387,18 +18591,8 @@ CREATE SEQUENCE sources.puerto_rico_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.puerto_rico_gid_seq OWNER TO postgres;
-
---
--- Name: puerto_rico_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.puerto_rico_gid_seq OWNED BY sources.puerto_rico.gid;
 
-
---
--- Name: puerto_rico_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.puerto_rico_lines (
     gid integer NOT NULL,
@@ -27411,12 +18605,6 @@ CREATE TABLE sources.puerto_rico_lines (
 );
 
 
-ALTER TABLE sources.puerto_rico_lines OWNER TO postgres;
-
---
--- Name: puertorico_nfaults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.puertorico_nfaults_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -27425,18 +18613,8 @@ CREATE SEQUENCE sources.puertorico_nfaults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.puertorico_nfaults_gid_seq OWNER TO postgres;
-
---
--- Name: puertorico_nfaults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.puertorico_nfaults_gid_seq OWNED BY sources.puerto_rico_lines.gid;
 
-
---
--- Name: ut_richfield_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_richfield_lines (
     gid integer NOT NULL,
@@ -27457,12 +18635,6 @@ CREATE TABLE sources.ut_richfield_lines (
 );
 
 
-ALTER TABLE sources.ut_richfield_lines OWNER TO postgres;
-
---
--- Name: richfield_faults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.richfield_faults_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -27471,18 +18643,8 @@ CREATE SEQUENCE sources.richfield_faults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.richfield_faults_gid_seq OWNER TO postgres;
-
---
--- Name: richfield_faults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.richfield_faults_gid_seq OWNED BY sources.ut_richfield_lines.gid;
 
-
---
--- Name: ut_richfield; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_richfield (
     gid integer NOT NULL,
@@ -27502,12 +18664,6 @@ CREATE TABLE sources.ut_richfield (
 );
 
 
-ALTER TABLE sources.ut_richfield OWNER TO postgres;
-
---
--- Name: richfieldutgeology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.richfieldutgeology_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -27516,18 +18672,8 @@ CREATE SEQUENCE sources.richfieldutgeology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.richfieldutgeology_gid_seq OWNER TO postgres;
-
---
--- Name: richfieldutgeology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.richfieldutgeology_gid_seq OWNED BY sources.ut_richfield.gid;
 
-
---
--- Name: wy_rock_springs; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_rock_springs (
     gid integer NOT NULL,
@@ -27547,12 +18693,6 @@ CREATE TABLE sources.wy_rock_springs (
 );
 
 
-ALTER TABLE sources.wy_rock_springs OWNER TO postgres;
-
---
--- Name: rock_springs_geo_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.rock_springs_geo_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -27561,18 +18701,8 @@ CREATE SEQUENCE sources.rock_springs_geo_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.rock_springs_geo_gid_seq OWNER TO postgres;
-
---
--- Name: rock_springs_geo_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.rock_springs_geo_gid_seq OWNED BY sources.wy_rock_springs.gid;
 
-
---
--- Name: wy_rock_springs_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_rock_springs_lines (
     gid integer NOT NULL,
@@ -27586,12 +18716,6 @@ CREATE TABLE sources.wy_rock_springs_lines (
 );
 
 
-ALTER TABLE sources.wy_rock_springs_lines OWNER TO postgres;
-
---
--- Name: rock_springs_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.rock_springs_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -27600,18 +18724,8 @@ CREATE SEQUENCE sources.rock_springs_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.rock_springs_lines_gid_seq OWNER TO postgres;
-
---
--- Name: rock_springs_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.rock_springs_lines_gid_seq OWNED BY sources.wy_rock_springs_lines.gid;
 
-
---
--- Name: wy_rock_springs_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_rock_springs_points (
     gid integer NOT NULL,
@@ -27627,12 +18741,6 @@ CREATE TABLE sources.wy_rock_springs_points (
 );
 
 
-ALTER TABLE sources.wy_rock_springs_points OWNER TO postgres;
-
---
--- Name: rock_springs_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.rock_springs_points_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -27641,18 +18749,8 @@ CREATE SEQUENCE sources.rock_springs_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.rock_springs_points_gid_seq OWNER TO postgres;
-
---
--- Name: rock_springs_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.rock_springs_points_gid_seq OWNED BY sources.wy_rock_springs_points.gid;
 
-
---
--- Name: rockies; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.rockies (
     gid integer NOT NULL,
@@ -27732,12 +18830,6 @@ CREATE TABLE sources.rockies (
 );
 
 
-ALTER TABLE sources.rockies OWNER TO postgres;
-
---
--- Name: rockies_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.rockies_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -27746,18 +18838,8 @@ CREATE SEQUENCE sources.rockies_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.rockies_gid_seq OWNER TO postgres;
-
---
--- Name: rockies_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.rockies_gid_seq OWNED BY sources.rockies.gid;
 
-
---
--- Name: rockies_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.rockies_lines (
     gid integer NOT NULL,
@@ -27788,12 +18870,6 @@ CREATE TABLE sources.rockies_lines (
 );
 
 
-ALTER TABLE sources.rockies_lines OWNER TO postgres;
-
---
--- Name: rockies_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.rockies_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -27802,18 +18878,8 @@ CREATE SEQUENCE sources.rockies_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.rockies_lines_gid_seq OWNER TO postgres;
-
---
--- Name: rockies_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.rockies_lines_gid_seq OWNED BY sources.rockies_lines.gid;
 
-
---
--- Name: rockport_l2_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.rockport_l2_gid_seq
     START WITH 1
@@ -27823,18 +18889,8 @@ CREATE SEQUENCE sources.rockport_l2_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.rockport_l2_gid_seq OWNER TO postgres;
-
---
--- Name: rockport_l2_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.rockport_l2_gid_seq OWNED BY sources.ma_glouster_lines.gid;
 
-
---
--- Name: rockymountainnationalparkgeology; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.rockymountainnationalparkgeology (
     gid integer NOT NULL,
@@ -27860,12 +18916,6 @@ CREATE TABLE sources.rockymountainnationalparkgeology (
 );
 
 
-ALTER TABLE sources.rockymountainnationalparkgeology OWNER TO postgres;
-
---
--- Name: rockymountainnationalparkgeology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.rockymountainnationalparkgeology_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -27874,18 +18924,8 @@ CREATE SEQUENCE sources.rockymountainnationalparkgeology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.rockymountainnationalparkgeology_gid_seq OWNER TO postgres;
-
---
--- Name: rockymountainnationalparkgeology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.rockymountainnationalparkgeology_gid_seq OWNED BY sources.rockymountainnationalparkgeology.gid;
 
-
---
--- Name: rockymtn_np_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.rockymtn_np_lines (
     gid integer NOT NULL,
@@ -27906,12 +18946,6 @@ CREATE TABLE sources.rockymtn_np_lines (
 );
 
 
-ALTER TABLE sources.rockymtn_np_lines OWNER TO postgres;
-
---
--- Name: rockymtn_faults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.rockymtn_faults_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -27920,18 +18954,8 @@ CREATE SEQUENCE sources.rockymtn_faults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.rockymtn_faults_gid_seq OWNER TO postgres;
-
---
--- Name: rockymtn_faults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.rockymtn_faults_gid_seq OWNED BY sources.rockymtn_np_lines.gid;
 
-
---
--- Name: rondinia_dikes_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.rondinia_dikes_gid_seq
     START WITH 1
@@ -27941,18 +18965,8 @@ CREATE SEQUENCE sources.rondinia_dikes_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.rondinia_dikes_gid_seq OWNER TO postgres;
-
---
--- Name: rondinia_dikes_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.rondinia_dikes_gid_seq OWNED BY sources.brazil_lines.gid;
 
-
---
--- Name: saipan_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.saipan_lines (
     gid integer NOT NULL,
@@ -27971,12 +18985,6 @@ CREATE TABLE sources.saipan_lines (
 );
 
 
-ALTER TABLE sources.saipan_lines OWNER TO postgres;
-
---
--- Name: saipan_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.saipan_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -27985,18 +18993,8 @@ CREATE SEQUENCE sources.saipan_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.saipan_lines_gid_seq OWNER TO postgres;
-
---
--- Name: saipan_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.saipan_lines_gid_seq OWNED BY sources.saipan_lines.gid;
 
-
---
--- Name: san_diego_ca_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.san_diego_ca_lines_gid_seq
     START WITH 1
@@ -28006,18 +19004,8 @@ CREATE SEQUENCE sources.san_diego_ca_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.san_diego_ca_lines_gid_seq OWNER TO postgres;
-
---
--- Name: san_diego_ca_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.san_diego_ca_lines_gid_seq OWNED BY sources.ca_san_diego_lines.gid;
 
-
---
--- Name: san_diego_ca_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.san_diego_ca_points_gid_seq
     START WITH 1
@@ -28027,18 +19015,8 @@ CREATE SEQUENCE sources.san_diego_ca_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.san_diego_ca_points_gid_seq OWNER TO postgres;
-
---
--- Name: san_diego_ca_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.san_diego_ca_points_gid_seq OWNED BY sources.ca_san_diego_points.gid;
 
-
---
--- Name: san_salvador; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.san_salvador (
     gid integer NOT NULL,
@@ -28060,12 +19038,6 @@ CREATE TABLE sources.san_salvador (
 );
 
 
-ALTER TABLE sources.san_salvador OWNER TO postgres;
-
---
--- Name: san_salvador_geo_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.san_salvador_geo_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -28074,18 +19046,8 @@ CREATE SEQUENCE sources.san_salvador_geo_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.san_salvador_geo_gid_seq OWNER TO postgres;
-
---
--- Name: san_salvador_geo_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.san_salvador_geo_gid_seq OWNED BY sources.san_salvador.gid;
 
-
---
--- Name: sanberno_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.sanberno_gid_seq
     START WITH 1
@@ -28095,18 +19057,8 @@ CREATE SEQUENCE sources.sanberno_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.sanberno_gid_seq OWNER TO postgres;
-
---
--- Name: sanberno_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.sanberno_gid_seq OWNED BY sources.ca_sanberno.gid;
 
-
---
--- Name: sanberno_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.sanberno_lines_gid_seq
     START WITH 1
@@ -28116,18 +19068,8 @@ CREATE SEQUENCE sources.sanberno_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.sanberno_lines_gid_seq OWNER TO postgres;
-
---
--- Name: sanberno_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.sanberno_lines_gid_seq OWNED BY sources.ca_sanberno_lines.gid;
 
-
---
--- Name: sanjosegeology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.sanjosegeology_gid_seq
     START WITH 1
@@ -28137,18 +19079,8 @@ CREATE SEQUENCE sources.sanjosegeology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.sanjosegeology_gid_seq OWNER TO postgres;
-
---
--- Name: sanjosegeology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.sanjosegeology_gid_seq OWNED BY sources.ca_sanjose.gid;
 
-
---
--- Name: sanjoselines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.sanjoselines_gid_seq
     START WITH 1
@@ -28158,18 +19090,8 @@ CREATE SEQUENCE sources.sanjoselines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.sanjoselines_gid_seq OWNER TO postgres;
-
---
--- Name: sanjoselines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.sanjoselines_gid_seq OWNED BY sources.ca_sanjose_lines.gid;
 
-
---
--- Name: wa_sanjuan_island_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wa_sanjuan_island_lines (
     gid integer NOT NULL,
@@ -28187,12 +19109,6 @@ CREATE TABLE sources.wa_sanjuan_island_lines (
 );
 
 
-ALTER TABLE sources.wa_sanjuan_island_lines OWNER TO postgres;
-
---
--- Name: sanjuanfaults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.sanjuanfaults_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -28201,18 +19117,8 @@ CREATE SEQUENCE sources.sanjuanfaults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.sanjuanfaults_gid_seq OWNER TO postgres;
-
---
--- Name: sanjuanfaults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.sanjuanfaults_gid_seq OWNED BY sources.wa_sanjuan_island_lines.gid;
 
-
---
--- Name: wa_sanjuan_island; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wa_sanjuan_island (
     gid integer NOT NULL,
@@ -28235,12 +19141,6 @@ CREATE TABLE sources.wa_sanjuan_island (
 );
 
 
-ALTER TABLE sources.wa_sanjuan_island OWNER TO postgres;
-
---
--- Name: sanjuanislandgeology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.sanjuanislandgeology_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -28249,18 +19149,8 @@ CREATE SEQUENCE sources.sanjuanislandgeology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.sanjuanislandgeology_gid_seq OWNER TO postgres;
-
---
--- Name: sanjuanislandgeology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.sanjuanislandgeology_gid_seq OWNED BY sources.wa_sanjuan_island.gid;
 
-
---
--- Name: sanmateofaults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.sanmateofaults_gid_seq
     START WITH 1
@@ -28270,18 +19160,8 @@ CREATE SEQUENCE sources.sanmateofaults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.sanmateofaults_gid_seq OWNER TO postgres;
-
---
--- Name: sanmateofaults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.sanmateofaults_gid_seq OWNED BY sources.ca_sanmateo_lines.gid;
 
-
---
--- Name: sanmateogeology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.sanmateogeology_gid_seq
     START WITH 1
@@ -28291,18 +19171,8 @@ CREATE SEQUENCE sources.sanmateogeology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.sanmateogeology_gid_seq OWNER TO postgres;
-
---
--- Name: sanmateogeology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.sanmateogeology_gid_seq OWNED BY sources.ca_sanmateo.gid;
 
-
---
--- Name: santacruz_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.santacruz_gid_seq
     START WITH 1
@@ -28312,18 +19182,8 @@ CREATE SEQUENCE sources.santacruz_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.santacruz_gid_seq OWNER TO postgres;
-
---
--- Name: santacruz_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.santacruz_gid_seq OWNED BY sources.ca_santacruz.gid;
 
-
---
--- Name: saskatchewan; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.saskatchewan (
     gid integer NOT NULL,
@@ -28346,12 +19206,6 @@ CREATE TABLE sources.saskatchewan (
 );
 
 
-ALTER TABLE sources.saskatchewan OWNER TO postgres;
-
---
--- Name: saskatchewan_dikes; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.saskatchewan_dikes (
     gid integer NOT NULL,
     id numeric,
@@ -28364,12 +19218,6 @@ CREATE TABLE sources.saskatchewan_dikes (
 );
 
 
-ALTER TABLE sources.saskatchewan_dikes OWNER TO postgres;
-
---
--- Name: saskatchewan_dikes_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.saskatchewan_dikes_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -28378,18 +19226,8 @@ CREATE SEQUENCE sources.saskatchewan_dikes_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.saskatchewan_dikes_gid_seq OWNER TO postgres;
-
---
--- Name: saskatchewan_dikes_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.saskatchewan_dikes_gid_seq OWNED BY sources.saskatchewan_dikes.gid;
 
-
---
--- Name: saskatchewan_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.saskatchewan_gid_seq
     START WITH 1
@@ -28399,18 +19237,8 @@ CREATE SEQUENCE sources.saskatchewan_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.saskatchewan_gid_seq OWNER TO postgres;
-
---
--- Name: saskatchewan_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.saskatchewan_gid_seq OWNED BY sources.saskatchewan.gid;
 
-
---
--- Name: wi_sauk_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wi_sauk_lines (
     gid integer NOT NULL,
@@ -28423,12 +19251,6 @@ CREATE TABLE sources.wi_sauk_lines (
 );
 
 
-ALTER TABLE sources.wi_sauk_lines OWNER TO postgres;
-
---
--- Name: sauk_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.sauk_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -28437,30 +19259,14 @@ CREATE SEQUENCE sources.sauk_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.sauk_lines_gid_seq OWNER TO postgres;
-
---
--- Name: sauk_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.sauk_lines_gid_seq OWNED BY sources.wi_sauk_lines.gid;
 
-
---
--- Name: scale_groups_tiny; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.scale_groups_tiny (
     source_id integer,
     group_id bigint
 );
 
-
-ALTER TABLE sources.scale_groups_tiny OWNER TO postgres;
-
---
--- Name: scruz_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.scruz_lines_gid_seq
     START WITH 1
@@ -28470,18 +19276,8 @@ CREATE SEQUENCE sources.scruz_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.scruz_lines_gid_seq OWNER TO postgres;
-
---
--- Name: scruz_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.scruz_lines_gid_seq OWNED BY sources.ca_santacruz_lines.gid;
 
-
---
--- Name: wi_southeast; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wi_southeast (
     gid integer NOT NULL,
@@ -28501,12 +19297,6 @@ CREATE TABLE sources.wi_southeast (
 );
 
 
-ALTER TABLE sources.wi_southeast OWNER TO postgres;
-
---
--- Name: se_wisconsin_geo_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.se_wisconsin_geo_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -28515,18 +19305,8 @@ CREATE SEQUENCE sources.se_wisconsin_geo_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.se_wisconsin_geo_gid_seq OWNER TO postgres;
-
---
--- Name: se_wisconsin_geo_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.se_wisconsin_geo_gid_seq OWNED BY sources.wi_southeast.gid;
 
-
---
--- Name: wi_southeast_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wi_southeast_lines (
     gid integer NOT NULL,
@@ -28546,12 +19326,6 @@ CREATE TABLE sources.wi_southeast_lines (
 );
 
 
-ALTER TABLE sources.wi_southeast_lines OWNER TO postgres;
-
---
--- Name: se_wisconsin_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.se_wisconsin_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -28560,18 +19334,8 @@ CREATE SEQUENCE sources.se_wisconsin_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.se_wisconsin_lines_gid_seq OWNER TO postgres;
-
---
--- Name: se_wisconsin_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.se_wisconsin_lines_gid_seq OWNED BY sources.wi_southeast_lines.gid;
 
-
---
--- Name: ut_seepridge_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_seepridge_lines (
     gid integer NOT NULL,
@@ -28588,12 +19352,6 @@ CREATE TABLE sources.ut_seepridge_lines (
 );
 
 
-ALTER TABLE sources.ut_seepridge_lines OWNER TO postgres;
-
---
--- Name: seepridge_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.seepridge_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -28602,18 +19360,8 @@ CREATE SEQUENCE sources.seepridge_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.seepridge_lines_gid_seq OWNER TO postgres;
-
---
--- Name: seepridge_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.seepridge_lines_gid_seq OWNED BY sources.ut_seepridge_lines.gid;
 
-
---
--- Name: wi_sheboygan; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wi_sheboygan (
     gid integer NOT NULL,
@@ -28630,12 +19378,6 @@ CREATE TABLE sources.wi_sheboygan (
 );
 
 
-ALTER TABLE sources.wi_sheboygan OWNER TO postgres;
-
---
--- Name: sheboygan_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.sheboygan_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -28644,18 +19386,8 @@ CREATE SEQUENCE sources.sheboygan_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.sheboygan_gid_seq OWNER TO postgres;
-
---
--- Name: sheboygan_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.sheboygan_gid_seq OWNED BY sources.wi_sheboygan.gid;
 
-
---
--- Name: wy_sheridan; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_sheridan (
     gid integer NOT NULL,
@@ -28680,12 +19412,6 @@ CREATE TABLE sources.wy_sheridan (
 );
 
 
-ALTER TABLE sources.wy_sheridan OWNER TO postgres;
-
---
--- Name: sheridan_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.sheridan_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -28694,18 +19420,8 @@ CREATE SEQUENCE sources.sheridan_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.sheridan_gid_seq OWNER TO postgres;
-
---
--- Name: sheridan_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.sheridan_gid_seq OWNED BY sources.wy_sheridan.gid;
 
-
---
--- Name: wy_sheridan_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_sheridan_lines (
     gid integer NOT NULL,
@@ -28724,12 +19440,6 @@ CREATE TABLE sources.wy_sheridan_lines (
 );
 
 
-ALTER TABLE sources.wy_sheridan_lines OWNER TO postgres;
-
---
--- Name: sheridan_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.sheridan_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -28738,18 +19448,8 @@ CREATE SEQUENCE sources.sheridan_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.sheridan_lines_gid_seq OWNER TO postgres;
-
---
--- Name: sheridan_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.sheridan_lines_gid_seq OWNED BY sources.wy_sheridan_lines.gid;
 
-
---
--- Name: ut_smokymtns_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_smokymtns_lines (
     gid integer NOT NULL,
@@ -28764,12 +19464,6 @@ CREATE TABLE sources.ut_smokymtns_lines (
 );
 
 
-ALTER TABLE sources.ut_smokymtns_lines OWNER TO postgres;
-
---
--- Name: smkymtns_faults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.smkymtns_faults_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -28778,18 +19472,8 @@ CREATE SEQUENCE sources.smkymtns_faults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.smkymtns_faults_gid_seq OWNER TO postgres;
-
---
--- Name: smkymtns_faults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.smkymtns_faults_gid_seq OWNED BY sources.ut_smokymtns_lines.gid;
 
-
---
--- Name: smokies; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.smokies (
     gid integer NOT NULL,
@@ -28812,12 +19496,6 @@ CREATE TABLE sources.smokies (
 );
 
 
-ALTER TABLE sources.smokies OWNER TO postgres;
-
---
--- Name: smokies_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.smokies_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -28826,18 +19504,8 @@ CREATE SEQUENCE sources.smokies_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.smokies_gid_seq OWNER TO postgres;
-
---
--- Name: smokies_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.smokies_gid_seq OWNED BY sources.smokies.gid;
 
-
---
--- Name: smokies_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.smokies_lines (
     gid integer NOT NULL,
@@ -28850,12 +19518,6 @@ CREATE TABLE sources.smokies_lines (
 );
 
 
-ALTER TABLE sources.smokies_lines OWNER TO postgres;
-
---
--- Name: smokymountainsnationalpark_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.smokymountainsnationalpark_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -28864,18 +19526,8 @@ CREATE SEQUENCE sources.smokymountainsnationalpark_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.smokymountainsnationalpark_lines_gid_seq OWNER TO postgres;
-
---
--- Name: smokymountainsnationalpark_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.smokymountainsnationalpark_lines_gid_seq OWNED BY sources.smokies_lines.gid;
 
-
---
--- Name: ut_smokymtns; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_smokymtns (
     gid integer NOT NULL,
@@ -28892,12 +19544,6 @@ CREATE TABLE sources.ut_smokymtns (
 );
 
 
-ALTER TABLE sources.ut_smokymtns OWNER TO postgres;
-
---
--- Name: smokymtnsutgeology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.smokymtnsutgeology_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -28906,18 +19552,8 @@ CREATE SEQUENCE sources.smokymtnsutgeology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.smokymtnsutgeology_gid_seq OWNER TO postgres;
-
---
--- Name: smokymtnsutgeology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.smokymtnsutgeology_gid_seq OWNED BY sources.ut_smokymtns.gid;
 
-
---
--- Name: so_africa; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.so_africa (
     gid integer NOT NULL,
@@ -28952,12 +19588,6 @@ CREATE TABLE sources.so_africa (
 );
 
 
-ALTER TABLE sources.so_africa OWNER TO postgres;
-
---
--- Name: so_africa_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.so_africa_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -28966,18 +19596,8 @@ CREATE SEQUENCE sources.so_africa_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.so_africa_gid_seq OWNER TO postgres;
-
---
--- Name: so_africa_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.so_africa_gid_seq OWNED BY sources.so_africa.gid;
 
-
---
--- Name: so_africa_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.so_africa_lines (
     gid integer NOT NULL,
@@ -28990,12 +19610,6 @@ CREATE TABLE sources.so_africa_lines (
 );
 
 
-ALTER TABLE sources.so_africa_lines OWNER TO postgres;
-
---
--- Name: so_africa_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.so_africa_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -29004,18 +19618,8 @@ CREATE SEQUENCE sources.so_africa_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.so_africa_lines_gid_seq OWNER TO postgres;
-
---
--- Name: so_africa_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.so_africa_lines_gid_seq OWNED BY sources.so_africa_lines.gid;
 
-
---
--- Name: sources.md_keedysville_line_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources."sources.md_keedysville_line_gid_seq"
     START WITH 1
@@ -29025,18 +19629,8 @@ CREATE SEQUENCE sources."sources.md_keedysville_line_gid_seq"
     CACHE 1;
 
 
-ALTER TABLE sources."sources.md_keedysville_line_gid_seq" OWNER TO postgres;
-
---
--- Name: sources.md_keedysville_line_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources."sources.md_keedysville_line_gid_seq" OWNED BY sources.md_keedysville_line.gid;
 
-
---
--- Name: southsanfrangeology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.southsanfrangeology_gid_seq
     START WITH 1
@@ -29046,18 +19640,8 @@ CREATE SEQUENCE sources.southsanfrangeology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.southsanfrangeology_gid_seq OWNER TO postgres;
-
---
--- Name: southsanfrangeology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.southsanfrangeology_gid_seq OWNED BY sources.ca_southsanfran.gid;
 
-
---
--- Name: southsanfranlines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.southsanfranlines_gid_seq
     START WITH 1
@@ -29067,18 +19651,8 @@ CREATE SEQUENCE sources.southsanfranlines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.southsanfranlines_gid_seq OWNER TO postgres;
-
---
--- Name: southsanfranlines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.southsanfranlines_gid_seq OWNED BY sources.ca_southsanfran_lines.gid;
 
-
---
--- Name: spain; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.spain (
     gid integer NOT NULL,
@@ -29119,12 +19693,6 @@ CREATE TABLE sources.spain (
 );
 
 
-ALTER TABLE sources.spain OWNER TO postgres;
-
---
--- Name: spain_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.spain_lines (
     gid integer NOT NULL,
     fnode_ double precision,
@@ -29144,12 +19712,6 @@ CREATE TABLE sources.spain_lines (
 );
 
 
-ALTER TABLE sources.spain_lines OWNER TO postgres;
-
---
--- Name: spainlines1_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.spainlines1_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -29158,18 +19720,8 @@ CREATE SEQUENCE sources.spainlines1_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.spainlines1_gid_seq OWNER TO postgres;
-
---
--- Name: spainlines1_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.spainlines1_gid_seq OWNED BY sources.spain_lines.gid;
 
-
---
--- Name: spainpbgeology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.spainpbgeology_gid_seq
     START WITH 1
@@ -29179,18 +19731,8 @@ CREATE SEQUENCE sources.spainpbgeology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.spainpbgeology_gid_seq OWNER TO postgres;
-
---
--- Name: spainpbgeology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.spainpbgeology_gid_seq OWNED BY sources.spain.gid;
 
-
---
--- Name: texas_mexico_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.texas_mexico_lines (
     gid integer NOT NULL,
@@ -29208,12 +19750,6 @@ CREATE TABLE sources.texas_mexico_lines (
 );
 
 
-ALTER TABLE sources.texas_mexico_lines OWNER TO postgres;
-
---
--- Name: stexasmexico_geolines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.stexasmexico_geolines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -29222,18 +19758,8 @@ CREATE SEQUENCE sources.stexasmexico_geolines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.stexasmexico_geolines_gid_seq OWNER TO postgres;
-
---
--- Name: stexasmexico_geolines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.stexasmexico_geolines_gid_seq OWNED BY sources.texas_mexico_lines.gid;
 
-
---
--- Name: texas_mexico; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.texas_mexico (
     gid integer NOT NULL,
@@ -29252,12 +19778,6 @@ CREATE TABLE sources.texas_mexico (
 );
 
 
-ALTER TABLE sources.texas_mexico OWNER TO postgres;
-
---
--- Name: stexasmexicogeology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.stexasmexicogeology_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -29266,18 +19786,8 @@ CREATE SEQUENCE sources.stexasmexicogeology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.stexasmexicogeology_gid_seq OWNER TO postgres;
-
---
--- Name: stexasmexicogeology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.stexasmexicogeology_gid_seq OWNED BY sources.texas_mexico.gid;
 
-
---
--- Name: sweden; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.sweden (
     gid integer NOT NULL,
@@ -29307,12 +19817,6 @@ CREATE TABLE sources.sweden (
     late_id integer
 );
 
-
-ALTER TABLE sources.sweden OWNER TO postgres;
-
---
--- Name: sweden_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.sweden_lines (
     gid integer NOT NULL,
@@ -29344,12 +19848,6 @@ CREATE TABLE sources.sweden_lines (
 );
 
 
-ALTER TABLE sources.sweden_lines OWNER TO postgres;
-
---
--- Name: sweden_faults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.sweden_faults_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -29358,18 +19856,8 @@ CREATE SEQUENCE sources.sweden_faults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.sweden_faults_gid_seq OWNER TO postgres;
-
---
--- Name: sweden_faults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.sweden_faults_gid_seq OWNED BY sources.sweden_lines.gid;
 
-
---
--- Name: swedengeology2_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.swedengeology2_gid_seq
     START WITH 1
@@ -29379,18 +19867,8 @@ CREATE SEQUENCE sources.swedengeology2_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.swedengeology2_gid_seq OWNER TO postgres;
-
---
--- Name: swedengeology2_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.swedengeology2_gid_seq OWNED BY sources.sweden.gid;
 
-
---
--- Name: switzerland; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.switzerland (
     gid integer NOT NULL,
@@ -29435,12 +19913,6 @@ CREATE TABLE sources.switzerland (
 );
 
 
-ALTER TABLE sources.switzerland OWNER TO postgres;
-
---
--- Name: switzerland_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.switzerland_lines (
     gid integer NOT NULL,
     length numeric,
@@ -29454,12 +19926,6 @@ CREATE TABLE sources.switzerland_lines (
 );
 
 
-ALTER TABLE sources.switzerland_lines OWNER TO postgres;
-
---
--- Name: switzerland_faults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.switzerland_faults_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -29468,18 +19934,8 @@ CREATE SEQUENCE sources.switzerland_faults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.switzerland_faults_gid_seq OWNER TO postgres;
-
---
--- Name: switzerland_faults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.switzerland_faults_gid_seq OWNED BY sources.switzerland_lines.gid;
 
-
---
--- Name: switzerland_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.switzerland_gid_seq
     START WITH 1
@@ -29489,18 +19945,8 @@ CREATE SEQUENCE sources.switzerland_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.switzerland_gid_seq OWNER TO postgres;
-
---
--- Name: switzerland_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.switzerland_gid_seq OWNED BY sources.switzerland.gid;
 
-
---
--- Name: table_name_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.table_name_gid_seq
     START WITH 1
@@ -29510,18 +19956,8 @@ CREATE SEQUENCE sources.table_name_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.table_name_gid_seq OWNER TO postgres;
-
---
--- Name: table_name_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.table_name_gid_seq OWNED BY sources.ca_oceanside.gid;
 
-
---
--- Name: tanzania_oldonyo; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.tanzania_oldonyo (
     gid integer NOT NULL,
@@ -29541,12 +19977,6 @@ CREATE TABLE sources.tanzania_oldonyo (
 );
 
 
-ALTER TABLE sources.tanzania_oldonyo OWNER TO postgres;
-
---
--- Name: tanzania_geo2_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.tanzania_geo2_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -29555,18 +19985,8 @@ CREATE SEQUENCE sources.tanzania_geo2_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.tanzania_geo2_gid_seq OWNER TO postgres;
-
---
--- Name: tanzania_geo2_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.tanzania_geo2_gid_seq OWNED BY sources.tanzania_oldonyo.gid;
 
-
---
--- Name: tanzania_oldonyo_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.tanzania_oldonyo_lines (
     gid integer NOT NULL,
@@ -29583,12 +20003,6 @@ CREATE TABLE sources.tanzania_oldonyo_lines (
 );
 
 
-ALTER TABLE sources.tanzania_oldonyo_lines OWNER TO postgres;
-
---
--- Name: tanzania_structures_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.tanzania_structures_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -29597,18 +20011,8 @@ CREATE SEQUENCE sources.tanzania_structures_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.tanzania_structures_gid_seq OWNER TO postgres;
-
---
--- Name: tanzania_structures_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.tanzania_structures_gid_seq OWNED BY sources.tanzania_oldonyo_lines.gid;
 
-
---
--- Name: world_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.world_lines (
     gid integer NOT NULL,
@@ -29645,12 +20049,6 @@ CREATE TABLE sources.world_lines (
 );
 
 
-ALTER TABLE sources.world_lines OWNER TO postgres;
-
---
--- Name: tiny_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.tiny_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -29659,18 +20057,8 @@ CREATE SEQUENCE sources.tiny_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.tiny_lines_gid_seq OWNER TO postgres;
-
---
--- Name: tiny_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.tiny_lines_gid_seq OWNED BY sources.world_lines.gid;
 
-
---
--- Name: tularosafaults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.tularosafaults_gid_seq
     START WITH 1
@@ -29680,18 +20068,8 @@ CREATE SEQUENCE sources.tularosafaults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.tularosafaults_gid_seq OWNER TO postgres;
-
---
--- Name: tularosafaults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.tularosafaults_gid_seq OWNED BY sources.nm_tularosa_lines.gid;
 
-
---
--- Name: tularosageo_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.tularosageo_gid_seq
     START WITH 1
@@ -29701,18 +20079,8 @@ CREATE SEQUENCE sources.tularosageo_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.tularosageo_gid_seq OWNER TO postgres;
-
---
--- Name: tularosageo_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.tularosageo_gid_seq OWNED BY sources.nm_tularosa.gid;
 
-
---
--- Name: ut_tulevalley_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_tulevalley_lines (
     gid integer NOT NULL,
@@ -29732,12 +20100,6 @@ CREATE TABLE sources.ut_tulevalley_lines (
 );
 
 
-ALTER TABLE sources.ut_tulevalley_lines OWNER TO postgres;
-
---
--- Name: tulevalley_faults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.tulevalley_faults_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -29746,18 +20108,8 @@ CREATE SEQUENCE sources.tulevalley_faults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.tulevalley_faults_gid_seq OWNER TO postgres;
-
---
--- Name: tulevalley_faults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.tulevalley_faults_gid_seq OWNED BY sources.ut_tulevalley_lines.gid;
 
-
---
--- Name: ut_tulevalley; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_tulevalley (
     gid integer NOT NULL,
@@ -29776,12 +20128,6 @@ CREATE TABLE sources.ut_tulevalley (
 );
 
 
-ALTER TABLE sources.ut_tulevalley OWNER TO postgres;
-
---
--- Name: tulevalleyutgeology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.tulevalleyutgeology_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -29790,18 +20136,8 @@ CREATE SEQUENCE sources.tulevalleyutgeology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.tulevalleyutgeology_gid_seq OWNER TO postgres;
-
---
--- Name: tulevalleyutgeology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.tulevalleyutgeology_gid_seq OWNED BY sources.ut_tulevalley.gid;
 
-
---
--- Name: twincitiesmn_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.twincitiesmn_lines (
     gid integer NOT NULL,
@@ -29826,12 +20162,6 @@ CREATE TABLE sources.twincitiesmn_lines (
 );
 
 
-ALTER TABLE sources.twincitiesmn_lines OWNER TO postgres;
-
---
--- Name: twincities_faults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.twincities_faults_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -29840,18 +20170,8 @@ CREATE SEQUENCE sources.twincities_faults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.twincities_faults_gid_seq OWNER TO postgres;
-
---
--- Name: twincities_faults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.twincities_faults_gid_seq OWNED BY sources.twincitiesmn_lines.gid;
 
-
---
--- Name: twincitiesmngeology; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.twincitiesmngeology (
     gid integer NOT NULL,
@@ -29874,12 +20194,6 @@ CREATE TABLE sources.twincitiesmngeology (
 );
 
 
-ALTER TABLE sources.twincitiesmngeology OWNER TO postgres;
-
---
--- Name: twincitiesmngeology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.twincitiesmngeology_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -29888,18 +20202,8 @@ CREATE SEQUENCE sources.twincitiesmngeology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.twincitiesmngeology_gid_seq OWNER TO postgres;
-
---
--- Name: twincitiesmngeology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.twincitiesmngeology_gid_seq OWNED BY sources.twincitiesmngeology.gid;
 
-
---
--- Name: tx_bexar; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.tx_bexar (
     gid integer NOT NULL,
@@ -29927,12 +20231,6 @@ CREATE TABLE sources.tx_bexar (
 );
 
 
-ALTER TABLE sources.tx_bexar OWNER TO postgres;
-
---
--- Name: tx_bexar_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.tx_bexar_gid_seq
     AS integer
     START WITH 1
@@ -29942,18 +20240,8 @@ CREATE SEQUENCE sources.tx_bexar_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.tx_bexar_gid_seq OWNER TO postgres;
-
---
--- Name: tx_bexar_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.tx_bexar_gid_seq OWNED BY sources.tx_bexar.gid;
 
-
---
--- Name: tx_bexar_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.tx_bexar_lines (
     gid integer NOT NULL,
@@ -29964,12 +20252,6 @@ CREATE TABLE sources.tx_bexar_lines (
 );
 
 
-ALTER TABLE sources.tx_bexar_lines OWNER TO postgres;
-
---
--- Name: tx_bexar_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.tx_bexar_lines_gid_seq
     AS integer
     START WITH 1
@@ -29979,18 +20261,8 @@ CREATE SEQUENCE sources.tx_bexar_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.tx_bexar_lines_gid_seq OWNER TO postgres;
-
---
--- Name: tx_bexar_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.tx_bexar_lines_gid_seq OWNED BY sources.tx_bexar_lines.gid;
 
-
---
--- Name: tx_blanco; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.tx_blanco (
     gid integer NOT NULL,
@@ -30012,12 +20284,6 @@ CREATE TABLE sources.tx_blanco (
 );
 
 
-ALTER TABLE sources.tx_blanco OWNER TO postgres;
-
---
--- Name: tx_blanco_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.tx_blanco_gid_seq
     AS integer
     START WITH 1
@@ -30027,18 +20293,8 @@ CREATE SEQUENCE sources.tx_blanco_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.tx_blanco_gid_seq OWNER TO postgres;
-
---
--- Name: tx_blanco_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.tx_blanco_gid_seq OWNED BY sources.tx_blanco.gid;
 
-
---
--- Name: tx_blanco_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.tx_blanco_lines (
     gid integer NOT NULL,
@@ -30049,12 +20305,6 @@ CREATE TABLE sources.tx_blanco_lines (
 );
 
 
-ALTER TABLE sources.tx_blanco_lines OWNER TO postgres;
-
---
--- Name: tx_blanco_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.tx_blanco_lines_gid_seq
     AS integer
     START WITH 1
@@ -30064,18 +20314,8 @@ CREATE SEQUENCE sources.tx_blanco_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.tx_blanco_lines_gid_seq OWNER TO postgres;
-
---
--- Name: tx_blanco_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.tx_blanco_lines_gid_seq OWNED BY sources.tx_blanco_lines.gid;
 
-
---
--- Name: tx_chisos; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.tx_chisos (
     gid integer NOT NULL,
@@ -30099,12 +20339,6 @@ CREATE TABLE sources.tx_chisos (
 );
 
 
-ALTER TABLE sources.tx_chisos OWNER TO postgres;
-
---
--- Name: tx_chisos_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.tx_chisos_gid_seq
     AS integer
     START WITH 1
@@ -30114,18 +20348,8 @@ CREATE SEQUENCE sources.tx_chisos_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.tx_chisos_gid_seq OWNER TO postgres;
-
---
--- Name: tx_chisos_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.tx_chisos_gid_seq OWNED BY sources.tx_chisos.gid;
 
-
---
--- Name: tx_chisos_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.tx_chisos_lines (
     gid integer NOT NULL,
@@ -30136,12 +20360,6 @@ CREATE TABLE sources.tx_chisos_lines (
 );
 
 
-ALTER TABLE sources.tx_chisos_lines OWNER TO postgres;
-
---
--- Name: tx_chisos_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.tx_chisos_lines_gid_seq
     AS integer
     START WITH 1
@@ -30151,18 +20369,8 @@ CREATE SEQUENCE sources.tx_chisos_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.tx_chisos_lines_gid_seq OWNER TO postgres;
-
---
--- Name: tx_chisos_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.tx_chisos_lines_gid_seq OWNED BY sources.tx_chisos_lines.gid;
 
-
---
--- Name: tx_chisos_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.tx_chisos_points (
     gid integer NOT NULL,
@@ -30176,12 +20384,6 @@ CREATE TABLE sources.tx_chisos_points (
 );
 
 
-ALTER TABLE sources.tx_chisos_points OWNER TO postgres;
-
---
--- Name: tx_chisos_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.tx_chisos_points_gid_seq
     AS integer
     START WITH 1
@@ -30191,18 +20393,8 @@ CREATE SEQUENCE sources.tx_chisos_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.tx_chisos_points_gid_seq OWNER TO postgres;
-
---
--- Name: tx_chisos_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.tx_chisos_points_gid_seq OWNED BY sources.tx_chisos_points.gid;
 
-
---
--- Name: tx_hays; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.tx_hays (
     gid integer NOT NULL,
@@ -30230,12 +20422,6 @@ CREATE TABLE sources.tx_hays (
 );
 
 
-ALTER TABLE sources.tx_hays OWNER TO postgres;
-
---
--- Name: tx_hays_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.tx_hays_gid_seq
     AS integer
     START WITH 1
@@ -30245,18 +20431,8 @@ CREATE SEQUENCE sources.tx_hays_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.tx_hays_gid_seq OWNER TO postgres;
-
---
--- Name: tx_hays_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.tx_hays_gid_seq OWNED BY sources.tx_hays.gid;
 
-
---
--- Name: tx_hays_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.tx_hays_lines (
     gid integer NOT NULL,
@@ -30267,12 +20443,6 @@ CREATE TABLE sources.tx_hays_lines (
 );
 
 
-ALTER TABLE sources.tx_hays_lines OWNER TO postgres;
-
---
--- Name: tx_hays_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.tx_hays_lines_gid_seq
     AS integer
     START WITH 1
@@ -30282,18 +20452,8 @@ CREATE SEQUENCE sources.tx_hays_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.tx_hays_lines_gid_seq OWNER TO postgres;
-
---
--- Name: tx_hays_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.tx_hays_lines_gid_seq OWNED BY sources.tx_hays_lines.gid;
 
-
---
--- Name: tx_laredo; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.tx_laredo (
     gid integer NOT NULL,
@@ -30311,12 +20471,6 @@ CREATE TABLE sources.tx_laredo (
 );
 
 
-ALTER TABLE sources.tx_laredo OWNER TO postgres;
-
---
--- Name: tx_laredo_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.tx_laredo_gid_seq
     AS integer
     START WITH 1
@@ -30326,18 +20480,8 @@ CREATE SEQUENCE sources.tx_laredo_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.tx_laredo_gid_seq OWNER TO postgres;
-
---
--- Name: tx_laredo_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.tx_laredo_gid_seq OWNED BY sources.tx_laredo.gid;
 
-
---
--- Name: tx_laredo_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.tx_laredo_lines (
     gid integer NOT NULL,
@@ -30349,12 +20493,6 @@ CREATE TABLE sources.tx_laredo_lines (
 );
 
 
-ALTER TABLE sources.tx_laredo_lines OWNER TO postgres;
-
---
--- Name: tx_laredo_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.tx_laredo_lines_gid_seq
     AS integer
     START WITH 1
@@ -30364,18 +20502,8 @@ CREATE SEQUENCE sources.tx_laredo_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.tx_laredo_lines_gid_seq OWNER TO postgres;
-
---
--- Name: tx_laredo_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.tx_laredo_lines_gid_seq OWNED BY sources.tx_laredo_lines.gid;
 
-
---
--- Name: tx_laredo_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.tx_laredo_points (
     gid integer NOT NULL,
@@ -30390,12 +20518,6 @@ CREATE TABLE sources.tx_laredo_points (
 );
 
 
-ALTER TABLE sources.tx_laredo_points OWNER TO postgres;
-
---
--- Name: tx_laredo_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.tx_laredo_points_gid_seq
     AS integer
     START WITH 1
@@ -30405,18 +20527,8 @@ CREATE SEQUENCE sources.tx_laredo_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.tx_laredo_points_gid_seq OWNER TO postgres;
-
---
--- Name: tx_laredo_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.tx_laredo_points_gid_seq OWNED BY sources.tx_laredo_points.gid;
 
-
---
--- Name: uk; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.uk (
     gid integer NOT NULL,
@@ -30485,12 +20597,6 @@ CREATE TABLE sources.uk (
 );
 
 
-ALTER TABLE sources.uk OWNER TO postgres;
-
---
--- Name: uk_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.uk_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -30499,18 +20605,8 @@ CREATE SEQUENCE sources.uk_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.uk_gid_seq OWNER TO postgres;
-
---
--- Name: uk_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.uk_gid_seq OWNED BY sources.uk.gid;
 
-
---
--- Name: uk_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.uk_lines (
     gid integer NOT NULL,
@@ -30530,12 +20626,6 @@ CREATE TABLE sources.uk_lines (
 );
 
 
-ALTER TABLE sources.uk_lines OWNER TO postgres;
-
---
--- Name: uk_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.uk_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -30544,18 +20634,8 @@ CREATE SEQUENCE sources.uk_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.uk_lines_gid_seq OWNER TO postgres;
-
---
--- Name: uk_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.uk_lines_gid_seq OWNED BY sources.uk_lines.gid;
 
-
---
--- Name: usgs_world; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.usgs_world (
     gid integer NOT NULL,
@@ -30595,12 +20675,6 @@ CREATE TABLE sources.usgs_world (
 );
 
 
-ALTER TABLE sources.usgs_world OWNER TO postgres;
-
---
--- Name: usgs_world_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.usgs_world_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -30609,18 +20683,8 @@ CREATE SEQUENCE sources.usgs_world_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.usgs_world_gid_seq OWNER TO postgres;
-
---
--- Name: usgs_world_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.usgs_world_gid_seq OWNED BY sources.usgs_world.gid;
 
-
---
--- Name: usgs_world_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.usgs_world_lines (
     gid integer NOT NULL,
@@ -30661,12 +20725,6 @@ CREATE TABLE sources.usgs_world_lines (
 );
 
 
-ALTER TABLE sources.usgs_world_lines OWNER TO postgres;
-
---
--- Name: usgs_world_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.usgs_world_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -30675,18 +20733,8 @@ CREATE SEQUENCE sources.usgs_world_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.usgs_world_lines_gid_seq OWNER TO postgres;
-
---
--- Name: usgs_world_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.usgs_world_lines_gid_seq OWNED BY sources.usgs_world_lines.gid;
 
-
---
--- Name: ut_beaver; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_beaver (
     gid integer NOT NULL,
@@ -30712,12 +20760,6 @@ CREATE TABLE sources.ut_beaver (
 );
 
 
-ALTER TABLE sources.ut_beaver OWNER TO postgres;
-
---
--- Name: ut_beaver_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ut_beaver_lines (
     gid integer NOT NULL,
     layerint smallint,
@@ -30738,12 +20780,6 @@ CREATE TABLE sources.ut_beaver_lines (
 );
 
 
-ALTER TABLE sources.ut_beaver_lines OWNER TO postgres;
-
---
--- Name: ut_beaver_lines_objectid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ut_beaver_lines_objectid_seq
     AS integer
     START WITH 1
@@ -30753,18 +20789,8 @@ CREATE SEQUENCE sources.ut_beaver_lines_objectid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ut_beaver_lines_objectid_seq OWNER TO postgres;
-
---
--- Name: ut_beaver_lines_objectid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ut_beaver_lines_objectid_seq OWNED BY sources.ut_beaver_lines.gid;
 
-
---
--- Name: ut_beaver_objectid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.ut_beaver_objectid_seq
     AS integer
@@ -30775,18 +20801,8 @@ CREATE SEQUENCE sources.ut_beaver_objectid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ut_beaver_objectid_seq OWNER TO postgres;
-
---
--- Name: ut_beaver_objectid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ut_beaver_objectid_seq OWNED BY sources.ut_beaver.gid;
 
-
---
--- Name: ut_dugway; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_dugway (
     gid integer NOT NULL,
@@ -30813,12 +20829,6 @@ CREATE TABLE sources.ut_dugway (
 );
 
 
-ALTER TABLE sources.ut_dugway OWNER TO postgres;
-
---
--- Name: ut_dugway_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ut_dugway_lines (
     gid integer NOT NULL,
     objectid numeric(10,0),
@@ -30842,12 +20852,6 @@ CREATE TABLE sources.ut_dugway_lines (
 );
 
 
-ALTER TABLE sources.ut_dugway_lines OWNER TO postgres;
-
---
--- Name: ut_dugway_points; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ut_dugway_points (
     gid integer NOT NULL,
     objectid numeric(10,0),
@@ -30870,12 +20874,6 @@ CREATE TABLE sources.ut_dugway_points (
 );
 
 
-ALTER TABLE sources.ut_dugway_points OWNER TO postgres;
-
---
--- Name: ut_dugwayprovinggrounds_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ut_dugwayprovinggrounds_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -30884,18 +20882,8 @@ CREATE SEQUENCE sources.ut_dugwayprovinggrounds_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ut_dugwayprovinggrounds_gid_seq OWNER TO postgres;
-
---
--- Name: ut_dugwayprovinggrounds_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ut_dugwayprovinggrounds_gid_seq OWNED BY sources.ut_dugway.gid;
 
-
---
--- Name: ut_dugwayprovinggrounds_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.ut_dugwayprovinggrounds_lines_gid_seq
     START WITH 1
@@ -30905,18 +20893,8 @@ CREATE SEQUENCE sources.ut_dugwayprovinggrounds_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ut_dugwayprovinggrounds_lines_gid_seq OWNER TO postgres;
-
---
--- Name: ut_dugwayprovinggrounds_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ut_dugwayprovinggrounds_lines_gid_seq OWNED BY sources.ut_dugway_lines.gid;
 
-
---
--- Name: ut_dugwayprovinggrounds_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.ut_dugwayprovinggrounds_points_gid_seq
     START WITH 1
@@ -30926,18 +20904,8 @@ CREATE SEQUENCE sources.ut_dugwayprovinggrounds_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ut_dugwayprovinggrounds_points_gid_seq OWNER TO postgres;
-
---
--- Name: ut_dugwayprovinggrounds_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ut_dugwayprovinggrounds_points_gid_seq OWNED BY sources.ut_dugway_points.gid;
 
-
---
--- Name: ut_escalante; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_escalante (
     gid integer NOT NULL,
@@ -30956,12 +20924,6 @@ CREATE TABLE sources.ut_escalante (
 );
 
 
-ALTER TABLE sources.ut_escalante OWNER TO postgres;
-
---
--- Name: ut_escalante_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ut_escalante_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -30970,18 +20932,8 @@ CREATE SEQUENCE sources.ut_escalante_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ut_escalante_gid_seq OWNER TO postgres;
-
---
--- Name: ut_escalante_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ut_escalante_gid_seq OWNED BY sources.ut_escalante.gid;
 
-
---
--- Name: ut_escalante_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_escalante_lines (
     gid integer NOT NULL,
@@ -30996,12 +20948,6 @@ CREATE TABLE sources.ut_escalante_lines (
 );
 
 
-ALTER TABLE sources.ut_escalante_lines OWNER TO postgres;
-
---
--- Name: ut_escalante_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ut_escalante_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -31010,18 +20956,8 @@ CREATE SEQUENCE sources.ut_escalante_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ut_escalante_lines_gid_seq OWNER TO postgres;
-
---
--- Name: ut_escalante_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ut_escalante_lines_gid_seq OWNED BY sources.ut_escalante_lines.gid;
 
-
---
--- Name: ut_kanab; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_kanab (
     gid integer NOT NULL,
@@ -31041,12 +20977,6 @@ CREATE TABLE sources.ut_kanab (
 );
 
 
-ALTER TABLE sources.ut_kanab OWNER TO postgres;
-
---
--- Name: ut_kanab_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ut_kanab_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -31055,18 +20985,8 @@ CREATE SEQUENCE sources.ut_kanab_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ut_kanab_gid_seq OWNER TO postgres;
-
---
--- Name: ut_kanab_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ut_kanab_gid_seq OWNED BY sources.ut_kanab.gid;
 
-
---
--- Name: ut_kanab_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_kanab_lines (
     gid integer NOT NULL,
@@ -31080,12 +21000,6 @@ CREATE TABLE sources.ut_kanab_lines (
 );
 
 
-ALTER TABLE sources.ut_kanab_lines OWNER TO postgres;
-
---
--- Name: ut_kanab_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ut_kanab_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -31094,18 +21008,8 @@ CREATE SEQUENCE sources.ut_kanab_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ut_kanab_lines_gid_seq OWNER TO postgres;
-
---
--- Name: ut_kanab_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ut_kanab_lines_gid_seq OWNED BY sources.ut_kanab_lines.gid;
 
-
---
--- Name: ut_lasal; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_lasal (
     gid integer NOT NULL,
@@ -31126,12 +21030,6 @@ CREATE TABLE sources.ut_lasal (
 );
 
 
-ALTER TABLE sources.ut_lasal OWNER TO postgres;
-
---
--- Name: ut_lasal_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ut_lasal_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -31140,18 +21038,8 @@ CREATE SEQUENCE sources.ut_lasal_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ut_lasal_gid_seq OWNER TO postgres;
-
---
--- Name: ut_lasal_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ut_lasal_gid_seq OWNED BY sources.ut_lasal.gid;
 
-
---
--- Name: ut_lasal_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_lasal_lines (
     gid integer NOT NULL,
@@ -31167,12 +21055,6 @@ CREATE TABLE sources.ut_lasal_lines (
 );
 
 
-ALTER TABLE sources.ut_lasal_lines OWNER TO postgres;
-
---
--- Name: ut_lasal_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ut_lasal_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -31181,18 +21063,8 @@ CREATE SEQUENCE sources.ut_lasal_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ut_lasal_lines_gid_seq OWNER TO postgres;
-
---
--- Name: ut_lasal_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ut_lasal_lines_gid_seq OWNED BY sources.ut_lasal_lines.gid;
 
-
---
--- Name: ut_logan; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_logan (
     gid integer NOT NULL,
@@ -31211,12 +21083,6 @@ CREATE TABLE sources.ut_logan (
 );
 
 
-ALTER TABLE sources.ut_logan OWNER TO postgres;
-
---
--- Name: ut_logan_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ut_logan_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -31225,18 +21091,8 @@ CREATE SEQUENCE sources.ut_logan_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ut_logan_gid_seq OWNER TO postgres;
-
---
--- Name: ut_logan_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ut_logan_gid_seq OWNED BY sources.ut_logan.gid;
 
-
---
--- Name: ut_lynndyl; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_lynndyl (
     gid integer NOT NULL,
@@ -31259,12 +21115,6 @@ CREATE TABLE sources.ut_lynndyl (
 );
 
 
-ALTER TABLE sources.ut_lynndyl OWNER TO postgres;
-
---
--- Name: ut_lynndyl_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ut_lynndyl_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -31273,18 +21123,8 @@ CREATE SEQUENCE sources.ut_lynndyl_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ut_lynndyl_gid_seq OWNER TO postgres;
-
---
--- Name: ut_lynndyl_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ut_lynndyl_gid_seq OWNED BY sources.ut_lynndyl.gid;
 
-
---
--- Name: ut_lynndyl_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_lynndyl_lines (
     gid integer NOT NULL,
@@ -31305,12 +21145,6 @@ CREATE TABLE sources.ut_lynndyl_lines (
 );
 
 
-ALTER TABLE sources.ut_lynndyl_lines OWNER TO postgres;
-
---
--- Name: ut_lynndyl_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ut_lynndyl_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -31319,18 +21153,8 @@ CREATE SEQUENCE sources.ut_lynndyl_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ut_lynndyl_lines_gid_seq OWNER TO postgres;
-
---
--- Name: ut_lynndyl_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ut_lynndyl_lines_gid_seq OWNED BY sources.ut_lynndyl_lines.gid;
 
-
---
--- Name: ut_moab; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_moab (
     gid integer NOT NULL,
@@ -31352,12 +21176,6 @@ CREATE TABLE sources.ut_moab (
 );
 
 
-ALTER TABLE sources.ut_moab OWNER TO postgres;
-
---
--- Name: ut_moab_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ut_moab_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -31366,18 +21184,8 @@ CREATE SEQUENCE sources.ut_moab_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ut_moab_gid_seq OWNER TO postgres;
-
---
--- Name: ut_moab_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ut_moab_gid_seq OWNED BY sources.ut_moab.gid;
 
-
---
--- Name: ut_moab_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_moab_lines (
     gid integer NOT NULL,
@@ -31391,12 +21199,6 @@ CREATE TABLE sources.ut_moab_lines (
 );
 
 
-ALTER TABLE sources.ut_moab_lines OWNER TO postgres;
-
---
--- Name: ut_moab_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ut_moab_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -31405,18 +21207,8 @@ CREATE SEQUENCE sources.ut_moab_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ut_moab_lines_gid_seq OWNER TO postgres;
-
---
--- Name: ut_moab_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ut_moab_lines_gid_seq OWNED BY sources.ut_moab_lines.gid;
 
-
---
--- Name: ut_ogden; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_ogden (
     gid integer NOT NULL,
@@ -31443,12 +21235,6 @@ CREATE TABLE sources.ut_ogden (
 );
 
 
-ALTER TABLE sources.ut_ogden OWNER TO postgres;
-
---
--- Name: ut_ogden_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ut_ogden_gid_seq
     AS integer
     START WITH 1
@@ -31458,18 +21244,8 @@ CREATE SEQUENCE sources.ut_ogden_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ut_ogden_gid_seq OWNER TO postgres;
-
---
--- Name: ut_ogden_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ut_ogden_gid_seq OWNED BY sources.ut_ogden.gid;
 
-
---
--- Name: ut_ogden_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_ogden_lines (
     gid integer NOT NULL,
@@ -31489,12 +21265,6 @@ CREATE TABLE sources.ut_ogden_lines (
 );
 
 
-ALTER TABLE sources.ut_ogden_lines OWNER TO postgres;
-
---
--- Name: ut_ogden_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ut_ogden_lines_gid_seq
     AS integer
     START WITH 1
@@ -31504,18 +21274,8 @@ CREATE SEQUENCE sources.ut_ogden_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ut_ogden_lines_gid_seq OWNER TO postgres;
-
---
--- Name: ut_ogden_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ut_ogden_lines_gid_seq OWNED BY sources.ut_ogden_lines.gid;
 
-
---
--- Name: ut_ogden_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_ogden_points (
     gid integer NOT NULL,
@@ -31539,12 +21299,6 @@ CREATE TABLE sources.ut_ogden_points (
 );
 
 
-ALTER TABLE sources.ut_ogden_points OWNER TO postgres;
-
---
--- Name: ut_ogden_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ut_ogden_points_gid_seq
     AS integer
     START WITH 1
@@ -31554,18 +21308,8 @@ CREATE SEQUENCE sources.ut_ogden_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ut_ogden_points_gid_seq OWNER TO postgres;
-
---
--- Name: ut_ogden_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ut_ogden_points_gid_seq OWNED BY sources.ut_ogden_points.gid;
 
-
---
--- Name: ut_panguitch; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_panguitch (
     gid integer NOT NULL,
@@ -31589,12 +21333,6 @@ CREATE TABLE sources.ut_panguitch (
 );
 
 
-ALTER TABLE sources.ut_panguitch OWNER TO postgres;
-
---
--- Name: ut_panguitch_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ut_panguitch_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -31603,18 +21341,8 @@ CREATE SEQUENCE sources.ut_panguitch_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ut_panguitch_gid_seq OWNER TO postgres;
-
---
--- Name: ut_panguitch_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ut_panguitch_gid_seq OWNED BY sources.ut_panguitch.gid;
 
-
---
--- Name: ut_panguitch_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_panguitch_lines (
     gid integer NOT NULL,
@@ -31634,12 +21362,6 @@ CREATE TABLE sources.ut_panguitch_lines (
 );
 
 
-ALTER TABLE sources.ut_panguitch_lines OWNER TO postgres;
-
---
--- Name: ut_panguitch_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ut_panguitch_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -31648,18 +21370,8 @@ CREATE SEQUENCE sources.ut_panguitch_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ut_panguitch_lines_gid_seq OWNER TO postgres;
-
---
--- Name: ut_panguitch_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ut_panguitch_lines_gid_seq OWNED BY sources.ut_panguitch_lines.gid;
 
-
---
--- Name: ut_price_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_price_lines (
     gid integer NOT NULL,
@@ -31679,12 +21391,6 @@ CREATE TABLE sources.ut_price_lines (
 );
 
 
-ALTER TABLE sources.ut_price_lines OWNER TO postgres;
-
---
--- Name: ut_price_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ut_price_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -31693,18 +21399,8 @@ CREATE SEQUENCE sources.ut_price_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ut_price_lines_gid_seq OWNER TO postgres;
-
---
--- Name: ut_price_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ut_price_lines_gid_seq OWNED BY sources.ut_price_lines.gid;
 
-
---
--- Name: ut_prommontorymtns; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_prommontorymtns (
     gid integer NOT NULL,
@@ -31732,12 +21428,6 @@ CREATE TABLE sources.ut_prommontorymtns (
 );
 
 
-ALTER TABLE sources.ut_prommontorymtns OWNER TO postgres;
-
---
--- Name: ut_prommontorymtns_folds; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ut_prommontorymtns_folds (
     gid integer NOT NULL,
     layerint smallint,
@@ -31760,12 +21450,6 @@ CREATE TABLE sources.ut_prommontorymtns_folds (
 );
 
 
-ALTER TABLE sources.ut_prommontorymtns_folds OWNER TO postgres;
-
---
--- Name: ut_prommontorymtns_folds_objectid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ut_prommontorymtns_folds_objectid_seq
     AS integer
     START WITH 1
@@ -31775,18 +21459,8 @@ CREATE SEQUENCE sources.ut_prommontorymtns_folds_objectid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ut_prommontorymtns_folds_objectid_seq OWNER TO postgres;
-
---
--- Name: ut_prommontorymtns_folds_objectid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ut_prommontorymtns_folds_objectid_seq OWNED BY sources.ut_prommontorymtns_folds.gid;
 
-
---
--- Name: ut_prommontorymtns_objectid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.ut_prommontorymtns_objectid_seq
     AS integer
@@ -31797,18 +21471,8 @@ CREATE SEQUENCE sources.ut_prommontorymtns_objectid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ut_prommontorymtns_objectid_seq OWNER TO postgres;
-
---
--- Name: ut_prommontorymtns_objectid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ut_prommontorymtns_objectid_seq OWNED BY sources.ut_prommontorymtns.gid;
 
-
---
--- Name: ut_prommontorymtns_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_prommontorymtns_points (
     gid integer NOT NULL,
@@ -31833,12 +21497,6 @@ CREATE TABLE sources.ut_prommontorymtns_points (
 );
 
 
-ALTER TABLE sources.ut_prommontorymtns_points OWNER TO postgres;
-
---
--- Name: ut_prommontorymtns_points_objectid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ut_prommontorymtns_points_objectid_seq
     AS integer
     START WITH 1
@@ -31848,18 +21506,8 @@ CREATE SEQUENCE sources.ut_prommontorymtns_points_objectid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ut_prommontorymtns_points_objectid_seq OWNER TO postgres;
-
---
--- Name: ut_prommontorymtns_points_objectid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ut_prommontorymtns_points_objectid_seq OWNED BY sources.ut_prommontorymtns_points.gid;
 
-
---
--- Name: ut_salina; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_salina (
     gid integer NOT NULL,
@@ -31886,12 +21534,6 @@ CREATE TABLE sources.ut_salina (
 );
 
 
-ALTER TABLE sources.ut_salina OWNER TO postgres;
-
---
--- Name: ut_salina_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ut_salina_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -31900,18 +21542,8 @@ CREATE SEQUENCE sources.ut_salina_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ut_salina_gid_seq OWNER TO postgres;
-
---
--- Name: ut_salina_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ut_salina_gid_seq OWNED BY sources.ut_salina.gid;
 
-
---
--- Name: ut_salina_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_salina_lines (
     gid integer NOT NULL,
@@ -31932,12 +21564,6 @@ CREATE TABLE sources.ut_salina_lines (
 );
 
 
-ALTER TABLE sources.ut_salina_lines OWNER TO postgres;
-
---
--- Name: ut_salina_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ut_salina_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -31946,18 +21572,8 @@ CREATE SEQUENCE sources.ut_salina_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ut_salina_lines_gid_seq OWNER TO postgres;
-
---
--- Name: ut_salina_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ut_salina_lines_gid_seq OWNED BY sources.ut_salina_lines.gid;
 
-
---
--- Name: ut_salina_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_salina_points (
     gid integer NOT NULL,
@@ -31981,12 +21597,6 @@ CREATE TABLE sources.ut_salina_points (
 );
 
 
-ALTER TABLE sources.ut_salina_points OWNER TO postgres;
-
---
--- Name: ut_salina_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ut_salina_points_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -31995,18 +21605,8 @@ CREATE SEQUENCE sources.ut_salina_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ut_salina_points_gid_seq OWNER TO postgres;
-
---
--- Name: ut_salina_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ut_salina_points_gid_seq OWNED BY sources.ut_salina_points.gid;
 
-
---
--- Name: ut_saltlake; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_saltlake (
     gid integer NOT NULL,
@@ -32027,12 +21627,6 @@ CREATE TABLE sources.ut_saltlake (
 );
 
 
-ALTER TABLE sources.ut_saltlake OWNER TO postgres;
-
---
--- Name: ut_saltlake_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ut_saltlake_gid_seq
     AS integer
     START WITH 1
@@ -32042,18 +21636,8 @@ CREATE SEQUENCE sources.ut_saltlake_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ut_saltlake_gid_seq OWNER TO postgres;
-
---
--- Name: ut_saltlake_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ut_saltlake_gid_seq OWNED BY sources.ut_saltlake.gid;
 
-
---
--- Name: ut_saltlake_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_saltlake_lines (
     gid integer NOT NULL,
@@ -32073,12 +21657,6 @@ CREATE TABLE sources.ut_saltlake_lines (
 );
 
 
-ALTER TABLE sources.ut_saltlake_lines OWNER TO postgres;
-
---
--- Name: ut_saltlake_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ut_saltlake_lines_gid_seq
     AS integer
     START WITH 1
@@ -32088,18 +21666,8 @@ CREATE SEQUENCE sources.ut_saltlake_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ut_saltlake_lines_gid_seq OWNER TO postgres;
-
---
--- Name: ut_saltlake_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ut_saltlake_lines_gid_seq OWNED BY sources.ut_saltlake_lines.gid;
 
-
---
--- Name: ut_seepridge; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_seepridge (
     gid integer NOT NULL,
@@ -32123,12 +21691,6 @@ CREATE TABLE sources.ut_seepridge (
 );
 
 
-ALTER TABLE sources.ut_seepridge OWNER TO postgres;
-
---
--- Name: ut_seepridge_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ut_seepridge_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -32137,18 +21699,8 @@ CREATE SEQUENCE sources.ut_seepridge_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ut_seepridge_gid_seq OWNER TO postgres;
-
---
--- Name: ut_seepridge_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ut_seepridge_gid_seq OWNED BY sources.ut_seepridge.gid;
 
-
---
--- Name: ut_stgeorge; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_stgeorge (
     gid integer NOT NULL,
@@ -32171,12 +21723,6 @@ CREATE TABLE sources.ut_stgeorge (
 );
 
 
-ALTER TABLE sources.ut_stgeorge OWNER TO postgres;
-
---
--- Name: ut_stgeorge_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ut_stgeorge_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -32185,18 +21731,8 @@ CREATE SEQUENCE sources.ut_stgeorge_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ut_stgeorge_gid_seq OWNER TO postgres;
-
---
--- Name: ut_stgeorge_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ut_stgeorge_gid_seq OWNED BY sources.ut_stgeorge.gid;
 
-
---
--- Name: ut_stgeorge_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_stgeorge_lines (
     gid integer NOT NULL,
@@ -32217,12 +21753,6 @@ CREATE TABLE sources.ut_stgeorge_lines (
 );
 
 
-ALTER TABLE sources.ut_stgeorge_lines OWNER TO postgres;
-
---
--- Name: ut_stgeorge_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ut_stgeorge_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -32231,18 +21761,8 @@ CREATE SEQUENCE sources.ut_stgeorge_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ut_stgeorge_lines_gid_seq OWNER TO postgres;
-
---
--- Name: ut_stgeorge_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ut_stgeorge_lines_gid_seq OWNED BY sources.ut_stgeorge_lines.gid;
 
-
---
--- Name: ut_tooele; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_tooele (
     gid integer NOT NULL,
@@ -32269,12 +21789,6 @@ CREATE TABLE sources.ut_tooele (
 );
 
 
-ALTER TABLE sources.ut_tooele OWNER TO postgres;
-
---
--- Name: ut_tooele_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ut_tooele_gid_seq
     AS integer
     START WITH 1
@@ -32284,18 +21798,8 @@ CREATE SEQUENCE sources.ut_tooele_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ut_tooele_gid_seq OWNER TO postgres;
-
---
--- Name: ut_tooele_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ut_tooele_gid_seq OWNED BY sources.ut_tooele.gid;
 
-
---
--- Name: ut_tooele_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_tooele_lines (
     gid integer NOT NULL,
@@ -32315,12 +21819,6 @@ CREATE TABLE sources.ut_tooele_lines (
 );
 
 
-ALTER TABLE sources.ut_tooele_lines OWNER TO postgres;
-
---
--- Name: ut_tooele_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ut_tooele_lines_gid_seq
     AS integer
     START WITH 1
@@ -32330,18 +21828,8 @@ CREATE SEQUENCE sources.ut_tooele_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ut_tooele_lines_gid_seq OWNER TO postgres;
-
---
--- Name: ut_tooele_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ut_tooele_lines_gid_seq OWNED BY sources.ut_tooele_lines.gid;
 
-
---
--- Name: ut_tooele_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_tooele_points (
     gid integer NOT NULL,
@@ -32367,12 +21855,6 @@ CREATE TABLE sources.ut_tooele_points (
 );
 
 
-ALTER TABLE sources.ut_tooele_points OWNER TO postgres;
-
---
--- Name: ut_tooele_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ut_tooele_points_gid_seq
     AS integer
     START WITH 1
@@ -32382,18 +21864,8 @@ CREATE SEQUENCE sources.ut_tooele_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ut_tooele_points_gid_seq OWNER TO postgres;
-
---
--- Name: ut_tooele_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ut_tooele_points_gid_seq OWNED BY sources.ut_tooele_points.gid;
 
-
---
--- Name: ut_vernal; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_vernal (
     gid integer NOT NULL,
@@ -32410,12 +21882,6 @@ CREATE TABLE sources.ut_vernal (
     late_id integer
 );
 
-
-ALTER TABLE sources.ut_vernal OWNER TO postgres;
-
---
--- Name: ut_vernal_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_vernal_lines (
     gid integer NOT NULL,
@@ -32437,12 +21903,6 @@ CREATE TABLE sources.ut_vernal_lines (
 );
 
 
-ALTER TABLE sources.ut_vernal_lines OWNER TO postgres;
-
---
--- Name: ut_wahwahmtns; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ut_wahwahmtns (
     gid integer NOT NULL,
     area double precision,
@@ -32459,12 +21919,6 @@ CREATE TABLE sources.ut_wahwahmtns (
     late_id integer
 );
 
-
-ALTER TABLE sources.ut_wahwahmtns OWNER TO postgres;
-
---
--- Name: ut_wahwahmtns_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_wahwahmtns_lines (
     gid integer NOT NULL,
@@ -32485,12 +21939,6 @@ CREATE TABLE sources.ut_wahwahmtns_lines (
 );
 
 
-ALTER TABLE sources.ut_wahwahmtns_lines OWNER TO postgres;
-
---
--- Name: ut_westwater; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.ut_westwater (
     gid integer NOT NULL,
     area numeric,
@@ -32507,12 +21955,6 @@ CREATE TABLE sources.ut_westwater (
     early_id integer
 );
 
-
-ALTER TABLE sources.ut_westwater OWNER TO postgres;
-
---
--- Name: ut_westwater_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.ut_westwater_lines (
     gid integer NOT NULL,
@@ -32532,12 +21974,6 @@ CREATE TABLE sources.ut_westwater_lines (
 );
 
 
-ALTER TABLE sources.ut_westwater_lines OWNER TO postgres;
-
---
--- Name: ut_westwater_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.ut_westwater_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -32546,18 +21982,8 @@ CREATE SEQUENCE sources.ut_westwater_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.ut_westwater_lines_gid_seq OWNER TO postgres;
-
---
--- Name: ut_westwater_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.ut_westwater_lines_gid_seq OWNED BY sources.ut_westwater_lines.gid;
 
-
---
--- Name: utquad_cedarcity; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.utquad_cedarcity (
     gid integer NOT NULL,
@@ -32576,12 +22002,6 @@ CREATE TABLE sources.utquad_cedarcity (
 );
 
 
-ALTER TABLE sources.utquad_cedarcity OWNER TO postgres;
-
---
--- Name: utquad_cedarcity_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.utquad_cedarcity_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -32590,18 +22010,8 @@ CREATE SEQUENCE sources.utquad_cedarcity_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.utquad_cedarcity_gid_seq OWNER TO postgres;
-
---
--- Name: utquad_cedarcity_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.utquad_cedarcity_gid_seq OWNED BY sources.utquad_cedarcity.gid;
 
-
---
--- Name: utquad_cedarcity_ln; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.utquad_cedarcity_ln (
     gid integer NOT NULL,
@@ -32615,12 +22025,6 @@ CREATE TABLE sources.utquad_cedarcity_ln (
 );
 
 
-ALTER TABLE sources.utquad_cedarcity_ln OWNER TO postgres;
-
---
--- Name: utquad_cedarcity_ln_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.utquad_cedarcity_ln_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -32629,18 +22033,8 @@ CREATE SEQUENCE sources.utquad_cedarcity_ln_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.utquad_cedarcity_ln_gid_seq OWNER TO postgres;
-
---
--- Name: utquad_cedarcity_ln_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.utquad_cedarcity_ln_gid_seq OWNED BY sources.utquad_cedarcity_ln.gid;
 
-
---
--- Name: utquad_eastslc; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.utquad_eastslc (
     gid integer NOT NULL,
@@ -32665,12 +22059,6 @@ CREATE TABLE sources.utquad_eastslc (
 );
 
 
-ALTER TABLE sources.utquad_eastslc OWNER TO postgres;
-
---
--- Name: utquad_eastslc_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.utquad_eastslc_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -32679,18 +22067,8 @@ CREATE SEQUENCE sources.utquad_eastslc_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.utquad_eastslc_gid_seq OWNER TO postgres;
-
---
--- Name: utquad_eastslc_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.utquad_eastslc_gid_seq OWNED BY sources.utquad_eastslc.gid;
 
-
---
--- Name: utquad_eastslc_ln; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.utquad_eastslc_ln (
     gid integer NOT NULL,
@@ -32708,12 +22086,6 @@ CREATE TABLE sources.utquad_eastslc_ln (
 );
 
 
-ALTER TABLE sources.utquad_eastslc_ln OWNER TO postgres;
-
---
--- Name: utquad_eastslc_ln_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.utquad_eastslc_ln_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -32722,18 +22094,8 @@ CREATE SEQUENCE sources.utquad_eastslc_ln_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.utquad_eastslc_ln_gid_seq OWNER TO postgres;
-
---
--- Name: utquad_eastslc_ln_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.utquad_eastslc_ln_gid_seq OWNED BY sources.utquad_eastslc_ln.gid;
 
-
---
--- Name: va_middletown; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.va_middletown (
     gid integer NOT NULL,
@@ -32797,12 +22159,6 @@ CREATE TABLE sources.va_middletown (
 );
 
 
-ALTER TABLE sources.va_middletown OWNER TO postgres;
-
---
--- Name: va_middletown_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.va_middletown_gid_seq
     AS integer
     START WITH 1
@@ -32812,18 +22168,8 @@ CREATE SEQUENCE sources.va_middletown_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.va_middletown_gid_seq OWNER TO postgres;
-
---
--- Name: va_middletown_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.va_middletown_gid_seq OWNED BY sources.va_middletown.gid;
 
-
---
--- Name: va_middletown_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.va_middletown_lines (
     gid integer NOT NULL,
@@ -32835,12 +22181,6 @@ CREATE TABLE sources.va_middletown_lines (
 );
 
 
-ALTER TABLE sources.va_middletown_lines OWNER TO postgres;
-
---
--- Name: va_middletown_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.va_middletown_lines_gid_seq
     AS integer
     START WITH 1
@@ -32850,18 +22190,8 @@ CREATE SEQUENCE sources.va_middletown_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.va_middletown_lines_gid_seq OWNER TO postgres;
-
---
--- Name: va_middletown_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.va_middletown_lines_gid_seq OWNED BY sources.va_middletown_lines.gid;
 
-
---
--- Name: va_stephcity; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.va_stephcity (
     gid integer NOT NULL,
@@ -32929,12 +22259,6 @@ CREATE TABLE sources.va_stephcity (
 );
 
 
-ALTER TABLE sources.va_stephcity OWNER TO postgres;
-
---
--- Name: va_stephcity_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.va_stephcity_gid_seq
     AS integer
     START WITH 1
@@ -32944,18 +22268,8 @@ CREATE SEQUENCE sources.va_stephcity_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.va_stephcity_gid_seq OWNER TO postgres;
-
---
--- Name: va_stephcity_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.va_stephcity_gid_seq OWNED BY sources.va_stephcity.gid;
 
-
---
--- Name: va_stephcity_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.va_stephcity_lines (
     gid integer NOT NULL,
@@ -32975,12 +22289,6 @@ CREATE TABLE sources.va_stephcity_lines (
 );
 
 
-ALTER TABLE sources.va_stephcity_lines OWNER TO postgres;
-
---
--- Name: va_stephcity_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.va_stephcity_lines_gid_seq
     AS integer
     START WITH 1
@@ -32990,18 +22298,8 @@ CREATE SEQUENCE sources.va_stephcity_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.va_stephcity_lines_gid_seq OWNER TO postgres;
-
---
--- Name: va_stephcity_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.va_stephcity_lines_gid_seq OWNED BY sources.va_stephcity_lines.gid;
 
-
---
--- Name: va_stephcity_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.va_stephcity_points (
     gid integer NOT NULL,
@@ -33031,12 +22329,6 @@ CREATE TABLE sources.va_stephcity_points (
 );
 
 
-ALTER TABLE sources.va_stephcity_points OWNER TO postgres;
-
---
--- Name: va_stephcity_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.va_stephcity_points_gid_seq
     AS integer
     START WITH 1
@@ -33046,18 +22338,8 @@ CREATE SEQUENCE sources.va_stephcity_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.va_stephcity_points_gid_seq OWNER TO postgres;
-
---
--- Name: va_stephcity_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.va_stephcity_points_gid_seq OWNED BY sources.va_stephcity_points.gid;
 
-
---
--- Name: venezuela_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.venezuela_lines (
     gid integer NOT NULL,
@@ -33071,12 +22353,6 @@ CREATE TABLE sources.venezuela_lines (
 );
 
 
-ALTER TABLE sources.venezuela_lines OWNER TO postgres;
-
---
--- Name: venez_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.venez_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -33085,18 +22361,8 @@ CREATE SEQUENCE sources.venez_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.venez_lines_gid_seq OWNER TO postgres;
-
---
--- Name: venez_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.venez_lines_gid_seq OWNED BY sources.venezuela_lines.gid;
 
-
---
--- Name: venezuela; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.venezuela (
     gid integer NOT NULL,
@@ -33117,12 +22383,6 @@ CREATE TABLE sources.venezuela (
 );
 
 
-ALTER TABLE sources.venezuela OWNER TO postgres;
-
---
--- Name: venezuela_geo_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.venezuela_geo_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -33131,18 +22391,8 @@ CREATE SEQUENCE sources.venezuela_geo_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.venezuela_geo_gid_seq OWNER TO postgres;
-
---
--- Name: venezuela_geo_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.venezuela_geo_gid_seq OWNED BY sources.venezuela.gid;
 
-
---
--- Name: vernal_faults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.vernal_faults_gid_seq
     START WITH 1
@@ -33152,18 +22402,8 @@ CREATE SEQUENCE sources.vernal_faults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.vernal_faults_gid_seq OWNER TO postgres;
-
---
--- Name: vernal_faults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.vernal_faults_gid_seq OWNED BY sources.ut_vernal_lines.gid;
 
-
---
--- Name: vernalutahgeology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.vernalutahgeology_gid_seq
     START WITH 1
@@ -33173,18 +22413,8 @@ CREATE SEQUENCE sources.vernalutahgeology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.vernalutahgeology_gid_seq OWNER TO postgres;
-
---
--- Name: vernalutahgeology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.vernalutahgeology_gid_seq OWNED BY sources.ut_vernal.gid;
 
-
---
--- Name: wa100k; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wa100k (
     gid integer NOT NULL,
@@ -33201,12 +22431,6 @@ CREATE TABLE sources.wa100k (
 );
 
 
-ALTER TABLE sources.wa100k OWNER TO postgres;
-
---
--- Name: wa100k_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wa100k_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -33215,18 +22439,8 @@ CREATE SEQUENCE sources.wa100k_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wa100k_gid_seq OWNER TO postgres;
-
---
--- Name: wa100k_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wa100k_gid_seq OWNED BY sources.wa100k.gid;
 
-
---
--- Name: wa100k_line; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wa100k_line (
     gid integer NOT NULL,
@@ -33239,12 +22453,6 @@ CREATE TABLE sources.wa100k_line (
 );
 
 
-ALTER TABLE sources.wa100k_line OWNER TO postgres;
-
---
--- Name: wa100k_line_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wa100k_line_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -33253,18 +22461,8 @@ CREATE SEQUENCE sources.wa100k_line_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wa100k_line_gid_seq OWNER TO postgres;
-
---
--- Name: wa100k_line_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wa100k_line_gid_seq OWNED BY sources.wa100k_line.gid;
 
-
---
--- Name: wahwahmountainutgeology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.wahwahmountainutgeology_gid_seq
     START WITH 1
@@ -33274,18 +22472,8 @@ CREATE SEQUENCE sources.wahwahmountainutgeology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wahwahmountainutgeology_gid_seq OWNER TO postgres;
-
---
--- Name: wahwahmountainutgeology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wahwahmountainutgeology_gid_seq OWNED BY sources.ut_wahwahmtns.gid;
 
-
---
--- Name: wahwahmtn_geolines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.wahwahmtn_geolines_gid_seq
     START WITH 1
@@ -33295,18 +22483,8 @@ CREATE SEQUENCE sources.wahwahmtn_geolines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wahwahmtn_geolines_gid_seq OWNER TO postgres;
-
---
--- Name: wahwahmtn_geolines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wahwahmtn_geolines_gid_seq OWNED BY sources.ut_wahwahmtns_lines.gid;
 
-
---
--- Name: westcentralpakistangeology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.westcentralpakistangeology_gid_seq
     START WITH 1
@@ -33316,18 +22494,8 @@ CREATE SEQUENCE sources.westcentralpakistangeology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.westcentralpakistangeology_gid_seq OWNER TO postgres;
-
---
--- Name: westcentralpakistangeology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.westcentralpakistangeology_gid_seq OWNED BY sources.pakistan_westcentral.gid;
 
-
---
--- Name: westwater_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.westwater_gid_seq
     START WITH 1
@@ -33337,18 +22505,8 @@ CREATE SEQUENCE sources.westwater_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.westwater_gid_seq OWNER TO postgres;
-
---
--- Name: westwater_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.westwater_gid_seq OWNED BY sources.ut_westwater.gid;
 
-
---
--- Name: wi_ashland; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wi_ashland (
     gid integer NOT NULL,
@@ -33393,12 +22551,6 @@ CREATE TABLE sources.wi_ashland (
 );
 
 
-ALTER TABLE sources.wi_ashland OWNER TO postgres;
-
---
--- Name: wi_ashland_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wi_ashland_gid_seq
     AS integer
     START WITH 1
@@ -33408,18 +22560,8 @@ CREATE SEQUENCE sources.wi_ashland_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wi_ashland_gid_seq OWNER TO postgres;
-
---
--- Name: wi_ashland_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wi_ashland_gid_seq OWNED BY sources.wi_ashland.gid;
 
-
---
--- Name: wi_ashland_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wi_ashland_lines (
     gid integer NOT NULL,
@@ -33432,12 +22574,6 @@ CREATE TABLE sources.wi_ashland_lines (
 );
 
 
-ALTER TABLE sources.wi_ashland_lines OWNER TO postgres;
-
---
--- Name: wi_ashland_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wi_ashland_lines_gid_seq
     AS integer
     START WITH 1
@@ -33447,18 +22583,8 @@ CREATE SEQUENCE sources.wi_ashland_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wi_ashland_lines_gid_seq OWNER TO postgres;
-
---
--- Name: wi_ashland_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wi_ashland_lines_gid_seq OWNED BY sources.wi_ashland_lines.gid;
 
-
---
--- Name: wi_ashland_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wi_ashland_points (
     gid integer NOT NULL,
@@ -33473,12 +22599,6 @@ CREATE TABLE sources.wi_ashland_points (
 );
 
 
-ALTER TABLE sources.wi_ashland_points OWNER TO postgres;
-
---
--- Name: wi_ashland_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wi_ashland_points_gid_seq
     AS integer
     START WITH 1
@@ -33488,18 +22608,8 @@ CREATE SEQUENCE sources.wi_ashland_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wi_ashland_points_gid_seq OWNER TO postgres;
-
---
--- Name: wi_ashland_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wi_ashland_points_gid_seq OWNED BY sources.wi_ashland_points.gid;
 
-
---
--- Name: wi_brown; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wi_brown (
     gid integer NOT NULL,
@@ -33518,12 +22628,6 @@ CREATE TABLE sources.wi_brown (
 );
 
 
-ALTER TABLE sources.wi_brown OWNER TO postgres;
-
---
--- Name: wi_brown_geology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wi_brown_geology_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -33532,18 +22636,8 @@ CREATE SEQUENCE sources.wi_brown_geology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wi_brown_geology_gid_seq OWNER TO postgres;
-
---
--- Name: wi_brown_geology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wi_brown_geology_gid_seq OWNED BY sources.wi_brown.gid;
 
-
---
--- Name: wi_brown_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wi_brown_lines (
     gid integer NOT NULL,
@@ -33560,12 +22654,6 @@ CREATE TABLE sources.wi_brown_lines (
 );
 
 
-ALTER TABLE sources.wi_brown_lines OWNER TO postgres;
-
---
--- Name: wi_brown_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wi_brown_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -33574,18 +22662,8 @@ CREATE SEQUENCE sources.wi_brown_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wi_brown_lines_gid_seq OWNER TO postgres;
-
---
--- Name: wi_brown_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wi_brown_lines_gid_seq OWNED BY sources.wi_brown_lines.gid;
 
-
---
--- Name: wi_brown_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wi_brown_points (
     gid integer NOT NULL,
@@ -33598,12 +22676,6 @@ CREATE TABLE sources.wi_brown_points (
 );
 
 
-ALTER TABLE sources.wi_brown_points OWNER TO postgres;
-
---
--- Name: wi_brown_point_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wi_brown_point_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -33612,18 +22684,8 @@ CREATE SEQUENCE sources.wi_brown_point_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wi_brown_point_gid_seq OWNER TO postgres;
-
---
--- Name: wi_brown_point_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wi_brown_point_gid_seq OWNED BY sources.wi_brown_points.gid;
 
-
---
--- Name: wi_fond_du; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wi_fond_du (
     gid integer NOT NULL,
@@ -33648,12 +22710,6 @@ CREATE TABLE sources.wi_fond_du (
 );
 
 
-ALTER TABLE sources.wi_fond_du OWNER TO postgres;
-
---
--- Name: wi_fond_du_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wi_fond_du_gid_seq
     AS integer
     START WITH 1
@@ -33663,18 +22719,8 @@ CREATE SEQUENCE sources.wi_fond_du_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wi_fond_du_gid_seq OWNER TO postgres;
-
---
--- Name: wi_fond_du_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wi_fond_du_gid_seq OWNED BY sources.wi_fond_du.gid;
 
-
---
--- Name: wi_fond_du_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wi_fond_du_lines (
     gid integer NOT NULL,
@@ -33692,12 +22738,6 @@ CREATE TABLE sources.wi_fond_du_lines (
 );
 
 
-ALTER TABLE sources.wi_fond_du_lines OWNER TO postgres;
-
---
--- Name: wi_fond_du_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wi_fond_du_lines_gid_seq
     AS integer
     START WITH 1
@@ -33707,18 +22747,8 @@ CREATE SEQUENCE sources.wi_fond_du_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wi_fond_du_lines_gid_seq OWNER TO postgres;
-
---
--- Name: wi_fond_du_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wi_fond_du_lines_gid_seq OWNED BY sources.wi_fond_du_lines.gid;
 
-
---
--- Name: wi_juneaucounty; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wi_juneaucounty (
     gid integer NOT NULL,
@@ -33734,12 +22764,6 @@ CREATE TABLE sources.wi_juneaucounty (
 );
 
 
-ALTER TABLE sources.wi_juneaucounty OWNER TO postgres;
-
---
--- Name: wi_juneaucounty_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.wi_juneaucounty_lines (
     gid integer NOT NULL,
     type integer,
@@ -33752,12 +22776,6 @@ CREATE TABLE sources.wi_juneaucounty_lines (
 );
 
 
-ALTER TABLE sources.wi_juneaucounty_lines OWNER TO postgres;
-
---
--- Name: wi_juneaucounty_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wi_juneaucounty_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -33766,18 +22784,8 @@ CREATE SEQUENCE sources.wi_juneaucounty_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wi_juneaucounty_lines_gid_seq OWNER TO postgres;
-
---
--- Name: wi_juneaucounty_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wi_juneaucounty_lines_gid_seq OWNED BY sources.wi_juneaucounty_lines.gid;
 
-
---
--- Name: wi_juneaucounty_polygon_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.wi_juneaucounty_polygon_gid_seq
     START WITH 1
@@ -33787,18 +22795,8 @@ CREATE SEQUENCE sources.wi_juneaucounty_polygon_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wi_juneaucounty_polygon_gid_seq OWNER TO postgres;
-
---
--- Name: wi_juneaucounty_polygon_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wi_juneaucounty_polygon_gid_seq OWNED BY sources.wi_juneaucounty.gid;
 
-
---
--- Name: wi_marathon; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wi_marathon (
     gid integer NOT NULL,
@@ -33813,12 +22811,6 @@ CREATE TABLE sources.wi_marathon (
 );
 
 
-ALTER TABLE sources.wi_marathon OWNER TO postgres;
-
---
--- Name: wi_marathon_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wi_marathon_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -33827,18 +22819,8 @@ CREATE SEQUENCE sources.wi_marathon_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wi_marathon_gid_seq OWNER TO postgres;
-
---
--- Name: wi_marathon_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wi_marathon_gid_seq OWNED BY sources.wi_marathon.gid;
 
-
---
--- Name: wi_marathon_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wi_marathon_lines (
     gid integer NOT NULL,
@@ -33851,12 +22833,6 @@ CREATE TABLE sources.wi_marathon_lines (
 );
 
 
-ALTER TABLE sources.wi_marathon_lines OWNER TO postgres;
-
---
--- Name: wi_marathon_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wi_marathon_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -33865,18 +22841,8 @@ CREATE SEQUENCE sources.wi_marathon_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wi_marathon_lines_gid_seq OWNER TO postgres;
-
---
--- Name: wi_marathon_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wi_marathon_lines_gid_seq OWNED BY sources.wi_marathon_lines.gid;
 
-
---
--- Name: wi_marathon_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wi_marathon_points (
     gid integer NOT NULL,
@@ -33893,12 +22859,6 @@ CREATE TABLE sources.wi_marathon_points (
 );
 
 
-ALTER TABLE sources.wi_marathon_points OWNER TO postgres;
-
---
--- Name: wi_marathon_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wi_marathon_points_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -33907,18 +22867,8 @@ CREATE SEQUENCE sources.wi_marathon_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wi_marathon_points_gid_seq OWNER TO postgres;
-
---
--- Name: wi_marathon_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wi_marathon_points_gid_seq OWNED BY sources.wi_marathon_points.gid;
 
-
---
--- Name: wi_piercestcroix; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wi_piercestcroix (
     gid integer NOT NULL,
@@ -33935,12 +22885,6 @@ CREATE TABLE sources.wi_piercestcroix (
 );
 
 
-ALTER TABLE sources.wi_piercestcroix OWNER TO postgres;
-
---
--- Name: wi_piercestcroix_geology_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wi_piercestcroix_geology_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -33949,18 +22893,8 @@ CREATE SEQUENCE sources.wi_piercestcroix_geology_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wi_piercestcroix_geology_gid_seq OWNER TO postgres;
-
---
--- Name: wi_piercestcroix_geology_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wi_piercestcroix_geology_gid_seq OWNED BY sources.wi_piercestcroix.gid;
 
-
---
--- Name: wi_piercestcroix_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wi_piercestcroix_lines (
     gid integer NOT NULL,
@@ -33979,12 +22913,6 @@ CREATE TABLE sources.wi_piercestcroix_lines (
 );
 
 
-ALTER TABLE sources.wi_piercestcroix_lines OWNER TO postgres;
-
---
--- Name: wi_piercestcroix_line_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wi_piercestcroix_line_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -33993,18 +22921,8 @@ CREATE SEQUENCE sources.wi_piercestcroix_line_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wi_piercestcroix_line_gid_seq OWNER TO postgres;
-
---
--- Name: wi_piercestcroix_line_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wi_piercestcroix_line_gid_seq OWNED BY sources.wi_piercestcroix_lines.gid;
 
-
---
--- Name: wy_rattlesnakehills; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_rattlesnakehills (
     gid integer NOT NULL,
@@ -34025,12 +22943,6 @@ CREATE TABLE sources.wy_rattlesnakehills (
 );
 
 
-ALTER TABLE sources.wy_rattlesnakehills OWNER TO postgres;
-
---
--- Name: wi_rattlesnakehills_polygon_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wi_rattlesnakehills_polygon_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -34039,18 +22951,8 @@ CREATE SEQUENCE sources.wi_rattlesnakehills_polygon_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wi_rattlesnakehills_polygon_gid_seq OWNER TO postgres;
-
---
--- Name: wi_rattlesnakehills_polygon_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wi_rattlesnakehills_polygon_gid_seq OWNED BY sources.wy_rattlesnakehills.gid;
 
-
---
--- Name: wi_sauk; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wi_sauk (
     gid integer,
@@ -34067,12 +22969,6 @@ CREATE TABLE sources.wi_sauk (
 );
 
 
-ALTER TABLE sources.wi_sauk OWNER TO postgres;
-
---
--- Name: wi_wood; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.wi_wood (
     gid integer NOT NULL,
     unitcode character varying(25),
@@ -34086,12 +22982,6 @@ CREATE TABLE sources.wi_wood (
 );
 
 
-ALTER TABLE sources.wi_wood OWNER TO postgres;
-
---
--- Name: wi_wood_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wi_wood_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -34100,18 +22990,8 @@ CREATE SEQUENCE sources.wi_wood_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wi_wood_gid_seq OWNER TO postgres;
-
---
--- Name: wi_wood_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wi_wood_gid_seq OWNED BY sources.wi_wood.gid;
 
-
---
--- Name: wi_wood_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wi_wood_lines (
     gid integer NOT NULL,
@@ -34124,12 +23004,6 @@ CREATE TABLE sources.wi_wood_lines (
 );
 
 
-ALTER TABLE sources.wi_wood_lines OWNER TO postgres;
-
---
--- Name: wi_wood_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wi_wood_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -34138,18 +23012,8 @@ CREATE SEQUENCE sources.wi_wood_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wi_wood_lines_gid_seq OWNER TO postgres;
-
---
--- Name: wi_wood_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wi_wood_lines_gid_seq OWNED BY sources.wi_wood_lines.gid;
 
-
---
--- Name: wi_wood_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wi_wood_points (
     gid integer NOT NULL,
@@ -34166,12 +23030,6 @@ CREATE TABLE sources.wi_wood_points (
 );
 
 
-ALTER TABLE sources.wi_wood_points OWNER TO postgres;
-
---
--- Name: wi_wood_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wi_wood_points_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -34180,18 +23038,8 @@ CREATE SEQUENCE sources.wi_wood_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wi_wood_points_gid_seq OWNER TO postgres;
-
---
--- Name: wi_wood_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wi_wood_points_gid_seq OWNED BY sources.wi_wood_points.gid;
 
-
---
--- Name: world_basins; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.world_basins (
     gid integer NOT NULL,
@@ -34214,12 +23062,6 @@ CREATE TABLE sources.world_basins (
 );
 
 
-ALTER TABLE sources.world_basins OWNER TO postgres;
-
---
--- Name: world_basins_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.world_basins_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -34228,18 +23070,8 @@ CREATE SEQUENCE sources.world_basins_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.world_basins_gid_seq OWNER TO postgres;
-
---
--- Name: world_basins_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.world_basins_gid_seq OWNED BY sources.world_basins.gid;
 
-
---
--- Name: wpakistan_faults_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.wpakistan_faults_gid_seq
     START WITH 1
@@ -34249,18 +23081,8 @@ CREATE SEQUENCE sources.wpakistan_faults_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wpakistan_faults_gid_seq OWNER TO postgres;
-
---
--- Name: wpakistan_faults_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wpakistan_faults_gid_seq OWNED BY sources.pakistan_westcentral_lines.gid;
 
-
---
--- Name: wy_baggs; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_baggs (
     gid integer NOT NULL,
@@ -34281,12 +23103,6 @@ CREATE TABLE sources.wy_baggs (
 );
 
 
-ALTER TABLE sources.wy_baggs OWNER TO postgres;
-
---
--- Name: wy_baggs_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_baggs_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -34295,18 +23111,8 @@ CREATE SEQUENCE sources.wy_baggs_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_baggs_gid_seq OWNER TO postgres;
-
---
--- Name: wy_baggs_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_baggs_gid_seq OWNED BY sources.wy_baggs.gid;
 
-
---
--- Name: wy_baggs_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_baggs_lines (
     gid integer NOT NULL,
@@ -34320,12 +23126,6 @@ CREATE TABLE sources.wy_baggs_lines (
 );
 
 
-ALTER TABLE sources.wy_baggs_lines OWNER TO postgres;
-
---
--- Name: wy_baggs_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_baggs_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -34334,18 +23134,8 @@ CREATE SEQUENCE sources.wy_baggs_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_baggs_lines_gid_seq OWNER TO postgres;
-
---
--- Name: wy_baggs_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_baggs_lines_gid_seq OWNED BY sources.wy_baggs_lines.gid;
 
-
---
--- Name: wy_baggs_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_baggs_points (
     gid integer NOT NULL,
@@ -34359,12 +23149,6 @@ CREATE TABLE sources.wy_baggs_points (
 );
 
 
-ALTER TABLE sources.wy_baggs_points OWNER TO postgres;
-
---
--- Name: wy_baggs_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_baggs_points_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -34373,18 +23157,8 @@ CREATE SEQUENCE sources.wy_baggs_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_baggs_points_gid_seq OWNER TO postgres;
-
---
--- Name: wy_baggs_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_baggs_points_gid_seq OWNED BY sources.wy_baggs_points.gid;
 
-
---
--- Name: wy_bairoil; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_bairoil (
     gid integer NOT NULL,
@@ -34405,12 +23179,6 @@ CREATE TABLE sources.wy_bairoil (
 );
 
 
-ALTER TABLE sources.wy_bairoil OWNER TO postgres;
-
---
--- Name: wy_bairoil_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_bairoil_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -34419,18 +23187,8 @@ CREATE SEQUENCE sources.wy_bairoil_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_bairoil_gid_seq OWNER TO postgres;
-
---
--- Name: wy_bairoil_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_bairoil_gid_seq OWNED BY sources.wy_bairoil.gid;
 
-
---
--- Name: wy_bairoil_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_bairoil_lines (
     gid integer NOT NULL,
@@ -34443,12 +23201,6 @@ CREATE TABLE sources.wy_bairoil_lines (
 );
 
 
-ALTER TABLE sources.wy_bairoil_lines OWNER TO postgres;
-
---
--- Name: wy_bairoil_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_bairoil_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -34457,18 +23209,8 @@ CREATE SEQUENCE sources.wy_bairoil_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_bairoil_lines_gid_seq OWNER TO postgres;
-
---
--- Name: wy_bairoil_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_bairoil_lines_gid_seq OWNED BY sources.wy_bairoil_lines.gid;
 
-
---
--- Name: wy_bill; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_bill (
     gid integer NOT NULL,
@@ -34494,12 +23236,6 @@ CREATE TABLE sources.wy_bill (
 );
 
 
-ALTER TABLE sources.wy_bill OWNER TO postgres;
-
---
--- Name: wy_bill_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_bill_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -34508,18 +23244,8 @@ CREATE SEQUENCE sources.wy_bill_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_bill_gid_seq OWNER TO postgres;
-
---
--- Name: wy_bill_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_bill_gid_seq OWNED BY sources.wy_bill.gid;
 
-
---
--- Name: wy_bill_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_bill_lines (
     gid integer NOT NULL,
@@ -34539,12 +23265,6 @@ CREATE TABLE sources.wy_bill_lines (
 );
 
 
-ALTER TABLE sources.wy_bill_lines OWNER TO postgres;
-
---
--- Name: wy_bill_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_bill_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -34553,18 +23273,8 @@ CREATE SEQUENCE sources.wy_bill_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_bill_lines_gid_seq OWNER TO postgres;
-
---
--- Name: wy_bill_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_bill_lines_gid_seq OWNED BY sources.wy_bill_lines.gid;
 
-
---
--- Name: wy_buffalo; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_buffalo (
     gid integer NOT NULL,
@@ -34585,12 +23295,6 @@ CREATE TABLE sources.wy_buffalo (
 );
 
 
-ALTER TABLE sources.wy_buffalo OWNER TO postgres;
-
---
--- Name: wy_buffalo_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_buffalo_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -34599,18 +23303,8 @@ CREATE SEQUENCE sources.wy_buffalo_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_buffalo_gid_seq OWNER TO postgres;
-
---
--- Name: wy_buffalo_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_buffalo_gid_seq OWNED BY sources.wy_buffalo.gid;
 
-
---
--- Name: wy_buffalo_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_buffalo_lines (
     gid integer NOT NULL,
@@ -34623,12 +23317,6 @@ CREATE TABLE sources.wy_buffalo_lines (
 );
 
 
-ALTER TABLE sources.wy_buffalo_lines OWNER TO postgres;
-
---
--- Name: wy_buffalo_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_buffalo_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -34637,18 +23325,8 @@ CREATE SEQUENCE sources.wy_buffalo_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_buffalo_lines_gid_seq OWNER TO postgres;
-
---
--- Name: wy_buffalo_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_buffalo_lines_gid_seq OWNED BY sources.wy_buffalo_lines.gid;
 
-
---
--- Name: wy_casper_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_casper_lines (
     gid integer NOT NULL,
@@ -34661,12 +23339,6 @@ CREATE TABLE sources.wy_casper_lines (
 );
 
 
-ALTER TABLE sources.wy_casper_lines OWNER TO postgres;
-
---
--- Name: wy_caspar_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_caspar_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -34675,18 +23347,8 @@ CREATE SEQUENCE sources.wy_caspar_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_caspar_lines_gid_seq OWNER TO postgres;
-
---
--- Name: wy_caspar_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_caspar_lines_gid_seq OWNED BY sources.wy_casper_lines.gid;
 
-
---
--- Name: wy_casper; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_casper (
     gid integer NOT NULL,
@@ -34706,12 +23368,6 @@ CREATE TABLE sources.wy_casper (
 );
 
 
-ALTER TABLE sources.wy_casper OWNER TO postgres;
-
---
--- Name: wy_caspar_polygon_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_caspar_polygon_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -34720,18 +23376,8 @@ CREATE SEQUENCE sources.wy_caspar_polygon_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_caspar_polygon_gid_seq OWNER TO postgres;
-
---
--- Name: wy_caspar_polygon_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_caspar_polygon_gid_seq OWNED BY sources.wy_casper.gid;
 
-
---
--- Name: wy_cheyenne; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_cheyenne (
     gid integer NOT NULL,
@@ -34754,12 +23400,6 @@ CREATE TABLE sources.wy_cheyenne (
 );
 
 
-ALTER TABLE sources.wy_cheyenne OWNER TO postgres;
-
---
--- Name: wy_cheyenne_polygon_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_cheyenne_polygon_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -34768,18 +23408,8 @@ CREATE SEQUENCE sources.wy_cheyenne_polygon_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_cheyenne_polygon_gid_seq OWNER TO postgres;
-
---
--- Name: wy_cheyenne_polygon_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_cheyenne_polygon_gid_seq OWNED BY sources.wy_cheyenne.gid;
 
-
---
--- Name: wy_douglas; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_douglas (
     gid integer NOT NULL,
@@ -34801,12 +23431,6 @@ CREATE TABLE sources.wy_douglas (
 );
 
 
-ALTER TABLE sources.wy_douglas OWNER TO postgres;
-
---
--- Name: wy_douglas_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_douglas_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -34815,18 +23439,8 @@ CREATE SEQUENCE sources.wy_douglas_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_douglas_gid_seq OWNER TO postgres;
-
---
--- Name: wy_douglas_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_douglas_gid_seq OWNED BY sources.wy_douglas.gid;
 
-
---
--- Name: wy_douglas_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_douglas_lines (
     gid integer NOT NULL,
@@ -34846,12 +23460,6 @@ CREATE TABLE sources.wy_douglas_lines (
 );
 
 
-ALTER TABLE sources.wy_douglas_lines OWNER TO postgres;
-
---
--- Name: wy_douglas_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_douglas_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -34860,18 +23468,8 @@ CREATE SEQUENCE sources.wy_douglas_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_douglas_lines_gid_seq OWNER TO postgres;
-
---
--- Name: wy_douglas_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_douglas_lines_gid_seq OWNED BY sources.wy_douglas_lines.gid;
 
-
---
--- Name: wy_evanston; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_evanston (
     gid integer NOT NULL,
@@ -34893,12 +23491,6 @@ CREATE TABLE sources.wy_evanston (
 );
 
 
-ALTER TABLE sources.wy_evanston OWNER TO postgres;
-
---
--- Name: wy_evanston_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.wy_evanston_lines (
     gid integer NOT NULL,
     objectid integer,
@@ -34910,12 +23502,6 @@ CREATE TABLE sources.wy_evanston_lines (
 );
 
 
-ALTER TABLE sources.wy_evanston_lines OWNER TO postgres;
-
---
--- Name: wy_evanston_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_evanston_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -34924,18 +23510,8 @@ CREATE SEQUENCE sources.wy_evanston_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_evanston_lines_gid_seq OWNER TO postgres;
-
---
--- Name: wy_evanston_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_evanston_lines_gid_seq OWNED BY sources.wy_evanston_lines.gid;
 
-
---
--- Name: wy_evanston_polygon_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.wy_evanston_polygon_gid_seq
     START WITH 1
@@ -34945,18 +23521,8 @@ CREATE SEQUENCE sources.wy_evanston_polygon_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_evanston_polygon_gid_seq OWNER TO postgres;
-
---
--- Name: wy_evanston_polygon_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_evanston_polygon_gid_seq OWNED BY sources.wy_evanston.gid;
 
-
---
--- Name: wy_farson; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_farson (
     gid integer NOT NULL,
@@ -34975,12 +23541,6 @@ CREATE TABLE sources.wy_farson (
 );
 
 
-ALTER TABLE sources.wy_farson OWNER TO postgres;
-
---
--- Name: wy_farson_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_farson_gid_seq
     AS integer
     START WITH 1
@@ -34990,18 +23550,8 @@ CREATE SEQUENCE sources.wy_farson_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_farson_gid_seq OWNER TO postgres;
-
---
--- Name: wy_farson_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_farson_gid_seq OWNED BY sources.wy_farson.gid;
 
-
---
--- Name: wy_farson_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_farson_lines (
     gid integer NOT NULL,
@@ -35015,12 +23565,6 @@ CREATE TABLE sources.wy_farson_lines (
 );
 
 
-ALTER TABLE sources.wy_farson_lines OWNER TO postgres;
-
---
--- Name: wy_farson_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_farson_lines_gid_seq
     AS integer
     START WITH 1
@@ -35030,18 +23574,8 @@ CREATE SEQUENCE sources.wy_farson_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_farson_lines_gid_seq OWNER TO postgres;
-
---
--- Name: wy_farson_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_farson_lines_gid_seq OWNED BY sources.wy_farson_lines.gid;
 
-
---
--- Name: wy_gillette; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_gillette (
     gid integer NOT NULL,
@@ -35063,12 +23597,6 @@ CREATE TABLE sources.wy_gillette (
 );
 
 
-ALTER TABLE sources.wy_gillette OWNER TO postgres;
-
---
--- Name: wy_gillette_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_gillette_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -35077,18 +23605,8 @@ CREATE SEQUENCE sources.wy_gillette_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_gillette_gid_seq OWNER TO postgres;
-
---
--- Name: wy_gillette_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_gillette_gid_seq OWNED BY sources.wy_gillette.gid;
 
-
---
--- Name: wy_kaycee; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_kaycee (
     gid integer NOT NULL,
@@ -35108,12 +23626,6 @@ CREATE TABLE sources.wy_kaycee (
 );
 
 
-ALTER TABLE sources.wy_kaycee OWNER TO postgres;
-
---
--- Name: wy_kaycee_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_kaycee_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -35122,18 +23634,8 @@ CREATE SEQUENCE sources.wy_kaycee_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_kaycee_gid_seq OWNER TO postgres;
-
---
--- Name: wy_kaycee_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_kaycee_gid_seq OWNED BY sources.wy_kaycee.gid;
 
-
---
--- Name: wy_kaycee_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_kaycee_lines (
     gid integer NOT NULL,
@@ -35145,12 +23647,6 @@ CREATE TABLE sources.wy_kaycee_lines (
 );
 
 
-ALTER TABLE sources.wy_kaycee_lines OWNER TO postgres;
-
---
--- Name: wy_kaycee_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_kaycee_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -35159,18 +23655,8 @@ CREATE SEQUENCE sources.wy_kaycee_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_kaycee_lines_gid_seq OWNER TO postgres;
-
---
--- Name: wy_kaycee_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_kaycee_lines_gid_seq OWNED BY sources.wy_kaycee_lines.gid;
 
-
---
--- Name: wy_kemmerer; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_kemmerer (
     gid integer NOT NULL,
@@ -35192,12 +23678,6 @@ CREATE TABLE sources.wy_kemmerer (
 );
 
 
-ALTER TABLE sources.wy_kemmerer OWNER TO postgres;
-
---
--- Name: wy_kemmerer_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.wy_kemmerer_lines (
     gid integer NOT NULL,
     ltype character varying(125),
@@ -35208,12 +23688,6 @@ CREATE TABLE sources.wy_kemmerer_lines (
 );
 
 
-ALTER TABLE sources.wy_kemmerer_lines OWNER TO postgres;
-
---
--- Name: wy_kemmerer_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_kemmerer_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -35222,18 +23696,8 @@ CREATE SEQUENCE sources.wy_kemmerer_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_kemmerer_lines_gid_seq OWNER TO postgres;
-
---
--- Name: wy_kemmerer_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_kemmerer_lines_gid_seq OWNED BY sources.wy_kemmerer_lines.gid;
 
-
---
--- Name: wy_kemmerer_polygon_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.wy_kemmerer_polygon_gid_seq
     START WITH 1
@@ -35243,18 +23707,8 @@ CREATE SEQUENCE sources.wy_kemmerer_polygon_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_kemmerer_polygon_gid_seq OWNER TO postgres;
-
---
--- Name: wy_kemmerer_polygon_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_kemmerer_polygon_gid_seq OWNED BY sources.wy_kemmerer.gid;
 
-
---
--- Name: wy_kinneyrim; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_kinneyrim (
     gid integer NOT NULL,
@@ -35277,12 +23731,6 @@ CREATE TABLE sources.wy_kinneyrim (
 );
 
 
-ALTER TABLE sources.wy_kinneyrim OWNER TO postgres;
-
---
--- Name: wy_kinneyrim_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_kinneyrim_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -35291,18 +23739,8 @@ CREATE SEQUENCE sources.wy_kinneyrim_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_kinneyrim_gid_seq OWNER TO postgres;
-
---
--- Name: wy_kinneyrim_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_kinneyrim_gid_seq OWNED BY sources.wy_kinneyrim.gid;
 
-
---
--- Name: wy_kinneyrim_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_kinneyrim_lines (
     gid integer NOT NULL,
@@ -35316,12 +23754,6 @@ CREATE TABLE sources.wy_kinneyrim_lines (
 );
 
 
-ALTER TABLE sources.wy_kinneyrim_lines OWNER TO postgres;
-
---
--- Name: wy_kinneyrim_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_kinneyrim_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -35330,18 +23762,8 @@ CREATE SEQUENCE sources.wy_kinneyrim_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_kinneyrim_lines_gid_seq OWNER TO postgres;
-
---
--- Name: wy_kinneyrim_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_kinneyrim_lines_gid_seq OWNED BY sources.wy_kinneyrim_lines.gid;
 
-
---
--- Name: wy_lancecreek; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_lancecreek (
     gid integer NOT NULL,
@@ -35365,12 +23787,6 @@ CREATE TABLE sources.wy_lancecreek (
 );
 
 
-ALTER TABLE sources.wy_lancecreek OWNER TO postgres;
-
---
--- Name: wy_lancecreek_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.wy_lancecreek_lines (
     gid integer NOT NULL,
     objectid integer,
@@ -35383,12 +23799,6 @@ CREATE TABLE sources.wy_lancecreek_lines (
     descrip text
 );
 
-
-ALTER TABLE sources.wy_lancecreek_lines OWNER TO postgres;
-
---
--- Name: wy_lander; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_lander (
     gid integer NOT NULL,
@@ -35412,12 +23822,6 @@ CREATE TABLE sources.wy_lander (
 );
 
 
-ALTER TABLE sources.wy_lander OWNER TO postgres;
-
---
--- Name: wy_lander_lines; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.wy_lander_lines (
     gid integer NOT NULL,
     objectid integer,
@@ -35430,12 +23834,6 @@ CREATE TABLE sources.wy_lander_lines (
 );
 
 
-ALTER TABLE sources.wy_lander_lines OWNER TO postgres;
-
---
--- Name: wy_lanecreek_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_lanecreek_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -35444,18 +23842,8 @@ CREATE SEQUENCE sources.wy_lanecreek_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_lanecreek_gid_seq OWNER TO postgres;
-
---
--- Name: wy_lanecreek_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_lanecreek_gid_seq OWNED BY sources.wy_lancecreek.gid;
 
-
---
--- Name: wy_lanecreek_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.wy_lanecreek_lines_gid_seq
     START WITH 1
@@ -35465,18 +23853,8 @@ CREATE SEQUENCE sources.wy_lanecreek_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_lanecreek_lines_gid_seq OWNER TO postgres;
-
---
--- Name: wy_lanecreek_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_lanecreek_lines_gid_seq OWNED BY sources.wy_lancecreek_lines.gid;
 
-
---
--- Name: wy_midwest; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_midwest (
     gid integer NOT NULL,
@@ -35503,12 +23881,6 @@ CREATE TABLE sources.wy_midwest (
 );
 
 
-ALTER TABLE sources.wy_midwest OWNER TO postgres;
-
---
--- Name: wy_midwest_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_midwest_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -35517,18 +23889,8 @@ CREATE SEQUENCE sources.wy_midwest_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_midwest_gid_seq OWNER TO postgres;
-
---
--- Name: wy_midwest_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_midwest_gid_seq OWNED BY sources.wy_midwest.gid;
 
-
---
--- Name: wy_midwest_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_midwest_lines (
     gid integer NOT NULL,
@@ -35549,12 +23911,6 @@ CREATE TABLE sources.wy_midwest_lines (
 );
 
 
-ALTER TABLE sources.wy_midwest_lines OWNER TO postgres;
-
---
--- Name: wy_midwest_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_midwest_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -35563,18 +23919,8 @@ CREATE SEQUENCE sources.wy_midwest_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_midwest_lines_gid_seq OWNER TO postgres;
-
---
--- Name: wy_midwest_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_midwest_lines_gid_seq OWNED BY sources.wy_midwest_lines.gid;
 
-
---
--- Name: wy_newcastle; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_newcastle (
     gid integer NOT NULL,
@@ -35598,12 +23944,6 @@ CREATE TABLE sources.wy_newcastle (
 );
 
 
-ALTER TABLE sources.wy_newcastle OWNER TO postgres;
-
---
--- Name: wy_newcastle_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_newcastle_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -35612,18 +23952,8 @@ CREATE SEQUENCE sources.wy_newcastle_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_newcastle_gid_seq OWNER TO postgres;
-
---
--- Name: wy_newcastle_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_newcastle_gid_seq OWNED BY sources.wy_newcastle.gid;
 
-
---
--- Name: wy_newcastle_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_newcastle_lines (
     gid integer NOT NULL,
@@ -35638,12 +23968,6 @@ CREATE TABLE sources.wy_newcastle_lines (
 );
 
 
-ALTER TABLE sources.wy_newcastle_lines OWNER TO postgres;
-
---
--- Name: wy_newcastle_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_newcastle_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -35652,18 +23976,8 @@ CREATE SEQUENCE sources.wy_newcastle_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_newcastle_lines_gid_seq OWNER TO postgres;
-
---
--- Name: wy_newcastle_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_newcastle_lines_gid_seq OWNED BY sources.wy_newcastle_lines.gid;
 
-
---
--- Name: wy_nowater; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_nowater (
     gid integer NOT NULL,
@@ -35683,12 +23997,6 @@ CREATE TABLE sources.wy_nowater (
 );
 
 
-ALTER TABLE sources.wy_nowater OWNER TO postgres;
-
---
--- Name: wy_nowater_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_nowater_gid_seq
     AS integer
     START WITH 1
@@ -35698,18 +24006,8 @@ CREATE SEQUENCE sources.wy_nowater_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_nowater_gid_seq OWNER TO postgres;
-
---
--- Name: wy_nowater_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_nowater_gid_seq OWNED BY sources.wy_nowater.gid;
 
-
---
--- Name: wy_nowater_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_nowater_lines (
     gid integer NOT NULL,
@@ -35723,12 +24021,6 @@ CREATE TABLE sources.wy_nowater_lines (
 );
 
 
-ALTER TABLE sources.wy_nowater_lines OWNER TO postgres;
-
---
--- Name: wy_nowater_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_nowater_lines_gid_seq
     AS integer
     START WITH 1
@@ -35738,18 +24030,8 @@ CREATE SEQUENCE sources.wy_nowater_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_nowater_lines_gid_seq OWNER TO postgres;
-
---
--- Name: wy_nowater_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_nowater_lines_gid_seq OWNED BY sources.wy_nowater_lines.gid;
 
-
---
--- Name: wy_rattlesnakehills_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_rattlesnakehills_lines (
     gid integer NOT NULL,
@@ -35761,12 +24043,6 @@ CREATE TABLE sources.wy_rattlesnakehills_lines (
 );
 
 
-ALTER TABLE sources.wy_rattlesnakehills_lines OWNER TO postgres;
-
---
--- Name: wy_rattlesnakehills_arcs_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_rattlesnakehills_arcs_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -35775,18 +24051,8 @@ CREATE SEQUENCE sources.wy_rattlesnakehills_arcs_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_rattlesnakehills_arcs_gid_seq OWNER TO postgres;
-
---
--- Name: wy_rattlesnakehills_arcs_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_rattlesnakehills_arcs_gid_seq OWNED BY sources.wy_rattlesnakehills_lines.gid;
 
-
---
--- Name: wy_rawlins; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_rawlins (
     gid integer NOT NULL,
@@ -35809,12 +24075,6 @@ CREATE TABLE sources.wy_rawlins (
 );
 
 
-ALTER TABLE sources.wy_rawlins OWNER TO postgres;
-
---
--- Name: wy_rawlins_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_rawlins_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -35823,18 +24083,8 @@ CREATE SEQUENCE sources.wy_rawlins_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_rawlins_gid_seq OWNER TO postgres;
-
---
--- Name: wy_rawlins_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_rawlins_gid_seq OWNED BY sources.wy_rawlins.gid;
 
-
---
--- Name: wy_rawlins_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_rawlins_lines (
     gid integer NOT NULL,
@@ -35848,12 +24098,6 @@ CREATE TABLE sources.wy_rawlins_lines (
 );
 
 
-ALTER TABLE sources.wy_rawlins_lines OWNER TO postgres;
-
---
--- Name: wy_rawlins_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_rawlins_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -35862,18 +24106,8 @@ CREATE SEQUENCE sources.wy_rawlins_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_rawlins_lines_gid_seq OWNER TO postgres;
-
---
--- Name: wy_rawlins_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_rawlins_lines_gid_seq OWNED BY sources.wy_rawlins_lines.gid;
 
-
---
--- Name: wy_recluse; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_recluse (
     gid integer NOT NULL,
@@ -35895,12 +24129,6 @@ CREATE TABLE sources.wy_recluse (
 );
 
 
-ALTER TABLE sources.wy_recluse OWNER TO postgres;
-
---
--- Name: wy_recluse_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_recluse_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -35909,18 +24137,8 @@ CREATE SEQUENCE sources.wy_recluse_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_recluse_gid_seq OWNER TO postgres;
-
---
--- Name: wy_recluse_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_recluse_gid_seq OWNED BY sources.wy_recluse.gid;
 
-
---
--- Name: wy_recluse_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_recluse_lines (
     gid integer NOT NULL,
@@ -35932,12 +24150,6 @@ CREATE TABLE sources.wy_recluse_lines (
 );
 
 
-ALTER TABLE sources.wy_recluse_lines OWNER TO postgres;
-
---
--- Name: wy_recluse_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_recluse_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -35946,18 +24158,8 @@ CREATE SEQUENCE sources.wy_recluse_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_recluse_lines_gid_seq OWNER TO postgres;
-
---
--- Name: wy_recluse_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_recluse_lines_gid_seq OWNED BY sources.wy_recluse_lines.gid;
 
-
---
--- Name: wy_renojunction; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_renojunction (
     gid integer NOT NULL,
@@ -35978,12 +24180,6 @@ CREATE TABLE sources.wy_renojunction (
 );
 
 
-ALTER TABLE sources.wy_renojunction OWNER TO postgres;
-
---
--- Name: wy_renojunction_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_renojunction_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -35992,18 +24188,8 @@ CREATE SEQUENCE sources.wy_renojunction_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_renojunction_gid_seq OWNER TO postgres;
-
---
--- Name: wy_renojunction_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_renojunction_gid_seq OWNED BY sources.wy_renojunction.gid;
 
-
---
--- Name: wy_sundance; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_sundance (
     gid integer NOT NULL,
@@ -36026,12 +24212,6 @@ CREATE TABLE sources.wy_sundance (
 );
 
 
-ALTER TABLE sources.wy_sundance OWNER TO postgres;
-
---
--- Name: wy_sundance_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_sundance_gid_seq
     AS integer
     START WITH 1
@@ -36041,18 +24221,8 @@ CREATE SEQUENCE sources.wy_sundance_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_sundance_gid_seq OWNER TO postgres;
-
---
--- Name: wy_sundance_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_sundance_gid_seq OWNED BY sources.wy_sundance.gid;
 
-
---
--- Name: wy_sundance_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_sundance_lines (
     gid integer NOT NULL,
@@ -36067,12 +24237,6 @@ CREATE TABLE sources.wy_sundance_lines (
 );
 
 
-ALTER TABLE sources.wy_sundance_lines OWNER TO postgres;
-
---
--- Name: wy_sundance_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_sundance_lines_gid_seq
     AS integer
     START WITH 1
@@ -36082,18 +24246,8 @@ CREATE SEQUENCE sources.wy_sundance_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_sundance_lines_gid_seq OWNER TO postgres;
-
---
--- Name: wy_sundance_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_sundance_lines_gid_seq OWNED BY sources.wy_sundance_lines.gid;
 
-
---
--- Name: wy_sundance_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_sundance_points (
     gid integer NOT NULL,
@@ -36108,12 +24262,6 @@ CREATE TABLE sources.wy_sundance_points (
 );
 
 
-ALTER TABLE sources.wy_sundance_points OWNER TO postgres;
-
---
--- Name: wy_sundance_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_sundance_points_gid_seq
     AS integer
     START WITH 1
@@ -36123,18 +24271,8 @@ CREATE SEQUENCE sources.wy_sundance_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_sundance_points_gid_seq OWNER TO postgres;
-
---
--- Name: wy_sundance_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_sundance_points_gid_seq OWNED BY sources.wy_sundance_points.gid;
 
-
---
--- Name: wy_torrington; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_torrington (
     gid integer NOT NULL,
@@ -36161,12 +24299,6 @@ CREATE TABLE sources.wy_torrington (
 );
 
 
-ALTER TABLE sources.wy_torrington OWNER TO postgres;
-
---
--- Name: wy_torrington_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_torrington_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -36175,18 +24307,8 @@ CREATE SEQUENCE sources.wy_torrington_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_torrington_gid_seq OWNER TO postgres;
-
---
--- Name: wy_torrington_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_torrington_gid_seq OWNED BY sources.wy_torrington.gid;
 
-
---
--- Name: wy_torrington_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.wy_torrington_lines (
     gid integer NOT NULL,
@@ -36208,12 +24330,6 @@ CREATE TABLE sources.wy_torrington_lines (
 );
 
 
-ALTER TABLE sources.wy_torrington_lines OWNER TO postgres;
-
---
--- Name: wy_torrington_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.wy_torrington_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -36222,18 +24338,8 @@ CREATE SEQUENCE sources.wy_torrington_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wy_torrington_lines_gid_seq OWNER TO postgres;
-
---
--- Name: wy_torrington_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wy_torrington_lines_gid_seq OWNED BY sources.wy_torrington_lines.gid;
 
-
---
--- Name: wyoming_lander_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.wyoming_lander_gid_seq
     START WITH 1
@@ -36243,18 +24349,8 @@ CREATE SEQUENCE sources.wyoming_lander_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wyoming_lander_gid_seq OWNER TO postgres;
-
---
--- Name: wyoming_lander_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wyoming_lander_gid_seq OWNED BY sources.wy_lander.gid;
 
-
---
--- Name: wyoming_lander_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.wyoming_lander_lines_gid_seq
     START WITH 1
@@ -36264,18 +24360,8 @@ CREATE SEQUENCE sources.wyoming_lander_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.wyoming_lander_lines_gid_seq OWNER TO postgres;
-
---
--- Name: wyoming_lander_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.wyoming_lander_lines_gid_seq OWNED BY sources.wy_lander_lines.gid;
 
-
---
--- Name: yk_joyal; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.yk_joyal (
     gid integer NOT NULL,
@@ -36304,12 +24390,6 @@ CREATE TABLE sources.yk_joyal (
 );
 
 
-ALTER TABLE sources.yk_joyal OWNER TO postgres;
-
---
--- Name: yk_joyal_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.yk_joyal_gid_seq
     AS integer
     START WITH 1
@@ -36319,18 +24399,8 @@ CREATE SEQUENCE sources.yk_joyal_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.yk_joyal_gid_seq OWNER TO postgres;
-
---
--- Name: yk_joyal_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.yk_joyal_gid_seq OWNED BY sources.yk_joyal.gid;
 
-
---
--- Name: yk_joyal_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.yk_joyal_lines (
     gid integer NOT NULL,
@@ -36358,12 +24428,6 @@ CREATE TABLE sources.yk_joyal_lines (
 );
 
 
-ALTER TABLE sources.yk_joyal_lines OWNER TO postgres;
-
---
--- Name: yk_joyal_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.yk_joyal_lines_gid_seq
     AS integer
     START WITH 1
@@ -36373,18 +24437,8 @@ CREATE SEQUENCE sources.yk_joyal_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.yk_joyal_lines_gid_seq OWNER TO postgres;
-
---
--- Name: yk_joyal_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.yk_joyal_lines_gid_seq OWNED BY sources.yk_joyal_lines.gid;
 
-
---
--- Name: yk_joyal_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.yk_joyal_points (
     gid integer NOT NULL,
@@ -36418,12 +24472,6 @@ CREATE TABLE sources.yk_joyal_points (
 );
 
 
-ALTER TABLE sources.yk_joyal_points OWNER TO postgres;
-
---
--- Name: yk_joyal_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.yk_joyal_points_gid_seq
     AS integer
     START WITH 1
@@ -36433,18 +24481,8 @@ CREATE SEQUENCE sources.yk_joyal_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.yk_joyal_points_gid_seq OWNER TO postgres;
-
---
--- Name: yk_joyal_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.yk_joyal_points_gid_seq OWNED BY sources.yk_joyal_points.gid;
 
-
---
--- Name: yukon; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.yukon (
     gid integer NOT NULL,
@@ -36495,12 +24533,6 @@ CREATE TABLE sources.yukon (
 );
 
 
-ALTER TABLE sources.yukon OWNER TO postgres;
-
---
--- Name: yukon_folds; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.yukon_folds (
     gid integer NOT NULL,
     fold_id numeric(10,0),
@@ -36514,12 +24546,6 @@ CREATE TABLE sources.yukon_folds (
 );
 
 
-ALTER TABLE sources.yukon_folds OWNER TO postgres;
-
---
--- Name: yukon_folds_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.yukon_folds_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -36528,18 +24554,8 @@ CREATE SEQUENCE sources.yukon_folds_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.yukon_folds_gid_seq OWNER TO postgres;
-
---
--- Name: yukon_folds_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.yukon_folds_gid_seq OWNED BY sources.yukon_folds.gid;
 
-
---
--- Name: yukon_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.yukon_gid_seq
     START WITH 1
@@ -36549,18 +24565,8 @@ CREATE SEQUENCE sources.yukon_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.yukon_gid_seq OWNER TO postgres;
-
---
--- Name: yukon_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.yukon_gid_seq OWNED BY sources.yukon.gid;
 
-
---
--- Name: yukon_lines; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.yukon_lines (
     gid integer NOT NULL,
@@ -36581,12 +24587,6 @@ CREATE TABLE sources.yukon_lines (
 );
 
 
-ALTER TABLE sources.yukon_lines OWNER TO postgres;
-
---
--- Name: yukon_lines_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.yukon_lines_gid_seq
     START WITH 1
     INCREMENT BY 1
@@ -36595,18 +24595,8 @@ CREATE SEQUENCE sources.yukon_lines_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.yukon_lines_gid_seq OWNER TO postgres;
-
---
--- Name: yukon_lines_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.yukon_lines_gid_seq OWNED BY sources.yukon_lines.gid;
 
-
---
--- Name: yukon_mtmartin; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.yukon_mtmartin (
     gid integer NOT NULL,
@@ -36637,12 +24627,6 @@ CREATE TABLE sources.yukon_mtmartin (
 );
 
 
-ALTER TABLE sources.yukon_mtmartin OWNER TO postgres;
-
---
--- Name: yukon_mtmartin_folds; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.yukon_mtmartin_folds (
     gid integer NOT NULL,
     fnode_ integer,
@@ -36669,12 +24653,6 @@ CREATE TABLE sources.yukon_mtmartin_folds (
 );
 
 
-ALTER TABLE sources.yukon_mtmartin_folds OWNER TO postgres;
-
---
--- Name: yukon_mtmartin_folds_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.yukon_mtmartin_folds_gid_seq
     AS integer
     START WITH 1
@@ -36684,18 +24662,8 @@ CREATE SEQUENCE sources.yukon_mtmartin_folds_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.yukon_mtmartin_folds_gid_seq OWNER TO postgres;
-
---
--- Name: yukon_mtmartin_folds_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.yukon_mtmartin_folds_gid_seq OWNED BY sources.yukon_mtmartin_folds.gid;
 
-
---
--- Name: yukon_mtmartin_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.yukon_mtmartin_gid_seq
     AS integer
@@ -36706,18 +24674,8 @@ CREATE SEQUENCE sources.yukon_mtmartin_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.yukon_mtmartin_gid_seq OWNER TO postgres;
-
---
--- Name: yukon_mtmartin_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.yukon_mtmartin_gid_seq OWNED BY sources.yukon_mtmartin.gid;
 
-
---
--- Name: yukon_mtmartin_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.yukon_mtmartin_points (
     gid integer NOT NULL,
@@ -36745,12 +24703,6 @@ CREATE TABLE sources.yukon_mtmartin_points (
 );
 
 
-ALTER TABLE sources.yukon_mtmartin_points OWNER TO postgres;
-
---
--- Name: yukon_mtmartin_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.yukon_mtmartin_points_gid_seq
     AS integer
     START WITH 1
@@ -36760,18 +24712,8 @@ CREATE SEQUENCE sources.yukon_mtmartin_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.yukon_mtmartin_points_gid_seq OWNER TO postgres;
-
---
--- Name: yukon_mtmartin_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.yukon_mtmartin_points_gid_seq OWNED BY sources.yukon_mtmartin_points.gid;
 
-
---
--- Name: yukon_mtmerril; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.yukon_mtmerril (
     gid integer NOT NULL,
@@ -36803,12 +24745,6 @@ CREATE TABLE sources.yukon_mtmerril (
 );
 
 
-ALTER TABLE sources.yukon_mtmerril OWNER TO postgres;
-
---
--- Name: yukon_mtmerril_folds; Type: TABLE; Schema: sources; Owner: postgres
---
-
 CREATE TABLE sources.yukon_mtmerril_folds (
     gid integer NOT NULL,
     fnode_ double precision,
@@ -36834,12 +24770,6 @@ CREATE TABLE sources.yukon_mtmerril_folds (
 );
 
 
-ALTER TABLE sources.yukon_mtmerril_folds OWNER TO postgres;
-
---
--- Name: yukon_mtmerril_folds_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.yukon_mtmerril_folds_gid_seq
     AS integer
     START WITH 1
@@ -36849,18 +24779,8 @@ CREATE SEQUENCE sources.yukon_mtmerril_folds_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.yukon_mtmerril_folds_gid_seq OWNER TO postgres;
-
---
--- Name: yukon_mtmerril_folds_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.yukon_mtmerril_folds_gid_seq OWNED BY sources.yukon_mtmerril_folds.gid;
 
-
---
--- Name: yukon_mtmerril_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
 
 CREATE SEQUENCE sources.yukon_mtmerril_gid_seq
     AS integer
@@ -36871,18 +24791,8 @@ CREATE SEQUENCE sources.yukon_mtmerril_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.yukon_mtmerril_gid_seq OWNER TO postgres;
-
---
--- Name: yukon_mtmerril_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.yukon_mtmerril_gid_seq OWNED BY sources.yukon_mtmerril.gid;
 
-
---
--- Name: yukon_mtmerril_points; Type: TABLE; Schema: sources; Owner: postgres
---
 
 CREATE TABLE sources.yukon_mtmerril_points (
     gid integer NOT NULL,
@@ -36907,12 +24817,6 @@ CREATE TABLE sources.yukon_mtmerril_points (
 );
 
 
-ALTER TABLE sources.yukon_mtmerril_points OWNER TO postgres;
-
---
--- Name: yukon_mtmerril_points_gid_seq; Type: SEQUENCE; Schema: sources; Owner: postgres
---
-
 CREATE SEQUENCE sources.yukon_mtmerril_points_gid_seq
     AS integer
     START WITH 1
@@ -36922,12892 +24826,5942 @@ CREATE SEQUENCE sources.yukon_mtmerril_points_gid_seq
     CACHE 1;
 
 
-ALTER TABLE sources.yukon_mtmerril_points_gid_seq OWNER TO postgres;
-
---
--- Name: yukon_mtmerril_points_gid_seq; Type: SEQUENCE OWNED BY; Schema: sources; Owner: postgres
---
-
 ALTER SEQUENCE sources.yukon_mtmerril_points_gid_seq OWNED BY sources.yukon_mtmerril_points.gid;
 
-
---
--- Name: located_query_bounds id; Type: DEFAULT; Schema: detrital_zircon; Owner: postgres
---
 
 ALTER TABLE ONLY detrital_zircon.located_query_bounds ALTER COLUMN id SET DEFAULT nextval('detrital_zircon.located_query_bounds_id_seq'::regclass);
 
 
---
--- Name: boundaries boundary_id; Type: DEFAULT; Schema: geologic_boundaries; Owner: postgres
---
-
 ALTER TABLE ONLY geologic_boundaries.boundaries ALTER COLUMN boundary_id SET DEFAULT nextval('geologic_boundaries.boundaries_boundary_id_seq'::regclass);
 
-
---
--- Name: r10 hex_id; Type: DEFAULT; Schema: hexgrids; Owner: postgres
---
 
 ALTER TABLE ONLY hexgrids.r10 ALTER COLUMN hex_id SET DEFAULT nextval('hexgrids.r10_ogc_fid_seq'::regclass);
 
 
---
--- Name: r11 hex_id; Type: DEFAULT; Schema: hexgrids; Owner: postgres
---
-
 ALTER TABLE ONLY hexgrids.r11 ALTER COLUMN hex_id SET DEFAULT nextval('hexgrids.r11_ogc_fid_seq'::regclass);
 
-
---
--- Name: r12 hex_id; Type: DEFAULT; Schema: hexgrids; Owner: postgres
---
 
 ALTER TABLE ONLY hexgrids.r12 ALTER COLUMN hex_id SET DEFAULT nextval('hexgrids.r12_ogc_fid_seq'::regclass);
 
 
---
--- Name: r5 hex_id; Type: DEFAULT; Schema: hexgrids; Owner: postgres
---
-
 ALTER TABLE ONLY hexgrids.r5 ALTER COLUMN hex_id SET DEFAULT nextval('hexgrids.r5_ogc_fid_seq'::regclass);
 
-
---
--- Name: r6 hex_id; Type: DEFAULT; Schema: hexgrids; Owner: postgres
---
 
 ALTER TABLE ONLY hexgrids.r6 ALTER COLUMN hex_id SET DEFAULT nextval('hexgrids.r6_ogc_fid_seq'::regclass);
 
 
---
--- Name: r7 hex_id; Type: DEFAULT; Schema: hexgrids; Owner: postgres
---
-
 ALTER TABLE ONLY hexgrids.r7 ALTER COLUMN hex_id SET DEFAULT nextval('hexgrids.r7_ogc_fid_seq'::regclass);
 
-
---
--- Name: r8 hex_id; Type: DEFAULT; Schema: hexgrids; Owner: postgres
---
 
 ALTER TABLE ONLY hexgrids.r8 ALTER COLUMN hex_id SET DEFAULT nextval('hexgrids.r8_ogc_fid_seq'::regclass);
 
 
---
--- Name: r9 hex_id; Type: DEFAULT; Schema: hexgrids; Owner: postgres
---
-
 ALTER TABLE ONLY hexgrids.r9 ALTER COLUMN hex_id SET DEFAULT nextval('hexgrids.r9_ogc_fid_seq'::regclass);
 
-
---
--- Name: intervals id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
---
 
 ALTER TABLE ONLY macrostrat.intervals ALTER COLUMN id SET DEFAULT nextval('macrostrat.intervals_new_id_seq1'::regclass);
 
 
---
--- Name: measurements id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
---
-
 ALTER TABLE ONLY macrostrat.measurements ALTER COLUMN id SET DEFAULT nextval('macrostrat.measurements_new_id_seq'::regclass);
 
-
---
--- Name: measuremeta id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
---
 
 ALTER TABLE ONLY macrostrat.measuremeta ALTER COLUMN id SET DEFAULT nextval('macrostrat.measuremeta_new_id_seq1'::regclass);
 
 
---
--- Name: measures id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
---
-
 ALTER TABLE ONLY macrostrat.measures ALTER COLUMN id SET DEFAULT nextval('macrostrat.measures_new_id_seq1'::regclass);
 
-
---
--- Name: strat_names id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
---
 
 ALTER TABLE ONLY macrostrat.strat_names ALTER COLUMN id SET DEFAULT nextval('macrostrat.strat_names_new_id_seq'::regclass);
 
 
---
--- Name: unit_measures id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
---
-
 ALTER TABLE ONLY macrostrat.unit_measures ALTER COLUMN id SET DEFAULT nextval('macrostrat.unit_measures_new_id_seq'::regclass);
 
-
---
--- Name: unit_strat_names id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
---
 
 ALTER TABLE ONLY macrostrat.unit_strat_names ALTER COLUMN id SET DEFAULT nextval('macrostrat.unit_strat_names_new_id_seq1'::regclass);
 
 
---
--- Name: units_sections id; Type: DEFAULT; Schema: macrostrat; Owner: postgres
---
-
 ALTER TABLE ONLY macrostrat.units_sections ALTER COLUMN id SET DEFAULT nextval('macrostrat.units_sections_new_id_seq'::regclass);
 
-
---
--- Name: legend legend_id; Type: DEFAULT; Schema: maps; Owner: postgres
---
 
 ALTER TABLE ONLY maps.legend ALTER COLUMN legend_id SET DEFAULT nextval('maps.legend_legend_id_seq'::regclass);
 
 
---
--- Name: manual_matches match_id; Type: DEFAULT; Schema: maps; Owner: postgres
---
-
 ALTER TABLE ONLY maps.manual_matches ALTER COLUMN match_id SET DEFAULT nextval('maps.manual_matches_match_id_seq'::regclass);
 
-
---
--- Name: sources source_id; Type: DEFAULT; Schema: maps; Owner: postgres
---
 
 ALTER TABLE ONLY maps.sources ALTER COLUMN source_id SET DEFAULT nextval('maps.sources_source_id_seq'::regclass);
 
 
---
--- Name: points point_id; Type: DEFAULT; Schema: points; Owner: postgres
---
-
 ALTER TABLE ONLY points.points ALTER COLUMN point_id SET DEFAULT nextval('points.points_point_id_seq'::regclass);
 
-
---
--- Name: impervious rid; Type: DEFAULT; Schema: public; Owner: postgres
---
 
 ALTER TABLE ONLY public.impervious ALTER COLUMN rid SET DEFAULT nextval('public.impervious_rid_seq'::regclass);
 
 
---
--- Name: land gid; Type: DEFAULT; Schema: public; Owner: postgres
---
-
 ALTER TABLE ONLY public.land ALTER COLUMN gid SET DEFAULT nextval('public.land_gid_seq'::regclass);
 
-
---
--- Name: macrostrat_union id; Type: DEFAULT; Schema: public; Owner: postgres
---
 
 ALTER TABLE ONLY public.macrostrat_union ALTER COLUMN id SET DEFAULT nextval('public.macrostrat_union_id_seq'::regclass);
 
 
---
--- Name: test_rgeom gid; Type: DEFAULT; Schema: public; Owner: postgres
---
-
 ALTER TABLE ONLY public.test_rgeom ALTER COLUMN gid SET DEFAULT nextval('public.test_rgeom_gid_seq'::regclass);
 
-
---
--- Name: ab_spray gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ab_spray ALTER COLUMN gid SET DEFAULT nextval('sources.ab_spray_gid_seq'::regclass);
 
 
---
--- Name: ab_spray_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ab_spray_lines ALTER COLUMN gid SET DEFAULT nextval('sources.ab_spray_lines_gid_seq'::regclass);
 
-
---
--- Name: ab_spray_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ab_spray_points ALTER COLUMN gid SET DEFAULT nextval('sources.ab_spray_points_gid_seq'::regclass);
 
 
---
--- Name: ab_stimson gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ab_stimson ALTER COLUMN gid SET DEFAULT nextval('sources.ab_stimson_gid_seq'::regclass);
 
-
---
--- Name: ab_stimson_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ab_stimson_lines ALTER COLUMN gid SET DEFAULT nextval('sources.ab_stimson_lines_gid_seq'::regclass);
 
 
---
--- Name: ab_stimson_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ab_stimson_points ALTER COLUMN gid SET DEFAULT nextval('sources.ab_stimson_points_gid_seq'::regclass);
 
-
---
--- Name: afghan gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.afghan ALTER COLUMN gid SET DEFAULT nextval('sources.afghan_gid_seq'::regclass);
 
 
---
--- Name: afghan_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.afghan_lines ALTER COLUMN gid SET DEFAULT nextval('sources.afghan_lines_gid_seq'::regclass);
 
-
---
--- Name: africa gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.africa ALTER COLUMN gid SET DEFAULT nextval('sources.africa_gid_seq'::regclass);
 
 
---
--- Name: africa_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.africa_lines ALTER COLUMN gid SET DEFAULT nextval('sources.lines_gid_seq'::regclass);
 
-
---
--- Name: ak gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ak ALTER COLUMN gid SET DEFAULT nextval('sources.ak_gid_seq'::regclass);
 
 
---
--- Name: ak_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ak_lines ALTER COLUMN gid SET DEFAULT nextval('sources.ak_lines_gid_seq'::regclass);
 
-
---
--- Name: al_greenwood gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.al_greenwood ALTER COLUMN gid SET DEFAULT nextval('sources.greenwoodalgeology_gid_seq'::regclass);
 
 
---
--- Name: al_greenwood_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.al_greenwood_lines ALTER COLUMN gid SET DEFAULT nextval('sources.greenwood_lines_gid_seq'::regclass);
 
-
---
--- Name: al_greenwood_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.al_greenwood_points ALTER COLUMN gid SET DEFAULT nextval('sources.greenwood_points_gid_seq'::regclass);
 
 
---
--- Name: alberta gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.alberta ALTER COLUMN gid SET DEFAULT nextval('sources.alberta_gid_seq'::regclass);
 
-
---
--- Name: alberta_faults gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.alberta_faults ALTER COLUMN gid SET DEFAULT nextval('sources.alberta_faults_gid_seq'::regclass);
 
 
---
--- Name: ar_buffalo_nriver gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ar_buffalo_nriver ALTER COLUMN gid SET DEFAULT nextval('sources.ar_buffalo_nriver_gid_seq'::regclass);
 
-
---
--- Name: ar_buffalo_nriver_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ar_buffalo_nriver_lines ALTER COLUMN gid SET DEFAULT nextval('sources.ar_buffalo_nriver_lines_gid_seq'::regclass);
 
 
---
--- Name: ar_hasty gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ar_hasty ALTER COLUMN gid SET DEFAULT nextval('sources.hasty_geo_gid_seq'::regclass);
 
-
---
--- Name: ar_hasty_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ar_hasty_lines ALTER COLUMN gid SET DEFAULT nextval('sources.hastylines2_gid_seq'::regclass);
 
 
---
--- Name: ar_hasty_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ar_hasty_points ALTER COLUMN gid SET DEFAULT nextval('sources.hasty_points_gid_seq'::regclass);
 
-
---
--- Name: ar_hotsprings_np gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ar_hotsprings_np ALTER COLUMN gid SET DEFAULT nextval('sources.hotspringsnationalparkgeology_gid_seq'::regclass);
 
 
---
--- Name: ar_hotsprings_np_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ar_hotsprings_np_lines ALTER COLUMN gid SET DEFAULT nextval('sources.hot_springs_lines_gid_seq'::regclass);
 
-
---
--- Name: ar_hotsprings_np_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ar_hotsprings_np_points ALTER COLUMN gid SET DEFAULT nextval('sources.hot_springs_points_gid_seq'::regclass);
 
 
---
--- Name: ar_jasper gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ar_jasper ALTER COLUMN gid SET DEFAULT nextval('sources.jaspergeo_gid_seq'::regclass);
 
-
---
--- Name: ar_jasper_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ar_jasper_lines ALTER COLUMN gid SET DEFAULT nextval('sources.jasperlines_gid_seq'::regclass);
 
 
---
--- Name: ar_ponca gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ar_ponca ALTER COLUMN gid SET DEFAULT nextval('sources.poncageo_gid_seq'::regclass);
 
-
---
--- Name: ar_ponca_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ar_ponca_lines ALTER COLUMN gid SET DEFAULT nextval('sources.poncafaults_gid_seq'::regclass);
 
 
---
--- Name: arctic gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.arctic ALTER COLUMN gid SET DEFAULT nextval('sources.arctic_newgeom_gid_seq'::regclass);
 
-
---
--- Name: arctic_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.arctic_lines ALTER COLUMN gid SET DEFAULT nextval('sources.arcticrus_lines_gid_seq'::regclass);
 
 
---
--- Name: arctic_orig gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.arctic_orig ALTER COLUMN gid SET DEFAULT nextval('sources.arctic_gid_seq'::regclass);
 
-
---
--- Name: australia gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.australia ALTER COLUMN gid SET DEFAULT nextval('sources.australia_gid_seq'::regclass);
 
 
---
--- Name: australia2 gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.australia2 ALTER COLUMN gid SET DEFAULT nextval('sources.australia2_gid_seq'::regclass);
 
-
---
--- Name: australia2_faults gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.australia2_faults ALTER COLUMN gid SET DEFAULT nextval('sources.australia2_faults_gid_seq'::regclass);
 
 
---
--- Name: australia_faults gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.australia_faults ALTER COLUMN gid SET DEFAULT nextval('sources.australia_faults_gid_seq'::regclass);
 
-
---
--- Name: az_fredonia gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.az_fredonia ALTER COLUMN gid SET DEFAULT nextval('sources.az_fredonia_polygon_one_gid_seq'::regclass);
 
 
---
--- Name: az_fredonia_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.az_fredonia_lines ALTER COLUMN gid SET DEFAULT nextval('sources.az_fredonia_lines_one_gid_seq'::regclass);
 
-
---
--- Name: az_fredonia_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.az_fredonia_points ALTER COLUMN gid SET DEFAULT nextval('sources.az_fredonia_point_two_gid_seq'::regclass);
 
 
---
--- Name: az_mohave gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.az_mohave ALTER COLUMN gid SET DEFAULT nextval('sources.mohaveazgeology_gid_seq'::regclass);
 
-
---
--- Name: az_mohave_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.az_mohave_lines ALTER COLUMN gid SET DEFAULT nextval('sources.mohavefault_lines_gid_seq'::regclass);
 
 
---
--- Name: az_peachsprings gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.az_peachsprings ALTER COLUMN gid SET DEFAULT nextval('sources.mohavecoconinoazgeology_gid_seq'::regclass);
 
-
---
--- Name: az_peachsprings_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.az_peachsprings_lines ALTER COLUMN gid SET DEFAULT nextval('sources.mohavecoconino_faults_gid_seq'::regclass);
 
 
---
--- Name: az_prescott gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.az_prescott ALTER COLUMN gid SET DEFAULT nextval('sources.prescottgeology_gid_seq'::regclass);
 
-
---
--- Name: az_prescott_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.az_prescott_lines ALTER COLUMN gid SET DEFAULT nextval('sources.prescottlines_gid_seq'::regclass);
 
 
---
--- Name: az_whitehills gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.az_whitehills ALTER COLUMN gid SET DEFAULT nextval('sources.az_whitehills_gid_seq'::regclass);
 
-
---
--- Name: az_whitehills_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.az_whitehills_lines ALTER COLUMN gid SET DEFAULT nextval('sources.az_whitehills_lines_gid_seq'::regclass);
 
 
---
--- Name: az_whitehills_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.az_whitehills_points ALTER COLUMN gid SET DEFAULT nextval('sources.az_whitehills_points_gid_seq'::regclass);
 
-
---
--- Name: az_winslow gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.az_winslow ALTER COLUMN gid SET DEFAULT nextval('sources.az_winslow_gid_seq'::regclass);
 
 
---
--- Name: az_winslow_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.az_winslow_lines ALTER COLUMN gid SET DEFAULT nextval('sources.az_winslow_lines_gid_seq'::regclass);
 
-
---
--- Name: az_winslow_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.az_winslow_points ALTER COLUMN gid SET DEFAULT nextval('sources.az_winslow_points_gid_seq'::regclass);
 
 
---
--- Name: bc gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc ALTER COLUMN gid SET DEFAULT nextval('sources.bc_gid_seq'::regclass);
 
-
---
--- Name: bc_2017 gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_2017 ALTER COLUMN gid SET DEFAULT nextval('sources.bc_2017_gid_seq'::regclass);
 
 
---
--- Name: bc_2017_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_2017_lines ALTER COLUMN gid SET DEFAULT nextval('sources.bc_2017_lines_gid_seq'::regclass);
 
-
---
--- Name: bc_2017_quat gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_2017_quat ALTER COLUMN gid SET DEFAULT nextval('sources.bc_2017_quat_gid_seq'::regclass);
 
 
---
--- Name: bc_abruzzi gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_abruzzi ALTER COLUMN gid SET DEFAULT nextval('sources.bc_abruzzi_gid_seq'::regclass);
 
-
---
--- Name: bc_abruzzi_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_abruzzi_lines ALTER COLUMN gid SET DEFAULT nextval('sources.bc_abruzzi_lines_gid_seq'::regclass);
 
 
---
--- Name: bc_abruzzi_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_abruzzi_points ALTER COLUMN gid SET DEFAULT nextval('sources.bc_abruzzi_points_gid_seq'::regclass);
 
-
---
--- Name: bc_assini gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_assini ALTER COLUMN gid SET DEFAULT nextval('sources.bc_assini_gid_seq'::regclass);
 
 
---
--- Name: bc_assini_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_assini_lines ALTER COLUMN gid SET DEFAULT nextval('sources.bc_assini_lines_gid_seq'::regclass);
 
-
---
--- Name: bc_assini_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_assini_points ALTER COLUMN gid SET DEFAULT nextval('sources.bc_assini_points_gid_seq'::regclass);
 
 
---
--- Name: bc_chinook gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_chinook ALTER COLUMN gid SET DEFAULT nextval('sources.bc_chinook_gid_seq'::regclass);
 
-
---
--- Name: bc_chinook_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_chinook_lines ALTER COLUMN gid SET DEFAULT nextval('sources.bc_chinook_lines_gid_seq'::regclass);
 
 
---
--- Name: bc_chinook_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_chinook_points ALTER COLUMN gid SET DEFAULT nextval('sources.bc_chinook_points_gid_seq'::regclass);
 
-
---
--- Name: bc_eight gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_eight ALTER COLUMN gid SET DEFAULT nextval('sources.bc_eight_gid_seq'::regclass);
 
 
---
--- Name: bc_eight_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_eight_lines ALTER COLUMN gid SET DEFAULT nextval('sources.bc_eight_lines_gid_seq'::regclass);
 
-
---
--- Name: bc_eight_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_eight_points ALTER COLUMN gid SET DEFAULT nextval('sources.bc_eight_points_gid_seq'::regclass);
 
 
---
--- Name: bc_faults gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_faults ALTER COLUMN gid SET DEFAULT nextval('sources.bc_faults_gid_seq'::regclass);
 
-
---
--- Name: bc_fernie gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_fernie ALTER COLUMN gid SET DEFAULT nextval('sources.bc_fernie_gid_seq'::regclass);
 
 
---
--- Name: bc_fernie_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_fernie_lines ALTER COLUMN gid SET DEFAULT nextval('sources.bc_fernie_lines_gid_seq'::regclass);
 
-
---
--- Name: bc_fernie_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_fernie_points ALTER COLUMN gid SET DEFAULT nextval('sources.bc_fernie_points_gid_seq'::regclass);
 
 
---
--- Name: bc_grayling gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_grayling ALTER COLUMN gid SET DEFAULT nextval('sources.bc_grayling_gid_seq'::regclass);
 
-
---
--- Name: bc_grayling_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_grayling_lines ALTER COLUMN gid SET DEFAULT nextval('sources.bc_grayling_lines_gid_seq'::regclass);
 
 
---
--- Name: bc_grayling_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_grayling_points ALTER COLUMN gid SET DEFAULT nextval('sources.bc_grayling_points_gid_seq'::regclass);
 
-
---
--- Name: bc_kananaskis gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_kananaskis ALTER COLUMN gid SET DEFAULT nextval('sources.bc_kananaskis_gid_seq'::regclass);
 
 
---
--- Name: bc_kananaskis_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_kananaskis_lines ALTER COLUMN gid SET DEFAULT nextval('sources.bc_kananaskis_lines_gid_seq'::regclass);
 
-
---
--- Name: bc_kananaskis_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_kananaskis_points ALTER COLUMN gid SET DEFAULT nextval('sources.bc_kananaskis_points_gid_seq'::regclass);
 
 
---
--- Name: bc_prudence gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_prudence ALTER COLUMN gid SET DEFAULT nextval('sources.bc_prudence_gid_seq'::regclass);
 
-
---
--- Name: bc_prudence_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_prudence_lines ALTER COLUMN gid SET DEFAULT nextval('sources.bc_prudence_lines_gid_seq'::regclass);
 
 
---
--- Name: bc_prudence_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_prudence_points ALTER COLUMN gid SET DEFAULT nextval('sources.bc_prudence_points_gid_seq'::regclass);
 
-
---
--- Name: bc_redfern gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_redfern ALTER COLUMN gid SET DEFAULT nextval('sources.bc_redfern_gid_seq'::regclass);
 
 
---
--- Name: bc_redfern_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_redfern_lines ALTER COLUMN gid SET DEFAULT nextval('sources.bc_redfern_lines_gid_seq'::regclass);
 
-
---
--- Name: bc_redfern_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_redfern_points ALTER COLUMN gid SET DEFAULT nextval('sources.bc_redfern_points_gid_seq'::regclass);
 
 
---
--- Name: bc_tangle gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_tangle ALTER COLUMN gid SET DEFAULT nextval('sources.bc_tangle_gid_seq'::regclass);
 
-
---
--- Name: bc_tangle_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_tangle_lines ALTER COLUMN gid SET DEFAULT nextval('sources.bc_tangle_lines_gid_seq'::regclass);
 
 
---
--- Name: bc_tangle_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_tangle_points ALTER COLUMN gid SET DEFAULT nextval('sources.bc_tangle_points_gid_seq'::regclass);
 
-
---
--- Name: bc_toad gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_toad ALTER COLUMN gid SET DEFAULT nextval('sources.bc_toad_gid_seq'::regclass);
 
 
---
--- Name: bc_toad_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_toad_lines ALTER COLUMN gid SET DEFAULT nextval('sources.bc_toad_lines_gid_seq'::regclass);
 
-
---
--- Name: bc_toad_ne gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_toad_ne ALTER COLUMN gid SET DEFAULT nextval('sources.bc_toad_ne_gid_seq'::regclass);
 
 
---
--- Name: bc_toad_ne_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_toad_ne_lines ALTER COLUMN gid SET DEFAULT nextval('sources.bc_toad_ne_lines_gid_seq'::regclass);
 
-
---
--- Name: bc_toad_ne_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_toad_ne_points ALTER COLUMN gid SET DEFAULT nextval('sources.bc_toad_ne_points_gid_seq'::regclass);
 
 
---
--- Name: bc_toad_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_toad_points ALTER COLUMN gid SET DEFAULT nextval('sources.bc_toad_points_gid_seq'::regclass);
 
-
---
--- Name: bc_ware gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_ware ALTER COLUMN gid SET DEFAULT nextval('sources.bc_ware_gid_seq'::regclass);
 
 
---
--- Name: bc_ware_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_ware_lines ALTER COLUMN gid SET DEFAULT nextval('sources.bc_ware_lines_gid_seq'::regclass);
 
-
---
--- Name: bigbend gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bigbend ALTER COLUMN gid SET DEFAULT nextval('sources.bigbend_gid_seq'::regclass);
 
 
---
--- Name: bigbend_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bigbend_lines ALTER COLUMN gid SET DEFAULT nextval('sources.bigbend_lines_gid_seq'::regclass);
 
-
---
--- Name: blackhills gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.blackhills ALTER COLUMN gid SET DEFAULT nextval('sources.blackhillsgeology_gid_seq'::regclass);
 
 
---
--- Name: blackhills_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.blackhills_lines ALTER COLUMN gid SET DEFAULT nextval('sources.blackhills_foldsfaults_gid_seq'::regclass);
 
-
---
--- Name: boulder gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.boulder ALTER COLUMN gid SET DEFAULT nextval('sources.boulder_gid_seq'::regclass);
 
 
---
--- Name: boulder_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.boulder_lines ALTER COLUMN gid SET DEFAULT nextval('sources.boulder_lines_gid_seq'::regclass);
 
-
---
--- Name: brazil gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.brazil ALTER COLUMN gid SET DEFAULT nextval('sources.brazil_gid_seq'::regclass);
 
 
---
--- Name: brazil_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.brazil_lines ALTER COLUMN gid SET DEFAULT nextval('sources.rondinia_dikes_gid_seq'::regclass);
 
-
---
--- Name: brazil_sp gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.brazil_sp ALTER COLUMN gid SET DEFAULT nextval('sources.brazil_sp_gid_seq'::regclass);
 
 
---
--- Name: brycecanyon_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.brycecanyon_lines ALTER COLUMN gid SET DEFAULT nextval('sources.brycecanyon_faults_gid_seq'::regclass);
 
-
---
--- Name: brycecanyonnationalparkgeology gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.brycecanyonnationalparkgeology ALTER COLUMN gid SET DEFAULT nextval('sources.brycecanyonnationalparkgeology_gid_seq'::regclass);
 
 
---
--- Name: ca_alameda gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_alameda ALTER COLUMN gid SET DEFAULT nextval('sources.alamedageology2_gid_seq'::regclass);
 
-
---
--- Name: ca_alameda_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_alameda_lines ALTER COLUMN gid SET DEFAULT nextval('sources.alam_fault_gid_seq'::regclass);
 
 
---
--- Name: ca_cambria gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_cambria ALTER COLUMN gid SET DEFAULT nextval('sources.cambriacageology_gid_seq'::regclass);
 
-
---
--- Name: ca_cambria_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_cambria_lines ALTER COLUMN gid SET DEFAULT nextval('sources.cambria_faults_gid_seq'::regclass);
 
 
---
--- Name: ca_carizoplain gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_carizoplain ALTER COLUMN gid SET DEFAULT nextval('sources.ca_carizonplains_geo_polygon_gid_seq'::regclass);
 
-
---
--- Name: ca_carizoplain_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_carizoplain_lines ALTER COLUMN gid SET DEFAULT nextval('sources.ca_carizonplains_geo_arc_gid_seq'::regclass);
 
 
---
--- Name: ca_carizoplain_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_carizoplain_points ALTER COLUMN gid SET DEFAULT nextval('sources.ca_carizonplains_point_gid_seq'::regclass);
 
-
---
--- Name: ca_contracosta gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_contracosta ALTER COLUMN gid SET DEFAULT nextval('sources.contracostageology_gid_seq'::regclass);
 
 
---
--- Name: ca_contracosta_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_contracosta_lines ALTER COLUMN gid SET DEFAULT nextval('sources.contracostafaults_gid_seq'::regclass);
 
-
---
--- Name: ca_elcajon gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_elcajon ALTER COLUMN gid SET DEFAULT nextval('sources.ca_elcajon_geo_polygon_gid_seq'::regclass);
 
 
---
--- Name: ca_elcajon_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_elcajon_lines ALTER COLUMN gid SET DEFAULT nextval('sources.ca_elcajon_geo_arc_gid_seq'::regclass);
 
-
---
--- Name: ca_funeralmtns gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_funeralmtns ALTER COLUMN gid SET DEFAULT nextval('sources.ca_funeralmtns_gid_seq'::regclass);
 
 
---
--- Name: ca_funeralmtns_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_funeralmtns_lines ALTER COLUMN gid SET DEFAULT nextval('sources.ca_funeralmtns_lines_gid_seq'::regclass);
 
-
---
--- Name: ca_funeralmtns_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_funeralmtns_points ALTER COLUMN gid SET DEFAULT nextval('sources.ca_funeralmtns_points_gid_seq'::regclass);
 
 
---
--- Name: ca_long_beach gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_long_beach ALTER COLUMN gid SET DEFAULT nextval('sources.long_beach_ca_geo_gid_seq'::regclass);
 
-
---
--- Name: ca_long_beach_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_long_beach_lines ALTER COLUMN gid SET DEFAULT nextval('sources.long_beach_ca_lines_gid_seq'::regclass);
 
 
---
--- Name: ca_long_beach_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_long_beach_points ALTER COLUMN gid SET DEFAULT nextval('sources.long_beach_ca_points_gid_seq'::regclass);
 
-
---
--- Name: ca_los_angeles gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_los_angeles ALTER COLUMN gid SET DEFAULT nextval('sources.los_angeles_geo_gid_seq'::regclass);
 
 
---
--- Name: ca_los_angeles_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_los_angeles_lines ALTER COLUMN gid SET DEFAULT nextval('sources.los_angeles_lines_gid_seq'::regclass);
 
-
---
--- Name: ca_marin gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_marin ALTER COLUMN gid SET DEFAULT nextval('sources.marin_co_gid_seq'::regclass);
 
 
---
--- Name: ca_marin_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_marin_lines ALTER COLUMN gid SET DEFAULT nextval('sources.northbay_lines_gid_seq'::regclass);
 
-
---
--- Name: ca_marin_lines_nad27 gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_marin_lines_nad27 ALTER COLUMN gid SET DEFAULT nextval('sources.ca_marin_lines_nad27_gid_seq'::regclass);
 
 
---
--- Name: ca_marin_nad27 gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_marin_nad27 ALTER COLUMN gid SET DEFAULT nextval('sources.ca_marin_nad27_gid_seq'::regclass);
 
-
---
--- Name: ca_monterey gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_monterey ALTER COLUMN gid SET DEFAULT nextval('sources.ca_monterrey_gid_seq'::regclass);
 
 
---
--- Name: ca_monterey_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_monterey_lines ALTER COLUMN gid SET DEFAULT nextval('sources.ca_monterey_lines_gid_seq'::regclass);
 
-
---
--- Name: ca_napa gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_napa ALTER COLUMN gid SET DEFAULT nextval('sources.ca_napa_gid_seq'::regclass);
 
 
---
--- Name: ca_napa_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_napa_lines ALTER COLUMN gid SET DEFAULT nextval('sources.ca_napa_lines_gid_seq'::regclass);
 
-
---
--- Name: ca_napa_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_napa_points ALTER COLUMN gid SET DEFAULT nextval('sources.ca_napa_points_gid_seq'::regclass);
 
 
---
--- Name: ca_north_santabarb gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_north_santabarb ALTER COLUMN gid SET DEFAULT nextval('sources.nsantabarbgeology_gid_seq'::regclass);
 
-
---
--- Name: ca_north_santabarb_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_north_santabarb_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nsbarblines2_gid_seq'::regclass);
 
 
---
--- Name: ca_northeastsanfran gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_northeastsanfran ALTER COLUMN gid SET DEFAULT nextval('sources.ca_northeastsanfran_union_gid_new_seq'::regclass);
 
-
---
--- Name: ca_northeastsanfran_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_northeastsanfran_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nesffaults_gid_seq'::regclass);
 
 
---
--- Name: ca_northofsanfran gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_northofsanfran ALTER COLUMN gid SET DEFAULT nextval('sources.northofsanfrangeology_gid_seq'::regclass);
 
-
---
--- Name: ca_northofsanfran_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_northofsanfran_lines ALTER COLUMN gid SET DEFAULT nextval('sources.northofsanfranlines_gid_seq'::regclass);
 
 
---
--- Name: ca_oakland_unioned gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_oakland_unioned ALTER COLUMN gid SET DEFAULT nextval('sources.ca_oakland_unioned_gid_seq'::regclass);
 
-
---
--- Name: ca_oceanside gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_oceanside ALTER COLUMN gid SET DEFAULT nextval('sources.table_name_gid_seq'::regclass);
 
 
---
--- Name: ca_oceanside_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_oceanside_lines ALTER COLUMN gid SET DEFAULT nextval('sources.oceanside_ca_lines_gid_seq'::regclass);
 
-
---
--- Name: ca_oceanside_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_oceanside_points ALTER COLUMN gid SET DEFAULT nextval('sources.oceanside_pointorn_gid_seq'::regclass);
 
 
---
--- Name: ca_point_reyes gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_point_reyes ALTER COLUMN gid SET DEFAULT nextval('sources.ca_point_reyes_gid_seq'::regclass);
 
-
---
--- Name: ca_providence_mtns gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_providence_mtns ALTER COLUMN gid SET DEFAULT nextval('sources.ca_providence_mtns_gid_seq'::regclass);
 
 
---
--- Name: ca_providence_mtns_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_providence_mtns_lines ALTER COLUMN gid SET DEFAULT nextval('sources.ca_providence_mtns_lines_gid_seq'::regclass);
 
-
---
--- Name: ca_providence_mtns_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_providence_mtns_points ALTER COLUMN gid SET DEFAULT nextval('sources.ca_providence_mtns_points_gid_seq'::regclass);
 
 
---
--- Name: ca_providencemountains gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_providencemountains ALTER COLUMN gid SET DEFAULT nextval('sources.ca_providencemountains_polygon_gid_seq'::regclass);
 
-
---
--- Name: ca_providencemountains_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_providencemountains_lines ALTER COLUMN gid SET DEFAULT nextval('sources.ca_providencemountains_arc_gid_seq'::regclass);
 
 
---
--- Name: ca_san_diego_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_san_diego_lines ALTER COLUMN gid SET DEFAULT nextval('sources.san_diego_ca_lines_gid_seq'::regclass);
 
-
---
--- Name: ca_san_diego_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_san_diego_points ALTER COLUMN gid SET DEFAULT nextval('sources.san_diego_ca_points_gid_seq'::regclass);
 
 
---
--- Name: ca_sanberno gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_sanberno ALTER COLUMN gid SET DEFAULT nextval('sources.sanberno_gid_seq'::regclass);
 
-
---
--- Name: ca_sanberno_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_sanberno_lines ALTER COLUMN gid SET DEFAULT nextval('sources.sanberno_lines_gid_seq'::regclass);
 
 
---
--- Name: ca_sanjose gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_sanjose ALTER COLUMN gid SET DEFAULT nextval('sources.sanjosegeology_gid_seq'::regclass);
 
-
---
--- Name: ca_sanjose_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_sanjose_lines ALTER COLUMN gid SET DEFAULT nextval('sources.sanjoselines_gid_seq'::regclass);
 
 
---
--- Name: ca_sanmateo gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_sanmateo ALTER COLUMN gid SET DEFAULT nextval('sources.sanmateogeology_gid_seq'::regclass);
 
-
---
--- Name: ca_sanmateo_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_sanmateo_lines ALTER COLUMN gid SET DEFAULT nextval('sources.sanmateofaults_gid_seq'::regclass);
 
 
---
--- Name: ca_santabarbara gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_santabarbara ALTER COLUMN gid SET DEFAULT nextval('sources.ca_santabarbara_geol_polygon_gid_seq'::regclass);
 
-
---
--- Name: ca_santabarbara_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_santabarbara_lines ALTER COLUMN gid SET DEFAULT nextval('sources.ca_santabarbara_geol_arc_gid_seq'::regclass);
 
 
---
--- Name: ca_santabarbara_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_santabarbara_points ALTER COLUMN gid SET DEFAULT nextval('sources.ca_santabarbara_structure_point_gid_seq'::regclass);
 
-
---
--- Name: ca_santacruz gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_santacruz ALTER COLUMN gid SET DEFAULT nextval('sources.santacruz_gid_seq'::regclass);
 
 
---
--- Name: ca_santacruz_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_santacruz_lines ALTER COLUMN gid SET DEFAULT nextval('sources.scruz_lines_gid_seq'::regclass);
 
-
---
--- Name: ca_southsanfran gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_southsanfran ALTER COLUMN gid SET DEFAULT nextval('sources.southsanfrangeology_gid_seq'::regclass);
 
 
---
--- Name: ca_southsanfran_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_southsanfran_lines ALTER COLUMN gid SET DEFAULT nextval('sources.southsanfranlines_gid_seq'::regclass);
 
-
---
--- Name: ca_yosemite_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_yosemite_lines ALTER COLUMN gid SET DEFAULT nextval('sources.ca_yosemite_lines_gid_seq'::regclass);
 
 
---
--- Name: ca_yosemite_units gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_yosemite_units ALTER COLUMN gid SET DEFAULT nextval('sources.ca_yosemite_units_gid_seq'::regclass);
 
-
---
--- Name: catalunya50k gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.catalunya50k ALTER COLUMN gid SET DEFAULT nextval('sources.catalunya50k_redo_gid_seq'::regclass);
 
 
---
--- Name: catalunya50k_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.catalunya50k_lines ALTER COLUMN gid SET DEFAULT nextval('sources.catalunya50k_lines_gid_seq'::regclass);
 
-
---
--- Name: co_arkansa_riv gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.co_arkansa_riv ALTER COLUMN gid SET DEFAULT nextval('sources.co_arkansa_riv_gid_seq'::regclass);
 
 
---
--- Name: co_arkansa_riv_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.co_arkansa_riv_lines ALTER COLUMN gid SET DEFAULT nextval('sources.co_arkansa_riv_lines_gid_seq'::regclass);
 
-
---
--- Name: co_arkansa_riv_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.co_arkansa_riv_points ALTER COLUMN gid SET DEFAULT nextval('sources.co_arkansa_riv_points_gid_seq'::regclass);
 
 
---
--- Name: co_denver gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.co_denver ALTER COLUMN gid SET DEFAULT nextval('sources.denvergeology_gid_seq'::regclass);
 
-
---
--- Name: co_ftcollins gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.co_ftcollins ALTER COLUMN gid SET DEFAULT nextval('sources.co_ftcollins_gid_seq'::regclass);
 
 
---
--- Name: co_ftcollins_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.co_ftcollins_lines ALTER COLUMN gid SET DEFAULT nextval('sources.co_ftcollins_lines_gid_seq'::regclass);
 
-
---
--- Name: co_ftcollins_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.co_ftcollins_points ALTER COLUMN gid SET DEFAULT nextval('sources.co_ftcollins_points_gid_seq'::regclass);
 
 
---
--- Name: co_grandjunction gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.co_grandjunction ALTER COLUMN gid SET DEFAULT nextval('sources.grand_junction_geo_gid_seq'::regclass);
 
-
---
--- Name: co_grandjunction_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.co_grandjunction_lines ALTER COLUMN gid SET DEFAULT nextval('sources.grand_junction_lines_gid_seq'::regclass);
 
 
---
--- Name: co_greatsanddunes gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.co_greatsanddunes ALTER COLUMN gid SET DEFAULT nextval('sources.gsd_co_geology_gid_seq'::regclass);
 
-
---
--- Name: co_greatsanddunes_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.co_greatsanddunes_lines ALTER COLUMN gid SET DEFAULT nextval('sources.co_greatsanddunes_lines_gid_seq'::regclass);
 
 
---
--- Name: co_homestake gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.co_homestake ALTER COLUMN gid SET DEFAULT nextval('sources.co_homestake_objectid_seq'::regclass);
 
-
---
--- Name: co_homestake_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.co_homestake_lines ALTER COLUMN gid SET DEFAULT nextval('sources.co_homestake_lines_objectid_seq'::regclass);
 
 
---
--- Name: co_homestake_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.co_homestake_points ALTER COLUMN gid SET DEFAULT nextval('sources.co_homestake_points_objectid_seq'::regclass);
 
-
---
--- Name: colombia gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.colombia ALTER COLUMN gid SET DEFAULT nextval('sources.colombia_geo_gid_seq'::regclass);
 
 
---
--- Name: colombia_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.colombia_lines ALTER COLUMN gid SET DEFAULT nextval('sources.colombia_faults_gid_seq'::regclass);
 
-
---
--- Name: congareenationalpark_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.congareenationalpark_lines ALTER COLUMN gid SET DEFAULT nextval('sources.congaree_lines_gid_seq'::regclass);
 
 
---
--- Name: congareenationalparkgeology gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.congareenationalparkgeology ALTER COLUMN gid SET DEFAULT nextval('sources.congareenationalparkgeology_gid_seq'::regclass);
 
-
---
--- Name: dane_co gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.dane_co ALTER COLUMN gid SET DEFAULT nextval('sources.dane_co_gid_seq'::regclass);
 
 
---
--- Name: dane_faults gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.dane_faults ALTER COLUMN gid SET DEFAULT nextval('sources.dane_faults_gid_seq'::regclass);
 
-
---
--- Name: dc_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.dc_lines ALTER COLUMN gid SET DEFAULT nextval('sources.dc_lines_gid_seq'::regclass);
 
 
---
--- Name: denver gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.denver ALTER COLUMN gid SET DEFAULT nextval('sources.denver_gid_seq'::regclass);
 
-
---
--- Name: denver_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.denver_lines ALTER COLUMN gid SET DEFAULT nextval('sources.denver_lines_gid_seq'::regclass);
 
 
---
--- Name: devils_tower gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.devils_tower ALTER COLUMN gid SET DEFAULT nextval('sources.devils_tower_geo_gid_seq'::regclass);
 
-
---
--- Name: devils_tower_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.devils_tower_lines ALTER COLUMN gid SET DEFAULT nextval('sources.devils_tower_lines_gid_seq'::regclass);
 
 
---
--- Name: endikai gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.endikai ALTER COLUMN gid SET DEFAULT nextval('sources.endikai_gid_seq'::regclass);
 
-
---
--- Name: endikai_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.endikai_lines ALTER COLUMN gid SET DEFAULT nextval('sources.albanel_lines_gid_seq'::regclass);
 
 
---
--- Name: europe_5m gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.europe_5m ALTER COLUMN gid SET DEFAULT nextval('sources.europe_5m_gid_seq'::regclass);
 
-
---
--- Name: europe_5m_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.europe_5m_lines ALTER COLUMN gid SET DEFAULT nextval('sources.europe_5m_lines_gid_seq'::regclass);
 
 
---
--- Name: florissant gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.florissant ALTER COLUMN gid SET DEFAULT nextval('sources.florissant_gid_seq'::regclass);
 
-
---
--- Name: florissant_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.florissant_lines ALTER COLUMN gid SET DEFAULT nextval('sources."florissant-lines_gid_seq"'::regclass);
 
 
---
--- Name: france gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.france ALTER COLUMN gid SET DEFAULT nextval('sources.france_gid_seq'::regclass);
 
-
---
--- Name: france_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.france_lines ALTER COLUMN gid SET DEFAULT nextval('sources.france_lines_gid_seq'::regclass);
 
 
---
--- Name: geo_lgm gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.geo_lgm ALTER COLUMN gid SET DEFAULT nextval('sources.geo_ice_gid_seq'::regclass);
 
-
---
--- Name: geo_regions gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.geo_regions ALTER COLUMN gid SET DEFAULT nextval('sources.geo_regions_gid_seq'::regclass);
 
 
---
--- Name: geo_regions_canada gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.geo_regions_canada ALTER COLUMN gid SET DEFAULT nextval('sources.geo_regions_canada_gid_seq'::regclass);
 
-
---
--- Name: geo_regions_europe gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.geo_regions_europe ALTER COLUMN gid SET DEFAULT nextval('sources.geo_regions_europe_gid_seq'::regclass);
 
 
---
--- Name: geo_regions_us gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.geo_regions_us ALTER COLUMN gid SET DEFAULT nextval('sources.geo_regions_us_gid_seq'::regclass);
 
-
---
--- Name: german_nuremburg gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.german_nuremburg ALTER COLUMN gid SET DEFAULT nextval('sources.german_nurenburg_gid_seq'::regclass);
 
 
---
--- Name: german_nuremburg_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.german_nuremburg_lines ALTER COLUMN gid SET DEFAULT nextval('sources.german_nuremburg_lines_gid_seq'::regclass);
 
-
---
--- Name: germany gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.germany ALTER COLUMN gid SET DEFAULT nextval('sources.germanygeology_gid_seq'::regclass);
 
 
---
--- Name: germany_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.germany_lines ALTER COLUMN gid SET DEFAULT nextval('sources.glines_gid_seq'::regclass);
 
-
---
--- Name: glacier_np_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.glacier_np_lines ALTER COLUMN gid SET DEFAULT nextval('sources.glacier_dikes_gid_seq'::regclass);
 
 
---
--- Name: glaciernationalparkgeology gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.glaciernationalparkgeology ALTER COLUMN gid SET DEFAULT nextval('sources.glaciernationalparkgeology_gid_seq'::regclass);
 
-
---
--- Name: global2 gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.global2 ALTER COLUMN gid SET DEFAULT nextval('sources.global2_gid_seq'::regclass);
 
 
---
--- Name: global2_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.global2_lines ALTER COLUMN gid SET DEFAULT nextval('sources.global2_lines_gid_seq'::regclass);
 
-
---
--- Name: global_ecoregions gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.global_ecoregions ALTER COLUMN gid SET DEFAULT nextval('sources.global_ecoregions_gid_seq'::regclass);
 
 
---
--- Name: gmna_faults gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.gmna_faults ALTER COLUMN gid SET DEFAULT nextval('sources.faults_gid_seq'::regclass);
 
-
---
--- Name: gmus2 gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.gmus2 ALTER COLUMN gid SET DEFAULT nextval('sources.gmus2_gid_seq'::regclass);
 
 
---
--- Name: gmus2_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.gmus2_lines ALTER COLUMN gid SET DEFAULT nextval('sources.gmus2_lines_gid_seq'::regclass);
 
-
---
--- Name: grandcanyon gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.grandcanyon ALTER COLUMN gid SET DEFAULT nextval('sources.grandcanyon_gid_seq'::regclass);
 
 
---
--- Name: grandcanyon_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.grandcanyon_lines ALTER COLUMN gid SET DEFAULT nextval('sources.grandcanyon_lines_gid_seq'::regclass);
 
-
---
--- Name: grandcanyon_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.grandcanyon_points ALTER COLUMN gid SET DEFAULT nextval('sources.grandcanyon_points_gid_seq'::regclass);
 
 
---
--- Name: greatbasinnationalpark_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.greatbasinnationalpark_lines ALTER COLUMN gid SET DEFAULT nextval('sources.greatbasin_contacts_faults_gid_seq'::regclass);
 
-
---
--- Name: greatbasinnationalparkgeology gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.greatbasinnationalparkgeology ALTER COLUMN gid SET DEFAULT nextval('sources.greatbasinnationalparkgeology_gid_seq'::regclass);
 
 
---
--- Name: guam gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.guam ALTER COLUMN gid SET DEFAULT nextval('sources.guamgeology_gid_seq'::regclass);
 
-
---
--- Name: gumo gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.gumo ALTER COLUMN gid SET DEFAULT nextval('sources.gumo_gid_seq'::regclass);
 
 
---
--- Name: gumo_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.gumo_lines ALTER COLUMN gid SET DEFAULT nextval('sources.gumo_lines_gid_seq'::regclass);
 
-
---
--- Name: gumo_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.gumo_points ALTER COLUMN gid SET DEFAULT nextval('sources.gumo_points_gid_seq'::regclass);
 
 
---
--- Name: hawaii gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.hawaii ALTER COLUMN gid SET DEFAULT nextval('sources.hawaii_gid_seq'::regclass);
 
-
---
--- Name: hawaii_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.hawaii_lines ALTER COLUMN gid SET DEFAULT nextval('sources.hawaii_dikes_gid_seq'::regclass);
 
 
---
--- Name: honduras gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.honduras ALTER COLUMN gid SET DEFAULT nextval('sources.honduras_geo_gid_seq'::regclass);
 
-
---
--- Name: id_arco gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.id_arco ALTER COLUMN gid SET DEFAULT nextval('sources.id_arco_objectid_seq'::regclass);
 
 
---
--- Name: id_arco_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.id_arco_lines ALTER COLUMN gid SET DEFAULT nextval('sources.id_arco_lines_objectid_seq'::regclass);
 
-
---
--- Name: id_bonners gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.id_bonners ALTER COLUMN gid SET DEFAULT nextval('sources.id_bonners_objectid_seq'::regclass);
 
 
---
--- Name: id_bonners_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.id_bonners_lines ALTER COLUMN gid SET DEFAULT nextval('sources.id_bonners_lines_objectid_seq'::regclass);
 
-
---
--- Name: id_deadwood gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.id_deadwood ALTER COLUMN gid SET DEFAULT nextval('sources.id_deadwood_gid_seq'::regclass);
 
 
---
--- Name: id_deadwood_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.id_deadwood_lines ALTER COLUMN gid SET DEFAULT nextval('sources.id_deadwood_lines_gid_seq'::regclass);
 
-
---
--- Name: id_deadwood_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.id_deadwood_points ALTER COLUMN gid SET DEFAULT nextval('sources.id_deadwood_points_gid_seq'::regclass);
 
 
---
--- Name: id_fairfield gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.id_fairfield ALTER COLUMN gid SET DEFAULT nextval('sources.id_fairfield_objectid_seq'::regclass);
 
-
---
--- Name: id_fairfield_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.id_fairfield_lines ALTER COLUMN gid SET DEFAULT nextval('sources.id_fairfield_lines_objectid_seq'::regclass);
 
 
---
--- Name: id_grangeville gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.id_grangeville ALTER COLUMN gid SET DEFAULT nextval('sources.id_grangeville_objectid_seq'::regclass);
 
-
---
--- Name: id_grangeville_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.id_grangeville_lines ALTER COLUMN gid SET DEFAULT nextval('sources.id_grangeville_lines_objectid_seq'::regclass);
 
 
---
--- Name: id_idahocity gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.id_idahocity ALTER COLUMN gid SET DEFAULT nextval('sources.id_idahocity_objectid_seq'::regclass);
 
-
---
--- Name: id_idahocity_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.id_idahocity_lines ALTER COLUMN gid SET DEFAULT nextval('sources.id_idahocity_lines_objectid_seq'::regclass);
 
 
---
--- Name: id_murphy gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.id_murphy ALTER COLUMN gid SET DEFAULT nextval('sources.id_murphy_objectid_seq'::regclass);
 
-
---
--- Name: id_murphy_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.id_murphy_lines ALTER COLUMN gid SET DEFAULT nextval('sources.id_murphy_lines_objectid_seq'::regclass);
 
 
---
--- Name: id_salmon objectid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.id_salmon ALTER COLUMN objectid SET DEFAULT nextval('sources.id_salmon_objectid_seq'::regclass);
 
-
---
--- Name: id_salmon gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.id_salmon ALTER COLUMN gid SET DEFAULT nextval('sources.id_salmon_gid_seq'::regclass);
 
 
---
--- Name: id_salmon_lines objectid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.id_salmon_lines ALTER COLUMN objectid SET DEFAULT nextval('sources.id_salmon_lines_objectid_seq'::regclass);
 
-
---
--- Name: id_salmon_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.id_salmon_lines ALTER COLUMN gid SET DEFAULT nextval('sources.id_salmon_lines_gid_seq'::regclass);
 
 
---
--- Name: id_sandpoint gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.id_sandpoint ALTER COLUMN gid SET DEFAULT nextval('sources.id_sandpoint_objectid_seq'::regclass);
 
-
---
--- Name: id_sandpoint_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.id_sandpoint_lines ALTER COLUMN gid SET DEFAULT nextval('sources.id_sandpoint_lines_objectid_seq'::regclass);
 
 
---
--- Name: id_twinfalls gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.id_twinfalls ALTER COLUMN gid SET DEFAULT nextval('sources.id_twinfalls_objectid_seq'::regclass);
 
-
---
--- Name: id_twinfalls_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.id_twinfalls_lines ALTER COLUMN gid SET DEFAULT nextval('sources.id_twinfalls_lines_objectid_seq'::regclass);
 
 
---
--- Name: in_allen gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.in_allen ALTER COLUMN gid SET DEFAULT nextval('sources.in_allen_gid_seq'::regclass);
 
-
---
--- Name: in_lawrence gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.in_lawrence ALTER COLUMN gid SET DEFAULT nextval('sources.in_lawrence_gid_seq'::regclass);
 
 
---
--- Name: in_lawrence_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.in_lawrence_lines ALTER COLUMN gid SET DEFAULT nextval('sources.in_lawrence_lines_gid_seq'::regclass);
 
-
---
--- Name: in_marion gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.in_marion ALTER COLUMN gid SET DEFAULT nextval('sources.in_marion_gid_seq'::regclass);
 
 
---
--- Name: in_morresville_w gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.in_morresville_w ALTER COLUMN gid SET DEFAULT nextval('sources.in_morresville_w_objectid_1_seq'::regclass);
 
-
---
--- Name: in_swhitleyw gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.in_swhitleyw ALTER COLUMN gid SET DEFAULT nextval('sources.in_swhitleyw_gid_seq'::regclass);
 
 
---
--- Name: iowa gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.iowa ALTER COLUMN gid SET DEFAULT nextval('sources.iowa_gid_seq'::regclass);
 
-
---
--- Name: iowa_co_wi gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.iowa_co_wi ALTER COLUMN gid SET DEFAULT nextval('sources.iowa_co_wi_gid_seq'::regclass);
 
 
---
--- Name: iowa_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.iowa_lines ALTER COLUMN gid SET DEFAULT nextval('sources.iowa_lines2_gid_seq'::regclass);
 
-
---
--- Name: iran gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.iran ALTER COLUMN gid SET DEFAULT nextval('sources.iran_gid_seq'::regclass);
 
 
---
--- Name: iran_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.iran_lines ALTER COLUMN gid SET DEFAULT nextval('sources.iran_lines_gid_seq'::regclass);
 
-
---
--- Name: joshuatree gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.joshuatree ALTER COLUMN gid SET DEFAULT nextval('sources.joshuatree_gid_seq'::regclass);
 
 
---
--- Name: joshuatree_faults gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.joshuatree_faults ALTER COLUMN gid SET DEFAULT nextval('sources.joshuatree_faults_gid_seq'::regclass);
 
-
---
--- Name: ky24k gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ky24k ALTER COLUMN gid SET DEFAULT nextval('sources.ky24k_gid_seq'::regclass);
 
 
---
--- Name: ky24k_faults gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ky24k_faults ALTER COLUMN gid SET DEFAULT nextval('sources.ky24k_faults_gid_seq'::regclass);
 
-
---
--- Name: ky_descrip id; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ky_descrip ALTER COLUMN id SET DEFAULT nextval('sources.ky_descrip_id_seq'::regclass);
 
 
---
--- Name: lake_mead gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.lake_mead ALTER COLUMN gid SET DEFAULT nextval('sources.lake_mead_gid_seq'::regclass);
 
-
---
--- Name: laketahoe gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.laketahoe ALTER COLUMN gid SET DEFAULT nextval('sources.laketahoe_geology_gid_seq'::regclass);
 
 
---
--- Name: laketahoe_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.laketahoe_lines ALTER COLUMN gid SET DEFAULT nextval('sources.laketahoe_lines_gid_seq'::regclass);
 
-
---
--- Name: laketahoe_point gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.laketahoe_point ALTER COLUMN gid SET DEFAULT nextval('sources.laketahoe_point_gid_seq'::regclass);
 
 
---
--- Name: lissadellaustralia gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.lissadellaustralia ALTER COLUMN gid SET DEFAULT nextval('sources.lissadellaustralia_gid_seq'::regclass);
 
-
---
--- Name: ma_glouster gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ma_glouster ALTER COLUMN gid SET DEFAULT nextval('sources.gloucester_rockport_geo2_gid_seq'::regclass);
 
 
---
--- Name: ma_glouster_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ma_glouster_lines ALTER COLUMN gid SET DEFAULT nextval('sources.rockport_l2_gid_seq'::regclass);
 
-
---
--- Name: manitoba gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.manitoba ALTER COLUMN gid SET DEFAULT nextval('sources.manitoba_gid_seq'::regclass);
 
 
---
--- Name: manitoba_faults gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.manitoba_faults ALTER COLUMN gid SET DEFAULT nextval('sources.manitoba_faults_gid_seq'::regclass);
 
-
---
--- Name: md_catocinfurnace gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.md_catocinfurnace ALTER COLUMN gid SET DEFAULT nextval('sources.md_catocinfurnace_gid_seq'::regclass);
 
 
---
--- Name: md_catocinfurnace_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.md_catocinfurnace_lines ALTER COLUMN gid SET DEFAULT nextval('sources.md_catocinfurnace_lines_gid_seq'::regclass);
 
-
---
--- Name: md_catocinfurnace_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.md_catocinfurnace_points ALTER COLUMN gid SET DEFAULT nextval('sources.md_catocinfurnace_points_gid_seq'::regclass);
 
 
---
--- Name: md_clearspring gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.md_clearspring ALTER COLUMN gid SET DEFAULT nextval('sources.md_clearspring_gid_seq'::regclass);
 
-
---
--- Name: md_clearspring_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.md_clearspring_lines ALTER COLUMN gid SET DEFAULT nextval('sources.md_clearspring_lines_gid_seq'::regclass);
 
 
---
--- Name: md_clearspring_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.md_clearspring_points ALTER COLUMN gid SET DEFAULT nextval('sources.md_clearspring_points_gid_seq'::regclass);
 
-
---
--- Name: md_frederick gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.md_frederick ALTER COLUMN gid SET DEFAULT nextval('sources.md_frederick_gid_seq'::regclass);
 
 
---
--- Name: md_frederick_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.md_frederick_lines ALTER COLUMN gid SET DEFAULT nextval('sources.md_frederick_linestwo_gid_seq'::regclass);
 
-
---
--- Name: md_frederick_point gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.md_frederick_point ALTER COLUMN gid SET DEFAULT nextval('sources.md_frederick_point_gid_seq'::regclass);
 
 
---
--- Name: md_keedysville gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.md_keedysville ALTER COLUMN gid SET DEFAULT nextval('sources.md_keedysville_gid_seq'::regclass);
 
-
---
--- Name: md_keedysville_line gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.md_keedysville_line ALTER COLUMN gid SET DEFAULT nextval('sources."sources.md_keedysville_line_gid_seq"'::regclass);
 
 
---
--- Name: md_myerssmith gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.md_myerssmith ALTER COLUMN gid SET DEFAULT nextval('sources.md_myerssmith_gid_seq'::regclass);
 
-
---
--- Name: md_myerssmith_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.md_myerssmith_lines ALTER COLUMN gid SET DEFAULT nextval('sources.md_myerssmith_lines_gid_seq'::regclass);
 
 
---
--- Name: md_newwindsor gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.md_newwindsor ALTER COLUMN gid SET DEFAULT nextval('sources.md_newwindsor_gid_seq'::regclass);
 
-
---
--- Name: md_newwindsor_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.md_newwindsor_lines ALTER COLUMN gid SET DEFAULT nextval('sources.md_newwindsor_lines_gid_seq'::regclass);
 
 
---
--- Name: md_newwindsor_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.md_newwindsor_points ALTER COLUMN gid SET DEFAULT nextval('sources.md_newwindsor_points_gid_seq'::regclass);
 
-
---
--- Name: md_western gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.md_western ALTER COLUMN gid SET DEFAULT nextval('sources.md_western_gid_seq'::regclass);
 
 
---
--- Name: md_western_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.md_western_lines ALTER COLUMN gid SET DEFAULT nextval('sources.md_western_lines_gid_seq'::regclass);
 
-
---
--- Name: mexico gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.mexico ALTER COLUMN gid SET DEFAULT nextval('sources.mexicogeology_gid_seq'::regclass);
 
 
---
--- Name: mexico_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.mexico_lines ALTER COLUMN gid SET DEFAULT nextval('sources.mexicolines_gid_seq'::regclass);
 
-
---
--- Name: mn_houston_co gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.mn_houston_co ALTER COLUMN gid SET DEFAULT nextval('sources.mn_houston_co_gid_seq'::regclass);
 
 
---
--- Name: mn_houston_co_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.mn_houston_co_lines ALTER COLUMN gid SET DEFAULT nextval('sources.mn_houston_co_faults_gid_seq'::regclass);
 
-
---
--- Name: mn_redwood_co gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.mn_redwood_co ALTER COLUMN gid SET DEFAULT nextval('sources.mn_redwood_co_gid_seq'::regclass);
 
 
---
--- Name: mn_redwood_co_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.mn_redwood_co_lines ALTER COLUMN gid SET DEFAULT nextval('sources.mn_redwood_co_faults_gid_seq'::regclass);
 
-
---
--- Name: mn_washington_co gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.mn_washington_co ALTER COLUMN gid SET DEFAULT nextval('sources.mn_washington_co_gid_seq'::regclass);
 
 
---
--- Name: mn_washington_co_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.mn_washington_co_lines ALTER COLUMN gid SET DEFAULT nextval('sources.mn_washington_co_faults_gid_seq'::regclass);
 
-
---
--- Name: mn_winona_co gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.mn_winona_co ALTER COLUMN gid SET DEFAULT nextval('sources.mn_winona_co_gid_seq'::regclass);
 
 
---
--- Name: mn_winona_co_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.mn_winona_co_lines ALTER COLUMN gid SET DEFAULT nextval('sources.mn_winona_co_fold_gid_seq'::regclass);
 
-
---
--- Name: mt_trumbull gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.mt_trumbull ALTER COLUMN gid SET DEFAULT nextval('sources.mt_trumbull_gid_seq'::regclass);
 
 
---
--- Name: mt_trumbull_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.mt_trumbull_lines ALTER COLUMN gid SET DEFAULT nextval('sources.mt_trumbull_lines_gid_seq'::regclass);
 
-
---
--- Name: new_river_gorge gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.new_river_gorge ALTER COLUMN gid SET DEFAULT nextval('sources.newrivergorge_geo_gid_seq'::regclass);
 
 
---
--- Name: new_river_gorge_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.new_river_gorge_lines ALTER COLUMN gid SET DEFAULT nextval('sources.new_river_gorge_lines_gid_seq'::regclass);
 
-
---
--- Name: newzealand gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.newzealand ALTER COLUMN gid SET DEFAULT nextval('sources.newzealand_gid_seq'::regclass);
 
 
---
--- Name: newzealand_faults gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.newzealand_faults ALTER COLUMN gid SET DEFAULT nextval('sources.newzealand_faults_gid_seq'::regclass);
 
-
---
--- Name: newzealandq gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.newzealandq ALTER COLUMN gid SET DEFAULT nextval('sources.newzealandq_gid_seq'::regclass);
 
 
---
--- Name: newzealandq_dikes gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.newzealandq_dikes ALTER COLUMN gid SET DEFAULT nextval('sources.newzealandq_dikes_gid_seq'::regclass);
 
-
---
--- Name: newzealandq_faults gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.newzealandq_faults ALTER COLUMN gid SET DEFAULT nextval('sources.newzealandq_faults_gid_seq'::regclass);
 
 
---
--- Name: nh_lisbon gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nh_lisbon ALTER COLUMN gid SET DEFAULT nextval('sources.nh_lisbon_gid_seq'::regclass);
 
-
---
--- Name: nh_lisbon_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nh_lisbon_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nh_lisbon_lines_gid_seq'::regclass);
 
 
---
--- Name: nh_lisbon_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nh_lisbon_points ALTER COLUMN gid SET DEFAULT nextval('sources.nh_lisbon_points_gid_seq'::regclass);
 
-
---
--- Name: nl_baieverte gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nl_baieverte ALTER COLUMN gid SET DEFAULT nextval('sources.nl_baieverte_gid_seq'::regclass);
 
 
---
--- Name: nl_baieverte_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nl_baieverte_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nl_baieverte_lines_gid_seq'::regclass);
 
-
---
--- Name: nl_baieverte_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nl_baieverte_points ALTER COLUMN gid SET DEFAULT nextval('sources.nl_baieverte_points_gid_seq'::regclass);
 
 
---
--- Name: nl_king gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nl_king ALTER COLUMN gid SET DEFAULT nextval('sources.nl_king_gid_seq'::regclass);
 
-
---
--- Name: nl_king_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nl_king_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nl_king_lines_gid_seq'::regclass);
 
 
---
--- Name: nl_king_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nl_king_points ALTER COLUMN gid SET DEFAULT nextval('sources.nl_king_points_gid_seq'::regclass);
 
-
---
--- Name: nl_nippers gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nl_nippers ALTER COLUMN gid SET DEFAULT nextval('sources.nl_nippers_gid_seq'::regclass);
 
 
---
--- Name: nl_nippers_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nl_nippers_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nl_nippers_lines_gid_seq'::regclass);
 
-
---
--- Name: nl_nippers_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nl_nippers_points ALTER COLUMN gid SET DEFAULT nextval('sources.nl_nippers_points_gid_seq'::regclass);
 
 
---
--- Name: nm_albuquerque gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nm_albuquerque ALTER COLUMN gid SET DEFAULT nextval('sources.nm_albuquerque_gid_seq'::regclass);
 
-
---
--- Name: nm_albuquerque_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nm_albuquerque_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nm_albuquerque_lines_gid_seq'::regclass);
 
 
---
--- Name: nm_albuquerque_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nm_albuquerque_points ALTER COLUMN gid SET DEFAULT nextval('sources.nm_albuquerque_points_gid_seq'::regclass);
 
-
---
--- Name: nm_espanola gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nm_espanola ALTER COLUMN gid SET DEFAULT nextval('sources.nm_espanola_gid_seq'::regclass);
 
 
---
--- Name: nm_espanola_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nm_espanola_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nm_espanola_lines_gid_seq'::regclass);
 
-
---
--- Name: nm_espanola_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nm_espanola_points ALTER COLUMN gid SET DEFAULT nextval('sources.nm_espanola_points_gid_seq'::regclass);
 
 
---
--- Name: nm_latir gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nm_latir ALTER COLUMN gid SET DEFAULT nextval('sources.nm_latir_gid_seq'::regclass);
 
-
---
--- Name: nm_latir_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nm_latir_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nm_latir_lines_gid_seq'::regclass);
 
 
---
--- Name: nm_latir_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nm_latir_points ALTER COLUMN gid SET DEFAULT nextval('sources.nm_latir_points_gid_seq'::regclass);
 
-
---
--- Name: nm_petroglyps gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nm_petroglyps ALTER COLUMN gid SET DEFAULT nextval('sources.nm_petroglyps_objectid_seq'::regclass);
 
 
---
--- Name: nm_petroglyps_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nm_petroglyps_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nm_petroglyps_lines_objectid_seq'::regclass);
 
-
---
--- Name: nm_tularosa gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nm_tularosa ALTER COLUMN gid SET DEFAULT nextval('sources.tularosageo_gid_seq'::regclass);
 
 
---
--- Name: nm_tularosa_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nm_tularosa_lines ALTER COLUMN gid SET DEFAULT nextval('sources.tularosafaults_gid_seq'::regclass);
 
-
---
--- Name: nm_vermejo gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nm_vermejo ALTER COLUMN gid SET DEFAULT nextval('sources.nm_vermejo_gid_seq'::regclass);
 
 
---
--- Name: nm_vermejo_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nm_vermejo_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nm_vermejo_lines_gid_seq'::regclass);
 
-
---
--- Name: nm_vermejo_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nm_vermejo_points ALTER COLUMN gid SET DEFAULT nextval('sources.nm_vermejo_points_gid_seq'::regclass);
 
 
---
--- Name: nova_scotia gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nova_scotia ALTER COLUMN gid SET DEFAULT nextval('sources.nova_scotia_geo_gid_seq'::regclass);
 
-
---
--- Name: nova_scotia_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nova_scotia_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nova_scotia_faults_gid_seq'::regclass);
 
 
---
--- Name: nsw_bathurst gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nsw_bathurst ALTER COLUMN gid SET DEFAULT nextval('sources.nsw_bathurst_gid_seq'::regclass);
 
-
---
--- Name: nsw_bathurst_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nsw_bathurst_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nsw_bathurst_lines_gid_seq'::regclass);
 
 
---
--- Name: nsw_bogangate gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nsw_bogangate ALTER COLUMN gid SET DEFAULT nextval('sources.nsw_bogangate_gid_seq'::regclass);
 
-
---
--- Name: nsw_bogangate_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nsw_bogangate_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nsw_bogangate_lines_gid_seq'::regclass);
 
 
---
--- Name: nsw_boorowa gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nsw_boorowa ALTER COLUMN gid SET DEFAULT nextval('sources.nsw_boorowa_gid_seq'::regclass);
 
-
---
--- Name: nsw_boorowa_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nsw_boorowa_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nsw_boorowa_lines_gid_seq'::regclass);
 
 
---
--- Name: nsw_boorowa_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nsw_boorowa_points ALTER COLUMN gid SET DEFAULT nextval('sources.nsw_boorowa_points_gid_seq'::regclass);
 
-
---
--- Name: nsw_bunda gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nsw_bunda ALTER COLUMN gid SET DEFAULT nextval('sources.nsw_bunda_gid_seq'::regclass);
 
 
---
--- Name: nsw_bunda_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nsw_bunda_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nsw_bunda_lines_gid_seq'::regclass);
 
-
---
--- Name: nsw_bunda_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nsw_bunda_points ALTER COLUMN gid SET DEFAULT nextval('sources.nsw_bunda_points_gid_seq'::regclass);
 
 
---
--- Name: nsw_cobar gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nsw_cobar ALTER COLUMN gid SET DEFAULT nextval('sources.nsw_cobar_gid_seq'::regclass);
 
-
---
--- Name: nsw_cobar_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nsw_cobar_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nsw_cobar_lines_gid_seq'::regclass);
 
 
---
--- Name: nsw_cobbora gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nsw_cobbora ALTER COLUMN gid SET DEFAULT nextval('sources.nsw_cobbora_gid_seq'::regclass);
 
-
---
--- Name: nsw_cobbora_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nsw_cobbora_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nsw_cobbora_lines_gid_seq'::regclass);
 
 
---
--- Name: nsw_cobbora_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nsw_cobbora_points ALTER COLUMN gid SET DEFAULT nextval('sources.nsw_cobbora_points_gid_seq'::regclass);
 
-
---
--- Name: nsw_cobham gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nsw_cobham ALTER COLUMN gid SET DEFAULT nextval('sources.nsw_cobham_gid_seq'::regclass);
 
 
---
--- Name: nsw_cobham_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nsw_cobham_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nsw_cobham_lines_gid_seq'::regclass);
 
-
---
--- Name: nsw_cobham_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nsw_cobham_points ALTER COLUMN gid SET DEFAULT nextval('sources.nsw_cobham_points_gid_seq'::regclass);
 
 
---
--- Name: nsw_cool gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nsw_cool ALTER COLUMN gid SET DEFAULT nextval('sources.nsw_cool_gid_seq'::regclass);
 
-
---
--- Name: nsw_cool_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nsw_cool_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nsw_cool_lines_gid_seq'::regclass);
 
 
---
--- Name: nsw_cool_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nsw_cool_points ALTER COLUMN gid SET DEFAULT nextval('sources.nsw_cool_points_gid_seq'::regclass);
 
-
---
--- Name: nsw_gosford gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nsw_gosford ALTER COLUMN gid SET DEFAULT nextval('sources.nsw_gosford_gid_seq'::regclass);
 
 
---
--- Name: nsw_gosford_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nsw_gosford_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nsw_gosford_lines_gid_seq'::regclass);
 
-
---
--- Name: nsw_gosford_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nsw_gosford_points ALTER COLUMN gid SET DEFAULT nextval('sources.nsw_gosford_points_gid_seq'::regclass);
 
 
---
--- Name: nsw_goul gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nsw_goul ALTER COLUMN gid SET DEFAULT nextval('sources.nsw_goul_gid_seq'::regclass);
 
-
---
--- Name: nsw_goul_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nsw_goul_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nsw_goul_lines_gid_seq'::regclass);
 
 
---
--- Name: nsw_goul_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nsw_goul_points ALTER COLUMN gid SET DEFAULT nextval('sources.nsw_goul_points_gid_seq'::regclass);
 
-
---
--- Name: nsw_sussex gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nsw_sussex ALTER COLUMN gid SET DEFAULT nextval('sources.nsw_sussex_gid_seq'::regclass);
 
 
---
--- Name: nsw_sussex_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nsw_sussex_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nsw_sussex_lines_gid_seq'::regclass);
 
-
---
--- Name: nsw_sussex_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nsw_sussex_points ALTER COLUMN gid SET DEFAULT nextval('sources.nsw_sussex_points_gid_seq'::regclass);
 
 
---
--- Name: nsw_wonnaminta gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nsw_wonnaminta ALTER COLUMN gid SET DEFAULT nextval('sources.nsw_wonnaminta_gid_seq'::regclass);
 
-
---
--- Name: nsw_wonnaminta_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nsw_wonnaminta_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nsw_wonnaminta_lines_gid_seq'::regclass);
 
 
---
--- Name: nsw_wonnaminta_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nsw_wonnaminta_points ALTER COLUMN gid SET DEFAULT nextval('sources.nsw_wonnaminta_points_gid_seq'::regclass);
 
-
---
--- Name: nu_chidliak_n gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nu_chidliak_n ALTER COLUMN gid SET DEFAULT nextval('sources.nu_chidliak_n_gid_seq'::regclass);
 
 
---
--- Name: nu_chidliak_s gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nu_chidliak_s ALTER COLUMN gid SET DEFAULT nextval('sources.nu_chidliak_s_gid_seq'::regclass);
 
-
---
--- Name: nu_chidliak_s_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nu_chidliak_s_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nu_chidliak_s_lines_gid_seq'::regclass);
 
 
---
--- Name: nu_circle gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nu_circle ALTER COLUMN gid SET DEFAULT nextval('sources.nu_circle_gid_seq'::regclass);
 
-
---
--- Name: nu_circle_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nu_circle_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nu_circle_lines_gid_seq'::regclass);
 
 
---
--- Name: nu_circle_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nu_circle_points ALTER COLUMN gid SET DEFAULT nextval('sources.nu_circle_points_gid_seq'::regclass);
 
-
---
--- Name: nu_ellef_s gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nu_ellef_s ALTER COLUMN gid SET DEFAULT nextval('sources.nu_ellef_s_gid_seq'::regclass);
 
 
---
--- Name: nu_ellef_s_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nu_ellef_s_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nu_ellef_s_lines_gid_seq'::regclass);
 
-
---
--- Name: nu_ellef_s_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nu_ellef_s_points ALTER COLUMN gid SET DEFAULT nextval('sources.nu_ellef_s_points_gid_seq'::regclass);
 
 
---
--- Name: nu_grinnell gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nu_grinnell ALTER COLUMN gid SET DEFAULT nextval('sources.nu_grinnell_gid_seq'::regclass);
 
-
---
--- Name: nu_grinnell_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nu_grinnell_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nu_grinnell_lines_gid_seq'::regclass);
 
 
---
--- Name: nu_grinnell_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nu_grinnell_points ALTER COLUMN gid SET DEFAULT nextval('sources.nu_grinnell_points_gid_seq'::regclass);
 
-
---
--- Name: nu_irvine_s gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nu_irvine_s ALTER COLUMN gid SET DEFAULT nextval('sources.nu_irvine_s_gid_seq'::regclass);
 
 
---
--- Name: nu_irvine_s_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nu_irvine_s_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nu_irvine_s_lines_gid_seq'::regclass);
 
-
---
--- Name: nu_irvine_s_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nu_irvine_s_points ALTER COLUMN gid SET DEFAULT nextval('sources.nu_irvine_s_points_gid_seq'::regclass);
 
 
---
--- Name: nu_mumiksaa gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nu_mumiksaa ALTER COLUMN gid SET DEFAULT nextval('sources.nu_mumiksaa_gid_seq'::regclass);
 
-
---
--- Name: nu_mumiksaa_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nu_mumiksaa_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nu_mumiksaa_lines_gid_seq'::regclass);
 
 
---
--- Name: nu_mumiksaa_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nu_mumiksaa_points ALTER COLUMN gid SET DEFAULT nextval('sources.nu_mumiksaa_points_gid_seq'::regclass);
 
-
---
--- Name: nu_paquet gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nu_paquet ALTER COLUMN gid SET DEFAULT nextval('sources.nu_paquet_gid_seq'::regclass);
 
 
---
--- Name: nu_paquet_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nu_paquet_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nu_paquet_lines_gid_seq'::regclass);
 
-
---
--- Name: nu_paquet_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nu_paquet_points ALTER COLUMN gid SET DEFAULT nextval('sources.nu_paquet_points_gid_seq'::regclass);
 
 
---
--- Name: nu_pritzler gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nu_pritzler ALTER COLUMN gid SET DEFAULT nextval('sources.nu_pritzler_gid_seq'::regclass);
 
-
---
--- Name: nu_pritzler_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nu_pritzler_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nu_pritzler_lines_gid_seq'::regclass);
 
 
---
--- Name: nu_pritzler_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nu_pritzler_points ALTER COLUMN gid SET DEFAULT nextval('sources.nu_pritzler_points_gid_seq'::regclass);
 
-
---
--- Name: nu_rae gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nu_rae ALTER COLUMN gid SET DEFAULT nextval('sources.nu_rae_gid_seq'::regclass);
 
 
---
--- Name: nu_rae_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nu_rae_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nu_rae_lines_gid_seq'::regclass);
 
-
---
--- Name: nu_sunneshine gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nu_sunneshine ALTER COLUMN gid SET DEFAULT nextval('sources.nu_sunneshine_gid_seq'::regclass);
 
 
---
--- Name: nu_sunneshine_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nu_sunneshine_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nu_sunneshine_lines_gid_seq'::regclass);
 
-
---
--- Name: nu_sunneshine_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nu_sunneshine_points ALTER COLUMN gid SET DEFAULT nextval('sources.nu_sunneshine_points_gid_seq'::regclass);
 
 
---
--- Name: nu_sylvia_s gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nu_sylvia_s ALTER COLUMN gid SET DEFAULT nextval('sources.nu_sylvia_s_gid_seq'::regclass);
 
-
---
--- Name: nu_sylvia_s_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nu_sylvia_s_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nu_sylvia_s_lines_gid_seq'::regclass);
 
 
---
--- Name: nu_sylvia_s_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nu_sylvia_s_points ALTER COLUMN gid SET DEFAULT nextval('sources.nu_sylvia_s_points_gid_seq'::regclass);
 
-
---
--- Name: nu_tebesjuak gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nu_tebesjuak ALTER COLUMN gid SET DEFAULT nextval('sources.nu_tebesjuak_gid_seq'::regclass);
 
 
---
--- Name: nu_tebesjuak_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nu_tebesjuak_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nu_tebesjuak_lines_gid_seq'::regclass);
 
-
---
--- Name: nu_tebesjuak_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nu_tebesjuak_points ALTER COLUMN gid SET DEFAULT nextval('sources.nu_tebesjuak_points_gid_seq'::regclass);
 
 
---
--- Name: nu_terra gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nu_terra ALTER COLUMN gid SET DEFAULT nextval('sources.nu_terra_gid_seq'::regclass);
 
-
---
--- Name: nu_terra_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nu_terra_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nu_terra_lines_gid_seq'::regclass);
 
 
---
--- Name: nu_terra_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nu_terra_points ALTER COLUMN gid SET DEFAULT nextval('sources.nu_terra_points_gid_seq'::regclass);
 
-
---
--- Name: nv_las_vegas_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nv_las_vegas_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nv_las_vegas_lines_gid_seq'::regclass);
 
 
---
--- Name: nv_las_vegas_units gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nv_las_vegas_units ALTER COLUMN gid SET DEFAULT nextval('sources.nv_las_vegas_units_gid_seq'::regclass);
 
-
---
--- Name: nw_lacmaunoir gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nw_lacmaunoir ALTER COLUMN gid SET DEFAULT nextval('sources.nw_lacmaunoir_gid_seq'::regclass);
 
 
---
--- Name: nw_lacmaunoir_drift gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nw_lacmaunoir_drift ALTER COLUMN gid SET DEFAULT nextval('sources.nw_lacmaunoir_drift_gid_seq'::regclass);
 
-
---
--- Name: nw_lacmaunoir_folds gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nw_lacmaunoir_folds ALTER COLUMN gid SET DEFAULT nextval('sources.nw_lacmaunoir_folds_gid_seq'::regclass);
 
 
---
--- Name: nw_lacmaunoir_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nw_lacmaunoir_points ALTER COLUMN gid SET DEFAULT nextval('sources.nw_lacmaunoir_points_gid_seq'::regclass);
 
-
---
--- Name: nw_slave_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nw_slave_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nw_slave_lines_gid_seq'::regclass);
 
 
---
--- Name: nw_slave_rv gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nw_slave_rv ALTER COLUMN gid SET DEFAULT nextval('sources.nw_slave_rv_gid_seq'::regclass);
 
-
---
--- Name: nwt_calder gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nwt_calder ALTER COLUMN gid SET DEFAULT nextval('sources.nwt_calder_gid_seq'::regclass);
 
 
---
--- Name: nwt_calder_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nwt_calder_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nwt_calder_lines_gid_seq'::regclass);
 
-
---
--- Name: nwt_calder_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nwt_calder_points ALTER COLUMN gid SET DEFAULT nextval('sources.nwt_calder_points_gid_seq'::regclass);
 
 
---
--- Name: nwt_campbell gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nwt_campbell ALTER COLUMN gid SET DEFAULT nextval('sources.nwt_campbell_gid_seq'::regclass);
 
-
---
--- Name: nwt_campbell_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nwt_campbell_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nwt_campbell_lines_gid_seq'::regclass);
 
 
---
--- Name: nwt_campbell_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nwt_campbell_points ALTER COLUMN gid SET DEFAULT nextval('sources.nwt_campbell_points_gid_seq'::regclass);
 
-
---
--- Name: nwt_carcajou gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nwt_carcajou ALTER COLUMN gid SET DEFAULT nextval('sources.nwt_carcajou_gid_seq'::regclass);
 
 
---
--- Name: nwt_carcajou_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nwt_carcajou_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nwt_carcajou_lines_gid_seq'::regclass);
 
-
---
--- Name: nwt_carcajou_ne gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nwt_carcajou_ne ALTER COLUMN gid SET DEFAULT nextval('sources.nwt_carcajou_ne_gid_seq'::regclass);
 
 
---
--- Name: nwt_carcajou_ne_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nwt_carcajou_ne_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nwt_carcajou_ne_lines_gid_seq'::regclass);
 
-
---
--- Name: nwt_carcajou_ne_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nwt_carcajou_ne_points ALTER COLUMN gid SET DEFAULT nextval('sources.nwt_carcajou_ne_points_gid_seq'::regclass);
 
 
---
--- Name: nwt_carcajou_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nwt_carcajou_points ALTER COLUMN gid SET DEFAULT nextval('sources.nwt_carcajou_points_gid_seq'::regclass);
 
-
---
--- Name: nwt_carcajou_se gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nwt_carcajou_se ALTER COLUMN gid SET DEFAULT nextval('sources.nwt_carcajou_se_gid_seq'::regclass);
 
 
---
--- Name: nwt_carcajou_se_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nwt_carcajou_se_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nwt_carcajou_se_lines_gid_seq'::regclass);
 
-
---
--- Name: nwt_carcajou_se_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nwt_carcajou_se_points ALTER COLUMN gid SET DEFAULT nextval('sources.nwt_carcajou_se_points_gid_seq'::regclass);
 
 
---
--- Name: nwt_carcajou_sw gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nwt_carcajou_sw ALTER COLUMN gid SET DEFAULT nextval('sources.nwt_carcajou_sw_gid_seq'::regclass);
 
-
---
--- Name: nwt_carcajou_sw_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nwt_carcajou_sw_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nwt_carcajou_sw_lines_gid_seq'::regclass);
 
 
---
--- Name: nwt_carcajou_sw_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nwt_carcajou_sw_points ALTER COLUMN gid SET DEFAULT nextval('sources.nwt_carcajou_sw_points_gid_seq'::regclass);
 
-
---
--- Name: nwt_mahony_sw gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nwt_mahony_sw ALTER COLUMN gid SET DEFAULT nextval('sources.nwt_mahony_sw_gid_seq'::regclass);
 
 
---
--- Name: nwt_mahony_sw_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nwt_mahony_sw_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nwt_mahony_sw_lines_gid_seq'::regclass);
 
-
---
--- Name: nwt_mahony_sw_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nwt_mahony_sw_points ALTER COLUMN gid SET DEFAULT nextval('sources.nwt_mahony_sw_points_gid_seq'::regclass);
 
 
---
--- Name: nwt_norman_nw gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nwt_norman_nw ALTER COLUMN gid SET DEFAULT nextval('sources.nwt_norman_nw_gid_seq'::regclass);
 
-
---
--- Name: nwt_norman_nw_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nwt_norman_nw_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nwt_norman_nw_lines_gid_seq'::regclass);
 
 
---
--- Name: nwt_norman_nw_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nwt_norman_nw_points ALTER COLUMN gid SET DEFAULT nextval('sources.nwt_norman_nw_points_gid_seq'::regclass);
 
-
---
--- Name: nwt_norman_se gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nwt_norman_se ALTER COLUMN gid SET DEFAULT nextval('sources.nwt_norman_se_gid_seq'::regclass);
 
 
---
--- Name: nwt_norman_se_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nwt_norman_se_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nwt_norman_se_lines_gid_seq'::regclass);
 
-
---
--- Name: nwt_norman_se_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nwt_norman_se_points ALTER COLUMN gid SET DEFAULT nextval('sources.nwt_norman_se_points_gid_seq'::regclass);
 
 
---
--- Name: nwt_taki gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nwt_taki ALTER COLUMN gid SET DEFAULT nextval('sources.nwt_taki_gid_seq'::regclass);
 
-
---
--- Name: nwt_taki_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nwt_taki_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nwt_taki_lines_gid_seq'::regclass);
 
 
---
--- Name: nwt_taki_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nwt_taki_points ALTER COLUMN gid SET DEFAULT nextval('sources.nwt_taki_points_gid_seq'::regclass);
 
-
---
--- Name: ontario gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ontario ALTER COLUMN gid SET DEFAULT nextval('sources.ontario_gid_seq'::regclass);
 
 
---
--- Name: ontario_dikes gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ontario_dikes ALTER COLUMN gid SET DEFAULT nextval('sources.ontario_dikes_gid_seq'::regclass);
 
-
---
--- Name: ontario_pz gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ontario_pz ALTER COLUMN gid SET DEFAULT nextval('sources.paleo_poly_polygon_objectid_seq'::regclass);
 
 
---
--- Name: ontario_pz_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ontario_pz_lines ALTER COLUMN gid SET DEFAULT nextval('sources.paleo_fault_arc_objectid_seq'::regclass);
 
-
---
--- Name: ontario_pz_mod gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ontario_pz_mod ALTER COLUMN gid SET DEFAULT nextval('sources.ontario_pz_mod_gid_seq'::regclass);
 
 
---
--- Name: ontario_pz_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ontario_pz_points ALTER COLUMN gid SET DEFAULT nextval('sources.paleo_point_point_objectid_seq'::regclass);
 
-
---
--- Name: oregon gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.oregon ALTER COLUMN gid SET DEFAULT nextval('sources.oregon_gid_seq'::regclass);
 
 
---
--- Name: oregon_faults gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.oregon_faults ALTER COLUMN gid SET DEFAULT nextval('sources.oregon_faults_gid_seq'::regclass);
 
-
---
--- Name: pakistan_westcentral gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.pakistan_westcentral ALTER COLUMN gid SET DEFAULT nextval('sources.westcentralpakistangeology_gid_seq'::regclass);
 
 
---
--- Name: pakistan_westcentral_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.pakistan_westcentral_lines ALTER COLUMN gid SET DEFAULT nextval('sources.wpakistan_faults_gid_seq'::regclass);
 
-
---
--- Name: puerto_rico gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.puerto_rico ALTER COLUMN gid SET DEFAULT nextval('sources.puerto_rico_gid_seq'::regclass);
 
 
---
--- Name: puerto_rico_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.puerto_rico_lines ALTER COLUMN gid SET DEFAULT nextval('sources.puertorico_nfaults_gid_seq'::regclass);
 
-
---
--- Name: rockies gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.rockies ALTER COLUMN gid SET DEFAULT nextval('sources.rockies_gid_seq'::regclass);
 
 
---
--- Name: rockies_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.rockies_lines ALTER COLUMN gid SET DEFAULT nextval('sources.rockies_lines_gid_seq'::regclass);
 
-
---
--- Name: rockymountainnationalparkgeology gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.rockymountainnationalparkgeology ALTER COLUMN gid SET DEFAULT nextval('sources.rockymountainnationalparkgeology_gid_seq'::regclass);
 
 
---
--- Name: rockymtn_np_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.rockymtn_np_lines ALTER COLUMN gid SET DEFAULT nextval('sources.rockymtn_faults_gid_seq'::regclass);
 
-
---
--- Name: saipan gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.saipan ALTER COLUMN gid SET DEFAULT nextval('sources.marianaislandsgeology_gid_seq'::regclass);
 
 
---
--- Name: saipan_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.saipan_lines ALTER COLUMN gid SET DEFAULT nextval('sources.saipan_lines_gid_seq'::regclass);
 
-
---
--- Name: san_salvador gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.san_salvador ALTER COLUMN gid SET DEFAULT nextval('sources.san_salvador_geo_gid_seq'::regclass);
 
 
---
--- Name: saskatchewan gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.saskatchewan ALTER COLUMN gid SET DEFAULT nextval('sources.saskatchewan_gid_seq'::regclass);
 
-
---
--- Name: saskatchewan_dikes gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.saskatchewan_dikes ALTER COLUMN gid SET DEFAULT nextval('sources.saskatchewan_dikes_gid_seq'::regclass);
 
 
---
--- Name: smokies gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.smokies ALTER COLUMN gid SET DEFAULT nextval('sources.smokies_gid_seq'::regclass);
 
-
---
--- Name: smokies_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.smokies_lines ALTER COLUMN gid SET DEFAULT nextval('sources.smokymountainsnationalpark_lines_gid_seq'::regclass);
 
 
---
--- Name: so_africa gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.so_africa ALTER COLUMN gid SET DEFAULT nextval('sources.so_africa_gid_seq'::regclass);
 
-
---
--- Name: so_africa_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.so_africa_lines ALTER COLUMN gid SET DEFAULT nextval('sources.so_africa_lines_gid_seq'::regclass);
 
 
---
--- Name: spain gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.spain ALTER COLUMN gid SET DEFAULT nextval('sources.spainpbgeology_gid_seq'::regclass);
 
-
---
--- Name: spain_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.spain_lines ALTER COLUMN gid SET DEFAULT nextval('sources.spainlines1_gid_seq'::regclass);
 
 
---
--- Name: sweden gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.sweden ALTER COLUMN gid SET DEFAULT nextval('sources.swedengeology2_gid_seq'::regclass);
 
-
---
--- Name: sweden_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.sweden_lines ALTER COLUMN gid SET DEFAULT nextval('sources.sweden_faults_gid_seq'::regclass);
 
 
---
--- Name: switzerland gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.switzerland ALTER COLUMN gid SET DEFAULT nextval('sources.switzerland_gid_seq'::regclass);
 
-
---
--- Name: switzerland_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.switzerland_lines ALTER COLUMN gid SET DEFAULT nextval('sources.switzerland_faults_gid_seq'::regclass);
 
 
---
--- Name: tanzania_oldonyo gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.tanzania_oldonyo ALTER COLUMN gid SET DEFAULT nextval('sources.tanzania_geo2_gid_seq'::regclass);
 
-
---
--- Name: tanzania_oldonyo_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.tanzania_oldonyo_lines ALTER COLUMN gid SET DEFAULT nextval('sources.tanzania_structures_gid_seq'::regclass);
 
 
---
--- Name: texas_mexico gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.texas_mexico ALTER COLUMN gid SET DEFAULT nextval('sources.stexasmexicogeology_gid_seq'::regclass);
 
-
---
--- Name: texas_mexico_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.texas_mexico_lines ALTER COLUMN gid SET DEFAULT nextval('sources.stexasmexico_geolines_gid_seq'::regclass);
 
 
---
--- Name: twincitiesmn_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.twincitiesmn_lines ALTER COLUMN gid SET DEFAULT nextval('sources.twincities_faults_gid_seq'::regclass);
 
-
---
--- Name: twincitiesmngeology gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.twincitiesmngeology ALTER COLUMN gid SET DEFAULT nextval('sources.twincitiesmngeology_gid_seq'::regclass);
 
 
---
--- Name: tx_bexar gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.tx_bexar ALTER COLUMN gid SET DEFAULT nextval('sources.tx_bexar_gid_seq'::regclass);
 
-
---
--- Name: tx_bexar_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.tx_bexar_lines ALTER COLUMN gid SET DEFAULT nextval('sources.tx_bexar_lines_gid_seq'::regclass);
 
 
---
--- Name: tx_blanco gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.tx_blanco ALTER COLUMN gid SET DEFAULT nextval('sources.tx_blanco_gid_seq'::regclass);
 
-
---
--- Name: tx_blanco_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.tx_blanco_lines ALTER COLUMN gid SET DEFAULT nextval('sources.tx_blanco_lines_gid_seq'::regclass);
 
 
---
--- Name: tx_chisos gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.tx_chisos ALTER COLUMN gid SET DEFAULT nextval('sources.tx_chisos_gid_seq'::regclass);
 
-
---
--- Name: tx_chisos_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.tx_chisos_lines ALTER COLUMN gid SET DEFAULT nextval('sources.tx_chisos_lines_gid_seq'::regclass);
 
 
---
--- Name: tx_chisos_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.tx_chisos_points ALTER COLUMN gid SET DEFAULT nextval('sources.tx_chisos_points_gid_seq'::regclass);
 
-
---
--- Name: tx_hays gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.tx_hays ALTER COLUMN gid SET DEFAULT nextval('sources.tx_hays_gid_seq'::regclass);
 
 
---
--- Name: tx_hays_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.tx_hays_lines ALTER COLUMN gid SET DEFAULT nextval('sources.tx_hays_lines_gid_seq'::regclass);
 
-
---
--- Name: tx_laredo gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.tx_laredo ALTER COLUMN gid SET DEFAULT nextval('sources.tx_laredo_gid_seq'::regclass);
 
 
---
--- Name: tx_laredo_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.tx_laredo_lines ALTER COLUMN gid SET DEFAULT nextval('sources.tx_laredo_lines_gid_seq'::regclass);
 
-
---
--- Name: tx_laredo_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.tx_laredo_points ALTER COLUMN gid SET DEFAULT nextval('sources.tx_laredo_points_gid_seq'::regclass);
 
 
---
--- Name: uk gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.uk ALTER COLUMN gid SET DEFAULT nextval('sources.uk_gid_seq'::regclass);
 
-
---
--- Name: uk_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.uk_lines ALTER COLUMN gid SET DEFAULT nextval('sources.uk_lines_gid_seq'::regclass);
 
 
---
--- Name: usgs_world gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.usgs_world ALTER COLUMN gid SET DEFAULT nextval('sources.usgs_world_gid_seq'::regclass);
 
-
---
--- Name: usgs_world_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.usgs_world_lines ALTER COLUMN gid SET DEFAULT nextval('sources.usgs_world_lines_gid_seq'::regclass);
 
 
---
--- Name: ut_beaver gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_beaver ALTER COLUMN gid SET DEFAULT nextval('sources.ut_beaver_objectid_seq'::regclass);
 
-
---
--- Name: ut_beaver_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_beaver_lines ALTER COLUMN gid SET DEFAULT nextval('sources.ut_beaver_lines_objectid_seq'::regclass);
 
 
---
--- Name: ut_delta gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_delta ALTER COLUMN gid SET DEFAULT nextval('sources.deltautah_gid_seq'::regclass);
 
-
---
--- Name: ut_delta_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_delta_lines ALTER COLUMN gid SET DEFAULT nextval('sources.delta_faults_gid_seq'::regclass);
 
 
---
--- Name: ut_dugway gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_dugway ALTER COLUMN gid SET DEFAULT nextval('sources.ut_dugwayprovinggrounds_gid_seq'::regclass);
 
-
---
--- Name: ut_dugway_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_dugway_lines ALTER COLUMN gid SET DEFAULT nextval('sources.ut_dugwayprovinggrounds_lines_gid_seq'::regclass);
 
 
---
--- Name: ut_dugway_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_dugway_points ALTER COLUMN gid SET DEFAULT nextval('sources.ut_dugwayprovinggrounds_points_gid_seq'::regclass);
 
-
---
--- Name: ut_dutchjohn gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_dutchjohn ALTER COLUMN gid SET DEFAULT nextval('sources.dutchjohn_gid_seq'::regclass);
 
 
---
--- Name: ut_dutchjohn_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_dutchjohn_lines ALTER COLUMN gid SET DEFAULT nextval('sources.dutchjohn_faults_gid_seq'::regclass);
 
-
---
--- Name: ut_escalante gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_escalante ALTER COLUMN gid SET DEFAULT nextval('sources.ut_escalante_gid_seq'::regclass);
 
 
---
--- Name: ut_escalante_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_escalante_lines ALTER COLUMN gid SET DEFAULT nextval('sources.ut_escalante_lines_gid_seq'::regclass);
 
-
---
--- Name: ut_huntington gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_huntington ALTER COLUMN gid SET DEFAULT nextval('sources.huntingtonutahgeology_gid_seq'::regclass);
 
 
---
--- Name: ut_huntington_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_huntington_lines ALTER COLUMN gid SET DEFAULT nextval('sources.huntington_faults_gid_seq'::regclass);
 
-
---
--- Name: ut_kanab gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_kanab ALTER COLUMN gid SET DEFAULT nextval('sources.ut_kanab_gid_seq'::regclass);
 
 
---
--- Name: ut_kanab_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_kanab_lines ALTER COLUMN gid SET DEFAULT nextval('sources.ut_kanab_lines_gid_seq'::regclass);
 
-
---
--- Name: ut_lasal gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_lasal ALTER COLUMN gid SET DEFAULT nextval('sources.ut_lasal_gid_seq'::regclass);
 
 
---
--- Name: ut_lasal_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_lasal_lines ALTER COLUMN gid SET DEFAULT nextval('sources.ut_lasal_lines_gid_seq'::regclass);
 
-
---
--- Name: ut_logan gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_logan ALTER COLUMN gid SET DEFAULT nextval('sources.ut_logan_gid_seq'::regclass);
 
 
---
--- Name: ut_logan_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_logan_lines ALTER COLUMN gid SET DEFAULT nextval('sources.logan_faults_gid_seq'::regclass);
 
-
---
--- Name: ut_lynndyl gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_lynndyl ALTER COLUMN gid SET DEFAULT nextval('sources.ut_lynndyl_gid_seq'::regclass);
 
 
---
--- Name: ut_lynndyl_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_lynndyl_lines ALTER COLUMN gid SET DEFAULT nextval('sources.ut_lynndyl_lines_gid_seq'::regclass);
 
-
---
--- Name: ut_manti gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_manti ALTER COLUMN gid SET DEFAULT nextval('sources.mantiutgeology_gid_seq'::regclass);
 
 
---
--- Name: ut_manti_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_manti_lines ALTER COLUMN gid SET DEFAULT nextval('sources.manti_lines_gid_seq'::regclass);
 
-
---
--- Name: ut_moab gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_moab ALTER COLUMN gid SET DEFAULT nextval('sources.ut_moab_gid_seq'::regclass);
 
 
---
--- Name: ut_moab_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_moab_lines ALTER COLUMN gid SET DEFAULT nextval('sources.ut_moab_lines_gid_seq'::regclass);
 
-
---
--- Name: ut_nephi gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_nephi ALTER COLUMN gid SET DEFAULT nextval('sources.nephiutahgeology_gid_seq'::regclass);
 
 
---
--- Name: ut_nephi_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_nephi_lines ALTER COLUMN gid SET DEFAULT nextval('sources.nephi_faults_gid_seq'::regclass);
 
-
---
--- Name: ut_ogden gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_ogden ALTER COLUMN gid SET DEFAULT nextval('sources.ut_ogden_gid_seq'::regclass);
 
 
---
--- Name: ut_ogden_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_ogden_lines ALTER COLUMN gid SET DEFAULT nextval('sources.ut_ogden_lines_gid_seq'::regclass);
 
-
---
--- Name: ut_ogden_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_ogden_points ALTER COLUMN gid SET DEFAULT nextval('sources.ut_ogden_points_gid_seq'::regclass);
 
 
---
--- Name: ut_panguitch gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_panguitch ALTER COLUMN gid SET DEFAULT nextval('sources.ut_panguitch_gid_seq'::regclass);
 
-
---
--- Name: ut_panguitch_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_panguitch_lines ALTER COLUMN gid SET DEFAULT nextval('sources.ut_panguitch_lines_gid_seq'::regclass);
 
 
---
--- Name: ut_price gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_price ALTER COLUMN gid SET DEFAULT nextval('sources.price_gid_seq'::regclass);
 
-
---
--- Name: ut_price_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_price_lines ALTER COLUMN gid SET DEFAULT nextval('sources.ut_price_lines_gid_seq'::regclass);
 
 
---
--- Name: ut_prommontorymtns gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_prommontorymtns ALTER COLUMN gid SET DEFAULT nextval('sources.ut_prommontorymtns_objectid_seq'::regclass);
 
-
---
--- Name: ut_prommontorymtns_folds gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_prommontorymtns_folds ALTER COLUMN gid SET DEFAULT nextval('sources.ut_prommontorymtns_folds_objectid_seq'::regclass);
 
 
---
--- Name: ut_prommontorymtns_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_prommontorymtns_points ALTER COLUMN gid SET DEFAULT nextval('sources.ut_prommontorymtns_points_objectid_seq'::regclass);
 
-
---
--- Name: ut_provo gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_provo ALTER COLUMN gid SET DEFAULT nextval('sources.provoutahgeology_gid_seq'::regclass);
 
 
---
--- Name: ut_provo_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_provo_lines ALTER COLUMN gid SET DEFAULT nextval('sources.provo_lines_gid_seq'::regclass);
 
-
---
--- Name: ut_richfield gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_richfield ALTER COLUMN gid SET DEFAULT nextval('sources.richfieldutgeology_gid_seq'::regclass);
 
 
---
--- Name: ut_richfield_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_richfield_lines ALTER COLUMN gid SET DEFAULT nextval('sources.richfield_faults_gid_seq'::regclass);
 
-
---
--- Name: ut_salina gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_salina ALTER COLUMN gid SET DEFAULT nextval('sources.ut_salina_gid_seq'::regclass);
 
 
---
--- Name: ut_salina_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_salina_lines ALTER COLUMN gid SET DEFAULT nextval('sources.ut_salina_lines_gid_seq'::regclass);
 
-
---
--- Name: ut_salina_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_salina_points ALTER COLUMN gid SET DEFAULT nextval('sources.ut_salina_points_gid_seq'::regclass);
 
 
---
--- Name: ut_saltlake gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_saltlake ALTER COLUMN gid SET DEFAULT nextval('sources.ut_saltlake_gid_seq'::regclass);
 
-
---
--- Name: ut_saltlake_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_saltlake_lines ALTER COLUMN gid SET DEFAULT nextval('sources.ut_saltlake_lines_gid_seq'::regclass);
 
 
---
--- Name: ut_seepridge gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_seepridge ALTER COLUMN gid SET DEFAULT nextval('sources.ut_seepridge_gid_seq'::regclass);
 
-
---
--- Name: ut_seepridge_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_seepridge_lines ALTER COLUMN gid SET DEFAULT nextval('sources.seepridge_lines_gid_seq'::regclass);
 
 
---
--- Name: ut_smokymtns gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_smokymtns ALTER COLUMN gid SET DEFAULT nextval('sources.smokymtnsutgeology_gid_seq'::regclass);
 
-
---
--- Name: ut_smokymtns_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_smokymtns_lines ALTER COLUMN gid SET DEFAULT nextval('sources.smkymtns_faults_gid_seq'::regclass);
 
 
---
--- Name: ut_stgeorge gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_stgeorge ALTER COLUMN gid SET DEFAULT nextval('sources.ut_stgeorge_gid_seq'::regclass);
 
-
---
--- Name: ut_stgeorge_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_stgeorge_lines ALTER COLUMN gid SET DEFAULT nextval('sources.ut_stgeorge_lines_gid_seq'::regclass);
 
 
---
--- Name: ut_tooele gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_tooele ALTER COLUMN gid SET DEFAULT nextval('sources.ut_tooele_gid_seq'::regclass);
 
-
---
--- Name: ut_tooele_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_tooele_lines ALTER COLUMN gid SET DEFAULT nextval('sources.ut_tooele_lines_gid_seq'::regclass);
 
 
---
--- Name: ut_tooele_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_tooele_points ALTER COLUMN gid SET DEFAULT nextval('sources.ut_tooele_points_gid_seq'::regclass);
 
-
---
--- Name: ut_tulevalley gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_tulevalley ALTER COLUMN gid SET DEFAULT nextval('sources.tulevalleyutgeology_gid_seq'::regclass);
 
 
---
--- Name: ut_tulevalley_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_tulevalley_lines ALTER COLUMN gid SET DEFAULT nextval('sources.tulevalley_faults_gid_seq'::regclass);
 
-
---
--- Name: ut_vernal gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_vernal ALTER COLUMN gid SET DEFAULT nextval('sources.vernalutahgeology_gid_seq'::regclass);
 
 
---
--- Name: ut_vernal_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_vernal_lines ALTER COLUMN gid SET DEFAULT nextval('sources.vernal_faults_gid_seq'::regclass);
 
-
---
--- Name: ut_wahwahmtns gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_wahwahmtns ALTER COLUMN gid SET DEFAULT nextval('sources.wahwahmountainutgeology_gid_seq'::regclass);
 
 
---
--- Name: ut_wahwahmtns_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_wahwahmtns_lines ALTER COLUMN gid SET DEFAULT nextval('sources.wahwahmtn_geolines_gid_seq'::regclass);
 
-
---
--- Name: ut_westwater gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_westwater ALTER COLUMN gid SET DEFAULT nextval('sources.westwater_gid_seq'::regclass);
 
 
---
--- Name: ut_westwater_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_westwater_lines ALTER COLUMN gid SET DEFAULT nextval('sources.ut_westwater_lines_gid_seq'::regclass);
 
-
---
--- Name: utquad_cedarcity gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.utquad_cedarcity ALTER COLUMN gid SET DEFAULT nextval('sources.utquad_cedarcity_gid_seq'::regclass);
 
 
---
--- Name: utquad_cedarcity_ln gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.utquad_cedarcity_ln ALTER COLUMN gid SET DEFAULT nextval('sources.utquad_cedarcity_ln_gid_seq'::regclass);
 
-
---
--- Name: utquad_eastslc gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.utquad_eastslc ALTER COLUMN gid SET DEFAULT nextval('sources.utquad_eastslc_gid_seq'::regclass);
 
 
---
--- Name: utquad_eastslc_ln gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.utquad_eastslc_ln ALTER COLUMN gid SET DEFAULT nextval('sources.utquad_eastslc_ln_gid_seq'::regclass);
 
-
---
--- Name: va_middletown gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.va_middletown ALTER COLUMN gid SET DEFAULT nextval('sources.va_middletown_gid_seq'::regclass);
 
 
---
--- Name: va_middletown_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.va_middletown_lines ALTER COLUMN gid SET DEFAULT nextval('sources.va_middletown_lines_gid_seq'::regclass);
 
-
---
--- Name: va_middletown_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.va_middletown_points ALTER COLUMN gid SET DEFAULT nextval('sources.points_ogc_fid_seq'::regclass);
 
 
---
--- Name: va_stephcity gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.va_stephcity ALTER COLUMN gid SET DEFAULT nextval('sources.va_stephcity_gid_seq'::regclass);
 
-
---
--- Name: va_stephcity_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.va_stephcity_lines ALTER COLUMN gid SET DEFAULT nextval('sources.va_stephcity_lines_gid_seq'::regclass);
 
 
---
--- Name: va_stephcity_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.va_stephcity_points ALTER COLUMN gid SET DEFAULT nextval('sources.va_stephcity_points_gid_seq'::regclass);
 
-
---
--- Name: venezuela gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.venezuela ALTER COLUMN gid SET DEFAULT nextval('sources.venezuela_geo_gid_seq'::regclass);
 
 
---
--- Name: venezuela_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.venezuela_lines ALTER COLUMN gid SET DEFAULT nextval('sources.venez_lines_gid_seq'::regclass);
 
-
---
--- Name: wa100k gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wa100k ALTER COLUMN gid SET DEFAULT nextval('sources.wa100k_gid_seq'::regclass);
 
 
---
--- Name: wa100k_line gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wa100k_line ALTER COLUMN gid SET DEFAULT nextval('sources.wa100k_line_gid_seq'::regclass);
 
-
---
--- Name: wa_sanjuan_island gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wa_sanjuan_island ALTER COLUMN gid SET DEFAULT nextval('sources.sanjuanislandgeology_gid_seq'::regclass);
 
 
---
--- Name: wa_sanjuan_island_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wa_sanjuan_island_lines ALTER COLUMN gid SET DEFAULT nextval('sources.sanjuanfaults_gid_seq'::regclass);
 
-
---
--- Name: wi_ashland gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wi_ashland ALTER COLUMN gid SET DEFAULT nextval('sources.wi_ashland_gid_seq'::regclass);
 
 
---
--- Name: wi_ashland_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wi_ashland_lines ALTER COLUMN gid SET DEFAULT nextval('sources.wi_ashland_lines_gid_seq'::regclass);
 
-
---
--- Name: wi_ashland_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wi_ashland_points ALTER COLUMN gid SET DEFAULT nextval('sources.wi_ashland_points_gid_seq'::regclass);
 
 
---
--- Name: wi_brown gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wi_brown ALTER COLUMN gid SET DEFAULT nextval('sources.wi_brown_geology_gid_seq'::regclass);
 
-
---
--- Name: wi_brown_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wi_brown_lines ALTER COLUMN gid SET DEFAULT nextval('sources.wi_brown_lines_gid_seq'::regclass);
 
 
---
--- Name: wi_brown_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wi_brown_points ALTER COLUMN gid SET DEFAULT nextval('sources.wi_brown_point_gid_seq'::regclass);
 
-
---
--- Name: wi_fond_du gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wi_fond_du ALTER COLUMN gid SET DEFAULT nextval('sources.wi_fond_du_gid_seq'::regclass);
 
 
---
--- Name: wi_fond_du_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wi_fond_du_lines ALTER COLUMN gid SET DEFAULT nextval('sources.wi_fond_du_lines_gid_seq'::regclass);
 
-
---
--- Name: wi_juneaucounty gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wi_juneaucounty ALTER COLUMN gid SET DEFAULT nextval('sources.wi_juneaucounty_polygon_gid_seq'::regclass);
 
 
---
--- Name: wi_juneaucounty_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wi_juneaucounty_lines ALTER COLUMN gid SET DEFAULT nextval('sources.wi_juneaucounty_lines_gid_seq'::regclass);
 
-
---
--- Name: wi_lacrosse gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wi_lacrosse ALTER COLUMN gid SET DEFAULT nextval('sources.lacrosse_geo_gid_seq'::regclass);
 
 
---
--- Name: wi_marathon gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wi_marathon ALTER COLUMN gid SET DEFAULT nextval('sources.wi_marathon_gid_seq'::regclass);
 
-
---
--- Name: wi_marathon_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wi_marathon_lines ALTER COLUMN gid SET DEFAULT nextval('sources.wi_marathon_lines_gid_seq'::regclass);
 
 
---
--- Name: wi_marathon_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wi_marathon_points ALTER COLUMN gid SET DEFAULT nextval('sources.wi_marathon_points_gid_seq'::regclass);
 
-
---
--- Name: wi_piercestcroix gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wi_piercestcroix ALTER COLUMN gid SET DEFAULT nextval('sources.wi_piercestcroix_geology_gid_seq'::regclass);
 
 
---
--- Name: wi_piercestcroix_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wi_piercestcroix_lines ALTER COLUMN gid SET DEFAULT nextval('sources.wi_piercestcroix_line_gid_seq'::regclass);
 
-
---
--- Name: wi_sauk_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wi_sauk_lines ALTER COLUMN gid SET DEFAULT nextval('sources.sauk_lines_gid_seq'::regclass);
 
 
---
--- Name: wi_sheboygan gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wi_sheboygan ALTER COLUMN gid SET DEFAULT nextval('sources.sheboygan_gid_seq'::regclass);
 
-
---
--- Name: wi_southeast gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wi_southeast ALTER COLUMN gid SET DEFAULT nextval('sources.se_wisconsin_geo_gid_seq'::regclass);
 
 
---
--- Name: wi_southeast_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wi_southeast_lines ALTER COLUMN gid SET DEFAULT nextval('sources.se_wisconsin_lines_gid_seq'::regclass);
 
-
---
--- Name: wi_wood gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wi_wood ALTER COLUMN gid SET DEFAULT nextval('sources.wi_wood_gid_seq'::regclass);
 
 
---
--- Name: wi_wood_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wi_wood_lines ALTER COLUMN gid SET DEFAULT nextval('sources.wi_wood_lines_gid_seq'::regclass);
 
-
---
--- Name: wi_wood_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wi_wood_points ALTER COLUMN gid SET DEFAULT nextval('sources.wi_wood_points_gid_seq'::regclass);
 
 
---
--- Name: world_basins gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.world_basins ALTER COLUMN gid SET DEFAULT nextval('sources.world_basins_gid_seq'::regclass);
 
-
---
--- Name: world_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.world_lines ALTER COLUMN gid SET DEFAULT nextval('sources.tiny_lines_gid_seq'::regclass);
 
 
---
--- Name: wv_gauley_river gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wv_gauley_river ALTER COLUMN gid SET DEFAULT nextval('sources.gauleyriver_geo_gid_seq'::regclass);
 
-
---
--- Name: wv_gauley_river_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wv_gauley_river_lines ALTER COLUMN gid SET DEFAULT nextval('sources.gauleyriver_lines_gid_seq'::regclass);
 
 
---
--- Name: wy_baggs gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_baggs ALTER COLUMN gid SET DEFAULT nextval('sources.wy_baggs_gid_seq'::regclass);
 
-
---
--- Name: wy_baggs_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_baggs_lines ALTER COLUMN gid SET DEFAULT nextval('sources.wy_baggs_lines_gid_seq'::regclass);
 
 
---
--- Name: wy_baggs_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_baggs_points ALTER COLUMN gid SET DEFAULT nextval('sources.wy_baggs_points_gid_seq'::regclass);
 
-
---
--- Name: wy_bairoil gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_bairoil ALTER COLUMN gid SET DEFAULT nextval('sources.wy_bairoil_gid_seq'::regclass);
 
 
---
--- Name: wy_bairoil_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_bairoil_lines ALTER COLUMN gid SET DEFAULT nextval('sources.wy_bairoil_lines_gid_seq'::regclass);
 
-
---
--- Name: wy_bill gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_bill ALTER COLUMN gid SET DEFAULT nextval('sources.wy_bill_gid_seq'::regclass);
 
 
---
--- Name: wy_bill_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_bill_lines ALTER COLUMN gid SET DEFAULT nextval('sources.wy_bill_lines_gid_seq'::regclass);
 
-
---
--- Name: wy_buffalo gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_buffalo ALTER COLUMN gid SET DEFAULT nextval('sources.wy_buffalo_gid_seq'::regclass);
 
 
---
--- Name: wy_buffalo_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_buffalo_lines ALTER COLUMN gid SET DEFAULT nextval('sources.wy_buffalo_lines_gid_seq'::regclass);
 
-
---
--- Name: wy_casper gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_casper ALTER COLUMN gid SET DEFAULT nextval('sources.wy_caspar_polygon_gid_seq'::regclass);
 
 
---
--- Name: wy_casper_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_casper_lines ALTER COLUMN gid SET DEFAULT nextval('sources.wy_caspar_lines_gid_seq'::regclass);
 
-
---
--- Name: wy_cheyenne gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_cheyenne ALTER COLUMN gid SET DEFAULT nextval('sources.wy_cheyenne_polygon_gid_seq'::regclass);
 
 
---
--- Name: wy_douglas gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_douglas ALTER COLUMN gid SET DEFAULT nextval('sources.wy_douglas_gid_seq'::regclass);
 
-
---
--- Name: wy_douglas_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_douglas_lines ALTER COLUMN gid SET DEFAULT nextval('sources.wy_douglas_lines_gid_seq'::regclass);
 
 
---
--- Name: wy_evanston gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_evanston ALTER COLUMN gid SET DEFAULT nextval('sources.wy_evanston_polygon_gid_seq'::regclass);
 
-
---
--- Name: wy_evanston_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_evanston_lines ALTER COLUMN gid SET DEFAULT nextval('sources.wy_evanston_lines_gid_seq'::regclass);
 
 
---
--- Name: wy_farson gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_farson ALTER COLUMN gid SET DEFAULT nextval('sources.wy_farson_gid_seq'::regclass);
 
-
---
--- Name: wy_farson_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_farson_lines ALTER COLUMN gid SET DEFAULT nextval('sources.wy_farson_lines_gid_seq'::regclass);
 
 
---
--- Name: wy_gillette gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_gillette ALTER COLUMN gid SET DEFAULT nextval('sources.wy_gillette_gid_seq'::regclass);
 
-
---
--- Name: wy_kaycee gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_kaycee ALTER COLUMN gid SET DEFAULT nextval('sources.wy_kaycee_gid_seq'::regclass);
 
 
---
--- Name: wy_kaycee_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_kaycee_lines ALTER COLUMN gid SET DEFAULT nextval('sources.wy_kaycee_lines_gid_seq'::regclass);
 
-
---
--- Name: wy_kemmerer gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_kemmerer ALTER COLUMN gid SET DEFAULT nextval('sources.wy_kemmerer_polygon_gid_seq'::regclass);
 
 
---
--- Name: wy_kemmerer_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_kemmerer_lines ALTER COLUMN gid SET DEFAULT nextval('sources.wy_kemmerer_lines_gid_seq'::regclass);
 
-
---
--- Name: wy_kinneyrim gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_kinneyrim ALTER COLUMN gid SET DEFAULT nextval('sources.wy_kinneyrim_gid_seq'::regclass);
 
 
---
--- Name: wy_kinneyrim_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_kinneyrim_lines ALTER COLUMN gid SET DEFAULT nextval('sources.wy_kinneyrim_lines_gid_seq'::regclass);
 
-
---
--- Name: wy_lancecreek gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_lancecreek ALTER COLUMN gid SET DEFAULT nextval('sources.wy_lanecreek_gid_seq'::regclass);
 
 
---
--- Name: wy_lancecreek_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_lancecreek_lines ALTER COLUMN gid SET DEFAULT nextval('sources.wy_lanecreek_lines_gid_seq'::regclass);
 
-
---
--- Name: wy_lander gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_lander ALTER COLUMN gid SET DEFAULT nextval('sources.wyoming_lander_gid_seq'::regclass);
 
 
---
--- Name: wy_lander_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_lander_lines ALTER COLUMN gid SET DEFAULT nextval('sources.wyoming_lander_lines_gid_seq'::regclass);
 
-
---
--- Name: wy_laramie gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_laramie ALTER COLUMN gid SET DEFAULT nextval('sources.laramie_geo_gid_seq'::regclass);
 
 
---
--- Name: wy_laramie_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_laramie_lines ALTER COLUMN gid SET DEFAULT nextval('sources.laramie_lines_gid_seq'::regclass);
 
-
---
--- Name: wy_midwest gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_midwest ALTER COLUMN gid SET DEFAULT nextval('sources.wy_midwest_gid_seq'::regclass);
 
 
---
--- Name: wy_midwest_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_midwest_lines ALTER COLUMN gid SET DEFAULT nextval('sources.wy_midwest_lines_gid_seq'::regclass);
 
-
---
--- Name: wy_newcastle gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_newcastle ALTER COLUMN gid SET DEFAULT nextval('sources.wy_newcastle_gid_seq'::regclass);
 
 
---
--- Name: wy_newcastle_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_newcastle_lines ALTER COLUMN gid SET DEFAULT nextval('sources.wy_newcastle_lines_gid_seq'::regclass);
 
-
---
--- Name: wy_nowater gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_nowater ALTER COLUMN gid SET DEFAULT nextval('sources.wy_nowater_gid_seq'::regclass);
 
 
---
--- Name: wy_nowater_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_nowater_lines ALTER COLUMN gid SET DEFAULT nextval('sources.wy_nowater_lines_gid_seq'::regclass);
 
-
---
--- Name: wy_rattlesnakehills gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_rattlesnakehills ALTER COLUMN gid SET DEFAULT nextval('sources.wi_rattlesnakehills_polygon_gid_seq'::regclass);
 
 
---
--- Name: wy_rattlesnakehills_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_rattlesnakehills_lines ALTER COLUMN gid SET DEFAULT nextval('sources.wy_rattlesnakehills_arcs_gid_seq'::regclass);
 
-
---
--- Name: wy_rawlins gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_rawlins ALTER COLUMN gid SET DEFAULT nextval('sources.wy_rawlins_gid_seq'::regclass);
 
 
---
--- Name: wy_rawlins_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_rawlins_lines ALTER COLUMN gid SET DEFAULT nextval('sources.wy_rawlins_lines_gid_seq'::regclass);
 
-
---
--- Name: wy_recluse gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_recluse ALTER COLUMN gid SET DEFAULT nextval('sources.wy_recluse_gid_seq'::regclass);
 
 
---
--- Name: wy_recluse_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_recluse_lines ALTER COLUMN gid SET DEFAULT nextval('sources.wy_recluse_lines_gid_seq'::regclass);
 
-
---
--- Name: wy_renojunction gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_renojunction ALTER COLUMN gid SET DEFAULT nextval('sources.wy_renojunction_gid_seq'::regclass);
 
 
---
--- Name: wy_rock_springs gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_rock_springs ALTER COLUMN gid SET DEFAULT nextval('sources.rock_springs_geo_gid_seq'::regclass);
 
-
---
--- Name: wy_rock_springs_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_rock_springs_lines ALTER COLUMN gid SET DEFAULT nextval('sources.rock_springs_lines_gid_seq'::regclass);
 
 
---
--- Name: wy_rock_springs_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_rock_springs_points ALTER COLUMN gid SET DEFAULT nextval('sources.rock_springs_points_gid_seq'::regclass);
 
-
---
--- Name: wy_sheridan gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_sheridan ALTER COLUMN gid SET DEFAULT nextval('sources.sheridan_gid_seq'::regclass);
 
 
---
--- Name: wy_sheridan_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_sheridan_lines ALTER COLUMN gid SET DEFAULT nextval('sources.sheridan_lines_gid_seq'::regclass);
 
-
---
--- Name: wy_sundance gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_sundance ALTER COLUMN gid SET DEFAULT nextval('sources.wy_sundance_gid_seq'::regclass);
 
 
---
--- Name: wy_sundance_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_sundance_lines ALTER COLUMN gid SET DEFAULT nextval('sources.wy_sundance_lines_gid_seq'::regclass);
 
-
---
--- Name: wy_sundance_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_sundance_points ALTER COLUMN gid SET DEFAULT nextval('sources.wy_sundance_points_gid_seq'::regclass);
 
 
---
--- Name: wy_torrington gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_torrington ALTER COLUMN gid SET DEFAULT nextval('sources.wy_torrington_gid_seq'::regclass);
 
-
---
--- Name: wy_torrington_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_torrington_lines ALTER COLUMN gid SET DEFAULT nextval('sources.wy_torrington_lines_gid_seq'::regclass);
 
 
---
--- Name: yk_joyal gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.yk_joyal ALTER COLUMN gid SET DEFAULT nextval('sources.yk_joyal_gid_seq'::regclass);
 
-
---
--- Name: yk_joyal_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.yk_joyal_lines ALTER COLUMN gid SET DEFAULT nextval('sources.yk_joyal_lines_gid_seq'::regclass);
 
 
---
--- Name: yk_joyal_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.yk_joyal_points ALTER COLUMN gid SET DEFAULT nextval('sources.yk_joyal_points_gid_seq'::regclass);
 
-
---
--- Name: yukon gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.yukon ALTER COLUMN gid SET DEFAULT nextval('sources.yukon_gid_seq'::regclass);
 
 
---
--- Name: yukon_folds gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.yukon_folds ALTER COLUMN gid SET DEFAULT nextval('sources.yukon_folds_gid_seq'::regclass);
 
-
---
--- Name: yukon_lines gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.yukon_lines ALTER COLUMN gid SET DEFAULT nextval('sources.yukon_lines_gid_seq'::regclass);
 
 
---
--- Name: yukon_mtmartin gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.yukon_mtmartin ALTER COLUMN gid SET DEFAULT nextval('sources.yukon_mtmartin_gid_seq'::regclass);
 
-
---
--- Name: yukon_mtmartin_folds gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.yukon_mtmartin_folds ALTER COLUMN gid SET DEFAULT nextval('sources.yukon_mtmartin_folds_gid_seq'::regclass);
 
 
---
--- Name: yukon_mtmartin_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.yukon_mtmartin_points ALTER COLUMN gid SET DEFAULT nextval('sources.yukon_mtmartin_points_gid_seq'::regclass);
 
-
---
--- Name: yukon_mtmerril gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.yukon_mtmerril ALTER COLUMN gid SET DEFAULT nextval('sources.yukon_mtmerril_gid_seq'::regclass);
 
 
---
--- Name: yukon_mtmerril_folds gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.yukon_mtmerril_folds ALTER COLUMN gid SET DEFAULT nextval('sources.yukon_mtmerril_folds_gid_seq'::regclass);
 
 
---
--- Name: yukon_mtmerril_points gid; Type: DEFAULT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.yukon_mtmerril_points ALTER COLUMN gid SET DEFAULT nextval('sources.yukon_mtmerril_points_gid_seq'::regclass);
 
-
---
--- Name: located_query_bounds located_query_bounds_pkey; Type: CONSTRAINT; Schema: detrital_zircon; Owner: postgres
---
 
 ALTER TABLE ONLY detrital_zircon.located_query_bounds
     ADD CONSTRAINT located_query_bounds_pkey PRIMARY KEY (id);
 
 
---
--- Name: sources sources_pkey; Type: CONSTRAINT; Schema: geologic_boundaries; Owner: postgres
---
-
 ALTER TABLE ONLY geologic_boundaries.sources
     ADD CONSTRAINT sources_pkey PRIMARY KEY (source_id);
 
-
---
--- Name: hexgrids hexgrids_pkey; Type: CONSTRAINT; Schema: hexgrids; Owner: postgres
---
 
 ALTER TABLE ONLY hexgrids.hexgrids
     ADD CONSTRAINT hexgrids_pkey PRIMARY KEY (hex_id);
 
 
---
--- Name: r10 r10_pkey; Type: CONSTRAINT; Schema: hexgrids; Owner: postgres
---
-
 ALTER TABLE ONLY hexgrids.r10
     ADD CONSTRAINT r10_pkey PRIMARY KEY (hex_id);
 
-
---
--- Name: r11 r11_pkey; Type: CONSTRAINT; Schema: hexgrids; Owner: postgres
---
 
 ALTER TABLE ONLY hexgrids.r11
     ADD CONSTRAINT r11_pkey PRIMARY KEY (hex_id);
 
 
---
--- Name: r12 r12_pkey; Type: CONSTRAINT; Schema: hexgrids; Owner: postgres
---
-
 ALTER TABLE ONLY hexgrids.r12
     ADD CONSTRAINT r12_pkey PRIMARY KEY (hex_id);
 
-
---
--- Name: r5 r5_pkey; Type: CONSTRAINT; Schema: hexgrids; Owner: postgres
---
 
 ALTER TABLE ONLY hexgrids.r5
     ADD CONSTRAINT r5_pkey PRIMARY KEY (hex_id);
 
 
---
--- Name: r6 r6_pkey; Type: CONSTRAINT; Schema: hexgrids; Owner: postgres
---
-
 ALTER TABLE ONLY hexgrids.r6
     ADD CONSTRAINT r6_pkey PRIMARY KEY (hex_id);
 
-
---
--- Name: r7 r7_pkey; Type: CONSTRAINT; Schema: hexgrids; Owner: postgres
---
 
 ALTER TABLE ONLY hexgrids.r7
     ADD CONSTRAINT r7_pkey PRIMARY KEY (hex_id);
 
 
---
--- Name: r8 r8_pkey; Type: CONSTRAINT; Schema: hexgrids; Owner: postgres
---
-
 ALTER TABLE ONLY hexgrids.r8
     ADD CONSTRAINT r8_pkey PRIMARY KEY (hex_id);
 
-
---
--- Name: r9 r9_pkey; Type: CONSTRAINT; Schema: hexgrids; Owner: postgres
---
 
 ALTER TABLE ONLY hexgrids.r9
     ADD CONSTRAINT r9_pkey PRIMARY KEY (hex_id);
 
 
---
--- Name: large large_pkey; Type: CONSTRAINT; Schema: lines; Owner: postgres
---
-
 ALTER TABLE ONLY lines.large
     ADD CONSTRAINT large_pkey PRIMARY KEY (line_id);
 
-
---
--- Name: medium medium_pkey; Type: CONSTRAINT; Schema: lines; Owner: postgres
---
 
 ALTER TABLE ONLY lines.medium
     ADD CONSTRAINT medium_pkey PRIMARY KEY (line_id);
 
 
---
--- Name: small small_pkey; Type: CONSTRAINT; Schema: lines; Owner: postgres
---
-
 ALTER TABLE ONLY lines.small
     ADD CONSTRAINT small_pkey PRIMARY KEY (line_id);
 
-
---
--- Name: tiny tiny_pkey; Type: CONSTRAINT; Schema: lines; Owner: postgres
---
 
 ALTER TABLE ONLY lines.tiny
     ADD CONSTRAINT tiny_pkey PRIMARY KEY (line_id);
 
 
---
--- Name: col_areas col_areas_new_pkey; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
---
-
 ALTER TABLE ONLY macrostrat.col_areas
     ADD CONSTRAINT col_areas_new_pkey PRIMARY KEY (id);
 
-
---
--- Name: col_groups col_groups_new_pkey1; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
---
 
 ALTER TABLE ONLY macrostrat.col_groups
     ADD CONSTRAINT col_groups_new_pkey1 PRIMARY KEY (id);
 
 
---
--- Name: col_refs col_refs_new_pkey1; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
---
-
 ALTER TABLE ONLY macrostrat.col_refs
     ADD CONSTRAINT col_refs_new_pkey1 PRIMARY KEY (id);
 
-
---
--- Name: cols cols_new_pkey; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
---
 
 ALTER TABLE ONLY macrostrat.cols
     ADD CONSTRAINT cols_new_pkey PRIMARY KEY (id);
 
 
---
--- Name: econs econs_new_pkey; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
---
-
 ALTER TABLE ONLY macrostrat.econs
     ADD CONSTRAINT econs_new_pkey PRIMARY KEY (id);
 
-
---
--- Name: environs environs_new_pkey1; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
---
 
 ALTER TABLE ONLY macrostrat.environs
     ADD CONSTRAINT environs_new_pkey1 PRIMARY KEY (id);
 
 
---
--- Name: grainsize grainsize_pkey; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
---
-
 ALTER TABLE ONLY macrostrat.grainsize
     ADD CONSTRAINT grainsize_pkey PRIMARY KEY (grain_id);
 
-
---
--- Name: lith_atts lith_atts_new_pkey1; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
---
 
 ALTER TABLE ONLY macrostrat.lith_atts
     ADD CONSTRAINT lith_atts_new_pkey1 PRIMARY KEY (id);
 
 
---
--- Name: liths liths_new_pkey1; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
---
-
 ALTER TABLE ONLY macrostrat.liths
     ADD CONSTRAINT liths_new_pkey1 PRIMARY KEY (id);
 
-
---
--- Name: lookup_units lookup_units_new_pkey1; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
---
 
 ALTER TABLE ONLY macrostrat.lookup_units
     ADD CONSTRAINT lookup_units_new_pkey1 PRIMARY KEY (unit_id);
 
 
---
--- Name: measurements measurements_new_pkey; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
---
-
 ALTER TABLE ONLY macrostrat.measurements
     ADD CONSTRAINT measurements_new_pkey PRIMARY KEY (id);
 
-
---
--- Name: measuremeta measuremeta_new_pkey; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
---
 
 ALTER TABLE ONLY macrostrat.measuremeta
     ADD CONSTRAINT measuremeta_new_pkey PRIMARY KEY (id);
 
 
---
--- Name: places places_new_pkey; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
---
-
 ALTER TABLE ONLY macrostrat.places
     ADD CONSTRAINT places_new_pkey PRIMARY KEY (place_id);
 
-
---
--- Name: refs refs_new_pkey1; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
---
 
 ALTER TABLE ONLY macrostrat.refs
     ADD CONSTRAINT refs_new_pkey1 PRIMARY KEY (id);
 
 
---
--- Name: strat_names_meta strat_names_meta_new_pkey1; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
---
-
 ALTER TABLE ONLY macrostrat.strat_names_meta
     ADD CONSTRAINT strat_names_meta_new_pkey1 PRIMARY KEY (concept_id);
 
-
---
--- Name: strat_names strat_names_new_pkey; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
---
 
 ALTER TABLE ONLY macrostrat.strat_names
     ADD CONSTRAINT strat_names_new_pkey PRIMARY KEY (id);
 
 
---
--- Name: timescales timescales_new_pkey1; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
---
-
 ALTER TABLE ONLY macrostrat.timescales
     ADD CONSTRAINT timescales_new_pkey1 PRIMARY KEY (id);
 
-
---
--- Name: unit_econs unit_econs_new_pkey1; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
---
 
 ALTER TABLE ONLY macrostrat.unit_econs
     ADD CONSTRAINT unit_econs_new_pkey1 PRIMARY KEY (id);
 
 
---
--- Name: unit_environs unit_environs_new_pkey1; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
---
-
 ALTER TABLE ONLY macrostrat.unit_environs
     ADD CONSTRAINT unit_environs_new_pkey1 PRIMARY KEY (id);
 
-
---
--- Name: unit_lith_atts unit_lith_atts_new_pkey1; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
---
 
 ALTER TABLE ONLY macrostrat.unit_lith_atts
     ADD CONSTRAINT unit_lith_atts_new_pkey1 PRIMARY KEY (id);
 
 
---
--- Name: unit_liths unit_liths_new_pkey1; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
---
-
 ALTER TABLE ONLY macrostrat.unit_liths
     ADD CONSTRAINT unit_liths_new_pkey1 PRIMARY KEY (id);
 
-
---
--- Name: unit_measures unit_measures_new_pkey; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
---
 
 ALTER TABLE ONLY macrostrat.unit_measures
     ADD CONSTRAINT unit_measures_new_pkey PRIMARY KEY (id);
 
 
---
--- Name: unit_strat_names unit_strat_names_new_pkey1; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
---
-
 ALTER TABLE ONLY macrostrat.unit_strat_names
     ADD CONSTRAINT unit_strat_names_new_pkey1 PRIMARY KEY (id);
 
-
---
--- Name: units units_new_pkey; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
---
 
 ALTER TABLE ONLY macrostrat.units
     ADD CONSTRAINT units_new_pkey PRIMARY KEY (id);
 
 
---
--- Name: units_sections units_sections_new_pkey; Type: CONSTRAINT; Schema: macrostrat; Owner: postgres
---
-
 ALTER TABLE ONLY macrostrat.units_sections
     ADD CONSTRAINT units_sections_new_pkey PRIMARY KEY (id);
 
-
---
--- Name: large large_pkey; Type: CONSTRAINT; Schema: maps; Owner: postgres
---
 
 ALTER TABLE ONLY maps.large
     ADD CONSTRAINT large_pkey PRIMARY KEY (map_id);
 
 
---
--- Name: legend_liths legend_liths_legend_id_lith_id_basis_col_key; Type: CONSTRAINT; Schema: maps; Owner: postgres
---
-
 ALTER TABLE ONLY maps.legend_liths
     ADD CONSTRAINT legend_liths_legend_id_lith_id_basis_col_key UNIQUE (legend_id, lith_id, basis_col);
 
-
---
--- Name: legend legend_pkey; Type: CONSTRAINT; Schema: maps; Owner: postgres
---
 
 ALTER TABLE ONLY maps.legend
     ADD CONSTRAINT legend_pkey PRIMARY KEY (legend_id);
 
 
---
--- Name: map_legend map_legend_legend_id_map_id_key; Type: CONSTRAINT; Schema: maps; Owner: postgres
---
-
 ALTER TABLE ONLY maps.map_legend
     ADD CONSTRAINT map_legend_legend_id_map_id_key UNIQUE (legend_id, map_id);
 
-
---
--- Name: medium medium_pkey; Type: CONSTRAINT; Schema: maps; Owner: postgres
---
 
 ALTER TABLE ONLY maps.medium
     ADD CONSTRAINT medium_pkey PRIMARY KEY (map_id);
 
 
---
--- Name: small small_pkey; Type: CONSTRAINT; Schema: maps; Owner: postgres
---
-
 ALTER TABLE ONLY maps.small
     ADD CONSTRAINT small_pkey PRIMARY KEY (map_id);
 
-
---
--- Name: sources sources_source_id_key; Type: CONSTRAINT; Schema: maps; Owner: postgres
---
 
 ALTER TABLE ONLY maps.sources
     ADD CONSTRAINT sources_source_id_key UNIQUE (source_id);
 
 
---
--- Name: tiny tiny_pkey; Type: CONSTRAINT; Schema: maps; Owner: postgres
---
-
 ALTER TABLE ONLY maps.tiny
     ADD CONSTRAINT tiny_pkey PRIMARY KEY (map_id);
 
-
---
--- Name: impervious impervious_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
---
 
 ALTER TABLE ONLY public.impervious
     ADD CONSTRAINT impervious_pkey PRIMARY KEY (rid);
 
 
---
--- Name: land land_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
 ALTER TABLE ONLY public.land
     ADD CONSTRAINT land_pkey PRIMARY KEY (gid);
 
-
---
--- Name: macrostrat_union macrostrat_union_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
---
 
 ALTER TABLE ONLY public.macrostrat_union
     ADD CONSTRAINT macrostrat_union_pkey PRIMARY KEY (id);
 
 
---
--- Name: test_rgeom test_rgeom_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
 ALTER TABLE ONLY public.test_rgeom
     ADD CONSTRAINT test_rgeom_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ab_spray_lines ab_spray_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ab_spray_lines
     ADD CONSTRAINT ab_spray_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ab_spray ab_spray_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ab_spray
     ADD CONSTRAINT ab_spray_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ab_spray_points ab_spray_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ab_spray_points
     ADD CONSTRAINT ab_spray_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ab_stimson_lines ab_stimson_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ab_stimson_lines
     ADD CONSTRAINT ab_stimson_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ab_stimson ab_stimson_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ab_stimson
     ADD CONSTRAINT ab_stimson_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ab_stimson_points ab_stimson_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ab_stimson_points
     ADD CONSTRAINT ab_stimson_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: afghan_lines afghan_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.afghan_lines
     ADD CONSTRAINT afghan_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: afghan afghan_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.afghan
     ADD CONSTRAINT afghan_pkey PRIMARY KEY (gid);
 
-
---
--- Name: africa africa_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.africa
     ADD CONSTRAINT africa_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ak_lines ak_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ak_lines
     ADD CONSTRAINT ak_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ak ak_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ak
     ADD CONSTRAINT ak_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ca_alameda_lines alam_fault_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_alameda_lines
     ADD CONSTRAINT alam_fault_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ca_alameda alamedageology2_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_alameda
     ADD CONSTRAINT alamedageology2_pkey PRIMARY KEY (gid);
 
 
---
--- Name: endikai_lines albanel_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.endikai_lines
     ADD CONSTRAINT albanel_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: alberta_faults alberta_faults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.alberta_faults
     ADD CONSTRAINT alberta_faults_pkey PRIMARY KEY (gid);
 
 
---
--- Name: alberta alberta_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.alberta
     ADD CONSTRAINT alberta_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ar_buffalo_nriver_lines ar_buffalo_nriver_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ar_buffalo_nriver_lines
     ADD CONSTRAINT ar_buffalo_nriver_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ar_buffalo_nriver ar_buffalo_nriver_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ar_buffalo_nriver
     ADD CONSTRAINT ar_buffalo_nriver_pkey PRIMARY KEY (gid);
 
-
---
--- Name: arctic arctic_newgeom_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.arctic
     ADD CONSTRAINT arctic_newgeom_pkey PRIMARY KEY (gid);
 
 
---
--- Name: arctic_orig arctic_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.arctic_orig
     ADD CONSTRAINT arctic_pkey PRIMARY KEY (gid);
 
-
---
--- Name: arctic_lines arcticrus_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.arctic_lines
     ADD CONSTRAINT arcticrus_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: australia2_faults australia2_faults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.australia2_faults
     ADD CONSTRAINT australia2_faults_pkey PRIMARY KEY (gid);
 
-
---
--- Name: australia2 australia2_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.australia2
     ADD CONSTRAINT australia2_pkey PRIMARY KEY (gid);
 
 
---
--- Name: australia_faults australia_faults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.australia_faults
     ADD CONSTRAINT australia_faults_pkey PRIMARY KEY (gid);
 
-
---
--- Name: australia australia_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.australia
     ADD CONSTRAINT australia_pkey PRIMARY KEY (gid);
 
 
---
--- Name: az_fredonia_lines az_fredonia_lines_one_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.az_fredonia_lines
     ADD CONSTRAINT az_fredonia_lines_one_pkey PRIMARY KEY (gid);
 
-
---
--- Name: az_fredonia_points az_fredonia_point_two_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.az_fredonia_points
     ADD CONSTRAINT az_fredonia_point_two_pkey PRIMARY KEY (gid);
 
 
---
--- Name: az_fredonia az_fredonia_polygon_one_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.az_fredonia
     ADD CONSTRAINT az_fredonia_polygon_one_pkey PRIMARY KEY (gid);
 
-
---
--- Name: az_whitehills_lines az_whitehills_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.az_whitehills_lines
     ADD CONSTRAINT az_whitehills_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: az_whitehills az_whitehills_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.az_whitehills
     ADD CONSTRAINT az_whitehills_pkey PRIMARY KEY (gid);
 
-
---
--- Name: az_whitehills_points az_whitehills_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.az_whitehills_points
     ADD CONSTRAINT az_whitehills_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: az_winslow_lines az_winslow_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.az_winslow_lines
     ADD CONSTRAINT az_winslow_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: az_winslow az_winslow_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.az_winslow
     ADD CONSTRAINT az_winslow_pkey PRIMARY KEY (gid);
 
 
---
--- Name: az_winslow_points az_winslow_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.az_winslow_points
     ADD CONSTRAINT az_winslow_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: bc_2017_lines bc_2017_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_2017_lines
     ADD CONSTRAINT bc_2017_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: bc_2017 bc_2017_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_2017
     ADD CONSTRAINT bc_2017_pkey PRIMARY KEY (gid);
 
-
---
--- Name: bc_2017_quat bc_2017_quat_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_2017_quat
     ADD CONSTRAINT bc_2017_quat_pkey PRIMARY KEY (gid);
 
 
---
--- Name: bc_abruzzi_lines bc_abruzzi_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_abruzzi_lines
     ADD CONSTRAINT bc_abruzzi_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: bc_abruzzi bc_abruzzi_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_abruzzi
     ADD CONSTRAINT bc_abruzzi_pkey PRIMARY KEY (gid);
 
 
---
--- Name: bc_abruzzi_points bc_abruzzi_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_abruzzi_points
     ADD CONSTRAINT bc_abruzzi_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: bc_assini_lines bc_assini_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_assini_lines
     ADD CONSTRAINT bc_assini_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: bc_assini bc_assini_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_assini
     ADD CONSTRAINT bc_assini_pkey PRIMARY KEY (gid);
 
-
---
--- Name: bc_assini_points bc_assini_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_assini_points
     ADD CONSTRAINT bc_assini_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: bc_chinook_lines bc_chinook_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_chinook_lines
     ADD CONSTRAINT bc_chinook_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: bc_chinook bc_chinook_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_chinook
     ADD CONSTRAINT bc_chinook_pkey PRIMARY KEY (gid);
 
 
---
--- Name: bc_chinook_points bc_chinook_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_chinook_points
     ADD CONSTRAINT bc_chinook_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: bc_eight_lines bc_eight_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_eight_lines
     ADD CONSTRAINT bc_eight_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: bc_eight bc_eight_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_eight
     ADD CONSTRAINT bc_eight_pkey PRIMARY KEY (gid);
 
-
---
--- Name: bc_eight_points bc_eight_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_eight_points
     ADD CONSTRAINT bc_eight_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: bc_faults bc_faults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_faults
     ADD CONSTRAINT bc_faults_pkey PRIMARY KEY (gid);
 
-
---
--- Name: bc_fernie_lines bc_fernie_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_fernie_lines
     ADD CONSTRAINT bc_fernie_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: bc_fernie bc_fernie_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_fernie
     ADD CONSTRAINT bc_fernie_pkey PRIMARY KEY (gid);
 
-
---
--- Name: bc_fernie_points bc_fernie_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_fernie_points
     ADD CONSTRAINT bc_fernie_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: bc_grayling_lines bc_grayling_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_grayling_lines
     ADD CONSTRAINT bc_grayling_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: bc_grayling bc_grayling_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_grayling
     ADD CONSTRAINT bc_grayling_pkey PRIMARY KEY (gid);
 
 
---
--- Name: bc_grayling_points bc_grayling_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_grayling_points
     ADD CONSTRAINT bc_grayling_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: bc_kananaskis_lines bc_kananaskis_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_kananaskis_lines
     ADD CONSTRAINT bc_kananaskis_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: bc_kananaskis bc_kananaskis_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_kananaskis
     ADD CONSTRAINT bc_kananaskis_pkey PRIMARY KEY (gid);
 
-
---
--- Name: bc_kananaskis_points bc_kananaskis_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_kananaskis_points
     ADD CONSTRAINT bc_kananaskis_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: bc bc_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc
     ADD CONSTRAINT bc_pkey PRIMARY KEY (gid);
 
-
---
--- Name: bc_prudence_lines bc_prudence_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_prudence_lines
     ADD CONSTRAINT bc_prudence_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: bc_prudence bc_prudence_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_prudence
     ADD CONSTRAINT bc_prudence_pkey PRIMARY KEY (gid);
 
-
---
--- Name: bc_prudence_points bc_prudence_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_prudence_points
     ADD CONSTRAINT bc_prudence_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: bc_redfern_lines bc_redfern_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_redfern_lines
     ADD CONSTRAINT bc_redfern_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: bc_redfern bc_redfern_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_redfern
     ADD CONSTRAINT bc_redfern_pkey PRIMARY KEY (gid);
 
 
---
--- Name: bc_redfern_points bc_redfern_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_redfern_points
     ADD CONSTRAINT bc_redfern_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: bc_tangle_lines bc_tangle_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_tangle_lines
     ADD CONSTRAINT bc_tangle_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: bc_tangle bc_tangle_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_tangle
     ADD CONSTRAINT bc_tangle_pkey PRIMARY KEY (gid);
 
-
---
--- Name: bc_tangle_points bc_tangle_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_tangle_points
     ADD CONSTRAINT bc_tangle_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: bc_toad_lines bc_toad_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_toad_lines
     ADD CONSTRAINT bc_toad_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: bc_toad_ne_lines bc_toad_ne_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_toad_ne_lines
     ADD CONSTRAINT bc_toad_ne_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: bc_toad_ne bc_toad_ne_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_toad_ne
     ADD CONSTRAINT bc_toad_ne_pkey PRIMARY KEY (gid);
 
-
---
--- Name: bc_toad_ne_points bc_toad_ne_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_toad_ne_points
     ADD CONSTRAINT bc_toad_ne_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: bc_toad bc_toad_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_toad
     ADD CONSTRAINT bc_toad_pkey PRIMARY KEY (gid);
 
-
---
--- Name: bc_toad_points bc_toad_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_toad_points
     ADD CONSTRAINT bc_toad_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: bc_ware_lines bc_ware_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bc_ware_lines
     ADD CONSTRAINT bc_ware_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: bc_ware bc_ware_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bc_ware
     ADD CONSTRAINT bc_ware_pkey PRIMARY KEY (gid);
 
 
---
--- Name: bigbend_lines bigbend_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.bigbend_lines
     ADD CONSTRAINT bigbend_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: bigbend bigbend_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.bigbend
     ADD CONSTRAINT bigbend_pkey PRIMARY KEY (gid);
 
 
---
--- Name: blackhills_lines blackhills_foldsfaults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.blackhills_lines
     ADD CONSTRAINT blackhills_foldsfaults_pkey PRIMARY KEY (gid);
 
-
---
--- Name: blackhills blackhillsgeology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.blackhills
     ADD CONSTRAINT blackhillsgeology_pkey PRIMARY KEY (gid);
 
 
---
--- Name: boulder_lines boulder_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.boulder_lines
     ADD CONSTRAINT boulder_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: boulder boulder_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.boulder
     ADD CONSTRAINT boulder_pkey PRIMARY KEY (gid);
 
 
---
--- Name: brazil brazil_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.brazil
     ADD CONSTRAINT brazil_pkey PRIMARY KEY (gid);
 
-
---
--- Name: brazil_sp brazil_sp_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.brazil_sp
     ADD CONSTRAINT brazil_sp_pkey PRIMARY KEY (gid);
 
 
---
--- Name: brycecanyon_lines brycecanyon_faults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.brycecanyon_lines
     ADD CONSTRAINT brycecanyon_faults_pkey PRIMARY KEY (gid);
 
-
---
--- Name: brycecanyonnationalparkgeology brycecanyonnationalparkgeology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.brycecanyonnationalparkgeology
     ADD CONSTRAINT brycecanyonnationalparkgeology_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ca_carizoplain_lines ca_carizonplains_geo_arc_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_carizoplain_lines
     ADD CONSTRAINT ca_carizonplains_geo_arc_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ca_carizoplain ca_carizonplains_geo_polygon_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_carizoplain
     ADD CONSTRAINT ca_carizonplains_geo_polygon_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ca_carizoplain_points ca_carizonplains_point_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_carizoplain_points
     ADD CONSTRAINT ca_carizonplains_point_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ca_elcajon_lines ca_elcajon_geo_arc_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_elcajon_lines
     ADD CONSTRAINT ca_elcajon_geo_arc_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ca_elcajon ca_elcajon_geo_polygon_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_elcajon
     ADD CONSTRAINT ca_elcajon_geo_polygon_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ca_funeralmtns_lines ca_funeralmtns_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_funeralmtns_lines
     ADD CONSTRAINT ca_funeralmtns_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ca_funeralmtns ca_funeralmtns_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_funeralmtns
     ADD CONSTRAINT ca_funeralmtns_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ca_funeralmtns_points ca_funeralmtns_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_funeralmtns_points
     ADD CONSTRAINT ca_funeralmtns_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ca_marin_lines_nad27 ca_marin_lines_nad27_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_marin_lines_nad27
     ADD CONSTRAINT ca_marin_lines_nad27_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ca_marin_nad27 ca_marin_nad27_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_marin_nad27
     ADD CONSTRAINT ca_marin_nad27_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ca_monterey_lines ca_monterey_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_monterey_lines
     ADD CONSTRAINT ca_monterey_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ca_monterey ca_monterrey_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_monterey
     ADD CONSTRAINT ca_monterrey_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ca_napa_lines ca_napa_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_napa_lines
     ADD CONSTRAINT ca_napa_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ca_napa ca_napa_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_napa
     ADD CONSTRAINT ca_napa_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ca_napa_points ca_napa_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_napa_points
     ADD CONSTRAINT ca_napa_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ca_point_reyes ca_point_reyes_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_point_reyes
     ADD CONSTRAINT ca_point_reyes_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ca_providence_mtns_lines ca_providence_mtns_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_providence_mtns_lines
     ADD CONSTRAINT ca_providence_mtns_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ca_providence_mtns ca_providence_mtns_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_providence_mtns
     ADD CONSTRAINT ca_providence_mtns_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ca_providence_mtns_points ca_providence_mtns_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_providence_mtns_points
     ADD CONSTRAINT ca_providence_mtns_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ca_providencemountains_lines ca_providencemountains_arc_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_providencemountains_lines
     ADD CONSTRAINT ca_providencemountains_arc_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ca_providencemountains ca_providencemountains_polygon_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_providencemountains
     ADD CONSTRAINT ca_providencemountains_polygon_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ca_santabarbara_lines ca_santabarbara_geol_arc_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_santabarbara_lines
     ADD CONSTRAINT ca_santabarbara_geol_arc_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ca_santabarbara ca_santabarbara_geol_polygon_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_santabarbara
     ADD CONSTRAINT ca_santabarbara_geol_polygon_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ca_santabarbara_points ca_santabarbara_structure_point_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_santabarbara_points
     ADD CONSTRAINT ca_santabarbara_structure_point_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ca_yosemite_lines ca_yosemite_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_yosemite_lines
     ADD CONSTRAINT ca_yosemite_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ca_yosemite_units ca_yosemite_units_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_yosemite_units
     ADD CONSTRAINT ca_yosemite_units_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ca_cambria_lines cambria_faults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_cambria_lines
     ADD CONSTRAINT cambria_faults_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ca_cambria cambriacageology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_cambria
     ADD CONSTRAINT cambriacageology_pkey PRIMARY KEY (gid);
 
 
---
--- Name: catalunya50k_lines catalunya50k_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.catalunya50k_lines
     ADD CONSTRAINT catalunya50k_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: catalunya50k catalunya50k_redo_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.catalunya50k
     ADD CONSTRAINT catalunya50k_redo_pkey PRIMARY KEY (gid);
 
 
---
--- Name: co_arkansa_riv_lines co_arkansa_riv_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.co_arkansa_riv_lines
     ADD CONSTRAINT co_arkansa_riv_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: co_arkansa_riv co_arkansa_riv_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.co_arkansa_riv
     ADD CONSTRAINT co_arkansa_riv_pkey PRIMARY KEY (gid);
 
 
---
--- Name: co_arkansa_riv_points co_arkansa_riv_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.co_arkansa_riv_points
     ADD CONSTRAINT co_arkansa_riv_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: co_ftcollins_lines co_ftcollins_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.co_ftcollins_lines
     ADD CONSTRAINT co_ftcollins_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: co_ftcollins co_ftcollins_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.co_ftcollins
     ADD CONSTRAINT co_ftcollins_pkey PRIMARY KEY (gid);
 
-
---
--- Name: co_ftcollins_points co_ftcollins_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.co_ftcollins_points
     ADD CONSTRAINT co_ftcollins_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: co_greatsanddunes_lines co_greatsanddunes_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.co_greatsanddunes_lines
     ADD CONSTRAINT co_greatsanddunes_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: co_homestake_lines co_homestake_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.co_homestake_lines
     ADD CONSTRAINT co_homestake_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: co_homestake co_homestake_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.co_homestake
     ADD CONSTRAINT co_homestake_pkey PRIMARY KEY (gid);
 
-
---
--- Name: co_homestake_points co_homestake_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.co_homestake_points
     ADD CONSTRAINT co_homestake_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: colombia_lines colombia_faults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.colombia_lines
     ADD CONSTRAINT colombia_faults_pkey PRIMARY KEY (gid);
 
-
---
--- Name: colombia colombia_geo_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.colombia
     ADD CONSTRAINT colombia_geo_pkey PRIMARY KEY (gid);
 
 
---
--- Name: congareenationalpark_lines congaree_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.congareenationalpark_lines
     ADD CONSTRAINT congaree_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: congareenationalparkgeology congareenationalparkgeology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.congareenationalparkgeology
     ADD CONSTRAINT congareenationalparkgeology_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ca_contracosta_lines contracostafaults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_contracosta_lines
     ADD CONSTRAINT contracostafaults_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ca_contracosta contracostageology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_contracosta
     ADD CONSTRAINT contracostageology_pkey PRIMARY KEY (gid);
 
 
---
--- Name: dane_co dane_co_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.dane_co
     ADD CONSTRAINT dane_co_pkey PRIMARY KEY (gid);
 
-
---
--- Name: dane_faults dane_faults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.dane_faults
     ADD CONSTRAINT dane_faults_pkey PRIMARY KEY (gid);
 
 
---
--- Name: dc_lines dc_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.dc_lines
     ADD CONSTRAINT dc_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ut_delta_lines delta_faults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_delta_lines
     ADD CONSTRAINT delta_faults_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ut_delta deltautah_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_delta
     ADD CONSTRAINT deltautah_pkey PRIMARY KEY (gid);
 
-
---
--- Name: denver_lines denver_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.denver_lines
     ADD CONSTRAINT denver_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: denver denver_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.denver
     ADD CONSTRAINT denver_pkey PRIMARY KEY (gid);
 
-
---
--- Name: co_denver denvergeology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.co_denver
     ADD CONSTRAINT denvergeology_pkey PRIMARY KEY (gid);
 
 
---
--- Name: devils_tower devils_tower_geo_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.devils_tower
     ADD CONSTRAINT devils_tower_geo_pkey PRIMARY KEY (gid);
 
-
---
--- Name: devils_tower_lines devils_tower_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.devils_tower_lines
     ADD CONSTRAINT devils_tower_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ut_dutchjohn_lines dutchjohn_faults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_dutchjohn_lines
     ADD CONSTRAINT dutchjohn_faults_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ut_dutchjohn dutchjohn_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_dutchjohn
     ADD CONSTRAINT dutchjohn_pkey PRIMARY KEY (gid);
 
 
---
--- Name: endikai endikai_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.endikai
     ADD CONSTRAINT endikai_pkey PRIMARY KEY (gid);
 
-
---
--- Name: europe_5m_lines europe_5m_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.europe_5m_lines
     ADD CONSTRAINT europe_5m_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: europe_5m europe_5m_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.europe_5m
     ADD CONSTRAINT europe_5m_pkey PRIMARY KEY (gid);
 
-
---
--- Name: gmna_faults faults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.gmna_faults
     ADD CONSTRAINT faults_pkey PRIMARY KEY (gid);
 
 
---
--- Name: florissant_lines florissant-lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.florissant_lines
     ADD CONSTRAINT "florissant-lines_pkey" PRIMARY KEY (gid);
 
-
---
--- Name: florissant florissant_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.florissant
     ADD CONSTRAINT florissant_pkey PRIMARY KEY (gid);
 
 
---
--- Name: france_lines france_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.france_lines
     ADD CONSTRAINT france_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: france france_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.france
     ADD CONSTRAINT france_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wv_gauley_river gauleyriver_geo_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wv_gauley_river
     ADD CONSTRAINT gauleyriver_geo_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wv_gauley_river_lines gauleyriver_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wv_gauley_river_lines
     ADD CONSTRAINT gauleyriver_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: geo_lgm geo_ice_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.geo_lgm
     ADD CONSTRAINT geo_ice_pkey PRIMARY KEY (gid);
 
-
---
--- Name: geo_regions_canada geo_regions_canada_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.geo_regions_canada
     ADD CONSTRAINT geo_regions_canada_pkey PRIMARY KEY (gid);
 
 
---
--- Name: geo_regions_europe geo_regions_europe_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.geo_regions_europe
     ADD CONSTRAINT geo_regions_europe_pkey PRIMARY KEY (gid);
 
-
---
--- Name: geo_regions geo_regions_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.geo_regions
     ADD CONSTRAINT geo_regions_pkey PRIMARY KEY (gid);
 
 
---
--- Name: geo_regions_us geo_regions_us_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.geo_regions_us
     ADD CONSTRAINT geo_regions_us_pkey PRIMARY KEY (gid);
 
-
---
--- Name: german_nuremburg_lines german_nuremburg_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.german_nuremburg_lines
     ADD CONSTRAINT german_nuremburg_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: german_nuremburg german_nurenburg_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.german_nuremburg
     ADD CONSTRAINT german_nurenburg_pkey PRIMARY KEY (gid);
 
-
---
--- Name: germany germanygeology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.germany
     ADD CONSTRAINT germanygeology_pkey PRIMARY KEY (gid);
 
 
---
--- Name: glacier_np_lines glacier_dikes_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.glacier_np_lines
     ADD CONSTRAINT glacier_dikes_pkey PRIMARY KEY (gid);
 
-
---
--- Name: glaciernationalparkgeology glaciernationalparkgeology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.glaciernationalparkgeology
     ADD CONSTRAINT glaciernationalparkgeology_pkey PRIMARY KEY (gid);
 
 
---
--- Name: germany_lines glines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.germany_lines
     ADD CONSTRAINT glines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: global2_lines global2_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.global2_lines
     ADD CONSTRAINT global2_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: global2 global2_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.global2
     ADD CONSTRAINT global2_pkey PRIMARY KEY (gid);
 
-
---
--- Name: global_ecoregions global_ecoregions_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.global_ecoregions
     ADD CONSTRAINT global_ecoregions_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ma_glouster gloucester_rockport_geo2_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ma_glouster
     ADD CONSTRAINT gloucester_rockport_geo2_pkey PRIMARY KEY (gid);
 
-
---
--- Name: gmus2_lines gmus2_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.gmus2_lines
     ADD CONSTRAINT gmus2_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: gmus2 gmus2_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.gmus2
     ADD CONSTRAINT gmus2_pkey PRIMARY KEY (gid);
 
-
---
--- Name: gmus_faults gmus_faults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.gmus_faults
     ADD CONSTRAINT gmus_faults_pkey PRIMARY KEY (gid);
 
 
---
--- Name: co_grandjunction grand_junction_geo_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.co_grandjunction
     ADD CONSTRAINT grand_junction_geo_pkey PRIMARY KEY (gid);
 
-
---
--- Name: co_grandjunction_lines grand_junction_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.co_grandjunction_lines
     ADD CONSTRAINT grand_junction_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: grandcanyon_lines grandcanyon_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.grandcanyon_lines
     ADD CONSTRAINT grandcanyon_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: grandcanyon grandcanyon_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.grandcanyon
     ADD CONSTRAINT grandcanyon_pkey PRIMARY KEY (gid);
 
 
---
--- Name: grandcanyon_points grandcanyon_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.grandcanyon_points
     ADD CONSTRAINT grandcanyon_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: greatbasinnationalpark_lines greatbasin_contacts_faults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.greatbasinnationalpark_lines
     ADD CONSTRAINT greatbasin_contacts_faults_pkey PRIMARY KEY (gid);
 
 
---
--- Name: greatbasinnationalparkgeology greatbasinnationalparkgeology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.greatbasinnationalparkgeology
     ADD CONSTRAINT greatbasinnationalparkgeology_pkey PRIMARY KEY (gid);
 
-
---
--- Name: al_greenwood_lines greenwood_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.al_greenwood_lines
     ADD CONSTRAINT greenwood_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: al_greenwood_points greenwood_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.al_greenwood_points
     ADD CONSTRAINT greenwood_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: al_greenwood greenwoodalgeology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.al_greenwood
     ADD CONSTRAINT greenwoodalgeology_pkey PRIMARY KEY (gid);
 
 
---
--- Name: co_greatsanddunes gsd_co_geology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.co_greatsanddunes
     ADD CONSTRAINT gsd_co_geology_pkey PRIMARY KEY (gid);
 
-
---
--- Name: guam guamgeology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.guam
     ADD CONSTRAINT guamgeology_pkey PRIMARY KEY (gid);
 
 
---
--- Name: gumo_lines gumo_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.gumo_lines
     ADD CONSTRAINT gumo_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: gumo gumo_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.gumo
     ADD CONSTRAINT gumo_pkey PRIMARY KEY (gid);
 
 
---
--- Name: gumo_points gumo_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.gumo_points
     ADD CONSTRAINT gumo_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ar_hasty hasty_geo_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ar_hasty
     ADD CONSTRAINT hasty_geo_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ar_hasty_points hasty_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ar_hasty_points
     ADD CONSTRAINT hasty_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ar_hasty_lines hastylines2_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ar_hasty_lines
     ADD CONSTRAINT hastylines2_pkey PRIMARY KEY (gid);
 
 
---
--- Name: hawaii_lines hawaii_dikes_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.hawaii_lines
     ADD CONSTRAINT hawaii_dikes_pkey PRIMARY KEY (gid);
 
-
---
--- Name: hawaii hawaii_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.hawaii
     ADD CONSTRAINT hawaii_pkey PRIMARY KEY (gid);
 
 
---
--- Name: honduras honduras_geo_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.honduras
     ADD CONSTRAINT honduras_geo_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ar_hotsprings_np_lines hot_springs_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ar_hotsprings_np_lines
     ADD CONSTRAINT hot_springs_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ar_hotsprings_np_points hot_springs_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ar_hotsprings_np_points
     ADD CONSTRAINT hot_springs_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ar_hotsprings_np hotspringsnationalparkgeology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ar_hotsprings_np
     ADD CONSTRAINT hotspringsnationalparkgeology_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ut_huntington_lines huntington_faults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_huntington_lines
     ADD CONSTRAINT huntington_faults_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ut_huntington huntingtonutahgeology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_huntington
     ADD CONSTRAINT huntingtonutahgeology_pkey PRIMARY KEY (gid);
 
 
---
--- Name: id_arco_lines id_arco_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.id_arco_lines
     ADD CONSTRAINT id_arco_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: id_arco id_arco_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.id_arco
     ADD CONSTRAINT id_arco_pkey PRIMARY KEY (gid);
 
 
---
--- Name: id_bonners_lines id_bonners_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.id_bonners_lines
     ADD CONSTRAINT id_bonners_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: id_bonners id_bonners_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.id_bonners
     ADD CONSTRAINT id_bonners_pkey PRIMARY KEY (gid);
 
 
---
--- Name: id_deadwood_lines id_deadwood_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.id_deadwood_lines
     ADD CONSTRAINT id_deadwood_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: id_deadwood id_deadwood_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.id_deadwood
     ADD CONSTRAINT id_deadwood_pkey PRIMARY KEY (gid);
 
 
---
--- Name: id_deadwood_points id_deadwood_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.id_deadwood_points
     ADD CONSTRAINT id_deadwood_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: id_fairfield_lines id_fairfield_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.id_fairfield_lines
     ADD CONSTRAINT id_fairfield_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: id_fairfield id_fairfield_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.id_fairfield
     ADD CONSTRAINT id_fairfield_pkey PRIMARY KEY (gid);
 
-
---
--- Name: id_grangeville_lines id_grangeville_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.id_grangeville_lines
     ADD CONSTRAINT id_grangeville_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: id_grangeville id_grangeville_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.id_grangeville
     ADD CONSTRAINT id_grangeville_pkey PRIMARY KEY (gid);
 
-
---
--- Name: id_idahocity_lines id_idahocity_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.id_idahocity_lines
     ADD CONSTRAINT id_idahocity_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: id_idahocity id_idahocity_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.id_idahocity
     ADD CONSTRAINT id_idahocity_pkey PRIMARY KEY (gid);
 
-
---
--- Name: id_murphy_lines id_murphy_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.id_murphy_lines
     ADD CONSTRAINT id_murphy_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: id_murphy id_murphy_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.id_murphy
     ADD CONSTRAINT id_murphy_pkey PRIMARY KEY (gid);
 
-
---
--- Name: id_salmon_lines id_salmon_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.id_salmon_lines
     ADD CONSTRAINT id_salmon_lines_pkey PRIMARY KEY (objectid);
 
 
---
--- Name: id_salmon id_salmon_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.id_salmon
     ADD CONSTRAINT id_salmon_pkey PRIMARY KEY (objectid);
 
-
---
--- Name: id_sandpoint_lines id_sandpoint_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.id_sandpoint_lines
     ADD CONSTRAINT id_sandpoint_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: id_sandpoint id_sandpoint_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.id_sandpoint
     ADD CONSTRAINT id_sandpoint_pkey PRIMARY KEY (gid);
 
-
---
--- Name: id_twinfalls_lines id_twinfalls_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.id_twinfalls_lines
     ADD CONSTRAINT id_twinfalls_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: id_twinfalls id_twinfalls_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.id_twinfalls
     ADD CONSTRAINT id_twinfalls_pkey PRIMARY KEY (gid);
 
-
---
--- Name: in_allen in_allen_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.in_allen
     ADD CONSTRAINT in_allen_pkey PRIMARY KEY (gid);
 
 
---
--- Name: in_bartholomew in_bartholomew_units_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.in_bartholomew
     ADD CONSTRAINT in_bartholomew_units_pkey PRIMARY KEY (gid);
 
-
---
--- Name: in_lawrence_lines in_lawrence_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.in_lawrence_lines
     ADD CONSTRAINT in_lawrence_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: in_lawrence in_lawrence_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.in_lawrence
     ADD CONSTRAINT in_lawrence_pkey PRIMARY KEY (gid);
 
-
---
--- Name: in_marion in_marion_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.in_marion
     ADD CONSTRAINT in_marion_pkey PRIMARY KEY (gid);
 
 
---
--- Name: in_morresville_w in_morresville_w_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.in_morresville_w
     ADD CONSTRAINT in_morresville_w_pkey PRIMARY KEY (gid);
 
-
---
--- Name: in_swhitleyw in_swhitleyw_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.in_swhitleyw
     ADD CONSTRAINT in_swhitleyw_pkey PRIMARY KEY (gid);
 
 
---
--- Name: iowa_co_wi iowa_co_wi_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.iowa_co_wi
     ADD CONSTRAINT iowa_co_wi_pkey PRIMARY KEY (gid);
 
-
---
--- Name: iowa_lines iowa_lines2_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.iowa_lines
     ADD CONSTRAINT iowa_lines2_pkey PRIMARY KEY (gid);
 
 
---
--- Name: iowa iowa_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.iowa
     ADD CONSTRAINT iowa_pkey PRIMARY KEY (gid);
 
-
---
--- Name: iran_lines iran_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.iran_lines
     ADD CONSTRAINT iran_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: iran iran_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.iran
     ADD CONSTRAINT iran_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ar_jasper jaspergeo_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ar_jasper
     ADD CONSTRAINT jaspergeo_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ar_jasper_lines jasperlines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ar_jasper_lines
     ADD CONSTRAINT jasperlines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: joshuatree_faults joshuatree_faults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.joshuatree_faults
     ADD CONSTRAINT joshuatree_faults_pkey PRIMARY KEY (gid);
 
 
---
--- Name: joshuatree joshuatree_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.joshuatree
     ADD CONSTRAINT joshuatree_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ky24k_faults ky24k_faults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ky24k_faults
     ADD CONSTRAINT ky24k_faults_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ky24k ky24k_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ky24k
     ADD CONSTRAINT ky24k_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ky_descrip ky_descrip_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ky_descrip
     ADD CONSTRAINT ky_descrip_pkey PRIMARY KEY (id);
 
 
---
--- Name: wi_lacrosse lacrosse_geo_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wi_lacrosse
     ADD CONSTRAINT lacrosse_geo_pkey PRIMARY KEY (gid);
 
-
---
--- Name: lake_mead lake_mead_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.lake_mead
     ADD CONSTRAINT lake_mead_pkey PRIMARY KEY (gid);
 
 
---
--- Name: laketahoe laketahoe_geology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.laketahoe
     ADD CONSTRAINT laketahoe_geology_pkey PRIMARY KEY (gid);
 
-
---
--- Name: laketahoe_lines laketahoe_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.laketahoe_lines
     ADD CONSTRAINT laketahoe_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: laketahoe_point laketahoe_point_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.laketahoe_point
     ADD CONSTRAINT laketahoe_point_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wy_laramie laramie_geo_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_laramie
     ADD CONSTRAINT laramie_geo_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wy_laramie_lines laramie_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_laramie_lines
     ADD CONSTRAINT laramie_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: africa_lines lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.africa_lines
     ADD CONSTRAINT lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: lissadellaustralia lissadellaustralia_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.lissadellaustralia
     ADD CONSTRAINT lissadellaustralia_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ut_logan_lines logan_faults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_logan_lines
     ADD CONSTRAINT logan_faults_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ca_long_beach long_beach_ca_geo_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_long_beach
     ADD CONSTRAINT long_beach_ca_geo_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ca_long_beach_lines long_beach_ca_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_long_beach_lines
     ADD CONSTRAINT long_beach_ca_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ca_long_beach_points long_beach_ca_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_long_beach_points
     ADD CONSTRAINT long_beach_ca_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ca_los_angeles los_angeles_geo_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_los_angeles
     ADD CONSTRAINT los_angeles_geo_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ca_los_angeles_lines los_angeles_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_los_angeles_lines
     ADD CONSTRAINT los_angeles_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: manitoba_faults manitoba_faults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.manitoba_faults
     ADD CONSTRAINT manitoba_faults_pkey PRIMARY KEY (gid);
 
 
---
--- Name: manitoba manitoba_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.manitoba
     ADD CONSTRAINT manitoba_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ut_manti_lines manti_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_manti_lines
     ADD CONSTRAINT manti_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ut_manti mantiutgeology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_manti
     ADD CONSTRAINT mantiutgeology_pkey PRIMARY KEY (gid);
 
-
---
--- Name: saipan marianaislandsgeology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.saipan
     ADD CONSTRAINT marianaislandsgeology_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ca_marin marin_co_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_marin
     ADD CONSTRAINT marin_co_pkey PRIMARY KEY (gid);
 
-
---
--- Name: md_catocinfurnace_lines md_catocinfurnace_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.md_catocinfurnace_lines
     ADD CONSTRAINT md_catocinfurnace_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: md_catocinfurnace md_catocinfurnace_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.md_catocinfurnace
     ADD CONSTRAINT md_catocinfurnace_pkey PRIMARY KEY (gid);
 
-
---
--- Name: md_catocinfurnace_points md_catocinfurnace_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.md_catocinfurnace_points
     ADD CONSTRAINT md_catocinfurnace_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: md_clearspring_lines md_clearspring_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.md_clearspring_lines
     ADD CONSTRAINT md_clearspring_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: md_clearspring md_clearspring_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.md_clearspring
     ADD CONSTRAINT md_clearspring_pkey PRIMARY KEY (gid);
 
 
---
--- Name: md_clearspring_points md_clearspring_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.md_clearspring_points
     ADD CONSTRAINT md_clearspring_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: md_frederick_lines md_frederick_linestwo_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.md_frederick_lines
     ADD CONSTRAINT md_frederick_linestwo_pkey PRIMARY KEY (gid);
 
 
---
--- Name: md_frederick md_frederick_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.md_frederick
     ADD CONSTRAINT md_frederick_pkey PRIMARY KEY (gid);
 
-
---
--- Name: md_frederick_point md_frederick_point_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.md_frederick_point
     ADD CONSTRAINT md_frederick_point_pkey PRIMARY KEY (gid);
 
 
---
--- Name: md_keedysville md_keedysville_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.md_keedysville
     ADD CONSTRAINT md_keedysville_pkey PRIMARY KEY (gid);
 
-
---
--- Name: md_myerssmith_lines md_myerssmith_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.md_myerssmith_lines
     ADD CONSTRAINT md_myerssmith_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: md_myerssmith md_myerssmith_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.md_myerssmith
     ADD CONSTRAINT md_myerssmith_pkey PRIMARY KEY (gid);
 
-
---
--- Name: md_newwindsor_lines md_newwindsor_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.md_newwindsor_lines
     ADD CONSTRAINT md_newwindsor_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: md_newwindsor md_newwindsor_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.md_newwindsor
     ADD CONSTRAINT md_newwindsor_pkey PRIMARY KEY (gid);
 
-
---
--- Name: md_newwindsor_points md_newwindsor_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.md_newwindsor_points
     ADD CONSTRAINT md_newwindsor_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: md_western_lines md_western_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.md_western_lines
     ADD CONSTRAINT md_western_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: md_western md_western_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.md_western
     ADD CONSTRAINT md_western_pkey PRIMARY KEY (gid);
 
 
---
--- Name: mexico mexicogeology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.mexico
     ADD CONSTRAINT mexicogeology_pkey PRIMARY KEY (gid);
 
-
---
--- Name: mexico_lines mexicolines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.mexico_lines
     ADD CONSTRAINT mexicolines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: mn_houston_co_lines mn_houston_co_faults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.mn_houston_co_lines
     ADD CONSTRAINT mn_houston_co_faults_pkey PRIMARY KEY (gid);
 
-
---
--- Name: mn_houston_co mn_houston_co_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.mn_houston_co
     ADD CONSTRAINT mn_houston_co_pkey PRIMARY KEY (gid);
 
 
---
--- Name: mn_redwood_co_lines mn_redwood_co_faults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.mn_redwood_co_lines
     ADD CONSTRAINT mn_redwood_co_faults_pkey PRIMARY KEY (gid);
 
-
---
--- Name: mn_redwood_co mn_redwood_co_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.mn_redwood_co
     ADD CONSTRAINT mn_redwood_co_pkey PRIMARY KEY (gid);
 
 
---
--- Name: mn_washington_co_lines mn_washington_co_faults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.mn_washington_co_lines
     ADD CONSTRAINT mn_washington_co_faults_pkey PRIMARY KEY (gid);
 
-
---
--- Name: mn_washington_co mn_washington_co_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.mn_washington_co
     ADD CONSTRAINT mn_washington_co_pkey PRIMARY KEY (gid);
 
 
---
--- Name: mn_winona_co_lines mn_winona_co_fold_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.mn_winona_co_lines
     ADD CONSTRAINT mn_winona_co_fold_pkey PRIMARY KEY (gid);
 
-
---
--- Name: mn_winona_co mn_winona_co_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.mn_winona_co
     ADD CONSTRAINT mn_winona_co_pkey PRIMARY KEY (gid);
 
 
---
--- Name: az_mohave mohaveazgeology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.az_mohave
     ADD CONSTRAINT mohaveazgeology_pkey PRIMARY KEY (gid);
 
-
---
--- Name: az_peachsprings_lines mohavecoconino_faults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.az_peachsprings_lines
     ADD CONSTRAINT mohavecoconino_faults_pkey PRIMARY KEY (gid);
 
 
---
--- Name: az_peachsprings mohavecoconinoazgeology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.az_peachsprings
     ADD CONSTRAINT mohavecoconinoazgeology_pkey PRIMARY KEY (gid);
 
-
---
--- Name: az_mohave_lines mohavefault_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.az_mohave_lines
     ADD CONSTRAINT mohavefault_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: mt_trumbull_lines mt_trumbull_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.mt_trumbull_lines
     ADD CONSTRAINT mt_trumbull_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: mt_trumbull mt_trumbull_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.mt_trumbull
     ADD CONSTRAINT mt_trumbull_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ut_nephi_lines nephi_faults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_nephi_lines
     ADD CONSTRAINT nephi_faults_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ut_nephi nephiutahgeology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_nephi
     ADD CONSTRAINT nephiutahgeology_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ca_northeastsanfran_lines nesffaults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_northeastsanfran_lines
     ADD CONSTRAINT nesffaults_pkey PRIMARY KEY (gid);
 
-
---
--- Name: new_river_gorge_lines new_river_gorge_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.new_river_gorge_lines
     ADD CONSTRAINT new_river_gorge_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: new_river_gorge newrivergorge_geo_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.new_river_gorge
     ADD CONSTRAINT newrivergorge_geo_pkey PRIMARY KEY (gid);
 
-
---
--- Name: newzealand_faults newzealand_faults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.newzealand_faults
     ADD CONSTRAINT newzealand_faults_pkey PRIMARY KEY (gid);
 
 
---
--- Name: newzealand newzealand_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.newzealand
     ADD CONSTRAINT newzealand_pkey PRIMARY KEY (gid);
 
-
---
--- Name: newzealandq_dikes newzealandq_dikes_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.newzealandq_dikes
     ADD CONSTRAINT newzealandq_dikes_pkey PRIMARY KEY (gid);
 
 
---
--- Name: newzealandq_faults newzealandq_faults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.newzealandq_faults
     ADD CONSTRAINT newzealandq_faults_pkey PRIMARY KEY (gid);
 
-
---
--- Name: newzealandq newzealandq_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.newzealandq
     ADD CONSTRAINT newzealandq_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nh_lisbon_lines nh_lisbon_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nh_lisbon_lines
     ADD CONSTRAINT nh_lisbon_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nh_lisbon nh_lisbon_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nh_lisbon
     ADD CONSTRAINT nh_lisbon_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nh_lisbon_points nh_lisbon_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nh_lisbon_points
     ADD CONSTRAINT nh_lisbon_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nl_baieverte_lines nl_baieverte_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nl_baieverte_lines
     ADD CONSTRAINT nl_baieverte_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nl_baieverte nl_baieverte_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nl_baieverte
     ADD CONSTRAINT nl_baieverte_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nl_baieverte_points nl_baieverte_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nl_baieverte_points
     ADD CONSTRAINT nl_baieverte_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nl_king_lines nl_king_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nl_king_lines
     ADD CONSTRAINT nl_king_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nl_king nl_king_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nl_king
     ADD CONSTRAINT nl_king_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nl_king_points nl_king_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nl_king_points
     ADD CONSTRAINT nl_king_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nl_nippers_lines nl_nippers_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nl_nippers_lines
     ADD CONSTRAINT nl_nippers_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nl_nippers nl_nippers_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nl_nippers
     ADD CONSTRAINT nl_nippers_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nl_nippers_points nl_nippers_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nl_nippers_points
     ADD CONSTRAINT nl_nippers_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nm_albuquerque_lines nm_albuquerque_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nm_albuquerque_lines
     ADD CONSTRAINT nm_albuquerque_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nm_albuquerque nm_albuquerque_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nm_albuquerque
     ADD CONSTRAINT nm_albuquerque_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nm_albuquerque_points nm_albuquerque_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nm_albuquerque_points
     ADD CONSTRAINT nm_albuquerque_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nm_espanola_lines nm_espanola_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nm_espanola_lines
     ADD CONSTRAINT nm_espanola_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nm_espanola nm_espanola_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nm_espanola
     ADD CONSTRAINT nm_espanola_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nm_espanola_points nm_espanola_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nm_espanola_points
     ADD CONSTRAINT nm_espanola_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nm_latir_lines nm_latir_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nm_latir_lines
     ADD CONSTRAINT nm_latir_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nm_latir nm_latir_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nm_latir
     ADD CONSTRAINT nm_latir_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nm_latir_points nm_latir_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nm_latir_points
     ADD CONSTRAINT nm_latir_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nm_petroglyps_lines nm_petroglyps_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nm_petroglyps_lines
     ADD CONSTRAINT nm_petroglyps_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nm_petroglyps nm_petroglyps_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nm_petroglyps
     ADD CONSTRAINT nm_petroglyps_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nm_vermejo_lines nm_vermejo_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nm_vermejo_lines
     ADD CONSTRAINT nm_vermejo_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nm_vermejo nm_vermejo_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nm_vermejo
     ADD CONSTRAINT nm_vermejo_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nm_vermejo_points nm_vermejo_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nm_vermejo_points
     ADD CONSTRAINT nm_vermejo_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ca_marin_lines northbay_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_marin_lines
     ADD CONSTRAINT northbay_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ca_northofsanfran northofsanfrangeology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_northofsanfran
     ADD CONSTRAINT northofsanfrangeology_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ca_northofsanfran_lines northofsanfranlines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_northofsanfran_lines
     ADD CONSTRAINT northofsanfranlines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nova_scotia_lines nova_scotia_faults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nova_scotia_lines
     ADD CONSTRAINT nova_scotia_faults_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nova_scotia nova_scotia_geo_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nova_scotia
     ADD CONSTRAINT nova_scotia_geo_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ca_north_santabarb nsantabarbgeology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_north_santabarb
     ADD CONSTRAINT nsantabarbgeology_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ca_north_santabarb_lines nsbarblines2_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_north_santabarb_lines
     ADD CONSTRAINT nsbarblines2_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nsw_bathurst_lines nsw_bathurst_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nsw_bathurst_lines
     ADD CONSTRAINT nsw_bathurst_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nsw_bathurst nsw_bathurst_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nsw_bathurst
     ADD CONSTRAINT nsw_bathurst_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nsw_bogangate_lines nsw_bogangate_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nsw_bogangate_lines
     ADD CONSTRAINT nsw_bogangate_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nsw_bogangate nsw_bogangate_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nsw_bogangate
     ADD CONSTRAINT nsw_bogangate_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nsw_boorowa_lines nsw_boorowa_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nsw_boorowa_lines
     ADD CONSTRAINT nsw_boorowa_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nsw_boorowa nsw_boorowa_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nsw_boorowa
     ADD CONSTRAINT nsw_boorowa_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nsw_boorowa_points nsw_boorowa_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nsw_boorowa_points
     ADD CONSTRAINT nsw_boorowa_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nsw_bunda_lines nsw_bunda_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nsw_bunda_lines
     ADD CONSTRAINT nsw_bunda_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nsw_bunda nsw_bunda_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nsw_bunda
     ADD CONSTRAINT nsw_bunda_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nsw_bunda_points nsw_bunda_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nsw_bunda_points
     ADD CONSTRAINT nsw_bunda_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nsw_cobar_lines nsw_cobar_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nsw_cobar_lines
     ADD CONSTRAINT nsw_cobar_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nsw_cobar nsw_cobar_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nsw_cobar
     ADD CONSTRAINT nsw_cobar_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nsw_cobbora_lines nsw_cobbora_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nsw_cobbora_lines
     ADD CONSTRAINT nsw_cobbora_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nsw_cobbora nsw_cobbora_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nsw_cobbora
     ADD CONSTRAINT nsw_cobbora_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nsw_cobbora_points nsw_cobbora_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nsw_cobbora_points
     ADD CONSTRAINT nsw_cobbora_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nsw_cobham_lines nsw_cobham_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nsw_cobham_lines
     ADD CONSTRAINT nsw_cobham_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nsw_cobham nsw_cobham_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nsw_cobham
     ADD CONSTRAINT nsw_cobham_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nsw_cobham_points nsw_cobham_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nsw_cobham_points
     ADD CONSTRAINT nsw_cobham_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nsw_cool_lines nsw_cool_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nsw_cool_lines
     ADD CONSTRAINT nsw_cool_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nsw_cool nsw_cool_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nsw_cool
     ADD CONSTRAINT nsw_cool_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nsw_cool_points nsw_cool_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nsw_cool_points
     ADD CONSTRAINT nsw_cool_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nsw_gosford_lines nsw_gosford_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nsw_gosford_lines
     ADD CONSTRAINT nsw_gosford_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nsw_gosford nsw_gosford_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nsw_gosford
     ADD CONSTRAINT nsw_gosford_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nsw_gosford_points nsw_gosford_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nsw_gosford_points
     ADD CONSTRAINT nsw_gosford_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nsw_goul_lines nsw_goul_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nsw_goul_lines
     ADD CONSTRAINT nsw_goul_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nsw_goul nsw_goul_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nsw_goul
     ADD CONSTRAINT nsw_goul_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nsw_goul_points nsw_goul_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nsw_goul_points
     ADD CONSTRAINT nsw_goul_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nsw_sussex_lines nsw_sussex_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nsw_sussex_lines
     ADD CONSTRAINT nsw_sussex_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nsw_sussex nsw_sussex_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nsw_sussex
     ADD CONSTRAINT nsw_sussex_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nsw_sussex_points nsw_sussex_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nsw_sussex_points
     ADD CONSTRAINT nsw_sussex_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nsw_wonnaminta_lines nsw_wonnaminta_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nsw_wonnaminta_lines
     ADD CONSTRAINT nsw_wonnaminta_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nsw_wonnaminta nsw_wonnaminta_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nsw_wonnaminta
     ADD CONSTRAINT nsw_wonnaminta_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nsw_wonnaminta_points nsw_wonnaminta_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nsw_wonnaminta_points
     ADD CONSTRAINT nsw_wonnaminta_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nu_chidliak_n nu_chidliak_n_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nu_chidliak_n
     ADD CONSTRAINT nu_chidliak_n_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nu_chidliak_s_lines nu_chidliak_s_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nu_chidliak_s_lines
     ADD CONSTRAINT nu_chidliak_s_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nu_chidliak_s nu_chidliak_s_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nu_chidliak_s
     ADD CONSTRAINT nu_chidliak_s_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nu_circle_lines nu_circle_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nu_circle_lines
     ADD CONSTRAINT nu_circle_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nu_circle nu_circle_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nu_circle
     ADD CONSTRAINT nu_circle_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nu_circle_points nu_circle_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nu_circle_points
     ADD CONSTRAINT nu_circle_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nu_ellef_s_lines nu_ellef_s_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nu_ellef_s_lines
     ADD CONSTRAINT nu_ellef_s_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nu_ellef_s nu_ellef_s_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nu_ellef_s
     ADD CONSTRAINT nu_ellef_s_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nu_ellef_s_points nu_ellef_s_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nu_ellef_s_points
     ADD CONSTRAINT nu_ellef_s_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nu_grinnell_lines nu_grinnell_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nu_grinnell_lines
     ADD CONSTRAINT nu_grinnell_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nu_grinnell nu_grinnell_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nu_grinnell
     ADD CONSTRAINT nu_grinnell_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nu_grinnell_points nu_grinnell_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nu_grinnell_points
     ADD CONSTRAINT nu_grinnell_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nu_irvine_s_lines nu_irvine_s_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nu_irvine_s_lines
     ADD CONSTRAINT nu_irvine_s_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nu_irvine_s nu_irvine_s_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nu_irvine_s
     ADD CONSTRAINT nu_irvine_s_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nu_irvine_s_points nu_irvine_s_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nu_irvine_s_points
     ADD CONSTRAINT nu_irvine_s_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nu_mumiksaa_lines nu_mumiksaa_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nu_mumiksaa_lines
     ADD CONSTRAINT nu_mumiksaa_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nu_mumiksaa nu_mumiksaa_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nu_mumiksaa
     ADD CONSTRAINT nu_mumiksaa_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nu_mumiksaa_points nu_mumiksaa_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nu_mumiksaa_points
     ADD CONSTRAINT nu_mumiksaa_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nu_paquet_lines nu_paquet_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nu_paquet_lines
     ADD CONSTRAINT nu_paquet_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nu_paquet nu_paquet_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nu_paquet
     ADD CONSTRAINT nu_paquet_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nu_paquet_points nu_paquet_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nu_paquet_points
     ADD CONSTRAINT nu_paquet_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nu_pritzler_lines nu_pritzler_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nu_pritzler_lines
     ADD CONSTRAINT nu_pritzler_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nu_pritzler nu_pritzler_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nu_pritzler
     ADD CONSTRAINT nu_pritzler_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nu_pritzler_points nu_pritzler_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nu_pritzler_points
     ADD CONSTRAINT nu_pritzler_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nu_rae_lines nu_rae_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nu_rae_lines
     ADD CONSTRAINT nu_rae_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nu_rae nu_rae_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nu_rae
     ADD CONSTRAINT nu_rae_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nu_sunneshine_lines nu_sunneshine_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nu_sunneshine_lines
     ADD CONSTRAINT nu_sunneshine_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nu_sunneshine nu_sunneshine_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nu_sunneshine
     ADD CONSTRAINT nu_sunneshine_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nu_sunneshine_points nu_sunneshine_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nu_sunneshine_points
     ADD CONSTRAINT nu_sunneshine_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nu_sylvia_s_lines nu_sylvia_s_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nu_sylvia_s_lines
     ADD CONSTRAINT nu_sylvia_s_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nu_sylvia_s nu_sylvia_s_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nu_sylvia_s
     ADD CONSTRAINT nu_sylvia_s_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nu_sylvia_s_points nu_sylvia_s_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nu_sylvia_s_points
     ADD CONSTRAINT nu_sylvia_s_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nu_tebesjuak_lines nu_tebesjuak_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nu_tebesjuak_lines
     ADD CONSTRAINT nu_tebesjuak_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nu_tebesjuak nu_tebesjuak_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nu_tebesjuak
     ADD CONSTRAINT nu_tebesjuak_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nu_tebesjuak_points nu_tebesjuak_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nu_tebesjuak_points
     ADD CONSTRAINT nu_tebesjuak_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nu_terra_lines nu_terra_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nu_terra_lines
     ADD CONSTRAINT nu_terra_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nu_terra nu_terra_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nu_terra
     ADD CONSTRAINT nu_terra_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nu_terra_points nu_terra_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nu_terra_points
     ADD CONSTRAINT nu_terra_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nv_beatty nv_beatty_geo_poly_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nv_beatty
     ADD CONSTRAINT nv_beatty_geo_poly_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nv_beatty_lines nv_beatty_line_annotation_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nv_beatty_lines
     ADD CONSTRAINT nv_beatty_line_annotation_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nv_las_vegas_lines nv_las_vegas_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nv_las_vegas_lines
     ADD CONSTRAINT nv_las_vegas_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nv_las_vegas_units nv_las_vegas_units_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nv_las_vegas_units
     ADD CONSTRAINT nv_las_vegas_units_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nw_lacmaunoir_drift nw_lacmaunoir_drift_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nw_lacmaunoir_drift
     ADD CONSTRAINT nw_lacmaunoir_drift_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nw_lacmaunoir_folds nw_lacmaunoir_folds_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nw_lacmaunoir_folds
     ADD CONSTRAINT nw_lacmaunoir_folds_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nw_lacmaunoir nw_lacmaunoir_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nw_lacmaunoir
     ADD CONSTRAINT nw_lacmaunoir_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nw_lacmaunoir_points nw_lacmaunoir_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nw_lacmaunoir_points
     ADD CONSTRAINT nw_lacmaunoir_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nw_slave_lines nw_slave_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nw_slave_lines
     ADD CONSTRAINT nw_slave_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nw_slave_rv nw_slave_rv_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nw_slave_rv
     ADD CONSTRAINT nw_slave_rv_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nwt_calder_lines nwt_calder_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nwt_calder_lines
     ADD CONSTRAINT nwt_calder_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nwt_calder nwt_calder_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nwt_calder
     ADD CONSTRAINT nwt_calder_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nwt_calder_points nwt_calder_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nwt_calder_points
     ADD CONSTRAINT nwt_calder_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nwt_campbell_lines nwt_campbell_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nwt_campbell_lines
     ADD CONSTRAINT nwt_campbell_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nwt_campbell nwt_campbell_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nwt_campbell
     ADD CONSTRAINT nwt_campbell_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nwt_campbell_points nwt_campbell_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nwt_campbell_points
     ADD CONSTRAINT nwt_campbell_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nwt_carcajou_lines nwt_carcajou_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nwt_carcajou_lines
     ADD CONSTRAINT nwt_carcajou_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nwt_carcajou_ne_lines nwt_carcajou_ne_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nwt_carcajou_ne_lines
     ADD CONSTRAINT nwt_carcajou_ne_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nwt_carcajou_ne nwt_carcajou_ne_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nwt_carcajou_ne
     ADD CONSTRAINT nwt_carcajou_ne_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nwt_carcajou_ne_points nwt_carcajou_ne_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nwt_carcajou_ne_points
     ADD CONSTRAINT nwt_carcajou_ne_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nwt_carcajou nwt_carcajou_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nwt_carcajou
     ADD CONSTRAINT nwt_carcajou_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nwt_carcajou_points nwt_carcajou_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nwt_carcajou_points
     ADD CONSTRAINT nwt_carcajou_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nwt_carcajou_se_lines nwt_carcajou_se_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nwt_carcajou_se_lines
     ADD CONSTRAINT nwt_carcajou_se_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nwt_carcajou_se nwt_carcajou_se_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nwt_carcajou_se
     ADD CONSTRAINT nwt_carcajou_se_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nwt_carcajou_se_points nwt_carcajou_se_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nwt_carcajou_se_points
     ADD CONSTRAINT nwt_carcajou_se_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nwt_carcajou_sw_lines nwt_carcajou_sw_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nwt_carcajou_sw_lines
     ADD CONSTRAINT nwt_carcajou_sw_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nwt_carcajou_sw nwt_carcajou_sw_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nwt_carcajou_sw
     ADD CONSTRAINT nwt_carcajou_sw_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nwt_carcajou_sw_points nwt_carcajou_sw_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nwt_carcajou_sw_points
     ADD CONSTRAINT nwt_carcajou_sw_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nwt_mahony_sw_lines nwt_mahony_sw_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nwt_mahony_sw_lines
     ADD CONSTRAINT nwt_mahony_sw_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nwt_mahony_sw nwt_mahony_sw_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nwt_mahony_sw
     ADD CONSTRAINT nwt_mahony_sw_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nwt_mahony_sw_points nwt_mahony_sw_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nwt_mahony_sw_points
     ADD CONSTRAINT nwt_mahony_sw_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nwt_norman_nw_lines nwt_norman_nw_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nwt_norman_nw_lines
     ADD CONSTRAINT nwt_norman_nw_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nwt_norman_nw nwt_norman_nw_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nwt_norman_nw
     ADD CONSTRAINT nwt_norman_nw_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nwt_norman_nw_points nwt_norman_nw_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nwt_norman_nw_points
     ADD CONSTRAINT nwt_norman_nw_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nwt_norman_se_lines nwt_norman_se_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nwt_norman_se_lines
     ADD CONSTRAINT nwt_norman_se_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nwt_norman_se nwt_norman_se_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nwt_norman_se
     ADD CONSTRAINT nwt_norman_se_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nwt_norman_se_points nwt_norman_se_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nwt_norman_se_points
     ADD CONSTRAINT nwt_norman_se_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nwt_taki_lines nwt_taki_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nwt_taki_lines
     ADD CONSTRAINT nwt_taki_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nwt_taki nwt_taki_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nwt_taki
     ADD CONSTRAINT nwt_taki_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nwt_taki_points nwt_taki_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nwt_taki_points
     ADD CONSTRAINT nwt_taki_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ca_oakland oakri_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_oakland
     ADD CONSTRAINT oakri_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ca_oceanside_points oceanside_pointorn_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_oceanside_points
     ADD CONSTRAINT oceanside_pointorn_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ontario_dikes ontario_dikes_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ontario_dikes
     ADD CONSTRAINT ontario_dikes_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ontario ontario_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ontario
     ADD CONSTRAINT ontario_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ontario_pz_mod ontario_pz_mod_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ontario_pz_mod
     ADD CONSTRAINT ontario_pz_mod_pkey PRIMARY KEY (gid);
 
-
---
--- Name: oregon_faults oregon_faults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.oregon_faults
     ADD CONSTRAINT oregon_faults_pkey PRIMARY KEY (gid);
 
 
---
--- Name: oregon oregon_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.oregon
     ADD CONSTRAINT oregon_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ontario_pz_lines paleo_fault_arc_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ontario_pz_lines
     ADD CONSTRAINT paleo_fault_arc_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ontario_pz_points paleo_point_point_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ontario_pz_points
     ADD CONSTRAINT paleo_point_point_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ontario_pz paleo_poly_polygon_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ontario_pz
     ADD CONSTRAINT paleo_poly_polygon_pkey PRIMARY KEY (gid);
 
 
---
--- Name: va_middletown_points points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.va_middletown_points
     ADD CONSTRAINT points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ar_ponca_lines poncafaults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ar_ponca_lines
     ADD CONSTRAINT poncafaults_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ar_ponca poncageo_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ar_ponca
     ADD CONSTRAINT poncageo_pkey PRIMARY KEY (gid);
 
-
---
--- Name: az_prescott prescottgeology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.az_prescott
     ADD CONSTRAINT prescottgeology_pkey PRIMARY KEY (gid);
 
 
---
--- Name: az_prescott_lines prescottlines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.az_prescott_lines
     ADD CONSTRAINT prescottlines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ut_price price_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_price
     ADD CONSTRAINT price_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ut_provo_lines provo_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_provo_lines
     ADD CONSTRAINT provo_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ut_provo provoutahgeology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_provo
     ADD CONSTRAINT provoutahgeology_pkey PRIMARY KEY (gid);
 
 
---
--- Name: puerto_rico puerto_rico_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.puerto_rico
     ADD CONSTRAINT puerto_rico_pkey PRIMARY KEY (gid);
 
-
---
--- Name: puerto_rico_lines puertorico_nfaults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.puerto_rico_lines
     ADD CONSTRAINT puertorico_nfaults_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ut_richfield_lines richfield_faults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_richfield_lines
     ADD CONSTRAINT richfield_faults_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ut_richfield richfieldutgeology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_richfield
     ADD CONSTRAINT richfieldutgeology_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wy_rock_springs rock_springs_geo_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_rock_springs
     ADD CONSTRAINT rock_springs_geo_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wy_rock_springs_lines rock_springs_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_rock_springs_lines
     ADD CONSTRAINT rock_springs_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wy_rock_springs_points rock_springs_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_rock_springs_points
     ADD CONSTRAINT rock_springs_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: rockies_lines rockies_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.rockies_lines
     ADD CONSTRAINT rockies_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: rockies rockies_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.rockies
     ADD CONSTRAINT rockies_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ma_glouster_lines rockport_l2_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ma_glouster_lines
     ADD CONSTRAINT rockport_l2_pkey PRIMARY KEY (gid);
 
 
---
--- Name: rockymountainnationalparkgeology rockymountainnationalparkgeology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.rockymountainnationalparkgeology
     ADD CONSTRAINT rockymountainnationalparkgeology_pkey PRIMARY KEY (gid);
 
-
---
--- Name: rockymtn_np_lines rockymtn_faults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.rockymtn_np_lines
     ADD CONSTRAINT rockymtn_faults_pkey PRIMARY KEY (gid);
 
 
---
--- Name: brazil_lines rondinia_dikes_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.brazil_lines
     ADD CONSTRAINT rondinia_dikes_pkey PRIMARY KEY (gid);
 
-
---
--- Name: saipan_lines saipan_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.saipan_lines
     ADD CONSTRAINT saipan_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ca_san_diego_lines san_diego_ca_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_san_diego_lines
     ADD CONSTRAINT san_diego_ca_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ca_san_diego_points san_diego_ca_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_san_diego_points
     ADD CONSTRAINT san_diego_ca_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: san_salvador san_salvador_geo_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.san_salvador
     ADD CONSTRAINT san_salvador_geo_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ca_sanberno_lines sanberno_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_sanberno_lines
     ADD CONSTRAINT sanberno_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ca_sanberno sanberno_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_sanberno
     ADD CONSTRAINT sanberno_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ca_sanjose sanjosegeology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_sanjose
     ADD CONSTRAINT sanjosegeology_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ca_sanjose_lines sanjoselines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_sanjose_lines
     ADD CONSTRAINT sanjoselines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wa_sanjuan_island_lines sanjuanfaults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wa_sanjuan_island_lines
     ADD CONSTRAINT sanjuanfaults_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wa_sanjuan_island sanjuanislandgeology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wa_sanjuan_island
     ADD CONSTRAINT sanjuanislandgeology_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ca_sanmateo_lines sanmateofaults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_sanmateo_lines
     ADD CONSTRAINT sanmateofaults_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ca_sanmateo sanmateogeology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_sanmateo
     ADD CONSTRAINT sanmateogeology_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ca_santacruz santacruz_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_santacruz
     ADD CONSTRAINT santacruz_pkey PRIMARY KEY (gid);
 
 
---
--- Name: saskatchewan_dikes saskatchewan_dikes_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.saskatchewan_dikes
     ADD CONSTRAINT saskatchewan_dikes_pkey PRIMARY KEY (gid);
 
-
---
--- Name: saskatchewan saskatchewan_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.saskatchewan
     ADD CONSTRAINT saskatchewan_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wi_sauk_lines sauk_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wi_sauk_lines
     ADD CONSTRAINT sauk_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ca_santacruz_lines scruz_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_santacruz_lines
     ADD CONSTRAINT scruz_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wi_southeast se_wisconsin_geo_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wi_southeast
     ADD CONSTRAINT se_wisconsin_geo_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wi_southeast_lines se_wisconsin_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wi_southeast_lines
     ADD CONSTRAINT se_wisconsin_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ut_seepridge_lines seepridge_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_seepridge_lines
     ADD CONSTRAINT seepridge_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wi_sheboygan sheboygan_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wi_sheboygan
     ADD CONSTRAINT sheboygan_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wy_sheridan_lines sheridan_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_sheridan_lines
     ADD CONSTRAINT sheridan_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wy_sheridan sheridan_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_sheridan
     ADD CONSTRAINT sheridan_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ut_smokymtns_lines smkymtns_faults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_smokymtns_lines
     ADD CONSTRAINT smkymtns_faults_pkey PRIMARY KEY (gid);
 
-
---
--- Name: smokies smokies_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.smokies
     ADD CONSTRAINT smokies_pkey PRIMARY KEY (gid);
 
 
---
--- Name: smokies_lines smokymountainsnationalpark_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.smokies_lines
     ADD CONSTRAINT smokymountainsnationalpark_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ut_smokymtns smokymtnsutgeology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_smokymtns
     ADD CONSTRAINT smokymtnsutgeology_pkey PRIMARY KEY (gid);
 
 
---
--- Name: so_africa_lines so_africa_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.so_africa_lines
     ADD CONSTRAINT so_africa_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: so_africa so_africa_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.so_africa
     ADD CONSTRAINT so_africa_pkey PRIMARY KEY (gid);
 
 
---
--- Name: md_keedysville_line sources.md_keedysville_line_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.md_keedysville_line
     ADD CONSTRAINT "sources.md_keedysville_line_pkey" PRIMARY KEY (gid);
 
-
---
--- Name: ca_southsanfran southsanfrangeology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_southsanfran
     ADD CONSTRAINT southsanfrangeology_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ca_southsanfran_lines southsanfranlines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ca_southsanfran_lines
     ADD CONSTRAINT southsanfranlines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: spain_lines spainlines1_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.spain_lines
     ADD CONSTRAINT spainlines1_pkey PRIMARY KEY (gid);
 
 
---
--- Name: spain spainpbgeology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.spain
     ADD CONSTRAINT spainpbgeology_pkey PRIMARY KEY (gid);
 
-
---
--- Name: texas_mexico_lines stexasmexico_geolines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.texas_mexico_lines
     ADD CONSTRAINT stexasmexico_geolines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: texas_mexico stexasmexicogeology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.texas_mexico
     ADD CONSTRAINT stexasmexicogeology_pkey PRIMARY KEY (gid);
 
-
---
--- Name: sweden_lines sweden_faults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.sweden_lines
     ADD CONSTRAINT sweden_faults_pkey PRIMARY KEY (gid);
 
 
---
--- Name: sweden swedengeology2_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.sweden
     ADD CONSTRAINT swedengeology2_pkey PRIMARY KEY (gid);
 
-
---
--- Name: switzerland_lines switzerland_faults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.switzerland_lines
     ADD CONSTRAINT switzerland_faults_pkey PRIMARY KEY (gid);
 
 
---
--- Name: switzerland switzerland_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.switzerland
     ADD CONSTRAINT switzerland_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ca_oceanside table_name_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ca_oceanside
     ADD CONSTRAINT table_name_pkey PRIMARY KEY (gid);
 
 
---
--- Name: tanzania_oldonyo tanzania_geo2_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.tanzania_oldonyo
     ADD CONSTRAINT tanzania_geo2_pkey PRIMARY KEY (gid);
 
-
---
--- Name: tanzania_oldonyo_lines tanzania_structures_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.tanzania_oldonyo_lines
     ADD CONSTRAINT tanzania_structures_pkey PRIMARY KEY (gid);
 
 
---
--- Name: world_lines tiny_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.world_lines
     ADD CONSTRAINT tiny_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: nm_tularosa_lines tularosafaults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.nm_tularosa_lines
     ADD CONSTRAINT tularosafaults_pkey PRIMARY KEY (gid);
 
 
---
--- Name: nm_tularosa tularosageo_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.nm_tularosa
     ADD CONSTRAINT tularosageo_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ut_tulevalley_lines tulevalley_faults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_tulevalley_lines
     ADD CONSTRAINT tulevalley_faults_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ut_tulevalley tulevalleyutgeology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_tulevalley
     ADD CONSTRAINT tulevalleyutgeology_pkey PRIMARY KEY (gid);
 
-
---
--- Name: twincitiesmn_lines twincities_faults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.twincitiesmn_lines
     ADD CONSTRAINT twincities_faults_pkey PRIMARY KEY (gid);
 
 
---
--- Name: twincitiesmngeology twincitiesmngeology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.twincitiesmngeology
     ADD CONSTRAINT twincitiesmngeology_pkey PRIMARY KEY (gid);
 
-
---
--- Name: tx_bexar_lines tx_bexar_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.tx_bexar_lines
     ADD CONSTRAINT tx_bexar_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: tx_bexar tx_bexar_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.tx_bexar
     ADD CONSTRAINT tx_bexar_pkey PRIMARY KEY (gid);
 
-
---
--- Name: tx_blanco_lines tx_blanco_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.tx_blanco_lines
     ADD CONSTRAINT tx_blanco_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: tx_blanco tx_blanco_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.tx_blanco
     ADD CONSTRAINT tx_blanco_pkey PRIMARY KEY (gid);
 
-
---
--- Name: tx_chisos_lines tx_chisos_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.tx_chisos_lines
     ADD CONSTRAINT tx_chisos_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: tx_chisos tx_chisos_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.tx_chisos
     ADD CONSTRAINT tx_chisos_pkey PRIMARY KEY (gid);
 
-
---
--- Name: tx_chisos_points tx_chisos_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.tx_chisos_points
     ADD CONSTRAINT tx_chisos_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: tx_hays_lines tx_hays_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.tx_hays_lines
     ADD CONSTRAINT tx_hays_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: tx_hays tx_hays_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.tx_hays
     ADD CONSTRAINT tx_hays_pkey PRIMARY KEY (gid);
 
 
---
--- Name: tx_laredo_lines tx_laredo_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.tx_laredo_lines
     ADD CONSTRAINT tx_laredo_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: tx_laredo tx_laredo_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.tx_laredo
     ADD CONSTRAINT tx_laredo_pkey PRIMARY KEY (gid);
 
 
---
--- Name: tx_laredo_points tx_laredo_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.tx_laredo_points
     ADD CONSTRAINT tx_laredo_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: uk_lines uk_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.uk_lines
     ADD CONSTRAINT uk_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: uk uk_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.uk
     ADD CONSTRAINT uk_pkey PRIMARY KEY (gid);
 
-
---
--- Name: usgs_world_lines usgs_world_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.usgs_world_lines
     ADD CONSTRAINT usgs_world_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: usgs_world usgs_world_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.usgs_world
     ADD CONSTRAINT usgs_world_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ut_beaver_lines ut_beaver_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_beaver_lines
     ADD CONSTRAINT ut_beaver_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ut_beaver ut_beaver_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_beaver
     ADD CONSTRAINT ut_beaver_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ut_dugway_lines ut_dugwayprovinggrounds_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_dugway_lines
     ADD CONSTRAINT ut_dugwayprovinggrounds_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ut_dugway ut_dugwayprovinggrounds_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_dugway
     ADD CONSTRAINT ut_dugwayprovinggrounds_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ut_dugway_points ut_dugwayprovinggrounds_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_dugway_points
     ADD CONSTRAINT ut_dugwayprovinggrounds_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ut_escalante_lines ut_escalante_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_escalante_lines
     ADD CONSTRAINT ut_escalante_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ut_escalante ut_escalante_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_escalante
     ADD CONSTRAINT ut_escalante_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ut_kanab_lines ut_kanab_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_kanab_lines
     ADD CONSTRAINT ut_kanab_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ut_kanab ut_kanab_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_kanab
     ADD CONSTRAINT ut_kanab_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ut_lasal_lines ut_lasal_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_lasal_lines
     ADD CONSTRAINT ut_lasal_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ut_lasal ut_lasal_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_lasal
     ADD CONSTRAINT ut_lasal_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ut_logan ut_logan_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_logan
     ADD CONSTRAINT ut_logan_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ut_lynndyl_lines ut_lynndyl_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_lynndyl_lines
     ADD CONSTRAINT ut_lynndyl_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ut_lynndyl ut_lynndyl_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_lynndyl
     ADD CONSTRAINT ut_lynndyl_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ut_moab_lines ut_moab_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_moab_lines
     ADD CONSTRAINT ut_moab_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ut_moab ut_moab_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_moab
     ADD CONSTRAINT ut_moab_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ut_ogden_lines ut_ogden_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_ogden_lines
     ADD CONSTRAINT ut_ogden_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ut_ogden ut_ogden_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_ogden
     ADD CONSTRAINT ut_ogden_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ut_ogden_points ut_ogden_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_ogden_points
     ADD CONSTRAINT ut_ogden_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ut_panguitch_lines ut_panguitch_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_panguitch_lines
     ADD CONSTRAINT ut_panguitch_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ut_panguitch ut_panguitch_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_panguitch
     ADD CONSTRAINT ut_panguitch_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ut_price_lines ut_price_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_price_lines
     ADD CONSTRAINT ut_price_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ut_prommontorymtns_folds ut_prommontorymtns_folds_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_prommontorymtns_folds
     ADD CONSTRAINT ut_prommontorymtns_folds_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ut_prommontorymtns ut_prommontorymtns_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_prommontorymtns
     ADD CONSTRAINT ut_prommontorymtns_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ut_prommontorymtns_points ut_prommontorymtns_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_prommontorymtns_points
     ADD CONSTRAINT ut_prommontorymtns_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ut_salina_lines ut_salina_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_salina_lines
     ADD CONSTRAINT ut_salina_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ut_salina ut_salina_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_salina
     ADD CONSTRAINT ut_salina_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ut_salina_points ut_salina_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_salina_points
     ADD CONSTRAINT ut_salina_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ut_saltlake_lines ut_saltlake_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_saltlake_lines
     ADD CONSTRAINT ut_saltlake_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ut_saltlake ut_saltlake_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_saltlake
     ADD CONSTRAINT ut_saltlake_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ut_seepridge ut_seepridge_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_seepridge
     ADD CONSTRAINT ut_seepridge_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ut_stgeorge_lines ut_stgeorge_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_stgeorge_lines
     ADD CONSTRAINT ut_stgeorge_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ut_stgeorge ut_stgeorge_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_stgeorge
     ADD CONSTRAINT ut_stgeorge_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ut_tooele_lines ut_tooele_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_tooele_lines
     ADD CONSTRAINT ut_tooele_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ut_tooele ut_tooele_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_tooele
     ADD CONSTRAINT ut_tooele_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ut_tooele_points ut_tooele_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_tooele_points
     ADD CONSTRAINT ut_tooele_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ut_westwater_lines ut_westwater_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_westwater_lines
     ADD CONSTRAINT ut_westwater_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: utquad_cedarcity_ln utquad_cedarcity_ln_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.utquad_cedarcity_ln
     ADD CONSTRAINT utquad_cedarcity_ln_pkey PRIMARY KEY (gid);
 
-
---
--- Name: utquad_cedarcity utquad_cedarcity_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.utquad_cedarcity
     ADD CONSTRAINT utquad_cedarcity_pkey PRIMARY KEY (gid);
 
 
---
--- Name: utquad_eastslc_ln utquad_eastslc_ln_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.utquad_eastslc_ln
     ADD CONSTRAINT utquad_eastslc_ln_pkey PRIMARY KEY (gid);
 
-
---
--- Name: utquad_eastslc utquad_eastslc_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.utquad_eastslc
     ADD CONSTRAINT utquad_eastslc_pkey PRIMARY KEY (gid);
 
 
---
--- Name: va_middletown_lines va_middletown_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.va_middletown_lines
     ADD CONSTRAINT va_middletown_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: va_middletown va_middletown_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.va_middletown
     ADD CONSTRAINT va_middletown_pkey PRIMARY KEY (gid);
 
 
---
--- Name: va_stephcity_lines va_stephcity_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.va_stephcity_lines
     ADD CONSTRAINT va_stephcity_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: va_stephcity va_stephcity_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.va_stephcity
     ADD CONSTRAINT va_stephcity_pkey PRIMARY KEY (gid);
 
 
---
--- Name: va_stephcity_points va_stephcity_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.va_stephcity_points
     ADD CONSTRAINT va_stephcity_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: venezuela_lines venez_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.venezuela_lines
     ADD CONSTRAINT venez_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: venezuela venezuela_geo_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.venezuela
     ADD CONSTRAINT venezuela_geo_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ut_vernal_lines vernal_faults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_vernal_lines
     ADD CONSTRAINT vernal_faults_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ut_vernal vernalutahgeology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_vernal
     ADD CONSTRAINT vernalutahgeology_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wa100k_line wa100k_line_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wa100k_line
     ADD CONSTRAINT wa100k_line_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wa100k wa100k_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wa100k
     ADD CONSTRAINT wa100k_pkey PRIMARY KEY (gid);
 
-
---
--- Name: ut_wahwahmtns wahwahmountainutgeology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.ut_wahwahmtns
     ADD CONSTRAINT wahwahmountainutgeology_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ut_wahwahmtns_lines wahwahmtn_geolines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_wahwahmtns_lines
     ADD CONSTRAINT wahwahmtn_geolines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: pakistan_westcentral westcentralpakistangeology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.pakistan_westcentral
     ADD CONSTRAINT westcentralpakistangeology_pkey PRIMARY KEY (gid);
 
 
---
--- Name: ut_westwater westwater_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.ut_westwater
     ADD CONSTRAINT westwater_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wi_ashland_lines wi_ashland_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wi_ashland_lines
     ADD CONSTRAINT wi_ashland_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wi_ashland wi_ashland_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wi_ashland
     ADD CONSTRAINT wi_ashland_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wi_ashland_points wi_ashland_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wi_ashland_points
     ADD CONSTRAINT wi_ashland_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wi_brown wi_brown_geology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wi_brown
     ADD CONSTRAINT wi_brown_geology_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wi_brown_lines wi_brown_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wi_brown_lines
     ADD CONSTRAINT wi_brown_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wi_brown_points wi_brown_point_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wi_brown_points
     ADD CONSTRAINT wi_brown_point_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wi_fond_du_lines wi_fond_du_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wi_fond_du_lines
     ADD CONSTRAINT wi_fond_du_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wi_fond_du wi_fond_du_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wi_fond_du
     ADD CONSTRAINT wi_fond_du_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wi_juneaucounty_lines wi_juneaucounty_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wi_juneaucounty_lines
     ADD CONSTRAINT wi_juneaucounty_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wi_juneaucounty wi_juneaucounty_polygon_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wi_juneaucounty
     ADD CONSTRAINT wi_juneaucounty_polygon_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wi_marathon_lines wi_marathon_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wi_marathon_lines
     ADD CONSTRAINT wi_marathon_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wi_marathon wi_marathon_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wi_marathon
     ADD CONSTRAINT wi_marathon_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wi_marathon_points wi_marathon_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wi_marathon_points
     ADD CONSTRAINT wi_marathon_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wi_piercestcroix wi_piercestcroix_geology_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wi_piercestcroix
     ADD CONSTRAINT wi_piercestcroix_geology_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wi_piercestcroix_lines wi_piercestcroix_line_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wi_piercestcroix_lines
     ADD CONSTRAINT wi_piercestcroix_line_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wy_rattlesnakehills wi_rattlesnakehills_polygon_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_rattlesnakehills
     ADD CONSTRAINT wi_rattlesnakehills_polygon_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wi_wood_lines wi_wood_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wi_wood_lines
     ADD CONSTRAINT wi_wood_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wi_wood wi_wood_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wi_wood
     ADD CONSTRAINT wi_wood_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wi_wood_points wi_wood_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wi_wood_points
     ADD CONSTRAINT wi_wood_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: world_basins world_basins_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.world_basins
     ADD CONSTRAINT world_basins_pkey PRIMARY KEY (gid);
 
-
---
--- Name: pakistan_westcentral_lines wpakistan_faults_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.pakistan_westcentral_lines
     ADD CONSTRAINT wpakistan_faults_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wy_baggs_lines wy_baggs_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_baggs_lines
     ADD CONSTRAINT wy_baggs_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wy_baggs wy_baggs_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_baggs
     ADD CONSTRAINT wy_baggs_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wy_baggs_points wy_baggs_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_baggs_points
     ADD CONSTRAINT wy_baggs_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wy_bairoil_lines wy_bairoil_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_bairoil_lines
     ADD CONSTRAINT wy_bairoil_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wy_bairoil wy_bairoil_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_bairoil
     ADD CONSTRAINT wy_bairoil_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wy_bill_lines wy_bill_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_bill_lines
     ADD CONSTRAINT wy_bill_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wy_bill wy_bill_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_bill
     ADD CONSTRAINT wy_bill_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wy_buffalo_lines wy_buffalo_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_buffalo_lines
     ADD CONSTRAINT wy_buffalo_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wy_buffalo wy_buffalo_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_buffalo
     ADD CONSTRAINT wy_buffalo_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wy_casper_lines wy_caspar_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_casper_lines
     ADD CONSTRAINT wy_caspar_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wy_casper wy_caspar_polygon_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_casper
     ADD CONSTRAINT wy_caspar_polygon_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wy_cheyenne wy_cheyenne_polygon_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_cheyenne
     ADD CONSTRAINT wy_cheyenne_polygon_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wy_douglas_lines wy_douglas_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_douglas_lines
     ADD CONSTRAINT wy_douglas_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wy_douglas wy_douglas_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_douglas
     ADD CONSTRAINT wy_douglas_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wy_evanston_lines wy_evanston_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_evanston_lines
     ADD CONSTRAINT wy_evanston_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wy_evanston wy_evanston_polygon_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_evanston
     ADD CONSTRAINT wy_evanston_polygon_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wy_farson_lines wy_farson_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_farson_lines
     ADD CONSTRAINT wy_farson_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wy_farson wy_farson_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_farson
     ADD CONSTRAINT wy_farson_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wy_gillette wy_gillette_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_gillette
     ADD CONSTRAINT wy_gillette_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wy_kaycee_lines wy_kaycee_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_kaycee_lines
     ADD CONSTRAINT wy_kaycee_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wy_kaycee wy_kaycee_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_kaycee
     ADD CONSTRAINT wy_kaycee_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wy_kemmerer_lines wy_kemmerer_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_kemmerer_lines
     ADD CONSTRAINT wy_kemmerer_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wy_kemmerer wy_kemmerer_polygon_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_kemmerer
     ADD CONSTRAINT wy_kemmerer_polygon_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wy_kinneyrim_lines wy_kinneyrim_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_kinneyrim_lines
     ADD CONSTRAINT wy_kinneyrim_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wy_kinneyrim wy_kinneyrim_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_kinneyrim
     ADD CONSTRAINT wy_kinneyrim_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wy_lancecreek_lines wy_lanecreek_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_lancecreek_lines
     ADD CONSTRAINT wy_lanecreek_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wy_lancecreek wy_lanecreek_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_lancecreek
     ADD CONSTRAINT wy_lanecreek_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wy_midwest_lines wy_midwest_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_midwest_lines
     ADD CONSTRAINT wy_midwest_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wy_midwest wy_midwest_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_midwest
     ADD CONSTRAINT wy_midwest_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wy_newcastle_lines wy_newcastle_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_newcastle_lines
     ADD CONSTRAINT wy_newcastle_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wy_newcastle wy_newcastle_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_newcastle
     ADD CONSTRAINT wy_newcastle_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wy_nowater_lines wy_nowater_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_nowater_lines
     ADD CONSTRAINT wy_nowater_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wy_nowater wy_nowater_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_nowater
     ADD CONSTRAINT wy_nowater_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wy_rattlesnakehills_lines wy_rattlesnakehills_arcs_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_rattlesnakehills_lines
     ADD CONSTRAINT wy_rattlesnakehills_arcs_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wy_rawlins_lines wy_rawlins_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_rawlins_lines
     ADD CONSTRAINT wy_rawlins_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wy_rawlins wy_rawlins_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_rawlins
     ADD CONSTRAINT wy_rawlins_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wy_recluse_lines wy_recluse_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_recluse_lines
     ADD CONSTRAINT wy_recluse_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wy_recluse wy_recluse_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_recluse
     ADD CONSTRAINT wy_recluse_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wy_renojunction wy_renojunction_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_renojunction
     ADD CONSTRAINT wy_renojunction_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wy_sundance_lines wy_sundance_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_sundance_lines
     ADD CONSTRAINT wy_sundance_lines_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wy_sundance wy_sundance_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_sundance
     ADD CONSTRAINT wy_sundance_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wy_sundance_points wy_sundance_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_sundance_points
     ADD CONSTRAINT wy_sundance_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wy_torrington_lines wy_torrington_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_torrington_lines
     ADD CONSTRAINT wy_torrington_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wy_torrington wy_torrington_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_torrington
     ADD CONSTRAINT wy_torrington_pkey PRIMARY KEY (gid);
 
 
---
--- Name: wy_lander_lines wyoming_lander_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.wy_lander_lines
     ADD CONSTRAINT wyoming_lander_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: wy_lander wyoming_lander_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.wy_lander
     ADD CONSTRAINT wyoming_lander_pkey PRIMARY KEY (gid);
 
 
---
--- Name: yk_joyal_lines yk_joyal_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.yk_joyal_lines
     ADD CONSTRAINT yk_joyal_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: yk_joyal yk_joyal_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.yk_joyal
     ADD CONSTRAINT yk_joyal_pkey PRIMARY KEY (gid);
 
 
---
--- Name: yk_joyal_points yk_joyal_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.yk_joyal_points
     ADD CONSTRAINT yk_joyal_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: yukon_folds yukon_folds_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.yukon_folds
     ADD CONSTRAINT yukon_folds_pkey PRIMARY KEY (gid);
 
 
---
--- Name: yukon_lines yukon_lines_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.yukon_lines
     ADD CONSTRAINT yukon_lines_pkey PRIMARY KEY (gid);
 
-
---
--- Name: yukon_mtmartin_folds yukon_mtmartin_folds_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.yukon_mtmartin_folds
     ADD CONSTRAINT yukon_mtmartin_folds_pkey PRIMARY KEY (gid);
 
 
---
--- Name: yukon_mtmartin yukon_mtmartin_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.yukon_mtmartin
     ADD CONSTRAINT yukon_mtmartin_pkey PRIMARY KEY (gid);
 
-
---
--- Name: yukon_mtmartin_points yukon_mtmartin_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.yukon_mtmartin_points
     ADD CONSTRAINT yukon_mtmartin_points_pkey PRIMARY KEY (gid);
 
 
---
--- Name: yukon_mtmerril_folds yukon_mtmerril_folds_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.yukon_mtmerril_folds
     ADD CONSTRAINT yukon_mtmerril_folds_pkey PRIMARY KEY (gid);
 
-
---
--- Name: yukon_mtmerril yukon_mtmerril_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.yukon_mtmerril
     ADD CONSTRAINT yukon_mtmerril_pkey PRIMARY KEY (gid);
 
 
---
--- Name: yukon_mtmerril_points yukon_mtmerril_points_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
-
 ALTER TABLE ONLY sources.yukon_mtmerril_points
     ADD CONSTRAINT yukon_mtmerril_points_pkey PRIMARY KEY (gid);
 
-
---
--- Name: yukon yukon_pkey; Type: CONSTRAINT; Schema: sources; Owner: postgres
---
 
 ALTER TABLE ONLY sources.yukon
     ADD CONSTRAINT yukon_pkey PRIMARY KEY (gid);
 
 
---
--- Name: flat_large_geom_idx; Type: INDEX; Schema: carto; Owner: postgres
---
-
 CREATE INDEX flat_large_geom_idx ON carto.flat_large USING gist (geom);
 
-
---
--- Name: flat_large_map_id_idx; Type: INDEX; Schema: carto; Owner: postgres
---
 
 CREATE INDEX flat_large_map_id_idx ON carto.flat_large USING btree (map_id);
 
 
---
--- Name: large_new_geom_idx; Type: INDEX; Schema: carto; Owner: postgres
---
-
 CREATE INDEX large_new_geom_idx ON carto.large USING gist (geom);
 
-
---
--- Name: large_new_map_id_idx; Type: INDEX; Schema: carto; Owner: postgres
---
 
 CREATE INDEX large_new_map_id_idx ON carto.large USING btree (map_id);
 
 
---
--- Name: lines_large_new_geom_idx1; Type: INDEX; Schema: carto; Owner: postgres
---
-
 CREATE INDEX lines_large_new_geom_idx1 ON carto.lines_large USING gist (geom);
 
-
---
--- Name: lines_large_new_line_id_idx1; Type: INDEX; Schema: carto; Owner: postgres
---
 
 CREATE INDEX lines_large_new_line_id_idx1 ON carto.lines_large USING btree (line_id);
 
 
---
--- Name: lines_medium_new_geom_idx1; Type: INDEX; Schema: carto; Owner: postgres
---
-
 CREATE INDEX lines_medium_new_geom_idx1 ON carto.lines_medium USING gist (geom);
 
-
---
--- Name: lines_medium_new_line_id_idx1; Type: INDEX; Schema: carto; Owner: postgres
---
 
 CREATE INDEX lines_medium_new_line_id_idx1 ON carto.lines_medium USING btree (line_id);
 
 
---
--- Name: lines_small_new_geom_idx1; Type: INDEX; Schema: carto; Owner: postgres
---
-
 CREATE INDEX lines_small_new_geom_idx1 ON carto.lines_small USING gist (geom);
 
-
---
--- Name: lines_small_new_line_id_idx1; Type: INDEX; Schema: carto; Owner: postgres
---
 
 CREATE INDEX lines_small_new_line_id_idx1 ON carto.lines_small USING btree (line_id);
 
 
---
--- Name: lines_tiny_new_geom_idx1; Type: INDEX; Schema: carto; Owner: postgres
---
-
 CREATE INDEX lines_tiny_new_geom_idx1 ON carto.lines_tiny USING gist (geom);
 
-
---
--- Name: lines_tiny_new_line_id_idx1; Type: INDEX; Schema: carto; Owner: postgres
---
 
 CREATE INDEX lines_tiny_new_line_id_idx1 ON carto.lines_tiny USING btree (line_id);
 
 
---
--- Name: medium_new_geom_idx; Type: INDEX; Schema: carto; Owner: postgres
---
-
 CREATE INDEX medium_new_geom_idx ON carto.medium USING gist (geom);
 
-
---
--- Name: medium_new_map_id_idx; Type: INDEX; Schema: carto; Owner: postgres
---
 
 CREATE INDEX medium_new_map_id_idx ON carto.medium USING btree (map_id);
 
 
---
--- Name: small_new_geom_idx; Type: INDEX; Schema: carto; Owner: postgres
---
-
 CREATE INDEX small_new_geom_idx ON carto.small USING gist (geom);
 
-
---
--- Name: small_new_map_id_idx; Type: INDEX; Schema: carto; Owner: postgres
---
 
 CREATE INDEX small_new_map_id_idx ON carto.small USING btree (map_id);
 
 
---
--- Name: tiny_new_geom_idx; Type: INDEX; Schema: carto; Owner: postgres
---
-
 CREATE INDEX tiny_new_geom_idx ON carto.tiny USING gist (geom);
 
-
---
--- Name: tiny_new_map_id_idx; Type: INDEX; Schema: carto; Owner: postgres
---
 
 CREATE INDEX tiny_new_map_id_idx ON carto.tiny USING btree (map_id);
 
 
---
--- Name: hex_index_hex_id_idx; Type: INDEX; Schema: carto_new; Owner: postgres
---
-
 CREATE INDEX hex_index_hex_id_idx ON carto_new.hex_index USING btree (hex_id);
 
-
---
--- Name: hex_index_map_id_idx; Type: INDEX; Schema: carto_new; Owner: postgres
---
 
 CREATE INDEX hex_index_map_id_idx ON carto_new.hex_index USING btree (map_id);
 
 
---
--- Name: hex_index_scale_idx; Type: INDEX; Schema: carto_new; Owner: postgres
---
-
 CREATE INDEX hex_index_scale_idx ON carto_new.hex_index USING btree (scale);
 
-
---
--- Name: large_geom_idx; Type: INDEX; Schema: carto_new; Owner: postgres
---
 
 CREATE INDEX large_geom_idx ON carto_new.large USING gist (geom);
 
 
---
--- Name: large_map_id_idx; Type: INDEX; Schema: carto_new; Owner: postgres
---
-
 CREATE INDEX large_map_id_idx ON carto_new.large USING btree (map_id);
 
-
---
--- Name: lines_large_geom_idx; Type: INDEX; Schema: carto_new; Owner: postgres
---
 
 CREATE INDEX lines_large_geom_idx ON carto_new.lines_large USING gist (geom);
 
 
---
--- Name: lines_large_line_id_idx; Type: INDEX; Schema: carto_new; Owner: postgres
---
-
 CREATE INDEX lines_large_line_id_idx ON carto_new.lines_large USING btree (line_id);
 
-
---
--- Name: lines_medium_geom_idx; Type: INDEX; Schema: carto_new; Owner: postgres
---
 
 CREATE INDEX lines_medium_geom_idx ON carto_new.lines_medium USING gist (geom);
 
 
---
--- Name: lines_medium_line_id_idx; Type: INDEX; Schema: carto_new; Owner: postgres
---
-
 CREATE INDEX lines_medium_line_id_idx ON carto_new.lines_medium USING btree (line_id);
 
-
---
--- Name: lines_small_geom_idx; Type: INDEX; Schema: carto_new; Owner: postgres
---
 
 CREATE INDEX lines_small_geom_idx ON carto_new.lines_small USING gist (geom);
 
 
---
--- Name: lines_small_line_id_idx; Type: INDEX; Schema: carto_new; Owner: postgres
---
-
 CREATE INDEX lines_small_line_id_idx ON carto_new.lines_small USING btree (line_id);
 
-
---
--- Name: lines_tiny_geom_idx; Type: INDEX; Schema: carto_new; Owner: postgres
---
 
 CREATE INDEX lines_tiny_geom_idx ON carto_new.lines_tiny USING gist (geom);
 
 
---
--- Name: lines_tiny_line_id_idx; Type: INDEX; Schema: carto_new; Owner: postgres
---
-
 CREATE INDEX lines_tiny_line_id_idx ON carto_new.lines_tiny USING btree (line_id);
 
-
---
--- Name: medium_geom_idx; Type: INDEX; Schema: carto_new; Owner: postgres
---
 
 CREATE INDEX medium_geom_idx ON carto_new.medium USING gist (geom);
 
 
---
--- Name: medium_map_id_idx; Type: INDEX; Schema: carto_new; Owner: postgres
---
-
 CREATE INDEX medium_map_id_idx ON carto_new.medium USING btree (map_id);
 
-
---
--- Name: pbdb_hex_index_collection_no_idx; Type: INDEX; Schema: carto_new; Owner: postgres
---
 
 CREATE INDEX pbdb_hex_index_collection_no_idx ON carto_new.pbdb_hex_index USING btree (collection_no);
 
 
---
--- Name: pbdb_hex_index_hex_id_idx; Type: INDEX; Schema: carto_new; Owner: postgres
---
-
 CREATE INDEX pbdb_hex_index_hex_id_idx ON carto_new.pbdb_hex_index USING btree (hex_id);
 
-
---
--- Name: pbdb_hex_index_scale_idx; Type: INDEX; Schema: carto_new; Owner: postgres
---
 
 CREATE INDEX pbdb_hex_index_scale_idx ON carto_new.pbdb_hex_index USING btree (scale);
 
 
---
--- Name: small_geom_idx; Type: INDEX; Schema: carto_new; Owner: postgres
---
-
 CREATE INDEX small_geom_idx ON carto_new.small USING gist (geom);
 
-
---
--- Name: small_map_id_idx; Type: INDEX; Schema: carto_new; Owner: postgres
---
 
 CREATE INDEX small_map_id_idx ON carto_new.small USING btree (map_id);
 
 
---
--- Name: tiny_geom_idx; Type: INDEX; Schema: carto_new; Owner: postgres
---
-
 CREATE INDEX tiny_geom_idx ON carto_new.tiny USING gist (geom);
 
-
---
--- Name: tiny_map_id_idx; Type: INDEX; Schema: carto_new; Owner: postgres
---
 
 CREATE INDEX tiny_map_id_idx ON carto_new.tiny USING btree (map_id);
 
 
---
--- Name: boundaries_boundary_class_idx; Type: INDEX; Schema: geologic_boundaries; Owner: postgres
---
-
 CREATE INDEX boundaries_boundary_class_idx ON geologic_boundaries.boundaries USING btree (boundary_class);
 
-
---
--- Name: boundaries_boundary_id_idx; Type: INDEX; Schema: geologic_boundaries; Owner: postgres
---
 
 CREATE INDEX boundaries_boundary_id_idx ON geologic_boundaries.boundaries USING btree (boundary_id);
 
 
---
--- Name: boundaries_geom_idx; Type: INDEX; Schema: geologic_boundaries; Owner: postgres
---
-
 CREATE INDEX boundaries_geom_idx ON geologic_boundaries.boundaries USING gist (geom);
 
-
---
--- Name: boundaries_orig_id_idx; Type: INDEX; Schema: geologic_boundaries; Owner: postgres
---
 
 CREATE INDEX boundaries_orig_id_idx ON geologic_boundaries.boundaries USING btree (orig_id);
 
 
---
--- Name: boundaries_source_id_idx; Type: INDEX; Schema: geologic_boundaries; Owner: postgres
---
-
 CREATE INDEX boundaries_source_id_idx ON geologic_boundaries.boundaries USING btree (source_id);
 
-
---
--- Name: bedrock_index_hex_id_idx; Type: INDEX; Schema: hexgrids; Owner: postgres
---
 
 CREATE INDEX bedrock_index_hex_id_idx ON hexgrids.bedrock_index USING btree (hex_id);
 
 
---
--- Name: bedrock_index_legend_id_hex_id_idx; Type: INDEX; Schema: hexgrids; Owner: postgres
---
-
 CREATE UNIQUE INDEX bedrock_index_legend_id_hex_id_idx ON hexgrids.bedrock_index USING btree (legend_id, hex_id);
 
-
---
--- Name: bedrock_index_legend_id_idx; Type: INDEX; Schema: hexgrids; Owner: postgres
---
 
 CREATE INDEX bedrock_index_legend_id_idx ON hexgrids.bedrock_index USING btree (legend_id);
 
 
---
--- Name: hexgrids_geom_idx; Type: INDEX; Schema: hexgrids; Owner: postgres
---
-
 CREATE INDEX hexgrids_geom_idx ON hexgrids.hexgrids USING gist (geom);
 
-
---
--- Name: hexgrids_res_idx; Type: INDEX; Schema: hexgrids; Owner: postgres
---
 
 CREATE INDEX hexgrids_res_idx ON hexgrids.hexgrids USING btree (res);
 
 
---
--- Name: pbdb_index_collection_no_hex_id_idx; Type: INDEX; Schema: hexgrids; Owner: postgres
---
-
 CREATE UNIQUE INDEX pbdb_index_collection_no_hex_id_idx ON hexgrids.pbdb_index USING btree (collection_no, hex_id);
 
-
---
--- Name: pbdb_index_collection_no_idx; Type: INDEX; Schema: hexgrids; Owner: postgres
---
 
 CREATE INDEX pbdb_index_collection_no_idx ON hexgrids.pbdb_index USING btree (collection_no);
 
 
---
--- Name: pbdb_index_hex_id_idx; Type: INDEX; Schema: hexgrids; Owner: postgres
---
-
 CREATE INDEX pbdb_index_hex_id_idx ON hexgrids.pbdb_index USING btree (hex_id);
 
-
---
--- Name: r10_geom_geom_idx; Type: INDEX; Schema: hexgrids; Owner: postgres
---
 
 CREATE INDEX r10_geom_geom_idx ON hexgrids.r10 USING gist (geom);
 
 
---
--- Name: r10_geom_idx; Type: INDEX; Schema: hexgrids; Owner: postgres
---
-
 CREATE INDEX r10_geom_idx ON hexgrids.r10 USING gist (geom);
 
-
---
--- Name: r10_web_geom_idx; Type: INDEX; Schema: hexgrids; Owner: postgres
---
 
 CREATE INDEX r10_web_geom_idx ON hexgrids.r10 USING gist (web_geom);
 
 
---
--- Name: r11_geom_geom_idx; Type: INDEX; Schema: hexgrids; Owner: postgres
---
-
 CREATE INDEX r11_geom_geom_idx ON hexgrids.r11 USING gist (geom);
 
-
---
--- Name: r11_web_geom_idx; Type: INDEX; Schema: hexgrids; Owner: postgres
---
 
 CREATE INDEX r11_web_geom_idx ON hexgrids.r11 USING gist (web_geom);
 
 
---
--- Name: r12_geom_geom_idx; Type: INDEX; Schema: hexgrids; Owner: postgres
---
-
 CREATE INDEX r12_geom_geom_idx ON hexgrids.r12 USING gist (geom);
 
-
---
--- Name: r12_web_geom_idx; Type: INDEX; Schema: hexgrids; Owner: postgres
---
 
 CREATE INDEX r12_web_geom_idx ON hexgrids.r12 USING gist (web_geom);
 
 
---
--- Name: r5_geom_idx; Type: INDEX; Schema: hexgrids; Owner: postgres
---
-
 CREATE INDEX r5_geom_idx ON hexgrids.r5 USING gist (geom);
 
-
---
--- Name: r5_web_geom_idx; Type: INDEX; Schema: hexgrids; Owner: postgres
---
 
 CREATE INDEX r5_web_geom_idx ON hexgrids.r5 USING gist (web_geom);
 
 
---
--- Name: r6_geom_idx; Type: INDEX; Schema: hexgrids; Owner: postgres
---
-
 CREATE INDEX r6_geom_idx ON hexgrids.r6 USING gist (geom);
 
-
---
--- Name: r6_web_geom_idx; Type: INDEX; Schema: hexgrids; Owner: postgres
---
 
 CREATE INDEX r6_web_geom_idx ON hexgrids.r6 USING gist (web_geom);
 
 
---
--- Name: r7_geom_idx; Type: INDEX; Schema: hexgrids; Owner: postgres
---
-
 CREATE INDEX r7_geom_idx ON hexgrids.r7 USING gist (geom);
 
-
---
--- Name: r7_geom_idx1; Type: INDEX; Schema: hexgrids; Owner: postgres
---
 
 CREATE INDEX r7_geom_idx1 ON hexgrids.r7 USING gist (geom);
 
 
---
--- Name: r7_geom_idx2; Type: INDEX; Schema: hexgrids; Owner: postgres
---
-
 CREATE INDEX r7_geom_idx2 ON hexgrids.r7 USING gist (geom);
 
-
---
--- Name: r7_web_geom_idx; Type: INDEX; Schema: hexgrids; Owner: postgres
---
 
 CREATE INDEX r7_web_geom_idx ON hexgrids.r7 USING gist (web_geom);
 
 
---
--- Name: r8_geom_idx; Type: INDEX; Schema: hexgrids; Owner: postgres
---
-
 CREATE INDEX r8_geom_idx ON hexgrids.r8 USING gist (geom);
 
-
---
--- Name: r8_geom_idx1; Type: INDEX; Schema: hexgrids; Owner: postgres
---
 
 CREATE INDEX r8_geom_idx1 ON hexgrids.r8 USING gist (geom);
 
 
---
--- Name: r8_geom_idx2; Type: INDEX; Schema: hexgrids; Owner: postgres
---
-
 CREATE INDEX r8_geom_idx2 ON hexgrids.r8 USING gist (geom);
 
-
---
--- Name: r8_web_geom_idx; Type: INDEX; Schema: hexgrids; Owner: postgres
---
 
 CREATE INDEX r8_web_geom_idx ON hexgrids.r8 USING gist (web_geom);
 
 
---
--- Name: r9_geom_idx; Type: INDEX; Schema: hexgrids; Owner: postgres
---
-
 CREATE INDEX r9_geom_idx ON hexgrids.r9 USING gist (geom);
 
-
---
--- Name: r9_geom_idx1; Type: INDEX; Schema: hexgrids; Owner: postgres
---
 
 CREATE INDEX r9_geom_idx1 ON hexgrids.r9 USING gist (geom);
 
 
---
--- Name: r9_web_geom_idx; Type: INDEX; Schema: hexgrids; Owner: postgres
---
-
 CREATE INDEX r9_web_geom_idx ON hexgrids.r9 USING gist (web_geom);
 
-
---
--- Name: large_geom_idx; Type: INDEX; Schema: lines; Owner: postgres
---
 
 CREATE INDEX large_geom_idx ON lines.large USING gist (geom);
 
 
---
--- Name: large_line_id_idx; Type: INDEX; Schema: lines; Owner: postgres
---
-
 CREATE INDEX large_line_id_idx ON lines.large USING btree (line_id);
 
-
---
--- Name: large_orig_id_idx; Type: INDEX; Schema: lines; Owner: postgres
---
 
 CREATE INDEX large_orig_id_idx ON lines.large USING btree (orig_id);
 
 
---
--- Name: large_source_id_idx; Type: INDEX; Schema: lines; Owner: postgres
---
-
 CREATE INDEX large_source_id_idx ON lines.large USING btree (source_id);
 
-
---
--- Name: medium_geom_idx; Type: INDEX; Schema: lines; Owner: postgres
---
 
 CREATE INDEX medium_geom_idx ON lines.medium USING gist (geom);
 
 
---
--- Name: medium_line_id_idx; Type: INDEX; Schema: lines; Owner: postgres
---
-
 CREATE INDEX medium_line_id_idx ON lines.medium USING btree (line_id);
 
-
---
--- Name: medium_orig_id_idx; Type: INDEX; Schema: lines; Owner: postgres
---
 
 CREATE INDEX medium_orig_id_idx ON lines.medium USING btree (orig_id);
 
 
---
--- Name: medium_source_id_idx; Type: INDEX; Schema: lines; Owner: postgres
---
-
 CREATE INDEX medium_source_id_idx ON lines.medium USING btree (source_id);
 
-
---
--- Name: small_geom_idx; Type: INDEX; Schema: lines; Owner: postgres
---
 
 CREATE INDEX small_geom_idx ON lines.small USING gist (geom);
 
 
---
--- Name: small_source_id_idx; Type: INDEX; Schema: lines; Owner: postgres
---
-
 CREATE INDEX small_source_id_idx ON lines.small USING btree (source_id);
 
-
---
--- Name: tiny_geom_idx; Type: INDEX; Schema: lines; Owner: postgres
---
 
 CREATE INDEX tiny_geom_idx ON lines.tiny USING gist (geom);
 
 
---
--- Name: tiny_source_id_idx; Type: INDEX; Schema: lines; Owner: postgres
---
-
 CREATE INDEX tiny_source_id_idx ON lines.tiny USING btree (source_id);
 
-
---
--- Name: autocomplete_new_category_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX autocomplete_new_category_idx1 ON macrostrat.autocomplete USING btree (category);
 
 
---
--- Name: autocomplete_new_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX autocomplete_new_id_idx1 ON macrostrat.autocomplete USING btree (id);
 
-
---
--- Name: autocomplete_new_name_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX autocomplete_new_name_idx1 ON macrostrat.autocomplete USING btree (name);
 
 
---
--- Name: autocomplete_new_type_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX autocomplete_new_type_idx1 ON macrostrat.autocomplete USING btree (type);
 
-
---
--- Name: col_areas_new_col_area_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX col_areas_new_col_area_idx ON macrostrat.col_areas USING gist (col_area);
 
 
---
--- Name: col_areas_new_col_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX col_areas_new_col_id_idx ON macrostrat.col_areas USING btree (col_id);
 
-
---
--- Name: col_groups_new_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX col_groups_new_id_idx1 ON macrostrat.col_groups USING btree (id);
 
 
---
--- Name: col_refs_new_col_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX col_refs_new_col_id_idx1 ON macrostrat.col_refs USING btree (col_id);
 
-
---
--- Name: col_refs_new_ref_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX col_refs_new_ref_id_idx1 ON macrostrat.col_refs USING btree (ref_id);
 
 
---
--- Name: cols_new_col_group_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX cols_new_col_group_id_idx ON macrostrat.cols USING btree (col_group_id);
 
-
---
--- Name: cols_new_coordinate_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX cols_new_coordinate_idx ON macrostrat.cols USING gist (coordinate);
 
 
---
--- Name: cols_new_poly_geom_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX cols_new_poly_geom_idx ON macrostrat.cols USING gist (poly_geom);
 
-
---
--- Name: cols_new_project_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX cols_new_project_id_idx ON macrostrat.cols USING btree (project_id);
 
 
---
--- Name: cols_new_status_code_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX cols_new_status_code_idx ON macrostrat.cols USING btree (status_code);
 
-
---
--- Name: concepts_places_new_concept_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX concepts_places_new_concept_id_idx ON macrostrat.concepts_places USING btree (concept_id);
 
 
---
--- Name: concepts_places_new_place_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX concepts_places_new_place_id_idx ON macrostrat.concepts_places USING btree (place_id);
 
-
---
--- Name: intervals_new_age_bottom_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX intervals_new_age_bottom_idx1 ON macrostrat.intervals USING btree (age_bottom);
 
 
---
--- Name: intervals_new_age_top_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX intervals_new_age_top_idx1 ON macrostrat.intervals USING btree (age_top);
 
-
---
--- Name: intervals_new_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX intervals_new_id_idx1 ON macrostrat.intervals USING btree (id);
 
 
---
--- Name: intervals_new_interval_name_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX intervals_new_interval_name_idx1 ON macrostrat.intervals USING btree (interval_name);
 
-
---
--- Name: intervals_new_interval_type_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX intervals_new_interval_type_idx1 ON macrostrat.intervals USING btree (interval_type);
 
 
---
--- Name: lith_atts_new_att_type_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX lith_atts_new_att_type_idx1 ON macrostrat.lith_atts USING btree (att_type);
 
-
---
--- Name: lith_atts_new_lith_att_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX lith_atts_new_lith_att_idx1 ON macrostrat.lith_atts USING btree (lith_att);
 
 
---
--- Name: liths_new_lith_class_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX liths_new_lith_class_idx1 ON macrostrat.liths USING btree (lith_class);
 
-
---
--- Name: liths_new_lith_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX liths_new_lith_idx1 ON macrostrat.liths USING btree (lith);
 
 
---
--- Name: liths_new_lith_type_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX liths_new_lith_type_idx1 ON macrostrat.liths USING btree (lith_type);
 
-
---
--- Name: lookup_strat_names_new_bed_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX lookup_strat_names_new_bed_id_idx ON macrostrat.lookup_strat_names USING btree (bed_id);
 
 
---
--- Name: lookup_strat_names_new_concept_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX lookup_strat_names_new_concept_id_idx ON macrostrat.lookup_strat_names USING btree (concept_id);
 
-
---
--- Name: lookup_strat_names_new_fm_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX lookup_strat_names_new_fm_id_idx ON macrostrat.lookup_strat_names USING btree (fm_id);
 
 
---
--- Name: lookup_strat_names_new_gp_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX lookup_strat_names_new_gp_id_idx ON macrostrat.lookup_strat_names USING btree (gp_id);
 
-
---
--- Name: lookup_strat_names_new_mbr_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX lookup_strat_names_new_mbr_id_idx ON macrostrat.lookup_strat_names USING btree (mbr_id);
 
 
---
--- Name: lookup_strat_names_new_sgp_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX lookup_strat_names_new_sgp_id_idx ON macrostrat.lookup_strat_names USING btree (sgp_id);
 
-
---
--- Name: lookup_strat_names_new_strat_name_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX lookup_strat_names_new_strat_name_id_idx ON macrostrat.lookup_strat_names USING btree (strat_name_id);
 
 
---
--- Name: lookup_strat_names_new_strat_name_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX lookup_strat_names_new_strat_name_idx ON macrostrat.lookup_strat_names USING btree (strat_name);
 
-
---
--- Name: lookup_unit_attrs_api_new_unit_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX lookup_unit_attrs_api_new_unit_id_idx1 ON macrostrat.lookup_unit_attrs_api USING btree (unit_id);
 
 
---
--- Name: lookup_unit_intervals_new_best_interval_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX lookup_unit_intervals_new_best_interval_id_idx ON macrostrat.lookup_unit_intervals USING btree (best_interval_id);
 
-
---
--- Name: lookup_unit_intervals_new_unit_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX lookup_unit_intervals_new_unit_id_idx ON macrostrat.lookup_unit_intervals USING btree (unit_id);
 
 
---
--- Name: lookup_unit_liths_new_unit_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX lookup_unit_liths_new_unit_id_idx ON macrostrat.lookup_unit_liths USING btree (unit_id);
 
-
---
--- Name: lookup_units_new_b_int_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX lookup_units_new_b_int_idx1 ON macrostrat.lookup_units USING btree (b_int);
 
 
---
--- Name: lookup_units_new_project_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX lookup_units_new_project_id_idx1 ON macrostrat.lookup_units USING btree (project_id);
 
-
---
--- Name: lookup_units_new_t_int_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX lookup_units_new_t_int_idx1 ON macrostrat.lookup_units USING btree (t_int);
 
 
---
--- Name: measurements_new_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX measurements_new_id_idx ON macrostrat.measurements USING btree (id);
 
-
---
--- Name: measurements_new_measurement_class_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX measurements_new_measurement_class_idx ON macrostrat.measurements USING btree (measurement_class);
 
 
---
--- Name: measurements_new_measurement_type_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX measurements_new_measurement_type_idx ON macrostrat.measurements USING btree (measurement_type);
 
-
---
--- Name: measuremeta_new_lith_att_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX measuremeta_new_lith_att_id_idx1 ON macrostrat.measuremeta USING btree (lith_att_id);
 
 
---
--- Name: measuremeta_new_lith_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX measuremeta_new_lith_id_idx1 ON macrostrat.measuremeta USING btree (lith_id);
 
-
---
--- Name: measuremeta_new_ref_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX measuremeta_new_ref_id_idx1 ON macrostrat.measuremeta USING btree (ref_id);
 
 
---
--- Name: measures_new_measurement_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX measures_new_measurement_id_idx1 ON macrostrat.measures USING btree (measurement_id);
 
-
---
--- Name: measures_new_measuremeta_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX measures_new_measuremeta_id_idx1 ON macrostrat.measures USING btree (measuremeta_id);
 
 
---
--- Name: pbdb_collections_new_collection_no_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX pbdb_collections_new_collection_no_idx1 ON macrostrat.pbdb_collections USING btree (collection_no);
 
-
---
--- Name: pbdb_collections_new_early_age_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX pbdb_collections_new_early_age_idx1 ON macrostrat.pbdb_collections USING btree (early_age);
 
 
---
--- Name: pbdb_collections_new_geom_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX pbdb_collections_new_geom_idx1 ON macrostrat.pbdb_collections USING gist (geom);
 
-
---
--- Name: pbdb_collections_new_late_age_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX pbdb_collections_new_late_age_idx1 ON macrostrat.pbdb_collections USING btree (late_age);
 
 
---
--- Name: places_new_geom_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX places_new_geom_idx ON macrostrat.places USING gist (geom);
 
-
---
--- Name: refs_new_rgeom_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX refs_new_rgeom_idx1 ON macrostrat.refs USING gist (rgeom);
 
 
---
--- Name: strat_name_footprints_new_geom_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX strat_name_footprints_new_geom_idx ON macrostrat.strat_name_footprints USING gist (geom);
 
-
---
--- Name: strat_name_footprints_new_strat_name_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX strat_name_footprints_new_strat_name_id_idx ON macrostrat.strat_name_footprints USING btree (strat_name_id);
 
 
---
--- Name: strat_names_meta_new_b_int_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX strat_names_meta_new_b_int_idx1 ON macrostrat.strat_names_meta USING btree (b_int);
 
-
---
--- Name: strat_names_meta_new_interval_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX strat_names_meta_new_interval_id_idx1 ON macrostrat.strat_names_meta USING btree (interval_id);
 
 
---
--- Name: strat_names_meta_new_ref_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX strat_names_meta_new_ref_id_idx1 ON macrostrat.strat_names_meta USING btree (ref_id);
 
-
---
--- Name: strat_names_meta_new_t_int_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX strat_names_meta_new_t_int_idx1 ON macrostrat.strat_names_meta USING btree (t_int);
 
 
---
--- Name: strat_names_new_concept_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX strat_names_new_concept_id_idx ON macrostrat.strat_names USING btree (concept_id);
 
-
---
--- Name: strat_names_new_rank_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX strat_names_new_rank_idx ON macrostrat.strat_names USING btree (rank);
 
 
---
--- Name: strat_names_new_ref_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX strat_names_new_ref_id_idx ON macrostrat.strat_names USING btree (ref_id);
 
-
---
--- Name: strat_names_new_strat_name_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX strat_names_new_strat_name_idx ON macrostrat.strat_names USING btree (strat_name);
 
 
---
--- Name: strat_names_places_new_place_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX strat_names_places_new_place_id_idx1 ON macrostrat.strat_names_places USING btree (place_id);
 
-
---
--- Name: strat_names_places_new_strat_name_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX strat_names_places_new_strat_name_id_idx1 ON macrostrat.strat_names_places USING btree (strat_name_id);
 
 
---
--- Name: timescales_intervals_new_interval_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX timescales_intervals_new_interval_id_idx1 ON macrostrat.timescales_intervals USING btree (interval_id);
 
-
---
--- Name: timescales_intervals_new_timescale_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX timescales_intervals_new_timescale_id_idx1 ON macrostrat.timescales_intervals USING btree (timescale_id);
 
 
---
--- Name: timescales_new_ref_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX timescales_new_ref_id_idx1 ON macrostrat.timescales USING btree (ref_id);
 
-
---
--- Name: timescales_new_timescale_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX timescales_new_timescale_idx1 ON macrostrat.timescales USING btree (timescale);
 
 
---
--- Name: unit_econs_new_econ_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX unit_econs_new_econ_id_idx1 ON macrostrat.unit_econs USING btree (econ_id);
 
-
---
--- Name: unit_econs_new_ref_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX unit_econs_new_ref_id_idx1 ON macrostrat.unit_econs USING btree (ref_id);
 
 
---
--- Name: unit_econs_new_unit_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX unit_econs_new_unit_id_idx1 ON macrostrat.unit_econs USING btree (unit_id);
 
-
---
--- Name: unit_environs_new_environ_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX unit_environs_new_environ_id_idx1 ON macrostrat.unit_environs USING btree (environ_id);
 
 
---
--- Name: unit_environs_new_ref_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX unit_environs_new_ref_id_idx1 ON macrostrat.unit_environs USING btree (ref_id);
 
-
---
--- Name: unit_environs_new_unit_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX unit_environs_new_unit_id_idx1 ON macrostrat.unit_environs USING btree (unit_id);
 
 
---
--- Name: unit_lith_atts_new_lith_att_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX unit_lith_atts_new_lith_att_id_idx1 ON macrostrat.unit_lith_atts USING btree (lith_att_id);
 
-
---
--- Name: unit_lith_atts_new_ref_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX unit_lith_atts_new_ref_id_idx1 ON macrostrat.unit_lith_atts USING btree (ref_id);
 
 
---
--- Name: unit_lith_atts_new_unit_lith_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX unit_lith_atts_new_unit_lith_id_idx1 ON macrostrat.unit_lith_atts USING btree (unit_lith_id);
 
-
---
--- Name: unit_liths_new_lith_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX unit_liths_new_lith_id_idx1 ON macrostrat.unit_liths USING btree (lith_id);
 
 
---
--- Name: unit_liths_new_ref_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX unit_liths_new_ref_id_idx1 ON macrostrat.unit_liths USING btree (ref_id);
 
-
---
--- Name: unit_liths_new_unit_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX unit_liths_new_unit_id_idx1 ON macrostrat.unit_liths USING btree (unit_id);
 
 
---
--- Name: unit_measures_new_measuremeta_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX unit_measures_new_measuremeta_id_idx ON macrostrat.unit_measures USING btree (measuremeta_id);
 
-
---
--- Name: unit_measures_new_strat_name_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX unit_measures_new_strat_name_id_idx ON macrostrat.unit_measures USING btree (strat_name_id);
 
 
---
--- Name: unit_measures_new_unit_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX unit_measures_new_unit_id_idx ON macrostrat.unit_measures USING btree (unit_id);
 
-
---
--- Name: unit_strat_names_new_strat_name_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX unit_strat_names_new_strat_name_id_idx1 ON macrostrat.unit_strat_names USING btree (strat_name_id);
 
 
---
--- Name: unit_strat_names_new_unit_id_idx1; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX unit_strat_names_new_unit_id_idx1 ON macrostrat.unit_strat_names USING btree (unit_id);
 
-
---
--- Name: units_new_col_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX units_new_col_id_idx ON macrostrat.units USING btree (col_id);
 
 
---
--- Name: units_new_color_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX units_new_color_idx ON macrostrat.units USING btree (color);
 
-
---
--- Name: units_new_section_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX units_new_section_id_idx ON macrostrat.units USING btree (section_id);
 
 
---
--- Name: units_new_strat_name_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX units_new_strat_name_idx ON macrostrat.units USING btree (strat_name);
 
-
---
--- Name: units_sections_new_col_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX units_sections_new_col_id_idx ON macrostrat.units_sections USING btree (col_id);
 
 
---
--- Name: units_sections_new_section_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
---
-
 CREATE INDEX units_sections_new_section_id_idx ON macrostrat.units_sections USING btree (section_id);
 
-
---
--- Name: units_sections_new_unit_id_idx; Type: INDEX; Schema: macrostrat; Owner: postgres
---
 
 CREATE INDEX units_sections_new_unit_id_idx ON macrostrat.units_sections USING btree (unit_id);
 
 
---
--- Name: large_b_interval_idx; Type: INDEX; Schema: maps; Owner: postgres
---
-
 CREATE INDEX large_b_interval_idx ON maps.large USING btree (b_interval);
 
-
---
--- Name: large_geom_idx; Type: INDEX; Schema: maps; Owner: postgres
---
 
 CREATE INDEX large_geom_idx ON maps.large USING gist (geom);
 
 
---
--- Name: large_name_idx; Type: INDEX; Schema: maps; Owner: postgres
---
-
 CREATE INDEX large_name_idx ON maps.large USING btree (name);
 
-
---
--- Name: large_orig_id_idx; Type: INDEX; Schema: maps; Owner: postgres
---
 
 CREATE INDEX large_orig_id_idx ON maps.large USING btree (orig_id);
 
 
---
--- Name: large_source_id_idx; Type: INDEX; Schema: maps; Owner: postgres
---
-
 CREATE INDEX large_source_id_idx ON maps.large USING btree (source_id);
 
-
---
--- Name: large_t_interval_idx; Type: INDEX; Schema: maps; Owner: postgres
---
 
 CREATE INDEX large_t_interval_idx ON maps.large USING btree (t_interval);
 
 
---
--- Name: legend_liths_legend_id_idx; Type: INDEX; Schema: maps; Owner: postgres
---
-
 CREATE INDEX legend_liths_legend_id_idx ON maps.legend_liths USING btree (legend_id);
 
-
---
--- Name: legend_liths_lith_id_idx; Type: INDEX; Schema: maps; Owner: postgres
---
 
 CREATE INDEX legend_liths_lith_id_idx ON maps.legend_liths USING btree (lith_id);
 
 
---
--- Name: legend_source_id_idx; Type: INDEX; Schema: maps; Owner: postgres
---
-
 CREATE INDEX legend_source_id_idx ON maps.legend USING btree (source_id);
 
-
---
--- Name: manual_matches_map_id_idx; Type: INDEX; Schema: maps; Owner: postgres
---
 
 CREATE INDEX manual_matches_map_id_idx ON maps.manual_matches USING btree (map_id);
 
 
---
--- Name: manual_matches_strat_name_id_idx; Type: INDEX; Schema: maps; Owner: postgres
---
-
 CREATE INDEX manual_matches_strat_name_id_idx ON maps.manual_matches USING btree (strat_name_id);
 
-
---
--- Name: manual_matches_unit_id_idx; Type: INDEX; Schema: maps; Owner: postgres
---
 
 CREATE INDEX manual_matches_unit_id_idx ON maps.manual_matches USING btree (unit_id);
 
 
---
--- Name: map_legend_legend_id_idx; Type: INDEX; Schema: maps; Owner: postgres
---
-
 CREATE INDEX map_legend_legend_id_idx ON maps.map_legend USING btree (legend_id);
 
-
---
--- Name: map_legend_map_id_idx; Type: INDEX; Schema: maps; Owner: postgres
---
 
 CREATE INDEX map_legend_map_id_idx ON maps.map_legend USING btree (map_id);
 
 
---
--- Name: map_liths_lith_id_idx; Type: INDEX; Schema: maps; Owner: postgres
---
-
 CREATE INDEX map_liths_lith_id_idx ON maps.map_liths USING btree (lith_id);
 
-
---
--- Name: map_liths_map_id_idx; Type: INDEX; Schema: maps; Owner: postgres
---
 
 CREATE INDEX map_liths_map_id_idx ON maps.map_liths USING btree (map_id);
 
 
---
--- Name: map_strat_names_map_id_idx; Type: INDEX; Schema: maps; Owner: postgres
---
-
 CREATE INDEX map_strat_names_map_id_idx ON maps.map_strat_names USING btree (map_id);
 
-
---
--- Name: map_strat_names_strat_name_id_idx; Type: INDEX; Schema: maps; Owner: postgres
---
 
 CREATE INDEX map_strat_names_strat_name_id_idx ON maps.map_strat_names USING btree (strat_name_id);
 
 
---
--- Name: map_units_map_id_idx; Type: INDEX; Schema: maps; Owner: postgres
---
-
 CREATE INDEX map_units_map_id_idx ON maps.map_units USING btree (map_id);
 
-
---
--- Name: map_units_unit_id_idx; Type: INDEX; Schema: maps; Owner: postgres
---
 
 CREATE INDEX map_units_unit_id_idx ON maps.map_units USING btree (unit_id);
 
 
---
--- Name: medium_b_interval_idx; Type: INDEX; Schema: maps; Owner: postgres
---
-
 CREATE INDEX medium_b_interval_idx ON maps.medium USING btree (b_interval);
 
-
---
--- Name: medium_geom_idx; Type: INDEX; Schema: maps; Owner: postgres
---
 
 CREATE INDEX medium_geom_idx ON maps.medium USING gist (geom);
 
 
---
--- Name: medium_orig_id_idx; Type: INDEX; Schema: maps; Owner: postgres
---
-
 CREATE INDEX medium_orig_id_idx ON maps.medium USING btree (orig_id);
 
-
---
--- Name: medium_source_id_idx; Type: INDEX; Schema: maps; Owner: postgres
---
 
 CREATE INDEX medium_source_id_idx ON maps.medium USING btree (source_id);
 
 
---
--- Name: medium_t_interval_idx; Type: INDEX; Schema: maps; Owner: postgres
---
-
 CREATE INDEX medium_t_interval_idx ON maps.medium USING btree (t_interval);
 
-
---
--- Name: small_b_interval_idx; Type: INDEX; Schema: maps; Owner: postgres
---
 
 CREATE INDEX small_b_interval_idx ON maps.small USING btree (b_interval);
 
 
---
--- Name: small_geom_idx; Type: INDEX; Schema: maps; Owner: postgres
---
-
 CREATE INDEX small_geom_idx ON maps.small USING gist (geom);
 
-
---
--- Name: small_orig_id_idx; Type: INDEX; Schema: maps; Owner: postgres
---
 
 CREATE INDEX small_orig_id_idx ON maps.small USING btree (orig_id);
 
 
---
--- Name: small_source_id_idx; Type: INDEX; Schema: maps; Owner: postgres
---
-
 CREATE INDEX small_source_id_idx ON maps.small USING btree (source_id);
 
-
---
--- Name: small_t_interval_idx; Type: INDEX; Schema: maps; Owner: postgres
---
 
 CREATE INDEX small_t_interval_idx ON maps.small USING btree (t_interval);
 
 
---
--- Name: sources_rgeom_idx; Type: INDEX; Schema: maps; Owner: postgres
---
-
 CREATE INDEX sources_rgeom_idx ON maps.sources USING gist (rgeom);
 
-
---
--- Name: sources_web_geom_idx; Type: INDEX; Schema: maps; Owner: postgres
---
 
 CREATE INDEX sources_web_geom_idx ON maps.sources USING gist (web_geom);
 
 
---
--- Name: tiny_b_interval_idx; Type: INDEX; Schema: maps; Owner: postgres
---
-
 CREATE INDEX tiny_b_interval_idx ON maps.tiny USING btree (b_interval);
 
-
---
--- Name: tiny_geom_idx; Type: INDEX; Schema: maps; Owner: postgres
---
 
 CREATE INDEX tiny_geom_idx ON maps.tiny USING gist (geom);
 
 
---
--- Name: tiny_orig_id_idx; Type: INDEX; Schema: maps; Owner: postgres
---
-
 CREATE INDEX tiny_orig_id_idx ON maps.tiny USING btree (orig_id);
 
-
---
--- Name: tiny_source_id_idx; Type: INDEX; Schema: maps; Owner: postgres
---
 
 CREATE INDEX tiny_source_id_idx ON maps.tiny USING btree (source_id);
 
 
---
--- Name: tiny_t_interval_idx; Type: INDEX; Schema: maps; Owner: postgres
---
-
 CREATE INDEX tiny_t_interval_idx ON maps.tiny USING btree (t_interval);
 
-
---
--- Name: points_geom_idx; Type: INDEX; Schema: points; Owner: postgres
---
 
 CREATE INDEX points_geom_idx ON points.points USING gist (geom);
 
 
---
--- Name: points_source_id_idx; Type: INDEX; Schema: points; Owner: postgres
---
-
 CREATE INDEX points_source_id_idx ON points.points USING btree (source_id);
 
-
---
--- Name: agebzepllj_geom_idx; Type: INDEX; Schema: public; Owner: postgres
---
 
 CREATE INDEX agebzepllj_geom_idx ON public.agebzepllj USING gist (geom);
 
 
---
--- Name: aofhmuuyjq_geom_idx; Type: INDEX; Schema: public; Owner: postgres
---
-
 CREATE INDEX aofhmuuyjq_geom_idx ON public.aofhmuuyjq USING gist (geom);
 
-
---
--- Name: bmbtwjmdgn_geom_idx; Type: INDEX; Schema: public; Owner: postgres
---
 
 CREATE INDEX bmbtwjmdgn_geom_idx ON public.bmbtwjmdgn USING gist (geom);
 
 
---
--- Name: emma5k5jzl_geom_idx; Type: INDEX; Schema: public; Owner: postgres
---
-
 CREATE INDEX emma5k5jzl_geom_idx ON public.emma5k5jzl USING gist (geom);
 
-
---
--- Name: i9kzotjhgr_geom_idx; Type: INDEX; Schema: public; Owner: postgres
---
 
 CREATE INDEX i9kzotjhgr_geom_idx ON public.i9kzotjhgr USING gist (geom);
 
 
---
--- Name: impervious_st_convexhull_idx; Type: INDEX; Schema: public; Owner: postgres
---
-
 CREATE INDEX impervious_st_convexhull_idx ON public.impervious USING gist (public.st_convexhull(rast));
 
-
---
--- Name: land_geom_idx; Type: INDEX; Schema: public; Owner: postgres
---
 
 CREATE INDEX land_geom_idx ON public.land USING gist (geom);
 
 
---
--- Name: lookup_large_concept_ids_idx; Type: INDEX; Schema: public; Owner: postgres
---
-
 CREATE INDEX lookup_large_concept_ids_idx ON public.lookup_large USING gin (concept_ids);
 
-
---
--- Name: lookup_large_legend_id_idx; Type: INDEX; Schema: public; Owner: postgres
---
 
 CREATE INDEX lookup_large_legend_id_idx ON public.lookup_large USING btree (legend_id);
 
 
---
--- Name: lookup_large_lith_ids_idx; Type: INDEX; Schema: public; Owner: postgres
---
-
 CREATE INDEX lookup_large_lith_ids_idx ON public.lookup_large USING gin (lith_ids);
 
-
---
--- Name: lookup_large_map_id_idx; Type: INDEX; Schema: public; Owner: postgres
---
 
 CREATE INDEX lookup_large_map_id_idx ON public.lookup_large USING btree (map_id);
 
 
---
--- Name: lookup_large_strat_name_children_idx; Type: INDEX; Schema: public; Owner: postgres
---
-
 CREATE INDEX lookup_large_strat_name_children_idx ON public.lookup_large USING gin (strat_name_children);
 
-
---
--- Name: lookup_medium_concept_ids_idx; Type: INDEX; Schema: public; Owner: postgres
---
 
 CREATE INDEX lookup_medium_concept_ids_idx ON public.lookup_medium USING gin (concept_ids);
 
 
---
--- Name: lookup_medium_legend_id_idx; Type: INDEX; Schema: public; Owner: postgres
---
-
 CREATE INDEX lookup_medium_legend_id_idx ON public.lookup_medium USING btree (legend_id);
 
-
---
--- Name: lookup_medium_lith_ids_idx; Type: INDEX; Schema: public; Owner: postgres
---
 
 CREATE INDEX lookup_medium_lith_ids_idx ON public.lookup_medium USING gin (lith_ids);
 
 
---
--- Name: lookup_medium_map_id_idx; Type: INDEX; Schema: public; Owner: postgres
---
-
 CREATE INDEX lookup_medium_map_id_idx ON public.lookup_medium USING btree (map_id);
 
-
---
--- Name: lookup_medium_strat_name_children_idx; Type: INDEX; Schema: public; Owner: postgres
---
 
 CREATE INDEX lookup_medium_strat_name_children_idx ON public.lookup_medium USING gin (strat_name_children);
 
 
---
--- Name: lookup_small_concept_ids_idx; Type: INDEX; Schema: public; Owner: postgres
---
-
 CREATE INDEX lookup_small_concept_ids_idx ON public.lookup_small USING gin (concept_ids);
 
-
---
--- Name: lookup_small_legend_id_idx; Type: INDEX; Schema: public; Owner: postgres
---
 
 CREATE INDEX lookup_small_legend_id_idx ON public.lookup_small USING btree (legend_id);
 
 
---
--- Name: lookup_small_lith_ids_idx; Type: INDEX; Schema: public; Owner: postgres
---
-
 CREATE INDEX lookup_small_lith_ids_idx ON public.lookup_small USING gin (lith_ids);
 
-
---
--- Name: lookup_small_map_id_idx; Type: INDEX; Schema: public; Owner: postgres
---
 
 CREATE INDEX lookup_small_map_id_idx ON public.lookup_small USING btree (map_id);
 
 
---
--- Name: lookup_small_strat_name_children_idx; Type: INDEX; Schema: public; Owner: postgres
---
-
 CREATE INDEX lookup_small_strat_name_children_idx ON public.lookup_small USING gin (strat_name_children);
 
-
---
--- Name: lookup_tiny_concept_ids_idx; Type: INDEX; Schema: public; Owner: postgres
---
 
 CREATE INDEX lookup_tiny_concept_ids_idx ON public.lookup_tiny USING gin (concept_ids);
 
 
---
--- Name: lookup_tiny_legend_id_idx; Type: INDEX; Schema: public; Owner: postgres
---
-
 CREATE INDEX lookup_tiny_legend_id_idx ON public.lookup_tiny USING btree (legend_id);
 
-
---
--- Name: lookup_tiny_lith_ids_idx; Type: INDEX; Schema: public; Owner: postgres
---
 
 CREATE INDEX lookup_tiny_lith_ids_idx ON public.lookup_tiny USING gin (lith_ids);
 
 
---
--- Name: lookup_tiny_map_id_idx; Type: INDEX; Schema: public; Owner: postgres
---
-
 CREATE INDEX lookup_tiny_map_id_idx ON public.lookup_tiny USING btree (map_id);
 
-
---
--- Name: lookup_tiny_strat_name_children_idx; Type: INDEX; Schema: public; Owner: postgres
---
 
 CREATE INDEX lookup_tiny_strat_name_children_idx ON public.lookup_tiny USING gin (strat_name_children);
 
 
---
--- Name: npb9s0ubia_geom_idx; Type: INDEX; Schema: public; Owner: postgres
---
-
 CREATE INDEX npb9s0ubia_geom_idx ON public.npb9s0ubia USING gist (geom);
 
-
---
--- Name: temp_names_name_no_lith_idx; Type: INDEX; Schema: public; Owner: postgres
---
 
 CREATE INDEX temp_names_name_no_lith_idx ON public.temp_names USING btree (name_no_lith);
 
 
---
--- Name: temp_names_rank_name_idx; Type: INDEX; Schema: public; Owner: postgres
---
-
 CREATE INDEX temp_names_rank_name_idx ON public.temp_names USING btree (rank_name);
 
-
---
--- Name: temp_names_strat_name_id_idx; Type: INDEX; Schema: public; Owner: postgres
---
 
 CREATE INDEX temp_names_strat_name_id_idx ON public.temp_names USING btree (strat_name_id);
 
 
---
--- Name: temp_names_strat_name_idx; Type: INDEX; Schema: public; Owner: postgres
---
-
 CREATE INDEX temp_names_strat_name_idx ON public.temp_names USING btree (strat_name);
 
-
---
--- Name: temp_rocks_b_interval_idx; Type: INDEX; Schema: public; Owner: postgres
---
 
 CREATE INDEX temp_rocks_b_interval_idx ON public.temp_rocks USING btree (b_interval);
 
 
---
--- Name: temp_rocks_envelope_idx; Type: INDEX; Schema: public; Owner: postgres
---
-
 CREATE INDEX temp_rocks_envelope_idx ON public.temp_rocks USING gist (envelope);
 
-
---
--- Name: temp_rocks_strat_name_clean_idx; Type: INDEX; Schema: public; Owner: postgres
---
 
 CREATE INDEX temp_rocks_strat_name_clean_idx ON public.temp_rocks USING btree (strat_name_clean);
 
 
---
--- Name: temp_rocks_strat_name_idx; Type: INDEX; Schema: public; Owner: postgres
---
-
 CREATE INDEX temp_rocks_strat_name_idx ON public.temp_rocks USING btree (strat_name);
 
-
---
--- Name: temp_rocks_t_interval_idx; Type: INDEX; Schema: public; Owner: postgres
---
 
 CREATE INDEX temp_rocks_t_interval_idx ON public.temp_rocks USING btree (t_interval);
 
 
---
--- Name: test_rgeom_geom_idx; Type: INDEX; Schema: public; Owner: postgres
---
-
 CREATE INDEX test_rgeom_geom_idx ON public.test_rgeom USING gist (geom);
 
-
---
--- Name: zphuctzzhp_geom_idx; Type: INDEX; Schema: public; Owner: postgres
---
 
 CREATE INDEX zphuctzzhp_geom_idx ON public.zphuctzzhp USING gist (geom);
 
 
---
--- Name: co_homestake_lines_shape_geom_idx; Type: INDEX; Schema: sources; Owner: postgres
---
-
 CREATE INDEX co_homestake_lines_shape_geom_idx ON sources.co_homestake_lines USING gist (shape);
 
-
---
--- Name: co_homestake_points_shape_geom_idx; Type: INDEX; Schema: sources; Owner: postgres
---
 
 CREATE INDEX co_homestake_points_shape_geom_idx ON sources.co_homestake_points USING gist (shape);
 
 
---
--- Name: co_homestake_shape_geom_idx; Type: INDEX; Schema: sources; Owner: postgres
---
-
 CREATE INDEX co_homestake_shape_geom_idx ON sources.co_homestake USING gist (shape);
 
-
---
--- Name: faults_arc_code_idx; Type: INDEX; Schema: sources; Owner: postgres
---
 
 CREATE INDEX faults_arc_code_idx ON sources.gmus_faults USING btree (arc_code);
 
 
---
--- Name: faults_the_geom_idx; Type: INDEX; Schema: sources; Owner: postgres
---
-
 CREATE INDEX faults_the_geom_idx ON sources.gmus_faults USING gist (the_geom);
 
-
---
--- Name: gid_idx; Type: INDEX; Schema: sources; Owner: postgres
---
 
 CREATE UNIQUE INDEX gid_idx ON sources.id_salmon USING btree (gid);
 
 
---
--- Name: gmus2_unit_link_idx; Type: INDEX; Schema: sources; Owner: postgres
---
-
 CREATE INDEX gmus2_unit_link_idx ON sources.gmus2 USING btree (unit_link);
 
-
---
--- Name: gmus_age_bottom_idx1; Type: INDEX; Schema: sources; Owner: postgres
---
 
 CREATE INDEX gmus_age_bottom_idx1 ON sources.gmus USING btree (age_bottom);
 
 
---
--- Name: gmus_geom_idx1; Type: INDEX; Schema: sources; Owner: postgres
---
-
 CREATE INDEX gmus_geom_idx1 ON sources.gmus USING gist (geom);
 
-
---
--- Name: gmus_state_idx1; Type: INDEX; Schema: sources; Owner: postgres
---
 
 CREATE INDEX gmus_state_idx1 ON sources.gmus USING btree (state);
 
 
---
--- Name: gmus_text_search_idx1; Type: INDEX; Schema: sources; Owner: postgres
---
-
 CREATE INDEX gmus_text_search_idx1 ON sources.gmus USING gin (text_search);
 
-
---
--- Name: gmus_unit_link_idx1; Type: INDEX; Schema: sources; Owner: postgres
---
 
 CREATE INDEX gmus_unit_link_idx1 ON sources.gmus USING btree (unit_link);
 
 
---
--- Name: gmus_unit_name_idx1; Type: INDEX; Schema: sources; Owner: postgres
---
-
 CREATE INDEX gmus_unit_name_idx1 ON sources.gmus USING btree (unit_name);
 
-
---
--- Name: id_fairfield_wkb_geometry_geom_idx; Type: INDEX; Schema: sources; Owner: postgres
---
 
 CREATE INDEX id_fairfield_wkb_geometry_geom_idx ON sources.id_fairfield USING gist (wkb_geometry);
 
 
---
--- Name: id_murphy_lines_wkb_geometry_geom_idx; Type: INDEX; Schema: sources; Owner: postgres
---
-
 CREATE INDEX id_murphy_lines_wkb_geometry_geom_idx ON sources.id_murphy_lines USING gist (wkb_geometry);
 
-
---
--- Name: id_murphy_wkb_geometry_geom_idx; Type: INDEX; Schema: sources; Owner: postgres
---
 
 CREATE INDEX id_murphy_wkb_geometry_geom_idx ON sources.id_murphy USING gist (wkb_geometry);
 
 
---
--- Name: id_salmon_gid_lines_idx; Type: INDEX; Schema: sources; Owner: postgres
---
-
 CREATE UNIQUE INDEX id_salmon_gid_lines_idx ON sources.id_salmon_lines USING btree (gid);
 
-
---
--- Name: id_sandpoint_lines_wkb_geometry_geom_idx; Type: INDEX; Schema: sources; Owner: postgres
---
 
 CREATE INDEX id_sandpoint_lines_wkb_geometry_geom_idx ON sources.id_sandpoint_lines USING gist (wkb_geometry);
 
 
---
--- Name: id_sandpoint_wkb_geometry_geom_idx; Type: INDEX; Schema: sources; Owner: postgres
---
-
 CREATE INDEX id_sandpoint_wkb_geometry_geom_idx ON sources.id_sandpoint USING gist (wkb_geometry);
 
-
---
--- Name: id_twinfalls_lines_wkb_geometry_geom_idx; Type: INDEX; Schema: sources; Owner: postgres
---
 
 CREATE INDEX id_twinfalls_lines_wkb_geometry_geom_idx ON sources.id_twinfalls_lines USING gist (wkb_geometry);
 
 
---
--- Name: id_twinfalls_wkb_geometry_geom_idx; Type: INDEX; Schema: sources; Owner: postgres
---
-
 CREATE INDEX id_twinfalls_wkb_geometry_geom_idx ON sources.id_twinfalls USING gist (wkb_geometry);
 
-
---
--- Name: in_bartholomew_units_geom_geom_idx; Type: INDEX; Schema: sources; Owner: postgres
---
 
 CREATE INDEX in_bartholomew_units_geom_geom_idx ON sources.in_bartholomew USING gist (geom);
 
 
---
--- Name: lookup_units_new_geom_idx; Type: INDEX; Schema: sources; Owner: postgres
---
-
 CREATE INDEX lookup_units_new_geom_idx ON sources.gmna USING gist (geom);
 
-
---
--- Name: lookup_units_new_gid_idx; Type: INDEX; Schema: sources; Owner: postgres
---
 
 CREATE INDEX lookup_units_new_gid_idx ON sources.gmna USING btree (gid);
 
 
---
--- Name: lookup_units_new_gid_idx1; Type: INDEX; Schema: sources; Owner: postgres
---
-
 CREATE INDEX lookup_units_new_gid_idx1 ON sources.gmus USING btree (gid);
 
-
---
--- Name: lookup_units_new_lith_class_idx; Type: INDEX; Schema: sources; Owner: postgres
---
 
 CREATE INDEX lookup_units_new_lith_class_idx ON sources.gmna USING btree (lith_class);
 
 
---
--- Name: lookup_units_new_lith_type_idx; Type: INDEX; Schema: sources; Owner: postgres
---
-
 CREATE INDEX lookup_units_new_lith_type_idx ON sources.gmna USING btree (lith_type);
 
-
---
--- Name: lookup_units_new_macro_interval_id_idx1; Type: INDEX; Schema: sources; Owner: postgres
---
 
 CREATE INDEX lookup_units_new_macro_interval_id_idx1 ON sources.gmus USING btree (macro_interval_id);
 
 
---
--- Name: lookup_units_new_max_age_idx; Type: INDEX; Schema: sources; Owner: postgres
---
-
 CREATE INDEX lookup_units_new_max_age_idx ON sources.gmna USING btree (max_age);
 
-
---
--- Name: lookup_units_new_min_age_idx; Type: INDEX; Schema: sources; Owner: postgres
---
 
 CREATE INDEX lookup_units_new_min_age_idx ON sources.gmna USING btree (min_age);
 
 
---
--- Name: nm_petroglyps_lines_shape_geom_idx; Type: INDEX; Schema: sources; Owner: postgres
---
-
 CREATE INDEX nm_petroglyps_lines_shape_geom_idx ON sources.nm_petroglyps_lines USING gist (shape);
 
-
---
--- Name: nm_petroglyps_shape_geom_idx; Type: INDEX; Schema: sources; Owner: postgres
---
 
 CREATE INDEX nm_petroglyps_shape_geom_idx ON sources.nm_petroglyps USING gist (shape);
 
 
---
--- Name: paleo_point_point_wkb_geometry_geom_idx; Type: INDEX; Schema: sources; Owner: postgres
---
-
 CREATE INDEX paleo_point_point_wkb_geometry_geom_idx ON sources.ontario_pz_points USING gist (geom);
 
-
---
--- Name: san_diego_ca_units_geom_idx; Type: INDEX; Schema: sources; Owner: postgres
---
 
 CREATE INDEX san_diego_ca_units_geom_idx ON sources.ca_san_diego USING gist (geom);
 
 
---
--- Name: san_diego_ca_units_objectid_idx; Type: INDEX; Schema: sources; Owner: postgres
---
-
 CREATE INDEX san_diego_ca_units_objectid_idx ON sources.ca_san_diego USING btree (objectid);
 
-
---
--- Name: ut_prommontorymtns_folds_wkb_geometry_geom_idx; Type: INDEX; Schema: sources; Owner: postgres
---
 
 CREATE INDEX ut_prommontorymtns_folds_wkb_geometry_geom_idx ON sources.ut_prommontorymtns_folds USING gist (wkb_geometry);
 
 
---
--- Name: ut_prommontorymtns_points_wkb_geometry_geom_idx; Type: INDEX; Schema: sources; Owner: postgres
---
-
 CREATE INDEX ut_prommontorymtns_points_wkb_geometry_geom_idx ON sources.ut_prommontorymtns_points USING gist (wkb_geometry);
 
-
---
--- Name: ut_prommontorymtns_wkb_geometry_geom_idx; Type: INDEX; Schema: sources; Owner: postgres
---
 
 CREATE INDEX ut_prommontorymtns_wkb_geometry_geom_idx ON sources.ut_prommontorymtns USING gist (wkb_geometry);
 
 
---
--- Name: world_basins_geom_idx; Type: INDEX; Schema: sources; Owner: postgres
---
-
 CREATE INDEX world_basins_geom_idx ON sources.world_basins USING gist (geom);
 
-
---
--- PostgreSQL database dump complete
---
 
