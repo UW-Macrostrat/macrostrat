@@ -142,7 +142,7 @@ def run_migrations(
 
     if dry_run:
         print("Running migrations in dry-run mode")
-        dry_run_migrations(wait=True, legacy=True)
+        dry_run_migrations(wait=True, legacy=legacy)
         return
 
     db = get_database()
@@ -153,6 +153,7 @@ def run_migrations(
         force=force,
         data_changes=data_changes,
         subsystem=subsystem,
+        legacy=legacy,
     )
 
 
@@ -306,10 +307,11 @@ def _run_migrations(
         # After running migration, reload the database and confirm that application was sucessful
         db.refresh_schema()
 
-        if _migration.should_apply(db) == ApplicationStatus.APPLIED:
-            completed_migrations.append(_migration.name)
-        else:
+        if _migration.should_apply(db) != ApplicationStatus.APPLIED:
             failed_migrations.append(_migration.name)
+            continue
+
+        completed_migrations.append(_migration.name)
 
     # Notify PostgREST to reload the schema cache
     db.run_sql("NOTIFY pgrst, 'reload schema';")
