@@ -9,6 +9,7 @@ import docker
 from macrostrat.database import Database
 from macrostrat.database.utils import OutputMode
 from macrostrat.dinosaur.upgrade_cluster.utils import database_cluster
+from pydantic import BaseModel
 from rich import print
 from time import time
 
@@ -166,7 +167,29 @@ def run_migrations(
     )
 
 
+class MigrationResult(BaseModel):
+    n_migrations: int
+    n_remaining: int
+    duration: float
+
+
 def dry_run_migrations(wait=False, legacy=False):
+    res = _dry_run_migrations(legacy=legacy)
+
+    print(f"Applied {n_total} migrations in {res.duration:.1f} seconds")
+    if res.n_remaining == 0:
+        print("[bold green]No more migrations to apply!")
+    else:
+        print(f"{n_remaining} migrations remaining")
+
+    if wait:
+        print(res)
+        input("Press Enter to continue...")
+
+    return res
+
+
+def _dry_run_migrations(legacy=False):
     # Spin up a docker container with a temporary database
     image = settings.get("pg_database_container", "postgres:15")
 
@@ -185,7 +208,7 @@ def dry_run_migrations(wait=False, legacy=False):
         url = f"postgresql://postgres@localhost:{port}/postgres"
         db = Database(url)
 
-        tstart = time()
+        t_start = time()
 
         _migrations = applyable_migrations(db, allow_destructive=True, legacy=legacy)
         _next_migrations = None
@@ -195,7 +218,7 @@ def dry_run_migrations(wait=False, legacy=False):
 
             if _migrations == _next_migrations:
                 print("No changes in applyable migrations, exiting")
-                return
+                break
 
             _migrations = _next_migrations
             n_applied = _run_migrations(
@@ -208,16 +231,11 @@ def dry_run_migrations(wait=False, legacy=False):
             )
             n_migrations = len(_next_migrations)
 
-        if n_migrations == 0:
-            print("No more migrations to apply!")
+        t_end = time()
 
-        tend = time()
-
-        print(f"Applied {n_total} migrations in {tend - tstart:.2f} seconds")
-
-        if wait:
-            print(url)
-            input("Press Enter to continue...")
+        return MigrationResult(
+            n_migrations=n_total, n_remaining=n_migrations, duration=t_end - t_start
+        )
 
 
 @lru_cache(10)
