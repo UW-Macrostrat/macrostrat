@@ -3,7 +3,7 @@ from enum import Enum
 from functools import lru_cache
 from graphlib import TopologicalSorter
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Iterable
 
 import docker
 from macrostrat.database import Database
@@ -56,6 +56,15 @@ def custom_type_exists(schema: str, *type_names: str) -> DbEvaluator:
 def _not(f: DbEvaluator) -> DbEvaluator:
     """Return a function that evaluates to true when the given function evaluates to false"""
     return lambda db: not f(db)
+
+
+def _any(f: Iterable[DbEvaluator]) -> DbEvaluator:
+    """Return a function that evaluates to true when any of the given functions evaluate to true"""
+
+    def _any_f(db: Database) -> bool:
+        return any(cond(db) for cond in f)
+
+    return _any_f
 
 
 class ApplicationStatus(Enum):
@@ -175,8 +184,12 @@ def dry_run_migrations(wait=False, legacy=False):
     with database_cluster(client, img_tag, port=port) as container:
         url = f"postgresql://postgres@localhost:{port}/postgres"
         db = Database(url)
+
+        tstart = time()
+
         _migrations = applyable_migrations(db, allow_destructive=True, legacy=legacy)
         _next_migrations = None
+        n_total = 0
         n_migrations = len(_migrations)
         while n_migrations > 0:
 
@@ -186,13 +199,21 @@ def dry_run_migrations(wait=False, legacy=False):
 
             _migrations = _next_migrations
             n_applied = _run_migrations(
-                db, apply=True, data_changes=True, verbose=False, legacy=legacy
+                db, apply=True, data_changes=True, legacy=legacy
             )
+            n_total += n_applied
 
             _next_migrations = applyable_migrations(
                 db, allow_destructive=True, legacy=legacy
             )
             n_migrations = len(_next_migrations)
+
+        if n_migrations == 0:
+            print("No more migrations to apply!")
+
+        tend = time()
+
+        print(f"Applied {n_total} migrations in {tend - tstart:.2f} seconds")
 
         if wait:
             print(url)

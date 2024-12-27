@@ -48,10 +48,10 @@ ALTER TABLE lines.lines_small SET SCHEMA maps;
 ALTER TABLE lines.lines_medium SET SCHEMA maps;
 ALTER TABLE lines.lines_large SET SCHEMA maps;
 
-ALTER TABLE maps.lines_tiny ADD COLUMN scale map_scale NOT NULL DEFAULT 'tiny';
-ALTER TABLE maps.lines_small ADD COLUMN scale map_scale NOT NULL DEFAULT 'small';
-ALTER TABLE maps.lines_medium ADD COLUMN scale map_scale NOT NULL DEFAULT 'medium';
-ALTER TABLE maps.lines_large ADD COLUMN scale map_scale NOT NULL DEFAULT 'large';
+ALTER TABLE maps.lines_tiny ADD COLUMN scale maps.map_scale NOT NULL DEFAULT 'tiny';
+ALTER TABLE maps.lines_small ADD COLUMN scale maps.map_scale NOT NULL DEFAULT 'small';
+ALTER TABLE maps.lines_medium ADD COLUMN scale maps.map_scale NOT NULL DEFAULT 'medium';
+ALTER TABLE maps.lines_large ADD COLUMN scale maps.map_scale NOT NULL DEFAULT 'large';
 
 DROP VIEW IF EXISTS tile_layers.map_lines;
 DROP VIEW IF EXISTS tile_layers.line_data;
@@ -82,7 +82,7 @@ CREATE TABLE maps.lines (
     geom geometry(Geometry,4326) NOT NULL,
     new_type character varying(100),
     new_direction character varying(40),
-    scale map_scale NOT NULL
+    scale maps.map_scale NOT NULL
 ) PARTITION BY LIST (scale);
 
 ALTER TABLE maps.lines ATTACH PARTITION maps.lines_tiny FOR VALUES IN ('tiny');
