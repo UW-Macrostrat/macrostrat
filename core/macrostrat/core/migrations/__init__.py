@@ -1,14 +1,21 @@
 import inspect
 from enum import Enum
+from functools import lru_cache
 from graphlib import TopologicalSorter
 from pathlib import Path
-from typing import Callable
+from time import time
+from typing import Callable, Iterable
 
+import docker
+from pydantic import BaseModel
 from rich import print
 
 from macrostrat.database import Database
+from macrostrat.database.utils import OutputMode
+from macrostrat.dinosaur.upgrade_cluster.utils import database_cluster
 
-from ..database import get_database, refresh_database
+from ..config import settings
+from ..database import get_database
 
 """ Higher-order functions that return a function that evaluates whether a condition is met on the database """
 DbEvaluator = Callable[[Database], bool]
@@ -53,6 +60,15 @@ def _not(f: DbEvaluator) -> DbEvaluator:
     return lambda db: not f(db)
 
 
+def _any(f: Iterable[DbEvaluator]) -> DbEvaluator:
+    """Return a function that evaluates to true when any of the given functions evaluate to true"""
+
+    def _any_f(db: Database) -> bool:
+        return any(cond(db) for cond in f)
+
+    return _any_f
+
+
 class ApplicationStatus(Enum):
     """Enum for the possible"""
 
@@ -93,6 +109,8 @@ class Migration:
     # schema changes
     destructive: bool = False
 
+    output_mode: OutputMode = OutputMode.SUMMARY
+
     def should_apply(self, database: Database) -> ApplicationStatus:
         """Determine whether this migration can run, or has already run."""
         # If all post-conditions are met, the migration is already applied
@@ -105,11 +123,11 @@ class Migration:
         else:
             return ApplicationStatus.CANT_APPLY
 
-    def apply(self, database: Database):
+    def apply(self, database: Database) -> ApplicationStatus:
         """Apply the migrations defined by this class. By default, run every sql file
         in the same directory as the class definition."""
         child_cls_dir = Path(inspect.getfile(self.__class__)).parent
-        database.run_fixtures(child_cls_dir)
+        database.run_fixtures(child_cls_dir, output_mode=self.output_mode)
 
 
 class MigrationState(Enum):
@@ -128,31 +146,153 @@ def run_migrations(
     force: bool = False,
     data_changes: bool = False,
     subsystem: str = None,
+    dry_run: bool = False,
+    wait: bool = False,
+    legacy: bool = False,
+):
+
+    if dry_run:
+        print("Running migrations in dry-run mode")
+        dry_run_migrations(wait=True, legacy=legacy)
+        return
+
+    db = get_database()
+    _run_migrations(
+        db,
+        apply=apply,
+        name=name,
+        force=force,
+        data_changes=data_changes,
+        subsystem=subsystem,
+        legacy=legacy,
+    )
+
+
+class MigrationResult(BaseModel):
+    n_migrations: int
+    n_remaining: int
+    duration: float
+
+
+def dry_run_migrations(wait=False, legacy=False):
+    res = _dry_run_migrations(legacy=legacy)
+
+    print(f"Applied {n_total} migrations in {res.duration:.1f} seconds")
+    if res.n_remaining == 0:
+        print("[bold green]No more migrations to apply!")
+    else:
+        print(f"{n_remaining} migrations remaining")
+
+    if wait:
+        print(res)
+        input("Press Enter to continue...")
+
+    return res
+
+
+def _dry_run_migrations(legacy=False):
+    # Spin up a docker container with a temporary database
+    image = settings.get("pg_database_container", "postgres:15")
+
+    client = docker.from_env()
+
+    img_root = settings.srcroot / "base-images" / "database"
+
+    # Build postgres pgaudit image
+    img_tag = "macrostrat-local-database:latest"
+
+    client.images.build(path=str(img_root), tag=img_tag)
+
+    # Spin up an image with this container
+    port = 54884
+    with database_cluster(client, img_tag, port=port) as container:
+        url = f"postgresql://postgres@localhost:{port}/postgres"
+        db = Database(url)
+
+        t_start = time()
+
+        _migrations = applyable_migrations(db, allow_destructive=True, legacy=legacy)
+        _next_migrations = None
+        n_total = 0
+        n_migrations = len(_migrations)
+        while n_migrations > 0:
+
+            if _migrations == _next_migrations:
+                print("No changes in applyable migrations, exiting")
+                break
+
+            _migrations = _next_migrations
+            n_applied = _run_migrations(
+                db, apply=True, data_changes=True, legacy=legacy
+            )
+            n_total += n_applied
+
+            _next_migrations = applyable_migrations(
+                db, allow_destructive=True, legacy=legacy
+            )
+            n_migrations = len(_next_migrations)
+
+        t_end = time()
+
+        return MigrationResult(
+            n_migrations=n_total, n_remaining=n_migrations, duration=t_end - t_start
+        )
+
+
+@lru_cache(10)
+def _get_all_migrations(legacy: bool = False):
+    """
+    Get all migrations in the system
+    :param legacy: Include legacy migrations
+    :return: List of migration instances
+    """
+
+    # Find all subclasses of Migration among imported modules
+    migrations = Migration.__subclasses__()
+
+    # Instantiate each migration, then sort topologically according to dependency order
+    instances = [
+        cls() for cls in migrations if legacy or not getattr(cls, "legacy", False)
+    ]
+    graph = {inst.name: inst.depends_on for inst in instances}
+    order = list(TopologicalSorter(graph).static_order())
+    instances.sort(key=lambda i: order.index(i.name))
+    return instances
+
+
+def _run_migrations(
+    db: Database,
+    apply: bool = False,
+    name: str = None,
+    force: bool = False,
+    data_changes: bool = False,
+    subsystem: str = None,
+    verbose: bool = True,
+    legacy: bool = False,
 ):
     """Apply database migrations"""
-    db = get_database()
+    # Start time
+    t_start = time()
 
     # Check if migrations need to be run and if not, run them
 
     if force and not name:
         raise ValueError("--force can only be applied with --name")
 
-    # Find all subclasses of Migration among imported modules
-    migrations = Migration.__subclasses__()
+    instances = _get_all_migrations(legacy=legacy)
 
-    # Instantiate each migration, then sort topologically according to dependency order
-    instances = [cls() for cls in migrations]
-    graph = {inst.name: inst.depends_on for inst in instances}
-    order = list(TopologicalSorter(graph).static_order())
-    instances.sort(key=lambda i: order.index(i.name))
+    output_mode = OutputMode.SUMMARY if verbose else OutputMode.NONE
 
     # While iterating over migrations, keep track of which have already applied
     completed_migrations = []
+    failed_migrations = []
 
     # Get max width of migration names for formatting
     name_max_width = max(len(m.name) for m in instances)
 
     print("Migrations:")
+
+    migrations_to_run = []
 
     for _migration in instances:
         _name = _migration.name
@@ -175,30 +315,69 @@ def run_migrations(
 
         _print_status(_name, _status, name_max_width=name_max_width)
 
+        migrations_to_run.append(_migration)
+
+    if not apply:
+        print("\n[dim]To apply the migrations, run with --apply")
+        return
+
+    run_counter = 0
+
+    for _migration in migrations_to_run:
+        _name = _migration.name
+        _subsystem = getattr(_migration, "subsystem", None)
+
         # By default, don't run migrations that depend on other non-applied migrations
         dependencies_met = all(d in completed_migrations for d in _migration.depends_on)
-        if not dependencies_met and not force:
+
+        if not force:
+            if not dependencies_met:
+                continue
+
+            if _name in completed_migrations:
+                continue
+
+            if _migration.destructive and not data_changes:
+                continue
+
+        # Hack to allow migrations to follow output mode
+        _migration.output_mode = output_mode
+        _migration.apply(db)
+        run_counter += 1
+        # After running migration, reload the database and confirm that application was sucessful
+        db.refresh_schema()
+
+        if _migration.should_apply(db) != ApplicationStatus.APPLIED:
+            failed_migrations.append(_migration.name)
             continue
 
-        if (force or apply_status == ApplicationStatus.CAN_APPLY) and apply:
-            if _migration.destructive and not data_changes and not force:
-                return
+        completed_migrations.append(_migration.name)
 
-            _migration.apply(db)
-            # After running migration, reload the database and confirm that application was sucessful
-            db = refresh_database()
-            if _migration.should_apply(db) == ApplicationStatus.APPLIED:
-                completed_migrations.append(_migration.name)
+    # Notify PostgREST to reload the schema cache
+    db.run_sql("NOTIFY pgrst, 'reload schema';")
 
-        # Short circuit after applying the migration specified by --name
-        if name is not None and name == _name:
-            break
+    t_delta = time() - t_start
 
-    if apply:
-        # Notify PostgREST to reload the schema cache
-        db.run_sql("NOTIFY pgrst, 'reload schema';")
-    else:
-        print("\n[dim]To apply the migrations, run with --apply")
+    print(f"\nApplied {run_counter} migrations in {t_delta:.2f} seconds")
+    print(f"Completed: {completed_migrations}")
+    if failed_migrations:
+        print(f"Failed: {failed_migrations}")
+
+    return run_counter
+
+
+def applyable_migrations(db, *, allow_destructive=False, legacy=False) -> set[str]:
+    """Check if there are any migrations that can be applied"""
+    _res = set()
+    migrations = _get_all_migrations(legacy=legacy)
+    for _migration in migrations:
+        if _migration.destructive and not allow_destructive:
+            continue
+        apply_status = _migration.should_apply(db)
+        if apply_status == ApplicationStatus.CAN_APPLY:
+            _res.add(_migration.name)
+    print(_res)
+    return _res
 
 
 def migration_has_been_run(*names: str):
@@ -218,28 +397,22 @@ def migration_has_been_run(*names: str):
 
 
 def _get_status(
-    _migration: Migration, completed_migrations: set[str]
+    _migration: Migration, completed_migrations: set[str], data_changes: bool = False
 ) -> MigrationState:
     """Get the status of a migration"""
     name = _migration.name
 
     # By default, don't run migrations that depend on other non-applied migrations
     dependencies_met = all(d in completed_migrations for d in _migration.depends_on)
-    if not dependencies_met and not force:
+    if not dependencies_met:
         return MigrationState.UNMET_DEPENDENCIES
 
     if name in completed_migrations:
         return MigrationState.COMPLETE
 
-    if force or apply_status == ApplicationStatus.CAN_APPLY:
-        if not apply:
-            return MigrationState.SHOULD_APPLY
-        else:
-            if _migration.destructive and not data_changes and not force:
-                return MigrationState.DISALLOWED
-            return MigrationState.SHOULD_APPLY
-
-    return MigrationState.CANNOT_APPLY
+    if _migration.destructive and not data_changes:
+        return MigrationState.DISALLOWED
+    return MigrationState.SHOULD_APPLY
 
 
 def _print_status(name, status: MigrationState, *, name_max_width=40):

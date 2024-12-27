@@ -14,9 +14,13 @@ caching and harmonization).
 
 ## Installation
 
-To install the Python application that controls Macrostrat, head to the
-[py-root](py-root) directory. Running `make` will install the Python
-dependencies and build the application.
+- Running `make` will install the Python dependencies and build the application.
+- `make test` will run the test suite.
+- `make install` will install the application into the local root.
+
+Setting the `MACROSTRAT_PYROOT` environment variable allows a different root
+Python version to be installed. This can be used to add new plugins
+or application dependencies.
 
 ## Usage
 
@@ -74,3 +78,4 @@ Documentation is a work in progress. We have starting points for:
 
 Other documentation of general interest can be found in the [docs/](docs/)
 directory.
+

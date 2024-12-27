@@ -8,7 +8,7 @@ packages = [{ include = "macrostrat" }]
 [tool.poetry.dependencies]
 dynaconf = "^3.1.12"
 "macrostrat.app-frame" = "^2.0.0"
-"macrostrat.database" = "^3.5.0"
+"macrostrat.database" = "^3.5.3"
 python = "^3.11"
 python-dotenv = "^1.0.0"
 sqlalchemy = "^2.0.28"

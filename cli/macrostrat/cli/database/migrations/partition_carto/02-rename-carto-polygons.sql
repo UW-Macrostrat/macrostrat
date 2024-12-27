@@ -27,10 +27,10 @@ ALTER TABLE carto_new.polygons_large SET SCHEMA carto;
 scale within a particular zoom level, not the scale of the zoom level itself.
 We have retained this information in the `geom_scale` field so we can easily
 tell which features are underzoomed */
-ALTER TABLE carto.polygons_tiny ALTER COLUMN scale TYPE map_scale USING scale::map_scale;
-ALTER TABLE carto.polygons_small ALTER COLUMN scale TYPE map_scale USING scale::map_scale;
-ALTER TABLE carto.polygons_medium ALTER COLUMN scale TYPE map_scale USING scale::map_scale;
-ALTER TABLE carto.polygons_large ALTER COLUMN scale TYPE map_scale USING scale::map_scale;
+ALTER TABLE carto.polygons_tiny ALTER COLUMN scale TYPE maps.map_scale USING scale::maps.map_scale;
+ALTER TABLE carto.polygons_small ALTER COLUMN scale TYPE maps.map_scale USING scale::maps.map_scale;
+ALTER TABLE carto.polygons_medium ALTER COLUMN scale TYPE maps.map_scale USING scale::maps.map_scale;
+ALTER TABLE carto.polygons_large ALTER COLUMN scale TYPE maps.map_scale USING scale::maps.map_scale;
 -- Rename to `geom_scale` to avoid confusion
 ALTER TABLE carto.polygons_tiny RENAME COLUMN scale TO geom_scale;
 ALTER TABLE carto.polygons_small RENAME COLUMN scale TO geom_scale;
@@ -44,13 +44,13 @@ ALTER TABLE carto.polygons_large ALTER COLUMN geom_scale SET NOT NULL;
 
 /* Prepare for partitioning */
 ALTER TABLE carto.polygons_tiny
-  ADD COLUMN scale map_scale NOT NULL DEFAULT 'tiny';
+  ADD COLUMN scale maps.map_scale NOT NULL DEFAULT 'tiny';
 ALTER TABLE carto.polygons_small
-  ADD COLUMN scale map_scale NOT NULL DEFAULT 'small';
+  ADD COLUMN scale maps.map_scale NOT NULL DEFAULT 'small';
 ALTER TABLE carto.polygons_medium
-  ADD COLUMN scale map_scale NOT NULL DEFAULT 'medium';
+  ADD COLUMN scale maps.map_scale NOT NULL DEFAULT 'medium';
 ALTER TABLE carto.polygons_large
-  ADD COLUMN scale map_scale NOT NULL DEFAULT 'large';
+  ADD COLUMN scale maps.map_scale NOT NULL DEFAULT 'large';
 
 /* Add a not-null constraint */
 ALTER TABLE carto.polygons_tiny ALTER COLUMN map_id SET NOT NULL;
@@ -85,7 +85,7 @@ CREATE TABLE carto.polygons (
   source_id integer REFERENCES maps.sources(source_id),
   geom geometry(Geometry, 4326) NOT NULL,
   /* This is the scale of the input feature (each level can have features from many scales) */
-  geom_scale map_scale NOT NULL,
+  geom_scale maps.map_scale NOT NULL,
   /* This is the scale of the layer */
-  scale map_scale NOT NULL
+  scale maps.map_scale NOT NULL
 ) PARTITION BY LIST (scale);

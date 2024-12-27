@@ -62,7 +62,7 @@ export PATH="$VIRTUAL_ENV/bin:$PATH"
 # Set the poetry root directory to the script directory
 if [ "$1" = "poetry" ]; then
   shift
-  $_poetry "$@"
+  $_poetry --directory "$SCRIPT_DIR" "$@"
   exit $?
 fi
 
@@ -85,9 +85,13 @@ if [ "$1" = "install" ]; then
     fi
     $SUDO rm -f "$install_loc"
     $SUDO ln -sf "$this_file" "$install_loc"
+  else
+    echo -e "Macrostrat command already available at at \033[36m$install_loc\033[0m"
+    echo -e ""
   fi
 
   shift
+  $_poetry --directory "$SCRIPT_DIR" lock "$@"
   $_poetry --directory "$SCRIPT_DIR" install "$@"
   exit $?
 fi

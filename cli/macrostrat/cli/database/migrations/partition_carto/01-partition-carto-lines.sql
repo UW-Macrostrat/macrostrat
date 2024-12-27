@@ -8,10 +8,10 @@ ALTER TABLE carto_new.lines_small SET SCHEMA carto;
 ALTER TABLE carto_new.lines_medium SET SCHEMA carto;
 ALTER TABLE carto_new.lines_large SET SCHEMA carto;
 
-ALTER TABLE carto.lines_tiny ALTER COLUMN scale TYPE map_scale USING scale::map_scale;
-ALTER TABLE carto.lines_small ALTER COLUMN scale TYPE map_scale USING scale::map_scale;
-ALTER TABLE carto.lines_medium ALTER COLUMN scale TYPE map_scale USING scale::map_scale;
-ALTER TABLE carto.lines_large ALTER COLUMN scale TYPE map_scale USING scale::map_scale;
+ALTER TABLE carto.lines_tiny ALTER COLUMN scale TYPE maps.map_scale USING scale::maps.map_scale;
+ALTER TABLE carto.lines_small ALTER COLUMN scale TYPE maps.map_scale USING scale::maps.map_scale;
+ALTER TABLE carto.lines_medium ALTER COLUMN scale TYPE maps.map_scale USING scale::maps.map_scale;
+ALTER TABLE carto.lines_large ALTER COLUMN scale TYPE maps.map_scale USING scale::maps.map_scale;
 
 ALTER TABLE carto.lines_tiny RENAME COLUMN scale TO geom_scale;
 ALTER TABLE carto.lines_small RENAME COLUMN scale TO geom_scale;
@@ -24,13 +24,13 @@ ALTER TABLE carto.lines_medium ALTER COLUMN geom_scale SET NOT NULL;
 ALTER TABLE carto.lines_large ALTER COLUMN geom_scale SET NOT NULL;
 
 ALTER TABLE carto.lines_tiny
-  ADD COLUMN scale map_scale NOT NULL DEFAULT 'tiny';
+  ADD COLUMN scale maps.map_scale NOT NULL DEFAULT 'tiny';
 ALTER TABLE carto.lines_small
-  ADD COLUMN scale map_scale NOT NULL DEFAULT 'small';
+  ADD COLUMN scale maps.map_scale NOT NULL DEFAULT 'small';
 ALTER TABLE carto.lines_medium
-  ADD COLUMN scale map_scale NOT NULL DEFAULT 'medium';
+  ADD COLUMN scale maps.map_scale NOT NULL DEFAULT 'medium';
 ALTER TABLE carto.lines_large
-  ADD COLUMN scale map_scale NOT NULL DEFAULT 'large';
+  ADD COLUMN scale maps.map_scale NOT NULL DEFAULT 'large';
 
 ALTER TABLE carto.lines_tiny ALTER COLUMN line_id SET NOT NULL;
 ALTER TABLE carto.lines_small ALTER COLUMN line_id SET NOT NULL;
@@ -60,8 +60,8 @@ CREATE TABLE carto.lines (
   line_id integer NOT NULL,
   source_id integer REFERENCES maps.sources(source_id),
   geom geometry(Geometry, 4326) NOT NULL,
-  geom_scale map_scale NOT NULL,
-  scale map_scale NOT NULL
+  geom_scale maps.map_scale NOT NULL,
+  scale maps.map_scale NOT NULL
 ) PARTITION BY LIST (scale);
 
 ALTER TABLE carto.lines ATTACH PARTITION carto.lines_tiny FOR VALUES IN ('tiny');
