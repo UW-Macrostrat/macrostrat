@@ -1,0 +1,76 @@
+[tool.poetry]
+name = "sources-api"
+version = "0.1.0"
+description = ""
+authors = ["Cannon Lock <clock@wisc.edu>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+sqlalchemy = { extras = ["asyncio"], version = "^2.0.22" }
+python-dotenv = "^1.0.0"
+pytest = "^7.4.3"
+fastapi = "^0.104.0"
+httpx = "^0.25.0"
+asyncpg = "^0.28.0"
+pytest-asyncio = "^0.21.1"
+uvicorn = "^0.23.2"
+geoalchemy2 = "^0.14.2"
+geojson-pydantic = "^1.0.1"
+pyjwt = "^2.8.0"
+werkzeug = "^3.0.1"
+aiohttp = "^3.8.6"
+python-jose = { extras = ["cryptography"], version = "^3.3.0" }
+bcrypt = "^4.1.1"
+minio = "^7.2.3"
+numpy = "^1.26.4"
+python-multipart = "^0.0.9"
+python-slugify = "^8.0.4"
+
+[tool.poetry.group.dev.dependencies]
+bandit = "~1.7"
+black = "~23.10"
+isort = "~5.12"
+mypy = "~1.6"
+pylint = "~3.0"
+safety = "~2.3"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
+[tool.black]
+line-length = 96
+target-version = ["py311"]
+
+[tool.isort]
+line_length = 96
+profile = "black"
+
+[tool.mypy]
+explicit_package_bases = true
+namespace_packages = true
+
+check_untyped_defs = true
+strict_optional = true
+no_implicit_optional = true
+
+warn_no_return = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unreachable = true
+warn_unused_ignores = true
+
+color_output = false
+pretty = true
+show_error_codes = true
+
+incremental = true
+sqlite_cache = true
+
+[tool.pylint.messages-control]
+max-line-length = 96
+disable = "invalid-name,missing-class-docstring,missing-function-docstring"
