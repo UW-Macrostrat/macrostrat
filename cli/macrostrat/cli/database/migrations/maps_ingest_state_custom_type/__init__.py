@@ -1,6 +1,5 @@
-from macrostrat.database import Database, Identifier
-
 from macrostrat.core.migrations import Migration, _not, custom_type_exists
+from macrostrat.database import Database, Identifier
 
 
 def ingest_type_exists_in_wrong_schema(db: Database) -> bool:
