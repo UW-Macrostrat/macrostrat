@@ -2,7 +2,7 @@ import random
 
 from fastapi.testclient import TestClient
 
-from .main import TEST_SOURCE_TABLE, api_client
+from .test_database import TEST_SOURCE_TABLE, api_client
 
 
 class TestAPI:

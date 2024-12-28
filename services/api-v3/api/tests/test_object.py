@@ -1,8 +1,7 @@
 import hashlib
-import os
 import random
 
-from .main import api_client
+from .test_database import api_client
 
 
 class TestObjectCRUD:

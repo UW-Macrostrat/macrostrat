@@ -1,6 +1,6 @@
 import random
 
-from .main import api_client
+from .test_database import api_client
 
 
 class TestIngestProcess:
