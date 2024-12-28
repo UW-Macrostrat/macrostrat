@@ -43,8 +43,9 @@ def test_cli_no_config():
         # assert "Active environment: None" in result.output
 
 
-@mark("migrations")
+@mark.docker
 def test_database_migrations(cfg):
+    """Test that database migrations can be run."""
     from macrostrat.core.migrations import _dry_run_migrations
 
     res = _dry_run_migrations(legacy=False)
