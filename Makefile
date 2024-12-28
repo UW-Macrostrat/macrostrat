@@ -12,7 +12,7 @@ format:
 	poetry run isort .
 
 test:
-	poetry run pytest cli/tests
+	poetry run pytest -rP cli/tests
 
 test-warnings:
 	poetry run pytest cli/tests -W error
