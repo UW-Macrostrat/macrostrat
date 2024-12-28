@@ -11,6 +11,9 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Install poetry
+        run: pipx install poetry
+
       - uses: actions/setup-python@v4
         with:
           python-version: '3.11'
