@@ -1,9 +1,9 @@
-from typing import Optional, Union
 import json
+from typing import Optional, Union
 
-from geojson_pydantic import Feature, Polygon, MultiPolygon
-from pydantic import BaseModel, ConfigDict, field_validator
+from geojson_pydantic import Feature, MultiPolygon, Polygon
 from numpy import isnan
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 # Database Models

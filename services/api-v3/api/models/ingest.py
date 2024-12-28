@@ -1,11 +1,10 @@
 import datetime
-from typing import Optional
 from enum import Enum
+from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, field_validator
-
-from api.schemas import IngestState, IngestProcessTag
 import api.models.source as Sources
+from api.schemas import IngestProcessTag, IngestState
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 class Post(BaseModel):

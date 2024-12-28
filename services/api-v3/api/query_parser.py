@@ -4,18 +4,17 @@
 # https://postgrest.org/en/stable/references/api/resource_embedding.html?highlight=filter#embedded-filters
 #
 
+import logging
 import urllib.parse
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import Union
 
-from multidict import MultiDict
 import starlette.requests
-import logging
 from fastapi import FastAPI, HTTPException, Request
-
+from multidict import MultiDict
+from sqlalchemy import Column, String, Table, and_, case, cast, distinct, func, not_
 from sqlalchemy.sql.expression import SQLColumnExpression
-from sqlalchemy import and_, Column, not_, Table, func, distinct, cast, String, case
 
 VALID_OPERATORS = ["not", "eq", "lt", "le", "gt", "ge", "ne", "like", "in", "is"]
 
@@ -29,7 +28,12 @@ class ParserException(Exception):
 def get_filter_query_params(request: Request) -> list[tuple[str, str]]:
     """Returns the query params that are not page or page_size"""
 
-    return [*filter(lambda x: x[0] not in ["page", "page_size"], request.query_params.multi_items())]
+    return [
+        *filter(
+            lambda x: x[0] not in ["page", "page_size"],
+            request.query_params.multi_items(),
+        )
+    ]
 
 
 def cast_to_column_type(column: Column, value):
@@ -78,7 +82,9 @@ class QueryParameter:
         match operators[0]:
             case "not":
                 return not_(
-                    QueryParameter._get_operator_expression(column, operators[1:], value)
+                    QueryParameter._get_operator_expression(
+                        column, operators[1:], value
+                    )
                 )
 
             case "eq":
@@ -173,9 +179,7 @@ class QueryParser:
                 continue
 
             if query_param.operators[0] not in ["group_by", "order_by"]:
-                where_expressions.append(
-                    query_param.get_operator_expression()
-                )
+                where_expressions.append(query_param.get_operator_expression())
 
         if len(where_expressions) == 1:
             return where_expressions[0]
@@ -217,8 +221,11 @@ class QueryParser:
             else:
                 columns.append(
                     case(
-                        (func.count(distinct(cast(column, String))) > 5, "Multiple Values"),
-                        else_=func.STRING_AGG(distinct(cast(column, String)), ",")
+                        (
+                            func.count(distinct(cast(column, String))) > 5,
+                            "Multiple Values",
+                        ),
+                        else_=func.STRING_AGG(distinct(cast(column, String)), ","),
                     ).label(column.name)
                 )
 
@@ -240,7 +247,7 @@ class QueryParser:
                 if query_param.value not in ["asc", "desc"]:
                     raise HTTPException(
                         status_code=400,
-                        detail=f"Query is invalid. Use asc or desc for order_by"
+                        detail=f"Query is invalid. Use asc or desc for order_by",
                     )
 
                 if query_param.value == "asc":
@@ -265,11 +272,13 @@ class QueryParser:
             col = self.columns.get(column_name, column_name)
 
             if col == column_name:
-                log.warning(f"Column ({column_name}) not found in table, potential error")
+                log.warning(
+                    f"Column ({column_name}) not found in table, potential error"
+                )
 
             decomposed_query_params.add(
                 column_name,
-                QueryParameter(column=col, operators=operators, value=value)
+                QueryParameter(column=col, operators=operators, value=value),
             )
 
         return decomposed_query_params

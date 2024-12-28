@@ -1,8 +1,9 @@
-import random
 import hashlib
 import os
+import random
 
 from .main import api_client
+
 
 class TestObjectCRUD:
 
@@ -16,11 +17,9 @@ class TestObjectCRUD:
             "host": "test.com",
             "bucket": "test",
             "key": key,
-            "source": {
-                "test_key": "test_value"
-            },
+            "source": {"test_key": "test_value"},
             "mime_type": "application/json",
-            "sha256_hash": hashlib.sha256(open(__file__, "rb").read()).hexdigest()
+            "sha256_hash": hashlib.sha256(open(__file__, "rb").read()).hexdigest(),
         }
 
         response = api_client.post(
@@ -38,8 +37,15 @@ class TestObjectCRUD:
         response = api_client.post(
             "/object",
             files=[
-                ("object", ("test.txt", open(f"./tests/data/{random_string}.txt", "rb"), "text/plain"))
-            ]
+                (
+                    "object",
+                    (
+                        "test.txt",
+                        open(f"./tests/data/{random_string}.txt", "rb"),
+                        "text/plain",
+                    ),
+                )
+            ],
         )
 
         assert response.status_code == 200
@@ -50,9 +56,15 @@ class TestObjectCRUD:
         response = api_client.post(
             "/object",
             files=[
-                ("object", ("test.txt", open("./tests/data/test.txt", "rb"), "text/plain")),
-                ("object", ("object.py", open("./tests/object.py", "rb"), "text/plain"))
-            ]
+                (
+                    "object",
+                    ("test.txt", open("./tests/data/test.txt", "rb"), "text/plain"),
+                ),
+                (
+                    "object",
+                    ("object.py", open("./tests/object.py", "rb"), "text/plain"),
+                ),
+            ],
         )
 
         assert response.status_code == 200
@@ -62,7 +74,7 @@ class TestObjectCRUD:
 
         response = api_client.post(
             "/ingest-process/1/objects",
-            files={"object": open("./tests/data/test.txt", "rb")}
+            files={"object": open("./tests/data/test.txt", "rb")},
         )
 
         assert response.status_code == 200
@@ -75,9 +87,23 @@ class TestObjectCRUD:
         response = api_client.post(
             "/ingest-process/1/objects",
             files=[
-                ("object", (f"{random_string}.txt", open("./tests/data/test.txt", "rb"), "text/plain")),
-                ("object", (f"{random_string}.py", open("./tests/object.py", "rb"), "text/plain"))
-            ]
+                (
+                    "object",
+                    (
+                        f"{random_string}.txt",
+                        open("./tests/data/test.txt", "rb"),
+                        "text/plain",
+                    ),
+                ),
+                (
+                    "object",
+                    (
+                        f"{random_string}.py",
+                        open("./tests/object.py", "rb"),
+                        "text/plain",
+                    ),
+                ),
+            ],
         )
 
         assert response.status_code == 200
@@ -115,17 +141,12 @@ class TestObjectCRUD:
 
         # Patch Object
         response = api_client.patch(
-            f"/object/{object_data[0]['id']}",
-            json={
-                "source": {
-                    "comments": "test"
-                }
-            }
+            f"/object/{object_data[0]['id']}", json={"source": {"comments": "test"}}
         )
         assert response.status_code == 200
         single_data = response.json()
 
-        assert single_data['source']['comments'] == "test"
+        assert single_data["source"]["comments"] == "test"
 
     def test_delete_object(self, api_client):
         key = f"test-{random.randint(0, 10000000)}"
@@ -135,11 +156,9 @@ class TestObjectCRUD:
             "host": "test.com",
             "bucket": "test",
             "key": key,
-            "source": {
-                "test_key": "test_value"
-            },
+            "source": {"test_key": "test_value"},
             "mime_type": "application/json",
-            "sha256_hash": hashlib.sha256(open(__file__, "rb").read()).hexdigest()
+            "sha256_hash": hashlib.sha256(open(__file__, "rb").read()).hexdigest(),
         }
 
         response = api_client.post("/object", json=object_data)

@@ -1,20 +1,16 @@
 from contextlib import asynccontextmanager
+
+import dotenv
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-import dotenv
-
 dotenv.load_dotenv()
 
 import api.routes.security
-from api.database import (
-    connect_engine,
-    dispose_engine
-)
-
-from api.routes.object import router as object_router
+from api.database import connect_engine, dispose_engine
 from api.routes.ingest import router as ingest_router
+from api.routes.object import router as object_router
 from api.routes.sources import router as sources_router
 
 
@@ -35,7 +31,7 @@ origins = [
     "http://localhost:8000",
     "http://localhost:3000",
     "http://localhost:3000/",
-    "http://localhost:6006"
+    "http://localhost:6006",
 ]
 
 app.add_middleware(
@@ -52,4 +48,9 @@ app.include_router(ingest_router)
 app.include_router(sources_router)
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000, headers=[("Access-Control-Expose-Headers", "X-Total-Count")])
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=8000,
+        headers=[("Access-Control-Expose-Headers", "X-Total-Count")],
+    )
