@@ -744,11 +744,8 @@ def load_object(
 
     ## Download the object to a local, temporary file.
 
-    s3 = minio.Minio(
-        config.S3_HOST,  # type: ignore[arg-type]
-        access_key=config.S3_ACCESS_KEY,
-        secret_key=config.S3_SECRET_KEY,
-    )
+    s3 = get_minio_client()
+
     obj_basename = key.split("/")[-1]
     fd, local_filename = tempfile.mkstemp(suffix=f"-{obj_basename}")
     os.close(fd)
