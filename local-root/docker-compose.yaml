@@ -72,7 +72,7 @@ services:
       - PGRST_SERVER_HOST=
   # Tileserver
   tileserver:
-    image: hub.opensciencegrid.org/macrostrat/tileserver:latest-itb
+    image: hub.opensciencegrid.org/macrostrat/tileserver:main
     #profiles: ['tileserver']
     build:
       context: ${MACROSTRAT_TILESERVER_SRC:-""}
@@ -95,7 +95,7 @@ services:
     build: ${MACROSTRAT_WEB_SRC:-""}
     environment:
       - VITE_MAPBOX_API_TOKEN=${MAPBOX_TOKEN}
-      - VITE_MACROSTRAT_TILESERVER_DOMAIN=tileserver:80
+      - VITE_MACROSTRAT_TILESERVER_DOMAIN=https://macrostrat.local/tiles
       - MACROSTRAT_API_PROXY_DOMAIN="https://dev2.macrostrat.org"
       - VITE_MACROSTRAT_API_DOMAIN="http://localhost:3000"
         # Secret key must be shared with the API that mints the JWT (in this case, the Macrostrat dev API)

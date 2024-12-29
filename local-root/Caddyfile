@@ -14,8 +14,9 @@ localhost, macrostrat.local {
         reverse_proxy tileserver:8000
     }
 
-    respond / "Welcome to your local installation of Macrostrat"
-
+    handle_path /* {
+        reverse_proxy web:3000
+    }
 }
 
 storage.macrostrat.local {
