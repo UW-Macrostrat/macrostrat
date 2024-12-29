@@ -73,7 +73,6 @@ services:
       - PGRST_DB_URI=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
       - PGRST_DB_SCHEMA=macrostrat_api
       - PGRST_DB_ANON_ROLE=web_anon
-      #- PGRST_SERVER_PROXY_URI=http://database:5432
       - PGRST_SERVER_PORT=3000
       - PGRST_SERVER_HOST=
   # Tileserver
