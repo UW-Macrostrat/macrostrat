@@ -7,7 +7,7 @@ localhost, macrostrat.local {
     }
 
     handle_path /api/v3/* {
-        reverse_proxy api_v3:5000
+        reverse_proxy api_v3:80
     }
 
     handle_path /api/pg/* {

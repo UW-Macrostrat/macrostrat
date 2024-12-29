@@ -2,14 +2,18 @@ from os import environ
 from pathlib import Path
 from typing import Optional
 
+from dotenv import load_dotenv
 from dynaconf import Dynaconf, Validator
 from macrostrat.app_frame.control_command import BackendType
+from macrostrat.utils import get_logger
 from pydantic import BaseModel
 from sqlalchemy.engine import make_url
 from sqlalchemy.engine.url import URL
 from toml import load as load_toml
 
 from .utils import find_macrostrat_config
+
+log = get_logger(__name__)
 
 
 class MacrostratConfig(Dynaconf):
@@ -28,6 +32,7 @@ class MacrostratConfig(Dynaconf):
             environments=True,
             env_switcher="MACROSTRAT_ENV",
             settings_files=settings,
+            # We load dotenv files on our own
             load_dotenv=False,
         )
 
@@ -48,14 +53,27 @@ settings = MacrostratConfig()
 
 settings.validators.register(
     # `must_exist` is causing huge problems
-    # Validator("COMPOSE_ROOT", "CORELLE_SRC", must_exist=False, cast=Path),
     Validator("COMPOSE_ROOT", cast=Path),
+    Validator("env_files", cast=list[Path]),
     Validator("pg_database", must_exist=True),
     # Backend information. We could potentially infer this from other environment variables
     Validator("backend", default="kubernetes", cast=BackendType),
 )
 
 macrostrat_env = getattr(settings, "env", "default")
+
+if env_files := getattr(settings, "env_files", None):
+    for env in env_files:
+        e = Path(env)
+        if not e.is_absolute():
+            # Resolve relative to config file
+            e = settings.config_file.parent / e
+
+        if not e.exists():
+            raise FileNotFoundError(f"Environment file {e} not found")
+
+        log.info(f"Loading environment variables from {e}")
+        load_dotenv(env)
 
 settings.validators.validate()
 
