@@ -8,6 +8,11 @@ CHUNK_SIZE = 8 * 1024 * 1024  # 8 MB
 TIMEOUT = 60  # seconds
 
 PG_DATABASE = getattr(settings, "pg_database")
-S3_HOST = getattr(settings, "s3_host", None)
-S3_ACCESS_KEY = getattr(settings, "s3_access_key", None)
-S3_SECRET_KEY = getattr(settings, "s3_secret_key", None)
+
+storage = getattr(settings, "storage", {})
+buckets = getattr(settings, "buckets", {})
+
+S3_HOST = storage.get("host", None)
+ACCESS_KEY = storage.get("access_key", None)
+SECRET_KEY = storage.get("secret_key", None)
+S3_BUCKET = buckets.get("map-staging", None)

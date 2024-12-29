@@ -14,13 +14,13 @@ import re
 import shutil
 import tarfile
 import tempfile
-import time
 import zipfile
 from typing import Annotated, Any, NoReturn, Optional
 
 import magic
 import minio
 import requests  # type: ignore[import-untyped]
+import time
 from rich.console import Console
 from sqlalchemy import and_, insert, select, update
 from sqlalchemy.orm import Session
@@ -66,6 +66,8 @@ console = Console()
 
 # --------------------------------------------------------------------------
 # Assorted helper functions.
+
+default_s3_bucket = config.S3_BUCKET
 
 
 def normalize_slug(slug: str) -> str:
@@ -529,14 +531,14 @@ def upload_file(
         Argument(help="The local archive file to upload"),
     ],
     *,
-    s3_bucket: Annotated[
-        str,
-        Option(help="The S3 bucket to upload the file to"),
-    ],
     s3_prefix: Annotated[
         str,
         Option(help="The prefix, sans trailing slash, to use for the file's S3 key"),
-    ],
+    ] = None,
+    s3_bucket: Annotated[
+        str,
+        Option(help="The S3 bucket to upload the file to"),
+    ] = default_s3_bucket,
     name: Annotated[
         Optional[str],
         Option(help="The map's name"),
@@ -816,14 +818,15 @@ def ingest_csv(
         pathlib.Path,
         Option(help="Directory into which to download the maps' archive files"),
     ],
+    *,
     s3_bucket: Annotated[
         str,
         Option(help="The S3 bucket to upload the files to"),
-    ],
+    ] = default_s3_bucket,
     s3_prefix: Annotated[
         str,
         Option(help="The prefix, sans trailing slash, to use for the files' S3 keys"),
-    ],
+    ] = None,
     tag: Annotated[
         Optional[list[str]],
         Option(help="A tag to apply to the maps"),
