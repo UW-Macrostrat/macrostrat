@@ -26,6 +26,7 @@ from sqlalchemy import and_, insert, select, update
 from sqlalchemy.orm import Session
 from typer import Argument, Option
 
+from macrostrat.core.database import get_database
 from macrostrat.core.schemas import (  # type: ignore[import-untyped]
     IngestProcess,
     IngestProcessTag,
@@ -42,6 +43,7 @@ from macrostrat.map_integration.database import db as DB
 from macrostrat.map_integration.errors import IngestError
 from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
 from macrostrat.map_integration.utils.map_info import MapInfo, get_map_info
+from .config import get_minio_client
 
 # The list of arguments to upload_file that ingest_csv will look
 # for in the CSV file given to it.
@@ -233,7 +235,8 @@ def update_alaska_metadata(source: Sources, data_dir: pathlib.Path) -> None:
 def get_db_session(expire_on_commit=False) -> Session:
     # NOTE: By default, let ORM objects persist past commits, and let
     # consumers manage concurrent updates.
-    return Session(DB.engine, expire_on_commit=expire_on_commit)
+    db = get_database()
+    return Session(db.engine, expire_on_commit=expire_on_commit)
 
 
 def get_object(bucket: str, key: str) -> Optional[Object]:
@@ -531,10 +534,14 @@ def upload_file(
         Argument(help="The local archive file to upload"),
     ],
     *,
+    compress: Annotated[
+        bool,
+        Option(help="Whether to compress the file before uploading"),
+    ] = False,
     s3_prefix: Annotated[
         str,
-        Option(help="The prefix, sans trailing slash, to use for the file's S3 key"),
-    ] = None,
+        Option(help="The prefix to use for the file's S3 key"),
+    ] = "",
     s3_bucket: Annotated[
         str,
         Option(help="The S3 bucket to upload the file to"),
@@ -588,10 +595,35 @@ def upload_file(
     Upload a local archive file for a map to the object store.
     """
 
+    s3 = get_minio_client()
+    bucket = s3_bucket
+    assert bucket is not None
+
+    if s3_prefix.endswith("/"):
+        s3_prefix = s3_prefix[:-1]
+
     ## Normalize identifiers.
 
     slug = normalize_slug(slug)
     console.print(f"Normalized the provided slug to {slug}")
+
+    out_name = local_file.name
+
+    if local_file.is_dir() and not compress:
+        # Special handling for Geodatabases
+        if local_file.suffix.endswith(".gdb"):
+            compress = True
+
+    if local_file.is_dir() and not compress:
+        raise IngestError("Cannot ingest a directory")
+
+    if compress:
+        console.print(f"Compressing {local_file}")
+        out_name = f"{local_file.name}.tar.gz"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".tar.gz") as tf:
+            with tarfile.open(tf.name, "w:gz") as tf:
+                tf.add(local_file, arcname=local_file.name)
+        local_file = pathlib.Path(tf.name)
 
     ## Create or update the `sources` and `ingest_process` records.
 
@@ -622,17 +654,12 @@ def upload_file(
     ## Upload the file.
 
     bucket = s3_bucket
-    key = f"{s3_prefix}/{slug}/{local_file.name}"
+    key = f"{s3_prefix}/{slug}/{out_name}"
 
     obj = get_object(bucket, key)
 
     if not obj or sha256_hash != obj.sha256_hash:
-        console.print(f"Uploading {local_file} to S3 as {bucket}/{key}")
-        s3 = minio.Minio(
-            config.S3_HOST,  # type: ignore[arg-type]
-            access_key=config.S3_ACCESS_KEY,
-            secret_key=config.S3_SECRET_KEY,
-        )
+        console.print(f"Uploading {out_name} to S3 as {bucket}/{key}")
         s3.fput_object(bucket, key, str(local_file))
         ingest_process = update_ingest_process(
             ingest_process.id, state=IngestState.pending
