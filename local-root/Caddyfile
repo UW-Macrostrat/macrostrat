@@ -1,15 +1,29 @@
-http://localhost:80
+# Macrostrat.local domain is served by orbstack
+localhost, macrostrat.local {
+    tls internal
 
-handle_path /api/v2/* {
-	reverse_proxy api:5000
+    handle_path /api/v2/* {
+        reverse_proxy api:5000
+    }
+
+    handle_path /api/pg/* {
+        reverse_proxy postgrest:3000
+    }
+
+    handle_path /tiles/* {
+        reverse_proxy tileserver:8000
+    }
+
+    respond / "Welcome to your local installation of Macrostrat"
+
 }
 
-handle_path /api/pg/* {
-    reverse_proxy postgrest:3000
+storage.macrostrat.local {
+    tls internal
+    reverse_proxy storage:9000
 }
 
-handle_path /tiles/* {
-    reverse_proxy tileserver:8000
+storage-ui.macrostrat.local {
+    tls internal
+    reverse_proxy storage:9001
 }
-
-respond / "Welcome to your local installation of Macrostrat"

@@ -132,18 +132,11 @@ settings.project_name = environ["COMPOSE_PROJECT_NAME"]
 # This should eventually become optional if it isn't already
 MYSQL_DATABASE = getattr(settings, "mysql_database", None)
 
+if mapbox_token := getattr(settings, "mapbox_token", None):
+    environ["MAPBOX_TOKEN"] = mapbox_token
 
-# environ.get("MACROSTRAT_MYSQL_DATABASE", None)
-
-
-# REDIS_PORT = environ.get("REDIS_PORT", None)
-
-# Tile caching
-# CACHE_PATH = environ.get("TILE_CACHE_PATH", "./tiles/burwell")
-# CACHE_PATH_VECTOR = environ.get("TILE_CACHE_PATH_VECTOR", CACHE_PATH)
-
-# TILESERVER_SECRET = environ.get("TILESERVER_SECRET", None)
-# MBTILES_PATH = environ.get("MBTILES_PATH", None)
+if secret_key := getattr(settings, "secret_key", None):
+    environ["SECRET_KEY"] = secret_key
 
 # Path to the root of the Macrostrat repository
 settings.srcroot = Path(__file__).parent.parent.parent.parent

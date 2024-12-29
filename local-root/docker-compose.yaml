@@ -5,6 +5,8 @@ services:
       - "8080:80"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
+    labels:
+      - dev.orbstack.domains=macrostrat.local,storage.macrostrat.local,storage-ui.macrostrat.local
   database:
     # PostgreSQL 13 is needed in order to allow force-dropping the database
     # (in testing mode)
@@ -88,6 +90,16 @@ services:
     volumes:
       - minio_data:/data
     command: server --address 0.0.0.0:9000 --console-address 0.0.0.0:9001 /data
+  web:
+    image: hub.opensciencegrid.org/macrostrat/macrostrat-web:main
+    build: ${MACROSTRAT_WEB_SRC:-""}
+    environment:
+      - VITE_MAPBOX_API_TOKEN=${MAPBOX_TOKEN}
+      - VITE_MACROSTRAT_TILESERVER_DOMAIN=tileserver:80
+      - MACROSTRAT_API_PROXY_DOMAIN="https://dev2.macrostrat.org"
+      - VITE_MACROSTRAT_API_DOMAIN="http://localhost:3000"
+        # Secret key must be shared with the API that mints the JWT (in this case, the Macrostrat dev API)
+      - SECRET_KEY=${SECRET_KEY}
   # Schema-only Test DB instance for applying migrations
   migrations-test-db:
     image: postgis-with-audit
