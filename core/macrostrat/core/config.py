@@ -2,11 +2,10 @@ from os import environ
 from pathlib import Path
 
 from dynaconf import Dynaconf, Validator
+from macrostrat.app_frame.control_command import BackendType
 from sqlalchemy.engine import make_url
 from sqlalchemy.engine.url import URL
 from toml import load as load_toml
-
-from macrostrat.app_frame.control_command import BackendType
 
 from .utils import find_macrostrat_config
 
@@ -57,6 +56,16 @@ settings.validators.register(
 macrostrat_env = getattr(settings, "env", "default")
 
 settings.validators.validate()
+
+# Settings for storage, if provided
+if storage := getattr(settings, "storage", None):
+    access_key = storage.get("access_key", None)
+    secret_key = storage.get("secret_key", None)
+    if access_key is None or secret_key is None:
+        raise ValueError("Access key and secret key must be provided for storage")
+
+    environ["STORAGE_ACCESS_KEY"] = access_key
+    environ["STORAGE_SECRET_KEY"] = secret_key
 
 # A database connection string for PostgreSQL
 PG_DATABASE = settings.pg_database
