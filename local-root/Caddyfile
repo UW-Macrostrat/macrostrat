@@ -3,7 +3,11 @@ localhost, macrostrat.local {
     tls internal
 
     handle_path /api/v2/* {
-        reverse_proxy api:5000
+        reverse_proxy api_v2:5000
+    }
+
+    handle_path /api/v3/* {
+        reverse_proxy api_v3:5000
     }
 
     handle_path /api/pg/* {
