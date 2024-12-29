@@ -1,8 +1,10 @@
 from os import environ
 from pathlib import Path
+from typing import Optional
 
 from dynaconf import Dynaconf, Validator
 from macrostrat.app_frame.control_command import BackendType
+from pydantic import BaseModel
 from sqlalchemy.engine import make_url
 from sqlalchemy.engine.url import URL
 from toml import load as load_toml
@@ -47,7 +49,7 @@ settings = MacrostratConfig()
 settings.validators.register(
     # `must_exist` is causing huge problems
     # Validator("COMPOSE_ROOT", "CORELLE_SRC", must_exist=False, cast=Path),
-    Validator("COMPOSE_ROOT", "CORELLE_SRC", cast=Path),
+    Validator("COMPOSE_ROOT", cast=Path),
     Validator("pg_database", must_exist=True),
     # Backend information. We could potentially infer this from other environment variables
     Validator("backend", default="kubernetes", cast=BackendType),
@@ -148,16 +150,43 @@ settings.srcroot = Path(__file__).parent.parent.parent.parent
 
 environ["MACROSTRAT_ROOT"] = str(settings.srcroot)
 
+
+# Setup source roots for application components
+class Sources(BaseModel):
+    api: Optional[Path] = None
+    api_v3: Optional[Path] = None
+    tileserver: Optional[Path] = None
+    corelle: Optional[Path] = None
+    web: Optional[Path] = None
+
+
+def get_source(key: str) -> Optional[Path]:
+    sources = getattr(settings, "sources", None)
+    if sources is None:
+        return None
+    src = getattr(sources, key, None)
+    if src is not None:
+        return Path(src)
+    return None
+
+
+def setup_environment(sources: Sources):
+    for k, v in sources.dict().items():
+        if v is not None:
+            environ[f"MACROSTRAT_{k.upper()}_SRC"] = str(v)
+
+
+settings.sources = Sources(
+    api=get_source("api"),
+    api_v3=get_source("api_v3"),
+    tileserver=get_source("tileserver"),
+    corelle=get_source("corelle"),
+    web=get_source("web"),
+)
+
+setup_environment(settings.sources)
+
 # Settings for local installation
 
 # Used for local running of Macrostrat
 environ["MACROSTRAT_DB_PORT"] = str(url.port)
-
-if srcroot := getattr(settings, "api_srcroot", None):
-    environ["MACROSTRAT_API_SRC"] = srcroot
-
-if srcroot := getattr(settings, "tileserver_srcroot", None):
-    environ["MACROSTRAT_TILESERVER_SRC"] = srcroot
-
-if srcroot := getattr(settings, "api_v3_srcroot", None):
-    environ["MACROSTRAT_API_V3_SRC"] = srcroot
