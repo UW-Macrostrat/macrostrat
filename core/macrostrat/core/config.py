@@ -1,14 +1,20 @@
 from os import environ
 from pathlib import Path
+from typing import Optional
 
+from dotenv import load_dotenv
 from dynaconf import Dynaconf, Validator
+from pydantic import BaseModel
 from sqlalchemy.engine import make_url
 from sqlalchemy.engine.url import URL
 from toml import load as load_toml
 
 from macrostrat.app_frame.control_command import BackendType
+from macrostrat.utils import get_logger
 
 from .utils import find_macrostrat_config
+
+log = get_logger(__name__)
 
 
 class MacrostratConfig(Dynaconf):
@@ -27,6 +33,7 @@ class MacrostratConfig(Dynaconf):
             environments=True,
             env_switcher="MACROSTRAT_ENV",
             settings_files=settings,
+            # We load dotenv files on our own
             load_dotenv=False,
         )
 
@@ -47,8 +54,8 @@ settings = MacrostratConfig()
 
 settings.validators.register(
     # `must_exist` is causing huge problems
-    # Validator("COMPOSE_ROOT", "CORELLE_SRC", must_exist=False, cast=Path),
-    Validator("COMPOSE_ROOT", "CORELLE_SRC", cast=Path),
+    Validator("COMPOSE_ROOT", cast=Path),
+    Validator("env_files", cast=list[Path]),
     Validator("pg_database", must_exist=True),
     # Backend information. We could potentially infer this from other environment variables
     Validator("backend", default="kubernetes", cast=BackendType),
@@ -56,7 +63,30 @@ settings.validators.register(
 
 macrostrat_env = getattr(settings, "env", "default")
 
+if env_files := getattr(settings, "env_files", None):
+    for env in env_files:
+        e = Path(env)
+        if not e.is_absolute():
+            # Resolve relative to config file
+            e = settings.config_file.parent / e
+
+        if not e.exists():
+            raise FileNotFoundError(f"Environment file {e} not found")
+
+        log.info(f"Loading environment variables from {e}")
+        load_dotenv(env)
+
 settings.validators.validate()
+
+# Settings for storage, if provided
+if storage := getattr(settings, "storage", None):
+    access_key = storage.get("access_key", None)
+    secret_key = storage.get("secret_key", None)
+    if access_key is None or secret_key is None:
+        raise ValueError("Access key and secret key must be provided for storage")
+
+    environ["STORAGE_ACCESS_KEY"] = access_key
+    environ["STORAGE_SECRET_KEY"] = secret_key
 
 # A database connection string for PostgreSQL
 PG_DATABASE = settings.pg_database
@@ -121,34 +151,54 @@ settings.project_name = environ["COMPOSE_PROJECT_NAME"]
 # This should eventually become optional if it isn't already
 MYSQL_DATABASE = getattr(settings, "mysql_database", None)
 
+if mapbox_token := getattr(settings, "mapbox_token", None):
+    environ["MAPBOX_TOKEN"] = mapbox_token
 
-# environ.get("MACROSTRAT_MYSQL_DATABASE", None)
-
-
-# REDIS_PORT = environ.get("REDIS_PORT", None)
-
-# Tile caching
-# CACHE_PATH = environ.get("TILE_CACHE_PATH", "./tiles/burwell")
-# CACHE_PATH_VECTOR = environ.get("TILE_CACHE_PATH_VECTOR", CACHE_PATH)
-
-# TILESERVER_SECRET = environ.get("TILESERVER_SECRET", None)
-# MBTILES_PATH = environ.get("MBTILES_PATH", None)
+if secret_key := getattr(settings, "secret_key", None):
+    environ["SECRET_KEY"] = secret_key
 
 # Path to the root of the Macrostrat repository
 settings.srcroot = Path(__file__).parent.parent.parent.parent
 
 environ["MACROSTRAT_ROOT"] = str(settings.srcroot)
 
+
+# Setup source roots for application components
+class Sources(BaseModel):
+    api: Optional[Path] = None
+    api_v3: Optional[Path] = None
+    tileserver: Optional[Path] = None
+    corelle: Optional[Path] = None
+    web: Optional[Path] = None
+
+
+def get_source(key: str) -> Optional[Path]:
+    sources = getattr(settings, "sources", None)
+    if sources is None:
+        return None
+    src = getattr(sources, key, None)
+    if src is not None:
+        return Path(src)
+    return None
+
+
+def setup_environment(sources: Sources):
+    for k, v in sources.dict().items():
+        if v is not None:
+            environ[f"MACROSTRAT_{k.upper()}_SRC"] = str(v)
+
+
+settings.sources = Sources(
+    api=get_source("api"),
+    api_v3=get_source("api_v3"),
+    tileserver=get_source("tileserver"),
+    corelle=get_source("corelle"),
+    web=get_source("web"),
+)
+
+setup_environment(settings.sources)
+
 # Settings for local installation
 
 # Used for local running of Macrostrat
 environ["MACROSTRAT_DB_PORT"] = str(url.port)
-
-if srcroot := getattr(settings, "api_srcroot", None):
-    environ["MACROSTRAT_API_SRC"] = srcroot
-
-if srcroot := getattr(settings, "tileserver_srcroot", None):
-    environ["MACROSTRAT_TILESERVER_SRC"] = srcroot
-
-if srcroot := getattr(settings, "api_v3_srcroot", None):
-    environ["MACROSTRAT_API_V3_SRC"] = srcroot

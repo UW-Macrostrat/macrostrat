@@ -23,7 +23,7 @@ from ._legacy import get_db
 # First, register all migrations
 # NOTE: right now, this is quite implicit.
 from .migrations import load_migrations
-from .utils import engine_for_db_name
+from .utils import engine_for_db_name, setup_postgrest_access
 
 log = get_logger(__name__)
 
@@ -396,6 +396,19 @@ def run_scripts(migration: str = Argument(None)):
 
 
 db_app.command(name="migrations", rich_help_panel="Schema management")(run_migrations)
+
+
+def update_permissions():
+    """Setup permissions for the PostgREST API.
+
+    NOTE: This is a stopgap until we have a better permssions system.
+    """
+    db = get_db()
+    setup_postgrest_access("macrostrat_api")(db)
+    db.run_sql("NOTIFY pgrst, 'reload schema';")
+
+
+db_app.command(name="permissions", rich_help_panel="Helpers")(update_permissions)
 
 
 ### Helpers
