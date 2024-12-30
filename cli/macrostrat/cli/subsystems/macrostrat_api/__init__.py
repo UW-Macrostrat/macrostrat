@@ -6,9 +6,9 @@ primarily in Macrostrat's column-builder application and set of routes.
 from pathlib import Path
 
 from macrostrat.app_frame import compose
-
 from macrostrat.core import MacrostratSubsystem
 from macrostrat.core.migrations import Migration, view_exists
+
 from ...database import SubsystemSchemaDefinition, get_db
 from ...database.utils import setup_postgrest_access
 

@@ -14,13 +14,13 @@ import re
 import shutil
 import tarfile
 import tempfile
+import time
 import zipfile
 from typing import Annotated, Any, NoReturn, Optional
 
 import magic
 import minio
 import requests  # type: ignore[import-untyped]
-import time
 from rich.console import Console
 from sqlalchemy import and_, insert, select, update
 from sqlalchemy.orm import Session
@@ -43,6 +43,7 @@ from macrostrat.map_integration.database import db as DB
 from macrostrat.map_integration.errors import IngestError
 from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
 from macrostrat.map_integration.utils.map_info import MapInfo, get_map_info
+
 from .config import get_minio_client
 
 # The list of arguments to upload_file that ingest_csv will look

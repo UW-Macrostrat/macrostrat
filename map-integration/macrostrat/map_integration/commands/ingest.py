@@ -1,10 +1,10 @@
 from collections import defaultdict
 from pathlib import Path
-from typing import List, Iterable, Tuple
+from typing import Iterable, List, Tuple
 
-import IPython
 import fiona as F
 import geopandas as G
+import IPython
 import pandas as P
 from geoalchemy2 import Geometry
 from rich.console import Console
