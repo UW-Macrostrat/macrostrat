@@ -67,3 +67,20 @@ UPDATE macrostrat_temp.cols SET poly_geom = ST_SetSRID(poly_geom, 4326);
 
 ALTER TABLE macrostrat_temp.intervals ADD COLUMN rank integer;
 
+--remove duplicates from autocomplete table coming from Mariadb
+
+WITH dupes AS (
+    SELECT
+        ctid
+    FROM (
+        SELECT
+            ctid,
+            ROW_NUMBER() OVER (PARTITION BY name, type, category ORDER BY id) AS row_num
+        FROM
+            macrostrat_temp.autocomplete
+    ) sub
+    WHERE row_num > 1
+)
+DELETE FROM macrostrat_temp.autocomplete
+WHERE ctid IN (SELECT ctid FROM dupes);
+
