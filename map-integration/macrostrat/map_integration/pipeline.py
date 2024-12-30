@@ -14,13 +14,12 @@ import re
 import shutil
 import tarfile
 import tempfile
-import time
 import zipfile
 from typing import Annotated, Any, NoReturn, Optional
 
 import magic
-import minio
 import requests  # type: ignore[import-untyped]
+import time
 from rich.console import Console
 from sqlalchemy import and_, insert, select, update
 from sqlalchemy.orm import Session
@@ -43,7 +42,6 @@ from macrostrat.map_integration.database import db as DB
 from macrostrat.map_integration.errors import IngestError
 from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
 from macrostrat.map_integration.utils.map_info import MapInfo, get_map_info
-
 from .config import get_minio_client
 
 # The list of arguments to upload_file that ingest_csv will look
@@ -475,6 +473,7 @@ def ingest_slug(
         Optional[str],
         Option(help="How to interpret the contents of the map's objects"),
     ] = None,
+    embed: Annotated[bool, Option(help="Embed a shell for debugging")] = False,
 ) -> Sources:
     """
     Ingest a map from its already uploaded files.
@@ -498,7 +497,9 @@ def ingest_slug(
     for i, obj in enumerate(objs):
         append_data = i != 0
         try:
-            load_object(obj.bucket, obj.key, filter=filter, append_data=append_data)
+            load_object(
+                obj.bucket, obj.key, filter=filter, append_data=append_data, embed=embed
+            )
         except Exception as exn:
             raise_ingest_error(ingest_process, str(exn), exn)
 
@@ -719,6 +720,7 @@ def load_object(
             help="Whether to append data to the associated map when it already exists"
         ),
     ] = False,
+    embed: Annotated[bool, Option(help="Embed a shell for debugging")] = False,
 ) -> Object:
     """
     Ingest an object in S3 containing a map into Macrostrat.
@@ -813,6 +815,7 @@ def load_object(
                     source.slug,
                     gis_data,
                     if_exists="append" if append_data else "replace",
+                    embed=embed,
                 )
             except Exception as exn:
                 raise_ingest_error(ingest_process, str(exn), exn)

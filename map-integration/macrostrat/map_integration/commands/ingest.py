@@ -2,9 +2,9 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Iterable, List, Tuple
 
+import IPython
 import fiona as F
 import geopandas as G
-import IPython
 import pandas as P
 from geoalchemy2 import Geometry
 from rich.console import Console
@@ -166,10 +166,19 @@ def get_dataframes(files) -> Iterable[Tuple[str, G.GeoDataFrame]]:
 
             console.print(file, style="bold cyan")
 
+            # If there is no geometry, skip
+            if "geometry" not in df.columns:
+                console.print("No geometry column found. Skipping.")
+                continue
+
             # Print geometry type statistics
             counts = df.geometry.type.value_counts()
             for geom_type, count in counts.items():
                 console.print(f"- {count} {geom_type}s")
+
+            _col_list = ", ".join(df.columns)
+            # Print out column names
+            console.print(f"- [bold]Columns[/bold]: [dim]{_col_list}[/dim]")
 
             name = file.stem
             if n_layers > 1:

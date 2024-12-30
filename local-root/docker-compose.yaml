@@ -56,7 +56,11 @@ services:
       - MACROSTRAT_DATABASE=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
       - ELEVATION_DATABASE=${ELEVATION_DATABASE_URL}
   api_v3:
-    build: ${MACROSTRAT_API_V3_SRC:-""}
+    # Unlike other services, the API v3 service is packaged as part of this repository.
+    # This is because its functionality is tightly coupled in many cases with the command-line
+    # tools and unstable elements of the database schema. We may elect to externalize this
+    # service in the future.
+    build: ../services/api-v3
     environment:
       - DB_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
       - REDIRECT_URI=https://macrostrat.local/api/v3/security/callback
@@ -78,7 +82,6 @@ services:
   # Tileserver
   tileserver:
     image: hub.opensciencegrid.org/macrostrat/tileserver:main
-    #profiles: ['tileserver']
     build:
       context: ${MACROSTRAT_TILESERVER_SRC:-""}
     environment:
