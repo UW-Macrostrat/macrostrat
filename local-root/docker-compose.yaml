@@ -101,9 +101,10 @@ services:
     environment:
       - VITE_MAPBOX_API_TOKEN=${MAPBOX_TOKEN}
       - VITE_MACROSTRAT_TILESERVER_DOMAIN=https://macrostrat.local/tiles
-      - MACROSTRAT_API_PROXY_DOMAIN=https://dev2.macrostrat.org
       - VITE_MACROSTRAT_API_DOMAIN=https://macrostrat.local
-        # Secret key must be shared with the API that mints the JWT (in this case, the Macrostrat dev API)
+      # Needed for server-side rendering requests to not fail on self-signed certs (which OrbStack provides)
+      - NODE_TLS_REJECT_UNAUTHORIZED=0
+      # Secret key must be shared with the API that mints the JWT (in this case, the Macrostrat dev API)
       - SECRET_KEY=${SECRET_KEY}
   # Schema-only Test DB instance for applying migrations
   migrations-test-db:
