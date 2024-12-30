@@ -10,21 +10,10 @@ from macrostrat.core import MacrostratSubsystem
 from macrostrat.core.migrations import Migration, view_exists
 
 from ...database import SubsystemSchemaDefinition, get_db
-from ...database.utils import grant_schema_usage
+from ...database.utils import setup_postgrest_access
 
 __here__ = Path(__file__).parent
 fixtures_dir = __here__ / "schema"
-
-
-def setup_postgrest_access(schema: str):
-    """Run basic grant statements to allow PostgREST to access the schema"""
-
-    def run_updates(db):
-        grant_schema_usage(db, schema, "web_anon")
-        grant_schema_usage(db, schema, "web_user", tables=False, sequences=True)
-
-    return run_updates
-
 
 macrostrat_api = SubsystemSchemaDefinition(
     name="macrostrat-api",

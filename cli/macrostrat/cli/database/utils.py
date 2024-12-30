@@ -336,3 +336,13 @@ def grant_schema_usage(
         """,
             params,
         )
+
+
+def setup_postgrest_access(schema: str):
+    """Run basic grant statements to allow PostgREST to access the schema"""
+
+    def run_updates(db):
+        grant_schema_usage(db, schema, "web_anon")
+        grant_schema_usage(db, schema, "web_user", tables=False, sequences=True)
+
+    return run_updates

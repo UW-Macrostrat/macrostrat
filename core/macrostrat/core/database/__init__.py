@@ -2,7 +2,7 @@ from contextvars import ContextVar
 
 from macrostrat.database import Database
 
-from .config import PG_DATABASE
+from ..config import PG_DATABASE
 
 db_ctx: ContextVar[Database | None] = ContextVar("db_ctx", default=None)
 
