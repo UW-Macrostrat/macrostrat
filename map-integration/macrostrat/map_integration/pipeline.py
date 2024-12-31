@@ -14,17 +14,13 @@ import re
 import shutil
 import tarfile
 import tempfile
+import time
 import zipfile
+from contextlib import contextmanager
 from typing import Annotated, Any, NoReturn, Optional
 
 import magic
 import requests  # type: ignore[import-untyped]
-import time
-from rich.console import Console
-from sqlalchemy import and_, insert, select, update
-from sqlalchemy.orm import Session
-from typer import Argument, Option
-
 from macrostrat.core.database import get_database
 from macrostrat.core.schemas import (  # type: ignore[import-untyped]
     IngestProcess,
@@ -42,6 +38,11 @@ from macrostrat.map_integration.database import db as DB
 from macrostrat.map_integration.errors import IngestError
 from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
 from macrostrat.map_integration.utils.map_info import MapInfo, get_map_info
+from rich.console import Console
+from sqlalchemy import and_, insert, select, update
+from sqlalchemy.orm import Session
+from typer import Argument, Option
+
 from .config import get_minio_client
 
 # The list of arguments to upload_file that ingest_csv will look
@@ -761,14 +762,7 @@ def load_object(
     ## Process anything that might have points, lines, or polygons.
 
     try:
-        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as td:
-            tmp_dir = pathlib.Path(td)
-
-            if is_archive(local_file):
-                console.print(f"Extracting archive into {tmp_dir}")
-                extract_archive(local_file, tmp_dir, ingest_process=ingest_process)
-            else:
-                shutil.copy(local_file, tmp_dir)
+        with ingestion_context(local_file, ignore_cleanup_errors=True) as tmp_dir:
 
             ## Locate files of interest.
 
@@ -798,6 +792,7 @@ def load_object(
                         excluded_data.append(gis_file)
                 else:
                     gis_data.append(gis_file)
+
             if not gis_data:
                 raise_ingest_error(ingest_process, "Failed to locate GIS data")
 
@@ -827,10 +822,27 @@ def load_object(
                     update_alaska_metadata(source, tmp_dir)
             except Exception as exn:
                 raise_ingest_error(ingest_process, str(exn), exn)
+    except Exception as exn:
+        raise_ingest_error(ingest_process, str(exn), exn)
     finally:
         local_file.unlink()
 
     return obj
+
+
+@contextmanager
+def ingestion_context(local_file, *, ignore_cleanup_errors=False) -> list[pathlib.Path]:
+    """Copy or extract a local file into a temporary directory for ingestion."""
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=ignore_cleanup_errors) as td:
+        tmp_dir = pathlib.Path(td)
+
+        if is_archive(local_file):
+            console.print(f"Extracting archive into {tmp_dir}")
+            extract_archive(local_file, tmp_dir)
+        else:
+            shutil.copy(local_file, tmp_dir)
+
+        yield tmp_dir
 
 
 # --------------------------------------------------------------------------

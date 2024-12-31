@@ -25,7 +25,7 @@ def ingest_map(
     if_exists: str = "replace",
     chunksize: int = 100,
 ):
-    """Ingest shapefiles into the database.
+    """Ingest general GIS data files into the database.
 
     This is similar to the macrostrat maps pipeline ingest-map command,
     but it doesn't upload files to S3 or check their existence.
@@ -145,6 +145,10 @@ def ingest_map(
                 progress.update(task, advance=len(chunk))
 
             conn.commit()
+
+
+def create_dataframe_for_layer(file: Path, layer: str) -> G.GeoDataFrame:
+    return G.read_file(file, layer=layer)
 
 
 def get_dataframes(files) -> Iterable[Tuple[str, G.GeoDataFrame]]:
