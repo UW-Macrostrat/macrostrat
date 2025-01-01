@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import Iterable, List, Tuple
 
 import IPython
-import fiona as F
 import geopandas as G
 import pandas as P
 from geoalchemy2 import Geometry
@@ -11,7 +10,7 @@ from rich.console import Console
 from rich.progress import Progress
 from sqlalchemy import text
 
-from .geodatabase import get_vector_info
+from .geodatabase import get_layer_names, apply_domains_to_fields, get_layer_info
 from ..database import db
 from ..errors import IngestError
 
@@ -157,28 +156,28 @@ def get_dataframes(files) -> Iterable[Tuple[str, G.GeoDataFrame]]:
     for file in files:
         console.print(file, style="bold cyan")
 
-        info = get_vector_info(file)
+        layers = get_layer_names(file)
 
-        with F.open(file) as f:
-            print(f.driver)
-            print(f.crs)
-
-        layers = F.listlayers(file)
         n_layers = len(layers)
         if n_layers > 1:
             console.print(f"{n_layers} layers.")
 
         for layer in layers:
-            console.print(f"Layer: {layer}")
+            name = get_layer_name(
+                file, layer, single_file=single_file, single_layer=n_layers == 1
+            )
+            stmt = f"Layer [cyan]{layer}[/cyan]"
+            if name != layer:
+                stmt += f" -> [cyan]{name}[/cyan]"
+            console.print(stmt)
 
             # Create the basic data frame
             df = G.read_file(file, layer=layer)
 
-            _print_layer_info(df, console)
+            info = get_layer_info(file, layer)
+            df = apply_domains_to_fields(df, info)
 
-            name = get_layer_name(
-                file, layer, single_file=single_file, single_layer=n_layers == 1
-            )
+            _print_layer_info(df, console)
 
             yield name, df
 

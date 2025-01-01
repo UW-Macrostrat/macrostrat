@@ -12,6 +12,11 @@ def get_vector_info(dataset: Path):
     return gdal.VectorInfo(ds, format="json")
 
 
+def get_layer_names(ds: Path):
+    info = get_vector_info(ds)
+    return [lyr["name"] for lyr in info["layers"]]
+
+
 def _get_basic_layer_info(info, layer):
     for lyr in info["layers"]:
         if lyr["name"] == layer:
