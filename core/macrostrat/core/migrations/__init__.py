@@ -7,12 +7,11 @@ from time import time
 from typing import Callable, Iterable
 
 import docker
-from pydantic import BaseModel
-from rich import print
-
 from macrostrat.database import Database
 from macrostrat.database.utils import OutputMode
 from macrostrat.dinosaur.upgrade_cluster.utils import database_cluster
+from pydantic import BaseModel
+from rich import print
 
 from ..config import settings
 from ..database import get_database
@@ -53,6 +52,19 @@ def has_fks(schema: str, *table_names: str) -> DbEvaluator:
 def custom_type_exists(schema: str, *type_names: str) -> DbEvaluator:
     """Return a function that evaluates to true when every given custom type in the given schema exists"""
     return lambda db: all(db.inspector.has_type(t, schema=schema) for t in type_names)
+
+
+def has_columns(schema: str, table: str, *fields: str) -> DbEvaluator:
+    """Return a function that evaluates to true when every given field in the given table exists"""
+
+    def _has_fields(db: Database) -> bool:
+        if not db.inspector.has_table(table, schema=schema):
+            return False
+        columns = db.inspector.get_columns(table, schema=schema)
+        col_names = [c["name"] for c in columns]
+        return all(f in col_names for f in fields)
+
+    return _has_fields
 
 
 def _not(f: DbEvaluator) -> DbEvaluator:
