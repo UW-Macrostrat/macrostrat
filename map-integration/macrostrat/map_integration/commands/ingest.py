@@ -175,7 +175,10 @@ def get_dataframes(files) -> Iterable[Tuple[str, G.GeoDataFrame]]:
             df = G.read_file(file, layer=layer)
 
             info = get_layer_info(file, layer)
+            # Apply domains for Geodatabase linked information
             df = apply_domains_to_fields(df, info)
+
+            # TODO: find and follow foreign key relationships
 
             _print_layer_info(df, console)
 

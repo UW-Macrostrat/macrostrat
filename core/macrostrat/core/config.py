@@ -4,13 +4,12 @@ from typing import Optional
 
 from dotenv import load_dotenv
 from dynaconf import Dynaconf, Validator
+from macrostrat.app_frame.control_command import BackendType
+from macrostrat.utils import get_logger
 from pydantic import BaseModel
 from sqlalchemy.engine import make_url
 from sqlalchemy.engine.url import URL
 from toml import load as load_toml
-
-from macrostrat.app_frame.control_command import BackendType
-from macrostrat.utils import get_logger
 
 from .utils import find_macrostrat_config
 
@@ -74,7 +73,8 @@ if env_files := getattr(settings, "env_files", None):
             raise FileNotFoundError(f"Environment file {e} not found")
 
         log.info(f"Loading environment variables from {e}")
-        load_dotenv(env)
+        load_dotenv(e)
+
 
 settings.validators.validate()
 
