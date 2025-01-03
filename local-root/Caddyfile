@@ -11,6 +11,18 @@ localhost, macrostrat.local {
     }
 
     handle_path /api/pg/* {
+        @auth_cookie {
+            # Match requests with an access_token cookie but not an Authorization header
+            header Cookie *access_token*
+            not {
+                header Authorization *
+            }
+        }
+
+        reverse_proxy @auth_cookie postgrest:3000 {
+            header_up Authorization {http.request.cookie.access_token}
+        }
+
         reverse_proxy postgrest:3000
     }
 
@@ -19,7 +31,8 @@ localhost, macrostrat.local {
     }
 
     handle_path /* {
-        reverse_proxy web:3000
+        reverse_proxy docker.host.internal:3000
+        #reverse_proxy web:3000
     }
 }
 
