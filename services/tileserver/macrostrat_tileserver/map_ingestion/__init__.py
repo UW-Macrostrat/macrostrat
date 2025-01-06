@@ -99,9 +99,12 @@ async def get_layer(pool, slug, layer: FeatureType, **params):
     async with pool.acquire() as con:
         table_name = f"{slug}_{layer}"
         alias = "s"
-        column_names = await get_table_columns(con, table_name, schema="sources")
+        column_dict = await get_table_columns(con, table_name, schema="sources")
+        log.debug("Columns: %s", column_dict)
         columns = [
-            alias + "." + _wrap_with_quotes(i) for i in column_names if i != "geom"
+            format_column(k, v, cast_empty_strings=True, table_alias=alias)
+            for k, v in column_dict.items()
+            if k != "geom"
         ]
         columns.append("tile_layers.tile_geom(s.geom, :envelope) AS geometry")
 
@@ -132,6 +135,25 @@ async def get_layer(pool, slug, layer: FeatureType, **params):
             layer_name=f"{layer}",
             **params,
         )
+
+
+string_data_types = [
+    "character varying",
+    "text",
+]
+
+
+def format_column(
+    col, data_type, table_alias=None, cast_empty_strings=False, name=None
+):
+    val = _wrap_with_quotes(col)
+    if name is None:
+        name = val
+    if table_alias is not None:
+        val = f"{table_alias}.{val}"
+    if cast_empty_strings and data_type in string_data_types:
+        val = f"NULLIF({val}, '')::text"
+    return f"{val} AS {name}"
 
 
 def _color_subquery(b_age, t_age, alias):
@@ -209,18 +231,18 @@ def get_bounds(base_query, geometry_column="geometry"):
 
 async def get_table_columns(con, table, schema="sources"):
     base_sql = f"""
-    SELECT array_agg(column_name)
+    SELECT column_name, data_type
     FROM information_schema.columns
     WHERE table_name = :table
     AND table_schema = :schema;
     """
 
     q, p = render(base_sql, table=table, schema=schema)
-    res = await con.fetchval(q, *p)
-    if res is None:
+    res = await con.fetch(q, *p)
+    if len(res) == 0:
         raise UndefinedTableError(f"Table {schema}.{table} not found")
 
-    return res
+    return {i[0]: i[1] for i in res}
 
 
 def register_map_ingestion_routes(app):
