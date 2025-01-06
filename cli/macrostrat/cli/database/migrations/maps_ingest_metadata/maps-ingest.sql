@@ -1,6 +1,12 @@
-ALTER TABLE maps_metadata.ingest_process ADD COLUMN polygon_omit text[];
-ALTER TABLE maps_metadata.ingest_process ADD COLUMN line_omit text[];
-ALTER TABLE maps_metadata.ingest_process ADD COLUMN point_omit text[];
+DROP VIEW IF EXISTS macrostrat_api.map_ingest_metadata;
+
+ALTER TABLE maps_metadata.ingest_process DROP COLUMN IF EXISTS polygon_omit;
+ALTER TABLE maps_metadata.ingest_process DROP COLUMN IF EXISTS line_omit;
+ALTER TABLE maps_metadata.ingest_process DROP COLUMN IF EXISTS point_omit;
+
+ALTER TABLE maps_metadata.ingest_process ADD COLUMN polygon_state jsonb;
+ALTER TABLE maps_metadata.ingest_process ADD COLUMN line_state jsonb;
+ALTER TABLE maps_metadata.ingest_process ADD COLUMN point_state jsonb;
 
 CREATE OR REPLACE VIEW macrostrat_api.map_ingest_metadata AS
 SELECT * FROM maps_metadata.ingest_process;

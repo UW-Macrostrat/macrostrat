@@ -8,7 +8,11 @@ class IngestMetadataMigration(Migration):
 
     postconditions = [
         has_columns(
-            "maps_metadata", "ingest_process", "polygon_omit", "line_omit", "point_omit"
+            "maps_metadata",
+            "ingest_process",
+            "polygon_state",
+            "line_state",
+            "point_state",
         ),
         # We should eventually move this to another _api schema
         view_exists("macrostrat_api", "map_ingest_metadata"),
