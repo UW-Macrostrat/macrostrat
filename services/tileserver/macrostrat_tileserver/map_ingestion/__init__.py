@@ -121,8 +121,8 @@ async def get_layer(pool, slug, layer: FeatureType, **params):
             # b_age = "coalesce(s.b_age, i0.age_bottom)"
             # t_age = "coalesce(s.t_age, i1.age_top)"
             columns += [
-                b_age + " AS b_age",
-                t_age + " AS t_age",
+                b_age + "::float AS b_age",
+                t_age + "::float AS t_age",
                 _color_subquery(b_age, t_age, "color"),
             ]
 
