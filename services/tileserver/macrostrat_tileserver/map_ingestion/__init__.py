@@ -4,10 +4,12 @@ from buildpg import render, Renderer
 from fastapi import APIRouter, Request, Response
 from timvt.resources.enums import MimeTypes
 from titiler.core.models.mapbox import TileJSON
-from pydantic import BaseModel
+from asyncpg import UndefinedTableError
 from enum import Enum
 from macrostrat.utils import get_logger
-from typing import Optional
+from macrostrat.database.utils import format as format_sql
+
+print_sql_statements = False
 
 router = APIRouter()
 log = get_logger("uvicorn.error")
@@ -40,7 +42,15 @@ async def tilejson(
 
     tile_endpoint = str(url_path)
 
-    sql = get_bounds(f"SELECT * FROM sources.{slug}_polygons", geometry_column="geom")
+    bounds_query = f"""
+    SELECT geom FROM sources.{slug}_polygons
+    UNION
+    SELECT geom FROM sources.{slug}_lines
+    UNION
+    SELECT geom FROM sources.{slug}_points
+    """
+
+    sql = get_bounds(bounds_query, geometry_column="geom")
     pool = request.app.state.pool
     async with pool.acquire() as con:
         bounds = await con.fetchval(sql)
@@ -70,41 +80,100 @@ async def tile(
     pool = request.app.state.pool
 
     data = b""
-
+    success = False
     for layer in FeatureType:
-        data += await get_layer(pool, slug, layer, z=z, x=x, y=y)
+        try:
+            data += await get_layer(pool, slug, layer, z=z, x=x, y=y)
+            success = True
+        except UndefinedTableError:
+            pass
+    if not success:
+        return Response(status_code=404, content=f"No tables found for {slug}")
 
     kwargs = {}
     kwargs.setdefault("media_type", MimeTypes.pbf.value)
     return Response(data, **kwargs)
 
 
-async def get_layer(pool, slug, layer, **params):
+async def get_layer(pool, slug, layer: FeatureType, **params):
     async with pool.acquire() as con:
         table_name = f"{slug}_{layer}"
+        alias = "s"
         column_names = await get_table_columns(con, table_name, schema="sources")
+        columns = [
+            alias + "." + _wrap_with_quotes(i) for i in column_names if i != "geom"
+        ]
+        columns.append("tile_layers.tile_geom(s.geom, :envelope) AS geometry")
+
+        joins = None
+        if layer == FeatureType.polygons:
+            joins = [
+                "LEFT JOIN macrostrat.intervals i0 ON s.b_interval = i0.id",
+                "LEFT JOIN macrostrat.intervals i1 ON s.t_interval = i1.id",
+            ]
+
+            b_age = "i0.age_bottom"
+            t_age = "i1.age_top"
+            # Eventually we will allow b_age and t_age to be set directly
+            # b_age = "coalesce(s.b_age, i0.age_bottom)"
+            # t_age = "coalesce(s.t_age, i1.age_top)"
+            columns += [
+                b_age + " AS b_age",
+                t_age + " AS t_age",
+                _color_subquery(b_age, t_age, "color"),
+            ]
+
         return await run_layer_query(
             con,
-            slug,
-            layer,
-            column_names,
+            f"sources.{table_name}",
+            columns,
+            joins=joins,
+            table_alias=alias,
+            layer_name=f"{layer}",
             **params,
         )
 
 
+def _color_subquery(b_age, t_age, alias):
+    return f"""(
+    SELECT interval_color
+      FROM macrostrat.intervals
+      WHERE age_top <= {t_age} AND age_bottom >= {b_age}
+      ORDER BY age_bottom - age_top
+      LIMIT 1
+    ) AS {alias}"""
+
+
 async def run_layer_query(
-    con, slug: str, layer: str, column_names: list[str], **params
+    con,
+    table_name,
+    columns,
+    *,
+    joins=None,
+    layer_name="default",
+    table_alias=None,
+    **params,
 ):
-    table_name = f"{slug}_{layer}"
-    cols = [_wrap_with_quotes(i) for i in column_names if i != "geom"]
-    cols.append("tile_layers.tile_geom(geom, :envelope) AS geometry")
-    cols = ", ".join(cols)
-    query = f"SELECT :cols FROM sources.{table_name}".replace(":cols", cols)
-    query = extend_sql(query, layer)
+    _cols = ", ".join(columns)
+    query = f"SELECT {_cols} FROM {table_name}"
+    if table_alias:
+        query += f" AS {table_alias}"
 
-    q, p = render(query, layer_name=layer, **params)
+    if joins:
+        query += "\n" + "\n".join(joins)
 
-    log.info(q, p)
+    query = extend_sql(query)
+    params = dict(layer_name=layer_name, **params)
+
+    if print_sql_statements:
+        log.debug(
+            "Running query:\n%s\nParameters: %s",
+            format_sql(query, reindent=True),
+            params,
+        )
+
+    q, p = render(query, **params)
+
     return await con.fetchval(q, *p)
 
 
@@ -116,7 +185,7 @@ def _wrap_with_quotes(col):
     return '"' + col + '"'
 
 
-def extend_sql(sql, layer_name):
+def extend_sql(sql):
     q = sql.strip()
     if q.endswith(";"):
         q = q[:-1]
@@ -147,7 +216,11 @@ async def get_table_columns(con, table, schema="sources"):
     """
 
     q, p = render(base_sql, table=table, schema=schema)
-    return await con.fetchval(q, *p)
+    res = await con.fetchval(q, *p)
+    if res is None:
+        raise UndefinedTableError(f"Table {schema}.{table} not found")
+
+    return res
 
 
 def register_map_ingestion_routes(app):
