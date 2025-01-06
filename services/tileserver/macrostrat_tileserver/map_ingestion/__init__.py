@@ -23,12 +23,6 @@ class FeatureType(str, Enum):
     points = "points"
 
 
-class ColumnNameInformation(BaseModel):
-    polygon_columns: Optional[list[str]]
-    line_columns: Optional[list[str]]
-    point_columns: Optional[list[str]]
-
-
 @router.get(
     "/{slug}/tilejson.json",
     response_model=TileJSON,
@@ -60,47 +54,6 @@ async def tilejson(
     }
 
 
-async def get_column_name_information(pool, slug) -> ColumnNameInformation:
-    polygon_table = f"{slug}_polygons"
-    line_table = f"{slug}_lines"
-    point_table = f"{slug}_points"
-    names = await get_column_names(
-        pool, polygon_table, line_table, point_table, schema="sources"
-    )
-    return ColumnNameInformation(
-        polygon_columns=names[polygon_table],
-        line_columns=names[line_table],
-        point_columns=names[point_table],
-    )
-
-
-def get_bounds(base_query, geometry_column="geometry"):
-    return f"""WITH b AS (
-        SELECT ST_Union(a.{geometry_column}::box2d)::box2d env
-        FROM ({base_query}) a
-    )
-    SELECT ARRAY[ST_XMin(env), ST_YMin(env), ST_XMax(env), ST_YMax(env)]
-    FROM b;
-    """
-
-
-async def get_column_names(pool, *tables, schema="sources"):
-    base_sql = f"""
-    SELECT array_agg(column_name)
-    FROM information_schema.columns
-    WHERE table_name = :table
-    AND table_schema = :schema;
-    """
-
-    res = {}
-    async with pool.acquire() as con:
-        for table in tables:
-            q, p = render(base_sql, table=table, schema=schema)
-            columns = await con.fetchval(q, *p)
-            res[table] = columns
-    return res
-
-
 @router.get("/{slug}/{z}/{x}/{y}")
 async def tile(
     request: Request,
@@ -116,35 +69,42 @@ async def tile(
     """Get a tile from the tileserver."""
     pool = request.app.state.pool
 
-    column_names = await get_column_name_information(pool, slug)
+    data = b""
 
-    async with pool.acquire() as con:
-        data = await run_layer_query(
-            con,
-            slug,
-            column_names,
-            z=z,
-            x=x,
-            y=y,
-        )
+    for layer in FeatureType:
+        data += await get_layer(pool, slug, layer, z=z, x=x, y=y)
+
     kwargs = {}
     kwargs.setdefault("media_type", MimeTypes.pbf.value)
     return Response(data, **kwargs)
 
 
-async def run_layer_query(con, slug, column_names: ColumnNameInformation, **params):
-    layer_name = "polygons"
+async def get_layer(pool, slug, layer, **params):
+    async with pool.acquire() as con:
+        table_name = f"{slug}_{layer}"
+        column_names = await get_table_columns(con, table_name, schema="sources")
+        return await run_layer_query(
+            con,
+            slug,
+            layer,
+            column_names,
+            **params,
+        )
 
-    cols = [_wrap_with_quotes(i) for i in column_names.polygon_columns if i != "geom"]
+
+async def run_layer_query(
+    con, slug: str, layer: str, column_names: list[str], **params
+):
+    table_name = f"{slug}_{layer}"
+    cols = [_wrap_with_quotes(i) for i in column_names if i != "geom"]
     cols.append("tile_layers.tile_geom(geom, :envelope) AS geometry")
     cols = ", ".join(cols)
-    query = f"SELECT :cols FROM sources.{slug}_polygons".replace(":cols", cols)
-    query = extend_sql(query, layer_name)
+    query = f"SELECT :cols FROM sources.{table_name}".replace(":cols", cols)
+    query = extend_sql(query, layer)
 
-    q, p = render(query, layer_name=layer_name, **params)
+    q, p = render(query, layer_name=layer, **params)
 
     log.info(q, p)
-
     return await con.fetchval(q, *p)
 
 
@@ -166,6 +126,28 @@ def extend_sql(sql, layer_name):
 
     # Wrap with MVT creation
     return f"WITH feature_query AS ({q}) SELECT ST_AsMVT(feature_query, :layer_name, 4096, 'geometry') FROM feature_query"
+
+
+def get_bounds(base_query, geometry_column="geometry"):
+    return f"""WITH b AS (
+        SELECT ST_Union(a.{geometry_column}::box2d)::box2d env
+        FROM ({base_query}) a
+    )
+    SELECT ARRAY[ST_XMin(env), ST_YMin(env), ST_XMax(env), ST_YMax(env)]
+    FROM b;
+    """
+
+
+async def get_table_columns(con, table, schema="sources"):
+    base_sql = f"""
+    SELECT array_agg(column_name)
+    FROM information_schema.columns
+    WHERE table_name = :table
+    AND table_schema = :schema;
+    """
+
+    q, p = render(base_sql, table=table, schema=schema)
+    return await con.fetchval(q, *p)
 
 
 def register_map_ingestion_routes(app):
