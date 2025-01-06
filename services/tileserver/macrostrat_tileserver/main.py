@@ -14,7 +14,6 @@ from timvt.db import (
     connect_to_db,
     register_table_catalog,
 )
-from timvt.settings import PostgresSettings
 from timvt.layer import FunctionRegistry
 from titiler.core.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from titiler.core.factory import TilerFactory
@@ -30,6 +29,7 @@ from macrostrat.database import Database
 from pathlib import Path
 from time import time
 
+from .map_ingestion import register_map_ingestion_routes
 
 from typing import Any, Optional
 from buildpg import asyncpg
@@ -100,9 +100,8 @@ async def startup_event():
 
     # Apply fixtures
     # apply_fixtures(db_settings.database_url)
-    await register_table_catalog(app, schemas=["sources"])
+    # await register_table_catalog(app, schemas=["sources"])
     prepare_image_tile_subsystem()
-    print("Application started.")
 
 
 @app.on_event("startup")
@@ -138,6 +137,10 @@ async def shutdown_event():
 
 app.add_middleware(CompressionMiddleware, minimum_size=0)
 
+# Map ingestion
+register_map_ingestion_routes(app)
+
+
 MapnikLayerFactory(app)
 
 cog = TilerFactory()
@@ -148,8 +151,8 @@ add_exception_handlers(app, DEFAULT_STATUS_CODES)
 
 # Register endpoints.
 mvt_tiler = CachedVectorTilerFactory(
-    with_tables_metadata=True,
-    with_functions_metadata=True,  # add Functions metadata endpoints (/functions.json, /{function_name}.json)
+    with_tables_metadata=False,
+    with_functions_metadata=False,  # add Functions metadata endpoints (/functions.json, /{function_name}.json)
     with_viewer=False,
 )
 
