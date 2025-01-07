@@ -209,11 +209,11 @@ class MigrationResult(BaseModel):
 def dry_run_migrations(wait=False, legacy=False):
     res = _dry_run_migrations(legacy=legacy)
 
-    print(f"Applied {n_total} migrations in {res.duration:.1f} seconds")
+    print(f"Applied {res.n_migrations} migrations in {res.duration:.1f} seconds")
     if res.n_remaining == 0:
         print("[bold green]No more migrations to apply!")
     else:
-        print(f"{n_remaining} migrations remaining")
+        print(f"{res.n_remaining} migrations remaining")
 
     if wait:
         print(res)
