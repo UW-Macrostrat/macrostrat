@@ -17,6 +17,7 @@ UPDATE maps.lines SET type = 'strike-slip fault'
 WHERE type = 'strike-slilp fault';
 
 -- Create another view for api
+DROP VIEW IF EXISTS map_ingestion_api.maps;
 CREATE OR REPLACE VIEW map_ingestion_api.maps AS
 SELECT
   s.source_id,
@@ -25,8 +26,10 @@ SELECT
   url,
   ref_year,
   scale,
+  i.state,
   (SELECT array_agg(tag) AS tags FROM maps_metadata.ingest_process_tag WHERE ingest_process_id = i.id) AS tags
 FROM maps.sources s
 LEFT JOIN maps_metadata.ingest_process i
   ON s.source_id = i.source_id
 ORDER BY s.source_id DESC;
+

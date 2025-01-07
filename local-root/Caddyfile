@@ -1,6 +1,10 @@
 # https://caddyserver.com/docs/caddyfile/directives/import
 (schema-proxy) {
-    handle_path {args[0]} {
+    handle {args[0]} {
+        redir {http.request.uri}/ 301
+    }
+
+    handle_path {args[0]}/* {
         @auth_cookie {
             # Match requests with an access_token cookie but not an Authorization header
             header Cookie *access_token*
@@ -34,16 +38,14 @@ localhost, macrostrat.local {
         reverse_proxy api_v3:80
     }
 
-    handle /api/v3/map-ingestion/pg {
-        # Internal redirect to path with trailing slash
-        redir /api/v3/map-ingestion/pg /api/v3/map-ingestion/pg/
-    }
-
-    import schema-proxy /api/v3/macrostrat/pg/* macrostrat_api
-    import schema-proxy /api/v3/map-ingestion/pg/* map_ingestion_api
+    # APIs for macrostrat and map-ingestion
+    # These use PostgREST as a proxy to the database and
+    # have headers set to default to a specific schema
+    import schema-proxy /api/v3/macrostrat/pg macrostrat_api
+    import schema-proxy /api/v3/map-ingestion/pg map_ingestion_api
 
     # Legacy API for development
-    import schema-proxy /api/pg/* macrostrat_api
+    import schema-proxy /api/pg macrostrat_api
 
 
 
