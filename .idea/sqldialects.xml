@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="SqlDialectMappings">
+    <file url="file://$PROJECT_DIR$/cli/macrostrat/cli/database/migrations/map_ingestion_api/map-ingestion-api.sql" dialect="PostgreSQL" />
     <file url="file://$PROJECT_DIR$/cli/macrostrat/cli/database/migrations/update_macrostrat/01-add-foreign-keys.sql" dialect="PostgreSQL" />
     <file url="file://$PROJECT_DIR$/cli/macrostrat/cli/database/migrations/update_macrostrat/scripts/assess-data-variances.sql" dialect="PostgreSQL" />
     <file url="file://$PROJECT_DIR$/cli/macrostrat/cli/subsystems/macrostrat_api/schema/02-column-builder-functions.sql" dialect="PostgreSQL" />
