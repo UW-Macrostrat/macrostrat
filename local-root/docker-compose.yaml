@@ -13,7 +13,9 @@ services:
     # docker pull imresamu/postgis:15-3.4
     build:
       context: ../base-images/database
-    image: ${PG_DATABASE_CONTAINER:-imresamu/postgis:15-3.4}
+    #image: ${PG_DATABASE_CONTAINER:-imresamu/postgis:15-3.4}
+    # Set an arbitary tag to avoid repeated builds
+    image: macrostrat.local/database:latest
     restart: unless-stopped
     environment:
       - POSTGRES_USER
@@ -83,6 +85,8 @@ services:
       - PGRST_DB_MAX_ROWS=5000
       - PGRST_SERVER_HOST=
       - PGRST_SERVER_TIMING_ENABLED=true
+      # This is sketchy
+      - PGRST_DB_AGGREGATES_ENABLED=true
   # Tileserver
   tileserver:
     image: hub.opensciencegrid.org/macrostrat/tileserver:main
