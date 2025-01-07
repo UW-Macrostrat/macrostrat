@@ -33,7 +33,10 @@ ORDER BY source_id DESC;
 COMMENT ON VIEW maps.sources_metadata IS 'Convenience view for maps.sources with only metadata fields';
 
 CREATE OR REPLACE VIEW macrostrat_api.sources_metadata AS
-SELECT * FROM maps.sources_metadata;
+SELECT *,
+  -- Legacy column for backwards compatibility.
+  is_finalized is_mapped
+FROM maps.sources_metadata;
 
 CREATE OR REPLACE VIEW macrostrat_api.sources_ingestion AS
 SELECT
