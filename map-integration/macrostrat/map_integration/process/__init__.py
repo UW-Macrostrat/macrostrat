@@ -15,16 +15,16 @@ Map processing pipeline (v2)
 
 """
 
-from ..database import db, sql_file
-from ..match import match_liths, match_strat_names, match_units
-from ..utils import IngestionCLI
-from ..utils.map_info import MapInfo
 from .extract_strat_name_candidates import extract_strat_name_candidates
 from .geometry import create_rgeom, create_webgeom
 from .insert import copy_to_maps
 from .legend_lookup import legend_lookup
 from .lookup import make_lookup
 from .status import processing_status
+from ..database import db, sql_file
+from ..match import match_liths, match_strat_names, match_units
+from ..utils import IngestionCLI
+from ..utils.map_info import MapInfo
 
 cli = IngestionCLI(
     no_args_is_help=True, name="process", help="Process map data once ingested"
@@ -81,3 +81,15 @@ cli.add_command(match_liths, name="liths", rich_help_panel="Matching")
 
 cli.add_command(make_lookup, name="lookup", rich_help_panel="Lookup")
 cli.add_command(legend_lookup, name="legend-lookup", rich_help_panel="Lookup")
+
+
+def finalize_map(source: MapInfo):
+    """
+    Finalize a map source by setting is_finalized to True in the sources table.
+
+    This is a computed parameter, so we can change its design in the future.
+    """
+    db.run_query(
+        "UPDATE maps.sources SET is_finalized = TRUE WHERE source_id = :source_id",
+        {"source_id": source.id},
+    )

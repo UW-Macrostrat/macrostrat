@@ -202,6 +202,15 @@ def change_slug(map: MapInfo, new_slug: str, dry_run: bool = False):
         print(f"Changed slug from {map.slug} to {new_slug}")
 
 
+@cli.command(name="update-status")
+def update_status():
+    """Update the status of all maps."""
+    from .status import update_status_for_all_maps
+    from .database import db
+
+    update_status_for_all_maps(db)
+
+
 # TODO: integrate this migration command with the main database migrations
 def _run_migrations(database: str = None):
     """Run migrations to convert a Macrostrat v1 sources table to v2 format."""
