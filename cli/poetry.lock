@@ -645,12 +645,12 @@ test = ["aiohttp", "fiona[s3]", "fsspec", "pytest (>=7)", "pytest-cov", "pytz"]
 
 [[package]]
 name = "gdal"
-version = "3.8.5"
+version = "3.8.4"
 description = "GDAL: Geospatial Data Abstraction Library"
 optional = false
 python-versions = ">=3.6.0"
 files = [
-    {file = "GDAL-3.8.5.tar.gz", hash = "sha256:ad8addd58ba9c62aefc7f65d345c168736798f137e5c8f247af76fcf4862d371"},
+    {file = "GDAL-3.8.4.tar.gz", hash = "sha256:7c51e0ae7a7ccf43ad9e4bf435176baa9276653dfa16fd167c3632f6e7275207"},
 ]
 
 [package.extras]
@@ -1012,7 +1012,7 @@ files = []
 develop = true
 
 [package.dependencies]
-GDAL = "^3.8.5,<3.9.0"
+GDAL = "^3.8.0,<3.8.5"
 geopandas = "^0.14.1"
 ipython = "^8.5.0"
 "macrostrat.core" = {path = "../core", develop = true}
