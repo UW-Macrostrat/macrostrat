@@ -3,9 +3,9 @@ from pathlib import Path
 
 from pytest import fixture
 
-from . import get_layer_info, apply_domains_to_fields
-from ..ingest import create_dataframe_for_layer
 from ...pipeline import ingestion_context
+from ..ingest import create_dataframe_for_layer
+from . import apply_domains_to_fields, get_layer_info
 
 fixtures_dir = Path(__file__).parent.parent.parent.parent.parent / "test-fixtures"
 

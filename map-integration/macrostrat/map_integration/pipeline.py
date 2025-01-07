@@ -21,6 +21,11 @@ from typing import Annotated, Any, NoReturn, Optional
 
 import magic
 import requests  # type: ignore[import-untyped]
+from rich.console import Console
+from sqlalchemy import and_, insert, select, update
+from sqlalchemy.orm import Session
+from typer import Argument, Option
+
 from macrostrat.core.database import get_database
 from macrostrat.core.schemas import (  # type: ignore[import-untyped]
     IngestProcess,
@@ -38,10 +43,6 @@ from macrostrat.map_integration.database import db as DB
 from macrostrat.map_integration.errors import IngestError
 from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
 from macrostrat.map_integration.utils.map_info import MapInfo, get_map_info
-from rich.console import Console
-from sqlalchemy import and_, insert, select, update
-from sqlalchemy.orm import Session
-from typer import Argument, Option
 
 from .config import get_minio_client
 

@@ -2,17 +2,17 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Iterable, List, Tuple
 
-import IPython
 import geopandas as G
+import IPython
 import pandas as P
 from geoalchemy2 import Geometry
 from rich.console import Console
 from rich.progress import Progress
 from sqlalchemy import text
 
-from .geodatabase import get_layer_names, apply_domains_to_fields, get_layer_info
 from ..database import db
 from ..errors import IngestError
+from .geodatabase import apply_domains_to_fields, get_layer_info, get_layer_names
 
 console = Console()
 
