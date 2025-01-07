@@ -3,9 +3,10 @@
 import importlib
 from pathlib import Path
 
-from macrostrat.utils import override_environment
 from pytest import fixture, mark
 from typer.testing import CliRunner
+
+from macrostrat.utils import override_environment
 
 runner = CliRunner()
 
