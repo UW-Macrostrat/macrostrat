@@ -16,16 +16,17 @@ Map processing pipeline (v2)
 """
 
 from macrostrat.core.exc import MacrostratError
+
+from ..database import db, sql_file
+from ..match import match_liths, match_strat_names, match_units
+from ..utils import IngestionCLI
+from ..utils.map_info import MapInfo, has_map_schema_data
 from .extract_strat_name_candidates import extract_strat_name_candidates
 from .geometry import create_rgeom, create_webgeom
 from .insert import copy_to_maps
 from .legend_lookup import legend_lookup
 from .lookup import make_lookup
 from .status import processing_status
-from ..database import db, sql_file
-from ..match import match_liths, match_strat_names, match_units
-from ..utils import IngestionCLI
-from ..utils.map_info import MapInfo, has_map_schema_data
 
 cli = IngestionCLI(
     no_args_is_help=True, name="process", help="Process map data once ingested"

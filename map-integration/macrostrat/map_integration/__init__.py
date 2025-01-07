@@ -21,7 +21,6 @@ from .commands.sources import map_sources
 from .migrations import run_migrations
 from .process import cli as _process
 from .process.insert import _delete_map_data
-
 from .utils import IngestionCLI, MapInfo, table_exists
 
 help_text = f"""Ingest maps into Macrostrat.
@@ -205,8 +204,8 @@ def change_slug(map: MapInfo, new_slug: str, dry_run: bool = False):
 @cli.command(name="update-status")
 def update_status():
     """Update the status of all maps."""
-    from .status import update_status_for_all_maps
     from .database import db
+    from .status import update_status_for_all_maps
 
     update_status_for_all_maps(db)
 

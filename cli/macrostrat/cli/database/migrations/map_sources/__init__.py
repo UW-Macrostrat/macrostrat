@@ -1,5 +1,4 @@
-from macrostrat.core.migrations import Migration, view_exists
-from macrostrat.core.migrations import has_columns
+from macrostrat.core.migrations import Migration, has_columns, view_exists
 
 
 class MapsSourcesMetadataMigration(Migration):

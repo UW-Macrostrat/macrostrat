@@ -1,6 +1,6 @@
 from rich import print
 
-from .utils.map_info import has_map_schema_data, MapInfo
+from .utils.map_info import MapInfo, has_map_schema_data
 
 
 def update_status_for_all_maps(db):

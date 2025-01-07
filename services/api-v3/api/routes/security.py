@@ -29,7 +29,9 @@ import api.schemas as schemas
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 1440  # 24 hours
 GROUP_TOKEN_LENGTH = 32
-GROUP_TOKEN_SALT = b"$2b$12$yQrslvQGWDFjwmDBMURAUe"  # Hardcode salt so hashes are consistent
+GROUP_TOKEN_SALT = (
+    b"$2b$12$yQrslvQGWDFjwmDBMURAUe"  # Hardcode salt so hashes are consistent
+)
 
 
 class Token(BaseModel):
@@ -113,7 +115,9 @@ async def get_groups_from_header_token(
     engine = db.get_engine()
     async_session = db.get_async_session(engine)
 
-    token = await db.get_access_token(async_session=async_session, token=token_hash_string)
+    token = await db.get_access_token(
+        async_session=async_session, token=token_hash_string
+    )
 
     if token is None:
         return None
@@ -150,7 +154,9 @@ async def create_user(sub: str, name: str, email: str) -> schemas.User:
     return await get_user(sub)
 
 
-async def get_user_token_from_cookie(token: Annotated[str | None, Depends(oauth2_scheme)]):
+async def get_user_token_from_cookie(
+    token: Annotated[str | None, Depends(oauth2_scheme)]
+):
     """Get the current user from the JWT token in the cookies"""
 
     # If there wasn't a token include in the request
@@ -252,7 +258,9 @@ async def redirect_callback(code: str, state: Optional[str] = None):
     domain = parsed_url.netloc
 
     async with aiohttp.ClientSession() as session:
-        async with session.post(os.environ["OAUTH_TOKEN_URL"], data=data) as token_response:
+        async with session.post(
+            os.environ["OAUTH_TOKEN_URL"], data=data
+        ) as token_response:
 
             if token_response.status != 200:
                 raise HTTPException(
@@ -278,7 +286,9 @@ async def redirect_callback(code: str, state: Optional[str] = None):
 
             if user is None:
 
-                given_name = user_data.get("given_name") if user_data.get("given_name") else ""
+                given_name = (
+                    user_data.get("given_name") if user_data.get("given_name") else ""
+                )
                 family_name = (
                     user_data.get("family_name") if user_data.get("family_name") else ""
                 )
@@ -342,7 +352,8 @@ async def create_group_token(
     engine = db.get_engine()
 
     token = "".join(
-        secrets.choice(string.ascii_letters + string.digits) for i in range(GROUP_TOKEN_LENGTH)
+        secrets.choice(string.ascii_letters + string.digits)
+        for i in range(GROUP_TOKEN_LENGTH)
     )
     token_hash = bcrypt.hashpw(token.encode("utf-8"), GROUP_TOKEN_SALT)
     token_hash_string = token_hash.decode("utf-8")

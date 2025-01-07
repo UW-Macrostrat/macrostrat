@@ -1,6 +1,5 @@
 from typing import Optional
 
-from macrostrat.database import Database
 from psycopg2.sql import Identifier
 from pydantic import BaseModel
 from typer import Argument
@@ -8,8 +7,10 @@ from typing_extensions import Annotated
 
 from macrostrat.core import app
 from macrostrat.core.exc import MacrostratError
-from ._database import table_exists
+from macrostrat.database import Database
+
 from ..database import db
+from ._database import table_exists
 
 
 class _MapInfo(BaseModel):
