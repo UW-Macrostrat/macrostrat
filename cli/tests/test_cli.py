@@ -1,11 +1,11 @@
 """Basic tests that the CLI runs without crashing."""
 
+import importlib
 from pathlib import Path
 
+from macrostrat.utils import override_environment
 from pytest import fixture, mark
 from typer.testing import CliRunner
-
-from macrostrat.utils import override_environment
 
 runner = CliRunner()
 
@@ -16,6 +16,7 @@ __here__ = Path(__file__).parent
 def cfg():
     cfg_file = __here__ / "macrostrat.test.toml"
     with override_environment(MACROSTRAT_CONFIG=str(cfg_file), NO_COLOR="1"):
+        importlib.reload(importlib.import_module("macrostrat.core.config"))
         from macrostrat.core.config import settings
 
         assert cfg_file == settings.config_file

@@ -15,10 +15,10 @@ format:
 	poetry run isort .
 
 test:
-	poetry run pytest -s -x cli/tests
+	#poetry run pytest -s -x cli/tests
 	# These tests fail due to an older GDAL version in use.
 	# We need to figure out how to bundle GDAL or run in a Docker context
-	poetry run pytest -s -x map-integration
+	poetry run pytest -s -x --ignore=runtime-tests --ignore=services --ignore=v2-transition .
 
 test-warnings:
 	poetry run pytest cli/tests -W error
