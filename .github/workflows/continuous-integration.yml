@@ -20,7 +20,7 @@ jobs:
       # We might try to remove this in the future, or figure out how to use
       # a bundled version of GDAL from the virtual environment.
       - name: Install GDAL
-        run: >
+        run: |
           sudo apt-add-repository ppa:ubuntugis/ubuntugis-unstable
           sudo apt-get update
           sudo apt-get install gdal-bin
