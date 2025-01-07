@@ -4,13 +4,12 @@ from typing import Optional
 
 from dotenv import load_dotenv
 from dynaconf import Dynaconf, Validator
+from macrostrat.app_frame.control_command import BackendType
+from macrostrat.utils import get_logger
 from pydantic import BaseModel
 from sqlalchemy.engine import make_url
 from sqlalchemy.engine.url import URL
 from toml import load as load_toml
-
-from macrostrat.app_frame.control_command import BackendType
-from macrostrat.utils import get_logger
 
 from .utils import find_macrostrat_config
 
@@ -116,6 +115,8 @@ if PG_DATABASE is not None:
     # Used for local running of Macrostrat
     environ["MACROSTRAT_DB_PORT"] = str(url.port)
 
+    environ["MACROSTRAT_DATABASE_URL"] = PG_DATABASE
+
 mysql_database = getattr(settings, "mysql_database", None)
 if mysql_database is not None:
     mysql_database: URL = make_url(mysql_database).set(drivername="mysql+pymysql")
@@ -136,8 +137,6 @@ settings.offline = getattr(settings, "offline", False)
 
 
 environ["COMPOSE_PROJECT_NAME"] = "macrostrat_" + macrostrat_env
-
-environ["MACROSTRAT_DATABASE_URL"] = PG_DATABASE
 
 # Docker compose file
 compose_file = getattr(settings, "compose_file", None)
