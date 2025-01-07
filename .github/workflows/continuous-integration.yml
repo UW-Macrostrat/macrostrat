@@ -13,6 +13,7 @@ jobs:
         with:
           submodules: 'recursive'
 
+      # Install poetry and fix setuptools error
       - name: Install poetry
         run: pipx install poetry
 
@@ -31,7 +32,9 @@ jobs:
           cache: 'poetry'
 
       - name: Install dependencies
-        run: poetry install
+        run: |
+          pip install --upgrade setuptools
+          poetry install
 
       - name: Run Macrostrat tests
         run: make test
