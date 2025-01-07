@@ -1,6 +1,6 @@
 services:
   gateway:
-    image: caddy:2-alpine
+    image: caddy:2.9-alpine
     ports:
       - "8080:80"
     volumes:
@@ -77,11 +77,12 @@ services:
       - PGRST_DB_URI=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
       - PGRST_JWT_SECRET=${SECRET_KEY}
       - PGRST_DB_ANON_ROLE=web_anon
-      - PGRST_DB_SCHEMA=macrostrat_api
-      - PGRST_DB_ANON_ROLE=web_anon
+      # We allow the API to access several schemas, separated by commas
+      - PGRST_DB_SCHEMA=macrostrat_api,map_ingestion_api
       - PGRST_SERVER_PORT=3000
       - PGRST_DB_MAX_ROWS=5000
       - PGRST_SERVER_HOST=
+      - PGRST_SERVER_TIMING_ENABLED=true
   # Tileserver
   tileserver:
     image: hub.opensciencegrid.org/macrostrat/tileserver:main
