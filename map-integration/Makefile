@@ -1,3 +1,2 @@
-# Easy installation approaches copied from Macrostrat's main CLI
-all:
-	poetry install
+test:
+	poetry run -C .. pytest -s -x .

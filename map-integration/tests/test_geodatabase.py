@@ -1,13 +1,15 @@
-# M173_Temuco-NuevaImperial.gdb.tar.gz
 from pathlib import Path
 
 from pytest import fixture
 
-from ...pipeline import ingestion_context
-from ..ingest import create_dataframe_for_layer
-from . import apply_domains_to_fields, get_layer_info
+from macrostrat.map_integration.commands.geodatabase import (
+    apply_domains_to_fields,
+    get_layer_info,
+)
+from macrostrat.map_integration.commands.ingest import create_dataframe_for_layer
+from macrostrat.map_integration.pipeline import ingestion_context
 
-fixtures_dir = Path(__file__).parent.parent.parent.parent.parent / "test-fixtures"
+fixtures_dir = Path(__file__).parent / "fixtures"
 
 
 @fixture
