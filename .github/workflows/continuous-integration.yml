@@ -16,9 +16,14 @@ jobs:
       - name: Install poetry
         run: pipx install poetry
 
-      # GDAL is needed for map integration system installation now
+      # External GDAL is needed for map integration system installation now.
+      # We might try to remove this in the future, or figure out how to use
+      # a bundled version of GDAL from the virtual environment.
       - name: Install GDAL
-        run: sudo apt-get install libgdal-dev
+        run: >
+          sudo apt-add-repository ppa:ubuntugis/ubuntugis-unstable
+          sudo apt-get update
+          sudo apt-get install gdal-bin
 
       - uses: actions/setup-python@v4
         with:
