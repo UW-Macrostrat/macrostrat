@@ -2,15 +2,14 @@ from contextlib import contextmanager
 from typing import Optional
 from uuid import uuid4
 
+from macrostrat.database import Database
+from macrostrat.database.utils import run_query, run_sql
 from psycopg2.sql import Identifier
 from rich import print
 from sqlalchemy.engine import Engine, create_engine
 from sqlalchemy.engine.url import URL, make_url
 
 from macrostrat.core.config import settings
-from macrostrat.database import Database
-from macrostrat.database.utils import run_query, run_sql
-
 from ._legacy import get_db
 
 
@@ -338,11 +337,17 @@ def grant_schema_usage(
         )
 
 
-def setup_postgrest_access(schema: str):
+def setup_postgrest_access(
+    schema: str,
+    *,
+    read_user: str = "web_anon",
+    write_user: Optional[str] = "web_user",
+):
     """Run basic grant statements to allow PostgREST to access the schema"""
 
     def run_updates(db):
-        grant_schema_usage(db, schema, "web_anon")
-        grant_schema_usage(db, schema, "web_user", tables=False, sequences=True)
+        grant_schema_usage(db, schema, read_user)
+        if write_user is not None:
+            grant_schema_usage(db, schema, write_user, tables=False, sequences=True)
 
     return run_updates
