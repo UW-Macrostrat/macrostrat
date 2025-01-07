@@ -5,9 +5,9 @@ from requests import get
 from rich import print
 from typer import Typer
 
+from ..macrostrat_api import setup_postgrest_access
 from ...database import SubsystemSchemaDefinition, get_db
 from ...database.utils import grant_permissions, grant_schema_ownership
-from ..macrostrat_api import setup_postgrest_access
 
 __here__ = Path(__file__).parent
 fixtures_dir = __here__ / "fixtures"
@@ -19,6 +19,9 @@ xdd_schema = SubsystemSchemaDefinition(
         fixtures_dir / "kg-views.sql",
         setup_postgrest_access("macrostrat_xdd"),
         grant_schema_ownership("macrostrat_xdd", "xdd-writer"),
+        grant_permissions(
+            "macrostrat_xdd", "web_admin", ["SELECT", "UPDATE"], tables=["source_text"]
+        ),
     ],
 )
 

@@ -1,7 +1,10 @@
 ALTER TABLE maps.sources ADD COLUMN IF NOT EXISTS raster_url text;
+ALTER TABLE maps.sources ADD COLUMN IF NOT EXISTS scale_denominator integer;
+ALTER TABLE maps.sources ADD COLUMN IF NOT EXISTS is_finalized boolean DEFAULT false;
 
 DROP VIEW IF EXISTS macrostrat_api.sources_metadata CASCADE;
 DROP VIEW IF EXISTS maps.sources_metadata CASCADE;
+DROP VIEW IF EXISTS macrostrat_api.sources CASCADE;
 
 CREATE OR REPLACE VIEW maps.sources_metadata AS
 SELECT
@@ -22,16 +25,9 @@ SELECT
     new_priority priority,
     status_code,
     raster_url,
-    CASE
-       WHEN psi.source_id IS NULL THEN false
-       ELSE true
-    END AS is_mapped
+    scale_denominator,
+    is_finalized
 FROM maps.sources AS s
-LEFT JOIN (
-    SELECT
-        DISTINCT(polygons.source_id)
-    FROM maps.polygons
-) psi ON s.source_id = psi.source_id
 ORDER BY source_id DESC;
 
 COMMENT ON VIEW maps.sources_metadata IS 'Convenience view for maps.sources with only metadata fields';
@@ -62,7 +58,9 @@ SELECT
     i.comments,
     i.created_on,
     i.completed_on,
-    i.map_id
+    i.map_id,
+    s.is_finalized,
+    s.scale_denominator
 FROM maps.sources_metadata s
 JOIN maps_metadata.ingest_process i
   ON i.source_id = s.source_id;
@@ -86,5 +84,7 @@ SELECT
     s.priority,
     s.status_code,
     s.raster_url,
-    s.web_geom envelope
+    s.web_geom envelope,
+    s.is_finalized,
+    s.scale_denominator
 FROM maps.sources s;

@@ -1,5 +1,6 @@
 from typing import Optional
 
+from macrostrat.database import Database
 from psycopg2.sql import Identifier
 from pydantic import BaseModel
 from typer import Argument
@@ -7,10 +8,8 @@ from typing_extensions import Annotated
 
 from macrostrat.core import app
 from macrostrat.core.exc import MacrostratError
-from macrostrat.database import Database
-
-from ..database import db
 from ._database import table_exists
+from ..database import db
 
 
 class _MapInfo(BaseModel):
@@ -20,6 +19,10 @@ class _MapInfo(BaseModel):
     slug: str
     url: Optional[str] = None
     name: Optional[str] = None
+
+    @property
+    def source_id(self):
+        return self.id
 
 
 def complete_map_slugs(incomplete: str):
@@ -117,3 +120,9 @@ def feature_counts(db, info: MapInfo):
         ),
     ).one()
     return res
+
+
+def has_map_schema_data(db: Database, map: MapInfo):
+    counts = feature_counts(db, map)
+    total = counts.n_polygons + counts.n_lines + counts.n_points
+    return total > 0
