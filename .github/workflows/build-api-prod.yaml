@@ -6,6 +6,8 @@ on:
       - main
     tags:
       - v[0-9]+.[0-9]+.[0-9]+  # Semver Release
+    paths:
+      - services/api-v3/**
 
 jobs:
   docker:
