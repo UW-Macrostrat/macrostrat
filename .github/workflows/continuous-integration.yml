@@ -35,6 +35,7 @@ jobs:
         run: |
           poetry install
           poetry run pip install GDAL==$(gdal-config --version | sed 's/\([0-9]*\)\.\([0-9]*\).*/\1.\2/')
+          poetry run pip install --upgrade setuptools
 
       - name: Run Macrostrat tests
         run: make test
