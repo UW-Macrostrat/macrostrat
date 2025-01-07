@@ -6,7 +6,6 @@ from sys import stdin
 
 from psycopg2.sql import Identifier
 from typer import Option
-from typer.core import TyperGroup
 
 from macrostrat.core import app
 from macrostrat.database import Database
@@ -21,6 +20,8 @@ from .commands.source_info import source_info
 from .commands.sources import map_sources
 from .migrations import run_migrations
 from .process import cli as _process
+from .process.insert import _delete_map_data
+
 from .utils import IngestionCLI, MapInfo, table_exists
 
 help_text = f"""Ingest maps into Macrostrat.
@@ -74,6 +75,7 @@ sources.add_command(map_sources, name="list")
 def delete_sources(
     slugs: list[str],
     dry_run: bool = Option(False, "--dry-run"),
+    all_data: bool = Option(False, "--all-data"),
 ):
     """Delete sources from the map ingestion database."""
     from .database import db
@@ -136,6 +138,13 @@ def delete_sources(
                 "DELETE FROM maps_metadata.ingest_process WHERE id = :ingest_process_id",
                 dict(ingest_process_id=ingest_process_id),
             )
+
+        source_id = db.run_query(
+            "SELECT source_id FROM maps.sources WHERE slug = :slug",
+            dict(slug=slug),
+        ).scalar()
+        if all_data:
+            _delete_map_data(source_id)
 
         db.run_sql("DELETE FROM maps.sources WHERE slug = :slug", dict(slug=slug))
 
