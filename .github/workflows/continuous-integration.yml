@@ -16,6 +16,10 @@ jobs:
       - name: Install poetry
         run: pipx install poetry
 
+      # GDAL is needed for map integration system installation now
+      - name: Install GDAL
+        run: sudo apt-get install libgdal-dev
+
       - uses: actions/setup-python@v4
         with:
           python-version: '3.11'
