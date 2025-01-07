@@ -149,7 +149,7 @@ class Migration:
         in the same directory as the class definition."""
         if len(self.fixtures) == 0:
             # Automatically load fixtures from the same directory as the migration
-            sql_dir = inspect.getfile(inspect.getfile(self.__class__)).parent
+            sql_dir = Path(inspect.getfile(self.__class__)).parent
             database.run_fixtures(sql_dir, output_mode=self.output_mode)
             return
 
