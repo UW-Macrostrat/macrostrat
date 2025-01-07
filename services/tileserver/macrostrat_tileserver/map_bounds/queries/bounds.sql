@@ -5,6 +5,7 @@ WITH tile AS (
 ), sources AS (
   SELECT
     source_id,
+    is_finalized,
     name,
     slug,
     scale,

@@ -34,7 +34,7 @@ async def rgeom_slug(
     )
 
 
-async def get_rgeom(pool, *, where="status_code = 'active'", **params):
+async def get_rgeom(pool, *, where="is_finalized = true", **params):
     async with pool.acquire() as con:
         data = await run_layer_query(con, "bounds", where=where, **params)
     kwargs = {}
