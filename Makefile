@@ -13,6 +13,7 @@ format:
 
 test:
 	poetry run pytest -s -x cli/tests
+	poetry run pytest -s -x map-integration
 
 test-warnings:
 	poetry run pytest cli/tests -W error

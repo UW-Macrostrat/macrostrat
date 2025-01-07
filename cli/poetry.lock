@@ -1012,7 +1012,7 @@ files = []
 develop = true
 
 [package.dependencies]
-GDAL = "^3.10.0"
+GDAL = "^3.8.5"
 geopandas = "^0.14.1"
 ipython = "^8.5.0"
 "macrostrat.core" = {path = "../core", develop = true}
