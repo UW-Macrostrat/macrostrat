@@ -3,6 +3,9 @@ all:
 	poetry install --only=dev
 	macrostrat poetry run mono install
 	poetry install
+	# Install the version of the GDAL bindings that matches the native lib.
+	# This is breakable and should be replaced with a more robust solution.
+	poetry run pip install GDAL==$(shell gdal-config --version | sed 's/\([0-9]*\)\.\([0-9]*\).*/\1.\2/')
 
 install:
 	ln -sf $(shell pwd)/bin/macrostrat /usr/local/bin/macrostrat
@@ -13,6 +16,8 @@ format:
 
 test:
 	poetry run pytest -s -x cli/tests
+	# These tests fail due to an older GDAL version in use.
+	# We need to figure out how to bundle GDAL or run in a Docker context
 	poetry run pytest -s -x map-integration
 
 test-warnings:

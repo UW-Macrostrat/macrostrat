@@ -31,10 +31,10 @@ jobs:
           python-version: '3.11'
           cache: 'poetry'
 
-      - name: Install dependencies
+      - name: Install dependencies and override GDAL version to match native library
         run: |
           poetry install
-          poetry run pip install --upgrade setuptools
+          poetry run pip install GDAL==$(gdal-config --version | sed 's/\([0-9]*\)\.\([0-9]*\).*/\1.\2/')
 
       - name: Run Macrostrat tests
         run: make test
