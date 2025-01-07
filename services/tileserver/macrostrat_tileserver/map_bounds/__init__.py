@@ -17,23 +17,33 @@ async def rgeom(
     y: int,
 ):
     """Get a tile from the tileserver."""
-    pool = request.app.state.pool
+    return await get_rgeom(request.app.state.pool, z=z, x=x, y=y)
 
+
+@router.get("/bounds/{slug}/{z}/{x}/{y}")
+async def rgeom_slug(
+    request: Request,
+    slug: str,
+    z: int,
+    x: int,
+    y: int,
+):
+    """Get a tile from the tileserver."""
+    return await get_rgeom(
+        request.app.state.pool, where="slug = :slug", z=z, x=x, y=y, slug=slug
+    )
+
+
+async def get_rgeom(pool, *, where="status_code = 'active'", **params):
     async with pool.acquire() as con:
-        data = await run_layer_query(
-            con,
-            "bounds",
-            z=z,
-            x=x,
-            y=y,
-        )
+        data = await run_layer_query(con, "bounds", where=where, **params)
     kwargs = {}
     kwargs.setdefault("media_type", MimeTypes.pbf.value)
     return Response(data, **kwargs)
 
 
-async def run_layer_query(con, layer_name, **params):
-    query = get_layer_sql(layer_name)
+async def run_layer_query(con, layer_name, *, where="true", **params):
+    query = get_layer_sql(layer_name, where=where)
     q, p = render(query, layer_name=layer_name, **params)
 
     # Overcomes a shortcoming in buildpg that deems casting to an array as unsafe
@@ -43,7 +53,7 @@ async def run_layer_query(con, layer_name, **params):
     return await con.fetchval(q, *p)
 
 
-def get_layer_sql(layer: str):
+def get_layer_sql(layer: str, *, where="true"):
     query = __here__ / "queries" / (layer + ".sql")
     q = query.read_text()
     q = q.strip()
@@ -52,6 +62,7 @@ def get_layer_sql(layer: str):
 
     # Replace the envelope with the function call. Kind of awkward.
     q = q.replace(":envelope", "tile_utils.envelope(:x, :y, :z)")
+    q = q.replace(":where", where)
 
     # Wrap with MVT creation
     return f"WITH feature_query AS ({q}) SELECT ST_AsMVT(feature_query, :layer_name) FROM feature_query"

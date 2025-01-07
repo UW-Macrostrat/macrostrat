@@ -15,7 +15,7 @@ WITH tile AS (
   FROM maps.sources, tile
   WHERE
     rgeom is NOT NULL
-    AND status_code = 'active'
+    AND :where
     AND ST_Intersects(rgeom, envelope_4326)
 )
 SELECT * FROM sources z
