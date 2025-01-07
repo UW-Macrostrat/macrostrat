@@ -55,7 +55,7 @@ settings.validators.register(
     # `must_exist` is causing huge problems
     Validator("COMPOSE_ROOT", cast=Path),
     Validator("env_files", cast=list[Path]),
-    Validator("pg_database", cast=str),
+    Validator("pg_database", cast=str, default=None),
     # Backend information. We could potentially infer this from other environment variables
     Validator("backend", default="kubernetes", cast=BackendType),
 )
