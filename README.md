@@ -12,6 +12,22 @@ The core component packaged here is a Python application designed to control
 various aspects of Macrostrat's system and supporting processes (e.g., map
 caching and harmonization).
 
+## Key components in this repository
+
+### Management utilities
+
+- [Command-line interface](./cli): A Python-based CLI for managing Macrostrat's
+  system components
+- [Map ingestion system](./map-integration): Scripts for importing geologic maps
+  into Macrostrat's database
+
+### Services
+
+- [API v3](./services/api-v3): An API for managing Macrostrat elements, and authentication
+- Macrostrat task runner: *coming soon*
+
+Other Macrostrat services (e.g., read-only APIs) are housed in other repositories.
+
 ## Installation
 
 - Running `make` will install the Python dependencies and build the application.
