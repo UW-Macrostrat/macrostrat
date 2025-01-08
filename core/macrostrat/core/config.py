@@ -4,13 +4,12 @@ from typing import Optional
 
 from dotenv import load_dotenv
 from dynaconf import Dynaconf, Validator
+from macrostrat.app_frame.control_command import BackendType
+from macrostrat.utils import get_logger
 from pydantic import BaseModel
 from sqlalchemy.engine import make_url
 from sqlalchemy.engine.url import URL
 from toml import load as load_toml
-
-from macrostrat.app_frame.control_command import BackendType
-from macrostrat.utils import get_logger
 
 from .utils import find_macrostrat_config
 
@@ -99,6 +98,9 @@ if storage := getattr(settings, "storage", None):
 # A database connection string for PostgreSQL
 PG_DATABASE = getattr(settings, "pg_database", None)
 url = None
+# Not sure why this happens
+if PG_DATABASE == "None":
+    PG_DATABASE = None
 # environ.get("MACROSTRAT_PG_DATABASE", None)
 if PG_DATABASE is not None:
     # On mac and windows, we need to use the docker host `host.docker.internal` or `host.lima.internal`, etc.
