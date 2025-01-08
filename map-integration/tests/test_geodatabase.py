@@ -63,6 +63,7 @@ def test_get_geodatabase_domains(gdb_fn):
             assert domain["codedValues"] is not None
 
 
+@mark.requires_gdal
 def test_apply_domains(gdb_fn):
     layer = "GB_UNIDAD_GEO_P"
     df = create_dataframe_for_layer(gdb_fn, layer)
