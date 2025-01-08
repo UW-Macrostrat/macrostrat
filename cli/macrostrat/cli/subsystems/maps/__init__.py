@@ -6,6 +6,7 @@ from subprocess import run
 from macrostrat.database import run_sql
 from macrostrat.database.transfer.utils import raw_database_url
 from macrostrat.utils import working_directory
+from rich import print
 from typer import Typer
 
 from macrostrat.core import MacrostratSubsystem
@@ -70,19 +71,28 @@ def update():
     maps = db.run_query(
         """
         SELECT
-            source_id,
+            a.source_id,
             slug,
             scale,
-            ST_Area(a.geometry::geography) as area
+            area_km
         FROM map_bounds.map_area a
         JOIN maps.sources s
         USING (source_id)
-        ORDER BY ST_Area(a.geometry::geography) DESC
+        ORDER BY area_km DESC
     """
     ).all()
 
+    start_time = time.time()
     for map in maps:
-        pass
+        print(
+            f"Processing map [bold green]{map.slug}[/][dim] - #[bold gray]{map.source_id}[/bold gray] [green]{map.area_km:.1f}[/green] km²"
+        )
+        process_map(db, map.source_id)
+        print()
+
+    end_time = time.time()
+
+    print(f"Total time: {end_time - start_time:.3f} seconds")
 
     return
 
@@ -139,6 +149,39 @@ def update():
 # WHERE source_id = map_bounds.map_area.source_id
 # )
 #
+
+
+def process_map(db, source_id: int):
+    # Insert or update the map topo
+
+    t_start = time.time()
+    res = db.run_query(
+        """
+        WITH existing_count AS (
+            SELECT COUNT(*) as n
+            FROM map_bounds.map_topo
+            WHERE source_id = :source_id
+        ), ins AS (
+            INSERT INTO map_bounds.map_topo (source_id, geometry)
+            SELECT
+                source_id,
+                ST_Subdivide(ST_MakeValid(ST_SnapToGrid(geometry, 0.0001)), 256, 0.0001)
+            FROM map_bounds.map_area
+            WHERE source_id = :source_id
+              AND (SELECT n FROM existing_count) = 0
+            RETURNING id, source_id
+        )
+        SELECT count(*) as inserted, (SELECT n FROM existing_count) as existing
+        FROM ins
+        """,
+        dict(source_id=source_id),
+    ).one()
+    db.session.commit()
+    elapsed = time.time() - t_start
+    total = res.inserted + res.existing
+    print(f"Processing {total} [cyan]map_topo[/cyan] features")
+    print(f"  inserted: {res.inserted}, existing: {res.existing}")
+    print(f"  {elapsed:.3f} seconds")
 
 
 def update_map_layer(db, id: int, name: str):
