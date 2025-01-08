@@ -34,6 +34,7 @@ jobs:
       - name: Install dependencies
         run: |
           poetry install
+          poetry run pip install --upgrade setuptools
 
       - name: Run Macrostrat tests
         run: make test-ci
