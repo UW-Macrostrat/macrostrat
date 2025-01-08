@@ -22,6 +22,8 @@ from .migrations import run_migrations
 from .process import cli as _process
 from .process.insert import _delete_map_data
 from .utils import IngestionCLI, MapInfo, table_exists
+from .database import get_database
+
 
 help_text = f"""Ingest maps into Macrostrat.
 
@@ -77,7 +79,7 @@ def delete_sources(
     all_data: bool = Option(False, "--all-data"),
 ):
     """Delete sources from the map ingestion database."""
-    from .database import db
+    db = get_database()
 
     if not stdin.isatty() and len(slugs) == 1 and slugs[0] == "-":
         slugs = [line.strip() for line in stdin]
@@ -152,7 +154,7 @@ def delete_sources(
 def change_slug(map: MapInfo, new_slug: str, dry_run: bool = False):
     """Change a map's slug."""
 
-    from .database import db
+    db = get_database()
 
     # Normalize the new slug
     new_slug = new_slug.lower().replace(" ", "_").replace("_", "-")
@@ -204,8 +206,9 @@ def change_slug(map: MapInfo, new_slug: str, dry_run: bool = False):
 @cli.command(name="update-status")
 def update_status():
     """Update the status of all maps."""
-    from .database import db
     from .status import update_status_for_all_maps
+
+    db = get_database()
 
     update_status_for_all_maps(db)
 
@@ -213,7 +216,7 @@ def update_status():
 # TODO: integrate this migration command with the main database migrations
 def _run_migrations(database: str = None):
     """Run migrations to convert a Macrostrat v1 sources table to v2 format."""
-    from .database import db
+    db = get_database()
 
     database_url = db.engine.url
     _db = db

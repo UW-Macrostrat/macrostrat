@@ -1,5 +1,6 @@
 from typing import Optional
 
+from macrostrat.database import Database
 from psycopg2.sql import Identifier
 from pydantic import BaseModel
 from typer import Argument
@@ -7,10 +8,8 @@ from typing_extensions import Annotated
 
 from macrostrat.core import app
 from macrostrat.core.exc import MacrostratError
-from macrostrat.database import Database
-
-from ..database import db
 from ._database import table_exists
+from ..database import get_database
 
 
 class _MapInfo(BaseModel):
@@ -27,6 +26,7 @@ class _MapInfo(BaseModel):
 
 
 def complete_map_slugs(incomplete: str):
+    db = get_database()
     return (
         db.run_query(
             "SELECT slug FROM maps.sources WHERE slug ILIKE :incomplete",
@@ -38,6 +38,7 @@ def complete_map_slugs(incomplete: str):
 
 
 def map_info_parser(identifier: str | int) -> _MapInfo:
+    db = get_database()
     if identifier == "-" or identifier == "active":
         identifier = app.state.get("active_map")
         if identifier is None:
@@ -107,6 +108,7 @@ def create_sources_record(db, slug) -> MapInfo:
 
 
 def feature_counts(db, info: MapInfo):
+    db = get_database()
     res = db.run_query(
         """SELECT
             (SELECT count(*) FROM {poly_table} WHERE source_id = :source_id) AS n_polygons,

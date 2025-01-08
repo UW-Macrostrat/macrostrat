@@ -1,15 +1,14 @@
 import time
-from pathlib import Path
 
 from psycopg2.sql import SQL, Identifier
-from sqlalchemy.sql import text
 
-from ..database import db, sql_file
+from ..database import get_database, sql_file
 from ..utils import MapInfo, table_exists
 
 
 def create_rgeom(source: MapInfo, use_maps_schema: bool = False):
     """Create a unioned reference geometry for a map source"""
+    db = get_database()
     start = time.time()
     source_id = source.id
 
@@ -43,6 +42,7 @@ def create_rgeom(source: MapInfo, use_maps_schema: bool = False):
 
 def create_webgeom(source: MapInfo, legacy: bool = False):
     """Create a simplified geometry for use on the web"""
+    db = get_database()
     sql = "UPDATE maps.sources SET web_geom = ST_Envelope(rgeom) WHERE source_id = :source_id;"
     if legacy:
         # legacy mode for complex maps

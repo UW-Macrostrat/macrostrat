@@ -5,9 +5,9 @@ from enum import Enum
 from psycopg2.sql import SQL, Identifier
 from rich import print
 
-from ..database import db, sql_file
-from ..utils import MapInfo
 from .utils import get_match_count
+from ..database import get_database, sql_file
+from ..utils import MapInfo
 
 
 class MatchType(Enum):
@@ -73,6 +73,7 @@ def describe_argument(match_type: MatchType | None):
 
 def prepare_match_strat_names(source_id: int):
     proc = sql_file("prepare-match-strat-names")
+    db = get_database()
 
     db.run_sql(proc, {"source_id": source_id})
 

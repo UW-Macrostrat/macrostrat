@@ -39,11 +39,9 @@ from macrostrat.core.schemas import (  # type: ignore[import-untyped]
 from macrostrat.map_integration import config
 from macrostrat.map_integration.commands.ingest import ingest_map
 from macrostrat.map_integration.commands.prepare_fields import prepare_fields
-from macrostrat.map_integration.database import db as DB
 from macrostrat.map_integration.errors import IngestError
 from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
 from macrostrat.map_integration.utils.map_info import MapInfo, get_map_info
-
 from .config import get_minio_client
 
 # The list of arguments to upload_file that ingest_csv will look
@@ -939,10 +937,11 @@ def ingest_csv(
             slugs_seen.append(row["slug"])
 
     ## Ingest only those maps with successful uploads.
+    db = get_database()
 
     for slug in set(slugs_seen):
         try:
-            ingest_slug(get_map_info(DB, slug), filter=filter)
+            ingest_slug(get_map_info(db, slug), filter=filter)
         except Exception as exn:
             console.print(f"Exception while attempting to ingest a CSV file: {exn}")
 
@@ -960,12 +959,14 @@ def run_polling_loop(
         console.print("Starting iteration of polling loop")
         bad_pending = 0
 
+        db = get_database()
+
         with get_db_session() as session:
             for ingest_process in session.scalars(
                 select(IngestProcess).where(IngestProcess.state == IngestState.pending)
             ).unique():
                 if ingest_process.source_id:
-                    map_info = get_map_info(DB, ingest_process.source_id)
+                    map_info = get_map_info(db, ingest_process.source_id)
                     console.print(f"Processing {map_info}")
                     try:
                         ingest_slug(map_info)

@@ -10,7 +10,7 @@ from rich.console import Console
 from rich.progress import Progress
 from sqlalchemy import text
 
-from ..database import db
+from ..database import get_database
 from ..errors import IngestError
 from .geodatabase import apply_domains_to_fields, get_layer_info, get_layer_names
 
@@ -30,6 +30,8 @@ def ingest_map(
     This is similar to the macrostrat maps pipeline ingest-map command,
     but it doesn't upload files to S3 or check their existence.
     """
+    db = get_database()
+
     console.print("[bold]Ingesting map data for source [bold blue]" + slug)
     # Read file with GeoPandas and dump to PostGIS
 

@@ -16,17 +16,16 @@ Map processing pipeline (v2)
 """
 
 from macrostrat.core.exc import MacrostratError
-
-from ..database import db, sql_file
-from ..match import match_liths, match_strat_names, match_units
-from ..utils import IngestionCLI
-from ..utils.map_info import MapInfo, has_map_schema_data
 from .extract_strat_name_candidates import extract_strat_name_candidates
 from .geometry import create_rgeom, create_webgeom
 from .insert import copy_to_maps
 from .legend_lookup import legend_lookup
 from .lookup import make_lookup
 from .status import processing_status
+from ..database import get_database, sql_file
+from ..match import match_liths, match_strat_names, match_units
+from ..utils import IngestionCLI
+from ..utils.map_info import MapInfo, has_map_schema_data
 
 cli = IngestionCLI(
     no_args_is_help=True, name="process", help="Process map data once ingested"
@@ -79,6 +78,7 @@ def legend(map: MapInfo):
     """
     Update legend lookup tables for a given map source
     """
+    db = get_database()
     proc = sql_file("update-legend")
     db.run_sql(proc, {"source_id": map.id})
 
@@ -98,7 +98,7 @@ def finalize_map(map: MapInfo):
 
     This is a computed parameter, so we can change its design in the future.
     """
-
+    db = get_database()
     is_finalized = has_map_schema_data(db, map)
 
     if is_finalized:
@@ -114,6 +114,7 @@ def set_finalized(map: MapInfo):
     """
     Set a map source as finalized
     """
+    db = get_database()
     db.run_query(
         "UPDATE maps.sources SET is_finalized = TRUE WHERE source_id = :map_id",
         dict(map_id=map.id),
