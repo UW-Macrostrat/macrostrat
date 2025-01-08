@@ -3,11 +3,10 @@ import sys
 import time
 
 from psycopg2.extensions import AsIs
-from psycopg2.extras import NamedTupleCursor, RealDictCursor
 from psycopg2.sql import Identifier
 from rich import print
 
-from ..database import LegacyCommandBase, db
+from ..database import LegacyCommandBase
 from ..utils import MapInfo
 from .utils import get_match_count
 

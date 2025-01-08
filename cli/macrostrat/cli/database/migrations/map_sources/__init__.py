@@ -1,4 +1,4 @@
-from macrostrat.core.migrations import Migration, view_exists
+from macrostrat.core.migrations import Migration, has_columns, view_exists
 
 
 class MapsSourcesMetadataMigration(Migration):
@@ -15,4 +15,5 @@ class MapsSourcesMetadataMigration(Migration):
         view_exists(
             "macrostrat_api", "sources_metadata", "sources_ingestion", "sources"
         ),
+        has_columns("maps", "sources", "is_finalized", "scale_denominator"),
     ]

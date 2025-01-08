@@ -8,6 +8,10 @@ from .corelle import build_carto_plate_index, create_corelle_fixtures
 
 
 def load_paleogeography_subsystem(app, main, db_subsystem):
+    if app.settings.pg_database is None:
+        print("No database configured, skipping corelle subsystem", file=stderr)
+        return app
+
     try:
         environ["CORELLE_DB"] = app.settings.pg_database
         from corelle.engine import cli as corelle_cli

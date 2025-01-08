@@ -57,7 +57,7 @@ class SubsystemSchemaDefinition(BaseModel):
         for f in self.fixtures:
             if callable(f):
                 f(db)
-                return
+                continue
             # This does the same as the upstream "Apply fixtures" function
             # but it has support for a 'match' parameter
             files = _match_paths(get_sql_files(f), match)

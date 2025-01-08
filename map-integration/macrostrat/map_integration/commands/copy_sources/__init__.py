@@ -17,6 +17,8 @@ from macrostrat.database.postgresql import on_conflict, table_exists
 from macrostrat.database.transfer import move_tables
 from macrostrat.utils import get_logger
 
+from ...database import get_database
+
 log = get_logger(__name__)
 
 
@@ -36,7 +38,7 @@ def copy_macrostrat_sources(
 ):
     """Copy a macrostrat source from one database to another."""
 
-    from ...database import db as _db
+    _db = get_database()
 
     if from_db is None and to_db is None:
         raise ValueError("Must specify either --from or --to")

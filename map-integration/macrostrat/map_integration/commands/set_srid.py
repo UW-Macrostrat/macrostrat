@@ -1,11 +1,13 @@
 from psycopg2.sql import Identifier
 
-from ..database import db
+from ..database import get_database
 from ..utils import MapInfo
 
 
 def apply_srid(source: MapInfo, srid: int, force: bool = False):
     """Set the georeference for a map source."""
+
+    db = get_database()
     if not force:
         print("This command will set the georeference for a map source.")
         print("This will overwrite any existing georeference.")

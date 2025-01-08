@@ -1,12 +1,13 @@
 from psycopg2.sql import Identifier
 from rich import print
 
-from ..database import db
-from ..utils import MapInfo, feature_counts, get_map_info, table_exists
+from ..database import get_database
+from ..utils import MapInfo, feature_counts, table_exists
 
 
 def source_info(source: MapInfo):
     """Get information about a map source."""
+    db = get_database()
 
     info = source
 

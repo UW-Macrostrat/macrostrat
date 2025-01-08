@@ -182,7 +182,9 @@ def get_table_permissions(db, schema, table, user) -> set[Permission]:
     return {Permission(p) for p in perms.scalars()}
 
 
-def grant_permissions(schema, user, *_permissions, owner=False):
+def grant_permissions(
+    schema, user, *_permissions, owner=False, tables: list[str] = None
+):
     """Higher-order function to grant permissions on a schema to a user"""
 
     def setup_permissions(db):
@@ -199,10 +201,11 @@ def grant_permissions(schema, user, *_permissions, owner=False):
             f"Grant {_perms} on  schema [cyan bold]{schema}[/] to [cyan bold]{user}[/]"
         )
 
-        tables = db.run_query(
-            "SELECT table_name FROM information_schema.tables WHERE table_schema = :schema",
-            dict(schema=schema),
-        )
+        if tables is None:
+            tables = db.run_query(
+                "SELECT table_name FROM information_schema.tables WHERE table_schema = :schema",
+                dict(schema=schema),
+            )
         stmts = [
             (
                 "GRANT USAGE ON SCHEMA {schema} TO {user}",
@@ -338,11 +341,17 @@ def grant_schema_usage(
         )
 
 
-def setup_postgrest_access(schema: str):
+def setup_postgrest_access(
+    schema: str,
+    *,
+    read_user: str = "web_anon",
+    write_user: Optional[str] = "web_user",
+):
     """Run basic grant statements to allow PostgREST to access the schema"""
 
     def run_updates(db):
-        grant_schema_usage(db, schema, "web_anon")
-        grant_schema_usage(db, schema, "web_user", tables=False, sequences=True)
+        grant_schema_usage(db, schema, read_user)
+        if write_user is not None:
+            grant_schema_usage(db, schema, write_user, tables=False, sequences=True)
 
     return run_updates

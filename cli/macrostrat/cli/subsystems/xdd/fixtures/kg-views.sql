@@ -305,3 +305,5 @@ RETURNS integer AS $$
   )
   SELECT id FROM next_run;
 $$ LANGUAGE SQL;
+
+GRANT web_admin TO "macrostrat_admin";

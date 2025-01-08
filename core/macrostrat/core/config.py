@@ -52,11 +52,18 @@ class MacrostratConfig(Dynaconf):
 
 settings = MacrostratConfig()
 
+
+def convert_to_string(value):
+    if value is None:
+        return None
+    return str(value)
+
+
 settings.validators.register(
     # `must_exist` is causing huge problems
     Validator("COMPOSE_ROOT", cast=Path),
     Validator("env_files", cast=list[Path]),
-    Validator("pg_database", must_exist=True),
+    Validator("pg_database", cast=convert_to_string, default=None),
     # Backend information. We could potentially infer this from other environment variables
     Validator("backend", default="kubernetes", cast=BackendType),
 )
@@ -74,7 +81,8 @@ if env_files := getattr(settings, "env_files", None):
             raise FileNotFoundError(f"Environment file {e} not found")
 
         log.info(f"Loading environment variables from {e}")
-        load_dotenv(env)
+        load_dotenv(e)
+
 
 settings.validators.validate()
 
@@ -89,11 +97,36 @@ if storage := getattr(settings, "storage", None):
     environ["STORAGE_SECRET_KEY"] = secret_key
 
 # A database connection string for PostgreSQL
-PG_DATABASE = settings.pg_database
+PG_DATABASE = getattr(settings, "pg_database", None)
+url = None
+# Not sure why this happens
+if PG_DATABASE == "None":
+    PG_DATABASE = None
 # environ.get("MACROSTRAT_PG_DATABASE", None)
-# On mac and windows, we need to use the docker host `host.docker.internal` or `host.lima.internal`, etc.
-docker_localhost = getattr(settings, "docker_localhost", "localhost")
-PG_DATABASE_DOCKER = PG_DATABASE.replace("localhost", docker_localhost)
+if PG_DATABASE is not None:
+    # On mac and windows, we need to use the docker host `host.docker.internal` or `host.lima.internal`, etc.
+    docker_localhost = getattr(settings, "docker_localhost", "localhost")
+    PG_DATABASE_DOCKER = PG_DATABASE.replace("localhost", docker_localhost)
+
+    # Set environment variables
+    url = make_url(PG_DATABASE)
+
+    environ["PGHOST"] = url.host
+    environ["PGPORT"] = str(url.port)
+
+    for v in ("PGPASSWORD", "POSTGRES_PASSWORD"):
+        environ[v] = url.password
+
+    for v in ("PGUSER", "POSTGRES_USER"):
+        environ[v] = url.username
+
+    for v in ("PGDATABASE", "POSTGRES_DB"):
+        environ[v] = url.database
+
+    # Used for local running of Macrostrat
+    environ["MACROSTRAT_DB_PORT"] = str(url.port)
+
+    environ["MACROSTRAT_DATABASE_URL"] = PG_DATABASE
 
 mysql_database = getattr(settings, "mysql_database", None)
 if mysql_database is not None:
@@ -103,21 +136,6 @@ if mysql_database is not None:
 
 if elevation_database := getattr(settings, "elevation_database", None):
     environ["ELEVATION_DATABASE_URL"] = elevation_database
-
-# Set environment variables
-url = make_url(PG_DATABASE)
-
-environ["PGHOST"] = url.host
-environ["PGPORT"] = str(url.port)
-
-for v in ("PGPASSWORD", "POSTGRES_PASSWORD"):
-    environ[v] = url.password
-
-for v in ("PGUSER", "POSTGRES_USER"):
-    environ[v] = url.username
-
-for v in ("PGDATABASE", "POSTGRES_DB"):
-    environ[v] = url.database
 
 
 environ["PG_DATABASE_CONTAINER"] = getattr(
@@ -130,8 +148,6 @@ settings.offline = getattr(settings, "offline", False)
 
 
 environ["COMPOSE_PROJECT_NAME"] = "macrostrat_" + macrostrat_env
-
-environ["MACROSTRAT_DATABASE_URL"] = PG_DATABASE
 
 # Docker compose file
 compose_file = getattr(settings, "compose_file", None)
@@ -199,6 +215,3 @@ settings.sources = Sources(
 setup_environment(settings.sources)
 
 # Settings for local installation
-
-# Used for local running of Macrostrat
-environ["MACROSTRAT_DB_PORT"] = str(url.port)

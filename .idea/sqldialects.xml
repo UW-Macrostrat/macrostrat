@@ -1,15 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="SqlDialectMappings">
-    <file url="file://$PROJECT_DIR$/cli/macrostrat/cli/database/migrations/update_macrostrat/01-add-foreign-keys.sql" dialect="PostgreSQL" />
-    <file url="file://$PROJECT_DIR$/cli/macrostrat/cli/database/migrations/update_macrostrat/scripts/assess-data-variances.sql" dialect="PostgreSQL" />
-    <file url="file://$PROJECT_DIR$/cli/macrostrat/cli/subsystems/macrostrat_api/schema/02-column-builder-functions.sql" dialect="PostgreSQL" />
-    <file url="file://$PROJECT_DIR$/cli/macrostrat/cli/subsystems/maps/legend-liths-summary.sql" dialect="PostgreSQL" />
-    <file url="file://$PROJECT_DIR$/cli/macrostrat/cli/subsystems/sgp/sql/schema.sql" dialect="PostgreSQL" />
-    <file url="file://$PROJECT_DIR$/cli/macrostrat/cli/subsystems/vector_embeddings/vector-schema-migration.sql" dialect="PostgreSQL" />
-    <file url="file://$PROJECT_DIR$/cli/macrostrat/cli/subsystems/xdd/fixtures/kg-views.sql" dialect="PostgreSQL" />
-    <file url="file://$PROJECT_DIR$/cli/macrostrat/cli/subsystems/xdd/ref/update-xdd-schema.sql" dialect="PostgreSQL" />
-    <file url="file://$PROJECT_DIR$/integrations/macrostrat/integrations/schema/integrations.sql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/cli/macrostrat/cli/subsystems/legend_api/fixtures/legend.sql" dialect="PostgreSQL" />
     <file url="PROJECT" dialect="PostgreSQL" />
   </component>
 </project>

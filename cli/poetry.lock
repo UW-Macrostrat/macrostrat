@@ -644,6 +644,19 @@ s3 = ["boto3 (>=1.3.1)"]
 test = ["aiohttp", "fiona[s3]", "fsspec", "pytest (>=7)", "pytest-cov", "pytz"]
 
 [[package]]
+name = "gdal"
+version = "3.8.4"
+description = "GDAL: Geospatial Data Abstraction Library"
+optional = false
+python-versions = ">=3.6.0"
+files = [
+    {file = "GDAL-3.8.4.tar.gz", hash = "sha256:7c51e0ae7a7ccf43ad9e4bf435176baa9276653dfa16fd167c3632f6e7275207"},
+]
+
+[package.extras]
+numpy = ["numpy (>1.0.0)"]
+
+[[package]]
 name = "geoalchemy2"
 version = "0.15.2"
 description = "Using SQLAlchemy with Spatial Databases"
@@ -999,6 +1012,7 @@ files = []
 develop = true
 
 [package.dependencies]
+GDAL = "^3.8.0"
 geopandas = "^0.14.1"
 ipython = "^8.5.0"
 "macrostrat.core" = {path = "../core", develop = true}

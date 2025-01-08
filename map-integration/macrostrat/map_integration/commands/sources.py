@@ -1,11 +1,12 @@
 from rich.console import Console
 from rich.table import Table
 
-from ..database import db
+from ..database import get_database
 
 
 def map_sources():
     """List all available map sources"""
+    db = get_database()
     sources = db.run_query(
         "SELECT source_id, slug, name FROM maps.sources ORDER BY source_id DESC"
     ).fetchall()

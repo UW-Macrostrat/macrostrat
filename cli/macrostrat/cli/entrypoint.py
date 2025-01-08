@@ -395,6 +395,7 @@ from .subsystems.macrostrat_api import macrostrat_api
 # Add basic schema hunks
 from .subsystems.xdd import text_vector_schema, xdd_schema
 
+# TODO: move these into the migrations system
 db_subsystem.schema_hunks.append(core_schema)
 db_subsystem.schema_hunks.append(xdd_schema)
 db_subsystem.schema_hunks.append(text_vector_schema)

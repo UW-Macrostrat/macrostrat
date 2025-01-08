@@ -13,7 +13,7 @@ from psycopg2.sql import SQL, Identifier
 from rich import print
 from typer import Option
 
-from ..database import db, sql_file
+from ..database import get_database, sql_file
 from ..utils import MapInfo
 
 __here__ = Path(__file__).parent
@@ -33,6 +33,7 @@ def extract_strat_name_candidates(
     Populates the strat_name field in the maps.sources table.
     When there are multiple strat names, they should be separated by a semicolon.
     """
+    db = get_database()
 
     poly_table = map.slug + "_polygons"
 
@@ -99,6 +100,7 @@ def get_all_fields(poly_table: str):
     """
     Get all the text fields in a given polygon table.
     """
+    db = get_database()
     column_names = db.run_query(
         """
         SELECT column_name

@@ -20,6 +20,9 @@ from ..database import get_database
 """ Higher-order functions that return a function that evaluates whether a condition is met on the database """
 DbEvaluator = Callable[[Database], bool]
 
+PathDependency = Callable[["Migration"], Path] | Path
+DBCallable = Callable[[Database], None]
+
 
 def exists(schema: str, *table_names: str) -> DbEvaluator:
     """Return a function that evaluates to true when every given table in the given schema exists"""
@@ -53,6 +56,19 @@ def has_fks(schema: str, *table_names: str) -> DbEvaluator:
 def custom_type_exists(schema: str, *type_names: str) -> DbEvaluator:
     """Return a function that evaluates to true when every given custom type in the given schema exists"""
     return lambda db: all(db.inspector.has_type(t, schema=schema) for t in type_names)
+
+
+def has_columns(schema: str, table: str, *fields: str) -> DbEvaluator:
+    """Return a function that evaluates to true when every given field in the given table exists"""
+
+    def _has_fields(db: Database) -> bool:
+        if not db.inspector.has_table(table, schema=schema):
+            return False
+        columns = db.inspector.get_columns(table, schema=schema)
+        col_names = [c["name"] for c in columns]
+        return all(f in col_names for f in fields)
+
+    return _has_fields
 
 
 def _not(f: DbEvaluator) -> DbEvaluator:
@@ -105,6 +121,12 @@ class Migration:
     # List of checks on the database that should all evaluate to true after the migration has run successfully
     postconditions: list[DbEvaluator] = []
 
+    # Should SQL be loaded from the directory of the migration class
+    load_sql_files: bool | Path = True
+
+    # Fixtures to run after loaded SQL
+    fixtures: list[Path | DBCallable] = []
+
     # Flag for whether running this migration will cause data changes in the database in addition to
     # schema changes
     destructive: bool = False
@@ -126,8 +148,19 @@ class Migration:
     def apply(self, database: Database) -> ApplicationStatus:
         """Apply the migrations defined by this class. By default, run every sql file
         in the same directory as the class definition."""
-        child_cls_dir = Path(inspect.getfile(self.__class__)).parent
-        database.run_fixtures(child_cls_dir, output_mode=self.output_mode)
+        if len(self.fixtures) == 0:
+            # Automatically load fixtures from the same directory as the migration
+            sql_dir = Path(inspect.getfile(self.__class__)).parent
+            database.run_fixtures(sql_dir, output_mode=self.output_mode)
+            return
+
+        for fixture in self.fixtures:
+            if callable(fixture):
+                fixture(database)
+            elif isinstance(fixture, Path):
+                database.run_fixtures(fixture, output_mode=self.output_mode)
+            else:
+                raise ValueError(f"Fixture {fixture} should be a callable or a Path")
 
 
 class MigrationState(Enum):
@@ -177,11 +210,11 @@ class MigrationResult(BaseModel):
 def dry_run_migrations(wait=False, legacy=False):
     res = _dry_run_migrations(legacy=legacy)
 
-    print(f"Applied {n_total} migrations in {res.duration:.1f} seconds")
+    print(f"Applied {res.n_migrations} migrations in {res.duration:.1f} seconds")
     if res.n_remaining == 0:
         print("[bold green]No more migrations to apply!")
     else:
-        print(f"{n_remaining} migrations remaining")
+        print(f"{res.n_remaining} migrations remaining")
 
     if wait:
         print(res)

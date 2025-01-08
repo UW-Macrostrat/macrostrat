@@ -16,10 +16,10 @@ import tarfile
 import tempfile
 import time
 import zipfile
+from contextlib import contextmanager
 from typing import Annotated, Any, NoReturn, Optional
 
 import magic
-import minio
 import requests  # type: ignore[import-untyped]
 from rich.console import Console
 from sqlalchemy import and_, insert, select, update
@@ -39,7 +39,6 @@ from macrostrat.core.schemas import (  # type: ignore[import-untyped]
 from macrostrat.map_integration import config
 from macrostrat.map_integration.commands.ingest import ingest_map
 from macrostrat.map_integration.commands.prepare_fields import prepare_fields
-from macrostrat.map_integration.database import db as DB
 from macrostrat.map_integration.errors import IngestError
 from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
 from macrostrat.map_integration.utils.map_info import MapInfo, get_map_info
@@ -475,6 +474,7 @@ def ingest_slug(
         Optional[str],
         Option(help="How to interpret the contents of the map's objects"),
     ] = None,
+    embed: Annotated[bool, Option(help="Embed a shell for debugging")] = False,
 ) -> Sources:
     """
     Ingest a map from its already uploaded files.
@@ -498,7 +498,9 @@ def ingest_slug(
     for i, obj in enumerate(objs):
         append_data = i != 0
         try:
-            load_object(obj.bucket, obj.key, filter=filter, append_data=append_data)
+            load_object(
+                obj.bucket, obj.key, filter=filter, append_data=append_data, embed=embed
+            )
         except Exception as exn:
             raise_ingest_error(ingest_process, str(exn), exn)
 
@@ -719,6 +721,7 @@ def load_object(
             help="Whether to append data to the associated map when it already exists"
         ),
     ] = False,
+    embed: Annotated[bool, Option(help="Embed a shell for debugging")] = False,
 ) -> Object:
     """
     Ingest an object in S3 containing a map into Macrostrat.
@@ -759,14 +762,7 @@ def load_object(
     ## Process anything that might have points, lines, or polygons.
 
     try:
-        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as td:
-            tmp_dir = pathlib.Path(td)
-
-            if is_archive(local_file):
-                console.print(f"Extracting archive into {tmp_dir}")
-                extract_archive(local_file, tmp_dir, ingest_process=ingest_process)
-            else:
-                shutil.copy(local_file, tmp_dir)
+        with ingestion_context(local_file, ignore_cleanup_errors=True) as tmp_dir:
 
             ## Locate files of interest.
 
@@ -796,6 +792,7 @@ def load_object(
                         excluded_data.append(gis_file)
                 else:
                     gis_data.append(gis_file)
+
             if not gis_data:
                 raise_ingest_error(ingest_process, "Failed to locate GIS data")
 
@@ -813,6 +810,7 @@ def load_object(
                     source.slug,
                     gis_data,
                     if_exists="append" if append_data else "replace",
+                    embed=embed,
                 )
             except Exception as exn:
                 raise_ingest_error(ingest_process, str(exn), exn)
@@ -824,10 +822,27 @@ def load_object(
                     update_alaska_metadata(source, tmp_dir)
             except Exception as exn:
                 raise_ingest_error(ingest_process, str(exn), exn)
+    except Exception as exn:
+        raise_ingest_error(ingest_process, str(exn), exn)
     finally:
         local_file.unlink()
 
     return obj
+
+
+@contextmanager
+def ingestion_context(local_file, *, ignore_cleanup_errors=False) -> list[pathlib.Path]:
+    """Copy or extract a local file into a temporary directory for ingestion."""
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=ignore_cleanup_errors) as td:
+        tmp_dir = pathlib.Path(td)
+
+        if is_archive(local_file):
+            console.print(f"Extracting archive into {tmp_dir}")
+            extract_archive(local_file, tmp_dir)
+        else:
+            shutil.copy(local_file, tmp_dir)
+
+        yield tmp_dir
 
 
 # --------------------------------------------------------------------------
@@ -923,10 +938,11 @@ def ingest_csv(
             slugs_seen.append(row["slug"])
 
     ## Ingest only those maps with successful uploads.
+    db = get_database()
 
     for slug in set(slugs_seen):
         try:
-            ingest_slug(get_map_info(DB, slug), filter=filter)
+            ingest_slug(get_map_info(db, slug), filter=filter)
         except Exception as exn:
             console.print(f"Exception while attempting to ingest a CSV file: {exn}")
 
@@ -944,12 +960,14 @@ def run_polling_loop(
         console.print("Starting iteration of polling loop")
         bad_pending = 0
 
+        db = get_database()
+
         with get_db_session() as session:
             for ingest_process in session.scalars(
                 select(IngestProcess).where(IngestProcess.state == IngestState.pending)
             ).unique():
                 if ingest_process.source_id:
-                    map_info = get_map_info(DB, ingest_process.source_id)
+                    map_info = get_map_info(db, ingest_process.source_id)
                     console.print(f"Processing {map_info}")
                     try:
                         ingest_slug(map_info)
