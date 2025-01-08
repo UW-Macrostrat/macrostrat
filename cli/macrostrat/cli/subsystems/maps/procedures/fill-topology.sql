@@ -37,9 +37,20 @@ SELECT ST_MakeLine(ST_MakePoint(-180, lat), ST_MakePoint(180, lat)), 'grid', 2
 ON CONFLICT DO NOTHING;
 
 
-INSERT INTO map_bounds.linework (geometry, source_id, type, map_layer)
-SELECT ST_MakeValid(ST_SnapToGrid((ST_Dump(ST_Boundary(rgeom))).geom, 0.0001)), source_id, 'map_bounds', 1
+WITH a AS (
+  SELECT
+    ST_MakeValid(ST_SnapToGrid((ST_Dump(ST_Boundary(rgeom))).geom, 0.0001)) geometry,
+    source_id
   FROM maps.sources
   WHERE rgeom IS NOT NULL
     AND is_finalized
+)
+INSERT INTO map_bounds.linework (geometry, source_id, type, map_layer)
+SELECT (ST_Dump(
+  ST_Segmentize(geometry, 1)
+  )).geom, source_id, 'map_bounds', 1
+FROM a
 ON CONFLICT DO NOTHING;
+
+-- Unnest boundaries and split by grid
+

@@ -3,14 +3,15 @@ from os import environ
 from pathlib import Path
 from subprocess import run
 
+from macrostrat.database import run_sql
 from macrostrat.database.transfer.utils import raw_database_url
 from macrostrat.utils import working_directory
 from typer import Typer
 
 from macrostrat.core import MacrostratSubsystem
 from mapboard.topology_manager import create_tables, drop_tables
-from mapboard.topology_manager.commands.update import _clean_topology
 from mapboard.topology_manager.database import _get_instance_params
+from mapboard.topology_manager.utilities import enable_triggers
 from ...database._legacy import get_db
 from ...database.utils import engine_for_db_name
 
@@ -34,17 +35,23 @@ config = dict(
 
 
 @cli.command("create")
-def create_fixtures():
+def create_fixtures(reset: bool = False, fill: bool = False):
     """Create topology fixtures"""
     db = get_db()
 
+    if reset:
+        drop_tables(db, **config)
+
     create_tables(db, **config)
+
+    if fill:
+        db.run_sql(__dir__ / "procedures" / "fill-topology.sql")
 
     db.run_fixtures(__dir__ / "fixtures")
 
 
 @cli.command("drop")
-def clean():
+def drop():
     """Drop topology fixtures"""
     db = get_db()
     drop_tables(db, **config)
@@ -68,30 +75,46 @@ def update():
     update_map_layer(db, 2, "Grid")
     update_map_layer(db, 1, "Map boundaries")
 
-    grid_lines = db.run_query(
-        "SELECT id FROM map_bounds.linework WHERE topo IS null AND map_layer ="
-    ).all()
+    enable_triggers(db, False)
 
 
 def update_map_layer(db, id: int, name: str):
 
     all_rows = db.run_query(
-        "SELECT id FROM map_bounds.linework WHERE topo IS null AND map_layer = :id ORDER BY id",
+        """SELECT l.id, l.source_id, s.slug, ST_Length(l.geometry::geography) as length
+                FROM map_bounds.linework l
+        LEFT JOIN maps.sources s
+            ON l.source_id = s.source_id
+        WHERE topo IS null
+          AND map_layer = :id
+        ORDER BY ST_Length(l.geometry::geography) DESC
+        """,
         dict(id=id),
     ).all()
     print("Updating layer", name)
     db.run_sql("SET session_replication_role = replica;")
+    total = len(all_rows)
+
+    conn = db.engine.connect()
+    conn.begin()
+
     for i, row in enumerate(all_rows):
-        print("Row", row.id)
-        # Record start time
         start_time = time.time()
 
-        # Your code block to time
-        db.run_sql(
-            __dir__ / "procedures" / "update-topology-row.sql",
-            dict(id=row.id),
+        km = row.length / 1000
+        print(
+            f"Row {i+1} of {total} ({row.id}, {row.source_id}, {row.slug}, {km:.1f} km)...",
+            end="",
         )
-        db.session.commit()
+        # Flush to stdout
+        print("\r", end="")
+
+        # Your code block to time
+        run_sql(
+            conn,
+            __dir__ / "procedures" / "update-topology-row.sql",
+            dict(id=row.id, **db.instance_params),
+        )
 
         # Record end time
         end_time = time.time()
@@ -103,7 +126,12 @@ def update_map_layer(db, id: int, name: str):
         print(f"...{execution_time:.3f} seconds")
 
         if i % 10 == 0:
-            _clean_topology(db)
+            print("Committing...")
+            conn.commit()
+            conn.begin()
+            # _clean_topology(db)
+
+        conn.commit()
 
 
 @cli.command("test")
