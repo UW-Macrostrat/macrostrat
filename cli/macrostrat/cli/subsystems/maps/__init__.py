@@ -3,7 +3,6 @@ from os import environ
 from pathlib import Path
 from subprocess import run
 
-from macrostrat.database import run_sql
 from macrostrat.database.transfer.utils import raw_database_url
 from macrostrat.utils import working_directory
 from rich import print
@@ -89,65 +88,15 @@ def update():
         )
         process_map(db, map.source_id)
         print()
+        add_topogeometries(db, map.source_id)
+        print()
+        print()
 
     end_time = time.time()
 
     print(f"Total time: {end_time - start_time:.3f} seconds")
 
-    return
 
-    conn = db.engine.connect()
-    conn.begin()
-
-    for i, row in enumerate(all_rows):
-        start_time = time.time()
-
-        km = row.length / 1000
-        print(
-            f"Row {i+1} of {total} ({row.id}, {row.source_id}, {row.slug}, {km:.1f} km)...",
-            end="",
-        )
-        # Flush to stdout
-        print("\r", end="")
-
-        # Your code block to time
-        db.run_sql(
-            __dir__ / "procedures" / "update-topology-row.sql",
-            dict(id=row.id, **db.instance_params),
-        )
-
-        # Record end time
-        end_time = time.time()
-
-        # Calculate execution time
-        execution_time = end_time - start_time
-
-        # Print or log the execution time
-        print(f"...{execution_time:.3f} seconds")
-
-        if i % 10 == 0:
-            print("Committing...")
-            conn.commit()
-            conn.begin()
-            # _clean_topology(db)
-
-        conn.commit()
-
-    # update_map_layer(db, 1, "Map boundaries")
-
-
-# -- Decompose map area geometries into smaller polygons
-#
-# INSERT INTO map_bounds.map_topo (source_id, geometry)
-# SELECT
-# source_id,
-# ST_Subdivide(ST_MakeValid(ST_SnapToGrid(ST_MakeValid(geometry), 0.0001), 256, 0.0001)
-# FROM map_bounds.map_area
-# WHERE NOT EXISTS (
-#     SELECT 1
-# FROM map_bounds.map_topo
-# WHERE source_id = map_bounds.map_area.source_id
-# )
 #
 
 
@@ -184,60 +133,24 @@ def process_map(db, source_id: int):
     print(f"  {elapsed:.3f} seconds")
 
 
-def update_map_layer(db, id: int, name: str):
+def _do_update(db, source_id: int, layer_id: int):
+    t_start = time.time()
+    res = db.run_query(
+        proc("update-topology-row"),
+        dict(source_id=source_id, batch_size=1),
+    ).one()
+    db.session.commit()
+    elapsed = time.time() - t_start
+    print(
+        f"  Processed {res.updated} topogeoms, {res.remaining} remaining, {elapsed:.3f} seconds"
+    )
+    return res.remaining
 
-    all_rows = db.run_query(
-        """SELECT l.id, l.source_id, s.slug, ST_Length(l.geometry::geography) as length
-                FROM map_bounds.linework l
-        LEFT JOIN maps.sources s
-            ON l.source_id = s.source_id
-        WHERE topo IS null
-          AND map_layer = :id
-        ORDER BY ST_Length(l.geometry::geography) DESC
-        """,
-        dict(id=id),
-    ).all()
-    print("Updating layer", name)
-    db.run_sql("SET session_replication_role = replica;")
-    total = len(all_rows)
 
-    conn = db.engine.connect()
-    conn.begin()
-
-    for i, row in enumerate(all_rows):
-        start_time = time.time()
-
-        km = row.length / 1000
-        print(
-            f"Row {i+1} of {total} ({row.id}, {row.source_id}, {row.slug}, {km:.1f} km)...",
-            end="",
-        )
-        # Flush to stdout
-        print("\r", end="")
-
-        # Your code block to time
-        run_sql(
-            conn,
-            __dir__ / "procedures" / "update-topology-row.sql",
-            dict(id=row.id, **db.instance_params),
-        )
-
-        # Record end time
-        end_time = time.time()
-
-        # Calculate execution time
-        execution_time = end_time - start_time
-
-        # Print or log the execution time
-        print(f"...{execution_time:.3f} seconds")
-
-        if i % 10 == 0:
-            print("Committing...")
-            conn.commit()
-            conn.begin()
-            # _clean_topology(db)
-
-        conn.commit()
+def add_topogeometries(db, source_id: int):
+    n_remaining = 1000
+    while n_remaining > 0:
+        n_remaining = _do_update(db, source_id, 1)
 
 
 @cli.command("test")
