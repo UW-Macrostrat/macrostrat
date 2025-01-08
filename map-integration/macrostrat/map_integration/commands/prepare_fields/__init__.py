@@ -5,9 +5,9 @@ from rich import print
 from sqlalchemy.exc import NoSuchTableError
 from typer import Option
 
-from .utils import LineworkTableUpdater, PointsTableUpdater, PolygonTableUpdater
 from ...database import get_database
 from ...utils import MapInfo, create_sources_record
+from .utils import LineworkTableUpdater, PointsTableUpdater, PolygonTableUpdater
 
 
 def prepare_fields(

@@ -18,12 +18,11 @@ from .commands.prepare_fields import prepare_fields
 from .commands.set_srid import apply_srid
 from .commands.source_info import source_info
 from .commands.sources import map_sources
+from .database import get_database
 from .migrations import run_migrations
 from .process import cli as _process
 from .process.insert import _delete_map_data
 from .utils import IngestionCLI, MapInfo, table_exists
-from .database import get_database
-
 
 help_text = f"""Ingest maps into Macrostrat.
 

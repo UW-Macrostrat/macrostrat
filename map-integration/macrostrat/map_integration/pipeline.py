@@ -42,6 +42,7 @@ from macrostrat.map_integration.commands.prepare_fields import prepare_fields
 from macrostrat.map_integration.errors import IngestError
 from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
 from macrostrat.map_integration.utils.map_info import MapInfo, get_map_info
+
 from .config import get_minio_client
 
 # The list of arguments to upload_file that ingest_csv will look

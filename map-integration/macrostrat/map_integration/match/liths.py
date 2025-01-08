@@ -5,9 +5,9 @@ from psycopg2.extensions import AsIs
 from psycopg2.sql import Identifier
 from rich import print
 
-from .utils import get_match_count
 from ..database import LegacyCommandBase, get_database
 from ..utils import MapInfo
+from .utils import get_match_count
 
 
 def match_liths(map: MapInfo):
