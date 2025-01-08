@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from pytest import fixture
+from pytest import fixture, mark
 
 from macrostrat.map_integration.commands.geodatabase import (
     apply_domains_to_fields,
@@ -19,6 +19,7 @@ def gdb_fn():
         yield tmp_dir / "M173_Temuco-NuevaImperial.gdb"
 
 
+@mark.requires_gdal
 def test_get_geodatabase_domains(gdb_fn):
     from osgeo import gdal, ogr
 
