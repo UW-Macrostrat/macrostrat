@@ -9,9 +9,6 @@ from macrostrat.utils import working_directory
 from typer import Typer
 
 from macrostrat.core import MacrostratSubsystem
-from mapboard.topology_manager import create_tables, drop_tables
-from mapboard.topology_manager.database import _get_instance_params
-from mapboard.topology_manager.utilities import enable_triggers
 from ...database._legacy import get_db
 from ...database.utils import engine_for_db_name
 
@@ -34,48 +31,114 @@ config = dict(
 )
 
 
+proc = lambda name: __dir__ / "procedures" / f"{name}.sql"
+
+
 @cli.command("create")
 def create_fixtures(reset: bool = False, fill: bool = False):
     """Create topology fixtures"""
     db = get_db()
 
     if reset:
-        drop_tables(db, **config)
+        drop()
 
-    create_tables(db, **config)
-
-    if fill:
-        db.run_sql(__dir__ / "procedures" / "fill-topology.sql")
-
-    db.run_fixtures(__dir__ / "fixtures")
+    db.run_fixtures(proc("create-tables"))
+    db.run_fixtures(proc("fill-tables"))
 
 
 @cli.command("drop")
 def drop():
     """Drop topology fixtures"""
     db = get_db()
-    drop_tables(db, **config)
+    db.run_fixtures(proc("drop-tables"))
 
 
-@cli.command("fill")
-def fill():
-    """Fill topology fixtures"""
+@cli.command("reset")
+def reset():
+    """Reset topogeometry creation"""
     db = get_db()
-
-    db.run_sql(__dir__ / "procedures" / "fill-topology.sql")
+    db.run_fixtures(proc("reset-topology"))
 
 
 @cli.command("update")
 def update():
     """Update topology fixtures"""
     db = get_db()
-    db.instance_params = _get_instance_params(**config)
-    # _update(db, bulk=True)
 
-    update_map_layer(db, 2, "Grid")
-    update_map_layer(db, 1, "Map boundaries")
+    # Get a list of maps ordered from large to small
 
-    enable_triggers(db, False)
+    maps = db.run_query(
+        """
+        SELECT
+            source_id,
+            slug,
+            scale,
+            ST_Area(a.geometry::geography) as area
+        FROM map_bounds.map_area a
+        JOIN maps.sources s
+        USING (source_id)
+        ORDER BY ST_Area(a.geometry::geography) DESC
+    """
+    ).all()
+
+    for map in maps:
+        pass
+
+    return
+
+    conn = db.engine.connect()
+    conn.begin()
+
+    for i, row in enumerate(all_rows):
+        start_time = time.time()
+
+        km = row.length / 1000
+        print(
+            f"Row {i+1} of {total} ({row.id}, {row.source_id}, {row.slug}, {km:.1f} km)...",
+            end="",
+        )
+        # Flush to stdout
+        print("\r", end="")
+
+        # Your code block to time
+        db.run_sql(
+            __dir__ / "procedures" / "update-topology-row.sql",
+            dict(id=row.id, **db.instance_params),
+        )
+
+        # Record end time
+        end_time = time.time()
+
+        # Calculate execution time
+        execution_time = end_time - start_time
+
+        # Print or log the execution time
+        print(f"...{execution_time:.3f} seconds")
+
+        if i % 10 == 0:
+            print("Committing...")
+            conn.commit()
+            conn.begin()
+            # _clean_topology(db)
+
+        conn.commit()
+
+    # update_map_layer(db, 1, "Map boundaries")
+
+
+# -- Decompose map area geometries into smaller polygons
+#
+# INSERT INTO map_bounds.map_topo (source_id, geometry)
+# SELECT
+# source_id,
+# ST_Subdivide(ST_MakeValid(ST_SnapToGrid(ST_MakeValid(geometry), 0.0001), 256, 0.0001)
+# FROM map_bounds.map_area
+# WHERE NOT EXISTS (
+#     SELECT 1
+# FROM map_bounds.map_topo
+# WHERE source_id = map_bounds.map_area.source_id
+# )
+#
 
 
 def update_map_layer(db, id: int, name: str):
