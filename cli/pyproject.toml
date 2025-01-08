@@ -28,7 +28,7 @@ ipython = "^8.5.0"
 "macrostrat.integrations" = { path = "../integrations", develop = true }
 "macrostrat.map-integration" = { path = "../map-integration", develop = true }
 "criticalmaas.ta1-geopackage" = "^0.2.0"
-"mapboard.topology-manager" = {  path = "../deps/topology-manager", develop = true }
+"mapboard.topology-manager" = {  path = "../submodules/topology-manager", develop = true }
 numpy = "^1.23.4"
 psycopg2-binary = "^2.9.4"
 pyproj = "^3.4.0"

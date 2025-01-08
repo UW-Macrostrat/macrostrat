@@ -1,5 +1,5 @@
 [submodule "deps/topology-manager"]
-	path = deps/topology-manager
+	path = submodules/topology-manager
 	url = https://github.com/Mapboard/topology-manager.git
 [submodule "submodules/postgis-tile-utils"]
 	path = submodules/postgis-tile-utils
