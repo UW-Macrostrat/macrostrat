@@ -6,6 +6,7 @@ from subprocess import run
 from macrostrat.database.transfer.utils import raw_database_url
 from macrostrat.utils import working_directory
 from rich import print
+from sqlalchemy.exc import InternalError
 from typer import Typer
 
 from macrostrat.core import MacrostratSubsystem
@@ -133,12 +134,36 @@ def process_map(db, source_id: int):
     print(f"  {elapsed:.3f} seconds")
 
 
-def _do_update(db, source_id: int, layer_id: int):
+def _run_update(db, source_id: int, *, batch_size: int = 10, tolerance: float = 0.0001):
+    try:
+        res = db.run_query(
+            proc("update-topology-row"),
+            dict(source_id=source_id, batch_size=batch_size, tolerance=tolerance),
+        ).one()
+        return res
+    except InternalError as e:
+        if "geometry crosses edge" in str(e):
+            if batch_size > 1:
+                # Try a lower batch size
+                return _run_update(
+                    db, source_id, batch_size=batch_size // 2, tolerance=tolerance
+                )
+            elif tolerance < 0.01:
+                # Try a lower tolerance
+                return _run_update(
+                    db, source_id, batch_size=batch_size, tolerance=tolerance * 2
+                )
+        raise e
+
+
+def _do_update(db, source_id: int):
     t_start = time.time()
-    res = db.run_query(
-        proc("update-topology-row"),
-        dict(source_id=source_id, batch_size=1),
-    ).one()
+
+    batch_size = 10
+    tolerance = 0.0001
+
+    res = _run_update(db, source_id, batch_size=batch_size, tolerance=tolerance)
+
     db.session.commit()
     elapsed = time.time() - t_start
     print(
@@ -150,7 +175,10 @@ def _do_update(db, source_id: int, layer_id: int):
 def add_topogeometries(db, source_id: int):
     n_remaining = 1000
     while n_remaining > 0:
-        n_remaining = _do_update(db, source_id, 1)
+        n_remaining = _do_update(
+            db,
+            source_id,
+        )
 
 
 @cli.command("test")

@@ -16,7 +16,7 @@ update AS (
            AND table_name='map_topo'
            AND feature_column='topo'
         ),
-        0.0001
+        :tolerance
       ),
       geometry_hash = md5(ST_AsBinary(t.geometry))::uuid,
       topology_error = NULL
