@@ -35,15 +35,14 @@ proc = lambda name: __dir__ / "procedures" / f"{name}.sql"
 
 
 @cli.command("create")
-def create_fixtures(reset: bool = False, fill: bool = False):
+def create_fixtures(reset: bool = False):
     """Create topology fixtures"""
     db = get_db()
 
     if reset:
         drop()
 
-    db.run_fixtures(proc("create-tables"))
-    db.run_fixtures(proc("fill-tables"))
+    db.run_fixtures(__dir__ / "fixtures")
 
 
 @cli.command("drop")
@@ -92,12 +91,11 @@ def update():
         print()
         print()
 
+    fix_errors(db)
+
     end_time = time.time()
 
     print(f"Total time: {end_time - start_time:.3f} seconds")
-
-
-#
 
 
 def process_map(db, source_id: int):
@@ -168,6 +166,60 @@ def add_topogeometries(db, source_id: int):
             db,
             source_id,
         )
+
+
+@cli.command("fix-errors")
+def fix_errors():
+    """Fix topology errors"""
+    db = get_db()
+    # Clean topology
+
+    # Get and fix errors
+    res = db.run_query(
+        """
+        SELECT
+            count(*)
+        FROM map_bounds.map_topo
+        WHERE topology_error IS NOT NULL
+    """
+    ).scalar()
+
+    print(f"Found {res} errors")
+
+    print("Cleaning topology")
+    db.run_sql(
+        "SELECT RemoveUnusedPrimitives('map_bounds_topology', :bbox);", dict(bbox=None)
+    )
+
+    # Try to re-run errors
+    res = db.run_query(
+        """
+        SELECT id, source_id
+        FROM map_bounds.map_topo
+        WHERE topology_error IS NOT NULL
+        ORDER BY source_id
+    """
+    )
+
+    for row in res:
+        print(f"[dim]- {row.id} (source #{row.source_id}): ", end="")
+        res = db.run_query(
+            """
+              SELECT
+                map_bounds.update_topogeom(m) res
+              FROM map_bounds.map_topo m
+              WHERE topo IS NULL
+                AND topology_error IS NOT NULL
+                AND id = :id
+            """,
+            dict(id=row.id),
+        ).scalar()
+        db.session.commit()
+
+        if res is None:
+            print(f"[dim green]fixed")
+        else:
+            print(f"[dim red]{res}")
 
 
 @cli.command("test")
