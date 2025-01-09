@@ -153,7 +153,7 @@ def _print_source_info(map, prefix="Processing map "):
     )
 
 
-def process_map(db, map, remove=False):
+def process_map(db, map):
     _print_source_info(map, prefix="Processing map ")
 
     prepare_map_topo_features(db, map.source_id)
@@ -163,8 +163,14 @@ def process_map(db, map, remove=False):
     print()
 
 
-def prepare_map_topo_features(db, source_id: int):
+def prepare_map_topo_features(db, _map):
     # Insert or update the map topo
+
+    source_id = _map.source_id
+    simplify_amount = 0.0001
+    # Don't simplify the boundaries of fine-scale maps as much.
+    if _map.scale == "large":
+        simplify_amount = 0.00001
 
     t_start = time.time()
     res = db.run_query(
@@ -176,18 +182,29 @@ def prepare_map_topo_features(db, source_id: int):
         ), ins AS (
             INSERT INTO map_bounds.map_topo (source_id, geometry)
             SELECT
-                source_id,
+                a.source_id,
                 -- We have to remove snapping behavior to make sure that the geometry is valid.
-                ST_Subdivide(ST_MakeValid(ST_SimplifyPreserveTopology(geometry, 0.0001)), 256, 0.0001)
-            FROM map_bounds.map_area
-            WHERE source_id = :source_id
+                ST_Subdivide(
+                    ST_MakeValid(
+                        ST_SimplifyPreserveTopology(
+                            a.geometry,
+                            :simplify_amount
+                        )
+                    ),
+                    256,
+                    0.0001
+                )
+            FROM map_bounds.map_area a
+            JOIN maps.sources_metadata m
+              ON a.source_id = :source_id
+            WHERE a.source_id = :source_id
               AND (SELECT n FROM existing_count) = 0
             RETURNING id, source_id
         )
         SELECT count(*) as inserted, (SELECT n FROM existing_count) as existing
         FROM ins
         """,
-        dict(source_id=source_id),
+        dict(source_id=source_id, simplify_amount=simplify_amount),
     ).one()
     db.session.commit()
     elapsed = time.time() - t_start
