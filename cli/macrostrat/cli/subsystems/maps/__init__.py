@@ -6,7 +6,7 @@ from subprocess import run
 from macrostrat.database.transfer.utils import raw_database_url
 from macrostrat.utils import working_directory
 from rich import print
-from typer import Typer
+from typer import Typer, Argument
 
 from macrostrat.core import MacrostratSubsystem
 from ...database._legacy import get_db
@@ -61,7 +61,8 @@ def reset():
 
 @cli.command("update")
 def update(
-    *maps: list[int],
+    maps: list[int] = Argument(None),
+    *,
     remove: bool = False,
 ):
     """Update topology fixtures"""
@@ -93,10 +94,8 @@ def update(
             return
 
     start_time = time.time()
-    for map in all_maps:
-        process_map(db, map, remove=remove)
-
-    fix_errors(db)
+    for _map in all_maps:
+        process_map(db, _map, remove=remove)
 
     end_time = time.time()
 
