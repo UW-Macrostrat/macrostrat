@@ -5,9 +5,9 @@ from enum import Enum
 from psycopg2.sql import SQL, Identifier
 from rich import print
 
+from .utils import get_match_count
 from ..database import get_database, sql_file
 from ..utils import MapInfo
-from .utils import get_match_count
 
 
 class MatchType(Enum):
@@ -21,6 +21,7 @@ def match_strat_names(map: MapInfo):
     Populates the table maps.map_strat_names
     """
 
+    db = get_database()
     # Time the process
     start_time = time.time()
     source_id = map.id
