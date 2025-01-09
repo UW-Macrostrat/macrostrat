@@ -187,7 +187,7 @@ def prepare_map_topo_features(db, _map):
                 ST_Subdivide(
                     ST_MakeValid(
                         ST_SimplifyPreserveTopology(
-                            a.geometry,
+                            ST_Multi(a.geometry),
                             :simplify_amount
                         )
                     ),
