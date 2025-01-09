@@ -6,7 +6,6 @@ from subprocess import run
 from macrostrat.database.transfer.utils import raw_database_url
 from macrostrat.utils import working_directory
 from rich import print
-from sqlalchemy.exc import InternalError
 from typer import Typer
 
 from macrostrat.core import MacrostratSubsystem
@@ -135,31 +134,17 @@ def process_map(db, source_id: int):
 
 
 def _run_update(db, source_id: int, *, batch_size: int = 10, tolerance: float = 0.0001):
-    try:
-        res = db.run_query(
-            proc("update-topology-row"),
-            dict(source_id=source_id, batch_size=batch_size, tolerance=tolerance),
-        ).one()
-        return res
-    except InternalError as e:
-        if "geometry crosses edge" in str(e):
-            if batch_size > 1:
-                # Try a lower batch size
-                return _run_update(
-                    db, source_id, batch_size=batch_size // 2, tolerance=tolerance
-                )
-            elif tolerance < 0.01:
-                # Try a lower tolerance
-                return _run_update(
-                    db, source_id, batch_size=batch_size, tolerance=tolerance * 2
-                )
-        raise e
+    res = db.run_query(
+        proc("update-topology-row"),
+        dict(source_id=source_id, batch_size=batch_size, tolerance=tolerance),
+    ).one()
+    return res
 
 
 def _do_update(db, source_id: int):
     t_start = time.time()
 
-    batch_size = 10
+    batch_size = 100
     tolerance = 0.0001
 
     res = _run_update(db, source_id, batch_size=batch_size, tolerance=tolerance)
@@ -169,6 +154,10 @@ def _do_update(db, source_id: int):
     print(
         f"  Processed {res.updated} topogeoms, {res.remaining} remaining, {elapsed:.3f} seconds"
     )
+    if res.errors is not None and len(res.errors) > 0:
+        print("  Errors:")
+        for err in res.errors:
+            print(f"   [dim]- [red]{err}")
     return res.remaining
 
 
