@@ -82,14 +82,7 @@ def update():
 
     start_time = time.time()
     for map in maps:
-        print(
-            f"Processing map [bold green]{map.slug}[/][dim] - #[bold gray]{map.source_id}[/bold gray] [green]{map.area_km:.1f}[/green] km²"
-        )
-        process_map(db, map.source_id)
-        print()
-        add_topogeometries(db, map.source_id)
-        print()
-        print()
+        process_map(db, map)
 
     fix_errors(db)
 
@@ -98,7 +91,22 @@ def update():
     print(f"Total time: {end_time - start_time:.3f} seconds")
 
 
-def process_map(db, source_id: int):
+def _print_source_info(map, prefix="Processing map "):
+    print(
+        f"{prefix}[bold green]{map.slug}[/][dim] - #[bold gray]{map.source_id}[/bold gray] [green]{map.area_km:.1f}[/green] km²"
+    )
+
+
+def process_map(db, map):
+    _print_source_info(map, prefix="Processing map ")
+    prepare_map_topo_features(db, map.source_id)
+    print()
+    add_topogeometries(db, map.source_id)
+    print()
+    print()
+
+
+def prepare_map_topo_features(db, source_id: int):
     # Insert or update the map topo
 
     t_start = time.time()
@@ -131,21 +139,16 @@ def process_map(db, source_id: int):
     print(f"  {elapsed:.3f} seconds")
 
 
-def _run_update(db, source_id: int, *, batch_size: int = 10, tolerance: float = 0.0001):
-    res = db.run_query(
-        proc("update-topology-row"),
-        dict(source_id=source_id, batch_size=batch_size, tolerance=tolerance),
-    ).one()
-    return res
-
-
 def _do_update(db, source_id: int):
     t_start = time.time()
 
     batch_size = 100
     tolerance = 0.0001
 
-    res = _run_update(db, source_id, batch_size=batch_size, tolerance=tolerance)
+    res = db.run_query(
+        proc("update-topology-row"),
+        dict(source_id=source_id, batch_size=batch_size, tolerance=tolerance),
+    ).one()
 
     db.session.commit()
     elapsed = time.time() - t_start
@@ -194,15 +197,25 @@ def fix_errors():
     # Try to re-run errors
     res = db.run_query(
         """
-        SELECT id, source_id
-        FROM map_bounds.map_topo
-        WHERE topology_error IS NOT NULL
-        ORDER BY source_id
+        SELECT t.id, t.source_id, slug, area_km
+        FROM map_bounds.map_topo t
+        JOIN maps.sources_metadata
+        USING (source_id)
+        JOIN map_bounds.map_area
+        USING (source_id)
+        WHERE t.topology_error IS NOT NULL
+        ORDER BY t.source_id
     """
     )
 
+    curr_source_id = None
     for row in res:
-        print(f"[dim]- {row.id} (source #{row.source_id}): ", end="")
+        if curr_source_id != row.source_id:
+            print()
+            _print_source_info(row, prefix="Source ")
+            curr_source_id = row.source_id
+
+        print(f"[dim]- {row.id}: ", end="")
         res = db.run_query(
             """
               SELECT
