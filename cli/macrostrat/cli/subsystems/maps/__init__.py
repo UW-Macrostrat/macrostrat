@@ -77,6 +77,33 @@ def filter_maps(all_maps, map_ids: list[str]):
             yield m
 
 
+@cli.command("remove")
+def _remove(maps: list[str] = Argument(None)):
+    """Remove topology fixtures"""
+    db = get_db()
+
+    # Get a list of maps ordered from large to small
+    all_maps = get_map_list(db, filter_by=maps)
+
+    # Check with the user
+    res = input(f"Remove existing topogeometries for {len(all_maps)} maps? [y/N] ")
+    if res.lower() not in ["y", "yes"]:
+        raise Exception("User aborted")
+
+    for _map in all_maps:
+        _print_source_info(_map, prefix="Removing map ")
+        print("Removing existing map topo elements")
+        remove_map_topo_elements(db, _map.source_id)
+
+    res = db.run_query(
+        """
+        SELECT topology.RemoveUnusedPrimitives('map_bounds_topology', null)
+        """,
+    ).scalar()
+
+    print(f"Removed {res} orphaned topology elements (global)")
+
+
 @cli.command("update")
 def update(
     maps: list[str] = Argument(None),
@@ -87,7 +114,21 @@ def update(
     db = get_db()
 
     # Get a list of maps ordered from large to small
+    all_maps = get_map_list(db, maps)
 
+    if remove:
+        _remove(maps)
+
+    start_time = time.time()
+    for _map in all_maps:
+        process_map(db, _map, remove=remove)
+
+    end_time = time.time()
+
+    print(f"Total time: {end_time - start_time:.3f} seconds")
+
+
+def get_map_list(db, filter_by: list[str] = None):
     all_maps = db.run_query(
         """
         SELECT
@@ -101,23 +142,9 @@ def update(
         ORDER BY area_km DESC
     """
     ).all()
-
-    if maps is not None and len(maps) > 0:
-        all_maps = list(filter_maps(all_maps, maps))
-
-    if remove:
-        # Check with the user
-        res = input(f"Remove existing topogeometries for {len(all_maps)} maps? [y/N] ")
-        if res.lower() not in ["y", "yes"]:
-            return
-
-    start_time = time.time()
-    for _map in all_maps:
-        process_map(db, _map, remove=remove)
-
-    end_time = time.time()
-
-    print(f"Total time: {end_time - start_time:.3f} seconds")
+    if filter_by is not None:
+        all_maps = list(filter_maps(all_maps, filter_by))
+    return all_maps
 
 
 def _print_source_info(map, prefix="Processing map "):
@@ -128,9 +155,6 @@ def _print_source_info(map, prefix="Processing map "):
 
 def process_map(db, map, remove=False):
     _print_source_info(map, prefix="Processing map ")
-    if remove:
-        print("Removing existing map topo elements")
-        remove_map_topo_elements(db, map.source_id)
 
     prepare_map_topo_features(db, map.source_id)
     print()
@@ -213,7 +237,6 @@ def _do_update(db, source_id: int):
         proc("update-topology-row"),
         dict(source_id=source_id, batch_size=batch_size, tolerance=tolerance),
     ).one()
-
     db.session.commit()
     elapsed = time.time() - t_start
     print(
@@ -236,7 +259,7 @@ def add_topogeometries(db, source_id: int):
 
 
 @cli.command("errors")
-def errors(fix: bool = False):
+def errors(maps: list[str] = Argument(None), fix: bool = False):
     """Show topology errors"""
     db = get_db()
 
@@ -264,7 +287,7 @@ def errors(fix: bool = False):
         db.session.commit()
 
     # Try to re-run errors
-    res = db.run_query(
+    all_maps = db.run_query(
         """
         SELECT t.id, t.source_id, slug, area_km, t.topology_error
         FROM map_bounds.map_topo t
@@ -275,10 +298,13 @@ def errors(fix: bool = False):
         WHERE t.topology_error IS NOT NULL
         ORDER BY t.source_id
     """
-    )
+    ).all()
+
+    if maps is not None and len(maps) > 0:
+        all_maps = list(filter_maps(all_maps, maps))
 
     curr_source_id = None
-    for row in res:
+    for row in all_maps:
         if curr_source_id != row.source_id:
             print()
             _print_source_info(row, prefix="Source ")
