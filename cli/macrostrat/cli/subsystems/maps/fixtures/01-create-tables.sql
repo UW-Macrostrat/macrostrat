@@ -50,7 +50,7 @@ CREATE INDEX IF NOT EXISTS map_bounds_map_topo_geometry_idx ON map_bounds.map_to
 CREATE OR REPLACE FUNCTION map_bounds.update_topogeom(
   map_topo map_bounds.map_topo,
   tolerance double precision DEFAULT 0.0001,
-  densify integer DEFAULT NULL
+  densify integer DEFAULT 1
 ) RETURNS text AS
 $$
   DECLARE
@@ -69,9 +69,9 @@ $$
       AND feature_column='topo';
 
     _geom := map_topo.geometry;
-    IF densify IS NOT NULL THEN
+    IF densify > 1 THEN
       /** Create shorter segments to improve snapping behavior */
-      _geom := ST_Segmentize(_geom, ST_Length(_geom) / densify::double precision);
+      _geom := ST_Segmentize(_geom, ST_Length(ST_Boundary(_geom)) / densify::double precision);
     END IF;
 
     IF (_hash = map_topo.geometry_hash) THEN

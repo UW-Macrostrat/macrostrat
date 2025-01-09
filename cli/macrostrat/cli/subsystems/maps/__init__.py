@@ -298,19 +298,25 @@ def errors(fix: bool = False):
 
 def _fix_error(id: int):
     db = get_db()
-    res = db.run_query(
-        """
-          SELECT
-            map_bounds.update_topogeom(m) res
-          FROM map_bounds.map_topo m
-          WHERE topo IS NULL
-            AND topology_error IS NOT NULL
-            AND id = :id
-        """,
-        dict(id=id),
-    ).scalar()
+    densify: int = 1
+    err = "Unknown error"
+    while err is not None and densify <= 100:
+        if densify > 1:
+            print(f"  Densifying by {densify}")
+        err = db.run_query(
+            """
+              SELECT
+                map_bounds.update_topogeom(m, :tolerance, :densify) res
+              FROM map_bounds.map_topo m
+              WHERE topo IS NULL
+                AND topology_error IS NOT NULL
+                AND id = :id
+            """,
+            dict(id=id, densify=densify * 10, tolerance=0.0001 * densify),
+        ).scalar()
+        densify *= 10
     db.session.commit()
-    return res
+    return err
 
 
 @cli.command("test")
