@@ -153,6 +153,7 @@ def prepare_map_topo_features(db, source_id: int):
             INSERT INTO map_bounds.map_topo (source_id, geometry)
             SELECT
                 source_id,
+                -- We have to remove snapping behavior to make sure that the geometry is valid.
                 ST_Subdivide(ST_MakeValid(geometry), 256, 0.0001)
             FROM map_bounds.map_area
             WHERE source_id = :source_id

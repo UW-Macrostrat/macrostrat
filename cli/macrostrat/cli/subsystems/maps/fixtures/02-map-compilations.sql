@@ -50,9 +50,9 @@ VALUES ('carto-tiny', 'Carto tiny', 0, 4, ST_MakeEnvelope(-180, -90, 180, 90, 43
         ('carto-large', 'Carto large', 0, 18, ST_MakeEnvelope(-180, -90, 180, 90, 4326))
 ON CONFLICT (slug) DO NOTHING;
 
-CREATE OR REPLACE FUNCTION map_bounds.compilation_id(slug text)
+CREATE OR REPLACE FUNCTION map_bounds.compilation_id(_slug text)
 RETURNS integer AS $$
-  SELECT id FROM map_bounds.compilation WHERE slug = :slug;
+  SELECT id FROM map_bounds.compilation WHERE slug = _slug;
 $$ LANGUAGE SQL IMMUTABLE;
 
 
@@ -81,8 +81,7 @@ WHERE is_finalized
 INSERT INTO map_bounds.map_compilation (
     compilation_id,
     source_id,
-    priority,
-    geometry
+    priority
 )
 SELECT
   map_bounds.compilation_id('carto-tiny'),
@@ -110,4 +109,5 @@ SELECT
   source_id,
   priority
 FROM map_bounds.scale_priority
-WHERE scale IN ('medium', 'large');
+WHERE scale IN ('medium', 'large')
+ON CONFLICT (compilation_id, source_id) DO NOTHING;

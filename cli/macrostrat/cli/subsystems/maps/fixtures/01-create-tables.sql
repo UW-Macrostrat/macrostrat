@@ -49,27 +49,35 @@ CREATE INDEX IF NOT EXISTS map_bounds_map_topo_geometry_idx ON map_bounds.map_to
  */
 CREATE OR REPLACE FUNCTION map_bounds.update_topogeom(
   map_topo map_bounds.map_topo,
-  tolerance double precision DEFAULT 0.0001
+  tolerance double precision DEFAULT 0.0001,
+  densify integer DEFAULT NULL
 ) RETURNS text AS
 $$
-DECLARE
-  _layer_id integer;
-  _hash uuid;
-  _err_text text;
-BEGIN
-  _hash := md5(ST_AsBinary(map_topo.geometry))::uuid;
+  DECLARE
+    _layer_id integer;
+    _hash uuid;
+    _err_text text;
+    _geom geometry;
+  BEGIN
+    _hash := md5(ST_AsBinary(map_topo.geometry))::uuid;
 
-  -- Get the layer identifier to update
-  SELECT layer_id INTO _layer_id
-  FROM topology.layer
-  WHERE schema_name='map_bounds'
-    AND table_name='map_topo'
-    AND feature_column='topo';
+    -- Get the layer identifier to update
+    SELECT layer_id INTO _layer_id
+    FROM topology.layer
+    WHERE schema_name='map_bounds'
+      AND table_name='map_topo'
+      AND feature_column='topo';
 
-  IF (_hash = map_topo.geometry_hash) THEN
-    -- We already have a valid topogeometry representation
-    RETURN null;
-  END IF;
+    _geom := map_topo.geometry;
+    IF densify IS NOT NULL THEN
+      /** Create shorter segments to improve snapping behavior */
+      _geom := ST_Segmentize(_geom, ST_Length(_geom) / densify::double precision);
+    END IF;
+
+    IF (_hash = map_topo.geometry_hash) THEN
+      -- We already have a valid topogeometry representation
+      RETURN null;
+    END IF;
     -- Set topogeometry
     UPDATE map_bounds.map_topo l
     SET
@@ -78,19 +86,19 @@ BEGIN
         'map_bounds_topology',
         _layer_id,
         tolerance
-      ),
+             ),
       geometry_hash = _hash,
       topology_error = null
     WHERE l.id = map_topo.id;
     RETURN NULL;
-EXCEPTION WHEN others THEN
-  _err_text := SQLSTATE || ': ' || SQLERRM;
-  -- Set the error
-  UPDATE map_bounds.map_topo l
-  SET
-    topology_error = _err_text
-  WHERE l.id = map_topo.id;
-  RETURN _err_text;
-END;
+  EXCEPTION WHEN others THEN
+    _err_text := SQLSTATE || ': ' || SQLERRM;
+    -- Set the error
+    UPDATE map_bounds.map_topo l
+    SET
+      topology_error = _err_text
+    WHERE l.id = map_topo.id;
+    RETURN _err_text;
+  END;
 $$
 LANGUAGE plpgsql VOLATILE;
