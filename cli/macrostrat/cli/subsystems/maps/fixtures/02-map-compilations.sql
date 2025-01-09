@@ -44,10 +44,10 @@ CREATE INDEX IF NOT EXISTS map_bounds_map_compilation_geometry_idx ON map_bounds
 -- Fill map compliation table for carto layers
 
 INSERT INTO map_bounds.compilation (slug, name, min_zoom, max_zoom, bounds)
-VALUES ('carto-tiny', 'Carto tiny', 0, 4, ST_MakeEnvelope(-180, -90, 180, 90, 4326)),
-        ('carto-small', 'Carto small', 4, 8, ST_MakeEnvelope(-180, -90, 180, 90, 4326)),
-        ('carto-medium', 'Carto medium', 0, 12, ST_MakeEnvelope(-180, -90, 180, 90, 4326)),
-        ('carto-large', 'Carto large', 0, 18, ST_MakeEnvelope(-180, -90, 180, 90, 4326))
+VALUES ('carto-tiny', 'Carto tiny', 0, 4, ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326))),
+        ('carto-small', 'Carto small', 4, 8, ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326))),
+        ('carto-medium', 'Carto medium', 0, 12, ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326))),
+        ('carto-large', 'Carto large', 0, 18, ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)))
 ON CONFLICT (slug) DO NOTHING;
 
 CREATE OR REPLACE FUNCTION map_bounds.compilation_id(_slug text)
