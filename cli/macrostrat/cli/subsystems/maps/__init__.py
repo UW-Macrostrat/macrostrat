@@ -153,7 +153,7 @@ def prepare_map_topo_features(db, source_id: int):
             INSERT INTO map_bounds.map_topo (source_id, geometry)
             SELECT
                 source_id,
-                ST_Subdivide(ST_MakeValid(ST_SnapToGrid(geometry, 0.0001)), 256, 0.0001)
+                ST_Subdivide(ST_MakeValid(geometry), 256, 0.0001)
             FROM map_bounds.map_area
             WHERE source_id = :source_id
               AND (SELECT n FROM existing_count) = 0
@@ -173,20 +173,24 @@ def prepare_map_topo_features(db, source_id: int):
 
 
 def remove_map_topo_elements(db, source_id: int):
-    res = db.run_query(
-        """
+    res = list(
+        db.run_query(
+            """
         DELETE FROM map_bounds.map_topo
         WHERE source_id = :source_id
         RETURNING id
         """,
-        dict(source_id=source_id),
-    ).scalars()
-    print("Removed {len(res)} map_topo elements")
+            dict(source_id=source_id),
+        )
+    )
+    db.session.commit()
+
+    print(f"Removed {len(res)} map_topo elements")
 
     # Clean up topogeoms
     res = db.run_query(
         """
-        SELECT topology.RemoveUnusedPrimitives('map_bounds_topology', geometry::box2d)
+        SELECT topology.RemoveUnusedPrimitives('map_bounds_topology', ST_Envelope(geometry))
         FROM map_bounds.map_area
         WHERE source_id = :source_id
         """,
@@ -251,10 +255,12 @@ def errors(fix: bool = False):
 
     if fix:
         print("Cleaning topology")
-        db.run_sql(
+        res = db.run_query(
             "SELECT RemoveUnusedPrimitives('map_bounds_topology', :bbox);",
             dict(bbox=None),
-        )
+        ).scalar()
+        print(f"Removed {res} orphaned topology elements")
+        db.session.commit()
 
     # Try to re-run errors
     res = db.run_query(
