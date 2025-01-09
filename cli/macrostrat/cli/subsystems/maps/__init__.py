@@ -60,13 +60,16 @@ def reset():
 
 
 @cli.command("update")
-def update():
+def update(
+    *maps: list[int],
+    remove: bool = False,
+):
     """Update topology fixtures"""
     db = get_db()
 
     # Get a list of maps ordered from large to small
 
-    maps = db.run_query(
+    all_maps = db.run_query(
         """
         SELECT
             a.source_id,
@@ -80,9 +83,18 @@ def update():
     """
     ).all()
 
+    if maps is not None and len(maps) > 0:
+        all_maps = [m for m in all_maps if m.source_id in maps]
+
+    if remove:
+        # Check with the user
+        res = input(f"Remove existing topogeometries for {len(all_maps)} maps? [y/N] ")
+        if res.lower() not in ["y", "yes"]:
+            return
+
     start_time = time.time()
-    for map in maps:
-        process_map(db, map)
+    for map in all_maps:
+        process_map(db, map, remove=remove)
 
     fix_errors(db)
 
@@ -97,8 +109,12 @@ def _print_source_info(map, prefix="Processing map "):
     )
 
 
-def process_map(db, map):
+def process_map(db, map, remove=False):
     _print_source_info(map, prefix="Processing map ")
+    if remove:
+        print("Removing existing map topo elements")
+        remove_map_topo_elements(db, map.source_id)
+
     prepare_map_topo_features(db, map.source_id)
     print()
     add_topogeometries(db, map.source_id)
@@ -139,6 +155,32 @@ def prepare_map_topo_features(db, source_id: int):
     print(f"  {elapsed:.3f} seconds")
 
 
+def remove_map_topo_elements(db, source_id: int):
+    res = db.run_query(
+        """
+        DELETE FROM map_bounds.map_topo
+        WHERE source_id = :source_id
+        RETURNING id
+        """,
+        dict(source_id=source_id),
+    ).scalars()
+    print("Removed {len(res)} map_topo elements")
+
+    # Clean up topogeoms
+    res = db.run_query(
+        """
+        SELECT topology.RemoveUnusedPrimitives('map_bounds_topology', geometry::box2d)
+        FROM map_bounds.map_area
+        WHERE source_id = :source_id
+        """,
+        dict(source_id=source_id),
+    ).scalar()
+
+    print(f"Removed {res} orphaned topology elements")
+
+    db.session.commit()
+
+
 def _do_update(db, source_id: int):
     t_start = time.time()
 
@@ -171,11 +213,10 @@ def add_topogeometries(db, source_id: int):
         )
 
 
-@cli.command("fix-errors")
-def fix_errors():
-    """Fix topology errors"""
+@cli.command("errors")
+def errors(fix: bool = False):
+    """Show topology errors"""
     db = get_db()
-    # Clean topology
 
     # Get and fix errors
     res = db.run_query(
@@ -186,18 +227,22 @@ def fix_errors():
         WHERE topology_error IS NOT NULL
     """
     ).scalar()
-
     print(f"Found {res} errors")
 
-    print("Cleaning topology")
-    db.run_sql(
-        "SELECT RemoveUnusedPrimitives('map_bounds_topology', :bbox);", dict(bbox=None)
-    )
+    if not fix and res > 0:
+        print("Use --fix to attempt to fix them")
+
+    if fix:
+        print("Cleaning topology")
+        db.run_sql(
+            "SELECT RemoveUnusedPrimitives('map_bounds_topology', :bbox);",
+            dict(bbox=None),
+        )
 
     # Try to re-run errors
     res = db.run_query(
         """
-        SELECT t.id, t.source_id, slug, area_km
+        SELECT t.id, t.source_id, slug, area_km, t.topology_error
         FROM map_bounds.map_topo t
         JOIN maps.sources_metadata
         USING (source_id)
@@ -214,25 +259,34 @@ def fix_errors():
             print()
             _print_source_info(row, prefix="Source ")
             curr_source_id = row.source_id
+        err = row.topology_error
 
-        print(f"[dim]- {row.id}: ", end="")
-        res = db.run_query(
-            """
-              SELECT
-                map_bounds.update_topogeom(m) res
-              FROM map_bounds.map_topo m
-              WHERE topo IS NULL
-                AND topology_error IS NOT NULL
-                AND id = :id
-            """,
-            dict(id=row.id),
-        ).scalar()
-        db.session.commit()
+        print(f"[dim]- {row.id}: [/dim]", end="")
+        if fix:
+            res = _fix_error(row.id)
+            err = res
 
-        if res is None:
-            print(f"[dim green]fixed")
+        if err is None:
+            print(f"[green]fixed")
         else:
-            print(f"[dim red]{res}")
+            print(f"[dim red]{err}")
+
+
+def _fix_error(id: int):
+    db = get_db()
+    res = db.run_query(
+        """
+          SELECT
+            map_bounds.update_topogeom(m) res
+          FROM map_bounds.map_topo m
+          WHERE topo IS NULL
+            AND topology_error IS NOT NULL
+            AND id = :id
+        """,
+        dict(id=id),
+    ).scalar()
+    db.session.commit()
+    return res
 
 
 @cli.command("test")
