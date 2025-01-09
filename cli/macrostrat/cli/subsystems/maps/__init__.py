@@ -121,7 +121,7 @@ def update(
 
     start_time = time.time()
     for _map in all_maps:
-        process_map(db, _map, remove=remove)
+        process_map(db, _map)
 
     end_time = time.time()
 
@@ -156,7 +156,7 @@ def _print_source_info(map, prefix="Processing map "):
 def process_map(db, map):
     _print_source_info(map, prefix="Processing map ")
 
-    prepare_map_topo_features(db, map.source_id)
+    prepare_map_topo_features(db, map)
     print()
     add_topogeometries(db, map.source_id)
     print()
