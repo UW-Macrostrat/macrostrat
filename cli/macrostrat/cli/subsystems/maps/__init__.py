@@ -59,9 +59,27 @@ def reset():
     db.run_fixtures(proc("reset-topology"))
 
 
+def split_ids_and_slugs(map_ids):
+    ids = []
+    slugs = []
+    for m in map_ids:
+        try:
+            ids.append(int(m))
+        except ValueError:
+            slugs.append(m)
+    return ids, slugs
+
+
+def filter_maps(all_maps, map_ids: list[str]):
+    ids, slugs = split_ids_and_slugs(map_ids)
+    for m in all_maps:
+        if m.source_id in ids or m.slug in slugs:
+            yield m
+
+
 @cli.command("update")
 def update(
-    maps: list[int] = Argument(None),
+    maps: list[str] = Argument(None),
     *,
     remove: bool = False,
 ):
@@ -85,7 +103,7 @@ def update(
     ).all()
 
     if maps is not None and len(maps) > 0:
-        all_maps = [m for m in all_maps if m.source_id in maps]
+        all_maps = list(filter_maps(all_maps, maps))
 
     if remove:
         # Check with the user
