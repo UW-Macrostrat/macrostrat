@@ -5,9 +5,9 @@ from enum import Enum
 from psycopg2.sql import SQL, Identifier
 from rich import print
 
-from .utils import get_match_count
 from ..database import get_database, sql_file
 from ..utils import MapInfo
+from .utils import get_match_count
 
 
 class MatchType(Enum):

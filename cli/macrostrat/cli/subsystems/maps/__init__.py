@@ -3,12 +3,13 @@ from os import environ
 from pathlib import Path
 from subprocess import run
 
-from macrostrat.database.transfer.utils import raw_database_url
-from macrostrat.utils import working_directory
 from rich import print
-from typer import Typer, Argument
+from typer import Argument, Typer
 
 from macrostrat.core import MacrostratSubsystem
+from macrostrat.database.transfer.utils import raw_database_url
+from macrostrat.utils import working_directory
+
 from ...database._legacy import get_db
 from ...database.utils import engine_for_db_name
 
