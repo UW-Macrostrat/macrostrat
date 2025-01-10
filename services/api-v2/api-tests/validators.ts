@@ -1,4 +1,5 @@
 //var sizeOf = require("image-size");
+const axios = require("axios");
 
 module.exports = {
   aSuccessfulRequest: function (res: { statusCode: number; headers: { [x: string]: string; }; }) {
@@ -154,5 +155,20 @@ module.exports = {
         throw new Error(`t_int_age is not a numeric type: ${item.t_int_age} (type: ${typeof item.t_int_age})`);
       }
     });
+  },
+
+  async compareWithProduction(queryParams = "", localResponse: any) {
+    const prodUrl = `https://www.macrostrat.org/api/v2${queryParams}`;
+    const externalResponse = await axios.get(prodUrl);
+    if (JSON.stringify(localResponse.body) !== JSON.stringify(externalResponse.data)) {
+      throw new Error(
+        `Mismatch for endpoint: ${queryParams}\nLocal: ${JSON.stringify(
+          localResponse.body,
+          null,
+          2
+        )}\nProduction: ${JSON.stringify(externalResponse.data, null, 2)}`
+      );
+    }
   }
 };
+

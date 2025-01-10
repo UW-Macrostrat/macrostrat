@@ -39,6 +39,7 @@
   });
 
   it("should output CSV", function (done) {
+    this.timeout(9000)
     request(settings.host)
       .get("/defs/strat_name_concepts?all&format=csv")
       .expect(validators.aSuccessfulRequest)

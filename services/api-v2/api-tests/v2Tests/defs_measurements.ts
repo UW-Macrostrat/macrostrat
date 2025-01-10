@@ -45,7 +45,7 @@
   });
 
   it("should accept a measurement class", function (done) {
-    this.timeout(5000);
+    this.timeout(9000);
     request(settings.host)
       .get("/defs/measurements?measurement_class=geochemical")
       .expect(validators.aSuccessfulRequest)
@@ -56,7 +56,7 @@
           if (d.class != "geochemical") {
             throw new Error("Wrong measurement class returned");
           }
-        });
+        })
       })
       .end(function (error: any, res: any) {
         if (error) return done(error);

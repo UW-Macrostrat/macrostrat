@@ -139,6 +139,7 @@ function summarizeBurwell(lat, lng, callback) {
 }
 
 module.exports = function (req, res, next) {
+
   if (Object.keys(req.query).length < 1) {
     larkin.info(req, res, next);
   } else {
@@ -516,6 +517,7 @@ module.exports = function (req, res, next) {
         },
 
         function (unit_summary, callback) {
+
           if (!unit_summary.lith || !unit_summary.lith.length)
             return callback(null, unit_summary);
 
@@ -524,7 +526,7 @@ module.exports = function (req, res, next) {
               query: {
                 lith_id: _.max(unit_summary.lith, function (d) {
                   return d.prop;
-                }).lith_id,
+                }).lith_id.toString(),
               },
             },
             null,
