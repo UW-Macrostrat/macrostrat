@@ -213,7 +213,7 @@ def prepare_map_topo_features(db, _map):
                 )
             FROM map_bounds.map_area a
             JOIN maps.sources_metadata m
-              ON a.source_id = :source_id
+            USING (source_id)
             WHERE a.source_id = :source_id
               AND (SELECT n FROM existing_count) = 0
             RETURNING id, source_id
