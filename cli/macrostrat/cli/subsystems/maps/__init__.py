@@ -201,7 +201,7 @@ def prepare_map_topo_features(db, _map):
             SELECT
                 a.source_id,
                 -- We have to remove snapping behavior to make sure that the geometry is valid.
-                ST_Subdivide(
+                ST_Multi(ST_Subdivide(
                     ST_MakeValid(
                         ST_SimplifyPreserveTopology(
                             ST_Multi(a.geometry),
@@ -210,7 +210,7 @@ def prepare_map_topo_features(db, _map):
                     ),
                     256,
                     0.0001
-                )
+                ))
             FROM map_bounds.map_area a
             JOIN maps.sources_metadata m
             USING (source_id)
