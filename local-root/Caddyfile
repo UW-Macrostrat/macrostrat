@@ -54,9 +54,14 @@ localhost, macrostrat.local {
     }
 
     handle_path /* {
-        reverse_proxy docker.host.internal:3000
-        #reverse_proxy web:3000
+        reverse_proxy web:3000
     }
+}
+
+dev.macrostrat.local {
+    # Proxy to the locally running frontend application, if running
+    tls internal
+    reverse_proxy docker.host.internal:3000
 }
 
 storage.macrostrat.local {

@@ -2,6 +2,9 @@
 <project version="4">
   <component name="SqlDialectMappings">
     <file url="file://$PROJECT_DIR$/cli/macrostrat/cli/subsystems/legend_api/fixtures/legend.sql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/cli/macrostrat/cli/subsystems/maps/fixtures/02-map-compilations.sql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/cli/macrostrat/cli/subsystems/maps/fixtures/03-fill-tables.sql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/cli/macrostrat/cli/subsystems/maps/procedures/clear-extra-topogeometries.sql" dialect="PostgreSQL" />
     <file url="PROJECT" dialect="PostgreSQL" />
   </component>
 </project>

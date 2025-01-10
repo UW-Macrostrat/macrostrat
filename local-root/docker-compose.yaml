@@ -6,7 +6,7 @@ services:
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
     labels:
-      - dev.orbstack.domains=macrostrat.local,storage.macrostrat.local,storage-ui.macrostrat.local
+      - dev.orbstack.domains=macrostrat.local,storage.macrostrat.local,storage-ui.macrostrat.local,dev.macrostrat.local
   database:
     # PostgreSQL 13 is needed in order to allow force-dropping the database
     # (in testing mode)
@@ -118,7 +118,6 @@ services:
       - minio_data:/data
     command: server --address 0.0.0.0:9000 --console-address 0.0.0.0:9001 /data
   web:
-    profiles: ['web']
     image: hub.opensciencegrid.org/macrostrat/macrostrat-web:main
     build: ${MACROSTRAT_WEB_SRC:-""}
     environment:
