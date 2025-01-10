@@ -13,7 +13,7 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1 POETRY_VIRTUALENVS_CREATE=false
 
 RUN python3 -m venv /poetry-env
 RUN /poetry-env/bin/pip install -U pip setuptools
-RUN /poetry-env/bin/pip install poetry
+RUN /poetry-env/bin/pip install poetry==1.8.4
 
 
 WORKDIR /app/
