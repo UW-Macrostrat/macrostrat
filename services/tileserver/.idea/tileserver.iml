@@ -5,6 +5,7 @@
     <content url="file://$MODULE_DIR$">
       <sourceFolder url="file://$MODULE_DIR$/deps/timvt/timvt" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/macrostrat_tileserver" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/deps/timvt" isTestSource="false" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
