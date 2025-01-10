@@ -93,15 +93,30 @@ def _remove(maps: list[str] = Argument(None)):
     for _map in all_maps:
         _print_source_info(_map, prefix="Removing map ")
         print("Removing existing map topo elements")
-        remove_map_topo_elements(db, _map.source_id)
+        _remove_map_topo_elements(db, _map.source_id)
+
+    _clean(db)
+
+
+def _clean(db):
+    res = db.run_query(proc("clear-extra-topogeometries")).scalar()
+    db.session.commit()
+    print(f"Removed {res} orphaned [cyan]map_topo[/cyan] topogeometries")
 
     res = db.run_query(
         """
         SELECT topology.RemoveUnusedPrimitives('map_bounds_topology', null)
         """,
     ).scalar()
+    db.session.commit()
+    print(f"Removed {res} orphaned topology primitives")
 
-    print(f"Removed {res} orphaned topology elements (global)")
+
+@cli.command("clean")
+def clean():
+    """Clean topology fixtures"""
+    db = get_db()
+    _clean(db)
 
 
 @cli.command("update")
@@ -122,6 +137,8 @@ def update(
     start_time = time.time()
     for _map in all_maps:
         process_map(db, _map)
+
+    _clean(db)
 
     end_time = time.time()
 
@@ -214,7 +231,7 @@ def prepare_map_topo_features(db, _map):
     print(f"  {elapsed:.3f} seconds")
 
 
-def remove_map_topo_elements(db, source_id: int):
+def _remove_map_topo_elements(db, source_id: int):
     res = list(
         db.run_query(
             """
@@ -226,22 +243,7 @@ def remove_map_topo_elements(db, source_id: int):
         )
     )
     db.session.commit()
-
     print(f"Removed {len(res)} map_topo elements")
-
-    # Clean up topogeoms
-    res = db.run_query(
-        """
-        SELECT topology.RemoveUnusedPrimitives('map_bounds_topology', ST_Envelope(geometry))
-        FROM map_bounds.map_area
-        WHERE source_id = :source_id
-        """,
-        dict(source_id=source_id),
-    ).scalar()
-
-    print(f"Removed {res} orphaned topology elements")
-
-    db.session.commit()
 
 
 def _do_update(db, source_id: int):
@@ -273,6 +275,13 @@ def add_topogeometries(db, source_id: int):
             db,
             source_id,
         )
+
+
+@cli.command("summary")
+def summary():
+    db = get_db()
+    res = db.run_query("SELECT TopologySummary('map_bounds_topology');").scalar()
+    print(res)
 
 
 @cli.command("errors")
