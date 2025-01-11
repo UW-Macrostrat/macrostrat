@@ -1067,6 +1067,26 @@ colorlog = ">=6.5.0,<7.0.0"
 pydantic = ">=1.10.4,<3.0.0"
 
 [[package]]
+name = "mapboard-topology-manager"
+version = "4.0.0"
+description = "A PostGIS-based iterative system for building geologic maps"
+optional = false
+python-versions = "^3.10"
+files = []
+develop = true
+
+[package.dependencies]
+"macrostrat.database" = "^3.3.0"
+"macrostrat.utils" = "^1.2.1"
+python-dotenv = "^1.0.1"
+rich = "^13.7.1"
+typer = "^0.12.0"
+
+[package.source]
+type = "directory"
+url = "../submodules/topology-manager"
+
+[[package]]
 name = "markdown-it-py"
 version = "3.0.0"
 description = "Python port of markdown-it. Markdown parsing, done right!"
@@ -2471,4 +2491,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "c00bcffd1794c688bcc92277ef746b9f671c189c95513029dc1a0e260ed06b72"
+content-hash = "814616f149d59aa78c8a2764c70d5e214a8a38d59062f10650d7a65c0b51d5ce"

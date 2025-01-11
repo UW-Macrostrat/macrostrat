@@ -21,6 +21,7 @@ def match_strat_names(map: MapInfo):
     Populates the table maps.map_strat_names
     """
 
+    db = get_database()
     # Time the process
     start_time = time.time()
     source_id = map.id

@@ -133,6 +133,15 @@ def environments():
 
 main.add_typer(cfg_app)
 
+from .subsystems.maps import cli as maps_cli
+
+main.add_typer(
+    maps_cli,
+    name="topo",
+    rich_help_panel="Subsystems",
+    short_help="Manage the Macrostrat maps topology",
+)
+
 
 @main.command(
     context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
