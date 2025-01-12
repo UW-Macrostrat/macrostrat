@@ -14,28 +14,22 @@ router = APIRouter()
 __here__ = Path(__file__).parent
 
 
-@router.get("/{compilation}/{z}/{x}/{y}")
+@router.get("/{slug}/{z}/{x}/{y}")
 async def get_tile(
-        request: Request,
-        compilation: MapCompilation,
-        z: int,
-        x: int,
-        y: int,
-        lithology: List[str] = Query(None)
+    request: Request,
+    slug: str,
+    z: int,
+    x: int,
+    y: int,
 ):
     """Get a tile from the tileserver."""
     pool = request.app.state.pool
-
-    mapsize, linesize = scales_for_zoom(z)
-
-    compilation_name = compilation.value
 
     params = dict(
         z=z,
         x=x,
         y=y,
-        mapsize=mapsize,
-        linesize=linesize,
+        slug=slug,
     )
 
     async with pool.acquire() as con:
@@ -44,15 +38,13 @@ async def get_tile(
             "units",
             compilation=V(compilation_name + ".polygons"),
             lithology=lithology,
-            **params
+            **params,
         )
         lines_ = await run_layer_query(
-            con,
-            "lines",
-            compilation=V(compilation_name + ".lines"),
-            **params
+            con, "lines", compilation=V(compilation_name + ".lines"), **params
         )
     return VectorTileResponse(units_, lines_)
+
 
 def build_lithology_clause(lithology: List[str]):
     """Build a WHERE clause to filter by lithology."""
@@ -72,7 +64,7 @@ def build_lithology_clause(lithology: List[str]):
 
 
 async def run_layer_query(con, layer_name, **params):
-    query = get_layer_sql( __here__ / "queries",  layer_name)
+    query = get_layer_sql(__here__ / "queries", layer_name)
     if ":where_lithology" in query:
         lith_clause = build_lithology_clause(params.get("lithology"))
         query = query.replace(":where_lithology", lith_clause)

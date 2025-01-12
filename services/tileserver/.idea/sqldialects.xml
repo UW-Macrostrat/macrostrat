@@ -3,6 +3,7 @@
   <component name="SqlDialectMappings">
     <file url="file://$PROJECT_DIR$/macrostrat_tileserver/fixtures/04-carto-layer-defs.sql" dialect="PostgreSQL" />
     <file url="file://$PROJECT_DIR$/macrostrat_tileserver/rockd_checkins/queries/checkins.sql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/macrostrat_tileserver/single_map/queries/lines.sql" dialect="PostgreSQL" />
     <file url="PROJECT" dialect="PostgreSQL" />
   </component>
 </project>

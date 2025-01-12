@@ -7,5 +7,6 @@ SELECT
   coalesce(l.type, '') AS "type",
   tile_layers.tile_geom(l.geom, :envelope) AS geom
 FROM maps.lines l
-WHERE l.source_id = :source_id
+JOIN maps.sources s ON l.source_id = s.source_id
+WHERE s.slug = :slug
   AND ST_Intersects(geom, ST_Transform(:envelope, 4326))

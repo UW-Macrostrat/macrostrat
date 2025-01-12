@@ -1,18 +1,14 @@
-WITH mvt_features AS (
-  SELECT
-    map_id,
-    source_id,
-    geom
-  FROM maps.polygons
-  WHERE source_id = :source_id
-    AND ST_Intersects(geom, ST_Transform(:envelope, 4326))
-)
 SELECT
-  z.map_id,
-  z.source_id,
+  p.map_id,
+  p.source_id,
   l.*, --  map legend info
   tile_layers.tile_geom(z.geom, :envelope) AS geom
-FROM mvt_features z
-LEFT JOIN maps.map_legend ON z.map_id = map_legend.map_id
+FROM maps.polygons p
+JOIN maps.sources s
+  ON p.source_id = s.source_id
+LEFT JOIN maps.map_legend ml
+  ON p.map_id = ml.map_id
 LEFT JOIN tile_layers.map_legend_info AS l
-  ON l.legend_id = map_legend.legend_id;
+  ON l.legend_id = ml.legend_id
+WHERE s.slug = :slug
+  AND ST_Intersects(geom, ST_Transform(:envelope, 4326))
