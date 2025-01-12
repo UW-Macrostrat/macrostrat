@@ -4,13 +4,12 @@ from typing import Optional
 
 from dotenv import load_dotenv
 from dynaconf import Dynaconf, Validator
+from macrostrat.app_frame.control_command import BackendType
+from macrostrat.utils import get_logger
 from pydantic import BaseModel
 from sqlalchemy.engine import make_url
 from sqlalchemy.engine.url import URL
 from toml import load as load_toml
-
-from macrostrat.app_frame.control_command import BackendType
-from macrostrat.utils import get_logger
 
 from .utils import find_macrostrat_config
 
@@ -186,6 +185,7 @@ class Sources(BaseModel):
     tileserver: Optional[Path] = None
     corelle: Optional[Path] = None
     web: Optional[Path] = None
+    map_cache: Optional[Path] = None
 
 
 def get_source(key: str) -> Optional[Path]:
@@ -210,6 +210,7 @@ settings.sources = Sources(
     tileserver=get_source("tileserver"),
     corelle=get_source("corelle"),
     web=get_source("web"),
+    map_cache=get_source("map_cache"),
 )
 
 setup_environment(settings.sources)
