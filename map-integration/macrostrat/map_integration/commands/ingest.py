@@ -3,16 +3,15 @@ from pathlib import Path
 from typing import Iterable, List, Tuple
 
 import geopandas as G
-import IPython
 import pandas as P
 from geoalchemy2 import Geometry
 from rich.console import Console
 from rich.progress import Progress
 from sqlalchemy import text
 
+from .geodatabase import apply_domains_to_fields, get_layer_info, get_layer_names
 from ..database import get_database
 from ..errors import IngestError
-from .geodatabase import apply_domains_to_fields, get_layer_info, get_layer_names
 
 console = Console()
 
@@ -67,6 +66,18 @@ def ingest_map(
 
             # Add file name to dataframe
             df["source_layer"] = name
+
+            # Remove the second instance of any repeated column
+            _dup = df.columns.duplicated()
+            # Print warning
+            for column in df.columns[_dup]:
+                console.print(
+                    "[yellow dim]Ignoring duplicate column:[/yellow dim] [yellow]"
+                    + column
+                )
+
+            df = df.loc[:, ~_dup]
+            # Print warning
 
             # Concatenate to polygons
             for feature_type in ("Polygon", "LineString", "Point"):
