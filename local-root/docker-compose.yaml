@@ -94,6 +94,7 @@ services:
       context: ${MACROSTRAT_TILESERVER_SRC:-""}
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
+      - ROCKD_DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/rockd
     # The `--proxy-headers` flag is necessary for the tileserver to work behind a reverse proxy
     # and correctly notify the app that it should trust the X-Forwarded-Proto header.
     # This is necessary for the tileserver to correctly generate URLs for tilejson files.
@@ -128,7 +129,18 @@ services:
       - NODE_TLS_REJECT_UNAUTHORIZED=0
       # Secret key must be shared with the API that mints the JWT (in this case, the Macrostrat dev API)
       - SECRET_KEY=${SECRET_KEY}
-  # Schema-only Test DB instance for applying migrations
+  map-cache:
+    build: ${MACROSTRAT_MAP_CACHE_SRC:-""}
+    environment:
+      - MAPBOX_API_TOKEN=${MAPBOX_TOKEN}
+      - MAP_CACHE_DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/map_cache
+    command: |
+        poetry run uvicorn --host 0.0.0.0 --port 8001
+          macrostrat.map_cache.main:app
+            --root-path /cache
+            --log-level debug
+            --proxy-headers
+            --forwarded-allow-ips=*
   migrations-test-db:
     image: postgis-with-audit
     profiles: ['migrations-test']
