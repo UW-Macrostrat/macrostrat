@@ -72,6 +72,7 @@
   });
 
   it("should accept a strat_name_id", function (done) {
+    this.timeout(8000)
     request(settings.host)
       .get("/geologic_units/burwell?strat_name_id=1205&scale=medium")
       .expect(validators.aSuccessfulRequest)

@@ -11,16 +11,61 @@ module.exports = function (req, res, next) {
         gmus: function (callback) {
           larkin.queryPg(
             "geomacro",
-            "SELECT gid, (SELECT array_agg(DISTINCT rocktypes) FROM unnest(array[rocktype1, rocktype2, u_rocktype1, u_rocktype2, u_rocktype3]) rocktypes WHERE rocktypes IS NOT null) AS rocktype, unit_name, unit_age, unitdesc FROM gmus.lookup_units WHERE ST_Contains(geom, ST_GeomFromText($1, 4326))",
+            "SELECT\n" +
+            "   cols.id AS col_id,\n" +
+            "    lookup_unit_liths.lith_short,\n" +
+            "    units.strat_name,\n" +
+            "    units.id as unit_id,\n" +
+            "    units.fo,\n" +
+            "    units.lo,\n" +
+            "    lookup_unit_intervals.fo_period,\n" +
+            "    lookup_unit_intervals.fo_age,\n" +
+            "    lookup_unit_intervals.lo_period,\n" +
+            "    lookup_unit_intervals.lo_age,\n" +
+            "    lookup_unit_intervals.age\n" +
+            "FROM\n" +
+            "    macrostrat.cols\n" +
+            "JOIN\n" +
+            "    macrostrat.units ON units.col_id = cols.id\n" +
+            "JOIN\n" +
+            "    macrostrat.lookup_unit_liths ON lookup_unit_liths.unit_id = units.id\n" +
+            "JOIN\n" +
+            "    macrostrat.lookup_unit_intervals ON lookup_unit_intervals.unit_id = units.id\n" +
+            "WHERE\n" +
+            "    ST_Contains(cols.poly_geom, ST_GeomFromText($1, 4326))\n" +
+            "    AND cols.status_code = 'active'\n" +
+            "ORDER BY lo_age;",
             ["POINT(" + req.query.lng + " " + req.query.lat + ")"],
             function (error, result) {
               if (error) {
                 callback(error);
               } else {
-                console.log("RESULTS: ", result)
-                callback(null, result.rows[0]);
+                if (result.rows.length > 0) {
+                const rocktypes = result.rows.map(row => {
+                  // Split lith_short into parts and extract only the type
+                  const lithParts = row.lith_short.split('|');
+                  return lithParts.map(part => {
+                    const [type] = part.split(' ').map(item => item.trim()); // Extract only the type
+                    return type; // Return the type as a string
+                  });
+                }).flat();
+                const median = (result.rows.length/2) - 1
+                const col_id = result.rows[0].col_id
+                const unit_age = result.rows[median].lo_period
+                const unit_name = result.rows[median].strat_name
+
+                console.log("ROCKTYPE RESULTS", result.rows, 'AND COL_ID ', col_id)
+                const uniqueRocktypes = Array.from(new Set(rocktypes));
+                  callback(null, { gid: col_id,
+                    rocktype: uniqueRocktypes,
+                    unit_name: unit_name,
+                    unit_age: unit_age,
+                    unitdesc: ""});
+                } else {
+                  callback(null, { rocktype: [] });
+                }
               }
-            },
+            }
           );
         },
 
@@ -37,6 +82,7 @@ module.exports = function (req, res, next) {
                     if (error) {
                       callback(error);
                     } else {
+                      console.log ("columns query result", result)
                       /* If a column isn't immediately found, buffer the point by a degree, get all polygons that
                    intersect that buffer, and then find the closest one */
                       if (result.rows.length < 1) {
@@ -51,7 +97,6 @@ module.exports = function (req, res, next) {
                               ")",
                           ],
                           function (error, result) {
-                            console.log("RESULTS: ", result)
 
                             if (error) {
                               callback(error);
@@ -66,6 +111,7 @@ module.exports = function (req, res, next) {
                           },
                         );
                       } else {
+                        console.log("final column query results ", result)
                         callbackB(null, result.rows[0]);
                       }
                     }
@@ -95,7 +141,6 @@ module.exports = function (req, res, next) {
                     result.rows.forEach(function (d) {
                       d.lith = larkin.fixLiths(d.lith);
                     });
-                    console.log("RESULTS: ", result)
                     callbackB(null, column, result.rows);
                   }
                 });
@@ -134,8 +179,6 @@ module.exports = function (req, res, next) {
           console.log(error);
           larkin.error(req, res, next, "Something went wrong");
         } else {
-          console.log("RESULTS: ", results)
-
           larkin.sendData(
             req,
             res,
@@ -148,7 +191,7 @@ module.exports = function (req, res, next) {
               compact: true,
             },
             {
-              data: [results.rows],
+              data: results,
             },
           );
         }
@@ -166,7 +209,6 @@ module.exports = function (req, res, next) {
               if (error) {
                 callback(error);
               } else {
-                console.log("RESULTS: ", result)
                 callback(null, result.rows[0]);
               }
             },
@@ -185,7 +227,6 @@ module.exports = function (req, res, next) {
                     if (error) {
                       callbackB(error);
                     } else {
-                      console.log("RESULTS: ", result)
 
                       if (result.rows.length === 0) {
                         callback(null);
@@ -217,8 +258,6 @@ module.exports = function (req, res, next) {
                     if (error) {
                       callbackB(error);
                     } else {
-                      console.log("RESULTS: ", result)
-
                       result.rows.forEach(function (d) {
                         d.lith = larkin.fixLiths(d.lith);
                       });
@@ -258,7 +297,6 @@ module.exports = function (req, res, next) {
           console.log(error);
           larkin.error(req, res, next, "Something went wrong");
         } else {
-          console.log("RESULTS: ", results)
 
           larkin.sendData(
             req,
@@ -272,7 +310,7 @@ module.exports = function (req, res, next) {
               compact: true,
             },
             {
-              data: [results.rows],
+              data: results,
             },
           );
         }
