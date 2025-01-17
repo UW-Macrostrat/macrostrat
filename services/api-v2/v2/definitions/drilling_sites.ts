@@ -12,8 +12,8 @@ module.exports = function (req, res, next, cb) {
       epoch,
       leg,
       site,
-      hole,lat,
-      lng,
+      hole,lat::float,
+      lng::float,
       col_id,
       col_group_id,
       penetration,
@@ -63,10 +63,8 @@ module.exports = function (req, res, next, cb) {
   if ("sample" in req.query) {
     sql += " LIMIT 5";
   }
-
-  console.log(sql)
-  console.log(params)
-
+  console.log("print format BEFORE submitting query", api.acceptedFormats.geo[req.query.format])
+  console.log("printing params before they go through larkin", params)
 
   larkin.queryPg("burwell", sql, params, function (error, result) {
     if (error) {
@@ -79,8 +77,10 @@ module.exports = function (req, res, next, cb) {
 
     // if a geographic format is requested
     if (req.query.format && api.acceptedFormats.geo[req.query.format]) {
+      //there is an error here we need to figure out
+      console.log("printing results before geoparse", result)
       dbgeo.parse(
-        result,
+        result.rows,
         {
           geometryType: "ll",
           geometryColumn: ["lng", "lat"],
