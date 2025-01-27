@@ -69,15 +69,15 @@ module.exports = function (req, res, next, cb) {
 
     if (req.query.interval_name) {
       where.push(
-        "early_age > (SELECT age_top from macrostrat.intervals where interval_name like :interval_name) and late_age < (SELECT age_bottom from macrostrat.intervals where interval_name like :interval_name2)",
+        "early_age > (SELECT age_top from macrostrat.intervals where interval_name ilike :interval_name) and late_age < (SELECT age_bottom from macrostrat.intervals where interval_name ilike :interval_name)",
       );
-      params["interval_name"] = larkin.parseMultipleStrings(
+      params["interval_name"] = req.query.interval_name;
+      //this code doesn't make sense. I removed interval_name2 since it will always be a "copy" of interval_name
+      /*params["interval_name2"] = larkin.parseMultipleStrings(
         req.query.interval_name,
-      );
-      params["interval_name2"] = larkin.parseMultipleStrings(
-        req.query.interval_name,
-      );
+      );*/
     }
+
 
     if (req.query.ref_id) {
       where.push("ref_id = ANY(:ref_id)");
@@ -131,6 +131,7 @@ module.exports = function (req, res, next, cb) {
   if ("sample" in req.query) {
     sql += " LIMIT 5";
   }
+
 
   larkin.queryPg("burwell", sql, params, function (error, response) {
     if (error) {
