@@ -69,14 +69,15 @@ module.exports = function (req, res, next) {
     sql += " LIMIT 1";
   }
 
-
   larkin.queryPg("burwell",sql, params, function (error, response) {
+    console.log('RESPONSE FROM LARKIN', response)
     if (error) {
       larkin.error(req, res, next, error);
     } else {
       //all parameter isn't formatted properly.
-
       if (req.query.format === undefined || req.query.format !== "csv") {
+        console.log('RESPONSE FROM LARKIN 3', response)
+
         for (var i = 0; i < response.rows.length; i++) {
           response.rows[i].top_depth = larkin.jsonifyPipes(
             response.rows[i].top_depth,
@@ -100,40 +101,54 @@ module.exports = function (req, res, next) {
           );
         }
       }
-
-      if (geo) {
-        dbgeo.parse(
-          response,
+    }
+    if (geo) {
+      try {
+        const geoJson = {
+          type: "FeatureCollection",
+          features: response.rows.map(row => ({
+            type: "Feature",
+            geometry: {
+              type: "Point",
+              coordinates: [parseFloat(row.lng), parseFloat(row.lat)],
+            },
+            properties: {
+              col_group: row.col_group,
+              site_hole: row.site_hole,
+              date_started: row.date_started,
+              ref_id: row.ref_id,
+              col_id: row.col_id,
+              top_depth: row.top_depth,
+              bottom_depth: row.bottom_depth,
+              primary_lith: row.primary_lith,
+              lith_id: row.lith_id,
+              minor_lith: row.minor_lith,
+            },
+          })),
+        };
+        console.log("RESPONSE FROM LARKIN", response)
+        console.log("GEOJSON FROM GEO LARKIN", geoJson)
+        // Send transformed GeoJSON data
+        larkin.sendData(
+          req,
+          res,
+          next,
           {
-            outputFormat: larkin.getOutputFormat(req.query.format),
-            geometryColumn: ["lng", "lat"],
-            geometryType: "ll",
+            format: api.acceptedFormats.standard[req.query.format]
+              ? req.query.format
+              : "json",
+            bare: api.acceptedFormats.bare[req.query.format] ? true : false,
+            refs: "refs",
           },
-          function (error, response) {
-            if (error) {
-              larkin.error(req, res, next, "Something went wrong");
-            } else {
-              larkin.sendData(
-                req,
-                res,
-                next,
-                {
-                  format: api.acceptedFormats.standard[req.query.format]
-                    ? req.query.format
-                    : "json",
-                  bare: api.acceptedFormats.bare[req.query.format]
-                    ? true
-                    : false,
-                  refs: "refs",
-                },
-                {
-                  data: response.rows,
-                },
-              );
-            }
-          },
+          {
+            data: geoJson,
+          }
         );
-      } else {
+      } catch (error) {
+        larkin.error(req, res, next, "Failed to transform data into GeoJSON format.")
+      }
+    }
+      else {
         //TODO determine why the all parameter returns 503 results rather than 505 as in prod
         larkin.sendData(
           req,
@@ -151,6 +166,5 @@ module.exports = function (req, res, next) {
           },
         );
       }
-    }
   });
 };

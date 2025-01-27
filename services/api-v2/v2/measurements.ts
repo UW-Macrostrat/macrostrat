@@ -2,8 +2,6 @@ var api = require("./api");
 var dbgeo = require("dbgeo");
 var larkin = require("./larkin");
 
-// need to fix bug to allow both col_id and measurement type parameters at same time
-
 module.exports = function (req, res, next) {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
@@ -63,7 +61,7 @@ module.exports = function (req, res, next) {
   }
 
   var where = [];
-  var params = [];
+  var params = {};
   var limit = "";
 
   var geo =
@@ -99,10 +97,11 @@ module.exports = function (req, res, next) {
 
   if (req.query.col_id) {
     where.push(
-      "(measuremeta_cols.col_id = ANY(:col_id1) OR units_sections.col_id = ANY(:col_id2))",
+      "(measuremeta_cols.col_id = ANY(:col_id) OR units_sections.col_id = ANY(:col_id))",
     );
-    params["col_id1"] = larkin.parseMultipleIds(req.query.col_id);
-    params["col_id2"] = larkin.parseMultipleIds(req.query.col_id);
+    params["col_id"] = larkin.parseMultipleIds(req.query.col_id);
+    //we don't need this line
+    //params["col_id2"] = larkin.parseMultipleIds(req.query.col_id);
   }
 
   if (req.query.interval_name) {
@@ -203,7 +202,7 @@ module.exports = function (req, res, next) {
     GROUP BY measuremeta.id,measurements.id, measure_units, measure_phase, method, v_error_units
     ${limit}
   `;
-  // console.log(sql)
+
 
   larkin.queryPg("burwell", sql, params, function (error, response) {
     if (error) {
