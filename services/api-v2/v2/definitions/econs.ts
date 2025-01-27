@@ -51,12 +51,19 @@ module.exports = function (req, res, next, cb) {
   }
 
   larkin.queryPg("burwell", sql, params, function (error, data) {
+    console.log("CALLBACK DATA ", cb);
     if (error) {
+      console.log("The error still returned from larkin")
       if (cb) {
         cb(error);
+      } else if (error == "{\"success\":{\"v\":2,\"license\":\"CC-BY 4.0\",\"data\":[]}}") {
+        console.log("THIS IS A SUCCESS JSON EVEN THOUGH IT'S CALLED ERROR", error)
+        error = JSON.parse(error);
+        res.status(200).json(error);
       } else {
-        return larkin.error(req, res, next, error);
+        larkin.error(req, res, next, error);
       }
+      return
     }
 
     if (cb) {

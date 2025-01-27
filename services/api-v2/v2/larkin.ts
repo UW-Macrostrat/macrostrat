@@ -112,10 +112,9 @@ const { Client, Pool } = require("pg");
         connectionDetails.database = 'rockd'
       }
     }
-    //TODO add error handling to keep api running if there are connection issues. Maybe implement pgpromise similar to rockd api?
-
     const pool = new Pool(connectionDetails);
     console.log(connectionDetails)
+    const errorMessage = "invalid input value for enum";
 
     pool.connect(function (err, client, done) {
       if (err) {
@@ -143,7 +142,13 @@ const { Client, Pool } = require("pg");
           done();
           if (err) {
             larkin.log("error", err);
-            callback(err);
+              if (err.message.includes(errorMessage)) {
+                const enumError = JSON.stringify({"success": {"v": 2,"license": "CC-BY 4.0", "data": []}});
+                callback(enumError);
+              }
+              else {
+                callback(err);
+              }
           } else {
             callback(null, result);
           }
