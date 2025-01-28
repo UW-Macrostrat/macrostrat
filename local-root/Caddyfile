@@ -31,15 +31,23 @@ localhost, macrostrat.local {
     tls internal
 
     header {
-        Access-Control-Allow-Origin *
         Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-        Access-Control-Allow-Headers *
+        >Access-Control-Allow-Origin "*"
     }
+
+    # If request is from dev.macrostrat.local or macrostrat.local, allow credentials and set the origin
+    # Match header origin to several values
+    @local_origin {
+        header Origin https://macrostrat.local
+        header Origin https://dev.macrostrat.local
+        header Origin http://localhost:3000
+    }
+
+    header @local_origin >Access-Control-Allow-Origin "{http.request.header.Origin}"
+    header @local_origin >Access-Control-Allow-Credentials true
 
     handle_path /api/v2/* {
         reverse_proxy api_v2:5000
-
-
     }
 
     handle_path /api/v3/* {
