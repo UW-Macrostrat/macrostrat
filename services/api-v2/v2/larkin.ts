@@ -143,8 +143,7 @@ const { Client, Pool } = require("pg");
           if (err) {
             larkin.log("error", err);
               if (err.message.includes(errorMessage)) {
-                const enumError = JSON.stringify({"success": {"v": 2,"license": "CC-BY 4.0", "data": []}});
-                callback(enumError);
+                callback(null, {rows: []});
               }
               else {
                 callback(err);

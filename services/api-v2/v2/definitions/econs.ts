@@ -56,19 +56,16 @@ module.exports = function (req, res, next, cb) {
       console.log("The error still returned from larkin")
       if (cb) {
         cb(error);
-      } else if (error == "{\"success\":{\"v\":2,\"license\":\"CC-BY 4.0\",\"data\":[]}}") {
-        console.log("THIS IS A SUCCESS JSON EVEN THOUGH IT'S CALLED ERROR", error)
-        error = JSON.parse(error);
-        res.status(200).json(error);
-      } else {
-        larkin.error(req, res, next, error);
       }
-      return
+      else {
+        return larkin.error(req, res, next, error);
+      }
     }
 
     if (cb) {
       cb(null, data.rows);
     } else {
+
       larkin.sendData(
         req,
         res,
