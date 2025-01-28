@@ -30,8 +30,16 @@
 localhost, macrostrat.local {
     tls internal
 
+    header {
+        Access-Control-Allow-Origin *
+        Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        Access-Control-Allow-Headers *
+    }
+
     handle_path /api/v2/* {
         reverse_proxy api_v2:5000
+
+
     }
 
     handle_path /api/v3/* {
