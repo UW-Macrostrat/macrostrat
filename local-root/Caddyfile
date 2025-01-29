@@ -17,11 +17,17 @@
             header_up Accept-Profile {args[1]}
             header_up Content-Profile {args[1]}
             header_up Authorization {http.request.cookie.access_token}
+            header_down -Access-Control-Allow-Origin
+            header_down -Access-Control-Allow-Credentials
+            header_down -Access-Control-Allow-Methods
         }
 
         reverse_proxy postgrest:3000   {
             header_up Accept-Profile {args[1]}
             header_up Content-Profile {args[1]}
+            header_down -Access-Control-Allow-Origin
+            header_down -Access-Control-Allow-Credentials
+            header_down -Access-Control-Allow-Methods
         }
     }
 }
@@ -29,11 +35,6 @@
 # Macrostrat.local domain is served by orbstack
 localhost, macrostrat.local {
     tls internal
-
-    header {
-        Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-        >Access-Control-Allow-Origin "*"
-    }
 
     # If request is from dev.macrostrat.local or macrostrat.local, allow credentials and set the origin
     # Match header origin to several values
@@ -43,15 +44,50 @@ localhost, macrostrat.local {
         header Origin http://localhost:3000
     }
 
-    header @local_origin >Access-Control-Allow-Origin "{http.request.header.Origin}"
-    header @local_origin >Access-Control-Allow-Credentials true
+    @external_origin {
+        not header Origin https://macrostrat.local
+        not header Origin https://dev.macrostrat.local
+        not header Origin http://localhost:3000
+    }
+
+    @cors_preflight {
+        method OPTIONS
+    }
+
+    header {
+        Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+    }
+
+    header @external_origin {
+        Access-Control-Allow-Origin *
+    }
+
+    header @local_origin {
+        Access-Control-Allow-Origin "{http.request.header.Origin}"
+        Access-Control-Allow-Credentials true
+    }
 
     handle_path /api/v2/* {
-        reverse_proxy api_v2:5000
+        reverse_proxy api_v2:5000 {
+            header_down -Access-Control-Allow-Origin
+            header_down -Access-Control-Allow-Credentials
+            header_down -Access-Control-Allow-Methods
+        }
     }
 
     handle_path /api/v3/* {
-        reverse_proxy api_v3:80
+        reverse_proxy api_v3:80 {
+            header_down -Access-Control-Allow-Origin
+            header_down -Access-Control-Allow-Credentials
+            header_down -Access-Control-Allow-Methods
+        }
+
+        # Handle CORS preflight requests from here
+        handle @cors_preflight {
+            header Access-Control-Allow-Headers "Authorization, Content-Type"
+            header Access-Control-Max-Age "86400"
+            respond "" 204
+         }
     }
 
     # APIs for macrostrat and map-ingestion
@@ -66,7 +102,11 @@ localhost, macrostrat.local {
 
 
     handle_path /tiles/* {
-        reverse_proxy tileserver:8000
+        reverse_proxy tileserver:8000 {
+            header_down -Access-Control-Allow-Origin
+            header_down -Access-Control-Allow-Credentials
+            header_down -Access-Control-Allow-Methods
+        }
     }
 
     handle_path /cache/* {
