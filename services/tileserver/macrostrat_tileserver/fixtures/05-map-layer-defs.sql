@@ -179,7 +179,8 @@ expanded AS (
     tile_layers.tile_geom(z.geom, mercator_bbox) AS geom
   FROM mvt_features z
 )
-SELECT ST_AsMVT(expanded, 'points') INTO points;
+SELECT ST_AsMVT(expanded, 'points') INTO points
+FROM expanded;
 
 RETURN bedrock || lines || points;
 
