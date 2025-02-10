@@ -85,7 +85,7 @@ module.exports = function (req, res, next) {
 
   Object.keys(req.query).forEach(function (param) {
     if (validParams.hasOwnProperty(param)) {
-      where.push(validParams[param] + " IN (:" + param + ")");
+      where.push(validParams[param] + " = ANY(:" + param + ")");
 
       if (param.substr(param.length - 3, param.length) === "_id") {
         params[param] = larkin.parseMultipleIds(req.query[param]);
@@ -103,6 +103,7 @@ module.exports = function (req, res, next) {
     //we don't need this line
     //params["col_id2"] = larkin.parseMultipleIds(req.query.col_id);
   }
+
 
   if (req.query.interval_name) {
     where.push(
@@ -155,12 +156,16 @@ module.exports = function (req, res, next) {
       measuremeta.lng as lng,
       unit_measures.unit_id,
       rel_position as unit_rel_pos,
-      IF(unit_measures.unit_id is not null, units_sections.col_id, measuremeta_cols.col_id) as col_id,
+      CASE 
+      WHEN unit_measures.unit_id IS NOT NULL THEN units_sections.col_id
+      ELSE measuremeta_cols.col_id
+      END AS col_id,
       strat_name_id,
       match_basis,
       ref`;
   }
-
+//removed IF with a CASE WHEN function.
+//IF(unit_measures.unit_id is not null, units_sections.col_id, measuremeta_cols.col_id) as col_id,
   if (req.query.response === "light") {
     select = `
       measurements.id as measurement_id,
@@ -199,38 +204,39 @@ module.exports = function (req, res, next) {
     LEFT JOIN macrostrat.lookup_unit_intervals USING (unit_id)
     LEFT JOIN macrostrat.liths ON lith_id=liths.id
     ${where}
-    GROUP BY measuremeta.id,measurements.id, measure_units, measure_phase, method, v_error_units
+    GROUP BY measuremeta.id,measurements.id, measure_units, measure_phase, method, v_error_units,
+        unit_measures.unit_id, unit_measures. rel_position, units_sections. col_id, measuremeta_cols. col_id,
+        unit_measures. strat_name_id,unit_measures. match_basis
     ${limit}
   `;
-
 
   larkin.queryPg("burwell", sql, params, function (error, response) {
     if (error) {
       larkin.error(req, res, next, error);
     } else {
       if (req.query.format !== "csv" && "show_values" in req.query) {
-        for (var i = 0; i < response.length; i++) {
+        for (var i = 0; i < response.rows.length; i++) {
           if (req.query.response !== "light") {
-            response[i].measure_position = larkin.jsonifyPipes(
-              response[i].measure_position,
+            response.rows[i].measure_position = larkin.jsonifyPipes(
+              response.rows[i].measure_position,
               "floats",
             );
           }
-          response[i].measure_value = larkin.jsonifyPipes(
-            response[i].measure_value,
+          response.rows[i].measure_value = larkin.jsonifyPipes(
+            response.rows[i].measure_value,
             "floats",
           );
-          response[i].measure_error = larkin.jsonifyPipes(
-            response[i].measure_error,
+          response.rows[i].measure_error = larkin.jsonifyPipes(
+            response.rows[i].measure_error,
             "floats",
           );
           if (req.query.response === "long") {
-            response[i].measure_n = larkin.jsonifyPipes(
-              response[i].measure_n,
+            response.rows[i].measure_n = larkin.jsonifyPipes(
+              response.rows[i].measure_n,
               "floats",
             );
-            response[i].sample_no = larkin.jsonifyPipes(
-              response[i].sample_no,
+            response.rows[i].sample_no = larkin.jsonifyPipes(
+              response.rows[i].sample_no,
               "strings",
             );
           }
@@ -239,7 +245,7 @@ module.exports = function (req, res, next) {
 
       if (geo) {
         dbgeo.parse(
-          response,
+          response.rows,
           {
             outputFormat: larkin.getOutputFormat(req.query.format),
             geometryColumn: ["lng", "lat"],
