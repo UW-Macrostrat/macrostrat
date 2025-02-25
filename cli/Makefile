@@ -1,5 +1,5 @@
 all:
-	poetry lock --no-update
+	poetry lock
 	poetry install
 
 install:
