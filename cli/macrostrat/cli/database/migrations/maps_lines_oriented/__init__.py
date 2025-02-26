@@ -6,6 +6,8 @@ from macrostrat.database import Database
 
 from macrostrat.core.migrations import Migration, has_columns
 
+_has_column = has_columns("maps", "sources", "lines_oriented")
+
 
 class MapsLinesOriented(Migration):
     name = "maps-lines-oriented"
@@ -14,7 +16,7 @@ class MapsLinesOriented(Migration):
 
     depends_on = ["baseline"]
 
-    postconditions = [has_columns("maps", "sources", "lines_oriented")]
+    postconditions = [_has_column]
 
     def apply(self, db: Database):
         db.run_sql("ALTER TABLE maps.sources ADD COLUMN lines_oriented boolean")
@@ -41,6 +43,8 @@ def matching_sources(
 
 
 def some_maps_are_unoriented(db: Database) -> bool:
+    if not _has_column(db):
+        return False
     ids = matching_sources(
         db, valid_maps + reversed_maps, "NOT coalesce(lines_oriented, false)"
     )
@@ -48,6 +52,8 @@ def some_maps_are_unoriented(db: Database) -> bool:
 
 
 def all_maps_are_oriented(db: Database) -> bool:
+    if not _has_column(db):
+        return False
     _all_maps = valid_maps + reversed_maps
     ids = matching_sources(db, _all_maps, "coalesce(lines_oriented, false)")
     return len(ids) == len(_all_maps)

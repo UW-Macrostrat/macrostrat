@@ -1,9 +1,9 @@
 from macrostrat.core.migrations import Migration, has_columns, view_exists
 
 
-class MapsAPIMigration(Migration):
-    name = "maps-sources"
-    subsystem = "core"
+class MapsSourcesAPIMigration(Migration):
+    name = "maps-sources-api"
+    subsystem = "maps"
     description = """
     Create views for sources_metadata and ingest_process in the maps and macrostrat_api schemas
     """
@@ -20,5 +20,6 @@ class MapsAPIMigration(Migration):
             "is_finalized",
             "scale_denominator",
             "lines_oriented",
+            allow_view=True,
         ),
     ]
