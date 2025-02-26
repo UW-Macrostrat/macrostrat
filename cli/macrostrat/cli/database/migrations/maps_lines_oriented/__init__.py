@@ -2,9 +2,8 @@
 Macrostrat line orientation management
 """
 
-from macrostrat.database import Database
-
 from macrostrat.core.migrations import Migration, has_columns
+from macrostrat.database import Database
 
 _has_column = has_columns("maps", "sources", "lines_oriented")
 

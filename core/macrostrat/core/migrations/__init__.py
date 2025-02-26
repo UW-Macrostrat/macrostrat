@@ -7,11 +7,12 @@ from time import time
 from typing import Callable, Iterable
 
 import docker
+from pydantic import BaseModel
+from rich import print
+
 from macrostrat.database import Database
 from macrostrat.database.utils import OutputMode
 from macrostrat.dinosaur.upgrade_cluster.utils import database_cluster
-from pydantic import BaseModel
-from rich import print
 
 from ..config import settings
 from ..database import get_database
