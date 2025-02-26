@@ -58,11 +58,15 @@ def custom_type_exists(schema: str, *type_names: str) -> DbEvaluator:
     return lambda db: all(db.inspector.has_type(t, schema=schema) for t in type_names)
 
 
-def has_columns(schema: str, table: str, *fields: str) -> DbEvaluator:
+def has_columns(schema: str, table: str, *fields: str, allow_view=False) -> DbEvaluator:
     """Return a function that evaluates to true when every given field in the given table exists"""
 
     def _has_fields(db: Database) -> bool:
-        if not db.inspector.has_table(table, schema=schema):
+        _has_table = db.inspector.has_table(table, schema=schema)
+        if not _has_table and not allow_view:
+            return False
+        _has_view = table in db.inspector.get_view_names(schema)
+        if not _has_table and not _has_view:
             return False
         columns = db.inspector.get_columns(table, schema=schema)
         col_names = [c["name"] for c in columns]
