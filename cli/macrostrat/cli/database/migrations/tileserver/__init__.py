@@ -8,6 +8,7 @@ from macrostrat.core.migrations import Migration, schema_exists
 
 __dir__ = Path(__file__).parent
 
+
 class TileserverMigration(Migration):
     name = "macrostrat-tileserver"
     subsystem = "tileserver"
