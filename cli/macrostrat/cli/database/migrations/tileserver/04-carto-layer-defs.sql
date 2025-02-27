@@ -41,7 +41,7 @@ JOIN maps.lines l1
   - If we were to break this strict superset rule, we could coalesce() the lith_classes and lith_types
     fields with the all_lith_* fields.
 
-  Testing SQL:
+  Testing sql:
   SELECT count(*) FROM maps.legend l
   WHERE array_length(l.all_lith_classes, 1) > array_length(l.lith_classes, 1)
     AND NOT l.lith_classes <@ l.all_lith_classes
