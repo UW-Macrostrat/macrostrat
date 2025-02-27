@@ -390,7 +390,7 @@ def _run_migrations(
         # After running migration, reload the database and confirm that application was sucessful
         db.refresh_schema()
 
-        if _migration.should_apply(db) != ApplicationStatus.APPLIED:
+        if _migration.should_apply(db) != ApplicationStatus.APPLIED and not _migration.always_apply:
             failed_migrations.append(_migration.name)
             continue
 
