@@ -32,6 +32,7 @@ JOIN maps.lines l1
   ON l.line_id = l1.line_id;
 
 
+
 /**
   == MAP LEGEND INFO ==
   A utility view to assemble "carto-slim" tile data for a given map legend entry
@@ -171,6 +172,7 @@ expanded AS (
     coalesce(l.name, '') AS name,
     coalesce(l.direction, '') AS direction,
     coalesce(l.type, '') AS "type",
+    s.lines_oriented oriented,
     tile_layers.tile_geom(z.geom, mercator_bbox) AS geom
   FROM mvt_features z
   LEFT JOIN maps.lines l
