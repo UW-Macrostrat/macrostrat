@@ -16,11 +16,12 @@ SELECT
   coalesce(l.name, '') AS name,
   coalesce(l.direction, '') AS direction,
   coalesce(l.type, '') AS "type",
-  tile_layers.tile_geom(z.geom, :envelope) AS geom
+  tile_layers.tile_geom(z.geom, :envelope) AS geom,
+  s.lines_oriented oriented
 FROM mvt_features z
 LEFT JOIN maps.lines l
   ON z.line_id = l.line_id
   AND l.scale::text = ANY(:linesize)
-LEFT JOIN maps.sources
-  ON z.source_id = sources.source_id
-WHERE sources.status_code = 'active'
+LEFT JOIN maps.sources s
+  ON z.source_id = s.source_id
+WHERE s.status_code = 'active'

@@ -144,8 +144,10 @@ expanded AS (
     coalesce(q.name, '') AS name,
     coalesce(q.direction, '') AS direction,
     coalesce(q.type, '') AS "type",
+    sources.lines_oriented oriented,
     tile_layers.tile_geom(z.geom, mercator_bbox) AS geom
   FROM mvt_features z
+  JOIN maps.sources ON z.source_id = sources.source_id
   LEFT JOIN tile_layers.line_data q
     ON z.line_id = q.line_id
   WHERE q.scale = ANY(linesize)

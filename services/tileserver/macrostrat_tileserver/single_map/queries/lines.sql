@@ -5,6 +5,7 @@ SELECT
   coalesce(l.name, '') AS name,
   coalesce(l.direction, '') AS direction,
   coalesce(l.type, '') AS "type",
+  s.lines_oriented oriented,
   tile_layers.tile_geom(l.geom, :envelope) AS geom
 FROM maps.lines l
 JOIN maps.sources s ON l.source_id = s.source_id
