@@ -133,6 +133,10 @@ def environments():
 
 main.add_typer(cfg_app)
 
+from .cache import cli as cache_cli
+
+main.add_typer(cache_cli, name="cache", rich_help_panel="Subsystems")
+
 
 @main.command(
     context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
