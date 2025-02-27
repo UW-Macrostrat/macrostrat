@@ -1,6 +1,6 @@
 from collections import defaultdict
 from pathlib import Path
-from typing import List
+from typing import Iterable, List, Tuple
 
 import geopandas as G
 import IPython
@@ -8,18 +8,11 @@ import pandas as P
 from geoalchemy2 import Geometry
 from rich.console import Console
 from rich.progress import Progress
-from shapely.geometry import (
-    LineString,
-    MultiLineString,
-    MultiPoint,
-    MultiPolygon,
-    Point,
-    Polygon,
-)
-from sqlalchemy import *
+from sqlalchemy import text
 
-from ..database import db
+from ..database import get_database
 from ..errors import IngestError
+from .geodatabase import apply_domains_to_fields, get_layer_info, get_layer_names
 
 console = Console()
 
@@ -32,7 +25,13 @@ def ingest_map(
     if_exists: str = "replace",
     chunksize: int = 100,
 ):
-    """Ingest shapefiles into the database."""
+    """Ingest general GIS data files into the database.
+
+    This is similar to the macrostrat maps pipeline ingest-map command,
+    but it doesn't upload files to S3 or check their existence.
+    """
+    db = get_database()
+
     console.print("[bold]Ingesting map data for source [bold blue]" + slug)
     # Read file with GeoPandas and dump to PostGIS
 
@@ -44,43 +43,49 @@ def ingest_map(
         f"INSERT INTO maps.sources (primary_table, slug) VALUES ('{slug}_polygons', '{slug}') ON CONFLICT DO NOTHING"
     )
 
-    for file in files:
-        df = G.read_file(file)
+    success_count = 0
+    total_count = 0
+    for name, df in get_dataframes(files):
+        try:
+            if crs is not None:
+                if df.crs is None:
+                    console.print("Forcing input CRS to [bold yellow]" + crs)
+                    df.crs = crs
+                else:
+                    raise IngestError("CRS already set")
 
-        console.print(file, style="bold cyan")
-
-        # Print geometry type statistics
-        counts = df.geometry.type.value_counts()
-        for geom_type, count in counts.items():
-            console.print(f"- {count} {geom_type}s")
-
-        if crs is not None:
+            # If no CRS is set, demand one.
             if df.crs is None:
-                console.print("Forcing input CRS to [bold yellow]" + crs)
-                df.crs = crs
-            else:
-                raise ValueError("CRS already set")
+                console.print(
+                    "No CRS set. Please set a CRS before ingesting.", style="bold red"
+                )
+                raise IngestError("No CRS set")
 
-        # If no CRS is set, demand one.
-        if df.crs is None:
-            console.print(
-                "No CRS set. Please set a CRS before ingesting.", style="bold red"
-            )
-            raise IngestError("No CRS set")
+            # Convert geometry to WGS84
+            console.print("Projecting to WGS84")
+            df = df.to_crs("EPSG:4326")
 
-        # Convert geometry to WGS84
-        console.print("Projecting to WGS84")
-        df = df.to_crs("EPSG:4326")
+            # Add file name to dataframe
+            df["source_layer"] = name
 
-        # Add file name to dataframe
-        df["source_layer"] = file.stem
+            # Concatenate to polygons
+            for feature_type in ("Polygon", "LineString", "Point"):
+                frames[feature_type].append(df[df.geometry.type == feature_type])
+                frames[feature_type].append(
+                    df[df.geometry.type == "Multi" + feature_type]
+                )
 
-        # Concatenate to polygons
-        for feature_type in ("Polygon", "LineString", "Point"):
-            frames[feature_type].append(df[df.geometry.type == feature_type])
-            frames[feature_type].append(df[df.geometry.type == "Multi" + feature_type])
+            success_count += 1
+            console.print()
+        except IngestError as e:
+            continue
+        finally:
+            total_count += 1
 
-        console.print()
+    if success_count == 0:
+        raise IngestError("No files successfully ingested")
+
+    console.print(f"Successfully ingested {success_count} of {total_count} layers.")
 
     if embed:
         IPython.embed()
@@ -142,6 +147,73 @@ def ingest_map(
                 progress.update(task, advance=len(chunk))
 
             conn.commit()
+
+
+def create_dataframe_for_layer(file: Path, layer: str) -> G.GeoDataFrame:
+    return G.read_file(file, layer=layer)
+
+
+def get_dataframes(files) -> Iterable[Tuple[str, G.GeoDataFrame]]:
+    single_file = len(files) == 1
+    for file in files:
+        console.print(file, style="bold cyan")
+
+        layers = get_layer_names(file)
+
+        n_layers = len(layers)
+        if n_layers > 1:
+            console.print(f"{n_layers} layers.")
+
+        for layer in layers:
+            name = get_layer_name(
+                file, layer, single_file=single_file, single_layer=n_layers == 1
+            )
+            stmt = f"Layer [cyan]{layer}[/cyan]"
+            if name != layer:
+                stmt += f" -> [cyan]{name}[/cyan]"
+            console.print(stmt)
+
+            # Create the basic data frame
+            df = G.read_file(file, layer=layer)
+
+            info = get_layer_info(file, layer)
+            # Apply domains for Geodatabase linked information
+            df = apply_domains_to_fields(df, info)
+
+            # TODO: find and follow foreign key relationships
+
+            _print_layer_info(df, console)
+
+            yield name, df
+
+
+def _print_layer_info(df, _console: Console):
+
+    # If there is no geometry, skip
+    if "geometry" not in df.columns:
+        _console.print("No geometry column found. Skipping.")
+        return
+
+    # Print geometry type statistics
+    counts = df.geometry.type.value_counts()
+    for geom_type, count in counts.items():
+        _console.print(f"- {count} {geom_type}s")
+
+    _col_list = ", ".join(df.columns)
+    # Print out column names
+    _console.print(f"- [bold]Columns[/bold]: [dim]{_col_list}[/dim]")
+
+
+def get_layer_name(
+    file: Path, layer: str, single_file=False, single_layer=False
+) -> str:
+    """Get the best layer name for a file and layer."""
+    name = file.stem
+    if single_layer:
+        return name
+    if single_file:
+        return layer
+    return f"_{layer}"
 
 
 def chunker(seq, size):

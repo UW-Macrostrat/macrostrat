@@ -2,7 +2,7 @@
 ALTER SEQUENCE map_ids SET SCHEMA maps;
 
 /** Rename maps tables and create views for backwards compatibility */
-CREATE TYPE map_scale AS ENUM ('tiny', 'small', 'medium', 'large');
+CREATE TYPE maps.map_scale AS ENUM ('tiny', 'small', 'medium', 'large');
 
 ALTER TABLE maps.tiny RENAME TO polygons_tiny;
 ALTER TABLE maps.small RENAME TO polygons_small;
@@ -15,10 +15,10 @@ CREATE VIEW maps.small AS SELECT * FROM maps.polygons_small;
 CREATE VIEW maps.medium AS SELECT * FROM maps.polygons_medium;
 CREATE VIEW maps.large AS SELECT * FROM maps.polygons_large;
 
-ALTER TABLE maps.polygons_tiny ADD COLUMN scale map_scale NOT NULL DEFAULT 'tiny';
-ALTER TABLE maps.polygons_small ADD COLUMN scale map_scale NOT NULL DEFAULT 'small';
-ALTER TABLE maps.polygons_medium ADD COLUMN scale map_scale NOT NULL DEFAULT 'medium';
-ALTER TABLE maps.polygons_large ADD COLUMN scale map_scale NOT NULL DEFAULT 'large';
+ALTER TABLE maps.polygons_tiny ADD COLUMN scale maps.map_scale NOT NULL DEFAULT 'tiny';
+ALTER TABLE maps.polygons_small ADD COLUMN scale maps.map_scale NOT NULL DEFAULT 'small';
+ALTER TABLE maps.polygons_medium ADD COLUMN scale maps.map_scale NOT NULL DEFAULT 'medium';
+ALTER TABLE maps.polygons_large ADD COLUMN scale maps.map_scale NOT NULL DEFAULT 'large';
 
 ALTER TABLE maps.polygons_tiny ADD CONSTRAINT polygons_tiny_scale_check CHECK (scale = 'tiny');
 ALTER TABLE maps.polygons_small ADD CONSTRAINT polygons_small_scale_check CHECK (scale = 'small');
@@ -35,7 +35,7 @@ CREATE TABLE maps.polygons (
   can be enforced only within each partition. */
   map_id integer DEFAULT nextval('maps.map_ids'::regclass) NOT NULL,
   source_id integer REFERENCES maps.sources(source_id) NOT NULL,
-  scale map_scale NOT NULL,
+  scale maps.map_scale NOT NULL,
   orig_id integer,
   name text,
   strat_name text,

@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from rich import print
 from rich.table import Table
 
-from ..database import db
+from ..database import get_database
 from ..utils import MapInfo, feature_counts
 
 
@@ -35,6 +35,7 @@ class MapProcessingTable(Table):
 
 def processing_status(map: MapInfo):
     """Get the processing status for a source."""
+    db = get_database()
     map_info = map
     source_id = map_info.id
     if map_info is None:
@@ -88,6 +89,7 @@ def processing_status(map: MapInfo):
 
 
 def _has_field(source_id: int, field_name: str) -> bool:
+    db = get_database()
     return db.run_query(
         "SELECT {field_name} IS NOT NULL FROM maps.sources WHERE source_id = :source_id",
         {"source_id": source_id, "field_name": Identifier(field_name)},

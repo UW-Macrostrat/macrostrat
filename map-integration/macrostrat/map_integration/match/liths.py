@@ -2,11 +2,10 @@ import sys
 import time
 
 from psycopg2.extensions import AsIs
-from psycopg2.extras import NamedTupleCursor
 from psycopg2.sql import Identifier
 from rich import print
 
-from ..database import LegacyCommandBase, db
+from ..database import LegacyCommandBase, get_database
 from ..utils import MapInfo
 from .utils import get_match_count
 
@@ -27,6 +26,7 @@ def match_liths(map: MapInfo):
 
 def get_lith_count(source_id: int):
     # Not sure where this gets created to be honest...
+    db = get_database()
     map_liths_count = get_match_count(source_id, Identifier("maps", "map_liths"))
 
     lith_count = db.run_query(

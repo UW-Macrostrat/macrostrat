@@ -1,10 +1,8 @@
-from typing import Union
-
 from psycopg2.sql import Identifier, Literal
 
 from macrostrat.utils import get_logger
 
-from ..database import db, sql_file
+from ..database import get_database, sql_file
 from ..utils import MapInfo, feature_counts
 
 log = get_logger(__name__)
@@ -14,6 +12,7 @@ def copy_to_maps(source: MapInfo, delete_existing: bool = False, scale: str = No
     """
     Copy a single map's data to the maps schema
     """
+    db = get_database()
 
     info = source
     source_id = info.id
@@ -46,12 +45,7 @@ def copy_to_maps(source: MapInfo, delete_existing: bool = False, scale: str = No
         )
 
     if has_any_features:
-        db.run_sql(
-            """DELETE FROM maps.polygons WHERE source_id = :source_id;
-            DELETE FROM maps.lines WHERE source_id = :source_id;
-            DELETE FROM maps.points WHERE source_id = :source_id;""",
-            dict(source_id=source_id),
-        )
+        _delete_map_data(source_id)
 
     db.run_sql(
         sql_file("copy-to-maps-schema"),
@@ -62,4 +56,14 @@ def copy_to_maps(source: MapInfo, delete_existing: bool = False, scale: str = No
             points_table=Identifier("sources", slug + "_points"),
             scale=Literal(scale),
         ),
+    )
+
+
+def _delete_map_data(source_id):
+    db = get_database()
+    db.run_sql(
+        """DELETE FROM maps.polygons WHERE source_id = :source_id;
+        DELETE FROM maps.lines WHERE source_id = :source_id;
+        DELETE FROM maps.points WHERE source_id = :source_id;""",
+        dict(source_id=source_id),
     )

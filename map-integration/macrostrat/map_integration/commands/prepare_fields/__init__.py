@@ -2,11 +2,11 @@ from pathlib import Path
 from typing import Annotated
 
 from rich import print
-from sqlalchemy.exc import NoResultFound, NoSuchTableError
-from typer import Argument, Option
+from sqlalchemy.exc import NoSuchTableError
+from typer import Option
 
-from ...database import db
-from ...utils import MapInfo, create_sources_record, get_map_info
+from ...database import get_database
+from ...utils import MapInfo, create_sources_record
 from .utils import LineworkTableUpdater, PointsTableUpdater, PolygonTableUpdater
 
 
@@ -74,6 +74,7 @@ updaters = {
 
 
 def update_tables(source_id, slug, schema):
+    db = get_database()
     for table_type, updater in updaters.items():
         try:
             updater(db, f"{slug}_{table_type}", schema).run(source_id)
@@ -83,6 +84,7 @@ def update_tables(source_id, slug, schema):
 
 def prepare_fields_for_all_sources(recover=False):
     # Run prepare fields for all legacy map tables that don't have a _pkid column
+    db = get_database()
     sql = (
         Path(__file__).parent.parent.parent
         / "procedures"
@@ -94,6 +96,7 @@ def prepare_fields_for_all_sources(recover=False):
 
 def get_sources_record(slug):
     """Insert a record into the sources table."""
+    db = get_database()
     return db.run_query(
         """
         INSERT INTO maps.sources (slug)

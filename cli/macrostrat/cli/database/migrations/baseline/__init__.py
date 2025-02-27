@@ -1,4 +1,4 @@
-from ..base import Migration, exists, not_exists
+from macrostrat.core.migrations import Migration, exists
 
 
 class BaselineMigration(Migration):

@@ -6,6 +6,7 @@ from pymysql.cursors import SSDictCursor
 from sqlalchemy import create_engine
 
 from macrostrat.core.config import MYSQL_DATABASE, PG_DATABASE
+from macrostrat.core.database import get_database, refresh_database
 
 
 # Connect to MySQL
@@ -34,29 +35,13 @@ def pgConnection():
 
 
 def get_pg_credentials():
-    engine = create_engine(PG_DATABASE)
-    return engine.url
-
-
-# Lazily initialize Database
-db = None
+    db = get_database()
+    return db.engine.url
 
 
 def get_db():
-    from macrostrat.database import Database
-
-    global db
-    if db is None:
-        db = Database(PG_DATABASE)
-    return db
+    return get_database()
 
 
 def refresh_db():
-    from macrostrat.database import Database, scoped_session
-
-    global db
-    if db is not None:
-        db.session.flush()
-        db.session.close()
-    db = Database(PG_DATABASE)
-    return db
+    return refresh_database()

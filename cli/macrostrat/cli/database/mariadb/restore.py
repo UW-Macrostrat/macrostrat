@@ -2,7 +2,6 @@ import asyncio
 from contextlib import contextmanager
 from pathlib import Path
 from sys import stdin
-from tempfile import NamedTemporaryFile
 from typing import Union
 
 import aiofiles
@@ -11,14 +10,17 @@ from sqlalchemy.engine import URL, Engine
 
 from macrostrat.core.exc import MacrostratError
 from macrostrat.database import database_exists
-from macrostrat.utils import get_logger
-
-from ..._dev.stream_utils import (
+from macrostrat.database.transfer.stream_utils import (
     DecodingStreamReader,
     print_stdout,
     print_stream_progress,
 )
-from ..._dev.utils import _create_command, _create_database_if_not_exists
+from macrostrat.database.transfer.utils import (
+    _create_command,
+    _create_database_if_not_exists,
+)
+from macrostrat.utils import get_logger
+
 from ..utils import docker_internal_url
 from .utils import ParameterStyle, build_connection_args
 
@@ -74,12 +76,8 @@ async def _restore_mariadb(engine: Engine, *args, **kwargs):
     # or another location, if more appropriate. Running on the remote
     # host, if possible, is probably the fastest option. There should be
     # multiple options ideally.
-    _cmd = _create_command(
-        "mariadb",
-        *conn,
-        *args,
-        container=container,
-    )
+    command_prefix = _docker_local_run_args(container)
+    _cmd = [*command_prefix, "mariadb", *conn, *args]
 
     _log_command(engine.url, _cmd)
 
@@ -116,7 +114,7 @@ async def _dump_mariadb(engine: Engine, *args, **kwargs):
     _cmd = _create_command(
         "mysqldump",
         *conn,
-        *args,
+        args=args,
         container=container,
     )
 

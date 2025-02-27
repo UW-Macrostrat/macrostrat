@@ -7,23 +7,13 @@ from pathlib import Path
 
 from macrostrat.app_frame import compose
 from macrostrat.core import MacrostratSubsystem
+from macrostrat.core.migrations import Migration, view_exists
 
 from ...database import SubsystemSchemaDefinition, get_db
-from ...database.utils import grant_schema_usage
+from ...database.utils import setup_postgrest_access
 
 __here__ = Path(__file__).parent
 fixtures_dir = __here__ / "schema"
-
-
-def setup_postgrest_access(schema: str):
-    """Run basic grant statements to allow PostgREST to access the schema"""
-
-    def run_updates(db):
-        grant_schema_usage(db, schema, "web_anon")
-        grant_schema_usage(db, schema, "web_user", tables=False, sequences=True)
-
-    return run_updates
-
 
 macrostrat_api = SubsystemSchemaDefinition(
     name="macrostrat-api",
@@ -58,3 +48,13 @@ class MacrostratAPISubsystem(MacrostratSubsystem):
         # fully reloaded the schema.
         if self.app.settings.get("compose_root", None) is not None:
             compose("kill -s SIGUSR1 postgrest")
+
+
+class MacrostratAPIMigration(Migration):
+    name = "macrostrat-api"
+
+    postconditions = [view_exists("macrostrat_api", "projects")]
+
+    def apply(self, db):
+        db.run_fixtures(fixtures_dir)
+        setup_postgrest_access("macrostrat_api")(db)

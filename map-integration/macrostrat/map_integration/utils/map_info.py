@@ -9,7 +9,7 @@ from macrostrat.core import app
 from macrostrat.core.exc import MacrostratError
 from macrostrat.database import Database
 
-from ..database import db
+from ..database import get_database
 from ._database import table_exists
 
 
@@ -21,8 +21,13 @@ class _MapInfo(BaseModel):
     url: Optional[str] = None
     name: Optional[str] = None
 
+    @property
+    def source_id(self):
+        return self.id
+
 
 def complete_map_slugs(incomplete: str):
+    db = get_database()
     return (
         db.run_query(
             "SELECT slug FROM maps.sources WHERE slug ILIKE :incomplete",
@@ -34,6 +39,7 @@ def complete_map_slugs(incomplete: str):
 
 
 def map_info_parser(identifier: str | int) -> _MapInfo:
+    db = get_database()
     if identifier == "-" or identifier == "active":
         identifier = app.state.get("active_map")
         if identifier is None:
@@ -103,6 +109,7 @@ def create_sources_record(db, slug) -> MapInfo:
 
 
 def feature_counts(db, info: MapInfo):
+    db = get_database()
     res = db.run_query(
         """SELECT
             (SELECT count(*) FROM {poly_table} WHERE source_id = :source_id) AS n_polygons,
@@ -117,3 +124,9 @@ def feature_counts(db, info: MapInfo):
         ),
     ).one()
     return res
+
+
+def has_map_schema_data(db: Database, map: MapInfo):
+    counts = feature_counts(db, map)
+    total = counts.n_polygons + counts.n_lines + counts.n_points
+    return total > 0

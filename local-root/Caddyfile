@@ -1,15 +1,70 @@
-http://localhost:80
+# https://caddyserver.com/docs/caddyfile/directives/import
+(schema-proxy) {
+    handle {args[0]} {
+        redir {http.request.uri}/ 301
+    }
 
-handle_path /api/v2/* {
-	reverse_proxy api:5000
+    handle_path {args[0]}/* {
+        @auth_cookie {
+            # Match requests with an access_token cookie but not an Authorization header
+            header Cookie *access_token*
+            not {
+                header Authorization *
+            }
+        }
+
+        reverse_proxy @auth_cookie postgrest:3000   {
+            header_up Accept-Profile {args[1]}
+            header_up Content-Profile {args[1]}
+            header_up Authorization {http.request.cookie.access_token}
+        }
+
+        reverse_proxy postgrest:3000   {
+            header_up Accept-Profile {args[1]}
+            header_up Content-Profile {args[1]}
+        }
+    }
 }
 
-handle_path /api/pg/* {
-    reverse_proxy postgrest:3000
+# Macrostrat.local domain is served by orbstack
+localhost, macrostrat.local {
+    tls internal
+
+    handle_path /api/v2/* {
+        reverse_proxy api_v2:5000
+    }
+
+    handle_path /api/v3/* {
+        reverse_proxy api_v3:80
+    }
+
+    # APIs for macrostrat and map-ingestion
+    # These use PostgREST as a proxy to the database and
+    # have headers set to default to a specific schema
+    import schema-proxy /api/v3/macrostrat/pg macrostrat_api
+    import schema-proxy /api/v3/map-ingestion/pg map_ingestion_api
+
+    # Legacy API for development
+    import schema-proxy /api/pg macrostrat_api
+
+
+
+    handle_path /tiles/* {
+        reverse_proxy tileserver:8000
+    }
+
+    handle_path /* {
+        reverse_proxy docker.host.internal:3000
+        #reverse_proxy web:3000
+    }
 }
 
-handle_path /tiles/* {
-    reverse_proxy tileserver:8000
+storage.macrostrat.local {
+    tls internal
+    reverse_proxy storage:9000
 }
 
-respond / "Welcome to your local installation of Macrostrat"
+storage-ui.macrostrat.local {
+    tls internal
+    reverse_proxy storage:9001
+}

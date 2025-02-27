@@ -6,7 +6,6 @@ from sys import stdin
 
 from psycopg2.sql import Identifier
 from typer import Option
-from typer.core import TyperGroup
 
 from macrostrat.core import app
 from macrostrat.database import Database
@@ -19,8 +18,10 @@ from .commands.prepare_fields import prepare_fields
 from .commands.set_srid import apply_srid
 from .commands.source_info import source_info
 from .commands.sources import map_sources
+from .database import get_database
 from .migrations import run_migrations
 from .process import cli as _process
+from .process.insert import _delete_map_data
 from .utils import IngestionCLI, MapInfo, table_exists
 
 help_text = f"""Ingest maps into Macrostrat.
@@ -74,9 +75,10 @@ sources.add_command(map_sources, name="list")
 def delete_sources(
     slugs: list[str],
     dry_run: bool = Option(False, "--dry-run"),
+    all_data: bool = Option(False, "--all-data"),
 ):
     """Delete sources from the map ingestion database."""
-    from .database import db
+    db = get_database()
 
     if not stdin.isatty() and len(slugs) == 1 and slugs[0] == "-":
         slugs = [line.strip() for line in stdin]
@@ -137,6 +139,13 @@ def delete_sources(
                 dict(ingest_process_id=ingest_process_id),
             )
 
+        source_id = db.run_query(
+            "SELECT source_id FROM maps.sources WHERE slug = :slug",
+            dict(slug=slug),
+        ).scalar()
+        if all_data:
+            _delete_map_data(source_id)
+
         db.run_sql("DELETE FROM maps.sources WHERE slug = :slug", dict(slug=slug))
 
 
@@ -144,7 +153,7 @@ def delete_sources(
 def change_slug(map: MapInfo, new_slug: str, dry_run: bool = False):
     """Change a map's slug."""
 
-    from .database import db
+    db = get_database()
 
     # Normalize the new slug
     new_slug = new_slug.lower().replace(" ", "_").replace("_", "-")
@@ -193,10 +202,20 @@ def change_slug(map: MapInfo, new_slug: str, dry_run: bool = False):
         print(f"Changed slug from {map.slug} to {new_slug}")
 
 
+@cli.command(name="update-status")
+def update_status():
+    """Update the status of all maps."""
+    from .status import update_status_for_all_maps
+
+    db = get_database()
+
+    update_status_for_all_maps(db)
+
+
 # TODO: integrate this migration command with the main database migrations
 def _run_migrations(database: str = None):
     """Run migrations to convert a Macrostrat v1 sources table to v2 format."""
-    from .database import db
+    db = get_database()
 
     database_url = db.engine.url
     _db = db

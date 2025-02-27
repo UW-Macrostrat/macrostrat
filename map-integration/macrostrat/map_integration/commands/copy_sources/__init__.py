@@ -12,10 +12,12 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from typer import Argument, Option
 
-from macrostrat.cli._dev.transfer_tables import transfer_tables
 from macrostrat.database import Database
 from macrostrat.database.postgresql import on_conflict, table_exists
+from macrostrat.database.transfer import move_tables
 from macrostrat.utils import get_logger
+
+from ...database import get_database
 
 log = get_logger(__name__)
 
@@ -36,7 +38,7 @@ def copy_macrostrat_sources(
 ):
     """Copy a macrostrat source from one database to another."""
 
-    from ...database import db as _db
+    _db = get_database()
 
     if from_db is None and to_db is None:
         raise ValueError("Must specify either --from or --to")
@@ -142,10 +144,12 @@ def copy_macrostrat_source(
     )
 
     # Copy the tables
-    transfer_tables(
-        from_database=from_db.engine,
-        to_database=to_db.engine,
-        tables=[".".join(t.strings) for t in tables],
+    asyncio.run(
+        move_tables(
+            from_database=from_db.engine,
+            to_database=to_db.engine,
+            tables=[".".join(t.strings) for t in tables],
+        )
     )
 
     for table in tables:
