@@ -47,6 +47,9 @@ toml = "^0.10.2"
 greenlet = "^3.0.3"
 paramiko = "^3.4.0"
 
+[tool.poetry.group.gis.dependencies]
+"macrostrat.map-integration" = { path = "../map-integration", develop = true, extras = ["gis"] }
+
 [tool.poetry.scripts]
 macrostrat = "macrostrat.cli:main"
 

@@ -1,10 +1,6 @@
-ALTER TABLE maps.sources ADD COLUMN IF NOT EXISTS raster_url text;
-ALTER TABLE maps.sources ADD COLUMN IF NOT EXISTS scale_denominator integer;
-ALTER TABLE maps.sources ADD COLUMN IF NOT EXISTS is_finalized boolean DEFAULT false;
-
-DROP VIEW IF EXISTS macrostrat_api.sources_metadata CASCADE;
-DROP VIEW IF EXISTS maps.sources_metadata CASCADE;
-DROP VIEW IF EXISTS macrostrat_api.sources CASCADE;
+DROP VIEW IF EXISTS macrostrat_api.sources_metadata;
+DROP VIEW IF EXISTS maps.sources_metadata;
+DROP VIEW IF EXISTS macrostrat_api.sources;
 
 CREATE OR REPLACE VIEW maps.sources_metadata AS
 SELECT
@@ -26,7 +22,8 @@ SELECT
     status_code,
     raster_url,
     scale_denominator,
-    is_finalized
+    is_finalized,
+    lines_oriented
 FROM maps.sources AS s
 ORDER BY source_id DESC;
 
@@ -89,5 +86,6 @@ SELECT
     s.raster_url,
     s.web_geom envelope,
     s.is_finalized,
-    s.scale_denominator
+    s.scale_denominator,
+    s.lines_oriented
 FROM maps.sources s;
