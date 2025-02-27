@@ -20,4 +20,5 @@ def clear_cache():
     ) SELECT count(*) FROM delete"""
     db = get_database()
     count = db.run_query(sql).scalar()
+    db.session.commit()
     print(f"Deleted {count} cached tiles")
