@@ -8,13 +8,12 @@ from macrostrat.core.migrations import Migration, schema_exists
 
 __dir__ = Path(__file__).parent
 
-
 class TileserverMigration(Migration):
     name = "macrostrat-tileserver"
     subsystem = "tileserver"
     description = """
     Populate the `tile_cache` and `tile_utils` schemas
     """
-    depends_on = ["macrostrat-mariadb"]
+    depends_on = ["macrostrat-mariadb", "maps-lines-oriented"]
 
     postconditions = [schema_exists("tile_cache"), schema_exists("tile_utils")]
