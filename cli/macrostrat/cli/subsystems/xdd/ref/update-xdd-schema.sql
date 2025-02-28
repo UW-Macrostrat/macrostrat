@@ -1,4 +1,4 @@
-/** SQL run during a mostly manual conversion of the knowledge graph database (2024-09-11)
+/** sql run during a mostly manual conversion of the knowledge graph database (2024-09-11)
   *  to use an overall simpler schema. Major changes include:
   *  - Using integer ids instead of UUIDs
   *  - Using an extensible, foreign-keyed table for entity and relationship types (instead of a custom enum)

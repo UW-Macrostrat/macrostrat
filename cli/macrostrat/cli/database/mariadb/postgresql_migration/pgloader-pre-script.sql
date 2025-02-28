@@ -1,4 +1,4 @@
-/* SQL script that
+/* sql script that
   - alters the MariaDB tables by adding a new column for geom -> text data,
   - sets the datatype of the new column data to WKT format,
   - drops the old geometry column,

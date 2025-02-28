@@ -103,7 +103,7 @@ class ApplicationStatus(Enum):
 
 
 class Migration:
-    """Class defining a set of SQL changes to be applied to the database, as well as checks for
+    """Class defining a set of sql changes to be applied to the database, as well as checks for
     whether the migration can be applied to the current state of the database
     """
 
@@ -125,10 +125,10 @@ class Migration:
     # List of checks on the database that should all evaluate to true after the migration has run successfully
     postconditions: list[DbEvaluator] = []
 
-    # Should SQL be loaded from the directory of the migration class
+    # Should sql be loaded from the directory of the migration class
     load_sql_files: bool | Path = True
 
-    # Fixtures to run after loaded SQL
+    # Fixtures to run after loaded sql
     fixtures: list[Path | DBCallable] = []
 
     # Flag for whether running this migration will cause data changes in the database in addition to
