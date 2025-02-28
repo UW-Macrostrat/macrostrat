@@ -8,6 +8,7 @@ A.k.a., a pipeline for ingesting maps into Macrostrat.
 import csv
 import datetime
 import hashlib
+import importlib
 import os
 import pathlib
 import re
@@ -19,8 +20,6 @@ import zipfile
 from contextlib import contextmanager
 from typing import Annotated, Any, NoReturn, Optional
 
-import magic
-import pylibmagic
 import requests  # type: ignore[import-untyped]
 from rich.console import Console
 from sqlalchemy import and_, insert, select, update
@@ -44,6 +43,10 @@ from macrostrat.map_integration.errors import IngestError
 from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
 from macrostrat.map_integration.utils.map_info import MapInfo, get_map_info
 from .config import get_minio_client
+
+# Do this with importlib so we control the order
+for mod in ["pylibmagic", "magic"]:
+    importlib.import_module("magic")
 
 # The list of arguments to upload_file that ingest_csv will look
 # for in the CSV file given to it.
@@ -345,6 +348,7 @@ def get_source_by_slug(slug: str) -> Optional[Sources]:
 
 def create_source(**data) -> Sources:
     data = truncate_source_metadata(data)
+    print(data)
     with get_db_session() as session:
         new_source = session.scalar(
             insert(Sources).values(**data).returning(Sources),
@@ -451,6 +455,7 @@ def create_slug(
         metadata["raster_url"] = raster_url
 
     if source := get_source_by_slug(slug):
+        console.print(f"Found existing source ID {source.source_id} for slug {slug}")
         source = update_source(source.source_id, **metadata)
     else:
         source = create_source(**metadata)
@@ -643,6 +648,8 @@ def upload_file(
         website_url=website_url,
         raster_url=raster_url,
     )
+
+    console.print(f"Created record for map {slug}")
 
     ## Collect metadata for the archive file.
 
