@@ -6,7 +6,7 @@ from typer import Typer
 
 from macrostrat.core.database import get_database
 
-cli = Typer(name="cache")
+cli = Typer(name="cache", help="Tile cache management")
 
 
 @cli.command(name="clear")
