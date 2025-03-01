@@ -22,6 +22,10 @@ typer = "^0.12.0"
 
 minio = "^7.2.5"
 python-dotenv = "^1"
+
+# Python-Magic does not ship shared library, but Pylibmagic packages
+# it to fill the gap.
+pylibmagic = "^0.5.0"
 python-magic = "^0.4.27"
 pyyaml = "^6.0"
 shapely = "^2.0.1"
