@@ -8,7 +8,8 @@ class MapsSourcesAPIMigration(Migration):
     Create views for sources_metadata and ingest_process in the maps and macrostrat_api schemas
     """
 
-    depends_on = ["baseline"]
+    depends_on = ["baseline", "maps-lines-oriented"]
+    always_apply = True
 
     postconditions = [
         view_exists(

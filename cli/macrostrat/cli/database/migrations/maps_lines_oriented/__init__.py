@@ -2,8 +2,9 @@
 Macrostrat line orientation management
 """
 
-from macrostrat.core.migrations import Migration, has_columns
 from macrostrat.database import Database
+
+from macrostrat.core.migrations import Migration, has_columns
 
 _has_column = has_columns("maps", "sources", "lines_oriented")
 
@@ -13,7 +14,7 @@ class MapsLinesOriented(Migration):
     subsystem = "maps"
     description = "Create a flag for line orientations in maps.sources table."
 
-    depends_on = ["baseline"]
+    depends_on = ["baseline", "map-source-slug"]
 
     postconditions = [_has_column]
 
