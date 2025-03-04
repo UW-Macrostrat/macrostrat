@@ -45,7 +45,7 @@ HOW LOGIN WORKS --> {
     if login successful --> return json token
 }
 
-Generate JWT in SQL ---> pgjwt
+Generate JWT in sql ---> pgjwt
 https://github.com/michelp/pgjwt
 https://app.bountysource.com/issues/89971002-example-code-to-show-how-to-install-pgjwt-extension-in-docker
 
