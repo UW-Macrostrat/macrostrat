@@ -1,24 +1,25 @@
 from os import environ
-from sys import stderr
 
 from typer import Context, Typer
 
-from ...database import get_db
 from .corelle import build_carto_plate_index, create_corelle_fixtures
+from ...database import get_db
 
 
-def load_paleogeography_subsystem(app, main, db_subsystem):
+class SubsystemLoadError(Exception):
+    pass
+
+
+def build_paleogeography_subsystem(app, db_subsystem):
     if app.settings.pg_database is None:
-        print("No database configured, skipping corelle subsystem", file=stderr)
-        return app
+        raise SubsystemLoadError("No database configured, skipping corelle subsystem")
 
     try:
         environ["CORELLE_DB"] = app.settings.pg_database
         from corelle.engine import cli as corelle_cli
         from corelle.engine.database import initialize
     except ImportError as err:
-        print("Corelle subsystem not available", err, file=stderr)
-        return app
+        raise SubsystemLoadError("Corelle subsystem not available") from err
 
     paleo_app = Typer(name="paleogeography", no_args_is_help=True)
 
@@ -39,13 +40,6 @@ def load_paleogeography_subsystem(app, main, db_subsystem):
         db = get_db()
         build_carto_plate_index(db)
 
-    main.add_typer(
-        paleo_app,
-        name="paleogeography",
-        rich_help_panel="Subsystems",
-        short_help="Manage paleogeography data",
-    )
-
     def update_corelle(db):
         environ["CORELLE_DB"] = app.settings.pg_database
         print("Creating models for [bold cyan]corelle[/] subsystem")
@@ -57,4 +51,4 @@ def load_paleogeography_subsystem(app, main, db_subsystem):
         callback=update_corelle,
     )
 
-    return app
+    return paleo_app

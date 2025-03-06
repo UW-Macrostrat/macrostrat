@@ -2,19 +2,18 @@ from os import environ
 from pathlib import Path
 
 import typer
+from macrostrat.app_frame import CommandBase
+from macrostrat.utils.shell import run
 from rich import print
 from rich.traceback import install
 from typer import Argument, Typer
 
-from macrostrat.app_frame import CommandBase
 from macrostrat.core import app
 from macrostrat.core.exc import MacrostratError
 from macrostrat.core.main import env_text, set_app_state
-from macrostrat.utils.shell import run
-
 from .database import db_app, db_subsystem
 from .subsystems.macrostrat_api import MacrostratAPISubsystem
-from .subsystems.paleogeography import load_paleogeography_subsystem
+from .subsystems.paleogeography import build_paleogeography_subsystem, SubsystemLoadError
 from .v1_entrypoint import v1_cli
 from .v2_commands import app as v2_app
 
@@ -36,6 +35,7 @@ help_text = f"""[bold]Macrostrat[/] control interface
 Active environment: [bold cyan]{environ.get('MACROSTRAT_ENV') or 'None'}[/]
 """
 
+
 warnings = []
 if not settings.pg_database:
     warnings.append("No database URL found in settings")
@@ -49,6 +49,17 @@ if environ.get("MACROSTRAT_PYROOT") is not None:
         "Using a custom [bold cyan]MACROSTRAT_PYROOT[/]. This is not recommended for normal operation."
     )
 
+# TODO: load all subsystems before rendering help so that warnings can be shown
+
+subsystem_commands = []
+try:
+    pcli = build_paleogeography_subsystem(app, db_subsystem)
+    subsystem_commands.append(pcli)
+except SubsystemLoadError as err:
+    warnings.append(str(err))
+
+
+# Now, we render the warnings in the CLI help text
 if warnings:
     help_text += "\n[bold yellow]Warnings[/]:\n"
     help_text += "\n".join([f"- [yellow]{w}[/]" for w in warnings]) + "\n"
@@ -66,6 +77,9 @@ main.add_typer(
     short_help="Manage the Macrostrat database",
     aliases=["db"],
 )
+
+for sub in subsystem_commands:
+    main.add_typer(sub, name=sub.name, rich_help_panel="Subsystems")
 
 
 @main.command(name="env")
@@ -254,8 +268,6 @@ if subsystems.get("criticalmaas", False):
         short_help="Tools for the CriticalMAAS program",
         deprecated=True,
     )
-
-app = load_paleogeography_subsystem(app, main, db_subsystem)
 
 
 if kube_namespace := getattr(settings, "kube_namespace", None):
