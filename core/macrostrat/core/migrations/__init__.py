@@ -58,11 +58,15 @@ def custom_type_exists(schema: str, *type_names: str) -> DbEvaluator:
     return lambda db: all(db.inspector.has_type(t, schema=schema) for t in type_names)
 
 
-def has_columns(schema: str, table: str, *fields: str) -> DbEvaluator:
+def has_columns(schema: str, table: str, *fields: str, allow_view=False) -> DbEvaluator:
     """Return a function that evaluates to true when every given field in the given table exists"""
 
     def _has_fields(db: Database) -> bool:
-        if not db.inspector.has_table(table, schema=schema):
+        _has_table = db.inspector.has_table(table, schema=schema)
+        if not _has_table and not allow_view:
+            return False
+        _has_view = table in db.inspector.get_view_names(schema)
+        if not _has_table and not _has_view:
             return False
         columns = db.inspector.get_columns(table, schema=schema)
         col_names = [c["name"] for c in columns]
@@ -112,7 +116,7 @@ class Migration:
     # Portion of the database to which this migration applies
     subsystem: str
 
-    # List of migration names that must
+    # List of migration names that must be run before this migration
     depends_on: list[str] = []
 
     # List of checks on the database that must all evaluate to true before the migration can be run
@@ -131,10 +135,15 @@ class Migration:
     # schema changes
     destructive: bool = False
 
+    # Flag for whether this migration only contains views/functions that don't modify the broader schema
+    always_apply: bool = False
+
     output_mode: OutputMode = OutputMode.SUMMARY
 
     def should_apply(self, database: Database) -> ApplicationStatus:
         """Determine whether this migration can run, or has already run."""
+        if self.always_apply:
+            return ApplicationStatus.CAN_APPLY
         # If all post-conditions are met, the migration is already applied
         if all([cond(database) for cond in self.postconditions]):
             return ApplicationStatus.APPLIED
@@ -171,6 +180,8 @@ class MigrationState(Enum):
     CANNOT_APPLY = "cannot_apply"
     SHOULD_APPLY = "should_apply"
     DISALLOWED = "disallowed"
+    # The migration always applies, regardless of the state of the database
+    ALWAYS_APPLY = "always_apply"
 
 
 def run_migrations(
@@ -380,7 +391,10 @@ def _run_migrations(
         # After running migration, reload the database and confirm that application was sucessful
         db.refresh_schema()
 
-        if _migration.should_apply(db) != ApplicationStatus.APPLIED:
+        if (
+            _migration.should_apply(db) != ApplicationStatus.APPLIED
+            and not _migration.always_apply
+        ):
             failed_migrations.append(_migration.name)
             continue
 
@@ -440,6 +454,9 @@ def _get_status(
     if not dependencies_met:
         return MigrationState.UNMET_DEPENDENCIES
 
+    if _migration.always_apply:
+        return MigrationState.ALWAYS_APPLY
+
     if name in completed_migrations:
         return MigrationState.COMPLETE
 
@@ -459,6 +476,8 @@ def _print_status(name, status: MigrationState, *, name_max_width=40):
         print("[red]cannot be applied[/red]")
     elif status == MigrationState.SHOULD_APPLY:
         print("[yellow]should be applied[/yellow]")
+    elif status == MigrationState.ALWAYS_APPLY:
+        print("[yellow] always applied[/yellow]")
     elif status == MigrationState.DISALLOWED:
         print("[red]cannot be applied without --force or --data-changes[/red]")
     else:
