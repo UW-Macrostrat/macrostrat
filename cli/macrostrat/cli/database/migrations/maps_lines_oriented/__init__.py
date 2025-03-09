@@ -22,13 +22,25 @@ class MapsLinesOriented(Migration):
         db.run_sql("ALTER TABLE maps.sources ADD COLUMN lines_oriented boolean")
 
 
+# TODO: it may be worth considering replacing this data migration with a simple SQL script
+# to be run manually. It's a one-time operation and probably does not need to be automated.
+
 # Legacy maps with consistently-oriented linework that needs to be reversed
-valid_maps = [229, 210, 74, 75, 40, 205, 154]
+valid_maps = [
+    (229, "ab_spray"),
+    (210, "bc_chinook"),
+    (205, "bc_2017"),
+    (154, "global2"),
+    (75, "az_mohave"),
+    (74, "az_peachsprings"),
+    (40, "mt_trumbull"),
+]
+
 
 # Legacy maps with consistently-oriented linework that does not need to be reversed
 reversed_maps = [4]
 # Note: we have flipped the logic here relative to how we did this in the original iteration
-# of the system, to aloign with FGDC recommendations (we think)
+# of the system, to aloign with FGDC recommendations (I think)
 
 
 def matching_sources(
@@ -45,6 +57,8 @@ def matching_sources(
 def some_maps_are_unoriented(db: Database) -> bool:
     if not _has_column(db):
         return False
+    # Ensure that we have at least one of the maps in question
+
     ids = matching_sources(
         db, valid_maps + reversed_maps, "NOT coalesce(lines_oriented, false)"
     )
