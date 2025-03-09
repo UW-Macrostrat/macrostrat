@@ -4,15 +4,14 @@ from functools import lru_cache
 from graphlib import TopologicalSorter
 from pathlib import Path
 from time import time
-from typing import Callable, Iterable
+from typing import Callable, Iterable, Optional
 
 import docker
-from pydantic import BaseModel
-from rich import print
-
 from macrostrat.database import Database
 from macrostrat.database.utils import OutputMode
 from macrostrat.dinosaur.upgrade_cluster.utils import database_cluster
+from pydantic import BaseModel
+from rich import print
 
 from ..config import settings
 from ..database import get_database
@@ -266,7 +265,7 @@ def _dry_run_migrations(legacy=False):
                 break
 
             _migrations = _next_migrations
-            n_applied = _run_migrations(
+            n_applied, completed_migrations = _run_migrations(
                 db, apply=True, data_changes=True, legacy=legacy
             )
             n_total += n_applied
@@ -274,6 +273,10 @@ def _dry_run_migrations(legacy=False):
             _next_migrations = applyable_migrations(
                 db, allow_destructive=True, legacy=legacy
             )
+            # Make sure that we don't have completed migrations in the applyable set
+            _next_migrations = _next_migrations - completed_migrations
+            print("Remaining migrations:", _next_migrations)
+
             n_migrations = len(_next_migrations)
 
         t_end = time()
@@ -313,7 +316,7 @@ def _run_migrations(
     subsystem: str = None,
     verbose: bool = True,
     legacy: bool = False,
-):
+) -> [Optional[int], set[str]]:
     """Apply database migrations"""
     # Start time
     t_start = time()
@@ -363,7 +366,7 @@ def _run_migrations(
 
     if not apply:
         print("\n[dim]To apply the migrations, run with --apply")
-        return
+        return (None, set())
 
     run_counter = 0
 
@@ -410,7 +413,7 @@ def _run_migrations(
     if failed_migrations:
         print(f"Failed: {failed_migrations}")
 
-    return run_counter
+    return run_counter, set(completed_migrations)
 
 
 def applyable_migrations(db, *, allow_destructive=False, legacy=False) -> set[str]:
@@ -423,7 +426,6 @@ def applyable_migrations(db, *, allow_destructive=False, legacy=False) -> set[st
         apply_status = _migration.should_apply(db)
         if apply_status == ApplicationStatus.CAN_APPLY:
             _res.add(_migration.name)
-    print(_res)
     return _res
 
 
