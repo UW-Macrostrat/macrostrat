@@ -29,7 +29,7 @@ valid_maps = [
 reversed_maps = [(4, "alberta")]
 
 for _map in valid_maps + reversed_maps:
-    args = dict(source_id_=map[0], slug=_map[1])
+    args = dict(source_id=_map[0], slug=_map[1])
     needs_update = db.run_query(
         """
         SELECT lines_oriented IS NULL

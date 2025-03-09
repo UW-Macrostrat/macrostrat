@@ -399,9 +399,9 @@ def run_scripts(migration: str = Argument(None)):
         exit(1)
     migration = matching_migrations[0]
     if migration.suffix == ".py":
-        run(migration)
+        run("python", str(migration))
     if migration.suffix == ".sh":
-        run(migration)
+        run(str(migration))
     if migration.suffix == ".sql":
         db = get_db()
         db.run_sql(migration)
