@@ -42,12 +42,14 @@ from macrostrat.map_integration.commands.prepare_fields import prepare_fields
 from macrostrat.map_integration.errors import IngestError
 from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
 from macrostrat.map_integration.utils.map_info import MapInfo, get_map_info
-
+import pylibmagic
+import magic
 from .config import get_minio_client
 
 # Do this with importlib so we control the order
-for mod in ["pylibmagic", "magic"]:
-    importlib.import_module("magic")
+#for mod in ["pylibmagic", "magic"]:
+#    importlib.import_module("magic")
+
 
 # The list of arguments to upload_file that ingest_csv will look
 # for in the CSV file given to it.

@@ -156,6 +156,8 @@ def create_dataframe_for_layer(file: Path, layer: str) -> G.GeoDataFrame:
 def get_dataframes(files) -> Iterable[Tuple[str, G.GeoDataFrame]]:
     single_file = len(files) == 1
     for file in files:
+        if '__MACOSX' in str(file):
+            continue
         console.print(file, style="bold cyan")
 
         layers = get_layer_names(file)
@@ -175,10 +177,13 @@ def get_dataframes(files) -> Iterable[Tuple[str, G.GeoDataFrame]]:
 
             # Create the basic data frame
             df = G.read_file(file, layer=layer)
-
-            info = get_layer_info(file, layer)
-            # Apply domains for Geodatabase linked information
-            df = apply_domains_to_fields(df, info)
+            try:
+                from osgeo import gdal
+                info = get_layer_info(file, layer)
+                # Apply domains for Geodatabase linked information
+                df = apply_domains_to_fields(df, info)
+            except ImportError:
+                print("Gdal is not installed. Geodatabase imports may not work properly.")
 
             # TODO: find and follow foreign key relationships
 
