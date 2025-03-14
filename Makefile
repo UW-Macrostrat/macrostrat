@@ -2,7 +2,7 @@ all:
 	poetry lock
 	poetry install --only=dev
 	# This breaks on fresh installs, not sure
-	./bin/macrostrat poetry run mono install
+	#./bin/macrostrat poetry run mono install
 	poetry install
 	# Install the version of the GDAL bindings that matches the native lib.
 	# This is breakable and should be replaced with a more robust solution.
