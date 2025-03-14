@@ -31,7 +31,7 @@ pyyaml = "^6.0"
 shapely = "^2.0.1"
 
 [tool.poetry.group.gis.dependencies]
-GDAL = "^3.8.0"
+GDAL = "^3.10.0"
 
 "macrostrat.core" = { path = "../core", develop = true }
 

@@ -53,9 +53,23 @@ localhost, macrostrat.local {
         reverse_proxy tileserver:8000
     }
 
+    handle_path /cache/* {
+        reverse_proxy map-cache:8000
+    }
+
     handle_path /* {
         reverse_proxy web:3000
     }
+}
+
+dev.macrostrat.local {
+    # Proxy to the locally running frontend application, if running
+    tls internal
+    reverse_proxy docker.host.internal:3000
+}
+
+offline.macrostrat.local {
+    # An offline version of the frontend, if running
 }
 
 storage.macrostrat.local {
