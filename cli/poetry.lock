@@ -669,20 +669,6 @@ s3 = ["boto3 (>=1.3.1)"]
 test = ["aiohttp", "fiona[s3]", "fsspec", "pytest (>=7)", "pytest-cov", "pytz"]
 
 [[package]]
-name = "gdal"
-version = "3.10.2"
-description = "GDAL: Geospatial Data Abstraction Library"
-optional = false
-python-versions = ">=3.8.0"
-groups = ["main"]
-files = [
-    {file = "gdal-3.10.2.tar.gz", hash = "sha256:c0cffa8ce9f9c0fa287fcc20b8271c519ca054958420e5880be8bedb432753f4"},
-]
-
-[package.extras]
-numpy = ["numpy (>1.0.0)"]
-
-[[package]]
 name = "geoalchemy2"
 version = "0.15.2"
 description = "Using SQLAlchemy with Spatial Databases"
@@ -732,6 +718,18 @@ packaging = "*"
 pandas = ">=1.4.0"
 pyproj = ">=3.3.0"
 shapely = ">=1.8.0"
+
+[[package]]
+name = "gprof2dot"
+version = "2024.6.6"
+description = "Generate a dot graph from the output of several profilers."
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "gprof2dot-2024.6.6-py2.py3-none-any.whl", hash = "sha256:45b14ad7ce64e299c8f526881007b9eb2c6b75505d5613e96e66ee4d5ab33696"},
+    {file = "gprof2dot-2024.6.6.tar.gz", hash = "sha256:fa1420c60025a9eb7734f65225b4da02a10fc6dd741b37fa129bc6b41951e5ab"},
+]
 
 [[package]]
 name = "greenlet"
@@ -1073,6 +1071,7 @@ ipython = "^8.5.0"
 minio = "^7.2.5"
 numpy = "^1.23.4"
 psycopg2-binary = "^2.9.4"
+pylibmagic = "^0.5.0"
 pyproj = "^3.4.0"
 python-dotenv = "^1"
 python-magic = "^0.4.27"
@@ -1120,6 +1119,28 @@ files = [
 [package.dependencies]
 colorlog = ">=6.5.0,<7.0.0"
 pydantic = ">=1.10.4,<3.0.0"
+
+[[package]]
+name = "mapboard-topology-manager"
+version = "4.0.0"
+description = "A PostGIS-based iterative system for building geologic maps"
+optional = false
+python-versions = "^3.10"
+groups = ["main"]
+files = []
+develop = true
+
+[package.dependencies]
+"macrostrat.database" = "^3.4.1"
+"macrostrat.utils" = "^1.2.1"
+pytest-profiling = "^1.7.0"
+python-dotenv = "^1.0.1"
+rich = "^13.7.1"
+typer = "^0.12.0"
+
+[package.source]
+type = "directory"
+url = "../submodules/topology-manager"
 
 [[package]]
 name = "markdown-it-py"
@@ -1752,6 +1773,28 @@ files = [
 windows-terminal = ["colorama (>=0.4.6)"]
 
 [[package]]
+name = "pylibmagic"
+version = "0.5.0"
+description = "scikit-build project with CMake for compiling libmagic"
+optional = false
+python-versions = ">=3.7"
+groups = ["main", "gis"]
+files = [
+    {file = "pylibmagic-0.5.0-py3-none-macosx_10_9_x86_64.whl", hash = "sha256:6e4aed7e50e7be87c33d7616393ec605be494388576efe3baa300da1d4c99703"},
+    {file = "pylibmagic-0.5.0-py3-none-macosx_11_0_arm64.whl", hash = "sha256:f403cf26e530fa45bcb260fed80f1cecc2df777f2d0239078a234b4f2f97dbf7"},
+    {file = "pylibmagic-0.5.0-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:e8614c1e9d7bb0c6b6989646e385a514acb111fed9ec64f50aaf0e21dcf7b7bb"},
+    {file = "pylibmagic-0.5.0-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:24b5bb791d42653d2668913c7b9a789b5458a2fff09d0ec3c8af33a1204eea6a"},
+    {file = "pylibmagic-0.5.0-py3-none-musllinux_1_1_aarch64.whl", hash = "sha256:10efe9403e45f3c9f379800991fb5f73c0f0fc80db4ec79b5e6db4d0a437a253"},
+    {file = "pylibmagic-0.5.0-py3-none-musllinux_1_1_x86_64.whl", hash = "sha256:948e94de523211c01a8dc1eee235e3433bdc96a39d7ecf8039b814386c27b832"},
+    {file = "pylibmagic-0.5.0.tar.gz", hash = "sha256:942f4f194994f09021f6a4e6e6477ceeb28e4e92dc268fda10d96fa45c8c9ec4"},
+]
+
+[package.extras]
+dev = ["pytest (>=6)", "pytest-cov (>=3)", "tbump (>=6.7.0)", "twine"]
+docs = ["Sphinx (>=4.0)", "myst-parser (>=0.13)", "sphinx-book-theme (>=0.1.0)", "sphinx-copybutton"]
+test = ["pytest (>=6)", "pytest-cov (>=3)", "python-magic"]
+
+[[package]]
 name = "pymysql"
 version = "1.1.1"
 description = "Pure Python MySQL Driver"
@@ -1900,6 +1943,23 @@ pluggy = ">=1.5,<2"
 
 [package.extras]
 dev = ["argcomplete", "attrs (>=19.2)", "hypothesis (>=3.56)", "mock", "pygments (>=2.7.2)", "requests", "setuptools", "xmlschema"]
+
+[[package]]
+name = "pytest-profiling"
+version = "1.8.1"
+description = "Profiling plugin for py.test"
+optional = false
+python-versions = ">=3.6"
+groups = ["main"]
+files = [
+    {file = "pytest-profiling-1.8.1.tar.gz", hash = "sha256:3f171fa69d5c82fa9aab76d66abd5f59da69135c37d6ae5bf7557f1b154cb08d"},
+    {file = "pytest_profiling-1.8.1-py3-none-any.whl", hash = "sha256:3dd8713a96298b42d83de8f5951df3ada3e61b3e5d2a06956684175529e17aea"},
+]
+
+[package.dependencies]
+gprof2dot = "*"
+pytest = "*"
+six = "*"
 
 [[package]]
 name = "python-dateutil"
@@ -2644,4 +2704,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "b0e681d1156a7a8279fc8ca5f4a8701047c8d6beabc06c3b47a382d07ff4f5c9"
+content-hash = "302bbb1afc0c5c7ea4567d594afb06f8fcd842bc2274ea65cfc09a853dbc3f0b"

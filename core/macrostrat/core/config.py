@@ -186,6 +186,7 @@ class Sources(BaseModel):
     tileserver: Optional[Path] = None
     corelle: Optional[Path] = None
     web: Optional[Path] = None
+    map_cache: Optional[Path] = None
 
 
 def get_source(key: str) -> Optional[Path]:
@@ -210,6 +211,7 @@ settings.sources = Sources(
     tileserver=get_source("tileserver"),
     corelle=get_source("corelle"),
     web=get_source("web"),
+    map_cache=get_source("map_cache"),
 )
 
 setup_environment(settings.sources)

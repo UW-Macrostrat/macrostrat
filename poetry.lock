@@ -791,6 +791,17 @@ pyproj = ">=3.3.0"
 shapely = ">=1.8.0"
 
 [[package]]
+name = "gprof2dot"
+version = "2024.6.6"
+description = "Generate a dot graph from the output of several profilers."
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "gprof2dot-2024.6.6-py2.py3-none-any.whl", hash = "sha256:45b14ad7ce64e299c8f526881007b9eb2c6b75505d5613e96e66ee4d5ab33696"},
+    {file = "gprof2dot-2024.6.6.tar.gz", hash = "sha256:fa1420c60025a9eb7734f65225b4da02a10fc6dd741b37fa129bc6b41951e5ab"},
+]
+
+[[package]]
 name = "greenlet"
 version = "3.1.1"
 description = "Lightweight in-process concurrent programming"
@@ -1082,6 +1093,7 @@ ipython = "^8.5.0"
 "macrostrat.integrations" = {path = "../integrations", develop = true}
 "macrostrat.map-integration" = {path = "../map-integration", develop = true}
 "macrostrat.utils" = "^1.3.0"
+"mapboard.topology-manager" = {path = "../submodules/topology-manager", develop = true}
 numpy = "^1.23.4"
 paramiko = "^3.4.0"
 psycopg2-binary = "^2.9.4"
@@ -1239,6 +1251,27 @@ files = [
 [package.dependencies]
 colorlog = ">=6.5.0,<7.0.0"
 pydantic = ">=1.10.4,<3.0.0"
+
+[[package]]
+name = "mapboard-topology-manager"
+version = "4.0.0"
+description = "A PostGIS-based iterative system for building geologic maps"
+optional = false
+python-versions = "^3.10"
+files = []
+develop = true
+
+[package.dependencies]
+"macrostrat.database" = "^3.4.1"
+"macrostrat.utils" = "^1.2.1"
+pytest-profiling = "^1.7.0"
+python-dotenv = "^1.0.1"
+rich = "^13.7.1"
+typer = "^0.12.0"
+
+[package.source]
+type = "directory"
+url = "submodules/topology-manager"
 
 [[package]]
 name = "markdown-it-py"
@@ -2106,6 +2139,22 @@ pluggy = ">=1.5,<2"
 
 [package.extras]
 dev = ["argcomplete", "attrs (>=19.2)", "hypothesis (>=3.56)", "mock", "pygments (>=2.7.2)", "requests", "setuptools", "xmlschema"]
+
+[[package]]
+name = "pytest-profiling"
+version = "1.8.1"
+description = "Profiling plugin for py.test"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "pytest-profiling-1.8.1.tar.gz", hash = "sha256:3f171fa69d5c82fa9aab76d66abd5f59da69135c37d6ae5bf7557f1b154cb08d"},
+    {file = "pytest_profiling-1.8.1-py3-none-any.whl", hash = "sha256:3dd8713a96298b42d83de8f5951df3ada3e61b3e5d2a06956684175529e17aea"},
+]
+
+[package.dependencies]
+gprof2dot = "*"
+pytest = "*"
+six = "*"
 
 [[package]]
 name = "python-dateutil"

@@ -1,3 +1,6 @@
+[submodule "deps/topology-manager"]
+	path = submodules/topology-manager
+	url = https://github.com/Mapboard/topology-manager.git
 [submodule "submodules/postgis-tile-utils"]
 	path = submodules/postgis-tile-utils
 	url = https://github.com/UW-Macrostrat/postgis-tile-utils

@@ -6,7 +6,7 @@ services:
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
     labels:
-      - dev.orbstack.domains=macrostrat.local,storage.macrostrat.local,storage-ui.macrostrat.local
+      - dev.orbstack.domains=macrostrat.local,storage.macrostrat.local,storage-ui.macrostrat.local,dev.macrostrat.local
   database:
     # PostgreSQL 13 is needed in order to allow force-dropping the database
     # (in testing mode)
@@ -121,7 +121,6 @@ services:
       - minio_data:/data
     command: server --address 0.0.0.0:9000 --console-address 0.0.0.0:9001 /data
   web:
-    profiles: ['web']
     image: hub.opensciencegrid.org/macrostrat/macrostrat-web:main
     build: ${MACROSTRAT_WEB_SRC:-""}
     environment:
@@ -132,7 +131,18 @@ services:
       - NODE_TLS_REJECT_UNAUTHORIZED=0
       # Secret key must be shared with the API that mints the JWT (in this case, the Macrostrat dev API)
       - SECRET_KEY=${SECRET_KEY}
-  # Schema-only Test DB instance for applying migrations
+  map-cache:
+    build: ${MACROSTRAT_MAP_CACHE_SRC:-""}
+    environment:
+      - MAPBOX_API_TOKEN=${MAPBOX_TOKEN}
+      - MAP_CACHE_DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/map_cache
+    command: |
+        poetry run uvicorn --host 0.0.0.0 --port 8001
+          macrostrat.map_cache.main:app
+            --root-path /cache
+            --log-level debug
+            --proxy-headers
+            --forwarded-allow-ips=*
   migrations-test-db:
     image: postgis-with-audit
     profiles: ['migrations-test']

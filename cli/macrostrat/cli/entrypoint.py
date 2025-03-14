@@ -151,6 +151,15 @@ def environments():
 
 main.add_typer(cfg_app)
 
+from .subsystems.maps import cli as maps_cli
+
+main.add_typer(
+    maps_cli,
+    name="topo",
+    rich_help_panel="Subsystems",
+    short_help="Manage the Macrostrat maps topology",
+)
+
 from .cache import cli as cache_cli
 
 main.add_typer(cache_cli, name="cache", rich_help_panel="Subsystems")
