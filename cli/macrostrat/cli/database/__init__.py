@@ -377,22 +377,36 @@ def inspect_table(table: str):
 @db_app.command(name="scripts", rich_help_panel="Schema management")
 def run_scripts(migration: str = Argument(None)):
     """Ad-hoc database management scripts"""
-    pth = Path(__file__).parent.parent / "sql-scripts"
-    files = list(pth.glob("*.sql"))
+    pth = Path(__file__).parent.parent / "data-scripts"
+    files = list(pth.glob("*.sql")) + list(pth.glob("*.sh")) + list(pth.glob("*.py"))
     files.sort()
     if migration is None:
         print("[yellow bold]No script specified\n", file=stderr)
         print("[bold]Available scripts:", file=stderr)
         for f in files:
-            print(f"  {f.stem}", file=stderr)
+            print(f"  {f.stem}[dim]{f.suffix}", file=stderr)
         exit(1)
-    migration = pth / (migration + ".sql")
-    if not migration.exists():
+    matching_migrations = [
+        f for f in files if f.stem == migration or str(f) == migration
+    ]
+    if len(matching_migrations) == 0:
         print(f"Script {migration} does not exist", file=stderr)
         exit(1)
-
-    db = get_db()
-    db.run_sql(migration)
+    if len(matching_migrations) > 1:
+        print(
+            f"Ambiguous script name: {migration}",
+            file=stderr,
+        )
+        print("Please specify the full file name")
+        exit(1)
+    migration = matching_migrations[0]
+    if migration.suffix == ".py":
+        run("python", str(migration))
+    if migration.suffix == ".sh":
+        run(str(migration))
+    if migration.suffix == ".sql":
+        db = get_db()
+        db.run_sql(migration)
 
 
 db_app.command(name="migrations", rich_help_panel="Schema management")(run_migrations)

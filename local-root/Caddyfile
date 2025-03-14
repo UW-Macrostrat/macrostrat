@@ -54,8 +54,7 @@ localhost, macrostrat.local {
     }
 
     handle_path /* {
-        reverse_proxy docker.host.internal:3000
-        #reverse_proxy web:3000
+        reverse_proxy web:3000
     }
 }
 
