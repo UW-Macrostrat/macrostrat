@@ -2,17 +2,18 @@
 Storage system management
 """
 
+import re
 from os import environ
 from subprocess import run
 from typing import List, Optional
 
+from macrostrat.utils import get_logger
 from rich import print
 from typer import Argument, Option, Typer
 
 from macrostrat.core import app as app_
-from macrostrat.utils import get_logger
-
 from ..kubernetes import _kubectl, get_secret
+from ...core.exc import MacrostratError
 
 settings = app_.settings
 
@@ -20,6 +21,38 @@ log = get_logger(__name__)
 
 
 app = Typer(no_args_is_help=True)
+
+if admin := settings.get("storage.admin", None):
+    host = settings.get("storage.endpoint", None)
+
+    if getattr(admin, "type") == "ceph-object-storage":
+        access_key = getattr(admin, "access_key")
+        secret_key = getattr(admin, "secret_key")
+
+        # Set up the radosgw-admin command
+
+        @app.command("admin", add_help_option=False)
+        def storage_admin(args: List[str] = Argument(None)):
+            """
+            Run the Ceph Object Storage admin command.
+            """
+            from htpheno.radosgw_admin_client.cli import main, UserError
+            import sys
+            from os import environ
+
+            environ["RADOSGW_ACCESS_KEY"] = access_key
+            environ["RADOSGW_SECRET_KEY"] = secret_key
+            environ["RADOSGW_HOST"] = re.sub("^https?://", "", host)
+
+            if args is None:
+                args = ["--help"]
+
+            sys.argv = ["radosgw-admin", *args]
+            try:
+                main()
+            except UserError as e:
+                # raise MacrostratError(e)
+                print("[red bold]Error:[/] [red]" + str(e))
 
 
 def _s3_users():

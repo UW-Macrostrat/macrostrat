@@ -252,6 +252,18 @@ jupyter = ["ipython (>=7.8.0)", "tokenize-rt (>=3.2.0)"]
 uvloop = ["uvloop (>=0.15.2)"]
 
 [[package]]
+name = "boto"
+version = "2.49.0"
+description = "Amazon Web Services Library"
+optional = false
+python-versions = "*"
+groups = ["main", "gis"]
+files = [
+    {file = "boto-2.49.0-py2.py3-none-any.whl", hash = "sha256:147758d41ae7240dc989f0039f27da8ca0d53734be0eb869ef16e3adcfa462e8"},
+    {file = "boto-2.49.0.tar.gz", hash = "sha256:ea0d3b40a2d852767be77ca343b58a9e3a4b00d9db440efb8da74b4e58025e5a"},
+]
+
+[[package]]
 name = "certifi"
 version = "2025.1.31"
 description = "Python package for providing Mozilla's CA Bundle."
@@ -796,6 +808,7 @@ version = "2024.6.6"
 description = "Generate a dot graph from the output of several profilers."
 optional = false
 python-versions = ">=3.8"
+groups = ["main", "gis"]
 files = [
     {file = "gprof2dot-2024.6.6-py2.py3-none-any.whl", hash = "sha256:45b14ad7ce64e299c8f526881007b9eb2c6b75505d5613e96e66ee4d5ab33696"},
     {file = "gprof2dot-2024.6.6.tar.gz", hash = "sha256:fa1420c60025a9eb7734f65225b4da02a10fc6dd741b37fa129bc6b41951e5ab"},
@@ -901,6 +914,24 @@ files = [
 ]
 
 [[package]]
+name = "htpheno-radosgw-admin-client"
+version = "0.8.2"
+description = "Client for the Ceph Object Gateway Admin Operations API"
+optional = false
+python-versions = ">=3.9,<4.0"
+groups = ["main", "gis"]
+files = []
+develop = true
+
+[package.dependencies]
+humanize = "~4.11"
+radosgw-admin = "~1.7"
+
+[package.source]
+type = "directory"
+url = "submodules/storage-admin"
+
+[[package]]
 name = "httpcore"
 version = "1.0.7"
 description = "A minimal low-level HTTP client."
@@ -947,6 +978,21 @@ cli = ["click (==8.*)", "pygments (==2.*)", "rich (>=10,<14)"]
 http2 = ["h2 (>=3,<5)"]
 socks = ["socksio (==1.*)"]
 zstd = ["zstandard (>=0.18.0)"]
+
+[[package]]
+name = "humanize"
+version = "4.11.0"
+description = "Python humanize utilities"
+optional = false
+python-versions = ">=3.9"
+groups = ["main", "gis"]
+files = [
+    {file = "humanize-4.11.0-py3-none-any.whl", hash = "sha256:b53caaec8532bcb2fff70c8826f904c35943f8cecaca29d272d9df38092736c0"},
+    {file = "humanize-4.11.0.tar.gz", hash = "sha256:e66f36020a2d5a974c504bd2555cf770621dbdbb6d82f94a6857c0b1ea2608be"},
+]
+
+[package.extras]
+tests = ["freezegun", "pytest", "pytest-cov"]
 
 [[package]]
 name = "idna"
@@ -1085,6 +1131,7 @@ dynaconf = "^3.1.12"
 Fiona = "^1.8.22"
 geopandas = "^0.14.1"
 greenlet = "^3.0.3"
+"htpheno.radosgw-admin-client" = {path = "../submodules/storage-admin", develop = true}
 ipython = "^8.5.0"
 "macrostrat.app-frame" = "^2.1.0"
 "macrostrat.core" = {path = "../core", develop = true}
@@ -1105,6 +1152,7 @@ PyYAML = "^6.0"
 requests = "^2.28.1"
 rich = "^13"
 scipy = "^1.9.3"
+setuptools = "^75.8.2"
 shapely = "^2.0.1"
 spectra = "^0.0.11"
 SQLAlchemy = "^2.0.0"
@@ -1258,6 +1306,7 @@ version = "4.0.0"
 description = "A PostGIS-based iterative system for building geologic maps"
 optional = false
 python-versions = "^3.10"
+groups = ["main", "gis"]
 files = []
 develop = true
 
@@ -2146,6 +2195,7 @@ version = "1.8.1"
 description = "Profiling plugin for py.test"
 optional = false
 python-versions = ">=3.6"
+groups = ["main", "gis"]
 files = [
     {file = "pytest-profiling-1.8.1.tar.gz", hash = "sha256:3f171fa69d5c82fa9aab76d66abd5f59da69135c37d6ae5bf7557f1b154cb08d"},
     {file = "pytest_profiling-1.8.1-py3-none-any.whl", hash = "sha256:3dd8713a96298b42d83de8f5951df3ada3e61b3e5d2a06956684175529e17aea"},
@@ -2303,6 +2353,21 @@ files = [
 ]
 
 [[package]]
+name = "radosgw-admin"
+version = "1.7.2"
+description = "Ceph RADOS Gateway (rgw) admin operations REST API"
+optional = false
+python-versions = "*"
+groups = ["main", "gis"]
+files = [
+    {file = "radosgw-admin-1.7.2.tar.gz", hash = "sha256:ac05f78ec41caaef4209f90932b857704aa031017bf31faa7f30ec0d7fc80471"},
+    {file = "radosgw_admin-1.7.2-py2.py3-none-any.whl", hash = "sha256:c22ade8e75397717a37ffa9277be2658d2e71c09942eac8eb9d5807a751abf30"},
+]
+
+[package.dependencies]
+boto = "*"
+
+[[package]]
 name = "requests"
 version = "2.32.3"
 description = "Python HTTP for Humans."
@@ -2428,7 +2493,7 @@ version = "75.8.2"
 description = "Easily download, build, install, upgrade, and uninstall Python packages"
 optional = false
 python-versions = ">=3.9"
-groups = ["main"]
+groups = ["main", "gis"]
 files = [
     {file = "setuptools-75.8.2-py3-none-any.whl", hash = "sha256:558e47c15f1811c1fa7adbd0096669bf76c1d3f433f58324df69f3f5ecac4e8f"},
     {file = "setuptools-75.8.2.tar.gz", hash = "sha256:4880473a969e5f23f2a2be3646b2dfd84af9028716d398e46192f84bc36900d2"},

@@ -4,3 +4,6 @@
 [submodule "submodules/postgis-tile-utils"]
 	path = submodules/postgis-tile-utils
 	url = https://github.com/UW-Macrostrat/postgis-tile-utils
+[submodule "submodules/storage-admin"]
+	path = submodules/storage-admin
+	url = https://github.com/UW-Macrostrat/radosgw_admin_client
