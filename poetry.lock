@@ -796,6 +796,7 @@ version = "2024.6.6"
 description = "Generate a dot graph from the output of several profilers."
 optional = false
 python-versions = ">=3.8"
+groups = ["main", "gis"]
 files = [
     {file = "gprof2dot-2024.6.6-py2.py3-none-any.whl", hash = "sha256:45b14ad7ce64e299c8f526881007b9eb2c6b75505d5613e96e66ee4d5ab33696"},
     {file = "gprof2dot-2024.6.6.tar.gz", hash = "sha256:fa1420c60025a9eb7734f65225b4da02a10fc6dd741b37fa129bc6b41951e5ab"},
@@ -1105,6 +1106,7 @@ PyYAML = "^6.0"
 requests = "^2.28.1"
 rich = "^13"
 scipy = "^1.9.3"
+setuptools = "^75.8.2"
 shapely = "^2.0.1"
 spectra = "^0.0.11"
 SQLAlchemy = "^2.0.0"
@@ -1258,6 +1260,7 @@ version = "4.0.0"
 description = "A PostGIS-based iterative system for building geologic maps"
 optional = false
 python-versions = "^3.10"
+groups = ["main", "gis"]
 files = []
 develop = true
 
@@ -2147,6 +2150,7 @@ version = "1.8.1"
 description = "Profiling plugin for py.test"
 optional = false
 python-versions = ">=3.6"
+groups = ["main", "gis"]
 files = [
     {file = "pytest-profiling-1.8.1.tar.gz", hash = "sha256:3f171fa69d5c82fa9aab76d66abd5f59da69135c37d6ae5bf7557f1b154cb08d"},
     {file = "pytest_profiling-1.8.1-py3-none-any.whl", hash = "sha256:3dd8713a96298b42d83de8f5951df3ada3e61b3e5d2a06956684175529e17aea"},
@@ -2429,7 +2433,7 @@ version = "75.8.2"
 description = "Easily download, build, install, upgrade, and uninstall Python packages"
 optional = false
 python-versions = ">=3.9"
-groups = ["main"]
+groups = ["main", "gis"]
 files = [
     {file = "setuptools-75.8.2-py3-none-any.whl", hash = "sha256:558e47c15f1811c1fa7adbd0096669bf76c1d3f433f58324df69f3f5ecac4e8f"},
     {file = "setuptools-75.8.2.tar.gz", hash = "sha256:4880473a969e5f23f2a2be3646b2dfd84af9028716d398e46192f84bc36900d2"},
