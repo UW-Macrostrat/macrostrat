@@ -61,7 +61,7 @@ def _log_command(url: URL, cmd: list[str]):
 
 
 async def _restore_mariadb(engine: Engine, *args, **kwargs):
-    """Load MariaDB dump (GZipped SQL file) into a database, using centrally managed credentials,
+    """Load MariaDB dump (GZipped sql file) into a database, using centrally managed credentials,
     a Docker containerized `mariadb` client, and a streaming approach."""
     overwrite = kwargs.pop("overwrite", False)
     create = kwargs.pop("create", overwrite)

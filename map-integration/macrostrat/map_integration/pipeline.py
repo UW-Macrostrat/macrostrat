@@ -78,7 +78,7 @@ default_s3_bucket = config.S3_BUCKET
 
 def normalize_slug(slug: str) -> str:
     """
-    Replace characters that are invalid in an SQL table name with an underscore.
+    Replace characters that are invalid in an sql table name with an underscore.
     """
     return re.sub(r"\W", "_", slug).lower()
 
