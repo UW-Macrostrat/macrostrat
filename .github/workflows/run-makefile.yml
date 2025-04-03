@@ -33,4 +33,4 @@ jobs:
       run: sudo make install
 
     - name: Run macrostrat CLI to confirm install
-      run: poetry run macrostrat --help
+      run: poetry run macrostrat
