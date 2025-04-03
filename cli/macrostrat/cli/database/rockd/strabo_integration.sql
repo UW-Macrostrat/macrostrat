@@ -1,5 +1,6 @@
 CREATE SCHEMA user_features
 
+--removed rockd_jwt column
 CREATE TABLE user_features.linked_strabo_account (
     id           serial PRIMARY KEY,
     person_id    integer NOT NULL UNIQUE
