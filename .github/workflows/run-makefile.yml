@@ -1,4 +1,4 @@
-name: CI - Install and Test
+name: Install and test `macrostrat` command
 
 on:
   push:
@@ -33,4 +33,4 @@ jobs:
       run: sudo make install
 
     - name: Run macrostrat CLI to confirm install
-      run: macrostrat --help
+      run: poetry run macrostrat --help
