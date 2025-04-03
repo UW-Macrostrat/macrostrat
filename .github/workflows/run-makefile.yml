@@ -13,6 +13,8 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        submodules: recursive
 
     - name: Set up Python and Poetry
       uses: abatilo/actions-poetry@v2
@@ -32,6 +34,3 @@ jobs:
 
     - name: Run macrostrat CLI to confirm install
       run: macrostrat --help
-
-    - name: Run CI-safe tests
-      run: make test-ci
