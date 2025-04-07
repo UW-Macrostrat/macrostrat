@@ -23,6 +23,7 @@ def stored_procedure(key: str):
 def get_sgp_db():
     # TODO: simplify this
     from macrostrat.core.config import settings
+
     url = settings.get("sgp_database")
     if url is None:
         # Try to assemble SGP database URL for the current environment
