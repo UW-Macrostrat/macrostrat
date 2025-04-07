@@ -1,11 +1,11 @@
 from pathlib import Path
 
 from geopandas import GeoDataFrame
+from macrostrat.database import Database
 from pandas import DataFrame
 from sqlalchemy.sql import text
 
 from macrostrat.cli.database import get_db
-from macrostrat.database import Database
 
 _query_cache = {}
 
@@ -22,10 +22,14 @@ def stored_procedure(key: str):
 
 def get_sgp_db():
     # TODO: simplify this
-    M = get_db()
-    uri = M.engine.url.set(database="sgp")
-    uri_ = str(uri).replace("***", uri.password)
-    return Database(uri_)
+    from macrostrat.core.config import settings
+    url = settings.get("sgp_database")
+    if url is None:
+        # Try to assemble SGP database URL for the current environment
+        M = get_db()
+        uri = M.engine.url.set(database="sgp")
+        url = str(uri).replace("***", uri.password)
+    return Database(url)
 
 
 def get_sgp_samples(procedure):
