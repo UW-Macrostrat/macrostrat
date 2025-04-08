@@ -39,7 +39,7 @@ WITH a AS (SELECT
 SELECT a.*,
        CASE WHEN (data_source IN ('USGS-CMIBS', 'USGS-NGDB') AND age_by IN ('Husson', 'Peters'))
               THEN 'Macrostrat matching process, prior to 2024'
-            WHEN interpreted_age_notes LIKE '%Macrostrat matching process%'
+            WHEN interpreted_age_notes ILIKE '%Macrostrat%'
               THEN 'Macrostrat matching process'
             ELSE 'Age from other sources'
          END AS match_set

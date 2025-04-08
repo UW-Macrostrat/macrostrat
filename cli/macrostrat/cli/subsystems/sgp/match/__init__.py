@@ -16,8 +16,6 @@ from sqlalchemy.sql import text
 
 from macrostrat.cli.database import get_db
 from macrostrat.core import app
-
-from ..utils import get_sgp_samples, stored_procedure, write_to_file
 from .clean_strat_name import (
     StratNameTextMatch,
     StratRank,
@@ -25,6 +23,7 @@ from .clean_strat_name import (
     clean_strat_name_text,
     format_name,
 )
+from ..utils import get_sgp_samples, stored_procedure, write_to_file
 
 here = Path(__file__).parent
 
@@ -67,6 +66,7 @@ def import_sgp_data(
     column: int = None,
     match: list[MatchType] = None,
     reset: bool = False,
+    only_macrostrat: bool = False,
     # comparison: MatchComparison = MatchComparison.Included.value,
 ):
     """
@@ -75,6 +75,8 @@ def import_sgp_data(
     M = get_db()
 
     samples = get_sgp_samples("all-match-samples")
+    if only_macrostrat:
+        samples = samples[samples["match_set"] != "Age from other sources"]
 
     app.console.print(
         f"Got {len(samples)} samples from the SGP database.",
