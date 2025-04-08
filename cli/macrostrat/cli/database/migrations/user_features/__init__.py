@@ -16,7 +16,8 @@ class UserSavedLocationsMigration(Migration):
     preconditions = [exists("macrostrat_auth", "user")]
 
     postconditions = [
-        exists(
-            "user_features", "user_locations, location_tags, location_tags_intersect"
-        ),
+        exists("user_features", "user_locations"),
+        exists("user_features", "location_tags"),
+        exists("user_features", "location_tags_intersect"),
     ]
+
