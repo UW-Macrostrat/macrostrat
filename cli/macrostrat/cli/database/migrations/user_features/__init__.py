@@ -20,4 +20,3 @@ class UserSavedLocationsMigration(Migration):
         exists("user_features", "location_tags"),
         exists("user_features", "location_tags_intersect"),
     ]
-
