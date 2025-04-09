@@ -7,13 +7,14 @@ from os import environ
 from subprocess import run
 from typing import List, Optional
 
-from macrostrat.utils import get_logger
 from rich import print
 from typer import Argument, Option, Typer
 
 from macrostrat.core import app as app_
-from ..kubernetes import _kubectl, get_secret
+from macrostrat.utils import get_logger
+
 from ...core.exc import MacrostratError
+from ..kubernetes import _kubectl, get_secret
 
 settings = app_.settings
 
@@ -36,9 +37,10 @@ if admin := settings.get("storage.admin", None):
             """
             Run the Ceph Object Storage admin command.
             """
-            from htpheno.radosgw_admin_client.cli import main, UserError
             import sys
             from os import environ
+
+            from htpheno.radosgw_admin_client.cli import UserError, main
 
             environ["RADOSGW_ACCESS_KEY"] = access_key
             environ["RADOSGW_SECRET_KEY"] = secret_key
