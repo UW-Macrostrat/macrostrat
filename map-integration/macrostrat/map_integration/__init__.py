@@ -9,6 +9,11 @@ from typer import Option
 
 from macrostrat.core import app
 from macrostrat.database import Database
+from macrostrat.map_integration.commands.prepare_fields import _prepare_fields
+from macrostrat.map_integration.pipeline import ingest_map
+from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
+from macrostrat.map_integration.utils.file_discovery import find_gis_files
+from macrostrat.map_integration.utils.map_info import get_map_info
 
 from . import pipeline
 from .commands.copy_sources import copy_macrostrat_sources
@@ -23,13 +28,6 @@ from .migrations import run_migrations
 from .process import cli as _process
 from .process.insert import _delete_map_data
 from .utils import IngestionCLI, MapInfo, table_exists
-from macrostrat.map_integration.utils.file_discovery import find_gis_files
-from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
-from macrostrat.map_integration.commands.prepare_fields import _prepare_fields
-from macrostrat.map_integration.utils.map_info import get_map_info
-from macrostrat.map_integration.pipeline import ingest_map
-
-
 
 help_text = f"""Ingest maps into Macrostrat.
 
@@ -242,10 +240,12 @@ sources.add_command(_run_migrations, name="migrate-schema")
 
 cli.add_typer(sources, name="sources", help="Manage map sources")
 
-#______________________________________________________________________________________________________________________
+# ______________________________________________________________________________________________________________________
+
+from pathlib import Path
 
 from macrostrat.map_integration.utils.file_discovery import find_gis_files
-from pathlib import Path
+
 
 @cli.command(name="staging")
 def staging(
@@ -254,7 +254,7 @@ def staging(
     name: str = Option(None, help="Display name for the map"),
     scale: str = Option("large", help="Map scale"),
     object_group_id: int = Option(1, help="Object group ID for ingest_process"),
-    filter: str = Option(None, help="Filter applied to GIS file selection")
+    filter: str = Option(None, help="Filter applied to GIS file selection"),
 ):
     """
     Ingest a map, update metadata, prepare fields, and build geometries.
@@ -282,7 +282,7 @@ def staging(
 
     source_id = db.run_query(
         "SELECT source_id FROM maps.sources_metadata WHERE slug = :slug",
-        dict(slug=slug)
+        dict(slug=slug),
     ).scalar()
 
     if source_id is None:
@@ -291,21 +291,20 @@ def staging(
     if name:
         db.run_sql(
             "UPDATE maps.sources_metadata SET name = :name WHERE source_id = :source_id",
-            dict(name=name, source_id=source_id)
+            dict(name=name, source_id=source_id),
         )
     if scale:
         db.run_sql(
             "UPDATE maps.sources_metadata SET scale = :scale WHERE source_id = :source_id",
-            dict(scale=scale, source_id=source_id)
-        ) 
-
+            dict(scale=scale, source_id=source_id),
+        )
 
     db.run_sql(
         """
         INSERT INTO maps_metadata.ingest_process (state, source_id, object_group_id)
         VALUES ('ingested', :source_id, :object_group_id)
         """,
-        dict(source_id=source_id, object_group_id=object_group_id)
+        dict(source_id=source_id, object_group_id=object_group_id),
     )
 
     map_info = get_map_info(db, slug)
@@ -313,6 +312,6 @@ def staging(
     create_rgeom(map_info)
     create_webgeom(map_info)
 
-    print(f"\nFinished staging setup for {slug}. View map here: https://dev2.macrostrat.org/maps/ingestion/{source_id}/ \n")
-
-
+    print(
+        f"\nFinished staging setup for {slug}. View map here: https://dev2.macrostrat.org/maps/ingestion/{source_id}/ \n"
+    )
