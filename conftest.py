@@ -4,11 +4,12 @@ import importlib
 from pathlib import Path
 
 import docker
+from pytest import fixture
+from typer.testing import CliRunner
+
 from macrostrat.database import Database
 from macrostrat.dinosaur.upgrade_cluster import database_cluster
 from macrostrat.utils import override_environment
-from pytest import fixture
-from typer.testing import CliRunner
 
 runner = CliRunner()
 
