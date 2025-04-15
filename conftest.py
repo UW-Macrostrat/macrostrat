@@ -17,7 +17,7 @@ __here__ = Path(__file__).parent
 
 @fixture(scope="session")
 def cfg():
-    cfg_file = __here__ /"cli"/"tests"/ "macrostrat.test.toml"
+    cfg_file = __here__ / "cli" / "tests" / "macrostrat.test.toml"
     with override_environment(MACROSTRAT_CONFIG=str(cfg_file), NO_COLOR="1"):
         importlib.reload(importlib.import_module("macrostrat.core.config"))
         from macrostrat.core.config import settings

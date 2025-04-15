@@ -13,6 +13,7 @@ runner = CliRunner()
 
 __here__ = Path(__file__).parent
 
+
 def test_cli_help(cfg):
     from macrostrat.cli import main
 
