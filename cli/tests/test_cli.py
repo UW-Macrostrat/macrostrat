@@ -7,6 +7,7 @@ import docker
 from macrostrat.database import Database
 from macrostrat.dinosaur.upgrade_cluster import database_cluster
 from macrostrat.utils import override_environment
+from psycopg2.sql import Identifier
 from pytest import fixture, mark
 from typer.testing import CliRunner
 
@@ -79,3 +80,14 @@ def test_database_migrations(db):
 
     assert res.n_migrations > 0
     assert res.n_remaining == 0
+
+
+def test_maps_tables_exist(db):
+    """Test that the tables exist in the database."""
+
+    for table in ["polygons", "lines", "points"]:
+        res = db.run_query(
+            "SELECT * FROM {table}", dict(table=Identifier("maps", table))
+        ).all()
+
+        assert len(res) == 0
