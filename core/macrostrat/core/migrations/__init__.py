@@ -7,12 +7,11 @@ from time import time
 from typing import Callable, Iterable, Optional
 
 import docker
-from pydantic import BaseModel
-from rich import print
-
 from macrostrat.database import Database
 from macrostrat.database.utils import OutputMode
 from macrostrat.dinosaur.upgrade_cluster.utils import database_cluster
+from pydantic import BaseModel
+from rich import print
 
 from ..config import settings
 from ..database import get_database
@@ -252,39 +251,42 @@ def _dry_run_migrations(legacy=False):
     with database_cluster(client, img_tag, port=port) as container:
         url = f"postgresql://postgres@localhost:{port}/postgres"
         db = Database(url)
+        return _run_migrations_in_database(db, legacy=legacy)
 
-        t_start = time()
 
-        _migrations = applyable_migrations(db, allow_destructive=True, legacy=legacy)
-        _next_migrations = None
-        n_total = 0
-        n_migrations = len(_migrations)
-        while n_migrations > 0:
+def _run_migrations_in_database(db, legacy=False):
+    t_start = time()
 
-            if _migrations == _next_migrations:
-                print("No changes in applyable migrations, exiting")
-                break
+    _migrations = applyable_migrations(db, allow_destructive=True, legacy=legacy)
+    _next_migrations = None
+    n_total = 0
+    n_migrations = len(_migrations)
+    while n_migrations > 0:
 
-            _migrations = _next_migrations
-            n_applied, completed_migrations = _run_migrations(
-                db, apply=True, data_changes=True, legacy=legacy
-            )
-            n_total += n_applied
+        if _migrations == _next_migrations:
+            print("No changes in applyable migrations, exiting")
+            break
 
-            _next_migrations = applyable_migrations(
-                db, allow_destructive=True, legacy=legacy
-            )
-            # Make sure that we don't have completed migrations in the applyable set
-            _next_migrations = _next_migrations - completed_migrations
-            print("Remaining migrations:", _next_migrations)
-
-            n_migrations = len(_next_migrations)
-
-        t_end = time()
-
-        return MigrationResult(
-            n_migrations=n_total, n_remaining=n_migrations, duration=t_end - t_start
+        _migrations = _next_migrations
+        n_applied, completed_migrations = _run_migrations(
+            db, apply=True, data_changes=True, legacy=legacy
         )
+        n_total += n_applied
+
+        _next_migrations = applyable_migrations(
+            db, allow_destructive=True, legacy=legacy
+        )
+        # Make sure that we don't have completed migrations in the applyable set
+        _next_migrations = _next_migrations - completed_migrations
+        print("Remaining migrations:", _next_migrations)
+
+        n_migrations = len(_next_migrations)
+
+    t_end = time()
+
+    return MigrationResult(
+        n_migrations=n_total, n_remaining=n_migrations, duration=t_end - t_start
+    )
 
 
 @lru_cache(10)

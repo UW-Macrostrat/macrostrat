@@ -23,6 +23,10 @@ def cfg():
         assert cfg_file == settings.config_file
         yield settings
 
+@fixture(scope="session")
+def db():
+    pass
+
 
 def test_cli_help(cfg):
     from macrostrat.cli import main
