@@ -2,16 +2,17 @@
 
 from pathlib import Path
 
-from macrostrat.utils import override_environment
 from psycopg2.sql import Identifier
 from pytest import mark
 from typer.testing import CliRunner
 
 from macrostrat.core.migrations import _run_migrations_in_database
+from macrostrat.utils import override_environment
 
 runner = CliRunner()
 
 __here__ = Path(__file__).parent
+
 
 def test_cli_help(cfg):
     from macrostrat.cli import main
