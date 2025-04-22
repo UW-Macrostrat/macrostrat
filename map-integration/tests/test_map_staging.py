@@ -1,12 +1,13 @@
-from psycopg2.sql import Identifier
-from macrostrat.map_integration.commands.ingest import ingest_map
-from macrostrat.map_integration.utils.map_info import get_map_info
-from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
-from macrostrat.map_integration.commands.prepare_fields import _prepare_fields
-from macrostrat.map_integration.utils.file_discovery import find_gis_files
 from pathlib import Path
-import pytest
 
+import pytest
+from psycopg2.sql import Identifier
+
+from macrostrat.map_integration.commands.ingest import ingest_map
+from macrostrat.map_integration.commands.prepare_fields import _prepare_fields
+from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
+from macrostrat.map_integration.utils.file_discovery import find_gis_files
+from macrostrat.map_integration.utils.map_info import get_map_info
 
 
 def test_maps_tables_exist(db):
@@ -41,8 +42,6 @@ def test_maps():
         "object_group_id": 1,
         "filter": None,
     }
-
-
 
 
 def test_map_staging(db, test_maps):
@@ -107,7 +106,7 @@ def test_map_staging(db, test_maps):
     create_rgeom(map_info)
     create_webgeom(map_info)
 
-    #Metadata assertions
+    # Metadata assertions
     row = db.run_query(
         "SELECT name, scale FROM maps.sources_metadata WHERE source_id = :source_id",
         dict(source_id=source_id),
@@ -116,7 +115,7 @@ def test_map_staging(db, test_maps):
     assert row.name == name
     assert row.scale == scale
 
-    #Ingest process assertions
+    # Ingest process assertions
     ingest_process = db.run_query(
         "SELECT state, object_group_id FROM maps_metadata.ingest_process WHERE source_id = :source_id",
         dict(source_id=source_id),
@@ -125,7 +124,7 @@ def test_map_staging(db, test_maps):
     assert ingest_process.state == "ingested"
     assert ingest_process.object_group_id == object_group_id
 
-    #Geometry column assertions
+    # Geometry column assertions
     cols = db.run_query(
         """
         SELECT column_name FROM information_schema.columns
@@ -136,10 +135,6 @@ def test_map_staging(db, test_maps):
     assert "rgeom" in cols
     assert "webgeom" in cols
 
-    #Data exists
-    count = db.run_query(
-        f"SELECT COUNT(*) FROM sources.{slug}_polygons"
-    ).scalar()
+    # Data exists
+    count = db.run_query(f"SELECT COUNT(*) FROM sources.{slug}_polygons").scalar()
     assert count > 0
-
-
