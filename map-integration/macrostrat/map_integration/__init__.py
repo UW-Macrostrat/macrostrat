@@ -263,7 +263,6 @@ def staging(
     slug = slug.lower().replace(" ", "_")
     print(f"Ingesting {slug} from {data_path}")
 
-    # Discover files
     gis_files, excluded_files = find_gis_files(Path(data_path), filter=filter)
     if not gis_files:
         raise ValueError(f"No GIS files found in {data_path}")
