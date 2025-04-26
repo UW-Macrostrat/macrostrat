@@ -260,10 +260,8 @@ def staging(
     Ingest a map, update metadata, prepare fields, and build geometries.
     """
     db = get_database()
-    slug = slug.lower().replace(" ", "_")
     print(f"Ingesting {slug} from {data_path}")
 
-    # Discover files
     gis_files, excluded_files = find_gis_files(Path(data_path), filter=filter)
     if not gis_files:
         raise ValueError(f"No GIS files found in {data_path}")
@@ -281,7 +279,7 @@ def staging(
     ingest_map(slug, gis_files, if_exists="replace")
 
     source_id = db.run_query(
-        "SELECT source_id FROM maps.sources_metadata WHERE slug = :slug",
+        "SELECT source_id FROM maps.sources WHERE slug = :slug",
         dict(slug=slug),
     ).scalar()
 
@@ -290,12 +288,12 @@ def staging(
 
     if name:
         db.run_sql(
-            "UPDATE maps.sources_metadata SET name = :name WHERE source_id = :source_id",
+            "UPDATE maps.sources SET name = :name WHERE source_id = :source_id",
             dict(name=name, source_id=source_id),
         )
     if scale:
         db.run_sql(
-            "UPDATE maps.sources_metadata SET scale = :scale WHERE source_id = :source_id",
+            "UPDATE maps.sources SET scale = :scale WHERE source_id = :source_id",
             dict(scale=scale, source_id=source_id),
         )
 
