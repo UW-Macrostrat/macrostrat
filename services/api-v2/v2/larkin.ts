@@ -75,13 +75,7 @@ const { Client, Pool } = require("pg");
     const nameMapping = credentials.postgresDatabases ?? {};
     const dbName = nameMapping[db] ?? db;
 
-    if (dbName == "geomacro") {
-      console.warn(
-        "In Macrostrat v2, 'geomacro' is merged with 'burwell' into the 'macrostrat' database.",
-      );
-    }
-
-    let connectionDetails;
+    let connectionDetails = {}
     const postgresCfg = credentials.pg;
 
     const inURLMode = postgresCfg.macrostratDatabaseURL != null;
@@ -94,26 +88,24 @@ const { Client, Pool } = require("pg");
         connectionString = postgresCfg.aliceDatabaseURL
       }
       if (dbName == "rockd") {
-        connectionString = postgresCfg.aliceDatabaseURL
+        connectionString = postgresCfg.rockdDatabaseURL
+      }
+      if (dbName == "whos_on_first") {
+        connectionString = postgresCfg.whosOnFirstDatabaseURL
       }
 
       connectionDetails = { connectionString }
 
     } else {
       connectionDetails = { ...credentials.pg }
-      if (dbName == "elevation") {
-        /* Special case for elevation database (temporary) */
-        connectionDetails.database = 'elevation'
-      }
-      if (dbName == "alice") {
-        connectionDetails.database = 'alice'
-      }
-      if (dbName == "rockd") {
-        connectionDetails.database = 'rockd'
+      // Attempt to infer the database name from the connection string
+      for (const dbname in ["elevation", "alice", "whos_on_first", "rockd"]) {
+        if (dbName == dbname) {
+          connectionDetails.database = dbname
+        }
       }
     }
     const pool = new Pool(connectionDetails);
-    console.log(connectionDetails)
     const errorMessage = "invalid input value for enum";
 
     pool.connect(function (err, client, done) {

@@ -1,7 +1,7 @@
 # Macrostrat API
 
 The API for SCIENCE
- 
+
 ## About
 
 The Macrostrat API provides diverse macrostratigraphic and geologic data in a
@@ -47,6 +47,24 @@ NOTE: Postgres connections are completely broken in node v14 and v15 (as of
 This will also run the script `postinstall.sh` which copies credentials files
 into place.
 
+## Running the API
+
+Add environment variables to your shell or `.env` file. The `MACROSTRAT_DATABASE_URL` variable
+is required.
+
+To start the API run `npm start <port|5000>`. This will start the API on the
+specified port (default 5000).
+
+
+## Generating a release
+
+Update the version string in `package.json` and run:
+
+```
+make release
+```
+
+This will simply add a tag that can be picked up by the CI/CD system to deploy the application.
 
 
 **Old config below. We now use env variables specifying which db and environment to connect to.**
@@ -58,7 +76,7 @@ which the underlying data has been changed (editing, adding, etc).
 
 ## Running
 
-To start the API simply run `node server.js` which will start a process on
+To start the API simply run `npm start` which will start a process on
 port 5050. Note that the default port was changed from 5000 to 5050 to avoid a
 port conflict introduced in recent versions of commonly used OSs. To use a
 different port, you can specify it during startup as so: `node server.js 5151`.
@@ -77,6 +95,7 @@ pm2 start server.js --name macrostrat-api -i 2
 
 For more information about managing processes with pm2 see the
 [Macrostrat Wiki](https://github.com/UW-Macrostrat/lab/wiki/Nodejs-based-application-management)
+
 
 ## Other useful things
 
@@ -100,7 +119,7 @@ otherwise edited.
 ### Test
 
 ```
-npm test
+yarn test
 ```
 
 ### Organization

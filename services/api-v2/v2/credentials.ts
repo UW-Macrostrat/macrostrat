@@ -1,3 +1,12 @@
+const dotenv = require('dotenv');
+// Load environment variables from .env file
+dotenv.config();
+
+// Keep old TLS handling for now
+if (process.env.NODE_TLS_REJECT_UNAUTHORIZED == null) {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+}
+
 if (process.env.MACROSTRAT_DB_URL != null && process.env.MACROSTRAT_DATABASE == null) {
   console.warn("Using deprecated database configuration, please migrate to the MACROSTRAT_DATABASE=<url> format");
   process.env.MACROSTRAT_DATABASE = process.env.MACROSTRAT_DB_URL;
@@ -9,11 +18,13 @@ if (process.env.MACROSTRAT_DATABASE != null) {
   const elevationDatabaseURL = process.env.ELEVATION_DATABASE ?? macrostratDatabaseURL.replace("5432/macrostrat", "5432/elevation");
   const aliceDatabaseURL = process.env.ALICE_DATABASE ?? macrostratDatabaseURL.replace("5432/macrostrat", "5432/alice");
   const rockdDatabaseURL = process.env.ROCKD_DATABASE ?? macrostratDatabaseURL.replace("5432/macrostrat", "5432/rockd");
+  const whosOnFirstDatabaseURL = process.env.WHOS_ON_FIRST_DATABASE ?? macrostratDatabaseURL.replace("5432/macrostrat", "5432/whos_on_first");
   exports.pg = {
     macrostratDatabaseURL,
     elevationDatabaseURL,
     aliceDatabaseURL,
-    rockdDatabaseURL
+    rockdDatabaseURL,
+    whosOnFirstDatabaseURL
   };
 }
 //added exports.pg to https://github.com/UW-Macrostrat/tiger-macrostrat-config/blob/main/manifests/development/dev-web-stack/credentials.js
@@ -30,11 +41,14 @@ exports.pg = {
 
 
 exports.postgresDatabases = {
+  // "Burwell" used to be Macrostrat's map database, but it is now in the same database as the rest of Macrostrat
   burwell: "macrostrat",
-  geomacro: "geomacro",
+  // The "geomacro" database is also now merged with Macrostrat
+  geomacro: "macrostrat",
   elevation: "elevation",
   alice: "alice",
-  rockd: "rockd"
+  rockd: "rockd",
+  wof: "whos_on_first",
 };
 
 // This is the default Redis port
