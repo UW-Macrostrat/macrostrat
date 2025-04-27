@@ -84,7 +84,7 @@
     "supertest": "^0.14.0",
     "validator": "^3.34.0"
   },
-  "packageManager": "yarn@4.0.2",
+  "packageManager": "yarn@4.9.1",
   "prettier": {
     "proseWrap": "always"
   }
