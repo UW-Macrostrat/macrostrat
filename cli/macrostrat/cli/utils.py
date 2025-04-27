@@ -4,10 +4,11 @@ from sys import argv, exit
 
 
 def run_user_command_if_provided(*script_dirs: list[Path], look_in_path=False):
-    # Run a user command if it's on the path.
-    # Before we do anything else, we want to check if we're working with a command on the path
-    # that starts with "macrostrat-". If so, we want to run it as a subprocess.
-
+    """
+    This checks for user-defined shell commands that start with "macrostrat-" in the script_dirs
+    defined by the application. These can then be run as
+    macrostrat <command> <args>.
+    """
     # TODO: integrate this more with the main CLI so that subsystems can also receive user commands
 
     if len(argv) <= 1:
@@ -17,8 +18,7 @@ def run_user_command_if_provided(*script_dirs: list[Path], look_in_path=False):
     # Check to see if this command can be found anywhere
     pth = None
 
-    for _dir in script_dirs:
-        dir = Path(_dir).expanduser().resolve()
+    for dir in script_dirs:
         candidate_path = dir / cmd_name
         if candidate_path.exists() and candidate_path.is_file():
             pth = candidate_path
