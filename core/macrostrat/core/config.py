@@ -1,16 +1,15 @@
 from os import environ
 from pathlib import Path
-from typing import Optional
 
 from dotenv import load_dotenv
 from dynaconf import Dynaconf, Validator
 from macrostrat.app_frame.control_command import BackendType
 from macrostrat.utils import get_logger
-from pydantic import BaseModel
 from sqlalchemy.engine import make_url
 from sqlalchemy.engine.url import URL
 from toml import load as load_toml
 
+from .resolvers import setup_source_roots_environment, cast_sources
 from .utils import find_macrostrat_config, path_list_resolver, convert_to_string
 
 log = get_logger(__name__)
@@ -67,7 +66,6 @@ class MacrostratConfig(Dynaconf):
 
 settings = MacrostratConfig()
 
-
 settings.validators.register(
     # `must_exist` is causing huge problems
     Validator("COMPOSE_ROOT", cast=Path),
@@ -82,18 +80,19 @@ settings.validators.register(
     Validator("pg_database", cast=convert_to_string, default=None),
     # Backend information. We could potentially infer this from other environment variables
     Validator("backend", default="kubernetes", cast=BackendType),
+    Validator("sources", cast=cast_sources, default=None),
 )
 
 macrostrat_env = getattr(settings, "env", "default")
 
-# Actually load environment files
 if env_files := getattr(settings, "env_files", None):
     for env in env_files:
         log.info(f"Loading environment variables from {env}")
         load_dotenv(env)
 
-
+# Validate settings
 settings.validators.validate()
+
 
 # Settings for storage, if provided
 if storage := getattr(settings, "storage", None):
@@ -186,41 +185,6 @@ if secret_key := getattr(settings, "secret_key", None):
 environ["MACROSTRAT_ROOT"] = str(settings.srcroot)
 
 
-# Setup source roots for application components
-class Sources(BaseModel):
-    api: Optional[Path] = None
-    api_v3: Optional[Path] = None
-    tileserver: Optional[Path] = None
-    corelle: Optional[Path] = None
-    web: Optional[Path] = None
-    map_cache: Optional[Path] = None
-
-
-def get_source(key: str) -> Optional[Path]:
-    sources = getattr(settings, "sources", None)
-    if sources is None:
-        return None
-    src = getattr(sources, key, None)
-    if src is not None:
-        return Path(src)
-    return None
-
-
-def setup_environment(sources: Sources):
-    for k, v in sources.dict().items():
-        if v is not None:
-            environ[f"MACROSTRAT_{k.upper()}_SRC"] = str(v)
-
-
-settings.sources = Sources(
-    api=get_source("api"),
-    api_v3=get_source("api_v3"),
-    tileserver=get_source("tileserver"),
-    corelle=get_source("corelle"),
-    web=get_source("web"),
-    map_cache=get_source("map_cache"),
-)
-
-setup_environment(settings.sources)
+setup_source_roots_environment(settings.sources)
 
 # Settings for local installation
