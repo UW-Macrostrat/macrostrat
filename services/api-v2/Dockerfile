@@ -8,17 +8,10 @@ RUN apt-get -y update && \
 
 WORKDIR /code
 
-COPY ./package.json ./yarn.lock ./code/
+COPY package.json yarn.lock .yarnrc.yml /code/
+COPY .yarn/releases /code/.yarn/releases
 
 RUN yarn install
-
-# We had to switch to native postgres bindings
-# (using the pg-native module) for the purposes
-# of building in Docker. I think this is necessary
-# to support Postgres v14, but it will make things harder
-# to build/run on weird platforms.
-# https://github.com/brianc/node-postgres/issues/1508
-ENV NODE_PG_FORCE_NATIVE=1
 
 COPY ./ /code/
 

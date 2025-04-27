@@ -667,7 +667,7 @@ const { Client, Pool } = require("pg");
   // Check if Redis is available
   portscanner.checkPortStatus(6379, "127.0.0.1", function (error, status) {
     if (status === "open") {
-      larkin.trace("Using Redis cache for columns");
+      larkin.log("Using Redis cache for columns");
       var redis = require("redis");
       larkin.cache = redis.createClient(6379, "127.0.0.1");
       larkin.cache.fetch = function (key, callback) {
@@ -676,12 +676,13 @@ const { Client, Pool } = require("pg");
         });
       };
     } else {
-      larkin.trace("Using application cache for columns");
+      larkin.log("Using memory cache for columns");
       larkin.cache = require("memory-cache");
       larkin.cache.fetch = function (key, callback) {
         callback(larkin.cache.get(key));
       };
     }
+    console.log("Initialized cache")
   });
 
   /*
@@ -701,7 +702,7 @@ const { Client, Pool } = require("pg");
           //get all units and summarize for columns
           http.get(
             //TODO: change url to match env.
-            "http://localhost:5000/v2/units?all&response=long",
+            "http://0.0.0.0:5000/v2/units?all&response=long",
             function (res) {
               var body = "";
               res.on("data", function (chunk) {
@@ -888,6 +889,7 @@ const { Client, Pool } = require("pg");
             JSON.stringify(results.columnsNoGeom),
           );
         } else {
+          larkin.trace("Setting up column cache")
           larkin.cache.put("unitSummary", results.unitSummary);
           larkin.cache.put("columnsGeom", results.columnsGeom);
           larkin.cache.put("columnsNoGeom", results.columnsNoGeom);

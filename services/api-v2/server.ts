@@ -1,3 +1,9 @@
+const dotenv = require("dotenv");
+// Load environment variables from .env file
+dotenv.config();
+
+console.log(process.env.PORT)
+
 var express = require("express"),
   bodyParser = require("body-parser"),
   //v1 = require("./v1"),
@@ -61,7 +67,7 @@ app.use("/", v2);
 app.set("json spaces", 2);
 
 //TODO: update port to designated env.
-app.port = process.argv[2] || 5000;
+app.port = process.argv[2] ?? process.env.PORT ?? 5000;
 
 app.start = function () {
   app.listen(app.port, function () {
