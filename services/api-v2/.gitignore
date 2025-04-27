@@ -28,5 +28,9 @@ Icon
 .Spotlight-V100
 .Trashes
 .yarn/install-state.gz
+.yarn/cache
+.yarn/unplugged
 
 .env
+.pnp.*
+
