@@ -14,28 +14,28 @@ module.exports = function (req, res, next, cb) {
   //updated sql variables to named parameters using yesql
   if (req.query.structure_class) {
     where.push(`structure_class = ANY(:structure_class)`);
-    params["structure_class"] = larkin.parseMultipleStrings(req.query.structure_class);
-  }
-  else if (req.query.structure_type) {
+    params["structure_class"] = larkin.parseMultipleStrings(
+      req.query.structure_class,
+    );
+  } else if (req.query.structure_type) {
     where.push(`structure_type = ANY(:structure_type)`);
-    params["structure_type"] = larkin.parseMultipleStrings(req.query.structure_type);
-  }
-  else if (req.query.structure) {
+    params["structure_type"] = larkin.parseMultipleStrings(
+      req.query.structure_type,
+    );
+  } else if (req.query.structure) {
     where.push(`structure = ANY(:structure)`);
     params["structure"] = larkin.parseMultipleStrings(req.query.structure);
-  }
-  else if (req.query.structure_id) {
+  } else if (req.query.structure_id) {
     where.push(`structures.id = ANY(:structure_id)`);
     params["structure_id"] = larkin.parseMultipleIds(req.query.structure_id);
-  }
-  else if (req.query.structure_like) {
+  } else if (req.query.structure_like) {
     where.push(`structure LIKE :structure_like`);
     params["structure_like"] = `%${req.query.structure_like}%`;
   }
 
   where = where.length ? "WHERE " + where.join(" AND ") : "";
 
-  var sql =`
+  var sql = `
     SELECT
       structures.id AS structure_id,
       structure AS name,
@@ -46,39 +46,35 @@ module.exports = function (req, res, next, cb) {
     ${where}
     GROUP BY structures.id
     ${limit}
-  `
+  `;
 
-  larkin.queryPg("burwell",
-    sql,
-    params,
-    function (error, data) {
-      if (error) {
-        if (cb) {
-          cb(error);
-        } else {
-          return larkin.error(req, res, next, error);
-        }
-      }
-
+  larkin.queryPg("burwell", sql, params, function (error, data) {
+    if (error) {
       if (cb) {
-        cb(null, data.rows);
+        cb(error);
       } else {
-        larkin.sendData(
-          req,
-          res,
-          next,
-          {
-            format: api.acceptedFormats.standard[req.query.format]
-              ? req.query.format
-              : "json",
-            bare: api.acceptedFormats.bare[req.query.format] ? true : false,
-            compact: true,
-          },
-          {
-            data: data.rows,
-          },
-        );
+        return larkin.error(req, res, next, error);
       }
-    },
-  );
+    }
+
+    if (cb) {
+      cb(null, data.rows);
+    } else {
+      larkin.sendData(
+        req,
+        res,
+        next,
+        {
+          format: api.acceptedFormats.standard[req.query.format]
+            ? req.query.format
+            : "json",
+          bare: api.acceptedFormats.bare[req.query.format] ? true : false,
+          compact: true,
+        },
+        {
+          data: data.rows,
+        },
+      );
+    }
+  });
 };

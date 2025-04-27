@@ -1,41 +1,41 @@
 var request = require("supertest"),
-validators = require("../validators"),
-settings = require("../settings");
+  validators = require("../validators"),
+  settings = require("../settings");
 
 it("should return metadata", function (done) {
-request(settings.host)
-  .get("/carto/small")
-  .expect(validators.aSuccessfulRequest)
-  .expect(validators.json)
-  .expect(validators.metadata)
-  .end(function (error: any, res: any) {
-    if (error) return done(error);
-    done();
-  });
+  request(settings.host)
+    .get("/carto/small")
+    .expect(validators.aSuccessfulRequest)
+    .expect(validators.json)
+    .expect(validators.metadata)
+    .end(function (error: any, res: any) {
+      if (error) return done(error);
+      done();
+    });
 });
 
 it("should return a sample", function (done) {
-request(settings.host)
-  .get("/carto/small?sample")
-  .expect(validators.aSuccessfulRequest)
-  .expect(validators.json)
-  .expect(validators.aSample)
-  .end(function (error: any, res: any) {
-    if (error) return done(error);
-    done();
-  });
+  request(settings.host)
+    .get("/carto/small?sample")
+    .expect(validators.aSuccessfulRequest)
+    .expect(validators.json)
+    .expect(validators.aSample)
+    .end(function (error: any, res: any) {
+      if (error) return done(error);
+      done();
+    });
 });
 
 it("should accept a latitude and longitude", function (done) {
-request(settings.host)
-  .get("/carto/small?lat=43&lng=-89.3")
-  .expect(validators.aSuccessfulRequest)
-  .expect(validators.json)
-  .expect(validators.atLeastOneResult)
-  .end(function (error: any, res: any) {
-    if (error) return done(error);
-    done();
-  });
+  request(settings.host)
+    .get("/carto/small?lat=43&lng=-89.3")
+    .expect(validators.aSuccessfulRequest)
+    .expect(validators.json)
+    .expect(validators.atLeastOneResult)
+    .end(function (error: any, res: any) {
+      if (error) return done(error);
+      done();
+    });
 });
 
 /*

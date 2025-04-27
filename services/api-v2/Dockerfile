@@ -1,6 +1,6 @@
 # We have to specify a new-ish version of Debian
 # to make sure we don't use an out of date image
-FROM node:14-bullseye
+FROM node:20-bullseye
 
 RUN apt-get -y update && \
     apt-get -y install redis-tools postgresql-client && \
@@ -8,13 +8,9 @@ RUN apt-get -y update && \
 
 WORKDIR /code
 
-#COPY ./v1/package.json /code/v1/
-#COPY ./v2/package.json /code/v2/
-COPY ./package.json package.json
+COPY ./package.json ./yarn.lock ./code/
 
-RUN npm install
-#RUN npm --prefix v1 install
-RUN npm --prefix v2 install
+RUN yarn install
 
 # We had to switch to native postgres bindings
 # (using the pg-native module) for the purposes

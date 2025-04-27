@@ -10,8 +10,7 @@ module.exports = function (req, res, next, cb) {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
-  let params = {}
-
+  let params = {};
 
   // First determine age range component of query, if any.
   // NB: ORDER MATTERS here. Do NOT add else if statements before req.query.interval_name, req.query.age or req.query.age_top else statements or  those age parameters will be ommitted
@@ -20,53 +19,46 @@ module.exports = function (req, res, next, cb) {
       function (callback) {
         if (req.query.interval_name) {
           params["interval_name"] = req.query.interval_name;
-          let sql = `SELECT age_bottom, age_top, interval_name FROM macrostrat.intervals WHERE interval_name = :interval_name LIMIT 1`
-          larkin.queryPg("burwell",
-            sql,
-            params,
-            function (error, result) {
-            console.log(result)
-              if (error) {
-                callback(error);
+          let sql = `SELECT age_bottom, age_top, interval_name FROM macrostrat.intervals WHERE interval_name = :interval_name LIMIT 1`;
+          larkin.queryPg("burwell", sql, params, function (error, result) {
+            console.log(result);
+            if (error) {
+              callback(error);
+            } else {
+              if (result.rowCount == 0) {
+                return larkin.error(req, res, next, "No results found");
               } else {
-                if (result.rowCount == 0) {
-                  return larkin.error(req, res, next, "No results found");
-                } else {
-                  callback(null, {
-                    interval_name: result.rows[0].interval_name,
-                    age_bottom: result.rows[0].age_bottom,
-                    age_top: result.rows[0].age_top,
-                  });
-                }
+                callback(null, {
+                  interval_name: result.rows[0].interval_name,
+                  age_bottom: result.rows[0].age_bottom,
+                  age_top: result.rows[0].age_top,
+                });
               }
-            },
-          );
+            }
+          });
         } else if (req.query.int_id) {
-          let sql = "SELECT age_bottom, age_top, interval_name FROM macrostrat.intervals WHERE id = :int_id LIMIT 1"
-          params["int_id"] =req.query.int_id
-          larkin.queryPg("burwell",
-            sql,
-            params,
-            function (error, result) {
-              if (error) {
-                callback(error);
+          let sql =
+            "SELECT age_bottom, age_top, interval_name FROM macrostrat.intervals WHERE id = :int_id LIMIT 1";
+          params["int_id"] = req.query.int_id;
+          larkin.queryPg("burwell", sql, params, function (error, result) {
+            if (error) {
+              callback(error);
+            } else {
+              if (result.rowCount == 0) {
+                callback(null, {
+                  interval_name: "none",
+                  age_bottom: 0,
+                  age_top: 9999999,
+                });
               } else {
-                if (result.rowCount == 0) {
-                  callback(null, {
-                    interval_name: "none",
-                    age_bottom: 0,
-                    age_top: 9999999,
-                  });
-                } else {
-                  callback(null, {
-                    interval_name: result.rows[0].interval_name,
-                    age_bottom: result.rows[0].age_bottom,
-                    age_top: result.rows[0].age_top,
-                  });
-                }
+                callback(null, {
+                  interval_name: result.rows[0].interval_name,
+                  age_bottom: result.rows[0].age_bottom,
+                  age_top: result.rows[0].age_top,
+                });
               }
-            },
-          );
+            }
+          });
         } else if (req.query.age) {
           callback(null, {
             interval_name: "none",
@@ -102,40 +94,34 @@ module.exports = function (req, res, next, cb) {
             },
           );
         } else if (req.query.lat && req.query.lng) {
-
           //TODO: review and see why all cols are returning with lat and lng.
           var sql =
             req.query.adjacents === "true"
               ? "WITH containing_geom AS (SELECT poly_geom FROM macrostrat.cols WHERE ST_Contains(poly_geom, ST_GeomFromText(:point, 4326))) SELECT id FROM macrostrat.cols WHERE ST_Intersects((SELECT * FROM containing_geom), poly_geom) ORDER BY ST_Distance(ST_Centroid(poly_geom), ST_GeomFromText($1, 4326))"
               : "SELECT id FROM macrostrat.cols WHERE ST_Contains(poly_geom, st_setsrid(ST_GeomFromText(:point), 4326)) ORDER BY ST_Distance(ST_Centroid(poly_geom), ST_GeomFromText(:point, 4326))";
-          params['point'] =
-              "POINT(" +
-                larkin.normalizeLng(req.query.lng) +
-                " " +
-                req.query.lat +
-                ")"
+          params["point"] =
+            "POINT(" +
+            larkin.normalizeLng(req.query.lng) +
+            " " +
+            req.query.lat +
+            ")";
 
-          larkin.queryPg(
-            "burwell",
-            sql,
-            params,
-            function (error, response) {
-              if (error) {
-                callback(error);
-              } else {
-                return callback(null, {
-                  interval_name: "none",
-                  age_bottom: 99999,
-                  age_top: 0,
-                  col_ids: response.rows.map(function (d) {
-                            return d.id;
-                  }),
-                });
-              }
-            },
-          );
+          larkin.queryPg("burwell", sql, params, function (error, response) {
+            if (error) {
+              callback(error);
+            } else {
+              return callback(null, {
+                interval_name: "none",
+                age_bottom: 99999,
+                age_top: 0,
+                col_ids: response.rows.map(function (d) {
+                  return d.id;
+                }),
+              });
+            }
+          });
         } else if (req.query.col_id && req.query.adjacents) {
-            var col_ids = larkin.parseMultipleIds(req.query.col_id),
+          var col_ids = larkin.parseMultipleIds(req.query.col_id),
             placeholders = col_ids.map(function (d, i) {
               return "$" + (i + 1);
             });
@@ -166,7 +152,7 @@ module.exports = function (req, res, next, cb) {
           });
         } else if (req.query.col_group_id) {
           larkin.queryPg(
-              "burwell",
+            "burwell",
             "SELECT id FROM macrostrat.cols WHERE col_group_id = ANY(:col_group_ids)",
             { col_group_ids: larkin.parseMultipleIds(req.query.col_group_id) },
             function (error, data) {
@@ -181,9 +167,10 @@ module.exports = function (req, res, next, cb) {
             },
           );
         } else if (req.query.strat_name) {
-          larkin.queryPg("burwell",
+          larkin.queryPg(
+            "burwell",
             "SELECT strat_name_id FROM macrostrat.lookup_strat_names WHERE strat_name ILIKE :strat_name ",
-              {'strat_name': "%" + req.query.strat_name + "%"},
+            { strat_name: "%" + req.query.strat_name + "%" },
             function (error, result) {
               if (error) {
                 callback(error);
@@ -205,11 +192,13 @@ module.exports = function (req, res, next, cb) {
             },
           );
         } else if (req.query.strat_name_concept_id) {
-          larkin.queryPg("burwell",
+          larkin.queryPg(
+            "burwell",
             "SELECT id FROM macrostrat.strat_names WHERE concept_id = ANY(:strat_name_concept_ids) ",
             {
               strat_name_concept_ids: larkin.parseMultipleIds(
-                req.query.strat_name_concept_id),
+                req.query.strat_name_concept_id,
+              ),
             },
             function (error, result) {
               if (error) {
@@ -288,7 +277,7 @@ module.exports = function (req, res, next, cb) {
           orderby = [],
           params = {};
 
-        console.log(data)
+        console.log(data);
 
         if (req.query.status_code) {
           where += "cols.status_code = ANY(:status_code)";
@@ -386,9 +375,7 @@ module.exports = function (req, res, next, cb) {
         if (req.query.unit_id) {
           where += " AND units.id = ANY(:unit_id)";
           params["unit_id"] = larkin.parseMultipleIds(req.query.unit_id);
-          orderby.push(
-            " units.id ",
-          );
+          orderby.push(" units.id ");
         }
 
         if (req.query.section_id) {
@@ -479,13 +466,11 @@ module.exports = function (req, res, next, cb) {
             econ_field = "econs.econ_class";
           }
 
-          where +=
-            ` AND units.id = ANY(SELECT unit_econs.unit_id 
+          where += ` AND units.id = ANY(SELECT unit_econs.unit_id 
             FROM macrostrat.unit_econs 
             JOIN macrostrat.econs on econ_id=econs.id
             WHERE ${econ_field} = ANY(:econ))`;
         }
-
 
         if (req.query.cltn_id) {
           where +=
@@ -558,14 +543,17 @@ module.exports = function (req, res, next, cb) {
       (${colRefsSubquery}) AS refs
       `;
           //TODO fix how refs are outputting if 1 ref or multiple
-        if ("show_position" in req.query) {
-          columnList += ", position_top AS t_pos, position_bottom AS b_pos";
+          if ("show_position" in req.query) {
+            columnList += ", position_top AS t_pos, position_bottom AS b_pos";
+          }
         }
-      }
 
-        if ((req.query.format && api.acceptedFormats.geo[req.query.format]) ||
-          req.query.response === "long") {
-          columnList += ", lookup_units.clat::float, lookup_units.clng::float, lookup_units.t_plat::float, lookup_units.t_plng::float, lookup_units.b_plat::float, lookup_units.b_plng::float "
+        if (
+          (req.query.format && api.acceptedFormats.geo[req.query.format]) ||
+          req.query.response === "long"
+        ) {
+          columnList +=
+            ", lookup_units.clat::float, lookup_units.clng::float, lookup_units.t_plat::float, lookup_units.t_plng::float, lookup_units.b_plat::float, lookup_units.b_plng::float ";
         }
 
         var sql = `
@@ -583,7 +571,7 @@ module.exports = function (req, res, next, cb) {
       ${orderby.length > 0 ? `ORDER BY ${orderby.join(", ")} ASC` : ""})
       SELECT * FROM orig_query
       ORDER BY t_age ASC
-      ${limit}`
+      ${limit}`;
 
         larkin.queryPg("burwell", sql, params, function (error, result) {
           if (error) {
@@ -594,15 +582,23 @@ module.exports = function (req, res, next, cb) {
               for (var i = 0; i < result.rows.length; i++) {
                 // These come back as JSON strings, so we need to make them real JSON
                 result.rows[i].lith = JSON.parse(result.rows[i].lith) || [];
-                result.rows[i].environ = JSON.parse(result.rows[i].environ) || [];
+                result.rows[i].environ =
+                  JSON.parse(result.rows[i].environ) || [];
                 result.rows[i].econ = JSON.parse(result.rows[i].econ) || [];
-                result.rows[i].measure = JSON.parse(result.rows[i].measure) || [];
+                result.rows[i].measure =
+                  JSON.parse(result.rows[i].measure) || [];
                 result.rows[i].units_above = larkin.jsonifyPipes(
                   result.rows[i].units_above,
                   "integers",
                 );
-                result.rows[i].units_below = larkin.jsonifyPipes(result.rows[i].units_below, "integers",);
-                result.rows[i].refs = larkin.jsonifyPipes(result.rows[i].refs,"integers",);
+                result.rows[i].units_below = larkin.jsonifyPipes(
+                  result.rows[i].units_below,
+                  "integers",
+                );
+                result.rows[i].refs = larkin.jsonifyPipes(
+                  result.rows[i].refs,
+                  "integers",
+                );
               }
             }
 
@@ -612,11 +608,15 @@ module.exports = function (req, res, next, cb) {
               !cb
             ) {
               for (var i = 0; i < result.rows.length; i++) {
-                result.rows[i].units_above = result.rows[i].units_above.join(",");
-                result.rows[i].units_below = result.rows[i].units_below.join(",");
+                result.rows[i].units_above =
+                  result.rows[i].units_above.join(",");
+                result.rows[i].units_below =
+                  result.rows[i].units_below.join(",");
 
                 result.rows[i].lith = larkin.pipifyAttrs(result.rows[i].lith);
-                result.rows[i].environ = larkin.pipifyAttrs(result.rows[i].environ);
+                result.rows[i].environ = larkin.pipifyAttrs(
+                  result.rows[i].environ,
+                );
                 result.rows[i].econ = larkin.pipifyAttrs(result.rows[i].econ);
 
                 result.rows[i].refs = result.rows[i].refs.join("|");
@@ -676,7 +676,6 @@ module.exports = function (req, res, next, cb) {
           return larkin.error(req, res, next, "Something went wrong");
         }
       } else {
-
         if (cb) {
           cb(null, result);
         } else {

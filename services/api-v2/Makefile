@@ -16,3 +16,6 @@ release:
 	git tag -a v$(VER) -m "Version $(VER)"
 	git push origin v$(VER)
 
+format:
+	# Format the code using Prettier
+	yarn run prettier --write .

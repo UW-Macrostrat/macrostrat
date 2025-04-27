@@ -50,7 +50,8 @@ app.use("/v2", v2);
 
 app.route("/v1*").get(function (req, res, next) {
   res.status(410).send({
-    error: "Macrostrat's v1 API has been retired. Please update your usage to newer endpoints.",
+    error:
+      "Macrostrat's v1 API has been retired. Please update your usage to newer endpoints.",
   });
 });
 

@@ -36,12 +36,12 @@ module.exports = function (req, res, next, cb) {
     params["lith"] = larkin.parseMultipleStrings(req.query.lith);
   }
   if (req.query.lith_id) {
-    console.log('LITH ID', req.query.lith_id)
-    console.log('LITH ID TYPESSS', typeof(req.query.lith_id))
+    console.log("LITH ID", req.query.lith_id);
+    console.log("LITH ID TYPESSS", typeof req.query.lith_id);
 
     where.push("liths.id = ANY(:lith_id)");
     params["lith_id"] = larkin.parseMultipleIds(req.query.lith_id);
-    console.log('PARAMS', params)
+    console.log("PARAMS", params);
   }
   if (req.query.lith_like) {
     where.push("lith LIKE :lith");

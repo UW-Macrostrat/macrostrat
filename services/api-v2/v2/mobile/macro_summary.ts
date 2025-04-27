@@ -1,7 +1,7 @@
 var api = require("../api"),
   async = require("async"),
   larkin = require("../larkin"),
- _ = require('underscore');
+  _ = require("underscore");
 
 function buildSQL(req, scale, where, limit) {
   return (
@@ -139,7 +139,6 @@ function summarizeBurwell(lat, lng, callback) {
 }
 
 module.exports = function (req, res, next) {
-
   if (Object.keys(req.query).length < 1) {
     larkin.info(req, res, next);
   } else {
@@ -517,7 +516,6 @@ module.exports = function (req, res, next) {
         },
 
         function (unit_summary, callback) {
-
           if (!unit_summary.lith || !unit_summary.lith.length)
             return callback(null, unit_summary);
 

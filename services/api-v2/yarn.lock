@@ -2773,7 +2773,7 @@ __metadata:
     pg: "npm:^8.7.1"
     pg-native: "npm:^3.0.0"
     portscanner: "npm:^1.0.0"
-    prettier: "npm:^3.2.3"
+    prettier: "npm:^3.5.3"
     redis: "npm:^2.4.2"
     should: "npm:^4.0.4"
     supertest: "npm:^0.14.0"
@@ -3663,7 +3663,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"prettier@npm:^3.2.3":
+"prettier@npm:^3.5.3":
   version: 3.5.3
   resolution: "prettier@npm:3.5.3"
   bin:

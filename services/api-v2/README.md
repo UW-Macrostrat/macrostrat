@@ -12,12 +12,13 @@ concise, queryable format.
 #### Software
 
 MariaDB, PostgreSQL, Nodejs, and the
-[Macrostrat system](https://github.com/UW-Macrostrat/macrostrat) are required. Redis is
-optional. When the API starts requests for all columns and all units are cached.
-If Redis is available it will be used, otherwise they are cached in the
-application memory.
+[Macrostrat system](https://github.com/UW-Macrostrat/macrostrat) are required.
+Redis is optional. When the API starts requests for all columns and all units
+are cached. If Redis is available it will be used, otherwise they are cached in
+the application memory.
 
-The API requires `node` v14 or later to run. Recent testing has been conducted on `node` v18.
+The API requires `node` v14 or later to run. Recent testing has been conducted
+on `node` v18.
 
 #### Data
 
@@ -49,12 +50,11 @@ into place.
 
 ## Running the API
 
-Add environment variables to your shell or `.env` file. The `MACROSTRAT_DATABASE_URL` variable
-is required.
+Add environment variables to your shell or `.env` file. The
+`MACROSTRAT_DATABASE_URL` variable is required.
 
 To start the API run `npm start <port|5000>`. This will start the API on the
 specified port (default 5000).
-
 
 ## Generating a release
 
@@ -64,22 +64,22 @@ Update the version string in `package.json` and run:
 make release
 ```
 
-This will simply add a tag that can be picked up by the CI/CD system to deploy the application.
+This will simply add a tag that can be picked up by the CI/CD system to deploy
+the application.
 
-
-**Old config below. We now use env variables specifying which db and environment to connect to.**
-For `credentials.ts` fill in your MariaDB and PostgreSQL user information,
-update the port for Redis if necessary, and follow the inline instructions for
-generating a cache refresh key. The cache refresh key is used as a secret
-parameter to programmatically refresh the column cache, such as in situations in
-which the underlying data has been changed (editing, adding, etc).
+**Old config below. We now use env variables specifying which db and environment
+to connect to.** For `credentials.ts` fill in your MariaDB and PostgreSQL user
+information, update the port for Redis if necessary, and follow the inline
+instructions for generating a cache refresh key. The cache refresh key is used
+as a secret parameter to programmatically refresh the column cache, such as in
+situations in which the underlying data has been changed (editing, adding, etc).
 
 ## Running
 
-To start the API simply run `npm start` which will start a process on
-port 5050. Note that the default port was changed from 5000 to 5050 to avoid a
-port conflict introduced in recent versions of commonly used OSs. To use a
-different port, you can specify it during startup as so: `node server.js 5151`.
+To start the API simply run `npm start` which will start a process on port 5050.
+Note that the default port was changed from 5000 to 5050 to avoid a port
+conflict introduced in recent versions of commonly used OSs. To use a different
+port, you can specify it during startup as so: `node server.js 5151`.
 
 For production use `pm2` is recommended. To start as a single process:
 
@@ -95,7 +95,6 @@ pm2 start server.js --name macrostrat-api -i 2
 
 For more information about managing processes with pm2 see the
 [Macrostrat Wiki](https://github.com/UW-Macrostrat/lab/wiki/Nodejs-based-application-management)
-
 
 ## Other useful things
 
@@ -135,4 +134,3 @@ its own `package.json` and dependencies.
 ### License
 
 CC0 for all code unique to this API.
-

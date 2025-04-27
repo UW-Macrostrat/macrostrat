@@ -13,8 +13,6 @@ api.use(function (req, res, next) {
   next();
 });
 
-
-
 // Load the new tile server that has multiple layers (USE ONLY THIS IN V3)
 api.use(burwellTileServer);
 

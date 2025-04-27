@@ -4,9 +4,9 @@
     "module": "commonjs",
     "strict": true,
     "esModuleInterop": true,
-    "types": ["node", "mocha"],  // Add "mocha" here so TypeScript recognizes the global functions
+    "types": ["node", "mocha"], // Add "mocha" here so TypeScript recognizes the global functions
     "skipLibCheck": true
   },
-  "include": ["./v2Tests/**/*.ts"],  // Ensure your test files are included
+  "include": ["./v2Tests/**/*.ts"], // Ensure your test files are included
   "exclude": ["node_modules"]
 }

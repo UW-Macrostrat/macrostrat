@@ -63,8 +63,11 @@ module.exports = function (req, res, next, cb) {
   if ("sample" in req.query) {
     sql += " LIMIT 5";
   }
-  console.log("print format BEFORE submitting query", api.acceptedFormats.geo[req.query.format])
-  console.log("printing params before they go through larkin", params)
+  console.log(
+    "print format BEFORE submitting query",
+    api.acceptedFormats.geo[req.query.format],
+  );
+  console.log("printing params before they go through larkin", params);
 
   larkin.queryPg("burwell", sql, params, function (error, result) {
     if (error) {
@@ -78,7 +81,7 @@ module.exports = function (req, res, next, cb) {
     // if a geographic format is requested
     if (req.query.format && api.acceptedFormats.geo[req.query.format]) {
       //there is an error here we need to figure out
-      console.log("printing results before geoparse", result)
+      console.log("printing results before geoparse", result);
       dbgeo.parse(
         result.rows,
         {
@@ -116,8 +119,7 @@ module.exports = function (req, res, next, cb) {
     //send results if no geo format requested.
     if (cb) {
       cb(null, result.rows);
-    }
-    else {
+    } else {
       larkin.sendData(
         req,
         res,

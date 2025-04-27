@@ -4,7 +4,6 @@ var api = require("../api"),
   dbgeo = require("dbgeo"),
   gp = require("geojson-precision");
 
-
 module.exports = function (req, res, next, cb) {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
@@ -79,73 +78,68 @@ module.exports = function (req, res, next, cb) {
    ORDER BY ordering, new_priority
    ${"sample" in req.query ? "LIMIT 5" : ""}
   `;
-  larkin.queryPg(
-    "burwell",
-    sql,
-    params,
-    function (error, result) {
-      if (error) {
-        if (cb) {
-          return cb(error);
-        } else {
-          return larkin.error(req, res, next, error);
-        }
+  larkin.queryPg("burwell", sql, params, function (error, result) {
+    if (error) {
+      if (cb) {
+        return cb(error);
       } else {
-        if (req.query.format && api.acceptedFormats.geo[req.query.format]) {
-          dbgeo.parse(
-            result.rows,
-            {
-              outputFormat: larkin.getOutputFormat(req.query.format),
-              precision: 5,
-            },
-            function (error, geojson) {
-              if (error) {
-                larkin.error(req, res, next, error);
+        return larkin.error(req, res, next, error);
+      }
+    } else {
+      if (req.query.format && api.acceptedFormats.geo[req.query.format]) {
+        dbgeo.parse(
+          result.rows,
+          {
+            outputFormat: larkin.getOutputFormat(req.query.format),
+            precision: 5,
+          },
+          function (error, geojson) {
+            if (error) {
+              larkin.error(req, res, next, error);
+            } else {
+              if (cb) {
+                cb(null, geojson);
               } else {
-                if (cb) {
-                  cb(null, geojson);
-                } else {
-                  larkin.sendData(
-                    req,
-                    res,
-                    next,
-                    {
-                      format: api.acceptedFormats.standard[req.query.format]
-                        ? req.query.format
-                        : "json",
-                      bare: api.acceptedFormats.bare[req.query.format]
-                        ? true
-                        : false,
-                    },
-                    {
-                      data: geojson,
-                    },
-                  );
-                }
+                larkin.sendData(
+                  req,
+                  res,
+                  next,
+                  {
+                    format: api.acceptedFormats.standard[req.query.format]
+                      ? req.query.format
+                      : "json",
+                    bare: api.acceptedFormats.bare[req.query.format]
+                      ? true
+                      : false,
+                  },
+                  {
+                    data: geojson,
+                  },
+                );
               }
+            }
+          },
+        );
+      } else {
+        if (cb) {
+          cb(null, result.rows);
+        } else {
+          larkin.sendData(
+            req,
+            res,
+            next,
+            {
+              format: api.acceptedFormats.standard[req.query.format]
+                ? req.query.format
+                : "json",
+              bare: api.acceptedFormats.bare[req.query.format] ? true : false,
+            },
+            {
+              data: result.rows,
             },
           );
-        } else {
-          if (cb) {
-            cb(null, result.rows);
-          } else {
-            larkin.sendData(
-              req,
-              res,
-              next,
-              {
-                format: api.acceptedFormats.standard[req.query.format]
-                  ? req.query.format
-                  : "json",
-                bare: api.acceptedFormats.bare[req.query.format] ? true : false,
-              },
-              {
-                data: result.rows,
-              },
-            );
-          }
         }
       }
-    },
-  );
+    }
+  });
 };

@@ -64,15 +64,15 @@ module.exports = function (req, res, next) {
       query =
         "sample" in req.query ? "ma%" : req.query.query.toLowerCase() + "%";
 
-    larkin.queryPg("burwell",
+    larkin.queryPg(
+      "burwell",
       "SELECT id::integer, name, type, category FROM macrostrat.autocomplete WHERE name ILIKE :query AND type = ANY(:types) LIMIT :limit",
       { query: query, types: types, limit: limit },
       function (error, result) {
-      console.log(result);
-      if (error) {
+        console.log(result);
+        if (error) {
           larkin.error(req, res, next, error);
-        }
-        else {
+        } else {
           var parsed = _.groupBy(result.rows, function (each) {
             return each.type;
           });

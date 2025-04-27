@@ -104,7 +104,6 @@ module.exports = function (req, res, next) {
     //params["col_id2"] = larkin.parseMultipleIds(req.query.col_id);
   }
 
-
   if (req.query.interval_name) {
     where.push(
       "b_age>(SELECT age_top from intervals where interval_name = ANY(:intname1) and t_age<(SELECT age_bottom from macrostrat.intervals where interval_name = ANY(:intname2)))",
@@ -164,8 +163,8 @@ module.exports = function (req, res, next) {
       match_basis,
       ref`;
   }
-//removed IF with a CASE WHEN function.
-//IF(unit_measures.unit_id is not null, units_sections.col_id, measuremeta_cols.col_id) as col_id,
+  //removed IF with a CASE WHEN function.
+  //IF(unit_measures.unit_id is not null, units_sections.col_id, measuremeta_cols.col_id) as col_id,
   if (req.query.response === "light") {
     select = `
       measurements.id as measurement_id,

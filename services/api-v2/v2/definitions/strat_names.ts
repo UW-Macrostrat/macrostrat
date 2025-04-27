@@ -78,7 +78,6 @@ module.exports = function (req, res, next, cb) {
       );*/
     }
 
-
     if (req.query.ref_id) {
       where.push("ref_id = ANY(:ref_id)");
       params["ref_id"] = larkin.parseMultipleIds(req.query.ref_id);
@@ -131,7 +130,6 @@ module.exports = function (req, res, next, cb) {
   if ("sample" in req.query) {
     sql += " LIMIT 5";
   }
-
 
   larkin.queryPg("burwell", sql, params, function (error, response) {
     if (error) {

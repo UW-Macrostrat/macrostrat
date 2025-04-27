@@ -16,7 +16,13 @@ module.exports = function (req, res, next) {
           "All data are licensed under Creative Commons BY 4.0 International",
         citation:
           "Peters, S.E. et al. Macrostrat: a platform for geological data integration and deep-time research. https://macrostrat.org, accessed on (date)",
-        api: ["John J Czaplewski", "Daven Quinn", "Amy Fromandi", "Puneet Kishor", "Shanan E Peters"],
+        api: [
+          "John J Czaplewski",
+          "Daven Quinn",
+          "Amy Fromandi",
+          "Puneet Kishor",
+          "Shanan E Peters",
+        ],
         version: require("../package.json").version,
         support: {
           current_funding:
