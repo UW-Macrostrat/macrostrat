@@ -2,8 +2,6 @@ const dotenv = require("dotenv");
 // Load environment variables from .env file
 dotenv.config();
 
-console.log(process.env.PORT)
-
 var express = require("express"),
   bodyParser = require("body-parser"),
   //v1 = require("./v1"),
