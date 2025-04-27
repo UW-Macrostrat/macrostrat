@@ -12,7 +12,7 @@ const named = require("yesql").pg;
 const { Client, Pool } = require("pg");
 
 (function () {
-  var larkin = {};
+  var larkin: any = {};
 
   /* larkin.connectMySQL = function () {
     // Non-blocking FTW
@@ -68,6 +68,13 @@ const { Client, Pool } = require("pg");
   };
 */
 
+  larkin.trace = function(...args: any[]) {
+    if (!credentials.debug) {
+      return;
+    }
+    console.log(...args);
+  }
+
   //added new method to query from Maria data in the new PG database after migration
   larkin.queryPg = function (db, sql, params, callback) {
     //add console.logs for debug mode in the future
@@ -111,8 +118,8 @@ const { Client, Pool } = require("pg");
         larkin.log("error", "error connecting - " + err);
         callback(err);
       } else if (Array.isArray(params)) {
-        console.log("Params is array: \n", sql);
-        console.log(params);
+        larkin.trace("Params is array: \n", sql);
+        larkin.trace(params);
         client.query(sql, params, function (err, result) {
           done();
           if (err) {
@@ -126,11 +133,11 @@ const { Client, Pool } = require("pg");
         //named uses yesql to modify the params dict and sql named parameters into an array before querying PG.
         //client.query can only accept numerical indices in sql syntax and an array for parameter values.
         const preparedQuery = named(sql)(params);
-        console.log(
+        larkin.trace(
           "Params is object, Yesql parsed query: ",
           preparedQuery.text,
         );
-        console.log("Yesql parsed parameters: ", preparedQuery.values);
+        larkin.trace("Yesql parsed parameters: ", preparedQuery.values);
         client.query(
           preparedQuery.text,
           preparedQuery.values,
@@ -324,7 +331,7 @@ const { Client, Pool } = require("pg");
   };
 
   larkin.log = function (type, message) {
-    console.log(type, message);
+    larkin.trace(type, message);
   };
 
   // Will return all field definitions
@@ -660,7 +667,7 @@ const { Client, Pool } = require("pg");
   // Check if Redis is available
   portscanner.checkPortStatus(6379, "127.0.0.1", function (error, status) {
     if (status === "open") {
-      console.log("Using Redis cache for columns");
+      larkin.trace("Using Redis cache for columns");
       var redis = require("redis");
       larkin.cache = redis.createClient(6379, "127.0.0.1");
       larkin.cache.fetch = function (key, callback) {
@@ -669,7 +676,7 @@ const { Client, Pool } = require("pg");
         });
       };
     } else {
-      console.log("Using application cache for columns");
+      larkin.trace("Using application cache for columns");
       larkin.cache = require("memory-cache");
       larkin.cache.fetch = function (key, callback) {
         callback(larkin.cache.get(key));
@@ -827,7 +834,7 @@ const { Client, Pool } = require("pg");
               if (!error && result && result.rows) {
                 callback(null, result.rows);
               } else {
-                console.log(
+                larkin.trace(
                   "Could not set up column cache. Check postgres connection",
                 );
                 callback(null);
@@ -862,7 +869,7 @@ const { Client, Pool } = require("pg");
               if (!error && result && result.rows) {
                 callback(null, result.rows);
               } else {
-                console.log(
+                larkin.trace(
                   "Could not set up column cache. Check postgres connection",
                 );
                 callback(null);
@@ -886,7 +893,7 @@ const { Client, Pool } = require("pg");
           larkin.cache.put("columnsNoGeom", results.columnsNoGeom);
         }
 
-        console.log("Done prepping column cache");
+        larkin.trace("Done prepping column cache");
       },
     );
   };

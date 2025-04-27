@@ -581,7 +581,7 @@ module.exports = function (req, res, next) {
       ],
       function (error, result) {
         if (error) {
-          console.log("ERROR - ", error);
+          larkin.trace("ERROR - ", error);
           larkin.error(req, res, next, error);
         } else {
           larkin.sendData(

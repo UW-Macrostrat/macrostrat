@@ -25,8 +25,8 @@ module.exports = function (req, res, next) {
            STRING_AGG(trim(concat_WS(' ',principal_lith_prefix_cleaned,cleaned_lith,principal_lith_suffix_cleaned)),'|' ORDER BY top_depth) as primary_lith,
            STRING_AGG(lith_id::text,'|' ORDER BY top_depth) as lith_id,
             STRING_AGG(standard_minor_lith,'|' ORDER BY top_depth) as minor_lith
-    FROM macrostrat.offshore_baggage ob 
-        JOIN macrostrat.offshore_sites USING (col_id) 
+    FROM macrostrat.offshore_baggage ob
+        JOIN macrostrat.offshore_sites USING (col_id)
         JOIN macrostrat.col_groups on col_group_id=col_groups.id
   `;
   var where = [];
@@ -71,13 +71,13 @@ module.exports = function (req, res, next) {
   }
 
   larkin.queryPg("burwell", sql, params, function (error, response) {
-    console.log("RESPONSE FROM LARKIN", response);
+    larkin.trace("RESPONSE FROM LARKIN", response);
     if (error) {
       larkin.error(req, res, next, error);
     } else {
       //all parameter isn't formatted properly.
       if (req.query.format === undefined || req.query.format !== "csv") {
-        console.log("RESPONSE FROM LARKIN 3", response);
+        larkin.trace("RESPONSE FROM LARKIN 3", response);
 
         for (var i = 0; i < response.rows.length; i++) {
           response.rows[i].top_depth = larkin.jsonifyPipes(
@@ -127,8 +127,8 @@ module.exports = function (req, res, next) {
             },
           })),
         };
-        console.log("RESPONSE FROM LARKIN", response);
-        console.log("GEOJSON FROM GEO LARKIN", geoJson);
+        larkin.trace("RESPONSE FROM LARKIN", response);
+        larkin.trace("GEOJSON FROM GEO LARKIN", geoJson);
         // Send transformed GeoJSON data
         larkin.sendData(
           req,

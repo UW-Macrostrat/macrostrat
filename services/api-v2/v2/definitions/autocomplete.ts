@@ -69,7 +69,7 @@ module.exports = function (req, res, next) {
       "SELECT id::integer, name, type, category FROM macrostrat.autocomplete WHERE name ILIKE :query AND type = ANY(:types) LIMIT :limit",
       { query: query, types: types, limit: limit },
       function (error, result) {
-        console.log(result);
+        larkin.trace(result);
         if (error) {
           larkin.error(req, res, next, error);
         } else {

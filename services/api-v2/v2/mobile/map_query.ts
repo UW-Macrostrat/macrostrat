@@ -391,7 +391,7 @@ module.exports = function (req, res, next) {
                 null,
                 null,
                 function (error, result) {
-                  if (error) console.log("Error fetching units", error);
+                  if (error) larkin.trace("Error fetching units", error);
                   if (result && result.length) {
                     // summarizeUnits
                     summarizeUnits(result, function (summary) {
@@ -454,7 +454,7 @@ module.exports = function (req, res, next) {
                 null,
                 function (error, result) {
                   if (error || !result || !result.length) {
-                    console.log("Error fetching strat names ", error);
+                    larkin.trace("Error fetching strat names ", error);
                     return cb(null, {
                       burwell: bestFit,
                       macrostrat: {},

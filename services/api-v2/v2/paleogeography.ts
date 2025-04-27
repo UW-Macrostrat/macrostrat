@@ -16,7 +16,7 @@ module.exports = function (req, res, next) {
             let sql = `SELECT (age_bottom + age_top)/2 AS mid FROM macrostrat.intervals WHERE interval_name = :interval_name`;
             params["interval_name"] = req.query.interval_name;
             larkin.queryPg("burwell", sql, params, function (error, result) {
-              console.log("results", result);
+              larkin.trace("results", result);
               if (error) {
                 callback(error);
               } else {

@@ -58,7 +58,7 @@ module.exports = function (req, res, next) {
                   const unit_age = result.rows[median].lo_period;
                   const unit_name = result.rows[median].strat_name;
 
-                  console.log(
+                  larkin.trace(
                     "ROCKTYPE RESULTS",
                     result.rows,
                     "AND COL_ID ",
@@ -93,7 +93,7 @@ module.exports = function (req, res, next) {
                     if (error) {
                       callback(error);
                     } else {
-                      console.log("columns query result", result);
+                      larkin.trace("columns query result", result);
                       /* If a column isn't immediately found, buffer the point by a degree, get all polygons that
                    intersect that buffer, and then find the closest one */
                       if (result.rows.length < 1) {
@@ -121,7 +121,7 @@ module.exports = function (req, res, next) {
                           },
                         );
                       } else {
-                        console.log("final column query results ", result);
+                        larkin.trace("final column query results ", result);
                         callbackB(null, result.rows[0]);
                       }
                     }
@@ -190,7 +190,7 @@ module.exports = function (req, res, next) {
       },
       function (error, results) {
         if (error) {
-          console.log(error);
+          larkin.trace(error);
           larkin.error(req, res, next, "Something went wrong");
         } else {
           larkin.sendData(
@@ -308,7 +308,7 @@ module.exports = function (req, res, next) {
       },
       function (error, results) {
         if (error) {
-          console.log(error);
+          larkin.trace(error);
           larkin.error(req, res, next, "Something went wrong");
         } else {
           larkin.sendData(

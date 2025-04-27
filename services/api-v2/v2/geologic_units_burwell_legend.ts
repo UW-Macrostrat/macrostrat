@@ -229,7 +229,6 @@ module.exports = function (req, res, next, cb) {
         //      var scaleSQL = buildSQL(req, where, limit);
 
         //      var toRun = "SELECT * FROM ( " + scaleSQL + ") doit";
-        console.log(sql, params_combined);
 
         larkin.queryPg(
           "burwell",

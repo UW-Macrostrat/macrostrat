@@ -8,15 +8,15 @@ module.exports = function (req, res, next, cb) {
     return larkin.info(req, res, next);
   }
 
-  let sql = `SELECT econs.id AS econ_id, 
-      econ AS name, 
+  let sql = `SELECT econs.id AS econ_id,
+      econ AS name,
       econ_type AS type,
-       econ_class AS class, 
-       econ_color AS color, 
-       COUNT(distinct units_sections.unit_id) AS t_units 
-       FROM macrostrat.econs 
-       LEFT JOIN macrostrat.unit_econs ON unit_econs.econ_id = econs.id 
-       LEFT JOIN macrostrat.units_sections ON units_sections.unit_id = unit_econs.unit_id 
+       econ_class AS class,
+       econ_color AS color,
+       COUNT(distinct units_sections.unit_id) AS t_units
+       FROM macrostrat.econs
+       LEFT JOIN macrostrat.unit_econs ON unit_econs.econ_id = econs.id
+       LEFT JOIN macrostrat.units_sections ON units_sections.unit_id = unit_econs.unit_id
        `;
   //changed params from array back to dict.
   let params = {};
@@ -45,9 +45,9 @@ module.exports = function (req, res, next, cb) {
   }
 
   larkin.queryPg("burwell", sql, params, function (error, data) {
-    console.log("CALLBACK DATA ", cb);
+    larkin.trace("CALLBACK DATA ", cb);
     if (error) {
-      console.log("The error still returned from larkin");
+      larkin.trace("The error still returned from larkin");
       if (cb) {
         cb(error);
       } else {

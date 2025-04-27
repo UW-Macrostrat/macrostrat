@@ -21,7 +21,7 @@ module.exports = function (req, res, next, cb) {
           params["interval_name"] = req.query.interval_name;
           let sql = `SELECT age_bottom, age_top, interval_name FROM macrostrat.intervals WHERE interval_name = :interval_name LIMIT 1`;
           larkin.queryPg("burwell", sql, params, function (error, result) {
-            console.log(result);
+            larkin.trace(result);
             if (error) {
               callback(error);
             } else {
@@ -277,7 +277,7 @@ module.exports = function (req, res, next, cb) {
           orderby = [],
           params = {};
 
-        console.log(data);
+        larkin.trace(data);
 
         if (req.query.status_code) {
           where += "cols.status_code = ANY(:status_code)";
@@ -466,8 +466,8 @@ module.exports = function (req, res, next, cb) {
             econ_field = "econs.econ_class";
           }
 
-          where += ` AND units.id = ANY(SELECT unit_econs.unit_id 
-            FROM macrostrat.unit_econs 
+          where += ` AND units.id = ANY(SELECT unit_econs.unit_id
+            FROM macrostrat.unit_econs
             JOIN macrostrat.econs on econ_id=econs.id
             WHERE ${econ_field} = ANY(:econ))`;
         }
@@ -575,7 +575,7 @@ module.exports = function (req, res, next, cb) {
 
         larkin.queryPg("burwell", sql, params, function (error, result) {
           if (error) {
-            console.log(error);
+            larkin.trace(error);
             callback(error);
           } else {
             if (req.query.response === "long" || cb) {
@@ -669,7 +669,7 @@ module.exports = function (req, res, next, cb) {
     ],
     function (error, data, result) {
       if (error) {
-        console.log(error);
+        larkin.trace(error);
         if (cb) {
           cb(error);
         } else {

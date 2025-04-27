@@ -208,7 +208,6 @@ module.exports = function (req, res, next, cb) {
           .join(" UNION ");
 
         var toRun = "SELECT * FROM ( " + scaleSQL + ") doit";
-        console.log(toRun);
 
         larkin.queryPg("burwell", toRun, params, function (error, result) {
           if (error) {
@@ -256,7 +255,7 @@ module.exports = function (req, res, next, cb) {
               );
             } else {
               if (cb) return cb(null, result.rows);
-              console.log(result);
+              larkin.trace(result);
               larkin.sendData(
                 req,
                 res,

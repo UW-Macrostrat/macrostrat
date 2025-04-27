@@ -95,7 +95,7 @@ module.exports = function (req, res, next) {
     params,
     function (error, result) {
       if (error) {
-        console.log(error);
+        larkin.trace(error);
         return larkin.error(req, res, next, "Something went wrong", 500);
       }
 

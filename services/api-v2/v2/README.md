@@ -67,7 +67,7 @@ unusable parameters.
 
 ### .log(type, messsage)
 
-Simply log something to the console. A convinience for `console.log`.
+Simply log something to the console. A convinience for `larkin.trace`.
 
 ### .defineFields(route, callback)
 

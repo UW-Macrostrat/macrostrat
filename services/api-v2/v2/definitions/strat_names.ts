@@ -133,7 +133,7 @@ module.exports = function (req, res, next, cb) {
 
   larkin.queryPg("burwell", sql, params, function (error, response) {
     if (error) {
-      console.log(error);
+      larkin.trace(error);
       if (cb) {
         cb(error);
       } else {

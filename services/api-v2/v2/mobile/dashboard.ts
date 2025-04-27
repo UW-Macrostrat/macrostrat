@@ -95,7 +95,7 @@ function queryCarto(scale, lng, lat, callback) {
     [`SRID=4326;POINT(${lng} ${lat})`],
     (error, result) => {
       if (error) {
-        console.log("error here", scale, lng, lat);
+        larkin.trace("error here", scale, lng, lat);
         return callback(error);
       }
       if (!result || !result.rows || !result.rows.length) {

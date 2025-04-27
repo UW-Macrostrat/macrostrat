@@ -196,7 +196,7 @@ module.exports = function (req, res, next) {
       ],
       function (error, data, results) {
         if (error) {
-          console.log(error);
+          larkin.trace(error);
           larkin.error(req, res, next, "Something went wrong");
         } else {
           if (geo) {

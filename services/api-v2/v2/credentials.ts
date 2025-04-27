@@ -2,6 +2,13 @@ const dotenv = require("dotenv");
 // Load environment variables from .env file
 dotenv.config();
 
+// Set up debug mode if needed
+exports.debug = process.env.NODE_ENV === "development";
+if (exports.debug) {
+  // eslint-disable-next-line no-console
+  console.log("Debug mode enabled");
+}
+
 // Keep old TLS handling for now
 if (process.env.NODE_TLS_REJECT_UNAUTHORIZED == null) {
   process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
