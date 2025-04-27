@@ -48,6 +48,12 @@ app.use(bodyParser.json({ type: "application/vnd.api+json" }));
 // Load and prefix all routes with /api and appropriate version
 app.use("/v2", v2);
 
+app.route("/v1*").get(function (req, res, next) {
+  res.status(410).send({
+    error: "Macrostrat's v1 API has been retired. Please update your usage to newer endpoints.",
+  });
+});
+
 // If no version specified, fall back to more current
 app.use("/", v2);
 
