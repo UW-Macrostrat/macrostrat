@@ -25,8 +25,8 @@ module.exports = function (req, res, next) {
            STRING_AGG(trim(concat_WS(' ',principal_lith_prefix_cleaned,cleaned_lith,principal_lith_suffix_cleaned)),'|' ORDER BY top_depth) as primary_lith,
            STRING_AGG(lith_id::text,'|' ORDER BY top_depth) as lith_id,
             STRING_AGG(standard_minor_lith,'|' ORDER BY top_depth) as minor_lith
-    FROM macrostrat.offshore_baggage ob 
-        JOIN macrostrat.offshore_sites USING (col_id) 
+    FROM macrostrat.offshore_baggage ob
+        JOIN macrostrat.offshore_sites USING (col_id)
         JOIN macrostrat.col_groups on col_group_id=col_groups.id
   `;
   var where = [];
@@ -62,21 +62,22 @@ module.exports = function (req, res, next) {
     sql += ` WHERE lith_id>0\n `;
   }
 
-  sql += " GROUP BY col_groups.col_group, ob.site_hole, offshore_sites.date_started,\n" +
-      "offshore_sites.ref_id, ob.col_id, offshore_sites.lat, offshore_sites.lng ";
+  sql +=
+    " GROUP BY col_groups.col_group, ob.site_hole, offshore_sites.date_started,\n" +
+    "offshore_sites.ref_id, ob.col_id, offshore_sites.lat, offshore_sites.lng ";
 
   if ("sample" in req.query) {
     sql += " LIMIT 1";
   }
 
-  larkin.queryPg("burwell",sql, params, function (error, response) {
-    console.log('RESPONSE FROM LARKIN', response)
+  larkin.queryPg("burwell", sql, params, function (error, response) {
+    larkin.trace("RESPONSE FROM LARKIN", response);
     if (error) {
       larkin.error(req, res, next, error);
     } else {
       //all parameter isn't formatted properly.
       if (req.query.format === undefined || req.query.format !== "csv") {
-        console.log('RESPONSE FROM LARKIN 3', response)
+        larkin.trace("RESPONSE FROM LARKIN 3", response);
 
         for (var i = 0; i < response.rows.length; i++) {
           response.rows[i].top_depth = larkin.jsonifyPipes(
@@ -106,7 +107,7 @@ module.exports = function (req, res, next) {
       try {
         const geoJson = {
           type: "FeatureCollection",
-          features: response.rows.map(row => ({
+          features: response.rows.map((row) => ({
             type: "Feature",
             geometry: {
               type: "Point",
@@ -126,8 +127,8 @@ module.exports = function (req, res, next) {
             },
           })),
         };
-        console.log("RESPONSE FROM LARKIN", response)
-        console.log("GEOJSON FROM GEO LARKIN", geoJson)
+        larkin.trace("RESPONSE FROM LARKIN", response);
+        larkin.trace("GEOJSON FROM GEO LARKIN", geoJson);
         // Send transformed GeoJSON data
         larkin.sendData(
           req,
@@ -142,29 +143,33 @@ module.exports = function (req, res, next) {
           },
           {
             data: geoJson,
-          }
+          },
         );
       } catch (error) {
-        larkin.error(req, res, next, "Failed to transform data into GeoJSON format.")
-      }
-    }
-      else {
-        //TODO determine why the all parameter returns 503 results rather than 505 as in prod
-        larkin.sendData(
+        larkin.error(
           req,
           res,
           next,
-          {
-            format: api.acceptedFormats.standard[req.query.format]
-              ? req.query.format
-              : "json",
-            bare: api.acceptedFormats.bare[req.query.format] ? true : false,
-            refs: "ref_id",
-          },
-          {
-            data: response.rows,
-          },
+          "Failed to transform data into GeoJSON format.",
         );
       }
+    } else {
+      //TODO determine why the all parameter returns 503 results rather than 505 as in prod
+      larkin.sendData(
+        req,
+        res,
+        next,
+        {
+          format: api.acceptedFormats.standard[req.query.format]
+            ? req.query.format
+            : "json",
+          bare: api.acceptedFormats.bare[req.query.format] ? true : false,
+          refs: "ref_id",
+        },
+        {
+          data: response.rows,
+        },
+      );
+    }
   });
 };

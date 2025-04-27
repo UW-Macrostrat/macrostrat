@@ -33,7 +33,7 @@ module.exports = function (req, res, next) {
     [
       // Create grid using parameters
       function (callback) {
-        console.log("step 1 - create grid");
+        larkin.trace("step 1 - create grid");
         grid.variable(
           parseFloat(req.query.lngSpacing),
           parseFloat(req.query.latSpacing),
@@ -46,7 +46,7 @@ module.exports = function (req, res, next) {
 
       // Create table
       function (grid, callback) {
-        console.log("step 2 - create table");
+        larkin.trace("step 2 - create table");
         // Create a unique hash key
         var table = randomString();
 
@@ -65,7 +65,7 @@ module.exports = function (req, res, next) {
 
       // Insert geojson
       function (grid, table, callback) {
-        console.log("step 3 - insert geojson");
+        larkin.trace("step 3 - insert geojson");
         async.eachLimit(
           grid.features,
           10,
@@ -100,7 +100,7 @@ module.exports = function (req, res, next) {
 
       // Create spatial index on temp table
       function (table, callback) {
-        console.log("step 3.5 - spatially index temp table");
+        larkin.trace("step 3.5 - spatially index temp table");
         larkin.queryPg(
           "burwell",
           "CREATE INDEX ON " + table + " USING GiST (geom)",
@@ -113,7 +113,7 @@ module.exports = function (req, res, next) {
 
       // Update the table with lithologies
       function (table, callback) {
-        console.log("step 4 - update table with lithologies");
+        larkin.trace("step 4 - update table with lithologies");
       },
 
       // Select the geojson cells that intersect the envelope of the target dataset
@@ -153,7 +153,7 @@ module.exports = function (req, res, next) {
     // return geo/topojson or error
     function (error, result) {
       if (error) {
-        console.log(error);
+        larkin.trace(error);
       }
 
       larkin.sendData(

@@ -79,7 +79,7 @@ module.exports = (req, res, next) => {
   // Check the cache
   hillshadeCache.get([lng, lat], aspect, (error, buffer) => {
     if (error) {
-      console.log(error);
+      larkin.trace(error);
     }
     if (buffer) {
       return larkin.sendImage(req, res, next, buffer, true);
@@ -95,7 +95,7 @@ module.exports = (req, res, next) => {
       },
       (error, jpeg) => {
         if (error) {
-          console.log(error);
+          larkin.trace(error);
           return larkin.error(req, res, next, "Internal error", 500);
         }
         hillshadeCache.set(
@@ -118,7 +118,7 @@ module.exports = (req, res, next) => {
             },
             (error, jpeg) => {
               if (error) {
-                console.log(error);
+                larkin.trace(error);
                 return;
               }
               hillshadeCache.set(

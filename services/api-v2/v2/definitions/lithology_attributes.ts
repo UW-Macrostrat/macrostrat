@@ -6,8 +6,7 @@ module.exports = function (req, res, next, cb) {
     return larkin.info(req, res, next);
   }
 
-  var sql =
-      `SELECT lith_atts.id AS lith_att_id, 
+  var sql = `SELECT lith_atts.id AS lith_att_id, 
       lith_att AS name, 
       att_type AS type, 
       COUNT(DISTINCT unit_liths.unit_id) AS t_units 

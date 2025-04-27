@@ -1,7 +1,7 @@
 {
-  "name": "macrostrat-api",
-  "version": "3.0.0-dev",
-  "description": "The API for SCIENCE",
+  "name": "@macrostrat/api-v2",
+  "version": "2.1.0-beta.1",
+  "description": "An API for stratigraphic and geological information (Version 2).",
   "main": "server.js",
   "repository": {
     "type": "git",
@@ -15,7 +15,8 @@
     "test": "mocha ./v2",
     "defs": "ts-node --transpileOnly ./v2/utilities/validateDefs.ts",
     "build-defs": "ts-node --transpileOnly ./v2/utilities/getOutputFields.ts",
-    "build-changes": "grip ./v2/CHANGELOG.md --export ./v2/changes.html"
+    "build-changes": "grip ./v2/CHANGELOG.md --export ./v2/changes.html",
+    "format": "prettier --write ."
   },
   "keywords": [
     "macrostrat",
@@ -24,6 +25,9 @@
   "contributors": [
     {
       "name": "John J Czaplewski"
+    },
+    {
+      "name": "Amy Fromandi"
     },
     {
       "name": "Shanan Peters"
@@ -40,10 +44,10 @@
     "@types/node": "^20.11.5",
     "async": "1.5.2",
     "body-parser": "^1.6.3",
-    "brute-force-equal-area": "git+https://github.com/UW-Macrostrat/brute-force-equal-area.git",
+    "brute-force-equal-area": "https://github.com/UW-Macrostrat/brute-force-equal-area.git",
     "csv-express": "^1.1.0",
     "dbgeo": "^1.0.1",
-    "dotenv": "^16.4.5",
+    "dotenv": "^16.5.0",
     "express": "4.x.x",
     "filesize-parser": "^1.3.0",
     "geojson-precision": "^0.4.0",
@@ -64,7 +68,7 @@
     "turf-area": "^1.1.1",
     "turf-buffer": "^1.0.4",
     "turf-point": "^0.1.6",
-    "turf-voronoi": "git+https://github.com/Turfjs/turf-voronoi.git",
+    "turf-voronoi": "https://github.com/Turfjs/turf-voronoi.git",
     "typescript": "^5.3.3",
     "underscore": "^1.8.3",
     "universal-analytics": "^0.4.6",
@@ -75,12 +79,12 @@
     "mocha": "^1.21.4",
     "node-uuid": "^1.4.3",
     "nodemon": "^3.0.3",
-    "prettier": "^3.2.3",
+    "prettier": "^3.5.3",
     "should": "^4.0.4",
     "supertest": "^0.14.0",
     "validator": "^3.34.0"
   },
-  "packageManager": "yarn@4.0.2",
+  "packageManager": "yarn@4.9.1",
   "prettier": {
     "proseWrap": "always"
   }

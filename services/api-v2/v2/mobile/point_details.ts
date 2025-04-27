@@ -12,60 +12,71 @@ module.exports = function (req, res, next) {
           larkin.queryPg(
             "geomacro",
             "SELECT\n" +
-            "   cols.id AS col_id,\n" +
-            "    lookup_unit_liths.lith_short,\n" +
-            "    units.strat_name,\n" +
-            "    units.id as unit_id,\n" +
-            "    units.fo,\n" +
-            "    units.lo,\n" +
-            "    lookup_unit_intervals.fo_period,\n" +
-            "    lookup_unit_intervals.fo_age,\n" +
-            "    lookup_unit_intervals.lo_period,\n" +
-            "    lookup_unit_intervals.lo_age,\n" +
-            "    lookup_unit_intervals.age\n" +
-            "FROM\n" +
-            "    macrostrat.cols\n" +
-            "JOIN\n" +
-            "    macrostrat.units ON units.col_id = cols.id\n" +
-            "JOIN\n" +
-            "    macrostrat.lookup_unit_liths ON lookup_unit_liths.unit_id = units.id\n" +
-            "JOIN\n" +
-            "    macrostrat.lookup_unit_intervals ON lookup_unit_intervals.unit_id = units.id\n" +
-            "WHERE\n" +
-            "    ST_Contains(cols.poly_geom, ST_GeomFromText($1, 4326))\n" +
-            "    AND cols.status_code = 'active'\n" +
-            "ORDER BY lo_age;",
+              "   cols.id AS col_id,\n" +
+              "    lookup_unit_liths.lith_short,\n" +
+              "    units.strat_name,\n" +
+              "    units.id as unit_id,\n" +
+              "    units.fo,\n" +
+              "    units.lo,\n" +
+              "    lookup_unit_intervals.fo_period,\n" +
+              "    lookup_unit_intervals.fo_age,\n" +
+              "    lookup_unit_intervals.lo_period,\n" +
+              "    lookup_unit_intervals.lo_age,\n" +
+              "    lookup_unit_intervals.age\n" +
+              "FROM\n" +
+              "    macrostrat.cols\n" +
+              "JOIN\n" +
+              "    macrostrat.units ON units.col_id = cols.id\n" +
+              "JOIN\n" +
+              "    macrostrat.lookup_unit_liths ON lookup_unit_liths.unit_id = units.id\n" +
+              "JOIN\n" +
+              "    macrostrat.lookup_unit_intervals ON lookup_unit_intervals.unit_id = units.id\n" +
+              "WHERE\n" +
+              "    ST_Contains(cols.poly_geom, ST_GeomFromText($1, 4326))\n" +
+              "    AND cols.status_code = 'active'\n" +
+              "ORDER BY lo_age;",
             ["POINT(" + req.query.lng + " " + req.query.lat + ")"],
             function (error, result) {
               if (error) {
                 callback(error);
               } else {
                 if (result.rows.length > 0) {
-                const rocktypes = result.rows.map(row => {
-                  // Split lith_short into parts and extract only the type
-                  const lithParts = row.lith_short.split('|');
-                  return lithParts.map(part => {
-                    const [type] = part.split(' ').map(item => item.trim()); // Extract only the type
-                    return type; // Return the type as a string
-                  });
-                }).flat();
-                const median = (result.rows.length/2) - 1
-                const col_id = result.rows[0].col_id
-                const unit_age = result.rows[median].lo_period
-                const unit_name = result.rows[median].strat_name
+                  const rocktypes = result.rows
+                    .map((row) => {
+                      // Split lith_short into parts and extract only the type
+                      const lithParts = row.lith_short.split("|");
+                      return lithParts.map((part) => {
+                        const [type] = part
+                          .split(" ")
+                          .map((item) => item.trim()); // Extract only the type
+                        return type; // Return the type as a string
+                      });
+                    })
+                    .flat();
+                  const median = result.rows.length / 2 - 1;
+                  const col_id = result.rows[0].col_id;
+                  const unit_age = result.rows[median].lo_period;
+                  const unit_name = result.rows[median].strat_name;
 
-                console.log("ROCKTYPE RESULTS", result.rows, 'AND COL_ID ', col_id)
-                const uniqueRocktypes = Array.from(new Set(rocktypes));
-                  callback(null, { gid: col_id,
+                  larkin.trace(
+                    "ROCKTYPE RESULTS",
+                    result.rows,
+                    "AND COL_ID ",
+                    col_id,
+                  );
+                  const uniqueRocktypes = Array.from(new Set(rocktypes));
+                  callback(null, {
+                    gid: col_id,
                     rocktype: uniqueRocktypes,
                     unit_name: unit_name,
                     unit_age: unit_age,
-                    unitdesc: ""});
+                    unitdesc: "",
+                  });
                 } else {
                   callback(null, { rocktype: [] });
                 }
               }
-            }
+            },
           );
         },
 
@@ -82,7 +93,7 @@ module.exports = function (req, res, next) {
                     if (error) {
                       callback(error);
                     } else {
-                      console.log ("columns query result", result)
+                      larkin.trace("columns query result", result);
                       /* If a column isn't immediately found, buffer the point by a degree, get all polygons that
                    intersect that buffer, and then find the closest one */
                       if (result.rows.length < 1) {
@@ -97,7 +108,6 @@ module.exports = function (req, res, next) {
                               ")",
                           ],
                           function (error, result) {
-
                             if (error) {
                               callback(error);
 
@@ -111,7 +121,7 @@ module.exports = function (req, res, next) {
                           },
                         );
                       } else {
-                        console.log("final column query results ", result)
+                        larkin.trace("final column query results ", result);
                         callbackB(null, result.rows[0]);
                       }
                     }
@@ -120,8 +130,7 @@ module.exports = function (req, res, next) {
               },
 
               function (column, callbackB) {
-                var sql =
-                  `SELECT units.id AS unit_id, units.strat_name, period, max_thick, min_thick, colors.unit_class, count(distinct collection_no) pbdb_cltns, lith_short AS lith
+                var sql = `SELECT units.id AS unit_id, units.strat_name, period, max_thick, min_thick, colors.unit_class, count(distinct collection_no) pbdb_cltns, lith_short AS lith
                 FROM macrostrat.units
                 JOIN macrostrat.colors ON colors.color::text = units.color::text
                 JOIN macrostrat.units_sections ON units_sections.unit_id = units.id
@@ -132,18 +141,23 @@ module.exports = function (req, res, next) {
                 LEFT JOIN macrostrat.pbdb_matches ON pbdb_matches.unit_id=units.id and pbdb_matches.release_date < now()
                 WHERE units_sections.col_id = $1
                 GROUP BY units.id, period, unit_class, lith_short
-                ORDER BY units.id ASC;`
+                ORDER BY units.id ASC;`;
 
-                larkin.queryPg("burwell", sql, [column.col_id], function (error, result) {
-                  if (error) {
-                    callbackB(error);
-                  } else {
-                    result.rows.forEach(function (d) {
-                      d.lith = larkin.fixLiths(d.lith);
-                    });
-                    callbackB(null, column, result.rows);
-                  }
-                });
+                larkin.queryPg(
+                  "burwell",
+                  sql,
+                  [column.col_id],
+                  function (error, result) {
+                    if (error) {
+                      callbackB(error);
+                    } else {
+                      result.rows.forEach(function (d) {
+                        d.lith = larkin.fixLiths(d.lith);
+                      });
+                      callbackB(null, column, result.rows);
+                    }
+                  },
+                );
               },
             ],
             // after the two queries are executed, send the result
@@ -176,7 +190,7 @@ module.exports = function (req, res, next) {
       },
       function (error, results) {
         if (error) {
-          console.log(error);
+          larkin.trace(error);
           larkin.error(req, res, next, "Something went wrong");
         } else {
           larkin.sendData(
@@ -227,7 +241,6 @@ module.exports = function (req, res, next) {
                     if (error) {
                       callbackB(error);
                     } else {
-
                       if (result.rows.length === 0) {
                         callback(null);
                       } else {
@@ -239,8 +252,9 @@ module.exports = function (req, res, next) {
               },
 
               function (column, callbackB) {
-                larkin.queryPg("burwell",
-                    `
+                larkin.queryPg(
+                  "burwell",
+                  `
                 SELECT units.id AS unit_id, units.strat_name, period, max_thick, min_thick, colors.unit_class, count(distinct collection_no) pbdb_cltns, lith_short AS lith
                 FROM macrostrat.units
                 JOIN macrostrat.colors ON colors.color::text = units.color::text
@@ -294,10 +308,9 @@ module.exports = function (req, res, next) {
       },
       function (error, results) {
         if (error) {
-          console.log(error);
+          larkin.trace(error);
           larkin.error(req, res, next, "Something went wrong");
         } else {
-
           larkin.sendData(
             req,
             res,

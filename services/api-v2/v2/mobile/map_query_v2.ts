@@ -62,7 +62,7 @@ function getUnits(params, callback) {
     `
     SELECT
       (
-           SELECT json_agg(w) 
+           SELECT json_agg(w)
            FROM (
                SELECT split_part(q, '|', 1)::int AS strat_name_id, split_part(q, '|', 2) AS rank_name
                FROM (
@@ -332,7 +332,7 @@ module.exports = (req, res, next) => {
   async.parallel(
     {
       elevation: (cb) => {
-          console.log("running elevation")
+        larkin.trace("running elevation");
         require("../elevation")(req, null, null, (error, data) => {
           if (data && data.length) {
             cb(null, data[0].elevation);
@@ -343,7 +343,7 @@ module.exports = (req, res, next) => {
       },
 
       lines: (cb) => {
-          console.log("running lines")
+        larkin.trace("running lines");
         larkin.queryPg(
           "burwell",
           buildLineSQL(scaleLookup[req.query.z]),
@@ -371,7 +371,7 @@ module.exports = (req, res, next) => {
       },
 
       columns: (cb) => {
-          console.log("running columns")
+        larkin.trace("running columns");
         larkin.queryPg(
           "burwell",
           `
@@ -396,7 +396,7 @@ module.exports = (req, res, next) => {
       },
 
       regions: (cb) => {
-          console.log("running regions")
+        larkin.trace("running regions");
         larkin.queryPg(
           "burwell",
           `
@@ -431,7 +431,7 @@ module.exports = (req, res, next) => {
       },
 
       burwell: (cb) => {
-          console.log("running burwell")
+        larkin.trace("running burwell");
         let where = [];
         let params = [];
 
@@ -481,7 +481,7 @@ module.exports = (req, res, next) => {
                   if (error) {
                     return cb(error);
                   }
-                  console.log("getUnits function test", units)
+                  larkin.trace("getUnits function test", units);
                   if (units.length) {
                     mapPolygon.macrostrat = units[0];
                   } else if (params.strat_name_ids) {

@@ -2,7 +2,10 @@
 const axios = require("axios");
 
 module.exports = {
-  aSuccessfulRequest: function (res: { statusCode: number; headers: { [x: string]: string; }; }) {
+  aSuccessfulRequest: function (res: {
+    statusCode: number;
+    headers: { [x: string]: string };
+  }) {
     if (res.statusCode !== 200) {
       console.log(res.statusCode);
       throw new Error("Bad status code");
@@ -12,7 +15,19 @@ module.exports = {
     }
   },
 
-  metadata: function (res: { body: { success: { description: any; options: { parameters: {}; output_formats: string | any[]; examples: string | any[]; fields: {}; }; }; }; }) {
+  metadata: function (res: {
+    body: {
+      success: {
+        description: any;
+        options: {
+          parameters: {};
+          output_formats: string | any[];
+          examples: string | any[];
+          fields: {};
+        };
+      };
+    };
+  }) {
     // Make sure all the key metadata sections exist
     if (!res.body.success.description) {
       throw new Error("Route description missing");
@@ -62,7 +77,13 @@ module.exports = {
     }
   },
 
-  aSample: function (res: { body: { success: { data: { type: any; features: string | any[]; length: number; }; }; }; }) {
+  aSample: function (res: {
+    body: {
+      success: {
+        data: { type: any; features: string | any[]; length: number };
+      };
+    };
+  }) {
     // Make sure 5 records were returned
     if (res.body.success.data.type) {
       if (res.body.success.data.features.length !== 5) {
@@ -75,7 +96,13 @@ module.exports = {
     }
   },
 
-  projectSample: function (res: { body: { success: { data: { type: any; features: string | any[]; length: number; }; }; }; }) {
+  projectSample: function (res: {
+    body: {
+      success: {
+        data: { type: any; features: string | any[]; length: number };
+      };
+    };
+  }) {
     // Make sure 13 records were returned
     if (res.body.success.data.type) {
       if (res.body.success.data.length !== 13) {
@@ -84,7 +111,9 @@ module.exports = {
     }
   },
 
-  geoJSON: function (res: { body: { success: { data: { type: string; features: any[]; }; }; }; }) {
+  geoJSON: function (res: {
+    body: { success: { data: { type: string; features: any[] } } };
+  }) {
     if (res.body.success.data.type !== "FeatureCollection") {
       throw new Error("GeoJSON was not returned");
     }
@@ -97,24 +126,24 @@ module.exports = {
         !d.properties
       ) {
         console.error("Malformed feature at index:", index, d); // Log issue for inspection
-      throw new Error(`GeoJSON was malformed at feature index ${index}`);
+        throw new Error(`GeoJSON was malformed at feature index ${index}`);
       }
     });
   },
 
-  topoJSON: function (res: { body: { success: { data: { type: string; }; }; }; }) {
+  topoJSON: function (res: { body: { success: { data: { type: string } } } }) {
     if (res.body.success.data.type !== "Topology") {
       throw new Error("TopoJSON was not returned");
     }
   },
 
-  json: function (res: { body: { success: any; error: any; }; }) {
+  json: function (res: { body: { success: any; error: any } }) {
     if (!res.body.success && !res.body.error) {
       throw new Error("Request did not return valid JSON");
     }
   },
 
-  csv: function (res: { body: string | any[]; }) {
+  csv: function (res: { body: string | any[] }) {
     if (res.body.length < 10) {
       throw new Error("No CSV output recieved");
     }
@@ -133,7 +162,9 @@ module.exports = {
     }*/
   },
 
-  atLeastOneResult: function (res: { body: { success: { data: string | any[]; }; }; }) {
+  atLeastOneResult: function (res: {
+    body: { success: { data: string | any[] } };
+  }) {
     if (res.body.success.data.length < 1) {
       throw new Error("Should have returned at least one result");
     }
@@ -141,34 +172,49 @@ module.exports = {
 
   correctDataTypes: function (res: any) {
     const data = res.body.success.data;
-    data.forEach((item: { t_age: any; b_age: any; t_prop?: any; t_int_age?: any }) => {
-      if (typeof item.t_age !== "number") {
-        throw new Error(`t_age is not a numeric type: ${item.t_age} (type: ${typeof item.t_age})`);
-      }
-      if (typeof item.b_age !== "number") {
-        throw new Error(`b_age is not a numeric type: ${item.b_age} (type: ${typeof item.b_age})`);
-      }
-      if (item.t_prop !== undefined && typeof item.t_prop !== "number") {
-        throw new Error(`t_prop is not a numeric type: ${item.t_prop} (type: ${typeof item.t_prop})`);
-      }
-      if (item.t_int_age !== undefined && typeof item.t_int_age !== "number") {
-        throw new Error(`t_int_age is not a numeric type: ${item.t_int_age} (type: ${typeof item.t_int_age})`);
-      }
-    });
+    data.forEach(
+      (item: { t_age: any; b_age: any; t_prop?: any; t_int_age?: any }) => {
+        if (typeof item.t_age !== "number") {
+          throw new Error(
+            `t_age is not a numeric type: ${item.t_age} (type: ${typeof item.t_age})`,
+          );
+        }
+        if (typeof item.b_age !== "number") {
+          throw new Error(
+            `b_age is not a numeric type: ${item.b_age} (type: ${typeof item.b_age})`,
+          );
+        }
+        if (item.t_prop !== undefined && typeof item.t_prop !== "number") {
+          throw new Error(
+            `t_prop is not a numeric type: ${item.t_prop} (type: ${typeof item.t_prop})`,
+          );
+        }
+        if (
+          item.t_int_age !== undefined &&
+          typeof item.t_int_age !== "number"
+        ) {
+          throw new Error(
+            `t_int_age is not a numeric type: ${item.t_int_age} (type: ${typeof item.t_int_age})`,
+          );
+        }
+      },
+    );
   },
 
   async compareWithProduction(queryParams = "", localResponse: any) {
     const prodUrl = `https://www.macrostrat.org/api/v2${queryParams}`;
     const externalResponse = await axios.get(prodUrl);
-    if (JSON.stringify(localResponse.body) !== JSON.stringify(externalResponse.data)) {
+    if (
+      JSON.stringify(localResponse.body) !==
+      JSON.stringify(externalResponse.data)
+    ) {
       throw new Error(
         `Mismatch for endpoint: ${queryParams}\nLocal: ${JSON.stringify(
           localResponse.body,
           null,
-          2
-        )}\nProduction: ${JSON.stringify(externalResponse.data, null, 2)}`
+          2,
+        )}\nProduction: ${JSON.stringify(externalResponse.data, null, 2)}`,
       );
     }
-  }
+  },
 };
-

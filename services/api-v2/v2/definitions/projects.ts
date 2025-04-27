@@ -7,8 +7,7 @@ module.exports = function (req, res, next, cb) {
   }
   //There will be a discrepancy with a key in production. Updated in_proccess_cols to in_process_cols key. Values are
   //still the same.
-  var sql =
-    `WITH RECURSIVE in_proc AS (SELECT count(distinct id) c,project_id from macrostrat.cols where status_code='in process' group by project_id),
+  var sql = `WITH RECURSIVE in_proc AS (SELECT count(distinct id) c,project_id from macrostrat.cols where status_code='in process' group by project_id),
                obs AS (SELECT count(distinct id) co,project_id from macrostrat.cols where status_code='obsolete' group by project_id)
     SELECT projects.id AS project_id,
            project,
@@ -37,7 +36,6 @@ module.exports = function (req, res, next, cb) {
     sql += ` WHERE ${where.join(" AND ")}`;
   }
   sql += "\nGROUP BY projects.id, in_proc.c, obs.co";
-
 
   larkin.queryPg("burwell", sql, params, function (error, data) {
     if (error) {

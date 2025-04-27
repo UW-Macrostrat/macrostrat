@@ -6,8 +6,7 @@ module.exports = function (req, res, next, cb) {
     return larkin.info(req, res, next);
   }
 
-  var sql =
-      `WITH distinct_measures AS (SELECT distinct measurement_id,measuremeta_id from measures) 
+  var sql = `WITH distinct_measures AS (SELECT distinct measurement_id,measuremeta_id from measures) 
 SELECT refs.id AS ref_id, 
        pub_year, 
        author, 
@@ -19,7 +18,6 @@ FROM macrostrat.refs
     JOIN macrostrat.measuremeta ON refs.id=ref_id 
     JOIN macrostrat.distinct_measures ON measuremeta_id=measuremeta.id 
     JOIN macrostrat.measurements on measurement_id=measurements.id`,
-
     params = {};
 
   if ("all" in req.query) {
@@ -49,7 +47,6 @@ FROM macrostrat.refs
   if ("sample" in req.query) {
     sql += " LIMIT 5";
   }
-
 
   larkin.queryPg("burwell", sql, params, function (error, data) {
     if (error) {

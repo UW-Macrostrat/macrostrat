@@ -116,8 +116,7 @@ module.exports = function (req, res, next, cb) {
     }
     if (cb) {
       cb(null, result.rows);
-    }
-    else {
+    } else {
       larkin.sendData(
         req,
         res,

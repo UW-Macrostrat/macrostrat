@@ -6,12 +6,12 @@ module.exports = (req, res, next, cb) => {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
-  let param = {}
+  let param = {};
 
   if ((req.query.lat && req.query.lng) || "sample" in req.query) {
     let lat = req.query.lat || 43.07;
     let lng = larkin.normalizeLng(req.query.lng) || -89.4;
-        param['point']= `POINT(${lng} ${lat})`;
+    param["point"] = `POINT(${lng} ${lat})`;
     let sql = `WITH first AS (
           SELECT ST_Value(rast, 1, ST_GeomFromText(:point, 4326)) AS elevation, 1 as priority
           FROM sources.srtm1
@@ -27,32 +27,27 @@ module.exports = (req, res, next, cb) => {
       ORDER BY priority ASC
       LIMIT 1`;
 
-    larkin.queryPg(
-      "elevation",
-      sql,
-      param,
-      (error, result) => {
-        if (error) {
-          if (cb) return cb(error);
-          return larkin.error(req, res, next, "Error fetching elevation data");
-        }
-        if (cb) return cb(null, result.rows);
-        larkin.sendData(
-          req,
-          res,
-          next,
-          {
-            format: api.acceptedFormats.standard[req.query.format]
-              ? req.query.format
-              : "json",
-            compact: true,
-          },
-          {
-            data: result.rows,
-          },
-        );
-      },
-    );
+    larkin.queryPg("elevation", sql, param, (error, result) => {
+      if (error) {
+        if (cb) return cb(error);
+        return larkin.error(req, res, next, "Error fetching elevation data");
+      }
+      if (cb) return cb(null, result.rows);
+      larkin.sendData(
+        req,
+        res,
+        next,
+        {
+          format: api.acceptedFormats.standard[req.query.format]
+            ? req.query.format
+            : "json",
+          compact: true,
+        },
+        {
+          data: result.rows,
+        },
+      );
+    });
   } else if (
     req.query.start_lng &&
     req.query.start_lat &&
@@ -78,10 +73,11 @@ module.exports = (req, res, next, cb) => {
       req.query.start_lng < req.query.end_lng
         ? req.query.end_lat
         : req.query.start_lat;
-    let params = {}
+    let params = {};
 
-    params['linestring'] = `SRID=4326;LINESTRING(${leftLng} ${leftLat}, ${rightLng} ${rightLat})`;
-    params['westPoint'] = `SRID=4326;POINT(${leftLng} ${leftLat})`;
+    params["linestring"] =
+      `SRID=4326;LINESTRING(${leftLng} ${leftLat}, ${rightLng} ${rightLat})`;
+    params["westPoint"] = `SRID=4326;POINT(${leftLng} ${leftLat})`;
 
     let sql = `WITH first AS (
         SELECT ST_SetSRID((ST_Dump(
@@ -113,32 +109,27 @@ module.exports = (req, res, next, cb) => {
           LIMIT 1
         ) AS elevation
       FROM first`;
-    larkin.queryPg(
-      "elevation",
-      sql,
-      params,
-      (error, result) => {
-        if (error) {
-          if (cb) return cb(error);
-          return larkin.error(req, res, next, "Internal error", 500);
-        }
-        if (cb) return cb(null, result.rows);
-        larkin.sendData(
-          req,
-          res,
-          next,
-          {
-            format: api.acceptedFormats.standard[req.query.format]
-              ? req.query.format
-              : "json",
-            compact: true,
-          },
-          {
-            data: result.rows,
-          },
-        );
-      },
-    );
+    larkin.queryPg("elevation", sql, params, (error, result) => {
+      if (error) {
+        if (cb) return cb(error);
+        return larkin.error(req, res, next, "Internal error", 500);
+      }
+      if (cb) return cb(null, result.rows);
+      larkin.sendData(
+        req,
+        res,
+        next,
+        {
+          format: api.acceptedFormats.standard[req.query.format]
+            ? req.query.format
+            : "json",
+          compact: true,
+        },
+        {
+          data: result.rows,
+        },
+      );
+    });
   } else {
     return larkin.error(req, res, next, "Invalid Parameters", 401);
   }

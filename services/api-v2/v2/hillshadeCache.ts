@@ -5,7 +5,7 @@ const redis = require("redis");
 const client = redis.createClient(6379, "127.0.0.1", { return_buffers: true });
 function removeMember(member) {
   client.zrem("hillshades", member, (error) => {
-    if (error) console.log(error);
+    if (error) larkin.trace(error);
   });
 }
 
@@ -65,13 +65,13 @@ module.exports = {
       `${aspect}|${hash}`,
       (error) => {
         if (error) {
-          console.log(error);
+          larkin.trace(error);
           return;
         }
 
         client.set(hash, buffer, (error) => {
           if (error) {
-            console.log(error);
+            larkin.trace(error);
             return;
           }
         });

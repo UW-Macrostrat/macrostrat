@@ -99,10 +99,11 @@ module.exports = {
 
   json: function (res) {
     if (!res.body || (!res.body.success && !res.body.error)) {
-      throw new Error("Request did not return valid JSON or unexpected structure");
+      throw new Error(
+        "Request did not return valid JSON or unexpected structure",
+      );
     }
   },
-
 
   csv: function (res) {
     if (res.body.length < 10) {
@@ -126,12 +127,12 @@ module.exports = {
   atLeastOneResult: function (res) {
     if (!res.body.success || !Array.isArray(res.body.success.data)) {
       console.error("Response body:", res.body);
-      throw new Error("Expected success.data to be an array but got something else or undefined");
+      throw new Error(
+        "Expected success.data to be an array but got something else or undefined",
+      );
     }
     if (res.body.success.data.length < 1) {
       throw new Error("Should have returned at least one result");
     }
   },
-
-
 };

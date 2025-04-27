@@ -77,7 +77,7 @@ module.exports = function (req, res, next) {
         : "";
     }
 
-    if (where.length < 1 && !(req.query.sample)) {
+    if (where.length < 1 && !req.query.sample) {
       return larkin.error(req, res, next, "Invalid params");
     }
 

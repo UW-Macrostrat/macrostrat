@@ -107,7 +107,7 @@ module.exports = (req, res, next) => {
     },
     (error, results) => {
       if (error) {
-        console.log(error);
+        larkin.trace(error);
         return larkin.error(req, res, next, error);
       }
 

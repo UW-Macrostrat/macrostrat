@@ -12,7 +12,7 @@ const named = require("yesql").pg;
 const { Client, Pool } = require("pg");
 
 (function () {
-  var larkin = {};
+  var larkin: any = {};
 
   /* larkin.connectMySQL = function () {
     // Non-blocking FTW
@@ -27,7 +27,6 @@ const { Client, Pool } = require("pg");
       }
     });
   };*/
-
 
   /*larkin.queryPg = function (db, sql, params, callback) {
     const nameMapping = credentials.postgresDatabases ?? {};
@@ -69,51 +68,49 @@ const { Client, Pool } = require("pg");
   };
 */
 
+  larkin.trace = function(...args: any[]) {
+    if (!credentials.debug) {
+      return;
+    }
+    console.log(...args);
+  }
+
   //added new method to query from Maria data in the new PG database after migration
   larkin.queryPg = function (db, sql, params, callback) {
     //add console.logs for debug mode in the future
     const nameMapping = credentials.postgresDatabases ?? {};
     const dbName = nameMapping[db] ?? db;
 
-    if (dbName == "geomacro") {
-      console.warn(
-        "In Macrostrat v2, 'geomacro' is merged with 'burwell' into the 'macrostrat' database.",
-      );
-    }
-
-    let connectionDetails;
+    let connectionDetails = {};
     const postgresCfg = credentials.pg;
 
     const inURLMode = postgresCfg.macrostratDatabaseURL != null;
     if (inURLMode) {
-      let connectionString = postgresCfg.macrostratDatabaseURL
+      let connectionString = postgresCfg.macrostratDatabaseURL;
       if (dbName == "elevation") {
-        connectionString = postgresCfg.elevationDatabaseURL
+        connectionString = postgresCfg.elevationDatabaseURL;
       }
       if (dbName == "alice") {
-        connectionString = postgresCfg.aliceDatabaseURL
+        connectionString = postgresCfg.aliceDatabaseURL;
       }
       if (dbName == "rockd") {
-        connectionString = postgresCfg.aliceDatabaseURL
+        connectionString = postgresCfg.rockdDatabaseURL;
+      }
+      if (dbName == "whos_on_first") {
+        connectionString = postgresCfg.whosOnFirstDatabaseURL;
       }
 
-      connectionDetails = { connectionString }
-
+      connectionDetails = { connectionString };
     } else {
-      connectionDetails = { ...credentials.pg }
-      if (dbName == "elevation") {
-        /* Special case for elevation database (temporary) */
-        connectionDetails.database = 'elevation'
-      }
-      if (dbName == "alice") {
-        connectionDetails.database = 'alice'
-      }
-      if (dbName == "rockd") {
-        connectionDetails.database = 'rockd'
+      connectionDetails = { ...credentials.pg };
+      // Attempt to infer the database name from the connection string
+      for (const dbname in ["elevation", "alice", "whos_on_first", "rockd"]) {
+        if (dbName == dbname) {
+          connectionDetails.database = dbname;
+        }
       }
     }
     const pool = new Pool(connectionDetails);
-    console.log(connectionDetails)
     const errorMessage = "invalid input value for enum";
 
     pool.connect(function (err, client, done) {
@@ -121,8 +118,8 @@ const { Client, Pool } = require("pg");
         larkin.log("error", "error connecting - " + err);
         callback(err);
       } else if (Array.isArray(params)) {
-        console.log("Params is array: \n", sql)
-        console.log(params)
+        larkin.trace("Params is array: \n", sql);
+        larkin.trace(params);
         client.query(sql, params, function (err, result) {
           done();
           if (err) {
@@ -132,31 +129,35 @@ const { Client, Pool } = require("pg");
             callback(null, result);
           }
         });
-      } else if (typeof(params) === 'object') {
+      } else if (typeof params === "object") {
         //named uses yesql to modify the params dict and sql named parameters into an array before querying PG.
         //client.query can only accept numerical indices in sql syntax and an array for parameter values.
         const preparedQuery = named(sql)(params);
-        console.log("Params is object, Yesql parsed query: ", preparedQuery.text);
-        console.log("Yesql parsed parameters: ", preparedQuery.values);
-        client.query(preparedQuery.text, preparedQuery.values, function (err, result) {
-          done();
-          if (err) {
-            larkin.log("error", err);
+        larkin.trace(
+          "Params is object, Yesql parsed query: ",
+          preparedQuery.text,
+        );
+        larkin.trace("Yesql parsed parameters: ", preparedQuery.values);
+        client.query(
+          preparedQuery.text,
+          preparedQuery.values,
+          function (err, result) {
+            done();
+            if (err) {
+              larkin.log("error", err);
               if (err.message.includes(errorMessage)) {
-                callback(null, {rows: []});
-              }
-              else {
+                callback(null, { rows: [] });
+              } else {
                 callback(err);
               }
-          } else {
-            callback(null, result);
-          }
-        });
+            } else {
+              callback(null, result);
+            }
+          },
+        );
       }
     });
   };
-
-
 
   larkin.toUnnamed = function (sql, params) {
     var placeholders = sql.match(
@@ -330,7 +331,7 @@ const { Client, Pool } = require("pg");
   };
 
   larkin.log = function (type, message) {
-    console.log(type, message);
+    larkin.trace(type, message);
   };
 
   // Will return all field definitions
@@ -589,7 +590,6 @@ const { Client, Pool } = require("pg");
       });
     }
 
-
     var ref_ids = _.uniq(
       _.flatten(
         data.map(function (d) {
@@ -598,12 +598,10 @@ const { Client, Pool } = require("pg");
       ),
     );
 
-
-
-
     // Macrostrat refs
     if (key === "refs" || key === "ref_id") {
-      larkin.queryPg("burwell",
+      larkin.queryPg(
+        "burwell",
         `SELECT refs.id                                AS ref_id,
                 pub_year,
                 author,
@@ -669,7 +667,7 @@ const { Client, Pool } = require("pg");
   // Check if Redis is available
   portscanner.checkPortStatus(6379, "127.0.0.1", function (error, status) {
     if (status === "open") {
-      console.log("Using Redis cache for columns");
+      larkin.trace("Using Redis cache for columns");
       var redis = require("redis");
       larkin.cache = redis.createClient(6379, "127.0.0.1");
       larkin.cache.fetch = function (key, callback) {
@@ -678,7 +676,7 @@ const { Client, Pool } = require("pg");
         });
       };
     } else {
-      console.log("Using application cache for columns");
+      larkin.trace("Using application cache for columns");
       larkin.cache = require("memory-cache");
       larkin.cache.fetch = function (key, callback) {
         callback(larkin.cache.get(key));
@@ -702,7 +700,7 @@ const { Client, Pool } = require("pg");
         unitSummary: function (callback) {
           //get all units and summarize for columns
           http.get(
-              //TODO: change url to match env.
+            //TODO: change url to match env.
             "http://localhost:5000/v2/units?all&response=long",
             function (res) {
               var body = "";
@@ -710,19 +708,22 @@ const { Client, Pool } = require("pg");
                 body += chunk;
               });
               res.on("end", function () {
-              try {
-                var parsedBody = JSON.parse(body);
-                // Process the JSON as needed
-              } catch (e) {
-                console.error('Failed to parse JSON:', e);
-                console.error('Response body:', body); // Log the actual body for debugging
-              }
+                try {
+                  var parsedBody = JSON.parse(body);
+                  // Process the JSON as needed
+                } catch (e) {
+                  console.error("Failed to parse JSON:", e);
+                  console.error("Response body:", body); // Log the actual body for debugging
+                }
 
-
-              if (parsedBody && parsedBody.success && parsedBody.success.data) {
-                var result = parsedBody.success.data;
-              } else {
-                console.error('Invalid response body:', body);
+                if (
+                  parsedBody &&
+                  parsedBody.success &&
+                  parsedBody.success.data
+                ) {
+                  var result = parsedBody.success.data;
+                } else {
+                  console.error("Invalid response body:", body);
                 }
                 var cols = _.groupBy(result, function (d) {
                   return d.col_id;
@@ -833,7 +834,7 @@ const { Client, Pool } = require("pg");
               if (!error && result && result.rows) {
                 callback(null, result.rows);
               } else {
-                console.log(
+                larkin.trace(
                   "Could not set up column cache. Check postgres connection",
                 );
                 callback(null);
@@ -868,7 +869,7 @@ const { Client, Pool } = require("pg");
               if (!error && result && result.rows) {
                 callback(null, result.rows);
               } else {
-                console.log(
+                larkin.trace(
                   "Could not set up column cache. Check postgres connection",
                 );
                 callback(null);
@@ -892,7 +893,7 @@ const { Client, Pool } = require("pg");
           larkin.cache.put("columnsNoGeom", results.columnsNoGeom);
         }
 
-        console.log("Done prepping column cache");
+        larkin.trace("Done prepping column cache");
       },
     );
   };

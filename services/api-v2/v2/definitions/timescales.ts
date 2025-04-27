@@ -5,8 +5,7 @@ module.exports = function (req, res, next, cb) {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
-  var sql =
-    `SELECT timescales.id AS timescale_id, 
+  var sql = `SELECT timescales.id AS timescale_id, 
        timescale, 
        count(distinct intervals.id)::integer AS n_intervals, 
        MAX( age_bottom )::float AS max_age, 

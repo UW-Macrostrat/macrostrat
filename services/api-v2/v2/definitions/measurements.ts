@@ -6,8 +6,7 @@ module.exports = function (req, res, next, cb) {
     return larkin.info(req, res, next);
   }
 
-  var sql =
-      `SELECT measurements.id AS measure_id,
+  var sql = `SELECT measurements.id AS measure_id,
        measurement AS name, 
        measurement_type AS type, 
        measurement_class AS class, 

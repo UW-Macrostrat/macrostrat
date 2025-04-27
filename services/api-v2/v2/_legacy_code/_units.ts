@@ -570,7 +570,7 @@ module.exports = function (req, res, next, cb) {
 
         larkin.query(sql, params, function (error, result) {
           if (error) {
-            console.log(error);
+            larkin.trace(error);
             callback(error);
           } else {
             if (req.query.response === "long" || cb) {
@@ -659,7 +659,7 @@ module.exports = function (req, res, next, cb) {
     ],
     function (error, data, result) {
       if (error) {
-        console.log(error);
+        larkin.trace(error);
         if (cb) {
           cb(error);
         } else {
@@ -689,6 +689,3 @@ module.exports = function (req, res, next, cb) {
     },
   );
 };
-
-
-

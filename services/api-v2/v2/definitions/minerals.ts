@@ -6,8 +6,7 @@ module.exports = function (req, res, next, cb) {
     return larkin.info(req, res, next);
   }
 
-  var sql =
-    `SELECT minerals.id AS mineral_id, 
+  var sql = `SELECT minerals.id AS mineral_id, 
        mineral AS mineral, 
        min_type as mineral_type, 
        formula AS formula, 
@@ -31,7 +30,9 @@ module.exports = function (req, res, next, cb) {
     params["mineral"] = larkin.parseMultipleStrings(req.query.mineral);
   } else if (req.query.mineral_type) {
     sql += " WHERE min_type ILIKE ANY(:mineral_type)";
-    params["mineral_type"] = larkin.parseMultipleStrings(req.query.mineral_type);
+    params["mineral_type"] = larkin.parseMultipleStrings(
+      req.query.mineral_type,
+    );
   } else if (req.query.element) {
     /*TODO ensure element param works with abbreviations*/
     var parsedElements = larkin

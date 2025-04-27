@@ -4,19 +4,18 @@ var settings = require("./settings");
 //import { app } from "../../server";
 var request = require("supertest");
 
-import * as fs from 'fs';
-import * as path from 'path';
-
+import * as fs from "fs";
+import * as path from "path";
 
 const endpointsToFix = [
-    //can't find the gmna.lookup_units table. 'geologic_units_gmna.ts',
-    //'geologic_units_gmus.ts'
-    //'mancos_test_cases.ts',
-    //uses gmus.lookup_units table. queries need to be customized and changed to match all of the lookup tables within postgresql
+  //can't find the gmna.lookup_units table. 'geologic_units_gmna.ts',
+  //'geologic_units_gmus.ts'
+  //'mancos_test_cases.ts',
+  //uses gmus.lookup_units table. queries need to be customized and changed to match all of the lookup tables within postgresql
   //'tiles.ts'
-]
+];
 const testFiles = [
- /*'carto_small.ts',
+  /*'carto_small.ts',
     'columns.ts',
     'defs.ts',
     'defs_columns.ts',
@@ -42,22 +41,19 @@ const testFiles = [
     'mobile_fossil_collections.ts',
     'mobile_macro_summary.ts',
     'mobile_map_query.ts',*/
-    'mobile_point.ts',
-   'mobile_point_details.ts',
-    'paleogeography.ts',
-    'root.ts',
-    'sections.ts',
-    'stats.ts' ]
+  "mobile_point.ts",
+  "mobile_point_details.ts",
+  "paleogeography.ts",
+  "root.ts",
+  "sections.ts",
+  "stats.ts",
+];
 
-
-
-const testDir = path.join(__dirname, 'v2Tests');
+const testDir = path.join(__dirname, "v2Tests");
 
 testFiles.forEach((file) => {
-    describe(file, function () {
-        console.log(`Loading test file: ${file}`);
-        require(path.join(testDir, file));
-    });
+  describe(file, function () {
+    console.log(`Loading test file: ${file}`);
+    require(path.join(testDir, file));
+  });
 });
-
-

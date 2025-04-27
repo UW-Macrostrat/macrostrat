@@ -6,8 +6,7 @@ module.exports = function (req, res, next, cb) {
     return larkin.info(req, res, next);
   }
 
-  let sql =
-      `SELECT environs.id AS environ_id, 
+  let sql = `SELECT environs.id AS environ_id, 
        environ AS name, 
        environ_type AS type, 
        environ_class AS class, 
@@ -16,7 +15,7 @@ module.exports = function (req, res, next, cb) {
     FROM macrostrat.environs 
         LEFT JOIN macrostrat.unit_environs ON unit_environs.environ_id = environs.id 
         LEFT JOIN macrostrat.units_sections ON units_sections.unit_id = unit_environs.unit_id
-    `
+    `;
   let environ = {};
 
   if (req.query.all) {
@@ -26,13 +25,13 @@ module.exports = function (req, res, next, cb) {
     environ["environ_class"] = req.query.environ_class;
   } else if (req.query.environ_type) {
     sql += "WHERE environ_type = :environ_type";
-    environ["environ_type"] =req.query.environ_type;
+    environ["environ_type"] = req.query.environ_type;
   } else if (req.query.environ) {
     sql += "WHERE environ = :environ";
     environ["environ"] = req.query.environ;
   } else if (req.query.environ_id) {
     sql += "WHERE environs.id = :environ_id";
-    environ["environ_id"]= req.query.environ_id;
+    environ["environ_id"] = req.query.environ_id;
   }
 
   sql += "\nGROUP BY environs.id\n";

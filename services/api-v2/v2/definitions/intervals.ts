@@ -10,26 +10,24 @@ module.exports = function (req, res, next, cb) {
   }
 
   //updated params back to dict
-  let params = {}
-  let where = []
-  let where_final= "";
+  let params = {};
+  let where = [];
+  let where_final = "";
   let groupby = "";
   let limit = "";
   let color = "";
 
-
   if (req.query.timescale) {
     where.push("timescale ILIKE :timescale");
     params["timescale"] = req.query.timescale;
-  }
-  else if (req.query.timescale_id) {
+  } else if (req.query.timescale_id) {
     where.push("timescales.id = ANY(:timescale_id)");
     params["timescale_id"] = larkin.parseMultipleIds(req.query.timescale_id);
   }
 
   if (req.query.interval_name) {
     where.push("intervals.interval_name ILIKE :name");
-    params["name"] = '%' + req.query.interval_name + '%';
+    params["name"] = "%" + req.query.interval_name + "%";
   }
 
   if (req.query.name_like) {
@@ -50,29 +48,26 @@ module.exports = function (req, res, next, cb) {
       );
       params["b_age"] = req.query.b_age;
       params["t_age"] = req.query.t_age;
-    }
-    else if (req.query.rule === "exact") {
+    } else if (req.query.rule === "exact") {
       where.push(
         "intervals.age_top = :t_age AND intervals.age_bottom = :b_age",
       );
       params["b_age"] = req.query.b_age;
       params["t_age"] = req.query.t_age;
-    }
-    else {
+    } else {
       where.push(
         "intervals.age_bottom > :t_age AND intervals.age_top < :b_age",
       );
       params["b_age"] = req.query.b_age;
       params["t_age"] = req.query.t_age;
     }
-  }
-  else if (req.query.age) {
+  } else if (req.query.age) {
     where.push("intervals.age_top <= :age AND intervals.age_bottom >= :age");
     params["age"] = req.query.age;
   }
 
-  groupby = "GROUP BY intervals.id, interval_name, interval_abbrev, age_top, age_bottom, interval_type, ";
-
+  groupby =
+    "GROUP BY intervals.id, interval_name, interval_abbrev, age_top, age_bottom, interval_type, ";
 
   if (req.query.true_colors) {
     color = "orig_color AS color ";
@@ -80,7 +75,6 @@ module.exports = function (req, res, next, cb) {
   } else {
     color = "interval_color AS color ";
     groupby += "interval_color ORDER BY age_top ASC";
-
   }
 
   if (where.length > 0) {
@@ -112,18 +106,14 @@ module.exports = function (req, res, next, cb) {
     ${limit}
   `;
 
-  larkin.queryPg("burwell",
-      sql,
-      params, function (error, result) {
+  larkin.queryPg("burwell", sql, params, function (error, result) {
     if (error) {
       if (cb) {
         cb(error);
       } else {
         return larkin.error(req, res, next, "Something went wrong");
       }
-    }
-
-    else {
+    } else {
       /*
       if (req.query.format !== "csv" || req.query.format == undefined) {
         result.rows.forEach(function (d) {
@@ -141,11 +131,10 @@ module.exports = function (req, res, next, cb) {
         });
       } */
 
-
       if (cb) {
         cb(null, result.rows);
       } else {
-        result.rows
+        result.rows;
 
         larkin.sendData(
           req,

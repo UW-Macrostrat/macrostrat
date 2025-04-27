@@ -62,7 +62,6 @@ module.exports = function (req, res, next, cb) {
         return larkin.error(req, res, next, error);
       }
     } else {
-
       /*TODO: update data types and foreach function.
       result.forEach(function (d) {
         d.int_id = parseInt(d.int_id);

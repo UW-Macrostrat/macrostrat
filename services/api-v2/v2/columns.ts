@@ -37,7 +37,7 @@ module.exports = function (req, res, next, callback) {
           if (!result || !result.length) {
             return callback(null, null);
           }
-          console.log(result[0])
+          larkin.trace(result[0]);
           var cols = _.groupBy(result, function (d) {
             return d.col_id;
           });
@@ -154,7 +154,6 @@ module.exports = function (req, res, next, callback) {
           }),
         ];
 
-
         var limit = "sample" in req.query ? " LIMIT 5" : "";
         var groupBy = "";
         var orderby = "";
@@ -184,7 +183,8 @@ module.exports = function (req, res, next, callback) {
               larkin.normalizeLng(req.query.lng) +
               " " +
               req.query.lat +
-              ")");
+              ")",
+          );
           groupBy = ", col_areas.col_area";
         } else if (req.query.col_id && req.query.adjacents) {
           orderby =
@@ -234,7 +234,7 @@ module.exports = function (req, res, next, callback) {
     ],
     function (error, unit_data, column_data) {
       if (error) {
-        console.log(error);
+        larkin.trace(error);
         if (callback) {
           return callback(error);
         }
