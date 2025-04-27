@@ -65,7 +65,7 @@ except SubsystemLoadError as err:
 # and return the output, instead of continuing with the CLI.
 # TODO: integrate this more with the typer app so that user commands cannot override
 # existing commands.
-run_user_command_if_provided()
+run_user_command_if_provided(*settings.script_dirs)
 
 # Now, we render the warnings in the CLI help text
 if warnings:

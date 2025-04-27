@@ -4,13 +4,12 @@ from typing import Optional
 
 from dotenv import load_dotenv
 from dynaconf import Dynaconf, Validator
+from macrostrat.app_frame.control_command import BackendType
+from macrostrat.utils import get_logger
 from pydantic import BaseModel
 from sqlalchemy.engine import make_url
 from sqlalchemy.engine.url import URL
 from toml import load as load_toml
-
-from macrostrat.app_frame.control_command import BackendType
-from macrostrat.utils import get_logger
 
 from .utils import find_macrostrat_config
 
@@ -74,6 +73,7 @@ settings.validators.register(
     # `must_exist` is causing huge problems
     Validator("COMPOSE_ROOT", cast=Path),
     Validator("env_files", cast=list[Path]),
+    Validator("script_dirs", cast=list[Path]),
     Validator("pg_database", cast=convert_to_string, default=None),
     # Backend information. We could potentially infer this from other environment variables
     Validator("backend", default="kubernetes", cast=BackendType),
