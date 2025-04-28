@@ -29,7 +29,9 @@ class StorageSchemeMigration(Migration):
         )
 
         db.run_sql("GRANT USAGE ON SCHEMA storage TO macrostrat;")
-        db.run_sql("GRANT SELECT, REFERENCES ON ALL TABLES IN SCHEMA storage TO macrostrat;")
+        db.run_sql(
+            "GRANT SELECT, REFERENCES ON ALL TABLES IN SCHEMA storage TO macrostrat;"
+        )
         db.run_sql("GRANT USAGE ON ALL SEQUENCES IN SCHEMA storage TO macrostrat;")
         db.run_sql("GRANT USAGE ON ALL TYPES IN SCHEMA storage TO macrostrat;")
 
