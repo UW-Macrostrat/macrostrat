@@ -43,3 +43,9 @@ ALTER SEQUENCE storage.object_id_seq OWNER TO macrostrat;
 ALTER SEQUENCE storage.object_id_seq OWNED BY storage.object.id;
 
 GRANT ALL ON DATABASE macrostrat TO postgrest;
+
+--give macrostrat user SELECT and INSERT on all tables in the storage schema
+GRANT SELECT, INSERT ON ALL TABLES IN SCHEMA storage TO macrostrat;
+GRANT USAGE ON SCHEMA storage TO macrostrat;
+
+

@@ -1,15 +1,13 @@
-from pathlib import Path
-
-import pytest
 from psycopg2.sql import Identifier
-from sqlalchemy import create_engine, text
-
-from macrostrat.core.database import Database
 from macrostrat.map_integration.commands.ingest import ingest_map
-from macrostrat.map_integration.commands.prepare_fields import _prepare_fields
-from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
-from macrostrat.map_integration.utils.file_discovery import find_gis_files
 from macrostrat.map_integration.utils.map_info import get_map_info
+from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
+from macrostrat.map_integration.commands.prepare_fields import _prepare_fields
+from macrostrat.map_integration.utils.file_discovery import find_gis_files
+from pathlib import Path
+import pytest
+from sqlalchemy import create_engine, text
+from macrostrat.core.database import Database
 
 
 def test_maps_tables_exist(db):
@@ -23,30 +21,30 @@ def test_maps_tables_exist(db):
 
 def test_get_database(db):
     from macrostrat.core.database import db_ctx
-
     db_ctx.set(db)
     from macrostrat.map_integration.database import get_database
-
     db1 = get_database()
     assert db1 is db
 
-
+'''
 @pytest.fixture(scope="session", autouse=True)
 def allow_macrostrat_login():
-    super_engine = create_engine("postgresql://postgres@localhost:54884/postgres")
+    super_engine = create_engine("postgresql://postgres@localhost:54884/postgres?sslmode=disable")
     with super_engine.connect() as conn:
         conn.execute(text("ALTER ROLE macrostrat LOGIN"))
         conn.commit()
 
 
+
 @pytest.fixture
-def db_as_macrostrat():
+def db_as_macrostrat(allow_macrostrat_login):
     # Adjust to match your test DB port
-    url = "postgresql://macrostrat@localhost:54884/macrostrat"
+    url = "postgresql://macrostrat@localhost:54884/macrostrat?sslmode=disable"
     engine = create_engine(url)
     db = Database(engine)
     yield db
-    engine.dispose()
+    engine.dispose()'''
+
 
 
 @pytest.fixture
@@ -56,22 +54,24 @@ def test_maps():
         "data_path": Path(__file__).parent / "fixtures" / "maps" / "Itaete",
         "name": "Test Map",
         "scale": "large",
-        "object_group_id": 1,
         "filter": None,
     }
 
 
-def test_map_staging(db_as_macrostrat, test_maps):
+
+
+def test_map_staging(db, test_maps):
     """
     Ingest a map, update metadata, prepare fields, and build geometries.
     """
-    db = db_as_macrostrat
+    #db = db_as_macrostrat
     slug = test_maps["slug"]
     data_path = test_maps["data_path"]
     name = test_maps["name"]
     scale = test_maps["scale"]
-    object_group_id = test_maps["object_group_id"]
     filter = test_maps["filter"]
+
+
 
     print(f"Ingesting {slug} from {data_path}")
 
@@ -91,10 +91,8 @@ def test_map_staging(db_as_macrostrat, test_maps):
     # Ingest
     ingest_map(slug, gis_files, if_exists="replace")
 
-    print("Current user:", db.run_query("SELECT current_user").scalar())
-
     source_id = db.run_query(
-        "SELECT source_id FROM maps.sources WHERE slug ilike :slug",
+        "SELECT source_id FROM maps.sources WHERE slug = :slug",
         dict(slug=slug),
     ).scalar()
 
@@ -112,16 +110,22 @@ def test_map_staging(db_as_macrostrat, test_maps):
             dict(scale=scale, source_id=source_id),
         )
 
-    # object_group_id is a foreign key into the storage schema where the curr user postgres does not have access to.
-    # the storage.sql ALTER TABLE storage.object OWNER TO macrostrat is switching the owner.
-    # we are temporarily using macrostrat to run the query below
+    #object_group_id is a foreign key into the storage schema where the curr user postgres does not have access to.
+    #the storage.sql ALTER TABLE storage.object OWNER TO macrostrat is switching the owner.
+    #we are temporarily using macrostrat to run the query below
+    object_group_id = db.run_query(
+        "INSERT INTO storage.object_group DEFAULT VALUES RETURNING id"
+    ).scalar()
+
+    print("This is the object id inserted: ", object_group_id)
+    assert object_group_id is not None
 
     db.run_sql(
         """
         INSERT INTO maps_metadata.ingest_process (state, source_id, object_group_id)
-        VALUES ('ingested', :source_id, :object_group_id);
+        VALUES (:state, :source_id, :object_group_id);
         """,
-        dict(source_id=source_id, object_group_id=object_group_id),
+        dict(state='ingested',source_id=source_id, object_group_id=object_group_id),
     )
 
     map_info = get_map_info(db, slug)
@@ -129,25 +133,34 @@ def test_map_staging(db_as_macrostrat, test_maps):
     create_rgeom(map_info)
     create_webgeom(map_info)
 
-    # Metadata assertions
+    #Metadata assertions
     row = db.run_query(
         "SELECT name, scale FROM maps.sources WHERE source_id = :source_id",
         dict(source_id=source_id),
     ).fetchone()
+    print("This is the row: ", row)
     assert row is not None
     assert row.name == name
     assert row.scale == scale
 
-    # Ingest process assertions
+    #Ingest process assertions
     ingest_process = db.run_query(
-        "SELECT state, object_group_id FROM maps_metadata.ingest_process WHERE source_id = :source_id",
+        "SELECT source_id, object_group_id, state FROM maps_metadata.ingest_process WHERE source_id = :source_id",
         dict(source_id=source_id),
     ).fetchone()
+    print("This is the ingest_process: ", ingest_process)
     assert ingest_process is not None
     assert ingest_process.state == "ingested"
     assert ingest_process.object_group_id == object_group_id
 
-    # Geometry column assertions
+    
+    #Data exists
+    count = db.run_query(
+        f"SELECT COUNT(*) FROM sources.{slug}_polygons"
+    ).scalar()
+    assert count > 0
+
+    #Geometry column assertions
     cols = db.run_query(
         """
         SELECT column_name FROM information_schema.columns
@@ -158,6 +171,7 @@ def test_map_staging(db_as_macrostrat, test_maps):
     assert "rgeom" in cols
     assert "webgeom" in cols
 
-    # Data exists
-    count = db.run_query(f"SELECT COUNT(*) FROM sources.{slug}_polygons").scalar()
-    assert count > 0
+
+
+
+
