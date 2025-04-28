@@ -117,7 +117,6 @@ def test_map_staging(db, test_maps):
         "INSERT INTO storage.object_group DEFAULT VALUES RETURNING id"
     ).scalar()
 
-    print("This is the object id inserted: ", object_group_id)
     assert object_group_id is not None
 
     db.run_sql(
@@ -138,7 +137,6 @@ def test_map_staging(db, test_maps):
         "SELECT name, scale FROM maps.sources WHERE source_id = :source_id",
         dict(source_id=source_id),
     ).fetchone()
-    print("This is the row: ", row)
     assert row is not None
     assert row.name == name
     assert row.scale == scale
@@ -148,7 +146,6 @@ def test_map_staging(db, test_maps):
         "SELECT source_id, object_group_id, state FROM maps_metadata.ingest_process WHERE source_id = :source_id",
         dict(source_id=source_id),
     ).fetchone()
-    print("This is the ingest_process: ", ingest_process)
     assert ingest_process is not None
     assert ingest_process.state == "ingested"
     assert ingest_process.object_group_id == object_group_id
@@ -161,16 +158,23 @@ def test_map_staging(db, test_maps):
     assert count > 0
 
     #Geometry column assertions
-    cols = db.run_query(
+    rgeom = db.run_query(
         """
-        SELECT column_name FROM information_schema.columns
-        WHERE table_schema = 'sources' AND table_name ilike :table
+        SELECT rgeom FROM maps.sources WHERE slug = :slug
         """,
-        dict(table=f"{slug}_polygons"),
-    ).scalars()
-    assert "rgeom" in cols
-    assert "webgeom" in cols
+        dict(slug=slug),
+    ).fetchone()
+    assert rgeom is not None
 
+    web_geom = db.run_query(
+        """
+        SELECT web_geom FROM maps.sources WHERE slug = :slug
+        """,
+        dict(slug=slug),
+    ).fetchone()
+    assert web_geom is not None
+
+    print("All tests have passed the map ingestion staging test suite!")
 
 
 
