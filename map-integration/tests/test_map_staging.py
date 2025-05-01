@@ -53,7 +53,6 @@ def test_maps():
         "slug": "test_map",
         "data_path": Path(__file__).parent / "fixtures" / "maps" / "Itaete",
         "name": "Test Map",
-        "scale": "large",
         "filter": None,
     }
 
@@ -68,7 +67,6 @@ def test_map_staging(db, test_maps):
     slug = test_maps["slug"]
     data_path = test_maps["data_path"]
     name = test_maps["name"]
-    scale = test_maps["scale"]
     filter = test_maps["filter"]
 
 
@@ -104,11 +102,11 @@ def test_map_staging(db, test_maps):
             "UPDATE maps.sources SET name = :name WHERE source_id = :source_id",
             dict(name=name, source_id=source_id),
         )
-    if scale:
-        db.run_sql(
-            "UPDATE maps.sources SET scale = :scale WHERE source_id = :source_id",
-            dict(scale=scale, source_id=source_id),
-        )
+
+    db.run_sql(
+        "UPDATE maps.sources SET scale = :scale WHERE source_id = :source_id",
+        dict(scale="large", source_id=source_id),
+    )
 
     #object_group_id is a foreign key into the storage schema where the curr user postgres does not have access to.
     #the storage.sql ALTER TABLE storage.object OWNER TO macrostrat is switching the owner.
@@ -124,7 +122,7 @@ def test_map_staging(db, test_maps):
         INSERT INTO maps_metadata.ingest_process (state, source_id, object_group_id)
         VALUES (:state, :source_id, :object_group_id);
         """,
-        dict(state='ingested',source_id=source_id, object_group_id=object_group_id),
+        dict(state='ingested', source_id=source_id, object_group_id=object_group_id),
     )
 
     map_info = get_map_info(db, slug)
@@ -139,7 +137,7 @@ def test_map_staging(db, test_maps):
     ).fetchone()
     assert row is not None
     assert row.name == name
-    assert row.scale == scale
+    assert row.scale == "large"
 
     #Ingest process assertions
     ingest_process = db.run_query(
