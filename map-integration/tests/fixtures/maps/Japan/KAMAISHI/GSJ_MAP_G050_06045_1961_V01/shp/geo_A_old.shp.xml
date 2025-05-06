@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata xml:lang="ja"><Esri><CreaDate>20240515</CreaDate><CreaTime>15120200</CreaTime><ArcGISFormat>1.0</ArcGISFormat><SyncOnce>TRUE</SyncOnce><DataProperties><lineage><Process ToolSource="c:\program files\arcgis\pro\Resources\ArcToolbox\toolboxes\Data Management Tools.tbx\Rename" Date="20240515" Time="151202">Rename Z:\5M-data\2021\Level3\GSJ_MAP_G050_06045_1961_V01\shp\geo_A.shp Z:\5M-data\2021\Level3\GSJ_MAP_G050_06045_1961_V01\shp\geo_A_old.shp ShapeFile</Process></lineage></DataProperties></Esri></metadata>
