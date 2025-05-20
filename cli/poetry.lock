@@ -186,6 +186,18 @@ tests = ["pytest (>=3.2.1,!=3.3.0)"]
 typecheck = ["mypy"]
 
 [[package]]
+name = "boto"
+version = "2.49.0"
+description = "Amazon Web Services Library"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "boto-2.49.0-py2.py3-none-any.whl", hash = "sha256:147758d41ae7240dc989f0039f27da8ca0d53734be0eb869ef16e3adcfa462e8"},
+    {file = "boto-2.49.0.tar.gz", hash = "sha256:ea0d3b40a2d852767be77ca343b58a9e3a4b00d9db440efb8da74b4e58025e5a"},
+]
+
+[[package]]
 name = "certifi"
 version = "2024.8.30"
 description = "Python package for providing Mozilla's CA Bundle."
@@ -829,6 +841,24 @@ files = [
 ]
 
 [[package]]
+name = "htpheno-radosgw-admin-client"
+version = "0.8.2"
+description = "Client for the Ceph Object Gateway Admin Operations API"
+optional = false
+python-versions = ">=3.9,<4.0"
+groups = ["main"]
+files = []
+develop = true
+
+[package.dependencies]
+humanize = "~4.11"
+radosgw-admin = "~1.7"
+
+[package.source]
+type = "directory"
+url = "../submodules/storage-admin"
+
+[[package]]
 name = "httpcore"
 version = "1.0.7"
 description = "A minimal low-level HTTP client."
@@ -875,6 +905,21 @@ cli = ["click (==8.*)", "pygments (==2.*)", "rich (>=10,<14)"]
 http2 = ["h2 (>=3,<5)"]
 socks = ["socksio (==1.*)"]
 zstd = ["zstandard (>=0.18.0)"]
+
+[[package]]
+name = "humanize"
+version = "4.11.0"
+description = "Python humanize utilities"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "humanize-4.11.0-py3-none-any.whl", hash = "sha256:b53caaec8532bcb2fff70c8826f904c35943f8cecaca29d272d9df38092736c0"},
+    {file = "humanize-4.11.0.tar.gz", hash = "sha256:e66f36020a2d5a974c504bd2555cf770621dbdbb6d82f94a6857c0b1ea2608be"},
+]
+
+[package.extras]
+tests = ["freezegun", "pytest", "pytest-cov"]
 
 [[package]]
 name = "idna"
@@ -2131,6 +2176,21 @@ files = [
 ]
 
 [[package]]
+name = "radosgw-admin"
+version = "1.7.2"
+description = "Ceph RADOS Gateway (rgw) admin operations REST API"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "radosgw-admin-1.7.2.tar.gz", hash = "sha256:ac05f78ec41caaef4209f90932b857704aa031017bf31faa7f30ec0d7fc80471"},
+    {file = "radosgw_admin-1.7.2-py2.py3-none-any.whl", hash = "sha256:c22ade8e75397717a37ffa9277be2658d2e71c09942eac8eb9d5807a751abf30"},
+]
+
+[package.dependencies]
+boto = "*"
+
+[[package]]
 name = "requests"
 version = "2.32.3"
 description = "Python HTTP for Humans."
@@ -2731,4 +2791,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "e18b91d8634b6cfa5e5bd5ec79d0672f969ec5711080a00bab4342f4c6b6ff74"
+content-hash = "24dbacc19f193f84b9a6bb6ef37a5d1ba9509a48e7cd85a84e8e698bd7e943ce"

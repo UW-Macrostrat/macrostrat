@@ -49,6 +49,17 @@ class MacrostratConfig(Dynaconf):
             next(keys)
             return [k for k in keys]
 
+    def get(self, key, default=None):
+        if not "." in key:
+            return getattr(self, key, default)
+
+        keys = key.split(".")
+        for k in keys:
+            if k not in self:
+                return default
+            self = getattr(self, k)
+        return self
+
 
 settings = MacrostratConfig()
 

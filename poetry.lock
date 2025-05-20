@@ -252,6 +252,18 @@ jupyter = ["ipython (>=7.8.0)", "tokenize-rt (>=3.2.0)"]
 uvloop = ["uvloop (>=0.15.2)"]
 
 [[package]]
+name = "boto"
+version = "2.49.0"
+description = "Amazon Web Services Library"
+optional = false
+python-versions = "*"
+groups = ["main", "gis"]
+files = [
+    {file = "boto-2.49.0-py2.py3-none-any.whl", hash = "sha256:147758d41ae7240dc989f0039f27da8ca0d53734be0eb869ef16e3adcfa462e8"},
+    {file = "boto-2.49.0.tar.gz", hash = "sha256:ea0d3b40a2d852767be77ca343b58a9e3a4b00d9db440efb8da74b4e58025e5a"},
+]
+
+[[package]]
 name = "certifi"
 version = "2025.1.31"
 description = "Python package for providing Mozilla's CA Bundle."
@@ -902,6 +914,24 @@ files = [
 ]
 
 [[package]]
+name = "htpheno-radosgw-admin-client"
+version = "0.8.2"
+description = "Client for the Ceph Object Gateway Admin Operations API"
+optional = false
+python-versions = ">=3.9,<4.0"
+groups = ["main", "gis"]
+files = []
+develop = true
+
+[package.dependencies]
+humanize = "~4.11"
+radosgw-admin = "~1.7"
+
+[package.source]
+type = "directory"
+url = "submodules/storage-admin"
+
+[[package]]
 name = "httpcore"
 version = "1.0.7"
 description = "A minimal low-level HTTP client."
@@ -948,6 +978,21 @@ cli = ["click (==8.*)", "pygments (==2.*)", "rich (>=10,<14)"]
 http2 = ["h2 (>=3,<5)"]
 socks = ["socksio (==1.*)"]
 zstd = ["zstandard (>=0.18.0)"]
+
+[[package]]
+name = "humanize"
+version = "4.11.0"
+description = "Python humanize utilities"
+optional = false
+python-versions = ">=3.9"
+groups = ["main", "gis"]
+files = [
+    {file = "humanize-4.11.0-py3-none-any.whl", hash = "sha256:b53caaec8532bcb2fff70c8826f904c35943f8cecaca29d272d9df38092736c0"},
+    {file = "humanize-4.11.0.tar.gz", hash = "sha256:e66f36020a2d5a974c504bd2555cf770621dbdbb6d82f94a6857c0b1ea2608be"},
+]
+
+[package.extras]
+tests = ["freezegun", "pytest", "pytest-cov"]
 
 [[package]]
 name = "idna"
@@ -1086,6 +1131,7 @@ dynaconf = "^3.1.12"
 Fiona = "^1.8.22"
 geopandas = "^0.14.1"
 greenlet = "^3.0.3"
+"htpheno.radosgw-admin-client" = {path = "../submodules/storage-admin", develop = true}
 ipython = "^8.5.0"
 "macrostrat.app-frame" = "^2.1.0"
 "macrostrat.core" = {path = "../core", develop = true}
@@ -2306,6 +2352,21 @@ files = [
     {file = "PyYAML-6.0.2-cp39-cp39-win_amd64.whl", hash = "sha256:39693e1f8320ae4f43943590b49779ffb98acb81f788220ea932a6b6c51004d8"},
     {file = "pyyaml-6.0.2.tar.gz", hash = "sha256:d584d9ec91ad65861cc08d42e834324ef890a082e591037abe114850ff7bbc3e"},
 ]
+
+[[package]]
+name = "radosgw-admin"
+version = "1.7.2"
+description = "Ceph RADOS Gateway (rgw) admin operations REST API"
+optional = false
+python-versions = "*"
+groups = ["main", "gis"]
+files = [
+    {file = "radosgw-admin-1.7.2.tar.gz", hash = "sha256:ac05f78ec41caaef4209f90932b857704aa031017bf31faa7f30ec0d7fc80471"},
+    {file = "radosgw_admin-1.7.2-py2.py3-none-any.whl", hash = "sha256:c22ade8e75397717a37ffa9277be2658d2e71c09942eac8eb9d5807a751abf30"},
+]
+
+[package.dependencies]
+boto = "*"
 
 [[package]]
 name = "requests"
