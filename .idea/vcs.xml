@@ -15,6 +15,10 @@
           <option name="issueRegexp" value="\(#(\d+)\)" />
           <option name="linkRegexp" value="https://github.com/Mapboard/topology-manager/issues/$1" />
         </IssueNavigationLink>
+        <IssueNavigationLink>
+          <option name="issueRegexp" value="\(#(\d+)\)" />
+          <option name="linkRegexp" value="https://github.com/UW-Macrostrat/radosgw_admin_client/issues/$1" />
+        </IssueNavigationLink>
       </list>
     </option>
   </component>

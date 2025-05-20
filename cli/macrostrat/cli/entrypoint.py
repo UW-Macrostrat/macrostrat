@@ -18,6 +18,7 @@ from .subsystems.paleogeography import (
     SubsystemLoadError,
     build_paleogeography_subsystem,
 )
+from .utils import run_user_command_if_provided
 from .v1_entrypoint import v1_cli
 from .v2_commands import app as v2_app
 
@@ -25,7 +26,6 @@ __here__ = Path(__file__).parent
 fixtures_dir = __here__ / "fixtures"
 
 install(show_locals=False)
-
 
 app.subsystems.add(db_subsystem)
 
@@ -62,6 +62,11 @@ try:
 except SubsystemLoadError as err:
     warnings.append(str(err))
 
+# If the user has macrostrat-<command> on their path, we want to run it as a subprocess
+# and return the output, instead of continuing with the CLI.
+# TODO: integrate this more with the typer app so that user commands cannot override
+# existing commands.
+run_user_command_if_provided(*settings.script_dirs)
 
 # Now, we render the warnings in the CLI help text
 if warnings:
@@ -81,6 +86,7 @@ main.add_typer(
     short_help="Manage the Macrostrat database",
     aliases=["db"],
 )
+
 
 for sub in subsystem_commands:
     main.add_typer(sub, rich_help_panel="Subsystems")
