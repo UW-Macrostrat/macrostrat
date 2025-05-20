@@ -1,23 +1,27 @@
-from fastapi import Request
-from morecantile import Tile
-from timvt.dependencies import TileParams
-from fastapi import Depends, BackgroundTasks
+from fastapi import Depends, BackgroundTasks, Request, Path
 from macrostrat.utils import get_logger
+from morecantile import Tile
+
+
+def TileParams(
+    z: int = Path(..., ge=0, le=30, description="Tiles's zoom level"),
+    x: int = Path(..., description="Tiles's column"),
+    y: int = Path(..., description="Tiles's row"),
+) -> Tile:
+    """Tile parameters."""
+    return Tile(x, y, z)
+
 
 log = get_logger(__name__)
 
 image_tiler = None
-try:
-    from .core import ImageTileSubsystem
+from .core import ImageTileSubsystem
 
-    image_tiler = ImageTileSubsystem()
-except ImportError:
-    log.info("Mapnik not available; image tile subsystem disabled")
+image_tiler = ImageTileSubsystem()
 
 
 def prepare_image_tile_subsystem():
-    if image_tiler is not None:
-        image_tiler.build_layer_cache()
+    image_tiler.build_layer_cache()
 
 
 def MapnikLayerFactory(app):

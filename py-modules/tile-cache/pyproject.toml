@@ -1,0 +1,19 @@
+[project]
+name = "macrostrat.tile-cache"
+version = "0.1.0"
+description = "Utilities for setting and getting cached map tiles"
+authors = [
+    {name = "Daven Quinn",email = "code@davenquinn.com"}
+]
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+]
+
+[tool.poetry]
+packages = [{include = "macrostrat"}]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

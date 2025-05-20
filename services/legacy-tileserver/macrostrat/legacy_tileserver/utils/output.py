@@ -1,10 +1,23 @@
 import decimal
 import json
 import typing
+from enum import Enum
 
+from macrostrat.tile_cache import CacheStatus
 from starlette.responses import JSONResponse, Response
-from timvt.resources.enums import MimeTypes
-from .cache import CacheStatus
+
+
+class MimeTypes(str, Enum):
+    """Responses MineTypes."""
+
+    xml = "application/xml"
+    json = "application/json"
+    geojson = "application/geo+json"
+    html = "text/html"
+    text = "text/plain"
+    pbf = "application/x-protobuf"
+    mvt = "application/x-protobuf"
+
 
 def TileResponse(content, timer, cache_status: CacheStatus = None, **kwargs):
     kwargs["headers"] = {
@@ -34,6 +47,7 @@ class DecimalJSONResponse(JSONResponse):
             separators=(",", ":"),
             cls=DecimalEncoder,
         ).encode("utf-8")
+
 
 class VectorTileResponse(Response):
     media_type = MimeTypes.pbf.value

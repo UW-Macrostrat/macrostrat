@@ -1,20 +1,22 @@
-from fastapi import Request
-from morecantile import Tile, tms
-from mapnik import Map, load_map_from_string, Image, render, Box2d
-from timvt.dependencies import TileParams
-from timvt.settings import TileSettings
 import time
-from .mapnik_styles import make_mapnik_xml
-from .config import scales, scale_for_zoom
+from os import environ
+
 from fastapi import Depends, BackgroundTasks, HTTPException
+from fastapi import Request
+from macrostrat.database import Database
 from macrostrat.utils.timer import Timer
-from timvt.resources.enums import MimeTypes
+from mapnik import Map, load_map_from_string, Image, render, Box2d
+from morecantile import Tile, tms
+
+from .config import scales, scale_for_zoom
+from .mapnik_styles import make_mapnik_xml
+from .utils import TileParams
 from ..cache import get_tile_from_cache, set_cached_tile
 from ..utils import TileResponse, CacheStatus, CacheMode
 
-tile_settings = TileSettings()
+db_url = environ.get("DATABASE_URL")
 
-db = Database(environ.get("DATABASE_URL"))
+db = Database(db_url)
 
 
 class ImageTileSubsystem:
