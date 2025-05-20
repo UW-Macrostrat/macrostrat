@@ -1,14 +1,18 @@
 import os
 import re
-import requests
 import zipfile
-from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 
-HTML_FILE = "/Users/afromandi/Macrostrat/Projects/macrostrat/map-staging/data/japan.html"
+import requests
+from bs4 import BeautifulSoup
+
+HTML_FILE = (
+    "/Users/afromandi/Macrostrat/Projects/macrostrat/map-staging/data/japan.html"
+)
 DOWNLOAD_DIR = "/Users/afromandi/Macrostrat/Maps/Japan/niigata_vector_data"
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 URL = "https://www.gsj.jp/Map/EN/geology4-7.html"
+
 
 def download_html():
     print(f"🌐 Fetching HTML from {URL}")
@@ -22,9 +26,11 @@ def download_html():
 def clean_filename(name):
     return re.sub(r"[^\w\-_. ]", "_", name).strip()
 
+
 def extract_and_rename(zip_path, target_dir):
-    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+    with zipfile.ZipFile(zip_path, "r") as zip_ref:
         zip_ref.extractall(target_dir)
+
 
 def main():
     download_html()
@@ -53,7 +59,11 @@ def main():
         if not vector_link:
             continue
 
-        url = vector_link if vector_link.startswith("http") else urljoin("https://www.gsj.jp/Map/EN/geology4-6.html", vector_link)
+        url = (
+            vector_link
+            if vector_link.startswith("http")
+            else urljoin("https://www.gsj.jp/Map/EN/geology4-6.html", vector_link)
+        )
         zip_filename = os.path.basename(url)
         zip_path = os.path.join(DOWNLOAD_DIR, zip_filename)
         extract_path = os.path.join(DOWNLOAD_DIR, map_name)
@@ -78,6 +88,7 @@ def main():
             print(f"❌ Failed for {map_name}: {e}")
 
     print("🏁 All complete.")
+
 
 if __name__ == "__main__":
     main()

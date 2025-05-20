@@ -18,7 +18,10 @@ from .geodatabase import apply_domains_to_fields, get_layer_info, get_layer_name
 
 console = Console()
 
-def preprocess_dataframe(df: G.GeoDataFrame, legend_path: Path, join_col: str) -> G.GeoDataFrame:
+
+def preprocess_dataframe(
+    df: G.GeoDataFrame, legend_path: Path, join_col: str
+) -> G.GeoDataFrame:
     """
     Preprocess a GeoDataFrame by merging in metadata from a legend.tsv file.
     Parameters:
@@ -28,7 +31,7 @@ def preprocess_dataframe(df: G.GeoDataFrame, legend_path: Path, join_col: str) -
     Returns:
         G.GeoDataFrame: The enriched GeoDataFrame with merged metadata.
     """
-    #load legend metadata
+    # load legend metadata
     ext = legend_path.suffix.lower()
     if ext == ".tsv":
         legend_df = P.read_csv(legend_path, sep="\t")
@@ -41,12 +44,14 @@ def preprocess_dataframe(df: G.GeoDataFrame, legend_path: Path, join_col: str) -
         return df
 
     if join_col not in df.columns:
-        console.print(f"[yellow]Warning: join column '{join_col}' not found in GeoDataFrame. Skipping merge.[/yellow]")
+        console.print(
+            f"[yellow]Warning: join column '{join_col}' not found in GeoDataFrame. Skipping merge.[/yellow]"
+        )
         return df
-    #ensure join column is string for both DataFrames
+    # ensure join column is string for both DataFrames
     df[join_col] = df[join_col].astype(str)
     legend_df[join_col] = legend_df[join_col].astype(str)
-    #merge metadata into geodataframe
+    # merge metadata into geodataframe
     merged_df = df.merge(legend_df, on=join_col, how="left")
     return merged_df
 
@@ -158,7 +163,7 @@ def ingest_map(
         if feature_suffix == "linestrings":
             feature_suffix = "lines"
 
-        #applies legend merge only to the whatever the legend_table is specified as
+        # applies legend merge only to the whatever the legend_table is specified as
         if legend_path and legend_table == feature_suffix:
             df = preprocess_dataframe(df, legend_path=legend_path, join_col=join_col)
 

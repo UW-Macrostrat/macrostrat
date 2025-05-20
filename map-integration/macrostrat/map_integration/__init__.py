@@ -10,11 +10,11 @@ from typer import Option
 from macrostrat.core import app
 from macrostrat.database import Database
 from macrostrat.map_integration.commands.prepare_fields import _prepare_fields
+from macrostrat.map_integration.custom_integrations.japan_full_map import japan_full_map
 from macrostrat.map_integration.pipeline import ingest_map
 from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
 from macrostrat.map_integration.utils.file_discovery import find_gis_files
 from macrostrat.map_integration.utils.map_info import get_map_info
-from macrostrat.map_integration.custom_integrations.japan_full_map import japan_full_map
 
 from . import pipeline
 from .commands.copy_sources import copy_macrostrat_sources
@@ -253,9 +253,17 @@ def staging(
     slug: str,
     data_path: str,
     name: str,
-    legend_file: str = Option(None, help="metadata URL to merge into the sources polygons/lines/points table"),
-    legend_key: str = Option(None, help="primary key to left join the metadata into the sources polygons/lines/points table"),
-    legend_table: str = Option("polygons", help="Options: polygons, lines, or points. specifies the table in which the legend metadata is merged into. It defaults to sources polygons"),
+    legend_file: str = Option(
+        None, help="metadata URL to merge into the sources polygons/lines/points table"
+    ),
+    legend_key: str = Option(
+        None,
+        help="primary key to left join the metadata into the sources polygons/lines/points table",
+    ),
+    legend_table: str = Option(
+        "polygons",
+        help="Options: polygons, lines, or points. specifies the table in which the legend metadata is merged into. It defaults to sources polygons",
+    ),
     filter: str = Option(None, help="Filter applied to GIS file selection"),
 ):
     """
@@ -277,7 +285,7 @@ def staging(
         for path in excluded_files:
             print(f"  ⚠️ {path}")
 
-    #add preprocess
+    # add preprocess
     # ingest the map!
 
     """ Example data_preprocess command:
@@ -286,7 +294,14 @@ def staging(
     "Japan" \
     --data-preprocess-url /Users/afromandi/Macrostrat/Maps/Japan/Japan\ Full/legend.tsv \
     --data-preprocess-key symbol"""
-    ingest_map(slug, gis_files, if_exists="replace", legend_file=legend_file, legend_key=legend_key, legend_table=legend_table)
+    ingest_map(
+        slug,
+        gis_files,
+        if_exists="replace",
+        legend_file=legend_file,
+        legend_key=legend_key,
+        legend_table=legend_table,
+    )
 
     source_id = db.run_query(
         "SELECT source_id FROM maps.sources WHERE slug = :slug",
@@ -364,12 +379,14 @@ def staging(
     )
 
 
-#----------------------------------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 
 
 @cli.command(name="staging-bulk")
 def staging_bulk(
-    parent_path: str = Option(..., help="Parent directory containing region subfolders"),
+    parent_path: str = Option(
+        ..., help="Parent directory containing region subfolders"
+    ),
     prefix: str = Option(..., help="Slug prefix to avoid collisions"),
     filter: str = Option(None, help="Filter applied to GIS file selection"),
 ):
@@ -466,7 +483,9 @@ def staging_bulk(
         print(web_geom)
 
         if any(val is None for val in [row, ingest_process, rgeom, web_geom]):
-            raise RuntimeError("Staging failed: Some expected records were not inserted.")
+            raise RuntimeError(
+                "Staging failed: Some expected records were not inserted."
+            )
 
         print(
             f"\nFinished staging setup for {slug}. View map here: https://dev2.macrostrat.org/maps/ingestion/{source_id}/ \n"
