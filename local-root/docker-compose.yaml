@@ -134,6 +134,7 @@ services:
       - SECRET_KEY=${SECRET_KEY}
   map-cache:
     build: ${MACROSTRAT_MAP_CACHE_SRC:-""}
+    profiles: ["map-cache"]
     environment:
       - MAPBOX_API_TOKEN=${MAPBOX_TOKEN}
       - MAP_CACHE_DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/map_cache
