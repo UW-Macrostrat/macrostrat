@@ -273,7 +273,7 @@ def staging(
         for path in excluded_files:
             print(f"  ⚠️ {path}")
 
-    #ingest the map!
+    # ingest the map!
     ingest_map(slug, gis_files, if_exists="replace")
 
     source_id = db.run_query(
@@ -300,7 +300,7 @@ def staging(
         INSERT INTO maps_metadata.ingest_process (state, source_id, object_group_id)
         VALUES (:state, :source_id, :object_group_id);
         """,
-        dict(state='ingested', source_id=source_id, object_group_id=1),
+        dict(state="ingested", source_id=source_id, object_group_id=1),
     )
 
     map_info = get_map_info(db, slug)
@@ -323,9 +323,7 @@ def staging(
     print(ingest_process)
 
     # Data exists
-    count = db.run_query(
-        f"SELECT COUNT(*) FROM sources.{slug}_polygons"
-    ).scalar()
+    count = db.run_query(f"SELECT COUNT(*) FROM sources.{slug}_polygons").scalar()
     print(count)
 
     # Geometry column assertions
