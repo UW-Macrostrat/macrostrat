@@ -49,6 +49,7 @@ greenlet = "^3.0.3"
 paramiko = "^3.4.0"
 pytest = "^8.3.4"
 setuptools = "^75.8.2"
+openpyxl = "^3.1.5"
 
 [tool.poetry.group.gis.dependencies]
 "macrostrat.map-integration" = { path = "../map-integration", develop = true, extras = ["gis"] }
