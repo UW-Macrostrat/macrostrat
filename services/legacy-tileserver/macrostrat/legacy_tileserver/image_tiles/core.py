@@ -1,6 +1,7 @@
 import time
 from os import environ
 
+import buildpg
 from fastapi import Depends, BackgroundTasks, HTTPException
 from fastapi import Request
 from macrostrat.database import Database
@@ -30,6 +31,8 @@ class ImageTileSubsystem:
     """
 
     layer_cache = {}
+    layer_name: str = "carto-tile"
+    cache_profile_id: int = None
 
     def build_layer_cache(self):
         ## Generate mapnik XML files
@@ -66,6 +69,19 @@ class ImageTileSubsystem:
         # Return image as binary
         return im.tostring("png")
 
+    async def get_cache_profile_id(self, pool):
+        if self.cache_profile_id is not None:
+            return self.cache_profile_id
+        # Set the cache profile id from the database
+        async with pool.acquire() as conn:
+            q, p = buildpg.render(
+                "SELECT id FROM tile_cache.profile WHERE name = :layer",
+                layer=self.layer_name,
+            )
+            res = await conn.fetchval(q, *p)
+            self.cache_profile_id = res
+            return res
+
     async def handle_tile_request(
         self,
         request: Request,
@@ -78,9 +94,11 @@ class ImageTileSubsystem:
 
         timer = Timer()
 
+        cache_id = await self.get_cache_profile_id(pool)
+
         # If cache is not bypassed and the tile is in the cache, return it
         if cache != CacheMode.bypass:
-            content = await get_tile_from_cache(pool, "carto-image", tile, None)
+            content = await get_tile_from_cache(pool, cache_id, None, tile)
             timer._add_step("check_cache")
             if content is not None:
                 return TileResponse(
@@ -103,7 +121,7 @@ class ImageTileSubsystem:
 
         if cache != CacheMode.bypass:
             background_tasks.add_task(
-                set_cached_tile, pool, "carto-image", tile, content
+                set_cached_tile, pool, cache_id, None, tile, content
             )
 
         return TileResponse(

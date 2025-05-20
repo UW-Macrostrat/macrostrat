@@ -69,4 +69,4 @@ COPY ./ /app/
 # Install the root package
 RUN poetry install --no-interaction --no-ansi --no-dev
 
-CMD uvicorn --host 0.0.0.0 --port 8000 macrostrat.legacy_tileserver.main:app
+CMD uvicorn --host 0.0.0.0 --port 8000 macrostrat.legacy_tileserver:app

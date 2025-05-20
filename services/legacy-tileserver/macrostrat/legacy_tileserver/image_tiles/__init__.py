@@ -1,16 +1,8 @@
-from fastapi import Depends, BackgroundTasks, Request, Path
+from fastapi import Depends, BackgroundTasks, Request
 from macrostrat.utils import get_logger
 from morecantile import Tile
 
-
-def TileParams(
-    z: int = Path(..., ge=0, le=30, description="Tiles's zoom level"),
-    x: int = Path(..., description="Tiles's column"),
-    y: int = Path(..., description="Tiles's row"),
-) -> Tile:
-    """Tile parameters."""
-    return Tile(x, y, z)
-
+from .utils import TileParams
 
 log = get_logger(__name__)
 
@@ -33,6 +25,5 @@ def MapnikLayerFactory(app):
         tile: Tile = Depends(TileParams),
     ):
         """Return vector tile."""
-        if image_tiler is None:
-            return "Mapnik not available", 404
+        log.info(tile)
         return await image_tiler.handle_tile_request(request, background_tasks, tile)
