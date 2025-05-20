@@ -1,11 +1,11 @@
 from pathlib import Path
 
 from geopandas import GeoDataFrame
-from macrostrat.database import Database
 from pandas import DataFrame
 from sqlalchemy.sql import text
 
 from macrostrat.cli.database import get_db
+from macrostrat.database import Database
 
 _query_cache = {}
 
