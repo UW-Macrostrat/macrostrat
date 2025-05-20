@@ -28,6 +28,13 @@
 
 # Macrostrat.local domain is served by orbstack
 localhost, macrostrat.local {
+    # Set up access logs
+#    log {
+#      output stdout
+#      # human readable
+#      format console
+#    }
+
     tls internal
 
     handle_path /api/v2/* {
