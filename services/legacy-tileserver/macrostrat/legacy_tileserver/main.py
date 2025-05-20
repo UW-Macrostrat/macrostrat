@@ -1,17 +1,11 @@
 from os import environ
-from pathlib import Path
-from time import time
-from typing import Optional
+from typing import Any, List, Optional
 
-from buildpg import asyncpg
 from buildpg import render
-from fastapi import FastAPI
 from fastapi import FastAPI, Request
-from macrostrat.database import Database
 from macrostrat.utils import get_logger, setup_stderr_logs
-from pydantic_settings import SettingsConfigDict
-from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware import Middleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette_cramjam.middleware import CompressionMiddleware
@@ -20,18 +14,28 @@ from timvt.db import (
     connect_to_db,
     register_table_catalog,
 )
-from timvt.db import con_init
 from timvt.layer import FunctionRegistry
-from timvt.settings import PostgresSettings
 from titiler.core.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from titiler.core.factory import TilerFactory
+from pydantic_settings import SettingsConfigDict
 
 from .cached_tiler import CachedStoredFunction, CachedVectorTilerFactory
 from .function_layer import StoredFunction
-from .map_ingestion import register_map_ingestion_routes
-from .paleogeography import PaleoGeographyLayer
+from .image_tiles import MapnikLayerFactory, prepare_image_tile_subsystem
 from .utils import DecimalJSONResponse
 from .vendor.repeat_every import repeat_every
+from .paleogeography import PaleoGeographyLayer
+from macrostrat.database import Database
+from pathlib import Path
+from time import time
+
+from .map_ingestion import register_map_ingestion_routes
+
+from typing import Any, Optional
+from buildpg import asyncpg
+from fastapi import FastAPI
+from timvt.settings import PostgresSettings
+from timvt.db import con_init
 
 
 # TODO: move this or improve it
@@ -97,6 +101,7 @@ async def startup_event():
     # Apply fixtures
     # apply_fixtures(db_settings.database_url)
     # await register_table_catalog(app, schemas=["sources"])
+    prepare_image_tile_subsystem()
 
 
 @app.on_event("startup")
@@ -134,6 +139,9 @@ app.add_middleware(CompressionMiddleware, minimum_size=0)
 
 # Map ingestion
 register_map_ingestion_routes(app)
+
+
+MapnikLayerFactory(app)
 
 cog = TilerFactory()
 

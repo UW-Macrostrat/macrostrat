@@ -1,0 +1,23 @@
+[tool.poetry]
+authors = ["Daven Quinn <dev@davenquinn.com>"]
+description = "Macrostrat tile server"
+name = "macrostrat.legacy-tileserver"
+packages = [{ include = "macrostrat" }]
+version = "2.1.0"
+
+[tool.poetry.dependencies]
+fastapi = "^0.111.0"
+python = "^3.9"
+python-dotenv = "^1.0.0"
+typer = "^0.12.3"
+uvicorn = "0.16.0"
+
+# Raster tiles dependencies cannot be installed with poetry
+
+[tool.poetry.group.dev.dependencies]
+isort = "^5.12.0"
+black = "^24.8.0"
+
+[build-system]
+build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core>=1.0.0"]
