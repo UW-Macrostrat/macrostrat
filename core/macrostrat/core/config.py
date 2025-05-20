@@ -3,14 +3,15 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from dynaconf import Dynaconf, Validator
-from macrostrat.app_frame.control_command import BackendType
-from macrostrat.utils import get_logger
 from sqlalchemy.engine import make_url
 from sqlalchemy.engine.url import URL
 from toml import load as load_toml
 
-from .resolvers import setup_source_roots_environment, cast_sources
-from .utils import find_macrostrat_config, path_list_resolver, convert_to_string
+from macrostrat.app_frame.control_command import BackendType
+from macrostrat.utils import get_logger
+
+from .resolvers import cast_sources, setup_source_roots_environment
+from .utils import convert_to_string, find_macrostrat_config, path_list_resolver
 
 log = get_logger(__name__)
 
