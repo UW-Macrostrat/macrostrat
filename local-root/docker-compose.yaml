@@ -36,27 +36,13 @@ services:
       - 5432
     volumes:
       - db_cluster:/var/lib/postgresql/data
-  mariadb:
-    # The MariaDB service is Macrostrat's v1 database service.
-    # This is currently being removed from the active configuration
-    # and relegated to a 'legacy' profile. But for now, we need it
-    # at least for inspection purposes.
-    image: mariadb:10.10
-    ports:
-      - "3306:3306"
-    environment:
-      - MARIADB_ROOT_PASSWORD
-    volumes:
-      - mysql_cluster:/var/lib/mysql
-    restart: always
-    profiles:
-      - legacy
   api_v2:
     image: hub.opensciencegrid.org/macrostrat/macrostrat-api:main
     build: ${MACROSTRAT_API_SRC:-""}
     environment:
-      - MACROSTRAT_DATABASE=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
+      - MACROSTRAT_DATABASE=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}?sslmode=disable
       - ELEVATION_DATABASE=${ELEVATION_DATABASE_URL}
+      - NODE_TLS_REJECT_UNAUTHORIZED=0
   api_v3:
     # Unlike other services, the API v3 service is packaged as part of this repository.
     # This is because its functionality is tightly coupled in many cases with the command-line
@@ -132,6 +118,7 @@ services:
       - NODE_TLS_REJECT_UNAUTHORIZED=0
       # Secret key must be shared with the API that mints the JWT (in this case, the Macrostrat dev API)
       - SECRET_KEY=${SECRET_KEY}
+  # The map-cache service is a prototype caching layer for local map tiles.
   map-cache:
     build: ${MACROSTRAT_MAP_CACHE_SRC:-""}
     profiles: ["map-cache"]
@@ -157,6 +144,20 @@ services:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_USER=postgres
       - POSTGRES_DB=macrostrat
+  # The MariaDB service is Macrostrat's v1 database service.
+  # This is currently being removed from the active configuration
+  # and relegated to a 'legacy' profile. But for now, we need it
+  # at least for inspection purposes.
+  mariadb:
+    image: mariadb:10.10
+    ports:
+      - "3306:3306"
+    environment:
+      - MARIADB_ROOT_PASSWORD
+    volumes:
+      - mysql_cluster:/var/lib/mysql
+    restart: always
+    profiles: ["legacy"]
 volumes:
   db_cluster:
   mysql_cluster:
