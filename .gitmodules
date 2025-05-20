@@ -7,3 +7,6 @@
 [submodule "submodules/storage-admin"]
 	path = submodules/storage-admin
 	url = https://github.com/UW-Macrostrat/radosgw_admin_client
+[submodule "deps/timvt"]
+	path = services/tileserver/deps/timvt
+	url = https://github.com/developmentseed/timvt.git
