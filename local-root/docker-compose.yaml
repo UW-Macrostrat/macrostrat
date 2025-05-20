@@ -78,7 +78,7 @@ services:
   tileserver:
     image: hub.opensciencegrid.org/macrostrat/tileserver:main
     build:
-      context: ${MACROSTRAT_TILESERVER_SRC:-""}
+      context: ../services/tileserver
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
       # Ideally the system would fail gracefully if we didn't provide the Rockd database URL but that's not the case.
