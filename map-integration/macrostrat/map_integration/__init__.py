@@ -251,9 +251,7 @@ from macrostrat.map_integration.utils.file_discovery import find_gis_files
 def staging(
     slug: str,
     data_path: str,
-    name: str = Option(None, help="Display name for the map"),
-    scale: str = Option("large", help="Map scale"),
-    object_group_id: int = Option(1, help="Object group ID for ingest_process"),
+    name: str,
     filter: str = Option(None, help="Filter applied to GIS file selection"),
 ):
     """
@@ -275,7 +273,7 @@ def staging(
         for path in excluded_files:
             print(f"  ⚠️ {path}")
 
-    # Ingest
+    # ingest the map!
     ingest_map(slug, gis_files, if_exists="replace")
 
     source_id = db.run_query(
@@ -291,24 +289,62 @@ def staging(
             "UPDATE maps.sources SET name = :name WHERE source_id = :source_id",
             dict(name=name, source_id=source_id),
         )
-    if scale:
-        db.run_sql(
-            "UPDATE maps.sources SET scale = :scale WHERE source_id = :source_id",
-            dict(scale=scale, source_id=source_id),
-        )
+
+    db.run_sql(
+        "UPDATE maps.sources SET scale = :scale WHERE source_id = :source_id",
+        dict(scale="large", source_id=source_id),
+    )
 
     db.run_sql(
         """
         INSERT INTO maps_metadata.ingest_process (state, source_id, object_group_id)
-        VALUES ('ingested', :source_id, :object_group_id)
+        VALUES (:state, :source_id, :object_group_id);
         """,
-        dict(source_id=source_id, object_group_id=object_group_id),
+        dict(state="ingested", source_id=source_id, object_group_id=1),
     )
 
     map_info = get_map_info(db, slug)
     _prepare_fields(map_info)
     create_rgeom(map_info)
     create_webgeom(map_info)
+
+    # Metadata assertions
+    row = db.run_query(
+        "SELECT name, scale FROM maps.sources WHERE source_id = :source_id",
+        dict(source_id=source_id),
+    ).fetchone()
+    print(row)
+
+    # Ingest process assertions
+    ingest_process = db.run_query(
+        "SELECT source_id, object_group_id, state FROM maps_metadata.ingest_process WHERE source_id = :source_id",
+        dict(source_id=source_id),
+    ).fetchone()
+    print(ingest_process)
+
+    # Data exists
+    count = db.run_query(f"SELECT COUNT(*) FROM sources.{slug}_polygons").scalar()
+    print(count)
+
+    # Geometry column assertions
+    rgeom = db.run_query(
+        """
+        SELECT rgeom FROM maps.sources WHERE slug = :slug
+        """,
+        dict(slug=slug),
+    ).fetchone()
+    print(rgeom)
+
+    web_geom = db.run_query(
+        """
+        SELECT web_geom FROM maps.sources WHERE slug = :slug
+        """,
+        dict(slug=slug),
+    ).fetchone()
+    print(web_geom)
+
+    if any(val is None for val in [row, ingest_process, rgeom, web_geom]):
+        raise RuntimeError("Staging failed: Some expected records were not inserted.")
 
     print(
         f"\nFinished staging setup for {slug}. View map here: https://dev2.macrostrat.org/maps/ingestion/{source_id}/ \n"

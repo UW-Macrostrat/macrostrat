@@ -67,6 +67,7 @@ def import_sgp_data(
     column: int = None,
     match: list[MatchType] = None,
     reset: bool = False,
+    only_macrostrat: bool = False,
     # comparison: MatchComparison = MatchComparison.Included.value,
 ):
     """
@@ -75,6 +76,8 @@ def import_sgp_data(
     M = get_db()
 
     samples = get_sgp_samples("all-match-samples")
+    if only_macrostrat:
+        samples = samples[samples["match_set"] != "Age from other sources"]
 
     app.console.print(
         f"Got {len(samples)} samples from the SGP database.",

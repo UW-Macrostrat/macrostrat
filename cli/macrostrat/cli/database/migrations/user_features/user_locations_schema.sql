@@ -1,5 +1,6 @@
 CREATE SCHEMA IF NOT EXISTS user_features;
 --changed map_layers from enum to array in order to save multiple layers at a time
+
 create table IF NOT EXISTS user_features.user_locations
 (
     id              serial primary key,
@@ -36,9 +37,9 @@ create table IF NOT EXISTS user_features.location_tags_intersect (
 );
 
 
-alter table user_features.user_locations owner to "macrostrat-admin";
-alter table user_features.location_tags owner to "macrostrat-admin";
-alter table user_features.location_tags_intersect owner to "macrostrat-admin";
+alter table user_features.user_locations owner to "macrostrat";
+alter table user_features.location_tags owner to "macrostrat";
+alter table user_features.location_tags_intersect owner to "macrostrat";
 
 grant delete, insert, select, update on user_features.user_locations to web_anon;
 grant delete, insert, select, update on user_features.location_tags to web_anon;
