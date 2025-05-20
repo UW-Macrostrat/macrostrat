@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Macrostrat Tiles</title>
+  <meta name="description" content="">
+  <meta name="author" content="">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link href="//fonts.googleapis.com/css?family=Raleway:400,300,600" rel="stylesheet" type="text/css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/skeleton/2.0.4/skeleton.min.css">
+
+  <style>
+    pre {
+      margin: 0;
+    }
+    .footer-links {
+      list-style: none;
+      text-decoration: none;
+    }
+    .footer-link-container {
+      height: 100%;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: #000;
+    }
+    .border-row {
+      border-top: 1px solid #eee;
+      padding-top: 15px;
+      padding-bottom: 15px;
+      display: flex;
+    }
+    .border-row > .five {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .footer {
+      height: 40%;
+      color: #777;
+    }
+    .footer a {
+      color: #000;
+      text-decoration: none;
+    }
+    .toc {
+      list-style: none;
+      font-size: 18px;
+    }
+    .toc a {
+      color: #000;
+      font-weight: bold;
+      text-decoration: none;
+    }
+
+    .section {
+      margin-top: 100px;
+    }
+
+    .flex {
+      display: flex;
+    }
+    .center {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .top {
+      padding-top: 25px;
+    }
+    .layer-holder > h4 > a {
+      color: #333;
+      text-decoration: none;
+    }
+    .layer-holder > h4 > a:hover {
+      color: #000;
+      text-decoration: underline;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="row flex top">
+      <div class="one-half column">
+        <h1>Macrostrat tiles</h1>
+        <p>The Macrostrat tile server provides access to all of its geologic maps as tiled rasters and vectors. The following layers are available:</p>
+      </div>
+      <div class="one-half column center">
+        <ul class="toc">
+          <li><a href="#layers">Layers</a></li>
+          <li><a href="#data">Data</a></li>
+          <li><a href="#terms">Terms of use</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="section">
+    <div class="row">
+      <div class="twelve columns">
+        <h3 id="layers">Layers</h3>
+      </div>
+    </div>
+
+    <div class="row border-row">
+      <div class="five columns">
+        <div class="layer-holder">
+          <h4><a href="/preview/carto">carto</a></h4>
+        </div>
+      </div>
+      <div class="seven columns">
+        <pre>
+          <code>/carto/{z}/{x}/{y}.{ext}</code>
+        </pre>
+        Available as `mvt` or `png`.
+
+        The carto layer is for visualization purposes, and makes many assumptions about the relative priority of each map. The layers and scales are seamlessly blended so no scale-dependent decisions can or should be made.
+      </div>
+    </div>
+
+    <div class="row border-row">
+      <div class="five columns">
+        <div class="layer-holder">
+          <h4><a href="/preview/tiny">tiny</a></h4>
+        </div>
+      </div>
+      <div class="seven columns">
+        <pre>
+          <code>/tiny/{z}/{x}/{y}.{ext}</code>
+        </pre>
+        Available as `mvt` or `png`.
+
+        All maps from the scale `tiny`. You can find a list of available maps at <a href="https://macrostrat.org/api/v2/defs/sources?scale=tiny">https://macrostrat.org/api/v2/defs/sources?scale=tiny</a>
+      </div>
+    </div>
+
+    <div class="row border-row">
+      <div class="five columns">
+        <div class="layer-holder">
+          <h4><a href="/preview/small">small</a></h4>
+        </div>
+      </div>
+      <div class="seven columns">
+        <pre>
+          <code>/small/{z}/{x}/{y}.{ext}</code>
+        </pre>
+        Available as `mvt` or `png`.
+
+        All maps from the scale `small`. You can find a list of available maps at <a href="https://macrostrat.org/api/v2/defs/sources?scale=small">https://macrostrat.org/api/v2/defs/sources?scale=small</a>
+      </div>
+    </div>
+
+    <div class="row border-row">
+      <div class="five columns">
+        <div class="layer-holder">
+          <h4><a href="/preview/medium">medium</a></h4>
+        </div>
+      </div>
+      <div class="seven columns">
+        <pre>
+          <code>/medium/{z}/{x}/{y}.{ext}</code>
+        </pre>
+        Available as `mvt` or `png`.
+
+        All maps from the scale `medium`. You can find a list of available maps at <a href="https://macrostrat.org/api/v2/defs/sources?scale=medium">https://macrostrat.org/api/v2/defs/sources?scale=medium</a>
+      </div>
+    </div>
+
+    <div class="row border-row">
+      <div class="five columns">
+        <div class="layer-holder">
+          <h4><a href="/preview/large">large</a></h4>
+        </div>
+      </div>
+      <div class="seven columns">
+        <pre>
+          <code>/large/{z}/{x}/{y}.{ext}</code>
+        </pre>
+        Available as `mvt` or `png`.
+
+        All maps from the scale `large`. You can find a list of available maps at <a href="https://macrostrat.org/api/v2/defs/sources?scale=large">https://macrostrat.org/api/v2/defs/sources?scale=large</a>
+      </div>
+    </div>
+
+    </div>
+
+    <div class="section">
+      <div class="row">
+        <div class="twelve columns">
+          <h3 id="data">Data</h3>
+          <p>All tilesets contain two layers - <code>units</code> and <code>lines</code>. Units are the geologic map polygons, and lines are geologic line features such as faults, anticlines, and moraines.</p>
+        </div>
+      </div>
+
+      <div class="row">
+        <h4>Units</h4>
+        <table>
+          <thead>
+            <tr>
+              <th>Field</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>map_id</code></td>
+              <td>The unique identifier for a polygon</td>
+            </tr>
+            <tr>
+              <td><code>source_id</code></td>
+              <td>An integer that corresponds to the original map sources that can be found at https://macrostrat.org/api/v2/defs/sources</td>
+            </tr>
+            <tr>
+              <td><code>name</code></td>
+              <td>The name of the polygon. Usually either a stratigraphic name or lithological description</td>
+            </tr>
+            <tr>
+              <td><code>strat_name</code></td>
+              <td>The stratigraphic name of the polygon</td>
+            </tr>
+            <tr>
+              <td><code>age</code></td>
+              <td>The age indicated by the map author</td>
+            </tr>
+            <tr>
+              <td><code>lith</code></td>
+              <td>Lithologies, or lithological description</td>
+            </tr>
+            <tr>
+              <td><code>descrip</code></td>
+              <td>A description of the map unit</td>
+            </tr>
+            <tr>
+              <td><code>comments</code></td>
+              <td>Comments about the map unit</td>
+            </tr>
+            <tr>
+              <td><code>t_int</code></td>
+              <td>The Macrostrat interval ID associated with the top age of the map unit</td>
+            </tr>
+            <tr>
+              <td><code>t_int_name</code></td>
+              <td>The name of the Macrostrat interval associated with the top age of the map unit</td>
+            </tr>
+            <tr>
+              <td><code>best_t_age</code></td>
+              <td>The best top age that Macrostrat can assign to the unit based on linked resources</td>
+            </tr>
+            <tr>
+              <td><code>b_int</code></td>
+              <td>The Macrostrat interval ID associated with the bottom age of the map unit</td>
+            </tr>
+            <tr>
+              <td><code>b_int_name</code></td>
+              <td>The name of the Macrostrat interval associated with the bottom age of the map unit</td>
+            </tr>
+            <tr>
+              <td><code>best_b_age</code></td>
+              <td>The best bottom age that Macrostrat can assign to the unit based on linked resources</td>
+            </tr>
+            <tr>
+              <td><code>color</code></td>
+              <td>A hex code associated with the best containing time interval for the map unit</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="row">
+        <h4>Lines</h4>
+        <table>
+          <thead>
+            <tr>
+              <th>Field</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>line_id</code></td>
+              <td>The unique identifier for a line feature</td>
+            </tr>
+            <tr>
+              <td><code>source_id</code></td>
+              <td>An integer that corresponds to the original map sources that can be found at https://macrostrat.org/api/v2/defs/sources</td>
+            </tr>
+            <tr>
+              <td><code>name</code></td>
+              <td>The name of the line, if available</td>
+            </tr>
+            <tr>
+              <td><code>descrip</code></td>
+              <td>A description of the line</td>
+            </tr>
+            <tr>
+              <td><code>type</code></td>
+              <td>A normalized line type (fault, fold, anticline, etc)</td>
+            </tr>
+            <tr>
+              <td><code>direction</code></td>
+              <td>A normalized direction of the line. Not commonly available.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="row">
+        <div class="twelve columns">
+          <h3 id="terms">Terms of Use</h3>
+          <p>Macrostrat's geologic map tiles are free and open under the <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0 International</a> license. You are required to cite Macrostrat as well as the original data providers when applicable (the reference corresponding to the <code>source_id</code> of each feature).</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="row footer">
+        <div class="eight columns">
+          <h5>Produced by the <br><a href="https://macrostrat.org">UW Macrostrat Lab</a></h5>
+
+          <h5>Funded by <br> <a href="http://nsf.gov">NSF</a> <br> and <br> <a href="http://geoscience.wisc.edu/geoscience/">UW Geoscience</a></h5>
+        </div>
+
+        <div class="four columns">
+          <div class="footer-link-container">
+            <ul class="footer-links">
+              <li><a href="https://macrostrat.org">Home</a></li>
+              <li><a href="https://macrostrat.org/api">API</a></li>
+              <li><a href="https://macrostrat.org/#apps">Apps</a></li>
+              <li><a href="https://rockd.org">Rockd</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

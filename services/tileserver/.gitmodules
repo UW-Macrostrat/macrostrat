@@ -1,0 +1,6 @@
+[submodule "deps/postgis-tile-utils"]
+	path = deps/postgis-tile-utils
+	url = https://github.com/UW-Macrostrat/postgis-tile-utils.git
+[submodule "deps/timvt"]
+	path = deps/timvt
+	url = https://github.com/developmentseed/timvt.git
