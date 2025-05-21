@@ -16,11 +16,11 @@ dist_dir="$root/py-modules/dist"
 for module in $(ls -d py-modules/*/); do
   [ ! -f "$module/pyproject.toml" ] && continue
   if [ -d "$module" ]; then
-    pushd $module 2>/dev/null
+    pushd $module > /dev/null 2>&1
     header "Building module $(poetry version | cut -d' ' -f1)"
     poetry lock
     poetry build --output $dist_dir
-    popd 2>/dev/null
+    popd > /dev/null 2>&1
   fi
 done
 
@@ -34,10 +34,10 @@ services=(
 for service_name in "${services[@]}"; do
   # Check if the service directory exists
   header "Updating dependencies for service $service_name"
-  pushd services/$service_name 2>/dev/null
+  pushd services/$service_name > /dev/null 2>&1
   mkdir -p deps
   rm -f deps/*.whl
   cp $dist_dir/*.whl deps
   poetry lock
-  popd 2>/dev/null
+  popd > /dev/null 2>&1
 done

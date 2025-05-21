@@ -567,7 +567,7 @@ description = "Utilities for Macrostrat tile servers"
 optional = false
 python-versions = ">=3.9,<4.0"
 files = [
-    {file = "macrostrat_tileserver_utils-0.1.0-py3-none-any.whl", hash = "sha256:15bbe9a8f3ec9024f31d83f413edaa067632f6e68e29bd7f983981b26160de79"},
+    {file = "macrostrat_tileserver_utils-0.1.0-py3-none-any.whl", hash = "sha256:0357a29a54f5da49bf79aace55ea5c2b9bcd48319c37ade5936e96371702290a"},
 ]
 
 [package.dependencies]
