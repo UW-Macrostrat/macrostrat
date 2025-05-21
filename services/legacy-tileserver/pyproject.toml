@@ -1,0 +1,32 @@
+[tool.poetry]
+authors = ["Daven Quinn <dev@davenquinn.com>"]
+description = "Macrostrat legacy tile server"
+name = "macrostrat.legacy-tileserver"
+packages = [{ include = "macrostrat" }]
+version = "1.0.0-beta.1"
+
+[tool.poetry.dependencies]
+fastapi = "^0.111.0"
+# For now, this only runs on Python 3.9 due to Mapnik compilation issues.
+python = "^3.9,<3.10"
+python-dotenv = "^1.0.0"
+typer = "^0.12.3"
+uvicorn = "0.16.0"
+asyncpg = "^0.23.0"
+buildpg = "^0.4"
+morecantile = "^6.2.0"
+"macrostrat.utils" = "^1.2.0"
+# Local wheel of macrostrat.tileserver-utils. This must be built (using make in the py-modules directory)
+# and copied here before Docker build.
+"macrostrat.tileserver-utils" = { file = "deps/macrostrat_tileserver_utils-0.1.0-py3-none-any.whl" }
+"macrostrat.database" = "^3.0.0"
+# NOTE: there is also a requirement on mapnik, but this cannot be installed via poetry
+# due to its complicated installation process.
+
+[tool.poetry.group.dev.dependencies]
+isort = "^5.12.0"
+black = "^24.8.0"
+
+[build-system]
+build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core>=1.0.0"]

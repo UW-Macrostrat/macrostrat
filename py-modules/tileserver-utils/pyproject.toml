@@ -1,0 +1,25 @@
+[project]
+name = "macrostrat.tileserver-utils"
+version = "0.1.0"
+description = "Utilities for Macrostrat tile servers"
+authors = [
+    {name = "Daven Quinn",email = "code@davenquinn.com"}
+]
+readme = "README.md"
+requires-python = ">=3.9,<4.0"
+dependencies = [
+    "starlette (>=0.37.0,<0.47.0)",
+    "fastapi (>=0.111.0,<0.112.0)",
+    "morecantile (>=6.2.0,<7.0.0)",
+    "buildpg (>=0.4,<0.5)",
+    "macrostrat.utils (>=1.3.1,<2.0.0)",
+    "pydantic (>=2.11.4,<3.0.0)"
+]
+
+[tool.poetry]
+packages = [{include = "macrostrat"}]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

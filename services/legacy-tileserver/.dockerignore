@@ -1,0 +1,5 @@
+__pycache__
+__archive
+.venv
+.pytest_cache
+legacy-tileserver.iml

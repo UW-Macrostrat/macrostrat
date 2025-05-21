@@ -54,7 +54,11 @@ localhost, macrostrat.local {
     # Legacy API for development
     import schema-proxy /api/pg macrostrat_api
 
-
+    # The legacy tileserver is served at a different domain in production
+    # but we keep it here to be straightforward for local development
+    handle_path /tiles/legacy/* {
+        reverse_proxy legacy_tileserver:8000
+    }
 
     handle_path /tiles/* {
         reverse_proxy tileserver:8000

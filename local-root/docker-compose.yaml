@@ -94,6 +94,17 @@ services:
         --log-level debug
         --proxy-headers
         --forwarded-allow-ips=*
+  tileserver_v2:
+    build: ../services/tileserver-v2
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
+    command: >
+      uvicorn --host 0.0.0.0 --port 8000
+        macrostrat.tileserver_v2:app
+        --root-path /tiles/legacy
+        --log-level debug
+        --proxy-headers
+        --forwarded-allow-ips=*
   # Storage
   storage:
     image: minio/minio:RELEASE.2024-12-18T13-15-44Z-cpuv1

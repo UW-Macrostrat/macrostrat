@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Script to catch and tag releases of specific services, to stage them for CI pipelines.
+
+set -e
+
+# Build services and lock dependencies, to ensure we don't have any uncommitted changes
+# or package version mismatches.
+prepare-services
+
+# Fail if we are in a dirty state
+if ! git diff-index --quiet HEAD --; then
+  echo "Error: You have uncommitted changes. Please commit or stash them before running this script."
+  exit 1
+fi
+
+services=(
+  "tileserver"
+  "legacy-tileserver"
+)
+
+for service_name in "${services[@]}"; do
+  # Check if the service directory exists
+  service_name="legacy-tileserver"
+
+  pushd services/$service_name
+  version=$(poetry version --short)
+  tag="$service_name-v$version"
+  popd
+
+  # Check if the tag already exists
+  if ! git rev-parse "$tag" >/dev/null 2>&1; then
+    # Tag the image
+    git tag "$tag" -m "Version $version of service $service_name"
+    git push origin "$tag"
+    echo "Tagged $service_name with version $version"
+  fi
+done
+
+# Tileserver
