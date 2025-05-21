@@ -13,14 +13,14 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1 POETRY_VIRTUALENVS_CREATE=false
 
 RUN python3 -m venv /poetry-env
 RUN /poetry-env/bin/pip install -U pip setuptools
-RUN /poetry-env/bin/pip install poetry==1.8.4
+RUN /poetry-env/bin/pip install poetry==2.1.1
 
 
 WORKDIR /app/
 
 # Copy only requirements to cache them in docker layer
 # Right now, Poetry lock file must exist to avoid hanging on dependency resolution
-COPY ./deps/timvt/ /app/deps/timvt/
+COPY ./deps/ /app/deps/
 COPY ./pyproject.toml ./poetry.lock /app/
 
 # Create and activate our own virtual envrionment so that we can keep
@@ -31,7 +31,8 @@ ENV PATH="/venv/bin:$PATH"
 # Command that always fails
 #RUN false
 
-RUN /poetry-env/bin/poetry install --no-interaction --no-ansi --no-root --no-dev
+
+RUN /poetry-env/bin/poetry install --no-interaction --no-ansi --no-root
 
 EXPOSE 8000
 
@@ -39,6 +40,6 @@ EXPOSE 8000
 COPY ./ /app/
 
 # Install the root package
-RUN /poetry-env/bin/poetry install --no-interaction --no-ansi --no-dev
+RUN /poetry-env/bin/poetry install --no-interaction --no-ansi
 
 CMD uvicorn --host 0.0.0.0 --port 8000 macrostrat_tileserver.main:app

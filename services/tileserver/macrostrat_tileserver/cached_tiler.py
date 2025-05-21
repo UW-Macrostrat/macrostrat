@@ -1,46 +1,30 @@
-import decimal
-import json
-import typing
 from typing import Any, Dict, List, Literal, Optional
 from urllib.parse import urlencode
 
-from fastapi import BackgroundTasks, Depends, HTTPException, Query, Request
+from fastapi import BackgroundTasks, Depends, HTTPException, Query
 from macrostrat.utils import get_logger
-from macrostrat.utils.timer import Timer
 from morecantile import Tile
 from starlette.requests import Request
-from starlette.responses import JSONResponse
-from timvt.dependencies import TileParams
+
+from macrostrat.tileserver_utils import (
+    TileParams,
+    CacheMode,
+    handle_cached_tile_request,
+    MimeTypes,
+    CachedTileArgs,
+)
 from timvt.factory import (
     TILE_RESPONSE_PARAMS,
     VectorTilerFactory,
     queryparams_to_kwargs,
 )
 from timvt.models.mapbox import TileJSON
-from buildpg import render
-
-from .cache import get_tile_from_cache, set_cached_tile
 from .function_layer import StoredFunction
-from .utils import CacheMode, CacheStatus, TileResponse
 
 log = get_logger(__name__)
 
 
 class CachedVectorTilerFactory(VectorTilerFactory):
-
-    async def get_cache_profile_id(self, pool, layer):
-        if layer.profile_id is not None:
-            return layer.profile_id
-        # Set the cache profile id from the database
-        async with pool.acquire() as conn:
-            q, p = render(
-                "SELECT id FROM tile_cache.profile WHERE name = :layer",
-                layer=layer.id,
-            )
-            res = await conn.fetchval(q, *p)
-            layer.profile_id = res
-            return res
-
     def register_tiles(self):
         @self.router.get("/{layer}/{z}/{x}/{y}", **TILE_RESPONSE_PARAMS)
         async def tile(
@@ -58,15 +42,12 @@ class CachedVectorTilerFactory(VectorTilerFactory):
             pool = request.app.state.pool
             tms = self.supported_tms.get(TileMatrixSetId)
 
-            timer = Timer()
-
             kwargs = queryparams_to_kwargs(
                 request.query_params, ignore_keys=["tilematrixsetid"]
             )
 
-            should_cache = (
-                isinstance(layer, CachedStoredFunction) and cache != CacheMode.bypass
-            )
+            if not isinstance(layer, CachedStoredFunction):
+                cache = CacheMode.bypass
 
             # "Table" layers don't have a validate_request method
             if hasattr(layer, "validate_request"):
@@ -75,35 +56,26 @@ class CachedVectorTilerFactory(VectorTilerFactory):
                 except ValueError as e:
                     raise HTTPException(status_code=400, detail=str(e))
 
-            if should_cache:
-                profile = await self.get_cache_profile_id(pool, layer)
-                content = await get_tile_from_cache(pool, profile, kwargs, tile, None)
-                timer._add_step("check_cache")
-                if content is not None:
-                    return TileResponse(content, timer, cache_status=CacheStatus.hit)
+            args = CachedTileArgs(
+                layer=layer,
+                tile=tile,
+                media_type=MimeTypes.pbf,
+                params=kwargs,
+                mode=cache,
+            )
 
-            if cache == CacheMode.force:
-                raise HTTPException(
-                    status_code=404,
-                    detail="Tile not found in cache",
-                    header={
-                        "Server-Timing": timer.server_timings(),
-                        "X-Tile-Cache": CacheStatus.miss,
-                    },
+            async def get_tile(request: Request, args: CachedTileArgs):
+                return await layer.get_tile(
+                    request.app.state.pool, args.tile, args.tms, **args.params
                 )
 
-            content = await layer.get_tile(pool, tile, tms, **kwargs)
-            timer._add_step("get_tile")
-
-            cache_status = CacheStatus.bypass
-            if should_cache:
-                profile = await self.get_cache_profile_id(pool, layer)
-                background_tasks.add_task(
-                    set_cached_tile, pool, profile, kwargs, tile, content
-                )
-                cache_status = CacheStatus.miss
-
-            return TileResponse(content, timer, cache_status=cache_status)
+            return await handle_cached_tile_request(
+                request,
+                pool,
+                background_tasks,
+                get_tile,
+                args,
+            )
 
         @self.router.get(
             "/{TileMatrixSetId}/{layer}/tilejson.json",
@@ -181,22 +153,3 @@ def _first_value(values: List[Any], default: Any = None):
 
 class CachedStoredFunction(StoredFunction):
     profile_id: Optional[int] = None
-
-
-class DecimalEncoder(json.JSONEncoder):
-    def default(self, o):
-        if isinstance(o, decimal.Decimal):
-            return float(o)
-        return super(DecimalEncoder, self).default(o)
-
-
-class DecimalJSONResponse(JSONResponse):
-    def render(self, content: typing.Any) -> bytes:
-        return json.dumps(
-            content,
-            ensure_ascii=False,
-            allow_nan=False,
-            indent=None,
-            separators=(",", ":"),
-            cls=DecimalEncoder,
-        ).encode("utf-8")

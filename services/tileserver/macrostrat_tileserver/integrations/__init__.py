@@ -1,8 +1,10 @@
 from pathlib import Path
+
 from buildpg import render
 from fastapi import APIRouter, Request, Response
-from timvt.resources.enums import MimeTypes
 from macrostrat.utils import get_logger
+
+from macrostrat.tileserver_utils import MimeTypes
 
 router = APIRouter()
 

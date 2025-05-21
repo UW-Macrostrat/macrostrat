@@ -5,7 +5,8 @@ from buildpg import V, render
 from fastapi import APIRouter, Request, Query
 from macrostrat.utils import get_logger
 
-from ..utils import scales_for_zoom, MapCompilation, get_layer_sql, VectorTileResponse
+from macrostrat.tileserver_utils import VectorTileResponse
+from ..utils import scales_for_zoom, MapCompilation, get_layer_sql
 
 log = get_logger(__name__)
 
@@ -16,12 +17,12 @@ __here__ = Path(__file__).parent
 
 @router.get("/{compilation}/{z}/{x}/{y}")
 async def get_tile(
-        request: Request,
-        compilation: MapCompilation,
-        z: int,
-        x: int,
-        y: int,
-        lithology: List[str] = Query(None)
+    request: Request,
+    compilation: MapCompilation,
+    z: int,
+    x: int,
+    y: int,
+    lithology: List[str] = Query(None),
 ):
     """Get a tile from the tileserver."""
     pool = request.app.state.pool
@@ -44,15 +45,13 @@ async def get_tile(
             "units",
             compilation=V(compilation_name + ".polygons"),
             lithology=lithology,
-            **params
+            **params,
         )
         lines_ = await run_layer_query(
-            con,
-            "lines",
-            compilation=V(compilation_name + ".lines"),
-            **params
+            con, "lines", compilation=V(compilation_name + ".lines"), **params
         )
     return VectorTileResponse(units_, lines_)
+
 
 def build_lithology_clause(lithology: List[str]):
     """Build a WHERE clause to filter by lithology."""
@@ -72,7 +71,7 @@ def build_lithology_clause(lithology: List[str]):
 
 
 async def run_layer_query(con, layer_name, **params):
-    query = get_layer_sql( __here__ / "queries",  layer_name)
+    query = get_layer_sql(__here__ / "queries", layer_name)
     if ":where_lithology" in query:
         lith_clause = build_lithology_clause(params.get("lithology"))
         query = query.replace(":where_lithology", lith_clause)

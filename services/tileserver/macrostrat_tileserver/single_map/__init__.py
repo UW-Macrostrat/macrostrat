@@ -2,10 +2,11 @@ from pathlib import Path
 from typing import List
 
 from buildpg import V, render
-from fastapi import APIRouter, Request, Query
+from fastapi import APIRouter, Request
 from macrostrat.utils import get_logger
 
-from ..utils import scales_for_zoom, MapCompilation, get_layer_sql, VectorTileResponse
+from macrostrat.tileserver_utils import VectorTileResponse
+from ..utils import get_layer_sql
 
 log = get_logger(__name__)
 
