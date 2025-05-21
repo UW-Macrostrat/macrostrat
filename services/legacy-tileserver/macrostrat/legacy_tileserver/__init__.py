@@ -29,7 +29,8 @@ async def startup_event():
     url = environ["DATABASE_URL"]
     app.state.pool = await create_pool_b(url)
     db = Database(url)
-    app.state.map_pool = MapnikMapPool(db, 4)
+    app.state.map_pool = MapnikMapPool(8)
+    await app.state.map_pool.setup(db)
 
 
 image_tiler = ImageTileSubsystem()

@@ -29,7 +29,7 @@ def make_carto_stylesheet(scale, db_url):
     SELECT
         z.map_id,
         nullif(l.color, '') AS color,
-        z.geom FROM carto_new.{scale} z
+        z.geom FROM carto.polygons z
     LEFT JOIN maps.map_legend
       ON z.map_id = map_legend.map_id
     LEFT JOIN maps.legend AS l
@@ -39,6 +39,7 @@ def make_carto_stylesheet(scale, db_url):
     WHERE sources.status_code = 'active'
       AND l.color IS NOT NULL
       AND l.color != ''
+      AND z.scale = '{scale}'
     """
     )
 
@@ -49,11 +50,12 @@ def make_carto_stylesheet(scale, db_url):
             x.geom,
             q.direction,
             q.type
-        FROM carto_new.lines_{scale} x
+        FROM carto.lines x
         LEFT JOIN ( {line_sql} ) q
           ON q.line_id = x.line_id
         LEFT JOIN maps.sources ON x.source_id = sources.source_id
         WHERE sources.status_code = 'active'
+          AND x.scale = '{scale}'
     """
     )
 

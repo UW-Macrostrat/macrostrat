@@ -15,7 +15,10 @@ def scale_for_zoom(zoom):
         return "tiny"
     if zoom < 6:
         return "small"
-    if zoom < 9:
+    # This should be < 9 according to the legacy code
+    # I think but it appears to actually be < 10
+    # in the legacy tileserver
+    if zoom < 10:
         return "medium"
     return "large"
 

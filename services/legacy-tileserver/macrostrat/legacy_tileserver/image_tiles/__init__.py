@@ -36,16 +36,16 @@ class ImageTileSubsystem:
     layer_name: str = "carto-tile"
     cache_profile_id: int = None
 
-    def get_tile(self, pool: MapnikMapPool, tile: Tile, tms) -> bytes:
+    async def get_tile(self, pool: MapnikMapPool, tile: Tile, tms) -> bytes:
         quad = tms.get("WebMercatorQuad")
         bbox = quad.xy_bounds(tile)
 
         # Get map scale for this zoom level
         # For some reason, the scale is one less than expected
-        scale = scale_for_zoom(tile.z - 1)
+        scale = scale_for_zoom(tile.z)
         box = Box2d(bbox.left, bbox.top, bbox.right, bbox.bottom)
 
-        with pool.map_context(scale) as _map:
+        async with pool.map_context(scale) as _map:
 
             _map.zoom_to_box(box)
 
@@ -103,7 +103,7 @@ class ImageTileSubsystem:
             )
 
         map_pool = request.app.state.map_pool
-        content = self.get_tile(map_pool, tile, tms)
+        content = await self.get_tile(map_pool, tile, tms)
         timer._add_step("get_tile")
 
         if cache != CacheMode.bypass:
