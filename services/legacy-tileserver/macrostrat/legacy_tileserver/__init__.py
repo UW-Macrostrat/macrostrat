@@ -4,6 +4,7 @@ from buildpg.asyncpg import create_pool_b
 from fastapi import Depends, BackgroundTasks, Request
 from fastapi import FastAPI
 from macrostrat.database import Database
+from macrostrat.tileserver_utils import CacheMode, TileParams
 from macrostrat.utils import get_logger
 from macrostrat.utils import setup_stderr_logs
 from morecantile import Tile
@@ -12,7 +13,6 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse
 
 from .image_tiles import ImageTileSubsystem, MapnikMapPool
-from .utils import TileParams, CacheMode
 
 log = get_logger(__name__)
 

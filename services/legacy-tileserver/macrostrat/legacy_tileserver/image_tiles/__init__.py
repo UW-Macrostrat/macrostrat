@@ -4,6 +4,15 @@ import buildpg
 from fastapi import Depends, BackgroundTasks, HTTPException
 from fastapi import Request
 from macrostrat.database import Database
+from macrostrat.tileserver_utils import (
+    get_tile_from_cache,
+    set_cached_tile,
+    TileParams,
+    TileResponse,
+    CacheStatus,
+    CacheMode,
+    CacheArgs,
+)
 from macrostrat.utils import get_logger
 from macrostrat.utils.timer import Timer
 from mapnik import Map, load_map_from_string, Image, render, Box2d
@@ -12,8 +21,6 @@ from morecantile import Tile, tms
 from .config import scales, scale_for_zoom
 from .mapnik_styles import make_mapnik_xml
 from .pool import MapnikMapPool
-from ..cache import get_tile_from_cache, set_cached_tile
-from ..utils import TileParams, TileResponse, CacheStatus, CacheMode
 
 log = get_logger(__name__)
 
@@ -33,7 +40,7 @@ class ImageTileSubsystem:
     """
 
     layer_cache = {}
-    layer_name: str = "carto-tile"
+    layer_name: str = "carto-image"
     cache_profile_id: int = None
 
     async def get_tile(self, pool: MapnikMapPool, tile: Tile, tms) -> bytes:
@@ -80,11 +87,15 @@ class ImageTileSubsystem:
 
         timer = Timer()
 
-        cache_id = await self.get_cache_profile_id(pool)
+        cache_args = CacheArgs(
+            tile=tile,
+            layer="carto-image",
+            params=None,
+        )
 
         # If cache is not bypassed and the tile is in the cache, return it
         if cache != CacheMode.bypass:
-            content = await get_tile_from_cache(pool, cache_id, None, tile)
+            content = await get_tile_from_cache(pool, cache_args)
             timer._add_step("check_cache")
             if content is not None:
                 return TileResponse(
@@ -106,10 +117,10 @@ class ImageTileSubsystem:
         content = await self.get_tile(map_pool, tile, tms)
         timer._add_step("get_tile")
 
+        print(cache_id, tile, content)
+
         if cache != CacheMode.bypass:
-            background_tasks.add_task(
-                set_cached_tile, pool, cache_id, None, tile, content
-            )
+            background_tasks.add_task(set_cached_tile, pool, cache_args, content)
 
         return TileResponse(
             content, timer, cache_status=CacheStatus.miss, media_type="image/png"

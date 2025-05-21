@@ -2,9 +2,9 @@ import decimal
 import json
 import typing
 from enum import Enum
-
-from macrostrat.tile_cache import CacheStatus
 from starlette.responses import JSONResponse, Response
+
+from .cache import CacheStatus
 
 
 class MimeTypes(str, Enum):
