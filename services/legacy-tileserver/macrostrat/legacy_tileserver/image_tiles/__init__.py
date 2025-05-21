@@ -1,11 +1,10 @@
 from os import environ
 
-import buildpg
 from fastapi import Depends, BackgroundTasks, HTTPException
 from fastapi import Request
 from macrostrat.database import Database
 from macrostrat.tileserver_utils import (
-    get_tile_from_cache,
+    get_cached_tile,
     set_cached_tile,
     TileParams,
     TileResponse,
@@ -41,7 +40,6 @@ class ImageTileSubsystem:
 
     layer_cache = {}
     layer_name: str = "carto-image"
-    cache_profile_id: int = None
 
     async def get_tile(self, pool: MapnikMapPool, tile: Tile, tms) -> bytes:
         quad = tms.get("WebMercatorQuad")
@@ -61,19 +59,6 @@ class ImageTileSubsystem:
             render(_map, im, 2)
             # Return image as binary
             return im.tostring("png")
-
-    async def get_cache_profile_id(self, pool):
-        if self.cache_profile_id is not None:
-            return self.cache_profile_id
-        # Set the cache profile id from the database
-        async with pool.acquire() as conn:
-            q, p = buildpg.render(
-                "SELECT id FROM tile_cache.profile WHERE name = :layer",
-                layer=self.layer_name,
-            )
-            res = await conn.fetchval(q, *p)
-            self.cache_profile_id = res
-            return res
 
     async def handle_tile_request(
         self,
@@ -95,7 +80,7 @@ class ImageTileSubsystem:
 
         # If cache is not bypassed and the tile is in the cache, return it
         if cache != CacheMode.bypass:
-            content = await get_tile_from_cache(pool, cache_args)
+            content = await get_cached_tile(pool, cache_args)
             timer._add_step("check_cache")
             if content is not None:
                 return TileResponse(
@@ -116,8 +101,6 @@ class ImageTileSubsystem:
         map_pool = request.app.state.map_pool
         content = await self.get_tile(map_pool, tile, tms)
         timer._add_step("get_tile")
-
-        print(cache_id, tile, content)
 
         if cache != CacheMode.bypass:
             background_tasks.add_task(set_cached_tile, pool, cache_args, content)
