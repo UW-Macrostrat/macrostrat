@@ -3,13 +3,12 @@ Generate mapnik XML for each map scale.
 The stylesheets are regenerated every time the server is restarted.
 """
 
-from os import environ
+from json import dumps
 from pathlib import Path
 from subprocess import check_output, CalledProcessError
-from json import dumps
-from .config import layer_order
 from textwrap import dedent
-from tempfile import NamedTemporaryFile
+
+from .config import layer_order
 
 __here__ = Path(__file__).parent
 
@@ -109,8 +108,8 @@ def make_carto_stylesheet(scale, db_url):
                 "maxZoom": "16",
             },
         ],
-        "scale": 1,
-        "metatile": 2,
+        "scale": 2,
+        "metatile": 1,
         "name": "burwell",
         "description": "burwell",
         "attribution": "Data providers, UW-Macrostrat",

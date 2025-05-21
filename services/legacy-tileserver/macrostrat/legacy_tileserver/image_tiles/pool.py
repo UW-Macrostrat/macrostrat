@@ -11,6 +11,7 @@ from .mapnik_styles import make_mapnik_xml
 
 log = get_logger(__name__)
 
+
 class MapnikMapPool:
     """A simple, lazy queue-based object pool of Mapnik maps for rendering tiles."""
 
