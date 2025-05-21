@@ -1,24 +1,15 @@
-# Macrostrat's tile server
+# Macrostrat's legacy tile server
 
 *A dynamic tile server for geologic maps*
 
 # Version 2 changes
 
 - Python-based instead of Node-based
-- A "dynamic tiler" based heavily on [TimVT](https://github.com/developmentseed/timvt)
-- Uses a PostgreSQL caching backend (this is the primary simplification)
-- Uses Mapnik for legacy image-tile generation
+- A "dynamic tiler" based on [Mapnik](https://mapnik.org/) and PostGIS
+- Uses a PostgreSQL caching backend
 - Optionally, can use Varnish as a "L2" API cache
 
 # Installing
-
-This module depends on tile utilities[UW-Macrostrat/postgis-tile-utils](https://github.com/UW-Macrostrat/postgis-tile-utils).
-This dependency is packaged as a git submodule. To install it, run:
-
-> git submodule update --init
-
-The module can be run locally using Poetry, but there may be problems with Mapnik.
-We're working on simplifying this process and making Mapnik optional.
 
 To install in Docker (preferred), build the image:
 

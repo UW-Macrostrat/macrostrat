@@ -52,6 +52,9 @@ WORKDIR /app/
 # Copy only requirements to cache them in docker layer
 # Right now, Poetry lock file must exist to avoid hanging on dependency resolution
 COPY ./pyproject.toml ./poetry.lock /app/
+# This gets locally built deps, which must be staged in the
+# image directory before building. This is breakable and we'd like
+# to end up with a better solution eventually.
 COPY ./deps/ /app/deps/
 
 # Create and activate our own virtual envrionment so that we can keep
@@ -69,4 +72,4 @@ COPY ./ /app/
 # Install the root package
 RUN poetry install --no-interaction --no-ansi --no-dev
 
-CMD uvicorn --host 0.0.0.0 --port 8000 macrostrat.legacy_tileserver:app
+CMD uvicorn --host 0.0.0.0 --port 8000 macrostrat.tileserver_v2:app

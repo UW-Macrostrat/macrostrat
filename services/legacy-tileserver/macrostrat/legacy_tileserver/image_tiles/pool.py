@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from macrostrat.database import Database
 from macrostrat.utils import get_logger
-from mapnik import Map, load_map_from_string, Image, render, Box2d
+from mapnik import Map, load_map_from_string
 
 from .config import scales
 from .mapnik_styles import make_mapnik_xml

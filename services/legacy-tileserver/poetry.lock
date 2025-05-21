@@ -567,13 +567,13 @@ description = "Utilities for Macrostrat tile servers"
 optional = false
 python-versions = ">=3.9,<4.0"
 files = [
-    {file = "macrostrat_tileserver_utils-0.1.0-py3-none-any.whl", hash = "sha256:6dc4fd01d92f27f94b62c400fe449c303c82882584c01c1de17e700a3df65e0a"},
+    {file = "macrostrat_tileserver_utils-0.1.0-py3-none-any.whl", hash = "sha256:15bbe9a8f3ec9024f31d83f413edaa067632f6e68e29bd7f983981b26160de79"},
 ]
 
 [package.dependencies]
 buildpg = ">=0.4,<0.5"
 fastapi = ">=0.111.0,<0.112.0"
-"macrostrat.utils" = ">=1.3.0,<2.0.0"
+"macrostrat.utils" = ">=1.3.1,<2.0.0"
 morecantile = ">=6.2.0,<7.0.0"
 pydantic = ">=2.11.4,<3.0.0"
 starlette = ">=0.37.0,<0.47.0"
@@ -584,13 +584,13 @@ url = "deps/macrostrat_tileserver_utils-0.1.0-py3-none-any.whl"
 
 [[package]]
 name = "macrostrat-utils"
-version = "1.3.0"
+version = "1.3.1"
 description = "Core utilities for Macrostrat and Sparrow"
 optional = false
 python-versions = "<4.0,>=3.8"
 files = [
-    {file = "macrostrat_utils-1.3.0-py3-none-any.whl", hash = "sha256:596681457b5bf02c827f075a381d7036242cd4aa21293965a1b9ca1dc9421bd6"},
-    {file = "macrostrat_utils-1.3.0.tar.gz", hash = "sha256:c8b2fd708ca5db54689e899b030b0b7b8ce5b24b76a2a9758e4583be53dc06e2"},
+    {file = "macrostrat_utils-1.3.1-py3-none-any.whl", hash = "sha256:a3751a1c172018ac246ce0e476a539b12ed89a9e0ce890d95672e20a4e50fd0c"},
+    {file = "macrostrat_utils-1.3.1.tar.gz", hash = "sha256:c40c5059103527e4afd8d83e66bc1e6a1d80e6509d297e7b13d103c01f4c5256"},
 ]
 
 [package.dependencies]
@@ -1406,13 +1406,13 @@ files = [
 
 [[package]]
 name = "typing-inspection"
-version = "0.4.0"
+version = "0.4.1"
 description = "Runtime typing introspection tools"
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "typing_inspection-0.4.0-py3-none-any.whl", hash = "sha256:50e72559fcd2a6367a19f7a7e610e6afcb9fac940c650290eed893d61386832f"},
-    {file = "typing_inspection-0.4.0.tar.gz", hash = "sha256:9765c87de36671694a67904bf2c96e395be9c6439bb6c87b5142569dcdd65122"},
+    {file = "typing_inspection-0.4.1-py3-none-any.whl", hash = "sha256:389055682238f53b04f7badcb49b989835495a96700ced5dab2d8feae4b26f51"},
+    {file = "typing_inspection-0.4.1.tar.gz", hash = "sha256:6ae134cc0203c33377d43188d4064e9b357dba58cff3185f22924610e70a9d28"},
 ]
 
 [package.dependencies]
@@ -1586,5 +1586,5 @@ files = [
 
 [metadata]
 lock-version = "2.0"
-python-versions = "^3.9"
-content-hash = "f18eec754b939d9caca56aa599c67c9238265aac11363a63aa655003015eea95"
+python-versions = "^3.9,<3.10"
+content-hash = "efa96b18257903fc1d24fe32ca7a4f4f5a9daee1160a47826c86130b39af118e"

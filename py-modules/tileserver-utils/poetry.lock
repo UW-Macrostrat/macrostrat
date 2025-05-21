@@ -377,14 +377,14 @@ i18n = ["Babel (>=2.7)"]
 
 [[package]]
 name = "macrostrat-utils"
-version = "1.3.0"
+version = "1.3.1"
 description = "Core utilities for Macrostrat and Sparrow"
 optional = false
 python-versions = "<4.0,>=3.8"
 groups = ["main"]
 files = [
-    {file = "macrostrat_utils-1.3.0-py3-none-any.whl", hash = "sha256:596681457b5bf02c827f075a381d7036242cd4aa21293965a1b9ca1dc9421bd6"},
-    {file = "macrostrat_utils-1.3.0.tar.gz", hash = "sha256:c8b2fd708ca5db54689e899b030b0b7b8ce5b24b76a2a9758e4583be53dc06e2"},
+    {file = "macrostrat_utils-1.3.1-py3-none-any.whl", hash = "sha256:a3751a1c172018ac246ce0e476a539b12ed89a9e0ce890d95672e20a4e50fd0c"},
+    {file = "macrostrat_utils-1.3.1.tar.gz", hash = "sha256:c40c5059103527e4afd8d83e66bc1e6a1d80e6509d297e7b13d103c01f4c5256"},
 ]
 
 [package.dependencies]
@@ -1173,4 +1173,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9,<4.0"
-content-hash = "5d917f433ec29ac6180f255e62649896a40949099ffe10f3f3e2a62de9f530da"
+content-hash = "38ecfd153e02234709fad192958f847734d2fabca0ce5b6ca91649161cdf8ac7"

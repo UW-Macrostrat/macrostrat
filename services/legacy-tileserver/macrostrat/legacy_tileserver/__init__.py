@@ -1,13 +1,11 @@
 from enum import Enum
+from functools import lru_cache
 from os import environ
 
 from buildpg import render
 from buildpg.asyncpg import create_pool_b
-from fastapi import Depends, BackgroundTasks, Request
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, BackgroundTasks, Request
 from macrostrat.database import Database
-from macrostrat.legacy_tileserver.image_tiles import handle_tile_request
-from macrostrat.tileserver_utils import CacheMode, TileParams, CacheArgs, MimeTypes
 from macrostrat.utils import get_logger
 from macrostrat.utils import setup_stderr_logs
 from morecantile import Tile
@@ -15,6 +13,13 @@ from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse
 
+from macrostrat.tileserver_utils import (
+    CacheMode,
+    TileParams,
+    MimeTypes,
+    handle_cached_tile_request,
+    CachedTileArgs,
+)
 from .image_tiles import get_image_tile, MapnikMapPool
 
 log = get_logger(__name__)
@@ -52,16 +57,18 @@ async def tile(
     *,
     cache: CacheMode = CacheMode.prefer,
 ):
-    """Return vector tile."""
+    """Raster tiles. Only available for Carto compilation (carto-slim would be the same)."""
 
-    args = CacheArgs(
+    args = CachedTileArgs(
         layer="carto-image",
         tile=tile,
         media_type="image/png",
         mode=cache,
     )
 
-    return await handle_tile_request(request, background_tasks, get_image_tile, args)
+    return await handle_cached_tile_request(
+        request, background_tasks, get_image_tile, args
+    )
 
 
 @app.get("/{layer}/{z}/{x}/{y}.mvt")
@@ -74,32 +81,39 @@ async def tile(
     cache: CacheMode = CacheMode.prefer,
 ):
     """Return vector tile."""
-    args = CacheArgs(
+    args = CachedTileArgs(
         layer=str(layer),
         tile=tile,
         media_type=MimeTypes.mvt,
         mode=cache,
     )
 
-    function_name = "carto"
-    if layer == MapCompilation.CartoSlim:
-        function_name = "carto_slim"
+    return await handle_cached_tile_request(
+        request, background_tasks, vector_tile_handler(layer), args
+    )
+
+
+# Cached function to get a handler for a specific vector tile layer
+@lru_cache(10)
+def vector_tile_handler(compilation: MapCompilation):
+    function_name: str = "tile_layers.carto"
+    if compilation == MapCompilation.CartoSlim:
+        function_name = "tile_layers.carto_slim"
 
     async def get_vector_tile(req, args):
         """Get vector tile."""
         # This is a placeholder for the actual function to get the vector tile
         # You would replace this with the actual implementation
-        tile = args.tile
         q, p = render(
-            f"SELECT tile_layers.{function_name}(:x, :y, :z)",
-            x=tile.x,
-            y=tile.y,
-            z=tile.z,
+            f"SELECT {function_name}(:x, :y, :z)",
+            x=args.tile.x,
+            y=args.tile.y,
+            z=args.tile.z,
         )
         async with req.app.state.pool.acquire() as conn:
             return await conn.fetchval(q, *p)
 
-    return await handle_tile_request(request, background_tasks, get_vector_tile, args)
+    return get_vector_tile
 
 
 @app.get("/", include_in_schema=False)

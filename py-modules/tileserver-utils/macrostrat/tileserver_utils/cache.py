@@ -1,15 +1,17 @@
-from ctypes import c_int32
-from json import dumps
-
-from buildpg import asyncpg, render
 from contextvars import ContextVar
+from ctypes import c_int32
 from enum import Enum
 from hashlib import md5
-from macrostrat.utils import get_logger
+from json import dumps
+from typing import Optional, Union, Callable, Awaitable
+
+from buildpg import asyncpg, render
+from fastapi import Request, BackgroundTasks, HTTPException
+from macrostrat.utils import get_logger, CodeTimer
 from morecantile import Tile
 from pydantic import BaseModel
-from typing import Optional, Union
 
+from .output import TileResponse
 from .utils import prepared_statement
 
 log = get_logger(__name__)
@@ -27,7 +29,7 @@ class CacheStatus(str, Enum):
     bypass = "bypass"
 
 
-class CacheArgs(BaseModel):
+class CachedTileArgs(BaseModel):
     layer: Union[int, str]
     tile: Tile
     media_type: str
@@ -36,9 +38,50 @@ class CacheArgs(BaseModel):
     mode: CacheMode = CacheMode.prefer
 
 
+async def handle_cached_tile_request(
+    request: Request,
+    pool: asyncpg.BuildPgPool,
+    background_tasks: BackgroundTasks,
+    get_tile: Callable[[Request, CachedTileArgs], Awaitable[bytes]],
+    args: CachedTileArgs,
+) -> TileResponse:
+    """Return vector tile."""
+    timer = CodeTimer()
+
+    # If cache is not bypassed and the tile is in the cache, return it
+    if args.mode != CacheMode.bypass:
+        content = await get_cached_tile(pool, args)
+        timer.step("check_cache")
+        if content is not None:
+            return TileResponse(
+                content, timer, cache_status=CacheStatus.hit, media_type=args.media_type
+            )
+
+    # If the cache is forced and the tile is not in the cache, return a 404
+    if args.mode == CacheMode.force:
+        raise HTTPException(
+            status_code=404,
+            detail="Tile not found in cache",
+            headers={
+                "Server-Timing": timer.server_timings(),
+                "X-Tile-Cache": CacheStatus.miss,
+            },
+        )
+
+    content = await get_tile(request, args)
+    timer.step("get_tile")
+
+    if args.mode != CacheMode.bypass:
+        background_tasks.add_task(set_cached_tile, pool, args, content)
+
+    return TileResponse(
+        content, timer, cache_status=CacheStatus.miss, media_type=args.media_type
+    )
+
+
 async def get_cached_tile(
     pool: asyncpg.BuildPgPool,
-    args: CacheArgs,
+    args: CachedTileArgs,
 ) -> Optional[bytes]:
     """Get tile data from cache."""
     # Get the tile from the tile_cache.tile table
@@ -61,17 +104,9 @@ async def get_cached_tile(
         return await conn.fetchval(q, *p)
 
 
-async def get_layer_id(pool, layer):
-    """Get the layer ID from the database"""
-    if isinstance(layer, int):
-        return layer
-
-    return await get_cache_profile_id(pool, layer)
-
-
 async def set_cached_tile(
     pool: asyncpg.BuildPgPool,
-    args: CacheArgs,
+    args: CachedTileArgs,
     content: bytes,
 ):
 
@@ -95,7 +130,14 @@ async def set_cached_tile(
 profiles = ContextVar("profiles", default={})
 
 
-async def get_cache_profile_id(pool: asyncpg.BuildPgPool, name: str):
+async def get_layer_id(pool, layer):
+    """Get the layer ID from the database"""
+    if isinstance(layer, int):
+        return layer
+    return await _get_cache_profile_id(pool, layer)
+
+
+async def _get_cache_profile_id(pool: asyncpg.BuildPgPool, name: str):
     index = profiles.get()
     if name in index:
         return index[name]
