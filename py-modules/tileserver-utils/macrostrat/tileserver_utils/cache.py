@@ -29,9 +29,11 @@ class CacheStatus(str, Enum):
 
 class CacheArgs(BaseModel):
     layer: Union[int, str]
-    params: Optional[dict[str, str]]
     tile: Tile
+    media_type: str
+    params: Optional[dict[str, str]] = None
     tms: str = "WebMercatorQuad"
+    mode: CacheMode = CacheMode.prefer
 
 
 async def get_cached_tile(
