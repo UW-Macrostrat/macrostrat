@@ -28,7 +28,7 @@ def make_carto_stylesheet(scale, db_url):
         f"""
     SELECT
         z.map_id,
-        coalesce(nullif(l.color, ''), '#777777') AS color,
+        nullif(l.color, '') AS color,
         z.geom FROM carto_new.{scale} z
     LEFT JOIN maps.map_legend
       ON z.map_id = map_legend.map_id
@@ -37,6 +37,8 @@ def make_carto_stylesheet(scale, db_url):
     LEFT JOIN maps.sources
       ON l.source_id = sources.source_id
     WHERE sources.status_code = 'active'
+      AND l.color IS NOT NULL
+      AND l.color != ''
     """
     )
 

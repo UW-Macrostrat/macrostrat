@@ -41,7 +41,8 @@ class ImageTileSubsystem:
         bbox = quad.xy_bounds(tile)
 
         # Get map scale for this zoom level
-        scale = scale_for_zoom(tile.z-1)
+        # For some reason, the scale is one less than expected
+        scale = scale_for_zoom(tile.z - 1)
         box = Box2d(bbox.left, bbox.top, bbox.right, bbox.bottom)
 
         with pool.map_context(scale) as _map:

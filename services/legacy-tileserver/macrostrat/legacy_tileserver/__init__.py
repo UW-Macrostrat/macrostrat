@@ -45,7 +45,9 @@ async def tile(
     cache: CacheMode = CacheMode.prefer,
 ):
     """Return vector tile."""
-    return await image_tiler.handle_tile_request(request, background_tasks, tile, cache=cache)
+    return await image_tiler.handle_tile_request(
+        request, background_tasks, tile, cache=cache
+    )
 
 
 @app.get("/", include_in_schema=False)
