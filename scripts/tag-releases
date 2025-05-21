@@ -5,7 +5,7 @@ set -e
 
 # Build services and lock dependencies, to ensure we don't have any uncommitted changes
 # or package version mismatches.
-prepare-services
+scripts/prepare-services
 
 # Fail if we are in a dirty state
 if ! git diff-index --quiet HEAD --; then
