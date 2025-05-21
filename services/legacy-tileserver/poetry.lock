@@ -567,14 +567,14 @@ description = "Utilities for Macrostrat tile servers"
 optional = false
 python-versions = ">=3.9,<4.0"
 files = [
-    {file = "macrostrat_tileserver_utils-0.1.0-py3-none-any.whl", hash = "sha256:0357a29a54f5da49bf79aace55ea5c2b9bcd48319c37ade5936e96371702290a"},
+    {file = "macrostrat_tileserver_utils-0.1.0-py3-none-any.whl", hash = "sha256:429fc075705c1b72ba702662fca45f76c84a17f3022824ae5b8d3298316bfa6b"},
 ]
 
 [package.dependencies]
 buildpg = ">=0.4,<0.5"
 fastapi = ">=0.111.0,<0.112.0"
 "macrostrat.utils" = ">=1.3.1,<2.0.0"
-morecantile = ">=6.2.0,<7.0.0"
+morecantile = ">=5.0.0,<7.0.0"
 pydantic = ">=2.11.4,<3.0.0"
 starlette = ">=0.37.0,<0.47.0"
 
