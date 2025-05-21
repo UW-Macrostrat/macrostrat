@@ -1,9 +1,21 @@
+import pathlib
 from contextvars import ContextVar
 from enum import Enum
-from pathlib import Path
+
+from fastapi import Path
+from morecantile import Tile
 
 from .cache import CacheMode, CacheStatus
 from .output import TileResponse, DecimalJSONResponse, VectorTileResponse
+
+
+def TileParams(
+    z: int = Path(..., ge=0, le=30, description="Tiles's zoom level"),
+    x: int = Path(..., description="Tiles's column"),
+    y: int = Path(..., description="Tiles's row"),
+) -> Tile:
+    """Tile parameters."""
+    return Tile(x, y, z)
 
 
 def scales_for_zoom(z: int, dz: int = 0):
@@ -61,5 +73,5 @@ def get_layer_sql(base_dir: Path, filename: str, as_mvt: bool = True):
 
 def prepared_statement(id):
     """Legacy prepared statement"""
-    filename = Path(__file__).parent.parent / "sql" / f"{id}.sql"
+    filename = pathlib.Path(__file__).parent.parent / "sql" / f"{id}.sql"
     return get_sql(filename)

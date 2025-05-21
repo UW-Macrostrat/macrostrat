@@ -1,14 +1,18 @@
 from os import environ
 
 from buildpg.asyncpg import create_pool_b
+from fastapi import Depends, BackgroundTasks, Request
 from fastapi import FastAPI
-from macrostrat.utils import get_logger, setup_stderr_logs
+from macrostrat.database import Database
+from macrostrat.utils import get_logger
+from macrostrat.utils import setup_stderr_logs
+from morecantile import Tile
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
-from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from .image_tiles import MapnikLayerFactory, prepare_image_tile_subsystem
+from .image_tiles import ImageTileSubsystem, MapnikMapPool
+from .utils import TileParams, CacheMode
 
 log = get_logger(__name__)
 
@@ -22,12 +26,26 @@ async def startup_event():
     # Don't rely on poort TimVT handling of database connections
     setup_stderr_logs("macrostrat.legacy_tileserver")
 
-    app.state.pool = await create_pool_b(environ["DATABASE_URL"])
+    url = environ["DATABASE_URL"]
+    app.state.pool = await create_pool_b(url)
+    db = Database(url)
+    app.state.map_pool = MapnikMapPool(db, 4)
 
-    prepare_image_tile_subsystem()
+
+image_tiler = ImageTileSubsystem()
 
 
-MapnikLayerFactory(app)
+@app.get("/carto/{z}/{x}/{y}.png")
+@app.get("/carto-slim/{z}/{x}/{y}.png")
+async def tile(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    tile: Tile = Depends(TileParams),
+    *,
+    cache: CacheMode = CacheMode.prefer,
+):
+    """Return vector tile."""
+    return await image_tiler.handle_tile_request(request, background_tasks, tile, cache=cache)
 
 
 @app.get("/", include_in_schema=False)
