@@ -3,13 +3,14 @@ from ctypes import c_int32
 from enum import Enum
 from hashlib import md5
 from json import dumps
-from typing import Optional, Union, Callable, Awaitable
+from typing import Awaitable, Callable, Optional, Union
 
 from buildpg import asyncpg, render
-from fastapi import Request, BackgroundTasks, HTTPException
-from macrostrat.utils import get_logger, CodeTimer
+from fastapi import BackgroundTasks, HTTPException, Request
 from morecantile import Tile
 from pydantic import BaseModel
+
+from macrostrat.utils import CodeTimer, get_logger
 
 from .output import TileResponse
 from .utils import prepared_statement

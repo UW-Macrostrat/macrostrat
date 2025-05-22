@@ -1,13 +1,14 @@
 from os import environ
 
 from fastapi import Request
-from macrostrat.database import Database
-from macrostrat.utils import get_logger
-from mapnik import Image, render, Box2d
+from mapnik import Box2d, Image, render
 from morecantile import tms
 
+from macrostrat.database import Database
 from macrostrat.tileserver_utils import CachedTileArgs
-from .config import scales, scale_for_zoom
+from macrostrat.utils import get_logger
+
+from .config import scale_for_zoom, scales
 from .mapnik_styles import make_mapnik_xml
 from .pool import MapnikMapPool
 

@@ -1,6 +1,8 @@
-from .cached_tiler import CachedStoredFunction
 from typing import Any, Optional
+
 from buildpg import render
+
+from .cached_tiler import CachedStoredFunction
 
 
 class PaleoGeographyLayer(CachedStoredFunction):

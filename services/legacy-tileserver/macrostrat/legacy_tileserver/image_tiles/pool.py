@@ -2,9 +2,10 @@ import time
 from asyncio import Queue
 from contextlib import asynccontextmanager
 
+from mapnik import Map, load_map_from_string
+
 from macrostrat.database import Database
 from macrostrat.utils import get_logger
-from mapnik import Map, load_map_from_string
 
 from .config import scales
 from .mapnik_styles import make_mapnik_xml

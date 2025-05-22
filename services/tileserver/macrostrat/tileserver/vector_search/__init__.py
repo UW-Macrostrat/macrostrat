@@ -4,15 +4,15 @@ from pathlib import Path
 from typing import List
 
 from buildpg import render
-from fastapi import APIRouter, Request, Query
+from fastapi import APIRouter, Query, Request
 from httpx import AsyncClient
 
 client = AsyncClient()
 
-from macrostrat.tileserver_utils import get_sql, VectorTileResponse
-from ..utils import scales_for_zoom, get_layer_sql
-
+from macrostrat.tileserver_utils import VectorTileResponse, get_sql
 from macrostrat.utils import get_logger
+
+from ..utils import get_layer_sql, scales_for_zoom
 
 log = get_logger(__name__)
 
