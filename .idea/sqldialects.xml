@@ -5,6 +5,24 @@
     <file url="file://$PROJECT_DIR$/cli/macrostrat/cli/subsystems/maps/fixtures/02-map-compilations.sql" dialect="PostgreSQL" />
     <file url="file://$PROJECT_DIR$/cli/macrostrat/cli/subsystems/maps/fixtures/03-fill-tables.sql" dialect="PostgreSQL" />
     <file url="file://$PROJECT_DIR$/cli/macrostrat/cli/subsystems/maps/procedures/clear-extra-topogeometries.sql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/py-modules/tileserver-utils/macrostrat/tileserver_utils/sql/get-cached-tile.sql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/py-modules/tileserver-utils/macrostrat/tileserver_utils/sql/set-cached-tile.sql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/services/legacy-tileserver/__archive/v1/seeder/sql/carto-slim/large.sql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/services/legacy-tileserver/__archive/v1/seeder/sql/carto-slim/large_lines.sql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/services/legacy-tileserver/__archive/v1/seeder/sql/carto-slim/medium.sql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/services/legacy-tileserver/__archive/v1/seeder/sql/carto-slim/medium_lines.sql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/services/legacy-tileserver/__archive/v1/seeder/sql/carto-slim/small.sql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/services/legacy-tileserver/__archive/v1/seeder/sql/carto-slim/small_lines.sql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/services/legacy-tileserver/__archive/v1/seeder/sql/carto-slim/tiny.sql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/services/legacy-tileserver/__archive/v1/seeder/sql/carto-slim/tiny_lines.sql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/services/legacy-tileserver/__archive/v1/seeder/sql/carto/large.sql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/services/legacy-tileserver/__archive/v1/seeder/sql/carto/large_lines.sql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/services/legacy-tileserver/__archive/v1/seeder/sql/carto/medium.sql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/services/legacy-tileserver/__archive/v1/seeder/sql/carto/medium_lines.sql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/services/legacy-tileserver/__archive/v1/seeder/sql/carto/small.sql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/services/legacy-tileserver/__archive/v1/seeder/sql/carto/small_lines.sql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/services/legacy-tileserver/__archive/v1/seeder/sql/carto/tiny.sql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/services/legacy-tileserver/__archive/v1/seeder/sql/carto/tiny_lines.sql" dialect="PostgreSQL" />
     <file url="PROJECT" dialect="PostgreSQL" />
   </component>
 </project>
