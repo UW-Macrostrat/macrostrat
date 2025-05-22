@@ -1,6 +1,7 @@
 # From here:
 # https://stackoverflow.com/questions/53835198/integrating-python-poetry-with-docker
 # NOTE: we might want to make things a bit nicer here
+
 FROM python:3.9@sha256:c0dcc146710fed0a6d62cb55b92f00bfbfc3b931fff6218f4958bab58333c37b
 
 # MAPNIK
@@ -42,10 +43,16 @@ RUN curl -sL https://deb.nodesource.com/setup_14.x | bash - && \
 # Install carto
 RUN npm install -g carto
 
-# The rest of this (for vector tile generation and the server itself) should be easier.
-ENV PIP_DISABLE_PIP_VERSION_CHECK=1 POETRY_VIRTUALENVS_CREATE=false
+# Clear temporary files
+RUN rm -rf /tmp/*
 
-RUN pip install "pip==23.2.1" && pip install "setuptools==68.2.2" && pip install "poetry==1.6.1"
+# The rest of this (for vector tile generation and the server itself) should be easier.
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    POETRY_NO_INTERACTION=1 \
+    POETRY_CACHE_DIR=/tmp/poetry-cache \
+    POETRY_VIRTUALENVS_CREATE=false
+
+RUN pip install --no-cache-dir "pip==25.1.1" && pip install --no-cache-dir "poetry==2.1.1"
 
 WORKDIR /app/
 
@@ -62,7 +69,7 @@ COPY ./deps/ /app/deps/
 RUN python3 -m venv /venv
 ENV PATH="/venv/bin:$PATH"
 
-RUN poetry install --no-interaction --no-ansi --no-root --no-dev
+RUN --mount=type=cache,target=$POETRY_CACHE_DIR poetry install --no-root --without dev
 
 EXPOSE 8000
 
@@ -70,6 +77,8 @@ EXPOSE 8000
 COPY ./ /app/
 
 # Install the root package
-RUN poetry install --no-interaction --no-ansi --no-dev
+RUN --mount=type=cache,target=$POETRY_CACHE_DIR poetry install --without dev
 
-CMD uvicorn --host 0.0.0.0 --port 8000 macrostrat.legacy_tileserver:app
+
+CMD ["uvicorn", "--host", "0.0.0.0", "--port", "8000", "macrostrat.legacy_tileserver:app"]
+

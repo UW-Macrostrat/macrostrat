@@ -1,18 +1,11 @@
-from enum import Enum
-from functools import lru_cache
 from os import environ
 
 from buildpg import render
 from buildpg.asyncpg import create_pool_b
+from enum import Enum
 from fastapi import FastAPI, Depends, BackgroundTasks, Request
+from functools import lru_cache
 from macrostrat.database import Database
-from macrostrat.utils import get_logger
-from macrostrat.utils import setup_stderr_logs
-from morecantile import Tile
-from starlette.middleware import Middleware
-from starlette.middleware.cors import CORSMiddleware
-from starlette.responses import JSONResponse
-
 from macrostrat.tileserver_utils import (
     CacheMode,
     TileParams,
@@ -20,6 +13,13 @@ from macrostrat.tileserver_utils import (
     handle_cached_tile_request,
     CachedTileArgs,
 )
+from macrostrat.utils import get_logger
+from macrostrat.utils import setup_stderr_logs
+from morecantile import Tile
+from starlette.middleware import Middleware
+from starlette.middleware.cors import CORSMiddleware
+from starlette.responses import JSONResponse
+
 from .image_tiles import get_image_tile, MapnikMapPool
 
 log = get_logger(__name__)
@@ -67,7 +67,7 @@ async def tile(
     )
 
     return await handle_cached_tile_request(
-        request, background_tasks, get_image_tile, args
+        request, request.app.state.pool, background_tasks, get_image_tile, args
     )
 
 
@@ -89,7 +89,11 @@ async def tile(
     )
 
     return await handle_cached_tile_request(
-        request, background_tasks, vector_tile_handler(layer), args
+        request,
+        request.app.state.pool,
+        background_tasks,
+        vector_tile_handler(layer),
+        args,
     )
 
 

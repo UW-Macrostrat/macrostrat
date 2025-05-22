@@ -87,7 +87,7 @@ services:
     # This is necessary for the tileserver to correctly generate URLs for tilejson files.
     # https://github.com/encode/starlette/issues/538
     command: >
-      poetry run uvicorn --host 0.0.0.0 --port 8000
+      uvicorn --host 0.0.0.0 --port 8000
         macrostrat.tileserver:app
         --root-path /tiles
         --log-level debug

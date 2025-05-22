@@ -20,7 +20,6 @@ RUN apt-get update -y && \
 
 # Install poetry
 RUN python3.11 -m venv /poetry-env
-ENV PATH="/poetry-env/bin:$PATH"
 RUN /poetry-env/bin/pip install --no-cache-dir poetry==2.1.1
 
 # The rest of this (for vector tile generation and the server itself) should be easier.
@@ -36,17 +35,27 @@ ENV PATH="/venv/bin:$PATH" \
 WORKDIR /app/
 
 COPY pyproject.toml poetry.lock ./
-COPY ./deps/ /app/deps/
 RUN touch README.md
 
 # Install Poetry dependencies (without dev and local dependencies)
-RUN --mount=type=cache,target=$POETRY_CACHE_DIR poetry install --without dev --no-root
+RUN --mount=type=cache,target=$POETRY_CACHE_DIR /poetry-env/bin/poetry install --without dev --without local --no-root
 
-# Creating folders, and files for a project:
+# Remove build dependencies
+RUN apt-get remove -y \
+  software-properties-common \
+  g++ \
+  make \
+  python3.11-dev && \
+  rm -rf /var/lib/apt/lists/*
+
+# Creating folders and files for a project, including local dependencies
 COPY ./ /app/
 
 # Install the root project and local dependencies
-RUN --mount=type=cache,target=$POETRY_CACHE_DIR poetry install --without dev
+RUN --mount=type=cache,target=$POETRY_CACHE_DIR /poetry-env/bin/poetry install --without dev
+
+# Remove Poetry and other versions of python
+RUN rm -rf /poetry-env && rm -rf /usr/lib/python3.12
 
 EXPOSE 8000
 
