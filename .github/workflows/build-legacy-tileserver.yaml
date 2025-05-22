@@ -1,14 +1,17 @@
 name: Build legacy tileserver
 on:
   push:
+    # Branches and paths are exclusive
     branches: ["main"]
+    paths:
+      - services/legacy-tileserver/**
     tags:
       - legacy-tileserver-v[0-9]+.[0-9]+.[0-9]+ # Semver Release (non-prerelease)
       - legacy-tileserver-v[0-9]+.[0-9]+.[0-9]+-** # Semver release (prerelease)
   pull_request:
     branches: [main]
-  paths:
-    - services/legacy-tileserver/**
+    paths:
+      - services/legacy-tileserver/**
 jobs:
   docker:
     runs-on: ubuntu-latest

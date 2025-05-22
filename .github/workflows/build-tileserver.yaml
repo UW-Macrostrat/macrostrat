@@ -1,14 +1,17 @@
 name: Build tileserver
 on:
   push:
+    # Branches and paths are exclusive
     branches: ["main"]
+    paths:
+      - services/tileserver/**
     tags:
       - tileserver-v[0-9]+.[0-9]+.[0-9]+ # Semver Release (non-prerelease)
       - tileserver-v[0-9]+.[0-9]+.[0-9]+-** # Semver release (prerelease)
   pull_request:
     branches: [main]
-  paths:
-    - services/tileserver/**
+    paths:
+      - services/tileserver/**
 jobs:
   docker:
     runs-on: ubuntu-latest
