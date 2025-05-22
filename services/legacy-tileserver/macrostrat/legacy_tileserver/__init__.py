@@ -16,9 +16,10 @@ from macrostrat.tileserver_utils import (
 from macrostrat.utils import get_logger
 from macrostrat.utils import setup_stderr_logs
 from morecantile import Tile
+from pathlib import Path
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
-from starlette.responses import JSONResponse
+from starlette.responses import HTMLResponse
 
 from .image_tiles import get_image_tile, MapnikMapPool
 
@@ -121,6 +122,17 @@ def vector_tile_handler(compilation: MapCompilation):
 
 
 @app.get("/", include_in_schema=False)
-async def index(request: Request):
-    """DEMO."""
-    return JSONResponse({"message": "Macrostrat legacy tileserver"})
+def index():
+    """Return index page"""
+    return get_page("index")
+
+
+@app.get("/preview", include_in_schema=False)
+def preview():
+    """Return preview page"""
+    return get_page("preview")
+
+
+def get_page(key):
+    file = Path(__file__).parent / "pages" / (key + ".html")
+    return HTMLResponse(file.read_text("utf-8"))

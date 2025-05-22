@@ -159,4 +159,3 @@ def _first_value(values: List[Any], default: Any = None):
 
 class CachedStoredFunction(StoredFunction):
     profile_id: Optional[int] = None
-

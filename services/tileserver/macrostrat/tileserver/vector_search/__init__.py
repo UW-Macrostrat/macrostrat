@@ -121,7 +121,7 @@ async def get_search_term_embedding(term, model) -> XDDEmbeddingResponse:
     """Get the embedding for a search term from the xDD API."""
 
     # Get the settings model
-    from ..main import db_settings
+    from ..__init__ import db_settings
 
     url = db_settings.xdd_embedding_service_url
 

@@ -2,17 +2,15 @@ from asyncio import run
 from os import environ, getenv
 from pathlib import Path
 
+from docker.client import DockerClient
 from fastapi.testclient import TestClient
 from macrostrat.database import Database
-
 from macrostrat.database.transfer import pg_restore_from_file
 from macrostrat.database.utils import temp_database
-
 # We could probably move this to a better location
 from macrostrat.dinosaur.upgrade_cluster.utils import database_cluster
 from pytest import fixture
 from sqlalchemy import Engine
-from docker.client import DockerClient
 
 
 def restore_database(engine: Engine, dumpfile: Path):
@@ -66,7 +64,7 @@ def db(pytestconfig, test_database_url):
 @fixture(scope="session")
 def app(db):
     environ["DATABASE_URL"] = getenv("TEST_DATABASE_URL")
-    from macrostrat_tileserver.main import app
+    from macrostrat_tileserver.__init__ import app
 
     yield app
 
