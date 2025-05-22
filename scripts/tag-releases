@@ -20,8 +20,6 @@ services=(
 
 for service_name in "${services[@]}"; do
   # Check if the service directory exists
-  service_name="legacy-tileserver"
-
   pushd services/$service_name > /dev/null 2>&1
   version=$(poetry version --short)
   tag="$service_name-v$version"
