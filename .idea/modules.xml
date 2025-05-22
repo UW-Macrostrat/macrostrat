@@ -4,6 +4,8 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/services/legacy-tileserver/legacy-tileserver.iml" filepath="$PROJECT_DIR$/services/legacy-tileserver/legacy-tileserver.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/macrostrat.iml" filepath="$PROJECT_DIR$/.idea/macrostrat.iml" />
+      <module fileurl="file://$PROJECT_DIR$/services/tileserver/tileserver.iml" filepath="$PROJECT_DIR$/services/tileserver/tileserver.iml" />
+      <module fileurl="file://$PROJECT_DIR$/py-modules/tileserver-utils/tileserver-utils.iml" filepath="$PROJECT_DIR$/py-modules/tileserver-utils/tileserver-utils.iml" />
     </modules>
   </component>
 </project>

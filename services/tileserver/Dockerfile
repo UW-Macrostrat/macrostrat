@@ -1,45 +1,52 @@
 # From here:
 # https://stackoverflow.com/questions/53835198/integrating-python-poetry-with-docker
 # NOTE: we might want to make things a bit nicer here
-FROM python:3.10
+FROM ghcr.io/osgeo/gdal:ubuntu-small-3.11.0
 
+# Install python from deadsnakes PPA
 RUN apt-get update -y && \
   apt-get install -y --no-install-recommends \
-  libgdal-dev libproj-dev libgeos-dev && \
+  software-properties-common && \
+  add-apt-repository ppa:deadsnakes/ppa && \
+  apt-get update -y && \
+  apt-get install -y --no-install-recommends \
+    gdb \
+    g++ \
+    make \
+    python3.11 \
+    python3.11-venv \
+    python3.11-dev && \
   rm -rf /var/lib/apt/lists/*
 
+# Install poetry
+RUN python3.11 -m venv /poetry-env
+ENV PATH="/poetry-env/bin:$PATH"
+RUN /poetry-env/bin/pip install --no-cache-dir poetry==2.1.1
+
 # The rest of this (for vector tile generation and the server itself) should be easier.
-ENV PIP_DISABLE_PIP_VERSION_CHECK=1 POETRY_VIRTUALENVS_CREATE=false
+ENV POETRY_NO_INTERACTION=1 \
+    POETRY_CACHE_DIR=/tmp/poetry-cache \
+    POETRY_VIRTUALENVS_CREATE=true
 
-RUN python3 -m venv /poetry-env
-RUN /poetry-env/bin/pip install -U pip setuptools
-RUN /poetry-env/bin/pip install poetry==2.1.1
-
+# Create a virtual environment for the app; add virtualenv and Poetry to PATH
+RUN python3.11 -m venv /venv
+ENV PATH="/venv/bin:$PATH"
 
 WORKDIR /app/
 
-# Copy only requirements to cache them in docker layer
-# Right now, Poetry lock file must exist to avoid hanging on dependency resolution
+COPY pyproject.toml poetry.lock ./
 COPY ./deps/ /app/deps/
-COPY ./pyproject.toml ./poetry.lock /app/
+RUN touch README.md
 
-# Create and activate our own virtual envrionment so that we can keep
-# our application dependencies separate from Poetry's
-RUN python3 -m venv /venv
-ENV PATH="/venv/bin:$PATH"
-
-# Command that always fails
-#RUN false
-
-
-RUN /poetry-env/bin/poetry install --no-interaction --no-ansi --no-root
-
-EXPOSE 8000
+# Install Poetry dependencies (without dev and local dependencies)
+RUN --mount=type=cache,target=$POETRY_CACHE_DIR poetry install --without dev --no-root
 
 # Creating folders, and files for a project:
 COPY ./ /app/
 
-# Install the root package
-RUN /poetry-env/bin/poetry install --no-interaction --no-ansi
+# Install the root project and local dependencies
+RUN --mount=type=cache,target=$POETRY_CACHE_DIR poetry install --without dev
 
-CMD uvicorn --host 0.0.0.0 --port 8000 macrostrat_tileserver.main:app
+EXPOSE 8000
+
+CMD [ "uvicorn", "--host", "0.0.0.0", "--port", "8000", "macrostrat_tileserver.main:app" ]
