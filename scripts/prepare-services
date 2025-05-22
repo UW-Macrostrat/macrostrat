@@ -5,6 +5,11 @@
 
 set -e
 
+should_lock=false
+if [[ $1 =~ "--lock" ]]; then
+  should_lock=true
+fi
+
 function header() {
   echo -e "\n\033[1m$1\033[0m" >&2
 }
@@ -42,6 +47,9 @@ for service_name in "${services[@]}"; do
   mkdir -p deps
   rm -f deps/*.whl
   cp "$dist_dir"/*.whl deps
-  poetry lock
+  # If we specify to lock/reinstall dependencies, do so
+  if $should_lock; then
+      poetry lock
+  fi
   cd "$root"
 done
