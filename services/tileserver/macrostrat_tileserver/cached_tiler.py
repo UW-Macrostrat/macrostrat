@@ -12,6 +12,7 @@ from macrostrat.tileserver_utils import (
     handle_cached_tile_request,
     MimeTypes,
     CachedTileArgs,
+    get_layer_id,
 )
 from timvt.factory import (
     TILE_RESPONSE_PARAMS,
@@ -56,8 +57,13 @@ class CachedVectorTilerFactory(VectorTilerFactory):
                 except ValueError as e:
                     raise HTTPException(status_code=400, detail=str(e))
 
+            # If caching isn't enabled, we use an invalid profile id
+            layer_id = -1
+            if cache != CacheMode.bypass:
+                layer_id = await get_layer_id(pool, layer.profile_id)
+
             args = CachedTileArgs(
-                layer=layer,
+                layer=layer_id,
                 tile=tile,
                 media_type=MimeTypes.pbf,
                 params=kwargs,
@@ -66,7 +72,7 @@ class CachedVectorTilerFactory(VectorTilerFactory):
 
             async def get_tile(request: Request, args: CachedTileArgs):
                 return await layer.get_tile(
-                    request.app.state.pool, args.tile, args.tms, **args.params
+                    request.app.state.pool, args.tile, tms, **args.params
                 )
 
             return await handle_cached_tile_request(
@@ -153,3 +159,4 @@ def _first_value(values: List[Any], default: Any = None):
 
 class CachedStoredFunction(StoredFunction):
     profile_id: Optional[int] = None
+

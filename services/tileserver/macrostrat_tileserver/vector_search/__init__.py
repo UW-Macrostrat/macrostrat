@@ -1,16 +1,16 @@
 from dataclasses import dataclass
 from json import dumps
-from typing import List
 from pathlib import Path
+from typing import List
 
-from buildpg import V, render
+from buildpg import render
 from fastapi import APIRouter, Request, Query
 from httpx import AsyncClient
-from contextvars import ContextVar
 
 client = AsyncClient()
 
-from ..utils import scales_for_zoom, get_layer_sql, get_sql, VectorTileResponse
+from macrostrat.tileserver_utils import get_sql, VectorTileResponse
+from ..utils import scales_for_zoom, get_layer_sql
 
 from macrostrat.utils import get_logger
 

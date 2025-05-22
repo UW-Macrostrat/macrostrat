@@ -26,7 +26,7 @@ from timvt.db import (
 from timvt.db import con_init
 from timvt.layer import FunctionRegistry
 from timvt.settings import PostgresSettings
-from .cached_tiler import CachedStoredFunction, CachedVectorTilerFactory
+from .cached_tiler import CachedVectorTilerFactory, CachedStoredFunction
 from .function_layer import StoredFunction
 from .map_ingestion import register_map_ingestion_routes
 from .paleogeography import PaleoGeographyLayer
@@ -151,12 +151,6 @@ mvt_tiler = CachedVectorTilerFactory(
 # Note: these are defined somewhat redundantly.
 # Our eventual goal will be to store these configurations in the database.
 
-cached_functions = [
-    "tile_layers.carto",
-    "tile_layers.carto_slim",
-]
-
-
 functions = [
     "corelle_macrostrat.igcp_orogens",
     "corelle_macrostrat.igcp_orogens_rotated",
@@ -165,9 +159,17 @@ functions = [
     "tile_layers.all_maps",
 ]
 
-layers = [CachedStoredFunction(l) for l in cached_functions] + [
-    StoredFunction(l) for l in functions
-]
+# Register the layers
+
+layers = [StoredFunction(l) for l in functions]
+
+layer = CachedStoredFunction("tile_layers.carto")
+layer.profile_id = "carto"
+layers.append(layer)
+
+layer = CachedStoredFunction("tile_layers.carto_slim")
+layer.profile_id = "carto-slim"
+layers.append(layer)
 
 
 layers.append(PaleoGeographyLayer())

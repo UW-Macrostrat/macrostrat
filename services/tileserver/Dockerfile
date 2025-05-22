@@ -26,11 +26,12 @@ RUN /poetry-env/bin/pip install --no-cache-dir poetry==2.1.1
 # The rest of this (for vector tile generation and the server itself) should be easier.
 ENV POETRY_NO_INTERACTION=1 \
     POETRY_CACHE_DIR=/tmp/poetry-cache \
-    POETRY_VIRTUALENVS_CREATE=true
+    POETRY_VIRTUALENVS_CREATE=false
 
 # Create a virtual environment for the app; add virtualenv and Poetry to PATH
 RUN python3.11 -m venv /venv
-ENV PATH="/venv/bin:$PATH"
+ENV PATH="/venv/bin:$PATH" \
+    VIRTUAL_ENV=/venv
 
 WORKDIR /app/
 
