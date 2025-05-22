@@ -35,6 +35,7 @@ ENV PATH="/venv/bin:$PATH" \
 WORKDIR /app/
 
 COPY pyproject.toml poetry.lock ./
+COPY ./deps/timvt ./deps/timvt
 RUN touch README.md
 
 # Install Poetry dependencies (without dev and local dependencies)
@@ -48,7 +49,16 @@ RUN apt-get remove -y \
   python3.11-dev && \
   rm -rf /var/lib/apt/lists/*
 
-# Creating folders and files for a project, including local dependencies
+# Copy local wheels and install with pip
+# TODO: place these wheels in a package repository to separate their build process...
+COPY ./deps/*.whl ./deps/
+# Install local wheels without caring about hashes (poetry gets mad if package hashes don't match.
+# Non-matching hashes could result from a different build environment (e.g, the wheel was compiled/locked locally
+# and the Dockerfile is now being built in CI/CD).
+# This is a temporary solution until we can get the wheels into a package repository.
+RUN pip install --no-cache-dir ./deps/*.whl
+
+# Creating folders and files for a project, including remaining local wheels
 COPY ./ /app/
 
 # Install the root project and local dependencies

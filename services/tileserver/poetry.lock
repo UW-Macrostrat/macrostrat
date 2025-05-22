@@ -69,7 +69,7 @@ version = "5.0.1"
 description = "Timeout context manager for asyncio programs"
 optional = false
 python-versions = ">=3.8"
-groups = ["local"]
+groups = ["main"]
 markers = "python_version < \"3.11.0\""
 files = [
     {file = "async_timeout-5.0.1-py3-none-any.whl", hash = "sha256:39e3809566ff85354557ec2398b55e096c8364bacac9405a7a1fa429e77fe76c"},
@@ -82,7 +82,7 @@ version = "0.30.0"
 description = "An asyncio PostgreSQL driver"
 optional = false
 python-versions = ">=3.8.0"
-groups = ["local"]
+groups = ["main"]
 files = [
     {file = "asyncpg-0.30.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:bfb4dd5ae0699bad2b233672c8fc5ccbd9ad24b89afded02341786887e37927e"},
     {file = "asyncpg-0.30.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:dc1f62c792752a49f88b7e6f774c26077091b44caceb1983509edc18a2222ec0"},
@@ -216,7 +216,7 @@ version = "0.4"
 description = "Query building for the postgresql prepared statements and asyncpg."
 optional = false
 python-versions = ">=3.6"
-groups = ["local"]
+groups = ["main", "local"]
 files = [
     {file = "buildpg-0.4-py3-none-any.whl", hash = "sha256:20d539976c81ea6f5529d3930016b0482ed0ff06def3d6da79d0fc0a3bbaeeb1"},
     {file = "buildpg-0.4.tar.gz", hash = "sha256:3a6c1f40fb6c826caa819d84727e36a1372f7013ba696637b492e5935916d479"},
@@ -533,7 +533,7 @@ version = "2.8.4"
 description = "Thin Python bindings to de/compression algorithms in Rust"
 optional = false
 python-versions = ">=3.8"
-groups = ["main", "local"]
+groups = ["main"]
 files = [
     {file = "cramjam-2.8.4-cp310-cp310-macosx_10_12_x86_64.whl", hash = "sha256:e9e112514363261a896f85948d5d055dccaab2a1fa77d440f55030464118a95a"},
     {file = "cramjam-2.8.4-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:ee2441028e813ecc1d10b90640dd2b9649cdefdfe80af1d838cf00fd935ee5e7"},
@@ -1106,7 +1106,7 @@ optional = false
 python-versions = ">=3.9,<4.0"
 groups = ["local"]
 files = [
-    {file = "macrostrat_tileserver_utils-0.1.0-py3-none-any.whl", hash = "sha256:2b3fb7b9185fe116a49e81f82c7d9bf73f92c696c0c4fb086a6afe57a652c8b8"},
+    {file = "macrostrat_tileserver_utils-0.1.0-py3-none-any.whl", hash = "sha256:2b3fb7b8185fe116a49e81f82c7d9bf73f92c696c0c4fb086a6afe57a652c8b8"},
 ]
 
 [package.dependencies]
@@ -1440,7 +1440,7 @@ version = "3.10.12"
 description = "Fast, correct Python JSON library supporting dataclasses, datetimes, and numpy"
 optional = false
 python-versions = ">=3.8"
-groups = ["local"]
+groups = ["main"]
 files = [
     {file = "orjson-3.10.12-cp310-cp310-macosx_10_15_x86_64.macosx_11_0_arm64.macosx_10_15_universal2.whl", hash = "sha256:ece01a7ec71d9940cc654c482907a6b65df27251255097629d0dea781f255c6d"},
     {file = "orjson-3.10.12-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:c34ec9aebc04f11f4b978dd6caf697a2df2dd9b47d35aa4cc606cabcb9df69d7"},
@@ -1874,7 +1874,7 @@ version = "2.6.1"
 description = "Settings management using Pydantic"
 optional = false
 python-versions = ">=3.8"
-groups = ["main", "local"]
+groups = ["main"]
 files = [
     {file = "pydantic_settings-2.6.1-py3-none-any.whl", hash = "sha256:7fb0637c786a558d3103436278a7c4f1cfd29ba8973238a50c5bb9a55387da87"},
     {file = "pydantic_settings-2.6.1.tar.gz", hash = "sha256:e0f92546d8a9923cb8941689abf85d6601a8c19a23e97a34b2964a2e3f813ca0"},
@@ -2720,7 +2720,7 @@ version = "0.3.3"
 description = "Cramjam integration for Starlette ASGI framework."
 optional = false
 python-versions = ">=3.7"
-groups = ["main", "local"]
+groups = ["main"]
 files = [
     {file = "starlette_cramjam-0.3.3-py3-none-any.whl", hash = "sha256:91675232b9847f6d45bbc38937c3beaaec51f80ce31167a5a7941b348967e95c"},
     {file = "starlette_cramjam-0.3.3.tar.gz", hash = "sha256:b7d5a95ef85f7e37a972ee1007bbc851c946ecdedbc95f54f9a2f40bed2d5431"},
@@ -2761,7 +2761,7 @@ version = "0.8.0a4"
 description = "A lightweight PostGIS based dynamic vector tile server."
 optional = false
 python-versions = ">=3.8"
-groups = ["local"]
+groups = ["main"]
 files = []
 develop = true
 
@@ -3220,4 +3220,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.10"
-content-hash = "a32ac1473a9eb7a93260a19e93f5c3062ec98ed1e1c42b20dabb98a07c7048e2"
+content-hash = "e2acac4fe158f1363c48a5dfcba40fbb510b676797aa16a591c90c83912c98e4"

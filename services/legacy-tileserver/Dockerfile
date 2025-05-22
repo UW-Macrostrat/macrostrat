@@ -59,19 +59,22 @@ WORKDIR /app/
 # Copy only requirements to cache them in docker layer
 # Right now, Poetry lock file must exist to avoid hanging on dependency resolution
 COPY ./pyproject.toml ./poetry.lock /app/
-# This gets locally built deps, which must be staged in the
-# image directory before building. This is breakable and we'd like
-# to end up with a better solution eventually.
-COPY ./deps/ /app/deps/
 
 # Create and activate our own virtual envrionment so that we can keep
 # our application dependencies separate from Poetry's
 RUN python3 -m venv /venv
 ENV PATH="/venv/bin:$PATH"
+ENV VIRTUAL_ENV=/venv
 
-RUN --mount=type=cache,target=$POETRY_CACHE_DIR poetry install --no-root --without dev
+RUN --mount=type=cache,target=$POETRY_CACHE_DIR poetry install --no-root --without dev --without local
 
-EXPOSE 8000
+# This gets locally built deps, which must be staged in the
+# image directory before building. This is breakable and we'd like
+# to end up with a better solution eventually.
+COPY ./deps/ /app/deps/
+
+# Install local wheels without caring about hashes (poetry gets mad if package hashes don't match.)
+RUN pip install --no-cache-dir ./deps/*.whl
 
 # Creating folders, and files for a project:
 COPY ./ /app/
@@ -79,6 +82,7 @@ COPY ./ /app/
 # Install the root package
 RUN --mount=type=cache,target=$POETRY_CACHE_DIR poetry install --without dev
 
+EXPOSE 8000
 
 CMD ["uvicorn", "--host", "0.0.0.0", "--port", "8000", "macrostrat.legacy_tileserver:app"]
 

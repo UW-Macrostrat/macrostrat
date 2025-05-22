@@ -16,16 +16,20 @@ asyncpg = "^0.23.0"
 buildpg = "^0.4"
 morecantile = "^6.2.0"
 "macrostrat.utils" = "^1.2.0"
+"macrostrat.database" = "^3.0.0"
+
+[tool.poetry.group.local.dependencies]
 # Local wheel of macrostrat.tileserver-utils. This must be built (using make in the py-modules directory)
 # and copied here before Docker build.
 "macrostrat.tileserver-utils" = { file = "deps/macrostrat_tileserver_utils-0.1.0-py3-none-any.whl" }
-"macrostrat.database" = "^3.0.0"
-# NOTE: there is also a requirement on mapnik, but this cannot be installed via poetry
-# due to its complicated installation process.
 
 [tool.poetry.group.dev.dependencies]
 isort = "^5.12.0"
 black = "^24.8.0"
+# NOTE: there is also a requirement on mapnik, but this cannot be installed via poetry
+# due to its complicated installation process.
+# mapnik = "^3.0.0"
+
 
 [build-system]
 build-backend = "poetry.core.masonry.api"
