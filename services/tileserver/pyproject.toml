@@ -2,7 +2,7 @@
 authors = ["Daven Quinn <dev@davenquinn.com>"]
 description = "Macrostrat tile server"
 name = "macrostrat.tileserver"
-packages = [{ include = "macrostrat_tileserver" }]
+packages = [{ include = "macrostrat" }]
 version = "3.0.0-beta.1"
 
 [tool.poetry.dependencies]
@@ -34,9 +34,6 @@ macrostrat-dinosaur = "^3.1.1"
 [build-system]
 build-backend = "poetry.core.masonry.api"
 requires = ["poetry-core>=1.0.0"]
-
-[tool.poetry.scripts]
-tileserver = "macrostrat_tileserver.cli:_cli"
 
 [tool.pytest.ini_options]
 norecursedirs = "deps/*"

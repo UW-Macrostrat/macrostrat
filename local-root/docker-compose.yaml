@@ -88,7 +88,7 @@ services:
     # https://github.com/encode/starlette/issues/538
     command: >
       poetry run uvicorn --host 0.0.0.0 --port 8000
-        macrostrat_tileserver.main:app
+        macrostrat.tileserver:app
         --root-path /tiles
         --log-level debug
         --proxy-headers

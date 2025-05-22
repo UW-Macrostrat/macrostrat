@@ -1,8 +1,8 @@
 serve:
-	poetry run uvicorn macrostrat_tileserver.main:app --log-level debug --reload --port 8000
+	poetry run uvicorn macrostrat_tileserver:app --log-level debug --reload --port 8000
 
 fast:
-	poetry run uvicorn macrostrat_tileserver.main:app --log-level debug --port 8000 --workers 8
+	poetry run uvicorn macrostrat_tileserver:app --log-level debug --port 8000 --workers 8
 
 test-dev:
 	poetry run pytest -s -x --no-drop --skip-legacy-raster

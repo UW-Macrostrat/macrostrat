@@ -50,4 +50,4 @@ RUN --mount=type=cache,target=$POETRY_CACHE_DIR poetry install --without dev
 
 EXPOSE 8000
 
-CMD [ "uvicorn", "--host", "0.0.0.0", "--port", "8000", "macrostrat_tileserver.main:app" ]
+CMD [ "uvicorn", "--host", "0.0.0.0", "--port", "8000", "macrostrat.tileserver:app" ]
