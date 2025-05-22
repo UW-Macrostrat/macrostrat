@@ -3,7 +3,7 @@
   <component name="NewModuleRootManager" inherit-compiler-output="true">
     <exclude-output />
     <content url="file://$MODULE_DIR$" />
-    <orderEntry type="jdk" jdkName="Python 3.9 virtualenv at ~/Library/Caches/pypoetry/virtualenvs/macrostrat-legacy-tileserver-6jf1tF4T-py3.9" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="Python 3.11 virtualenv at ~/Library/Caches/pypoetry/virtualenvs/macrostrat-tileserver-GlGBRNyn-py3.11" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
 </module>

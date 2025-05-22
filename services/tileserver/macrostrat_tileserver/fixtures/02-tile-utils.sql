@@ -1,1 +1,0 @@
-../../deps/postgis-tile-utils/sql/02-tile-utils.sql

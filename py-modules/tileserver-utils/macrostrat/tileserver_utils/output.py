@@ -2,9 +2,8 @@ import decimal
 import json
 import typing
 from enum import Enum
-from starlette.responses import JSONResponse, Response
 
-from .cache import CacheStatus
+from starlette.responses import JSONResponse, Response
 
 
 class MimeTypes(str, Enum):
@@ -19,7 +18,7 @@ class MimeTypes(str, Enum):
     mvt = "application/x-protobuf"
 
 
-def TileResponse(content, timer, cache_status: CacheStatus = None, **kwargs):
+def TileResponse(content, timer, cache_status: "CacheStatus" = None, **kwargs):
     kwargs["headers"] = {
         "Server-Timing": timer.server_timings(),
         **kwargs.pop("headers", {}),

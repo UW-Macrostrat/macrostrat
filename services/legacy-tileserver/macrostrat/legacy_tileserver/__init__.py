@@ -1,18 +1,11 @@
-from enum import Enum
-from functools import lru_cache
 from os import environ
 
 from buildpg import render
 from buildpg.asyncpg import create_pool_b
+from enum import Enum
 from fastapi import FastAPI, Depends, BackgroundTasks, Request
+from functools import lru_cache
 from macrostrat.database import Database
-from macrostrat.utils import get_logger
-from macrostrat.utils import setup_stderr_logs
-from morecantile import Tile
-from starlette.middleware import Middleware
-from starlette.middleware.cors import CORSMiddleware
-from starlette.responses import JSONResponse
-
 from macrostrat.tileserver_utils import (
     CacheMode,
     TileParams,
@@ -20,6 +13,14 @@ from macrostrat.tileserver_utils import (
     handle_cached_tile_request,
     CachedTileArgs,
 )
+from macrostrat.utils import get_logger
+from macrostrat.utils import setup_stderr_logs
+from morecantile import Tile
+from pathlib import Path
+from starlette.middleware import Middleware
+from starlette.middleware.cors import CORSMiddleware
+from starlette.responses import HTMLResponse
+
 from .image_tiles import get_image_tile, MapnikMapPool
 
 log = get_logger(__name__)
@@ -67,7 +68,7 @@ async def tile(
     )
 
     return await handle_cached_tile_request(
-        request, background_tasks, get_image_tile, args
+        request, request.app.state.pool, background_tasks, get_image_tile, args
     )
 
 
@@ -89,7 +90,11 @@ async def tile(
     )
 
     return await handle_cached_tile_request(
-        request, background_tasks, vector_tile_handler(layer), args
+        request,
+        request.app.state.pool,
+        background_tasks,
+        vector_tile_handler(layer),
+        args,
     )
 
 
@@ -117,6 +122,17 @@ def vector_tile_handler(compilation: MapCompilation):
 
 
 @app.get("/", include_in_schema=False)
-async def index(request: Request):
-    """DEMO."""
-    return JSONResponse({"message": "Macrostrat legacy tileserver"})
+def index():
+    """Return index page"""
+    return get_page("index")
+
+
+@app.get("/preview", include_in_schema=False)
+def preview():
+    """Return preview page"""
+    return get_page("preview")
+
+
+def get_page(key):
+    file = Path(__file__).parent / "pages" / (key + ".html")
+    return HTMLResponse(file.read_text("utf-8"))

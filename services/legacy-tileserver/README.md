@@ -5,9 +5,15 @@
 # Version 2 changes
 
 - Python-based instead of Node-based
-- A "dynamic tiler" based on [Mapnik](https://mapnik.org/) and PostGIS
-- Uses a PostgreSQL caching backend
-- Optionally, can use Varnish as a "L2" API cache
+- Uses PostGIS as an on-demand caching backend (i.e., no seeding)
+- A "dynamic tiler" based on [Mapnik](https://mapnik.org/) and PostGIS without intermediate caching
+
+# Version 1
+
+This project has output compatible with Macrostrat's v1
+tileserver, which was based on Node.js and TileStrata.
+The legacy v1 tileserver code can be found in the
+[`UW-Macrostrat/tileserver`](https://github.com/UW-Macrostrat/tileserver) repository.
 
 # Installing
 
@@ -48,23 +54,5 @@ Macrostrat core layers:
 
 - https://localhost:8000/carto-slim/{z}/{x}/{y}
 - https://localhost:8000/carto/{z}/{x}/{y}
-- https://localhost:8000/map/{z}/{x}/{y}?source_id=<source_id>
-- https://localhost:8000/all-maps/{z}/{x}/{y} _(for development purposes only)_
 
-
-## Defining new layers
-
-- New layers can be defined using SQL or PL/PGSQL functions.
-- Currently, layers must be initialized by editing the `macrostrat_tileserver/main.py` file to
-  add the appropriate initialization function. This will be improved in the future.
-
-## Testing
-
-Testing is done with `pytest`. To run the tests, use:
-
-```make test```.
-
-To omit legacy raster tests, use
-
-  ```make test-dev```.
 

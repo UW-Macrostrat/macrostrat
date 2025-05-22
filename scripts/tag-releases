@@ -22,16 +22,15 @@ for service_name in "${services[@]}"; do
   # Check if the service directory exists
   service_name="legacy-tileserver"
 
-  pushd services/$service_name
+  pushd services/$service_name > /dev/null 2>&1
   version=$(poetry version --short)
   tag="$service_name-v$version"
-  popd
+  popd > /dev/null 2>&1
 
   # Check if the tag already exists
   if ! git rev-parse "$tag" >/dev/null 2>&1; then
     # Tag the image
     git tag "$tag" -m "Version $version of service $service_name"
-    git push origin "$tag"
     echo "Tagged $service_name with version $version"
   fi
 done
