@@ -4,13 +4,15 @@ from pathlib import Path
 
 from docker.client import DockerClient
 from fastapi.testclient import TestClient
+from pytest import fixture
+from sqlalchemy import Engine
+
 from macrostrat.database import Database
 from macrostrat.database.transfer import pg_restore_from_file
 from macrostrat.database.utils import temp_database
+
 # We could probably move this to a better location
 from macrostrat.dinosaur.upgrade_cluster.utils import database_cluster
-from pytest import fixture
-from sqlalchemy import Engine
 
 
 def restore_database(engine: Engine, dumpfile: Path):

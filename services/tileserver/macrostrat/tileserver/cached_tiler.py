@@ -2,24 +2,25 @@ from typing import Any, Dict, List, Literal, Optional
 from urllib.parse import urlencode
 
 from fastapi import BackgroundTasks, Depends, HTTPException, Query
-from macrostrat.utils import get_logger
 from morecantile import Tile
 from starlette.requests import Request
-
-from macrostrat.tileserver_utils import (
-    TileParams,
-    CacheMode,
-    handle_cached_tile_request,
-    MimeTypes,
-    CachedTileArgs,
-    get_layer_id,
-)
 from timvt.factory import (
     TILE_RESPONSE_PARAMS,
     VectorTilerFactory,
     queryparams_to_kwargs,
 )
 from timvt.models.mapbox import TileJSON
+
+from macrostrat.tileserver_utils import (
+    CachedTileArgs,
+    CacheMode,
+    MimeTypes,
+    TileParams,
+    get_layer_id,
+    handle_cached_tile_request,
+)
+from macrostrat.utils import get_logger
+
 from .function_layer import StoredFunction
 
 log = get_logger(__name__)

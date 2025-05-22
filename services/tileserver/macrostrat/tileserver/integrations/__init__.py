@@ -2,9 +2,9 @@ from pathlib import Path
 
 from buildpg import render
 from fastapi import APIRouter, Request, Response
-from macrostrat.utils import get_logger
 
 from macrostrat.tileserver_utils import MimeTypes
+from macrostrat.utils import get_logger
 
 router = APIRouter()
 

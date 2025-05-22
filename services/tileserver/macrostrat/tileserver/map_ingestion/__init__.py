@@ -1,13 +1,14 @@
+from enum import Enum
 from pathlib import Path
 
-from buildpg import render, Renderer
+from asyncpg import UndefinedTableError
+from buildpg import Renderer, render
 from fastapi import APIRouter, Request, Response
 from timvt.resources.enums import MimeTypes
 from titiler.core.models.mapbox import TileJSON
-from asyncpg import UndefinedTableError
-from enum import Enum
-from macrostrat.utils import get_logger
+
 from macrostrat.database.utils import format as format_sql
+from macrostrat.utils import get_logger
 
 print_sql_statements = False
 

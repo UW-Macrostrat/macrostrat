@@ -3,9 +3,10 @@ from typing import List
 
 from buildpg import V, render
 from fastapi import APIRouter, Request
-from macrostrat.utils import get_logger
 
 from macrostrat.tileserver_utils import VectorTileResponse
+from macrostrat.utils import get_logger
+
 from ..utils import get_layer_sql
 
 log = get_logger(__name__)

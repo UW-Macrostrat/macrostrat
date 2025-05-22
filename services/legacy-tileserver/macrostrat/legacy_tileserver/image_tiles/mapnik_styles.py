@@ -5,7 +5,7 @@ The stylesheets are regenerated every time the server is restarted.
 
 from json import dumps
 from pathlib import Path
-from subprocess import check_output, CalledProcessError
+from subprocess import CalledProcessError, check_output
 from textwrap import dedent
 
 from .config import layer_order

@@ -3,30 +3,30 @@ from pathlib import Path
 from time import time
 from typing import Optional
 
-from buildpg import asyncpg
-from buildpg import render
+from buildpg import asyncpg, render
 from fastapi import FastAPI
-from macrostrat.database import Database
-from macrostrat.utils import get_logger, setup_stderr_logs
 from pydantic_settings import SettingsConfigDict
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette_cramjam.middleware import CompressionMiddleware
-from titiler.core.errors import DEFAULT_STATUS_CODES, add_exception_handlers
-from titiler.core.factory import TilerFactory
-
-from macrostrat.tileserver_utils import DecimalJSONResponse
 from timvt.db import (
     close_db_connection,
+    con_init,
     connect_to_db,
     register_table_catalog,
 )
-from timvt.db import con_init
 from timvt.layer import FunctionRegistry
 from timvt.settings import PostgresSettings
-from .cached_tiler import CachedVectorTilerFactory, CachedStoredFunction
+from titiler.core.errors import DEFAULT_STATUS_CODES, add_exception_handlers
+from titiler.core.factory import TilerFactory
+
+from macrostrat.database import Database
+from macrostrat.tileserver_utils import DecimalJSONResponse
+from macrostrat.utils import get_logger, setup_stderr_logs
+
+from .cached_tiler import CachedStoredFunction, CachedVectorTilerFactory
 from .function_layer import StoredFunction
 from .map_ingestion import register_map_ingestion_routes
 from .paleogeography import PaleoGeographyLayer

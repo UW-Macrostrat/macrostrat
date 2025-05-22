@@ -2,14 +2,11 @@ import json
 from typing import Any, Dict, List, Optional
 
 import morecantile
-from buildpg import Func
-from buildpg import asyncpg, clauses, render
-
-from timvt.errors import (
-    MissingEPSGCode,
-)
-from timvt.settings import TileSettings
+from buildpg import Func, asyncpg, clauses, render
+from timvt.errors import MissingEPSGCode
 from timvt.layer import Function
+from timvt.settings import TileSettings
+
 from macrostrat.utils import get_logger
 
 log = get_logger(__name__)
