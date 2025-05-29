@@ -748,6 +748,7 @@
         parameters: {
           concept_id: "unique id",
           concept_name: "string specifying concept name",
+          concept_like: "lithostratigraphic name concept, with open-ended string matching",
           all: "return all lithostratigraphic names",
           format: "Desired output format",
           last_id: "integer, used to paginate results. If specified, will return strat_names with an ID greater than last_id",
