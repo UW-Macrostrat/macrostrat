@@ -26,15 +26,19 @@ module.exports = function (req, res, next, cb) {
      JOIN macrostrat.refs ON snm.ref_id = refs.id
   */
     }),
-    params = {};
+    params = {},
+    where = [];
 
   if ("all" in req.query) {
     // do nothing
+  } else if (req.query.concept_like) {
+    where.push("lower(name) ILIKE lower(:name)");
+    params["name"] = req.query.concept_like + "%";
   } else if ("concept_name" in req.query) {
-    sql += " WHERE name = ANY(:concept_name)";
+    where.push("name = ANY(:concept_name)");
     params["concept_name"] = req.query.concept_name;
   } else if (req.query.concept_id || req.query.strat_name_concept_id) {
-    sql += " WHERE concept_id = ANY(:concept_id)";
+    where.push("concept_id = ANY(:concept_id)");
     if (req.query.concept_id) {
       params["concept_id"] = larkin.parseMultipleIds(req.query.concept_id);
     } else {
@@ -43,15 +47,28 @@ module.exports = function (req, res, next, cb) {
       );
     }
   } else if (req.query.strat_name_id) {
-    sql +=
-      " WHERE concept_id IN (SELECT concept_id FROM macrostrat.lookup_strat_names WHERE strat_name_id IN (:strat_name_ids))";
+    where.push("concept_id IN (SELECT concept_id FROM macrostrat.lookup_strat_names WHERE strat_name_id IN (:strat_name_ids))");
     params["strat_name_ids"] = larkin.parseMultipleIds(req.query.strat_name_id);
+  }
+
+  // pagination
+  const lastId = req.query.last_id ? parseInt(req.query.last_id, 10) : null;
+  const pageSize = req.query.page_size ? parseInt(req.query.page_size, 10) : 5; // defaults to 5
+
+  if (req.query.last_id) {
+    where.push("concept_id > :last_id");
+    params["last_id"] = lastId;
+  }
+
+  if (where.length > 0) {
+    sql += " WHERE " + where.join(" AND ");
   }
 
   sql += " GROUP BY concept_id, author ORDER BY concept_id";
 
-  if ("sample" in req.query) {
-    sql += " LIMIT 5";
+  if ("sample" in req.query || req.query.last_id) {
+    sql += " LIMIT :page_size";
+    params["page_size"] = pageSize;
   }
 
   larkin.queryPg("burwell", sql, params, function (error, result) {

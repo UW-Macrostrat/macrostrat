@@ -711,6 +711,8 @@
             "retrieve only stratigraphic names linked the specified reference_id (see /defs/refs)",
           all: "return all lithostratigraphic names",
           format: "Desired output format",
+          last_id: "integer, used to paginate results. If specified, will return strat_names with an ID greater than last_id",
+          page_size: "integer, used to paginate results. If specified, will return at most page_size results. Must be paired with last_idd",
         },
         output_formats: ["json", "csv"],
         examples: [
@@ -746,8 +748,11 @@
         parameters: {
           concept_id: "unique id",
           concept_name: "string specifying concept name",
+          concept_like: "lithostratigraphic name concept, with open-ended string matching",
           all: "return all lithostratigraphic names",
           format: "Desired output format",
+          last_id: "integer, used to paginate results. If specified, will return strat_names with an ID greater than last_id",
+          page_size: "integer, used to paginate results. If specified, will return at most page_size results. Must be paired with last_idd",
         },
         output_formats: ["json", "csv"],
         examples: ["api/v2/defs/concept_id?all"],
