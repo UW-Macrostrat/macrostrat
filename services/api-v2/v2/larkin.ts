@@ -243,6 +243,10 @@ const { Client, Pool } = require("pg");
         .send(JSON.stringify(outgoing.data, null, 0));
     }
 
+    if (options.last_id) {
+      outgoing.last_id = options.last_id;
+    }
+
     if (options.refs) {
       larkin.getRefs(options.refs, outgoing.data, function (refs) {
         outgoing.refs = refs;
@@ -264,6 +268,10 @@ const { Client, Pool } = require("pg");
 
     if (outgoing.refs) {
       responseObject.success["refs"] = outgoing.refs;
+    }
+
+    if (outgoing.last_id) {
+      responseObject.success["last_id"] = outgoing.last_id;
     }
 
     if ((options && options.compact) || outgoing.data.length <= 5) {

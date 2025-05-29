@@ -175,6 +175,7 @@ module.exports = function (req, res, next, cb) {
           },
           {
             data: response.rows,
+            last_id: lastIdOut,
           },
         );
       }
