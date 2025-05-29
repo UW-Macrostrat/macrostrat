@@ -126,7 +126,7 @@ module.exports = function (req, res, next, cb) {
 
   // pagination
   const lastId = req.query.last_id ? parseInt(req.query.last_id, 10) : null;
-  const pageSize = req.query.page_size ? parseInt(req.query.page_size, 10) : 20;
+  const pageSize = req.query.page_size ? parseInt(req.query.page_size, 10) : 5; // defaults to 5
 
   if (req.query.last_id) {
     where.push("strat_name_id > :last_id");
@@ -143,7 +143,8 @@ module.exports = function (req, res, next, cb) {
   }
 
   if ("sample" in req.query || req.query.last_id) {
-    sql += " LIMIT 5";
+    sql += " LIMIT :page_size";
+    params["page_size"] = pageSize;
   }
 
   larkin.queryPg("burwell", sql, params, function (error, response) {
