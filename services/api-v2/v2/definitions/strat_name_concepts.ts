@@ -26,15 +26,17 @@ module.exports = function (req, res, next, cb) {
      JOIN macrostrat.refs ON snm.ref_id = refs.id
   */
     }),
-    params = {};
+    params = {},
+    orderBy = [],
+    where = [];
 
   if ("all" in req.query) {
     // do nothing
   } else if ("concept_name" in req.query) {
-    sql += " WHERE name = ANY(:concept_name)";
+    where.push("name = ANY(:concept_name)");
     params["concept_name"] = req.query.concept_name;
   } else if (req.query.concept_id || req.query.strat_name_concept_id) {
-    sql += " WHERE concept_id = ANY(:concept_id)";
+    where.push("concept_id = ANY(:concept_id)");
     if (req.query.concept_id) {
       params["concept_id"] = larkin.parseMultipleIds(req.query.concept_id);
     } else {
@@ -43,9 +45,12 @@ module.exports = function (req, res, next, cb) {
       );
     }
   } else if (req.query.strat_name_id) {
-    sql +=
-      " WHERE concept_id IN (SELECT concept_id FROM macrostrat.lookup_strat_names WHERE strat_name_id IN (:strat_name_ids))";
+    where.push("concept_id IN (SELECT concept_id FROM macrostrat.lookup_strat_names WHERE strat_name_id IN (:strat_name_ids))");
     params["strat_name_ids"] = larkin.parseMultipleIds(req.query.strat_name_id);
+  }
+
+  if (where.length > 0) {
+    sql += " WHERE " + where.join(" AND ");
   }
 
   sql += " GROUP BY concept_id, author ORDER BY concept_id";
