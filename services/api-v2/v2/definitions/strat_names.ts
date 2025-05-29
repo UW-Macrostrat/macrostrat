@@ -8,7 +8,8 @@ module.exports = function (req, res, next, cb) {
   }
 
   var where = [],
-    params = {};
+    params = {},
+    orderBy = [];
 
   if (req.query.rule) {
     if (req.query.rule === "down") {
@@ -123,11 +124,25 @@ module.exports = function (req, res, next, cb) {
     FROM macrostrat.lookup_strat_names l
   `;
 
+  // pagination
+  const lastId = req.query.last_id ? parseInt(req.query.last_id, 10) : null;
+  const pageSize = req.query.page_size ? parseInt(req.query.page_size, 10) : 20;
+
+  if (req.query.last_id) {
+    where.push("strat_name_id > :last_id");
+    params["last_id"] = lastId;
+    orderBy.push("strat_name_id ASC");
+  }
+
   if (where.length > 0) {
     sql += " WHERE " + where.join(" AND ");
   }
 
-  if ("sample" in req.query) {
+  if (orderBy.length > 0) {
+    sql += " ORDER BY " + orderBy.join(", ");
+  }
+
+  if ("sample" in req.query || req.query.last_id) {
     sql += " LIMIT 5";
   }
 
@@ -140,6 +155,9 @@ module.exports = function (req, res, next, cb) {
         larkin.error(req, res, next, "Something went wrong");
       }
     } else {
+      const rows = response.rows;
+      const lastIdOut = rows.length > 0 ? rows[rows.length - 1].strat_name_id : null;
+
       if (cb) {
         cb(null, response.rows);
       } else {
