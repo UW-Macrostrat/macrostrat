@@ -31,6 +31,9 @@ module.exports = function (req, res, next, cb) {
 
   if ("all" in req.query) {
     // do nothing
+  } else if (req.query.concept_like) {
+    where.push("lower(name) ILIKE lower(:name)");
+    params["name"] = req.query.concept_like + "%";
   } else if ("concept_name" in req.query) {
     where.push("name = ANY(:concept_name)");
     params["concept_name"] = req.query.concept_name;
