@@ -27,7 +27,6 @@ module.exports = function (req, res, next, cb) {
   */
     }),
     params = {},
-    orderBy = [],
     where = [];
 
   if ("all" in req.query) {
@@ -49,14 +48,24 @@ module.exports = function (req, res, next, cb) {
     params["strat_name_ids"] = larkin.parseMultipleIds(req.query.strat_name_id);
   }
 
+  // pagination
+  const lastId = req.query.last_id ? parseInt(req.query.last_id, 10) : null;
+  const pageSize = req.query.page_size ? parseInt(req.query.page_size, 10) : 5; // defaults to 5
+
+  if (req.query.last_id) {
+    where.push("concept_id > :last_id");
+    params["last_id"] = lastId;
+  }
+
   if (where.length > 0) {
     sql += " WHERE " + where.join(" AND ");
   }
 
   sql += " GROUP BY concept_id, author ORDER BY concept_id";
 
-  if ("sample" in req.query) {
-    sql += " LIMIT 5";
+  if ("sample" in req.query || req.query.last_id) {
+    sql += " LIMIT :page_size";
+    params["page_size"] = pageSize;
   }
 
   larkin.queryPg("burwell", sql, params, function (error, result) {
@@ -76,6 +85,9 @@ module.exports = function (req, res, next, cb) {
       if (cb) {
         cb(null, result.rows);
       } else {
+        const rows = result.rows;
+        const lastIdOut = rows.length > 0 ? rows[rows.length - 1].concept_id : null;
+
         larkin.sendData(
           req,
           res,
@@ -89,6 +101,7 @@ module.exports = function (req, res, next, cb) {
           },
           {
             data: result.rows,
+            last_id: lastIdOut,
           },
         );
       }
