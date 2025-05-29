@@ -7,44 +7,22 @@ module.exports = function (req, res, next, cb) {
   }
   //There will be a discrepancy with a key in production. Updated in_proccess_cols to in_process_cols key. Values are
   //still the same.
-  var sql = `WITH in_proc AS (
-        SELECT COUNT(DISTINCT id) AS c, project_id
-        FROM macrostrat.cols
-        WHERE status_code = 'in process'
-        GROUP BY project_id
-    ),
-    obs AS (
-        SELECT COUNT(DISTINCT id) AS co, project_id
-        FROM macrostrat.cols
-        WHERE status_code = 'obsolete'
-        GROUP BY project_id
-    ),
-    col_area_sum AS (
-        SELECT project_id, SUM(col_area) AS total_area
-        FROM macrostrat.cols
-        WHERE status_code = 'active'
-        GROUP BY project_id
-    )
-
-
-    SELECT
-        projects.id AS project_id,
-        projects.project,
-        projects.descrip,
-        projects.timescale_id,
-        COUNT(DISTINCT units_sections.col_id)::integer AS t_cols,
-        COALESCE(c, 0)::integer AS in_process_cols,
-        COALESCE(co, 0)::integer AS obsolete_cols,
-        COUNT(DISTINCT units_sections.unit_id)::integer AS t_units,
-        COALESCE(ROUND(total_area), 0)::integer AS area
-
-
+  var sql = `WITH RECURSIVE in_proc AS (SELECT count(distinct id) c,project_id from macrostrat.cols where status_code='in process' group by project_id),
+               obs AS (SELECT count(distinct id) co,project_id from macrostrat.cols where status_code='obsolete' group by project_id)
+    SELECT projects.id AS project_id,
+           project,
+           descrip,
+           timescale_id,
+           COUNT(DISTINCT units_sections.col_id)::integer AS t_cols,
+           coalesce(c,0)::integer as in_process_cols,
+           coalesce(co,0)::integer as obsolete_cols,
+           COUNT(DISTINCT units_sections.unit_id)::integer AS t_units,
+           round(SUM(cols.col_area)::integer,0)::integer as area
     FROM macrostrat.projects
     LEFT JOIN macrostrat.cols ON projects.id = cols.project_id
     LEFT JOIN macrostrat.units_sections ON units_sections.col_id = cols.id
-    LEFT JOIN in_proc USING (project_id)
-    LEFT JOIN obs USING (project_id)
-    LEFT JOIN col_area_sum ON projects.id = col_area_sum.project_id
+    LEFT JOIN in_proc using (project_id)
+    left join obs using (project_id)
     `;
 
   var where = [];
@@ -57,14 +35,7 @@ module.exports = function (req, res, next, cb) {
   if (where.length) {
     sql += ` WHERE ${where.join(" AND ")}`;
   }
-  sql += `\nGROUP BY
-    projects.id,
-    projects.project,
-    projects.descrip,
-    projects.timescale_id,
-    c,
-    co,
-    total_area;`;
+  sql += "\nGROUP BY projects.id, in_proc.c, obs.co";
 
   larkin.queryPg("burwell", sql, params, function (error, data) {
     if (error) {
