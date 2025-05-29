@@ -156,9 +156,6 @@ module.exports = function (req, res, next, cb) {
         larkin.error(req, res, next, "Something went wrong");
       }
     } else {
-      const rows = response.rows;
-      const lastIdOut = rows.length > 0 ? rows[rows.length - 1].strat_name_id : null;
-
       if (cb) {
         cb(null, response.rows);
       } else {
@@ -176,7 +173,6 @@ module.exports = function (req, res, next, cb) {
           },
           {
             data: response.rows,
-            last_id: lastIdOut,
           },
         );
       }

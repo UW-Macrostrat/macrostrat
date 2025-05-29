@@ -88,9 +88,6 @@ module.exports = function (req, res, next, cb) {
       if (cb) {
         cb(null, result.rows);
       } else {
-        const rows = result.rows;
-        const lastIdOut = rows.length > 0 ? rows[rows.length - 1].concept_id : null;
-
         larkin.sendData(
           req,
           res,
@@ -104,7 +101,6 @@ module.exports = function (req, res, next, cb) {
           },
           {
             data: result.rows,
-            last_id: lastIdOut,
           },
         );
       }
