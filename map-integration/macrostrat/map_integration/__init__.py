@@ -285,15 +285,6 @@ def staging(
         for path in excluded_files:
             print(f"  ⚠️ {path}")
 
-    # add preprocess
-    # ingest the map!
-
-    """ Example data_preprocess command:
-    macrostrat maps staging japan_full_map \
-    /Users/afromandi/Macrostrat/Maps/Japan/Japan\ Full \
-    "Japan" \
-    --data-preprocess-url /Users/afromandi/Macrostrat/Maps/Japan/Japan\ Full/legend.tsv \
-    --data-preprocess-key symbol"""
     ingest_map(
         slug,
         gis_files,

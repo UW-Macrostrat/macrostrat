@@ -23,7 +23,8 @@ def preprocess_dataframe(
     df: G.GeoDataFrame, legend_path: Path, join_col: str
 ) -> G.GeoDataFrame:
     """
-    Preprocess a GeoDataFrame by merging in metadata from a legend.tsv file.
+    Preprocess a GeoDataFrame by merging in metadata from a local .tsv,
+    .csv, .xls, or .xlsx file.
     Parameters:
         df (G.GeoDataFrame): The geospatial dataframe to preprocess.
         legend_path (Path): Path to the legend.tsv metadata file.
