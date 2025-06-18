@@ -2,7 +2,7 @@ name: Install and test `macrostrat` command
 
 on:
   push:
-    branches: [main]
+    branches: [main, custom_integrations]
   pull_request:
     branches: [main]
 
