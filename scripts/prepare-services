@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# Prepare services for building docker containers
+
+# First, build Python wheels for dependencies
+
+set -e
+
+should_lock=false
+if [[ $1 =~ "--lock" ]]; then
+  should_lock=true
+fi
+
+function header() {
+  echo -e "\n\033[1m$1\033[0m" >&2
+}
+
+# Get the root of the repository
+root=$(git rev-parse --show-toplevel)
+
+dist_dir="$root/py-modules/dist"
+
+rm -f "$dist_dir"/*.whl
+
+
+# First, build python wheels for dependencies
+for module in $(ls -d py-modules/*/); do
+  module_dir="$root/$module"
+  [ ! -f "$module_dir/pyproject.toml" ] && continue
+  cd "$module_dir"
+  header "Building module $(poetry version | cut -d' ' -f1)"
+  poetry lock
+  poetry build --output "$dist_dir"
+  cd "$root"
+done
+
+# Then, copy dependency wheels into each service directory and lock dependencies
+
+services=(
+  "tileserver"
+  "legacy-tileserver"
+)
+
+for service_name in "${services[@]}"; do
+  # Check if the service directory exists
+  header "Updating dependencies for service $service_name"
+  cd "$root/services/$service_name"
+  mkdir -p deps
+  rm -f deps/*.whl
+  cp "$dist_dir"/*.whl deps
+  # If we specify to lock/reinstall dependencies, do so
+  if $should_lock; then
+      poetry lock
+  fi
+  cd "$root"
+done

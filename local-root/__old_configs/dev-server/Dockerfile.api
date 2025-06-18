@@ -1,5 +1,0 @@
-FROM next.macrostrat.org:5000/macrostrat/api:develop
-
-# Copy the API configuration file
-
-COPY ./api-credentials.js /code/credentials.js
