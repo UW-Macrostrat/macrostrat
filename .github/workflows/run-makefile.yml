@@ -26,7 +26,12 @@ jobs:
         sudo apt update
         sudo apt install -y gdal-bin libgdal-dev python3-dev
 
-    - name: Run make all
+    - name: Clean up Poetry artifacts
+      run: |
+        rm -f poetry.lock
+        rm -rf ~/.cache/pypoetry/virtualenvs
+
+    - name: Install dependencies and build macrostrat
       run: make all
 
     - name: Run macrostrat tests
