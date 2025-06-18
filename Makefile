@@ -6,9 +6,10 @@ all:
 	poetry install
 	# Install the version of the GDAL bindings that matches the native lib.
 	# This is breakable and should be replaced with a more robust solution.
-	poetry run pip install GDAL==$(shell gdal-config --version | sed 's/\([0-9]*\)\.\([0-9]*\).*/\1.\2/')
+	#poetry run pip install GDAL==$(shell gdal-config --version | sed 's/\([0-9]*\)\.\([0-9]*\).*/\1.\2/')
 
 install:
+	poetry run pip install GDAL==3.10
 	ln -sf $(shell pwd)/bin/macrostrat /usr/local/bin/macrostrat
 
 format:
