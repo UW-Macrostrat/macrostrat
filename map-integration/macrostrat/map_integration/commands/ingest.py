@@ -284,9 +284,9 @@ def get_layer_name(
     return f"_{layer}"
 
 
-#infer age from column
-#post process for all local maps as well as the national map.
-#def post_process_dataframe(df: DataFrame, console: Console): rgb color, t-age, b-age,
+# infer age from column
+# post process for all local maps as well as the national map.
+# def post_process_dataframe(df: DataFrame, console: Console): rgb color, t-age, b-age,
 
 
 def chunker(seq, size):
