@@ -8,8 +8,7 @@ def get_vector_info(dataset: Path):
 
     """Get information on fields and layers (high-level function roughly equivalent to ogrinfo)"""
     ogr.UseExceptions()
-    ds = ogr.Open(str(dataset))
-    return gdal.VectorInfo(ds, format="json")
+    return gdal.VectorInfo(str(dataset), format="json")
 
 
 def get_layer_names(ds: Path):

@@ -1,10 +1,13 @@
 from collections import defaultdict
+from optparse import Option
 from pathlib import Path
 from typing import Iterable, List, Tuple
 
 import geopandas as G
 import pandas as P
 from geoalchemy2 import Geometry
+from numpy.f2py.symbolic import as_ge
+from pandas import DataFrame
 from rich.console import Console
 from rich.progress import Progress
 from sqlalchemy import text
@@ -16,12 +19,53 @@ from .geodatabase import apply_domains_to_fields, get_layer_info, get_layer_name
 console = Console()
 
 
+def preprocess_dataframe(
+    df: G.GeoDataFrame, legend_path: Path, join_col: str
+) -> G.GeoDataFrame:
+    """
+    Preprocess a GeoDataFrame by merging in metadata from a local .tsv,
+    .csv, .xls, or .xlsx file.
+    Parameters:
+        df (G.GeoDataFrame): The geospatial dataframe to preprocess.
+        legend_path (Path): Path to the legend.tsv metadata file.
+        join_col (str): The column to join on (default is "symbol").
+    Returns:
+        G.GeoDataFrame: The enriched GeoDataFrame with merged metadata.
+    """
+    # load legend metadata
+    ext = legend_path.suffix.lower()
+    if ext == ".tsv":
+        legend_df = P.read_csv(legend_path, sep="\t")
+    elif ext == ".csv":
+        legend_df = P.read_csv(legend_path)
+    elif ext in [".xls", ".xlsx"]:
+        legend_df = P.read_excel(legend_path)
+    else:
+        console.print(f"[red]Unsupported file type: {ext}[/red]")
+        return df
+
+    if join_col not in df.columns:
+        console.print(
+            f"[yellow]Warning: join column '{join_col}' not found in GeoDataFrame. Skipping merge.[/yellow]"
+        )
+        return df
+    # ensure join column is string for both DataFrames
+    df[join_col] = df[join_col].astype(str)
+    legend_df[join_col] = legend_df[join_col].astype(str)
+    # merge metadata into geodataframe
+    merged_df = df.merge(legend_df, on=join_col, how="left")
+    return merged_df
+
+
 def ingest_map(
     slug: str,
     files: List[Path],
     embed: bool = False,
     crs: str = None,
     if_exists: str = "replace",
+    legend_file: str = None,
+    legend_key: str = None,
+    legend_table: str = "polygons",
     chunksize: int = 100,
 ):
     """Ingest general GIS data files into the database.
@@ -44,8 +88,17 @@ def ingest_map(
 
     success_count = 0
     total_count = 0
+
+    if legend_file:
+        legend_path = Path(legend_file)
+        join_col = legend_key
+    else:
+        legend_path = None
+        join_col = None
+
     for name, df in get_dataframes(files):
         try:
+
             if crs is not None:
                 if df.crs is None:
                     console.print("Forcing input CRS to [bold yellow]" + crs)
@@ -107,15 +160,19 @@ def ingest_map(
             axis=1, how="all"
         )
 
+        feature_suffix = feature_type.lower() + "s"
+        if feature_suffix == "linestrings":
+            feature_suffix = "lines"
+
+        # applies legend merge only to the whatever the legend_table is specified as
+        if legend_path and legend_table == feature_suffix:
+            df = preprocess_dataframe(df, legend_path=legend_path, join_col=join_col)
+
         console.print(f"[bold]{feature_type}s[/bold] [dim]- {len(df)} features[/dim]")
         # Columns
         console.print("Columns:")
         for col in df.columns:
             console.print(f"- {col}")
-
-        feature_suffix = feature_type.lower() + "s"
-        if feature_suffix == "linestrings":
-            feature_suffix = "lines"
 
         table = f"{slug}_{feature_suffix}"
         schema = "sources"
@@ -225,6 +282,11 @@ def get_layer_name(
     if single_file:
         return layer
     return f"_{layer}"
+
+
+# infer age from column
+# post process for all local maps as well as the national map.
+# def post_process_dataframe(df: DataFrame, console: Console): rgb color, t-age, b-age,
 
 
 def chunker(seq, size):

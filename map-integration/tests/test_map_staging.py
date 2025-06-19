@@ -170,3 +170,108 @@ def test_map_staging(db, test_maps):
     assert web_geom is not None
 
     print("All tests have passed the map ingestion staging test suite!")
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+
+region_dirs = sorted((Path(__file__).parent / "fixtures" / "maps" / "Japan").glob("*"))
+
+
+@pytest.mark.parametrize("region_path", region_dirs)
+def test_map_staging_bulk(db, region_path):
+    """
+    Ingest a map, update metadata, prepare fields, and build geometries.
+    """
+    slug = f"test_{region_path.name.lower()}"
+    name = region_path.name
+    data_path = region_path
+    print(f"\n🚀 Ingesting map for region: {name} at {data_path}")
+
+    gis_files, excluded_files = find_gis_files(data_path, filter=lambda p: True)
+    assert gis_files, f"No GIS files found for {region_path}"
+
+    for path in gis_files:
+        print(f"  ✓ {path}")
+
+    # Ingest
+    ingest_map(slug, gis_files, if_exists="replace")
+
+    source_id = db.run_query(
+        "SELECT source_id FROM maps.sources WHERE slug = :slug",
+        dict(slug=slug),
+    ).scalar()
+
+    if source_id is None:
+        raise RuntimeError(f"Could not find source for slug {slug}")
+
+    if name:
+        db.run_sql(
+            "UPDATE maps.sources SET name = :name WHERE source_id = :source_id",
+            dict(name=name, source_id=source_id),
+        )
+
+    db.run_sql(
+        "UPDATE maps.sources SET scale = :scale WHERE source_id = :source_id",
+        dict(scale="large", source_id=source_id),
+    )
+
+    object_group_id = db.run_query(
+        "INSERT INTO storage.object_group DEFAULT VALUES RETURNING id"
+    ).scalar()
+
+    assert object_group_id is not None
+
+    db.run_sql(
+        """
+        INSERT INTO maps_metadata.ingest_process (state, source_id, object_group_id)
+        VALUES (:state, :source_id, :object_group_id);
+        """,
+        dict(state="ingested", source_id=source_id, object_group_id=object_group_id),
+    )
+
+    map_info = get_map_info(db, slug)
+    _prepare_fields(map_info)
+    create_rgeom(map_info)
+    create_webgeom(map_info)
+
+    # Metadata assertions
+    row = db.run_query(
+        "SELECT name, scale FROM maps.sources WHERE source_id = :source_id",
+        dict(source_id=source_id),
+    ).fetchone()
+    assert row is not None
+    assert row.name == name
+    assert row.scale == "large"
+
+    # Ingest process assertions
+    ingest_process = db.run_query(
+        "SELECT source_id, object_group_id, state FROM maps_metadata.ingest_process WHERE source_id = :source_id",
+        dict(source_id=source_id),
+    ).fetchone()
+    assert ingest_process is not None
+    assert ingest_process.state == "ingested"
+    assert ingest_process.object_group_id == object_group_id
+
+    # Data exists
+    count = db.run_query(f"SELECT COUNT(*) FROM sources.{slug}_polygons").scalar()
+    assert count > 0
+
+    # Geometry column assertions
+    rgeom = db.run_query(
+        """
+        SELECT rgeom FROM maps.sources WHERE slug = :slug
+        """,
+        dict(slug=slug),
+    ).fetchone()
+    assert rgeom is not None
+
+    web_geom = db.run_query(
+        """
+        SELECT web_geom FROM maps.sources WHERE slug = :slug
+        """,
+        dict(slug=slug),
+    ).fetchone()
+    assert web_geom is not None
+
+    print(f"✅ {region_path.name} passed the map ingestion staging test suite!\n")

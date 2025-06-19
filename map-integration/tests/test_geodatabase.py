@@ -23,8 +23,7 @@ def gdb_fn():
 def test_get_geodatabase_domains(gdb_fn):
     from osgeo import gdal, ogr
 
-    ds = ogr.Open(str(gdb_fn))
-    res = gdal.VectorInfo(ds, format="json")
+    res = gdal.VectorInfo(str(gdb_fn), format="json")
 
     lyr_name = "GB_UNIDAD_GEO_P"
 

@@ -10,6 +10,7 @@ from typer import Option
 from macrostrat.core import app
 from macrostrat.database import Database
 from macrostrat.map_integration.commands.prepare_fields import _prepare_fields
+from macrostrat.map_integration.custom_integrations.japan_full_map import japan_full_map
 from macrostrat.map_integration.pipeline import ingest_map
 from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
 from macrostrat.map_integration.utils.file_discovery import find_gis_files
@@ -252,6 +253,17 @@ def staging(
     slug: str,
     data_path: str,
     name: str,
+    legend_file: str = Option(
+        None, help="metadata URL to merge into the sources polygons/lines/points table"
+    ),
+    legend_key: str = Option(
+        None,
+        help="primary key to left join the metadata into the sources polygons/lines/points table",
+    ),
+    legend_table: str = Option(
+        "polygons",
+        help="Options: polygons, lines, or points. specifies the table in which the legend metadata is merged into. It defaults to sources polygons",
+    ),
     filter: str = Option(None, help="Filter applied to GIS file selection"),
 ):
     """
@@ -273,8 +285,14 @@ def staging(
         for path in excluded_files:
             print(f"  ⚠️ {path}")
 
-    # ingest the map!
-    ingest_map(slug, gis_files, if_exists="replace")
+    ingest_map(
+        slug,
+        gis_files,
+        if_exists="replace",
+        legend_file=legend_file,
+        legend_key=legend_key,
+        legend_table=legend_table,
+    )
 
     source_id = db.run_query(
         "SELECT source_id FROM maps.sources WHERE slug = :slug",
@@ -304,6 +322,7 @@ def staging(
     )
 
     map_info = get_map_info(db, slug)
+
     _prepare_fields(map_info)
     create_rgeom(map_info)
     create_webgeom(map_info)
@@ -349,3 +368,116 @@ def staging(
     print(
         f"\nFinished staging setup for {slug}. View map here: https://dev2.macrostrat.org/maps/ingestion/{source_id}/ \n"
     )
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+
+@cli.command(name="staging-bulk")
+def staging_bulk(
+    parent_path: str = Option(
+        ..., help="Parent directory containing region subfolders"
+    ),
+    prefix: str = Option(..., help="Slug prefix to avoid collisions"),
+    filter: str = Option(None, help="Filter applied to GIS file selection"),
+):
+    """
+    Ingest all maps from subdirectories within a parent folder.
+    """
+    db = get_database()
+    parent = Path(parent_path)
+
+    if not parent.exists() or not parent.is_dir():
+        raise ValueError(f"{parent_path} is not a valid directory.")
+
+    region_dirs = sorted([p for p in parent.iterdir() if p.is_dir()])
+
+    for region_path in region_dirs:
+        slug = f"{region_path.name.lower()}_{prefix}"
+        name = region_path.name
+        data_path = region_path
+        print(f"\n🚀 Ingesting {slug} from {data_path}")
+
+        gis_files, excluded_files = find_gis_files(data_path, filter=filter)
+        if not gis_files:
+            print(f"⚠️ No GIS files found in {data_path}, skipping.")
+            continue
+        for path in gis_files:
+            print(f"  ✓ {path}")
+        ingest_map(slug, gis_files, if_exists="replace")
+
+        source_id = db.run_query(
+            "SELECT source_id FROM maps.sources WHERE slug = :slug",
+            dict(slug=slug),
+        ).scalar()
+
+        if source_id is None:
+            raise RuntimeError(f"Could not find source for slug {slug}")
+
+        if name:
+            db.run_sql(
+                "UPDATE maps.sources SET name = :name WHERE source_id = :source_id",
+                dict(name=name, source_id=source_id),
+            )
+
+        db.run_sql(
+            "UPDATE maps.sources SET scale = :scale WHERE source_id = :source_id",
+            dict(scale="large", source_id=source_id),
+        )
+
+        db.run_sql(
+            """
+            INSERT INTO maps_metadata.ingest_process (state, source_id, object_group_id)
+            VALUES (:state, :source_id, :object_group_id);
+            """,
+            dict(state="ingested", source_id=source_id, object_group_id=1),
+        )
+
+        map_info = get_map_info(db, slug)
+        _prepare_fields(map_info)
+        create_rgeom(map_info)
+        create_webgeom(map_info)
+
+        # Metadata assertions
+        row = db.run_query(
+            "SELECT name, scale FROM maps.sources WHERE source_id = :source_id",
+            dict(source_id=source_id),
+        ).fetchone()
+        print(row)
+
+        # Ingest process assertions
+        ingest_process = db.run_query(
+            "SELECT source_id, object_group_id, state FROM maps_metadata.ingest_process WHERE source_id = :source_id",
+            dict(source_id=source_id),
+        ).fetchone()
+        print(ingest_process)
+
+        # Data exists
+        count = db.run_query(f"SELECT COUNT(*) FROM sources.{slug}_polygons").scalar()
+        print(count)
+
+        # Geometry column assertions
+        rgeom = db.run_query(
+            """
+            SELECT rgeom FROM maps.sources WHERE slug = :slug
+            """,
+            dict(slug=slug),
+        ).fetchone()
+        print(rgeom)
+
+        web_geom = db.run_query(
+            """
+            SELECT web_geom FROM maps.sources WHERE slug = :slug
+            """,
+            dict(slug=slug),
+        ).fetchone()
+        print(web_geom)
+
+        if any(val is None for val in [row, ingest_process, rgeom, web_geom]):
+            raise RuntimeError(
+                "Staging failed: Some expected records were not inserted."
+            )
+
+        print(
+            f"\nFinished staging setup for {slug}. View map here: https://dev2.macrostrat.org/maps/ingestion/{source_id}/ \n"
+        )

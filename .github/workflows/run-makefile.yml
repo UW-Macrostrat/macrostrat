@@ -1,4 +1,4 @@
-name: Install and test `macrostrat` command
+name: Install and run `macrostrat` test suite
 
 on:
   push:
@@ -26,11 +26,8 @@ jobs:
         sudo apt update
         sudo apt install -y gdal-bin libgdal-dev python3-dev
 
-    - name: Run make all
+    - name: Install dependencies and build macrostrat
       run: make all
 
-    - name: Run make install
-      run: sudo make install
-
-    - name: Run macrostrat CLI to confirm install
-      run: poetry run macrostrat
+    - name: Run macrostrat tests
+      run: make test
