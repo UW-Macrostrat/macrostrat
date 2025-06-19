@@ -1,8 +1,8 @@
-name: Install and test `macrostrat` command
+name: Install and run `macrostrat` test suite
 
 on:
   push:
-    branches: [main, test_ci]
+    branches: [main]
   pull_request:
     branches: [main]
 
