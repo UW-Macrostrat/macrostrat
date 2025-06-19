@@ -21,7 +21,6 @@ def test_cli_help(cfg):
     assert result.exit_code == 0
 
 
-
 def test_cli_database(cfg):
     assert cfg.pg_database == "postgresql://user:password@localhost:5432/macrostrat"
 

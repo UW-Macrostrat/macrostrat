@@ -5,6 +5,7 @@ from pathlib import Path
 @lru_cache
 def get_vector_info(dataset: Path):
     from osgeo import gdal, ogr
+
     """Get information on fields and layers (high-level function roughly equivalent to ogrinfo)"""
     ogr.UseExceptions()
     return gdal.VectorInfo(str(dataset), format="json")
