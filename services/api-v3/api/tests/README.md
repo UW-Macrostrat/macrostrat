@@ -9,7 +9,7 @@ The ADMIN_TOKEN is an api token used to authenticate as an admin user.
 ```bash
 uri=
 
-REDIRECT_URI=http://localhost:8000/security/callback
+REDIRECT_URI_ENV=http://localhost:8000/security/callback
 
 OAUTH_AUTHORIZATION_URL=https://cilogon.org/authorize
 OAUTH_TOKEN_URL=https://cilogon.org/oauth2/token

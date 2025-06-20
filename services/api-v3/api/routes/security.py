@@ -229,7 +229,7 @@ async def redirect_authorization(return_url: str = None):
         "scope": "openid profile email",
         "client_id": os.environ["OAUTH_CLIENT_ID"],
         "response_type": "code",
-        "redirect_uri": os.environ["REDIRECT_URI"],
+        "REDIRECT_URI_ENV": os.environ["REDIRECT_URI_ENV"],
     }
 
     if return_url is not None:
@@ -244,13 +244,13 @@ async def redirect_authorization(return_url: str = None):
 async def redirect_callback(code: str, state: Optional[str] = None):
     """Exchange the code for a token and redirect to the state URL"""
 
-    uri = os.environ["REDIRECT_URI"]
+    uri = os.environ["REDIRECT_URI_ENV"]
     data = {
         "grant_type": "authorization_code",
         "client_id": os.environ["OAUTH_CLIENT_ID"],
         "client_secret": os.environ["OAUTH_CLIENT_SECRET"],
         "code": code,
-        "redirect_uri": uri,
+        "redirect_uri_env": uri,
     }
 
     # Get the domain for the redirect URL
@@ -372,7 +372,7 @@ async def create_group_token(
 async def logout(response: Response):
     """Logout the active user"""
 
-    main_domain = get_domain(os.environ["REDIRECT_URI"])
+    main_domain = get_domain(os.environ["REDIRECT_URI_ENV"])
     # Delete all instances of cookies that we might conceivably have set
     for domain in [main_domain, "localhost", "127.0.0.1", None]:
         response.delete_cookie(key=access_token_key, domain=domain)
