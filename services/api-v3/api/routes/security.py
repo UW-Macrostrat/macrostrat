@@ -229,7 +229,7 @@ async def redirect_authorization(return_url: str = None):
         "scope": "openid profile email",
         "client_id": os.environ["OAUTH_CLIENT_ID"],
         "response_type": "code",
-        "REDIRECT_URI_ENV": os.environ["REDIRECT_URI_ENV"],
+        "redirect_uri": os.environ["REDIRECT_URI_ENV"],
     }
 
     if return_url is not None:
@@ -250,7 +250,7 @@ async def redirect_callback(code: str, state: Optional[str] = None):
         "client_id": os.environ["OAUTH_CLIENT_ID"],
         "client_secret": os.environ["OAUTH_CLIENT_SECRET"],
         "code": code,
-        "redirect_uri_env": uri,
+        "redirect_uri": uri,
     }
 
     # Get the domain for the redirect URL
