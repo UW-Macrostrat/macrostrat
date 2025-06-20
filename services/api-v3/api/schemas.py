@@ -1,6 +1,8 @@
 import datetime
 import enum
 from typing import List
+from sqlalchemy.dialects.postgresql import ENUM
+
 
 from geoalchemy2 import Geometry
 from sqlalchemy import (
@@ -178,9 +180,11 @@ class IngestProcess(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
-    state: Mapped[str] = mapped_column(
-        Enum(IngestState, name="ingest_state"), nullable=True
+    state: Mapped[IngestState] = mapped_column(
+        ENUM(IngestState, name="ingest_state", schema="maps", native_enum=True),
+        nullable=True,
     )
+
     type: Mapped[str] = mapped_column(
         Enum(IngestType, name="ingest_type"), nullable=True
     )

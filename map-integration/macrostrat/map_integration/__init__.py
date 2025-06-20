@@ -10,7 +10,6 @@ from typer import Option
 from macrostrat.core import app
 from macrostrat.database import Database
 from macrostrat.map_integration.commands.prepare_fields import _prepare_fields
-from macrostrat.map_integration.custom_integrations.japan_full_map import japan_full_map
 from macrostrat.map_integration.pipeline import ingest_map
 from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
 from macrostrat.map_integration.utils.file_discovery import find_gis_files
