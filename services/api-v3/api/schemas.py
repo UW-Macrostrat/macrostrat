@@ -1,8 +1,6 @@
 import datetime
 import enum
 from typing import List
-from sqlalchemy.dialects.postgresql import ENUM
-
 
 from geoalchemy2 import Geometry
 from sqlalchemy import (
@@ -16,6 +14,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import (
     ARRAY,
     BOOLEAN,
+    ENUM,
     INTEGER,
     JSON,
     JSONB,
