@@ -64,7 +64,7 @@ def ingest_map(
     crs: str = None,
     if_exists: str = "replace",
     legend_file: str = None,
-    #TODO add default key column to the first column in the file
+    # TODO add default key column to the first column in the file
     legend_key: str = None,
     legend_table: str = "polygons",
     chunksize: int = 100,
