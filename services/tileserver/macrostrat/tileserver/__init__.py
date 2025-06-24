@@ -42,7 +42,6 @@ async def connect_to_rockd_db(
     """Connect."""
     if not settings:
         settings = PostgresSettings()
-
     app.state.rockd_pool = await asyncpg.create_pool_b(
         settings.rockd_database_url,
         min_size=settings.db_min_conn_size,
@@ -73,12 +72,12 @@ class TileServerSettings(PostgresSettings):
     xdd_embedding_service_url: Optional[str] = None
     rockd_database_url: Optional[str] = None
     model_config = SettingsConfigDict(
+        env_file=".env",
         extra="allow",
     )
 
 
 db_settings = TileServerSettings()
-db_settings.rockd_database_url
 
 app.state.timvt_function_catalog = FunctionRegistry()
 app.state.function_catalog = FunctionRegistry()

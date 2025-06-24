@@ -82,11 +82,18 @@ async def tile(
 
     data = b""
     success = False
+    print("request!\n",request)
+    print("Feature Type!!\n", FeatureType)
     for layer in FeatureType:
+        print("layer\n", layer)
+        print("CONNECTION POOL\n", pool)
+        print("slug\n", slug)
+
         try:
             data += await get_layer(pool, slug, layer, z=z, x=x, y=y)
             success = True
         except UndefinedTableError:
+            print("ERRORRRRR", UndefinedTableError, "for layer ", layer)
             pass
     if not success:
         return Response(status_code=404, content=f"No tables found for {slug}")
@@ -98,9 +105,13 @@ async def tile(
 
 async def get_layer(pool, slug, layer: FeatureType, **params):
     async with pool.acquire() as con:
-        table_name = f"{slug}_{layer}"
+
+        table_name = f"{slug}_{layer.value}"
         alias = "s"
         column_dict = await get_table_columns(con, table_name, schema="sources")
+
+        print(f"Columns for {table_name}", column_dict)
+
         log.debug("Columns: %s", column_dict)
         columns = [
             format_column(k, v, cast_empty_strings=True, table_alias=alias)
@@ -237,8 +248,10 @@ async def get_table_columns(con, table, schema="sources"):
     WHERE table_name = :table
     AND table_schema = :schema;
     """
+    print("table", table, "schema", schema)
 
     q, p = render(base_sql, table=table, schema=schema)
+    print("variables erroring", p, q)
     res = await con.fetch(q, *p)
     if len(res) == 0:
         raise UndefinedTableError(f"Table {schema}.{table} not found")
