@@ -82,7 +82,12 @@ async def tile(
 
     data = b""
     success = False
+<<<<<<< HEAD
 
+=======
+    print("request!\n", request)
+    print("Feature Type!!\n", FeatureType)
+>>>>>>> abb20b694fee2d66506f4f0859cc625ace9eedd3
     for layer in FeatureType:
 
         try:
