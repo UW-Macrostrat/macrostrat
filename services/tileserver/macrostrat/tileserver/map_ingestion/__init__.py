@@ -82,12 +82,7 @@ async def tile(
 
     data = b""
     success = False
-<<<<<<< HEAD
 
-=======
-    print("request!\n", request)
-    print("Feature Type!!\n", FeatureType)
->>>>>>> abb20b694fee2d66506f4f0859cc625ace9eedd3
     for layer in FeatureType:
 
         try:
@@ -109,8 +104,6 @@ async def get_layer(pool, slug, layer: FeatureType, **params):
         table_name = f"{slug}_{layer.value}"
         alias = "s"
         column_dict = await get_table_columns(con, table_name, schema="sources")
-
-        print(f"Columns for {table_name}", column_dict)
 
         log.debug("Columns: %s", column_dict)
         columns = [
