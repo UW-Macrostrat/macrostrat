@@ -82,18 +82,13 @@ async def tile(
 
     data = b""
     success = False
-    print("request!\n",request)
-    print("Feature Type!!\n", FeatureType)
+
     for layer in FeatureType:
-        print("layer\n", layer)
-        print("CONNECTION POOL\n", pool)
-        print("slug\n", slug)
 
         try:
             data += await get_layer(pool, slug, layer, z=z, x=x, y=y)
             success = True
         except UndefinedTableError:
-            print("ERRORRRRR", UndefinedTableError, "for layer ", layer)
             pass
     if not success:
         return Response(status_code=404, content=f"No tables found for {slug}")
@@ -144,7 +139,7 @@ async def get_layer(pool, slug, layer: FeatureType, **params):
             columns,
             joins=joins,
             table_alias=alias,
-            layer_name=f"{layer}",
+            layer_name=f"{layer.value}",
             **params,
         )
 
@@ -198,6 +193,8 @@ async def run_layer_query(
 
     query = extend_sql(query)
     params = dict(layer_name=layer_name, **params)
+    print("\nRunning query:", query)
+    print("\nParams:", params)
 
     if print_sql_statements:
         log.debug(
