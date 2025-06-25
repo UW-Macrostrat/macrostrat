@@ -4,7 +4,6 @@ import logging
 from typing import Callable, Dict, Type
 
 from fastapi import FastAPI
-
 from starlette import status
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -59,5 +58,5 @@ def add_exception_handlers(
     """
     Add exception handlers to the FastAPI app.
     """
-    for (exc, code) in status_codes.items():
+    for exc, code in status_codes.items():
         app.add_exception_handler(exc, exception_handler_factory(code))

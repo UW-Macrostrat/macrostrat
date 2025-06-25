@@ -2,13 +2,10 @@
 
 import re
 
-from morecantile import Tile
-
-from timvt.layer import Layer, Table
-
 from fastapi import HTTPException, Path
-
+from morecantile import Tile
 from starlette.requests import Request
+from timvt.layer import Layer, Table
 
 
 def TileParams(

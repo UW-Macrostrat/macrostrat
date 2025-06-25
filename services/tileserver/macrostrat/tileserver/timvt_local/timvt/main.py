@@ -2,6 +2,11 @@
 
 import pathlib
 
+from fastapi import FastAPI, Request
+from starlette.middleware.cors import CORSMiddleware
+from starlette.responses import HTMLResponse
+from starlette.templating import Jinja2Templates
+from starlette_cramjam.middleware import CompressionMiddleware
 from timvt import __version__ as timvt_version
 from timvt.db import close_db_connection, connect_to_db, register_table_catalog
 from timvt.errors import DEFAULT_STATUS_CODES, add_exception_handlers
@@ -9,13 +14,6 @@ from timvt.factory import TMSFactory, VectorTilerFactory
 from timvt.layer import Function, FunctionRegistry
 from timvt.middleware import CacheControlMiddleware
 from timvt.settings import ApiSettings, PostgresSettings, TileSettings
-
-from fastapi import FastAPI, Request
-
-from starlette.middleware.cors import CORSMiddleware
-from starlette.responses import HTMLResponse
-from starlette.templating import Jinja2Templates
-from starlette_cramjam.middleware import CompressionMiddleware
 
 try:
     from importlib.resources import files as resources_files  # type: ignore

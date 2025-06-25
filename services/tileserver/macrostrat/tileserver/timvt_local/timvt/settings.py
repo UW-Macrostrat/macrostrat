@@ -132,6 +132,7 @@ class PostgresSettings(BaseSettings):
 
     class Config:
         """model config"""
+
         env_file = ".env"
 
     # https://github.com/tiangolo/full-stack-fastapi-postgresql/blob/master/%7B%7Bcookiecutter.project_slug%7D%7D/backend/app/app/core/config.py#L42
