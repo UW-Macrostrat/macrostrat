@@ -2784,7 +2784,7 @@ test = ["httpx", "mapbox-vector-tile", "numpy", "protobuf (>=3.0,<4.0)", "psycop
 
 [package.source]
 type = "directory"
-url = "deps/timvt"
+url = "deps/timvt_local"
 
 [[package]]
 name = "titiler"
@@ -3221,4 +3221,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.10"
-content-hash = "e2acac4fe158f1363c48a5dfcba40fbb510b676797aa16a591c90c83912c98e4"
+content-hash = "ad40ff86b919c0b57e75b02a599ecd6dbbabb46306d6565f8a48025fd1dd316b"

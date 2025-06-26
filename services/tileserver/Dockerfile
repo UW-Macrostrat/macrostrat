@@ -35,7 +35,7 @@ ENV PATH="/venv/bin:$PATH" \
 WORKDIR /app/
 
 COPY pyproject.toml poetry.lock ./
-COPY ./deps/timvt ./deps/timvt
+COPY ./deps/timvt_local ./deps/timvt_local
 RUN touch README.md
 
 # Install Poetry dependencies (without dev and local dependencies)
