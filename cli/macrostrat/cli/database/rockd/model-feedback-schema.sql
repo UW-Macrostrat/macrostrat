@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS model_feedback (
+CREATE TABLE IF NOT EXISTS public.model_feedback (
     id serial PRIMARY KEY,
     checkin_id integer NOT NULL,
     photo_id integer NOT NULL,
@@ -9,3 +9,10 @@ CREATE TABLE IF NOT EXISTS model_feedback (
     status_code integer NOT NULL,
     date_created timestamp with time zone NOT NULL DEFAULT now()
 );
+
+ALTER TABLE public.checkins
+    ADD model_run_id integer;
+    ADD CONSTRAINT fk_model_run
+        FOREIGN KEY (model_run_id)
+        REFERENCES public.model_feedback(id)
+        ON DELETE SET NULL;
