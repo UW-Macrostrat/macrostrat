@@ -4,7 +4,6 @@ import os
 
 import pytest
 import pytest_pgsql
-
 from starlette.testclient import TestClient
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "fixtures")

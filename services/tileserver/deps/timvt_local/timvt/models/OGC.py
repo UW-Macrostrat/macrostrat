@@ -1,10 +1,8 @@
 """timvt.models.OGC: Open GeoSpatial Consortium models."""
 
-
 from typing import List
 
 from pydantic import AnyHttpUrl, BaseModel
-
 from timvt.resources.enums import MimeTypes
 
 
