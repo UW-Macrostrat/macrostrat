@@ -28,7 +28,6 @@
   </component>
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/services/tileserver/deps/timvt" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/submodules/postgis-tile-utils" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/submodules/storage-admin" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/submodules/topology-manager" vcs="Git" />
