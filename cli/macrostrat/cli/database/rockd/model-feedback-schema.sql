@@ -11,7 +11,9 @@ CREATE TABLE IF NOT EXISTS public.model_feedback (
 );
 
 ALTER TABLE public.checkins
-    ADD model_run_id integer;
+    ADD COLUMN model_run_id integer;
+
+ALTER TABLE public.checkins
     ADD CONSTRAINT fk_model_run
         FOREIGN KEY (model_run_id)
         REFERENCES public.model_feedback(id)
