@@ -15,7 +15,7 @@ ALTER TABLE public.observations
     ADD COLUMN model_run_id integer;
 
 ALTER TABLE public.observations
-    ADD CONSTRAINT fk_model_run
+    ADD CONSTRAINT fk_model_run_observations
         FOREIGN KEY (model_run_id)
         REFERENCES public.model_feedback(id)
         ON DELETE SET NULL;
@@ -24,7 +24,7 @@ ALTER TABLE public.checkins
     ADD COLUMN model_run_id integer;
 
 ALTER TABLE public.checkins
-    ADD CONSTRAINT fk_model_run
+    ADD CONSTRAINT fk_model_run_checkins
         FOREIGN KEY (model_run_id)
         REFERENCES public.model_feedback(id)
         ON DELETE SET NULL;
