@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS public.model_feedback (
     id serial PRIMARY KEY,
     checkin_id integer NOT NULL REFERENCES public.checkins(checkin_id) ON DELETE CASCADE,
-    observation_id integer NOT NULL REFERENCES public.observations(obs_id) ON DELETE CASCADE,
+    observation_id integer public.observations(obs_id),
     photo_id integer NOT NULL,
     text_relevancy float NOT NULL,
     image_relevancy float NOT NULL,
