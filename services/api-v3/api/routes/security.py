@@ -281,7 +281,7 @@ async def redirect_callback(code: str, state: Optional[str] = None):
                 )
 
             user_data = await user_response.json()
-
+            #need to look up the user_id and return it in the jwt
             user = await get_user(user_data["sub"])
 
             if user is None:
@@ -306,12 +306,13 @@ async def redirect_callback(code: str, state: Optional[str] = None):
             if "admin" in names:
                 role = "web_admin"
 
+            #validate jwt https://dev.macrostrat.org/dev/me
             access_token = create_access_token(
                 data={
                     "sub": user.sub,
                     "role": role,  # For PostgREST
-                    "groups": [group.id for group in user.groups],
-                    "group_names": names,
+                    #ensure user_id is correctly being returned
+                    "user_id": user.id,
                 }
             )
 
