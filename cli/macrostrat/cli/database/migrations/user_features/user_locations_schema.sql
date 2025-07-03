@@ -18,7 +18,7 @@ create table IF NOT EXISTS user_features.user_locations
     updated_at      timestamp default now() not null
 );
 
-
+--add predefined list of tags for users to use
 create table IF NOT EXISTS user_features.location_tags
 (
     id          serial PRIMARY KEY,
@@ -26,6 +26,20 @@ create table IF NOT EXISTS user_features.location_tags
     description text,
     color       varchar(30)
 );
+
+INSERT INTO user_features.location_tags (name, description, color)
+VALUES
+  ('Basalt Outcrop',      'Exposure of dark, fine‑grained basaltic lava',          '#4B4E6D'),
+  ('Fossil Locality',     'Site where macro‑ or microfossils have been collected', '#C19A6B'),
+  ('Fault Trace',         'Mapped surface expression of a fault plane',            '#FF6F61'),
+  ('Glacial Erratic',     'Large exotic boulder deposited by glacial ice',         '#3DA5D9'),
+  ('Mineral Prospect',    'Area under evaluation for economic mineralization',     '#FFD166'),
+  ('Stratotype Section',  'Formally designated reference stratigraphic section',   '#6D8B74'),
+  ('Core Sample Site',    'Location where drill‑core was extracted',               '#8E7DBE'),
+  ('Hydrothermal Vent',   'Vent or fissure of hydrothermal fluids (active/pale)',  '#E9724C'),
+  ('Paleosol Horizon',    'Profile of an ancient soil preserved in the rock record','#A67C52'),
+  ('Dike Intrusion',      'Tabular igneous body cutting host strata',              '#FFB3BA');
+
 
 --intersection table for ids joins with the location_tags table
 --remove category and add NULL user_ids
@@ -40,32 +54,6 @@ create table IF NOT EXISTS user_features.location_tags_intersect (
 alter table user_features.user_locations owner to "macrostrat";
 alter table user_features.location_tags owner to "macrostrat";
 alter table user_features.location_tags_intersect owner to "macrostrat";
-
-grant delete, insert, select, update on user_features.user_locations to web_anon;
-grant delete, insert, select, update on user_features.location_tags to web_anon;
-GRANT USAGE, SELECT ON SEQUENCE user_features.user_locations_id_seq TO web_anon;
-
-grant delete, insert, select, update on user_features.user_locations to web_user;
-grant delete, insert, select, update on user_features.location_tags to web_user;
-GRANT USAGE, SELECT ON SEQUENCE user_features.user_locations_id_seq TO web_anon;
-
-
-CREATE OR REPLACE VIEW macrostrat_api.user_locations AS
-SELECT *
-FROM user_features.user_locations;
-
-
-CREATE OR REPLACE VIEW macrostrat_api.location_tags AS
-SELECT *
-FROM user_features.location_tags;
-
---this will change from web_anon to an authorized user once that workflow has been implemented.
---web_anon is used for testing only right now.
-GRANT SELECT, INSERT, UPDATE, DELETE ON macrostrat_api.user_locations TO web_anon;
-GRANT SELECT, INSERT, UPDATE, DELETE ON macrostrat_api.location_tags TO web_anon;
-
-
-NOTIFY pgrst, 'reload schema';
 
 
 
