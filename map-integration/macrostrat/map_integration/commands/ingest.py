@@ -12,6 +12,8 @@ from rich.console import Console
 from rich.progress import Progress
 from sqlalchemy import text
 import os
+import fiona
+import re
 
 from ..database import get_database
 from ..errors import IngestError
@@ -36,7 +38,6 @@ def preprocess_dataframe(
     # load legend metadata
     ext = legend_path.suffix.lower()
     print("Starting preprocessing...")
-    print("Ext file to merge", ext)
     if ext == ".tsv":
         legend_df = P.read_csv(legend_path, sep="\t")
     elif ext == ".csv":
@@ -45,14 +46,28 @@ def preprocess_dataframe(
         legend_df = P.read_excel(legend_path)
     # note that the gdb dir may not contain shp files to merge metadata into
     elif ext == ".gdb":
+        dmu_layer = None
         try:
-            #load sql
+            for name in fiona.listlayers(legend_path):
+                if re.search(r"descriptionofmapunits$", name, re.I):
+                    dmu_layer = name
+            if dmu_layer is None:
+                console.print(f"[yellow]No DescriptionOfMapUnits table found in "
+                              f"{legend_path.name}.  Layers: "
+                              f"{', '.join(fiona.listlayers(legend_path))}[/yellow]")
+                return df
             legend_df = G.read_file(
                 legend_path,
-                layer="DescriptionOfMapUnits",
+                layer=dmu_layer,
+                engine="pyogrio",
+                read_geometry=False,
             )
+            print('\n',df.columns.tolist())
+            print("Polygons dataframe!!!!",df.head(5))
+            print('\n',legend_df.columns.tolist())
+            print("GDB dataframe!!!!",legend_df.head(5))
         except ValueError as e:
-            console.print("[red]No DescriptionOfMapUnits table found in this .gdb[/red]\n, e")
+            console.print(f"[red]Error {e}[/red]\n")
             return df
     else:
         console.print(f"[red]Unsupported file type: {ext}[/red]")
