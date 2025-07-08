@@ -1376,3 +1376,51 @@ def etl_multiple_gdbs(engine,db_metadata,mapsources_etl_template,datasources_del
 
 
     return ingestion_errors, ingested_mapsource_ids
+
+
+if __name__ == "__main__":
+    from pathlib import Path
+    GDB_PATH = Path("/Users/afromandi/Macrostrat/Maps/Arizona/SamaniegoHills.gdb")
+    OUT_DIR = Path("/Users/afromandi/Macrostrat/Maps/Arizona/SamaniegoHillsGemsTest")
+    USE_DB = False        # set True if you really want to load Postgres
+    print(f"\nGeMS ETL for {GDB_PATH.name}\n")
+
+    # extract
+    gems = extract_gems_database_to_dict_of_dataframes(GDB_PATH)
+    print(f"  • extracted {len(gems)} layers")
+
+    # transform
+    gems, unused = transform_gems_dict_of_dataframes(
+        gems,
+        mapsource_id=GDB_PATH.stem,
+        datasources_delimiter=None,
+    )
+    print(f"  • transformed; {len(unused)} extra feature‑classes recorded")
+
+    # load/write to disk each layer/table
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    for name, frame in gems.items():
+        fout = (OUT_DIR / f"{name}.gpkg" if name in GEMS_SPATIAL_TABLES_FIELDS
+                else OUT_DIR / f"{name}.csv")
+        if fout.suffix == ".gpkg":
+            frame.to_file(fout, driver="GPKG")
+        else:
+            frame.to_csv(fout, index=False)
+        print(f"    ✓ {fout.name}")
+
+    # load into postgres: optional
+    if USE_DB:
+        ENGINE = connect_to_db(
+            host="localhost", port=5432,
+            database="geomaps", username="postgres", pw="secret"
+        )
+        META = get_schema_metadata(ENGINE, SOURCE_DATA_SCHEMA)
+        errs = etl_gems_database(
+            ENGINE, META,
+            GDB_PATH,
+            mapsource_id=GDB_PATH.stem,
+            datasources_delimiter=None,
+        )
+        print("  • loaded to Postgres;", "errors:" if errs else "no errors", errs.keys())
+    else:
+        print("  • skipped database load (USE_DB = False)")
