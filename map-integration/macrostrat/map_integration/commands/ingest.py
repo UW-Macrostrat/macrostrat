@@ -2,7 +2,7 @@ from collections import defaultdict
 from optparse import Option
 from pathlib import Path
 from typing import Iterable, List, Tuple
-
+import pyogrio
 import geopandas as G
 import pandas as P
 from geoalchemy2 import Geometry
@@ -11,6 +11,9 @@ from pandas import DataFrame
 from rich.console import Console
 from rich.progress import Progress
 from sqlalchemy import text
+import os
+import fiona
+import re
 
 from ..database import get_database
 from ..errors import IngestError
@@ -34,21 +37,48 @@ def preprocess_dataframe(
     """
     # load legend metadata
     ext = legend_path.suffix.lower()
+    print("Starting preprocessing...")
     if ext == ".tsv":
         legend_df = P.read_csv(legend_path, sep="\t")
     elif ext == ".csv":
         legend_df = P.read_csv(legend_path)
     elif ext in [".xls", ".xlsx"]:
         legend_df = P.read_excel(legend_path)
+    # note that the gdb dir may not contain shp files to merge metadata into
+    elif ext == ".gdb":
+        dmu_layer = None
+        try:
+            for name in fiona.listlayers(legend_path):
+                if re.search(r"descriptionofmapunits$", name, re.I):
+                    dmu_layer = name
+            if dmu_layer is None:
+                console.print(f"[yellow]No DescriptionOfMapUnits table found in "
+                              f"{legend_path.name}.  Layers: "
+                              f"{', '.join(fiona.listlayers(legend_path))}[/yellow]")
+                return df
+            legend_df = G.read_file(
+                legend_path,
+                layer=dmu_layer,
+                engine="pyogrio",
+                read_geometry=False,
+            )
+            print('\n',df.columns.tolist())
+            print("Polygons dataframe!!!!",df.head(5))
+            print('\n',legend_df.columns.tolist())
+            print("GDB dataframe!!!!",legend_df.head(5))
+        except ValueError as e:
+            console.print(f"[red]Error {e}[/red]\n")
+            return df
     else:
         console.print(f"[red]Unsupported file type: {ext}[/red]")
         return df
 
     if join_col not in df.columns:
         console.print(
-            f"[yellow]Warning: join column '{join_col}' not found in GeoDataFrame. Skipping merge.[/yellow]"
+            f"[yellow]Warning: join column '{join_col}' not found in legend file. Skipping merge.[/yellow]"
         )
         return df
+    # merge df (polygon df) and legend_df (created df from file)
     # ensure join column is string for both DataFrames
     df[join_col] = df[join_col].astype(str)
     legend_df[join_col] = legend_df[join_col].astype(str)
