@@ -96,8 +96,6 @@ startDict = {
         ["IndentedName", "String", "NoNulls", 300],
         ["Definition", "String", "NoNulls", 3000],
     ],
-
-  
     # as-needed tables and feature classes
     "GenericPoints": [
         ["Type", "String", "Optional", defaultLength],
@@ -180,8 +178,7 @@ startDict = {
         ["GPSY", "Double", "Optional"],
         ["PDOP", "Single", "Optional"],
     ],
-
-    #Left of ngs db review here
+    # Left of ngs db review here
     "GeologicLines": [
         ["Type", "String", "NoNulls", defaultLength],
         ["IsConcealed", "String", "NoNulls", booleanLength],

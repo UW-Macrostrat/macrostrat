@@ -1,25 +1,27 @@
+import os
 from collections import defaultdict
 from optparse import Option
 from pathlib import Path
 from typing import Iterable, List, Tuple
-import pyogrio
+
+import fiona
 import geopandas as G
 import pandas as P
+import pyogrio
 from geoalchemy2 import Geometry
 from numpy.f2py.symbolic import as_ge
 from pandas import DataFrame
 from rich.console import Console
 from rich.progress import Progress
 from sqlalchemy import text
-import os
-import fiona
-from ..custom_integrations.gems_standard_ETL import *
 
+from ..custom_integrations.gems_standard_ETL import *
 from ..database import get_database
 from ..errors import IngestError
 from .geodatabase import apply_domains_to_fields, get_layer_info, get_layer_names
 
 console = Console()
+
 
 def merge_metadata_polygons(polygon_df, legend_df, join_col):
     # merge df (polygon df) and legend_df (created df from file)
@@ -56,9 +58,9 @@ def preprocess_dataframe(
         legend_df = P.read_excel(legend_path)
     # note that the gdb dir may not contain shp files to merge metadata into
     elif ext == ".gdb":
-        #extract whatever layer you want to merge with the polygons table
+        # extract whatever layer you want to merge with the polygons table
         legend_df = extract_gdb_layer(legend_path, "DescriptionOfMapUnits", df, False)
-        #transform the standard gems columns to macrostrat columns
+        # transform the standard gems columns to macrostrat columns
         legend_df = transform_gdb_layer(legend_df)
         legend_df = map_t_b_intervals(legend_df)
     if legend_df is None:
@@ -71,10 +73,9 @@ def preprocess_dataframe(
             f"[yellow]Warning: join column '{join_col}' not found in legend file. Skipping merge.[/yellow]"
         )
         return df
-    #merge polygons and metadata dataframes before inserting into the db
+    # merge polygons and metadata dataframes before inserting into the db
     merged_df = merge_metadata_polygons(df, legend_df, join_col)
     return merged_df
-
 
 
 def ingest_map(
@@ -188,7 +189,9 @@ def ingest_map(
         # applies legend merge only to the whatever the legend_table is specified as
         if legend_path and legend_table == feature_suffix:
             df.columns = df.columns.str.lower()
-            df = preprocess_dataframe(df, legend_path=legend_path, join_col=join_col.lower())
+            df = preprocess_dataframe(
+                df, legend_path=legend_path, join_col=join_col.lower()
+            )
 
         console.print(f"[bold]{feature_type}s[/bold] [dim]- {len(df)} features[/dim]")
         # Columns
