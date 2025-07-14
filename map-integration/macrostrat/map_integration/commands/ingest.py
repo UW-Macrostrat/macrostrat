@@ -13,13 +13,22 @@ from rich.progress import Progress
 from sqlalchemy import text
 import os
 import fiona
-import re
+from ..custom_integrations.gems_standard_ETL import *
 
 from ..database import get_database
 from ..errors import IngestError
 from .geodatabase import apply_domains_to_fields, get_layer_info, get_layer_names
 
 console = Console()
+
+def merge_metadata_polygons(polygon_df, legend_df, join_col):
+    # merge df (polygon df) and legend_df (created df from file)
+    # ensure join column is string for both DataFrames
+    polygon_df[join_col] = polygon_df[join_col].astype(str)
+    legend_df[join_col] = legend_df[join_col].astype(str)
+    # merge metadata into geodataframe
+    merged_df = polygon_df.merge(legend_df, on=join_col, how="left")
+    return merged_df
 
 
 def preprocess_dataframe(
@@ -35,7 +44,8 @@ def preprocess_dataframe(
     Returns:
         G.GeoDataFrame: The enriched GeoDataFrame with merged metadata.
     """
-    # load legend metadata
+    # extract and store metadata into legend_df for processing.
+    legend_df = None
     ext = legend_path.suffix.lower()
     print("Starting preprocessing...")
     if ext == ".tsv":
@@ -46,45 +56,25 @@ def preprocess_dataframe(
         legend_df = P.read_excel(legend_path)
     # note that the gdb dir may not contain shp files to merge metadata into
     elif ext == ".gdb":
-        dmu_layer = None
-        try:
-            for name in fiona.listlayers(legend_path):
-                if re.search(r"descriptionofmapunits$", name, re.I):
-                    dmu_layer = name
-            if dmu_layer is None:
-                console.print(f"[yellow]No DescriptionOfMapUnits table found in "
-                              f"{legend_path.name}.  Layers: "
-                              f"{', '.join(fiona.listlayers(legend_path))}[/yellow]")
-                return df
-            legend_df = G.read_file(
-                legend_path,
-                layer=dmu_layer,
-                engine="pyogrio",
-                read_geometry=False,
-            )
-            print('\n',df.columns.tolist())
-            print("Polygons dataframe!!!!",df.head(5))
-            print('\n',legend_df.columns.tolist())
-            print("GDB dataframe!!!!",legend_df.head(5))
-        except ValueError as e:
-            console.print(f"[red]Error {e}[/red]\n")
-            return df
+        #extract whatever layer you want to merge with the polygons table
+        legend_df = extract_gdb_layer(legend_path, "DescriptionOfMapUnits", df, False)
+        #transform the standard gems columns to macrostrat columns
+        legend_df = transform_gdb_layer(legend_df)
+        legend_df = map_t_b_intervals(legend_df)
+    if legend_df is None:
+        return print("Error metadata file does not contain any data.")
     else:
-        console.print(f"[red]Unsupported file type: {ext}[/red]")
-        return df
+        legend_df.columns = legend_df.columns.str.lower()
 
     if join_col not in df.columns:
         console.print(
             f"[yellow]Warning: join column '{join_col}' not found in legend file. Skipping merge.[/yellow]"
         )
         return df
-    # merge df (polygon df) and legend_df (created df from file)
-    # ensure join column is string for both DataFrames
-    df[join_col] = df[join_col].astype(str)
-    legend_df[join_col] = legend_df[join_col].astype(str)
-    # merge metadata into geodataframe
-    merged_df = df.merge(legend_df, on=join_col, how="left")
+    #merge polygons and metadata dataframes before inserting into the db
+    merged_df = merge_metadata_polygons(df, legend_df, join_col)
     return merged_df
+
 
 
 def ingest_map(
@@ -197,7 +187,8 @@ def ingest_map(
 
         # applies legend merge only to the whatever the legend_table is specified as
         if legend_path and legend_table == feature_suffix:
-            df = preprocess_dataframe(df, legend_path=legend_path, join_col=join_col)
+            df.columns = df.columns.str.lower()
+            df = preprocess_dataframe(df, legend_path=legend_path, join_col=join_col.lower())
 
         console.print(f"[bold]{feature_type}s[/bold] [dim]- {len(df)} features[/dim]")
         # Columns
