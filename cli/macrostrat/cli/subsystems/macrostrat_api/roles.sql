@@ -10,6 +10,8 @@ CREATE ROLE web_user NOLOGIN;
 -- For a Macrostrat administrator
 CREATE ROLE web_admin NOLOGIN;
 
+CREATE ROLE web_anon NOLOGIN;
+
 -- Postgrest is our 'authenticator' role
 -- We need to allow it to switch to the web roles
 GRANT web_anon TO postgrest;
@@ -24,4 +26,5 @@ GRANT web_anon TO web_user;
 
 -- Grant web_user capabilities to web_admin
 GRANT web_user TO web_admin;
+
 
