@@ -13,7 +13,7 @@ from rich.progress import Progress
 from sqlalchemy import text
 import os
 import fiona
-from ..custom_integrations.gems_standard_ETL import *
+from ..custom_integrations.gems_standard_ETL import extract_gdb_layer, transform_gdb_layer, map_t_b_intervals
 
 from ..database import get_database
 from ..errors import IngestError
@@ -47,7 +47,6 @@ def preprocess_dataframe(
     # extract and store metadata into legend_df for processing.
     legend_df = None
     ext = legend_path.suffix.lower()
-    print("Starting preprocessing...")
     if ext == ".tsv":
         legend_df = P.read_csv(legend_path, sep="\t")
     elif ext == ".csv":
@@ -55,16 +54,31 @@ def preprocess_dataframe(
     elif ext in [".xls", ".xlsx"]:
         legend_df = P.read_excel(legend_path)
     # note that the gdb dir may not contain shp files to merge metadata into
+    #TODO add lines metadata ingestion hereeee
+    #TODO ensure this is a gems dataset (list all layers) OR .gdb
     elif ext == ".gdb":
+
         #extract whatever layer you want to merge with the polygons table
-        legend_df = extract_gdb_layer(legend_path, "DescriptionOfMapUnits", df, False)
+        print('\n\nPolygons df before any metadata processing\n', df.columns.tolist())
+        print("", df.head(5).T)
+
+        legend_df = extract_gdb_layer(legend_path, "DescriptionOfMapUnits", False)
+
+        print('\n\nDMU df before transform\n', legend_df.columns.tolist())
+        print("", legend_df.head(5).T)
         #transform the standard gems columns to macrostrat columns
+
         legend_df = transform_gdb_layer(legend_df)
+
+        print("\n\nAFTER TRANSFORMATION!!\n\n")
+        print('\n\nPolygons df\n', df.columns.tolist())
+        print('\n\nDMU df\n', legend_df.columns.tolist())
+
         legend_df = map_t_b_intervals(legend_df)
+
+
     if legend_df is None:
         return print("Error metadata file does not contain any data.")
-    else:
-        legend_df.columns = legend_df.columns.str.lower()
 
     if join_col not in df.columns:
         console.print(
