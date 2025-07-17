@@ -13,7 +13,7 @@ from rich.progress import Progress
 from sqlalchemy import text
 import os
 import fiona
-from ..custom_integrations.gems_standard_ETL import extract_gdb_layer, transform_gdb_layer, map_t_b_intervals
+from ..custom_integrations.gems_utils import extract_gdb_layer, transform_gdb_layer, map_t_b_intervals
 
 from ..database import get_database
 from ..errors import IngestError
@@ -75,10 +75,6 @@ def preprocess_dataframe(
         print('\n\nDMU df\n', legend_df.columns.tolist())
 
         legend_df = map_t_b_intervals(legend_df)
-
-
-    if legend_df is None:
-        return print("Error metadata file does not contain any data.")
 
     if join_col not in df.columns:
         console.print(
