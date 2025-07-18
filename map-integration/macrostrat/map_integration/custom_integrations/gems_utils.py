@@ -2,7 +2,7 @@ import fiona
 import pyogrio
 import geopandas as G
 import pandas as pd
-
+from typing import Optional
 import re
 from ..database import get_database
 
@@ -46,7 +46,7 @@ def extract_gdb_layer(legend_path, layer_name, read_geometry):
         return None
 
 
-def transform_gdb_layer(legend_df: G.DataFrame) -> G.DataFrame:
+def transform_gdb_layer(legend_df: G.GeoDataFrame) -> G.GeoDataFrame:
     """Map column names to Macrostrat standard and concatenate lithology‑related fields.
     Parameters:
     legend_df: G.GeoDataFrame. Raw DMU layer as extracted from extract_gdb_layer().
@@ -101,7 +101,7 @@ def get_age_interval_df() -> pd.DataFrame:
 QUALIFIERS = {"early", "middle", "late", "lower", "upper"}
 
 def lookup_and_validate_age(name: str | float, interval_set: set[str]) \
-        -> tuple[str | pd.NA, str | pd.NA]:
+        -> tuple[Optional[str], Optional[str]]:
     """
     Return (b_interval, t_interval) for the first interval(s) found.
     If only one valid interval is found, duplicate it into both slots.
@@ -140,7 +140,7 @@ def lookup_and_validate_age(name: str | float, interval_set: set[str]) \
 
 #need to modify this logic and maybe need to reference another table besides intervals.
 #look in the name and age column to infer the age
-def map_t_b_intervals(legend_df: G.DataFrame) -> G.DataFrame:
+def map_t_b_intervals(legend_df: G.GeoDataFrame) -> G.GeoDataFrame:
     """Populate the b_interval field using age and name information.
     The function first tries a direct match between legend_df.age and the
     canonical interval list. For formations whose age is not explicit, it scans
