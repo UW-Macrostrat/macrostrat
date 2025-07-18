@@ -2,6 +2,7 @@ import fiona
 import pyogrio
 import geopandas as G
 import pandas as pd
+
 import re
 from ..database import get_database
 
@@ -97,52 +98,44 @@ def get_age_interval_df() -> pd.DataFrame:
         df = pd.read_sql(query, conn)
     return df
 
-def set_t_interval(series: pd.Series, t_interval: str) -> pd.Series:
-    series = series + t_interval
-    return series
+QUALIFIERS = {"early", "middle", "late", "lower", "upper"}
 
-def lookup_and_validate_age(name: str | float, interval_set: set[str]):
-    """Extract the first interval word found in DMU layer's name column.
-    Parameters:
-    name: str or float. Formation name (any missing value is cast to an empty string).
-    interval_set: set[str]. Lower‑case set of valid interval name_array_of_strings for membership testing.
-
-    Returns:
-    str or pd.NA: The first token from name that matches an entry in interval_set or pd.NA if there is none.
+def lookup_and_validate_age(name: str | float, interval_set: set[str]) \
+        -> tuple[str | pd.NA, str | pd.NA]:
+    """
+    Return (b_interval, t_interval) for the first interval(s) found.
+    If only one valid interval is found, duplicate it into both slots.
     """
     #findall() takes the legend_df["name"] and splits each word into an array of strings.
 
-    name_array_of_strings = re.findall(r"\b\w+\b", str(name))
-    matches = []
+    tokens = re.findall(r"\b\w+\b", str(name).lower())
 
-    i = 0
-    for i, word in enumerate(name_array_of_strings):
-        word = word.lower()
-        # Check for qualifier + interval phrase, e.g. “late pleistocene”
-        if word in {"early", "middle", "late", "upper", "lower"} and i + 1 < len(name_array_of_strings):
-            if word == "lower":
-                word = "early"
-            elif word == "upper":
-                word = "late"
-            if i + 3 <= len(name_array_of_strings) and name_array_of_strings[i + 2] in {"early", "middle", "late", "upper", "lower"}:
-                phrase_one = f"{word} {name_array_of_strings[i + 3]}"
-                phrase_two = f"{name_array_of_strings[i + 2]} {name_array_of_strings[i + 3]}"
-                if phrase_one in interval_set:
-                    if phrase_two in interval_set:
-                        #this is true if word is early or middle
-                        if word == "early" and (name_array_of_strings[i + 2] == "middle" or name_array_of_strings[i + 2] == "late"):
-                            return phrase_one + "," + phrase_two
-                        else:
-                            return phrase_two + "," + phrase_one
-                    return phrase_one
-                elif {name_array_of_strings[i + 3]} in interval_set:
-                    return {name_array_of_strings[i + 3]}
-            phrase = f"{word} {name_array_of_strings[i + 1]}"
+    for i, word in enumerate(tokens):
+        qual = "early" if word == "lower" else "late" if word == "upper" else word
+
+        if word in QUALIFIERS and i + 3 < len(tokens) and tokens[i + 2] in QUALIFIERS:
+            next_qual = "early" if tokens[i + 2] == "lower" else "late" if tokens[i + 2] == "upper" else tokens[i + 2]
+            phrase_one = f"{qual} {tokens[i + 3]}"
+            phrase_two = f"{next_qual} {tokens[i + 3]}"
+            if phrase_one in interval_set and phrase_two in interval_set:
+                #this is true if word is early or middle
+                return (phrase_one, phrase_two) if qual == "early" and next_qual in {"middle", "late"} \
+                    else (phrase_two, phrase_one)
+            elif phrase_one in interval_set:
+                return phrase_one, phrase_one
+            elif phrase_two in interval_set:
+                return phrase_two, phrase_two
+            elif tokens[i + 3] in interval_set:
+                return tokens[i + 3], tokens[i + 3]
+
+        if word in QUALIFIERS and i + 1 < len(tokens):
+            phrase = f"{qual} {tokens[i + 1]}"
             if phrase in interval_set:
-                return phrase
+                return phrase, phrase
         if word in interval_set:
-            return word
-    return pd.NA
+            return word, word
+    return pd.NA, pd.NA
+
 
 
 #need to modify this logic and maybe need to reference another table besides intervals.
@@ -168,7 +161,18 @@ def map_t_b_intervals(legend_df: G.DataFrame) -> G.DataFrame:
         .str.lower()
         .unique()
     )
-    legend_df["b_interval"] = legend_df["age"].apply(lookup_and_validate_age, args=(interval_set,))
+    #map age fields to b/t intervals
+    #must have a match in the macrotrat.intervals dictionary in order to return a valid interval
+    legend_df[["b_interval", "t_interval"]] = (
+        legend_df["age"]
+        .str.lower()
+        .apply(lambda n: pd.Series(lookup_and_validate_age(n, interval_set), index=["b_interval", "t_interval"]))
+    )
+    #for the rest of NA's we will map the name field to b/t intervals
     needs_fill = legend_df["b_interval"].isna()
-    legend_df.loc[needs_fill, "b_interval"] = (legend_df.loc[needs_fill, "name"].apply(lookup_and_validate_age, args=(interval_set,)))
+    legend_df.loc[needs_fill, ["b_interval", "t_interval"]] = (
+        legend_df.loc[needs_fill, "name"]
+        .str.lower()
+        .apply(lambda n: pd.Series(lookup_and_validate_age(n, interval_set), index=["b_interval", "t_interval"]))
+    )
     return legend_df
