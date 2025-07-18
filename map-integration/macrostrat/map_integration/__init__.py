@@ -277,12 +277,12 @@ def staging(
 
     print(f"Found {len(gis_files)} GIS file(s)")
     for path in gis_files:
-        print(f"  ✓ {path}")
+        print(f"{path}")
 
     if excluded_files:
         print(f"Excluded {len(excluded_files)} file(s) due to filter:")
         for path in excluded_files:
-            print(f"  ⚠️ {path}")
+            print(f"{path}")
 
     ingest_map(
         slug,
@@ -321,7 +321,6 @@ def staging(
     )
 
     map_info = get_map_info(db, slug)
-
     _prepare_fields(map_info)
     create_rgeom(map_info)
     create_webgeom(map_info)
@@ -365,7 +364,7 @@ def staging(
         raise RuntimeError("Staging failed: Some expected records were not inserted.")
 
     print(
-        f"\nFinished staging setup for {slug}. View map here: https://dev2.macrostrat.org/maps/ingestion/{source_id}/ \n"
+        f"\nFinished staging setup for {slug}. View map here: https://dev.macrostrat.org/maps/ingestion/{source_id}/ \n"
     )
 
 

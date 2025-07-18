@@ -10,8 +10,6 @@ setup/credentials.py
 
 unprojected.*
 *.log
-
-node_modules
 tiles/node_modules
 tiles/tiles
 tiles/:memory
