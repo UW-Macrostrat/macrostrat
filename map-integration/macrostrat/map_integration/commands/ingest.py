@@ -18,7 +18,7 @@ from sqlalchemy import text
 from ..custom_integrations.gems_utils import (
     extract_gdb_layer,
     map_t_b_intervals,
-    transform_gdb_layer,
+    transform_gdb_layer, map_strat_name,
 )
 from ..database import get_database
 from ..errors import IngestError
@@ -81,6 +81,8 @@ def preprocess_dataframe(
         print("\n\nDMU df\n", legend_df.columns.tolist())
 
         legend_df = map_t_b_intervals(legend_df)
+        legend_df = map_strat_name(legend_df)
+
 
     if join_col not in df.columns:
         console.print(

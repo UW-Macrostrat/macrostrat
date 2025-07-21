@@ -80,11 +80,64 @@ def transform_gdb_layer(legend_df: G.GeoDataFrame) -> G.GeoDataFrame:
     legend_df = legend_df.dropna(axis=1, how="all")
     return legend_df
 
+
+
+
+def get_strat_names_df() -> pd.DataFrame:
+    """Query and store interval names from the database into a DataFrame for lookups.
+    Returns:
+    pd.DataFrame. A pandas series with interval_name strings.
+    """
+    db = get_database()
+    query = "select rank_name from macrostrat.lookup_strat_names"
+    with db.engine.connect() as conn:
+        df = pd.read_sql(query, conn)
+    return df
+
 #determine if name AND description field is proper or not to insert into the strat_name (group, member, formation, null otherwise)
 #comma separated list of strat_names. similar to lith field.
 #geolex...
-def infer_strat_names():
-    pass
+STRAT_NAME_LOOKUP = {"formation", "fm", "bed", "member", "mbr", "group"}
+
+def lookup_and_validate_strat_name(name: str | float, rank_name_set: set[str]) -> Optional[str]:
+    """
+    Return the full stratigraphic name found in the tokenized input string.
+    Looks for STRAT_NAME_LOOKUP terms and matches the preceding token + current token against known strat names.
+    """
+    tokens = re.findall(r"\b\w+\b", str(name).lower())
+
+    for i, token in enumerate(tokens):
+        if token in STRAT_NAME_LOOKUP and i > 0:
+            candidate = f"{tokens[i - 1]} {token}"
+            if candidate in rank_name_set:
+                return candidate
+    return pd.NA
+
+def map_strat_name(legend_df: G.GeoDataFrame) -> G.GeoDataFrame:
+    """
+    Update legend_df with a new column 'ranked_strat_name' based on matched strat names.
+    Looks for rank words and matches against known stratigraphic names.
+
+    Parameters:
+    - legend_df: GeoDataFrame containing a column of unit names.
+    - name_col: The name of the column in legend_df to search.
+
+    Returns:
+    - GeoDataFrame with an additional 'ranked_strat_name' column.
+    """
+    rank_name_df = get_strat_names_df()
+    rank_name_set = set(
+        rank_name_df["rank_name"]
+        .dropna()
+        .str.lower()
+        .unique()
+    )
+
+    legend_df["name"] = legend_df["name"].astype(str).str.lower()
+    legend_df["ranked_strat_name"] = legend_df["name"].apply(
+        lambda n: lookup_and_validate_strat_name(n, rank_name_set)
+    )
+    return legend_df
 
 
 def get_age_interval_df() -> pd.DataFrame:
