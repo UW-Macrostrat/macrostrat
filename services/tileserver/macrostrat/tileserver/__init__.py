@@ -156,6 +156,7 @@ functions = [
     "weaver_api.weaver_tile",
     "tile_layers.map",
     "tile_layers.all_maps",
+    "tile_layers.pbdb_collections",
 ]
 
 # Register the layers
@@ -169,7 +170,6 @@ layers.append(layer)
 layer = CachedStoredFunction("tile_layers.carto_slim")
 layer.profile_id = "carto-slim"
 layers.append(layer)
-
 
 layers.append(PaleoGeographyLayer())
 
