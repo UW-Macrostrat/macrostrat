@@ -21,10 +21,10 @@ async def rgeom(
 
     if "cluster" in request.query_params:
         cluster_val = request.query_params["cluster"]
-        cluster = cluster_val.lower() not in ("false", "0", "no")  
+        cluster = cluster_val.lower() not in ("false", "0", "no")
 
     else:
-        cluster = True  
+        cluster = True
 
     if cluster:
         query = __here__ / "queries" / "clustered.sql"
