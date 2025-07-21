@@ -4,6 +4,16 @@
 
 FROM python:3.9@sha256:c0dcc146710fed0a6d62cb55b92f00bfbfc3b931fff6218f4958bab58333c37b
 
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    POETRY_NO_INTERACTION=1 \
+    POETRY_CACHE_DIR=/tmp/poetry-cache \
+    POETRY_VIRTUALENVS_CREATE=false
+
+WORKDIR /app
+RUN python3 -m venv /venv
+ENV PATH="/venv/bin:$PATH"
+ENV VIRTUAL_ENV=/venv
+
 # MAPNIK
 # Install mapnik for compiling legacy image tiles
 RUN apt-get update -y && \
@@ -47,14 +57,10 @@ RUN npm install -g carto
 RUN rm -rf /tmp/*
 
 # The rest of this (for vector tile generation and the server itself) should be easier.
-ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    POETRY_NO_INTERACTION=1 \
-    POETRY_CACHE_DIR=/tmp/poetry-cache \
-    POETRY_VIRTUALENVS_CREATE=false
+
 
 RUN pip install --no-cache-dir "pip==25.1.1" && pip install --no-cache-dir "poetry==2.1.1"
 
-WORKDIR /app/
 
 # Copy only requirements to cache them in docker layer
 # Right now, Poetry lock file must exist to avoid hanging on dependency resolution
@@ -62,9 +68,6 @@ COPY ./pyproject.toml ./poetry.lock /app/
 
 # Create and activate our own virtual envrionment so that we can keep
 # our application dependencies separate from Poetry's
-RUN python3 -m venv /venv
-ENV PATH="/venv/bin:$PATH"
-ENV VIRTUAL_ENV=/venv
 
 RUN --mount=type=cache,target=$POETRY_CACHE_DIR poetry install --no-root --without dev --without local
 
