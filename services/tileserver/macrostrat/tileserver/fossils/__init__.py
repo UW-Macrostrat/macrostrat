@@ -18,7 +18,18 @@ async def rgeom(
 ):
     """Get a tile from the tileserver."""
     pool = request.app.state.pool
-    query = __here__ / "queries" / "fossils.sql"
+
+    if "cluster" in request.query_params:
+        cluster_val = request.query_params["cluster"]
+        cluster = cluster_val.lower() not in ("false", "0", "no")  
+
+    else:
+        cluster = True  
+
+    if cluster:
+        query = __here__ / "queries" / "clustered.sql"
+    else:
+        query = __here__ / "queries" / "unclustered.sql"
 
     query = query.read_text()
     query = query.strip()
