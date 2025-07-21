@@ -156,7 +156,7 @@ functions = [
     "weaver_api.weaver_tile",
     "tile_layers.map",
     "tile_layers.all_maps",
-    "tile_layers.pbdb_collections",
+    "tile_layers.fossils",
 ]
 
 # Register the layers
