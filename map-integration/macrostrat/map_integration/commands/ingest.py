@@ -17,8 +17,9 @@ from sqlalchemy import text
 
 from ..custom_integrations.gems_utils import (
     extract_gdb_layer,
+    map_strat_name,
     map_t_b_intervals,
-    transform_gdb_layer, map_strat_name,
+    transform_gdb_layer,
 )
 from ..database import get_database
 from ..errors import IngestError
@@ -82,7 +83,6 @@ def preprocess_dataframe(
 
         legend_df = map_t_b_intervals(legend_df)
         legend_df = map_strat_name(legend_df)
-
 
     if join_col not in df.columns:
         console.print(
