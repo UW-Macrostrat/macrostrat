@@ -156,7 +156,6 @@ functions = [
     "weaver_api.weaver_tile",
     "tile_layers.map",
     "tile_layers.all_maps",
-    "tile_layers.fossils",
 ]
 
 # Register the layers
@@ -196,6 +195,10 @@ app.include_router(search_router, tags=["Vector search"], prefix="/search")
 from .rockd_checkins import router as checkins_router
 
 app.include_router(checkins_router, tags=["Checkins"], prefix="/checkins/tiles")
+
+from .fossils import router as fossils_router
+
+app.include_router(fossils_router, tags=["PBDB"], prefix="/pbdb")
 
 from .integrations import router as integrations_router
 
