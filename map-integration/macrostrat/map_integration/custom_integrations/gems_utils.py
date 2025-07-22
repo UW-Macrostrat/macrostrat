@@ -98,20 +98,66 @@ def get_strat_names_df() -> pd.DataFrame:
 #comma separated list of strat_names. similar to lith field.
 #geolex...
 STRAT_NAME_LOOKUP = {"formation", "fm", "bed", "member", "mbr", "group"}
+STOPWORDS = {"trachyte", "unit", "of", "the"}
 
-def lookup_and_validate_strat_name(name: str | float, rank_name_set: set[str]) -> Optional[str]:
+
+def next_valid(tokens, start, skip):
+    """
+    helper function to avoid irrelevant words in the lookup in the rank_name_set
+    """
+    k = start
+    while k < len(tokens) and tokens[k] in skip:
+        k += 1
+    return (tokens[k], k) if k < len(tokens) else (None, None)
+
+
+def lookup_and_validate_strat_name(name_descrip: str | float, rank_name_set: set[str]) -> Optional[str]:
     """
     Return the full stratigraphic name found in the tokenized input string.
     Looks for STRAT_NAME_LOOKUP terms and matches the preceding token + current token against known strat names.
     """
-    tokens = re.findall(r"\b\w+\b", str(name).lower())
+    tokens = re.findall(r"\b\w+\b", str(name_descrip).lower())
+    for i, qualifier in enumerate(tokens):
+        print(tokens)
+        candidate_indices = [i - 2, i - 1, i + 1, i + 2]
+        phrase_array = []
+        of_indices = [i - 1, i + 1, i + 2, i + 3]
 
-    for i, token in enumerate(tokens):
-        if token in STRAT_NAME_LOOKUP and i > 0:
-            candidate = f"{tokens[i - 1]} {token}"
-            if candidate in rank_name_set:
-                return candidate
+        if qualifier in STRAT_NAME_LOOKUP:
+            for j in candidate_indices:
+                if 0 <= j < len(tokens) and tokens[j] != "the":
+                    if tokens[j] == "ranch":
+                        phrase_array.append(None)
+                    else:
+                        phrase_array.append(tokens[j])
+                else:
+                    phrase_array.append(None)
+            print("HERE'S THE PHRASE ARRAY", phrase_array)
+
+        elif qualifier == "of" and i + 1 < len(tokens):
+            seen = set()
+            for j in of_indices:
+                if 0 <= j < len(tokens):
+                    tok, idx = next_valid(tokens, j, STOPWORDS | seen)
+                    if tok is None:
+                        phrase_array.append(None)
+                    else:
+                        phrase_array.append(tok)
+                        seen.add(tok)
+                else:
+                    phrase_array.append(None)
+            print("HERE'S THE PHRASE ARRAY", phrase_array)
+
+        if len(phrase_array) > 0:
+            for rank_name in rank_name_set:
+                match_count = sum(1 for word in phrase_array if word and word in rank_name)
+                match_ratio = match_count / 4
+
+                if match_ratio >= 0.25:
+                    print(f"Match found: {match_count}/ 4 tokens in '{rank_name}'")
+                    return rank_name
     return pd.NA
+
 
 def map_strat_name(legend_df: G.GeoDataFrame) -> G.GeoDataFrame:
     """
@@ -132,11 +178,20 @@ def map_strat_name(legend_df: G.GeoDataFrame) -> G.GeoDataFrame:
         .str.lower()
         .unique()
     )
-
     legend_df["name"] = legend_df["name"].astype(str).str.lower()
-    legend_df["ranked_strat_name"] = legend_df["name"].apply(
+    legend_df["descrip"] = legend_df["descrip"].astype(str).str.lower()
+    #check name for matched strat_name
+    legend_df["strat_name"] = legend_df["name"].apply(
         lambda n: lookup_and_validate_strat_name(n, rank_name_set)
     )
+
+    #fallback to 'descrip' for missing values
+    needs_fill = legend_df["strat_name"].isna()
+    legend_df.loc[needs_fill, "strat_name"] = (
+        legend_df.loc[needs_fill, "descrip"]
+        .apply(lambda d: lookup_and_validate_strat_name(d, rank_name_set))
+    )
+
     return legend_df
 
 
