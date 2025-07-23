@@ -100,8 +100,8 @@ def get_strat_names_df() -> pd.DataFrame:
         df = pd.read_sql(query, conn)
     return df
 STRAT_NAME_LOOKUP = {"formation", "fm", "bed", "member", "mbr", "group"}
-IRRELEVANT_WORDS = {"cm", "fine", "in", "dacite", "conglomerate","top", "an", "map", "tcg", "quadrangle", "to", "part", "late", "middle", "lack", "any", "evidence", "sand", "gravel", "silt", "composed", "well", "sorted", "and", "a", "is", "or", "for", "trachyte", "unit", "of", "the"}
-VALID_WORDS = {"plomosa", "suizo", "coronado", "complex", "units"}
+IRRELEVANT_WORDS = {"active", "percent", "relief", "part", "area", "m", "above", "cm", "fine", "in", "dacite", "conglomerate","top", "an", "map", "tcg", "quadrangle", "to", "part", "late", "middle", "lack", "any", "evidence", "sand", "gravel", "silt", "composed", "well", "sorted", "and", "a", "is", "or", "for", "trachyte", "unit", "of", "the"}
+VALID_WORDS = {"plomosa", "suizo", "coronado", "complex", "units", "sasco"}
 
 
 def lookup_and_validate_strat_name(name_descrip: str | float, rank_name_set: set[str]) -> Optional[str]:
@@ -142,6 +142,8 @@ def lookup_and_validate_strat_name(name_descrip: str | float, rank_name_set: set
             for rank_name in rank_name_set:
                 match_count = sum(1 for word in phrase_array_dropped if word in rank_name)
                 match_ratio = match_count / len(phrase_array_dropped)
+                #if match_ratio == 1:
+                    #return rank_name
                 if match_ratio >= 0.6:
                     print(f"Match found: {match_count} / {len(phrase_array_dropped)} tokens in '{rank_name}'")
                     print("Returning...", strat_name)
@@ -192,7 +194,7 @@ def get_age_interval_df() -> pd.DataFrame:
     pd.DataFrame. A pandas series with interval_name strings.
     """
     db = get_database()
-    query = "SELECT interval_name FROM macrostrat.intervals"
+    query = "SELECT id, interval_name FROM macrostrat.intervals"
     with db.engine.connect() as conn:
         df = pd.read_sql(query, conn)
     return df
@@ -200,8 +202,8 @@ def get_age_interval_df() -> pd.DataFrame:
 QUALIFIERS = {"early", "middle", "late", "lower", "upper"}
 QUALIFIER_ORDER = {"early": 0, "middle": 1, "late": 2}
 
-def lookup_and_validate_age(name: str | float, interval_set: set[str]) \
-        -> tuple[Optional[str], Optional[str]]:
+def lookup_and_validate_age(name: str | float, interval_lookup: dict[str, int]) \
+        -> tuple[Optional[int], Optional[int]]:
     """
     Return (b_interval, t_interval) for the first interval(s) found.
     If only one valid interval is found, duplicate it into both slots.
@@ -217,22 +219,22 @@ def lookup_and_validate_age(name: str | float, interval_set: set[str]) \
             next_qual = "early" if tokens[i + 2] == "lower" else "late" if tokens[i + 2] == "upper" else tokens[i + 2]
             phrase_one = f"{qual} {tokens[i + 3]}"
             phrase_two = f"{next_qual} {tokens[i + 3]}"
-            if phrase_one in interval_set and phrase_two in interval_set:
+            if phrase_one in interval_lookup and phrase_two in interval_lookup:
                 #this is true if word is early or middle
                 return (phrase_one, phrase_two) if QUALIFIER_ORDER.get(qual, -1) < QUALIFIER_ORDER.get(next_qual, -1) \
                     else (phrase_two, phrase_one)
-            elif phrase_one in interval_set:
+            elif phrase_one in interval_lookup:
                 return phrase_one, phrase_one
-            elif phrase_two in interval_set:
+            elif phrase_two in interval_lookup:
                 return phrase_two, phrase_two
-            elif tokens[i + 3] in interval_set:
+            elif tokens[i + 3] in interval_lookup:
                 return tokens[i + 3], tokens[i + 3]
 
         if word in QUALIFIERS and i + 1 < len(tokens):
             phrase = f"{qual} {tokens[i + 1]}"
-            if phrase in interval_set:
+            if phrase in interval_lookup:
                 return phrase, phrase
-        if word in interval_set:
+        if word in interval_lookup:
             return word, word
     return pd.NA, pd.NA
 
@@ -252,27 +254,26 @@ def map_t_b_intervals(legend_df: G.GeoDataFrame) -> G.GeoDataFrame:
     G.GeoDataFrame: The input frame with a newly filled/created b_interval column.
     """
     interval_df = get_age_interval_df().reset_index(drop=True)
-    interval_df["interval_name"] = interval_df["interval_name"].str.lower()
+    interval_df["interval_name"] = interval_df["interval_name"].dropna().str.lower().unique()
     legend_df["age"] = legend_df["age"].str.lower()
     legend_df["name"] = legend_df["name"].str.lower()
-    interval_set = set(
-        interval_df["interval_name"]
-        .dropna()
-        .str.lower()
-        .unique()
-    )
+    interval_lookup = {
+        row["interval_name"].lower(): row["id"]
+        for _, row in interval_df.iterrows()
+    }
+
     #map age fields to b/t intervals
     #must have a match in the macrotrat.intervals dictionary in order to return a valid interval
     legend_df[["b_interval", "t_interval"]] = (
         legend_df["age"]
         .str.lower()
-        .apply(lambda n: pd.Series(lookup_and_validate_age(n, interval_set), index=["b_interval", "t_interval"]))
+        .apply(lambda n: pd.Series(lookup_and_validate_age(n, interval_lookup), index=["b_interval", "t_interval"]))
     )
     #for the rest of NA's we will map the name field to b/t intervals
     needs_fill = legend_df["b_interval"].isna()
     legend_df.loc[needs_fill, ["b_interval", "t_interval"]] = (
         legend_df.loc[needs_fill, "name"]
         .str.lower()
-        .apply(lambda n: pd.Series(lookup_and_validate_age(n, interval_set), index=["b_interval", "t_interval"]))
+        .apply(lambda n: pd.Series(lookup_and_validate_age(n, interval_lookup), index=["b_interval", "t_interval"]))
     )
     return legend_df

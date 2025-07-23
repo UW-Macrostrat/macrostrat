@@ -74,6 +74,18 @@ def preprocess_dataframe(
         print("\n\nDMU df before transform\n", legend_df.columns.tolist())
         print("", legend_df.head(5).T)
         # transform the standard gems columns to macrostrat columns
+        # delete all of the arizona maps that are empty
+        # create delete bulk ingestion script
+        # what other info to add into ingest process table. recored type of ETL operations are performed in ingest table.
+        # can remove ingest_process table if we don't need.
+        # how to flag maps if pre process is ready (in the ui) for daven to post process.
+        # celery process to have a delete button in the UI.
+        # post UI manual column input json into the db for column ingestion...need RLS for user to post correct data to.
+        # infrastructure....
+        # suite of tests to run for rls to show what edge cases work. point to dev postgrest RLS
+        # run role migration to ensure that the roles
+        #once rls works have david update the UI immediately!
+        #streamline the api's and UI for production.
 
         legend_df = transform_gdb_layer(legend_df)
 
