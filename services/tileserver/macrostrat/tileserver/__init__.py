@@ -200,6 +200,10 @@ from .integrations import router as integrations_router
 
 app.include_router(integrations_router, tags=["Integrations"], prefix="/integrations")
 
+from .usage_stats import router as usage_stats_router
+
+app.include_router(usage_stats_router, tags=["Usage stats"], prefix="/usage-stats")
+
 
 @app.get("/carto/rotation-models")
 async def rotation_models():
