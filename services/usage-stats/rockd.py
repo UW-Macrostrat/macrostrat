@@ -1,7 +1,8 @@
-import pymysql
-from dotenv import load_dotenv
 import os
+
+import pymysql
 import requests
+from dotenv import load_dotenv
 
 # Load variables from .env file
 load_dotenv()
@@ -22,12 +23,13 @@ conn = pymysql.connect(
 
 
 BATCH_SIZE = 1000
-last_id = 0 
+last_id = 0
 
 with conn:
     with conn.cursor() as cursor:
         # Keyset-based pagination using idvisit
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT
                 a.Idaction AS action_id,
                 a.name AS url,
@@ -41,25 +43,38 @@ with conn:
                 AND lva.idlink_va > %s
             ORDER BY lva.idlink_va ASC
             LIMIT %s
-        """, ("%dashboard%", last_id, BATCH_SIZE))
+        """,
+            ("%dashboard%", last_id, BATCH_SIZE),
+        )
 
-        
         rows = cursor.fetchall()
 
         if not rows:
-            print("No more rows to process.") 
-        else: 
+            print("No more rows to process.")
+        else:
             # Prepare and send batch to API
             payload = [
                 {
-                    "lat": float([part.split('=')[1] for part in str(row[1]).split('?')[1].split('&') if part.startswith('lat=')][0]),
-                    "lng": float([part.split('=')[1] for part in str(row[1]).split('?')[1].split('&') if part.startswith('lng=')][0]),
+                    "lat": float(
+                        [
+                            part.split("=")[1]
+                            for part in str(row[1]).split("?")[1].split("&")
+                            if part.startswith("lat=")
+                        ][0]
+                    ),
+                    "lng": float(
+                        [
+                            part.split("=")[1]
+                            for part in str(row[1]).split("?")[1].split("&")
+                            if part.startswith("lng=")
+                        ][0]
+                    ),
                     "date": str(row[2]),
-                    "ip": str(row[3])
+                    "ip": str(row[3]),
                 }
                 for row in rows
             ]
 
-            # Send the data to macrostrat DB 
+            # Send the data to macrostrat DB
             # TODO - base off of v3 api
             print(payload)
