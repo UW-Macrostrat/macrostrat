@@ -57,16 +57,22 @@ def transform_gdb_layer(legend_df: G.GeoDataFrame) -> G.GeoDataFrame:
         empty columns removed.
     """
     rename_map = {
-        "description": "descrip",
         "name": "name",
         "fullname": "strat_name",
         "age": "age",
         "descriptionofmapunits_id": "orig_id",
         "notes": "comments",
-        "areafillrgb": "color",
         "label": "strat_symbol"
     }
     legend_df.columns = legend_df.columns.str.lower()
+    if "description" in legend_df.columns:
+        rename_map["description"] = "descrip"
+    elif "descr" in legend_df.columns:
+        rename_map["descr"] = "descrip"
+    if "areafillrgb" in legend_df.columns:
+        rename_map["areafillrgb"] = "color"
+    elif "rgb" in legend_df.columns:
+        rename_map["rgb"] = "color"
 
     legend_df = legend_df.rename(columns={c: rename_map[c] for c in rename_map if c in legend_df})
 
@@ -93,22 +99,9 @@ def get_strat_names_df() -> pd.DataFrame:
     with db.engine.connect() as conn:
         df = pd.read_sql(query, conn)
     return df
-
-#determine if name AND description field is proper or not to insert into the strat_name (group, member, formation, null otherwise)
-#comma separated list of strat_names. similar to lith field.
-#geolex...
 STRAT_NAME_LOOKUP = {"formation", "fm", "bed", "member", "mbr", "group"}
-STOPWORDS = {"trachyte", "unit", "of", "the"}
-
-
-def next_valid(tokens, start, skip):
-    """
-    helper function to avoid irrelevant words in the lookup in the rank_name_set
-    """
-    k = start
-    while k < len(tokens) and tokens[k] in skip:
-        k += 1
-    return (tokens[k], k) if k < len(tokens) else (None, None)
+IRRELEVANT_WORDS = {"cm", "fine", "in", "dacite", "conglomerate","top", "an", "map", "tcg", "quadrangle", "to", "part", "late", "middle", "lack", "any", "evidence", "sand", "gravel", "silt", "composed", "well", "sorted", "and", "a", "is", "or", "for", "trachyte", "unit", "of", "the"}
+VALID_WORDS = {"plomosa", "suizo", "coronado", "complex", "units"}
 
 
 def lookup_and_validate_strat_name(name_descrip: str | float, rank_name_set: set[str]) -> Optional[str]:
@@ -118,44 +111,42 @@ def lookup_and_validate_strat_name(name_descrip: str | float, rank_name_set: set
     """
     tokens = re.findall(r"\b\w+\b", str(name_descrip).lower())
     for i, qualifier in enumerate(tokens):
-        print(tokens)
-        candidate_indices = [i - 2, i - 1, i + 1, i + 2]
+        candidate_indices = [i - 3, i - 2, i - 1, i]
         phrase_array = []
-        of_indices = [i - 1, i + 1, i + 2, i + 3]
-
+        phrase_array_dropped = []
+        of_indices = [i - 1, i, i + 1, i + 2, i + 3]
         if qualifier in STRAT_NAME_LOOKUP:
             for j in candidate_indices:
-                if 0 <= j < len(tokens) and tokens[j] != "the":
-                    if tokens[j] == "ranch":
-                        phrase_array.append(None)
-                    else:
-                        phrase_array.append(tokens[j])
-                else:
-                    phrase_array.append(None)
+                if 0 <= j < len(tokens):
+                    phrase_array.append(tokens[j])
             print("HERE'S THE PHRASE ARRAY", phrase_array)
+            phrase_array_dropped = [word for word in phrase_array if word not in IRRELEVANT_WORDS]
+            print("AFTER irrelevant words are dropped! ", phrase_array_dropped)
 
         elif qualifier == "of" and i + 1 < len(tokens):
-            seen = set()
             for j in of_indices:
                 if 0 <= j < len(tokens):
-                    tok, idx = next_valid(tokens, j, STOPWORDS | seen)
-                    if tok is None:
-                        phrase_array.append(None)
-                    else:
-                        phrase_array.append(tok)
-                        seen.add(tok)
-                else:
-                    phrase_array.append(None)
+                    phrase_array.append(tokens[j])
             print("HERE'S THE PHRASE ARRAY", phrase_array)
+            phrase_array_dropped = [word for word in phrase_array if word not in IRRELEVANT_WORDS]
+            print("AFTER irrelevant words are dropped! ", phrase_array_dropped)
 
-        if len(phrase_array) > 0:
+        if len(phrase_array_dropped) > 0:
+            strat_name = " ".join(phrase_array)
+            for word in phrase_array_dropped:
+                if word in VALID_WORDS:
+                    print(f"Match found: strat_name found in VALID_WORDS!")
+                    print("Returning...", strat_name)
+                    print(" ")
+                    return strat_name
             for rank_name in rank_name_set:
-                match_count = sum(1 for word in phrase_array if word and word in rank_name)
-                match_ratio = match_count / 4
-
-                if match_ratio >= 0.25:
-                    print(f"Match found: {match_count}/ 4 tokens in '{rank_name}'")
-                    return rank_name
+                match_count = sum(1 for word in phrase_array_dropped if word in rank_name)
+                match_ratio = match_count / len(phrase_array_dropped)
+                if match_ratio >= 0.6:
+                    print(f"Match found: {match_count} / {len(phrase_array_dropped)} tokens in '{rank_name}'")
+                    print("Returning...", strat_name)
+                    print("")
+                    return strat_name
     return pd.NA
 
 
@@ -207,6 +198,7 @@ def get_age_interval_df() -> pd.DataFrame:
     return df
 
 QUALIFIERS = {"early", "middle", "late", "lower", "upper"}
+QUALIFIER_ORDER = {"early": 0, "middle": 1, "late": 2}
 
 def lookup_and_validate_age(name: str | float, interval_set: set[str]) \
         -> tuple[Optional[str], Optional[str]]:
@@ -227,7 +219,7 @@ def lookup_and_validate_age(name: str | float, interval_set: set[str]) \
             phrase_two = f"{next_qual} {tokens[i + 3]}"
             if phrase_one in interval_set and phrase_two in interval_set:
                 #this is true if word is early or middle
-                return (phrase_one, phrase_two) if qual == "early" and next_qual in {"middle", "late"} \
+                return (phrase_one, phrase_two) if QUALIFIER_ORDER.get(qual, -1) < QUALIFIER_ORDER.get(next_qual, -1) \
                     else (phrase_two, phrase_one)
             elif phrase_one in interval_set:
                 return phrase_one, phrase_one
