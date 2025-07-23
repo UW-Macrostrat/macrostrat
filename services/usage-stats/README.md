@@ -9,6 +9,9 @@ The project is meant to parse the matomo database and post subsetted logs to the
 
 ## Installation
 
+   ```bash
+   pip install -r requirements.txt
+   ```
 
 ## Running
 You can either run the script directly using 

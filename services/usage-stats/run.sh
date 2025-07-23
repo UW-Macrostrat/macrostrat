@@ -1,1 +1,1 @@
-python3 get-data.py
+python3 rockd.py
