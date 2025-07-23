@@ -1,6 +1,6 @@
-# Rockd Usage Stats
+# Usage Stats
 
-The project is meant to parse Traefik logs and post to rockd api, in order to store location statistics for rockd
+The project is meant to parse the matomo database and post subsetted logs to the usage_stats schema
 
 ## Requirements
 
@@ -9,10 +9,6 @@ The project is meant to parse Traefik logs and post to rockd api, in order to st
 
 ## Installation
 
-1. Clone the repo:
-   ```bash
-   git clone https://github.com/davidsklar99/rockd-usage-stats.git
-   cd rockd-usage-stats
 
 ## Running
 You can either run the script directly using 
