@@ -19,7 +19,7 @@ async def lifespan(app: FastAPI):
                 logging.exception("Error in periodic task: %s", e)
 
             try:
-                await asyncio.wait_for(stop_event.wait(), timeout=10.0)
+                await asyncio.wait_for(stop_event.wait(), timeout=10.0) # Adjust timeout as needed
             except asyncio.TimeoutError:
                 pass  
 
