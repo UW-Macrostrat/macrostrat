@@ -1,27 +1,27 @@
 # Usage Stats
 
-The project is meant to parse the matomo database and post subsetted logs to the usage_stats schema
+The project is meant to parse the matomo database and post subsetted logs to the usage_stats schema for **Rockd** and **Macrostrat**
 
 ## Requirements
 
 - Python 3.7+
 - Packages listed in `requirements.txt`
 
-## Installation
+## Local installation
 
    ```bash
-   pip install -r requirements.txt
+   make install
    ```
 
 ## Running
-You can either run the script directly using 
+You can either run the app directly using
+
    ```bash
-   ./run.sh
+   make install
    ```
 
-Or you can use the docker container by running
-
+Or using docker using
+   
    ```bash
-   docker build -t stats .
-   docker run --rm stats
+   make docker
    ```
