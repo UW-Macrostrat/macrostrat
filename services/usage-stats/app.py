@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 import asyncio
-import test
+from src.macrostrat import get_macrostrat_data
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -9,9 +9,9 @@ async def lifespan(app: FastAPI):
 
     async def periodic_task():
         while not stop_event.is_set():
-            await test.run_task()
+            await get_macrostrat_data()
             try:
-                await asyncio.wait_for(stop_event.wait(), timeout=2.0)
+                await asyncio.wait_for(stop_event.wait(), timeout=10.0)
             except asyncio.TimeoutError:
                 pass
 
