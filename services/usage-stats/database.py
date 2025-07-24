@@ -12,8 +12,10 @@ engine = create_async_engine(DATABASE_URL, echo=True)
 
 async def connect_engine():
     async with engine.connect() as conn:
-        result = await conn.execute(text("SELECT * FROM macrostrat.intervals LIMIT 1"))
-        rows = await result.fetchall()  # <-- await here
+        result = await conn.execute(text(
+                "SELECT * FROM macrostrat.intervals LIMIT 1"
+            ))
+        rows = result.fetchall()  
         if not rows:
             print("No rows found in macrostrat.intervals.")
         else:
