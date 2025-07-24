@@ -47,8 +47,6 @@ async def get_data(last_id):
 
         rows = await cursor.fetchall()
 
-        print(rows[0])
-
         if not rows:
             print("No more rows to process.")
         else:
