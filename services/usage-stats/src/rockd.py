@@ -4,7 +4,7 @@ import requests
 from dotenv import load_dotenv
 import asyncio
 
-from database import insert
+from insert import insert
 
 # Load variables from .env file
 load_dotenv()
@@ -23,8 +23,13 @@ matomo_conn = pymysql.connect(
     database=database,
 )
 
+# Get last processed ID from the database
+last_id = asyncio.run(get_last_id("rockd"))
+
+if last_id is None:
+    last_id = 0
+
 BATCH_SIZE = 1000
-last_id = 0
 payload = []
 
 with matomo_conn:

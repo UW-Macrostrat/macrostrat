@@ -4,7 +4,8 @@ import requests
 from dotenv import load_dotenv
 import asyncio
 
-from database import insert
+from insert import insert
+from last_id import get_last_id
 
 # Load variables from .env file
 load_dotenv()
@@ -23,6 +24,11 @@ matomo_conn = pymysql.connect(
     database=database,
 )
 
+# Get last processed ID from the database
+last_id = asyncio.run(get_last_id("macrostrat"))
+if last_id is None:
+    last_id = 0
+
 BATCH_SIZE = 1000
 payload = []
 
@@ -35,15 +41,17 @@ with matomo_conn:
                 location_latitude AS lat,
                 location_longitude AS lng,
                 visit_first_action_time AS date,
-                idvisitor AS ip
+                idvisitor AS ip,
+                idvisit as matomo_id
             FROM matomo_log_visit a
             WHERE 
-                location_latitude IS NOT NULL
+                idvisit > %s
+                AND location_latitude IS NOT NULL
                 AND location_longitude IS NOT NULL
                 AND visit_first_action_time > '2025-07-02'
             LIMIT %s
         """,
-            (BATCH_SIZE),
+            (last_id, BATCH_SIZE),
         )
 
         rows = cursor.fetchall()
@@ -57,6 +65,7 @@ with matomo_conn:
                     "lng": float(row[1]),
                     "date": row[2].isoformat(),
                     "ip": row[3],
+                    "matomo_id": row[4],
                 }
                 for row in rows
             ]
