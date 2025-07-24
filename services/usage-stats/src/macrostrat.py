@@ -3,6 +3,7 @@ import pymysql
 import requests
 from dotenv import load_dotenv
 import asyncio
+from datetime import datetime
 
 from insert import insert
 from last_id import get_last_id
@@ -26,8 +27,8 @@ matomo_conn = pymysql.connect(
 
 # Get last processed ID from the database
 last_id = asyncio.run(get_last_id("macrostrat"))
-if last_id is None:
-    last_id = 0
+
+print("Last id", last_id)
 
 BATCH_SIZE = 1000
 payload = []
@@ -58,13 +59,15 @@ with matomo_conn:
 
         if not rows:
             print("No more rows to process.")
+
+
         else:
             payload = [
                 {
                     "lat": float(row[0]),
                     "lng": float(row[1]),
-                    "date": row[2].isoformat(),
-                    "ip": row[3],
+                    "date": row[2],
+                    "ip": str(row[3]),
                     "matomo_id": row[4],
                 }
                 for row in rows

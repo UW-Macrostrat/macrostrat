@@ -19,10 +19,12 @@ async def get_last_id(table_name=None):
 
         result = await conn.execute(text(f"SELECT MAX(matomo_id) FROM usage_stats.{table_name}"))
         rows = result.fetchall()
-        if not rows:
-            print("No rows in table", table_name)
+        id = rows[0][0]
+
+        if not id:
+            return 0
         else:
-            return rows[0]
+            return id
 
 
 if __name__ == "__main__":

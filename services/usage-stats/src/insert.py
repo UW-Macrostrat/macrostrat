@@ -21,15 +21,14 @@ async def insert(payload=None, table_name=None):
             print("No table name provided")
             return
 
-        print("Inserting payload", payload[0], "into table", table_name)
-
-        result = await conn.execute(text("SELECT * FROM macrostrat.intervals LIMIT 1"))
-        rows = result.fetchall()
-        if not rows:
-            print("No rows found in macrostrat.intervals.")
-        else:
-            print("Rows found in macrostrat.intervals:", rows)
-
+        result = await conn.execute(text(f"""
+            INSERT INTO usage_stats.{table_name} 
+                (lat, lng, date, ip, matomo_id) 
+            VALUES (:lat, :lng, :date, :ip, :matomo_id)
+        """),
+            (payload)
+        )
+        await conn.commit()
 
 if __name__ == "__main__":
     asyncio.run(insert())
