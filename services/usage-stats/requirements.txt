@@ -1,3 +1,6 @@
 requests
 pymysql
 python-dotenv
+sqlalchemy
+psycopg2
+asyncpg
