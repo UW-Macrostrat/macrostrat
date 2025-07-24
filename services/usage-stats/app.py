@@ -1,10 +1,11 @@
 import asyncio
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from src.macrostrat import get_macrostrat_data
 from src.rockd import get_rockd_data
-import logging
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -19,9 +20,11 @@ async def lifespan(app: FastAPI):
                 logging.exception("Error in periodic task: %s", e)
 
             try:
-                await asyncio.wait_for(stop_event.wait(), timeout=10.0) # Adjust timeout as needed
+                await asyncio.wait_for(
+                    stop_event.wait(), timeout=10.0
+                )  # Adjust timeout as needed
             except asyncio.TimeoutError:
-                pass  
+                pass
 
     task = asyncio.create_task(periodic_task())
     yield

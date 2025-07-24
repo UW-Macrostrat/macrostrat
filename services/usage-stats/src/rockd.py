@@ -7,7 +7,8 @@ from dotenv import load_dotenv
 from src.insert import insert
 from src.last_id import get_last_id
 
-BATCH_SIZE = 1000 # Adjust batch size as needed
+BATCH_SIZE = 1000  # Adjust batch size as needed
+
 
 async def get_data(last_id):
     load_dotenv()
@@ -27,7 +28,7 @@ async def get_data(last_id):
     try:
         async with matomo_conn.cursor() as cursor:
             await cursor.execute(
-            """
+                """
             SELECT
                 a.Idaction AS action_id,
                 a.name AS url,
@@ -42,8 +43,8 @@ async def get_data(last_id):
             ORDER BY lva.idlink_va ASC
             LIMIT %s
         """,
-            ("%dashboard%", last_id, BATCH_SIZE),
-        )
+                ("%dashboard%", last_id, BATCH_SIZE),
+            )
 
         rows = await cursor.fetchall()
 
@@ -86,6 +87,7 @@ async def fetch_last_id():
 
 async def fetch_matomo_data(last_id):
     await get_data(last_id)
+
 
 async def get_rockd_data():
     last_id = await fetch_last_id()
