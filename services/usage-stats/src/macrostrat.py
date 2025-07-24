@@ -27,7 +27,7 @@ async def get_macrostrat_data():
     )
 
     # Get last processed ID from the database
-    last_id = asyncio.run(get_last_id("macrostrat"))
+    last_id = await get_last_id("macrostrat")
 
     print("Last id", last_id)
 
@@ -75,4 +75,6 @@ async def get_macrostrat_data():
                 ]
 
                 # Insert payload
-                asyncio.run(insert(payload, "macrostrat"))
+                await insert(payload, "macrostrat")
+
+asyncio.run(get_macrostrat_data())

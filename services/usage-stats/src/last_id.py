@@ -17,6 +17,8 @@ async def get_last_id(table_name=None):
             print("No table name provided")
             return
 
+        print("Fetching data")
+
         result = await conn.execute(text(f"SELECT MAX(matomo_id) FROM usage_stats.{table_name}"))
         rows = result.fetchall()
         id = rows[0][0]
