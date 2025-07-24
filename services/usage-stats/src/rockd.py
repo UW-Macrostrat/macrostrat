@@ -1,42 +1,32 @@
 import asyncio
 import os
+from datetime import datetime
 
-import pymysql
-import requests
+import asyncmy
 from dotenv import load_dotenv
-from insert import insert
-from last_id import get_last_id
-
-# Load variables from .env file
-load_dotenv()
-
-# Get DB credentials from environment
-host = os.getenv("MARIADB_HOST")
-user = os.getenv("MARIADB_USER")
-password = os.getenv("MARIADB_PASSWORD")
-database = os.getenv("MARIADB_DATABASE")
-
-# Connect to MariaDB using env vars
-matomo_conn = pymysql.connect(
-    host=host,
-    user=user,
-    password=password,
-    database=database,
-)
-
-# Get last processed ID from the database
-last_id = asyncio.run(get_last_id("rockd"))
-
-if last_id is None:
-    last_id = 0
+from src.insert import insert
+from src.last_id import get_last_id
 
 BATCH_SIZE = 1000
-payload = []
 
-with matomo_conn:
-    with matomo_conn.cursor() as cursor:
-        # Keyset-based pagination using idvisit
-        cursor.execute(
+async def get_data(last_id):
+    load_dotenv()
+
+    host = os.getenv("MARIADB_HOST")
+    user = os.getenv("MARIADB_USER")
+    password = os.getenv("MARIADB_PASSWORD")
+    database = os.getenv("MARIADB_DATABASE")
+
+    matomo_conn = await asyncmy.connect(
+        host=host,
+        user=user,
+        password=password,
+        database=database,
+    )
+
+    try:
+        async with matomo_conn.cursor() as cursor:
+            await cursor.execute(
             """
             SELECT
                 a.Idaction AS action_id,
@@ -55,7 +45,7 @@ with matomo_conn:
             ("%dashboard%", last_id, BATCH_SIZE),
         )
 
-        rows = cursor.fetchall()
+        rows = await cursor.fetchall()
 
         print(rows[0])
 
@@ -86,4 +76,24 @@ with matomo_conn:
                 for row in rows
             ]
 
-            asyncio.run(insert(payload, "rockd"))
+            await insert(payload, "rockd")
+
+    finally:
+        await matomo_conn.ensure_closed()
+
+
+async def fetch_last_id():
+    return await get_last_id("rockd")
+
+
+async def fetch_matomo_data(last_id):
+    await get_data(last_id)
+
+async def get_rockd_data():
+    last_id = await fetch_last_id()
+    await fetch_matomo_data(last_id)
+    print("Data fetching completed.")
+
+
+if __name__ == "__main__":
+    asyncio.run(get_rockd_data())

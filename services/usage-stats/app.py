@@ -3,6 +3,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from src.macrostrat import get_macrostrat_data
+import logging
+
 
 
 @asynccontextmanager
@@ -11,11 +13,15 @@ async def lifespan(app: FastAPI):
 
     async def periodic_task():
         while not stop_event.is_set():
-            await get_macrostrat_data()
+            try:
+                await get_macrostrat_data()
+            except Exception as e:
+                logging.exception("Error in periodic task: %s", e)
+
             try:
                 await asyncio.wait_for(stop_event.wait(), timeout=10.0)
             except asyncio.TimeoutError:
-                pass
+                pass  
 
     task = asyncio.create_task(periodic_task())
     yield
