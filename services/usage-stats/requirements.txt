@@ -2,6 +2,8 @@ requests
 pymysql
 python-dotenv
 sqlalchemy
-psycopg2
+psycopg2-binary
 asyncpg
 asyncmy
+uvicorn
+fastapi

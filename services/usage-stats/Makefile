@@ -1,8 +1,12 @@
-app:
-	python3 app.py
+docker-build:
+	docker build -t usage-stats .
 
-macrostrat:
-	python3 src/macrostrat.py 
-	
-rockd:
-	python3 src/rockd.py
+docker-run:
+	docker run -p 8000:8000 usage-stats
+
+docker:
+	docker build -t usage-stats .
+	docker run -p 8000:8000 usage-stats
+
+run:
+	python3 app.py

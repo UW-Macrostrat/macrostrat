@@ -1,20 +1,20 @@
-# Use an official Python runtime as a parent image
+# Use official Python image as base
 FROM python:3.11-slim
 
-# Set working directory inside the container
+# Set working directory
 WORKDIR /app
 
-# Copy requirements first (to leverage Docker cache)
+# Copy your requirements (adjust if you use poetry or pipenv)
 COPY requirements.txt .
 
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of your app’s code
+# Copy app source code
 COPY . .
 
-# Expose port 8000
+# Expose the port uvicorn will run on
 EXPOSE 8000
 
-# Command to run your app — change this to your actual run command
-CMD ["python", "app.py"]
+# Run the app with uvicorn
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]

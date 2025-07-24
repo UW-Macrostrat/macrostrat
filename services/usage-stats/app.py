@@ -6,8 +6,6 @@ from src.macrostrat import get_macrostrat_data
 from src.rockd import get_rockd_data
 import logging
 
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     stop_event = asyncio.Event()
