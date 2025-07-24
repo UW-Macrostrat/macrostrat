@@ -23,6 +23,8 @@ async def get_last_id(table_name=None):
         rows = result.fetchall()
         id = rows[0][0]
 
+        print(id)
+
         if not id:
             return 0
         else:
