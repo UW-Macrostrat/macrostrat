@@ -16,6 +16,7 @@ async def lifespan(app: FastAPI):
         while not stop_event.is_set():
             try:
                 await get_rockd_data()
+                await get_macrostrat_data()
             except Exception as e:
                 logging.exception("Error in periodic task: %s", e)
 
@@ -31,12 +32,6 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
-
-
-@app.get("/")
-async def read_root():
-    return {"message": "Hello from Docker on localhost:8000!"}
-
 
 if __name__ == "__main__":
     import uvicorn

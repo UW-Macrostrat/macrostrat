@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from src.insert import insert
 from src.last_id import get_last_id
 
-BATCH_SIZE = 1000
+BATCH_SIZE = 1
 
 async def get_data(last_id):
     load_dotenv()
