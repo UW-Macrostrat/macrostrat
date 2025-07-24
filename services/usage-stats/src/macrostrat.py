@@ -5,9 +5,6 @@ from datetime import datetime
 import pymysql
 import requests
 from dotenv import load_dotenv
-import asyncio
-from datetime import datetime
-
 from src.insert import insert
 from src.last_id import get_last_id
 

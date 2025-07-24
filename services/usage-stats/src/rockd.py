@@ -81,7 +81,7 @@ with matomo_conn:
                     ),
                     "date": row[2],
                     "ip": str(row[3]),
-                    "matomo_id": int(row[0])
+                    "matomo_id": int(row[0]),
                 }
                 for row in rows
             ]
