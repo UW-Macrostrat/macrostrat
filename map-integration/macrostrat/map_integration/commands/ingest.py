@@ -1,10 +1,13 @@
+import os
 from collections import defaultdict
 from optparse import Option
 from pathlib import Path
 from typing import Iterable, List, Tuple
 
+import fiona
 import geopandas as G
 import pandas as P
+import pyogrio
 from geoalchemy2 import Geometry
 from numpy.f2py.symbolic import as_ge
 from pandas import DataFrame
@@ -12,11 +15,27 @@ from rich.console import Console
 from rich.progress import Progress
 from sqlalchemy import text
 
+from ..custom_integrations.gems_utils import (
+    extract_gdb_layer,
+    map_strat_name,
+    map_t_b_intervals,
+    transform_gdb_layer,
+)
 from ..database import get_database
 from ..errors import IngestError
 from .geodatabase import apply_domains_to_fields, get_layer_info, get_layer_names
 
 console = Console()
+
+
+def merge_metadata_polygons(polygon_df, legend_df, join_col):
+    # merge df (polygon df) and legend_df (created df from file)
+    # ensure join column is string for both DataFrames
+    polygon_df[join_col] = polygon_df[join_col].astype(str)
+    legend_df[join_col] = legend_df[join_col].astype(str)
+    # merge metadata into geodataframe
+    merged_df = polygon_df.merge(legend_df, on=join_col, how="left")
+    return merged_df
 
 
 def preprocess_dataframe(
@@ -32,7 +51,8 @@ def preprocess_dataframe(
     Returns:
         G.GeoDataFrame: The enriched GeoDataFrame with merged metadata.
     """
-    # load legend metadata
+    # extract and store metadata into legend_df for processing.
+    legend_df = None
     ext = legend_path.suffix.lower()
     if ext == ".tsv":
         legend_df = P.read_csv(legend_path, sep="\t")
@@ -40,20 +60,49 @@ def preprocess_dataframe(
         legend_df = P.read_csv(legend_path)
     elif ext in [".xls", ".xlsx"]:
         legend_df = P.read_excel(legend_path)
-    else:
-        console.print(f"[red]Unsupported file type: {ext}[/red]")
-        return df
+    # note that the gdb dir may not contain shp files to merge metadata into
+    # TODO add lines metadata ingestion hereeee
+    # TODO ensure this is a gems dataset (list all layers) OR .gdb
+    elif ext == ".gdb":
+
+        # extract whatever layer you want to merge with the polygons table
+        print("\n\nPolygons df before any metadata processing\n", df.columns.tolist())
+        print("", df.head(5).T)
+
+        legend_df = extract_gdb_layer(legend_path, "DescriptionOfMapUnits", False)
+
+        print("\n\nDMU df before transform\n", legend_df.columns.tolist())
+        print("", legend_df.head(5).T)
+        # transform the standard gems columns to macrostrat columns
+        # delete all of the arizona maps that are empty
+        # create delete bulk ingestion script
+        # what other info to add into ingest process table. recored type of ETL operations are performed in ingest table.
+        # can remove ingest_process table if we don't need.
+        # how to flag maps if pre process is ready (in the ui) for daven to post process.
+        # celery process to have a delete button in the UI.
+        # post UI manual column input json into the db for column ingestion...need RLS for user to post correct data to.
+        # infrastructure....
+        # suite of tests to run for rls to show what edge cases work. point to dev postgrest RLS
+        # run role migration to ensure that the roles
+        # once rls works have david update the UI immediately!
+        # streamline the api's and UI for production.
+
+        legend_df = transform_gdb_layer(legend_df)
+
+        print("\n\nAFTER TRANSFORMATION!!\n\n")
+        print("\n\nPolygons df\n", df.columns.tolist())
+        print("\n\nDMU df\n", legend_df.columns.tolist())
+
+        legend_df = map_t_b_intervals(legend_df)
+        legend_df = map_strat_name(legend_df)
 
     if join_col not in df.columns:
         console.print(
-            f"[yellow]Warning: join column '{join_col}' not found in GeoDataFrame. Skipping merge.[/yellow]"
+            f"[yellow]Warning: join column '{join_col}' not found in legend file. Skipping merge.[/yellow]"
         )
         return df
-    # ensure join column is string for both DataFrames
-    df[join_col] = df[join_col].astype(str)
-    legend_df[join_col] = legend_df[join_col].astype(str)
-    # merge metadata into geodataframe
-    merged_df = df.merge(legend_df, on=join_col, how="left")
+    # merge polygons and metadata dataframes before inserting into the db
+    merged_df = merge_metadata_polygons(df, legend_df, join_col)
     return merged_df
 
 
@@ -167,7 +216,10 @@ def ingest_map(
 
         # applies legend merge only to the whatever the legend_table is specified as
         if legend_path and legend_table == feature_suffix:
-            df = preprocess_dataframe(df, legend_path=legend_path, join_col=join_col)
+            df.columns = df.columns.str.lower()
+            df = preprocess_dataframe(
+                df, legend_path=legend_path, join_col=join_col.lower()
+            )
 
         console.print(f"[bold]{feature_type}s[/bold] [dim]- {len(df)} features[/dim]")
         # Columns
