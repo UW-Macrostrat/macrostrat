@@ -64,7 +64,7 @@ class GroupMembers(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     group_id: Mapped[int] = mapped_column(ForeignKey("macrostrat_auth.group.id"))
     user_id: Mapped[int] = mapped_column(ForeignKey("macrostrat_auth.user.id"))
-    
+
 
 class Group(Base):
     __tablename__ = "group"
@@ -145,19 +145,6 @@ class Object(Base):
 
     # Relationships
     object_group: Mapped["ObjectGroup"] = relationship(back_populates="objects")
-
-class RockdUsageStats(Base):
-    __tablename__ = "rockd"
-    __table_args__ = {"schema": "usage_stats"}
-    
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    date: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    ip: Mapped[str] = mapped_column(VARCHAR(45), nullable=False)  
-    lat: Mapped[float] = mapped_column(nullable=True)
-    lng: Mapped[float] = mapped_column(nullable=True)
-    matomo_id: Mapped[int] = mapped_column(nullable=True)
-
-
 
 
 class ObjectGroup(Base):
