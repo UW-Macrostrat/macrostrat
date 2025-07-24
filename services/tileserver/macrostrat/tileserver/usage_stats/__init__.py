@@ -2,7 +2,8 @@ from pathlib import Path
 from typing import List
 
 from buildpg import V, render
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Response
+from timvt.resources.enums import MimeTypes
 
 from macrostrat.tileserver_utils import VectorTileResponse
 from macrostrat.utils import get_logger
@@ -31,14 +32,16 @@ async def get_tile(
         z=z,
         x=x,
         y=y,
-        slug=slug,
     )
 
     """Get a tile from the tileserver."""
     pool = request.app.state.pool
 
     if slug == "macrostrat":
-        query = __here__ / "queries" / "macrostrat.sql"
+        if "today" in request.query_params:
+            query = __here__ / "queries" / "macrostrat_today.sql"
+        else:
+            query = __here__ / "queries" / "macrostrat.sql"
     else:
         query = __here__ / "queries" / "rockd.sql"
 
