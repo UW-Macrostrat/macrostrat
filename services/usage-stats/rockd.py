@@ -13,19 +13,19 @@ password = os.getenv("MARIADB_PASSWORD")
 database = os.getenv("MARIADB_DATABASE")
 
 # Connect to MariaDB using env vars
-conn = pymysql.connect(
+matomo_conn = pymysql.connect(
     host=host,
     user=user,
     password=password,
     database=database,
 )
 
-
 BATCH_SIZE = 1000
 last_id = 0 
+payload = []
 
-with conn:
-    with conn.cursor() as cursor:
+with matomo_conn:
+    with matomo_conn.cursor() as cursor:
         # Keyset-based pagination using idvisit
         cursor.execute("""
             SELECT
@@ -60,6 +60,4 @@ with conn:
                 for row in rows
             ]
 
-            # Send the data to macrostrat DB 
-            # TODO - base off of v3 api
-            print(payload)
+print(payload)
