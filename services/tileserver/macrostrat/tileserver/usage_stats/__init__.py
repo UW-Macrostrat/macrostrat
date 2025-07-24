@@ -43,7 +43,10 @@ async def get_tile(
         else:
             query = __here__ / "queries" / "macrostrat.sql"
     else:
-        query = __here__ / "queries" / "rockd.sql"
+        if "today" in request.query_params:
+            query = __here__ / "queries" / "rockd_today.sql"
+        else:
+            query = __here__ / "queries" / "rockd.sql"
 
     query = query.read_text()
     query = query.strip()
