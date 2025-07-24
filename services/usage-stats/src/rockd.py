@@ -4,7 +4,7 @@ import requests
 from dotenv import load_dotenv
 import asyncio
 
-from database import insert_rockd
+from database import insert
 
 # Load variables from .env file
 load_dotenv()
@@ -77,4 +77,4 @@ with matomo_conn:
                 for row in rows
             ]
 
-            asyncio.run(insert_rockd(payload))
+            asyncio.run(insert(payload, "rockd"))
