@@ -1,7 +1,9 @@
-from fastapi import FastAPI
-from contextlib import asynccontextmanager
 import asyncio
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
 from src.macrostrat import get_macrostrat_data
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -16,16 +18,20 @@ async def lifespan(app: FastAPI):
                 pass
 
     task = asyncio.create_task(periodic_task())
-    yield  
+    yield
     stop_event.set()
-    await task  
+    await task
+
 
 app = FastAPI(lifespan=lifespan)
+
 
 @app.get("/")
 async def read_root():
     return {"message": "Hello from Docker on localhost:8000!"}
 
+
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="localhost", port=8000)

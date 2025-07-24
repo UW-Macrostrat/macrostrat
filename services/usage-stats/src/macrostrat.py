@@ -1,12 +1,13 @@
+import asyncio
 import os
+from datetime import datetime
+
 import pymysql
 import requests
 from dotenv import load_dotenv
-import asyncio
-from datetime import datetime
-
 from insert import insert
 from last_id import get_last_id
+
 
 async def get_macrostrat_data():
     # Load variables from .env file
@@ -61,7 +62,6 @@ async def get_macrostrat_data():
             if not rows:
                 print("No more rows to process.")
 
-
             else:
                 payload = [
                     {
@@ -76,5 +76,6 @@ async def get_macrostrat_data():
 
                 # Insert payload
                 await insert(payload, "macrostrat")
+
 
 asyncio.run(get_macrostrat_data())

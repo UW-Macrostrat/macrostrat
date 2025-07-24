@@ -11,6 +11,7 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 
 engine = create_async_engine(DATABASE_URL, echo=True)
 
+
 async def insert(payload=None, table_name=None):
     async with engine.connect() as conn:
         if payload is None:
@@ -21,14 +22,18 @@ async def insert(payload=None, table_name=None):
             print("No table name provided")
             return
 
-        result = await conn.execute(text(f"""
+        result = await conn.execute(
+            text(
+                f"""
             INSERT INTO usage_stats.{table_name} 
                 (lat, lng, date, ip, matomo_id) 
             VALUES (:lat, :lng, :date, :ip, :matomo_id)
-        """),
-            (payload)
+        """
+            ),
+            (payload),
         )
         await conn.commit()
+
 
 if __name__ == "__main__":
     asyncio.run(insert())

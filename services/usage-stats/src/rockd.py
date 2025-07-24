@@ -1,9 +1,9 @@
+import asyncio
 import os
+
 import pymysql
 import requests
 from dotenv import load_dotenv
-import asyncio
-
 from insert import insert
 
 # Load variables from .env file
