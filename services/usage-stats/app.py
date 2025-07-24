@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from src.macrostrat import get_macrostrat_data
+from src.rockd import get_rockd_data
 import logging
 
 
@@ -14,7 +15,7 @@ async def lifespan(app: FastAPI):
     async def periodic_task():
         while not stop_event.is_set():
             try:
-                await get_macrostrat_data()
+                await get_rockd_data()
             except Exception as e:
                 logging.exception("Error in periodic task: %s", e)
 
