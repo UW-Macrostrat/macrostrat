@@ -84,8 +84,8 @@ def preprocess_dataframe(
         # infrastructure....
         # suite of tests to run for rls to show what edge cases work. point to dev postgrest RLS
         # run role migration to ensure that the roles
-        #once rls works have david update the UI immediately!
-        #streamline the api's and UI for production.
+        # once rls works have david update the UI immediately!
+        # streamline the api's and UI for production.
 
         legend_df = transform_gdb_layer(legend_df)
 
