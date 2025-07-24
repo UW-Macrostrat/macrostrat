@@ -17,10 +17,10 @@ The project is meant to parse the matomo database and post subsetted logs to the
 You can either run the app directly using
 
    ```bash
-   make install
+   make app
    ```
 
-Or using docker using
+Or via docker using
    
    ```bash
    make docker

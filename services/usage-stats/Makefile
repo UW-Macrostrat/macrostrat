@@ -8,7 +8,7 @@ docker:
 	docker build -t usage-stats .
 	docker run -p 8000:8000 usage-stats
 
-run:
+app:
 	python3 app.py
 
 install:
