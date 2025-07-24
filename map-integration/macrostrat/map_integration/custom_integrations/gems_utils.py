@@ -221,23 +221,22 @@ def lookup_and_validate_age(name: str | float, interval_lookup: dict[str, int]) 
             phrase_two = f"{next_qual} {tokens[i + 3]}"
             if phrase_one in interval_lookup and phrase_two in interval_lookup:
                 #this is true if word is early or middle
-                return (phrase_one, phrase_two) if QUALIFIER_ORDER.get(qual, -1) < QUALIFIER_ORDER.get(next_qual, -1) \
-                    else (phrase_two, phrase_one)
+                return (interval_lookup[phrase_one], interval_lookup[phrase_two]) if QUALIFIER_ORDER.get(qual, -1) < QUALIFIER_ORDER.get(next_qual, -1) \
+                    else (interval_lookup[phrase_two], interval_lookup[phrase_one])
             elif phrase_one in interval_lookup:
-                return phrase_one, phrase_one
+                return interval_lookup[phrase_one], interval_lookup[phrase_one]
             elif phrase_two in interval_lookup:
-                return phrase_two, phrase_two
+                return interval_lookup[phrase_two], interval_lookup[phrase_two]
             elif tokens[i + 3] in interval_lookup:
-                return tokens[i + 3], tokens[i + 3]
+                return interval_lookup[tokens[i + 3]], interval_lookup[tokens[i + 3]]
 
         if word in QUALIFIERS and i + 1 < len(tokens):
             phrase = f"{qual} {tokens[i + 1]}"
             if phrase in interval_lookup:
-                return phrase, phrase
+                return interval_lookup[phrase], interval_lookup[phrase]
         if word in interval_lookup:
-            return word, word
+            return interval_lookup[word], interval_lookup[word]
     return pd.NA, pd.NA
-
 
 
 #need to modify this logic and maybe need to reference another table besides intervals.
@@ -254,7 +253,7 @@ def map_t_b_intervals(legend_df: G.GeoDataFrame) -> G.GeoDataFrame:
     G.GeoDataFrame: The input frame with a newly filled/created b_interval column.
     """
     interval_df = get_age_interval_df().reset_index(drop=True)
-    interval_df["interval_name"] = interval_df["interval_name"].dropna().str.lower().unique()
+    interval_df["interval_name"] = interval_df["interval_name"].str.lower()
     legend_df["age"] = legend_df["age"].str.lower()
     legend_df["name"] = legend_df["name"].str.lower()
     interval_lookup = {
