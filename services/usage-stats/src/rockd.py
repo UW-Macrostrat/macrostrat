@@ -1,9 +1,9 @@
+import asyncio
 import os
+
 import pymysql
 import requests
 from dotenv import load_dotenv
-import asyncio
-
 from insert import insert
 from last_id import get_last_id
 

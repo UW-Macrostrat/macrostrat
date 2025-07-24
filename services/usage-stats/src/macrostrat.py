@@ -1,4 +1,7 @@
+import asyncio
 import os
+from datetime import datetime
+
 import pymysql
 import requests
 from dotenv import load_dotenv
@@ -7,6 +10,7 @@ from datetime import datetime
 
 from src.insert import insert
 from src.last_id import get_last_id
+
 
 async def get_macrostrat_data():
     # Load variables from .env file
@@ -75,5 +79,6 @@ async def get_macrostrat_data():
 
                 # Insert payload
                 await insert(payload, "macrostrat")
+
 
 asyncio.run(get_macrostrat_data())
