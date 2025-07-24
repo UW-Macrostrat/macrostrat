@@ -11,9 +11,14 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 
 engine = create_async_engine(DATABASE_URL, echo=True)
 
-
-async def connect_engine():
+async def insert_rockd(payload=None):
     async with engine.connect() as conn:
+        if payload is None:
+            print("No payload provided")
+            return
+        
+        print("Inserting payload", payload)
+
         result = await conn.execute(text("SELECT * FROM macrostrat.intervals LIMIT 1"))
         rows = result.fetchall()
         if not rows:
@@ -23,4 +28,4 @@ async def connect_engine():
 
 
 if __name__ == "__main__":
-    asyncio.run(connect_engine())
+    asyncio.run(insert_rockd())
