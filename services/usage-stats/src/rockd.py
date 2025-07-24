@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 import asyncio
 
 from insert import insert
+from last_id import get_last_id
 
 # Load variables from .env file
 load_dotenv()
@@ -56,6 +57,8 @@ with matomo_conn:
 
         rows = cursor.fetchall()
 
+        print(rows[0])
+
         if not rows:
             print("No more rows to process.")
         else:
@@ -76,8 +79,9 @@ with matomo_conn:
                             if part.startswith("lng=")
                         ][0]
                     ),
-                    "date": str(row[2]),
+                    "date": row[2],
                     "ip": str(row[3]),
+                    "matomo_id": int(row[0])
                 }
                 for row in rows
             ]
