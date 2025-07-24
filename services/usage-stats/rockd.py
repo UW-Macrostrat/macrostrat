@@ -22,7 +22,7 @@ matomo_conn = pymysql.connect(
 )
 
 BATCH_SIZE = 1000
-last_id = 0 
+last_id = 0
 payload = []
 
 with matomo_conn:

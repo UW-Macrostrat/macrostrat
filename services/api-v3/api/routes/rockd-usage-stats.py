@@ -1,12 +1,12 @@
+from api.database import get_async_session
+from api.schemas import RockdUsageStats
+from app.models import UsageStats as UsageStatsModel
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.schemas import RockdUsageStats
-from app.models import UsageStats as UsageStatsModel
-from api.database import get_async_session
-
 router = APIRouter()
+
 
 @router.post("/rockd-usage_stats", response_model=RockdUsageStats)
 async def create_usage_stats(

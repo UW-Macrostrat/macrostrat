@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, String, DateTime, func
 from pydantic import BaseModel
+from sqlalchemy import Column, DateTime, Integer, String, func
+
 
 class UsageStats(BaseModel):
     id: int
