@@ -154,6 +154,18 @@ CREATE TABLE macrostrat_xdd.entity_type (
 ALTER TABLE macrostrat_xdd.entity_type OWNER TO "xdd-writer";
 
 --
+-- Name: extraction_feedback_type; Type: TABLE; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+CREATE TABLE macrostrat_xdd.extraction_feedback_type (
+    id serial primary key,
+	type text NOT NULL
+);
+
+
+ALTER TABLE macrostrat_xdd.extraction_feedback_type OWNER TO "xdd-writer";
+
+--
 -- Name: entity_type_id_seq; Type: SEQUENCE; Schema: macrostrat_xdd; Owner: xdd-writer
 --
 
