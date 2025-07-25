@@ -34,7 +34,3 @@ async def get_last_id(table_name=None):
             return 0
         else:
             return id
-
-
-if __name__ == "__main__":
-    asyncio.run(get_last_id())

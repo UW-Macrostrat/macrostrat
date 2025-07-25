@@ -37,7 +37,3 @@ async def insert(payload=None, table_name=None):
             (payload),
         )
         await conn.commit()
-
-
-if __name__ == "__main__":
-    asyncio.run(insert())
