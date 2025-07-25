@@ -9,7 +9,7 @@ SELECT
   match_min_age b_age,
   match_max_age t_age,
   count(sample_id) n_samples
-FROM sgp.sgp_matches
+FROM integrations.sgp_matches
 GROUP BY
   col_id,
   source_text,

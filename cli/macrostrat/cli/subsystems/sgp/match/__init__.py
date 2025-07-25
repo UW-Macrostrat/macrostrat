@@ -3,11 +3,10 @@ Subsystem for SGP matching
 """
 
 from enum import Enum
-from pathlib import Path
-
 from geoalchemy2 import Geometry, WKBElement
 from geopandas import GeoDataFrame, sjoin
 from pandas import DataFrame, isna, read_sql
+from pathlib import Path
 from pydantic import BaseModel
 from rich.live import Live
 from rich.table import Table
@@ -16,8 +15,6 @@ from sqlalchemy.sql import text
 
 from macrostrat.cli.database import get_db
 from macrostrat.core import app
-
-from ..utils import get_sgp_samples, stored_procedure, write_to_file
 from .clean_strat_name import (
     StratNameTextMatch,
     StratRank,
@@ -25,6 +22,7 @@ from .clean_strat_name import (
     clean_strat_name_text,
     format_name,
 )
+from ..utils import get_sgp_samples, stored_procedure, write_to_file
 
 here = Path(__file__).parent
 
@@ -258,8 +256,8 @@ def import_sgp_data(
         write_to_file(samples, out_file)
     else:
         # Check if table exists
-        if reset or not M.inspector.has_table("sgp_matches", schema="sgp"):
-            M.run_sql(stored_procedure("schema"))
+        if reset:
+            M.engine.execute(text("TRUNCATE TABLE integrations.sgp_matches"))
 
         samples["geom"] = samples["geom"].apply(
             lambda x: x if isna(x) else WKBElement(x.wkb, srid=4326)
@@ -269,7 +267,7 @@ def import_sgp_data(
             "sgp_matches",
             M.engine,
             if_exists="append",
-            schema="sgp",
+            schema="integrations",
             method=postgres_upsert,
             chunksize=1000,
             dtype={"geom": Geometry("POINT", srid=4326)},
