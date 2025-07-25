@@ -196,9 +196,17 @@ from .rockd_checkins import router as checkins_router
 
 app.include_router(checkins_router, tags=["Checkins"], prefix="/checkins/tiles")
 
+from .fossils import router as fossils_router
+
+app.include_router(fossils_router, tags=["PBDB"], prefix="/pbdb")
+
 from .integrations import router as integrations_router
 
 app.include_router(integrations_router, tags=["Integrations"], prefix="/integrations")
+
+from .usage_stats import router as usage_stats_router
+
+app.include_router(usage_stats_router, tags=["Usage stats"], prefix="/usage-stats")
 
 
 @app.get("/carto/rotation-models")
