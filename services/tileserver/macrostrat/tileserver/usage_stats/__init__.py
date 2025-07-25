@@ -25,14 +25,19 @@ async def get_tile(
     x: int,
     y: int,
 ):
-
     """Get a tile from the tileserver."""
     pool = request.app.state.pool
 
-    if (slug != "macrostrat" and slug != "rockd"):
-        raise ValueError("Invalid slug provided. Only 'macrostrat' and 'rockd' are supported.")
+    if slug != "macrostrat" and slug != "rockd":
+        raise ValueError(
+            "Invalid slug provided. Only 'macrostrat' and 'rockd' are supported."
+        )
 
-    where="AND date >= (NOW() - INTERVAL '24 hours')" if "today" in request.query_params else ""
+    where = (
+        "AND date >= (NOW() - INTERVAL '24 hours')"
+        if "today" in request.query_params
+        else ""
+    )
 
     query = f"""
         WITH
