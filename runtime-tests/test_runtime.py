@@ -9,9 +9,10 @@ of the deployed system and can depend on specific data being present.
 As such, they may need to evolve with Macrostrat's data holdings.
 """
 
+from time import sleep
+
 from pytest import mark
 from requests import Session
-from time import sleep
 
 client = Session()
 
