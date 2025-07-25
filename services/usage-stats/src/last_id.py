@@ -26,8 +26,10 @@ async def get_last_id(table_name=None):
         rows = result.fetchall()
         id = rows[0][0]
 
-        print(id)
+        # Note: If you want to regenerate the table, truncate it first, then
+        # this script will repopulate it automatically.
 
+        # Check if table is empty
         if not id:
             return 0
         else:

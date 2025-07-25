@@ -1,40 +1,31 @@
 import asyncio
-import logging
-from contextlib import asynccontextmanager
-
-from fastapi import FastAPI
 from src.macrostrat import get_macrostrat_data
 from src.rockd import get_rockd_data
 
+async def periodic_task(stop_event: asyncio.Event):
+    while not stop_event.is_set():
+        try:
+            await get_rockd_data()
+            await get_macrostrat_data()
+        except Exception:
+            pass
+        
+        try:
+            await asyncio.wait_for(stop_event.wait(), timeout=10)
+        except asyncio.TimeoutError:
+            pass
+    logging.info("Worker stopped")
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
+async def main():
     stop_event = asyncio.Event()
 
-    async def periodic_task():
-        while not stop_event.is_set():
-            try:
-                await get_rockd_data()
-                await get_macrostrat_data()
-            except Exception as e:
-                logging.exception("Error in periodic task: %s", e)
+    # Optionally handle graceful shutdown on signals
+    loop = asyncio.get_running_loop()
+    for sig in ('SIGINT', 'SIGTERM'):
+        loop.add_signal_handler(getattr(signal, sig), stop_event.set)
 
-            try:
-                await asyncio.wait_for(
-                    stop_event.wait(), timeout=10.0
-                )  # Adjust timeout as needed
-            except asyncio.TimeoutError:
-                pass
-
-    task = asyncio.create_task(periodic_task())
-    yield
-    stop_event.set()
-    await task
-
-
-app = FastAPI(lifespan=lifespan)
+    await periodic_task(stop_event)
 
 if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(app, host="localhost", port=8000)
+    import signal
+    asyncio.run(main())
