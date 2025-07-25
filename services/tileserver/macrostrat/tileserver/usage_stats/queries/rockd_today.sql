@@ -13,7 +13,7 @@ points AS (
       ),
       envelope
     ) AS geom
-  FROM usage_stats.rockd, tile
+  FROM usage_stats.rockd_stats, tile
   WHERE
     lat IS NOT NULL AND lng IS NOT NULL
     AND ST_Intersects(

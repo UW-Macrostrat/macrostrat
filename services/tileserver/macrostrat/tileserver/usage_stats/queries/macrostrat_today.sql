@@ -13,7 +13,7 @@ points AS (
       ),
       envelope
     ) AS geom
-  FROM usage_stats.macrostrat, tile
+  FROM usage_stats.macrostrat_stats, tile
   WHERE
     lat IS NOT NULL AND lng IS NOT NULL
     AND ST_Intersects(
