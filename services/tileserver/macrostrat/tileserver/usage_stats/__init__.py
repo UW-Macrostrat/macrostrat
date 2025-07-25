@@ -25,35 +25,51 @@ async def get_tile(
     x: int,
     y: int,
 ):
-    """Get a tile from the tileserver."""
-    pool = request.app.state.pool
-
-    params = dict(
-        z=z,
-        x=x,
-        y=y,
-    )
 
     """Get a tile from the tileserver."""
     pool = request.app.state.pool
 
-    if slug == "macrostrat":
-        if "today" in request.query_params:
-            query = __here__ / "queries" / "macrostrat_today.sql"
-        else:
-            query = __here__ / "queries" / "macrostrat.sql"
-    else:
-        if "today" in request.query_params:
-            query = __here__ / "queries" / "rockd_today.sql"
-        else:
-            query = __here__ / "queries" / "rockd.sql"
+    if (slug != "macrostrat" and slug != "rockd"):
+        raise ValueError("Invalid slug provided. Only 'macrostrat' and 'rockd' are supported.")
 
-    query = query.read_text()
-    query = query.strip()
-    if query.endswith(";"):
-        query = query[:-1]
+    where="AND date >= (NOW() - INTERVAL '24 hours')" if "today" in request.query_params else ""
 
-    q, p = render(query, **params)
+    query = f"""
+        WITH
+            tile AS (
+            SELECT ST_TileEnvelope({z}, {x}, {y}) AS envelope,
+                    tile_layers.geographic_envelope({x}, {y}, {z}, 0.01) AS envelope_4326
+            ),
+            points AS (
+            SELECT
+                id,
+                tile_layers.tile_geom(
+                ST_Intersection(
+                    ST_SetSRID(ST_MakePoint(lng, lat), 4326),
+                    envelope_4326
+                ),
+                envelope
+                ) AS geom
+            FROM usage_stats.{slug}_stats, tile
+            WHERE
+                lat IS NOT NULL AND lng IS NOT NULL
+                AND ST_Intersects(
+                ST_SetSRID(ST_MakePoint(lng, lat), 4326),
+                envelope_4326
+                )
+                {where}
+            )
+
+            SELECT ST_AsMVT(
+            points.*,
+            'default',
+            4096,
+            'geom'
+            ) AS mvt
+        FROM points
+    """
+
+    q, p = render(query, **{})
     q = q.replace("textarray", "text[]")
 
     async with pool.acquire() as con:
