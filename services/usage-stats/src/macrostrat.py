@@ -52,16 +52,17 @@ async def get_data(last_id):
                 print("No more rows to process.")
                 return
 
-            payload = [
-                {
+            payload = []
+
+            for row in rows:
+                parsed = {
                     "lat": float(row[0]),
                     "lng": float(row[1]),
                     "date": row[2],
                     "ip": str(row[3]),
                     "matomo_id": row[4],
                 }
-                for row in rows
-            ]
+                payload.append(parsed)
 
             await insert(payload, "macrostrat")
 
