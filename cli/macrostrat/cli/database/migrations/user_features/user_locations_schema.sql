@@ -6,8 +6,9 @@ create table IF NOT EXISTS user_features.user_locations
   --instead of serial for id, we want GENERATED ALWAYS AS IDENTITY so that postgrest can handle the id increments internally and
   --we don't have to rely on granting sequence id access to the base table to web_user.
   --Goal is to try to keep grant access to web_user on the views only rather than the base tables.
+  --removed DEFAULT current_app_user_id() 
     id              integer GENERATED ALWAYS AS IDENTITY primary key,
-    user_id         integer not null DEFAULT current_app_user_id() constraint fk_user references macrostrat_auth."user" on delete cascade,
+    user_id         integer not null constraint fk_user references macrostrat_auth."user" on delete cascade,
     name            varchar(120) not null,
     description     text,
     point           public.geometry(POINT, 4326),
