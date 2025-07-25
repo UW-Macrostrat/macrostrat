@@ -3,26 +3,18 @@ import os
 from datetime import datetime
 
 import asyncmy
-from dotenv import load_dotenv
 from src.insert import insert
 from src.last_id import get_last_id
+from src.config import MARIADB_CONFIG
 
 BATCH_SIZE = 1000  # Adjust batch size as needed
 
-
 async def get_data(last_id):
-    load_dotenv()
-
-    host = os.getenv("MARIADB_HOST")
-    user = os.getenv("MARIADB_USER")
-    password = os.getenv("MARIADB_PASSWORD")
-    database = os.getenv("MARIADB_DATABASE")
-
     matomo_conn = await asyncmy.connect(
-        host=host,
-        user=user,
-        password=password,
-        database=database,
+        host=MARIADB_CONFIG["host"],
+        user=MARIADB_CONFIG["user"],
+        password=MARIADB_CONFIG["password"],
+        database=MARIADB_CONFIG["database"]
     )
 
     try:
