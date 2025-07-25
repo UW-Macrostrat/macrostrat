@@ -25,7 +25,7 @@ async def insert(payload=None, table_name=None):
         result = await conn.execute(
             text(
                 f"""
-            INSERT INTO usage_stats.{table_name} 
+            INSERT INTO usage_stats.{table_name}_stats 
                 (lat, lng, date, ip, matomo_id) 
             VALUES (:lat, :lng, :date, :ip, :matomo_id)
         """
