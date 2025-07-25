@@ -1,20 +1,31 @@
-# Use official Python image as base
+# Use official Python slim image
 FROM python:3.11-slim
+
+# Environment variables
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV POETRY_VERSION=1.8.2
 
 # Set working directory
 WORKDIR /app
 
-# Copy your requirements (adjust if you use poetry or pipenv)
-COPY requirements.txt .
+# Install Poetry and system deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl build-essential gcc \
+    && curl -sSL https://install.python-poetry.org | python3 - --version $POETRY_VERSION \
+    && ln -s /root/.local/bin/poetry /usr/local/bin/poetry \
+    && apt-get remove -y curl \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy only dependency files (for better cache)
+COPY pyproject.toml poetry.lock ./
 
-# Copy app source code
+# Disable Poetry virtualenvs and install dependencies
+RUN poetry config virtualenvs.create false \
+    && poetry install --no-root --no-interaction --no-ansi
+
+# Copy the full project
 COPY . .
 
-# Expose the port uvicorn will run on
-EXPOSE 8000
-
-# Run the app with uvicorn
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run the worker script
+CMD ["python", "worker.py"]

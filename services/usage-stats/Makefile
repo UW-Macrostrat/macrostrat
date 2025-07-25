@@ -8,8 +8,8 @@ docker:
 	docker build -t usage-stats .
 	docker run -p 8000:8000 usage-stats
 
-app:
-	python3 app.py
+worker:
+	python3 worker.py
 
 install:
 	pip install -r requirements.txt

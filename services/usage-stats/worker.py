@@ -14,7 +14,6 @@ async def periodic_task(stop_event: asyncio.Event):
             await asyncio.wait_for(stop_event.wait(), timeout=10)
         except asyncio.TimeoutError:
             pass
-    logging.info("Worker stopped")
 
 async def main():
     stop_event = asyncio.Event()
