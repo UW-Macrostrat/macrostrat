@@ -2,10 +2,9 @@ import asyncio
 import os
 from datetime import datetime
 
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy import text
-
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker
 from src.insert import insert
 from src.last_id import get_last_id
 
@@ -13,8 +12,7 @@ BATCH_SIZE = 1000  # Adjust batch size as needed
 
 # Database URL format: mysql+asyncmy://user:password@host:port/database
 DATABASE_URL = os.getenv(
-    "MARIADB_URL",
-    "mysql+asyncmy://user:password@localhost:3306/database"
+    "MARIADB_URL", "mysql+asyncmy://user:password@localhost:3306/database"
 )
 
 # Create async SQLAlchemy engine

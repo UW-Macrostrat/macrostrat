@@ -1,9 +1,9 @@
 import asyncio
 import os
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy import text
 
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker
 from src.insert import insert
 from src.last_id import get_last_id
 
@@ -11,8 +11,7 @@ BATCH_SIZE = 1000  # Adjust as needed
 
 # Database URL format: mysql+asyncmy://user:password@host:port/database
 DATABASE_URL = os.getenv(
-    "MARIADB_URL",
-    "mysql+asyncmy://user:password@localhost:3306/database"
+    "MARIADB_URL", "mysql+asyncmy://user:password@localhost:3306/database"
 )
 
 # Create async engine
@@ -20,14 +19,14 @@ engine = create_async_engine(DATABASE_URL, echo=True)
 
 # Async session factory
 AsyncSessionLocal = sessionmaker(
-    bind=engine,
-    expire_on_commit=False,
-    class_=AsyncSession
+    bind=engine, expire_on_commit=False, class_=AsyncSession
 )
+
 
 async def get_data(last_id):
     async with AsyncSessionLocal() as session:
-        query = text("""
+        query = text(
+            """
             SELECT
                 location_latitude AS lat,
                 location_longitude AS lng,
@@ -41,9 +40,12 @@ async def get_data(last_id):
                 AND location_longitude IS NOT NULL
                 AND visit_first_action_time > '2025-07-02'
             LIMIT :batch_size
-        """)
+        """
+        )
 
-        result = await session.execute(query, {"last_id": last_id, "batch_size": BATCH_SIZE})
+        result = await session.execute(
+            query, {"last_id": last_id, "batch_size": BATCH_SIZE}
+        )
         rows = result.fetchall()
 
         if not rows:
