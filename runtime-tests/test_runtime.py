@@ -9,10 +9,9 @@ of the deployed system and can depend on specific data being present.
 As such, they may need to evolve with Macrostrat's data holdings.
 """
 
-from time import sleep
-
 from pytest import mark
 from requests import Session
+from time import sleep
 
 client = Session()
 
@@ -55,3 +54,13 @@ def exponential_backoff(url):
             yield res
         sleep(2**i)
     yield res
+
+
+# Tile server should return an image for a legacy tile request
+def test_legacy_tile():
+    # TODO: modify this for dev URLs
+    url = "https://macrostrat.org/api/v2/maps/burwell/emphasized/1/0/1/tile.png"
+    res = client.get(url)
+    assert res.status_code == 200
+    assert res.headers["Content-Type"] == "image/png"
+    assert len(res.content) > 0, "Tile content should not be empty"
