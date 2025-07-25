@@ -22,6 +22,10 @@ async def insert(payload=None, table_name=None):
             print("No table name provided")
             return
 
+        if table_name not in ["macrostrat", "rockd"]:
+            print("Invalid table name provided")
+            return
+
         result = await conn.execute(
             text(
                 f"""
