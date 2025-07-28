@@ -55,3 +55,13 @@ def exponential_backoff(url):
             yield res
         sleep(2**i)
     yield res
+
+
+# Tile server should return an image for a legacy tile request
+def test_legacy_tile():
+    # TODO: modify this for dev URLs
+    url = "https://macrostrat.org/api/v2/maps/burwell/emphasized/1/0/1/tile.png"
+    res = client.get(url)
+    assert res.status_code == 200
+    assert res.headers["Content-Type"] == "image/png"
+    assert len(res.content) > 0, "Tile content should not be empty"
