@@ -6,7 +6,7 @@ all:
 	# Install the version of the GDAL bindings that matches the native lib.
 	# This is breakable and should be replaced with a more robust solution.
 	poetry run pip install GDAL==$(shell gdal-config --version | sed 's/\([0-9]*\)\.\([0-9]*\).*/\1.\2/')
-	ln -sf $(shell pwd)/bin/macrostrat /usr/local/bin/macrostrat
+	ln -sf /Users/afromandi/Library/Caches/pypoetry/virtualenvs/non-package-mode-d4fpU5Zf-py3.11/bin/macrostrat /usr/local/bin/macrostrat
 
 install:
 	ln -sf $(shell pwd)/bin/macrostrat /usr/local/bin/macrostrat
