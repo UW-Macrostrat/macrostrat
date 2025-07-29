@@ -16,3 +16,6 @@ docker-build:
 styles:
 	npm install -g carto
 	poetry run tileserver create-mapnik-xml mapnik-xml-test
+
+docker-run: 
+	docker run -p 8000:8000 --env-file .env macrostrat-tileserver
