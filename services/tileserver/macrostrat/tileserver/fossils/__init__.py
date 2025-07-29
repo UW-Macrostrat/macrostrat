@@ -10,7 +10,7 @@ __here__ = Path(__file__).parent
 
 
 @router.get("/fossils/{z}/{x}/{y}")
-async def rgeom(
+async def tile_query(
     request: Request,
     z: int,
     x: int,
