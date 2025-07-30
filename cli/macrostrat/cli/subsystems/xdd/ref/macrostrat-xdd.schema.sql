@@ -166,6 +166,34 @@ CREATE TABLE macrostrat_xdd.extraction_feedback_type (
 ALTER TABLE macrostrat_xdd.extraction_feedback_type OWNER TO "xdd-writer";
 
 --
+-- Name: extraction_feedback; Type: TABLE; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+CREATE TABLE macrostrat_xdd.extraction_feedback (
+    id serial primary key,
+    user_id text NOT NULL,
+    paper_id uuid NOT NULL,
+    date timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    feedback_ids text,
+    custom_not text
+);
+
+
+ALTER TABLE macrostrat_xdd.extraction_feedback OWNER TO "xdd-writer";
+
+--
+-- Name: extraction_feedback; Type: TABLE; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+CREATE TABLE macrostrat_xdd.extraction_feedback_link (
+    feedback_id integer NOT NULL REFERENCES macrostrat_xdd.extraction_feedback(id) ON DELETE CASCADE,
+    type_id integer NOT NULL REFERENCES macrostrat_xdd.extraction_feedback_type(id) ON DELETE CASCADE,
+    PRIMARY KEY (feedback_id, type_id)
+);
+
+ALTER TABLE macrostrat_xdd.extraction_feedback_link OWNER TO "xdd-writer";
+
+--
 -- Name: entity_type_id_seq; Type: SEQUENCE; Schema: macrostrat_xdd; Owner: xdd-writer
 --
 
