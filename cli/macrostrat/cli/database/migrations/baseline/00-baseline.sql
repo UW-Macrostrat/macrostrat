@@ -1233,7 +1233,9 @@ CREATE TABLE maps.sources (
     display_scales text[],
     web_geom public.geometry,
     new_priority integer DEFAULT 0,
-    status_code text DEFAULT 'active'::text
+    status_code text DEFAULT 'active'::text,
+    date_finalized timestamp with time zone DEFAULT null,
+    ingested_by text
 );
 
 CREATE SEQUENCE maps.sources_source_id_seq

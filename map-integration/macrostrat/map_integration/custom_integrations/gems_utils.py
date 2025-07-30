@@ -176,7 +176,7 @@ def lookup_and_validate_strat_name(
             ]
             print("AFTER irrelevant words are dropped! ", phrase_array_dropped)
 
-        elif qualifier == "of" and i + 1 < len(tokens):
+        elif qualifier == "of" and i + 1 < len(tokens) and tokens[i+1] != "the":
             for j in of_indices:
                 if 0 <= j < len(tokens):
                     phrase_array.append(tokens[j])
@@ -187,7 +187,7 @@ def lookup_and_validate_strat_name(
             print("AFTER irrelevant words are dropped! ", phrase_array_dropped)
 
         if len(phrase_array_dropped) > 0:
-            strat_name = " ".join(phrase_array)
+            strat_name = " ".join(phrase_array).title()
             for word in phrase_array_dropped:
                 if word in VALID_WORDS:
                     print(f"Match found: strat_name found in VALID_WORDS!")
@@ -195,6 +195,7 @@ def lookup_and_validate_strat_name(
                     print(" ")
                     return strat_name
             for rank_name in rank_name_set:
+                rank_name = rank_name.lower()
                 match_count = sum(
                     1 for word in phrase_array_dropped if word in rank_name
                 )
@@ -224,11 +225,9 @@ def map_strat_name(legend_df: G.GeoDataFrame) -> G.GeoDataFrame:
     - GeoDataFrame with an additional 'ranked_strat_name' column.
     """
     rank_name_df = get_strat_names_df()
-    rank_name_set = set(rank_name_df["rank_name"].dropna().str.lower().unique())
-    legend_df["name"] = legend_df["name"].astype(str).str.lower()
-    legend_df["descrip"] = legend_df["descrip"].astype(str).str.lower()
+    rank_name_set = set(rank_name_df["rank_name"].dropna().unique())
     # check name for matched strat_name
-    legend_df["strat_name"] = legend_df["name"].apply(
+    legend_df["strat_name"] = legend_df["name"].str.lower().apply(
         lambda n: lookup_and_validate_strat_name(n, rank_name_set)
     )
 
@@ -236,7 +235,7 @@ def map_strat_name(legend_df: G.GeoDataFrame) -> G.GeoDataFrame:
     needs_fill = legend_df["strat_name"].isna()
     legend_df.loc[needs_fill, "strat_name"] = legend_df.loc[
         needs_fill, "descrip"
-    ].apply(lambda d: lookup_and_validate_strat_name(d, rank_name_set))
+    ].str.lower().apply(lambda d: lookup_and_validate_strat_name(d, rank_name_set))
 
     return legend_df
 
@@ -317,9 +316,6 @@ def map_t_b_intervals(legend_df: G.GeoDataFrame) -> G.GeoDataFrame:
     G.GeoDataFrame: The input frame with a newly filled/created b_interval column.
     """
     interval_df = get_age_interval_df().reset_index(drop=True)
-    interval_df["interval_name"] = interval_df["interval_name"].str.lower()
-    legend_df["age"] = legend_df["age"].str.lower()
-    legend_df["name"] = legend_df["name"].str.lower()
     interval_lookup = {
         row["interval_name"].lower(): row["id"] for _, row in interval_df.iterrows()
     }

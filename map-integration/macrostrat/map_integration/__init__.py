@@ -308,9 +308,10 @@ def staging(
         )
 
     db.run_sql(
-        "UPDATE maps.sources SET scale = :scale WHERE source_id = :source_id",
-        dict(scale="large", source_id=source_id),
+        "UPDATE maps.sources SET scale = :scale, ingested_by = :ingested_by WHERE source_id = :source_id",
+        dict(scale="large", ingested_by="macrostrat-admin",source_id=source_id),
     )
+
 
     db.run_sql(
         """
