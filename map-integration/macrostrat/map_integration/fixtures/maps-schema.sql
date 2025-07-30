@@ -262,7 +262,8 @@ CREATE TABLE maps.sources (
     display_scales text[],
     web_geom public.geometry(Geometry,4326),
     new_priority integer DEFAULT 0,
-    status_code text DEFAULT 'active'::text
+    status_code text DEFAULT 'active'::text,
+    date_added timestamp with time zone DEFAULT now() NOT NULL
 );
 
 
