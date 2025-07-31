@@ -1,6 +1,6 @@
 # Usage Stats
 
-This worker parses the Matomo database and post subsetted logs to the usage_stats schema for **Rockd** and **Macrostrat**
+This worker parses the Matomo database and posts subsetted logs to the usage_stats schema for **Rockd** and **Macrostrat**
 
 ## Requirements
 
