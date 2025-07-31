@@ -43,3 +43,12 @@ CREATE TABLE IF NOT EXISTS ecosystem.people_contributions (
     contribution_id integer NOT NULL REFERENCES ecosystem.contributions(id) ON DELETE CASCADE,
     PRIMARY KEY (person_id, contribution_id)
 );
+
+-- PREPOPULATE ROLES
+INSERT INTO ecosystem.roles (name, description) VALUES
+  ('Student', 'Currently enrolled in an academic program'),
+  ('Researcher', 'Conducts academic or applied research'),
+  ('Developer', 'Writes and maintains software code'),
+  ('Postdoc', 'Postdoctoral researcher working on scholarly projects'),
+  ('Research Scientist', 'Professional researcher involved in scientific work'),
+ON CONFLICT (name) DO NOTHING;
