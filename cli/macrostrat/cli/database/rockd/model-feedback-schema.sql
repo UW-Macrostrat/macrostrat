@@ -7,5 +7,6 @@ CREATE TABLE IF NOT EXISTS public.model_feedback (
     text_appropriateness float,
     image_appropriateness float NOT NULL,
     status_code integer NOT NULL,
-    date_created timestamp with time zone NOT NULL DEFAULT now()
+    date_created timestamp with time zone NOT NULL DEFAULT now(),
+    user_id integer REFERENCES public.peoeple(person_id) ON DELETE CASCADE
 );
