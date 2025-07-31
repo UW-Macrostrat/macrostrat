@@ -29,9 +29,10 @@ async def tile_query(
 
 
     if "type" in request.query_params:
-        type_val = request.query_params["type"]
-        where += " AND type = :type_val"
-        params["type_val"] = type_val
+        type_vals = request.query_params["type"].split(",")
+        type_vals = [v.strip() for v in type_vals if v.strip()]
+        where += " AND type = ANY(:type_vals)"
+        params["type_vals"] = type_vals
 
     if "cluster" in request.query_params:
         cluster_val = request.query_params["cluster"]
