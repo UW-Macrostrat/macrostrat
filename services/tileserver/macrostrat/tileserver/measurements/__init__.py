@@ -19,8 +19,19 @@ async def tile_query(
     """Get a tile from the tileserver."""
     pool = request.app.state.pool
 
+    where = ""
+
+    params = {
+        "z": z,
+        "x": x,
+        "y": y,
+    }
+
+
     if "type" in request.query_params:
         type_val = request.query_params["type"]
+        where += " AND type = :type_val"
+        params["type_val"] = type_val
 
     if "cluster" in request.query_params:
         cluster_val = request.query_params["cluster"]
@@ -29,7 +40,6 @@ async def tile_query(
     else:
         cluster = True
 
-    where = ""
 
     clusterSQL = """
         ,
@@ -74,39 +84,29 @@ async def tile_query(
     query = f"""
         WITH
             tile AS (
-            SELECT ST_TileEnvelope({z}, {x}, {y}) AS envelope,
-                    tile_layers.geographic_envelope({x}, {y}, {z}, 0.01) AS envelope_4326
+                SELECT ST_TileEnvelope(:z, :x, :y) AS envelope,
+                    tile_layers.geographic_envelope(:x, :y, :z, 0.01) AS envelope_4326
             ),
             points AS (
-            SELECT
-                id,
-                sample_name,
-                sample_lith,
-                sample_geo_unit,
-                tile_layers.tile_geom(
-                    ST_Intersection(geometry, envelope_4326),
-                    envelope
-                ) AS geom
-            FROM macrostrat.measuremeta, tile
-            WHERE
-                lat IS NOT NULL AND lng IS NOT NULL
-                AND ST_Intersects(
-                ST_SetSRID(ST_MakePoint(lng, lat), 4326),
-                envelope_4326
-                )
-                {where}
+                SELECT
+                    id,
+                    type,
+                    tile_layers.tile_geom(
+                        ST_Intersection(geometry, envelope_4326),
+                        envelope
+                    ) AS geom
+                FROM macrostrat_api.measurements_with_type
+                JOIN tile ON true
+                WHERE
+                    lat IS NOT NULL AND lng IS NOT NULL
+                    AND ST_Intersects(
+                        ST_SetSRID(ST_MakePoint(lng, lat), 4326),
+                        envelope_4326
+                    )
+                    {where}
             )
-
             {ending}
     """
-
-
-
-    params = {
-        "z": z,
-        "x": x,
-        "y": y,
-    }
 
     q, p = render(query, **params)
     q = q.replace("textarray", "text[]")
