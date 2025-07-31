@@ -1,5 +1,7 @@
-CREATE SCHEMA ecosystem;
+-- SCHEMA
+CREATE SCHEMA IF NOT EXISTS ecosystem;
 
+-- PEOPLE
 CREATE TABLE IF NOT EXISTS ecosystem.people (
     id serial PRIMARY KEY,
     name text NOT NULL,
@@ -7,29 +9,37 @@ CREATE TABLE IF NOT EXISTS ecosystem.people (
     title text NOT NULL,
     website text,
     img_id text,
-    roles integer[] NOT NULL DEFAULT '{}',
     active_start timestamp with time zone NOT NULL DEFAULT now(),
-    active_end timestamp with time zone,
+    active_end timestamp with time zone
 );
 
+-- ROLES
 CREATE TABLE IF NOT EXISTS ecosystem.roles (
     id serial PRIMARY KEY,
     name text NOT NULL UNIQUE,
     description text NOT NULL
 );
 
+-- PEOPLE-ROLES MAPPING
 CREATE TABLE IF NOT EXISTS ecosystem.people_roles (
     person_id integer NOT NULL REFERENCES ecosystem.people(id) ON DELETE CASCADE,
     role_id integer NOT NULL REFERENCES ecosystem.roles(id) ON DELETE CASCADE,
     PRIMARY KEY (person_id, role_id)
 );
 
+-- CONTRIBUTIONS
 CREATE TABLE IF NOT EXISTS ecosystem.contributions (
     id serial PRIMARY KEY,
-    person_id integer NOT NULL REFERENCES macrostrat.people(id) ON DELETE CASCADE,
+    person_id integer NOT NULL REFERENCES ecosystem.people(id) ON DELETE CASCADE,
     contribution text NOT NULL,
-    rockd boolean NOT NULL DEFAULT false,
-    macrostrat boolean NOT NULL DEFAULT false,
+    description text,
     date timestamp with time zone NOT NULL DEFAULT now(),
     url text
+);
+
+-- PEOPLE-CONTRIBUTIONS MAPPING
+CREATE TABLE IF NOT EXISTS ecosystem.people_contributions (
+    person_id integer NOT NULL REFERENCES ecosystem.people(id) ON DELETE CASCADE,
+    contribution_id integer NOT NULL REFERENCES ecosystem.contributions(id) ON DELETE CASCADE,
+    PRIMARY KEY (person_id, contribution_id)
 );
