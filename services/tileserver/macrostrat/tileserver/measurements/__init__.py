@@ -27,7 +27,6 @@ async def tile_query(
         "y": y,
     }
 
-
     if "type" in request.query_params:
         type_vals = request.query_params["type"].split(",")
         type_vals = [v.strip() for v in type_vals if v.strip()]
@@ -40,7 +39,6 @@ async def tile_query(
 
     else:
         cluster = True
-
 
     clusterSQL = """
         ,
