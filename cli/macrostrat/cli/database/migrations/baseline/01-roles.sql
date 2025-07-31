@@ -26,6 +26,13 @@ RETURNS int
 STABLE
 LANGUAGE sql
 AS $$
-  SELECT (current_setting('request.jwt.claims', true)::json ->> 'user_id')::int
+  SELECT (current_setting('request.jwt.claims', true)::json ->> 'user_id')::int;
 $$;
 
+CREATE OR REPLACE FUNCTION current_app_role()          -- returns text
+RETURNS text
+STABLE
+LANGUAGE sql
+AS $$
+  SELECT (current_setting('request.jwt.claims', true)::json ->> 'role')::text;
+$$;
