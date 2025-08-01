@@ -1,5 +1,5 @@
 import re
-from typing import Optional
+from typing import Optional, Tuple
 
 import fiona
 import geopandas as G
@@ -9,7 +9,7 @@ import pyogrio
 from ..database import get_database
 
 
-def extract_gdb_layer(legend_path, layer_name, read_geometry):
+def extract_gdb_layer(meta_path, layer_name, read_geometry) -> Tuple[G.GeoDataFrame, str, str]:
     """Return a GeoDataFrame containing the requested non‑spatial or spatial layer.
     Parameters:
     legend_path: Pathlike or str. Path to the .gdb directory.
@@ -22,35 +22,34 @@ def extract_gdb_layer(legend_path, layer_name, read_geometry):
     """
 
     dmu_layer = None
+    ingest_pipeline = ''
+    comments = ''
+    # we are trying to read all of the non-spatial layers in the .gdb
+    # ingest any non-spatial metadata from .gdb just specify the file name in the re.search function
+    # ex. GeoMaterialDict or DescriptionOfMapUnits
+    # then we merge meta_df into the polygons df on a join_col
+    for name in fiona.listlayers(meta_path):
+        if name in ('DescriptionOfMapUnits', 'GeoMaterialDict', 'DataSources', 'Glossary'):
+            ingest_pipeline = 'Gems pipeline'
+        if re.search(rf"{layer_name}", name, re.IGNORECASE):
+            dmu_layer = name
+    if dmu_layer is None and ingest_pipeline == 'Gems pipeline':
+        comments = f"[yellow]No {layer_name} table found in {meta_path.name}.  Layers:{', '.join(fiona.listlayers(meta_path))}[/yellow]"
+        return None, ingest_pipeline, comments
+    elif dmu_layer is None and ingest_pipeline == '':
+        ingest_pipeline = '.gdb pipeline'
+        comments = 'Basic .gdb ingestion. No gems layers found.'
+        return None, ingest_pipeline, comments
+    meta_df = G.read_file(
+        meta_path,
+        layer=dmu_layer,
+        engine="pyogrio",
+        read_geometry=read_geometry,
+    )
+    return meta_df, ingest_pipeline, comments
 
-    try:
-        # we are trying to read all of the non-spatial layers in the .gdb
-        # ingest any non-spatial metadata from .gdb just specify the file name in the re.search function
-        # ex. GeoMaterialDict or DescriptionOfMapUnits
-        # then we merge legend_df into the polygons df on a join_col
-        for name in fiona.listlayers(legend_path):
-            if re.search(rf"{layer_name}", name, re.IGNORECASE):
-                dmu_layer = name
-        if dmu_layer is None:
-            print(
-                f"[yellow]No {layer_name} table found in "
-                f"{legend_path.name}.  Layers: "
-                f"{', '.join(fiona.listlayers(legend_path))}[/yellow]"
-            )
-            return None
-        legend_df = G.read_file(
-            legend_path,
-            layer=dmu_layer,
-            engine="pyogrio",
-            read_geometry=read_geometry,
-        )
-        return legend_df
-    except ValueError as e:
-        print(f"[red]Error {e}[/red]\n")
-        return None
 
-
-def transform_gdb_layer(legend_df: G.GeoDataFrame) -> G.GeoDataFrame:
+def transform_gdb_layer(meta_df: G.GeoDataFrame) -> Tuple[G.GeoDataFrame, str]:
     """Map column names to Macrostrat standard and concatenate lithology‑related fields.
     Parameters:
     legend_df: G.GeoDataFrame. Raw DMU layer as extracted from extract_gdb_layer().
@@ -60,6 +59,8 @@ def transform_gdb_layer(legend_df: G.GeoDataFrame) -> G.GeoDataFrame:
         (``descrip``, ``strat_name`` …), a single lith column that concatenates lithology descriptors, and
         empty columns removed.
     """
+    comments = ''
+    required_canonical = {"name", "strat_name", "age", "comments", "descrip", "color", "orig_id", "strat_symbol"}
     rename_map = {
         "name": "name",
         "fullname": "strat_name",
@@ -67,33 +68,37 @@ def transform_gdb_layer(legend_df: G.GeoDataFrame) -> G.GeoDataFrame:
         "descriptionofmapunits_id": "orig_id",
         "notes": "comments",
         "label": "strat_symbol",
+        "description": "descrip",
+        "descr": "descrip",
+        "areafillrgb": "color",
+        "rgb": "color",
     }
-    legend_df.columns = legend_df.columns.str.lower()
-    if "description" in legend_df.columns:
-        rename_map["description"] = "descrip"
-    elif "descr" in legend_df.columns:
-        rename_map["descr"] = "descrip"
-    if "areafillrgb" in legend_df.columns:
-        rename_map["areafillrgb"] = "color"
-    elif "rgb" in legend_df.columns:
-        rename_map["rgb"] = "color"
+    meta_df.columns = meta_df.columns.str.lower()
+    meta_df = meta_df.rename(columns={src: dst for src, dst in rename_map.items()
+                                      if src in meta_df.columns})
+    missing_canonical = required_canonical - set(meta_df.columns)
+    if missing_canonical:
+        # which dmu keys would have supplied those canonical fields?
+        missing_sources = {src for src, dst in rename_map.items()
+                           if dst in missing_canonical}
+        comments = f"Gems DMU columns not found: {sorted(missing_sources)}."
 
-    legend_df = legend_df.rename(
-        columns={c: rename_map[c] for c in rename_map if c in legend_df}
-    )
 
-    lith_cols = [c for c in ("generallithology", "geomaterial") if c in legend_df]
+    lithology_candidates = ("generallithology", "geomaterial")
+    lith_cols = [c for c in lithology_candidates if c in meta_df]
     if lith_cols:
-        legend_df["lith"] = (
-            legend_df[lith_cols]
+        meta_df["lith"] = (
+            meta_df[lith_cols]
             .fillna("")
             .agg("; ".join, axis=1)
             .str.strip("; ")
             .replace("", pd.NA)
         )
-        legend_df = legend_df.drop(columns=lith_cols)
-    legend_df = legend_df.dropna(axis=1, how="all")
-    return legend_df
+        meta_df = meta_df.drop(columns=lith_cols)
+    else:
+        comments += f"Missing lithology columns: {lithology_candidates}."
+    meta_df = meta_df.dropna(axis=1, how="all")
+    return meta_df, comments
 
 
 def get_strat_names_df() -> pd.DataFrame:
@@ -212,7 +217,7 @@ def lookup_and_validate_strat_name(
     return pd.NA
 
 
-def map_strat_name(legend_df: G.GeoDataFrame) -> G.GeoDataFrame:
+def map_strat_name(meta_df: G.GeoDataFrame) -> G.GeoDataFrame:
     """
     Update legend_df with a new column 'ranked_strat_name' based on matched strat names.
     Looks for rank words and matches against known stratigraphic names.
@@ -227,17 +232,17 @@ def map_strat_name(legend_df: G.GeoDataFrame) -> G.GeoDataFrame:
     rank_name_df = get_strat_names_df()
     rank_name_set = set(rank_name_df["rank_name"].dropna().unique())
     # check name for matched strat_name
-    legend_df["strat_name"] = legend_df["name"].str.lower().apply(
+    meta_df["strat_name"] = meta_df["name"].str.lower().apply(
         lambda n: lookup_and_validate_strat_name(n, rank_name_set)
     )
 
     # fallback to 'descrip' for missing values
-    needs_fill = legend_df["strat_name"].isna()
-    legend_df.loc[needs_fill, "strat_name"] = legend_df.loc[
+    needs_fill = meta_df["strat_name"].isna()
+    meta_df.loc[needs_fill, "strat_name"] = meta_df.loc[
         needs_fill, "descrip"
     ].str.lower().apply(lambda d: lookup_and_validate_strat_name(d, rank_name_set))
 
-    return legend_df
+    return meta_df
 
 
 def get_age_interval_df() -> pd.DataFrame:
@@ -304,7 +309,7 @@ def lookup_and_validate_age(
 
 # need to modify this logic and maybe need to reference another table besides intervals.
 # look in the name and age column to infer the age
-def map_t_b_intervals(legend_df: G.GeoDataFrame) -> G.GeoDataFrame:
+def map_t_b_intervals(meta_df: G.GeoDataFrame) -> G.GeoDataFrame:
     """Populate the b_interval field using age and name information.
     The function first tries a direct match between legend_df.age and the
     canonical interval list. For formations whose age is not explicit, it scans
@@ -322,8 +327,8 @@ def map_t_b_intervals(legend_df: G.GeoDataFrame) -> G.GeoDataFrame:
 
     # map age fields to b/t intervals
     # must have a match in the macrotrat.intervals dictionary in order to return a valid interval
-    legend_df[["b_interval", "t_interval"]] = (
-        legend_df["age"]
+    meta_df[["b_interval", "t_interval"]] = (
+        meta_df["age"]
         .str.lower()
         .apply(
             lambda n: pd.Series(
@@ -333,9 +338,9 @@ def map_t_b_intervals(legend_df: G.GeoDataFrame) -> G.GeoDataFrame:
         )
     )
     # for the rest of NA's we will map the name field to b/t intervals
-    needs_fill = legend_df["b_interval"].isna()
-    legend_df.loc[needs_fill, ["b_interval", "t_interval"]] = (
-        legend_df.loc[needs_fill, "name"]
+    needs_fill = meta_df["b_interval"].isna()
+    meta_df.loc[needs_fill, ["b_interval", "t_interval"]] = (
+        meta_df.loc[needs_fill, "name"]
         .str.lower()
         .apply(
             lambda n: pd.Series(
@@ -344,4 +349,4 @@ def map_t_b_intervals(legend_df: G.GeoDataFrame) -> G.GeoDataFrame:
             )
         )
     )
-    return legend_df
+    return meta_df
