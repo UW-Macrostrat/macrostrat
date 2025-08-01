@@ -12,3 +12,5 @@ class ColumnBuilderMigration(Migration):
     depends_on = ["macrostrat-core-v2"]
 
     postconditions = [schema_exists("macrostrat_api")]
+
+    always_apply = True
