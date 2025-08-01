@@ -36,9 +36,7 @@ def merge_metadata_polygons(polygon_df, meta_df, join_col) -> G.GeoDataFrame:
     # ensure join column is string for both DataFrames
     polygon_df[join_col] = polygon_df[join_col].astype(str)
     meta_df[join_col] = meta_df[join_col].astype(str)
-    console.print("Polygon df before merging...", polygon_df.columns)
     # merge metadata into geodataframe
-    console.print("Metadata df before merging...", meta_df.columns)
     merged_df = polygon_df.merge(meta_df, on=join_col, how="left", suffixes=("", "_meta"))
     # Drop duplicate columns (after merge)
     return merged_df
@@ -93,14 +91,14 @@ def preprocess_dataframe(
         # streamline the api's and UI for production.
         meta_df, comments = transform_gdb_layer(meta_df)
         if comments != '':
-            state = 'needs review'
+            state = 'pending'
             return polygon_df, ingest_pipeline, comments, state
         meta_df = map_t_b_intervals(meta_df)
         if meta_df["b_interval"].isna().all() and meta_df["t_interval"].isna().all():
             comments = "map_t_b_intervals() function failed. Both b_interval and t_interval are NA."
             state = 'failed'
             return polygon_df, ingest_pipeline, comments, state
-        meta_df, comments = map_strat_name(meta_df)
+        meta_df = map_strat_name(meta_df)
         if meta_df["strat_name"].isna().all():
             comments = "strat_name column needs review. map_strat_name() function did not find any strat_names."
 
@@ -111,7 +109,7 @@ def preprocess_dataframe(
     # merge polygons and metadata dataframes before inserting into the db
     merged_df = merge_metadata_polygons(polygon_df, meta_df, join_col)
     comments += " Successfully merged metadata."
-    state = 'pre-processed'
+    state = 'ingested'
     return merged_df, ingest_pipeline, comments, state
 
 
@@ -204,7 +202,6 @@ def ingest_map(
                 )
 
             success_count += 1
-            console.print()
         except IngestError as e:
             continue
         finally:
@@ -232,15 +229,13 @@ def ingest_map(
             df, ingest_pipeline, comments, state = preprocess_dataframe(df, meta_path=meta_path,
                                                                         join_col=join_col.lower())
             if state == '':
-                state = 'pre-processed'
+                state = 'ingested'
             before = df.columns.tolist()
             df = df.loc[:, ~df.columns.duplicated()]  # <- fix: reassign to merged_df!
             after = df.columns.tolist()
             removed = set(before) - set(after)
             if removed:
                 console.print(f"[yellow]Dropped duplicate columns after merge: {removed}")
-            console.print("df columns after preprocessing: ", df.columns)
-
         console.print(f"[bold]{feature_type}s[/bold] [dim]- {len(df)} features[/dim]")
         # Columns
         console.print("Columns:")

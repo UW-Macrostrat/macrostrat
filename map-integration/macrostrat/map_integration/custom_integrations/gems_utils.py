@@ -60,12 +60,13 @@ def transform_gdb_layer(meta_df: G.GeoDataFrame) -> Tuple[G.GeoDataFrame, str]:
         empty columns removed.
     """
     comments = ''
-    required_canonical = {"name", "strat_name", "age", "comments", "descrip", "color", "orig_id", "strat_symbol"}
+    required_canonical = {"name", "strat_name", "age", "descrip", "color", "strat_symbol"}
     rename_map = {
         "name": "name",
         "fullname": "strat_name",
         "age": "age",
-        "descriptionofmapunits_id": "orig_id",
+        "age_meta": "age",
+        "hierarchykey": "orig_id",
         "notes": "comments",
         "label": "strat_symbol",
         "description": "descrip",
@@ -175,29 +176,20 @@ def lookup_and_validate_strat_name(
             for j in candidate_indices:
                 if 0 <= j < len(tokens):
                     phrase_array.append(tokens[j])
-            print("HERE'S THE PHRASE ARRAY", phrase_array)
             phrase_array_dropped = [
                 word for word in phrase_array if word not in IRRELEVANT_WORDS
             ]
-            print("AFTER irrelevant words are dropped! ", phrase_array_dropped)
-
         elif qualifier == "of" and i + 1 < len(tokens) and tokens[i+1] != "the":
             for j in of_indices:
                 if 0 <= j < len(tokens):
                     phrase_array.append(tokens[j])
-            print("HERE'S THE PHRASE ARRAY", phrase_array)
             phrase_array_dropped = [
                 word for word in phrase_array if word not in IRRELEVANT_WORDS
             ]
-            print("AFTER irrelevant words are dropped! ", phrase_array_dropped)
-
         if len(phrase_array_dropped) > 0:
             strat_name = " ".join(phrase_array).title()
             for word in phrase_array_dropped:
                 if word in VALID_WORDS:
-                    print(f"Match found: strat_name found in VALID_WORDS!")
-                    print("Returning...", strat_name)
-                    print(" ")
                     return strat_name
             for rank_name in rank_name_set:
                 rank_name = rank_name.lower()
@@ -208,11 +200,6 @@ def lookup_and_validate_strat_name(
                 # if match_ratio == 1:
                 # return rank_name
                 if match_ratio >= 0.6:
-                    print(
-                        f"Match found: {match_count} / {len(phrase_array_dropped)} tokens in '{rank_name}'"
-                    )
-                    print("Returning...", strat_name)
-                    print("")
                     return strat_name
     return pd.NA
 
@@ -262,15 +249,23 @@ QUALIFIER_ORDER = {"early": 0, "middle": 1, "late": 2}
 
 
 def lookup_and_validate_age(
-    name: str | float, interval_lookup: dict[str, int]
+    name: str, interval_lookup: dict[str, int]
 ) -> tuple[Optional[int], Optional[int]]:
     """
     Return (b_interval, t_interval) for the first interval(s) found.
     If only one valid interval is found, duplicate it into both slots.
     """
-    # findall() takes the legend_df["name"] and splits each word into an array of strings.
+    s = str(name).lower().replace("–", "-").strip()
+    if "-" in s:
+        left, right = [p.strip() for p in s.split("-", 1)]
+        if left in interval_lookup and right in interval_lookup:
+            return interval_lookup[left], interval_lookup[right]
+        elif left in interval_lookup and right not in interval_lookup:
+            return interval_lookup[left], interval_lookup[left]
+        elif left not in interval_lookup and right in interval_lookup:
+            return interval_lookup[right], interval_lookup[right]
 
-    tokens = re.findall(r"\b\w+\b", str(name).lower())
+    tokens = re.findall(r"\b\w+\b", s)
 
     for i, word in enumerate(tokens):
         qual = "early" if word == "lower" else "late" if word == "upper" else word
@@ -339,14 +334,16 @@ def map_t_b_intervals(meta_df: G.GeoDataFrame) -> G.GeoDataFrame:
     )
     # for the rest of NA's we will map the name field to b/t intervals
     needs_fill = meta_df["b_interval"].isna()
-    meta_df.loc[needs_fill, ["b_interval", "t_interval"]] = (
-        meta_df.loc[needs_fill, "name"]
-        .str.lower()
-        .apply(
-            lambda n: pd.Series(
-                lookup_and_validate_age(n, interval_lookup),
-                index=["b_interval", "t_interval"],
+
+    if needs_fill.any():
+        meta_df.loc[needs_fill, ["b_interval", "t_interval"]] = (
+            meta_df.loc[needs_fill, "name"]
+            .str.lower()
+            .apply(
+                lambda n: pd.Series(
+                    lookup_and_validate_age(n, interval_lookup),
+                    index=["b_interval", "t_interval"],
+                )
             )
         )
-    )
     return meta_df
