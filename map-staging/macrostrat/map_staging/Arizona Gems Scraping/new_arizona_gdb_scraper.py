@@ -1,7 +1,10 @@
-import requests, time, os
-from bs4 import BeautifulSoup
-from urllib.parse import urljoin, urlparse, unquote
+import os
 import random
+import time
+from urllib.parse import unquote, urljoin, urlparse
+
+import requests
+from bs4 import BeautifulSoup
 from tqdm import tqdm
 
 BASE_URL = "https://repository.arizona.edu"
@@ -32,7 +35,7 @@ def get_soup(url, retries=5):
             time.sleep(1.0)
             resp = requests.get(url)
             if resp.status_code == 429:
-                delay = 30 * (2 ** attempt)
+                delay = 30 * (2**attempt)
                 print(f"429 Too Many Requests: {url}, retrying in {delay} seconds...")
                 time.sleep(delay)
                 continue
@@ -40,7 +43,7 @@ def get_soup(url, retries=5):
             return BeautifulSoup(resp.text, "html.parser")
         except requests.exceptions.HTTPError as e:
             if resp.status_code == 429:
-                delay = 30 * (2 ** attempt)
+                delay = 30 * (2**attempt)
                 print(f"Retrying {url} after {delay}s (attempt {attempt + 1})")
                 time.sleep(delay)
                 continue
@@ -49,7 +52,9 @@ def get_soup(url, retries=5):
     raise Exception(f"Failed to fetch {url} after {retries} retries")
 
 
-def get_all_item_links(start_url, total_items=1700, per_page=100, cache_file="scraped_item_links.txt"):
+def get_all_item_links(
+    start_url, total_items=1700, per_page=100, cache_file="scraped_item_links.txt"
+):
     if os.path.exists(cache_file):
         print(f"Loading item links from cache: {cache_file}")
         with open(cache_file) as f:
@@ -60,10 +65,14 @@ def get_all_item_links(start_url, total_items=1700, per_page=100, cache_file="sc
         soup = get_soup(page_url)
         time.sleep(3.0)
 
-        sel = soup.select("div.artifact-title a") or soup.select("a.artifact-title") or soup.select("div.ds-artifact-item a")
+        sel = (
+            soup.select("div.artifact-title a")
+            or soup.select("a.artifact-title")
+            or soup.select("div.ds-artifact-item a")
+        )
         for a in sel:
-            href = a.get('href')
-            if href and '/handle/' in href:
+            href = a.get("href")
+            if href and "/handle/" in href:
                 full_url = urljoin(BASE_URL, href)
                 links.append(full_url)
         print(f"Page offset={offset}, found {len(sel)} links")
@@ -78,7 +87,7 @@ def get_all_item_links(start_url, total_items=1700, per_page=100, cache_file="sc
 def download_gdb_zips(item_url):
     soup = get_soup(item_url)
     download_links = soup.select("a[href*='.gdb.zip']")
-    download_urls = {urljoin(BASE_URL, a['href']) for a in download_links}
+    download_urls = {urljoin(BASE_URL, a["href"]) for a in download_links}
     print(f"Checking {item_url} - found {len(download_links)} .gdb.zip links")
     for file_url in download_urls:
         parsed = urlparse(file_url)
@@ -99,7 +108,7 @@ def download_gdb_zips(item_url):
             time.sleep(1.0)
             with requests.get(file_url, stream=True, timeout=30) as r:
                 r.raise_for_status()
-                with open(out_path, 'wb') as f:
+                with open(out_path, "wb") as f:
                     for chunk in r.iter_content(8192):
                         f.write(chunk)
 
@@ -108,6 +117,7 @@ def download_gdb_zips(item_url):
             downloaded_filenames.add(filename)
         except Exception as e:
             print(f"Download failed for {filename}: {e}")
+
 
 def deduplicate_file(path):
     if os.path.exists(path):
@@ -119,7 +129,7 @@ def deduplicate_file(path):
 
 
 if __name__ == "__main__":
-    #deduplicate_file("scraped_item_links.txt")
+    # deduplicate_file("scraped_item_links.txt")
     item_pages = get_all_item_links(START_URL)
     for idx, item in enumerate(tqdm(item_pages, desc="Items")):
         if item in visited_urls:
