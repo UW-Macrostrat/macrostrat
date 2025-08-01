@@ -1,3 +1,12 @@
+/** TODO:
+  - original_num is not used
+  - is_standard is not used
+  - max_depth is not used
+  - composite_height_m is not used
+
+  These values can be pulled in from the sample table instead...
+ */
+
 WITH a AS (SELECT
              s.sample_id,
              s.original_num,
