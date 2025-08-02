@@ -1,0 +1,8 @@
+.node_modules
+__pycache__/
+*.pyc
+*.parcel-cache
+dist
+.env
+.vscode/
+dev.yaml

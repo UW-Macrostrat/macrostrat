@@ -1,0 +1,14 @@
+##  libraries in my conda environement
+
+click
+pandas
+psycopg2-binary
+pylint
+pyparsing
+pyshp
+requests
+simplejson
+SQLAlchemy
+sqlparse
+starlette
+uvicorn

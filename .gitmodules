@@ -7,3 +7,6 @@
 [submodule "submodules/storage-admin"]
 	path = submodules/storage-admin
 	url = https://github.com/UW-Macrostrat/radosgw_admin_client
+[submodule "postgis-geologic-map"]
+	path = services/column-footprint-editor/postgis-geologic-map
+	url = https://github.com/davenquinn/postgis-geologic-map.git
