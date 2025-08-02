@@ -1,5 +1,6 @@
-from starlette.config import Config
 from os import path
+
+from starlette.config import Config
 
 config = Config(".env")
 
