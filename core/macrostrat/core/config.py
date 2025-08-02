@@ -1,14 +1,13 @@
 from os import environ
-from pathlib import Path
 
 from dotenv import load_dotenv
 from dynaconf import Dynaconf, Validator
+from macrostrat.app_frame.control_command import BackendType
+from macrostrat.utils import get_logger
+from pathlib import Path
 from sqlalchemy.engine import make_url
 from sqlalchemy.engine.url import URL
 from toml import load as load_toml
-
-from macrostrat.app_frame.control_command import BackendType
-from macrostrat.utils import get_logger
 
 from .resolvers import cast_sources, setup_source_roots_environment
 from .utils import convert_to_string, find_macrostrat_config, path_list_resolver
@@ -89,6 +88,9 @@ macrostrat_env = getattr(settings, "env", "default")
 if env_files := getattr(settings, "env_files", None):
     for env in env_files:
         log.info(f"Loading environment variables from {env}")
+        # Resolve env file from settings path
+        if not Path(env).is_absolute():
+            env = settings.config_file.parent / env
         load_dotenv(env)
 
 # Validate settings

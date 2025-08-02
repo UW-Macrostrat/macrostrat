@@ -8,7 +8,7 @@ class MapsSourcesMetadataMigration(Migration):
     Create views for sources_metadata and ingest_process in the maps and macrostrat_api schemas
     """
 
-    depends_on = ["api-v3", "column-builder"]
+    depends_on = ["api-v3"]
 
     postconditions = [
         view_exists("maps", "sources_metadata", "ingest_process"),
