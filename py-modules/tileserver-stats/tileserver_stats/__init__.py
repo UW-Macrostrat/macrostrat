@@ -17,7 +17,7 @@ app.command()
 
 
 @app.command()
-def run():
+def run(truncate: bool = False):
     """Run the update procedure."""
     tileserver_db = environ.get("TILESERVER_STATS_DATABASE")
     db = Database(tileserver_db)
@@ -41,6 +41,9 @@ def run():
         print(f"{res.last_row_id} ({dt*1000:.0f} ms)")
         step = next_step
 
+    if truncate and n_results == 0:
+        conn.execute(text("TRUNCATE TABLE requests"))
+
     print(f"Total time: {datetime.now() - start}")
 
 
@@ -52,6 +55,19 @@ def reset(drop: bool = False):
 
     if drop:
         db.engine.execute("DROP SCHEMA IF EXISTS stats CASCADE")
+
+    files = Path(relative_path(__file__, "schema")).glob("*.sql")
+    files = list(files)
+    files.sort()
+
+    for file in files:
+        list(db.run_sql(file))
+
+@app.command()
+def truncate():
+    """Create the stats schema."""
+    tileserver_db = environ.get("TILESERVER_STATS_DATABASE")
+    db = Database(tileserver_db)
 
     files = Path(relative_path(__file__, "schema")).glob("*.sql")
     files = list(files)
