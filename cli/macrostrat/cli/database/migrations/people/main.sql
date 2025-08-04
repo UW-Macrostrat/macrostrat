@@ -52,3 +52,13 @@ INSERT INTO ecosystem.roles (name, description) VALUES
   ('Leader', 'Leads research or development projects and mentors others'),
   ('Collaborator', 'Contributes to joint projects'),
 ON CONFLICT (name) DO NOTHING;
+
+-- Make it writeable by admins
+GRANT SELECT, UPDATE ON ecosystem.people TO web_admin;
+GRANT SELECT, UPDATE ON ecosystem.roles TO web_admin;
+GRANT SELECT, UPDATE ON ecosystem.contributions TO web_admin;
+GRANT SELECT, UPDATE ON ecosystem.people_roles TO web_admin;
+GRANT SELECT, UPDATE ON ecosystem.people_contributions TO web_admin;
+
+-- Make pg api writeable by admins
+GRANT SELECT, UPDATE ON macrostrat_api.people TO web_admin;
