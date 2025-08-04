@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS ecosystem.people (
     title text NOT NULL,
     website text,
     img_id text,
-    active_start timestamp with time zone NOT NULL DEFAULT now(),
+    active_start timestamp with time zone DEFAULT now(),
     active_end timestamp with time zone
 );
 
