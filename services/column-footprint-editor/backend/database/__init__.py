@@ -25,21 +25,21 @@ project_table = fixtures / "projects_table.sql"
 
 
 class Database:
-    """ 
+    """
     Database class with built in SQL Formatter
     """
 
-    def __init__(self, project = None):
+    def __init__(self, project=None):
         self.project_id = getattr(project, "id", None)
         self.engine = create_engine(DATABASE, echo=True)
         self.Session = sessionmaker(bind=self.engine)
         self.config = config_check(project)
         self.formatter = SqlFormatter(self.project_id)
-    
+
     def run_sql(self, sql, params={}, **kwargs):
         sql = self.formatter.sql_config_format(sql, self.config)
         return run_sql(sql, params=params, session=self.Session(), **kwargs)
-    
+
     def exec_sql(self, sql, params=None, count=None):
         sql = self.formatter.sql_config_format(sql, self.config)
         res = None
@@ -55,14 +55,14 @@ class Database:
         sql = open(sql_file).read()
 
         return self.run_sql(sql, params=params, **kwargs)
-    
+
     def exec_query(self, filename_or_query, **kwargs):
         """
-            Returns a Pandas DataFrame from a SQL query
-            need to pass query as sql
+        Returns a Pandas DataFrame from a SQL query
+        need to pass query as sql
         """
-        from pandas import read_sql        
-    
+        from pandas import read_sql
+
         if "SELECT" in str(filename_or_query):
             # We are working with a query string instead of
             # an SQL file.
@@ -74,11 +74,11 @@ class Database:
             sql = self.formatter.sql_config_format(sql, self.config)
 
         return read_sql(sql, self.engine, **kwargs)
-    
+
     #################### db initialization methods ##########################
     def create_project_table(self):
         self.run_sql_file(project_table)
-              
+
     #################### db procedure methods ###############################
     def clean_topology(self):
         self.update_topology()
@@ -91,19 +91,19 @@ class Database:
         run_docker_config(self.project_id, "create_tables")
         self.run_sql_file(create_core_table)
         self.create_map_face_view()
-    
+
     def clear_project_data(self):
         self.run_sql_file(clear_project_data_sql)
-    
-    def insert_project_data(self, params={}, no_location = False):
+
+    def insert_project_data(self, params={}, no_location=False):
         if no_location:
             self.run_sql_file(project_insert_no_location, params=params)
         else:
             self.run_sql_file(project_insert_sql, params=params)
-    
+
     def insert_project_info(self, params={}):
         self.run_sql_file(project_info_insert, params=params)
-    
+
     def insert_project_column_group(self, params={}):
         sql = """INSERT INTO ${project_schema}.column_groups(col_group_id, col_group, col_group_name) VALUES(
             :col_group_id, :col_group, :col_group_name);"""
@@ -111,17 +111,17 @@ class Database:
 
     def on_project_insert(self):
         self.run_sql_file(on_project_insert_sql)
-    
+
     def create_map_face_view(self):
         self.run_sql_file(create_view_sql)
-    
+
     def redump_linework_from_edge(self):
         self.run_sql_file(redump_linework_sql)
 
     def remove_project(self, params={}):
-        run_docker_config(self.project_id, "delete") # delete topology
-        self.run_sql_file(remove_project_schema, params={"project_id": self.project_id}) 
-        delete_config(self.project_id) # remove config file
+        run_docker_config(self.project_id, "delete")  # delete topology
+        self.run_sql_file(remove_project_schema, params={"project_id": self.project_id})
+        delete_config(self.project_id)  # remove config file
 
     ################## db topology methods ##############################
 
@@ -129,36 +129,37 @@ class Database:
         run_docker_config(self.project_id, "update")
 
     ###################### Project-Free methods ########################
-    
+
     def get_project_info(self):
         query = "SELECT * FROM projects;"
         return self.exec_query(query).to_dict(orient="records")
-    
-    def get_next_project_id(self):
-        """ function to get the next project id that won't conflict with macrostrat """
-        # TODO: unhardcode the max int for project id
-        sql = '''SELECT max(project_id), 'imported' origin from projects WHERE project_id < 50
-                 UNION ALL
-                 SELECT max(project_id), 'all' origin from projects;'''
 
-        data = self.exec_query(sql).to_dict(orient='records')
-        imported_max_id = data[0]['max']
-        all_max_id = data[1]['max']
+    def get_next_project_id(self):
+        """function to get the next project id that won't conflict with macrostrat"""
+        # TODO: unhardcode the max int for project id
+        sql = """SELECT max(project_id), 'imported' origin from projects WHERE project_id < 50
+                 UNION ALL
+                 SELECT max(project_id), 'all' origin from projects;"""
+
+        data = self.exec_query(sql).to_dict(orient="records")
+        imported_max_id = data[0]["max"]
+        all_max_id = data[1]["max"]
         if imported_max_id == all_max_id:
             return imported_max_id + 1000
         else:
             return all_max_id + 1
+
     def get_next_col_group_id(self):
-        """ function to get the next project id that won't conflict with macrostrat """
+        """function to get the next project id that won't conflict with macrostrat"""
         # TODO: unhardcode the max int for project id
         # WARNING: Now this isn't going to be conflict free. Because we split the tables up
-        sql = '''SELECT max(col_group_id), 'imported' origin from ${project_schema}.column_groups WHERE col_group_id < 5000
+        sql = """SELECT max(col_group_id), 'imported' origin from ${project_schema}.column_groups WHERE col_group_id < 5000
                  UNION ALL
-                 SELECT max(col_group_id), 'all' origin from ${project_schema}.column_groups;'''
+                 SELECT max(col_group_id), 'all' origin from ${project_schema}.column_groups;"""
 
-        data = self.exec_query(sql).to_dict(orient='records')
-        imported_max_id = data[0]['max']
-        all_max_id = data[1]['max']
+        data = self.exec_query(sql).to_dict(orient="records")
+        imported_max_id = data[0]["max"]
+        all_max_id = data[1]["max"]
         if imported_max_id is None or all_max_id is None:
             return 5000
         if imported_max_id == all_max_id:
