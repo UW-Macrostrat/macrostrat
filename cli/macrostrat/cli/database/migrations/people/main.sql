@@ -53,12 +53,9 @@ INSERT INTO ecosystem.roles (name, description) VALUES
   ('Collaborator', 'Contributes to joint projects'),
 ON CONFLICT (name) DO NOTHING;
 
--- Make it writeable by admins
-GRANT SELECT, UPDATE ON ecosystem.people TO web_admin;
-GRANT SELECT, UPDATE ON ecosystem.roles TO web_admin;
-GRANT SELECT, UPDATE ON ecosystem.contributions TO web_admin;
-GRANT SELECT, UPDATE ON ecosystem.people_roles TO web_admin;
-GRANT SELECT, UPDATE ON ecosystem.people_contributions TO web_admin;
+-- DEFAULT PRIVILEGES
+ALTER DEFAULT PRIVILEGES IN SCHEMA ecosystem
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO web_admin;
 
--- Make pg api writeable by admins
+-- Macrostrat API Permissions
 GRANT SELECT, UPDATE ON macrostrat_api.people TO web_admin;
