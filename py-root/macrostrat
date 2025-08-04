@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+
+# This command is deprecated, go to the actual one
+
+# THIS FILE LOCATION
+this_file=$(readlink -f "${BASH_SOURCE[0]}")
+BIN_DIR="$(cd "$(dirname "$this_file")" && cd ../bin && pwd)"
+
+export MACROSTRAT_SHOULD_REINSTALL="Your macrostrat command should be relinked."
+$BIN_DIR/macrostrat "$@"
+

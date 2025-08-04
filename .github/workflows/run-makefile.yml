@@ -1,0 +1,33 @@
+name: Install and run `macrostrat` test suite
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  install-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Set up Python and Poetry
+      uses: abatilo/actions-poetry@v2
+      with:
+        poetry-version: "1.8.2"
+
+    - name: Install system dependencies (GDAL)
+      run: |
+        sudo apt update
+        sudo apt install -y gdal-bin libgdal-dev python3-dev
+
+    - name: Install dependencies and build macrostrat
+      run: make all
+
+    - name: Run macrostrat tests
+      run: make test

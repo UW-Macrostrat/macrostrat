@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+instance=${1:-"development"}
+shift
+
+kubectl logs -f $(kubectl get pods -l instance=$instance,component=api -o jsonpath='{.items[*].metadata.name}') $@

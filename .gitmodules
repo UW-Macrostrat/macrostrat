@@ -1,3 +1,12 @@
 [submodule "postgis-geologic-map"]
 	path = services/column-footprint-editor/postgis-geologic-map
 	url = https://github.com/davenquinn/postgis-geologic-map.git
+[submodule "deps/topology-manager"]
+	path = submodules/topology-manager
+	url = https://github.com/Mapboard/topology-manager.git
+[submodule "submodules/postgis-tile-utils"]
+	path = submodules/postgis-tile-utils
+	url = https://github.com/UW-Macrostrat/postgis-tile-utils
+[submodule "submodules/storage-admin"]
+	path = submodules/storage-admin
+	url = https://github.com/UW-Macrostrat/radosgw_admin_client

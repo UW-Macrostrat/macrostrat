@@ -1,0 +1,45 @@
+#!bash -e
+
+load_sources=0
+load_carto=0
+# Load sources if specified
+
+for arg in "$@"; do
+  if [ "$arg" = "--sources" ]; then
+    load_sources=1
+  elif [ "$arg" = "--carto" ]; then
+    load_carto=1
+  elif [ "$arg" = "--all" ]; then
+    load_sources=1
+    load_carto=1
+  fi
+done
+
+if [ $load_sources -eq 0 ] && [ $load_carto -eq 0 ]; then
+  echo "Specify '--sources', '--carto', or '--all' to load"
+  exit 1
+fi
+
+# Load carto data
+
+if [ $load_carto -eq 1 ]; then
+  echo "Loading Macrostrat maps schema from steno"
+  strat copy-data --schema=maps
+
+  echo "Loading Macrostrat carto data from steno"
+  strat copy-data --schema=carto_new
+
+  echo "Loading Macrostrat lines schema from steno"
+  strat copy-data -t line_ids # For some reason the sequence is separate here
+  strat copy-data --schema=lines
+
+  # Upgrade the database to conform to the latest schemas
+  strat upgrade-db
+fi
+
+if [ $load_sources -eq 1 ]; then
+  echo "Loading Macrostrat sources schema from steno"
+  strat copy-data --schema=sources
+fi
+
+

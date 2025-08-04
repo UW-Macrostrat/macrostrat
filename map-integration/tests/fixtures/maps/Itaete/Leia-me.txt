@@ -1,0 +1,40 @@
+INFORMAÇÕES DO PRODUTO 
+
+Projeto: Mapeamento Geológico e Integração Geológica-Geofísica da Região de Contendas-Macajuba, Bahia (Projeto Contendas-Macajuba)
+
+Arquivos vetoriais (shp) da Carta geológica da folha SD.24-V-A-VI - Itaetê
+Escala 1:100.000,
+Sistema de Coordenadas Geográficas, Datum SIRGAS - 2000. (EPSG - 4674)
+Data da Publicação:06/03/2025
+
+
+1 - Informações sobre a Estratigrafia
+
+a) Os atributos contidos na Estratigrafia foram extraídos do GEOSGB em 06/02/2025.
+
+Base Geológica: Cartografia geológica gerada a partir da coleta sistemática de dados em campo, integrada às informações consistidas da literatura, interpretação de produtos de sensoriamento remoto (imagens satelitais e/ou fotografias aéreas), inclusive imagens aerogeofísicas, e demais dados disponíveis e/ou adquiridos no projeto, tais como geocronologia, petrografia e geoquímica.
+
+b) Os arquivos de estilo *Sld (OGC® Styled Layer Descriptor), *QML (QGIS - Open Source Geographic Information System - Versão do QGIS - 3.16.9-Hannover) e *lyr/lyrx (ESRI© - LayerFile - ArcGis - Versão 10.1 e ArcGIS Pro 2.8), da camada de Litoestratigrafia, estão localizados na pasta Estratigrafia.
+
+OBS: As cores das unidades estratigráficas podem apresentar divergências em áreas limites quando associadas a outras folhas vizinhas de períodos, projetos e/ou temas diferentes, pois elas representam as cores extraídas dos seus respectivos mapas.
+
+O Serviço Geológico do Brasil - CPRM, dispõem de uma biblioteca com simbologias integradas das unidades estratigráficas do Brasil, onde as cores são definidas a partir da ordem de chegada dos mapas, assumindo a cor do mapa mais antigo.
+
+Para fazer o download das bibliotecas clique em: https://geosgb.sgb.gov.br/geosgb/simbologia.html
+
+
+2 - Informações sobre os Afloramentos
+
+a) Os atributos contidos nos Afloramentos foram extraídos da base "Aflora" do GEOSGB em 20/12/2024.
+
+
+3 - Informações sobre Ocorrências Minerais 
+
+a) A camada "itaete_folha_SD24VAVI_recmin.shp" contém os dados de ocorrências minerais extraídos da base em 20/12/2024, cadastrados no projeto "Mapeamento Geológico e Integração Geológica-Geofísica da Região de Contendas-Macajuba, Bahia (Projeto Contendas-Macajuba)" (dados cadastrados em 2021).
+
+
+4 - Base Cartográfica
+
+Base planimétrica elaborada a partir dos arquivos fornecidos pela Superintendência de Estudos Econômicos e Sociais da Bahia – SEI, referente à folha Itaetê (SD.24-V-A-VI), 1976, Superintendência do Desenvolvimento do Nordeste – SUDENE, escala 1:100.000, ajustada às imagens do Mosaico GeoCover – 2.000, ortorretificado e georreferenciado segundo o datum SIRGAS 2000, de imagens ETM + do Landsat 7 resultantes da fusão das bandas 7, 4, 2 e 8, com resolução espacial de 14,25 metros. Esta base foi editada e atualizada pela Superintendência Regional de Salvador, com o apoio da Gerência de Relações Institucionais e Desenvolvimento, para atender ao mapeamento temático do Serviço Geológico do Brasil.
+
+Para mais informações: https://rigeo.sgb.gov.br/handle/doc/25293

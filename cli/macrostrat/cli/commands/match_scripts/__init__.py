@@ -1,0 +1,1 @@
+from .fossils_strat_names import FossilsStratNames as fossils_strat_names

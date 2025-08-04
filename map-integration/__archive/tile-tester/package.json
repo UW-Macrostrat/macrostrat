@@ -1,0 +1,23 @@
+{
+  "name": "tile-tester",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "author": "John J Czaplewski <jczaplew@gmail.com>",
+  "license": "ISC",
+  "dependencies": {
+    "@turf/random": "^4.2.0",
+    "@turf/sample": "^4.2.0",
+    "@turf/within": "^4.2.0",
+    "express": "^4.14.0",
+    "mapnik": "^3.5.14",
+    "tilestrata": "^2.0.2",
+    "tilestrata-etag": "^0.1.1",
+    "tilestrata-mapnik": "^0.4.1",
+    "tilestrata-vtile": "^0.5.3"
+  }
+}

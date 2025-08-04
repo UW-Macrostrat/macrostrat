@@ -1,0 +1,728 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><!--[if lt IE 7]>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="ja" xml:lang="ja" id=ie6 class="no-js ie6 lt-ie9 lt-ie8 lt-ie7"><![endif]--><!--[if IE 7]>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="ja" xml:lang="ja" id=ie7 class="no-js ie7 lt-ie9 lt-ie8">       <![endif]--><!--[if IE 8]>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="ja" xml:lang="ja" id=ie8 class="no-js ie8 lt-ie9">              <![endif]--><!--[if gt IE 8]><!-->
+<html xmlns="http://www.w3.org/1999/xhtml" lang="ja" xml:lang="ja"        class="no-js">                     <!--<![endif]-->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta name="description" content="Understanding and living with the Earth" />
+
+<meta name="keywords" content="geology, geological map, gology map, geological survey of japan, map, geo, gsj, jishin, kazan, tsunami" />
+
+
+
+<link rel="stylesheet" type="text/css" href="../css/style2017.css" media="screen" />
+<link rel="stylesheet" type="text/css" href="../common/css/import.css" media="screen" />
+<link rel="stylesheet" type="text/css" href="../common/css/print.css" media="print" />
+<link rel="stylesheet" href="colorbox.css" />
+<script src="../js/jquery.min.js"></script>
+<script src="../js/jquery.colorbox.js"></script>
+<script>
+$(document).ready(function(){
+	//Examples of how to assign the Colorbox event to elements
+	$(".group1").colorbox({rel:'group1'});
+	$(".group2").colorbox({rel:'group2'});
+	$(".group3").colorbox({rel:'group3'});
+	$(".iframe").colorbox({iframe:true, width:"55%", height:"75%"});
+	$(".callbacks").colorbox({
+		onOpen:function(){ alert('onOpen: colorbox is about to open'); },
+		onLoad:function(){ alert('onLoad: colorbox has started to load the targeted content'); },
+		onComplete:function(){ alert('onComplete: colorbox has displayed the loaded content'); },
+		onCleanup:function(){ alert('onCleanup: colorbox has begun the close process'); },
+		onClosed:function(){ alert('onClosed: colorbox has completely closed'); }
+	});
+
+	$('.non-retina').colorbox({rel:'group5', transition:'none'})
+	$('.retina').colorbox({rel:'group5', transition:'none', retinaImage:true, retinaUrl:true});
+	
+	//Example of preserving a JavaScript event for inline calls.
+	$("#click").click(function(){ 
+		$('#click').css({"background-color":"#f00", "color":"#fff", "cursor":"inherit"}).text("Open this window again and this message will still be here.");
+		return false;
+	});
+	});
+</script>
+
+<style type="text/css">
+#outerImageContainer {
+    -moz-border-radius-topleft: 10px;
+    -moz-border-radius-topright: 10px;
+}
+#imageDataContainer {
+    -moz-border-radius-bottomleft: 10px;
+    -moz-border-radius-bottomright: 10px;
+}
+</style>
+
+
+<script src="../common/js/modernizr.min.js" type="text/javascript"></script><script type="text/javascript">
+void function(global, document, Modernizr) { "use strict";
+  global.googleSearchIframeName = "cse-search-results";
+  global.googleSearchFormName   = "cse-search-box";
+  global.googleSearchFrameWidth = 600;
+  global.googleSearchDomain     = "www.google.com";
+  global.googleSearchPath       = "/cse";
+
+  Modernizr.load([
+    {
+      //test: !/(?:^|\s+)lt-ie9(?:\s+|$)/.test(document.getElementsByTagName("html")[0].className),
+      test: document.getElementsByTagName("html")[0].className.indexOf(" lt-ie9 ") < 0,
+      //yep:  "//ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js",
+      yep:  "../common/js/jquery.min.js",
+      nope: [
+        //"//ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js",
+        "../common/js/jquery-3.7.1.min.js"/*,
+        "../common/js/jquery-migrate.min.js"*/
+      ]/*,
+      complete: function() { global.jQuery || Modernizr.load("../common/js/jquery-3.7.1.min.js") }*/
+    },
+    [
+      "../common/js/jquery.cookie.min.js",
+      "../common/js/jquery.scrollTo.min.js"
+    ],
+    {
+
+
+      load: "/common/js/ecommon.js"
+    }
+  ]);
+}(this, this.document, this.Modernizr);
+</script>
+
+<title>Geological Survey of Japan, AIST : Catalogue of Geological Maps</title>
+</head>
+<body id="blog264" class="second">
+<ul id="skip">
+  <li><a href="#main">To content</a></li>
+</ul>
+<div id="container">
+  <div id="header" class="clearfix">
+    <h1><a href="../../HomePageJP.html"><img src="../common/images/logo.jpg" width="260" height="66" alt="Geological Survey of Japan" /></a></h1>
+    <div id="headerinfo">
+    <div id="headersection">
+    <ul id="hNav" class="clearfix">
+<!--âContactâ--><li><a href="../../inquiryEN.html" target="_blank">Contact</a></li>
+<!--âSite Mapâ--><li><a href="../../sitemap.html">Site Map</a></li>
+<!--âLocationâ--><li><a href="http://www.aist.go.jp/aist_e/guidemap/index.html" target="_blank">Location</a></li>
+<!--âJapaneaseâ--><li><a href="../../HomePageJP.html">Japanese</a></li>
+    </ul>
+    </div>
+    <!--div id="pageUtility" class="clearfix">
+<script>
+  (function() {
+    var cx = '004083589015928335565:ksyujbbswow';
+    var gcse = document.createElement('script');
+    gcse.type = 'text/javascript';
+    gcse.async = true;
+    gcse.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') +
+        '//www.google.com/cse/cse.js?cx=' + cx;
+    var s = document.getElementsByTagName('script')[0];
+    s.parentNode.insertBefore(gcse, s);
+  })();
+</script>
+<gcse:searchbox-only></gcse:searchbox-only>
+    </div-->
+    </div>     <ul id="gnavi">
+      <li class="toppage_en"><a href="../../en/index.html"><img src="../common/images/gnaviE01_f.jpg" width="91" height="18" alt="GSJ Toppage" /></a></li>
+     <li><a href="../../en/about/index.html"><img src="../common/images/gnaviE02_f.jpg" width="100" height="18" alt="AboutGSJ" /></a></li>
+     <li><a href="../../en/research/index.html"><img src="../common/images/gnaviE03_f.jpg" width="100" height="18" alt="OurResearch" /></a></li>
+     <li><a href="../../en/publications/index.html"><img src="../common/images/gnaviE04_f.jpg" width="173" height="18" alt="Publications and Maps" /></a></li>
+     <li><a href="../../en/hazards/index.html"><img src="../common/images/gnaviE05_f.jpg" width="137" height="18" alt="Geological Hazards" /></a></li>
+     <li><a href="../../en/education/index.html"><img src="../common/images/gnaviE06_f.jpg" width="150" height="18" alt="Learning and Education" /></a></li>
+    </ul>
+<!-- /header -->
+  </div>
+<div id="topicpath">
+  <ul>
+    <li><a href="../../en/index.html">GSJ HOME</a>&nbsp;&gt;&nbsp;</li>
+<li><a href="../index_e.html">Catalogue of Geological Maps</a>&nbsp;&gt;&nbsp;</li><li><a href="geology.html">Geology</a>&nbsp;&gt;&nbsp;</li><li><a href="geology4.html">Quadrangle Series 1:50,000</a>&nbsp;&gt;&nbsp;</li><li> 7. NIIGATA</li>
+  </ul>
+</div>
+<div id="content" class="clearfix">
+  <div id="wrap2" class="clearfix">
+    <div id="main" class="clearfix">
+		
+        <h2>Quadrangle Series 1:50,000</h2>
+        
+		
+<h3> 7. NIIGATA</h3>
+      
+
+<table class="article03">
+<tbody>
+<tr>
+<td colspan="3">
+<img src="../indexmap/50k_07-E.jpg" width="700" height="500" alt="Index Map" usemap="#Map" /><br />
+* Region unpublished that has no color.
+</td>
+</tr>
+<tr>
+<th>Thumbnail image</th>
+<td width="200" valign="top" align="center"><strong>Map Name</strong><br />Prices shown are print media prices (tax included).</td>
+<td width="340" valign="top" align="center"><strong>Downloads</strong> <a class="iframe" href="download.html">Notes on use (license)</a><br />[dd.mm.yyyy] is the data update date</td>
+</tr><tr>
+<th><a id="07009" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -008, 009    NIIGATA AND UCHINO" href="../jpeg/50k/50k_07008-009.jpg"><img src="../imgs/5man/07/07_008-009.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_009.htm"><strong>NIIGATA AND UCHINO</strong></a><br />07-008, 009<br />Pub : 2016<br />Price : &#165;2,420</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07009_2016_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 5.7 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07009_2016.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 50 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07009_2016_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 43 MB)</td>
+</tr><tr>
+</tr><tr>
+<th><a id="07011" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -011    IIDE SAN" href="../jpeg/50k/50k_07011.jpg"><img src="../imgs/5man/07/07_011.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_011.htm"><strong>IIDE SAN</strong></a><br />07-011<br />Pub : 1996<br />Price : &#165;3,300</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07011_1996_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 2.9 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07011_1996.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 36 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07011_1996_V01.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 2.3 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07011_1996_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 6.4 MB)</td>
+</tr><tr>
+<th><a id="07012" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -012    TAMANIWA" href="../jpeg/50k/50k_07012.jpg"><img src="../imgs/5man/07/07_012.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_012.htm"><strong>TAMANIWA</strong></a><br />07-012<br />Pub : 1998<br />Price : &#165;4,730</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07012_1998_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 3.5 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07012_1998.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 40 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07012_1998_V01.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 7.4 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07012_1998_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 8.0 MB)</td>
+</tr><tr>
+<th><a id="07016" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -016    KAKUDA" href="../jpeg/50k/50k_07016.jpg"><img src="../imgs/5man/07/07_016.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_016.htm"><strong>KAKUDA</strong></a><br />07-016<br />Pub : 1988<br />Price : &#165;3,080</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07016_1988_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 2.9 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07016_1988.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 35 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07016_1988_V01.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 7.0 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07016_1988_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 4.0 MB)</td>
+</tr><tr>
+<th><a id="07022" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -022    AZUMA YAMA" href="../jpeg/50k/50k_07022.jpg"><img src="../imgs/5man/07/07_022.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_022.htm"><strong>AZUMA YAMA</strong></a><br />07-022<br />Pub : 2018<br />Price : &#165;1,870</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07022_2018_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 3.1 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07022_2018.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 35.7 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07022_2018_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 19.6 MB)</td>
+</tr><tr>
+<th><a id="07025" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -025    SOMA-NAKAMURA" href="../jpeg/50k/50k_07025.jpg"><img src="../imgs/5man/07/07_025.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_025.htm"><strong>SOMA-NAKAMURA</strong></a><br />07-025<br />Pub : 1996<br />Price : &#165;5,610</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07025_1996_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 3.8 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07025_1996.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 40 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07025_1996_V01.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 9.3 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07025_1996_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 11 MB)</td>
+</tr><tr>
+<th><a id="07026" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -026    IZUMOZAKI" href="../jpeg/50k/50k_07026.jpg"><img src="../imgs/5man/07/07_026.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_026.htm"><strong>IZUMOZAKI</strong></a><br />07-026<br />Pub : 1993<br />Price : &#165;3,520</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07026_1993_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 1.2 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07026_1993.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 14 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07026_1993_V01.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 2.2 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07026_1993_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 7.0 MB)</td>
+</tr><tr>
+<th><a id="07027" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -027    SANJO" href="../jpeg/50k/50k_07027.jpg"><img src="../imgs/5man/07/07_027.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_027.htm"><strong>SANJO</strong></a><br />07-027<br />Pub : 2001 / 2002 (Explanatory Text)<br />Price : &#165;4,510</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07027_2001_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 3.5 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07027_2001.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 29 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07027_2001_V01.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 8.5 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07027_2002_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 9.4 MB)</td>
+</tr><tr>
+<th><a id="07028" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -028    KAMO" href="../jpeg/50k/50k_07028.jpg"><img src="../imgs/5man/07/07_028.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_028.htm"><strong>KAMO</strong></a><br />07-028<br />Pub : 2011<br />Price : &#165;4,620</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07028_2011_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 4.0 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07028_2011.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 39 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07028_2011_V01.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 11.8 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07028_2011_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 39 MB)</td>
+</tr><tr>
+<th><a id="07031" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -031    KITAKATA" href="../jpeg/50k/50k_07031.jpg"><img src="../imgs/5man/07/07_031.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_031.htm"><strong>KITAKATA</strong></a><br />07-031<br />Pub : 2006<br />Price : &#165;3,850</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07031_2006_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 3.8 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07031_2006.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 38 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07031_2006_V01.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 6.8 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07031_2006_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 6.1 MB)</td>
+</tr><tr>
+<th><a id="07032" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -032    BANDAI SAN" href="../jpeg/50k/50k_07032.jpg"><img src="../imgs/5man/07/07_032.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_032.htm"><strong>BANDAI SAN</strong></a><br />07-032<br />Pub : 2023<br />Price : &#165;3,080</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07032_2023_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 4.1 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07032_2023.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 34 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07032_2023_D.pdf" target="_blank"></a>  Explanatory Text [Lightweight version] (PDF / 24 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07032_2023_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 346 MB)</td>
+</tr><tr>
+<th><a id="07033" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -033    NIHONMATSU" href="../jpeg/50k/50k_07033.jpg"><img src="../imgs/5man/07/07_033.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_033.htm"><strong>NIHONMATSU</strong></a><br />07-033<br />Pub : 1995<br />Price : &#165;3,190</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07033_1995_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 3.4 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07033_1995.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 38 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07033_1995_V01.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 3.1 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07033_1995_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 1.8 MB)</td>
+</tr><tr>
+<th><a id="07033" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -034    KAWAMATA" href="../jpeg/50k/50k_07034.jpg"><img src="../imgs/5man/07/07_034.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_034.htm"><strong>KAWAMATA</strong></a><br />07-034<br />Pub : 2015<br />Price : &#165;1,430</td>
+<td width="340" valign="top" style="font-size: 90%"><!---Undelivered--->
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07034_2015_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 3.9 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07034_2015.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 35 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07034_2015_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 9.0 MB)</td>
+</tr><tr>
+<th><a id="07035" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -035, 036    HARAMACHI & OMIKA" href="../jpeg/50k/50k_07035-036.jpg"><img src="../imgs/5man/07/07_035-036.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_035-036.htm"><strong>HARAMACHI & OMIKA</strong></a><br />07-035, 036<br />Pub : 1990<br />Price : &#165;4,290</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07035_1990_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 4.1 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07035_1990.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 47 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07035_1990_V01.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 13 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07035_1990_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 23 MB)</td>
+</tr><tr>
+<th><a id="07037" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -037    KASHIWAZAKI" href="../jpeg/50k/50k_07037.jpg"><img src="../imgs/5man/07/07_037.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_037.htm"><strong>KASHIWAZAKI</strong></a><br />07-037<br />Pub : 1995<br />Price : &#165;4,620</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07037_1995_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 3.0 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07037_1995.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 33 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07037_1995_V01.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 4.7 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07037_1995_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 7.0 MB)</td>
+</tr><tr>
+<th><a id="07038" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -038    NAGAOKA" href="../jpeg/50k/50k_07038.jpg"><img src="../imgs/5man/07/07_038.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_038.htm"><strong>NAGAOKA</strong></a><br />07-038<br />Pub : 1991 ( 2nd printing, copy:2010)<br />Price : &#165;4,400</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07038_1991_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 3.4 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07038_1991.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 38 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07038_1991_V01.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 4.3 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07038_1991_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 50 MB)</td>
+</tr><tr>
+<th><a id="07041" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -041    MIYASHITA" href="../jpeg/50k/50k_07041.jpg"><img src="../imgs/5man/07/07_041.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_041.htm"><strong>MIYASHITA</strong></a><br />07-041<br />Pub : 2004<br />Price : &#165;3,960</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07041_2004_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 3.4 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07041_2004.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 38 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07041_2004_V01.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 6.9 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07041_2004_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 17 MB)</td>
+</tr><tr>
+<th><a id="07042" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -042    WAKAMATSU" href="../jpeg/50k/50k_07042.jpg"><img src="../imgs/5man/07/07_042.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_042.htm"><strong>WAKAMATSU</strong></a><br />07-042<br />Pub : 1992<br />Price : &#165;2,860</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07042_1992_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 3.4 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07042_1992.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 39 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07042_1992_V01.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 4.1 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07042_1992_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 13 MB)</td>
+</tr><tr>
+<th><a id="07046" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -046, 047    NAMIE & IWAKI-TOMIOKA" href="../jpeg/50k/50k_07046-047.jpg"><img src="../imgs/5man/07/07_046-047.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_046-047.htm"><strong>NAMIE & IWAKI-TOMIOKA</strong></a><br />07-046. 047<br />Pub : 1994<br />Price : &#165;3,630</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07046_1994_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 4.3 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07046_1994.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 46 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07046_1994_V01.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 7.4 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07046_1994_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 16 MB)</td>
+</tr><tr>
+<th><a id="07048" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -048    KAKIZAKI" href="../jpeg/50k/50k_07048.jpg"><img src="../imgs/5man/07/07_048.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_048.htm"><strong>KAKIZAKI</strong></a><br />07-048<br />Pub : 1996<br />Price : &#165;3,630</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07048_1996_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 2.4 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07048_1996.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 30 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07048_1996_V01.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 3.4 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07048_1996_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 2.7 MB)</td>
+</tr><tr>
+<th><a id="07049" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -049    OKANOMACHI" href="../jpeg/50k/50k_07049.jpg"><img src="../imgs/5man/07/07_049.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_049.htm"><strong>OKANOMACHI</strong></a><br />07-049<br />Pub : 1989<br />Price : &#165;3,520</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07049_1989_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 3.5 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07049_1989.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 40 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07049_1989_V01.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 6.1 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07049_1989_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 10 MB)</td>
+</tr><tr>
+<th><a id="07050" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -050    OJIYA" href="../jpeg/50k/50k_07050.jpg"><img src="../imgs/5man/07/07_050.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_050.htm"><strong>OJIYA</strong></a><br />07-050<br />Pub : 1986 ( 2nd printing, copy:2006)<br />Price : &#165;4,840</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07050_1986_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 3.8 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07050_1986.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 39 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07050_1986_V01.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 10.2 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07050_1986_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 5.1 MB)</td>
+</tr><tr>
+<th><a id="07051" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -051    SUHARA" href="../jpeg/50k/50k_07051.jpg"><img src="../imgs/5man/07/07_051.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_051.htm"><strong>SUHARA</strong></a><br />07-051<br />Pub : 2004<br />Price : &#165;4,290</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07051_2004_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 3.7 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07051_2004.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 39 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07051_2004_V01.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 3.9 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07051_2004_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 23 MB)</td>
+</tr><tr>
+<th><a id="07054" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -054    TAJIMA" href="../jpeg/50k/50k_07054.jpg"><img src="../imgs/5man/07/07_054.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_054.htm"><strong>TAJIMA</strong></a><br />07-054<br />Pub : 1999<br />Price : &#165;3,850</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07054_1999_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 3.3 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07054_1999.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 39 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07054_1999_V01.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 4.6 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07054_1999_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 13 MB)</td>
+</tr><tr>
+<th><a id="07058" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -058, 059    KAWAMAE & IDE" href="../jpeg/50k/50k_07058-059.jpg"><img src="../imgs/5man/07/07_058-059.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_058-059.htm"><strong>KAWAMAE & IDE</strong></a><br />07-058, 059<br />Pub : 2002<br />Price : &#165;6,600</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07058_2002_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 4.2 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07058_2002.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 44 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07058_2002_V02.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 4.3 MB) [23.07.2024]<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07058_2002_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 18 MB)</td>
+</tr><tr>
+<th><a id="07060" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -060    TAKADA-SEIBU" href="../jpeg/50k/50k_07060.jpg"><img src="../imgs/5man/07/07_060.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_060.htm"><strong>TAKADA-SEIBU</strong></a><br />07-060<br />Pub : 1989<br />Price : &#165;3,300</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07060_1989_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 3.5 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07060_1989.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 40 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07060_1989_V01.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 3.5 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07060_1989_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 6.2 MB)</td>
+</tr><tr>
+<th><a id="07061" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -061    TAKADA-TOBU" href="../jpeg/50k/50k_07061.jpg"><img src="../imgs/5man/07/07_061.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_061.htm"><strong>TAKADA-TOBU</strong></a><br />07-061<br />Pub : 1994<br />Price : &#165;3,190</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07061_1994_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 3.4 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07061_1994.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 38 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07061_1994_V01.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 2.5 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07061_1994_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 8.6 MB)</td>
+</tr><tr>
+<th><a id="07062" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -062    MATSUNOYAMA ONSEN" href="../jpeg/50k/50k_07062.jpg"><img src="../imgs/5man/07/07_062.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_062.htm"><strong>MATSUNOYAMA ONSEN</strong></a><br />07-062<br />Pub : 2000<br />Price : &#165;4,070</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07062_2000_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 3.6 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07062_2000.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 38 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07062_2000_V01.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 5.5 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07062_2000_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 1.7 MB)</td>
+</tr><tr>
+<th><a id="07063" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -063    TOKAMACHI" href="../jpeg/50k/50k_07063.jpg"><img src="../imgs/5man/07/07_063.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_063.htm"><strong>TOKAMACHI</strong></a><br />07-063<br />Pub : 1985 ( 2nd printing, copy:2006)<br />Price : &#165;4,180</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07063_1985_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 3.8 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07063_1985.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 40 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07063_1985_V01.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 7.4 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07063_1985_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 3.2 MB)</td>
+</tr><tr>
+<th><a id="07064" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -064    HAKKAI SAN" href="../jpeg/50k/50k_07064.jpg"><img src="../imgs/5man/07/07_064.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_064.htm"><strong>HAKKAI SAN</strong></a><br />07-064<br />Pub : 1992<br />Price : &#165;2,970</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07064_1992_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 3.2 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07064_1992.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 38 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07064_1992_V01.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 2.9 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07064_1992_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 3.1 MB)</td>
+</tr><tr>
+<th><a id="07070" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -070    TAKANUKI" href="../jpeg/50k/50k_07070.jpg"><img src="../imgs/5man/07/07_070.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_070.htm"><strong>TAKANUKI</strong></a><br />07-070<br />Pub : 1973<br />out of stock</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07070_1973_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 4.1 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07070_1973.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 42 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07070_1973_V01.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 3.5 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07070_1973_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 16 MB)</td>
+</tr><tr>
+<th><a id="07071" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -071    TAIRA" href="../jpeg/50k/50k_07071.jpg"><img src="../imgs/5man/07/07_071.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_071.htm"><strong>TAIRA</strong></a><br />07-071<br />Pub : 1961<br />out of stock</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07071_1961_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 3.9 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07071_1961.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 42 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07071_1961_V01.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 6.3 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07071_1961_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 2.1 MB)</td>
+</tr><tr>
+<th><a id="07073" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -073    IIYAMA" href="../jpeg/50k/50k_07073.jpg"><img src="../imgs/5man/07/07_073.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_073.htm"><strong>IIYAMA</strong></a><br />07-073<br />Pub : 2000 / 2001 (Explanatory Text)<br />Price : &#165;6,050</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07073_2000_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 3.9 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07073_2000.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 40 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07073_2000_V01.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 13.7 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07073_2000_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 3.0 MB)</td>
+</tr><tr>
+<th><a id="07074" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -074    NAEBA SAN" href="../jpeg/50k/50k_07074.jpg"><img src="../imgs/5man/07/07_074.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_074.htm"><strong>NAEBA SAN</strong></a><br />07-074<br />Pub : 1993<br />Price : &#165;2,970</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07074_1993_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 3.5 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07074_1993.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 40 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07074_1993_V01.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 4.2 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07074_1993_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 16 MB)</td>
+</tr><tr>
+<th><a id="07075" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -075    ECHIGO-YUZAWA" href="../jpeg/50k/50k_07075.jpg"><img src="../imgs/5man/07/07_075.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_075.htm"><strong>ECHIGO-YUZAWA</strong></a><br />07-075<br />Pub : 1981<br />out of stock</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07075_1981_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 4.0 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07075_1981.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 41 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07075_1981_V01.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 5.9 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07075_1981_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 11 MB)</td>
+</tr><tr>
+<th><a id="07077" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -077    HIUCHI DAKE" href="../jpeg/50k/50k_07077.jpg"><img src="../imgs/5man/07/07_077.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_077.htm"><strong>HIUCHI DAKE</strong></a><br />07-077<br />Pub : 1956<br />Price : &#165;550</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07077_1956_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 4.0 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07077_1956.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 40 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07077_1956_V01.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 1.8 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07077_1956_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 648 KB)</td>
+</tr><tr>
+<th><a id="07084" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -084    TOGAKUSHI" href="../jpeg/50k/50k_07084.jpg"><img src="../imgs/5man/07/07_084.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_084.htm"><strong>TOGAKUSHI</strong></a><br />07-084<br />Pub : 2003<br />Price : &#165;4,620</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07084_2003_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 4.2 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07084_2003.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 40 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07084_2003_V01.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 7.9 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07084_2003_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 4.0 MB)</td>
+</tr><tr>
+<th><a id="07085" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -085    NAKANO" href="../jpeg/50k/50k_07085.jpg"><img src="../imgs/5man/07/07_085.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_085.htm"><strong>NAKANO</strong></a><br />07-085<br />Pub : 1992<br />Price : &#165;2,750</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07085_1992_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 3.3 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07085_1992.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 39 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07085_1992_V01.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 5.0 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07085_1992_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 14 MB)</td>
+</tr><tr>
+<th><a id="07089" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -089    NANTAIZAN" href="../jpeg/50k/50k_07089.jpg"><img src="../imgs/5man/07/07_089.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_089.htm"><strong>NANTAIZAN</strong></a><br />07-089<br />Pub : 1956 / 1955 (Explanatory Text)<br />out of stock</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07089_1956_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 4.1 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07089_1956.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 41 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07089_1956_V01.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 2.3 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07089_1955_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 855 KB)</td>
+</tr><tr>
+<th><a id="07096" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -096    NAGANO" href="../jpeg/50k/50k_07096.jpg"><img src="../imgs/5man/07/07_096.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_096.htm"><strong>NAGANO</strong></a><br />07-096<br />Pub : 1986 ( 2nd printing, copy:2002)<br />Price : &#165;3,630</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07096_1986_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 3.5 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07096_1986.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 41 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07096_1986_V01.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 4.3 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07096_1986_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 4.0 MB)</td>
+</tr><tr>
+<th><a id="07097" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -097    SUZAKA" href="../jpeg/50k/50k_07097.jpg"><img src="../imgs/5man/07/07_097.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_097.htm"><strong>SUZAKA</strong></a><br />07-097<br />Pub : 1955<br />out of stock</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07097_1955_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 4.0 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07097_1955.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 40 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07097_1955_V01.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 4.0 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07097_1955_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 1.2 MB)</td>
+</tr><tr>
+<th><a id="07098" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -098    KUSATSU" href="../jpeg/50k/50k_07098.jpg"><img src="../imgs/5man/07/07_098.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_098.htm"><strong>KUSATSU</strong></a><br />07-098<br />Pub : 1957<br />out of stock</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07098_1957_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 3.7 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07098_1957.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 41 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07098_1957_V01.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 3.0 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07098_1957_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 1.2 MB)</td>
+</tr><tr>
+<th><a id="07100" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -100    NUMATA" href="../jpeg/50k/50k_07100.jpg"><img src="../imgs/5man/07/07_100.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_100.htm"><strong>NUMATA</strong></a><br />07-100<br />Pub : 1954 / 1953 (Explanatory Text)<br />out of stock</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07100_1954_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 4.2 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07100_1954.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 40 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07100_1954_V01.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 2.1 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07100_1953_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 1.2 MB)</td>
+</tr><tr>
+<th><a id="07101" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -101    ASHIO" href="../jpeg/50k/50k_07101.jpg"><img src="../imgs/5man/07/07_101.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_101.htm"><strong>ASHIO</strong></a><br />07-101<br />Pub : 1954 / 1955 (Explanatory Text)<br />out of stock</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07101_1954_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 3.3 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07101_1954.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 38 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07101_1954_V01.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 2.7 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07101_1955_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 1.1 MB)</td>
+</tr><tr>
+<th><a id="07103" class="group1" title="Quadrangle Series 1:50,000   7 [NIIGATA] -103    UTSUNOMIYA" href="../jpeg/50k/50k_07103.jpg"><img src="../imgs/5man/07/07_103.jpg" width="119" height="82" /></a></th>
+<td width="200" valign="top"><a class="iframe" href="docs/5man_doc/07/07_103.htm"><strong>UTSUNOMIYA</strong></a><br />07-103<br />Pub : 2010<br />Price : &#165;3,410</td>
+<td width="340" valign="top" style="font-size: 90%">
+<a href="../../data/50KGM/JPG/GSJ_MAP_G050_07103_2010_200dpi.jpg" target="_blank"><img src="../icon/dl_06.png" /></a>  Raster data (JPEG / 200dpi / 3.4 MB)<br />
+<a href="../../data/50KGM/GTF/GSJ_MAP_G050_07103_2010.zip" target="_blank"><img src="../icon/dl_04.png" /></a>  Raster data (GeoTIFF, kml / 200dpi / 33 MB)<br />
+<a href="../../data/50KGM/VCT/GSJ_MAP_G050_07103_2010_V01.zip" target="_blank"><img src="../icon/dl_02.png" /></a>  Vector data (Shapefile, kml / 5.5 MB)<br />
+<a href="../../data/50KGM/PDF/GSJ_MAP_G050_07103_2010_D.pdf" target="_blank"></a>  Explanatory Text (PDF / 33 MB) [26.05.2020]</td>
+</tr>
+</tbody>
+</table>
+<br />
+	
+
+
+      <!-- /main -->
+    </div>
+	<div id="localMenu" class="clearfix">
+<div class="sideBox">
+<ul>
+<!---	<li><a href="http://unit.aist.go.jp/geoc/inquiry/inquiry_EN.html" target="_blank">Inquiry on GSJ Publications</a></li>--->
+	<li><a href="purchase-guide.html">Purchase Guide</a></li>
+</ul>
+</div>
+
+<div class="sideBox">
+<ul>
+	<li><a href="newmaps.html" title>New Publications</a></li>
+</ul>
+</div>
+<div class="sideBox">
+<ul>
+	<li><a href="seamless-geomap.html">Seamless Geoinformation of Coastal Zone</a></li>
+	<li><a href="geology4.html">Quadrangle Series 1:50,000</a></li>
+
+		  &nbsp; <a href="geology4-1.html">1. Abashiri</a><br />
+		  &nbsp; <a href="geology4-2.html">2. Kushiro</a><br />
+		  &nbsp; <a href="geology4-3.html">3. Asahikawa</a><br />
+		  &nbsp; <a href="geology4-4.html">4. Sapporo</a><br />
+		  &nbsp; <a href="geology4-5.html">5. Aomori</a><br />
+		  &nbsp; <a href="geology4-6.html">6. Akita</a><br />
+		  &nbsp; <strong>7. Niigata</strong><br />
+		  &nbsp; <a href="geology4-8.html">8. Tokyo</a><br />
+		  &nbsp; <a href="geology4-9.html">9. Hachijo Jima<br />
+		  &nbsp; 20.Ogasawara Shoto</a><br />
+		  &nbsp; <a href="geology4-10.html">10. Kanazawa</a><br />
+		  &nbsp; <a href="geology4-11.html">11. Kyoto</a><br />
+		  &nbsp; <a href="geology4-12.html">12. Okayama</a><br />
+		  &nbsp; <a href="geology4-13.html">13. Kochi</a><br />
+		  &nbsp; <a href="geology4-14.html">14. Fukuoka</a><br />
+		  &nbsp; <a href="geology4-15.html">15. Kagoshima</a><br />
+		  &nbsp; <a href="geology4-16.html">16. Tane-ga-shima<br />
+		  &nbsp; 17. Amami-Oshima<br />
+		  &nbsp; 18. Naha<br />
+		  &nbsp; 19. Miyako Jima</a><br />
+		<br />
+	<li><a href="geology2.html">Geological Map of Japan 1:200,000</a></li>
+	<li><a href="geology0.html">1:2,000,000 Map Sr.</a></li>
+	<li><a href="geology.html">1:1,000,000 Map, etc</a></li>
+	<li><a href="geology3.html">Geological Sheet Map 1:75,000</a></li>
+	<li><a href="geology1.html">Geological Sheet Map 1:500,000<br />1:500,000 Neotectonic Map</a></li>
+	<li><a href="af-earthquake2.html">Tectonic Map Series</a></li>
+	<li><a href="marine-geology.html">Marine Geology</a></li>
+	<li><a href="volcano.html">Volcanic Geology</a></li>
+	<li><a href="lvi.html">Distribution Map of Large-Volume Ignimbrites in Japan</a></li>
+	<li><a href="geology5.html">Miscellaneous Map Sr.</a></li>
+	<li><a href="environment.html">Water Environment Map<br />Hydrogeological Maps of Japan</a></li>
+	<li><a href="geophysics.html">Gravity Map (Bouguer Anomalies)</a></li>
+	<li><a href="geophysics2.html">Total Intensity Aeromagnetic Map</a></li>
+	<li><a href="geochemistry.html">Geochemistry</a></li>
+	<li><a href="soils_assessment.html">Soils Assessment Map</a></li>
+	<li><a href="cd_dvd_list.html#FR">Fuel Resource Map</a></li>
+	<li><a href="cd_dvd_list.html#GT">Geothermal Resources Map</a></li>
+	<li><a href="geo-resources.html">Mineral Resources Map</a></li>
+	<li><a href="geo-resources2.html">Geological Maps of Coal Fields of Japan</a></li>
+	<li><a href="geo-resources3.html">Geological Maps of Oil and Gas Fields of Japan</a></li>
+	<li><a href="asia-area-geoscience.html">Asia Area Geoscience</a></li>
+	<li><a href="cd_dvd_list.html">CD/DVD-ROM publication</a></li>
+</ul>
+</div>
+
+      </div>
+
+      
+
+
+      <!-- /localMenu -->
+    </div>
+    <!-- /wrap -->
+  </div>
+  <div id="sidebar" class="clearfix">
+
+    <!-- /sidebar -->
+  </div>
+<div id="footer">
+  <p class="pageTop"><a href="#">Top of Page</a></p>
+    <ul>
+<!--âAIST HOMEâ--><li><a href="http://www.aist.go.jp/index_en.html" target="_blank">AIST HOME</a></li>
+<!--âSite Policyâ--><li><a href="../../license/index.html">Site Policy</a></li>
+<!--âPrivacy Policyâ--><li><a href="http://www.aist.go.jp/aist_j/comp-info/pip/index.html" target="_blank">Privacy Policy</a></li>
+    </ul>
+    <p id="copyright">Copyright &copy; Geological Survey of Japan, AIST</p>
+    <!-- /footer -->
+  </div>
+  <!-- /content -->
+  </div>
+  <!-- /container -->
+<map name="Map" id="Map">
+<!---  <area shape="rect" coords="127,70,168,104" href="#07001" />
+  <area shape="rect" coords="100,104,143,138" href="#07002" />
+  <area shape="rect" coords="142,104,184,138" href="#07003" />
+  <area shape="rect" coords="100,137,141,172" href="#07004" />
+  <area shape="rect" coords="141,138,184,172" href="#07005" />
+  <area shape="rect" coords="100,172,141,206" href="#07006" />--->
+  <area shape="rect" coords="203,138,245,172" href="#07009" />
+  <area shape="rect" coords="245,138,287,172" href="#07009" />
+<!---  <area shape="rect" coords="286,138,329,172" href="#07010" />--->
+  <area shape="rect" coords="329,138,370,172" href="#07011" />
+  <area shape="rect" coords="369,139,412,172" href="#07012" />
+<!---  <area shape="rect" coords="412,138,453,172" href="#07013" />
+  <area shape="rect" coords="453,139,496,172" href="#07014" />
+  <area shape="rect" coords="495,138,536,172" href="#07015" />--->
+  <area shape="rect" coords="535,138,577,172" href="#07016" />
+<!---  <area shape="rect" coords="203,172,246,206" href="#07017" />
+  <area shape="rect" coords="245,172,286,206" href="#07018" />
+  <area shape="rect" coords="285,172,329,206" href="#07019" />
+  <area shape="rect" coords="328,172,370,206" href="#07020" />
+  <area shape="rect" coords="369,172,411,206" href="#07021" />-->
+  <area shape="rect" coords="411,172,453,206" href="#07022" />
+<!--  <area shape="rect" coords="453,172,495,206" href="#07023" />
+  <area shape="rect" coords="495,172,537,206" href="#07024" />--->
+  <area shape="rect" coords="536,172,582,206" href="#07025" />
+  <area shape="rect" coords="163,206,204,241" href="#07026" />
+  <area shape="rect" coords="204,206,246,241" href="#07027" />
+  <area shape="rect" coords="246,206,288,241" href="#07028" />
+<!---  <area shape="rect" coords="287,206,329,241" href="#07029" />
+  <area shape="rect" coords="328,206,369,241" href="#07030" />--->
+  <area shape="rect" coords="369,206,412,241" href="#07031" />
+  <area shape="rect" coords="411,206,453,241" href="#07032" />
+  <area shape="rect" coords="453,206,494,241" href="#07033" />
+<!---  <area shape="rect" coords="494,206,536,241" href="#07034" />--->
+  <area shape="rect" coords="535,206,618,241" href="#07035" />
+  <area shape="rect" coords="154,241,204,274" href="#07037" />
+  <area shape="rect" coords="203,241,246,274" href="#07038" />
+<!---  <area shape="rect" coords="245,241,287,274" href="#07039" />
+  <area shape="rect" coords="287,241,330,274" href="#07040" />--->
+  <area shape="rect" coords="330,241,370,274" href="#07041" />
+  <area shape="rect" coords="370,241,411,274" href="#07042" />
+<!---  <area shape="rect" coords="410,241,453,274" href="#07043" />
+  <area shape="rect" coords="453,241,495,274" href="#07044" />
+  <area shape="rect" coords="494,241,536,274" href="#07045" />--->
+  <area shape="rect" coords="536,241,619,274" href="#07046" />
+  <area shape="rect" coords="121,274,163,309" href="#07048" />
+  <area shape="rect" coords="162,274,205,309" href="#07049" />
+  <area shape="rect" coords="204,274,245,309" href="#07050" />
+  <area shape="rect" coords="245,274,288,308" href="#07051" />
+<!---  <area shape="rect" coords="287,274,329,309" href="#07052" />
+  <area shape="rect" coords="328,274,370,309" href="#07053" />--->
+  <area shape="rect" coords="370,274,411,309" href="#07054" />
+<!---  <area shape="rect" coords="410,274,452,309" href="#07055" />
+  <area shape="rect" coords="452,274,494,309" href="#07056" />
+  <area shape="rect" coords="493,274,535,309" href="#07057" />--->
+  <area shape="rect" coords="535,274,618,309" href="#07058" />
+  <area shape="rect" coords="80,303,121,343" href="#07060" />
+  <area shape="rect" coords="120,309,162,343" href="#07061" />
+  <area shape="rect" coords="161,309,204,343" href="#07062" />
+  <area shape="rect" coords="204,309,246,343" href="#07063" />
+  <area shape="rect" coords="246,309,286,343" href="#07064" />
+<!---  <area shape="rect" coords="286,309,329,343" href="#07065" />
+  <area shape="rect" coords="329,309,370,343" href="#07066" />
+  <area shape="rect" coords="370,309,411,343" href="#07067" />
+  <area shape="rect" coords="411,309,453,343" href="#07068" />
+  <area shape="rect" coords="453,309,496,343" href="#07069" />--->
+  <area shape="rect" coords="494,309,536,343" href="#07070" />
+  <area shape="rect" coords="536,309,581,343" href="#07071" />
+<!---  <area shape="rect" coords="79,343,120,377" href="#07072" />--->
+  <area shape="rect" coords="119,343,162,377" href="#07073" />
+  <area shape="rect" coords="161,343,203,377" href="#07074" />
+  <area shape="rect" coords="202,343,245,377" href="#07075" />
+<!---  <area shape="rect" coords="245,343,287,377" href="#07076" />--->
+  <area shape="rect" coords="287,343,329,377" href="#07077" />
+<!---  <area shape="rect" coords="329,343,370,377" href="#07078" />
+  <area shape="rect" coords="370,343,411,377" href="#07079" />
+  <area shape="rect" coords="411,343,452,377" href="#07080" />
+  <area shape="rect" coords="451,343,494,377" href="#07081" />
+  <area shape="rect" coords="493,343,536,377" href="#07082" />
+  <area shape="rect" coords="536,343,578,377" href="#07083" />--->
+  <area shape="rect" coords="80,377,121,411" href="#07084" />
+  <area shape="rect" coords="121,377,162,411" href="#07085" />
+<!---  <area shape="rect" coords="162,377,205,411" href="#07086" />
+  <area shape="rect" coords="204,377,246,411" href="#07087" />
+  <area shape="rect" coords="246,377,286,411" href="#07088" />--->
+  <area shape="rect" coords="285,377,329,411" href="#07089" />
+<!---  <area shape="rect" coords="329,377,369,411" href="#07090" />
+  <area shape="rect" coords="369,377,412,411" href="#07091" />
+  <area shape="rect" coords="411,377,453,411" href="#07092" />
+  <area shape="rect" coords="453,377,494,411" href="#07093" />
+  <area shape="rect" coords="494,377,535,411" href="#07094" />
+  <area shape="rect" coords="534,377,577,411" href="#07095" />--->
+  <area shape="rect" coords="78,411,121,445" href="#07096" />
+  <area shape="rect" coords="120,411,162,445" href="#07097" />
+  <area shape="rect" coords="162,411,203,445" href="#07098" />
+<!---  <area shape="rect" coords="202,411,245,445" href="#07099" />--->
+  <area shape="rect" coords="245,411,287,445" href="#07100" />
+  <area shape="rect" coords="287,411,330,445" href="#07101" />
+<!---  <area shape="rect" coords="329,411,370,445" href="#07102" />--->
+  <area shape="rect" coords="370,411,412,445" href="#07103" />
+<!---  <area shape="rect" coords="411,411,453,445" href="#07104" />
+  <area shape="rect" coords="453,411,495,445" href="#07105" />
+  <area shape="rect" coords="495,411,536,445" href="#07106" />--->
+  <area shape="rect" coords="271,5,670,117" href="geology4-6.html" alt="06 AKITA AREA" />
+  <area shape="rect" coords="91,453,528,490" href="geology4-8.html" alt="08 TOYKO AREA" />
+  <area shape="rect" coords="14,322,64,491" href="geology4-10.html" alt="10 KANAZAWA AREA" />
+</map>
+</body>
+</html>

@@ -1,0 +1,11 @@
+###
+GET https://dev2.macrostrat.org/api/pg/rpc/auth_status
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMDAwLTAwMDMtMTg5NS0zNzQyIiwicm9sZSI6IndlYl9hZG1pbiIsImdyb3VwcyI6WzFdLCJncm91cF9uYW1lcyI6WyJhZG1pbiJdLCJleHAiOjE3MjkyODY3NTF9.X4-AyqrmAOcWukHAfzFRHbdF1FXJvGcDYluyHolmIpk
+
+###
+
+# This access_token cookie should be read
+GET https://dev2.macrostrat.org/api/pg/rpc/auth_status
+Accept: application/json
+Cookie: access_token=Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMDAwLTAwMDMtMTg5NS0zNzQyIiwicm9sZSI6IndlYl9hZG1pbiIsImdyb3VwcyI6WzFdLCJncm91cF9uYW1lcyI6WyJhZG1pbiJdLCJleHAiOjE3MjkyODY3NTF9.X4-AyqrmAOcWukHAfzFRHbdF1FXJvGcDYluyHolmIpk
+

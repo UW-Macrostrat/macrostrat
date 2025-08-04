@@ -1,0 +1,7 @@
+*.pyc
+.DS_STORE
+credentials.yml
+.python-version
+*.egg-info
+.venv
+

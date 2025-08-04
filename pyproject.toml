@@ -1,0 +1,33 @@
+# This Poetry config is mostly a proxy to the cli Poetry config,
+# with some extra packages for code formatting and import sorting.
+# Install GIS tools as well with `poetry install --with=gis`
+
+[tool.poetry]
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.11"
+setuptools = "^75.8.2"
+"macrostrat.cli" = { path = "./cli", develop = true }
+
+[tool.poetry.group.gis.dependencies]
+"macrostrat.cli" = { path = "./cli", develop = true, extras = ["gis"] }
+
+[tool.poetry.group.dev.dependencies]
+black = "^24.8.0"
+isort = "^5.13.2"
+pytest = "^8.3.2"
+
+[tool.black]
+line-length = 88
+extend-exclude = "__archive"
+
+[tool.isort]
+profile = "black"
+known_first_party = "macrostrat"
+
+[tool.pytest.ini_options]
+markers = [
+    "docker: marks tests as requiring a docker container",
+    "requires_gdal: marks tests as requiring GDAL",
+]

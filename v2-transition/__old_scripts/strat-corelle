@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Description: Manage the corelle plate-rotation system
+
+if [ $1 = 'init' ]; then
+  strat compose build corelle
+  strat compose up -d corelle
+fi
+
+strat compose exec corelle corelle $@

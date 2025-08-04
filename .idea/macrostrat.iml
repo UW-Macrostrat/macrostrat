@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="JAVA_MODULE" version="4">
+  <component name="FacetManager">
+    <facet type="Python" name="Python">
+      <configuration sdkName="Python 3.11 (macrostrat)" />
+    </facet>
+  </component>
+  <component name="NewModuleRootManager" inherit-compiler-output="true">
+    <exclude-output />
+    <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/core" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/deps/topology-manager" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/map-integration" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/cli" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/raster-cli" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/integrations" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/submodules/topology-manager" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/cli/.venv" />
+      <excludeFolder url="file://$MODULE_DIR$/py-root/.venv" />
+      <excludeFolder url="file://$MODULE_DIR$/.venv" />
+    </content>
+    <orderEntry type="jdk" jdkName="Python 3.13" jdkType="Python SDK" />
+    <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="library" name="Python 3.11 (macrostrat) interpreter library" level="application" />
+  </component>
+</module>

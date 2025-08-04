@@ -1,0 +1,693 @@
+--
+-- PostgreSQL database dump of the macrostrat_xdd schema as of 2024-09-19
+--
+
+-- Dumped from database version 15.3
+-- Dumped by pg_dump version 15.7 (Debian 15.7-1.pgdg120+1)
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+--
+-- Name: macrostrat_xdd; Type: SCHEMA; Schema: -; Owner: macrostrat-admin
+--
+
+CREATE SCHEMA macrostrat_xdd;
+
+
+ALTER SCHEMA macrostrat_xdd OWNER TO "macrostrat-admin";
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- Name: entity; Type: TABLE; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+CREATE TABLE macrostrat_xdd.entity (
+    name text NOT NULL,
+    corrected_name text,
+    strat_name_id integer,
+    lith_id integer,
+    lith_att_id integer,
+    type text,
+    start_index integer NOT NULL,
+    end_index integer NOT NULL,
+    model_run_id integer NOT NULL,
+    id integer NOT NULL,
+    entity_type_id integer
+);
+
+
+ALTER TABLE macrostrat_xdd.entity OWNER TO "xdd-writer";
+
+--
+-- Name: model_run; Type: TABLE; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+CREATE TABLE macrostrat_xdd.model_run (
+    user_id uuid,
+    "timestamp" timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    model_id integer,
+    version_id integer,
+    id integer NOT NULL,
+    extraction_job_id text,
+    extraction_pipeline_id text,
+    source_text_id integer,
+    supersedes integer
+);
+
+
+ALTER TABLE macrostrat_xdd.model_run OWNER TO "xdd-writer";
+
+--
+-- Name: relationship; Type: TABLE; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+CREATE TABLE macrostrat_xdd.relationship (
+    type text,
+    id integer NOT NULL,
+    model_run_id integer NOT NULL,
+    src_entity_id integer NOT NULL,
+    dst_entity_id integer NOT NULL,
+    relationship_type_id integer
+);
+
+
+ALTER TABLE macrostrat_xdd.relationship OWNER TO "xdd-writer";
+
+--
+-- Name: source_text; Type: TABLE; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+CREATE TABLE macrostrat_xdd.source_text (
+    preprocessor_id text NOT NULL,
+    paper_id text NOT NULL,
+    hashed_text text NOT NULL,
+    weaviate_id text NOT NULL,
+    paragraph_text text NOT NULL,
+    legacy_model_run_id integer,
+    id integer NOT NULL,
+    map_legend_id integer,
+    source_text_type text
+);
+
+
+ALTER TABLE macrostrat_xdd.source_text OWNER TO "xdd-writer";
+
+--
+-- Name: publication; Type: TABLE; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+CREATE TABLE macrostrat_xdd.publication (
+    paper_id text NOT NULL,
+    doi text,
+    citation jsonb NOT NULL,
+    url text
+);
+
+
+ALTER TABLE macrostrat_xdd.publication OWNER TO "xdd-writer";
+
+--
+-- Name: entity_id_seq; Type: SEQUENCE; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+CREATE SEQUENCE macrostrat_xdd.entity_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE macrostrat_xdd.entity_id_seq OWNER TO "xdd-writer";
+
+--
+-- Name: entity_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER SEQUENCE macrostrat_xdd.entity_id_seq OWNED BY macrostrat_xdd.entity.id;
+
+
+--
+-- Name: entity_type; Type: TABLE; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+CREATE TABLE macrostrat_xdd.entity_type (
+    name text NOT NULL,
+    description text,
+    id integer NOT NULL
+);
+
+
+ALTER TABLE macrostrat_xdd.entity_type OWNER TO "xdd-writer";
+
+--
+-- Name: extraction_feedback_type; Type: TABLE; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+CREATE TABLE macrostrat_xdd.extraction_feedback_type (
+    id serial primary key,
+	type text NOT NULL
+);
+
+
+ALTER TABLE macrostrat_xdd.extraction_feedback_type OWNER TO "xdd-writer";
+
+--
+-- Name: extraction_feedback; Type: TABLE; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+CREATE TABLE macrostrat_xdd.extraction_feedback (
+    id serial primary key,
+    user_id text NOT NULL,
+    paper_id uuid NOT NULL,
+    date timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    feedback_ids text,
+    custom_not text
+);
+
+
+ALTER TABLE macrostrat_xdd.extraction_feedback OWNER TO "xdd-writer";
+
+--
+-- Name: extraction_feedback; Type: TABLE; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+CREATE TABLE macrostrat_xdd.extraction_feedback_link (
+    feedback_id integer NOT NULL REFERENCES macrostrat_xdd.extraction_feedback(id) ON DELETE CASCADE,
+    type_id integer NOT NULL REFERENCES macrostrat_xdd.extraction_feedback_type(id) ON DELETE CASCADE,
+    PRIMARY KEY (feedback_id, type_id)
+);
+
+ALTER TABLE macrostrat_xdd.extraction_feedback_link OWNER TO "xdd-writer";
+
+--
+-- Name: entity_type_id_seq; Type: SEQUENCE; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER TABLE macrostrat_xdd.entity_type ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME macrostrat_xdd.entity_type_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: latest_run_per_text; Type: VIEW; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+CREATE VIEW macrostrat_xdd.latest_run_per_text AS
+ WITH latest_run AS (
+         SELECT model_run.source_text_id AS src_text_id,
+            max(model_run."timestamp") AS latest_timestamp
+           FROM macrostrat_xdd.model_run
+          GROUP BY model_run.source_text_id
+        )
+ SELECT all_runs.id AS latest_run_id,
+    all_runs.source_text_id,
+    all_runs."timestamp",
+    all_runs.supersedes
+   FROM macrostrat_xdd.model_run all_runs,
+    latest_run
+  WHERE ((all_runs.source_text_id = latest_run.src_text_id) AND (all_runs."timestamp" = latest_run.latest_timestamp));
+
+
+ALTER TABLE macrostrat_xdd.latest_run_per_text OWNER TO "xdd-writer";
+
+--
+-- Name: model; Type: TABLE; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+CREATE TABLE macrostrat_xdd.model (
+    id integer NOT NULL,
+    name text,
+    description text,
+    url text
+);
+
+
+ALTER TABLE macrostrat_xdd.model OWNER TO "xdd-writer";
+
+--
+-- Name: model_run_id_seq; Type: SEQUENCE; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+CREATE SEQUENCE macrostrat_xdd.model_run_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE macrostrat_xdd.model_run_id_seq OWNER TO "xdd-writer";
+
+--
+-- Name: model_run_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER SEQUENCE macrostrat_xdd.model_run_id_seq OWNED BY macrostrat_xdd.model_run.id;
+
+
+--
+-- Name: model_version; Type: TABLE; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+CREATE TABLE macrostrat_xdd.model_version (
+    id integer NOT NULL,
+    name text NOT NULL,
+    description text,
+    model_id integer NOT NULL
+);
+
+
+ALTER TABLE macrostrat_xdd.model_version OWNER TO "xdd-writer";
+
+--
+-- Name: model_versions_version_id_seq; Type: SEQUENCE; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER TABLE macrostrat_xdd.model_version ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME macrostrat_xdd.model_versions_version_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: models_model_id_seq; Type: SEQUENCE; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER TABLE macrostrat_xdd.model ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME macrostrat_xdd.models_model_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: relationship_id_seq; Type: SEQUENCE; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+CREATE SEQUENCE macrostrat_xdd.relationship_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE macrostrat_xdd.relationship_id_seq OWNER TO "xdd-writer";
+
+--
+-- Name: relationship_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER SEQUENCE macrostrat_xdd.relationship_id_seq OWNED BY macrostrat_xdd.relationship.id;
+
+
+--
+-- Name: relationship_type; Type: TABLE; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+CREATE TABLE macrostrat_xdd.relationship_type (
+    name text NOT NULL,
+    description text,
+    id integer NOT NULL
+);
+
+
+ALTER TABLE macrostrat_xdd.relationship_type OWNER TO "xdd-writer";
+
+--
+-- Name: relationship_type_id_seq; Type: SEQUENCE; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER TABLE macrostrat_xdd.relationship_type ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME macrostrat_xdd.relationship_type_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: source_text_id_seq; Type: SEQUENCE; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+CREATE SEQUENCE macrostrat_xdd.source_text_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE macrostrat_xdd.source_text_id_seq OWNER TO "xdd-writer";
+
+--
+-- Name: source_text_id_seq; Type: SEQUENCE OWNED BY; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER SEQUENCE macrostrat_xdd.source_text_id_seq OWNED BY macrostrat_xdd.source_text.id;
+
+
+--
+-- Name: users; Type: TABLE; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+CREATE TABLE macrostrat_xdd.users (
+    user_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_name text NOT NULL
+);
+
+
+ALTER TABLE macrostrat_xdd.users OWNER TO "xdd-writer";
+
+--
+-- Name: entity id; Type: DEFAULT; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER TABLE ONLY macrostrat_xdd.entity ALTER COLUMN id SET DEFAULT nextval('macrostrat_xdd.entity_id_seq'::regclass);
+
+
+--
+-- Name: model_run id; Type: DEFAULT; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER TABLE ONLY macrostrat_xdd.model_run ALTER COLUMN id SET DEFAULT nextval('macrostrat_xdd.model_run_id_seq'::regclass);
+
+
+--
+-- Name: relationship id; Type: DEFAULT; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER TABLE ONLY macrostrat_xdd.relationship ALTER COLUMN id SET DEFAULT nextval('macrostrat_xdd.relationship_id_seq'::regclass);
+
+
+--
+-- Name: source_text id; Type: DEFAULT; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER TABLE ONLY macrostrat_xdd.source_text ALTER COLUMN id SET DEFAULT nextval('macrostrat_xdd.source_text_id_seq'::regclass);
+
+
+--
+-- Name: entity entity_pkey; Type: CONSTRAINT; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER TABLE ONLY macrostrat_xdd.entity
+    ADD CONSTRAINT entity_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: entity_type entity_type_pkey; Type: CONSTRAINT; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER TABLE ONLY macrostrat_xdd.entity_type
+    ADD CONSTRAINT entity_type_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: model_run model_run_pkey; Type: CONSTRAINT; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER TABLE ONLY macrostrat_xdd.model_run
+    ADD CONSTRAINT model_run_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: model_version model_versions_pkey; Type: CONSTRAINT; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER TABLE ONLY macrostrat_xdd.model_version
+    ADD CONSTRAINT model_versions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: model models_model_name_key; Type: CONSTRAINT; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER TABLE ONLY macrostrat_xdd.model
+    ADD CONSTRAINT models_model_name_key UNIQUE (name);
+
+
+--
+-- Name: model models_pkey; Type: CONSTRAINT; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER TABLE ONLY macrostrat_xdd.model
+    ADD CONSTRAINT models_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: model_run no_duplicate_runs; Type: CONSTRAINT; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER TABLE ONLY macrostrat_xdd.model_run
+    ADD CONSTRAINT no_duplicate_runs UNIQUE (user_id, model_id, version_id, extraction_job_id, extraction_pipeline_id, source_text_id, supersedes);
+
+
+--
+-- Name: publication publication_pkey; Type: CONSTRAINT; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER TABLE ONLY macrostrat_xdd.publication
+    ADD CONSTRAINT publication_pkey PRIMARY KEY (paper_id);
+
+
+--
+-- Name: relationship relationship_pkey; Type: CONSTRAINT; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER TABLE ONLY macrostrat_xdd.relationship
+    ADD CONSTRAINT relationship_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: relationship_type relationship_type_pkey; Type: CONSTRAINT; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER TABLE ONLY macrostrat_xdd.relationship_type
+    ADD CONSTRAINT relationship_type_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: source_text source_text_pkey; Type: CONSTRAINT; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER TABLE ONLY macrostrat_xdd.source_text
+    ADD CONSTRAINT source_text_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: users user_pkey; Type: CONSTRAINT; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER TABLE ONLY macrostrat_xdd.users
+    ADD CONSTRAINT user_pkey PRIMARY KEY (user_id);
+
+
+--
+-- Name: users users_unique_enforcement; Type: CONSTRAINT; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER TABLE ONLY macrostrat_xdd.users
+    ADD CONSTRAINT users_unique_enforcement UNIQUE (user_name);
+
+
+--
+-- Name: unique_run_constraint; Type: INDEX; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+CREATE UNIQUE INDEX unique_run_constraint ON macrostrat_xdd.model_run USING btree (user_id, model_id, version_id, extraction_job_id, extraction_pipeline_id, source_text_id, supersedes);
+
+
+--
+-- Name: unique_source_text; Type: INDEX; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+CREATE UNIQUE INDEX unique_source_text ON macrostrat_xdd.source_text USING btree (source_text_type, paragraph_text, hashed_text);
+
+
+--
+-- Name: unique_versions; Type: INDEX; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+CREATE UNIQUE INDEX unique_versions ON macrostrat_xdd.model_version USING btree (model_id, name);
+
+
+--
+-- Name: entity Entity Type; Type: FK CONSTRAINT; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER TABLE ONLY macrostrat_xdd.entity
+    ADD CONSTRAINT "Entity Type" FOREIGN KEY (entity_type_id) REFERENCES macrostrat_xdd.entity_type(id);
+
+
+--
+-- Name: source_text Map Legend; Type: FK CONSTRAINT; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER TABLE ONLY macrostrat_xdd.source_text
+    ADD CONSTRAINT "Map Legend" FOREIGN KEY (map_legend_id) REFERENCES maps.legend(legend_id);
+
+
+--
+-- Name: model_run Model version check; Type: FK CONSTRAINT; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER TABLE ONLY macrostrat_xdd.model_run
+    ADD CONSTRAINT "Model version check" FOREIGN KEY (version_id) REFERENCES macrostrat_xdd.model_version(id);
+
+
+--
+-- Name: model_run Previous Run; Type: FK CONSTRAINT; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER TABLE ONLY macrostrat_xdd.model_run
+    ADD CONSTRAINT "Previous Run" FOREIGN KEY (supersedes) REFERENCES macrostrat_xdd.model_run(id);
+
+
+--
+-- Name: relationship Relationship Type; Type: FK CONSTRAINT; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER TABLE ONLY macrostrat_xdd.relationship
+    ADD CONSTRAINT "Relationship Type" FOREIGN KEY (relationship_type_id) REFERENCES macrostrat_xdd.relationship_type(id);
+
+
+--
+-- Name: model_run Source Text Id; Type: FK CONSTRAINT; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER TABLE ONLY macrostrat_xdd.model_run
+    ADD CONSTRAINT "Source Text Id" FOREIGN KEY (source_text_id) REFERENCES macrostrat_xdd.source_text(id);
+
+
+--
+-- Name: relationship fk_dst_entity_id; Type: FK CONSTRAINT; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER TABLE ONLY macrostrat_xdd.relationship
+    ADD CONSTRAINT fk_dst_entity_id FOREIGN KEY (dst_entity_id) REFERENCES macrostrat_xdd.entity(id);
+
+
+--
+-- Name: entity fk_lith_att_id; Type: FK CONSTRAINT; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER TABLE ONLY macrostrat_xdd.entity
+    ADD CONSTRAINT fk_lith_att_id FOREIGN KEY (lith_att_id) REFERENCES macrostrat.lith_atts(id);
+
+
+--
+-- Name: entity fk_lith_id; Type: FK CONSTRAINT; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER TABLE ONLY macrostrat_xdd.entity
+    ADD CONSTRAINT fk_lith_id FOREIGN KEY (lith_id) REFERENCES macrostrat.liths(id);
+
+
+--
+-- Name: entity fk_model_run_id; Type: FK CONSTRAINT; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER TABLE ONLY macrostrat_xdd.entity
+    ADD CONSTRAINT fk_model_run_id FOREIGN KEY (model_run_id) REFERENCES macrostrat_xdd.model_run(id);
+
+
+--
+-- Name: relationship fk_model_run_id; Type: FK CONSTRAINT; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER TABLE ONLY macrostrat_xdd.relationship
+    ADD CONSTRAINT fk_model_run_id FOREIGN KEY (model_run_id) REFERENCES macrostrat_xdd.model_run(id) ON DELETE CASCADE;
+
+
+--
+-- Name: relationship fk_src_entity_id; Type: FK CONSTRAINT; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER TABLE ONLY macrostrat_xdd.relationship
+    ADD CONSTRAINT fk_src_entity_id FOREIGN KEY (src_entity_id) REFERENCES macrostrat_xdd.entity(id);
+
+
+--
+-- Name: entity fk_strat_name_id; Type: FK CONSTRAINT; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER TABLE ONLY macrostrat_xdd.entity
+    ADD CONSTRAINT fk_strat_name_id FOREIGN KEY (strat_name_id) REFERENCES macrostrat.strat_names(id);
+
+
+--
+-- Name: model_version model_id_check; Type: FK CONSTRAINT; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER TABLE ONLY macrostrat_xdd.model_version
+    ADD CONSTRAINT model_id_check FOREIGN KEY (model_id) REFERENCES macrostrat_xdd.model(id);
+
+
+--
+-- Name: model_run model_id_check; Type: FK CONSTRAINT; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER TABLE ONLY macrostrat_xdd.model_run
+    ADD CONSTRAINT model_id_check FOREIGN KEY (model_id) REFERENCES macrostrat_xdd.model(id);
+
+
+--
+-- Name: source_text source_text_model_run_id_fkey; Type: FK CONSTRAINT; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER TABLE ONLY macrostrat_xdd.source_text
+    ADD CONSTRAINT source_text_model_run_id_fkey FOREIGN KEY (legacy_model_run_id) REFERENCES macrostrat_xdd.model_run(id);
+
+
+--
+-- Name: model_run user_id_check; Type: FK CONSTRAINT; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+ALTER TABLE ONLY macrostrat_xdd.model_run
+    ADD CONSTRAINT user_id_check FOREIGN KEY (user_id) REFERENCES macrostrat_xdd.users(user_id);
+
+
+--
+-- Name: SCHEMA macrostrat_xdd; Type: ACL; Schema: -; Owner: macrostrat-admin
+--
+
+GRANT ALL ON SCHEMA macrostrat_xdd TO macrostrat_kg_admin;
+GRANT ALL ON SCHEMA macrostrat_xdd TO "xdd-writer";
+
+
+--
+-- PostgreSQL database dump complete
+--
+

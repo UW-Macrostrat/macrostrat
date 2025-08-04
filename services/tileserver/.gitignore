@@ -1,0 +1,6 @@
+.env
+.venv
+__pycache__
+.pytest_cache
+deps/macrostrat_tileserver_utils-0.1.0-py3-none-any.whl
+

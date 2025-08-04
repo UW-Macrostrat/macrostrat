@@ -1,0 +1,167 @@
+from dataclasses import dataclass
+from json import dumps
+from pathlib import Path
+from typing import List
+
+from buildpg import render
+from fastapi import APIRouter, Query, Request
+from httpx import AsyncClient
+
+client = AsyncClient()
+
+from macrostrat.tileserver_utils import VectorTileResponse, get_sql
+from macrostrat.utils import get_logger
+
+from ..utils import get_layer_sql, scales_for_zoom
+
+log = get_logger(__name__)
+
+
+router = APIRouter()
+
+__here__ = Path(__file__).parent
+
+
+@router.get("/{model}/tiles/{z}/{x}/{y}")
+async def get_tile(
+    request: Request,
+    model: str,
+    z: int,
+    x: int,
+    y: int,
+    term: str = Query(None),
+    norm_method: str = Query("global"),
+):
+    """Get a tile from the tileserver."""
+    pool = request.app.state.pool
+
+    if not term:
+        raise ValueError("No term provided")
+
+    model_name = standardize_model_name(model)
+
+    term_id = await get_search_term_id(pool, term, model_name)
+
+    # Check if there is a query term in the cache and if not, add it
+
+    mapsize, linesize = scales_for_zoom(z)
+
+    query = get_layer_sql(__here__ / "queries", "units")
+
+    units_ = await fetchval(
+        pool,
+        query,
+        z=z,
+        x=x,
+        y=y,
+        mapsize=mapsize,
+        model_name=model_name,
+        linesize=linesize,
+        term_id=term_id,
+        # norm_method=norm_method,
+        layer_name="units",
+    )
+
+    return VectorTileResponse(units_)
+
+
+async def get_search_term_id(pool, term, model) -> int:
+    """Get the ID of a search term from the database, or create it if it doesn't exist."""
+
+    # Check the database to see if the term exists
+    term_id = await fetchval(
+        pool,
+        """
+        SELECT sv.id FROM text_vectors.search_vector sv
+        JOIN text_vectors.model m
+          ON m.id = sv.model_id
+        WHERE text = :term AND m.name = :model
+        """,
+        term=term,
+        model=model,
+    )
+
+    if term_id:
+        return term_id
+
+    # If the term doesn't exist, create it
+    res = await get_search_term_embedding(term, model)
+
+    ins_stmt = get_sql(__here__ / "queries" / "create-search-term.sql")
+    term_id = await fetchval(
+        pool,
+        ins_stmt,
+        text=term,
+        model_name=res.model_name,
+        model_version=res.model_version,
+        sample_size=5000,
+        text_vector=dumps(res.vector),
+        norm_vector=dumps(res.norm_vector),
+    )
+
+    return term_id
+
+
+async def fetchval(pool, query, **params):
+    q, p = render(query, **params)
+    async with pool.acquire() as con:
+        return await con.fetchval(q, *p)
+
+
+@dataclass
+class XDDEmbeddingResponse:
+    term: str
+    model_name: str
+    model_version: str
+    vector: List[float]
+    norm_vector: List[float]
+
+
+async def get_search_term_embedding(term, model) -> XDDEmbeddingResponse:
+    """Get the embedding for a search term from the xDD API."""
+
+    # Get the settings model
+    from ..__init__ import db_settings
+
+    url = db_settings.xdd_embedding_service_url
+
+    data = {
+        "inputs": [
+            {
+                "name": "prompt",
+                "shape": [1],
+                "datatype": "BYTES",
+                "data": [term],
+            }
+        ]
+    }
+
+    response = await client.post(url, json=data, timeout=30)
+    response.raise_for_status()
+    res = response.json()
+    vector = res["outputs"][0]["data"]
+
+    # We don't query the model name properly at this point,
+    # so we need to make sure it is standardized
+    model_name = standardize_model_name(res.get("model_name"))
+    assert model_name == model
+
+    norm = sum(x**2 for x in vector) ** 0.5
+    # Normalize the vector
+    norm_vector = [x / norm for x in vector]
+    # convert to list
+
+    return XDDEmbeddingResponse(
+        term=term,
+        model_name=model_name,
+        model_version=res.get("model_version"),
+        vector=vector,
+        norm_vector=norm_vector,
+    )
+
+
+def standardize_model_name(model_id: str) -> str:
+    """Why can't we just all get along?"""
+    if "/" not in model_id:
+        return "iaross/" + model_id
+    return model_id

@@ -1,0 +1,5 @@
+#!/usr/bin/env zsh
+# An example command to run `df` on all hosts in the inventory
+
+cd "$(dirname "$0")/../.."
+ansible all -m shell -a "df -h"

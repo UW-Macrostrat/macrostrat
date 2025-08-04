@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -o allexport
+source "$STRAT_BASE/chtc/.env"
+source "$STRAT_BASE/server-configs/chtc-server/.env"
+set +o allexport
+
+function docker-run {
+  docker run -i --network host postgres:15 "$@"
+}
+
+
+# Create the database
+docker-run psql $MACROSTRAT_PG_DATABASE -c "CREATE DATABASE elevation"
+
+# Switch the database in the connection string
+elevation_database=$(echo $MACROSTRAT_PG_DATABASE | sed 's/\/macrostrat$/\/elevation/')
+echo $elevation_database
+
+docker-run psql $elevation_database -c "CREATE EXTENSION postgis"
+docker-run psql $elevation_database -c "CREATE EXTENSION postgis_raster"
+
+# Dump the database from Strata and load it into the new database
+ssh strata -C "pg_dump -U postgres -Fc -d elevation" \
+| pv \
+| docker-run pg_restore --no-owner -d $elevation_database
+

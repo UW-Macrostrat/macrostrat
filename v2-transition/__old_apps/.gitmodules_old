@@ -1,0 +1,30 @@
+[submodule "services/macrostrat-api"]
+	path = services/macrostrat-api
+	url = ./services/macrostrat-api
+[submodule "tools/msutils"]
+	path = tools/macrostrat-utils
+	url = ./tools/msutils
+[submodule "services/rockd-api"]
+	path = services/rockd-api
+	url = git@github.com:UW-Macrostrat/rockd.git
+[submodule "services/tileserver"]
+	path = services/tileserver
+	url = https://github.com/UW-Macrostrat/tileserver.git
+[submodule "services/column-infrastructure"]
+	path = services/column-infrastructure
+	url = https://github.com/UW-Macrostrat/column-infrastructure.git
+[submodule "weaver"]
+	path = tools/weaver
+	url = https://github.com/digitalcrust/weaver.git
+[submodule "services/corelle"]
+	path = services/corelle
+	url = https://github.com/UW-Macrostrat/corelle.git
+[submodule "tileserver-stats"]
+	path = tools/tileserver-stats
+	url = https://github.com/UW-Macrostrat/tileserver-stats.git
+[submodule "tools/map-integration"]
+	path = tools/map-integration
+	url = https://github.com/UW-Macrostrat/burwell.git
+[submodule "tools/raster-cli"]
+	path = tools/raster-cli
+	url = https://github.com/UW-Macrostrat/raster-cli.git

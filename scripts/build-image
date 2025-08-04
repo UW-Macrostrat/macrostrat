@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# This script builds a docker image for a service.
+# It should be run from the root of the repository.
+
+# First, build local python modules
+
+set -e
+
+name=${1:-"legacy-tileserver"}
+
+function header() {
+  echo -e "\n\033[1m$1\033[0m" >&2
+}
+
+root=$(pwd)
+dist_dir="$root/py-modules/dist"
+
+for module in $(ls -d py-modules/*/); do
+  [ ! -f "$module/pyproject.toml" ] && continue
+  if [ -d "$module" ]; then
+    # Bold text
+    header "Building $module"
+    pushd $module
+    poetry lock
+    poetry build --output $dist_dir
+    popd
+  fi
+done
+
+
+# Copy the dependencies to the service/deps directory
+
+svc=services/$name
+
+header "Updating dependencies for $svc"
+
+mkdir -p $svc/deps
+rm -f $svc/deps/*.whl
+cp $dist_dir/*.whl $svc/deps
+
+pushd $svc
+poetry lock
+
+header "Building Docker container $svc"
+docker build .

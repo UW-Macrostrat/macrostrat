@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# Export a database query as spatialite
+
+# Get environment variables from .env file
+root=$STRAT_BASE
+
+export $(grep -v '^#' $root/server-configs/dev-server/.env | xargs)
+
+export PGPASSWORD="$POSTGRES_PASSWORD"
+export PGHOST="dev.macrostrat.org"
+export PGUSER="$POSTGRES_USER"
+
+conn_string="PG:dbname=macrostrat_v2 host=$PGHOST user=$PGUSER password=$PGPASSWORD"
+
+# Output file
+query=$1
+if [ -z "$query" ]; then
+  echo "Usage: strat export-query <query> <output-file> <layer-name>"
+  echo "Example: strat export-query 'SELECT * FROM macrostrat.strat_names' strat_names.spatialite"
+  echo "Pass - as the query to read from stdin"
+  exit 1
+fi
+
+output_file=$2
+layer=${3:-"exported"}
+
+if [ "$query" == "-" ]; then
+  echo "Reading query from stdin"
+  # Get query from stdin
+  query=$(cat)
+fi
+
+ogr2ogr \
+  -append \
+  -f "SQLite" \
+  -dsco SPATIALITE=YES \
+  $output_file \
+  "$conn_string" \
+  -sql "$query" \
+  -nln "$layer" \
+  -nlt PROMOTE_TO_MULTI \
+  -lco GEOMETRY_NAME=geom \
+  -lco FID=id \
+  -lco SPATIAL_INDEX=YES

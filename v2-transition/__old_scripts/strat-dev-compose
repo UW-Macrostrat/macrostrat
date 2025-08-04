@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+export DOCKER_HOST=ssh://acadia
+
+server_dir="$STRAT_BASE/server-configs/dev-server"
+export COMPOSE_FILE="$server_dir/docker-compose.yaml"
+
+docker compose --project-directory "$server_dir" $@

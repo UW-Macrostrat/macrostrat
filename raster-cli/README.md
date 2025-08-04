@@ -1,0 +1,1 @@
+# Macrostrat raster pipeline

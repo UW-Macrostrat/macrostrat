@@ -1,0 +1,5 @@
+- All tables should have `_polygon`, `_line`, `_point` suffixes
+- `sources.primary_table` should be recast as `sources.slug`
+- No primary key column
+- `ready` column should be recast as `ignore`
+- No foreign keys to Macrostrat data definitions (this keeps the system lean but decreases flexibility).

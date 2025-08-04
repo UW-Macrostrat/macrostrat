@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -o allexport
+source "$STRAT_BASE/chtc/.env"
+set +o allexport
+
+
+ssh strata -C "pg_dump -U postgres -Fc -d $1" \
+| pv \
+> /data/backups/$1-$(date '+%Y-%m-%d').pg-dump

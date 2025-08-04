@@ -1,0 +1,174 @@
+services:
+  gateway:
+    image: caddy:2.9-alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+    labels:
+      - dev.orbstack.domains=macrostrat.local,storage.macrostrat.local,storage-ui.macrostrat.local,dev.macrostrat.local
+  database:
+    # PostgreSQL 13 is needed in order to allow force-dropping the database
+    # (in testing mode)
+    # docker pull imresamu/postgis:15-3.4
+    build:
+      context: ../base-images/database
+    #image: ${PG_DATABASE_CONTAINER:-imresamu/postgis:15-3.4}
+    # Set an arbitary tag to avoid repeated builds
+    image: macrostrat.local/database:latest
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER
+      - POSTGRES_DB
+      # This allows connections without a password, which is expedient but insecure...
+      - POSTGRES_PASSWORD
+      - PGUSER=${POSTGRES_USER}
+      - PGPASSWORD=${POSTGRES_PASSWORD}
+      - PGPORT=5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "${MACROSTRAT_DB_PORT:-5432}:5432"
+    expose:
+      - 5432
+    volumes:
+      - db_cluster:/var/lib/postgresql/data
+  api_v2:
+    image: hub.opensciencegrid.org/macrostrat/macrostrat-api:main
+    build: ${MACROSTRAT_API_SRC:-""}
+    environment:
+      - MACROSTRAT_DATABASE=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}?sslmode=disable
+      - ELEVATION_DATABASE=${ELEVATION_DATABASE_URL}
+      - NODE_TLS_REJECT_UNAUTHORIZED=0
+  api_v3:
+    # Unlike other services, the API v3 service is packaged as part of this repository.
+    # This is because its functionality is tightly coupled in many cases with the command-line
+    # tools and unstable elements of the database schema. We may elect to externalize this
+    # service in the future.
+    build: ../services/api-v3
+    environment:
+      - DB_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
+      - REDIRECT_URI_ENV=https://macrostrat.local/api/v3/security/callback
+      - SECRET_KEY=${SECRET_KEY}
+      - JWT_ENCRYPTION_ALGORITHM=HS256
+      - OAUTH_TOKEN_URL=${OAUTH_TOKEN_URL:-https://orcid.org/oauth/token}
+      - OAUTH_CLIENT_ID
+      - OAUTH_CLIENT_SECRET
+      - OAUTH_USERINFO_URL=${OAUTH_USERINFO_URL:-https://orcid.org/oauth/userinfo}
+      - OAUTH_AUTHORIZATION_URL=${OAUTH_AUTHORIZATION_URL:-https://orcid.org/oauth/authorize}
+  postgrest:
+    image: postgrest/postgrest:v12.2.3
+    environment:
+      - PGRST_DB_URI=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
+      - PGRST_JWT_SECRET=${SECRET_KEY}
+      - PGRST_DB_ANON_ROLE=web_anon
+      # We allow the API to access several schemas, separated by commas
+      - PGRST_DB_SCHEMA=macrostrat_api,map_ingestion_api
+      - PGRST_SERVER_PORT=3000
+      - PGRST_DB_MAX_ROWS=5000
+      - PGRST_SERVER_HOST=
+      - PGRST_SERVER_TIMING_ENABLED=true
+      # This is sketchy; we really only want this for a few (auth-gated) routes
+      # Perhaps we can put this config in the database?
+      - PGRST_DB_AGGREGATES_ENABLED=true
+  # Tileserver
+  tileserver:
+    image: hub.opensciencegrid.org/macrostrat/tileserver:main
+    build: ../services/tileserver
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
+      # Ideally the system would fail gracefully if we didn't provide the Rockd database URL but that's not the case.
+      - ROCKD_DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/rockd
+    # The `--proxy-headers` flag is necessary for the tileserver to work behind a reverse proxy
+    # and correctly notify the app that it should trust the X-Forwarded-Proto header.
+    # This is necessary for the tileserver to correctly generate URLs for tilejson files.
+    # https://github.com/encode/starlette/issues/538
+    command: >
+      uvicorn --host 0.0.0.0 --port 8000
+        macrostrat.tileserver:app
+        --root-path /tiles
+        --log-level debug
+        --proxy-headers
+        --forwarded-allow-ips=*
+  legacy_tileserver:
+    build: ../services/legacy-tileserver
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
+    command: >
+      uvicorn --host 0.0.0.0 --port 8000
+        macrostrat.legacy_tileserver:app
+        --root-path /tiles/legacy
+        --log-level debug
+        --proxy-headers
+        --forwarded-allow-ips=*
+  # Storage
+  storage:
+    image: minio/minio:RELEASE.2024-12-18T13-15-44Z-cpuv1
+    environment:
+      - MINIO_ROOT_USER=${STORAGE_ACCESS_KEY}
+      - MINIO_ROOT_PASSWORD=${STORAGE_SECRET_KEY}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    command: server --address 0.0.0.0:9000 --console-address 0.0.0.0:9001 /data
+  web:
+    profiles: ["web"]
+    image: hub.opensciencegrid.org/macrostrat/macrostrat-web:main
+    build: ${MACROSTRAT_WEB_SRC:-""}
+    environment:
+      - VITE_MAPBOX_API_TOKEN=${MAPBOX_TOKEN}
+      - VITE_MACROSTRAT_TILESERVER_DOMAIN=https://macrostrat.local/tiles
+      - VITE_MACROSTRAT_API_DOMAIN=https://macrostrat.local
+      # Needed for server-side rendering requests to not fail on self-signed certs (which OrbStack provides)
+      - NODE_TLS_REJECT_UNAUTHORIZED=0
+      # Secret key must be shared with the API that mints the JWT (in this case, the Macrostrat dev API)
+      - SECRET_KEY=${SECRET_KEY}
+  # The map-cache service is a prototype caching layer for local map tiles.
+  map-cache:
+    build: ${MACROSTRAT_MAP_CACHE_SRC:-""}
+    profiles: ["map-cache"]
+    environment:
+      - MAPBOX_API_TOKEN=${MAPBOX_TOKEN}
+      - MAP_CACHE_DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/map_cache
+    command: |
+        poetry run uvicorn --host 0.0.0.0 --port 8001
+          macrostrat.map_cache.main:app
+            --root-path /cache
+            --log-level debug
+            --proxy-headers
+            --forwarded-allow-ips=*
+  migrations-test-db:
+    image: postgis-with-audit
+    profiles: ['migrations-test']
+    build:
+      context: .
+      dockerfile: ./postgis-audit.Dockerfile
+    ports:
+      - "${MACROSTRAT_DB_PORT:-5432}:5432"
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=macrostrat
+  # The MariaDB service is Macrostrat's v1 database service.
+  # This is currently being removed from the active configuration
+  # and relegated to a 'legacy' profile. But for now, we need it
+  # at least for inspection purposes.
+  mariadb:
+    image: mariadb:10.10
+    ports:
+      - "3306:3306"
+    environment:
+      - MARIADB_ROOT_PASSWORD
+    volumes:
+      - mysql_cluster:/var/lib/mysql
+    restart: always
+    profiles: ["legacy"]
+volumes:
+  db_cluster:
+  mysql_cluster:
+  minio_data:

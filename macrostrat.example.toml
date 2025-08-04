@@ -1,0 +1,33 @@
+[default]
+# Source code for of individual services that we want to integrate
+# TODO: we may decide to organize these somewhat differently.
+corelle_src = "~/Projects/Macrostrat/Software/corelle"
+
+# The remainder of the configuration expresses different settings per environment
+[local]
+# Example of changing the database container..
+pg_database_container = "imresamu/postgis:15-3.4"
+pg_database = "postgresql://macrostrat-admin:my-cool-password@localhost:5432/macrostrat"
+
+# Use a docker compose configuration (there will eventually be a bundled default)
+compose_root = "./local-root"
+
+# Key for salting passwords
+secret_key = "really-secure-key"
+
+# A kubernetes based development instance
+[development]
+pg_database = "postgresql://macrostrat-admin:my-cool-password@dev.macrostrat.org:5432/macrostrat"
+# Use a Kubernetes namespace
+# Right now, using kubectl's default configuration and connection parameters is assumed
+#
+kube_namespace="<my-namespace>"
+pg_database_pod = "dev-macrostrat-db"
+
+# A hypothetical remote implementation
+# Fundamentally, the only required component is the database connection string
+# (service management features will not be available).
+[criticalmaas]
+
+pg_database = "postgresql://remote_user:remote_password@cool-other-server.usgs.gov:5432/criticalmaas_maps"
+
