@@ -50,11 +50,8 @@ INSERT INTO ecosystem.roles (name, description) VALUES
   ('Researcher', 'Conducts academic or applied research'),
   ('Developer', 'Writes and maintains software code'),
   ('Leader', 'Leads research or development projects and mentors others'),
-  ('Collaborator', 'Contributes to joint projects'),
+  ('Collaborator', 'Contributes to joint projects')
 ON CONFLICT (name) DO NOTHING;
 
 -- DEFAULT PRIVILEGES
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA ecosystem TO web_admin;
-
--- Macrostrat API Permissions
-GRANT SELECT, UPDATE ON macrostrat_api.people TO web_admin;
