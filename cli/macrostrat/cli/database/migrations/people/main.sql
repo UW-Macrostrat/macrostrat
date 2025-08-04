@@ -54,4 +54,4 @@ INSERT INTO ecosystem.roles (name, description) VALUES
 ON CONFLICT (name) DO NOTHING;
 
 -- DEFAULT PRIVILEGES
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA ecosystem TO web_admin;
+GRANT SELECT, INSERT, UPDATE, DELETE ON macrostrat_api.people_table, macrostrat_api.people_roles_table TO web_admin;
