@@ -61,12 +61,28 @@ CREATE OR REPLACE VIEW macrostrat_api.people AS
 CREATE OR REPLACE VIEW macrostrat_api.people_roles AS
 	SELECT * FROM ecosystem.people_roles;
 
+CREATE OR REPLACE VIEW macrostrat_api.people_with_roles AS
+	SELECT p.id,
+	    p.name,
+	    p.email,
+	    p.title,
+	    p.website,
+	    p.img_id,
+	    p.active_start,
+	    p.active_end,
+	    COALESCE(json_agg(json_build_object('name', r.name, 'description', r.description)) FILTER (WHERE r.id IS NOT NULL)) AS roles
+	   FROM ecosystem.people p
+	     LEFT JOIN ecosystem.people_roles pr ON p.id = pr.person_id
+	     LEFT JOIN ecosystem.roles r ON pr.role_id = r.id
+	  GROUP BY p.id;
+
+
 -- DEFAULT PRIVILEGES
 GRANT SELECT, INSERT, UPDATE, DELETE ON 
 	ecosystem.people, 
 	ecosystem.people_roles,
 	macrostrat_api.people, 
 	macrostrat_api.people_roles
-TO web_admin;
+TO web_anon;
 
-GRANT USAGE, SELECT ON SEQUENCE ecosystem.people_person_id_seq TO web_admin;
+GRANT USAGE, SELECT ON SEQUENCE ecosystem.people_person_id_seq TO web_anon;
