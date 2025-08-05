@@ -62,7 +62,8 @@ CREATE OR REPLACE VIEW macrostrat_api.people_roles AS
 	SELECT * FROM ecosystem.people_roles;
 
 CREATE OR REPLACE VIEW macrostrat_api.people_with_roles AS
-	SELECT p.id,
+	SELECT 
+		p.person_id,
 	    p.name,
 	    p.email,
 	    p.title,
@@ -70,11 +71,11 @@ CREATE OR REPLACE VIEW macrostrat_api.people_with_roles AS
 	    p.img_id,
 	    p.active_start,
 	    p.active_end,
-	    COALESCE(json_agg(json_build_object('name', r.name, 'description', r.description)) FILTER (WHERE r.id IS NOT NULL)) AS roles
+	    COALESCE(json_agg(json_build_object('name', r.name, 'description', r.description)) FILTER (WHERE r.role_id IS NOT NULL)) AS roles
 	   FROM ecosystem.people p
-	     LEFT JOIN ecosystem.people_roles pr ON p.id = pr.person_id
-	     LEFT JOIN ecosystem.roles r ON pr.role_id = r.id
-	  GROUP BY p.id;
+	     LEFT JOIN ecosystem.people_roles pr ON p.person_id = pr.person_id
+	     LEFT JOIN ecosystem.roles r ON pr.role_id = r.role_id
+	  GROUP BY p.person_id;
 
 
 -- DEFAULT PRIVILEGES
