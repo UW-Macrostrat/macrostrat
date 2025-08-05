@@ -9,10 +9,14 @@ packages = [
 ]
 dependencies = [
     "click>=8.2.1",
-    "macrostrat-database>=3.5.4",
+    "macrostrat.database>=3.5.4",
     "pandas>=2.3.1",
     "requests>=2.32.4",
     "simplejson>=3.20.1",
     "starlette>=0.47.2",
     "uvicorn>=0.35.0",
+    "mapboard.topology-manager"
 ]
+
+[tool.uv.sources]
+"mapboard.topology-manager" = { path = "../../submodules/topology-manager" }
