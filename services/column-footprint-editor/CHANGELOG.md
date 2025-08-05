@@ -3,6 +3,7 @@
 ## 2025 reactivation
 
 - Switch to newer version of Python
+- Start using `uv` for dependency managment (note, this is different than other packages which use `poetry`).
 
 ## Older changes on `voronoi` branch (2021)
 

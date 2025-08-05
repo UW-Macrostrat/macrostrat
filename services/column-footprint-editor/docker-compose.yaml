@@ -19,7 +19,7 @@ services:
     ports:
       - "1234:3000"
   backend:
-    build: "./backend"
+    build: "column_footprint_editor"
     entrypoint: "/python_app/docker-scripts/run"
     environment:
       - GEOLOGIC_MAP_CONFIG=/app/docker-assets/docker-map-config.json

@@ -1,12 +1,12 @@
-from starlette.routing import Route
 from starlette.applications import Starlette
-from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware import Middleware
+from starlette.middleware.cors import CORSMiddleware
+from starlette.routing import Route
 
-from .home import HomePage
 from .column_groups import ColumnGroups
-from .project import ProjectsAPI
 from .geometries import Points, geometries, get_line, import_topologies, Lines, get_csv
+from .home import HomePage
+from .project import ProjectsAPI
 from .voronoi import VoronoiTesselator
 
 middleware = [
@@ -29,3 +29,13 @@ routes = [
 ]
 
 app = Starlette(routes=routes, debug=True, middleware=middleware)
+
+
+# On startup, create tables if needed
+@app.on_event("startup")
+async def startup_event():
+    from ..database import Database
+
+    # TODO: don't create tables on startup
+    db = Database()
+    db.create_project_table()

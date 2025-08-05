@@ -1,13 +1,12 @@
-import os
-
-from click import secho
-from sqlparse import split, format
-from sqlalchemy.exc import ProgrammingError, IntegrityError
-from shlex import split as split_
-from subprocess import run
-from pathlib import Path
 import json
 import logging
+import os
+from click import secho
+from pathlib import Path
+from shlex import split as split_
+from sqlalchemy.exc import ProgrammingError, IntegrityError
+from sqlparse import split, format
+from subprocess import run
 
 here = Path(__file__).parent
 config_dir = here / "config"
@@ -114,25 +113,25 @@ def create_project_config(project):
         "user": "postgres",
     }
 
-    fn = config_dir / f"project_{project_id}.json"
-    with open(fn, "w") as f:
-        json.dump(config, f)
-    print("Configuration file sucessfully created")
+    # fn = config_dir / f"project_{project_id}.json"
+    # with open(fn, "w") as f:
+    #     json.dump(config, f)
+    # print("Configuration file sucessfully created")
     return config
 
 
 def config_check(project):
     if not hasattr(project, "id"):
         return {}
-    project_id = project.id
-    config_fn = config_dir / f"project_{project_id}.json"
-
-    if config_fn.exists():
-        print("Configuration file exists")
-        return get_config(project_id)
-    else:
-        print("Config does not exist")
-        return create_project_config(project)
+    # project_id = project.id
+    # config_fn = config_dir / f"project_{project_id}.json"
+    #
+    # if config_fn.exists():
+    #     print("Configuration file exists")
+    #     return get_config(project_id)
+    # else:
+    #     print("Config does not exist")
+    return create_project_config(project)
 
 
 def get_config(project_id):

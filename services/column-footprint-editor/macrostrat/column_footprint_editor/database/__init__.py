@@ -1,10 +1,11 @@
+from macrostrat.database import Database as BaseDatabase
 from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from .sql_formatter import SqlFormatter
 from ..settings import DATABASE
-from ..utils import run_sql, config_check, run_docker_config, delete_config
+from ..utils import config_check, run_docker_config, delete_config
 
 here = Path(__file__).parent
 fixtures = here / "fixtures"
@@ -23,21 +24,19 @@ project_info_insert = procedures / "project-meta-insert.sql"
 project_table = fixtures / "projects_table.sql"
 
 
-class Database:
+class Database(BaseDatabase):
     """
     Database class with built in SQL Formatter
     """
 
     def __init__(self, project=None):
         self.project_id = getattr(project, "id", None)
+        super().__init__(DATABASE, echo_sql=True)
+
         self.engine = create_engine(DATABASE, echo=True)
         self.Session = sessionmaker(bind=self.engine)
         self.config = config_check(project)
         self.formatter = SqlFormatter(self.project_id)
-
-    def run_sql(self, sql, params={}, **kwargs):
-        sql = self.formatter.sql_config_format(sql, self.config)
-        return run_sql(sql, params=params, session=self.Session(), **kwargs)
 
     def exec_sql(self, sql, params=None, count=None):
         sql = self.formatter.sql_config_format(sql, self.config)
@@ -50,10 +49,10 @@ class Database:
                 res = q.fetchone()
         return res
 
-    def run_sql_file(self, sql_file, params={}, **kwargs):
-        sql = open(sql_file).read()
-
-        return self.run_sql(sql, params=params, **kwargs)
+    def run_sql_file(self, sql_file, params=None, **kwargs):
+        pth = Path(sql_file)
+        params = params or {}
+        return self.run_fixtures(pth, params, **kwargs)
 
     def exec_query(self, filename_or_query, **kwargs):
         """
