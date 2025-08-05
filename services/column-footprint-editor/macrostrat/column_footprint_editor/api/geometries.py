@@ -1,14 +1,13 @@
-import requests
-from starlette.endpoints import HTTPEndpoint
-from starlette.responses import JSONResponse, PlainTextResponse
-from project import Project
-from project.importer import ProjectImporter
-from database import Database
-from pathlib import Path
-from .utils import clean_change_set
-
 import json
 import simplejson
+from pathlib import Path
+from starlette.endpoints import HTTPEndpoint
+from starlette.responses import JSONResponse, PlainTextResponse
+
+from .utils import clean_change_set
+from ..database import Database
+from ..project import Project
+from ..project.importer import ProjectImporter
 
 here = Path(__file__).parent / ".."
 procedures = here / "database" / "procedures"
@@ -195,15 +194,15 @@ async def get_csv(request):
     project_id = request.path_params["project_id"]
     project = Project(project_id)
 
-    sql = """SELECT ST_AsGeoJSON(c.geometry) polygon, 
+    sql = """SELECT ST_AsGeoJSON(c.geometry) polygon,
              ST_AsGeoJSON(c.point) point,
-             c.id, 
-             c.project_id, 
-             c.col_id, 
-             c.col_name, 
-             c.col_group_id, 
-             c.col_group, 
-             c.col_group_name 
+             c.id,
+             c.project_id,
+             c.col_id,
+             c.col_name,
+             c.col_group_id,
+             c.col_group,
+             c.col_group_name
             from ${project_schema}.column_map_face c; """
     df = project.db.exec_query(sql)
     csv = df.to_csv()

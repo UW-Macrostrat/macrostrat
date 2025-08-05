@@ -1,7 +1,8 @@
-import requests
 import json
-from project import Project
-from settings import IMPORTER_API
+import requests
+
+from . import Project
+from ..settings import IMPORTER_API
 
 
 class ProjectImporter:

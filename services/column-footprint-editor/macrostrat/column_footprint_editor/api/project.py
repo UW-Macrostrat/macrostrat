@@ -1,11 +1,12 @@
+from os import error
+
+import json
+from pathlib import Path
 from starlette.endpoints import HTTPEndpoint
 from starlette.responses import JSONResponse
-from database import Database
-from project import Project
-from pathlib import Path
 
-from os import error
-import json
+from ..database import Database
+from ..project import Project
 
 here = Path(__file__).parent / ".."
 procedures = here / "database" / "procedures"

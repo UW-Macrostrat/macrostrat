@@ -1,5 +1,11 @@
 # Changelog:
 
+## 2025 reactivation
+
+- Switch to newer version of Python
+
+## Older changes on `voronoi` branch (2021)
+
 You can click on a point, that has more than one vertex, and drag them together, causing the lines to also be dragged together. Deleting and creating nodes also work.
 
 Can create new polygons from scratch using the line create tool. Edits are relatively easy, except for bugs listed below.

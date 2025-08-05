@@ -1,6 +1,7 @@
-from api import app
-from database import Database
 import uvicorn
+
+from .api import app
+from .database import Database
 
 if __name__ == "__main__":
     db = Database()

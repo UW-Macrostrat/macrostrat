@@ -1,7 +1,8 @@
-from pathlib import Path
-from settings import IMPORTER_API
-from database import Database
 import requests
+from pathlib import Path
+
+from ..database import Database
+from ..settings import IMPORTER_API
 
 here = Path(__file__).parent / ".." / "database"
 queries = here / "queries"

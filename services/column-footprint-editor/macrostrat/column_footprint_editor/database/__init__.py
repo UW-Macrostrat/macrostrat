@@ -1,11 +1,10 @@
-from sqlalchemy.ext.automap import automap_base
+from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from pathlib import Path
-from settings import DATABASE
 
-from utils import run_sql, config_check, run_docker_config, delete_config
 from .sql_formatter import SqlFormatter
+from ..settings import DATABASE
+from ..utils import run_sql, config_check, run_docker_config, delete_config
 
 here = Path(__file__).parent
 fixtures = here / "fixtures"

@@ -1,9 +1,11 @@
+from os import error
+
+import simplejson
 from starlette.endpoints import HTTPEndpoint
 from starlette.responses import JSONResponse
-from database import Database
-from project import Project
-from os import error
-import simplejson
+
+from ..database import Database
+from ..project import Project
 
 
 class ColumnGroups(HTTPEndpoint):
@@ -73,7 +75,7 @@ class ColumnGroups(HTTPEndpoint):
     async def put(self, request):
         """Endpoint for Editing Existing Column Groups"""
 
-        sql = """ 
+        sql = """
             UPDATE ${project_schema}.column_groups cg
                 SET col_group = :col_group,
                 col_group_name = :col_group_name,
