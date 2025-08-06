@@ -4,7 +4,7 @@ from typing import Required
 os.environ["USE_PYGEOS"] = "0"
 
 from sys import stdin
-
+import re
 from psycopg2.sql import Identifier
 from typer import Option
 
@@ -413,7 +413,11 @@ def staging_bulk(
     region_dirs = sorted([p for p in parent.iterdir() if p.is_dir()])
 
     for region_path in region_dirs:
-        slug = f"{prefix}_{region_path.stem.lower()}"
+        #normalize slug name
+        stem = region_path.stem.lower()
+        clean_stem = re.sub(r"\s+", "_", stem.strip())
+        clean_stem = re.sub(r"[^a-z0-9_]", "", clean_stem)
+        slug = f"{prefix}_{clean_stem}"
         name = region_path.stem
         meta_path = region_path
         staged_slugs.append(slug)
