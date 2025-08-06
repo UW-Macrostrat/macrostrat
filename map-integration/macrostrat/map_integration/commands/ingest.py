@@ -3,11 +3,10 @@ from collections import defaultdict
 from optparse import Option
 from pathlib import Path
 from typing import Iterable, List, Tuple
-from shapely import wkt
-from shapely.geometry.base import BaseGeometry
 
 import fiona
 import geopandas as G
+import numpy as np
 import pandas as P
 import pyogrio
 from geoalchemy2 import Geometry
@@ -15,8 +14,9 @@ from numpy.f2py.symbolic import as_ge
 from pandas import DataFrame
 from rich.console import Console
 from rich.progress import Progress
+from shapely import wkt
+from shapely.geometry.base import BaseGeometry
 from sqlalchemy import text
-import numpy as np
 
 from ..custom_integrations.gems_utils import (
     extract_gdb_layer,
@@ -37,7 +37,9 @@ def merge_metadata_polygons(polygon_df, meta_df, join_col) -> G.GeoDataFrame:
     polygon_df[join_col] = polygon_df[join_col].astype(str)
     meta_df[join_col] = meta_df[join_col].astype(str)
     # merge metadata into geodataframe
-    merged_df = polygon_df.merge(meta_df, on=join_col, how="left", suffixes=("", "_meta"))
+    merged_df = polygon_df.merge(
+        meta_df, on=join_col, how="left", suffixes=("", "_meta")
+    )
     # Drop duplicate columns (after merge)
     return merged_df
 
@@ -57,32 +59,34 @@ def preprocess_dataframe(
     """
     # extract and store metadata into meta_df for processing.
     meta_df = None
-    ingest_pipeline = ''
-    comments = ''
-    state = ''
+    ingest_pipeline = ""
+    comments = ""
+    state = ""
     ext = meta_path.suffix.lower()
     if join_col not in polygon_df.columns:
         comments = f"Warning: join column '{join_col}' not found in metadata file. Skipping metadata merge."
-        state = 'failed'
+        state = "failed"
         return polygon_df, ingest_pipeline, comments, state
     if ext == ".tsv":
         meta_df = P.read_csv(meta_path, sep="\t")
-        ingest_pipeline = '.tsv pipeline'
+        ingest_pipeline = ".tsv pipeline"
     elif ext == ".csv":
         meta_df = P.read_csv(meta_path)
-        ingest_pipeline = '.csv pipeline'
+        ingest_pipeline = ".csv pipeline"
     elif ext in [".xls", ".xlsx"]:
-        ingest_pipeline = '.xls pipeline'
+        ingest_pipeline = ".xls pipeline"
         meta_df = P.read_excel(meta_path)
     # TODO add lines metadata ingestion hereeee
     # TODO ensure this is a gems dataset (list all layers) OR .gdb
     elif ext == ".gdb":
         # extract whatever layer you want to merge with the polygons table
-        meta_df, ingest_pipeline, comments = extract_gdb_layer(meta_path, "DescriptionOfMapUnits", False)
-        if ingest_pipeline == '.gdb pipeline':
+        meta_df, ingest_pipeline, comments = extract_gdb_layer(
+            meta_path, "DescriptionOfMapUnits", False
+        )
+        if ingest_pipeline == ".gdb pipeline":
             return polygon_df, ingest_pipeline, comments, state
-        if ingest_pipeline == 'Gems pipeline' and comments != '':
-            state = 'failed'
+        if ingest_pipeline == "Gems pipeline" and comments != "":
+            state = "failed"
             return polygon_df, ingest_pipeline, comments, state
 
         # delete all of the arizona maps that are empty
@@ -90,13 +94,13 @@ def preprocess_dataframe(
         # celery process to have a delete button in the UI.
         # streamline the api's and UI for production.
         meta_df, comments = transform_gdb_layer(meta_df)
-        if comments != '':
-            state = 'pending'
+        if comments != "":
+            state = "pending"
             return polygon_df, ingest_pipeline, comments, state
         meta_df = map_t_b_intervals(meta_df)
         if meta_df["b_interval"].isna().all() and meta_df["t_interval"].isna().all():
             comments = "map_t_b_intervals() function failed. Both b_interval and t_interval are NA."
-            state = 'failed'
+            state = "failed"
             return polygon_df, ingest_pipeline, comments, state
         meta_df = map_strat_name(meta_df)
         if meta_df["strat_name"].isna().all():
@@ -104,20 +108,21 @@ def preprocess_dataframe(
 
     if meta_df.empty:
         comments = "Warning: metadata file is empty. Skipping metadata merge."
-        state = 'failed'
+        state = "failed"
         return polygon_df, ingest_pipeline, comments, state
     # merge polygons and metadata dataframes before inserting into the db
     merged_df = merge_metadata_polygons(polygon_df, meta_df, join_col)
     comments += " Successfully merged metadata."
-    state = 'ingested'
+    state = "ingested"
     return merged_df, ingest_pipeline, comments, state
 
 
 def strip_z(g: BaseGeometry | None):
     """Return a 2-D copy of *g* (or None)."""
     if g is None or g.is_empty or not g.has_z:
-        return g               # already 2D / empty / null
+        return g  # already 2D / empty / null
     return wkt.loads(wkt.dumps(g, output_dimension=2))
+
 
 def ingest_map(
     slug: str,
@@ -226,16 +231,19 @@ def ingest_map(
         # applies legend merge only to the whatever the legend_table is specified as
         if meta_path and meta_table == feature_suffix:
             df.columns = df.columns.str.lower()
-            df, ingest_pipeline, comments, state = preprocess_dataframe(df, meta_path=meta_path,
-                                                                        join_col=join_col.lower())
-            if state == '':
-                state = 'ingested'
+            df, ingest_pipeline, comments, state = preprocess_dataframe(
+                df, meta_path=meta_path, join_col=join_col.lower()
+            )
+            if state == "":
+                state = "ingested"
             before = df.columns.tolist()
             df = df.loc[:, ~df.columns.duplicated()]  # <- fix: reassign to merged_df!
             after = df.columns.tolist()
             removed = set(before) - set(after)
             if removed:
-                console.print(f"[yellow]Dropped duplicate columns after merge: {removed}")
+                console.print(
+                    f"[yellow]Dropped duplicate columns after merge: {removed}"
+                )
         console.print(f"[bold]{feature_type}s[/bold] [dim]- {len(df)} features[/dim]")
         # Columns
         console.print("Columns:")
@@ -285,6 +293,7 @@ def ingest_map(
 
             conn.commit()
     return ingest_pipeline, comments, state
+
 
 def create_dataframe_for_layer(file: Path, layer: str) -> G.GeoDataFrame:
     return G.read_file(file, layer=layer)

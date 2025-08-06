@@ -9,7 +9,9 @@ import pyogrio
 from ..database import get_database
 
 
-def extract_gdb_layer(meta_path, layer_name, read_geometry) -> Tuple[G.GeoDataFrame, str, str]:
+def extract_gdb_layer(
+    meta_path, layer_name, read_geometry
+) -> Tuple[G.GeoDataFrame, str, str]:
     """Return a GeoDataFrame containing the requested non‑spatial or spatial layer.
     Parameters:
     legend_path: Pathlike or str. Path to the .gdb directory.
@@ -22,23 +24,28 @@ def extract_gdb_layer(meta_path, layer_name, read_geometry) -> Tuple[G.GeoDataFr
     """
 
     dmu_layer = None
-    ingest_pipeline = ''
-    comments = ''
+    ingest_pipeline = ""
+    comments = ""
     # we are trying to read all of the non-spatial layers in the .gdb
     # ingest any non-spatial metadata from .gdb just specify the file name in the re.search function
     # ex. GeoMaterialDict or DescriptionOfMapUnits
     # then we merge meta_df into the polygons df on a join_col
     for name in fiona.listlayers(meta_path):
-        if name in ('DescriptionOfMapUnits', 'GeoMaterialDict', 'DataSources', 'Glossary'):
-            ingest_pipeline = 'Gems pipeline'
+        if name in (
+            "DescriptionOfMapUnits",
+            "GeoMaterialDict",
+            "DataSources",
+            "Glossary",
+        ):
+            ingest_pipeline = "Gems pipeline"
         if re.search(rf"{layer_name}", name, re.IGNORECASE):
             dmu_layer = name
-    if dmu_layer is None and ingest_pipeline == 'Gems pipeline':
+    if dmu_layer is None and ingest_pipeline == "Gems pipeline":
         comments = f"[yellow]No {layer_name} table found in {meta_path.name}.  Layers:{', '.join(fiona.listlayers(meta_path))}[/yellow]"
         return None, ingest_pipeline, comments
-    elif dmu_layer is None and ingest_pipeline == '':
-        ingest_pipeline = '.gdb pipeline'
-        comments = 'Basic .gdb ingestion. No gems layers found.'
+    elif dmu_layer is None and ingest_pipeline == "":
+        ingest_pipeline = ".gdb pipeline"
+        comments = "Basic .gdb ingestion. No gems layers found."
         return None, ingest_pipeline, comments
     meta_df = G.read_file(
         meta_path,
@@ -59,8 +66,15 @@ def transform_gdb_layer(meta_df: G.GeoDataFrame) -> Tuple[G.GeoDataFrame, str]:
         (``descrip``, ``strat_name`` …), a single lith column that concatenates lithology descriptors, and
         empty columns removed.
     """
-    comments = ''
-    required_canonical = {"name", "strat_name", "age", "descrip", "color", "strat_symbol"}
+    comments = ""
+    required_canonical = {
+        "name",
+        "strat_name",
+        "age",
+        "descrip",
+        "color",
+        "strat_symbol",
+    }
     rename_map = {
         "name": "name",
         "fullname": "strat_name",
@@ -75,15 +89,16 @@ def transform_gdb_layer(meta_df: G.GeoDataFrame) -> Tuple[G.GeoDataFrame, str]:
         "rgb": "color",
     }
     meta_df.columns = meta_df.columns.str.lower()
-    meta_df = meta_df.rename(columns={src: dst for src, dst in rename_map.items()
-                                      if src in meta_df.columns})
+    meta_df = meta_df.rename(
+        columns={src: dst for src, dst in rename_map.items() if src in meta_df.columns}
+    )
     missing_canonical = required_canonical - set(meta_df.columns)
     if missing_canonical:
         # which dmu keys would have supplied those canonical fields?
-        missing_sources = {src for src, dst in rename_map.items()
-                           if dst in missing_canonical}
+        missing_sources = {
+            src for src, dst in rename_map.items() if dst in missing_canonical
+        }
         comments = f"Gems DMU columns not found: {sorted(missing_sources)}."
-
 
     lithology_candidates = ("generallithology", "geomaterial")
     lith_cols = [c for c in lithology_candidates if c in meta_df]
@@ -179,7 +194,7 @@ def lookup_and_validate_strat_name(
             phrase_array_dropped = [
                 word for word in phrase_array if word not in IRRELEVANT_WORDS
             ]
-        elif qualifier == "of" and i + 1 < len(tokens) and tokens[i+1] != "the":
+        elif qualifier == "of" and i + 1 < len(tokens) and tokens[i + 1] != "the":
             for j in of_indices:
                 if 0 <= j < len(tokens):
                     phrase_array.append(tokens[j])
@@ -219,15 +234,19 @@ def map_strat_name(meta_df: G.GeoDataFrame) -> G.GeoDataFrame:
     rank_name_df = get_strat_names_df()
     rank_name_set = set(rank_name_df["rank_name"].dropna().unique())
     # check name for matched strat_name
-    meta_df["strat_name"] = meta_df["name"].str.lower().apply(
-        lambda n: lookup_and_validate_strat_name(n, rank_name_set)
+    meta_df["strat_name"] = (
+        meta_df["name"]
+        .str.lower()
+        .apply(lambda n: lookup_and_validate_strat_name(n, rank_name_set))
     )
 
     # fallback to 'descrip' for missing values
     needs_fill = meta_df["strat_name"].isna()
-    meta_df.loc[needs_fill, "strat_name"] = meta_df.loc[
-        needs_fill, "descrip"
-    ].str.lower().apply(lambda d: lookup_and_validate_strat_name(d, rank_name_set))
+    meta_df.loc[needs_fill, "strat_name"] = (
+        meta_df.loc[needs_fill, "descrip"]
+        .str.lower()
+        .apply(lambda d: lookup_and_validate_strat_name(d, rank_name_set))
+    )
 
     return meta_df
 
