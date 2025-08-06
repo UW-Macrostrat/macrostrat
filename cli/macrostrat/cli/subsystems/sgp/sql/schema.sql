@@ -1,8 +1,6 @@
-CREATE SCHEMA IF NOT EXISTS sgp;
+CREATE SCHEMA IF NOT EXISTS integrations;
 
-DROP TABLE IF EXISTS sgp.sgp_matches;
-
-CREATE TABLE sgp.sgp_matches (
+CREATE TABLE integrations.sgp_matches (
   sample_id integer PRIMARY KEY,
   match_set text NOT NULL,
   created_at timestamp with time zone DEFAULT now() NOT NULL,

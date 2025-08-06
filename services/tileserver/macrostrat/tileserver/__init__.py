@@ -200,6 +200,10 @@ from .fossils import router as fossils_router
 
 app.include_router(fossils_router, tags=["PBDB"], prefix="/pbdb")
 
+from .measurements import router as measurements_router
+
+app.include_router(measurements_router, tags=["Measurements"], prefix="/measurements")
+
 from .integrations import router as integrations_router
 
 app.include_router(integrations_router, tags=["Integrations"], prefix="/integrations")

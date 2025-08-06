@@ -258,8 +258,8 @@ def import_sgp_data(
         write_to_file(samples, out_file)
     else:
         # Check if table exists
-        if reset or not M.inspector.has_table("sgp_matches", schema="sgp"):
-            M.run_sql(stored_procedure("schema"))
+        if reset:
+            M.engine.execute(text("TRUNCATE TABLE integrations.sgp_matches"))
 
         samples["geom"] = samples["geom"].apply(
             lambda x: x if isna(x) else WKBElement(x.wkb, srid=4326)
@@ -269,7 +269,7 @@ def import_sgp_data(
             "sgp_matches",
             M.engine,
             if_exists="append",
-            schema="sgp",
+            schema="integrations",
             method=postgres_upsert,
             chunksize=1000,
             dtype={"geom": Geometry("POINT", srid=4326)},

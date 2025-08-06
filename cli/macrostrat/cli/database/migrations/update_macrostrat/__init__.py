@@ -18,5 +18,5 @@ class MacrostratCoreMigration(Migration):
 
     postconditions = [
         exists("macrostrat", "units", "sections"),
-        has_fks("macrostrat", "units", "sections"),
+        has_fks("macrostrat", "units", "sections", "strat_names"),
     ]
