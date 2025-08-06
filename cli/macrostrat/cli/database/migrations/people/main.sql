@@ -61,6 +61,9 @@ CREATE OR REPLACE VIEW macrostrat_api.people AS
 CREATE OR REPLACE VIEW macrostrat_api.people_roles AS
 	SELECT * FROM ecosystem.people_roles;
 
+CREATE OR REPLACE VIEW macrostrat_api.roles AS
+	SELECT * FROM ecosystem.roles;
+
 CREATE OR REPLACE VIEW macrostrat_api.people_with_roles AS
 	SELECT 
 		p.person_id,
@@ -84,6 +87,6 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON
 	ecosystem.people_roles,
 	macrostrat_api.people, 
 	macrostrat_api.people_roles
-TO web_anon;
+TO web_admin;
 
-GRANT USAGE, SELECT ON SEQUENCE ecosystem.people_person_id_seq TO web_anon;
+GRANT USAGE, SELECT ON SEQUENCE ecosystem.people_person_id_seq TO web_admin;
