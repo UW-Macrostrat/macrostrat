@@ -1,9 +1,8 @@
 import requests
-import json
-from settings import EXPORTER_API
-from project import Project
 from pathlib import Path
 
+from ..project import Project
+from ..settings import EXPORTER_API
 
 here = Path(__file__).parent / ".." / "database"
 queries = here / "queries"

@@ -1,12 +1,16 @@
 import json
 import logging
-import os
 from click import secho
+from macrostrat.database import Database
 from pathlib import Path
 from shlex import split as split_
 from sqlalchemy.exc import ProgrammingError, IntegrityError
 from sqlparse import split, format
 from subprocess import run
+
+from mapboard.topology_manager.cli import _operation_command
+from mapboard.topology_manager.commands.create_tables import _create_tables
+from mapboard.topology_manager.commands.update import _update
 
 here = Path(__file__).parent
 config_dir = here / "config"
@@ -34,7 +38,7 @@ def cmd(*v, **kwargs):
     return run(split_(val), **kwargs)
 
 
-def run_docker_config(project_id, command):
+def run_topology_command(db: Database, project_id, command):
     """
     Possible Commands:
     update
@@ -43,24 +47,18 @@ def run_docker_config(project_id, command):
     create_tables
     """
 
-    my_env = os.environ.copy()
-    my_env["GEOLOGIC_MAP_CONFIG"] = f"/python_app/config/project_{project_id}.json"
-    base = "/app/bin/geologic-map"
-    update = base + " update"
-    reset = base + " reset"
-    delete = base + " delete"
-    create_tables = base + " create-tables --all"
+    # Invoke typer app commands directly
 
     if command == "update":
-        cmd_ = update
-    if command == "reset":
-        cmd_ = reset
-    if command == "create_tables":
-        cmd_ = create_tables
-    if command == "delete":
-        cmd_ = delete
-
-    return cmd(cmd_, env=my_env)
+        return _update(db)
+    elif command == "reset":
+        return _operation_command(db, "reset", confirm=False)
+    elif command == "create_tables":
+        return _create_tables(db)
+    elif command == "delete":
+        return _operation_command(db, "delete", confirm=False)
+    else:
+        raise ValueError(f"Unknown command: {command}")
 
 
 def pretty_print(sql, **kwargs):

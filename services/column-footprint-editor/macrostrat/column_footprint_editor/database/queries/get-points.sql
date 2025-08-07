@@ -1,12 +1,12 @@
-SELECT 
-    ST_AsGeoJSON(point) point, 
-    id, 
-    project_id, 
-    col_id, 
-    col_name, 
+SELECT
+    ST_AsGeoJSON(point) point,
+    id,
+    project_id,
+    col_id,
+    col_name,
     description,
-    col_group_id, 
+    col_group_id,
     col_group,
-    col_group_name, 
-    color 
-from ${project_schema}.column_map_face c;
+    col_group_name,
+    color
+from {project_schema}.column_map_face c;

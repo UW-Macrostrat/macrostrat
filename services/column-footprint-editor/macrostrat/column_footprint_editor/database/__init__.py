@@ -1,11 +1,12 @@
 from macrostrat.database import Database as BaseDatabase
+from macrostrat.database.utils import get_sql_text
 from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from .sql_formatter import SqlFormatter
 from ..settings import DATABASE
-from ..utils import config_check, run_docker_config, delete_config
+from ..utils import run_topology_command, delete_config
 
 here = Path(__file__).parent
 fixtures = here / "fixtures"
@@ -35,7 +36,7 @@ class Database(BaseDatabase):
 
         self.engine = create_engine(DATABASE, echo=True)
         self.Session = sessionmaker(bind=self.engine)
-        self.config = config_check(project)
+        # self.config = config_check(project)
         self.formatter = SqlFormatter(self.project_id)
 
     def exec_sql(self, sql, params=None, count=None):
@@ -61,17 +62,9 @@ class Database(BaseDatabase):
         """
         from pandas import read_sql
 
-        if "SELECT" in str(filename_or_query):
-            # We are working with a query string instead of
-            # an SQL file.
-            sql = filename_or_query
-            sql = self.formatter.sql_config_format(sql, self.config)
-        else:
-            with open(filename_or_query) as f:
-                sql = f.read()
-            sql = self.formatter.sql_config_format(sql, self.config)
+        txt = get_sql_text(filename_or_query)
 
-        return read_sql(sql, self.engine, **kwargs)
+        return read_sql(txt, self.engine, **kwargs)
 
     #################### db initialization methods ##########################
     def create_project_table(self):
@@ -86,7 +79,7 @@ class Database(BaseDatabase):
 
     def create_project_schema(self):
         # need to run docker command and then create core tables
-        run_docker_config(self.project_id, "create_tables")
+        run_topology_command(self, self.project_id, "create_tables")
         self.run_sql_file(create_core_table)
         self.create_map_face_view()
 
@@ -103,7 +96,7 @@ class Database(BaseDatabase):
         self.run_sql_file(project_info_insert, params=params)
 
     def insert_project_column_group(self, params={}):
-        sql = """INSERT INTO ${project_schema}.column_groups(col_group_id, col_group, col_group_name) VALUES(
+        sql = """INSERT INTO {data_schema}.column_groups(col_group_id, col_group, col_group_name) VALUES(
             :col_group_id, :col_group, :col_group_name);"""
         self.run_sql(sql, params)
 
@@ -117,14 +110,14 @@ class Database(BaseDatabase):
         self.run_sql_file(redump_linework_sql)
 
     def remove_project(self, params={}):
-        run_docker_config(self.project_id, "delete")  # delete topology
+        run_topology_command(self.project_id, "delete")  # delete topology
         self.run_sql_file(remove_project_schema, params={"project_id": self.project_id})
         delete_config(self.project_id)  # remove config file
 
     ################## db topology methods ##############################
 
     def update_topology(self):
-        run_docker_config(self.project_id, "update")
+        run_topology_command(self.project_id, "update")
 
     ###################### Project-Free methods ########################
 
@@ -142,6 +135,10 @@ class Database(BaseDatabase):
         data = self.exec_query(sql).to_dict(orient="records")
         imported_max_id = data[0]["max"]
         all_max_id = data[1]["max"]
+        if imported_max_id is None:
+            imported_max_id = 0
+        if all_max_id is None:
+            all_max_id = 0
         if imported_max_id == all_max_id:
             return imported_max_id + 1000
         else:
@@ -151,9 +148,9 @@ class Database(BaseDatabase):
         """function to get the next project id that won't conflict with macrostrat"""
         # TODO: unhardcode the max int for project id
         # WARNING: Now this isn't going to be conflict free. Because we split the tables up
-        sql = """SELECT max(col_group_id), 'imported' origin from ${project_schema}.column_groups WHERE col_group_id < 5000
+        sql = """SELECT max(col_group_id), 'imported' origin from {data_schema}.column_groups WHERE col_group_id < 5000
                  UNION ALL
-                 SELECT max(col_group_id), 'all' origin from ${project_schema}.column_groups;"""
+                 SELECT max(col_group_id), 'all' origin from $(data_schema).column_groups;"""
 
         data = self.exec_query(sql).to_dict(orient="records")
         imported_max_id = data[0]["max"]

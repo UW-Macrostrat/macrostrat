@@ -15,11 +15,11 @@ b as(
 FROM a
 ),
 c as(
-	SELECT 
+	SELECT
 		coalesce(
-			st_collect(geometry), 
-			st_geomfromtext('SRID=4326;POINT(80 180)')) as bounds 
-	FROM ${topo_schema}.map_face
+			st_collect(geometry),
+			st_geomfromtext('SRID=4326;POINT(80 180)')) as bounds
+	FROM {topo_schema}.map_face
 )
 SELECT st_asgeojson(
 		st_dump(

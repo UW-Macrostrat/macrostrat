@@ -1,6 +1,7 @@
 import requests
 from pathlib import Path
 
+from mapboard.topology_manager.database import _get_instance_params
 from ..database import Database
 from ..settings import IMPORTER_API
 
@@ -16,6 +17,16 @@ class Project:
         self.name = name
         self.description = description
         self.db = Database(self)
+
+        params = _get_instance_params(
+            data_schema=f"project_{self.id}_data",
+            topo_schema=f"project_{self.id}_topology",
+            tolerance=0.0001,
+        )
+        params["project_schema"] = f"project_{self.id}"
+
+        self.db.instance_params = params
+
         self.base_url = IMPORTER_API
 
     def create_new_project(self):
@@ -47,10 +58,12 @@ class Project:
         res = requests.get(route)
         data = res.json()
         for column in data:
-            params = {}
-            params["col_group_id"] = column["id"]
-            params["col_group"] = column["col_group"]
-            params["col_group_name"] = column["col_group_long"]
+            params = dict(
+                project_id=self.id,
+                col_group_id=column["id"],
+                col_group=column["col_group"],
+                col_group_name=column["col_group_long"],
+            )
 
             self.db.insert_project_column_group(params)
 

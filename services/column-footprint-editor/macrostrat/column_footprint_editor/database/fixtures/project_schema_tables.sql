@@ -1,6 +1,6 @@
-CREATE SCHEMA IF NOT EXISTS ${project_schema};
+CREATE SCHEMA IF NOT EXISTS {project_schema};
 
-create table if not exists ${project_schema}.column_groups(
+create table if not exists {project_schema}.column_groups(
     id SERIAL PRIMARY KEY,
     col_group_id integer,
     col_group text,
@@ -8,13 +8,13 @@ create table if not exists ${project_schema}.column_groups(
     color text
 );
 
-CREATE TABLE IF NOT EXISTS ${project_schema}.columns(
+CREATE TABLE IF NOT EXISTS {project_schema}.columns(
     id serial PRIMARY KEY,
     project_id integer,
-    col_group integer REFERENCES ${project_schema}.column_groups(id),
+    col_group integer REFERENCES {project_schema}.column_groups(id),
     col_id integer,
     col_name text,
     description text,
     point geometry,
-    location geometry 
+    location geometry
 );
