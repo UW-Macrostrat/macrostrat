@@ -1,8 +1,9 @@
 import json
+
 import requests
 
 from . import Project
-from ..settings import IMPORTER_API
+from ..settings import IMPORTER_API, DATABASE
 
 
 class ProjectImporter:
@@ -22,7 +23,7 @@ class ProjectImporter:
     """
 
     def __init__(self, project_id: int, name: str, description: str):
-        self.project = Project(project_id, name, description)
+        self.project = Project(DATABASE, project_id, name=name, description=description)
         self.db = self.project.db
         self.base_url = IMPORTER_API
 

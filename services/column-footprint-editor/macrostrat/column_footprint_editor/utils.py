@@ -8,7 +8,7 @@ from sqlalchemy.exc import ProgrammingError, IntegrityError
 from sqlparse import split, format
 from subprocess import run
 
-from mapboard.topology_manager.cli import _operation_command
+from mapboard.topology_manager.cli import operation_command
 from mapboard.topology_manager.commands.create_tables import _create_tables
 from mapboard.topology_manager.commands.update import _update
 
@@ -52,11 +52,11 @@ def run_topology_command(db: Database, project_id, command):
     if command == "update":
         return _update(db)
     elif command == "reset":
-        return _operation_command(db, "reset", confirm=False)
+        return operation_command(db, "reset", ask=False)
     elif command == "create_tables":
         return _create_tables(db)
     elif command == "delete":
-        return _operation_command(db, "delete", confirm=False)
+        return operation_command(db, "delete", ask=False)
     else:
         raise ValueError(f"Unknown command: {command}")
 

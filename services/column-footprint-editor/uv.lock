@@ -237,6 +237,7 @@ dependencies = [
     { name = "macrostrat-database" },
     { name = "mapboard-topology-manager" },
     { name = "pandas" },
+    { name = "python-dotenv" },
     { name = "requests" },
     { name = "simplejson" },
     { name = "starlette" },
@@ -247,8 +248,9 @@ dependencies = [
 requires-dist = [
     { name = "click", specifier = ">=8.2.1" },
     { name = "macrostrat-database", specifier = ">=3.5.4" },
-    { name = "mapboard-topology-manager", directory = "../../submodules/topology-manager" },
+    { name = "mapboard-topology-manager", editable = "../../submodules/topology-manager" },
     { name = "pandas", specifier = ">=2.3.1" },
+    { name = "python-dotenv", specifier = ">=1.1.1" },
     { name = "requests", specifier = ">=2.32.4" },
     { name = "simplejson", specifier = ">=3.20.1" },
     { name = "starlette", specifier = ">=0.47.2" },
@@ -291,7 +293,7 @@ wheels = [
 [[package]]
 name = "mapboard-topology-manager"
 version = "4.0.0"
-source = { directory = "../../submodules/topology-manager" }
+source = { editable = "../../submodules/topology-manager" }
 dependencies = [
     { name = "addict" },
     { name = "macrostrat-database" },

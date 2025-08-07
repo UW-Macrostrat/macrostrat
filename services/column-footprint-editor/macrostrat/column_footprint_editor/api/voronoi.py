@@ -1,12 +1,13 @@
-from collections import defaultdict
-
 import json
+from collections import defaultdict
 from pathlib import Path
+
 from starlette.endpoints import HTTPEndpoint
 from starlette.responses import JSONResponse
 
 from ..database import Database
 from ..project import Project
+from ..settings import DATABASE
 
 here = Path(__file__).parent / ".."
 procedures = here / "database" / "procedures"
@@ -112,22 +113,20 @@ class VoronoiTesselator(HTTPEndpoint):
 
     async def put(self, request):
         project_id = request.path_params["project_id"]
-        project = Project(project_id)
-        db = Database(project)
+        project = Project(DATABASE, project_id)
 
         data = await request.json()
         points = data["points"]
         radius = data["radius"]
         quad_segs = data["quad_segs"]
 
-        polygons = self.tesselate(db, points, radius, quad_segs)
+        polygons = self.tesselate(project.db, points, radius, quad_segs)
 
         return JSONResponse({"Status": "Success", "polygons": polygons})
 
     async def post(self, request):
         project_id = request.path_params["project_id"]
-        project = Project(project_id)
-        db = Database(project)
+        project = Project(DATABASE, project_id)
 
         data = await request.json()
         points = data["points"]
@@ -135,7 +134,7 @@ class VoronoiTesselator(HTTPEndpoint):
         radius = data["radius"]
         quad_segs = data["quad_segs"]
 
-        polygons = self.tesselate(db, points, radius, quad_segs)
+        polygons = self.tesselate(project.db, points, radius, quad_segs)
         ## dump each polygon to multilinestring and insert!!
         sql = open(self.dump_voronoi_to_lines).read()
 

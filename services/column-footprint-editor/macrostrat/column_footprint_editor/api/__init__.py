@@ -8,6 +8,7 @@ from .geometries import Points, geometries, get_line, import_topologies, Lines, 
 from .home import HomePage
 from .project import ProjectsAPI
 from .voronoi import VoronoiTesselator
+from ..settings import DATABASE
 
 middleware = [
     Middleware(
@@ -36,6 +37,5 @@ app = Starlette(routes=routes, debug=True, middleware=middleware)
 async def startup_event():
     from ..database import Database
 
-    # TODO: don't create tables on startup
-    db = Database()
+    db = Database(DATABASE)
     db.create_project_table()

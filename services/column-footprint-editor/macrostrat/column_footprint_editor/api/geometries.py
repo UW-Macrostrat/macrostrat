@@ -1,6 +1,7 @@
 import json
-import simplejson
 from pathlib import Path
+
+import simplejson
 from starlette.endpoints import HTTPEndpoint
 from starlette.responses import JSONResponse, PlainTextResponse
 
@@ -8,6 +9,7 @@ from .utils import clean_change_set
 from ..database import Database
 from ..project import Project
 from ..project.importer import ProjectImporter
+from ..settings import DATABASE
 
 here = Path(__file__).parent / ".."
 procedures = here / "database" / "procedures"
@@ -18,8 +20,7 @@ config = here / "config"
 class Lines(HTTPEndpoint):
     async def get(self, request):
         project_id = request.path_params["project_id"]
-        project = Project(project_id)
-        db = Database(project)
+        project = Project(DATABASE, project_id)
 
         if "id" in request.query_params:
             id_ = request.query_params["id"]
@@ -41,7 +42,7 @@ class Lines(HTTPEndpoint):
         q = queries / "get-linework.sql"
         sql = open(q).read()
 
-        df = db.exec_query(sql)
+        df = project.db.exec_query(sql)
 
         lines = []
         for i in range(0, len(df["lines"])):
@@ -72,7 +73,7 @@ class Lines(HTTPEndpoint):
         data = await request.json()
 
         project_id = data["project_id"]
-        project = Project(project_id)
+        project = Project(DATABASE, project_id)
         db = Database(project)
 
         new_change_set = clean_change_set(data["change_set"])
@@ -107,13 +108,12 @@ class Lines(HTTPEndpoint):
 class Points(HTTPEndpoint):
     async def get(self, request):
         project_id = request.path_params["project_id"]
-        project = Project(project_id)
-        db = Database(project)
+        project = Project(DATABASE, project_id)
 
         q = queries / "get-points.sql"
         sql = open(q).read()
 
-        df = db.exec_query(sql)
+        df = project.db.exec_query(sql)
         cols = df.to_dict(orient="records")
         cols = json.loads(simplejson.dumps(cols, ignore_nan=True))
 
@@ -159,7 +159,7 @@ async def get_line(request):
 
     sql = f"SELECT ST_AsGeoJSON(((ST_Dump(ST_Boundary({location_parser}))).geom))"
 
-    db = Database()
+    db = Database(DATABASE)
     df = db.exec_query(sql, params={"location": data})
     location = json.loads(df.to_dict(orient="records")[0]["st_asgeojson"])
 
@@ -169,13 +169,12 @@ async def get_line(request):
 async def geometries(request):
 
     project_id = request.path_params["project_id"]
-    project = Project(project_id)
-    db = Database(project)
+    project = Project(DATABASE, project_id)
 
     q = queries / "get-topology-columns.sql"
     sql = open(q).read()
 
-    df = db.exec_query(sql)
+    df = project.db.exec_query(sql)
     cols = df.to_dict(orient="records")
     cols = json.loads(simplejson.dumps(cols, ignore_nan=True))
 

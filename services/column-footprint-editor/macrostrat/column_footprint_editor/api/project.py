@@ -1,12 +1,13 @@
-from os import error
-
 import json
+from os import error
 from pathlib import Path
+
 from starlette.endpoints import HTTPEndpoint
 from starlette.responses import JSONResponse
 
 from ..database import Database
 from ..project import Project
+from ..settings import DATABASE
 
 here = Path(__file__).parent / ".."
 procedures = here / "database" / "procedures"
@@ -18,7 +19,7 @@ class ProjectsAPI(HTTPEndpoint):
 
     async def get(self, request):
         """endpoint to get availble projects"""
-        db = Database()
+        db = Database(DATABASE)
 
         project_data = db.get_project_info()
 
@@ -58,7 +59,7 @@ class ProjectsAPI(HTTPEndpoint):
     async def post(self, request):
         res = await request.json()
 
-        db = Database()
+        db = Database(DATABASE)
         next_id = db.get_next_project_id()
 
         params = res["data"]

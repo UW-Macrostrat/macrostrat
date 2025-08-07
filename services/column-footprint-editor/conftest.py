@@ -1,4 +1,6 @@
 import logging
+from dotenv import load_dotenv
+
 
 disable_loggers = ["macrostrat.database.utils"]
 
@@ -8,3 +10,5 @@ def pytest_configure():
     for logger_name in disable_loggers:
         logger = logging.getLogger(logger_name)
         logger.disabled = True
+
+    load_dotenv()

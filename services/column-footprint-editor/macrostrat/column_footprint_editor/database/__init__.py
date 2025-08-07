@@ -1,11 +1,9 @@
 from macrostrat.database import Database as BaseDatabase
 from macrostrat.database.utils import get_sql_text
 from pathlib import Path
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from .sql_formatter import SqlFormatter
-from ..settings import DATABASE
 from ..utils import run_topology_command, delete_config
 
 here = Path(__file__).parent
@@ -30,11 +28,10 @@ class Database(BaseDatabase):
     Database class with built in SQL Formatter
     """
 
-    def __init__(self, project=None):
+    def __init__(self, url, project=None):
         self.project_id = getattr(project, "id", None)
-        super().__init__(DATABASE, echo_sql=True)
+        super().__init__(url)
 
-        self.engine = create_engine(DATABASE, echo=True)
         self.Session = sessionmaker(bind=self.engine)
         # self.config = config_check(project)
         self.formatter = SqlFormatter(self.project_id)
@@ -110,7 +107,7 @@ class Database(BaseDatabase):
         self.run_sql_file(redump_linework_sql)
 
     def remove_project(self, params={}):
-        run_topology_command(self.project_id, "delete")  # delete topology
+        run_topology_command(self, self.project_id, "delete")  # delete topology
         self.run_sql_file(remove_project_schema, params={"project_id": self.project_id})
         delete_config(self.project_id)  # remove config file
 

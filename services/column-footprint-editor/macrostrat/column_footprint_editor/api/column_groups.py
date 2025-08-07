@@ -4,8 +4,8 @@ import simplejson
 from starlette.endpoints import HTTPEndpoint
 from starlette.responses import JSONResponse
 
-from ..database import Database
 from ..project import Project
+from ..settings import DATABASE
 
 
 class ColumnGroups(HTTPEndpoint):
@@ -20,7 +20,7 @@ class ColumnGroups(HTTPEndpoint):
         """
 
         project_id = request.path_params["project_id"]
-        project = Project(project_id)
+        project = Project(DATABASE, project_id)
 
         if "id" in request.query_params:
             id_ = request.query_params["id"]
@@ -29,7 +29,7 @@ class ColumnGroups(HTTPEndpoint):
             )
 
             try:
-                df = Database().exec_query(sql)
+                df = project.db.exec_query(sql)
                 col_groups = df.to_dict(orient="records")
 
                 return JSONResponse({"status": "success", "data": col_groups})
@@ -53,7 +53,7 @@ class ColumnGroups(HTTPEndpoint):
             :col_group,:col_group_name,:color
         )  """
 
-        project = Project(request.path_params["project_id"])
+        project = Project(DATABASE, request.path_params["project_id"])
 
         res = await request.json()
 
@@ -82,7 +82,7 @@ class ColumnGroups(HTTPEndpoint):
                 color = :color
             WHERE cg.id = :col_group_id
          """
-        project = Project(request.path_params["project_id"])
+        project = Project(DATABASE, request.path_params["project_id"])
 
         res = await request.json()
 

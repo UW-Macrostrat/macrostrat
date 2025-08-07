@@ -1,5 +1,6 @@
 import requests
 from pathlib import Path
+from psycopg2.sql import Identifier
 
 from mapboard.topology_manager.database import _get_instance_params
 from ..database import Database
@@ -12,24 +13,27 @@ queries = here / "queries"
 class Project:
     """Helper class to pass around project attributes"""
 
-    def __init__(self, id_: int = None, name: str = "", description: str = "") -> None:
+    def __init__(
+        self, db_url: str, id_: int = None, *, name: str = "", description: str = ""
+    ) -> None:
         self.id = id_
         self.name = name
         self.description = description
-        self.db = Database(self)
+        self.db = Database(db_url, project=self)
 
         params = _get_instance_params(
             data_schema=f"project_{self.id}_data",
             topo_schema=f"project_{self.id}_topology",
             tolerance=0.0001,
         )
-        params["project_schema"] = f"project_{self.id}"
+        params["project_schema"] = Identifier(f"project_{self.id}")
 
         self.db.instance_params = params
 
         self.base_url = IMPORTER_API
 
     def create_new_project(self):
+        self.db.create_project_table()
         if not self.project_in_db():
             self.id = self.db.get_next_project_id()
             self.insert_project_info()
