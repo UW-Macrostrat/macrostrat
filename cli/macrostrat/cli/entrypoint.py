@@ -21,6 +21,7 @@ from .subsystems.paleogeography import (
 from .utils import run_user_command_if_provided
 from .v1_entrypoint import v1_cli
 from .v2_commands import app as v2_app
+from macrostrat.cli.database.rockd.cli import cli as rockd_cli
 
 __here__ = Path(__file__).parent
 fixtures_dir = __here__ / "fixtures"
@@ -32,6 +33,10 @@ app.subsystems.add(db_subsystem)
 # Manage as a docker-compose application
 
 settings = app.settings
+rockd_url = settings.get("ROCKD_DATABASE") or settings.get("rockd_database")
+if rockd_url and "ROCKD_DATABASE" not in environ:
+    environ["ROCKD_DATABASE"] = rockd_url
+
 
 help_text = f"""[bold]Macrostrat[/] control interface
 
@@ -85,6 +90,13 @@ main.add_typer(
     name="database",
     short_help="Manage the Macrostrat database",
     aliases=["db"],
+)
+
+main.add_typer(
+    rockd_cli,
+    name="rockd-db",                 # command group name
+    short_help="Manage the Rockd database",   # shows in --help
+    rich_help_panel="Subsystems",
 )
 
 
