@@ -1,11 +1,14 @@
-import typer, importlib
-from .database import get_rockd_db
+import importlib
+
+import typer
 from typer import Option
+
 from macrostrat.core.migrations import run_migrations
 
-
+from .database import get_rockd_db
 
 cli = typer.Typer(help="Rockd database tools")
+
 
 @cli.command()
 def migrations(

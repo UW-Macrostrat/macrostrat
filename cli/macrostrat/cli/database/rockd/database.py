@@ -1,5 +1,7 @@
-from macrostrat.database import Database
 import os
+
+from macrostrat.database import Database
+
 
 def get_rockd_db() -> Database:
     """
@@ -10,4 +12,6 @@ def get_rockd_db() -> Database:
     if url is None:
         raise RuntimeError("Set ROCKD_DATABASE in your environment")
     return Database(url)
+
+
 get_db = get_rockd_db

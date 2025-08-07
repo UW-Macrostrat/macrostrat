@@ -7,6 +7,7 @@ from rich.traceback import install
 from typer import Argument, Typer
 
 from macrostrat.app_frame import CommandBase
+from macrostrat.cli.database.rockd.cli import cli as rockd_cli
 from macrostrat.core import app
 from macrostrat.core.exc import MacrostratError
 from macrostrat.core.main import env_text, set_app_state
@@ -21,7 +22,6 @@ from .subsystems.paleogeography import (
 from .utils import run_user_command_if_provided
 from .v1_entrypoint import v1_cli
 from .v2_commands import app as v2_app
-from macrostrat.cli.database.rockd.cli import cli as rockd_cli
 
 __here__ = Path(__file__).parent
 fixtures_dir = __here__ / "fixtures"
@@ -94,8 +94,8 @@ main.add_typer(
 
 main.add_typer(
     rockd_cli,
-    name="rockd-db",                 # command group name
-    short_help="Manage the Rockd database",   # shows in --help
+    name="rockd-db",  # command group name
+    short_help="Manage the Rockd database",  # shows in --help
     rich_help_panel="Subsystems",
 )
 
