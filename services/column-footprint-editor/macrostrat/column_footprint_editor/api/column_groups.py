@@ -24,9 +24,7 @@ class ColumnGroups(HTTPEndpoint):
 
         if "id" in request.query_params:
             id_ = request.query_params["id"]
-            sql = (
-                "SELECT * FROM ${project_schema}.column_groups WHERE id = " + f"{id_};"
-            )
+            sql = "SELECT * FROM {project_schema}.column_groups WHERE id = " + f"{id_};"
 
             try:
                 df = project.db.exec_query(sql)
@@ -36,7 +34,7 @@ class ColumnGroups(HTTPEndpoint):
             except error:
                 return JSONResponse({"error": f"col_group {id_} does not exist"})
 
-        sql = """SELECT * from ${project_schema}.column_groups;"""
+        sql = """SELECT * from {project_schema}.column_groups;"""
         try:
             df = project.db.exec_query(sql)
             col_groups = df.to_dict(orient="records")
@@ -49,7 +47,7 @@ class ColumnGroups(HTTPEndpoint):
     async def post(self, request):
         """Endpoint for new Column Groups"""
 
-        sql = """INSERT INTO ${project_schema}.column_groups(col_group, col_group_name, color)VALUES(
+        sql = """INSERT INTO {project_schema}.column_groups(col_group, col_group_name, color)VALUES(
             :col_group,:col_group_name,:color
         )  """
 
@@ -62,7 +60,7 @@ class ColumnGroups(HTTPEndpoint):
         try:
             project.db.run_sql(sql, params)
 
-            sql = "SELECT id FROM ${project_schema}.column_groups WHERE col_group = :col_group"
+            sql = "SELECT id FROM {project_schema}.column_groups WHERE col_group = :col_group"
             res = project.db.exec_sql(sql, params=params, count=1)
             params["col_group_id"] = res.id
         except error:
@@ -76,7 +74,7 @@ class ColumnGroups(HTTPEndpoint):
         """Endpoint for Editing Existing Column Groups"""
 
         sql = """
-            UPDATE ${project_schema}.column_groups cg
+            UPDATE {project_schema}.column_groups cg
                 SET col_group = :col_group,
                 col_group_name = :col_group_name,
                 color = :color

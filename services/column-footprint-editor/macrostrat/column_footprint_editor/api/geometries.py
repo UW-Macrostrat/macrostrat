@@ -202,7 +202,7 @@ async def get_csv(request):
              c.col_group_id,
              c.col_group,
              c.col_group_name
-            from ${project_schema}.column_map_face c; """
+            from {project_schema}.column_map_face c; """
     df = project.db.exec_query(sql)
     csv = df.to_csv()
 

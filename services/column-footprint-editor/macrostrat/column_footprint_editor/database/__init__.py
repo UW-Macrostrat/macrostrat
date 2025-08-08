@@ -1,6 +1,8 @@
-from macrostrat.database import Database as BaseDatabase
-from macrostrat.database.utils import get_sql_text
 from pathlib import Path
+
+from macrostrat.database import Database as BaseDatabase
+from macrostrat.database.utils import get_sql_text, _split_params, _render_query
+from psycopg2.sql import SQL
 from sqlalchemy.orm import sessionmaker
 
 from .sql_formatter import SqlFormatter
@@ -21,6 +23,13 @@ redump_linework_sql = procedures / "redump-linework-from-edge-data.sql"
 remove_project_schema = procedures / "remove_project_schema.sql"
 project_info_insert = procedures / "project-meta-insert.sql"
 project_table = fixtures / "projects_table.sql"
+
+color_description = here / "schema-updates" / "color-description.sql"
+
+
+from macrostrat.utils import get_logger
+
+log = get_logger("uvicorn.error")
 
 
 class Database(BaseDatabase):
@@ -61,6 +70,18 @@ class Database(BaseDatabase):
 
         txt = get_sql_text(filename_or_query)
 
+        params = self.instance_params.copy()
+        for k, v in kwargs.get("params", {}).items():
+            params[k] = v
+
+        # Pre-fill bind parameters
+        params, pre_bind_params = _split_params(params)
+        if pre_bind_params is not None:
+            query = SQL(txt).format(**pre_bind_params)
+            txt = _render_query(query, self.engine)
+
+        kwargs["params"] = params
+        log.info(params)
         return read_sql(txt, self.engine, **kwargs)
 
     #################### db initialization methods ##########################
@@ -113,8 +134,17 @@ class Database(BaseDatabase):
 
     ################## db topology methods ##############################
 
+    def create_topology_tables(self):
+        # Drop topology in case it already exists: (TODO: make this safer)
+        run_topology_command(self, self.project_id, "delete")
+
+        run_topology_command(self, self.project_id, "create_tables")
+
+        # Create color-description tables
+        self.run_sql_file(color_description)
+
     def update_topology(self):
-        run_topology_command(self.project_id, "update")
+        run_topology_command(self, self.project_id, "update")
 
     ###################### Project-Free methods ########################
 

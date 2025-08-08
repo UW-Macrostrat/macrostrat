@@ -1,5 +1,5 @@
 SELECT
-    ST_AsGeoJSON(point) point,
+    ST_AsGeoJSON(geometry) point,
     id,
     project_id,
     col_id,

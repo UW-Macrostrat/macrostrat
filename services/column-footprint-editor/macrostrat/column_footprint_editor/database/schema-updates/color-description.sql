@@ -1,9 +1,9 @@
--- Add a 'color' column to every column_group table and a 'description' column to every columns table. 
+-- Add a 'color' column to every column_group table and a 'description' column to every columns table.
 -- Loops through each project schema.
 -- Updates the view's for each as well
 
 do $$
-DECLARE 
+DECLARE
 	table_ record;
 BEGIN
 FOR table_ IN
@@ -11,8 +11,8 @@ FOR table_ IN
 LOOP
 	RAISE info '%.column_groups',table_.schemaname;
 	EXECUTE
-	'ALTER TABLE '|| table_.schemaname ||'.column_groups ADD COLUMN color text;'
-	'ALTER TABLE '|| table_.schemaname ||'.columns ADD COLUMN description text;'
+	'ALTER TABLE '|| table_.schemaname ||'.column_groups ADD COLUMN IF NOT EXISTS color text;'
+	'ALTER TABLE '|| table_.schemaname ||'.columns ADD COLUMN  IF NOT EXISTS description text;'
 	'DROP VIEW IF EXISTS ' || table_.schemaname || '.column_map_face;'
 	'CREATE VIEW ' || table_.schemaname || '.column_map_face AS
 		WITH A as(

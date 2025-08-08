@@ -30,7 +30,7 @@ class ProjectImporter:
     def get_project_json(self):
         project_id = self.project.id
         url = f"{self.base_url}cols?project_id=eq.{project_id}"
-        res = requests.get(url)
+        res = requests.get(url, verify=False)
         data = res.json()
 
         return data
@@ -65,6 +65,7 @@ class ProjectImporter:
         self.project.insert_project_column_groups()
         self.columns_import()
         self.db.on_project_insert()
+        self.db.create_topology_tables()
         self.db.update_topology()
         self.db.redump_linework_from_edge()
         self.db.update_topology()

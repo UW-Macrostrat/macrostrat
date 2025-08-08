@@ -52,7 +52,7 @@ class ProjectExporter:
         ## insert col-groups get ids and names (need project_id)
         ## use hash-table to store  {col-group-name: col-group-id}
         ## for col insertions
-        col_group_sql = """ SELECT col_group, col_group_name  FROM ${project_schema}.column_groups; """
+        col_group_sql = """ SELECT col_group, col_group_name  FROM {project_schema}.column_groups; """
         col_groups = self.db.exec_sql(col_group_sql)
         col_group_lookup = {}
         for col_group in col_groups:

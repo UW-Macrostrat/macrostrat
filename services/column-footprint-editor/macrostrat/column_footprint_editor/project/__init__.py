@@ -1,5 +1,6 @@
-import requests
 from pathlib import Path
+
+import requests
 from psycopg2.sql import Identifier
 
 from mapboard.topology_manager.database import _get_instance_params
@@ -59,7 +60,7 @@ class Project:
 
     def insert_project_column_groups(self):
         route = f"{self.base_url}col_groups?project_id=eq.{self.id}"
-        res = requests.get(route)
+        res = requests.get(route, verify=False)
         data = res.json()
         for column in data:
             params = dict(
