@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 load_dotenv()
 
-raw_url = os.getenv("DATABASE_URL", "postgresql://user:pass@localhost:5432/dbname")
+raw_url = os.getenv("DATABASE_URL")
 
 # Ensure it uses asyncpg
 if raw_url.startswith("postgresql://"):

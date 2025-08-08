@@ -9,9 +9,7 @@ from src.last_id import get_last_id
 
 BATCH_SIZE = 1000  # Adjust as needed
 
-raw_url = os.getenv(
-    "MARIADB_URL", "mysql://user:password@localhost:3306/database"
-)
+raw_url = os.getenv("MARIADB_URL")
 
 # Ensure the URL uses asyncmy driver
 if raw_url.startswith("mysql://"):
