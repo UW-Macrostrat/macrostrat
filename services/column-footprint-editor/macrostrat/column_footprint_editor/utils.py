@@ -1,16 +1,17 @@
 import json
 import logging
-from click import secho
-from macrostrat.database import Database
 from pathlib import Path
 from shlex import split as split_
-from sqlalchemy.exc import ProgrammingError, IntegrityError
-from sqlparse import split, format
 from subprocess import run
 
+from click import secho
 from mapboard.topology_manager.cli import operation_command
 from mapboard.topology_manager.commands.create_tables import _create_tables
 from mapboard.topology_manager.commands.update import _update
+from sqlalchemy.exc import IntegrityError, ProgrammingError
+from sqlparse import format, split
+
+from macrostrat.database import Database
 
 here = Path(__file__).parent
 config_dir = here / "config"

@@ -2,8 +2,8 @@ import json
 
 import requests
 
+from ..settings import DATABASE, IMPORTER_API
 from . import Project
-from ..settings import IMPORTER_API, DATABASE
 
 
 class ProjectImporter:

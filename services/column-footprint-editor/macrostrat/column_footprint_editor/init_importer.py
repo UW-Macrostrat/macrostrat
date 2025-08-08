@@ -1,10 +1,11 @@
 ## Test import script
+import json
+
+import simplejson
+from database import Database
 from project import Project
 from project.exporter import ProjectExporter
 from utils import run_docker_config
-from database import Database
-import simplejson
-import json
 
 
 def is_json(myjson):

@@ -1,5 +1,6 @@
-import requests
 from pathlib import Path
+
+import requests
 
 from ..project import Project
 from ..settings import EXPORTER_API

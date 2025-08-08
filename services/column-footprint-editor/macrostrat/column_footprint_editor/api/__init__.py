@@ -3,12 +3,12 @@ from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.routing import Route
 
+from ..settings import DATABASE
 from .column_groups import ColumnGroups
-from .geometries import Points, geometries, get_line, import_topologies, Lines, get_csv
+from .geometries import Lines, Points, geometries, get_csv, get_line, import_topologies
 from .home import HomePage
 from .project import ProjectsAPI
 from .voronoi import VoronoiTesselator
-from ..settings import DATABASE
 
 middleware = [
     Middleware(

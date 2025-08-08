@@ -5,11 +5,11 @@ import simplejson
 from starlette.endpoints import HTTPEndpoint
 from starlette.responses import JSONResponse, PlainTextResponse
 
-from .utils import clean_change_set
 from ..database import Database
 from ..project import Project
 from ..project.importer import ProjectImporter
 from ..settings import DATABASE
+from .utils import clean_change_set
 
 here = Path(__file__).parent / ".."
 procedures = here / "database" / "procedures"

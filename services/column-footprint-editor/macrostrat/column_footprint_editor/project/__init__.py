@@ -1,9 +1,9 @@
 from pathlib import Path
 
 import requests
+from mapboard.topology_manager.database import _get_instance_params
 from psycopg2.sql import Identifier
 
-from mapboard.topology_manager.database import _get_instance_params
 from ..database import Database
 from ..settings import IMPORTER_API
 

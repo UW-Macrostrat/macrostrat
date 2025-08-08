@@ -1,6 +1,6 @@
 import logging
-from dotenv import load_dotenv
 
+from dotenv import load_dotenv
 
 disable_loggers = ["macrostrat.database.utils"]
 

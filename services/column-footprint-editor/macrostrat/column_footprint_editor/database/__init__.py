@@ -1,12 +1,13 @@
 from pathlib import Path
 
-from macrostrat.database import Database as BaseDatabase
-from macrostrat.database.utils import get_sql_text, _split_params, _render_query
 from psycopg2.sql import SQL
 from sqlalchemy.orm import sessionmaker
 
+from macrostrat.database import Database as BaseDatabase
+from macrostrat.database.utils import _render_query, _split_params, get_sql_text
+
+from ..utils import delete_config, run_topology_command
 from .sql_formatter import SqlFormatter
-from ..utils import run_topology_command, delete_config
 
 here = Path(__file__).parent
 fixtures = here / "fixtures"

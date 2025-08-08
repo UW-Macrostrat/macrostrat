@@ -1,8 +1,10 @@
 import os
+
+from pytest import fixture
+
 from macrostrat.database import Database
 from macrostrat.database.utils import temp_database
 from macrostrat.utils import get_logger
-from pytest import fixture
 
 from .project import Project
 
