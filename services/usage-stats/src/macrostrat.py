@@ -15,7 +15,9 @@ raw_url = os.getenv("MARIADB_URL")
 if raw_url.startswith("mysql://"):
     raw_url = raw_url.replace("mysql://", "mysql+asyncmy://", 1)
 elif not raw_url.startswith("mysql+asyncmy://"):
-    raise ValueError("Invalid DATABASE_URL: must start with mysql:// or mysql+asyncmy://")
+    raise ValueError(
+        "Invalid DATABASE_URL: must start with mysql:// or mysql+asyncmy://"
+    )
 
 DATABASE_URL = raw_url
 

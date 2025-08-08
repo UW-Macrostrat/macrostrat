@@ -13,7 +13,9 @@ raw_url = os.getenv("DATABASE_URL")
 if raw_url.startswith("postgresql://"):
     raw_url = raw_url.replace("postgresql://", "postgresql+asyncpg://", 1)
 elif not raw_url.startswith("postgresql+asyncpg://"):
-    raise ValueError("Invalid DATABASE_URL: must start with postgresql:// or postgresql+asyncpg://")
+    raise ValueError(
+        "Invalid DATABASE_URL: must start with postgresql:// or postgresql+asyncpg://"
+    )
 
 DATABASE_URL = raw_url
 
