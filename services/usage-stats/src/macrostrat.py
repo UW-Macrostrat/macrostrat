@@ -9,15 +9,15 @@ from src.last_id import get_last_id
 
 BATCH_SIZE = 1000  # Adjust as needed
 
-raw_url = os.getenv(
-    "MARIADB_URL", "mysql://user:password@localhost:3306/database"
-)
+raw_url = os.getenv("MARIADB_URL", "mysql://user:password@localhost:3306/database")
 
 # Ensure the URL uses asyncmy driver
 if raw_url.startswith("mysql://"):
     raw_url = raw_url.replace("mysql://", "mysql+asyncmy://", 1)
 elif not raw_url.startswith("mysql+asyncmy://"):
-    raise ValueError("Invalid DATABASE_URL: must start with mysql:// or mysql+asyncmy://")
+    raise ValueError(
+        "Invalid DATABASE_URL: must start with mysql:// or mysql+asyncmy://"
+    )
 
 DATABASE_URL = raw_url
 
