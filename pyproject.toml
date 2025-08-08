@@ -31,3 +31,7 @@ markers = [
     "docker: marks tests as requiring a docker container",
     "requires_gdal: marks tests as requiring GDAL",
 ]
+
+# TODO: use UV workspaces
+# https://docs.astral.sh/uv/concepts/projects/workspaces/#workspace-sources
+

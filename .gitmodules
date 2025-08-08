@@ -1,3 +1,6 @@
+[submodule "postgis-geologic-map"]
+	path = services/column-footprint-editor/postgis-geologic-map
+	url = https://github.com/davenquinn/postgis-geologic-map.git
 [submodule "deps/topology-manager"]
 	path = submodules/topology-manager
 	url = https://github.com/Mapboard/topology-manager.git
