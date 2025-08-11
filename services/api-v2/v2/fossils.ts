@@ -186,6 +186,7 @@ module.exports = function (req, res, next) {
                     col_id: d.col_id,
                     refs: d.refs,
                     strat_name_concept_id: d.strat_name_concept_id,
+                    ...(geo && d.geometry ? { geometry: d.geometry } : {}),
                   };
                 });
                 callback(null, data, result);
