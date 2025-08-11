@@ -89,6 +89,9 @@ macrostrat_env = getattr(settings, "env", "default")
 if env_files := getattr(settings, "env_files", None):
     for env in env_files:
         log.info(f"Loading environment variables from {env}")
+        # Resolve env file from settings path
+        if not Path(env).is_absolute():
+            env = settings.config_file.parent / env
         load_dotenv(env)
 
 # Validate settings

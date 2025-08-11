@@ -380,6 +380,14 @@ def inspect():
     IPython.embed()
 
 
+# Print the environment variables
+@self_app.command()
+def printenv():
+    """Print the environment variables"""
+    for k, v in environ.items():
+        print(f"[bold cyan]{k}[/]: {v}")
+
+
 main.add_typer(
     self_app,
     name="self",
