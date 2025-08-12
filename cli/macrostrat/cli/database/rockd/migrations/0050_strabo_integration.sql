@@ -1,7 +1,7 @@
-CREATE SCHEMA user_features
+CREATE SCHEMA IF NOT EXISTS user_features;
 
 --removed rockd_jwt column
-CREATE TABLE user_features.linked_strabo_account (
+CREATE TABLE IF NOT EXISTS user_features.linked_strabo_account (
     id           serial PRIMARY KEY,
     person_id    integer NOT NULL UNIQUE
                  CONSTRAINT fk_user REFERENCES public."people" ON DELETE CASCADE,

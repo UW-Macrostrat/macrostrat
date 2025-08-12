@@ -1,6 +1,31 @@
 /* 1 ─ Add the new column (type timestamptz is the usual choice) */
+DO $$
+DECLARE
+  k_people text;
+  k_checkins text;
+  k_obs text;
+BEGIN
+  SELECT c.relkind INTO k_people
+  FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+  WHERE n.nspname='public' AND c.relname='people';
+
+  SELECT c.relkind INTO k_checkins
+  FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+  WHERE n.nspname='public' AND c.relname='checkins';
+
+  SELECT c.relkind INTO k_obs
+  FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+  WHERE n.nspname='public' AND c.relname='observations';
+
+  IF k_people IS NULL OR k_checkins IS NULL OR k_obs IS NULL THEN
+    RAISE EXCEPTION
+      'rockd_initial_schema precheck failed. db=% user=% | people=% checkins=% observations=%',
+      current_database(), current_user, k_people, k_checkins, k_obs;
+  END IF;
+END$$;
+
 ALTER TABLE public.people
-  ADD COLUMN token_exp timestamptz;
+  ADD COLUMN IF NOT EXISTS token_exp timestamptz;
 
 INSERT INTO public.people (
     first_name,
