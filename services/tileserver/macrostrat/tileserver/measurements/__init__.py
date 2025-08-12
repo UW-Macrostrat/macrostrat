@@ -27,11 +27,11 @@ async def tile_query(
         "y": y,
     }
 
-    if "type" in request.query_params:
-        type_vals = request.query_params["type"].split(",")
-        type_vals = [v.strip() for v in type_vals if v.strip()]
-        where += " AND type = ANY(:type_vals)"
-        params["type_vals"] = type_vals
+    if "measurement_id" in request.query_params:
+        measurement_id_vals = request.query_params["measurement_id"].split(",")
+        measurement_id_vals = [int(v.strip()) for v in measurement_id_vals if v.strip()]
+        where += " AND measurement_id = ANY(:measurement_id_vals)"
+        params["measurement_id_vals"] = measurement_id_vals
 
     if "cluster" in request.query_params:
         cluster_val = request.query_params["cluster"]
@@ -89,7 +89,7 @@ async def tile_query(
             points AS (
                 SELECT
                     id,
-                    type,
+                    measurement_id,
                     tile_layers.tile_geom(
                         ST_Intersection(geometry, envelope_4326),
                         envelope
