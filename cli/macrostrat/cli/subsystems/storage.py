@@ -3,14 +3,13 @@ Storage system management
 """
 
 import re
-from os import environ
-from subprocess import run
-from typing import List, Optional
-from os import path
 import subprocess
 import tempfile
+from os import environ, path
+from subprocess import run
 from textwrap import dedent
-from typer import Option
+from typing import List, Optional
+
 from rich import print
 from typer import Argument, Option, Typer
 
@@ -73,13 +72,13 @@ def _s3_users():
         r.replace(prefix, "") for r in res.stdout.split(" ") if r.startswith(prefix)
     ]
 
+
 @app.command()
 def s3_bucket_migration(
     dry_run: bool = Option(False, "--dry-run", "-n", help="Do everything except write"),
     show_cmd: bool = Option(False, help="Print the rclone command for debugging"),
     src: str = Option(..., help="Source bucket that contains photos"),
     dst: str = Option(..., help="Destination bucket to copy photos into"),
-
 ):
     endpoint = settings.get("storage.endpoint")
     b_access = settings.get("storage.rockd_backup_access")
@@ -87,7 +86,8 @@ def s3_bucket_migration(
     p_access = settings.get("storage.rockd_prod_access")
     p_secret = settings.get("storage.rockd_prod_secret")
 
-    cfg = dedent(f"""
+    cfg = dedent(
+        f"""
         [rockd-backup]
         type = s3
         provider = Minio
@@ -103,18 +103,31 @@ def s3_bucket_migration(
         access_key_id = {p_access}
         secret_access_key = {p_secret}
         acl = private
-    """)
+    """
+    )
 
     with tempfile.NamedTemporaryFile("w+", delete=False) as tf:
-        tf.write(cfg); tf.flush()
+        tf.write(cfg)
+        tf.flush()
 
         # local rclone cmd
         cmd = [
-            "rclone", "copy", f"rockd-backup:{src}", f"rockd-prod:{dst}",
-            "--config", tf.name,
-            "--checksum", "--metadata", "--transfers", "8",
-            "--log-level", "NOTICE", "--stats-log-level", "NOTICE",
-            "--stats=1s", "--stats-one-line",
+            "rclone",
+            "copy",
+            f"rockd-backup:{src}",
+            f"rockd-prod:{dst}",
+            "--config",
+            tf.name,
+            "--checksum",
+            "--metadata",
+            "--transfers",
+            "8",
+            "--log-level",
+            "NOTICE",
+            "--stats-log-level",
+            "NOTICE",
+            "--stats=1s",
+            "--stats-one-line",
             "--s3-no-check-bucket",
             "--ignore-existing",
         ]
@@ -126,15 +139,30 @@ def s3_bucket_migration(
         try:
             subprocess.run(cmd, check=True)
         except FileNotFoundError:
-            #use rclone docker image
+            # use rclone docker image
             conf_dir, conf_name = path.dirname(tf.name), path.basename(tf.name)
             docker_cmd = [
-                "docker", "run", "--rm", "-v", f"{conf_dir}:/cfg:ro",
-                "rclone/rclone:latest", "copy", f"rockd-backup:{src}", f"rockd-prod:{dst}",
-                "--config", f"/cfg/{conf_name}",
-                "--checksum", "--metadata", "--transfers", "8",
-                "--log-level", "NOTICE", "--stats-log-level", "NOTICE",
-                "--stats=1s", "--stats-one-line",
+                "docker",
+                "run",
+                "--rm",
+                "-v",
+                f"{conf_dir}:/cfg:ro",
+                "rclone/rclone:latest",
+                "copy",
+                f"rockd-backup:{src}",
+                f"rockd-prod:{dst}",
+                "--config",
+                f"/cfg/{conf_name}",
+                "--checksum",
+                "--metadata",
+                "--transfers",
+                "8",
+                "--log-level",
+                "NOTICE",
+                "--stats-log-level",
+                "NOTICE",
+                "--stats=1s",
+                "--stats-one-line",
                 "--s3-no-check-bucket",
                 "--ignore-existing",
             ]
