@@ -12,6 +12,7 @@ from macrostrat.core import app
 from macrostrat.core.exc import MacrostratError
 from macrostrat.core.main import env_text, set_app_state
 from macrostrat.utils.shell import run
+from macrostrat.cli.database.rockd.db_subsystem import rockd_subsystem
 
 from .database import db_app, db_subsystem
 from .subsystems.macrostrat_api import MacrostratAPISubsystem
@@ -28,7 +29,7 @@ fixtures_dir = __here__ / "fixtures"
 
 install(show_locals=False)
 
-app.subsystems.add(db_subsystem)
+
 
 # Manage as a docker-compose application
 
@@ -37,6 +38,8 @@ rockd_url = settings.get("ROCKD_DATABASE") or settings.get("rockd_database")
 if rockd_url and "ROCKD_DATABASE" not in environ:
     environ["ROCKD_DATABASE"] = rockd_url
 
+app.subsystems.add(db_subsystem)
+app.subsystems.add(rockd_subsystem)
 
 help_text = f"""[bold]Macrostrat[/] control interface
 

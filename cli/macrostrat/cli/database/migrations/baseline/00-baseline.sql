@@ -1381,6 +1381,8 @@ CREATE TABLE public.lookup_tiny (
     strat_name_children integer[],
     legend_id integer
 );
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.lookup_tiny TO rockd;
+
 
 CREATE TABLE public.macrostrat_union (
     id integer NOT NULL,

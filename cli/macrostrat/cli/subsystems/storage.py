@@ -12,7 +12,9 @@ from typer import Argument, Option, Typer
 
 from macrostrat.core import app as app_
 from macrostrat.utils import get_logger
-
+import subprocess
+import tempfile
+from textwrap import dedent
 from ...core.exc import MacrostratError
 from ..kubernetes import _kubectl, get_secret
 
@@ -68,6 +70,63 @@ def _s3_users():
     return [
         r.replace(prefix, "") for r in res.stdout.split(" ") if r.startswith(prefix)
     ]
+
+
+@app.command()
+def backup_to_prod(
+    dry_run: bool = Option(False, "--dry-run", "-n", help="Do everything except write"),
+    show_cmd: bool = Option(False, help="Print the rclone command for debugging"),
+):
+    """
+    Migrates new photos from the rockd-backup bucket to the rockd-prod bucket.
+    """
+    cfg = dedent(
+        f"""
+            [rockd-backup]
+            type          = s3
+            provider      = Minio
+            endpoint      = {settings.storage.endpoint}
+            access_key_id = {settings.rockd_backup_access}
+            secret_access_key = {settings.rockd_backup_secret}
+            acl           = private
+
+            [rockd-prod]
+            type          = s3
+            provider      = Minio
+            endpoint      = {settings.storage.endpoint}
+            access_key_id = {settings.rockd_prod_access}
+            secret_access_key = {settings.rockd_prod_secret}
+            acl           = private
+            """
+    )
+
+    with tempfile.NamedTemporaryFile("w+", delete=False) as tf:
+        tf.write(cfg)
+        tf.flush()
+
+        cmd = [
+            "rclone",
+            "copy",  # copy == only newer/different
+            "rockd-backup",
+            "rockd-prod",
+            "--config",
+            tf.name,
+            "--checksum",  # strong change detection
+            "--metadata",  # copy object metadata too
+            "--transfers", "8",  # parallelism
+            "--progress",
+        ]
+        if dry_run:
+            cmd.append("--dry-run")
+
+        if show_cmd:
+            print(" ".join(cmd))
+
+        try:
+            subprocess.run(cmd, check=True)
+            print("[green]Backup complete[/green]")
+        except subprocess.CalledProcessError as err:
+            raise MacrostratError(f"rclone failed (exit {err.returncode})") from err
 
 
 @app.command()

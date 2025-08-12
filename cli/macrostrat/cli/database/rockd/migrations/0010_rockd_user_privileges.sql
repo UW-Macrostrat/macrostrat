@@ -1,5 +1,15 @@
 --granting read only access for the rockd api to read macrostrat.public
-ALTER TABLE public.lookup_tiny OWNER TO postgres;
+--ALTER ROLE rockd WITH SUPERUSER;
+
+--/opt/homebrew/bin/pg_restore --dbname=rockd --clean --username=rockd --host=db.development.svc.macrostrat.org --port=5432 /Users/afromandi/Macrostrat/Pgdump/2025-08-11T00:00:10.rockd.pg_dump
+
+
+ALTER DATABASE rockd OWNER TO rockd;
+ALTER SCHEMA public OWNER TO rockd;
+--REASSIGN OWNED BY "macrostrat-admin" TO rockd;
+GRANT CREATE ON DATABASE rockd TO rockd;
+GRANT CREATE ON SCHEMA public TO rockd;
+
 GRANT USAGE ON SCHEMA public TO "rockd-reader";
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO "rockd-reader";
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
@@ -13,6 +23,6 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public
 GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO rockd;
 
 --if we need to update permissions for all tables run query below
---GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO rockd;
---GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO rockd;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO rockd;
+GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO rockd;
 
