@@ -6,6 +6,8 @@
 
 ALTER DATABASE rockd OWNER TO rockd;
 ALTER SCHEMA public OWNER TO rockd;
+ALTER SCHEMA modules OWNER TO rockd;
+
 --REASSIGN OWNED BY "macrostrat-admin" TO rockd;
 GRANT CREATE ON DATABASE rockd TO rockd;
 GRANT CREATE ON SCHEMA public TO rockd;
@@ -25,4 +27,6 @@ GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO rockd;
 --if we need to update permissions for all tables run query below
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO rockd;
 GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO rockd;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA modules TO rockd;
+GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA modules TO rockd;
 
