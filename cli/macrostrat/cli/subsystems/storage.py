@@ -3,13 +3,14 @@ Storage system management
 """
 
 import re
-import subprocess
-import tempfile
 from os import environ
 from subprocess import run
-from textwrap import dedent
 from typing import List, Optional
-
+from os import path
+import subprocess
+import tempfile
+from textwrap import dedent
+from typer import Option
 from rich import print
 from typer import Argument, Option, Typer
 
@@ -72,63 +73,78 @@ def _s3_users():
         r.replace(prefix, "") for r in res.stdout.split(" ") if r.startswith(prefix)
     ]
 
-
 @app.command()
-def backup_to_prod(
+def s3_bucket_migration(
     dry_run: bool = Option(False, "--dry-run", "-n", help="Do everything except write"),
     show_cmd: bool = Option(False, help="Print the rclone command for debugging"),
-):
-    """
-    Migrates new photos from the rockd-backup bucket to the rockd-prod bucket.
-    """
-    cfg = dedent(
-        f"""
-            [rockd-backup]
-            type          = s3
-            provider      = Minio
-            endpoint      = {settings.storage.endpoint}
-            access_key_id = {settings.rockd_backup_access}
-            secret_access_key = {settings.rockd_backup_secret}
-            acl           = private
+    src: str = Option(..., help="Source bucket that contains photos"),
+    dst: str = Option(..., help="Destination bucket to copy photos into"),
 
-            [rockd-prod]
-            type          = s3
-            provider      = Minio
-            endpoint      = {settings.storage.endpoint}
-            access_key_id = {settings.rockd_prod_access}
-            secret_access_key = {settings.rockd_prod_secret}
-            acl           = private
-            """
-    )
+):
+    endpoint = settings.get("storage.endpoint")
+    b_access = settings.get("storage.rockd_backup_access")
+    b_secret = settings.get("storage.rockd_backup_secret")
+    p_access = settings.get("storage.rockd_prod_access")
+    p_secret = settings.get("storage.rockd_prod_secret")
+
+    cfg = dedent(f"""
+        [rockd-backup]
+        type = s3
+        provider = Minio
+        endpoint = {endpoint}
+        access_key_id = {b_access}
+        secret_access_key = {b_secret}
+        acl = private
+
+        [rockd-prod]
+        type = s3
+        provider = Minio
+        endpoint = {endpoint}
+        access_key_id = {p_access}
+        secret_access_key = {p_secret}
+        acl = private
+    """)
 
     with tempfile.NamedTemporaryFile("w+", delete=False) as tf:
-        tf.write(cfg)
-        tf.flush()
+        tf.write(cfg); tf.flush()
 
+        # local rclone cmd
         cmd = [
-            "rclone",
-            "copy",  # copy == only newer/different
-            "rockd-backup",
-            "rockd-prod",
-            "--config",
-            tf.name,
-            "--checksum",  # strong change detection
-            "--metadata",  # copy object metadata too
-            "--transfers",
-            "8",  # parallelism
-            "--progress",
+            "rclone", "copy", f"rockd-backup:{src}", f"rockd-prod:{dst}",
+            "--config", tf.name,
+            "--checksum", "--metadata", "--transfers", "8",
+            "--log-level", "NOTICE", "--stats-log-level", "NOTICE",
+            "--stats=1s", "--stats-one-line",
+            "--s3-no-check-bucket",
+            "--ignore-existing",
         ]
         if dry_run:
             cmd.append("--dry-run")
-
         if show_cmd:
             print(" ".join(cmd))
 
         try:
             subprocess.run(cmd, check=True)
-            print("[green]Backup complete[/green]")
-        except subprocess.CalledProcessError as err:
-            raise MacrostratError(f"rclone failed (exit {err.returncode})") from err
+        except FileNotFoundError:
+            #use rclone docker image
+            conf_dir, conf_name = path.dirname(tf.name), path.basename(tf.name)
+            docker_cmd = [
+                "docker", "run", "--rm", "-v", f"{conf_dir}:/cfg:ro",
+                "rclone/rclone:latest", "copy", f"rockd-backup:{src}", f"rockd-prod:{dst}",
+                "--config", f"/cfg/{conf_name}",
+                "--checksum", "--metadata", "--transfers", "8",
+                "--log-level", "NOTICE", "--stats-log-level", "NOTICE",
+                "--stats=1s", "--stats-one-line",
+                "--s3-no-check-bucket",
+                "--ignore-existing",
+            ]
+            if dry_run:
+                docker_cmd.append("--dry-run")
+            if show_cmd:
+                print(" ".join(docker_cmd))
+            subprocess.run(docker_cmd, check=True)
+
+        print("[green]Backup complete[/green]")
 
 
 @app.command()
