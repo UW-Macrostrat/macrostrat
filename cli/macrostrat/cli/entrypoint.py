@@ -8,11 +8,11 @@ from typer import Argument, Typer
 
 from macrostrat.app_frame import CommandBase
 from macrostrat.cli.database.rockd.cli import cli as rockd_cli
+from macrostrat.cli.database.rockd.db_subsystem import rockd_subsystem
 from macrostrat.core import app
 from macrostrat.core.exc import MacrostratError
 from macrostrat.core.main import env_text, set_app_state
 from macrostrat.utils.shell import run
-from macrostrat.cli.database.rockd.db_subsystem import rockd_subsystem
 
 from .database import db_app, db_subsystem
 from .subsystems.macrostrat_api import MacrostratAPISubsystem
@@ -28,7 +28,6 @@ __here__ = Path(__file__).parent
 fixtures_dir = __here__ / "fixtures"
 
 install(show_locals=False)
-
 
 
 # Manage as a docker-compose application

@@ -3,8 +3,11 @@ Storage system management
 """
 
 import re
+import subprocess
+import tempfile
 from os import environ
 from subprocess import run
+from textwrap import dedent
 from typing import List, Optional
 
 from rich import print
@@ -12,9 +15,7 @@ from typer import Argument, Option, Typer
 
 from macrostrat.core import app as app_
 from macrostrat.utils import get_logger
-import subprocess
-import tempfile
-from textwrap import dedent
+
 from ...core.exc import MacrostratError
 from ..kubernetes import _kubectl, get_secret
 
@@ -113,7 +114,8 @@ def backup_to_prod(
             tf.name,
             "--checksum",  # strong change detection
             "--metadata",  # copy object metadata too
-            "--transfers", "8",  # parallelism
+            "--transfers",
+            "8",  # parallelism
             "--progress",
         ]
         if dry_run:
