@@ -9,10 +9,10 @@ dotenv.load_dotenv()
 
 import api.routes.security
 from api.database import connect_engine, dispose_engine
+from api.routes.image_upload import router as image_upload_router
 from api.routes.ingest import router as ingest_router
 from api.routes.object import router as object_router
 from api.routes.sources import router as sources_router
-from api.routes.image_upload import router as image_upload_router
 
 
 @asynccontextmanager
