@@ -50,5 +50,5 @@ INSERT INTO ecosystem.roles (name, description) VALUES
   ('Researcher', 'Conducts academic or applied research'),
   ('Developer', 'Writes and maintains software code'),
   ('Leader', 'Leads research or development projects and mentors others'),
-  ('Collaborator', 'Contributes to joint projects'),
+  ('Collaborator', 'Contributes to joint projects')
 ON CONFLICT (name) DO NOTHING;
