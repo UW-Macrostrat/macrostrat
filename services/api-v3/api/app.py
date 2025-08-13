@@ -12,6 +12,7 @@ from api.database import connect_engine, dispose_engine
 from api.routes.ingest import router as ingest_router
 from api.routes.object import router as object_router
 from api.routes.sources import router as sources_router
+from api.routes.image_upload import router as image_upload_router
 
 
 @asynccontextmanager
@@ -46,6 +47,7 @@ app.include_router(api.routes.security.router)
 app.include_router(object_router)
 app.include_router(ingest_router)
 app.include_router(sources_router)
+app.include_router(image_upload_router)
 
 if __name__ == "__main__":
     uvicorn.run(
