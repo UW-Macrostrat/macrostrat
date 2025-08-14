@@ -1,4 +1,4 @@
-CREATE VIEW macrostrat_api.autocomplete AS 
+CREATE OR REPLACE VIEW macrostrat_api.autocomplete as 
  SELECT autocomplete.id,
     autocomplete.name,
     autocomplete.type,
@@ -21,8 +21,15 @@ UNION ALL
     projects.project::text AS name,
     'project'::character varying AS type,
     'projects'::character varying AS category
-   FROM macrostrat.projects;
-
+   FROM macrostrat.projects
+UNION ALL
+  SELECT strat_names.id,
+    strat_names.strat_name::text AS name,
+    'strat_name'::character varying AS type,
+    'strat_names'::character varying AS category
+   FROM macrostrat.strat_names
+   where concept_id is null
+   
 CREATE VIEW macrostrat_api.col_base AS 
  SELECT c.id AS col_id,
     c.col_group_id,
