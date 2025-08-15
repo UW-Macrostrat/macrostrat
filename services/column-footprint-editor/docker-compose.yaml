@@ -1,0 +1,31 @@
+version: "3.7"
+services:
+  db:
+    # PostgreSQL 13 is needed in order to allow force-dropping the database
+    # (in testing mode)
+    image: postgis/postgis:13-3.1
+    environment:
+      - POSTGRES_DB=geologic_map
+      # This allows connections without a password, which is expedient but insecure...
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    ports:
+      - "5432:5432"
+    expose:
+      - 5432
+    volumes:
+      - db_cluster:/var/lib/postgresql/data
+  frontend:
+    build: ./frontend
+    ports:
+      - "1234:3000"
+  backend:
+    build: "column_footprint_editor"
+    entrypoint: "/python_app/docker-scripts/run"
+    environment:
+      - GEOLOGIC_MAP_CONFIG=/app/docker-assets/docker-map-config.json
+    ports:
+      - "40053:8000"
+    expose:
+      - "8000"
+volumes:
+  db_cluster:

@@ -1,0 +1,26 @@
+[project]
+name = "macrostrat.column-footprint-editor"
+version = "0.1.0"
+description = "Editor for Macrostrat column footprints"
+readme = "README.md"
+requires-python = ">=3.11"
+packages = [
+    { include = "macrostrat" }
+]
+dependencies = [
+    "click>=8.2.1",
+    "macrostrat.database>=3.5.4",
+    "pandas>=2.3.1",
+    "requests>=2.32.4",
+    "simplejson>=3.20.1",
+    "starlette>=0.47.2",
+    "uvicorn>=0.35.0",
+    "mapboard.topology-manager",
+    "python-dotenv>=1.1.1",
+]
+
+[tool.uv.sources]
+"mapboard.topology-manager" = { path = "../../submodules/topology-manager", editable = true }
+
+[tool.pytest.ini_options]
+confcutdir = "."
