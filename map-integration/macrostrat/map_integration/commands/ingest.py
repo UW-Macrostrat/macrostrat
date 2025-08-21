@@ -229,6 +229,9 @@ def ingest_map(
         if feature_suffix == "linestrings":
             feature_suffix = "lines"
         # applies legend merge only to the whatever the legend_table is specified as
+        #TODO add flag in db for cross sections. Remove cross section layer from Arizona maps
+        #TODO add metadata page to the sources table. delete all of the old maps
+        #TODO add maps to s3 bucket.
         if meta_path and meta_table == feature_suffix:
             df.columns = df.columns.str.lower()
             df, ingest_pipeline, comments, state = preprocess_dataframe(
@@ -321,9 +324,11 @@ def get_dataframes(files) -> Iterable[Tuple[str, G.GeoDataFrame]]:
 
             # Create the basic data frame
             df = G.read_file(file, layer=layer)
+            df.columns = df.columns.str.replace(r"\s+", " ", regex=True).str.strip()
 
             info = get_layer_info(file, layer)
             # Apply domains for Geodatabase linked information
+
             df = apply_domains_to_fields(df, info)
 
             # TODO: find and follow foreign key relationships
