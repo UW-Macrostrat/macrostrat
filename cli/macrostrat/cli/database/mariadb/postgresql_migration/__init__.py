@@ -38,7 +38,8 @@ class MariaDBMigrationStep(Enum):
     CHECK_DATA = "check-data"
     FINALIZE = "finalize"
 
-#TODO add production enum flag to move this migration to staging and production
+
+# TODO add production enum flag to move this migration to staging and production
 _all_steps = {
     MariaDBMigrationStep.COPY_MARIADB,
     MariaDBMigrationStep.PGLOADER,
@@ -112,7 +113,7 @@ def pgloader(source: Engine, dest: Engine, target_schema: str, overwrite: bool =
 
     pgloader_pre_script(source)
     _schema = Identifier(target_schema)
-    #make sure FK's in other schemas are not tied into the macrostrat schema
+    # make sure FK's in other schemas are not tied into the macrostrat schema
     if overwrite:
         run_sql(
             dest,
