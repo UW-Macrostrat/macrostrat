@@ -435,6 +435,7 @@ def applyable_migrations(db, *, allow_destructive=False, legacy=False) -> set[st
 
 def migration_has_been_run(*names: str):
     from macrostrat.cli.database._legacy import get_db
+
     db = get_db()
     print(db)
     instances = [cls() for cls in Migration.__subclasses__()]
@@ -443,7 +444,7 @@ def migration_has_been_run(*names: str):
     if missing:
         raise ValueError(f"Unknown migrations: {missing}")
 
-    #return True only if all requested migrations are already APPLIED
+    # return True only if all requested migrations are already APPLIED
     for m in instances:
         if m.name in names:
             if m.should_apply(db) is not ApplicationStatus.APPLIED:

@@ -38,7 +38,8 @@ class MariaDBMigrationStep(Enum):
     CHECK_DATA = "check-data"
     FINALIZE = "finalize"
 
-#TODO add production enum flag to move this migration to staging and production
+
+# TODO add production enum flag to move this migration to staging and production
 _all_steps = {
     MariaDBMigrationStep.COPY_MARIADB,
     MariaDBMigrationStep.PGLOADER,
@@ -118,22 +119,37 @@ def pgloader(source: Engine, dest: Engine, target_schema: str, overwrite: bool =
 
     pgloader_pre_script(source)
     _schema = Identifier(target_schema)
-    #make sure FK's in other schemas are not tied into the macrostrat schema
+    # make sure FK's in other schemas are not tied into the macrostrat schema
     username = "maria_migrate"
 
     with pg_temp_user(dest, username, overwrite=overwrite) as pg_temp:
         # DB-level privileges so the temp user can CREATE SCHEMA
-        run_sql(dest, "GRANT CONNECT, TEMP ON DATABASE {db} TO {user};",
-                dict(db=Identifier(dest.url.database), user=Identifier(username)))
-        run_sql(dest, "GRANT CREATE ON DATABASE {db} TO {user};",
-                dict(db=Identifier(dest.url.database), user=Identifier(username)))
+        run_sql(
+            dest,
+            "GRANT CONNECT, TEMP ON DATABASE {db} TO {user};",
+            dict(db=Identifier(dest.url.database), user=Identifier(username)),
+        )
+        run_sql(
+            dest,
+            "GRANT CREATE ON DATABASE {db} TO {user};",
+            dict(db=Identifier(dest.url.database), user=Identifier(username)),
+        )
         if overwrite:
-            run_sql(dest, "DROP SCHEMA IF EXISTS {schema} CASCADE; CREATE SCHEMA {schema};",
-                    dict(schema=_schema))
-            run_sql(dest, "ALTER SCHEMA {schema} OWNER TO {user};",
-                    dict(schema=_schema, user=Identifier(username)))
-        run_sql(dest, "GRANT USAGE, CREATE ON SCHEMA {schema} TO {user};",
-                dict(schema=_schema, user=Identifier(username)))
+            run_sql(
+                dest,
+                "DROP SCHEMA IF EXISTS {schema} CASCADE; CREATE SCHEMA {schema};",
+                dict(schema=_schema),
+            )
+            run_sql(
+                dest,
+                "ALTER SCHEMA {schema} OWNER TO {user};",
+                dict(schema=_schema, user=Identifier(username)),
+            )
+        run_sql(
+            dest,
+            "GRANT USAGE, CREATE ON SCHEMA {schema} TO {user};",
+            dict(schema=_schema, user=Identifier(username)),
+        )
 
         _run_pgloader(source, pg_temp)
         pgloader_post_script(pg_temp)
@@ -178,7 +194,8 @@ def _run_pgloader(source: Engine, dest: Engine):
     run(
         "docker",
         "run",
-        "--platform", "linux/amd64",
+        "--platform",
+        "linux/amd64",
         "-i",
         "--rm",
         "pgloader-runner",
@@ -193,15 +210,15 @@ def _run_pgloader(source: Engine, dest: Engine):
 def _build_pgloader():
     header("Building pgloader-runner Docker image")
 
-    dockerfile = (
-        "FROM dimitri/pgloader:latest\n"
-        'ENTRYPOINT ["pgloader"]\n'
-    )
+    dockerfile = "FROM dimitri/pgloader:latest\n" 'ENTRYPOINT ["pgloader"]\n'
 
     run(
-        "docker", "build",
-        "--platform", "linux/amd64",
-        "-t", "pgloader-runner:latest",
+        "docker",
+        "build",
+        "--platform",
+        "linux/amd64",
+        "-t",
+        "pgloader-runner:latest",
         "-",
         input=dockerfile.encode("utf-8"),
     )
