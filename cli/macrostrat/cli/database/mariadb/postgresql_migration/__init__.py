@@ -92,6 +92,12 @@ def migrate_mariadb_to_postgresql(
             raise ValueError(
                 "This will overwrite the macrostrat schema. Use --force to proceed."
             )
+        get_db().run_sql(
+            f"ALTER SCHEMA {final_schema} RENAME TO macrostratbak3",
+            dict(
+                final_schema=Identifier(final_schema),
+            ),
+        )
 
         get_db().run_sql(
             "ALTER SCHEMA {temp_schema} RENAME TO {final_schema}",
@@ -113,28 +119,22 @@ def pgloader(source: Engine, dest: Engine, target_schema: str, overwrite: bool =
     pgloader_pre_script(source)
     _schema = Identifier(target_schema)
     #make sure FK's in other schemas are not tied into the macrostrat schema
-    if overwrite:
-        run_sql(
-            dest,
-            """
-            DROP SCHEMA IF EXISTS {schema} CASCADE;
-            CREATE SCHEMA {schema};
-            """,
-            dict(schema=_schema),
-        )
-
     username = "maria_migrate"
+
     with pg_temp_user(dest, username, overwrite=overwrite) as pg_temp:
-        # Create a temporary user that PGLoader can use to connect to the PostgreSQL database
-        # and create the temporary schema.
-        run_sql(
-            dest,
-            "GRANT ALL PRIVILEGES ON SCHEMA {schema} TO {user}",
-            dict(
-                schema=_schema,
-                user=Identifier(username),
-            ),
-        )
+        # DB-level privileges so the temp user can CREATE SCHEMA
+        run_sql(dest, "GRANT CONNECT, TEMP ON DATABASE {db} TO {user};",
+                dict(db=Identifier(dest.url.database), user=Identifier(username)))
+        run_sql(dest, "GRANT CREATE ON DATABASE {db} TO {user};",
+                dict(db=Identifier(dest.url.database), user=Identifier(username)))
+        if overwrite:
+            run_sql(dest, "DROP SCHEMA IF EXISTS {schema} CASCADE; CREATE SCHEMA {schema};",
+                    dict(schema=_schema))
+            run_sql(dest, "ALTER SCHEMA {schema} OWNER TO {user};",
+                    dict(schema=_schema, user=Identifier(username)))
+        run_sql(dest, "GRANT USAGE, CREATE ON SCHEMA {schema} TO {user};",
+                dict(schema=_schema, user=Identifier(username)))
+
         _run_pgloader(source, pg_temp)
         pgloader_post_script(pg_temp)
 
@@ -178,6 +178,7 @@ def _run_pgloader(source: Engine, dest: Engine):
     run(
         "docker",
         "run",
+        "--platform", "linux/amd64",
         "-i",
         "--rm",
         "pgloader-runner",
@@ -192,18 +193,15 @@ def _run_pgloader(source: Engine, dest: Engine):
 def _build_pgloader():
     header("Building pgloader-runner Docker image")
 
-    dockerfile = dedent(
-        """FROM dimitri/pgloader:latest
-        RUN apt-get update && apt-get install -y postgresql-client ca-certificates && rm -rf /var/lib/apt/lists/*
-        ENTRYPOINT ["pgloader"]
-        """
+    dockerfile = (
+        "FROM dimitri/pgloader:latest\n"
+        'ENTRYPOINT ["pgloader"]\n'
     )
 
     run(
-        "docker",
-        "build",
-        "-t",
-        "pgloader-runner:latest",
+        "docker", "build",
+        "--platform", "linux/amd64",
+        "-t", "pgloader-runner:latest",
         "-",
         input=dockerfile.encode("utf-8"),
     )
