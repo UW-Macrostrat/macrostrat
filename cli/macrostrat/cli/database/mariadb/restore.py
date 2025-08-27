@@ -18,7 +18,7 @@ from macrostrat.database.transfer.stream_utils import (
 from macrostrat.database.transfer.utils import (
     _create_command,
     _create_database_if_not_exists,
-    _docker_local_run_args
+    _docker_local_run_args,
 )
 from macrostrat.utils import get_logger
 
@@ -72,9 +72,10 @@ async def _restore_mariadb(engine: Engine, *args, **kwargs):
         engine.url, create=create, allow_exists=False, overwrite=overwrite
     )
     conn = build_connection_args(docker_internal_url(engine.url))
-    restore_opts = ["--force",
-                    #"--init-command=SET SESSION sql_log_bin=0;SET SESSION foreign_key_checks=0;SET SESSION unique_checks=0",
-                    ]
+    restore_opts = [
+        "--force",
+        # "--init-command=SET SESSION sql_log_bin=0;SET SESSION foreign_key_checks=0;SET SESSION unique_checks=0",
+    ]
 
     # Run mariadb in a local Docker container
     # or another location, if more appropriate. Running on the remote
@@ -120,9 +121,14 @@ async def _dump_mariadb(engine: Engine, *args, **kwargs):
     else:
         conn += ["--skip-ssl"]
 
-    #flags to reduce packet size and avoid mid dump drops
-    args = ("--compress", "--single-transaction", "--quick", f"--max-allowed-packet={1024*1024*1024}", *args)
-
+    # flags to reduce packet size and avoid mid dump drops
+    args = (
+        "--compress",
+        "--single-transaction",
+        "--quick",
+        f"--max-allowed-packet={1024*1024*1024}",
+        *args,
+    )
 
     command_prefix = _docker_local_run_args(container)
     _cmd = [*command_prefix, "mysqldump", *conn, *args]
