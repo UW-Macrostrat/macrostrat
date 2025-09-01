@@ -31,7 +31,7 @@ jobs:
         run: scripts/prepare-services
       - name: Get the version from the tag, if it exists
         run: |
-          TAG=${{ github.event.release.tag_name }}
+          TAG=${{ github.ref_name }}
           VERSION=$(echo "${TAG}" | sed -E 's/legacy-tileserver-v//')
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
       - name: Docker meta
