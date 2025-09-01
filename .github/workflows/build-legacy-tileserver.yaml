@@ -40,7 +40,7 @@ jobs:
         with:
           images: hub.opensciencegrid.org/macrostrat/legacy-tileserver
           tags: |
-            type=raw,pattern={{environment.VERSION}},enable=${{ env.VERSION != '' }}
+            type=raw,value=${{ env.VERSION }},enable=${{ env.VERSION != '' }}
             type=ref,event=pr,suffix=-{{date 'YYYYMMDDHHmmss'}}
             type=ref,event=branch,suffix=-{{date 'YYYYMMDDHHmmss'}}
             type=raw,value=latest,enable={{is_default_branch}}
