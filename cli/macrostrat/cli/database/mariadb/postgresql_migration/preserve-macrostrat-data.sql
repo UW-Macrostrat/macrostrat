@@ -45,7 +45,7 @@ DECLARE
 BEGIN
     FOREACH table_name IN ARRAY tables
     LOOP
-        EXECUTE format('CREATE TABLE %I.%I (LIKE %I.%I INCLUDING ALL)', target_schema, table_name, source_schema, table_name);
+        EXECUTE format('CREATE TABLE IF NOT EXISTS %I.%I (LIKE %I.%I INCLUDING ALL)', target_schema, table_name, source_schema, table_name);
         EXECUTE format('INSERT INTO %I.%I SELECT * FROM %I.%I', target_schema, table_name, source_schema, table_name);
     END LOOP;
 END $$;

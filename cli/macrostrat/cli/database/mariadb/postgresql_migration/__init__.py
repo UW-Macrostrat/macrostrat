@@ -324,10 +324,6 @@ def compare_row_counts(maria: Engine, pg_engine: Engine, schema):
 
 
 def preserve_macrostrat_data(engine: Engine):
-    app.console.print("\n[bold]Running script[/]")
-    assert engine.url.drivername.startswith("postgres")
-    preserve_data = __here__ / "preserve-macrostrat-data.sql"
-    run_sql(engine, preserve_data)
 
     # Check if necessary migrations are satisfied
     did_migrate = migration_has_been_run("maps-scale-type")
@@ -335,6 +331,11 @@ def preserve_macrostrat_data(engine: Engine):
         raise ValueError(
             "Migration 'maps-scale-type' has not been run. Please run `macrostrat db migrations` before proceeding."
         )
+    app.console.print("\n[bold]Running preserve_data script[/]")
+    assert engine.url.drivername.startswith("postgres")
+    preserve_data = __here__ / "preserve-macrostrat-data.sql"
+    run_sql(engine, preserve_data)
+
     return True
 
 
