@@ -6,6 +6,7 @@ from typing import Iterable, List, Tuple
 
 import fiona
 import geopandas as G
+import numpy as np
 import pandas as P
 import pyogrio
 from geoalchemy2 import Geometry
@@ -13,6 +14,8 @@ from numpy.f2py.symbolic import as_ge
 from pandas import DataFrame
 from rich.console import Console
 from rich.progress import Progress
+from shapely import wkt
+from shapely.geometry.base import BaseGeometry
 from sqlalchemy import text
 
 from ..custom_integrations.gems_utils import (
@@ -28,82 +31,97 @@ from .geodatabase import apply_domains_to_fields, get_layer_info, get_layer_name
 console = Console()
 
 
-def merge_metadata_polygons(polygon_df, legend_df, join_col):
+def merge_metadata_polygons(polygon_df, meta_df, join_col) -> G.GeoDataFrame:
     # merge df (polygon df) and legend_df (created df from file)
     # ensure join column is string for both DataFrames
     polygon_df[join_col] = polygon_df[join_col].astype(str)
-    legend_df[join_col] = legend_df[join_col].astype(str)
+    meta_df[join_col] = meta_df[join_col].astype(str)
     # merge metadata into geodataframe
-    merged_df = polygon_df.merge(legend_df, on=join_col, how="left")
+    merged_df = polygon_df.merge(
+        meta_df, on=join_col, how="left", suffixes=("", "_meta")
+    )
+    # Drop duplicate columns (after merge)
     return merged_df
 
 
 def preprocess_dataframe(
-    df: G.GeoDataFrame, legend_path: Path, join_col: str
-) -> G.GeoDataFrame:
+    polygon_df: G.GeoDataFrame, meta_path: Path, join_col: str
+) -> Tuple[G.GeoDataFrame, str, str, str]:
     """
     Preprocess a GeoDataFrame by merging in metadata from a local .tsv,
     .csv, .xls, or .xlsx file.
     Parameters:
-        df (G.GeoDataFrame): The geospatial dataframe to preprocess.
-        legend_path (Path): Path to the legend.tsv metadata file.
+        polygon_df (G.GeoDataFrame): The geospatial dataframe to preprocess.
+        meta_path (Path): Path to the legend.tsv metadata file.
         join_col (str): The column to join on (default is "symbol").
     Returns:
         G.GeoDataFrame: The enriched GeoDataFrame with merged metadata.
     """
-    # extract and store metadata into legend_df for processing.
-    legend_df = None
-    ext = legend_path.suffix.lower()
+    # extract and store metadata into meta_df for processing.
+    meta_df = None
+    ingest_pipeline = ""
+    comments = ""
+    state = ""
+    ext = meta_path.suffix.lower()
+    if join_col not in polygon_df.columns:
+        comments = f"Warning: join column '{join_col}' not found in metadata file. Skipping metadata merge."
+        state = "failed"
+        return polygon_df, ingest_pipeline, comments, state
     if ext == ".tsv":
-        legend_df = P.read_csv(legend_path, sep="\t")
+        meta_df = P.read_csv(meta_path, sep="\t")
+        ingest_pipeline = ".tsv pipeline"
     elif ext == ".csv":
-        legend_df = P.read_csv(legend_path)
+        meta_df = P.read_csv(meta_path)
+        ingest_pipeline = ".csv pipeline"
     elif ext in [".xls", ".xlsx"]:
-        legend_df = P.read_excel(legend_path)
-    # note that the gdb dir may not contain shp files to merge metadata into
+        ingest_pipeline = ".xls pipeline"
+        meta_df = P.read_excel(meta_path)
     # TODO add lines metadata ingestion hereeee
     # TODO ensure this is a gems dataset (list all layers) OR .gdb
     elif ext == ".gdb":
-
         # extract whatever layer you want to merge with the polygons table
-        print("\n\nPolygons df before any metadata processing\n", df.columns.tolist())
-        print("", df.head(5).T)
+        meta_df, ingest_pipeline, comments = extract_gdb_layer(
+            meta_path, "DescriptionOfMapUnits", False
+        )
+        if ingest_pipeline == ".gdb pipeline":
+            return polygon_df, ingest_pipeline, comments, state
+        if ingest_pipeline == "Gems pipeline" and comments != "":
+            state = "failed"
+            return polygon_df, ingest_pipeline, comments, state
 
-        legend_df = extract_gdb_layer(legend_path, "DescriptionOfMapUnits", False)
-
-        print("\n\nDMU df before transform\n", legend_df.columns.tolist())
-        print("", legend_df.head(5).T)
-        # transform the standard gems columns to macrostrat columns
         # delete all of the arizona maps that are empty
         # create delete bulk ingestion script
-        # what other info to add into ingest process table. recored type of ETL operations are performed in ingest table.
-        # can remove ingest_process table if we don't need.
-        # how to flag maps if pre process is ready (in the ui) for daven to post process.
         # celery process to have a delete button in the UI.
-        # post UI manual column input json into the db for column ingestion...need RLS for user to post correct data to.
-        # infrastructure....
-        # suite of tests to run for rls to show what edge cases work. point to dev postgrest RLS
-        # run role migration to ensure that the roles
-        # once rls works have david update the UI immediately!
         # streamline the api's and UI for production.
+        meta_df, comments = transform_gdb_layer(meta_df)
+        if comments != "":
+            state = "pending"
+            return polygon_df, ingest_pipeline, comments, state
+        meta_df = map_t_b_intervals(meta_df)
+        if meta_df["b_interval"].isna().all() and meta_df["t_interval"].isna().all():
+            comments = "map_t_b_intervals() function failed. Both b_interval and t_interval are NA."
+            state = "failed"
+            return polygon_df, ingest_pipeline, comments, state
+        meta_df = map_strat_name(meta_df)
+        if meta_df["strat_name"].isna().all():
+            comments = "strat_name column needs review. map_strat_name() function did not find any strat_names."
 
-        legend_df = transform_gdb_layer(legend_df)
-
-        print("\n\nAFTER TRANSFORMATION!!\n\n")
-        print("\n\nPolygons df\n", df.columns.tolist())
-        print("\n\nDMU df\n", legend_df.columns.tolist())
-
-        legend_df = map_t_b_intervals(legend_df)
-        legend_df = map_strat_name(legend_df)
-
-    if join_col not in df.columns:
-        console.print(
-            f"[yellow]Warning: join column '{join_col}' not found in legend file. Skipping merge.[/yellow]"
-        )
-        return df
+    if meta_df.empty:
+        comments = "Warning: metadata file is empty. Skipping metadata merge."
+        state = "failed"
+        return polygon_df, ingest_pipeline, comments, state
     # merge polygons and metadata dataframes before inserting into the db
-    merged_df = merge_metadata_polygons(df, legend_df, join_col)
-    return merged_df
+    merged_df = merge_metadata_polygons(polygon_df, meta_df, join_col)
+    comments += " Successfully merged metadata."
+    state = "ingested"
+    return merged_df, ingest_pipeline, comments, state
+
+
+def strip_z(g: BaseGeometry | None):
+    """Return a 2-D copy of *g* (or None)."""
+    if g is None or g.is_empty or not g.has_z:
+        return g  # already 2D / empty / null
+    return wkt.loads(wkt.dumps(g, output_dimension=2))
 
 
 def ingest_map(
@@ -112,12 +130,12 @@ def ingest_map(
     embed: bool = False,
     crs: str = None,
     if_exists: str = "replace",
-    legend_file: str = None,
+    meta_path: str = None,
     # TODO add default key column to the first column in the file
-    legend_key: str = None,
-    legend_table: str = "polygons",
+    merge_key: str = None,
+    meta_table: str = "polygons",
     chunksize: int = 100,
-):
+) -> Tuple[str, str, str]:
     """Ingest general GIS data files into the database.
 
     This is similar to the macrostrat maps pipeline ingest-map command,
@@ -139,11 +157,11 @@ def ingest_map(
     success_count = 0
     total_count = 0
 
-    if legend_file:
-        legend_path = Path(legend_file)
-        join_col = legend_key
+    if meta_path:
+        meta_path = Path(meta_path)
+        join_col = merge_key
     else:
-        legend_path = None
+        meta_path = None
         join_col = None
 
     for name, df in get_dataframes(files):
@@ -178,7 +196,6 @@ def ingest_map(
                     "[yellow dim]Ignoring duplicate column:[/yellow dim] [yellow]"
                     + column
                 )
-
             df = df.loc[:, ~_dup]
             # Print warning
 
@@ -190,7 +207,6 @@ def ingest_map(
                 )
 
             success_count += 1
-            console.print()
         except IngestError as e:
             continue
         finally:
@@ -206,21 +222,31 @@ def ingest_map(
 
     for feature_type, df_list in frames.items():
         # Concatenate all dataframes
-        df = G.GeoDataFrame(P.concat(df_list, ignore_index=True)).dropna(
-            axis=1, how="all"
-        )
+        df = G.GeoDataFrame(P.concat(df_list, ignore_index=True))
+        df = df.loc[:, ~df.columns.duplicated()]
 
         feature_suffix = feature_type.lower() + "s"
         if feature_suffix == "linestrings":
             feature_suffix = "lines"
-
         # applies legend merge only to the whatever the legend_table is specified as
-        if legend_path and legend_table == feature_suffix:
+        #TODO add flag in db for cross sections. Remove cross section layer from Arizona maps
+        #TODO add metadata page to the sources table. delete all of the old maps
+        #TODO add maps to s3 bucket.
+        if meta_path and meta_table == feature_suffix:
             df.columns = df.columns.str.lower()
-            df = preprocess_dataframe(
-                df, legend_path=legend_path, join_col=join_col.lower()
+            df, ingest_pipeline, comments, state = preprocess_dataframe(
+                df, meta_path=meta_path, join_col=join_col.lower()
             )
-
+            if state == "":
+                state = "ingested"
+            before = df.columns.tolist()
+            df = df.loc[:, ~df.columns.duplicated()]  # <- fix: reassign to merged_df!
+            after = df.columns.tolist()
+            removed = set(before) - set(after)
+            if removed:
+                console.print(
+                    f"[yellow]Dropped duplicate columns after merge: {removed}"
+                )
         console.print(f"[bold]{feature_type}s[/bold] [dim]- {len(df)} features[/dim]")
         # Columns
         console.print("Columns:")
@@ -244,6 +270,7 @@ def ingest_map(
 
             conn = db.engine.connect()
 
+            df["geometry"] = df["geometry"].apply(strip_z)
             for i, chunk in enumerate(chunker(df, chunksize)):
                 chunk.to_postgis(
                     table,
@@ -268,6 +295,7 @@ def ingest_map(
                 progress.update(task, advance=len(chunk))
 
             conn.commit()
+    return ingest_pipeline, comments, state
 
 
 def create_dataframe_for_layer(file: Path, layer: str) -> G.GeoDataFrame:
@@ -296,9 +324,11 @@ def get_dataframes(files) -> Iterable[Tuple[str, G.GeoDataFrame]]:
 
             # Create the basic data frame
             df = G.read_file(file, layer=layer)
+            df.columns = df.columns.str.replace(r"\s+", " ", regex=True).str.strip()
 
             info = get_layer_info(file, layer)
             # Apply domains for Geodatabase linked information
+
             df = apply_domains_to_fields(df, info)
 
             # TODO: find and follow foreign key relationships
