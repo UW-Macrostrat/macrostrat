@@ -261,30 +261,6 @@ except ImportError as err:
     pass
 
 
-# TODO: consider removing tileserver config - or adjusting, as fixtures
-# are now run automatically on tileserver startup.
-try:
-    from macrostrat_tileserver.cli import _cli as tileserver_cli
-    from macrostrat_tileserver.cli import create_fixtures
-
-    environ["DATABASE_URL"] = app.settings.pg_database
-    main.add_typer(
-        tileserver_cli,
-        name="tileserver",
-        rich_help_panel="Subsystems",
-        short_help="Control Macrostrat's tileserver",
-    )
-
-    def update_tileserver(db):
-        app.console.print("Creating models for [bold cyan]tileserver[/] subsystem")
-        create_fixtures()
-
-    db_subsystem.register_schema_part(name="tileserver", callback=update_tileserver)
-
-except ImportError as err:
-    pass
-    # app.console.print("Could not import tileserver subsystem")
-
 # Get subsystems config
 subsystems = getattr(settings, "subsystems", {})
 if subsystems.get("criticalmaas", False):
@@ -467,6 +443,6 @@ discovered_plugins = entry_points(group="macrostrat.subsystems")
 for entry_point in discovered_plugins:
     plugin = entry_point.load()
     if isinstance(plugin, typer.Typer):
-        main.add_typer(plugin, name=entry_point.name, rich_help_panel="Subsystems")
+        main.add_typer(plugin, name=entry_point.name, rich_help_panel="Extensions")
 
 # main = setup_exception_handling(main)
