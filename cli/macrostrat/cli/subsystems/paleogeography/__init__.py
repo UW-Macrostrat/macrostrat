@@ -2,8 +2,8 @@ from os import environ
 
 from typer import Context, Typer
 
-from .corelle import build_carto_plate_index, create_corelle_fixtures
 from ...database import get_db
+from .corelle import build_carto_plate_index, create_corelle_fixtures
 
 
 class SubsystemLoadError(Exception):
