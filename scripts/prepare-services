@@ -24,6 +24,11 @@ rm -f "$dist_dir"/*.whl
 
 # First, build python wheels for dependencies
 for module in $(ls -d py-modules/*/); do
+  # Skip certain modules if needed
+  if [[ "$module" == *"raster-cli"* ]]; then
+    continue
+  fi
+
   module_dir="$root/$module"
   [ ! -f "$module_dir/pyproject.toml" ] && continue
   cd "$module_dir"
