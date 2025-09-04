@@ -312,6 +312,7 @@ def log_match_row(row, *, verbose=False, console=app.console):
 
 
 def log_matches(verbose: bool = False):
+    """Log SGP matches to the console"""
     console = app.console
     M = get_db()
 

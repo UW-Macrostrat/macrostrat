@@ -1,5 +1,7 @@
 -- TODO: check if we're a superuser
 -- Update all columns with unknown geometry to have SRID 4326 (WGS 84)
+
+-- This is mostly a duplicate of the set-srids.sql script.
 SELECT
   UpdateGeometrySRID(
     f_table_schema::text,
