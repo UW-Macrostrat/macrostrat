@@ -88,14 +88,14 @@ main = app.control_command(
 main.add_typer(
     db_app,
     name="database",
-    short_help="Manage the Macrostrat database",
+    short_help="Macrostrat database",
     aliases=["db"],
 )
 
 main.add_typer(
     rockd_cli,
     name="rockd-db",  # command group name
-    short_help="Manage the Rockd database",  # shows in --help
+    short_help="Rockd database",  # shows in --help
     rich_help_panel="Subsystems",
 )
 
@@ -215,7 +215,7 @@ try:
         map_app,
         name="maps",
         rich_help_panel="Subsystems",
-        short_help="Map integration system (partial overlap with v1 commands)",
+        short_help="Map integration system",
     )
 except ImportError as err:
     app.console.print("Could not import map integration subsystem", err)
@@ -228,6 +228,7 @@ try:
         rich_help_panel="Subsystems",
         short_help="Raster data integration",
         context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
+        deprecated=True,
     )
     def rast(ctx: typer.Context):
         run(
@@ -246,7 +247,7 @@ try:
     main.add_typer(
         weaver_app,
         name="weaver",
-        rich_help_panel="Subsystems",
+        rich_help_panel="Integrations",
         short_help="Prototype geochemical data management system",
     )
 
@@ -309,6 +310,7 @@ if kube_namespace := getattr(settings, "kube_namespace", None):
         name="kube",
         short_help="Kubernetes utilities",
         rich_help_panel="Subsystems",
+        deprecated=True,
     )
 
 
@@ -338,7 +340,7 @@ main.add_typer(
     integrations_app,
     name="integrations",
     short_help="Integrations with other data systems",
-    rich_help_panel="Subsystems",
+    rich_help_panel="Integrations",
 )
 
 

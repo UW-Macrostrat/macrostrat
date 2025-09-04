@@ -2,8 +2,8 @@ from os import environ
 
 from typer import Context, Typer
 
-from ...database import get_db
 from .corelle import build_carto_plate_index, create_corelle_fixtures
+from ...database import get_db
 
 
 class SubsystemLoadError(Exception):
@@ -21,7 +21,11 @@ def build_paleogeography_subsystem(app, db_subsystem):
     except ImportError as err:
         raise SubsystemLoadError("Corelle subsystem not available") from err
 
-    paleo_app = Typer(name="paleogeography", no_args_is_help=True)
+    paleo_app = Typer(
+        name="paleogeography",
+        no_args_is_help=True,
+        short_help="Paleogeography models and data",
+    )
 
     @paleo_app.command(
         name="corelle",
