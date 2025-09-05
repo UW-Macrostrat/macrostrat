@@ -36,20 +36,20 @@ def test_cli_no_config():
 
 
 @mark.docker
-def test_database_migrations(db):
+def test_database_migrations(test_db):
     """Test that database migrations can be run."""
 
-    res = _run_migrations_in_database(db, legacy=False)
+    res = _run_migrations_in_database(test_db, legacy=False)
 
     assert res.n_migrations > 0
     assert res.n_remaining == 0
 
 
-def test_maps_tables_exist(db):
+def test_maps_tables_exist(test_db):
     """Test that the tables exist in the database."""
 
     for table in ["polygons", "lines", "points"]:
-        res = db.run_query(
+        res = test_db.run_query(
             "SELECT * FROM {table}", dict(table=Identifier("maps", table))
         ).all()
 
