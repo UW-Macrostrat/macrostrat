@@ -4,16 +4,24 @@ import importlib
 from pathlib import Path
 
 import docker
-from pytest import fixture
-from typer.testing import CliRunner
-
 from macrostrat.database import Database
 from macrostrat.dinosaur.upgrade_cluster import database_cluster
 from macrostrat.utils import override_environment
+from pytest import fixture
+from typer.testing import CliRunner
 
 runner = CliRunner()
 
 __here__ = Path(__file__).parent
+
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--skip-database",
+        action="store_true",
+        default=False,
+        help="skip database tests",
+    )
 
 
 @fixture(scope="session")
@@ -28,8 +36,15 @@ def cfg():
 
 
 @fixture(scope="session")
-def db(cfg):
-    # Spin up a docker container with a temporary database
+def db(request, cfg):
+    if request.config.getoption("--skip-database"):
+        import pytest
+
+        pytest.skip("skipping database tests")
+
+    # Spin up a docker container with a temporary database using the
+    # pg_database_container image
+
     image = cfg.get("pg_database_container", "postgres:15")
 
     client = docker.from_env()
