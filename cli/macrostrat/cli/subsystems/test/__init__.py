@@ -1,3 +1,8 @@
+"""
+Basic wrapper for PyTest to run Macrostrat tests.
+
+"""
+
 from pathlib import Path
 
 from pytest import main
@@ -43,4 +48,19 @@ def cli_tests():
 def all_tests(ctx: Context) -> None:
     # run the banana command with all arguments
     """Run all tests"""
-    main(["-v", settings.srcroot / "cli", settings.srcroot / "py-modules", *ctx.args])
+    main(
+        [
+            "-v",
+            settings.srcroot / "cli",
+            settings.srcroot / "py-modules",
+            settings.srcroot / "map-integration",
+            *ctx.args,
+        ]
+    )
+
+
+@cli.command(name="quick")
+def unit_tests(ctx: Context) -> None:
+    """Run quick tests that skip the database"""
+    ctx.args += ["--skip-database"]
+    all_tests(ctx)
