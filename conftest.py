@@ -69,6 +69,8 @@ def env_config(request):
 
 @fixture(scope="session")
 def env_db(env_config):
+    """The actually operational database for the current environment."""
+
     if env_config is None:
         skip("No environment configured")
 
@@ -96,7 +98,8 @@ def cfg():
 
 
 @fixture(scope="session")
-def db(request):
+def test_db(request):
+    """A temporary, initially empty database for Macorstrat testing."""
     # Get the current settings without an override
     cfg = load_config_module().settings
     if request.config.getoption("--skip-database"):
