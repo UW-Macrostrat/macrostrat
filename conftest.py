@@ -67,6 +67,13 @@ def env_config(request):
         yield mod_instance.settings
 
 
+## TODO: labeled databases with expected environments where tests will succeed.
+# This will allow us to flexibly define which tests should pass with different
+# data loaded into the Macrostrat database. Tests could be runnable on dev, staging,
+# prod, or empty databases as needed.
+
+
+# TODO: ensure that tests on "live" environments are read-only by connecting to a read-only user.
 @fixture(scope="session")
 def db(env_config):
     """The actually operational database for the current environment."""
@@ -78,6 +85,9 @@ def db(env_config):
         skip("No database configured for this environment")
 
     db = Database(env_config.pg_database)
+    # Change the user on the connection
+    # db.run_sql("SET ROLE macrostrat_reader;")
+
     yield db
 
 
@@ -97,10 +107,6 @@ def cfg():
         yield mod_instance.settings
 
 
-## TODO: labeled databases with expected environments where tests will succeed.
-# This will allow us to flexibly define which tests should pass with different
-# data loaded into the Macrostrat database. Tests could be runnable on dev, staging,
-# prod, or empty databases as needed.
 @fixture(scope="session")
 def test_db(request):
     """A temporary, initially empty database for Macorstrat testing."""

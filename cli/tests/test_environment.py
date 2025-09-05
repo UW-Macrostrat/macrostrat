@@ -1,5 +1,6 @@
 from pytest import mark
 
+
 def test_database_connection(db):
     """Test that the database connection works."""
     res = db.run_query("SELECT 1").all()
