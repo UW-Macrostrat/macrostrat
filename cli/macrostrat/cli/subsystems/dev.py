@@ -8,7 +8,7 @@ from macrostrat.utils import working_directory, cmd
 from typer import Typer
 
 from macrostrat.core.config import settings
-from macrostrat.core.console import err_console
+from macrostrat.core.console import echo
 
 dev_app = Typer(help="Run services in development", no_args_is_help=True)
 
@@ -22,13 +22,16 @@ def run_api_v3():
     # Prepare environment
     environ["uri"] = settings.pg_database
 
-    err_console.print(
+    echo(
         f"Running [bold]API v3[/bold] service in environment [bold]{settings.env}[/bold]..."
     )
 
     # Print warnings
-    err_console.print(
-        "Running [bold]API v3[/bold] locally does not currently support authentication.",
+    echo(
+        """
+        Running [bold]API v3[/bold] locally does not currently support authentication
+        because ORCID authentication requires a HTTPS callback address.
+        """,
         style="warning",
     )
 
