@@ -50,7 +50,6 @@ def all_tests(ctx: Context) -> None:
     """Run all tests"""
     main(
         [
-            "-v",
             settings.srcroot / "cli",
             settings.srcroot / "py-modules",
             settings.srcroot / "map-integration",
@@ -62,5 +61,5 @@ def all_tests(ctx: Context) -> None:
 @cli.command(name="quick")
 def unit_tests(ctx: Context) -> None:
     """Run quick tests that skip the database"""
-    ctx.args += ["--skip-database"]
+    ctx.args += ["--skip-database", "--disable-warnings"]
     all_tests(ctx)
