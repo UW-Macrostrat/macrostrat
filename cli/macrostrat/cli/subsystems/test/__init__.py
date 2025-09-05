@@ -6,7 +6,7 @@ Basic wrapper for PyTest to run Macrostrat tests.
 from pathlib import Path
 
 from pytest import main
-from typer import Typer, Context
+from typer import Context, Typer
 
 from macrostrat.core.config import settings
 
