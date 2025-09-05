@@ -18,8 +18,9 @@ cli = Typer(
     Run Macrostrat tests.
 
     Custom options:
-    --skip-database: skip database tests
+    --skip-test-database: skip Docker database tests
     --skip-env: skip environment tests
+                necessary when you don't have a connection to an active environment
     --env: override the environment
     """,
 )
@@ -63,5 +64,5 @@ def all_tests(ctx: Context) -> None:
 @cli.command(name="quick")
 def unit_tests(ctx: Context) -> None:
     """Run quick tests that skip the database"""
-    ctx.args += ["--skip-database", "--disable-warnings"]
+    ctx.args += ["--skip-test-database", "--disable-warnings"]
     all_tests(ctx)

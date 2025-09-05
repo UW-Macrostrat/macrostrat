@@ -23,6 +23,7 @@ test:
 		--ignore=services \
 		--ignore=v2-transition \
 		--ignore=submodules \
+		--skip-env \
 		.
 
 test-ci:
@@ -33,6 +34,7 @@ test-ci:
 		--ignore=services \
 		--ignore=v2-transition \
 		--ignore=submodules \
+		--skip-env \
 		-m "not requires_gdal" \
 		.
 

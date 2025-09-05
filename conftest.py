@@ -19,10 +19,10 @@ __here__ = Path(__file__).parent
 
 def pytest_addoption(parser):
     parser.addoption(
-        "--skip-database",
+        "--skip-test-database",
         action="store_true",
         default=False,
-        help="skip database tests",
+        help="skip test database creation",
     )
 
     parser.addoption(
@@ -112,10 +112,10 @@ def test_db(request):
     """A temporary, initially empty database for Macorstrat testing."""
     # Get the current settings without an override
     cfg = load_config_module().settings
-    if request.config.getoption("--skip-database"):
+    if request.config.getoption("--skip-test-database"):
         import pytest
 
-        pytest.skip("skipping database tests")
+        pytest.skip("skipping Docker test database")
 
     # Spin up a docker container with a temporary database using the
     # pg_database_container image
