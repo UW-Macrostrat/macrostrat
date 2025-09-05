@@ -4,11 +4,11 @@ Scripts to assist with running various services against different environments.
 
 from os import environ
 
-from macrostrat.utils import working_directory, cmd
 from typer import Typer
 
 from macrostrat.core.config import settings
 from macrostrat.core.console import echo
+from macrostrat.utils import cmd, working_directory
 
 dev_app = Typer(help="Run services in development", no_args_is_help=True)
 
