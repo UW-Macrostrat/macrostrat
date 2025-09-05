@@ -6,11 +6,13 @@ from pathlib import Path
 import docker
 from macrostrat.database import Database
 from macrostrat.dinosaur.upgrade_cluster import database_cluster
-from macrostrat.utils import override_environment
-from pytest import fixture
+from macrostrat.utils import override_environment, get_logger
+from pytest import fixture, skip
 from typer.testing import CliRunner
 
 runner = CliRunner()
+
+log = get_logger(__name__)
 
 __here__ = Path(__file__).parent
 
@@ -23,20 +25,80 @@ def pytest_addoption(parser):
         help="skip database tests",
     )
 
+    parser.addoption(
+        "--skip-env",
+        action="store_true",
+        default=False,
+        help="skip env tests",
+    )
+
+    parser.addoption(
+        "--env", action="store", default=None, help="override the environment"
+    )
+
+
+# We have to do some complicated stuff to import two separate versions
+# of the config module.
+module_spec = importlib.util.find_spec("macrostrat.core.config")
+
 
 @fixture(scope="session")
+def env_config(request):
+    """
+    Load the config for the current environment. This allows integration tests to be run.
+    These tests may assume the presence of data in the database.
+    """
+    if request.config.getoption("--skip-env"):
+        skip("skipping environment tests")
+
+    kwargs = {
+        "NO_COLOR": "1",
+    }
+    env = request.config.getoption("--env")
+    if env is not None:
+        log.info("Overriding environment to %s", env)
+        kwargs["MACROSTRAT_ENV"] = env
+
+    with override_environment(**kwargs):
+        mod_instance = load_config_module()
+        # Print the current environment to the PyTest output
+        log.info("Current env: %s", mod_instance.settings.env)
+
+        yield mod_instance.settings
+
+
+@fixture(scope="session")
+def env_db(env_config):
+    if env_config is None:
+        skip("No environment configured")
+
+    if env_config.pg_database is None:
+        skip("No database configured for this environment")
+
+    db = Database(env_config.pg_database)
+    yield db
+
+
+def load_config_module():
+    mod_instance = importlib.util.module_from_spec(module_spec)
+    module_spec.loader.exec_module(mod_instance)
+    return mod_instance
+
+
+@fixture()
 def cfg():
     cfg_file = __here__ / "cli" / "tests" / "macrostrat.test.toml"
     with override_environment(MACROSTRAT_CONFIG=str(cfg_file), NO_COLOR="1"):
-        importlib.reload(importlib.import_module("macrostrat.core.config"))
-        from macrostrat.core.config import settings
+        mod_instance = load_config_module()
 
-        assert cfg_file == settings.config_file
-        yield settings
+        assert cfg_file == mod_instance.settings.config_file
+        yield mod_instance.settings
 
 
 @fixture(scope="session")
-def db(request, cfg):
+def db(request):
+    # Get the current settings without an override
+    cfg = load_config_module().settings
     if request.config.getoption("--skip-database"):
         import pytest
 

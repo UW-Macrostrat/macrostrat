@@ -19,6 +19,8 @@ cli = Typer(
 
     Custom options:
     --skip-database: skip database tests
+    --skip-env: skip environment tests
+    --env: override the environment
     """,
 )
 
