@@ -4,6 +4,7 @@ version = "0.1.0"
 description = ""
 authors = ["Cannon Lock <clock@wisc.edu>"]
 readme = "README.md"
+package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.11"
@@ -26,6 +27,7 @@ minio = "^7.2.3"
 numpy = "^1.26.4"
 python-multipart = "^0.0.9"
 python-slugify = "^8.0.4"
+"macrostrat.match-utils" = { path = "../../py-modules/match-utils", develop = true }
 
 [tool.poetry.group.dev.dependencies]
 bandit = "~1.7"
