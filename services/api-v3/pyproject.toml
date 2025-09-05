@@ -27,7 +27,6 @@ minio = "^7.2.3"
 numpy = "^1.26.4"
 python-multipart = "^0.0.9"
 python-slugify = "^8.0.4"
-"macrostrat.match-utils" = { path = "../../py-modules/match-utils", develop = true }
 
 [tool.poetry.group.dev.dependencies]
 bandit = "~1.7"

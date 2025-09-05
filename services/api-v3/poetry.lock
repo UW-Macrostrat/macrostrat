@@ -1091,20 +1091,6 @@ plugins = ["setuptools"]
 requirements-deprecated-finder = ["pip-api", "pipreqs"]
 
 [[package]]
-name = "macrostrat-match-utils"
-version = "0.1.0"
-description = "Utilities to match geologic information to Macrostrat rock units"
-optional = false
-python-versions = ">=3.11"
-groups = ["main"]
-files = []
-develop = true
-
-[package.source]
-type = "directory"
-url = "../../py-modules/match-utils"
-
-[[package]]
 name = "markdown-it-py"
 version = "3.0.0"
 description = "Python port of markdown-it. Markdown parsing, done right!"
@@ -2566,4 +2552,4 @@ propcache = ">=0.2.0"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "c479f939229990c6447f86bb9991cf18fbcd2a4142b52c3ad4cef1f2cdd2fad9"
+content-hash = "526c3a959688dab25c9fe884e82d162478f243ee71506ec835456f6857fa0ee9"
