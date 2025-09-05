@@ -68,7 +68,7 @@ def env_config(request):
 
 
 @fixture(scope="session")
-def env_db(env_config):
+def db(env_config):
     """The actually operational database for the current environment."""
 
     if env_config is None:
@@ -97,6 +97,10 @@ def cfg():
         yield mod_instance.settings
 
 
+## TODO: labeled databases with expected environments where tests will succeed.
+# This will allow us to flexibly define which tests should pass with different
+# data loaded into the Macrostrat database. Tests could be runnable on dev, staging,
+# prod, or empty databases as needed.
 @fixture(scope="session")
 def test_db(request):
     """A temporary, initially empty database for Macorstrat testing."""

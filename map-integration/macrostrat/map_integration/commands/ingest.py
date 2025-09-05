@@ -1,6 +1,4 @@
-import os
 from collections import defaultdict
-from optparse import Option
 from pathlib import Path
 from typing import Iterable, List, Tuple
 
@@ -9,12 +7,11 @@ import geopandas as G
 import pandas as P
 import pyogrio
 from geoalchemy2 import Geometry
-from numpy.f2py.symbolic import as_ge
-from pandas import DataFrame
 from rich.console import Console
 from rich.progress import Progress
 from sqlalchemy import text
 
+from .geodatabase import apply_domains_to_fields, get_layer_info, get_layer_names
 from ..custom_integrations.gems_utils import (
     extract_gdb_layer,
     map_strat_name,
@@ -23,7 +20,6 @@ from ..custom_integrations.gems_utils import (
 )
 from ..database import get_database
 from ..errors import IngestError
-from .geodatabase import apply_domains_to_fields, get_layer_info, get_layer_names
 
 console = Console()
 
