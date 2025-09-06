@@ -4,7 +4,7 @@ import importlib
 from pathlib import Path
 
 import docker
-from pytest import fixture, skip
+from pytest import fixture, skip, mark
 from typer.testing import CliRunner
 
 from macrostrat.database import Database
@@ -36,6 +36,20 @@ def pytest_addoption(parser):
     parser.addoption(
         "--env", action="store", default=None, help="override the environment"
     )
+
+    parser.addoption(
+        "--skip-slow",
+        action="store_true",
+        default=False,
+        help="skip slow tests",
+    )
+
+def pytest_collection_modifyitems(config, items):
+    if config.getoption("--skip-slow"):
+        skip_slow_marker = mark.skip(reason="skipping slow tests")
+        for item in items:
+            if "slow" in item.keywords:
+                item.add_marker(skip_slow_marker)
 
 
 # We have to do some complicated stuff to import two separate versions

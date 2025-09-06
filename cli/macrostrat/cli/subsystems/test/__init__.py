@@ -67,5 +67,5 @@ def all_tests(ctx: Context) -> None:
 )
 def unit_tests(ctx: Context) -> None:
     """Run quick tests that skip the database"""
-    ctx.args += ["--skip-test-database", "--disable-warnings"]
+    ctx.args += ["--skip-test-database", "--disable-warnings", "--skip-slow"]
     all_tests(ctx)
