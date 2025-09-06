@@ -5,8 +5,7 @@ Subsystem for SGP matching
 from typer import Typer
 
 from macrostrat.cli.database import get_db
-
-from .match import import_sgp_data, log_matches
+from .match import match_sgp_data_cmd, log_matches
 from .migrations import *
 from .paleogeography import compute_paleo_positions
 from .utils import get_sgp_db
@@ -16,7 +15,7 @@ sgp = Typer(
     no_args_is_help=True,
     short_help="Sedimentary Geochemistry and Paleogeography integration",
 )
-sgp.command(name="match-units")(import_sgp_data)
+sgp.command(name="match-units")(match_sgp_data_cmd)
 sgp.command(name="paleogeography")(compute_paleo_positions)
 sgp.command(name="log-matches")(log_matches)
 

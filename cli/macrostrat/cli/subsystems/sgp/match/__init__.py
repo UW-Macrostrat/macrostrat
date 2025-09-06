@@ -2,17 +2,20 @@
 Subsystem for SGP matching
 """
 
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
 from geoalchemy2 import Geometry, WKBElement
 from geopandas import GeoDataFrame, sjoin
+from macrostrat.database import Database
 from pandas import DataFrame, isna, read_sql
 from pydantic import BaseModel
 from rich.live import Live
 from rich.table import Table
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql import text
+from typer import Option
 
 from macrostrat.cli.database import get_db
 from macrostrat.core.console import err_console as console
@@ -23,14 +26,13 @@ from .clean_strat_name import (
     clean_strat_name_text,
     format_name,
 )
-from ..utils import get_sgp_samples, stored_procedure, write_to_file
+from ..utils import get_sgp_samples, stored_procedure, write_to_file, get_sgp_db
 
 here = Path(__file__).parent
 
 
-def get_columns_data_frame():
+def get_columns_data_frame(db: Database):
     """Get all Macrostrat columns as a GeoDataFrame"""
-    M = get_db()
     sql = """
         SELECT col_id, ST_SetSRID(ca.col_area, 4326) as col_area
         FROM macrostrat.col_areas ca
@@ -39,7 +41,7 @@ def get_columns_data_frame():
         WHERE c.status_code = 'active'
     """
     gdf = GeoDataFrame.from_postgis(
-        text(sql), M.engine.connect(), geom_col="col_area", index_col="col_id"
+        text(sql), db.engine.connect(), geom_col="col_area", index_col="col_id"
     )
     return gdf
 
@@ -59,7 +61,38 @@ class MatchComparison(Enum):
     Fuzzy = "fuzzy"
 
 
-def import_sgp_data(
+@dataclass
+class DatabaseConfig:
+    macrostrat: Database = None
+    sgp: Database = None
+
+
+def match_sgp_data_cmd(
+    out_file: Path = Option(None, help="Output file to write results to"),
+    verbose: bool = Option(False, help="Verbose output"),
+    sample: int = Option(None, help="Number of random samples to process"),
+    column: int = Option(None, help="Restrict to a single Macrostrat column ID"),
+    match: list[MatchType] = Option(None, help="Types of matches to use"),
+    reset: bool = Option(False, help="Reset the SGP matches table before writing"),
+    only_macrostrat: bool = Option(
+        False, help="Only match samples that have Macrostrat as the primary age"
+    ),
+    write: bool = Option(True, help="Write results to the database"),
+):
+    """Match SGP samples to Macrostrat units"""
+    return match_sgp_data(
+        out_file=out_file,
+        verbose=verbose,
+        sample=sample,
+        column=column,
+        match=match,
+        reset=reset,
+        only_macrostrat=only_macrostrat,
+        write=write,
+    )
+
+
+def match_sgp_data(
     out_file: Path = None,
     *,
     verbose: bool = False,
@@ -69,14 +102,18 @@ def import_sgp_data(
     reset: bool = False,
     only_macrostrat: bool = False,
     write: bool = False,
+    databases: DatabaseConfig = None,
     # comparison: MatchComparison = MatchComparison.Included.value,
 ):
     """
-    Match SGP samples to Macrostrat units
+    Match SGP samples to Macrostrat units (core function)
     """
-    M = get_db()
+    if databases is None:
+        databases = DatabaseConfig(macrostrat=get_db(), sgp=get_sgp_db())
 
-    samples = get_sgp_samples("all-match-samples")
+    db = databases
+
+    samples = get_sgp_samples(db.sgp, "all-match-samples")
     if only_macrostrat:
         samples = samples[samples["match_set"] != "Age from other sources"]
 
@@ -98,7 +135,7 @@ def import_sgp_data(
     console.print("\nMacrostrat columns", style="bold")
 
     # Join samples to columns
-    columns = get_columns_data_frame()
+    columns = get_columns_data_frame(db.macrostrat)
     sample_locs = samples.drop(columns=[i for i in samples.columns if i != "geom"])
 
     join = sjoin(sample_locs, columns, how="left", op="intersects")
@@ -194,7 +231,7 @@ def import_sgp_data(
 
     with Live(
         generate_table(status)
-    ) as live, M.engine.connect() as conn:  # update 4 times a second to feel fluid
+    ) as live, db.macrostrat.engine.connect() as conn:  # update 4 times a second to feel fluid
         for ix, row in counts.iterrows():
             _match = get_matched_unit(
                 conn,
@@ -261,7 +298,9 @@ def import_sgp_data(
     if write:
         # Check if table exists
         if reset:
-            M.engine.execute(text("TRUNCATE TABLE integrations.sgp_matches"))
+            db.macrostrat.engine.execute(
+                text("TRUNCATE TABLE integrations.sgp_matches")
+            )
 
         samples["geom"] = samples["geom"].apply(
             lambda x: x if isna(x) else WKBElement(x.wkb, srid=4326)
@@ -269,7 +308,7 @@ def import_sgp_data(
 
         samples.to_sql(
             "sgp_matches",
-            M.engine,
+            db.macrostrat.engine,
             if_exists="append",
             schema="integrations",
             method=postgres_upsert,
@@ -317,7 +356,6 @@ def log_match_row(row, *, verbose=False, console=console):
 
 def log_matches(verbose: bool = False):
     """Log SGP matches to the console"""
-    console = console
     M = get_db()
 
     # Get the matches

@@ -4,8 +4,7 @@ from geopandas import GeoDataFrame, sjoin
 from sqlalchemy.sql import text
 
 from macrostrat.cli.database import get_db
-
-from .utils import get_sgp_samples, write_to_file
+from .utils import get_sgp_samples, write_to_file, get_sgp_db
 
 
 def compute_paleo_positions(out_file: Path = None, sample: int = None):
@@ -35,7 +34,7 @@ def compute_paleo_positions(out_file: Path = None, sample: int = None):
         params=dict(model_id=model_id),
     )
 
-    samples = get_sgp_samples("paleogeography-samples")
+    samples = get_sgp_samples(get_sgp_db(), "paleogeography-samples")
     samples["plate_model"] = None
 
     if sample is not None:
