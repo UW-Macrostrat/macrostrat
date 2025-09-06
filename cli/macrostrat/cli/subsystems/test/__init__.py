@@ -61,7 +61,10 @@ def all_tests(ctx: Context) -> None:
     )
 
 
-@cli.command(name="quick")
+@cli.command(
+    name="quick",
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
+)
 def unit_tests(ctx: Context) -> None:
     """Run quick tests that skip the database"""
     ctx.args += ["--skip-test-database", "--disable-warnings"]
