@@ -94,104 +94,6 @@ CREATE VIEW macrostrat_api.col_filter AS
             'unit'::text AS type
            FROM macrostrat.units) combined;
 
-CREATE VIEW macrostrat_api.col_group_with_cols AS 
- SELECT cg.id,
-    cg.col_group,
-    cg.col_group_long,
-    cg.project_id,
-    p.project,
-    COALESCE(jsonb_agg(jsonb_build_object('col_id', c.id, 'status_code', c.status_code, 'col_number', c.col, 'col_name', c.col_name)) FILTER (WHERE c.id IS NOT NULL), '[]'::jsonb) AS cols
-   FROM macrostrat.col_groups cg
-     LEFT JOIN macrostrat.cols c ON c.col_group_id = cg.id
-     LEFT JOIN macrostrat.projects p ON p.id = cg.project_id
-  GROUP BY cg.id, c.project_id, p.project;
-
-
-CREATE VIEW macrostrat_api.col_groups AS
- SELECT col_groups.id,
-    col_groups.col_group,
-    col_groups.col_group_long,
-    col_groups.project_id
-   FROM macrostrat.col_groups;
-
-CREATE VIEW macrostrat_api.col_ref_expanded AS
- SELECT c.id AS col_id,
-    c.col_name,
-    c.col AS col_number,
-    ''::text AS notes,
-    c.lat,
-    c.lng,
-    json_build_object('id', r.id, 'pub_year', r.pub_year, 'author', r.author, 'ref', r.ref, 'doi', r.doi, 'url', r.url) AS ref
-   FROM ((macrostrat.cols c
-     LEFT JOIN macrostrat.col_refs cr ON ((c.id = cr.col_id)))
-     LEFT JOIN macrostrat.refs r ON ((cr.ref_id = r.id)));
-
-CREATE VIEW macrostrat_api.col_refs AS
- SELECT col_refs.id,
-    col_refs.col_id,
-    col_refs.ref_id
-   FROM macrostrat.col_refs;
-
-CREATE VIEW macrostrat_api.col_section_data AS
- WITH a AS (
-         SELECT us.unit_id,
-            us.section_id,
-            us.col_id,
-            u.fo,
-            fo.age_bottom AS fo_age,
-            fo.interval_name AS fo_name,
-            u.lo,
-            lo.age_top AS lo_age,
-            lo.interval_name AS lo_name
-           FROM (((macrostrat.units_sections us
-             JOIN macrostrat.units u ON ((us.unit_id = u.id)))
-             JOIN macrostrat.intervals fo ON ((u.fo = fo.id)))
-             JOIN macrostrat.intervals lo ON ((u.lo = lo.id)))
-        )
- SELECT DISTINCT ON (a.col_id, a.section_id) a.col_id,
-    a.section_id,
-    count(*) OVER w AS unit_count,
-    first_value(a.fo) OVER w AS fo,
-    first_value(a.lo) OVER w AS lo,
-    first_value(a.fo_name) OVER w AS bottom,
-    first_value(a.fo_age) OVER w AS fo_age,
-    first_value(a.lo_name) OVER w1 AS top,
-    first_value(a.lo_age) OVER w1 AS lo_age
-   FROM a
-  WINDOW w AS (PARTITION BY a.col_id, a.section_id ORDER BY a.fo_age DESC), w1 AS (PARTITION BY a.col_id, a.section_id ORDER BY a.lo_age)
-  ORDER BY a.col_id, a.section_id;
-
-CREATE VIEW macrostrat_api.col_sections AS
- SELECT c.id AS col_id,
-    c.col_name,
-    u.section_id,
-    u.position_top,
-    u.position_bottom,
-    fo.interval_name AS bottom,
-    lo.interval_name AS top
-   FROM (((macrostrat.cols c
-     LEFT JOIN macrostrat.units u ON ((u.col_id = c.id)))
-     LEFT JOIN macrostrat.intervals fo ON ((u.fo = fo.id)))
-     LEFT JOIN macrostrat.intervals lo ON ((u.lo = lo.id)));
-
-CREATE VIEW macrostrat_api.cols AS
- SELECT cols.id,
-    cols.col_group_id,
-    cols.project_id,
-    cols.status_code,
-    cols.col_type,
-    cols.col_position,
-    cols.col,
-    cols.col_name,
-    cols.lat,
-    cols.lng,
-    cols.col_area,
-    cols.created,
-    cols.coordinate,
-    cols.wkt,
-    cols.poly_geom
-   FROM macrostrat.cols;
-
 CREATE VIEW macrostrat_api.cols_with_groups AS
  SELECT mt.id,
     mt.col_group_id,
@@ -235,61 +137,6 @@ CREATE VIEW macrostrat_api.cols_with_liths AS
      LEFT JOIN macrostrat_api.unit_liths l ON ((l.unit_id = u.id)))
   GROUP BY c.id;
 
-CREATE VIEW macrostrat_api.dataset AS
- SELECT d.id,
-    d.uid,
-    d.name,
-    d.url,
-    d.type,
-    d.geom,
-    d.symbol,
-    d.data,
-    d.created_at,
-    d.updated_at,
-    dt.name AS type_name,
-    dt.organization
-   FROM (integrations.dataset d
-     JOIN integrations.dataset_type dt ON ((d.type = dt.id)));
-
-CREATE VIEW macrostrat_api.dataset_type AS
- SELECT dataset_type.id,
-    dataset_type.name,
-    dataset_type.organization,
-    dataset_type.updated_at
-   FROM integrations.dataset_type;
-
-CREATE VIEW macrostrat_api.econ_unit AS
- SELECT e.id,
-    e.econ,
-    e.econ_type,
-    e.econ_class,
-    e.econ_color,
-    ue.unit_id,
-    ue.ref_id
-   FROM (macrostrat.econs e
-     JOIN macrostrat.unit_econs ue ON ((e.id = ue.econ_id)));
-
-CREATE VIEW macrostrat_api.environ_unit AS
- SELECT e.id,
-    e.environ,
-    e.environ_type,
-    e.environ_class,
-    e.environ_fill,
-    e.environ_color,
-    ue.unit_id,
-    ue.ref_id
-   FROM (macrostrat.environs e
-     JOIN macrostrat.unit_environs ue ON ((e.id = ue.environ_id)));
-
-CREATE VIEW macrostrat_api.environs AS
- SELECT environs.id,
-    environs.environ,
-    environs.environ_type,
-    environs.environ_class,
-    environs.environ_fill,
-    environs.environ_color
-   FROM macrostrat.environs;
-
 CREATE VIEW macrostrat_api.fossils AS
  SELECT pbdb_collections.collection_no,
     pbdb_collections.name,
@@ -313,18 +160,6 @@ CREATE VIEW macrostrat_api.grouped_autocomplete AS
     json_agg((to_jsonb(t.*) - 'type'::text)) AS items
    FROM macrostrat_api.autocomplete t
   GROUP BY t.type;
-
-CREATE VIEW macrostrat_api.intervals AS
- SELECT intervals.id,
-    intervals.age_bottom,
-    intervals.age_top,
-    intervals.interval_name,
-    intervals.interval_abbrev,
-    intervals.interval_type,
-    intervals.interval_color,
-    intervals.orig_color,
-    intervals.rank
-   FROM macrostrat.intervals;
 
 CREATE VIEW macrostrat_api.kg_context_entities AS
  WITH entities AS (
