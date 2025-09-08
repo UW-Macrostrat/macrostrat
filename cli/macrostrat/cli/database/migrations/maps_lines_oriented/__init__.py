@@ -12,7 +12,7 @@ class MapsLinesOriented(Migration):
     name = "maps-lines-oriented"
     subsystem = "maps"
     description = "Create a flag for line orientations in maps.sources table."
-
+    readiness_state = "ga"
     depends_on = ["baseline", "map-source-slug"]
 
     postconditions = [_has_column]

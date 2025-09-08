@@ -9,7 +9,7 @@ from typing import Callable, Iterable, Optional
 import docker
 from pydantic import BaseModel
 from rich import print
-
+from os import environ
 from macrostrat.database import Database
 from macrostrat.database.utils import OutputMode
 from macrostrat.dinosaur.upgrade_cluster.utils import database_cluster
@@ -23,6 +23,35 @@ DbEvaluator = Callable[[Database], bool]
 PathDependency = Callable[["Migration"], Path] | Path
 DBCallable = Callable[[Database], None]
 
+try:
+    from macrostrat.core import app as _app
+except Exception:
+    _app = None
+
+#canonicalize env and readiness states
+_ENV_ALIASES = {
+    "dev": "dev", "development": "dev", "local": "dev",
+    "stage": "staging", "staging": "staging", "preprod": "staging",
+    "prod": "prod", "production": "prod"
+}
+_MIN_READINESS_BY_ENV = {"dev": "alpha", "staging": "beta", "prod": "ga"}
+_READINESS_ORDER = {"alpha": 0, "beta": 1, "ga": 2}
+
+#based on set_env in macrostrat/cli/macrostrat/cli/entrypoint.py
+def _get_active_env() -> str:
+    env = getattr(settings, "env", None)
+    if not env and _app is not None:
+        env = getattr(getattr(_app, "settings", None), "env", None) or \
+              (getattr(_app, "state", None).get().get("active_env") if getattr(_app, "state", None) else None)
+    if not env:
+        env = environ.get("MACROSTRAT_ENV")
+    env = (env or "dev").lower()
+    return _ENV_ALIASES.get(env, "dev")
+
+def _env_allows_migration(migration_readiness: str, env: str) -> bool:
+    migr_ready = (migration_readiness or "alpha").lower()
+    min_ready = _MIN_READINESS_BY_ENV[_get_active_env() if env is None else env].lower()
+    return _READINESS_ORDER[migr_ready] >= _READINESS_ORDER[min_ready]
 
 def exists(schema: str, *table_names: str) -> DbEvaluator:
     """Return a function that evaluates to true when every given table in the given schema exists"""
@@ -138,6 +167,9 @@ class Migration:
     # Flag for whether this migration only contains views/functions that don't modify the broader schema
     always_apply: bool = False
 
+    #Flags for whether the migration can be applied in the given environment
+    readiness_state: str = "alpha"
+
     output_mode: OutputMode = OutputMode.SUMMARY
 
     def should_apply(self, database: Database) -> ApplicationStatus:
@@ -182,7 +214,7 @@ class MigrationState(Enum):
     DISALLOWED = "disallowed"
     # The migration always applies, regardless of the state of the database
     ALWAYS_APPLY = "always_apply"
-
+    NOT_ENV_READY = "not_env_ready"
 
 def run_migrations(
     apply: bool = False,
@@ -324,6 +356,7 @@ def _run_migrations(
     """Apply database migrations"""
     # Start time
     t_start = time()
+    cur_env = _get_active_env()
 
     # Check if migrations need to be run and if not, run them
 
@@ -362,7 +395,7 @@ def _run_migrations(
         if subsystem is not None and subsystem != _subsystem:
             continue
 
-        _status = _get_status(_migration, completed_migrations)
+        _status = _get_status(_migration, completed_migrations, env=_get_active_env())
 
         _print_status(_name, _status, name_max_width=name_max_width)
 
@@ -377,7 +410,8 @@ def _run_migrations(
     for _migration in migrations_to_run:
         _name = _migration.name
         _subsystem = getattr(_migration, "subsystem", None)
-
+        if not _env_allows_migration(getattr(_migration, "readiness_state", "alpha"), cur_env):
+            continue
         # By default, don't run migrations that depend on other non-applied migrations
         dependencies_met = all(d in completed_migrations for d in _migration.depends_on)
 
@@ -453,10 +487,17 @@ def migration_has_been_run(*names: str):
 
 
 def _get_status(
-    _migration: Migration, completed_migrations: set[str], data_changes: bool = False
+    _migration: Migration, completed_migrations: set[str], data_changes: bool = False, env: Optional[str] = None
 ) -> MigrationState:
     """Get the status of a migration"""
     name = _migration.name
+    env = env or _get_active_env()
+
+    if name in completed_migrations:
+        return MigrationState.COMPLETE
+
+    if not _env_allows_migration(getattr(_migration, "readiness_state", "alpha"), env):
+        return MigrationState.NOT_ENV_READY
 
     # By default, don't run migrations that depend on other non-applied migrations
     dependencies_met = all(d in completed_migrations for d in _migration.depends_on)
@@ -465,9 +506,6 @@ def _get_status(
 
     if _migration.always_apply:
         return MigrationState.ALWAYS_APPLY
-
-    if name in completed_migrations:
-        return MigrationState.COMPLETE
 
     if _migration.destructive and not data_changes:
         return MigrationState.DISALLOWED
@@ -489,5 +527,8 @@ def _print_status(name, status: MigrationState, *, name_max_width=40):
         print("[yellow] always applied[/yellow]")
     elif status == MigrationState.DISALLOWED:
         print("[red]cannot be applied without --force or --data-changes[/red]")
+    elif status == MigrationState.NOT_ENV_READY:
+        cur_env = _get_active_env()
+        print(f"[red]not {cur_env} ready[/red]")
     else:
         raise ValueError(f"Unknown migration status: {status}")

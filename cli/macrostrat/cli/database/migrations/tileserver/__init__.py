@@ -16,5 +16,6 @@ class TileserverMigration(Migration):
     Populate the `tile_cache` and `tile_utils` schemas
     """
     depends_on = ["macrostrat-mariadb", "maps-lines-oriented"]
+    readiness_state = "ga"
 
     postconditions = [schema_exists("tile_cache"), schema_exists("tile_utils")]

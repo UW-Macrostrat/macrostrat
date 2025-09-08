@@ -52,7 +52,7 @@ class MacrostratAPISubsystem(MacrostratSubsystem):
 
 class MacrostratAPIMigration(Migration):
     name = "macrostrat-api"
-
+    readiness_state = "ga"
     postconditions = [view_exists("macrostrat_api", "projects")]
 
     def apply(self, db):

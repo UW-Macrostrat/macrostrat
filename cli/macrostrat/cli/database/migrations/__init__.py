@@ -1,10 +1,21 @@
 from importlib import import_module
 from pathlib import Path
+from macrostrat.core.migrations import Migration
 
 __dir__ = Path(__file__).parent
 
 # Import all submodules within this directory using importlib
 
+def _all_subclasses(cls):
+    seen = set()
+    stack = [cls]
+    while stack:
+        c = stack.pop()
+        for sc in c.__subclasses__():
+            if sc not in seen:
+                seen.add(sc)
+                yield sc
+                stack.append(sc)
 
 def load_migrations():
     for module in __dir__.iterdir():
