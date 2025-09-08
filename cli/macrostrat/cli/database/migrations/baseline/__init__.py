@@ -9,6 +9,5 @@ class BaselineMigration(Migration):
     """
     readiness_state = "ga"
 
-
     # Basic sanity check, just confirm that the first table created in the migration is present
     postconditions = [exists("maps", "sources")]
