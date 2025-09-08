@@ -1,6 +1,4 @@
-import os
 from collections import defaultdict
-from optparse import Option
 from pathlib import Path
 from typing import Iterable, List, Tuple
 
@@ -10,8 +8,6 @@ import numpy as np
 import pandas as P
 import pyogrio
 from geoalchemy2 import Geometry
-from numpy.f2py.symbolic import as_ge
-from pandas import DataFrame
 from rich.console import Console
 from rich.progress import Progress
 from shapely import wkt
