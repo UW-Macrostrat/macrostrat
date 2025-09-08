@@ -368,13 +368,6 @@ CREATE VIEW macrostrat_api.people_with_roles AS
      LEFT JOIN ecosystem.roles r ON ((pr.role_id = r.role_id)))
   GROUP BY p.person_id;
 
-CREATE VIEW macrostrat_api.projects AS
- SELECT projects.id,
-    projects.project,
-    projects.descrip,
-    projects.timescale_id
-   FROM macrostrat.projects;
-
 CREATE VIEW macrostrat_api.refs AS
  SELECT refs.id,
     refs.pub_year,
@@ -391,91 +384,6 @@ CREATE VIEW macrostrat_api.roles AS
     roles.name,
     roles.description
    FROM ecosystem.roles;
-
-CREATE VIEW macrostrat_api.sections AS
- SELECT sections.id,
-    sections.col_id,
-    sections.fo,
-    sections.fo_h,
-    sections.lo,
-    sections.lo_h
-   FROM macrostrat.sections;
-
-CREATE VIEW macrostrat_api.sources AS
- SELECT s.source_id,
-    s.slug,
-    s.name,
-    s.url,
-    s.ref_title,
-    s.authors,
-    s.ref_year,
-    s.ref_source,
-    s.isbn_doi,
-    s.licence,
-    s.scale,
-    s.features,
-    s.area,
-    s.display_scales,
-    s.priority,
-    s.status_code,
-    s.raster_url,
-    s.web_geom AS envelope,
-    s.is_finalized,
-    s.scale_denominator,
-    s.lines_oriented
-   FROM maps.sources s;
-
-CREATE VIEW macrostrat_api.sources_ingestion AS
- SELECT s.source_id,
-    s.slug,
-    s.name,
-    s.url,
-    s.ref_title,
-    s.authors,
-    s.ref_year,
-    s.ref_source,
-    s.isbn_doi,
-    s.scale,
-    s.licence,
-    s.features,
-    s.area,
-    s.display_scales,
-    s.priority,
-    s.status_code,
-    s.raster_url,
-    i.state,
-    i.comments,
-    i.created_on,
-    i.completed_on,
-    i.map_id,
-    s.is_finalized,
-    s.scale_denominator
-   FROM (maps.sources_metadata s
-     JOIN maps_metadata.ingest_process i ON ((i.source_id = s.source_id)));
-
-CREATE VIEW macrostrat_api.sources_metadata AS
- SELECT sources_metadata.source_id,
-    sources_metadata.slug,
-    sources_metadata.name,
-    sources_metadata.url,
-    sources_metadata.ref_title,
-    sources_metadata.authors,
-    sources_metadata.ref_year,
-    sources_metadata.ref_source,
-    sources_metadata.isbn_doi,
-    sources_metadata.scale,
-    sources_metadata.licence,
-    sources_metadata.features,
-    sources_metadata.area,
-    sources_metadata.display_scales,
-    sources_metadata.priority,
-    sources_metadata.status_code,
-    sources_metadata.raster_url,
-    sources_metadata.scale_denominator,
-    sources_metadata.is_finalized,
-    sources_metadata.lines_oriented,
-    sources_metadata.is_finalized AS is_mapped
-   FROM maps.sources_metadata;
 
 CREATE VIEW macrostrat_api.strat_combined AS
  SELECT strat_concepts_with_names.concept_id,
@@ -585,33 +493,6 @@ CREATE VIEW macrostrat_api.strat_name_concepts AS
     strat_names_meta.ref_id
    FROM macrostrat.strat_names_meta;
 
-CREATE VIEW macrostrat_api.strat_names AS
- SELECT strat_names.id,
-    strat_names.old_id,
-    strat_names.concept_id,
-    strat_names.strat_name,
-    strat_names.rank,
-    strat_names.old_strat_name_id,
-    strat_names.ref_id,
-    strat_names.places,
-    strat_names.orig_id
-   FROM macrostrat.strat_names;
-
-CREATE VIEW macrostrat_api.strat_names_meta AS
- SELECT strat_names_meta.concept_id,
-    strat_names_meta.orig_id,
-    strat_names_meta.name,
-    strat_names_meta.geologic_age,
-    strat_names_meta.interval_id,
-    strat_names_meta.b_int,
-    strat_names_meta.t_int,
-    strat_names_meta.usage_notes,
-    strat_names_meta.other,
-    strat_names_meta.province,
-    strat_names_meta.url,
-    strat_names_meta.ref_id
-   FROM macrostrat.strat_names_meta;
-
 CREATE VIEW macrostrat_api.strat_names_ref AS
  SELECT s.id,
     s.strat_name,
@@ -651,12 +532,6 @@ CREATE VIEW macrostrat_api.test_helper_functions AS
  SELECT user_features.current_app_role() AS current_app_role,
     user_features.current_app_user_id() AS current_app_user_id;
 
-CREATE VIEW macrostrat_api.timescales AS
- SELECT timescales.id,
-    timescales.timescale,
-    timescales.ref_id
-   FROM macrostrat.timescales;
-
 CREATE VIEW macrostrat_api.type_lookup AS
  SELECT liths.lith AS name,
     liths.id,
@@ -689,85 +564,11 @@ CREATE VIEW macrostrat_api.unit_boundaries AS
     unit_boundaries.ref_id
    FROM macrostrat.unit_boundaries;
 
-CREATE VIEW macrostrat_api.unit_environs AS
- SELECT unit_environs.id,
-    unit_environs.unit_id,
-    unit_environs.environ_id,
-    unit_environs.f,
-    unit_environs.l,
-    unit_environs.ref_id,
-    unit_environs.date_mod
-   FROM macrostrat.unit_environs;
-
 CREATE VIEW macrostrat_api.unit_intervals AS
  SELECT i.id AS int_id,
     u.unit_id
    FROM (macrostrat.intervals i
      JOIN macrostrat.lookup_units u ON (((u.b_age <= i.age_bottom) AND (u.t_age >= i.age_top))));
-
-CREATE VIEW macrostrat_api.unit_liths AS
- SELECT unit_liths.id,
-    unit_liths.lith_id,
-    unit_liths.unit_id,
-    unit_liths.prop,
-    unit_liths.dom,
-    unit_liths.comp_prop,
-    unit_liths.mod_prop,
-    unit_liths.toc,
-    unit_liths.ref_id,
-    unit_liths.date_mod
-   FROM macrostrat.unit_liths;
-
-CREATE VIEW macrostrat_api.unit_strat_name_expanded AS
- SELECT usn.id,
-    usn.unit_id,
-    usn.strat_name_id,
-    sn.strat_name,
-    u.color,
-    u.outcrop,
-    u.fo,
-    u.lo,
-    u.position_bottom,
-    u.position_top,
-    u.max_thick,
-    u.min_thick,
-    u.section_id,
-    u.col_id,
-    ''::text AS notes,
-    fo.interval_name AS name_fo,
-    fo.age_bottom,
-    lo.interval_name AS name_lo,
-    lo.age_top
-   FROM ((((macrostrat.unit_strat_names usn
-     JOIN macrostrat.units u ON ((u.id = usn.unit_id)))
-     LEFT JOIN macrostrat.strat_names sn ON ((usn.strat_name_id = sn.id)))
-     LEFT JOIN macrostrat.intervals fo ON ((u.fo = fo.id)))
-     LEFT JOIN macrostrat.intervals lo ON ((u.lo = lo.id)));
-
-CREATE VIEW macrostrat_api.unit_strat_names AS
- SELECT unit_strat_names.id,
-    unit_strat_names.unit_id,
-    unit_strat_names.strat_name_id,
-    unit_strat_names.old_strat_name_id
-   FROM macrostrat.unit_strat_names;
-
-CREATE VIEW macrostrat_api.units AS
- SELECT units.id,
-    units.strat_name,
-    units.color,
-    units.outcrop,
-    units.fo,
-    units.fo_h,
-    units.lo,
-    units.lo_h,
-    units.position_bottom,
-    units.position_top,
-    units.max_thick,
-    units.min_thick,
-    units.section_id,
-    units.col_id,
-    units.date_mod
-   FROM macrostrat.units;
 
 CREATE VIEW macrostrat_api.user_locations_view AS
  SELECT user_locations.id,
