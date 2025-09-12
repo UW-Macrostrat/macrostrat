@@ -1,4 +1,4 @@
-VERSION := 2.3.0-beta.2
+VERSION := tileserver-v2.3.0-beta.2
 
 TAG := hub.opensciencegrid.org/macrostrat/tileserver:$(VERSION)
 
@@ -31,4 +31,4 @@ docker:
 publish:
 # Ensure the git repository is clean
 	@git diff --quiet || (echo "Uncommitted changes present. Please commit or stash them before publishing." && exit 1)
-	git tag -a v$(VERSION) -m "Version $(VERSION)"
+	git tag -a $(VERSION) -m "Version $(VERSION)"
