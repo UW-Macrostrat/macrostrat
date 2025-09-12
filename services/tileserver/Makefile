@@ -1,3 +1,7 @@
+VERSION := 2.3.0-beta.2
+
+TAG := hub.opensciencegrid.org/macrostrat/tileserver:$(VERSION)
+
 serve:
 	poetry run uvicorn macrostrat_tileserver:app --log-level debug --reload --port 8000
 
@@ -23,3 +27,8 @@ docker-run:
 docker:
 	docker build -t macrostrat-tileserver .
 	docker run -p 8000:8000 --env-file .env macrostrat-tileserver
+
+publish:
+# Ensure the git repository is clean
+	@git diff --quiet || (echo "Uncommitted changes present. Please commit or stash them before publishing." && exit 1)
+	git tag -a v$(VERSION) -m "Version $(VERSION)"
