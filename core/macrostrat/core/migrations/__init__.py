@@ -437,7 +437,11 @@ def _run_migrations(
             if not dependencies_met:
                 continue
 
-            if _name in completed_migrations and not reapply and not _migration.always_apply:
+            if (
+                _name in completed_migrations
+                and not reapply
+                and not _migration.always_apply
+            ):
                 continue
 
             if _migration.destructive and not data_changes:
