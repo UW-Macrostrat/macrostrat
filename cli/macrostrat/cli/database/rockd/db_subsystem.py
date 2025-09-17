@@ -15,13 +15,16 @@ class RockdDatabaseSubsystem(MacrostratSubsystem):
 
     def initialize(self):
         selected_fixtures = [
-            migrations_dir / "0010_rockd_user_privileges.sql",  # grants/defaults (safe)
+            migrations_dir
+            / "0010_tile_utils.sql",  # creates util functions in the rockd db for the tileserver api
+            migrations_dir / "0011_rockd_user_privileges.sql",  # grants/defaults (safe)
             migrations_dir / "0030_rockd-coords.sql",  # standalone table
             migrations_dir
             / "0040_model-feedback-schema.sql",  # references checkins/observations
             migrations_dir / "0050_strabo_integration.sql",  # references people
             migrations_dir
             / "0020_integration_tokens.sql",  # alters/inserts into people
+
         ]
         self.register_schema_part(
             name="rockd_initial_schema", fixtures=selected_fixtures
