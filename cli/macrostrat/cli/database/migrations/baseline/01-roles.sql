@@ -18,6 +18,15 @@ CREATE ROLE "macrostrat_admin";
 GRANT macrostrat TO postgres;
 GRANT web_user TO postgres;
 
+GRANT CONNECT ON DATABASE macrostrat TO "rockd-reader";
+GRANT USAGE ON SCHEMA macrostrat TO "rockd-reader";
+GRANT USAGE ON SCHEMA public TO "rockd-reader";
+GRANT USAGE ON SCHEMA topology TO "rockd-reader";
+
+GRANT SELECT ON ALL TABLES IN SCHEMA macrostrat TO "rockd-reader";
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO "rockd-reader";
+GRANT SELECT ON ALL TABLES IN SCHEMA topology TO "rockd-reader";
+
 
 --POSTGREST helper functions for RLS security
 --Pull `"user_id"` out of the JWT that PostgREST stores in request.jwt.claims

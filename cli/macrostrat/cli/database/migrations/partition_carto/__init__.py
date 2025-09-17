@@ -14,6 +14,7 @@ class PartitionCartoMigration(Migration):
     """
 
     depends_on = ["partition-maps"]
+    readiness_state = "ga"
 
     destructive = True
 

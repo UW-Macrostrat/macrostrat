@@ -6,6 +6,7 @@ class StorageSchemeMigration(Migration):
     name = "storage-scheme"
 
     depends_on = ["api-v3"]
+    readiness_state = "ga"
 
     def apply(self, db: Database):
         db.run_sql(

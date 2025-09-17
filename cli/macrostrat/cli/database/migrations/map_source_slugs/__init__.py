@@ -19,6 +19,7 @@ class MapSourceSlugsMigration(Migration):
     """
 
     depends_on = ["baseline"]
+    readiness_state = "ga"
 
     destructive = True
 
