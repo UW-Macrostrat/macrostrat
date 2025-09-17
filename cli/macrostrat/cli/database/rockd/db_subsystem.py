@@ -24,7 +24,6 @@ class RockdDatabaseSubsystem(MacrostratSubsystem):
             migrations_dir / "0050_strabo_integration.sql",  # references people
             migrations_dir
             / "0020_integration_tokens.sql",  # alters/inserts into people
-
         ]
         self.register_schema_part(
             name="rockd_initial_schema", fixtures=selected_fixtures
