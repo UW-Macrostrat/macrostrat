@@ -4,12 +4,11 @@ import importlib
 from pathlib import Path
 
 import docker
-from pytest import fixture, skip, mark
-from typer.testing import CliRunner
-
 from macrostrat.database import Database
 from macrostrat.dinosaur.upgrade_cluster import database_cluster
 from macrostrat.utils import get_logger, override_environment
+from pytest import fixture, skip, mark
+from typer.testing import CliRunner
 
 runner = CliRunner()
 
@@ -43,6 +42,7 @@ def pytest_addoption(parser):
         default=False,
         help="skip slow tests",
     )
+
 
 def pytest_collection_modifyitems(config, items):
     if config.getoption("--skip-slow"):

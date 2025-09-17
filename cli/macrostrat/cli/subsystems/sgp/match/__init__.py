@@ -269,7 +269,7 @@ def match_sgp_data(
     counts = counts.join(matches, how="left")
 
     _match = counts["match_unit_id"].notnull()
-    print_counts(live.console, "matched unit", counts[_match], n_total)
+    print_counts(console, "matched unit", counts[_match], n_total)
 
     # Complex statement that basically keeps the sample index while merging the counts
     # into that data frame.
@@ -495,7 +495,7 @@ def get_matched_unit(
     """
 
     units = get_column_units(conn, col_id, types=types)
-    u1 = units[units.strat_name_clean != None]
+    u1 = units[units.strat_name_clean is not None]
 
     if comparison == MatchComparison.Fuzzy:
         raise NotImplementedError("Fuzzy matching not implemented")
