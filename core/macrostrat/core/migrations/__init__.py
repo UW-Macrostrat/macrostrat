@@ -238,6 +238,7 @@ def run_migrations(
     dry_run: bool = False,
     wait: bool = False,
     legacy: bool = False,
+    reapply: bool = False,
 ):
 
     if dry_run:
@@ -254,6 +255,7 @@ def run_migrations(
         data_changes=data_changes,
         subsystem=subsystem,
         legacy=legacy,
+        reapply=reapply,
     )
 
 
@@ -365,6 +367,7 @@ def _run_migrations(
     subsystem: str = None,
     verbose: bool = True,
     legacy: bool = False,
+    reapply: bool = False,
 ) -> [Optional[int], set[str]]:
     """Apply database migrations"""
     # Start time
@@ -434,7 +437,7 @@ def _run_migrations(
             if not dependencies_met:
                 continue
 
-            if _name in completed_migrations:
+            if _name in completed_migrations and not reapply and not _migration.always_apply:
                 continue
 
             if _migration.destructive and not data_changes:
