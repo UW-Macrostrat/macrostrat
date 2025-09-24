@@ -16,7 +16,7 @@ else:
     raise ValueError(
         "Invalid DATABASE_URL: must start with postgresql:// or postgresql+asyncpg://"
     )
-    
+
 DATABASE_URL = raw_url
 
 engine = create_async_engine(DATABASE_URL, echo=True)
