@@ -1,17 +1,15 @@
-from typer import Argument
+from typer import Argument, Typer
 
+from macrostrat.core.migrations import run_migrations
+from .gbdb import update_age_model
+from .schema import IntegrationsBaseSchema
 from .strabospot import populate_strabospot
 
 pipelines = {
     "strabospot": populate_strabospot,
+    "update-gbdb-age-model": update_age_model,
 }
 
-
-from typer import Typer
-
-from macrostrat.core.migrations import run_migrations
-
-from .schema import IntegrationsBaseSchema
 
 app = Typer(
     no_args_is_help=True,

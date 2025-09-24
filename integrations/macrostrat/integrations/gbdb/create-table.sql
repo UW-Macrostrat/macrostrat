@@ -139,3 +139,64 @@ SELECT
     ))
   ) geojson
 FROM macrostrat_gbdb.sections;
+
+WITH formations AS (SELECT section_id,
+                           formation,
+                           MIN(min_ma)                    min_ma,
+                           MAX(max_ma)                    max_ma,
+                           COUNT(*),
+                           MIN(unit_sum - unit_thickness) unit_base,
+                           MAX(unit_sum)                  unit_sum
+                    FROM macrostrat_gbdb.strata
+                    GROUP BY section_id, formation)
+SELECT * FROM formations;
+
+DROP VIEW macrostrat_api.gbdb_age_model;
+CREATE OR REPLACE VIEW macrostrat_api.gbdb_age_model AS
+WITH formations AS (
+  SELECT
+    section_id,
+    formation,
+    MIN(min_ma) min_ma,
+    MAX(max_ma) max_ma,
+    MIN(unit_sum-unit_thickness) b_pos,
+    MAX(unit_sum) t_pos,
+    COUNT(*)
+  FROM macrostrat_gbdb.strata
+  GROUP BY section_id, formation
+),
+a0 AS (SELECT f.section_id,
+              s.unit_id,
+              f.formation,
+              f.min_ma                  formation_min_ma,
+              f.max_ma                  formation_max_ma,
+              f.b_pos formation_b_pos,
+              f.t_pos formation_t_pos,
+              f.t_pos - f.b_pos formation_thickness,
+              f.max_ma - f.min_ma formation_age_range,
+              unit_sum - unit_thickness b_pos,
+              unit_sum                  t_pos
+       FROM macrostrat_gbdb.strata s
+              JOIN formations f
+                   ON s.section_id = f.section_id
+                     AND s.formation = f.formation
+), with_proportions AS (SELECT *,
+                               -- proportions through unit
+                               (b_pos - formation_b_pos) / formation_thickness AS b_prop,
+                               (t_pos - formation_b_pos) / formation_thickness AS t_prop
+                        FROM a0
+                        WHERE formation_thickness > 0
+)
+SELECT *,
+       -- age estimates based on linear interpolation within formation
+       formation_max_ma - b_prop * formation_age_range AS model_max_ma,
+       formation_max_ma - t_prop * formation_age_range AS model_min_ma
+FROM with_proportions;
+
+CREATE OR REPLACE VIEW macrostrat_api.strata_with_age_model AS
+SELECT s.*,
+       am.*
+FROM macrostrat_api.gbdb_strata s
+       JOIN macrostrat_api.gbdb_age_model am
+            ON s.section_id = am.section_id
+              AND s.unit_id = am.unit_id;
