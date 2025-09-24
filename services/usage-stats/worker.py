@@ -1,13 +1,14 @@
-import os
 import asyncio
-import time
+import os
 import signal
-from dotenv import load_dotenv
+import time
 
+from dotenv import load_dotenv
 from src.macrostrat import get_macrostrat_data
 from src.rockd import get_rockd_data
 
 load_dotenv()
+
 
 def get_env_var(name: str, timeout: int = 30) -> str:
     """
@@ -22,7 +23,10 @@ def get_env_var(name: str, timeout: int = 30) -> str:
             return value
         print(f"[DEBUG] Waiting for environment variable {name}...")
         time.sleep(1)
-    raise RuntimeError(f"Environment variable {name} is not set after waiting {timeout} seconds")
+    raise RuntimeError(
+        f"Environment variable {name} is not set after waiting {timeout} seconds"
+    )
+
 
 async def periodic_task(stop_event: asyncio.Event, db_url: str, mariadb_url: str):
     while not stop_event.is_set():

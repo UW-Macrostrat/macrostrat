@@ -8,6 +8,7 @@ from sqlalchemy.orm import sessionmaker
 from src.insert import insert
 from src.last_id import get_last_id
 
+
 async def get_data(last_id, mariadb_url, db_url):
     BATCH_SIZE = 1000  # Adjust batch size as needed
 
@@ -32,7 +33,6 @@ async def get_data(last_id, mariadb_url, db_url):
         expire_on_commit=False,
         class_=AsyncSession,
     )
-
 
     async with AsyncSessionLocal() as session:
         query = text(
