@@ -7,30 +7,29 @@ from sqlalchemy.orm import sessionmaker
 from src.insert import insert
 from src.last_id import get_last_id
 
-BATCH_SIZE = 1000  # Adjust as needed
+async def get_data(last_id, mariadb_url, db_url):
+    BATCH_SIZE = 1000  # Adjust as needed
 
-raw_url = os.getenv("MARIADB_URL")
+    raw_url = mariadb_url
 
-# Ensure the URL uses asyncmy driver
-if raw_url.startswith("mysql://"):
-    raw_url = raw_url.replace("mysql://", "mysql+asyncmy://", 1)
-else:
-    raise ValueError(
-        "Invalid DATABASE_URL: must start with mysql:// or mysql+asyncmy://"
+    # Ensure the URL uses asyncmy driver
+    if raw_url.startswith("mysql://"):
+        raw_url = raw_url.replace("mysql://", "mysql+asyncmy://", 1)
+    else:
+        raise ValueError(
+            "Invalid DATABASE_URL: must start with mysql:// or mysql+asyncmy://"
+        )
+
+    DATABASE_URL = raw_url
+
+    # Create async engine
+    engine = create_async_engine(DATABASE_URL, echo=True)
+
+    # Async session factory
+    AsyncSessionLocal = sessionmaker(
+        bind=engine, expire_on_commit=False, class_=AsyncSession
     )
 
-DATABASE_URL = raw_url
-
-# Create async engine
-engine = create_async_engine(DATABASE_URL, echo=True)
-
-# Async session factory
-AsyncSessionLocal = sessionmaker(
-    bind=engine, expire_on_commit=False, class_=AsyncSession
-)
-
-
-async def get_data(last_id):
     async with AsyncSessionLocal() as session:
         query = text(
             """
@@ -70,10 +69,10 @@ async def get_data(last_id):
             for row in rows
         ]
 
-        await insert(payload, "macrostrat")
+        await insert(payload, "macrostrat", db_url)
 
 
-async def get_macrostrat_data():
-    last_id = await get_last_id("macrostrat")
-    await get_data(last_id)
+async def get_macrostrat_data(mariadb_url, db_url):
+    last_id = await get_last_id("macrostrat", db_url)
+    await get_data(last_id, mariadb_url, db_url)
     print("Data fetching completed.")

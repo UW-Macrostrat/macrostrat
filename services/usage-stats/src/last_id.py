@@ -5,24 +5,23 @@ from dotenv import load_dotenv
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
-load_dotenv()
+async def get_last_id(table_name=None, db_url=None):
+    load_dotenv()
 
-raw_url = os.getenv("DATABASE_URL")
+    raw_url = db_url
+    
+    # Ensure it uses asyncpg
+    if raw_url.startswith("postgresql://"):
+        raw_url = raw_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    else:
+        raise ValueError(
+            "Invalid DATABASE_URL: must start with postgresql:// or postgresql+asyncpg://"
+        )
 
-# Ensure it uses asyncpg
-if raw_url.startswith("postgresql://"):
-    raw_url = raw_url.replace("postgresql://", "postgresql+asyncpg://", 1)
-else:
-    raise ValueError(
-        "Invalid DATABASE_URL: must start with postgresql:// or postgresql+asyncpg://"
-    )
+    DATABASE_URL = raw_url
 
-DATABASE_URL = raw_url
+    engine = create_async_engine(DATABASE_URL, echo=True)
 
-engine = create_async_engine(DATABASE_URL, echo=True)
-
-
-async def get_last_id(table_name=None):
     async with engine.connect() as conn:
         if table_name is None:
             print("No table name provided")
