@@ -12,11 +12,11 @@ raw_url = os.getenv("DATABASE_URL")
 # Ensure it uses asyncpg
 if raw_url.startswith("postgresql://"):
     raw_url = raw_url.replace("postgresql://", "postgresql+asyncpg://", 1)
-elif not raw_url.startswith("postgresql+asyncpg://"):
+else:
     raise ValueError(
         "Invalid DATABASE_URL: must start with postgresql:// or postgresql+asyncpg://"
     )
-
+    
 DATABASE_URL = raw_url
 
 engine = create_async_engine(DATABASE_URL, echo=True)
