@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
+
 async def insert(payload=None, table_name=None, db_url=None):
     load_dotenv()
 
@@ -17,7 +18,7 @@ async def insert(payload=None, table_name=None, db_url=None):
         raise ValueError(
             "Invalid DATABASE_URL: must start with postgresql:// or postgresql+asyncpg://"
         )
-        
+
     DATABASE_URL = raw_url
 
     engine = create_async_engine(DATABASE_URL, echo=True)

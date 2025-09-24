@@ -5,11 +5,12 @@ from dotenv import load_dotenv
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
+
 async def get_last_id(table_name=None, db_url=None):
     load_dotenv()
 
     raw_url = db_url
-    
+
     # Ensure it uses asyncpg
     if raw_url.startswith("postgresql://"):
         raw_url = raw_url.replace("postgresql://", "postgresql+asyncpg://", 1)
