@@ -4,6 +4,12 @@ from sys import exit, stderr, stdin, stdout
 from typing import Any, Callable, Iterable
 
 import typer
+from macrostrat.database import Database
+from macrostrat.database.transfer import pg_dump_to_file, pg_restore_from_file
+from macrostrat.database.transfer.utils import raw_database_url
+from macrostrat.database.utils import get_sql_files
+from macrostrat.utils import get_logger
+from macrostrat.utils.shell import run
 from pydantic import BaseModel
 from rich import print
 from sqlalchemy import make_url, text
@@ -11,15 +17,7 @@ from typer import Argument, Option
 
 from macrostrat.core import MacrostratSubsystem, app
 from macrostrat.core.migrations import run_migrations
-from macrostrat.database import Database
-from macrostrat.database.transfer import pg_dump_to_file, pg_restore_from_file
-from macrostrat.database.transfer.utils import raw_database_url
-from macrostrat.database.utils import get_sql_files
-from macrostrat.utils import get_logger
-from macrostrat.utils.shell import run
-
 from ._legacy import get_db
-
 # First, register all migrations
 # NOTE: right now, this is quite implicit.
 from .migrations import load_migrations
@@ -429,6 +427,15 @@ db_app.command(name="permissions", rich_help_panel="Helpers")(update_permissions
 
 
 keys = ["username", "host", "port", "password", "database"]
+
+
+@db_app.command(name="refresh-postgrest")
+def refresh_postgrest():
+    """
+    Refresh PostgrREST API table definitions
+    """
+    db = get_db()
+    db.run_sql("NOTIFY pgrst, 'reload schema';")
 
 
 @db_app.command(name="credentials", rich_help_panel="Helpers")
