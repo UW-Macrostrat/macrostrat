@@ -3,11 +3,12 @@ from os import environ
 from pathlib import Path
 
 from dotenv import load_dotenv
-from macrostrat.database import Database
-from macrostrat.utils import relative_path
 from rich import print
 from sqlalchemy.sql import text
 from typer import Typer
+
+from macrostrat.database import Database
+from macrostrat.utils import relative_path
 
 load_dotenv()
 

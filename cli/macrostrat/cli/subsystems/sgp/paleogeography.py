@@ -4,7 +4,8 @@ from geopandas import GeoDataFrame, sjoin
 from sqlalchemy.sql import text
 
 from macrostrat.cli.database import get_db
-from .utils import get_sgp_samples, write_to_file, get_sgp_db
+
+from .utils import get_sgp_db, get_sgp_samples, write_to_file
 
 
 def compute_paleo_positions(out_file: Path = None, sample: int = None):
