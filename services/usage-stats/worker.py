@@ -2,6 +2,7 @@ import os
 import asyncio
 import time
 import signal
+import traceback
 from dotenv import load_dotenv
 
 from src.macrostrat import get_macrostrat_data
@@ -18,7 +19,7 @@ def get_env_var(name: str, timeout: int = 30) -> str:
     for _ in range(timeout):
         value = os.getenv(name)
         if value:
-            print(f"[DEBUG] {name} found: {value}")
+            print(f"[DEBUG] {name} found")
             return value
         print(f"[DEBUG] Waiting for environment variable {name}...")
         time.sleep(1)
@@ -26,20 +27,20 @@ def get_env_var(name: str, timeout: int = 30) -> str:
 
 async def periodic_task(stop_event: asyncio.Event, db_url: str, mariadb_url: str):
     while not stop_event.is_set():
+        print("[DEBUG] Starting periodic data fetch")
         try:
-            # Pass MARIADB_URL if get_rockd_data needs it
             await get_rockd_data(mariadb_url, db_url)
-
-            # Pass DATABASE_URL if get_macrostrat_data needs it
+            print("[DEBUG] Finished get_rockd_data")
             await get_macrostrat_data(mariadb_url, db_url)
-        except Exception as e:
-            print(f"Error in periodic_task: {e}")
+            print("[DEBUG] Finished get_macrostrat_data")
+        except Exception:
+            print("Error in periodic_task:", flush=True)
+            traceback.print_exc()
 
         try:
-            await asyncio.wait_for(stop_event.wait(), timeout=10)
+            await asyncio.wait_for(stop_event.wait(), timeout=30)
         except asyncio.TimeoutError:
             pass
-
 
 async def main():
     stop_event = asyncio.Event()
