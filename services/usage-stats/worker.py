@@ -2,7 +2,6 @@ import asyncio
 import os
 import signal
 import traceback
-from dotenv import load_dotenv
 
 from dotenv import load_dotenv
 from src.macrostrat import get_macrostrat_data
@@ -45,6 +44,7 @@ async def periodic_task(stop_event: asyncio.Event, db_url: str, mariadb_url: str
             await asyncio.wait_for(stop_event.wait(), timeout=30)
         except asyncio.TimeoutError:
             pass
+
 
 async def main():
     stop_event = asyncio.Event()
