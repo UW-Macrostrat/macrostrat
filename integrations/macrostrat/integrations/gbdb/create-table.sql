@@ -42,9 +42,41 @@ CREATE TABLE IF NOT EXISTS macrostrat_gbdb.strata (
   late_biozone TEXT
 );
 
--- Path: '/Users/Daven/Projects/Macrostrat/Datasets/GBDB workshop/geological_strata.csv'
+UPDATE macrostrat_gbdb.strata SET member = null WHERE member = '';
+UPDATE macrostrat_gbdb.strata SET formation = null WHERE formation = '';
+UPDATE macrostrat_gbdb.strata SET epoch = null WHERE epoch = '';
 
-/** Command to load data:
-  > cat "/Users/Daven/Projects/Macrostrat/Datasets/GBDB workshop/geological_strata.csv" \
-  | macrostrat db psql -c 'COPY macrostrat_gbdb.strata FROM STDIN WITH CSV HEADER'
- */
+DROP VIEW macrostrat_api.gbdb_strata;
+CREATE VIEW macrostrat_api.gbdb_strata AS
+SELECT *,
+       ((early_interval IS NOT NULL AND late_interval IS NOT NULL)
+         OR (early_biozone IS NOT NULL AND late_biozone IS NOT NULL)
+         OR (epoch IS NOT NULL)
+         OR (period IS NOT NULL)
+         OR (min_ma IS NOT NULL AND max_ma IS NOT NULL)) AS has_age_constraint
+       FROM macrostrat_gbdb.strata;
+
+
+-- 121903 strata have an age constraint
+SELECT count(*) FROM macrostrat_api.gbdb_strata WHERE has_age_constraint;
+
+--153217 strata do not have an age constraint
+SELECT count(*) FROM macrostrat_api.gbdb_strata WHERE NOT has_age_constraint and (formation IS NOT NULL);
+
+--153179 strata do not have an age constraint but have a formation name
+SELECT count(*) FROM macrostrat_api.gbdb_strata WHERE NOT has_age_constraint;
+
+
+
+-- 5742 formations mentioned that do not have an age constraint defined
+SELECT count(DISTINCT formation)
+FROM macrostrat_api.gbdb_strata
+WHERE NOT has_age_constraint
+  AND (formation IS NOT NULL);
+
+
+SELECT DISTINCT (formation) formation
+FROM macrostrat_api.gbdb_strata
+WHERE NOT has_age_constraint
+  AND (formation IS NOT NULL);
+
