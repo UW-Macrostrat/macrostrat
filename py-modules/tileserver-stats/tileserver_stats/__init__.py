@@ -1,13 +1,13 @@
-from macrostrat.database import Database
-from macrostrat.utils import relative_path, cmd
-from pathlib import Path
-from os import environ
-from rich import print
-from typer import Typer
-from dotenv import load_dotenv
-from sqlalchemy.sql import text
 from datetime import datetime
-from psycopg2.sql import Literal
+from os import environ
+from pathlib import Path
+
+from dotenv import load_dotenv
+from macrostrat.database import Database
+from macrostrat.utils import relative_path
+from rich import print
+from sqlalchemy.sql import text
+from typer import Typer
 
 load_dotenv()
 
@@ -25,7 +25,6 @@ def run(truncate: bool = False):
     # Run update
     fn = Path(relative_path(__file__, "procedures")) / "run-update.sql"
     sql = text(fn.read_text().replace(":", "\:"))
-
 
     # check query timing
     conn = db.engine.connect()
@@ -62,6 +61,7 @@ def reset(drop: bool = False):
 
     for file in files:
         list(db.run_sql(file))
+
 
 @app.command()
 def truncate():
