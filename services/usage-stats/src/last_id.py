@@ -21,7 +21,7 @@ async def get_last_id(table_name=None, db_url=None):
 
     DATABASE_URL = raw_url
 
-    engine = create_async_engine(DATABASE_URL, echo=True)
+    engine = create_async_engine(DATABASE_URL, echo=True, connect_args={"ssl": None})
 
     async with engine.connect() as conn:
         if table_name is None:

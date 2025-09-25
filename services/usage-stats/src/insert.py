@@ -21,7 +21,7 @@ async def insert(payload=None, table_name=None, db_url=None):
 
     DATABASE_URL = raw_url
 
-    engine = create_async_engine(DATABASE_URL, echo=True)
+    engine = create_async_engine(DATABASE_URL, echo=True, connect_args={"ssl": None})
 
     async with engine.connect() as conn:
         if payload is None:
