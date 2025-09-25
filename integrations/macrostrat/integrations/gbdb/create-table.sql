@@ -140,46 +140,37 @@ SELECT
   ) geojson
 FROM macrostrat_gbdb.sections;
 
-WITH formations AS (SELECT section_id,
-                           formation,
-                           MIN(min_ma)                    min_ma,
-                           MAX(max_ma)                    max_ma,
-                           COUNT(*),
-                           MIN(unit_sum - unit_thickness) unit_base,
-                           MAX(unit_sum)                  unit_sum
-                    FROM macrostrat_gbdb.strata
-                    GROUP BY section_id, formation)
-SELECT * FROM formations;
+CREATE VIEW macrostrat_api.gbdb_formations AS
+SELECT
+  section_id,
+  formation,
+  MIN(min_ma) min_ma,
+  MAX(max_ma) max_ma,
+  MIN(unit_sum-unit_thickness) b_pos,
+  MAX(unit_sum) t_pos,
+  COUNT(*)
+FROM macrostrat_gbdb.strata
+GROUP BY section_id, formation;
+
 
 DROP VIEW macrostrat_api.gbdb_age_model;
 CREATE OR REPLACE VIEW macrostrat_api.gbdb_age_model AS
-WITH formations AS (
-  SELECT
-    section_id,
-    formation,
-    MIN(min_ma) min_ma,
-    MAX(max_ma) max_ma,
-    MIN(unit_sum-unit_thickness) b_pos,
-    MAX(unit_sum) t_pos,
-    COUNT(*)
-  FROM macrostrat_gbdb.strata
-  GROUP BY section_id, formation
-),
-a0 AS (SELECT f.section_id,
-              s.unit_id,
-              f.formation,
-              f.min_ma                  formation_min_ma,
-              f.max_ma                  formation_max_ma,
-              f.b_pos formation_b_pos,
-              f.t_pos formation_t_pos,
-              f.t_pos - f.b_pos formation_thickness,
-              f.max_ma - f.min_ma formation_age_range,
-              unit_sum - unit_thickness b_pos,
-              unit_sum                  t_pos
-       FROM macrostrat_gbdb.strata s
-              JOIN formations f
-                   ON s.section_id = f.section_id
-                     AND s.formation = f.formation
+WITH a0 AS (
+  SELECT f.section_id,
+    s.unit_id,
+    f.formation,
+    f.min_ma                  formation_min_ma,
+    f.max_ma                  formation_max_ma,
+    f.b_pos formation_b_pos,
+    f.t_pos formation_t_pos,
+    f.t_pos - f.b_pos formation_thickness,
+    f.max_ma - f.min_ma formation_age_range,
+    unit_sum - unit_thickness b_pos,
+    unit_sum                  t_pos
+  FROM macrostrat_gbdb.strata s
+  JOIN macrostrat_api.gbdb_formations f
+    ON s.section_id = f.section_id
+   AND s.formation = f.formation
 ), with_proportions AS (SELECT *,
                                -- proportions through unit
                                (b_pos - formation_b_pos) / formation_thickness AS b_prop,
@@ -193,10 +184,58 @@ SELECT *,
        formation_max_ma - t_prop * formation_age_range AS model_min_ma
 FROM with_proportions;
 
-CREATE OR REPLACE VIEW macrostrat_api.strata_with_age_model AS
+CREATE OR REPLACE VIEW macrostrat_api.gbdb_strata_with_age_model AS
 SELECT s.*,
-       am.*
+       am.model_min_ma,
+       am.model_max_ma
 FROM macrostrat_api.gbdb_strata s
        JOIN macrostrat_api.gbdb_age_model am
             ON s.section_id = am.section_id
               AND s.unit_id = am.unit_id;
+
+DROP TABLE macrostrat_gbdb.summary_columns;
+CREATE TABLE macrostrat_gbdb.summary_columns AS
+WITH hexgrid AS (
+  SELECT ST_HexagonGrid(1, ST_MakeEnvelope(-180, -90, 180, 90, 4326)) AS hex
+)
+SELECT
+  row_number() OVER () id,
+  (hex).geom
+FROM hexgrid
+WHERE ST_Intersects((hex).geom, (
+    SELECT ST_Union(ST_SetSRID(ST_MakePoint(lng, lat), 4326)) FROM macrostrat_api.gbdb_section WHERE has_age_constraint
+  )
+);
+
+DROP VIEW IF EXISTS macrostrat_api.gbdb_summary_columns;
+CREATE OR REPLACE VIEW macrostrat_api.gbdb_summary_columns AS
+SELECT jsonb_build_object(
+    'type',
+    'FeatureCollection',
+    'features',
+    JSON_AGG(JSONB_BUILD_OBJECT(
+      'geometry', ST_AsGeoJSON(geom)::jsonb,
+      'type', 'Feature',
+      'id', id,
+      'properties', JSONB_BUILD_OBJECT(
+        'section_id', id
+      )
+    ))
+  ) geojson
+FROM macrostrat_gbdb.summary_columns;
+
+CREATE VIEW macrostrat_api.gbdb_summary_units AS
+WITH col_sections AS (SELECT section_id, sc.id col_id
+                      FROM macrostrat_gbdb.sections s
+                             JOIN macrostrat_gbdb.summary_columns sc
+                                  ON ST_Intersects(ST_SetSRID(ST_MakePoint(lng, lat), 4326), sc.geom)
+                      WHERE has_age_constraint)
+SELECT
+  col_id,
+  f.formation unit_name,
+  min(min_ma) t_age,
+  max(max_ma) b_age
+FROM macrostrat_api.gbdb_formations f
+JOIN col_sections cs ON cs.section_id = f.section_id
+WHERE f.min_ma IS NOT NULL AND f.max_ma IS NOT NULL
+GROUP BY col_id, f.formation;
