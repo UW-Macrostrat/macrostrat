@@ -184,6 +184,9 @@ SELECT *,
        formation_max_ma - t_prop * formation_age_range AS model_min_ma
 FROM with_proportions;
 
+
+/** Summary tables */
+
 CREATE OR REPLACE VIEW macrostrat_api.gbdb_strata_with_age_model AS
 SELECT s.*,
        am.model_min_ma,
@@ -193,14 +196,14 @@ FROM macrostrat_api.gbdb_strata s
             ON s.section_id = am.section_id
               AND s.unit_id = am.unit_id;
 
-DROP TABLE macrostrat_gbdb.summary_columns;
+DROP TABLE macrostrat_gbdb.summary_columns CASCADE;
 CREATE TABLE macrostrat_gbdb.summary_columns AS
 WITH hexgrid AS (
   SELECT ST_HexagonGrid(1, ST_MakeEnvelope(-180, -90, 180, 90, 4326)) AS hex
 )
 SELECT
   row_number() OVER () id,
-  (hex).geom
+  ST_ForceRHR((hex).geom) geometry
 FROM hexgrid
 WHERE ST_Intersects((hex).geom, (
     SELECT ST_Union(ST_SetSRID(ST_MakePoint(lng, lat), 4326)) FROM macrostrat_api.gbdb_section WHERE has_age_constraint
@@ -214,7 +217,7 @@ SELECT jsonb_build_object(
     'FeatureCollection',
     'features',
     JSON_AGG(JSONB_BUILD_OBJECT(
-      'geometry', ST_AsGeoJSON(geom)::jsonb,
+      'geometry', ST_AsGeoJSON(geometry)::jsonb,
       'type', 'Feature',
       'id', id,
       'properties', JSONB_BUILD_OBJECT(
@@ -228,9 +231,10 @@ CREATE VIEW macrostrat_api.gbdb_summary_units AS
 WITH col_sections AS (SELECT section_id, sc.id col_id
                       FROM macrostrat_gbdb.sections s
                              JOIN macrostrat_gbdb.summary_columns sc
-                                  ON ST_Intersects(ST_SetSRID(ST_MakePoint(lng, lat), 4326), sc.geom)
+                                  ON ST_Intersects(ST_SetSRID(ST_MakePoint(lng, lat), 4326), sc.geometry)
                       WHERE has_age_constraint)
 SELECT
+  row_number() OVER () unit_id,
   col_id,
   f.formation unit_name,
   min(min_ma) t_age,
@@ -239,3 +243,20 @@ FROM macrostrat_api.gbdb_formations f
 JOIN col_sections cs ON cs.section_id = f.section_id
 WHERE f.min_ma IS NOT NULL AND f.max_ma IS NOT NULL
 GROUP BY col_id, f.formation;
+
+-- WITH duplicate_units AS (SELECT unit_id, section_id, COUNT(*)
+--                FROM macrostrat_api.gbdb_strata
+--                GROUP BY unit_id, section_id
+--                HAVING COUNT(*) > 1
+--                ORDER BY count DESC)
+-- SELECT unit_id, array_agg(depth_scale) FROM duplicate_units
+-- JOIN macrostrat_api.gbdb_strata USING (unit_id, section_id)
+-- GROUP BY unit_id;
+--
+-- WITH duplicate_units AS (SELECT unit_id, section_id, COUNT(*)
+--                          FROM macrostrat_api.gbdb_strata
+--                          GROUP BY unit_id, section_id
+--                          HAVING COUNT(*) > 1
+--                          ORDER BY count DESC)
+-- SELECT * FROM duplicate_units
+-- JOIN macrostrat_api.gbdb_strata USING (unit_id, section_id);
