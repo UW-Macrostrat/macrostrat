@@ -42,6 +42,71 @@ CREATE TABLE IF NOT EXISTS macrostrat_gbdb.strata (
   late_biozone TEXT
 );
 
+CREATE TABLE IF NOT EXISTS macrostrat_gbdb.stratigraphic_dictionary_llm (
+  id integer,
+  chinese_name text,
+  english_name text,
+  code text,
+  interval_b text,
+  interval_t text,
+  max_ma numeric,
+  min_ma numeric,
+  "group" text,
+  formation text
+);
+
+
+-- name	period	age_interval	province	type_locality	lithology	lower_contact	upper_contact	regional_extent	fossils	age	depositional	additional_info	compiler	beginning_stage	end_stage	geojson	lithology_pattern	age_span	depositional_pattern	frac_upB	beg_date	frac_upE	end_date
+CREATE TABLE IF NOT EXISTS macrostrat_gbdb.chinalex (
+  "name" TEXT,
+  period TEXT,
+  age_interval TEXT,
+  province TEXT,
+  type_locality TEXT,
+  lithology TEXT,
+  lower_contact TEXT,
+  upper_contact TEXT,
+  regional_extent TEXT,
+  fossils TEXT,
+  age TEXT,
+  depositional TEXT,
+  additional_info TEXT,
+  compiler TEXT,
+  beginning_stage TEXT,
+  end_stage TEXT,
+  geojson TEXT,
+  lithology_pattern TEXT,
+  age_span TEXT,
+  depositional_pattern TEXT,
+  "frac_upB" NUMERIC,
+  beg_date NUMERIC,
+  "frac_upE" NUMERIC,
+  end_date NUMERIC
+);
+
+CREATE OR REPLACE VIEW macrostrat_gbdb.external_age_control AS
+WITH a AS (SELECT REPLACE(REPLACE(name, ' Fm', ''), ' Gr', '') name_clean,
+                  beg_date                                     b_age,
+                  end_date                                     t_age,
+                  beg_date - end_date                          age_span,
+                  'chinalex'                                   age_source
+           FROM macrostrat_gbdb.chinalex
+           WHERE beg_date IS NOT NULL
+             AND end_date IS NOT NULL
+           UNION
+           SELECT COALESCE(formation, "group") name_clean,
+                  max_ma                       beg_date,
+                  min_ma                       end_date,
+                  max_ma - min_ma              age_span,
+                  'llm'                        age_source
+           FROM macrostrat_gbdb.stratigraphic_dictionary_llm
+           WHERE max_ma IS NOT NULL
+             AND min_ma IS NOT NULL)
+SELECT * FROM a ORDER BY name_clean, age_span;
+
+CREATE OR REPLACE VIEW macrostrat_gbdb.best_external_age_control AS
+SELECT DISTINCT ON (name_clean) * FROM macrostrat_gbdb.external_age_control;
+
 UPDATE macrostrat_gbdb.strata SET member = null WHERE member = '';
 UPDATE macrostrat_gbdb.strata SET formation = null WHERE formation = '';
 UPDATE macrostrat_gbdb.strata SET epoch = null WHERE epoch = '';
@@ -152,18 +217,6 @@ SELECT
 FROM macrostrat_gbdb.strata
 GROUP BY section_id, formation;
 -- TODO: get Macrostrat formations
-
-SELECT
-  section_id,
-  formation,
-  MIN(min_ma) min_ma,
-  MAX(max_ma) max_ma,
-  MIN(unit_sum-unit_thickness) b_pos,
-  MAX(unit_sum) t_pos,
-  COUNT(*),
-  array_agg(DISTINCT lithology1)
-FROM macrostrat_gbdb.strata
-GROUP BY section_id, formation;
 
 
 DROP VIEW macrostrat_api.gbdb_age_model;
@@ -296,3 +349,9 @@ FROM macrostrat_api.gbdb_formations f
        JOIN col_sections cs ON cs.section_id = f.section_id
 WHERE f.min_ma IS NOT NULL AND f.max_ma IS NOT NULL
 GROUP BY col_id, f.formation, min_ma, max_ma;
+
+
+
+SELECT * FROM macrostrat_api.gbdb_formations WHERE formation ILIKE '%Fangyan%';
+
+SELECT * FROM macrostrat_api.gbdb_formations WHERE min_ma IS null ORDER BY formation;
