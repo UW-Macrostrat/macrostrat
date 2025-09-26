@@ -114,7 +114,13 @@ WITH a AS (SELECT REPLACE(REPLACE(name, ' Fm', ''), ' Gr', '') name_clean,
              AND formation IS NOT NULL
            GROUP BY formation
            )
-SELECT * FROM a ORDER BY name_clean, age_span;
+SELECT
+  name_clean,
+  greatest(b_age, t_age)                       b_age,
+  least(b_age, t_age)                       t_age,
+  abs(b_age - t_age)            age_span,
+  age_source
+FROM a ORDER BY name_clean, age_span;
 
 CREATE OR REPLACE VIEW macrostrat_gbdb.best_external_age_control AS
 SELECT DISTINCT ON (name_clean) * FROM macrostrat_gbdb.external_age_control;
@@ -195,8 +201,6 @@ SELECT *,
        macrostrat_api.color_for_age_range(a.min_ma, a.max_ma) color
 FROM a;
 
-SELECT * FROM macrostrat_gbdb.sections;
-
 SELECT count(*) FROM macrostrat_api.gbdb_section WHERE has_age_constraint;
 
 DROP VIEW IF EXISTS macrostrat_api.gbdb_section_geojson;
@@ -239,12 +243,12 @@ WITH a0 AS (
   SELECT f.section_id,
     s.unit_id,
     f.formation,
-    fa.t_age                  formation_min_ma,
-    fa.b_age                 formation_max_ma,
+    fa.t_age  formation_min_ma,
+    fa.b_age  formation_max_ma,
     f.b_pos formation_b_pos,
     f.t_pos formation_t_pos,
     f.t_pos - f.b_pos formation_thickness,
-    fa.age_span formation_age_range,
+    abs(fa.age_span) formation_age_range,
     unit_sum - unit_thickness b_pos,
     unit_sum                  t_pos,
     fa.age_source
@@ -254,6 +258,7 @@ WITH a0 AS (
    AND s.formation = f.formation
   JOIN macrostrat_gbdb.best_external_age_control fa
     ON f.formation = fa.name_clean
+   AND f.formation != 'Unknown'
 ), with_proportions AS (SELECT *,
                                -- proportions through unit
                                (b_pos - formation_b_pos) / formation_thickness AS b_prop,
@@ -314,11 +319,12 @@ FROM macrostrat_gbdb.summary_columns;
 
 DROP TABLE macrostrat_gbdb.summary_units CASCADE;
 CREATE TABLE macrostrat_gbdb.summary_units AS
-WITH col_sections AS (SELECT section_id, sc.id col_id
-                      FROM macrostrat_gbdb.sections s
-                             JOIN macrostrat_gbdb.summary_columns sc
-                                  ON ST_Intersects(ST_SetSRID(ST_MakePoint(lng, lat), 4326), sc.geometry)
-                      WHERE has_age_constraint)
+WITH col_sections AS (
+  SELECT section_id, sc.id col_id
+  FROM macrostrat_gbdb.sections s
+  JOIN macrostrat_gbdb.summary_columns sc
+    ON ST_Intersects(ST_SetSRID(ST_MakePoint(lng, lat), 4326), sc.geometry)
+  WHERE has_age_constraint)
 SELECT
   row_number() OVER () unit_id,
   col_id,
@@ -373,3 +379,7 @@ GROUP BY col_id, f.formation, min_ma, max_ma;
 SELECT * FROM macrostrat_api.gbdb_formations WHERE formation ILIKE '%Fangyan%';
 
 SELECT * FROM macrostrat_api.gbdb_formations WHERE min_ma IS null ORDER BY formation;
+
+
+SELECT age_source, count(*), count(*)::numeric/(SELECT count(*) FROM macrostrat_gbdb.strata) FROM macrostrat_api.gbdb_strata_with_age_model GROUP BY age_source ;
+
