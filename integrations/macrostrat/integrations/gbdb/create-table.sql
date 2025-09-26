@@ -191,17 +191,20 @@ CREATE TABLE macrostrat_gbdb.sections AS
 WITH a AS (SELECT section_id,
                   lng,
                   lat,
-                  BOOL_OR(has_age_constraint) has_age_constraint,
-                  MIN(min_ma)                 min_ma,
-                  MAX(max_ma)                 max_ma
-           FROM macrostrat_api.gbdb_strata
+                  count(ac.t_age) > 0 has_age_constraint,
+                  MIN(ac.t_age)                 min_ma,
+                  MAX(ac.b_age)                 max_ma
+           FROM macrostrat_gbdb.strata s
+           LEFT JOIN macrostrat_gbdb.best_external_age_control ac
+             ON lower(s.formation) = lower(ac.name_clean)
+            AND lower(s.formation) != 'unknown'
            GROUP BY section_id, lng, lat
 )
 SELECT *,
        macrostrat_api.color_for_age_range(a.min_ma, a.max_ma) color
 FROM a;
 
-SELECT count(*) FROM macrostrat_api.gbdb_section WHERE has_age_constraint;
+SELECT count(*) FROM macrostrat_gbdb.sections WHERE has_age_constraint;
 
 DROP VIEW IF EXISTS macrostrat_api.gbdb_section_geojson;
 CREATE OR REPLACE VIEW macrostrat_api.gbdb_section_geojson AS
@@ -242,7 +245,7 @@ CREATE OR REPLACE VIEW macrostrat_api.gbdb_age_model AS
 WITH a0 AS (
   SELECT f.section_id,
     s.unit_id,
-    f.formation,
+    s.formation,
     fa.t_age  formation_min_ma,
     fa.b_age  formation_max_ma,
     f.b_pos formation_b_pos,
@@ -253,12 +256,12 @@ WITH a0 AS (
     unit_sum                  t_pos,
     fa.age_source
   FROM macrostrat_gbdb.strata s
-  JOIN macrostrat_api.gbdb_formations f
+  LEFT JOIN macrostrat_api.gbdb_formations f
     ON s.section_id = f.section_id
    AND s.formation = f.formation
-  JOIN macrostrat_gbdb.best_external_age_control fa
-    ON f.formation = fa.name_clean
-   AND f.formation != 'Unknown'
+  LEFT JOIN macrostrat_gbdb.best_external_age_control fa
+    ON lower(f.formation) = lower(fa.name_clean)
+   AND lower(f.formation) != 'unknown'
 ), with_proportions AS (SELECT *,
                                -- proportions through unit
                                (b_pos - formation_b_pos) / formation_thickness AS b_prop,
@@ -295,7 +298,7 @@ SELECT
   ST_ForceRHR((hex).geom) geometry
 FROM hexgrid
 WHERE ST_Intersects((hex).geom, (
-    SELECT ST_Union(ST_SetSRID(ST_MakePoint(lng, lat), 4326)) FROM macrostrat_api.gbdb_section WHERE has_age_constraint
+    SELECT ST_Union(ST_SetSRID(ST_MakePoint(lng, lat), 4326)) FROM macrostrat_gbdb.sections WHERE has_age_constraint
   )
 );
 
