@@ -101,10 +101,24 @@ WITH a AS (SELECT REPLACE(REPLACE(name, ' Fm', ''), ' Gr', '') name_clean,
                   'llm'                        age_source
            FROM macrostrat_gbdb.stratigraphic_dictionary_llm
            WHERE max_ma IS NOT NULL
-             AND min_ma IS NOT NULL)
+             AND min_ma IS NOT NULL
+           UNION
+           SELECT
+              formation name_clean,
+              MIN(min_ma) b_age,
+              MAX(max_ma) t_age,
+              MAX(max_ma) - MIN(min_ma) age_span,
+              'pbdb' age_source
+           FROM macrostrat_gbdb.strata
+           WHERE min_ma IS NOT null AND max_ma IS NOT null
+             AND formation IS NOT NULL
+           GROUP BY formation
+           )
 SELECT * FROM a ORDER BY name_clean, age_span;
 
 CREATE OR REPLACE VIEW macrostrat_gbdb.best_external_age_control AS
+SELECT DISTINCT ON (name_clean) * FROM macrostrat_gbdb.external_age_control;
+
 SELECT DISTINCT ON (name_clean) * FROM macrostrat_gbdb.external_age_control;
 
 UPDATE macrostrat_gbdb.strata SET member = null WHERE member = '';
@@ -219,24 +233,27 @@ GROUP BY section_id, formation;
 -- TODO: get Macrostrat formations
 
 
-DROP VIEW macrostrat_api.gbdb_age_model;
+DROP VIEW macrostrat_api.gbdb_age_model CASCADE;
 CREATE OR REPLACE VIEW macrostrat_api.gbdb_age_model AS
 WITH a0 AS (
   SELECT f.section_id,
     s.unit_id,
     f.formation,
-    f.min_ma                  formation_min_ma,
-    f.max_ma                  formation_max_ma,
+    fa.t_age                  formation_min_ma,
+    fa.b_age                 formation_max_ma,
     f.b_pos formation_b_pos,
     f.t_pos formation_t_pos,
     f.t_pos - f.b_pos formation_thickness,
-    f.max_ma - f.min_ma formation_age_range,
+    fa.age_span formation_age_range,
     unit_sum - unit_thickness b_pos,
-    unit_sum                  t_pos
+    unit_sum                  t_pos,
+    fa.age_source
   FROM macrostrat_gbdb.strata s
   JOIN macrostrat_api.gbdb_formations f
     ON s.section_id = f.section_id
    AND s.formation = f.formation
+  JOIN macrostrat_gbdb.best_external_age_control fa
+    ON f.formation = fa.name_clean
 ), with_proportions AS (SELECT *,
                                -- proportions through unit
                                (b_pos - formation_b_pos) / formation_thickness AS b_prop,
@@ -256,9 +273,10 @@ FROM with_proportions;
 CREATE OR REPLACE VIEW macrostrat_api.gbdb_strata_with_age_model AS
 SELECT s.*,
        am.model_min_ma,
-       am.model_max_ma
+       am.model_max_ma,
+       am.age_source
 FROM macrostrat_api.gbdb_strata s
-       JOIN macrostrat_api.gbdb_age_model am
+LEFT JOIN macrostrat_api.gbdb_age_model am
             ON s.section_id = am.section_id
               AND s.unit_id = am.unit_id;
 
