@@ -377,12 +377,17 @@ FROM macrostrat_api.gbdb_formations f
 WHERE f.min_ma IS NOT NULL AND f.max_ma IS NOT NULL
 GROUP BY col_id, f.formation, min_ma, max_ma;
 
-
+SELECT age_source, count(*), count(*)::numeric/(SELECT count(*) proportion FROM macrostrat_api.gbdb_strata_with_age_model) FROM macrostrat_api.gbdb_strata_with_age_model GROUP BY age_source;
 
 SELECT * FROM macrostrat_api.gbdb_formations WHERE formation ILIKE '%Fangyan%';
 
 SELECT * FROM macrostrat_api.gbdb_formations WHERE min_ma IS null ORDER BY formation;
 
+SELECT count(*), round(count(*)::numeric/(SELECT count(*) proportion FROM macrostrat_api.gbdb_strata), 2) FROM macrostrat_api.gbdb_strata WHERE min_ma IS NOT NULL AND max_ma IS NOT NULL;
 
-SELECT age_source, count(*), count(*)::numeric/(SELECT count(*) FROM macrostrat_gbdb.strata) FROM macrostrat_api.gbdb_strata_with_age_model GROUP BY age_source ;
 
+SELECT age_source, count(*), round(count(*)::numeric/(SELECT count(*) FROM macrostrat_gbdb.strata), 2) proportion FROM macrostrat_api.gbdb_strata_with_age_model WHERE country = 'China' GROUP BY age_source ;
+
+CREATE VIEW macrostrat_gbdb.chinalex_ext AS
+SELECT *, ST_GeomFromGeoJSON(geojson::json->>'geometry') AS geom
+       FROM macrostrat_gbdb.chinalex;
