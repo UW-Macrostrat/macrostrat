@@ -583,3 +583,12 @@ CREATE VIEW macrostrat_api.user_locations_view AS
     user_locations.pitch,
     user_locations.map_layers
    FROM user_features.user_locations;
+
+CREATE VIEW macrostrat_api.legend_liths AS
+ SELECT l.legend_id,
+    l.source_id,
+    l.name AS map_unit_name,
+    array_agg(ll.lith_id) FILTER (WHERE (ll.lith_id IS NOT NULL)) AS lith_ids
+   FROM (maps.legend l
+     LEFT JOIN maps.legend_liths ll ON ((ll.legend_id = l.legend_id)))
+  GROUP BY l.legend_id, l.source_id, l.name;
