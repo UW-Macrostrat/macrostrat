@@ -1,7 +1,7 @@
 from typer import Argument, Typer
 
 from macrostrat.core.migrations import run_migrations
-from .gbdb import update_age_model
+from .gbdb import update_age_model, app as gbdb_app
 from .schema import IntegrationsBaseSchema
 from .strabospot import populate_strabospot
 
@@ -43,3 +43,6 @@ def run(pipeline: str = Argument(None)):
         return
 
     pipelines[pipeline]()
+
+
+app.add_typer(gbdb_app, name="gbdb")
