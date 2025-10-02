@@ -248,9 +248,11 @@ cli.add_typer(sources, name="sources", help="Manage map sources")
 # ______________________________________________________________________________________________________________________
 
 from pathlib import Path
-from .pipeline import upload_file
+
 from macrostrat.map_integration.utils.file_discovery import find_gis_files
 from macrostrat.map_integration.utils.staging_upload_file import *
+
+from .pipeline import upload_file
 
 
 @cli.command(name="staging")
