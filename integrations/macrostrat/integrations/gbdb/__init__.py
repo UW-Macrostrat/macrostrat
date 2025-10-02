@@ -1,6 +1,5 @@
 from pathlib import Path
 
-from IPython import embed
 from typer import Typer
 
 from macrostrat.core.database import get_database
@@ -24,10 +23,6 @@ def update_age_model():
 
 @app.command("ingest")
 def ingest_strata(source: Path):
-    src = Path(source)
+    from .ingest_strata import ingest_strata
 
-    from pandas import read_csv
-
-    df = read_csv(src)
-
-    embed()
+    ingest_strata(source)
