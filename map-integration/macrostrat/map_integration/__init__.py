@@ -248,8 +248,9 @@ cli.add_typer(sources, name="sources", help="Manage map sources")
 # ______________________________________________________________________________________________________________________
 
 from pathlib import Path
-
+from .pipeline import upload_file
 from macrostrat.map_integration.utils.file_discovery import find_gis_files
+from macrostrat.map_integration.utils.staging_upload_file import *
 
 
 @cli.command(name="staging")
@@ -257,6 +258,7 @@ def staging(
     slug: str,
     data_path: str,
     name: str,
+    s3: bool,
     meta_path: str = Option(
         None, help="metadata URL to merge into the sources polygons/lines/points table"
     ),
@@ -288,7 +290,12 @@ def staging(
         print(f"Excluded {len(excluded_files)} file(s) due to filter:")
         for path in excluded_files:
             print(f"{path}")
+    if s3:
+        upload_to_s3 = staging_upload_file(slug, data_path)
+        print(upload_to_s3)
 
+
+'''
     ingest_pipeline, comments, state = ingest_map(
         slug,
         gis_files,
@@ -379,7 +386,7 @@ def staging(
         f"\nFinished staging setup for {slug}. View map here: https://dev.macrostrat.org/maps/ingestion/{source_id}/ \n"
     )
 
-
+'''
 # ----------------------------------------------------------------------------------------------------------------------
 
 
