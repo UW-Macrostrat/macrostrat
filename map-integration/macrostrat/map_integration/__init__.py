@@ -2,6 +2,7 @@ import os
 from typing import Required
 
 os.environ["USE_PYGEOS"] = "0"
+os.environ["USE_PYGEOS"] = "0"
 
 import re
 from sys import stdin
@@ -30,14 +31,19 @@ from .migrations import run_migrations
 from .process import cli as _process
 from .process.insert import _delete_map_data
 from .utils import IngestionCLI, MapInfo, table_exists
+from rich.console import Console
+
+from pathlib import Path
+from .pipeline import upload_file
+from macrostrat.map_integration.utils.file_discovery import find_gis_files
+from macrostrat.map_integration.utils.staging_upload_dir import *
 
 help_text = f"""Ingest maps into Macrostrat.
 
 Active map: [bold cyan]{app.state.get("active_map")}[/]
 """
-
+console =Console()
 cli = IngestionCLI(no_args_is_help=True, name="map-ingestion", help=help_text)
-
 
 @cli.command(name="set-active")
 def set_active_map(map: MapInfo = None):
@@ -247,18 +253,13 @@ cli.add_typer(sources, name="sources", help="Manage map sources")
 
 # ______________________________________________________________________________________________________________________
 
-from pathlib import Path
-from .pipeline import upload_file
-from macrostrat.map_integration.utils.file_discovery import find_gis_files
-from macrostrat.map_integration.utils.staging_upload_file import *
+staging_cli = IngestionCLI(no_args_is_help=True, help="Staging pipeline & storage")
+cli.add_typer(staging_cli, name="staging")
 
-
-@cli.command(name="staging")
 def staging(
     slug: str,
     data_path: str,
     name: str,
-    s3: bool,
     meta_path: str = Option(
         None, help="metadata URL to merge into the sources polygons/lines/points table"
     ),
@@ -290,12 +291,7 @@ def staging(
         print(f"Excluded {len(excluded_files)} file(s) due to filter:")
         for path in excluded_files:
             print(f"{path}")
-    if s3:
-        upload_to_s3 = staging_upload_file(slug, data_path)
-        print(upload_to_s3)
 
-
-'''
     ingest_pipeline, comments, state = ingest_map(
         slug,
         gis_files,
@@ -386,7 +382,58 @@ def staging(
         f"\nFinished staging setup for {slug}. View map here: https://dev.macrostrat.org/maps/ingestion/{source_id}/ \n"
     )
 
-'''
+staging_cli.add_command(staging, name="ingest")
+
+#------------------------------------------
+# commands nested under 'macrostrat maps staging...'
+
+@staging_cli.command("upload-dir")
+def cmd_upload_dir(
+    slug: str = ...,
+    data_path: Path = ...,
+):
+    """Upload a local directory to the staging bucket under SLUG/."""
+    res = staging_upload_dir(slug, data_path)
+    pretty_res = json.dumps(res, indent=2)
+    console.print(f'[green] Upload successful! \n {pretty_res} [/green]')
+
+@staging_cli.command("delete-dir")
+def cmd_delete_dir(
+    slug: str = ...,
+    file_name: str = Option(None, help="deletes a specified file within the slug directory.")
+):
+    """Delete all objects under SLUG/ in the staging bucket."""
+    staging_delete_dir(slug, file_name)
+    console.print(f"[green] Delete successful! \n Deleted objects under slug: {slug} [/green]")
+
+@staging_cli.command("list")
+def cmd_list_dir(
+    slug: str = ...,
+    page_token: int = Option(0, "--page-token", "-t", help="Offset to start from"),
+    page_size: int = Option(10, "--page-size", "-s", help="Items per page"),
+    more: bool = Option(False, "--more", "-m", help="Interactively page through results"),
+):
+    """List paginated files under SLUG."""
+    if not more:
+        page = staging_list_dir(slug, page_token=page_token, page_size=page_size)
+        files = json.dumps(page, indent=2)
+        console.print(f'[green] {files} [/green]')
+        return
+
+    token = page_token
+    while True:
+        page = staging_list_dir(slug, page_token=token, page_size=page_size)
+        for f in page["files"]:
+            console.print(f'[green]{f}[/green]')
+        if page["next_page_token"] is None:
+            print("\n-- End of list --")
+            break
+        resp = input("\nPress Enter for next page, or type 'exit' to stop: ").strip().lower()
+        if resp in ("exit", "quit", "q"):
+            break
+        token = page["next_page_token"]
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 

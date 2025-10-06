@@ -3,6 +3,7 @@ import tempfile
 from os import path
 from textwrap import dedent
 import pathlib
+import json
 from macrostrat.core.schemas import (  # type: ignore[import-untyped]
     IngestProcess,
     IngestProcessTag,
@@ -29,7 +30,7 @@ settings = app_.settings
 #delete the object group id from all the tables.
 #super standardized upload
 #specify the bucket name
-def staging_upload_file(slug: str, data_path: pathlib.Path) -> dict:
+def staging_upload_dir(slug: str, data_path: pathlib.Path) -> dict:
     endpoint = settings.get("storage.endpoint")
     b_access = settings.get("storage.access_key")
     b_secret = settings.get("storage.secret_key")
@@ -107,3 +108,77 @@ def staging_upload_file(slug: str, data_path: pathlib.Path) -> dict:
         "endpoint": endpoint,
         "destination": f"s3://{bucket_name}/{slug}/",
     }
+
+
+def staging_delete_dir(slug: str, file_name: str | None = None) -> None:
+    endpoint = settings.get("storage.endpoint")
+    b_access = settings.get("storage.access_key")
+    b_secret = settings.get("storage.secret_key")
+    bucket_name = settings.get("storage.bucket_name")
+
+    cfg = dedent(f"""
+        [dev]
+        type = s3
+        provider = Minio
+        endpoint = {endpoint}
+        access_key_id = {b_access}
+        secret_access_key = {b_secret}
+        acl = private
+    """)
+
+    target = f"dev:{bucket_name}/{slug}" + (f"/{file_name}" if file_name else "")
+
+    with tempfile.NamedTemporaryFile("w+", delete=False) as tf:
+        tf.write(cfg); tf.flush()
+        cmd = ["rclone", "deletefile" if file_name else "purge", target, "--config", tf.name, "--s3-no-check-bucket"]
+        try:
+            subprocess.run(cmd, check=True)
+        except FileNotFoundError:
+            conf_dir, conf_name = path.dirname(tf.name), path.basename(tf.name)
+            subprocess.run(
+                ["docker","run","--rm","-v",f"{conf_dir}:/cfg:ro","rclone/rclone:latest",
+                 "deletefile" if file_name else "purge", target,
+                 "--config", f"/cfg/{conf_name}","--s3-no-check-bucket"],
+                check=True,
+            )
+
+
+
+def staging_list_dir(slug: str, page_token: int = 0, page_size: int = 10) -> dict:
+    endpoint = settings.get("storage.endpoint")
+    b_access = settings.get("storage.access_key")
+    b_secret = settings.get("storage.secret_key")
+    bucket_name = settings.get("storage.bucket_name")
+
+    cfg = dedent(f"""
+        [dev]
+        type = s3
+        provider = Minio
+        endpoint = {endpoint}
+        access_key_id = {b_access}
+        secret_access_key = {b_secret}
+        acl = private
+    """)
+    dst = f"dev:{bucket_name}/{slug}"
+
+    with tempfile.NamedTemporaryFile("w+", delete=False) as tf:
+        tf.write(cfg); tf.flush()
+        try:
+            out = subprocess.run(
+                ["rclone", "lsjson", dst, "--config", tf.name, "--recursive", "--files-only"],
+                check=True, capture_output=True, text=True
+            ).stdout
+        except FileNotFoundError:
+            conf_dir, conf_name = path.dirname(tf.name), path.basename(tf.name)
+            out = subprocess.run(
+                ["docker", "run", "--rm", "-v", f"{conf_dir}:/cfg:ro", "rclone/rclone:latest",
+                 "lsjson", dst, "--config", f"/cfg/{conf_name}", "--recursive", "--files-only"],
+                check=True, capture_output=True, text=True
+            ).stdout
+
+    files = [f"{slug}/{o['Path']}" for o in json.loads(out)]
+    end = page_token + page_size
+    next_token = end if end < len(files) else None
+    return {"files": files[page_token:end], "next_page_token": next_token, "total": len(files)}
+
+
