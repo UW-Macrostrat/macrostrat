@@ -592,3 +592,38 @@ CREATE VIEW macrostrat_api.legend_liths AS
    FROM (maps.legend l
      LEFT JOIN maps.legend_liths ll ON ((ll.legend_id = l.legend_id)))
   GROUP BY l.legend_id, l.source_id, l.name;
+
+create view macrostrat_api.kg_matches as 
+select 
+    id::text as strat_name_id,
+    null::text as lith_id,
+    null::text as lith_att_id,
+    null::text as concept_id
+from macrostrat.strat_names 
+
+union all
+
+select 
+    null::text as strat_name_id,
+    id::text as lith_id,
+    null::text as lith_att_id,
+    null::text as concept_id
+from macrostrat.liths 
+
+union all
+
+select 
+    null::text as strat_name_id,
+    null::text as lith_id,
+    id::text as lith_att_id,
+    null::text as concept_id
+from macrostrat.lith_atts 
+
+union all
+
+select 
+    null::text as strat_name_id,
+    null::text as lith_id,
+    null::text as lith_att_id,
+    concept_id::text as concept_id
+from macrostrat.strat_names_meta;
