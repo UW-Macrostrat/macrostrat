@@ -6,7 +6,11 @@ CREATE TYPE maps.ingest_state AS ENUM (
   'prepared',
   'failed',
   'abandoned',
-  'post_harmonization'
+  'post-harmonization',
+  'pre-processed',
+  'post-processed',
+  'needs review',
+  'finalized'
 );
 
 CREATE TYPE maps.ingest_type AS ENUM (
@@ -18,7 +22,9 @@ CREATE TABLE maps_metadata.ingest_process
 (
     id                serial primary key,
     state             maps.ingest_state,
+    slug              text,
     type              maps.ingest_type,
+    ingest_pipeline   text,
     comments          text,
     source_id         integer
         references maps.sources,
@@ -28,7 +34,9 @@ CREATE TABLE maps_metadata.ingest_process
         references storage.object_group,
     created_on        timestamp with time zone default now() not null,
     completed_on      timestamp with time zone,
-    map_id            text
+    map_id            text,
+    map_url           text,
+    ingested_by       text
 );
 
 

@@ -18,6 +18,7 @@ from macrostrat.database.transfer.stream_utils import (
 from macrostrat.database.transfer.utils import (
     _create_command,
     _create_database_if_not_exists,
+    _docker_local_run_args,
 )
 from macrostrat.utils import get_logger
 
@@ -71,13 +72,17 @@ async def _restore_mariadb(engine: Engine, *args, **kwargs):
         engine.url, create=create, allow_exists=False, overwrite=overwrite
     )
     conn = build_connection_args(docker_internal_url(engine.url))
+    restore_opts = [
+        "--force",
+        # "--init-command=SET SESSION sql_log_bin=0;SET SESSION foreign_key_checks=0;SET SESSION unique_checks=0",
+    ]
 
     # Run mariadb in a local Docker container
     # or another location, if more appropriate. Running on the remote
     # host, if possible, is probably the fastest option. There should be
     # multiple options ideally.
     command_prefix = _docker_local_run_args(container)
-    _cmd = [*command_prefix, "mariadb", *conn, *args]
+    _cmd = [*command_prefix, "mariadb", *restore_opts, *conn, *args]
 
     _log_command(engine.url, _cmd)
 
@@ -87,7 +92,7 @@ async def _restore_mariadb(engine: Engine, *args, **kwargs):
         stderr=asyncio.subprocess.PIPE,
         limit=1024 * 1024 * 1,  # 1 MB windows
         # Stdout to dev null
-        stdout=asyncio.subprocess.PIPE,
+        stdout=asyncio.subprocess.DEVNULL,
     )
 
 
@@ -110,13 +115,23 @@ async def _dump_mariadb(engine: Engine, *args, **kwargs):
     conn = build_connection_args(
         docker_internal_url(engine.url), ParameterStyle.MySQLDump
     )
+    use_tls = kwargs.pop("use_tls", True)
+    if use_tls:
+        conn += ["--ssl", "--tls-version=TLSv1.2"]
+    else:
+        conn += ["--skip-ssl"]
 
-    _cmd = _create_command(
-        "mysqldump",
-        *conn,
-        args=args,
-        container=container,
+    # flags to reduce packet size and avoid mid dump drops
+    args = (
+        "--compress",
+        "--single-transaction",
+        "--quick",
+        f"--max-allowed-packet={1024*1024*1024}",
+        *args,
     )
+
+    command_prefix = _docker_local_run_args(container)
+    _cmd = [*command_prefix, "mysqldump", *conn, *args]
 
     _log_command(engine.url, _cmd)
 

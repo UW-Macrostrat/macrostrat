@@ -21,7 +21,11 @@ def build_paleogeography_subsystem(app, db_subsystem):
     except ImportError as err:
         raise SubsystemLoadError("Corelle subsystem not available") from err
 
-    paleo_app = Typer(name="paleogeography", no_args_is_help=True)
+    paleo_app = Typer(
+        name="paleogeography",
+        no_args_is_help=True,
+        short_help="Paleogeography models and data",
+    )
 
     @paleo_app.command(
         name="corelle",

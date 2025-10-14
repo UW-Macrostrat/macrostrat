@@ -15,6 +15,7 @@ from macrostrat.core.main import env_text, set_app_state
 from macrostrat.utils.shell import run
 
 from .database import db_app, db_subsystem
+from .subsystems.dev import dev_app
 from .subsystems.macrostrat_api import MacrostratAPISubsystem
 from .subsystems.paleogeography import (
     SubsystemLoadError,
@@ -22,7 +23,6 @@ from .subsystems.paleogeography import (
 )
 from .utils import run_user_command_if_provided
 from .v1_entrypoint import v1_cli
-from .v2_commands import app as v2_app
 
 __here__ = Path(__file__).parent
 fixtures_dir = __here__ / "fixtures"
@@ -31,6 +31,11 @@ install(show_locals=False)
 
 
 # Manage as a docker-compose application
+
+
+def initialize(app):
+    pass
+
 
 settings = app.settings
 rockd_url = settings.get("ROCKD_DATABASE") or settings.get("rockd_database")
@@ -90,14 +95,14 @@ main = app.control_command(
 main.add_typer(
     db_app,
     name="database",
-    short_help="Manage the Macrostrat database",
+    short_help="Macrostrat database",
     aliases=["db"],
 )
 
 main.add_typer(
     rockd_cli,
     name="rockd-db",  # command group name
-    short_help="Manage the Rockd database",  # shows in --help
+    short_help="Rockd database",  # shows in --help
     rich_help_panel="Subsystems",
 )
 
@@ -217,7 +222,7 @@ try:
         map_app,
         name="maps",
         rich_help_panel="Subsystems",
-        short_help="Map integration system (partial overlap with v1 commands)",
+        short_help="Map integration system",
     )
 except ImportError as err:
     app.console.print("Could not import map integration subsystem", err)
@@ -230,6 +235,7 @@ try:
         rich_help_panel="Subsystems",
         short_help="Raster data integration",
         context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
+        deprecated=True,
     )
     def rast(ctx: typer.Context):
         run(
@@ -248,7 +254,7 @@ try:
     main.add_typer(
         weaver_app,
         name="weaver",
-        rich_help_panel="Subsystems",
+        rich_help_panel="Integrations",
         short_help="Prototype geochemical data management system",
     )
 
@@ -261,30 +267,6 @@ try:
 except ImportError as err:
     pass
 
-
-# TODO: consider removing tileserver config - or adjusting, as fixtures
-# are now run automatically on tileserver startup.
-try:
-    from macrostrat_tileserver.cli import _cli as tileserver_cli
-    from macrostrat_tileserver.cli import create_fixtures
-
-    environ["DATABASE_URL"] = app.settings.pg_database
-    main.add_typer(
-        tileserver_cli,
-        name="tileserver",
-        rich_help_panel="Subsystems",
-        short_help="Control Macrostrat's tileserver",
-    )
-
-    def update_tileserver(db):
-        app.console.print("Creating models for [bold cyan]tileserver[/] subsystem")
-        create_fixtures()
-
-    db_subsystem.register_schema_part(name="tileserver", callback=update_tileserver)
-
-except ImportError as err:
-    pass
-    # app.console.print("Could not import tileserver subsystem")
 
 # Get subsystems config
 subsystems = getattr(settings, "subsystems", {})
@@ -311,6 +293,7 @@ if kube_namespace := getattr(settings, "kube_namespace", None):
         name="kube",
         short_help="Kubernetes utilities",
         rich_help_panel="Subsystems",
+        deprecated=True,
     )
 
 
@@ -340,7 +323,7 @@ main.add_typer(
     integrations_app,
     name="integrations",
     short_help="Integrations with other data systems",
-    rich_help_panel="Subsystems",
+    rich_help_panel="Integrations",
 )
 
 
@@ -376,6 +359,9 @@ main.add_typer(
 from .subsystems.test import cli as test_app
 
 main.add_typer(test_app, name="test", rich_help_panel="Subsystems")
+
+# TODO: disable dev app in some cases
+main.add_typer(dev_app, name="dev", rich_help_panel="Subsystems")
 
 
 app.finish_loading_subsystems()
@@ -426,7 +412,6 @@ def install():
 
 # Add the v1 CLI
 main.add_click_command(v1_cli, name="v1", deprecated=True, rich_help_panel="Legacy")
-main.add_typer(v2_app, name="v2", deprecated=True, rich_help_panel="Legacy")
 
 
 # main.add_click_command(v1_cli, name="v1")
@@ -468,6 +453,6 @@ discovered_plugins = entry_points(group="macrostrat.subsystems")
 for entry_point in discovered_plugins:
     plugin = entry_point.load()
     if isinstance(plugin, typer.Typer):
-        main.add_typer(plugin, name=entry_point.name, rich_help_panel="Subsystems")
+        main.add_typer(plugin, name=entry_point.name, rich_help_panel="Extensions")
 
 # main = setup_exception_handling(main)

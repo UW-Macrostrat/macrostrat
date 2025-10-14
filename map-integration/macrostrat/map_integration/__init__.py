@@ -1,10 +1,15 @@
 import os
+from typing import Required
 
 os.environ["USE_PYGEOS"] = "0"
+os.environ["USE_PYGEOS"] = "0"
 
+import re
+from pathlib import Path
 from sys import stdin
 
 from psycopg2.sql import Identifier
+from rich.console import Console
 from typer import Option
 
 from macrostrat.core import app
@@ -14,6 +19,7 @@ from macrostrat.map_integration.pipeline import ingest_map
 from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
 from macrostrat.map_integration.utils.file_discovery import find_gis_files
 from macrostrat.map_integration.utils.map_info import get_map_info
+from macrostrat.map_integration.utils.staging_upload_dir import *
 
 from . import pipeline
 from .commands.copy_sources import copy_macrostrat_sources
@@ -25,6 +31,7 @@ from .commands.source_info import source_info
 from .commands.sources import map_sources
 from .database import get_database
 from .migrations import run_migrations
+from .pipeline import upload_file
 from .process import cli as _process
 from .process.insert import _delete_map_data
 from .utils import IngestionCLI, MapInfo, table_exists
@@ -33,7 +40,7 @@ help_text = f"""Ingest maps into Macrostrat.
 
 Active map: [bold cyan]{app.state.get("active_map")}[/]
 """
-
+console = Console()
 cli = IngestionCLI(no_args_is_help=True, name="map-ingestion", help=help_text)
 
 
@@ -87,6 +94,9 @@ def delete_sources(
 
     if not stdin.isatty() and len(slugs) == 1 and slugs[0] == "-":
         slugs = [line.strip() for line in stdin]
+    elif len(slugs) == 1 and os.path.isfile(slugs[0]):
+        with open(slugs[0]) as file:
+            slugs = [line.strip() for line in file if line.strip()]
 
     if dry_run:
         print("Deleting maps:")
@@ -242,24 +252,22 @@ cli.add_typer(sources, name="sources", help="Manage map sources")
 
 # ______________________________________________________________________________________________________________________
 
-from pathlib import Path
+staging_cli = IngestionCLI(no_args_is_help=True, help="Staging pipeline & storage")
+cli.add_typer(staging_cli, name="staging")
 
-from macrostrat.map_integration.utils.file_discovery import find_gis_files
 
-
-@cli.command(name="staging")
 def staging(
     slug: str,
     data_path: str,
     name: str,
-    legend_file: str = Option(
+    meta_path: str = Option(
         None, help="metadata URL to merge into the sources polygons/lines/points table"
     ),
-    legend_key: str = Option(
+    merge_key: str = Option(
         None,
         help="primary key to left join the metadata into the sources polygons/lines/points table",
     ),
-    legend_table: str = Option(
+    meta_table: str = Option(
         "polygons",
         help="Options: polygons, lines, or points. specifies the table in which the legend metadata is merged into. It defaults to sources polygons",
     ),
@@ -284,13 +292,13 @@ def staging(
         for path in excluded_files:
             print(f"{path}")
 
-    ingest_map(
+    ingest_pipeline, comments, state = ingest_map(
         slug,
         gis_files,
         if_exists="replace",
-        legend_file=legend_file,
-        legend_key=legend_key,
-        legend_table=legend_table,
+        meta_path=meta_path,
+        merge_key=merge_key,
+        meta_table=meta_table,
     )
 
     source_id = db.run_query(
@@ -308,16 +316,23 @@ def staging(
         )
 
     db.run_sql(
-        "UPDATE maps.sources SET scale = :scale WHERE source_id = :source_id",
-        dict(scale="large", source_id=source_id),
+        "UPDATE maps.sources SET scale = :scale, ingested_by = :ingested_by WHERE source_id = :source_id",
+        dict(scale="large", ingested_by="macrostrat-admin", source_id=source_id),
     )
-
+    # add map_url later
     db.run_sql(
         """
-        INSERT INTO maps_metadata.ingest_process (state, source_id, object_group_id)
-        VALUES (:state, :source_id, :object_group_id);
+        INSERT INTO maps_metadata.ingest_process (state, source_id, object_group_id, ingested_by, ingest_pipeline, comments)
+        VALUES (:state, :source_id, :object_group_id, :ingested_by, :ingest_pipeline, :comments);
         """,
-        dict(state="ingested", source_id=source_id, object_group_id=1),
+        dict(
+            state=state,
+            source_id=source_id,
+            object_group_id=1,
+            ingested_by="macrostrat-admin",
+            ingest_pipeline=ingest_pipeline,
+            comments=comments,
+        ),
     )
 
     map_info = get_map_info(db, slug)
@@ -368,41 +383,136 @@ def staging(
     )
 
 
+staging_cli.add_command(staging, name="ingest")
+
+# ------------------------------------------
+# commands nested under 'macrostrat maps staging...'
+
+
+@staging_cli.command("upload-dir")
+def cmd_upload_dir(
+    slug: str = ...,
+    data_path: Path = ...,
+):
+    """Upload a local directory to the staging bucket under SLUG/."""
+    res = staging_upload_dir(slug, data_path)
+    pretty_res = json.dumps(res, indent=2)
+    console.print(f"[green] Upload successful! \n {pretty_res} [/green]")
+
+
+@staging_cli.command("delete-dir")
+def cmd_delete_dir(
+    slug: str = ...,
+    file_name: str = Option(
+        None, help="deletes a specified file within the slug directory."
+    ),
+):
+    """Delete all objects under SLUG/ in the staging bucket."""
+    staging_delete_dir(slug, file_name)
+    console.print(
+        f"[green] Delete successful! \n Deleted objects under slug: {slug} [/green]"
+    )
+
+
+@staging_cli.command("list")
+def cmd_list_dir(
+    slug: str = ...,
+    page_token: int = Option(0, "--page-token", "-t", help="Offset to start from"),
+    page_size: int = Option(10, "--page-size", "-s", help="Items per page"),
+    more: bool = Option(
+        False, "--more", "-m", help="Interactively page through results"
+    ),
+):
+    """List paginated files under SLUG."""
+    if not more:
+        page = staging_list_dir(slug, page_token=page_token, page_size=page_size)
+        files = json.dumps(page, indent=2)
+        console.print(f"[green] {files} [/green]")
+        return
+
+    token = page_token
+    while True:
+        page = staging_list_dir(slug, page_token=token, page_size=page_size)
+        for f in page["files"]:
+            console.print(f"[green]{f}[/green]")
+        if page["next_page_token"] is None:
+            print("\n-- End of list --")
+            break
+        resp = (
+            input("\nPress Enter for next page, or type 'exit' to stop: ")
+            .strip()
+            .lower()
+        )
+        if resp in ("exit", "quit", "q"):
+            break
+        token = page["next_page_token"]
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 
-@cli.command(name="staging-bulk")
+@cli.command(name="bulk-staging")
 def staging_bulk(
-    parent_path: str = Option(
+    # required
+    meta_parent_path: str = Option(
         ..., help="Parent directory containing region subfolders"
     ),
+    # required
     prefix: str = Option(..., help="Slug prefix to avoid collisions"),
+    # required
+    merge_key: str = Option(
+        ...,
+        help="primary key to left join the metadata into the sources polygons/lines/points table",
+    ),
+    meta_table: str = Option(
+        "polygons",
+        help="Options: polygons, lines, or points. specifies the table in which the legend metadata is merged into. It defaults to sources polygons",
+    ),
     filter: str = Option(None, help="Filter applied to GIS file selection"),
 ):
     """
     Ingest all maps from subdirectories within a parent folder.
     """
     db = get_database()
-    parent = Path(parent_path)
-
+    parent = Path(meta_parent_path)
+    staged_slugs = []
     if not parent.exists() or not parent.is_dir():
-        raise ValueError(f"{parent_path} is not a valid directory.")
+        raise ValueError(f"{meta_parent_path} is not a valid directory.")
 
     region_dirs = sorted([p for p in parent.iterdir() if p.is_dir()])
 
     for region_path in region_dirs:
-        slug = f"{region_path.name.lower()}_{prefix}"
-        name = region_path.name
-        data_path = region_path
-        print(f"\n🚀 Ingesting {slug} from {data_path}")
+        # normalize slug name
+        stem = region_path.stem.lower()
+        clean_stem = re.sub(r"\s+", "_", stem.strip())
+        clean_stem = re.sub(r"[^a-z0-9_]", "", clean_stem)
+        slug = f"{prefix}_{clean_stem}"
+        name = region_path.stem
+        meta_path = region_path
+        staged_slugs.append(slug)
 
-        gis_files, excluded_files = find_gis_files(data_path, filter=filter)
+        print(f"Ingesting {slug} from {meta_path}")
+        gis_files, excluded_files = find_gis_files(Path(meta_path), filter=filter)
         if not gis_files:
-            print(f"⚠️ No GIS files found in {data_path}, skipping.")
-            continue
+            raise ValueError(f"No GIS files found in {meta_path}")
+
+        print(f"Found {len(gis_files)} GIS file(s)")
         for path in gis_files:
-            print(f"  ✓ {path}")
-        ingest_map(slug, gis_files, if_exists="replace")
+            print(f"{path}")
+
+        if excluded_files:
+            print(f"Excluded {len(excluded_files)} file(s) due to filter:")
+            for path in excluded_files:
+                print(f"{path}")
+
+        ingest_pipeline, comments, state = ingest_map(
+            slug,
+            gis_files,
+            if_exists="replace",
+            meta_path=meta_path,
+            merge_key=merge_key,
+            meta_table=meta_table,
+        )
 
         source_id = db.run_query(
             "SELECT source_id FROM maps.sources WHERE slug = :slug",
@@ -419,16 +529,24 @@ def staging_bulk(
             )
 
         db.run_sql(
-            "UPDATE maps.sources SET scale = :scale WHERE source_id = :source_id",
-            dict(scale="large", source_id=source_id),
+            "UPDATE maps.sources SET scale = :scale, ingested_by = :ingested_by WHERE source_id = :source_id",
+            dict(scale="large", ingested_by="macrostrat-admin", source_id=source_id),
         )
-
+        # add map_url later
         db.run_sql(
             """
-            INSERT INTO maps_metadata.ingest_process (state, source_id, object_group_id)
-            VALUES (:state, :source_id, :object_group_id);
+            INSERT INTO maps_metadata.ingest_process (state, source_id, object_group_id, ingested_by, ingest_pipeline, comments, slug)
+            VALUES (:state, :source_id, :object_group_id, :ingested_by, :ingest_pipeline, :comments, :slug);
             """,
-            dict(state="ingested", source_id=source_id, object_group_id=1),
+            dict(
+                state=state,
+                source_id=source_id,
+                object_group_id=1,
+                ingested_by="macrostrat-admin",
+                ingest_pipeline=ingest_pipeline,
+                comments=comments,
+                slug=slug,
+            ),
         )
 
         map_info = get_map_info(db, slug)
@@ -477,5 +595,9 @@ def staging_bulk(
             )
 
         print(
-            f"\nFinished staging setup for {slug}. View map here: https://dev2.macrostrat.org/maps/ingestion/{source_id}/ \n"
+            f"\nFinished staging setup for {slug}. View map here: https://dev.macrostrat.org/maps/ingestion/{source_id}/ \n"
         )
+    slug_list_path = parent / f"staged_slugs.txt"
+    with open(slug_list_path, "w") as file:
+        for slug in staged_slugs:
+            file.write(slug + "\n")

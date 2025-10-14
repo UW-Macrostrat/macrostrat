@@ -7,5 +7,6 @@ class MapsSoureOperationsMigration(Migration):
     description = """ Create table for tracking map management operations """
 
     depends_on = ["api-v3"]
+    readiness_state = "ga"
 
     postconditions = [exists("maps", "source_operations")]

@@ -12,6 +12,7 @@ class MapsScaleCustomTypeMigration(Migration):
     """
 
     depends_on = ["baseline", "macrostrat-mariadb"]
+    readiness_state = "ga"
 
     postconditions = [
         custom_type_exists("maps", "map_scale"),

@@ -1,8 +1,7 @@
 """
 Simple tests for the Macrostrat system.
-
-These tests are designed to run against a deployed instance
-of Macrostrat to ensure that the system is functioning as expected.
+If these tests pass, the external-facing Macrostrat system is likely
+functioning correctly.
 
 Unlike unit or integration tests, these tests depend on the state
 of the deployed system and can depend on specific data being present.
@@ -17,7 +16,8 @@ from requests import Session
 client = Session()
 
 tileserver = "https://tileserver.development.svc.macrostrat.org"
-website = "https://dev2.macrostrat.org"
+# TODO: deprecate dev2
+website = "https://dev.macrostrat.org"
 
 
 def test_tile_cache():
@@ -65,3 +65,9 @@ def test_legacy_tile():
     assert res.status_code == 200
     assert res.headers["Content-Type"] == "image/png"
     assert len(res.content) > 0, "Tile content should not be empty"
+
+
+def test_get_macrostrat_base_url():
+    """
+    Test that we get the proper HOST returned when we request a Macrostrat URL
+    """

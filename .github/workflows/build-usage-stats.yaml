@@ -42,7 +42,7 @@ jobs:
           tags: |
             type=ref,event=pr,suffix=-{{date 'YYYYMMDDHHmmss'}}
             type=ref,event=branch,suffix=-{{date 'YYYYMMDDHHmmss'}}
-            type=semver,pattern={{version}}
+            type=raw,value=${{ env.VERSION }},enable=${{ env.VERSION != '' }}
             type=raw,value=latest,enable={{is_default_branch}}
             type=raw,value=sha-{{sha}}
       - name: Set up Docker BuildX

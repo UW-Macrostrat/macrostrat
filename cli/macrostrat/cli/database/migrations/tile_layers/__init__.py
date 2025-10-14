@@ -15,5 +15,7 @@ class TileLayersMigration(Migration):
     description = """
     Create tileserver views
     """
+    readiness_state = "ga"
+
     always_apply = True
     depends_on = ["macrostrat-tileserver"]

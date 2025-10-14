@@ -5,24 +5,24 @@ from dotenv import load_dotenv
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
-load_dotenv()
 
-raw_url = os.getenv("DATABASE_URL")
+async def insert(payload=None, table_name=None, db_url=None):
+    load_dotenv()
 
-# Ensure it uses asyncpg
-if raw_url.startswith("postgresql://"):
-    raw_url = raw_url.replace("postgresql://", "postgresql+asyncpg://", 1)
-elif not raw_url.startswith("postgresql+asyncpg://"):
-    raise ValueError(
-        "Invalid DATABASE_URL: must start with postgresql:// or postgresql+asyncpg://"
-    )
+    raw_url = db_url
 
-DATABASE_URL = raw_url
+    # Ensure it uses asyncpg
+    if raw_url.startswith("postgresql://"):
+        raw_url = raw_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    else:
+        raise ValueError(
+            "Invalid DATABASE_URL: must start with postgresql:// or postgresql+asyncpg://"
+        )
 
-engine = create_async_engine(DATABASE_URL, echo=True)
+    DATABASE_URL = raw_url
 
+    engine = create_async_engine(DATABASE_URL, echo=True, connect_args={"ssl": None})
 
-async def insert(payload=None, table_name=None):
     async with engine.connect() as conn:
         if payload is None:
             print("No payload provided")

@@ -14,6 +14,7 @@ class PartitionMapsMigration(Migration):
     into a single map table, partitioned by scale to retain the original table structure and avoid copying data.
     """
     depends_on = ["macrostrat-core-v2"]
+    readiness_state = "ga"
 
     postconditions = [
         exists("maps", "lines", "polygons"),

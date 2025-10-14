@@ -220,6 +220,17 @@ def compare_data_counts(db1_rows, db2_rows, db1_columns, db2_columns, db1, db2):
     }
     # col_count_difference.update(db1_cols_not_in_db2)
     # col_count_difference.update(db2_cols_not_in_db1)
+    # Special-case: pgloader post-script removes exact duplicates in autocomplete
+    if "autocomplete" in row_count_difference:
+        v1, v2 = row_count_difference["autocomplete"]
+        # Expect exactly 298 fewer rows in Postgres (e.g., 58599 -> 58301)
+        if (v1 - v2) == 298 or (v1 - v2) == -298:
+            success(
+                f"'autocomplete' duplicates removed as expected from postprocess script({v1} -> {v2}, +/-298)."
+            )
+            row_count_difference = {
+                k: v for k, v in row_count_difference.items() if k != "autocomplete"
+            }
 
     if len(row_count_difference) == 0:
         success(f"All row counts in all tables are the same in {db1} and {db2}!")

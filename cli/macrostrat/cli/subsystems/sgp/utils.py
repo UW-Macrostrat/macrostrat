@@ -33,12 +33,11 @@ def get_sgp_db():
     return Database(url)
 
 
-def get_sgp_samples(procedure):
-    SGP = get_sgp_db()
+def get_sgp_samples(sgp_db, procedure):
     measurements_query = stored_procedure(procedure)
     samples = GeoDataFrame.from_postgis(
         measurements_query,
-        SGP.engine.connect(),
+        sgp_db.engine.connect(),
         geom_col="geom",
         index_col="sample_id",
     )

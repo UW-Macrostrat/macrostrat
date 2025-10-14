@@ -31,7 +31,7 @@ jobs:
         run: scripts/prepare-services
       - name: Get the version from the tag, if it exists
         run: |
-          TAG=${{ github.event.release.tag_name }}
+          TAG=${{ github.ref_name }}
           VERSION=$(echo "${TAG}" | sed -E 's/legacy-tileserver-v//')
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
       - name: Docker meta
@@ -40,9 +40,9 @@ jobs:
         with:
           images: hub.opensciencegrid.org/macrostrat/legacy-tileserver
           tags: |
+            type=raw,value=${{ env.VERSION }},enable=${{ env.VERSION != '' }}
             type=ref,event=pr,suffix=-{{date 'YYYYMMDDHHmmss'}}
             type=ref,event=branch,suffix=-{{date 'YYYYMMDDHHmmss'}}
-            type=semver,pattern={{version}}
             type=raw,value=latest,enable={{is_default_branch}}
             type=raw,value=sha-{{sha}}
       - name: Set up Docker BuildX
