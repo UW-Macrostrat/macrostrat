@@ -593,37 +593,43 @@ CREATE VIEW macrostrat_api.legend_liths AS
      LEFT JOIN maps.legend_liths ll ON ((ll.legend_id = l.legend_id)))
   GROUP BY l.legend_id, l.source_id, l.name;
 
-create view macrostrat_api.kg_matches as 
-select 
-    id::text as strat_name_id,
-    null::text as lith_id,
-    null::text as lith_att_id,
-    null::text as concept_id
-from macrostrat.strat_names 
+CREATE OR REPLACE VIEW macrostrat_api.kg_matches AS (
+   WITH all_lith_ids AS (
+      SELECT 
+         id::text AS lith_id,
+         NULL::text AS lith_att_id
+      FROM macrostrat.liths
 
-union all
+      UNION ALL
 
-select 
-    null::text as strat_name_id,
-    id::text as lith_id,
-    null::text as lith_att_id,
-    null::text as concept_id
-from macrostrat.liths 
+      SELECT 
+         NULL::text AS lith_id,
+         id::text AS lith_att_id
+      FROM macrostrat.lith_atts
+   ),
 
-union all
+   parsed_kg_entities AS (
+      SELECT 
+         id,
+         match::jsonb,
+         source,
+         indices,
+         (match::jsonb ->> 'lith_id') AS lith_id,
+         (match::jsonb ->> 'lith_att_id') AS lith_att_id
+      FROM macrostrat_api.kg_entities
+   )
 
-select 
-    null::text as strat_name_id,
-    null::text as lith_id,
-    id::text as lith_att_id,
-    null::text as concept_id
-from macrostrat.lith_atts 
-
-union all
-
-select 
-    null::text as strat_name_id,
-    null::text as lith_id,
-    null::text as lith_att_id,
-    concept_id::text as concept_id
-from macrostrat.strat_names_meta;
+   SELECT 
+      a.lith_id,
+      a.lith_att_id,
+      k.match,
+      k.source,
+      k.indices,
+      s.paragraph_text as context_text
+   FROM all_lith_ids a
+   LEFT JOIN parsed_kg_entities k
+      ON (a.lith_id IS NOT NULL AND k.lith_id = a.lith_id)
+      OR (a.lith_att_id IS NOT NULL AND k.lith_att_id = a.lith_att_id)
+   LEFT JOIN macrostrat_api.kg_source_text s
+      ON k.source = s.id
+)
