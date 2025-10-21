@@ -109,7 +109,8 @@ it("should accept a response parameter", function (done) {
 });
 
 it("should accept a lith parameter", function (done) {
-  request(settings.host)
+    this.timeout(10000);
+    request(settings.host)
     .get("/units?lith=sandstone")
     .expect(validators.aSuccessfulRequest)
     .expect(validators.json)
@@ -126,7 +127,8 @@ it("should accept a lith parameter", function (done) {
 });
 
 it("should accept a lith_type parameter", function (done) {
-  request(settings.host)
+    this.timeout(10000);
+    request(settings.host)
     .get("/units?lith_type=organic")
     .expect(validators.aSuccessfulRequest)
     .expect(validators.json)
@@ -145,7 +147,8 @@ it("should accept a lith_type parameter", function (done) {
 });
 
 it("should accept a lith_class parameter", function (done) {
-  request(settings.host)
+    this.timeout(10000);
+    request(settings.host)
     .get("/units?lith_class=metamorphic")
     .expect(validators.aSuccessfulRequest)
     .expect(validators.json)

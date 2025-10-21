@@ -83,6 +83,7 @@ module.exports = function (req, res, next) {
     if (where.length > 0) {
       where = " WHERE " + where.join(", ");
     }
+  //TODO the gmna.lookup_units needs to be repointed to macrostrat. This is the gmna map select * from maps.sources where source_id = 7
 
     let sql = "SELECT gid, unit_abbre, COALESCE(rocktype, '') AS rocktype, COALESCE(lithology, '') AS lith, lith_type, lith_class, min_interval AS t_interval, min_age::float AS t_age, max_interval AS b_interval, max_age::float AS b_age, containing_interval, interval_color AS color" +
         geomField +
