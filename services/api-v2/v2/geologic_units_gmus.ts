@@ -234,7 +234,6 @@ module.exports = function (req, res, next) {
           where +
           orderBy +
           limit;
-
         larkin.queryPg("geomacro", sql, params, function (error, result) {
           if (error) {
             larkin.error(req, res, next, error);

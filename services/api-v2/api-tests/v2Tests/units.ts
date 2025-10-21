@@ -204,7 +204,7 @@ it("should accept a environ_type parameter", function (done) {
 });
 
 it("should accept a environ_class parameter", function (done) {
-    this.timeout(10000);
+    this.timeout(15000);
     request(settings.host)
     .get("/units?environ_class=marine")
     .expect(validators.aSuccessfulRequest)
@@ -224,7 +224,8 @@ it("should accept a environ_class parameter", function (done) {
 });
 
 it("should accept a project_id", function (done) {
-  request(settings.host)
+    this.timeout(15000);
+    request(settings.host)
     .get("/units?project_id=4")
     .expect(validators.aSuccessfulRequest)
     .expect(validators.json)

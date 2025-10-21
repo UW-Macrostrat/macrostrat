@@ -10,7 +10,7 @@ import * as fs from "fs";
 import * as path from "path";
 /*
 const endpointsToFix = [
-  //can't find the gmna.lookup_units table. 'geologic_units_gmna.ts',
+  //can't find the gmna.lookup_units table. 'geologic_units_gmna.ts' Reached out to Shanan to see if we're going to migrate the geomacro db or if i need to rewrite this endpoint.
   //'geologic_units_gmus.ts'
   //'mancos_test_cases.ts',
   //uses gmus.lookup_units table. queries need to be customized and changed to match all of the lookup tables within postgresql

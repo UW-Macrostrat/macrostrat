@@ -42,7 +42,7 @@ function buildSQL(scale, where) {
       LEFT JOIN maps.map_liths ON map_liths.map_id = m.map_id
       LEFT JOIN macrostrat.liths ON map_liths.lith_id = liths.id
       ${where}
-      GROUP BY m.map_id
+      GROUP BY m.map_id, m.source_id, m.name, m.age, m.strat_name, m.lith, m.descrip, m.comments
     )
   `;
 }
@@ -71,7 +71,6 @@ module.exports = function (req, res, next) {
           .join(" UNION ");
 
         var toRun = `SELECT * FROM ( ${scaleSQL} ) doit`;
-
         larkin.queryPg("burwell", toRun, params, function (error, result) {
           if (error || !result.rows || !result.rows.length) {
             return callback(null, {});
