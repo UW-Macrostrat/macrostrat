@@ -55,12 +55,9 @@ module.exports = function (req, res, next) {
   async.parallel(
     {
       burwell: function (callback) {
-        let where = [
-          `
-      ST_Intersects(m.geom, ST_GeomFromText($1, 4326))
-      `,
-        ];
-        let params = [`SRID=4326;POINT(${req.query.lng} ${req.query.lat})`];
+        const geom = `ST_GeomFromText('POINT(${req.query.lng} ${req.query.lat})', 4326)`;
+
+        let where = [`ST_Intersects(m.geom, ${geom})`];
 
         where = " WHERE " + where.join(" AND ");
 
@@ -71,7 +68,8 @@ module.exports = function (req, res, next) {
           .join(" UNION ");
 
         var toRun = `SELECT * FROM ( ${scaleSQL} ) doit`;
-        larkin.queryPg("burwell", toRun, params, function (error, result) {
+
+        larkin.queryPg("burwell", toRun, [], function (error, result) {
           if (error || !result.rows || !result.rows.length) {
             return callback(null, {});
           }
@@ -111,11 +109,12 @@ module.exports = function (req, res, next) {
       // Query Macrostrat for polygon
       column: function (callback) {
         require("../columns")(req, null, null, (error, result) => {
-          if (error) return callback(error);
-
-          if (!result || !result.length) return callback(null, null);
-
-          callback(null, result[0].col_id);
+          if (error) {
+            console.warn("[mobile/point] columns() failed:", error);
+            return callback(null, "");
+          }
+          if (!result || !result.length) return callback(null, "");
+          callback(null, result[0].col_id ?? "");
         });
       },
     },
