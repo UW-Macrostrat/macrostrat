@@ -150,28 +150,28 @@ it("should return point data for Buenos Aires", function (done) {
       body: {
         success: {
           data: {
-            uid: string | any[];
-            rocktype: string | any[];
-            age: string | any[];
-            name: string | any[];
-            strat_unit: string | any[];
-            desc: string | any[];
-            comm: string | any[];
-            col_id: string | any[];
+            uid: number;
+            rocktype: string[];
+            age: string;
+            name: string;
+            strat_unit: string;
+            desc: string;
+            comm: string;
+            col_id: string;
           };
         };
       };
     }) {
-      if (res.body.success.data.uid.length > 0) {
+      if (res.body.success.data.uid != 3185641) {
         throw new Error("Wrong unit returned for Buenos Aires");
       }
-      if (res.body.success.data.rocktype.length > 0) {
+      if (res.body.success.data.rocktype.length === 0) {
         throw new Error("Invalid rocktypes returned for Buenos Aires");
       }
-      if (res.body.success.data.age.length > 0) {
+      if (res.body.success.data.age != 'Quaternary') {
         throw new Error("Invalid age returned for Buenos Aires");
       }
-      if (res.body.success.data.name.length > 0) {
+      if (res.body.success.data.name != 'Cenozoic sedimentary rocks') {
         throw new Error("Invalid data returned for Buenos Aires");
       }
       if (

@@ -215,7 +215,6 @@ module.exports = function (req, res, next) {
       },
     );
   } else if (req.query.col_id && req.query.unit_id) {
-
       //TODO the gmus.lookup_units needs to be repointed to macrostrat
 
     async.parallel(
