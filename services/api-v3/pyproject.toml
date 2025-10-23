@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "api"
-version = "0.1.0"
+version = "2.3.0-beta.3"
 description = ""
 authors = ["Cannon Lock <clock@wisc.edu>"]
 readme = "README.md"
