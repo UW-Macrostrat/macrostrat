@@ -4,7 +4,7 @@ DOCKER_TAG = latest
 .PHONY: build run stop clean
 
 # Get the current version from package.json
-VER := $(shell node -p "require('./package.json').version")
+VERSION := $(shell node -p "require('./package.json').version")
 
 run:
 	docker build -t macrostrat-api .
@@ -13,8 +13,8 @@ run:
 release:
 	# Ensure that the repository is clean
 	git diff-index --quiet HEAD --
-	git tag -a v$(VER) -m "Version $(VER)"
-	git push origin v$(VER)
+	git tag -a v$(VERSION) -m "Version $(VERSION)"
+	git push origin tag v$(VERSION)
 
 format:
 	# Format the code using Prettier
@@ -24,3 +24,5 @@ publish:
 	# Ensure the git repository is clean
 	@git diff --quiet || (echo "Uncommitted changes present. Please commit or stash them before publishing." && exit 1)
 	git tag -a v$(VERSION) -m "Version $(VERSION)"
+	git push origin tag v$(VERSION)
+
