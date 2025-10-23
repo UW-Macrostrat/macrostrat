@@ -1,5 +1,3 @@
-VERSION := tileserver-v2.3.0-beta.2
-
 TAG := hub.opensciencegrid.org/macrostrat/tileserver:$(VERSION)
 
 serve:
@@ -27,8 +25,10 @@ docker-run:
 docker:
 	docker build -t macrostrat-tileserver .
 	docker run -p 8000:8000 --env-file .env macrostrat-tileserver
+VERSION := $(shell node -p "require('./package.json').version")
 
-publish:
-# Ensure the git repository is clean
-	@git diff --quiet || (echo "Uncommitted changes present. Please commit or stash them before publishing." && exit 1)
-	git tag -a $(VERSION) -m "Version $(VERSION)"
+release:
+	# Ensure that the repository is clean
+	git diff-index --quiet HEAD --
+	git tag -a tileserver-v$(VERSION) -m "Version $(VERSION)"
+	git push origin tag tileserver-v(VERSION)

@@ -3,7 +3,7 @@ authors = ["Daven Quinn <dev@davenquinn.com>"]
 description = "Macrostrat tile server"
 name = "macrostrat.tileserver"
 packages = [{ include = "macrostrat" }]
-version = "3.0.0-beta.1"
+version = "3.0.0-beta.2"
 
 [tool.poetry.dependencies]
 fastapi = "^0.111.0"

@@ -94,7 +94,7 @@ def migrate_mariadb_to_postgresql(
                 "This will overwrite the macrostrat schema. Use --force to proceed."
             )
         get_db().run_sql(
-            f"ALTER SCHEMA {final_schema} RENAME TO macrostratbak3",
+            f"ALTER SCHEMA {final_schema} RENAME TO macrostratbak2",
             dict(
                 final_schema=Identifier(final_schema),
             ),
