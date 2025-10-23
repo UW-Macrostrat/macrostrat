@@ -14,8 +14,6 @@ build:
 whl:
 		bash ./scripts/prepare-services
 
-VERSION := $(shell node -p "require('./package.json').version")
-
 release:
 	# Ensure that the repository is clean
 	git diff-index --quiet HEAD --
