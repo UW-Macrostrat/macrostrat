@@ -11,5 +11,5 @@ VERSION = $(shell grep -E '^[[:space:]]*version[[:space:]]*=' pyproject.toml | h
 release:
 	# Ensure that the repository is clean
 	git diff-index --quiet HEAD --
-	git tag -a tileserver-v$(VERSION) -m "Version $(VERSION)"
-	git push origin tileserver-v$(VERSION)
+	git tag -a v$(VERSION) -m "Version $(VERSION)"
+	git push origin v$(VERSION)
