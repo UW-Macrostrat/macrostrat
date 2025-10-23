@@ -25,7 +25,7 @@ docker-run:
 docker:
 	docker build -t macrostrat-tileserver .
 	docker run -p 8000:8000 --env-file .env macrostrat-tileserver
-VERSION := $(shell node -p "require('./package.json').version")
+VERSION := $(shell poetry version -s)
 
 release:
 	# Ensure that the repository is clean
