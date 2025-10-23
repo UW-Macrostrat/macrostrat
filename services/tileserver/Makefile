@@ -1,3 +1,5 @@
+VERSION = $(shell grep -E '^[[:space:]]*version[[:space:]]*=' pyproject.toml | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+
 TAG := hub.opensciencegrid.org/macrostrat/tileserver:$(VERSION)
 
 serve:
@@ -25,10 +27,9 @@ docker-run:
 docker:
 	docker build -t macrostrat-tileserver .
 	docker run -p 8000:8000 --env-file .env macrostrat-tileserver
-VERSION := $(shell poetry version -s)
 
 release:
 	# Ensure that the repository is clean
 	git diff-index --quiet HEAD --
 	git tag -a tileserver-v$(VERSION) -m "Version $(VERSION)"
-	git push origin tag tileserver-v(VERSION)
+	git push origin tileserver-v$(VERSION)
