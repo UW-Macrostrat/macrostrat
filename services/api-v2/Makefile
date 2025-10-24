@@ -19,10 +19,3 @@ release:
 format:
 	# Format the code using Prettier
 	yarn run prettier --write .
-
-publish:
-	# Ensure the git repository is clean
-	@git diff --quiet || (echo "Uncommitted changes present. Please commit or stash them before publishing." && exit 1)
-	git tag -a v$(VERSION) -m "Version $(VERSION)"
-	git push origin tag v$(VERSION)
-

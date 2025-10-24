@@ -8,7 +8,8 @@ const baseURL = "https://tiles.dev.macrostrat.org";
 const tilePath = "/maps/bounds/3/2/4";
 
 describe("Tileserver API", function () {
-  it("should return a valid tile response", function (done) {
+    this.timeout(10000)
+    it("should return a valid tile response", function (done) {
     request(baseURL)
       .get(tilePath)
       .expect(200)
