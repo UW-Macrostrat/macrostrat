@@ -4,7 +4,9 @@ import subprocess
 import tempfile
 from os import path
 from textwrap import dedent
+
 from rich.progress import Progress
+
 from macrostrat.core import app as app_
 from macrostrat.core.exc import MacrostratError
 from macrostrat.core.schemas import (  # type: ignore[import-untyped]
@@ -79,7 +81,8 @@ def staging_upload_dir(slug: str, data_path: pathlib.Path) -> dict:
             "--metadata",
             "--transfers",
             "8",
-            "--log-level", "ERROR",
+            "--log-level",
+            "ERROR",
             "--s3-no-check-bucket",
             "--progress",
         ]
@@ -106,7 +109,8 @@ def staging_upload_dir(slug: str, data_path: pathlib.Path) -> dict:
                 "--metadata",
                 "--transfers",
                 "8",
-                "--log-level", "ERROR",
+                "--log-level",
+                "ERROR",
                 "--s3-no-check-bucket",
                 "--progress",
             ]
@@ -211,10 +215,16 @@ def staging_list_dir(slug: str, page_token: int = 0, page_size: int = 20) -> dic
         except FileNotFoundError:
             conf_dir, conf_name = path.dirname(tf.name), path.basename(tf.name)
             args = [
-                "docker", "run", "--rm",
-                "-v", f"{conf_dir}:/cfg:ro",
-                "rclone/rclone:latest", "lsjson", dst,
-                "--config", f"/cfg/{conf_name}",
+                "docker",
+                "run",
+                "--rm",
+                "-v",
+                f"{conf_dir}:/cfg:ro",
+                "rclone/rclone:latest",
+                "lsjson",
+                dst,
+                "--config",
+                f"/cfg/{conf_name}",
             ]
             if list_dirs:
                 args += ["--dirs-only", "--max-depth", "1"]
@@ -293,11 +303,14 @@ def staging_download_dir(slug: str, dest_path: pathlib.Path) -> dict:
             "copy",
             src,
             str(dest_path),
-            "--config", tf.name,
+            "--config",
+            tf.name,
             "--checksum",
             "--metadata",
-            "--transfers", "8",
-            "--log-level", "ERROR",
+            "--transfers",
+            "8",
+            "--log-level",
+            "ERROR",
             "--s3-no-check-bucket",
             "--progress",
         ]
@@ -325,7 +338,8 @@ def staging_download_dir(slug: str, dest_path: pathlib.Path) -> dict:
                 "--metadata",
                 "--transfers",
                 "8",
-                "--log-level", "ERROR",
+                "--log-level",
+                "ERROR",
                 "--s3-no-check-bucket",
                 "--progress",
             ]
