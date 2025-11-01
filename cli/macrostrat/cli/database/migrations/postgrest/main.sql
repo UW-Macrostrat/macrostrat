@@ -633,3 +633,16 @@ CREATE OR REPLACE VIEW macrostrat_api.kg_matches AS (
    LEFT JOIN macrostrat_api.kg_source_text s
       ON k.source = s.id
 )
+
+CREATE OR REPLACE VIEW macrostrat_api.rockd_stats AS 
+SELECT
+    COUNT(*) AS total_rows,
+    COUNT(CASE WHEN date >= NOW() - INTERVAL '1 day' THEN 1 END) AS rows_last_24_hours
+FROM usage_stats.rockd_stats;
+
+
+CREATE OR REPLACE VIEW macrostrat_api.macrostrat_stats AS 
+SELECT
+    COUNT(*) AS total_rows,
+    COUNT(CASE WHEN date >= NOW() - INTERVAL '1 day' THEN 1 END) AS rows_last_24_hours
+FROM usage_stats.macrostrat_stats;
