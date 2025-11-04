@@ -4,7 +4,6 @@ import string
 import urllib.parse
 from datetime import datetime, timedelta
 from typing import Annotated, Optional
-from sqlalchemy.orm import selectinload
 
 import aiohttp
 import bcrypt
@@ -20,6 +19,7 @@ from fastapi.security.utils import get_authorization_scheme_param
 from jose import JWTError, jwt
 from pydantic import BaseModel
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from starlette.status import HTTP_401_UNAUTHORIZED
 
 dotenv.load_dotenv()
@@ -133,10 +133,11 @@ async def get_user(sub: str) -> schemas.User | None:
     async_session = db.get_async_session(engine)
 
     async with async_session() as session:
-        stmt = (select(schemas.User)
-                .options(selectinload(schemas.User.groups))
-                .where(schemas.User.sub == sub)
-                )
+        stmt = (
+            select(schemas.User)
+            .options(selectinload(schemas.User.groups))
+            .where(schemas.User.sub == sub)
+        )
         user = await session.scalar(stmt)
 
     return user
@@ -302,11 +303,14 @@ async def redirect_callback(code: str, state: Optional[str] = None):
                     user_data.get("email", ""),
                 )
 
-
             # Check if the user is in the admin group to set the appropriate database role
             names = {g.name for g in user.groups}
             ids = {g.id for g in user.groups}
-            role = "web_admin" if ("web_admin" in names or "admin" in names or 1 in ids) else "web_user"
+            role = (
+                "web_admin"
+                if ("web_admin" in names or "admin" in names or 1 in ids)
+                else "web_user"
+            )
 
             # validate jwt https://dev.macrostrat.org/dev/me
             access_token = create_access_token(
@@ -316,7 +320,6 @@ async def redirect_callback(code: str, state: Optional[str] = None):
                     # ensure user_id is correctly being returned
                     "user_id": user.id,
                     "groups": list(ids),
-
                 }
             )
 
@@ -404,10 +407,11 @@ async def read_users_me(
     async_session = db.get_async_session(engine)
 
     async with async_session() as session:
-        user_stmt = (select(schemas.User)
-                     .options(selectinload(schemas.User.groups))
-                     .filter(schemas.User.sub == user_token_data.sub)
-                     )
+        user_stmt = (
+            select(schemas.User)
+            .options(selectinload(schemas.User.groups))
+            .filter(schemas.User.sub == user_token_data.sub)
+        )
         user = await session.scalar(user_stmt)
 
         if user is None:
