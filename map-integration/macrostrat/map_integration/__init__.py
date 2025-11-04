@@ -85,8 +85,11 @@ sources.add_command(map_sources, name="list")
 
 @sources.command(name="delete")
 def delete_sources(
-    slug: list[str] = Option(..., help="BULK delete = filename.txt [every line lists the slug_name to delete. no whitespaces.]\n " +
-                                   "SINGLE delete = 'slug_name' [list the slug_name in quotes]"),
+    slug: list[str] = Option(
+        ...,
+        help="BULK delete = filename.txt [every line lists the slug_name to delete. no whitespaces.]\n "
+        + "SINGLE delete = 'slug_name' [list the slug_name in quotes]",
+    ),
     file_name: str = Option(
         None, help="deletes a specified file within the slug's directory."
     ),
@@ -265,7 +268,10 @@ def staging(
     slug: str,
     data_path: str,
     name: str,
-    merge_key: str = Option('mapunit', help="primary key to left join the metadata into the sources polygons/lines/points table"),
+    merge_key: str = Option(
+        "mapunit",
+        help="primary key to left join the metadata into the sources polygons/lines/points table",
+    ),
     meta_table: str = Option(
         "polygons",
         help="Options: polygons, lines, or points. specifies the table in which the legend metadata is merged into. It defaults to sources polygons",
@@ -396,15 +402,13 @@ staging_cli.command("delete")(delete_sources)
 
 
 @staging_cli.command("s3-upload-dir")
-def cmd_upload_dir(
-    slug: str = ...,
-    data_path: Path = ...,
-    ext: str = Option('')
-):
+def cmd_upload_dir(slug: str = ..., data_path: Path = ..., ext: str = Option("")):
     """Upload a local directory to the staging bucket under SLUG/."""
     res = staging_upload_dir(slug, data_path, ext)
     pretty_res = json.dumps(res, indent=2)
-    console.print(f"[green] Upload to s3 bucket was successful! \n {pretty_res} [/green]")
+    console.print(
+        f"[green] Upload to s3 bucket was successful! \n {pretty_res} [/green]"
+    )
 
 
 @staging_cli.command("s3-delete-dir")
@@ -423,7 +427,10 @@ def cmd_delete_dir(
 
 @staging_cli.command("s3-list")
 def cmd_list_dir(
-    slug: str = Option(..., help="lists all files within a slug directory. Input 'all' to list all the slug directories."),
+    slug: str = Option(
+        ...,
+        help="lists all files within a slug directory. Input 'all' to list all the slug directories.",
+    ),
     page_token: int = Option(0, "--page-token", "-t", help="Offset to start from"),
     page_size: int = Option(20, "--page-size", "-s", help="Items per page"),
 ):
@@ -443,11 +450,7 @@ def cmd_list_dir(
             break
         console.print(f"[green]Scrolled through: {count} files[/green]")
 
-        resp = (
-            input("\nPress 'enter' for next page, or 'q' to exit: ")
-            .strip()
-            .lower()
-        )
+        resp = input("\nPress 'enter' for next page, or 'q' to exit: ").strip().lower()
         if resp in ("exit", "quit", "q"):
             break
         token = page["next_page_token"]
@@ -456,13 +459,14 @@ def cmd_list_dir(
 @staging_cli.command("s3-download-dir")
 def cmd_download_dir(
     slug: str = ...,
-    dest_path: pathlib.Path = Option(..., help="Local destination path to save slug directory to."),
+    dest_path: pathlib.Path = Option(
+        ..., help="Local destination path to save slug directory to."
+    ),
 ):
     """Download a staging prefix to a local directory."""
     res = staging_download_dir(slug=slug, dest_path=dest_path)
     console.print(f"[green] Download successful![/green]")
     console.print(json.dumps(res, indent=2))
-
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -476,7 +480,10 @@ def staging_bulk(
     ),
     # required
     prefix: str = Option(..., help="Slug prefix to avoid collisions"),
-    merge_key: str = Option('mapunit', help="primary key to left join the metadata into the sources polygons/lines/points table"),
+    merge_key: str = Option(
+        "mapunit",
+        help="primary key to left join the metadata into the sources polygons/lines/points table",
+    ),
     meta_table: str = Option(
         "polygons",
         help="Options: polygons, lines, or points. specifies the table in which the metadata is merged into. It defaults to sources polygons",
@@ -505,7 +512,7 @@ def staging_bulk(
         meta_path = region_path
         staged_slugs.append(slug)
 
-        #upload to the s3 bucket!
+        # upload to the s3 bucket!
         cmd_upload_dir(slug, region_path, ext)
 
         print(f"Ingesting {slug} from {meta_path}")
