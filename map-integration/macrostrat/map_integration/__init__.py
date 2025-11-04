@@ -265,10 +265,7 @@ def staging(
     slug: str,
     data_path: str,
     name: str,
-    merge_key: str = Option(
-        None,
-        help="primary key to left join the metadata into the sources polygons/lines/points table",
-    ),
+    merge_key: str = Option('mapunit', help="primary key to left join the metadata into the sources polygons/lines/points table"),
     meta_table: str = Option(
         "polygons",
         help="Options: polygons, lines, or points. specifies the table in which the legend metadata is merged into. It defaults to sources polygons",
@@ -279,11 +276,13 @@ def staging(
     Ingest a map, update metadata, prepare fields, and build geometries.
     """
     db = get_database()
+    data_path_ext = Path(data_path)
+    ext = data_path_ext.suffix.lower()
     # upload to the s3 bucket!
-    cmd_upload_dir(slug, data_path)
+    cmd_upload_dir(slug, data_path_ext, ext)
     print(f"Ingesting {slug} from {data_path}")
 
-    gis_files, excluded_files = find_gis_files(Path(data_path), filter=filter)
+    gis_files, excluded_files = find_gis_files(data_path_ext, filter=filter)
     if not gis_files:
         raise ValueError(f"No GIS files found in {data_path}")
 
@@ -384,7 +383,8 @@ def staging(
         raise RuntimeError("Staging failed: Some expected records were not inserted.")
 
     console.print(
-        f"[green] \n Finished staging setup for {slug}. View map here: https://dev.macrostrat.org/maps/ingestion/{source_id}/ \n [\green]"
+        f"[green] \n Finished staging setup for {slug}. "
+        f"View map here: https://dev.macrostrat.org/maps/ingestion/{source_id}/ [\green] \n"
     )
 
 
@@ -399,9 +399,10 @@ staging_cli.command("delete")(delete_sources)
 def cmd_upload_dir(
     slug: str = ...,
     data_path: Path = ...,
+    ext: str = Option('')
 ):
     """Upload a local directory to the staging bucket under SLUG/."""
-    res = staging_upload_dir(slug, data_path)
+    res = staging_upload_dir(slug, data_path, ext)
     pretty_res = json.dumps(res, indent=2)
     console.print(f"[green] Upload to s3 bucket was successful! \n {pretty_res} [/green]")
 
@@ -500,11 +501,12 @@ def staging_bulk(
         clean_stem = re.sub(r"[^a-z0-9_]", "", clean_stem)
         slug = f"{prefix}_{clean_stem}"
         name = region_path.stem
+        ext = region_path.suffix.lower()
         meta_path = region_path
         staged_slugs.append(slug)
 
         #upload to the s3 bucket!
-        cmd_upload_dir(slug, region_path)
+        cmd_upload_dir(slug, region_path, ext)
 
         print(f"Ingesting {slug} from {meta_path}")
         gis_files, excluded_files = find_gis_files(Path(meta_path), filter=filter)

@@ -5,6 +5,7 @@ import tempfile
 from os import path
 from textwrap import dedent
 from rich.progress import Progress
+import shutil
 from macrostrat.core import app as app_
 from macrostrat.core.exc import MacrostratError
 from macrostrat.core.schemas import (  # type: ignore[import-untyped]
@@ -20,10 +21,7 @@ from macrostrat.core.schemas import (  # type: ignore[import-untyped]
 settings = app_.settings
 
 
-# upload, delete, list all files for a map.
-# upload a directory
 # object group id...store a set of objects related to a map....
-# get list of objects.
 # page through objects and ingest them.
 # single ingestion....
 # file to be stored in the storage schema and objects table...object group...
@@ -31,7 +29,7 @@ settings = app_.settings
 # delete the object group id from all the tables.
 # super standardized upload
 # specify the bucket name
-def staging_upload_dir(slug: str, data_path: pathlib.Path) -> dict:
+def staging_upload_dir(slug: str, data_path: pathlib.Path, ext: str) -> dict:
     endpoint = settings.get("storage.endpoint")
     b_access = settings.get("storage.access_key")
     b_secret = settings.get("storage.secret_key")
@@ -63,6 +61,11 @@ def staging_upload_dir(slug: str, data_path: pathlib.Path) -> dict:
     )
 
     dst = f"dev:{bucket_name}/{slug}"
+    # If a FileGDB directory, zip it to slug.gdb.zip and upload that file
+    if ext == ".gdb":
+        archive_base = path.join(tempfile.gettempdir(), f"{slug}.gdb")
+        archive_path = shutil.make_archive(archive_base, "zip", root_dir=data_path.parent, base_dir=data_path.name)
+        data_path = pathlib.Path(archive_path)
 
     with tempfile.NamedTemporaryFile("w+", delete=False) as tf:
         tf.write(cfg)
