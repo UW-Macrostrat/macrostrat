@@ -416,11 +416,12 @@ async def read_users_me(
 
         if user is None:
             raise HTTPException(status_code=404, detail="User not found")
-        return {"sub": user.sub,
-                "email": user.email,
-                "id": user.id,
-                "name": user.name,
-                "created_on": user.created_on,
-                "updated_on": user.updated_on,
-                "groups": [{"name": g.name, "id": g.id} for g in user.groups],
-                }
+        return {
+            "sub": user.sub,
+            "email": user.email,
+            "id": user.id,
+            "name": user.name,
+            "created_on": user.created_on,
+            "updated_on": user.updated_on,
+            "groups": [{"name": g.name, "id": g.id} for g in user.groups],
+        }
