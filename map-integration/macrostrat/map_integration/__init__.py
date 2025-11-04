@@ -19,7 +19,7 @@ from macrostrat.map_integration.pipeline import ingest_map
 from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
 from macrostrat.map_integration.utils.file_discovery import find_gis_files
 from macrostrat.map_integration.utils.map_info import get_map_info
-from macrostrat.map_integration.utils.staging_upload_dir import *
+from macrostrat.map_integration.utils.s3_file_management import *
 
 from . import pipeline
 from .commands.copy_sources import copy_macrostrat_sources
@@ -85,27 +85,35 @@ sources.add_command(map_sources, name="list")
 
 @sources.command(name="delete")
 def delete_sources(
-    slugs: list[str],
+    slug: list[str] = Option(
+        ...,
+        help="BULK delete = filename.txt [every line lists the slug_name to delete. no whitespaces.]\n "
+        + "SINGLE delete = 'slug_name' [list the slug_name in quotes]",
+    ),
+    file_name: str = Option(
+        None, help="deletes a specified file within the slug's directory."
+    ),
     dry_run: bool = Option(False, "--dry-run"),
     all_data: bool = Option(False, "--all-data"),
 ):
     """Delete sources from the map ingestion database."""
     db = get_database()
 
-    if not stdin.isatty() and len(slugs) == 1 and slugs[0] == "-":
-        slugs = [line.strip() for line in stdin]
-    elif len(slugs) == 1 and os.path.isfile(slugs[0]):
-        with open(slugs[0]) as file:
-            slugs = [line.strip() for line in file if line.strip()]
+    if not stdin.isatty() and len(slug) == 1 and slug[0] == "-":
+        slug = [line.strip() for line in stdin]
+    elif len(slug) == 1 and os.path.isfile(slug[0]):
+        with open(slug[0]) as file:
+            slug = [line.strip() for line in file if line.strip()]
 
     if dry_run:
         print("Deleting maps:")
-        print("  " + "\n  ".join(slugs))
+        print("  " + "\n  ".join(slug))
 
         print("\nDry run; not actually deleting anything")
         return
 
-    for slug in slugs:
+    for slug in slug:
+        cmd_delete_dir(slug, file_name)
         print(f"Deleting map {slug}")
         print(slug)
         tables = db.run_query(
@@ -260,11 +268,8 @@ def staging(
     slug: str,
     data_path: str,
     name: str,
-    meta_path: str = Option(
-        None, help="metadata URL to merge into the sources polygons/lines/points table"
-    ),
     merge_key: str = Option(
-        None,
+        "mapunit",
         help="primary key to left join the metadata into the sources polygons/lines/points table",
     ),
     meta_table: str = Option(
@@ -277,9 +282,13 @@ def staging(
     Ingest a map, update metadata, prepare fields, and build geometries.
     """
     db = get_database()
+    data_path_ext = Path(data_path)
+    ext = data_path_ext.suffix.lower()
+    # upload to the s3 bucket!
+    cmd_upload_dir(slug, data_path_ext, ext)
     print(f"Ingesting {slug} from {data_path}")
 
-    gis_files, excluded_files = find_gis_files(Path(data_path), filter=filter)
+    gis_files, excluded_files = find_gis_files(data_path_ext, filter=filter)
     if not gis_files:
         raise ValueError(f"No GIS files found in {data_path}")
 
@@ -296,7 +305,7 @@ def staging(
         slug,
         gis_files,
         if_exists="replace",
-        meta_path=meta_path,
+        meta_path=data_path,
         merge_key=merge_key,
         meta_table=meta_table,
     )
@@ -322,8 +331,8 @@ def staging(
     # add map_url later
     db.run_sql(
         """
-        INSERT INTO maps_metadata.ingest_process (state, source_id, object_group_id, ingested_by, ingest_pipeline, comments)
-        VALUES (:state, :source_id, :object_group_id, :ingested_by, :ingest_pipeline, :comments);
+        INSERT INTO maps_metadata.ingest_process (state, source_id, object_group_id, ingested_by, ingest_pipeline, comments, slug)
+        VALUES (:state, :source_id, :object_group_id, :ingested_by, :ingest_pipeline, :comments, :slug);
         """,
         dict(
             state=state,
@@ -332,6 +341,7 @@ def staging(
             ingested_by="macrostrat-admin",
             ingest_pipeline=ingest_pipeline,
             comments=comments,
+            slug=slug,
         ),
     )
 
@@ -378,29 +388,30 @@ def staging(
     if any(val is None for val in [row, ingest_process, rgeom, web_geom]):
         raise RuntimeError("Staging failed: Some expected records were not inserted.")
 
-    print(
-        f"\nFinished staging setup for {slug}. View map here: https://dev.macrostrat.org/maps/ingestion/{source_id}/ \n"
+    console.print(
+        f"[green] \n Finished staging setup for {slug}. "
+        f"View map here: https://dev.macrostrat.org/maps/ingestion/{source_id}/ [\green] \n"
     )
 
 
 staging_cli.add_command(staging, name="ingest")
+staging_cli.command("delete")(delete_sources)
 
 # ------------------------------------------
 # commands nested under 'macrostrat maps staging...'
 
 
-@staging_cli.command("upload-dir")
-def cmd_upload_dir(
-    slug: str = ...,
-    data_path: Path = ...,
-):
+@staging_cli.command("s3-upload-dir")
+def cmd_upload_dir(slug: str = ..., data_path: Path = ..., ext: str = Option("")):
     """Upload a local directory to the staging bucket under SLUG/."""
-    res = staging_upload_dir(slug, data_path)
+    res = staging_upload_dir(slug, data_path, ext)
     pretty_res = json.dumps(res, indent=2)
-    console.print(f"[green] Upload successful! \n {pretty_res} [/green]")
+    console.print(
+        f"[green] Upload to s3 bucket was successful! \n {pretty_res} [/green]"
+    )
 
 
-@staging_cli.command("delete-dir")
+@staging_cli.command("s3-delete-dir")
 def cmd_delete_dir(
     slug: str = ...,
     file_name: str = Option(
@@ -410,48 +421,58 @@ def cmd_delete_dir(
     """Delete all objects under SLUG/ in the staging bucket."""
     staging_delete_dir(slug, file_name)
     console.print(
-        f"[green] Delete successful! \n Deleted objects under slug: {slug} [/green]"
+        f"[green] Successfully deleted objects within the s3 bucket under slug: {slug} [/green]"
     )
 
 
-@staging_cli.command("list")
+@staging_cli.command("s3-list")
 def cmd_list_dir(
-    slug: str = ...,
-    page_token: int = Option(0, "--page-token", "-t", help="Offset to start from"),
-    page_size: int = Option(10, "--page-size", "-s", help="Items per page"),
-    more: bool = Option(
-        False, "--more", "-m", help="Interactively page through results"
+    slug: str = Option(
+        ...,
+        help="lists all files within a slug directory. Input 'all' to list all the slug directories.",
     ),
+    page_token: int = Option(0, "--page-token", "-t", help="Offset to start from"),
+    page_size: int = Option(20, "--page-size", "-s", help="Items per page"),
 ):
     """List paginated files under SLUG."""
-    if not more:
-        page = staging_list_dir(slug, page_token=page_token, page_size=page_size)
-        files = json.dumps(page, indent=2)
-        console.print(f"[green] {files} [/green]")
-        return
 
     token = page_token
+    count = 0
     while True:
         page = staging_list_dir(slug, page_token=token, page_size=page_size)
         for f in page["files"]:
-            console.print(f"[green]{f}[/green]")
+            console.print(f"[blue]{f}[/blue]")
+            count += 1
+
         if page["next_page_token"] is None:
+            console.print(f"[green]Total files: {count}[/green]")
             print("\n-- End of list --")
             break
-        resp = (
-            input("\nPress Enter for next page, or type 'exit' to stop: ")
-            .strip()
-            .lower()
-        )
+        console.print(f"[green]Scrolled through: {count} files[/green]")
+
+        resp = input("\nPress 'enter' for next page, or 'q' to exit: ").strip().lower()
         if resp in ("exit", "quit", "q"):
             break
         token = page["next_page_token"]
 
 
+@staging_cli.command("s3-download-dir")
+def cmd_download_dir(
+    slug: str = ...,
+    dest_path: pathlib.Path = Option(
+        ..., help="Local destination path to save slug directory to."
+    ),
+):
+    """Download a staging prefix to a local directory."""
+    res = staging_download_dir(slug=slug, dest_path=dest_path)
+    console.print(f"[green] Download successful![/green]")
+    console.print(json.dumps(res, indent=2))
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 
-@cli.command(name="bulk-staging")
+@staging_cli.command("bulk-ingest")
 def staging_bulk(
     # required
     meta_parent_path: str = Option(
@@ -459,14 +480,13 @@ def staging_bulk(
     ),
     # required
     prefix: str = Option(..., help="Slug prefix to avoid collisions"),
-    # required
     merge_key: str = Option(
-        ...,
+        "mapunit",
         help="primary key to left join the metadata into the sources polygons/lines/points table",
     ),
     meta_table: str = Option(
         "polygons",
-        help="Options: polygons, lines, or points. specifies the table in which the legend metadata is merged into. It defaults to sources polygons",
+        help="Options: polygons, lines, or points. specifies the table in which the metadata is merged into. It defaults to sources polygons",
     ),
     filter: str = Option(None, help="Filter applied to GIS file selection"),
 ):
@@ -488,8 +508,12 @@ def staging_bulk(
         clean_stem = re.sub(r"[^a-z0-9_]", "", clean_stem)
         slug = f"{prefix}_{clean_stem}"
         name = region_path.stem
+        ext = region_path.suffix.lower()
         meta_path = region_path
         staged_slugs.append(slug)
+
+        # upload to the s3 bucket!
+        cmd_upload_dir(slug, region_path, ext)
 
         print(f"Ingesting {slug} from {meta_path}")
         gis_files, excluded_files = find_gis_files(Path(meta_path), filter=filter)
