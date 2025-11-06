@@ -9,6 +9,7 @@ dotenv.load_dotenv()
 
 import api.routes.security
 from api.database import connect_engine, dispose_engine
+from api.routes.dev import dev_router
 from api.routes.ingest import router as ingest_router
 from api.routes.object import router as object_router
 from api.routes.sources import router as sources_router
@@ -46,6 +47,8 @@ app.include_router(api.routes.security.router)
 app.include_router(object_router)
 app.include_router(ingest_router)
 app.include_router(sources_router)
+app.include_router(dev_router)
+
 
 if __name__ == "__main__":
     uvicorn.run(
