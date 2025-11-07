@@ -1,12 +1,25 @@
-from fastapi import Request, Body, Query
-from typing import Any, Iterable, Union, List
-import httpx
+from typing import Any, Iterable, List, Union
+
 import dotenv
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+import httpx
+from fastapi import (
+    APIRouter,
+    Body,
+    Depends,
+    HTTPException,
+    Query,
+    Request,
+    Response,
+    status,
+)
 from slugify import slugify
 from sqlalchemy import func, insert, select, update
 from sqlalchemy.exc import NoResultFound, NoSuchTableError
+
 dotenv.load_dotenv()
+
+from datetime import datetime, timezone
+from typing import Optional
 
 from api.database import (
     get_async_session,
@@ -15,11 +28,16 @@ from api.database import (
     patch_sources_sub_table,
     select_sources_sub_table,
 )
+from api.models.field_site import (
+    BeddingFacing,
+    FieldSite,
+    Location,
+    Observation,
+    Photo,
+    PlanarOrientation,
+)
 from api.query_parser import ParserException
 from api.routes.security import has_access
-from datetime import datetime, timezone
-from api.models.field_site import FieldSite, Location, Photo, PlanarOrientation, Observation, BeddingFacing
-from typing import Optional
 
 convert_router = APIRouter(
     prefix="/convert",
@@ -27,7 +45,8 @@ convert_router = APIRouter(
     responses={404: {"description": "Not found"}},
 )
 
-#helpers
+# helpers
+
 
 def _parse_date_time(x: Optional[str]) -> Optional[datetime]:
     if not x:
@@ -40,6 +59,7 @@ def _parse_date_time(x: Optional[str]) -> Optional[datetime]:
         except Exception:
             return None
 
+
 def _to_float(v) -> Optional[float]:
     try:
         if v is None:
@@ -48,7 +68,8 @@ def _to_float(v) -> Optional[float]:
     except Exception:
         return None
 
-#normalize and require lat/lngs
+
+# normalize and require lat/lngs
 def _valid_coords(lat, lng) -> bool:
     try:
         lat = float(lat)
@@ -56,6 +77,7 @@ def _valid_coords(lat, lng) -> bool:
     except (TypeError, ValueError):
         return False
     return -90.0 <= lat <= 90.0 and -180.0 <= lng <= 180.0
+
 
 def _first_planar_from_spot(props) -> Optional[PlanarOrientation]:
     """Find first planar orientation with numeric strike & dip in StraboSpot props."""
@@ -69,8 +91,11 @@ def _first_planar_from_spot(props) -> Optional[PlanarOrientation]:
             strike = _to_float(item.get("strike"))
             dip = _to_float(item.get("dip"))
             if strike is not None and dip is not None:
-                return PlanarOrientation(strike=strike, dip=dip, facing=BeddingFacing.upright)
+                return PlanarOrientation(
+                    strike=strike, dip=dip, facing=BeddingFacing.upright
+                )
     return None
+
 
 def _first_planar_from_checkin(checkin) -> Optional[PlanarOrientation]:
     """Find first observation with numeric strike & dip in Rockd checkin."""
@@ -84,8 +109,11 @@ def _first_planar_from_checkin(checkin) -> Optional[PlanarOrientation]:
         strike = _to_float(orientation.get("strike"))
         dip = _to_float(orientation.get("dip"))
         if strike is not None and dip is not None:
-            return PlanarOrientation(strike=strike, dip=dip, facing=BeddingFacing.upright)
+            return PlanarOrientation(
+                strike=strike, dip=dip, facing=BeddingFacing.upright
+            )
     return None
+
 
 def _first_planar_from_fieldsite(fs: FieldSite) -> Optional[PlanarOrientation]:
     """Return first PlanarOrientation in FieldSite.observations."""
@@ -126,14 +154,16 @@ def spot_to_fieldsite(feat) -> FieldSite:
                     url=f"rockd://photo/{pid}",
                     width=int(img.get("width", 0) or 0),
                     height=int(img.get("height", 0) or 0),
-                    checksum=""
+                    checksum="",
                 )
             )
     observations: list[Observation] = []
     planar = _first_planar_from_spot(props)
     if planar:
         observations.append(Observation(data=planar))
-    created = _parse_date_time(props.get("time") or props.get("date")) or datetime.now(timezone.utc)
+    created = _parse_date_time(props.get("time") or props.get("date")) or datetime.now(
+        timezone.utc
+    )
 
     mt = props.get("modified_timestamp")
     if mt is not None:
@@ -154,7 +184,10 @@ def spot_to_fieldsite(feat) -> FieldSite:
         observations=observations,
     )
 
-def multiple_spot_to_fieldsite(feat: Union[dict, List[dict]] = Body(...)) -> List[FieldSite]:
+
+def multiple_spot_to_fieldsite(
+    feat: Union[dict, List[dict]] = Body(...)
+) -> List[FieldSite]:
     """
     Accept a single FeatureCollection or a list of FeatureCollections and
     return a FieldSite for each qualifying Point feature.
@@ -198,11 +231,15 @@ def fieldsite_to_checkin(fs: FieldSite) -> dict:
         d["photo"] = fs.photos[0].id
     planar = _first_planar_from_fieldsite(fs)
     if planar:
-        d["observations"] = [{"orientation": {"strike": float(planar.strike), "dip": float(planar.dip)}}]
+        d["observations"] = [
+            {"orientation": {"strike": float(planar.strike), "dip": float(planar.dip)}}
+        ]
     return d
 
 
-def multiple_fieldsite_to_checkin(fieldsites: list[FieldSite] = Body(...)) -> list[dict]:
+def multiple_fieldsite_to_checkin(
+    fieldsites: list[FieldSite] = Body(...),
+) -> list[dict]:
     out: list[dict] = []
     for fs in fieldsites:
         try:
@@ -213,17 +250,22 @@ def multiple_fieldsite_to_checkin(fieldsites: list[FieldSite] = Body(...)) -> li
             continue
     return out
 
+
 def spot_to_checkin(spot: Union[dict, List[dict]] = Body(...)) -> list[dict]:
     """Pipeline: Spot JSON (FeatureCollection[s]) or FieldSite list -> Checkin list."""
     # If it's already a list of FieldSite-like dicts (has 'location'), skip the first hop
-    if isinstance(spot, list) and spot and isinstance(spot[0], dict) and "location" in spot[0]:
+    if (
+        isinstance(spot, list)
+        and spot
+        and isinstance(spot[0], dict)
+        and "location" in spot[0]
+    ):
         fieldsites: List[FieldSite] = spot  # already FieldSite-shaped
     else:
         # Convert FeatureCollection (or list of them) -> FieldSite list
         fieldsites = multiple_spot_to_fieldsite(spot)
     # Convert FieldSite list -> Checkin list
     return multiple_fieldsite_to_checkin(fieldsites)
-
 
 
 @convert_router.post("/field-site")
@@ -245,4 +287,7 @@ async def convert_field_site(
         return multiple_fieldsite_to_checkin(payload)
     if key == ("spot", "checkin"):
         return spot_to_checkin(payload)
-    raise HTTPException(status_code=400, detail="Unsupported conversion. Use in=[spot|fieldsite], out=[fieldsite|checkin].")
+    raise HTTPException(
+        status_code=400,
+        detail="Unsupported conversion. Use in=[spot|fieldsite], out=[fieldsite|checkin].",
+    )
