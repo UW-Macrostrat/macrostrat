@@ -1,4 +1,4 @@
-from fastapi import Request, Body
+from fastapi import Request, Body, Query
 from typing import Any, Iterable, Union, List
 import httpx
 import dotenv
@@ -21,9 +21,9 @@ from datetime import datetime, timezone
 from api.models.field_site import FieldSite, Location, Photo, PlanarOrientation, Observation, BeddingFacing
 from typing import Optional
 
-interchange_router = APIRouter(
-    prefix="/interchange-data",
-    tags=["interchange-data"],
+convert_router = APIRouter(
+    prefix="/convert",
+    tags=["convert"],
     responses={404: {"description": "Not found"}},
 )
 
@@ -154,11 +154,10 @@ def spot_to_fieldsite(feat) -> FieldSite:
         observations=observations,
     )
 
-@interchange_router.post("/spot-to-fieldsite")
 def multiple_spot_to_fieldsite(feat: Union[dict, List[dict]] = Body(...)) -> List[FieldSite]:
     """
     Accept a single FeatureCollection or a list of FeatureCollections and
-    return a FieldSite for each qualifying Point feature (non-image-basemap).
+    return a FieldSite for each qualifying Point feature.
     """
     out: list[FieldSite] = []
 
@@ -203,18 +202,18 @@ def fieldsite_to_checkin(fs: FieldSite) -> dict:
     return d
 
 
-@interchange_router.post("/fieldsite-to-checkin")
 def multiple_fieldsite_to_checkin(fieldsites: list[FieldSite] = Body(...)) -> list[dict]:
     out: list[dict] = []
     for fs in fieldsites:
         try:
+            if not isinstance(fs, FieldSite):
+                fs = FieldSite(**fs)
             out.append(fieldsite_to_checkin(fs))
         except Exception:
             continue
     return out
 
-@interchange_router.post("/spot-to-checkin")
-async def spot_to_checkin(request: Request, spot: Union[dict, List[dict]] = Body(...)) -> list[dict]:
+def spot_to_checkin(spot: Union[dict, List[dict]] = Body(...)) -> list[dict]:
     """Pipeline: Spot JSON (FeatureCollection[s]) or FieldSite list -> Checkin list."""
     # If it's already a list of FieldSite-like dicts (has 'location'), skip the first hop
     if isinstance(spot, list) and spot and isinstance(spot[0], dict) and "location" in spot[0]:
@@ -222,6 +221,28 @@ async def spot_to_checkin(request: Request, spot: Union[dict, List[dict]] = Body
     else:
         # Convert FeatureCollection (or list of them) -> FieldSite list
         fieldsites = multiple_spot_to_fieldsite(spot)
-
     # Convert FieldSite list -> Checkin list
     return multiple_fieldsite_to_checkin(fieldsites)
+
+
+
+@convert_router.post("/field-site")
+async def convert_field_site(
+    payload: Union[dict, List[dict]] = Body(...),
+    in_: str = Query(..., alias="in"),
+    out: str = Query(..., alias="out"),
+) -> Any:
+    """
+    Unified converter:
+    - ?in=spot&out=fieldsite   -> spot FeatureCollection(s) -> FieldSite
+    - ?in=fieldsite&out=checkin -> FieldSite -> Checkin
+    - ?in=spot&out=checkin     -> spot FeatureCollection(s) -> FieldSite -> Checkin
+    """
+    key = (in_.lower(), out.lower())
+    if key == ("spot", "fieldsite"):
+        return multiple_spot_to_fieldsite(payload)
+    if key == ("fieldsite", "checkin"):
+        return multiple_fieldsite_to_checkin(payload)
+    if key == ("spot", "checkin"):
+        return spot_to_checkin(payload)
+    raise HTTPException(status_code=400, detail="Unsupported conversion. Use in=[spot|fieldsite], out=[fieldsite|checkin].")
