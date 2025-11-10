@@ -17,6 +17,10 @@ dist_dir="$root/py-modules/dist"
 
 for module in $(ls -d py-modules/*/); do
   [ ! -f "$module/pyproject.toml" ] && continue
+  # Skip services that aren't ready yet
+  [ "$module" == "py-modules/match-utils/" ] && continue
+  [ "$module" == "py-modules/raster-cli/" ] && continue
+
   if [ -d "$module" ]; then
     # Bold text
     header "Building $module"

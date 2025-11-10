@@ -225,9 +225,6 @@ def ingest_map(
         if feature_suffix == "linestrings":
             feature_suffix = "lines"
         # applies legend merge only to the whatever the legend_table is specified as
-        # TODO add flag in db for cross sections. Remove cross section layer from Arizona maps
-        # TODO add metadata page to the sources table. delete all of the old maps
-        # TODO add maps to s3 bucket.
         if meta_path and meta_table == feature_suffix:
             df.columns = df.columns.str.lower()
             df, ingest_pipeline, comments, state = preprocess_dataframe(

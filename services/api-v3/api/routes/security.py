@@ -19,6 +19,7 @@ from fastapi.security.utils import get_authorization_scheme_param
 from jose import JWTError, jwt
 from pydantic import BaseModel
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from starlette.status import HTTP_401_UNAUTHORIZED
 
 dotenv.load_dotenv()
@@ -132,8 +133,11 @@ async def get_user(sub: str) -> schemas.User | None:
     async_session = db.get_async_session(engine)
 
     async with async_session() as session:
-        stmt = select(schemas.User).where(schemas.User.sub == sub)
-
+        stmt = (
+            select(schemas.User)
+            .options(selectinload(schemas.User.groups))
+            .where(schemas.User.sub == sub)
+        )
         user = await session.scalar(stmt)
 
     return user
@@ -299,12 +303,14 @@ async def redirect_callback(code: str, state: Optional[str] = None):
                     user_data.get("email", ""),
                 )
 
-            names = [group.name for group in user.groups]
-
             # Check if the user is in the admin group to set the appropriate database role
-            role = "web_user"
-            if "admin" in names:
-                role = "web_admin"
+            names = {g.name for g in user.groups}
+            ids = {g.id for g in user.groups}
+            role = (
+                "web_admin"
+                if ("web_admin" in names or "admin" in names or 1 in ids)
+                else "web_user"
+            )
 
             # validate jwt https://dev.macrostrat.org/dev/me
             access_token = create_access_token(
@@ -313,6 +319,7 @@ async def redirect_callback(code: str, state: Optional[str] = None):
                     "role": role,  # For PostgREST
                     # ensure user_id is correctly being returned
                     "user_id": user.id,
+                    "groups": list(ids),
                 }
             )
 
@@ -400,12 +407,21 @@ async def read_users_me(
     async_session = db.get_async_session(engine)
 
     async with async_session() as session:
-
-        user_stmt = select(schemas.User).filter(schemas.User.sub == user_token_data.sub)
-
+        user_stmt = (
+            select(schemas.User)
+            .options(selectinload(schemas.User.groups))
+            .filter(schemas.User.sub == user_token_data.sub)
+        )
         user = await session.scalar(user_stmt)
 
         if user is None:
             raise HTTPException(status_code=404, detail="User not found")
-
-        return user
+        return {
+            "sub": user.sub,
+            "email": user.email,
+            "id": user.id,
+            "name": user.name,
+            "created_on": user.created_on,
+            "updated_on": user.updated_on,
+            "groups": [{"name": g.name, "id": g.id} for g in user.groups],
+        }

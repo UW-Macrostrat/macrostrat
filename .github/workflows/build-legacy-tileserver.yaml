@@ -45,6 +45,16 @@ jobs:
             type=ref,event=branch,suffix=-{{date 'YYYYMMDDHHmmss'}}
             type=raw,value=latest,enable={{is_default_branch}}
             type=raw,value=sha-{{sha}}
+            
+            
+            # When a PRODUCTION tag (legacy-tileserver-vX.Y.Z) → also tag staging and dev
+            type=raw,value=main-{{date 'YYYYMMDDHHmmss'}},enable=${{ startsWith(github.ref, 'refs/tags/legacy-tileserver-v') && !contains(env.VERSION, '-') }}
+            type=raw,value=${{ env.VERSION }}-beta.{{date 'YYYYMMDDHHmmss'}},enable=${{ startsWith(github.ref, 'refs/tags/legacy-tileserver-v') && !contains(env.VERSION, '-') }}
+            type=raw,value=${{ env.VERSION }}-beta,enable=${{ startsWith(github.ref, 'refs/tags/legacy-tileserver-v') && !contains(env.VERSION, '-') }}
+
+            # When a STAGING prerelease tag (legacy-tileserver-vX.Y.Z-*) → also tag dev
+            type=raw,value=main-{{date 'YYYYMMDDHHmmss'}},enable=${{ startsWith(github.ref, 'refs/tags/legacy-tileserver-v') && contains(env.VERSION, '-') }}
+
       - name: Set up Docker BuildX
         uses: docker/setup-buildx-action@v2
       - name: Login to OSG DockerHub
