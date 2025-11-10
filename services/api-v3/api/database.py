@@ -8,7 +8,7 @@
 import datetime
 from os import environ
 from typing import List, Literal, Type
-
+from datetime import timezone
 import api.schemas as schemas
 from api.query_parser import QueryParser
 from dotenv import load_dotenv
@@ -319,3 +319,90 @@ async def patch_sources_sub_table_set_columns_equal(
         result = await conn.execute(stmt)
 
         return result
+
+
+
+# ----------- SQL helpers used by security.py; returns plain dicts/lists ------------
+
+async def fetch_user_by_sub(engine, sub: str) -> dict | None:
+    async with engine.begin() as conn:
+        user = (await conn.execute(
+            text("""
+                SELECT id, sub, name, email, created_on, updated_on
+                FROM macrostrat_auth."user"
+                WHERE sub = :sub
+            """),
+            {"sub": sub},
+        )).mappings().first()
+        if not user:
+            return None
+        groups = (await conn.execute(
+            text("""
+                SELECT g.id, g.name
+                FROM macrostrat_auth."group" g
+                JOIN macrostrat_auth.group_members gm ON gm.group_id = g.id
+                WHERE gm.user_id = :uid
+                ORDER BY g.id
+            """),
+            {"uid": user["id"]},
+        )).mappings().all()
+        user = dict(user)
+        user["groups"] = [dict(g) for g in groups]
+        return user
+
+async def create_user_row(engine, sub: str, name: str, email: str) -> dict:
+    async with engine.begin() as conn:
+        user = (await conn.execute(
+            text("""
+                INSERT INTO macrostrat_auth."user"(sub, name, email)
+                VALUES (:sub, :name, :email)
+                RETURNING id, sub, name, email, created_on, updated_on
+            """),
+            {"sub": sub, "name": name, "email": email},
+        )).mappings().first()
+        user = dict(user)
+        user["groups"] = []
+        return user
+
+async def insert_group_api_token(engine, token_hash_string: str, group_id: int, expiration_dt):
+    async with engine.begin() as conn:
+        await conn.execute(
+            text("""
+                INSERT INTO macrostrat_auth.token(token, "group", expires_on)
+                VALUES (:token, :group_id, :exp)
+            """),
+            {"token": token_hash_string, "group_id": group_id, "exp": expiration_dt},
+        )
+
+async def get_access_token_by_hash(engine, token_hash_string: str) -> dict | None:
+    async with engine.begin() as conn:
+        row = (await conn.execute(
+            text("""
+                SELECT id, token, "group", used_on, expires_on
+                FROM macrostrat_auth.token
+                WHERE token = :tok
+            """),
+            {"tok": token_hash_string},
+        )).mappings().first()
+        if not row:
+            return None
+        now = datetime.datetime.now(datetime.timezone.utc)
+        if row["expires_on"] and row["expires_on"] < now:
+            return None
+        await conn.execute(
+            text("""UPDATE macrostrat_auth.token SET used_on = NOW() WHERE id = :id"""),
+            {"id": row["id"]},
+        )
+        return dict(row)
+
+async def get_all_unexpired_access_tokens(engine) -> list[dict]:
+    async with engine.begin() as conn:
+        rows = (await conn.execute(
+            text("""
+                SELECT id, token, "group", used_on, expires_on
+                FROM macrostrat_auth.token
+                WHERE expires_on > NOW()
+            """)
+        )).mappings().all()
+        return [dict(r) for r in rows]
+

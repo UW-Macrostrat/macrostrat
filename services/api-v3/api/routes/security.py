@@ -2,7 +2,7 @@ import os
 import secrets
 import string
 import urllib.parse
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Annotated, Optional
 
 import aiohttp
@@ -18,7 +18,7 @@ from fastapi.security import (
 from fastapi.security.utils import get_authorization_scheme_param
 from jose import JWTError, jwt
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import selectinload
 from starlette.status import HTTP_401_UNAUTHORIZED
 
@@ -63,8 +63,6 @@ class GroupTokenRequest(BaseModel):
 
 
 access_token_key = "access_token"
-# TODO: Refresh tokens
-# refresh_token_key = "refresh_token"
 
 
 class OAuth2AuthorizationCodeBearerWithCookie(OAuth2AuthorizationCodeBearer):
@@ -126,6 +124,7 @@ async def get_groups_from_header_token(
     return token.group
 
 
+'''
 async def get_user(sub: str) -> schemas.User | None:
     """Get an existing user"""
 
@@ -143,6 +142,7 @@ async def get_user(sub: str) -> schemas.User | None:
     return user
 
 
+
 async def create_user(sub: str, name: str, email: str) -> schemas.User:
     """Create a new user"""
 
@@ -156,6 +156,17 @@ async def create_user(sub: str, name: str, email: str) -> schemas.User:
         await session.commit()
 
     return await get_user(sub)
+    
+'''
+
+async def get_user(sub: str) -> dict | None:
+    engine = db.get_engine()
+    return await db.fetch_user_by_sub(engine, sub)
+
+async def create_user(sub: str, name: str, email: str) -> dict:
+    engine = db.get_engine()
+    return await db.create_user_row(engine, sub, name, email)
+
 
 
 async def get_user_token_from_cookie(
@@ -339,9 +350,53 @@ async def redirect_callback(code: str, state: Optional[str] = None):
                 domain=_domain,
                 httponly=True,
                 samesite="lax",
+                secure=(parsed_url.scheme == "https"),
             )
 
             return response
+
+@router.post("/refresh")
+async def refresh_token(
+    response: Response,
+    user_token: TokenData = Depends(get_user_token_from_cookie)
+):
+    """Refresh token issuing a new cookie with a fresh exp.
+    Requires a valid cookie-based JWT;"""
+
+    if user_token is None or user_token.sub is None:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    user = await get_user(user_token.sub)
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    names = {g["name"] for g in user["groups"]}
+    ids = {g["id"] for g in user["groups"]}
+    role = "web_admin" if ("web_admin" in names or "admin" in names or 1 in ids) else "web_user"
+
+    access_token = create_access_token(
+        data={"sub": user["sub"], "role": role, "user_id": user["id"], "groups": list(ids)}
+    )
+
+    uri = os.environ["REDIRECT_URI_ENV"]
+    parsed_url = urllib.parse.urlparse(uri)
+    redirect_domain = parsed_url.netloc
+    _domain = redirect_domain
+    for override in ["localhost", "127.0.0.1"]:
+        if override in redirect_domain:
+            _domain = override
+
+    response.set_cookie(
+        access_token_key,
+        f"Bearer {access_token}",
+        domain=_domain,
+        httponly=True,
+        samesite="lax",
+        secure=(parsed_url.scheme == "https"),
+    )
+
+    return {"status": "refreshed"}
+
 
 
 @router.post("/token", response_model=AccessToken)
