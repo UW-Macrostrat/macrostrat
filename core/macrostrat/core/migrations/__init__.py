@@ -4,16 +4,15 @@ from functools import lru_cache
 from graphlib import TopologicalSorter
 from os import environ
 from pathlib import Path
-from time import time
-from typing import Callable, Iterable, Optional
+from typing import Callable, Iterable, Optional, Union
 
 import docker
-from pydantic import BaseModel
-from rich import print
-
 from macrostrat.database import Database
 from macrostrat.database.utils import OutputMode
 from macrostrat.dinosaur.upgrade_cluster.utils import database_cluster
+from pydantic import BaseModel
+from rich import print
+from time import time
 
 from ..config import settings
 from ..database import get_database
@@ -44,6 +43,12 @@ _MIN_READINESS_BY_ENV = {"dev": "alpha", "staging": "beta", "prod": "ga"}
 _READINESS_ORDER = {"alpha": 0, "beta": 1, "ga": 2}
 
 
+class ReadinessState(Enum):
+    ALPHA = "alpha"
+    BETA = "beta"
+    GA = "ga"
+
+
 # based on set_env in macrostrat/cli/macrostrat/cli/entrypoint.py
 def _get_active_env() -> str:
     env = getattr(settings, "env", None)
@@ -59,7 +64,12 @@ def _get_active_env() -> str:
     return _ENV_ALIASES.get(env, "dev")
 
 
-def _env_allows_migration(migration_readiness: str, env: str) -> bool:
+def _env_allows_migration(
+    migration_readiness: Union[str, ReadinessState], env: str
+) -> bool:
+    # We prefer to use the ReadinessState enum if provided
+    if isinstance(migration_readiness, ReadinessState):
+        migration_readiness = migration_readiness.value
     migr_ready = (migration_readiness or "alpha").lower()
     min_ready = _MIN_READINESS_BY_ENV[_get_active_env() if env is None else env].lower()
     return _READINESS_ORDER[migr_ready] >= _READINESS_ORDER[min_ready]

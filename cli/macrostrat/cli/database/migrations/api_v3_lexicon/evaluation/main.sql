@@ -1,4 +1,4 @@
-CREATE OR REPLACE VIEW macrostrat_api.autocomplete as 
+CREATE OR REPLACE VIEW macrostrat_api.autocomplete as
  SELECT autocomplete.id,
     autocomplete.name,
     autocomplete.type,
@@ -28,23 +28,12 @@ UNION ALL
     'strat_name'::character varying AS type,
     'strat_names'::character varying AS category
    FROM macrostrat.strat_names
-   where concept_id is null
-   
-CREATE VIEW macrostrat_api.col_base AS 
- SELECT c.id AS col_id,
-    c.col_group_id,
-    c.project_id,
-    c.col_name AS name,
-    c.status_code,
-    NOT (EXISTS ( SELECT 1
-           FROM macrostrat_api.units u2
-          WHERE u2.col_id = c.id)) AS empty,
-    jsonb_agg(DISTINCT u.id) FILTER (WHERE u.id IS NOT NULL) AS units
-   FROM macrostrat.cols c
-     LEFT JOIN macrostrat_api.units u ON c.id = u.col_id
-  GROUP BY c.id;
+   where concept_id is null;
 
-CREATE VIEW macrostrat_api.col_data AS 
+/**
+  TODO: this is not needed but we keep it around for reference
+
+CREATE VIEW macrostrat_api.col_data AS
  SELECT c.id AS col_id,
     c.col_group_id,
     c.project_id,
@@ -63,36 +52,7 @@ CREATE VIEW macrostrat_api.col_data AS
      LEFT JOIN macrostrat_api.unit_liths l ON l.unit_id = u.id
      LEFT JOIN macrostrat_api.unit_intervals i ON i.unit_id = u.id
   GROUP BY c.id;
-
-CREATE VIEW macrostrat_api.col_filter AS 
- SELECT row_number() OVER () AS id,
-    combined.name,
-    combined.color,
-    combined.lex_id,
-    combined.type
-   FROM ( SELECT liths.lith AS name,
-            liths.lith_color AS color,
-            liths.id AS lex_id,
-            'lithology'::text AS type
-           FROM macrostrat.liths
-        UNION ALL
-         SELECT strat_names.strat_name AS name,
-            NULL::character varying AS color,
-            strat_names.id AS lex_id,
-            'strat name'::text AS type
-           FROM macrostrat.strat_names
-        UNION ALL
-         SELECT intervals.interval_name AS name,
-            intervals.interval_color AS color,
-            intervals.id AS lex_id,
-            'interval'::text AS type
-           FROM macrostrat.intervals
-        UNION ALL
-         SELECT units.strat_name AS name,
-            NULL::character varying AS color,
-            units.id AS lex_id,
-            'unit'::text AS type
-           FROM macrostrat.units) combined;
+ */
 
 CREATE VIEW macrostrat_api.cols_with_groups AS
  SELECT mt.id,
@@ -595,21 +555,21 @@ CREATE VIEW macrostrat_api.legend_liths AS
 
 CREATE OR REPLACE VIEW macrostrat_api.kg_matches AS (
    WITH all_lith_ids AS (
-      SELECT 
+      SELECT
          id::text AS lith_id,
          NULL::text AS lith_att_id
       FROM macrostrat.liths
 
       UNION ALL
 
-      SELECT 
+      SELECT
          NULL::text AS lith_id,
          id::text AS lith_att_id
       FROM macrostrat.lith_atts
    ),
 
    parsed_kg_entities AS (
-      SELECT 
+      SELECT
          id,
          match::jsonb,
          source,
@@ -619,7 +579,7 @@ CREATE OR REPLACE VIEW macrostrat_api.kg_matches AS (
       FROM macrostrat_api.kg_entities
    )
 
-   SELECT 
+   SELECT
       a.lith_id,
       a.lith_att_id,
       k.match,
@@ -634,14 +594,14 @@ CREATE OR REPLACE VIEW macrostrat_api.kg_matches AS (
       ON k.source = s.id
 )
 
-CREATE OR REPLACE VIEW macrostrat_api.rockd_stats AS 
+CREATE OR REPLACE VIEW macrostrat_api.rockd_stats AS
 SELECT
     COUNT(*) AS total_rows,
     COUNT(CASE WHEN date >= NOW() - INTERVAL '1 day' THEN 1 END) AS rows_last_24_hours
 FROM usage_stats.rockd_stats;
 
 
-CREATE OR REPLACE VIEW macrostrat_api.macrostrat_stats AS 
+CREATE OR REPLACE VIEW macrostrat_api.macrostrat_stats AS
 SELECT
     COUNT(*) AS total_rows,
     COUNT(CASE WHEN date >= NOW() - INTERVAL '1 day' THEN 1 END) AS rows_last_24_hours
