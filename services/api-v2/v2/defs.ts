@@ -1,4 +1,54 @@
 (function () {
+
+  const sharedUnitFilters = {
+    unit_id: "integer, a valid unit id",
+    section_id: "integer, a valid section id",
+    col_id: "integer, a valid column id",
+    col_type: "string, a column type",
+    interval_name: "string, chronostratigraphic time interval name",
+    int_id:
+      "integer, a chronostratigraphic time interval ID from /defs/intervals",
+    age: "numerical age in millions of years before present",
+    age_top:
+      "numerical age (Ma) - must be used with age_bottom and be less than age_bottom",
+    age_bottom:
+      "numerical age (Ma) - must be used with age_top and be greater than age_top",
+    lith_id: "integer, ID of a lithology from /defs/lithologies",
+    lith: "string, specific lithology name (e.g., shale, sandstone)",
+    lith_type:
+      "string, groups of lithologies (e.g., carbonate, siliciclastic)",
+    lith_class:
+      "string, general lithologies (sedimentary, igneous, metamorphic)",
+    lith_att_id:
+      "integer, ID of a lithology attribute from /defs/lithology_attributes",
+    lith_att:
+      "string, specific lithology attribute name (e.g. fine, olivine, poorly washed)",
+    lith_att_type:
+      "string, specific category of lithology attribute (e.g. grains, lithology, bedform)",
+    environ_id:
+      "integer, specific environment ID from /defs/environments",
+    environ: "string, specific environment",
+    environ_type: "string, groups of environments",
+    environ_class: "string, general environments",
+    econ_id: "integer, ID of an economic attribute from /defs/econs",
+    econ: "string, name of an economic attribute",
+    econ_type: "string, name of an economic attribute type",
+    econ_class: "string, name of an economic attribute class",
+    cltn_id: "integer, one or more Paleobiology Database collection IDs",
+    strat_name: "a fuzzy stratigraphic name to match units to",
+    strat_name_id:
+      "integer, a single or comma-separated list of stratigraphic IDs from /defs/strat_names",
+    strat_name_concept_id:
+      "integer, a single or comma-separated list of stratigraphic name concept IDs from /defs/strat_name_concepts",
+    lat: "number, decimal degree latitude, WGS84",
+    lng: "number, decimal degree longitude, WGS84",
+    adjacents:
+      "boolean, if lat/lng or col_id is specified, optionally return all units in columns that touch the polygon containing the supplied lat/lng",
+    project_id: "a Macrostrat project ID",
+    response: "Any available response_type. Default is short.",
+    format: "string, desired output format",
+  }
+
   var defs = {
     "/columns": {
       description:
@@ -6,50 +56,7 @@
       visible: true,
       options: {
         parameters: {
-          unit_id: "integer, a valid unit id",
-          section_id: "integer, a valid section id",
-          col_id: "integer, a valid column id",
-          col_type: "string, a column type",
-          interval_name: "string, chronostratigraphic time interval name",
-          int_id:
-            "integer, a chronostratigraphic time interval ID from /defs/intervals",
-          age: "numerical age in millions of years before present",
-          age_top:
-            "numerical age (Ma) - must be used with age_bottom and be less than age_bottom",
-          age_bottom:
-            "numerical age (Ma) - must be used with age_top and be greater than age_top",
-          lith_id: "integer, ID of a lithology from /defs/lithologies",
-          lith: "string, specific lithology name (e.g., shale, sandstone)",
-          lith_type:
-            "string, groups of lithologies (e.g., carbonate, siliciclastic)",
-          lith_class:
-            "string, general lithologies (sedimentary, igneous, metamorphic)",
-          lith_att_id:
-            "integer, ID of a lithology attribute from /defs/lithology_attributes",
-          lith_att:
-            "string, specific lithology attribute name (e.g. fine, olivine, poorly washed)",
-          lith_att_type:
-            "string, specific category of lithology attribute (e.g. grains, lithology, bedform)",
-          environ_id:
-            "integer, specific environment ID from /defs/environments",
-          environ: "string, specific environment",
-          environ_type: "string, groups of environments",
-          environ_class: "string, general environments",
-          econ_id: "integer, ID of an economic attribute from /defs/econs",
-          econ: "string, name of an economic attribute",
-          econ_type: "string, name of an economic attribute type",
-          econ_class: "string, name of an economic attribute class",
-          cltn_id: "integer, one or more Paleobiology Database collection IDs",
-          strat_name: "a fuzzy stratigraphic name to match units to",
-          strat_name_id:
-            "integer, a single or comma-separated list of stratigraphic IDs from /defs/strat_names",
-          lat: "number, decimal degree latitude, WGS84",
-          lng: "number, decimal degree longitude, WGS84",
-          adjacents:
-            "boolean, if lat/lng or col_id is specified, optionally return all units in columns that touch the polygon containing the supplied lat/lng",
-          project_id: "a Macrostrat project ID",
-          response: "Any available response_type. Default is short.",
-          format: "string, desired output format",
+          ...sharedUnitFilters,
         },
         response_types: ["short", "long"],
         output_formats: [
@@ -96,52 +103,7 @@
       visible: true,
       options: {
         parameters: {
-          unit_id: "integer, a valid unit id",
-          section_id: "integer, a valid section id",
-          col_id: "integer, a valid column id",
-          interval_name: "string, chronostratigraphic time interval name",
-          int_id:
-            "integer, a chronostratigraphic time interval ID from /defs/intervals",
-          age: "numerical age in millions of years before present",
-          age_top:
-            "numerical age (Ma) - must be used with age_bottom and be less than age_bottom",
-          age_bottom:
-            "numerical age (Ma) - must be used with age_top and be greater than age_top",
-          lith_id: "integer, ID of a lithology from /defs/lithologies",
-          lith: "string, specific lithology name (e.g., shale, sandstone)",
-          lith_group: "string, group of lithologies (e.g., unconsolidated)",
-          lith_type:
-            "string, type of lithologies (e.g., carbonate, siliciclastic)",
-          lith_class:
-            "string, general lithologies (sedimentary, igneous, metamorphic)",
-          lith_att_id:
-            "integer, ID of a lithology attribute from /defs/lithology_attributes",
-          lith_att:
-            "string, specific lithology attribute name (e.g. fine, olivine, poorly washed)",
-          lith_att_type:
-            "string, specific category of lithology attribute (e.g. grains, lithology, bedform)",
-          environ_id:
-            "integer, specific environment ID from /defs/environments",
-          environ: "string, specific environment",
-          environ_type: "string, groups of environments",
-          environ_class: "string, general environments",
-          econ_id: "integer, ID of an economic attribute from /defs/econs",
-          econ: "string, name of an economic attribute",
-          econ_type: "string, name of an economic attribute type",
-          econ_class: "string, name of an economic attribute class",
-          cltn_id: "integer, one or more Paleobiology Database collection IDs",
-          strat_name: "a fuzzy stratigraphic name to match units to",
-          strat_name_id:
-            "integer, a single or comma-separated list of stratigraphic IDs from /defs/strat_names",
-          strat_name_concept_id:
-            "integer, a single or comma-separated list of stratigraphic name concept IDs from /defs/strat_name_concepts",
-          lat: "number, decimal degree latitude, WGS84",
-          lng: "number, decimal degree longitude, WGS84",
-          adjacents:
-            "boolean, if lat/lng or col_id is specified, optionally return all units in columns that touch the polygon containing the supplied lat/lng",
-          project_id: "a Macrostrat project ID",
-          response: "Any available response_type. Default is short.",
-          format: "string, desired output format",
+          ...sharedUnitFilters,
         },
         output_formats: ["json", "csv"],
         response_types: ["short", "long"],
@@ -170,60 +132,13 @@
       visible: true,
       options: {
         parameters: {
-          unit_id: "integer, a valid unit id",
-          section_id: "integer, a valid section id",
-          col_id: "integer, a valid column id",
-          col_type: "string, a column type",
-          interval_name: "string, chronostratigraphic time interval name",
-          int_id:
-            "integer, a chronostratigraphic time interval ID from /defs/intervals",
-          age: "numerical age in millions of years before present",
-          age_top:
-            "numerical age (Ma) - must be used with age_bottom and be less than age_bottom",
-          age_bottom:
-            "numerical age (Ma) - must be used with age_top and be greater than age_top; note that returned units may not be entirely contained by age_top and age_bottom, but they will intersect that age range in whole or in part",
-          lith_id: "integer, ID of a lithology from /defs/lithologies",
-          lith: "string, specific lithology name (e.g., shale, sandstone)",
-          lith_group:
-            "string, groups of lithologies (e.g., sandstones, mudrocks, unconsolidated)",
-          lith_type:
-            "string, types of lithologies (e.g., carbonate, siliciclastic)",
-          lith_class:
-            "string, general lithologies (sedimentary, igneous, metamorphic)",
-          lith_att_id:
-            "integer, ID of a lithology attribute from /defs/lithology_attributes",
-          lith_att:
-            "string, specific lithology attribute name (e.g. fine, olivine, poorly washed)",
-          lith_att_type:
-            "string, specific category of lithology attribute (e.g. grains, lithology, bedform)",
-          environ_id:
-            "integer, specific environment ID from /defs/environments",
-          environ: "string, specific environment",
-          environ_type: "string, groups of environments",
-          environ_class: "string, general environments",
-          econ_id: "integer, ID of an economic attribute from /defs/econs",
-          econ: "string, name of an economic attribute",
-          econ_type: "string, name of an economic attribute type",
-          econ_class: "string, name of an economic attribute class",
-          cltn_id: "integer, one or more Paleobiology Database collection IDs",
-          strat_name: "a fuzzy stratigraphic name to match units to",
-          strat_name_id:
-            "integer, a single or comma-separated list of stratigraphic IDs from /defs/strat_names",
-          strat_name_concept_id:
-            "integer, a single or comma-separated list of stratigraphic name concept IDs from /defs/strat_name_concepts",
-          lat: "number, decimal degree latitude, WGS84",
-          lng: "number, decimal degree longitude, WGS84",
-          adjacents:
-            "boolean, if lat/lng or col_id is specified, optionally return all units in columns that touch the polygon containing the supplied lat/lng",
-          project_id: "a Macrostrat project ID",
-          response: "Any available response_type. Default is short.",
+          ...sharedUnitFilters,
           geom_age:
             "If requesting a geographic format, specifies which age to use for the primary coordinates. Accepted parameters are 'modern' (clat, clng), 'top' (t_plat, t_plng) and 'bottom' (b_plat, b_plng). Default is 'modern'",
           summarize_measures:
             "If present, returns summary statistics about the measurements associated with each unit",
           show_position:
             "If present, return the unit top and bottom position in section",
-          format: "string, desired output format",
         },
         response_types: ["short", "long"],
         output_formats: [
