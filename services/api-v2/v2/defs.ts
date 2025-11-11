@@ -133,6 +133,8 @@
           strat_name: "a fuzzy stratigraphic name to match units to",
           strat_name_id:
             "integer, a single or comma-separated list of stratigraphic IDs from /defs/strat_names",
+          strat_name_concept_id:
+            "integer, a single or comma-separated list of stratigraphic name concept IDs from /defs/strat_name_concepts",
           lat: "number, decimal degree latitude, WGS84",
           lng: "number, decimal degree longitude, WGS84",
           adjacents:
@@ -207,6 +209,8 @@
           strat_name: "a fuzzy stratigraphic name to match units to",
           strat_name_id:
             "integer, a single or comma-separated list of stratigraphic IDs from /defs/strat_names",
+          strat_name_concept_id:
+            "integer, a single or comma-separated list of stratigraphic name concept IDs from /defs/strat_name_concepts",
           lat: "number, decimal degree latitude, WGS84",
           lng: "number, decimal degree longitude, WGS84",
           adjacents:

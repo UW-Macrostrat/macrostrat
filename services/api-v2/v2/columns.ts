@@ -247,6 +247,10 @@ module.exports = function (req, res, next, callback) {
             d.refs = larkin.jsonifyPipes(d.refs, "integers");
           }
 
+          // Add summary parameters to each column
+          d.t_units = unit_data[d.col_id].t_units;
+          d.t_sections = unit_data[d.col_id].t_sections;
+
           if (req.query.response === "long") {
             d = _.extend(d, unit_data[d.col_id]);
 
