@@ -9,6 +9,9 @@ module.exports = function (req, res, next) {
   if (Object.keys(req.query).length < 1) {
     larkin.info(req, res, next);
   } else {
+
+    const hasSample = Object.prototype.hasOwnProperty.call(req.query, "sample");
+
     var geo =
       req.query.format && api.acceptedFormats.geo[req.query.format]
         ? true
@@ -19,11 +22,8 @@ module.exports = function (req, res, next) {
       geomField = geo ? ", ST_AsGeoJSON(geom) AS geometry" : "",
       limit,
       from = "";
-    if (req.query.sample === "") {
-      limit = " LIMIT 5";
-    } else {
-      limit = "";
-    }
+
+    limit = hasSample ? " LIMIT 5" : "";
 
     if (req.query.gid && req.query.gid != "undefined") {
       where.push(" gid = $" + (where.length + 1));
@@ -76,23 +76,25 @@ module.exports = function (req, res, next) {
         ? ", ST_AsGeoJSON(ST_Intersection(ST_Buffer(geom, 0)::geography, buffer)) AS geometry"
         : "";
     }
-
-    if (where.length < 1 && !req.query.sample) {
+    if (where.length < 1 && !hasSample) {
       return larkin.error(req, res, next, "Invalid params");
     }
 
     if (where.length > 0) {
       where = " WHERE " + where.join(", ");
     }
-    //todo modify query to use macrostrat schema.
-    larkin.queryPg(
-      "geomacro",
-      "SELECT gid, unit_abbre, COALESCE(rocktype, '') AS rocktype, COALESCE(lithology, '') AS lith, lith_type, lith_class, min_interval AS t_interval, min_age::float AS t_age, max_interval AS b_interval, max_age::float AS b_age, containing_interval, interval_color AS color" +
+  //TODO the gmna.lookup_units needs to be repointed to macrostrat. This is the gmna map select * from maps.sources where source_id = 7
+
+    let sql = "SELECT gid, unit_abbre, COALESCE(rocktype, '') AS rocktype, COALESCE(lithology, '') AS lith, lith_type, lith_class, min_interval AS t_interval, min_age::float AS t_age, max_interval AS b_interval, max_age::float AS b_age, containing_interval, interval_color AS color" +
         geomField +
         " FROM gmna.lookup_units" +
         from +
         where +
-        limit,
+        limit
+    //todo modify query to use macrostrat schema.
+    larkin.queryPg(
+      "geomacro",
+      sql,
       params,
       function (error, result) {
         if (error) {

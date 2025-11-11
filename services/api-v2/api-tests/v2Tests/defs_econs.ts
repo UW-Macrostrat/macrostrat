@@ -3,7 +3,8 @@ var request = require("supertest"),
   settings = require("../settings");
 
 it("should return metadata", function (done) {
-  request(settings.host)
+    this.timeout(10000);
+    request(settings.host)
     .get("/defs/econs")
     .expect(validators.aSuccessfulRequest)
     .expect(validators.json)

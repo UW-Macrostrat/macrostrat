@@ -9,9 +9,7 @@ module.exports = function (req, res, next) {
     async.parallel(
       {
         gmus: function (callback) {
-          larkin.queryPg(
-            "geomacro",
-            "SELECT\n" +
+            let sql = "SELECT\n" +
               "   cols.id AS col_id,\n" +
               "    lookup_unit_liths.lith_short,\n" +
               "    units.strat_name,\n" +
@@ -34,7 +32,12 @@ module.exports = function (req, res, next) {
               "WHERE\n" +
               "    ST_Contains(cols.poly_geom, ST_GeomFromText($1, 4326))\n" +
               "    AND cols.status_code = 'active'\n" +
-              "ORDER BY lo_age;",
+              "ORDER BY lo_age;"
+            console.log('HERE IS THE POINT DETAILS SQL:', sql)
+            console.log('here are the params in point details: ', ["POINT(" + req.query.lng + " " + req.query.lat + ")"])
+          larkin.queryPg(
+            "geomacro",
+            sql,
             ["POINT(" + req.query.lng + " " + req.query.lat + ")"],
             function (error, result) {
               if (error) {
@@ -53,7 +56,7 @@ module.exports = function (req, res, next) {
                       });
                     })
                     .flat();
-                  const median = result.rows.length / 2 - 1;
+                  const median = Math.floor(result.rows.length / 2);
                   const col_id = result.rows[0].col_id;
                   const unit_age = result.rows[median].lo_period;
                   const unit_name = result.rows[median].strat_name;
@@ -212,6 +215,8 @@ module.exports = function (req, res, next) {
       },
     );
   } else if (req.query.col_id && req.query.unit_id) {
+      //TODO the gmus.lookup_units needs to be repointed to macrostrat
+
     async.parallel(
       {
         gmus: function (callback) {

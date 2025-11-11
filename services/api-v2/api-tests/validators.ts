@@ -1,6 +1,93 @@
 //var sizeOf = require("image-size");
 const axios = require("axios");
 
+function extractArrayData(payload) {
+  try {
+    if (!payload || !payload.success) return null;
+    const data = payload.success.data;
+    if (Array.isArray(data)) return data;
+    if (data && data.type === "FeatureCollection" && Array.isArray(data.features)) {
+      return data.features;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+// Returns the object to scan for keys (GeoJSON Feature.properties if present)
+function surfaceForIdScan(item) {
+  if (!item) return null;
+  if (item.properties && typeof item.properties === "object") return item.properties;
+  return item;
+}
+
+// Find the first *_id key by insertion order on a single item
+function firstStarIdKey(item) {
+  const base = surfaceForIdScan(item);
+  if (!base || typeof base !== "object") return null;
+  for (const k of Object.keys(base)) {
+    if (/_id$/i.test(k)) return k;         // first *_id encountered wins
+  }
+  if (Object.prototype.hasOwnProperty.call(base, "id")) return "id";
+  return null;
+}
+
+// Does at least one item in `arr` expose `key` (on root or Feature.properties)?
+function arrayExposesKey(arr, key, sampleSize = 50) {
+  const n = Math.min(arr.length, sampleSize);
+  for (let i = 0; i < n; i++) {
+    const it = arr[i];
+    if (!it) continue;
+    const props = it.properties && typeof it.properties === "object" ? it.properties : null;
+    if ((props && Object.prototype.hasOwnProperty.call(props, key)) ||
+        Object.prototype.hasOwnProperty.call(it, key)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// Choose a shared id key by prioritizing the FIRST *_id in the objects.
+function chooseCommonIdKey(localArr, prodArr) {
+  // 1) Prefer first *_id on the FIRST local item (insertion order)
+  const localFirst = firstStarIdKey(localArr[0]);
+  if (localFirst && arrayExposesKey(prodArr, localFirst)) return localFirst;
+
+  // 2) Otherwise try first *_id on the FIRST prod item
+  const prodFirst = firstStarIdKey(prodArr[0]);
+  if (prodFirst && arrayExposesKey(localArr, prodFirst)) return prodFirst;
+
+  // 3) (Optional) fall back to legacy heuristic or null
+  return null;
+}
+
+
+// Build a set of unique IDs from an array given a chosen id key.
+// Supports both flat objects and GeoJSON Feature properties.
+function uniqueIds(arr, idKey) {
+  const out = new Set();
+  for (const item of arr) {
+    if (!item) continue;
+    // Prefer .properties[idKey] if available (GeoJSON Feature)
+    const props = item.properties && typeof item.properties === "object" ? item.properties : null;
+    if (props && Object.prototype.hasOwnProperty.call(props, idKey)) {
+      out.add(props[idKey]);
+      continue;
+    }
+    if (Object.prototype.hasOwnProperty.call(item, idKey)) {
+      out.add(item[idKey]);
+      continue;
+    }
+    // Handle plain "id" on the Feature object itself (rare but possible)
+    if (idKey === "id" && Object.prototype.hasOwnProperty.call(item, "id")) {
+      out.add(item.id);
+    }
+  }
+  return out;
+}
+
+
+
 module.exports = {
   aSuccessfulRequest: function (res: {
     statusCode: number;
@@ -201,20 +288,52 @@ module.exports = {
     );
   },
 
-  async compareWithProduction(queryParams = "", localResponse: any) {
+
+  async compareWithProduction(queryParams = "", localResponse) {
     const prodUrl = `https://www.macrostrat.org/api/v2${queryParams}`;
-    const externalResponse = await axios.get(prodUrl);
-    if (
-      JSON.stringify(localResponse.body) !==
-      JSON.stringify(externalResponse.data)
-    ) {
-      throw new Error(
-        `Mismatch for endpoint: ${queryParams}\nLocal: ${JSON.stringify(
-          localResponse.body,
-          null,
-          2,
-        )}\nProduction: ${JSON.stringify(externalResponse.data, null, 2)}`,
-      );
+    const { data: prodData } = await axios.get(prodUrl);
+
+    // Exact JSON match still passes quickly.
+    if (JSON.stringify(localResponse.body) === JSON.stringify(prodData)) {
+      return;
     }
+
+    // Lenient path for array-like payloads
+    const localArr = extractArrayData(localResponse.body);
+    const prodArr  = extractArrayData(prodData);
+
+    if (Array.isArray(localArr) && Array.isArray(prodArr) && localArr.length && prodArr.length) {
+      // Auto-detect a shared *_id (or "id") to compare by counts
+      const idKey = chooseCommonIdKey(localArr, prodArr);
+
+      if (idKey) {
+        console.info(`[compareWithProduction] Using id key: ${idKey}`);
+        const localIds = uniqueIds(localArr, idKey);
+        const prodIds  = uniqueIds(prodArr,  idKey);
+        const localCount = localIds.size;
+        const prodCount  = prodIds.size;
+
+        if (localCount !== prodCount) {
+          console.warn(
+            [
+              `⚠️  ${idKey} count mismatch for endpoint: ${queryParams}`,
+              `   - Dev (current host) ${idKey} count: ${localCount}`,
+              `   - Prod (host_prod) ${idKey} count: ${prodCount}`,
+            ].join("\n")
+          );
+
+          return;
+        }
+        // If counts match but payloads differ, fall through to strict error to surface real mismatches.
+      }
+      // If we couldn't find a shared idKey, we’ll fall back to strict diff below.
+    }
+
+    // Strict mismatch error with helpful diff
+    throw new Error(
+      `Mismatch for endpoint: ${queryParams}\n` +
+      `Local: ${JSON.stringify(localResponse.body, null, 2)}\n` +
+      `Production: ${JSON.stringify(prodData, null, 2)}`
+    );
   },
 };

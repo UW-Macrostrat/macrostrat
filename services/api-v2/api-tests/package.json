@@ -5,7 +5,7 @@
   "scripts": {
     "start": "ts-node app.ts",
     "dev": "ts-node-dev app.ts",
-    "test": "mocha -r ts-node/register app.ts"
+    "test": "mocha -r ts-node/register \"v2Tests/**/*.ts\""
   },
   "dependencies": {
     "axios": "^1.7.9",
