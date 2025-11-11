@@ -99,7 +99,7 @@ router = APIRouter(
     responses={404: {"description": "Not found"}},
 )
 
-
+'''
 async def get_groups_from_header_token(
     header_token: Annotated[HTTPAuthorizationCredentials, Depends(http_bearer)]
 ) -> int | None:
@@ -122,6 +122,29 @@ async def get_groups_from_header_token(
         return None
 
     return token.group
+'''
+
+
+async def get_groups_from_header_token(
+    header_token: Annotated[HTTPAuthorizationCredentials, Depends(http_bearer)]
+) -> int | None:
+    if header_token is None:
+        return None
+
+    engine = db.get_engine()
+
+    try:
+        rows = await db.get_all_unexpired_access_tokens(engine)
+    except Exception:
+        rows = []
+    for row in rows:
+        try:
+            if bcrypt.checkpw(header_token.credentials.encode(), row["token"].encode()):
+                return row["group"]
+        except Exception:
+            continue
+    return None
+
 
 
 '''
@@ -418,14 +441,13 @@ async def create_group_token(
         secrets.choice(string.ascii_letters + string.digits)
         for i in range(GROUP_TOKEN_LENGTH)
     )
-    token_hash = bcrypt.hashpw(token.encode("utf-8"), GROUP_TOKEN_SALT)
-    token_hash_string = token_hash.decode("utf-8")
+    token_hash_string = bcrypt.hashpw(token.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
-    await db.insert_access_token(
-        engine=engine,
-        token=token_hash_string,
+    await db.insert_group_api_token(
+        engine=db.get_engine(),
+        token_hash_string=token_hash_string,
         group_id=group_token_request.group_id,
-        expiration=datetime.fromtimestamp(group_token_request.expiration),
+        expiration_dt=datetime.datetime.fromtimestamp(group_token_request.expiration, tz=datetime.timezone.utc),
     )
 
     return AccessToken(group=group_token_request.group_id, token=token)
