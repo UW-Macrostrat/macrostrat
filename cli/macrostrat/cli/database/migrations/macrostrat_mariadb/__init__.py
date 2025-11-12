@@ -13,6 +13,7 @@ class MacrostratCoreMigration(Migration):
     Populate the `macrostrat` schema of the database prior to importing data from mariadb
     """
     depends_on = ["baseline"]
+    readiness_state = "ga"
 
     postconditions = [
         exists("macrostrat", "projects", "sections", "strat_tree", "unit_boundaries")

@@ -9,7 +9,7 @@ class BaselineMigration(Migration):
     """
 
     depends_on = ["map-source-slug"]
-
+    readiness_state = "ga"
     # Confirm that the tables created by the API v3 migrations are present
     postconditions = [
         exists("storage", "object_group", "object"),

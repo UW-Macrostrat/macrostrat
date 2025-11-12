@@ -2,9 +2,7 @@ from pathlib import Path
 
 import pytest
 from psycopg2.sql import Identifier
-from sqlalchemy import create_engine, text
 
-from macrostrat.core.database import Database
 from macrostrat.map_integration.commands.ingest import ingest_map
 from macrostrat.map_integration.commands.prepare_fields import _prepare_fields
 from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
@@ -12,8 +10,10 @@ from macrostrat.map_integration.utils.file_discovery import find_gis_files
 from macrostrat.map_integration.utils.map_info import get_map_info
 
 
-def test_maps_tables_exist(db):
+def test_maps_tables_exist(test_db):
     """Test that the tables exist in the database."""
+    db = test_db
+
     for table in ["polygons", "lines", "points"]:
         res = db.run_query(
             "SELECT * FROM {table}", dict(table=Identifier("maps", table))
@@ -21,8 +21,10 @@ def test_maps_tables_exist(db):
         assert len(res) == 0
 
 
-def test_get_database(db):
+def test_get_database(test_db):
     from macrostrat.core.database import db_ctx
+
+    db = test_db
 
     db_ctx.set(db)
     from macrostrat.map_integration.database import get_database
@@ -61,11 +63,11 @@ def test_maps():
     }
 
 
-def test_map_staging(db, test_maps):
+def test_map_staging(test_db, test_maps):
     """
     Ingest a map, update metadata, prepare fields, and build geometries.
     """
-    # db = db_as_macrostrat
+    db = test_db
     slug = test_maps["slug"]
     data_path = test_maps["data_path"]
     name = test_maps["name"]
@@ -179,10 +181,11 @@ region_dirs = sorted((Path(__file__).parent / "fixtures" / "maps" / "Japan").glo
 
 
 @pytest.mark.parametrize("region_path", region_dirs)
-def test_map_staging_bulk(db, region_path):
+def test_map_staging_bulk(test_db, region_path):
     """
     Ingest a map, update metadata, prepare fields, and build geometries.
     """
+    db = test_db
     slug = f"test_{region_path.name.lower()}"
     name = region_path.name
     data_path = region_path

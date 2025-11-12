@@ -817,8 +817,8 @@ def load_object(
                 ingest_map(
                     source.slug,
                     gis_data,
-                    if_exists="append" if append_data else "replace",
                     embed=embed,
+                    if_exists="append" if append_data else "replace",
                 )
             except Exception as exn:
                 raise_ingest_error(ingest_process, str(exn), exn)

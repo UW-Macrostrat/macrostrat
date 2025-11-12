@@ -12,7 +12,6 @@ class UserSavedLocationsMigration(Migration):
     """
 
     # depends_on = ["baseline", "macrostrat-mariadb"]
-
     preconditions = [exists("macrostrat_auth", "user")]
 
     postconditions = [

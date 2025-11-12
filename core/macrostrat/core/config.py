@@ -82,6 +82,8 @@ settings.validators.register(
     # Backend information. We could potentially infer this from other environment variables
     Validator("backend", default="kubernetes", cast=BackendType),
     Validator("sources", cast=cast_sources, default=None),
+    # Settings to control the location of arbitrary named databases
+    Validator("databases", default={}),
 )
 
 macrostrat_env = getattr(settings, "env", "default")
@@ -119,6 +121,9 @@ if PG_DATABASE is not None:
     # On mac and windows, we need to use the docker host `host.docker.internal` or `host.lima.internal`, etc.
     docker_localhost = getattr(settings, "docker_localhost", "localhost")
     PG_DATABASE_DOCKER = PG_DATABASE.replace("localhost", docker_localhost)
+
+    # add this to the settings.databases mapping
+    settings.databases["macrostrat"] = PG_DATABASE
 
     # Set environment variables
     url = make_url(PG_DATABASE)
