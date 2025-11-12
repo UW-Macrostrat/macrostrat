@@ -26,13 +26,15 @@ if [ -z "$MACROSTRAT_SHOULD_REINSTALL" ]; then
   fi
 fi
 
-if [ ! -x "$(command -v poetry)" ]; then
-  echo -e "\033[31mCould not find Poetry executable.\033[0m"
+if [ ! -x "$(command -v uv)" ]; then
+  echo -e "\033[31mCould not find UV executable.\033[0m"
   exit 1
 fi
 
 # Get script directory (reading symlink)
 SCRIPT_DIR="$(cd "$(dirname "$this_file")" && cd ../cli && pwd)"
+
+BASE_DIR="$(dirname "$SCRIPT_DIR")"
 
 # If we've defined our own root directory, use that instead
 if [ -n "$MACROSTRAT_PYROOT" ] ; then
@@ -52,10 +54,13 @@ if [ -n "$MACROSTRAT_PYROOT" ] ; then
 fi
 
 # Get path to poetry outside of the virtual environment
-_poetry=$(command -v poetry)
+_poetry=$(command -v uv)
 
 # Activate the virtual environment
-export VIRTUAL_ENV=$(poetry --directory "$SCRIPT_DIR" env info --path)
+# Standard location for UV virtual environments in the project
+# Note: other project services may have their own virtual environments
+export VIRTUAL_ENV=$BASE_DIR/.venv
+
 export PATH="$VIRTUAL_ENV/bin:$PATH"
 
 # If first argument is "poetry", run poetry directly

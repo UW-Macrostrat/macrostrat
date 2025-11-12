@@ -1,22 +1,29 @@
-# This Poetry config is mostly a proxy to the cli Poetry config,
-# with some extra packages for code formatting and import sorting.
-# Install GIS tools as well with `poetry install --with=gis`
+[project]
+name = ""
+version = "0.0.1"
+requires-python = "~=3.11"
+dependencies = [
+    "setuptools>=75.8.2,<76",
+    "macrostrat.cli",
+]
 
-[tool.poetry]
-package-mode = false
+[dependency-groups]
+gis = ["macrostrat.cli[gis]"]
+dev = [
+    "black>=24.8.0,<25",
+    "isort>=5.13.2,<6",
+    "pytest>=8.3.2,<9",
+]
 
-[tool.poetry.dependencies]
-python = "^3.11"
-setuptools = "^75.8.2"
-"macrostrat.cli" = { path = "./cli", develop = true }
+[tool.uv]
+package = false
+default-groups = [
+    "gis",
+    "dev",
+]
 
-[tool.poetry.group.gis.dependencies]
-"macrostrat.cli" = { path = "./cli", develop = true, extras = ["gis"] }
-
-[tool.poetry.group.dev.dependencies]
-black = "^24.8.0"
-isort = "^5.13.2"
-pytest = "^8.3.2"
+[tool.uv.sources]
+"macrostrat.cli" = { path = "./cli", editable = true }
 
 [tool.black]
 line-length = 88
