@@ -7,39 +7,6 @@ resolution-markers = [
 ]
 
 [[package]]
-name = ""
-version = "0.0.1"
-source = { virtual = "." }
-dependencies = [
-    { name = "macrostrat-cli" },
-    { name = "setuptools" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "black" },
-    { name = "isort" },
-    { name = "pytest" },
-]
-gis = [
-    { name = "macrostrat-cli" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "macrostrat-cli", editable = "cli" },
-    { name = "setuptools", specifier = ">=75.8.2,<76" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "black", specifier = ">=24.8.0,<25" },
-    { name = "isort", specifier = ">=5.13.2,<6" },
-    { name = "pytest", specifier = ">=8.3.2,<9" },
-]
-gis = [{ name = "macrostrat-cli", extras = ["gis"], editable = "cli" }]
-
-[[package]]
 name = "aiofiles"
 version = "23.2.1"
 source = { registry = "https://pypi.org/simple" }
@@ -981,6 +948,39 @@ gis = [
     { name = "gdal", specifier = ">=3.10.0,<4" },
     { name = "macrostrat-core", editable = "core" },
 ]
+
+[[package]]
+name = "macrostrat-system"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "macrostrat-cli" },
+    { name = "setuptools" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "black" },
+    { name = "isort" },
+    { name = "pytest" },
+]
+gis = [
+    { name = "macrostrat-cli" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "macrostrat-cli", editable = "cli" },
+    { name = "setuptools", specifier = ">=75.8.2,<76" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "black", specifier = ">=24.8.0,<25" },
+    { name = "isort", specifier = ">=5.13.2,<6" },
+    { name = "pytest", specifier = ">=8.3.2,<9" },
+]
+gis = [{ name = "macrostrat-cli", extras = ["gis"], editable = "cli" }]
 
 [[package]]
 name = "macrostrat-utils"

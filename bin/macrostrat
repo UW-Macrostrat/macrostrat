@@ -32,9 +32,7 @@ if [ ! -x "$(command -v uv)" ]; then
 fi
 
 # Get script directory (reading symlink)
-SCRIPT_DIR="$(cd "$(dirname "$this_file")" && cd ../cli && pwd)"
-
-BASE_DIR="$(dirname "$SCRIPT_DIR")"
+BASE_DIR="$(cd "$(dirname "$this_file")" && cd ../cli && pwd)"
 
 # If we've defined our own root directory, use that instead
 if [ -n "$MACROSTRAT_PYROOT" ] ; then
@@ -50,13 +48,13 @@ if [ -n "$MACROSTRAT_PYROOT" ] ; then
     exit 1
   fi
 
-  SCRIPT_DIR="$MACROSTRAT_PYROOT"
+  BASE_DIR="$MACROSTRAT_PYROOT"
 fi
 
-# Get path to poetry outside of the virtual environment
-_poetry=$(command -v uv)
+# Get path to UV outside of the virtual environment
+_uv=$(command -v uv)
 
-# Activate the virtual environment
+# Activate the virtual environment (if we are not already in one)
 # Standard location for UV virtual environments in the project
 # Note: other project services may have their own virtual environments
 export VIRTUAL_ENV=$BASE_DIR/.venv
@@ -65,9 +63,16 @@ export PATH="$VIRTUAL_ENV/bin:$PATH"
 
 # If first argument is "poetry", run poetry directly
 # Set the poetry root directory to the script directory
-if [ "$1" = "poetry" ]; then
+if [ "$1" = "uv" ]; then
   shift
-  $_poetry --directory "$SCRIPT_DIR" "$@"
+  # If no arguments are given, show help
+  if [ $# -eq 0 ]; then
+    set -- "--help"
+    echo -e "The \033[36mmacrostrat uv\033[0m command runs \033[36muv\033[0m in the Macrostrat Python root."
+    echo -e "MACROSTRAT_PYROOT is set to \033[36m$BASE_DIR\033[0m"
+    echo ""
+  fi
+  $_uv --directory "$BASE_DIR" "$@"
   exit $?
 fi
 
@@ -96,8 +101,7 @@ if [ "$1" = "install" ]; then
   fi
 
   shift
-  $_poetry --directory "$SCRIPT_DIR" lock "$@"
-  $_poetry --directory "$SCRIPT_DIR" install "$@"
+  $_uv --directory "$BASE_DIR" sync
   exit $?
 fi
 
@@ -106,7 +110,5 @@ if [ -z "$VIRTUAL_ENV" ]; then
   echo -e "Could not find virtual environment. Please run \033[36mmacrostrat install\033[0m."
   exit 1
 fi
-
-
 
 $VIRTUAL_ENV/bin/macrostrat "$@"
