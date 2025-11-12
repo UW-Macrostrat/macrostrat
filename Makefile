@@ -6,8 +6,8 @@ install:
 	ln -sf $(shell pwd)/bin/macrostrat /usr/local/bin/macrostrat
 
 format:
-	poetry run black .
-	poetry run isort .
+	uv run black .
+	uv run isort .
 
 test:
 	# These tests may fail due to an older GDAL version in use.
@@ -28,3 +28,8 @@ test-ci:
 
 test-warnings:
 	uv run pytest cli/tests -W error
+
+reset:
+	# Remove all virtual environments in subdirectories and re-create the main one
+	find . -name ".venv" -type d -exec rm -rf {} +
+	uv sync
