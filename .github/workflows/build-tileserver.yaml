@@ -12,6 +12,7 @@ on:
     branches: [main]
     paths:
       - services/tileserver/**
+      - py-modules/tileserver-utils/**
 jobs:
   docker:
     runs-on: ubuntu-latest
@@ -27,8 +28,6 @@ jobs:
           python-version: 3.11
       - name: Install Poetry
         run: python3 -m pip install poetry==2.1.1
-      - name: Build and stage local packages
-        run: scripts/prepare-services
       - name: Get the version from the tag, if it exists
         run: |
           TAG=${{ github.ref_name }}
@@ -45,15 +44,15 @@ jobs:
             type=raw,value=${{ env.VERSION }},enable=${{ env.VERSION != '' }}
             type=raw,value=latest,enable={{is_default_branch}}
             type=raw,value=sha-{{sha}}
-      
+
             # When a PRODUCTION tag (tileserver-vX.Y.Z) → also tag staging and dev
             type=raw,value=main-{{date 'YYYYMMDDHHmmss'}},enable=${{ startsWith(github.ref, 'refs/tags/tileserver-v') && !contains(env.VERSION, '-') }}
             type=raw,value=${{ env.VERSION }}-beta.{{date 'YYYYMMDDHHmmss'}},enable=${{ startsWith(github.ref, 'refs/tags/tileserver-v') && !contains(env.VERSION, '-') }}
             type=raw,value=${{ env.VERSION }}-beta,enable=${{ startsWith(github.ref, 'refs/tags/tileserver-v') && !contains(env.VERSION, '-') }}
-      
+
             # When a STAGING prerelease tag (tileserver-vX.Y.Z-*) → also tag dev
             type=raw,value=main-{{date 'YYYYMMDDHHmmss'}},enable=${{ startsWith(github.ref, 'refs/tags/tileserver-v') && contains(env.VERSION, '-') }}
-                  
+
 
       - name: Set up Docker BuildX
         uses: docker/setup-buildx-action@v2
@@ -67,6 +66,8 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: services/tileserver
+          build-contexts: |
+            py-modules=./py-modules
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
