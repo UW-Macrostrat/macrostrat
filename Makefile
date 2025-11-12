@@ -32,4 +32,4 @@ test-warnings:
 reset:
 	# Remove all virtual environments in subdirectories and re-create the main one
 	find . -name ".venv" -type d -exec rm -rf {} +
-	uv sync
+	make all

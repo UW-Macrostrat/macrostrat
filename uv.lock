@@ -887,11 +887,11 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "criticalmaas-ta1-geopackage", specifier = ">=0.2.0,<0.3.0" },
-    { name = "httpx", specifier = ">=0.27.2,<0.28.0" },
-    { name = "macrostrat-core", directory = "core" },
-    { name = "macrostrat-database", specifier = ">=3.3.3,<4.0.0" },
-    { name = "macrostrat-utils", specifier = ">=1.2.2,<2.0.0" },
+    { name = "criticalmaas-ta1-geopackage", specifier = ">=0.2.0,<0.3" },
+    { name = "httpx", specifier = ">=0.27.2,<0.28" },
+    { name = "macrostrat-core", editable = "core" },
+    { name = "macrostrat-database", specifier = ">=3.3.3,<4" },
+    { name = "macrostrat-utils", specifier = ">=1.2.2,<2" },
     { name = "typer", specifier = ">=0.12,<0.13" },
 ]
 
