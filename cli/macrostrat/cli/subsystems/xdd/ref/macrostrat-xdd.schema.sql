@@ -157,11 +157,10 @@ ALTER TABLE macrostrat_xdd.entity_type OWNER TO "xdd-writer";
 -- Name: extraction_feedback_type; Type: TABLE; Schema: macrostrat_xdd; Owner: xdd-writer
 --
 
-CREATE TABLE macrostrat_xdd.extraction_feedback_type (
-    id serial primary key,
-	type text NOT NULL
+CREATE TABLE IF NOT EXISTS macrostrat_xdd.extraction_feedback_type (
+    type_id serial PRIMARY KEY,
+    type text NOT NULL
 );
-
 
 ALTER TABLE macrostrat_xdd.extraction_feedback_type OWNER TO "xdd-writer";
 
@@ -169,29 +168,88 @@ ALTER TABLE macrostrat_xdd.extraction_feedback_type OWNER TO "xdd-writer";
 -- Name: extraction_feedback; Type: TABLE; Schema: macrostrat_xdd; Owner: xdd-writer
 --
 
-CREATE TABLE macrostrat_xdd.extraction_feedback (
-    id serial primary key,
-    user_id text NOT NULL,
-    paper_id uuid NOT NULL,
+CREATE TABLE IF NOT EXISTS macrostrat_xdd.extraction_feedback (
+    note_id serial PRIMARY KEY,
+    feedback_id integer,
     date timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    feedback_ids text,
-    custom_not text
+    custom_note text,
+    CONSTRAINT fk_feedback_id 
+        FOREIGN KEY (feedback_id) REFERENCES macrostrat_xdd.all_runs(id)
 );
-
 
 ALTER TABLE macrostrat_xdd.extraction_feedback OWNER TO "xdd-writer";
 
 --
--- Name: extraction_feedback; Type: TABLE; Schema: macrostrat_xdd; Owner: xdd-writer
+-- Name: extraction_feedback; Type: VIEW; Schema: macrostrat_api; 
 --
 
-CREATE TABLE macrostrat_xdd.extraction_feedback_link (
-    feedback_id integer NOT NULL REFERENCES macrostrat_xdd.extraction_feedback(id) ON DELETE CASCADE,
-    type_id integer NOT NULL REFERENCES macrostrat_xdd.extraction_feedback_type(id) ON DELETE CASCADE,
-    PRIMARY KEY (feedback_id, type_id)
+CREATE OR REPLACE VIEW macrostrat_api.extraction_feedback AS
+SELECT * FROM macrostrat_xdd.extraction_feedback;
+
+--
+-- Name: lookup_extraction_type; Type: VIEW; Schema: macrostrat_api; 
+--
+
+CREATE OR REPLACE VIEW macrostrat_api.lookup_extraction_type  AS
+SELECT * FROM macrostrat_xdd.lookup_extraction_type;
+
+--
+-- Name: extraction_feedback_type; Type: VIEW; Schema: macrostrat_api;
+--
+
+CREATE OR REPLACE VIEW macrostrat_api.extraction_feedback_type  AS
+SELECT * FROM macrostrat_xdd.extraction_feedback_type;
+
+--
+-- Name: extraction_feedback_combined; Type: VIEW; Schema: macrostrat_api;
+--
+
+CREATE VIEW macrostrat_api.extraction_feedback_combined AS
+    SELECT
+    f.feedback_id,
+    f.date,
+    f.custom_note AS note,
+    COALESCE(
+        json_agg(
+        json_build_object('type_id', t.type_id, 'type', t.type)
+        ) FILTER (WHERE t.type_id IS NOT NULL),
+        '[]'::json
+    ) AS types
+    FROM macrostrat_xdd.extraction_feedback f
+    LEFT JOIN macrostrat_xdd.lookup_extraction_type l
+    ON l.note_id = f.note_id
+    LEFT JOIN macrostrat_xdd.extraction_feedback_type t
+    ON t.type_id = l.type_id
+    GROUP BY f.feedback_id, f.date, f.custom_note
+    ORDER BY f.date DESC;
+
+--
+-- Name: lookup_extraction_type; Type: TABLE; Schema: macrostrat_xdd; Owner: xdd-writer
+--
+
+CREATE TABLE IF NOT EXISTS macrostrat_xdd.lookup_extraction_type (
+    note_id integer NOT NULL REFERENCES macrostrat_xdd.extraction_feedback(note_id) ON DELETE CASCADE,
+    type_id integer NOT NULL REFERENCES macrostrat_xdd.extraction_feedback_type(type_id) ON DELETE CASCADE,
+    PRIMARY KEY (note_id, type_id)
 );
 
-ALTER TABLE macrostrat_xdd.extraction_feedback_link OWNER TO "xdd-writer";
+ALTER TABLE macrostrat_xdd.lookup_extraction_type OWNER TO "xdd-writer";
+
+-- 
+-- Update permissions
+--
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON 
+    macrostrat_api.extraction_feedback,
+    macrostrat_xdd.extraction_feedback,
+    macrostrat_api.lookup_extraction_type,
+    macrostrat_xdd.lookup_extraction_type,
+    macrostrat_api.extraction_feedback_type,
+    macrostrat_xdd.extraction_feedback_type
+TO web_anon;
+
+GRANT USAGE, SELECT ON SEQUENCE macrostrat_xdd.extraction_feedback_note_id_seq TO web_anon;
+
 
 --
 -- Name: entity_type_id_seq; Type: SEQUENCE; Schema: macrostrat_xdd; Owner: xdd-writer
