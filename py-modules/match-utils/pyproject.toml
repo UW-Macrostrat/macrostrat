@@ -2,18 +2,17 @@
 name = "macrostrat.match-utils"
 version = "0.1.0"
 description = "Utilities to match geologic information to Macrostrat rock units"
-authors = [
-    {name = "Daven Quinn",email = "code@davenquinn.com"}
-]
-readme = "README.md"
+authors = [{ name = "Daven Quinn", email = "code@davenquinn.com" }]
 requires-python = ">=3.11"
-dependencies = [
-]
+readme = "README.md"
+dependencies = []
 
-[tool.poetry]
-packages = [{include = "macrostrat"}]
+[tool.hatch.build.targets.sdist]
+include = ["macrostrat"]
 
+[tool.hatch.build.targets.wheel]
+include = ["macrostrat"]
 
 [build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"

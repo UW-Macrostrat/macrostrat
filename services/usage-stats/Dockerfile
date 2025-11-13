@@ -1,24 +1,22 @@
-FROM python:3.11-slim
+FROM python:3.12
+COPY --from=ghcr.io/astral-sh/uv:0.9.9 /uv /uvx /bin/
+# https://docs.astral.sh/uv/guides/integration/docker/#intermediate-layers
 
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-ENV POETRY_VERSION=1.8.2
+WORKDIR /services/main
 
-WORKDIR /app
+ENV UV_COMPILE_BYTECODE=1
+ENV UV_SYSTEM_PYTHON=1
 
-# Install system dependencies including PostgreSQL dev headers
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq-dev gcc build-essential curl \
-    && curl -sSL https://install.python-poetry.org | python3 - --version $POETRY_VERSION \
-    && ln -s /root/.local/bin/poetry /usr/local/bin/poetry \
-    && apt-get remove -y curl \
-    && rm -rf /var/lib/apt/lists/*
+# Install dependencies
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --locked --no-install-project
 
-COPY pyproject.toml poetry.lock ./
+ADD . /services/main
 
-RUN poetry config virtualenvs.create false \
-    && poetry install --no-root --no-interaction --no-ansi
+# Sync the project
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked
 
-COPY . .
-
-CMD ["python", "worker.py"]
+CMD ["uv", "run", "python", "worker.py"]

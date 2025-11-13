@@ -48,7 +48,10 @@ services:
     # This is because its functionality is tightly coupled in many cases with the command-line
     # tools and unstable elements of the database schema. We may elect to externalize this
     # service in the future.
-    build: ../services/api-v3
+    build:
+      context: ../services/api-v3
+      additional_contexts:
+        py-modules: ../py-modules
     environment:
       - DB_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
       - REDIRECT_URI_ENV=https://macrostrat.local/api/v3/security/callback
@@ -77,7 +80,10 @@ services:
   # Tileserver
   tileserver:
     image: hub.opensciencegrid.org/macrostrat/tileserver:main
-    build: ../services/tileserver
+    build:
+      context: ../services/tileserver
+      additional_contexts:
+        py-modules: ../py-modules
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
       # Ideally the system would fail gracefully if we didn't provide the Rockd database URL but that's not the case.
@@ -87,14 +93,18 @@ services:
     # This is necessary for the tileserver to correctly generate URLs for tilejson files.
     # https://github.com/encode/starlette/issues/538
     command: >
-      uvicorn --host 0.0.0.0 --port 8000
+      uv run uvicorn --host 0.0.0.0 --port 8000
         macrostrat.tileserver:app
         --root-path /tiles
         --log-level debug
         --proxy-headers
         --forwarded-allow-ips=*
   legacy_tileserver:
-    build: ../services/legacy-tileserver
+    image: hub.opensciencegrid.org/macrostrat/legacy-tileserver:main
+    build:
+      context: ../services/legacy-tileserver
+      additional_contexts:
+        py-modules: ../py-modules
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
     command: >

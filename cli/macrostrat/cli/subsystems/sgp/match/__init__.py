@@ -230,9 +230,10 @@ def match_sgp_data(
     # Create a data frame of matches with the same index as the counts
     matches = {}
 
-    with Live(
-        generate_table(status)
-    ) as live, db.macrostrat.engine.connect() as conn:  # update 4 times a second to feel fluid
+    with (
+        Live(generate_table(status)) as live,
+        db.macrostrat.engine.connect() as conn,
+    ):  # update 4 times a second to feel fluid
         for ix, row in counts.iterrows():
             _match = get_matched_unit(
                 conn,

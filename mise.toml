@@ -1,3 +1,4 @@
 [tools]
 act = "latest"
-uv = "latest"
+python = "3.12"
+uv = "0.9.9"

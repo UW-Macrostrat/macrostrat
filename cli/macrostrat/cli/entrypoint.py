@@ -399,9 +399,11 @@ app.subsystems.run_hook("add-commands", main)
 
 
 @main.command(rich_help_panel="Meta")
-def poetry():
-    """[cyan]poetry[/] CLI wrapper"""
-    raise RuntimeError("This command is currently implemented in a wrapping script")
+def uv():
+    """[cyan]uv[/] CLI wrapper"""
+    raise RuntimeError(
+        "This is a placeholder for a command implemented in a wrapping script."
+    )
 
 
 @main.command(rich_help_panel="Meta")

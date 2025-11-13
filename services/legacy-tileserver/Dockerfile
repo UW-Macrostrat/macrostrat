@@ -56,34 +56,31 @@ RUN npm install -g carto
 # Clear temporary files
 RUN rm -rf /tmp/*
 
-# The rest of this (for vector tile generation and the server itself) should be easier.
+# The rest of this (for the server itself) should be easier.
 
+# Install UV
+COPY --from=ghcr.io/astral-sh/uv:0.9.9 /uv /uvx /bin/
 
-RUN pip install --no-cache-dir "pip==25.1.1" && pip install --no-cache-dir "poetry==2.1.1"
+ENV UV_LINK_MODE=copy
+ENV UV_COMPILE_BYTECODE=1
 
+# NEED TO specify a build context for the py-modules directory
+COPY --from=py-modules tileserver-utils /py-modules/tileserver-utils
 
-# Copy only requirements to cache them in docker layer
-# Right now, Poetry lock file must exist to avoid hanging on dependency resolution
-COPY ./pyproject.toml ./poetry.lock /app/
+WORKDIR /services/main
 
-# Create and activate our own virtual envrionment so that we can keep
-# our application dependencies separate from Poetry's
+# Install dependencies
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --locked --no-install-project --no-editable --active
 
-RUN --mount=type=cache,target=$POETRY_CACHE_DIR poetry install --no-root --without dev --without local
+# Add source files to project
+ADD . /services/main
 
-# This gets locally built deps, which must be staged in the
-# image directory before building. This is breakable and we'd like
-# to end up with a better solution eventually.
-COPY ./deps/ /app/deps/
-
-# Install local wheels without caring about hashes (poetry gets mad if package hashes don't match.)
-RUN pip install --no-cache-dir ./deps/*.whl
-
-# Creating folders, and files for a project:
-COPY ./ /app/
-
-# Install the root package
-RUN --mount=type=cache,target=$POETRY_CACHE_DIR poetry install --without dev
+# Sync the project
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked --no-editable --active
 
 EXPOSE 8000
 

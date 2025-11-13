@@ -1,30 +1,40 @@
-# This Poetry config is mostly a proxy to the cli Poetry config,
-# with some extra packages for code formatting and import sorting.
-# Install GIS tools as well with `poetry install --with=gis`
+# This project-level UV configuration is a convenience for development.
+# It is not required for end users of macrostrat.cli.
 
-[tool.poetry]
-package-mode = false
+[project]
+name = "macrostrat-system"
+version = "0.1.0"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "setuptools>=75.8.2,<76",
+    "macrostrat.cli",
+]
 
-[tool.poetry.dependencies]
-python = "^3.11"
-setuptools = "^75.8.2"
-"macrostrat.cli" = { path = "./cli", develop = true }
+[dependency-groups]
+gis = ["macrostrat.cli[gis]"]
+dev = [
+    "black>=24.8.0,<25",
+    "isort>=5.13.2,<6",
+    "pytest>=8.3.2,<9",
+]
 
-[tool.poetry.group.gis.dependencies]
-"macrostrat.cli" = { path = "./cli", develop = true, extras = ["gis"] }
+[tool.uv]
+package = false
+default-groups = [
+    "dev",
+]
 
-[tool.poetry.group.dev.dependencies]
-black = "^24.8.0"
-isort = "^5.13.2"
-pytest = "^8.3.2"
+[tool.uv.sources]
+"macrostrat.cli" = { path = "./cli", editable = true }
 
 [tool.black]
 line-length = 88
-extend-exclude = "__archive"
+extend-exclude = "__archive|submodules"
 
 [tool.isort]
 profile = "black"
 known_first_party = "macrostrat"
+extend_skip = ["__archive", "submodules"]
 
 [tool.pytest.ini_options]
 markers = [
