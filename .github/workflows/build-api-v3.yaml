@@ -1,4 +1,4 @@
-name: API v3 build
+name: Build API v3
 on:
   push:
     branches:
@@ -8,7 +8,13 @@ on:
       - api-v3-v[0-9]+.[0-9]+.[0-9]+-**  # Semver Pre-Release
     paths:
       - services/api-v3/**
-
+      - .github/workflows/build-api-v3.yaml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - services/api-v3/**
+      - .github/workflows/build-api-v3.yaml
 jobs:
   docker:
     runs-on: ubuntu-latest
