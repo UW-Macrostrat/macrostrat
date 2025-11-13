@@ -44,6 +44,7 @@ jobs:
           password: ${{ secrets.HARBOR_CLI_SECRET }}
       - name: Build and push
         uses: docker/build-push-action@v5
+        id: build-and-push
         with:
           context: services/api-v3
           build-contexts: |
@@ -56,11 +57,11 @@ jobs:
       # Add a link to the built artifact to the workflow summary
       - name: Add link to workflow summary
         run: |
-            echo "## Docker Image Built" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "The Docker image has been built and pushed to [OSG Harbor](https://hub.opensciencegrid.org/harbor/projects/887/repositories/api-v3/artifacts-tab/artifacts/sha256:${{ github.sha }})" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### Tags:" >> $GITHUB_STEP_SUMMARY
-            for tag in ${{ steps.meta.outputs.tags }}; do
-            echo "- \`$tag\`" >> $GITHUB_STEP_SUMMARY
-            done
+          echo "## Docker Image Built" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The Docker image has been built and pushed to [OSG Harbor](https://hub.opensciencegrid.org/harbor/projects/887/repositories/api-v3/artifacts-tab/artifacts/sha256:${{ steps.build-and-push.outputs.digest }})" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Tags:" >> $GITHUB_STEP_SUMMARY
+          for tag in (${{ steps.meta.outputs.tags }}); do
+          echo "- \`$tag\`" >> $GITHUB_STEP_SUMMARY
+          done
