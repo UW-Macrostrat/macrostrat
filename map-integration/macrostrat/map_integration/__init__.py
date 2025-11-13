@@ -301,7 +301,7 @@ def staging(
         for path in excluded_files:
             print(f"{path}")
 
-    ingest_pipeline, comments, state = ingest_map(
+    ingest_results = ingest_map(
         slug,
         gis_files,
         if_exists="replace",
@@ -331,17 +331,20 @@ def staging(
     # add map_url later
     db.run_sql(
         """
-        INSERT INTO maps_metadata.ingest_process (state, source_id, object_group_id, ingested_by, ingest_pipeline, comments, slug)
-        VALUES (:state, :source_id, :object_group_id, :ingested_by, :ingest_pipeline, :comments, :slug);
+        INSERT INTO maps_metadata.ingest_process (state, source_id, object_group_id, ingested_by, ingest_pipeline, comments, slug, polygon_state, line_state, point_state)
+        VALUES (:state, :source_id, :object_group_id, :ingested_by, :ingest_pipeline, :comments, :slug, :polygon_state, :line_state, :point_state);
         """,
         dict(
-            state=state,
+            state=ingest_results['state'],
             source_id=source_id,
             object_group_id=1,
             ingested_by="macrostrat-admin",
-            ingest_pipeline=ingest_pipeline,
-            comments=comments,
+            ingest_pipeline=ingest_results['ingest_pipeline'],
+            comments=ingest_results['comments'],
             slug=slug,
+            polygon_state=ingest_results['polygon_state'],
+            line_state=ingest_results['line_state'],
+            point_state=ingest_results['point_state'],
         ),
     )
 
@@ -529,7 +532,7 @@ def staging_bulk(
             for path in excluded_files:
                 print(f"{path}")
 
-        ingest_pipeline, comments, state = ingest_map(
+        ingest_results = ingest_map(
             slug,
             gis_files,
             if_exists="replace",
@@ -557,19 +560,23 @@ def staging_bulk(
             dict(scale="large", ingested_by="macrostrat-admin", source_id=source_id),
         )
         # add map_url later
+
         db.run_sql(
             """
-            INSERT INTO maps_metadata.ingest_process (state, source_id, object_group_id, ingested_by, ingest_pipeline, comments, slug)
-            VALUES (:state, :source_id, :object_group_id, :ingested_by, :ingest_pipeline, :comments, :slug);
+            INSERT INTO maps_metadata.ingest_process (state, source_id, object_group_id, ingested_by, ingest_pipeline, comments, slug, polygon_state, line_state, point_state)
+            VALUES (:state, :source_id, :object_group_id, :ingested_by, :ingest_pipeline, :comments, :slug, :polygon_state, :line_state, :point_state);
             """,
             dict(
-                state=state,
+                state=ingest_results['state'],
                 source_id=source_id,
                 object_group_id=1,
                 ingested_by="macrostrat-admin",
-                ingest_pipeline=ingest_pipeline,
-                comments=comments,
+                ingest_pipeline=ingest_results['ingest_pipeline'],
+                comments=ingest_results['comments'],
                 slug=slug,
+                polygon_state=ingest_results['polygon_state'],
+                line_state=ingest_results['line_state'],
+                point_state=ingest_results['point_state'],
             ),
         )
 
