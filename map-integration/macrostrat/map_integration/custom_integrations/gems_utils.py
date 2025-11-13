@@ -366,3 +366,46 @@ def map_t_b_intervals(meta_df: G.GeoDataFrame) -> G.GeoDataFrame:
             )
         )
     return meta_df
+
+def map_points_to_preferred_fields(meta_df: G.GeoDataFrame) -> G.GeoDataFrame:
+    rename_map = {
+        "Symbol": "orig_id",
+        "Label": "descrip",
+        "Notes": "comments",
+        "Azimuth": "strike",
+        "Inclination": "dip",
+        "SymbolRotation": "dip_dir",
+        "Type": "point_type",
+        "IdentityConfidence": "certainty"
+
+    }
+    col_lower_to_actual = {col.lower(): col for col in meta_df.columns}
+    actual_rename = {}
+    for src, dst in rename_map.items():
+        src_lower = src.lower()
+        if src_lower in col_lower_to_actual:
+            actual_rename[col_lower_to_actual[src_lower]] = dst
+
+    meta_df = meta_df.rename(columns=actual_rename)
+    return meta_df
+
+def map_lines_to_preferred_fields(meta_df: G.GeoDataFrame) -> G.GeoDataFrame:
+    rename_map = {
+        "Symbol": "orig_id",
+        "Notes": "descrip",
+        "Label": "name",
+        "Type": "type",
+        "Azimuth": "direction"
+    }
+
+    col_lower_to_actual = {col.lower(): col for col in meta_df.columns}
+    actual_rename = {}
+    for src, dst in rename_map.items():
+        src_lower = src.lower()
+        if src_lower in col_lower_to_actual:
+            actual_rename[col_lower_to_actual[src_lower]] = dst
+
+    meta_df = meta_df.rename(columns=actual_rename)
+    return meta_df
+
+
