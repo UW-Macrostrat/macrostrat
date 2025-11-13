@@ -63,11 +63,12 @@ jobs:
       # Add a link to the built artifact to the workflow summary
       - name: Add link to workflow summary
         run: |
-          echo "## Docker Image Built" >> $GITHUB_STEP_SUMMARY
+          echo "## Image Built" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "The Docker image has been built and pushed to [OSG Harbor](https://hub.opensciencegrid.org/harbor/projects/887/repositories/api-v3/artifacts-tab/artifacts/sha256:${{ steps.build-and-push.outputs.digest }})" >> $GITHUB_STEP_SUMMARY
+          echo "The image has been built and pushed to [OSG Harbor](https://hub.opensciencegrid.org/harbor/projects/887/repositories/api-v3/artifacts-tab/artifacts/${{ steps.build-and-push.outputs.digest }})" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Tags:" >> $GITHUB_STEP_SUMMARY
-          for tag in (${{ steps.meta.outputs.tags }}); do
-          echo "- \`$tag\`" >> $GITHUB_STEP_SUMMARY
+          var="${{ steps.meta.outputs.tags }}"
+          for tag in $var; do
+            echo "- \`$tag\`" >> $GITHUB_STEP_SUMMARY
           done
