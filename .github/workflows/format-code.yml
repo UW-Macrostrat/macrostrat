@@ -1,14 +1,16 @@
 name: Format code and sort imports
 on:
   pull_request:
-    branches: [main]
+    branches: [ main ]
   push:
-    branches: [main]
+    branches: [ main ]
 jobs:
   format:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          submodules: recursive
 
       - name: "Set up Python"
         uses: actions/setup-python@v6
