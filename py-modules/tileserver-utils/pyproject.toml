@@ -3,7 +3,7 @@ name = "macrostrat.tileserver-utils"
 version = "0.1.0"
 description = "Utilities for Macrostrat tile servers"
 authors = [{ name = "Daven Quinn", email = "code@davenquinn.com" }]
-requires-python = ">=3.11,<4.0"
+requires-python = ">=3.9,<4.0"
 readme = "README.md"
 dependencies = [
     "starlette (>=0.37.0,<0.47.0)",

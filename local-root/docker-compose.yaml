@@ -93,14 +93,18 @@ services:
     # This is necessary for the tileserver to correctly generate URLs for tilejson files.
     # https://github.com/encode/starlette/issues/538
     command: >
-      uvicorn --host 0.0.0.0 --port 8000
+      uv run uvicorn --host 0.0.0.0 --port 8000
         macrostrat.tileserver:app
         --root-path /tiles
         --log-level debug
         --proxy-headers
         --forwarded-allow-ips=*
   legacy_tileserver:
-    build: ../services/legacy-tileserver
+    image: hub.opensciencegrid.org/macrostrat/legacy-tileserver:main
+    build:
+      context: ../services/legacy-tileserver
+      additional_contexts:
+        py-modules: ../py-modules
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
     command: >
