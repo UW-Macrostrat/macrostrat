@@ -21,16 +21,18 @@ dependencies = [
     "python-magic>=0.4.27,<0.5",
     "pyyaml~=6.0",
     "shapely>=2.0.1,<3",
+    "macrostrat.core",
 ]
 
 [project.scripts]
 macrostrat-maps = "macrostrat.map_integration:app"
 
-[dependency-groups]
+[project.optional-dependencies]
 gis = [
     "GDAL>=3.10.0,<4",
-    "macrostrat.core",
 ]
+
+[dependency-groups]
 dev = [
     "bandit>=1.7.7,<2",
     "black~=24.2",
@@ -41,7 +43,6 @@ dev = [
 
 [tool.uv]
 default-groups = [
-    "gis",
     "dev",
 ]
 

@@ -52,8 +52,12 @@ dependencies = [
 [project.scripts]
 macrostrat = "macrostrat.cli:main"
 
+[project.optional-dependencies]
+gis = [
+    "macrostrat.map-integration[gis]"
+]
+
 [dependency-groups]
-gis = ["macrostrat.map-integration[gis]"]
 dev = [
     "snakeviz>=2.2.0,<3",
     "macrostrat.package_tools>=1.1.0,<2",
@@ -61,7 +65,6 @@ dev = [
 
 [tool.uv]
 default-groups = [
-    "gis",
     "dev",
 ]
 

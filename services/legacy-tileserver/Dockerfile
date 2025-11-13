@@ -73,7 +73,6 @@ WORKDIR /services/main
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    --mount=type=bind,source=deps,target=deps \
     uv sync --locked --no-install-project --no-editable --active
 
 # Add source files to project

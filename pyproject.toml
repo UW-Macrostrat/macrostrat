@@ -4,7 +4,7 @@
 [project]
 name = "macrostrat-system"
 version = "0.1.0"
-requires-python = ">=3.11,<4"
+requires-python = ">=3.11,<3.13"
 dependencies = [
     "setuptools>=75.8.2,<76",
     "macrostrat.cli",
@@ -21,7 +21,6 @@ dev = [
 [tool.uv]
 package = false
 default-groups = [
-    "gis",
     "dev",
 ]
 

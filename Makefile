@@ -1,6 +1,12 @@
 all:
 	# Install all dependencies
-	uv sync --all-groups # Install all optional dependency groups (dev, gis, etc)
+	# Install all optional dependency groups (dev, gis, etc)
+	uv sync
+
+gis:
+	# Install GIS dependencies
+	uv pip install "GDAL==$(shell gdal-config --version)"
+	uv sync --group gis
 
 install:
 	ln -sf $(shell pwd)/bin/macrostrat /usr/local/bin/macrostrat
@@ -13,13 +19,6 @@ test:
 	# These tests may fail due to an older GDAL version in use.
 	# We need to figure out how to bundle GDAL or run in a Docker context
 	uv run macrostrat test all --skip-env -x -s
-	#	poetry run pytest -s -x \
-	#		--ignore=runtime-tests \
-	#		--ignore=services \
-	#		--ignore=v2-transition \
-	#		--ignore=submodules \
-	#		--skip-env \
-	#		.
 
 test-ci:
 	# We need a fairly recent version of GDAL (3.10) for map integration tests to pass.
