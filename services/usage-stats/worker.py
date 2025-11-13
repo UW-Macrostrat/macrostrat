@@ -1,11 +1,10 @@
 import asyncio
 import os
 import signal
+import time
 import traceback
 
-import time
 from dotenv import load_dotenv
-
 from src.macrostrat import get_macrostrat_data
 from src.rockd import get_rockd_data
 

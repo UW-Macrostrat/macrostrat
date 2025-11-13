@@ -29,11 +29,12 @@ default-groups = [
 
 [tool.black]
 line-length = 88
-extend-exclude = "__archive"
+extend-exclude = "__archive|submodules"
 
 [tool.isort]
 profile = "black"
 known_first_party = "macrostrat"
+extend_skip = ["__archive", "submodules"]
 
 [tool.pytest.ini_options]
 markers = [

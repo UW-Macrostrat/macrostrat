@@ -3,7 +3,7 @@ name = "macrostrat.raster_cli"
 version = "0.1.0"
 description = "Prototype raster processing CLI for Macrostrat"
 authors = [{ name = "Daven Quinn", email = "dev@davenquinn.com" }]
-requires-python = "=3.10, <4"
+requires-python = ">=3.10, <4"
 readme = "README.md"
 dependencies = [
     "typer>=0.9.0,<0.10",
