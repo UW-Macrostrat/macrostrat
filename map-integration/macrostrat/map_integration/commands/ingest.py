@@ -1,3 +1,4 @@
+import json
 from collections import defaultdict
 from pathlib import Path
 from typing import Iterable, List, Tuple
@@ -13,13 +14,14 @@ from rich.progress import Progress
 from shapely import wkt
 from shapely.geometry.base import BaseGeometry
 from sqlalchemy import text
-import json
 
 from ..custom_integrations.gems_utils import (
     extract_gdb_layer,
+    map_lines_to_preferred_fields,
+    map_points_to_preferred_fields,
     map_strat_name,
     map_t_b_intervals,
-    transform_gdb_layer, map_lines_to_preferred_fields, map_points_to_preferred_fields,
+    transform_gdb_layer,
 )
 from ..database import get_database
 from ..errors import IngestError
@@ -63,15 +65,15 @@ def preprocess_dataframe(
     if ext == ".tsv":
         meta_df = P.read_csv(meta_path, sep="\t")
         ingest_pipeline = ".tsv pipeline"
-        #TODO tsv pipeline for if feature_suffix == "polygons", "lines" OR "points"
+        # TODO tsv pipeline for if feature_suffix == "polygons", "lines" OR "points"
     elif ext == ".csv":
         meta_df = P.read_csv(meta_path)
         ingest_pipeline = ".csv pipeline"
-        #TODO csv pipeline for if feature_suffix == "polygons", "lines" OR "points"
+        # TODO csv pipeline for if feature_suffix == "polygons", "lines" OR "points"
     elif ext in [".xls", ".xlsx"]:
         ingest_pipeline = ".xls pipeline"
         meta_df = P.read_excel(meta_path)
-        #TODO xls pipeline for if feature_suffix == "polygons", "lines" OR "points"
+        # TODO xls pipeline for if feature_suffix == "polygons", "lines" OR "points"
     elif ext == ".gdb":
         if feature_suffix == "polygons":
             join_col = "mapunit"
@@ -96,14 +98,17 @@ def preprocess_dataframe(
                 state = "pending"
                 return poly_line_pt_df, ingest_pipeline, comments, state
             meta_df = map_t_b_intervals(meta_df)
-            if meta_df["b_interval"].isna().all() and meta_df["t_interval"].isna().all():
+            if (
+                meta_df["b_interval"].isna().all()
+                and meta_df["t_interval"].isna().all()
+            ):
                 comments = "map_t_b_intervals() function failed. Both b_interval and t_interval are NA."
                 state = "failed"
                 return poly_line_pt_df, ingest_pipeline, comments, state
             meta_df = map_strat_name(meta_df)
             if meta_df["strat_name"].isna().all():
                 comments = "strat_name column needs review. map_strat_name() function did not find any strat_names."
-        elif feature_suffix == 'lines':
+        elif feature_suffix == "lines":
             meta_df = map_lines_to_preferred_fields(poly_line_pt_df)
             if meta_df.empty:
                 state = "failed"
@@ -112,7 +117,7 @@ def preprocess_dataframe(
             comments = " Lines successfully ingested."
             return meta_df, ingest_pipeline, comments, state
 
-        elif feature_suffix == 'points':
+        elif feature_suffix == "points":
             meta_df = map_points_to_preferred_fields(poly_line_pt_df)
             if meta_df.empty:
                 state = "failed"
@@ -235,14 +240,14 @@ def ingest_map(
     if embed:
         IPython.embed()
     ingest_results = {
-        'ingest_pipeline': None,
-        'comments': '',
-        'state': None,
-        'polygon_state': None,
-        'line_state': None,
-        'point_state': None
+        "ingest_pipeline": None,
+        "comments": "",
+        "state": None,
+        "polygon_state": None,
+        "line_state": None,
+        "point_state": None,
     }
-    #concatenate all polygons into a single df, lines, and points as well
+    # concatenate all polygons into a single df, lines, and points as well
     for feature_type, df_list in frames.items():
         # Concatenate all dataframes
         df = G.GeoDataFrame(P.concat(df_list, ignore_index=True))
@@ -251,44 +256,54 @@ def ingest_map(
         feature_suffix = feature_type.lower() + "s"
         if feature_suffix == "linestrings":
             feature_suffix = "lines"
-        #preprocess dataframe will take the concatenated polygons, lines, or points df and see if there are any metadata
-        #files to append and map based on whatever integration pipeline is needed (inferred from the meta_path's ext)
+        # preprocess dataframe will take the concatenated polygons, lines, or points df and see if there are any metadata
+        # files to append and map based on whatever integration pipeline is needed (inferred from the meta_path's ext)
         if meta_path:
             df.columns = df.columns.str.lower()
-            df, ingest_pipeline, comments, state = preprocess_dataframe(df, meta_path=meta_path, join_col=join_col.lower(),
-                                                                        feature_suffix=feature_suffix,)
+            df, ingest_pipeline, comments, state = preprocess_dataframe(
+                df,
+                meta_path=meta_path,
+                join_col=join_col.lower(),
+                feature_suffix=feature_suffix,
+            )
             if feature_suffix == "polygons":
-                ingest_results['ingest_pipeline'] = ingest_pipeline
-                ingest_results['polygon_state'] = json.dumps({
-                    "status": state,
-                    "pipeline": ingest_pipeline,
-                    "feature_count": len(df),
-                    "comments": comments
-                })
+                ingest_results["ingest_pipeline"] = ingest_pipeline
+                ingest_results["polygon_state"] = json.dumps(
+                    {
+                        "status": state,
+                        "pipeline": ingest_pipeline,
+                        "feature_count": len(df),
+                        "comments": comments,
+                    }
+                )
             if feature_suffix == "lines":
-                ingest_results['line_state'] = json.dumps({
-                    "status": state,
-                    "pipeline": ingest_results['ingest_pipeline'],
-                    "feature_count": len(df),
-                    "comments": comments
-                })
+                ingest_results["line_state"] = json.dumps(
+                    {
+                        "status": state,
+                        "pipeline": ingest_results["ingest_pipeline"],
+                        "feature_count": len(df),
+                        "comments": comments,
+                    }
+                )
             if feature_suffix == "points":
-                ingest_results['point_state'] = json.dumps({
-                    "status": state,
-                    "pipeline": ingest_results['ingest_pipeline'],
-                    "feature_count": len(df),
-                    "comments": comments
-                })
+                ingest_results["point_state"] = json.dumps(
+                    {
+                        "status": state,
+                        "pipeline": ingest_results["ingest_pipeline"],
+                        "feature_count": len(df),
+                        "comments": comments,
+                    }
+                )
             if len(comments) > 0:
-                if ingest_results['comments']:
-                    ingest_results['comments'] += '; ' + comments
+                if ingest_results["comments"]:
+                    ingest_results["comments"] += "; " + comments
                 else:
-                    ingest_results['comments'] = comments
+                    ingest_results["comments"] = comments
 
-            if state == 'ingested' and ingest_results['state'] is None:
-                ingest_results['state'] = 'ingested'
-            elif ingest_results['state'] is None:
-                ingest_results['state'] = 'pending'
+            if state == "ingested" and ingest_results["state"] is None:
+                ingest_results["state"] = "ingested"
+            elif ingest_results["state"] is None:
+                ingest_results["state"] = "pending"
 
             before = df.columns.tolist()
             df = df.loc[:, ~df.columns.duplicated()]  # <- fix: reassign to merged_df!
@@ -356,9 +371,25 @@ def create_dataframe_for_layer(file: Path, layer: str) -> G.GeoDataFrame:
 def get_dataframes(files) -> Iterable[Tuple[str, G.GeoDataFrame]]:
     single_file = len(files) == 1
     # ignore cross section polygons/lines/faults in Arizona CSAMapUnitPolys files.
-    ignore_cs_prefix = ('CSA', 'CSB', 'CSC', 'CSD', 'CSE', 'CSF', 'CSG', 'CSH', 'CSI', 'CMU')
-    ignore_cs_suffix = ('ContactsAndFaults', 'MapUnitPolys', 'OrientationPoints')
-    ignore_misc = ('T_1_DirtyAreas', 'T_1_LineErrors', 'T_1_PointErrors', 'T_1_PolyErrors')
+    ignore_cs_prefix = (
+        "CSA",
+        "CSB",
+        "CSC",
+        "CSD",
+        "CSE",
+        "CSF",
+        "CSG",
+        "CSH",
+        "CSI",
+        "CMU",
+    )
+    ignore_cs_suffix = ("ContactsAndFaults", "MapUnitPolys", "OrientationPoints")
+    ignore_misc = (
+        "T_1_DirtyAreas",
+        "T_1_LineErrors",
+        "T_1_PointErrors",
+        "T_1_PolyErrors",
+    )
     for file in files:
         console.print(file, style="bold cyan")
 
@@ -369,14 +400,14 @@ def get_dataframes(files) -> Iterable[Tuple[str, G.GeoDataFrame]]:
             console.print(f"{n_layers} layers.")
 
         for layer in layers:
-            #ignore cross section polygons/lines/faults in Arizona CSAMapUnitPolys files.
-            #skip if it's a misc layer
+            # ignore cross section polygons/lines/faults in Arizona CSAMapUnitPolys files.
+            # skip if it's a misc layer
             if layer.startswith(ignore_misc):
-                console.print(f'Skipping misc {layer}.')
+                console.print(f"Skipping misc {layer}.")
                 continue
-            #skip if it's BOTH a cross section prefix AND ends with a cross section suffix
+            # skip if it's BOTH a cross section prefix AND ends with a cross section suffix
             if layer.startswith(ignore_cs_prefix) and layer.endswith(ignore_cs_suffix):
-                console.print(f'Skipping cross section {layer}.')
+                console.print(f"Skipping cross section {layer}.")
                 continue
 
             name = get_layer_name(

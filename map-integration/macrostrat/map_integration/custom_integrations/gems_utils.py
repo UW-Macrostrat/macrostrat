@@ -367,6 +367,7 @@ def map_t_b_intervals(meta_df: G.GeoDataFrame) -> G.GeoDataFrame:
         )
     return meta_df
 
+
 def map_points_to_preferred_fields(meta_df: G.GeoDataFrame) -> G.GeoDataFrame:
     rename_map = {
         "Symbol": "orig_id",
@@ -376,8 +377,7 @@ def map_points_to_preferred_fields(meta_df: G.GeoDataFrame) -> G.GeoDataFrame:
         "Inclination": "dip",
         "SymbolRotation": "dip_dir",
         "Type": "point_type",
-        "IdentityConfidence": "certainty"
-
+        "IdentityConfidence": "certainty",
     }
     col_lower_to_actual = {col.lower(): col for col in meta_df.columns}
     actual_rename = {}
@@ -388,6 +388,7 @@ def map_points_to_preferred_fields(meta_df: G.GeoDataFrame) -> G.GeoDataFrame:
 
     meta_df = meta_df.rename(columns=actual_rename)
     return meta_df
+
 
 def map_lines_to_preferred_fields(meta_df: G.GeoDataFrame) -> G.GeoDataFrame:
     rename_map = {
@@ -395,7 +396,7 @@ def map_lines_to_preferred_fields(meta_df: G.GeoDataFrame) -> G.GeoDataFrame:
         "Notes": "descrip",
         "Label": "name",
         "Type": "type",
-        "Azimuth": "direction"
+        "Azimuth": "direction",
     }
 
     col_lower_to_actual = {col.lower(): col for col in meta_df.columns}
@@ -407,5 +408,3 @@ def map_lines_to_preferred_fields(meta_df: G.GeoDataFrame) -> G.GeoDataFrame:
 
     meta_df = meta_df.rename(columns=actual_rename)
     return meta_df
-
-
