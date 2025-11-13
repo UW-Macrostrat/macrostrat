@@ -1,11 +1,9 @@
-name: Build Production
-
+name: API v3 build
 on:
   push:
     branches:
       - main
     tags:
-      # Sem
       - api-v3-v[0-9]+.[0-9]+.[0-9]+  # Semver Release
       - api-v3-v[0-9]+.[0-9]+.[0-9]+-**  # Semver Pre-Release
     paths:
@@ -55,3 +53,14 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      # Add a link to the built artifact to the workflow summary
+      - name: Add link to workflow summary
+        run: |
+            echo "## Docker Image Built" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The Docker image has been built and pushed to [OSG Harbor](https://hub.opensciencegrid.org/harbor/projects/887/repositories/api-v3/artifacts-tab/artifacts/sha256:${{ github.sha }})" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Tags:" >> $GITHUB_STEP_SUMMARY
+            for tag in ${{ steps.meta.outputs.tags }}; do
+            echo "- \`$tag\`" >> $GITHUB_STEP_SUMMARY
+            done
