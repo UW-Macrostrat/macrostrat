@@ -6,7 +6,7 @@ services:
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
     labels:
-      - dev.orbstack.domains=macrostrat.local,storage.macrostrat.local,storage-ui.macrostrat.local,dev.macrostrat.local
+      - dev.orbstack.domains=macrostrat.local,storage.macrostrat.local,storage-ui.macrostrat.local,dev.macrostrat.local,tiles.macrostrat.local
   database:
     # PostgreSQL 13 is needed in order to allow force-dropping the database
     # (in testing mode)
@@ -78,7 +78,13 @@ services:
       # Perhaps we can put this config in the database?
       - PGRST_DB_AGGREGATES_ENABLED=true
   # Tileserver
-  tileserver:
+  tileserver_cache:
+    image: varnish:7.7
+    environment:
+      - VARNISH_HTTP_PORT=8000
+    volumes:
+      - ./configs/tileserver-cache.vcl:/etc/varnish/default.vcl
+  tileserver_core:
     image: hub.opensciencegrid.org/macrostrat/tileserver:main
     build:
       context: ../services/tileserver
@@ -99,7 +105,7 @@ services:
         --log-level debug
         --proxy-headers
         --forwarded-allow-ips=*
-  legacy_tileserver:
+  tileserver_legacy:
     image: hub.opensciencegrid.org/macrostrat/legacy-tileserver:main
     build:
       context: ../services/legacy-tileserver
@@ -114,7 +120,7 @@ services:
         --log-level debug
         --proxy-headers
         --forwarded-allow-ips=*
-  # Storage
+  # Storage system
   storage:
     image: minio/minio:RELEASE.2024-12-18T13-15-44Z-cpuv1
     environment:

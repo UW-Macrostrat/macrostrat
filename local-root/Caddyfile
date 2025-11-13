@@ -113,7 +113,7 @@ localhost, macrostrat.local {
     }
 
     handle_path /tiles/* {
-        reverse_proxy tileserver:8000 {
+        reverse_proxy tileserver_cache:8000 {
             header_down -Access-Control-Allow-Origin
             header_down -Access-Control-Allow-Credentials
             header_down -Access-Control-Allow-Methods
@@ -147,4 +147,13 @@ storage.macrostrat.local {
 storage-ui.macrostrat.local {
     tls internal
     reverse_proxy storage:9001
+}
+
+tiles.macrostrat.local {
+    tls internal
+    reverse_proxy tileserver_cache:8000 {
+        header_down -Access-Control-Allow-Origin
+        header_down -Access-Control-Allow-Credentials
+        header_down -Access-Control-Allow-Methods
+    }
 }
