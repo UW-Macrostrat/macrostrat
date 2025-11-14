@@ -1072,6 +1072,7 @@ name = "macrostrat-match-utils"
 version = "0.1.0"
 source = { editable = "py-modules/match-utils" }
 dependencies = [
+    { name = "geopandas" },
     { name = "macrostrat-database" },
     { name = "pandas" },
     { name = "pydantic" },
@@ -1079,6 +1080,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "geopandas", specifier = ">=0.14.4" },
     { name = "macrostrat-database", specifier = ">=3.5.4" },
     { name = "pandas", specifier = ">=2.3.3" },
     { name = "pydantic", specifier = ">=2.12.4" },

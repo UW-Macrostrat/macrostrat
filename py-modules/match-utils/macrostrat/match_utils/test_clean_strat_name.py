@@ -1,4 +1,4 @@
-from .clean_strat_name import clean_strat_name, StratRank
+from .strat_names import clean_strat_name, StratRank
 
 
 def test_clean_strat_name():
