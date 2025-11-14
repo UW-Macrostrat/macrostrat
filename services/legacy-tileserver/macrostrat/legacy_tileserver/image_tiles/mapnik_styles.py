@@ -4,11 +4,11 @@ The stylesheets are regenerated every time the server is restarted.
 """
 
 from json import dumps
-
-from mapnik import Datasource
 from pathlib import Path
 from subprocess import CalledProcessError, check_output
 from textwrap import dedent
+
+from mapnik import Datasource
 
 from .config import layer_order
 

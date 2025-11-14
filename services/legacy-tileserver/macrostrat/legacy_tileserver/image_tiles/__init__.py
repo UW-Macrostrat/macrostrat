@@ -41,7 +41,7 @@ async def get_image_tile(request: Request, args: CachedTileArgs) -> bytes:
         # Render map to image
         im = Image(512, 512)
         render(_map, im, 2)
-        
+
         # Return image as binary
         res = im.tostring("png")
         return res

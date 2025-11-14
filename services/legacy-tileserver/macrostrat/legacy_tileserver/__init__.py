@@ -1,10 +1,16 @@
+from enum import Enum
+from functools import lru_cache
 from os import environ
+from pathlib import Path
 
 from buildpg import render
 from buildpg.asyncpg import create_pool_b
-from enum import Enum
 from fastapi import BackgroundTasks, Depends, FastAPI, Request
-from functools import lru_cache
+from morecantile import Tile
+from starlette.middleware import Middleware
+from starlette.middleware.cors import CORSMiddleware
+from starlette.responses import HTMLResponse
+
 from macrostrat.database import Database
 from macrostrat.tileserver_utils import (
     CachedTileArgs,
@@ -14,11 +20,6 @@ from macrostrat.tileserver_utils import (
     handle_cached_tile_request,
 )
 from macrostrat.utils import get_logger, setup_stderr_logs
-from morecantile import Tile
-from pathlib import Path
-from starlette.middleware import Middleware
-from starlette.middleware.cors import CORSMiddleware
-from starlette.responses import HTMLResponse
 
 from .image_tiles import MapnikMapPool, get_image_tile
 
