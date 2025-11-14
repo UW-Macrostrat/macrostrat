@@ -69,7 +69,10 @@ class MapnikMapPool:
         """Get a map from the pool."""
         q = self.storage[scale]
         _map = await q.get()
+        t = time.time()
         try:
             yield _map
         finally:
             await q.put(_map)
+            dt = time.time() - t
+            log.debug(f"Returned map to pool for scale {scale} in {dt:.3f} seconds")
