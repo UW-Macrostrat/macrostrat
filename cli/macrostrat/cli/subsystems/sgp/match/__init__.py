@@ -497,7 +497,7 @@ def get_matched_unit(
     """
 
     units = get_column_units(conn, col_id, types=types)
-    u1 = units[units.strat_name_clean is not None]
+    u1 = units[units.strat_name_clean.notnull()]
 
     if comparison == MatchComparison.Fuzzy:
         raise NotImplementedError("Fuzzy matching not implemented")

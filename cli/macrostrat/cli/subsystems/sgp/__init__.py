@@ -40,7 +40,7 @@ def import_sgp_data():
     port = sgp_db.engine.url.port or 5432
 
     if host == "localhost":
-        # Use an internal port
+        # Use an internal port for connectivity.
         port = "5432"
 
     db.run_sql(

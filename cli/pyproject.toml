@@ -50,7 +50,7 @@ dependencies = [
 ]
 
 [project.scripts]
-macrostrat = "macrostrat.cli:main"
+macrostrat = "macrostrat.cli.entrypoint:main"
 
 [project.optional-dependencies]
 gis = [
