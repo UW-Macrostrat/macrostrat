@@ -156,4 +156,13 @@ tiles.macrostrat.local {
         header_down -Access-Control-Allow-Credentials
         header_down -Access-Control-Allow-Methods
     }
+
+    # Local CORS headers
+
+    header {
+      Access-Control-Allow-Origin *
+      Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+    }
+
+
 }

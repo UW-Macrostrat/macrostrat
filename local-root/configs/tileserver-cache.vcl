@@ -56,3 +56,15 @@ sub vcl_deliver {
         set resp.http.X-Cache = "miss";
     }
 }
+
+sub vcl_backend_response {
+    # Set a long TTL for tiles
+    if (bereq.url ~ ".*\.(png|mvt)$") {
+        set beresp.ttl = 1d;
+        # Allow stale content while revalidating
+        set beresp.grace = 5m;
+    } else {
+        # Shorter TTL for other content
+        set beresp.ttl = 5m;
+    }
+}

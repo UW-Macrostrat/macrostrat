@@ -101,7 +101,6 @@ services:
     command: >
       uv run uvicorn --host 0.0.0.0 --port 8000
         macrostrat.tileserver:app
-        --root-path /tiles
         --log-level debug
         --proxy-headers
         --forwarded-allow-ips=*
@@ -113,10 +112,10 @@ services:
         py-modules: ../py-modules
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
+      - MAPNIK_POOL_SIZE=64
     command: >
       uvicorn --host 0.0.0.0 --port 8000
         macrostrat.legacy_tileserver:app
-        --root-path /tiles/legacy
         --log-level debug
         --proxy-headers
         --forwarded-allow-ips=*
