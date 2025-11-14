@@ -4,11 +4,11 @@ Subsystem for SGP matching
 
 from dataclasses import dataclass
 from enum import Enum
-from pathlib import Path
-
 from geoalchemy2 import Geometry, WKBElement
 from geopandas import GeoDataFrame, sjoin
+from macrostrat.database import Database
 from pandas import DataFrame, isna, read_sql
+from pathlib import Path
 from pydantic import BaseModel
 from rich.live import Live
 from rich.table import Table
@@ -18,16 +18,12 @@ from typer import Option
 
 from macrostrat.cli.database import get_db
 from macrostrat.core.console import err_console as console
-from macrostrat.database import Database
-
-from ..utils import get_sgp_db, get_sgp_samples, stored_procedure, write_to_file
-from .clean_strat_name import (
-    StratNameTextMatch,
-    StratRank,
+from macrostrat.match_utils.clean_strat_name import (
     clean_strat_name,
     clean_strat_name_text,
     format_name,
 )
+from ..utils import get_sgp_db, get_sgp_samples, stored_procedure, write_to_file
 
 here = Path(__file__).parent
 

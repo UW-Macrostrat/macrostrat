@@ -5,7 +5,6 @@ Subsystem for SGP matching
 from typer import Typer
 
 from macrostrat.cli.database import get_db
-
 from .match import log_matches, match_sgp_data_cmd
 from .migrations import *
 from .paleogeography import compute_paleo_positions

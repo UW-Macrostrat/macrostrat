@@ -24,6 +24,7 @@ dependencies = [
     "macrostrat.core",
     "macrostrat.integrations",
     "macrostrat.map-integration",
+    "macrostrat.match-utils",
     "criticalmaas.ta1-geopackage>=0.2.0,<0.3",
     "mapboard.topology-manager",
     "htpheno.radosgw-admin-client",
@@ -74,6 +75,7 @@ default-groups = [
 "macrostrat.integrations" = { path = "../integrations", editable = true }
 "mapboard.topology-manager" = { path = "../submodules/topology-manager", editable = true }
 "htpheno.radosgw-admin-client" = { path = "../submodules/storage-admin", editable = true }
+"macrostrat.match-utils" = { path = "../py-modules/match-utils", editable = true }
 
 [tool.hatch.build.targets.sdist]
 include = ["macrostrat"]

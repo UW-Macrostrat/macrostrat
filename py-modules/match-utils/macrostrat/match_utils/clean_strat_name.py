@@ -5,11 +5,11 @@ Cleaning functions for stratigraphic names
 
 """
 
+from string import punctuation
+
 import enum
 import re
 from functools import reduce
-from string import punctuation
-
 from pydantic import BaseModel
 
 from macrostrat.core.database import get_database
@@ -311,5 +311,3 @@ gremlins = {
     "\x19": "",
     "\x06\x08\x13\x11\x08\x12": "",
 }
-
-

@@ -8,6 +8,7 @@ requires-python = ">=3.11,<3.13"
 dependencies = [
     "setuptools>=75.8.2,<76",
     "macrostrat.cli",
+    "macrostrat.match-utils",
 ]
 
 [dependency-groups]
@@ -26,6 +27,11 @@ default-groups = [
 
 [tool.uv.sources]
 "macrostrat.cli" = { path = "./cli", editable = true }
+"macrostrat.match-utils" = { workspace = true }
+
+[tool.uv.workspace]
+members = ["py-packages/*"]
+
 
 [tool.black]
 line-length = 88
