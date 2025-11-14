@@ -83,6 +83,8 @@ services:
     environment:
       - VARNISH_HTTP_PORT=8000
     volumes:
+      # TODO:
+      # Changes to this config file aren't pulled in without explicitly restarting the container.
       - ./configs/tileserver-cache.vcl:/etc/varnish/default.vcl
   tileserver_core:
     image: hub.opensciencegrid.org/macrostrat/tileserver:main

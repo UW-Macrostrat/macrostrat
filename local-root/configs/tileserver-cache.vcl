@@ -63,6 +63,10 @@ sub vcl_backend_response {
         set beresp.ttl = 1d;
         # Allow stale content while revalidating
         set beresp.grace = 5m;
+    } else if (beresp.http.Content-Type ~ "application/x-protobuf") {
+        # Vector tiles should have the same TTL
+        set beresp.ttl = 1d;
+        set beresp.grace = 5m;
     } else {
         # Shorter TTL for other content
         set beresp.ttl = 5m;
