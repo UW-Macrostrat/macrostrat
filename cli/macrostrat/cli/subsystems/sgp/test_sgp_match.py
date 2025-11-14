@@ -1,7 +1,7 @@
 from pytest import mark
 
-from macrostrat.cli.subsystems.sgp import get_sgp_db
-from macrostrat.cli.subsystems.sgp.match import DatabaseConfig, match_sgp_data
+from . import get_sgp_db
+from .match import DatabaseConfig, match_sgp_data
 
 
 # Note: these tests have to be outside the macrostrat.cli package
