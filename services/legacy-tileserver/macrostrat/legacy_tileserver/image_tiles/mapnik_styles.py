@@ -4,6 +4,8 @@ The stylesheets are regenerated every time the server is restarted.
 """
 
 from json import dumps
+
+from mapnik import Datasource
 from pathlib import Path
 from subprocess import CalledProcessError, check_output
 from textwrap import dedent
@@ -13,51 +15,53 @@ from .config import layer_order
 __here__ = Path(__file__).parent
 
 
+def make_datasource(db_url, **kwargs):
+    pg_credentials = get_credentials(db_url)
+    return Datasource(
+        **pg_credentials,
+        **kwargs,
+    )
+
+
+def make_line_datasource(db_url, scale):
+    line_query = create_line_query(scale)
+    pg_credentials = get_credentials(db_url)
+    return Datasource(
+        type="postgis",
+        table=f"({line_query}) subset",
+        key_field="line_id",
+        geometry_field="geom",
+        extent_cache="auto",
+        extent="-180,-90,180,90",
+        srid="4326",
+        **pg_credentials,
+    )
+
+
+def make_polygon_datasource(db_url, scale):
+    polygon_query = create_polygon_query(scale)
+    pg_credentials = get_credentials(db_url)
+    return Datasource(
+        type="postgis",
+        table=f"({polygon_query}) subset",
+        key_field="map_id",
+        geometry_field="geom",
+        extent_cache="auto",
+        extent="-180,-90,180,90",
+        srid="4326",
+        **pg_credentials,
+    )
+
+
 def make_carto_stylesheet(scale, db_url):
     pg_credentials = get_credentials(db_url)
-
-    line_sql = " UNION ALL ".join(
-        f"SELECT * FROM lines.{s}" for s in layer_order[scale]
-    )
 
     cartoCSS = (__here__ / "style.mss").read_text()
 
     webmercator_srs = "+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0.0 +k=1.0 +units=m +nadgrids=@null +wktext +no_defs +over"
 
-    polygon_query = dedent(
-        f"""
-    SELECT
-        z.map_id,
-        nullif(l.color, '') AS color,
-        z.geom FROM carto.polygons z
-    LEFT JOIN maps.map_legend
-      ON z.map_id = map_legend.map_id
-    LEFT JOIN maps.legend AS l
-      ON l.legend_id = map_legend.legend_id
-    LEFT JOIN maps.sources
-      ON l.source_id = sources.source_id
-    WHERE sources.status_code = 'active'
-      AND l.color IS NOT NULL
-      AND l.color != ''
-      AND z.scale = '{scale}'
-    """
-    )
-
-    line_query = dedent(
-        f"""
-        SELECT
-            x.line_id,
-            x.geom,
-            q.direction,
-            q.type
-        FROM carto.lines x
-        LEFT JOIN ( {line_sql} ) q
-          ON q.line_id = x.line_id
-        LEFT JOIN maps.sources ON x.source_id = sources.source_id
-        WHERE sources.status_code = 'active'
-          AND x.scale = '{scale}'
-    """
-    )
+    polygon_query = create_polygon_query(scale)
+    line_query = create_line_query(scale)
 
     return {
         "bounds": [-89, -179, 89, 179],
@@ -153,3 +157,45 @@ def get_credentials(db_url=None):
         "password": db_url.password,
         "dbname": db_url.database,
     }
+
+
+def create_polygon_query(scale):
+    return dedent(
+        f"""
+    SELECT
+        z.map_id,
+        nullif(l.color, '') AS color,
+        z.geom FROM carto.polygons z
+    LEFT JOIN maps.map_legend
+      ON z.map_id = map_legend.map_id
+    LEFT JOIN maps.legend AS l
+      ON l.legend_id = map_legend.legend_id
+    LEFT JOIN maps.sources
+      ON l.source_id = sources.source_id
+    WHERE sources.status_code = 'active'
+      AND l.color IS NOT NULL
+      AND l.color != ''
+      AND z.scale = '{scale}'
+    """
+    )
+
+
+def create_line_query(scale):
+    line_sql = " UNION ALL ".join(
+        f"SELECT * FROM lines.{s}" for s in layer_order[scale]
+    )
+    return dedent(
+        f"""
+        SELECT
+            x.line_id,
+            x.geom,
+            q.direction,
+            q.type
+        FROM carto.lines x
+        LEFT JOIN ( {line_sql} ) q
+          ON q.line_id = x.line_id
+        LEFT JOIN maps.sources ON x.source_id = sources.source_id
+        WHERE sources.status_code = 'active'
+          AND x.scale = '{scale}'
+    """
+    )
