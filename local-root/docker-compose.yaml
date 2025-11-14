@@ -6,7 +6,7 @@ services:
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
     labels:
-      - dev.orbstack.domains=macrostrat.local,storage.macrostrat.local,storage-ui.macrostrat.local,dev.macrostrat.local
+      - dev.orbstack.domains=macrostrat.local,storage.macrostrat.local,storage-ui.macrostrat.local,dev.macrostrat.local,tiles.macrostrat.local
   database:
     # PostgreSQL 13 is needed in order to allow force-dropping the database
     # (in testing mode)
@@ -78,7 +78,13 @@ services:
       # Perhaps we can put this config in the database?
       - PGRST_DB_AGGREGATES_ENABLED=true
   # Tileserver
-  tileserver:
+  tileserver_cache:
+    image: varnish:7.7
+    environment:
+      - VARNISH_HTTP_PORT=8000
+    volumes:
+      - ./configs/tileserver-cache.vcl:/etc/varnish/default.vcl
+  tileserver_core:
     image: hub.opensciencegrid.org/macrostrat/tileserver:main
     build:
       context: ../services/tileserver
@@ -95,11 +101,10 @@ services:
     command: >
       uv run uvicorn --host 0.0.0.0 --port 8000
         macrostrat.tileserver:app
-        --root-path /tiles
         --log-level debug
         --proxy-headers
         --forwarded-allow-ips=*
-  legacy_tileserver:
+  tileserver_legacy:
     image: hub.opensciencegrid.org/macrostrat/legacy-tileserver:main
     build:
       context: ../services/legacy-tileserver
@@ -107,14 +112,14 @@ services:
         py-modules: ../py-modules
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
+      - MAPNIK_POOL_SIZE=64
     command: >
       uvicorn --host 0.0.0.0 --port 8000
         macrostrat.legacy_tileserver:app
-        --root-path /tiles/legacy
         --log-level debug
         --proxy-headers
         --forwarded-allow-ips=*
-  # Storage
+  # Storage system
   storage:
     image: minio/minio:RELEASE.2024-12-18T13-15-44Z-cpuv1
     environment:
@@ -132,7 +137,7 @@ services:
     build: ${MACROSTRAT_WEB_SRC:-""}
     environment:
       - VITE_MAPBOX_API_TOKEN=${MAPBOX_TOKEN}
-      - VITE_MACROSTRAT_TILESERVER_DOMAIN=https://macrostrat.local/tiles
+      - VITE_MACROSTRAT_TILESERVER_DOMAIN=https://tiles.macrostrat.local
       - VITE_MACROSTRAT_API_DOMAIN=https://macrostrat.local
       # Needed for server-side rendering requests to not fail on self-signed certs (which OrbStack provides)
       - NODE_TLS_REJECT_UNAUTHORIZED=0
