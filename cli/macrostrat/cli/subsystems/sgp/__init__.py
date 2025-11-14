@@ -36,11 +36,18 @@ def import_sgp_data():
     print("Importing SGP data...")
     print(sgp_db.engine.url)
 
+    host = sgp_db.engine.url.host
+    port = sgp_db.engine.url.port or 5432
+
+    if host == "localhost":
+        # Use an internal port
+        port = "5432"
+
     db.run_sql(
         sql_dir / "create-fdw.sql",
         dict(
-            sgp_host=sgp_db.engine.url.host,
-            sgp_port=str(sgp_db.engine.url.port or 5432),
+            sgp_host=host,
+            sgp_port=str(port),
             sgp_database=sgp_db.engine.url.database,
             sgp_user=sgp_db.engine.url.username,
             sgp_password=sgp_db.engine.url.password,
