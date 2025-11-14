@@ -3,17 +3,24 @@
 
 set -e
 
-# Fail if we are in a dirty state
-if ! git diff-index --quiet HEAD --; then
-  echo "Error: You have uncommitted changes. Please commit or stash them before running this script."
-  exit 1
-fi
-
 services=(
   "tileserver"
   "legacy-tileserver"
   "usage-stats"
 )
+
+for service_name in "${services[@]}"; do
+  # Lock dependencies
+  pushd services/$service_name > /dev/null 2>&1
+  uv lock
+  popd > /dev/null 2>&1
+done
+
+# Fail if we are in a dirty state
+if ! git diff-index --quiet HEAD --; then
+  echo "Error: You have uncommitted changes. Please commit or stash them before running this script."
+  exit 1
+fi
 
 for service_name in "${services[@]}"; do
   # Check if the service directory exists
