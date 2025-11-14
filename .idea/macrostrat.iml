@@ -15,6 +15,8 @@
       <sourceFolder url="file://$MODULE_DIR$/raster-cli" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/integrations" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/submodules/topology-manager" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/py-modules/match-utils" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/submodules/storage-admin" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/cli/.venv" />
       <excludeFolder url="file://$MODULE_DIR$/py-root/.venv" />
       <excludeFolder url="file://$MODULE_DIR$/.venv" />

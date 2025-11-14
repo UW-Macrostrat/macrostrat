@@ -3,7 +3,6 @@ Subsystem for SGP matching
 """
 
 from dataclasses import dataclass
-from enum import Enum
 from geoalchemy2 import Geometry, WKBElement
 from geopandas import GeoDataFrame, sjoin
 from macrostrat.database import Database
@@ -18,6 +17,7 @@ from typer import Option
 
 from macrostrat.cli.database import get_db
 from macrostrat.core.console import err_console as console
+from macrostrat.match_utils import MatchType, MatchComparison
 from macrostrat.match_utils.clean_strat_name import (
     clean_strat_name,
     clean_strat_name_text,
@@ -41,21 +41,6 @@ def get_columns_data_frame(db: Database):
         text(sql), db.engine.connect(), geom_col="col_area", index_col="col_id"
     )
     return gdf
-
-
-class MatchType(Enum):
-    Concepts = "concepts"
-    AdjacentCols = "adjacent-cols"
-    ColumnUnits = "column-units"
-    FootprintIndex = "footprint-index"
-    Synonyms = "synonyms"
-
-
-class MatchComparison(Enum):
-    Exact = "exact"
-    Included = "included"
-    Bidirectional = "bidirectional"
-    Fuzzy = "fuzzy"
 
 
 @dataclass

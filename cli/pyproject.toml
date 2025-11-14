@@ -7,7 +7,7 @@ authors = [
     { name = "Casey Idzikowski" },
     { name = "John J Czaplewski", email = "jczaplewski@wisc.edu" },
 ]
-requires-python = "~=3.11"
+requires-python = ">=3.11,<4"
 readme = "README.md"
 dependencies = [
     "Fiona>=1.8.22,<2",
@@ -75,7 +75,7 @@ default-groups = [
 "macrostrat.integrations" = { path = "../integrations", editable = true }
 "mapboard.topology-manager" = { path = "../submodules/topology-manager", editable = true }
 "htpheno.radosgw-admin-client" = { path = "../submodules/storage-admin", editable = true }
-"macrostrat.match-utils" = { path = "../py-modules/match-utils", editable = true }
+"macrostrat.match-utils" = { workspace = true }
 
 [tool.hatch.build.targets.sdist]
 include = ["macrostrat"]

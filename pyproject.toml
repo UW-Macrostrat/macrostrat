@@ -26,11 +26,11 @@ default-groups = [
 ]
 
 [tool.uv.sources]
-"macrostrat.cli" = { path = "./cli", editable = true }
+"macrostrat.cli" = { workspace = true }
 "macrostrat.match-utils" = { workspace = true }
 
 [tool.uv.workspace]
-members = ["py-packages/*"]
+members = ["py-modules/*", "cli"]
 
 
 [tool.black]
