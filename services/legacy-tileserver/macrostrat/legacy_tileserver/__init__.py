@@ -39,7 +39,7 @@ async def startup_event():
     # Tile rendering map pool size
     # This controls how many image tiles can be concurrently rendered.
     # Database access is somewhat inefficient, so we may need to adjust this.
-    mapnik_pool_size = int(environ.get("MAPNIK_POOL_SIZE", "64"))
+    mapnik_pool_size = int(environ.get("MAPNIK_POOL_SIZE", "8"))
     log.info(f"Setting up Mapnik map pool with size {mapnik_pool_size}")
 
     app.state.pool = await create_pool_b(url)

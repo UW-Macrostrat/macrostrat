@@ -31,6 +31,9 @@ async def get_image_tile(request: Request, args: CachedTileArgs) -> bytes:
     scale = scale_for_zoom(tile.z)
     box = Box2d(bbox.left, bbox.top, bbox.right, bbox.bottom)
 
+    # TODO: tune PostGIS data sources
+    # https://github.com/mapnik/mapnik/wiki/PostGIS
+
     async with pool.map_context(scale) as _map:
 
         _map.zoom_to_box(box)
@@ -38,5 +41,7 @@ async def get_image_tile(request: Request, args: CachedTileArgs) -> bytes:
         # Render map to image
         im = Image(512, 512)
         render(_map, im, 2)
+
         # Return image as binary
-        return im.tostring("png")
+        res = im.tostring("png")
+        return res

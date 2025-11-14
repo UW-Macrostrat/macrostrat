@@ -83,6 +83,8 @@ services:
     environment:
       - VARNISH_HTTP_PORT=8000
     volumes:
+      # TODO:
+      # Changes to this config file aren't pulled in without explicitly restarting the container.
       - ./configs/tileserver-cache.vcl:/etc/varnish/default.vcl
   tileserver_core:
     image: hub.opensciencegrid.org/macrostrat/tileserver:main
@@ -112,7 +114,7 @@ services:
         py-modules: ../py-modules
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
-      - MAPNIK_POOL_SIZE=64
+      - MAPNIK_POOL_SIZE=8
     command: >
       uvicorn --host 0.0.0.0 --port 8000
         macrostrat.legacy_tileserver:app
