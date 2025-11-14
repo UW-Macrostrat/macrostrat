@@ -342,7 +342,7 @@ wheels = [
 
 [[package]]
 name = "macrostrat-legacy-tileserver"
-version = "2.3.0b2"
+version = "2.3.0b3"
 source = { editable = "." }
 dependencies = [
     { name = "asyncpg" },
