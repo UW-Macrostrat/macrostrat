@@ -1,13 +1,14 @@
+import csv
 import os
 import random
-import time
-from urllib.parse import unquote, urljoin, urlparse
 import re
-import csv
+import time
+import zipfile
+from urllib.parse import unquote, urljoin, urlparse
+
 import requests
 from bs4 import BeautifulSoup
 from tqdm import tqdm
-import zipfile
 
 BASE_URL = "https://repository.arizona.edu"
 START_URL = f"{BASE_URL}/handle/10150/628301/recent-submissions"
@@ -33,7 +34,7 @@ CSV_HEADERS = [
     "scale_denominator",
 ]
 
-#inserts header row in csv
+# inserts header row in csv
 if not os.path.exists(PROCESSED_URLS_PATH) or os.path.getsize(PROCESSED_URLS_PATH) == 0:
     with open(PROCESSED_URLS_PATH, "w", newline="") as f:
         writer = csv.writer(f)
@@ -66,6 +67,7 @@ def strip_gdb_zip_suffixes(filename: str) -> str:
         if name.lower().endswith(ext):
             name = name[: -len(ext)]
     return name
+
 
 def extract_all_zips(root_dir=OUTPUT_DIR):
     """
@@ -147,6 +149,7 @@ def get_all_item_links(
     print(f"Total found: {len(links)} (saved to {cache_file})")
     return links
 
+
 def parse_citation(citation: str) -> dict:
     """
     Parse a full citation string into maps.sources-style fields.
@@ -162,7 +165,6 @@ def parse_citation(citation: str) -> dict:
         "ref_title": None,
         "ref_source": None,
         "scale_denominator": None,
-
     }
     if not citation:
         return fields
@@ -205,6 +207,7 @@ def parse_citation(citation: str) -> dict:
         fields["ref_source"] = source_text or None
     return fields
 
+
 def get_citation_text(soup):
     """Extract the full bibliographic citation text from the page."""
     meta = soup.find("meta", attrs={"name": "DCTERMS.bibliographicCitation"})
@@ -214,8 +217,8 @@ def get_citation_text(soup):
 
 
 def download_gdb_zips(item_url):
-    '''Saves the filename along with the url link to the repository the files
-    are extracted from.'''
+    """Saves the filename along with the url link to the repository the files
+    are extracted from."""
     soup = get_soup(item_url)
 
     citation_text = get_citation_text(soup)
@@ -268,13 +271,14 @@ def deduplicate_file(path):
             for line in unique:
                 f.write(line + "\n")
 
+
 # metadata csv format: filename_prefix,url,ref_title,authors,ref_year,ref_source,scale_denominator
 if __name__ == "__main__":
     # deduplicate_file("scraped_item_links.txt")
     item_pages = get_all_item_links(START_URL)
     for idx, url in enumerate(tqdm(item_pages, desc="Items")):
         if url in visited_urls:
-            continue  #skip already processed item
+            continue  # skip already processed item
         try:
             files, citation_fields = download_gdb_zips(url)
             ref_title = citation_fields.get("ref_title") if citation_fields else ""
@@ -283,7 +287,8 @@ if __name__ == "__main__":
             ref_source = citation_fields.get("ref_source") if citation_fields else ""
             scale_den = (
                 citation_fields.get("scale_denominator")
-                if citation_fields and citation_fields.get("scale_denominator") is not None
+                if citation_fields
+                and citation_fields.get("scale_denominator") is not None
                 else ""
             )
 
@@ -293,10 +298,18 @@ if __name__ == "__main__":
                     for filename in files:
                         filename_prefix = strip_gdb_zip_suffixes(filename)
                         writer.writerow(
-                            [filename_prefix, url, ref_title, authors, ref_year, ref_source, scale_den]
+                            [
+                                filename_prefix,
+                                url,
+                                ref_title,
+                                authors,
+                                ref_year,
+                                ref_source,
+                                scale_den,
+                            ]
                         )
                 else:
-                    #mark URL as processed even if it has no files
+                    # mark URL as processed even if it has no files
                     writer.writerow(
                         ["", url, ref_title, authors, ref_year, ref_source, scale_den]
                     )
@@ -310,4 +323,3 @@ if __name__ == "__main__":
             print("Error", url, e)
 
     extract_all_zips()
-
