@@ -3,7 +3,7 @@ from macrostrat.database import Database
 from pandas import isna, read_sql
 from sqlalchemy.sql import text
 
-from .models import MatchType, MatchComparison
+from .models import MatchType, MatchComparison, MatchResult
 from .strat_names import format_name, clean_strat_name, clean_strat_name_text
 from .utils import stored_procedure
 
@@ -93,6 +93,19 @@ def get_matched_unit(
     return rows[0]
 
 
+def output_schema(schema):
+    """Decorator to convert function output to a list of schema instances."""
+
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            result = func(*args, **kwargs)
+            return [schema.from_row(row) for row in result]
+
+        return wrapper
+
+    return decorator
+
+
 def get_all_matched_units(
     conn,
     col_id,
@@ -105,6 +118,7 @@ def get_all_matched_units(
     """
     Return all units and stratigraphic names that match the given col_id
     """
+
     units = get_column_units(conn, col_id, types=types)
     u1 = units[units.strat_name_clean.notnull()]
 

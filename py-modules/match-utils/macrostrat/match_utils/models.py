@@ -42,4 +42,3 @@ class MatchComparison(Enum):
     Included = "included"
     Bidirectional = "bidirectional"
     Fuzzy = "fuzzy"
-

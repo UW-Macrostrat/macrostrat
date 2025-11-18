@@ -28,9 +28,10 @@ default-groups = [
 [tool.uv.sources]
 "macrostrat.cli" = { workspace = true }
 "macrostrat.match-utils" = { workspace = true }
+"macrostrat.api-v3" = { workspace = true }
 
 [tool.uv.workspace]
-members = ["py-modules/*", "cli"]
+members = ["py-modules/*", "cli", "services/api-v3"]
 
 
 [tool.black]
@@ -47,3 +48,7 @@ markers = [
     "docker: marks tests as requiring a docker container",
     "requires_gdal: marks tests as requiring GDAL",
 ]
+
+[tool.pylint.messages-control]
+max-line-length = 88
+disable = "invalid-name,missing-class-docstring,missing-function-docstring"
