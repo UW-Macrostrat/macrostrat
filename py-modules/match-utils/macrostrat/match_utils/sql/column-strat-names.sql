@@ -177,9 +177,10 @@ with_footprints_index AS (
   ORDER BY sort_order, is_selected_column DESC NULLS LAST
 )
 SELECT DISTINCT ON (sort_order, is_selected_column, strat_name_id)
+  sort_order priority,
   strat_name_id,
   strat_name,
-  rank,
+  rank strat_rank,
   parent_id,
   concept_id,
   unit_id,

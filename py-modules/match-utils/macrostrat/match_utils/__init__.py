@@ -1,5 +1,5 @@
 from enum import Enum
-from geopandas import GeoDataFrame, sjoin
+from geopandas import GeoDataFrame
 from macrostrat.database import Database
 from pandas import isna, read_sql
 from sqlalchemy.sql import text
@@ -92,7 +92,7 @@ def get_matched_unit(
     conn,
     col_id,
     strat_names,
-    comparison=MatchComparison.Included,
+    comparison: MatchComparison = MatchComparison.Included,
     types: list[MatchType] = None,
 ):
     """
@@ -102,9 +102,11 @@ def get_matched_unit(
     units = get_column_units(conn, col_id, types=types)
     u1 = units[units.strat_name_clean.notnull()]
 
+    # We don't support fuzzy matching yet
     if comparison == MatchComparison.Fuzzy:
         raise NotImplementedError("Fuzzy matching not implemented")
 
+    # First, try exact matching
     for strat_name in strat_names:
         # Try for an exact match with all strat names
         for ix, row in u1.iterrows():
@@ -115,6 +117,7 @@ def get_matched_unit(
     if comparison == MatchComparison.Exact:
         return None
 
+    # Name is a subset of the strat name
     for strat_name in strat_names:
         # Try for a "like" match, which might catch verbatim strat names better
         for ix, row in u1.iterrows():
@@ -127,6 +130,7 @@ def get_matched_unit(
     if comparison == MatchComparison.Included:
         return None
 
+    # "Bidirectional" matching: strat name can be either a subset or superset of the cleaned name
     for strat_name in strat_names:
         # Finally check that our cleaned strat name does not include the cleaned name as a subset
         for ix, row in u1.iterrows():
