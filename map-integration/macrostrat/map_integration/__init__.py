@@ -335,16 +335,16 @@ def staging(
         VALUES (:state, :source_id, :object_group_id, :ingested_by, :ingest_pipeline, :comments, :slug, :polygon_state, :line_state, :point_state);
         """,
         dict(
-            state=ingest_results['state'],
+            state=ingest_results["state"],
             source_id=source_id,
             object_group_id=1,
             ingested_by="macrostrat-admin",
-            ingest_pipeline=ingest_results['ingest_pipeline'],
-            comments=ingest_results['comments'],
+            ingest_pipeline=ingest_results["ingest_pipeline"],
+            comments=ingest_results["comments"],
             slug=slug,
-            polygon_state=ingest_results['polygon_state'],
-            line_state=ingest_results['line_state'],
-            point_state=ingest_results['point_state'],
+            polygon_state=ingest_results["polygon_state"],
+            line_state=ingest_results["line_state"],
+            point_state=ingest_results["point_state"],
         ),
     )
 
@@ -567,16 +567,16 @@ def staging_bulk(
             VALUES (:state, :source_id, :object_group_id, :ingested_by, :ingest_pipeline, :comments, :slug, :polygon_state, :line_state, :point_state);
             """,
             dict(
-                state=ingest_results['state'],
+                state=ingest_results["state"],
                 source_id=source_id,
                 object_group_id=1,
                 ingested_by="macrostrat-admin",
-                ingest_pipeline=ingest_results['ingest_pipeline'],
-                comments=ingest_results['comments'],
+                ingest_pipeline=ingest_results["ingest_pipeline"],
+                comments=ingest_results["comments"],
                 slug=slug,
-                polygon_state=ingest_results['polygon_state'],
-                line_state=ingest_results['line_state'],
-                point_state=ingest_results['point_state'],
+                polygon_state=ingest_results["polygon_state"],
+                line_state=ingest_results["line_state"],
+                point_state=ingest_results["point_state"],
             ),
         )
 
