@@ -17,7 +17,7 @@ from macrostrat.database import Database
 from macrostrat.map_integration.commands.prepare_fields import _prepare_fields
 from macrostrat.map_integration.pipeline import ingest_map
 from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
-from macrostrat.map_integration.utils.file_discovery import find_gis_files
+from macrostrat.map_integration.utils.ingestion_utils import find_gis_files, process_sources_metadata, normalize_slug
 from macrostrat.map_integration.utils.map_info import get_map_info
 from macrostrat.map_integration.utils.s3_file_management import *
 
@@ -265,9 +265,8 @@ cli.add_typer(staging_cli, name="staging")
 
 
 def staging(
-    slug: str,
     data_path: str,
-    name: str,
+    prefix: str = Option(..., help="Slug region prefix to avoid collisions"),
     merge_key: str = Option(
         "mapunit",
         help="primary key to left join the metadata into the sources polygons/lines/points table",
@@ -282,13 +281,13 @@ def staging(
     Ingest a map, update metadata, prepare fields, and build geometries.
     """
     db = get_database()
-    data_path_ext = Path(data_path)
-    ext = data_path_ext.suffix.lower()
-    # upload to the s3 bucket!
-    cmd_upload_dir(slug, data_path_ext, ext)
+
+    slug, name, ext = normalize_slug(prefix, Path(data_path))
+
+    cmd_upload_dir(slug, Path(data_path), ext)
     print(f"Ingesting {slug} from {data_path}")
 
-    gis_files, excluded_files = find_gis_files(data_path_ext, filter=filter)
+    gis_files, excluded_files = find_gis_files(Path(data_path), filter=filter)
     if not gis_files:
         raise ValueError(f"No GIS files found in {data_path}")
 
@@ -318,16 +317,40 @@ def staging(
     if source_id is None:
         raise RuntimeError(f"Could not find source for slug {slug}")
 
-    if name:
+
+    #add metadata from AZ map scraper /Users processed_item_urls.csv
+    sources_mapping = process_sources_metadata(slug, Path(data_path))
+
+    if sources_mapping is not None:
         db.run_sql(
-            "UPDATE maps.sources SET name = :name WHERE source_id = :source_id",
-            dict(name=name, source_id=source_id),
+            "UPDATE maps.sources SET name = :name, scale = :scale, ingested_by = :ingested_by, url = :url, "
+            "ref_title = :ref_title, authors = :authors, ref_year = :ref_year, ref_source = :ref_source, "
+            "scale_denominator = :scale_denominator WHERE source_id = :source_id",
+
+            dict(
+                name=name,
+                scale="large",
+                ingested_by="macrostrat-admin",
+                source_id=source_id,
+                url= sources_mapping["url"],
+                ref_title= sources_mapping["ref_title"],
+                authors= sources_mapping["authors"],
+                ref_year= sources_mapping["ref_year"],
+                ref_source= sources_mapping["ref_source"],
+                scale_denominator= sources_mapping["scale_denominator"]),
         )
 
-    db.run_sql(
-        "UPDATE maps.sources SET scale = :scale, ingested_by = :ingested_by WHERE source_id = :source_id",
-        dict(scale="large", ingested_by="macrostrat-admin", source_id=source_id),
-    )
+    else:
+        db.run_sql(
+            "UPDATE maps.sources SET name = :name, scale = :scale, ingested_by = :ingested_by WHERE source_id = :source_id",
+
+            dict(
+                name=name,
+                scale="large",
+                ingested_by="macrostrat-admin",
+                source_id=source_id),
+        )
+
     # add map_url later
     db.run_sql(
         """
@@ -477,11 +500,7 @@ def cmd_download_dir(
 
 @staging_cli.command("bulk-ingest")
 def staging_bulk(
-    # required
-    meta_parent_path: str = Option(
-        ..., help="Parent directory containing region subfolders"
-    ),
-    # required
+    data_path: str,
     prefix: str = Option(..., help="Slug filename_prefix to avoid collisions"),
     merge_key: str = Option(
         "mapunit",
@@ -497,31 +516,23 @@ def staging_bulk(
     Ingest all maps from subdirectories within a parent folder.
     """
     db = get_database()
-    parent = Path(meta_parent_path)
+    parent = Path(data_path)
     staged_slugs = []
     if not parent.exists() or not parent.is_dir():
-        raise ValueError(f"{meta_parent_path} is not a valid directory.")
+        raise ValueError(f"{data_path} is not a valid directory.")
 
     region_dirs = sorted([p for p in parent.iterdir() if p.is_dir()])
 
     for region_path in region_dirs:
-        # normalize slug name
-        stem = region_path.stem.lower()
-        clean_stem = re.sub(r"\s+", "_", stem.strip())
-        clean_stem = re.sub(r"[^a-z0-9_]", "", clean_stem)
-        slug = f"{prefix}_{clean_stem}"
-        name = region_path.stem
-        ext = region_path.suffix.lower()
-        meta_path = region_path
-        staged_slugs.append(slug)
+        slug, name, ext = normalize_slug(prefix, Path(region_path))
 
         # upload to the s3 bucket!
         cmd_upload_dir(slug, region_path, ext)
 
-        print(f"Ingesting {slug} from {meta_path}")
-        gis_files, excluded_files = find_gis_files(Path(meta_path), filter=filter)
+        print(f"Ingesting {slug} from {region_path}")
+        gis_files, excluded_files = find_gis_files(Path(region_path), filter=filter)
         if not gis_files:
-            raise ValueError(f"No GIS files found in {meta_path}")
+            raise ValueError(f"No GIS files found in {region_path}")
 
         print(f"Found {len(gis_files)} GIS file(s)")
         for path in gis_files:
@@ -536,7 +547,7 @@ def staging_bulk(
             slug,
             gis_files,
             if_exists="replace",
-            meta_path=meta_path,
+            meta_path=region_path,
             merge_key=merge_key,
             meta_table=meta_table,
         )
@@ -549,17 +560,37 @@ def staging_bulk(
         if source_id is None:
             raise RuntimeError(f"Could not find source for slug {slug}")
 
-        if name:
-            db.run_sql(
-                "UPDATE maps.sources SET name = :name WHERE source_id = :source_id",
-                dict(name=name, source_id=source_id),
-            )
+        # add metadata from AZ map scraper /Users processed_item_urls.csv
+        sources_mapping = process_sources_metadata(slug, Path(data_path))
 
-        db.run_sql(
-            "UPDATE maps.sources SET scale = :scale, ingested_by = :ingested_by WHERE source_id = :source_id",
-            dict(scale="large", ingested_by="macrostrat-admin", source_id=source_id),
-        )
-        # add map_url later
+        if sources_mapping is not None:
+            db.run_sql(
+                "UPDATE maps.sources SET name = :name, scale = :scale, ingested_by = :ingested_by, url = :url, "
+                "ref_title = :ref_title, authors = :authors, ref_year = :ref_year, ref_source = :ref_source, "
+                "scale_denominator = :scale_denominator WHERE source_id = :source_id",
+
+                dict(
+                    name=name,
+                    scale="large",
+                    ingested_by="macrostrat-admin",
+                    source_id=source_id,
+                    url=sources_mapping["url"],
+                    ref_title=sources_mapping["ref_title"],
+                    authors=sources_mapping["authors"],
+                    ref_year=sources_mapping["ref_year"],
+                    ref_source=sources_mapping["ref_source"],
+                    scale_denominator=sources_mapping["scale_denominator"]),
+            )
+        else:
+            db.run_sql(
+                "UPDATE maps.sources SET name = :name, scale = :scale, ingested_by = :ingested_by WHERE source_id = :source_id",
+
+                dict(
+                    name=name,
+                    scale="large",
+                    ingested_by="macrostrat-admin",
+                    source_id=source_id),
+            )
 
         db.run_sql(
             """
