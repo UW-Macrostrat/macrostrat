@@ -46,6 +46,10 @@ Setting the `MACROSTRAT_PYROOT` environment variable allows a different root
 Python version to be installed. This can be used to add new plugins
 or application dependencies.
 
+### Debugging the installation
+
+- Run `macrostrat uv sync` to ensure that all dependencies are installed.
+
 ## Usage
 
 Once a Macrostrat configuration file is defined, the Macrostrat command-line app

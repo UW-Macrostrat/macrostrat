@@ -21,6 +21,8 @@ from macrostrat.match_utils import (
     format_names,
     standardize_names,
     get_columns_data_frame,
+    get_match_types,
+    get_matched_unit,
 )
 from ..utils import get_sgp_db, get_sgp_samples, stored_procedure, write_to_file
 
