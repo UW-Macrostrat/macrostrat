@@ -37,6 +37,45 @@ def get_columns_data_frame(db: Database):
     return gdf
 
 
+def get_columns_for_location(
+    db, position, *, project_id=None, status_code="active"
+) -> list[int]:
+    """
+    Get a list of column IDs for a given lat/lng position
+    """
+
+    base_select = """
+    SELECT col_id FROM macrostrat.col_areas ca
+    JOIN macrostrat.cols c ON c.id = ca.col_id
+    """
+
+    filters = ["ST_Contains(ca.col_area, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326))"]
+    params = dict(lng=position[0], lat=position[1])
+
+    if status_code is not None:
+        filters.append("c.status_code = :status_code")
+        params["status_code"] = status_code
+
+    if project_id is not None:
+        filters.append("c.project_id = :project_id")
+        params["project_id"] = project_id
+
+    sql = base_select + " WHERE " + " AND ".join(filters)
+
+    cols = db.run_query(sql, params).all()
+    return [col.col_id for col in cols]
+
+def ensure_single(col_ids, entity="column"):
+    if len(col_ids) == 0:
+        raise ValueError(f"No {entity}s found for location")
+    if len(col_ids) > 1:
+        raise ValueError(
+            f"Multiple {entity}s found for location. This is not supported."
+        )
+    return col_ids[0]
+
+
+
 def get_column_units(conn, col_id, types: list[MatchType] = None):
     """
     Get a unit that matches a given stratigraphic name
