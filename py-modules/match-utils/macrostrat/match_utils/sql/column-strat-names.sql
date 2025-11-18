@@ -51,9 +51,10 @@ WITH RECURSIVE cols AS (
   JOIN adjacent_cols cols
     ON cols.col_id = u.col_id
 ), strat_name_children AS (
+  -- Unit at this level
   SELECT * FROM base_unit
   UNION ALL
-  -- Parents
+  -- Children
   SELECT
    sn2.*,
    snt.unit_id,
@@ -72,7 +73,8 @@ WITH RECURSIVE cols AS (
    snt.col_id,
    snt.depth - 1 AS depth
  FROM strat_units sn2
- JOIN strat_name_parents snt ON snt.strat_name_id = sn2.parent_id
+ JOIN strat_name_parents snt
+   ON snt.strat_name_id = sn2.parent_id
 ), all_results AS (
   SELECT * FROM strat_name_children
   UNION ALL

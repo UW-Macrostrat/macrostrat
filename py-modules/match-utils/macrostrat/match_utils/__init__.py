@@ -45,7 +45,7 @@ def get_columns_data_frame(db: Database):
           FROM macrostrat.col_areas ca
                    JOIN macrostrat.cols c
                         ON c.id = ca.col_id
-          WHERE c.status_code = 'active' \
+          WHERE c.status_code = 'active'
           """
     gdf = GeoDataFrame.from_postgis(
         text(sql), db.engine.connect(), geom_col="col_area", index_col="col_id"
@@ -96,11 +96,36 @@ def get_matched_unit(
     types: list[MatchType] = None,
 ):
     """
-    Get a unit that matches a given stratigraphic name
+    Get a unit that matches a given stratigraphic name within a given
+    Macrostrat column.
     """
+    rows = get_all_matched_units(
+        conn, col_id, strat_names, comparison=comparison, types=types, n_results=1
+    )
+    if len(rows) == 0:
+        return None
 
+    return rows[0]
+
+
+def get_all_matched_units(
+    conn,
+    col_id,
+    strat_names,
+    *,
+    comparison: MatchComparison = MatchComparison.Included,
+    types: list[MatchType] = None,
+    n_results: int | None = None,
+):
+    """
+    Return all units and stratigraphic names that match the given col_id
+    """
     units = get_column_units(conn, col_id, types=types)
     u1 = units[units.strat_name_clean.notnull()]
+
+    matched_rows = []
+    # The max number of results to return
+    n_results = n_results or len(units)
 
     # We don't support fuzzy matching yet
     if comparison == MatchComparison.Fuzzy:
@@ -112,10 +137,12 @@ def get_matched_unit(
         for ix, row in u1.iterrows():
             name = row["strat_name_clean"]
             if strat_name.name == name:
-                return row
+                matched_rows.append(row)
+                if len(matched_rows) >= n_results:
+                    return matched_rows
 
     if comparison == MatchComparison.Exact:
-        return None
+        return matched_rows
 
     # Name is a subset of the strat name
     for strat_name in strat_names:
@@ -125,10 +152,12 @@ def get_matched_unit(
             if name is None:
                 continue
             if name in strat_name.name:
-                return row
+                matched_rows.append(row)
+                if len(matched_rows) >= n_results:
+                    return matched_rows
 
     if comparison == MatchComparison.Included:
-        return None
+        return matched_rows
 
     # "Bidirectional" matching: strat name can be either a subset or superset of the cleaned name
     for strat_name in strat_names:
@@ -138,9 +167,11 @@ def get_matched_unit(
             if name is None:
                 continue
             if strat_name.name in name:
-                return row
+                matched_rows.append(row)
+                if len(matched_rows) >= n_results:
+                    return matched_rows
 
-    return None
+    return matched_rows
 
 
 def standardize_names(source_text):
