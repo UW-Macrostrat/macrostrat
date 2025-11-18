@@ -549,7 +549,7 @@ def upload_file(
     ] = False,
     s3_prefix: Annotated[
         str,
-        Option(help="The prefix to use for the file's S3 key"),
+        Option(help="The filename_prefix to use for the file's S3 key"),
     ] = "",
     s3_bucket: Annotated[
         str,
@@ -873,7 +873,7 @@ def ingest_csv(
     ] = default_s3_bucket,
     s3_prefix: Annotated[
         str,
-        Option(help="The prefix, sans trailing slash, to use for the files' S3 keys"),
+        Option(help="The filename_prefix, sans trailing slash, to use for the files' S3 keys"),
     ] = None,
     tag: Annotated[
         Optional[list[str]],

@@ -466,7 +466,7 @@ def cmd_download_dir(
         ..., help="Local destination path to save slug directory to."
     ),
 ):
-    """Download a staging prefix to a local directory."""
+    """Download a staging filename_prefix to a local directory."""
     res = staging_download_dir(slug=slug, dest_path=dest_path)
     console.print(f"[green] Download successful![/green]")
     console.print(json.dumps(res, indent=2))
@@ -482,7 +482,7 @@ def staging_bulk(
         ..., help="Parent directory containing region subfolders"
     ),
     # required
-    prefix: str = Option(..., help="Slug prefix to avoid collisions"),
+    prefix: str = Option(..., help="Slug filename_prefix to avoid collisions"),
     merge_key: str = Option(
         "mapunit",
         help="primary key to left join the metadata into the sources polygons/lines/points table",

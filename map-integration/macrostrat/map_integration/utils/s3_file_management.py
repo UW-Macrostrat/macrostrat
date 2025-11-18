@@ -123,7 +123,7 @@ def staging_upload_dir(slug: str, data_path: pathlib.Path, ext: str) -> dict:
 
     return {
         "bucket_name": bucket_name,
-        "prefix": f"{slug}/",
+        "filename_prefix": f"{slug}/",
         "endpoint": endpoint,
         "destination": f"s3://{bucket_name}/{slug}/",
     }
@@ -263,7 +263,7 @@ def staging_download_dir(slug: str, dest_path: pathlib.Path) -> dict:
     """
     Download a directory from the staging bucket to a local path.
     Args:
-        slug: Remote key prefix (folder) in the bucket, e.g. "myprefix_region"
+        slug: Remote key filename_prefix (folder) in the bucket, e.g. "myprefix_region"
         dest_path: Local directory to download into (created if missing)
     Returns:
         dict with details about the download source/destination.

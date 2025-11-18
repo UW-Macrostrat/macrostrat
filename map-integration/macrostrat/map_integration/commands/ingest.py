@@ -76,58 +76,59 @@ def preprocess_dataframe(
         if feature_suffix == "polygons":
             join_col = "mapunit"
             if join_col not in poly_line_pt_df.columns:
-                comments = f"Warning: join column '{join_col}' not found in metadata file. Skipping metadata merge."
+                comments = f"Warning: join column '{join_col}' not found in metadata file. Skipping metadata merge"
                 state = "failed"
                 return poly_line_pt_df, ingest_pipeline, comments, state
             meta_df, ingest_pipeline, comments = extract_gdb_layer(
                 meta_path, "DescriptionOfMapUnits", False
             )
+            #no gems metadata...continue ingesting other layers.
             if ingest_pipeline == ".gdb pipeline":
                 return poly_line_pt_df, ingest_pipeline, comments, state
             if ingest_pipeline == "Gems pipeline" and comments != "":
                 state = "failed"
                 return poly_line_pt_df, ingest_pipeline, comments, state
-            # delete all of the arizona maps that are empty
-            # create delete bulk ingestion script
-            # celery process to have a delete button in the UI.
-            # streamline the api's and UI for production.
             meta_df, comments = transform_gdb_layer(meta_df)
             if comments != "":
+                #TODO update to needs review. this status makes UI fail for some reason so kept it at pending.
                 state = "pending"
                 return poly_line_pt_df, ingest_pipeline, comments, state
             meta_df = map_t_b_intervals(meta_df)
             if meta_df["b_interval"].isna().all() and meta_df["t_interval"].isna().all():
-                comments = "map_t_b_intervals() function failed. Both b_interval and t_interval are NA."
+                comments += "Both b_interval and t_interval are NA. "
                 state = "failed"
                 return poly_line_pt_df, ingest_pipeline, comments, state
             meta_df = map_strat_name(meta_df)
             if meta_df["strat_name"].isna().all():
-                comments = "strat_name column needs review. map_strat_name() function did not find any strat_names."
+                comments += "No strat_names found."
+
         elif feature_suffix == 'lines':
-            meta_df = map_lines_to_preferred_fields(poly_line_pt_df)
-            if meta_df.empty:
+            meta_df, comments, state = map_lines_to_preferred_fields(poly_line_pt_df, comments, state)
+            if len(meta_df) == 0 or meta_df.empty:
                 state = "failed"
-                comments = "No lines ingested."
-            state = "ingested"
-            comments = " Lines successfully ingested."
+                comments = "No lines to ingest"
+            if state != 'pending':
+                state = "ingested"
+                comments = " Lines successfully ingested"
             return meta_df, ingest_pipeline, comments, state
 
         elif feature_suffix == 'points':
-            meta_df = map_points_to_preferred_fields(poly_line_pt_df)
-            if meta_df.empty:
+            meta_df, comments, state = map_points_to_preferred_fields(poly_line_pt_df, comments, state)
+            if len(meta_df) == 0 or meta_df.empty:
                 state = "failed"
-                comments = "No points ingested."
-            state = "ingested"
-            comments = " Points successfully ingested."
+                comments = "No points to ingest"
+            if state != 'pending':
+                state = "ingested"
+                comments = " Points successfully ingested"
             return meta_df, ingest_pipeline, comments, state
 
-    if meta_df.empty:
+    if len(meta_df) == 0 or meta_df.empty:
         comments = "Warning: metadata file is empty. Skipping metadata merge."
         state = "failed"
         return poly_line_pt_df, ingest_pipeline, comments, state
     # merge polygons and metadata dataframes before inserting into the db
     merged_df = merge_metadata_polygons(poly_line_pt_df, meta_df, join_col)
-    comments += " Polygons metadata merged."
+    comments += "Polygons metadata merged and ingested"
     state = "ingested"
     return merged_df, ingest_pipeline, comments, state
 
@@ -287,6 +288,8 @@ def ingest_map(
 
             if state == 'ingested' and ingest_results['state'] is None:
                 ingest_results['state'] = 'ingested'
+            if state == 'needs review' and ingest_results['state'] is None:
+                ingest_results['state'] = 'needs review'
             elif ingest_results['state'] is None:
                 ingest_results['state'] = 'pending'
 
@@ -374,7 +377,7 @@ def get_dataframes(files) -> Iterable[Tuple[str, G.GeoDataFrame]]:
             if layer.startswith(ignore_misc):
                 console.print(f'Skipping misc {layer}.')
                 continue
-            #skip if it's BOTH a cross section prefix AND ends with a cross section suffix
+            #skip if it's BOTH a cross section filename_prefix AND ends with a cross section suffix
             if layer.startswith(ignore_cs_prefix) and layer.endswith(ignore_cs_suffix):
                 console.print(f'Skipping cross section {layer}.')
                 continue
