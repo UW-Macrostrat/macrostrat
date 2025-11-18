@@ -5,12 +5,11 @@ The tests are not unit tests, as they require actual data to be loaded into
 Macrostrat's database.
 """
 
-from pandas import isna
 from pydantic import BaseModel
 from pytest import mark
-from typing import Optional
 
-from macrostrat.match_utils import get_matched_unit, standardize_names
+from . import get_matched_unit, standardize_names
+from .models import MatchResult
 
 
 # xy == -109.905/35.951
@@ -48,22 +47,6 @@ cases = [
 ]
 
 
-class MatchResult(BaseModel):
-    strat_name_id: int
-    strat_name: str
-    strat_rank: Optional[str]
-    parent_id: Optional[int]
-    concept_id: Optional[int]
-    unit_id: Optional[int]
-    col_id: Optional[int]
-    depth: Optional[int]
-    basis: str
-    spatial_basis: str
-    min_age: float
-    max_age: float
-    priority: float
-
-
 @mark.parametrize("case", cases)
 def test_match_strat_name(db, case):
 
@@ -77,14 +60,6 @@ def test_match_strat_name(db, case):
     assert unit.strat_name_id == case.strat_name_id
 
 
-def pandas_to_pydantic(row) -> MatchResult:
-    vals = dict(row)
-    for k, v in vals.items():
-        if isna(v):
-            vals[k] = None
-    return MatchResult(**vals)
-
-
 @mark.parametrize("case", cases)
 def test_strat_name_coerce_to_pydantic(db, case):
     col_id = get_column_for_xy(db, case.xy)
@@ -93,7 +68,7 @@ def test_strat_name_coerce_to_pydantic(db, case):
     with db.engine.connect() as conn:
         unit = get_matched_unit(conn, col_id, names)
     assert unit is not None
-    result = pandas_to_pydantic(unit)
+    result = MatchResult.from_row(unit)
     assert result.unit_id == case.unit_id
     assert result.strat_name_id == case.strat_name_id
 

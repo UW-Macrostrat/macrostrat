@@ -1,27 +1,11 @@
-from enum import Enum
 from geopandas import GeoDataFrame
 from macrostrat.database import Database
 from pandas import isna, read_sql
 from sqlalchemy.sql import text
 
+from .models import MatchType, MatchComparison
 from .strat_names import format_name, clean_strat_name, clean_strat_name_text
 from .utils import stored_procedure
-
-
-class MatchType(Enum):
-    Concepts = "concepts"
-    AdjacentCols = "adjacent-cols"
-    ColumnUnits = "column-units"
-    FootprintIndex = "footprint-index"
-    Synonyms = "synonyms"
-
-
-class MatchComparison(Enum):
-    Exact = "exact"
-    Included = "included"
-    Bidirectional = "bidirectional"
-    Fuzzy = "fuzzy"
-
 
 _column_unit_index = {}
 
@@ -92,6 +76,7 @@ def get_matched_unit(
     conn,
     col_id,
     strat_names,
+    *,
     comparison: MatchComparison = MatchComparison.Included,
     types: list[MatchType] = None,
 ):
