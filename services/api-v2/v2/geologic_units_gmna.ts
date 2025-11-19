@@ -9,7 +9,6 @@ module.exports = function (req, res, next) {
   if (Object.keys(req.query).length < 1) {
     larkin.info(req, res, next);
   } else {
-
     const hasSample = Object.prototype.hasOwnProperty.call(req.query, "sample");
 
     var geo =
@@ -83,75 +82,71 @@ module.exports = function (req, res, next) {
     if (where.length > 0) {
       where = " WHERE " + where.join(", ");
     }
-  //TODO the gmna.lookup_units needs to be repointed to macrostrat. This is the gmna map select * from maps.sources where source_id = 7
+    //TODO the gmna.lookup_units needs to be repointed to macrostrat. This is the gmna map select * from maps.sources where source_id = 7
 
-    let sql = "SELECT gid, unit_abbre, COALESCE(rocktype, '') AS rocktype, COALESCE(lithology, '') AS lith, lith_type, lith_class, min_interval AS t_interval, min_age::float AS t_age, max_interval AS b_interval, max_age::float AS b_age, containing_interval, interval_color AS color" +
-        geomField +
-        " FROM gmna.lookup_units" +
-        from +
-        where +
-        limit
+    let sql =
+      "SELECT gid, unit_abbre, COALESCE(rocktype, '') AS rocktype, COALESCE(lithology, '') AS lith, lith_type, lith_class, min_interval AS t_interval, min_age::float AS t_age, max_interval AS b_interval, max_age::float AS b_age, containing_interval, interval_color AS color" +
+      geomField +
+      " FROM gmna.lookup_units" +
+      from +
+      where +
+      limit;
     //todo modify query to use macrostrat schema.
-    larkin.queryPg(
-      "geomacro",
-      sql,
-      params,
-      function (error, result) {
-        if (error) {
-          larkin.error(req, res, next, error);
-        } else {
-          if (geo) {
-            dbgeo.parse(
-              result.rows,
-              {
-                geometryType: "geojson",
-                geometryColumn: "geometry",
-                outputFormat: larkin.getOutputFormat(req.query.format),
-              },
-              function (error, result) {
-                if (error) {
-                  larkin.error(req, res, next, error);
-                } else {
-                  if (larkin.getOutputFormat(req.query.format) === "geojson") {
-                    result = gp(result, 5);
-                  }
-                  larkin.sendData(
-                    req,
-                    res,
-                    next,
-                    {
-                      format: api.acceptedFormats.standard[req.query.format]
-                        ? req.query.format
-                        : "json",
-                      bare: api.acceptedFormats.bare[req.query.format]
-                        ? true
-                        : false,
-                    },
-                    {
-                      data: result,
-                    },
-                  );
+    larkin.queryPg("geomacro", sql, params, function (error, result) {
+      if (error) {
+        larkin.error(req, res, next, error);
+      } else {
+        if (geo) {
+          dbgeo.parse(
+            result.rows,
+            {
+              geometryType: "geojson",
+              geometryColumn: "geometry",
+              outputFormat: larkin.getOutputFormat(req.query.format),
+            },
+            function (error, result) {
+              if (error) {
+                larkin.error(req, res, next, error);
+              } else {
+                if (larkin.getOutputFormat(req.query.format) === "geojson") {
+                  result = gp(result, 5);
                 }
-              },
-            );
-          } else {
-            larkin.sendData(
-              req,
-              res,
-              next,
-              {
-                format: api.acceptedFormats.standard[req.query.format]
-                  ? req.query.format
-                  : "json",
-                bare: api.acceptedFormats.bare[req.query.format] ? true : false,
-              },
-              {
-                data: result.rows,
-              },
-            );
-          }
+                larkin.sendData(
+                  req,
+                  res,
+                  next,
+                  {
+                    format: api.acceptedFormats.standard[req.query.format]
+                      ? req.query.format
+                      : "json",
+                    bare: api.acceptedFormats.bare[req.query.format]
+                      ? true
+                      : false,
+                  },
+                  {
+                    data: result,
+                  },
+                );
+              }
+            },
+          );
+        } else {
+          larkin.sendData(
+            req,
+            res,
+            next,
+            {
+              format: api.acceptedFormats.standard[req.query.format]
+                ? req.query.format
+                : "json",
+              bare: api.acceptedFormats.bare[req.query.format] ? true : false,
+            },
+            {
+              data: result.rows,
+            },
+          );
         }
-      },
-    );
+      }
+    });
   }
 };

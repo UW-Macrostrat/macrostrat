@@ -9,32 +9,35 @@ module.exports = function (req, res, next) {
     async.parallel(
       {
         gmus: function (callback) {
-            let sql = "SELECT\n" +
-              "   cols.id AS col_id,\n" +
-              "    lookup_unit_liths.lith_short,\n" +
-              "    units.strat_name,\n" +
-              "    units.id as unit_id,\n" +
-              "    units.fo,\n" +
-              "    units.lo,\n" +
-              "    lookup_unit_intervals.fo_period,\n" +
-              "    lookup_unit_intervals.fo_age,\n" +
-              "    lookup_unit_intervals.lo_period,\n" +
-              "    lookup_unit_intervals.lo_age,\n" +
-              "    lookup_unit_intervals.age\n" +
-              "FROM\n" +
-              "    macrostrat.cols\n" +
-              "JOIN\n" +
-              "    macrostrat.units ON units.col_id = cols.id\n" +
-              "JOIN\n" +
-              "    macrostrat.lookup_unit_liths ON lookup_unit_liths.unit_id = units.id\n" +
-              "JOIN\n" +
-              "    macrostrat.lookup_unit_intervals ON lookup_unit_intervals.unit_id = units.id\n" +
-              "WHERE\n" +
-              "    ST_Contains(cols.poly_geom, ST_GeomFromText($1, 4326))\n" +
-              "    AND cols.status_code = 'active'\n" +
-              "ORDER BY lo_age;"
-            console.log('HERE IS THE POINT DETAILS SQL:', sql)
-            console.log('here are the params in point details: ', ["POINT(" + req.query.lng + " " + req.query.lat + ")"])
+          let sql =
+            "SELECT\n" +
+            "   cols.id AS col_id,\n" +
+            "    lookup_unit_liths.lith_short,\n" +
+            "    units.strat_name,\n" +
+            "    units.id as unit_id,\n" +
+            "    units.fo,\n" +
+            "    units.lo,\n" +
+            "    lookup_unit_intervals.fo_period,\n" +
+            "    lookup_unit_intervals.fo_age,\n" +
+            "    lookup_unit_intervals.lo_period,\n" +
+            "    lookup_unit_intervals.lo_age,\n" +
+            "    lookup_unit_intervals.age\n" +
+            "FROM\n" +
+            "    macrostrat.cols\n" +
+            "JOIN\n" +
+            "    macrostrat.units ON units.col_id = cols.id\n" +
+            "JOIN\n" +
+            "    macrostrat.lookup_unit_liths ON lookup_unit_liths.unit_id = units.id\n" +
+            "JOIN\n" +
+            "    macrostrat.lookup_unit_intervals ON lookup_unit_intervals.unit_id = units.id\n" +
+            "WHERE\n" +
+            "    ST_Contains(cols.poly_geom, ST_GeomFromText($1, 4326))\n" +
+            "    AND cols.status_code = 'active'\n" +
+            "ORDER BY lo_age;";
+          console.log("HERE IS THE POINT DETAILS SQL:", sql);
+          console.log("here are the params in point details: ", [
+            "POINT(" + req.query.lng + " " + req.query.lat + ")",
+          ]);
           larkin.queryPg(
             "geomacro",
             sql,
@@ -215,7 +218,7 @@ module.exports = function (req, res, next) {
       },
     );
   } else if (req.query.col_id && req.query.unit_id) {
-      //TODO the gmus.lookup_units needs to be repointed to macrostrat
+    //TODO the gmus.lookup_units needs to be repointed to macrostrat
 
     async.parallel(
       {

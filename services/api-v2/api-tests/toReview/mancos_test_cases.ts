@@ -39,7 +39,7 @@ it("should return point data for Detroit", function (done) {
       ) {
         throw new Error("Invalid data returned for Detroit");
       }
-      if (res.body.success.data.strat_unit != 'Dundee Limestone') {
+      if (res.body.success.data.strat_unit != "Dundee Limestone") {
         throw new Error("Invalid strat unit returned for Detroit");
       }
       if (res.body.success.data.col_id !== 1594) {
@@ -105,7 +105,7 @@ it("should return point data for Toronto", function (done) {
       if (res.body.success.data.age != "Ordovician") {
         throw new Error("Invalid age returned for Toronto");
       }
-      if (res.body.success.data.name != 'Georgian Bay') {
+      if (res.body.success.data.name != "Georgian Bay") {
         throw new Error("Invalid data returned for Toronto");
       }
       if (res.body.success.data.col_id !== 1598) {
@@ -168,10 +168,10 @@ it("should return point data for Buenos Aires", function (done) {
       if (res.body.success.data.rocktype.length === 0) {
         throw new Error("Invalid rocktypes returned for Buenos Aires");
       }
-      if (res.body.success.data.age != 'Quaternary') {
+      if (res.body.success.data.age != "Quaternary") {
         throw new Error("Invalid age returned for Buenos Aires");
       }
-      if (res.body.success.data.name != 'Cenozoic sedimentary rocks') {
+      if (res.body.success.data.name != "Cenozoic sedimentary rocks") {
         throw new Error("Invalid data returned for Buenos Aires");
       }
       if (

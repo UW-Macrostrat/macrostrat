@@ -6,7 +6,11 @@ function extractArrayData(payload) {
     if (!payload || !payload.success) return null;
     const data = payload.success.data;
     if (Array.isArray(data)) return data;
-    if (data && data.type === "FeatureCollection" && Array.isArray(data.features)) {
+    if (
+      data &&
+      data.type === "FeatureCollection" &&
+      Array.isArray(data.features)
+    ) {
       return data.features;
     }
     return null;
@@ -17,7 +21,8 @@ function extractArrayData(payload) {
 // Returns the object to scan for keys (GeoJSON Feature.properties if present)
 function surfaceForIdScan(item) {
   if (!item) return null;
-  if (item.properties && typeof item.properties === "object") return item.properties;
+  if (item.properties && typeof item.properties === "object")
+    return item.properties;
   return item;
 }
 
@@ -26,7 +31,7 @@ function firstStarIdKey(item) {
   const base = surfaceForIdScan(item);
   if (!base || typeof base !== "object") return null;
   for (const k of Object.keys(base)) {
-    if (/_id$/i.test(k)) return k;         // first *_id encountered wins
+    if (/_id$/i.test(k)) return k; // first *_id encountered wins
   }
   if (Object.prototype.hasOwnProperty.call(base, "id")) return "id";
   return null;
@@ -38,9 +43,12 @@ function arrayExposesKey(arr, key, sampleSize = 50) {
   for (let i = 0; i < n; i++) {
     const it = arr[i];
     if (!it) continue;
-    const props = it.properties && typeof it.properties === "object" ? it.properties : null;
-    if ((props && Object.prototype.hasOwnProperty.call(props, key)) ||
-        Object.prototype.hasOwnProperty.call(it, key)) {
+    const props =
+      it.properties && typeof it.properties === "object" ? it.properties : null;
+    if (
+      (props && Object.prototype.hasOwnProperty.call(props, key)) ||
+      Object.prototype.hasOwnProperty.call(it, key)
+    ) {
       return true;
     }
   }
@@ -61,7 +69,6 @@ function chooseCommonIdKey(localArr, prodArr) {
   return null;
 }
 
-
 // Build a set of unique IDs from an array given a chosen id key.
 // Supports both flat objects and GeoJSON Feature properties.
 function uniqueIds(arr, idKey) {
@@ -69,7 +76,10 @@ function uniqueIds(arr, idKey) {
   for (const item of arr) {
     if (!item) continue;
     // Prefer .properties[idKey] if available (GeoJSON Feature)
-    const props = item.properties && typeof item.properties === "object" ? item.properties : null;
+    const props =
+      item.properties && typeof item.properties === "object"
+        ? item.properties
+        : null;
     if (props && Object.prototype.hasOwnProperty.call(props, idKey)) {
       out.add(props[idKey]);
       continue;
@@ -85,8 +95,6 @@ function uniqueIds(arr, idKey) {
   }
   return out;
 }
-
-
 
 module.exports = {
   aSuccessfulRequest: function (res: {
@@ -288,7 +296,6 @@ module.exports = {
     );
   },
 
-
   async compareWithProduction(queryParams = "", localResponse) {
     const prodUrl = `https://www.macrostrat.org/api/v2${queryParams}`;
     const { data: prodData } = await axios.get(prodUrl);
@@ -300,18 +307,23 @@ module.exports = {
 
     // Lenient path for array-like payloads
     const localArr = extractArrayData(localResponse.body);
-    const prodArr  = extractArrayData(prodData);
+    const prodArr = extractArrayData(prodData);
 
-    if (Array.isArray(localArr) && Array.isArray(prodArr) && localArr.length && prodArr.length) {
+    if (
+      Array.isArray(localArr) &&
+      Array.isArray(prodArr) &&
+      localArr.length &&
+      prodArr.length
+    ) {
       // Auto-detect a shared *_id (or "id") to compare by counts
       const idKey = chooseCommonIdKey(localArr, prodArr);
 
       if (idKey) {
         console.info(`[compareWithProduction] Using id key: ${idKey}`);
         const localIds = uniqueIds(localArr, idKey);
-        const prodIds  = uniqueIds(prodArr,  idKey);
+        const prodIds = uniqueIds(prodArr, idKey);
         const localCount = localIds.size;
-        const prodCount  = prodIds.size;
+        const prodCount = prodIds.size;
 
         if (localCount !== prodCount) {
           console.warn(
@@ -319,7 +331,7 @@ module.exports = {
               `⚠️  ${idKey} count mismatch for endpoint: ${queryParams}`,
               `   - Dev (current host) ${idKey} count: ${localCount}`,
               `   - Prod (host_prod) ${idKey} count: ${prodCount}`,
-            ].join("\n")
+            ].join("\n"),
           );
 
           return;
@@ -332,8 +344,8 @@ module.exports = {
     // Strict mismatch error with helpful diff
     throw new Error(
       `Mismatch for endpoint: ${queryParams}\n` +
-      `Local: ${JSON.stringify(localResponse.body, null, 2)}\n` +
-      `Production: ${JSON.stringify(prodData, null, 2)}`
+        `Local: ${JSON.stringify(localResponse.body, null, 2)}\n` +
+        `Production: ${JSON.stringify(prodData, null, 2)}`,
     );
   },
 };

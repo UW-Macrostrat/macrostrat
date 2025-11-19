@@ -1,5 +1,4 @@
 (function () {
-
   const sharedUnitFilters = {
     unit_id: "integer, a valid unit id",
     section_id: "integer, a valid section id",
@@ -15,8 +14,7 @@
       "numerical age (Ma) - must be used with age_top and be greater than age_top",
     lith_id: "integer, ID of a lithology from /defs/lithologies",
     lith: "string, specific lithology name (e.g., shale, sandstone)",
-    lith_type:
-      "string, groups of lithologies (e.g., carbonate, siliciclastic)",
+    lith_type: "string, groups of lithologies (e.g., carbonate, siliciclastic)",
     lith_class:
       "string, general lithologies (sedimentary, igneous, metamorphic)",
     lith_att_id:
@@ -25,8 +23,7 @@
       "string, specific lithology attribute name (e.g. fine, olivine, poorly washed)",
     lith_att_type:
       "string, specific category of lithology attribute (e.g. grains, lithology, bedform)",
-    environ_id:
-      "integer, specific environment ID from /defs/environments",
+    environ_id: "integer, specific environment ID from /defs/environments",
     environ: "string, specific environment",
     environ_type: "string, groups of environments",
     environ_class: "string, general environments",
@@ -47,7 +44,7 @@
     project_id: "a Macrostrat project ID",
     response: "Any available response_type. Default is short.",
     format: "string, desired output format",
-  }
+  };
 
   var defs = {
     "/columns": {
@@ -630,8 +627,10 @@
             "retrieve only stratigraphic names linked the specified reference_id (see /defs/refs)",
           all: "return all lithostratigraphic names",
           format: "Desired output format",
-          last_id: "integer, used to paginate results. If specified, will return strat_names with an ID greater than last_id",
-          page_size: "integer, used to paginate results. If specified, will return at most page_size results. Must be paired with last_idd",
+          last_id:
+            "integer, used to paginate results. If specified, will return strat_names with an ID greater than last_id",
+          page_size:
+            "integer, used to paginate results. If specified, will return at most page_size results. Must be paired with last_idd",
         },
         output_formats: ["json", "csv"],
         examples: [
@@ -667,11 +666,14 @@
         parameters: {
           concept_id: "unique id",
           concept_name: "string specifying concept name",
-          concept_like: "lithostratigraphic name concept, with open-ended string matching",
+          concept_like:
+            "lithostratigraphic name concept, with open-ended string matching",
           all: "return all lithostratigraphic names",
           format: "Desired output format",
-          last_id: "integer, used to paginate results. If specified, will return strat_names with an ID greater than last_id",
-          page_size: "integer, used to paginate results. If specified, will return at most page_size results. Must be paired with last_idd",
+          last_id:
+            "integer, used to paginate results. If specified, will return strat_names with an ID greater than last_id",
+          page_size:
+            "integer, used to paginate results. If specified, will return at most page_size results. Must be paired with last_idd",
         },
         output_formats: ["json", "csv"],
         examples: ["api/v2/defs/concept_id?all"],

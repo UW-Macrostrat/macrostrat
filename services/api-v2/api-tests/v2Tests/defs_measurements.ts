@@ -98,8 +98,8 @@ it("should return all definitions", function (done) {
 });
 
 it("should return CSV", function (done) {
-    this.timeout(10000);
-    request(settings.host)
+  this.timeout(10000);
+  request(settings.host)
     .get("/defs/measurements?measurement_type=geochronological&format=csv")
     .expect(validators.aSuccessfulRequest)
     .expect(validators.csv)

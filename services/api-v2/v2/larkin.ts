@@ -68,18 +68,18 @@ const { Client, Pool } = require("pg");
   };
 */
 
-  larkin.trace = function(...args: any[]) {
+  larkin.trace = function (...args: any[]) {
     if (!credentials.debug) {
       return;
     }
     console.log(...args);
-  }
+  };
 
   // In recent versions of node, we have to ensure that we don't reject unauthorized SSL connections.
   // We could eventually make sure we carry a valid SSL certificate, but this is easier for now.
   const sslConfig = {
     rejectUnauthorized: false,
-  }
+  };
 
   //added new method to query from Maria data in the new PG database after migration
   larkin.queryPg = function (db, sql, params, callback) {
@@ -688,7 +688,7 @@ const { Client, Pool } = require("pg");
         callback(larkin.cache.get(key));
       };
     }
-    console.log("Initialized cache")
+    console.log("Initialized cache");
   });
 
   /*
@@ -895,7 +895,7 @@ const { Client, Pool } = require("pg");
             JSON.stringify(results.columnsNoGeom),
           );
         } else {
-          larkin.trace("Setting up column cache")
+          larkin.trace("Setting up column cache");
           larkin.cache.put("unitSummary", results.unitSummary);
           larkin.cache.put("columnsGeom", results.columnsGeom);
           larkin.cache.put("columnsNoGeom", results.columnsNoGeom);

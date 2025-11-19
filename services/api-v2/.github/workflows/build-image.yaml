@@ -29,7 +29,7 @@ jobs:
             type=ref,event=tag,suffix=-{{date 'YYYYMMDDHHmmss'}}
             type=semver,pattern={{version}}
             type=semver,pattern={{version}},suffix=-{{date 'YYYYMMDDHHmmss'}}
-            
+
             # When a PRODUCTION tag (vX.Y.Z) is pushed → also tag staging and dev
             type=raw,value=main-{{date 'YYYYMMDDHHmmss'}},enable=${{ startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-') }}
             type=semver,pattern={{version}},suffix=-beta.{{date 'YYYYMMDDHHmmss'}},enable=${{ startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-') }}

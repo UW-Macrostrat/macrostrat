@@ -32,7 +32,6 @@ it("should accept a lat and lng", function (done) {
     });
 });*/
 
-
 //TODO endpoint is failing because of the gmus error
 /*
 it("should accept a col_id and unit_id", function (done) {

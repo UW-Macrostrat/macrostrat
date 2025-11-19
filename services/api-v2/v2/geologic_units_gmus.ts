@@ -225,7 +225,7 @@ module.exports = function (req, res, next) {
             ")::geometry AS buffer), states AS (SELECT postal FROM us_states WHERE ST_Intersects(geom::geography, (SELECT buffer FROM linestring))), subset AS (SELECT * FROM gmus.lookup_units WHERE upper(state) in (SELECT postal FROM states))";
         }
 
-      //TODO the gmus.lookup_units needs to be repointed to macrostrat
+        //TODO the gmus.lookup_units needs to be repointed to macrostrat
         sql +=
           "SELECT DISTINCT ON (gid) gid, lu.area_km2::int AS area, lu.unit_link, macro_color AS interval_color, (SELECT array_agg(liths) FROM unnest(array[lith1, lith2, lith3, lith4, lith5]) liths WHERE liths IS NOT null) AS lithology, (SELECT array_agg(DISTINCT rocktypes) FROM unnest(array[rocktype1, rocktype2, u_rocktype1, u_rocktype2, u_rocktype3]) rocktypes WHERE rocktypes IS NOT null) AS rocktype, COALESCE(gm.best_units, '{}') AS macro_units, COALESCE(gm.best_names, '{}') AS strat_names, lu.min_interval_name AS t_int_id, lu.age_top::float AS t_age, lu.max_interval_name as b_int_id, lu.age_bottom::float AS b_age, lu.containing_interval_name AS containing_interval, unit_com, unit_name, unitdesc, COALESCE(strat_unit, '') AS strat_unit, macro_color AS color" +
           (orderBy.length > 0 ? ", geom" : "") +
