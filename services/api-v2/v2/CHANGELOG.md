@@ -3,7 +3,7 @@
 ## [2.1.7] - 2025-11-19
 
 - Allow multiple `status_code` values in `/columns` route
-- Add `status_code` filter option to
+- Add `status_code` filter option to `/defs/columns` (former option `status` is deprecated but still available)
 
 
 ## [2.1.5] - 2025-11-07
