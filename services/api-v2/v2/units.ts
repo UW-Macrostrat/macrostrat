@@ -121,6 +121,7 @@ module.exports = function (req, res, next, cb) {
             }
           });
         } else if (req.query.col_id && req.query.adjacents) {
+          /** TODO: this can probably be improved with a spatial join instead of a subquery */
           var col_ids = larkin.parseMultipleIds(req.query.col_id),
             placeholders = col_ids.map(function (d, i) {
               return "$" + (i + 1);

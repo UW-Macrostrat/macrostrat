@@ -1,3 +1,6 @@
+const statusCodeExplanation =
+  "string, column status codes, values 'active','in process','obsolete'. Defaults to 'active'";
+
 (function () {
   const sharedUnitFilters = {
     unit_id: "integer, a valid unit id",
@@ -42,6 +45,7 @@
     adjacents:
       "boolean, if lat/lng or col_id is specified, optionally return all units in columns that touch the polygon containing the supplied lat/lng",
     project_id: "a Macrostrat project ID",
+    status_code: statusCodeExplanation,
     response: "Any available response_type. Default is short.",
     format: "string, desired output format",
   };
@@ -455,8 +459,8 @@
           col_group_id: "integer, one or more column group ids",
           col_name: "string, column name",
           project_id: "integer, one or more project ids",
-          status:
-            "string, status of column, values 'active','in process','obsolete'",
+          status_code: statusCodeExplanation,
+          status: "same as status_code (deprecated signature)",
           all: "Return all column definitions",
           format: "Desired output format",
         },
