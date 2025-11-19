@@ -8,7 +8,12 @@ Macrostrat's database.
 from pydantic import BaseModel
 from pytest import mark
 
-from . import get_matched_unit, standardize_names, get_columns_for_location
+from . import (
+    get_matched_unit,
+    standardize_names,
+    get_columns_for_location,
+    ensure_single,
+)
 from .models import MatchResult
 
 
