@@ -1,5 +1,7 @@
 from datetime import datetime
-from fastapi import APIRouter
+from typing import Annotated
+
+from fastapi import APIRouter, Query
 from pydantic import BaseModel, Field
 
 from macrostrat.core.database import get_database
@@ -70,14 +72,21 @@ class MatchOptions(BaseModel):
     )
 
 
-@router.get("/strat-names", response_model=MatchAPIResponse)
+class MatchSingleQueryParams(MatchQuery, MatchOptions):
+    pass
+
+
+@router.get("/strat-names")
 def match_units(
-    params: MatchQuery, opts: MatchOptions = MatchOptions()
+    query: Annotated[MatchSingleQueryParams, Query()],
 ) -> MatchAPIResponse:
     """
     Match stratigraphic names to Macrostrat units.
     """
 
+    # Reconstruct separated mixins
+    params = MatchQuery(**query.model_dump())
+    opts = MatchOptions(**query.model_dump())
     params.validate()
 
     db = get_database()
