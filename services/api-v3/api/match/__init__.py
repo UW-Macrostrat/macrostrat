@@ -34,8 +34,8 @@ class MatchQuery(BaseModel):
         None, description="Search within a specific Macrostrat project"
     )
 
-    min_age: int = Field(0, description="Minimum age constraint in Ma.")
-    max_age: int = Field(4540, description="Maximum age constraint in Ma.")
+    min_age: int = Field(0, description="Minimum age constraint in Ma")
+    max_age: int = Field(4540, description="Maximum age constraint in Ma")
 
     # Enforce one of col_id or lat/lng
     def validate(self):
@@ -90,6 +90,47 @@ def match_units(
 
     db = get_database()
 
+    match_data = build_match_data(db, params)
+
+    return MatchAPIResponse(
+        version="0.0.1",
+        date_accessed=datetime.now().isoformat(),
+        results=[match_data],
+        **opts.model_dump(),
+    )
+
+
+@router.post("/strat-names")
+def match_units_multi(
+    body: list[MatchQuery],
+    query: Annotated[MatchOptions, Query()],
+):
+    """
+    Match multiple stratigraphic name queries in a single request.
+    :return: MatchAPIResponse
+    """
+    opts = MatchOptions(**query.model_dump())
+
+    db = get_database()
+
+    all_results: list[MatchData] = []
+
+    for params in body:
+        params.validate()
+
+    for params in body:
+        match_data = build_match_data(db, params)
+        all_results.append(match_data)
+
+    return MatchAPIResponse(
+        version="0.0.1",
+        date_accessed=datetime.now().isoformat(),
+        results=all_results,
+        **opts.model_dump(),
+    )
+
+
+def build_match_data(db, params):
     col_id = params.col_id
     if col_id is None:
         cols = get_columns_for_location(db, (params.lng, params.lat))
@@ -107,17 +148,6 @@ def match_units(
         names = standardize_names(params.match_text)
         with db.engine.connect() as conn:
             rows = get_all_matched_units(conn, col_id, names)
-            results = [
-                MatchResult.from_row(r) for r in rows
-            ]
+        results = [MatchResult.from_row(r) for r in rows]
 
-    match_data = MatchData(
-        **params.model_dump(), matches=results
-    )
-
-    return MatchAPIResponse(
-        version="0.0.1",
-        date_accessed=datetime.now().isoformat(),
-        results=[match_data],
-        **opts.model_dump(),
-    )
+    return MatchData(**params.model_dump(), matches=results)
