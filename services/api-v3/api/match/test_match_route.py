@@ -28,7 +28,6 @@ def test_basic_match_units(case):
             "match_text": case.match_text,
         },
     )
-    print(response.json())
     assert response.status_code == 200
     data = response.json()
     assert "results" in data

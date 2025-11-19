@@ -9,7 +9,6 @@ from macrostrat.match_utils import (
     MatchResult,
     MatchType,
     MatchComparison,
-    ensure_single,
     get_columns_for_location,
     standardize_names,
     get_all_matched_units,
@@ -81,7 +80,7 @@ def match_units(
     query: Annotated[MatchSingleQueryParams, Query()],
 ) -> MatchAPIResponse:
     """
-    Match stratigraphic names to Macrostrat units.
+    Match stratigraphic name text to the Macrostrat lexicon and columns.
     """
 
     # Reconstruct separated mixins
@@ -93,14 +92,27 @@ def match_units(
 
     col_id = params.col_id
     if col_id is None:
-        col_id = ensure_single(get_columns_for_location(db, (params.lng, params.lat)))
+        cols = get_columns_for_location(db, (params.lng, params.lat))
+        if len(cols) == 0:
+            col_id = None
+        elif len(cols) > 1:
+            raise ValueError(
+                "Multiple overlapping columns found. This is currently unsupported. Please specify a project_id or col_id."
+            )
+        else:
+            col_id = cols[0]
 
-    names = standardize_names(params.match_text)
-    with db.engine.connect() as conn:
-        results = get_all_matched_units(conn, col_id, names)
+    results: list[MatchResult] = []
+    if col_id is not None:
+        names = standardize_names(params.match_text)
+        with db.engine.connect() as conn:
+            rows = get_all_matched_units(conn, col_id, names)
+            results = [
+                MatchResult.from_row(r) for r in rows
+            ]
 
     match_data = MatchData(
-        **params.model_dump(), matches=[MatchResult.from_row(r) for r in results]
+        **params.model_dump(), matches=results
     )
 
     return MatchAPIResponse(
