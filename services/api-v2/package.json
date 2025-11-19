@@ -2,7 +2,7 @@
   "name": "@macrostrat/api-v2",
   "version": "2.1.7",
   "description": "An API for stratigraphic and geological information (Version 2).",
-  "main": "server.js",
+  "main": "server.ts",
   "repository": {
     "type": "git",
     "url": "https://github.com/UW-Macrostrat/macrostrat-api.git"

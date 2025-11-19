@@ -17,15 +17,11 @@ Redis is optional. When the API starts requests for all columns and all units
 are cached. If Redis is available it will be used, otherwise they are cached in
 the application memory.
 
-The API requires `node` v14 or later to run. Recent testing has been conducted
-on `node` v18.
+The API requires `node` v20 or to run.
 
-#### Data
+## Data
 
-The following databases must be in place:
-
-- MariaDB - macrostrat
-- Postgres - burwell, alice, wof, elevation
+The `macrostrat` PostgreSQL database must be available.
 
 ## Setup
 
@@ -42,12 +38,6 @@ Next, install dependencies:
 yarn install
 ```
 
-NOTE: Postgres connections are completely broken in node v14 and v15 (as of
-2021-03-16). Use node v12!
-
-This will also run the script `postinstall.sh` which copies credentials files
-into place.
-
 ## Running the API
 
 Add environment variables to your shell or `.env` file. The
@@ -58,7 +48,14 @@ specified port (default 5000).
 
 ## Running tests
 
-Tests can be run with `yarn test`.
+Tests can be run with `yarn test`. Currently, you must have a local instance of the
+API running separately (e.g., `yarn start` or `yarn run dev`). You can also set
+the `TEST_API_URL` variable to a different URL if you want to test a
+different instance.
+
+Additionally, you can set a `TEST_PRODUCTION_API_URL` to run comparisons against
+another running instance of the API (e.g., production). This is useful for
+ensuring that new versions of the API return the same results as older versions.
 
 ## Generating a release
 
@@ -77,6 +74,13 @@ information, update the port for Redis if necessary, and follow the inline
 instructions for generating a cache refresh key. The cache refresh key is used
 as a secret parameter to programmatically refresh the column cache, such as in
 situations in which the underlying data has been changed (editing, adding, etc).
+
+## Data
+
+Required databases (version 1):
+
+- MariaDB - macrostrat
+- Postgres - burwell, alice, wof, elevation
 
 ## Running
 
