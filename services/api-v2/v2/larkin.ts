@@ -68,6 +68,9 @@ const { Client, Pool } = require("pg");
   };
 */
 
+  // Store a global mapping of connection pools, so we don't overload PG with connections
+  const connectionPoolStore: { [key: string]: typeof Pool } = {};
+
   larkin.trace = function (...args: any[]) {
     if (!credentials.debug) {
       return;
@@ -77,7 +80,7 @@ const { Client, Pool } = require("pg");
 
   // In recent versions of node, we have to ensure that we don't reject unauthorized SSL connections.
   // We could eventually make sure we carry a valid SSL certificate, but this is easier for now.
-  const sslConfig = {
+  let sslConfig: any = {
     rejectUnauthorized: false,
   };
 
@@ -106,9 +109,19 @@ const { Client, Pool } = require("pg");
         connectionString = postgresCfg.whosOnFirstDatabaseURL;
       }
 
+      if (
+        connectionString.includes("localhost") ||
+        connectionString.includes("sslmode=disable")
+      ) {
+        sslConfig = false;
+      }
+
       connectionDetails = { connectionString, ssl: sslConfig };
     } else {
-      connectionDetails = { ...credentials.pg, ssl: sslConfig };
+      if (connectionDetails.host == "localhost") {
+        sslConfig = false;
+      }
+      connectionDetails = { ssl: sslConfig, ...credentials.pg };
       // Attempt to infer the database name from the connection string
       for (const dbname in ["elevation", "alice", "whos_on_first", "rockd"]) {
         if (dbName == dbname) {
@@ -116,7 +129,12 @@ const { Client, Pool } = require("pg");
         }
       }
     }
-    const pool = new Pool(connectionDetails);
+
+    if (!connectionPoolStore[dbName]) {
+      connectionPoolStore[dbName] = new Pool(connectionDetails);
+    }
+
+    const pool = connectionPoolStore[dbName];
     const errorMessage = "invalid input value for enum";
 
     pool.connect(function (err, client, done) {
