@@ -162,9 +162,11 @@ module.exports = function (req, res, next, callback) {
         let orderBy = "";
 
         if (req.query.status_code) {
-          params["status_code"] = decodeURI(req.query.status_code);
+          params["status_code"] = larkin.parseMultipleStrings(
+            decodeURI(req.query.status_code),
+          );
         } else {
-          params["status_code"] = "active";
+          params["status_code"] = ["active"];
         }
 
         if (req.query.format && api.acceptedFormats.geo[req.query.format]) {
@@ -215,7 +217,7 @@ module.exports = function (req, res, next, callback) {
       LEFT JOIN macrostrat.col_areas on col_areas.col_id = cols.id
       LEFT JOIN macrostrat.col_groups ON col_groups.id = cols.col_group_id
       LEFT JOIN macrostrat.col_refs ON cols.id = col_refs.col_id
-      WHERE cols.status_code = :status_code
+      WHERE cols.status_code = ANY(:status_code)
         AND cols.id = ANY(:col_ids)
       GROUP BY col_areas.col_id, cols.id, col_groups.col_group, col_groups.id ${groupBy}
       ${orderBy}
