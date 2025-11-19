@@ -48,9 +48,13 @@ module.exports = function (req, res, next, cb) {
     where.push("cols.project_id = ANY(:project_id)");
     params["project_id"] = larkin.parseMultipleIds(req.query.project_id);
   }
-  if (req.query.status) {
-    where.push("status_code = :status");
-    params["status"] = req.query.status;
+  if (req.query.status_code || req.query.status) {
+    // `status` parameter still works but has been superseded by `status_code`
+    // multiple status codes can be provided
+    where.push("status_code = ANY(:status_code)");
+    params["status_code"] = larkin.parseMultipleIds(
+      req.query.status_code ?? req.query.status,
+    );
   }
 
   if (where.length) {

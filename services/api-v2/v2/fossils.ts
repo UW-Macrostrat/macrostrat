@@ -33,6 +33,7 @@ module.exports = function (req, res, next) {
             req.query.col_group_id ||
             req.query.strat_name_id ||
             req.query.strat_name_concept_id ||
+            req.query.project_id ||
             "sample" in req.query
           ) {
             callback(null, {

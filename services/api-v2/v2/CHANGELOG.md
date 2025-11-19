@@ -1,5 +1,22 @@
 # Macrostrat API v2 Changelog
 
+## [2.1.7] - 2025-11-19
+
+- Allow multiple `status_code` values in `/columns` route
+- Add `status_code` filter option to
+
+
+## [2.1.5] - 2025-11-07
+
+- Add `t_units` and `t_sections` summary parameters to short `/columns` output
+
+## [2.x.x] Series - 2024 to 2025
+
+Moved the entire API to be based on PostgreSQL instead of a mix of PostgreSQL
+and MariaDB.
+
+--------
+
 ## tl;dr
 
 - Added `?sample` to every route (except `/mobile`), which returns 5 records.
