@@ -1,13 +1,14 @@
 {
-  "name": "typescript-app-tests",
+  "name": "api-tests",
   "version": "1.0.0",
   "main": "app.ts",
   "scripts": {
-    "start": "ts-node app.ts",
+    "start": "ts-node --transpileOnly app.ts",
     "dev": "ts-node-dev app.ts",
-    "test": "mocha -r ts-node/register \"v2Tests/**/*.ts\""
+    "test": "mocha -r ts-node/register/transpile-only \"v2Tests/**/*.ts\""
   },
   "dependencies": {
+    "@types/node": "^24.10.1",
     "axios": "^1.7.9",
     "express": "^5.0.0",
     "mocha": "^9.0.0",

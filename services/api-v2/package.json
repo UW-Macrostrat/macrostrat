@@ -12,7 +12,7 @@
     "start": "ts-node --transpileOnly server.ts",
     "docker": "docker build -t macrostrat-api . && docker run --rm -it -p 5000:5000 macrostrat-api",
     "serve": "ts-node --transpileOnly server.ts",
-    "test": "mocha ./v2",
+    "test": "yarn workspace api-tests test",
     "defs": "ts-node --transpileOnly ./v2/utilities/validateDefs.ts",
     "build-defs": "ts-node --transpileOnly ./v2/utilities/getOutputFields.ts",
     "build-changes": "grip ./v2/CHANGELOG.md --export ./v2/changes.html",
@@ -35,6 +35,9 @@
     {
       "name": "Daven Quinn"
     }
+  ],
+  "workspaces": [
+    "./api-tests"
   ],
   "license": "CC0",
   "dependencies": {
