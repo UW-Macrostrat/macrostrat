@@ -10,7 +10,7 @@ client = TestClient(test_app)
 
 
 def test_match_units_no_params():
-    response = client.get("/strat-names")
+    response = client.get("/match/strat-names")
     assert response.status_code == 422  # Missing required parameters
     data = response.json()
     assert "detail" in data

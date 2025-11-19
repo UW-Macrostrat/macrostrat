@@ -9,6 +9,7 @@ dependencies = [
     "setuptools>=75.8.2,<76",
     "macrostrat.cli",
     "macrostrat.match-utils",
+    "macrostrat.core",
     "api"
 ]
 
@@ -20,7 +21,13 @@ dev = [
     "black>=24.8.0,<25",
 ]
 
+[tool.setuptools]
+py-modules = []
+
 [tool.uv]
+# Allow the entire workspace to be treated
+# as a packages, to facilitate integration
+# into broader Python environments.
 package = false
 default-groups = [
     "dev",
@@ -29,10 +36,11 @@ default-groups = [
 [tool.uv.sources]
 "macrostrat.cli" = { workspace = true }
 "macrostrat.match-utils" = { workspace = true }
+"macrostrat.core" = { workspace = true }
 "api" = { path = "services/api-v3"  }
 
 [tool.uv.workspace]
-members = ["py-modules/*", "cli"]
+members = ["py-modules/*", "cli", "core"]
 
 
 [tool.black]
@@ -49,7 +57,24 @@ markers = [
     "docker: marks tests as requiring a docker container",
     "requires_gdal: marks tests as requiring GDAL",
 ]
+# Paths for default test discovery.
+# This allows 'pytest' to have the same discovery behavior
+# as 'macrostrat test all'.
+# TODO: this test coverage should be gradually expanded.
+testpaths = [
+    "cli",
+    "py-modules",
+    "map-integration",
+    "services/api-v3/api/match"
+]
 
 [tool.pylint.messages-control]
 max-line-length = 88
 disable = "invalid-name,missing-class-docstring,missing-function-docstring"
+
+[tool.hatch.build.targets.wheel]
+packages = ["macrostrat.cli"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

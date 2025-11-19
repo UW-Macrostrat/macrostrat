@@ -3,8 +3,8 @@ Basic wrapper for PyTest to run Macrostrat tests.
 
 """
 
+from macrostrat.utils import working_directory
 from pathlib import Path
-
 from pytest import main
 from typer import Context, Typer
 
@@ -51,14 +51,8 @@ def cli_tests():
 def all_tests(ctx: Context) -> None:
     # run the banana command with all arguments
     """Run all tests"""
-    main(
-        [
-            settings.srcroot / "cli",
-            settings.srcroot / "py-modules",
-            settings.srcroot / "map-integration",
-            *ctx.args,
-        ]
-    )
+    with working_directory(settings.srcroot):
+        main(ctx.args)
 
 
 @cli.command(

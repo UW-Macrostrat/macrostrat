@@ -34,7 +34,7 @@ class MatchQuery(BaseModel):
     )
 
     min_age: int = Field(0, description="Minimum age constraint in Ma.")
-    max_age: int = Field(4600, description="Maximum age constraint in Ma.")
+    max_age: int = Field(4540, description="Maximum age constraint in Ma.")
 
     # Enforce one of col_id or lat/lng
     def validate(self):

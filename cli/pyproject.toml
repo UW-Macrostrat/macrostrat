@@ -71,7 +71,7 @@ default-groups = [
 
 [tool.uv.sources]
 "macrostrat.map-integration" = { path = "../map-integration", editable = true }
-"macrostrat.core" = { path = "../core", editable = true }
+"macrostrat.core" = { workspace = true }
 "macrostrat.integrations" = { path = "../integrations", editable = true }
 "mapboard.topology-manager" = { path = "../submodules/topology-manager", editable = true }
 "htpheno.radosgw-admin-client" = { path = "../submodules/storage-admin", editable = true }
