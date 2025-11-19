@@ -182,7 +182,7 @@ module.exports = function (req, res, next, callback) {
 
         if (req.query.lat && req.query.lng && req.query.adjacents) {
           orderBy =
-            "ORDER BY ST_Distance(ST_SetSRID(col_areas.col_area, 4326), ST_GeometryFromText(ST_MakePoint(:lng, :lat), 4326))";
+            "ORDER BY ST_Distance(ST_SetSRID(col_areas.col_area, 4326), ST_SetSRID(ST_MakePoint(:lng, :lat), 4326))";
           params["lat"] = req.query.lat;
           params["lng"] = larkin.normalizeLng(req.query.lng);
           groupBy = ", col_areas.col_area";

@@ -5,11 +5,12 @@
   "scripts": {
     "start": "ts-node --transpileOnly app.ts",
     "dev": "ts-node-dev app.ts",
-    "test": "mocha -r ts-node/register/transpile-only \"v2Tests/**/*.ts\""
+    "test": "mocha -r ts-node/register/transpile-only -r dotenv/config \"v2Tests/**/*.ts\""
   },
   "dependencies": {
     "@types/node": "^24.10.1",
     "axios": "^1.7.9",
+    "dotenv": "^17.2.3",
     "express": "^5.0.0",
     "mocha": "^9.0.0",
     "supertest": "^6.1.3"

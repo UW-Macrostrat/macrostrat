@@ -56,6 +56,10 @@ Add environment variables to your shell or `.env` file. The
 To start the API run `npm start <port|5000>`. This will start the API on the
 specified port (default 5000).
 
+## Running tests
+
+Tests can be run with `yarn test`.
+
 ## Generating a release
 
 Update the version string in `package.json` and run:
