@@ -1,15 +1,19 @@
 from os import environ
 from pathlib import Path
-from sys import exit
+from sys import exit, argv
 
 import toml
 from dynaconf import Dynaconf
-from rich.console import Console
-from typer import get_app_dir
-
-from macrostrat.app_frame import Application, Subsystem, SubsystemManager
+from macrostrat.app_frame import (
+    Application,
+    Subsystem,
+    SubsystemManager,
+    ControlCommand,
+)
 from macrostrat.app_frame.control_command import CommandBase
 from macrostrat.utils import get_logger
+from rich.console import Console
+from typer import get_app_dir, Context, Option
 
 from .console import console_theme
 from .exc import MacrostratError
@@ -88,6 +92,20 @@ class StateManager:
         set_app_state(key, value, wipe_others=wipe_others)
 
 
+class MacrostratControlCommand(ControlCommand):
+    def callback(
+        self,
+        ctx: Context,
+        verbose: bool = Option(False, "--verbose", help="Enable verbose output"),
+        # This sets the env var too late to be used in config, but it does show the argument in the help text
+        env: str = Option(None, "--env", "-e", help="Set the active environment"),
+    ):
+        """:app_name: command-line interface"""
+        super().callback(ctx, verbose=verbose)
+        if env is not None:
+            environ["MACROSTRAT_ENV"] = env
+
+
 class Macrostrat(Application):
     subsystems: SubsystemManager
     settings: Dynaconf
@@ -95,6 +113,15 @@ class Macrostrat(Application):
     state: StateManager
 
     def __init__(self, *args, **kwargs):
+
+        # Check sys args for --env or -e, and use that to set the environment
+        # TODO: this is pretty hacky.
+        for i, arg in enumerate(argv):
+            if arg in ("--env", "-e") and i + 1 < len(argv):
+                environ["MACROSTRAT_ENV"] = argv[i + 1]
+                argv.pop(i + 1)
+                argv.pop(i)  # Remove the arg and its value so Typer doesn't see it
+
         self.console = Console(theme=console_theme)
         self.settings = load_settings(self.console)
         self.subsystems = SubsystemManager()
@@ -128,6 +155,9 @@ class Macrostrat(Application):
     @property
     def app_dir(self):
         return Path(get_app_dir("macrostrat"))
+
+    def control_command(self, *args, **kwargs):
+        return MacrostratControlCommand(self, *args, **kwargs)
 
 
 def env_text():

@@ -340,8 +340,9 @@ if mariadb_url := getattr(settings, "mysql_database", None):
     main.add_typer(
         mariadb_app,
         name="mariadb",
-        rich_help_panel="Subsystems",
+        rich_help_panel="Legacy",
         short_help="Manage the MariaDB database",
+        deprecated=True,
     )
 
 # Knowledge graph CLI
