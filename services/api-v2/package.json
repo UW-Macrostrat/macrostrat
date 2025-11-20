@@ -1,6 +1,6 @@
 {
   "name": "@macrostrat/api-v2",
-  "version": "2.1.7",
+  "version": "2.1.8",
   "description": "An API for stratigraphic and geological information (Version 2).",
   "main": "server.ts",
   "repository": {
@@ -84,7 +84,7 @@
     "typescript": "^5.3.3",
     "validator": "^3.34.0"
   },
-  "packageManager": "yarn@4.9.1",
+  "packageManager": "yarn@4.11.0",
   "prettier": {
     "proseWrap": "always"
   }
