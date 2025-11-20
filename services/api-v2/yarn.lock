@@ -104,7 +104,6 @@ __metadata:
     turf-buffer: "npm:^1.0.4"
     typescript: "npm:^5.3.3"
     underscore: "npm:^1.8.3"
-    universal-analytics: "npm:^0.4.6"
     validator: "npm:^3.34.0"
     wellknown: "npm:^0.3.0"
     yesql: "npm:^7.0.0"
@@ -1270,7 +1269,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"debug@npm:4, debug@npm:^4, debug@npm:^4.1.1, debug@npm:^4.3.4":
+"debug@npm:4, debug@npm:^4, debug@npm:^4.3.4":
   version: 4.4.0
   resolution: "debug@npm:4.4.0"
   dependencies:
@@ -3694,7 +3693,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"request@npm:^2.88.2, request@npm:~2.88.2":
+"request@npm:~2.88.2":
   version: 2.88.2
   resolution: "request@npm:2.88.2"
   dependencies:
@@ -4713,17 +4712,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"universal-analytics@npm:^0.4.6":
-  version: 0.4.23
-  resolution: "universal-analytics@npm:0.4.23"
-  dependencies:
-    debug: "npm:^4.1.1"
-    request: "npm:^2.88.2"
-    uuid: "npm:^3.0.0"
-  checksum: 10c0/f8eb9a02981ebeed1b62d9b0c112382549e789a192384fc1bb31b6ed0e9c28cb5f82b5b1c616f123adad1030f2a28e634aad5270b9b75d944c056126a7655bcc
-  languageName: node
-  linkType: hard
-
 "unpipe@npm:1.0.0, unpipe@npm:~1.0.0":
   version: 1.0.0
   resolution: "unpipe@npm:1.0.0"
@@ -4754,7 +4742,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"uuid@npm:^3.0.0, uuid@npm:^3.3.2":
+"uuid@npm:^3.3.2":
   version: 3.4.0
   resolution: "uuid@npm:3.4.0"
   bin:

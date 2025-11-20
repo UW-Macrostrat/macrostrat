@@ -66,7 +66,6 @@
     "turf-area": "^1.1.1",
     "turf-buffer": "^1.0.4",
     "underscore": "^1.8.3",
-    "universal-analytics": "^0.4.6",
     "wellknown": "^0.3.0",
     "yesql": "^7.0.0"
   },
