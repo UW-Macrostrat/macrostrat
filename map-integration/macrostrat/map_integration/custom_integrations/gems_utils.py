@@ -106,7 +106,6 @@ def transform_gdb_layer(meta_df: G.GeoDataFrame) -> Tuple[G.GeoDataFrame, str]:
         s = df[col].astype(str).str.strip()
         return s.eq("").all()
 
-
     lithology_candidates = ("generallithology", "geomaterial")
     lith_cols = [c for c in lithology_candidates if c in meta_df]
     if lith_cols:
@@ -409,7 +408,16 @@ def map_points_to_preferred_fields(
         s = df[col].astype(str).str.strip()
         return s.eq("").all()
 
-    preferred = ["descrip", "comments", "strike", "dip", "point_type", 'orig_id', 'dip_dir', 'certainty']
+    preferred = [
+        "descrip",
+        "comments",
+        "strike",
+        "dip",
+        "point_type",
+        "orig_id",
+        "dip_dir",
+        "certainty",
+    ]
     if all(col_empty(meta_df, c) for c in preferred):
         comments += (
             "All preferred line fields are missing or empty; "
@@ -419,7 +427,11 @@ def map_points_to_preferred_fields(
     elif col_empty(meta_df, "point_type") or col_empty(meta_df, "descrip"):
         comments += "Line required fields are empty or missing (name/type)."
         state = "pending"
-        if col_empty(meta_df, "comments") or col_empty(meta_df, "strike") or col_empty(meta_df, "dip"):
+        if (
+            col_empty(meta_df, "comments")
+            or col_empty(meta_df, "strike")
+            or col_empty(meta_df, "dip")
+        ):
             comments += " Some preferred line fields are missing or empty."
 
     return meta_df, comments, state
@@ -445,6 +457,7 @@ def map_lines_to_preferred_fields(
             actual_rename[col_lower_to_actual[src_lower]] = dst
 
     meta_df = meta_df.rename(columns=actual_rename)
+
     def col_empty(df: G.GeoDataFrame, col: str) -> bool:
         if col not in df.columns:
             return True

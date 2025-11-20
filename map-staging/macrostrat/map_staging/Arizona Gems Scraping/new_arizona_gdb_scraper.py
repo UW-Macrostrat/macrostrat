@@ -4,8 +4,8 @@ import random
 import re
 import time
 import zipfile
-from urllib.parse import unquote, urljoin, urlparse
 from typing import Optional
+from urllib.parse import unquote, urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -27,17 +27,17 @@ if os.path.exists(SKIPPED_FILENAMES_PATH):
 SAVE_METADATA_PATH = "metadata.csv"
 CSV_HEADERS = [
     "filename_prefix",
-    "url",               # the original repository page (item_url)
-    "ref_title",         # metadata title
-    "authors",           # semicolon-joined list of author names
-    "ref_year",          # numeric year or empty string
-    "ref_source",        # UA Library handle (or equivalent)
-    "isbn_doi",          # DOI or first API link href
-    "license",      # license type string
-    "series",            # e.g. DGM-209
-    "keywords",          # semicolon-joined keyword names
+    "url",  # the original repository page (item_url)
+    "ref_title",  # metadata title
+    "authors",  # semicolon-joined list of author names
+    "ref_year",  # numeric year or empty string
+    "ref_source",  # UA Library handle (or equivalent)
+    "isbn_doi",  # DOI or first API link href
+    "license",  # license type string
+    "series",  # e.g. DGM-209
+    "keywords",  # semicolon-joined keyword names
     "language",  # language
-    "description",       # abstract
+    "description",  # abstract
 ]
 
 # inserts header row in csv
@@ -236,9 +236,10 @@ def filename_to_title_param(filename: str) -> str:
     return title_param
 
 
-
 def get_collection_id(title_param: str, filename: str) -> Optional[str]:
-    results = requests.get(f'https://data.azgs.arizona.edu/api/v1/metadata?collection_group=%21ADMM&title={title_param}')
+    results = requests.get(
+        f"https://data.azgs.arizona.edu/api/v1/metadata?collection_group=%21ADMM&title={title_param}"
+    )
     results.raise_for_status()
     results = results.json()
     for collection in results.get("data", []):
@@ -252,7 +253,8 @@ def get_collection_id(title_param: str, filename: str) -> Optional[str]:
 
 def get_collection_metadata(collection_id: str) -> dict:
     results = requests.get(
-        f'https://data.azgs.arizona.edu/api/v1/metadata/{collection_id}')
+        f"https://data.azgs.arizona.edu/api/v1/metadata/{collection_id}"
+    )
     payload = results.json()
 
     coll = payload.get("data", {})
@@ -261,16 +263,8 @@ def get_collection_metadata(collection_id: str) -> dict:
     top_links = coll.get("links", []) or []
     identifiers = meta.get("identifiers", {}) or {}
     license_info = meta.get("license", {}) or {}
-    authors = [
-        a.get("person")
-        for a in meta.get("authors", [])
-        if a.get("person")
-    ]
-    keywords = [
-        k.get("name")
-        for k in meta.get("keywords", [])
-        if k.get("name")
-    ]
+    authors = [a.get("person") for a in meta.get("authors", []) if a.get("person")]
+    keywords = [k.get("name") for k in meta.get("keywords", []) if k.get("name")]
     ref_source = meta_links[0].get("url") if meta_links else None
 
     isbn_doi = identifiers.get("doi")
@@ -292,13 +286,13 @@ def get_collection_metadata(collection_id: str) -> dict:
         # Remove the entire boilerplate paragraph starting with "This geodatabase is part of..."
         # This pattern matches from "This geodatabase" through "U.S. Government."
         description = re.sub(
-            r'\s*This geodatabase is part of a digital republication.*?U\.S\. Government\.',
-            '',
+            r"\s*This geodatabase is part of a digital republication.*?U\.S\. Government\.",
+            "",
             description,
-            flags=re.DOTALL | re.IGNORECASE
+            flags=re.DOTALL | re.IGNORECASE,
         )
-        description = re.sub(r'\n+', ' ', description)
-        description = re.sub(r'\s+', ' ', description).strip()
+        description = re.sub(r"\n+", " ", description)
+        description = re.sub(r"\s+", " ", description).strip()
 
     required_fields = {
         "authors": authors,
@@ -313,7 +307,6 @@ def get_collection_metadata(collection_id: str) -> dict:
         "description": description,
     }
     return required_fields
-
 
 
 def download_gdb_zips(item_url: str):
@@ -331,9 +324,9 @@ def download_gdb_zips(item_url: str):
 
     for file_url in gdb_links:
         parsed = urlparse(file_url)
-        filename = unquote(os.path.basename(parsed.path))          # e.g. 'WildcatHill.gdb.zip'
-        title_param = filename_to_title_param(filename)            # e.g. 'Wildcat+Hill'
-        filename_prefix = strip_gdb_zip_suffixes(filename)         # e.g. 'WildcatHill'
+        filename = unquote(os.path.basename(parsed.path))  # e.g. 'WildcatHill.gdb.zip'
+        title_param = filename_to_title_param(filename)  # e.g. 'Wildcat+Hill'
+        filename_prefix = strip_gdb_zip_suffixes(filename)  # e.g. 'WildcatHill'
         download_ok = False
         if filename in downloaded_filenames:
             print(f"Already scraped this file... skipping: {filename}")
@@ -343,7 +336,7 @@ def download_gdb_zips(item_url: str):
             downloaded_filenames.add(filename)
             download_ok = True
         else:
-            #trying downloading the gdb
+            # trying downloading the gdb
             out_path = os.path.join(OUTPUT_DIR, filename)
             print(f"Downloading: {filename}")
             try:
@@ -363,7 +356,9 @@ def download_gdb_zips(item_url: str):
                 download_ok = False
 
         if not download_ok:
-            print(f"Skipping metadata for {filename_prefix} because download failed and file is not present.")
+            print(
+                f"Skipping metadata for {filename_prefix} because download failed and file is not present."
+            )
             continue
         else:
             # Get metadata via API
@@ -372,8 +367,12 @@ def download_gdb_zips(item_url: str):
 
             # Map and write filename + metadata to CSV
             if metadata:
-                authors_str = "; ".join(metadata["authors"]) if metadata["authors"] else ""
-                keywords_str = "; ".join(metadata["keywords"]) if metadata["keywords"] else ""
+                authors_str = (
+                    "; ".join(metadata["authors"]) if metadata["authors"] else ""
+                )
+                keywords_str = (
+                    "; ".join(metadata["keywords"]) if metadata["keywords"] else ""
+                )
 
                 row = [
                     filename_prefix,  # filename_prefix
@@ -390,7 +389,20 @@ def download_gdb_zips(item_url: str):
                     metadata["description"] or "",  # description
                 ]
             else:
-                row = [filename_prefix, item_url, "", "", "", "", "", "", "", "", "", ""]
+                row = [
+                    filename_prefix,
+                    item_url,
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                ]
 
             with open(SAVE_METADATA_PATH, "a", newline="") as f:
                 writer = csv.writer(f)
