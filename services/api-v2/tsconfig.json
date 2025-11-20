@@ -1,6 +1,11 @@
 {
   "compilerOptions": {
     "moduleResolution": "NodeNext",
-    "module": "NodeNext"
-  }
+    "module": "NodeNext",
+    "skipLibCheck": true
+  },
+  "include": [
+    "./v2",
+    "./api-tests"
+  ], // Ensure your test files are included
 }

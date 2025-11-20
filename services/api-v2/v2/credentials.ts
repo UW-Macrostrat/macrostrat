@@ -1,5 +1,10 @@
 // Set up debug mode if needed
-exports.debug = process.env.NODE_ENV === "development";
+const debugVals = ["true", "1", "*", "macrostrat-api", "larkin"];
+
+exports.debug =
+  process.env.DEBUG != null &&
+  debugVals.includes(process.env.DEBUG.toLowerCase());
+
 if (exports.debug) {
   // eslint-disable-next-line no-console
   console.log("Debug mode enabled");
@@ -23,18 +28,26 @@ if (
 if (process.env.MACROSTRAT_DATABASE != null) {
   // Connect using a database URL
   const macrostratDatabaseURL = process.env.MACROSTRAT_DATABASE;
+
+  // Get port from the main database URL
+  const uri = new URL(macrostratDatabaseURL);
+
+  const port = uri.port || "5432";
+  const database = uri.pathname.substring(1);
+  const dbString = `${port}/${database}`;
+
   const elevationDatabaseURL =
     process.env.ELEVATION_DATABASE ??
-    macrostratDatabaseURL.replace("5432/macrostrat", "5432/elevation");
+    macrostratDatabaseURL.replace(dbString, port + "/elevation");
   const aliceDatabaseURL =
     process.env.ALICE_DATABASE ??
-    macrostratDatabaseURL.replace("5432/macrostrat", "5432/alice");
+    macrostratDatabaseURL.replace(dbString, port + "/alice");
   const rockdDatabaseURL =
     process.env.ROCKD_DATABASE ??
-    macrostratDatabaseURL.replace("5432/macrostrat", "5432/rockd");
+    macrostratDatabaseURL.replace(dbString, port + "/rockd");
   const whosOnFirstDatabaseURL =
     process.env.WHOS_ON_FIRST_DATABASE ??
-    macrostratDatabaseURL.replace("5432/macrostrat", "5432/whos_on_first");
+    macrostratDatabaseURL.replace(dbString, port + "/whos_on_first");
   exports.pg = {
     macrostratDatabaseURL,
     elevationDatabaseURL,
@@ -42,6 +55,8 @@ if (process.env.MACROSTRAT_DATABASE != null) {
     rockdDatabaseURL,
     whosOnFirstDatabaseURL,
   };
+
+  console.log(exports.pg);
 }
 //added exports.pg to https://github.com/UW-Macrostrat/tiger-macrostrat-config/blob/main/manifests/development/dev-web-stack/credentials.js
 else {

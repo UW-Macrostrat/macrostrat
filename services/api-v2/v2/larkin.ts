@@ -1,5 +1,4 @@
-var //mysql = require("mysql"),
-  async = require("async"),
+var async = require("async"),
   _ = require("underscore"),
   credentials = require("./credentials"),
   csv = require("csv-express"),
@@ -14,71 +13,14 @@ const { Client, Pool } = require("pg");
 (function () {
   var larkin: any = {};
 
-  /* larkin.connectMySQL = function () {
-    // Non-blocking FTW
-    this.pool = mysql.createPool(credentials.mysql);
-
-    // Verify a connection has been made
-    this.pool.getConnection(function (error, connection) {
-      if (error) {
-        throw new Error(
-          "Unable to connect to MySQL. Please check your credentials",
-        );
-      }
-    });
-  };*/
-
-  /*larkin.queryPg = function (db, sql, params, callback) {
-    const nameMapping = credentials.postgresDatabases ?? {};
-    const dbName = nameMapping[db] ?? db;
-
-    let { connectionString, ...otherConnectionDetails } = credentials.pg;
-
-    if (dbName == "geomacro") {
-      console.warn(
-        "In Macrostrat v2, 'geomacro' is merged with 'burwell' into the 'macrostrat' database.",
-      );
-    }
-
-    if (dbName == "elevation") {
-      //Special case for elevation database (temporary)
-      connectionString = credentials.elevationDatabase;
-    }
-    const pool = new Pool({
-      connectionString,
-      ...otherConnectionDetails,
-    });
-
-    pool.connect(function (err, client, done) {
-      if (err) {
-        larkin.log("error", "error connecting - " + err);
-        callback(err);
-      } else {
-        var query = client.query(sql, params, function (err, result) {
-          done();
-          if (err) {
-            larkin.log("error", err);
-            callback(err);
-          } else {
-            callback(null, result);
-          }
-        });
-      }
-    });
-  };
-*/
+  // Store a global mapping of connection pools, so we don't overload PG with connections
+  const connectionPoolStore: { [key: string]: typeof Pool } = {};
 
   larkin.trace = function (...args: any[]) {
-    if (!credentials.debug) {
+    if (credentials.debug === false) {
       return;
     }
     console.log(...args);
-  };
-
-  // In recent versions of node, we have to ensure that we don't reject unauthorized SSL connections.
-  // We could eventually make sure we carry a valid SSL certificate, but this is easier for now.
-  const sslConfig = {
-    rejectUnauthorized: false,
   };
 
   //added new method to query from Maria data in the new PG database after migration
@@ -86,6 +28,12 @@ const { Client, Pool } = require("pg");
     //add console.logs for debug mode in the future
     const nameMapping = credentials.postgresDatabases ?? {};
     const dbName = nameMapping[db] ?? db;
+
+    // In recent versions of node, we have to ensure that we don't reject unauthorized SSL connections.
+    // We could eventually make sure we carry a valid SSL certificate, but this is easier for now.
+    let sslConfig: any = {
+      rejectUnauthorized: false,
+    };
 
     let connectionDetails = {};
     const postgresCfg = credentials.pg;
@@ -106,9 +54,19 @@ const { Client, Pool } = require("pg");
         connectionString = postgresCfg.whosOnFirstDatabaseURL;
       }
 
+      if (
+        connectionString.includes("localhost") ||
+        connectionString.includes("sslmode=disable")
+      ) {
+        sslConfig = false;
+      }
+
       connectionDetails = { connectionString, ssl: sslConfig };
     } else {
-      connectionDetails = { ...credentials.pg, ssl: sslConfig };
+      if (connectionDetails.host == "localhost") {
+        sslConfig = false;
+      }
+      connectionDetails = { ssl: sslConfig, ...credentials.pg };
       // Attempt to infer the database name from the connection string
       for (const dbname in ["elevation", "alice", "whos_on_first", "rockd"]) {
         if (dbName == dbname) {
@@ -116,7 +74,12 @@ const { Client, Pool } = require("pg");
         }
       }
     }
-    const pool = new Pool(connectionDetails);
+
+    if (!connectionPoolStore[dbName]) {
+      connectionPoolStore[dbName] = new Pool(connectionDetails);
+    }
+
+    const pool = connectionPoolStore[dbName];
     const errorMessage = "invalid input value for enum";
 
     pool.connect(function (err, client, done) {
@@ -181,38 +144,6 @@ const { Client, Pool } = require("pg");
 
     return [sql, newParams];
   };
-
-  /*
-  larkin.query = function (sql, params, callback) {
-    //console.warn(`Deprecated MySQL query:\n${sql}`);
-    if (sql.indexOf(":") > -1 && Object.keys(params).length > 0) {
-      var newQuery = larkin.toUnnamed(sql, params);
-      sql = newQuery[0];
-      params = newQuery[1];
-    }
-
-    this.pool.getConnection(
-      function (err, connection) {
-        var query = connection.query(
-          sql,
-          params,
-          function (error, result) {
-            // Remove the connection
-            connection.destroy();
-            if (error) {
-              if (callback) {
-                callback(error);
-              } else {
-                this.error(res, next, "Error retrieving from MySQL.", error);
-              }
-            } else {
-              callback(null, result);
-            }
-          }.bind(this),
-        );
-      }.bind(this),
-    );
-  }; */
 
   larkin.sendImage = function (req, res, next, data, isCached) {
     //  console.log(data)

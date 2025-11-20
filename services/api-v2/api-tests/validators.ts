@@ -1,5 +1,6 @@
 //var sizeOf = require("image-size");
 const axios = require("axios");
+const settings = require("./settings");
 
 function extractArrayData(payload) {
   try {
@@ -296,8 +297,15 @@ module.exports = {
     );
   },
 
-  async compareWithProduction(queryParams = "", localResponse) {
-    const prodUrl = `https://www.macrostrat.org/api/v2${queryParams}`;
+  async compareWithProduction(requestPath = "", localResponse) {
+    const { host_prod } = settings;
+
+    if (!host_prod) {
+      // Skip comparison if no production host is set
+      return;
+    }
+
+    const prodUrl = host_prod + requestPath;
     const { data: prodData } = await axios.get(prodUrl);
 
     // Exact JSON match still passes quickly.
@@ -328,7 +336,7 @@ module.exports = {
         if (localCount !== prodCount) {
           console.warn(
             [
-              `⚠️  ${idKey} count mismatch for endpoint: ${queryParams}`,
+              `⚠️  ${idKey} count mismatch for endpoint: ${requestPath}`,
               `   - Dev (current host) ${idKey} count: ${localCount}`,
               `   - Prod (host_prod) ${idKey} count: ${prodCount}`,
             ].join("\n"),
@@ -343,7 +351,7 @@ module.exports = {
 
     // Strict mismatch error with helpful diff
     throw new Error(
-      `Mismatch for endpoint: ${queryParams}\n` +
+      `Mismatch for endpoint: ${requestPath}\n` +
         `Local: ${JSON.stringify(localResponse.body, null, 2)}\n` +
         `Production: ${JSON.stringify(prodData, null, 2)}`,
     );
