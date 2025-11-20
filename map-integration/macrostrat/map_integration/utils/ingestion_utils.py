@@ -1,7 +1,7 @@
-from pathlib import Path
-import pandas as pd
 import re
+from pathlib import Path
 
+import pandas as pd
 
 BASE_ROOT = Path(__file__).resolve().parents[4]  # /Users/.../Projects/macrostrat
 PROCESSED_ITEMS_CSV = (
@@ -13,6 +13,7 @@ PROCESSED_ITEMS_CSV = (
     / "processed_item_urls.csv"
 )
 SLUG_SAFE_CHARS = re.compile(r"[^a-z0-9_]+")
+
 
 def find_gis_files(
     directory: Path, filter: str | None = None
@@ -53,8 +54,9 @@ def find_gis_files(
 
     return gis_files, excluded_files
 
-from pathlib import Path
+
 import re
+from pathlib import Path
 
 SLUG_SAFE_CHARS = re.compile(r"[^a-z0-9_]+")
 
@@ -73,7 +75,7 @@ def normalize_slug(prefix: str, path: Path) -> tuple[str, str, str]:
     clean_stem = SLUG_SAFE_CHARS.sub("", stem_for_slug)
     slug = f"{prefix}_{clean_stem}"
 
-    #filename stem/prefix"
+    # filename stem/prefix"
     filename = path.stem.replace("_", " ")
     # "AdamsMesa" -> "Adams Mesa"
     filename = re.sub(r"(?<=[a-z])(?=[A-Z])", " ", filename)
@@ -82,7 +84,6 @@ def normalize_slug(prefix: str, path: Path) -> tuple[str, str, str]:
     name = f"{filename}, {region}"
 
     return slug, name, ext
-
 
 
 def process_sources_metadata(slug: str, data_path: Path) -> dict | None:
@@ -117,26 +118,26 @@ def process_sources_metadata(slug: str, data_path: Path) -> dict | None:
     row = match.iloc[0]
 
     def _safe_get(col):
-        #return matched metadata row
+        # return matched metadata row
         return row[col] if col in df.columns and pd.notna(row[col]) else None
+
     sources_mapping = {
         "slug": slug,
         "filename_prefix": filename_prefix,
         "url": _safe_get("url") or "",
         "ref_title": _safe_get("ref_title") or "",
         "authors": _safe_get("authors") or "",
-        "ref_year": int(row["ref_year"])
-        if "ref_year" in df.columns and pd.notna(row["ref_year"])
-        else None,
+        "ref_year": (
+            int(row["ref_year"])
+            if "ref_year" in df.columns and pd.notna(row["ref_year"])
+            else None
+        ),
         "ref_source": _safe_get("ref_source") or "",
-        "scale_denominator": int(row["scale_denominator"])
-        if "scale_denominator" in df.columns and pd.notna(row["scale_denominator"])
-        else None,
+        "scale_denominator": (
+            int(row["scale_denominator"])
+            if "scale_denominator" in df.columns and pd.notna(row["scale_denominator"])
+            else None
+        ),
     }
 
     return sources_mapping
-
-
-
-
-

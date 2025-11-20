@@ -17,7 +17,11 @@ from macrostrat.database import Database
 from macrostrat.map_integration.commands.prepare_fields import _prepare_fields
 from macrostrat.map_integration.pipeline import ingest_map
 from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
-from macrostrat.map_integration.utils.ingestion_utils import find_gis_files, process_sources_metadata, normalize_slug
+from macrostrat.map_integration.utils.ingestion_utils import (
+    find_gis_files,
+    normalize_slug,
+    process_sources_metadata,
+)
 from macrostrat.map_integration.utils.map_info import get_map_info
 from macrostrat.map_integration.utils.s3_file_management import *
 
@@ -317,8 +321,7 @@ def staging(
     if source_id is None:
         raise RuntimeError(f"Could not find source for slug {slug}")
 
-
-    #add metadata from AZ map scraper /Users processed_item_urls.csv
+    # add metadata from AZ map scraper /Users processed_item_urls.csv
     sources_mapping = process_sources_metadata(slug, Path(data_path))
 
     if sources_mapping is not None:
@@ -326,29 +329,29 @@ def staging(
             "UPDATE maps.sources SET name = :name, scale = :scale, ingested_by = :ingested_by, url = :url, "
             "ref_title = :ref_title, authors = :authors, ref_year = :ref_year, ref_source = :ref_source, "
             "scale_denominator = :scale_denominator WHERE source_id = :source_id",
-
             dict(
                 name=name,
                 scale="large",
                 ingested_by="macrostrat-admin",
                 source_id=source_id,
-                url= sources_mapping["url"],
-                ref_title= sources_mapping["ref_title"],
-                authors= sources_mapping["authors"],
-                ref_year= sources_mapping["ref_year"],
-                ref_source= sources_mapping["ref_source"],
-                scale_denominator= sources_mapping["scale_denominator"]),
+                url=sources_mapping["url"],
+                ref_title=sources_mapping["ref_title"],
+                authors=sources_mapping["authors"],
+                ref_year=sources_mapping["ref_year"],
+                ref_source=sources_mapping["ref_source"],
+                scale_denominator=sources_mapping["scale_denominator"],
+            ),
         )
 
     else:
         db.run_sql(
             "UPDATE maps.sources SET name = :name, scale = :scale, ingested_by = :ingested_by WHERE source_id = :source_id",
-
             dict(
                 name=name,
                 scale="large",
                 ingested_by="macrostrat-admin",
-                source_id=source_id),
+                source_id=source_id,
+            ),
         )
 
     # add map_url later
@@ -568,7 +571,6 @@ def staging_bulk(
                 "UPDATE maps.sources SET name = :name, scale = :scale, ingested_by = :ingested_by, url = :url, "
                 "ref_title = :ref_title, authors = :authors, ref_year = :ref_year, ref_source = :ref_source, "
                 "scale_denominator = :scale_denominator WHERE source_id = :source_id",
-
                 dict(
                     name=name,
                     scale="large",
@@ -579,17 +581,18 @@ def staging_bulk(
                     authors=sources_mapping["authors"],
                     ref_year=sources_mapping["ref_year"],
                     ref_source=sources_mapping["ref_source"],
-                    scale_denominator=sources_mapping["scale_denominator"]),
+                    scale_denominator=sources_mapping["scale_denominator"],
+                ),
             )
         else:
             db.run_sql(
                 "UPDATE maps.sources SET name = :name, scale = :scale, ingested_by = :ingested_by WHERE source_id = :source_id",
-
                 dict(
                     name=name,
                     scale="large",
                     ingested_by="macrostrat-admin",
-                    source_id=source_id),
+                    source_id=source_id,
+                ),
             )
 
         db.run_sql(
