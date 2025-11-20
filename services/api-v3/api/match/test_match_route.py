@@ -58,6 +58,7 @@ def test_no_match_units():
     matches = results[0]["matches"]
     assert len(matches) == 0
 
+
 def test_multi_match_units():
     response = client.post(
         "/match/strat-names",
@@ -83,3 +84,32 @@ def test_multi_match_units():
 
         assert best_match["unit_id"] == case.unit_id
         assert best_match["strat_name_id"] == case.strat_name_id
+
+
+# Column 1494, lat: 53.11400 | lng: -120.90900 | project 1
+# Overlaps Column 2149, project_id 10
+# Strat name "Kaza", 5415, unit 41104 (2149), unit 34519 (1494)
+# Neoproterozoic
+
+
+def test_match_units_ambiguous_column():
+    response = client.get(
+        "/match/strat-names",
+        params={
+            "lat": 53.11400,
+            "lng": -120.90900,
+            "match_text": "Kaza",
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert "results" in data
+    results = data["results"]
+    assert len(results) == 1
+    matches = results[0]["matches"]
+    assert len(matches) >= 1
+    best_match = matches[0]
+
+    # Should match the unit from the higher priority project (1)
+    assert best_match["unit_id"] == 34519
+    assert best_match["strat_name_id"] == 5415

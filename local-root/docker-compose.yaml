@@ -17,6 +17,8 @@ services:
     # Set an arbitary tag to avoid repeated builds
     image: macrostrat.local/database:latest
     restart: unless-stopped
+    labels:
+      - dev.orbstack.domains=database.macrostrat.local
     environment:
       - POSTGRES_USER
       - POSTGRES_DB
