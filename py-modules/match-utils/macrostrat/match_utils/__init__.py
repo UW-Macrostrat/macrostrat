@@ -1,6 +1,7 @@
 from geopandas import GeoDataFrame
 from macrostrat.database import Database
 from pandas import isna, read_sql
+from pydantic import BaseModel
 from sqlalchemy.sql import text
 
 from .models import MatchType, MatchComparison, MatchResult
@@ -37,15 +38,25 @@ def get_columns_data_frame(db: Database):
     return gdf
 
 
+class ColumnInfo(BaseModel):
+    col_id: int
+    project_id: int
+    status_code: str
+
+    model_config = {
+        "from_attributes": True,
+    }
+
+
 def get_columns_for_location(
     db, position, *, project_id=None, status_code="active"
-) -> list[int]:
+) -> list[ColumnInfo]:
     """
     Get a list of column IDs for a given lat/lng position
     """
 
     base_select = """
-    SELECT col_id FROM macrostrat.col_areas ca
+    SELECT col_id, status_code, project_id FROM macrostrat.col_areas ca
     JOIN macrostrat.cols c ON c.id = ca.col_id
     """
 
@@ -63,7 +74,8 @@ def get_columns_for_location(
     sql = base_select + " WHERE " + " AND ".join(filters)
 
     cols = db.run_query(sql, params).all()
-    return [col.col_id for col in cols]
+    return [ColumnInfo.model_validate(row) for row in cols]
+
 
 def ensure_single(col_ids, entity="column"):
     if len(col_ids) == 0:
@@ -73,7 +85,6 @@ def ensure_single(col_ids, entity="column"):
             f"Multiple {entity}s found for location. This is not supported."
         )
     return col_ids[0]
-
 
 
 def get_column_units(conn, col_id, types: list[MatchType] = None):
@@ -107,7 +118,11 @@ def get_column_units(conn, col_id, types: list[MatchType] = None):
         ix + 1, "strat_name_clean", units_df["strat_name"].apply(clean_strat_name_text)
     )
 
+    # Fix multiple project_id columns (not sure why this is happening)
+    units_df = units_df.loc[:, ~units_df.columns.duplicated()]
+
     _column_unit_index[col_id] = units_df
+
     return units_df
 
 

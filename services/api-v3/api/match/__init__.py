@@ -45,8 +45,19 @@ class MatchQuery(BaseModel):
             raise ValueError("Either col_id or lat/lng must be provided.")
 
 
+class MatchWarning(BaseModel):
+    message: str
+    details: str
+
+    def __eq__(self, other):
+        if not isinstance(other, MatchWarning):
+            return NotImplemented
+        return self.message == other.message and self.details == other.details
+
+
 class MatchData(MatchQuery):
     matches: list[MatchResult]
+    warnings: list[MatchWarning]
 
 
 class MatchAPIResponse(BaseModel):
@@ -59,6 +70,7 @@ class MatchAPIResponse(BaseModel):
     comparison: MatchComparison = Field(
         ..., description="The type of string comparison that was performed."
     )
+    warnings: set[MatchWarning] | None = None
 
 
 class MatchOptions(BaseModel):
@@ -122,10 +134,17 @@ def match_units_multi(
         match_data = build_match_data(db, params)
         all_results.append(match_data)
 
+    # Aggregate warnings across all results
+    warnings: set[MatchWarning] = set()
+    for result in all_results:
+        for warning in result.warnings:
+            warnings.add(warning)
+
     return MatchAPIResponse(
         version="0.0.1",
         date_accessed=datetime.now().isoformat(),
         results=all_results,
+        warnings=warnings,
         **opts.model_dump(),
     )
 
@@ -134,20 +153,26 @@ def build_match_data(db, params):
     col_id = params.col_id
     if col_id is None:
         cols = get_columns_for_location(db, (params.lng, params.lat))
-        if len(cols) == 0:
-            col_id = None
-        elif len(cols) > 1:
-            raise ValueError(
-                "Multiple overlapping columns found. This is currently unsupported. Please specify a project_id or col_id."
-            )
-        else:
-            col_id = cols[0]
+        col_ids = [col.col_id for col in cols]
+    else:
+        col_ids = [col_id]
 
     results: list[MatchResult] = []
-    if col_id is not None:
+    warnings: list[MatchWarning] = []
+    for col_id in col_ids:
         names = standardize_names(params.match_text)
         with db.engine.connect() as conn:
             rows = get_all_matched_units(conn, col_id, names)
-        results = [MatchResult.from_row(r) for r in rows]
+        results += [MatchResult.from_row(r) for r in rows]
 
-    return MatchData(**params.model_dump(), matches=results)
+    # TODO match based on lexicon footprints only if columns are not found.
+
+    if len(col_ids) > 1:
+        warnings.append(
+            MatchWarning(
+                message="Multiple columns",
+                details="Results aggregated from multiple columns. Consider specifying a single col_id or project_id for more precise results.",
+            )
+        )
+
+    return MatchData(**params.model_dump(), matches=results, warnings=warnings)

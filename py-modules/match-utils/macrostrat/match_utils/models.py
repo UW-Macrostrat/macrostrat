@@ -1,7 +1,8 @@
 from enum import Enum
-from pandas import isna
-from pydantic import BaseModel
 from typing import Optional
+
+from pandas import isna
+from pydantic import BaseModel, model_validator
 
 
 class MatchResult(BaseModel):
@@ -12,12 +13,23 @@ class MatchResult(BaseModel):
     concept_id: Optional[int]
     unit_id: Optional[int]
     col_id: Optional[int]
+    project_id: Optional[int]
     depth: Optional[int]
     basis: str
     spatial_basis: str
     min_age: float
     max_age: float
     priority: float
+
+    # TODO: refs
+    # Provide more match information with a response="detailed" option
+
+    @model_validator(mode="after")
+    def check_column_project(self):
+        """Ensure that project_id is set if col_id is set."""
+        if self.col_id is not None and self.project_id is None:
+            raise ValueError("project_id must be set if col_id is set.")
+        return self
 
     @classmethod
     def from_row(cls, row):
