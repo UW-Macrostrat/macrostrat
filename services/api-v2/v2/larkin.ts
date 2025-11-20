@@ -72,7 +72,7 @@ const { Client, Pool } = require("pg");
   const connectionPoolStore: { [key: string]: typeof Pool } = {};
 
   larkin.trace = function (...args: any[]) {
-    if (!credentials.debug) {
+    if (credentials.debug === false) {
       return;
     }
     console.log(...args);
@@ -199,38 +199,6 @@ const { Client, Pool } = require("pg");
 
     return [sql, newParams];
   };
-
-  /*
-  larkin.query = function (sql, params, callback) {
-    //console.warn(`Deprecated MySQL query:\n${sql}`);
-    if (sql.indexOf(":") > -1 && Object.keys(params).length > 0) {
-      var newQuery = larkin.toUnnamed(sql, params);
-      sql = newQuery[0];
-      params = newQuery[1];
-    }
-
-    this.pool.getConnection(
-      function (err, connection) {
-        var query = connection.query(
-          sql,
-          params,
-          function (error, result) {
-            // Remove the connection
-            connection.destroy();
-            if (error) {
-              if (callback) {
-                callback(error);
-              } else {
-                this.error(res, next, "Error retrieving from MySQL.", error);
-              }
-            } else {
-              callback(null, result);
-            }
-          }.bind(this),
-        );
-      }.bind(this),
-    );
-  }; */
 
   larkin.sendImage = function (req, res, next, data, isCached) {
     //  console.log(data)

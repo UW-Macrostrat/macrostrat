@@ -1,7 +1,10 @@
 // Set up debug mode if needed
-const pg = require("pg");
+const debugVals = ["true", "1", "*", "macrostrat-api", "larkin"];
 
-exports.debug = process.env.NODE_ENV === "development";
+exports.debug =
+  process.env.DEBUG != null &&
+  debugVals.includes(process.env.DEBUG.toLowerCase());
+
 if (exports.debug) {
   // eslint-disable-next-line no-console
   console.log("Debug mode enabled");
