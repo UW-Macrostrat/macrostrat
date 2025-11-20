@@ -20,7 +20,18 @@ router = APIRouter(prefix="/match", tags=["match"])
 
 class MatchQuery(BaseModel):
     match_text: str = Field(
-        ..., description="Text containing a stratigraphic name to match."
+        ...,
+        description="Text containing a stratigraphic name to match.",
+        examples=[
+            "Navajo Sandstone",
+            "Halgaito Member",
+            "Coconino",
+            "Dakota Formation",
+            "Matchless Amphibolite",
+            "broke neck pluton; Escapement Bay Fm",
+            "Morrison Fm",
+            "Kayenta Formation; Davis Branch Mbr; Wingate Sandstone",
+        ],
     )
     identifier: str | int | None = Field(
         None, description="An optional identifier to associate with this query."
@@ -126,6 +137,9 @@ def match_units_multi(
     db = get_database()
 
     all_results: list[MatchData] = []
+
+    if len(body) > 100:
+        raise ValueError("Maximum of 100 queries allowed per request.")
 
     for params in body:
         params.validate()
