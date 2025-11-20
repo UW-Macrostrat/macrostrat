@@ -78,17 +78,17 @@ const { Client, Pool } = require("pg");
     console.log(...args);
   };
 
-  // In recent versions of node, we have to ensure that we don't reject unauthorized SSL connections.
-  // We could eventually make sure we carry a valid SSL certificate, but this is easier for now.
-  let sslConfig: any = {
-    rejectUnauthorized: false,
-  };
-
   //added new method to query from Maria data in the new PG database after migration
   larkin.queryPg = function (db, sql, params, callback) {
     //add console.logs for debug mode in the future
     const nameMapping = credentials.postgresDatabases ?? {};
     const dbName = nameMapping[db] ?? db;
+
+    // In recent versions of node, we have to ensure that we don't reject unauthorized SSL connections.
+    // We could eventually make sure we carry a valid SSL certificate, but this is easier for now.
+    let sslConfig: any = {
+      rejectUnauthorized: false,
+    };
 
     let connectionDetails = {};
     const postgresCfg = credentials.pg;
