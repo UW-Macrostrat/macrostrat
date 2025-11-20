@@ -1,3 +1,4 @@
+import json
 from collections import defaultdict
 from pathlib import Path
 from typing import Iterable, List, Tuple
@@ -16,6 +17,8 @@ from sqlalchemy import text
 
 from ..custom_integrations.gems_utils import (
     extract_gdb_layer,
+    map_lines_to_preferred_fields,
+    map_points_to_preferred_fields,
     map_strat_name,
     map_t_b_intervals,
     transform_gdb_layer,
@@ -41,15 +44,15 @@ def merge_metadata_polygons(polygon_df, meta_df, join_col) -> G.GeoDataFrame:
 
 
 def preprocess_dataframe(
-    polygon_df: G.GeoDataFrame, meta_path: Path, join_col: str
+    poly_line_pt_df: G.GeoDataFrame, meta_path: Path, join_col: str, feature_suffix: str
 ) -> Tuple[G.GeoDataFrame, str, str, str]:
     """
     Preprocess a GeoDataFrame by merging in metadata from a local .tsv,
     .csv, .xls, or .xlsx file.
     Parameters:
-        polygon_df (G.GeoDataFrame): The geospatial dataframe to preprocess.
+        poly_line_pt_df (G.GeoDataFrame): The geospatial dataframe to preprocess.
         meta_path (Path): Path to the legend.tsv metadata file.
-        join_col (str): The column to join on (default is "symbol").
+        join_col (str): The column to join on (default is "mapunit").
     Returns:
         G.GeoDataFrame: The enriched GeoDataFrame with merged metadata.
     """
@@ -59,56 +62,82 @@ def preprocess_dataframe(
     comments = ""
     state = ""
     ext = meta_path.suffix.lower()
-    if join_col not in polygon_df.columns:
-        comments = f"Warning: join column '{join_col}' not found in metadata file. Skipping metadata merge."
-        state = "failed"
-        return polygon_df, ingest_pipeline, comments, state
     if ext == ".tsv":
         meta_df = P.read_csv(meta_path, sep="\t")
         ingest_pipeline = ".tsv pipeline"
+        # TODO tsv pipeline for if feature_suffix == "polygons", "lines" OR "points"
     elif ext == ".csv":
         meta_df = P.read_csv(meta_path)
         ingest_pipeline = ".csv pipeline"
+        # TODO csv pipeline for if feature_suffix == "polygons", "lines" OR "points"
     elif ext in [".xls", ".xlsx"]:
         ingest_pipeline = ".xls pipeline"
         meta_df = P.read_excel(meta_path)
-    # TODO add lines metadata ingestion hereeee
-    # TODO ensure this is a gems dataset (list all layers) OR .gdb
+        # TODO xls pipeline for if feature_suffix == "polygons", "lines" OR "points"
     elif ext == ".gdb":
-        # extract whatever layer you want to merge with the polygons table
-        meta_df, ingest_pipeline, comments = extract_gdb_layer(
-            meta_path, "DescriptionOfMapUnits", False
-        )
-        if ingest_pipeline == ".gdb pipeline":
-            return polygon_df, ingest_pipeline, comments, state
-        if ingest_pipeline == "Gems pipeline" and comments != "":
-            state = "failed"
-            return polygon_df, ingest_pipeline, comments, state
+        if feature_suffix == "polygons":
+            join_col = "mapunit"
+            if join_col not in poly_line_pt_df.columns:
+                comments = f"Warning: join column '{join_col}' not found in metadata file. Skipping metadata merge"
+                state = "failed"
+                return poly_line_pt_df, ingest_pipeline, comments, state
+            meta_df, ingest_pipeline, comments = extract_gdb_layer(
+                meta_path, "DescriptionOfMapUnits", False
+            )
+            # no gems metadata...continue ingesting other layers.
+            if ingest_pipeline == ".gdb pipeline":
+                return poly_line_pt_df, ingest_pipeline, comments, state
+            if ingest_pipeline == "Gems pipeline" and comments != "":
+                state = "failed"
+                return poly_line_pt_df, ingest_pipeline, comments, state
+            meta_df, comments = transform_gdb_layer(meta_df)
+            if comments != "":
+                # TODO update to needs review. this status makes UI fail for some reason so kept it at pending.
+                state = "pending"
+                return poly_line_pt_df, ingest_pipeline, comments, state
+            meta_df = map_t_b_intervals(meta_df)
+            if (
+                meta_df["b_interval"].isna().all()
+                and meta_df["t_interval"].isna().all()
+            ):
+                comments += "Both b_interval and t_interval are NA. "
+                state = "failed"
+                return poly_line_pt_df, ingest_pipeline, comments, state
+            meta_df = map_strat_name(meta_df)
+            if meta_df["strat_name"].isna().all():
+                comments += "No strat_names found."
 
-        # delete all of the arizona maps that are empty
-        # create delete bulk ingestion script
-        # celery process to have a delete button in the UI.
-        # streamline the api's and UI for production.
-        meta_df, comments = transform_gdb_layer(meta_df)
-        if comments != "":
-            state = "pending"
-            return polygon_df, ingest_pipeline, comments, state
-        meta_df = map_t_b_intervals(meta_df)
-        if meta_df["b_interval"].isna().all() and meta_df["t_interval"].isna().all():
-            comments = "map_t_b_intervals() function failed. Both b_interval and t_interval are NA."
-            state = "failed"
-            return polygon_df, ingest_pipeline, comments, state
-        meta_df = map_strat_name(meta_df)
-        if meta_df["strat_name"].isna().all():
-            comments = "strat_name column needs review. map_strat_name() function did not find any strat_names."
+        elif feature_suffix == "lines":
+            meta_df, comments, state = map_lines_to_preferred_fields(
+                poly_line_pt_df, comments, state
+            )
+            if len(meta_df) == 0 or meta_df.empty:
+                state = "failed"
+                comments = "No lines to ingest"
+            if state != "pending":
+                state = "ingested"
+                comments = " Lines successfully ingested"
+            return meta_df, ingest_pipeline, comments, state
 
-    if meta_df.empty:
+        elif feature_suffix == "points":
+            meta_df, comments, state = map_points_to_preferred_fields(
+                poly_line_pt_df, comments, state
+            )
+            if len(meta_df) == 0 or meta_df.empty:
+                state = "failed"
+                comments = "No points to ingest"
+            if state != "pending":
+                state = "ingested"
+                comments = " Points successfully ingested"
+            return meta_df, ingest_pipeline, comments, state
+
+    if len(meta_df) == 0 or meta_df.empty:
         comments = "Warning: metadata file is empty. Skipping metadata merge."
         state = "failed"
-        return polygon_df, ingest_pipeline, comments, state
+        return poly_line_pt_df, ingest_pipeline, comments, state
     # merge polygons and metadata dataframes before inserting into the db
-    merged_df = merge_metadata_polygons(polygon_df, meta_df, join_col)
-    comments += " Successfully merged metadata."
+    merged_df = merge_metadata_polygons(poly_line_pt_df, meta_df, join_col)
+    comments += "Polygons metadata merged and ingested"
     state = "ingested"
     return merged_df, ingest_pipeline, comments, state
 
@@ -132,10 +161,10 @@ def ingest_map(
     meta_table: str = "polygons",
     chunksize: int = 100,
 ) -> Tuple[str, str, str]:
-    """Ingest general GIS data files into the database.
+    """Ingest general GIS data formatted_filenames into the database.
 
     This is similar to the macrostrat maps pipeline ingest-map command,
-    but it doesn't upload files to S3 or check their existence.
+    but it doesn't upload formatted_filenames to S3 or check their existence.
     """
     db = get_database()
 
@@ -209,13 +238,21 @@ def ingest_map(
             total_count += 1
 
     if success_count == 0:
-        raise IngestError("No files successfully ingested")
+        raise IngestError("No formatted_filenames successfully ingested")
 
     console.print(f"Successfully ingested {success_count} of {total_count} layers.")
 
     if embed:
         IPython.embed()
-
+    ingest_results = {
+        "ingest_pipeline": None,
+        "comments": "",
+        "state": None,
+        "polygon_state": None,
+        "line_state": None,
+        "point_state": None,
+    }
+    # concatenate all polygons into a single df, lines, and points as well
     for feature_type, df_list in frames.items():
         # Concatenate all dataframes
         df = G.GeoDataFrame(P.concat(df_list, ignore_index=True))
@@ -224,14 +261,57 @@ def ingest_map(
         feature_suffix = feature_type.lower() + "s"
         if feature_suffix == "linestrings":
             feature_suffix = "lines"
-        # applies legend merge only to the whatever the legend_table is specified as
-        if meta_path and meta_table == feature_suffix:
+        # preprocess dataframe will take the concatenated polygons, lines, or points df and see if there are any metadata
+        # formatted_filenames to append and map based on whatever integration pipeline is needed (inferred from the meta_path's ext)
+        if meta_path:
             df.columns = df.columns.str.lower()
             df, ingest_pipeline, comments, state = preprocess_dataframe(
-                df, meta_path=meta_path, join_col=join_col.lower()
+                df,
+                meta_path=meta_path,
+                join_col=join_col.lower(),
+                feature_suffix=feature_suffix,
             )
-            if state == "":
-                state = "ingested"
+            if feature_suffix == "polygons":
+                ingest_results["ingest_pipeline"] = ingest_pipeline
+                ingest_results["polygon_state"] = json.dumps(
+                    {
+                        "status": state,
+                        "pipeline": ingest_pipeline,
+                        "feature_count": len(df),
+                        "comments": comments,
+                    }
+                )
+            if feature_suffix == "lines":
+                ingest_results["line_state"] = json.dumps(
+                    {
+                        "status": state,
+                        "pipeline": ingest_results["ingest_pipeline"],
+                        "feature_count": len(df),
+                        "comments": comments,
+                    }
+                )
+            if feature_suffix == "points":
+                ingest_results["point_state"] = json.dumps(
+                    {
+                        "status": state,
+                        "pipeline": ingest_results["ingest_pipeline"],
+                        "feature_count": len(df),
+                        "comments": comments,
+                    }
+                )
+            if len(comments) > 0:
+                if ingest_results["comments"]:
+                    ingest_results["comments"] += "; " + comments
+                else:
+                    ingest_results["comments"] = comments
+
+            if state == "ingested" and ingest_results["state"] is None:
+                ingest_results["state"] = "ingested"
+            if state == "needs review" and ingest_results["state"] is None:
+                ingest_results["state"] = "needs review"
+            elif ingest_results["state"] is None:
+                ingest_results["state"] = "pending"
+
             before = df.columns.tolist()
             df = df.loc[:, ~df.columns.duplicated()]  # <- fix: reassign to merged_df!
             after = df.columns.tolist()
@@ -288,7 +368,7 @@ def ingest_map(
                 progress.update(task, advance=len(chunk))
 
             conn.commit()
-    return ingest_pipeline, comments, state
+    return ingest_results
 
 
 def create_dataframe_for_layer(file: Path, layer: str) -> G.GeoDataFrame:
@@ -297,6 +377,26 @@ def create_dataframe_for_layer(file: Path, layer: str) -> G.GeoDataFrame:
 
 def get_dataframes(files) -> Iterable[Tuple[str, G.GeoDataFrame]]:
     single_file = len(files) == 1
+    # ignore cross section polygons/lines/faults in Arizona CSAMapUnitPolys formatted_filenames.
+    ignore_cs_prefix = (
+        "CSA",
+        "CSB",
+        "CSC",
+        "CSD",
+        "CSE",
+        "CSF",
+        "CSG",
+        "CSH",
+        "CSI",
+        "CMU",
+    )
+    ignore_cs_suffix = ("ContactsAndFaults", "MapUnitPolys", "OrientationPoints")
+    ignore_misc = (
+        "T_1_DirtyAreas",
+        "T_1_LineErrors",
+        "T_1_PointErrors",
+        "T_1_PolyErrors",
+    )
     for file in files:
         console.print(file, style="bold cyan")
 
@@ -307,6 +407,16 @@ def get_dataframes(files) -> Iterable[Tuple[str, G.GeoDataFrame]]:
             console.print(f"{n_layers} layers.")
 
         for layer in layers:
+            # ignore cross section polygons/lines/faults in Arizona CSAMapUnitPolys formatted_filenames.
+            # skip if it's a misc layer
+            if layer.startswith(ignore_misc):
+                console.print(f"Skipping misc {layer}.")
+                continue
+            # skip if it's BOTH a cross section filename_prefix AND ends with a cross section suffix
+            if layer.startswith(ignore_cs_prefix) and layer.endswith(ignore_cs_suffix):
+                console.print(f"Skipping cross section {layer}.")
+                continue
+
             name = get_layer_name(
                 file, layer, single_file=single_file, single_layer=n_layers == 1
             )
@@ -314,7 +424,6 @@ def get_dataframes(files) -> Iterable[Tuple[str, G.GeoDataFrame]]:
             if name != layer:
                 stmt += f" -> [cyan]{name}[/cyan]"
             console.print(stmt)
-
             # Create the basic data frame
             df = G.read_file(file, layer=layer)
             df.columns = df.columns.str.replace(r"\s+", " ", regex=True).str.strip()

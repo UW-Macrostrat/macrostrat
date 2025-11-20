@@ -123,6 +123,7 @@ class Object(Base):
         {"schema": "storage"},
     )
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    #delete object_group_id
     object_group_id: Mapped[int] = mapped_column(
         ForeignKey("storage.object_group.id"), nullable=True
     )
