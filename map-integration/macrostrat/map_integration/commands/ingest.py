@@ -161,10 +161,10 @@ def ingest_map(
     meta_table: str = "polygons",
     chunksize: int = 100,
 ) -> Tuple[str, str, str]:
-    """Ingest general GIS data files into the database.
+    """Ingest general GIS data formatted_filenames into the database.
 
     This is similar to the macrostrat maps pipeline ingest-map command,
-    but it doesn't upload files to S3 or check their existence.
+    but it doesn't upload formatted_filenames to S3 or check their existence.
     """
     db = get_database()
 
@@ -238,7 +238,7 @@ def ingest_map(
             total_count += 1
 
     if success_count == 0:
-        raise IngestError("No files successfully ingested")
+        raise IngestError("No formatted_filenames successfully ingested")
 
     console.print(f"Successfully ingested {success_count} of {total_count} layers.")
 
@@ -262,7 +262,7 @@ def ingest_map(
         if feature_suffix == "linestrings":
             feature_suffix = "lines"
         # preprocess dataframe will take the concatenated polygons, lines, or points df and see if there are any metadata
-        # files to append and map based on whatever integration pipeline is needed (inferred from the meta_path's ext)
+        # formatted_filenames to append and map based on whatever integration pipeline is needed (inferred from the meta_path's ext)
         if meta_path:
             df.columns = df.columns.str.lower()
             df, ingest_pipeline, comments, state = preprocess_dataframe(
@@ -377,7 +377,7 @@ def create_dataframe_for_layer(file: Path, layer: str) -> G.GeoDataFrame:
 
 def get_dataframes(files) -> Iterable[Tuple[str, G.GeoDataFrame]]:
     single_file = len(files) == 1
-    # ignore cross section polygons/lines/faults in Arizona CSAMapUnitPolys files.
+    # ignore cross section polygons/lines/faults in Arizona CSAMapUnitPolys formatted_filenames.
     ignore_cs_prefix = (
         "CSA",
         "CSB",
@@ -407,7 +407,7 @@ def get_dataframes(files) -> Iterable[Tuple[str, G.GeoDataFrame]]:
             console.print(f"{n_layers} layers.")
 
         for layer in layers:
-            # ignore cross section polygons/lines/faults in Arizona CSAMapUnitPolys files.
+            # ignore cross section polygons/lines/faults in Arizona CSAMapUnitPolys formatted_filenames.
             # skip if it's a misc layer
             if layer.startswith(ignore_misc):
                 console.print(f"Skipping misc {layer}.")

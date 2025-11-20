@@ -5,6 +5,7 @@ import re
 import time
 import zipfile
 from urllib.parse import unquote, urljoin, urlparse
+from typing import Optional
 
 import requests
 from bs4 import BeautifulSoup
@@ -23,27 +24,32 @@ downloaded_filenames = set()
 if os.path.exists(SKIPPED_FILENAMES_PATH):
     with open(SKIPPED_FILENAMES_PATH) as f:
         downloaded_filenames = set(line.strip() for line in f)
-PROCESSED_URLS_PATH = "processed_item_urls.csv"
+SAVE_METADATA_PATH = "metadata.csv"
 CSV_HEADERS = [
     "filename_prefix",
-    "url",
-    "ref_title",
-    "authors",
-    "ref_year",
-    "ref_source",
-    "scale_denominator",
+    "url",               # the original repository page (item_url)
+    "ref_title",         # metadata title
+    "authors",           # semicolon-joined list of author names
+    "ref_year",          # numeric year or empty string
+    "ref_source",        # UA Library handle (or equivalent)
+    "isbn_doi",          # DOI or first API link href
+    "license",      # license type string
+    "series",            # e.g. DGM-209
+    "keywords",          # semicolon-joined keyword names
+    "language",  # language
+    "description",       # abstract
 ]
 
 # inserts header row in csv
-if not os.path.exists(PROCESSED_URLS_PATH) or os.path.getsize(PROCESSED_URLS_PATH) == 0:
-    with open(PROCESSED_URLS_PATH, "w", newline="") as f:
+if not os.path.exists(SAVE_METADATA_PATH) or os.path.getsize(SAVE_METADATA_PATH) == 0:
+    with open(SAVE_METADATA_PATH, "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(CSV_HEADERS)
 
 
 visited_urls = set()
-if os.path.exists(PROCESSED_URLS_PATH):
-    with open(PROCESSED_URLS_PATH, newline="") as f:
+if os.path.exists(SAVE_METADATA_PATH):
+    with open(SAVE_METADATA_PATH, newline="") as f:
         reader = csv.reader(f)
         for row in reader:
             if not row:
@@ -71,17 +77,14 @@ def strip_gdb_zip_suffixes(filename: str) -> str:
 
 def extract_all_zips(root_dir=OUTPUT_DIR):
     """
-    Extract all .zip files in root_dir into the same directory.
-    For .gdb.zip files, this will create a .gdb folder next to the zip.
+    Extract all .zip formatted_filenames in root_dir into the same directory.
+    For .gdb.zip formatted_filenames, this will create a .gdb folder next to the zip.
     """
     for name in os.listdir(root_dir):
         if not name.lower().endswith(".zip"):
             continue
-
         zip_path = os.path.join(root_dir, name)
-
-        # Optional: skip if we've already extracted a .gdb folder with same prefix
-        prefix = strip_gdb_zip_suffixes(name)  # e.g. BoulderMountain
+        prefix = strip_gdb_zip_suffixes(name)
         gdb_dir = os.path.join(root_dir, f"{prefix}.gdb")
         if os.path.exists(gdb_dir):
             print(f"Already extracted: {gdb_dir} (skipping {name})")
@@ -216,51 +219,184 @@ def get_citation_text(soup):
     return None
 
 
-def download_gdb_zips(item_url):
-    """Saves the filename along with the url link to the repository the files
-    are extracted from."""
+def filename_to_title_param(filename: str) -> str:
+    """
+    Convert a gdb/gdb.zip filename to a title parameter for the API.
+
+    Examples:
+      'WildcatHill.gdb.zip' -> 'Wildcat+Hill'
+      'Wildcat_Hill.gdb'    -> 'Wildcat+Hill'
+      'Wildcat Hill.gdb'    -> 'Wildcat+Hill'
+    """
+    stem = strip_gdb_zip_suffixes(filename)
+    stem = stem.replace("_", " ")
+    stem = re.sub(r"(?<=[a-z])(?=[A-Z])", " ", stem)
+    stem = re.sub(r"\s+", " ", stem).strip()
+    title_param = "+".join(stem.split(" "))
+    return title_param
+
+
+
+def get_collection_id(title_param: str, filename: str) -> Optional[str]:
+    results = requests.get(f'https://data.azgs.arizona.edu/api/v1/metadata?collection_group=%21ADMM&title={title_param}')
+    results.raise_for_status()
+    results = results.json()
+    for collection in results.get("data", []):
+        metadata = collection.get("metadata", {})
+        files = metadata.get("files", [])
+        for f in files:
+            if f.get("name") == filename:
+                return collection.get("collection_id")
+    return None
+
+
+def get_collection_metadata(collection_id: str) -> dict:
+    results = requests.get(
+        f'https://data.azgs.arizona.edu/api/v1/metadata/{collection_id}')
+    payload = results.json()
+
+    coll = payload.get("data", {})
+    meta = coll.get("metadata", {}) or {}
+    meta_links = meta.get("links", []) or []
+    top_links = coll.get("links", []) or []
+    identifiers = meta.get("identifiers", {}) or {}
+    license_info = meta.get("license", {}) or {}
+    authors = [
+        a.get("person")
+        for a in meta.get("authors", [])
+        if a.get("person")
+    ]
+    keywords = [
+        k.get("name")
+        for k in meta.get("keywords", [])
+        if k.get("name")
+    ]
+    ref_source = meta_links[0].get("url") if meta_links else None
+
+    isbn_doi = identifiers.get("doi")
+    if not isbn_doi and top_links:
+        isbn_doi = top_links[0].get("href")
+    license_url = license_info.get("url")
+    license_type = license_info.get("type")
+    if license_url or license_type:
+        license_str = "; ".join(p for p in (license_url, license_type) if p)
+    else:
+        license_str = ""
+    year_raw = meta.get("year")
+    try:
+        ref_year = int(year_raw) if year_raw is not None else None
+    except (ValueError, TypeError):
+        ref_year = None
+    description = meta.get("abstract") or ""
+    if description:
+        # Remove the entire boilerplate paragraph starting with "This geodatabase is part of..."
+        # This pattern matches from "This geodatabase" through "U.S. Government."
+        description = re.sub(
+            r'\s*This geodatabase is part of a digital republication.*?U\.S\. Government\.',
+            '',
+            description,
+            flags=re.DOTALL | re.IGNORECASE
+        )
+        description = re.sub(r'\n+', ' ', description)
+        description = re.sub(r'\s+', ' ', description).strip()
+
+    required_fields = {
+        "authors": authors,
+        "ref_year": ref_year,
+        "ref_title": meta.get("title"),
+        "ref_source": ref_source,
+        "isbn_doi": isbn_doi,
+        "license": license_str,
+        "series": meta.get("series"),
+        "keywords": keywords,
+        "language": meta.get("language"),
+        "description": description,
+    }
+    return required_fields
+
+
+
+def download_gdb_zips(item_url: str):
+    """
+    Download any .gdb.zip files on the page and record metadata in processed_item_urls.csv.
+    Returns a list of filename_prefixes (e.g. 'WildcatHill').
+    """
     soup = get_soup(item_url)
 
-    citation_text = get_citation_text(soup)
-    citation_fields = parse_citation(citation_text)
     download_links = soup.select("a[href*='.gdb.zip']")
-    download_urls = {urljoin(BASE_URL, a["href"]) for a in download_links}
+    gdb_links = {urljoin(BASE_URL, a["href"]) for a in download_links}
     print(f"Checking {item_url} - found {len(download_links)} .gdb.zip links")
 
-    downloaded_files = []
+    filenames_formatted: list[str] = []
 
-    for file_url in download_urls:
+    for file_url in gdb_links:
         parsed = urlparse(file_url)
-        filename = os.path.basename(parsed.path)
-        filename = unquote(filename)
-
+        filename = unquote(os.path.basename(parsed.path))          # e.g. 'WildcatHill.gdb.zip'
+        title_param = filename_to_title_param(filename)            # e.g. 'Wildcat+Hill'
+        filename_prefix = strip_gdb_zip_suffixes(filename)         # e.g. 'WildcatHill'
+        download_ok = False
         if filename in downloaded_filenames:
-            print(f"Already scraped this file....skipping: {filename}")
-            downloaded_files.append(filename)
-            continue
-
-        out_path = os.path.join(OUTPUT_DIR, filename)
-        if os.path.exists(out_path):
-            print(f"Already downloaded: {filename}")
-            downloaded_files.append(filename)
-            continue
-
-        print(f"Downloading: {filename}")
-        try:
-            time.sleep(1.0)
-            with requests.get(file_url, stream=True, timeout=30) as r:
-                r.raise_for_status()
-                with open(out_path, "wb") as f:
-                    for chunk in r.iter_content(8192):
-                        f.write(chunk)
-
-            with open(SKIPPED_FILENAMES_PATH, "a") as log:
-                log.write(filename + "\n")
+            print(f"Already scraped this file... skipping: {filename}")
+            download_ok = True
+        elif os.path.exists(os.path.join(OUTPUT_DIR, filename)):
+            print(f"Already downloaded on disk: {filename}")
             downloaded_filenames.add(filename)
-            downloaded_files.append(filename)
-        except Exception as e:
-            print(f"Download failed for {filename}: {e}")
-    return downloaded_files, citation_fields
+            download_ok = True
+        else:
+            #trying downloading the gdb
+            out_path = os.path.join(OUTPUT_DIR, filename)
+            print(f"Downloading: {filename}")
+            try:
+                time.sleep(1.0)
+                with requests.get(file_url, stream=True, timeout=30) as r:
+                    r.raise_for_status()
+                    with open(out_path, "wb") as f:
+                        for chunk in r.iter_content(8192):
+                            f.write(chunk)
+
+                with open(SKIPPED_FILENAMES_PATH, "a") as log:
+                    log.write(filename + "\n")
+                downloaded_filenames.add(filename)
+                download_ok = True
+            except Exception as e:
+                print(f"Download failed for {filename}: {e}")
+                download_ok = False
+
+        if not download_ok:
+            print(f"Skipping metadata for {filename_prefix} because download failed and file is not present.")
+            continue
+        else:
+            # Get metadata via API
+            collection_id = get_collection_id(title_param, filename)
+            metadata = get_collection_metadata(collection_id) if collection_id else None
+
+            # Map and write filename + metadata to CSV
+            if metadata:
+                authors_str = "; ".join(metadata["authors"]) if metadata["authors"] else ""
+                keywords_str = "; ".join(metadata["keywords"]) if metadata["keywords"] else ""
+
+                row = [
+                    filename_prefix,  # filename_prefix
+                    item_url,  # url (original repo page)
+                    metadata["ref_title"] or "",  # ref_title
+                    authors_str,  # authors
+                    metadata["ref_year"] or "",  # ref_year
+                    metadata["ref_source"] or "",  # ref_source
+                    metadata["isbn_doi"] or "",  # isbn_doi
+                    metadata["license"] or "",  # license
+                    metadata["series"] or "",  # series
+                    keywords_str,  # keywords
+                    metadata["language"] or "",  # language
+                    metadata["description"] or "",  # description
+                ]
+            else:
+                row = [filename_prefix, item_url, "", "", "", "", "", "", "", "", "", ""]
+
+            with open(SAVE_METADATA_PATH, "a", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerow(row)
+
+    return
 
 
 def deduplicate_file(path):
@@ -280,40 +416,7 @@ if __name__ == "__main__":
         if url in visited_urls:
             continue  # skip already processed item
         try:
-            files, citation_fields = download_gdb_zips(url)
-            ref_title = citation_fields.get("ref_title") if citation_fields else ""
-            authors = citation_fields.get("authors") if citation_fields else ""
-            ref_year = citation_fields.get("ref_year") if citation_fields else ""
-            ref_source = citation_fields.get("ref_source") if citation_fields else ""
-            scale_den = (
-                citation_fields.get("scale_denominator")
-                if citation_fields
-                and citation_fields.get("scale_denominator") is not None
-                else ""
-            )
-
-            with open(PROCESSED_URLS_PATH, "a", newline="") as f:
-                writer = csv.writer(f)
-                if files:
-                    for filename in files:
-                        filename_prefix = strip_gdb_zip_suffixes(filename)
-                        writer.writerow(
-                            [
-                                filename_prefix,
-                                url,
-                                ref_title,
-                                authors,
-                                ref_year,
-                                ref_source,
-                                scale_den,
-                            ]
-                        )
-                else:
-                    # mark URL as processed even if it has no files
-                    writer.writerow(
-                        ["", url, ref_title, authors, ref_year, ref_source, scale_den]
-                    )
-
+            download_gdb_zips(url)
             visited_urls.add(url)
             time.sleep(random.uniform(4.0, 8.0))
             if idx > 0 and idx % 100 == 0:

@@ -100,20 +100,12 @@ def transform_gdb_layer(meta_df: G.GeoDataFrame) -> Tuple[G.GeoDataFrame, str]:
         }
         comments += f"Gems DMU columns not found: {sorted(missing_sources)}."
 
-    if (
-        "age" not in meta_df.columns
-        and "name" not in meta_df.columns
-        and "descrip" not in meta_df.columns
-        and "comments" not in meta_df.columns
-        and "orig_id" not in meta_df.columns
-        and "strat_symbol" not in meta_df.columns
-    ):
-        comments += "All preferred polygon fields are missing. Possible empty df or incorrect pipeline processing."
+    def col_empty(df, col: str) -> bool:
+        if col not in df.columns:
+            return True
+        s = df[col].astype(str).str.strip()
+        return s.eq("").all()
 
-    elif "age" not in meta_df.columns and "name" not in meta_df.columns:
-        comments += "Missing required polygon fields (age/name)."
-    elif meta_df["age"].isna().all() or meta_df["name"].isna().all():
-        comments += "Polygon required fields are empty (age/name)."
 
     lithology_candidates = ("generallithology", "geomaterial")
     lith_cols = [c for c in lithology_candidates if c in meta_df]
@@ -128,7 +120,11 @@ def transform_gdb_layer(meta_df: G.GeoDataFrame) -> Tuple[G.GeoDataFrame, str]:
         meta_df = meta_df.drop(columns=lith_cols)
     else:
         comments += f"Missing lithology columns: {lithology_candidates}."
-
+    preferred = ["age", "name", "descrip", "comments", "orig_id", "strat_symbol"]
+    if all(col_empty(meta_df, c) for c in preferred):
+        comments += "All preferred polygon fields are missing. Possible empty df or incorrect pipeline processing."
+    elif col_empty(meta_df, "age") or col_empty(meta_df, "name"):
+        comments += "Polygon required fields are empty or missing (age/name)."
     meta_df = meta_df.dropna(axis=1, how="all")
     return meta_df, comments
 
@@ -406,33 +402,26 @@ def map_points_to_preferred_fields(
             actual_rename[col_lower_to_actual[src_lower]] = dst
 
     meta_df = meta_df.rename(columns=actual_rename)
-    if (
-        "orig_id" not in meta_df.columns
-        and "descrip" not in meta_df.columns
-        and "comments" not in meta_df.columns
-        and "strike" not in meta_df.columns
-        and "dip" not in meta_df.columns
-        and "dip_dir" not in meta_df.columns
-        and "point_type" not in meta_df.columns
-        and "certainty" not in meta_df.columns
-    ):
-        comments += "ALL preferred points fields are missing; possible empty df or incorrect pipeline processing."
-        state = "pending"
 
-    if (
-        "descrip" not in meta_df.columns
-        or "point_type" not in meta_df.columns
-        or "strike" not in meta_df.columns
-        or "certainty" not in meta_df.columns
-    ):
-        comments += "Missing some points preferred fields, but ingested."
-    elif (
-        meta_df["point_type"].isna().all()
-        and meta_df["descrip"].isna().all()
-        and meta_df["strike"].isna().all()
-    ):
-        comments += "Missing some points required fields, but ingested."
+    def col_empty(df: G.GeoDataFrame, col: str) -> bool:
+        if col not in df.columns:
+            return True
+        s = df[col].astype(str).str.strip()
+        return s.eq("").all()
+
+    preferred = ["descrip", "comments", "strike", "dip", "point_type", 'orig_id', 'dip_dir', 'certainty']
+    if all(col_empty(meta_df, c) for c in preferred):
+        comments += (
+            "All preferred line fields are missing or empty; "
+            "possible empty df or incorrect pipeline processing."
+        )
         state = "pending"
+    elif col_empty(meta_df, "point_type") or col_empty(meta_df, "descrip"):
+        comments += "Line required fields are empty or missing (name/type)."
+        state = "pending"
+        if col_empty(meta_df, "comments") or col_empty(meta_df, "strike") or col_empty(meta_df, "dip"):
+            comments += " Some preferred line fields are missing or empty."
+
     return meta_df, comments, state
 
 
@@ -456,28 +445,23 @@ def map_lines_to_preferred_fields(
             actual_rename[col_lower_to_actual[src_lower]] = dst
 
     meta_df = meta_df.rename(columns=actual_rename)
-    if (
-        "name" not in meta_df.columns
-        and "type" not in meta_df.columns
-        and "descrip" not in meta_df.columns
-        and "orig_id" not in meta_df.columns
-        and "direction" not in meta_df.columns
-    ):
-        comments += "ALL preferred points fields are missing; maybe empty df or incorrect pipeline processing."
+    def col_empty(df: G.GeoDataFrame, col: str) -> bool:
+        if col not in df.columns:
+            return True
+        s = df[col].astype(str).str.strip()
+        return s.eq("").all()
+
+    preferred = ["name", "type", "descrip", "orig_id", "direction"]
+    if all(col_empty(meta_df, c) for c in preferred):
+        comments += (
+            "All preferred line fields are missing or empty; "
+            "possible empty df or incorrect pipeline processing."
+        )
         state = "pending"
-    if (
-        "name" not in meta_df.columns
-        or "type" not in meta_df.columns
-        or "descrip" not in meta_df.columns
-        or "direction" not in meta_df.columns
-    ):
-        comments += "Missing some points preferred fields, but ingested."
-    elif (
-        meta_df["type"].isna().all()
-        and meta_df["name"].isna().all()
-        and meta_df["descrip"].isna().all()
-        and meta_df["direction"].isna().all()
-    ):
-        comments += "Some required fields are empty, but ingested."
+    elif col_empty(meta_df, "name") or col_empty(meta_df, "type"):
+        comments += "Line required fields are empty or missing (name/type)."
         state = "pending"
+        if col_empty(meta_df, "descrip") or col_empty(meta_df, "direction"):
+            comments += " Some preferred line fields are missing or empty."
+
     return meta_df, comments, state

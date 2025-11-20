@@ -57,3 +57,7 @@ HumboltMtn.gdb.zip
 OracleJunction.gdb.zip
 CopperMtns.gdb.zip
 PictureMtns.gdb.zip
+SacatonMtnsWestinset.gdb.zip
+LowerAguaFriaRiverBaldyMtn.gdb.zip
+SacatonMountains.gdb.zip
+SacatonMountainsinset.gdb.zip
