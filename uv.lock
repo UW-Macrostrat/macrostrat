@@ -1164,8 +1164,9 @@ requires-dist = [
 [[package]]
 name = "macrostrat-system"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
+    { name = "api" },
     { name = "macrostrat-cli" },
     { name = "macrostrat-core" },
     { name = "macrostrat-match-utils" },
@@ -1174,7 +1175,6 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "api" },
     { name = "black" },
     { name = "isort" },
     { name = "pytest" },
@@ -1185,6 +1185,7 @@ gis = [
 
 [package.metadata]
 requires-dist = [
+    { name = "api", editable = "services/api-v3" },
     { name = "macrostrat-cli", editable = "cli" },
     { name = "macrostrat-core", editable = "core" },
     { name = "macrostrat-match-utils", editable = "py-modules/match-utils" },
@@ -1193,7 +1194,6 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "api", editable = "services/api-v3" },
     { name = "black", specifier = ">=24.8.0,<25" },
     { name = "isort", specifier = ">=5.13.2,<6" },
     { name = "pytest", specifier = ">=8.3.2,<9" },
