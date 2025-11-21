@@ -17,12 +17,19 @@ class MatchResult(BaseModel):
     depth: Optional[int]
     basis: str
     spatial_basis: str
-    min_age: float
-    max_age: float
+    t_age: float
+    b_age: float
     priority: float
 
     # TODO: refs
     # Provide more match information with a response="detailed" option
+
+    @model_validator(mode="after")
+    def check_ages(self):
+        """Ensure that t_age is less than or equal to b_age."""
+        if self.t_age > self.b_age:
+            raise ValueError("t_age must be less than b_age.")
+        return self
 
     @model_validator(mode="after")
     def check_column_project(self):

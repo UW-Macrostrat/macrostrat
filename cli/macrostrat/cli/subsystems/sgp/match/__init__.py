@@ -3,10 +3,11 @@ Subsystem for SGP matching
 """
 
 from dataclasses import dataclass
+from pathlib import Path
+
 from geopandas import sjoin
 from macrostrat.database import Database
 from pandas import DataFrame, isna, read_sql
-from pathlib import Path
 from pydantic import BaseModel
 from rich.live import Live
 from rich.table import Table
@@ -212,6 +213,11 @@ def match_sgp_data(
     # Create a data frame of matches with the same index as the counts
     matches = DataFrame(matches).T
     # Rename columns
+    # Macrostrat uses b_age and t_age for max and min ages, respectively, while SGP uses min_age and max_age
+    matches.rename(
+        columns={"b_age": "max_age", "t_age": "min_age"},
+        inplace=True,
+    )
 
     if matches.empty:
         console.print("No matches found.")

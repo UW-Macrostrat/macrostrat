@@ -194,8 +194,8 @@ with_footprints_index AS (
         THEN 'containing column'
       ELSE 'adjacent column'
       END AS   spatial_basis,
-    t_age      min_age,
-    b_age      max_age
+    t_age,
+    b_age
   FROM with_footprints_index
   ORDER BY sort_order, is_selected_column DESC, strat_name_id
 )

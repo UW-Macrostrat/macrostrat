@@ -200,8 +200,8 @@ def test_age_constraints_interval():
     best_match = matches[0]
     assert best_match["unit_id"] == 15503
     assert best_match["strat_name_id"] == 981
-    assert best_match["min_age"] <= 260.0
-    assert best_match["max_age"] >= 200.0
+    assert best_match["t_age"] >= 200.0
+    assert best_match["b_age"] <= 260.0
 
 
 def test_invalid_age_constraints():

@@ -184,9 +184,9 @@ def get_all_matched_units(
     units = get_column_units(conn, col_id, types=types)
     # Units matching age constraints only
     if b_age is not None:
-        units = units.loc[units["min_age"] <= b_age]
+        units = units.loc[units.t_age <= b_age]
     if t_age is not None:
-        units = units.loc[units["max_age"] >= t_age]
+        units = units.loc[units.b_age >= t_age]
 
     u1 = units[units.strat_name_clean.notnull()]
 
