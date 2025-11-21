@@ -54,11 +54,8 @@ def test_no_match_units():
     data = response.json()
     assert "results" in data
     results = data["results"]
-    assert len(results) == 0
-    assert "messages" in data
-    messages = data["messages"]
-    assert any("No matches found" in msg["message"] for msg in messages)
-
+    assert len(results) == 1
+    assert len(results[0]["matches"]) == 0
 
 def test_multi_match_units():
     response = client.post(
@@ -161,7 +158,9 @@ def test_match_units_wrong_time_period():
     data = response.json()
     assert "results" in data
     results = data["results"]
-    assert len(results) == 0
+    assert len(results) == 1
+    assert len(results[0]["matches"]) == 0
+
 
 def test_age_constraints(db):
     data = MatchQuery(
@@ -175,3 +174,51 @@ def test_age_constraints(db):
 
     assert age_range.b_age == 250.0
     assert age_range.t_age == 200.0
+
+
+def test_age_constraints_interval():
+    response = client.get(
+        "/match/strat-names",
+        params={
+            "lat": pos[1],
+            "lng": pos[0],
+            "match_text": "Jelm Formation",
+            "interval": "Triassic",
+        },
+    )
+    # TODO: should "no match" be a 404?
+    assert response.status_code == 200
+    data = response.json()
+    assert "results" in data
+    results = data["results"]
+    assert len(results) == 1
+    assert results[0]["t_age"] >= 200.0
+    assert results[0]["b_age"] <= 260.0
+    matches = results[0]["matches"]
+    assert len(matches) >= 1
+    best_match = matches[0]
+    assert best_match["unit_id"] == 15503
+    assert best_match["strat_name_id"] == 981
+    assert best_match["min_age"] <= 260.0
+    assert best_match["max_age"] >= 200.0
+
+
+def test_invalid_age_constraints():
+    response = client.get(
+        "/match/strat-names",
+        params={
+            "lat": 40.0,
+            "lng": -105.0,
+            "match_text": "Some Formation",
+            "b_interval": "Oligocene",
+            "t_age": 200.0,
+        },
+    )
+    # Could return an error, but currently returns no matches
+    assert response.status_code == 200
+    data = response.json()
+    assert "results" in data
+    results = data["results"]
+    assert len(results) == 1
+    messages = results[0]["messages"]
+    assert any("Inconsistent age constraints" in msg["message"] for msg in messages)

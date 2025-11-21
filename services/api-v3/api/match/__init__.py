@@ -33,8 +33,8 @@ router = APIRouter(prefix="/match", tags=["match"])
 
 
 class AbsoluteAgeConstraint(BaseModel):
-    b_age: int = Field(None, description="Early/lower age constraint in Ma")
-    t_age: int = Field(None, description="Late/upper age constraint in Ma")
+    b_age: float = Field(None, description="Early/lower age constraint in Ma")
+    t_age: float = Field(None, description="Late/upper age constraint in Ma")
 
 
 class MatchQuery(BaseModel):
@@ -72,8 +72,8 @@ class MatchQuery(BaseModel):
     interval: int | str | None = Field(
         None, description="Interval name or ID to constrain matches"
     )
-    b_age: int | None = Field(None, description="Early/lower age constraint in Ma")
-    t_age: int | None = Field(None, description="Late/upper age constraint in Ma")
+    b_age: float | None = Field(None, description="Early/lower age constraint in Ma")
+    t_age: float | None = Field(None, description="Late/upper age constraint in Ma")
 
     # Enforce one of col_id or lat/lng
     @model_validator(mode="after")
@@ -88,8 +88,8 @@ class MatchQuery(BaseModel):
         """Get the best age constraint from the provided age or interval names/IDs."""
 
         # Start with unconstrained ages
-        b_age = 4600
-        t_age = 0
+        b_age = float("inf")
+        t_age = -float("inf")
 
         # Apply interval-based age constraints in order of specificity, complaining if conflicting
         if self.interval is not None:
@@ -107,8 +107,6 @@ class MatchQuery(BaseModel):
             b_age = min(b_age, self.b_age)
         if self.t_age is not None:
             t_age = max(t_age, self.t_age)
-        if b_age < t_age:
-            raise ValueError("Inconsistent age constraints: b_age < t_age")
         return AbsoluteAgeConstraint(b_age=b_age, t_age=t_age)
 
 
@@ -240,18 +238,24 @@ def match_units_multi(
     return generate_response(all_results, opts)
 
 
-def generate_response(results: list[MatchData], opts: MatchOptions) -> MatchAPIResponse:
+def generate_response(
+    results: list[MatchData], opts: MatchOptions, messages: list[MatchMessage] = None
+) -> MatchAPIResponse:
     # Aggregate warnings across all results
-    messages: set[MatchMessage] = set()
+    _messages: set[MatchMessage] = set()
     for result in results:
         if result.messages is None:
             continue
         for msg in result.messages:
-            messages.add(msg)
+            _messages.add(msg)
 
     # Could also raise an error/return a 404
     if len(results) == 0:
-        messages.add(MatchMessage(message="No matches found"))
+        _messages.add(MatchMessage(message="No matches found"))
+
+    if messages is not None:
+        for msg in messages:
+            _messages.add(msg)
 
     return MatchAPIResponse(
         version="0.0.1",
@@ -265,14 +269,35 @@ def generate_response(results: list[MatchData], opts: MatchOptions) -> MatchAPIR
 def build_match_data(db, params):
     """Build MatchData for a single MatchQuery."""
 
+    age_constraint = params.get_age_range(db)
+
+    res = params.model_dump()
+    # Add resolved numeric age constraints to context if provided
+    if age_constraint.t_age >= 0:
+        res["t_age"] = age_constraint.t_age
+    if age_constraint.b_age < 4600:
+        res["b_age"] = age_constraint.b_age
+
+    # Validate age constraint
+    if age_constraint.b_age < age_constraint.t_age:
+        # Return an error result
+        return MatchData(
+            **res,
+            matches=[],
+            messages=[
+                MatchMessage(
+                    message="Inconsistent age constraints: b_age < t_age",
+                    type=MatchMessageType.Error,
+                )
+            ],
+        )
+
     col_id = params.col_id
     if col_id is None:
         cols = get_columns_for_location(db, (params.lng, params.lat))
         col_ids = [col.col_id for col in cols]
     else:
         col_ids = [col_id]
-
-    age_constraint = params.get_age_range(db)
 
     results: list[MatchResult] = []
     messages: list[MatchMessage] = []
@@ -288,9 +313,6 @@ def build_match_data(db, params):
             )
         results += [MatchResult.from_row(r) for r in rows]
 
-    if len(results) == 0:
-        return None
-
     # TODO match based on lexicon footprints only if columns are not found.
 
     if len(col_ids) > 1:
@@ -302,4 +324,4 @@ def build_match_data(db, params):
             )
         )
 
-    return MatchData(**params.model_dump(), matches=results, messages=messages)
+    return MatchData(**res, matches=results, messages=messages)
