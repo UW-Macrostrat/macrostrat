@@ -9,6 +9,7 @@ from pytest import main
 from typer import Context, Typer
 
 from macrostrat.core.config import settings
+from macrostrat.utils import working_directory
 
 cli = Typer(
     short_help="Macrostrat tests",
@@ -27,13 +28,15 @@ cli = Typer(
 
 __here__ = Path(__file__).parent
 
+run_pytest = main
+
 
 @cli.command(name="runtime")
 def runtime_tests():
     """Test the deployed application"""
     print("Running runtime tests")
 
-    main(["-v", settings.srcroot / "runtime-tests"])
+    run_pytest(["-v", settings.srcroot / "runtime-tests"])
 
 
 @cli.command(name="cli")
@@ -41,7 +44,7 @@ def cli_tests():
     """Test the CLI"""
     print("Running CLI tests")
 
-    main(["-v", settings.srcroot / "cli" / "tests"])
+    run_pytest(["-v", settings.srcroot / "cli" / "tests"])
 
 
 @cli.command(
@@ -49,16 +52,9 @@ def cli_tests():
     context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
 )
 def all_tests(ctx: Context) -> None:
-    # run the banana command with all arguments
     """Run all tests"""
-    main(
-        [
-            settings.srcroot / "cli",
-            settings.srcroot / "py-modules",
-            settings.srcroot / "map-integration",
-            *ctx.args,
-        ]
-    )
+    with working_directory(settings.srcroot):
+        run_pytest(ctx.args)
 
 
 @cli.command(

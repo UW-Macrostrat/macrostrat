@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 
 import dotenv
 import uvicorn
+from api.routes.dev_routes.convert import convert_router
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -9,7 +10,7 @@ dotenv.load_dotenv()
 
 import api.routes.security
 from api.database import connect_engine, dispose_engine
-from api.routes.dev import dev_router
+from api.match import router as match_router
 from api.routes.ingest import router as ingest_router
 from api.routes.object import router as object_router
 from api.routes.sources import router as sources_router
@@ -25,7 +26,7 @@ async def setup_engine(a: FastAPI):
 
 app = FastAPI(
     lifespan=setup_engine,
-    openapi_prefix="./",
+    root_path="./",
 )
 
 origins = [
@@ -47,7 +48,9 @@ app.include_router(api.routes.security.router)
 app.include_router(object_router)
 app.include_router(ingest_router)
 app.include_router(sources_router)
-app.include_router(dev_router)
+
+app.include_router(convert_router, prefix="/dev")
+app.include_router(match_router, prefix="/dev/match")
 
 
 if __name__ == "__main__":

@@ -6,38 +6,62 @@
 # On the bottom you will find the methods that do not use this method
 #
 import datetime
+from contextvars import ContextVar
 from os import environ
-from typing import List, Literal, Type
+from typing import Literal, Type
 
 import api.schemas as schemas
 from api.query_parser import QueryParser
 from dotenv import load_dotenv
 from pydantic import BaseModel
 from sqlalchemy import CursorResult, MetaData, Table, func, insert, select, text, update
-from sqlalchemy.exc import NoResultFound, NoSuchTableError
+from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
 )
-from starlette.requests import QueryParams
+
+from macrostrat.database import Database
 
 load_dotenv()
 
-engine: AsyncEngine = None
+_async_engine: ContextVar[AsyncEngine | None] = ContextVar("async_engine", default=None)
+_sync_database: ContextVar[Database | None] = ContextVar("sync_database", default=None)
 
 
 def get_engine():
-    return engine
+    return _async_engine.get()
+
+
+def get_db_url():
+    # Try several options ot get a database URL
+    # - MACROSTRAT_DATABASE_URL is used by PyTest embedded in the macrostrat cli
+    # - uri is how the Postgres Operator passes
+    # - DB_URL is nicer for .env files
+    for env in ["MACROSTRAT_DATABASE_URL", "uri", "DB_URL"]:
+        if environ.get(env, None) is not None:
+            return environ.get(env)
+    raise ValueError("No database URL found")
+
+
+def get_sync_database():
+    # Method to get a synchronous database connection
+    # TODO: this needs to be unified with the async engine management
+    db = _sync_database.get()
+    db_url = get_db_url()
+    if db is None:
+        db = Database(db_url)
+        _sync_database.set(db)
+    return db
 
 
 async def connect_engine() -> AsyncEngine:
-    global engine
-
     # Check the uri and DB_URL for the database connection string
     # uri is how the Postgres Operator passes, DB_URL is nicer for .env files
-    db_url = environ.get("DB_URL", None)
+    db_url = get_db_url()
+
     db_url = environ.get("uri", db_url)
 
     # Make sure this is all run async
@@ -45,13 +69,15 @@ async def connect_engine() -> AsyncEngine:
         db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
 
     engine = create_async_engine(db_url)
-
-    async with engine.begin() as conn:
-        await conn.run_sync(schemas.Base.metadata.create_all)
+    # Don't create the tables
+    # async with engine.begin() as conn:
+    #    await conn.run_sync(schemas.Base.metadata.create_all)
+    _async_engine.set(engine)
+    return engine
 
 
 async def dispose_engine():
-    global engine
+    engine = get_engine()
     await engine.dispose()
 
 

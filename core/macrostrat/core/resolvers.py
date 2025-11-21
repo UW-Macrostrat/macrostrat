@@ -36,6 +36,6 @@ def cast_sources(value):
 
 
 def setup_source_roots_environment(sources: _SourceRootConfig):
-    for k, v in sources.dict().items():
+    for k, v in sources.model_dump().items():
         if v is not None:
             environ[f"MACROSTRAT_{k.upper()}_SRC"] = str(v)

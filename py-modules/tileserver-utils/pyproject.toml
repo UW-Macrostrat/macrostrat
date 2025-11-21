@@ -7,7 +7,7 @@ requires-python = ">=3.9,<4.0"
 readme = "README.md"
 dependencies = [
     "starlette (>=0.37.0,<0.47.0)",
-    "fastapi (>=0.111.0,<0.112.0)",
+    "fastapi (>=0.111.0,<0.123.0)",
     "morecantile (>=5.0.0,<7.0.0)",
     "buildpg (>=0.4,<0.5)",
     "macrostrat.utils (>=1.3.1,<2.0.0)",

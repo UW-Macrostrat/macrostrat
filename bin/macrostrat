@@ -72,7 +72,7 @@ if [ "$1" = "uv" ]; then
     echo -e "MACROSTRAT_PYROOT is set to \033[36m$BASE_DIR\033[0m"
     echo ""
   fi
-  $_uv --directory "$BASE_DIR" "$@"
+  $_uv --project "$BASE_DIR" "$@"
   exit $?
 fi
 

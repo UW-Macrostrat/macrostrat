@@ -1,7 +1,7 @@
 from pytest import mark
 
-from macrostrat.cli.subsystems.sgp import get_sgp_db
-from macrostrat.cli.subsystems.sgp.match import DatabaseConfig, match_sgp_data
+from . import get_sgp_db
+from .match import DatabaseConfig, match_sgp_data
 
 
 # Note: these tests have to be outside the macrostrat.cli package
@@ -10,9 +10,6 @@ from macrostrat.cli.subsystems.sgp.match import DatabaseConfig, match_sgp_data
 def test_match_sgp_data(db):
 
     databases = DatabaseConfig(db, get_sgp_db())
-
-    print(databases.macrostrat.engine.url)
-    print(databases.sgp.engine.url)
 
     res = match_sgp_data(None, sample=5, databases=databases)
     assert res is not None

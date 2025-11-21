@@ -5,7 +5,12 @@ description = "Utilities to match geologic information to Macrostrat rock units"
 authors = [{ name = "Daven Quinn", email = "code@davenquinn.com" }]
 requires-python = ">=3.11"
 readme = "README.md"
-dependencies = []
+dependencies = [
+    "geopandas>=0.14.4",
+    "macrostrat-database>=3.5.4",
+    "pandas>=2.3.3",
+    "pydantic>=2.12.4",
+]
 
 [tool.hatch.build.targets.sdist]
 include = ["macrostrat"]

@@ -51,9 +51,10 @@ WITH RECURSIVE cols AS (
   JOIN adjacent_cols cols
     ON cols.col_id = u.col_id
 ), strat_name_children AS (
+  -- Unit at this level
   SELECT * FROM base_unit
   UNION ALL
-  -- Parents
+  -- Children
   SELECT
    sn2.*,
    snt.unit_id,
@@ -72,7 +73,8 @@ WITH RECURSIVE cols AS (
    snt.col_id,
    snt.depth - 1 AS depth
  FROM strat_units sn2
- JOIN strat_name_parents snt ON snt.strat_name_id = sn2.parent_id
+ JOIN strat_name_parents snt
+   ON snt.strat_name_id = sn2.parent_id
 ), all_results AS (
   SELECT * FROM strat_name_children
   UNION ALL
@@ -175,23 +177,32 @@ with_footprints_index AS (
     )
     AND :use_footprint_index
   ORDER BY sort_order, is_selected_column DESC NULLS LAST
+), res AS (
+  SELECT DISTINCT ON (sort_order, is_selected_column, strat_name_id)
+    sort_order priority,
+    strat_name_id,
+    strat_name,
+    rank strat_rank,
+    parent_id,
+    concept_id,
+    unit_id,
+    col_id,
+    depth,
+    basis,
+    CASE
+      WHEN is_selected_column != 0
+        THEN 'containing column'
+      ELSE 'adjacent column'
+      END AS   spatial_basis,
+    t_age,
+    b_age
+  FROM with_footprints_index
+  ORDER BY sort_order, is_selected_column DESC, strat_name_id
 )
-SELECT DISTINCT ON (sort_order, is_selected_column, strat_name_id)
-  strat_name_id,
-  strat_name,
-  rank,
-  parent_id,
-  concept_id,
-  unit_id,
-  col_id,
-  depth,
-  basis,
-  CASE
-    WHEN is_selected_column != 0
-    THEN 'containing column'
-    ELSE 'adjacent column'
-  END AS spatial_basis,
-  t_age min_age,
-  b_age max_age
-FROM with_footprints_index
-ORDER BY sort_order, is_selected_column DESC, strat_name_id;
+-- Start adding metadata to matches
+SELECT
+  *,
+  project_id project_id
+FROM res
+LEFT JOIN macrostrat.cols c
+  ON res.col_id = c.id
