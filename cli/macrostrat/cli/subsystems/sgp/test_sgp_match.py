@@ -11,9 +11,6 @@ def test_match_sgp_data(db):
 
     databases = DatabaseConfig(db, get_sgp_db())
 
-    print(databases.macrostrat.engine.url)
-    print(databases.sgp.engine.url)
-
     res = match_sgp_data(None, sample=5, databases=databases)
     assert res is not None
     assert len(res) == 5

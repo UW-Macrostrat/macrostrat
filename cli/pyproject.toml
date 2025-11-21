@@ -71,11 +71,11 @@ default-groups = [
 
 [tool.uv.sources]
 "macrostrat.map-integration" = { path = "../map-integration", editable = true }
-"macrostrat.core" = { workspace = true }
+"macrostrat.core" = { path = "../core", editable = true }
 "macrostrat.integrations" = { path = "../integrations", editable = true }
 "mapboard.topology-manager" = { path = "../submodules/topology-manager", editable = true }
 "htpheno.radosgw-admin-client" = { path = "../submodules/storage-admin", editable = true }
-"macrostrat.match-utils" = { workspace = true }
+"macrostrat.match-utils" = { path = "../py-modules/match-utils", editable = true }
 
 [tool.hatch.build.targets.sdist]
 include = ["macrostrat"]

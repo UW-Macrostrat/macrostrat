@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy.sql import text
 
 from .models import MatchType, MatchComparison, MatchResult
-from .strat_names import format_name, clean_strat_name, clean_strat_name_text
+from .strat_names import format_name, clean_strat_name, clean_strat_name_text, create_ignore_list
 from .utils import stored_procedure
 
 _column_unit_index = {}

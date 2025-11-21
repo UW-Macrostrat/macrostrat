@@ -1,4 +1,5 @@
 import enum
+from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from datetime import datetime
 from typing import Annotated, Optional
@@ -6,7 +7,6 @@ from typing import Annotated, Optional
 from fastapi import APIRouter, Query
 from pydantic import BaseModel, Field, model_validator
 
-from macrostrat.core.database import get_database
 from macrostrat.match_utils import (
     MatchResult,
     MatchType,
@@ -15,7 +15,9 @@ from macrostrat.match_utils import (
     standardize_names,
     get_all_matched_units,
     get_match_types,
+    create_ignore_list,
 )
+from ..database import get_sync_database as get_database
 
 
 class Interval(BaseModel):
@@ -26,10 +28,31 @@ class Interval(BaseModel):
 
 
 # Context variable to hold interval list
-intervals: ContextVar[list[Interval] | None] = ContextVar("intervals", default=None)
+_intervals: ContextVar[list[Interval] | None] = ContextVar("intervals", default=None)
 
 
-router = APIRouter(prefix="/match", tags=["match"])
+def setup_intervals(db):
+    """Load intervals from the database and store them in the context variable."""
+    # Get intervals from database
+    res = db.run_query(
+        "SELECT id, interval_name, age_bottom, age_top FROM macrostrat.intervals"
+    )
+    interval_list = [Interval.model_validate(obj, from_attributes=True) for obj in res]
+    _intervals.set(interval_list)
+
+
+@asynccontextmanager
+async def setup_matcher(app):
+    """Setup function to initialize matcher resources."""
+    db = get_database()
+    lith_names = db.run_query("SELECT lith name FROM macrostrat.liths").scalars().all()
+    create_ignore_list(lith_names)
+
+    setup_intervals(db)
+    yield
+
+
+router = APIRouter(prefix="/match", tags=["match"], lifespan=setup_matcher)
 
 
 class AbsoluteAgeConstraint(BaseModel):
@@ -84,7 +107,7 @@ class MatchQuery(BaseModel):
             raise ValueError("Either col_id or lat/lng must be provided.")
         return self
 
-    def get_age_range(self, db) -> AbsoluteAgeConstraint:
+    def get_age_range(self) -> AbsoluteAgeConstraint:
         """Get the best age constraint from the provided age or interval names/IDs."""
 
         # Start with unconstrained ages
@@ -93,15 +116,15 @@ class MatchQuery(BaseModel):
 
         # Apply interval-based age constraints in order of specificity, complaining if conflicting
         if self.interval is not None:
-            intv = get_interval(db, self.interval)
+            intv = get_interval(self.interval)
             b_age = intv.age_bottom
             t_age = intv.age_top
 
         if self.b_interval is not None:
-            intv = get_interval(db, self.b_interval)
+            intv = get_interval(self.b_interval)
             b_age = min(b_age, intv.age_bottom)
         if self.t_interval is not None:
-            intv = get_interval(db, self.t_interval)
+            intv = get_interval(self.t_interval)
             t_age = max(t_age, intv.age_top)
         if self.b_age is not None:
             b_age = min(b_age, self.b_age)
@@ -170,18 +193,11 @@ class MatchSingleQueryParams(MatchQuery, MatchOptions):
     pass
 
 
-def get_interval(db, interval: int | str) -> Optional[Interval]:
+def get_interval(interval: int | str) -> Optional[Interval]:
     """Retrieve interval information by ID or name."""
-    interval_list = intervals.get()
+    interval_list = _intervals.get()
     if interval_list is None:
-        # Get intervals from database
-        res = db.run_query(
-            "SELECT id, interval_name, age_bottom, age_top FROM macrostrat.intervals"
-        )
-        interval_list = [
-            Interval.model_validate(obj, from_attributes=True) for obj in res
-        ]
-        intervals.set(interval_list)
+        raise ValueError("Interval list not initialized.")
 
     for intv in interval_list:
         if isinstance(interval, int) and intv.id == interval:
@@ -269,7 +285,7 @@ def generate_response(
 def build_match_data(db, params):
     """Build MatchData for a single MatchQuery."""
 
-    age_constraint = params.get_age_range(db)
+    age_constraint = params.get_age_range()
 
     res = params.model_dump()
     # Add resolved numeric age constraints to context if provided

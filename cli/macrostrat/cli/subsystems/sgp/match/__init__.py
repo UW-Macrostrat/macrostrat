@@ -24,6 +24,7 @@ from macrostrat.match_utils import (
     get_columns_data_frame,
     get_match_types,
     get_matched_unit,
+    create_ignore_list
 )
 from ..utils import get_sgp_db, get_sgp_samples, stored_procedure, write_to_file
 
@@ -81,6 +82,9 @@ def match_sgp_data(
         databases = DatabaseConfig(macrostrat=get_db(), sgp=get_sgp_db())
 
     db = databases
+
+    lith_names = db.macrostrat.run_query("SELECT lith name FROM macrostrat.liths").scalars().all()
+    create_ignore_list(lith_names)
 
     samples = get_sgp_samples(db.sgp, "all-match-samples")
     if only_macrostrat:

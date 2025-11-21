@@ -5,20 +5,36 @@ Cleaning functions for stratigraphic names
 
 """
 
-from string import punctuation
-
 import enum
 import re
+from contextvars import ContextVar
 from functools import reduce
-from pydantic import BaseModel
+from string import punctuation
 
-from macrostrat.core.database import get_database
+from pydantic import BaseModel
 
 
 class Confidence(enum.Enum):
     Low = "low"
     High = "high"
     NotIndicated = "not indicated"
+
+
+_ignore_list: ContextVar[list[str] | None] = ContextVar("_ignore_list", default=None)
+
+
+def create_ignore_list(lith_names: list[str], force: bool = False):
+    """Create the ignore list for stratigraphic name cleaning."""
+    _ignore_list.set(build_ignore_list(lith_names))
+
+
+def get_ignore_list() -> list[str]:
+    ignore = _ignore_list.get()
+    if ignore is None:
+        raise ValueError(
+            "Ignore list has not been initialized; call create_ignore_list first."
+        )
+    return ignore
 
 
 def clean_strat_name_text(text):
@@ -61,9 +77,7 @@ def clean_strat_name(text, split_names=True):
 
 
 def _clean_name(name, confidence=Confidence.NotIndicated):
-    global _ignore_list
-    if _ignore_list is None:
-        _ignore_list = build_ignore_list()
+    _ignore_list = get_ignore_list()
 
     # Remove punctuation
     for d in delete:
@@ -248,15 +262,10 @@ ranks = [
     "supergroup",
 ]
 
-_ignore_list = None
-
 
 # DESIGNATIONS OF STRATIGRAPHIC RANK (SEDIMENTARY LITHOLOGIES)
-def build_ignore_list():
-    db = get_database()
-    ignore = [
-        l[0] for l in db.run_query("SELECT lith name FROM macrostrat.liths").all()
-    ]
+def build_ignore_list(lith_names: list[str]) -> list[str]:
+    ignore = lith_names
 
     ignore += ["ls", "dol", "dolo", "ss", "cong", "congl", "sh"]
 

@@ -6,6 +6,10 @@ WORKDIR /services/main
 
 ENV UV_COMPILE_BYTECODE=1
 
+
+# NEED TO specify another build context for the py-modules directory
+COPY --from=py-modules match-utils /py-modules/match-utils
+
 # Install dependencies
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \

@@ -28,20 +28,15 @@ py-modules = []
 # Allow the entire workspace to be treated
 # as a packages, to facilitate integration
 # into broader Python environments.
-package = false
 default-groups = [
     "dev",
 ]
 
 [tool.uv.sources]
-"macrostrat.cli" = { workspace = true }
-"macrostrat.match-utils" = { workspace = true }
-"macrostrat.core" = { workspace = true }
-"api" = { path = "services/api-v3"  }
-
-[tool.uv.workspace]
-members = ["py-modules/*", "cli", "core"]
-
+"macrostrat.cli" = { editable = true, path = "cli" }
+"macrostrat.match-utils" = { editable = true, path = "py-modules/match-utils" }
+"macrostrat.core" = { editable = true, path = "core" }
+"api" = { editable = true, path = "services/api-v3" }
 
 [tool.black]
 line-length = 88
