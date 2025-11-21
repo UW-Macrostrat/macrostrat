@@ -46,7 +46,6 @@ def clean_strat_name_text(text):
 
 
 def clean_strat_name(text, split_names=True):
-
     # Remove gremlins
     for g in gremlins:
         text = text.replace(g, gremlins[g])
@@ -158,7 +157,6 @@ class StratRank(enum.Enum):
     Suite = "suite"
 
     def __lt__(self, other):
-
         return order.index(self) < order.index(other)
 
     def __repr__(self):
@@ -169,6 +167,7 @@ class StratNameTextMatch(BaseModel):
     name: str
     rank: StratRank | None
     confidence: Confidence
+
     # Extra information about lithology and age
     # lith_signifiers: list[str]
     # age_signifiers: list[str]
@@ -296,7 +295,7 @@ def build_ignore_list(lith_names: list[str]) -> list[str]:
 delete = [l for l in punctuation if l not in ["-", "/", "?"]]
 
 # SOME INSTANCES DIVIDE STRAT NAMES ON WITH THESE MODIFIERS
-to_split = ["\s*-\s*", "\s*/\s*"]
+to_split = [r"\s*-\s*", r"\s*/\s*"]
 
 # ABBREVIATION REPLACEMENTS
 replace = {

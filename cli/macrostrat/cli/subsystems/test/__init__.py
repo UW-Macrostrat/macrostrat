@@ -3,8 +3,9 @@ Basic wrapper for PyTest to run Macrostrat tests.
 
 """
 
-from macrostrat.utils import working_directory
 from pathlib import Path
+
+from macrostrat.utils import working_directory
 from pytest import main
 from typer import Context, Typer
 
@@ -27,13 +28,14 @@ cli = Typer(
 
 __here__ = Path(__file__).parent
 
+run_pytest = main
 
 @cli.command(name="runtime")
 def runtime_tests():
     """Test the deployed application"""
     print("Running runtime tests")
 
-    main(["-v", settings.srcroot / "runtime-tests"])
+    run_pytest(["-v", settings.srcroot / "runtime-tests"])
 
 
 @cli.command(name="cli")
@@ -41,7 +43,7 @@ def cli_tests():
     """Test the CLI"""
     print("Running CLI tests")
 
-    main(["-v", settings.srcroot / "cli" / "tests"])
+    run_pytest(["-v", settings.srcroot / "cli" / "tests"])
 
 
 @cli.command(
@@ -49,10 +51,9 @@ def cli_tests():
     context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
 )
 def all_tests(ctx: Context) -> None:
-    # run the banana command with all arguments
     """Run all tests"""
     with working_directory(settings.srcroot):
-        main(ctx.args)
+        run_pytest(ctx.args)
 
 
 @cli.command(
