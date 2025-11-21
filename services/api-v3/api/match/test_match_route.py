@@ -3,7 +3,8 @@ from fastapi.testclient import TestClient
 from pytest import mark
 
 from macrostrat.match_utils.test_match_strat_names import cases
-from . import router, MatchQuery, setup_intervals
+
+from . import MatchQuery, router, setup_intervals
 
 test_app = FastAPI()
 test_app.include_router(router)

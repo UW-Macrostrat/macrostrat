@@ -10,8 +10,9 @@ from contextvars import ContextVar
 from os import environ
 from typing import Literal, Type
 
+import api.schemas as schemas
+from api.query_parser import QueryParser
 from dotenv import load_dotenv
-from macrostrat.database import Database
 from pydantic import BaseModel
 from sqlalchemy import CursorResult, MetaData, Table, func, insert, select, text, update
 from sqlalchemy.exc import NoResultFound
@@ -22,8 +23,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-import api.schemas as schemas
-from api.query_parser import QueryParser
+from macrostrat.database import Database
 
 load_dotenv()
 

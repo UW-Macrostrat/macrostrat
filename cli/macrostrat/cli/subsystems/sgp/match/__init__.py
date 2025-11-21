@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from geopandas import sjoin
-from macrostrat.database import Database
 from pandas import DataFrame, isna, read_sql
 from pydantic import BaseModel
 from rich.live import Live
@@ -17,15 +16,17 @@ from typer import Option
 
 from macrostrat.cli.database import get_db
 from macrostrat.core.console import err_console as console
+from macrostrat.database import Database
 from macrostrat.match_utils import (
     MatchType,
+    create_ignore_list,
     format_names,
-    standardize_names,
     get_columns_data_frame,
     get_match_types,
     get_matched_unit,
-    create_ignore_list,
+    standardize_names,
 )
+
 from ..utils import get_sgp_db, get_sgp_samples, stored_procedure, write_to_file
 
 here = Path(__file__).parent

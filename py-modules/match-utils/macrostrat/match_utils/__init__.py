@@ -1,17 +1,18 @@
 from contextvars import ContextVar
 
 from geopandas import GeoDataFrame
-from macrostrat.database import Database
 from pandas import isna, read_sql
 from pydantic import BaseModel
 from sqlalchemy.sql import text
 
-from .models import MatchType, MatchComparison, MatchResult
+from macrostrat.database import Database
+
+from .models import MatchComparison, MatchResult, MatchType
 from .strat_names import (
-    format_name,
     clean_strat_name,
     clean_strat_name_text,
     create_ignore_list,
+    format_name,
 )
 from .utils import stored_procedure
 

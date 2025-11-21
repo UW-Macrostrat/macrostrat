@@ -7,16 +7,17 @@ from fastapi import APIRouter, Query
 from pydantic import BaseModel, Field, model_validator
 
 from macrostrat.match_utils import (
+    MatchComparison,
     MatchResult,
     MatchType,
-    MatchComparison,
-    get_columns_for_location,
-    standardize_names,
-    get_all_matched_units,
-    get_match_types,
     create_ignore_list,
+    get_all_matched_units,
+    get_columns_for_location,
+    get_match_types,
+    standardize_names,
 )
 from macrostrat.match_utils.strat_names import get_ignore_list
+
 from ..database import get_sync_database as get_database
 
 

@@ -9,15 +9,14 @@ from pydantic import BaseModel
 from pytest import mark
 
 from . import (
+    ensure_single,
+    get_all_matched_units,
+    get_column_units,
+    get_columns_for_location,
     get_matched_unit,
     standardize_names,
-    get_columns_for_location,
-    ensure_single,
-    get_column_units,
-    get_all_matched_units,
 )
 from .models import MatchResult
-
 
 # xy == -109.905/35.951
 # strat name candidate Navajo

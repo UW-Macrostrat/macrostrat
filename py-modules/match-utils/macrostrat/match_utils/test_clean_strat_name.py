@@ -1,6 +1,6 @@
 from pytest import fixture
 
-from .strat_names import clean_strat_name, StratRank, create_ignore_list
+from .strat_names import StratRank, clean_strat_name, create_ignore_list
 
 
 @fixture(scope="module", autouse=True)

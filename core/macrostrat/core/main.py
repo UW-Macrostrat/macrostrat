@@ -1,19 +1,20 @@
 from os import environ
 from pathlib import Path
-from sys import exit, argv
+from sys import argv, exit
 
 import toml
 from dynaconf import Dynaconf
+from rich.console import Console
+from typer import Context, Option, get_app_dir
+
 from macrostrat.app_frame import (
     Application,
+    ControlCommand,
     Subsystem,
     SubsystemManager,
-    ControlCommand,
 )
 from macrostrat.app_frame.control_command import CommandBase
 from macrostrat.utils import get_logger
-from rich.console import Console
-from typer import get_app_dir, Context, Option
 
 from .console import console_theme
 from .exc import MacrostratError
