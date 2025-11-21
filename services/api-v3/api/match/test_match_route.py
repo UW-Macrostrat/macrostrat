@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 from pytest import mark
 
 from macrostrat.match_utils.test_match_strat_names import cases
-from . import router
+from . import router, MatchQuery
 
 test_app = FastAPI()
 test_app.include_router(router)
@@ -162,3 +162,16 @@ def test_match_units_wrong_time_period():
     assert "results" in data
     results = data["results"]
     assert len(results) == 0
+
+def test_age_constraints(db):
+    data = MatchQuery(
+        lat=40.9,
+        lng=-105.6,
+        match_text="Jelm Formation",
+        b_age=250.0,
+        t_age=200.0,
+    )
+    age_range = data.get_age_range(db)
+
+    assert age_range.b_age == 250.0
+    assert age_range.t_age == 200.0

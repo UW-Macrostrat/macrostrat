@@ -1,9 +1,10 @@
 import enum
+from contextvars import ContextVar
 from datetime import datetime
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from macrostrat.core.database import get_database
 from macrostrat.match_utils import (
@@ -16,7 +17,24 @@ from macrostrat.match_utils import (
     get_match_types,
 )
 
+
+class Interval(BaseModel):
+    id: int
+    interval_name: str
+    age_bottom: float
+    age_top: float
+
+
+# Context variable to hold interval list
+intervals: ContextVar[list[Interval] | None] = ContextVar("intervals", default=None)
+
+
 router = APIRouter(prefix="/match", tags=["match"])
+
+
+class AbsoluteAgeConstraint(BaseModel):
+    b_age: int = Field(None, description="Early/lower age constraint in Ma")
+    t_age: int = Field(None, description="Late/upper age constraint in Ma")
 
 
 class MatchQuery(BaseModel):
@@ -45,10 +63,6 @@ class MatchQuery(BaseModel):
     project_id: int | None = Field(
         None, description="Search within a specific Macrostrat project"
     )
-
-    b_age: int | None = Field(None, description="Early/lower age constraint in Ma")
-    t_age: int| None= Field(None, description="Late/upper age constraint in Ma")
-
     b_interval: int | str | None = Field(
         None, description="Early/lower interval name or ID"
     )
@@ -58,13 +72,44 @@ class MatchQuery(BaseModel):
     interval: int | str | None = Field(
         None, description="Interval name or ID to constrain matches"
     )
+    b_age: int | None = Field(None, description="Early/lower age constraint in Ma")
+    t_age: int | None = Field(None, description="Late/upper age constraint in Ma")
 
     # Enforce one of col_id or lat/lng
-    def validate(self):
+    @model_validator(mode="after")
+    def validate_position_info(self):
         if (self.lat is None) != (self.lng is None):
             raise ValueError("Lat and lng must both be provided.")
         if self.col_id is None and (self.lat is None or self.lng is None):
             raise ValueError("Either col_id or lat/lng must be provided.")
+        return self
+
+    def get_age_range(self, db) -> AbsoluteAgeConstraint:
+        """Get the best age constraint from the provided age or interval names/IDs."""
+
+        # Start with unconstrained ages
+        b_age = 4600
+        t_age = 0
+
+        # Apply interval-based age constraints in order of specificity, complaining if conflicting
+        if self.interval is not None:
+            intv = get_interval(db, self.interval)
+            b_age = intv.age_bottom
+            t_age = intv.age_top
+
+        if self.b_interval is not None:
+            intv = get_interval(db, self.b_interval)
+            b_age = min(b_age, intv.age_bottom)
+        if self.t_interval is not None:
+            intv = get_interval(db, self.t_interval)
+            t_age = max(t_age, intv.age_top)
+        if self.b_age is not None:
+            b_age = min(b_age, self.b_age)
+        if self.t_age is not None:
+            t_age = max(t_age, self.t_age)
+        if b_age < t_age:
+            raise ValueError("Inconsistent age constraints: b_age < t_age")
+        return AbsoluteAgeConstraint(b_age=b_age, t_age=t_age)
 
 
 class MatchMessageType(enum.Enum):
@@ -127,6 +172,27 @@ class MatchSingleQueryParams(MatchQuery, MatchOptions):
     pass
 
 
+def get_interval(db, interval: int | str) -> Optional[Interval]:
+    """Retrieve interval information by ID or name."""
+    interval_list = intervals.get()
+    if interval_list is None:
+        # Get intervals from database
+        res = db.run_query(
+            "SELECT id, interval_name, age_bottom, age_top FROM macrostrat.intervals"
+        )
+        interval_list = [
+            Interval.model_validate(obj, from_attributes=True) for obj in res
+        ]
+        intervals.set(interval_list)
+
+    for intv in interval_list:
+        if isinstance(interval, int) and intv.id == interval:
+            return intv
+        elif isinstance(interval, str) and intv.interval_name == interval:
+            return intv
+    return None
+
+
 @router.get("/strat-names")
 def match_units(
     query: Annotated[MatchSingleQueryParams, Query()],
@@ -137,7 +203,6 @@ def match_units(
     # Reconstruct separated mixins
     params = MatchQuery(**query.model_dump())
     opts = MatchOptions(**query.model_dump())
-    params.validate()
 
     db = get_database()
 
@@ -166,9 +231,6 @@ def match_units_multi(
 
     if len(body) > 100:
         raise ValueError("Maximum of 100 queries allowed per request.")
-
-    for params in body:
-        params.validate()
 
     for params in body:
         match_data = build_match_data(db, params)
@@ -201,6 +263,8 @@ def generate_response(results: list[MatchData], opts: MatchOptions) -> MatchAPIR
 
 
 def build_match_data(db, params):
+    """Build MatchData for a single MatchQuery."""
+
     col_id = params.col_id
     if col_id is None:
         cols = get_columns_for_location(db, (params.lng, params.lat))
@@ -208,12 +272,20 @@ def build_match_data(db, params):
     else:
         col_ids = [col_id]
 
+    age_constraint = params.get_age_range(db)
+
     results: list[MatchResult] = []
     messages: list[MatchMessage] = []
     for col_id in col_ids:
         names = standardize_names(params.match_text)
         with db.engine.connect() as conn:
-            rows = get_all_matched_units(conn, col_id, names)
+            rows = get_all_matched_units(
+                conn,
+                col_id,
+                names,
+                t_age=age_constraint.t_age,
+                b_age=age_constraint.b_age,
+            )
         results += [MatchResult.from_row(r) for r in rows]
 
     if len(results) == 0:

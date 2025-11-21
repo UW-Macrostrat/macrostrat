@@ -1,3 +1,5 @@
+from contextvars import ContextVar
+
 from geopandas import GeoDataFrame
 from macrostrat.database import Database
 from pandas import isna, read_sql
@@ -87,14 +89,16 @@ def ensure_single(col_ids, entity="column"):
     return col_ids[0]
 
 
+column_unit_index = ContextVar("column_unit_index", default={})
+
+
 def get_column_units(conn, col_id, types: list[MatchType] = None):
     """
     Get a unit that matches a given stratigraphic name
     """
-    global _column_unit_index
-
-    if col_id in _column_unit_index:
-        return _column_unit_index[col_id]
+    unit_index = column_unit_index.get()
+    if col_id in unit_index:
+        return unit_index[col_id]
 
     types = get_match_types(types)
 
@@ -121,8 +125,10 @@ def get_column_units(conn, col_id, types: list[MatchType] = None):
     # Fix multiple project_id columns (not sure why this is happening)
     units_df = units_df.loc[:, ~units_df.columns.duplicated()]
 
-    _column_unit_index[col_id] = units_df
-
+    # Set the index to a shared cache
+    unit_index = column_unit_index.get()
+    unit_index[col_id] = units_df
+    column_unit_index.set(unit_index)
     return units_df
 
 
@@ -168,12 +174,20 @@ def get_all_matched_units(
     comparison: MatchComparison = MatchComparison.Included,
     types: list[MatchType] = None,
     n_results: int | None = None,
+    t_age: float | None = None,
+    b_age: float | None = None,
 ):
     """
     Return all units and stratigraphic names that match the given col_id
     """
 
     units = get_column_units(conn, col_id, types=types)
+    # Units matching age constraints only
+    if b_age is not None:
+        units = units.loc[units["min_age"] <= b_age]
+    if t_age is not None:
+        units = units.loc[units["max_age"] >= t_age]
+
     u1 = units[units.strat_name_clean.notnull()]
 
     matched_rows = []
