@@ -30,6 +30,7 @@ __here__ = Path(__file__).parent
 
 run_pytest = main
 
+
 @cli.command(name="runtime")
 def runtime_tests():
     """Test the deployed application"""

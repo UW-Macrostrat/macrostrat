@@ -1,5 +1,4 @@
 import enum
-from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from datetime import datetime
 from typing import Annotated, Optional
@@ -17,6 +16,7 @@ from macrostrat.match_utils import (
     get_match_types,
     create_ignore_list,
 )
+from macrostrat.match_utils.strat_names import get_ignore_list
 from ..database import get_sync_database as get_database
 
 
@@ -34,6 +34,10 @@ _intervals: ContextVar[list[Interval] | None] = ContextVar("intervals", default=
 def setup_intervals(db):
     """Load intervals from the database and store them in the context variable."""
     # Get intervals from database
+    val = _intervals.get()
+    if val is not None:
+        return  # Already initialized
+
     res = db.run_query(
         "SELECT id, interval_name, age_bottom, age_top FROM macrostrat.intervals"
     )
@@ -41,18 +45,22 @@ def setup_intervals(db):
     _intervals.set(interval_list)
 
 
-@asynccontextmanager
-async def setup_matcher(app):
+def setup_matcher():
     """Setup function to initialize matcher resources."""
     db = get_database()
-    lith_names = db.run_query("SELECT lith name FROM macrostrat.liths").scalars().all()
-    create_ignore_list(lith_names)
+    try:
+        ignore = get_ignore_list()
+        return
+    except ValueError:
+        lith_names = (
+            db.run_query("SELECT lith name FROM macrostrat.liths").scalars().all()
+        )
+        create_ignore_list(lith_names)
 
     setup_intervals(db)
-    yield
 
 
-router = APIRouter(prefix="/match", tags=["match"], lifespan=setup_matcher)
+router = APIRouter(tags=["match"])
 
 
 class AbsoluteAgeConstraint(BaseModel):
@@ -180,8 +188,8 @@ class MatchAPIResponse(BaseModel):
 
 
 class MatchOptions(BaseModel):
-    basis: set[MatchType] = Field(
-        set(get_match_types(None)), description="Types of matches to include."
+    basis: Optional[set[MatchType]] = Field(
+        None, description="Types of matches to include."
     )
     comparison: MatchComparison = Field(
         MatchComparison.Included,
@@ -217,8 +225,11 @@ def match_units(
     # Reconstruct separated mixins
     params = MatchQuery(**query.model_dump())
     opts = MatchOptions(**query.model_dump())
+    if opts.basis is None:
+        opts.basis = set(get_match_types(None))
 
     db = get_database()
+    setup_matcher()
 
     results = []
     match_data = build_match_data(db, params)
@@ -238,8 +249,11 @@ def match_units_multi(
     :return: MatchAPIResponse
     """
     opts = MatchOptions(**query.model_dump())
+    if opts.basis is None:
+        opts.basis = set(get_match_types(None))
 
     db = get_database()
+    setup_matcher()
 
     all_results: list[MatchData] = []
 

@@ -12,7 +12,7 @@ client = TestClient(test_app, raise_server_exceptions=True)
 
 
 def test_match_units_no_params():
-    response = client.get("/match/strat-names")
+    response = client.get("/strat-names")
     assert response.status_code == 422  # Missing required parameters
     data = response.json()
     assert "detail" in data
@@ -21,7 +21,7 @@ def test_match_units_no_params():
 @mark.parametrize("case", cases)
 def test_basic_match_units(case):
     response = client.get(
-        "/match/strat-names",
+        "/strat-names",
         params={
             "lat": case.xy[1],
             "lng": case.xy[0],
@@ -43,7 +43,7 @@ def test_basic_match_units(case):
 
 def test_no_match_units():
     response = client.get(
-        "/match/strat-names",
+        "/strat-names",
         params={
             "lat": 0.0,
             "lng": 0.0,
@@ -60,7 +60,7 @@ def test_no_match_units():
 
 def test_multi_match_units():
     response = client.post(
-        "/match/strat-names",
+        "/strat-names",
         json=[
             {
                 "lat": case.xy[1],
@@ -93,7 +93,7 @@ def test_multi_match_units():
 
 def test_match_units_ambiguous_column():
     response = client.get(
-        "/match/strat-names",
+        "/strat-names",
         params={
             "lat": 53.11400,
             "lng": -120.90900,
@@ -121,7 +121,7 @@ pos = [-105.6, 40.9]  # Near front range of Colorado
 
 def test_match_units_time_limited():
     response = client.get(
-        "/match/strat-names",
+        "/strat-names",
         params={
             "lat": pos[1],
             "lng": pos[0],
@@ -145,7 +145,7 @@ def test_match_units_time_limited():
 
 def test_match_units_wrong_time_period():
     response = client.get(
-        "/match/strat-names",
+        "/strat-names",
         params={
             "lat": pos[1],
             "lng": pos[0],
@@ -180,7 +180,7 @@ def test_age_constraints(db):
 
 def test_age_constraints_interval():
     response = client.get(
-        "/match/strat-names",
+        "/strat-names",
         params={
             "lat": pos[1],
             "lng": pos[0],
@@ -207,7 +207,7 @@ def test_age_constraints_interval():
 
 def test_invalid_age_constraints():
     response = client.get(
-        "/match/strat-names",
+        "/strat-names",
         params={
             "lat": 40.0,
             "lng": -105.0,
@@ -228,7 +228,7 @@ def test_invalid_age_constraints():
 
 def test_match_types():
     response = client.get(
-        "/match/strat-names",
+        "/strat-names",
         params={
             "col_id": 490,
             "match_text": "Brady Butte Pluton",
