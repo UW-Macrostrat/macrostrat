@@ -14,6 +14,7 @@ from . import (
     get_columns_for_location,
     ensure_single,
     get_column_units,
+    get_all_matched_units,
 )
 from .models import MatchResult
 
@@ -87,3 +88,14 @@ def test_strat_name_coerce_to_pydantic(db, case):
     result = MatchResult.from_row(unit)
     assert result.unit_id == case.unit_id
     assert result.strat_name_id == case.strat_name_id
+
+
+def test_match_count(db):
+
+    names = standardize_names("Brady Butte Pluton")
+    with db.engine.connect() as conn:
+        units = get_all_matched_units(conn, 490, names)
+    assert len(units) == 2
+    assert units[0].strat_name == "Brady Butte Granodiorite"
+    unit_ids = set(unit.unit_id for unit in units)
+    assert unit_ids == {1852}

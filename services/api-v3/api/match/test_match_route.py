@@ -57,6 +57,7 @@ def test_no_match_units():
     assert len(results) == 1
     assert len(results[0]["matches"]) == 0
 
+
 def test_multi_match_units():
     response = client.post(
         "/match/strat-names",
@@ -222,3 +223,27 @@ def test_invalid_age_constraints():
     assert len(results) == 1
     messages = results[0]["messages"]
     assert any("Inconsistent age constraints" in msg["message"] for msg in messages)
+
+
+def test_match_types():
+    response = client.get(
+        "/match/strat-names",
+        params={
+            "col_id": 490,
+            "match_text": "Brady Butte Pluton",
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert "results" in data
+    results = data["results"]
+    assert len(results) == 1
+    matches = results[0]["matches"]
+    assert len(matches) == 2
+
+    best_match = matches[0]
+    assert best_match["unit_id"] == 1852
+    assert best_match["strat_name"] == "Brady Butte Granodiorite"
+    second_match = matches[1]
+    assert second_match["unit_id"] == 1852
+    assert second_match["strat_name"] == "Brady Butte"

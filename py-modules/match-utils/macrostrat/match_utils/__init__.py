@@ -192,53 +192,50 @@ def get_all_matched_units(
 
     matched_rows = []
     # The max number of results to return
-    n_results = n_results or len(units)
+    n_results = n_results or len(u1)
 
+    # Perform matching in stages
+    for ix, row in u1.iterrows():
+        matches, _ = match_row(row, strat_names, comparison)
+        if not matches:
+            continue
+        matched_rows.append(row)
+        if len(matched_rows) >= n_results:
+            return matched_rows
+    return matched_rows
+
+
+def match_row(row, strat_names, comparison) -> tuple[bool, MatchComparison | None]:
     # We don't support fuzzy matching yet
     if comparison == MatchComparison.Fuzzy:
         raise NotImplementedError("Fuzzy matching not implemented")
 
-    # First, try exact matching
+    name = row["strat_name_clean"]
+    if name is None:
+        return False, None
+    # First try exact match, in all cases
     for strat_name in strat_names:
-        # Try for an exact match with all strat names
-        for ix, row in u1.iterrows():
-            name = row["strat_name_clean"]
-            if strat_name.name == name:
-                matched_rows.append(row)
-                if len(matched_rows) >= n_results:
-                    return matched_rows
-
+        if strat_name.name == name:
+            return True, MatchComparison.Exact
     if comparison == MatchComparison.Exact:
-        return matched_rows
+        return False, None
 
     # Name is a subset of the strat name
     for strat_name in strat_names:
         # Try for a "like" match, which might catch verbatim strat names better
-        for ix, row in u1.iterrows():
-            name = row["strat_name_clean"]
-            if name is None:
-                continue
-            if name in strat_name.name:
-                matched_rows.append(row)
-                if len(matched_rows) >= n_results:
-                    return matched_rows
+        if name in strat_name.name:
+            return True, MatchComparison.Included
 
     if comparison == MatchComparison.Included:
-        return matched_rows
+        return False, None
 
     # "Bidirectional" matching: strat name can be either a subset or superset of the cleaned name
     for strat_name in strat_names:
         # Finally check that our cleaned strat name does not include the cleaned name as a subset
-        for ix, row in u1.iterrows():
-            name = row["strat_name_clean"]
-            if name is None:
-                continue
-            if strat_name.name in name:
-                matched_rows.append(row)
-                if len(matched_rows) >= n_results:
-                    return matched_rows
+        if strat_name.name in name:
+            return True, MatchComparison.Bidirectional
 
-    return matched_rows
+    return False, None
 
 
 def standardize_names(source_text):
