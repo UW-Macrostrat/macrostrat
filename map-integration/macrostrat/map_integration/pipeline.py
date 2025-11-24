@@ -873,9 +873,7 @@ def ingest_csv(
     ] = default_s3_bucket,
     s3_prefix: Annotated[
         str,
-        Option(
-            help="The filename, sans trailing slash, to use for the files' S3 keys"
-        ),
+        Option(help="The filename, sans trailing slash, to use for the files' S3 keys"),
     ] = None,
     tag: Annotated[
         Optional[list[str]],
