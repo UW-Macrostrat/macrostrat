@@ -6,7 +6,7 @@ from psycopg2.sql import Identifier
 from macrostrat.map_integration.commands.ingest import ingest_map
 from macrostrat.map_integration.commands.prepare_fields import _prepare_fields
 from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
-from macrostrat.map_integration.utils.file_discovery import find_gis_files
+from macrostrat.map_integration.utils.ingestion_utils import find_gis_files
 from macrostrat.map_integration.utils.map_info import get_map_info
 
 
