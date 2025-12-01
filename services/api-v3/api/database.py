@@ -6,7 +6,6 @@
 # On the bottom you will find the methods that do not use this method
 #
 import datetime
-from contextvars import ContextVar
 from os import environ
 from typing import Literal, Type
 
@@ -27,12 +26,14 @@ from macrostrat.database import Database
 
 load_dotenv()
 
-_async_engine: ContextVar[AsyncEngine | None] = ContextVar("async_engine", default=None)
-_sync_database: ContextVar[Database | None] = ContextVar("sync_database", default=None)
+engine: AsyncEngine | None = None
+sync_db: Database | None = None
 
 
-def get_engine():
-    return _async_engine.get()
+def get_engine() -> AsyncEngine:
+    if engine is None:
+        raise RuntimeError("Database engine not initialized yet")
+    return engine
 
 
 def get_db_url():
@@ -47,38 +48,29 @@ def get_db_url():
 
 
 def get_sync_database():
-    # Method to get a synchronous database connection
-    # TODO: this needs to be unified with the async engine management
-    db = _sync_database.get()
-    db_url = get_db_url()
-    if db is None:
-        db = Database(db_url)
-        _sync_database.set(db)
-    return db
+    global sync_db
+    if sync_db is None:
+        sync_db = Database(get_db_url())
+    return sync_db
 
 
 async def connect_engine() -> AsyncEngine:
     # Check the uri and DB_URL for the database connection string
     # uri is how the Postgres Operator passes, DB_URL is nicer for .env files
+    global engine
     db_url = get_db_url()
-
-    db_url = environ.get("uri", db_url)
-
     # Make sure this is all run async
     if db_url.startswith("postgresql://"):
         db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
-
     engine = create_async_engine(db_url)
-    # Don't create the tables
-    # async with engine.begin() as conn:
-    #    await conn.run_sync(schemas.Base.metadata.create_all)
-    _async_engine.set(engine)
     return engine
 
 
 async def dispose_engine():
-    engine = get_engine()
-    await engine.dispose()
+    global engine
+    if engine is not None:
+        await engine.dispose()
+        engine = None
 
 
 def get_async_session(
@@ -203,7 +195,7 @@ async def get_table(
     conn, table_id: int, geometry_type: Literal["polygons", "points", "lines"]
 ) -> Table:
     metadata = MetaData(schema="sources")
-    table_slug = await source_id_to_slug(engine, table_id)
+    table_slug = await source_id_to_slug(get_engine(), table_id)
     table_name = f"{table_slug}_{geometry_type}"
     table = await conn.run_sync(
         lambda sync_conn: Table(table_name, metadata, autoload_with=sync_conn)

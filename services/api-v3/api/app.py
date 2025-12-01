@@ -17,9 +17,9 @@ from api.routes.sources import router as sources_router
 
 
 @asynccontextmanager
-async def setup_engine(a: FastAPI):
+async def setup_engine(app: FastAPI):
     """Return database client instance."""
-    await connect_engine()
+    app.state.engine = await connect_engine()
     yield
     await dispose_engine()
 
