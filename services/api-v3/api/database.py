@@ -29,10 +29,12 @@ load_dotenv()
 engine: AsyncEngine | None = None
 sync_db: Database | None = None
 
+
 def get_engine() -> AsyncEngine:
     if engine is None:
         raise RuntimeError("Database engine not initialized yet")
     return engine
+
 
 def get_db_url():
     # Try several options ot get a database URL
@@ -62,6 +64,7 @@ async def connect_engine() -> AsyncEngine:
         db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
     engine = create_async_engine(db_url)
     return engine
+
 
 async def dispose_engine():
     global engine
