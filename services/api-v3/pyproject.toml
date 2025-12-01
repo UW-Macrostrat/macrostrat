@@ -1,5 +1,5 @@
 [project]
-name = "api-v3"
+name = "api"
 version = "2.3.2"
 description = ""
 authors = [{ name = "Cannon Lock", email = "clock@wisc.edu" }]

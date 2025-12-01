@@ -6,7 +6,7 @@ all:
 	    --log-level debug \
 	    --reload-dir ../..
 # Extract project name (api-v3) from pyproject.toml
-NAME = $(shell grep -E '^[[:space:]]*name[[:space:]]*=' pyproject.toml | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+NAME = api-v3
 
 # Extract version (2.3.2) from pyproject.toml
 VERSION = $(shell grep -E '^[[:space:]]*version[[:space:]]*=' pyproject.toml | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
