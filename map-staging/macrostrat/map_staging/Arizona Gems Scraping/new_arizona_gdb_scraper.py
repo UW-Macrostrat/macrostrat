@@ -4,6 +4,7 @@ import random
 import re
 import time
 import zipfile
+from multiprocessing.pool import ExceptionWithTraceback
 from typing import Optional
 from urllib.parse import unquote, urljoin, urlparse
 
@@ -11,19 +12,21 @@ import requests
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 
+"""
 BASE_URL = "https://repository.arizona.edu"
 START_URL = f"{BASE_URL}/handle/10150/628301/recent-submissions"
-OUTPUT_DIR = "gdb_zips"
-
-os.makedirs(OUTPUT_DIR, exist_ok=True)
-
 SKIPPED_FILENAMES_PATH = "downloaded_gdb_files.txt"
-
 # Load downloaded filenames into a set
 downloaded_filenames = set()
 if os.path.exists(SKIPPED_FILENAMES_PATH):
     with open(SKIPPED_FILENAMES_PATH) as f:
-        downloaded_filenames = set(line.strip() for line in f)
+        downloaded_filenames = set(line.strip() for line in f)"""
+
+OUTPUT_DIR = "collection_zips"
+GDB_DIR = "gdb_zips"
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+os.makedirs(GDB_DIR, exist_ok=True)
+
 SAVE_METADATA_PATH = "metadata.csv"
 CSV_HEADERS = [
     "filename_prefix",
@@ -46,7 +49,7 @@ if not os.path.exists(SAVE_METADATA_PATH) or os.path.getsize(SAVE_METADATA_PATH)
         writer = csv.writer(f)
         writer.writerow(CSV_HEADERS)
 
-
+"""
 visited_urls = set()
 if os.path.exists(SAVE_METADATA_PATH):
     with open(SAVE_METADATA_PATH, newline="") as f:
@@ -60,19 +63,14 @@ if os.path.exists(SAVE_METADATA_PATH):
                 url = row[0].strip()
             else:
                 url = row[1].strip()
-            visited_urls.add(url)
+            visited_urls.add(url)"""
 
 
-def strip_gdb_zip_suffixes(filename: str) -> str:
-    """
-    Given something like 'BoulderMountain.gdb.zip', return 'BoulderMountain'.
-    Handles .zip, .gdb, or .gdb.zip (case-insensitive).
-    """
-    name = filename
-    for ext in [".zip", ".gdb"]:
-        if name.lower().endswith(ext):
-            name = name[: -len(ext)]
-    return name
+def strip_gdb_zip_suffixes(name: str) -> str | None:
+    if name.lower().endswith(".gdb.zip"):
+        return name[:-len(".gdb.zip")]
+    return None
+
 
 
 def extract_all_zips(root_dir=OUTPUT_DIR):
@@ -236,10 +234,8 @@ def filename_to_title_param(filename: str) -> str:
     return title_param
 
 
-def get_collection_id(title_param: str, filename: str) -> Optional[str]:
-    results = requests.get(
-        f"https://data.azgs.arizona.edu/api/v1/metadata?collection_group=%21ADMM&title={title_param}"
-    )
+def get_collection_id(filename: str) -> Optional[str]:
+    results = requests.get("https://data.azgs.arizona.edu/api/v1/metadata?collection_group=ADGM&file_type=gisdata&latest=true")
     results.raise_for_status()
     results = results.json()
     for collection in results.get("data", []):
@@ -251,7 +247,13 @@ def get_collection_id(title_param: str, filename: str) -> Optional[str]:
     return None
 
 
-def get_collection_metadata(collection_id: str) -> dict:
+def get_gis_collections() -> Optional[str]:
+    results = requests.get("https://data.azgs.arizona.edu/api/v1/metadata?collection_group=ADGM&file_type=gisdata&latest=true")
+    results.raise_for_status()
+    return results.json()
+
+
+def get_collection_metadata(collection_id: str, name: str) -> dict:
     results = requests.get(
         f"https://data.azgs.arizona.edu/api/v1/metadata/{collection_id}"
     )
@@ -265,17 +267,12 @@ def get_collection_metadata(collection_id: str) -> dict:
     license_info = meta.get("license", {}) or {}
     authors = [a.get("person") for a in meta.get("authors", []) if a.get("person")]
     keywords = [k.get("name") for k in meta.get("keywords", []) if k.get("name")]
-    ref_source = meta_links[0].get("url") if meta_links else None
+    url = meta_links[0].get("url") if meta_links else None
 
     isbn_doi = identifiers.get("doi")
     if not isbn_doi and top_links:
         isbn_doi = top_links[0].get("href")
-    license_url = license_info.get("url")
     license_type = license_info.get("type")
-    if license_url or license_type:
-        license_str = "; ".join(p for p in (license_url, license_type) if p)
-    else:
-        license_str = ""
     year_raw = meta.get("year")
     try:
         ref_year = int(year_raw) if year_raw is not None else None
@@ -294,13 +291,17 @@ def get_collection_metadata(collection_id: str) -> dict:
         description = re.sub(r"\n+", " ", description)
         description = re.sub(r"\s+", " ", description).strip()
 
+
+
     required_fields = {
+        "name": name,
+        "url": url,
         "authors": authors,
         "ref_year": ref_year,
         "ref_title": meta.get("title"),
-        "ref_source": ref_source,
+        "ref_source": f"https://data.azgs.arizona.edu/api/v1/collections/{collection_id}",
         "isbn_doi": isbn_doi,
-        "license": license_str,
+        "license": license_type,
         "series": meta.get("series"),
         "keywords": keywords,
         "language": meta.get("language"),
@@ -308,7 +309,67 @@ def get_collection_metadata(collection_id: str) -> dict:
     }
     return required_fields
 
+def unzip_files(zip_path: str, extract_dir: str | None = None):
+    if extract_dir is None:
+        extract_dir = os.path.splitext(zip_path)[0]  # folder with same name as zip
+    os.makedirs(extract_dir, exist_ok=True)
+    with zipfile.ZipFile(zip_path, "r") as z:
+        z.extractall(extract_dir)
+    return extract_dir
 
+def extract_nested_gdb_zips(collection_dir: str, filename: str) -> None:
+    """
+    Walk collection_dir, find any *.gdb.zip under gisdata/, and extract the
+    GDB contents into GDB_DIR/<mapname>.gdb/.
+    """
+    os.makedirs(GDB_DIR, exist_ok=True)
+
+    for root, dirs, files in os.walk(collection_dir):
+        # Only process paths under a gisdata/* subtree
+        if "gisdata" not in root.split(os.sep):
+            continue
+        for fname in files:
+            if not fname.lower().endswith(".gdb.zip"):
+                continue
+            zip_path = os.path.join(root, fname)
+            gdb_name = filename + ".gdb"
+            #destination: GDB_DIR/WildcatHill.gdb
+            out_dir = os.path.join(GDB_DIR, gdb_name)
+            if os.path.exists(out_dir):
+                print(f"GDB already extracted: {out_dir}")
+                continue
+            print(f"Extracting nested GDB: {zip_path} -> {out_dir}")
+            os.makedirs(out_dir, exist_ok=True)
+            try:
+                with zipfile.ZipFile(zip_path, "r") as zf:
+                    zf.extractall(out_dir)
+            except Exception as e:
+                print(f"Failed to extract nested GDB {zip_path}: {e}")
+
+
+def download_files_from_api(collection_id: str, filename: str) -> None:
+    url = f"https://data.azgs.arizona.edu/api/v1/collections/{collection_id}"
+    print(f"Requesting: {url}")
+
+    #stream api response so we don't load the whole ZIP into memory
+    resp = requests.get(url, stream=True)
+    resp.raise_for_status()
+
+    out_path = os.path.join(OUTPUT_DIR, filename)
+    print(f"Downloading .gdb to: {out_path}")
+    try:
+        with open(out_path, "wb") as f:
+            for pkg in resp.iter_content(chunk_size=8192):
+                if pkg:
+                    f.write(pkg)
+        extract_dir = unzip_files(out_path)
+        print(f"Unzipped files: {extract_dir}")
+        extract_nested_gdb_zips(extract_dir, filename)
+    except Exception as e:
+        print(f"Could not download: {filename}, {collection_id}\n {e}")
+    return
+
+'''
 def download_gdb_zips(item_url: str):
     """
     Download any .gdb.zip files on the page and record metadata in processed_item_urls.csv.
@@ -325,7 +386,6 @@ def download_gdb_zips(item_url: str):
     for file_url in gdb_links:
         parsed = urlparse(file_url)
         filename = unquote(os.path.basename(parsed.path))  # e.g. 'WildcatHill.gdb.zip'
-        title_param = filename_to_title_param(filename)  # e.g. 'Wildcat+Hill'
         filename_prefix = strip_gdb_zip_suffixes(filename)  # e.g. 'WildcatHill'
         download_ok = False
         if filename in downloaded_filenames:
@@ -362,53 +422,39 @@ def download_gdb_zips(item_url: str):
             continue
         else:
             # Get metadata via API
-            collection_id = get_collection_id(title_param, filename)
+            collection_id = get_collection_id(filename)
             metadata = get_collection_metadata(collection_id) if collection_id else None
+            metadata_to_csv(metadata)
+    return 
+'''
 
-            # Map and write filename + metadata to CSV
-            if metadata:
-                authors_str = (
-                    "; ".join(metadata["authors"]) if metadata["authors"] else ""
-                )
-                keywords_str = (
-                    "; ".join(metadata["keywords"]) if metadata["keywords"] else ""
-                )
+def metadata_to_csv(metadata):
+    authors_str = (
+        "; ".join(metadata["authors"]) if metadata["authors"] else ""
+    )
+    keywords_str = (
+        "; ".join(metadata["keywords"]) if metadata["keywords"] else ""
+    )
 
-                row = [
-                    filename_prefix,  # filename_prefix
-                    item_url,  # url (original repo page)
-                    metadata["ref_title"] or "",  # ref_title
-                    authors_str,  # authors
-                    metadata["ref_year"] or "",  # ref_year
-                    metadata["ref_source"] or "",  # ref_source
-                    metadata["isbn_doi"] or "",  # isbn_doi
-                    metadata["license"] or "",  # license
-                    metadata["series"] or "",  # series
-                    keywords_str,  # keywords
-                    metadata["language"] or "",  # language
-                    metadata["description"] or "",  # description
-                ]
-            else:
-                row = [
-                    filename_prefix,
-                    item_url,
-                    "",
-                    "",
-                    "",
-                    "",
-                    "",
-                    "",
-                    "",
-                    "",
-                    "",
-                    "",
-                ]
+    row = [
+        metadata["name"],  # filename_prefix
+        metadata["url"],  # url (original repo page)
+        metadata["ref_title"] or "",  # ref_title
+        authors_str,  # authors
+        metadata["ref_year"] or "",  # ref_year
+        metadata["ref_source"] or "",  # ref_source
+        metadata["isbn_doi"] or "",  # isbn_doi
+        metadata["license"] or "",  # license
+        metadata["series"] or "",  # series
+        keywords_str,  # keywords
+        metadata["language"] or "",  # language
+        metadata["description"] or "",  # description
+    ]
 
-            with open(SAVE_METADATA_PATH, "a", newline="") as f:
-                writer = csv.writer(f)
-                writer.writerow(row)
 
-    return
+    with open(SAVE_METADATA_PATH, "a", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(row)
 
 
 def deduplicate_file(path):
@@ -423,8 +469,24 @@ def deduplicate_file(path):
 # metadata csv format: filename_prefix,url,ref_title,authors,ref_year,ref_source,scale_denominator
 if __name__ == "__main__":
     # deduplicate_file("scraped_item_links.txt")
-    item_pages = get_all_item_links(START_URL)
-    for idx, url in enumerate(tqdm(item_pages, desc="Items")):
+    #item_pages = get_all_item_links(START_URL)
+    collections = get_gis_collections()
+    for collection in collections.get("data", []):
+        collection_id = collection.get("collection_id")
+        meta = collection.get("metadata", {}) or {}
+        files = meta.get("files", [])
+        for f in files:
+            filename = f.get("name")
+            name = strip_gdb_zip_suffixes(filename)
+            if name is not None:
+                download_files_from_api(collection_id, name)
+                metadata = get_collection_metadata(collection_id, name)
+                metadata_to_csv(metadata)
+
+                break
+
+
+    """for idx, url in enumerate(tqdm(item_pages, desc="Items")):
         if url in visited_urls:
             continue  # skip already processed item
         try:
@@ -435,6 +497,5 @@ if __name__ == "__main__":
                 print(f"[Cooldown] Processed {idx} items, sleeping for 120 seconds...")
                 time.sleep(120)
         except Exception as e:
-            print("Error", url, e)
+            print("Error", url, e)"""
 
-    extract_all_zips()
