@@ -77,7 +77,9 @@ def normalize_slug(prefix: str, path: Path) -> tuple[str, str, str]:
     return slug, name, ext
 
 
-def process_sources_metadata(slug: str, region_path: Path, parent: Path | None) -> dict | None:
+def process_sources_metadata(
+    slug: str, region_path: Path, parent: Path | None
+) -> dict | None:
     """
     Load metadata for this map from metadata.csv.
 
