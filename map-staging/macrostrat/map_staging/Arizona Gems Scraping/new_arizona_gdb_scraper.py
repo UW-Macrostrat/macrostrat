@@ -68,7 +68,7 @@ if os.path.exists(SAVE_METADATA_PATH):
 
 def strip_gdb_zip_suffixes(filename: str) -> str | None:
     if filename.lower().endswith(".gdb.zip"):
-        return filename[:-len(".gdb.zip")]
+        return filename[: -len(".gdb.zip")]
     return None
 
 
@@ -211,7 +211,9 @@ def filename_to_title_param(filename: str) -> str:
 
 
 def get_collection_id(filename: str) -> Optional[str]:
-    results = requests.get("https://data.azgs.arizona.edu/api/v1/metadata?collection_group=ADGM&file_type=gisdata&latest=true")
+    results = requests.get(
+        "https://data.azgs.arizona.edu/api/v1/metadata?collection_group=ADGM&file_type=gisdata&latest=true"
+    )
     results.raise_for_status()
     results = results.json()
     for collection in results.get("data", []):
@@ -224,7 +226,9 @@ def get_collection_id(filename: str) -> Optional[str]:
 
 
 def get_gis_collections() -> Optional[str]:
-    results = requests.get("https://data.azgs.arizona.edu/api/v1/metadata?collection_group=ADGM&file_type=gisdata&latest=true&limit=500")
+    results = requests.get(
+        "https://data.azgs.arizona.edu/api/v1/metadata?collection_group=ADGM&file_type=gisdata&latest=true&limit=500"
+    )
     results.raise_for_status()
     return results.json()
 
@@ -267,8 +271,6 @@ def get_collection_metadata(collection_id: str, name: str) -> dict:
         description = re.sub(r"\n+", " ", description)
         description = re.sub(r"\s+", " ", description).strip()
 
-
-
     required_fields = {
         "name": name,
         "url": url,
@@ -285,6 +287,7 @@ def get_collection_metadata(collection_id: str, name: str) -> dict:
     }
     return required_fields
 
+
 def unzip_files(zip_path: str, extract_dir: str | None = None):
     if extract_dir is None:
         extract_dir = os.path.splitext(zip_path)[0]  # folder with same name as zip
@@ -292,6 +295,7 @@ def unzip_files(zip_path: str, extract_dir: str | None = None):
     with zipfile.ZipFile(zip_path, "r") as z:
         z.extractall(extract_dir)
     return extract_dir
+
 
 def extract_nested_gdb_zips(collection_dir: str) -> None:
     """
@@ -306,7 +310,7 @@ def extract_nested_gdb_zips(collection_dir: str) -> None:
             if not fname.lower().endswith(".gdb.zip"):
                 continue
             zip_path = os.path.join(root, fname)
-            gdb_name = fname[:-len(".gdb.zip")] + ".gdb"
+            gdb_name = fname[: -len(".gdb.zip")] + ".gdb"
             out_dir = os.path.join(GDB_DIR, gdb_name)
             if os.path.exists(out_dir):
                 print(f"GDB already extracted: {out_dir}")
@@ -328,7 +332,10 @@ def extract_nested_gdb_zips(collection_dir: str) -> None:
                         target_path = os.path.join(out_dir, name)
                         os.makedirs(os.path.dirname(target_path), exist_ok=True)
                         # Extract file content
-                        with zf.open(member) as source, open(target_path, "wb") as target:
+                        with (
+                            zf.open(member) as source,
+                            open(target_path, "wb") as target,
+                        ):
                             target.write(source.read())
 
             except Exception as e:
@@ -343,8 +350,8 @@ def download_files_from_api(collection_id: str, max_retries: int = 5) -> None:
     # Browser-like headers to avoid ZIP regeneration & increase success
     headers = {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                      "AppleWebKit/537.36 (KHTML, like Gecko) "
-                      "Chrome/139.0.0.0 Safari/537.36",
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/139.0.0.0 Safari/537.36",
         "Accept": "*/*",
         "Accept-Encoding": "identity",  # prevents content-encoding issues
         "Cache-Control": "no-cache",
@@ -360,9 +367,11 @@ def download_files_from_api(collection_id: str, max_retries: int = 5) -> None:
             # Explicitly handle gateway timeouts BEFORE raise_for_status()
             if resp.status_code == 504:
                 attempt += 1
-                wait = 10 * (2 ** attempt)
-                print(f"504 Gateway Timeout (attempt {attempt}/{max_retries}) "
-                      f"→ retrying in {wait}s...")
+                wait = 10 * (2**attempt)
+                print(
+                    f"504 Gateway Timeout (attempt {attempt}/{max_retries}) "
+                    f"→ retrying in {wait}s..."
+                )
                 time.sleep(wait)
                 continue
 
@@ -382,16 +391,18 @@ def download_files_from_api(collection_id: str, max_retries: int = 5) -> None:
             return  # done
         except requests.exceptions.Timeout:
             attempt += 1
-            wait = 10 * (2 ** attempt)
+            wait = 10 * (2**attempt)
             print(f"Timeout (attempt {attempt}/{max_retries}) → retrying in {wait}s...")
             time.sleep(wait)
         except requests.exceptions.HTTPError as e:
             # Do NOT retry 404, 400, etc.
             if resp.status_code >= 500:
                 attempt += 1
-                wait = 10 * (2 ** attempt)
-                print(f"Server error {resp.status_code} (attempt {attempt}/{max_retries}) "
-                      f"→ retrying in {wait}s...")
+                wait = 10 * (2**attempt)
+                print(
+                    f"Server error {resp.status_code} (attempt {attempt}/{max_retries}) "
+                    f"→ retrying in {wait}s..."
+                )
                 time.sleep(wait)
                 continue
             else:
@@ -399,8 +410,10 @@ def download_files_from_api(collection_id: str, max_retries: int = 5) -> None:
                 return
         except Exception as e:
             attempt += 1
-            wait = 10 * (2 ** attempt)
-            print(f"Unexpected error (attempt {attempt}/{max_retries}): {e} → retrying in {wait}s...")
+            wait = 10 * (2**attempt)
+            print(
+                f"Unexpected error (attempt {attempt}/{max_retries}): {e} → retrying in {wait}s..."
+            )
             time.sleep(wait)
 
     print(f"Failed to download collection {collection_id} after {max_retries} retries.")
@@ -465,13 +478,10 @@ def download_gdb_zips(item_url: str):
     return 
 '''
 
+
 def metadata_to_csv(metadata):
-    authors_str = (
-        "; ".join(metadata["authors"]) if metadata["authors"] else ""
-    )
-    keywords_str = (
-        "; ".join(metadata["keywords"]) if metadata["keywords"] else ""
-    )
+    authors_str = "; ".join(metadata["authors"]) if metadata["authors"] else ""
+    keywords_str = "; ".join(metadata["keywords"]) if metadata["keywords"] else ""
 
     row = [
         metadata["name"],  # filename_prefix
@@ -487,7 +497,6 @@ def metadata_to_csv(metadata):
         metadata["language"] or "",  # language
         metadata["description"] or "",  # description
     ]
-
 
     with open(SAVE_METADATA_PATH, "a", newline="") as f:
         writer = csv.writer(f)
@@ -506,7 +515,7 @@ def deduplicate_file(path):
 # metadata csv format: filename_prefix,url,ref_title,authors,ref_year,ref_source,scale_denominator
 if __name__ == "__main__":
     # deduplicate_file("scraped_item_links.txt")
-    #item_pages = get_all_item_links(START_URL)
+    # item_pages = get_all_item_links(START_URL)
     collections = get_gis_collections()
     for collection in collections.get("data", []):
         collection_id = collection.get("collection_id")
@@ -523,7 +532,6 @@ if __name__ == "__main__":
         metadata = get_collection_metadata(collection_id, gdb_prefix)
         metadata_to_csv(metadata)
 
-
     """for idx, url in enumerate(tqdm(item_pages, desc="Items")):
         if url in visited_urls:
             continue  # skip already processed item
@@ -536,4 +544,3 @@ if __name__ == "__main__":
                 time.sleep(120)
         except Exception as e:
             print("Error", url, e)"""
-
