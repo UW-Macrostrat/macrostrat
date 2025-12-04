@@ -117,7 +117,7 @@ def delete_sources(
         return
 
     for slug in slug:
-        #cmd_delete_dir(slug, file_name)
+        # cmd_delete_dir(slug, file_name)
         print(f"Deleting map {slug}")
         print(slug)
         tables = db.run_query(
@@ -288,7 +288,7 @@ def staging(
 
     slug, name, ext = normalize_slug(prefix, Path(data_path))
 
-    #cmd_upload_dir(slug, Path(data_path), ext)
+    # cmd_upload_dir(slug, Path(data_path), ext)
     print(f"Ingesting {slug} from {data_path}")
 
     gis_files, excluded_files = find_gis_files(Path(data_path), filter=filter)
@@ -550,7 +550,7 @@ def staging_bulk(
         slug, name, ext = normalize_slug(prefix, Path(region_path))
 
         # upload to the s3 bucket!
-        #cmd_upload_dir(slug, region_path, ext)
+        # cmd_upload_dir(slug, region_path, ext)
 
         print(f"Ingesting {slug} from {region_path}")
         gis_files, excluded_files = find_gis_files(Path(region_path), filter=filter)

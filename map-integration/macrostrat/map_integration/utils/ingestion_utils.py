@@ -88,7 +88,6 @@ def process_sources_metadata(slug: str, data_path: Path) -> dict | None:
     filename_prefix = Path(data_path).stem
     metadata_csv = data_path / "metadata.csv"
 
-
     if not metadata_csv.is_file():
         print(f"Error: metadata CSV not found at {metadata_csv}")
         return None
@@ -113,7 +112,7 @@ def process_sources_metadata(slug: str, data_path: Path) -> dict | None:
     def _safe(col):
         return row[col] if col in df.columns and pd.notna(row[col]) else None
 
-    #normalize keywords: split on semicolon, trim, drop empties
+    # normalize keywords: split on semicolon, trim, drop empties
     raw_keywords = _safe("keywords")
     keywords_list = (
         [kw.strip() for kw in raw_keywords.split(";") if kw.strip()]
@@ -136,4 +135,3 @@ def process_sources_metadata(slug: str, data_path: Path) -> dict | None:
         "language": _safe("language") or "",
         "description": _safe("description") or "",
     }
-
