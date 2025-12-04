@@ -77,16 +77,16 @@ def normalize_slug(prefix: str, path: Path) -> tuple[str, str, str]:
     return slug, name, ext
 
 
-def process_sources_metadata(slug: str, data_path: Path) -> dict | None:
+def process_sources_metadata(slug: str, region_path: Path, parent: Path | None) -> dict | None:
     """
     Load metadata for this map from metadata.csv.
 
     Expected columns in metadata.csv:
       filename_prefix,url,ref_title,authors,ref_year,ref_source,
-      isbn_doi,license,series,keywords,language,description
+      isbn_doi,license,keywords,language,description
     """
-    filename_prefix = Path(data_path).stem
-    metadata_csv = data_path / "metadata.csv"
+    filename_prefix = region_path.stem
+    metadata_csv = parent / "metadata.csv"
 
 
     if not metadata_csv.is_file():
@@ -131,7 +131,6 @@ def process_sources_metadata(slug: str, data_path: Path) -> dict | None:
         "ref_source": _safe("ref_source") or "",
         "isbn_doi": _safe("isbn_doi") or "",
         "license": _safe("license") or "",
-        "series": _safe("series") or "",
         "keywords": keywords_list,  # ARRAY
         "language": _safe("language") or "",
         "description": _safe("description") or "",

@@ -107,7 +107,7 @@ def truncate_source_metadata(data: dict[str, Any]) -> dict[str, Any]:
     for col in ["name", "url", "authors", "ref_source"]:
         if col in data:
             data[col] = truncate_str(data[col], limit=255)
-    for col in ["isbn_doi", "licence"]:
+    for col in ["isbn_doi", "license"]:
         if col in data:
             data[col] = truncate_str(data[col], limit=100)
     return data

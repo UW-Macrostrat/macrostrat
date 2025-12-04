@@ -181,7 +181,7 @@ class Export(Base):
                 ref_source,
                 isbn_doi,
                 scale,
-                licence AS license
+                license AS license
             FROM maps.sources
             WHERE source_id = ANY(%(source_ids)s)
         """,
@@ -540,7 +540,7 @@ class Export(Base):
                     ref_source,
                     isbn_doi,
                     scale,
-                    licence AS license
+                    license
                 FROM maps.sources
                 WHERE source_id IN (
                     SELECT DISTINCT ll.source_id

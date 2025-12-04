@@ -252,7 +252,7 @@ function exportSource(db, source_id, callback) {
 
     var targetTables = {
       'maps.sources': buildDumpStatement(db, meta, 'maps.sources', `
-        SELECT source_id, name, primary_table, url, ref_title, authors, ref_year, ref_source, isbn_doi, scale, primary_line_table, licence, features, area, priority, rgeom
+        SELECT source_id, name, primary_table, url, ref_title, authors, ref_year, ref_source, isbn_doi, scale, primary_line_table, license, features, area, priority, rgeom
         FROM maps.sources
         WHERE source_id = ${meta.source_id}`),
       'maps.map_liths': buildDumpStatement(db, meta, 'maps.map_liths', `

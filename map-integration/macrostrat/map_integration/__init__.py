@@ -338,7 +338,6 @@ def staging(
                 ref_source = :ref_source,
                 isbn_doi = :isbn_doi,
                 license = :license,
-                series = :series,
                 keywords = :keywords,
                 language = :language,
                 description = :description
@@ -356,7 +355,6 @@ def staging(
                 ref_source=sources_mapping["ref_source"],
                 isbn_doi=sources_mapping["isbn_doi"],
                 license=sources_mapping["license"],
-                series=sources_mapping["series"],
                 keywords=sources_mapping["keywords"],  # array
                 language=sources_mapping["language"],
                 description=sources_mapping["description"],
@@ -584,7 +582,7 @@ def staging_bulk(
             raise RuntimeError(f"Could not find source for slug {slug}")
 
         # add metadata from AZ map scraper /Users processed_item_urls.csv
-        sources_mapping = process_sources_metadata(slug, Path(data_path))
+        sources_mapping = process_sources_metadata(slug, Path(region_path), parent)
 
         if sources_mapping is not None:
             db.run_sql(
@@ -600,7 +598,6 @@ def staging_bulk(
                     ref_source = :ref_source,
                     isbn_doi = :isbn_doi,
                     license = :license,
-                    series = :series,
                     keywords = :keywords,
                     language = :language,
                     description = :description
@@ -618,7 +615,6 @@ def staging_bulk(
                     ref_source=sources_mapping["ref_source"],
                     isbn_doi=sources_mapping["isbn_doi"],
                     license=sources_mapping["license"],
-                    series=sources_mapping["series"],
                     keywords=sources_mapping["keywords"],  # array
                     language=sources_mapping["language"],
                     description=sources_mapping["description"],

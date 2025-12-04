@@ -44,7 +44,7 @@ class TestAPI:
             "ref_year": "Test",
             "isbn_doi": "Test",
             "scale": "large",
-            "licence": "Test",
+            "license": "Test",
             "area": 1,
             "raster_url": "http://test.com",
         }

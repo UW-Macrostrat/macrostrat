@@ -1791,7 +1791,7 @@ CREATE TABLE geologic_boundaries.sources (
     isbn_doi character varying(100),
     scale character varying(20),
     primary_line_table character varying(50),
-    licence character varying(100),
+    license character varying(100),
     features integer,
     area integer,
     priority boolean,
@@ -3613,8 +3613,11 @@ CREATE TABLE maps.sources (
     ref_source character varying(255),
     isbn_doi character varying(100),
     scale character varying(20),
+    keywords text[],
+    language text,
+    description varchar,
     primary_line_table character varying(50),
-    licence character varying(100),
+    license character varying(100),
     features integer,
     area integer,
     priority boolean DEFAULT false,
@@ -3625,6 +3628,7 @@ CREATE TABLE maps.sources (
     status_code text DEFAULT 'active'::text,
     slug text NOT NULL
 );
+
 COMMENT ON COLUMN maps.sources.slug IS 'Unique identifier for each Macrostrat source';
 
 -- Name: sources_source_id_seq; Type: SEQUENCE; Schema: maps; Owner: macrostrat
@@ -3678,7 +3682,7 @@ CREATE VIEW maps_metadata.sources_meta AS
     s.ref_source,
     s.isbn_doi,
     s.scale,
-    s.licence,
+    s.license,
     s.features,
     s.area,
     s.priority,

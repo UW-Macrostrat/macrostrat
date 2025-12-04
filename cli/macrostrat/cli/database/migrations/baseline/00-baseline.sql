@@ -345,7 +345,7 @@ CREATE TABLE geologic_boundaries.sources (
     isbn_doi character varying(100),
     scale character varying(20),
     primary_line_table character varying(50),
-    licence character varying(100),
+    license character varying(100),
     features integer,
     area integer,
     priority boolean,
@@ -1224,8 +1224,11 @@ CREATE TABLE maps.sources (
     ref_source character varying(255),
     isbn_doi character varying(100),
     scale character varying(20),
+    keywords text[],
+    language text,
+    description varchar,
     primary_line_table character varying(50),
-    licence character varying(100),
+    license character varying(100),
     features integer,
     area integer,
     priority boolean DEFAULT false,
@@ -1237,6 +1240,7 @@ CREATE TABLE maps.sources (
     date_finalized timestamp with time zone DEFAULT null,
     ingested_by text
 );
+
 
 CREATE SEQUENCE maps.sources_source_id_seq
     START WITH 1
