@@ -66,34 +66,10 @@ if os.path.exists(SAVE_METADATA_PATH):
             visited_urls.add(url)"""
 
 
-def strip_gdb_zip_suffixes(name: str) -> str | None:
-    if name.lower().endswith(".gdb.zip"):
-        return name[:-len(".gdb.zip")]
+def strip_gdb_zip_suffixes(filename: str) -> str | None:
+    if filename.lower().endswith(".gdb.zip"):
+        return filename[:-len(".gdb.zip")]
     return None
-
-
-
-def extract_all_zips(root_dir=OUTPUT_DIR):
-    """
-    Extract all .zip formatted_filenames in root_dir into the same directory.
-    For .gdb.zip formatted_filenames, this will create a .gdb folder next to the zip.
-    """
-    for name in os.listdir(root_dir):
-        if not name.lower().endswith(".zip"):
-            continue
-        zip_path = os.path.join(root_dir, name)
-        prefix = strip_gdb_zip_suffixes(name)
-        gdb_dir = os.path.join(root_dir, f"{prefix}.gdb")
-        if os.path.exists(gdb_dir):
-            print(f"Already extracted: {gdb_dir} (skipping {name})")
-            continue
-
-        print(f"Extracting {zip_path} -> {root_dir}")
-        try:
-            with zipfile.ZipFile(zip_path, "r") as zf:
-                zf.extractall(root_dir)
-        except Exception as e:
-            print(f"Failed to extract {zip_path}: {e}")
 
 
 def get_soup(url, retries=5):
@@ -248,7 +224,7 @@ def get_collection_id(filename: str) -> Optional[str]:
 
 
 def get_gis_collections() -> Optional[str]:
-    results = requests.get("https://data.azgs.arizona.edu/api/v1/metadata?collection_group=ADGM&file_type=gisdata&latest=true")
+    results = requests.get("https://data.azgs.arizona.edu/api/v1/metadata?collection_group=ADGM&file_type=gisdata&latest=true&limit=500")
     results.raise_for_status()
     return results.json()
 
@@ -317,57 +293,118 @@ def unzip_files(zip_path: str, extract_dir: str | None = None):
         z.extractall(extract_dir)
     return extract_dir
 
-def extract_nested_gdb_zips(collection_dir: str, filename: str) -> None:
+def extract_nested_gdb_zips(collection_dir: str) -> None:
     """
-    Walk collection_dir, find any *.gdb.zip under gisdata/, and extract the
-    GDB contents into GDB_DIR/<mapname>.gdb/.
+    Extract *.gdb.zip files under gisdata/ into GDB_DIR/<mapname>.gdb/
+    Flatten the structure so that contents are directly inside the .gdb folder.
     """
     os.makedirs(GDB_DIR, exist_ok=True)
-
     for root, dirs, files in os.walk(collection_dir):
-        # Only process paths under a gisdata/* subtree
         if "gisdata" not in root.split(os.sep):
             continue
         for fname in files:
             if not fname.lower().endswith(".gdb.zip"):
                 continue
             zip_path = os.path.join(root, fname)
-            gdb_name = filename + ".gdb"
-            #destination: GDB_DIR/WildcatHill.gdb
+            gdb_name = fname[:-len(".gdb.zip")] + ".gdb"
             out_dir = os.path.join(GDB_DIR, gdb_name)
             if os.path.exists(out_dir):
                 print(f"GDB already extracted: {out_dir}")
                 continue
-            print(f"Extracting nested GDB: {zip_path} -> {out_dir}")
+            print(f"Extracting flattened GDB: {zip_path} -> {out_dir}")
             os.makedirs(out_dir, exist_ok=True)
             try:
                 with zipfile.ZipFile(zip_path, "r") as zf:
-                    zf.extractall(out_dir)
+                    for member in zf.infolist():
+                        # Normalize name
+                        name = member.filename
+                        if name.endswith("/"):
+                            continue
+                        # Remove the top-level folder (e.g., EasternGilaBend.gdb/)
+                        parts = name.split("/")
+                        if len(parts) > 1 and parts[0].lower().endswith(".gdb"):
+                            name = "/".join(parts[1:])
+                        # Compute target path
+                        target_path = os.path.join(out_dir, name)
+                        os.makedirs(os.path.dirname(target_path), exist_ok=True)
+                        # Extract file content
+                        with zf.open(member) as source, open(target_path, "wb") as target:
+                            target.write(source.read())
+
             except Exception as e:
                 print(f"Failed to extract nested GDB {zip_path}: {e}")
+    return
 
 
-def download_files_from_api(collection_id: str, filename: str) -> None:
+def download_files_from_api(collection_id: str, max_retries: int = 5) -> None:
     url = f"https://data.azgs.arizona.edu/api/v1/collections/{collection_id}"
     print(f"Requesting: {url}")
 
-    #stream api response so we don't load the whole ZIP into memory
-    resp = requests.get(url, stream=True)
-    resp.raise_for_status()
+    # Browser-like headers to avoid ZIP regeneration & increase success
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                      "AppleWebKit/537.36 (KHTML, like Gecko) "
+                      "Chrome/139.0.0.0 Safari/537.36",
+        "Accept": "*/*",
+        "Accept-Encoding": "identity",  # prevents content-encoding issues
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache",
+        "Connection": "keep-alive",
+    }
 
-    out_path = os.path.join(OUTPUT_DIR, filename)
-    print(f"Downloading .gdb to: {out_path}")
-    try:
-        with open(out_path, "wb") as f:
-            for pkg in resp.iter_content(chunk_size=8192):
-                if pkg:
-                    f.write(pkg)
-        extract_dir = unzip_files(out_path)
-        print(f"Unzipped files: {extract_dir}")
-        extract_nested_gdb_zips(extract_dir, filename)
-    except Exception as e:
-        print(f"Could not download: {filename}, {collection_id}\n {e}")
-    return
+    attempt = 0
+    while attempt < max_retries:
+        try:
+            resp = requests.get(url, stream=True, timeout=300, headers=headers)
+
+            # Explicitly handle gateway timeouts BEFORE raise_for_status()
+            if resp.status_code == 504:
+                attempt += 1
+                wait = 10 * (2 ** attempt)
+                print(f"504 Gateway Timeout (attempt {attempt}/{max_retries}) "
+                      f"→ retrying in {wait}s...")
+                time.sleep(wait)
+                continue
+
+            resp.raise_for_status()
+
+            # Success — download ZIP
+            out_path = os.path.join(OUTPUT_DIR, f"{collection_id}.zip")
+
+            with open(out_path, "wb") as f:
+                for chunk in resp.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+
+            extract_dir = unzip_files(out_path)
+            print(f"Unzipped collection: {extract_dir}")
+            extract_nested_gdb_zips(extract_dir)
+            return  # done
+        except requests.exceptions.Timeout:
+            attempt += 1
+            wait = 10 * (2 ** attempt)
+            print(f"Timeout (attempt {attempt}/{max_retries}) → retrying in {wait}s...")
+            time.sleep(wait)
+        except requests.exceptions.HTTPError as e:
+            # Do NOT retry 404, 400, etc.
+            if resp.status_code >= 500:
+                attempt += 1
+                wait = 10 * (2 ** attempt)
+                print(f"Server error {resp.status_code} (attempt {attempt}/{max_retries}) "
+                      f"→ retrying in {wait}s...")
+                time.sleep(wait)
+                continue
+            else:
+                print(f"Fatal HTTP error {resp.status_code}: {e}")
+                return
+        except Exception as e:
+            attempt += 1
+            wait = 10 * (2 ** attempt)
+            print(f"Unexpected error (attempt {attempt}/{max_retries}): {e} → retrying in {wait}s...")
+            time.sleep(wait)
+
+    print(f"Failed to download collection {collection_id} after {max_retries} retries.")
+
 
 '''
 def download_gdb_zips(item_url: str):
@@ -474,16 +511,17 @@ if __name__ == "__main__":
     for collection in collections.get("data", []):
         collection_id = collection.get("collection_id")
         meta = collection.get("metadata", {}) or {}
-        files = meta.get("files", [])
-        for f in files:
+        gdb_prefix = None
+        for f in meta.get("files", []):
             filename = f.get("name")
-            name = strip_gdb_zip_suffixes(filename)
-            if name is not None:
-                download_files_from_api(collection_id, name)
-                metadata = get_collection_metadata(collection_id, name)
-                metadata_to_csv(metadata)
-
+            gdb_prefix = strip_gdb_zip_suffixes(filename)
+            if gdb_prefix:
                 break
+        if not gdb_prefix:
+            continue  # no GDB in this collection
+        download_files_from_api(collection_id)
+        metadata = get_collection_metadata(collection_id, gdb_prefix)
+        metadata_to_csv(metadata)
 
 
     """for idx, url in enumerate(tqdm(item_pages, desc="Items")):

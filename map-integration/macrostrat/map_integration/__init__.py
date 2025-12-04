@@ -117,7 +117,7 @@ def delete_sources(
         return
 
     for slug in slug:
-        cmd_delete_dir(slug, file_name)
+        #cmd_delete_dir(slug, file_name)
         print(f"Deleting map {slug}")
         print(slug)
         tables = db.run_query(
@@ -288,7 +288,7 @@ def staging(
 
     slug, name, ext = normalize_slug(prefix, Path(data_path))
 
-    cmd_upload_dir(slug, Path(data_path), ext)
+    #cmd_upload_dir(slug, Path(data_path), ext)
     print(f"Ingesting {slug} from {data_path}")
 
     gis_files, excluded_files = find_gis_files(Path(data_path), filter=filter)
@@ -326,9 +326,24 @@ def staging(
 
     if sources_mapping is not None:
         db.run_sql(
-            "UPDATE maps.sources SET name = :name, scale = :scale, ingested_by = :ingested_by, url = :url, "
-            "ref_title = :ref_title, authors = :authors, ref_year = :ref_year, ref_source = :ref_source, "
-            "scale_denominator = :scale_denominator WHERE source_id = :source_id",
+            """
+            UPDATE maps.sources
+            SET name = :name,
+                scale = :scale,
+                ingested_by = :ingested_by,
+                url = :url,
+                ref_title = :ref_title,
+                authors = :authors,
+                ref_year = :ref_year,
+                ref_source = :ref_source,
+                isbn_doi = :isbn_doi,
+                license = :license,
+                series = :series,
+                keywords = :keywords,
+                language = :language,
+                description = :description
+            WHERE source_id = :source_id
+            """,
             dict(
                 name=name,
                 scale="large",
@@ -339,7 +354,12 @@ def staging(
                 authors=sources_mapping["authors"],
                 ref_year=sources_mapping["ref_year"],
                 ref_source=sources_mapping["ref_source"],
-                scale_denominator=sources_mapping["scale_denominator"],
+                isbn_doi=sources_mapping["isbn_doi"],
+                license=sources_mapping["license"],
+                series=sources_mapping["series"],
+                keywords=sources_mapping["keywords"],  # array
+                language=sources_mapping["language"],
+                description=sources_mapping["description"],
             ),
         )
 
@@ -530,7 +550,7 @@ def staging_bulk(
         slug, name, ext = normalize_slug(prefix, Path(region_path))
 
         # upload to the s3 bucket!
-        cmd_upload_dir(slug, region_path, ext)
+        #cmd_upload_dir(slug, region_path, ext)
 
         print(f"Ingesting {slug} from {region_path}")
         gis_files, excluded_files = find_gis_files(Path(region_path), filter=filter)
@@ -568,9 +588,24 @@ def staging_bulk(
 
         if sources_mapping is not None:
             db.run_sql(
-                "UPDATE maps.sources SET name = :name, scale = :scale, ingested_by = :ingested_by, url = :url, "
-                "ref_title = :ref_title, authors = :authors, ref_year = :ref_year, ref_source = :ref_source, "
-                "scale_denominator = :scale_denominator WHERE source_id = :source_id",
+                """
+                UPDATE maps.sources
+                SET name = :name,
+                    scale = :scale,
+                    ingested_by = :ingested_by,
+                    url = :url,
+                    ref_title = :ref_title,
+                    authors = :authors,
+                    ref_year = :ref_year,
+                    ref_source = :ref_source,
+                    isbn_doi = :isbn_doi,
+                    license = :license,
+                    series = :series,
+                    keywords = :keywords,
+                    language = :language,
+                    description = :description
+                WHERE source_id = :source_id
+                """,
                 dict(
                     name=name,
                     scale="large",
@@ -581,9 +616,15 @@ def staging_bulk(
                     authors=sources_mapping["authors"],
                     ref_year=sources_mapping["ref_year"],
                     ref_source=sources_mapping["ref_source"],
-                    scale_denominator=sources_mapping["scale_denominator"],
+                    isbn_doi=sources_mapping["isbn_doi"],
+                    license=sources_mapping["license"],
+                    series=sources_mapping["series"],
+                    keywords=sources_mapping["keywords"],  # array
+                    language=sources_mapping["language"],
+                    description=sources_mapping["description"],
                 ),
             )
+
         else:
             db.run_sql(
                 "UPDATE maps.sources SET name = :name, scale = :scale, ingested_by = :ingested_by WHERE source_id = :source_id",

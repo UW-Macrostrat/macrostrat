@@ -3,15 +3,6 @@ from pathlib import Path
 
 import pandas as pd
 
-BASE_ROOT = Path(__file__).resolve().parents[4]  # /Users/.../Projects/macrostrat
-PROCESSED_ITEMS_CSV = (
-    BASE_ROOT
-    / "map-staging"
-    / "macrostrat"
-    / "map_staging"
-    / "Arizona Gems Scraping"
-    / "processed_item_urls.csv"
-)
 SLUG_SAFE_CHARS = re.compile(r"[^a-z0-9_]+")
 
 
@@ -88,56 +79,61 @@ def normalize_slug(prefix: str, path: Path) -> tuple[str, str, str]:
 
 def process_sources_metadata(slug: str, data_path: Path) -> dict | None:
     """
-    Look up metadata for this map based on its filename_prefix in processed_item_urls.csv.
+    Load metadata for this map from metadata.csv.
 
-    Assumes:
-      - data_path is something like /.../AdamsMesa.gdb or /.../AdamsMesa
-      - processed_item_urls.csv has columns:
-        filename_prefix,url,ref_title,authors,ref_year,ref_source,scale_denominator
+    Expected columns in metadata.csv:
+      filename_prefix,url,ref_title,authors,ref_year,ref_source,
+      isbn_doi,license,series,keywords,language,description
     """
     filename_prefix = Path(data_path).stem
+    metadata_csv = data_path / "metadata.csv"
 
-    if not PROCESSED_ITEMS_CSV.is_file():
-        print(f"Error: processed_item_urls.csv not found at {PROCESSED_ITEMS_CSV}")
+
+    if not metadata_csv.is_file():
+        print(f"Error: metadata CSV not found at {metadata_csv}")
         return None
+
     try:
-        df = pd.read_csv(PROCESSED_ITEMS_CSV)
+        df = pd.read_csv(metadata_csv)
     except Exception as e:
-        print(f"Error reading {PROCESSED_ITEMS_CSV}: {e}")
+        print(f"Error reading {metadata_csv}: {e}")
         return None
 
     if "filename_prefix" not in df.columns:
-        print(f"Error: 'filename_prefix' column not found in {PROCESSED_ITEMS_CSV}")
+        print(f"Error: 'filename_prefix' column missing in {metadata_csv}")
         return None
+
     match = df.loc[df["filename_prefix"] == filename_prefix]
     if match.empty:
-        print(
-            f"No metadata row in processed_item_urls.csv for filename_prefix='{filename_prefix}'"
-        )
+        print(f"No metadata found for filename_prefix='{filename_prefix}'")
         return None
+
     row = match.iloc[0]
 
-    def _safe_get(col):
-        # return matched metadata row
+    def _safe(col):
         return row[col] if col in df.columns and pd.notna(row[col]) else None
 
-    sources_mapping = {
+    #normalize keywords: split on semicolon, trim, drop empties
+    raw_keywords = _safe("keywords")
+    keywords_list = (
+        [kw.strip() for kw in raw_keywords.split(";") if kw.strip()]
+        if isinstance(raw_keywords, str)
+        else []
+    )
+
+    return {
         "slug": slug,
         "filename_prefix": filename_prefix,
-        "url": _safe_get("url") or "",
-        "ref_title": _safe_get("ref_title") or "",
-        "authors": _safe_get("authors") or "",
-        "ref_year": (
-            int(row["ref_year"])
-            if "ref_year" in df.columns and pd.notna(row["ref_year"])
-            else None
-        ),
-        "ref_source": _safe_get("ref_source") or "",
-        "scale_denominator": (
-            int(row["scale_denominator"])
-            if "scale_denominator" in df.columns and pd.notna(row["scale_denominator"])
-            else None
-        ),
+        "url": _safe("url") or "",
+        "ref_title": _safe("ref_title") or "",
+        "authors": _safe("authors") or "",
+        "ref_year": int(row["ref_year"]) if pd.notna(_safe("ref_year")) else None,
+        "ref_source": _safe("ref_source") or "",
+        "isbn_doi": _safe("isbn_doi") or "",
+        "license": _safe("license") or "",
+        "series": _safe("series") or "",
+        "keywords": keywords_list,  # ARRAY
+        "language": _safe("language") or "",
+        "description": _safe("description") or "",
     }
 
-    return sources_mapping
