@@ -51,7 +51,6 @@ from pathlib import Path
 
 SLUG_SAFE_CHARS = re.compile(r"[^a-z0-9_]+")
 
-
 def normalize_slug(prefix: str, path: Path) -> tuple[str, str, str]:
     """
     Normalize a slug and also return a human-readable name and the file extension.
@@ -61,14 +60,16 @@ def normalize_slug(prefix: str, path: Path) -> tuple[str, str, str]:
         ext:   e.g. ".gdb"
     """
     ext = path.suffix.lower()
-    stem_for_slug = path.stem.lower()
-    stem_for_slug = re.sub(r"\s+", "_", stem_for_slug.strip())
-    clean_stem = SLUG_SAFE_CHARS.sub("", stem_for_slug)
-    slug = f"{prefix}_{clean_stem}"
+    # base filename without extension, e.g. "SaddleMountain" from "SaddleMountain.gdb"
+    stem_for_slug = path.stem.strip()
+    stem_for_slug = re.sub(r"\s+", "_", stem_for_slug)
+    stem_for_slug = stem_for_slug.lower()
 
-    # filename stem/prefix"
+    clean_stem = SLUG_SAFE_CHARS.sub("", stem_for_slug)
+    clean_stem = re.sub(r"_+", "_", clean_stem).strip("_")
+
+    slug = f"{prefix}_{clean_stem}"
     filename = path.stem.replace("_", " ")
-    # "AdamsMesa" -> "Adams Mesa"
     filename = re.sub(r"(?<=[a-z])(?=[A-Z])", " ", filename)
     filename = re.sub(r"\s+", " ", filename).strip()
     region = prefix.replace("_", " ").title()
