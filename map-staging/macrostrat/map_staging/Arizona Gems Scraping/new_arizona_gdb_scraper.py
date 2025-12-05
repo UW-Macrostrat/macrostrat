@@ -71,6 +71,21 @@ def strip_gdb_zip_suffixes(filename: str) -> str | None:
         return filename[: -len(".gdb.zip")]
     return None
 
+def load_existing_prefixes():
+    prefixes = set()
+    if os.path.exists(SAVE_METADATA_PATH):
+        with open(SAVE_METADATA_PATH, newline="") as f:
+            reader = csv.reader(f)
+            next(reader, None)  # skip header
+            for row in reader:
+                if row and row[0]:
+                    prefixes.add(row[0])
+    return prefixes
+
+def collection_zip_exists(collection_id):
+    return os.path.exists(os.path.join(OUTPUT_DIR, f"{collection_id}.zip"))
+
+
 
 def get_soup(url, retries=5):
     for attempt in range(retries):
@@ -517,20 +532,40 @@ if __name__ == "__main__":
     # deduplicate_file("scraped_item_links.txt")
     # item_pages = get_all_item_links(START_URL)
     collections = get_gis_collections()
+    existing_prefixes = load_existing_prefixes()
+
     for collection in collections.get("data", []):
         collection_id = collection.get("collection_id")
         meta = collection.get("metadata", {}) or {}
-        gdb_prefix = None
+        gdb_prefixes = []
         for f in meta.get("files", []):
             filename = f.get("name")
-            gdb_prefix = strip_gdb_zip_suffixes(filename)
-            if gdb_prefix:
-                break
-        if not gdb_prefix:
-            continue  # no GDB in this collection
-        download_files_from_api(collection_id)
-        metadata = get_collection_metadata(collection_id, gdb_prefix)
-        metadata_to_csv(metadata)
+            prefix = strip_gdb_zip_suffixes(filename)
+            if prefix:
+                gdb_prefixes.append(prefix)
+        if not gdb_prefixes:
+            continue
+        needs_download = not collection_zip_exists(collection_id)
+        needs_metadata = any(p not in existing_prefixes for p in gdb_prefixes)
+
+        if not needs_download:
+            print(f"Skipping download for {collection_id}")
+        else:
+            download_files_from_api(collection_id)
+
+        if needs_metadata:
+            base_metadata = get_collection_metadata(collection_id, gdb_prefixes[0])
+            for prefix in gdb_prefixes:
+                if prefix not in existing_prefixes:
+                    metadata = dict(base_metadata)
+                    metadata["name"] = prefix
+                    metadata_to_csv(metadata)
+                    existing_prefixes.add(prefix)
+        else:
+            print(f"Skipping metadata for {collection_id} (all prefixes already exist)")
+
+
+
 
     """for idx, url in enumerate(tqdm(item_pages, desc="Items")):
         if url in visited_urls:
