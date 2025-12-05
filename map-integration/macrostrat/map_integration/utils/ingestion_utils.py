@@ -51,6 +51,7 @@ from pathlib import Path
 
 SLUG_SAFE_CHARS = re.compile(r"[^a-z0-9_]+")
 
+
 def normalize_slug(prefix: str, path: Path) -> tuple[str, str, str]:
     """
     Normalize a slug and also return a human-readable name and the file extension.
