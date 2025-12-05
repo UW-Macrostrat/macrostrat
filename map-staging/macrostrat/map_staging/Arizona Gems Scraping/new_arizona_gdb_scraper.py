@@ -71,6 +71,7 @@ def strip_gdb_zip_suffixes(filename: str) -> str | None:
         return filename[: -len(".gdb.zip")]
     return None
 
+
 def load_existing_prefixes():
     prefixes = set()
     if os.path.exists(SAVE_METADATA_PATH):
@@ -82,9 +83,9 @@ def load_existing_prefixes():
                     prefixes.add(row[0])
     return prefixes
 
+
 def collection_zip_exists(collection_id):
     return os.path.exists(os.path.join(OUTPUT_DIR, f"{collection_id}.zip"))
-
 
 
 def get_soup(url, retries=5):
@@ -563,9 +564,6 @@ if __name__ == "__main__":
                     existing_prefixes.add(prefix)
         else:
             print(f"Skipping metadata for {collection_id} (all prefixes already exist)")
-
-
-
 
     """for idx, url in enumerate(tqdm(item_pages, desc="Items")):
         if url in visited_urls:
