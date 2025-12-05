@@ -107,7 +107,7 @@ def truncate_source_metadata(data: dict[str, Any]) -> dict[str, Any]:
     for col in ["name", "url", "authors", "ref_source"]:
         if col in data:
             data[col] = truncate_str(data[col], limit=255)
-    for col in ["isbn_doi", "licence"]:
+    for col in ["isbn_doi", "license"]:
         if col in data:
             data[col] = truncate_str(data[col], limit=100)
     return data
@@ -549,7 +549,7 @@ def upload_file(
     ] = False,
     s3_prefix: Annotated[
         str,
-        Option(help="The prefix to use for the file's S3 key"),
+        Option(help="The filename to use for the file's S3 key"),
     ] = "",
     s3_bucket: Annotated[
         str,
@@ -873,7 +873,7 @@ def ingest_csv(
     ] = default_s3_bucket,
     s3_prefix: Annotated[
         str,
-        Option(help="The prefix, sans trailing slash, to use for the files' S3 keys"),
+        Option(help="The filename, sans trailing slash, to use for the files' S3 keys"),
     ] = None,
     tag: Annotated[
         Optional[list[str]],

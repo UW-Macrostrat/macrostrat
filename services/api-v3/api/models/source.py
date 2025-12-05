@@ -19,7 +19,7 @@ class Post(BaseModel):
     isbn_doi: Optional[str] = None
     scale: Optional[str] = None
     primary_line_table: Optional[str] = None
-    licence: Optional[str] = None
+    license: Optional[str] = None
     features: Optional[int] = None
     area: Optional[int] = None
     priority: Optional[bool] = None

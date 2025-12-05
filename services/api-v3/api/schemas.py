@@ -43,7 +43,7 @@ class Sources(Base):
     isbn_doi: Mapped[str] = mapped_column(VARCHAR(100))
     scale: Mapped[str] = mapped_column(VARCHAR(20))
     primary_line_table: Mapped[str] = mapped_column(VARCHAR(50))
-    licence: Mapped[str] = mapped_column(VARCHAR(100))
+    license: Mapped[str] = mapped_column(VARCHAR(100))
     features: Mapped[int] = mapped_column(INTEGER)
     area: Mapped[int] = mapped_column(INTEGER)
     priority: Mapped[bool] = mapped_column(BOOLEAN)
@@ -123,6 +123,7 @@ class Object(Base):
         {"schema": "storage"},
     )
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    # delete object_group_id
     object_group_id: Mapped[int] = mapped_column(
         ForeignKey("storage.object_group.id"), nullable=True
     )

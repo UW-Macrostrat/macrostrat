@@ -40,9 +40,9 @@ async def tilejson(
     url_path = request.url_for(
         "tile", **{"slug": slug, "z": "{z}", "x": "{x}", "y": "{y}"}
     )
-
+    # TODO url_for resolves to http rather than https. find a better solution
     tile_endpoint = str(url_path)
-
+    tile_endpoint = tile_endpoint.replace("http://", "https://")
     bounds_query = f"""
     SELECT geom FROM sources.{slug}_polygons
     UNION
