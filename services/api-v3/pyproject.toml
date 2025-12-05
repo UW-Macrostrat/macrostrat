@@ -1,6 +1,6 @@
 [project]
 name = "api"
-version = "2.3.2"
+version = "2.3.3"
 description = ""
 authors = [{ name = "Cannon Lock", email = "clock@wisc.edu" }]
 requires-python = ">=3.11,<4"

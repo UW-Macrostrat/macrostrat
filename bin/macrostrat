@@ -32,7 +32,7 @@ if [ ! -x "$(command -v uv)" ]; then
 fi
 
 # Get script directory (reading symlink)
-BASE_DIR="$(cd "$(dirname "$this_file")" && cd ../cli && pwd)"
+BASE_DIR="$(cd "$(dirname "$this_file")" && cd .. && pwd)"
 
 # If we've defined our own root directory, use that instead
 if [ -n "$MACROSTRAT_PYROOT" ] ; then

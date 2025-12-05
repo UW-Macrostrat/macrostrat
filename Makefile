@@ -5,7 +5,8 @@ all:
 
 gis:
 	# Install GIS dependencies
-	uv pip install "GDAL==$(shell gdal-config --version)"
+	#uv pip install "GDAL==$(shell gdal-config --version)"
+	uv pip install "GDAL==3.12.0.post1"
 	uv sync --group gis
 
 install:
