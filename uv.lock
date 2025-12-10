@@ -122,7 +122,7 @@ wheels = [
 
 [[package]]
 name = "api"
-version = "2.3.2"
+version = "2.3.3"
 source = { editable = "services/api-v3" }
 dependencies = [
     { name = "aiohttp" },
