@@ -322,7 +322,7 @@ def staging(
         raise RuntimeError(f"Could not find source for slug {slug}")
 
     # add metadata from AZ map scraper /Users processed_item_urls.csv
-    sources_mapping = process_sources_metadata(slug, Path(data_path))
+    sources_mapping = process_sources_metadata(slug, Path(data_path), None)
 
     if sources_mapping is not None:
         db.run_sql(
@@ -437,7 +437,7 @@ def staging(
 
     console.print(
         f"[green] \n Finished staging setup for {slug}. "
-        f"View map here: https://dev.macrostrat.org/maps/ingestion/{source_id}/ [\green] \n"
+        f"View map here: https://dev.macrostrat.org/maps/ingestion/{source_id}/ [/green] \n"
     )
 
 

@@ -1983,7 +1983,7 @@ CREATE SEQUENCE public.line_ids
 -- Name: lines; Type: TABLE; Schema: maps; Owner: macrostrat
 CREATE TABLE maps.lines (
     line_id integer DEFAULT nextval('public.line_ids'::regclass) NOT NULL,
-    orig_id integer,
+    orig_id text,
     source_id integer,
     name character varying(255),
     type_legacy character varying(100),
@@ -3226,7 +3226,7 @@ CREATE TABLE maps.polygons (
     map_id integer DEFAULT nextval('maps.map_ids'::regclass) NOT NULL,
     source_id integer NOT NULL,
     scale macrostrat.map_scale NOT NULL,
-    orig_id integer,
+    orig_id text,
     name text,
     strat_name text,
     age character varying(255),
@@ -3251,7 +3251,7 @@ CREATE SEQUENCE public.map_ids
 -- Name: polygons_large; Type: TABLE; Schema: maps; Owner: macrostrat
 CREATE TABLE maps.polygons_large (
     map_id integer DEFAULT nextval('public.map_ids'::regclass) NOT NULL,
-    orig_id integer,
+    orig_id text,
     source_id integer NOT NULL,
     name text,
     strat_name text,
@@ -3338,7 +3338,7 @@ CREATE TABLE maps.legend_liths (
 -- Name: lines_large; Type: TABLE; Schema: maps; Owner: macrostrat
 CREATE TABLE maps.lines_large (
     line_id integer DEFAULT nextval('public.line_ids'::regclass) NOT NULL,
-    orig_id integer,
+    orig_id text,
     source_id integer,
     name character varying(255),
     type_legacy character varying(100),
@@ -3355,7 +3355,7 @@ CREATE TABLE maps.lines_large (
 -- Name: lines_medium; Type: TABLE; Schema: maps; Owner: macrostrat
 CREATE TABLE maps.lines_medium (
     line_id integer DEFAULT nextval('public.line_ids'::regclass) NOT NULL,
-    orig_id integer,
+    orig_id text,
     source_id integer,
     name character varying(255),
     type_legacy character varying(100),
@@ -3372,7 +3372,7 @@ CREATE TABLE maps.lines_medium (
 -- Name: lines_small; Type: TABLE; Schema: maps; Owner: macrostrat
 CREATE TABLE maps.lines_small (
     line_id integer DEFAULT nextval('public.line_ids'::regclass) NOT NULL,
-    orig_id integer,
+    orig_id text,
     source_id integer,
     name character varying(255),
     type_legacy character varying(100),
@@ -3389,7 +3389,7 @@ CREATE TABLE maps.lines_small (
 -- Name: lines_tiny; Type: TABLE; Schema: maps; Owner: macrostrat
 CREATE TABLE maps.lines_tiny (
     line_id integer DEFAULT nextval('public.line_ids'::regclass) NOT NULL,
-    orig_id integer,
+    orig_id text,
     source_id integer,
     name character varying(255),
     type_legacy character varying(100),
@@ -3456,7 +3456,7 @@ CREATE TABLE maps.map_units (
 -- Name: polygons_medium; Type: TABLE; Schema: maps; Owner: macrostrat
 CREATE TABLE maps.polygons_medium (
     map_id integer DEFAULT nextval('public.map_ids'::regclass) NOT NULL,
-    orig_id integer,
+    orig_id text,
     source_id integer NOT NULL,
     name text,
     strat_name text,
@@ -3500,7 +3500,7 @@ CREATE TABLE maps.points (
     comments text,
     geom public.geometry(Geometry,4326),
     point_id integer NOT NULL,
-    orig_id integer,
+    orig_id text,
     CONSTRAINT dip_lt_90 CHECK ((dip <= 90)),
     CONSTRAINT dip_positive CHECK ((dip >= 0)),
     CONSTRAINT direction_lt_360 CHECK ((dip_dir <= 360)),
@@ -3524,7 +3524,7 @@ ALTER SEQUENCE maps.points_point_id_seq OWNED BY maps.points.point_id;
 -- Name: polygons_small; Type: TABLE; Schema: maps; Owner: macrostrat
 CREATE TABLE maps.polygons_small (
     map_id integer DEFAULT nextval('public.map_ids'::regclass) NOT NULL,
-    orig_id integer,
+    orig_id text,
     source_id integer NOT NULL,
     name text,
     strat_name text,
@@ -3543,7 +3543,7 @@ CREATE TABLE maps.polygons_small (
 -- Name: polygons_tiny; Type: TABLE; Schema: maps; Owner: macrostrat
 CREATE TABLE maps.polygons_tiny (
     map_id integer DEFAULT nextval('public.map_ids'::regclass) NOT NULL,
-    orig_id integer,
+    orig_id text,
     source_id integer NOT NULL,
     name text,
     strat_name text,

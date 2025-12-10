@@ -90,6 +90,9 @@ def process_sources_metadata(
       isbn_doi,license,keywords,language,description
     """
     filename_prefix = region_path.stem
+    if parent is None:
+        parent = region_path.parent
+
     metadata_csv = parent / "metadata.csv"
 
     if not metadata_csv.is_file():

@@ -36,7 +36,7 @@ CREATE TABLE maps.polygons (
   map_id integer DEFAULT nextval('maps.map_ids'::regclass) NOT NULL,
   source_id integer REFERENCES maps.sources(source_id) NOT NULL,
   scale maps.map_scale NOT NULL,
-  orig_id integer,
+  orig_id text,
   name text,
   strat_name text,
   age character varying(255),

@@ -64,6 +64,23 @@ def _get_active_env() -> str:
     env = (env or "dev").lower()
     return _ENV_ALIASES.get(env, "dev")
 
+def column_type_is(schema: str, table: str, column: str, expected_type: str) -> DbEvaluator:
+    """
+    Return a function that evaluates to True when the given column
+    has the expected SQL type (e.g. 'integer', 'text').
+    """
+
+    def _check(db: Database) -> bool:
+        cols = db.inspector.get_columns(table, schema=schema)
+        for c in cols:
+            if c["name"] == column:
+                # Compile the SQLAlchemy type to its DB-specific SQL string, e.g. 'INTEGER', 'TEXT'
+                col_type = c["type"].compile(dialect=db.engine.dialect)
+                return col_type.lower() == expected_type.lower()
+        # Column not found
+        return False
+
+    return _check
 
 def _env_allows_migration(
     migration_readiness: Union[str, ReadinessState], env: str

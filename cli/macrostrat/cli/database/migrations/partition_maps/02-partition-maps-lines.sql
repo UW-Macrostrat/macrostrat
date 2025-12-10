@@ -73,7 +73,7 @@ ALTER TABLE maps.lines_medium ALTER COLUMN new_direction TYPE character varying(
 
 CREATE TABLE maps.lines (
     line_id integer DEFAULT nextval('line_ids'::regclass),
-    orig_id integer,
+    orig_id text,
     source_id integer REFERENCES maps.sources(source_id),
     name character varying(255),
     type character varying(100),
