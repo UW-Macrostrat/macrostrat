@@ -376,12 +376,6 @@ def upload_files_db(db, slug: str, data_path: Path):
     bucket = settings.get("storage.bucket_name")
     host = settings.get("storage.endpoint")
 
-    # Fetch the original map source URL
-    source_url = db.run_query(
-        "SELECT url FROM maps.sources WHERE slug = :slug",
-        dict(slug=slug),
-    ).scalar()
-
     metadata_files = (
         list(data_path.glob("*.json")) +
         list(data_path.glob("*.csv")) +
@@ -413,7 +407,6 @@ def upload_files_db(db, slug: str, data_path: Path):
         record_key = f"{slug}/{f.name}"
         sha256 = sha256_of_file(f)
 
-        # --- NEW: Check if row already exists ---
         exists = db.run_query(
             """
             SELECT 1
