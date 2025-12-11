@@ -64,7 +64,10 @@ def _get_active_env() -> str:
     env = (env or "dev").lower()
     return _ENV_ALIASES.get(env, "dev")
 
-def column_type_is(schema: str, table: str, column: str, expected_type: str) -> DbEvaluator:
+
+def column_type_is(
+    schema: str, table: str, column: str, expected_type: str
+) -> DbEvaluator:
     """
     Return a function that evaluates to True when the given column
     has the expected SQL type (e.g. 'integer', 'text').
@@ -81,6 +84,7 @@ def column_type_is(schema: str, table: str, column: str, expected_type: str) -> 
         return False
 
     return _check
+
 
 def _env_allows_migration(
     migration_readiness: Union[str, ReadinessState], env: str

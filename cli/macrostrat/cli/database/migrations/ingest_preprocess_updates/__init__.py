@@ -1,4 +1,9 @@
-from macrostrat.core.migrations import Migration, has_columns, column_type_is, view_exists
+from macrostrat.core.migrations import (
+    Migration,
+    column_type_is,
+    has_columns,
+    view_exists,
+)
 
 
 class IngestPreprocessUpdates(Migration):
@@ -6,7 +11,6 @@ class IngestPreprocessUpdates(Migration):
     subsystem = "maps"
     description = "Align maps_metadata.ingest_process table across envs."
     depends_on = ["ingest-state-type"]
-
 
     preconditions = [
         has_columns("maps_metadata", "ingest_process", "id"),
@@ -23,7 +27,6 @@ class IngestPreprocessUpdates(Migration):
             "ingested_by",
             "slug",
         ),
-
         # Column types match development
         column_type_is("maps_metadata", "ingest_process", "polygon_state", "JSONB"),
         column_type_is("maps_metadata", "ingest_process", "line_state", "JSONB"),
@@ -32,7 +35,6 @@ class IngestPreprocessUpdates(Migration):
         column_type_is("maps_metadata", "ingest_process", "map_url", "TEXT"),
         column_type_is("maps_metadata", "ingest_process", "ingested_by", "TEXT"),
         column_type_is("maps_metadata", "ingest_process", "slug", "TEXT"),
-
         # View must exist after migration
         view_exists("macrostrat_api", "map_ingest_metadata"),
     ]
