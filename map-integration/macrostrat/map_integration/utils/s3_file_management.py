@@ -75,7 +75,7 @@ def staging_upload_dir(slug: str, data_path: pathlib.Path, ext: str, db) -> dict
         gdb_zip_path = Path(archive_path)
         data_path = gdb_zip_path
 
-    #check if files are stored in db or not. if not, upload rows.
+    # check if files are stored in db or not. if not, upload rows.
     if db is not None:
         object_ids = insert_local_files_into_db(db, slug, data_path, gdb_zip_path, ext)
 
@@ -375,7 +375,10 @@ def sha256_of_file(path: Path) -> str:
     # DB stores hex, so return hexdigest()
     return h.hexdigest()
 
-def insert_local_files_into_db(db, slug: str, data_path: Path, gdb_zip_path: Path | None, ext):
+
+def insert_local_files_into_db(
+    db, slug: str, data_path: Path, gdb_zip_path: Path | None, ext
+):
     """
     Insert DB rows for files exactly as they will be uploaded to S3.
     - If ext == ".gdb": insert only the .gdb.zip
@@ -385,12 +388,12 @@ def insert_local_files_into_db(db, slug: str, data_path: Path, gdb_zip_path: Pat
     host = settings.get("storage.endpoint")
     files_to_insert = []
 
-    #GDB upload → use only the zip
+    # GDB upload → use only the zip
     if ext == ".gdb":
         if gdb_zip_path and gdb_zip_path.exists():
             files_to_insert.append((gdb_zip_path, gdb_zip_path.name))
 
-    #normal directory upload → keep nested structure
+    # normal directory upload → keep nested structure
     elif data_path.is_dir():
         for f in data_path.rglob("*"):
             if f.is_file():
@@ -398,7 +401,7 @@ def insert_local_files_into_db(db, slug: str, data_path: Path, gdb_zip_path: Pat
                 rel_key = f.relative_to(data_path)
                 files_to_insert.append((f, str(rel_key)))
 
-    #single file upload
+    # single file upload
     elif data_path.is_file():
         files_to_insert.append((data_path, data_path.name))
 
@@ -436,6 +439,5 @@ def insert_local_files_into_db(db, slug: str, data_path: Path, gdb_zip_path: Pat
             dict(host=host, bucket=bucket, key=record_key),
         ).scalar()
         inserted.append(object_id)
-
 
     return inserted
