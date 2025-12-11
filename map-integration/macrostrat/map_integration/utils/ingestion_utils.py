@@ -141,5 +141,3 @@ def process_sources_metadata(
         "language": _safe("language") or "",
         "description": _safe("description") or "",
     }
-
-
