@@ -1,11 +1,10 @@
 from macrostrat.core.migrations import (
     Migration,
     column_type_is,
-    has_columns,
-    view_exists,
     exists,
-    not_exists
-
+    has_columns,
+    not_exists,
+    view_exists,
 )
 
 
@@ -20,7 +19,7 @@ class FileStorageUpdates(Migration):
         exists("maps_metadata", "ingest_process"),
     ]
     postconditions = [
-        #storage.object no longer has object_group_id
+        # storage.object no longer has object_group_id
         has_columns(
             "storage",
             "object",
@@ -35,10 +34,9 @@ class FileStorageUpdates(Migration):
             "updated_on",
             "deleted_on",
         ),
-        #intersection table exists in storage schema
+        # intersection table exists in storage schema
         exists("storage", "map_files"),
-
-        #intersection table columns exist
+        # intersection table columns exist
         has_columns(
             "storage",
             "map_files",
