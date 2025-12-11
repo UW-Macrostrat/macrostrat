@@ -396,13 +396,12 @@ def staging(
     # add map_url later
     db.run_sql(
         """
-        INSERT INTO maps_metadata.ingest_process (state, source_id, object_group_id, ingested_by, ingest_pipeline, comments, slug, polygon_state, line_state, point_state)
-        VALUES (:state, :source_id, :object_group_id, :ingested_by, :ingest_pipeline, :comments, :slug, :polygon_state, :line_state, :point_state);
+        INSERT INTO maps_metadata.ingest_process (state, source_id, ingested_by, ingest_pipeline, comments, slug, polygon_state, line_state, point_state)
+        VALUES (:state, :source_id, :ingested_by, :ingest_pipeline, :comments, :slug, :polygon_state, :line_state, :point_state);
         """,
         dict(
             state=ingest_results["state"],
             source_id=source_id,
-            object_group_id=1,
             ingested_by="macrostrat-admin",
             ingest_pipeline=ingest_results["ingest_pipeline"],
             comments=ingest_results["comments"],
@@ -641,13 +640,12 @@ def staging_bulk(
 
         db.run_sql(
             """
-            INSERT INTO maps_metadata.ingest_process (state, source_id, object_group_id, ingested_by, ingest_pipeline, comments, slug, polygon_state, line_state, point_state)
-            VALUES (:state, :source_id, :object_group_id, :ingested_by, :ingest_pipeline, :comments, :slug, :polygon_state, :line_state, :point_state);
+            INSERT INTO maps_metadata.ingest_process (state, source_id, ingested_by, ingest_pipeline, comments, slug, polygon_state, line_state, point_state)
+            VALUES (:state, :source_id, :ingested_by, :ingest_pipeline, :comments, :slug, :polygon_state, :line_state, :point_state);
             """,
             dict(
                 state=ingest_results["state"],
                 source_id=source_id,
-                object_group_id=1,
                 ingested_by="macrostrat-admin",
                 ingest_pipeline=ingest_results["ingest_pipeline"],
                 comments=ingest_results["comments"],
