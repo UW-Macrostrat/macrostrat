@@ -5,8 +5,10 @@ import subprocess
 import tempfile
 from os import path
 from textwrap import dedent
+import hashlib
 
 from rich.progress import Progress
+from pathlib import Path
 
 from macrostrat.core import app as app_
 from macrostrat.core.exc import MacrostratError
@@ -357,3 +359,98 @@ def staging_download_dir(slug: str, dest_path: pathlib.Path) -> dict:
         "source": f"s3://{bucket_name}/{slug}/",
         "downloaded_to": str(dest_path.resolve()),
     }
+
+
+def sha256_of_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(8192), b""):
+            h.update(chunk)
+    # DB stores hex, so return hexdigest()
+    return h.hexdigest()
+
+def upload_files_db(db, slug: str, data_path: Path):
+    """
+    Insert metadata files into storage.object, **only if not already inserted**.
+    """
+    bucket = settings.get("storage.bucket_name")
+    host = settings.get("storage.endpoint")
+
+    # Fetch the original map source URL
+    source_url = db.run_query(
+        "SELECT url FROM maps.sources WHERE slug = :slug",
+        dict(slug=slug),
+    ).scalar()
+
+    metadata_files = (
+        list(data_path.glob("*.json")) +
+        list(data_path.glob("*.csv")) +
+        list(data_path.glob("*.txt")) +
+        list(data_path.glob("*.xml")) +
+        list(data_path.glob("*.zip")) +
+        list(data_path.glob("*.xlsx")) +
+        list(data_path.glob("*.tsv")) +
+        list(data_path.glob("*.xls")) +
+        list(data_path.glob("*.gpkg")) +
+        list(data_path.glob("*.shp"))
+    )
+
+    inserted = []
+    skipped = []
+
+    for f in metadata_files:
+        # MIME detection
+        mime_type = "application/octet-stream"
+        if f.suffix == ".json":
+            mime_type = "application/json"
+        elif f.suffix == ".csv":
+            mime_type = "text/csv"
+        elif f.suffix in [".txt", ".tsv"]:
+            mime_type = "text/plain"
+        elif f.suffix == ".xml":
+            mime_type = "application/xml"
+
+        record_key = f"{slug}/{f.name}"
+        sha256 = sha256_of_file(f)
+
+        # --- NEW: Check if row already exists ---
+        exists = db.run_query(
+            """
+            SELECT 1
+            FROM storage.object
+            WHERE scheme = 's3'
+              AND host = :host
+              AND bucket = :bucket
+              AND key = :key
+            """,
+            dict(host=host, bucket=bucket, key=record_key),
+        ).scalar()
+
+        if exists:
+            skipped.append(record_key)
+            continue
+
+        # Insert only when not present
+        db.run_sql(
+            """
+            INSERT INTO storage.object (scheme, host, bucket, key, source, mime_type, sha256_hash)
+            VALUES ('s3', :host, :bucket, :key, :source, :mime_type, :sha256_hash)
+            """,
+            dict(
+                host=host,
+                bucket=bucket,
+                key=record_key,
+                source=json.dumps({
+                    "local_path": str(f),
+                    "map_source_url": source_url
+                }),
+                mime_type=mime_type,
+                sha256_hash=sha256,
+            )
+        )
+
+        inserted.append(record_key)
+
+    return {"inserted": inserted, "skipped": skipped}
+
+
