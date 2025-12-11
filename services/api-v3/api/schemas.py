@@ -64,7 +64,9 @@ class Sources(Base):
     scale_denominator: Mapped[int | None] = mapped_column(INTEGER)
     is_finalized: Mapped[bool] = mapped_column(BOOLEAN, default=False)
     lines_oriented: Mapped[bool | None] = mapped_column(BOOLEAN)
-    date_finalized: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True))
+    date_finalized: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
 
     ingested_by: Mapped[str | None] = mapped_column(TEXT)
     keywords: Mapped[list[str] | None] = mapped_column(ARRAY(TEXT))
@@ -103,7 +105,9 @@ class Object(Base):
     updated_on: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
-    deleted_on: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True))
+    deleted_on: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
 
 
 # storage.map_files  (NEW! intersection table)
@@ -153,9 +157,7 @@ class IngestProcess(Base):
     )
 
     comments: Mapped[str | None] = mapped_column(TEXT)
-    source_id: Mapped[int | None] = mapped_column(
-        ForeignKey("maps.sources.source_id")
-    )
+    source_id: Mapped[int | None] = mapped_column(ForeignKey("maps.sources.source_id"))
 
     created_on: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
@@ -165,7 +167,9 @@ class IngestProcess(Base):
     )
 
     map_id: Mapped[str | None] = mapped_column(TEXT)
-    type: Mapped[IngestType | None] = mapped_column(Enum(IngestType, name="ingest_type"))
+    type: Mapped[IngestType | None] = mapped_column(
+        Enum(IngestType, name="ingest_type")
+    )
 
     polygon_state: Mapped[dict | None] = mapped_column(JSONB)
     line_state: Mapped[dict | None] = mapped_column(JSONB)

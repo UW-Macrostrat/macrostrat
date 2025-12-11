@@ -10,7 +10,9 @@ from api.database import get_async_session, get_engine
 from api.query_parser import QueryParser, get_filter_query_params
 from api.routes.security import has_access
 from api.schemas import IngestProcess as IngestProcessSchema
-from api.schemas import IngestProcessTag, Sources, MapFiles, Object as ObjectORM
+from api.schemas import IngestProcessTag, MapFiles
+from api.schemas import Object as ObjectORM
+from api.schemas import Sources
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from sqlalchemy import and_, delete, func, insert, select, update
 from sqlalchemy.orm import defer, joinedload, selectinload
@@ -139,10 +141,7 @@ async def create_ingest_process(
 
         tags = [IngestProcessTag(tag=tag.strip()) for tag in object.tags]
         del object.tags
-        ingest_process = IngestProcessSchema(
-            **object.model_dump(),
-            tags=tags
-        )
+        ingest_process = IngestProcessSchema(**object.model_dump(), tags=tags)
 
         session.add(ingest_process)
         await session.commit()
@@ -363,8 +362,7 @@ async def create_object(
                 server_object = await session.scalar(insert_stmt)
                 await session.execute(
                     insert(MapFiles).values(
-                        ingest_process_id=id,
-                        object_id=server_object.id
+                        ingest_process_id=id, object_id=server_object.id
                     )
                 )
 
