@@ -189,7 +189,6 @@ def delete_sources(
             dict(slug=slug),
         ).scalar()
 
-
         if all_data:
             _delete_map_data(source_id)
 
@@ -459,9 +458,7 @@ def cmd_upload_dir(slug: str = ..., data_path: Path = ..., ext: str = Option("")
     db = get_database()
     res, object_ids = staging_upload_dir(slug, data_path, ext, db)
     pretty_res = json.dumps(res, indent=2)
-    console.print(
-        f"[green] Processed files \n {pretty_res} [/green]"
-    )
+    console.print(f"[green] Processed files \n {pretty_res} [/green]")
     return object_ids
 
 
