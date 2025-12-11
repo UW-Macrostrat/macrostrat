@@ -33,11 +33,12 @@ settings = app_.settings
 # delete the object group id from all the tables.
 # super standardized upload
 # specify the bucket name
-def staging_upload_dir(slug: str, data_path: pathlib.Path, ext: str) -> dict:
+def staging_upload_dir(slug: str, data_path: pathlib.Path, ext: str, db) -> dict:
     endpoint = settings.get("storage.endpoint")
     b_access = settings.get("storage.access_key")
     b_secret = settings.get("storage.secret_key")
     bucket_name = settings.get("storage.bucket_name")
+    gdb_zip_path = None
 
     missing = [
         k
@@ -71,7 +72,12 @@ def staging_upload_dir(slug: str, data_path: pathlib.Path, ext: str) -> dict:
         archive_path = shutil.make_archive(
             archive_base, "zip", root_dir=data_path.parent, base_dir=data_path.name
         )
-        data_path = pathlib.Path(archive_path)
+        gdb_zip_path = Path(archive_path)
+        data_path = gdb_zip_path
+
+    #check if files are stored in db or not. if not, upload rows.
+    if db is not None:
+        object_ids = insert_local_files_into_db(db, slug, data_path, gdb_zip_path, ext)
 
     with tempfile.NamedTemporaryFile("w+", delete=False) as tf:
         tf.write(cfg)
@@ -128,7 +134,7 @@ def staging_upload_dir(slug: str, data_path: pathlib.Path, ext: str) -> dict:
         "filename": f"{slug}/",
         "endpoint": endpoint,
         "destination": f"s3://{bucket_name}/{slug}/",
-    }
+    }, object_ids
 
 
 def staging_delete_dir(slug: str, file_name: str | None = None) -> None:
@@ -369,77 +375,67 @@ def sha256_of_file(path: Path) -> str:
     # DB stores hex, so return hexdigest()
     return h.hexdigest()
 
-
-def upload_files_db(db, slug: str, data_path: Path):
+def insert_local_files_into_db(db, slug: str, data_path: Path, gdb_zip_path: Path | None, ext):
     """
-    Insert metadata files into storage.object, **only if not already inserted**.
+    Insert DB rows for files exactly as they will be uploaded to S3.
+    - If ext == ".gdb": insert only the .gdb.zip
+    - Otherwise: recursively list all files with full relative path
     """
     bucket = settings.get("storage.bucket_name")
     host = settings.get("storage.endpoint")
+    files_to_insert = []
 
-    metadata_files = (
-        list(data_path.glob("*.json"))
-        + list(data_path.glob("*.csv"))
-        + list(data_path.glob("*.txt"))
-        + list(data_path.glob("*.xml"))
-        + list(data_path.glob("*.zip"))
-        + list(data_path.glob("*.xlsx"))
-        + list(data_path.glob("*.tsv"))
-        + list(data_path.glob("*.xls"))
-        + list(data_path.glob("*.gpkg"))
-        + list(data_path.glob("*.shp"))
-    )
+    #GDB upload → use only the zip
+    if ext == ".gdb":
+        if gdb_zip_path and gdb_zip_path.exists():
+            files_to_insert.append((gdb_zip_path, gdb_zip_path.name))
+
+    #normal directory upload → keep nested structure
+    elif data_path.is_dir():
+        for f in data_path.rglob("*"):
+            if f.is_file():
+                # compute relative path WITH directories preserved
+                rel_key = f.relative_to(data_path)
+                files_to_insert.append((f, str(rel_key)))
+
+    #single file upload
+    elif data_path.is_file():
+        files_to_insert.append((data_path, data_path.name))
 
     inserted = []
-    skipped = []
 
-    for f in metadata_files:
-        # MIME detection
-        mime_type = "application/octet-stream"
-        if f.suffix == ".json":
-            mime_type = "application/json"
-        elif f.suffix == ".csv":
-            mime_type = "text/csv"
-        elif f.suffix in [".txt", ".tsv"]:
-            mime_type = "text/plain"
-        elif f.suffix == ".xml":
-            mime_type = "application/xml"
-
-        record_key = f"{slug}/{f.name}"
-        sha256 = sha256_of_file(f)
-
+    for f, rel_key in files_to_insert:
+        record_key = f"{slug}/{rel_key}"
         exists = db.run_query(
             """
             SELECT 1
             FROM storage.object
-            WHERE scheme = 's3'
-              AND host = :host
-              AND bucket = :bucket
-              AND key = :key
+            WHERE scheme='s3'
+              AND host=:host AND bucket=:bucket AND key=:key
             """,
             dict(host=host, bucket=bucket, key=record_key),
         ).scalar()
 
         if exists:
-            skipped.append(record_key)
             continue
 
-        # Insert only when not present
         db.run_sql(
             """
-            INSERT INTO storage.object (scheme, host, bucket, key, source, mime_type, sha256_hash)
-            VALUES ('s3', :host, :bucket, :key, :source, :mime_type, :sha256_hash)
+            INSERT INTO storage.object (scheme, host, bucket, key)
+            VALUES ('s3', :host, :bucket, :key)
             """,
-            dict(
-                host=host,
-                bucket=bucket,
-                key=record_key,
-                source=json.dumps({"local_path": str(f), "map_source_url": source_url}),
-                mime_type=mime_type,
-                sha256_hash=sha256,
-            ),
+            dict(host=host, bucket=bucket, key=record_key),
         )
+        object_id = db.run_query(
+            """
+            SELECT id
+            FROM storage.object
+            WHERE scheme='s3'
+              AND host=:host AND bucket=:bucket AND key=:key
+            """,
+            dict(host=host, bucket=bucket, key=record_key),
+        ).scalar()
+        inserted.append(object_id)
 
-        inserted.append(record_key)
 
-    return {"inserted": inserted, "skipped": skipped}
+    return inserted

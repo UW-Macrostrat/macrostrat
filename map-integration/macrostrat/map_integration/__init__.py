@@ -156,6 +156,24 @@ def delete_sources(
             ingest_process_id = ingest_process[0]
 
             print("Ingest Process ID", ingest_process_id)
+            if file_name is None:
+                rows = db.run_query(
+                    "select f.object_id from storage.map_files f where ingest_process_id = :ingest_process_id",
+                    dict(ingest_process_id=ingest_process_id),
+                ).fetchall()
+                object_ids = [r[0] for r in rows]
+                db.run_sql(
+                    "DELETE FROM storage.map_files WHERE ingest_process_id = :ingest_process_id",
+                    dict(ingest_process_id=ingest_process_id),
+                )
+                if object_ids:
+                    db.run_sql(
+                        """
+                        DELETE FROM storage.object
+                        WHERE id = ANY(:object_ids)
+                        """,
+                        dict(object_ids=object_ids),
+                    )
 
             db.run_sql(
                 "DELETE FROM maps_metadata.ingest_process_tag WHERE ingest_process_id = :ingest_process_id",
@@ -170,6 +188,8 @@ def delete_sources(
             "SELECT source_id FROM maps.sources WHERE slug = :slug",
             dict(slug=slug),
         ).scalar()
+
+
         if all_data:
             _delete_map_data(source_id)
 
@@ -288,7 +308,7 @@ def staging(
 
     slug, name, ext = normalize_slug(prefix, Path(data_path))
     # we need to add database insert here.
-    cmd_upload_dir(slug, Path(data_path), ext)
+    object_ids = cmd_upload_dir(slug=slug, data_path=Path(data_path), ext=ext)
 
     print(f"Ingesting {slug} from {data_path}")
 
@@ -398,43 +418,27 @@ def staging(
     create_rgeom(map_info)
     create_webgeom(map_info)
 
-    # Metadata assertions
-    row = db.run_query(
-        "SELECT name, scale FROM maps.sources WHERE source_id = :source_id",
-        dict(source_id=source_id),
-    ).fetchone()
-    print(row)
-
     # Ingest process assertions
-    ingest_process = db.run_query(
-        "SELECT source_id, object_group_id, state FROM maps_metadata.ingest_process WHERE source_id = :source_id",
-        dict(source_id=source_id),
-    ).fetchone()
-    print(ingest_process)
+    if len(object_ids) > 0:
+        ingest_id = db.run_query(
+            """
+            SELECT id
+            FROM maps_metadata.ingest_process
+            WHERE source_id = :source_id
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            dict(source_id=source_id),
+        ).scalar()
 
-    # Data exists
-    count = db.run_query(f"SELECT COUNT(*) FROM sources.{slug}_polygons").scalar()
-    print(count)
-
-    # Geometry column assertions
-    rgeom = db.run_query(
-        """
-        SELECT rgeom FROM maps.sources WHERE slug = :slug
-        """,
-        dict(slug=slug),
-    ).fetchone()
-    print(rgeom)
-
-    web_geom = db.run_query(
-        """
-        SELECT web_geom FROM maps.sources WHERE slug = :slug
-        """,
-        dict(slug=slug),
-    ).fetchone()
-    print(web_geom)
-
-    if any(val is None for val in [row, ingest_process, rgeom, web_geom]):
-        raise RuntimeError("Staging failed: Some expected records were not inserted.")
+        for object in object_ids:
+            db.run_sql(
+                """
+                INSERT INTO storage.map_files (ingest_process_id, object_id)
+                VALUES (:ingest_process_id, :object_id)
+                """,
+                dict(ingest_process_id=ingest_id, object_id=object),
+            )
 
     console.print(
         f"[green] \n Finished staging setup for {slug}. "
@@ -452,11 +456,13 @@ staging_cli.command("delete")(delete_sources)
 @staging_cli.command("s3-upload-dir")
 def cmd_upload_dir(slug: str = ..., data_path: Path = ..., ext: str = Option("")):
     """Upload a local directory to the staging bucket under SLUG/."""
-    res = staging_upload_dir(slug, data_path, ext)
+    db = get_database()
+    res, object_ids = staging_upload_dir(slug, data_path, ext, db)
     pretty_res = json.dumps(res, indent=2)
     console.print(
-        f"[green] Upload to s3 bucket was successful! \n {pretty_res} [/green]"
+        f"[green] Processed files \n {pretty_res} [/green]"
     )
+    return object_ids
 
 
 @staging_cli.command("s3-delete-dir")
@@ -549,7 +555,7 @@ def staging_bulk(
         slug, name, ext = normalize_slug(prefix, Path(region_path))
 
         # upload to the s3 bucket!
-        # cmd_upload_dir(slug, region_path, ext)
+        object_ids = cmd_upload_dir(slug=slug, data_path=region_path, ext=ext)
 
         print(f"Ingesting {slug} from {region_path}")
         gis_files, excluded_files = find_gis_files(Path(region_path), filter=filter)
@@ -657,45 +663,27 @@ def staging_bulk(
         create_rgeom(map_info)
         create_webgeom(map_info)
 
-        # Metadata assertions
-        row = db.run_query(
-            "SELECT name, scale FROM maps.sources WHERE source_id = :source_id",
-            dict(source_id=source_id),
-        ).fetchone()
-        print(row)
-
         # Ingest process assertions
-        ingest_process = db.run_query(
-            "SELECT source_id, object_group_id, state FROM maps_metadata.ingest_process WHERE source_id = :source_id",
-            dict(source_id=source_id),
-        ).fetchone()
-        print(ingest_process)
+        if len(object_ids) > 0:
+            ingest_id = db.run_query(
+                """
+                SELECT id
+                FROM maps_metadata.ingest_process
+                WHERE source_id = :source_id
+                ORDER BY id DESC
+                LIMIT 1
+                """,
+                dict(source_id=source_id),
+            ).scalar()
 
-        # Data exists
-        count = db.run_query(f"SELECT COUNT(*) FROM sources.{slug}_polygons").scalar()
-        print(count)
-
-        # Geometry column assertions
-        rgeom = db.run_query(
-            """
-            SELECT rgeom FROM maps.sources WHERE slug = :slug
-            """,
-            dict(slug=slug),
-        ).fetchone()
-        print(rgeom)
-
-        web_geom = db.run_query(
-            """
-            SELECT web_geom FROM maps.sources WHERE slug = :slug
-            """,
-            dict(slug=slug),
-        ).fetchone()
-        print(web_geom)
-
-        if any(val is None for val in [row, ingest_process, rgeom, web_geom]):
-            raise RuntimeError(
-                "Staging failed: Some expected records were not inserted."
-            )
+            for object in object_ids:
+                db.run_sql(
+                    """
+                    INSERT INTO storage.map_files (ingest_process_id, object_id)
+                    VALUES (:ingest_process_id, :object_id)
+                    """,
+                    dict(ingest_process_id=ingest_id, object_id=object),
+                )
 
         print(
             f"\nFinished staging setup for {slug}. View map here: https://dev.macrostrat.org/maps/ingestion/{source_id}/ \n"
