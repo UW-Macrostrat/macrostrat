@@ -1,14 +1,14 @@
+import hashlib
 import json
 import pathlib
 import shutil
 import subprocess
 import tempfile
 from os import path
+from pathlib import Path
 from textwrap import dedent
-import hashlib
 
 from rich.progress import Progress
-from pathlib import Path
 
 from macrostrat.core import app as app_
 from macrostrat.core.exc import MacrostratError
@@ -369,6 +369,7 @@ def sha256_of_file(path: Path) -> str:
     # DB stores hex, so return hexdigest()
     return h.hexdigest()
 
+
 def upload_files_db(db, slug: str, data_path: Path):
     """
     Insert metadata files into storage.object, **only if not already inserted**.
@@ -383,16 +384,16 @@ def upload_files_db(db, slug: str, data_path: Path):
     ).scalar()
 
     metadata_files = (
-        list(data_path.glob("*.json")) +
-        list(data_path.glob("*.csv")) +
-        list(data_path.glob("*.txt")) +
-        list(data_path.glob("*.xml")) +
-        list(data_path.glob("*.zip")) +
-        list(data_path.glob("*.xlsx")) +
-        list(data_path.glob("*.tsv")) +
-        list(data_path.glob("*.xls")) +
-        list(data_path.glob("*.gpkg")) +
-        list(data_path.glob("*.shp"))
+        list(data_path.glob("*.json"))
+        + list(data_path.glob("*.csv"))
+        + list(data_path.glob("*.txt"))
+        + list(data_path.glob("*.xml"))
+        + list(data_path.glob("*.zip"))
+        + list(data_path.glob("*.xlsx"))
+        + list(data_path.glob("*.tsv"))
+        + list(data_path.glob("*.xls"))
+        + list(data_path.glob("*.gpkg"))
+        + list(data_path.glob("*.shp"))
     )
 
     inserted = []
@@ -440,17 +441,12 @@ def upload_files_db(db, slug: str, data_path: Path):
                 host=host,
                 bucket=bucket,
                 key=record_key,
-                source=json.dumps({
-                    "local_path": str(f),
-                    "map_source_url": source_url
-                }),
+                source=json.dumps({"local_path": str(f), "map_source_url": source_url}),
                 mime_type=mime_type,
                 sha256_hash=sha256,
-            )
+            ),
         )
 
         inserted.append(record_key)
 
     return {"inserted": inserted, "skipped": skipped}
-
-
