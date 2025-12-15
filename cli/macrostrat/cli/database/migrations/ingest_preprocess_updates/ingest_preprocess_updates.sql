@@ -20,7 +20,21 @@ SELECT * FROM maps_metadata.ingest_process;
 CREATE OR REPLACE VIEW macrostrat_api.map_ingest_metadata AS
 SELECT * FROM maps_metadata.ingest_process;
 
+
 -- Make it writeable by users
 GRANT SELECT, UPDATE ON maps_metadata.ingest_process TO web_user;
 GRANT SELECT, UPDATE ON macrostrat_api.map_ingest_metadata TO web_user;
+
+create view macrostrat_api.map_ingest as
+    select * from maps_metadata.ingest_process;
+create view macrostrat_api.map_ingest_tags as
+    select * from maps_metadata.ingest_process_tag;
+
+GRANT SELECT, UPDATE ON macrostrat_api.map_ingest TO web_user, web_admin;
+GRANT SELECT, UPDATE ON macrostrat_api.map_ingest_tags TO web_user, web_admin;
+NOTIFY pgrst, 'reload schema';
+NOTIFY pgrst, 'reload schema';
+
+
+
 

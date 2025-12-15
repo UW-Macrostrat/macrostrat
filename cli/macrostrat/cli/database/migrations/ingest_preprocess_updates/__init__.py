@@ -37,4 +37,7 @@ class IngestPreprocessUpdates(Migration):
         column_type_is("maps_metadata", "ingest_process", "slug", "TEXT"),
         # View must exist after migration
         view_exists("macrostrat_api", "map_ingest_metadata"),
+        view_exists("macrostrat_api", "map_ingest"),
+        view_exists("macrostrat_api", "map_ingest_tags"),
+
     ]
