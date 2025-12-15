@@ -575,11 +575,11 @@ def _print_status(name, status: MigrationState, *, name_max_width=40):
     if status == MigrationState.COMPLETE:
         print("[green]already applied[/green]")
     elif status == MigrationState.UNMET_DEPENDENCIES:
-        print("[yellow]has unmet dependencies[/yellow]")
+        print("[orange]has unmet dependencies[/orange]")
     elif status == MigrationState.CANNOT_APPLY:
         print("[red]cannot be applied[/red]")
     elif status == MigrationState.SHOULD_APPLY:
-        print("[yellow]should be applied[/yellow]")
+        print("[orange]should be applied[/orange]")
     elif status == MigrationState.ALWAYS_APPLY:
         print("[yellow] always applied[/yellow]")
     elif status == MigrationState.DISALLOWED:
