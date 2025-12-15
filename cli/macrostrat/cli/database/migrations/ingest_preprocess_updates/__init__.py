@@ -39,5 +39,4 @@ class IngestPreprocessUpdates(Migration):
         view_exists("macrostrat_api", "map_ingest_metadata"),
         view_exists("macrostrat_api", "map_ingest"),
         view_exists("macrostrat_api", "map_ingest_tags"),
-
     ]
