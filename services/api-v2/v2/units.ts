@@ -275,8 +275,7 @@ module.exports = function (req, res, next, cb) {
       function (data, callback) {
         var where = "",
           limit = "sample" in req.query ? (cb ? " LIMIT 15 " : " LIMIT 5") : "",
-          orderby = [],
-          params = {};
+          orderby = [];
 
         larkin.trace(data);
 
@@ -333,39 +332,31 @@ module.exports = function (req, res, next, cb) {
 
           where += lithWhere.join(" OR ") + ")";
         }
+        if (req.query.lith_att_id || req.query.lith_att || req.query.lith_att_type) {
+          let lithAttField;
 
-        if (
-          req.query.lith_att_id ||
-          req.query.lith_att ||
-          req.query.lith_att_type
-        ) {
-          where += `
-          AND units.id = ANY(
-            SELECT unit_liths.unit_id
-            FROM macrostrat.unit_liths
-            JOIN macrostrat.liths ON lith_id = liths.id
-            JOIN macrostrat.unit_liths_atts ON unit_liths_atts.unit_lith_id = unit_liths.id
-            JOIN macrostrat.lith_atts ON unit_liths_atts.lith_att_id = lith_atts.id
-            WHERE :lith_att_field`;
-          //why is the syntax lith_att)) ?
           if (req.query.lith_att_id) {
-            where += " = ANY(:lith_att)) ";
-            params["lith_att_field"] = "unit_liths_atts.lith_att_id";
+            lithAttField = "unit_liths_atts.lith_att_id";
             params["lith_att"] = larkin.parseMultipleIds(req.query.lith_att_id);
           } else if (req.query.lith_att) {
-            where += " = ANY(:lith_att)) ";
-            params["lith_att_field"] = "lith_atts.lith_att";
-            params["lith_att"] = larkin.parseMultipleStrings(
-              req.query.lith_att,
-            );
+            lithAttField = "lith_atts.lith_att";
+            params["lith_att"] = larkin.parseMultipleStrings(req.query.lith_att);
           } else if (req.query.lith_att_type) {
-            where += " = ANY(:lith_att)) ";
-            params["lith_att_field"] = "lith_atts.att_type";
-            params["lith_att"] = larkin.parseMultipleStrings(
-              req.query.lith_att_type,
-            );
+            lithAttField = "lith_atts.att_type";
+            params["lith_att"] = larkin.parseMultipleStrings(req.query.lith_att_type);
           }
+
+          where += `
+            AND units.id = ANY(
+              SELECT unit_liths.unit_id
+              FROM macrostrat.unit_liths
+              JOIN macrostrat.liths ON lith_id = liths.id
+              JOIN macrostrat.unit_liths_atts ON unit_liths_atts.unit_lith_id = unit_liths.id
+              JOIN macrostrat.lith_atts ON unit_liths_atts.lith_att_id = lith_atts.id
+              WHERE ${lithAttField} = ANY(:lith_att)
+            )`;
         }
+
 
         if (data.age_bottom !== 99999) {
           where += " AND b_age > :age_top AND t_age < :age_bottom";
