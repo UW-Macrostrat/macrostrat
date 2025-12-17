@@ -8,7 +8,7 @@ SET
     WHEN mbr_id > 0 AND strat_name_id != mbr_id THEN mbr_id
     WHEN fm_id > 0 AND strat_name_id != fm_id THEN fm_id
     WHEN subgp_id > 0 AND strat_name_id != subgp_id THEN subgp_id
-    WHEN gp_id > 0 AND strat_name_id != gp_id THEN gp_id
+    WHEN sgp_id > 0 AND strat_name_id != gp_id THEN gp_id
     WHEN sgp_id > 0 AND strat_name_id != sgp_id THEN sgp_id
     ELSE strat_name_id
   END,

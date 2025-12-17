@@ -3,9 +3,8 @@ from pathlib import Path
 from psycopg2.sql import Identifier
 
 from macrostrat.core.exc import MacrostratError
-
-from ...database import get_db
 from ..base import Base
+from ...database import get_db
 
 here = Path(__file__).parent
 
@@ -16,7 +15,13 @@ class LookupStratNames(Base):
 
     def run(self):
         db = get_db()
-        db.run_sql(here / "sql" / "lookup-strat-names-01.sql")
+        db.run_sql("SET SEARCH_PATH TO macrostrat, public;")
+
+        # self.part_1()
+        self.part_2()
+
+    def part_1(self):
+        db = get_db()
 
         lookup_rank_children = {
             "sgp": ["SGp", "Gp", "SubGp", "Fm", "Mbr", "Bed"],
@@ -154,6 +159,9 @@ class LookupStratNames(Base):
 
         db.session.commit()
 
+    def part_2(self):
+        db = get_db()
+
         # Populate `early_age` and `late_age`
         db.run_sql(
             """
@@ -178,17 +186,12 @@ class LookupStratNames(Base):
         # We have some python code to handle this now
         db.run_sql(
             """
-            UPDATE lookup_strat_names_new
-            SET rank_name = CASE
-            WHEN split_part(strat_name, ' ', -1) IN (
-                'Suite', 'Volcanics', 'Complex', 'Melange', 'Series', 'Supersuite',
-                'Tongue', 'Lens', 'Lentil', 'Drift', 'Metamorphics', 'Sequence',
-                'Supersequence', 'Intrusives', 'Measures', 'Division', 'Subsuite'
-            )
+            UPDATE lookup_strat_names_new SET rank_name = CASE
+            WHEN split_part(strat_name, ' ', -1) IN ('Suite', 'Volcanics', 'Complex', 'Melange', 'Series', 'Supersuite', 'Tongue', 'Lens', 'Lentil', 'Drift', 'Metamorphics', 'Sequence', 'Supersequence', 'Intrusives', 'Measures', 'Division', 'Subsuite')
               THEN strat_name
-            WHEN lower(split_part(strat_name, ' ', -1)) IN (SELECT lith FROM liths) AND rank = 'fm'
+            WHEN lower(split_part(strat_name, ' ', -1)) IN (SELECT lith FROM liths) AND rank = 'Fm'
               THEN strat_name
-            WHEN lower(split_part(strat_name, ' ', -1) = 'Beds' AND rank = 'Bed'
+            WHEN lower(split_part(strat_name, ' ', -1)) = 'beds' AND rank = 'Bed'
               THEN strat_name
             WHEN rank = 'SGp' THEN
               CONCAT(strat_name, ' Supergroup')
@@ -214,8 +217,8 @@ class LookupStratNames(Base):
             WHERE rank != ''
             """
         ).fetchone()
-        n_rows = res["lsn"]
-        if res["sn"] != n_rows:
+        n_rows = res.lsn
+        if res.sn != n_rows:
             raise MacrostratError(
                 "Inconsistent strat_name count in lookup table.",
                 details=f"Found {n_rows} rows in lookup_strat_names_new",
@@ -228,8 +231,8 @@ class LookupStratNames(Base):
 
         # Get a list of lithologies
         lith_results = db.run_query("SELECT lith FROM macrostrat.liths").fetchall()
-        lithologies = [lith["lith"] for lith in lith_results]
-        plural_lithologies = [lith["lith"] + "s" for lith in lith_results]
+        lithologies = [lith.lith for lith in lith_results]
+        plural_lithologies = [lith + "s" for lith in lithologies]
         other_terms = [
             "beds",
             "volcanics",
@@ -248,12 +251,12 @@ class LookupStratNames(Base):
             "SELECT strat_name_id, strat_name FROM lookup_strat_names_new"
         )
         for strat_name in res.fetchall():
-            split_name = strat_name["strat_name"].split(" ")
+            split_name = strat_name.strat_name.split(" ")
 
             name_no_lith = " ".join(
                 [name for name in split_name if name.lower() not in lithologies]
             )
-            print(strat_name["strat_name_id"], name_no_lith)
+            print(strat_name.strat_name_id, name_no_lith)
             db.run_query(
                 """
                 UPDATE macrostrat.lookup_strat_names_new
@@ -262,7 +265,7 @@ class LookupStratNames(Base):
                 """,
                 dict(
                     name_no_lith=name_no_lith,
-                    strat_name_id=strat_name["strat_name_id"],
+                    strat_name_id=strat_name.strat_name_id,
                 ),
             )
             db.session.commit()
