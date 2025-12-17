@@ -27,6 +27,7 @@ import sys
 
 import click
 
+
 # CLI with unprocessed arguments
 
 
@@ -37,7 +38,7 @@ def v1_cli(args):
     # import all available commands
     from . import __version__ as VERSION
     from . import commands
-    from .database import mariaConnection, pgConnection
+    from .database._legacy import pgConnection
 
     # No parameters
     if len(args) == 0:
@@ -60,7 +61,7 @@ def v1_cli(args):
     # Get the class associated with the provided table name
     script = getattr(commands, cmd)
 
-    script = script({"pg": pgConnection, "mariadb": mariaConnection}, *args)
+    script = script({"pg": pgConnection, "mariadb": None}, *args)
 
     if len(args) == 1 or args[1] == "--help" or args[1] == "-h":
         # Print script help

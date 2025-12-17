@@ -9,14 +9,12 @@ from functools import partial
 import numpy as np
 import pyproj
 import shapely.ops as ops
-from psycopg2.extensions import AsIs
-from psycopg2.extras import NamedTupleCursor
 from scipy.spatial import Voronoi
 from shapely.geometry import MultiPoint, Point, Polygon, mapping, shape
-from shapely.ops import cascaded_union
 from shapely.wkt import loads
 
-from .. import schlep
+# TODO: don't need this any longer
+# from .. import schlep
 from ..base import Base
 
 
@@ -660,16 +658,16 @@ class Tesselate(Base):
         self.mariadb["connection"].close()
 
         # Update postgres
-        schlep_instance = schlep(
-            {
-                "pg": self.pg["raw_connection"],
-                "mariadb": self.mariadb["raw_connection"],
-            },
-            [None, ""],
-        )
-
-        schlep_instance.move_table("col_areas")
-        schlep_instance.move_table("cols")
+        # schlep_instance = schlep(
+        #     {
+        #         "pg": self.pg["raw_connection"],
+        #         "mariadb": self.mariadb["raw_connection"],
+        #     },
+        #     [None, ""],
+        # )
+        #
+        # schlep_instance.move_table("col_areas")
+        # schlep_instance.move_table("cols")
 
         urllib.request.urlopen(
             "http://127.0.0.1:5000/api/v2/columns/refresh-cache?cacheRefreshKey=%s"

@@ -1,4 +1,9 @@
+from pathlib import Path
+
 from ..base import Base
+from ...database import get_db
+
+here = Path(__file__).parent
 
 
 class Autocomplete(Base):
@@ -6,6 +11,11 @@ class Autocomplete(Base):
         Base.__init__(self, {}, *args)
 
     def run(self):
+        db = get_db()
+        db.run_sql(here / "sql" / "autocomplete.sql")
+        # TODO: synchonize macrostrat_api.autocomplete view
+
+    def run_legacy(self):
         self.mariadb["cursor"].execute(
             """
             DROP TABLE IF EXISTS autocomplete_new;
