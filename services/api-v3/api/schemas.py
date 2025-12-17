@@ -216,6 +216,7 @@ class IngestProcess(Base):
         back_populates="ingest_process", lazy="joined"
     )
 
+
 class MapFiles(Base):
     __tablename__ = "map_files"
     __table_args__ = {"schema": "storage"}
@@ -231,6 +232,7 @@ class MapFiles(Base):
         ForeignKey("storage.object.id", ondelete="CASCADE"),
         nullable=False,
     )
+
 
 class IngestProcessTag(Base):
     __tablename__ = "ingest_process_tag"
