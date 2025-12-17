@@ -97,9 +97,15 @@ class LookupStratNames(Base):
                     dict(name=name_id),
                 ).fetchone()
 
-                if parent is not None and parent.id > 0:
+                name_id = 0
+                parent_rank_id = None
+                parent_rank_name = None
+                if parent is not None:
+                    name_id = parent.id
                     parent_rank_id = parent.rank.lower() + "_id"
                     parent_rank_name = parent.rank.lower() + "_name"
+
+                if name_id > 0:
                     db.run_sql(
                         """
                         UPDATE macrostrat.lookup_strat_names_new
@@ -114,7 +120,6 @@ class LookupStratNames(Base):
                             strat_name_id=strat_name["id"],
                         ),
                     )
-
                 else:
                     has_parent = False
 
