@@ -15,7 +15,7 @@ class LookupStratNames(Base):
 
     def run(self):
         db = get_db()
-        db.run_sql(here / "sql" / "lookup-strat-names.sql")
+        db.run_sql(here / "sql" / "lookup-strat-names-01.sql")
 
         lookup_rank_children = {
             "sgp": ["SGp", "Gp", "SubGp", "Fm", "Mbr", "Bed"],
@@ -38,9 +38,22 @@ class LookupStratNames(Base):
             """
         )
 
-        for strat_name in res:
-            rank_id = strat_name["rank"] + "_id"
-            rank_name = strat_name["rank"] + "_name"
+        for strat_name in res.mappings():
+            rank_id = strat_name["rank"].lower() + "_id"
+            rank_name = strat_name["rank"].lower() + "_name"
+            print(f"Processing {strat_name['strat_name']} ({strat_name['rank']})")
+
+            params = dict(
+                ref_id=strat_name["ref_id"],
+                concept_id=strat_name["concept_id"],
+                strat_name_id=strat_name["id"],
+                strat_name=strat_name["strat_name"],
+                rank=strat_name["rank"],
+                rank_id_col=Identifier(rank_id),
+                rank_name_col=Identifier(rank_name),
+            )
+
+            print(params)
 
             db.run_sql(
                 """
@@ -53,19 +66,9 @@ class LookupStratNames(Base):
                     {rank_id_col},
                     {rank_name_col}
                 )
-                VALUES (:ref_id, :concept_id, :strat_name_id, :strat_name, :rank, :rank_id, :rank_name)
+                VALUES (:ref_id, :concept_id, :strat_name_id, :strat_name, :rank, :strat_name_id, :strat_name)
                 """,
-                dict(
-                    ref_id=strat_name["ref_id"],
-                    concept_id=strat_name["concept_id"],
-                    strat_name_id=strat_name["id"],
-                    strat_name=strat_name["strat_name"],
-                    rank=strat_name["rank"],
-                    rank_id=strat_name["id"],
-                    rank_name=strat_name["strat_name"],
-                    rank_id_col=Identifier(rank_id),
-                    rank_name_col=Identifier(rank_name),
-                ),
+                params,
             )
             db.session.commit()
 
@@ -94,15 +97,9 @@ class LookupStratNames(Base):
                     dict(name=name_id),
                 ).fetchone()
 
-                if parent is None:
-                    # Sketchy null check, we should improve this...
-                    name_id = 0
-                else:
-                    name_id = parent["id"]
-
-                if name_id > 0 and parent is not None:
-                    parent_rank_id = parent["rank"] + "_id"
-                    parent_rank_name = parent["rank"] + "_name"
+                if parent is not None and parent.id > 0:
+                    parent_rank_id = parent.rank.lower() + "_id"
+                    parent_rank_name = parent.rank.lower() + "_name"
                     db.run_sql(
                         """
                         UPDATE macrostrat.lookup_strat_names_new
@@ -111,9 +108,9 @@ class LookupStratNames(Base):
                         """,
                         dict(
                             parent_rank_id_col=Identifier(parent_rank_id),
-                            parent_rank_name=Identifier(parent_rank_name),
-                            parent_id=parent["id"],
-                            parent_name=parent["strat_name"],
+                            parent_rank_name_col=Identifier(parent_rank_name),
+                            parent_id=parent.id,
+                            parent_name=parent.strat_name,
                             strat_name_id=strat_name["id"],
                         ),
                     )
@@ -133,7 +130,7 @@ class LookupStratNames(Base):
                     SELECT strat_name_id
                     FROM lookup_strat_names
                     WHERE {rank_col} = :strat_name_id
-                    AND rank = ANY (:strat_name_ranks)
+                    AND rank::text = ANY(:strat_name_ranks)
                   )
                   AND cols.status_code = 'active'
                 )

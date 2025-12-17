@@ -32,7 +32,8 @@ SET c_interval = (
 );
 
 
+-- TODO: verify that all rows have been populated correctly before running the final swa
 -- Out with the old, in with the new
-TRUNCATE macrostrat.lookup_strat_names;
-INSERT INTO macrostrat.lookup_strat_names SELECT * FROM macrostrat.lookup_strat_names_new;
-DROP TABLE macrostrat.lookup_strat_names_new;
+--TRUNCATE macrostrat.lookup_strat_names;
+-- INSERT INTO macrostrat.lookup_strat_names SELECT * FROM macrostrat.lookup_strat_names_new;
+-- DROP TABLE macrostrat.lookup_strat_names_new;
