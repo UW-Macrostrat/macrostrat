@@ -19,20 +19,20 @@ SET early_age = (
 
 UPDATE macrostrat.lookup_strat_names_new
 SET c_interval = (
-    SELECT interval_name from intervals
-                                  JOIN timescales_intervals ON intervals.id = interval_id
-                                  JOIN timescales on timescale_id = timescales.id
-    WHERE timescale = 'international'
-      AND early_age > age_top
-      AND early_age <= age_bottom
-      AND late_age < age_bottom
-      AND late_age >= age_top
-    ORDER BY age_bottom - age_top
-    LIMIT 1
+  SELECT interval_name from intervals
+    JOIN timescales_intervals ON intervals.id = interval_id
+    JOIN timescales on timescale_id = timescales.id
+  WHERE timescale = 'international'
+    AND early_age > age_top
+    AND early_age <= age_bottom
+    AND late_age < age_bottom
+    AND late_age >= age_top
+  ORDER BY age_bottom - age_top
+  LIMIT 1
 );
 
 
 -- Out with the old, in with the new
-TRUNCATE lookup_strat_names;
-INSERT INTO lookup_strat_names SELECT * FROM lookup_strat_names_new;
-DROP TABLE lookup_strat_names_new;
+TRUNCATE macrostrat.lookup_strat_names;
+INSERT INTO macrostrat.lookup_strat_names SELECT * FROM macrostrat.lookup_strat_names_new;
+DROP TABLE macrostrat.lookup_strat_names_new;
