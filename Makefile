@@ -33,3 +33,7 @@ reset:
 	# Remove all virtual environments in subdirectories and re-create the main one
 	find . -name ".venv" -type d -exec rm -rf {} +
 	make all
+
+v3-local:
+	docker build -t macrostrat-api-v3 -f services/api-v3/Dockerlocal .
+	docker run --rm -p 8080:80 --env-file services/api-v3/.env macrostrat-api-v3
