@@ -5,5 +5,5 @@
     <option name="enabledOnSave" value="true" />
     <option name="sdkName" value="Python 3.11 (macrostrat)" />
   </component>
-  <component name="ProjectRootManager" version="2" languageLevel="JDK_24" default="true" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.13" project-jdk-type="Python SDK" />
 </project>
