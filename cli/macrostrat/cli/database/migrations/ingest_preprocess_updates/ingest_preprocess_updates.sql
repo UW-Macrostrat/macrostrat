@@ -54,7 +54,7 @@ create or replace view macrostrat_api.maps_sources AS
          keywords,
          language,
          description
-  from maps.sources limit 50;
+  from maps.sources
 
 GRANT SELECT, UPDATE ON macrostrat_api.map_ingest TO web_user, web_admin;
 GRANT SELECT, UPDATE ON macrostrat_api.map_ingest_tags TO web_user, web_admin;
