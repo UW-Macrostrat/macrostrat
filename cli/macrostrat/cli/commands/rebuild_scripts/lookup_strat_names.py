@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from psycopg2.sql import Identifier
-from rich.progress import track
+from rich.progress import track, Progress
 
 from macrostrat.core.exc import MacrostratError
 from ..base import Base
@@ -50,42 +50,51 @@ class LookupStratNames(Base):
         strat_names = res.all()
         n_strat_names = len(strat_names)
 
-        for i, strat_name in enumerate(
-            track(
-                strat_names, description="Inserting strat names...", total=n_strat_names
-            )
-        ):
-            rank_id = strat_name.rank.lower() + "_id"
-            rank_name = strat_name.rank.lower() + "_name"
+        ranks = set([strat_name.rank for strat_name in strat_names])
 
-            params = dict(
-                ref_id=strat_name.ref_id,
-                concept_id=strat_name.concept_id,
-                strat_name_id=strat_name.id,
-                strat_name=strat_name.strat_name,
-                rank=strat_name.rank,
-                rank_id_col=Identifier(rank_id),
-                rank_name_col=Identifier(rank_name),
+        with Progress() as progress:
+            task = progress.add_task("Inserting strat names...", total=n_strat_names)
+            progress.update(
+                task, total=n_strat_names, description="Inserting strat names..."
             )
+            for rank in ranks:
+                _rank = str(rank).lower()
+                rank_id = _rank + "_id"
+                rank_name = _rank + "_name"
 
-            db.run_query(
-                """
-                INSERT INTO macrostrat.lookup_strat_names_new (
-                    ref_id,
-                    concept_id,
-                    strat_name_id,
-                    strat_name,
-                    rank,
-                    {rank_id_col},
-                    {rank_name_col}
+                params = dict(
+                    rank=rank,
+                    rank_id_col=Identifier(rank_id),
+                    rank_name_col=Identifier(rank_name),
                 )
-                VALUES (:ref_id, :concept_id, :strat_name_id, :strat_name, :rank, :strat_name_id, :strat_name)
-                """,
-                params,
-            )
 
-            if i % 1000 == 0:
+                res = db.run_query(
+                    """
+                    INSERT INTO macrostrat.lookup_strat_names_new (
+                        ref_id,
+                        concept_id,
+                        strat_name_id,
+                        strat_name,
+                        rank,
+                        {rank_id_col},
+                        {rank_name_col}
+                    )
+                    SELECT
+                        ref_id,
+                        concept_id,
+                        id,
+                        strat_name,
+                        (rank::text)::macrostrat.lookup_strat_names_rank,
+                        id,
+                        strat_name
+                    FROM macrostrat.strat_names
+                    WHERE rank = :rank
+                    """,
+                    params,
+                )
+                n_inserted = res.rowcount
                 db.session.commit()
+                progress.update(task, advance=n_inserted)
 
         db.session.commit()
 
@@ -119,7 +128,7 @@ class LookupStratNames(Base):
                       AND rel = 'parent' and rank != ''
                     """,
                     dict(name=name_id),
-                )
+                ).one_or_none()
 
                 name_id = 0
                 parent_rank_id = None
