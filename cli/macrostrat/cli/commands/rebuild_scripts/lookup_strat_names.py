@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from psycopg2.sql import Identifier
+from rich.progress import track
 
 from macrostrat.core.exc import MacrostratError
 from ..base import Base
@@ -17,7 +18,7 @@ class LookupStratNames(Base):
         db = get_db()
         db.run_sql("SET SEARCH_PATH TO macrostrat, public;")
 
-        # self.part_1()
+        self.part_1()
         self.part_2()
 
     def part_1(self):
@@ -34,34 +35,40 @@ class LookupStratNames(Base):
 
         db.run_sql("SET SEARCH_PATH TO macrostrat, public;")
 
+        db.run_sql(here / "sql" / "lookup-strat-names-01.sql")
+
         # Get all the strat names
         res = db.run_query(
             """
             SELECT *
-            FROM strat_names
+            FROM macrostrat.strat_names
             WHERE rank != ''
             ORDER BY strat_name
             """
         )
 
-        for strat_name in res.mappings():
-            rank_id = strat_name["rank"].lower() + "_id"
-            rank_name = strat_name["rank"].lower() + "_name"
-            print(f"Processing {strat_name['strat_name']} ({strat_name['rank']})")
+        strat_names = res.all()
+        n_strat_names = len(strat_names)
+
+        for i, strat_name in enumerate(
+            track(
+                strat_names, description="Inserting strat names...", total=n_strat_names
+            )
+        ):
+            rank_id = strat_name.rank.lower() + "_id"
+            rank_name = strat_name.rank.lower() + "_name"
 
             params = dict(
-                ref_id=strat_name["ref_id"],
-                concept_id=strat_name["concept_id"],
-                strat_name_id=strat_name["id"],
-                strat_name=strat_name["strat_name"],
-                rank=strat_name["rank"],
+                ref_id=strat_name.ref_id,
+                concept_id=strat_name.concept_id,
+                strat_name_id=strat_name.id,
+                strat_name=strat_name.strat_name,
+                rank=strat_name.rank,
                 rank_id_col=Identifier(rank_id),
                 rank_name_col=Identifier(rank_name),
             )
 
-            print(params)
-
-            db.run_sql(
+            db.run_query(
                 """
                 INSERT INTO macrostrat.lookup_strat_names_new (
                     ref_id,
@@ -76,10 +83,21 @@ class LookupStratNames(Base):
                 """,
                 params,
             )
-            db.session.commit()
 
+            if i % 1000 == 0:
+                db.session.commit()
+
+        db.session.commit()
+
+        for i, strat_name in enumerate(
+            track(
+                strat_names,
+                description="Linking parent strat names...",
+                total=n_strat_names,
+            )
+        ):
             has_parent = True
-            name_id = strat_name["id"]
+            name_id = strat_name.id
 
             while has_parent:
                 # Get the parent of this unit
@@ -101,7 +119,7 @@ class LookupStratNames(Base):
                       AND rel = 'parent' and rank != ''
                     """,
                     dict(name=name_id),
-                ).fetchone()
+                )
 
                 name_id = 0
                 parent_rank_id = None
@@ -112,7 +130,7 @@ class LookupStratNames(Base):
                     parent_rank_name = parent.rank.lower() + "_name"
 
                 if name_id > 0:
-                    db.run_sql(
+                    db.run_query(
                         """
                         UPDATE macrostrat.lookup_strat_names_new
                         SET {parent_rank_id_col} = :parent_id, {parent_rank_name_col} = :parent_name
@@ -123,13 +141,13 @@ class LookupStratNames(Base):
                             parent_rank_name_col=Identifier(parent_rank_name),
                             parent_id=parent.id,
                             parent_name=parent.strat_name,
-                            strat_name_id=strat_name["id"],
+                            strat_name_id=strat_name.id,
                         ),
                     )
                 else:
                     has_parent = False
 
-                _rank = strat_name["rank"].lower()
+                _rank = strat_name.rank.lower()
 
                 sql = """
                 UPDATE macrostrat.lookup_strat_names_new SET t_units = (
@@ -150,12 +168,13 @@ class LookupStratNames(Base):
 
                 params = dict(
                     rank_col=Identifier(_rank + "_id"),
-                    strat_name_id=strat_name["id"],
+                    strat_name_id=strat_name.id,
                     strat_name_ranks=lookup_rank_children[_rank],
                 )
 
-                db.run_sql(sql, params)
-                db.session.commit()
+                db.run_query(sql, params)
+                if i % 1000 == 0:
+                    db.session.commit()
 
         db.session.commit()
 
@@ -247,11 +266,15 @@ class LookupStratNames(Base):
         lithologies = lithologies + plural_lithologies + other_terms
 
         # Fetch all strat names
-        res = db.run_query(
+        strat_names = db.run_query(
             "SELECT strat_name_id, strat_name FROM lookup_strat_names_new"
-        )
+        ).all()
         i = 0
-        for strat_name in res:
+        for strat_name in track(
+            strat_names,
+            description="Removing lithological terms...",
+            total=len(strat_names),
+        ):
             split_name = strat_name.strat_name.split(" ")
 
             name_no_lith = " ".join(
@@ -270,7 +293,6 @@ class LookupStratNames(Base):
             )
             i += 1
             if i % 1000 == 0:
-                print(f"Processed {i} strat names...")
                 db.session.commit()
 
         db.session.commit()
