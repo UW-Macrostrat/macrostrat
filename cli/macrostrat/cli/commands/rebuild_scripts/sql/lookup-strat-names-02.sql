@@ -19,7 +19,7 @@ SET
     WHEN fm_id > 0 THEN fm_id
     WHEN mbr_id > 0 THEN mbr_id
     WHEN bed_id > 0 THEN bed_id
-    ELSE tree = 0
+    ELSE 0
   END;
 
 -- Group by concept_id and fill in NULL ages
@@ -37,7 +37,7 @@ FROM (
   LEFT JOIN unit_strat_names USING (strat_name_id)
   LEFT JOIN lookup_unit_intervals USING (unit_id)
   WHERE concept_id != 0
-  GROUP BY strat_name_id
+  GROUP BY strat_name_id, concept_id
 ) AS sub
  WHERE lsn.concept_id = sub.concept_id
    AND lsn.early_age IS NULL
@@ -45,7 +45,7 @@ FROM (
 
 -- Group by concept_id, but using strat names meta
 
-UPDATE lookup_strat_names_new lsn
+UPDATE macrostrat.lookup_strat_names_new lsn
 SET
   early_age = sub.age_bottom,
   late_age = sub.age_top
@@ -62,7 +62,7 @@ WHERE lsn.concept_id = sub.concept_id
 -- Group by parent and fill in NULL ages
 UPDATE lookup_strat_names_new lsn
 SET
-  early_age = sub.early_age
+  early_age = sub.early_age,
   late_age = sub.late_age
 FROM (
     SELECT parent, max(b_age) AS early_age, min(t_age) AS late_age
@@ -118,10 +118,7 @@ SET t_period = (
 );
 
 -- Update containing interval for names not explicitly matched to units but have a concept_id
-UPDATE lookup_strat_names_new
-    JOIN strat_names_meta USING (concept_id)
-    JOIN intervals t on t.id = t_int
-    JOIN intervals b on b.id = b_int
+UPDATE lookup_strat_names_new lsn
 SET c_interval = (
     SELECT interval_name
     FROM intervals
@@ -161,4 +158,11 @@ t_period = (
     ORDER BY age_bottom - age_top
     LIMIT 1
 )
-WHERE c_interval IS NULL and t_int > 0 and b_int > 0;
+FROM
+  strat_names_meta snm,
+  intervals t,
+  intervals b
+WHERE c_interval IS NULL and t_int > 0 and b_int > 0
+  AND snm.concept_id = lsn.concept_id
+  AND t.id = t_int
+  AND b.id = b_int;

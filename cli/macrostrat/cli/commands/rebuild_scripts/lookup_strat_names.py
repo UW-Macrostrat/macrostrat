@@ -250,13 +250,13 @@ class LookupStratNames(Base):
         res = db.run_query(
             "SELECT strat_name_id, strat_name FROM lookup_strat_names_new"
         )
-        for strat_name in res.fetchall():
+        i = 0
+        for strat_name in res:
             split_name = strat_name.strat_name.split(" ")
 
             name_no_lith = " ".join(
                 [name for name in split_name if name.lower() not in lithologies]
             )
-            print(strat_name.strat_name_id, name_no_lith)
             db.run_query(
                 """
                 UPDATE macrostrat.lookup_strat_names_new
@@ -268,7 +268,10 @@ class LookupStratNames(Base):
                     strat_name_id=strat_name.strat_name_id,
                 ),
             )
-            db.session.commit()
+            i += 1
+            if i % 1000 == 0:
+                print(f"Processed {i} strat names...")
+                db.session.commit()
 
         db.session.commit()
 
