@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from psycopg2.sql import Identifier
+from rich.console import Console
 from rich.progress import track, Progress
 
 from macrostrat.core.exc import MacrostratError
@@ -8,6 +9,9 @@ from ..base import Base
 from ...database import get_db
 
 here = Path(__file__).parent
+
+
+console = Console()
 
 
 class LookupStratNames(Base):
@@ -114,7 +118,7 @@ class LookupStratNames(Base):
                 # Note: in PostgreSQL, the column `this_name` has been renamed to `parent`,
                 # and `that_name` has been renamed to `child`.
                 # Another note: there are only 3 entries in strat_tree where rel != 'parent', on 2025-12-17
-                parent = db.run_query(
+                res = db.run_query(
                     """
                     SELECT
                         parent, -- this_name has been renamed to parent
@@ -128,7 +132,16 @@ class LookupStratNames(Base):
                       AND rel = 'parent' and rank != ''
                     """,
                     dict(name=name_id),
-                ).one_or_none()
+                ).all()
+
+                parent = None
+                if len(res) > 1:
+                    # Warning: multiple parents found
+                    console.print(
+                        f"[yellow]Warning: multiple parents found for strat_name_id {name_id}. This will not be allowed in future versions.",
+                    )
+                if len(res) > 0:
+                    parent = res[0]
 
                 name_id = 0
                 parent_rank_id = None
