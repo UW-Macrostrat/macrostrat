@@ -34,3 +34,10 @@ SELECT * FROM macrostrat.units
 WHERE section_id NOT IN (SELECT id FROM macrostrat.sections);
 
 
+-- Find strat name relationships that are duplicated
+SELECT
+  array_agg(id) ids, parent, child, count(*)
+FROM macrostrat.strat_tree
+GROUP BY parent, child
+HAVING COUNT(*) > 1;
+-- 1 duplicate found (id array: {25993,25994})

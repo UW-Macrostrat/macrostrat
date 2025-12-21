@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from macrostrat.core.migrations import Migration, exists, has_fks
+from macrostrat.core.migrations import Migration, exists, has_fks, ReadinessState
 
 __dir__ = Path(__file__).parent
 
@@ -14,8 +14,9 @@ class MacrostratCoreMigration(Migration):
     Update the Macrostrat core schema ('macrostrat') with foreign keys and data transformations to
     stabilize the schema in PostgreSQL after transformation from MariaDB.
     """
-    readiness_state = "ga"
+    readiness_state = ReadinessState.ALPHA
     depends_on = ["macrostrat-mariadb", "api-v3"]
+    destructive = True
 
     postconditions = [
         exists("macrostrat", "units", "sections"),

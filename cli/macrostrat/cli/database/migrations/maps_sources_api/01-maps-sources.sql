@@ -1,5 +1,6 @@
-DROP VIEW IF EXISTS macrostrat_api.sources_metadata;
-DROP VIEW IF EXISTS maps.sources_metadata;
+DROP VIEW IF EXISTS macrostrat_api.sources_ingestion;
+DROP VIEW IF EXISTS macrostrat_api.sources_metadata CASCADE;
+DROP VIEW IF EXISTS maps.sources_metadata CASCADE;
 DROP VIEW IF EXISTS macrostrat_api.sources;
 
 CREATE OR REPLACE VIEW maps.sources_metadata AS
