@@ -62,9 +62,9 @@ GRANT SELECT, UPDATE ON macrostrat_api.map_ingest TO web_user, web_admin;
 GRANT SELECT, UPDATE ON macrostrat_api.map_ingest_tags TO web_user, web_admin;
 GRANT SELECT, UPDATE ON macrostrat_api.maps_sources TO web_user, web_admin;
 
-ALTER VIEW macrostrat_api.map_ingest OWNER TO web_admin;
-ALTER VIEW macrostrat_api.map_ingest_tags OWNER TO web_admin;
-ALTER VIEW macrostrat_api.maps_sources OWNER TO web_admin;
+ALTER VIEW macrostrat_api.map_ingest OWNER TO macrostrat;
+ALTER VIEW macrostrat_api.map_ingest_tags OWNER TO macrostrat;
+ALTER VIEW macrostrat_api.maps_sources OWNER TO macrostrat;
 
 GRANT USAGE ON SCHEMA macrostrat_api TO web_anon;
 GRANT SELECT ON macrostrat_api.map_ingest TO web_anon;
