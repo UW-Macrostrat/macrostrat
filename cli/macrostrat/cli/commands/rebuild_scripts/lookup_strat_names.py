@@ -58,9 +58,7 @@ class LookupStratNames(Base):
 
         with Progress() as progress:
             task = progress.add_task("Inserting strat names...", total=n_strat_names)
-            progress.update(
-                task, total=n_strat_names, description="Inserting strat names..."
-            )
+            progress.update(task, total=n_strat_names)
             for rank in ranks:
                 _rank = str(rank).lower()
                 rank_id = _rank + "_id"
@@ -100,103 +98,107 @@ class LookupStratNames(Base):
                 db.session.commit()
                 progress.update(task, advance=n_inserted)
 
-        db.session.commit()
+            db.session.commit()
 
-        for i, strat_name in enumerate(
-            track(
-                strat_names,
-                description="Linking parent strat names...",
-                total=n_strat_names,
-            )
-        ):
-            has_parent = True
-            name_id = strat_name.id
+            for i, strat_name in enumerate(
+                progress.track(
+                    strat_names,
+                    description="Linking parent strat names...",
+                    total=n_strat_names,
+                )
+            ):
+                has_parent = True
+                name_id = strat_name.id
 
-            while has_parent:
-                # Get the parent of this unit
+                while has_parent:
+                    # Get the parent of this unit
 
-                # Note: in PostgreSQL, the column `this_name` has been renamed to `parent`,
-                # and `that_name` has been renamed to `child`.
-                # Another note: there are only 3 entries in strat_tree where rel != 'parent', on 2025-12-17
-                res = db.run_query(
-                    """
-                    SELECT
-                        parent, -- this_name has been renamed to parent
-                        strat_name,
-                        strat_names.id,
-                        rank
-                    FROM macrostrat.strat_tree
-                    JOIN macrostrat.strat_names
-                      ON parent = strat_names.id
-                    WHERE child = :name
-                      AND rel = 'parent' and rank != ''
-                    """,
-                    dict(name=name_id),
-                ).all()
-
-                parent = None
-                if len(res) > 1:
-                    # Warning: multiple parents found
-                    console.print(
-                        f"[yellow]Warning: multiple parents found for strat_name_id {name_id}. This will not be allowed in future versions.",
-                    )
-                if len(res) > 0:
-                    parent = res[0]
-
-                name_id = 0
-                parent_rank_id = None
-                parent_rank_name = None
-                if parent is not None:
-                    name_id = parent.id
-                    parent_rank_id = parent.rank.lower() + "_id"
-                    parent_rank_name = parent.rank.lower() + "_name"
-
-                if name_id > 0:
-                    db.run_query(
+                    # Note: in PostgreSQL, the column `this_name` has been renamed to `parent`,
+                    # and `that_name` has been renamed to `child`.
+                    # Another note: there are only 3 entries in strat_tree where rel != 'parent', on 2025-12-17
+                    res = db.run_query(
                         """
-                        UPDATE macrostrat.lookup_strat_names_new
-                        SET {parent_rank_id_col} = :parent_id, {parent_rank_name_col} = :parent_name
-                        WHERE strat_name_id = :strat_name_id
+                        SELECT
+                            parent, -- this_name has been renamed to parent
+                            child,
+                            strat_name,
+                            strat_names.id,
+                            rank
+                        FROM macrostrat.strat_tree
+                        JOIN macrostrat.strat_names
+                          ON parent = strat_names.id
+                        WHERE child = :child
+                          AND rel = 'parent' and rank != ''
                         """,
-                        dict(
-                            parent_rank_id_col=Identifier(parent_rank_id),
-                            parent_rank_name_col=Identifier(parent_rank_name),
-                            parent_id=parent.id,
-                            parent_name=parent.strat_name,
-                            strat_name_id=strat_name.id,
-                        ),
+                        dict(child=name_id),
+                    ).all()
+
+                    parent = None
+                    if len(res) > 1:
+                        # Warning: multiple parents found
+                        snr = ",".join([str(r.parent) for r in res])
+                        child = res[0].child
+                        progress.console.print(
+                            f"[yellow]Warning: multiple parents found; this may not be allowed. "
+                            f"{child} > {snr}[/yellow]"
+                        )
+                    if len(res) > 0:
+                        parent = res[0]
+
+                    name_id = 0
+                    parent_rank_id = None
+                    parent_rank_name = None
+                    if parent is not None:
+                        name_id = parent.id
+                        parent_rank_id = parent.rank.lower() + "_id"
+                        parent_rank_name = parent.rank.lower() + "_name"
+
+                    if name_id > 0:
+                        db.run_query(
+                            """
+                            UPDATE macrostrat.lookup_strat_names_new
+                            SET {parent_rank_id_col} = :parent_id, {parent_rank_name_col} = :parent_name
+                            WHERE strat_name_id = :strat_name_id
+                            """,
+                            dict(
+                                parent_rank_id_col=Identifier(parent_rank_id),
+                                parent_rank_name_col=Identifier(parent_rank_name),
+                                parent_id=parent.id,
+                                parent_name=parent.strat_name,
+                                strat_name_id=strat_name.id,
+                            ),
+                        )
+                    else:
+                        has_parent = False
+
+                    _rank = strat_name.rank.lower()
+
+                    sql = """
+                    UPDATE macrostrat.lookup_strat_names_new SET t_units = (
+                      SELECT COUNT(*)
+                      FROM unit_strat_names
+                      LEFT JOIN units_sections ON unit_strat_names.unit_id = units_sections.unit_id
+                      LEFT JOIN cols ON units_sections.col_id = cols.id
+                      WHERE unit_strat_names.strat_name_id IN (
+                        SELECT strat_name_id
+                        FROM lookup_strat_names
+                        WHERE {rank_col} = :strat_name_id
+                        AND rank::text = ANY(:strat_name_ranks)
+                      )
+                      AND cols.status_code = 'active'
                     )
-                else:
-                    has_parent = False
+                    WHERE strat_name_id = :strat_name_id
+                    """
 
-                _rank = strat_name.rank.lower()
+                    params = dict(
+                        rank_col=Identifier(_rank + "_id"),
+                        strat_name_id=strat_name.id,
+                        strat_name_ranks=lookup_rank_children[_rank],
+                    )
 
-                sql = """
-                UPDATE macrostrat.lookup_strat_names_new SET t_units = (
-                  SELECT COUNT(*)
-                  FROM unit_strat_names
-                  LEFT JOIN units_sections ON unit_strat_names.unit_id = units_sections.unit_id
-                  LEFT JOIN cols ON units_sections.col_id = cols.id
-                  WHERE unit_strat_names.strat_name_id IN (
-                    SELECT strat_name_id
-                    FROM lookup_strat_names
-                    WHERE {rank_col} = :strat_name_id
-                    AND rank::text = ANY(:strat_name_ranks)
-                  )
-                  AND cols.status_code = 'active'
-                )
-                WHERE strat_name_id = :strat_name_id
-                """
-
-                params = dict(
-                    rank_col=Identifier(_rank + "_id"),
-                    strat_name_id=strat_name.id,
-                    strat_name_ranks=lookup_rank_children[_rank],
-                )
-
-                db.run_query(sql, params)
-                if i % 1000 == 0:
-                    db.session.commit()
+                    db.run_query(sql, params)
+                    if i % 1000 == 0:
+                        db.session.commit()
 
         db.session.commit()
 
