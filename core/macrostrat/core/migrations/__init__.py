@@ -8,12 +8,11 @@ from time import time
 from typing import Callable, Iterable, Optional, Union
 
 import docker
-from pydantic import BaseModel
-from rich import print
-
 from macrostrat.database import Database
 from macrostrat.database.utils import OutputMode
 from macrostrat.dinosaur.upgrade_cluster.utils import database_cluster
+from pydantic import BaseModel
+from rich import print
 
 from ..config import settings
 from ..database import get_database
@@ -430,11 +429,6 @@ def _run_migrations(
         _name = _migration.name
         _subsystem = getattr(_migration, "subsystem", None)
 
-        # Check whether the migration is capable of applying, or has already applied
-        apply_status = _migration.should_apply(db)
-        if apply_status == ApplicationStatus.APPLIED:
-            completed_migrations.append(_migration.name)
-
         # If --name is specified, only run the migration with the matching name
         if name is not None and name != _name:
             continue
@@ -442,6 +436,11 @@ def _run_migrations(
         # If --subsystem is specified, only run migrations that match the subsystem
         if subsystem is not None and subsystem != _subsystem:
             continue
+
+        # Check whether the migration is capable of applying, or has already applied
+        apply_status = _migration.should_apply(db)
+        if apply_status == ApplicationStatus.APPLIED:
+            completed_migrations.append(_migration.name)
 
         _status = _get_status(_migration, completed_migrations, env=_get_active_env())
 
