@@ -307,8 +307,6 @@ def staging(
 
     slug, name, ext = normalize_slug(prefix, Path(data_path))
     # we need to add database insert here.
-    object_ids = cmd_upload_dir(slug=slug, data_path=Path(data_path), ext=ext)
-
     print(f"Ingesting {slug} from {data_path}")
 
     gis_files, excluded_files = find_gis_files(Path(data_path), filter=filter)
@@ -410,33 +408,23 @@ def staging(
             point_state=ingest_results["point_state"],
         ),
     )
+    ingest_id = db.run_query(
+        """
+        SELECT id
+        FROM maps_metadata.ingest_process
+        WHERE source_id = :source_id
+        ORDER BY id DESC
+        LIMIT 1
+        """,
+        dict(source_id=source_id),
+    ).scalar()
+    cmd_upload_dir(slug=slug, data_path=Path(data_path), ext=ext, ingest_process_id=ingest_id)
+
 
     map_info = get_map_info(db, slug)
     _prepare_fields(map_info)
     create_rgeom(map_info)
     create_webgeom(map_info)
-
-    # Ingest process assertions
-    if len(object_ids) > 0:
-        ingest_id = db.run_query(
-            """
-            SELECT id
-            FROM maps_metadata.ingest_process
-            WHERE source_id = :source_id
-            ORDER BY id DESC
-            LIMIT 1
-            """,
-            dict(source_id=source_id),
-        ).scalar()
-
-        for object in object_ids:
-            db.run_sql(
-                """
-                INSERT INTO storage.map_files (ingest_process_id, object_id)
-                VALUES (:ingest_process_id, :object_id)
-                """,
-                dict(ingest_process_id=ingest_id, object_id=object),
-            )
 
     console.print(
         f"[green] \n Finished staging setup for {slug}. "
@@ -452,10 +440,10 @@ staging_cli.command("delete")(delete_sources)
 
 
 @staging_cli.command("s3-upload-dir")
-def cmd_upload_dir(slug: str = ..., data_path: Path = ..., ext: str = Option("")):
+def cmd_upload_dir(slug: str = ..., data_path: Path = ..., ext: str = Option(""), ingest_process_id: int = Option(None)):
     """Upload a local directory to the staging bucket under SLUG/."""
     db = get_database()
-    res, object_ids = staging_upload_dir(slug, data_path, ext, db)
+    res, object_ids = staging_upload_dir(slug, data_path, ext, db, ingest_process_id)
     pretty_res = json.dumps(res, indent=2)
     console.print(f"[green] Processed files \n {pretty_res} [/green]")
     return object_ids
@@ -469,7 +457,8 @@ def cmd_delete_dir(
     ),
 ):
     """Delete all objects under SLUG/ in the staging bucket."""
-    staging_delete_dir(slug, file_name)
+    db = get_database()
+    staging_delete_dir(slug, db)
     console.print(
         f"[green] Successfully deleted objects within the s3 bucket under slug: {slug} [/green]"
     )
@@ -549,9 +538,6 @@ def staging_bulk(
 
     for region_path in region_dirs:
         slug, name, ext = normalize_slug(prefix, Path(region_path))
-
-        # upload to the s3 bucket!
-        object_ids = cmd_upload_dir(slug=slug, data_path=region_path, ext=ext)
 
         print(f"Ingesting {slug} from {region_path}")
         gis_files, excluded_files = find_gis_files(Path(region_path), filter=filter)
@@ -653,32 +639,23 @@ def staging_bulk(
             ),
         )
 
+        ingest_id = db.run_query(
+            """
+            SELECT id
+            FROM maps_metadata.ingest_process
+            WHERE source_id = :source_id
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            dict(source_id=source_id),
+        ).scalar()
+        cmd_upload_dir(slug=slug, data_path=region_path, ext=ext, ingest_process_id=ingest_id)
+
+
         map_info = get_map_info(db, slug)
         _prepare_fields(map_info)
         create_rgeom(map_info)
         create_webgeom(map_info)
-
-        # Ingest process assertions
-        if len(object_ids) > 0:
-            ingest_id = db.run_query(
-                """
-                SELECT id
-                FROM maps_metadata.ingest_process
-                WHERE source_id = :source_id
-                ORDER BY id DESC
-                LIMIT 1
-                """,
-                dict(source_id=source_id),
-            ).scalar()
-
-            for object in object_ids:
-                db.run_sql(
-                    """
-                    INSERT INTO storage.map_files (ingest_process_id, object_id)
-                    VALUES (:ingest_process_id, :object_id)
-                    """,
-                    dict(ingest_process_id=ingest_id, object_id=object),
-                )
 
         print(
             f"\nFinished staging setup for {slug}. View map here: https://dev.macrostrat.org/maps/ingestion/{source_id}/ \n"

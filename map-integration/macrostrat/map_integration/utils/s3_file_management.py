@@ -7,187 +7,299 @@ import tempfile
 from os import path
 from pathlib import Path
 from textwrap import dedent
-
+from rich.console import Console
+from rich.table import Table
 from rich.progress import Progress
-
 from macrostrat.core import app as app_
 from macrostrat.core.exc import MacrostratError
-from macrostrat.core.schemas import (  # type: ignore[import-untyped]
-    IngestProcess,
-    IngestProcessTag,
-    IngestState,
-    Object,
-    ObjectGroup,
+from macrostrat.core.schemas import (
     SchemeEnum,
-    Sources,
 )
+from minio import Minio
 
-settings = app_.settings
-
-
-# object group id...store a set of objects related to a map....
-# page through objects and ingest them.
-# single ingestion....
-# file to be stored in the storage schema and objects table...object group...
-# change object group table into an intersection table that ties  the objects with the maps_metadata.ingest_process table.
-# delete the object group id from all the tables.
-# super standardized upload
-# specify the bucket name
-def staging_upload_dir(slug: str, data_path: pathlib.Path, ext: str, db) -> dict:
-    endpoint = settings.get("storage.endpoint")
-    b_access = settings.get("storage.access_key")
-    b_secret = settings.get("storage.secret_key")
-    bucket_name = settings.get("storage.bucket_name")
-    gdb_zip_path = None
-
-    missing = [
-        k
-        for k, v in {
-            "storage.endpoint": endpoint,
-            "storage.bucket_name": bucket_name,
-            "storage.*_access": b_access,
-            "storage.*_secret": b_secret,
-        }.items()
-        if not v
-    ]
-    if missing:
-        print("These are missing ", missing)
-
-    cfg = dedent(
-        f"""
-            [dev]
-            type = s3
-            provider = Minio
-            endpoint = {endpoint}
-            access_key_id = {b_access}
-            secret_access_key = {b_secret}
-            acl = private
-            """
+def get_minio_client():
+    return Minio(
+        endpoint=settings.get("storage.endpoint"),
+        access_key=settings.get("storage.access_key"),
+        secret_key=settings.get("storage.secret_key"),
+        secure=True,
     )
 
-    dst = f"dev:{bucket_name}/{slug}"
-    # If a FileGDB directory, zip it to slug.gdb.zip and upload that file
+settings = app_.settings
+console = Console()
+
+def print_objects(objects: list[dict]) -> None:
+    table = Table(title="Objects staged for deletion")
+
+    table.add_column("#", justify="right")
+    table.add_column("Object ID", justify="right")
+    table.add_column("Key")
+
+    for i, obj in enumerate(objects, start=1):
+        table.add_row(str(i), str(obj["id"]), obj["key"])
+
+    console.print(table)
+
+
+
+#--------------UPLOADS---------------
+
+def get_existing_object_id(db, *, host: str, bucket: str, key: str) -> int | None:
+    return db.run_query(
+        """
+        SELECT id
+        FROM storage.object
+        WHERE scheme = 's3'
+          AND host = :host
+          AND bucket = :bucket
+          AND key = :key
+        """,
+        dict(host=host, bucket=bucket, key=key),
+    ).scalar()
+
+
+def insert_storage_object(
+    db,
+    *,
+    host: str,
+    bucket: str,
+    key: str,
+    sha256: str,) -> int:
+    db.run_sql(
+        """
+        INSERT INTO storage.object
+          (scheme, host, bucket, key, sha256_hash)
+        VALUES
+          ('s3', :host, :bucket, :key, :sha256)
+        """,
+        dict(
+            host=host,
+            bucket=bucket,
+            key=key,
+            sha256=sha256,
+        ),
+    )
+    object_id = get_existing_object_id(db, host=host, bucket=bucket, key=key)
+    if object_id is None:
+        raise RuntimeError("Failed to retrieve storage.object id after insert")
+    return object_id
+
+
+def link_object_to_ingest(
+    db,
+    *,
+    ingest_process_id: int,
+    object_id: int,
+) -> None:
+    db.run_sql(
+        """
+        INSERT INTO maps_metadata.map_files (ingest_process_id, object_id)
+        VALUES (:ingest_process_id, :object_id)
+        ON CONFLICT DO NOTHING
+        """,
+        dict(
+            ingest_process_id=ingest_process_id,
+            object_id=object_id,
+        ),
+    )
+
+
+def upload_file_to_minio(
+    minio_client: Minio,
+    *,
+    bucket: str,
+    object_key: str,
+    local_path: Path,
+    sha256: str,
+    content_type: str | None = None,) -> None:
+    with open(local_path, "rb") as f:
+        minio_client.put_object(
+            bucket_name=bucket,
+            object_name=object_key,
+            data=f,
+            length=local_path.stat().st_size,
+            content_type=content_type,
+            metadata={"sha256": sha256},
+        )
+
+def staging_upload_dir(
+    slug: str,
+    data_path: Path,
+    ext: str,
+    db,
+    ingest_process_id: int,
+) -> dict:
+    """
+    Upload local files to S3 via MinIO and register them in storage.object.
+    """
+    if ingest_process_id is None:
+        raise ValueError("ingest_process_id is required to link uploaded files")
+
+    bucket = settings.get("storage.bucket_name")
+    host = settings.get("storage.endpoint")
+    minio_client = get_minio_client()
+
+    files_to_upload: list[tuple[Path, str]] = []
+
     if ext == ".gdb":
         archive_base = path.join(tempfile.gettempdir(), f"{slug}.gdb")
         archive_path = shutil.make_archive(
             archive_base, "zip", root_dir=data_path.parent, base_dir=data_path.name
         )
-        gdb_zip_path = Path(archive_path)
-        data_path = gdb_zip_path
+        files_to_upload.append((Path(archive_path), Path(archive_path).name))
 
-    # check if files are stored in db or not. if not, upload rows.
-    if db is not None:
-        object_ids = insert_local_files_into_db(db, slug, data_path, gdb_zip_path, ext)
+    elif data_path.is_dir():
+        for f in data_path.rglob("*"):
+            if f.is_file():
+                files_to_upload.append((f, str(f.relative_to(data_path))))
 
-    with tempfile.NamedTemporaryFile("w+", delete=False) as tf:
-        tf.write(cfg)
-        tf.flush()
+    elif data_path.is_file():
+        files_to_upload.append((data_path, data_path.name))
 
-        cmd = [
-            "rclone",
-            "copy",
-            str(data_path),
-            dst,
-            "--config",
-            tf.name,
-            "--checksum",
-            "--metadata",
-            "--transfers",
-            "8",
-            "--log-level",
-            "ERROR",
-            "--s3-no-check-bucket",
-            "--progress",
-        ]
+    uploaded_object_ids: list[int] = []
 
-        try:
-            subprocess.run(cmd, check=True)
-        except FileNotFoundError:
-            conf_dir, conf_name = path.dirname(tf.name), path.basename(tf.name)
-            docker_cmd = [
-                "docker",
-                "run",
-                "--rm",
-                "-v",
-                f"{conf_dir}:/cfg:ro",
-                "-v",
-                f"{data_path}:/src:ro",
-                "rclone/rclone:latest",
-                "copy",
-                "/src",
-                f"{dst}",
-                "--config",
-                f"/cfg/{conf_name}",
-                "--checksum",
-                "--metadata",
-                "--transfers",
-                "8",
-                "--log-level",
-                "ERROR",
-                "--s3-no-check-bucket",
-                "--progress",
-            ]
-            subprocess.run(docker_cmd, check=True)
+    for local_path, rel_key in files_to_upload:
+        object_key = f"{slug}/{rel_key}"
+
+        existing_id = get_existing_object_id(
+            db,
+            host=host,
+            bucket=bucket,
+            key=object_key,
+        )
+        if existing_id:
+            continue
+
+        sha256 = sha256_of_file(local_path)
+
+        upload_file_to_minio(
+            minio_client,
+            bucket=bucket,
+            object_key=object_key,
+            local_path=local_path,
+            sha256=sha256,
+        )
+
+        object_id = insert_storage_object(
+            db,
+            host=host,
+            bucket=bucket,
+            key=object_key,
+            sha256=sha256,
+        )
+
+        link_object_to_ingest(
+            db,
+            ingest_process_id=ingest_process_id,
+            object_id=object_id,
+        )
+
+        uploaded_object_ids.append(object_id)
 
     return {
-        "bucket_name": bucket_name,
-        "filename": f"{slug}/",
-        "endpoint": endpoint,
-        "destination": f"s3://{bucket_name}/{slug}/",
-    }, object_ids
+        "bucket_name": bucket,
+        "slug": slug,
+        "endpoint": host,
+        "destination": f"s3://{bucket}/{slug}/",
+        "objects_created": uploaded_object_ids,
+    }
 
 
-def staging_delete_dir(slug: str, file_name: str | None = None) -> None:
-    endpoint = settings.get("storage.endpoint")
-    b_access = settings.get("storage.access_key")
-    b_secret = settings.get("storage.secret_key")
-    bucket_name = settings.get("storage.bucket_name")
 
-    cfg = dedent(
-        f"""
-        [dev]
-        type = s3
-        provider = Minio
-        endpoint = {endpoint}
-        access_key_id = {b_access}
-        secret_access_key = {b_secret}
-        acl = private
-    """
+
+# --------------------DELETIONS-------------------
+def get_objects_for_slug(db, *, host: str, bucket: str, slug: str) -> list[dict]:
+    return db.run_query(
+        """
+        SELECT id, key
+        FROM storage.object
+        WHERE scheme = 's3'
+          AND host = :host
+          AND bucket = :bucket
+          AND key LIKE :prefix
+        """,
+        dict(
+            host=host,
+            bucket=bucket,
+            prefix=f"{slug}/%",
+        ),
+    ).mappings().all()
+
+def unlink_object_from_ingests(db, *, object_id: int) -> None:
+    db.run_sql(
+        """
+        DELETE FROM maps_metadata.map_files
+        WHERE object_id = :object_id
+        """,
+        dict(object_id=object_id),
     )
 
-    target = f"dev:{bucket_name}/{slug}" + (f"/{file_name}" if file_name else "")
+def delete_storage_object(db, *, object_id: int) -> None:
+    db.run_sql(
+        """
+        DELETE FROM storage.object
+        WHERE id = :id
+        """,
+        dict(id=object_id),
+    )
 
-    with tempfile.NamedTemporaryFile("w+", delete=False) as tf:
-        tf.write(cfg)
-        tf.flush()
-        cmd = [
-            "rclone",
-            "deletefile" if file_name else "purge",
-            target,
-            "--config",
-            tf.name,
-            "--s3-no-check-bucket",
-        ]
-        try:
-            subprocess.run(cmd, check=True)
-        except FileNotFoundError:
-            conf_dir, conf_name = path.dirname(tf.name), path.basename(tf.name)
-            subprocess.run(
-                [
-                    "docker",
-                    "run",
-                    "--rm",
-                    "-v",
-                    f"{conf_dir}:/cfg:ro",
-                    "rclone/rclone:latest",
-                    "deletefile" if file_name else "purge",
-                    target,
-                    "--config",
-                    f"/cfg/{conf_name}",
-                    "--s3-no-check-bucket",
-                ],
-                check=True,
-            )
+def delete_object_from_minio(
+    minio_client: Minio,
+    *,
+    bucket: str,
+    object_key: str,
+) -> None:
+    minio_client.remove_object(bucket, object_key)
+
+
+def staging_delete_dir(slug: str, db) -> dict:
+    """
+    Delete all staged objects under a slug using DB as the source of truth.
+    """
+    bucket = settings.get("storage.bucket_name")
+    host = settings.get("storage.endpoint")
+    minio_client = get_minio_client()
+
+    objects = get_objects_for_slug(
+        db,
+        host=host,
+        bucket=bucket,
+        slug=slug,
+    )
+
+    deleted = []
+
+    for obj in objects:
+        object_id = obj["id"]
+        object_key = obj["key"]
+
+        #Remove ingest links
+        unlink_object_from_ingests(db, object_id=object_id)
+
+        #Remove DB object record
+        delete_storage_object(db, object_id=object_id)
+
+        #Remove from MinIO
+        delete_object_from_minio(
+            minio_client,
+            bucket=bucket,
+            object_key=object_key,
+        )
+
+        deleted.append(object_key)
+
+    return {
+        "bucket": bucket,
+        "slug": slug,
+        "objects_deleted": len(deleted),
+        "keys": deleted,
+    }
+
+
+
+
+
+
 
 
 def staging_list_dir(slug: str, page_token: int = 0, page_size: int = 20) -> dict:
