@@ -2,6 +2,10 @@
 <project version="4">
   <component name="DataSourcePerFileMappings">
     <file url="file://$APPLICATION_CONFIG_DIR$/consoles/db/2b0e1593-0c83-4fd7-b37d-870e85d1cced/console.sql" value="2b0e1593-0c83-4fd7-b37d-870e85d1cced" />
+    <file url="file://$APPLICATION_CONFIG_DIR$/consoles/db/2b0e1593-0c83-4fd7-b37d-870e85d1cced/console_10.sql" value="2b0e1593-0c83-4fd7-b37d-870e85d1cced" />
     <file url="file://$APPLICATION_CONFIG_DIR$/consoles/db/2b0e1593-0c83-4fd7-b37d-870e85d1cced/console_8.sql" value="2b0e1593-0c83-4fd7-b37d-870e85d1cced" />
+    <file url="file://$PROJECT_DIR$/cli/macrostrat/cli/commands/rebuild_scripts/lookup_strat_names.py" value="2b0e1593-0c83-4fd7-b37d-870e85d1cced" />
+    <file url="file://$PROJECT_DIR$/cli/macrostrat/cli/commands/rebuild_scripts/sql/autocomplete.sql" value="2b0e1593-0c83-4fd7-b37d-870e85d1cced" />
+    <file url="file://$PROJECT_DIR$/docs/notes/helpful-queries.sql" value="2b0e1593-0c83-4fd7-b37d-870e85d1cced" />
   </component>
 </project>

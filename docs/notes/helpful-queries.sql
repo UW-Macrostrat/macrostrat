@@ -16,6 +16,20 @@ ON child = sn2.id
 WHERE child = :child
   AND rel = 'parent' and sn1.rank != '';
 
+SELECT
+  child child_id,
+  array_to_string(array_agg(parent), ', ') parent_id, -- this_name has been renamed to parent
+  array_to_string(array_agg(sn1.strat_name || ' ' || sn1.rank::text), ', ') parent_strat_name,
+  sn2.strat_name || ' ' || sn2.rank child_strat_name
+FROM macrostrat.strat_tree
+       JOIN macrostrat.strat_names sn1
+            ON parent = sn1.id
+       JOIN macrostrat.strat_names sn2
+            ON child = sn2.id
+WHERE rel = 'parent' and sn1.rank != ''
+GROUP BY child, sn2.strat_name, sn2.rank
+HAVING COUNT(*) > 1;
+
 /* Count of number of children per parent */
 SELECT
   parent parent_id,
@@ -23,6 +37,13 @@ SELECT
   count(child) n_children
 FROM macrostrat.strat_tree
 GROUP BY parent;
+
+SELECT child id,
+       ARRAY_AGG(parent) parents,
+       COUNT(parent)    n_parents
+FROM macrostrat.strat_tree
+GROUP BY child
+HAVING COUNT(parent) > 1;
 
 /* Unified count of parents per child */
 SELECT
@@ -69,3 +90,6 @@ WITH a as (
   FROM macrostrat.strat_names_meta
 )
 SELECT domain, COUNT(*) n_names FROM a GROUP BY domain;
+
+
+SELECT rel, count(*) FROM macrostrat.strat_tree GROUP BY rel;
