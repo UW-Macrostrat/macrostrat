@@ -1,26 +1,116 @@
 from pathlib import Path
 
-from macrostrat.core.migrations import Migration, exists
+from macrostrat.database import Database
+
+from macrostrat.core.migrations import (
+    Migration,
+    exists,
+    schema_exists,
+    ApplicationStatus,
+    has_columns,
+)
 
 migrations_dir = Path(__file__).parent / "migrations"
 
 
-class InitialSchema(Migration):
-    name = "rockd_initial_schema"
+class RockdMigration(Migration):
+    """Base class for rockd migrations."""
+
+    subsystem = "rockd"
+
+
+class InitialSchema(RockdMigration):
+    name = "initial-schema"
     description = "Initial schema and core tables"
-    subsystem = "rockd_database"
-    preconditions = [lambda db: True]
     postconditions = [exists("public", "people")]
+
+    def should_apply(self, database: Database) -> ApplicationStatus:
+        # Default to applied
+        return ApplicationStatus.APPLIED
+
+    def apply(self, database: Database) -> None:
+        # Initial schema is applied outside the migration system
+        raise NotImplementedError(
+            "Initial schema is applied outside the migration system."
+        )
+
+
+class RockdTileUtils(RockdMigration):
+    name = "tile-utils"
+    description = "Rockd tile utility functions"
+
+    postconditions = [
+        # Check if the tile_utils schema exists
+        schema_exists("tile_utils"),
+    ]
 
     fixtures = [
         migrations_dir
-        / "0010-rockd-dms-defs.sql",  # creates util functions in the rockd db for the tileserver api
-        migrations_dir / "rockd-tile-utils.sql",
-        migrations_dir / "0012_rockd_user_privileges.sql",  # grants/defaults (safe)
-        migrations_dir / "0020_integration_tokens.sql",  # adds tokens for integrations
-        migrations_dir / "0030_rockd-coords.sql",  # standalone table
+        / "0010-rockd-tms-defs.sql",  # creates util functions in the rockd db for the tileserver api
+        migrations_dir / "0011-rockd-tile-utils.sql",
+    ]
+
+
+class UsageStatsTable(RockdMigration):
+    name = "usage-stats-table"
+    description = "Create usage_stats table"
+    postconditions = [
+        # Check if the usage_stats table exists
+        exists("public", "usage_stats"),
+    ]
+
+    fixtures = [
+        migrations_dir / "0030-usage-stats-table.sql",  # standalone table
+    ]
+
+
+class ModelFeedbackSchema(RockdMigration):
+    name = "model-feedback-schema"
+    description = "Add model feedback schema"
+    postconditions = [
+        # Check if the model_feedback table exists
+        exists("public", "model_feedback"),
+    ]
+
+    fixtures = [
         migrations_dir
-        / "0040_model-feedback-schema.sql",  # references checkins/observations
-        migrations_dir / "0050_strabo_integration.sql",  # references people
-        migrations_dir / "0020_integration_tokens.sql",  # alters/inserts into people
+        / "0040-model-feedback-schema.sql",  # references checkins/observations
+    ]
+
+
+class StraboIntegration(RockdMigration):
+    name = "strabo-integration"
+    description = "Add Strabo integration tables"
+    postconditions = [
+        # Check if the strabo_integrations table exists
+        exists("user_features", "linked_strabo_account"),
+        has_columns("public", "checkins", "spot_id"),
+    ]
+
+    fixtures = [
+        migrations_dir / "0050-strabo-integration.sql",  # references people
+    ]
+
+
+class UserPrivileges(RockdMigration):
+    name = "user-privileges"
+    description = "Set default user privileges"
+    always_apply = True
+    fixtures = [
+        migrations_dir / "0012-user-privileges.sql",  # grants/defaults (safe)
+    ]
+
+
+class IntegrationTokens(RockdMigration):
+    name = "integration-tokens"
+    description = "Schema updates and new tables"
+    depends_on = [
+        "rockd_initial_schema",
+    ]
+    postconditions = [
+        # Check if the tile_utils schema exists
+        has_columns("public", "people", "token_exp")
+    ]
+    fixtures = [
+        migrations_dir / "0020-integration-tokens.sql",  # adds tokens for integrations
     ]

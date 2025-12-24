@@ -3,7 +3,6 @@
 
 --/opt/homebrew/bin/pg_restore --dbname=rockd --clean --username=rockd --host=db.development.svc.macrostrat.org --port=5432 /Users/afromandi/Macrostrat/Pgdump/2025-08-11T00:00:10.rockd.pg_dump
 
-
 ALTER DATABASE rockd OWNER TO rockd;
 ALTER SCHEMA public OWNER TO rockd;
 ALTER SCHEMA modules OWNER TO rockd;

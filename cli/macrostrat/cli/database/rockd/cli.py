@@ -2,11 +2,8 @@ import importlib
 
 import typer
 from sqlalchemy import text
-from typer import Option
 
-import macrostrat.cli.database.rockd.db_subsystem
 from macrostrat.core.migrations import _run_migrations
-
 from .database import get_rockd_db
 
 cli = typer.Typer(help="Rockd database tools")
@@ -51,5 +48,5 @@ def migrations(
         name=name,
         force=force,
         data_changes=data_changes,
-        subsystem="rockd_database",
+        subsystem="rockd",
     )
