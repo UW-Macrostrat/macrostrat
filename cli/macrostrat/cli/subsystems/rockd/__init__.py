@@ -1,13 +1,23 @@
 import importlib
+from os import environ
 
 import typer
 from sqlalchemy import text
-from typer import Option
 
-import macrostrat.cli.database.rockd.db_subsystem
 from macrostrat.core.migrations import _run_migrations
+from macrostrat.database import Database
 
-from .database import get_rockd_db
+
+def get_rockd_db() -> Database:
+    """
+    Return a Database instance that talks to the Rockd cluster.
+    The URL can live in .env / docker-compose.yml as ROCKD_DATABASE.
+    """
+    url = environ.get("ROCKD_DATABASE")
+    if url is None:
+        raise RuntimeError("Set ROCKD_DATABASE in your environment")
+    return Database(url)
+
 
 cli = typer.Typer(help="Rockd database tools")
 
@@ -22,7 +32,7 @@ def migrations(
     """
     List or apply Rockd migrations.
     """
-    importlib.import_module("macrostrat.cli.database.rockd.migrations")
+    importlib.import_module(".migrations", __package__)
     db = get_rockd_db()
 
     with db.engine.connect() as conn:
@@ -51,5 +61,5 @@ def migrations(
         name=name,
         force=force,
         data_changes=data_changes,
-        subsystem="rockd_database",
+        subsystem="rockd",
     )

@@ -117,6 +117,20 @@ def view_exists(schema: str, *view_names: str) -> DbEvaluator:
     return lambda db: all(v in db.inspector.get_view_names(schema) for v in view_names)
 
 
+def has_table_privilege(
+    user: str, schema: str, table: str, privilege: str = "SELECT"
+) -> DbEvaluator:
+    """Return a function that evaluates to true when the given user has all specified privileges on the given table in the given schema"""
+
+    def _has_priv(db: Database) -> bool:
+        return db.run_query(
+            "SELECT has_table_privilege(:user, :schema || '.' || :table, :privilege) AS has_privilege",
+            dict(user=user, schema=schema, table=table, privilege=privilege),
+        ).scalar()
+
+    return _has_priv
+
+
 def has_fks(schema: str, *table_names: str) -> DbEvaluator:
     """Return a function that evaluates to true when every given table in the given schema has at least one foreign key"""
     return lambda db: all(
@@ -233,7 +247,7 @@ class Migration:
     def apply(self, database: Database) -> ApplicationStatus:
         """Apply the migrations defined by this class. By default, run every sql file
         in the same directory as the class definition."""
-        if len(self.fixtures) == 0:
+        if len(self.fixtures) == 0 and self.load_sql_files:
             # Automatically load fixtures from the same directory as the migration
             sql_dir = Path(inspect.getfile(self.__class__)).parent
             database.run_fixtures(sql_dir, output_mode=self.output_mode)
@@ -380,9 +394,23 @@ def _get_all_migrations(legacy: bool = False):
     # Find all subclasses of Migration among imported modules
     migrations = Migration.__subclasses__()
 
+    for cls in migrations:
+        if hasattr(cls, "name"):
+            # This is a concrete migration class
+            continue
+        # Recursively include subclasses if not concrete
+        subclasses = cls.__subclasses__()
+        if len(subclasses) == 0:
+            warnings.warn(
+                f"No subclasses or concrete implementation found for migration class {cls}"
+            )
+        migrations.extend(subclasses)
+
     # Instantiate each migration, then sort topologically according to dependency order
     instances = [
-        cls() for cls in migrations if legacy or not getattr(cls, "legacy", False)
+        cls()
+        for cls in migrations
+        if (legacy or not getattr(cls, "legacy", False)) and hasattr(cls, "name")
     ]
     graph = {inst.name: inst.depends_on for inst in instances}
     order = list(TopologicalSorter(graph).static_order())
@@ -430,11 +458,6 @@ def _run_migrations(
         _name = _migration.name
         _subsystem = getattr(_migration, "subsystem", None)
 
-        # Check whether the migration is capable of applying, or has already applied
-        apply_status = _migration.should_apply(db)
-        if apply_status == ApplicationStatus.APPLIED:
-            completed_migrations.append(_migration.name)
-
         # If --name is specified, only run the migration with the matching name
         if name is not None and name != _name:
             continue
@@ -442,6 +465,11 @@ def _run_migrations(
         # If --subsystem is specified, only run migrations that match the subsystem
         if subsystem is not None and subsystem != _subsystem:
             continue
+
+        # Check whether the migration is capable of applying, or has already applied
+        apply_status = _migration.should_apply(db)
+        if apply_status == ApplicationStatus.APPLIED:
+            completed_migrations.append(_migration.name)
 
         _status = _get_status(_migration, completed_migrations, env=_get_active_env())
 
