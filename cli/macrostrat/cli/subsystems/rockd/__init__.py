@@ -32,7 +32,7 @@ def migrations(
     """
     List or apply Rockd migrations.
     """
-    importlib.import_module("macrostrat.cli.database.rockd.migrations")
+    importlib.import_module(".migrations", __package__)
     db = get_rockd_db()
 
     with db.engine.connect() as conn:

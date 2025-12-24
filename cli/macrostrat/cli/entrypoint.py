@@ -8,7 +8,6 @@ from rich import print
 from rich.traceback import install
 from typer import Argument, Typer
 
-from macrostrat.cli.database.rockd import cli as rockd_cli
 from macrostrat.core import app
 from macrostrat.core.exc import MacrostratError
 from macrostrat.core.main import env_text, set_app_state
@@ -19,6 +18,7 @@ from .subsystems.paleogeography import (
     SubsystemLoadError,
     build_paleogeography_subsystem,
 )
+from .subsystems.rockd import cli as rockd_cli
 from .utils import run_user_command_if_provided
 from .v1_entrypoint import v1_cli
 
