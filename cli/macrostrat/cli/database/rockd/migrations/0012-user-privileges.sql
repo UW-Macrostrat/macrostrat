@@ -3,6 +3,20 @@
 
 --/opt/homebrew/bin/pg_restore --dbname=rockd --clean --username=rockd --host=db.development.svc.macrostrat.org --port=5432 /Users/afromandi/Macrostrat/Pgdump/2025-08-11T00:00:10.rockd.pg_dump
 
+
+DO
+$$
+BEGIN
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'rockd') THEN
+        CREATE ROLE rockd NOLOGIN ;
+    END IF;
+
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'rockd-reader') THEN
+        CREATE ROLE "rockd-reader" NOLOGIN ;
+    END IF;
+END
+$$;
+
 ALTER DATABASE rockd OWNER TO rockd;
 ALTER SCHEMA public OWNER TO rockd;
 ALTER SCHEMA modules OWNER TO rockd;

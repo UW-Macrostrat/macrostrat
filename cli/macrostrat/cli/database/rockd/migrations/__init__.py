@@ -10,7 +10,7 @@ from macrostrat.core.migrations import (
     has_columns,
 )
 
-migrations_dir = Path(__file__).parent / "migrations"
+migrations_dir = Path(__file__).parent
 
 
 class RockdMigration(Migration):
@@ -105,7 +105,7 @@ class IntegrationTokens(RockdMigration):
     name = "integration-tokens"
     description = "Schema updates and new tables"
     depends_on = [
-        "rockd_initial_schema",
+        "initial-schema",
     ]
     postconditions = [
         # Check if the tile_utils schema exists
