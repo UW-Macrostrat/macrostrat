@@ -60,4 +60,5 @@ VALUES (
     NOW(),                                                       -- last_notification_check
     NULL,                                                        -- last_data_dump
     NOW() + INTERVAL '1 year'                                    -- token_exp
-);
+)
+ON CONFLICT (email) DO NOTHING;
