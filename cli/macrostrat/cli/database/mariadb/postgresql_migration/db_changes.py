@@ -2,9 +2,7 @@
 Script to output dataframes for comparing data between two databases and tables.
 """
 
-import pandas as pd
-from psycopg2.sql import Identifier
-from sqlalchemy import create_engine, inspect, text
+from sqlalchemy import inspect, text
 from sqlalchemy.engine import Engine
 
 from macrostrat.core import app

@@ -7,8 +7,6 @@ from rich.traceback import install
 from typer import Argument, Typer
 
 from macrostrat.app_frame import CommandBase
-from macrostrat.cli.database.rockd.cli import cli as rockd_cli
-from macrostrat.cli.database.rockd.db_subsystem import rockd_subsystem
 from macrostrat.core import app
 from macrostrat.core.exc import MacrostratError
 from macrostrat.core.main import env_text, set_app_state
@@ -21,6 +19,7 @@ from .subsystems.paleogeography import (
     SubsystemLoadError,
     build_paleogeography_subsystem,
 )
+from .subsystems.rockd import cli as rockd_cli
 from .utils import run_user_command_if_provided
 from .v1_entrypoint import v1_cli
 
@@ -43,7 +42,7 @@ if rockd_url and "ROCKD_DATABASE" not in environ:
     environ["ROCKD_DATABASE"] = rockd_url
 
 app.subsystems.add(db_subsystem)
-app.subsystems.add(rockd_subsystem)
+# app.subsystems.add(rockd_subsystem)
 
 help_text = f"""[bold]Macrostrat[/] control interface
 
