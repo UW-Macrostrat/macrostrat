@@ -1,10 +1,7 @@
 from macrostrat.core.migrations import (
     Migration,
-    column_type_is,
     exists,
     has_columns,
-    not_exists,
-    view_exists,
 )
 
 
