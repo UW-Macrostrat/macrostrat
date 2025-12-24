@@ -5,8 +5,9 @@ from rich.console import Console
 from rich.progress import track, Progress
 
 from macrostrat.core.exc import MacrostratError
-from ..base import Base
+
 from ...database import get_db
+from ..base import Base
 
 here = Path(__file__).parent
 
