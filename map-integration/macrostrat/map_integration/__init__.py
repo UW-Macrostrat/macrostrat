@@ -94,9 +94,6 @@ def delete_sources(
         help="BULK delete = filename.txt [every line lists the slug_name to delete. no whitespaces.]\n "
         + "SINGLE delete = 'slug_name' [list the slug_name in quotes]",
     ),
-    file_name: str = Option(
-        None, help="deletes a specified file within the slug's directory."
-    ),
     dry_run: bool = Option(False, "--dry-run"),
     all_data: bool = Option(False, "--all-data"),
 ):
@@ -116,13 +113,11 @@ def delete_sources(
         print("\nDry run; not actually deleting anything")
         return
 
-    for slug in slug:
-        cmd_delete_dir(slug, file_name)
-        print(f"Deleting map {slug}")
-        print(slug)
+    for s in slug:
+        print(f"Deleting map {s}")
         tables = db.run_query(
             "SELECT primary_table, primary_line_table FROM maps.sources WHERE slug = :slug",
-            dict(slug=slug),
+            dict(slug=s),
         ).fetchone()
 
         line_table = None
@@ -132,10 +127,10 @@ def delete_sources(
             poly_table = tables.primary_table
 
         if line_table is None:
-            line_table = f"{slug}_lines"
+            line_table = f"{s}_lines"
         if poly_table is None:
-            poly_table = f"{slug}_polygons"
-        points_table = f"{slug}_points"
+            poly_table = f"{s}_polygons"
+        points_table = f"{s}_points"
 
         for table in [line_table, poly_table, points_table]:
             db.run_sql(
@@ -143,56 +138,38 @@ def delete_sources(
                 dict(table=Identifier("sources", table)),
             )
 
-        ingest_process = db.run_query(
-            """
-            SELECT id FROM maps_metadata.ingest_process
-            JOIN maps.sources ON maps.sources.source_id = maps_metadata.ingest_process.source_id
-            WHERE maps.sources.slug = :slug
-            """,
-            dict(slug=slug),
-        ).fetchone()
-
-        if ingest_process:
-            ingest_process_id = ingest_process[0]
-
-            print("Ingest Process ID", ingest_process_id)
-            if file_name is None:
-                rows = db.run_query(
-                    "select f.object_id from storage.map_files f where ingest_process_id = :ingest_process_id",
-                    dict(ingest_process_id=ingest_process_id),
-                ).fetchall()
-                object_ids = [r[0] for r in rows]
-                db.run_sql(
-                    "DELETE FROM storage.map_files WHERE ingest_process_id = :ingest_process_id",
-                    dict(ingest_process_id=ingest_process_id),
-                )
-                if object_ids:
-                    db.run_sql(
-                        """
-                        DELETE FROM storage.object
-                        WHERE id = ANY(:object_ids)
-                        """,
-                        dict(object_ids=object_ids),
-                    )
-
-            db.run_sql(
-                "DELETE FROM maps_metadata.ingest_process_tag WHERE ingest_process_id = :ingest_process_id",
-                dict(ingest_process_id=ingest_process_id),
-            )
-            db.run_sql(
-                "DELETE FROM maps_metadata.ingest_process WHERE id = :ingest_process_id",
-                dict(ingest_process_id=ingest_process_id),
-            )
+        staging_delete_dir(s, db)
 
         source_id = db.run_query(
             "SELECT source_id FROM maps.sources WHERE slug = :slug",
-            dict(slug=slug),
+            dict(slug=s),
         ).scalar()
+
+
+        # Delete ALL ingest-related rows for this source
+        db.run_sql(
+            """
+            DELETE FROM maps_metadata.ingest_process_tag
+            WHERE ingest_process_id IN (
+                SELECT id FROM maps_metadata.ingest_process
+                WHERE source_id = :source_id
+            )
+            """,
+            dict(source_id=source_id),
+        )
+
+        db.run_sql(
+            """
+            DELETE FROM maps_metadata.ingest_process
+            WHERE source_id = :source_id
+            """,
+            dict(source_id=source_id),
+        )
 
         if all_data:
             _delete_map_data(source_id)
 
-        db.run_sql("DELETE FROM maps.sources WHERE slug = :slug", dict(slug=slug))
+        db.run_sql("DELETE FROM maps.sources WHERE slug = :slug", dict(slug=s))
 
 
 @cli.command(name="change-slug")
@@ -443,10 +420,10 @@ staging_cli.command("delete")(delete_sources)
 def cmd_upload_dir(slug: str = ..., data_path: Path = ..., ext: str = Option(""), ingest_process_id: int = Option(None)):
     """Upload a local directory to the staging bucket under SLUG/."""
     db = get_database()
-    res, object_ids = staging_upload_dir(slug, data_path, ext, db, ingest_process_id)
+    res = staging_upload_dir(slug, data_path, ext, db, ingest_process_id)
     pretty_res = json.dumps(res, indent=2)
     console.print(f"[green] Processed files \n {pretty_res} [/green]")
-    return object_ids
+    return
 
 
 @staging_cli.command("s3-delete-dir")

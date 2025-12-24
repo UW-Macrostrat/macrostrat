@@ -8,6 +8,7 @@ from os import path
 from pathlib import Path
 from textwrap import dedent
 from rich.console import Console
+import mimetypes
 from rich.table import Table
 from rich.progress import Progress
 from macrostrat.core import app as app_
@@ -17,6 +18,14 @@ from macrostrat.core.schemas import (
 )
 from minio import Minio
 
+
+settings = app_.settings
+console = Console()
+
+def guess_mime_type(path: Path) -> str:
+    mime, _ = mimetypes.guess_type(path.name)
+    return mime or "application/octet-stream"
+
 def get_minio_client():
     return Minio(
         endpoint=settings.get("storage.endpoint"),
@@ -24,10 +33,6 @@ def get_minio_client():
         secret_key=settings.get("storage.secret_key"),
         secure=True,
     )
-
-settings = app_.settings
-console = Console()
-
 
 def sha256_of_file(p: Path, chunk_size: int = 1024 * 1024) -> str:
     h = hashlib.sha256()
@@ -88,19 +93,23 @@ def insert_storage_object(
     host: str,
     bucket: str,
     key: str,
-    sha256: str,) -> int:
+    sha256: str,
+    mime_type: str,
+) -> int:
     db.run_sql(
         """
         INSERT INTO storage.object
-          (scheme, host, bucket, key, sha256_hash)
+          (scheme, host, bucket, key, source, sha256_hash, mime_type)
         VALUES
-          ('s3', :host, :bucket, :key, :sha256)
+          ('s3', :host, :bucket, :key, :source, :sha256, :mime_type)
         """,
         dict(
             host=host,
             bucket=bucket,
             key=key,
+            source=json.dumps({}),
             sha256=sha256,
+            mime_type=mime_type,
         ),
     )
     object_id = get_existing_object_id(db, host=host, bucket=bucket, key=key)
@@ -134,17 +143,16 @@ def upload_file_to_minio(
     bucket: str,
     object_key: str,
     local_path: Path,
-    sha256: str,
-    content_type: str | None = None,) -> None:
+    sha256: str,) -> None:
     with open(local_path, "rb") as f:
         minio_client.put_object(
             bucket_name=bucket,
             object_name=object_key,
             data=f,
             length=local_path.stat().st_size,
-            content_type=content_type,
             metadata={"sha256": sha256},
         )
+
 
 def staging_upload_dir(
     slug: str,
@@ -184,6 +192,7 @@ def staging_upload_dir(
 
     for local_path, rel_key in files_to_upload:
         object_key = f"{slug}/{rel_key}"
+        mime_type = guess_mime_type(local_path)
 
         existing_id = get_existing_object_id(
             db,
@@ -210,6 +219,8 @@ def staging_upload_dir(
             bucket=bucket,
             key=object_key,
             sha256=sha256,
+            mime_type=mime_type,
+
         )
 
         link_object_to_ingest(
