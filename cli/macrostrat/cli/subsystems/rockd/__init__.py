@@ -2,10 +2,10 @@ import importlib
 from os import environ
 
 import typer
-from macrostrat.database import Database
 from sqlalchemy import text
 
 from macrostrat.core.migrations import _run_migrations
+from macrostrat.database import Database
 
 
 def get_rockd_db() -> Database:

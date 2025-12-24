@@ -1,14 +1,13 @@
 from pathlib import Path
 
-from macrostrat.database import Database
-
 from macrostrat.core.migrations import (
+    ApplicationStatus,
     Migration,
     exists,
-    schema_exists,
-    ApplicationStatus,
     has_columns,
+    schema_exists,
 )
+from macrostrat.database import Database
 
 migrations_dir = Path(__file__).parent
 
