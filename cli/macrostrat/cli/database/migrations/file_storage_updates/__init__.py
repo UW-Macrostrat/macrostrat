@@ -1,4 +1,4 @@
-from macrostrat.core.migrations import Migration, exists, has_columns, _not, _any
+from macrostrat.core.migrations import Migration, _any, _not, exists, has_columns
 
 
 class MapFiles(Migration):
