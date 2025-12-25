@@ -1,25 +1,22 @@
 import asyncio
-from pathlib import Path
-from sys import exit, stderr, stdin, stdout
-from typing import Any, Callable, Iterable
-
 import typer
-from pydantic import BaseModel
-from rich import print
-from sqlalchemy import make_url, text
-from typer import Argument, Option
-
-from macrostrat.core import MacrostratSubsystem, app
-from macrostrat.core.migrations import run_migrations
 from macrostrat.database import Database
 from macrostrat.database.transfer import pg_dump_to_file, pg_restore_from_file
 from macrostrat.database.transfer.utils import raw_database_url
 from macrostrat.database.utils import get_sql_files
 from macrostrat.utils import get_logger
 from macrostrat.utils.shell import run
+from pathlib import Path
+from pydantic import BaseModel
+from rich import print
+from sqlalchemy import make_url, text
+from sys import exit, stderr, stdin, stdout
+from typer import Argument, Option
+from typing import Any, Callable, Iterable
 
+from macrostrat.core import MacrostratSubsystem, app
+from macrostrat.core.migrations import run_migrations
 from ._legacy import get_db
-
 # First, register all migrations
 # NOTE: right now, this is quite implicit.
 from .migrations import load_migrations
@@ -348,6 +345,36 @@ class TableInspector:
     @property
     def check_constraints(self):
         return self._insp.get_check_constraints(self.table, schema=self.schema)
+
+
+@db_app.command(
+    context_settings={
+        "allow_extra_args": True,
+        "ignore_unknown_options": True,
+        "help_option_names": [],
+    }
+)
+def pgschema(
+    ctx: typer.Context,
+):
+    """Explore a database using [cyan]pgschema[/cyan]"""
+    db = get_db()
+    url = db.engine.url
+
+    args = [
+        "--db",
+        url.database,
+        "--host",
+        url.host,
+        "--port",
+        str(url.port or 5432),
+        "--user",
+        url.username,
+        "--password",
+        url.password,
+    ]
+
+    run("pgschema", *args, *ctx.args)
 
 
 @db_app.command(name="inspect", rich_help_panel="Helpers")
