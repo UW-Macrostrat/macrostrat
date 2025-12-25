@@ -18,7 +18,7 @@ from macrostrat.dinosaur.upgrade_cluster.utils import database_cluster
 from ..config import settings
 from ..database import get_database
 
-""" Higher-order functions that return a function that evaluates whether a condition is met on the database """
+"""Higher-order functions that return a function that evaluates whether a condition is met on the database """
 DbEvaluator = Callable[[Database], bool]
 
 PathDependency = Callable[["Migration"], Path] | Path

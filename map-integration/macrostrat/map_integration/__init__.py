@@ -158,12 +158,12 @@ def delete_sources(
             print("Ingest Process ID", ingest_process_id)
             if file_name is None:
                 rows = db.run_query(
-                    "select f.object_id from storage.map_files f where ingest_process_id = :ingest_process_id",
+                    "select f.object_id from maps_metadata.map_files f where ingest_process_id = :ingest_process_id",
                     dict(ingest_process_id=ingest_process_id),
                 ).fetchall()
                 object_ids = [r[0] for r in rows]
                 db.run_sql(
-                    "DELETE FROM storage.map_files WHERE ingest_process_id = :ingest_process_id",
+                    "DELETE FROM maps_metadata.map_files WHERE ingest_process_id = :ingest_process_id",
                     dict(ingest_process_id=ingest_process_id),
                 )
                 if object_ids:
@@ -432,7 +432,7 @@ def staging(
         for object in object_ids:
             db.run_sql(
                 """
-                INSERT INTO storage.map_files (ingest_process_id, object_id)
+                INSERT INTO maps_metadata.map_files (ingest_process_id, object_id)
                 VALUES (:ingest_process_id, :object_id)
                 """,
                 dict(ingest_process_id=ingest_id, object_id=object),
@@ -674,7 +674,7 @@ def staging_bulk(
             for object in object_ids:
                 db.run_sql(
                     """
-                    INSERT INTO storage.map_files (ingest_process_id, object_id)
+                    INSERT INTO maps_metadata.map_files (ingest_process_id, object_id)
                     VALUES (:ingest_process_id, :object_id)
                     """,
                     dict(ingest_process_id=ingest_id, object_id=object),
