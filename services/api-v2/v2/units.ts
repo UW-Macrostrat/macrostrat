@@ -5,6 +5,8 @@ var api = require("./api"),
   larkin = require("./larkin");
 //need to repoint setupCache function in larkin.ts to accommodate for units.ts changes
 
+const { buildProjectsFilter } = require("./utils");
+
 module.exports = function (req, res, next, cb) {
   // If no parameters, send the route definition
   if (Object.keys(req.query).length < 1) {
@@ -398,17 +400,13 @@ module.exports = function (req, res, next, cb) {
           params["strat_ids"] = data.strat_ids;
         }
 
-        if (req.query.project_id) {
-          if (req.query.project_id !== "all") {
-            where +=
-              " AND lookup_units.project_id = ANY(macrostrat.flattened_project_ids(:project_id))";
-            params["project_id"] = larkin.parseMultipleIds(
-              req.query.project_id,
-            );
-          }
-        } else {
-          // Default to active projects only
-          where += ` AND lookup_units.project_id = ANY(macrostrat.core_project_ids())`;
+        const [whereClauses, projectParams] = buildProjectsFilter(
+          req,
+          "lookup_units.project_id",
+        );
+        if (whereClauses.length > 0) {
+          where += " AND " + whereClauses.join(" AND ");
+          Object.assign(params, projectParams);
         }
 
         if (

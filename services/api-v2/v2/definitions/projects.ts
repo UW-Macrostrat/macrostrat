@@ -18,7 +18,32 @@ module.exports = function (req, res, next, cb) {
 
   const whereStatement = where.length > 0 ? where.join(" AND ") : "true";
 
-  const sql = `
+  let sql = `
+    SELECT
+        p.id AS project_id,
+        p.project,
+        p.descrip,
+        p.timescale_id,
+        count(DISTINCT units_sections.col_id)::integer AS t_cols,
+        count(DISTINCT cols.id) FILTER ( WHERE cols.status_code = 'active' )::integer AS active_cols,
+        count(DISTINCT cols.id) FILTER ( WHERE cols.status_code = 'in process' )::integer AS in_process_cols,
+        count(DISTINCT cols.id) FILTER ( WHERE cols.status_code = 'obsolete' )::integer AS obsolete_cols,
+        count(DISTINCT units_sections.unit_id)::integer AS t_units,
+        coalesce(round(sum(DISTINCT cols.col_area) FILTER ( WHERE cols.status_code = 'active')), 0) AS area
+    FROM macrostrat.projects p
+    LEFT JOIN macrostrat.cols ON p.id = cols.project_id
+    LEFT JOIN macrostrat.units_sections ON units_sections.col_id = cols.id
+    WHERE ${whereStatement}
+    GROUP BY
+      p.id,
+      p.project,
+      p.descrip,
+      p.timescale_id
+  `;
+
+  if (larkin.hasCapability("composite-projects")) {
+    /** Progressive enhancement for composite projects **/
+    sql = `
     WITH composite_tree AS (
       SELECT pt.parent_id,  array_agg(pt.child_id) children, jsonb_agg(to_jsonb(p)) AS members
       FROM macrostrat.projects_tree pt
@@ -58,6 +83,7 @@ module.exports = function (req, res, next, cb) {
       ct.children,
       ct.members
     `;
+  }
 
   larkin.queryPg("burwell", sql, params, function (error, data) {
     if (error) {

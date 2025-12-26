@@ -10,6 +10,10 @@ var async = require("async"),
 const named = require("yesql").pg;
 const { Client, Pool } = require("pg");
 
+enum APICapability {
+  COMPOSITE_PROJECTS = "composite-projects",
+}
+
 (function () {
   var larkin: any = {};
 
@@ -142,6 +146,14 @@ const { Client, Pool } = require("pg");
         );
       }
     });
+  };
+
+  larkin.capabilities = new Set<APICapability>([]);
+
+  larkin.hasCapability = function (capability: APICapability) {
+    /** Check to see if the API framework/database supports a given capability.
+     * This is not exposed to clients and is used for eventual consistency. */
+    return larkin.capabilities.has(capability);
   };
 
   larkin.toUnnamed = function (sql, params) {
@@ -660,6 +672,8 @@ const { Client, Pool } = require("pg");
   */
 
   larkin.setupCache = function () {
+    // TODO: this is deprecated and should be removed in future versions
+
     async.parallel(
       {
         columnsGeom: function (callback) {

@@ -3,6 +3,8 @@ var api = require("./api"),
   async = require("async"),
   larkin = require("./larkin");
 
+const { buildProjectsFilter } = require("./utils");
+
 module.exports = function (req, res, next) {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
@@ -122,19 +124,15 @@ module.exports = function (req, res, next) {
             );
           }
 
-          if (req.query.project_id) {
-            if (req.query.project_id !== "all") {
-              where +=
-                " AND cols.project_id = ANY(macrostrat.flattened_project_ids(:project_ids))";
-              params["project_ids"] = larkin.parseMultipleIds(
-                req.query.project_id,
-              );
-            }
-          } else {
-            // Default to "core" projects
-            where +=
-              " AND cols.project_id = ANY(macrostrat.core_project_ids())";
-          }
+          const [projectWhereClauses, projectParams] = buildProjectsFilter(
+            req,
+            "cols.project_id",
+          );
+          where += projectWhereClauses.length
+            ? " AND " + projectWhereClauses.join(" AND ")
+            : "";
+          Object.assign(params, projectParams);
+
           //TODO there is no pbdb table, so I removed LEFT JOIN pbdb.occ_matrix ON pbdb.coll_matrix.collection_no = pbdb.occ_matrix.collection_no
           //I also removed LEFT JOIN pbdb.taxon_lower ON pbdb.occ_matrix.orig_no = pbdb.taxon_lower.orig_no
           //removed JOIN pbdb.coll_matrix ON pbdb_matches.collection_no = pbdb.coll_matrix.collection_no

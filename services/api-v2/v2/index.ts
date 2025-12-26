@@ -5,7 +5,7 @@ var api = require("./api"),
 //larkin.connectMySQL();
 
 // Set up the column and unit cache
-larkin.setupCache();
+//larkin.setupCache();
 
 // Load route categories
 api.use("/carto", require("./carto"));

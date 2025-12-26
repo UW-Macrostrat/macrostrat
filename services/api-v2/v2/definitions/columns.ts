@@ -44,16 +44,14 @@ module.exports = function (req, res, next, cb) {
     where.push("cols.col_name = ANY(:col_name)");
     params["col_name"] = larkin.parseMultipleStrings(req.query.col_name);
   }
-  if (req.query.project_id) {
-    if (req.query.project_id !== "all") {
-      where.push(
-        "cols.project_id = ANY(macrostrat.flattened_project_ids(:project_id))",
-      );
-      params["project_id"] = larkin.parseMultipleIds(req.query.project_id);
-    }
-  } else {
-    where.push("cols.project_id = ANY(macrostrat.core_project_ids())");
-  }
+
+  const [whereClauses, projectParams] = larkin.buildProjectsFilter(
+    req,
+    "cols.project_id",
+  );
+  where = where.concat(whereClauses);
+  Object.assign(params, projectParams);
+
   if (req.query.status_code || req.query.status) {
     // `status` parameter still works but has been superseded by `status_code`
     // multiple status codes can be provided
