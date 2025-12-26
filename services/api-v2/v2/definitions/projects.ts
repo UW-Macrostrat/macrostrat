@@ -19,17 +19,15 @@ module.exports = function (req, res, next, cb) {
   const whereStatement = where.length > 0 ? where.join(" AND ") : "true";
 
   const sql = `
-    WITH projects_ext AS (
-      SELECT projects.*,
-             tree.children
-      FROM macrostrat.projects
-      LEFT JOIN LATERAL (
-        SELECT pt.parent_id, array_agg(pt.child_id) AS children
-        FROM macrostrat.projects_tree pt
-        WHERE pt.parent_id = projects.id
-          AND projects.is_composite
-        GROUP BY pt.parent_id
-      ) AS tree ON true
+    WITH composite_tree AS (
+      SELECT pt.parent_id,  array_agg(pt.child_id) children, jsonb_agg(to_jsonb(p)) AS members
+      FROM macrostrat.projects_tree pt
+      JOIN LATERAL (
+        SELECT p.id, p.slug, p.project name
+        FROM macrostrat.projects p
+        WHERE p.id = pt.child_id
+      ) AS p ON true
+      GROUP BY pt.parent_id
     )
     SELECT
         p.id AS project_id,
@@ -37,15 +35,18 @@ module.exports = function (req, res, next, cb) {
         p.project,
         p.descrip,
         p.timescale_id,
-        p.children members,
-        COUNT(DISTINCT units_sections.col_id)::integer AS t_cols,
+        ct.members,
+        count(DISTINCT units_sections.col_id)::integer AS t_cols,
+        count(DISTINCT cols.id) FILTER ( WHERE cols.status_code = 'active' )::integer AS active_cols,
         count(DISTINCT cols.id) FILTER ( WHERE cols.status_code = 'in process' )::integer AS in_process_cols,
         count(DISTINCT cols.id) FILTER ( WHERE cols.status_code = 'obsolete' )::integer AS obsolete_cols,
-        COUNT(DISTINCT units_sections.unit_id)::integer AS t_units,
+        count(DISTINCT units_sections.unit_id)::integer AS t_units,
         coalesce(round(sum(DISTINCT cols.col_area) FILTER ( WHERE cols.status_code = 'active')), 0) AS area
-    FROM projects_ext p
+    FROM macrostrat.projects p
+    LEFT JOIN composite_tree ct
+      ON ct.parent_id = p.id
     LEFT JOIN macrostrat.cols ON p.id = cols.project_id
-          OR (p.is_composite AND cols.project_id = ANY(p.children))
+          OR (p.is_composite AND cols.project_id = ANY(ct.children))
     LEFT JOIN macrostrat.units_sections ON units_sections.col_id = cols.id
     WHERE ${whereStatement}
     GROUP BY
@@ -53,7 +54,8 @@ module.exports = function (req, res, next, cb) {
       p.project,
       p.descrip,
       p.timescale_id,
-      p.children,
+      ct.children,
+      ct.members,
       p.slug
     `;
 
