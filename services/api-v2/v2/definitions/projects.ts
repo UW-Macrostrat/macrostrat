@@ -21,33 +21,40 @@ module.exports = function (req, res, next, cb) {
   const sql = `
     WITH projects_ext AS (
       SELECT projects.*,
-             children
+             tree.children
       FROM macrostrat.projects
-      JOIN LATERAL (
-        SELECT array_agg(pt.child_id) AS children
+      LEFT JOIN LATERAL (
+        SELECT pt.parent_id, array_agg(pt.child_id) AS children
         FROM macrostrat.projects_tree pt
         WHERE pt.parent_id = projects.id
-      ) AS children ON TRUE
+          AND projects.is_composite
+        GROUP BY pt.parent_id
+      ) AS tree ON true
     )
     SELECT
         p.id AS project_id,
+        p.slug,
         p.project,
         p.descrip,
         p.timescale_id,
+        p.children members,
         COUNT(DISTINCT units_sections.col_id)::integer AS t_cols,
         count(DISTINCT cols.id) FILTER ( WHERE cols.status_code = 'in process' )::integer AS in_process_cols,
         count(DISTINCT cols.id) FILTER ( WHERE cols.status_code = 'obsolete' )::integer AS obsolete_cols,
         COUNT(DISTINCT units_sections.unit_id)::integer AS t_units,
         coalesce(round(sum(DISTINCT cols.col_area) FILTER ( WHERE cols.status_code = 'active')), 0) AS area
-    FROM macrostrat.projects p
+    FROM projects_ext p
     LEFT JOIN macrostrat.cols ON p.id = cols.project_id
+          OR (p.is_composite AND cols.project_id = ANY(p.children))
     LEFT JOIN macrostrat.units_sections ON units_sections.col_id = cols.id
     WHERE ${whereStatement}
     GROUP BY
       p.id,
       p.project,
       p.descrip,
-      p.timescale_id
+      p.timescale_id,
+      p.children,
+      p.slug
     `;
 
   larkin.queryPg("burwell", sql, params, function (error, data) {
