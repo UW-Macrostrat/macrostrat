@@ -2,6 +2,8 @@ var api = require("../api");
 var larkin = require("../larkin");
 var dbgeo = require("dbgeo");
 
+const { buildProjectsFilter } = require("../utils");
+
 module.exports = function (req, res, next, cb) {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
@@ -45,20 +47,22 @@ module.exports = function (req, res, next, cb) {
     params["col_name"] = larkin.parseMultipleStrings(req.query.col_name);
   }
 
-  const [whereClauses, projectParams] = larkin.buildProjectsFilter(
+  const [whereClauses, projectParams] = buildProjectsFilter(
     req,
     "cols.project_id",
   );
   where = where.concat(whereClauses);
   Object.assign(params, projectParams);
 
+  where.push("status_code = ANY(:status_code)");
   if (req.query.status_code || req.query.status) {
     // `status` parameter still works but has been superseded by `status_code`
     // multiple status codes can be provided
-    where.push("status_code = ANY(:status_code)");
     params["status_code"] = larkin.parseMultipleIds(
       req.query.status_code ?? req.query.status,
     );
+  } else {
+    params["status_code"] = ["active"];
   }
 
   if (where.length) {

@@ -13,7 +13,7 @@ function buildProjectsFilter(req, field = "project_id"): [string[], Params] {
     // If composite projects are not supported, default to active projects only
     if (req.query.project_id) {
       whereClauses.push(field + " = ANY(:project_id)");
-      params["project_id"] = req.query.project_id;
+      params["project_id"] = larkin.parseMultipleIds(req.query.project_id);
     }
     return [whereClauses, params];
   }

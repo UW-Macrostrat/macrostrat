@@ -7,6 +7,17 @@ var api = require("./api"),
 // Set up the column and unit cache
 //larkin.setupCache();
 
+larkin.checkCapabilities(api).then((capabilities) => {
+  if (capabilities.length > 0) {
+    larkin.log("Progressive enhancement enabled:");
+    capabilities.forEach((cap) => {
+      larkin.log(" - " + cap);
+    });
+  } else {
+    console.log("No enhancements available.");
+  }
+});
+
 // Load route categories
 api.use("/carto", require("./carto"));
 api.use("/defs", require("./definitions"));

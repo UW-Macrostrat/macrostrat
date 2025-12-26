@@ -22,7 +22,7 @@ module.exports = async function (req, res, next) {
     : "json";
 
   try {
-    const data = await larkin.queryPgAsync("burwell", sql, []);
+    const data = await larkin.queryPgAsync("burwell", sql, {});
     larkin.sendData(
       req,
       res,

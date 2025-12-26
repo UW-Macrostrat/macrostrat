@@ -27,10 +27,10 @@ enum APICapability {
     console.log(...args);
   };
 
-  larkin.queryPgAsync = async function (
+  larkin.queryPgAsync = function (
     db: string,
     sql: string,
-    params: any,
+    params: any = {},
   ): Promise<any> {
     return new Promise((resolve, reject) => {
       larkin.queryPg(db, sql, params, (err: any, result: any) => {
@@ -670,6 +670,27 @@ enum APICapability {
     made to /columns/refresh-cache?cacheRefreshKey= with the value of
     exports.cacheRefreshKey found in ./credentials.js
   */
+
+  larkin.checkCapabilities = async function (): Promise<Set<APICapability>> {
+    console.log("Checking API capabilities...");
+    // COMPOSITE PROJECTS
+    // Enable enhanced support for projects
+    // Check if composite projects are supported
+    try {
+      await larkin.queryPgAsync(
+        "macrostrat",
+        `SELECT COUNT(*) FROM macrostrat.projects_tree`,
+      );
+      await larkin.queryPgAsync(
+        "macrostrat",
+        `SELECT slug FROM macrostrat.projects WHERE is_composite = true LIMIT 1`,
+      );
+      larkin.capabilities.add(APICapability.COMPOSITE_PROJECTS);
+    } catch (e) {
+      console.log("Composite projects not supported");
+    }
+    return larkin.capabilities;
+  };
 
   larkin.setupCache = function () {
     // TODO: this is deprecated and should be removed in future versions
