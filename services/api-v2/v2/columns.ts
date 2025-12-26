@@ -107,19 +107,22 @@ module.exports = function (req, res, next, callback) {
           return callback(null, null, []);
         }
 
-        if ("all" in req.query) {
-          if (req.query.format && api.acceptedFormats.geo[req.query.format]) {
-            larkin.cache.fetch("columnsGeom", function (data) {
-              callback(null, new_cols, data);
-            });
-          } else {
-            larkin.cache.fetch("columnsNoGeom", function (data) {
-              callback(null, new_cols, data);
-            });
-          }
-        } else {
-          callback(null, new_cols, null);
-        }
+        callback(null, new_cols, null);
+
+        // TODO: this breaks "all" filtering and brings down the API
+        // if ("all" in req.query) {
+        //   if (req.query.format && api.acceptedFormats.geo[req.query.format]) {
+        //     larkin.cache.fetch("columnsGeom", function (data) {
+        //       callback(null, new_cols, data);
+        //     });
+        //   } else {
+        //     larkin.cache.fetch("columnsNoGeom", function (data) {
+        //       callback(null, new_cols, data);
+        //     });
+        //   }
+        // } else {
+        //   callback(null, new_cols, null);
+        // }
       },
 
       // Using the unique column IDs returned from units, query columns

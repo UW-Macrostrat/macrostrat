@@ -399,9 +399,16 @@ module.exports = function (req, res, next, cb) {
         }
 
         if (req.query.project_id) {
-          where +=
-            " AND lookup_units.project_id = ANY(macrostrat.flattened_project_ids(:project_id))";
-          params["project_id"] = larkin.parseMultipleIds(req.query.project_id);
+          if (req.query.project_id !== "all") {
+            where +=
+              " AND lookup_units.project_id = ANY(macrostrat.flattened_project_ids(:project_id))";
+            params["project_id"] = larkin.parseMultipleIds(
+              req.query.project_id,
+            );
+          }
+        } else {
+          // Default to active projects only
+          where += ` AND lookup_units.project_id = ANY(macrostrat.core_project_ids())`;
         }
 
         if (

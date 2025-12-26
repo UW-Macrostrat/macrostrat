@@ -1,15 +1,12 @@
 var api = require("./api"),
-  larkin = require("./larkin"),
-  multiline = require("multiline");
+  larkin = require("./larkin");
 
 module.exports = function (req, res, next) {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
 
-  var sql = multiline(function () {
-    /*
-    SELECT
+  const sql = `SELECT
       project_id,
       project,
       columns::integer,
@@ -18,11 +15,9 @@ module.exports = function (req, res, next) {
       pbdb_collections::integer,
       measurements::integer,
       burwell_polygons::integer AS t_polys
-    FROM macrostrat.stats
-  */
-  });
+    FROM macrostrat.stats`;
 
-  var format = api.acceptedFormats.standard[req.query.format]
+  const format = api.acceptedFormats.standard[req.query.format]
     ? req.query.format
     : "json";
 
@@ -35,9 +30,7 @@ module.exports = function (req, res, next) {
         res,
         next,
         {
-          format: api.acceptedFormats.standard[req.query.format]
-            ? req.query.format
-            : "json",
+          format,
           bare: api.acceptedFormats.bare[req.query.format] ? true : false,
         },
         {

@@ -45,10 +45,14 @@ module.exports = function (req, res, next, cb) {
     params["col_name"] = larkin.parseMultipleStrings(req.query.col_name);
   }
   if (req.query.project_id) {
-    where.push(
-      "cols.project_id = ANY(macrostrat.flattened_project_ids(:project_id))",
-    );
-    params["project_id"] = larkin.parseMultipleIds(req.query.project_id);
+    if (req.query.project_id !== "all") {
+      where.push(
+        "cols.project_id = ANY(macrostrat.flattened_project_ids(:project_id))",
+      );
+      params["project_id"] = larkin.parseMultipleIds(req.query.project_id);
+    }
+  } else {
+    where.push("cols.project_id = ANY(macrostrat.core_project_ids())");
   }
   if (req.query.status_code || req.query.status) {
     // `status` parameter still works but has been superseded by `status_code`

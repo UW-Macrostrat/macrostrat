@@ -667,6 +667,7 @@ const { Client, Pool } = require("pg");
         LEFT JOIN macrostrat.col_refs ON cols.id = col_refs.col_id
         WHERE status_code = 'active'
           AND col_areas.col_area IS NOT NULL
+          AND cols.project_id = ANY(macrostrat.core_project_ids())
         GROUP BY col_areas.col_id, cols.id, col_groups.col_group, col_groups.id, col_areas.col_area
         `,
             [],
@@ -702,6 +703,7 @@ const { Client, Pool } = require("pg");
         LEFT JOIN macrostrat.col_refs ON cols.id = col_refs.col_id
         WHERE status_code = 'active'
           AND col_areas.col_area IS NOT NULL
+          AND cols.project_id = ANY(macrostrat.core_project_ids())
         GROUP BY col_areas.col_id, cols.id, col_groups.col_group, col_groups.id
         `,
             [],

@@ -18,7 +18,7 @@ module.exports = function (req, res, next, cb) {
   if (req.query.col_group_id) {
     where.push("col_groups.id = ANY(:col_group_id)");
     params["col_group_id"] = larkin.parseMultipleIds(req.query.col_group_id);
-  } else if (req.query.project_id) {
+  } else if (req.query.project_id && req.query.project_id !== "all") {
     where.push(
       "cols.project_id = ANY(macrostrat.flattened_project_ids(:project_id))",
     );
