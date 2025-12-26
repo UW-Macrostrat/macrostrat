@@ -7,7 +7,18 @@ module.exports = function (req, res, next, cb) {
   }
   //There will be a discrepancy with a key in production. Updated in_proccess_cols to in_process_cols key. Values are
   //still the same.
-  var sql = `WITH in_proc AS (
+  var sql = `
+    WITH projects_ext AS (
+      SELECT projects.*,
+             children
+      FROM macrostrat.projects
+      JOIN LATERAL (
+        SELECT array_agg(pt.child_id) AS children
+        FROM macrostrat.projects_tree pt
+        WHERE pt.parent_id = projects.id
+      ) AS children ON TRUE
+    ),
+    in_proc AS (
         SELECT COUNT(DISTINCT id) AS c, project_id
         FROM macrostrat.cols
         WHERE status_code = 'in process'
@@ -36,7 +47,6 @@ module.exports = function (req, res, next, cb) {
         COALESCE(co, 0)::integer AS obsolete_cols,
         COUNT(DISTINCT units_sections.unit_id)::integer AS t_units,
         COALESCE(ROUND(total_area), 0)::integer AS area
-
     FROM macrostrat.projects
     LEFT JOIN macrostrat.cols ON projects.id = cols.project_id
     LEFT JOIN macrostrat.units_sections ON units_sections.col_id = cols.id
