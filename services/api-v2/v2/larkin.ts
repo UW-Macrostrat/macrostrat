@@ -23,6 +23,22 @@ const { Client, Pool } = require("pg");
     console.log(...args);
   };
 
+  larkin.queryPgAsync = async function (
+    db: string,
+    sql: string,
+    params: any,
+  ): Promise<any> {
+    return new Promise((resolve, reject) => {
+      larkin.queryPg(db, sql, params, (err: any, result: any) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(result);
+        }
+      });
+    });
+  };
+
   //added new method to query from Maria data in the new PG database after migration
   larkin.queryPg = function (db, sql, params, callback) {
     //add console.logs for debug mode in the future

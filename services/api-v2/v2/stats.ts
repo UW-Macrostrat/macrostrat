@@ -1,7 +1,7 @@
 var api = require("./api"),
   larkin = require("./larkin");
 
-module.exports = function (req, res, next) {
+module.exports = async function (req, res, next) {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
@@ -21,22 +21,21 @@ module.exports = function (req, res, next) {
     ? req.query.format
     : "json";
 
-  larkin.queryPg("burwell", sql, [], function (error, data) {
-    if (error) {
-      larkin.error(req, res, next, error);
-    } else {
-      larkin.sendData(
-        req,
-        res,
-        next,
-        {
-          format,
-          bare: api.acceptedFormats.bare[req.query.format] ? true : false,
-        },
-        {
-          data: data.rows,
-        },
-      );
-    }
-  });
+  try {
+    const data = await larkin.queryPgAsync("burwell", sql, []);
+    larkin.sendData(
+      req,
+      res,
+      next,
+      {
+        format,
+        bare: api.acceptedFormats.bare[req.query.format] ? true : false,
+      },
+      {
+        data: data.rows,
+      },
+    );
+  } catch (error) {
+    larkin.error(req, res, next, error);
+  }
 };
