@@ -7,7 +7,18 @@ module.exports = function (req, res, next, cb) {
   }
   //There will be a discrepancy with a key in production. Updated in_proccess_cols to in_process_cols key. Values are
   //still the same.
-  var sql = `
+
+  const where = [];
+  let params = {};
+
+  if (req.query.project_id) {
+    where.push("projects.id = ANY(:project_id)");
+    params["project_id"] = larkin.parseMultipleIds(req.query.project_id);
+  }
+
+  const whereStatement = where.length > 0 ? where.join(" AND ") : "true";
+
+  const sql = `
     WITH projects_ext AS (
       SELECT projects.*,
              children
@@ -53,26 +64,16 @@ module.exports = function (req, res, next, cb) {
     LEFT JOIN in_proc USING (project_id)
     LEFT JOIN obs USING (project_id)
     LEFT JOIN col_area_sum ON projects.id = col_area_sum.project_id
+    WHERE ${whereStatement}
+    GROUP BY
+      projects.id,
+      projects.project,
+      projects.descrip,
+      projects.timescale_id,
+      c,
+      co,
+      total_area;
     `;
-
-  var where = [];
-  var params = {};
-
-  if (req.query.project_id) {
-    where.push("projects.id = ANY(:project_id)");
-    params["project_id"] = larkin.parseMultipleIds(req.query.project_id);
-  }
-  if (where.length) {
-    sql += ` WHERE ${where.join(" AND ")}`;
-  }
-  sql += `\nGROUP BY
-    projects.id,
-    projects.project,
-    projects.descrip,
-    projects.timescale_id,
-    c,
-    co,
-    total_area;`;
 
   larkin.queryPg("burwell", sql, params, function (error, data) {
     if (error) {
