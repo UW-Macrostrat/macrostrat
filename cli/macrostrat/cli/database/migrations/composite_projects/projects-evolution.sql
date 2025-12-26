@@ -16,8 +16,8 @@ ALTER TABLE macrostrat.projects ADD COLUMN IF NOT EXISTS slug TEXT UNIQUE;
 
 CREATE TABLE IF NOT EXISTS macrostrat.projects_tree (
   id integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-  parent_id integer NOT NULL REFERENCES macrostrat.projects(id) ON DELETE CASCADE,
-  child_id integer NOT NULL REFERENCES macrostrat.projects(id) ON DELETE CASCADE,
+  parent_id integer NOT NULL REFERENCES macrostrat.projects(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  child_id integer NOT NULL REFERENCES macrostrat.projects(id) ON DELETE CASCADE ON UPDATE CASCADE,
   UNIQUE (parent_id, child_id)
 );
 ALTER TABLE macrostrat.projects_tree OWNER TO macrostrat;

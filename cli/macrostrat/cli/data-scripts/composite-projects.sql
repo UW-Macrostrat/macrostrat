@@ -3,14 +3,17 @@ DECLARE
   _core_project_id integer;
 BEGIN
 
-INSERT INTO macrostrat.projects (project, descrip, timescale_id, is_composite, slug)
+INSERT INTO macrostrat.projects (id, project, descrip, timescale_id, is_composite, slug)
 VALUES
-  ('Core columns',
+  (
+   14,
+   'Core columns',
    'A composite dataset containing a non-overlapping set of regional composite columns at regional scale.',
    1,
    TRUE,
-   'core')
-ON CONFLICT (slug) DO NOTHING;
+   'core'
+  )
+ON CONFLICT (id) DO NOTHING;
 
 SELECT id INTO _core_project_id
 FROM macrostrat.projects
