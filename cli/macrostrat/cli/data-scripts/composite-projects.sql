@@ -10,13 +10,17 @@ VALUES
    1,
    TRUE,
    'core')
-ON CONFLICT (slug) DO NOTHING
-RETURNING id INTO _core_project_id;
+ON CONFLICT (slug) DO NOTHING;
+
+SELECT id INTO _core_project_id
+FROM macrostrat.projects
+WHERE slug = 'core';
 
 INSERT INTO macrostrat.projects_tree (parent_id, child_id)
 SELECT _core_project_id, id
 FROM macrostrat.projects p
-WHERE p.slug IN ('north-america', 'caribbean', 'south-america', 'africa', 'eodp');
+WHERE p.slug IN ('north-america', 'caribbean', 'south-america', 'africa', 'eodp')
+ON CONFLICT DO NOTHING;
 
 END;
 $$ LANGUAGE plpgsql;

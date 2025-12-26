@@ -1,3 +1,4 @@
+ALTER SCHEMA macrostrat OWNER TO macrostrat;
 
 DROP VIEW IF EXISTS macrostrat_api.projects;
 DROP VIEW IF EXISTS macrostrat_api.col_group_with_cols;
@@ -15,10 +16,11 @@ ALTER TABLE macrostrat.projects ADD COLUMN IF NOT EXISTS slug TEXT UNIQUE;
 
 CREATE TABLE IF NOT EXISTS macrostrat.projects_tree (
   id integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-  parent_id integer REFERENCES macrostrat.projects(id) ON DELETE CASCADE,
-  child_id integer REFERENCES macrostrat.projects(id) ON DELETE CASCADE,
+  parent_id integer NOT NULL REFERENCES macrostrat.projects(id) ON DELETE CASCADE,
+  child_id integer NOT NULL REFERENCES macrostrat.projects(id) ON DELETE CASCADE,
   UNIQUE (parent_id, child_id)
 );
+ALTER TABLE macrostrat.projects_tree OWNER TO macrostrat;
 
 -- Ensure that only composite projects can be parent of other projects
 CREATE OR REPLACE FUNCTION macrostrat.check_composite_parent()
@@ -87,3 +89,4 @@ ALTER TABLE macrostrat.projects ALTER COLUMN slug SET NOT NULL;
 
 -- Create an index on the slug column for faster lookups
 CREATE INDEX IF NOT EXISTS idx_projects_slug ON macrostrat.projects(slug);
+
