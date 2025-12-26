@@ -637,129 +637,15 @@ const { Client, Pool } = require("pg");
     On API startup cache the following:
       + All columns (with geometries)
       + All columns (without geometries)
-      + A summary of all units
 
     To refresh these caches without restarting the API an HTTP request can be
     made to /columns/refresh-cache?cacheRefreshKey= with the value of
     exports.cacheRefreshKey found in ./credentials.js
   */
 
-  const port = process.env.PORT || "5000";
-  const baseURL = `http://0.0.0.0:${port}`;
-
   larkin.setupCache = function () {
     async.parallel(
       {
-        unitSummary: function (callback) {
-          //get all units and summarize for columns
-          http.get(
-            //TODO: change url to match env.
-
-            baseURL + "/v2/units?all&response=long",
-            function (res) {
-              var body = "";
-              res.on("data", function (chunk) {
-                body += chunk;
-              });
-              res.on("end", function () {
-                try {
-                  var parsedBody = JSON.parse(body);
-                  // Process the JSON as needed
-                } catch (e) {
-                  console.error("Failed to parse JSON:", e);
-                  console.error("Response body:", body); // Log the actual body for debugging
-                }
-
-                if (
-                  parsedBody &&
-                  parsedBody.success &&
-                  parsedBody.success.data
-                ) {
-                  var result = parsedBody.success.data;
-                } else {
-                  console.error("Invalid response body:", body);
-                }
-                var cols = _.groupBy(result, function (d) {
-                  return d.col_id;
-                });
-
-                var new_cols = {};
-
-                Object.keys(cols).forEach(function (col_id) {
-                  new_cols[col_id] = {
-                    max_thick: _.reduce(
-                      cols[col_id].map(function (d) {
-                        return d.max_thick;
-                      }),
-                      function (a, b) {
-                        return a + b;
-                      },
-                      0,
-                    ),
-                    max_min_thick: _.reduce(
-                      cols[col_id].map(function (d) {
-                        if (d.min_thick === 0) {
-                          return d.max_thick;
-                        } else {
-                          return d.min_thick;
-                        }
-                      }),
-                      function (a, b) {
-                        return a + b;
-                      },
-                      0,
-                    ),
-                    min_min_thick: _.reduce(
-                      cols[col_id].map(function (d) {
-                        return d.min_thick;
-                      }),
-                      function (a, b) {
-                        return a + b;
-                      },
-                      0,
-                    ),
-
-                    b_age: _.max(cols[col_id], function (d) {
-                      return d.b_age;
-                    }).b_age,
-                    t_age: _.min(cols[col_id], function (d) {
-                      return d.t_age;
-                    }).t_age,
-                    b_int_name: _.max(cols[col_id], function (d) {
-                      return d.b_age;
-                    }).b_int_name,
-                    t_int_name: _.min(cols[col_id], function (d) {
-                      return d.t_age;
-                    }).t_int_name,
-
-                    pbdb_collections: _.reduce(
-                      cols[col_id].map(function (d) {
-                        return d.pbdb_collections;
-                      }),
-                      function (a, b) {
-                        return a + b;
-                      },
-                      0,
-                    ),
-
-                    lith: larkin.summarizeAttribute(cols[col_id], "lith"),
-                    environ: larkin.summarizeAttribute(cols[col_id], "environ"),
-                    econ: larkin.summarizeAttribute(cols[col_id], "econ"),
-
-                    t_units: cols[col_id].length,
-                    t_sections: _.uniq(
-                      cols[col_id].map(function (d) {
-                        return d.section_id;
-                      }),
-                    ).length,
-                  };
-                });
-                callback(null, new_cols);
-              });
-            },
-          );
-        },
-
         columnsGeom: function (callback) {
           // get all columns, with geometry
           larkin.queryPg(
@@ -835,7 +721,6 @@ const { Client, Pool } = require("pg");
       function (error, results) {
         // Check if using Redis or not
         if (larkin.cache.address) {
-          larkin.cache.set("unitSummary", JSON.stringify(results.unitSummary));
           larkin.cache.set("columnsGeom", JSON.stringify(results.columnsGeom));
           larkin.cache.set(
             "columnsNoGeom",
@@ -843,7 +728,6 @@ const { Client, Pool } = require("pg");
           );
         } else {
           larkin.trace("Setting up column cache");
-          larkin.cache.put("unitSummary", results.unitSummary);
           larkin.cache.put("columnsGeom", results.columnsGeom);
           larkin.cache.put("columnsNoGeom", results.columnsNoGeom);
         }

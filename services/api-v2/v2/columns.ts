@@ -12,22 +12,7 @@ module.exports = function (req, res, next, callback) {
 
   async.waterfall(
     [
-      // First pass the request to the /units route and get the long response
       function (callback) {
-        if ("all" in req.query) {
-          larkin.cache.fetch("unitSummary", function (data) {
-            callback(null, data);
-          });
-        } else {
-          callback(null, null);
-        }
-      },
-
-      function (data, callback) {
-        if (data) {
-          return callback(null, data);
-        }
-
         //call units to group units by col_id
         require("./units")(req, null, null, function (error, result) {
           if (error) {

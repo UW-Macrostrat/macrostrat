@@ -332,7 +332,11 @@ module.exports = function (req, res, next, cb) {
 
           where += lithWhere.join(" OR ") + ")";
         }
-        if (req.query.lith_att_id || req.query.lith_att || req.query.lith_att_type) {
+        if (
+          req.query.lith_att_id ||
+          req.query.lith_att ||
+          req.query.lith_att_type
+        ) {
           let lithAttField;
 
           if (req.query.lith_att_id) {
@@ -340,10 +344,14 @@ module.exports = function (req, res, next, cb) {
             params["lith_att"] = larkin.parseMultipleIds(req.query.lith_att_id);
           } else if (req.query.lith_att) {
             lithAttField = "lith_atts.lith_att";
-            params["lith_att"] = larkin.parseMultipleStrings(req.query.lith_att);
+            params["lith_att"] = larkin.parseMultipleStrings(
+              req.query.lith_att,
+            );
           } else if (req.query.lith_att_type) {
             lithAttField = "lith_atts.att_type";
-            params["lith_att"] = larkin.parseMultipleStrings(req.query.lith_att_type);
+            params["lith_att"] = larkin.parseMultipleStrings(
+              req.query.lith_att_type,
+            );
           }
 
           where += `
@@ -356,7 +364,6 @@ module.exports = function (req, res, next, cb) {
               WHERE ${lithAttField} = ANY(:lith_att)
             )`;
         }
-
 
         if (data.age_bottom !== 99999) {
           where += " AND b_age > :age_top AND t_age < :age_bottom";
@@ -392,7 +399,8 @@ module.exports = function (req, res, next, cb) {
         }
 
         if (req.query.project_id) {
-          where += " AND lookup_units.project_id = ANY(:project_id)";
+          where +=
+            " AND lookup_units.project_id = ANY(macrostrat.flattened_project_ids(:project_id))";
           params["project_id"] = larkin.parseMultipleIds(req.query.project_id);
         }
 

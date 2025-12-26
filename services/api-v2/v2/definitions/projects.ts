@@ -54,9 +54,9 @@ module.exports = function (req, res, next, cb) {
       p.project,
       p.descrip,
       p.timescale_id,
+      p.slug,
       ct.children,
-      ct.members,
-      p.slug
+      ct.members
     `;
 
   larkin.queryPg("burwell", sql, params, function (error, data) {

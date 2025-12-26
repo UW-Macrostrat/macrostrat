@@ -123,7 +123,8 @@ module.exports = function (req, res, next) {
           }
 
           if (req.query.project_id) {
-            where += " AND cols.project_id = ANY(:project_ids)";
+            where +=
+              " AND cols.project_id = ANY(macrostrat.flattened_project_ids(:project_ids))";
             params["project_ids"] = larkin.parseMultipleIds(
               req.query.project_id,
             );

@@ -45,7 +45,9 @@ module.exports = function (req, res, next, cb) {
     params["col_name"] = larkin.parseMultipleStrings(req.query.col_name);
   }
   if (req.query.project_id) {
-    where.push("cols.project_id = ANY(:project_id)");
+    where.push(
+      "cols.project_id = ANY(macrostrat.flattened_project_ids(:project_id))",
+    );
     params["project_id"] = larkin.parseMultipleIds(req.query.project_id);
   }
   if (req.query.status_code || req.query.status) {
