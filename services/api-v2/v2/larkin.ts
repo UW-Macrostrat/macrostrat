@@ -16,7 +16,7 @@ const { Client, Pool } = require("pg");
   // Store a global mapping of connection pools, so we don't overload PG with connections
   const connectionPoolStore: { [key: string]: typeof Pool } = {};
 
-  larkin.trace = function (...args: any[]) {
+  larkin.trace = function (type: string, ...args: any[]) {
     if (credentials.debug === false) {
       return;
     }
@@ -267,8 +267,19 @@ const { Client, Pool } = require("pg");
     }
   };
 
-  larkin.log = function (type, message) {
-    larkin.trace(type, message);
+  larkin.log = function (type, obj) {
+    let message = obj;
+    if (typeof obj === "object" && "message" in obj) {
+      message = obj.message;
+    }
+    if (type === "error") {
+      console.error("ERROR:", message);
+    } else if (type === "warning") {
+      console.warn("WARNING:", message);
+    } else if (type === "info") {
+      console.info("INFO", message);
+    }
+    larkin.trace(obj);
   };
 
   // Will return all field definitions
