@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS macrostrat.projects_tree (
 CREATE OR REPLACE FUNCTION macrostrat.check_composite_parent()
 RETURNS TRIGGER AS $$
 BEGIN
-  IF NOT (SELECT is_composite FROM macrostrat.projects WHERE id = NEW.parent_project_id) THEN
+  IF NOT (SELECT is_composite FROM macrostrat.projects WHERE id = NEW.parent_id) THEN
     RAISE EXCEPTION 'Parent project must be a composite project';
   END IF;
   RETURN NEW;
@@ -57,29 +57,33 @@ CREATE TRIGGER trg_check_column_project_non_composite
 BEFORE INSERT OR UPDATE ON macrostrat.cols
 FOR EACH ROW EXECUTE FUNCTION macrostrat.check_column_project_non_composite();
 
-
-/** Generate slugs from existing projects **/
-DO $$
+DROP FUNCTION IF EXISTS macrostrat.generate_project_slug(macrostrat.projects);
+CREATE OR REPLACE FUNCTION macrostrat.generate_project_slug(_project macrostrat.projects)
+RETURNS TEXT AS $$
 DECLARE
-  proj RECORD;
   base_slug TEXT;
   unique_slug TEXT;
   suffix INT;
 BEGIN
-  FOR proj IN SELECT id, project FROM macrostrat.projects WHERE slug IS NULL LOOP
-    base_slug := lower(regexp_replace(proj.project, '[^a-zA-Z0-9]+', '-', 'g'));
-    unique_slug := base_slug;
-    suffix := 1;
-    WHILE EXISTS (SELECT 1 FROM macrostrat.projects WHERE slug = unique_slug) LOOP
-      suffix := suffix + 1;
-      unique_slug := base_slug || '-' || suffix;
-    END LOOP;
-    UPDATE macrostrat.projects SET slug = unique_slug WHERE id = proj.id;
+  base_slug := lower(regexp_replace(_project.project, '[^a-zA-Z0-9]+', '-', 'g'));
+  unique_slug := base_slug;
+  suffix := 1;
+  WHILE EXISTS (SELECT 1 FROM macrostrat.projects p WHERE p.slug = unique_slug AND p.id != _project.id) LOOP
+    suffix := suffix + 1;
+    unique_slug := base_slug || '-' || suffix;
   END LOOP;
+  RETURN unique_slug;
 END;
 $$ LANGUAGE plpgsql;
 
+/** Generate slugs from existing projects **/
+UPDATE macrostrat.projects p
+SET slug = macrostrat.generate_project_slug(p)
+WHERE slug IS NULL;
+
 -- Set slug column to NOT NULL
 ALTER TABLE macrostrat.projects ALTER COLUMN slug SET NOT NULL;
+
+
 -- Create an index on the slug column for faster lookups
 CREATE INDEX IF NOT EXISTS idx_projects_slug ON macrostrat.projects(slug);

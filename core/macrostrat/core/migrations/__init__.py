@@ -1,19 +1,17 @@
+import docker
 import inspect
 from enum import Enum
 from functools import lru_cache
 from graphlib import TopologicalSorter
-from os import environ
-from pathlib import Path
-from time import time
-from typing import Callable, Iterable, Optional, Union
-
-import docker
-from pydantic import BaseModel
-from rich import print
-
 from macrostrat.database import Database
 from macrostrat.database.utils import OutputMode
 from macrostrat.dinosaur.upgrade_cluster.utils import database_cluster
+from os import environ
+from pathlib import Path
+from pydantic import BaseModel
+from rich import print
+from time import time
+from typing import Callable, Iterable, Optional, Union
 
 from ..config import settings
 from ..database import get_database
@@ -509,6 +507,8 @@ def _run_migrations(
 
         # Hack to allow migrations to follow output mode
         _migration.output_mode = output_mode
+
+        print(f"\nApplying migration [bold cyan]{_name}[/]...")
         _migration.apply(db)
         run_counter += 1
         # After running migration, reload the database and confirm that application was sucessful
