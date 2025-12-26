@@ -28,51 +28,26 @@ module.exports = function (req, res, next, cb) {
         FROM macrostrat.projects_tree pt
         WHERE pt.parent_id = projects.id
       ) AS children ON TRUE
-    ),
-    in_proc AS (
-        SELECT COUNT(DISTINCT id) AS c, project_id
-        FROM macrostrat.cols
-        WHERE status_code = 'in process'
-        GROUP BY project_id
-    ),
-    obs AS (
-        SELECT COUNT(DISTINCT id) AS co, project_id
-        FROM macrostrat.cols
-        WHERE status_code = 'obsolete'
-        GROUP BY project_id
-    ),
-    col_area_sum AS (
-        SELECT project_id, SUM(col_area) AS total_area
-        FROM macrostrat.cols
-        WHERE status_code = 'active'
-        GROUP BY project_id
     )
-
     SELECT
-        projects.id AS project_id,
-        projects.project,
-        projects.descrip,
-        projects.timescale_id,
+        p.id AS project_id,
+        p.project,
+        p.descrip,
+        p.timescale_id,
         COUNT(DISTINCT units_sections.col_id)::integer AS t_cols,
-        COALESCE(c, 0)::integer AS in_process_cols,
-        COALESCE(co, 0)::integer AS obsolete_cols,
+        count(DISTINCT cols.id) FILTER ( WHERE cols.status_code = 'in process' )::integer AS in_process_cols,
+        count(DISTINCT cols.id) FILTER ( WHERE cols.status_code = 'obsolete' )::integer AS obsolete_cols,
         COUNT(DISTINCT units_sections.unit_id)::integer AS t_units,
-        COALESCE(ROUND(total_area), 0)::integer AS area
-    FROM macrostrat.projects
-    LEFT JOIN macrostrat.cols ON projects.id = cols.project_id
+        coalesce(round(sum(DISTINCT cols.col_area) FILTER ( WHERE cols.status_code = 'active')), 0) AS area
+    FROM macrostrat.projects p
+    LEFT JOIN macrostrat.cols ON p.id = cols.project_id
     LEFT JOIN macrostrat.units_sections ON units_sections.col_id = cols.id
-    LEFT JOIN in_proc USING (project_id)
-    LEFT JOIN obs USING (project_id)
-    LEFT JOIN col_area_sum ON projects.id = col_area_sum.project_id
     WHERE ${whereStatement}
     GROUP BY
-      projects.id,
-      projects.project,
-      projects.descrip,
-      projects.timescale_id,
-      c,
-      co,
-      total_area;
+      p.id,
+      p.project,
+      p.descrip,
+      p.timescale_id
     `;
 
   larkin.queryPg("burwell", sql, params, function (error, data) {
