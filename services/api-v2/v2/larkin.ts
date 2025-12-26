@@ -632,6 +632,10 @@ const { Client, Pool } = require("pg");
     made to /columns/refresh-cache?cacheRefreshKey= with the value of
     exports.cacheRefreshKey found in ./credentials.js
   */
+
+  const port = process.env.PORT || "5000";
+  const baseURL = `http://0.0.0.0:${port}`;
+
   larkin.setupCache = function () {
     async.parallel(
       {
@@ -639,7 +643,8 @@ const { Client, Pool } = require("pg");
           //get all units and summarize for columns
           http.get(
             //TODO: change url to match env.
-            "http://0.0.0.0:5000/v2/units?all&response=long",
+
+            baseURL + "/v2/units?all&response=long",
             function (res) {
               var body = "";
               res.on("data", function (chunk) {
