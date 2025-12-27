@@ -1,17 +1,19 @@
-import docker
 import inspect
 from enum import Enum
 from functools import lru_cache
 from graphlib import TopologicalSorter
+from os import environ
+from pathlib import Path
+from time import time
+from typing import Callable, Iterable, Optional, Union
+
+import docker
+from pydantic import BaseModel
+from rich import print
+
 from macrostrat.database import Database
 from macrostrat.database.utils import OutputMode
 from macrostrat.dinosaur.upgrade_cluster.utils import database_cluster
-from os import environ
-from pathlib import Path
-from pydantic import BaseModel
-from rich import print
-from time import time
-from typing import Callable, Iterable, Optional, Union
 
 from ..config import settings
 from ..database import get_database
