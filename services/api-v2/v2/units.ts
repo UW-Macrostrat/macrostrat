@@ -3,9 +3,10 @@ var api = require("./api"),
   dbgeo = require("dbgeo"),
   gp = require("geojson-precision"),
   larkin = require("./larkin");
-//need to repoint setupCache function in larkin.ts to accommodate for units.ts changes
 
-module.exports = function (req, res, next, cb) {
+import { buildProjectsFilter } from "./utils";
+
+export function handleUnitsRoute(req, res, next, cb) {
   // If no parameters, send the route definition
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
@@ -332,7 +333,11 @@ module.exports = function (req, res, next, cb) {
 
           where += lithWhere.join(" OR ") + ")";
         }
-        if (req.query.lith_att_id || req.query.lith_att || req.query.lith_att_type) {
+        if (
+          req.query.lith_att_id ||
+          req.query.lith_att ||
+          req.query.lith_att_type
+        ) {
           let lithAttField;
 
           if (req.query.lith_att_id) {
@@ -340,10 +345,14 @@ module.exports = function (req, res, next, cb) {
             params["lith_att"] = larkin.parseMultipleIds(req.query.lith_att_id);
           } else if (req.query.lith_att) {
             lithAttField = "lith_atts.lith_att";
-            params["lith_att"] = larkin.parseMultipleStrings(req.query.lith_att);
+            params["lith_att"] = larkin.parseMultipleStrings(
+              req.query.lith_att,
+            );
           } else if (req.query.lith_att_type) {
             lithAttField = "lith_atts.att_type";
-            params["lith_att"] = larkin.parseMultipleStrings(req.query.lith_att_type);
+            params["lith_att"] = larkin.parseMultipleStrings(
+              req.query.lith_att_type,
+            );
           }
 
           where += `
@@ -356,7 +365,6 @@ module.exports = function (req, res, next, cb) {
               WHERE ${lithAttField} = ANY(:lith_att)
             )`;
         }
-
 
         if (data.age_bottom !== 99999) {
           where += " AND b_age > :age_top AND t_age < :age_bottom";
@@ -391,9 +399,13 @@ module.exports = function (req, res, next, cb) {
           params["strat_ids"] = data.strat_ids;
         }
 
-        if (req.query.project_id) {
-          where += " AND lookup_units.project_id = ANY(:project_id)";
-          params["project_id"] = larkin.parseMultipleIds(req.query.project_id);
+        const [whereClauses, projectParams] = buildProjectsFilter(
+          req,
+          "lookup_units.project_id",
+        );
+        if (whereClauses.length > 0) {
+          where += " AND " + whereClauses.join(" AND ");
+          Object.assign(params, projectParams);
         }
 
         if (
@@ -690,4 +702,4 @@ module.exports = function (req, res, next, cb) {
       }
     },
   );
-};
+}
