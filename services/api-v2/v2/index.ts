@@ -8,11 +8,12 @@ var api = require("./api"),
 //larkin.setupCache();
 
 larkin.checkCapabilities(api).then((capabilities) => {
-  if (capabilities.length > 0) {
-    larkin.log("Progressive enhancement enabled:");
+  if (capabilities.size > 0) {
+    let msg = "Progressive enhancements enabled:\n";
     capabilities.forEach((cap) => {
-      larkin.log(" - " + cap);
+      msg += `- ${cap}\n`;
     });
+    larkin.log("info", msg);
   } else {
     console.log("No enhancements available.");
   }

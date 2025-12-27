@@ -677,14 +677,21 @@ enum APICapability {
     // Enable enhanced support for projects
     // Check if composite projects are supported
     try {
-      await larkin.queryPgAsync(
-        "macrostrat",
-        `SELECT COUNT(*) FROM macrostrat.projects_tree`,
-      );
-      await larkin.queryPgAsync(
-        "macrostrat",
-        `SELECT slug FROM macrostrat.projects WHERE is_composite = true LIMIT 1`,
-      );
+      await Promise.all([
+        larkin.queryPgAsync(
+          "macrostrat",
+          `SELECT COUNT(*) FROM macrostrat.projects_tree`,
+        ),
+        larkin.queryPgAsync(
+          "macrostrat",
+          `SELECT slug FROM macrostrat.projects WHERE is_composite = true LIMIT 1`,
+        ),
+        larkin.queryPgAsync(
+          "macrostrat",
+          `SELECT macrostrat.core_project_ids()`,
+        ),
+      ]);
+
       larkin.capabilities.add(APICapability.COMPOSITE_PROJECTS);
     } catch (e) {
       console.log("Composite projects not supported");
