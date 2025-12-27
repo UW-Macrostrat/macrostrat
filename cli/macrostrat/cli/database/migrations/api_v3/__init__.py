@@ -12,7 +12,7 @@ class BaselineMigration(Migration):
     readiness_state = "ga"
     # Confirm that the tables created by the API v3 migrations are present
     postconditions = [
-        exists("storage", "object_group", "object"),
+        exists("storage", "object"),
         exists("maps_metadata", "ingest_process", "ingest_process_tag"),
         exists("macrostrat_auth", "user", "group"),
     ]

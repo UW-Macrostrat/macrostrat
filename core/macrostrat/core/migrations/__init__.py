@@ -230,6 +230,9 @@ class Migration:
 
     output_mode: OutputMode = OutputMode.SUMMARY
 
+    def __init__(self):
+        pass
+
     def should_apply(self, database: Database) -> ApplicationStatus:
         """Determine whether this migration can run, or has already run."""
         if self.always_apply:
@@ -509,6 +512,8 @@ def _run_migrations(
 
         # Hack to allow migrations to follow output mode
         _migration.output_mode = output_mode
+
+        print(f"\nApplying migration [bold cyan]{_name}[/]...")
         _migration.apply(db)
         run_counter += 1
         # After running migration, reload the database and confirm that application was sucessful

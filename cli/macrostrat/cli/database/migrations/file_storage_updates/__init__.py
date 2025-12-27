@@ -13,7 +13,7 @@ class MapFiles(Migration):
     postconditions = [
         # storage.object no longer has object_group_id
         # intersection table exists in storage schema
-        exists("storage", "map_files"),
+        exists("maps_metadata", "map_files"),
         # intersection table columns exist
         has_columns(
             "maps_metadata",
