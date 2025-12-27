@@ -228,6 +228,9 @@ class Migration:
 
     output_mode: OutputMode = OutputMode.SUMMARY
 
+    def __init__(self):
+        pass
+
     def should_apply(self, database: Database) -> ApplicationStatus:
         """Determine whether this migration can run, or has already run."""
         if self.always_apply:
