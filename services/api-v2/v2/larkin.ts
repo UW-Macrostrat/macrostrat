@@ -10,17 +10,37 @@ var async = require("async"),
 const named = require("yesql").pg;
 const { Client, Pool } = require("pg");
 
+enum APICapability {
+  COMPOSITE_PROJECTS = "composite-projects",
+}
+
 (function () {
   var larkin: any = {};
 
   // Store a global mapping of connection pools, so we don't overload PG with connections
   const connectionPoolStore: { [key: string]: typeof Pool } = {};
 
-  larkin.trace = function (...args: any[]) {
+  larkin.trace = function (type: string, ...args: any[]) {
     if (credentials.debug === false) {
       return;
     }
     console.log(...args);
+  };
+
+  larkin.queryPgAsync = function (
+    db: string,
+    sql: string,
+    params: any = {},
+  ): Promise<any> {
+    return new Promise((resolve, reject) => {
+      larkin.queryPg(db, sql, params, (err: any, result: any) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(result);
+        }
+      });
+    });
   };
 
   //added new method to query from Maria data in the new PG database after migration
@@ -126,6 +146,14 @@ const { Client, Pool } = require("pg");
         );
       }
     });
+  };
+
+  larkin.capabilities = new Set<APICapability>([]);
+
+  larkin.hasCapability = function (capability: APICapability) {
+    /** Check to see if the API framework/database supports a given capability.
+     * This is not exposed to clients and is used for eventual consistency. */
+    return larkin.capabilities.has(capability);
   };
 
   larkin.toUnnamed = function (sql, params) {
@@ -267,8 +295,19 @@ const { Client, Pool } = require("pg");
     }
   };
 
-  larkin.log = function (type, message) {
-    larkin.trace(type, message);
+  larkin.log = function (type, obj) {
+    let message = obj;
+    if (typeof obj === "object" && "message" in obj) {
+      message = obj.message;
+    }
+    if (type === "error") {
+      console.error("ERROR:", message);
+    } else if (type === "warning") {
+      console.warn("WARNING:", message);
+    } else if (type === "info") {
+      console.info("INFO", message);
+    }
+    larkin.trace(obj);
   };
 
   // Will return all field definitions
@@ -626,215 +665,49 @@ const { Client, Pool } = require("pg");
     On API startup cache the following:
       + All columns (with geometries)
       + All columns (without geometries)
-      + A summary of all units
 
     To refresh these caches without restarting the API an HTTP request can be
     made to /columns/refresh-cache?cacheRefreshKey= with the value of
     exports.cacheRefreshKey found in ./credentials.js
   */
-  larkin.setupCache = function () {
-    async.parallel(
-      {
-        unitSummary: function (callback) {
-          //get all units and summarize for columns
-          http.get(
-            //TODO: change url to match env.
-            "http://0.0.0.0:5000/v2/units?all&response=long",
-            function (res) {
-              var body = "";
-              res.on("data", function (chunk) {
-                body += chunk;
-              });
-              res.on("end", function () {
-                try {
-                  var parsedBody = JSON.parse(body);
-                  // Process the JSON as needed
-                } catch (e) {
-                  console.error("Failed to parse JSON:", e);
-                  console.error("Response body:", body); // Log the actual body for debugging
-                }
 
-                if (
-                  parsedBody &&
-                  parsedBody.success &&
-                  parsedBody.success.data
-                ) {
-                  var result = parsedBody.success.data;
-                } else {
-                  console.error("Invalid response body:", body);
-                }
-                var cols = _.groupBy(result, function (d) {
-                  return d.col_id;
-                });
+  larkin.checkCapabilities = async function (): Promise<Set<APICapability>> {
+    console.log("Checking API capabilities...");
+    // COMPOSITE PROJECTS
+    // Enable enhanced support for projects
+    // Check if composite projects are supported
+    try {
+      await Promise.all([
+        larkin.queryPgAsync(
+          "macrostrat",
+          `SELECT COUNT(*) FROM macrostrat.projects_tree`,
+        ),
+        larkin.queryPgAsync(
+          "macrostrat",
+          `SELECT slug FROM macrostrat.projects WHERE is_composite = true LIMIT 1`,
+        ),
+        larkin.queryPgAsync(
+          "macrostrat",
+          `SELECT macrostrat.core_project_ids()`,
+        ),
+      ]);
 
-                var new_cols = {};
+      larkin.capabilities.add(APICapability.COMPOSITE_PROJECTS);
+    } catch (e) {
+      console.log("Composite projects not supported");
+    }
 
-                Object.keys(cols).forEach(function (col_id) {
-                  new_cols[col_id] = {
-                    max_thick: _.reduce(
-                      cols[col_id].map(function (d) {
-                        return d.max_thick;
-                      }),
-                      function (a, b) {
-                        return a + b;
-                      },
-                      0,
-                    ),
-                    max_min_thick: _.reduce(
-                      cols[col_id].map(function (d) {
-                        if (d.min_thick === 0) {
-                          return d.max_thick;
-                        } else {
-                          return d.min_thick;
-                        }
-                      }),
-                      function (a, b) {
-                        return a + b;
-                      },
-                      0,
-                    ),
-                    min_min_thick: _.reduce(
-                      cols[col_id].map(function (d) {
-                        return d.min_thick;
-                      }),
-                      function (a, b) {
-                        return a + b;
-                      },
-                      0,
-                    ),
+    if (larkin.capabilities.size > 0) {
+      let msg = "Progressive enhancements enabled:\n";
+      larkin.capabilities.forEach((cap) => {
+        msg += `- ${cap}\n`;
+      });
+      larkin.log("info", msg);
+    } else {
+      larkin.log("info", "No enhancements available.");
+    }
 
-                    b_age: _.max(cols[col_id], function (d) {
-                      return d.b_age;
-                    }).b_age,
-                    t_age: _.min(cols[col_id], function (d) {
-                      return d.t_age;
-                    }).t_age,
-                    b_int_name: _.max(cols[col_id], function (d) {
-                      return d.b_age;
-                    }).b_int_name,
-                    t_int_name: _.min(cols[col_id], function (d) {
-                      return d.t_age;
-                    }).t_int_name,
-
-                    pbdb_collections: _.reduce(
-                      cols[col_id].map(function (d) {
-                        return d.pbdb_collections;
-                      }),
-                      function (a, b) {
-                        return a + b;
-                      },
-                      0,
-                    ),
-
-                    lith: larkin.summarizeAttribute(cols[col_id], "lith"),
-                    environ: larkin.summarizeAttribute(cols[col_id], "environ"),
-                    econ: larkin.summarizeAttribute(cols[col_id], "econ"),
-
-                    t_units: cols[col_id].length,
-                    t_sections: _.uniq(
-                      cols[col_id].map(function (d) {
-                        return d.section_id;
-                      }),
-                    ).length,
-                  };
-                });
-                callback(null, new_cols);
-              });
-            },
-          );
-        },
-
-        columnsGeom: function (callback) {
-          // get all columns, with geometry
-          larkin.queryPg(
-            "burwell",
-            `
-         SELECT
-          cols.id AS col_id,
-          col_name,
-          col_group,
-          col_groups.id AS col_group_id,
-          col AS group_col_id,
-          round(cols.col_area::numeric, 1) AS col_area,
-          cols.project_id,
-          string_agg(col_refs.ref_id::varchar, '|') AS refs,
-          ST_AsGeoJSON(col_areas.col_area) geojson
-        FROM macrostrat.cols
-        LEFT JOIN macrostrat.col_areas on col_areas.col_id = cols.id
-        LEFT JOIN macrostrat.col_groups ON col_groups.id = cols.col_group_id
-        LEFT JOIN macrostrat.col_refs ON cols.id = col_refs.col_id
-        WHERE status_code = 'active'
-          AND col_areas.col_area IS NOT NULL
-        GROUP BY col_areas.col_id, cols.id, col_groups.col_group, col_groups.id, col_areas.col_area
-        `,
-            [],
-            function (error, result) {
-              if (!error && result && result.rows) {
-                callback(null, result.rows);
-              } else {
-                larkin.trace(
-                  "Could not set up column cache. Check postgres connection",
-                );
-                callback(null);
-              }
-            },
-          );
-        },
-
-        columnsNoGeom: function (callback) {
-          larkin.queryPg(
-            "burwell",
-            `
-        SELECT
-          cols.id AS col_id,
-          col_name,
-          col_group,
-          col_groups.id AS col_group_id,
-          col AS group_col_id,
-          round(cols.col_area::numeric, 1) AS col_area,
-          cols.project_id,
-          string_agg(col_refs.ref_id::varchar, '|') AS refs
-        FROM macrostrat.cols
-        LEFT JOIN macrostrat.col_areas on col_areas.col_id = cols.id
-        LEFT JOIN macrostrat.col_groups ON col_groups.id = cols.col_group_id
-        LEFT JOIN macrostrat.col_refs ON cols.id = col_refs.col_id
-        WHERE status_code = 'active'
-          AND col_areas.col_area IS NOT NULL
-        GROUP BY col_areas.col_id, cols.id, col_groups.col_group, col_groups.id
-        `,
-            [],
-            function (error, result) {
-              if (!error && result && result.rows) {
-                callback(null, result.rows);
-              } else {
-                larkin.trace(
-                  "Could not set up column cache. Check postgres connection",
-                );
-                callback(null);
-              }
-            },
-          );
-        },
-      },
-      function (error, results) {
-        // Check if using Redis or not
-        if (larkin.cache.address) {
-          larkin.cache.set("unitSummary", JSON.stringify(results.unitSummary));
-          larkin.cache.set("columnsGeom", JSON.stringify(results.columnsGeom));
-          larkin.cache.set(
-            "columnsNoGeom",
-            JSON.stringify(results.columnsNoGeom),
-          );
-        } else {
-          larkin.trace("Setting up column cache");
-          larkin.cache.put("unitSummary", results.unitSummary);
-          larkin.cache.put("columnsGeom", results.columnsGeom);
-          larkin.cache.put("columnsNoGeom", results.columnsNoGeom);
-        }
-
-        larkin.trace("Done prepping column cache");
-      },
-    );
+    return larkin.capabilities;
   };
 
   module.exports = larkin;

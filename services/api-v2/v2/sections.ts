@@ -1,3 +1,5 @@
+import { handleUnitsRoute } from "./units";
+
 var api = require("./api"),
   async = require("async"),
   _ = require("underscore"),
@@ -20,7 +22,7 @@ module.exports = function (req, res, next) {
     [
       // First pass the request to units and get the units back
       function (callback) {
-        require("./units")(req, null, null, function (error, result) {
+        handleUnitsRoute(req, null, null, function (error, result) {
           if (error) {
             return callback(error);
           }

@@ -1,6 +1,8 @@
 var api = require("../api"),
   larkin = require("../larkin");
 
+import { buildProjectsFilter } from "../utils";
+
 module.exports = function (req, res, next, cb) {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
@@ -18,15 +20,16 @@ module.exports = function (req, res, next, cb) {
   if (req.query.col_group_id) {
     where.push("col_groups.id = ANY(:col_group_id)");
     params["col_group_id"] = larkin.parseMultipleIds(req.query.col_group_id);
-  } else if (req.query.project_id) {
-    where.push("cols.project_id = ANY(:project_id)");
-    params["project_id"] = larkin.parseMultipleIds(req.query.project_id);
-  } else if (req.query.col_id) {
-    where.push("cols.id = ANY(:col_id)");
-    params["col_id"] = larkin.parseMultipleIds(req.query.col_id);
   }
 
-  where = where.length ? "WHERE " + where.join(" AND ") : "";
+  const [projectWhereClauses, projectParams] = buildProjectsFilter(
+    req,
+    "cols.project_id",
+  );
+  where = where.concat(projectWhereClauses);
+  Object.assign(params, projectParams);
+
+  const whereClause = where.length ? "WHERE " + where.join(" AND ") : "";
 
   let sql = `SELECT col_groups.id AS col_group_id,
        col_group,
@@ -37,7 +40,7 @@ module.exports = function (req, res, next, cb) {
     FROM macrostrat.col_groups
     LEFT JOIN macrostrat.cols ON cols.col_group_id = col_groups.id
     LEFT JOIN macrostrat.units_sections ON units_sections.col_id = cols.id
-    ${where}
+    ${whereClause}
     GROUP BY col_groups.id, cols.project_id `;
 
   if ("sample" in req.query) {

@@ -1,3 +1,5 @@
+import { handleUnitsRoute } from "../units";
+
 var api = require("../api"),
   async = require("async"),
   larkin = require("../larkin"),
@@ -222,7 +224,7 @@ module.exports = function (req, res, next) {
               },
             );
           } else {
-            require("../units")(
+            handleUnitsRoute(
               { query: { unit_id: units[0].units } },
               null,
               null,

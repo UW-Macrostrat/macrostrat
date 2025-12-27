@@ -1,3 +1,5 @@
+import { handleUnitsRoute } from "./units";
+
 var api = require("./api"),
   async = require("async"),
   dbgeo = require("dbgeo"),
@@ -12,24 +14,9 @@ module.exports = function (req, res, next, callback) {
 
   async.waterfall(
     [
-      // First pass the request to the /units route and get the long response
       function (callback) {
-        if ("all" in req.query) {
-          larkin.cache.fetch("unitSummary", function (data) {
-            callback(null, data);
-          });
-        } else {
-          callback(null, null);
-        }
-      },
-
-      function (data, callback) {
-        if (data) {
-          return callback(null, data);
-        }
-
         //call units to group units by col_id
-        require("./units")(req, null, null, function (error, result) {
+        handleUnitsRoute(req, null, null, function (error, result) {
           if (error) {
             callback(error);
           }
@@ -122,19 +109,22 @@ module.exports = function (req, res, next, callback) {
           return callback(null, null, []);
         }
 
-        if ("all" in req.query) {
-          if (req.query.format && api.acceptedFormats.geo[req.query.format]) {
-            larkin.cache.fetch("columnsGeom", function (data) {
-              callback(null, new_cols, data);
-            });
-          } else {
-            larkin.cache.fetch("columnsNoGeom", function (data) {
-              callback(null, new_cols, data);
-            });
-          }
-        } else {
-          callback(null, new_cols, null);
-        }
+        callback(null, new_cols, null);
+
+        // TODO: this breaks "all" filtering and brings down the API
+        // if ("all" in req.query) {
+        //   if (req.query.format && api.acceptedFormats.geo[req.query.format]) {
+        //     larkin.cache.fetch("columnsGeom", function (data) {
+        //       callback(null, new_cols, data);
+        //     });
+        //   } else {
+        //     larkin.cache.fetch("columnsNoGeom", function (data) {
+        //       callback(null, new_cols, data);
+        //     });
+        //   }
+        // } else {
+        //   callback(null, new_cols, null);
+        // }
       },
 
       // Using the unique column IDs returned from units, query columns
