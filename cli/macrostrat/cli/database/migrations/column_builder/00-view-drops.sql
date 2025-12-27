@@ -2,7 +2,10 @@
 Drop all views so they can be recreated.
 TODO: automate this process.
 */
-DROP VIEW IF EXISTS macrostrat_api.projects;
+DROP VIEW IF EXISTS macrostrat_api.units CASCADE;
+DROP VIEW IF EXISTS macrostrat_api.unit_liths CASCADE;
+DROP VIEW IF EXISTS macrostrat_api.projects CASCADE;
+DROP VIEW IF EXISTS macrostrat_api.autocomplete CASCADE;
 DROP VIEW IF EXISTS macrostrat_api.cols;
 DROP VIEW IF EXISTS macrostrat_api.col_groups;
 DROP VIEW IF EXISTS macrostrat_api.environs;
@@ -11,10 +14,8 @@ DROP VIEW IF EXISTS macrostrat_api.intervals;
 DROP VIEW IF EXISTS macrostrat_api.timescales;
 DROP VIEW IF EXISTS macrostrat_api.strat_tree;
 DROP VIEW IF EXISTS macrostrat_api.refs;
-DROP VIEW IF EXISTS macrostrat_api.units;
 DROP VIEW IF EXISTS macrostrat_api.col_refs;
 DROP VIEW IF EXISTS macrostrat_api.unit_environs;
-DROP VIEW IF EXISTS macrostrat_api.unit_liths;
 DROP VIEW IF EXISTS macrostrat_api.sections;
 DROP VIEW IF EXISTS macrostrat_api.strat_names;
 DROP VIEW IF EXISTS macrostrat_api.unit_strat_names;

@@ -2,6 +2,7 @@ ALTER SCHEMA macrostrat OWNER TO macrostrat;
 
 DROP VIEW IF EXISTS macrostrat_api.projects;
 DROP VIEW IF EXISTS macrostrat_api.col_group_with_cols;
+DROP VIEW IF EXISTS macrostrat_api.autocomplete CASCADE;
 
 -- Alter project name to text
 ALTER TABLE macrostrat.projects ALTER COLUMN project TYPE TEXT USING project::TEXT;
