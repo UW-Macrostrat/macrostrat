@@ -3,7 +3,7 @@ var api = require("./api"),
   async = require("async"),
   larkin = require("./larkin");
 
-const { buildProjectsFilter } = require("./utils");
+import { buildProjectsFilter } from "./utils";
 
 module.exports = function (req, res, next) {
   if (Object.keys(req.query).length < 1) {

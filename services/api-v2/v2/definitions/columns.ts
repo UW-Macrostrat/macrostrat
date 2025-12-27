@@ -2,7 +2,7 @@ var api = require("../api");
 var larkin = require("../larkin");
 var dbgeo = require("dbgeo");
 
-const { buildProjectsFilter } = require("../utils");
+import { buildProjectsFilter } from "../utils";
 
 module.exports = function (req, res, next, cb) {
   if (Object.keys(req.query).length < 1) {

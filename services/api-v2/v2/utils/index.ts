@@ -5,7 +5,10 @@ type Params = Record<
   string | number | boolean | Array<string | number | boolean>
 >;
 
-function buildProjectsFilter(req, field = "project_id"): [string[], Params] {
+export function buildProjectsFilter(
+  req,
+  field = "project_id",
+): [string[], Params] {
   const params: Params = {};
   const whereClauses: string[] = [];
 
@@ -33,7 +36,3 @@ function buildProjectsFilter(req, field = "project_id"): [string[], Params] {
 
   return [whereClauses, params];
 }
-
-module.exports = {
-  buildProjectsFilter,
-};

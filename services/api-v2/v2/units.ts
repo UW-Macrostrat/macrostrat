@@ -4,7 +4,7 @@ var api = require("./api"),
   gp = require("geojson-precision"),
   larkin = require("./larkin");
 
-const { buildProjectsFilter } = require("./utils");
+import { buildProjectsFilter } from "./utils";
 
 module.exports = function (req, res, next, cb) {
   // If no parameters, send the route definition

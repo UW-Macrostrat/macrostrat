@@ -1,7 +1,7 @@
 var api = require("../api"),
   larkin = require("../larkin");
 
-const { buildProjectsFilter } = require("../utils");
+import { buildProjectsFilter } from "../utils";
 
 module.exports = function (req, res, next, cb) {
   if (Object.keys(req.query).length < 1) {
