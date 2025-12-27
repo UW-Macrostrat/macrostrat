@@ -696,6 +696,17 @@ enum APICapability {
     } catch (e) {
       console.log("Composite projects not supported");
     }
+
+    if (larkin.capabilities.size > 0) {
+      let msg = "Progressive enhancements enabled:\n";
+      larkin.capabilities.forEach((cap) => {
+        msg += `- ${cap}\n`;
+      });
+      larkin.log("info", msg);
+    } else {
+      larkin.log("info", "No enhancements available.");
+    }
+
     return larkin.capabilities;
   };
 
