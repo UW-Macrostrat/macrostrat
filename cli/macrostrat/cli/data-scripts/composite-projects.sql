@@ -8,7 +8,7 @@ VALUES
   (
    14,
    'Core columns',
-   'A composite dataset containing a non-overlapping set of regional composite columns at regional scale.',
+   'The "best available" default set of regional columns, composited from other datasets.',
    1,
    TRUE,
    'core'
