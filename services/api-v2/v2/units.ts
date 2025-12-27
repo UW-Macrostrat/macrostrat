@@ -3,7 +3,6 @@ var api = require("./api"),
   dbgeo = require("dbgeo"),
   gp = require("geojson-precision"),
   larkin = require("./larkin");
-//need to repoint setupCache function in larkin.ts to accommodate for units.ts changes
 
 const { buildProjectsFilter } = require("./utils");
 
