@@ -6,7 +6,7 @@ var api = require("./api"),
 
 import { buildProjectsFilter } from "./utils";
 
-module.exports = function (req, res, next, cb) {
+export function handleUnitsRoute(req, res, next, cb) {
   // If no parameters, send the route definition
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
@@ -702,4 +702,4 @@ module.exports = function (req, res, next, cb) {
       }
     },
   );
-};
+}

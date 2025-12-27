@@ -1,3 +1,5 @@
+import { handleUnitsRoute } from "../units";
+
 var api = require("../api");
 var async = require("async");
 var larkin = require("../larkin");
@@ -386,7 +388,7 @@ module.exports = function (req, res, next) {
               bestFit && bestFit.strat_names ? bestFit.strat_names : [];
 
             if (macroUnits.length) {
-              require("../units")(
+              handleUnitsRoute(
                 { query: { unit_id: macroUnits.join(",") } },
                 null,
                 null,

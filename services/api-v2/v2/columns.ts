@@ -1,3 +1,5 @@
+import { handleUnitsRoute } from "./units";
+
 var api = require("./api"),
   async = require("async"),
   dbgeo = require("dbgeo"),
@@ -14,7 +16,7 @@ module.exports = function (req, res, next, callback) {
     [
       function (callback) {
         //call units to group units by col_id
-        require("./units")(req, null, null, function (error, result) {
+        handleUnitsRoute(req, null, null, function (error, result) {
           if (error) {
             callback(error);
           }

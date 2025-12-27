@@ -1,3 +1,5 @@
+import { handleUnitsRoute } from "./units";
+
 var api = require("./api"),
   dbgeo = require("dbgeo"),
   async = require("async"),
@@ -59,7 +61,7 @@ module.exports = function (req, res, next) {
             req.query.econ_type ||
             req.query.econ_class
           ) {
-            require("./units")(req, null, null, function (error, result) {
+            handleUnitsRoute(req, null, null, function (error, result) {
               if (error) {
                 callback(error);
               }
