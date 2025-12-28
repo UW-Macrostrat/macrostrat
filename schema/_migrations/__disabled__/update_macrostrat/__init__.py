@@ -14,7 +14,7 @@ class MacrostratCoreMigration(Migration):
     Update the Macrostrat core schema ('macrostrat') with foreign keys and data transformations to
     stabilize the schema in PostgreSQL after transformation from MariaDB.
     """
-    readiness_state = "ga"
+    readiness_state = "alpha"
     depends_on = ["macrostrat-mariadb", "api-v3"]
 
     postconditions = [

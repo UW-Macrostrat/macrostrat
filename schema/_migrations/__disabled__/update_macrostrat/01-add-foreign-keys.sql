@@ -21,22 +21,23 @@
     the mariadb version of macrostrat has a "col_equv" that maps
     the bad id-ed columns to the actual ones
  */
-DELETE FROM macrostrat.col_refs
-	WHERE col_id NOT IN (SELECT id from macrostrat.cols)
-	OR ref_id NOT IN (SELECT id from macrostrat.refs);
-
 ALTER TABLE macrostrat.col_refs
-	ADD CONSTRAINT col_refs_col_fk FOREIGN KEY (col_id) REFERENCES macrostrat.cols(id) ON DELETE CASCADE,
-	ADD CONSTRAINT col_refs_ref_fk FOREIGN KEY (ref_id) REFERENCES macrostrat.refs(id) ON DELETE CASCADE;
+	ADD CONSTRAINT col_refs_col_fk FOREIGN KEY (col_id) REFERENCES macrostrat.cols(id) ON DELETE CASCADE ON UPDATE CASCADE,
+	ADD CONSTRAINT col_refs_ref_fk FOREIGN KEY (ref_id) REFERENCES macrostrat.refs(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT col_refs_unique UNIQUE (col_id, ref_id);
 
 /* I had to make the id the primary key of intervals first before adding the foreign key */
-ALTER TABLE macrostrat.intervals ADD PRIMARY KEY (id);
+-- ALTER TABLE macrostrat.intervals ADD PRIMARY KEY (id);
+
+ALTER TABLE macrostrat.col_groups
+  ADD CONSTRAINT col_groups_project_fk FOREIGN KEY (project_id) REFERENCES macrostrat.projects(id) ON DELETE CASCADE ON UPDATE CASCADE;
 
 /* no issues
     col_notes were not perserved, in mariaDB this is a separte table.
 */
 ALTER TABLE macrostrat.cols
-	ADD CONSTRAINT cols_col_groups_fk FOREIGN KEY (col_group_id) REFERENCES macrostrat.col_groups(id) ON DELETE CASCADE;
+	ADD CONSTRAINT cols_col_groups_fk FOREIGN KEY (col_group_id) REFERENCES macrostrat.col_groups(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT cols_project_fk FOREIGN KEY (project_id) REFERENCES macrostrat.projects(id) ON DELETE CASCADE ON UPDATE CASCADE;
 
 /* no issues */
 ALTER TABLE macrostrat.col_areas
@@ -45,10 +46,6 @@ ALTER TABLE macrostrat.col_areas
 /* seems like the 'concepts' table is missing */
 ALTER TABLE macrostrat.concepts_places
 	ADD CONSTRAINT concepts_places_places_fk FOREIGN KEY (place_id) REFERENCES macrostrat.places(place_id) ON DELETE CASCADE;
-
-/* 9 unit_id's deleted from unit_econs */
-DELETE FROM macrostrat.unit_econs
-	WHERE unit_id NOT IN (SELECT id from macrostrat.units);
 
 ALTER TABLE macrostrat.unit_econs
 	ADD CONSTRAINT unit_econs_econs_fk FOREIGN KEY (econ_id) REFERENCES macrostrat.econs(id) ON DELETE CASCADE,
@@ -60,12 +57,6 @@ ALTER TABLE macrostrat.unit_econs
 */
 -- pg_loader apparently adds NOT NULL constraints in some cases
 ALTER TABLE macrostrat.unit_environs ALTER COLUMN ref_id DROP NOT NULL;
-UPDATE macrostrat.unit_environs
-SET ref_id = NULL
-WHERE ref_id = 0;
-
-DELETE FROM macrostrat.unit_environs
-WHERE unit_id not in (SELECT id from macrostrat.units);
 
 ALTER TABLE macrostrat.unit_environs
 	ADD CONSTRAINT unit_environs_environs_fk FOREIGN KEY (environ_id) REFERENCES macrostrat.environs(id) ON DELETE CASCADE,
@@ -83,26 +74,6 @@ ALTER TABLE macrostrat.unit_liths_atts
 	ADD CONSTRAINT unit_liths_atts_unit_liths_fk FOREIGN KEY (unit_lith_id) REFERENCES macrostrat.unit_liths(id) ON DELETE CASCADE,
 	ADD CONSTRAINT unit_liths_atts_lith_atts_fk FOREIGN KEY (lith_att_id) REFERENCES macrostrat.lith_atts(id) ON DELETE CASCADE;
 
-/*
- deleted 2 rows from bad unit ids and 2 rows from bad strat_name ids
-
-strat_name ids:
-	the ids are just wrong. The strat_names exist but as different records than what is recorded..
-	Need to update the table strat_name_ids where
-	three sisters: 75254 -> 6040
-	jasper fm: 102656 -> 102650
-
-unit_ids:
-	It appears that units were removed.. there are no units with the corresponding strat_names
-*/
-UPDATE macrostrat.unit_strat_names
-SET strat_name_id = 6040
-WHERE strat_name_id = 75254;
-
-UPDATE macrostrat.unit_strat_names
-SET strat_name_id = 102650
-WHERE strat_name_id = 102656;
-
 DELETE FROM macrostrat.unit_strat_names
 	WHERE unit_id NOT IN (SELECT id from macrostrat.units);
 
@@ -112,19 +83,8 @@ ALTER TABLE macrostrat.unit_strat_names
 
 -- Remove the NOT NULL constraint on concept_id
 ALTER TABLE macrostrat.strat_names ALTER COLUMN concept_id DROP NOT NULL;
-UPDATE macrostrat.strat_names
-	SET concept_id = NULL
-	WHERE concept_id = 0;
 
-/* BREAKS!!! there is a non-null constraint on ref_id.. but 0 means none so. */
--- Remove the NOT NULL constraint on ref_id
 ALTER TABLE macrostrat.strat_names ALTER COLUMN ref_id DROP NOT NULL;
-UPDATE macrostrat.strat_names
-	SET ref_id = NULL
-	WHERE ref_id = 0;
-
-DELETE FROM macrostrat.strat_names sn
-WHERE sn.concept_id NOT IN (SELECT concept_id FROM macrostrat.strat_names_meta);
 
 ALTER TABLE macrostrat.strat_names
 	ADD CONSTRAINT strat_names_strat_names_meta_fk FOREIGN KEY (concept_id) REFERENCES macrostrat.strat_names_meta(concept_id) ON DELETE CASCADE;
@@ -132,44 +92,18 @@ ALTER TABLE macrostrat.strat_names
 -- There are 6,000+ strat_name_meta entries with interval_id = 0
 
 ALTER TABLE macrostrat.strat_names_meta ALTER COLUMN interval_id DROP NOT NULL;
-UPDATE macrostrat.strat_names_meta
-  SET interval_id = NULL
-  WHERE interval_id = 0;
 
 ALTER TABLE macrostrat.strat_names_meta
 	ADD CONSTRAINT strat_names_meta_intervals_fk FOREIGN KEY(interval_id) REFERENCES macrostrat.intervals(id) ON DELETE CASCADE,
 	ADD CONSTRAINT strat_names_meta_refs_fk FOREIGN KEY(ref_id) REFERENCES macrostrat.refs(id) ON DELETE CASCADE;
 
-/* 33 rows deleted b/c of non-matching strat_name ids
-there doesn't seem to be a way to recover the missing strat_names
-*/
-DELETE FROM macrostrat.strat_names_places
-	WHERE strat_name_id NOT IN (SELECT id from macrostrat.strat_names);
-
 ALTER TABLE macrostrat.strat_names_places
 	ADD CONSTRAINT strat_names_places_places_fk FOREIGN KEY (place_id) REFERENCES macrostrat.places(place_id) ON DELETE CASCADE,
 	ADD CONSTRAINT strat_names_places_strat_names_fk FOREIGN KEY (strat_name_id) REFERENCES macrostrat.strat_names(id) ON DELETE CASCADE;
 
-/* 1 row deleted b/c of bad interval id */
-DELETE FROM macrostrat.timescales_intervals
-	WHERE interval_id NOT IN (SELECT id from macrostrat.intervals);
-
 ALTER TABLE macrostrat.timescales_intervals
 	ADD CONSTRAINT timescales_intervals_timescales_fk FOREIGN KEY (timescale_id) REFERENCES macrostrat.timescales(id) ON DELETE CASCADE,
 	ADD CONSTRAINT timescales_intervals_intervals_fk FOREIGN KEY (interval_id) REFERENCES macrostrat.intervals(id) ON DELETE CASCADE;
-
-/* 2 rows deleted for a col_id of 0,
-one was a `test_delete_me`
-the other was Lane Shale, unit_id 42143 */
-DELETE FROM macrostrat.units
-	WHERE col_id NOT IN (SELECT id FROM macrostrat.cols)
-	-- Ensure that a maximum of two units are deleted, just for sanity.
-  AND ((SELECT count(*) FROM macrostrat.units WHERE col_id = 0) <= 2);
-
-
--- Create fk constraints on units_sections table
--- Delete bad units_sections record
-DELETE FROM macrostrat.units_sections WHERE unit_id NOT IN (SELECT id FROM macrostrat.units);
 
 ALTER TABLE macrostrat.units_sections
   ADD CONSTRAINT units_sections_units_fk FOREIGN KEY (unit_id) REFERENCES macrostrat.units(id) ON DELETE CASCADE,
@@ -191,66 +125,6 @@ ALTER TABLE macrostrat.units_sections
   AND section_id NOT IN (SELECT id FROM macrostrat.sections);
 */
 
-/** Add sections to contain a few stray units from New Zealand */
-WITH units AS (
-  SELECT id, col_id, fo, lo, fo_h, lo_h
-  FROM macrostrat.units
-  WHERE id NOT IN (SELECT unit_id FROM macrostrat.units_sections)
-   AND section_id NOT IN (SELECT id FROM macrostrat.sections)
-  LIMIT 5 -- there should be only 5 units that match this criteria
-), new_sections  AS (
-  INSERT INTO macrostrat.sections (col_id, fo, lo, fo_h, lo_h)
-  SELECT
-    col_id, fo, lo, fo_h, lo_h
-  FROM units
-  GROUP BY col_id, fo, lo, fo_h, lo_h
-  RETURNING col_id, id section_id
-), new_units_sections AS (
-  INSERT INTO macrostrat.units_sections (unit_id, section_id, col_id)
-    SELECT u.id, ns.section_id, ns.col_id
-    FROM units u
-           JOIN new_sections ns
-                ON u.col_id = ns.col_id
-    RETURNING unit_id, section_id, col_id
-)
-  -- Update legacy unit.section_id relationships to mirror the macrostrat.units_sections links
-UPDATE macrostrat.units u
-SET section_id = us.section_id
-FROM new_units_sections us
-WHERE u.id = us.unit_id
-  AND u.col_id = us.col_id;
-
-
-/** Update legacy section_id field for cases where it references a non-existent section.
-TODO: we may want to delete this legacy field if it isn't needed.
-*/
-UPDATE macrostrat.units u
-SET section_id = us.section_id
-FROM macrostrat.units_sections us
-WHERE u.id = us.unit_id
-  AND u.col_id = us.col_id
-  AND u.section_id NOT IN (SELECT id FROM macrostrat.sections);
-
-/** Only a few units that are totally unlinked to sections
-  SELECT * FROM macrostrat.units
-  WHERE id NOT IN (SELECT unit_id FROM macrostrat.units_sections)
-  AND section_id NOT IN (SELECT id FROM macrostrat.sections);
-
-  -- fo, lo, fo_h and lo_h seem to match in all cases
- */
-
-
-/* Reconstruct section_id field from units_sections table.
-  TODO: the col_id and section_id fields in the "units_columns" table
-   are the 'master' version of the link, and the others are around for
-   legacy purposes.
-*/
-UPDATE macrostrat.units u
-SET section_id = us.section_id,
-    col_id = us.col_id
-FROM macrostrat.units_sections us
-WHERE u.id = us.unit_id
-  AND u.section_id NOT IN (SELECT id FROM macrostrat.sections);
 
 ALTER TABLE macrostrat.units
 	ADD CONSTRAINT units_cols_fk FOREIGN KEY (col_id) REFERENCES macrostrat.cols(id) ON DELETE CASCADE,
@@ -260,14 +134,6 @@ ALTER TABLE macrostrat.units
 
 ALTER TABLE macrostrat.sections
 	ADD CONSTRAINT sections_cols_fk FOREIGN KEY (col_id) REFERENCES macrostrat.cols(id) ON DELETE CASCADE;
-
-DELETE FROM macrostrat.strat_tree
-	WHERE child NOT IN (SELECT id FROM macrostrat.strat_names)
-	OR ref_id NOT IN (SELECT id FROM macrostrat.refs);
-
-UPDATE macrostrat.strat_tree
-	SET ref_id = NULL
-	WHERE ref_id = 0;
 
 ALTER TABLE macrostrat.strat_tree
 	ADD CONSTRAINT strat_tree_strat_names_parent_fk FOREIGN KEY (parent) REFERENCES macrostrat.strat_names(id) ON DELETE CASCADE,
@@ -284,12 +150,6 @@ ALTER TABLE macrostrat.cols
 /* Add project id constraint to col-groups */
 ALTER TABLE macrostrat.col_groups
 	ADD COLUMN project_id INT REFERENCES macrostrat.projects(id);
-
-UPDATE macrostrat.col_groups cg
-SET project_id = c.project_id
-FROM macrostrat.cols c
-WHERE c.col_group_id = cg.id;
-
 
 --
 -- /* unit_boundaries table, needs a unit_id and ref_id fk
