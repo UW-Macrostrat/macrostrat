@@ -448,13 +448,13 @@ def plan(schema: str):
         """
         )
 
-        for schema in managed_schemas:
-            plan_db.run_sql("CREATE SCHEMA IF NOT EXISTS {}".format(schema))
-            dumpfile = dumpdir / f"{schema}.sql"
+        for _schema in managed_schemas:
+            plan_db.run_sql("CREATE SCHEMA IF NOT EXISTS {}".format(_schema))
+            dumpfile = dumpdir / f"{_schema}.sql"
             print(
-                f"[dim]Loading schema [bold cyan]{schema}[/] from [bold]{dumpfile}[/]"
+                f"[dim]Loading schema [bold cyan]{_schema}[/] from [bold]{dumpfile}[/]"
             )
-            plan_db.run_sql("set search_path TO {}".format(schema))
+            plan_db.run_sql("set search_path TO {}".format(_schema))
             plan_db.run_sql(dumpfile.read_text())
 
         plan_file = dumpdir / f"{schema}.sql"
