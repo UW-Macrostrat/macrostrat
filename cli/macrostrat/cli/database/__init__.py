@@ -21,7 +21,6 @@ from macrostrat.core import MacrostratSubsystem, app
 from macrostrat.core.config import settings
 from macrostrat.core.migrations import run_migrations, _run_migrations_in_database
 from ._legacy import get_db
-
 # First, register all migrations
 # NOTE: right now, this is quite implicit.
 from .migrations import load_migrations
@@ -366,6 +365,25 @@ def pgschema(
     db = get_db()
     url = db.engine.url
 
+    dbargs = [
+        "--db",
+        url.database,
+        "--host",
+        url.host,
+        "--port",
+        str(url.port or 5432),
+        "--user",
+        url.username,
+        "--password",
+        url.password,
+    ]
+
+    if ctx.args[0] == "dump":
+        run("pgschema", *dbargs, *ctx.args)
+        return
+
+    # Otherwise we
+
     image = settings.get("pg_database_container", "postgres:15")
 
     client = docker.from_env()
@@ -384,19 +402,11 @@ def pgschema(
         plan_db = Database(_url)
         plan_url = plan_db.engine.url
 
+        plan_db.run_sql('CREATE ROLE "macrostrat-admin"')
+
         _run_migrations_in_database(plan_db, legacy=False)
 
-        args = [
-            "--db",
-            url.database,
-            "--host",
-            url.host,
-            "--port",
-            str(url.port or 5432),
-            "--user",
-            url.username,
-            "--password",
-            url.password,
+        dbargs += [
             "--plan-db",
             plan_url.database,
             "--plan-host",
@@ -408,9 +418,9 @@ def pgschema(
         ]
 
         if plan_url.password is not None:
-            args.extend(["--plan-password", plan_url.password])
+            dbargs.extend(["--plan-password", plan_url.password])
 
-        run("pgschema", *args, *ctx.args)
+        run("pgschema", *dbargs, *ctx.args)
 
 
 @db_app.command(name="inspect", rich_help_panel="Helpers")
