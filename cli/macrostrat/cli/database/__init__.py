@@ -369,25 +369,42 @@ managed_schemas = [
 
 @db_app.command("dump-managed")
 def dump_managed():
-    """Export managed schemas from the Macrostrat database"""
+    """Export managed schemas from the Macrostrat database using [cyan]pg_dump[/]"""
 
     db_container = app.settings.get("pg_database_container", "postgres:15")
     engine = engine_for_db_name("macrostrat")
 
     dumpdir = settings.srcroot / "schema"
 
+    db = get_db()
+    url = db.engine.url
+
+    dbargs = [
+        "--db",
+        url.database,
+        "--host",
+        url.host,
+        "--port",
+        str(url.port or 5432),
+        "--user",
+        url.username,
+        "--password",
+        url.password,
+    ]
+
     args = []
     for schema in managed_schemas:
         dumpfile = dumpdir / f"{schema}.sql"
-        args = ["--schema-only", "-n", schema]
-        task = pg_dump_to_file(
-            engine,
-            dumpfile,
-            args=args,
-            postgres_container=db_container,
-            custom_format=False,
-        )
-        asyncio.run(task)
+        with dumpfile.open("w") as f:
+            print(f"[dim]Dumping schema [bold cyan]{schema}[/] to [bold]{dumpfile}[/]")
+            run(
+                "pgschema",
+                "dump",
+                *dbargs,
+                "--schema",
+                schema,
+                stdout=f,
+            )
 
 
 @db_app.command(
