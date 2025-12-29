@@ -351,6 +351,94 @@ class TableInspector:
         return self._insp.get_check_constraints(self.table, schema=self.schema)
 
 
+from results import db as results_db
+
+managed_schemas = [
+    "public",
+    "macrostrat",
+    "macrostrat_api",
+    "auth",
+    "storage",
+    "maps",
+    "maps_metadata",
+    "lines",
+    "carto",
+    "carto_new",
+]
+
+
+@db_app.command("dump-managed")
+def dump_managed():
+    """Export managed schemas from the Macrostrat database"""
+
+    db_container = app.settings.get("pg_database_container", "postgres:15")
+    engine = engine_for_db_name("macrostrat")
+
+    dumpdir = settings.srcroot / "schema"
+
+    args = []
+    for schema in managed_schemas:
+        dumpfile = dumpdir / f"{schema}.sql"
+        args = ["--schema-only", "-n", schema]
+        task = pg_dump_to_file(
+            engine,
+            dumpfile,
+            args=args,
+            postgres_container=db_container,
+            custom_format=False,
+        )
+        asyncio.run(task)
+
+
+@db_app.command(
+    context_settings={
+        "allow_extra_args": True,
+        "ignore_unknown_options": True,
+        "help_option_names": [],
+    }
+)
+def diff(
+    ctx: typer.Context,
+    schema: str = Option("macrostrat", "--schema", "-s"),
+):
+    """Run pg-schema-diff to compare with the target database"""
+    db = get_db()
+    url = db.engine.url
+
+    image = settings.get("pg_database_container", "postgres:15")
+
+    client = docker.from_env()
+
+    img_root = settings.srcroot / "base-images" / "database"
+
+    # Build postgres pgaudit image
+    img_tag = "macrostrat.local/database:latest"
+
+    client.images.build(path=str(img_root), tag=img_tag)
+
+    # Spin up an image with this container
+    port = 54884
+    with database_cluster(client, img_tag, port=port) as container:
+        _url = f"postgresql://postgres@localhost:{port}/postgres"
+        plan_db = Database(_url)
+        plan_url = plan_db.engine.url
+
+        plan_db.run_sql('CREATE ROLE "macrostrat-admin"')
+
+        _run_migrations_in_database(plan_db, legacy=False)
+
+        db_a = results_db(raw_database_url(url))
+        db_b = results_db(raw_database_url(plan_url))
+
+        schemadiff_sql = db_b.schemadiff_as_sql(
+            db_a, with_privileges=False, schema=schema
+        )
+
+        if schemadiff_sql:
+            print(schemadiff_sql)
+            exit(2)
+
+
 @db_app.command(
     context_settings={
         "allow_extra_args": True,
