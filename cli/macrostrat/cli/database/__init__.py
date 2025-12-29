@@ -1,22 +1,27 @@
 import asyncio
+from pathlib import Path
+from sys import exit, stderr, stdin, stdout
+from typing import Any, Callable, Iterable
+
+import docker
 import typer
 from macrostrat.database import Database
 from macrostrat.database.transfer import pg_dump_to_file, pg_restore_from_file
 from macrostrat.database.transfer.utils import raw_database_url
 from macrostrat.database.utils import get_sql_files
+from macrostrat.dinosaur.upgrade_cluster.utils import database_cluster
 from macrostrat.utils import get_logger
 from macrostrat.utils.shell import run
-from pathlib import Path
 from pydantic import BaseModel
 from rich import print
 from sqlalchemy import make_url, text
-from sys import exit, stderr, stdin, stdout
 from typer import Argument, Option
-from typing import Any, Callable, Iterable
 
 from macrostrat.core import MacrostratSubsystem, app
-from macrostrat.core.migrations import run_migrations
+from macrostrat.core.config import settings
+from macrostrat.core.migrations import run_migrations, _run_migrations_in_database
 from ._legacy import get_db
+
 # First, register all migrations
 # NOTE: right now, this is quite implicit.
 from .migrations import load_migrations
@@ -361,20 +366,51 @@ def pgschema(
     db = get_db()
     url = db.engine.url
 
-    args = [
-        "--db",
-        url.database,
-        "--host",
-        url.host,
-        "--port",
-        str(url.port or 5432),
-        "--user",
-        url.username,
-        "--password",
-        url.password,
-    ]
+    image = settings.get("pg_database_container", "postgres:15")
 
-    run("pgschema", *args, *ctx.args)
+    client = docker.from_env()
+
+    img_root = settings.srcroot / "base-images" / "database"
+
+    # Build postgres pgaudit image
+    img_tag = "macrostrat.local/database:latest"
+
+    client.images.build(path=str(img_root), tag=img_tag)
+
+    # Spin up an image with this container
+    port = 54884
+    with database_cluster(client, img_tag, port=port) as container:
+        _url = f"postgresql://postgres@localhost:{port}/postgres"
+        plan_db = Database(_url)
+        plan_url = plan_db.engine.url
+
+        _run_migrations_in_database(plan_db, legacy=False)
+
+        args = [
+            "--db",
+            url.database,
+            "--host",
+            url.host,
+            "--port",
+            str(url.port or 5432),
+            "--user",
+            url.username,
+            "--password",
+            url.password,
+            "--plan-db",
+            plan_url.database,
+            "--plan-host",
+            plan_url.host,
+            "--plan-port",
+            str(plan_url.port or 5432),
+            "--plan-user",
+            plan_url.username,
+        ]
+
+        if plan_url.password is not None:
+            args.extend(["--plan-password", plan_url.password])
+
+        run("pgschema", *args, *ctx.args)
 
 
 @db_app.command(name="inspect", rich_help_panel="Helpers")

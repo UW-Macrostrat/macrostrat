@@ -11,8 +11,7 @@ CREATE OR REPLACE VIEW macrostrat_api.test_helper_functions  AS
   SELECT current_app_role(), current_app_user_id();
 
 --Ensures HTTP's require a parameter to delete or update rows. Bulk deletions and bulk updates are not allowed.
-CREATE EXTENSION IF NOT EXISTS pg_safe_update;
-SELECT pg_safe_update.enable();
+LOAD 'safeupdate';
 
 
 

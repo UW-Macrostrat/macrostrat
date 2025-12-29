@@ -14,8 +14,7 @@ CREATE TYPE storage.scheme AS ENUM (
 ALTER TYPE storage.scheme OWNER TO macrostrat;
 
 CREATE TABLE IF NOT EXISTS storage.object (
-    id integer NOT NULL,
-    object_group_id integer references storage.object_group(id) ON DELETE CASCADE,
+    id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     scheme storage.scheme NOT NULL,
     host character varying(255) NOT NULL,
     bucket character varying(255) NOT NULL,
@@ -28,19 +27,8 @@ CREATE TABLE IF NOT EXISTS storage.object (
     deleted_on timestamp with time zone
 );
 
+
 ALTER TABLE storage.object OWNER TO macrostrat;
-
-CREATE SEQUENCE storage.object_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-ALTER SEQUENCE storage.object_id_seq OWNER TO macrostrat;
-
-ALTER SEQUENCE storage.object_id_seq OWNED BY storage.object.id;
 
 GRANT ALL ON DATABASE macrostrat TO postgrest;
 

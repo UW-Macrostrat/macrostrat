@@ -162,11 +162,10 @@ services:
             --proxy-headers
             --forwarded-allow-ips=*
   migrations-test-db:
-    image: postgis-with-audit
-    profiles: ['migrations-test']
     build:
-      context: .
-      dockerfile: ./postgis-audit.Dockerfile
+      context: ../base-images/database
+    image: macrostrat.local/database:latest
+    profiles: ['migrations-test']
     ports:
       - "${MACROSTRAT_DB_PORT:-5432}:5432"
     environment:
