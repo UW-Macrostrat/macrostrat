@@ -407,6 +407,64 @@ def dump_managed():
             )
 
 
+@db_app.command("plan")
+def plan(schema: str):
+    """Plan updates to managed schemas in the Macrostrat database using [cyan]pgschema[/cyan]"""
+    db = get_db()
+    url = db.engine.url
+
+    image = settings.get("pg_database_container", "postgres:15")
+
+    client = docker.from_env()
+
+    img_root = settings.srcroot / "base-images" / "database"
+
+    # Build postgres pgaudit image
+    img_tag = "macrostrat.local/database:latest"
+
+    client.images.build(path=str(img_root), tag=img_tag)
+
+    dumpdir = settings.srcroot / "schema"
+
+    # Spin up an image with this container
+    port = 54884
+    with database_cluster(client, img_tag, port=port) as container:
+        _url = f"postgresql://postgres@localhost:{port}/postgres"
+        plan_db = Database(_url)
+        plan_url = plan_db.engine.url
+
+        plan_db.run_sql('CREATE ROLE "macrostrat-admin"')
+        plan_db.run_sql('CREATE ROLE "macrostrat"')
+
+        plan_db.run_sql(
+            """
+            CREATE EXTENSION IF NOT EXISTS postgis;
+            CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA public;
+            CREATE EXTENSION IF NOT EXISTS pgaudit WITH SCHEMA public;
+            CREATE EXTENSION IF NOT EXISTS postgis WITH SCHEMA public;
+            CREATE EXTENSION IF NOT EXISTS postgis_raster WITH SCHEMA public;
+            CREATE EXTENSION IF NOT EXISTS postgis_topology WITH SCHEMA topology;
+            CREATE EXTENSION IF NOT EXISTS postgres_fdw WITH SCHEMA public;
+        """
+        )
+
+        for schema in managed_schemas:
+            plan_db.run_sql("CREATE SCHEMA IF NOT EXISTS {}".format(schema))
+            dumpfile = dumpdir / f"{schema}.sql"
+            print(
+                f"[dim]Loading schema [bold cyan]{schema}[/] from [bold]{dumpfile}[/]"
+            )
+            plan_db.run_sql("set search_path TO {}".format(schema))
+            plan_db.run_sql(dumpfile.read_text())
+
+        plan_file = dumpdir / f"{schema}.sql"
+        _pgschema(
+            db,
+            ["plan", "--schema", schema, "--file", str(plan_file)],
+            plan_db=plan_db,
+        )
+
+
 @db_app.command(
     context_settings={
         "allow_extra_args": True,
@@ -484,7 +542,7 @@ def pgschema(
     ]
 
     if ctx.args[0] == "dump":
-        run("pgschema", *dbargs, *ctx.args)
+        _pgschema(db, ctx.args)
         return
 
     # Otherwise we
@@ -505,12 +563,33 @@ def pgschema(
     with database_cluster(client, img_tag, port=port) as container:
         _url = f"postgresql://postgres@localhost:{port}/postgres"
         plan_db = Database(_url)
-        plan_url = plan_db.engine.url
-
         plan_db.run_sql('CREATE ROLE "macrostrat-admin"')
 
         _run_migrations_in_database(plan_db, legacy=False)
 
+        _pgschema(db, ctx.args, plan_db=plan_db)
+
+
+def _pgschema(db: Database, args: list[str], plan_db: Database = None):
+    """Run pgschema with the given arguments"""
+    url = db.engine.url
+
+    dbargs = [
+        "--db",
+        url.database,
+        "--host",
+        url.host,
+        "--port",
+        str(url.port or 5432),
+        "--user",
+        url.username,
+    ]
+
+    if url.password is not None:
+        dbargs.extend(["--password", url.password])
+
+    if plan_db is not None:
+        plan_url = plan_db.engine.url
         dbargs += [
             "--plan-db",
             plan_url.database,
@@ -525,7 +604,7 @@ def pgschema(
         if plan_url.password is not None:
             dbargs.extend(["--plan-password", plan_url.password])
 
-        run("pgschema", *dbargs, *ctx.args)
+    run("pgschema", *dbargs, *args)
 
 
 @db_app.command(name="inspect", rich_help_panel="Helpers")
