@@ -357,6 +357,8 @@ managed_schemas = [
     "public",
     "macrostrat",
     "macrostrat_api",
+    "macrostrat_auth",
+    "ecosystem",
     "auth",
     "storage",
     "maps",
@@ -413,7 +415,7 @@ def dump_managed():
 
 
 @db_app.command("plan")
-def plan(schema: str):
+def plan():
     """Plan updates to managed schemas in the Macrostrat database using [cyan]pgschema[/cyan]"""
     db = get_db()
     url = db.engine.url
@@ -462,12 +464,31 @@ def plan(schema: str):
             plan_db.run_sql("set search_path TO {}".format(_schema))
             plan_db.run_sql(dumpfile.read_text())
 
-        plan_file = dumpdir / f"{schema}.sql"
-        _pgschema(
-            db,
-            ["plan", "--schema", schema, "--file", str(plan_file)],
-            plan_db=plan_db,
-        )
+        out_dir = dumpdir / "plans"
+        out_dir.mkdir(exist_ok=True)
+
+        for _schema in managed_schemas:
+            plan_file = dumpdir / f"{_schema}.sql"
+
+            out_file = out_dir / f"{_schema}_plan.sql"
+
+            _pgschema(
+                db,
+                [
+                    "plan",
+                    "--schema",
+                    _schema,
+                    "--file",
+                    str(plan_file),
+                    "--output-sql",
+                    str(out_file),
+                    "--output-human",
+                    str(out_file.with_suffix(".txt")),
+                    "--output-json",
+                    str(out_file.with_suffix(".json")),
+                ],
+                plan_db=plan_db,
+            )
 
 
 @db_app.command(

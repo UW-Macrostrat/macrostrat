@@ -2703,7 +2703,7 @@ CREATE INDEX IF NOT EXISTS strat_names_places_new_strat_name_id_idx1 ON strat_na
 CREATE TABLE IF NOT EXISTS strat_tree (
     id integer,
     parent integer,
-    rel macrostratbak2.strat_tree_rel,
+    rel strat_tree_rel,
     child integer,
     ref_id integer,
     check_me smallint
@@ -4011,7 +4011,7 @@ LANGUAGE plpgsql
 VOLATILE
 AS $$
 BEGIN
-  IF (SELECT is_composite FROM macrostrat.projects WHERE id = NEW.project_id)
+  IF (SELECT is_composite FROM projects WHERE id = NEW.project_id)
   THEN
     RAISE EXCEPTION 'A composite project cannot itself contain columns. We may relax this restriction in the future.';
   END IF;
@@ -4029,23 +4029,11 @@ LANGUAGE plpgsql
 VOLATILE
 AS $$
 BEGIN
-  IF NOT (SELECT is_composite FROM macrostrat.projects WHERE id = NEW.parent_id) THEN
+  IF NOT (SELECT is_composite FROM projects WHERE id = NEW.parent_id) THEN
     RAISE EXCEPTION 'Parent project must be a composite project';
   END IF;
   RETURN NEW;
 END;
-$$;
-
---
--- Name: core_project_ids(); Type: FUNCTION; Schema: -; Owner: -
---
-
-CREATE OR REPLACE FUNCTION core_project_ids()
-RETURNS integer[]
-LANGUAGE sql
-STABLE
-AS $$
-SELECT macrostrat.flattened_project_ids(ARRAY[id]) FROM macrostrat.projects WHERE slug = 'core';
 $$;
 
 --
@@ -4069,12 +4057,24 @@ BEGIN
     result_ids := result_ids || current_ids;
     SELECT array_agg(pt.child_id)
     INTO child_ids
-    FROM macrostrat.projects_tree pt
+    FROM projects_tree pt
     WHERE pt.parent_id = ANY(current_ids);
     current_ids := child_ids;
   END LOOP;
   RETURN ARRAY(SELECT DISTINCT unnest(result_ids));
 END;
+$$;
+
+--
+-- Name: core_project_ids(); Type: FUNCTION; Schema: -; Owner: -
+--
+
+CREATE OR REPLACE FUNCTION core_project_ids()
+  RETURNS integer[]
+  LANGUAGE sql
+  STABLE
+AS $$
+SELECT flattened_project_ids(ARRAY[id]) FROM projects WHERE slug = 'core';
 $$;
 
 --
@@ -4096,7 +4096,7 @@ BEGIN
   base_slug := lower(regexp_replace(_project.project, '[^a-zA-Z0-9]+', '-', 'g'));
   unique_slug := base_slug;
   suffix := 1;
-  WHILE EXISTS (SELECT 1 FROM macrostrat.projects p WHERE p.slug = unique_slug AND p.id != _project.id) LOOP
+  WHILE EXISTS (SELECT 1 FROM projects p WHERE p.slug = unique_slug AND p.id != _project.id) LOOP
     suffix := suffix + 1;
     unique_slug := base_slug || '-' || suffix;
   END LOOP;
@@ -4123,7 +4123,7 @@ BEGIN
   base_slug := lower(regexp_replace(project_name, '[^a-zA-Z0-9]+', '-', 'g'));
   unique_slug := base_slug;
   suffix := 1;
-  WHILE EXISTS (SELECT 1 FROM macrostrat.projects WHERE slug = unique_slug) LOOP
+  WHILE EXISTS (SELECT 1 FROM projects WHERE slug = unique_slug) LOOP
     suffix := suffix + 1;
     unique_slug := base_slug || '-' || suffix;
   END LOOP;
@@ -4149,7 +4149,7 @@ BEGIN
             unit_id,
             count(id) count,
             'dom' AS dom
-        FROM macrostrat.unit_liths
+        FROM unit_liths
         WHERE dom = 'dom' and unit_id = _unit_id
         GROUP BY unit_id
       ), sub as(
@@ -4157,7 +4157,7 @@ BEGIN
           unit_id,
           count(id) count,
           'sub' AS dom
-        FROM macrostrat.unit_liths
+        FROM unit_liths
         WHERE dom = 'sub' and unit_id = _unit_id
         GROUP BY unit_id
       )
@@ -4337,10 +4337,10 @@ LANGUAGE plpgsql
 VOLATILE
 AS $$
 BEGIN
-  UPDATE macrostrat.unit_liths ul
+  UPDATE unit_liths ul
   SET
     comp_prop = (CASE WHEN ul.dom = 'sub' THEN prop.sub_prop ELSE prop.dom_prop END)
-  FROM (SELECT * FROM macrostrat.get_lith_comp_prop(_unit_id)) as prop
+  FROM (SELECT * FROM get_lith_comp_prop(_unit_id)) as prop
   WHERE ul.unit_id = _unit_id;
 END
 $$;
