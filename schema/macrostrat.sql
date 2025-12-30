@@ -3078,7 +3078,7 @@ ALTER TABLE macrostrat.strat_names_places OWNER TO "macrostrat-admin";
 CREATE TABLE macrostrat.strat_tree (
     id integer,
     parent integer,
-    rel macrostratbak2.strat_tree_rel,
+    rel macrostrat.strat_tree_rel,
     child integer,
     ref_id integer,
     check_me smallint

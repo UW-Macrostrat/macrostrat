@@ -1,6 +1,8 @@
 Schema migration process
 ========================
 
+## Automated schema migrations
+
 1. Make your desired changes to the schema files located in the `schema/` directory.
 2. Run `macrostrat db diff` to generate a diff file that captures the changes made to the schema.
 3. Review the generated diff file to ensure it accurately reflects the intended changes.
@@ -10,3 +12,8 @@ Schema migration process
 5. After applying the migration, go to step 2. Repeat until no further changes are needed.
 
 Note: old migraion files in the `migrations/` directory can be deleted once all environments conform to the new schema.
+
+## Manual migrations
+
+Table alterations that cannot be handled by the automated process (e.g., complex data transformations) should
+be performed with manually created migration files. To create a manual migration:
