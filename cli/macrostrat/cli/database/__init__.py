@@ -14,8 +14,10 @@ from macrostrat.database.utils import get_sql_files
 from macrostrat.dinosaur.upgrade_cluster.utils import database_cluster
 from macrostrat.utils import get_logger, working_directory
 from macrostrat.utils.shell import run
+from psycopg2.sql import Identifier
 from pydantic import BaseModel
 from results.dbdiff import Migration
+from results.dbdiff.statements import check_for_drop
 from results.schemainspect.pg import PostgreSQL
 from results.schemainspect.pg.obj import PROPS
 from rich import print
@@ -370,6 +372,8 @@ managed_schemas = [
     "lines",
     "carto",
     "carto_new",
+    "user_features",
+    "integrations",
     "macrostrat_api",
 ]
 
@@ -471,8 +475,14 @@ def planning_database(db: Database):
         plan_db = Database(_url)
         plan_url = plan_db.engine.url
 
-        plan_db.run_sql('CREATE ROLE "macrostrat_admin"')
-        plan_db.run_sql('CREATE ROLE "macrostrat"')
+        for role in [
+            "macrostrat_admin",
+            "macrostrat",
+            "web_admin",
+            "web_user",
+            "web_anon",
+        ]:
+            plan_db.run_sql("CREATE ROLE {role}", dict(role=Identifier(role)))
 
         plan_db.run_sql(
             """
@@ -568,8 +578,53 @@ def plan():
                 )
 
 
+class StatementCounter:
+    def __init__(self, safe: bool = True):
+        self.total = 0
+        self.unsafe = 0
+        self.safe = safe
+
+    def filter(self, s, params):
+        self.total += 1
+        if check_for_drop(s):
+            self.unsafe += 1
+            if self.safe:
+                return False
+        return True
+
+    def print_report(self):
+        applied_count = self.total
+        _unsafe_action = "applied"
+        if self.safe:
+            applied_count -= self.unsafe
+            _unsafe_action = "skipped"
+
+        print(f"[dim]{applied_count} changes applied")
+        if self.unsafe > 0:
+            print(f"[red bold]{self.unsafe} unsafe changes were {_unsafe_action}")
+
+
 @db_app.command()
-def apply(schema: str = Argument(None)):
+def apply(safe: bool = True):
+    """Apply planned updates to managed schemas in the Macrostrat database"""
+    db = get_db()
+    url = db.engine.url
+
+    dumpdir = settings.srcroot / "schema"
+    plan_dir = dumpdir / "diffs"
+
+    # List all sql in the diffs directory
+    plan_files = list(plan_dir.glob("*_diff.sql"))
+
+    counter = StatementCounter(safe=safe)
+
+    db.run_fixtures(plan_files, statement_filter=counter.filter)
+
+    counter.print_report()
+
+
+@db_app.command(deprecated=True)
+def apply_pgschema(schema: str = Argument(None)):
     """Apply planned updates to managed schemas in the Macrostrat database using [cyan]pgschema[/cyan]"""
     db = get_db()
     url = db.engine.url
@@ -698,17 +753,9 @@ def diff(
         out_file = outdir / f"{schema or 'all_schemas'}_diff.sql"
 
         safe_statements = []
-        unsafe_keywords = [
-            "DROP TABLE",
-            "DROP SCHEMA",
-        ]
 
-        for stmt in m.statements:
-            if any(kw in stmt.upper() for kw in unsafe_keywords):
-                continue
-            safe_statements.append(stmt)
-
-        n_unsafe = len(m.statements) - len(safe_statements)
+        unsafe_statements = [s for s in m.statements if check_for_drop(s)]
+        n_unsafe = len(unsafe_statements)
 
         if n_unsafe > 0:
             print(f"[red dim]{n_unsafe} unsafe statements in diff")
