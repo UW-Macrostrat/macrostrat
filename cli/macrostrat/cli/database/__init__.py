@@ -15,6 +15,9 @@ from macrostrat.dinosaur.upgrade_cluster.utils import database_cluster
 from macrostrat.utils import get_logger, working_directory
 from macrostrat.utils.shell import run
 from pydantic import BaseModel
+from results.dbdiff import Migration
+from results.schemainspect.pg import PostgreSQL
+from results.schemainspect.pg.obj import PROPS
 from rich import print
 from sqlalchemy import make_url, text
 from typer import Argument, Option
@@ -23,7 +26,6 @@ from macrostrat.core import MacrostratSubsystem, app
 from macrostrat.core.config import settings
 from macrostrat.core.migrations import run_migrations, _run_migrations_in_database
 from ._legacy import get_db
-
 # First, register all migrations
 # NOTE: right now, this is quite implicit.
 from .migrations import load_migrations
@@ -620,6 +622,32 @@ def apply(schema: str = Argument(None)):
                 _pgschema(db, ["dump", "--schema", _schema], stdout=f)
 
 
+class OurPostgreSQL(PostgreSQL):
+    def filter_schema(self, schema=None, exclude_schema=None):
+        def is_managed_schema(x):
+            return x.schema in managed_schemas
+
+        comparator = is_managed_schema
+
+        for prop in PROPS.split():
+            att = getattr(self, prop)
+            filtered = {k: v for k, v in att.items() if comparator(v)}
+            setattr(self, prop, filtered)
+
+
+def get_inspector(x):
+    if hasattr(x, "url") and hasattr(x, "URL"):
+        with x.t() as t:
+            inspected = OurPostgreSQL(t.c)
+    else:
+        try:
+            inspected = OurPostgreSQL(x.c)
+        except AttributeError:
+            inspected = OurPostgreSQL(x)
+    inspected.filter_schema()
+    return inspected
+
+
 @db_app.command(
     context_settings={
         "allow_extra_args": True,
@@ -654,18 +682,43 @@ def diff(
     outdir.mkdir(exist_ok=True)
 
     with planning_database(db) as plan_db:
-        db_b = results_db(raw_database_url(url))
-        db_a = results_db(raw_database_url(plan_db.engine.url))
+        from_db = results_db(raw_database_url(url))
+        target_db = results_db(raw_database_url(plan_db.engine.url))
 
-        for schema in schemas:
-            schemadiff_sql = db_b.schemadiff_as_sql(db_a, schema=schema)
+        m = Migration(
+            from_db,
+            target_db,
+        )
+        m.changes.i_from = get_inspector(from_db)
+        m.changes.i_target = get_inspector(target_db)
 
-            if not schemadiff_sql:
-                print(f"[green]No differences found for schema [bold cyan]{schema}[/]")
+        m.set_safety(False)
+        m.add_all_changes(privileges=True)
+
+        out_file = outdir / f"{schema or 'all_schemas'}_diff.sql"
+
+        safe_statements = []
+        unsafe_keywords = [
+            "DROP TABLE",
+            "DROP SCHEMA",
+        ]
+
+        for stmt in m.statements:
+            if any(kw in stmt.upper() for kw in unsafe_keywords):
                 continue
-            out_file = outdir / f"{schema}_diff.sql"
-            out_file.write_text(schemadiff_sql)
-            print(f"[yellow bold]Differences found for schema [bold cyan]{schema}[/]")
+            safe_statements.append(stmt)
+
+        n_unsafe = len(m.statements) - len(safe_statements)
+
+        if n_unsafe > 0:
+            print(f"[red dim]{n_unsafe} unsafe statements in diff")
+
+        print(
+            f"[dim]Writing {len(m.statements)} proposed changes to [bold]{out_file}[/]"
+        )
+
+        with open(out_file, "w") as f:
+            f.write("\n".join(m.statements))
 
 
 @db_app.command(
