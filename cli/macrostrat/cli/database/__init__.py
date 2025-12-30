@@ -1,4 +1,5 @@
 import asyncio
+from contextlib import contextmanager
 from json import loads
 from pathlib import Path
 from sys import exit, stderr, stdin, stdout
@@ -414,12 +415,9 @@ def dump_managed():
                 )
 
 
-@db_app.command("plan")
-def plan():
-    """Plan updates to managed schemas in the Macrostrat database using [cyan]pgschema[/cyan]"""
-    db = get_db()
-    url = db.engine.url
-
+@contextmanager
+def planning_database(db: Database):
+    """Context manager to create a temporary database for planning schema changes"""
     image = settings.get("pg_database_container", "postgres:15")
 
     client = docker.from_env()
@@ -468,49 +466,117 @@ def plan():
         out_dir.mkdir(exist_ok=True)
 
         with working_directory(str(dumpdir)):
-            for _schema in managed_schemas:
-                plan_file = dumpdir / f"{_schema}.sql"
+            yield plan_db
 
-                out_file = out_dir / f"{_schema}_plan.sql"
 
-                human_readable = out_file.with_suffix(".txt")
-                machine_readable = out_file.with_suffix(".json")
+@db_app.command("plan")
+def plan():
+    """Plan updates to managed schemas in the Macrostrat database using [cyan]pgschema[/cyan]"""
+    db = get_db()
+    url = db.engine.url
 
-                print(f"[dim]Planning schema [bold cyan]{_schema}[/]")
+    image = settings.get("pg_database_container", "postgres:15")
 
-                _pgschema(
-                    db,
-                    [
-                        "plan",
-                        "--schema",
-                        _schema,
-                        "--file",
-                        str(plan_file),
-                        "--output-sql",
-                        str(out_file),
-                        "--output-json",
-                        str(machine_readable),
-                    ],
-                    plan_db=plan_db,
+    client = docker.from_env()
+
+    img_root = settings.srcroot / "base-images" / "database"
+
+    # Build postgres pgaudit image
+    img_tag = "macrostrat.local/database:latest"
+
+    client.images.build(path=str(img_root), tag=img_tag)
+
+    dumpdir = settings.srcroot / "schema"
+
+    # Spin up an image with this container
+    port = 54884
+    with planning_database(db) as plan_db:
+        out_dir = dumpdir / "plans"
+        out_dir.mkdir(exist_ok=True)
+        for _schema in managed_schemas:
+            plan_file = dumpdir / f"{_schema}.sql"
+
+            out_file = out_dir / f"{_schema}_plan.sql"
+
+            human_readable = out_file.with_suffix(".txt")
+            machine_readable = out_file.with_suffix(".json")
+
+            print(f"[dim]Planning schema [bold cyan]{_schema}[/]")
+
+            _pgschema(
+                db,
+                [
+                    "plan",
+                    "--schema",
+                    _schema,
+                    "--file",
+                    str(plan_file),
+                    "--output-sql",
+                    str(out_file),
+                    "--output-json",
+                    str(machine_readable),
+                ],
+                plan_db=plan_db,
+            )
+
+            # Read the plan
+            plan_data = loads(machine_readable.read_text())
+            n_changes = plan_data.get("groups", None)
+            if n_changes is None:
+                print(f"[green]No changes planned for schema [bold cyan]{_schema}[/]")
+                out_file.unlink(missing_ok=True)
+                human_readable.unlink(missing_ok=True)
+                machine_readable.unlink(missing_ok=True)
+            else:
+                n_changes = sum([len(g.get("steps", [])) for g in plan_data["groups"]])
+                print(
+                    f"[yellow bold]{n_changes} changes planned for schema [bold cyan]{_schema}[/]"
                 )
 
-                # Read the plan
-                plan_data = loads(machine_readable.read_text())
-                n_changes = plan_data.get("groups", None)
-                if n_changes is None:
-                    print(
-                        f"[green]No changes planned for schema [bold cyan]{_schema}[/]"
-                    )
-                    out_file.unlink(missing_ok=True)
-                    human_readable.unlink(missing_ok=True)
-                    machine_readable.unlink(missing_ok=True)
-                else:
-                    n_changes = sum(
-                        [len(g.get("steps", [])) for g in plan_data["groups"]]
-                    )
-                    print(
-                        f"[yellow bold]{n_changes} changes planned for schema [bold cyan]{_schema}[/]"
-                    )
+
+@db_app.command()
+def apply(schema: str = Argument(None)):
+    """Apply planned updates to managed schemas in the Macrostrat database using [cyan]pgschema[/cyan]"""
+    db = get_db()
+    url = db.engine.url
+
+    dumpdir = settings.srcroot / "schema"
+
+    out_dir = dumpdir / "plans"
+
+    if schema is not None:
+        schemas_to_apply = [schema]
+    else:
+        schemas_to_apply = managed_schemas
+
+    for _schema in schemas_to_apply:
+        plan_file = out_dir / f"{_schema}_plan.json"
+        if not plan_file.exists():
+            print(f"[dim]No plan found for schema [bold cyan]{_schema}[/], skipping")
+            continue
+
+        print(f"[dim]Applying plan for schema [bold cyan]{_schema}[/]")
+
+        res = _pgschema(
+            db,
+            ["apply", "--plan", str(plan_file)],
+        )
+
+        if res.returncode != 0:
+            print(f"[red bold]Failed to apply plan for schema [bold cyan]{_schema}[/]")
+            return
+
+        print(f"[dim]Dumping updated schema [bold cyan]{_schema}[/]")
+        _pgschema(
+            db,
+            [
+                "dump",
+                "--schema",
+                _schema,
+                "--file",
+                str(dumpdir / f"{_schema}.sql"),
+            ],
+        )
 
 
 @db_app.command(
@@ -652,7 +718,7 @@ def _pgschema(db: Database, args: list[str], plan_db: Database = None):
         if plan_url.password is not None:
             dbargs.extend(["--plan-password", plan_url.password])
 
-    run("pgschema", *dbargs, *args)
+    return run("pgschema", *dbargs, *args)
 
 
 @db_app.command(name="inspect", rich_help_panel="Helpers")
