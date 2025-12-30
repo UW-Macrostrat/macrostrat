@@ -11,7 +11,7 @@ SET idle_in_transaction_session_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', 'public', false);
-SET check_function_bodies = true;
+SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
@@ -21,6 +21,7 @@ SET row_security = off;
 --
 
 CREATE SCHEMA maps;
+
 
 ALTER SCHEMA maps OWNER TO macrostrat;
 
@@ -71,30 +72,30 @@ CREATE TYPE maps.map_scale AS ENUM (
 ALTER TYPE maps.map_scale OWNER TO macrostrat;
 
 --
--- Name: lines_geom_is_valid(geometry); Type: FUNCTION; Schema: maps; Owner: macrostrat
+-- Name: lines_geom_is_valid(public.geometry); Type: FUNCTION; Schema: maps; Owner: macrostrat
 --
 
-CREATE FUNCTION maps.lines_geom_is_valid(geom geometry) RETURNS boolean
+CREATE FUNCTION maps.lines_geom_is_valid(geom public.geometry) RETURNS boolean
     LANGUAGE sql IMMUTABLE
     AS $$
   SELECT ST_IsValid(geom) AND ST_GeometryType(geom) IN ('ST_LineString', 'ST_MultiLineString');
 $$;
 
 
-ALTER FUNCTION maps.lines_geom_is_valid(geom geometry) OWNER TO macrostrat;
+ALTER FUNCTION maps.lines_geom_is_valid(geom public.geometry) OWNER TO macrostrat;
 
 --
--- Name: polygons_geom_is_valid(geometry); Type: FUNCTION; Schema: maps; Owner: macrostrat
+-- Name: polygons_geom_is_valid(public.geometry); Type: FUNCTION; Schema: maps; Owner: macrostrat
 --
 
-CREATE FUNCTION maps.polygons_geom_is_valid(geom geometry) RETURNS boolean
+CREATE FUNCTION maps.polygons_geom_is_valid(geom public.geometry) RETURNS boolean
     LANGUAGE sql IMMUTABLE
     AS $$
   SELECT ST_IsValid(geom) AND ST_GeometryType(geom) IN ('ST_Polygon', 'ST_MultiPolygon');
 $$;
 
 
-ALTER FUNCTION maps.polygons_geom_is_valid(geom geometry) OWNER TO macrostrat;
+ALTER FUNCTION maps.polygons_geom_is_valid(geom public.geometry) OWNER TO macrostrat;
 
 SET default_tablespace = '';
 
@@ -103,14 +104,14 @@ SET default_tablespace = '';
 --
 
 CREATE TABLE maps.lines (
-    line_id integer DEFAULT nextval('line_ids'::regclass) NOT NULL,
+    line_id integer DEFAULT nextval('public.line_ids'::regclass) NOT NULL,
     orig_id text,
     source_id integer,
     name character varying(255),
     type_legacy character varying(100),
     direction_legacy character varying(40),
     descrip text,
-    geom geometry(Geometry,4326) NOT NULL,
+    geom public.geometry(Geometry,4326) NOT NULL,
     type character varying(100),
     direction character varying(40),
     scale maps.map_scale NOT NULL,
@@ -205,7 +206,7 @@ CREATE TABLE maps.polygons (
     comments text,
     t_interval integer,
     b_interval integer,
-    geom geometry(Geometry,4326) NOT NULL,
+    geom public.geometry(Geometry,4326) NOT NULL,
     CONSTRAINT maps_polygons_geom_check CHECK (maps.polygons_geom_is_valid(geom))
 )
 PARTITION BY LIST (scale);
@@ -233,9 +234,9 @@ CREATE TABLE maps.sources (
     features integer,
     area integer,
     priority boolean DEFAULT false,
-    rgeom geometry,
+    rgeom public.geometry,
     display_scales text[],
-    web_geom geometry,
+    web_geom public.geometry,
     new_priority integer DEFAULT 0,
     status_code text DEFAULT 'active'::text,
     slug text NOT NULL,
@@ -310,14 +311,14 @@ CREATE TABLE maps.points (
     point_type character varying(100),
     certainty character varying(100),
     comments text,
-    geom geometry(Geometry,4326),
+    geom public.geometry(Geometry,4326),
     point_id integer NOT NULL,
     orig_id text,
     CONSTRAINT dip_lt_90 CHECK ((dip <= 90)),
     CONSTRAINT dip_positive CHECK ((dip >= 0)),
     CONSTRAINT direction_lt_360 CHECK ((dip_dir <= 360)),
     CONSTRAINT direction_positive CHECK ((dip_dir >= 0)),
-    CONSTRAINT enforce_point_geom CHECK (st_isvalid(geom)),
+    CONSTRAINT enforce_point_geom CHECK (public.st_isvalid(geom)),
     CONSTRAINT strike_lt_360 CHECK ((strike <= 360)),
     CONSTRAINT strike_positive CHECK ((strike >= 0))
 );
@@ -355,7 +356,7 @@ ALTER TABLE maps.ingest_process OWNER TO macrostrat_admin;
 --
 
 CREATE TABLE maps.polygons_large (
-    map_id integer DEFAULT nextval('map_ids'::regclass) NOT NULL,
+    map_id integer DEFAULT nextval('public.map_ids'::regclass) NOT NULL,
     orig_id text,
     source_id integer NOT NULL,
     name text,
@@ -366,9 +367,9 @@ CREATE TABLE maps.polygons_large (
     comments text,
     t_interval integer,
     b_interval integer,
-    geom geometry(Geometry,4326) NOT NULL,
+    geom public.geometry(Geometry,4326) NOT NULL,
     scale maps.map_scale DEFAULT 'large'::maps.map_scale NOT NULL,
-    CONSTRAINT enforce_valid_geom_large CHECK (st_isvalid(geom)),
+    CONSTRAINT enforce_valid_geom_large CHECK (public.st_isvalid(geom)),
     CONSTRAINT maps_polygons_geom_check CHECK (maps.polygons_geom_is_valid(geom)),
     CONSTRAINT polygons_large_scale_check CHECK ((scale = 'large'::maps.map_scale))
 );
@@ -425,14 +426,14 @@ ALTER SEQUENCE maps.legend_legend_id_seq OWNED BY maps.legend.legend_id;
 --
 
 CREATE TABLE maps.lines_large (
-    line_id integer DEFAULT nextval('line_ids'::regclass) NOT NULL,
+    line_id integer DEFAULT nextval('public.line_ids'::regclass) NOT NULL,
     orig_id text,
     source_id integer,
     name character varying(255),
     type_legacy character varying(100),
     direction_legacy character varying(40),
     descrip text,
-    geom geometry(Geometry,4326) NOT NULL,
+    geom public.geometry(Geometry,4326) NOT NULL,
     type character varying(100),
     direction character varying(40),
     scale maps.map_scale DEFAULT 'large'::maps.map_scale NOT NULL,
@@ -448,14 +449,14 @@ ALTER TABLE maps.lines_large OWNER TO macrostrat;
 --
 
 CREATE TABLE maps.lines_medium (
-    line_id integer DEFAULT nextval('line_ids'::regclass) NOT NULL,
+    line_id integer DEFAULT nextval('public.line_ids'::regclass) NOT NULL,
     orig_id text,
     source_id integer,
     name character varying(255),
     type_legacy character varying(100),
     direction_legacy character varying(40),
     descrip text,
-    geom geometry(Geometry,4326) NOT NULL,
+    geom public.geometry(Geometry,4326) NOT NULL,
     type character varying(100),
     direction character varying(40),
     scale maps.map_scale DEFAULT 'medium'::maps.map_scale NOT NULL,
@@ -471,14 +472,14 @@ ALTER TABLE maps.lines_medium OWNER TO macrostrat;
 --
 
 CREATE TABLE maps.lines_small (
-    line_id integer DEFAULT nextval('line_ids'::regclass) NOT NULL,
+    line_id integer DEFAULT nextval('public.line_ids'::regclass) NOT NULL,
     orig_id text,
     source_id integer,
     name character varying(255),
     type_legacy character varying(100),
     direction_legacy character varying(40),
     descrip text,
-    geom geometry(Geometry,4326) NOT NULL,
+    geom public.geometry(Geometry,4326) NOT NULL,
     type character varying(100),
     direction character varying(40),
     scale maps.map_scale DEFAULT 'small'::maps.map_scale NOT NULL,
@@ -494,18 +495,18 @@ ALTER TABLE maps.lines_small OWNER TO macrostrat;
 --
 
 CREATE TABLE maps.lines_tiny (
-    line_id integer DEFAULT nextval('line_ids'::regclass) NOT NULL,
+    line_id integer DEFAULT nextval('public.line_ids'::regclass) NOT NULL,
     orig_id text,
     source_id integer,
     name character varying(255),
     type_legacy character varying(100),
     direction_legacy character varying(40),
     descrip text,
-    geom geometry(Geometry,4326) NOT NULL,
+    geom public.geometry(Geometry,4326) NOT NULL,
     type character varying(100),
     direction character varying(40),
     scale maps.map_scale DEFAULT 'tiny'::maps.map_scale NOT NULL,
-    CONSTRAINT isvalid CHECK (st_isvalid(geom)),
+    CONSTRAINT isvalid CHECK (public.st_isvalid(geom)),
     CONSTRAINT lines_tiny_scale_check CHECK ((scale = 'tiny'::maps.map_scale)),
     CONSTRAINT maps_lines_geom_check CHECK (maps.lines_geom_is_valid(geom))
 );
@@ -607,7 +608,7 @@ ALTER TABLE maps.map_units OWNER TO macrostrat;
 --
 
 CREATE TABLE maps.polygons_medium (
-    map_id integer DEFAULT nextval('map_ids'::regclass) NOT NULL,
+    map_id integer DEFAULT nextval('public.map_ids'::regclass) NOT NULL,
     orig_id text,
     source_id integer NOT NULL,
     name text,
@@ -618,9 +619,9 @@ CREATE TABLE maps.polygons_medium (
     comments text,
     t_interval integer,
     b_interval integer,
-    geom geometry(Geometry,4326) NOT NULL,
+    geom public.geometry(Geometry,4326) NOT NULL,
     scale maps.map_scale DEFAULT 'medium'::maps.map_scale NOT NULL,
-    CONSTRAINT enforce_valid_geom_medium CHECK (st_isvalid(geom)),
+    CONSTRAINT enforce_valid_geom_medium CHECK (public.st_isvalid(geom)),
     CONSTRAINT maps_polygons_geom_check CHECK (maps.polygons_geom_is_valid(geom)),
     CONSTRAINT polygons_medium_scale_check CHECK ((scale = 'medium'::maps.map_scale))
 );
@@ -676,7 +677,7 @@ ALTER SEQUENCE maps.points_point_id_seq OWNED BY maps.points.point_id;
 --
 
 CREATE TABLE maps.polygons_small (
-    map_id integer DEFAULT nextval('map_ids'::regclass) NOT NULL,
+    map_id integer DEFAULT nextval('public.map_ids'::regclass) NOT NULL,
     orig_id text,
     source_id integer NOT NULL,
     name text,
@@ -687,7 +688,7 @@ CREATE TABLE maps.polygons_small (
     comments text,
     t_interval integer,
     b_interval integer,
-    geom geometry(Geometry,4326) NOT NULL,
+    geom public.geometry(Geometry,4326) NOT NULL,
     scale maps.map_scale DEFAULT 'small'::maps.map_scale NOT NULL,
     CONSTRAINT maps_polygons_geom_check CHECK (maps.polygons_geom_is_valid(geom)),
     CONSTRAINT polygons_small_scale_check CHECK ((scale = 'small'::maps.map_scale))
@@ -701,7 +702,7 @@ ALTER TABLE maps.polygons_small OWNER TO macrostrat;
 --
 
 CREATE TABLE maps.polygons_tiny (
-    map_id integer DEFAULT nextval('map_ids'::regclass) NOT NULL,
+    map_id integer DEFAULT nextval('public.map_ids'::regclass) NOT NULL,
     orig_id text,
     source_id integer NOT NULL,
     name text,
@@ -712,7 +713,7 @@ CREATE TABLE maps.polygons_tiny (
     comments text,
     t_interval integer,
     b_interval integer,
-    geom geometry(Geometry,4326) NOT NULL,
+    geom public.geometry(Geometry,4326) NOT NULL,
     scale maps.map_scale DEFAULT 'tiny'::maps.map_scale NOT NULL,
     CONSTRAINT maps_polygons_geom_check CHECK (maps.polygons_geom_is_valid(geom)),
     CONSTRAINT polygons_tiny_scale_check CHECK ((scale = 'tiny'::maps.map_scale))

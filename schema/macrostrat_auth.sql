@@ -30,8 +30,8 @@ ALTER SCHEMA macrostrat_auth OWNER TO macrostrat;
 --
 
 CREATE FUNCTION macrostrat_auth.current_app_user_id() RETURNS integer
-LANGUAGE sql STABLE
-AS $$
+    LANGUAGE sql STABLE
+    AS $$
   SELECT (current_setting('request.jwt.claims', true)::json ->> 'user_id')::int
 $$;
 

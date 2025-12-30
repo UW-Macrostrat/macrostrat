@@ -23,6 +23,7 @@ from macrostrat.core import MacrostratSubsystem, app
 from macrostrat.core.config import settings
 from macrostrat.core.migrations import run_migrations, _run_migrations_in_database
 from ._legacy import get_db
+
 # First, register all migrations
 # NOTE: right now, this is quite implicit.
 from .migrations import load_migrations
@@ -367,11 +368,12 @@ managed_schemas = [
     "lines",
     "carto",
     "carto_new",
+    "macrostrat_api",
 ]
 
 
-@db_app.command("dump-managed")
-def dump_managed():
+@db_app.command("dump-canonical", deprecated=True)
+def dump_managed(schema: str = Argument(None)):
     """Export managed schemas from the Macrostrat database using [cyan]pg_dump[/]"""
 
     db_container = app.settings.get("pg_database_container", "postgres:15")
@@ -395,11 +397,15 @@ def dump_managed():
         url.password,
     ]
 
+    schemas_to_dump = managed_schemas
+    if schema is not None:
+        schemas_to_dump = [schema]
+
     # Use the dump directory as the working directory
     # to pull in the pgschemaignore file
     with working_directory(str(dumpdir)):
         args = []
-        for schema in managed_schemas:
+        for schema in schemas_to_dump:
             dumpfile = f"{schema}.sql"
             with open(dumpfile, "w") as f:
                 print(
@@ -415,8 +421,8 @@ def dump_managed():
                 )
 
 
-@db_app.command("dump-all")
-def dump_all():
+@db_app.command("dump-schema")
+def dump_schema(schema: str = Argument(None)):
     """Export managed schemas from the Macrostrat database using [cyan]pg_dump[/]"""
 
     db_container = app.settings.get("pg_database_container", "postgres:15")
@@ -424,7 +430,11 @@ def dump_all():
 
     dumpdir = settings.srcroot / "schema"
 
-    for _schema in managed_schemas:
+    schemas_to_dump = managed_schemas
+    if schema is not None:
+        schemas_to_dump = [schema]
+
+    for _schema in schemas_to_dump:
         dumpfile = dumpdir / f"{_schema}.sql"
         print(f"[dim]Dumping schema [bold cyan]{_schema}[/] to [bold]{dumpfile}[/]")
         task = pg_dump_to_file(
@@ -459,7 +469,7 @@ def planning_database(db: Database):
         plan_db = Database(_url)
         plan_url = plan_db.engine.url
 
-        plan_db.run_sql('CREATE ROLE "macrostrat-admin"')
+        plan_db.run_sql('CREATE ROLE "macrostrat_admin"')
         plan_db.run_sql('CREATE ROLE "macrostrat"')
 
         plan_db.run_sql(
@@ -471,6 +481,7 @@ def planning_database(db: Database):
             CREATE EXTENSION IF NOT EXISTS postgis_raster WITH SCHEMA public;
             CREATE EXTENSION IF NOT EXISTS postgis_topology WITH SCHEMA topology;
             CREATE EXTENSION IF NOT EXISTS postgres_fdw WITH SCHEMA public;
+            CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA public;
             """
         )
 
