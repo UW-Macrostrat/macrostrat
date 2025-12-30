@@ -7,24 +7,6 @@
 
 
 --
--- Name: addbandarg; Type: TYPE; Schema: -; Owner: -
---
-
-CREATE TYPE addbandarg AS (index integer, pixeltype text, initialvalue double precision, nodataval double precision);
-
---
--- Name: agg_count; Type: TYPE; Schema: -; Owner: -
---
-
-CREATE TYPE agg_count AS (count bigint, nband integer, exclude_nodata_value boolean, sample_percent double precision);
-
---
--- Name: agg_samealignment; Type: TYPE; Schema: -; Owner: -
---
-
-CREATE TYPE agg_samealignment AS (refraster raster, aligned boolean);
-
---
 -- Name: boundary_status; Type: TYPE; Schema: -; Owner: -
 --
 
@@ -49,18 +31,6 @@ CREATE TYPE boundary_type AS ENUM (
     'non-conformity',
     'angular unconformity'
 );
-
---
--- Name: geometry_dump; Type: TYPE; Schema: -; Owner: -
---
-
-CREATE TYPE geometry_dump AS (path integer[], geom geometry);
-
---
--- Name: geomval; Type: TYPE; Schema: -; Owner: -
---
-
-CREATE TYPE geomval AS (geom geometry, val double precision);
 
 --
 -- Name: measurement_class; Type: TYPE; Schema: -; Owner: -
@@ -117,18 +87,6 @@ CREATE TYPE measurement_type_new AS ENUM (
 );
 
 --
--- Name: rastbandarg; Type: TYPE; Schema: -; Owner: -
---
-
-CREATE TYPE rastbandarg AS (rast raster, nband integer);
-
---
--- Name: reclassarg; Type: TYPE; Schema: -; Owner: -
---
-
-CREATE TYPE reclassarg AS (nband integer, reclassexpr text, pixeltype text, nodataval double precision);
-
---
 -- Name: saved_locations_enum; Type: TYPE; Schema: -; Owner: -
 --
 
@@ -152,18 +110,6 @@ CREATE TYPE schemeenum AS ENUM (
 --
 
 CREATE TYPE summarystats AS (count bigint, sum double precision, mean double precision, stddev double precision, min double precision, max double precision);
-
---
--- Name: unionarg; Type: TYPE; Schema: -; Owner: -
---
-
-CREATE TYPE unionarg AS (nband integer, uniontype text);
-
---
--- Name: valid_detail; Type: TYPE; Schema: -; Owner: -
---
-
-CREATE TYPE valid_detail AS (valid boolean, reason character varying, location geometry);
 
 --
 -- Name: geologic_boundary_source_seq; Type: SEQUENCE; Schema: -; Owner: -
@@ -471,20 +417,6 @@ CREATE TABLE IF NOT EXISTS ref_boundaries (
 );
 
 --
--- Name: spatial_ref_sys; Type: TABLE; Schema: -; Owner: -
---
-
-CREATE TABLE IF NOT EXISTS spatial_ref_sys (
-    srid integer,
-    auth_name varchar(256),
-    auth_srid integer,
-    srtext varchar(2048),
-    proj4text varchar(2048),
-    CONSTRAINT spatial_ref_sys_pkey PRIMARY KEY (srid),
-    CONSTRAINT spatial_ref_sys_srid_check CHECK (srid > 0 AND srid <= 998999)
-);
-
---
 -- Name: temp_names; Type: TABLE; Schema: -; Owner: -
 --
 
@@ -703,8 +635,4 @@ BEGIN
     RETURN NEW;
 END;
 $$;
-
---
--- Name: geography_columns; Type: VIEW; Schema: -; Owner: -
---
 

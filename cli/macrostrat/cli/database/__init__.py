@@ -10,7 +10,7 @@ from macrostrat.database.transfer import pg_dump_to_file, pg_restore_from_file
 from macrostrat.database.transfer.utils import raw_database_url
 from macrostrat.database.utils import get_sql_files
 from macrostrat.dinosaur.upgrade_cluster.utils import database_cluster
-from macrostrat.utils import get_logger
+from macrostrat.utils import get_logger, working_directory
 from macrostrat.utils.shell import run
 from pydantic import BaseModel
 from rich import print
@@ -392,19 +392,24 @@ def dump_managed():
         url.password,
     ]
 
-    args = []
-    for schema in managed_schemas:
-        dumpfile = dumpdir / f"{schema}.sql"
-        with dumpfile.open("w") as f:
-            print(f"[dim]Dumping schema [bold cyan]{schema}[/] to [bold]{dumpfile}[/]")
-            run(
-                "pgschema",
-                "dump",
-                *dbargs,
-                "--schema",
-                schema,
-                stdout=f,
-            )
+    # Use the dump directory as the working directory
+    # to pull in the pgschemaignore file
+    with working_directory(str(dumpdir)):
+        args = []
+        for schema in managed_schemas:
+            dumpfile = f"{schema}.sql"
+            with open(dumpfile, "w") as f:
+                print(
+                    f"[dim]Dumping schema [bold cyan]{schema}[/] to [bold]{dumpfile}[/]"
+                )
+                run(
+                    "pgschema",
+                    "dump",
+                    *dbargs,
+                    "--schema",
+                    schema,
+                    stdout=f,
+                )
 
 
 @db_app.command("plan")
@@ -445,7 +450,7 @@ def plan(schema: str):
             CREATE EXTENSION IF NOT EXISTS postgis_raster WITH SCHEMA public;
             CREATE EXTENSION IF NOT EXISTS postgis_topology WITH SCHEMA topology;
             CREATE EXTENSION IF NOT EXISTS postgres_fdw WITH SCHEMA public;
-        """
+            """
         )
 
         for _schema in managed_schemas:
