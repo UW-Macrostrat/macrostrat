@@ -415,6 +415,27 @@ def dump_managed():
                 )
 
 
+@db_app.command("dump-all")
+def dump_all():
+    """Export managed schemas from the Macrostrat database using [cyan]pg_dump[/]"""
+
+    db_container = app.settings.get("pg_database_container", "postgres:15")
+    engine = engine_for_db_name("macrostrat")
+
+    dumpdir = settings.srcroot / "schema"
+
+    for _schema in managed_schemas:
+        dumpfile = dumpdir / f"{_schema}.sql"
+        print(f"[dim]Dumping schema [bold cyan]{_schema}[/] to [bold]{dumpfile}[/]")
+        task = pg_dump_to_file(
+            engine,
+            dumpfile,
+            custom_format=False,
+            args=["--schema-only", "--schema", _schema],
+        )
+        asyncio.run(task)
+
+
 @contextmanager
 def planning_database(db: Database):
     """Context manager to create a temporary database for planning schema changes"""
@@ -443,7 +464,7 @@ def planning_database(db: Database):
 
         plan_db.run_sql(
             """
-            CREATE EXTENSION IF NOT EXISTS postgis;
+            CREATE EXTENSION IF NOT EXISTS postgis WITH SCHEMA public;
             CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA public;
             CREATE EXTENSION IF NOT EXISTS pgaudit WITH SCHEMA public;
             CREATE EXTENSION IF NOT EXISTS postgis WITH SCHEMA public;
@@ -569,6 +590,23 @@ def apply(schema: str = Argument(None)):
                     f"[red bold]Failed to apply plan for schema [bold cyan]{_schema}[/]"
                 )
                 return
+
+            print(
+                f"[green bold]Successfully applied plan for schema [bold cyan]{_schema}[/]"
+            )
+
+            # Remove plan files
+            plan_file.with_suffix(".sql").unlink(missing_ok=True)
+            plan_file.with_suffix(".txt").unlink(missing_ok=True)
+            plan_file.unlink(missing_ok=True)
+
+            # Dump the updated schema
+            dumpfile = f"{_schema}.sql"
+            with open(dumpfile, "w") as f:
+                print(
+                    f"[dim]Dumping updated schema [bold cyan]{_schema}[/] to [bold]{dumpfile}[/]"
+                )
+                _pgschema(db, ["dump", "--schema", _schema], stdout=f)
 
 
 @db_app.command(
