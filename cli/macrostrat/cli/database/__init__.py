@@ -1,4 +1,5 @@
 import asyncio
+from json import loads
 from pathlib import Path
 from sys import exit, stderr, stdin, stdout
 from typing import Any, Callable, Iterable
@@ -356,7 +357,6 @@ from results import db as results_db
 managed_schemas = [
     "public",
     "macrostrat",
-    "macrostrat_api",
     "macrostrat_auth",
     "ecosystem",
     "auth",
@@ -461,34 +461,56 @@ def plan():
             print(
                 f"[dim]Loading schema [bold cyan]{_schema}[/] from [bold]{dumpfile}[/]"
             )
-            plan_db.run_sql("set search_path TO {}".format(_schema))
+            plan_db.run_sql("set search_path TO {},public".format(_schema))
             plan_db.run_sql(dumpfile.read_text())
 
         out_dir = dumpdir / "plans"
         out_dir.mkdir(exist_ok=True)
 
-        for _schema in managed_schemas:
-            plan_file = dumpdir / f"{_schema}.sql"
+        with working_directory(str(dumpdir)):
+            for _schema in managed_schemas:
+                plan_file = dumpdir / f"{_schema}.sql"
 
-            out_file = out_dir / f"{_schema}_plan.sql"
+                out_file = out_dir / f"{_schema}_plan.sql"
 
-            _pgschema(
-                db,
-                [
-                    "plan",
-                    "--schema",
-                    _schema,
-                    "--file",
-                    str(plan_file),
-                    "--output-sql",
-                    str(out_file),
-                    "--output-human",
-                    str(out_file.with_suffix(".txt")),
-                    "--output-json",
-                    str(out_file.with_suffix(".json")),
-                ],
-                plan_db=plan_db,
-            )
+                human_readable = out_file.with_suffix(".txt")
+                machine_readable = out_file.with_suffix(".json")
+
+                print(f"[dim]Planning schema [bold cyan]{_schema}[/]")
+
+                _pgschema(
+                    db,
+                    [
+                        "plan",
+                        "--schema",
+                        _schema,
+                        "--file",
+                        str(plan_file),
+                        "--output-sql",
+                        str(out_file),
+                        "--output-json",
+                        str(machine_readable),
+                    ],
+                    plan_db=plan_db,
+                )
+
+                # Read the plan
+                plan_data = loads(machine_readable.read_text())
+                n_changes = plan_data.get("groups", None)
+                if n_changes is None:
+                    print(
+                        f"[green]No changes planned for schema [bold cyan]{_schema}[/]"
+                    )
+                    out_file.unlink(missing_ok=True)
+                    human_readable.unlink(missing_ok=True)
+                    machine_readable.unlink(missing_ok=True)
+                else:
+                    n_changes = sum(
+                        [len(g.get("steps", [])) for g in plan_data["groups"]]
+                    )
+                    print(
+                        f"[yellow bold]{n_changes} changes planned for schema [bold cyan]{_schema}[/]"
+                    )
 
 
 @db_app.command(

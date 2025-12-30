@@ -298,7 +298,7 @@ CREATE TABLE IF NOT EXISTS points (
     point_type varchar(100),
     certainty varchar(100),
     comments text,
-    geom public.geometry,
+    geom geometry,
     point_id SERIAL,
     orig_id text,
     CONSTRAINT points_source_id_fkey FOREIGN KEY (source_id) REFERENCES sources (source_id),
