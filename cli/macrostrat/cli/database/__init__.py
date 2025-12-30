@@ -541,7 +541,6 @@ def apply(schema: str = Argument(None)):
     url = db.engine.url
 
     dumpdir = settings.srcroot / "schema"
-
     out_dir = dumpdir / "plans"
 
     if schema is not None:
@@ -549,34 +548,27 @@ def apply(schema: str = Argument(None)):
     else:
         schemas_to_apply = managed_schemas
 
-    for _schema in schemas_to_apply:
-        plan_file = out_dir / f"{_schema}_plan.json"
-        if not plan_file.exists():
-            print(f"[dim]No plan found for schema [bold cyan]{_schema}[/], skipping")
-            continue
+    with working_directory(str(dumpdir)):
+        for _schema in schemas_to_apply:
+            plan_file = out_dir / f"{_schema}_plan.json"
+            if not plan_file.exists():
+                print(
+                    f"[dim]No plan found for schema [bold cyan]{_schema}[/], skipping"
+                )
+                continue
 
-        print(f"[dim]Applying plan for schema [bold cyan]{_schema}[/]")
+            print(f"[dim]Applying plan for schema [bold cyan]{_schema}[/]")
 
-        res = _pgschema(
-            db,
-            ["apply", "--plan", str(plan_file)],
-        )
+            res = _pgschema(
+                db,
+                ["apply", "--schema", _schema, "--plan", str(plan_file)],
+            )
 
-        if res.returncode != 0:
-            print(f"[red bold]Failed to apply plan for schema [bold cyan]{_schema}[/]")
-            return
-
-        print(f"[dim]Dumping updated schema [bold cyan]{_schema}[/]")
-        _pgschema(
-            db,
-            [
-                "dump",
-                "--schema",
-                _schema,
-                "--file",
-                str(dumpdir / f"{_schema}.sql"),
-            ],
-        )
+            if res.returncode != 0:
+                print(
+                    f"[red bold]Failed to apply plan for schema [bold cyan]{_schema}[/]"
+                )
+                return
 
 
 @db_app.command(
@@ -588,7 +580,7 @@ def apply(schema: str = Argument(None)):
 )
 def diff(
     ctx: typer.Context,
-    schema: str = Option("macrostrat", "--schema", "-s"),
+    schema: str = Argument(None),
 ):
     """Run pg-schema-diff to compare with the target database"""
     db = get_db()
@@ -605,27 +597,26 @@ def diff(
 
     client.images.build(path=str(img_root), tag=img_tag)
 
-    # Spin up an image with this container
-    port = 54884
-    with database_cluster(client, img_tag, port=port) as container:
-        _url = f"postgresql://postgres@localhost:{port}/postgres"
-        plan_db = Database(_url)
-        plan_url = plan_db.engine.url
+    schemas = managed_schemas
+    if schema is not None:
+        schemas = [schema]
 
-        plan_db.run_sql('CREATE ROLE "macrostrat-admin"')
+    outdir = settings.srcroot / "schema" / "diffs"
+    outdir.mkdir(exist_ok=True)
 
-        _run_migrations_in_database(plan_db, legacy=False)
+    with planning_database(db) as plan_db:
+        db_b = results_db(raw_database_url(url))
+        db_a = results_db(raw_database_url(plan_db.engine.url))
 
-        db_a = results_db(raw_database_url(url))
-        db_b = results_db(raw_database_url(plan_url))
+        for schema in schemas:
+            schemadiff_sql = db_b.schemadiff_as_sql(db_a, schema=schema)
 
-        schemadiff_sql = db_b.schemadiff_as_sql(
-            db_a, with_privileges=False, schema=schema
-        )
-
-        if schemadiff_sql:
-            print(schemadiff_sql)
-            exit(2)
+            if not schemadiff_sql:
+                print(f"[green]No differences found for schema [bold cyan]{schema}[/]")
+                continue
+            out_file = outdir / f"{schema}_diff.sql"
+            out_file.write_text(schemadiff_sql)
+            print(f"[yellow bold]Differences found for schema [bold cyan]{schema}[/]")
 
 
 @db_app.command(
