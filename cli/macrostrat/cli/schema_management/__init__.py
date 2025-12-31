@@ -1,0 +1,191 @@
+import asyncio
+from pathlib import Path
+from sys import exit, stderr
+from typing import Callable
+
+import docker
+import typer
+from macrostrat.database import Database
+from macrostrat.database.transfer import pg_dump_to_file
+from macrostrat.database.transfer.utils import raw_database_url
+from macrostrat.utils import get_logger
+from macrostrat.utils.shell import run
+from results import db as results_db
+from results.dbdiff import Migration
+from rich import print
+from typer import Argument
+
+from macrostrat.core import app
+from macrostrat.core.config import settings
+from macrostrat.core.database import get_database
+from macrostrat.core.migrations import run_migrations
+from .defs import (
+    get_inspector,
+    managed_schemas,
+    planning_database,
+    StatementCounter,
+    is_unsafe_statement,
+)
+# First, register all migrations
+# NOTE: right now, this is quite implicit.
+from ..database.migrations import load_migrations
+from ..database.utils import engine_for_db_name
+
+log = get_logger(__name__)
+
+__here__ = Path(__file__).parent
+fixtures_dir = __here__.parent / "fixtures"
+
+
+DBCallable = Callable[[Database], None]
+
+
+load_migrations()
+
+
+schema_app = typer.Typer(no_args_is_help=True)
+
+
+@schema_app.command("dump")
+def dump_schema(schema: str = Argument(None)):
+    """Dump schemas from the Macrostrat database using [cyan]pg_dump[/]"""
+
+    db_container = app.settings.get("pg_database_container", "postgres:15")
+    engine = engine_for_db_name("macrostrat")
+
+    dumpdir = settings.srcroot / "schema"
+
+    schemas_to_dump = managed_schemas
+    if schema is not None:
+        schemas_to_dump = [schema]
+
+    for _schema in schemas_to_dump:
+        dumpfile = dumpdir / f"{_schema}.sql"
+        print(f"[dim]Dumping schema [bold cyan]{_schema}[/] to [bold]{dumpfile}[/]")
+        task = pg_dump_to_file(
+            engine,
+            dumpfile,
+            custom_format=False,
+            args=["--schema-only", "--schema", _schema],
+        )
+        asyncio.run(task)
+
+
+@schema_app.command(
+    context_settings={
+        "allow_extra_args": True,
+        "ignore_unknown_options": True,
+        "help_option_names": [],
+    }
+)
+def plan(
+    ctx: typer.Context,
+    schema: str = Argument(None),
+):
+    """Run pg-schema-diff to compare with the target database"""
+    db = get_database()
+    url = db.engine.url
+
+    image = settings.get("pg_database_container", "postgres:15")
+
+    client = docker.from_env()
+
+    img_root = settings.srcroot / "base-images" / "database"
+
+    # Build postgres pgaudit image
+    img_tag = "macrostrat.local/database:latest"
+
+    client.images.build(path=str(img_root), tag=img_tag)
+
+    schemas = managed_schemas
+    if schema is not None:
+        schemas = [schema]
+
+    outdir = settings.srcroot / "schema" / "diffs"
+    outdir.mkdir(exist_ok=True)
+
+    with planning_database(db) as plan_db:
+        from_db = results_db(raw_database_url(url))
+        target_db = results_db(raw_database_url(plan_db.engine.url))
+
+        m = Migration(
+            from_db,
+            target_db,
+        )
+        m.changes.i_from = get_inspector(from_db)
+        m.changes.i_target = get_inspector(target_db)
+
+        m.set_safety(False)
+        m.add_all_changes(privileges=True)
+
+        out_file = outdir / f"{schema or 'all_schemas'}_diff.sql"
+
+        unsafe_statements = [s for s in m.statements if is_unsafe_statement(s)]
+        n_unsafe = len(unsafe_statements)
+
+        if n_unsafe > 0:
+            print(f"[red dim]{n_unsafe} unsafe statements in diff")
+
+        print(
+            f"[dim]Writing {len(m.statements)} proposed changes to [bold]{out_file}[/]"
+        )
+
+        with open(out_file, "w") as f:
+            f.write("\n".join(m.statements))
+
+
+@schema_app.command()
+def apply(safe: bool = True):
+    """Apply automated migrations"""
+    db = get_database()
+    url = db.engine.url
+
+    dumpdir = settings.srcroot / "schema"
+    plan_dir = dumpdir / "diffs"
+
+    # List all sql in the diffs directory
+    plan_files = list(plan_dir.glob("*_diff.sql"))
+
+    counter = StatementCounter(safe=safe)
+
+    db.run_fixtures(plan_files, statement_filter=counter.filter)
+
+    counter.print_report()
+
+
+@schema_app.command(name="scripts")
+def run_scripts(migration: str = Argument(None)):
+    """Ad-hoc database management scripts"""
+    pth = Path(__file__).parent.parent / "data-scripts"
+    files = list(pth.glob("*.sql")) + list(pth.glob("*.sh")) + list(pth.glob("*.py"))
+    files.sort()
+    if migration is None:
+        print("[yellow bold]No script specified\n", file=stderr)
+        print("[bold]Available scripts:", file=stderr)
+        for f in files:
+            print(f"  {f.stem}[dim]{f.suffix}", file=stderr)
+        exit(1)
+    matching_migrations = [
+        f for f in files if f.stem == migration or str(f) == migration
+    ]
+    if len(matching_migrations) == 0:
+        print(f"Script {migration} does not exist", file=stderr)
+        exit(1)
+    if len(matching_migrations) > 1:
+        print(
+            f"Ambiguous script name: {migration}",
+            file=stderr,
+        )
+        print("Please specify the full file name")
+        exit(1)
+    migration = matching_migrations[0]
+    if migration.suffix == ".py":
+        run("python", str(migration))
+    if migration.suffix == ".sh":
+        run(str(migration))
+    if migration.suffix == ".sql":
+        db = get_database()
+        db.run_sql(migration)
+
+
+schema_app.command(name="migrate")(run_migrations)
