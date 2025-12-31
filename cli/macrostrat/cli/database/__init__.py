@@ -28,6 +28,7 @@ from macrostrat.core import MacrostratSubsystem, app
 from macrostrat.core.config import settings
 from macrostrat.core.migrations import run_migrations, _run_migrations_in_database
 from ._legacy import get_db
+
 # First, register all migrations
 # NOTE: right now, this is quite implicit.
 from .migrations import load_migrations

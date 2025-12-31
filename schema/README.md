@@ -17,3 +17,11 @@ Note: old migraion files in the `migrations/` directory can be deleted once all 
 
 Table alterations that cannot be handled by the automated process (e.g., complex data transformations) should
 be performed with manually created migration files. To create a manual migration:
+
+
+
+# Concepts
+
+- Subsystems ~ modules that can be independently migrated. These often correspond to PostgreSQL schemas and specific modules in the codebase.
+- Environments ~ different database instances (e.g., development, staging, production) that may be at different schema versions.
+- Migrations ~ files that describe changes to the database schema. Not all changes must be made with manual migrations
