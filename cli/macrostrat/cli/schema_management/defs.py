@@ -3,7 +3,6 @@ from contextlib import contextmanager
 import docker
 from macrostrat.database import Database
 from macrostrat.dinosaur.upgrade_cluster.utils import database_cluster
-from macrostrat.utils import working_directory
 from psycopg2.sql import Identifier
 from results.dbdiff.statements import check_for_drop
 from results.schemainspect.pg import PostgreSQL
@@ -38,6 +37,38 @@ def is_unsafe_statement(s: str) -> bool:
     return check_for_drop(s)
 
 
+def plan_schema_for_environment(env: str, db: Database):
+    # Set up roles
+    for role in [
+        "macrostrat_admin",
+        "macrostrat",
+        "web_admin",
+        "web_user",
+        "web_anon",
+    ]:
+        db.run_sql("CREATE ROLE {role}", dict(role=Identifier(role)))
+
+    schema_dir = settings.srcroot / "schema" / "local"
+
+    db.run_sql(
+        """
+        CREATE EXTENSION IF NOT EXISTS postgis WITH SCHEMA public;
+        CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA public;
+        CREATE EXTENSION IF NOT EXISTS pgaudit WITH SCHEMA public;
+        CREATE EXTENSION IF NOT EXISTS postgis WITH SCHEMA public;
+        CREATE EXTENSION IF NOT EXISTS postgis_raster WITH SCHEMA public;
+        CREATE EXTENSION IF NOT EXISTS postgis_topology WITH SCHEMA topology;
+        CREATE EXTENSION IF NOT EXISTS postgres_fdw WITH SCHEMA public;
+        CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA public;
+        """
+    )
+
+    for _schema in managed_schemas:
+        dumpfile = schema_dir / f"{_schema}.sql"
+        print(f"[dim]Loading schema [bold cyan]{_schema}[/] from [bold]{dumpfile}[/]")
+        db.run_sql(dumpfile.read_text())
+
+
 @contextmanager
 def planning_database():
     """Context manager to create a temporary database for planning schema changes"""
@@ -50,50 +81,13 @@ def planning_database():
 
     client.images.build(path=str(img_root), tag=img_tag)
 
-    dumpdir = settings.srcroot / "schema"
-
     # Spin up an image with this container
     port = 54884
     with database_cluster(client, img_tag, port=port) as container:
         _url = f"postgresql://postgres@localhost:{port}/postgres"
         plan_db = Database(_url)
-
-        for role in [
-            "macrostrat_admin",
-            "macrostrat",
-            "web_admin",
-            "web_user",
-            "web_anon",
-        ]:
-            plan_db.run_sql("CREATE ROLE {role}", dict(role=Identifier(role)))
-
-        plan_db.run_sql(
-            """
-            CREATE EXTENSION IF NOT EXISTS postgis WITH SCHEMA public;
-            CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA public;
-            CREATE EXTENSION IF NOT EXISTS pgaudit WITH SCHEMA public;
-            CREATE EXTENSION IF NOT EXISTS postgis WITH SCHEMA public;
-            CREATE EXTENSION IF NOT EXISTS postgis_raster WITH SCHEMA public;
-            CREATE EXTENSION IF NOT EXISTS postgis_topology WITH SCHEMA topology;
-            CREATE EXTENSION IF NOT EXISTS postgres_fdw WITH SCHEMA public;
-            CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA public;
-            """
-        )
-
-        for _schema in managed_schemas:
-            plan_db.run_sql("CREATE SCHEMA IF NOT EXISTS {}".format(_schema))
-            dumpfile = dumpdir / f"{_schema}.sql"
-            print(
-                f"[dim]Loading schema [bold cyan]{_schema}[/] from [bold]{dumpfile}[/]"
-            )
-            plan_db.run_sql("set search_path TO {},public".format(_schema))
-            plan_db.run_sql(dumpfile.read_text())
-
-        out_dir = dumpdir / "plans"
-        out_dir.mkdir(exist_ok=True)
-
-        with working_directory(str(dumpdir)):
-            yield plan_db
+        plan_schema_for_environment("local", plan_db)
+        yield plan_db
 
 
 class OurPostgreSQL(PostgreSQL):

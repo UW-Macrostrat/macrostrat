@@ -15,7 +15,6 @@ from results.dbdiff import Migration
 from rich import print
 from typer import Argument
 
-from macrostrat.core import app
 from macrostrat.core.config import settings
 from macrostrat.core.database import get_database
 from macrostrat.core.migrations import run_migrations
@@ -46,31 +45,6 @@ load_migrations()
 schema_app = typer.Typer(no_args_is_help=True)
 
 
-@schema_app.command("dump")
-def dump_schema(schema: str = Argument(None)):
-    """Dump schemas from the Macrostrat database using [cyan]pg_dump[/]"""
-
-    db_container = app.settings.get("pg_database_container", "postgres:15")
-    engine = engine_for_db_name("macrostrat")
-
-    dumpdir = settings.srcroot / "schema"
-
-    schemas_to_dump = managed_schemas
-    if schema is not None:
-        schemas_to_dump = [schema]
-
-    for _schema in schemas_to_dump:
-        dumpfile = dumpdir / f"{_schema}.sql"
-        print(f"[dim]Dumping schema [bold cyan]{_schema}[/] to [bold]{dumpfile}[/]")
-        task = pg_dump_to_file(
-            engine,
-            dumpfile,
-            custom_format=False,
-            args=["--schema-only", "--schema", _schema],
-        )
-        asyncio.run(task)
-
-
 @schema_app.command(
     context_settings={
         "allow_extra_args": True,
@@ -79,7 +53,6 @@ def dump_schema(schema: str = Argument(None)):
     }
 )
 def plan(
-    ctx: typer.Context,
     schema: str = Argument(None),
 ):
     """Run pg-schema-diff to compare with the target database"""
@@ -104,7 +77,7 @@ def plan(
     outdir = settings.srcroot / "schema" / "diffs"
     outdir.mkdir(exist_ok=True)
 
-    with planning_database(db) as plan_db:
+    with planning_database() as plan_db:
         from_db = results_db(raw_database_url(url))
         target_db = results_db(raw_database_url(plan_db.engine.url))
 
@@ -153,9 +126,12 @@ def apply(safe: bool = True):
     counter.print_report()
 
 
-@schema_app.command(name="scripts")
+@schema_app.command(name="scripts", rich_help_panel="Utils")
 def run_scripts(migration: str = Argument(None)):
-    """Ad-hoc database management scripts"""
+    """Ad-hoc database management scripts
+
+    These will be integrated with the migration system in the future.
+    """
     pth = Path(__file__).parent.parent / "data-scripts"
     files = list(pth.glob("*.sql")) + list(pth.glob("*.sh")) + list(pth.glob("*.py"))
     files.sort()
@@ -189,3 +165,27 @@ def run_scripts(migration: str = Argument(None)):
 
 
 schema_app.command(name="migrate")(run_migrations)
+
+
+@schema_app.command("dump", rich_help_panel="Utils")
+def dump_schema(schema: str = Argument(None)):
+    """Dump managed schemas using [cyan]pg_dump[/]"""
+
+    engine = engine_for_db_name("macrostrat")
+
+    dumpdir = settings.srcroot / "schema"
+
+    schemas_to_dump = managed_schemas
+    if schema is not None:
+        schemas_to_dump = [schema]
+
+    for _schema in schemas_to_dump:
+        dumpfile = dumpdir / f"{_schema}.sql"
+        print(f"[dim]Dumping schema [bold cyan]{_schema}[/] to [bold]{dumpfile}[/]")
+        task = pg_dump_to_file(
+            engine,
+            dumpfile,
+            custom_format=False,
+            args=["--schema-only", "--schema", _schema],
+        )
+        asyncio.run(task)
