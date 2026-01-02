@@ -1,4 +1,3 @@
--- Description: Migrate boundary_status and boundary_type columns to new enum types
 
 create or replace function should_apply() returns boolean as $$
 begin
@@ -20,13 +19,10 @@ begin
     );
 end;
 $$ language plpgsql;
-
-
 create type "macrostrat"."boundary_status" as enum ('', 'modeled', 'relative', 'absolute', 'spike');
 create type "macrostrat"."boundary_type" as enum ('', 'unconformity', 'conformity', 'fault', 'disconformity', 'non-conformity', 'angular unconformity');
 drop view if exists "macrostrat_api"."unit_boundaries";
 drop table "maps_metadata"."sources_metadata";
-
 alter table "macrostrat"."interval_boundaries" alter column "boundary_status" drop default;
 alter table "macrostrat"."interval_boundaries_scratch" alter column "boundary_status" drop default;
 alter table "macrostrat"."unit_boundaries" alter column "boundary_status" drop default;
@@ -37,7 +33,6 @@ alter table "macrostrat"."unit_boundaries_scratch" alter column "boundary_status
 alter table "macrostrat"."unit_boundaries_scratch" alter column "boundary_type" drop default;
 alter table "macrostrat"."unit_boundaries_scratch_old" alter column "boundary_status" drop default;
 alter table "macrostrat"."unit_boundaries_scratch_old" alter column "boundary_type" drop default;
-
 alter table "macrostrat"."interval_boundaries" alter column "boundary_status" set data type macrostrat.boundary_status using "boundary_status"::text::macrostrat.boundary_status;
 alter table "macrostrat"."interval_boundaries_scratch" alter column "boundary_status" set data type macrostrat.boundary_status using "boundary_status"::text::macrostrat.boundary_status;
 alter table "macrostrat"."unit_boundaries" alter column "boundary_status" set data type macrostrat.boundary_status using "boundary_status"::text::macrostrat.boundary_status;
@@ -48,7 +43,6 @@ alter table "macrostrat"."unit_boundaries_scratch" alter column "boundary_status
 alter table "macrostrat"."unit_boundaries_scratch" alter column "boundary_type" set data type macrostrat.boundary_type using "boundary_type"::text::macrostrat.boundary_type;
 alter table "macrostrat"."unit_boundaries_scratch_old" alter column "boundary_status" set data type macrostrat.boundary_status using "boundary_status"::text::macrostrat.boundary_status;
 alter table "macrostrat"."unit_boundaries_scratch_old" alter column "boundary_type" set data type macrostrat.boundary_type using "boundary_type"::text::macrostrat.boundary_type;
-
 alter table "macrostrat"."interval_boundaries" alter column "boundary_status" set default ''::macrostrat.boundary_status;
 alter table "macrostrat"."interval_boundaries_scratch" alter column "boundary_status" set default ''::macrostrat.boundary_status;
 alter table "macrostrat"."unit_boundaries" alter column "boundary_status" set default 'modeled'::macrostrat.boundary_status;
@@ -59,7 +53,6 @@ alter table "macrostrat"."unit_boundaries_scratch" alter column "boundary_status
 alter table "macrostrat"."unit_boundaries_scratch" alter column "boundary_type" set default ''::macrostrat.boundary_type;
 alter table "macrostrat"."unit_boundaries_scratch_old" alter column "boundary_status" set default 'modeled'::macrostrat.boundary_status;
 alter table "macrostrat"."unit_boundaries_scratch_old" alter column "boundary_type" set default ''::macrostrat.boundary_type;
-
 drop type "public"."boundary_status";
 drop type "public"."boundary_type";
 drop type "macrostrat"."interval_boundaries_boundary_status";
