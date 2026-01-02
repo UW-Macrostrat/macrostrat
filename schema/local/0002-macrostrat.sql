@@ -2592,27 +2592,20 @@ ALTER SEQUENCE macrostrat.projects_id_seq OWNED BY macrostrat.projects.id;
 --
 
 CREATE TABLE macrostrat.projects_tree (
-    id integer NOT NULL,
+    id integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY (
+        SEQUENCE NAME macrostrat.projects_tree_id_seq
+        START WITH 1
+        INCREMENT BY 1
+        NO MINVALUE
+        NO MAXVALUE
+        CACHE 1
+    ),
     parent_id integer NOT NULL,
     child_id integer NOT NULL
 );
 
 
 ALTER TABLE macrostrat.projects_tree OWNER TO macrostrat;
-
---
--- Name: projects_tree_id_seq; Type: SEQUENCE; Schema: macrostrat; Owner: macrostrat
---
-
-ALTER TABLE macrostrat.projects_tree ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
-    SEQUENCE NAME macrostrat.projects_tree_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1
-);
-
 
 --
 -- Name: refs; Type: TABLE; Schema: macrostrat; Owner: macrostrat-admin
