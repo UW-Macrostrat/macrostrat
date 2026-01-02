@@ -19,7 +19,6 @@ managed_schemas = [
     "macrostrat",
     "macrostrat_auth",
     "ecosystem",
-    "auth",
     "storage",
     "maps",
     "maps_metadata",
@@ -65,23 +64,7 @@ def plan_schema_for_environment(env: str, db: Database):
 
     schema_dir = settings.srcroot / "schema" / "local"
 
-    db.run_sql(
-        """
-        CREATE EXTENSION IF NOT EXISTS postgis WITH SCHEMA public;
-        CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA public;
-        CREATE EXTENSION IF NOT EXISTS pgaudit WITH SCHEMA public;
-        CREATE EXTENSION IF NOT EXISTS postgis WITH SCHEMA public;
-        CREATE EXTENSION IF NOT EXISTS postgis_raster WITH SCHEMA public;
-        CREATE EXTENSION IF NOT EXISTS postgis_topology WITH SCHEMA topology;
-        CREATE EXTENSION IF NOT EXISTS postgres_fdw WITH SCHEMA public;
-        CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA public;
-        """
-    )
-
-    for _schema in managed_schemas:
-        dumpfile = schema_dir / f"{_schema}.sql"
-        print(f"[dim]Loading schema [bold cyan]{_schema}[/] from [bold]{dumpfile}[/]")
-        db.run_sql(dumpfile.read_text())
+    db.run_fixtures(schema_dir)
 
 
 @contextmanager

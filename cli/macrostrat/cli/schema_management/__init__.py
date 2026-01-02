@@ -207,7 +207,7 @@ def dump_schema(schema: str = Argument(None)):
         schemas_to_dump = [schema]
 
     for _schema in schemas_to_dump:
-        dumpfile = dumpdir / env / f"{_schema}.sql"
+        dumpfile = dumpdir / env / f"0999-{_schema}.sql"
         print(f"[dim]Dumping schema [bold cyan]{_schema}[/] to [bold]{dumpfile}[/]")
         task = pg_dump_to_file(
             engine,
