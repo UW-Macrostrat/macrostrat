@@ -327,31 +327,6 @@ CREATE TABLE maps.points (
 ALTER TABLE maps.points OWNER TO macrostrat;
 
 --
--- Name: ingest_process; Type: VIEW; Schema: maps; Owner: macrostrat_admin
---
-
-CREATE VIEW maps.ingest_process AS
- SELECT ingest_process.id,
-    ingest_process.state,
-    ingest_process.comments,
-    ingest_process.source_id,
-    ingest_process.created_on,
-    ingest_process.completed_on,
-    ingest_process.map_id,
-    ingest_process.type,
-    ingest_process.polygon_state,
-    ingest_process.line_state,
-    ingest_process.point_state,
-    ingest_process.ingest_pipeline,
-    ingest_process.map_url,
-    ingest_process.ingested_by,
-    ingest_process.slug
-   FROM maps_metadata.ingest_process;
-
-
-ALTER TABLE maps.ingest_process OWNER TO macrostrat_admin;
-
---
 -- Name: polygons_large; Type: TABLE; Schema: maps; Owner: macrostrat
 --
 
