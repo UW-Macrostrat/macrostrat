@@ -7,7 +7,7 @@ authors = [
     { name = "Casey Idzikowski" },
     { name = "John J Czaplewski", email = "jczaplewski@wisc.edu" },
 ]
-requires-python = ">=3.11,<4"
+requires-python = ">=3.12,<4"
 readme = "README.md"
 dependencies = [
     "Fiona>=1.8.22,<2",
