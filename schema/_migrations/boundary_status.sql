@@ -1,4 +1,3 @@
-
 create or replace function should_apply() returns boolean as $$
 begin
     return not exists (
@@ -19,6 +18,8 @@ begin
     );
 end;
 $$ language plpgsql;
+
+
 create type "macrostrat"."boundary_status" as enum ('', 'modeled', 'relative', 'absolute', 'spike');
 create type "macrostrat"."boundary_type" as enum ('', 'unconformity', 'conformity', 'fault', 'disconformity', 'non-conformity', 'angular unconformity');
 drop view if exists "macrostrat_api"."unit_boundaries";

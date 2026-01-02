@@ -61,7 +61,7 @@ def plan():
     outdir.mkdir(exist_ok=True)
     out_file = outdir / f"{env}.plan.sql"
 
-    with planning_database() as plan_db:
+    with planning_database(env) as plan_db:
         from_db = results_db(raw_database_url(url))
         target_db = results_db(raw_database_url(plan_db.engine.url))
 

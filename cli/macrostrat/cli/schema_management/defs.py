@@ -3,7 +3,6 @@ from contextlib import contextmanager
 import docker
 from macrostrat.database import Database
 from macrostrat.dinosaur.upgrade_cluster.utils import database_cluster
-from psycopg2.sql import Identifier
 from results.dbdiff.statements import check_for_drop
 from results.schemainspect.pg import PostgreSQL
 from results.schemainspect.pg.obj import PROPS
@@ -11,9 +10,7 @@ from rich import print
 
 from macrostrat.core.config import settings
 
-# First, register all migrations
-# NOTE: right now, this is quite implicit.
-
+# DEPRECATED
 managed_schemas = [
     "public",
     "macrostrat",
@@ -51,24 +48,42 @@ def is_unsafe_statement(s: str) -> bool:
     return True
 
 
+env_schema_dirs = {
+    "local": ["production", "development"],
+    "development": ["production"],
+    "staging": ["production"],
+    "production": ["production"],
+}
+
+
+def schema_dirs_for_environment(env: str):
+    core_schema_dir = settings.srcroot / "schema"
+
+    # Always apply the core schema
+    yield core_schema_dir
+
+    if env in ["development", "local"]:
+        yield core_schema_dir / "development"
+
+    if env in ["local"]:
+        yield core_schema_dir / "local"
+
+
 def plan_schema_for_environment(env: str, db: Database):
-    # Set up roles
-    for role in [
-        "macrostrat_admin",
-        "macrostrat",
-        "web_admin",
-        "web_user",
-        "web_anon",
-    ]:
-        db.run_sql("CREATE ROLE {role}", dict(role=Identifier(role)))
-
-    schema_dir = settings.srcroot / "schema" / "local"
-
-    db.run_fixtures(schema_dir)
+    for env_dir in schema_dirs_for_environment(env):
+        schema_dir = env_dir
+        if not schema_dir.exists():
+            raise ValueError(
+                f"Schema directory for environment '{env_dir}' does not exist"
+            )
+        fixtures = list(schema_dir.glob("*.sql"))
+        if len(fixtures) == 0:
+            continue
+        db.run_fixtures(fixtures, recursive=False)
 
 
 @contextmanager
-def planning_database():
+def planning_database(environment):
     """Context manager to create a temporary database for planning schema changes"""
     client = docker.from_env()
 
@@ -84,7 +99,7 @@ def planning_database():
     with database_cluster(client, img_tag, port=port) as container:
         _url = f"postgresql://postgres@localhost:{port}/postgres"
         plan_db = Database(_url)
-        plan_schema_for_environment("local", plan_db)
+        plan_schema_for_environment(environment, plan_db)
         yield plan_db
 
 
