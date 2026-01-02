@@ -77,6 +77,8 @@ def plan_schema_for_environment(env: str, db: Database):
                 f"Schema directory for environment '{env_dir}' does not exist"
             )
         fixtures = list(schema_dir.glob("*.sql"))
+        fixtures = [f for f in fixtures if f.is_file() and not f.name.endswith(".plan.sql")]
+
         if len(fixtures) == 0:
             continue
         db.run_fixtures(fixtures, recursive=False)
