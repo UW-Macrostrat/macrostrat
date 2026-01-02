@@ -25,3 +25,5 @@ be performed with manually created migration files. To create a manual migration
 - Subsystems ~ modules that can be independently migrated. These often correspond to PostgreSQL schemas and specific modules in the codebase.
 - Environments ~ different database instances (e.g., development, staging, production) that may be at different schema versions.
 - Migrations ~ files that describe changes to the database schema. Not all changes must be made with manual migrations
+
+

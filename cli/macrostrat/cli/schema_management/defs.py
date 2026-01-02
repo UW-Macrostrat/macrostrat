@@ -27,14 +27,29 @@ managed_schemas = [
     "carto",
     "carto_new",
     "user_features",
+    "usage_stats",
     "integrations",
+    "macrostrat_xdd",
     "macrostrat_api",
 ]
 
 
 def is_unsafe_statement(s: str) -> bool:
     """Check if a SQL statement is unsafe (i.e., contains DROP)"""
-    return check_for_drop(s)
+    is_drop = check_for_drop(s)
+    if not is_drop:
+        return False
+    allowed_drops = [
+        "drop view",
+        "drop index",
+        "drop function",
+        "drop trigger",
+    ]
+    s_lower = s.lower()
+    for allowed in allowed_drops:
+        if s_lower.startswith(allowed):
+            return False
+    return True
 
 
 def plan_schema_for_environment(env: str, db: Database):

@@ -183,7 +183,7 @@ def dump(
 
     engine = engine_for_db_name(database)
 
-    if dumpfile == "-":
+    if str(dumpfile) == "-":
         dumpfile = stdout
 
     args = ctx.args

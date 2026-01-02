@@ -1068,7 +1068,7 @@ CREATE VIEW macrostrat_api.legend AS
  WITH _intervals AS (
          SELECT intervals.id,
             json_build_object('id', intervals.id, 'name', intervals.interval_name, 'color', intervals.interval_color, 'rank', intervals.rank, 'b_age', intervals.age_bottom, 't_age', intervals.age_top) AS _interval
-           FROM macrostrat_backup.intervals
+           FROM macrostrat.intervals
         ), legend_liths AS (
          SELECT legend_liths.legend_id,
             legend_liths.lith_id,
@@ -1079,7 +1079,7 @@ CREATE VIEW macrostrat_api.legend AS
          SELECT ll_1.legend_id,
             json_build_object('lith_id', ll_1.lith_id, 'basis_col', ll_1.basis_cols, 'name', l_1.lith, 'color', l_1.lith_color, 'fill', l_1.lith_fill) AS liths
            FROM (legend_liths ll_1
-             JOIN macrostrat_backup.liths l_1 ON ((ll_1.lith_id = l_1.id)))
+             JOIN macrostrat.liths l_1 ON ((ll_1.lith_id = l_1.id)))
         )
  SELECT l.legend_id,
     l.source_id,

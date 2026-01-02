@@ -1,9 +1,10 @@
 import asyncio
+from datetime import datetime
 from pathlib import Path
 from sys import exit, stderr
 from typing import Callable
 
-import docker
+import click
 import typer
 from macrostrat.database import Database
 from macrostrat.database.transfer import pg_dump_to_file
@@ -14,9 +15,11 @@ from results import db as results_db
 from results.dbdiff import Migration
 from rich import print
 from typer import Argument
+from typer import Option
 
 from macrostrat.core.config import settings
 from macrostrat.core.database import get_database
+from macrostrat.core.exc import MacrostratError
 from macrostrat.core.migrations import run_migrations
 from .defs import (
     get_inspector,
@@ -52,30 +55,17 @@ schema_app = typer.Typer(no_args_is_help=True)
         "help_option_names": [],
     }
 )
-def plan(
-    schema: str = Argument(None),
-):
-    """Run pg-schema-diff to compare with the target database"""
+def plan():
+    """Compare schema with target database"""
+
+    # TODO: enable single-schema diffs
     db = get_database()
     url = db.engine.url
+    env = settings.env
 
-    image = settings.get("pg_database_container", "postgres:15")
-
-    client = docker.from_env()
-
-    img_root = settings.srcroot / "base-images" / "database"
-
-    # Build postgres pgaudit image
-    img_tag = "macrostrat.local/database:latest"
-
-    client.images.build(path=str(img_root), tag=img_tag)
-
-    schemas = managed_schemas
-    if schema is not None:
-        schemas = [schema]
-
-    outdir = settings.srcroot / "schema" / "diffs"
+    outdir = settings.srcroot / "schema"
     outdir.mkdir(exist_ok=True)
+    out_file = outdir / f"{env}.plan.sql"
 
     with planning_database() as plan_db:
         from_db = results_db(raw_database_url(url))
@@ -90,8 +80,6 @@ def plan(
 
         m.set_safety(False)
         m.add_all_changes(privileges=True)
-
-        out_file = outdir / f"{schema or 'all_schemas'}_diff.sql"
 
         unsafe_statements = [s for s in m.statements if is_unsafe_statement(s)]
         n_unsafe = len(unsafe_statements)
@@ -108,22 +96,60 @@ def plan(
 
 
 @schema_app.command()
-def apply(safe: bool = True):
+def review(edit=False):
+    """Review the latest migration plan"""
+    dumpdir = settings.srcroot / "schema"
+    environment = settings.env
+
+    pending_plan = dumpdir / f"{environment}.plan.sql"
+
+    if not pending_plan.exists():
+        raise MacrostratError(
+            "[yellow]No plan found. Please run [cyan]macrostrat schema plan[/cyan] to generate one."
+        )
+
+    if edit:
+        click.edit(filename=pending_plan)
+        print(f"[dim]Updated plan saved to [bold]{pending_plan}[/]")
+    else:
+        plan_sql = pending_plan.read_text()
+        print(plan_sql)
+
+
+@schema_app.command()
+def apply(
+    plan_file: Path | None = Argument(None),
+    safe: bool = Option(True, "--safe/--unsafe"),
+):
     """Apply automated migrations"""
     db = get_database()
-    url = db.engine.url
 
     dumpdir = settings.srcroot / "schema"
-    plan_dir = dumpdir / "diffs"
+    environment = settings.env
 
-    # List all sql in the diffs directory
-    plan_files = list(plan_dir.glob("*_diff.sql"))
+    if plan_file is not None:
+        pending_plan = plan_file
+    else:
+        pending_plan = dumpdir / f"{environment}.plan.sql"
+
+    if not pending_plan.exists():
+        raise MacrostratError(
+            "[yellow]No plan found. Please run [cyan]macrostrat schema plan[/cyan] to generate one."
+        )
 
     counter = StatementCounter(safe=safe)
 
-    db.run_fixtures(plan_files, statement_filter=counter.filter)
+    db.run_fixtures(pending_plan, statement_filter=counter.filter)
 
     counter.print_report()
+
+    # If we applied the plan, move it to the applied plans location
+    applied_dir = dumpdir / "_plans"
+    applied_dir.mkdir(exist_ok=True)
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    applied_file = applied_dir / f"{timestamp}-{pending_plan.name}"
+    pending_plan.rename(applied_file)
+    print(f"[dim]Moved applied plan to [bold]{applied_file}[/]")
 
 
 @schema_app.command(name="scripts", rich_help_panel="Utils")
@@ -174,13 +200,14 @@ def dump_schema(schema: str = Argument(None)):
     engine = engine_for_db_name("macrostrat")
 
     dumpdir = settings.srcroot / "schema"
+    env = settings.env
 
     schemas_to_dump = managed_schemas
     if schema is not None:
         schemas_to_dump = [schema]
 
     for _schema in schemas_to_dump:
-        dumpfile = dumpdir / f"{_schema}.sql"
+        dumpfile = dumpdir / env / f"{_schema}.sql"
         print(f"[dim]Dumping schema [bold cyan]{_schema}[/] to [bold]{dumpfile}[/]")
         task = pg_dump_to_file(
             engine,
