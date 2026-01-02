@@ -48,13 +48,7 @@ load_migrations()
 schema_app = typer.Typer(no_args_is_help=True)
 
 
-@schema_app.command(
-    context_settings={
-        "allow_extra_args": True,
-        "ignore_unknown_options": True,
-        "help_option_names": [],
-    }
-)
+@schema_app.command()
 def plan():
     """Compare schema with target database"""
 

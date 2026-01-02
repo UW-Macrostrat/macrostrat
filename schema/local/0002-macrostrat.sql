@@ -159,11 +159,8 @@ CREATE TYPE macrostrat.environs_environ_type AS ENUM (
 
 ALTER TYPE macrostrat.environs_environ_type OWNER TO "macrostrat-admin";
 
---
--- Name: interval_boundaries_boundary_status; Type: TYPE; Schema: macrostrat; Owner: macrostrat-admin
---
 
-CREATE TYPE macrostrat.interval_boundaries_boundary_status AS ENUM (
+CREATE TYPE macrostrat.boundary_status AS ENUM (
     '',
     'modeled',
     'relative',
@@ -172,22 +169,8 @@ CREATE TYPE macrostrat.interval_boundaries_boundary_status AS ENUM (
 );
 
 
-ALTER TYPE macrostrat.interval_boundaries_boundary_status OWNER TO "macrostrat-admin";
+ALTER TYPE macrostrat.boundary_status OWNER TO "macrostrat-admin";
 
---
--- Name: interval_boundaries_scratch_boundary_status; Type: TYPE; Schema: macrostrat; Owner: macrostrat-admin
---
-
-CREATE TYPE macrostrat.interval_boundaries_scratch_boundary_status AS ENUM (
-    '',
-    'modeled',
-    'relative',
-    'absolute',
-    'spike'
-);
-
-
-ALTER TYPE macrostrat.interval_boundaries_scratch_boundary_status OWNER TO "macrostrat-admin";
 
 --
 -- Name: intervals_interval_type; Type: TYPE; Schema: macrostrat; Owner: macrostrat-admin
@@ -603,26 +586,8 @@ CREATE TYPE macrostrat.tectonics_basin_setting AS ENUM (
 
 ALTER TYPE macrostrat.tectonics_basin_setting OWNER TO "macrostrat-admin";
 
---
--- Name: unit_boundaries_backup_boundary_status; Type: TYPE; Schema: macrostrat; Owner: macrostrat-admin
---
 
-CREATE TYPE macrostrat.unit_boundaries_backup_boundary_status AS ENUM (
-    '',
-    'modeled',
-    'relative',
-    'absolute',
-    'spike'
-);
-
-
-ALTER TYPE macrostrat.unit_boundaries_backup_boundary_status OWNER TO "macrostrat-admin";
-
---
--- Name: unit_boundaries_backup_boundary_type; Type: TYPE; Schema: macrostrat; Owner: macrostrat-admin
---
-
-CREATE TYPE macrostrat.unit_boundaries_backup_boundary_type AS ENUM (
+CREATE TYPE macrostrat.boundary_type AS ENUM (
     '',
     'unconformity',
     'conformity',
@@ -633,103 +598,7 @@ CREATE TYPE macrostrat.unit_boundaries_backup_boundary_type AS ENUM (
 );
 
 
-ALTER TYPE macrostrat.unit_boundaries_backup_boundary_type OWNER TO "macrostrat-admin";
-
---
--- Name: unit_boundaries_boundary_status; Type: TYPE; Schema: macrostrat; Owner: macrostrat-admin
---
-
-CREATE TYPE macrostrat.unit_boundaries_boundary_status AS ENUM (
-    '',
-    'modeled',
-    'relative',
-    'absolute',
-    'spike'
-);
-
-
-ALTER TYPE macrostrat.unit_boundaries_boundary_status OWNER TO "macrostrat-admin";
-
---
--- Name: unit_boundaries_boundary_type; Type: TYPE; Schema: macrostrat; Owner: macrostrat-admin
---
-
-CREATE TYPE macrostrat.unit_boundaries_boundary_type AS ENUM (
-    '',
-    'unconformity',
-    'conformity',
-    'fault',
-    'disconformity',
-    'non-conformity',
-    'angular unconformity'
-);
-
-
-ALTER TYPE macrostrat.unit_boundaries_boundary_type OWNER TO "macrostrat-admin";
-
---
--- Name: unit_boundaries_scratch_boundary_status; Type: TYPE; Schema: macrostrat; Owner: macrostrat-admin
---
-
-CREATE TYPE macrostrat.unit_boundaries_scratch_boundary_status AS ENUM (
-    '',
-    'modeled',
-    'relative',
-    'absolute',
-    'spike'
-);
-
-
-ALTER TYPE macrostrat.unit_boundaries_scratch_boundary_status OWNER TO "macrostrat-admin";
-
---
--- Name: unit_boundaries_scratch_boundary_type; Type: TYPE; Schema: macrostrat; Owner: macrostrat-admin
---
-
-CREATE TYPE macrostrat.unit_boundaries_scratch_boundary_type AS ENUM (
-    '',
-    'unconformity',
-    'conformity',
-    'fault',
-    'disconformity',
-    'non-conformity',
-    'angular unconformity'
-);
-
-
-ALTER TYPE macrostrat.unit_boundaries_scratch_boundary_type OWNER TO "macrostrat-admin";
-
---
--- Name: unit_boundaries_scratch_old_boundary_status; Type: TYPE; Schema: macrostrat; Owner: macrostrat-admin
---
-
-CREATE TYPE macrostrat.unit_boundaries_scratch_old_boundary_status AS ENUM (
-    '',
-    'modeled',
-    'relative',
-    'absolute',
-    'spike'
-);
-
-
-ALTER TYPE macrostrat.unit_boundaries_scratch_old_boundary_status OWNER TO "macrostrat-admin";
-
---
--- Name: unit_boundaries_scratch_old_boundary_type; Type: TYPE; Schema: macrostrat; Owner: macrostrat-admin
---
-
-CREATE TYPE macrostrat.unit_boundaries_scratch_old_boundary_type AS ENUM (
-    '',
-    'unconformity',
-    'conformity',
-    'fault',
-    'disconformity',
-    'non-conformity',
-    'angular unconformity'
-);
-
-
-ALTER TYPE macrostrat.unit_boundaries_scratch_old_boundary_type OWNER TO "macrostrat-admin";
+ALTER TYPE macrostrat.boundary_type OWNER TO "macrostrat-admin";
 
 --
 -- Name: unit_contacts_contact; Type: TYPE; Schema: macrostrat; Owner: macrostrat-admin
@@ -1688,7 +1557,7 @@ CREATE TABLE macrostrat.interval_boundaries (
     interval_id integer NOT NULL,
     interval_id_2 integer NOT NULL,
     timescale_id integer NOT NULL,
-    boundary_status macrostrat.interval_boundaries_boundary_status DEFAULT ''::macrostrat.interval_boundaries_boundary_status NOT NULL
+    boundary_status macrostrat.boundary_status DEFAULT ''::macrostrat.boundary_status NOT NULL
 );
 
 
@@ -1708,7 +1577,7 @@ CREATE TABLE macrostrat.interval_boundaries_scratch (
     interval_id integer NOT NULL,
     interval_id_2 integer NOT NULL,
     timescale_id integer NOT NULL,
-    boundary_status macrostrat.interval_boundaries_scratch_boundary_status DEFAULT ''::macrostrat.interval_boundaries_scratch_boundary_status NOT NULL
+    boundary_status macrostrat.boundary_status DEFAULT ''::macrostrat.boundary_status NOT NULL
 );
 
 
@@ -3359,8 +3228,8 @@ CREATE TABLE macrostrat.unit_boundaries (
     unit_id_2 integer NOT NULL,
     section_id integer NOT NULL,
     boundary_position numeric(7,3) DEFAULT NULL::numeric,
-    boundary_type macrostrat.unit_boundaries_boundary_type DEFAULT ''::macrostrat.unit_boundaries_boundary_type NOT NULL,
-    boundary_status macrostrat.unit_boundaries_boundary_status DEFAULT 'modeled'::macrostrat.unit_boundaries_boundary_status NOT NULL,
+    boundary_type macrostrat.boundary_type DEFAULT ''::macrostrat.boundary_type NOT NULL,
+    boundary_status macrostrat.boundary_status DEFAULT 'modeled'::macrostrat.boundary_status NOT NULL,
     paleo_lat numeric(7,3) DEFAULT NULL::numeric,
     paleo_lng numeric(7,3) DEFAULT NULL::numeric,
     ref_id integer DEFAULT 217 NOT NULL
@@ -3382,8 +3251,8 @@ CREATE TABLE macrostrat.unit_boundaries_backup (
     unit_id_2 integer NOT NULL,
     section_id integer NOT NULL,
     boundary_position numeric(6,2) DEFAULT NULL::numeric,
-    boundary_type macrostrat.unit_boundaries_backup_boundary_type DEFAULT ''::macrostrat.unit_boundaries_backup_boundary_type NOT NULL,
-    boundary_status macrostrat.unit_boundaries_backup_boundary_status DEFAULT 'modeled'::macrostrat.unit_boundaries_backup_boundary_status NOT NULL,
+    boundary_type macrostrat.boundary_type DEFAULT ''::macrostrat.boundary_type NOT NULL,
+    boundary_status macrostrat.boundary_status DEFAULT 'modeled'::macrostrat.boundary_status NOT NULL,
     paleo_lat numeric(7,3) DEFAULT NULL::numeric,
     paleo_lng numeric(7,3) DEFAULT NULL::numeric,
     ref_id integer DEFAULT 217 NOT NULL
@@ -3449,8 +3318,8 @@ CREATE TABLE macrostrat.unit_boundaries_scratch (
     unit_id_2 integer NOT NULL,
     section_id integer NOT NULL,
     boundary_position numeric(6,2) DEFAULT NULL::numeric,
-    boundary_type macrostrat.unit_boundaries_scratch_boundary_type DEFAULT ''::macrostrat.unit_boundaries_scratch_boundary_type NOT NULL,
-    boundary_status macrostrat.unit_boundaries_scratch_boundary_status DEFAULT 'modeled'::macrostrat.unit_boundaries_scratch_boundary_status NOT NULL,
+    boundary_type macrostrat.boundary_type DEFAULT ''::macrostrat.boundary_type NOT NULL,
+    boundary_status macrostrat.boundary_status DEFAULT 'modeled'::macrostrat.boundary_status NOT NULL,
     paleo_lat numeric(7,3) DEFAULT NULL::numeric,
     paleo_lng numeric(7,3) DEFAULT NULL::numeric,
     ref_id integer DEFAULT 217 NOT NULL
@@ -3493,8 +3362,8 @@ CREATE TABLE macrostrat.unit_boundaries_scratch_old (
     unit_id integer NOT NULL,
     unit_id_2 integer NOT NULL,
     section_id integer NOT NULL,
-    boundary_type macrostrat.unit_boundaries_scratch_old_boundary_type DEFAULT ''::macrostrat.unit_boundaries_scratch_old_boundary_type NOT NULL,
-    boundary_status macrostrat.unit_boundaries_scratch_old_boundary_status DEFAULT 'modeled'::macrostrat.unit_boundaries_scratch_old_boundary_status NOT NULL,
+    boundary_type macrostrat.boundary_type DEFAULT ''::macrostrat.boundary_type NOT NULL,
+    boundary_status macrostrat.boundary_status DEFAULT 'modeled'::macrostrat.boundary_status NOT NULL,
     paleo_lat numeric(7,3) DEFAULT NULL::numeric,
     paleo_lng numeric(7,3) DEFAULT NULL::numeric
 );
