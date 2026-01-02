@@ -19,14 +19,14 @@ CREATE FUNCTION user_features.current_app_role() RETURNS text
     AS $$
   SELECT (current_setting('request.jwt.claims', true)::json ->> 'role')::text;
 $$;
-ALTER FUNCTION user_features.current_app_role() OWNER TO "macrostrat-admin";
+ALTER FUNCTION user_features.current_app_role() OWNER TO macrostrat_admin;
 
 CREATE FUNCTION user_features.current_app_user_id() RETURNS integer
     LANGUAGE sql STABLE
     AS $$
   SELECT (current_setting('request.jwt.claims', true)::json ->> 'user_id')::int;
 $$;
-ALTER FUNCTION user_features.current_app_user_id() OWNER TO "macrostrat-admin";
+ALTER FUNCTION user_features.current_app_user_id() OWNER TO macrostrat_admin;
 SET default_tablespace = '';
 SET default_table_access_method = heap;
 

@@ -19,7 +19,7 @@ CREATE FUNCTION macrostrat_auth.current_app_user_id() RETURNS integer
     AS $$
   SELECT (current_setting('request.jwt.claims', true)::json ->> 'user_id')::int
 $$;
-ALTER FUNCTION macrostrat_auth.current_app_user_id() OWNER TO "macrostrat-admin";
+ALTER FUNCTION macrostrat_auth.current_app_user_id() OWNER TO macrostrat_admin;
 SET default_tablespace = '';
 SET default_table_access_method = heap;
 

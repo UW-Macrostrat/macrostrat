@@ -12,7 +12,7 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 CREATE SCHEMA maps_metadata;
-ALTER SCHEMA maps_metadata OWNER TO "macrostrat-admin";
+ALTER SCHEMA maps_metadata OWNER TO macrostrat_admin;
 
 CREATE FUNCTION maps_metadata.maps_metadata_update_trigger() RETURNS trigger
     LANGUAGE plpgsql

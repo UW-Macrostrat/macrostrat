@@ -548,7 +548,7 @@ CREATE VIEW maps.vw_legend_with_liths AS
    FROM (maps.legend l
      LEFT JOIN maps.legend_liths ll ON ((ll.legend_id = l.legend_id)))
   GROUP BY l.legend_id, l.source_id, l.name;
-ALTER TABLE maps.vw_legend_with_liths OWNER TO "macrostrat-admin";
+ALTER TABLE maps.vw_legend_with_liths OWNER TO macrostrat_admin;
 
 ALTER TABLE ONLY maps.lines ATTACH PARTITION maps.lines_large FOR VALUES IN ('large');
 
@@ -885,7 +885,7 @@ ALTER TABLE ONLY maps.source_operations
 
 GRANT SELECT ON TABLE maps.vw_legend_with_liths TO macrostrat;
 
-ALTER DEFAULT PRIVILEGES FOR ROLE "macrostrat-admin" IN SCHEMA maps GRANT SELECT,USAGE ON SEQUENCES  TO macrostrat;
+ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat_admin IN SCHEMA maps GRANT SELECT,USAGE ON SEQUENCES  TO macrostrat;
 
-ALTER DEFAULT PRIVILEGES FOR ROLE "macrostrat-admin" IN SCHEMA maps GRANT SELECT ON TABLES  TO macrostrat;
+ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat_admin IN SCHEMA maps GRANT SELECT ON TABLES  TO macrostrat;
 

@@ -12,7 +12,7 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 CREATE SCHEMA macrostrat_xdd;
-ALTER SCHEMA macrostrat_xdd OWNER TO "macrostrat-admin";
+ALTER SCHEMA macrostrat_xdd OWNER TO macrostrat_admin;
 SET default_tablespace = '';
 SET default_table_access_method = heap;
 
@@ -22,19 +22,19 @@ CREATE TABLE macrostrat_xdd.extraction_feedback (
     date timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     custom_note text
 );
-ALTER TABLE macrostrat_xdd.extraction_feedback OWNER TO "macrostrat-admin";
+ALTER TABLE macrostrat_xdd.extraction_feedback OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat_xdd.extraction_feedback_type (
     type_id integer NOT NULL,
     type text NOT NULL
 );
-ALTER TABLE macrostrat_xdd.extraction_feedback_type OWNER TO "macrostrat-admin";
+ALTER TABLE macrostrat_xdd.extraction_feedback_type OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat_xdd.lookup_extraction_type (
     note_id integer NOT NULL,
     type_id integer NOT NULL
 );
-ALTER TABLE macrostrat_xdd.lookup_extraction_type OWNER TO "macrostrat-admin";
+ALTER TABLE macrostrat_xdd.lookup_extraction_type OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat_xdd.all_runs (
     user_id uuid,
@@ -153,7 +153,7 @@ CREATE SEQUENCE macrostrat_xdd.extraction_feedback_note_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat_xdd.extraction_feedback_note_id_seq OWNER TO "macrostrat-admin";
+ALTER TABLE macrostrat_xdd.extraction_feedback_note_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat_xdd.extraction_feedback_note_id_seq OWNED BY macrostrat_xdd.extraction_feedback.note_id;
 
@@ -164,7 +164,7 @@ CREATE SEQUENCE macrostrat_xdd.extraction_feedback_type_type_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat_xdd.extraction_feedback_type_type_id_seq OWNER TO "macrostrat-admin";
+ALTER TABLE macrostrat_xdd.extraction_feedback_type_type_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat_xdd.extraction_feedback_type_type_id_seq OWNED BY macrostrat_xdd.extraction_feedback_type.type_id;
 
@@ -449,7 +449,7 @@ GRANT SELECT,USAGE ON SEQUENCE macrostrat_xdd.source_text_id_seq TO web_user;
 
 GRANT SELECT ON TABLE macrostrat_xdd.users TO web_anon;
 
-ALTER DEFAULT PRIVILEGES FOR ROLE "macrostrat-admin" IN SCHEMA macrostrat_xdd GRANT SELECT,USAGE ON SEQUENCES  TO web_user;
+ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat_admin IN SCHEMA macrostrat_xdd GRANT SELECT,USAGE ON SEQUENCES  TO web_user;
 
-ALTER DEFAULT PRIVILEGES FOR ROLE "macrostrat-admin" IN SCHEMA macrostrat_xdd GRANT SELECT ON TABLES  TO web_anon;
+ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat_admin IN SCHEMA macrostrat_xdd GRANT SELECT ON TABLES  TO web_anon;
 

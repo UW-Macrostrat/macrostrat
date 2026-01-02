@@ -12,7 +12,7 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 CREATE SCHEMA carto_new;
-ALTER SCHEMA carto_new OWNER TO "macrostrat-admin";
+ALTER SCHEMA carto_new OWNER TO macrostrat_admin;
 SET default_tablespace = '';
 SET default_table_access_method = heap;
 
@@ -30,7 +30,7 @@ CREATE VIEW carto_new.large AS
     (polygons.geom_scale)::text AS scale
    FROM carto.polygons
   WHERE (polygons.scale = 'large'::maps.map_scale);
-ALTER TABLE carto_new.large OWNER TO "macrostrat-admin";
+ALTER TABLE carto_new.large OWNER TO macrostrat_admin;
 
 CREATE VIEW carto_new.lines_large AS
  SELECT lines.line_id,
@@ -75,7 +75,7 @@ CREATE VIEW carto_new.medium AS
     (polygons.geom_scale)::text AS scale
    FROM carto.polygons
   WHERE (polygons.scale = 'medium'::maps.map_scale);
-ALTER TABLE carto_new.medium OWNER TO "macrostrat-admin";
+ALTER TABLE carto_new.medium OWNER TO macrostrat_admin;
 
 CREATE TABLE carto_new.pbdb_hex_index (
     collection_no integer NOT NULL,
@@ -91,7 +91,7 @@ CREATE VIEW carto_new.small AS
     (polygons.geom_scale)::text AS scale
    FROM carto.polygons
   WHERE (polygons.scale = 'small'::maps.map_scale);
-ALTER TABLE carto_new.small OWNER TO "macrostrat-admin";
+ALTER TABLE carto_new.small OWNER TO macrostrat_admin;
 
 CREATE VIEW carto_new.tiny AS
  SELECT polygons.map_id,
@@ -100,7 +100,7 @@ CREATE VIEW carto_new.tiny AS
     (polygons.geom_scale)::text AS scale
    FROM carto.polygons
   WHERE (polygons.scale = 'tiny'::maps.map_scale);
-ALTER TABLE carto_new.tiny OWNER TO "macrostrat-admin";
+ALTER TABLE carto_new.tiny OWNER TO macrostrat_admin;
 
 CREATE INDEX hex_index_hex_id_idx ON carto_new.hex_index USING btree (hex_id);
 
@@ -122,7 +122,7 @@ GRANT SELECT ON TABLE carto_new.small TO macrostrat;
 
 GRANT SELECT ON TABLE carto_new.tiny TO macrostrat;
 
-ALTER DEFAULT PRIVILEGES FOR ROLE "macrostrat-admin" IN SCHEMA carto_new GRANT SELECT,USAGE ON SEQUENCES  TO macrostrat;
+ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat_admin IN SCHEMA carto_new GRANT SELECT,USAGE ON SEQUENCES  TO macrostrat;
 
-ALTER DEFAULT PRIVILEGES FOR ROLE "macrostrat-admin" IN SCHEMA carto_new GRANT SELECT ON TABLES  TO macrostrat;
+ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat_admin IN SCHEMA carto_new GRANT SELECT ON TABLES  TO macrostrat;
 

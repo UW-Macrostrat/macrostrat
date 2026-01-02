@@ -74,7 +74,7 @@ CREATE VIEW lines.tiny AS
   WHERE (lines.scale = 'tiny'::maps.map_scale);
 ALTER TABLE lines.tiny OWNER TO macrostrat_admin;
 
-ALTER DEFAULT PRIVILEGES FOR ROLE "macrostrat-admin" IN SCHEMA lines GRANT SELECT,USAGE ON SEQUENCES  TO macrostrat;
+ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat_admin IN SCHEMA lines GRANT SELECT,USAGE ON SEQUENCES  TO macrostrat;
 
-ALTER DEFAULT PRIVILEGES FOR ROLE "macrostrat-admin" IN SCHEMA lines GRANT SELECT ON TABLES  TO macrostrat;
+ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat_admin IN SCHEMA lines GRANT SELECT ON TABLES  TO macrostrat;
 

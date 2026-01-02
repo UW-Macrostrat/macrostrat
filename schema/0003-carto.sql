@@ -20,13 +20,13 @@ CREATE TABLE carto.flat_large (
     map_id integer,
     geom public.geometry
 );
-ALTER TABLE carto.flat_large OWNER TO "macrostrat-admin";
+ALTER TABLE carto.flat_large OWNER TO macrostrat_admin;
 
 CREATE TABLE carto.flat_medium (
     map_id integer,
     geom public.geometry
 );
-ALTER TABLE carto.flat_medium OWNER TO "macrostrat-admin";
+ALTER TABLE carto.flat_medium OWNER TO macrostrat_admin;
 
 CREATE TABLE carto.large (
     map_id integer,
@@ -51,7 +51,7 @@ CREATE TABLE carto.large (
     lith_ids integer[],
     geom public.geometry
 );
-ALTER TABLE carto.large OWNER TO "macrostrat-admin";
+ALTER TABLE carto.large OWNER TO macrostrat_admin;
 
 CREATE TABLE carto.lines (
     line_id integer NOT NULL,
@@ -126,7 +126,7 @@ CREATE TABLE carto.medium (
     lith_ids integer[],
     geom public.geometry
 );
-ALTER TABLE carto.medium OWNER TO "macrostrat-admin";
+ALTER TABLE carto.medium OWNER TO macrostrat_admin;
 
 CREATE TABLE carto.polygons (
     map_id integer NOT NULL,
@@ -201,7 +201,7 @@ CREATE TABLE carto.small (
     lith_ids integer[],
     geom public.geometry
 );
-ALTER TABLE carto.small OWNER TO "macrostrat-admin";
+ALTER TABLE carto.small OWNER TO macrostrat_admin;
 
 CREATE TABLE carto.tiny (
     map_id integer,
@@ -226,7 +226,7 @@ CREATE TABLE carto.tiny (
     lith_ids integer[],
     geom public.geometry
 );
-ALTER TABLE carto.tiny OWNER TO "macrostrat-admin";
+ALTER TABLE carto.tiny OWNER TO macrostrat_admin;
 
 ALTER TABLE ONLY carto.lines ATTACH PARTITION carto.lines_large FOR VALUES IN ('large');
 
@@ -386,7 +386,7 @@ GRANT SELECT ON TABLE carto.small TO macrostrat;
 
 GRANT SELECT ON TABLE carto.tiny TO macrostrat;
 
-ALTER DEFAULT PRIVILEGES FOR ROLE "macrostrat-admin" IN SCHEMA carto GRANT SELECT,USAGE ON SEQUENCES  TO macrostrat;
+ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat_admin IN SCHEMA carto GRANT SELECT,USAGE ON SEQUENCES  TO macrostrat;
 
-ALTER DEFAULT PRIVILEGES FOR ROLE "macrostrat-admin" IN SCHEMA carto GRANT SELECT ON TABLES  TO macrostrat;
+ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat_admin IN SCHEMA carto GRANT SELECT ON TABLES  TO macrostrat;
 
