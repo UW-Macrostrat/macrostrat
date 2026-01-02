@@ -31,39 +31,6 @@ ALTER SCHEMA public OWNER TO pg_database_owner;
 
 COMMENT ON SCHEMA public IS 'standard public schema';
 
-
---
--- Name: boundary_status; Type: TYPE; Schema: public; Owner: macrostrat
---
-
-CREATE TYPE public.boundary_status AS ENUM (
-    '',
-    'modeled',
-    'relative',
-    'absolute',
-    'spike'
-);
-
-
-ALTER TYPE public.boundary_status OWNER TO macrostrat;
-
---
--- Name: boundary_type; Type: TYPE; Schema: public; Owner: macrostrat
---
-
-CREATE TYPE public.boundary_type AS ENUM (
-    '',
-    'unconformity',
-    'conformity',
-    'fault',
-    'disconformity',
-    'non-conformity',
-    'angular unconformity'
-);
-
-
-ALTER TYPE public.boundary_type OWNER TO macrostrat;
-
 --
 -- Name: measurement_class; Type: TYPE; Schema: public; Owner: macrostrat
 --
