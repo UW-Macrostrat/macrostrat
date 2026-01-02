@@ -184,35 +184,6 @@ CREATE VIEW maps_metadata.sources_meta AS
 
 ALTER TABLE maps_metadata.sources_meta OWNER TO macrostrat_admin;
 
---
--- Name: sources_metadata; Type: TABLE; Schema: maps_metadata; Owner: macrostrat_admin
---
-
-CREATE TABLE maps_metadata.sources_metadata (
-    source_id integer,
-    raster_bucket_url text,
-    date_compiled timestamp without time zone,
-    compiler_name text,
-    raster_source_url text,
-    name character varying(255),
-    url character varying(255),
-    ref_title text,
-    authors character varying(255),
-    ref_year text,
-    ref_source character varying(255),
-    isbn_doi character varying(100),
-    scale character varying(20),
-    licence character varying(100),
-    features integer,
-    area integer,
-    priority boolean,
-    display_scales text[],
-    status_code text,
-    slug text
-);
-
-
-ALTER TABLE maps_metadata.sources_metadata OWNER TO macrostrat_admin;
 
 --
 -- Name: ingest_process id; Type: DEFAULT; Schema: maps_metadata; Owner: macrostrat
