@@ -200,6 +200,7 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+
 ALTER FUNCTION macrostrat_api.people_view_insert_trigger() OWNER TO "macrostrat-admin";
 
 CREATE FUNCTION macrostrat_api.split_section(unit_ids integer[]) RETURNS void
