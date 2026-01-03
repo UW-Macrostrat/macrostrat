@@ -131,6 +131,7 @@ def apply(
     counter = StatementCounter(safe=safe)
 
     db.run_fixtures(pending_plan, statement_filter=counter.filter)
+    db.run_sql("NOTIFY pgrst, 'reload schema';")
 
     counter.print_report()
 
@@ -141,6 +142,7 @@ def apply(
     applied_file = applied_dir / f"{timestamp}-{pending_plan.name}"
     pending_plan.rename(applied_file)
     print(f"[dim]Moved applied plan to [bold]{applied_file}[/]")
+
 
 
 @schema_app.command(name="scripts", rich_help_panel="Utils")

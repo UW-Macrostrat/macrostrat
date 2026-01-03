@@ -57,25 +57,23 @@ env_schema_dirs = {
 
 
 def schema_dirs_for_environment(env: str):
-    core_schema_dir = settings.srcroot / "schema"
+    schema_dir = settings.srcroot / "schema"
 
     # Always apply the core schema
-    yield core_schema_dir
+    yield schema_dir
 
     if env in ["development", "local"]:
-        yield core_schema_dir / "development"
+        yield schema_dir / "development"
 
     if env in ["local"]:
-        yield core_schema_dir / "local"
+        yield schema_dir / "local"
 
 
 def plan_schema_for_environment(env: str, db: Database):
     for env_dir in schema_dirs_for_environment(env):
         schema_dir = env_dir
         if not schema_dir.exists():
-            raise ValueError(
-                f"Schema directory for environment '{env_dir}' does not exist"
-            )
+            continue
         fixtures = list(schema_dir.glob("*.sql"))
         fixtures = [
             f for f in fixtures if f.is_file() and not f.name.endswith(".plan.sql")
