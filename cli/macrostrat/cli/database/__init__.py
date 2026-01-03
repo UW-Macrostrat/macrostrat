@@ -18,9 +18,7 @@ from typer import Argument, Option
 from macrostrat.core import MacrostratSubsystem, app
 from macrostrat.core.database import get_database
 from ._legacy import get_db
-# First, register all migrations
 # NOTE: right now, this is quite implicit.
-from .migrations import load_migrations
 from .utils import engine_for_db_name, setup_postgrest_access
 
 log = get_logger(__name__)
@@ -30,9 +28,6 @@ fixtures_dir = __here__.parent / "fixtures"
 
 
 DBCallable = Callable[[Database], None]
-
-
-load_migrations()
 
 
 class SubsystemSchemaDefinition(BaseModel):

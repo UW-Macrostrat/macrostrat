@@ -30,7 +30,7 @@ from .defs import (
 )
 # First, register all migrations
 # NOTE: right now, this is quite implicit.
-from ..database.migrations import load_migrations
+from .migration_system import load_migrations
 from ..database.utils import engine_for_db_name
 
 log = get_logger(__name__)
@@ -40,9 +40,6 @@ fixtures_dir = __here__.parent / "fixtures"
 
 
 DBCallable = Callable[[Database], None]
-
-
-load_migrations()
 
 
 schema_app = typer.Typer(no_args_is_help=True)
@@ -184,7 +181,10 @@ def run_scripts(migration: str = Argument(None)):
         db.run_sql(migration)
 
 
-schema_app.command(name="migrate")(run_migrations)
+@schema_app.command(name="migrate")
+def _run_migrations():
+    load_migrations()
+    run_migrations()
 
 
 @schema_app.command("dump", rich_help_panel="Utils")
