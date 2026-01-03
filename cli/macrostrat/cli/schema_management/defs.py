@@ -74,14 +74,12 @@ def plan_schema_for_environment(env: str, db: Database):
         schema_dir = env_dir
         if not schema_dir.exists():
             continue
-        fixtures = list(schema_dir.glob("*.sql"))
-        fixtures = [
-            f for f in fixtures if f.is_file() and not f.name.endswith(".plan.sql")
-        ]
+        fixtures = sorted(list(schema_dir.glob("*.sql")))
+        fixtures = [f for f in fixtures if not f.name.endswith(".plan.sql")]
 
         if len(fixtures) == 0:
             continue
-        db.run_fixtures(fixtures, recursive=False)
+        db.run_fixtures(fixtures, recursive=True)
 
 
 @contextmanager

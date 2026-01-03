@@ -17,6 +17,7 @@ from rich import print
 from typer import Argument
 from typer import Option
 
+from macrostrat.core import app as macrostrat_app
 from macrostrat.core.config import settings
 from macrostrat.core.database import get_database
 from macrostrat.core.exc import MacrostratError
@@ -28,7 +29,6 @@ from .defs import (
     StatementCounter,
     is_unsafe_statement,
 )
-
 # First, register all migrations
 # NOTE: right now, this is quite implicit.
 from .migration_system import load_migrations
@@ -131,7 +131,9 @@ def apply(
 
     counter = StatementCounter(safe=safe)
 
-    db.run_fixtures(pending_plan, statement_filter=counter.filter)
+    db.run_fixtures(
+        pending_plan, statement_filter=counter.filter, console=macrostrat_app.console
+    )
     db.run_sql("NOTIFY pgrst, 'reload schema';")
 
     counter.print_report()
