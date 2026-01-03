@@ -18,6 +18,7 @@ from typer import Argument, Option
 from macrostrat.core import MacrostratSubsystem, app
 from macrostrat.core.database import get_database
 from ._legacy import get_db
+
 # NOTE: right now, this is quite implicit.
 from .utils import engine_for_db_name, setup_postgrest_access
 

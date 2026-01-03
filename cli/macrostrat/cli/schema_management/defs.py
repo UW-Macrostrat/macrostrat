@@ -60,7 +60,7 @@ def schema_dirs_for_environment(env: str):
     schema_dir = settings.srcroot / "schema"
 
     # Always apply the core schema
-    yield schema_dir
+    yield schema_dir / "core"
 
     if env in ["development", "local"]:
         yield schema_dir / "development"
