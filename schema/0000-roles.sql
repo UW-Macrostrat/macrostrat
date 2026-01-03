@@ -24,3 +24,5 @@ GRANT rockd_reader TO "rockd-reader";
 GRANT "rockd-reader" TO rockd_reader;
 
 CREATE ROLE xdd_writer;
+GRANT xdd_writer TO "xdd-writer";
+GRANT "xdd-writer" TO xdd_writer;

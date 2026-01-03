@@ -101,6 +101,20 @@ def planning_database(environment):
     with database_cluster(client, img_tag, port=port) as container:
         _url = f"postgresql://postgres@localhost:{port}/postgres"
         plan_db = Database(_url)
+
+        # Optimize postgres for fast testing
+        plan_db.run_sql(
+            """
+            SET fsync TO off;
+            SET synchronous_commit TO off;
+            SET full_page_writes TO off;
+            SET temp_buffers TO '16MB';
+            SET work_mem TO '64MB';
+            SET maintenance_work_mem TO '128MB';
+            SET autovacuum TO off;
+        """
+        )
+
         plan_schema_for_environment(environment, plan_db)
         yield plan_db
 

@@ -47,7 +47,7 @@ CREATE TABLE macrostrat_xdd.all_runs (
     source_text_id integer NOT NULL,
     supersedes integer
 );
-ALTER TABLE macrostrat_xdd.all_runs OWNER TO "xdd-writer";
+ALTER TABLE macrostrat_xdd.all_runs OWNER TO xdd_writer;
 
 CREATE TABLE macrostrat_xdd.entity (
     name text NOT NULL,
@@ -62,7 +62,7 @@ CREATE TABLE macrostrat_xdd.entity (
     entity_type_id integer NOT NULL,
     str_match_type text NOT NULL
 );
-ALTER TABLE macrostrat_xdd.entity OWNER TO "xdd-writer";
+ALTER TABLE macrostrat_xdd.entity OWNER TO xdd_writer;
 
 CREATE TABLE macrostrat_xdd.entity_type (
     name text NOT NULL,
@@ -70,7 +70,7 @@ CREATE TABLE macrostrat_xdd.entity_type (
     id integer NOT NULL,
     color text
 );
-ALTER TABLE macrostrat_xdd.entity_type OWNER TO "xdd-writer";
+ALTER TABLE macrostrat_xdd.entity_type OWNER TO xdd_writer;
 
 CREATE VIEW macrostrat_xdd.model_run AS
  SELECT all_runs.user_id,
@@ -83,7 +83,7 @@ CREATE VIEW macrostrat_xdd.model_run AS
     all_runs.source_text_id,
     all_runs.supersedes
    FROM macrostrat_xdd.all_runs;
-ALTER TABLE macrostrat_xdd.model_run OWNER TO "xdd-writer";
+ALTER TABLE macrostrat_xdd.model_run OWNER TO xdd_writer;
 
 CREATE TABLE macrostrat_xdd.relationship (
     id integer NOT NULL,
@@ -93,7 +93,7 @@ CREATE TABLE macrostrat_xdd.relationship (
     relationship_type_id integer NOT NULL,
     reasoning text
 );
-ALTER TABLE macrostrat_xdd.relationship OWNER TO "xdd-writer";
+ALTER TABLE macrostrat_xdd.relationship OWNER TO xdd_writer;
 
 CREATE TABLE macrostrat_xdd.source_text (
     preprocessor_id text,
@@ -106,7 +106,7 @@ CREATE TABLE macrostrat_xdd.source_text (
     source_text_type text NOT NULL,
     xdd_tags text
 );
-ALTER TABLE macrostrat_xdd.source_text OWNER TO "xdd-writer";
+ALTER TABLE macrostrat_xdd.source_text OWNER TO xdd_writer;
 
 CREATE TABLE macrostrat_xdd.model (
     id integer NOT NULL,
@@ -114,7 +114,7 @@ CREATE TABLE macrostrat_xdd.model (
     description text,
     url text
 );
-ALTER TABLE macrostrat_xdd.model OWNER TO "xdd-writer";
+ALTER TABLE macrostrat_xdd.model OWNER TO xdd_writer;
 
 CREATE TABLE macrostrat_xdd.publication (
     paper_id text NOT NULL,
@@ -122,7 +122,7 @@ CREATE TABLE macrostrat_xdd.publication (
     citation jsonb NOT NULL,
     url text
 );
-ALTER TABLE macrostrat_xdd.publication OWNER TO "xdd-writer";
+ALTER TABLE macrostrat_xdd.publication OWNER TO xdd_writer;
 
 CREATE SEQUENCE macrostrat_xdd.entity_id_seq
     AS integer
@@ -131,7 +131,7 @@ CREATE SEQUENCE macrostrat_xdd.entity_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat_xdd.entity_id_seq OWNER TO "xdd-writer";
+ALTER TABLE macrostrat_xdd.entity_id_seq OWNER TO xdd_writer;
 
 ALTER SEQUENCE macrostrat_xdd.entity_id_seq OWNED BY macrostrat_xdd.entity.id;
 
@@ -142,7 +142,7 @@ CREATE SEQUENCE macrostrat_xdd.entity_type_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat_xdd.entity_type_id_seq OWNER TO "xdd-writer";
+ALTER TABLE macrostrat_xdd.entity_type_id_seq OWNER TO xdd_writer;
 
 ALTER SEQUENCE macrostrat_xdd.entity_type_id_seq OWNED BY macrostrat_xdd.entity_type.id;
 
@@ -182,7 +182,7 @@ CREATE VIEW macrostrat_xdd.latest_run_per_text AS
    FROM macrostrat_xdd.all_runs all_runs,
     latest_run
   WHERE ((all_runs.source_text_id = latest_run.src_text_id) AND (all_runs."timestamp" = latest_run.latest_timestamp));
-ALTER TABLE macrostrat_xdd.latest_run_per_text OWNER TO "xdd-writer";
+ALTER TABLE macrostrat_xdd.latest_run_per_text OWNER TO xdd_writer;
 
 CREATE SEQUENCE macrostrat_xdd.model_run_id_seq
     AS integer
@@ -191,7 +191,7 @@ CREATE SEQUENCE macrostrat_xdd.model_run_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat_xdd.model_run_id_seq OWNER TO "xdd-writer";
+ALTER TABLE macrostrat_xdd.model_run_id_seq OWNER TO xdd_writer;
 
 ALTER SEQUENCE macrostrat_xdd.model_run_id_seq OWNED BY macrostrat_xdd.all_runs.id;
 
@@ -201,7 +201,7 @@ CREATE TABLE macrostrat_xdd.model_version (
     description text,
     model_id integer NOT NULL
 );
-ALTER TABLE macrostrat_xdd.model_version OWNER TO "xdd-writer";
+ALTER TABLE macrostrat_xdd.model_version OWNER TO xdd_writer;
 
 ALTER TABLE macrostrat_xdd.model_version ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
     SEQUENCE NAME macrostrat_xdd.model_versions_version_id_seq
@@ -228,7 +228,7 @@ CREATE SEQUENCE macrostrat_xdd.relationship_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat_xdd.relationship_id_seq OWNER TO "xdd-writer";
+ALTER TABLE macrostrat_xdd.relationship_id_seq OWNER TO xdd_writer;
 
 ALTER SEQUENCE macrostrat_xdd.relationship_id_seq OWNED BY macrostrat_xdd.relationship.id;
 
@@ -237,7 +237,7 @@ CREATE TABLE macrostrat_xdd.relationship_type (
     description text,
     id integer NOT NULL
 );
-ALTER TABLE macrostrat_xdd.relationship_type OWNER TO "xdd-writer";
+ALTER TABLE macrostrat_xdd.relationship_type OWNER TO xdd_writer;
 
 CREATE SEQUENCE macrostrat_xdd.relationship_type_id_seq
     AS integer
@@ -246,7 +246,7 @@ CREATE SEQUENCE macrostrat_xdd.relationship_type_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat_xdd.relationship_type_id_seq OWNER TO "xdd-writer";
+ALTER TABLE macrostrat_xdd.relationship_type_id_seq OWNER TO xdd_writer;
 
 ALTER SEQUENCE macrostrat_xdd.relationship_type_id_seq OWNED BY macrostrat_xdd.relationship_type.id;
 
@@ -257,7 +257,7 @@ CREATE SEQUENCE macrostrat_xdd.source_text_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat_xdd.source_text_id_seq OWNER TO "xdd-writer";
+ALTER TABLE macrostrat_xdd.source_text_id_seq OWNER TO xdd_writer;
 
 ALTER SEQUENCE macrostrat_xdd.source_text_id_seq OWNED BY macrostrat_xdd.source_text.id;
 
@@ -265,7 +265,7 @@ CREATE TABLE macrostrat_xdd.users (
     internal_user_id uuid DEFAULT gen_random_uuid() NOT NULL,
     external_user_id text NOT NULL
 );
-ALTER TABLE macrostrat_xdd.users OWNER TO "xdd-writer";
+ALTER TABLE macrostrat_xdd.users OWNER TO xdd_writer;
 
 ALTER TABLE ONLY macrostrat_xdd.all_runs ALTER COLUMN id SET DEFAULT nextval('macrostrat_xdd.model_run_id_seq'::regclass);
 

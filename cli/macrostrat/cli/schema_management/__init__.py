@@ -144,7 +144,6 @@ def apply(
     print(f"[dim]Moved applied plan to [bold]{applied_file}[/]")
 
 
-
 @schema_app.command(name="scripts", rich_help_panel="Utils")
 def run_scripts(migration: str = Argument(None)):
     """Ad-hoc database management scripts
