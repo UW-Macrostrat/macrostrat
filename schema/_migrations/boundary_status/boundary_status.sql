@@ -1,24 +1,3 @@
-create or replace function should_apply() returns boolean as $$
-begin
-    return not exists (
-        select 1
-        from pg_type t
-        where t.typname = 'boundary_status'
-          and t.typnamespace = (select oid from pg_namespace where nspname = 'macrostrat')
-    ) or exists (
-        select 1
-        from pg_type t
-        where t.typname = 'interval_boundaries_boundary_status'
-          and t.typnamespace = (select oid from pg_namespace where nspname = 'macrostrat')
-    ) or exists (
-        select 1
-        from pg_type t
-        where t.typname = 'boundary_type'
-          and t.typnamespace = (select oid from pg_namespace where nspname = 'public')
-    );
-end;
-$$ language plpgsql;
-
 
 create type "macrostrat"."boundary_status" as enum ('', 'modeled', 'relative', 'absolute', 'spike');
 create type "macrostrat"."boundary_type" as enum ('', 'unconformity', 'conformity', 'fault', 'disconformity', 'non-conformity', 'angular unconformity');

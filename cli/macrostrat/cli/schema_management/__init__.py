@@ -182,9 +182,10 @@ def run_scripts(migration: str = Argument(None)):
 
 
 @schema_app.command(name="migrate")
-def _run_migrations():
+def _run_migrations(*, apply: bool = Option(False, "--apply/--no-apply")):
+    # TODO: we could import and load subsystem migrations here too.
     load_migrations()
-    run_migrations()
+    run_migrations(apply=apply)
 
 
 @schema_app.command("dump", rich_help_panel="Utils")

@@ -453,25 +453,3 @@ GRANT ALL ON FUNCTION public.update_updated_on() TO macrostrat;
 
 GRANT ALL ON FUNCTION public.array_agg_mult(anycompatiblearray) TO macrostrat;
 
-/** Legacy: superseded by macrostrat.measurement_*
-  ...but retained because other schemas (e.g., macrostrat_bak2) depend on it
-  */
-CREATE TYPE public.measurement_class AS ENUM (
-  '',
-  'geophysical',
-  'geochemical',
-  'sedimentological'
-  );
-ALTER TYPE public.measurement_class OWNER TO macrostrat_admin;
-CREATE TYPE public.measurement_type AS ENUM (
-  '',
-  'material properties',
-  'geochronological',
-  'major elements',
-  'minor elements',
-  'radiogenic isotopes',
-  'stable isotopes',
-  'petrologic',
-  'environmental'
-  );
-ALTER TYPE public.measurement_type OWNER TO macrostrat_admin;

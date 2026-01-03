@@ -4,10 +4,10 @@ from pathlib import Path
 
 from macrostrat.core.config import settings
 
-migrations_dir = settings.srcroot / "schema" / "_migrations"
+root_migrations_dir = settings.srcroot / "schema" / "_migrations"
 
 
-def load_migrations():
+def load_migrations(migrations_dir: Path = root_migrations_dir):
     for module in migrations_dir.iterdir():
         if module.is_file() and module.suffix == ".py" and module.stem != "__init__":
             _import_file(module)
