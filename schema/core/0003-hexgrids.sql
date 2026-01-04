@@ -1,3 +1,5 @@
+CREATE SCHEMA IF NOT EXISTS hexgrids;
+ALTER SCHEMA hexgrids OWNER TO macrostrat;
 
 CREATE TABLE hexgrids.bedrock_index (
     legend_id integer NOT NULL,

@@ -22,6 +22,7 @@ managed_schemas = [
     "lines",
     "carto",
     "carto_new",
+    "points",
     "user_features",
     "usage_stats",
     "integrations",
@@ -101,6 +102,7 @@ def planning_database(environment):
         plan_db = Database(_url)
 
         # Optimize postgres for fast testing
+        # TODO: this must be integrated with the database_cluster context manager
         plan_db.run_sql(
             """
             SET fsync TO off;
@@ -118,9 +120,16 @@ def planning_database(environment):
 
 
 class OurPostgreSQL(PostgreSQL):
+    included_schemas = ["public"]
+
+    def __init__(self, conn, schemas=None):
+        super().__init__(conn)
+        if schemas is not None:
+            self.included_schemas = schemas
+
     def filter_schema(self, schema=None, exclude_schema=None):
         def is_managed_schema(x):
-            return x.schema in managed_schemas
+            return x.schema in self.included_schemas
 
         comparator = is_managed_schema
 
@@ -130,17 +139,40 @@ class OurPostgreSQL(PostgreSQL):
             setattr(self, prop, filtered)
 
 
-def get_inspector(x):
+def get_inspector(x, schemas=None):
     if hasattr(x, "url") and hasattr(x, "URL"):
         with x.t() as t:
-            inspected = OurPostgreSQL(t.c)
+            inspected = OurPostgreSQL(t.c, schemas)
     else:
         try:
-            inspected = OurPostgreSQL(x.c)
+            inspected = OurPostgreSQL(x.c, schemas)
         except AttributeError:
-            inspected = OurPostgreSQL(x)
+            inspected = OurPostgreSQL(x, schemas)
     inspected.filter_schema()
     return inspected
+
+
+def get_all_schemas(db: Database, excluded_schemas=None):
+    _excluded = [
+        "information_schema",
+        "pg_catalog",
+        "pg_toast",
+    ]
+    if excluded_schemas is not None:
+        _excluded.extend(excluded_schemas)
+    return (
+        db.run_query(
+            """
+        SELECT nspname AS schema_name FROM pg_catalog.pg_namespace
+        WHERE NOT nspname = ANY(:excluded_schemas)
+        AND nspname NOT LIKE 'pg_temp_%'
+        AND nspname NOT LIKE 'pg_toast_%'
+        """,
+            {"excluded_schemas": _excluded},
+        )
+        .scalars()
+        .all()
+    )
 
 
 class StatementCounter:

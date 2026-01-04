@@ -62,7 +62,6 @@ CREATE INDEX boundaries_orig_id_idx ON geologic_boundaries.boundaries USING btre
 
 CREATE INDEX boundaries_source_id_idx ON geologic_boundaries.boundaries USING btree (source_id);
 
-ALTER DEFAULT PRIVILEGES FOR ROLE "macrostrat-admin" IN SCHEMA geologic_boundaries GRANT SELECT,USAGE ON SEQUENCES  TO macrostrat;
-
-ALTER DEFAULT PRIVILEGES FOR ROLE "macrostrat-admin" IN SCHEMA geologic_boundaries GRANT SELECT ON TABLES  TO macrostrat;
+ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat_admin IN SCHEMA geologic_boundaries GRANT SELECT, USAGE ON SEQUENCES TO macrostrat;
+ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat_admin IN SCHEMA geologic_boundaries GRANT SELECT ON TABLES TO macrostrat;
 

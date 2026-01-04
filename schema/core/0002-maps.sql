@@ -130,7 +130,7 @@ PARTITION BY LIST (scale);
 ALTER TABLE maps.polygons OWNER TO macrostrat;
 
 CREATE TABLE maps.sources (
-    source_id integer NOT NULL,
+    source_id serial PRIMARY KEY,
     name character varying(255),
     primary_table character varying(255),
     url character varying(255),
@@ -161,6 +161,19 @@ CREATE TABLE maps.sources (
     language text,
     description character varying
 );
+
+ALTER TABLE ONLY maps.sources
+  ADD CONSTRAINT sources_slug_key1 UNIQUE (slug);
+
+ALTER TABLE ONLY maps.sources
+  ADD CONSTRAINT sources_slug_key2 UNIQUE (slug);
+
+ALTER TABLE ONLY maps.sources
+  ADD CONSTRAINT sources_slug_key3 UNIQUE (slug);
+
+ALTER TABLE ONLY maps.sources
+  ADD CONSTRAINT sources_source_id_key UNIQUE (source_id);
+
 ALTER TABLE maps.sources OWNER TO macrostrat;
 
 COMMENT ON COLUMN maps.sources.slug IS 'Unique identifier for each Macrostrat source';
@@ -229,7 +242,8 @@ CREATE TABLE maps.polygons_large (
     scale maps.map_scale DEFAULT 'large'::maps.map_scale NOT NULL,
     CONSTRAINT enforce_valid_geom_large CHECK (public.st_isvalid(geom)),
     CONSTRAINT maps_polygons_geom_check CHECK (maps.polygons_geom_is_valid(geom)),
-    CONSTRAINT polygons_large_scale_check CHECK ((scale = 'large'::maps.map_scale))
+    CONSTRAINT polygons_large_scale_check CHECK ((scale = 'large'::maps.map_scale)),
+    CONSTRAINT polygons_source_id_fkey FOREIGN KEY (source_id) REFERENCES maps.sources(source_id)
 );
 ALTER TABLE maps.polygons_large OWNER TO macrostrat;
 
@@ -393,7 +407,8 @@ CREATE TABLE maps.polygons_medium (
     scale maps.map_scale DEFAULT 'medium'::maps.map_scale NOT NULL,
     CONSTRAINT enforce_valid_geom_medium CHECK (public.st_isvalid(geom)),
     CONSTRAINT maps_polygons_geom_check CHECK (maps.polygons_geom_is_valid(geom)),
-    CONSTRAINT polygons_medium_scale_check CHECK ((scale = 'medium'::maps.map_scale))
+    CONSTRAINT polygons_medium_scale_check CHECK ((scale = 'medium'::maps.map_scale)),
+    CONSTRAINT polygons_source_id_fkey FOREIGN KEY (source_id) REFERENCES maps.sources(source_id)
 );
 ALTER TABLE maps.polygons_medium OWNER TO macrostrat;
 
@@ -438,7 +453,8 @@ CREATE TABLE maps.polygons_small (
     geom public.geometry(Geometry,4326) NOT NULL,
     scale maps.map_scale DEFAULT 'small'::maps.map_scale NOT NULL,
     CONSTRAINT maps_polygons_geom_check CHECK (maps.polygons_geom_is_valid(geom)),
-    CONSTRAINT polygons_small_scale_check CHECK ((scale = 'small'::maps.map_scale))
+    CONSTRAINT polygons_small_scale_check CHECK ((scale = 'small'::maps.map_scale)),
+    CONSTRAINT polygons_source_id_fkey FOREIGN KEY (source_id) REFERENCES maps.sources(source_id)
 );
 ALTER TABLE maps.polygons_small OWNER TO macrostrat;
 
@@ -457,7 +473,8 @@ CREATE TABLE maps.polygons_tiny (
     geom public.geometry(Geometry,4326) NOT NULL,
     scale maps.map_scale DEFAULT 'tiny'::maps.map_scale NOT NULL,
     CONSTRAINT maps_polygons_geom_check CHECK (maps.polygons_geom_is_valid(geom)),
-    CONSTRAINT polygons_tiny_scale_check CHECK ((scale = 'tiny'::maps.map_scale))
+    CONSTRAINT polygons_tiny_scale_check CHECK ((scale = 'tiny'::maps.map_scale)),
+    CONSTRAINT polygons_source_id_fkey FOREIGN KEY (source_id) REFERENCES maps.sources(source_id)
 );
 ALTER TABLE maps.polygons_tiny OWNER TO macrostrat;
 
@@ -502,16 +519,6 @@ ALTER TABLE maps.source_operations_id_seq OWNER TO macrostrat;
 
 ALTER SEQUENCE maps.source_operations_id_seq OWNED BY maps.source_operations.id;
 
-CREATE SEQUENCE maps.sources_source_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-ALTER TABLE maps.sources_source_id_seq OWNER TO macrostrat;
-
-ALTER SEQUENCE maps.sources_source_id_seq OWNED BY maps.sources.source_id;
-
 CREATE VIEW maps.tiny AS
  SELECT polygons_tiny.map_id,
     polygons_tiny.orig_id,
@@ -528,6 +535,7 @@ CREATE VIEW maps.tiny AS
    FROM maps.polygons_tiny;
 ALTER TABLE maps.tiny OWNER TO macrostrat_admin;
 
+/** We should probably get rid of this */
 CREATE VIEW maps.vw_legend_with_liths AS
  SELECT l.legend_id,
     l.source_id,
@@ -561,8 +569,6 @@ ALTER TABLE ONLY maps.manual_matches ALTER COLUMN match_id SET DEFAULT nextval('
 ALTER TABLE ONLY maps.points ALTER COLUMN point_id SET DEFAULT nextval('maps.points_point_id_seq'::regclass);
 
 ALTER TABLE ONLY maps.source_operations ALTER COLUMN id SET DEFAULT nextval('maps.source_operations_id_seq'::regclass);
-
-ALTER TABLE ONLY maps.sources ALTER COLUMN source_id SET DEFAULT nextval('maps.sources_source_id_seq'::regclass);
 
 ALTER TABLE ONLY maps.legend_liths
     ADD CONSTRAINT legend_liths_legend_id_lith_id_basis_col_key UNIQUE (legend_id, lith_id, basis_col);
@@ -608,21 +614,6 @@ ALTER TABLE ONLY maps.polygons_tiny
 
 ALTER TABLE ONLY maps.source_operations
     ADD CONSTRAINT source_operations_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY maps.sources
-    ADD CONSTRAINT sources_pkey PRIMARY KEY (source_id);
-
-ALTER TABLE ONLY maps.sources
-    ADD CONSTRAINT sources_slug_key1 UNIQUE (slug);
-
-ALTER TABLE ONLY maps.sources
-    ADD CONSTRAINT sources_slug_key2 UNIQUE (slug);
-
-ALTER TABLE ONLY maps.sources
-    ADD CONSTRAINT sources_slug_key3 UNIQUE (slug);
-
-ALTER TABLE ONLY maps.sources
-    ADD CONSTRAINT sources_source_id_key UNIQUE (source_id);
 
 CREATE INDEX polygons_b_interval_idx ON ONLY maps.polygons USING btree (b_interval);
 

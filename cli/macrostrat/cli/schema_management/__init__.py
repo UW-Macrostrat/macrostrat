@@ -28,6 +28,7 @@ from .defs import (
     planning_database,
     StatementCounter,
     is_unsafe_statement,
+    get_all_schemas,
 )
 # First, register all migrations
 # NOTE: right now, this is quite implicit.
@@ -63,12 +64,20 @@ def plan():
         from_db = results_db(raw_database_url(url))
         target_db = results_db(raw_database_url(plan_db.engine.url))
 
+        schemas = get_all_schemas(
+            plan_db,
+            excluded_schemas=["topology", "sources", "tiger", "tiger_data"],
+        )
+
         m = Migration(
             from_db,
             target_db,
         )
-        m.changes.i_from = get_inspector(from_db)
-        m.changes.i_target = get_inspector(target_db)
+        # Subsitute inspectors for ones that support multiple schemas
+        m.changes.i_from = get_inspector(from_db, schemas)
+        m.changes.i_target = get_inspector(target_db, schemas)
+        # Extension versions are not important
+        m.changes.ignore_extension_versions = True
 
         m.set_safety(False)
         m.add_all_changes(privileges=True)
@@ -126,7 +135,7 @@ def apply(
 
     if not pending_plan.exists():
         raise MacrostratError(
-            "[yellow]No plan found. Please run [cyan]macrostrat schema plan[/cyan] to generate one."
+            "No plan found. Please run [item]macrostrat schema plan[/item] to generate one."
         )
 
     counter = StatementCounter(safe=safe)
