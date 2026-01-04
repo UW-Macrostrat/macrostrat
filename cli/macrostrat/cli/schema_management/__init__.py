@@ -261,10 +261,10 @@ def dump_schema(schema: str):
 
 
 @schema_app.command(rich_help_panel="Utils")
-def apply_all():
-    """Apply the entire target schema to the database
+def provision():
+    """Apply all schema objects to the database
 
-    TODO: filter out non-idempotent statements
+    TODO: filter out non-idempotent statements (table creation, etc.)
     """
     db = get_database()
 
