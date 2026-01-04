@@ -6,9 +6,9 @@ primarily in Macrostrat's column-builder application and set of routes.
 from pathlib import Path
 
 from macrostrat.app_frame import compose
+
 from macrostrat.core import MacrostratSubsystem
 from macrostrat.core.migrations import Migration, view_exists
-
 from ...database import SubsystemSchemaDefinition, get_db
 from ...database.utils import setup_postgrest_access
 
@@ -35,7 +35,6 @@ class MacrostratAPISubsystem(MacrostratSubsystem):
         """
         self.app.console.print("Setting roles for Macrostrat API", style="green bold")
         db = get_db()
-        db.run_fixtures(__here__ / "roles.sql")
 
         setup_postgrest_access("macrostrat_api")(db)
 

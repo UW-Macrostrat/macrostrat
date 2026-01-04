@@ -438,7 +438,6 @@ def state():
 
 # TODO: subsystem dependencies
 from .subsystems.core import core_schema
-from .subsystems.legend_api import legend_api
 from .subsystems.macrostrat_api import macrostrat_api
 
 # Add basic schema hunks
@@ -448,7 +447,6 @@ from .subsystems.xdd import text_vector_schema, xdd_schema
 db_subsystem.schema_hunks.append(core_schema)
 db_subsystem.schema_hunks.append(xdd_schema)
 db_subsystem.schema_hunks.append(text_vector_schema)
-db_subsystem.schema_hunks.append(legend_api)
 db_subsystem.schema_hunks.append(macrostrat_api)
 
 # Discover subsystems in third-party packages
