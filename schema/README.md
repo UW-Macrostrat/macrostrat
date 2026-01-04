@@ -27,3 +27,10 @@ be performed with manually created migration files. To create a manual migration
 - Migrations ~ files that describe changes to the database schema. Not all changes must be made with manual migrations
 
 
+## Known deficiencies in migration process
+
+Some schema changes are not automatically detected. We hope to improve this in the future:
+
+- Renaming columns
+- Inherited foreign keys in partitioned tables
+- Inter-schema view dependency cascades
