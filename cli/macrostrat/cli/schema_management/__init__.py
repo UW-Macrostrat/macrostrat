@@ -5,7 +5,7 @@ from sys import exit, stderr
 from typing import Callable
 
 import click
-import typer
+from macrostrat.app_frame import CommandBase
 from macrostrat.database import Database
 from macrostrat.database.transfer import pg_dump_to_file
 from macrostrat.database.transfer.utils import raw_database_url
@@ -44,10 +44,10 @@ fixtures_dir = __here__.parent / "fixtures"
 DBCallable = Callable[[Database], None]
 
 
-schema_app = typer.Typer(no_args_is_help=True)
+schema_app = CommandBase()
 
 
-@schema_app.command()
+@schema_app.command(name="plan", rich_help_panel="Automated migrations")
 def plan():
     """Compare schema with target database"""
 
@@ -96,7 +96,7 @@ def plan():
             f.write("\n".join(m.statements))
 
 
-@schema_app.command()
+@schema_app.command(rich_help_panel="Automated migrations")
 def review(edit=False):
     """Review the latest migration plan"""
     dumpdir = settings.srcroot / "schema"
@@ -117,13 +117,13 @@ def review(edit=False):
         print(plan_sql)
 
 
-@schema_app.command()
+@schema_app.command(rich_help_panel="Automated migrations")
 def apply(
     plan_file: Path | None = Argument(None),
     safe: bool = Option(True, "--safe/--unsafe"),
     archive: bool = Option(True, "--archive/--no-archive"),
 ):
-    """Apply automated migrations"""
+    """Apply migration plan to database"""
     db = get_database()
 
     dumpdir = settings.srcroot / "schema"
@@ -184,16 +184,31 @@ def apply(
         f.write("\n".join(statements_to_log) + "\n\n")
         # Write newlines to separate from next log entry
 
-    print(f"[dim]Logged statements to [bold]{applied_file.relative_to(cwd, walk_up=True)}[/]")
+    print(
+        f"[dim]Logged statements to [bold]{applied_file.relative_to(cwd, walk_up=True)}[/]"
+    )
+
+
+@schema_app.command(name="migrate", rich_help_panel="Manual migrations")
+def migrate(
+    name: str = Argument(None),
+    *,
+    apply: bool = Option(False, "--apply/--no-apply"),
+    force: bool = Option(False, "--force/--no-force"),
+    data: bool = Option(False, "--data/--no-data"),
+):
+    """Run all pending migrations"""
+    load_migrations()
+    run_migrations(apply=apply, name=name, force=force, data_changes=data)
 
 
 @schema_app.command(name="scripts", rich_help_panel="Utils")
 def run_scripts(migration: str = Argument(None)):
-    """Ad-hoc database management scripts
+    """Run ad-hoc data management scripts
 
     These will be integrated with the migration system in the future.
     """
-    pth = Path(__file__).parent.parent / "data-scripts"
+    pth = settings.srcroot / "schema" / "_data_scripts"
     files = list(pth.glob("*.sql")) + list(pth.glob("*.sh")) + list(pth.glob("*.py"))
     files.sort()
     if migration is None:
@@ -223,13 +238,6 @@ def run_scripts(migration: str = Argument(None)):
     if migration.suffix == ".sql":
         db = get_database()
         db.run_sql(migration)
-
-
-@schema_app.command(name="migrate")
-def _run_migrations(*, apply: bool = Option(False, "--apply/--no-apply")):
-    # TODO: we could import and load subsystem migrations here too.
-    load_migrations()
-    run_migrations(apply=apply)
 
 
 @schema_app.command("dump", rich_help_panel="Utils")
