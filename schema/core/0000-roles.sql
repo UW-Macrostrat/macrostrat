@@ -35,9 +35,6 @@ GRANT web_anon TO postgrest;
 GRANT web_user TO postgrest;
 GRANT web_admin TO postgrest;
 
-GRANT USAGE ON SCHEMA macrostrat TO web_anon;
-GRANT SELECT ON ALL TABLES IN SCHEMA macrostrat TO web_anon;
-
 -- Grant web_anon capabilities to web_user
 GRANT web_anon TO web_user;
 

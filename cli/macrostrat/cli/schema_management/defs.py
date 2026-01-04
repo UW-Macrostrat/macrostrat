@@ -70,7 +70,9 @@ def schema_dirs_for_environment(env: str):
         yield schema_dir / "local"
 
 
-def plan_schema_for_environment(env: str, db: Database):
+def apply_schema_for_environment(
+    db: Database, env: str, *, recursive: bool = True, statement_filter=None
+):
     for env_dir in schema_dirs_for_environment(env):
         schema_dir = env_dir
         if not schema_dir.exists():
@@ -80,7 +82,7 @@ def plan_schema_for_environment(env: str, db: Database):
 
         if len(fixtures) == 0:
             continue
-        db.run_fixtures(fixtures, recursive=True)
+        db.run_fixtures(fixtures, recursive=recursive, statement_filter=filter)
 
 
 @contextmanager
@@ -115,7 +117,9 @@ def planning_database(environment):
         """
         )
 
-        plan_schema_for_environment(environment, plan_db)
+        apply_schema_for_environment(
+            plan_db,
+            environment)
         yield plan_db
 
 

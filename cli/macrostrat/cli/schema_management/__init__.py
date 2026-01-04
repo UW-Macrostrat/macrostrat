@@ -29,6 +29,7 @@ from .defs import (
     StatementCounter,
     is_unsafe_statement,
     get_all_schemas,
+    apply_schema_for_environment,
 )
 # First, register all migrations
 # NOTE: right now, this is quite implicit.
@@ -263,3 +264,19 @@ def dump_schema(schema: str = Argument(None)):
             args=["--schema-only", "--schema", _schema],
         )
         asyncio.run(task)
+
+
+@schema_app.command(rich_help_panel="Utils")
+def apply_all():
+    """Apply the entire target schema to the database
+
+    TODO: filter out non-idempotent statements
+    """
+    db = get_database()
+
+    environment = settings.env
+
+    counter = StatementCounter(safe=True)
+    apply_schema_for_environment(db, environment, statement_filter=counter.filter)
+    db.run_sql("NOTIFY pgrst, 'reload schema';")
+    counter.print_report()

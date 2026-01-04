@@ -43,12 +43,18 @@ GRANT USAGE ON ALL SEQUENCES IN SCHEMA macrostrat TO "macrostrat";
 
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public, topology TO macrostrat;
 
+-- This is mostly here to ensure idempoence of replaying all GRANT statements
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO macrostrat;
+
 -- xDD writer role
 GRANT USAGE ON SCHEMA maps TO xdd_writer;
 GRANT SELECT ON ALL TABLES IN SCHEMA maps TO xdd_writer;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA maps TO xdd_writer;
 ALTER DEFAULT PRIVILEGES IN SCHEMA maps GRANT SELECT ON TABLES TO xdd_writer;
 
+/** PostgREST helper functions */
+GRANT USAGE ON SCHEMA macrostrat TO web_anon;
+GRANT SELECT ON ALL TABLES IN SCHEMA macrostrat TO web_anon;
 
 --POSTGREST helper functions for RLS security
 --Pull `"user_id"` out of the JWT that PostgREST stores in request.jwt.claims
