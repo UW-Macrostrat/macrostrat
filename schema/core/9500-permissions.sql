@@ -16,7 +16,7 @@ GRANT USAGE ON SCHEMA
   macrostrat, maps, points, sources, topology, public
   TO macrostrat;
 
-GRANT SELECT ON ALL TABLES    IN SCHEMA
+GRANT SELECT ON ALL TABLES IN SCHEMA
   carto, carto_new, geologic_boundaries, hexgrids, lines,
   macrostrat, maps, points, sources, topology, public
   TO macrostrat;

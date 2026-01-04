@@ -24,7 +24,6 @@ from macrostrat.core.exc import MacrostratError
 from macrostrat.core.migrations import run_migrations
 from .defs import (
     get_inspector,
-    managed_schemas,
     planning_database,
     StatementCounter,
     is_unsafe_statement,
@@ -242,7 +241,7 @@ def run_scripts(migration: str = Argument(None)):
 
 
 @schema_app.command("dump", rich_help_panel="Utils")
-def dump_schema(schema: str = Argument(None)):
+def dump_schema(schema: str):
     """Dump managed schemas using [cyan]pg_dump[/]"""
 
     engine = engine_for_db_name("macrostrat")
@@ -250,20 +249,15 @@ def dump_schema(schema: str = Argument(None)):
     dumpdir = settings.srcroot / "schema"
     env = settings.env
 
-    schemas_to_dump = managed_schemas
-    if schema is not None:
-        schemas_to_dump = [schema]
-
-    for _schema in schemas_to_dump:
-        dumpfile = dumpdir / env / f"0999-{_schema}.sql"
-        print(f"[dim]Dumping schema [bold cyan]{_schema}[/] to [bold]{dumpfile}[/]")
-        task = pg_dump_to_file(
-            engine,
-            dumpfile,
-            custom_format=False,
-            args=["--schema-only", "--schema", _schema],
-        )
-        asyncio.run(task)
+    dumpfile = dumpdir / env / f"0999-{schema}.sql"
+    print(f"[dim]Dumping schema [bold cyan]{schema}[/] to [bold]{dumpfile}[/]")
+    task = pg_dump_to_file(
+        engine,
+        dumpfile,
+        custom_format=False,
+        args=["--schema-only", "--schema", schema],
+    )
+    asyncio.run(task)
 
 
 @schema_app.command(rich_help_panel="Utils")

@@ -10,26 +10,6 @@ from rich import print
 
 from macrostrat.core.config import settings
 
-# DEPRECATED
-managed_schemas = [
-    "public",
-    "macrostrat",
-    "macrostrat_auth",
-    "ecosystem",
-    "storage",
-    "maps",
-    "maps_metadata",
-    "lines",
-    "carto",
-    "carto_new",
-    "points",
-    "user_features",
-    "usage_stats",
-    "integrations",
-    "macrostrat_xdd",
-    "macrostrat_api",
-]
-
 
 def is_unsafe_statement(s: str) -> bool:
     """Check if a SQL statement is unsafe (i.e., contains DROP)"""
@@ -117,9 +97,7 @@ def planning_database(environment):
         """
         )
 
-        apply_schema_for_environment(
-            plan_db,
-            environment)
+        apply_schema_for_environment(plan_db, environment)
         yield plan_db
 
 
