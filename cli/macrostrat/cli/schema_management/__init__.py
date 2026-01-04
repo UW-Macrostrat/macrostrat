@@ -121,6 +121,7 @@ def review(edit=False):
 def apply(
     plan_file: Path | None = Argument(None),
     safe: bool = Option(True, "--safe/--unsafe"),
+    archive: bool = Option(True, "--archive/--no-archive"),
 ):
     """Apply automated migrations"""
     db = get_database()
@@ -147,13 +148,43 @@ def apply(
 
     counter.print_report()
 
+    statements_to_log = counter.schema_log_entries()
+
+    if not archive:
+        print("[dim]Skipping archive step.")
+        return
+
+    if len(statements_to_log) == 0:
+        print("[dim]No statements to log, skipping archive step.")
+        return
+
+    n_ignored = len(counter.statements) - len(statements_to_log)
+
     # If we applied the plan, move it to the applied plans location
-    applied_dir = dumpdir / "_plans"
+    applied_dir = dumpdir / "_changelog"
     applied_dir.mkdir(exist_ok=True)
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
-    applied_file = applied_dir / f"{timestamp}-{pending_plan.name}"
-    pending_plan.rename(applied_file)
-    print(f"[dim]Moved applied plan to [bold]{applied_file}[/]")
+
+    _now = datetime.now()
+    date = _now.strftime("%Y-%m-%d")
+    applied_file = applied_dir / f"{date}-{environment}.applied.sql"
+
+    time_applied = _now.strftime("%Y-%m-%d %H:%M:%S")
+
+    cwd = Path.cwd()
+
+    with applied_file.open("a") as f:
+        # TODO: include user info, mark failing statements
+        f.write(f"\n-- {time_applied}\n")
+        f.write(f"-- Environment: {environment}\n")
+        counter.print_report(file=f, prefix="-- ")
+        if n_ignored > 0:
+            f.write(f"-- {n_ignored} statements were not logged\n")
+
+        f.write("\n")
+        f.write("\n".join(statements_to_log) + "\n\n")
+        # Write newlines to separate from next log entry
+
+    print(f"[dim]Logged statements to [bold]{applied_file.relative_to(cwd, walk_up=True)}[/]")
 
 
 @schema_app.command(name="scripts", rich_help_panel="Utils")

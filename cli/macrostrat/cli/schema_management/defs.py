@@ -180,6 +180,7 @@ class StatementCounter:
         self.total = 0
         self.unsafe = 0
         self.safe = safe
+        self.statements = []
 
     def filter(self, s, params):
         self.total += 1
@@ -187,15 +188,61 @@ class StatementCounter:
             self.unsafe += 1
             if self.safe:
                 return False
+        self.statements.append((s, params))
         return True
 
-    def print_report(self):
+    def print_report(self, file=None, prefix=""):
         applied_count = self.total
         _unsafe_action = "applied"
+        unsafe_suffix = ""
         if self.safe:
             applied_count -= self.unsafe
             _unsafe_action = "skipped"
+        elif self.unsafe > 0:
+            unsafe_suffix = f" ([red bold]{self.unsafe} unsafe[/])"
 
-        print(f"[dim]{applied_count} changes applied")
-        if self.unsafe > 0:
-            print(f"[red bold]{self.unsafe} unsafe changes were {_unsafe_action}")
+        n_text = _count(applied_count, "change")
+
+        print(
+            prefix + f"[dim]{n_text} applied" + unsafe_suffix,
+            file=file,
+        )
+        if self.unsafe > 0 and self.safe:
+            n_text = _count(self.unsafe, "unsafe change")
+            print(
+                prefix + f"[red bold]{n_text} skipped",
+                file=file,
+            )
+
+    def schema_log_entries(self):
+        return [s for s, p in self.statements if should_log_statement(s)]
+
+
+def _count(count, label):
+    plural = "" if count == 1 else "s"
+    return f"{count} {label}{plural}"
+
+
+def should_log_statement(s):
+    """Filter out uninteresting statements for schema change logging"""
+    s_lower = s.lower()
+    uninteresting_starts = [
+        "set",
+        "notify",
+        "alter role",
+        "comment on",
+        "create index",
+        "drop index",
+        "create view",
+        "drop view",
+        "create or replace view",
+        "create or replace function",
+        "create function",
+        "drop function",
+        "grant",
+        "revoke",
+    ]
+    for start in uninteresting_starts:
+        if s_lower.startswith(start + " "):
+            return False
+    return True
