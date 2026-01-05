@@ -28,6 +28,10 @@ GROUP BY col_id;
 
 SELECT * FROM macrostrat.cols;
 
+SELECT * FROM macrostrat.unit_econs
+WHERE unit_id NOT IN (SELECT id from macrostrat.units);
+
+
 /** Fix missing column refs */
 WITH cols_without_refs AS (
   SELECT id
@@ -60,6 +64,10 @@ LEFT JOIN macrostrat.cols col1
   ON ce.col_1 = col1.id
 LEFT JOIN macrostrat.cols col2
   ON ce.col_2 = col2.id;
+
+SELECT * FROM macrostrat.col_refs
+WHERE col_id NOT IN (SELECT id from macrostrat.cols)
+   OR ref_id NOT IN (SELECT id from macrostrat.refs);
 
 DO $$
 BEGIN
