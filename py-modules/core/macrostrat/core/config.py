@@ -3,12 +3,11 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from dynaconf import Dynaconf, Validator
+from macrostrat.app_frame.control_command import BackendType
+from macrostrat.utils import get_logger
 from sqlalchemy.engine import make_url
 from sqlalchemy.engine.url import URL
 from toml import load as load_toml
-
-from macrostrat.app_frame.control_command import BackendType
-from macrostrat.utils import get_logger
 
 from .resolvers import cast_sources, setup_source_roots_environment
 from .utils import convert_to_string, find_macrostrat_config, path_list_resolver
@@ -43,7 +42,7 @@ class MacrostratConfig(Dynaconf):
 
         # TODO: this enables sketchy behavior and tight coupling and should be removed.
         # However it is a useful hack for now
-        self.srcroot = Path(__file__).parent.parent.parent.parent
+        self.srcroot = Path(__file__).parent.parent.parent.parent.parent
 
     def all_environments(self):
         # Parse out top-level headers from TOML file
