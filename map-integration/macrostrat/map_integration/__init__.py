@@ -489,6 +489,99 @@ def cmd_download_dir(
     console.print(json.dumps(res, indent=2))
 
 
+@staging_cli.command("convert-e00")
+def convert_e00_to_gpkg(
+    data_path: str = Option(..., help="Directory containing .e00 files"),
+    slug: str = Option(..., help="Output basename (no .gpkg needed)"),
+):
+    data_dir = Path(data_path).expanduser().resolve()
+    out_gpkg = data_dir / f"{slug}.gpkg"
+    e00_files = sorted(data_dir.glob("*.e00"))
+
+    if not e00_files:
+        raise ValueError(f"No .e00 files found in {data_dir}")
+
+    def list_layers(e00_path: Path) -> set[str]:
+        # ogrinfo output includes lines like: "1: ARC (Line String)"
+        p = subprocess.run(
+            ["ogrinfo", "-ro", "-so", str(e00_path)],
+            capture_output=True,
+            text=True,
+        )
+        text_out = (p.stdout or "") + "\n" + (p.stderr or "")
+        layers = set()
+        for line in text_out.splitlines():
+            line = line.strip()
+            # matches: "1: ARC (Line String)"
+            if ":" in line and "(" in line:
+                left = line.split(":", 1)[1].strip()
+                name = left.split("(", 1)[0].strip()
+                if name:
+                    layers.add(name)
+        return layers
+
+    def run(cmd):
+        p = subprocess.run(cmd, capture_output=True, text=True)
+        return p.returncode, p.stdout, p.stderr
+    created = False
+    for f in e00_files:
+        base = f.stem
+        layers = list_layers(f)
+        line_layers = [lyr for lyr in ("ARC",) if lyr in layers]
+        point_layers = [lyr for lyr in ("CNT", "LAB", "POINT") if lyr in layers]
+        poly_layers = [lyr for lyr in ("PAL", "AREA") if lyr in layers]
+
+        # Lines
+        for lyr in line_layers:
+            cmd = ["ogr2ogr", "-f", "GPKG"]
+            if created:
+                cmd += ["-update", "-append"]
+            else:
+                # create/overwrite first successful write
+                cmd += ["-overwrite"]
+            cmd += [
+                str(out_gpkg), str(f), lyr,
+                "-nln", f"{base}_lines",
+                "-nlt", "LINESTRING",
+            ]
+            rc, _, err = run(cmd)
+            if rc == 0:
+                created = True
+
+        # Points
+        for lyr in point_layers:
+            if not created:
+                cmd = ["ogr2ogr", "-f", "GPKG", "-overwrite"]
+            else:
+                cmd = ["ogr2ogr", "-f", "GPKG", "-update", "-append"]
+            cmd += [
+                str(out_gpkg), str(f), lyr,
+                "-nln", f"{base}_points",
+                "-nlt", "POINT",
+            ]
+            rc, _, _ = run(cmd)
+            if rc == 0:
+                created = True
+
+        # Polygons
+        for lyr in poly_layers:
+            if not created:
+                cmd = ["ogr2ogr", "-f", "GPKG", "-overwrite"]
+            else:
+                cmd = ["ogr2ogr", "-f", "GPKG", "-update", "-append"]
+            cmd += [
+                str(out_gpkg), str(f), lyr,
+                "-nln", f"{base}_polygons",
+                "-nlt", "POLYGON",
+            ]
+            rc, _, _ = run(cmd)
+            if rc == 0:
+                created = True
+
+        print(f"{f.name}: layers={sorted(layers)}")
+
+    print(f"Done: {out_gpkg}")
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 

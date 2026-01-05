@@ -132,11 +132,16 @@ def preprocess_dataframe(
                 comments = " Points successfully ingested"
             print("Points df merge successful")
             return meta_df, ingest_pipeline, comments, state
-
-    if len(meta_df) == 0 or meta_df.empty:
-        comments = "Warning: metadata file is empty. Skipping metadata merge."
-        state = "failed"
+    if meta_df is None:
+        comments += "No metadata dataframe produced. Skipping metadata merge. "
+        state = state or "needs review"
         return poly_line_pt_df, ingest_pipeline, comments, state
+
+    if len(meta_df) == 0:
+        comments += "Metadata dataframe is empty. Skipping metadata merge. "
+        state = state or "needs review"
+        return poly_line_pt_df, ingest_pipeline, comments, state
+
     # merge polygons and metadata dataframes before inserting into the db
 
     merged_df = merge_metadata_polygons(poly_line_pt_df, meta_df, join_col)
