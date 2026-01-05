@@ -1,3 +1,0 @@
-#! /usr/bin/env sh
-
-uvicorn urvogel.__entry__:app --reload

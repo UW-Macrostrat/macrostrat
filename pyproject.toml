@@ -4,7 +4,7 @@
 [project]
 name = "macrostrat-system"
 version = "0.1.0"
-requires-python = ">=3.11,<3.13"
+requires-python = ">=3.12,<3.13"
 dependencies = [
     "setuptools>=75.8.2,<81.0.0",
     "macrostrat.cli",
@@ -33,9 +33,9 @@ default-groups = [
 ]
 
 [tool.uv.sources]
-"macrostrat.cli" = { editable = true, path = "cli" }
+"macrostrat.cli" = { editable = true, path = "py-modules/cli" }
 "macrostrat.match-utils" = { editable = true, path = "py-modules/match-utils" }
-"macrostrat.core" = { editable = true, path = "core" }
+"macrostrat.core" = { editable = true, path = "py-modules/core" }
 "api" = { editable = true, path = "services/api-v3" }
 
 [tool.black]
@@ -57,9 +57,7 @@ markers = [
 # as 'macrostrat test all'.
 # TODO: this test coverage should be gradually expanded.
 testpaths = [
-    "cli",
     "py-modules",
-    "map-integration",
     "services/api-v3/api/match"
 ]
 

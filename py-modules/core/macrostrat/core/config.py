@@ -43,7 +43,7 @@ class MacrostratConfig(Dynaconf):
 
         # TODO: this enables sketchy behavior and tight coupling and should be removed.
         # However it is a useful hack for now
-        self.srcroot = Path(__file__).parent.parent.parent.parent
+        self.srcroot = Path(__file__).parent.parent.parent.parent.parent
 
     def all_environments(self):
         # Parse out top-level headers from TOML file
