@@ -1,4 +1,4 @@
--- Column names unit_id	ref_id	section_id	section_name	country	province	lng	lat	paleolng	paleolat	unit_sum	unit_thickness	unit_thickness_sign	unit_thickness_unit	unit_con_base	unit_relationa	unit_relationb	unit_relationc	unit_paleoenvironment	depth_scale	group	formation	formation_thick_sign	formation_thick	formation_thick_unit	member	epoch	period	early_interval	late_interval	max_ma	min_ma	paleoenvironment	lithology1	lithology2	early_biozone	late_biozone
+SELECT pg_catalog.set_config('search_path', 'public', false);
 
 CREATE SCHEMA IF NOT EXISTS macrostrat_gbdb;
 
@@ -131,8 +131,7 @@ UPDATE macrostrat_gbdb.strata SET member = null WHERE member = '';
 UPDATE macrostrat_gbdb.strata SET formation = null WHERE formation = '';
 UPDATE macrostrat_gbdb.strata SET epoch = null WHERE epoch = '';
 
-DROP VIEW macrostrat_api.gbdb_strata;
-CREATE VIEW macrostrat_api.gbdb_strata AS
+CREATE OR REPLACE VIEW macrostrat_api.gbdb_strata AS
 SELECT *,
        ((early_interval IS NOT NULL AND late_interval IS NOT NULL)
          OR (early_biozone IS NOT NULL AND late_biozone IS NOT NULL)
@@ -186,7 +185,6 @@ $$ LANGUAGE sql IMMUTABLE;
 SELECT * FROM macrostrat.intervals WHERE id = macrostrat_api.interval_for_age_range(100, 140);
 
 
-DROP TABLE IF EXISTS macrostrat_gbdb.sections CASCADE;
 CREATE TABLE macrostrat_gbdb.sections AS
 WITH a AS (SELECT section_id,
                   lng,
@@ -206,7 +204,6 @@ FROM a;
 
 SELECT count(*) FROM macrostrat_gbdb.sections WHERE has_age_constraint;
 
-DROP VIEW IF EXISTS macrostrat_api.gbdb_section_geojson;
 CREATE OR REPLACE VIEW macrostrat_api.gbdb_section_geojson AS
 SELECT
   jsonb_build_object(
@@ -226,7 +223,7 @@ SELECT
   ) geojson
 FROM macrostrat_gbdb.sections;
 
-CREATE VIEW macrostrat_api.gbdb_formations AS
+CREATE OR REPLACE VIEW macrostrat_api.gbdb_formations AS
 SELECT
   section_id,
   formation,
@@ -240,7 +237,6 @@ GROUP BY section_id, formation;
 -- TODO: get Macrostrat formations
 
 
-DROP VIEW macrostrat_api.gbdb_age_model CASCADE;
 CREATE OR REPLACE VIEW macrostrat_api.gbdb_age_model AS
 WITH a0 AS (
   SELECT f.section_id,
@@ -288,7 +284,8 @@ LEFT JOIN macrostrat_api.gbdb_age_model am
             ON s.section_id = am.section_id
               AND s.unit_id = am.unit_id;
 
-DROP TABLE macrostrat_gbdb.summary_columns CASCADE;
+-- TODO: make this align more with new schema management approach
+DROP TABLE IF EXISTS macrostrat_gbdb.summary_columns;
 CREATE TABLE macrostrat_gbdb.summary_columns AS
 WITH hexgrid AS (
   SELECT ST_HexagonGrid(1, ST_MakeEnvelope(-180, -90, 180, 90, 4326)) AS hex
@@ -302,7 +299,6 @@ WHERE ST_Intersects((hex).geom, (
   )
 );
 
-DROP VIEW IF EXISTS macrostrat_api.gbdb_summary_columns;
 CREATE OR REPLACE VIEW macrostrat_api.gbdb_summary_columns AS
 SELECT jsonb_build_object(
     'type',
@@ -320,7 +316,6 @@ SELECT jsonb_build_object(
   ) geojson
 FROM macrostrat_gbdb.summary_columns;
 
-DROP TABLE macrostrat_gbdb.summary_units CASCADE;
 CREATE TABLE macrostrat_gbdb.summary_units AS
 WITH col_sections AS (
   SELECT section_id, sc.id col_id
@@ -339,8 +334,7 @@ JOIN col_sections cs ON cs.section_id = f.section_id
 WHERE f.min_ma IS NOT NULL AND f.max_ma IS NOT NULL
 GROUP BY col_id, f.formation, min_ma, max_ma;
 
-DROP VIEW macrostrat_api.gbdb_summary_units;
-CREATE VIEW macrostrat_api.gbdb_summary_units AS
+CREATE OR REPLACE VIEW macrostrat_api.gbdb_summary_units AS
 SELECT * FROM macrostrat_gbdb.summary_units;
 
 -- WITH duplicate_units AS (SELECT unit_id, section_id, COUNT(*)
@@ -388,6 +382,6 @@ SELECT count(*), round(count(*)::numeric/(SELECT count(*) proportion FROM macros
 
 SELECT age_source, count(*), round(count(*)::numeric/(SELECT count(*) FROM macrostrat_gbdb.strata), 2) proportion FROM macrostrat_api.gbdb_strata_with_age_model WHERE country = 'China' GROUP BY age_source ;
 
-CREATE VIEW macrostrat_gbdb.chinalex_ext AS
+CREATE OR REPLACE VIEW macrostrat_gbdb.chinalex_ext AS
 SELECT *, ST_GeomFromGeoJSON(geojson::json->>'geometry') AS geom
        FROM macrostrat_gbdb.chinalex;
