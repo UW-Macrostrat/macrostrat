@@ -24,10 +24,6 @@ ALTER TABLE macrostrat.timescales_intervals
   ADD CONSTRAINT timescales_intervals_timescales_fk FOREIGN KEY (timescale_id) REFERENCES macrostrat.timescales(id) ON DELETE CASCADE,
   ADD CONSTRAINT timescales_intervals_intervals_fk FOREIGN KEY (interval_id) REFERENCES macrostrat.intervals(id) ON DELETE CASCADE;
 
-ALTER TABLE macrostrat.units_sections
-  ADD CONSTRAINT units_sections_units_fk FOREIGN KEY (unit_id) REFERENCES macrostrat.units(id) ON DELETE CASCADE,
-  ADD CONSTRAINT units_sections_sections_fk FOREIGN KEY (section_id) REFERENCES macrostrat.sections(id) ON DELETE CASCADE;
-
 ALTER TABLE macrostrat.unit_liths
   ADD CONSTRAINT unit_liths_liths_fk FOREIGN KEY (lith_id) REFERENCES macrostrat.liths(id) ON DELETE CASCADE,
   ADD CONSTRAINT unit_liths_units_fk FOREIGN KEY (unit_id) REFERENCES macrostrat.units(id) ON DELETE CASCADE;
@@ -49,3 +45,32 @@ ALTER TABLE macrostrat.unit_liths_atts
 ALTER TABLE macrostrat.unit_strat_names
   ADD CONSTRAINT unit_strat_names_units_fk FOREIGN KEY (unit_id) REFERENCES macrostrat.units(id) ON DELETE CASCADE,
   ADD CONSTRAINT unit_strat_names_strat_names_fk FOREIGN KEY (strat_name_id) REFERENCES macrostrat.strat_names(id) ON DELETE CASCADE;
+
+ALTER TABLE macrostrat.unit_boundaries
+  ADD FOREIGN KEY(unit_id) REFERENCES macrostrat.units(id) ON DELETE CASCADE NOT VALID,
+  ADD FOREIGN KEY(ref_id) REFERENCES macrostrat.refs(id) ON DELETE CASCADE;
+
+/**
+  Unit-section relationships
+
+  258 units are in more than one section/column
+  TODO: we should decide if this will be allowed (i.e., do we put a unique constraint in units_sections?)
+
+SELECT unit_id, array_agg(col_id), array_agg(section_id) FROM macrostrat.units_sections
+GROUP BY unit_id
+HAVING COUNT(unit_id) > 1;
+*/
+
+/**
+  Really, units_sections should be a one-to-many data model, but it is implemented with the possibility of many-to-many relationships.
+  Here, we add unique constraints and triggers to prevent many-to-many relationships.
+**/
+
+ALTER TABLE macrostrat.units_sections
+  ADD CONSTRAINT units_sections_units_fk FOREIGN KEY (unit_id) REFERENCES macrostrat.units(id) ON DELETE CASCADE,
+  ADD CONSTRAINT units_sections_sections_fk FOREIGN KEY (section_id) REFERENCES macrostrat.sections(id) ON DELETE CASCADE,
+  ADD CONSTRAINT units_sections_cols_fk FOREIGN KEY (col_id) REFERENCES macrostrat.cols(id) ON DELETE CASCADE;
+
+-- ALTER TABLE macrostrat.units_sections
+--   ADD CONSTRAINT unique_unit_section_col UNIQUE (unit_id, section_id, col_id) NOT VALID;
+

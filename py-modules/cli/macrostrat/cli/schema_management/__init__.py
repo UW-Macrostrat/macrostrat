@@ -30,6 +30,7 @@ from .defs import (
     is_unsafe_statement,
     planning_database,
 )
+
 # First, register all migrations
 # NOTE: right now, this is quite implicit.
 from .migration_system import load_migrations

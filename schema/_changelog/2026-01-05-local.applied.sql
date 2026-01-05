@@ -94,3 +94,27 @@ FOREIGN KEY (project_id) REFERENCES macrostrat.projects(id)
 ALTER TABLE "macrostrat"."col_groups" VALIDATE
 CONSTRAINT "col_groups_project_fk";
 
+
+-- 2026-01-05 12:21:18
+-- Environment: local
+-- 6 changes applied
+
+ALTER TABLE "macrostrat"."unit_boundaries" ADD
+CONSTRAINT "unit_boundaries_ref_id_fkey"
+FOREIGN KEY (ref_id) REFERENCES macrostrat.refs(id)
+    ON DELETE CASCADE NOT VALID;
+ALTER TABLE "macrostrat"."unit_boundaries" VALIDATE
+CONSTRAINT "unit_boundaries_ref_id_fkey";
+ALTER TABLE "macrostrat"."unit_boundaries" ADD
+CONSTRAINT "unit_boundaries_unit_id_fkey"
+FOREIGN KEY (unit_id) REFERENCES macrostrat.units(id)
+    ON DELETE CASCADE NOT VALID;
+ALTER TABLE "macrostrat"."unit_boundaries" VALIDATE
+CONSTRAINT "unit_boundaries_unit_id_fkey";
+ALTER TABLE "macrostrat"."units_sections" ADD
+CONSTRAINT "units_sections_cols_fk"
+FOREIGN KEY (col_id) REFERENCES macrostrat.cols(id)
+    ON DELETE CASCADE NOT VALID;
+ALTER TABLE "macrostrat"."units_sections" VALIDATE
+CONSTRAINT "units_sections_cols_fk";
+
