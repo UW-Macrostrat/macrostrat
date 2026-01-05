@@ -1,14 +1,14 @@
 from contextlib import contextmanager
 
 import docker
+from macrostrat.database import Database
+from macrostrat.dinosaur.upgrade_cluster.utils import database_cluster
 from results.dbdiff.statements import check_for_drop
 from results.schemainspect.pg import PostgreSQL
 from results.schemainspect.pg.obj import PROPS
 from rich import print
 
 from macrostrat.core.config import settings
-from macrostrat.database import Database
-from macrostrat.dinosaur.upgrade_cluster.utils import database_cluster
 
 
 def is_unsafe_statement(s: str) -> bool:
@@ -51,18 +51,26 @@ def schema_dirs_for_environment(env: str):
 
 
 def apply_schema_for_environment(
-    db: Database, env: str, *, recursive: bool = True, statement_filter=None
+    db: Database,
+    env: str,
+    *,
+    recursive: bool = True,
+    statement_filter=lambda s, p: True,
 ):
     for env_dir in schema_dirs_for_environment(env):
         schema_dir = env_dir
         if not schema_dir.exists():
             continue
-        fixtures = sorted(list(schema_dir.glob("*.sql")))
+
+        func = schema_dir.rglob if recursive else schema_dir.glob
+        fixtures = sorted(list(func("*.sql")))
         fixtures = [f for f in fixtures if not f.name.endswith(".plan.sql")]
 
         if len(fixtures) == 0:
             continue
-        db.run_fixtures(fixtures, recursive=recursive, statement_filter=filter)
+        db.run_fixtures(
+            fixtures, recursive=recursive, statement_filter=statement_filter
+        )
 
 
 @contextmanager

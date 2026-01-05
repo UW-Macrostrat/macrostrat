@@ -1758,6 +1758,40 @@ CREATE VIEW macrostrat_api.user_locations_view WITH (security_invoker='true') AS
    FROM user_features.user_locations;
 ALTER TABLE macrostrat_api.user_locations_view OWNER TO macrostrat_admin;
 
+CREATE OR REPLACE VIEW macrostrat_api.autocomplete as
+SELECT autocomplete.id,
+       autocomplete.name,
+       autocomplete.type,
+       autocomplete.category
+FROM macrostrat.autocomplete
+UNION ALL
+SELECT sources.source_id AS id,
+       sources.name,
+       'sources'::character varying AS type,
+       'maps'::character varying AS category
+FROM maps.sources
+UNION ALL
+SELECT cols.id,
+       cols.col_name AS name,
+       'col'::character varying AS type,
+       'columns'::character varying AS category
+FROM macrostrat.cols
+UNION ALL
+SELECT projects.id,
+       projects.project::text AS name,
+       'project'::character varying AS type,
+       'projects'::character varying AS category
+FROM macrostrat.projects
+UNION ALL
+SELECT strat_names.id,
+       strat_names.strat_name::text AS name,
+       'strat_name'::character varying AS type,
+       'strat_names'::character varying AS category
+FROM macrostrat.strat_names
+where concept_id is null;
+ALTER TABLE macrostrat_api.autocomplete OWNER TO macrostrat_admin;
+
+
 GRANT USAGE ON SCHEMA macrostrat_api TO web_anon;
 GRANT USAGE ON SCHEMA macrostrat_api TO web_user;
 

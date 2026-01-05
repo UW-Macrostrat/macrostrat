@@ -1,34 +1,3 @@
-CREATE OR REPLACE VIEW macrostrat_api.autocomplete as
- SELECT autocomplete.id,
-    autocomplete.name,
-    autocomplete.type,
-    autocomplete.category
-   FROM macrostrat.autocomplete
-UNION ALL
- SELECT sources.source_id AS id,
-    sources.name,
-    'sources'::character varying AS type,
-    'maps'::character varying AS category
-   FROM maps.sources
-UNION ALL
- SELECT cols.id,
-    cols.col_name AS name,
-    'col'::character varying AS type,
-    'columns'::character varying AS category
-   FROM macrostrat.cols
-UNION ALL
- SELECT projects.id,
-    projects.project::text AS name,
-    'project'::character varying AS type,
-    'projects'::character varying AS category
-   FROM macrostrat.projects
-UNION ALL
-  SELECT strat_names.id,
-    strat_names.strat_name::text AS name,
-    'strat_name'::character varying AS type,
-    'strat_names'::character varying AS category
-   FROM macrostrat.strat_names
-   where concept_id is null;
 
 /**
   TODO: this is not needed but we keep it around for reference
