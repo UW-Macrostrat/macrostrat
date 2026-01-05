@@ -4,12 +4,11 @@ import importlib
 from pathlib import Path
 
 import docker
-from pytest import fixture, mark, skip
-from typer.testing import CliRunner
-
 from macrostrat.database import Database
 from macrostrat.dinosaur.upgrade_cluster import database_cluster
 from macrostrat.utils import get_logger, override_environment
+from pytest import fixture, mark, skip
+from typer.testing import CliRunner
 
 runner = CliRunner()
 
@@ -115,7 +114,7 @@ def load_config_module():
 
 @fixture()
 def cfg():
-    cfg_file = __here__ / "cli" / "tests" / "macrostrat.test.toml"
+    cfg_file = __here__ / "macrostrat" / "cli" / "tests" / "macrostrat.test.toml"
     with override_environment(MACROSTRAT_CONFIG=str(cfg_file), NO_COLOR="1"):
         mod_instance = load_config_module()
 
