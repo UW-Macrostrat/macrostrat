@@ -35,7 +35,6 @@ class MacrostratAPISubsystem(MacrostratSubsystem):
         """
         self.app.console.print("Setting roles for Macrostrat API", style="green bold")
         db = get_db()
-        db.run_fixtures(__here__ / "roles.sql")
 
         setup_postgrest_access("macrostrat_api")(db)
 

@@ -6,11 +6,11 @@ name = "macrostrat-system"
 version = "0.1.0"
 requires-python = ">=3.11,<3.13"
 dependencies = [
-    "setuptools>=75.8.2,<76",
+    "setuptools>=75.8.2,<81.0.0",
     "macrostrat.cli",
     "macrostrat.match-utils",
     "macrostrat.core",
-    "api"
+    "api",
 ]
 
 [dependency-groups]

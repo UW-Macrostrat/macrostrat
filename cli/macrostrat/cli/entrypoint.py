@@ -13,6 +13,7 @@ from macrostrat.core.main import env_text, set_app_state
 from macrostrat.utils.shell import run
 
 from .database import db_app, db_subsystem
+from .schema_management import schema_app
 from .subsystems.dev import dev_app
 from .subsystems.macrostrat_api import MacrostratAPISubsystem
 from .subsystems.paleogeography import (
@@ -92,9 +93,15 @@ main = app.control_command(
 )
 
 main.add_typer(
+    schema_app,
+    name="schema",
+    short_help="Schema management and migrations",
+)
+
+main.add_typer(
     db_app,
     name="database",
-    short_help="Macrostrat database",
+    short_help="Database utilities",
     aliases=["db"],
 )
 
@@ -295,7 +302,6 @@ if kube_namespace := getattr(settings, "kube_namespace", None):
         deprecated=True,
     )
 
-
 from .subsystems.storage import app as storage_app
 
 main.add_typer(
@@ -433,7 +439,6 @@ def state():
 
 # TODO: subsystem dependencies
 from .subsystems.core import core_schema
-from .subsystems.legend_api import legend_api
 from .subsystems.macrostrat_api import macrostrat_api
 
 # Add basic schema hunks
@@ -443,7 +448,6 @@ from .subsystems.xdd import text_vector_schema, xdd_schema
 db_subsystem.schema_hunks.append(core_schema)
 db_subsystem.schema_hunks.append(xdd_schema)
 db_subsystem.schema_hunks.append(text_vector_schema)
-db_subsystem.schema_hunks.append(legend_api)
 db_subsystem.schema_hunks.append(macrostrat_api)
 
 # Discover subsystems in third-party packages

@@ -10,7 +10,7 @@ from sqlalchemy import make_url, text
 from typer import Argument, Option
 
 from macrostrat.core import MacrostratSubsystem, app
-from macrostrat.core.migrations import run_migrations
+from macrostrat.core.database import get_database
 from macrostrat.database import Database
 from macrostrat.database.transfer import pg_dump_to_file, pg_restore_from_file
 from macrostrat.database.transfer.utils import raw_database_url
@@ -20,9 +20,7 @@ from macrostrat.utils.shell import run
 
 from ._legacy import get_db
 
-# First, register all migrations
 # NOTE: right now, this is quite implicit.
-from .migrations import load_migrations
 from .utils import engine_for_db_name, setup_postgrest_access
 
 log = get_logger(__name__)
@@ -32,9 +30,6 @@ fixtures_dir = __here__.parent / "fixtures"
 
 
 DBCallable = Callable[[Database], None]
-
-
-load_migrations()
 
 
 class SubsystemSchemaDefinition(BaseModel):
@@ -116,52 +111,7 @@ db_subsystem = DatabaseSubsystem(app)
 
 db_app = typer.Typer(no_args_is_help=True)
 
-
-def update_schema(
-    match: str = Option(None),
-    subsystems: list[str] = Option(None),
-    _all: bool = Option(None, "--all"),
-):
-    """Update the database schema"""
-    from macrostrat.core.config import PG_DATABASE
-    from macrostrat.database import Database
-
-    db_subsystem = app.subsystems.get("database")
-
-    if subsystems is None:
-        subsystems = []
-
-    """Create schema additions"""
-    schema_dir = fixtures_dir
-    # Loaded from env file
-    db = Database(PG_DATABASE)
-
-    if match is not None and len(subsystems) == 0:
-        # core is implicit
-        subsystems = ["core"]
-
-    if not _all and len(subsystems) == 0:
-        print("Please specify --all or --subsystems to update the schema")
-        print("Available subsystems:")
-        for hunk in db_subsystem.schema_hunks:
-            print(f"  {hunk.name}")
-        return
-
-    # Run subsystem updates
-    for hunk in db_subsystem.schema_hunks:
-        if (
-            subsystems is not None
-            and len(subsystems) != 0
-            and hunk.name not in subsystems
-        ):
-            continue
-        hunk.apply(db, match=match)
-
-    app.subsystems.run_hook("schema-update")
-
-
 db_app = db_subsystem.control_command()
-db_app.command(name="update", rich_help_panel="Schema management")(update_schema)
 
 
 @db_app.command(
@@ -230,7 +180,7 @@ def dump(
 
     engine = engine_for_db_name(database)
 
-    if dumpfile == "-":
+    if str(dumpfile) == "-":
         dumpfile = stdout
 
     args = ctx.args
@@ -353,7 +303,7 @@ class TableInspector:
 @db_app.command(name="inspect", rich_help_panel="Helpers")
 def inspect_table(table: str):
     """Inspect a table in the database"""
-    db = get_db()
+    db = get_database()
 
     schema = None
     if "." in table:
@@ -372,44 +322,6 @@ def inspect_table(table: str):
         header=f"""Inspecting table {table} in database {db.engine.url.database}.
         Use the 'db' object to interact with the database and 'insp' to interact with the inspector."""
     )
-
-
-@db_app.command(name="scripts", rich_help_panel="Schema management")
-def run_scripts(migration: str = Argument(None)):
-    """Ad-hoc database management scripts"""
-    pth = Path(__file__).parent.parent / "data-scripts"
-    files = list(pth.glob("*.sql")) + list(pth.glob("*.sh")) + list(pth.glob("*.py"))
-    files.sort()
-    if migration is None:
-        print("[yellow bold]No script specified\n", file=stderr)
-        print("[bold]Available scripts:", file=stderr)
-        for f in files:
-            print(f"  {f.stem}[dim]{f.suffix}", file=stderr)
-        exit(1)
-    matching_migrations = [
-        f for f in files if f.stem == migration or str(f) == migration
-    ]
-    if len(matching_migrations) == 0:
-        print(f"Script {migration} does not exist", file=stderr)
-        exit(1)
-    if len(matching_migrations) > 1:
-        print(
-            f"Ambiguous script name: {migration}",
-            file=stderr,
-        )
-        print("Please specify the full file name")
-        exit(1)
-    migration = matching_migrations[0]
-    if migration.suffix == ".py":
-        run("python", str(migration))
-    if migration.suffix == ".sh":
-        run(str(migration))
-    if migration.suffix == ".sql":
-        db = get_db()
-        db.run_sql(migration)
-
-
-db_app.command(name="migrations", rich_help_panel="Schema management")(run_migrations)
 
 
 def update_permissions():

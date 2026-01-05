@@ -74,6 +74,8 @@ def column_type_is(
     """
 
     def _check(db: Database) -> bool:
+        if not db.inspector.has_table(table, schema=schema):
+            return False
         cols = db.inspector.get_columns(table, schema=schema)
         for c in cols:
             if c["name"] == column:
@@ -339,13 +341,14 @@ def _dry_run_migrations(legacy=False):
     img_root = settings.srcroot / "base-images" / "database"
 
     # Build postgres pgaudit image
-    img_tag = "macrostrat-local-database:latest"
+    img_tag = "macrostrat.local/database:latest"
 
     client.images.build(path=str(img_root), tag=img_tag)
 
     # Spin up an image with this container
     port = 54884
     with database_cluster(client, img_tag, port=port) as container:
+        print(container)
         url = f"postgresql://postgres@localhost:{port}/postgres"
         db = Database(url)
         return _run_migrations_in_database(db, legacy=legacy)
