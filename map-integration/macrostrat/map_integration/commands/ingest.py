@@ -62,6 +62,7 @@ def preprocess_dataframe(
     comments = ""
     state = ""
     ext = meta_path.suffix.lower()
+    print("here is the ext!", ext)
     if ext == ".tsv":
         meta_df = P.read_csv(meta_path, sep="\t")
         ingest_pipeline = ".tsv pipeline"
@@ -106,7 +107,6 @@ def preprocess_dataframe(
             meta_df = map_strat_name(meta_df)
             if meta_df["strat_name"].isna().all():
                 comments += "No strat_names found."
-
         elif feature_suffix == "lines":
             meta_df, comments, state = map_lines_to_preferred_fields(
                 poly_line_pt_df, comments, state
@@ -117,6 +117,7 @@ def preprocess_dataframe(
             if state != "pending":
                 state = "ingested"
                 comments = " Lines successfully ingested"
+            print("Lines df merge successful")
             return meta_df, ingest_pipeline, comments, state
 
         elif feature_suffix == "points":
@@ -129,6 +130,7 @@ def preprocess_dataframe(
             if state != "pending":
                 state = "ingested"
                 comments = " Points successfully ingested"
+            print("Points df merge successful")
             return meta_df, ingest_pipeline, comments, state
 
     if len(meta_df) == 0 or meta_df.empty:
@@ -136,7 +138,10 @@ def preprocess_dataframe(
         state = "failed"
         return poly_line_pt_df, ingest_pipeline, comments, state
     # merge polygons and metadata dataframes before inserting into the db
+
     merged_df = merge_metadata_polygons(poly_line_pt_df, meta_df, join_col)
+    print("Polygon df merge successful")
+
     comments += "Polygons metadata merged and ingested"
     state = "ingested"
     return merged_df, ingest_pipeline, comments, state
@@ -255,7 +260,9 @@ def ingest_map(
     # concatenate all polygons into a single df, lines, and points as well
     for feature_type, df_list in frames.items():
         # Concatenate all dataframes
+        print("about to concatenate all df's per feature")
         df = G.GeoDataFrame(P.concat(df_list, ignore_index=True))
+        print("about to check for duplicates")
         df = df.loc[:, ~df.columns.duplicated()]
 
         feature_suffix = feature_type.lower() + "s"
@@ -265,12 +272,14 @@ def ingest_map(
         # formatted_filenames to append and map based on whatever integration pipeline is needed (inferred from the meta_path's ext)
         if meta_path:
             df.columns = df.columns.str.lower()
+            print("success at concatenating....now continuing to preprocess...")
             df, ingest_pipeline, comments, state = preprocess_dataframe(
                 df,
                 meta_path=meta_path,
                 join_col=join_col.lower(),
                 feature_suffix=feature_suffix,
             )
+            print("DONE preprocessing.")
             if feature_suffix == "polygons":
                 ingest_results["ingest_pipeline"] = ingest_pipeline
                 ingest_results["polygon_state"] = json.dumps(
@@ -311,7 +320,7 @@ def ingest_map(
                 ingest_results["state"] = "needs review"
             elif ingest_results["state"] is None:
                 ingest_results["state"] = "pending"
-
+            print("all required logs are updated.")
             before = df.columns.tolist()
             df = df.loc[:, ~df.columns.duplicated()]  # <- fix: reassign to merged_df!
             after = df.columns.tolist()

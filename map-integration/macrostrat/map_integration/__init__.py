@@ -15,7 +15,7 @@ from typer import Option
 from macrostrat.core import app
 from macrostrat.database import Database
 from macrostrat.map_integration.commands.prepare_fields import _prepare_fields
-from macrostrat.map_integration.pipeline import ingest_map
+#from macrostrat.map_integration.pipeline import ingest_map
 from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
 from macrostrat.map_integration.utils.ingestion_utils import (
     find_gis_files,
@@ -385,18 +385,8 @@ def staging(
             point_state=ingest_results["point_state"],
         ),
     )
-    ingest_id = db.run_query(
-        """
-        SELECT id
-        FROM maps_metadata.ingest_process
-        WHERE source_id = :source_id
-        ORDER BY id DESC
-        LIMIT 1
-        """,
-        dict(source_id=source_id),
-    ).scalar()
-    cmd_upload_dir(slug=slug, data_path=Path(data_path), ext=ext, ingest_process_id=ingest_id)
 
+    cmd_upload_dir(slug=slug, data_path=Path(data_path), ext=ext)
 
     map_info = get_map_info(db, slug)
     _prepare_fields(map_info)
@@ -416,17 +406,31 @@ staging_cli.command("delete")(delete_sources)
 # commands nested under 'macrostrat maps staging...'
 
 
-@staging_cli.command("s3-upload-dir")
-def cmd_upload_dir(slug: str = ..., data_path: Path = ..., ext: str = Option(""), ingest_process_id: int = Option(None)):
+@staging_cli.command("s3-upload")
+def cmd_upload_dir(slug: str = ..., data_path: Path = ..., ext: str = Option(".gdb", help="extension of the data path"), ingest_process_id: int = Option(None)):
     """Upload a local directory to the staging bucket under SLUG/."""
     db = get_database()
-    res = staging_upload_dir(slug, data_path, ext, db, ingest_process_id)
+    source_id = db.run_query(
+        "SELECT source_id FROM maps.sources WHERE slug = :slug",
+        dict(slug=slug),
+    ).scalar()
+    ingest_id = db.run_query(
+        """
+        SELECT id
+        FROM maps_metadata.ingest_process
+        WHERE source_id = :source_id
+        ORDER BY id DESC
+        LIMIT 1
+        """,
+        dict(source_id=source_id),
+    ).scalar()
+    res = staging_upload_dir(slug, data_path, ext, db, ingest_id)
     pretty_res = json.dumps(res, indent=2)
     console.print(f"[green] Processed files \n {pretty_res} [/green]")
     return
 
 
-@staging_cli.command("s3-delete-dir")
+@staging_cli.command("s3-delete")
 def cmd_delete_dir(
     slug: str = ...,
     file_name: str = Option(
@@ -472,7 +476,7 @@ def cmd_list_dir(
         token = page["next_page_token"]
 
 
-@staging_cli.command("s3-download-dir")
+@staging_cli.command("s3-download")
 def cmd_download_dir(
     slug: str = ...,
     dest_path: pathlib.Path = Option(
@@ -616,17 +620,8 @@ def staging_bulk(
             ),
         )
 
-        ingest_id = db.run_query(
-            """
-            SELECT id
-            FROM maps_metadata.ingest_process
-            WHERE source_id = :source_id
-            ORDER BY id DESC
-            LIMIT 1
-            """,
-            dict(source_id=source_id),
-        ).scalar()
-        cmd_upload_dir(slug=slug, data_path=region_path, ext=ext, ingest_process_id=ingest_id)
+
+        cmd_upload_dir(slug=slug, data_path=region_path, ext=ext)
 
 
         map_info = get_map_info(db, slug)

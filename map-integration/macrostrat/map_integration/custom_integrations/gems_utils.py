@@ -438,7 +438,7 @@ def map_points_to_preferred_fields(
 
 
 def map_lines_to_preferred_fields(
-    meta_df: G.GeoDataFrame, comments: str, state: str
+        meta_df: G.GeoDataFrame, comments: str, state: str
 ) -> G.GeoDataFrame:
     state = ""
     rename_map = {
@@ -450,6 +450,17 @@ def map_lines_to_preferred_fields(
     }
 
     col_lower_to_actual = {col.lower(): col for col in meta_df.columns}
+
+    def series_has_values(s) -> bool:
+        s = s.astype(str).str.strip()
+        return (~s.isin(["", "nan", "none"])).any()
+
+    # use name column if it already exists
+    if "name" in col_lower_to_actual:
+        actual_name_col = col_lower_to_actual["name"]
+        if series_has_values(meta_df[actual_name_col]):
+            rename_map.pop("Label", None)
+
     actual_rename = {}
     for src, dst in rename_map.items():
         src_lower = src.lower()
