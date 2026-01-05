@@ -265,8 +265,9 @@ RETURN QUERY
 END
 $$ language plpgsql;
 
-/* function that calculates proportions of lithologies based on
-subdom and dom props.
+/* function that calculates proportions
+   of lithologies based on subdom and
+   dom props.
 
 happens here: https://github.com/UW-Macrostrat/utils/blob/bba082956cc611af8458cf234c160b05e1cb3794/cli/commands/rebuild_scripts/lookup_unit_attrs_api.py#L40
 but as two separate queries. Makes more sense to make a function that calculates both sub and dom comp_prop for
