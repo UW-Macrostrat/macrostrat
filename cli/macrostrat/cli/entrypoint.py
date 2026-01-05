@@ -2,15 +2,16 @@ from os import environ
 from pathlib import Path
 
 import typer
-from macrostrat.app_frame import CommandBase
-from macrostrat.utils.shell import run
 from rich import print
 from rich.traceback import install
 from typer import Argument, Typer
 
+from macrostrat.app_frame import CommandBase
 from macrostrat.core import app
 from macrostrat.core.exc import MacrostratError
 from macrostrat.core.main import env_text, set_app_state
+from macrostrat.utils.shell import run
+
 from .database import db_app, db_subsystem
 from .schema_management import schema_app
 from .subsystems.dev import dev_app

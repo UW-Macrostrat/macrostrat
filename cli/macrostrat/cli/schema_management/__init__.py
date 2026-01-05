@@ -5,35 +5,36 @@ from sys import exit, stderr
 from typing import Callable
 
 import click
-from macrostrat.app_frame import CommandBase
-from macrostrat.database import Database
-from macrostrat.database.transfer import pg_dump_to_file
-from macrostrat.database.transfer.utils import raw_database_url
-from macrostrat.utils import get_logger
-from macrostrat.utils.shell import run
 from results import db as results_db
 from results.dbdiff import Migration
 from rich import print
-from typer import Argument
-from typer import Option
+from typer import Argument, Option
 
+from macrostrat.app_frame import CommandBase
 from macrostrat.core import app as macrostrat_app
 from macrostrat.core.config import settings
 from macrostrat.core.database import get_database
 from macrostrat.core.exc import MacrostratError
 from macrostrat.core.migrations import run_migrations
+from macrostrat.database import Database
+from macrostrat.database.transfer import pg_dump_to_file
+from macrostrat.database.transfer.utils import raw_database_url
+from macrostrat.utils import get_logger
+from macrostrat.utils.shell import run
+
+from ..database.utils import engine_for_db_name
 from .defs import (
-    get_inspector,
-    planning_database,
     StatementCounter,
-    is_unsafe_statement,
-    get_all_schemas,
     apply_schema_for_environment,
+    get_all_schemas,
+    get_inspector,
+    is_unsafe_statement,
+    planning_database,
 )
+
 # First, register all migrations
 # NOTE: right now, this is quite implicit.
 from .migration_system import load_migrations
-from ..database.utils import engine_for_db_name
 
 log = get_logger(__name__)
 

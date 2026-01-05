@@ -1,14 +1,14 @@
 from contextlib import contextmanager
 
 import docker
-from macrostrat.database import Database
-from macrostrat.dinosaur.upgrade_cluster.utils import database_cluster
 from results.dbdiff.statements import check_for_drop
 from results.schemainspect.pg import PostgreSQL
 from results.schemainspect.pg.obj import PROPS
 from rich import print
 
 from macrostrat.core.config import settings
+from macrostrat.database import Database
+from macrostrat.dinosaur.upgrade_cluster.utils import database_cluster
 
 
 def is_unsafe_statement(s: str) -> bool:

@@ -1,7 +1,7 @@
-from macrostrat.database import Database
 from psycopg2.sql import Identifier
 
 from macrostrat.core.migrations import Migration, _not, custom_type_exists
+from macrostrat.database import Database
 
 
 class MeasurementClassCustomTypeMigration(Migration):

@@ -4,10 +4,6 @@ from typing import Callable
 
 import docker
 import typer
-from macrostrat.database import Database
-from macrostrat.dinosaur.upgrade_cluster.utils import database_cluster
-from macrostrat.utils import get_logger, working_directory
-from macrostrat.utils.shell import run
 from rich import print
 from typer import Argument
 
@@ -15,6 +11,11 @@ from macrostrat.core import app
 from macrostrat.core.config import settings
 from macrostrat.core.database import get_database
 from macrostrat.core.migrations import _run_migrations_in_database
+from macrostrat.database import Database
+from macrostrat.dinosaur.upgrade_cluster.utils import database_cluster
+from macrostrat.utils import get_logger, working_directory
+from macrostrat.utils.shell import run
+
 from ..database.utils import engine_for_db_name
 
 log = get_logger(__name__)
