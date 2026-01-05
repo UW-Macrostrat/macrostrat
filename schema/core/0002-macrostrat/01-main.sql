@@ -1804,14 +1804,9 @@ CREATE TABLE macrostrat.strat_names_meta (
   ref_id integer NOT NULL,
   CONSTRAINT idx_44157324_primary PRIMARY KEY (concept_id),
   CONSTRAINT strat_names_meta_interval_fk
-    FOREIGN KEY (interval_id) REFERENCES macrostrat.intervals(id),
-  CONSTRAINT strat_names_meta_b_int_fk
-    FOREIGN KEY (b_int) REFERENCES macrostrat.intervals(id),
-  CONSTRAINT strat_names_meta_t_int_fk
-    FOREIGN KEY (t_int) REFERENCES macrostrat.intervals(id),
-  CONSTRAINT strat_names_meta_refs_fk
-    FOREIGN KEY (ref_id) REFERENCES macrostrat.refs(id)
+    FOREIGN KEY (interval_id) REFERENCES macrostrat.intervals(id)
 );
+
 ALTER TABLE macrostrat.strat_names_meta OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.strat_names_meta_concept_id_seq
@@ -1824,6 +1819,13 @@ CREATE SEQUENCE macrostrat.strat_names_meta_concept_id_seq
 ALTER TABLE macrostrat.strat_names_meta_concept_id_seq OWNER TO macrostrat_admin;
 ALTER SEQUENCE macrostrat.strat_names_meta_concept_id_seq OWNED BY macrostrat.strat_names_meta.concept_id;
 
+/** Constraints that need validation */
+ALTER TABLE macrostrat.strat_names_meta ADD CONSTRAINT strat_names_meta_b_int_fk
+    FOREIGN KEY (b_int) REFERENCES macrostrat.intervals(id) NOT VALID;
+ALTER TABLE macrostrat.strat_names_meta ADD CONSTRAINT strat_names_meta_t_int_fk
+    FOREIGN KEY (t_int) REFERENCES macrostrat.intervals(id) NOT VALID;
+ALTER TABLE macrostrat.strat_names_meta ADD CONSTRAINT strat_names_meta_refs_fk
+  FOREIGN KEY (ref_id) REFERENCES macrostrat.refs(id);
 
 CREATE TABLE macrostrat.strat_names (
     id integer NOT NULL,
@@ -1905,17 +1907,19 @@ CREATE TABLE macrostrat.strat_tree (
     CONSTRAINT strat_tree_strat_names_parent_fk
       FOREIGN KEY (parent)
       REFERENCES macrostrat.strat_names(id)
-      ON DELETE CASCADE,
-    CONSTRAINT strat_tree_strat_names_child_fk
-      FOREIGN KEY (child)
-      REFERENCES macrostrat.strat_names(id)
-      ON DELETE CASCADE,
-    CONSTRAINT strat_tree_refs_fk
-      FOREIGN KEY (ref_id)
-      REFERENCES macrostrat.refs(id)
       ON DELETE CASCADE
 );
 ALTER TABLE macrostrat.strat_tree OWNER TO macrostrat_admin;
+
+ALTER TABLE macrostrat.strat_tree ADD CONSTRAINT strat_tree_refs_fk
+  FOREIGN KEY (ref_id)
+  REFERENCES macrostrat.refs(id)
+  NOT VALID;
+
+ALTER TABLE macrostrat.strat_tree ADD CONSTRAINT strat_tree_strat_names_child_fk
+      FOREIGN KEY (child)
+      REFERENCES macrostrat.strat_names(id)
+      ON DELETE CASCADE NOT VALID;
 
 CREATE TABLE macrostrat.structure_atts (
     id bigint NOT NULL,
