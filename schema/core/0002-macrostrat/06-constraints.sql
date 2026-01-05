@@ -1,18 +1,6 @@
 ALTER TABLE ONLY macrostrat.col_areas
   ADD CONSTRAINT col_areas_cols_fk FOREIGN KEY (col_id) REFERENCES macrostrat.cols(id) ON DELETE CASCADE;
 
-ALTER TABLE ONLY macrostrat.col_refs
-  ADD CONSTRAINT col_refs_col_fk FOREIGN KEY (col_id) REFERENCES macrostrat.cols(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY macrostrat.col_refs
-  ADD CONSTRAINT col_refs_ref_fk FOREIGN KEY (ref_id) REFERENCES macrostrat.refs(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY macrostrat.cols
-  ADD CONSTRAINT cols_col_groups_fk FOREIGN KEY (col_group_id) REFERENCES macrostrat.col_groups(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY macrostrat.cols
-  ADD CONSTRAINT cols_project_fk FOREIGN KEY (project_id) REFERENCES macrostrat.projects(id) ON DELETE CASCADE;
-
 ALTER TABLE ONLY macrostrat.concepts_places
   ADD CONSTRAINT concepts_places_places_fk FOREIGN KEY (place_id) REFERENCES macrostrat.places(place_id) ON DELETE CASCADE;
 
@@ -75,18 +63,6 @@ ALTER TABLE ONLY macrostrat.unit_strat_names
 
 ALTER TABLE ONLY macrostrat.unit_strat_names
   ADD CONSTRAINT unit_strat_names_units_fk FOREIGN KEY (unit_id) REFERENCES macrostrat.units(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY macrostrat.units
-  ADD CONSTRAINT units_cols_fk FOREIGN KEY (col_id) REFERENCES macrostrat.cols(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY macrostrat.units
-  ADD CONSTRAINT units_intervals_fo_fk FOREIGN KEY (fo) REFERENCES macrostrat.intervals(id) ON DELETE RESTRICT;
-
-ALTER TABLE ONLY macrostrat.units
-  ADD CONSTRAINT units_intervals_lo_fk FOREIGN KEY (lo) REFERENCES macrostrat.intervals(id) ON DELETE RESTRICT;
-
-ALTER TABLE ONLY macrostrat.units
-  ADD CONSTRAINT units_sections_fk FOREIGN KEY (section_id) REFERENCES macrostrat.sections(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY macrostrat.units_sections
   ADD CONSTRAINT units_sections_sections_fk FOREIGN KEY (section_id) REFERENCES macrostrat.sections(id) ON DELETE CASCADE;

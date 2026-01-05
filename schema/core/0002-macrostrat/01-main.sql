@@ -506,11 +506,42 @@ CREATE TABLE macrostrat.projects (
     descrip text NOT NULL,
     timescale_id integer NOT NULL,
     is_composite boolean DEFAULT false,
-    slug text NOT NULL
+    slug text NOT NULL,
+    CONSTRAINT idx_44157270_primary PRIMARY KEY (id),
+    CONSTRAINT projects_slug_key UNIQUE (slug)
 );
 ALTER TABLE macrostrat.projects OWNER TO macrostrat;
 
 COMMENT ON TABLE macrostrat.projects IS 'Last updated from MariaDB - 2023-07-28 16:57';
+
+CREATE SEQUENCE macrostrat.projects_id_seq
+  AS integer
+  START WITH 1
+  INCREMENT BY 1
+  NO MINVALUE
+  NO MAXVALUE
+  CACHE 1;
+ALTER TABLE macrostrat.projects_id_seq OWNER TO macrostrat;
+
+ALTER SEQUENCE macrostrat.projects_id_seq OWNED BY macrostrat.projects.id;
+
+CREATE TABLE macrostrat.projects_tree (
+  id integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME macrostrat.projects_tree_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+    ),
+  parent_id integer NOT NULL,
+  child_id integer NOT NULL
+);
+ALTER TABLE macrostrat.projects_tree OWNER TO macrostrat;
+
+ALTER TABLE ONLY macrostrat.projects_tree
+  ADD CONSTRAINT projects_tree_parent_id_child_id_key UNIQUE (parent_id, child_id);
+
 
 CREATE FUNCTION macrostrat.generate_project_slug(_project macrostrat.projects) RETURNS text
     LANGUAGE plpgsql
@@ -702,6 +733,32 @@ END
 $$;
 ALTER FUNCTION macrostrat.update_unit_lith_comp_props(_unit_id integer) OWNER TO macrostrat_admin;
 
+
+CREATE TABLE macrostrat.refs (
+  id integer NOT NULL,
+  pub_year integer NOT NULL,
+  author character varying(255) NOT NULL,
+  ref text NOT NULL,
+  doi character varying(40) DEFAULT NULL::character varying,
+  compilation_code macrostrat.refs_compilation_code NOT NULL,
+  url character varying(255) DEFAULT NULL::character varying,
+  rgeom public.geometry,
+  CONSTRAINT idx_44157277_primary PRIMARY KEY (id)
+);
+ALTER TABLE macrostrat.refs OWNER TO macrostrat_admin;
+
+CREATE SEQUENCE macrostrat.refs_id_seq
+  AS integer
+  START WITH 1
+  INCREMENT BY 1
+  NO MINVALUE
+  NO MAXVALUE
+  CACHE 1;
+ALTER TABLE macrostrat.refs_id_seq OWNER TO macrostrat_admin;
+
+ALTER SEQUENCE macrostrat.refs_id_seq OWNED BY macrostrat.refs.id;
+
+
 CREATE TABLE macrostrat.autocomplete (
     id integer DEFAULT 0 NOT NULL,
     name character varying(255) DEFAULT NULL::character varying,
@@ -777,7 +834,8 @@ ALTER SEQUENCE macrostrat.col_areas_id_seq OWNED BY macrostrat.col_areas.id;
 CREATE TABLE macrostrat.col_equiv (
     id integer NOT NULL,
     col_1 integer NOT NULL,
-    col_2 integer NOT NULL
+    col_2 integer NOT NULL,
+    CONSTRAINT idx_44157034_primary PRIMARY KEY (id)
 );
 ALTER TABLE macrostrat.col_equiv OWNER TO macrostrat_admin;
 
@@ -791,25 +849,6 @@ CREATE SEQUENCE macrostrat.col_equiv_id_seq
 ALTER TABLE macrostrat.col_equiv_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.col_equiv_id_seq OWNED BY macrostrat.col_equiv.id;
-
-CREATE TABLE macrostrat.col_groups (
-    id integer NOT NULL,
-    col_group character varying(100) NOT NULL,
-    col_group_long character varying(100) NOT NULL,
-    project_id integer NOT NULL
-);
-ALTER TABLE macrostrat.col_groups OWNER TO macrostrat_admin;
-
-CREATE SEQUENCE macrostrat.col_groups_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-ALTER TABLE macrostrat.col_groups_id_seq OWNER TO macrostrat_admin;
-
-ALTER SEQUENCE macrostrat.col_groups_id_seq OWNED BY macrostrat.col_groups.id;
 
 CREATE TABLE macrostrat.col_notes (
     id integer NOT NULL,
@@ -829,11 +868,72 @@ ALTER TABLE macrostrat.col_notes_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.col_notes_id_seq OWNED BY macrostrat.col_notes.id;
 
+CREATE TABLE macrostrat.col_groups (
+  id integer NOT NULL,
+  col_group character varying(100) NOT NULL,
+  col_group_long character varying(100) NOT NULL,
+  project_id integer NOT NULL,
+  CONSTRAINT idx_44157039_primary PRIMARY KEY (id)
+);
+ALTER TABLE macrostrat.col_groups OWNER TO macrostrat_admin;
+
+CREATE SEQUENCE macrostrat.col_groups_id_seq
+  AS integer
+  START WITH 1
+  INCREMENT BY 1
+  NO MINVALUE
+  NO MAXVALUE
+  CACHE 1;
+ALTER TABLE macrostrat.col_groups_id_seq OWNER TO macrostrat_admin;
+
+ALTER SEQUENCE macrostrat.col_groups_id_seq OWNED BY macrostrat.col_groups.id;
+
+CREATE TABLE macrostrat.cols (
+  id integer NOT NULL,
+  col_group_id integer NOT NULL,
+  project_id integer NOT NULL,
+  status_code macrostrat.cols_status_code NOT NULL,
+  col_type macrostrat.cols_col_type NOT NULL,
+  col_position macrostrat.cols_col_position NOT NULL,
+  col numeric(6,2) NOT NULL,
+  col_name character varying(75) NOT NULL,
+  lat numeric(8,5) NOT NULL,
+  lng numeric(8,5) NOT NULL,
+  col_area double precision NOT NULL,
+  created timestamp with time zone NOT NULL,
+  coordinate public.geometry,
+  wkt text,
+  poly_geom public.geometry,
+  CONSTRAINT idx_44157014_primary PRIMARY KEY (id),
+  CONSTRAINT cols_col_groups_fk FOREIGN KEY (col_group_id) REFERENCES macrostrat.col_groups(id) ON DELETE CASCADE,
+  CONSTRAINT cols_project_fk FOREIGN KEY (project_id) REFERENCES macrostrat.projects(id) ON DELETE CASCADE
+);
+ALTER TABLE macrostrat.cols OWNER TO macrostrat_admin;
+
+CREATE SEQUENCE macrostrat.cols_id_seq
+  AS integer
+  START WITH 1
+  INCREMENT BY 1
+  NO MINVALUE
+  NO MAXVALUE
+  CACHE 1;
+ALTER TABLE macrostrat.cols_id_seq OWNER TO macrostrat_admin;
+
+ALTER SEQUENCE macrostrat.cols_id_seq OWNED BY macrostrat.cols.id;
+
+
+/* Need to delete 68 rows where col_id didn't exist in cols
+    the mariadb version of macrostrat has a "col_equv" that maps
+    the bad id-ed columns to the actual ones
+ */
 CREATE TABLE macrostrat.col_refs (
     id integer NOT NULL,
     col_id integer NOT NULL,
     ref_id integer NOT NULL,
-    CONSTRAINT idx_44157051_primary PRIMARY KEY (id)
+    CONSTRAINT idx_44157051_primary PRIMARY KEY (id),
+    CONSTRAINT col_refs_col_fk FOREIGN KEY (col_id) REFERENCES macrostrat.cols(id) ON DELETE CASCADE,
+    CONSTRAINT col_refs_ref_fk FOREIGN KEY (ref_id) REFERENCES macrostrat.refs(id) ON DELETE CASCADE,
+    CONSTRAINT col_refs_unique UNIQUE (col_id, ref_id)
 );
 ALTER TABLE macrostrat.col_refs OWNER TO macrostrat_admin;
 
@@ -855,37 +955,6 @@ CREATE TABLE macrostrat.colors (
     unit_class character varying(4) DEFAULT NULL::character varying
 );
 ALTER TABLE macrostrat.colors OWNER TO macrostrat_admin;
-
-CREATE TABLE macrostrat.cols (
-    id integer NOT NULL,
-    col_group_id integer NOT NULL,
-    project_id integer NOT NULL,
-    status_code macrostrat.cols_status_code NOT NULL,
-    col_type macrostrat.cols_col_type NOT NULL,
-    col_position macrostrat.cols_col_position NOT NULL,
-    col numeric(6,2) NOT NULL,
-    col_name character varying(75) NOT NULL,
-    lat numeric(8,5) NOT NULL,
-    lng numeric(8,5) NOT NULL,
-    col_area double precision NOT NULL,
-    created timestamp with time zone NOT NULL,
-    coordinate public.geometry,
-    wkt text,
-    poly_geom public.geometry,
-    CONSTRAINT idx_44157014_primary PRIMARY KEY (id)
-);
-ALTER TABLE macrostrat.cols OWNER TO macrostrat_admin;
-
-CREATE SEQUENCE macrostrat.cols_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-ALTER TABLE macrostrat.cols_id_seq OWNER TO macrostrat_admin;
-
-ALTER SEQUENCE macrostrat.cols_id_seq OWNED BY macrostrat.cols.id;
 
 CREATE TABLE macrostrat.concepts_places (
     concept_id integer NOT NULL,
@@ -1630,54 +1699,6 @@ ALTER TABLE macrostrat.places_place_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.places_place_id_seq OWNED BY macrostrat.places.place_id;
 
-CREATE SEQUENCE macrostrat.projects_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-ALTER TABLE macrostrat.projects_id_seq OWNER TO macrostrat;
-
-ALTER SEQUENCE macrostrat.projects_id_seq OWNED BY macrostrat.projects.id;
-
-CREATE TABLE macrostrat.projects_tree (
-    id integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY (
-        SEQUENCE NAME macrostrat.projects_tree_id_seq
-        START WITH 1
-        INCREMENT BY 1
-        NO MINVALUE
-        NO MAXVALUE
-        CACHE 1
-    ),
-    parent_id integer NOT NULL,
-    child_id integer NOT NULL
-);
-ALTER TABLE macrostrat.projects_tree OWNER TO macrostrat;
-
-CREATE TABLE macrostrat.refs (
-    id integer NOT NULL,
-    pub_year integer NOT NULL,
-    author character varying(255) NOT NULL,
-    ref text NOT NULL,
-    doi character varying(40) DEFAULT NULL::character varying,
-    compilation_code macrostrat.refs_compilation_code NOT NULL,
-    url character varying(255) DEFAULT NULL::character varying,
-    rgeom public.geometry,
-    CONSTRAINT idx_44157277_primary PRIMARY KEY (id)
-);
-ALTER TABLE macrostrat.refs OWNER TO macrostrat_admin;
-
-CREATE SEQUENCE macrostrat.refs_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-ALTER TABLE macrostrat.refs_id_seq OWNER TO macrostrat_admin;
-
-ALTER SEQUENCE macrostrat.refs_id_seq OWNED BY macrostrat.refs.id;
 
 CREATE TABLE macrostrat.rockd_features (
     id integer NOT NULL,
@@ -1726,7 +1747,8 @@ CREATE TABLE macrostrat.sections (
     fo integer DEFAULT 0 NOT NULL,
     fo_h smallint NOT NULL,
     lo integer DEFAULT 0 NOT NULL,
-    lo_h smallint NOT NULL
+    lo_h smallint NOT NULL,
+    CONSTRAINT idx_44157294_primary PRIMARY KEY (id)
 );
 ALTER TABLE macrostrat.sections OWNER TO macrostrat;
 
@@ -1879,7 +1901,19 @@ CREATE TABLE macrostrat.strat_tree (
     rel macrostrat.strat_tree_rel,
     child integer,
     ref_id integer,
-    check_me smallint
+    check_me smallint,
+    CONSTRAINT strat_tree_strat_names_parent_fk
+      FOREIGN KEY (parent)
+      REFERENCES macrostrat.strat_names(id)
+      ON DELETE CASCADE,
+    CONSTRAINT strat_tree_strat_names_child_fk
+      FOREIGN KEY (child)
+      REFERENCES macrostrat.strat_names(id)
+      ON DELETE CASCADE,
+    CONSTRAINT strat_tree_refs_fk
+      FOREIGN KEY (ref_id)
+      REFERENCES macrostrat.refs(id)
+      ON DELETE CASCADE
 );
 ALTER TABLE macrostrat.strat_tree OWNER TO macrostrat_admin;
 
@@ -2444,6 +2478,22 @@ ALTER TABLE macrostrat.unit_tectonics_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.unit_tectonics_id_seq OWNED BY macrostrat.unit_tectonics.id;
 
+
+/* TODO: resolve unit/column issues
+Some units are not tied to the correct sections... */
+/** New addition 2024-11-06
+  We want to keep the NOT NULL constraint on section_id (at least for now)
+  so we have to reconstruct sections in a few cases.
+
+- 17 units exist with section_id = 0
+- 941 units exist with a section_id that is not a valid section,
+  however all but 5 of those (all from New Zealand)
+  have a valid section_id in the units_sections table.
+
+  SELECT * FROM macrostrat.units
+  WHERE section_id NOT IN (select id from macrostrat.sections)
+  AND section_id NOT IN (SELECT id FROM macrostrat.sections);
+*/
 CREATE TABLE macrostrat.units (
   id integer NOT NULL,
   strat_name character varying(150) NOT NULL,
@@ -2459,7 +2509,12 @@ CREATE TABLE macrostrat.units (
   min_thick numeric(7,2) NOT NULL,
   section_id integer DEFAULT 0 NOT NULL,
   col_id integer NOT NULL,
-  date_mod timestamp with time zone
+  date_mod timestamp with time zone,
+  CONSTRAINT idx_44157375_primary PRIMARY KEY (id),
+  CONSTRAINT units_cols_fk FOREIGN KEY (col_id) REFERENCES macrostrat.cols(id) ON DELETE CASCADE,
+  CONSTRAINT units_sections_fk FOREIGN KEY (section_id) REFERENCES macrostrat.sections(id) ON DELETE CASCADE,
+  CONSTRAINT units_intervals_fo_fk FOREIGN KEY (fo) REFERENCES macrostrat.intervals(id) ON DELETE RESTRICT,
+  CONSTRAINT units_intervals_lo_fk FOREIGN KEY (lo) REFERENCES macrostrat.intervals(id) ON DELETE RESTRICT
 );
 ALTER TABLE macrostrat.units OWNER TO macrostrat_admin;
 

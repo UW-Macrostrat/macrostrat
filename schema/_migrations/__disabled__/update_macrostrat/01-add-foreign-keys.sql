@@ -17,15 +17,6 @@
 
 */
 
-/* deleted 68 rows where col_id didn't exist in cols
-    the mariadb version of macrostrat has a "col_equv" that maps
-    the bad id-ed columns to the actual ones
- */
-ALTER TABLE macrostrat.col_refs
-	ADD CONSTRAINT col_refs_col_fk FOREIGN KEY (col_id) REFERENCES macrostrat.cols(id) ON DELETE CASCADE ON UPDATE CASCADE,
-	ADD CONSTRAINT col_refs_ref_fk FOREIGN KEY (ref_id) REFERENCES macrostrat.refs(id) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT col_refs_unique UNIQUE (col_id, ref_id);
-
 /* I had to make the id the primary key of intervals first before adding the foreign key */
 -- ALTER TABLE macrostrat.intervals ADD PRIMARY KEY (id);
 
@@ -86,9 +77,6 @@ ALTER TABLE macrostrat.strat_names ALTER COLUMN concept_id DROP NOT NULL;
 
 ALTER TABLE macrostrat.strat_names ALTER COLUMN ref_id DROP NOT NULL;
 
-ALTER TABLE macrostrat.strat_names
-	ADD CONSTRAINT strat_names_strat_names_meta_fk FOREIGN KEY (concept_id) REFERENCES macrostrat.strat_names_meta(concept_id) ON DELETE CASCADE;
-
 -- There are 6,000+ strat_name_meta entries with interval_id = 0
 
 ALTER TABLE macrostrat.strat_names_meta ALTER COLUMN interval_id DROP NOT NULL;
@@ -109,28 +97,6 @@ ALTER TABLE macrostrat.units_sections
   ADD CONSTRAINT units_sections_units_fk FOREIGN KEY (unit_id) REFERENCES macrostrat.units(id) ON DELETE CASCADE,
   ADD CONSTRAINT units_sections_sections_fk FOREIGN KEY (section_id) REFERENCES macrostrat.sections(id) ON DELETE CASCADE;
 
-
-/* Some units are not tied to the correct sections... */
-/** New addition 2024-11-06
-  We want to keep the NOT NULL constraint on section_id (at least for now)
-  so we have to reconstruct sections in a few cases.
-
-- 17 units exist with section_id = 0
-- 941 units exist with a section_id that is not a valid section,
-  however all but 5 of those (all from New Zealand)
-  have a valid section_id in the units_sections table.
-
-  SELECT * FROM macrostrat.units
-  WHERE section_id NOT IN (select id from macrostrat.sections)
-  AND section_id NOT IN (SELECT id FROM macrostrat.sections);
-*/
-
-
-ALTER TABLE macrostrat.units
-	ADD CONSTRAINT units_cols_fk FOREIGN KEY (col_id) REFERENCES macrostrat.cols(id) ON DELETE CASCADE,
-	ADD CONSTRAINT units_sections_fk FOREIGN KEY (section_id) REFERENCES macrostrat.sections(id) ON DELETE CASCADE,
-	ADD CONSTRAINT units_intervals_fo_fk FOREIGN KEY (fo) REFERENCES macrostrat.intervals(id) ON DELETE RESTRICT,
-	ADD CONSTRAINT units_intervals_lo_fk FOREIGN KEY (lo) REFERENCES macrostrat.intervals(id) ON DELETE RESTRICT;
 
 ALTER TABLE macrostrat.sections
 	ADD CONSTRAINT sections_cols_fk FOREIGN KEY (col_id) REFERENCES macrostrat.cols(id) ON DELETE CASCADE;

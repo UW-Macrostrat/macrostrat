@@ -8,12 +8,6 @@ ALTER TABLE ONLY macrostrat.canada_lexicon_dump
 ALTER TABLE ONLY macrostrat.col_areas
   ADD CONSTRAINT idx_44157021_primary PRIMARY KEY (id);
 
-ALTER TABLE ONLY macrostrat.col_equiv
-  ADD CONSTRAINT idx_44157034_primary PRIMARY KEY (id);
-
-ALTER TABLE ONLY macrostrat.col_groups
-  ADD CONSTRAINT idx_44157039_primary PRIMARY KEY (id);
-
 ALTER TABLE ONLY macrostrat.col_notes
   ADD CONSTRAINT idx_44157044_primary PRIMARY KEY (id);
 
@@ -86,14 +80,8 @@ ALTER TABLE ONLY macrostrat.pbdb_matches
 ALTER TABLE ONLY macrostrat.places
   ADD CONSTRAINT idx_44157263_primary PRIMARY KEY (place_id);
 
-ALTER TABLE ONLY macrostrat.projects
-  ADD CONSTRAINT idx_44157270_primary PRIMARY KEY (id);
-
 ALTER TABLE ONLY macrostrat.rockd_features
   ADD CONSTRAINT idx_44157286_primary PRIMARY KEY (id);
-
-ALTER TABLE ONLY macrostrat.sections
-  ADD CONSTRAINT idx_44157294_primary PRIMARY KEY (id);
 
 ALTER TABLE ONLY macrostrat.strat_names_lookup
   ADD CONSTRAINT idx_44157318_primary PRIMARY KEY (strat_name_id);
@@ -115,9 +103,6 @@ ALTER TABLE ONLY macrostrat.timescales_intervals
 
 ALTER TABLE ONLY macrostrat.uniquedatafiles2
   ADD CONSTRAINT idx_44157367_primary PRIMARY KEY (id);
-
-ALTER TABLE ONLY macrostrat.units
-  ADD CONSTRAINT idx_44157375_primary PRIMARY KEY (id);
 
 ALTER TABLE ONLY macrostrat.units_datafiles
   ADD CONSTRAINT idx_44157384_primary PRIMARY KEY (unit_id);
@@ -172,15 +157,6 @@ ALTER TABLE ONLY macrostrat.unit_strat_names
 
 ALTER TABLE ONLY macrostrat.unit_tectonics
   ADD CONSTRAINT idx_44157502_primary PRIMARY KEY (id);
-
-ALTER TABLE ONLY macrostrat.projects
-  ADD CONSTRAINT projects_slug_key UNIQUE (slug);
-
-ALTER TABLE ONLY macrostrat.projects_tree
-  ADD CONSTRAINT projects_tree_parent_id_child_id_key UNIQUE (parent_id, child_id);
-
-ALTER TABLE ONLY macrostrat.projects_tree
-  ADD CONSTRAINT projects_tree_pkey PRIMARY KEY (id);
 
 ALTER TABLE ONLY macrostrat.unit_lith_atts
   ADD CONSTRAINT unit_lith_atts_new_pkey1 PRIMARY KEY (id);
