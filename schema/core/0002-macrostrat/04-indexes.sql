@@ -230,13 +230,11 @@ CREATE INDEX idx_44157294_fo ON macrostrat.sections USING btree (fo);
 
 CREATE INDEX idx_44157294_lo ON macrostrat.sections USING btree (lo);
 
-CREATE INDEX idx_44157311_concept_id ON macrostrat.strat_names USING btree (concept_id);
-
-CREATE INDEX idx_44157311_rank ON macrostrat.strat_names USING btree (rank);
-
-CREATE INDEX idx_44157311_ref_id ON macrostrat.strat_names USING btree (ref_id);
-
-CREATE INDEX idx_44157311_strat_name ON macrostrat.strat_names USING btree (strat_name);
+-- Streamline and rename
+CREATE INDEX strat_names_concept_id_idx ON macrostrat.strat_names USING btree (concept_id);
+CREATE INDEX strat_names_rank_idx ON macrostrat.strat_names USING btree (rank);
+CREATE INDEX strat_names_ref_id_idx ON macrostrat.strat_names USING btree (ref_id);
+CREATE INDEX strat_names_strat_name_idx ON macrostrat.strat_names USING btree (strat_name);
 
 CREATE INDEX idx_44157318_bed_id ON macrostrat.strat_names_lookup USING btree (bed_id);
 
@@ -248,13 +246,12 @@ CREATE INDEX idx_44157318_mbr_id ON macrostrat.strat_names_lookup USING btree (m
 
 CREATE INDEX idx_44157318_sgp_id ON macrostrat.strat_names_lookup USING btree (sgp_id);
 
-CREATE INDEX idx_44157324_b_int ON macrostrat.strat_names_meta USING btree (b_int);
+-- Streamline and rename
+CREATE INDEX strat_names_meta_interval_id_idx1 ON macrostrat.strat_names_meta USING btree (interval_id);
+CREATE INDEX strat_names_meta_b_int_idx1 ON macrostrat.strat_names_meta USING btree (b_int);
+CREATE INDEX strat_names_meta_ref_id_idx1 ON macrostrat.strat_names_meta USING btree (ref_id);
+CREATE INDEX strat_names_meta_t_int_idx1 ON macrostrat.strat_names_meta USING btree (t_int);
 
-CREATE INDEX idx_44157324_interval_id ON macrostrat.strat_names_meta USING btree (interval_id);
-
-CREATE INDEX idx_44157324_ref_id ON macrostrat.strat_names_meta USING btree (ref_id);
-
-CREATE INDEX idx_44157324_t_int ON macrostrat.strat_names_meta USING btree (t_int);
 
 CREATE UNIQUE INDEX idx_44157331_strat_name_id ON macrostrat.strat_names_places USING btree (strat_name_id, place_id);
 
@@ -491,22 +488,6 @@ CREATE INDEX strat_name_footprints_new_strat_name_id_idx ON macrostrat.strat_nam
 CREATE INDEX strat_name_footprints_strat_name_id_idx ON macrostrat.strat_name_footprints USING btree (strat_name_id);
 
 CREATE INDEX strat_name_footprints_strat_name_id_idx1 ON macrostrat.strat_name_footprints USING btree (strat_name_id);
-
-CREATE INDEX strat_names_meta_new_b_int_idx1 ON macrostrat.strat_names_meta USING btree (b_int);
-
-CREATE INDEX strat_names_meta_new_interval_id_idx1 ON macrostrat.strat_names_meta USING btree (interval_id);
-
-CREATE INDEX strat_names_meta_new_ref_id_idx1 ON macrostrat.strat_names_meta USING btree (ref_id);
-
-CREATE INDEX strat_names_meta_new_t_int_idx1 ON macrostrat.strat_names_meta USING btree (t_int);
-
-CREATE INDEX strat_names_new_concept_id_idx ON macrostrat.strat_names USING btree (concept_id);
-
-CREATE INDEX strat_names_new_rank_idx ON macrostrat.strat_names USING btree (rank);
-
-CREATE INDEX strat_names_new_ref_id_idx ON macrostrat.strat_names USING btree (ref_id);
-
-CREATE INDEX strat_names_new_strat_name_idx ON macrostrat.strat_names USING btree (strat_name);
 
 CREATE INDEX strat_names_places_new_place_id_idx1 ON macrostrat.strat_names_places USING btree (place_id);
 
