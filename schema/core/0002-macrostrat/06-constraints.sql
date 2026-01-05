@@ -28,20 +28,11 @@ ALTER TABLE ONLY macrostrat.projects_tree
 ALTER TABLE ONLY macrostrat.sections
   ADD CONSTRAINT sections_cols_fk FOREIGN KEY (col_id) REFERENCES macrostrat.cols(id) ON DELETE CASCADE;
 
-ALTER TABLE ONLY macrostrat.strat_names_meta
-  ADD CONSTRAINT strat_names_meta_intervals_fk FOREIGN KEY (interval_id) REFERENCES macrostrat.intervals(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY macrostrat.strat_names_meta
-  ADD CONSTRAINT strat_names_meta_refs_fk FOREIGN KEY (ref_id) REFERENCES macrostrat.refs(id) ON DELETE CASCADE;
-
 ALTER TABLE ONLY macrostrat.strat_names_places
   ADD CONSTRAINT strat_names_places_places_fk FOREIGN KEY (place_id) REFERENCES macrostrat.places(place_id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY macrostrat.strat_names_places
   ADD CONSTRAINT strat_names_places_strat_names_fk FOREIGN KEY (strat_name_id) REFERENCES macrostrat.strat_names(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY macrostrat.strat_names
-  ADD CONSTRAINT strat_names_strat_names_meta_fk FOREIGN KEY (concept_id) REFERENCES macrostrat.strat_names_meta(concept_id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY macrostrat.timescales_intervals
   ADD CONSTRAINT timescales_intervals_intervals_fk FOREIGN KEY (interval_id) REFERENCES macrostrat.intervals(id) ON DELETE CASCADE;

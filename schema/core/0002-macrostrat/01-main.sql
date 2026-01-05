@@ -832,7 +832,8 @@ ALTER SEQUENCE macrostrat.col_notes_id_seq OWNED BY macrostrat.col_notes.id;
 CREATE TABLE macrostrat.col_refs (
     id integer NOT NULL,
     col_id integer NOT NULL,
-    ref_id integer NOT NULL
+    ref_id integer NOT NULL,
+    CONSTRAINT idx_44157051_primary PRIMARY KEY (id)
 );
 ALTER TABLE macrostrat.col_refs OWNER TO macrostrat_admin;
 
@@ -870,7 +871,8 @@ CREATE TABLE macrostrat.cols (
     created timestamp with time zone NOT NULL,
     coordinate public.geometry,
     wkt text,
-    poly_geom public.geometry
+    poly_geom public.geometry,
+    CONSTRAINT idx_44157014_primary PRIMARY KEY (id)
 );
 ALTER TABLE macrostrat.cols OWNER TO macrostrat_admin;
 
@@ -981,7 +983,8 @@ CREATE TABLE macrostrat.intervals (
     interval_type macrostrat.intervals_interval_type DEFAULT 'supereon'::macrostrat.intervals_interval_type,
     interval_color character varying(7) NOT NULL,
     orig_color character varying(7) NOT NULL,
-    rank integer
+    rank integer,
+    CONSTRAINT idx_44157069_primary PRIMARY KEY (id)
 );
 ALTER TABLE macrostrat.intervals OWNER TO macrostrat_admin;
 
@@ -1660,7 +1663,8 @@ CREATE TABLE macrostrat.refs (
     doi character varying(40) DEFAULT NULL::character varying,
     compilation_code macrostrat.refs_compilation_code NOT NULL,
     url character varying(255) DEFAULT NULL::character varying,
-    rgeom public.geometry
+    rgeom public.geometry,
+    CONSTRAINT idx_44157277_primary PRIMARY KEY (id)
 );
 ALTER TABLE macrostrat.refs OWNER TO macrostrat_admin;
 
@@ -1762,10 +1766,47 @@ CREATE TABLE macrostrat.strat_name_footprints (
 );
 ALTER TABLE macrostrat.strat_name_footprints OWNER TO macrostrat_admin;
 
+/* Strat name concepts */
+CREATE TABLE macrostrat.strat_names_meta (
+  concept_id integer NOT NULL,
+  orig_id integer NOT NULL,
+  name character varying(40) DEFAULT NULL::character varying,
+  geologic_age text,
+  interval_id integer,
+  b_int integer NOT NULL,
+  t_int integer NOT NULL,
+  usage_notes text,
+  other text,
+  province text,
+  url character varying(150) NOT NULL,
+  ref_id integer NOT NULL,
+  CONSTRAINT idx_44157324_primary PRIMARY KEY (concept_id),
+  CONSTRAINT strat_names_meta_interval_fk
+    FOREIGN KEY (interval_id) REFERENCES macrostrat.intervals(id),
+  CONSTRAINT strat_names_meta_b_int_fk
+    FOREIGN KEY (b_int) REFERENCES macrostrat.intervals(id),
+  CONSTRAINT strat_names_meta_t_int_fk
+    FOREIGN KEY (t_int) REFERENCES macrostrat.intervals(id),
+  CONSTRAINT strat_names_meta_refs_fk
+    FOREIGN KEY (ref_id) REFERENCES macrostrat.refs(id)
+);
+ALTER TABLE macrostrat.strat_names_meta OWNER TO macrostrat_admin;
+
+CREATE SEQUENCE macrostrat.strat_names_meta_concept_id_seq
+  AS integer
+  START WITH 1
+  INCREMENT BY 1
+  NO MINVALUE
+  NO MAXVALUE
+  CACHE 1;
+ALTER TABLE macrostrat.strat_names_meta_concept_id_seq OWNER TO macrostrat_admin;
+ALTER SEQUENCE macrostrat.strat_names_meta_concept_id_seq OWNED BY macrostrat.strat_names_meta.concept_id;
+
+
 CREATE TABLE macrostrat.strat_names (
     id integer NOT NULL,
     old_id integer NOT NULL,
-    concept_id integer,
+    concept_id integer,  -- TODO: Should be set NOT NULL in future
     strat_name character varying(75) DEFAULT NULL::character varying,
     rank macrostrat.strat_names_rank,
     old_strat_name_id integer NOT NULL,
@@ -1787,50 +1828,12 @@ ALTER TABLE macrostrat.strat_names_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.strat_names_id_seq OWNED BY macrostrat.strat_names.id;
 
-CREATE TABLE macrostrat.strat_names_lookup (
-    strat_name_id integer NOT NULL,
-    strat_name character varying(100) NOT NULL,
-    rank macrostrat.strat_names_lookup_rank NOT NULL,
-    bed_id integer NOT NULL,
-    bed_name character varying(100) NOT NULL,
-    mbr_id integer NOT NULL,
-    mbr_name character varying(100) NOT NULL,
-    fm_id integer NOT NULL,
-    fm_name character varying(100) NOT NULL,
-    gp_id integer NOT NULL,
-    gp_name character varying(100) NOT NULL,
-    sgp_id integer NOT NULL,
-    sgp_name character varying(100) NOT NULL
-);
-ALTER TABLE macrostrat.strat_names_lookup OWNER TO macrostrat_admin;
+-- TODO: Validate this constraint
+ALTER TABLE macrostrat.strat_names
+  ADD CONSTRAINT strat_names_strat_names_meta_fk
+  FOREIGN KEY (concept_id) REFERENCES macrostrat.strat_names_meta(concept_id)
+  ON DELETE CASCADE NOT VALID;
 
-CREATE TABLE macrostrat.strat_names_meta (
-    concept_id integer NOT NULL,
-    orig_id integer NOT NULL,
-    name character varying(40) DEFAULT NULL::character varying,
-    geologic_age text,
-    interval_id integer,
-    b_int integer NOT NULL,
-    t_int integer NOT NULL,
-    usage_notes text,
-    other text,
-    province text,
-    url character varying(150) NOT NULL,
-    ref_id integer NOT NULL,
-    CONSTRAINT idx_44157324_primary PRIMARY KEY (concept_id)
-);
-ALTER TABLE macrostrat.strat_names_meta OWNER TO macrostrat_admin;
-
-CREATE SEQUENCE macrostrat.strat_names_meta_concept_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-ALTER TABLE macrostrat.strat_names_meta_concept_id_seq OWNER TO macrostrat_admin;
-
-ALTER SEQUENCE macrostrat.strat_names_meta_concept_id_seq OWNED BY macrostrat.strat_names_meta.concept_id;
 
 CREATE SEQUENCE macrostrat.strat_names_new_id_seq
     AS integer
@@ -1842,6 +1845,27 @@ CREATE SEQUENCE macrostrat.strat_names_new_id_seq
 ALTER TABLE macrostrat.strat_names_new_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.strat_names_new_id_seq OWNED BY macrostrat.strat_names.id;
+
+/* Lookup table for strat names
+   DEPRECATED - to be removed in future releases
+*/
+
+CREATE TABLE macrostrat.strat_names_lookup (
+  strat_name_id integer NOT NULL,
+  strat_name character varying(100) NOT NULL,
+  rank macrostrat.strat_names_lookup_rank NOT NULL,
+  bed_id integer NOT NULL,
+  bed_name character varying(100) NOT NULL,
+  mbr_id integer NOT NULL,
+  mbr_name character varying(100) NOT NULL,
+  fm_id integer NOT NULL,
+  fm_name character varying(100) NOT NULL,
+  gp_id integer NOT NULL,
+  gp_name character varying(100) NOT NULL,
+  sgp_id integer NOT NULL,
+  sgp_name character varying(100) NOT NULL
+);
+ALTER TABLE macrostrat.strat_names_lookup OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat.strat_names_places (
     strat_name_id integer NOT NULL,

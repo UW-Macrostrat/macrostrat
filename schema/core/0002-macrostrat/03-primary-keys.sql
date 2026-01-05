@@ -5,9 +5,6 @@ ALTER TABLE ONLY macrostrat.grainsize
 ALTER TABLE ONLY macrostrat.canada_lexicon_dump
   ADD CONSTRAINT idx_44157002_primary PRIMARY KEY (strat_unit_id);
 
-ALTER TABLE ONLY macrostrat.cols
-  ADD CONSTRAINT idx_44157014_primary PRIMARY KEY (id);
-
 ALTER TABLE ONLY macrostrat.col_areas
   ADD CONSTRAINT idx_44157021_primary PRIMARY KEY (id);
 
@@ -20,17 +17,11 @@ ALTER TABLE ONLY macrostrat.col_groups
 ALTER TABLE ONLY macrostrat.col_notes
   ADD CONSTRAINT idx_44157044_primary PRIMARY KEY (id);
 
-ALTER TABLE ONLY macrostrat.col_refs
-  ADD CONSTRAINT idx_44157051_primary PRIMARY KEY (id);
-
 ALTER TABLE ONLY macrostrat.econs
   ADD CONSTRAINT idx_44157059_primary PRIMARY KEY (id);
 
 ALTER TABLE ONLY macrostrat.environs
   ADD CONSTRAINT idx_44157064_primary PRIMARY KEY (id);
-
-ALTER TABLE ONLY macrostrat.intervals
-  ADD CONSTRAINT idx_44157069_primary PRIMARY KEY (id);
 
 ALTER TABLE ONLY macrostrat.liths
   ADD CONSTRAINT idx_44157091_primary PRIMARY KEY (id);
@@ -98,23 +89,14 @@ ALTER TABLE ONLY macrostrat.places
 ALTER TABLE ONLY macrostrat.projects
   ADD CONSTRAINT idx_44157270_primary PRIMARY KEY (id);
 
-ALTER TABLE ONLY macrostrat.refs
-  ADD CONSTRAINT idx_44157277_primary PRIMARY KEY (id);
-
 ALTER TABLE ONLY macrostrat.rockd_features
   ADD CONSTRAINT idx_44157286_primary PRIMARY KEY (id);
 
 ALTER TABLE ONLY macrostrat.sections
   ADD CONSTRAINT idx_44157294_primary PRIMARY KEY (id);
 
-ALTER TABLE ONLY macrostrat.strat_names
-  ADD CONSTRAINT idx_44157311_primary PRIMARY KEY (id);
-
 ALTER TABLE ONLY macrostrat.strat_names_lookup
   ADD CONSTRAINT idx_44157318_primary PRIMARY KEY (strat_name_id);
-
-ALTER TABLE ONLY macrostrat.strat_names_meta
-  ADD CONSTRAINT idx_44157324_primary PRIMARY KEY (concept_id);
 
 ALTER TABLE ONLY macrostrat.structures
   ADD CONSTRAINT idx_44157340_primary PRIMARY KEY (id);
