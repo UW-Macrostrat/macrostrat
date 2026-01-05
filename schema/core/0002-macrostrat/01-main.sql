@@ -539,7 +539,7 @@ CREATE TABLE macrostrat.projects_tree (
 );
 ALTER TABLE macrostrat.projects_tree OWNER TO macrostrat;
 
-ALTER TABLE ONLY macrostrat.projects_tree
+ALTER TABLE macrostrat.projects_tree
   ADD CONSTRAINT projects_tree_parent_id_child_id_key UNIQUE (parent_id, child_id);
 
 
@@ -876,6 +876,10 @@ CREATE TABLE macrostrat.col_groups (
   CONSTRAINT idx_44157039_primary PRIMARY KEY (id)
 );
 ALTER TABLE macrostrat.col_groups OWNER TO macrostrat_admin;
+
+ALTER TABLE macrostrat.col_groups
+  ADD CONSTRAINT col_groups_project_fk FOREIGN KEY (project_id)
+  REFERENCES macrostrat.projects(id) ON UPDATE CASCADE NOT VALID;
 
 CREATE SEQUENCE macrostrat.col_groups_id_seq
   AS integer
@@ -2242,7 +2246,8 @@ CREATE TABLE macrostrat.unit_econs (
   unit_id integer NOT NULL,
   econ_id integer NOT NULL,
   ref_id integer NOT NULL,
-  date_mod timestamp with time zone
+  date_mod timestamp with time zone,
+  CONSTRAINT idx_44157447_primary PRIMARY KEY (id)
 );
 ALTER TABLE macrostrat.unit_econs OWNER TO macrostrat_admin;
 
@@ -2264,9 +2269,11 @@ CREATE TABLE macrostrat.unit_environs (
   f integer,
   l integer,
   ref_id integer DEFAULT 1,
-  date_mod timestamp with time zone
+  date_mod timestamp with time zone,
+  CONSTRAINT idx_44157452_primary PRIMARY KEY (id)
 );
 ALTER TABLE macrostrat.unit_environs OWNER TO macrostrat_admin;
+
 
 CREATE SEQUENCE macrostrat.unit_environs_id_seq
   AS integer
@@ -2316,7 +2323,8 @@ CREATE TABLE macrostrat.unit_liths (
   mod_prop numeric(5,4) NOT NULL,
   toc numeric(6,5) NOT NULL,
   ref_id integer NOT NULL,
-  date_mod timestamp with time zone
+  date_mod timestamp with time zone,
+  CONSTRAINT idx_44157463_primary PRIMARY KEY (id)
 );
 ALTER TABLE macrostrat.unit_liths OWNER TO macrostrat_admin;
 
@@ -2325,7 +2333,8 @@ CREATE TABLE macrostrat.unit_liths_atts (
   unit_lith_id integer NOT NULL,
   lith_att_id integer NOT NULL,
   ref_id integer NOT NULL,
-  date_mod timestamp with time zone
+  date_mod timestamp with time zone,
+  CONSTRAINT idx_44157469_primary PRIMARY KEY (id)
 );
 ALTER TABLE macrostrat.unit_liths_atts OWNER TO macrostrat_admin;
 

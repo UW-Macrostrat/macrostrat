@@ -20,15 +20,9 @@
 /* I had to make the id the primary key of intervals first before adding the foreign key */
 -- ALTER TABLE macrostrat.intervals ADD PRIMARY KEY (id);
 
-ALTER TABLE macrostrat.col_groups
-  ADD CONSTRAINT col_groups_project_fk FOREIGN KEY (project_id) REFERENCES macrostrat.projects(id) ON DELETE CASCADE ON UPDATE CASCADE;
-
 /* no issues
     col_notes were not perserved, in mariaDB this is a separte table.
 */
-ALTER TABLE macrostrat.cols
-	ADD CONSTRAINT cols_col_groups_fk FOREIGN KEY (col_group_id) REFERENCES macrostrat.col_groups(id) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT cols_project_fk FOREIGN KEY (project_id) REFERENCES macrostrat.projects(id) ON DELETE CASCADE ON UPDATE CASCADE;
 
 /* no issues */
 ALTER TABLE macrostrat.col_areas
@@ -38,21 +32,11 @@ ALTER TABLE macrostrat.col_areas
 ALTER TABLE macrostrat.concepts_places
 	ADD CONSTRAINT concepts_places_places_fk FOREIGN KEY (place_id) REFERENCES macrostrat.places(place_id) ON DELETE CASCADE;
 
-ALTER TABLE macrostrat.unit_econs
-	ADD CONSTRAINT unit_econs_econs_fk FOREIGN KEY (econ_id) REFERENCES macrostrat.econs(id) ON DELETE CASCADE,
-	ADD CONSTRAINT unit_econs_refs_fk  FOREIGN KEY (ref_id) REFERENCES macrostrat.refs(id) ON DELETE CASCADE,
-	ADD CONSTRAINT unit_econs_units_fk FOREIGN KEY (unit_id) REFERENCES macrostrat.units(id) ON DELETE CASCADE;
-
 /*
 23769 rows updated to have null ref_ids instead of 0...
 */
 -- pg_loader apparently adds NOT NULL constraints in some cases
 ALTER TABLE macrostrat.unit_environs ALTER COLUMN ref_id DROP NOT NULL;
-
-ALTER TABLE macrostrat.unit_environs
-	ADD CONSTRAINT unit_environs_environs_fk FOREIGN KEY (environ_id) REFERENCES macrostrat.environs(id) ON DELETE CASCADE,
-	ADD CONSTRAINT unit_environs_refs_fk  FOREIGN KEY (ref_id) REFERENCES macrostrat.refs(id) ON DELETE CASCADE,
-	ADD CONSTRAINT unit_environs_units_fk FOREIGN KEY (unit_id) REFERENCES macrostrat.units(id) ON DELETE CASCADE;
 
 /* no issues */
 ALTER TABLE macrostrat.unit_liths
@@ -78,12 +62,7 @@ ALTER TABLE macrostrat.strat_names ALTER COLUMN concept_id DROP NOT NULL;
 ALTER TABLE macrostrat.strat_names ALTER COLUMN ref_id DROP NOT NULL;
 
 -- There are 6,000+ strat_name_meta entries with interval_id = 0
-
 ALTER TABLE macrostrat.strat_names_meta ALTER COLUMN interval_id DROP NOT NULL;
-
-ALTER TABLE macrostrat.strat_names_meta
-	ADD CONSTRAINT strat_names_meta_intervals_fk FOREIGN KEY(interval_id) REFERENCES macrostrat.intervals(id) ON DELETE CASCADE,
-	ADD CONSTRAINT strat_names_meta_refs_fk FOREIGN KEY(ref_id) REFERENCES macrostrat.refs(id) ON DELETE CASCADE;
 
 ALTER TABLE macrostrat.strat_names_places
 	ADD CONSTRAINT strat_names_places_places_fk FOREIGN KEY (place_id) REFERENCES macrostrat.places(place_id) ON DELETE CASCADE,
@@ -101,21 +80,9 @@ ALTER TABLE macrostrat.units_sections
 ALTER TABLE macrostrat.sections
 	ADD CONSTRAINT sections_cols_fk FOREIGN KEY (col_id) REFERENCES macrostrat.cols(id) ON DELETE CASCADE;
 
-ALTER TABLE macrostrat.strat_tree
-	ADD CONSTRAINT strat_tree_strat_names_parent_fk FOREIGN KEY (parent) REFERENCES macrostrat.strat_names(id) ON DELETE CASCADE,
-	ADD CONSTRAINT strat_tree_strat_names_child_fk FOREIGN KEY (child) REFERENCES macrostrat.strat_names(id) ON DELETE CASCADE,
-	ADD CONSTRAINT strat_tree_refs_fk FOREIGN KEY (ref_id) REFERENCES macrostrat.refs(id) ON DELETE CASCADE;
-
 ALTER TABLE macrostrat.projects
 	ADD CONSTRAINT projects_timescale_fk FOREIGN KEY (timescale_id) REFERENCES macrostrat.timescales(id) ON DELETE CASCADE;
 
-/* Set foreign key on col table */
-ALTER TABLE macrostrat.cols
-	ADD CONSTRAINT cols_project_fk  FOREIGN KEY (project_id) REFERENCES macrostrat.projects(id) ON DELETE CASCADE;
-
-/* Add project id constraint to col-groups */
-ALTER TABLE macrostrat.col_groups
-	ADD COLUMN project_id INT REFERENCES macrostrat.projects(id);
 
 --
 -- /* unit_boundaries table, needs a unit_id and ref_id fk

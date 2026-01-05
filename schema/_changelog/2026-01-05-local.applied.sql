@@ -61,3 +61,36 @@ ALTER TABLE "macrostrat"."strat_tree" ADD
 CONSTRAINT "strat_tree_refs_fk"
 FOREIGN KEY (ref_id) REFERENCES macrostrat.refs(id) NOT VALID;
 
+
+-- 2026-01-05 11:53:37
+-- Environment: local
+-- 4 changes applied
+
+ALTER TABLE "macrostrat"."col_groups" ADD
+CONSTRAINT "col_groups_project_fk"
+FOREIGN KEY (project_id) REFERENCES macrostrat.projects(id)
+    ON UPDATE CASCADE
+    ON DELETE CASCADE NOT VALID;
+ALTER TABLE "macrostrat"."col_groups" VALIDATE
+CONSTRAINT "col_groups_project_fk";
+ALTER TABLE "macrostrat"."concepts_places" ADD
+CONSTRAINT "concepts_places_concepts_fk"
+FOREIGN KEY (concept_id) REFERENCES macrostrat.strat_names_meta(concept_id)
+    ON DELETE CASCADE NOT VALID;
+ALTER TABLE "macrostrat"."concepts_places" VALIDATE
+CONSTRAINT "concepts_places_concepts_fk";
+
+
+-- 2026-01-05 12:00:34
+-- Environment: local
+-- 3 changes applied (1 unsafe)
+
+ALTER TABLE "macrostrat"."col_groups" DROP
+CONSTRAINT "col_groups_project_fk";
+ALTER TABLE "macrostrat"."col_groups" ADD
+CONSTRAINT "col_groups_project_fk"
+FOREIGN KEY (project_id) REFERENCES macrostrat.projects(id)
+    ON UPDATE CASCADE NOT VALID;
+ALTER TABLE "macrostrat"."col_groups" VALIDATE
+CONSTRAINT "col_groups_project_fk";
+

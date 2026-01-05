@@ -128,20 +128,8 @@ ALTER TABLE ONLY macrostrat.unit_contacts
 ALTER TABLE ONLY macrostrat.unit_dates
   ADD CONSTRAINT idx_44157440_primary PRIMARY KEY (id);
 
-ALTER TABLE ONLY macrostrat.unit_econs
-  ADD CONSTRAINT idx_44157447_primary PRIMARY KEY (id);
-
-ALTER TABLE ONLY macrostrat.unit_environs
-  ADD CONSTRAINT idx_44157452_primary PRIMARY KEY (id);
-
 ALTER TABLE ONLY macrostrat.unit_equiv
   ADD CONSTRAINT idx_44157458_primary PRIMARY KEY (id);
-
-ALTER TABLE ONLY macrostrat.unit_liths
-  ADD CONSTRAINT idx_44157463_primary PRIMARY KEY (id);
-
-ALTER TABLE ONLY macrostrat.unit_liths_atts
-  ADD CONSTRAINT idx_44157469_primary PRIMARY KEY (id);
 
 ALTER TABLE ONLY macrostrat.unit_measures
   ADD CONSTRAINT idx_44157474_primary PRIMARY KEY (id);
