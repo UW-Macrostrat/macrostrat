@@ -12,7 +12,7 @@ module.exports = function (req, res, next, cb) {
   let params = {};
 
   if (req.query.project_id) {
-    where.push("projects.id = ANY(:project_id)");
+    where.push("p.id = ANY(:project_id)");
     params["project_id"] = larkin.parseMultipleIds(req.query.project_id);
   }
 
