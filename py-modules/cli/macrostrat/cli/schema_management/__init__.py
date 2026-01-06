@@ -5,6 +5,12 @@ from sys import exit, stderr
 from typing import Callable
 
 import click
+from results import db as results_db
+from results.dbdiff import Migration
+from rich import print
+from sqlparse import format as format_sql
+from typer import Argument, Option
+
 from macrostrat.app_frame import CommandBase
 from macrostrat.core import app as macrostrat_app
 from macrostrat.core.config import settings
@@ -16,12 +22,8 @@ from macrostrat.database.transfer import pg_dump_to_file
 from macrostrat.database.transfer.utils import raw_database_url
 from macrostrat.utils import get_logger
 from macrostrat.utils.shell import run
-from results import db as results_db
-from results.dbdiff import Migration
-from rich import print
-from sqlparse import format as format_sql
-from typer import Argument, Option
 
+from ..database.utils import engine_for_db_name
 from .defs import (
     StatementCounter,
     apply_schema_for_environment,
@@ -34,7 +36,6 @@ from .defs import (
 # First, register all migrations
 # NOTE: right now, this is quite implicit.
 from .migration_system import load_migrations
-from ..database.utils import engine_for_db_name
 
 log = get_logger(__name__)
 

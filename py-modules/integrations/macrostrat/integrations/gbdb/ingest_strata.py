@@ -2,8 +2,9 @@ from pathlib import Path
 
 import numpy as N
 from IPython import embed
+from pandas import DataFrame, read_csv
+
 from macrostrat.core.database import get_database
-from pandas import read_csv, DataFrame
 
 
 def ingest_strata_next(source: Path):

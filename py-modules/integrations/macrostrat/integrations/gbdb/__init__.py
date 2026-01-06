@@ -1,8 +1,9 @@
 import os
 from pathlib import Path
 
-from macrostrat.core.database import get_database
 from typer import Typer
+
+from macrostrat.core.database import get_database
 
 app = Typer(
     name="gbdb",
