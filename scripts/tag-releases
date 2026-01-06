@@ -3,9 +3,19 @@
 
 set -e
 
-# Build services and lock dependencies, to ensure we don't have any uncommitted changes
-# or package version mismatches.
-scripts/prepare-services
+services=(
+  "tileserver"
+  "legacy-tileserver"
+  "usage-stats"
+  "api-v3"
+)
+
+for service_name in "${services[@]}"; do
+  # Lock dependencies
+  pushd services/$service_name > /dev/null 2>&1
+  uv lock
+  popd > /dev/null 2>&1
+done
 
 # Fail if we are in a dirty state
 if ! git diff-index --quiet HEAD --; then
@@ -13,15 +23,10 @@ if ! git diff-index --quiet HEAD --; then
   exit 1
 fi
 
-services=(
-  "tileserver"
-  "legacy-tileserver"
-)
-
 for service_name in "${services[@]}"; do
   # Check if the service directory exists
   pushd services/$service_name > /dev/null 2>&1
-  version=$(poetry version --short)
+  version=$(uv version --short)
   tag="$service_name-v$version"
   popd > /dev/null 2>&1
 
@@ -29,8 +34,6 @@ for service_name in "${services[@]}"; do
   if ! git rev-parse "$tag" >/dev/null 2>&1; then
     # Tag the image
     git tag "$tag" -m "Version $version of service $service_name"
-    echo "Tagged $service_name with version $version"
+    echo "Tagged service $service_name with version $version"
   fi
 done
-
-# Tileserver

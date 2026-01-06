@@ -10,7 +10,9 @@ from api.database import get_async_session, get_engine
 from api.query_parser import QueryParser, get_filter_query_params
 from api.routes.security import has_access
 from api.schemas import IngestProcess as IngestProcessSchema
-from api.schemas import IngestProcessTag, ObjectGroup, Sources
+from api.schemas import IngestProcessTag, MapFiles
+from api.schemas import Object as ObjectORM
+from api.schemas import Sources
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from sqlalchemy import and_, delete, func, insert, select, update
 from sqlalchemy.orm import defer, joinedload, selectinload
@@ -134,19 +136,12 @@ async def create_ingest_process(
 
     async with async_session() as session:
 
-        object_group = ObjectGroup()
-        session.add(object_group)
-        await session.commit()
-
         if object.tags is None:
             object.tags = []
 
         tags = [IngestProcessTag(tag=tag.strip()) for tag in object.tags]
         del object.tags
-
-        ingest_process = IngestProcessSchema(
-            **object.model_dump(), object_group_id=object_group.id, tags=tags
-        )
+        ingest_process = IngestProcessSchema(**object.model_dump(), tags=tags)
 
         session.add(ingest_process)
         await session.commit()
@@ -268,14 +263,16 @@ async def get_ingest_process_objects(id: int):
             and_(IngestProcessSchema.id == id)
         )
         ingest_process = await session.scalar(select_stmt)
-
-        object_stmt = (
-            select(ObjectGroup)
-            .where(ObjectGroup.id == ingest_process.object_group_id)
-            .options(selectinload(ObjectGroup.objects))
+        object_ids_stmt = select(MapFiles.object_id).where(
+            MapFiles.ingest_process_id == id
         )
-        objects_iterator = await session.execute(object_stmt)
-        schema_objects = objects_iterator.scalar().objects
+        object_ids = (await session.execute(object_ids_stmt)).scalars().all()
+
+        if not object_ids:
+            return []
+
+        objects_stmt = select(ObjectORM).where(ObjectORM.id.in_(object_ids))
+        schema_objects = (await session.execute(objects_stmt)).scalars().all()
 
     if len(schema_objects) == 0:
         return []
@@ -355,7 +352,6 @@ async def create_object(
                     bucket=os.environ["S3_BUCKET"],
                     host=os.environ["S3_HOST"],
                     scheme=schemas.SchemeEnum.s3,
-                    object_group_id=ingest_process.object_group_id,
                 )
 
                 insert_stmt = (
@@ -364,6 +360,11 @@ async def create_object(
                     .returning(schemas.Object)
                 )
                 server_object = await session.scalar(insert_stmt)
+                await session.execute(
+                    insert(MapFiles).values(
+                        ingest_process_id=id, object_id=server_object.id
+                    )
+                )
 
                 response_objects.append(Object.Get(**server_object.__dict__))
 

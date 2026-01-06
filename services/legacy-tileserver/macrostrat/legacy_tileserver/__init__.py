@@ -32,13 +32,19 @@ app = FastAPI(prefix="/", middleware=[Middleware(CORSMiddleware, allow_origins=[
 @app.on_event("startup")
 async def startup_event():
     """Application startup: register the database connection and create table list."""
-    # Don't rely on poort TimVT handling of database connections
     setup_stderr_logs("macrostrat.legacy_tileserver")
 
     url = environ["DATABASE_URL"]
+
+    # Tile rendering map pool size
+    # This controls how many image tiles can be concurrently rendered.
+    # Database access is somewhat inefficient, so we may need to adjust this.
+    mapnik_pool_size = int(environ.get("MAPNIK_POOL_SIZE", "8"))
+    log.info(f"Setting up Mapnik map pool with size {mapnik_pool_size}")
+
     app.state.pool = await create_pool_b(url)
     db = Database(url)
-    app.state.map_pool = MapnikMapPool(8)
+    app.state.map_pool = MapnikMapPool(mapnik_pool_size)
     await app.state.map_pool.setup(db)
 
 

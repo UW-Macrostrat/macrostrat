@@ -1,1 +1,0 @@
-../../../subsystems/macrostrat_api/schema/02-column-builder-functions.sql

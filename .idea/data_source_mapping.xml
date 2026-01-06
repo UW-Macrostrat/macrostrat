@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DataSourcePerFileMappings">
+    <file url="file://$APPLICATION_CONFIG_DIR$/consoles/db/2b0e1593-0c83-4fd7-b37d-870e85d1cced/console.sql" value="2b0e1593-0c83-4fd7-b37d-870e85d1cced" />
+    <file url="file://$APPLICATION_CONFIG_DIR$/consoles/db/2b0e1593-0c83-4fd7-b37d-870e85d1cced/console_11.sql" value="2b0e1593-0c83-4fd7-b37d-870e85d1cced" />
+    <file url="file://$APPLICATION_CONFIG_DIR$/consoles/db/2b0e1593-0c83-4fd7-b37d-870e85d1cced/console_8.sql" value="2b0e1593-0c83-4fd7-b37d-870e85d1cced" />
+    <file url="file://$APPLICATION_CONFIG_DIR$/consoles/db/72739528-961b-48b3-a012-7ec521111f1d/console.sql" value="72739528-961b-48b3-a012-7ec521111f1d" />
+    <file url="file://$PROJECT_DIR$/py-modules/integrations/macrostrat/integrations/gbdb/schema.sql" value="2b0e1593-0c83-4fd7-b37d-870e85d1cced" />
+  </component>
+</project>

@@ -40,21 +40,29 @@ async def tilejson(
     url_path = request.url_for(
         "tile", **{"slug": slug, "z": "{z}", "x": "{x}", "y": "{y}"}
     )
-
+    # TODO url_for resolves to http rather than https. find a better solution
     tile_endpoint = str(url_path)
+    tile_endpoint = tile_endpoint.replace("http://", "https://")
+    base_queries = [
+        f"SELECT geom FROM sources.{slug}_polygons",
+        f"SELECT geom FROM sources.{slug}_lines",
+        f"SELECT geom FROM sources.{slug}_points",
+    ]
 
-    bounds_query = f"""
-    SELECT geom FROM sources.{slug}_polygons
-    UNION
-    SELECT geom FROM sources.{slug}_lines
-    UNION
-    SELECT geom FROM sources.{slug}_points
-    """
-
-    sql = get_bounds(bounds_query, geometry_column="geom")
+    bounds = None
     pool = request.app.state.pool
     async with pool.acquire() as con:
-        bounds = await con.fetchval(sql)
+        for i in range(len(base_queries), 0, -1):
+            try:
+                bounds_query = " UNION ".join(base_queries[:i])
+                sql = get_bounds(bounds_query, geometry_column="geom")
+                bounds = await con.fetchval(sql)
+                break
+            except UndefinedTableError:
+                continue
+
+    if bounds is None:
+        return Response(status_code=404, content=f"No geometry tables found for {slug}")
 
     return {
         "minzoom": 0,

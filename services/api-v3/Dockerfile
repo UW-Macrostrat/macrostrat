@@ -1,27 +1,27 @@
-FROM python:3.11
+FROM python:3.12
+COPY --from=ghcr.io/astral-sh/uv:0.9.9 /uv /uvx /bin/
+# https://docs.astral.sh/uv/guides/integration/docker/#intermediate-layers
 
-# Setup the Poetry ENV - https://github.com/python-poetry/poetry/issues/525#issuecomment-1227231432
-ENV POETRY_HOME="/opt/poetry" \
-    POETRY_VIRTUALENVS_CREATE=false \
-    POETRY_VIRTUALENVS_IN_PROJECT=false \
-    POETRY_NO_INTERACTION=1 \
-    POETRY_VERSION=1.6.1
-ENV PATH="$PATH:$POETRY_HOME/bin"
+WORKDIR /services/main
 
-# Install Poetry
-RUN curl -sSL https://install.python-poetry.org | python3 -
+ENV UV_COMPILE_BYTECODE=1
 
-#
-WORKDIR /code
 
-#
-COPY ./poetry.lock ./pyproject.toml /code/
+# NEED TO specify another build context for the py-modules directory
+COPY --from=py-modules match-utils /py-modules/match-utils
 
-#
-RUN poetry update && poetry install
+# Install dependencies
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --locked --no-install-project
 
-#
-COPY ./api /code/api
+ADD . /services/main
 
-#
-CMD ["uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "80"]
+# Sync the project
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked
+
+EXPOSE 80
+
+CMD ["uv", "run", "uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "80"]

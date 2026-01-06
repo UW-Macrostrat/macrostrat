@@ -1,33 +1,73 @@
-# This Poetry config is mostly a proxy to the cli Poetry config,
-# with some extra packages for code formatting and import sorting.
-# Install GIS tools as well with `poetry install --with=gis`
+# This project-level UV configuration is a convenience for development.
+# It is not required for end users of macrostrat.cli.
 
-[tool.poetry]
-package-mode = false
+[project]
+name = "macrostrat-system"
+version = "0.1.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "setuptools>=75.8.2,<81.0.0",
+    "macrostrat.cli",
+    "macrostrat.match-utils",
+    "macrostrat.core",
+    "api",
+]
 
-[tool.poetry.dependencies]
-python = "^3.11"
-setuptools = "^75.8.2"
-"macrostrat.cli" = { path = "./cli", develop = true }
+[dependency-groups]
+gis = ["macrostrat.cli[gis]"]
+dev = [
+    "isort>=5.13.2,<6",
+    "pytest>=8.3.2,<9",
+    "black>=24.8.0,<25",
+]
 
-[tool.poetry.group.gis.dependencies]
-"macrostrat.cli" = { path = "./cli", develop = true, extras = ["gis"] }
+[tool.setuptools]
+py-modules = []
 
-[tool.poetry.group.dev.dependencies]
-black = "^24.8.0"
-isort = "^5.13.2"
-pytest = "^8.3.2"
+[tool.uv]
+# Allow the entire workspace to be treated
+# as a packages, to facilitate integration
+# into broader Python environments.
+default-groups = [
+    "dev",
+]
+
+[tool.uv.sources]
+"macrostrat.cli" = { editable = true, path = "py-modules/cli" }
+"macrostrat.match-utils" = { editable = true, path = "py-modules/match-utils" }
+"macrostrat.core" = { editable = true, path = "py-modules/core" }
+"api" = { editable = true, path = "services/api-v3" }
 
 [tool.black]
 line-length = 88
-extend-exclude = "__archive"
+extend-exclude = "__archive|submodules"
 
 [tool.isort]
 profile = "black"
 known_first_party = "macrostrat"
+extend_skip = ["__archive", "submodules"]
 
 [tool.pytest.ini_options]
 markers = [
     "docker: marks tests as requiring a docker container",
     "requires_gdal: marks tests as requiring GDAL",
 ]
+# Paths for default test discovery.
+# This allows 'pytest' to have the same discovery behavior
+# as 'macrostrat test all'.
+# TODO: this test coverage should be gradually expanded.
+testpaths = [
+    "py-modules",
+    "services/api-v3/api/match"
+]
+
+[tool.pylint.messages-control]
+max-line-length = 88
+disable = "invalid-name,missing-class-docstring,missing-function-docstring"
+
+[tool.hatch.build.targets.wheel]
+packages = ["macrostrat.cli"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

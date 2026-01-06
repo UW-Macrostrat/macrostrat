@@ -7,52 +7,70 @@
 #
 import datetime
 from os import environ
-from typing import List, Literal, Type
-from datetime import timezone
+from typing import Literal, Type
+
 import api.schemas as schemas
 from api.query_parser import QueryParser
 from dotenv import load_dotenv
 from pydantic import BaseModel
 from sqlalchemy import CursorResult, MetaData, Table, func, insert, select, text, update
-from sqlalchemy.exc import NoResultFound, NoSuchTableError
+from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
 )
-from starlette.requests import QueryParams
+
+from macrostrat.database import Database
 
 load_dotenv()
 
-engine: AsyncEngine = None
+engine: AsyncEngine | None = None
+sync_db: Database | None = None
 
 
-def get_engine():
+def get_engine() -> AsyncEngine:
+    if engine is None:
+        raise RuntimeError("Database engine not initialized yet")
     return engine
 
 
-async def connect_engine() -> AsyncEngine:
-    global engine
+def get_db_url():
+    # Try several options ot get a database URL
+    # - MACROSTRAT_DATABASE_URL is used by PyTest embedded in the macrostrat cli
+    # - uri is how the Postgres Operator passes
+    # - DB_URL is nicer for .env files
+    for env in ["MACROSTRAT_DATABASE_URL", "uri", "DB_URL"]:
+        if environ.get(env, None) is not None:
+            return environ.get(env)
+    raise ValueError("No database URL found")
 
+
+def get_sync_database():
+    global sync_db
+    if sync_db is None:
+        sync_db = Database(get_db_url())
+    return sync_db
+
+
+async def connect_engine() -> AsyncEngine:
     # Check the uri and DB_URL for the database connection string
     # uri is how the Postgres Operator passes, DB_URL is nicer for .env files
-    db_url = environ.get("DB_URL", None)
-    db_url = environ.get("uri", db_url)
-
+    global engine
+    db_url = get_db_url()
     # Make sure this is all run async
     if db_url.startswith("postgresql://"):
         db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
-
     engine = create_async_engine(db_url)
-
-    async with engine.begin() as conn:
-        await conn.run_sync(schemas.Base.metadata.create_all)
+    return engine
 
 
 async def dispose_engine():
     global engine
-    await engine.dispose()
+    if engine is not None:
+        await engine.dispose()
+        engine = None
 
 
 def get_async_session(
@@ -177,7 +195,7 @@ async def get_table(
     conn, table_id: int, geometry_type: Literal["polygons", "points", "lines"]
 ) -> Table:
     metadata = MetaData(schema="sources")
-    table_slug = await source_id_to_slug(engine, table_id)
+    table_slug = await source_id_to_slug(get_engine(), table_id)
     table_name = f"{table_slug}_{geometry_type}"
     table = await conn.run_sync(
         lambda sync_conn: Table(table_name, metadata, autoload_with=sync_conn)
@@ -319,90 +337,3 @@ async def patch_sources_sub_table_set_columns_equal(
         result = await conn.execute(stmt)
 
         return result
-
-
-
-# ----------- SQL helpers used by security.py; returns plain dicts/lists ------------
-
-async def fetch_user_by_sub(engine, sub: str) -> dict | None:
-    async with engine.begin() as conn:
-        user = (await conn.execute(
-            text("""
-                SELECT id, sub, name, email, created_on, updated_on
-                FROM macrostrat_auth."user"
-                WHERE sub = :sub
-            """),
-            {"sub": sub},
-        )).mappings().first()
-        if not user:
-            return None
-        groups = (await conn.execute(
-            text("""
-                SELECT g.id, g.name
-                FROM macrostrat_auth."group" g
-                JOIN macrostrat_auth.group_members gm ON gm.group_id = g.id
-                WHERE gm.user_id = :uid
-                ORDER BY g.id
-            """),
-            {"uid": user["id"]},
-        )).mappings().all()
-        user = dict(user)
-        user["groups"] = [dict(g) for g in groups]
-        return user
-
-async def create_user_row(engine, sub: str, name: str, email: str) -> dict:
-    async with engine.begin() as conn:
-        user = (await conn.execute(
-            text("""
-                INSERT INTO macrostrat_auth."user"(sub, name, email)
-                VALUES (:sub, :name, :email)
-                RETURNING id, sub, name, email, created_on, updated_on
-            """),
-            {"sub": sub, "name": name, "email": email},
-        )).mappings().first()
-        user = dict(user)
-        user["groups"] = []
-        return user
-
-async def insert_group_api_token(engine, token_hash_string: str, group_id: int, expiration_dt):
-    async with engine.begin() as conn:
-        await conn.execute(
-            text("""
-                INSERT INTO macrostrat_auth.token(token, "group", expires_on)
-                VALUES (:token, :group_id, :exp)
-            """),
-            {"token": token_hash_string, "group_id": group_id, "exp": expiration_dt},
-        )
-
-async def get_access_token_by_hash(engine, token_hash_string: str) -> dict | None:
-    async with engine.begin() as conn:
-        row = (await conn.execute(
-            text("""
-                SELECT id, token, "group", used_on, expires_on
-                FROM macrostrat_auth.token
-                WHERE token = :tok
-            """),
-            {"tok": token_hash_string},
-        )).mappings().first()
-        if not row:
-            return None
-        now = datetime.datetime.now(datetime.timezone.utc)
-        if row["expires_on"] and row["expires_on"] < now:
-            return None
-        await conn.execute(
-            text("""UPDATE macrostrat_auth.token SET used_on = NOW() WHERE id = :id"""),
-            {"id": row["id"]},
-        )
-        return dict(row)
-
-async def get_all_unexpired_access_tokens(engine) -> list[dict]:
-    async with engine.begin() as conn:
-        rows = (await conn.execute(
-            text("""
-                SELECT id, token, "group", used_on, expires_on
-                FROM macrostrat_auth.token
-                WHERE expires_on > NOW()
-            """)
-        )).mappings().all()
-        return [dict(r) for r in rows]
-

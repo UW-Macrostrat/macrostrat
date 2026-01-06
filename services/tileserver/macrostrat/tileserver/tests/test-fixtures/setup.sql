@@ -77,7 +77,7 @@ DROP SCHEMA carto_new CASCADE;
 /** Create some views for line data (we should have gotten this data) */
 CREATE TABLE maps.lines (
     line_id integer PRIMARY KEY,
-    orig_id integer,
+    orig_id text,
     source_id integer REFERENCES maps.sources(source_id),
     name character varying(255),
     type character varying(100),

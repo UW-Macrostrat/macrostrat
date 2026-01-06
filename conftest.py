@@ -115,7 +115,7 @@ def load_config_module():
 
 @fixture()
 def cfg():
-    cfg_file = __here__ / "cli" / "tests" / "macrostrat.test.toml"
+    cfg_file = __here__ / "macrostrat" / "cli" / "tests" / "macrostrat.test.toml"
     with override_environment(MACROSTRAT_CONFIG=str(cfg_file), NO_COLOR="1"):
         mod_instance = load_config_module()
 

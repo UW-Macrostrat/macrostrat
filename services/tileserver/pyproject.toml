@@ -1,39 +1,46 @@
-[tool.poetry]
-authors = ["Daven Quinn <dev@davenquinn.com>"]
-description = "Macrostrat tile server"
+[project]
 name = "macrostrat.tileserver"
-packages = [{ include = "macrostrat" }]
 version = "3.0.1"
+description = "Macrostrat tile server"
+authors = [{ name = "Daven Quinn", email = "dev@davenquinn.com" }]
+requires-python = ">=3.11, <4"
+dependencies = [
+    "fastapi>=0.111.0,<0.112",
+    "macrostrat.database~=3.0",
+    "macrostrat.utils>=1.2.0,<2",
+    "pytest>=7.2.1,<8",
+    "python-dotenv>=1.0.0,<2",
+    "typer>=0.12.3,<0.13",
+    "uvicorn>=0.34.2,<0.35",
+    "titiler>=0.18.5,<0.19",
+    "httpx>=0.27.2,<0.28",
+    "mapbox-vector-tile>=2.1.0,<3",
+    "timvt",
+    "macrostrat.tileserver-utils",
+]
 
-[tool.poetry.dependencies]
-fastapi = "^0.111.0"
-"macrostrat.database" = "^3.0"
-"macrostrat.utils" = "^1.2.0"
-pytest = "^7.2.1"
-python = "^3.10"
-python-dotenv = "^1.0.0"
-typer = "^0.12.3"
-uvicorn = "^0.34.2"
-titiler = "^0.18.5"
-httpx = "^0.27.2"
-mapbox-vector-tile = "^2.1.0"
-timvt = { path = "./deps/timvt_local", develop = true }
+[dependency-groups]
+dev = [
+    "isort>=5.12.0,<6",
+    "black>=24.8.0,<25",
+    "macrostrat-dinosaur>=3.1.1,<4",
+]
 
-[tool.poetry.group.local.dependencies]
-# Local wheel of macrostrat.tileserver-utils. This must be built (using make in the py-modules directory)
-# and copied here before Docker build.
-"macrostrat.tileserver-utils" = { file = "./deps/macrostrat_tileserver_utils-0.1.0-py3-none-any.whl" }
+[tool.uv]
 
-# Raster tiles dependencies cannot be installed with poetry
+[tool.uv.sources]
+timvt = { path = "./deps/timvt_local", editable = true }
+"macrostrat.tileserver_utils" = { path = "../../py-modules/tileserver-utils", editable = true }
 
-[tool.poetry.group.dev.dependencies]
-isort = "^5.12.0"
-black = "^24.8.0"
-macrostrat-dinosaur = "^3.1.1"
+[tool.hatch.build.targets.sdist]
+include = ["macrostrat"]
+
+[tool.hatch.build.targets.wheel]
+include = ["macrostrat"]
 
 [build-system]
-build-backend = "poetry.core.masonry.api"
-requires = ["poetry-core>=1.0.0"]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [tool.pytest.ini_options]
 norecursedirs = "deps/*"

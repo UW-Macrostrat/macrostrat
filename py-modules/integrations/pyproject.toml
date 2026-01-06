@@ -1,0 +1,30 @@
+[project]
+name = "macrostrat.integrations"
+version = "1.0.0"
+description = "Macrostrat system integrations"
+authors = [{ name = "Daven Quinn", email = "dev@davenquinn.com" }]
+requires-python = "~=3.10"
+readme = "README.md"
+dependencies = [
+    "macrostrat.database>=3.3.3,<4",
+    "macrostrat.utils>=1.2.2,<2",
+    "macrostrat.core",
+    "criticalmaas.ta1-geopackage>=0.2.0,<0.3",
+    "typer>=0.12,<0.13",
+    "httpx>=0.27.2,<0.28",
+]
+
+[tool.uv]
+
+[tool.uv.sources]
+"macrostrat.core" = { path = "../core", editable = true }
+
+[tool.hatch.build.targets.sdist]
+include = ["macrostrat"]
+
+[tool.hatch.build.targets.wheel]
+include = ["macrostrat"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

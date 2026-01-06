@@ -221,7 +221,7 @@ def multiple_spot_to_fieldsite(
 
 def fieldsite_to_checkin(fs: FieldSite) -> dict:
     d = {
-        "checkin_id": fs.id,
+        "spot_id": fs.id,
         "notes": fs.notes,
         "lat": fs.location.latitude,
         "lng": fs.location.longitude,

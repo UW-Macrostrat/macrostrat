@@ -1,3 +1,6 @@
 .venv
 __pycache__
 macrostrat.toml
+*.egg-info
+*.pyc
+.DS_Store
