@@ -125,8 +125,6 @@ FROM a ORDER BY name_clean, age_span;
 CREATE OR REPLACE VIEW macrostrat_gbdb.best_external_age_control AS
 SELECT DISTINCT ON (name_clean) * FROM macrostrat_gbdb.external_age_control;
 
-SELECT DISTINCT ON (name_clean) * FROM macrostrat_gbdb.external_age_control;
-
 UPDATE macrostrat_gbdb.strata SET member = null WHERE member = '';
 UPDATE macrostrat_gbdb.strata SET formation = null WHERE formation = '';
 UPDATE macrostrat_gbdb.strata SET epoch = null WHERE epoch = '';
@@ -139,32 +137,6 @@ SELECT *,
          OR (period IS NOT NULL)
          OR (min_ma IS NOT NULL AND max_ma IS NOT NULL)) AS has_age_constraint
        FROM macrostrat_gbdb.strata;
-
-SELECT count(*) FROM macrostrat_api.gbdb_strata WHERE (min_ma IS NOT NULL AND max_ma IS NOT NULL);
-
-
--- 121903 strata have an age constraint
-SELECT count(*) FROM macrostrat_api.gbdb_strata WHERE has_age_constraint;
-
---153217 strata do not have an age constraint
-SELECT count(*) FROM macrostrat_api.gbdb_strata WHERE NOT has_age_constraint;
-
---153179 strata do not have an age constraint but have a formation name
-SELECT count(*) FROM macrostrat_api.gbdb_strata WHERE NOT has_age_constraint and (formation IS NOT NULL);
-
-
-
--- 5742 formations mentioned that do not have an age constraint defined
-SELECT count(DISTINCT formation)
-FROM macrostrat_api.gbdb_strata
-WHERE NOT has_age_constraint
-  AND (formation IS NOT NULL);
-
-
-SELECT DISTINCT (formation) formation
-FROM macrostrat_api.gbdb_strata
-WHERE NOT has_age_constraint
-  AND (formation IS NOT NULL);
 
 -- Create an interval age range index
 CREATE INDEX IF NOT EXISTS intervals_age_range_idx ON macrostrat.intervals ((age_bottom - age_top));
@@ -184,6 +156,15 @@ $$ LANGUAGE sql IMMUTABLE;
 
 SELECT * FROM macrostrat.intervals WHERE id = macrostrat_api.interval_for_age_range(100, 140);
 
+CREATE TABLE macrostrat_gbdb.sections (
+  section_id INTEGER PRIMARY KEY,
+  lng NUMERIC,
+  lat NUMERIC,
+  has_age_constraint BOOLEAN,
+  min_ma NUMERIC,
+  max_ma NUMERIC,
+  color TEXT
+);
 
 CREATE TABLE macrostrat_gbdb.sections AS
 WITH a AS (SELECT section_id,
@@ -198,11 +179,11 @@ WITH a AS (SELECT section_id,
             AND lower(s.formation) != 'unknown'
            GROUP BY section_id, lng, lat
 )
+INSERT INTO macrostrat_gbdb.sections
 SELECT *,
        macrostrat_api.color_for_age_range(a.min_ma, a.max_ma) color
 FROM a;
 
-SELECT count(*) FROM macrostrat_gbdb.sections WHERE has_age_constraint;
 
 CREATE OR REPLACE VIEW macrostrat_api.gbdb_section_geojson AS
 SELECT
@@ -316,13 +297,22 @@ SELECT jsonb_build_object(
   ) geojson
 FROM macrostrat_gbdb.summary_columns;
 
-CREATE TABLE macrostrat_gbdb.summary_units AS
+CREATE TABLE macrostrat_gbdb.summary_units (
+  unit_id integer PRIMARY KEY,
+  col_id integer,
+  unit_name text,
+  t_age numeric,
+  b_age numeric
+);
+
+TRUNCATE TABLE macrostrat_gbdb.summary_units;
 WITH col_sections AS (
   SELECT section_id, sc.id col_id
   FROM macrostrat_gbdb.sections s
   JOIN macrostrat_gbdb.summary_columns sc
     ON ST_Intersects(ST_SetSRID(ST_MakePoint(lng, lat), 4326), sc.geometry)
   WHERE has_age_constraint)
+INSERT INTO macrostrat_gbdb.summary_units
 SELECT
   row_number() OVER () unit_id,
   col_id,
@@ -336,51 +326,6 @@ GROUP BY col_id, f.formation, min_ma, max_ma;
 
 CREATE OR REPLACE VIEW macrostrat_api.gbdb_summary_units AS
 SELECT * FROM macrostrat_gbdb.summary_units;
-
--- WITH duplicate_units AS (SELECT unit_id, section_id, COUNT(*)
---                FROM macrostrat_api.gbdb_strata
---                GROUP BY unit_id, section_id
---                HAVING COUNT(*) > 1
---                ORDER BY count DESC)
--- SELECT unit_id, array_agg(depth_scale) FROM duplicate_units
--- JOIN macrostrat_api.gbdb_strata USING (unit_id, section_id)
--- GROUP BY unit_id;
---
--- WITH duplicate_units AS (SELECT unit_id, section_id, COUNT(*)
---                          FROM macrostrat_api.gbdb_strata
---                          GROUP BY unit_id, section_id
---                          HAVING COUNT(*) > 1
---                          ORDER BY count DESC)
--- SELECT * FROM duplicate_units
--- JOIN macrostrat_api.gbdb_strata USING (unit_id, section_id);
-
-
-WITH col_sections AS (SELECT section_id, sc.id col_id
-                      FROM macrostrat_gbdb.sections s
-                             JOIN macrostrat_gbdb.summary_columns sc
-                                  ON ST_Intersects(ST_SetSRID(ST_MakePoint(lng, lat), 4326), sc.geometry)
-                      WHERE has_age_constraint)
-SELECT
-    row_number() OVER () unit_id,
-    col_id,
-    f.formation unit_name,
-    min_ma t_age,
-    max_ma b_age
-FROM macrostrat_api.gbdb_formations f
-       JOIN col_sections cs ON cs.section_id = f.section_id
-WHERE f.min_ma IS NOT NULL AND f.max_ma IS NOT NULL
-GROUP BY col_id, f.formation, min_ma, max_ma;
-
-SELECT age_source, count(*), count(*)::numeric/(SELECT count(*) proportion FROM macrostrat_api.gbdb_strata_with_age_model) FROM macrostrat_api.gbdb_strata_with_age_model GROUP BY age_source;
-
-SELECT * FROM macrostrat_api.gbdb_formations WHERE formation ILIKE '%Fangyan%';
-
-SELECT * FROM macrostrat_api.gbdb_formations WHERE min_ma IS null ORDER BY formation;
-
-SELECT count(*), round(count(*)::numeric/(SELECT count(*) proportion FROM macrostrat_api.gbdb_strata), 2) FROM macrostrat_api.gbdb_strata WHERE min_ma IS NOT NULL AND max_ma IS NOT NULL;
-
-
-SELECT age_source, count(*), round(count(*)::numeric/(SELECT count(*) FROM macrostrat_gbdb.strata), 2) proportion FROM macrostrat_api.gbdb_strata_with_age_model WHERE country = 'China' GROUP BY age_source ;
 
 CREATE OR REPLACE VIEW macrostrat_gbdb.chinalex_ext AS
 SELECT *, ST_GeomFromGeoJSON(geojson::json->>'geometry') AS geom
