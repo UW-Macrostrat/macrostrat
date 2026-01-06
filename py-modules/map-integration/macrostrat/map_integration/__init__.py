@@ -138,7 +138,6 @@ def delete_sources(
                 dict(table=Identifier("sources", table)),
             )
 
-<<<<<<< HEAD:py-modules/map-integration/macrostrat/map_integration/__init__.py
         ingest_process = db.run_query(
             """
             SELECT id FROM maps_metadata.ingest_process
@@ -179,9 +178,8 @@ def delete_sources(
                 "DELETE FROM maps_metadata.ingest_process WHERE id = :ingest_process_id",
                 dict(ingest_process_id=ingest_process_id),
             )
-=======
+
         staging_delete_dir(s, db)
->>>>>>> 115fe2f6d4d422b4c341a2938707dc116834a325:map-integration/macrostrat/map_integration/__init__.py
 
         source_id = db.run_query(
             "SELECT source_id FROM maps.sources WHERE slug = :slug",
@@ -436,7 +434,6 @@ def staging(
     create_rgeom(map_info)
     create_webgeom(map_info)
 
-<<<<<<< HEAD:py-modules/map-integration/macrostrat/map_integration/__init__.py
     # Ingest process assertions
     if len(object_ids) > 0:
         ingest_id = db.run_query(
@@ -459,8 +456,6 @@ def staging(
                 dict(ingest_process_id=ingest_id, object_id=object),
             )
 
-=======
->>>>>>> 115fe2f6d4d422b4c341a2938707dc116834a325:map-integration/macrostrat/map_integration/__init__.py
     console.print(
         f"[green] \n Finished staging setup for {slug}. "
         f"View map here: https://dev.macrostrat.org/maps/ingestion/{source_id}/ [/green] \n"
@@ -789,8 +784,6 @@ def staging_bulk(
         _prepare_fields(map_info)
         create_rgeom(map_info)
         create_webgeom(map_info)
-
-<<<<<<< HEAD:py-modules/map-integration/macrostrat/map_integration/__init__.py
         # Ingest process assertions
         if len(object_ids) > 0:
             ingest_id = db.run_query(
@@ -813,8 +806,6 @@ def staging_bulk(
                     dict(ingest_process_id=ingest_id, object_id=object),
                 )
 
-=======
->>>>>>> 115fe2f6d4d422b4c341a2938707dc116834a325:map-integration/macrostrat/map_integration/__init__.py
         print(
             f"\nFinished staging setup for {slug}. View map here: https://dev.macrostrat.org/maps/ingestion/{source_id}/ \n"
         )

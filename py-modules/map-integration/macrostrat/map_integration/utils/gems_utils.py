@@ -7,7 +7,7 @@ import pandas as pd
 import pyogrio
 
 from macrostrat.core.database import get_database
-from ingestion_utils import get_age_interval_df, get_strat_names_df
+from macrostrat.map_integration.utils.ingestion_utils import get_age_interval_df, get_strat_names_df
 
 
 def extract_gdb_layer(
