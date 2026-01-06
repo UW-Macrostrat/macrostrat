@@ -1,6 +1,6 @@
 #!/usr/bin/env bash -e
 
-root_dir="/Users/Daven/Projects/Macrostrat/Datasets/GBDB workshop"
+root_dir=$ROOT_DIR
 
 macrostrat db psql -c "TRUNCATE TABLE macrostrat_gbdb.chinalex"
 cat "$root_dir/2024-08-18_chinalex.csv" \

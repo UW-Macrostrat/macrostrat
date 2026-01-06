@@ -125,10 +125,6 @@ FROM a ORDER BY name_clean, age_span;
 CREATE OR REPLACE VIEW macrostrat_gbdb.best_external_age_control AS
 SELECT DISTINCT ON (name_clean) * FROM macrostrat_gbdb.external_age_control;
 
-UPDATE macrostrat_gbdb.strata SET member = null WHERE member = '';
-UPDATE macrostrat_gbdb.strata SET formation = null WHERE formation = '';
-UPDATE macrostrat_gbdb.strata SET epoch = null WHERE epoch = '';
-
 CREATE OR REPLACE VIEW macrostrat_api.gbdb_strata AS
 SELECT *,
        ((early_interval IS NOT NULL AND late_interval IS NOT NULL)
@@ -154,8 +150,6 @@ LIMIT 1;
 $$ LANGUAGE sql IMMUTABLE;
 
 
-SELECT * FROM macrostrat.intervals WHERE id = macrostrat_api.interval_for_age_range(100, 140);
-
 CREATE TABLE macrostrat_gbdb.sections (
   section_id INTEGER PRIMARY KEY,
   lng NUMERIC,
@@ -165,25 +159,6 @@ CREATE TABLE macrostrat_gbdb.sections (
   max_ma NUMERIC,
   color TEXT
 );
-
-CREATE TABLE macrostrat_gbdb.sections AS
-WITH a AS (SELECT section_id,
-                  lng,
-                  lat,
-                  count(ac.t_age) > 0 has_age_constraint,
-                  MIN(ac.t_age)                 min_ma,
-                  MAX(ac.b_age)                 max_ma
-           FROM macrostrat_gbdb.strata s
-           LEFT JOIN macrostrat_gbdb.best_external_age_control ac
-             ON lower(s.formation) = lower(ac.name_clean)
-            AND lower(s.formation) != 'unknown'
-           GROUP BY section_id, lng, lat
-)
-INSERT INTO macrostrat_gbdb.sections
-SELECT *,
-       macrostrat_api.color_for_age_range(a.min_ma, a.max_ma) color
-FROM a;
-
 
 CREATE OR REPLACE VIEW macrostrat_api.gbdb_section_geojson AS
 SELECT
@@ -265,19 +240,9 @@ LEFT JOIN macrostrat_api.gbdb_age_model am
             ON s.section_id = am.section_id
               AND s.unit_id = am.unit_id;
 
--- TODO: make this align more with new schema management approach
-DROP TABLE IF EXISTS macrostrat_gbdb.summary_columns;
-CREATE TABLE macrostrat_gbdb.summary_columns AS
-WITH hexgrid AS (
-  SELECT ST_HexagonGrid(1, ST_MakeEnvelope(-180, -90, 180, 90, 4326)) AS hex
-)
-SELECT
-  row_number() OVER () id,
-  ST_ForceRHR((hex).geom) geometry
-FROM hexgrid
-WHERE ST_Intersects((hex).geom, (
-    SELECT ST_Union(ST_SetSRID(ST_MakePoint(lng, lat), 4326)) FROM macrostrat_gbdb.sections WHERE has_age_constraint
-  )
+CREATE TABLE macrostrat_gbdb.summary_columns (
+  id INTEGER PRIMARY KEY,
+  geometry GEOMETRY(POLYGON, 4326)
 );
 
 CREATE OR REPLACE VIEW macrostrat_api.gbdb_summary_columns AS
@@ -304,25 +269,6 @@ CREATE TABLE macrostrat_gbdb.summary_units (
   t_age numeric,
   b_age numeric
 );
-
-TRUNCATE TABLE macrostrat_gbdb.summary_units;
-WITH col_sections AS (
-  SELECT section_id, sc.id col_id
-  FROM macrostrat_gbdb.sections s
-  JOIN macrostrat_gbdb.summary_columns sc
-    ON ST_Intersects(ST_SetSRID(ST_MakePoint(lng, lat), 4326), sc.geometry)
-  WHERE has_age_constraint)
-INSERT INTO macrostrat_gbdb.summary_units
-SELECT
-  row_number() OVER () unit_id,
-  col_id,
-  f.formation unit_name,
-  min_ma t_age,
-  max_ma b_age
-FROM macrostrat_api.gbdb_formations f
-JOIN col_sections cs ON cs.section_id = f.section_id
-WHERE f.min_ma IS NOT NULL AND f.max_ma IS NOT NULL
-GROUP BY col_id, f.formation, min_ma, max_ma;
 
 CREATE OR REPLACE VIEW macrostrat_api.gbdb_summary_units AS
 SELECT * FROM macrostrat_gbdb.summary_units;

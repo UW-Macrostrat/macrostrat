@@ -25,6 +25,9 @@ WHERE NOT has_age_constraint
   AND (formation IS NOT NULL);
 
 
+SELECT * FROM macrostrat.intervals WHERE id = macrostrat_api.interval_for_age_range(100, 140);
+
+
 SELECT count(*) FROM macrostrat_gbdb.sections WHERE has_age_constraint;
 
 
