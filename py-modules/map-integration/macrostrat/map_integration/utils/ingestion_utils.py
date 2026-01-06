@@ -1,7 +1,10 @@
 import re
 from pathlib import Path
 
+import geopandas as G
 import pandas as pd
+
+from macrostrat.core.database import get_database
 
 SLUG_SAFE_CHARS = re.compile(r"[^a-z0-9_]+")
 
@@ -77,6 +80,67 @@ def normalize_slug(prefix: str, path: Path) -> tuple[str, str, str]:
     name = f"{filename}, {region}"
 
     return slug, name, ext
+
+
+def get_age_interval_df() -> pd.DataFrame:
+    """Query and store interval names from the database into a DataFrame for lookups.
+    Returns:
+    pd.DataFrame. A pandas series with interval_name strings.
+    """
+    db = get_database()
+    query = "SELECT id, interval_name FROM macrostrat.intervals"
+    with db.engine.connect() as conn:
+        df = pd.read_sql(query, conn)
+    return df
+
+
+def get_strat_names_df() -> pd.DataFrame:
+    """Query and store interval names from the database into a DataFrame for lookups.
+    Returns:
+    pd.DataFrame. A pandas series with interval_name strings.
+    """
+    db = get_database()
+    query = "select rank_name from macrostrat.lookup_strat_names"
+    with db.engine.connect() as conn:
+        df = pd.read_sql(query, conn)
+    return df
+
+
+# standard map age function. User gets to input their column 1 and a column 2 data to map to our ages.
+def map_t_b_standard(
+    meta_df: G.GeoDataFrame, col_one: str, col_two: str
+) -> G.GeoDataFrame:
+    """Populate the b_interval field using age and name information.
+    The function first tries a direct match between legend_df.age and the
+    canonical interval list. For formations whose age is not explicit, it scans
+    the formation name for any word that appears in the interval list.
+    Parameters:
+    legend_df : G.GeoDataFrame. Legend table with at least age and name columns.
+
+    Returns:
+    G.GeoDataFrame: The input frame with a newly filled/created b_interval column.
+    """
+    interval_df = get_age_interval_df().reset_index(drop=True)
+    interval_lookup = {
+        row["interval_name"].lower(): row["id"] for _, row in interval_df.iterrows()
+    }
+
+    # map age fields to b/t intervals
+    # must have a match in the macrotrat.intervals dictionary in order to return a valid interval
+    for word in meta_df[col_one]:
+        if word in interval_lookup:
+            meta_df["b_interval"] = interval_lookup[word]
+            meta_df["t_interval"] = interval_lookup[word]
+
+    # for the rest of NA's we will map the name field to b/t intervals
+    needs_fill = meta_df["b_interval"].isna()
+
+    if needs_fill.any():
+        for word in meta_df[col_two]:
+            if word in interval_lookup:
+                meta_df["b_interval"] = interval_lookup[word]
+                meta_df["t_interval"] = interval_lookup[word]
+    return meta_df
 
 
 def process_sources_metadata(

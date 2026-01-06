@@ -1,17 +1,38 @@
-from macrostrat.core.migrations import Migration, _any, _not, exists, has_columns
+from macrostrat.core.migrations import (
+    Migration,
+    column_type_is,
+    exists,
+    has_columns,
+    not_exists,
+    view_exists,
+)
 
 
-class MapFiles(Migration):
-    name = "map-files"
+class FileStorageUpdates(Migration):
+    name = "file-storage-updates"
     subsystem = "maps"
     description = "Update storage schema for better file management."
-    depends_on = ["api-v3"]
+    # depends_on = ["api-v3"]
     preconditions = [
         exists("maps_metadata", "ingest_process"),
-        exists("storage", "object"),
     ]
     postconditions = [
         # storage.object no longer has object_group_id
+        has_columns(
+            "storage",
+            "object",
+            "scheme",
+            "host",
+            "bucket",
+            "key",
+            "source",
+            "mime_type",
+            "sha256_hash",
+            "created_on",
+            "updated_on",
+            "deleted_on",
+        ),
+        not_exists("storage", "object_group"),
         # intersection table exists in storage schema
         exists("maps_metadata", "map_files"),
         # intersection table columns exist
@@ -22,53 +43,4 @@ class MapFiles(Migration):
             "ingest_process_id",
             "object_id",
         ),
-    ]
-
-
-class MapFilesChangeSchema(Migration):
-    name = "map-files-change-schema"
-    subsystem = "maps"
-    description = "Change map_files table to use the map_metadata schema"
-    depends_on = ["map-files"]
-    preconditions = [
-        exists("storage", "map_files"),
-        exists("maps_metadata", "map_files"),
-    ]
-    postconditions = [_not(exists("storage", "map_files"))]
-
-    def apply(self, db):
-        db.run_sql(
-            """
-            INSERT INTO maps_metadata.map_files (ingest_process_id, object_id)
-            SELECT ingest_process_id, object_id FROM storage.map_files
-            ON CONFLICT (ingest_process_id, object_id) DO NOTHING;
-
-            DROP TABLE IF EXISTS storage.map_files;
-            """
-        )
-
-
-has_object_group = _any(
-    [
-        exists("storage", "object_group"),
-        has_columns("storage", "object", "object_group_id"),
-    ]
-)
-
-
-class StorageAddColumns(Migration):
-    name = "storage-add-columns"
-
-    def apply(self, db):
-        db.run_sql(
-            """
-            ALTER TABLE storage.object DROP COLUMN IF EXISTS object_group_id;
-            DROP TABLE IF EXISTS storage.object_group;
-            """
-        )
-
-    preconditions = [has_object_group]
-
-    postconditions = [
-        _not(has_object_group),
     ]

@@ -5,7 +5,6 @@ from typing import Iterable, List, Tuple
 
 import fiona
 import geopandas as G
-import numpy as np
 import pandas as P
 import pyogrio
 from geoalchemy2 import Geometry
@@ -15,7 +14,7 @@ from shapely import wkt
 from shapely.geometry.base import BaseGeometry
 from sqlalchemy import text
 
-from ..custom_integrations.gems_utils import (
+from macrostrat.map_integration.utils.gems_utils import (
     extract_gdb_layer,
     map_lines_to_preferred_fields,
     map_points_to_preferred_fields,
@@ -23,8 +22,10 @@ from ..custom_integrations.gems_utils import (
     map_t_b_intervals,
     transform_gdb_layer,
 )
+
 from ..database import get_database
 from ..errors import IngestError
+from ..utils.ingestion_utils import map_t_b_standard
 from .geodatabase import apply_domains_to_fields, get_layer_info, get_layer_names
 
 console = Console()
@@ -62,6 +63,7 @@ def preprocess_dataframe(
     comments = ""
     state = ""
     ext = meta_path.suffix.lower()
+    print("here is the ext!", ext)
     if ext == ".tsv":
         meta_df = P.read_csv(meta_path, sep="\t")
         ingest_pipeline = ".tsv pipeline"
@@ -74,6 +76,8 @@ def preprocess_dataframe(
         ingest_pipeline = ".xls pipeline"
         meta_df = P.read_excel(meta_path)
         # TODO xls pipeline for if feature_suffix == "polygons", "lines" OR "points"
+    elif ext == ".gpkg":
+        map_t_b_standard(poly_line_pt_df, "epoch", "period")
     elif ext == ".gdb":
         if feature_suffix == "polygons":
             join_col = "mapunit"
@@ -106,7 +110,6 @@ def preprocess_dataframe(
             meta_df = map_strat_name(meta_df)
             if meta_df["strat_name"].isna().all():
                 comments += "No strat_names found."
-
         elif feature_suffix == "lines":
             meta_df, comments, state = map_lines_to_preferred_fields(
                 poly_line_pt_df, comments, state
@@ -117,6 +120,7 @@ def preprocess_dataframe(
             if state != "pending":
                 state = "ingested"
                 comments = " Lines successfully ingested"
+            print("Lines df merge successful")
             return meta_df, ingest_pipeline, comments, state
 
         elif feature_suffix == "points":
@@ -129,14 +133,23 @@ def preprocess_dataframe(
             if state != "pending":
                 state = "ingested"
                 comments = " Points successfully ingested"
+            print("Points df merge successful")
             return meta_df, ingest_pipeline, comments, state
-
-    if len(meta_df) == 0 or meta_df.empty:
-        comments = "Warning: metadata file is empty. Skipping metadata merge."
-        state = "failed"
+    if meta_df is None:
+        comments += "No metadata dataframe produced. Skipping metadata merge. "
+        state = state or "needs review"
         return poly_line_pt_df, ingest_pipeline, comments, state
+
+    if len(meta_df) == 0:
+        comments += "Metadata dataframe is empty. Skipping metadata merge. "
+        state = state or "needs review"
+        return poly_line_pt_df, ingest_pipeline, comments, state
+
     # merge polygons and metadata dataframes before inserting into the db
+
     merged_df = merge_metadata_polygons(poly_line_pt_df, meta_df, join_col)
+    print("Polygon df merge successful")
+
     comments += "Polygons metadata merged and ingested"
     state = "ingested"
     return merged_df, ingest_pipeline, comments, state
@@ -255,7 +268,9 @@ def ingest_map(
     # concatenate all polygons into a single df, lines, and points as well
     for feature_type, df_list in frames.items():
         # Concatenate all dataframes
+        print("about to concatenate all df's per feature")
         df = G.GeoDataFrame(P.concat(df_list, ignore_index=True))
+        print("about to check for duplicates")
         df = df.loc[:, ~df.columns.duplicated()]
 
         feature_suffix = feature_type.lower() + "s"
@@ -311,7 +326,7 @@ def ingest_map(
                 ingest_results["state"] = "needs review"
             elif ingest_results["state"] is None:
                 ingest_results["state"] = "pending"
-
+            print("all required logs are updated.")
             before = df.columns.tolist()
             df = df.loc[:, ~df.columns.duplicated()]  # <- fix: reassign to merged_df!
             after = df.columns.tolist()

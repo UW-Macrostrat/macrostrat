@@ -15,7 +15,8 @@ from typer import Option
 from macrostrat.core import app
 from macrostrat.database import Database
 from macrostrat.map_integration.commands.prepare_fields import _prepare_fields
-from macrostrat.map_integration.pipeline import ingest_map
+
+# from macrostrat.map_integration.pipeline import ingest_map
 from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
 from macrostrat.map_integration.utils.ingestion_utils import (
     find_gis_files,
@@ -94,9 +95,6 @@ def delete_sources(
         help="BULK delete = filename.txt [every line lists the slug_name to delete. no whitespaces.]\n "
         + "SINGLE delete = 'slug_name' [list the slug_name in quotes]",
     ),
-    file_name: str = Option(
-        None, help="deletes a specified file within the slug's directory."
-    ),
     dry_run: bool = Option(False, "--dry-run"),
     all_data: bool = Option(False, "--all-data"),
 ):
@@ -116,13 +114,11 @@ def delete_sources(
         print("\nDry run; not actually deleting anything")
         return
 
-    for slug in slug:
-        cmd_delete_dir(slug, file_name)
-        print(f"Deleting map {slug}")
-        print(slug)
+    for s in slug:
+        print(f"Deleting map {s}")
         tables = db.run_query(
             "SELECT primary_table, primary_line_table FROM maps.sources WHERE slug = :slug",
-            dict(slug=slug),
+            dict(slug=s),
         ).fetchone()
 
         line_table = None
@@ -132,10 +128,10 @@ def delete_sources(
             poly_table = tables.primary_table
 
         if line_table is None:
-            line_table = f"{slug}_lines"
+            line_table = f"{s}_lines"
         if poly_table is None:
-            poly_table = f"{slug}_polygons"
-        points_table = f"{slug}_points"
+            poly_table = f"{s}_polygons"
+        points_table = f"{s}_points"
 
         for table in [line_table, poly_table, points_table]:
             db.run_sql(
@@ -184,15 +180,37 @@ def delete_sources(
                 dict(ingest_process_id=ingest_process_id),
             )
 
+        staging_delete_dir(s, db)
+
         source_id = db.run_query(
             "SELECT source_id FROM maps.sources WHERE slug = :slug",
-            dict(slug=slug),
+            dict(slug=s),
         ).scalar()
+
+        # Delete ALL ingest-related rows for this source
+        db.run_sql(
+            """
+            DELETE FROM maps_metadata.ingest_process_tag
+            WHERE ingest_process_id IN (
+                SELECT id FROM maps_metadata.ingest_process
+                WHERE source_id = :source_id
+            )
+            """,
+            dict(source_id=source_id),
+        )
+
+        db.run_sql(
+            """
+            DELETE FROM maps_metadata.ingest_process
+            WHERE source_id = :source_id
+            """,
+            dict(source_id=source_id),
+        )
 
         if all_data:
             _delete_map_data(source_id)
 
-        db.run_sql("DELETE FROM maps.sources WHERE slug = :slug", dict(slug=slug))
+        db.run_sql("DELETE FROM maps.sources WHERE slug = :slug", dict(slug=s))
 
 
 @cli.command(name="change-slug")
@@ -307,8 +325,6 @@ def staging(
 
     slug, name, ext = normalize_slug(prefix, Path(data_path))
     # we need to add database insert here.
-    object_ids = cmd_upload_dir(slug=slug, data_path=Path(data_path), ext=ext)
-
     print(f"Ingesting {slug} from {data_path}")
 
     gis_files, excluded_files = find_gis_files(Path(data_path), filter=filter)
@@ -411,6 +427,8 @@ def staging(
         ),
     )
 
+    cmd_upload_dir(slug=slug, data_path=Path(data_path), ext=ext)
+
     map_info = get_map_info(db, slug)
     _prepare_fields(map_info)
     create_rgeom(map_info)
@@ -451,17 +469,36 @@ staging_cli.command("delete")(delete_sources)
 # commands nested under 'macrostrat maps staging...'
 
 
-@staging_cli.command("s3-upload-dir")
-def cmd_upload_dir(slug: str = ..., data_path: Path = ..., ext: str = Option("")):
+@staging_cli.command("s3-upload")
+def cmd_upload_dir(
+    slug: str = ...,
+    data_path: Path = ...,
+    ext: str = Option(".gdb", help="extension of the data path"),
+    ingest_process_id: int = Option(None),
+):
     """Upload a local directory to the staging bucket under SLUG/."""
     db = get_database()
-    res, object_ids = staging_upload_dir(slug, data_path, ext, db)
+    source_id = db.run_query(
+        "SELECT source_id FROM maps.sources WHERE slug = :slug",
+        dict(slug=slug),
+    ).scalar()
+    ingest_id = db.run_query(
+        """
+        SELECT id
+        FROM maps_metadata.ingest_process
+        WHERE source_id = :source_id
+        ORDER BY id DESC
+        LIMIT 1
+        """,
+        dict(source_id=source_id),
+    ).scalar()
+    res = staging_upload_dir(slug, data_path, ext, db, ingest_id)
     pretty_res = json.dumps(res, indent=2)
     console.print(f"[green] Processed files \n {pretty_res} [/green]")
-    return object_ids
+    return
 
 
-@staging_cli.command("s3-delete-dir")
+@staging_cli.command("s3-delete")
 def cmd_delete_dir(
     slug: str = ...,
     file_name: str = Option(
@@ -469,7 +506,8 @@ def cmd_delete_dir(
     ),
 ):
     """Delete all objects under SLUG/ in the staging bucket."""
-    staging_delete_dir(slug, file_name)
+    db = get_database()
+    staging_delete_dir(slug, db)
     console.print(
         f"[green] Successfully deleted objects within the s3 bucket under slug: {slug} [/green]"
     )
@@ -506,7 +544,7 @@ def cmd_list_dir(
         token = page["next_page_token"]
 
 
-@staging_cli.command("s3-download-dir")
+@staging_cli.command("s3-download")
 def cmd_download_dir(
     slug: str = ...,
     dest_path: pathlib.Path = Option(
@@ -517,6 +555,113 @@ def cmd_download_dir(
     res = staging_download_dir(slug=slug, dest_path=dest_path)
     console.print(f"[green] Download successful![/green]")
     console.print(json.dumps(res, indent=2))
+
+
+@staging_cli.command("convert-e00")
+def convert_e00_to_gpkg(
+    data_path: str = Option(..., help="Directory containing .e00 files"),
+    slug: str = Option(..., help="Output basename (no .gpkg needed)"),
+):
+    data_dir = Path(data_path).expanduser().resolve()
+    out_gpkg = data_dir / f"{slug}.gpkg"
+    e00_files = sorted(data_dir.glob("*.e00"))
+
+    if not e00_files:
+        raise ValueError(f"No .e00 files found in {data_dir}")
+
+    def list_layers(e00_path: Path) -> set[str]:
+        # ogrinfo output includes lines like: "1: ARC (Line String)"
+        p = subprocess.run(
+            ["ogrinfo", "-ro", "-so", str(e00_path)],
+            capture_output=True,
+            text=True,
+        )
+        text_out = (p.stdout or "") + "\n" + (p.stderr or "")
+        layers = set()
+        for line in text_out.splitlines():
+            line = line.strip()
+            # matches: "1: ARC (Line String)"
+            if ":" in line and "(" in line:
+                left = line.split(":", 1)[1].strip()
+                name = left.split("(", 1)[0].strip()
+                if name:
+                    layers.add(name)
+        return layers
+
+    def run(cmd):
+        p = subprocess.run(cmd, capture_output=True, text=True)
+        return p.returncode, p.stdout, p.stderr
+
+    created = False
+    for f in e00_files:
+        base = f.stem
+        layers = list_layers(f)
+        line_layers = [lyr for lyr in ("ARC",) if lyr in layers]
+        point_layers = [lyr for lyr in ("CNT", "LAB", "POINT") if lyr in layers]
+        poly_layers = [lyr for lyr in ("PAL", "AREA") if lyr in layers]
+
+        # Lines
+        for lyr in line_layers:
+            cmd = ["ogr2ogr", "-f", "GPKG"]
+            if created:
+                cmd += ["-update", "-append"]
+            else:
+                # create/overwrite first successful write
+                cmd += ["-overwrite"]
+            cmd += [
+                str(out_gpkg),
+                str(f),
+                lyr,
+                "-nln",
+                f"{base}_lines",
+                "-nlt",
+                "LINESTRING",
+            ]
+            rc, _, err = run(cmd)
+            if rc == 0:
+                created = True
+
+        # Points
+        for lyr in point_layers:
+            if not created:
+                cmd = ["ogr2ogr", "-f", "GPKG", "-overwrite"]
+            else:
+                cmd = ["ogr2ogr", "-f", "GPKG", "-update", "-append"]
+            cmd += [
+                str(out_gpkg),
+                str(f),
+                lyr,
+                "-nln",
+                f"{base}_points",
+                "-nlt",
+                "POINT",
+            ]
+            rc, _, _ = run(cmd)
+            if rc == 0:
+                created = True
+
+        # Polygons
+        for lyr in poly_layers:
+            if not created:
+                cmd = ["ogr2ogr", "-f", "GPKG", "-overwrite"]
+            else:
+                cmd = ["ogr2ogr", "-f", "GPKG", "-update", "-append"]
+            cmd += [
+                str(out_gpkg),
+                str(f),
+                lyr,
+                "-nln",
+                f"{base}_polygons",
+                "-nlt",
+                "POLYGON",
+            ]
+            rc, _, _ = run(cmd)
+            if rc == 0:
+                created = True
+
+        print(f"{f.name}: layers={sorted(layers)}")
+
+    print(f"Done: {out_gpkg}")
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -549,9 +694,6 @@ def staging_bulk(
 
     for region_path in region_dirs:
         slug, name, ext = normalize_slug(prefix, Path(region_path))
-
-        # upload to the s3 bucket!
-        object_ids = cmd_upload_dir(slug=slug, data_path=region_path, ext=ext)
 
         print(f"Ingesting {slug} from {region_path}")
         gis_files, excluded_files = find_gis_files(Path(region_path), filter=filter)
@@ -653,11 +795,12 @@ def staging_bulk(
             ),
         )
 
+        cmd_upload_dir(slug=slug, data_path=region_path, ext=ext)
+
         map_info = get_map_info(db, slug)
         _prepare_fields(map_info)
         create_rgeom(map_info)
         create_webgeom(map_info)
-
         # Ingest process assertions
         if len(object_ids) > 0:
             ingest_id = db.run_query(

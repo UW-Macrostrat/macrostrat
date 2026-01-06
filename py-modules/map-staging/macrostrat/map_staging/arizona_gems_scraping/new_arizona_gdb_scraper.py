@@ -27,7 +27,7 @@ GDB_DIR = "gdb_zips"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 os.makedirs(GDB_DIR, exist_ok=True)
 
-SAVE_METADATA_PATH = "metadata.csv"
+SAVE_METADATA_PATH = "gdb_zips/metadata.csv"
 CSV_HEADERS = [
     "filename_prefix",
     "url",  # the original repository page (item_url)
