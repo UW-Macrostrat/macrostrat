@@ -6,7 +6,8 @@ import geopandas as G
 import pandas as pd
 import pyogrio
 
-from ..database import get_database
+from macrostrat.core.database import get_database
+from ingestion_utils import get_age_interval_df, get_strat_names_df
 
 
 def extract_gdb_layer(
@@ -126,18 +127,6 @@ def transform_gdb_layer(meta_df: G.GeoDataFrame) -> Tuple[G.GeoDataFrame, str]:
         comments += "Polygon required fields are empty or missing (age/name)."
     meta_df = meta_df.dropna(axis=1, how="all")
     return meta_df, comments
-
-
-def get_strat_names_df() -> pd.DataFrame:
-    """Query and store interval names from the database into a DataFrame for lookups.
-    Returns:
-    pd.DataFrame. A pandas series with interval_name strings.
-    """
-    db = get_database()
-    query = "select rank_name from macrostrat.lookup_strat_names"
-    with db.engine.connect() as conn:
-        df = pd.read_sql(query, conn)
-    return df
 
 
 STRAT_NAME_LOOKUP = {"formation", "fm", "bed", "member", "mbr", "group"}
@@ -262,22 +251,10 @@ def map_strat_name(meta_df: G.GeoDataFrame) -> G.GeoDataFrame:
     return meta_df
 
 
-def get_age_interval_df() -> pd.DataFrame:
-    """Query and store interval names from the database into a DataFrame for lookups.
-    Returns:
-    pd.DataFrame. A pandas series with interval_name strings.
-    """
-    db = get_database()
-    query = "SELECT id, interval_name FROM macrostrat.intervals"
-    with db.engine.connect() as conn:
-        df = pd.read_sql(query, conn)
-    return df
-
-
 QUALIFIERS = {"early", "middle", "late", "lower", "upper"}
 QUALIFIER_ORDER = {"early": 0, "middle": 1, "late": 2}
 
-
+#ages are all in one column so we need to parse and map to our t/b intervals
 def lookup_and_validate_age(
     name: str, interval_lookup: dict[str, int]
 ) -> tuple[Optional[int], Optional[int]]:
@@ -438,7 +415,7 @@ def map_points_to_preferred_fields(
 
 
 def map_lines_to_preferred_fields(
-    meta_df: G.GeoDataFrame, comments: str, state: str
+        meta_df: G.GeoDataFrame, comments: str, state: str
 ) -> G.GeoDataFrame:
     state = ""
     rename_map = {
@@ -450,6 +427,17 @@ def map_lines_to_preferred_fields(
     }
 
     col_lower_to_actual = {col.lower(): col for col in meta_df.columns}
+
+    def series_has_values(s) -> bool:
+        s = s.astype(str).str.strip()
+        return (~s.isin(["", "nan", "none"])).any()
+
+    # use name column if it already exists
+    if "name" in col_lower_to_actual:
+        actual_name_col = col_lower_to_actual["name"]
+        if series_has_values(meta_df[actual_name_col]):
+            rename_map.pop("Label", None)
+
     actual_rename = {}
     for src, dst in rename_map.items():
         src_lower = src.lower()
