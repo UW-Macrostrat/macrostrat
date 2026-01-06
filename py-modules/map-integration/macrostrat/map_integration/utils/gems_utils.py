@@ -7,7 +7,10 @@ import pandas as pd
 import pyogrio
 
 from macrostrat.core.database import get_database
-from macrostrat.map_integration.utils.ingestion_utils import get_age_interval_df, get_strat_names_df
+from macrostrat.map_integration.utils.ingestion_utils import (
+    get_age_interval_df,
+    get_strat_names_df,
+)
 
 
 def extract_gdb_layer(
@@ -254,7 +257,8 @@ def map_strat_name(meta_df: G.GeoDataFrame) -> G.GeoDataFrame:
 QUALIFIERS = {"early", "middle", "late", "lower", "upper"}
 QUALIFIER_ORDER = {"early": 0, "middle": 1, "late": 2}
 
-#ages are all in one column so we need to parse and map to our t/b intervals
+
+# ages are all in one column so we need to parse and map to our t/b intervals
 def lookup_and_validate_age(
     name: str, interval_lookup: dict[str, int]
 ) -> tuple[Optional[int], Optional[int]]:
@@ -415,7 +419,7 @@ def map_points_to_preferred_fields(
 
 
 def map_lines_to_preferred_fields(
-        meta_df: G.GeoDataFrame, comments: str, state: str
+    meta_df: G.GeoDataFrame, comments: str, state: str
 ) -> G.GeoDataFrame:
     state = ""
     rename_map = {

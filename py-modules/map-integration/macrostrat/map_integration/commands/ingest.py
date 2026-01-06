@@ -22,9 +22,10 @@ from macrostrat.map_integration.utils.gems_utils import (
     map_t_b_intervals,
     transform_gdb_layer,
 )
-from ..utils.ingestion_utils import map_t_b_standard
+
 from ..database import get_database
 from ..errors import IngestError
+from ..utils.ingestion_utils import map_t_b_standard
 from .geodatabase import apply_domains_to_fields, get_layer_info, get_layer_names
 
 console = Console()

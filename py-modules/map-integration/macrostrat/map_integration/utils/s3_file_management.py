@@ -1,5 +1,6 @@
 import hashlib
 import json
+import mimetypes
 import pathlib
 import shutil
 import subprocess
@@ -7,24 +8,24 @@ import tempfile
 from os import path
 from pathlib import Path
 from textwrap import dedent
+
+from minio import Minio
 from rich.console import Console
-import mimetypes
-from rich.table import Table
 from rich.progress import Progress
+from rich.table import Table
+
 from macrostrat.core import app as app_
 from macrostrat.core.exc import MacrostratError
-from macrostrat.core.schemas import (
-    SchemeEnum,
-)
-from minio import Minio
-
+from macrostrat.core.schemas import SchemeEnum
 
 settings = app_.settings
 console = Console()
 
+
 def guess_mime_type(path: Path) -> str:
     mime, _ = mimetypes.guess_type(path.name)
     return mime or "application/octet-stream"
+
 
 def get_minio_client():
     return Minio(
@@ -33,6 +34,7 @@ def get_minio_client():
         secret_key=settings.get("storage.secret_key"),
         secure=True,
     )
+
 
 def sha256_of_file(p: Path, chunk_size: int = 1024 * 1024) -> str:
     h = hashlib.sha256()
@@ -52,8 +54,9 @@ def print_objects(objects: list[dict]) -> None:
         table.add_row(str(i), str(obj["id"]), obj["key"])
     console.print(table)
 
+
 def parse_selection(selection: str, objects: list[dict]) -> list[dict]:
-    """ input: * → delete everything,obj_ids separated by commas or a hyphen"""
+    """input: * → delete everything,obj_ids separated by commas or a hyphen"""
     if selection.strip() == "*":
         return objects
     selected = set()
@@ -71,7 +74,9 @@ def parse_selection(selection: str, objects: list[dict]) -> list[dict]:
         return []
     return [objects[i - 1] for i in sorted(selected) if 1 <= i <= len(objects)]
 
-#--------------UPLOADS---------------
+
+# --------------UPLOADS---------------
+
 
 def get_existing_object_id(db, *, host: str, bucket: str, key: str) -> int | None:
     return db.run_query(
@@ -143,7 +148,8 @@ def upload_file_to_minio(
     bucket: str,
     object_key: str,
     local_path: Path,
-    sha256: str,) -> None:
+    sha256: str,
+) -> None:
     with open(local_path, "rb") as f:
         minio_client.put_object(
             bucket_name=bucket,
@@ -220,7 +226,6 @@ def staging_upload_dir(
             key=object_key,
             sha256=sha256,
             mime_type=mime_type,
-
         )
 
         link_object_to_ingest(
@@ -240,19 +245,20 @@ def staging_upload_dir(
     }
 
 
-
-
 # --------------------DELETIONS-------------------
 def confirm_delete(count: int) -> bool:
-    resp = input(
-        f"\nDelete {count} object(s)? Type 'yes' or 'y' to confirm: "
-    ).strip().lower()
+    resp = (
+        input(f"\nDelete {count} object(s)? Type 'yes' or 'y' to confirm: ")
+        .strip()
+        .lower()
+    )
     return resp == "yes" or resp == "y"
 
 
 def get_objects_for_slug(db, *, host: str, bucket: str, slug: str) -> list[dict]:
-    return db.run_query(
-        """
+    return (
+        db.run_query(
+            """
         SELECT id, key
         FROM storage.object
         WHERE scheme = 's3'
@@ -261,12 +267,16 @@ def get_objects_for_slug(db, *, host: str, bucket: str, slug: str) -> list[dict]
           AND key LIKE :prefix
         ORDER BY key
         """,
-        dict(
-            host=host,
-            bucket=bucket,
-            prefix=f"{slug}/%",
-        ),
-    ).mappings().all()
+            dict(
+                host=host,
+                bucket=bucket,
+                prefix=f"{slug}/%",
+            ),
+        )
+        .mappings()
+        .all()
+    )
+
 
 def unlink_object_from_ingests(db, *, object_id: int) -> None:
     db.run_sql(
@@ -277,6 +287,7 @@ def unlink_object_from_ingests(db, *, object_id: int) -> None:
         dict(object_id=object_id),
     )
 
+
 def delete_storage_object(db, *, object_id: int) -> None:
     db.run_sql(
         """
@@ -285,6 +296,7 @@ def delete_storage_object(db, *, object_id: int) -> None:
         """,
         dict(id=object_id),
     )
+
 
 def delete_object_from_minio(
     minio_client: Minio,
@@ -335,11 +347,11 @@ def staging_delete_dir(slug: str, db) -> dict:
     for obj in selected_objects:
         object_id = obj["id"]
         object_key = obj["key"]
-        #Remove ingest links
+        # Remove ingest links
         unlink_object_from_ingests(db, object_id=object_id)
-        #Remove DB object record
+        # Remove DB object record
         delete_storage_object(db, object_id=object_id)
-        #Remove from MinIO
+        # Remove from MinIO
         delete_object_from_minio(
             minio_client,
             bucket=bucket,
@@ -357,10 +369,15 @@ def staging_delete_dir(slug: str, db) -> dict:
     }
 
 
-#----------------LISTS------------------
+# ----------------LISTS------------------
 
-def staging_list_dir(db, slug: str, page_token: int = 0, page_size: int = 20,
-                     ) -> dict:
+
+def staging_list_dir(
+    db,
+    slug: str,
+    page_token: int = 0,
+    page_size: int = 20,
+) -> dict:
     """
     List staged objects using the database as the source of truth.
     Supports pagination via page_token / page_size.
@@ -370,8 +387,9 @@ def staging_list_dir(db, slug: str, page_token: int = 0, page_size: int = 20,
 
     # --- Fetch objects ---
     if slug == "all":
-        objects = db.run_query(
-            """
+        objects = (
+            db.run_query(
+                """
             SELECT id, key
             FROM storage.object
             WHERE scheme = 's3'
@@ -379,8 +397,11 @@ def staging_list_dir(db, slug: str, page_token: int = 0, page_size: int = 20,
               AND bucket = :bucket
             ORDER BY key
             """,
-            dict(host=host, bucket=bucket),
-        ).mappings().all()
+                dict(host=host, bucket=bucket),
+            )
+            .mappings()
+            .all()
+        )
     else:
         objects = get_objects_for_slug(
             db,
@@ -406,8 +427,6 @@ def staging_list_dir(db, slug: str, page_token: int = 0, page_size: int = 20,
     }
 
 
-
-
 def staging_download_dir(db, slug: str, dest_path: Path) -> dict:
     """
     Interactively select and download staged objects using the DB
@@ -419,8 +438,9 @@ def staging_download_dir(db, slug: str, dest_path: Path) -> dict:
 
     # Fetch objects from DB
     if slug == "all":
-        objects = db.run_query(
-            """
+        objects = (
+            db.run_query(
+                """
             SELECT id, key
             FROM storage.object
             WHERE scheme = 's3'
@@ -428,8 +448,11 @@ def staging_download_dir(db, slug: str, dest_path: Path) -> dict:
               AND bucket = :bucket
             ORDER BY key
             """,
-            dict(host=host, bucket=bucket),
-        ).mappings().all()
+                dict(host=host, bucket=bucket),
+            )
+            .mappings()
+            .all()
+        )
     else:
         objects = get_objects_for_slug(
             db,
@@ -486,4 +509,3 @@ def staging_download_dir(db, slug: str, dest_path: Path) -> dict:
         "downloaded": len(downloaded),
         "paths": downloaded,
     }
-

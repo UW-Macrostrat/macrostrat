@@ -12,7 +12,7 @@ class FileStorageUpdates(Migration):
     name = "file-storage-updates"
     subsystem = "maps"
     description = "Update storage schema for better file management."
-    #depends_on = ["api-v3"]
+    # depends_on = ["api-v3"]
     preconditions = [
         exists("maps_metadata", "ingest_process"),
     ]
@@ -33,7 +33,6 @@ class FileStorageUpdates(Migration):
             "deleted_on",
         ),
         not_exists("storage", "object_group"),
-
         # intersection table exists in storage schema
         exists("maps_metadata", "map_files"),
         # intersection table columns exist

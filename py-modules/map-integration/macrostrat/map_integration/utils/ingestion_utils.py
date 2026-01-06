@@ -1,8 +1,10 @@
 import re
 from pathlib import Path
-from macrostrat.core.database import get_database
-import pandas as pd
+
 import geopandas as G
+import pandas as pd
+
+from macrostrat.core.database import get_database
 
 SLUG_SAFE_CHARS = re.compile(r"[^a-z0-9_]+")
 
@@ -79,6 +81,7 @@ def normalize_slug(prefix: str, path: Path) -> tuple[str, str, str]:
 
     return slug, name, ext
 
+
 def get_age_interval_df() -> pd.DataFrame:
     """Query and store interval names from the database into a DataFrame for lookups.
     Returns:
@@ -102,8 +105,11 @@ def get_strat_names_df() -> pd.DataFrame:
         df = pd.read_sql(query, conn)
     return df
 
-#standard map age function. User gets to input their column 1 and a column 2 data to map to our ages.
-def map_t_b_standard(meta_df: G.GeoDataFrame, col_one: str, col_two: str) -> G.GeoDataFrame:
+
+# standard map age function. User gets to input their column 1 and a column 2 data to map to our ages.
+def map_t_b_standard(
+    meta_df: G.GeoDataFrame, col_one: str, col_two: str
+) -> G.GeoDataFrame:
     """Populate the b_interval field using age and name information.
     The function first tries a direct match between legend_df.age and the
     canonical interval list. For formations whose age is not explicit, it scans
@@ -126,7 +132,6 @@ def map_t_b_standard(meta_df: G.GeoDataFrame, col_one: str, col_two: str) -> G.G
             meta_df["b_interval"] = interval_lookup[word]
             meta_df["t_interval"] = interval_lookup[word]
 
-
     # for the rest of NA's we will map the name field to b/t intervals
     needs_fill = meta_df["b_interval"].isna()
 
@@ -136,6 +141,7 @@ def map_t_b_standard(meta_df: G.GeoDataFrame, col_one: str, col_two: str) -> G.G
                 meta_df["b_interval"] = interval_lookup[word]
                 meta_df["t_interval"] = interval_lookup[word]
     return meta_df
+
 
 def process_sources_metadata(
     slug: str, region_path: Path, parent: Path | None

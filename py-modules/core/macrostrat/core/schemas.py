@@ -193,7 +193,7 @@ class IngestProcess(Base):
     access_group_id: Mapped[int] = mapped_column(
         ForeignKey("macrostrat_auth.group.id"), nullable=True
     )
-    #TODO remove all object_group_id associations
+    # TODO remove all object_group_id associations
     object_group_id: Mapped[ObjectGroup] = mapped_column(
         ForeignKey("storage.object_group.id")
     )
