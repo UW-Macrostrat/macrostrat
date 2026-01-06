@@ -146,7 +146,6 @@ async def get_groups_from_header_token(
     return None
 
 
-
 '''
 async def get_user(sub: str) -> schemas.User | None:
     """Get an existing user"""
@@ -182,14 +181,15 @@ async def create_user(sub: str, name: str, email: str) -> schemas.User:
     
 '''
 
+
 async def get_user(sub: str) -> dict | None:
     engine = db.get_engine()
     return await db.fetch_user_by_sub(engine, sub)
 
+
 async def create_user(sub: str, name: str, email: str) -> dict:
     engine = db.get_engine()
     return await db.create_user_row(engine, sub, name, email)
-
 
 
 async def get_user_token_from_cookie(
@@ -378,10 +378,10 @@ async def redirect_callback(code: str, state: Optional[str] = None):
 
             return response
 
+
 @router.post("/refresh")
 async def refresh_token(
-    response: Response,
-    user_token: TokenData = Depends(get_user_token_from_cookie)
+    response: Response, user_token: TokenData = Depends(get_user_token_from_cookie)
 ):
     """Refresh token issuing a new cookie with a fresh exp.
     Requires a valid cookie-based JWT;"""
@@ -395,10 +395,19 @@ async def refresh_token(
 
     names = {g["name"] for g in user["groups"]}
     ids = {g["id"] for g in user["groups"]}
-    role = "web_admin" if ("web_admin" in names or "admin" in names or 1 in ids) else "web_user"
+    role = (
+        "web_admin"
+        if ("web_admin" in names or "admin" in names or 1 in ids)
+        else "web_user"
+    )
 
     access_token = create_access_token(
-        data={"sub": user["sub"], "role": role, "user_id": user["id"], "groups": list(ids)}
+        data={
+            "sub": user["sub"],
+            "role": role,
+            "user_id": user["id"],
+            "groups": list(ids),
+        }
     )
 
     uri = os.environ["REDIRECT_URI_ENV"]
@@ -421,7 +430,6 @@ async def refresh_token(
     return {"status": "refreshed"}
 
 
-
 @router.post("/token", response_model=AccessToken)
 async def create_group_token(
     group_token_request: GroupTokenRequest,
@@ -441,13 +449,17 @@ async def create_group_token(
         secrets.choice(string.ascii_letters + string.digits)
         for i in range(GROUP_TOKEN_LENGTH)
     )
-    token_hash_string = bcrypt.hashpw(token.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    token_hash_string = bcrypt.hashpw(token.encode("utf-8"), bcrypt.gensalt()).decode(
+        "utf-8"
+    )
 
     await db.insert_group_api_token(
         engine=db.get_engine(),
         token_hash_string=token_hash_string,
         group_id=group_token_request.group_id,
-        expiration_dt=datetime.datetime.fromtimestamp(group_token_request.expiration, tz=datetime.timezone.utc),
+        expiration_dt=datetime.datetime.fromtimestamp(
+            group_token_request.expiration, tz=datetime.timezone.utc
+        ),
     )
 
     return AccessToken(group=group_token_request.group_id, token=token)
