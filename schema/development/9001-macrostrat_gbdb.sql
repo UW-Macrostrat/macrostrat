@@ -1,0 +1,1 @@
+../../py-modules/integrations/macrostrat/integrations/gbdb/schema.sql

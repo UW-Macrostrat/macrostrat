@@ -272,7 +272,7 @@ def dump_schema(schema: str):
 
 
 @schema_app.command(rich_help_panel="Utils")
-def provision():
+def provision(pattern: str = Argument("*")):
     """Apply all schema objects to the database
 
     TODO: filter out non-idempotent statements (table creation, etc.)
@@ -282,6 +282,8 @@ def provision():
     environment = settings.env
 
     counter = StatementCounter(safe=True)
-    apply_schema_for_environment(db, environment, statement_filter=counter.filter)
+    apply_schema_for_environment(
+        db, environment, statement_filter=counter.filter, pattern=pattern
+    )
     db.run_sql("NOTIFY pgrst, 'reload schema';")
     counter.print_report()

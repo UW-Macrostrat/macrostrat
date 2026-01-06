@@ -56,14 +56,18 @@ def apply_schema_for_environment(
     *,
     recursive: bool = True,
     statement_filter=lambda s, p: True,
+    pattern: str = "*",
 ):
+    if "*" not in pattern:
+        pattern = f"*{pattern}*"
+
     for env_dir in schema_dirs_for_environment(env):
         schema_dir = env_dir
         if not schema_dir.exists():
             continue
 
         func = schema_dir.rglob if recursive else schema_dir.glob
-        fixtures = sorted(list(func("*.sql")))
+        fixtures = sorted(list(func(pattern + ".sql")))
         fixtures = [f for f in fixtures if not f.name.endswith(".plan.sql")]
 
         if len(fixtures) == 0:

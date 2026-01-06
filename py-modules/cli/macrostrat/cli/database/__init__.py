@@ -343,6 +343,15 @@ db_app.command(name="permissions", rich_help_panel="Helpers")(update_permissions
 keys = ["username", "host", "port", "password", "database"]
 
 
+@db_app.command(name="refresh-postgrest")
+def refresh_postgrest():
+    """
+    Refresh PostgrREST API table definitions
+    """
+    db = get_db()
+    db.run_sql("NOTIFY pgrst, 'reload schema';")
+
+
 @db_app.command(name="credentials", rich_help_panel="Helpers")
 def connection_details():
     """Show PostgreSQL connection credentials"""
