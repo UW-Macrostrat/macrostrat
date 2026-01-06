@@ -5,7 +5,6 @@ from typing import Iterable, List, Tuple
 
 import fiona
 import geopandas as G
-import numpy as np
 import pandas as P
 import pyogrio
 from geoalchemy2 import Geometry
@@ -15,7 +14,7 @@ from shapely import wkt
 from shapely.geometry.base import BaseGeometry
 from sqlalchemy import text
 
-from ..custom_integrations.gems_utils import (
+from macrostrat.map_integration.utils.gems_utils import (
     extract_gdb_layer,
     map_lines_to_preferred_fields,
     map_points_to_preferred_fields,
@@ -23,6 +22,7 @@ from ..custom_integrations.gems_utils import (
     map_t_b_intervals,
     transform_gdb_layer,
 )
+from macrostrat.map_integration.utils import map_t_b_standard
 from ..database import get_database
 from ..errors import IngestError
 from .geodatabase import apply_domains_to_fields, get_layer_info, get_layer_names
@@ -75,6 +75,8 @@ def preprocess_dataframe(
         ingest_pipeline = ".xls pipeline"
         meta_df = P.read_excel(meta_path)
         # TODO xls pipeline for if feature_suffix == "polygons", "lines" OR "points"
+    elif ext == ".gpkg":
+        map_t_b_standard(poly_line_pt_df, "epoch", "period")
     elif ext == ".gdb":
         if feature_suffix == "polygons":
             join_col = "mapunit"
@@ -277,14 +279,12 @@ def ingest_map(
         # formatted_filenames to append and map based on whatever integration pipeline is needed (inferred from the meta_path's ext)
         if meta_path:
             df.columns = df.columns.str.lower()
-            print("success at concatenating....now continuing to preprocess...")
             df, ingest_pipeline, comments, state = preprocess_dataframe(
                 df,
                 meta_path=meta_path,
                 join_col=join_col.lower(),
                 feature_suffix=feature_suffix,
             )
-            print("DONE preprocessing.")
             if feature_suffix == "polygons":
                 ingest_results["ingest_pipeline"] = ingest_pipeline
                 ingest_results["polygon_state"] = json.dumps(
