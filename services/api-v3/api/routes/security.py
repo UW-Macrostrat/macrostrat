@@ -2,7 +2,7 @@ import os
 import secrets
 import string
 import urllib.parse
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Annotated, Optional
 
 import aiohttp
@@ -18,7 +18,7 @@ from fastapi.security import (
 from fastapi.security.utils import get_authorization_scheme_param
 from jose import JWTError, jwt
 from pydantic import BaseModel
-from sqlalchemy import select, text
+from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from starlette.status import HTTP_401_UNAUTHORIZED
 
@@ -99,7 +99,6 @@ router = APIRouter(
     responses={404: {"description": "Not found"}},
 )
 
-'''
 async def get_groups_from_header_token(
     header_token: Annotated[HTTPAuthorizationCredentials, Depends(http_bearer)]
 ) -> int | None:
@@ -122,31 +121,7 @@ async def get_groups_from_header_token(
         return None
 
     return token.group
-'''
 
-
-async def get_groups_from_header_token(
-    header_token: Annotated[HTTPAuthorizationCredentials, Depends(http_bearer)]
-) -> int | None:
-    if header_token is None:
-        return None
-
-    engine = db.get_engine()
-
-    try:
-        rows = await db.get_all_unexpired_access_tokens(engine)
-    except Exception:
-        rows = []
-    for row in rows:
-        try:
-            if bcrypt.checkpw(header_token.credentials.encode(), row["token"].encode()):
-                return row["group"]
-        except Exception:
-            continue
-    return None
-
-
-'''
 async def get_user(sub: str) -> schemas.User | None:
     """Get an existing user"""
 
@@ -164,7 +139,6 @@ async def get_user(sub: str) -> schemas.User | None:
     return user
 
 
-
 async def create_user(sub: str, name: str, email: str) -> schemas.User:
     """Create a new user"""
 
@@ -178,18 +152,6 @@ async def create_user(sub: str, name: str, email: str) -> schemas.User:
         await session.commit()
 
     return await get_user(sub)
-    
-'''
-
-
-async def get_user(sub: str) -> dict | None:
-    engine = db.get_engine()
-    return await db.fetch_user_by_sub(engine, sub)
-
-
-async def create_user(sub: str, name: str, email: str) -> dict:
-    engine = db.get_engine()
-    return await db.create_user_row(engine, sub, name, email)
 
 
 async def get_user_token_from_cookie(
