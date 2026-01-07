@@ -99,6 +99,7 @@ router = APIRouter(
     responses={404: {"description": "Not found"}},
 )
 
+
 async def get_groups_from_header_token(
     header_token: Annotated[HTTPAuthorizationCredentials, Depends(http_bearer)]
 ) -> int | None:
@@ -121,6 +122,7 @@ async def get_groups_from_header_token(
         return None
 
     return token.group
+
 
 async def get_user(sub: str) -> schemas.User | None:
     """Get an existing user"""
