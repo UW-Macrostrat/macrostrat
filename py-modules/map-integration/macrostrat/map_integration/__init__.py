@@ -15,7 +15,8 @@ from typer import Option
 from macrostrat.core import app
 from macrostrat.database import Database
 from macrostrat.map_integration.commands.prepare_fields import _prepare_fields
-#from macrostrat.map_integration.pipeline import ingest_map
+
+# from macrostrat.map_integration.pipeline import ingest_map
 from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
 from macrostrat.map_integration.utils.ingestion_utils import (
     find_gis_files,
@@ -144,7 +145,6 @@ def delete_sources(
             "SELECT source_id FROM maps.sources WHERE slug = :slug",
             dict(slug=s),
         ).scalar()
-
 
         # Delete ALL ingest-related rows for this source
         db.run_sql(
@@ -409,7 +409,12 @@ staging_cli.command("delete")(delete_sources)
 
 
 @staging_cli.command("s3-upload")
-def cmd_upload_dir(slug: str = ..., data_path: Path = ..., ext: str = Option(".gdb", help="extension of the data path"), ingest_process_id: int = Option(None)):
+def cmd_upload_dir(
+    slug: str = ...,
+    data_path: Path = ...,
+    ext: str = Option(".gdb", help="extension of the data path"),
+    ingest_process_id: int = Option(None),
+):
     """Upload a local directory to the staging bucket under SLUG/."""
     db = get_database()
     source_id = db.run_query(
@@ -525,6 +530,7 @@ def convert_e00_to_gpkg(
     def run(cmd):
         p = subprocess.run(cmd, capture_output=True, text=True)
         return p.returncode, p.stdout, p.stderr
+
     created = False
     for f in e00_files:
         base = f.stem
@@ -542,9 +548,13 @@ def convert_e00_to_gpkg(
                 # create/overwrite first successful write
                 cmd += ["-overwrite"]
             cmd += [
-                str(out_gpkg), str(f), lyr,
-                "-nln", f"{base}_lines",
-                "-nlt", "LINESTRING",
+                str(out_gpkg),
+                str(f),
+                lyr,
+                "-nln",
+                f"{base}_lines",
+                "-nlt",
+                "LINESTRING",
             ]
             rc, _, err = run(cmd)
             if rc == 0:
@@ -557,9 +567,13 @@ def convert_e00_to_gpkg(
             else:
                 cmd = ["ogr2ogr", "-f", "GPKG", "-update", "-append"]
             cmd += [
-                str(out_gpkg), str(f), lyr,
-                "-nln", f"{base}_points",
-                "-nlt", "POINT",
+                str(out_gpkg),
+                str(f),
+                lyr,
+                "-nln",
+                f"{base}_points",
+                "-nlt",
+                "POINT",
             ]
             rc, _, _ = run(cmd)
             if rc == 0:
@@ -572,9 +586,13 @@ def convert_e00_to_gpkg(
             else:
                 cmd = ["ogr2ogr", "-f", "GPKG", "-update", "-append"]
             cmd += [
-                str(out_gpkg), str(f), lyr,
-                "-nln", f"{base}_polygons",
-                "-nlt", "POLYGON",
+                str(out_gpkg),
+                str(f),
+                lyr,
+                "-nln",
+                f"{base}_polygons",
+                "-nlt",
+                "POLYGON",
             ]
             rc, _, _ = run(cmd)
             if rc == 0:
@@ -583,6 +601,7 @@ def convert_e00_to_gpkg(
         print(f"{f.name}: layers={sorted(layers)}")
 
     print(f"Done: {out_gpkg}")
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -715,9 +734,7 @@ def staging_bulk(
             ),
         )
 
-
         cmd_upload_dir(slug=slug, data_path=region_path, ext=ext)
-
 
         map_info = get_map_info(db, slug)
         _prepare_fields(map_info)

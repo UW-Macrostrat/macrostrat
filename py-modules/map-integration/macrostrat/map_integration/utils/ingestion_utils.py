@@ -107,7 +107,9 @@ def get_strat_names_df() -> pd.DataFrame:
 
 
 # standard map age function. User gets to input their column 1 and a column 2 data to map to our ages.
-def map_t_b_standard(meta_df: G.GeoDataFrame, col_one: str, col_two: str) -> G.GeoDataFrame:
+def map_t_b_standard(
+    meta_df: G.GeoDataFrame, col_one: str, col_two: str
+) -> G.GeoDataFrame:
     interval_df = get_age_interval_df().reset_index(drop=True)
     interval_lookup = {
         str(row["interval_name"]).strip().lower(): int(row["id"])
@@ -132,7 +134,7 @@ def map_t_b_standard(meta_df: G.GeoDataFrame, col_one: str, col_two: str) -> G.G
         meta_df["b_interval"] = mapped_col_one
         meta_df["t_interval"] = mapped_col_one
 
-    #fallback to map col_two if col_one row is empty
+    # fallback to map col_two if col_one row is empty
     if col_two in meta_df.columns:
         needs_fill = meta_df["b_interval"].isna() | meta_df["t_interval"].isna()
         if needs_fill.any():
