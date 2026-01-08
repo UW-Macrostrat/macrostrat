@@ -45,7 +45,7 @@ def merge_metadata_polygons(polygon_df, meta_df, join_col) -> G.GeoDataFrame:
 
 
 def preprocess_dataframe(
-    poly_line_pt_df: G.GeoDataFrame, meta_path: Path, join_col: str, feature_suffix: str
+    poly_line_pt_df: G.GeoDataFrame, meta_path: Path, join_col: str, feature_suffix: str, pipeline: str
 ) -> Tuple[G.GeoDataFrame, str, str, str]:
     """
     Preprocess a GeoDataFrame by merging in metadata from a local .tsv,
@@ -62,23 +62,25 @@ def preprocess_dataframe(
     ingest_pipeline = ""
     comments = ""
     state = ""
-    ext = meta_path.suffix.lower()
-    print("here is the ext!", ext)
-    if ext == ".tsv":
+    if pipeline == ".tsv":
         meta_df = P.read_csv(meta_path, sep="\t")
         ingest_pipeline = ".tsv pipeline"
         # TODO tsv pipeline for if feature_suffix == "polygons", "lines" OR "points"
-    elif ext == ".csv":
+    elif pipeline == ".csv":
         meta_df = P.read_csv(meta_path)
         ingest_pipeline = ".csv pipeline"
         # TODO csv pipeline for if feature_suffix == "polygons", "lines" OR "points"
-    elif ext in [".xls", ".xlsx"]:
+    elif pipeline in [".xls", ".xlsx"]:
         ingest_pipeline = ".xls pipeline"
         meta_df = P.read_excel(meta_path)
         # TODO xls pipeline for if feature_suffix == "polygons", "lines" OR "points"
-    elif ext == ".gpkg":
-        map_t_b_standard(poly_line_pt_df, "epoch", "period")
-    elif ext == ".gdb":
+    elif pipeline == ".gpkg":
+        meta_df = map_t_b_standard(poly_line_pt_df, "epoch", "period")
+        ingest_pipeline = ".gpkg pipeline"
+        state = "needs review"
+        comments = ""
+        return meta_df, ingest_pipeline, comments, state
+    elif pipeline == ".gdb":
         if feature_suffix == "polygons":
             join_col = "mapunit"
             if join_col not in poly_line_pt_df.columns:
@@ -167,6 +169,7 @@ def ingest_map(
     files: List[Path],
     embed: bool = False,
     crs: str = None,
+    pipeline: str = "",
     if_exists: str = "replace",
     meta_path: str = None,
     # TODO add default key column to the first column in the file
@@ -268,11 +271,8 @@ def ingest_map(
     # concatenate all polygons into a single df, lines, and points as well
     for feature_type, df_list in frames.items():
         # Concatenate all dataframes
-        print("about to concatenate all df's per feature")
         df = G.GeoDataFrame(P.concat(df_list, ignore_index=True))
-        print("about to check for duplicates")
         df = df.loc[:, ~df.columns.duplicated()]
-
         feature_suffix = feature_type.lower() + "s"
         if feature_suffix == "linestrings":
             feature_suffix = "lines"
@@ -280,11 +280,14 @@ def ingest_map(
         # formatted_filenames to append and map based on whatever integration pipeline is needed (inferred from the meta_path's ext)
         if meta_path:
             df.columns = df.columns.str.lower()
+            if pipeline == "":
+                pipeline = meta_path.suffix.lower()
             df, ingest_pipeline, comments, state = preprocess_dataframe(
                 df,
                 meta_path=meta_path,
                 join_col=join_col.lower(),
                 feature_suffix=feature_suffix,
+                pipeline=pipeline
             )
             if feature_suffix == "polygons":
                 ingest_results["ingest_pipeline"] = ingest_pipeline

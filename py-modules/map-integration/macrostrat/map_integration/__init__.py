@@ -15,8 +15,7 @@ from typer import Option
 from macrostrat.core import app
 from macrostrat.database import Database
 from macrostrat.map_integration.commands.prepare_fields import _prepare_fields
-
-# from macrostrat.map_integration.pipeline import ingest_map
+#from macrostrat.map_integration.pipeline import ingest_map
 from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
 from macrostrat.map_integration.utils.ingestion_utils import (
     find_gis_files,
@@ -139,53 +138,13 @@ def delete_sources(
                 dict(table=Identifier("sources", table)),
             )
 
-        ingest_process = db.run_query(
-            """
-            SELECT id FROM maps_metadata.ingest_process
-            JOIN maps.sources ON maps.sources.source_id = maps_metadata.ingest_process.source_id
-            WHERE maps.sources.slug = :slug
-            """,
-            dict(slug=slug),
-        ).fetchone()
-
-        if ingest_process:
-            ingest_process_id = ingest_process[0]
-
-            print("Ingest Process ID", ingest_process_id)
-            if file_name is None:
-                rows = db.run_query(
-                    "select f.object_id from maps_metadata.map_files f where ingest_process_id = :ingest_process_id",
-                    dict(ingest_process_id=ingest_process_id),
-                ).fetchall()
-                object_ids = [r[0] for r in rows]
-                db.run_sql(
-                    "DELETE FROM maps_metadata.map_files WHERE ingest_process_id = :ingest_process_id",
-                    dict(ingest_process_id=ingest_process_id),
-                )
-                if object_ids:
-                    db.run_sql(
-                        """
-                        DELETE FROM storage.object
-                        WHERE id = ANY(:object_ids)
-                        """,
-                        dict(object_ids=object_ids),
-                    )
-
-            db.run_sql(
-                "DELETE FROM maps_metadata.ingest_process_tag WHERE ingest_process_id = :ingest_process_id",
-                dict(ingest_process_id=ingest_process_id),
-            )
-            db.run_sql(
-                "DELETE FROM maps_metadata.ingest_process WHERE id = :ingest_process_id",
-                dict(ingest_process_id=ingest_process_id),
-            )
-
         staging_delete_dir(s, db)
 
         source_id = db.run_query(
             "SELECT source_id FROM maps.sources WHERE slug = :slug",
             dict(slug=s),
         ).scalar()
+
 
         # Delete ALL ingest-related rows for this source
         db.run_sql(
@@ -308,6 +267,7 @@ cli.add_typer(staging_cli, name="staging")
 def staging(
     data_path: str,
     prefix: str = Option(..., help="Slug region prefix to avoid collisions"),
+    pipeline: str = Option("", help="Specify a pipeline to run"),
     merge_key: str = Option(
         "mapunit",
         help="primary key to left join the metadata into the sources polygons/lines/points table",
@@ -343,6 +303,7 @@ def staging(
     ingest_results = ingest_map(
         slug,
         gis_files,
+        pipeline=pipeline,
         if_exists="replace",
         meta_path=data_path,
         merge_key=merge_key,
@@ -434,28 +395,6 @@ def staging(
     create_rgeom(map_info)
     create_webgeom(map_info)
 
-    # Ingest process assertions
-    if len(object_ids) > 0:
-        ingest_id = db.run_query(
-            """
-            SELECT id
-            FROM maps_metadata.ingest_process
-            WHERE source_id = :source_id
-            ORDER BY id DESC
-            LIMIT 1
-            """,
-            dict(source_id=source_id),
-        ).scalar()
-
-        for object in object_ids:
-            db.run_sql(
-                """
-                INSERT INTO maps_metadata.map_files (ingest_process_id, object_id)
-                VALUES (:ingest_process_id, :object_id)
-                """,
-                dict(ingest_process_id=ingest_id, object_id=object),
-            )
-
     console.print(
         f"[green] \n Finished staging setup for {slug}. "
         f"View map here: https://dev.macrostrat.org/maps/ingestion/{source_id}/ [/green] \n"
@@ -470,12 +409,7 @@ staging_cli.command("delete")(delete_sources)
 
 
 @staging_cli.command("s3-upload")
-def cmd_upload_dir(
-    slug: str = ...,
-    data_path: Path = ...,
-    ext: str = Option(".gdb", help="extension of the data path"),
-    ingest_process_id: int = Option(None),
-):
+def cmd_upload_dir(slug: str = ..., data_path: Path = ..., ext: str = Option(".gdb", help="extension of the data path"), ingest_process_id: int = Option(None)):
     """Upload a local directory to the staging bucket under SLUG/."""
     db = get_database()
     source_id = db.run_query(
@@ -591,7 +525,6 @@ def convert_e00_to_gpkg(
     def run(cmd):
         p = subprocess.run(cmd, capture_output=True, text=True)
         return p.returncode, p.stdout, p.stderr
-
     created = False
     for f in e00_files:
         base = f.stem
@@ -609,13 +542,9 @@ def convert_e00_to_gpkg(
                 # create/overwrite first successful write
                 cmd += ["-overwrite"]
             cmd += [
-                str(out_gpkg),
-                str(f),
-                lyr,
-                "-nln",
-                f"{base}_lines",
-                "-nlt",
-                "LINESTRING",
+                str(out_gpkg), str(f), lyr,
+                "-nln", f"{base}_lines",
+                "-nlt", "LINESTRING",
             ]
             rc, _, err = run(cmd)
             if rc == 0:
@@ -628,13 +557,9 @@ def convert_e00_to_gpkg(
             else:
                 cmd = ["ogr2ogr", "-f", "GPKG", "-update", "-append"]
             cmd += [
-                str(out_gpkg),
-                str(f),
-                lyr,
-                "-nln",
-                f"{base}_points",
-                "-nlt",
-                "POINT",
+                str(out_gpkg), str(f), lyr,
+                "-nln", f"{base}_points",
+                "-nlt", "POINT",
             ]
             rc, _, _ = run(cmd)
             if rc == 0:
@@ -647,13 +572,9 @@ def convert_e00_to_gpkg(
             else:
                 cmd = ["ogr2ogr", "-f", "GPKG", "-update", "-append"]
             cmd += [
-                str(out_gpkg),
-                str(f),
-                lyr,
-                "-nln",
-                f"{base}_polygons",
-                "-nlt",
-                "POLYGON",
+                str(out_gpkg), str(f), lyr,
+                "-nln", f"{base}_polygons",
+                "-nlt", "POLYGON",
             ]
             rc, _, _ = run(cmd)
             if rc == 0:
@@ -662,7 +583,6 @@ def convert_e00_to_gpkg(
         print(f"{f.name}: layers={sorted(layers)}")
 
     print(f"Done: {out_gpkg}")
-
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -795,33 +715,14 @@ def staging_bulk(
             ),
         )
 
+
         cmd_upload_dir(slug=slug, data_path=region_path, ext=ext)
+
 
         map_info = get_map_info(db, slug)
         _prepare_fields(map_info)
         create_rgeom(map_info)
         create_webgeom(map_info)
-        # Ingest process assertions
-        if len(object_ids) > 0:
-            ingest_id = db.run_query(
-                """
-                SELECT id
-                FROM maps_metadata.ingest_process
-                WHERE source_id = :source_id
-                ORDER BY id DESC
-                LIMIT 1
-                """,
-                dict(source_id=source_id),
-            ).scalar()
-
-            for object in object_ids:
-                db.run_sql(
-                    """
-                    INSERT INTO maps_metadata.map_files (ingest_process_id, object_id)
-                    VALUES (:ingest_process_id, :object_id)
-                    """,
-                    dict(ingest_process_id=ingest_id, object_id=object),
-                )
 
         print(
             f"\nFinished staging setup for {slug}. View map here: https://dev.macrostrat.org/maps/ingestion/{source_id}/ \n"

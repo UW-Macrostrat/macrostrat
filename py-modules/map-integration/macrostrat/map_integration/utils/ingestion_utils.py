@@ -107,39 +107,46 @@ def get_strat_names_df() -> pd.DataFrame:
 
 
 # standard map age function. User gets to input their column 1 and a column 2 data to map to our ages.
-def map_t_b_standard(
-    meta_df: G.GeoDataFrame, col_one: str, col_two: str
-) -> G.GeoDataFrame:
-    """Populate the b_interval field using age and name information.
-    The function first tries a direct match between legend_df.age and the
-    canonical interval list. For formations whose age is not explicit, it scans
-    the formation name for any word that appears in the interval list.
-    Parameters:
-    legend_df : G.GeoDataFrame. Legend table with at least age and name columns.
-
-    Returns:
-    G.GeoDataFrame: The input frame with a newly filled/created b_interval column.
-    """
+def map_t_b_standard(meta_df: G.GeoDataFrame, col_one: str, col_two: str) -> G.GeoDataFrame:
     interval_df = get_age_interval_df().reset_index(drop=True)
     interval_lookup = {
-        row["interval_name"].lower(): row["id"] for _, row in interval_df.iterrows()
+        str(row["interval_name"]).strip().lower(): int(row["id"])
+        for _, row in interval_df.iterrows()
     }
 
-    # map age fields to b/t intervals
-    # must have a match in the macrotrat.intervals dictionary in order to return a valid interval
-    for word in meta_df[col_one]:
-        if word in interval_lookup:
-            meta_df["b_interval"] = interval_lookup[word]
-            meta_df["t_interval"] = interval_lookup[word]
+    # Ensure columns exist (prevents KeyError)
+    if "b_interval" not in meta_df.columns:
+        meta_df["b_interval"] = pd.NA
+    if "t_interval" not in meta_df.columns:
+        meta_df["t_interval"] = pd.NA
 
-    # for the rest of NA's we will map the name field to b/t intervals
-    needs_fill = meta_df["b_interval"].isna()
+    if col_one in meta_df.columns:
+        mapped_col_one = (
+            meta_df[col_one]
+            .astype("string")
+            .str.strip()
+            .str.lower()
+            .replace("", pd.NA)
+            .map(interval_lookup)
+        )
+        meta_df["b_interval"] = mapped_col_one
+        meta_df["t_interval"] = mapped_col_one
 
-    if needs_fill.any():
-        for word in meta_df[col_two]:
-            if word in interval_lookup:
-                meta_df["b_interval"] = interval_lookup[word]
-                meta_df["t_interval"] = interval_lookup[word]
+    #fallback to map col_two if col_one row is empty
+    if col_two in meta_df.columns:
+        needs_fill = meta_df["b_interval"].isna() | meta_df["t_interval"].isna()
+        if needs_fill.any():
+            mapped_col_two = (
+                meta_df.loc[needs_fill, col_two]
+                .astype("string")
+                .str.strip()
+                .str.lower()
+                .replace("", pd.NA)
+                .map(interval_lookup)
+            )
+            meta_df.loc[needs_fill, "b_interval"] = mapped_col_two
+            meta_df.loc[needs_fill, "t_interval"] = mapped_col_two
+
     return meta_df
 
 
