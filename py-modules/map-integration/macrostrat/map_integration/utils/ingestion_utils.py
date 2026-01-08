@@ -147,6 +147,20 @@ def map_t_b_standard(meta_df: G.GeoDataFrame, col_one: str, col_two: str) -> G.G
             meta_df.loc[needs_fill, "b_interval"] = mapped_col_two
             meta_df.loc[needs_fill, "t_interval"] = mapped_col_two
 
+    if "era" in meta_df.columns:
+        needs_fill = meta_df["b_interval"].isna() | meta_df["t_interval"].isna()
+        if needs_fill.any():
+            mapped_col_three = (
+                meta_df.loc[needs_fill, "era"]
+                .astype("string")
+                .str.strip()
+                .str.lower()
+                .replace("", pd.NA)
+                .map(interval_lookup)
+            )
+            meta_df.loc[needs_fill, "b_interval"] = mapped_col_three
+            meta_df.loc[needs_fill, "t_interval"] = mapped_col_three
+
     return meta_df
 
 

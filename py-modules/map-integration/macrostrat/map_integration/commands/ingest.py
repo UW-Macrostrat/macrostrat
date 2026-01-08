@@ -75,11 +75,15 @@ def preprocess_dataframe(
         meta_df = P.read_excel(meta_path)
         # TODO xls pipeline for if feature_suffix == "polygons", "lines" OR "points"
     elif pipeline == ".gpkg":
-        meta_df = map_t_b_standard(poly_line_pt_df, "epoch", "period")
         ingest_pipeline = ".gpkg pipeline"
         state = "needs review"
         comments = ""
-        return meta_df, ingest_pipeline, comments, state
+        if feature_suffix == "polygons":
+            meta_df = map_t_b_standard(poly_line_pt_df, "epoch", "period")
+            return meta_df, ingest_pipeline, comments, state
+        else:
+            return poly_line_pt_df, ingest_pipeline, comments, state
+
     elif pipeline == ".gdb":
         if feature_suffix == "polygons":
             join_col = "mapunit"
