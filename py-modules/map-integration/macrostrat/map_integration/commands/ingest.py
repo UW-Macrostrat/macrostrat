@@ -45,7 +45,11 @@ def merge_metadata_polygons(polygon_df, meta_df, join_col) -> G.GeoDataFrame:
 
 
 def preprocess_dataframe(
-    poly_line_pt_df: G.GeoDataFrame, meta_path: Path, join_col: str, feature_suffix: str, pipeline: str
+    poly_line_pt_df: G.GeoDataFrame,
+    meta_path: Path,
+    join_col: str,
+    feature_suffix: str,
+    pipeline: str,
 ) -> Tuple[G.GeoDataFrame, str, str, str]:
     """
     Preprocess a GeoDataFrame by merging in metadata from a local .tsv,
@@ -291,7 +295,7 @@ def ingest_map(
                 meta_path=meta_path,
                 join_col=join_col.lower(),
                 feature_suffix=feature_suffix,
-                pipeline=pipeline
+                pipeline=pipeline,
             )
             if feature_suffix == "polygons":
                 ingest_results["ingest_pipeline"] = ingest_pipeline
