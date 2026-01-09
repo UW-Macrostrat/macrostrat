@@ -1,15 +1,13 @@
 from typing import Annotated
 
 import morecantile
-from fastapi import APIRouter, HTTPException
-from fastapi import Depends
+from api.database import get_sync_database
+from fastapi import APIRouter, Depends, HTTPException
 from morecantile import Tile
 from shapely import GEOSException
 from shapely.geometry import Polygon
 from shapely.wkb import loads as load_wkb
 from shapely.wkt import loads as load_wkt
-
-from api.database import get_sync_database
 
 router = APIRouter(tags=["map"])
 
@@ -129,8 +127,9 @@ def get_map_legend(
             detail="Only 'carto' compilation is currently supported.",
         )
 
-    res = db.run_query(
-        """
+    res = (
+        db.run_query(
+            """
         WITH polygons AS (
             SELECT legend_id, source_id, scale
             FROM carto.polygons p
@@ -168,7 +167,10 @@ def get_map_legend(
         JOIN maps.sources s USING (source_id)
         JOIN polygons p USING (legend_id, source_id)
         """,
-        params={"bounds": map_area.bounds.wkt, "scale": scale},
-    ).mappings().all()
+            params={"bounds": map_area.bounds.wkt, "scale": scale},
+        )
+        .mappings()
+        .all()
+    )
 
     return res
