@@ -113,6 +113,7 @@ dependencies = [
     { name = "macrostrat-database" },
     { name = "macrostrat-match-utils" },
     { name = "minio" },
+    { name = "morecantile" },
     { name = "numpy" },
     { name = "pyjwt" },
     { name = "pytest-asyncio" },
@@ -136,6 +137,7 @@ requires-dist = [
     { name = "macrostrat-database", specifier = ">=3.0.0,<4" },
     { name = "macrostrat-match-utils", editable = "py-modules/match-utils" },
     { name = "minio", specifier = ">=7.2.3,<8" },
+    { name = "morecantile", specifier = ">=7.0.2" },
     { name = "numpy", specifier = ">=1.26.4,<2" },
     { name = "pyjwt", specifier = ">=2.8.0,<3" },
     { name = "pytest-asyncio", specifier = ">=0.21.1,<0.22" },
@@ -1219,6 +1221,21 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/9e/68/86a1cef80396e6a35a6fc4fafee5d28578c1a137bddd3ca2aa86f9b26a22/minio-7.2.15.tar.gz", hash = "sha256:5247df5d4dca7bfa4c9b20093acd5ad43e82d8710ceb059d79c6eea970f49f79", size = 138040, upload-time = "2025-01-19T08:57:26.626Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/fb/6f/3690028e846fe432bfa5ba724a0dc37ec9c914965b7733e19d8ca2c4c48d/minio-7.2.15-py3-none-any.whl", hash = "sha256:c06ef7a43e5d67107067f77b6c07ebdd68733e5aa7eed03076472410ca19d876", size = 95075, upload-time = "2025-01-19T08:57:24.169Z" },
+]
+
+[[package]]
+name = "morecantile"
+version = "7.0.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "attrs" },
+    { name = "click" },
+    { name = "pydantic" },
+    { name = "pyproj" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/03/91/4305a53bc20785ec882c9066528d8bbd82782b3a8ec30d4d5f6bc9c9d148/morecantile-7.0.2.tar.gz", hash = "sha256:83aaffab29e63d39a88d78931aaad3659ab5355d500ec843ea136eef976dc717", size = 43076, upload-time = "2026-01-05T20:59:55.844Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f1/c3/cb8db47ed1a28b43d498e91b629d69886778ad5d9e91dcb953d411052728/morecantile-7.0.2-py3-none-any.whl", hash = "sha256:f873e435a057e1b61ea91613c297e5a76b2ae854b5ec2ccc8b0c561f9cdde534", size = 50857, upload-time = "2026-01-05T20:59:54.435Z" },
 ]
 
 [[package]]
