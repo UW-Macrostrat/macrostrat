@@ -2,9 +2,10 @@ from contextlib import asynccontextmanager
 
 import dotenv
 import uvicorn
-from api.routes.dev_routes.convert import convert_router
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+from api.routes.dev_routes.convert import convert_router
 
 dotenv.load_dotenv()
 
@@ -14,6 +15,7 @@ from api.match import router as match_router
 from api.routes.ingest import router as ingest_router
 from api.routes.object import router as object_router
 from api.routes.sources import router as sources_router
+from api.map import router as map_router
 
 
 @asynccontextmanager
@@ -48,6 +50,7 @@ app.include_router(api.routes.security.router)
 app.include_router(object_router)
 app.include_router(ingest_router)
 app.include_router(sources_router)
+app.include_router(map_router, prefix="/map")
 
 app.include_router(convert_router, prefix="/dev")
 app.include_router(match_router, prefix="/dev/match")
