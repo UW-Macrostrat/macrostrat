@@ -367,12 +367,12 @@ def ingest_map(
             )
 
             conn = db.engine.connect()
-            
+
             if len(df) == 0:
                 console.print(f"[yellow]Skipping {feature_suffix}: 0 features[/yellow]")
                 continue
             df["geometry"] = df["geometry"].apply(strip_z)
-            df = df.dropna(axis=1, how='all')
+            df = df.dropna(axis=1, how="all")
 
             for i, chunk in enumerate(chunker(df, chunksize)):
                 chunk.to_postgis(

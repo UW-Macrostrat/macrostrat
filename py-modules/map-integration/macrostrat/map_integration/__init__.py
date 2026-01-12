@@ -495,6 +495,7 @@ def cmd_download_dir(
     console.print(f"[green] Download successful![/green]")
     console.print(json.dumps(res, indent=2))
 
+
 @staging_cli.command("convert-e00")
 def convert_e00_to_gpkg(
     data_path: str = Option(..., help="Directory containing .e00 files"),
@@ -537,8 +538,10 @@ def convert_e00_to_gpkg(
 
     # common args to make gpkg consistent
     common = [
-        "-lco", "SPATIAL_INDEX=YES",
-        "-lco", "GEOMETRY_NAME=geometry",
+        "-lco",
+        "SPATIAL_INDEX=YES",
+        "-lco",
+        "GEOMETRY_NAME=geometry",
     ]
     if a_srs:
         common += ["-a_srs", a_srs]
@@ -556,13 +559,17 @@ def convert_e00_to_gpkg(
             str(out_gpkg),
             str(src_e00),
             src_layer,
-            "-nln", dst_layer,
-            "-nlt", "PROMOTE_TO_MULTI",
+            "-nln",
+            dst_layer,
+            "-nlt",
+            "PROMOTE_TO_MULTI",
         ] + common
 
         rc, out, err = run(cmd)
         if rc != 0:
-            print(f"[ERROR] ogr2ogr failed for {src_e00.name}:{src_layer} -> {dst_layer}")
+            print(
+                f"[ERROR] ogr2ogr failed for {src_e00.name}:{src_layer} -> {dst_layer}"
+            )
             print(err.strip() or out.strip())
             return False
 
@@ -589,14 +596,19 @@ def convert_e00_to_gpkg(
         print(f"{f.name}: layers={sorted(layers)}")
 
     if not created:
-        raise RuntimeError("No layers were successfully written; output gpkg not created.")
+        raise RuntimeError(
+            "No layers were successfully written; output gpkg not created."
+        )
 
     # sanity check: can GDAL read it?
-    p = subprocess.run(["ogrinfo", "-ro", "-so", str(out_gpkg)], capture_output=True, text=True)
+    p = subprocess.run(
+        ["ogrinfo", "-ro", "-so", str(out_gpkg)], capture_output=True, text=True
+    )
     if p.returncode != 0:
         raise RuntimeError(f"Created file but ogrinfo cannot read it:\n{p.stderr}")
 
     print(f"Done: {out_gpkg}")
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 

@@ -35,6 +35,7 @@ def get_minio_client():
         secure=True,
     )
 
+
 def make_zip_for_data_path(*, slug: str, data_path: Path) -> Path:
     tmp_dir = Path(tempfile.gettempdir()) / "macrostrat_upload_zips"
     tmp_dir.mkdir(parents=True, exist_ok=True)
@@ -260,7 +261,6 @@ def staging_upload_dir(
             zip_path.unlink(missing_ok=True)
         except Exception:
             pass
-
 
 
 # --------------------DELETIONS-------------------
