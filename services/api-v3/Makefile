@@ -1,7 +1,6 @@
 all:
-	poetry lock
-	poetry install
-	poetry run uvicorn api.app:app \
+	uv sync
+	uv run uvicorn api.app:app \
 	    --reload \
 	    --log-level debug \
 	    --reload-dir ../..

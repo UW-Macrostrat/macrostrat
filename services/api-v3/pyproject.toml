@@ -25,6 +25,7 @@ dependencies = [
     "python-slugify>=8.0.4,<9",
     "macrostrat.database>=3.0.0,<4",
     "macrostrat.match-utils",
+    "morecantile>=7.0.2",
 ]
 
 [dependency-groups]
