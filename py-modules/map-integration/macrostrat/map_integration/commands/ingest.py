@@ -347,7 +347,6 @@ def ingest_map(
                     f"[yellow]Dropped duplicate columns after merge: {removed}"
                 )
         console.print(f"[bold]{feature_type}s[/bold] [dim]- {len(df)} features[/dim]")
-        # Columns
         console.print("Columns:")
         for col in df.columns:
             console.print(f"- {col}")
@@ -368,8 +367,13 @@ def ingest_map(
             )
 
             conn = db.engine.connect()
-
+            
+            if len(df) == 0:
+                console.print(f"[yellow]Skipping {feature_suffix}: 0 features[/yellow]")
+                continue
             df["geometry"] = df["geometry"].apply(strip_z)
+            df = df.dropna(axis=1, how='all')
+
             for i, chunk in enumerate(chunker(df, chunksize)):
                 chunk.to_postgis(
                     table,

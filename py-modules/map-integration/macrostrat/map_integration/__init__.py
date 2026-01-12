@@ -431,7 +431,7 @@ def cmd_upload_dir(
         """,
         dict(source_id=source_id),
     ).scalar()
-    res = staging_upload_dir(slug, data_path, ext, db, ingest_id)
+    res = staging_upload_dir(slug, data_path, db, ingest_id)
     pretty_res = json.dumps(res, indent=2)
     console.print(f"[green] Processed files \n {pretty_res} [/green]")
     return
@@ -495,11 +495,11 @@ def cmd_download_dir(
     console.print(f"[green] Download successful![/green]")
     console.print(json.dumps(res, indent=2))
 
-
 @staging_cli.command("convert-e00")
 def convert_e00_to_gpkg(
     data_path: str = Option(..., help="Directory containing .e00 files"),
     slug: str = Option(..., help="Output basename (no .gpkg needed)"),
+    a_srs: str = Option(None, help="Assign CRS like EPSG:4326 (optional)"),
 ):
     data_dir = Path(data_path).expanduser().resolve()
     out_gpkg = data_dir / f"{slug}.gpkg"
@@ -508,8 +508,11 @@ def convert_e00_to_gpkg(
     if not e00_files:
         raise ValueError(f"No .e00 files found in {data_dir}")
 
+    # Start fresh to avoid half-written / invalid gpkg
+    if out_gpkg.exists():
+        out_gpkg.unlink()
+
     def list_layers(e00_path: Path) -> set[str]:
-        # ogrinfo output includes lines like: "1: ARC (Line String)"
         p = subprocess.run(
             ["ogrinfo", "-ro", "-so", str(e00_path)],
             capture_output=True,
@@ -519,7 +522,6 @@ def convert_e00_to_gpkg(
         layers = set()
         for line in text_out.splitlines():
             line = line.strip()
-            # matches: "1: ARC (Line String)"
             if ":" in line and "(" in line:
                 left = line.split(":", 1)[1].strip()
                 name = left.split("(", 1)[0].strip()
@@ -529,79 +531,72 @@ def convert_e00_to_gpkg(
 
     def run(cmd):
         p = subprocess.run(cmd, capture_output=True, text=True)
-        return p.returncode, p.stdout, p.stderr
+        return p.returncode, (p.stdout or ""), (p.stderr or "")
 
     created = False
+
+    # common args to make gpkg consistent
+    common = [
+        "-lco", "SPATIAL_INDEX=YES",
+        "-lco", "GEOMETRY_NAME=geometry",
+    ]
+    if a_srs:
+        common += ["-a_srs", a_srs]
+
+    def ogr2ogr_write(src_e00: Path, src_layer: str, dst_layer: str):
+        nonlocal created
+
+        cmd = ["ogr2ogr", "-f", "GPKG"]
+        if created:
+            cmd += ["-update", "-append"]
+        else:
+            cmd += ["-overwrite"]
+
+        cmd += [
+            str(out_gpkg),
+            str(src_e00),
+            src_layer,
+            "-nln", dst_layer,
+            "-nlt", "PROMOTE_TO_MULTI",
+        ] + common
+
+        rc, out, err = run(cmd)
+        if rc != 0:
+            print(f"[ERROR] ogr2ogr failed for {src_e00.name}:{src_layer} -> {dst_layer}")
+            print(err.strip() or out.strip())
+            return False
+
+        created = True
+        return True
+
     for f in e00_files:
         base = f.stem
         layers = list_layers(f)
+
         line_layers = [lyr for lyr in ("ARC",) if lyr in layers]
         point_layers = [lyr for lyr in ("CNT", "LAB", "POINT") if lyr in layers]
         poly_layers = [lyr for lyr in ("PAL", "AREA") if lyr in layers]
 
-        # Lines
         for lyr in line_layers:
-            cmd = ["ogr2ogr", "-f", "GPKG"]
-            if created:
-                cmd += ["-update", "-append"]
-            else:
-                # create/overwrite first successful write
-                cmd += ["-overwrite"]
-            cmd += [
-                str(out_gpkg),
-                str(f),
-                lyr,
-                "-nln",
-                f"{base}_lines",
-                "-nlt",
-                "LINESTRING",
-            ]
-            rc, _, err = run(cmd)
-            if rc == 0:
-                created = True
+            ogr2ogr_write(f, lyr, f"{base}_lines")
 
-        # Points
         for lyr in point_layers:
-            if not created:
-                cmd = ["ogr2ogr", "-f", "GPKG", "-overwrite"]
-            else:
-                cmd = ["ogr2ogr", "-f", "GPKG", "-update", "-append"]
-            cmd += [
-                str(out_gpkg),
-                str(f),
-                lyr,
-                "-nln",
-                f"{base}_points",
-                "-nlt",
-                "POINT",
-            ]
-            rc, _, _ = run(cmd)
-            if rc == 0:
-                created = True
+            ogr2ogr_write(f, lyr, f"{base}_points")
 
-        # Polygons
         for lyr in poly_layers:
-            if not created:
-                cmd = ["ogr2ogr", "-f", "GPKG", "-overwrite"]
-            else:
-                cmd = ["ogr2ogr", "-f", "GPKG", "-update", "-append"]
-            cmd += [
-                str(out_gpkg),
-                str(f),
-                lyr,
-                "-nln",
-                f"{base}_polygons",
-                "-nlt",
-                "POLYGON",
-            ]
-            rc, _, _ = run(cmd)
-            if rc == 0:
-                created = True
+            ogr2ogr_write(f, lyr, f"{base}_polygons")
 
         print(f"{f.name}: layers={sorted(layers)}")
 
-    print(f"Done: {out_gpkg}")
+    if not created:
+        raise RuntimeError("No layers were successfully written; output gpkg not created.")
 
+    # sanity check: can GDAL read it?
+    p = subprocess.run(["ogrinfo", "-ro", "-so", str(out_gpkg)], capture_output=True, text=True)
+    if p.returncode != 0:
+        raise RuntimeError(f"Created file but ogrinfo cannot read it:\n{p.stderr}")
+
+    print(f"Done: {out_gpkg}")
 
 # ----------------------------------------------------------------------------------------------------------------------
 
