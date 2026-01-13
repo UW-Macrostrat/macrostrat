@@ -17,6 +17,7 @@ from fastapi.security import (
 )
 from fastapi.security.utils import get_authorization_scheme_param
 from jose import JWTError, jwt
+from macrostrat.utils import get_logger
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -33,6 +34,9 @@ GROUP_TOKEN_LENGTH = 32
 GROUP_TOKEN_SALT = (
     b"$2b$12$yQrslvQGWDFjwmDBMURAUe"  # Hardcode salt so hashes are consistent
 )
+
+# TODO: Log to the proper channel
+log = get_logger("uvicorn")
 
 
 class Token(BaseModel):
@@ -210,12 +214,11 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     else:
         expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(
+    return jwt.encode(
         to_encode,
         os.environ["SECRET_KEY"],
         algorithm=os.environ["JWT_ENCRYPTION_ALGORITHM"],
     )
-    return encoded_jwt
 
 
 def get_domain(url: str):
@@ -257,7 +260,6 @@ async def redirect_callback(code: str, state: Optional[str] = None):
 
     # Get the domain for the redirect URL
     parsed_url = urllib.parse.urlparse(uri)
-    domain = parsed_url.netloc
 
     async with aiohttp.ClientSession() as session:
         async with session.post(
@@ -272,9 +274,13 @@ async def redirect_callback(code: str, state: Optional[str] = None):
 
             response_data = await token_response.json()
 
+        log.info("Obtained token response: %s", response_data)
+
         async with session.post(
             os.environ["OAUTH_USERINFO_URL"], data=response_data
         ) as user_response:
+
+            log.info("Obtained user response: %s", await user_response.text())
 
             if user_response.status != 200:
                 raise HTTPException(
@@ -321,23 +327,36 @@ async def redirect_callback(code: str, state: Optional[str] = None):
                 }
             )
 
-            response = RedirectResponse(state if state else "/")
-            redirect_domain = urllib.parse.urlparse(state).netloc
+            log.info("Created access token: %s", access_token)
 
-            _domain = domain
+            response = RedirectResponse(state if state else "/")
+
+            _domain = parsed_url.netloc
+
+            samesite = "lax"
 
             # Overrides for local development
-            for override in ["localhost", "127.0.0.1"]:
-                if override in redirect_domain:
-                    _domain = override
+            # Remove subdomins for .local domains (for local development)
+            if _domain.endswith(".local") and _domain.count(".") > 1:
+                parts = _domain.split(".")
+                # Remove the subdomain
+                _domain = ".".join(parts[-2:])
+                samesite = None
+
+            log.info("Redirecting to %s", _domain)
+
+            secure = parsed_url.scheme == "https"
+            if not secure:
+                # Samesite none requires secure cookies
+                samesite = "lax"
 
             response.set_cookie(
                 access_token_key,
                 f"Bearer {access_token}",
                 domain=_domain,
                 httponly=True,
-                samesite="lax",
-                secure=(parsed_url.scheme == "https"),
+                samesite=samesite,
+                secure=secure,
             )
 
             return response

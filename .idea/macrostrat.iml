@@ -18,6 +18,10 @@
       <sourceFolder url="file://$MODULE_DIR$/py-modules/match-utils" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/submodules/storage-admin" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/services/api-v3" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/py-modules/cli" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/py-modules/core" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/py-modules/integrations" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/py-modules/map-integration" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/cli/.venv" />
       <excludeFolder url="file://$MODULE_DIR$/py-root/.venv" />
       <excludeFolder url="file://$MODULE_DIR$/.venv" />
