@@ -4,11 +4,13 @@ import string
 import urllib.parse
 from datetime import datetime, timedelta
 from typing import Annotated, Optional
-
+import hashlib
+import hmac
+import base64
 import aiohttp
 import bcrypt
 import dotenv
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, Cookie
 from fastapi.responses import RedirectResponse
 from fastapi.security import (
     HTTPAuthorizationCredentials,
@@ -34,6 +36,8 @@ GROUP_TOKEN_SALT = (
     b"$2b$12$yQrslvQGWDFjwmDBMURAUe"  # Hardcode salt so hashes are consistent
 )
 
+REFRESH_TOKEN_EXPIRE_DAYS = 7
+refresh_token_key = "refresh_token"
 
 class Token(BaseModel):
     access_token: str
@@ -99,6 +103,20 @@ router = APIRouter(
     responses={404: {"description": "Not found"}},
 )
 
+def hash_refresh_token(raw_token: str) -> str:
+    # Deterministic hash so you can LOOKUP in DB by value.
+    key = os.environ["SECRET_KEY"].encode("utf-8")
+    digest = hmac.new(key, raw_token.encode("utf-8"), hashlib.sha256).digest()
+    return base64.urlsafe_b64encode(digest).decode("utf-8")
+
+async def get_any_group_id_for_user(session, user_id: int) -> int | None:
+    stmt = (
+        select(schemas.GroupMembers.group_id)
+        .where(schemas.GroupMembers.user_id == user_id)
+        .order_by(schemas.GroupMembers.group_id.asc())
+        .limit(1)
+    )
+    return await session.scalar(stmt)
 
 async def get_groups_from_header_token(
     header_token: Annotated[HTTPAuthorizationCredentials, Depends(http_bearer)]
@@ -322,11 +340,9 @@ async def redirect_callback(code: str, state: Optional[str] = None):
             )
 
             response = RedirectResponse(state if state else "/")
-            redirect_domain = urllib.parse.urlparse(state).netloc
 
+            redirect_domain = urllib.parse.urlparse(state).netloc if state else ""
             _domain = domain
-
-            # Overrides for local development
             for override in ["localhost", "127.0.0.1"]:
                 if override in redirect_domain:
                     _domain = override
@@ -340,40 +356,88 @@ async def redirect_callback(code: str, state: Optional[str] = None):
                 secure=(parsed_url.scheme == "https"),
             )
 
+            refresh_jwt = jwt.encode(
+                {"sub": user.sub, "exp": datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)},
+                os.environ["SECRET_KEY"],
+                algorithm=os.environ["JWT_ENCRYPTION_ALGORITHM"],
+            )
+
+            refresh_hash = hash_refresh_token(refresh_jwt)
+            engine = db.get_engine()
+            async_session = db.get_async_session(engine)
+
+            async with async_session() as db_session:
+                refresh_group_id = await get_any_group_id_for_user(db_session, user.id) or 1
+                await db.insert_refresh_token(
+                    engine=db.get_engine(),
+                    token=refresh_hash,
+                    group_id=refresh_group_id,
+                    expiration=datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
+                    token_type="refresh",
+                )
+
+            response.set_cookie(
+                refresh_token_key,
+                refresh_jwt,
+                domain=_domain,
+                httponly=True,
+                samesite="lax",
+                secure=(parsed_url.scheme == "https"),
+            )
+
             return response
+
 
 
 @router.post("/refresh")
 async def refresh_token(
-    response: Response, user_token: TokenData = Depends(get_user_token_from_cookie)
+    request: Request,
+    response: Response,
+    refresh_token: str | None = Cookie(default=None, alias=refresh_token_key),
 ):
-    """Refresh token issuing a new cookie with a fresh exp.
-    Requires a valid cookie-based JWT;"""
-
-    if user_token is None or user_token.sub is None:
+    if not refresh_token:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    user = await get_user(user_token.sub)
+    refresh_hash = hash_refresh_token(refresh_token)
+
+    engine = db.get_engine()
+    async_session = db.get_async_session(engine)
+
+    # validate refresh token exists in DB + not expired
+    tok = await db.get_refresh_token(async_session=async_session, token=refresh_hash)
+    if tok is None:
+        # delete cookie across possible domainsz
+        main_domain = get_domain(os.environ["REDIRECT_URI_ENV"])
+        for dom in [main_domain, "localhost", "127.0.0.1", None]:
+            response.delete_cookie(refresh_token_key, domain=dom)
+        raise HTTPException(status_code=401, detail="Refresh token invalid")
+
+    # decode refresh JWT to get user id
+    try:
+        payload = jwt.decode(
+            refresh_token,
+            os.environ["SECRET_KEY"],
+            algorithms=[os.environ["JWT_ENCRYPTION_ALGORITHM"]],
+        )
+        sub = payload.get("sub")
+        if not sub:
+            raise HTTPException(status_code=401, detail="Refresh token invalid")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Refresh token invalid")
+
+    user = await get_user(sub)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
 
-    names = {g["name"] for g in user["groups"]}
-    ids = {g["id"] for g in user["groups"]}
-    role = (
-        "web_admin"
-        if ("web_admin" in names or "admin" in names or 1 in ids)
-        else "web_user"
-    )
+    names = {g.name for g in user.groups}
+    ids = {g.id for g in user.groups}
+    role = "web_admin" if ("web_admin" in names or "admin" in names or 1 in ids) else "web_user"
 
     access_token = create_access_token(
-        data={
-            "sub": user["sub"],
-            "role": role,
-            "user_id": user["id"],
-            "groups": list(ids),
-        }
+        data={"sub": user.sub, "role": role, "user_id": user.id, "groups": list(ids)}
     )
 
+    # set new access cookie
     uri = os.environ["REDIRECT_URI_ENV"]
     parsed_url = urllib.parse.urlparse(uri)
     redirect_domain = parsed_url.netloc
@@ -392,6 +456,9 @@ async def refresh_token(
     )
 
     return {"status": "refreshed"}
+
+
+
 
 
 @router.post("/token", response_model=AccessToken)
@@ -437,6 +504,8 @@ async def logout(response: Response):
     # Delete all instances of cookies that we might conceivably have set
     for domain in [main_domain, "localhost", "127.0.0.1", None]:
         response.delete_cookie(key=access_token_key, domain=domain)
+        response.delete_cookie(key=refresh_token_key, domain=domain)
+
     return {"status": "success"}
 
 

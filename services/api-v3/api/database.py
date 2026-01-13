@@ -121,40 +121,88 @@ async def get_schema_tables(engine: AsyncEngine, schema: str):
 
 
 async def insert_access_token(
-    engine: AsyncEngine, token: str, group_id: int, expiration: datetime.datetime
+    engine: AsyncEngine,
+    token: str,
+    group_id: int,
+    expiration: datetime.datetime,
+    token_type: str = "api",
 ):
     async with engine.begin() as conn:
         q = insert(schemas.Token).values(
-            token=token, expires_on=expiration, group=group_id
+            token=token,
+            expires_on=expiration,
+            group=group_id,
+            token_type=token_type,
         )
         result = await conn.execute(q)
+        return result
 
+async def insert_refresh_token(
+    engine: AsyncEngine,
+    token: str,
+    group_id: int,
+    expiration: datetime.datetime,
+    token_type: str = "refresh",
+):
+    async with engine.begin() as conn:
+        q = insert(schemas.Token).values(
+            token=token,
+            expires_on=expiration,
+            group=group_id,
+            token_type=token_type,
+        )
+        result = await conn.execute(q)
         return result
 
 
 async def get_access_token(async_session: async_sessionmaker[AsyncSession], token: str):
     async with async_session() as session:
+        select_stmt = select(schemas.Token).where(
+            schemas.Token.token == token,
+            schemas.Token.token_type == "api",
+        )
 
-        select_stmt = select(schemas.Token).where(schemas.Token.token == token)
-
-        # Check that the token exists
         result = (await session.scalars(select_stmt)).first()
+        if result is None:
+            return None
 
-        # Check if it has expired
         if result.expires_on < datetime.datetime.now(datetime.timezone.utc):
             return None
 
-        # Update the used_on column
-        if result is not None:
-            stmt = (
-                update(schemas.Token)
-                .where(schemas.Token.token == token)
-                .values(used_on=datetime.datetime.utcnow())
-            )
-            await session.execute(stmt)
-            await session.commit()
+        stmt = (
+            update(schemas.Token)
+            .where(schemas.Token.id == result.id)
+            .values(used_on=datetime.datetime.utcnow())
+        )
+        await session.execute(stmt)
+        await session.commit()
 
-        return (await session.scalars(select_stmt)).first()
+        return result
+
+
+async def get_refresh_token(async_session: async_sessionmaker[AsyncSession], token: str):
+    async with async_session() as session:
+        select_stmt = select(schemas.Token).where(
+            schemas.Token.token == token,
+            schemas.Token.token_type == "refresh",
+        )
+
+        result = (await session.scalars(select_stmt)).first()
+        if result is None:
+            return None
+
+        if result.expires_on < datetime.datetime.now(datetime.timezone.utc):
+            return None
+
+        stmt = (
+            update(schemas.Token)
+            .where(schemas.Token.id == result.id)
+            .values(used_on=datetime.datetime.utcnow())
+        )
+        await session.execute(stmt)
+        await session.commit()
+
+        return result
 
 
 #
