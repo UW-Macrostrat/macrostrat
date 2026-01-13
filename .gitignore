@@ -4,3 +4,5 @@ macrostrat.toml
 *.egg-info
 *.pyc
 .DS_Store
+
+.idea/data_source_mapping.xml

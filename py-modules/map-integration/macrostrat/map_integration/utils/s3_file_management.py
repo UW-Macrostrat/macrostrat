@@ -36,6 +36,26 @@ def get_minio_client():
     )
 
 
+def make_zip_for_data_path(*, slug: str, data_path: Path) -> Path:
+    tmp_dir = Path(tempfile.gettempdir()) / "macrostrat_upload_zips"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    unique = next(tempfile._get_candidate_names())
+    archive_base = tmp_dir / f"{slug}_{unique}"
+    base_name = str(archive_base)
+
+    if data_path.is_dir() or data_path.is_file():
+        archive_path = shutil.make_archive(
+            base_name,
+            "zip",
+            root_dir=str(data_path.parent),
+            base_dir=str(data_path.name),
+        )
+        return Path(archive_path)
+
+    raise FileNotFoundError(f"data_path does not exist or is unsupported: {data_path}")
+
+
 def sha256_of_file(p: Path, chunk_size: int = 1024 * 1024) -> str:
     h = hashlib.sha256()
     with p.open("rb") as f:
@@ -163,12 +183,12 @@ def upload_file_to_minio(
 def staging_upload_dir(
     slug: str,
     data_path: Path,
-    ext: str,
     db,
     ingest_process_id: int,
 ) -> dict:
     """
     Upload local files to S3 via MinIO and register them in storage.object.
+    Always uploads a single zip archive for the provided data_path.
     """
     if ingest_process_id is None:
         raise ValueError("ingest_process_id is required to link uploaded files")
@@ -177,29 +197,13 @@ def staging_upload_dir(
     host = settings.get("storage.endpoint")
     minio_client = get_minio_client()
 
-    files_to_upload: list[tuple[Path, str]] = []
-
-    if ext == ".gdb":
-        archive_base = path.join(tempfile.gettempdir(), f"{slug}.gdb")
-        archive_path = shutil.make_archive(
-            archive_base, "zip", root_dir=data_path.parent, base_dir=data_path.name
-        )
-        files_to_upload.append((Path(archive_path), Path(archive_path).name))
-
-    elif data_path.is_dir():
-        for f in data_path.rglob("*"):
-            if f.is_file():
-                files_to_upload.append((f, str(f.relative_to(data_path))))
-
-    elif data_path.is_file():
-        files_to_upload.append((data_path, data_path.name))
+    zip_path = make_zip_for_data_path(slug=slug, data_path=data_path)
+    rel_key = f"{slug}.zip"
+    object_key = f"{slug}/{rel_key}"
 
     uploaded_object_ids: list[int] = []
 
-    for local_path, rel_key in files_to_upload:
-        object_key = f"{slug}/{rel_key}"
-        mime_type = guess_mime_type(local_path)
-
+    try:
         existing_id = get_existing_object_id(
             db,
             host=host,
@@ -207,15 +211,23 @@ def staging_upload_dir(
             key=object_key,
         )
         if existing_id:
-            continue
+            return {
+                "bucket_name": bucket,
+                "slug": slug,
+                "endpoint": host,
+                "destination": f"s3://{bucket}/{slug}/",
+                "objects_created": [],
+                "note": "Object already exists; skipping upload.",
+            }
 
-        sha256 = sha256_of_file(local_path)
+        sha256 = sha256_of_file(zip_path)
+        mime_type = "application/zip"
 
         upload_file_to_minio(
             minio_client,
             bucket=bucket,
             object_key=object_key,
-            local_path=local_path,
+            local_path=zip_path,
             sha256=sha256,
         )
 
@@ -236,13 +248,19 @@ def staging_upload_dir(
 
         uploaded_object_ids.append(object_id)
 
-    return {
-        "bucket_name": bucket,
-        "slug": slug,
-        "endpoint": host,
-        "destination": f"s3://{bucket}/{slug}/",
-        "objects_created": uploaded_object_ids,
-    }
+        return {
+            "bucket_name": bucket,
+            "slug": slug,
+            "endpoint": host,
+            "destination": f"s3://{bucket}/{slug}/",
+            "objects_created": uploaded_object_ids,
+        }
+
+    finally:
+        try:
+            zip_path.unlink(missing_ok=True)
+        except Exception:
+            pass
 
 
 # --------------------DELETIONS-------------------

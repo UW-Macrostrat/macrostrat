@@ -2,20 +2,19 @@ from contextlib import asynccontextmanager
 
 import dotenv
 import uvicorn
+from api.routes.dev_routes.convert import convert_router
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
-from api.routes.dev_routes.convert import convert_router
 
 dotenv.load_dotenv()
 
 import api.routes.security
 from api.database import connect_engine, dispose_engine
+from api.map import router as map_router
 from api.match import router as match_router
 from api.routes.ingest import router as ingest_router
 from api.routes.object import router as object_router
 from api.routes.sources import router as sources_router
-from api.map import router as map_router
 
 
 @asynccontextmanager
