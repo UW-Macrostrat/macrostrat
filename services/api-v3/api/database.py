@@ -137,6 +137,7 @@ async def insert_access_token(
         result = await conn.execute(q)
         return result
 
+
 async def insert_refresh_token(
     engine: AsyncEngine,
     token: str,
@@ -180,7 +181,9 @@ async def get_access_token(async_session: async_sessionmaker[AsyncSession], toke
         return result
 
 
-async def get_refresh_token(async_session: async_sessionmaker[AsyncSession], token: str):
+async def get_refresh_token(
+    async_session: async_sessionmaker[AsyncSession], token: str
+):
     async with async_session() as session:
         select_stmt = select(schemas.Token).where(
             schemas.Token.token == token,

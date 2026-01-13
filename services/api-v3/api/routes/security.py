@@ -1,16 +1,17 @@
+import base64
+import hashlib
+import hmac
 import os
 import secrets
 import string
 import urllib.parse
 from datetime import datetime, timedelta
 from typing import Annotated, Optional
-import hashlib
-import hmac
-import base64
+
 import aiohttp
 import bcrypt
 import dotenv
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, Cookie
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
 from fastapi.security import (
     HTTPAuthorizationCredentials,
@@ -38,6 +39,7 @@ GROUP_TOKEN_SALT = (
 
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 refresh_token_key = "refresh_token"
+
 
 class Token(BaseModel):
     access_token: str
@@ -103,11 +105,13 @@ router = APIRouter(
     responses={404: {"description": "Not found"}},
 )
 
+
 def hash_refresh_token(raw_token: str) -> str:
     # Deterministic hash so you can LOOKUP in DB by value.
     key = os.environ["SECRET_KEY"].encode("utf-8")
     digest = hmac.new(key, raw_token.encode("utf-8"), hashlib.sha256).digest()
     return base64.urlsafe_b64encode(digest).decode("utf-8")
+
 
 async def get_any_group_id_for_user(session, user_id: int) -> int | None:
     stmt = (
@@ -117,6 +121,7 @@ async def get_any_group_id_for_user(session, user_id: int) -> int | None:
         .limit(1)
     )
     return await session.scalar(stmt)
+
 
 async def get_groups_from_header_token(
     header_token: Annotated[HTTPAuthorizationCredentials, Depends(http_bearer)]
@@ -357,7 +362,11 @@ async def redirect_callback(code: str, state: Optional[str] = None):
             )
 
             refresh_jwt = jwt.encode(
-                {"sub": user.sub, "exp": datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)},
+                {
+                    "sub": user.sub,
+                    "exp": datetime.utcnow()
+                    + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
+                },
                 os.environ["SECRET_KEY"],
                 algorithm=os.environ["JWT_ENCRYPTION_ALGORITHM"],
             )
@@ -367,12 +376,15 @@ async def redirect_callback(code: str, state: Optional[str] = None):
             async_session = db.get_async_session(engine)
 
             async with async_session() as db_session:
-                refresh_group_id = await get_any_group_id_for_user(db_session, user.id) or 1
+                refresh_group_id = (
+                    await get_any_group_id_for_user(db_session, user.id) or 1
+                )
                 await db.insert_refresh_token(
                     engine=db.get_engine(),
                     token=refresh_hash,
                     group_id=refresh_group_id,
-                    expiration=datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
+                    expiration=datetime.utcnow()
+                    + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
                     token_type="refresh",
                 )
 
@@ -386,7 +398,6 @@ async def redirect_callback(code: str, state: Optional[str] = None):
             )
 
             return response
-
 
 
 @router.post("/refresh")
@@ -431,7 +442,11 @@ async def refresh_token(
 
     names = {g.name for g in user.groups}
     ids = {g.id for g in user.groups}
-    role = "web_admin" if ("web_admin" in names or "admin" in names or 1 in ids) else "web_user"
+    role = (
+        "web_admin"
+        if ("web_admin" in names or "admin" in names or 1 in ids)
+        else "web_user"
+    )
 
     access_token = create_access_token(
         data={"sub": user.sub, "role": role, "user_id": user.id, "groups": list(ids)}
@@ -456,9 +471,6 @@ async def refresh_token(
     )
 
     return {"status": "refreshed"}
-
-
-
 
 
 @router.post("/token", response_model=AccessToken)
