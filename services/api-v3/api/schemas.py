@@ -10,6 +10,7 @@ from sqlalchemy import (
     PrimaryKeyConstraint,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import (
     ARRAY,
@@ -101,13 +102,18 @@ class Token(Base):
     __table_args__ = {"schema": "macrostrat_auth"}
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     token: Mapped[str] = mapped_column(VARCHAR(255), unique=True)
-    group: Mapped[Group] = mapped_column(ForeignKey("macrostrat_auth.group.id"))
+    group: Mapped[int] = mapped_column(ForeignKey("macrostrat_auth.group.id"))
     used_on: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
     expires_on: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True))
     created_on: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
+    )
+    token_type: Mapped[str] = mapped_column(
+        TEXT,
+        nullable=False,
+        server_default=text("'api'"),
     )
 
 

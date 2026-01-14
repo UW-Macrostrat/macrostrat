@@ -10,27 +10,4 @@
       </scope>
     </mapping>
   </component>
-  <component name="SqlDataSourceStorage">
-    <option name="dataSources">
-      <list>
-        <State>
-          <option name="id" value="bf07ef7f-0b6b-4c36-826b-ff4b30f26dc4" />
-          <option name="name" value="Macrostrat (dev) (DDL)" />
-          <option name="dbmsName" value="POSTGRES" />
-          <option name="urls">
-            <array>
-              <option value="file://$PROJECT_DIR$/cli/macrostrat/cli/subsystems/knowledge_graph/ddl" />
-            </array>
-          </option>
-          <option name="outLayout" value="File per object.groovy" />
-          <option name="scriptOptions">
-            <map>
-              <entry key="CreateIfNotExists" value="1" />
-            </map>
-          </option>
-          <option name="autoSync" value="false" />
-        </State>
-      </list>
-    </option>
-  </component>
 </project>
