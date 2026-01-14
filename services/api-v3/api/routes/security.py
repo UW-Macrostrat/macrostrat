@@ -20,11 +20,12 @@ from fastapi.security import (
 )
 from fastapi.security.utils import get_authorization_scheme_param
 from jose import JWTError, jwt
-from macrostrat.utils import get_logger
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from starlette.status import HTTP_401_UNAUTHORIZED
+
+from macrostrat.utils import get_logger
 
 dotenv.load_dotenv()
 
