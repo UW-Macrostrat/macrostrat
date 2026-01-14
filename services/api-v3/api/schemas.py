@@ -111,7 +111,7 @@ class Token(Base):
         DateTime(timezone=True), server_default=func.now()
     )
     token_type: Mapped[str] = mapped_column(
-        TEXT,  # match DDL (or keep VARCHAR(32) if you change DDL)
+        TEXT,
         nullable=False,
         server_default=text("'api'"),
     )

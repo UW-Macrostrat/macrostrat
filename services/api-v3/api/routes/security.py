@@ -5,7 +5,7 @@ import os
 import secrets
 import string
 import urllib.parse
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Annotated, Optional
 
 import aiohttp
@@ -112,15 +112,35 @@ def hash_refresh_token(raw_token: str) -> str:
     digest = hmac.new(key, raw_token.encode("utf-8"), hashlib.sha256).digest()
     return base64.urlsafe_b64encode(digest).decode("utf-8")
 
+async def get_user_by_id(user_id: int) -> schemas.User | None:
+    engine = db.get_engine()
+    async_session = db.get_async_session(engine)
 
-async def get_any_group_id_for_user(session, user_id: int) -> int | None:
-    stmt = (
-        select(schemas.GroupMembers.group_id)
-        .where(schemas.GroupMembers.user_id == user_id)
-        .order_by(schemas.GroupMembers.group_id.asc())
-        .limit(1)
-    )
-    return await session.scalar(stmt)
+    async with async_session() as session:
+        stmt = (
+            select(schemas.User)
+            .options(selectinload(schemas.User.groups))
+            .where(schemas.User.id == user_id)
+        )
+        return await session.scalar(stmt)
+
+def parse_redirect_uri():
+    """Parse REDIRECT_URI_ENV once and reuse consistently."""
+    uri = os.environ["REDIRECT_URI_ENV"]
+    parsed = urllib.parse.urlparse(uri)
+    hostname = parsed.hostname or ""
+    scheme = parsed.scheme or "http"
+    secure = scheme == "https"
+    cookie_domain = None if hostname in ("localhost", "127.0.0.1") else hostname
+    return parsed, hostname, cookie_domain, secure
+
+def clear_auth_cookies(response: Response):
+    """
+    Attempt to delete cookies for both host-only and domain cookies"""
+    _, hostname, cookie_domain, _ = parse_redirect_uri()
+    for dom in {None, cookie_domain, "localhost", "127.0.0.1", hostname}:
+        response.delete_cookie(key=access_token_key, domain=dom)
+        response.delete_cookie(key=refresh_token_key, domain=dom)
 
 
 async def get_groups_from_header_token(
@@ -145,6 +165,7 @@ async def get_groups_from_header_token(
         return None
 
     return token.group
+
 
 
 async def get_user(sub: str) -> schemas.User | None:
@@ -241,11 +262,6 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     return encoded_jwt
 
 
-def get_domain(url: str):
-    parsed_url = urllib.parse.urlparse(url)
-    return parsed_url.netloc
-
-
 @router.get("/login")
 async def redirect_authorization(return_url: str = None):
     """Redirect to the authorization URL with the appropriate parameters"""
@@ -278,9 +294,7 @@ async def redirect_callback(code: str, state: Optional[str] = None):
         "redirect_uri": uri,
     }
 
-    # Get the domain for the redirect URL
-    parsed_url = urllib.parse.urlparse(uri)
-    domain = parsed_url.netloc
+    parsed_url, hostname, cookie_domain, secure = parse_redirect_uri()
 
     async with aiohttp.ClientSession() as session:
         async with session.post(
@@ -346,16 +360,10 @@ async def redirect_callback(code: str, state: Optional[str] = None):
 
             response = RedirectResponse(state if state else "/")
 
-            redirect_domain = urllib.parse.urlparse(state).netloc if state else ""
-            _domain = domain
-            for override in ["localhost", "127.0.0.1"]:
-                if override in redirect_domain:
-                    _domain = override
-
             response.set_cookie(
                 access_token_key,
                 f"Bearer {access_token}",
-                domain=_domain,
+                domain=cookie_domain,
                 httponly=True,
                 samesite="lax",
                 secure=(parsed_url.scheme == "https"),
@@ -363,35 +371,19 @@ async def redirect_callback(code: str, state: Optional[str] = None):
 
             refresh_jwt = jwt.encode(
                 {
+                    "user_id": user.id,
                     "sub": user.sub,
-                    "exp": datetime.utcnow()
-                    + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
+                    "type": "refresh",
+                    "exp": datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
                 },
                 os.environ["SECRET_KEY"],
                 algorithm=os.environ["JWT_ENCRYPTION_ALGORITHM"],
             )
 
-            refresh_hash = hash_refresh_token(refresh_jwt)
-            engine = db.get_engine()
-            async_session = db.get_async_session(engine)
-
-            async with async_session() as db_session:
-                refresh_group_id = (
-                    await get_any_group_id_for_user(db_session, user.id) or 1
-                )
-                await db.insert_refresh_token(
-                    engine=db.get_engine(),
-                    token=refresh_hash,
-                    group_id=refresh_group_id,
-                    expiration=datetime.utcnow()
-                    + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
-                    token_type="refresh",
-                )
-
             response.set_cookie(
                 refresh_token_key,
                 refresh_jwt,
-                domain=_domain,
+                domain=cookie_domain,
                 httponly=True,
                 samesite="lax",
                 secure=(parsed_url.scheme == "https"),
@@ -409,68 +401,51 @@ async def refresh_token(
     if not refresh_token:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    refresh_hash = hash_refresh_token(refresh_token)
-
-    engine = db.get_engine()
-    async_session = db.get_async_session(engine)
-
-    # validate refresh token exists in DB + not expired
-    tok = await db.get_refresh_token(async_session=async_session, token=refresh_hash)
-    if tok is None:
-        # delete cookie across possible domainsz
-        main_domain = get_domain(os.environ["REDIRECT_URI_ENV"])
-        for dom in [main_domain, "localhost", "127.0.0.1", None]:
-            response.delete_cookie(refresh_token_key, domain=dom)
-        raise HTTPException(status_code=401, detail="Refresh token invalid")
-
-    # decode refresh JWT to get user id
+    #verify the jwt is valid/not expired and signature
     try:
         payload = jwt.decode(
             refresh_token,
             os.environ["SECRET_KEY"],
             algorithms=[os.environ["JWT_ENCRYPTION_ALGORITHM"]],
         )
-        sub = payload.get("sub")
-        if not sub:
-            raise HTTPException(status_code=401, detail="Refresh token invalid")
     except JWTError:
+        clear_auth_cookies(response)
         raise HTTPException(status_code=401, detail="Refresh token invalid")
 
-    user = await get_user(sub)
+    if payload.get("type") != "refresh":
+        clear_auth_cookies(response)
+        raise HTTPException(status_code=401, detail="Refresh token invalid")
+
+    user_id = payload.get("user_id")
+    if not user_id:
+        clear_auth_cookies(response)
+        raise HTTPException(status_code=401, detail="Refresh token invalid")
+
+    #verifying the user_id and group_id
+    user = await get_user_by_id(int(user_id))
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
-
     names = {g.name for g in user.groups}
     ids = {g.id for g in user.groups}
-    role = (
-        "web_admin"
-        if ("web_admin" in names or "admin" in names or 1 in ids)
-        else "web_user"
-    )
-
+    role = "web_admin" if ("web_admin" in names or "admin" in names or 1 in ids) else "web_user"
+    #setting new access cookie
     access_token = create_access_token(
         data={"sub": user.sub, "role": role, "user_id": user.id, "groups": list(ids)}
     )
 
-    # set new access cookie
-    uri = os.environ["REDIRECT_URI_ENV"]
-    parsed_url = urllib.parse.urlparse(uri)
-    redirect_domain = parsed_url.netloc
-    _domain = redirect_domain
-    for override in ["localhost", "127.0.0.1"]:
-        if override in redirect_domain:
-            _domain = override
+    parsed_url, hostname, cookie_domain, secure = parse_redirect_uri()
 
     response.set_cookie(
         access_token_key,
         f"Bearer {access_token}",
-        domain=_domain,
+        domain=cookie_domain,
         httponly=True,
         samesite="lax",
         secure=(parsed_url.scheme == "https"),
     )
 
     return {"status": "refreshed"}
+
 
 
 @router.post("/token", response_model=AccessToken)
@@ -500,9 +475,7 @@ async def create_group_token(
         engine=db.get_engine(),
         token_hash_string=token_hash_string,
         group_id=group_token_request.group_id,
-        expiration_dt=datetime.datetime.fromtimestamp(
-            group_token_request.expiration, tz=datetime.timezone.utc
-        ),
+        expiration_dt=datetime.fromtimestamp(group_token_request.expiration, tz=timezone.utc),
     )
 
     return AccessToken(group=group_token_request.group_id, token=token)
@@ -510,15 +483,9 @@ async def create_group_token(
 
 @router.post("/logout")
 async def logout(response: Response):
-    """Logout the active user"""
-
-    main_domain = get_domain(os.environ["REDIRECT_URI_ENV"])
-    # Delete all instances of cookies that we might conceivably have set
-    for domain in [main_domain, "localhost", "127.0.0.1", None]:
-        response.delete_cookie(key=access_token_key, domain=domain)
-        response.delete_cookie(key=refresh_token_key, domain=domain)
-
+    clear_auth_cookies(response)
     return {"status": "success"}
+
 
 
 @router.get("/groups")
