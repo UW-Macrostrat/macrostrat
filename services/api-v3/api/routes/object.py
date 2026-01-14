@@ -165,38 +165,41 @@ def _row_to_dict(row) -> dict[str, Any]:
             pass
     return d
 
-
 @router.get("")
-async def list_objects(
-    page: int = 0,
-    page_size: int = 50,
-    slug: str | None = None,
-    include_deleted: bool = False,
-):
-    """
-    List objects using the database as the source of truth.
-    Optional slug filters by key prefix: key LIKE '{slug}/%'.
-    """
+async def list_objects(page: int = 0, page_size: int = 50, slug: str | None = None, include_deleted: bool = False):
     host, bucket = get_storage_host_bucket()
-    prefix = f"{slug}/%" if slug else None
+
+    where = ["scheme = 's3'", "host = :host", "bucket = :bucket"]
+    params: dict[str, Any] = {
+        "host": host,
+        "bucket": bucket,
+        "include_deleted": include_deleted,
+        "limit": page_size,
+        "offset": page * page_size,
+    }
+
+    if slug:
+        where.append("key LIKE :prefix")
+        params["prefix"] = f"{slug}/%"
+
+    if not include_deleted:
+        where.append("deleted_on IS NULL")
+
+    sql = f"""
+    SELECT id, scheme, host, bucket, key, sha256_hash, mime_type, source, created_on, updated_on
+    FROM storage.object
+    WHERE {' AND '.join(where)}
+    ORDER BY id DESC
+    LIMIT :limit
+    OFFSET :offset
+    """
 
     engine = get_engine()
     async_session = get_async_session(engine)
-
     async with async_session() as session:
-        res = await session.execute(
-            text(SQL_LIST_OBJECTS),
-            dict(
-                host=host,
-                bucket=bucket,
-                prefix=prefix,
-                include_deleted=include_deleted,
-                limit=page_size,
-                offset=page * page_size,
-            ),
-        )
-        rows = res.mappings().all()
-        return [_row_to_dict(r) for r in rows]
+        res = await session.execute(text(sql), params)
+        return [_row_to_dict(r) for r in res.mappings().all()]
+
 
 
 @router.get("/{id}")
@@ -340,19 +343,19 @@ async def delete_object(
 ):
     """
     Delete an object:
-    - hard=True (default): delete DB row and remove from MinIO
-    - hard=False: soft delete (sets deleted_on)
+    - hard=True (default): delete from MinIO + delete DB row
+    - hard=False: soft delete (sets deleted_on) and keeps object in MinIO
     """
     if not user_has_access:
         raise HTTPException(status_code=403, detail="User does not have access to delete object")
 
-    host, bucket = get_storage_host_bucket()
     minio_client = get_minio_client()
 
     engine = get_engine()
     async_session = get_async_session(engine)
 
     async with async_session() as session:
+        #fetch the object row first (source of truth for bucket/key)
         res = await session.execute(text(SQL_GET_OBJECT_BY_ID), dict(id=id))
         obj = res.mappings().first()
         if obj is None:
@@ -360,23 +363,34 @@ async def delete_object(
 
         objd = _row_to_dict(obj)
         object_key = objd.get("key")
-        if object_key:
-            try:
-                minio_client.remove_object(bucket, object_key)
-            except Exception:
-                pass
+        object_bucket = objd.get("bucket")
 
+        #hard delete. remove from MinIO first, then delete DB row
         if hard:
+            if object_bucket and object_key:
+                try:
+                    minio_client.remove_object(object_bucket, object_key)
+                except Exception as e:
+                    # Do NOT delete DB row if MinIO deletion failed
+                    raise HTTPException(
+                        status_code=502,
+                        detail=f"Failed to delete object from S3 (bucket={object_bucket}, key={object_key}): {e}",
+                    )
+
             res2 = await session.execute(text(SQL_HARD_DELETE_OBJECT), dict(id=id))
             deleted_id = res2.scalar_one_or_none()
             if deleted_id is None:
                 raise HTTPException(status_code=500, detail="Failed to delete DB record")
+
             await session.commit()
             return {"status": "deleted", "id": id, "hard": True}
 
+        #soft delete: only mark deleted in DB; keep MinIO object
         res2 = await session.execute(text(SQL_SOFT_DELETE_OBJECT), dict(id=id))
         row2 = res2.mappings().first()
         if row2 is None:
             raise HTTPException(status_code=500, detail="Failed to soft-delete DB record")
+
         await session.commit()
         return {"status": "deleted", "hard": False, "object": _row_to_dict(row2)}
+
