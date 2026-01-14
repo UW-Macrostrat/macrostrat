@@ -1,17 +1,22 @@
-import datetime
-import os
-from typing import Union
+# api/routes/object.py
 
-import api.models.object as Object
-import api.schemas as schemas
-import minio
-import starlette.requests
-from api.database import get_async_session, get_engine, results_to_model
-from api.query_parser import QueryParser, get_filter_query_params
-from api.routes.security import has_access
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from sqlalchemy import and_, insert, select, update
+import hashlib
+import json
+import mimetypes
+import os
+from datetime import datetime
+from pathlib import Path
+from typing import Any
+
+from minio import Minio
+from sqlalchemy import text
 from starlette.datastructures import UploadFile as StarletteUploadFile
+
+import starlette.requests
+from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile
+
+from api.database import get_async_session, get_engine
+from api.routes.security import has_access
 
 router = APIRouter(
     prefix="/object",
@@ -19,184 +24,359 @@ router = APIRouter(
     responses={404: {"description": "Not found"}},
 )
 
+def guess_mime_type(filename: str) -> str:
+    mime, _ = mimetypes.guess_type(filename)
+    return mime or "application/octet-stream"
 
-@router.get("", response_model=list[Object.Get])
-async def get_objects(
-    page: int = 0,
-    page_size: int = 50,
-    filter_query_params=Depends(get_filter_query_params),
-):
-    """Get all objects"""
 
-    engine = get_engine()
-    async_session = get_async_session(engine)
+def sha256_of_uploadfile(upload: StarletteUploadFile, chunk_size: int = 1024 * 1024) -> str:
+    """
+    Compute sha256 while reading the upload stream.
+    IMPORTANT: resets file pointer back to 0 afterwards so MinIO upload works.
+    """
+    h = hashlib.sha256()
+    upload.file.seek(0)
+    while True:
+        chunk = upload.file.read(chunk_size)
+        if not chunk:
+            break
+        h.update(chunk)
+    upload.file.seek(0)
+    return h.hexdigest()
 
-    query_parser = QueryParser(
-        columns=schemas.Object.__table__.c, query_params=filter_query_params
+
+def get_minio_client() -> Minio:
+    return Minio(
+        #TODO need to add or configure these envs within kubernetets
+        endpoint=os.environ["storage_host"],
+        access_key=os.environ["maps_access_key"],
+        secret_key=os.environ["maps_secret_key"],
+        secure=True,
     )
 
-    async with async_session() as session:
 
-        # TODO: This flow should likely be refactored into a function, lets see it used once more before making the move
-        select_stmt = (
-            select(*query_parser.get_select_columns())
-            .limit(page_size)
-            .offset(page_size * page)
-            .where(
-                and_(
-                    schemas.Object.deleted_on == None, query_parser.where_expressions()
-                )
-            )
-        )
+def get_storage_host_bucket() -> tuple[str, str]:
+    """
+    Keep host/bucket consistent everywhere.
+    Also ensures host has no port (hostname only) if storage_host ever includes one.
+    """
+    import urllib.parse
 
-        # Add grouping
-        if query_parser.get_group_by_column() is not None:
-            select_stmt = select_stmt.group_by(
-                query_parser.get_group_by_column()
-            ).order_by(query_parser.get_group_by_column())
-
-        if (
-            query_parser.get_order_by_columns() is not None
-            and query_parser.get_group_by_column() is None
-        ):
-            select_stmt = select_stmt.order_by(*query_parser.get_order_by_columns())
-
-        results = await session.execute(select_stmt)
-
-        return results_to_model(results, Object.Get)
+    raw_host = os.environ["storage_host"]
+    parsed = urllib.parse.urlparse(raw_host if "://" in raw_host else f"https://{raw_host}")
+    host = parsed.hostname or raw_host.split(":")[0]
+    bucket = os.environ["maps_bucket_name"]
+    return host, bucket
 
 
-@router.get("/{id}", response_model=Object.Get)
-async def get_object(id: int):
-    """Get a single object"""
+#TODO move queries to database.py functions
+SQL_LIST_OBJECTS = """
+SELECT
+  id,
+  scheme,
+  host,
+  bucket,
+  key,
+  sha256_hash,
+  mime_type,
+  source,
+  created_on,
+  updated_on
+FROM storage.object
+WHERE scheme = 's3'
+  AND host = :host
+  AND bucket = :bucket
+  AND (:prefix IS NULL OR key LIKE :prefix)
+  AND (:include_deleted = TRUE OR deleted_on IS NULL)
+ORDER BY id DESC
+LIMIT :limit
+OFFSET :offset
+"""
+
+SQL_GET_OBJECT_BY_ID = """
+SELECT
+  id,
+  scheme,
+  host,
+  bucket,
+  key,
+  sha256_hash,
+  mime_type,
+  source,
+  created_on,
+  updated_on,
+  deleted_on
+FROM storage.object
+WHERE id = :id
+"""
+
+SQL_FIND_EXISTING = """
+SELECT id
+FROM storage.object
+WHERE scheme = 's3'
+  AND host = :host
+  AND bucket = :bucket
+  AND key = :key
+  AND deleted_on IS NULL
+"""
+
+SQL_INSERT_OBJECT = """
+INSERT INTO storage.object
+  (scheme, host, bucket, key, source, sha256_hash, mime_type)
+VALUES
+  ('s3', :host, :bucket, :key, :source, :sha256, :mime_type)
+RETURNING
+  id, scheme, host, bucket, key, sha256_hash, mime_type, source, created_on, updated_on
+"""
+
+SQL_PATCH_OBJECT = """
+UPDATE storage.object
+SET
+  key = COALESCE(:key, key),
+  mime_type = COALESCE(:mime_type, mime_type),
+  source = COALESCE(:source, source),
+  updated_on = NOW()
+WHERE id = :id
+RETURNING
+  id, scheme, host, bucket, key, sha256_hash, mime_type, source, created_on, updated_on
+"""
+
+SQL_SOFT_DELETE_OBJECT = """
+UPDATE storage.object
+SET deleted_on = NOW(), updated_on = NOW()
+WHERE id = :id
+RETURNING
+  id, scheme, host, bucket, key, sha256_hash, mime_type, source, created_on, updated_on, deleted_on
+"""
+
+SQL_HARD_DELETE_OBJECT = """
+DELETE FROM storage.object
+WHERE id = :id
+RETURNING id
+"""
+
+
+def _row_to_dict(row) -> dict[str, Any]:
+    d = dict(row)
+    if "source" in d and isinstance(d["source"], str):
+        try:
+            d["source"] = json.loads(d["source"])
+        except Exception:
+            pass
+    return d
+
+
+@router.get("")
+async def list_objects(
+    page: int = 0,
+    page_size: int = 50,
+    slug: str | None = None,
+    include_deleted: bool = False,
+):
+    """
+    List objects using the database as the source of truth.
+    Optional slug filters by key prefix: key LIKE '{slug}/%'.
+    """
+    host, bucket = get_storage_host_bucket()
+    prefix = f"{slug}/%" if slug else None
 
     engine = get_engine()
     async_session = get_async_session(engine)
 
     async with async_session() as session:
-        select_stmt = select(schemas.Object).where(
-            and_(schemas.Object.id == id, schemas.Object.deleted_on == None)
+        res = await session.execute(
+            text(SQL_LIST_OBJECTS),
+            dict(
+                host=host,
+                bucket=bucket,
+                prefix=prefix,
+                include_deleted=include_deleted,
+                limit=page_size,
+                offset=page * page_size,
+            ),
         )
-
-        result = await session.scalar(select_stmt)
-
-        if result is None:
-            raise HTTPException(
-                status_code=404, detail=f"Object with id ({id}) not found"
-            )
-
-        response = Object.Get(**result.__dict__)
-        return response
+        rows = res.mappings().all()
+        return [_row_to_dict(r) for r in rows]
 
 
-@router.post("", response_model=Object.Get)
+@router.get("/{id}")
+async def get_object(id: int):
+    engine = get_engine()
+    async_session = get_async_session(engine)
+
+    async with async_session() as session:
+        res = await session.execute(text(SQL_GET_OBJECT_BY_ID), dict(id=id))
+        row = res.mappings().first()
+
+        if row is None:
+            raise HTTPException(status_code=404, detail=f"Object with id ({id}) not found")
+
+        return _row_to_dict(row)
+
+
+@router.post("")
 async def create_object(
     request: starlette.requests.Request,
-    object: Union[Object.Post, list[UploadFile], UploadFile],
+    user_has_access: bool = Depends(has_access),
+    object: UploadFile | None = File(default=None),
+):
+    """
+    Upload to MinIO and register in storage.object.
+
+    - Accepts multipart/form-data with one or many files under field name "object".
+    - Uses DB to prevent duplicates (same host/bucket/key).
+    """
+    if not user_has_access:
+        raise HTTPException(status_code=403, detail="User does not have access to create object")
+
+    if "multipart/form-data" not in (request.headers.get("content-type") or ""):
+        raise HTTPException(status_code=400, detail="Expected multipart/form-data")
+
+    form = await request.form()
+    uploads = form.getlist("object")
+    if not uploads:
+        raise HTTPException(status_code=400, detail="No files provided under field name 'object'")
+
+    host, bucket = get_storage_host_bucket()
+    minio_client = get_minio_client()
+
+    engine = get_engine()
+    async_session = get_async_session(engine)
+
+    created: list[dict[str, Any]] = []
+
+    async with async_session() as session:
+        for upload in uploads:
+            if not isinstance(upload, StarletteUploadFile):
+                continue
+            object_key = upload.filename
+            existing = await session.execute(
+                text(SQL_FIND_EXISTING),
+                dict(host=host, bucket=bucket, key=object_key),
+            )
+            existing_id = existing.scalar_one_or_none()
+            if existing_id is not None:
+                continue
+
+            sha256 = sha256_of_uploadfile(upload)
+            mime_type = upload.content_type or guess_mime_type(upload.filename)
+            try:
+                minio_client.put_object(
+                    bucket_name=bucket,
+                    object_name=object_key,
+                    data=upload.file,
+                    length=upload.size if upload.size is not None else -1,
+                    content_type=mime_type,
+                    metadata={"sha256": sha256},
+                )
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Failed to upload to S3: {e}")
+
+            res = await session.execute(
+                text(SQL_INSERT_OBJECT),
+                dict(
+                    host=host,
+                    bucket=bucket,
+                    key=object_key,
+                    source=json.dumps({}),
+                    sha256=sha256,
+                    mime_type=mime_type,
+                ),
+            )
+            row = res.mappings().first()
+            if row is None:
+                raise HTTPException(status_code=500, detail="Failed to insert storage.object record")
+
+            created.append(_row_to_dict(row))
+        await session.commit()
+
+    return {
+        "bucket": bucket,
+        "host": host,
+        "objects_created": created,
+    }
+
+
+@router.patch("/{id}")
+async def patch_object(
+    id: int,
+    body: dict[str, Any],
     user_has_access: bool = Depends(has_access),
 ):
-    """Create/Register a new object"""
-
+    """
+    Update DB fields only (does not rename objects in MinIO).
+    Supported keys: key, mime_type, source
+    """
     if not user_has_access:
-        raise HTTPException(
-            status_code=403, detail="User does not have access to create object"
-        )
+        raise HTTPException(status_code=403, detail="User does not have access to update object")
 
-    if "multipart/form-data" in request.headers["content-type"]:
-
-        files = (await request.form()).getlist("object")
-        for upload_file in files:
-
-            m = minio.Minio(
-                endpoint=os.environ["S3_HOST"],
-                access_key=os.environ["access_key"],
-                secret_key=os.environ["secret_key"],
-                secure=True,
-            )
-
-            m.put_object(
-                bucket_name=os.environ["S3_BUCKET"],
-                object_name=upload_file.filename,
-                data=upload_file.file,
-                content_type=upload_file.content_type,
-                length=upload_file.size,
-            )
-
-            object = Object.Post(
-                mime_type=upload_file.content_type,
-                key=upload_file.filename,
-                bucket=os.environ["S3_BUCKET"],
-                host=os.environ["S3_HOST"],
-                scheme=schemas.SchemeEnum.s3,
-            )
+    key = body.get("key")
+    mime_type = body.get("mime_type")
+    source = body.get("source")
+    if isinstance(source, dict):
+        source = json.dumps(source)
 
     engine = get_engine()
     async_session = get_async_session(engine)
 
     async with async_session() as session:
-        insert_stmt = (
-            insert(schemas.Object)
-            .values(**object.model_dump())
-            .returning(schemas.Object)
+        res = await session.execute(
+            text(SQL_PATCH_OBJECT),
+            dict(id=id, key=key, mime_type=mime_type, source=source),
         )
-        server_object = await session.scalar(insert_stmt)
+        row = res.mappings().first()
+        if row is None:
+            raise HTTPException(status_code=404, detail=f"Object with id ({id}) not found")
 
-        response = Object.Get(**server_object.__dict__)
         await session.commit()
-        return response
+        return _row_to_dict(row)
 
 
-@router.patch("/{id}", response_model=Object.Get)
-async def patch_object(
-    id: int, object: Object.Patch, user_has_access: bool = Depends(has_access)
+@router.delete("/{id}")
+async def delete_object(
+    id: int,
+    hard: bool = True,
+    user_has_access: bool = Depends(has_access),
 ):
-    """Update a object"""
-
+    """
+    Delete an object:
+    - hard=True (default): delete DB row and remove from MinIO
+    - hard=False: soft delete (sets deleted_on)
+    """
     if not user_has_access:
-        raise HTTPException(
-            status_code=403, detail="User does not have access to update object"
-        )
+        raise HTTPException(status_code=403, detail="User does not have access to delete object")
+
+    host, bucket = get_storage_host_bucket()
+    minio_client = get_minio_client()
 
     engine = get_engine()
     async_session = get_async_session(engine)
 
     async with async_session() as session:
-        update_stmt = (
-            update(schemas.Object)
-            .where(schemas.Object.id == id)
-            .values(**object.model_dump(exclude_unset=True))
-            .returning(schemas.Object)
-        )
+        res = await session.execute(text(SQL_GET_OBJECT_BY_ID), dict(id=id))
+        obj = res.mappings().first()
+        if obj is None:
+            raise HTTPException(status_code=404, detail=f"Object with id ({id}) not found")
 
-        server_object = await session.scalar(update_stmt)
+        objd = _row_to_dict(obj)
+        object_key = objd.get("key")
+        if object_key:
+            try:
+                minio_client.remove_object(bucket, object_key)
+            except Exception:
+                pass
 
-        response = Object.Get(**server_object.__dict__)
+        if hard:
+            res2 = await session.execute(text(SQL_HARD_DELETE_OBJECT), dict(id=id))
+            deleted_id = res2.scalar_one_or_none()
+            if deleted_id is None:
+                raise HTTPException(status_code=500, detail="Failed to delete DB record")
+            await session.commit()
+            return {"status": "deleted", "id": id, "hard": True}
+
+        res2 = await session.execute(text(SQL_SOFT_DELETE_OBJECT), dict(id=id))
+        row2 = res2.mappings().first()
+        if row2 is None:
+            raise HTTPException(status_code=500, detail="Failed to soft-delete DB record")
         await session.commit()
-        return response
-
-
-@router.delete("/{id}", response_model=Object.Get)
-async def delete_object(id: int, has_access: bool = Depends(has_access)):
-    """Delete a object"""
-
-    if not has_access:
-        raise HTTPException(
-            status_code=403, detail="User does not have access to delete object"
-        )
-
-    engine = get_engine()
-    async_session = get_async_session(engine)
-
-    async with async_session() as session:
-        delete_stmt = (
-            update(schemas.Object)
-            .where(schemas.Object.id == id)
-            .values(deleted_on=datetime.datetime.utcnow())
-            .returning(schemas.Object)
-        )
-
-        server_object = await session.scalar(delete_stmt)
-
-        response = Object.Get(**server_object.__dict__)
-        await session.commit()
-        return response
+        return {"status": "deleted", "hard": False, "object": _row_to_dict(row2)}
