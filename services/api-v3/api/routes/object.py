@@ -8,15 +8,21 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+import starlette.requests
+from api.database import get_async_session, get_engine
+from api.routes.security import has_access
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    HTTPException,
+    Request,
+    Response,
+    UploadFile,
+)
 from minio import Minio
 from sqlalchemy import text
 from starlette.datastructures import UploadFile as StarletteUploadFile
-
-import starlette.requests
-from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile
-
-from api.database import get_async_session, get_engine
-from api.routes.security import has_access
 
 router = APIRouter(
     prefix="/object",
@@ -24,12 +30,15 @@ router = APIRouter(
     responses={404: {"description": "Not found"}},
 )
 
+
 def guess_mime_type(filename: str) -> str:
     mime, _ = mimetypes.guess_type(filename)
     return mime or "application/octet-stream"
 
 
-def sha256_of_uploadfile(upload: StarletteUploadFile, chunk_size: int = 1024 * 1024) -> str:
+def sha256_of_uploadfile(
+    upload: StarletteUploadFile, chunk_size: int = 1024 * 1024
+) -> str:
     """
     Compute sha256 while reading the upload stream.
     IMPORTANT: resets file pointer back to 0 afterwards so MinIO upload works.
@@ -47,7 +56,7 @@ def sha256_of_uploadfile(upload: StarletteUploadFile, chunk_size: int = 1024 * 1
 
 def get_minio_client() -> Minio:
     return Minio(
-        #TODO need to add or configure these envs within kubernetets
+        # TODO need to add or configure these envs within kubernetets
         endpoint=os.environ["storage_host"],
         access_key=os.environ["maps_access_key"],
         secret_key=os.environ["maps_secret_key"],
@@ -63,13 +72,15 @@ def get_storage_host_bucket() -> tuple[str, str]:
     import urllib.parse
 
     raw_host = os.environ["storage_host"]
-    parsed = urllib.parse.urlparse(raw_host if "://" in raw_host else f"https://{raw_host}")
+    parsed = urllib.parse.urlparse(
+        raw_host if "://" in raw_host else f"https://{raw_host}"
+    )
     host = parsed.hostname or raw_host.split(":")[0]
     bucket = os.environ["maps_bucket_name"]
     return host, bucket
 
 
-#TODO move queries to database.py functions
+# TODO move queries to database.py functions
 SQL_LIST_OBJECTS = """
 SELECT
   id,
@@ -165,8 +176,14 @@ def _row_to_dict(row) -> dict[str, Any]:
             pass
     return d
 
+
 @router.get("")
-async def list_objects(page: int = 0, page_size: int = 50, slug: str | None = None, include_deleted: bool = False):
+async def list_objects(
+    page: int = 0,
+    page_size: int = 50,
+    slug: str | None = None,
+    include_deleted: bool = False,
+):
     host, bucket = get_storage_host_bucket()
 
     where = ["scheme = 's3'", "host = :host", "bucket = :bucket"]
@@ -201,7 +218,6 @@ async def list_objects(page: int = 0, page_size: int = 50, slug: str | None = No
         return [_row_to_dict(r) for r in res.mappings().all()]
 
 
-
 @router.get("/{id}")
 async def get_object(id: int):
     engine = get_engine()
@@ -212,7 +228,9 @@ async def get_object(id: int):
         row = res.mappings().first()
 
         if row is None:
-            raise HTTPException(status_code=404, detail=f"Object with id ({id}) not found")
+            raise HTTPException(
+                status_code=404, detail=f"Object with id ({id}) not found"
+            )
 
         return _row_to_dict(row)
 
@@ -230,7 +248,9 @@ async def create_object(
     - Uses DB to prevent duplicates (same host/bucket/key).
     """
     if not user_has_access:
-        raise HTTPException(status_code=403, detail="User does not have access to create object")
+        raise HTTPException(
+            status_code=403, detail="User does not have access to create object"
+        )
 
     if "multipart/form-data" not in (request.headers.get("content-type") or ""):
         raise HTTPException(status_code=400, detail="Expected multipart/form-data")
@@ -238,7 +258,9 @@ async def create_object(
     form = await request.form()
     uploads = form.getlist("object")
     if not uploads:
-        raise HTTPException(status_code=400, detail="No files provided under field name 'object'")
+        raise HTTPException(
+            status_code=400, detail="No files provided under field name 'object'"
+        )
 
     host, bucket = get_storage_host_bucket()
     minio_client = get_minio_client()
@@ -273,7 +295,9 @@ async def create_object(
                     metadata={"sha256": sha256},
                 )
             except Exception as e:
-                raise HTTPException(status_code=500, detail=f"Failed to upload to S3: {e}")
+                raise HTTPException(
+                    status_code=500, detail=f"Failed to upload to S3: {e}"
+                )
 
             res = await session.execute(
                 text(SQL_INSERT_OBJECT),
@@ -288,7 +312,9 @@ async def create_object(
             )
             row = res.mappings().first()
             if row is None:
-                raise HTTPException(status_code=500, detail="Failed to insert storage.object record")
+                raise HTTPException(
+                    status_code=500, detail="Failed to insert storage.object record"
+                )
 
             created.append(_row_to_dict(row))
         await session.commit()
@@ -311,7 +337,9 @@ async def patch_object(
     Supported keys: key, mime_type, source
     """
     if not user_has_access:
-        raise HTTPException(status_code=403, detail="User does not have access to update object")
+        raise HTTPException(
+            status_code=403, detail="User does not have access to update object"
+        )
 
     key = body.get("key")
     mime_type = body.get("mime_type")
@@ -329,7 +357,9 @@ async def patch_object(
         )
         row = res.mappings().first()
         if row is None:
-            raise HTTPException(status_code=404, detail=f"Object with id ({id}) not found")
+            raise HTTPException(
+                status_code=404, detail=f"Object with id ({id}) not found"
+            )
 
         await session.commit()
         return _row_to_dict(row)
@@ -347,7 +377,9 @@ async def delete_object(
     - hard=False: soft delete (sets deleted_on) and keeps object in MinIO
     """
     if not user_has_access:
-        raise HTTPException(status_code=403, detail="User does not have access to delete object")
+        raise HTTPException(
+            status_code=403, detail="User does not have access to delete object"
+        )
 
     minio_client = get_minio_client()
 
@@ -355,17 +387,19 @@ async def delete_object(
     async_session = get_async_session(engine)
 
     async with async_session() as session:
-        #fetch the object row first (source of truth for bucket/key)
+        # fetch the object row first (source of truth for bucket/key)
         res = await session.execute(text(SQL_GET_OBJECT_BY_ID), dict(id=id))
         obj = res.mappings().first()
         if obj is None:
-            raise HTTPException(status_code=404, detail=f"Object with id ({id}) not found")
+            raise HTTPException(
+                status_code=404, detail=f"Object with id ({id}) not found"
+            )
 
         objd = _row_to_dict(obj)
         object_key = objd.get("key")
         object_bucket = objd.get("bucket")
 
-        #hard delete. remove from MinIO first, then delete DB row
+        # hard delete. remove from MinIO first, then delete DB row
         if hard:
             if object_bucket and object_key:
                 try:
@@ -380,17 +414,20 @@ async def delete_object(
             res2 = await session.execute(text(SQL_HARD_DELETE_OBJECT), dict(id=id))
             deleted_id = res2.scalar_one_or_none()
             if deleted_id is None:
-                raise HTTPException(status_code=500, detail="Failed to delete DB record")
+                raise HTTPException(
+                    status_code=500, detail="Failed to delete DB record"
+                )
 
             await session.commit()
             return {"status": "deleted", "id": id, "hard": True}
 
-        #soft delete: only mark deleted in DB; keep MinIO object
+        # soft delete: only mark deleted in DB; keep MinIO object
         res2 = await session.execute(text(SQL_SOFT_DELETE_OBJECT), dict(id=id))
         row2 = res2.mappings().first()
         if row2 is None:
-            raise HTTPException(status_code=500, detail="Failed to soft-delete DB record")
+            raise HTTPException(
+                status_code=500, detail="Failed to soft-delete DB record"
+            )
 
         await session.commit()
         return {"status": "deleted", "hard": False, "object": _row_to_dict(row2)}
-
