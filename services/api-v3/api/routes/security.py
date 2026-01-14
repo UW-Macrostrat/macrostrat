@@ -112,6 +112,7 @@ def hash_refresh_token(raw_token: str) -> str:
     digest = hmac.new(key, raw_token.encode("utf-8"), hashlib.sha256).digest()
     return base64.urlsafe_b64encode(digest).decode("utf-8")
 
+
 async def get_user_by_id(user_id: int) -> schemas.User | None:
     engine = db.get_engine()
     async_session = db.get_async_session(engine)
@@ -124,6 +125,7 @@ async def get_user_by_id(user_id: int) -> schemas.User | None:
         )
         return await session.scalar(stmt)
 
+
 def parse_redirect_uri():
     """Parse REDIRECT_URI_ENV once and reuse consistently."""
     uri = os.environ["REDIRECT_URI_ENV"]
@@ -133,6 +135,7 @@ def parse_redirect_uri():
     secure = scheme == "https"
     cookie_domain = None if hostname in ("localhost", "127.0.0.1") else hostname
     return parsed, hostname, cookie_domain, secure
+
 
 def clear_auth_cookies(response: Response):
     """
@@ -165,7 +168,6 @@ async def get_groups_from_header_token(
         return None
 
     return token.group
-
 
 
 async def get_user(sub: str) -> schemas.User | None:
@@ -374,7 +376,8 @@ async def redirect_callback(code: str, state: Optional[str] = None):
                     "user_id": user.id,
                     "sub": user.sub,
                     "type": "refresh",
-                    "exp": datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
+                    "exp": datetime.utcnow()
+                    + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
                 },
                 os.environ["SECRET_KEY"],
                 algorithm=os.environ["JWT_ENCRYPTION_ALGORITHM"],
@@ -401,7 +404,7 @@ async def refresh_token(
     if not refresh_token:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    #verify the jwt is valid/not expired and signature
+    # verify the jwt is valid/not expired and signature
     try:
         payload = jwt.decode(
             refresh_token,
@@ -421,14 +424,18 @@ async def refresh_token(
         clear_auth_cookies(response)
         raise HTTPException(status_code=401, detail="Refresh token invalid")
 
-    #verifying the user_id and group_id
+    # verifying the user_id and group_id
     user = await get_user_by_id(int(user_id))
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     names = {g.name for g in user.groups}
     ids = {g.id for g in user.groups}
-    role = "web_admin" if ("web_admin" in names or "admin" in names or 1 in ids) else "web_user"
-    #setting new access cookie
+    role = (
+        "web_admin"
+        if ("web_admin" in names or "admin" in names or 1 in ids)
+        else "web_user"
+    )
+    # setting new access cookie
     access_token = create_access_token(
         data={"sub": user.sub, "role": role, "user_id": user.id, "groups": list(ids)}
     )
@@ -445,7 +452,6 @@ async def refresh_token(
     )
 
     return {"status": "refreshed"}
-
 
 
 @router.post("/token", response_model=AccessToken)
@@ -475,7 +481,9 @@ async def create_group_token(
         engine=db.get_engine(),
         token_hash_string=token_hash_string,
         group_id=group_token_request.group_id,
-        expiration_dt=datetime.fromtimestamp(group_token_request.expiration, tz=timezone.utc),
+        expiration_dt=datetime.fromtimestamp(
+            group_token_request.expiration, tz=timezone.utc
+        ),
     )
 
     return AccessToken(group=group_token_request.group_id, token=token)
@@ -485,7 +493,6 @@ async def create_group_token(
 async def logout(response: Response):
     clear_auth_cookies(response)
     return {"status": "success"}
-
 
 
 @router.get("/groups")
