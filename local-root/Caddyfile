@@ -13,14 +13,7 @@
             }
         }
 
-        reverse_proxy @auth_cookie postgrest:3000   {
-            header_up Accept-Profile {args[1]}
-            header_up Content-Profile {args[1]}
-            header_up Authorization {http.request.cookie.access_token}
-            header_down -Access-Control-Allow-Origin
-            header_down -Access-Control-Allow-Credentials
-            header_down -Access-Control-Allow-Methods
-        }
+        request_header @auth_cookie Authorization {http.request.cookie.access_token}
 
         reverse_proxy postgrest:3000   {
             header_up Accept-Profile {args[1]}
@@ -28,6 +21,19 @@
             header_down -Access-Control-Allow-Origin
             header_down -Access-Control-Allow-Credentials
             header_down -Access-Control-Allow-Methods
+            # Remove cookie header to prevent leaking cookies to PostgREST and cache
+            header_up -Cookie
+
+            @has_content_range {
+              header Content-Range *
+            }
+
+            handle_response @has_content_range {
+              # Rename PostgREST content-range header to avoid conflicts with varnish
+              copy_response
+              header X-Data-Range {rp.header.Content-Range}
+              header >Content-Range (.*) "items $1"
+            }
         }
     }
 }
