@@ -18,7 +18,7 @@ from fastapi import (
 from minio import Minio
 from sqlalchemy import text
 from starlette.datastructures import UploadFile as StarletteUploadFile
-from macrostrat.core import app as app_
+from api.settings import settings
 
 router = APIRouter(
     prefix="/object",
@@ -26,7 +26,6 @@ router = APIRouter(
     responses={404: {"description": "Not found"}},
 )
 
-settings = app_.settings
 
 def guess_mime_type(filename: str) -> str:
     mime, _ = mimetypes.guess_type(filename)
@@ -53,10 +52,10 @@ def sha256_of_uploadfile(
 def get_s3_client():
     # TODO need to add or configure these envs within api v3 kubernetes config
     return Minio(
-        endpoint=settings.get("storage.endpoint"),
-        access_key=settings.get("storage.access_key"),
-        secret_key=settings.get("storage.secret_key"),
-        secure=True,
+        endpoint=settings.s3_endpoint,
+        access_key=settings.s3_access_key,
+        secret_key=settings.s3_secret_key,
+        secure=settings.s3_secure,
     )
 
 def get_storage_host_bucket() -> tuple[str, str]:
@@ -66,12 +65,12 @@ def get_storage_host_bucket() -> tuple[str, str]:
     """
     import urllib.parse
 
-    raw_host = settings.get("storage.endpoint")
+    raw_host = settings.s3_endpoint
     parsed = urllib.parse.urlparse(
         raw_host if "://" in raw_host else f"https://{raw_host}"
     )
     host = parsed.hostname or raw_host.split(":")[0]
-    bucket = settings.get("storage.bucket_name")
+    bucket = settings.s3_bucket
     return host, bucket
 
 
