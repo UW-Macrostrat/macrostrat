@@ -16,9 +16,9 @@ class StorageSchemeMigration(Migration):
         ALTER TYPE storage.scheme ADD VALUE 'http' AFTER 'https';
 
         -- Lock the table to prevent concurrent updates
-        LOCK TABLE storage.object IN ACCESS EXCLUSIVE MODE;
+        LOCK TABLE storage.objects  IN ACCESS EXCLUSIVE MODE;
 
-        ALTER TABLE storage.object
+        ALTER TABLE storage.objects 
         ALTER COLUMN scheme
               TYPE storage.scheme USING scheme::text::storage.scheme;
 

@@ -17,7 +17,7 @@ class FileStorageUpdates(Migration):
         exists("maps_metadata", "ingest_process"),
     ]
     postconditions = [
-        # storage.object no longer has object_group_id
+        # storage.objects no longer has object_group_id
         has_columns(
             "storage",
             "object",

@@ -11,7 +11,7 @@ ALTER TYPE storage.scheme OWNER TO macrostrat;
 SET default_tablespace = '';
 SET default_table_access_method = heap;
 
-CREATE TABLE storage.object (
+CREATE TABLE storage.objects (
     id integer NOT NULL,
     scheme storage.scheme NOT NULL,
     host character varying(255) NOT NULL,
@@ -24,7 +24,7 @@ CREATE TABLE storage.object (
     updated_on timestamp with time zone DEFAULT now() NOT NULL,
     deleted_on timestamp with time zone
 );
-ALTER TABLE storage.object OWNER TO macrostrat;
+ALTER TABLE storage.objects OWNER TO macrostrat;
 
 CREATE SEQUENCE storage.object_id_seq
     AS integer
@@ -37,11 +37,11 @@ ALTER TABLE storage.object_id_seq OWNER TO macrostrat;
 
 ALTER SEQUENCE storage.object_id_seq OWNED BY storage.object.id;
 
-ALTER TABLE ONLY storage.object ALTER COLUMN id SET DEFAULT nextval('storage.object_id_seq'::regclass);
+ALTER TABLE ONLY storage.objects ALTER COLUMN id SET DEFAULT nextval('storage.objects _id_seq'::regclass);
 
-ALTER TABLE ONLY storage.object
+ALTER TABLE ONLY storage.objects
     ADD CONSTRAINT object_pkey PRIMARY KEY (id);
 
-ALTER TABLE ONLY storage.object
+ALTER TABLE ONLY storage.objects
     ADD CONSTRAINT unique_file UNIQUE (scheme, host, bucket, key);
 

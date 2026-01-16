@@ -102,7 +102,7 @@ def get_existing_object_id(db, *, host: str, bucket: str, key: str) -> int | Non
     return db.run_query(
         """
         SELECT id
-        FROM storage.object
+        FROM storage.objects 
         WHERE scheme = 's3'
           AND host = :host
           AND bucket = :bucket
@@ -123,7 +123,7 @@ def insert_storage_object(
 ) -> int:
     db.run_sql(
         """
-        INSERT INTO storage.object
+        INSERT INTO storage.objects 
           (scheme, host, bucket, key, source, sha256_hash, mime_type)
         VALUES
           ('s3', :host, :bucket, :key, :source, :sha256, :mime_type)
@@ -139,7 +139,7 @@ def insert_storage_object(
     )
     object_id = get_existing_object_id(db, host=host, bucket=bucket, key=key)
     if object_id is None:
-        raise RuntimeError("Failed to retrieve storage.object id after insert")
+        raise RuntimeError("Failed to retrieve storage.objects  id after insert")
     return object_id
 
 
@@ -187,7 +187,7 @@ def staging_upload_dir(
     ingest_process_id: int,
 ) -> dict:
     """
-    Upload local files to S3 via MinIO and register them in storage.object.
+    Upload local files to S3 via MinIO and register them in storage.objects.
     Always uploads a single zip archive for the provided data_path.
     """
     if ingest_process_id is None:
@@ -278,7 +278,7 @@ def get_objects_for_slug(db, *, host: str, bucket: str, slug: str) -> list[dict]
         db.run_query(
             """
         SELECT id, key
-        FROM storage.object
+        FROM storage.objects 
         WHERE scheme = 's3'
           AND host = :host
           AND bucket = :bucket
@@ -309,7 +309,7 @@ def unlink_object_from_ingests(db, *, object_id: int) -> None:
 def delete_storage_object(db, *, object_id: int) -> None:
     db.run_sql(
         """
-        DELETE FROM storage.object
+        DELETE FROM storage.objects 
         WHERE id = :id
         """,
         dict(id=object_id),
@@ -409,7 +409,7 @@ def staging_list_dir(
             db.run_query(
                 """
             SELECT id, key
-            FROM storage.object
+            FROM storage.objects 
             WHERE scheme = 's3'
               AND host = :host
               AND bucket = :bucket
@@ -460,7 +460,7 @@ def staging_download_dir(db, slug: str, dest_path: Path) -> dict:
             db.run_query(
                 """
             SELECT id, key
-            FROM storage.object
+            FROM storage.objects 
             WHERE scheme = 's3'
               AND host = :host
               AND bucket = :bucket

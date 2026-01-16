@@ -1,4 +1,4 @@
-ALTER TABLE storage.object DROP COLUMN IF EXISTS object_group_id;
+ALTER TABLE storage.objects DROP COLUMN IF EXISTS object_group_id;
 DROP TABLE IF EXISTS storage.object_group CASCADE;
 CREATE TABLE IF NOT EXISTS maps_metadata.map_files (
             id serial PRIMARY KEY,
