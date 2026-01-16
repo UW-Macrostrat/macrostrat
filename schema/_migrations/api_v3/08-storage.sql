@@ -13,7 +13,7 @@ CREATE TYPE storage.scheme AS ENUM (
 
 ALTER TYPE storage.scheme OWNER TO macrostrat;
 
-CREATE TABLE IF NOT EXISTS storage.object (
+CREATE TABLE IF NOT EXISTS storage.objects (
     id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     scheme storage.scheme NOT NULL,
     host character varying(255) NOT NULL,
@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS storage.object (
 );
 
 
-ALTER TABLE storage.object OWNER TO macrostrat;
+ALTER TABLE storage.objects OWNER TO macrostrat;
 
 GRANT ALL ON DATABASE macrostrat TO postgrest;
 

@@ -111,7 +111,7 @@ def test_map_staging(test_db, test_maps):
     )
 
     # object_group_id is a foreign key into the storage schema where the curr user postgres does not have access to.
-    # the storage.sql ALTER TABLE storage.object OWNER TO macrostrat is switching the owner.
+    # the storage.sql ALTER TABLE storage.objects  OWNER TO macrostrat is switching the owner.
     # we are temporarily using macrostrat to run the query below
     object_group_id = db.run_query(
         "INSERT INTO storage.object_group DEFAULT VALUES RETURNING id"
