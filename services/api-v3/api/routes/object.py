@@ -18,6 +18,7 @@ from fastapi import (
 from minio import Minio
 from sqlalchemy import text
 from starlette.datastructures import UploadFile as StarletteUploadFile
+
 from macrostrat.core import app as app_
 
 router = APIRouter(
@@ -27,6 +28,7 @@ router = APIRouter(
 )
 
 settings = app_.settings
+
 
 def guess_mime_type(filename: str) -> str:
     mime, _ = mimetypes.guess_type(filename)
@@ -50,6 +52,7 @@ def sha256_of_uploadfile(
     upload.file.seek(0)
     return h.hexdigest()
 
+
 def get_s3_client():
     # TODO need to add or configure these envs within api v3 kubernetes config
     return Minio(
@@ -58,6 +61,7 @@ def get_s3_client():
         secret_key=settings.get("storage.secret_key"),
         secure=True,
     )
+
 
 def get_storage_host_bucket() -> tuple[str, str]:
     """
@@ -190,7 +194,6 @@ async def list_objects(
         items = [_row_to_dict(r) for r in res.mappings().all()]
         next_before_id = items[-1]["id"] if items else None
         return {"items": items, "next_before_id": next_before_id}
-
 
 
 @router.get("/{id}")
@@ -407,6 +410,7 @@ async def delete_object(
         await session.commit()
         return {"status": "deleted", "hard": False, "object": _row_to_dict(row2)}
 
+
 @router.post("/{id}/track")
 async def track_object(id: int):
     """
@@ -422,10 +426,10 @@ async def forget_object(id: int):
     """
     raise HTTPException(status_code=501, detail="Forget not implemented yet")
 
+
 @router.get("/{id}/url")
 async def get_object_url(id: int):
     """
     TODO: Return or redirect to signed S3 URL.
     """
     raise HTTPException(status_code=501, detail="URL helper not implemented yet")
-
