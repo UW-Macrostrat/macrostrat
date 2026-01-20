@@ -36,10 +36,10 @@ class Settings(BaseSettings):
     )
 
     # S3 / MinIO
-    s3_access_key: str = Field(alias="S3_ACCESS_KEY")
-    s3_secret_key: str = Field(alias="S3_SECRET_KEY")
-    s3_bucket: str = Field(alias="S3_BUCKET")
-    s3_endpoint: str = Field(alias="S3_ENDPOINT")
+    s3_access_key: str = Field(alias="ACCESS_KEY")
+    s3_secret_key: str = Field(alias="SECRET_KEY")
+    s3_bucket: str = Field(alias="BUCKET")
+    s3_endpoint: str = Field(alias="S3_HOST")
     s3_secure: bool = Field(default=True, alias="S3_SECURE")
 
 
