@@ -268,51 +268,23 @@ def multiple_spot_to_fieldsite(payload: Union[dict, List[dict]] = Body(...)) -> 
             continue
     return out
 
-def fieldsite_to_checkin(fs: FieldSite) -> dict:
-    d = {
-        "spot_id": fs.id,
-        "notes": fs.notes,
-        "lat": fs.location.latitude,
-        "lng": fs.location.longitude,
-        "created": fs.created.isoformat(),
-    }
-    if fs.photos:
-        d["photo"] = fs.photos[0].id
-    planar = _first_planar_from_fieldsite(fs)
-    if planar:
-        d["observations"] = [
-            {"orientation": {"strike": float(planar.strike), "dip": float(planar.dip)}}
-        ]
-    return d
-
-def multiple_fieldsite_to_checkin(
-    fieldsites: list[FieldSite] = Body(...),
-) -> list[dict]:
-    out: list[dict] = []
-    for fs in fieldsites:
-        try:
-            if not isinstance(fs, FieldSite):
-                fs = FieldSite(**fs)
-            out.append(fieldsite_to_checkin(fs))
-        except Exception:
-            continue
-    return out
-
 def spot_to_checkin(spot: Union[dict, List[dict]] = Body(...)) -> list[dict]:
-    """Pipeline: Spot JSON (FeatureCollection[s]) or FieldSite list -> Checkin list."""
-    # If it's already a list of FieldSite dicts (has 'location'), skip the first
-    if (
+    """Pipeline: Spot JSON (FeatureCollections) or FieldSites -> Checkin list."""
+    #already a single FieldSite-shaped dict
+    if isinstance(spot, dict) and "location" in spot:
+        fieldsites: List[FieldSite] = [spot]
+    #already a list of FieldSite-shaped dicts
+    elif (
         isinstance(spot, list)
         and spot
         and isinstance(spot[0], dict)
         and "location" in spot[0]
     ):
-        fieldsites: List[FieldSite] = spot  # already FieldSite-shaped
+        fieldsites = spot
     else:
-        #convert FeatureCollection - FieldSite list
         fieldsites = multiple_spot_to_fieldsite(spot)
-    #convert FieldSite list - Checkin list
-    return multiple_fieldsite_to_checkin(fieldsites)
+    return multiple_fieldsite_to_rockd_checkin(fieldsites)
+
 
 
 
@@ -378,32 +350,38 @@ def multiple_checkin_to_fieldsite(payload: Union[dict, List[dict]] = Body(...)) 
 
 def fieldsite_to_rockd_checkin(fs: FieldSite) -> dict:
     """
-    Convert FieldSite -> Rockd checkin JSON (based on your example structure).
-    Uses checkin_id and formatted created/added strings.
+    Convert FieldSite -> Rockd checkin JSON (based on your example structure),
+    but ALSO include spot_id for compatibility with spot-based pipelines.
     """
     if not isinstance(fs, FieldSite):
         fs = FieldSite(**fs)
+    created = fs.created or datetime.now(timezone.utc)
+    updated = fs.updated or created
     d: dict = {
         "checkin_id": fs.id,
+        "spot_id": fs.id,  # <-- added
         "notes": fs.notes,
         "lat": fs.location.latitude,
         "lng": fs.location.longitude,
-        "created": _format_checkin_date(fs.created),
-        "added": _format_checkin_date(fs.updated),
+        "created": _format_checkin_date(created),
+        "added": _format_checkin_date(updated),
+        "observations": [],
     }
     if fs.photos:
         d["photo"] = fs.photos[0].id
     planar = _first_planar_from_fieldsite(fs)
     if planar:
         d["observations"] = [
-            {"orientation": {"strike": float(planar.strike), "dip": float(planar.dip)}}
+            {
+                "orientation": {
+                    "strike": float(planar.strike),
+                    "dip": float(planar.dip),
+                }
+            }
         ]
-    else:
-        d["observations"] = []
-
     return d
 
-def multiple_fieldsite_to_rockd_checkin(fieldsites: list[FieldSite] = Body(...)) -> list[dict]:
+def multiple_fieldsite_to_rockd_checkin(fieldsites: Union[list[FieldSite], list[dict]] = Body(...)) -> list[dict]:
     """Convert list[FieldSite] (or list[dict]) -> list[Rockd checkin dict]."""
     out: list[dict] = []
     for fs in fieldsites or []:
@@ -507,7 +485,9 @@ async def convert_field_site(
     if key == ("checkin", "fieldsite"):
         return multiple_checkin_to_fieldsite(payload)
     if key == ("fieldsite", "checkin"):
-        return multiple_fieldsite_to_rockd_checkin(payload)
+        if isinstance(payload, list):
+            return multiple_fieldsite_to_rockd_checkin(payload)
+        return [fieldsite_to_rockd_checkin(payload)]
     if key == ("fieldsite", "spot"):
         if isinstance(payload, list):
             return multiple_fieldsite_to_spot(payload)

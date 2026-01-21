@@ -18,3 +18,10 @@ release:
 	git diff-index --quiet HEAD --
 	git tag -a $(TAG) -m "Version $(TAG)"
 	git push origin $(TAG)
+
+test-fieldsite:
+	uv run pytest -q \
+  	--confcutdir=api/tests \
+  	api/tests/test_fieldsite.py
+
+
