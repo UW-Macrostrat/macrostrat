@@ -51,7 +51,6 @@ def sha256_of_uploadfile(
 
 
 def get_s3_client():
-    # TODO need to add or configure these envs within api v3 kubernetes config
     return Minio(
         endpoint=settings.s3_endpoint,
         access_key=settings.s3_access_key,
@@ -60,6 +59,7 @@ def get_s3_client():
     )
 
 
+# TODO add bucket name parameter for user to specify
 def get_storage_host_bucket() -> tuple[str, str]:
     """
     Keep host/bucket consistent everywhere.
