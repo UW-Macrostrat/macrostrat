@@ -45,13 +45,15 @@ convert_router = APIRouter(
     responses={404: {"description": "Not found"}},
 )
 
-#_____________________HELPERS_________________________________
+
+# _____________________HELPERS_________________________________
 def _dt_to_ms(dt: Optional[datetime]) -> Optional[int]:
     if not dt:
         return None
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
     return int(dt.timestamp() * 1000)
+
 
 def _format_checkin_date(dt: Optional[datetime]) -> Optional[str]:
     """Match example Rockd checkin date strings like 'October 19, 2023'."""
@@ -60,6 +62,7 @@ def _format_checkin_date(dt: Optional[datetime]) -> Optional[str]:
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
     return dt.strftime("%B %d, %Y")
+
 
 def _iter_spot_features(payload: Any) -> Iterable[dict]:
     """
@@ -95,6 +98,7 @@ def _iter_spot_features(payload: Any) -> Iterable[dict]:
                 if isinstance(f, dict) and f.get("type") == "Feature":
                     yield f
 
+
 def _iter_checkins(payload: Any) -> Iterable[dict]:
     """
     Yield checkin dicts from:
@@ -108,6 +112,7 @@ def _iter_checkins(payload: Any) -> Iterable[dict]:
         if isinstance(item, dict):
             yield item
 
+
 def _parse_date_time(x: Optional[str]) -> Optional[datetime]:
     if not x:
         return None
@@ -119,6 +124,7 @@ def _parse_date_time(x: Optional[str]) -> Optional[datetime]:
         except Exception:
             return None
 
+
 def _to_float(v) -> Optional[float]:
     try:
         if v is None:
@@ -126,6 +132,7 @@ def _to_float(v) -> Optional[float]:
         return float(v)
     except Exception:
         return None
+
 
 # normalize and require lat/lngs
 def _valid_coords(lat, lng) -> bool:
@@ -135,6 +142,7 @@ def _valid_coords(lat, lng) -> bool:
     except (TypeError, ValueError):
         return False
     return -90.0 <= lat <= 90.0 and -180.0 <= lng <= 180.0
+
 
 def _first_planar_from_spot(props) -> Optional[PlanarOrientation]:
     """Find first planar orientation with numeric strike & dip in StraboSpot props."""
@@ -153,6 +161,7 @@ def _first_planar_from_spot(props) -> Optional[PlanarOrientation]:
                 )
     return None
 
+
 def _first_planar_from_checkin(checkin) -> Optional[PlanarOrientation]:
     """Find first observation with numeric strike & dip in Rockd checkin."""
     obs = checkin.get("observations")
@@ -170,6 +179,7 @@ def _first_planar_from_checkin(checkin) -> Optional[PlanarOrientation]:
             )
     return None
 
+
 def _first_planar_from_fieldsite(fs: FieldSite) -> Optional[PlanarOrientation]:
     """Return first PlanarOrientation in FieldSite.observations."""
     for ob in fs.observations or []:
@@ -179,10 +189,7 @@ def _first_planar_from_fieldsite(fs: FieldSite) -> Optional[PlanarOrientation]:
     return None
 
 
-
-
-
-#_____________________________SPOT - FS - CHECKIN_________________________________
+# _____________________________SPOT - FS - CHECKIN_________________________________
 def spot_to_fieldsite(feat) -> FieldSite:
     props = feat.get("properties", {}) or {}
     geom = feat.get("geometry", {}) or {}
@@ -240,7 +247,10 @@ def spot_to_fieldsite(feat) -> FieldSite:
         observations=observations,
     )
 
-def multiple_spot_to_fieldsite(payload: Union[dict, List[dict]] = Body(...)) -> List[FieldSite]:
+
+def multiple_spot_to_fieldsite(
+    payload: Union[dict, List[dict]] = Body(...)
+) -> List[FieldSite]:
     """
     Accept:
       - FeatureCollection with many spots (your example)
@@ -268,12 +278,13 @@ def multiple_spot_to_fieldsite(payload: Union[dict, List[dict]] = Body(...)) -> 
             continue
     return out
 
+
 def spot_to_checkin(spot: Union[dict, List[dict]] = Body(...)) -> list[dict]:
     """Pipeline: Spot JSON (FeatureCollections) or FieldSites -> Checkin list."""
-    #already a single FieldSite-shaped dict
+    # already a single FieldSite-shaped dict
     if isinstance(spot, dict) and "location" in spot:
         fieldsites: List[FieldSite] = [spot]
-    #already a list of FieldSite-shaped dicts
+    # already a list of FieldSite-shaped dicts
     elif (
         isinstance(spot, list)
         and spot
@@ -286,13 +297,7 @@ def spot_to_checkin(spot: Union[dict, List[dict]] = Body(...)) -> list[dict]:
     return multiple_fieldsite_to_rockd_checkin(fieldsites)
 
 
-
-
-
-
-
-
-#___________________________________CHECKIN - FS - SPOT____________________________________
+# ___________________________________CHECKIN - FS - SPOT____________________________________
 def checkin_to_fieldsite(checkin: dict) -> FieldSite:
     """
     Convert Rockd checkin JSON dict -> FieldSite.
@@ -338,7 +343,10 @@ def checkin_to_fieldsite(checkin: dict) -> FieldSite:
         observations=observations,
     )
 
-def multiple_checkin_to_fieldsite(payload: Union[dict, List[dict]] = Body(...)) -> List[FieldSite]:
+
+def multiple_checkin_to_fieldsite(
+    payload: Union[dict, List[dict]] = Body(...)
+) -> List[FieldSite]:
     """Convert single checkin dict OR list of checkins -> list[FieldSite]."""
     out: list[FieldSite] = []
     for c in _iter_checkins(payload):
@@ -347,6 +355,7 @@ def multiple_checkin_to_fieldsite(payload: Union[dict, List[dict]] = Body(...)) 
         except Exception:
             continue
     return out
+
 
 def fieldsite_to_rockd_checkin(fs: FieldSite) -> dict:
     """
@@ -381,7 +390,10 @@ def fieldsite_to_rockd_checkin(fs: FieldSite) -> dict:
         ]
     return d
 
-def multiple_fieldsite_to_rockd_checkin(fieldsites: Union[list[FieldSite], list[dict]] = Body(...)) -> list[dict]:
+
+def multiple_fieldsite_to_rockd_checkin(
+    fieldsites: Union[list[FieldSite], list[dict]] = Body(...)
+) -> list[dict]:
     """Convert list[FieldSite] (or list[dict]) -> list[Rockd checkin dict]."""
     out: list[dict] = []
     for fs in fieldsites or []:
@@ -392,6 +404,7 @@ def multiple_fieldsite_to_rockd_checkin(fieldsites: Union[list[FieldSite], list[
         except Exception:
             continue
     return out
+
 
 def fieldsite_to_spot(fs: FieldSite) -> dict:
     """
@@ -443,6 +456,7 @@ def fieldsite_to_spot(fs: FieldSite) -> dict:
         ]
     return {"type": "FeatureCollection", "features": [feat]}
 
+
 def multiple_fieldsite_to_spot(fieldsites: list[FieldSite]) -> dict:
     """Convert many FieldSites -> one StraboSpot FeatureCollection with many Features."""
     features: list[dict] = []
@@ -455,6 +469,7 @@ def multiple_fieldsite_to_spot(fieldsites: list[FieldSite]) -> dict:
         except Exception:
             continue
     return {"type": "FeatureCollection", "features": features}
+
 
 def checkin_to_spot(payload: Union[dict, List[dict]] = Body(...)) -> dict:
     """
@@ -469,10 +484,7 @@ def checkin_to_spot(payload: Union[dict, List[dict]] = Body(...)) -> dict:
     return multiple_fieldsite_to_spot(fieldsites)
 
 
-
-
-
-#_________________________________API ROUTE___________________________________
+# _________________________________API ROUTE___________________________________
 @convert_router.post("/field-site")
 async def convert_field_site(
     payload: Union[dict, List[dict]] = Body(...),

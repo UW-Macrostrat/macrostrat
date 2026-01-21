@@ -10,12 +10,9 @@ from .test_database import api_client
 
 
 def test__debug_routes(api_client):
-    paths = sorted(
-        {r.path for r in api_client.app.router.routes if hasattr(r, "path")}
-    )
+    paths = sorted({r.path for r in api_client.app.router.routes if hasattr(r, "path")})
     print("\n".join(paths))
     assert True
-
 
 
 def _spot_feature(
@@ -105,7 +102,13 @@ def _fieldsite_dict(
 
     if include_photo:
         d["photos"] = [
-            {"id": 321, "url": "rockd://photo/321", "width": 0, "height": 0, "checksum": ""}
+            {
+                "id": 321,
+                "url": "rockd://photo/321",
+                "width": 0,
+                "height": 0,
+                "checksum": "",
+            }
         ]
 
     if include_orientation:
@@ -125,7 +128,9 @@ class TestConvertFieldSite:
             ]
         )
 
-        resp = api_client.post("/dev/convert/field-site?in=spot&out=fieldsite", json=payload)
+        resp = api_client.post(
+            "/dev/convert/field-site?in=spot&out=fieldsite", json=payload
+        )
         assert resp.status_code == 200
 
         data = resp.json()
@@ -148,12 +153,16 @@ class TestConvertFieldSite:
         payload = _spot_featurecollection(
             [
                 _spot_feature(spot_id=1, geom_type="LineString"),
-                _spot_feature(spot_id=2, image_basemap="something"),  # should be skipped
+                _spot_feature(
+                    spot_id=2, image_basemap="something"
+                ),  # should be skipped
                 _spot_feature(spot_id=3),  # should survive
             ]
         )
 
-        resp = api_client.post("/dev/convert/field-site?in=spot&out=fieldsite", json=payload)
+        resp = api_client.post(
+            "/dev/convert/field-site?in=spot&out=fieldsite", json=payload
+        )
         assert resp.status_code == 200
         data = resp.json()
 
@@ -162,15 +171,21 @@ class TestConvertFieldSite:
         assert data[0]["id"] == 3
 
     def test_spot_to_fieldsite_invalid_coords_skips_feature(self, api_client):
-        payload = _spot_featurecollection([_spot_feature(spot_id=1, lat=999.0, lng=-89.0)])
-        resp = api_client.post("/dev/convert/field-site?in=spot&out=fieldsite", json=payload)
+        payload = _spot_featurecollection(
+            [_spot_feature(spot_id=1, lat=999.0, lng=-89.0)]
+        )
+        resp = api_client.post(
+            "/dev/convert/field-site?in=spot&out=fieldsite", json=payload
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data == []  # invalid spot should be skipped
 
     def test_spot_to_checkin_from_featurecollection(self, api_client):
         payload = _spot_featurecollection([_spot_feature(spot_id=10)])
-        resp = api_client.post("/dev/convert/field-site?in=spot&out=checkin", json=payload)
+        resp = api_client.post(
+            "/dev/convert/field-site?in=spot&out=checkin", json=payload
+        )
         assert resp.status_code == 200
 
         out = resp.json()
@@ -196,7 +211,9 @@ class TestConvertFieldSite:
     def test_spot_to_checkin_accepts_single_fieldsite_dict(self, api_client):
         # your spot_to_checkin treats dict with "location" as already-FieldSite-shaped
         payload = _fieldsite_dict(fs_id=501)
-        resp = api_client.post("/dev/convert/field-site?in=spot&out=checkin", json=payload)
+        resp = api_client.post(
+            "/dev/convert/field-site?in=spot&out=checkin", json=payload
+        )
         assert resp.status_code == 200
 
         out = resp.json()
@@ -207,7 +224,9 @@ class TestConvertFieldSite:
 
     def test_checkin_to_fieldsite_single(self, api_client):
         payload = _checkin(checkin_id=77)
-        resp = api_client.post("/dev/convert/field-site?in=checkin&out=fieldsite", json=payload)
+        resp = api_client.post(
+            "/dev/convert/field-site?in=checkin&out=fieldsite", json=payload
+        )
         assert resp.status_code == 200
 
         out = resp.json()
@@ -221,8 +240,13 @@ class TestConvertFieldSite:
         assert "observations" in fs and isinstance(fs["observations"], list)
 
     def test_checkin_to_fieldsite_list(self, api_client):
-        payload = [_checkin(checkin_id=1), _checkin(checkin_id=2, include_orientation=False)]
-        resp = api_client.post("/dev/convert/field-site?in=checkin&out=fieldsite", json=payload)
+        payload = [
+            _checkin(checkin_id=1),
+            _checkin(checkin_id=2, include_orientation=False),
+        ]
+        resp = api_client.post(
+            "/dev/convert/field-site?in=checkin&out=fieldsite", json=payload
+        )
         assert resp.status_code == 200
         out = resp.json()
         assert isinstance(out, list)
@@ -230,8 +254,13 @@ class TestConvertFieldSite:
         assert {o["id"] for o in out} == {1, 2}
 
     def test_fieldsite_to_checkin_list(self, api_client):
-        payload = [_fieldsite_dict(fs_id=900), _fieldsite_dict(fs_id=901, include_orientation=False)]
-        resp = api_client.post("/dev/convert/field-site?in=fieldsite&out=checkin", json=payload)
+        payload = [
+            _fieldsite_dict(fs_id=900),
+            _fieldsite_dict(fs_id=901, include_orientation=False),
+        ]
+        resp = api_client.post(
+            "/dev/convert/field-site?in=fieldsite&out=checkin", json=payload
+        )
         assert resp.status_code == 200
 
         out = resp.json()
@@ -246,7 +275,9 @@ class TestConvertFieldSite:
 
     def test_fieldsite_to_checkin_single_returns_list_of_one(self, api_client):
         payload = _fieldsite_dict(fs_id=999)
-        resp = api_client.post("/dev/convert/field-site?in=fieldsite&out=checkin", json=payload)
+        resp = api_client.post(
+            "/dev/convert/field-site?in=fieldsite&out=checkin", json=payload
+        )
         assert resp.status_code == 200
 
         out = resp.json()
@@ -257,7 +288,9 @@ class TestConvertFieldSite:
 
     def test_fieldsite_to_spot_single(self, api_client):
         payload = _fieldsite_dict(fs_id=1234)
-        resp = api_client.post("/dev/convert/field-site?in=fieldsite&out=spot", json=payload)
+        resp = api_client.post(
+            "/dev/convert/field-site?in=fieldsite&out=spot", json=payload
+        )
         assert resp.status_code == 200
 
         fc = resp.json()
@@ -272,7 +305,9 @@ class TestConvertFieldSite:
 
     def test_fieldsite_to_spot_list(self, api_client):
         payload = [_fieldsite_dict(fs_id=1), _fieldsite_dict(fs_id=2)]
-        resp = api_client.post("/dev/convert/field-site?in=fieldsite&out=spot", json=payload)
+        resp = api_client.post(
+            "/dev/convert/field-site?in=fieldsite&out=spot", json=payload
+        )
         assert resp.status_code == 200
 
         fc = resp.json()
@@ -283,7 +318,9 @@ class TestConvertFieldSite:
 
     def test_checkin_to_spot_single(self, api_client):
         payload = _checkin(checkin_id=321)
-        resp = api_client.post("/dev/convert/field-site?in=checkin&out=spot", json=payload)
+        resp = api_client.post(
+            "/dev/convert/field-site?in=checkin&out=spot", json=payload
+        )
         assert resp.status_code == 200
 
         fc = resp.json()
@@ -293,7 +330,9 @@ class TestConvertFieldSite:
 
     def test_checkin_to_spot_list(self, api_client):
         payload = [_checkin(checkin_id=1), _checkin(checkin_id=2)]
-        resp = api_client.post("/dev/convert/field-site?in=checkin&out=spot", json=payload)
+        resp = api_client.post(
+            "/dev/convert/field-site?in=checkin&out=spot", json=payload
+        )
         assert resp.status_code == 200
 
         fc = resp.json()
@@ -303,7 +342,9 @@ class TestConvertFieldSite:
         assert ids == {1, 2}
 
     def test_unsupported_conversion_400(self, api_client):
-        resp = api_client.post("/dev/convert/field-site?in=banana&out=fieldsite", json={})
+        resp = api_client.post(
+            "/dev/convert/field-site?in=banana&out=fieldsite", json={}
+        )
         assert resp.status_code == 400
         detail = resp.json().get("detail")
         assert isinstance(detail, str)

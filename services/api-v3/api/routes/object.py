@@ -59,7 +59,7 @@ def get_s3_client():
     )
 
 
-#TODO add bucket name parameter for user to specify
+# TODO add bucket name parameter for user to specify
 def get_storage_host_bucket() -> tuple[str, str]:
     """
     Keep host/bucket consistent everywhere.
