@@ -102,9 +102,17 @@ async function queryColumnsData(req, new_cols) {
   let params = { col_ids };
 
   const limit = "sample" in req.query ? " LIMIT 5" : "";
-  let groupBy = "";
   let orderBy = "";
   let geo = "";
+
+  // Base GROUP BY columns that are always needed
+  const baseGroupBy = [
+    "col_areas.col_id",
+    "cols.id",
+    "col_groups.col_group",
+    "col_groups.id",
+  ];
+  let additionalGroupBy = [];
 
   // Handle status code
   if (req.query.status_code) {
@@ -115,8 +123,10 @@ async function queryColumnsData(req, new_cols) {
     params["status_code"] = ["active"];
   }
 
-  // Handle geometry
-  if (req.query.format && api.acceptedFormats.geo[req.query.format]) {
+  // Handle geometry - adds col_areas.col_area to GROUP BY
+  const needsGeometry =
+    req.query.format && api.acceptedFormats.geo[req.query.format];
+  if (needsGeometry) {
     if (req.query.shape) {
       geo =
         ", ST_AsGeoJSON(ST_Intersection(col_areas.col_area, ST_MakeValid(:shape))) geojson";
@@ -124,24 +134,36 @@ async function queryColumnsData(req, new_cols) {
     } else {
       geo = ", ST_AsGeoJSON(col_areas.col_area) geojson";
     }
-    groupBy = ", col_areas.col_area";
+    additionalGroupBy.push("col_areas.col_area");
   }
 
-  // Handle ordering
+  // Handle ordering - also adds col_areas.col_area to GROUP BY if not already added
   if (req.query.lat && req.query.lng && req.query.adjacents) {
     orderBy =
       "ORDER BY ST_Distance(ST_SetSRID(col_areas.col_area, 4326), ST_SetSRID(ST_MakePoint(:lng, :lat), 4326))";
     params["lat"] = req.query.lat;
     params["lng"] = larkin.normalizeLng(req.query.lng);
-    groupBy = ", col_areas.col_area";
+
+    // Add col_areas.col_area to GROUP BY if not already added for geometry
+    if (!needsGeometry) {
+      additionalGroupBy.push("col_areas.col_area");
+    }
   } else if (req.query.col_id && req.query.adjacents) {
     orderBy = `ORDER BY ST_Distance(
       ST_Centroid(col_areas.col_area),
       (SELECT ST_Centroid(col_area) FROM macrostrat.col_areas WHERE col_id = :col_id)
     )`;
     params["col_id"] = req.query.col_id;
-    groupBy = ", col_areas.col_area";
+
+    // Add col_areas.col_area to GROUP BY if not already added for geometry
+    if (!needsGeometry) {
+      additionalGroupBy.push("col_areas.col_area");
+    }
   }
+
+  // Assemble final GROUP BY clause
+  const allGroupByColumns = [...baseGroupBy, ...additionalGroupBy];
+  const groupByClause = `GROUP BY ${allGroupByColumns.join(", ")}`;
 
   const result = await larkin.queryPgAsync(
     "burwell",
@@ -165,7 +187,7 @@ async function queryColumnsData(req, new_cols) {
     LEFT JOIN macrostrat.col_refs ON cols.id = col_refs.col_id
     WHERE cols.status_code = ANY(:status_code)
       AND cols.id = ANY(:col_ids)
-    GROUP BY col_areas.col_id, cols.id, col_groups.col_group, col_groups.id ${groupBy}
+    ${groupByClause}
     ${orderBy}
     ${limit}
   `,
