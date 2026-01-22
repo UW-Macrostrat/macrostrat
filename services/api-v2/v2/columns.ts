@@ -38,14 +38,9 @@ export async function handleColumnRoute(req, res, next) {
     const columnData = await queryColumnsData(req, new_cols);
 
     // Process and send response
-    await processAndSendResponse(
-      req,
-      res,
-      next,
-      undefined,
-      new_cols,
-      columnData,
-    );
+    const data = await prepareColumnData(req, new_cols, columnData);
+    const cfg = buildOutputConfig(req);
+    return larkin.sendData(req, res, next, cfg, { data });
   } catch (error) {
     larkin.trace(error);
     return larkin.error(req, res, next, error.message);
@@ -73,19 +68,21 @@ export function getColumnDataCompat(req, callback) {
       const columnData = await queryColumnsData(req, new_cols);
 
       // Process and send response
-      await processAndSendResponse(
-        req,
-        null,
-        null,
-        callback,
-        new_cols,
-        columnData,
-      );
+      const res = await prepareColumnData(req, new_cols, columnData);
+      callback(null, res);
     } catch (error) {
       larkin.trace(error);
       return callback(error);
     }
   })();
+}
+
+async function prepareColumnData(req, unit_data, column_data) {
+  let data = finalizeColumnsData(req, column_data, unit_data);
+  if (req.query.format && acceptedFormats.geo[req.query.format]) {
+    data = await buildGeoResult(req, data);
+  }
+  return data;
 }
 
 function processColumnsData(cols) {
@@ -228,36 +225,30 @@ async function queryColumnsData(req, new_cols) {
   return result.rows;
 }
 
-async function processAndSendResponse(
-  req,
-  res,
-  next,
-  callback,
-  unit_data,
-  column_data,
-) {
-  if (column_data) {
-    column_data.forEach((d) => {
-      if (typeof d.refs === "string" || d.refs instanceof String) {
-        d.refs = larkin.jsonifyPipes(d.refs, "integers");
+function finalizeColumnsData(req, column_data, unit_data) {
+  if (!column_data) return column_data;
+  return column_data.map((init) => {
+    let d = { ...init };
+    if (typeof d.refs === "string" || d.refs instanceof String) {
+      d.refs = larkin.jsonifyPipes(d.refs, "integers");
+    }
+    d.t_units = unit_data[d.col_id].t_units;
+    d.t_sections = unit_data[d.col_id].t_sections;
+
+    if (req.query.response === "long") {
+      d = _.extend(d, unit_data[d.col_id]);
+
+      if (req.query.format === "csv") {
+        d.lith = larkin.pipifyAttrs(d.lith);
+        d.environ = larkin.pipifyAttrs(d.environ);
+        d.econ = larkin.pipifyAttrs(d.econ);
       }
-      d.t_units = unit_data[d.col_id].t_units;
-      d.t_sections = unit_data[d.col_id].t_sections;
+    }
+    return d;
+  });
+}
 
-      if (req.query.response === "long") {
-        d = _.extend(d, unit_data[d.col_id]);
-
-        if (req.query.format === "csv") {
-          d.lith = larkin.pipifyAttrs(d.lith);
-          d.environ = larkin.pipifyAttrs(d.environ);
-          d.econ = larkin.pipifyAttrs(d.econ);
-        }
-      }
-    });
-  }
-
-  let data = column_data;
-
+function buildOutputConfig(req) {
   let cfg = {
     format: acceptedFormats.standard[req.query.format]
       ? req.query.format
@@ -266,29 +257,29 @@ async function processAndSendResponse(
     refs: "refs",
   };
 
-  if (req.query.format && api.acceptedFormats.geo[req.query.format]) {
-    const outputFormat = larkin.getOutputFormat(req.query.format);
-    const output = await new Promise((resolve, reject) => {
-      dbgeo.parse(
-        data || [],
-        {
-          geometryColumn: "geojson",
-          geometryType: "geojson",
-          outputFormat,
-        },
-        (error, result) => {
-          if (error)
-            reject(new Error("An error was incurred during conversion"));
-          else resolve(result);
-        },
-      );
-    });
-
-    data = outputFormat === "geojson" ? gp(output, 4) : output;
-
+  if (req.query.format && acceptedFormats.geo[req.query.format]) {
     cfg.bare = !!acceptedFormats.bare[req.query.format];
   }
-  if (callback) return callback(null, data);
 
-  return larkin.sendData(req, res, next, cfg, { data });
+  return cfg;
+}
+
+async function buildGeoResult(req, data) {
+  const outputFormat = larkin.getOutputFormat(req.query.format);
+  const output = await new Promise((resolve, reject) => {
+    dbgeo.parse(
+      data || [],
+      {
+        geometryColumn: "geojson",
+        geometryType: "geojson",
+        outputFormat,
+      },
+      (error, result) => {
+        if (error) reject(new Error("An error was incurred during conversion"));
+        else resolve(result);
+      },
+    );
+  });
+
+  return outputFormat === "geojson" ? gp(output, 4) : output;
 }
