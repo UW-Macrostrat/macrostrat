@@ -12,7 +12,7 @@ function newSection(data) {
   };
 }
 
-module.exports = async function (req, res, next) {
+export async function handleSectionsRoute(req, res, next) {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
@@ -53,7 +53,7 @@ module.exports = async function (req, res, next) {
   } catch (error) {
     return larkin.error(req, res, next, error);
   }
-};
+}
 
 function processUnitsIntoSections(units) {
   // First group by column

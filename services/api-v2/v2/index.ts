@@ -4,6 +4,7 @@ const larkin = require("./larkin");
 import { handleColumnRoute } from "./columns";
 import { handleUnitsRoute } from "./units";
 import { handleFossilsRoute } from "./fossils";
+import { handleSectionsRoute } from "./sections";
 
 export async function buildAPI() {
   await larkin.checkCapabilities(api);
@@ -25,11 +26,8 @@ export async function buildAPI() {
   api.route("/columns/refresh-cache").get(require("./column-cache-refresh"));
 
   api.route("/columns").get(handleColumnRoute);
-
-  api.route("/sections").get(require("./sections"));
-
+  api.route("/sections").get(handleSectionsRoute);
   api.route("/units").get(handleUnitsRoute);
-
   api.route("/fossils").get(handleFossilsRoute);
 
   api.route("/stats").get(require("./stats"));

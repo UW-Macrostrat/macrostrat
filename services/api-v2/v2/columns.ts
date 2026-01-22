@@ -6,11 +6,52 @@ import * as larkin from "./larkin";
 import _ from "underscore";
 import gp from "geojson-precision";
 
-function columnRouteHandlerInternal(req, res, next, callback) {
+export async function handleColumnRoute(req, res, next) {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
 
+  // Wrap the async logic in a promise but keep the outer handler sync
+  try {
+    // Get units data grouped by col_id
+    const unitsResult = await getUnitsData(req);
+
+    if (!unitsResult || !unitsResult.length) {
+      const emptyResult = larkin.sendData(
+        req,
+        res,
+        next,
+        { format: "json" },
+        { data: [] },
+      );
+      return emptyResult;
+    }
+
+    larkin.trace(unitsResult[0]);
+
+    // Group and process units data
+    const cols = _.groupBy(unitsResult, (d) => d.col_id);
+    const new_cols = processColumnsData(cols);
+
+    // Query columns data
+    const columnData = await queryColumnsData(req, new_cols);
+
+    // Process and send response
+    await processAndSendResponse(
+      req,
+      res,
+      next,
+      undefined,
+      new_cols,
+      columnData,
+    );
+  } catch (error) {
+    larkin.trace(error);
+    return larkin.error(req, res, next, error.message);
+  }
+}
+
+export function getColumnDataCompat(req, callback) {
   // Wrap the async logic in a promise but keep the outer handler sync
   (async () => {
     try {
@@ -18,10 +59,7 @@ function columnRouteHandlerInternal(req, res, next, callback) {
       const unitsResult = await getUnitsData(req);
 
       if (!unitsResult || !unitsResult.length) {
-        const emptyResult = callback
-          ? callback(null, [])
-          : larkin.sendData(req, res, next, { format: "json" }, { data: [] });
-        return emptyResult;
+        return callback(null, []);
       }
 
       larkin.trace(unitsResult[0]);
@@ -36,30 +74,17 @@ function columnRouteHandlerInternal(req, res, next, callback) {
       // Process and send response
       await processAndSendResponse(
         req,
-        res,
-        next,
+        null,
+        null,
         callback,
         new_cols,
         columnData,
       );
     } catch (error) {
       larkin.trace(error);
-      if (callback) {
-        return callback(error);
-      }
-      return larkin.error(req, res, next, error);
+      return callback(error);
     }
   })();
-}
-
-export { columnRouteHandlerInternal };
-
-export function handleColumnRoute(req, res, next) {
-  return columnRouteHandlerInternal(req, res, next, null);
-}
-
-export function getColumnDataCompat(req, callback) {
-  return columnRouteHandlerInternal(req, null, null, callback);
 }
 
 function processColumnsData(cols) {
