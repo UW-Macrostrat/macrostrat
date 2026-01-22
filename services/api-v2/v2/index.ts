@@ -29,9 +29,7 @@ export async function buildAPI() {
 
   api.route("/sections").get(require("./sections"));
 
-  api.route("/units").get(function (req, res, next) {
-    handleUnitsRoute(req, res, next);
-  });
+  api.route("/units").get(handleUnitsRoute);
 
   api.route("/fossils").get(handleFossilsRoute);
 

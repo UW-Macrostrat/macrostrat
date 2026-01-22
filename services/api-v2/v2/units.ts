@@ -6,39 +6,22 @@ var api = require("./api"),
 
 import { buildProjectsFilter } from "./utils";
 
-export function handleUnitsRoute(req, res, next, cb) {
-  handleUnitsRouteAsync(req, res, next, cb).catch((error) => {
-    larkin.trace(error);
-    if (cb) {
-      cb(error);
-    } else {
-      return larkin.error(req, res, next, error.message);
-    }
-  });
-}
-
 export async function getUnitsData(req, internal: boolean = true) {
   // First determine age range component of query, if any.
   const params = buildSharedQueryParams(req);
   const data = await determineAgeRange(req, params);
-
-  const cb = internal ? () => {} : null;
-
-  // Build the main query
-  return await buildAndExecuteMainQuery(req, data, params, cb);
+  return await buildAndExecuteMainQuery(req, data, params, internal);
 }
 
-export async function handleUnitsRouteAsync(req, res, next, cb) {
+export async function handleUnitsRoute(req, res, next) {
   // If no parameters, send the route definition
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
 
-  const result = await getUnitsData(req, false);
+  try {
+    const result = await getUnitsData(req, false);
 
-  if (cb) {
-    cb(null, result);
-  } else {
     return larkin.sendData(
       req,
       res,
@@ -54,6 +37,9 @@ export async function handleUnitsRouteAsync(req, res, next, cb) {
         data: result,
       },
     );
+  } catch (error) {
+    larkin.trace(error);
+    return larkin.error(req, res, next, error.message);
   }
 }
 
@@ -297,9 +283,10 @@ async function determineAgeRange(req, params) {
   throw new Error("Invalid parameters passed");
 }
 
-async function buildAndExecuteMainQuery(req, data, params, cb) {
+async function buildAndExecuteMainQuery(req, data, params, internal = false) {
   let where = "";
-  const limit = "sample" in req.query ? (cb ? " LIMIT 15 " : " LIMIT 5") : "";
+  const limit =
+    "sample" in req.query ? (internal ? " LIMIT 15 " : " LIMIT 5") : "";
   const orderby = [];
 
   larkin.trace(data);
@@ -525,7 +512,7 @@ async function buildAndExecuteMainQuery(req, data, params, cb) {
     lookup_units.pbdb_collections::integer,
     lookup_units.pbdb_occurrences::integer`;
 
-  if (req.query.response === "long" || cb) {
+  if (req.query.response === "long" || internal) {
     const colRefsSubquery = `SELECT string_agg(col_refs.ref_id::text, '|') FROM macrostrat.col_refs WHERE col_refs.col_id = cols.id`;
 
     columnList += `,
@@ -582,7 +569,7 @@ async function buildAndExecuteMainQuery(req, data, params, cb) {
   const result = await larkin.queryPgAsync("burwell", sql, params);
 
   // Process results
-  if (req.query.response === "long" || cb) {
+  if (req.query.response === "long" || internal) {
     for (let i = 0; i < result.rows.length; i++) {
       result.rows[i].lith = JSON.parse(result.rows[i].lith) || [];
       result.rows[i].environ = JSON.parse(result.rows[i].environ) || [];
@@ -603,7 +590,11 @@ async function buildAndExecuteMainQuery(req, data, params, cb) {
     }
   }
 
-  if (req.query.format === "csv" && req.query.response === "long" && !cb) {
+  if (
+    req.query.format === "csv" &&
+    req.query.response === "long" &&
+    !internal
+  ) {
     for (let i = 0; i < result.rows.length; i++) {
       result.rows[i].units_above = result.rows[i].units_above.join(",");
       result.rows[i].units_below = result.rows[i].units_below.join(",");
@@ -614,7 +605,11 @@ async function buildAndExecuteMainQuery(req, data, params, cb) {
     }
   }
 
-  if (req.query.format && api.acceptedFormats.geo[req.query.format] && !cb) {
+  if (
+    req.query.format &&
+    api.acceptedFormats.geo[req.query.format] &&
+    !internal
+  ) {
     const geomAge =
       req.query.geom_age && req.query.geom_age === "top"
         ? ["t_plng", "t_plat"]
