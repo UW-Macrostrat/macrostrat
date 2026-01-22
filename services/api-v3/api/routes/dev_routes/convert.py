@@ -1,4 +1,4 @@
-from typing import Any, Iterable, List, Union
+from typing import Any, Iterable, List, Union, Optional
 
 import dotenv
 import httpx
@@ -53,6 +53,14 @@ def _dt_to_ms(dt: Optional[datetime]) -> Optional[int]:
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
     return int(dt.timestamp() * 1000)
+
+def _dt_to_iso_z(dt: Optional[datetime]) -> Optional[str]:
+    if not dt:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+
 
 
 def _format_checkin_date(dt: Optional[datetime]) -> Optional[str]:
@@ -279,22 +287,41 @@ def multiple_spot_to_fieldsite(
     return out
 
 
-def spot_to_checkin(spot: Union[dict, List[dict]] = Body(...)) -> list[dict]:
-    """Pipeline: Spot JSON (FeatureCollections) or FieldSites -> Checkin list."""
-    # already a single FieldSite-shaped dict
-    if isinstance(spot, dict) and "location" in spot:
-        fieldsites: List[FieldSite] = [spot]
-    # already a list of FieldSite-shaped dicts
-    elif (
-        isinstance(spot, list)
-        and spot
-        and isinstance(spot[0], dict)
-        and "location" in spot[0]
-    ):
-        fieldsites = spot
-    else:
+def spot_to_checkin(spot: Union[dict, List[dict]] = Body(...)) -> Union[dict, list[dict]]:
+    """Pipeline: Spot JSON (FeatureCollections) or FieldSites -> Checkin(s).
+    Output rule:
+    - dict output only when the input is a single object representing a single spot/fieldsite
+      (Feature OR FeatureCollection with exactly 1 feature OR single FieldSite dict)
+      AND exactly one checkin is produced.
+    - otherwise list output
+    """
+    #multiple fieldsites
+    if isinstance(spot, list):
+        if spot and isinstance(spot[0], dict) and "location" in spot[0]:
+            return multiple_fieldsite_to_rockd_checkin(spot)
         fieldsites = multiple_spot_to_fieldsite(spot)
-    return multiple_fieldsite_to_rockd_checkin(fieldsites)
+        return multiple_fieldsite_to_rockd_checkin(fieldsites)
+    #single fieldsite object
+    if isinstance(spot, dict) and "location" in spot:
+        checkins = multiple_fieldsite_to_rockd_checkin([spot])
+        return checkins[0] if len(checkins) == 1 else checkins
+    #determine whether this is a single spot
+    is_single_spot_payload = False
+    if isinstance(spot, dict):
+        t = spot.get("type")
+        if t == "Feature":
+            is_single_spot_payload = True
+        elif t == "FeatureCollection":
+            feats = spot.get("features")
+            if isinstance(feats, list) and len(feats) == 1:
+                is_single_spot_payload = True
+    fieldsites = multiple_spot_to_fieldsite(spot)
+    checkins = multiple_fieldsite_to_rockd_checkin(fieldsites)
+    if is_single_spot_payload and len(checkins) == 1:
+        return checkins[0]
+    return checkins
+
+
 
 
 # ___________________________________CHECKIN - FS - SPOT____________________________________
@@ -332,7 +359,12 @@ def checkin_to_fieldsite(checkin: dict) -> FieldSite:
     if planar:
         observations.append(Observation(data=planar))
     created = _parse_date_time(checkin.get("created")) or datetime.now(timezone.utc)
-    updated = _parse_date_time(checkin.get("added")) or created
+
+    updated = (_parse_date_time(checkin.get("updated"))
+               or _parse_date_time(checkin.get("added"))
+               or created
+               )
+
     return FieldSite(
         id=int(cid),
         location=Location(latitude=float(lat), longitude=float(lng)),
@@ -368,12 +400,12 @@ def fieldsite_to_rockd_checkin(fs: FieldSite) -> dict:
     updated = fs.updated or created
     d: dict = {
         "checkin_id": fs.id,
-        "spot_id": fs.id,  # <-- added
+        "spot_id": fs.id,
         "notes": fs.notes,
         "lat": fs.location.latitude,
         "lng": fs.location.longitude,
-        "created": _format_checkin_date(created),
-        "added": _format_checkin_date(updated),
+        "created": _dt_to_iso_z(created),
+        "updated": _dt_to_iso_z(updated),
         "observations": [],
     }
     if fs.photos:
@@ -498,8 +530,10 @@ async def convert_field_site(
         return multiple_checkin_to_fieldsite(payload)
     if key == ("fieldsite", "checkin"):
         if isinstance(payload, list):
+            if len(payload) == 1:
+                return fieldsite_to_rockd_checkin(payload[0])
             return multiple_fieldsite_to_rockd_checkin(payload)
-        return [fieldsite_to_rockd_checkin(payload)]
+        return fieldsite_to_rockd_checkin(payload)
     if key == ("fieldsite", "spot"):
         if isinstance(payload, list):
             return multiple_fieldsite_to_spot(payload)
