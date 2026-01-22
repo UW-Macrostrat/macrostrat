@@ -6,7 +6,7 @@ import * as larkin from "./larkin";
 import _ from "underscore";
 import gp from "geojson-precision";
 
-module.exports = function (req, res, next, callback) {
+function columnRouteHandlerInternal(req, res, next, callback) {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
@@ -50,7 +50,17 @@ module.exports = function (req, res, next, callback) {
       return larkin.error(req, res, next, error);
     }
   })();
-};
+}
+
+export { columnRouteHandlerInternal };
+
+export function handleColumnRoute(req, res, next) {
+  return columnRouteHandlerInternal(req, res, next, null);
+}
+
+export function getColumnDataCompat(req, callback) {
+  return columnRouteHandlerInternal(req, null, null, callback);
+}
 
 function processColumnsData(cols) {
   const new_cols = {};
