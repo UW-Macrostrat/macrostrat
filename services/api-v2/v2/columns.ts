@@ -11,34 +11,8 @@ export async function handleColumnRoute(req, res, next) {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
-
-  // Wrap the async logic in a promise but keep the outer handler sync
   try {
-    // Get units data grouped by col_id
-    const unitsResult = await getUnitsData(req);
-
-    if (!unitsResult || !unitsResult.length) {
-      const emptyResult = larkin.sendData(
-        req,
-        res,
-        next,
-        { format: "json" },
-        { data: [] },
-      );
-      return emptyResult;
-    }
-
-    larkin.trace(unitsResult[0]);
-
-    // Group and process units data
-    const cols = _.groupBy(unitsResult, (d) => d.col_id);
-    const new_cols = processColumnsData(cols);
-
-    // Query columns data
-    const columnData = await queryColumnsData(req, new_cols);
-
-    // Process and send response
-    const data = await prepareColumnData(req, new_cols, columnData);
+    const data = await getColumnData(req);
     const cfg = buildOutputConfig(req);
     return larkin.sendData(req, res, next, cfg, { data });
   } catch (error) {
@@ -47,28 +21,27 @@ export async function handleColumnRoute(req, res, next) {
   }
 }
 
+async function getColumnData(req) {
+  // Get units data grouped by col_id
+  const unitsResult = (await getUnitsData(req)) ?? [];
+
+  // Group and process units data
+  const cols = _.groupBy(unitsResult, (d) => d.col_id);
+  const new_cols = processColumnsData(cols);
+
+  // Query columns data
+  const columnData = await queryColumnsData(req, new_cols);
+
+  // Process and send response
+  return await prepareColumnData(req, new_cols, columnData);
+}
+
 export function getColumnDataCompat(req, callback) {
   // Wrap the async logic in a promise but keep the outer handler sync
   (async () => {
     try {
-      // Get units data grouped by col_id
-      const unitsResult = await getUnitsData(req);
-
-      if (!unitsResult || !unitsResult.length) {
-        return callback(null, []);
-      }
-
-      larkin.trace(unitsResult[0]);
-
-      // Group and process units data
-      const cols = _.groupBy(unitsResult, (d) => d.col_id);
-      const new_cols = processColumnsData(cols);
-
-      // Query columns data
-      const columnData = await queryColumnsData(req, new_cols);
-
       // Process and send response
-      const res = await prepareColumnData(req, new_cols, columnData);
+      const res = await getColumnData(req);
       callback(null, res);
     } catch (error) {
       larkin.trace(error);
@@ -126,6 +99,10 @@ function processColumnsData(cols) {
 }
 
 async function queryColumnsData(req, new_cols) {
+  if (Object.keys(new_cols).length === 0) {
+    return [];
+  }
+
   const col_ids = Object.keys(new_cols).map((d) => parseInt(d));
   let params = { col_ids };
 
