@@ -1,4 +1,4 @@
-import { handleUnitsRoute } from "./units";
+import { getUnitsData } from "./units";
 
 var api = require("./api"),
   _ = require("underscore"),
@@ -19,14 +19,8 @@ module.exports = async function (req, res, next) {
 
   try {
     // First pass the request to units and get the units back
-    const units = await new Promise((resolve, reject) => {
-      handleUnitsRoute(req, null, null, function (error, result) {
-        if (error) {
-          return reject(error);
-        }
-        resolve(result);
-      });
-    });
+
+    const units = await getUnitsData(req);
 
     // The sauce. Process the units into sections, grouped by column
     const columns = processUnitsIntoSections(units);

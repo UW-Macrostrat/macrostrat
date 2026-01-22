@@ -12,9 +12,19 @@ export function handleUnitsRoute(req, res, next, cb) {
     if (cb) {
       cb(error);
     } else {
-      return larkin.error(req, res, next, "Something went wrong");
+      return larkin.error(req, res, next, error.message);
     }
   });
+}
+
+export async function getUnitsData(req) {
+  let params = {};
+
+  // First determine age range component of query, if any.
+  const data = await determineAgeRange(req, params);
+
+  // Build the main query
+  return await buildAndExecuteMainQuery(req, data, params, () => {});
 }
 
 async function handleUnitsRouteAsync(req, res, next, cb) {
@@ -23,13 +33,7 @@ async function handleUnitsRouteAsync(req, res, next, cb) {
     return larkin.info(req, res, next);
   }
 
-  let params = {};
-
-  // First determine age range component of query, if any.
-  const data = await determineAgeRange(req, params);
-
-  // Build the main query
-  const result = await buildAndExecuteMainQuery(req, data, params, cb);
+  const result = getUnitsData(req);
 
   if (cb) {
     cb(null, result);

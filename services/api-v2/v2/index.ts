@@ -2,7 +2,7 @@ const api = require("./api");
 const larkin = require("./larkin");
 
 import { handleUnitsRoute } from "./units";
-import handleFossilsRoute from "./fossils";
+import { handleFossilsRoute } from "./fossils";
 
 export async function buildAPI() {
   await larkin.checkCapabilities(api);

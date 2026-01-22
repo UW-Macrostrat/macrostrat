@@ -1,4 +1,4 @@
-import { handleUnitsRoute } from "./units";
+import { getUnitsData } from "./units";
 
 var api = require("./api"),
   dbgeo = require("dbgeo"),
@@ -6,7 +6,7 @@ var api = require("./api"),
 
 import { buildProjectsFilter } from "./utils";
 
-export default async function (req, res, next) {
+export async function handleFossilsRoute(req, res, next) {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
@@ -146,15 +146,7 @@ async function determineAgeRangeAndUnits(req) {
     req.query.econ_type ||
     req.query.econ_class
   ) {
-    const result = await new Promise((resolve, reject) => {
-      handleUnitsRoute(req, null, null, function (error, result) {
-        if (error) {
-          reject(error);
-        } else {
-          resolve(result);
-        }
-      });
-    });
+    const result = await getUnitsData(req);
 
     if (!result || !result.length) {
       return null;

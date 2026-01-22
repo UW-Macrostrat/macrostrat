@@ -1,4 +1,4 @@
-import { handleUnitsRoute } from "./units";
+import { getUnitsData } from "./units";
 
 import * as api from "./api";
 import dbgeo from "dbgeo";
@@ -15,12 +15,7 @@ module.exports = function (req, res, next, callback) {
   (async () => {
     try {
       // Get units data grouped by col_id
-      const unitsResult = await new Promise((resolve, reject) => {
-        handleUnitsRoute(req, null, null, function (error, result) {
-          if (error) return reject(error);
-          resolve(result);
-        });
-      });
+      const unitsResult = await getUnitsData(req);
 
       if (!unitsResult || !unitsResult.length) {
         const emptyResult = callback
