@@ -1,4 +1,4 @@
-from typing import Any, Iterable, List, Union, Optional
+from typing import Any, Iterable, List, Optional, Union
 
 import dotenv
 import httpx
@@ -54,13 +54,13 @@ def _dt_to_ms(dt: Optional[datetime]) -> Optional[int]:
         dt = dt.replace(tzinfo=timezone.utc)
     return int(dt.timestamp() * 1000)
 
+
 def _dt_to_iso_z(dt: Optional[datetime]) -> Optional[str]:
     if not dt:
         return None
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
     return dt.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
-
 
 
 def _format_checkin_date(dt: Optional[datetime]) -> Optional[str]:
@@ -287,7 +287,9 @@ def multiple_spot_to_fieldsite(
     return out
 
 
-def spot_to_checkin(spot: Union[dict, List[dict]] = Body(...)) -> Union[dict, list[dict]]:
+def spot_to_checkin(
+    spot: Union[dict, List[dict]] = Body(...)
+) -> Union[dict, list[dict]]:
     """Pipeline: Spot JSON (FeatureCollections) or FieldSites -> Checkin(s).
     Output rule:
     - dict output only when the input is a single object representing a single spot/fieldsite
@@ -295,17 +297,17 @@ def spot_to_checkin(spot: Union[dict, List[dict]] = Body(...)) -> Union[dict, li
       AND exactly one checkin is produced.
     - otherwise list output
     """
-    #multiple fieldsites
+    # multiple fieldsites
     if isinstance(spot, list):
         if spot and isinstance(spot[0], dict) and "location" in spot[0]:
             return multiple_fieldsite_to_rockd_checkin(spot)
         fieldsites = multiple_spot_to_fieldsite(spot)
         return multiple_fieldsite_to_rockd_checkin(fieldsites)
-    #single fieldsite object
+    # single fieldsite object
     if isinstance(spot, dict) and "location" in spot:
         checkins = multiple_fieldsite_to_rockd_checkin([spot])
         return checkins[0] if len(checkins) == 1 else checkins
-    #determine whether this is a single spot
+    # determine whether this is a single spot
     is_single_spot_payload = False
     if isinstance(spot, dict):
         t = spot.get("type")
@@ -320,8 +322,6 @@ def spot_to_checkin(spot: Union[dict, List[dict]] = Body(...)) -> Union[dict, li
     if is_single_spot_payload and len(checkins) == 1:
         return checkins[0]
     return checkins
-
-
 
 
 # ___________________________________CHECKIN - FS - SPOT____________________________________
@@ -360,10 +360,11 @@ def checkin_to_fieldsite(checkin: dict) -> FieldSite:
         observations.append(Observation(data=planar))
     created = _parse_date_time(checkin.get("created")) or datetime.now(timezone.utc)
 
-    updated = (_parse_date_time(checkin.get("updated"))
-               or _parse_date_time(checkin.get("added"))
-               or created
-               )
+    updated = (
+        _parse_date_time(checkin.get("updated"))
+        or _parse_date_time(checkin.get("added"))
+        or created
+    )
 
     return FieldSite(
         id=int(cid),
