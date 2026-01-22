@@ -1,4 +1,4 @@
-import { handleUnitsRoute } from "../units";
+import { getUnitsDataCompat } from "../units";
 
 var api = require("../api");
 var async = require("async");
@@ -388,10 +388,8 @@ module.exports = function (req, res, next) {
               bestFit && bestFit.strat_names ? bestFit.strat_names : [];
 
             if (macroUnits.length) {
-              handleUnitsRoute(
+              getUnitsDataCompat(
                 { query: { unit_id: macroUnits.join(",") } },
-                null,
-                null,
                 function (error, result) {
                   if (error) larkin.trace("Error fetching units", error);
                   if (result && result.length) {

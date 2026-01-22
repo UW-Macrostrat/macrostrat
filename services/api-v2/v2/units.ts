@@ -17,23 +17,24 @@ export function handleUnitsRoute(req, res, next, cb) {
   });
 }
 
-export async function getUnitsData(req) {
-  let params = {};
-
+export async function getUnitsData(req, internal: boolean = true) {
   // First determine age range component of query, if any.
+  const params = buildSharedQueryParams(req);
   const data = await determineAgeRange(req, params);
 
+  const cb = internal ? () => {} : null;
+
   // Build the main query
-  return await buildAndExecuteMainQuery(req, data, params, () => {});
+  return await buildAndExecuteMainQuery(req, data, params, cb);
 }
 
-async function handleUnitsRouteAsync(req, res, next, cb) {
+export async function handleUnitsRouteAsync(req, res, next, cb) {
   // If no parameters, send the route definition
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
 
-  const result = getUnitsData(req);
+  const result = await getUnitsData(req, false);
 
   if (cb) {
     cb(null, result);
@@ -56,9 +57,35 @@ async function handleUnitsRouteAsync(req, res, next, cb) {
   }
 }
 
-async function determineAgeRange(req, params) {
+export function getUnitsDataCompat(req, callback) {
+  getUnitsData(req)
+    .then((result) => {
+      callback(null, result);
+    })
+    .catch((error) => {
+      callback(error);
+    });
+}
+
+function buildSharedQueryParams(req) {
+  let params = {};
   if (req.query.interval_name) {
     params["interval_name"] = req.query.interval_name;
+  }
+
+  if (req.query.int_id) {
+    params["int_id"] = req.query.int_id;
+  }
+
+  if (req.query.lat && req.query.lng) {
+    params["point"] =
+      "POINT(" + larkin.normalizeLng(req.query.lng) + " " + req.query.lat + ")";
+  }
+  return params;
+}
+
+async function determineAgeRange(req, params) {
+  if (params.interval_name) {
     const sql = `SELECT age_bottom, age_top, interval_name FROM macrostrat.intervals WHERE interval_name = :interval_name LIMIT 1`;
     const result = await larkin.queryPgAsync("burwell", sql, params);
 
@@ -73,10 +100,9 @@ async function determineAgeRange(req, params) {
     };
   }
 
-  if (req.query.int_id) {
+  if (params.int_id) {
     const sql =
       "SELECT age_bottom, age_top, interval_name FROM macrostrat.intervals WHERE id = :int_id LIMIT 1";
-    params["int_id"] = req.query.int_id;
     const result = await larkin.queryPgAsync("burwell", sql, params);
 
     if (result.rowCount == 0) {
@@ -125,14 +151,11 @@ async function determineAgeRange(req, params) {
     };
   }
 
-  if (req.query.lat && req.query.lng) {
+  if (params.point) {
     const sql =
       req.query.adjacents === "true"
         ? "WITH containing_geom AS (SELECT poly_geom FROM macrostrat.cols WHERE ST_Contains(poly_geom, ST_GeomFromText(:point, 4326))) SELECT id FROM macrostrat.cols WHERE ST_Intersects((SELECT * FROM containing_geom), poly_geom) ORDER BY ST_Distance(ST_Centroid(poly_geom), ST_GeomFromText($1, 4326))"
         : "SELECT id FROM macrostrat.cols WHERE ST_Contains(poly_geom, st_setsrid(ST_GeomFromText(:point), 4326)) ORDER BY ST_Distance(ST_Centroid(poly_geom), ST_GeomFromText(:point, 4326))";
-
-    params["point"] =
-      "POINT(" + larkin.normalizeLng(req.query.lng) + " " + req.query.lat + ")";
 
     const response = await larkin.queryPgAsync("burwell", sql, params);
     return {

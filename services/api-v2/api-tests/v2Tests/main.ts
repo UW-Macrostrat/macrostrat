@@ -38,7 +38,7 @@ describe("api/v2", () => {
   describe("defs/sources", loadTests("./defs_sources"));
 
   describe("paleogeography", loadTests("./paleogeography"));
-  //describe("geologic_units/gmna", loadTests("./geologic_units_gmna"));
+  //describe("geologic_units/gmna", loadTests("./geologic_units_gmna"), null, true);
   //describe("geologic_units/gmus", loadTests("./geologic_units_gmus"));
   describe("geologic_units/burwell", loadTests("./geologic_units_burwell"));
 
