@@ -2,6 +2,7 @@ const api = require("./api");
 const larkin = require("./larkin");
 
 import { handleUnitsRoute } from "./units";
+import handleFossilsRoute from "./fossils";
 
 export async function buildAPI() {
   await larkin.checkCapabilities(api);
@@ -32,7 +33,7 @@ export async function buildAPI() {
     handleUnitsRoute(req, res, next);
   });
 
-  api.route("/fossils").get(require("./fossils"));
+  api.route("/fossils").get(handleFossilsRoute);
 
   api.route("/stats").get(require("./stats"));
 

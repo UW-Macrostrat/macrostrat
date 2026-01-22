@@ -20,7 +20,7 @@ enum APICapability {
   // Store a global mapping of connection pools, so we don't overload PG with connections
   const connectionPoolStore: { [key: string]: typeof Pool } = {};
 
-  larkin.trace = function (type: string, ...args: any[]) {
+  larkin.trace = function (...args: any[]) {
     if (credentials.debug === false) {
       return;
     }
