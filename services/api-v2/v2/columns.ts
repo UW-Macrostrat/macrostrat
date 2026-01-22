@@ -5,6 +5,7 @@ import dbgeo from "dbgeo";
 import * as larkin from "./larkin";
 import _ from "underscore";
 import gp from "geojson-precision";
+import { acceptedFormats } from "./api";
 
 export async function handleColumnRoute(req, res, next) {
   if (Object.keys(req.query).length < 1) {
@@ -255,14 +256,25 @@ async function processAndSendResponse(
     });
   }
 
+  let data = column_data;
+
+  let cfg = {
+    format: acceptedFormats.standard[req.query.format]
+      ? req.query.format
+      : "json",
+    compact: true,
+    refs: "refs",
+  };
+
   if (req.query.format && api.acceptedFormats.geo[req.query.format]) {
+    const outputFormat = larkin.getOutputFormat(req.query.format);
     const output = await new Promise((resolve, reject) => {
       dbgeo.parse(
-        column_data || [],
+        data || [],
         {
           geometryColumn: "geojson",
           geometryType: "geojson",
-          outputFormat: larkin.getOutputFormat(req.query.format),
+          outputFormat,
         },
         (error, result) => {
           if (error)
@@ -272,42 +284,11 @@ async function processAndSendResponse(
       );
     });
 
-    const finalOutput =
-      larkin.getOutputFormat(req.query.format) === "geojson"
-        ? gp(output, 4)
-        : output;
+    data = outputFormat === "geojson" ? gp(output, 4) : output;
 
-    if (callback) return callback(null, finalOutput);
-
-    return larkin.sendData(
-      req,
-      res,
-      next,
-      {
-        format: api.acceptedFormats.standard[req.query.format]
-          ? req.query.format
-          : "json",
-        bare: api.acceptedFormats.bare[req.query.format] ? true : false,
-        compact: true,
-        refs: "refs",
-      },
-      { data: finalOutput },
-    );
-  } else {
-    if (callback) return callback(null, column_data);
-
-    return larkin.sendData(
-      req,
-      res,
-      next,
-      {
-        format: api.acceptedFormats.standard[req.query.format]
-          ? req.query.format
-          : "json",
-        compact: true,
-        refs: "refs",
-      },
-      { data: column_data },
-    );
+    cfg.bare = !!acceptedFormats.bare[req.query.format];
   }
+  if (callback) return callback(null, data);
+
+  return larkin.sendData(req, res, next, cfg, { data });
 }

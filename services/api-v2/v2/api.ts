@@ -1,3 +1,5 @@
+import { acceptedFormats } from "./defs";
+
 var express = require("express");
 var burwellTileServer = require("./burwellTileServer");
 
@@ -16,7 +18,7 @@ api.use(function (req, res, next) {
 // Load the new tile server that has multiple layers (USE ONLY THIS IN V3)
 api.use(burwellTileServer);
 
-api.acceptedFormats = {
+export const acceptedFormats = {
   standard: {
     json: true,
     csv: true,
@@ -32,6 +34,8 @@ api.acceptedFormats = {
     topojson_bare: true,
   },
 };
+
+api.acceptedFormats = acceptedFormats;
 
 api.version = 2;
 api.license = "CC-BY 4.0";

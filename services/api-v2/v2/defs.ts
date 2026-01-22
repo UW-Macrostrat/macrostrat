@@ -48,23 +48,6 @@ const sharedUnitFilters = {
   format: "string, desired output format",
 };
 
-export const acceptedFormats = {
-  standard: {
-    json: true,
-    csv: true,
-  },
-  geo: {
-    geojson: true,
-    topojson: true,
-    geojson_bare: true,
-    topojson_bare: true,
-  },
-  bare: {
-    geojson_bare: true,
-    topojson_bare: true,
-  },
-};
-
 export function isUnitFilteringRequired(req) {
   const columnFilters = [
     "col_id",
