@@ -108,6 +108,30 @@ it("should return topojson", async function () {
     .expect(validators.topoJSON);
 });
 
+it("should return all columns as topojson", async function () {
+  this.timeout(10000);
+  const localResponse = await request(settings.host)
+    .get("/columns?all=true&format=topojson")
+    .expect(validators.aSuccessfulRequest)
+    .expect(validators.topoJSON)
+    .expect(returnsManyColumns);
+});
+
+function returnsManyColumns(res: {
+  body: {
+    success: {
+      data: { type: "Topology"; objects: { output: { geometries: any[] } } };
+    };
+  };
+}) {
+  if (res.body.success.data.type !== "Topology") {
+    throw new Error("TopoJSON was not returned");
+  }
+  if (res.body.success.data.objects.output.geometries.length < 500) {
+    throw new Error("Not all columns being returned");
+  }
+}
+
 it("should return csv", async function () {
   const localResponse = await request(settings.host)
     .get("/columns?age=2&format=csv")
