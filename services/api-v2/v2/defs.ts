@@ -1,7 +1,7 @@
 const statusCodeExplanation =
   "string, column status codes, values 'active','in process','obsolete'. Defaults to 'active'";
 
-const sharedUnitFilters = {
+export const sharedUnitFilters = {
   unit_id: "integer, a valid unit id",
   section_id: "integer, a valid section id",
   col_id: "integer, a valid column id",
@@ -47,27 +47,6 @@ const sharedUnitFilters = {
   response: "Any available response_type. Default is short.",
   format: "string, desired output format",
 };
-
-export function isUnitFilteringRequired(req) {
-  const columnFilters = [
-    "col_id",
-    "col_type",
-    "project_id",
-    "status_code",
-    "adjacents",
-    "lat",
-    "lng",
-    "response",
-    "format",
-  ];
-
-  for (const param in req.query) {
-    if (!columnFilters.includes(param) && param in sharedUnitFilters) {
-      return true;
-    }
-  }
-  return false;
-}
 
 module.exports = {
   "/columns": {

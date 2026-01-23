@@ -6,6 +6,7 @@ import * as larkin from "./larkin";
 import _ from "underscore";
 import gp from "geojson-precision";
 import { acceptedFormats } from "./api";
+import { sharedUnitFilters } from "./defs";
 
 export async function handleColumnRoute(req, res, next) {
   if (Object.keys(req.query).length < 1) {
@@ -22,18 +23,24 @@ export async function handleColumnRoute(req, res, next) {
 }
 
 async function getColumnData(req) {
-  // Get units data grouped by col_id
-  const unitsResult = (await getUnitsData(req)) ?? [];
+  // New: a "fast path" where we can skip units processing if only column IDs are requested
+  //if (isUnitFilteringRequired(req))
 
-  // Group and process units data
-  const cols = _.groupBy(unitsResult, (d) => d.col_id);
-  const new_cols = processColumnsData(cols);
+  let unitGroups = null;
+  // Get units data grouped by col_id
+  if (isUnitFilteringRequired(req)) {
+    const unitsResult = (await getUnitsData(req)) ?? [];
+
+    // Group and process units data
+    const unitMap = _.groupBy(unitsResult, (d) => d.col_id);
+    unitGroups = synthesizeColumnDataFromGroupedUnits(unitMap);
+  }
 
   // Query columns data
-  const columnData = await queryColumnsData(req, new_cols);
+  const columnData = await queryColumnsData(req, unitGroups);
 
   // Process and send response
-  return await prepareColumnData(req, new_cols, columnData);
+  return await prepareColumnData(req, columnData, unitGroups);
 }
 
 export function getColumnDataCompat(req, callback) {
@@ -50,7 +57,46 @@ export function getColumnDataCompat(req, callback) {
   })();
 }
 
-async function prepareColumnData(req, unit_data, column_data) {
+export function isUnitFilteringRequired(req) {
+  const columnFilters = [
+    "col_id",
+    "col_type",
+    "project_id",
+    "status_code",
+    "adjacents",
+    "lat",
+    "lng",
+    "response",
+    "format",
+  ];
+
+  for (const param in req.query) {
+    if (!columnFilters.includes(param) && param in sharedUnitFilters) {
+      return true;
+    }
+  }
+  if (req.query.response === "long") {
+    // If we want long response, we need unit data
+    return true;
+  }
+
+  return false;
+}
+
+type ColumnData = {
+  [key: string]: any;
+  col_id: number;
+}[];
+
+type UnitDataMap = {
+  [col_id: number]: any;
+};
+
+async function prepareColumnData(
+  req,
+  column_data: ColumnData,
+  unit_data: UnitDataMap | null,
+) {
   let data = finalizeColumnsData(req, column_data, unit_data);
   if (req.query.format && acceptedFormats.geo[req.query.format]) {
     data = await buildGeoResult(req, data);
@@ -58,7 +104,7 @@ async function prepareColumnData(req, unit_data, column_data) {
   return data;
 }
 
-function processColumnsData(cols) {
+function synthesizeColumnDataFromGroupedUnits(cols) {
   const new_cols = {};
   Object.keys(cols).forEach((col_id) => {
     new_cols[col_id] = {
@@ -98,13 +144,20 @@ function processColumnsData(cols) {
   return new_cols;
 }
 
-async function queryColumnsData(req, new_cols) {
-  if (Object.keys(new_cols).length === 0) {
-    return [];
-  }
+async function queryColumnsData(req, new_cols: UnitDataMap | null) {
+  let params: any = {};
+  if (new_cols !== null) {
+    if (Object.keys(new_cols).length === 0) {
+      return [];
+    }
 
-  const col_ids = Object.keys(new_cols).map((d) => parseInt(d));
-  let params = { col_ids };
+    const col_ids = Object.keys(new_cols).map((d) => parseInt(d));
+    params = { col_ids };
+  } else if (req.query.col_id != null) {
+    params = {
+      col_ids: larkin.parseMultipleIds(req.query.col_id),
+    };
+  }
 
   const limit = "sample" in req.query ? " LIMIT 5" : "";
   let orderBy = "";
@@ -127,6 +180,8 @@ async function queryColumnsData(req, new_cols) {
   } else {
     params["status_code"] = ["active"];
   }
+
+  const whereClauses = ["cols.status_code = ANY(:status_code)"];
 
   // Handle geometry - adds col_areas.col_area to GROUP BY
   const needsGeometry =
@@ -166,9 +221,36 @@ async function queryColumnsData(req, new_cols) {
     }
   }
 
+  if (new_cols == null) {
+    // We have to filter directly instead of relying on units filtering
+    if ("col_ids" in params) {
+      whereClauses.push("cols.id = ANY(:col_ids)");
+    }
+    if ("col_group_id" in req.query) {
+      whereClauses.push("cols.col_group_id = :col_group_id");
+      params["col_group_id"] = req.query.col_group_id;
+    }
+    if ("lat" in req.query && "lng" in req.query) {
+      const point = `ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)`;
+      whereClauses.push(`ST_Contains(col_areas.col_area, ${point})`);
+      params["lat"] = req.query.lat;
+      params["lng"] = larkin.normalizeLng(req.query.lng);
+    }
+    if ("col_type" in req.query) {
+      whereClauses.push("cols.col_type = :col_type");
+      params["col_type"] = req.query.col_type;
+    }
+    if ("project_id" in req.query) {
+      whereClauses.push("cols.project_id = :project_id");
+      params["project_id"] = req.query.project_id;
+    }
+  }
+
   // Assemble final GROUP BY clause
   const allGroupByColumns = [...baseGroupBy, ...additionalGroupBy];
   const groupByClause = `GROUP BY ${allGroupByColumns.join(", ")}`;
+
+  const whereClause = whereClauses.join(" AND ");
 
   const result = await larkin.queryPgAsync(
     "burwell",
@@ -190,8 +272,7 @@ async function queryColumnsData(req, new_cols) {
     LEFT JOIN macrostrat.col_areas on col_areas.col_id = cols.id
     LEFT JOIN macrostrat.col_groups ON col_groups.id = cols.col_group_id
     LEFT JOIN macrostrat.col_refs ON cols.id = col_refs.col_id
-    WHERE cols.status_code = ANY(:status_code)
-      AND cols.id = ANY(:col_ids)
+    WHERE ${whereClause}
     ${groupByClause}
     ${orderBy}
     ${limit}
@@ -209,16 +290,18 @@ function finalizeColumnsData(req, column_data, unit_data) {
     if (typeof d.refs === "string" || d.refs instanceof String) {
       d.refs = larkin.jsonifyPipes(d.refs, "integers");
     }
-    d.t_units = unit_data[d.col_id].t_units;
-    d.t_sections = unit_data[d.col_id].t_sections;
+    if (unit_data != null) {
+      d.t_units = unit_data[d.col_id].t_units;
+      d.t_sections = unit_data[d.col_id].t_sections;
 
-    if (req.query.response === "long") {
-      d = _.extend(d, unit_data[d.col_id]);
+      if (req.query.response === "long") {
+        d = _.extend(d, unit_data[d.col_id]);
 
-      if (req.query.format === "csv") {
-        d.lith = larkin.pipifyAttrs(d.lith);
-        d.environ = larkin.pipifyAttrs(d.environ);
-        d.econ = larkin.pipifyAttrs(d.econ);
+        if (req.query.format === "csv") {
+          d.lith = larkin.pipifyAttrs(d.lith);
+          d.environ = larkin.pipifyAttrs(d.environ);
+          d.econ = larkin.pipifyAttrs(d.econ);
+        }
       }
     }
     return d;

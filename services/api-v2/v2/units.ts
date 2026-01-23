@@ -8,9 +8,8 @@ import { buildProjectsFilter } from "./utils";
 
 export async function getUnitsData(req, internal: boolean = true) {
   // First determine age range component of query, if any.
-  const params = buildSharedQueryParams(req);
-  const data = await determineAgeRange(req, params);
-  return await buildAndExecuteMainQuery(req, data, params, internal);
+  const data = await determineAgeRange(req);
+  return await buildAndExecuteMainQuery(req, data, internal);
 }
 
 export async function handleUnitsRoute(req, res, next) {
@@ -30,7 +29,7 @@ export async function handleUnitsRoute(req, res, next) {
         format: api.acceptedFormats.standard[req.query.format]
           ? req.query.format
           : "json",
-        bare: api.acceptedFormats.bare[req.query.format] ? true : false,
+        bare: !!api.acceptedFormats.bare[req.query.format],
         refs: req.query.response === "long" ? "refs" : false,
       },
       {
@@ -53,27 +52,61 @@ export function getUnitsDataCompat(req, callback) {
     });
 }
 
-function buildSharedQueryParams(req) {
-  let params = {};
-  if (req.query.interval_name) {
-    params["interval_name"] = req.query.interval_name;
-  }
-
-  if (req.query.int_id) {
-    params["int_id"] = req.query.int_id;
-  }
-
+async function getColumnIDsForQuery(req): Promise<number[]> {
   if (req.query.lat && req.query.lng) {
-    params["point"] =
+    const point =
       "POINT(" + larkin.normalizeLng(req.query.lng) + " " + req.query.lat + ")";
+
+    const sql =
+      req.query.adjacents === "true"
+        ? "WITH containing_geom AS (SELECT poly_geom FROM macrostrat.cols WHERE ST_Contains(poly_geom, ST_GeomFromText(:point, 4326))) SELECT id FROM macrostrat.cols WHERE ST_Intersects((SELECT * FROM containing_geom), poly_geom) ORDER BY ST_Distance(ST_Centroid(poly_geom), ST_GeomFromText($1, 4326))"
+        : "SELECT id FROM macrostrat.cols WHERE ST_Contains(poly_geom, st_setsrid(ST_GeomFromText(:point), 4326)) ORDER BY ST_Distance(ST_Centroid(poly_geom), ST_GeomFromText(:point, 4326))";
+
+    const response = await larkin.queryPgAsync("burwell", sql, { point });
+
+    return response.rows.map((d) => d.id);
   }
-  return params;
+
+  if (req.query.col_id && req.query.adjacents) {
+    const col_ids = larkin.parseMultipleIds(req.query.col_id);
+    const placeholders = col_ids.map((d, i) => "$" + (i + 1));
+
+    let sql =
+      "WITH containing_geom AS (SELECT poly_geom FROM macrostrat.cols WHERE id IN (" +
+      placeholders.join(",") +
+      ")) SELECT id FROM macrostrat.cols WHERE ST_Intersects((SELECT * FROM containing_geom), poly_geom)";
+
+    if (col_ids.length === 1) {
+      sql +=
+        " ORDER BY ST_Distance(ST_Centroid(poly_geom), (SELECT * FROM containing_geom))";
+    }
+
+    const response = await larkin.queryPgAsync("burwell", sql, col_ids);
+    return response.rows.map((d) => d.id);
+  }
+
+  if (req.query.col_group_id) {
+    const result = await larkin.queryPgAsync(
+      "burwell",
+      "SELECT id FROM macrostrat.cols WHERE col_group_id = ANY(:col_group_ids)",
+      { col_group_ids: larkin.parseMultipleIds(req.query.col_group_id) },
+    );
+
+    return result.rows.map((d) => d.id);
+  }
+  return undefined;
 }
 
-async function determineAgeRange(req, params) {
-  if (params.interval_name) {
+async function determineAgeRange(req) {
+  /** TODO: right now, joint filtering of ages and column IDs is not supported.
+   * This should be changed.
+   * */
+
+  if (req.query.interval_name) {
     const sql = `SELECT age_bottom, age_top, interval_name FROM macrostrat.intervals WHERE interval_name = :interval_name LIMIT 1`;
-    const result = await larkin.queryPgAsync("burwell", sql, params);
+    const result = await larkin.queryPgAsync("burwell", sql, {
+      interval_name: req.query.interval_name,
+    });
 
     if (result.rowCount == 0) {
       throw new Error("No results found");
@@ -86,10 +119,12 @@ async function determineAgeRange(req, params) {
     };
   }
 
-  if (params.int_id) {
+  if (req.query.int_id) {
     const sql =
       "SELECT age_bottom, age_top, interval_name FROM macrostrat.intervals WHERE id = :int_id LIMIT 1";
-    const result = await larkin.queryPgAsync("burwell", sql, params);
+    const result = await larkin.queryPgAsync("burwell", sql, {
+      int_id: req.query.int_id,
+    });
 
     if (result.rowCount == 0) {
       return {
@@ -122,71 +157,13 @@ async function determineAgeRange(req, params) {
     };
   }
 
-  if (req.query.shape) {
-    const result = await larkin.queryPgAsync(
-      "burwell",
-      `SELECT id FROM macrostrat.cols WHERE ST_Intersects(poly_geom, ST_GeomFromText($1, 4326))`,
-      [req.query.shape],
-    );
-
+  const col_ids = await getColumnIDsForQuery(req);
+  if (col_ids !== undefined) {
     return {
       interval_name: "none",
       age_bottom: 99999,
       age_top: 0,
-      col_ids: result.rows.map((d) => d.id),
-    };
-  }
-
-  if (params.point) {
-    const sql =
-      req.query.adjacents === "true"
-        ? "WITH containing_geom AS (SELECT poly_geom FROM macrostrat.cols WHERE ST_Contains(poly_geom, ST_GeomFromText(:point, 4326))) SELECT id FROM macrostrat.cols WHERE ST_Intersects((SELECT * FROM containing_geom), poly_geom) ORDER BY ST_Distance(ST_Centroid(poly_geom), ST_GeomFromText($1, 4326))"
-        : "SELECT id FROM macrostrat.cols WHERE ST_Contains(poly_geom, st_setsrid(ST_GeomFromText(:point), 4326)) ORDER BY ST_Distance(ST_Centroid(poly_geom), ST_GeomFromText(:point, 4326))";
-
-    const response = await larkin.queryPgAsync("burwell", sql, params);
-    return {
-      interval_name: "none",
-      age_bottom: 99999,
-      age_top: 0,
-      col_ids: response.rows.map((d) => d.id),
-    };
-  }
-
-  if (req.query.col_id && req.query.adjacents) {
-    const col_ids = larkin.parseMultipleIds(req.query.col_id);
-    const placeholders = col_ids.map((d, i) => "$" + (i + 1));
-
-    let sql =
-      "WITH containing_geom AS (SELECT poly_geom FROM macrostrat.cols WHERE id IN (" +
-      placeholders.join(",") +
-      ")) SELECT id FROM macrostrat.cols WHERE ST_Intersects((SELECT * FROM containing_geom), poly_geom)";
-
-    if (col_ids.length === 1) {
-      sql +=
-        " ORDER BY ST_Distance(ST_Centroid(poly_geom), (SELECT * FROM containing_geom))";
-    }
-
-    const response = await larkin.queryPgAsync("burwell", sql, col_ids);
-    return {
-      interval_name: "none",
-      age_bottom: 99999,
-      age_top: 0,
-      col_ids: response.rows.map((d) => d.id),
-    };
-  }
-
-  if (req.query.col_group_id) {
-    const result = await larkin.queryPgAsync(
-      "burwell",
-      "SELECT id FROM macrostrat.cols WHERE col_group_id = ANY(:col_group_ids)",
-      { col_group_ids: larkin.parseMultipleIds(req.query.col_group_id) },
-    );
-
-    return {
-      interval_name: "none",
-      age_bottom: 99999,
-      age_top: 0,
-      col_ids: result.rows.map((d) => d.id),
+      col_ids,
     };
   }
 
@@ -283,7 +260,8 @@ async function determineAgeRange(req, params) {
   throw new Error("Invalid parameters passed");
 }
 
-async function buildAndExecuteMainQuery(req, data, params, internal = false) {
+async function buildAndExecuteMainQuery(req, data, internal = false) {
+  let params = {};
   let where = "";
   const limit =
     "sample" in req.query ? (internal ? " LIMIT 15 " : " LIMIT 5") : "";
