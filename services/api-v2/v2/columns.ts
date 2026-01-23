@@ -28,7 +28,7 @@ async function getColumnData(req) {
 
   let unitGroups = null;
   // Get units data grouped by col_id
-  if (isUnitFilteringRequired(req)) {
+  if (isUnitFilteringRequired(req) || true) {
     const unitsResult = (await getUnitsData(req)) ?? [];
 
     // Group and process units data
@@ -183,7 +183,8 @@ async function queryColumnsData(req, new_cols: UnitDataMap | null) {
 
   const whereClauses = ["cols.status_code = ANY(:status_code)"];
 
-  // Handle geometry - adds col_areas.col_area to GROUP BY
+  /**
+   // Handle geometry - adds col_areas.col_area to GROUP BY
   const needsGeometry =
     req.query.format && api.acceptedFormats.geo[req.query.format];
   if (needsGeometry) {
@@ -220,12 +221,14 @@ async function queryColumnsData(req, new_cols: UnitDataMap | null) {
       additionalGroupBy.push("col_areas.col_area");
     }
   }
+    */
 
+  if ("col_ids" in params) {
+    whereClauses.push("cols.id = ANY(:col_ids)");
+  }
   if (new_cols == null) {
     // We have to filter directly instead of relying on units filtering
-    if ("col_ids" in params) {
-      whereClauses.push("cols.id = ANY(:col_ids)");
-    }
+
     if ("col_group_id" in req.query) {
       whereClauses.push("cols.col_group_id = :col_group_id");
       params["col_group_id"] = req.query.col_group_id;
