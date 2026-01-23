@@ -1,21 +1,17 @@
 import hashlib
 import json
 import mimetypes
+from functools import lru_cache
 from typing import Any
 
 import starlette.requests
 from api.database import get_async_session, get_engine
 from api.routes.security import has_access
-from fastapi import (
-    APIRouter,
-    Depends,
-    HTTPException,
-)
+from fastapi import APIRouter, Depends, HTTPException
 from minio import Minio
-from sqlalchemy import text
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from functools import lru_cache
+from sqlalchemy import text
 from starlette.datastructures import UploadFile as StarletteUploadFile
 
 
@@ -43,7 +39,6 @@ def get_file_settings() -> FileSettings:
             status_code=503,
             detail=f"File management is not configured.",
         )
-
 
 
 router = APIRouter(
@@ -93,6 +88,7 @@ def get_storage_host_bucket() -> tuple[str, str]:
     Also ensures host has no port (hostname only) if storage_host ever includes one.
     """
     import urllib.parse
+
     settings = get_file_settings()
 
     raw_host = settings.s3_endpoint
