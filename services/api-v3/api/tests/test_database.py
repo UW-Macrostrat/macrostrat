@@ -41,8 +41,6 @@ def api_client() -> TestClient:
         yield client
 
 
-
-
 @pytest.fixture
 async def engine() -> AsyncEngine:
     await connect_engine()

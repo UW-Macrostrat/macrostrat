@@ -208,7 +208,6 @@ class TestConvertFieldSite:
         assert c["observations"][0]["orientation"]["strike"] == pytest.approx(123.0)
         assert c["observations"][0]["orientation"]["dip"] == pytest.approx(45.0)
 
-
     def test_spot_to_checkin_accepts_single_fieldsite_dict(self, api_client):
         # your spot_to_checkin treats dict with "location" as already-FieldSite-shaped
         payload = _fieldsite_dict(fs_id=501)
@@ -222,7 +221,6 @@ class TestConvertFieldSite:
         assert out["spot_id"] == 501
         assert "created" in out and isinstance(out["created"], str)
         assert "updated" in out and isinstance(out["updated"], str)
-
 
     def test_checkin_to_fieldsite_single(self, api_client):
         payload = _checkin(checkin_id=77)
@@ -273,7 +271,6 @@ class TestConvertFieldSite:
         assert "created" in c0 and isinstance(c0["created"], str)
         assert "updated" in c0 and isinstance(c0["updated"], str)
 
-
     def test_fieldsite_to_checkin_single_returns_list_of_one(self, api_client):
         payload = _fieldsite_dict(fs_id=999)
         resp = api_client.post(
@@ -286,7 +283,6 @@ class TestConvertFieldSite:
         assert out["spot_id"] == 999
         assert "created" in out and isinstance(out["created"], str)
         assert "updated" in out and isinstance(out["updated"], str)
-
 
     def test_fieldsite_to_spot_single(self, api_client):
         payload = _fieldsite_dict(fs_id=1234)

@@ -49,12 +49,12 @@ def _assert_object_row_shape(obj: Dict[str, Any]) -> None:
     assert isinstance(obj["id"], int)
     assert isinstance(obj["key"], str)
     assert isinstance(obj["mime_type"], str)
-    assert isinstance(obj["source"], (dict, str, type(None)))  # _row_to_dict tries to coerce
+    assert isinstance(
+        obj["source"], (dict, str, type(None))
+    )  # _row_to_dict tries to coerce
 
 
-def _post_object_files(
-    api_client, files: List[Tuple[str, Tuple[str, bytes, str]]]
-):
+def _post_object_files(api_client, files: List[Tuple[str, Tuple[str, bytes, str]]]):
     """
     POST /object expects multipart/form-data with one or many files under field name 'object'.
 
@@ -64,7 +64,9 @@ def _post_object_files(
     return api_client.post("/object", files=files)
 
 
-def _create_one(api_client, *, name: Optional[str] = None, content: bytes = b"hello") -> Dict[str, Any]:
+def _create_one(
+    api_client, *, name: Optional[str] = None, content: bytes = b"hello"
+) -> Dict[str, Any]:
     name = name or f"{_rand()}.txt"
     resp = _post_object_files(api_client, [("object", (name, content, "text/plain"))])
     assert resp.status_code == 200
@@ -82,17 +84,21 @@ class CreatedObject:
     id: int
     key: str
 
+
 @pytest.fixture(scope="module")
 def object_registry(api_client):
     created: List[CreatedObject] = []
     yield created
     for obj in reversed(created):
         resp = api_client.delete(f"/object/{obj.id}?hard=true")
-        assert resp.status_code == 200, (
-            f"Cleanup hard delete failed for id={obj.id} key={obj.key}: {resp.text}"
-        )
+        assert (
+            resp.status_code == 200
+        ), f"Cleanup hard delete failed for id={obj.id} key={obj.key}: {resp.text}"
 
-def _register_created(registry: List[CreatedObject], objects_created: List[Dict[str, Any]]) -> None:
+
+def _register_created(
+    registry: List[CreatedObject], objects_created: List[Dict[str, Any]]
+) -> None:
     for o in objects_created:
         registry.append(CreatedObject(id=o["id"], key=o["key"]))
 
@@ -114,7 +120,9 @@ class TestObjectRoutes:
 
     def test_post_single_file_creates_row(self, api_client, object_registry):
         name = f"{_rand()}.txt"
-        resp = _post_object_files(api_client, [("object", (name, b"hello", "text/plain"))])
+        resp = _post_object_files(
+            api_client, [("object", (name, b"hello", "text/plain"))]
+        )
         assert resp.status_code == 200
 
         out = resp.json()
@@ -149,13 +157,17 @@ class TestObjectRoutes:
     def test_post_duplicate_key_skips(self, api_client, object_registry):
         name = f"{_rand()}.txt"
 
-        r1 = _post_object_files(api_client, [("object", (name, b"first", "text/plain"))])
+        r1 = _post_object_files(
+            api_client, [("object", (name, b"first", "text/plain"))]
+        )
         assert r1.status_code == 200
         created1 = r1.json()["objects_created"]
         assert len(created1) == 1
         _register_created(object_registry, created1)
 
-        r2 = _post_object_files(api_client, [("object", (name, b"second", "text/plain"))])
+        r2 = _post_object_files(
+            api_client, [("object", (name, b"second", "text/plain"))]
+        )
         assert r2.status_code == 200
         created2 = r2.json()["objects_created"]
         assert len(created2) == 0  # skipped
@@ -236,7 +248,9 @@ class TestObjectRoutes:
         assert isinstance(out["source"], dict)
         assert out["source"]["comments"] == "test"
 
-        resp2 = api_client.patch(f"/object/{oid}", json={"mime_type": "application/pdf"})
+        resp2 = api_client.patch(
+            f"/object/{oid}", json={"mime_type": "application/pdf"}
+        )
         assert resp2.status_code == 200
         assert resp2.json()["mime_type"] == "application/pdf"
 
